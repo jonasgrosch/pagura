@@ -1,7 +1,7 @@
-# ADR 0024: A document is built before it caches
+# ADR 0024: A document is built before it caches; passwords are typed
 
 Status: accepted, 2026-10-18. Refines ADR 0012 (retained memory) and
-invariant 8 of `docs/ARCHITECTURE.md`.
+invariant 8 of `docs/ARCHITECTURE.md`; protocol change per ADR 0005.
 
 ## Context
 
@@ -16,6 +16,10 @@ A review of `pagura-document` found that opening relied on implicit rules:
 - The password was cloned into the document's options and later cleared,
   which keeps its bytes in the allocation for the document's lifetime, and
   the security code read it back from there.
+- Legacy handlers (revisions 2–4) need PDFDocEncoding passwords
+  (7.6.4.3.2, Algorithm 2 step a), but only the CLI encoded text. The
+  library, the host protocol and the web viewer passed UTF-8, so a
+  non-ASCII password that worked in `pagura render` failed in the browser.
 - A failed object load was not cached, so offset correction and terminator
   scans of up to `stream_bytes` repeated on every access.
 
@@ -48,6 +52,18 @@ A review of `pagura-document` found that opening relied on implicit rules:
    earlier revisions and permitted-change analysis use this evidence instead
    of the document-wide diagnostic log, which grows as other consumers load
    objects or report information.
+6. **Passwords are `Password` values**: bytes reach the handler unchanged;
+   text is encoded once the handler revision is known, with PDFDocEncoding
+   for revisions 2–4 (`text_string::encode_pdf_doc`; an unrepresentable
+   character is `Unsupported` with `security.password-encoding`) and UTF-8
+   for 5 and 6, which the handler prepares with SASLprep. A password is
+   zeroed on drop on a best-effort basis and redacted in `Debug`. The CLI
+   passes `--password` as text and its private encoder is deleted.
+7. **Host protocol 1.5** marks a text password with bit 1 of open's
+   recovery byte. Older sessions keep treating that bit as an invalid
+   recovery byte, which ends the session, as before. The viewer negotiates
+   1.5 and sends typed passwords as text; other callers send bytes unless
+   they ask for text.
 
 ## Consequences
 
@@ -59,6 +75,8 @@ A review of `pagura-document` found that opening relied on implicit rules:
 - A reconstructed object stream's contents are decoded once for the plan
   and again lazily; if its dependencies were replaced, the opened document
   reports the disagreement instead of serving stale contents.
+- Callers construct `OpenOptions::password` with `Password::bytes` or
+  `Password::text`; `OpenOptions` no longer implements `PartialEq`.
 - A cached failed load is final for the document; retrying requires
   reopening, as for any other cached result.
 - A repair reported after opening outside the objects a signature analysis
@@ -67,6 +85,9 @@ A review of `pagura-document` found that opening relied on implicit rules:
 
 ## Alternatives considered
 
+- *An `OpenOptions::with_text_password` helper*: the typed `Password` keeps
+  bytes and text distinct where the decision is made, and gives the zeroing
+  and redaction one home.
 - *Clearing every cache after the last mutation*: simpler, but it keeps a
   mutable phase on the public type and depends on finding every cache.
 - *Decoding object streams for reconstruction without publishing*: that

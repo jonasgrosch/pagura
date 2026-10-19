@@ -10,8 +10,8 @@
 use crate::xref::rebuild::{self, StreamSlots};
 use crate::xref::{self, XrefOrigin, XrefTable};
 use crate::{
-    Document, Location, OpenOptions, Revision, Slot, catalog, diagnostics, history, memory, object,
-    security,
+    Document, Location, OpenOptions, Password, Revision, Slot, catalog, diagnostics, history,
+    memory, object, security,
 };
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, INDEX_ENTRY_OVERHEAD, Limits, Name, ObjectId, Recovery,
@@ -155,7 +155,7 @@ impl DocumentBuilder {
 
     /// Authenticates, reads reconstructed object streams and catalog, then
     /// freezes the document and validates its catalog.
-    pub(crate) fn build(mut self, password: &[u8]) -> Result<Document> {
+    pub(crate) fn build(mut self, password: &Password) -> Result<Document> {
         let origin = std::mem::take(&mut self.origin);
         if self
             .trailer

@@ -5137,6 +5137,78 @@
       "prepared_encoding": "PDFDocEncoding"
     },
     {
+      "id": "crypto/r6-utf8-euro",
+      "kind": "vector",
+      "description": "U+20AC is UTF-8 E2 82 AC for revision 6; text interfaces must not use PDFDocEncoding",
+      "requirements": [
+        "security-r6"
+      ],
+      "files": {
+        ".cipher": {
+          "path": "corpus/generated/crypto/r6-utf8-euro.cipher",
+          "sha256": "393eabd37f05bac22888027272b74fac196ff178ee0da97695450b044628c98f"
+        },
+        ".key": {
+          "path": "corpus/generated/crypto/r6-utf8-euro.key",
+          "sha256": "61a074972a43db3f24557d57a0731c7fb9dd6f8015bfc62d5ea83976725e8cd8"
+        },
+        ".method": {
+          "path": "corpus/generated/crypto/r6-utf8-euro.method",
+          "sha256": "a392beca2d548d42aaf5dfde0f515a7b9e2df4e1209a9d10079b2da7092ca0ce"
+        },
+        ".owner": {
+          "path": "corpus/generated/crypto/r6-utf8-euro.owner",
+          "sha256": "03f99ad2bb8f470ab4a6b65dd51dca8f63c4a36d52a66b22d706c14dbfec5983"
+        },
+        ".params": {
+          "path": "corpus/generated/crypto/r6-utf8-euro.params",
+          "sha256": "bfd04a8c7a54566fafff7903cf280439166819517324b13061436ef874b28eb5"
+        },
+        ".pdf": {
+          "path": "corpus/generated/crypto/r6-utf8-euro.pdf",
+          "sha256": "538598a30a0aea6c7a1fa395d598b14020f496af41b81280ad83d5892a657613"
+        },
+        ".plain": {
+          "path": "corpus/generated/crypto/r6-utf8-euro.plain",
+          "sha256": "1a4f0f43925093c6116af1e776b26b15071cdbfc75c99b8c0c7dde32aa13972f"
+        },
+        ".size0": {
+          "path": "corpus/generated/crypto/r6-utf8-euro.size0",
+          "sha256": "77b57ba67d2d22617fdcddd17732e3f09056d9f109e850d4b4204362645f7e53"
+        },
+        ".size1": {
+          "path": "corpus/generated/crypto/r6-utf8-euro.size1",
+          "sha256": "f595518d127a4bf864e78308f7481b3abc37b4c751133484496995cbdb2d7063"
+        },
+        ".size15": {
+          "path": "corpus/generated/crypto/r6-utf8-euro.size15",
+          "sha256": "ae3e0554eaf191e95800eee0fe17d116ac7062c68514cbf25ef24a6f8f28efd9"
+        },
+        ".size16": {
+          "path": "corpus/generated/crypto/r6-utf8-euro.size16",
+          "sha256": "efcbb7b739617ebf00d4d26626f825e308e8976278ee16d1132f4b0f0080ffe5"
+        },
+        ".size17": {
+          "path": "corpus/generated/crypto/r6-utf8-euro.size17",
+          "sha256": "c823c778f1d00ca7e14d977908217ef52740653d9ff9dd93309e4a78127fe327"
+        },
+        ".size31": {
+          "path": "corpus/generated/crypto/r6-utf8-euro.size31",
+          "sha256": "531d165a203f931c18a017be07b50fa64d4bd8dec527fb66cc36e2de54e66030"
+        },
+        ".size32": {
+          "path": "corpus/generated/crypto/r6-utf8-euro.size32",
+          "sha256": "2f9ccd9199334230e226935a9b188b4871a992f73ad6c6c6d54f978fa9c70a0d"
+        },
+        ".user": {
+          "path": "corpus/generated/crypto/r6-utf8-euro.user",
+          "sha256": "c4cc90ed3d26f12d4b08a75140970a7904035c31cbb4515a83f19b9003c00d1d"
+        }
+      },
+      "text_password_codepoint": "U+20AC",
+      "prepared_encoding": "UTF-8"
+    },
+    {
       "id": "crypto/r3-permissions-reserved-low",
       "kind": "vector",
       "description": "Independent encryption-side authentication, file-key and object-key oracle",

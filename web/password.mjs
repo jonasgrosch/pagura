@@ -1,4 +1,6 @@
-/** Accessible password entry; values are cleared before returning to the caller. */
+/** Accessible password entry; values are cleared before returning to the caller.
+ * The UTF-8 bytes are sent as a text password (protocol 1.5), which the engine
+ * encodes for the document's security handler. */
 let activeCancel = null;
 /** Dismiss a prompt when replacing or closing the document. */
 export function cancelPassword() { activeCancel?.(); }

@@ -31,7 +31,7 @@ mod view;
 mod xref;
 
 pub use object::{IndirectObject, ObjectSource};
-pub use options::OpenOptions;
+pub use options::{OpenOptions, Password};
 pub use pages::{Page, Rotation};
 pub use pagura_codec::ImageCodec;
 pub use stream::ImageStream;
@@ -115,7 +115,8 @@ impl Document {
     /// `Unsupported` for structures not implemented yet. DocOpen authorization
     /// can return `Password`; EFOpen-only filters defer authorization until an
     /// encrypted embedded stream is requested (7.6.6). Reopen with credentials
-    /// to authorize those embedded streams.
+    /// to authorize those embedded streams. A text password that PDFDocEncoding
+    /// cannot represent is `Unsupported` for a revision 2–4 handler.
     pub fn open(bytes: impl Into<Arc<[u8]>>, options: &OpenOptions) -> Result<Self> {
         let bytes = bytes.into();
         if bytes.len() > options.limits.file_bytes {

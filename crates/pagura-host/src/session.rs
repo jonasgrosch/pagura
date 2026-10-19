@@ -2,7 +2,7 @@
 
 use crate::cache::PageCache;
 use crate::protocol::{self, Request, Response};
-use pagura::{Document, Error, Limits, OpenOptions, Position, RenderOptions, Result};
+use pagura::{Document, Error, Limits, OpenOptions, Password, Position, RenderOptions, Result};
 use std::collections::BTreeMap;
 use std::io::{self, Read, Write};
 use std::sync::Arc;
@@ -193,6 +193,7 @@ impl Session {
                             | protocol::VERSION_1_2
                             | protocol::VERSION_1_3
                             | protocol::VERSION_1_4
+                            | protocol::VERSION_1_5
                     ) =>
             {
                 self.version = Some(*version);
@@ -206,6 +207,14 @@ impl Session {
             _ if self.version.is_none() => {
                 return Err(Error::invalid_argument("hello must be the first request")
                     .at(Position::Buffer(0)));
+            }
+            // Before 1.5 the text bit is an invalid recovery byte, which ends
+            // the session exactly as it always has.
+            Request::Open {
+                password_kind: protocol::PasswordKind::Text,
+                ..
+            } if self.version != Some(protocol::VERSION_1_5) => {
+                return Err(Error::syntax("unknown recovery mode").at(Position::Buffer(5)));
             }
             _ => (),
         }
@@ -279,7 +288,8 @@ impl Session {
                 bytes,
                 recovery,
                 password,
-            } => self.open(bytes, recovery, password),
+                password_kind,
+            } => self.open(bytes, recovery, password, password_kind),
             Request::PageInfo { document, page } => {
                 let page = self
                     .document(document)?
@@ -303,11 +313,7 @@ impl Session {
                 Ok(Response::Diagnostics(self.document(handle)?.diagnostics()))
             }
             Request::DiagnosticDetails(handle) => {
-                if self.version != Some(protocol::VERSION_1_4) {
-                    return Err(Error::invalid_argument(
-                        "typed diagnostics require protocol 1.4",
-                    ));
-                }
+                self.require_typed_diagnostics()?;
                 Ok(Response::DiagnosticDetails(
                     self.document(handle)?.diagnostics(),
                 ))
@@ -407,6 +413,7 @@ impl Session {
         bytes: &[u8],
         recovery: pagura::Recovery,
         password: &[u8],
+        password_kind: protocol::PasswordKind,
     ) -> Result<Response> {
         let retained = self
             .retained_bytes
@@ -416,10 +423,17 @@ impl Session {
         if self.documents.len() >= self.limits.objects || self.next_handle == u32::MAX {
             return Err(Error::limit("session document handle budget exceeded"));
         }
+        let password = match password_kind {
+            protocol::PasswordKind::Bytes => Password::bytes(password),
+            protocol::PasswordKind::Text => Password::text(
+                std::str::from_utf8(password)
+                    .map_err(|_| Error::invalid_argument("text password is not UTF-8"))?,
+            ),
+        };
         let options = OpenOptions {
             limits: self.limits,
             recovery,
-            password: password.to_vec(),
+            password,
         };
         let document = Document::open(bytes, &options)?;
         let pages = u32::try_from(document.page_count()?)
@@ -465,7 +479,7 @@ impl Session {
         if matches!(request, Request::Bounds(..))
             && !matches!(
                 self.version,
-                Some(protocol::VERSION_1_3 | protocol::VERSION_1_4)
+                Some(protocol::VERSION_1_3 | protocol::VERSION_1_4 | protocol::VERSION_1_5)
             )
         {
             return Err(Error::invalid_argument(
@@ -474,7 +488,12 @@ impl Session {
         }
         if !matches!(
             self.version,
-            Some(protocol::VERSION_1_2 | protocol::VERSION_1_3 | protocol::VERSION_1_4)
+            Some(
+                protocol::VERSION_1_2
+                    | protocol::VERSION_1_3
+                    | protocol::VERSION_1_4
+                    | protocol::VERSION_1_5
+            )
         ) {
             return Err(Error::invalid_argument(
                 "reading request requires protocol 1.2",
@@ -601,11 +620,25 @@ impl Session {
                     | protocol::VERSION_1_2
                     | protocol::VERSION_1_3
                     | protocol::VERSION_1_4
+                    | protocol::VERSION_1_5
             )
         ) {
             Ok(())
         } else {
             Err(Error::invalid_argument("request requires protocol 1.1"))
+        }
+    }
+
+    fn require_typed_diagnostics(&self) -> Result<()> {
+        if matches!(
+            self.version,
+            Some(protocol::VERSION_1_4 | protocol::VERSION_1_5)
+        ) {
+            Ok(())
+        } else {
+            Err(Error::invalid_argument(
+                "typed diagnostics require protocol 1.4",
+            ))
         }
     }
 
@@ -726,6 +759,48 @@ mod tests {
             assert_eq!(output[0][0], 255);
         }
         assert_eq!(run(&[], limits), (SessionEnd::Eof, vec![]));
+    }
+
+    #[test]
+    fn text_passwords_need_protocol_1_5_and_are_encoded_for_the_handler() {
+        let pdf = fixture("crypto", "r3-pdfdocencoding-euro.pdf");
+        let open = |id: u32, mode: u8, password: &[u8]| {
+            let mut payload = vec![mode];
+            payload.extend(u32::try_from(password.len()).unwrap().to_le_bytes());
+            payload.extend(password);
+            payload.extend(u32::try_from(pdf.len()).unwrap().to_le_bytes());
+            payload.extend(&pdf);
+            frame(2, id, &payload)
+        };
+        let hello_1_5 = frame(1, 1, &protocol::VERSION_1_5.to_le_bytes());
+        // UTF-8 text becomes PDFDocEncoding 0xA0 for this revision 3 file.
+        for mode in [protocol::PASSWORD_TEXT, protocol::PASSWORD_TEXT | 1] {
+            let mut input = hello_1_5.clone();
+            input.extend(open(2, mode, "€".as_bytes()));
+            let (end, output) = run(&input, Limits::default());
+            assert_eq!(end, SessionEnd::Eof);
+            assert_eq!(output[1][0], 130, "mode {mode}");
+        }
+        // The same bytes without the flag are a wrong password; the session stays.
+        let mut input = hello_1_5;
+        input.extend(open(2, 1, "€".as_bytes()));
+        input.extend(open(3, 1, &[0xa0]));
+        let (end, output) = run(&input, Limits::default());
+        assert_eq!(end, SessionEnd::Eof);
+        assert_eq!(output[1][0], 255);
+        assert_eq!(output[2][0], 130);
+        // Before 1.5 the flag is an invalid recovery byte, which ends the session.
+        let mut input = frame(1, 1, &protocol::VERSION_1_4.to_le_bytes());
+        input.extend(open(2, protocol::PASSWORD_TEXT | 1, "€".as_bytes()));
+        input.extend(frame(5, 3, &[1, 0, 0, 0]));
+        let (end, output) = run(&input, Limits::default());
+        assert_eq!(end, SessionEnd::ProtocolError);
+        assert_eq!(output.len(), 2);
+        assert_eq!(output[1][0], 255);
+        // No version defines the other mode bits.
+        let mut payload = vec![4];
+        payload.extend([0; 8]);
+        assert!(protocol::decode(&frame(2, 2, &payload)[4..], Limits::default()).is_err());
     }
 
     #[test]
@@ -893,6 +968,7 @@ mod tests {
                 bytes: &pdf,
                 recovery: pagura::Recovery::Strict,
                 password: &[],
+                password_kind: protocol::PasswordKind::Bytes,
             })
             .unwrap();
         session
@@ -979,6 +1055,7 @@ mod tests {
                 bytes: &pdf,
                 recovery: pagura::Recovery::Strict,
                 password: &[],
+                password_kind: protocol::PasswordKind::Bytes,
             })
             .unwrap();
         session

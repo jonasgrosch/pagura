@@ -1,4 +1,4 @@
-# Pagura session protocol v1 through v1.4
+# Pagura session protocol v1 through v1.5
 
 ADR 0005 defines a synchronous command over stdin/stdout with the same layouts
 on native and wasm32-wasip1. This document freezes the v1 byte layout, including the refused-repair field.
@@ -17,7 +17,7 @@ complete valid request. Callers serialize requests; the host flushes responses.
 
 The first request is `hello(1)` for v1, `hello(65537)` (0x00010001) for v1.1,
 `hello(65538)` (0x00010002) for v1.2, `hello(65539)` (0x00010003) for v1.3,
-or `hello(65540)` (0x00010004) for v1.4.
+`hello(65540)` (0x00010004) for v1.4, or `hello(65541)` (0x00010005) for v1.5.
 Repeated hello, unsupported versions,
 non-increasing IDs, unknown kinds, invalid recovery bytes, trailing payload,
 truncation and oversized frames emit one error and **end the session**. Clean
@@ -32,7 +32,7 @@ responses and keep the session alive. A failed open consumes no handle.
 | Request kind | Request payload | Success kind | Success payload |
 |---|---|---|---|
 | 1 hello | `u32 version` | 129 | `u32 version` (echoes the negotiated version) |
-| 2 open | `u8 recovery` (0 strict, 1 repair), `blob password`, `blob pdf` | 130 | `u32 handle`, `u32 page_count` |
+| 2 open | `u8 recovery` (0 strict, 1 repair; v1.5: bit 1 marks a text password), `blob password`, `blob pdf` | 130 | `u32 handle`, `u32 page_count` |
 | 3 page_info | `u32 handle`, `u32 page` | 131 | `f64 crop_x0,y0,x1,y1`, `u16 clockwise_rotation`, `f64 user_unit`, `u32 width,height` |
 | 4 render_tile | `u32 handle,page`, `f64 scale`, `u32 x,y,width,height` | 132 | `u32 width,height`, exactly `width*height*4` bytes straight RGBA8 |
 | 5 diagnostics | `u32 handle` | 133 | `u32 count`, then `count` diagnostic records |
@@ -53,6 +53,19 @@ open and page-tree validation succeed. Open's repair mode is forwarded directly
 to the document API (ADR 0003); legacy diagnostic snapshots contain repairs
 discovered so far, in discovery order, including repairs made during lazy
 rendering. Protocol 1.4 also exposes informational diagnostics (see below).
+
+## Text passwords (v1.5)
+
+`hello(65541)` keeps every v1.4 operation and layout. In open's recovery
+byte, bit 0 still selects repair and bit 1 (value 2) marks the password blob
+as UTF-8 text rather than handler bytes. The engine then encodes it for the
+document's Standard security handler once its revision is known:
+PDFDocEncoding for revisions 2–4 and UTF-8 for revisions 5 and 6 (ISO 32000-2
+7.6.4.3). Text that PDFDocEncoding cannot represent fails open with
+`Unsupported` (`security.password-encoding`); a blob that is not UTF-8 fails
+with `InvalidArgument`. Both keep the session. Older sessions treat bit 1 as
+an invalid recovery byte and end, as before; other bits are invalid in every
+version.
 
 ## Viewport generations (v1.1)
 

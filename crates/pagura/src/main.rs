@@ -2,10 +2,9 @@
 //! The `pagura` command-line tool: inspection, PDF-to-image conversion,
 //! corpus scanning and internal profiling.
 
-mod password;
-
 use pagura::{
-    Document, Limits, OpenOptions, OverprintPreview, Pixmap, Recovery, RenderOptions, Rgba8,
+    Document, Limits, OpenOptions, OverprintPreview, Password, Pixmap, Recovery, RenderOptions,
+    Rgba8,
 };
 use std::error::Error;
 use std::fmt::Write as _;
@@ -57,7 +56,7 @@ struct Flags {
     provider: std::sync::Arc<pagura_data::Bundled>,
     strict: bool,
     timings: bool,
-    password: Vec<u8>,
+    password: Password,
     max_pages: Option<usize>,
     overprint: OverprintPreview,
 }
@@ -100,7 +99,7 @@ fn parse(args: &[String]) -> CliResult<(Flags, Vec<&str>)> {
         match arg {
             "--strict" => flags.strict = true,
             "--timings" => flags.timings = true,
-            "--password" => flags.password = value()?.as_bytes().to_vec(),
+            "--password" => flags.password = Password::text(value()?),
             "--max-pages" => flags.max_pages = Some(value()?.parse()?),
             "--overprint" => {
                 flags.overprint = match value()? {
@@ -198,7 +197,7 @@ fn open(path: &str, flags: &Flags) -> CliResult<Document> {
 
 fn open_bytes(bytes: std::sync::Arc<[u8]>, flags: &Flags) -> CliResult<Document> {
     let options = flags.open_options();
-    let document = password::open(bytes, &options)?;
+    let document = Document::open(bytes, &options)?;
     Ok(document)
 }
 

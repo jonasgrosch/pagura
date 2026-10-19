@@ -135,7 +135,7 @@ fn padded_key_choice_precedes_cached_strings_and_obeys_decoding_limits() {
             let document = Document::open(
                 bytes.clone(),
                 &OpenOptions {
-                    password: password.to_vec(),
+                    password: crate::Password::bytes(password),
                     ..OpenOptions::default()
                 },
             )
@@ -174,7 +174,7 @@ fn padded_key_choice_precedes_cached_strings_and_obeys_decoding_limits() {
         let error = Document::open(
             bytes.clone(),
             &OpenOptions {
-                password: b"wrong".to_vec(),
+                password: crate::Password::bytes(b"wrong".as_slice()),
                 ..OpenOptions::default()
             },
         )
@@ -364,15 +364,20 @@ mod unit {
         )
         .unwrap();
         let expected = pagura_crypto::standard::authenticate(&parameters, b"").unwrap_err();
-        assert_eq!(crate::security::read(&document, &[]).unwrap_err(), expected);
+        assert_eq!(
+            crate::security::read(&document, &crate::Password::default()).unwrap_err(),
+            expected
+        );
         *document.trailer.get_mut(b"Encrypt").unwrap() =
             Value::Dictionary(dictionary(b"<< /Filter /Adobe.PubSec >>"));
         assert_eq!(
-            crate::security::read(&document, &[]).unwrap_err().feature(),
+            crate::security::read(&document, &crate::Password::default())
+                .unwrap_err()
+                .feature(),
             Some(crate::features::PUBSEC)
         );
         let options = OpenOptions {
-            password: b"private-password".to_vec(),
+            password: crate::Password::bytes(b"private-password".as_slice()),
             ..OpenOptions::default()
         };
         assert!(!format!("{options:?}").contains("private-password"));
@@ -393,7 +398,7 @@ mod indirect_filters {
                     bytes.clone(),
                     &OpenOptions {
                         recovery: Recovery::Strict,
-                        password: password.to_vec(),
+                        password: crate::Password::bytes(password),
                         ..OpenOptions::default()
                     },
                 )
@@ -411,7 +416,7 @@ mod indirect_filters {
                 Document::open(
                     bytes,
                     &OpenOptions {
-                        password: b"wrong".to_vec(),
+                        password: crate::Password::bytes(b"wrong".as_slice()),
                         ..OpenOptions::default()
                     }
                 )
@@ -450,7 +455,7 @@ mod authorization_events {
                 bytes.clone(),
                 &OpenOptions {
                     recovery,
-                    password: password.to_vec(),
+                    password: crate::Password::bytes(password),
                     ..OpenOptions::default()
                 },
             )
@@ -489,7 +494,7 @@ mod authorization_events {
                 bytes.clone(),
                 &OpenOptions {
                     recovery,
-                    password: password.to_vec(),
+                    password: crate::Password::bytes(password),
                     ..OpenOptions::default()
                 },
             )
@@ -524,7 +529,7 @@ mod authorization_events {
                 bytes.clone(),
                 &OpenOptions {
                     recovery,
-                    password: b"attachment".to_vec(),
+                    password: crate::Password::bytes(b"attachment".as_slice()),
                     ..OpenOptions::default()
                 },
             )
@@ -560,7 +565,7 @@ mod missing_length {
         let bytes = fixture("document", "security-length-missing.pdf");
         for password in [b"".as_slice(), b"owner"] {
             let options = OpenOptions {
-                password: password.to_vec(),
+                password: crate::Password::bytes(password),
                 ..OpenOptions::default()
             };
             let strict = Document::open(
@@ -608,7 +613,7 @@ mod missing_length {
             let error = Document::open(
                 bytes,
                 &OpenOptions {
-                    password: b"wrong".to_vec(),
+                    password: crate::Password::bytes(b"wrong".as_slice()),
                     ..OpenOptions::default()
                 },
             )
@@ -616,5 +621,70 @@ mod missing_length {
             assert_eq!(error.kind, ErrorKind::Password);
             assert_eq!(error.repair, None);
         }
+    }
+}
+
+mod text_passwords {
+    use crate::{Document, OpenOptions, Password, features};
+    use pagura_core::{ErrorKind, ObjectId};
+    use pagura_testkit::fixture;
+
+    const CONTENT: &[u8] = b"1 0 0 rg 8 8 48 32 re f\n0 0 1 rg 0 0 8 8 re f\n";
+
+    fn open(name: &str, password: Password) -> pagura_core::Result<Document> {
+        Document::open(
+            fixture("crypto", &format!("{name}.pdf")),
+            &OpenOptions {
+                password,
+                ..OpenOptions::default()
+            },
+        )
+    }
+
+    #[test]
+    fn text_passwords_follow_the_handler_revision() {
+        // U+20AC is PDFDocEncoding 0xA0 for revision 3 (Annex D.2) and UTF-8
+        // E2 82 AC for revision 6 (7.6.4.3.3); the fixtures hash those bytes.
+        for name in ["r3-pdfdocencoding-euro", "r6-utf8-euro"] {
+            let document = open(name, Password::text("€")).unwrap();
+            assert_eq!(document.page_count().unwrap(), 1, "{name}");
+            let content = document.object(ObjectId::new(4, 0)).unwrap();
+            assert_eq!(
+                document.stream_data(content).unwrap().as_ref(),
+                CONTENT,
+                "{name}"
+            );
+            assert_eq!(
+                open(name, Password::text("wrong")).unwrap_err().kind,
+                ErrorKind::Password,
+                "{name}"
+            );
+        }
+        // Bytes are passed unchanged, so each fixture opens only with its own.
+        assert!(open("r3-pdfdocencoding-euro", Password::bytes([0xa0])).is_ok());
+        assert_eq!(
+            open("r3-pdfdocencoding-euro", Password::bytes("€".as_bytes()))
+                .unwrap_err()
+                .kind,
+            ErrorKind::Password
+        );
+        assert!(open("r6-utf8-euro", Password::bytes("€".as_bytes())).is_ok());
+        assert_eq!(
+            open("r6-utf8-euro", Password::bytes([0xa0]))
+                .unwrap_err()
+                .kind,
+            ErrorKind::Password
+        );
+    }
+
+    #[test]
+    fn unrepresentable_legacy_text_is_unsupported() {
+        let error = open("r3-pdfdocencoding-euro", Password::text("🙂")).unwrap_err();
+        assert_eq!(error.feature(), Some(features::PASSWORD_ENCODING));
+        // Revision 6 has no such restriction: the password is simply wrong.
+        assert_eq!(
+            open("r6-utf8-euro", Password::text("🙂")).unwrap_err().kind,
+            ErrorKind::Password
+        );
     }
 }

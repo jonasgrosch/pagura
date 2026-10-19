@@ -626,7 +626,7 @@ mod repaired_authentication {
             let document = Document::open(
                 bytes.clone(),
                 &OpenOptions {
-                    password: b"owner".to_vec(),
+                    password: crate::Password::bytes(b"owner".as_slice()),
                     ..OpenOptions::default()
                 },
             )
@@ -642,7 +642,7 @@ mod repaired_authentication {
                 Document::open(
                     bytes,
                     &OpenOptions {
-                        password: b"wrong".to_vec(),
+                        password: crate::Password::bytes(b"wrong".as_slice()),
                         ..OpenOptions::default()
                     }
                 )

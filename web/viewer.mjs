@@ -56,7 +56,7 @@ async function recover(error) {
   try {
     client?.destroy(); client = createClient(); const current = client;
     await current.hello();
-    const opened = await current.open(saved.bytes, saved.recovery, saved.password);
+    const opened = await current.open(saved.bytes, saved.recovery, saved.password, true);
     if (epoch !== documentEpoch) return;
     handle = opened.document; page = Math.min(position.index, Math.max(0, opened.pages - 1));
     if (layout.count !== opened.pages) layout = new PageLayout(opened.pages);
@@ -294,7 +294,7 @@ async function openFile(file) {
     let password = new Uint8Array(), retried = false, opened;
     for (;;) {
       const attemptedPassword = password;
-      try { opened = await current.open(bytes, saved.recovery, password); saved.password = password.slice(); break; }
+      try { opened = await current.open(bytes, saved.recovery, password, true); saved.password = password.slice(); break; }
       catch (error) {
         if (epoch !== documentEpoch) return;
         if (!(error instanceof HostError) || error.category !== 6) throw error;
