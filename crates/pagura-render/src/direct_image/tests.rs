@@ -188,3 +188,50 @@ fn tiles_are_cut_from_the_painted_page() {
     };
     assert!(cut(&page, outside, Limits::default()).is_none());
 }
+
+#[test]
+fn magnified_planar_rows_equal_the_expanded_image() {
+    let luma: Vec<u8> = (0..256u16)
+        .map(|i| u8::try_from(i * 7 % 256).unwrap())
+        .collect();
+    let chroma: Vec<u8> = (0..64u16).map(|i| u8::try_from(100 + i).unwrap()).collect();
+    let planar = pagura_image::deferred::Planar::new(
+        (13, 11),
+        [2, 2],
+        [[2, 2, 16], [1, 1, 8], [1, 1, 8]],
+        [luma, chroma.clone(), chroma.iter().rev().copied().collect()],
+    )
+    .unwrap();
+    let mut expanded = vec![0; 13 * 11 * 3];
+    for (y, row) in expanded.as_chunks_mut::<39>().0.iter_mut().enumerate() {
+        assert!(planar.rgb(y, row));
+    }
+    let mut list = list(Rotation::None);
+    list.crop = Rect::from_corners(0.0, 0.0, 29.0, 23.0).unwrap();
+    let (transform, image) = image_mut(&mut list);
+    *transform = Transform::new(27.5, 0.0, 0.0, 22.25, 0.75, 0.5);
+    image.decoded.width = 13;
+    image.decoded.height = 11;
+    image.decoded.samples = Samples::Planar(Box::new(planar));
+    let rows = painted(&list);
+    let (_, image) = image_mut(&mut list);
+    image.decoded.samples = Samples::Bytes(expanded);
+    let Command::Image(command) = &list.commands[0] else {
+        unreachable!("the test list holds one image")
+    };
+    let placement = Placement::new(&list, &RenderOptions::default(), command.transform)
+        .unwrap()
+        .unwrap();
+    let Samples::Bytes(samples) = &command.image.decoded.samples else {
+        unreachable!("bytes were just set")
+    };
+    let expected = nearest(
+        &command.image,
+        samples,
+        &placement,
+        &RenderOptions::default(),
+        Limits::default(),
+    )
+    .unwrap();
+    assert_eq!(rows.data(), expected.data());
+}

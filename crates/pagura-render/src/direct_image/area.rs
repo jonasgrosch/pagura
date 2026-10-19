@@ -17,6 +17,8 @@ use pagura_image::deferred::{Packed, Planar};
 fn narrow(value: f64) -> f32 {
     value as f32
 }
+/// Horizontal footprints of the device columns: one band of taps per
+/// column, and a structure-of-arrays copy for one-channel rows.
 struct Plan {
     bands: Vec<Band>,
     taps: Vec<Tap>,
@@ -98,6 +100,8 @@ impl Plan {
         Ok(plan)
     }
 }
+/// Horizontal filtering of source rows in any sample layout, with its work
+/// charge. `N` is 1 for gray and 4 for RGB lanes.
 struct Filter<'a, const N: usize> {
     samples: &'a [u8],
     planar: Option<&'a Planar>,
@@ -189,6 +193,7 @@ impl<'a, const N: usize> Filter<'a, N> {
         })
     }
 
+    /// Filters source row `key` into `output`, one footprint per column.
     fn row(&mut self, key: usize, output: &mut [[f32; N]]) -> Result<()> {
         self.charge(self.width + self.plan.taps.len())?;
         if self.deferred_row(key, output)? {
@@ -283,6 +288,8 @@ impl<'a, const N: usize> Filter<'a, N> {
         }
         Ok(())
     }
+    /// Filters a packed or planar row without expanding it, where possible;
+    /// otherwise converts it into `rgb` for the byte paths.
     fn deferred_row(&mut self, key: usize, output: &mut [[f32; N]]) -> Result<bool> {
         if let Some(p) = self.packed {
             let row = p
@@ -378,6 +385,8 @@ impl<'a, const N: usize> Filter<'a, N> {
     }
 }
 
+/// Up to three filtered source rows, keyed by source row, and the device row
+/// they combine into.
 struct Rows<const N: usize> {
     cache: [Vec<[f32; N]>; 3],
     ranges: [Vec<std::ops::Range<usize>>; 3],
@@ -503,6 +512,8 @@ impl<const N: usize> Rows<N> {
 }
 
 impl<const N: usize> Rows<N> {
+    /// Mixes partly covered pixels of a deficit row with the background from
+    /// their unrounded sums.
     fn cover_float(&mut self, row: usize, p: &Placement, bg: pagura_raster::Rgba8) {
         let [x0, x1, y0, y1] = p.extent;
         let (left, right, low, high, fixed) = if p.rotated {
@@ -550,6 +561,8 @@ fn filter_tables(image: &Image) -> Vec<[f32; 256]> {
         .collect()
 }
 
+/// Paints `image` through its footprints, or through nearest samples when it
+/// is aligned to the device grid or magnified without interpolation.
 pub(super) fn paint(
     image: &Image,
     samples: &[u8],
@@ -786,6 +799,9 @@ fn planar_nearest(
     options: &RenderOptions,
     limits: Limits,
 ) -> Result<Pixmap> {
+    if !placement.rotated {
+        return super::nearest_rows(image, placement, options, limits, |y, row| p.rgb(y, row));
+    }
     let limits = materialization_limits(image, placement, limits)?;
     let length = p
         .width()
@@ -809,6 +825,17 @@ fn packed_nearest(
     options: &RenderOptions,
     limits: Limits,
 ) -> Result<Pixmap> {
+    if !placement.rotated {
+        return super::nearest_rows(image, placement, options, limits, |y, out| {
+            let Some(source) = p.row(y) else {
+                return false;
+            };
+            for (x, v) in out.iter_mut().enumerate() {
+                *v = (source[x / 8] >> (7 - x % 8)) & 1;
+            }
+            true
+        });
+    }
     let limits = materialization_limits(image, placement, limits)?;
     let length = p
         .width()

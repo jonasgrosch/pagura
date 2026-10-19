@@ -334,6 +334,78 @@ fn nearest(
     Ok(target)
 }
 
+/// Nearest-sample placement of an upright image whose rows `fill` produces
+/// on demand, one byte per component, instead of expanding the whole image
+/// first; as [`nearest`] otherwise.
+fn nearest_rows(
+    image: &Image,
+    placement: &Placement,
+    options: &RenderOptions,
+    limits: Limits,
+    mut fill: impl FnMut(usize, &mut [u8]) -> bool,
+) -> Result<Pixmap> {
+    let Placement {
+        width,
+        range: [left, right, top, bottom],
+        extent,
+        ..
+    } = *placement;
+    let mut target = Pixmap::new_with_limits(width, placement.height, options.background, limits)?;
+    let components = usize::from(image.decoded.components);
+    let (source_width, source_height) =
+        (image.decoded.width as usize, image.decoded.height as usize);
+    let row_bytes = source_width
+        .checked_mul(components)
+        .ok_or(Error::limit("image row overflow"))?;
+    (right - left)
+        .checked_mul(size_of::<usize>() + 4)
+        .and_then(|n| n.checked_add(target.data().len()))
+        .and_then(|n| n.checked_add(row_bytes))
+        .and_then(|n| {
+            n.checked_add(pagura_image::deferred::storage_bytes(
+                &image.decoded.samples,
+            ))
+        })
+        .filter(|&n| n <= limits.decoded_bytes)
+        .ok_or(Error::limit("image sampling storage exceeded"))?;
+    let inverse = source_transform(image, placement)?;
+    let tables = decode_tables(image);
+    let identity = image.decoded.bits_per_component == 8
+        && image.decode.iter().all(|&range| range == (0.0, 1.0));
+    let columns: Vec<usize> = (left..right)
+        .map(|x| index((x as f64 + 0.5) * inverse.a + inverse.e).min(source_width - 1) * components)
+        .collect();
+    let format = Format {
+        tables: &tables,
+        components,
+        identity,
+        contiguous: components == 3 && identity && columns.windows(2).all(|w| w[1] == w[0] + 3),
+    };
+    let mut source = filled(row_bytes, 0u8)?;
+    let mut cached = filled((right - left) * 4, 0u8)?;
+    let mut previous = None;
+    for (y, row) in target
+        .data_mut()
+        .chunks_exact_mut(width as usize * 4)
+        .enumerate()
+        .take(bottom)
+        .skip(top)
+    {
+        let line = index((y as f64 + 0.5) * inverse.d + inverse.f).min(source_height - 1);
+        if previous != Some(line) {
+            if !fill(line, &mut source) {
+                return Err(Error::syntax("image row conversion mismatch"));
+            }
+            format.blit(&mut cached, &source, &columns);
+            previous = Some(line);
+        }
+        let row = &mut row[left * 4..right * 4];
+        row.copy_from_slice(&cached);
+        cover_row(row, left, y, extent, options.background);
+    }
+    Ok(target)
+}
+
 /// Maps device coordinates to the image's source sample grid.
 fn source_transform(image: &Image, placement: &Placement) -> Result<Transform> {
     let width = f64::from(image.decoded.width);
