@@ -591,6 +591,8 @@ impl Context {
                     },
                     &mut self.raster,
                 )?;
+                // Every placement scans its flattened outline, cached or not.
+                self.charge(geometry.vertices())?;
                 let bytes = geometry.retained_bytes();
                 self.trim_raster(bytes);
                 self.allocated = self
