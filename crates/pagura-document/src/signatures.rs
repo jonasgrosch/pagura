@@ -35,7 +35,10 @@ mod transforms;
 
 use crate::Document;
 pub use byte_range::{ByteRange, ByteRangeError};
-pub use changes::*;
+pub use changes::{
+    ChangeDecision, ChangeKind, ChangeTarget, ModificationAnalysis, ModificationOutcome,
+    ModificationRule, ObjectChange, ObjectRole, PermittedModifications, RevisionChanges,
+};
 pub use model::{
     AlgorithmStatus, FieldLock, FieldSelection, HistoricalSignature, Integrity, MdpPermission,
     RevisionCoverage, RevocationStatus, Signature, SignatureField, SignatureReference,

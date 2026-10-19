@@ -46,6 +46,7 @@ pub enum Justification {
 }
 /// One choice option, retained in source order (Table 234).
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct ChoiceOption {
     /// Export text; equal to display for the single-string form.
     pub export: String,
@@ -54,6 +55,7 @@ pub struct ChoiceOption {
 }
 /// Typed terminal field configuration; nonterminal nodes have no logical type.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum FieldKind<'a> {
     /// An attribute/name container with child fields.
     Group,
@@ -100,6 +102,7 @@ pub enum FieldKind<'a> {
 }
 /// A field value (12.7.5), distinct from unmodified source entries.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum FieldValue<'a> {
     /// Decoded text string or text stream.
     Text(String),
@@ -114,6 +117,7 @@ pub enum FieldValue<'a> {
 }
 /// An additional-action entry (12.6.3, Tables 196–197), never executed.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct AdditionalAction<'a> {
     /// Trigger name, preserving extension events too.
     pub trigger: &'a Name,
@@ -122,6 +126,7 @@ pub struct AdditionalAction<'a> {
 }
 /// A field node and its effective inherited attributes (12.7.4.1).
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct Field<'a> {
     /// Source object, or enclosing object for a repaired direct dictionary.
     pub object: Option<ObjectId>,
@@ -157,6 +162,7 @@ pub struct Field<'a> {
 }
 /// A widget associated with a terminal field (12.5.6.19, 12.7.4.2).
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct Widget<'a> {
     /// Index of the owning field.
     pub field: usize,
@@ -183,6 +189,7 @@ pub struct Widget<'a> {
 }
 /// The document's interactive form, as immutable source views (Table 224).
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct AcroForm<'a> {
     /// Fields in preorder; parent indexes precede children.
     pub fields: Vec<Field<'a>>,

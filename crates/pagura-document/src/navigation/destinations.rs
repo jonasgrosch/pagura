@@ -35,12 +35,21 @@ pub enum DestinationView {
 }
 /// An explicit destination in this document.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub struct Destination {
     /// Zero-based page index in this document.
     pub page: usize,
     /// View instruction, interpreted by the host.
     pub view: DestinationView,
 }
+
+impl Destination {
+    /// A destination showing zero-based `page` with `view`.
+    pub const fn new(page: usize, view: DestinationView) -> Self {
+        Self { page, view }
+    }
+}
+
 /// A named destination key, preserving its original PDF kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DestinationName<'a> {
@@ -60,6 +69,7 @@ impl<'a> DestinationName<'a> {
 }
 /// A named destination and its resolved local target.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub struct NamedDestination<'a> {
     /// Original key kind and bytes.
     pub name: DestinationName<'a>,
@@ -81,6 +91,7 @@ pub enum RemoteDestination<'a> {
 }
 /// An inert outline or annotation target. Activating it is the host's decision.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum Target<'a> {
     /// A local page/view jump.
     Destination(Destination),

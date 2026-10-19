@@ -7,6 +7,7 @@ use std::collections::BTreeSet;
 
 /// One outline item in preorder. Parent indexes avoid recursive result storage.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct OutlineItem<'a> {
     /// Parent item index, or None for a top-level item.
     pub parent: Option<usize>,

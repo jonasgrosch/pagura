@@ -19,6 +19,7 @@ pub enum LabelStyle {
 }
 /// One page-label range; its end is the next range or the document end.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct PageLabelRange {
     source: Source,
     /// Zero-based first page.

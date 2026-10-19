@@ -7,6 +7,7 @@ use std::collections::BTreeSet;
 
 /// Standard Named actions (12.6.4.12), with extension names preserved.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum NamedAction<'a> {
     /// Advance one page.
     NextPage,
@@ -30,6 +31,7 @@ pub enum Script<'a> {
 /// An action's data. Every variant is inert; the host chooses whether and how
 /// to activate it. File specifications and platform parameters remain source data.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum ActionKind<'a> {
     /// Jump in this document.
     GoTo(Destination),
@@ -67,6 +69,7 @@ pub enum ActionKind<'a> {
 }
 /// One action in a flat preorder sequence.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct Action<'a> {
     /// Parent action index, or None for the initial action.
     pub parent: Option<usize>,
@@ -77,6 +80,7 @@ pub struct Action<'a> {
 }
 /// An inert action/Next tree in depth-first execution order (12.6.2).
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct ActionSequence<'a> {
     /// Flat actions; parent indexes refer to earlier entries. Reused acyclic
     /// subgraphs occur each time; only back edges are omitted with a repair.

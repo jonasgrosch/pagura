@@ -34,6 +34,7 @@ pub enum BorderStyle {
 }
 /// Resolved border appearance, with BS taking precedence over Border.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct LinkBorder {
     /// Horizontal corner radius from Border; zero for BS.
     pub horizontal_radius: f64,
@@ -48,6 +49,7 @@ pub struct LinkBorder {
 }
 /// A Link annotation. Geometry is in default user space, before page rotation.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct Link<'a> {
     /// Normalized annotation rectangle.
     pub rectangle: Rect,
