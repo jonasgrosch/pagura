@@ -1,100 +1,145 @@
 //! Mixed-byte and trimmed Unicode cmap layouts, pending OpenType primary review.
-use super::word;
+use super::{Layout, available, u16_at};
 use crate::budget::Work;
-use crate::read::{bad, here};
 use crate::repairs;
+use pagura_core::Result;
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
-use pagura_core::{Position, Result};
+
+/// Format 2: 256 subheader keys follow the 6-byte header, then the
+/// subheaders of 8 bytes each (OpenType cmap format 2).
+const KEYS: usize = 6;
+pub(super) const SUBHEADERS: usize = KEYS + 2 * 256;
+const SUBHEADER: usize = 8;
+/// Keys are subheader offsets: multiples of the subheader size.
+const KEY_STRIDE: usize = 8;
+/// Format 10's header, before its glyph array.
+const TRIMMED_ARRAY: usize = 20;
+/// The size of the Unicode code space, which format 10 ranges stay within.
+const UNICODE_CODES: u64 = 0x0011_0000;
 
 pub(super) fn validate_two(mut r: Cursor<'_>, glyphs: usize, work: &mut Work<'_>) -> Result<()> {
-    r.skip(6)?;
+    r.skip(KEYS)?;
     let mut largest = 0;
     for _ in 0..256 {
         let key = usize::from(r.u16()?);
-        if key % 8 != 0 {
-            return Err(bad(here(&r), "unaligned cmap subheader key"));
+        if !key.is_multiple_of(KEY_STRIDE) {
+            return Err(r.error("unaligned cmap subheader key"));
         }
-        largest = largest.max(key / 8);
+        largest = largest.max(key / KEY_STRIDE);
     }
-    work.entries(largest + 1, Position::Buffer(here(&r)))?;
-    work.work(256, Position::Buffer(here(&r)))?;
-    let headers = super::available(&r, largest + 1, 8, work)?;
+    work.entries(largest + 1, r.position())?;
+    work.work(256, r.position())?;
+    let data = r.data();
+    let headers = available(&r, largest + 1, SUBHEADER, work)?;
     for index in 0..headers {
-        let mut header = r.cursor_at(518 + 8 * index)?;
+        let mut header = r.cursor_at(SUBHEADERS + SUBHEADER * index)?;
         let first = usize::from(header.u16()?);
         let count = usize::from(header.u16()?);
-        header.u16()?;
+        let delta = header.u16()?;
+        let relative_at = header.position();
         let relative = usize::from(header.u16()?);
-        if first + count > 256 || relative % 2 != 0 {
-            return Err(bad(here(&header), "invalid cmap subheader range"));
+        if first + count > 256 || !relative.is_multiple_of(2) {
+            return Err(header.error("invalid cmap subheader range"));
         }
-        work.work(count, Position::Buffer(here(&header)))?;
-        let start = 524 + 8 * index + relative;
-        if start > r.data().len() {
+        work.work(count, header.position())?;
+        // idRangeOffset counts from its own word.
+        let start = SUBHEADERS + SUBHEADER * index + 6 + relative;
+        if start > data.len() {
             work.repair(
                 repairs::CMAP_TRUNCATED,
                 "missing cmap subheader glyph array",
-                Position::Buffer(here(&header) - 2),
+                relative_at,
             )?;
             continue;
         }
         let mut glyph_array = r.cursor_at(start)?;
-        let count = super::available(&glyph_array, count, 2, work)?;
-        for _ in 0..count {
+        for _ in 0..available(&glyph_array, count, 2, work)? {
             let raw = glyph_array.u16()?;
-            let delta = word(r.data(), 522 + 8 * index)?;
             let glyph = if raw == 0 { 0 } else { raw.wrapping_add(delta) };
             if usize::from(glyph) >= glyphs {
-                return Err(bad(here(&glyph_array), "invalid cmap glyph"));
+                return Err(glyph_array.error("invalid cmap glyph"));
             }
         }
     }
     Ok(())
 }
 
-pub(super) fn lookup_two(data: &[u8], code: u32) -> Result<u16> {
-    if code > 65535 {
-        return Ok(0);
+/// The glyph of a two-byte (or single-byte) `code` in format 2 `data`;
+/// `None` if a needed word is missing.
+pub(super) fn lookup_two(data: &[u8], code: u16) -> Option<u16> {
+    let [high, low] = code.to_be_bytes().map(usize::from);
+    // A high byte with key 0 is a single-byte code itself; other high
+    // bytes select the subheader for their second byte.
+    let key = usize::from(u16_at(data, KEYS + 2 * if high == 0 { low } else { high })?);
+    if (high == 0) != (key == 0) {
+        return Some(0);
     }
-    let high = usize::try_from(code >> 8)
-        .map_err(|_| crate::read::limit(Position::Buffer(0), "cmap code overflow"))?;
-    let low = usize::try_from(code & 255)
-        .map_err(|_| crate::read::limit(Position::Buffer(0), "cmap code overflow"))?;
-    let key = usize::from(word(data, 6 + 2 * if high == 0 { low } else { high })?);
-    if high == 0 && key != 0 || high != 0 && key == 0 {
-        return Ok(0);
-    }
-    let at = 518 + if high == 0 { 0 } else { key };
-    let first = usize::from(word(data, at)?);
-    let count = usize::from(word(data, at + 2)?);
-    if low < first || low - first >= count {
-        return Ok(0);
-    }
-    let delta = word(data, at + 4)?;
-    let relative = usize::from(word(data, at + 6)?);
-    let glyph = word(data, at + 6 + relative + 2 * (low - first))?;
-    Ok(if glyph == 0 {
+    let at = SUBHEADERS + key;
+    let first = usize::from(u16_at(data, at)?);
+    let count = usize::from(u16_at(data, at + 2)?);
+    let Some(index) = low.checked_sub(first).filter(|&i| i < count) else {
+        return Some(0);
+    };
+    let delta = u16_at(data, at + 4)?;
+    let relative = usize::from(u16_at(data, at + 6)?);
+    let glyph = u16_at(data, at + 6 + relative + 2 * index)?;
+    Some(if glyph == 0 {
         0
     } else {
         glyph.wrapping_add(delta)
     })
 }
 
-pub(super) fn validate_ten(mut r: Cursor<'_>, glyphs: usize, work: &mut Work<'_>) -> Result<()> {
+pub(super) fn validate_ten(
+    mut r: Cursor<'_>,
+    glyphs: usize,
+    work: &mut Work<'_>,
+) -> Result<Layout> {
     r.skip(12)?;
     let first = r.u32()?;
-    let count = u32_to_usize(r.u32()?);
-    if u64::from(first) + count as u64 > 0x0011_0000 {
-        return Err(bad(here(&r), "invalid cmap Unicode range"));
+    let count = r.u32()?;
+    if u64::from(first) + u64::from(count) > UNICODE_CODES {
+        return Err(r.error("invalid cmap Unicode range"));
     }
-    work.entries(count, Position::Buffer(here(&r)))?;
-    work.work(count, Position::Buffer(here(&r)))?;
-    let count = super::available(&r, count, 2, work)?;
-    for _ in 0..count {
+    let entries = u32_to_usize(count);
+    work.entries(entries, r.position())?;
+    work.work(entries, r.position())?;
+    for _ in 0..available(&r, entries, 2, work)? {
         if usize::from(r.u16()?) >= glyphs {
-            return Err(bad(here(&r), "invalid cmap glyph"));
+            return Err(r.error("invalid cmap glyph"));
         }
     }
-    Ok(())
+    Ok(Layout::Trimmed {
+        first,
+        count,
+        array: TRIMMED_ARRAY,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{SUBHEADERS, lookup_two};
+
+    #[test]
+    fn format_two_selects_single_bytes_and_subheaders() {
+        let mut data = vec![0; SUBHEADERS];
+        // High byte 0x81 uses subheader 1; others are single bytes.
+        data[6 + 2 * 0x81..6 + 2 * 0x81 + 2].copy_from_slice(&8_u16.to_be_bytes());
+        // Subheader 0 maps codes 0x41-0x42 to the first two glyph words;
+        // subheader 1 maps second byte 0x40 to the third, plus delta 2.
+        // Each idRangeOffset counts from its own word.
+        for words in [[0x41, 2, 0, 10], [0x40, 1, 2, 6]] {
+            data.extend(words.iter().flat_map(|w: &u16| w.to_be_bytes()));
+        }
+        data.extend([5_u16, 6, 7].iter().flat_map(|w| w.to_be_bytes()));
+        assert_eq!(lookup_two(&data, 0x41), Some(5));
+        assert_eq!(lookup_two(&data, 0x42), Some(6));
+        assert_eq!(lookup_two(&data, 0x43), Some(0));
+        assert_eq!(lookup_two(&data[..520], 0x41), None);
+        assert_eq!(lookup_two(&data, 0x8140), Some(9));
+        // 0x81 alone is a lead byte, not a character.
+        assert_eq!(lookup_two(&data, 0x81), Some(0));
+        assert_eq!(lookup_two(&data, 0x8240), Some(0));
+    }
 }

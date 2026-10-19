@@ -38,6 +38,11 @@ pub(crate) fn indexed<'a>(
     Ok(names)
 }
 
+/// The name of `glyph` in an index.
+pub(crate) fn get(names: &[Option<Name>], glyph: GlyphId) -> Option<&Name> {
+    names.get(u32_to_usize(glyph.0))?.as_ref()
+}
+
 pub(crate) fn heap_bytes(names: &Vec<Option<Name>>) -> usize {
     names
         .iter()
