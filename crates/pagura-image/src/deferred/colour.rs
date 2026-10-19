@@ -191,18 +191,18 @@ impl Constant {
         clippy::cast_sign_loss,
         reason = "biased chroma offsets are in 0..512"
     )]
-    pub fn new(cb: u8, cr: u8) -> Option<Self> {
-        let cb = i32::from(cb) - 128;
-        let cr = i32::from(cr) - 128;
+    pub fn new(blue: u8, red: u8) -> Option<Self> {
+        let cb = i32::from(blue) - 128;
+        let cr = i32::from(red) - 128;
         let g = -43_017 * cb - 89_267 * cr;
         if g.rem_euclid(125_000) == 62_500 {
             return None;
         }
         Some(Self {
             offsets: [
-                ((175_250 * cr + 62_500).div_euclid(125_000) + 256) as u16,
+                RED[usize::from(red)],
                 ((g + 62_500).div_euclid(125_000) + 256) as u16,
-                ((221_500 * cb + 62_500).div_euclid(125_000) + 256) as u16,
+                BLUE[usize::from(blue)],
             ],
         })
     }
@@ -272,25 +272,54 @@ pub fn deficits(
         return false;
     }
     let up = u8::from(interval);
-    for ((ys, out), (&cb, &cr)) in luma
-        .chunks(repeat)
-        .zip(output.chunks_mut(repeat))
-        .zip(cb.iter().zip(cr))
-    {
-        let Some(colour) = Constant::new(cb, cr) else {
-            return false;
-        };
-        for (&y, pixel) in ys.iter().zip(out) {
-            let low = u16::from(y);
-            let high = u16::from(y.saturating_add(up));
-            let p = colour.offsets.map(|offset| {
-                510 - (low.wrapping_add(offset).saturating_sub(256).min(255)
-                    + high.wrapping_add(offset).saturating_sub(256).min(255))
-            });
-            *pixel = [p[0], p[1], p[2], 0];
+    for (group, (ys, out)) in luma.chunks(8).zip(output.chunks_mut(8)).enumerate() {
+        // Eight samples span at most eight chroma pairs; repeat divides 8.
+        let first = group * 8 / repeat;
+        let mut pairs = [[0u16; 3]; 8];
+        for (k, pair) in pairs[..ys.len().div_ceil(repeat)].iter_mut().enumerate() {
+            let Some(colour) = Constant::new(cb[first + k], cr[first + k]) else {
+                return false;
+            };
+            *pair = colour.offsets;
+        }
+        let offsets: [[u16; 8]; 3] =
+            std::array::from_fn(|c| std::array::from_fn(|i| pairs[i / repeat][c]));
+        let low: [u16; 8] = std::array::from_fn(|i| ys.get(i).map_or(0, |&v| u16::from(v)));
+        let high: [u16; 8] =
+            std::array::from_fn(|i| ys.get(i).map_or(0, |&v| u16::from(v.saturating_add(up))));
+        let [r, g, b] = offsets.map(|offset| {
+            std::array::from_fn::<_, 8, _>(|i| {
+                510 - (low[i].wrapping_add(offset[i]).saturating_sub(256).min(255)
+                    + high[i].wrapping_add(offset[i]).saturating_sub(256).min(255))
+            })
+        });
+        for (i, pixel) in out.iter_mut().enumerate() {
+            *pixel = [r[i], g[i], b[i], 0];
         }
     }
     true
+}
+
+/// Biased Table 13 offsets `round(1.402 (Cr - 128)) + 256` and
+/// `round(1.772 (Cb - 128)) + 256`, by chroma byte.
+const RED: [u16; 256] = offsets(175_250);
+const BLUE: [u16; 256] = offsets(221_500);
+
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    reason = "biased chroma offsets are in 0..512"
+)]
+const fn offsets(coefficient: i32) -> [u16; 256] {
+    let mut table = [0; 256];
+    let mut index = 0;
+    while index < 256 {
+        let chroma = index as i32 - 128;
+        table[index] = ((coefficient * chroma + 62_500).div_euclid(125_000) + 256) as u16;
+        index += 1;
+    }
+    table
 }
 
 /// As [`ycbcr`], in groups of eight samples for short runs.

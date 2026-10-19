@@ -217,64 +217,6 @@ struct Token {
     pending: u8,
 }
 
-#[expect(
-    clippy::inline_always,
-    reason = "token return overhead dominates the per-coefficient loop"
-)]
-#[inline(always)]
-fn next(table: &Huffman, stream: &mut Stream) -> Option<Token> {
-    let available = stream.length * 8 - stream.bit;
-    let (mut code, mut start) = (0u32, 0usize);
-    if available >= 12 {
-        code = peek(stream, 12);
-        let entry = table.wide[code as usize];
-        if entry != 0 {
-            stream.bit += ((entry >> 8) & 31) as usize;
-            let symbol = entry.to_le_bytes()[0];
-            let pending = (symbol & 15) & 0u8.wrapping_sub(u8::from(entry & 0x8000 == 0));
-            return Some(Token {
-                symbol,
-                value: i16::from_ne_bytes(u16::try_from(entry >> 16).ok()?.to_ne_bytes()),
-                pending,
-            });
-        }
-        stream.bit += 12;
-        start = 12;
-    }
-    for length in start..16 {
-        code = code * 2 + read(stream, 1)?;
-        if let Some(relative) = code
-            .checked_sub(table.first[length])
-            .filter(|&v| v < u32::from(table.count[length]))
-        {
-            let symbol = table.symbols[table.offset[length] + relative as usize];
-            return Some(Token {
-                symbol,
-                value: 0,
-                pending: symbol & 15,
-            });
-        }
-    }
-    None
-}
-
-#[expect(
-    clippy::inline_always,
-    reason = "bounds and constant bit widths belong in the token loop"
-)]
-#[inline(always)]
-fn read(stream: &mut Stream, count: u8) -> Option<u32> {
-    if count == 0 {
-        return Some(0);
-    }
-    if count > 24 || usize::from(count) > stream.length * 8 - stream.bit {
-        return None;
-    }
-    let value = peek(stream, count);
-    stream.bit += usize::from(count);
-    Some(value)
-}
-
 /// Joins a DC magnitude and its following EOB into one twelve-bit prefix.
 pub(super) fn shortcut(dc: &Huffman, ac: &Huffman, bits: &mut Bits<'_>) -> Result<[u32; 4096]> {
     bits.stream.work = bits
@@ -330,23 +272,148 @@ pub(super) fn native(
     native_inner(dc, ac, &mut bits.stream, predictor, output, quant)
         .ok_or_else(|| bits.error("invalid JPEG native entropy"))
 }
-#[expect(
-    clippy::inline_always,
-    reason = "measured fixed-size entropy prefix operations must fold into the block consumer"
-)]
-#[inline(always)]
-fn magnitude(token: Token, stream: &mut Stream) -> Option<i32> {
-    let size = token.pending;
-    if usize::from(size) > stream.length * 8 - stream.bit {
-        return None;
+/// A 64-bit window on the unstuffed segment at bit `bit`, refilled with one
+/// load. The segment's eight padding bytes make every load in bounds while
+/// `bit` is within it; reads past its end are rejected by `limit`.
+struct Window<'a> {
+    bytes: &'a [u8],
+    bit: usize,
+    limit: usize,
+    word: u64,
+    valid: u32,
+}
+
+impl<'a> Window<'a> {
+    fn new(stream: &'a Stream) -> Self {
+        let mut window = Self {
+            bytes: &stream.bytes,
+            bit: stream.bit,
+            limit: stream.length * 8,
+            word: 0,
+            valid: 0,
+        };
+        window.refill();
+        window
     }
-    // Pending magnitudes have at most eleven bits. Reading the padded word
-    // even for zero bits removes the fused/unfused branch from every token.
-    let raw = peek(stream, size.max(1)) & 0u32.wrapping_sub(u32::from(size != 0));
-    stream.bit += usize::from(size);
-    let negative = 0i32.wrapping_sub(i32::from(raw < ((1u32 << size) >> 1)));
-    let correction = negative & (1i32 - (1i32 << size));
-    Some(i32::from(token.value).wrapping_add(i32::try_from(raw).ok()?.wrapping_add(correction)))
+
+    /// Holds at least 57 bits from `bit` on.
+    #[expect(
+        clippy::inline_always,
+        reason = "one load serves several entropy tokens"
+    )]
+    #[inline(always)]
+    fn refill(&mut self) {
+        let at = self.bit / 8;
+        let word = self.bytes[at..at + 8]
+            .first_chunk::<8>()
+            .map_or(0, |bytes| u64::from_be_bytes(*bytes));
+        let skip = u32::from(self.bit.to_le_bytes()[0] & 7);
+        self.word = word << skip;
+        self.valid = 64 - skip;
+    }
+
+    fn available(&self) -> usize {
+        self.limit - self.bit
+    }
+
+    /// The next `count` bits, 1 ≤ count ≤ `valid`.
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "at most 32 bits are requested"
+    )]
+    fn peek(&self, count: u32) -> u32 {
+        (self.word >> (64 - count)) as u32
+    }
+
+    fn consume(&mut self, count: u32) {
+        self.bit += count as usize;
+        self.word <<= count;
+        self.valid -= count;
+    }
+
+    /// Reads `count` ≤ 24 bits, or None past the segment.
+    fn read(&mut self, count: u32) -> Option<u32> {
+        if count == 0 {
+            return Some(0);
+        }
+        if count as usize > self.available() {
+            return None;
+        }
+        if self.valid < count {
+            self.refill();
+        }
+        let value = self.peek(count);
+        self.consume(count);
+        Some(value)
+    }
+
+    /// The next Huffman token. Afterwards at least eleven bits of a pending
+    /// magnitude remain in the window.
+    #[expect(
+        clippy::inline_always,
+        reason = "token return overhead dominates the per-coefficient loop"
+    )]
+    #[inline(always)]
+    fn token(&mut self, table: &Huffman) -> Option<Token> {
+        if self.valid < 24 {
+            self.refill();
+        }
+        let (mut code, mut start) = (0u32, 0usize);
+        if self.available() >= 12 {
+            code = self.peek(12);
+            let entry = table.wide[code as usize];
+            if entry != 0 {
+                self.consume((entry >> 8) & 31);
+                let symbol = entry.to_le_bytes()[0];
+                let pending = (symbol & 15) & 0u8.wrapping_sub(u8::from(entry & 0x8000 == 0));
+                return Some(Token {
+                    symbol,
+                    value: i16::from_ne_bytes(u16::try_from(entry >> 16).ok()?.to_ne_bytes()),
+                    pending,
+                });
+            }
+            self.consume(12);
+            start = 12;
+        }
+        for length in start..16 {
+            code = code * 2 + self.read(1)?;
+            if let Some(relative) = code
+                .checked_sub(table.first[length])
+                .filter(|&v| v < u32::from(table.count[length]))
+            {
+                let symbol = table.symbols[table.offset[length] + relative as usize];
+                if self.valid < 11 {
+                    self.refill();
+                }
+                return Some(Token {
+                    symbol,
+                    value: 0,
+                    pending: symbol & 15,
+                });
+            }
+        }
+        None
+    }
+
+    /// Adds a token's pending magnitude bits (T.81 F.2.2.1) to its value.
+    #[expect(
+        clippy::inline_always,
+        reason = "magnitude extraction is on every nonzero coefficient"
+    )]
+    #[inline(always)]
+    fn magnitude(&mut self, token: Token) -> Option<i32> {
+        let size = u32::from(token.pending);
+        if size as usize > self.available() {
+            return None;
+        }
+        // Pending magnitudes have at most eleven bits, which `token` leaves in
+        // the window. Reading one bit even for none removes a branch.
+        let raw = self.peek(size.max(1)) & 0u32.wrapping_sub(u32::from(size != 0));
+        self.consume(size);
+        let negative = 0i32.wrapping_sub(i32::from(raw < ((1u32 << size) >> 1)));
+        let correction = negative & (1i32 - (1i32 << size));
+        Some(i32::from(token.value).wrapping_add(i32::try_from(raw).ok()?.wrapping_add(correction)))
+    }
 }
 
 fn native_inner(
@@ -357,19 +424,33 @@ fn native_inner(
     output: &mut [i32; 64],
     quant: &[u16; 64],
 ) -> Option<(bool, u64)> {
-    let token = next(dc, stream)?;
+    let mut window = Window::new(stream);
+    let result = block(dc, ac, &mut window, predictor, output, quant);
+    stream.bit = window.bit;
+    result
+}
+
+fn block(
+    dc: &Huffman,
+    ac: &Huffman,
+    window: &mut Window<'_>,
+    predictor: &mut i32,
+    output: &mut [i32; 64],
+    quant: &[u16; 64],
+) -> Option<(bool, u64)> {
+    let token = window.token(dc)?;
     if token.symbol > 11 {
         return None;
     }
     *predictor = predictor
-        .checked_add(magnitude(token, stream)?)
+        .checked_add(window.magnitude(token)?)
         .filter(|&v| (-2048..2048).contains(&v))?;
     output[0] = *predictor * i32::from(quant[0]);
     let mut l1 = u64::from(output[0].unsigned_abs());
     let mut nonconstant = false;
     let mut k = 1;
     while k < 64 {
-        let token = next(ac, stream)?;
+        let token = window.token(ac)?;
         if token.symbol == 0 {
             break;
         }
@@ -388,7 +469,7 @@ fn native_inner(
         if k >= 64 {
             return None;
         }
-        let value = magnitude(token, stream)?;
+        let value = window.magnitude(token)?;
         if !nonconstant {
             output[1..].fill(0);
             nonconstant = true;
