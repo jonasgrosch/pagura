@@ -711,6 +711,23 @@ mod tests {
             pagura_core::Name::new(b"Widths"),
             Value::Array(vec![Value::Integer(400); 256]),
         );
+        // A simple font keeps one width per code, so its glyph names make
+        // the larger font.
+        let mut differences = vec![Value::Integer(0)];
+        differences.extend(
+            (0..256).map(|code| {
+                Value::Name(pagura_core::Name::new(format!("glyph{code:04}").as_bytes()))
+            }),
+        );
+        let mut encoding = Dictionary::new();
+        encoding.insert(
+            pagura_core::Name::new(b"Differences"),
+            Value::Array(differences),
+        );
+        expanded.insert(
+            pagura_core::Name::new(b"Encoding"),
+            Value::Dictionary(encoding),
+        );
         let large = Arc::new(PdfFont::load(&document, &expanded).unwrap());
         assert!(large.retained_bytes() > small.retained_bytes());
         let id = Some(pagura_core::ObjectId::new(5, 0));

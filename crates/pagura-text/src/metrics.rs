@@ -1,12 +1,12 @@
 //! Simple widths and CID horizontal/vertical metrics (9.6 and 9.7.4.3).
 use crate::{
     VerticalMetrics,
-    cmap::charge,
+    cid::Cid,
     objects::{array, number, optional},
     repairs,
     report::Report,
 };
-use pagura_core::{Diagnostic, Dictionary, Error, Result, Value};
+use pagura_core::{Diagnostic, Dictionary, Error, Meter, Result, Value};
 use pagura_document::Document;
 use std::collections::BTreeMap;
 
@@ -14,54 +14,58 @@ use std::collections::BTreeMap;
 /// (9.2.4): widths and vertical metrics are in thousandths of text space.
 pub(crate) const GLYPH_SPACE_UNITS: f64 = 0.001;
 
+/// The default `/DW2` of a CIDFont, `[880 -1000]`: the vertical origin's
+/// y coordinate and the vertical advance, in glyph space (Table 115).
+const DEFAULT_DW2: [f64; 2] = [880.0, -1000.0];
+
 #[derive(Debug)]
 pub(crate) struct Metrics {
-    widths: BTreeMap<u32, f64>,
-    /// A simple font's width of every code; empty for composite fonts.
-    dense: Vec<f64>,
-    vertical: BTreeMap<u32, VerticalMetrics>,
+    horizontal: Widths,
+    vertical: Runs<VerticalMetrics>,
     missing: f64,
-    default_vertical: (f64, f64),
+    /// The scaled `/DW2`: vertical origin y and vertical advance.
+    default_vertical: [f64; 2],
+}
+
+/// Horizontal widths: every code's width for simple fonts, CID intervals
+/// for CIDFonts.
+#[derive(Debug)]
+enum Widths {
+    Simple(Box<[f64; 256]>),
+    Composite(Runs<f64>),
 }
 
 impl Metrics {
     pub(crate) fn heap_bytes(&self) -> usize {
-        (self.dense.capacity() * size_of::<f64>())
-            .saturating_add(crate::memory::tree::<u32, f64>(self.widths.len()))
-            .saturating_add(crate::memory::tree::<u32, VerticalMetrics>(
-                self.vertical.len(),
-            ))
+        let horizontal = match &self.horizontal {
+            Widths::Simple(values) => size_of_val(values.as_ref()),
+            Widths::Composite(runs) => runs.heap_bytes(),
+        };
+        horizontal.saturating_add(self.vertical.heap_bytes())
     }
 
+    /// Widths of a standard font's built-in AFM metrics for `names`.
     pub(crate) fn standard(
         metrics: &crate::StandardMetrics,
         names: &[Option<pagura_core::Name>; 256],
     ) -> Self {
+        let values = names.each_ref().map(|name| {
+            name.as_ref()
+                .and_then(|name| metrics.widths.get(name))
+                .map_or(0.0, |width| width * GLYPH_SPACE_UNITS)
+        });
         Self {
-            widths: (0_u8..=255)
-                .filter_map(|code| {
-                    Some((
-                        u32::from(code),
-                        *metrics.widths.get(names[usize::from(code)].as_ref()?)? * 0.001,
-                    ))
-                })
-                .collect(),
-            dense: Vec::new(),
-            vertical: BTreeMap::new(),
+            horizontal: Widths::Simple(Box::new(values)),
+            vertical: Runs::default(),
             missing: 0.0,
-            default_vertical: (0.88, -1.0),
+            default_vertical: DEFAULT_DW2.map(|value| value * GLYPH_SPACE_UNITS),
         }
-        .densified()
     }
 
-    /// Stores a simple font's widths, every code below 256, as a table.
-    fn densified(mut self) -> Self {
-        self.dense = (0..256)
-            .map(|code| self.widths.get(&code).copied().unwrap_or(self.missing))
-            .collect();
-        self
-    }
-
+    /// `/Widths` of a simple font from `FirstChar`, scaled by `scale`
+    /// (glyph space to text space). A `Widths` array whose length disagrees
+    /// with `FirstChar` and `LastChar` is a reported repair: codes past its
+    /// end use `MissingWidth`, and extra entries are ignored.
     pub(crate) fn simple(
         document: &Document,
         font: &Dictionary,
@@ -70,195 +74,286 @@ impl Metrics {
     ) -> Result<Self> {
         let missing =
             descriptor.map_or(Ok(0.0), |d| number(document, d, b"MissingWidth", 0.0))? * scale;
-        let mut result = Self {
-            widths: BTreeMap::new(),
-            dense: Vec::new(),
-            vertical: BTreeMap::new(),
-            missing,
-            default_vertical: (0.88, -1.0),
-        };
-        if let Some(value) = optional(document, font, b"Widths")? {
-            let first = optional(document, font, b"FirstChar")?
-                .and_then(Value::as_integer)
-                .and_then(|v| u8::try_from(v).ok())
-                .ok_or_else(|| Error::syntax("invalid FirstChar"))?;
-            let last = optional(document, font, b"LastChar")?
-                .and_then(Value::as_integer)
-                .and_then(|v| u8::try_from(v).ok())
-                .ok_or_else(|| Error::syntax("invalid LastChar"))?;
-            let widths = array(value)?;
-            let expected = usize::from(last.saturating_sub(first)) + 1;
-            let count = if last < first || widths.len() != expected {
-                // Table 109: codes past the array use MissingWidth and
-                // entries past LastChar are unused.
-                Report::new(document).diagnostic(Diagnostic::new(
-                    repairs::WIDTHS_LENGTH,
-                    "Widths length disagrees with FirstChar and LastChar; missing codes use MissingWidth (Table 109)",
-                ))?;
-                if last < first {
-                    0
-                } else {
-                    expected.min(widths.len())
-                }
+        let value = optional(document, font, b"Widths")?
+            .ok_or(Error::syntax("simple font missing Widths"))?;
+        let first = code(document, font, b"FirstChar", "invalid FirstChar")?;
+        let last = code(document, font, b"LastChar", "invalid LastChar")?;
+        let widths = array(value)?;
+        let count = usize::from(last.saturating_sub(first)) + 1;
+        let count = if last < first || widths.len() != count {
+            Report::new(document).diagnostic(Diagnostic::new(
+                repairs::WIDTHS_LENGTH,
+                "Widths length disagrees with FirstChar and LastChar; missing codes use MissingWidth (Table 109)",
+            ))?;
+            if last < first {
+                0
             } else {
-                expected
-            };
-            for (code, value) in (u32::from(first)..).zip(widths).take(count) {
-                result.widths.insert(code, scaled(document, value, scale)?);
+                count.min(widths.len())
             }
         } else {
-            return Err(Error::syntax("simple font missing Widths"));
+            count
+        };
+        let mut values = Box::new([missing; 256]);
+        for (slot, value) in values[usize::from(first)..]
+            .iter_mut()
+            .zip(&widths[..count])
+        {
+            *slot = scaled(document, value, scale)?;
         }
-        Ok(result.densified())
+        Ok(Self {
+            horizontal: Widths::Simple(values),
+            vertical: Runs::default(),
+            missing,
+            default_vertical: DEFAULT_DW2.map(|value| value * GLYPH_SPACE_UNITS),
+        })
     }
 
+    /// `/DW`, `/W`, `/DW2` and `/W2` of a CIDFont (9.7.4.3).
     pub(crate) fn composite(document: &Document, font: &Dictionary) -> Result<Self> {
-        let missing = number(document, font, b"DW", 1000.0)? / 1000.0;
+        let missing = number(document, font, b"DW", 1000.0)? * GLYPH_SPACE_UNITS;
         let default_vertical = if let Some(value) = optional(document, font, b"DW2")? {
-            let values = array(value)?;
-            if values.len() != 2 {
+            let [origin, advance] = array(value)? else {
                 return Err(Error::syntax("DW2 must contain two numbers"));
-            }
-            (
-                scaled(document, &values[0], 0.001)?,
-                scaled(document, &values[1], 0.001)?,
-            )
+            };
+            [
+                scaled(document, origin, GLYPH_SPACE_UNITS)?,
+                scaled(document, advance, GLYPH_SPACE_UNITS)?,
+            ]
         } else {
-            (0.88, -1.0)
+            DEFAULT_DW2.map(|value| value * GLYPH_SPACE_UNITS)
         };
-        let mut result = Self {
-            widths: BTreeMap::new(),
-            dense: Vec::new(),
-            vertical: BTreeMap::new(),
+        let limits = document.limits();
+        let mut budget = Budget {
+            work: Meter::new(limits.font_work, "CID metrics work budget exceeded"),
+            entries: Meter::new(limits.font_entries, "CID metrics entry budget exceeded"),
+        };
+        let horizontal = match optional(document, font, b"W")? {
+            Some(value) => read_runs(document, array(value)?, 1, &mut budget, |values| {
+                scaled(document, &values[0], GLYPH_SPACE_UNITS)
+            })?,
+            None => Runs::default(),
+        };
+        let vertical = match optional(document, font, b"W2")? {
+            Some(value) => read_runs(document, array(value)?, 3, &mut budget, |values| {
+                Ok(VerticalMetrics {
+                    advance: scaled(document, &values[0], GLYPH_SPACE_UNITS)?,
+                    origin: (
+                        scaled(document, &values[1], GLYPH_SPACE_UNITS)?,
+                        scaled(document, &values[2], GLYPH_SPACE_UNITS)?,
+                    ),
+                })
+            })?,
+            None => Runs::default(),
+        };
+        Ok(Self {
+            horizontal: Widths::Composite(horizontal),
+            vertical,
             missing,
             default_vertical,
-        };
-        let mut work = 0;
-        for (key, vertical) in [(b"W".as_slice(), false), (b"W2".as_slice(), true)] {
-            if let Some(value) = optional(document, font, key)? {
-                result.read(document, array(value)?, vertical, &mut work)?;
-            }
-        }
-        Ok(result)
+        })
     }
 
-    fn read(
-        &mut self,
-        document: &Document,
-        values: &[Value],
-        vertical: bool,
-        work: &mut usize,
-    ) -> Result<()> {
-        let mut values = values.iter();
-        let stride = if vertical { 3 } else { 1 };
-        while let Some(value) = values.next() {
-            let first = cid(document, value)?;
-            let value = document.resolve(
-                values
-                    .next()
-                    .ok_or_else(|| Error::syntax("truncated CID metrics"))?,
-            )?;
-            if let Some(array) = value.as_array() {
-                if array.len() % stride != 0 {
-                    return Err(Error::syntax("incomplete vertical metric triple"));
-                }
-                for (i, chunk) in array.chunks_exact(stride).enumerate() {
-                    let i =
-                        u32::try_from(i).map_err(|_| Error::limit("CID metric range too large"))?;
-                    let code = first
-                        .checked_add(i)
-                        .filter(|c| *c <= 65535)
-                        .ok_or_else(|| Error::syntax("CID metrics overflow"))?;
-                    charge(
-                        work,
-                        1,
-                        document
-                            .limits()
-                            .operations
-                            .min(document.limits().value_nodes),
-                    )?;
-                    self.insert(document, code, chunk, vertical)?;
-                }
-            } else {
-                let last = cid(document, value)?;
-                if last < first {
-                    return Err(Error::syntax("reversed CID metric range"));
-                }
-                let chunk = values.by_ref().take(stride).collect::<Vec<_>>();
-                if chunk.len() != stride {
-                    return Err(Error::syntax("truncated CID metric range"));
-                }
-                let owned: Vec<_> = chunk.into_iter().cloned().collect();
-                for code in first..=last {
-                    charge(
-                        work,
-                        1,
-                        document
-                            .limits()
-                            .operations
-                            .min(document.limits().value_nodes),
-                    )?;
-                    self.insert(document, code, &owned, vertical)?;
-                }
-            }
-        }
-        Ok(())
-    }
-
-    fn insert(
-        &mut self,
-        document: &Document,
-        code: u32,
-        values: &[Value],
-        vertical: bool,
-    ) -> Result<()> {
-        let first = scaled(document, &values[0], 0.001)?;
-        if vertical {
-            let metrics = VerticalMetrics {
-                advance: first,
-                origin: (
-                    scaled(document, &values[1], 0.001)?,
-                    scaled(document, &values[2], 0.001)?,
-                ),
-            };
-            self.vertical.entry(code).or_insert(metrics);
-        } else {
-            self.widths.entry(code).or_insert(first);
-        }
-        Ok(())
-    }
-
+    /// Horizontal width in text space of a simple-font code or a CID.
     pub(crate) fn width(&self, code: u32) -> f64 {
-        if let Some(&width) = usize::try_from(code).ok().and_then(|c| self.dense.get(c)) {
-            return width;
-        }
-        self.widths.get(&code).copied().unwrap_or(self.missing)
+        let width = match &self.horizontal {
+            Widths::Simple(values) => usize::try_from(code)
+                .ok()
+                .and_then(|code| values.get(code))
+                .copied(),
+            Widths::Composite(runs) => Cid::try_from(code).ok().and_then(|cid| runs.get(cid)),
+        };
+        width.unwrap_or(self.missing)
     }
+
+    /// Vertical metrics of a CID (9.7.4.3): `/W2`, else the `/DW2` advance
+    /// with the origin at half the horizontal width.
     pub(crate) fn vertical(&self, code: u32) -> VerticalMetrics {
-        self.vertical
-            .get(&code)
-            .copied()
+        Cid::try_from(code)
+            .ok()
+            .and_then(|cid| self.vertical.get(cid))
             .unwrap_or(VerticalMetrics {
-                advance: self.default_vertical.1,
-                origin: (self.width(code) / 2.0, self.default_vertical.0),
+                advance: self.default_vertical[1],
+                origin: (self.width(code) / 2.0, self.default_vertical[0]),
             })
     }
 }
 
-fn cid(document: &Document, value: &Value) -> Result<u32> {
+fn code(document: &Document, font: &Dictionary, key: &[u8], message: &'static str) -> Result<u8> {
+    optional(document, font, key)?
+        .and_then(Value::as_integer)
+        .and_then(|value| u8::try_from(value).ok())
+        .ok_or(Error::syntax(message))
+}
+
+struct Budget {
+    work: Meter,
+    entries: Meter,
+}
+
+/// Disjoint CID intervals of one metric. An earlier `/W` or `/W2` entry
+/// wins over a later overlapping one, so only uncovered CIDs are added.
+#[derive(Debug)]
+struct Runs<T>(BTreeMap<Cid, Run<T>>);
+
+#[derive(Debug)]
+struct Run<T> {
+    last: Cid,
+    values: RunValues<T>,
+}
+
+/// `c [w1 w2 …]` gives one value per CID; `c_first c_last w` one for all.
+#[derive(Debug)]
+enum RunValues<T> {
+    Each(Box<[T]>),
+    Constant(T),
+}
+
+impl<T> Default for Runs<T> {
+    fn default() -> Self {
+        Self(BTreeMap::new())
+    }
+}
+
+impl<T: Copy> Runs<T> {
+    fn heap_bytes(&self) -> usize {
+        self.0.values().fold(
+            crate::memory::tree::<Cid, Run<T>>(self.0.len()),
+            |sum, run| match &run.values {
+                RunValues::Each(values) => sum.saturating_add(size_of_val(values.as_ref())),
+                RunValues::Constant(_) => sum,
+            },
+        )
+    }
+
+    fn get(&self, cid: Cid) -> Option<T> {
+        let (first, run) = self.0.range(..=cid).next_back()?;
+        if cid > run.last {
+            return None;
+        }
+        Some(match &run.values {
+            RunValues::Each(values) => *values.get(usize::from(cid.get() - first.get()))?,
+            RunValues::Constant(value) => *value,
+        })
+    }
+
+    /// Adds the CIDs of `first..=last` that no earlier entry covers.
+    fn insert(
+        &mut self,
+        first: Cid,
+        last: Cid,
+        values: &RunValues<T>,
+        budget: &mut Budget,
+    ) -> Result<()> {
+        let covered: Vec<(Cid, Cid)> = self
+            .0
+            .range(..=last)
+            .rev()
+            .take_while(|(_, run)| run.last >= first)
+            .map(|(start, run)| (*start, run.last))
+            .collect();
+        budget.work.charge(covered.len().saturating_add(1))?;
+        let mut gaps = Vec::new();
+        let mut cursor = Some(first);
+        for (start, end) in covered.into_iter().rev() {
+            let Some(from) = cursor else { break };
+            if start > from {
+                gaps.push((from, Cid::new(start.get() - 1)));
+            }
+            cursor = end
+                .checked_add(1)
+                .filter(|next| *next <= last)
+                .map(|next| next.max(from));
+        }
+        if let Some(from) = cursor {
+            gaps.push((from, last));
+        }
+        for (from, to) in gaps {
+            budget.entries.charge(1)?;
+            let values = match values {
+                RunValues::Each(all) => {
+                    let start = usize::from(from.get() - first.get());
+                    let end = usize::from(to.get() - first.get()) + 1;
+                    budget.work.charge(end - start)?;
+                    RunValues::Each(all[start..end].into())
+                }
+                RunValues::Constant(value) => RunValues::Constant(*value),
+            };
+            self.0.insert(from, Run { last: to, values });
+        }
+        Ok(())
+    }
+}
+
+/// Reads `/W` (`stride` 1) or `/W2` (`stride` 3): `c [v …]` and
+/// `c_first c_last v` entries (9.7.4.3). Each value group is parsed once.
+fn read_runs<T: Copy>(
+    document: &Document,
+    entries: &[Value],
+    stride: usize,
+    budget: &mut Budget,
+    parse: impl Fn(&[Value]) -> Result<T>,
+) -> Result<Runs<T>> {
+    let mut runs = Runs::default();
+    let mut entries = entries.iter();
+    while let Some(value) = entries.next() {
+        let first = cid(document, value)?;
+        let value = document.resolve(
+            entries
+                .next()
+                .ok_or(Error::syntax("truncated CID metrics"))?,
+        )?;
+        if let Some(values) = value.as_array() {
+            if values.len() % stride != 0 {
+                return Err(Error::syntax("incomplete vertical metric triple"));
+            }
+            let count = values.len() / stride;
+            let Some(last) = count
+                .checked_sub(1)
+                .and_then(|offset| u32::try_from(offset).ok())
+                .map(|offset| first.checked_add(offset))
+            else {
+                continue;
+            };
+            let last = last.ok_or(Error::syntax("CID metrics overflow"))?;
+            budget.work.charge(count)?;
+            let parsed = values
+                .chunks_exact(stride)
+                .map(&parse)
+                .collect::<Result<Box<[T]>>>()?;
+            runs.insert(first, last, &RunValues::Each(parsed), budget)?;
+        } else {
+            let last = cid(document, value)?;
+            if last < first {
+                return Err(Error::syntax("reversed CID metric range"));
+            }
+            let group: Vec<&Value> = entries.by_ref().take(stride).collect();
+            if group.len() != stride {
+                return Err(Error::syntax("truncated CID metric range"));
+            }
+            let group: Vec<Value> = group
+                .into_iter()
+                .map(|value| document.resolve(value).cloned())
+                .collect::<Result<_>>()?;
+            budget.work.charge(stride)?;
+            runs.insert(first, last, &RunValues::Constant(parse(&group)?), budget)?;
+        }
+    }
+    Ok(runs)
+}
+
+fn cid(document: &Document, value: &Value) -> Result<Cid> {
     document
         .resolve(value)?
         .as_integer()
-        .and_then(|v| u16::try_from(v).ok())
-        .map(u32::from)
-        .ok_or_else(|| Error::syntax("CID outside 16-bit range"))
+        .and_then(Cid::from_integer)
+        .ok_or(Error::syntax("CID outside 16-bit range"))
 }
 
 fn scaled(document: &Document, value: &Value, scale: f64) -> Result<f64> {
     let width = document
         .resolve(value)?
         .as_number()
-        .ok_or_else(|| Error::syntax("font metric is not a finite number"))?
+        .ok_or(Error::syntax("font metric is not a finite number"))?
         * scale;
     if !width.is_finite() {
         return Err(Error::syntax("font metric overflow"));
@@ -269,9 +364,84 @@ fn scaled(document: &Document, value: &Value, scale: f64) -> Result<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
     use crate::test_support::{dictionary, document, expected, float, integer, near, rows};
     use pagura_core::ErrorKind;
+    use pagura_core::Limits;
 
+    fn budget() -> Budget {
+        let limits = Limits::default();
+        Budget {
+            work: Meter::new(limits.font_work, "test"),
+            entries: Meter::new(limits.font_entries, "test"),
+        }
+    }
+
+    #[test]
+    fn earlier_entries_win_and_gaps_are_filled() -> Result<()> {
+        let mut runs = Runs::default();
+        let mut budget = budget();
+        runs.insert(
+            Cid::new(10),
+            Cid::new(12),
+            &RunValues::Each([1.0, 2.0, 3.0].into()),
+            &mut budget,
+        )?;
+        runs.insert(
+            Cid::new(20),
+            Cid::new(20),
+            &RunValues::Constant(4.0),
+            &mut budget,
+        )?;
+        runs.insert(
+            Cid::new(5),
+            Cid::new(25),
+            &RunValues::Constant(9.0),
+            &mut budget,
+        )?;
+        let values: Vec<Option<f64>> = [4, 5, 9, 10, 12, 13, 19, 20, 21, 25, 26]
+            .map(|cid| runs.get(Cid::new(cid)))
+            .into();
+        assert_eq!(
+            values,
+            [
+                None,
+                Some(9.0),
+                Some(9.0),
+                Some(1.0),
+                Some(3.0),
+                Some(9.0),
+                Some(9.0),
+                Some(4.0),
+                Some(9.0),
+                Some(9.0),
+                None
+            ]
+        );
+        runs.insert(
+            Cid::new(65_530),
+            Cid::new(65_535),
+            &RunValues::Each([0.5; 6].into()),
+            &mut budget,
+        )?;
+        assert_eq!(runs.get(Cid::new(65_535)), Some(0.5));
+        Ok(())
+    }
+
+    #[test]
+    fn a_full_range_is_one_entry() -> Result<()> {
+        let mut runs = Runs::default();
+        let mut budget = budget();
+        runs.insert(
+            Cid::new(0),
+            Cid::new(65_535),
+            &RunValues::Constant(1.0),
+            &mut budget,
+        )?;
+        assert_eq!(runs.0.len(), 1);
+        assert_eq!(budget.entries.used(), 1);
+        Ok(())
+    }
     #[test]
     fn cid_metric_vectors() -> Result<()> {
         for name in ["cid-metrics", "cid-default-metrics"] {
