@@ -6,6 +6,9 @@ export const VERSION_1_1 = 0x00010001;
 export const VERSION_1_2 = 0x00010002;
 export const VERSION_1_3 = 0x00010003;
 export const VERSION_1_4 = 0x00010004;
+export const VERSION_1_5 = 0x00010005;
+/** Open's mode bit (protocol 1.5) marking the password as UTF-8 text. */
+export const PASSWORD_TEXT = 2;
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 class Reader {
@@ -167,7 +170,7 @@ export function encodeRequest(kind, id, values = {}) {
   const integer = (value) => { view.setUint32(offset, u32(value), true); offset += 4; };
   const blob = (data) => { integer(data.length); bytes.set(data, offset); offset += data.length; };
   if (kind === 1) integer(values.version ?? 1);
-  if (kind === 2) { bytes[offset++] = values.recovery; blob(values.password); blob(values.bytes); }
+  if (kind === 2) { bytes[offset++] = values.recovery | (values.text ? PASSWORD_TEXT : 0); blob(values.password); blob(values.bytes); }
   if (kind === 8) integer(values.generation);
   if ((kind >= 3 && kind <= 8) || kind === 17) integer(values.document);
   if (kind === 7) integer(values.generation);
