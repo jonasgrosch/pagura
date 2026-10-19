@@ -264,7 +264,10 @@ fn empty_appearances_keep_reported_recovery_and_skip_generation() {
     }
     let diagnostics = document.diagnostics();
     assert_eq!(diagnostics.len(), 1);
-    assert_eq!(diagnostics[0].repair(), Some(crate::repairs::APPEARANCE_EMPTY));
+    assert_eq!(
+        diagnostics[0].repair(),
+        Some(crate::repairs::APPEARANCE_EMPTY)
+    );
     assert_eq!(
         diagnostics[0].object,
         Some(pagura_core::ObjectId::new(80, 0))
