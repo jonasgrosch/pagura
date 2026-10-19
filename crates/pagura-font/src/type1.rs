@@ -122,9 +122,8 @@ impl Type1 {
         charstring::outline(self, glyph, work).map_err(|e| self.locator.place(e, Space::Plain))
     }
 
-    /// The charstring width, if the glyph interprets.
-    pub(crate) fn advance(&self, glyph: GlyphId, work: &mut Work<'_>) -> Option<f64> {
-        charstring::advance(self, glyph, work).ok()
+    pub(crate) fn advance(&self, glyph: GlyphId, work: &mut Work<'_>) -> Result<f64> {
+        charstring::advance(self, glyph, work).map_err(|e| self.locator.place(e, Space::Plain))
     }
 
     /// The input position of a plaintext position.

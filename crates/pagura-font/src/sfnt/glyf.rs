@@ -2,12 +2,13 @@
 //! (OpenType glyf).
 use crate::budget::Work;
 use crate::memory::vector;
+use crate::outline::{Pen, finite};
 use crate::read::{self, syntax};
 use crate::{GlyphId, repairs};
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Position, Result};
-use pagura_raster::{Path, PathBuilder, Point, Segment, Transform};
+use pagura_raster::{Path, Point, Transform};
 use std::ops::Range;
 
 /// Simple-glyph point flags (OpenType glyf). Bit 6 (overlap) is ignored.
@@ -141,7 +142,7 @@ impl Glyf {
         work: &mut Work<'_>,
     ) -> Result<Shape> {
         let mut points = Vec::new();
-        let mut builder = PathBuilder::new();
+        let mut pen = Pen::new();
         let mut have_instructions = false;
         loop {
             work.work(1, r.position())?;
@@ -179,15 +180,12 @@ impl Glyf {
             transform.f = if round { offset.y.round() } else { offset.y };
             work.work(shape.path.segments().len(), at)?;
             work.entries(shape.points.len(), at)?;
-            work.segments(shape.path.segments().len(), at)?;
             for &p in &shape.points {
                 let p = transform.apply(p);
-                if !p.is_finite() {
-                    return Err(syntax(at, "nonfinite component point"));
-                }
+                finite(p, at)?;
                 points.push(p);
             }
-            append(&mut builder, &shape.path, transform, at)?;
+            pen.append(work, &shape.path, transform, at)?;
             have_instructions |= flags & component::HAVE_INSTRUCTIONS != 0;
             if flags & component::MORE_COMPONENTS == 0 {
                 break;
@@ -198,39 +196,10 @@ impl Glyf {
             r.skip(len)?;
         }
         Ok(Shape {
-            path: builder.finish(),
+            path: pen.finish(Transform::IDENTITY, r.position())?,
             points,
         })
     }
-}
-
-/// Adds a component outline mapped through `transform`.
-fn append(
-    builder: &mut PathBuilder,
-    path: &Path,
-    transform: Transform,
-    at: Position,
-) -> Result<()> {
-    let invalid = || syntax(at, "invalid component path");
-    for &segment in path.segments() {
-        match segment {
-            Segment::MoveTo(p) => {
-                builder.move_to(transform.apply(p));
-            }
-            Segment::LineTo(p) => {
-                builder.line_to(transform.apply(p)).ok_or_else(invalid)?;
-            }
-            Segment::CubicTo(a, b, c) => {
-                builder
-                    .cubic_to(transform.apply(a), transform.apply(b), transform.apply(c))
-                    .ok_or_else(invalid)?;
-            }
-            Segment::Close => {
-                builder.close();
-            }
-        }
-    }
-    Ok(())
 }
 
 fn simple(r: &mut Cursor<'_>, contours: usize, work: &mut Work<'_>) -> Result<Shape> {
@@ -247,7 +216,6 @@ fn simple(r: &mut Cursor<'_>, contours: usize, work: &mut Work<'_>) -> Result<Sh
     }
     work.work(count, r.position())?;
     work.entries(count, r.position())?;
-    work.segments(count.saturating_add(contours * 2), r.position())?;
     let instructions = usize::from(r.u16()?);
     r.skip(instructions)?;
     let mut flags = Vec::with_capacity(count);
@@ -285,17 +253,17 @@ fn simple(r: &mut Cursor<'_>, contours: usize, work: &mut Work<'_>) -> Result<Sh
         vertex.point.y = f64::from(y);
     }
     let at = r.position();
-    let mut builder = PathBuilder::new();
+    let mut pen = Pen::new();
     let mut start = 0;
     for end in ends {
         let contour = vertices
             .get(start..end)
             .ok_or_else(|| syntax(at, "contour outside glyph points"))?;
-        draw_contour(&mut builder, contour, at)?;
+        draw_contour(&mut pen, contour, work, at)?;
         start = end;
     }
     Ok(Shape {
-        path: builder.finish(),
+        path: pen.finish(Transform::IDENTITY, at)?,
         points: vertices.into_iter().map(|v| v.point).collect(),
     })
 }
@@ -317,7 +285,12 @@ fn midpoint(a: Point, b: Point) -> Point {
 
 /// One contour of quadratic splines: consecutive off-curve points imply
 /// an on-curve point midway (OpenType glyf).
-fn draw_contour(builder: &mut PathBuilder, vertices: &[Vertex], at: Position) -> Result<()> {
+fn draw_contour(
+    pen: &mut Pen,
+    vertices: &[Vertex],
+    work: &mut Work<'_>,
+    at: Position,
+) -> Result<()> {
     let (Some(&first), Some(&last)) = (vertices.first(), vertices.last()) else {
         return Err(syntax(at, "empty contour"));
     };
@@ -331,46 +304,26 @@ fn draw_contour(builder: &mut PathBuilder, vertices: &[Vertex], at: Position) ->
     } else {
         (midpoint(last.point, first.point), vertices)
     };
-    builder.move_to(start);
+    pen.move_to(work, start, at)?;
     let mut control = None;
     for vertex in rest {
         if vertex.on {
             if let Some(p) = control.take() {
-                quadratic(builder, p, vertex.point, at)?;
+                pen.quad_to(work, p, vertex.point, at)?;
             } else {
-                builder
-                    .line_to(vertex.point)
-                    .ok_or_else(|| syntax(at, "line without current point"))?;
+                pen.line_to(work, vertex.point, at)?;
             }
         } else {
             if let Some(p) = control {
-                quadratic(builder, p, midpoint(p, vertex.point), at)?;
+                pen.quad_to(work, p, midpoint(p, vertex.point), at)?;
             }
             control = Some(vertex.point);
         }
     }
     if let Some(p) = control {
-        quadratic(builder, p, start, at)?;
+        pen.quad_to(work, p, start, at)?;
     }
-    builder.close();
-    Ok(())
-}
-
-/// A quadratic Bézier from the current point, elevated exactly to the
-/// cubic with the same curve.
-fn quadratic(builder: &mut PathBuilder, control: Point, end: Point, at: Position) -> Result<()> {
-    let invalid = || syntax(at, "quadratic without current point");
-    let from = builder.current_point().ok_or_else(invalid)?;
-    let third = |end: Point| {
-        Point::new(
-            end.x + (control.x - end.x) * 2.0 / 3.0,
-            end.y + (control.y - end.y) * 2.0 / 3.0,
-        )
-    };
-    builder
-        .cubic_to(third(from), third(end), end)
-        .ok_or_else(invalid)?;
-    Ok(())
+    pen.close(work, at)
 }
 
 fn component(r: &mut Cursor<'_>, work: &mut Work<'_>) -> Result<Component> {

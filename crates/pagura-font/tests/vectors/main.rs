@@ -54,7 +54,7 @@ fn check_vector(
             "count" => assert_eq!(font.glyph_count(), u(1), "{name}"),
             "matrix" => check_matrix(font, &[n(1), n(2), n(3), n(4), n(5), n(6)]),
             "name" | "glyph-name" | "glyph-name-none" => check_name(font, &words, name),
-            "advance" => assert_eq!(font.advance(GlyphId(u(1))), Some(n(2)), "{name}"),
+            "advance" => assert_eq!(font.advance(GlyphId(u(1))).unwrap(), Some(n(2)), "{name}"),
             "is-cid" => assert_eq!(font.is_cid_keyed(), u(1) == 1),
             "cid" => assert_eq!(font.glyph_for_cid(u(1)), Some(GlyphId(u(2)))),
             "encoding" => assert_eq!(
@@ -133,7 +133,7 @@ fn check_vector(
     }
     check_outline(font, name, glyph, &mut builder, diagnostics);
     assert!(font.outline(GlyphId(u32::MAX)).is_err());
-    assert_eq!(font.advance(GlyphId(u32::MAX)), None);
+    assert!(font.advance(GlyphId(u32::MAX)).is_err());
     assert_eq!(font.glyph_for_name(b"no such glyph"), None);
 }
 

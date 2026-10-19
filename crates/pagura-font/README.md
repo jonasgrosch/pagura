@@ -23,8 +23,9 @@ Bytes and parsed metadata are shared across clones; `FontBytes::Static` data,
 such as bundled `include_bytes!` fonts, is used in place without a copy.
 Outlines are decoded on demand; they are not cached. Parse success validates
 the container and mapping tables, while `outline` validates the requested
-glyph and its dependencies. `advance` returns `None` if a charstring cannot
-be interpreted; `outline` provides the corresponding structured error.
+glyph and its dependencies. `advance` interprets a charstring only up to its
+width, so a fault later in the glyph is reported by `outline` alone; it
+returns `Ok(None)` when the program records no advance (CFF2 without `hmtx`).
 OpenType advances come from `hmtx` when present, including the shared final
 advance for trailing side bearings. Per 9.9.1 Table 124, OpenType CFF requires CFF and cmap without
 requiring glyf's header/metrics tables; absent horizontal tables use CFF widths.

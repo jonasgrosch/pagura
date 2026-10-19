@@ -318,7 +318,7 @@ fn duplicate_empty_name_keeps_the_first_charstring() {
     )
     .unwrap();
     assert_eq!(font.glyph_for_name(b""), Some(GlyphId(2)));
-    assert_eq!(font.advance(GlyphId(2)), Some(600.0));
+    assert_eq!(font.advance(GlyphId(2)).unwrap(), Some(600.0));
     assert_eq!(diagnostics.as_slice().len(), 1);
 }
 

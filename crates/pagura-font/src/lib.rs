@@ -9,15 +9,17 @@
 //! to glyphs through PDF encodings and CMaps is `pagura-text`'s job.
 //! Hinting is not applied; outlines are returned in glyph space.
 
-use pagura_core::{Diagnostic, Diagnostics, Limits, Name, Recovery, Result};
+use pagura_core::{Diagnostic, Diagnostics, Error, Limits, Name, Position, Recovery, Result};
 use pagura_raster::{Path, Transform};
 use std::ops::Deref;
 use std::sync::Arc;
 
 mod budget;
 mod cff;
+mod charstring;
 mod memory;
 mod names;
+mod outline;
 mod read;
 mod recovery;
 pub mod repairs;
@@ -341,25 +343,34 @@ impl FontProgram {
 
     fn outline_inner(&self, glyph: GlyphId, diagnostics: &mut Diagnostics) -> Result<Path> {
         let mut work = Work::new(self.budget, diagnostics);
-        let path = match self.parsed.as_ref() {
+        match self.parsed.as_ref() {
             Program::Sfnt(p) => p.outline(&self.data, glyph, &mut work),
             Program::Cff(p) => p.outline(&self.data, glyph, &mut work),
             Program::Type1(p) => p.outline(glyph, &mut work),
-        }?;
-        read::finite_path(&path)?;
-        Ok(path)
+        }
     }
 
-    /// The horizontal advance of `glyph` in glyph space, if the program
-    /// records one. Malformed charstrings return `None`; call [`Self::outline`]
-    /// to obtain their structured error.
-    pub fn advance(&self, glyph: GlyphId) -> Option<f64> {
+    /// The horizontal advance of `glyph` in glyph space: the `hmtx` advance
+    /// when the program has one, otherwise the charstring width. `None` if
+    /// the program records no advance (CFF2 without `hmtx`).
+    ///
+    /// A charstring is interpreted only up to its width, so a fault later
+    /// in the glyph is reported by [`Self::outline`] alone.
+    ///
+    /// # Errors
+    ///
+    /// A `Syntax` error for a glyph outside the program or a malformed
+    /// width, and `Limit` for an exhausted budget, as for [`Self::outline`].
+    pub fn advance(&self, glyph: GlyphId) -> Result<Option<f64>> {
+        if glyph.0 >= self.glyph_count() {
+            return Err(Error::syntax("glyph index outside font program").at(Position::Unknown));
+        }
         let mut diagnostics = Diagnostics::new(Recovery::Strict);
         let mut work = Work::new(self.budget, &mut diagnostics);
         match self.parsed.as_ref() {
             Program::Sfnt(p) => p.advance(&self.data, glyph, &mut work),
             Program::Cff(p) => p.advance(&self.data, glyph, &mut work),
-            Program::Type1(p) => p.advance(glyph, &mut work),
+            Program::Type1(p) => p.advance(glyph, &mut work).map(Some),
         }
     }
 

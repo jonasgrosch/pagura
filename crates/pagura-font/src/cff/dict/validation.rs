@@ -1,7 +1,8 @@
 //! Operand types and dictionary domains from TN 5176 Tables 9, 10 and 23.
-use super::{Dict, Operator as Op, integer};
+use super::{Dict, Operator as Op};
 use crate::budget::Work;
 use crate::cff::strings::{RESERVED_SID, STANDARD_STRINGS};
+use crate::charstring::integer;
 use crate::read::syntax;
 use crate::repairs;
 use pagura_core::Result;

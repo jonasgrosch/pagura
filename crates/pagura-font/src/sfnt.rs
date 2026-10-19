@@ -175,11 +175,16 @@ impl Sfnt {
     }
 
     /// The `hmtx` advance, else the CFF charstring width.
-    pub(crate) fn advance(&self, data: &[u8], glyph: GlyphId, work: &mut Work<'_>) -> Option<f64> {
+    pub(crate) fn advance(
+        &self,
+        data: &[u8],
+        glyph: GlyphId,
+        work: &mut Work<'_>,
+    ) -> Result<Option<f64>> {
         match (&self.advances, &self.outlines) {
-            (Some(advances), _) => advances.get(u32_to_usize(glyph.0)).copied().map(f64::from),
+            (Some(advances), _) => Ok(advances.get(u32_to_usize(glyph.0)).copied().map(f64::from)),
             (None, Outlines::Cff(cff)) => cff.advance(data, glyph, work),
-            (None, Outlines::Glyf(_)) => None,
+            (None, Outlines::Glyf(_)) => Ok(None),
         }
     }
 
