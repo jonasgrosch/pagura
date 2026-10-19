@@ -125,30 +125,22 @@ mod tests {
                 assert!(super::ycbcr8(&ys, &[cb; 256], &[cr; 256], 1, &mut eight));
                 assert_eq!(actual, eight);
                 if let Some(colour) = super::Constant::new(cb, cr) {
-                    for interval in [false, true] {
-                        let mut deficits = vec![[0u16; 4]; 256];
-                        assert!(colour.deficits(&ys, interval, &mut deficits));
-                        let mut varying = vec![[0u16; 4]; 256];
-                        assert!(super::deficits(
-                            &ys,
-                            &[cb; 256],
-                            &[cr; 256],
-                            1,
-                            interval,
-                            &mut varying
-                        ));
-                        assert_eq!(varying, deficits);
-                        for (y, p) in deficits.iter().enumerate() {
-                            let high = if interval { (y + 1).min(255) } else { y };
-                            for c in 0..3 {
-                                assert_eq!(
-                                    p[c],
-                                    510 - u16::from(actual[y * 3 + c])
-                                        - u16::from(actual[high * 3 + c])
-                                );
-                            }
-                            assert_eq!(p[3], 0);
+                    let mut deficits = vec![[0u16; 4]; 256];
+                    assert!(colour.deficits(&ys, &mut deficits));
+                    let mut varying = vec![[0u16; 4]; 256];
+                    assert!(super::deficits(
+                        &ys,
+                        &[cb; 256],
+                        &[cr; 256],
+                        1,
+                        &mut varying
+                    ));
+                    assert_eq!(varying, deficits);
+                    for (y, p) in deficits.iter().enumerate() {
+                        for c in 0..3 {
+                            assert_eq!(p[c], 255 - u16::from(actual[y * 3 + c]));
                         }
+                        assert_eq!(p[3], 0);
                     }
                 }
                 let cb0 = i32::from(cb) - 128;
@@ -206,64 +198,42 @@ impl Constant {
             ],
         })
     }
-    /// Emits doubled RGB deficits from white, using an optional adjacent luma interval.
+    /// Emits RGB deficits from white, `255 - channel`, for `luma`.
     #[must_use]
-    pub fn deficits(&self, luma: &[u8], interval: bool, output: &mut [[u16; 4]]) -> bool {
+    pub fn deficits(&self, luma: &[u8], output: &mut [[u16; 4]]) -> bool {
         if luma.len() != output.len() {
             return false;
         }
-        let wide = luma.len() / 8 * 8;
-        for (ys, out) in luma[..wide]
-            .as_chunks::<8>()
-            .0
-            .iter()
-            .zip(output[..wide].as_chunks_mut::<8>().0)
-        {
-            let low = ys.map(u16::from);
-            let high = if interval {
-                ys.map(|v| u16::from(v.saturating_add(1)))
-            } else {
-                low
-            };
-            let channel = |offset: u16| {
-                std::array::from_fn::<_, 8, _>(|i| {
-                    510 - (low[i].wrapping_add(offset).saturating_sub(256).min(255)
-                        + high[i].wrapping_add(offset).saturating_sub(256).min(255))
-                })
-            };
-            let r = channel(self.offsets[0]);
-            let g = channel(self.offsets[1]);
-            let b = channel(self.offsets[2]);
+        for (ys, out) in luma.chunks(8).zip(output.chunks_mut(8)) {
+            let [r, g, b] = lanes(ys, self.offsets.map(|offset| [offset; 8]));
             for (i, pixel) in out.iter_mut().enumerate() {
                 *pixel = [r[i], g[i], b[i], 0];
             }
-        }
-        for (&y, out) in luma[wide..].iter().zip(&mut output[wide..]) {
-            let low = u16::from(y);
-            let high = u16::from(if interval { y.saturating_add(1) } else { y });
-            let p = self.offsets.map(|offset| {
-                510 - (low.wrapping_add(offset).saturating_sub(256).min(255)
-                    + high.wrapping_add(offset).saturating_sub(256).min(255))
-            });
-            *out = [p[0], p[1], p[2], 0];
         }
         true
     }
 }
 
-/// Doubled RGB deficits from white for `luma` with chroma replicated
-/// `repeat` times, as [`Constant::deficits`] for each chroma pair. Returns
-/// false, with `output` unspecified, for mismatched extents, an unsupported
-/// repeat or an exact green half tie.
+/// Deficits `255 - clamp(Y + offset - 256)` of up to eight samples per
+/// channel, from biased Table 13 offsets per sample.
+#[expect(
+    clippy::inline_always,
+    reason = "fixed eight-sample lanes vectorize only when inlined"
+)]
+#[inline(always)]
+fn lanes(luma: &[u8], offsets: [[u16; 8]; 3]) -> [[u16; 8]; 3] {
+    let y: [u16; 8] = std::array::from_fn(|i| luma.get(i).map_or(0, |&v| u16::from(v)));
+    offsets.map(|offset| {
+        std::array::from_fn(|i| 255 - y[i].wrapping_add(offset[i]).saturating_sub(256).min(255))
+    })
+}
+
+/// RGB deficits from white for `luma` with chroma replicated `repeat`
+/// times, as [`Constant::deficits`] for each chroma pair. Returns false,
+/// with `output` unspecified, for mismatched extents, an unsupported repeat
+/// or an exact green half tie.
 #[must_use]
-pub fn deficits(
-    luma: &[u8],
-    cb: &[u8],
-    cr: &[u8],
-    repeat: usize,
-    interval: bool,
-    output: &mut [[u16; 4]],
-) -> bool {
+pub fn deficits(luma: &[u8], cb: &[u8], cr: &[u8], repeat: usize, output: &mut [[u16; 4]]) -> bool {
     if !matches!(repeat, 1 | 2 | 4)
         || luma.len() != output.len()
         || cb.len() < luma.len().div_ceil(repeat)
@@ -271,7 +241,6 @@ pub fn deficits(
     {
         return false;
     }
-    let up = u8::from(interval);
     for (group, (ys, out)) in luma.chunks(8).zip(output.chunks_mut(8)).enumerate() {
         // Eight samples span at most eight chroma pairs; repeat divides 8.
         let first = group * 8 / repeat;
@@ -282,17 +251,8 @@ pub fn deficits(
             };
             *pair = colour.offsets;
         }
-        let offsets: [[u16; 8]; 3] =
-            std::array::from_fn(|c| std::array::from_fn(|i| pairs[i / repeat][c]));
-        let low: [u16; 8] = std::array::from_fn(|i| ys.get(i).map_or(0, |&v| u16::from(v)));
-        let high: [u16; 8] =
-            std::array::from_fn(|i| ys.get(i).map_or(0, |&v| u16::from(v.saturating_add(up))));
-        let [r, g, b] = offsets.map(|offset| {
-            std::array::from_fn::<_, 8, _>(|i| {
-                510 - (low[i].wrapping_add(offset[i]).saturating_sub(256).min(255)
-                    + high[i].wrapping_add(offset[i]).saturating_sub(256).min(255))
-            })
-        });
+        let offsets = std::array::from_fn(|c| std::array::from_fn(|i| pairs[i / repeat][c]));
+        let [r, g, b] = lanes(ys, offsets);
         for (i, pixel) in out.iter_mut().enumerate() {
             *pixel = [r[i], g[i], b[i], 0];
         }

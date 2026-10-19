@@ -2,14 +2,14 @@
 //! mark is one opaque image ([`ImageReconstruction::Fused`]).
 //!
 //! The image is decoded in the deferred layout (`pagura_image::deferred`):
-//! a baseline YCbCr JPEG stays in its component planes, with one-level luma
-//! intervals, and one-bit samples stay packed. Each device row then takes
-//! the exact-area footprints of the general compositor on the original
-//! sample grid. Source rows are converted only when a footprint needs them,
-//! equal rows are filtered once, and background JPEG blocks are skipped.
-//! Interior cells of a footprint add up as integers; the end cells, the
-//! row accumulation and partial pixel coverage use f32 and f64 weights, and
-//! each pixel is rounded once. Every pixel is within one level of the
+//! a baseline YCbCr JPEG stays in its component planes and one-bit samples
+//! stay packed; the samples are the decoders' own. Each device row then
+//! takes the exact-area footprints of the general compositor on the
+//! original sample grid. Source rows are converted with Table 13 only when a
+//! footprint needs them, equal rows are filtered once, and background JPEG
+//! blocks are skipped. Interior cells of a footprint add up as integers; the
+//! end cells and the row accumulation use f32 weights, partial coverage f64,
+//! and each pixel is rounded once. Every pixel is within one level of the
 //! [`ImageReconstruction::Exact`] result.
 //!
 //! Pages, images and placements outside this scope return `None` and render

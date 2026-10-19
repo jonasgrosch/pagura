@@ -39,7 +39,6 @@ fn green_half_ties_take_exact_luma() {
     for (index, &value) in reference.samples.iter().enumerate() {
         assert_eq!(planar.get(index), Some(u16::from(value)), "sample {index}");
     }
-    assert!(planar.intervals.iter().all(|&v| v == 0));
 }
 
 #[test]

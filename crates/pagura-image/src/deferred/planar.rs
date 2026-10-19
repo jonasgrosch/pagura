@@ -17,24 +17,19 @@ pub struct Planar {
     pub(crate) dirty: [Vec<u8>; 3],
     /// The value each plane was initialized with.
     pub(crate) backgrounds: [u8; 3],
-    /// Per luma block: nonzero when its samples are the lower end of an
-    /// interval `[sample, min(sample + 1, 255)]` holding the reference byte.
-    pub(crate) intervals: Vec<u8>,
 }
 
 impl Planar {
     /// Builds a planar image from Y, Cb and Cr planes in eight-by-eight
     /// block rows, as a baseline decoder stores them: component `c` has
     /// sampling factors `geometry[c][..2]` and row pitch `geometry[c][2]`.
-    /// `intervals` holds one flag per luma block. Returns None when the
-    /// planes do not cover the image.
+    /// Returns None when the planes do not cover the image.
     #[must_use]
     pub fn new(
         (width, height): (usize, usize),
         maximum: [usize; 2],
         geometry: [[usize; 3]; 3],
         planes: [Vec<u8>; 3],
-        intervals: Vec<u8>,
     ) -> Option<Self> {
         const BACKGROUNDS: [u8; 3] = [255, 128, 128];
         if width == 0 || height == 0 || !maximum.iter().all(|m| (1..=4).contains(m)) {
@@ -65,9 +60,6 @@ impl Planar {
                 })
                 .collect();
         }
-        if intervals.len() != dirty[0].len() {
-            return None;
-        }
         Some(Self {
             width,
             height,
@@ -76,7 +68,6 @@ impl Planar {
             planes,
             dirty,
             backgrounds: BACKGROUNDS,
-            intervals,
         })
     }
 
@@ -130,21 +121,11 @@ impl Planar {
             .is_some_and(|&flag| flag != 0)
     }
 
-    /// Whether the luma block covering sample `(x, y)` holds interval lower
-    /// ends rather than reference bytes.
-    #[must_use]
-    pub fn interval(&self, x: usize, y: usize) -> bool {
-        let stride = self.geometry[0][2] / 8;
-        self.intervals
-            .get(y / 8 * stride + x / 8)
-            .is_some_and(|&flag| flag != 0)
-    }
-
     pub(crate) fn storage_bytes(&self) -> usize {
-        self.planes.iter().chain(&self.dirty).fold(
-            self.intervals.capacity().saturating_add(size_of::<Self>()),
-            |n, v| n.saturating_add(v.capacity()),
-        )
+        self.planes
+            .iter()
+            .chain(&self.dirty)
+            .fold(size_of::<Self>(), |n, v| n.saturating_add(v.capacity()))
     }
 
     /// Component `c`'s samples for image row `y`, before horizontal
@@ -156,8 +137,8 @@ impl Planar {
         &self.planes[c][y * pitch..(y + 1) * pitch]
     }
 
-    /// One interleaved RGB sample converted from the stored components, for
-    /// painters without a planar path.
+    /// One interleaved RGB sample converted from the stored components with
+    /// Table 13, as the interleaved layout holds it.
     #[must_use]
     pub fn get(&self, index: usize) -> Option<u16> {
         let pixel = index / 3;
@@ -200,16 +181,11 @@ impl Planar {
         true
     }
 
-    /// Whether source rows `a` and `b` have equal components and luma
-    /// interval flags, so they convert and filter identically.
+    /// Whether source rows `a` and `b` have equal components, so they
+    /// convert and filter identically.
     #[must_use]
     pub fn same_row(&self, a: usize, b: usize) -> bool {
-        let stride = self.geometry[0][2] / 8;
-        let ar = a * self.geometry[0][1] / self.maximum[1] / 8;
-        let br = b * self.geometry[0][1] / self.maximum[1] / 8;
-        self.intervals[ar * stride..(ar + 1) * stride]
-            == self.intervals[br * stride..(br + 1) * stride]
-            && (0..3).all(|c| self.row(c, a) == self.row(c, b))
+        (0..3).all(|c| self.row(c, a) == self.row(c, b))
     }
 
     /// Full-width luma of row `y` when both of its chroma rows are neutral.
@@ -230,22 +206,32 @@ impl Planar {
 
 #[cfg(test)]
 mod tests {
+    use super::Planar;
+
     #[test]
-    fn row_reuse_includes_the_luma_interval_flags() {
-        let p = super::Planar {
-            width: 8,
-            height: 16,
-            maximum: [1, 1],
-            geometry: [[1, 1, 8]; 3],
-            planes: [vec![100; 128], vec![128; 128], vec![128; 128]],
-            dirty: [vec![1; 2], vec![0; 2], vec![0; 2]],
-            backgrounds: [255, 128, 128],
-            intervals: vec![0, 1],
-        };
+    fn construction_validates_coverage_and_derives_background_blocks() {
+        let mut luma = vec![255; 256];
+        luma[16 * 9 + 9] = 7;
+        let p = Planar::new(
+            (13, 11),
+            [2, 2],
+            [[2, 2, 16], [1, 1, 8], [1, 1, 8]],
+            [luma, vec![128; 64], vec![128; 64]],
+        )
+        .unwrap();
+        assert_eq!(p.dirty, [vec![0, 0, 0, 1], vec![0], vec![0]]);
         assert!(p.same_row(0, 1));
-        assert!(!p.same_row(0, 8));
-        assert!(p.interval(3, 9));
-        assert!(!p.interval(3, 7));
-        assert_eq!(p.chroma_repeat(), Some(1));
+        assert!(!p.same_row(8, 9));
+        assert_eq!(p.chroma_repeat(), Some(2));
+        assert!(p.dirty(0, 1, 1) && !p.dirty(0, 1, 0));
+        assert!(
+            Planar::new(
+                (17, 11),
+                [2, 2],
+                [[2, 2, 16], [1, 1, 8], [1, 1, 8]],
+                [vec![255; 256], vec![128; 64], vec![128; 64]],
+            )
+            .is_none()
+        );
     }
 }

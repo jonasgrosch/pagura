@@ -1,11 +1,9 @@
 //! Sparse rows of a deferred JPEG: only blocks that differ from the white
 //! background are converted and filtered.
 //!
-//! Each converted sample is held as a doubled deficit from white: 510 minus
-//! the RGB bytes of both ends of its luma interval (or twice the exact
-//! byte). Background blocks contribute zero, so device footprints that see
-//! only background need no work, and the interval midpoint is kept exactly
-//! until the final rounding.
+//! Each converted sample is held as its deficit from white, 255 minus each
+//! RGB byte. Background blocks contribute zero, so footprints that see only
+//! background need no work.
 use super::footprint::{Band, Tap};
 use pagura_core::{Error, Limits, Result};
 use pagura_image::deferred::{Constant, Planar, deficits, uniform, ycbcr8};
@@ -156,7 +154,7 @@ impl Plan {
                 let b = t[t.len() - 1];
                 let first = pixels[a.sample];
                 if a.sample == b.sample {
-                    *out = first.map(|v| f32::from(v) * 0.5);
+                    *out = first.map(f32::from);
                     continue;
                 }
                 let last = pixels[b.sample];
@@ -168,10 +166,9 @@ impl Plan {
                 }
                 let middle = if t.len() > 2 { t[1].weight } else { 0.0 };
                 *out = std::array::from_fn(|c| {
-                    (sum[c] as f32 * middle
+                    sum[c] as f32 * middle
                         + f32::from(first[c]) * a.weight
-                        + f32::from(last[c]) * b.weight)
-                        * 0.5
+                        + f32::from(last[c]) * b.weight
                 });
             }
         }
@@ -195,62 +192,40 @@ fn convert(
             let len = chunk.len();
             let cs = start / repeat;
             let ce = (start + len).div_ceil(repeat);
-            let interval = p.interval(start, y);
             let out = &mut rgb[start..start + len];
             if uniform(&cb[cs..ce], 128) && uniform(&cr[cs..ce], 128) {
                 for (pixel, &v) in out.iter_mut().zip(chunk) {
-                    let hi = if interval { v.saturating_add(1) } else { v };
-                    let d = 510 - u16::from(v) - u16::from(hi);
+                    let d = 255 - u16::from(v);
                     *pixel = [d, d, d, 0];
                 }
                 continue;
             }
             if uniform(&cb[cs..ce], cb[cs])
                 && uniform(&cr[cs..ce], cr[cs])
-                && Constant::new(cb[cs], cr[cs]).is_some_and(|c| c.deficits(chunk, interval, out))
+                && Constant::new(cb[cs], cr[cs]).is_some_and(|c| c.deficits(chunk, out))
             {
                 continue;
             }
             // Integer Table 13 offsets per chroma pair; a green half tie
             // keeps the binary64 conversion below.
-            if deficits(chunk, &cb[cs..ce], &cr[cs..ce], repeat, interval, out) {
+            if deficits(chunk, &cb[cs..ce], &cr[cs..ce], repeat, out) {
                 continue;
             }
-            let mut lower = [0; 24];
+            let mut bytes = [0; 24];
             if !ycbcr8(
                 chunk,
                 &cb[cs..ce],
                 &cr[cs..ce],
                 repeat,
-                &mut lower[..len * 3],
+                &mut bytes[..len * 3],
             ) {
                 return false;
             }
-            let mut upper = lower;
-            if interval {
-                let mut high = [0u8; 8];
-                for (out, &v) in high.iter_mut().zip(chunk) {
-                    *out = v.saturating_add(1);
-                }
-                if !ycbcr8(
-                    &high[..len],
-                    &cb[cs..ce],
-                    &cr[cs..ce],
-                    repeat,
-                    &mut upper[..len * 3],
-                ) {
-                    return false;
-                }
-            }
-            for ((out, lo), hi) in out
-                .iter_mut()
-                .zip(lower[..len * 3].as_chunks::<3>().0)
-                .zip(upper[..len * 3].as_chunks::<3>().0)
-            {
+            for (out, rgb) in out.iter_mut().zip(bytes[..len * 3].as_chunks::<3>().0) {
                 *out = [
-                    510 - u16::from(lo[0]) - u16::from(hi[0]),
-                    510 - u16::from(lo[1]) - u16::from(hi[1]),
-                    510 - u16::from(lo[2]) - u16::from(hi[2]),
+                    255 - u16::from(rgb[0]),
+                    255 - u16::from(rgb[1]),
+                    255 - u16::from(rgb[2]),
                     0,
                 ];
             }

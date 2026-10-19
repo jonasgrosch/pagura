@@ -74,15 +74,18 @@ pub enum ImageReconstruction {
     #[default]
     Exact,
     /// A page whose only mark is one opaque DeviceGray or DeviceRGB image,
-    /// upright or turned by a quarter, is decoded, converted and filtered in
-    /// one pass on the original sample grid, and painted straight into the
-    /// output. Every pixel is within one level of [`Self::Exact`]. Other
-    /// pages render as [`Self::Exact`], after a second compilation when the
-    /// page's first mark was an image.
+    /// upright or turned by a quarter, keeps a baseline JPEG in its
+    /// component planes and one-bit samples packed, converts and filters
+    /// them on the original sample grid row by row, and paints straight into
+    /// the output. The samples are the decoders' own; only the filter's
+    /// arithmetic differs, and every pixel is within one level of
+    /// [`Self::Exact`]. Other pages render as [`Self::Exact`], compiled a
+    /// second time when their first mark was such an image.
     ///
     /// This applies where a page is compiled and rendered in one call
     /// ([`render_page`], [`render_tile`] and their [`RenderContext`]
-    /// versions). A list from [`compile_page`] always holds exact samples.
+    /// versions). A list from [`compile_page`] always holds interleaved
+    /// samples.
     Fused,
 }
 

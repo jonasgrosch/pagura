@@ -6,13 +6,9 @@
 //! packed rows ([`Packed`]). Every other image decodes exactly as with
 //! [`SampleLayout::Interleaved`].
 //!
-//! A deferred JPEG consumes every coefficient. Chroma and single-component
-//! samples are the reference's bytes (T.81 A.3.3 in binary64, then rounding
-//! and clamping). A luma block whose certified f32 error is below a quarter
-//! level may instead keep the lower end of an adjacent-byte interval that
-//! contains the reference byte; [`Planar::interval`] marks those blocks.
-//! Table 13 conversion is 1-Lipschitz in luma except at exact green half
-//! ties, so frames with such a tie are decoded again with exact luma.
+//! Deferred samples are the decoders' samples: a deferred JPEG consumes every
+//! coefficient, and each component sample is the reference's byte (T.81
+//! A.3.3 in binary64, then rounding and clamping). Only the layout differs.
 mod colour;
 mod packed;
 mod planar;

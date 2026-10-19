@@ -193,8 +193,7 @@ fn xobject(data: &[u8], root: u32, recovery: Recovery) {
     super::assert_diagnostics(&document.diagnostics(), recovery);
 }
 
-/// Deferred samples are the exact samples, except that converted planar
-/// RGB may differ by one level where luma kept an interval.
+/// Deferred samples are the exact samples in another layout.
 fn assert_deferred(image: &DecodedImage, deferred: &DecodedImage) {
     assert_decoded(deferred);
     assert_eq!(
@@ -202,14 +201,11 @@ fn assert_deferred(image: &DecodedImage, deferred: &DecodedImage) {
         (deferred.width, deferred.height, deferred.components),
         "deferred decoding changes the image geometry"
     );
-    let tolerance = u16::from(matches!(deferred.samples, Samples::Planar(_)));
     for index in 0..image.samples.len() {
         let exact = image.samples.get(index);
         let value = deferred.samples.get(index);
         assert!(
-            exact
-                .zip(value)
-                .is_some_and(|(exact, value)| exact.abs_diff(value) <= tolerance),
+            exact.is_some() && exact == value,
             "deferred sample {index} is {value:?}, exact {exact:?}"
         );
     }

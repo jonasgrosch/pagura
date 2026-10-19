@@ -47,8 +47,8 @@ pub struct DctImage {
 pub(crate) use deferred::{Deferred, decode_deferred};
 
 struct Decoder {
-    /// `Some(precise_luma)` when baseline frames use native planes.
-    native: Option<bool>,
+    /// Whether baseline frames decode into native planes.
+    native: bool,
     frame: Option<Frame>,
     quant: [Option<[u16; 64]>; 4],
     huffman: [Option<Huffman>; 8],
@@ -107,7 +107,7 @@ fn decode_inner(
     limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<DctImage> {
-    let mut decoder = run(data, color_transform, limits, diagnostics, None)?;
+    let mut decoder = run(data, color_transform, limits, diagnostics, false)?;
     let mut frame = decoder
         .frame
         .take()
@@ -122,7 +122,7 @@ fn run(
     color_transform: Option<i64>,
     limits: &Limits,
     diagnostics: &mut Diagnostics,
-    native: Option<bool>,
+    native: bool,
 ) -> Result<Decoder> {
     if data.get(..2) != Some(&[255, 216]) {
         return Err(Error::syntax("missing JPEG SOI"));
@@ -160,14 +160,8 @@ fn run(
                         return Err(Error::syntax("multiple JPEG frames").at(Position::Buffer(at)));
                     }
                     let mut frame = Frame::parse(payload, marker, limits)?;
-                    if let Some(precise_luma) = decoder.native {
-                        deferred::prepare(
-                            &mut frame,
-                            decoder.adobe,
-                            color_transform,
-                            precise_luma,
-                            limits,
-                        )?;
+                    if decoder.native {
+                        deferred::prepare(&mut frame, decoder.adobe, color_transform, limits)?;
                     }
                     decoder.frame = Some(frame);
                     Ok(())
@@ -181,7 +175,7 @@ fn run(
                     "JPEG lossless or hierarchical process is unsupported",
                 )),
                 0xdb => quant_tables(payload, &mut decoder.quant),
-                0xc4 => entropy::tables(payload, &mut decoder.huffman, decoder.native.is_some()),
+                0xc4 => entropy::tables(payload, &mut decoder.huffman, decoder.native),
                 0xcc => decoder.conditioning.define(payload),
                 0xdd if payload.len() == 2 => {
                     decoder.restart = usize::from(u16::from_be_bytes([payload[0], payload[1]]));

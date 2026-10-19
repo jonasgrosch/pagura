@@ -5,9 +5,8 @@
 //! straight into their component plane, without a coefficient image. Blocks
 //! equal to the plane's background are not stored. Samples use a certified
 //! f32 transform; a sample whose certificate does not fix its byte is
-//! recomputed in binary64 in the reference's order (T.81 A.3.3). Luma of a
-//! YCbCr frame may instead keep a one-level interval (see
-//! [`crate::deferred`]).
+//! recomputed in binary64 in the reference's order (T.81 A.3.3), so every
+//! sample is the reference's byte.
 mod basis;
 mod plane;
 mod spatial;
@@ -15,7 +14,7 @@ mod spatial;
 pub(super) use plane::Plane;
 
 use super::{DctImage, Decoder, frame::Frame, frame::Storage};
-use crate::deferred::{Planar, uniform};
+use crate::deferred::Planar;
 use pagura_core::{Diagnostics, Error, Limits, Result};
 
 /// The result of a deferred decode.
@@ -33,8 +32,6 @@ const SHORTCUT_BYTES: u64 = 4096 * 4;
 /// How a deferred decode ended.
 pub(super) enum Finished {
     Done(Deferred),
-    /// A green half tie needs exact luma; holds the work used so far.
-    Retry(usize),
     /// The frame does not qualify after all.
     Declined,
 }
@@ -52,29 +49,14 @@ pub(crate) fn decode_deferred(
     if data.len() > limits.stream_bytes {
         return None;
     }
-    let mut budget = *limits;
-    for precise_luma in [false, true] {
-        let mut scratch = Diagnostics::new(diagnostics.mode());
-        let outcome = super::run(
-            data,
-            color_transform,
-            &budget,
-            &mut scratch,
-            Some(precise_luma),
-        )
-        .and_then(|decoder| finish(decoder, color_transform, &budget));
-        match outcome {
-            Ok(Finished::Done(result)) => {
-                diagnostics.extend(scratch.take());
-                return Some(result);
-            }
-            Ok(Finished::Retry(work)) if !precise_luma => {
-                budget.operations = limits.operations.checked_sub(work)?;
-            }
-            _ => return None,
-        }
-    }
-    None
+    let mut scratch = Diagnostics::new(diagnostics.mode());
+    let outcome = super::run(data, color_transform, limits, &mut scratch, true)
+        .and_then(|decoder| finish(decoder, color_transform, limits));
+    let Ok(Finished::Done(result)) = outcome else {
+        return None;
+    };
+    diagnostics.extend(scratch.take());
+    Some(result)
 }
 
 /// Whether a frame's colour interpretation and geometry suit native planes.
@@ -101,7 +83,6 @@ pub(super) fn prepare(
     frame: &mut Frame,
     adobe: Option<u8>,
     color_transform: Option<i64>,
-    precise_luma: bool,
     limits: &Limits,
 ) -> Result<()> {
     if !qualifies(frame, adobe, color_transform) {
@@ -111,23 +92,21 @@ pub(super) fn prepare(
         ));
     }
     // The frame's admission budgets five bytes per coefficient; native
-    // planes need one per sample, two block flags and a prefix table.
+    // planes need one per sample, a block flag and a prefix table.
     let tables = SHORTCUT_BYTES * frame.components.len() as u64;
     let planes: u64 = frame
         .components
         .iter()
-        .map(|c| (c.stride * c.rows) as u64 * 66)
+        .map(|c| (c.stride * c.rows) as u64 * 65)
         .sum();
     if planes.saturating_add(tables) > limits.decoded_bytes as u64 {
         return Err(Error::limit("JPEG native plane budget exceeded"));
     }
-    let luma = frame.components.len() == 3 && !precise_luma;
     for (index, c) in frame.components.iter_mut().enumerate() {
         c.storage = Storage::Native(Box::new(Plane::new(
             c.stride * c.rows,
             c.stride,
             if index == 0 { 255 } else { 128 },
-            index == 0 && luma,
         )?));
     }
     Ok(())
@@ -151,10 +130,6 @@ fn finish(mut decoder: Decoder, color_transform: Option<i64>, limits: &Limits) -
         return gray(&frame, limits).map(|image| Finished::Done(Deferred::Gray(image)));
     }
     let planar = take_planar(&mut frame)?;
-    let mut work = decoder.work;
-    if green_ties(&planar, &mut work, limits)? {
-        return Ok(Finished::Retry(work));
-    }
     Ok(Finished::Done(Deferred::Planar(Box::new(planar))))
 }
 
@@ -191,14 +166,10 @@ fn take_planar(frame: &mut Frame) -> Result<Planar> {
     let mut planes = std::array::from_fn(|_| Vec::new());
     let mut dirty = std::array::from_fn(|_| Vec::new());
     let mut backgrounds = [0; 3];
-    let mut intervals = Vec::new();
     for (i, component) in frame.components.iter_mut().enumerate() {
         let Storage::Native(plane) = &mut component.storage else {
             return Err(Error::syntax("missing JPEG component plane"));
         };
-        if i == 0 {
-            intervals = plane.take_intervals();
-        }
         backgrounds[i] = plane.background();
         dirty[i] = plane.take_dirty();
         planes[i] = plane.take_samples();
@@ -211,40 +182,7 @@ fn take_planar(frame: &mut Frame) -> Result<Planar> {
         planes,
         dirty,
         backgrounds,
-        intervals,
     })
-}
-
-/// Whether any chroma pair is an exact Table 13 green half tie, where an
-/// interval in luma could move green by more than its width. Only planes
-/// with luma intervals need the check.
-fn green_ties(planar: &Planar, work: &mut usize, limits: &Limits) -> Result<bool> {
-    if planar.intervals.iter().all(|&flag| flag == 0) {
-        return Ok(false);
-    }
-    let mut charge = |count: usize| {
-        *work = work
-            .checked_add(count)
-            .filter(|&n| n <= limits.operations)
-            .ok_or(Error::limit("JPEG colour certificate work exceeded"))?;
-        Ok::<(), Error>(())
-    };
-    charge(planar.planes[1].len())?;
-    for (cb, cr) in planar.planes[1].chunks(16).zip(planar.planes[2].chunks(16)) {
-        if uniform(cb, 128) && uniform(cr, 128) {
-            continue;
-        }
-        if cb.iter().zip(cr).any(|(&cb, &cr)| green_tie(cb, cr)) {
-            return Ok(true);
-        }
-    }
-    Ok(false)
-}
-
-/// Table 13 green, `Y - 0.344136 (Cb - 128) - 0.714136 (Cr - 128)`, lies
-/// exactly halfway between two integers for every Y.
-fn green_tie(cb: u8, cr: u8) -> bool {
-    (-43_017 * (i32::from(cb) - 128) - 89_267 * (i32::from(cr) - 128)).rem_euclid(125_000) == 62_500
 }
 
 #[cfg(test)]

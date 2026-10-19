@@ -1,5 +1,5 @@
 //! Area and coverage oracles computed with exact fractions, independently of
-//! the renderer, for byte samples and for planar samples with luma intervals.
+//! the renderer, for byte samples and for planar samples.
 use super::*;
 use pagura_image::{DecodedImage, ImageKind, deferred::Planar};
 struct Case {
@@ -9,7 +9,7 @@ struct Case {
     height: u32,
     rotated: bool,
     raw: &'static [u8],
-    interval: &'static [u8],
+    planar: &'static [u8],
 }
 const CASES: &[Case] = &[
     Case {
@@ -32,7 +32,7 @@ const CASES: &[Case] = &[
             111, 157, 255, 133, 168, 144, 255, 176, 136, 74, 255, 99, 84, 126, 255, 101, 154, 179,
             255, 168, 135, 99, 255, 132, 74, 111, 255,
         ],
-        interval: &[
+        planar: &[
             36, 36, 36, 255, 54, 54, 54, 255, 73, 73, 73, 255, 90, 90, 90, 255, 108, 108, 108, 255,
             66, 66, 66, 255, 84, 84, 84, 255, 102, 102, 102, 255, 120, 120, 120, 255, 138, 138,
             138, 255, 96, 96, 96, 255, 114, 114, 114, 255, 132, 132, 132, 255, 150, 150, 150, 255,
@@ -60,7 +60,7 @@ const CASES: &[Case] = &[
             111, 157, 255, 157, 142, 105, 255, 97, 107, 160, 255, 132, 74, 111, 255, 133, 168, 144,
             255, 107, 93, 116, 255, 132, 159, 149, 255,
         ],
-        interval: &[
+        planar: &[
             126, 126, 126, 255, 96, 96, 96, 255, 66, 66, 66, 255, 36, 36, 36, 255, 144, 144, 144,
             255, 114, 114, 114, 255, 84, 84, 84, 255, 54, 54, 54, 255, 162, 162, 162, 255, 132,
             132, 132, 255, 102, 102, 102, 255, 73, 73, 73, 255, 181, 181, 181, 255, 150, 150, 150,
@@ -88,7 +88,7 @@ const CASES: &[Case] = &[
             126, 255, 168, 125, 101, 255, 132, 159, 149, 255, 97, 107, 160, 255, 152, 119, 79, 255,
             148, 168, 134, 255, 69, 122, 159, 255,
         ],
-        interval: &[
+        planar: &[
             199, 199, 199, 255, 181, 181, 181, 255, 162, 162, 162, 255, 144, 144, 144, 255, 126,
             126, 126, 255, 168, 168, 168, 255, 150, 150, 150, 255, 132, 132, 132, 255, 114, 114,
             114, 255, 96, 96, 96, 255, 138, 138, 138, 255, 120, 120, 120, 255, 102, 102, 102, 255,
@@ -116,7 +116,7 @@ const CASES: &[Case] = &[
             126, 255, 146, 174, 109, 255, 99, 84, 126, 255, 69, 122, 159, 255, 168, 125, 101, 255,
             87, 122, 161, 255, 176, 136, 74, 255,
         ],
-        interval: &[
+        planar: &[
             108, 108, 108, 255, 138, 138, 138, 255, 168, 168, 168, 255, 199, 199, 199, 255, 90, 90,
             90, 255, 120, 120, 120, 255, 150, 150, 150, 255, 181, 181, 181, 255, 73, 73, 73, 255,
             102, 102, 102, 255, 132, 132, 132, 255, 162, 162, 162, 255, 54, 54, 54, 255, 84, 84,
@@ -146,7 +146,7 @@ const CASES: &[Case] = &[
             255, 180, 113, 89, 255, 227, 217, 215, 255, 249, 198, 211, 255, 186, 202, 220, 255,
             211, 229, 241, 255, 238, 199, 188, 255, 188, 197, 215, 255, 240, 244, 249, 255,
         ],
-        interval: &[
+        planar: &[
             142, 142, 142, 255, 115, 115, 115, 255, 127, 127, 127, 255, 139, 139, 139, 255, 151,
             151, 151, 255, 231, 231, 231, 255, 104, 104, 104, 255, 70, 70, 70, 255, 88, 88, 88,
             255, 106, 106, 106, 255, 124, 124, 124, 255, 225, 225, 225, 255, 127, 127, 127, 255,
@@ -157,8 +157,8 @@ const CASES: &[Case] = &[
         ],
     },
 ];
-fn image(interval: bool) -> Image {
-    let samples = if interval {
+fn image(planar: bool) -> Image {
+    let samples = if planar {
         let mut y = vec![255u8; 256];
         for yy in 0..11 {
             for x in 0..13 {
@@ -171,7 +171,6 @@ fn image(interval: bool) -> Image {
                 [2, 2],
                 [[2, 2, 16], [1, 1, 8], [1, 1, 8]],
                 [y, vec![128; 64], vec![128; 64]],
-                vec![1, 0, 0, 1],
             )
             .unwrap(),
         ))
@@ -206,9 +205,9 @@ fn image(interval: bool) -> Image {
     }
 }
 #[test]
-fn source_intervals_rotations_and_fractional_coverage_stay_within_one_level() {
-    for interval in [false, true] {
-        let image = image(interval);
+fn planar_and_byte_samples_with_turns_and_fractional_coverage_stay_within_one_level() {
+    for planar in [false, true] {
+        let image = image(planar);
         let samples = if let Samples::Bytes(v) = &image.decoded.samples {
             v.as_slice()
         } else {
@@ -239,12 +238,12 @@ fn source_intervals_rotations_and_fractional_coverage_stay_within_one_level() {
                 Limits::default(),
             )
             .unwrap();
-            let expected = if interval { case.interval } else { case.raw };
+            let expected = if planar { case.planar } else { case.raw };
             assert_eq!(actual.data().len(), expected.len());
             for (index, (&a, &b)) in actual.data().iter().zip(expected).enumerate() {
                 assert!(
                     a.abs_diff(b) <= 1,
-                    "interval={interval},rotation={},channel={index}: {a}/{b}",
+                    "planar={planar},rotation={},channel={index}: {a}/{b}",
                     case.rotated
                 );
             }
