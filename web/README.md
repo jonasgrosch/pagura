@@ -98,7 +98,10 @@ Thumbnails have lower priority than visible tiles and eligible preloading.
 On-demand diagnostics show retained bytes, cache reuse and completed preloads.
 
 The browser negotiates protocol v1.7 for form editing and typed diagnostics; existing protocol v1 clients remain
-supported. See crates/pagura-host/PROTOCOL.md for the byte layouts. A viewport
+supported. See crates/pagura-host/PROTOCOL.md for the byte layouts. Wire codes and
+default budgets come from protocol_constants.mjs, generated from the host's Rust
+tables by `cargo run -p pagura-host --features codegen --example protocol_constants`.
+A viewport
 change invalidates queued old-generation tiles before transmission. The host
 also skips a stale generation before compilation or painting. The current
 synchronous tile cannot be interrupted; its result is discarded if obsolete.

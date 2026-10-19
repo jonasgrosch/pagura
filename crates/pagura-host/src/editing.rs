@@ -12,11 +12,16 @@ use pagura::forms::{
 };
 use pagura::{Document, Error, Name, Page, Result};
 
-const MAX_FIELDS: usize = 1024;
-const MAX_OPTIONS: usize = 4096;
+/// The most form fields one inspection or save handles.
+pub(crate) const MAX_FIELDS: usize = 1024;
+/// The most choice options and button states one inspection lists.
+pub(crate) const MAX_OPTIONS: usize = 4096;
+/// The largest form change payload and form response, at most the
+/// document's `document_bytes`.
+pub(crate) const MAX_BYTES: usize = 32 * 1024 * 1024;
 
 pub(crate) fn fields(document: &Document) -> Result<Vec<u8>> {
-    let mut out = Writer::new(document.limits().document_bytes.min(32 * 1024 * 1024));
+    let mut out = Writer::new(document.limits().document_bytes.min(MAX_BYTES));
     let Some(form) = document.acro_form()? else {
         out.count(0)?;
         return Ok(out.finish());
@@ -234,7 +239,7 @@ fn index(value: u32) -> Result<usize> {
 
 /// Map only widgets actually listed by this page, never the optional P backlink.
 pub(crate) fn widgets(document: &Document, page: &Page) -> Result<Vec<u8>> {
-    let mut out = Writer::new(document.limits().document_bytes.min(32 * 1024 * 1024));
+    let mut out = Writer::new(document.limits().document_bytes.min(MAX_BYTES));
     let Some(form) = document.acro_form()? else {
         out.count(0)?;
         return Ok(out.finish());

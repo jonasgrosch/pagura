@@ -1,6 +1,7 @@
 //! Request decoding: the only code that knows request layouts.
 
 use super::{Field, OpenFlags, PageRef, Request, RequestFrame, RequestKind, TileRequest};
+use crate::editing;
 use crate::reading::{self, MAX_QUERY_BYTES, Search};
 use pagura::{Error, Limits, Position, Result, Tile};
 
@@ -55,7 +56,7 @@ pub fn decode<'a>(body: &'a [u8], limits: &Limits) -> Result<RequestFrame<'a>> {
         RequestKind::FormFields => Request::FormFields(reader.field(Reader::u32)?),
         RequestKind::SaveForm => Request::SaveForm {
             document: reader.field(Reader::u32)?,
-            changes: reader.blob(limits.document_bytes.min(MAX_FORM_CHANGE_BYTES))?,
+            changes: reader.blob(limits.document_bytes.min(editing::MAX_BYTES))?,
         },
         RequestKind::FormWidgets => Request::FormWidgets(reader.page()?),
         RequestKind::FormStyles => Request::FormStyles(reader.page()?),
@@ -63,9 +64,6 @@ pub fn decode<'a>(body: &'a [u8], limits: &Limits) -> Result<RequestFrame<'a>> {
     reader.finish()?;
     Ok(RequestFrame { id, request })
 }
-
-/// The largest form change payload a save request may carry.
-const MAX_FORM_CHANGE_BYTES: usize = 32 * 1024 * 1024;
 
 /// A little-endian reader over one request body, or over a nested payload
 /// such as a form change batch. Positions are offsets into the bytes it

@@ -1,5 +1,5 @@
+import { MAX_FORM_BYTES as MAX_BYTES, MAX_FORM_FIELDS as MAX_FIELDS, MAX_FORM_OPTIONS as MAX_OPTIONS } from './protocol_constants.mjs';
 /** Protocol 1.5: bounded field descriptors and atomic change batches. */
-const MAX_FIELDS = 1024, MAX_OPTIONS = 4096, MAX_BYTES = 32 * 1024 * 1024;
 function count(r, cap, minimum) {
   const value = r.u32();
   if (value > cap || value > Math.floor((r.bytes.length - r.offset) / minimum)) throw new Error('Invalid form record count');

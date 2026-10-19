@@ -1,10 +1,10 @@
 //! Native editor metrics from stored appearance glyphs, with declared DA fallback.
-use super::{Writer, aliases, overlay_visible};
+use super::{MAX_BYTES, Writer, aliases, overlay_visible};
 use pagura::forms::{FieldKind, Justification};
 use pagura::{Document, Name, Page, Result, Value};
 
 pub(crate) fn encode(document: &Document, page: &Page) -> Result<Vec<u8>> {
-    let mut out = Writer::new(document.limits().document_bytes.min(32 * 1024 * 1024));
+    let mut out = Writer::new(document.limits().document_bytes.min(MAX_BYTES));
     let Some(form) = document.acro_form()? else {
         out.count(0)?;
         return Ok(out.finish());
@@ -22,7 +22,7 @@ pub(crate) fn encode(document: &Document, page: &Page) -> Result<Vec<u8>> {
         }
     }
     out.count(selected.len())?;
-    let mut remaining = document.limits().document_bytes.min(32 * 1024 * 1024);
+    let mut remaining = document.limits().document_bytes.min(MAX_BYTES);
     for index in selected {
         let widget = &form.widgets[index];
         let field = &form.fields[widget.field];
