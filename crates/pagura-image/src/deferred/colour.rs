@@ -112,8 +112,8 @@ fn convert<const REPEAT: usize, const L: usize, const RGB: usize>(
         let raw_green: [f32; L] =
             std::array::from_fn(|i| y[i] - cb[i] * 0.344_136 - cr[i] * 0.714_136 + 0.5);
         let mut g = raw_green.map(quantize);
-        let ambiguous =
-            raw_green.map(|v| (1.0..=255.0).contains(&v) && ((v - v.round()).abs() < 0.0001));
+        let ambiguous = raw_green
+            .map(|v| (1.0..=255.0).contains(&v) && ((v - nearest_integer(v)).abs() < 0.0001));
         if ambiguous.iter().any(|&v| v) {
             for i in 0..L {
                 if ambiguous[i] {
@@ -141,6 +141,21 @@ fn convert<const REPEAT: usize, const L: usize, const RGB: usize>(
             green(f64::from(y), f64::from(cb), f64::from(cr)),
             quantize(y + cb * 1.772 + 0.5),
         ];
+    }
+}
+
+/// The integer nearest to `v`, |v| < 2²², or either neighbour of a half.
+/// Baseline x86-64 has no rounding instruction, so `round` is a library
+/// call there; adding and removing 2²³ rounds in the addition instead.
+#[inline]
+fn nearest_integer(v: f32) -> f32 {
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    {
+        (v + 8_388_608.0) - 8_388_608.0
+    }
+    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+    {
+        v.round()
     }
 }
 
@@ -186,6 +201,32 @@ mod tests {
             let x = f32::from_bits(bits);
             assert_eq!(super::floor_byte(x), reference(x), "{bits:#x}");
             assert_eq!(super::floor_byte_shifted(x), reference(x), "{bits:#x}");
+        }
+    }
+
+    #[test]
+    #[expect(clippy::cast_precision_loss, reason = "small exact integers")]
+    fn shifted_nearest_integers_mark_the_same_ambiguous_greens() {
+        // The x86 form of `nearest_integer`, checked on every target.
+        let shifted = |v: f32| (v + 8_388_608.0) - 8_388_608.0;
+        let mut values = Vec::new();
+        for k in -2..=258 {
+            let k = k as f32;
+            for offset in [0.0, 0.00009, 0.0001, 0.00011, 0.25, 0.4999, 0.5, 0.5001] {
+                for v in [k + offset, k - offset] {
+                    values.extend([v, v.next_up(), v.next_down()]);
+                }
+            }
+        }
+        values.extend((0..300 * 1024).map(|step| step as f32 / 1024.0 - 20.0));
+        for v in values {
+            let ambiguous = |n: f32| (1.0..=255.0).contains(&v) && (v - n).abs() < 0.0001;
+            assert_eq!(ambiguous(shifted(v)), ambiguous(v.round()), "{v}");
+            assert_eq!(
+                ambiguous(super::nearest_integer(v)),
+                ambiguous(v.round()),
+                "{v}"
+            );
         }
     }
 
