@@ -1,11 +1,13 @@
 //! T.81 canonical Huffman tables (Annex C) and the bits of Huffman-coded
 //! entropy data (F.2.2), with T.81 B.1.1.5 byte stuffing.
 use super::marker;
-use pagura_core::bytes::Cursor;
+use pagura_core::bytes::{BitCursor, Cursor, JpegFf00};
 use pagura_core::{Diagnostic, Diagnostics, Error, Position, Result};
 
 /// The longest Huffman code, in bits (T.81 C.2).
 const LONGEST: usize = 16;
+/// [`LONGEST`] as a bit count.
+const LONGEST_BITS: u32 = 16;
 /// Codes up to this length are decoded by one table lookup.
 const SHORT: u8 = 8;
 
@@ -20,28 +22,35 @@ pub(super) struct Huffman {
 }
 
 impl Huffman {
-    /// Decodes one symbol (T.81 F.2.2.3): a short code by lookup, a longer
-    /// one, or one that ends just before a marker, a bit at a time.
+    /// Decodes one symbol (T.81 F.2.2.3) from a look at the next
+    /// [`LONGEST`] bits: a code of at most [`SHORT`] bits by table lookup,
+    /// a longer one against the canonical code ranges. Only the code's own
+    /// bits are consumed; bits beyond the data read as zero in the look, so
+    /// a code that would need them fails to consume instead.
     pub(super) fn symbol(&self, bits: &mut Bits<'_>) -> Result<u8> {
-        if let Some(symbol) = bits.short(&self.short) {
+        let window = bits.peek();
+        let (symbol, length) = self.short
+            [usize::from(u8::try_from(window >> (LONGEST_BITS - u32::from(SHORT))).unwrap_or(0))];
+        if length != 0 {
+            bits.consume(length)?;
             return Ok(symbol);
         }
-        let at = bits.position();
-        let mut code = 0;
-        for length in 0..LONGEST {
-            code = code * 2 + u32::from(bits.bit()?);
+        for (i, length) in (usize::from(SHORT)..LONGEST).zip(SHORT + 1..) {
+            let code = window >> (LONGEST_BITS - u32::from(length));
             if let Some(relative) = code
-                .checked_sub(self.first[length])
-                .filter(|&v| v < u32::from(self.count[length]))
+                .checked_sub(self.first[i])
+                .filter(|&v| v < u32::from(self.count[i]))
             {
-                return self
+                let symbol = self
                     .symbols
-                    .get(self.offset[length] + pagura_core::convert::u32_to_usize(relative))
+                    .get(self.offset[i] + pagura_core::convert::u32_to_usize(relative))
                     .copied()
-                    .ok_or(Error::syntax("invalid JPEG Huffman code").at(at));
+                    .ok_or_else(|| bits.error("invalid JPEG Huffman code"))?;
+                bits.consume(length)?;
+                return Ok(symbol);
             }
         }
-        Err(Error::syntax("invalid JPEG Huffman code").at(at))
+        Err(bits.error("invalid JPEG Huffman code"))
     }
 }
 
@@ -116,48 +125,22 @@ pub(super) fn tables(mut bytes: Cursor<'_>, tables: &mut Tables) -> Result<()> {
     Ok(())
 }
 
-/// The bits of Huffman-coded entropy data, loaded a byte at a time with the
-/// byte stuffing of T.81 B.1.1.5: a data byte `0xFF` is followed by a
-/// stuffed `0x00`, and `0xFF` followed by anything else is a marker.
+/// The bits of Huffman-coded entropy data, with the byte stuffing of T.81
+/// B.1.1.5.
 pub(super) struct Bits<'a> {
-    /// The entropy-coded data and the byte-oriented data after it.
-    bytes: Cursor<'a>,
-    data: &'a [u8],
-    /// The offset of the next byte to load.
-    offset: usize,
-    /// The offset of `byte`, for positions.
-    byte_offset: usize,
-    byte: u8,
-    /// Unread bits of `byte`, in its low bits.
-    left: u8,
-    /// Where offset `first` of `data` is in the decoder's input.
-    start: Position,
-    first: usize,
+    cursor: BitCursor<'a, JpegFf00>,
 }
 
 impl<'a> Bits<'a> {
-    pub(super) fn new(bytes: Cursor<'a>) -> Self {
-        let offset = bytes.offset();
+    pub(super) const fn new(bytes: Cursor<'a>) -> Self {
         Self {
-            data: bytes.data(),
-            offset,
-            byte_offset: offset,
-            byte: 0,
-            left: 0,
-            start: bytes.position(),
-            first: offset,
-            bytes,
+            cursor: BitCursor::new(bytes),
         }
     }
 
     /// The position of the byte holding the next unread bit.
-    pub(super) const fn position(&self) -> Position {
-        let offset = if self.left == 0 {
-            self.offset
-        } else {
-            self.byte_offset
-        };
-        Position::Buffer(offset.saturating_sub(self.first)).within(self.start)
+    pub(super) fn position(&self) -> Position {
+        self.cursor.position()
     }
 
     /// A syntax error at the byte holding the next unread bit.
@@ -165,76 +148,19 @@ impl<'a> Bits<'a> {
         Error::syntax(message).at(self.position())
     }
 
-    pub(super) fn bit(&mut self) -> Result<bool> {
-        Ok(self.read(1)? == 1)
+    /// The next [`LONGEST`] bits without consuming them; zeros past the data.
+    fn peek(&mut self) -> u32 {
+        self.cursor.peek(LONGEST_BITS)
     }
 
-    /// Decodes a code of at most [`SHORT`] bits by looking up the next
-    /// [`SHORT`] bits in `table`, with one byte and stuffing check. Consumes
-    /// nothing when those bits would reach a marker or the end of the data,
-    /// or when a longer code starts.
-    fn short(&mut self, table: &[(u8, u8); 1 << SHORT]) -> Option<u8> {
-        let next = if self.left == 8 {
-            self.byte
-        } else {
-            let next = *self.data.get(self.offset)?;
-            if next == marker::PREFIX && self.data.get(self.offset + 1) != Some(&marker::STUFFED) {
-                return None;
-            }
-            next
-        };
-        let prefix = if self.left == 8 {
-            self.byte
-        } else if self.left == 0 {
-            next
-        } else {
-            (self.byte << (8 - self.left)) | (next >> self.left)
-        };
-        let (symbol, length) = table[usize::from(prefix)];
-        if length == 0 {
-            return None;
-        }
-        if length > self.left {
-            self.byte = next;
-            self.byte_offset = self.offset;
-            self.offset += 1 + usize::from(next == marker::PREFIX);
-            self.left += 8;
-        }
-        self.left -= length;
-        Some(symbol)
+    /// Consumes `count` bits of a code looked at with [`Bits::peek`].
+    fn consume(&mut self, count: u8) -> Result<()> {
+        self.cursor.consume(u32::from(count))
     }
 
     /// Reads `count` bits, at most 16 (T.81 F.2.2.4).
-    pub(super) fn read(&mut self, mut count: u8) -> Result<u32> {
-        let mut value = 0;
-        while count != 0 {
-            if self.left == 0 {
-                self.load()?;
-            }
-            let take = count.min(self.left);
-            self.left -= take;
-            value = (value << take) | (u32::from(self.byte >> self.left) & ((1 << take) - 1));
-            count -= take;
-        }
-        Ok(value)
-    }
-
-    fn load(&mut self) -> Result<()> {
-        let byte = *self
-            .data
-            .get(self.offset)
-            .ok_or_else(|| self.error("truncated JPEG entropy data"))?;
-        if byte == marker::PREFIX {
-            if self.data.get(self.offset + 1) != Some(&marker::STUFFED) {
-                return Err(self.error("unexpected marker in JPEG entropy data"));
-            }
-            self.offset += 1;
-        }
-        self.byte = byte;
-        self.byte_offset = self.offset - usize::from(byte == marker::PREFIX);
-        self.offset += 1;
-        self.left = 8;
-        Ok(())
+    pub(super) fn read(&mut self, count: u8) -> Result<u32> {
+        self.cursor.bits(u32::from(count))
     }
 
     /// Reads a `count`-bit magnitude category value (T.81 F.2.2.1, EXTEND).
@@ -255,19 +181,18 @@ impl<'a> Bits<'a> {
         diagnostics: &mut Diagnostics,
         reported: &mut bool,
     ) -> Result<()> {
-        // The unread low bits of the current byte, none when aligned.
-        let ones = u8::MAX.checked_shr(u32::from(8 - self.left)).unwrap_or(0);
-        if self.byte & ones != ones && !*reported {
+        // Once per restart interval or scan, so the position is cheap here.
+        let at = self.position();
+        if !self.cursor.align()?.is_ones() && !*reported {
             diagnostics.repair(
                 Diagnostic::new(
                     crate::repairs::JPEG_ENTROPY_PADDING,
                     "non-one JPEG entropy padding ignored (T.81 B.1.1.5, E.1.4)",
                 )
-                .at(self.position()),
+                .at(at),
             )?;
             *reported = true;
         }
-        self.left = 0;
         Ok(())
     }
 
@@ -279,19 +204,17 @@ impl<'a> Bits<'a> {
         reported: &mut bool,
     ) -> Result<()> {
         self.align(diagnostics, reported)?;
-        let mut bytes = self.bytes.clone();
-        bytes.seek(self.offset)?;
+        let bytes = self.cursor.byte_cursor()?;
         let at = bytes.position();
-        if super::read_marker(&mut bytes)? != marker::RST0 + sequence {
+        if super::read_marker(bytes)? != marker::RST0 + sequence {
             return Err(Error::syntax("wrong JPEG restart marker").at(at));
         }
-        self.offset = bytes.offset();
         Ok(())
     }
 
     /// The offset of the next byte, once aligned.
-    pub(super) const fn offset(&self) -> usize {
-        self.offset
+    pub(super) fn offset(&mut self) -> Result<usize> {
+        Ok(self.cursor.byte_cursor()?.offset())
     }
 }
 
@@ -322,8 +245,9 @@ mod tests {
                 let mut bits = Bits::new(Cursor::new(&data));
                 bits.read(leading).unwrap();
                 assert_eq!(book.symbol(&mut bits).unwrap(), 122);
-                assert_eq!(bits.offset, size);
-                assert_eq!(usize::from(bits.left), size * 8 - used);
+                let padding = bits.cursor.align().unwrap();
+                assert_eq!(padding.width(), u32::try_from(size * 8 - used).unwrap());
+                assert_eq!(bits.cursor.byte_cursor().unwrap().offset(), size);
             }
         }
     }
@@ -349,14 +273,16 @@ mod tests {
                 );
             }
         }
+        // Past the data a look reads zeros, but nothing past it is consumed.
         let mut bits = Bits::new(Cursor::new(&[255, 217]));
-        assert_eq!(bits.short(&[(7, 1); 256]), None);
+        assert_eq!(bits.peek(), 0);
+        assert!(bits.consume(1).is_err());
         assert_eq!(bits.position(), Position::Buffer(0));
         assert!(bits.read(1).is_err());
-        assert_eq!(bits.offset, 0);
         // A stuffed 0xFF is data: 0xFF 0x00 0x80 holds 1111 1111 1000 0000.
         let mut bits = Bits::new(Cursor::new(&[255, 0, 128]));
-        assert_eq!(bits.short(&[(7, 3); 256]), Some(7));
+        assert_eq!(bits.peek(), 0xff80);
+        bits.consume(3).unwrap();
         assert_eq!(bits.read(7).unwrap(), 0b111_1110);
     }
 }
