@@ -46,7 +46,14 @@ impl Pixmap {
         data.try_reserve_exact(bytes)
             .map_err(|_| Error::limit("surface allocation failed"))?;
         let pixel = premultiply(background);
-        data.extend(std::iter::repeat_n(pixel, pixels).flatten());
+        // One byte value (white, black, transparent) is a plain fill; any
+        // other colour is stored a pixel at a time into the filled buffer.
+        data.resize(bytes, pixel[0]);
+        if pixel.iter().any(|&b| b != pixel[0]) {
+            for out in data.as_chunks_mut::<4>().0 {
+                *out = pixel;
+            }
+        }
         Ok(Self {
             width,
             height,
