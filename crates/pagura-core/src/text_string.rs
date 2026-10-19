@@ -97,8 +97,15 @@ pub fn decode(bytes: &[u8], limits: &Limits, diagnostics: &mut Diagnostics) -> R
     if bytes.len() > limits.string_bytes {
         return Err(Error::limit("text string budget exceeded"));
     }
+    // Every input byte yields at most three UTF-8 bytes: a PDFDocEncoding
+    // character, two thirds of a UTF-16 unit, or a replacement character.
+    // Reserving that bound once means pushes never reallocate.
+    let mut output = String::new();
+    output
+        .try_reserve_exact(bytes.len().saturating_mul(3).min(limits.string_bytes))
+        .map_err(|_| Error::limit("text string allocation failed"))?;
     let mut text = Text {
-        output: String::new(),
+        output,
         max: limits.string_bytes,
         diagnostics,
         invalid: false,
@@ -130,14 +137,10 @@ struct Text<'a> {
 
 impl Text<'_> {
     fn push_str(&mut self, text: &str) -> Result<()> {
-        self.output
-            .len()
-            .checked_add(text.len())
-            .filter(|&length| length <= self.max)
-            .ok_or(Error::limit("text string budget exceeded"))?;
-        self.output
-            .try_reserve(text.len())
-            .map_err(|_| Error::limit("text string allocation failed"))?;
+        if self.output.len() + text.len() > self.max {
+            return Err(Error::limit("text string budget exceeded"));
+        }
+        // Within the capacity reserved by `decode`.
         self.output.push_str(text);
         Ok(())
     }
