@@ -17,6 +17,28 @@ pub const VERSION_1_4: u32 = 0x0001_0004;
 /// Kind byte for structured error responses.
 pub const ERROR_KIND: u8 = 255;
 
+/// Fixed frame layout, shared by the decoder, the encoder and the budgets.
+pub(crate) mod layout {
+    /// Frame bytes before the body: its `u32` length.
+    pub(crate) const LENGTH_BYTES: usize = 4;
+    /// Body bytes before the payload: the kind byte and the request id.
+    pub(crate) const HEADER_BYTES: usize = 5;
+    /// Offset of the kind byte in a body.
+    pub(crate) const KIND_OFFSET: usize = 0;
+    /// Offset of the request id in a body.
+    pub(crate) const ID_OFFSET: usize = 1;
+    /// Framing errors are reported at the start of the frame (PROTOCOL.md).
+    pub(crate) const FRAME_START: usize = 0;
+    /// The largest body the `u32` length field can describe.
+    pub(crate) const MAX_BODY_BYTES: usize = u32::MAX as usize;
+    /// An open body without its blobs: header, recovery byte, two lengths.
+    pub(crate) const OPEN_OVERHEAD: usize = HEADER_BYTES + 1 + 4 + 4;
+    /// A tile body without its pixels: header, width and height.
+    pub(crate) const TILE_OVERHEAD: usize = HEADER_BYTES + 4 + 4;
+    /// A generated tile body without its pixels: status and generation too.
+    pub(crate) const GENERATION_TILE_OVERHEAD: usize = TILE_OVERHEAD + 1 + 4;
+}
+
 /// A borrowed, fully validated request payload.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Request<'a> {
@@ -83,6 +105,7 @@ pub enum Request<'a> {
 
 /// Session-owned retention accounting, not allocator or total-heap telemetry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct SessionStats {
     /// Original input bytes owned by open documents.
     pub source_bytes: u64,
