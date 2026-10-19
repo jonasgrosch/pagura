@@ -18,7 +18,7 @@ fn blocks(bytes: &mut [u8]) -> &mut [[u8; 16]] {
 }
 
 #[test]
-fn every_substitution_matches_printed_tables() {
+fn every_substitution_and_product_matches_printed_tables() {
     assert_eq!(
         SBOX.as_slice(),
         fixture("crypto", "aes-substitution-tables.forward")
@@ -31,10 +31,22 @@ fn every_substitution_matches_printed_tables() {
     let mut rcon = 1;
     for expected in [1, 2, 4, 8, 16, 32, 64, 128, 0x1b, 0x36] {
         assert_eq!(rcon, expected);
-        rcon = multiply(rcon, 2);
+        rcon = MUL2[usize::from(rcon)];
     }
     // FIPS 197 4.2 works {57} • {13} = {fe} through xtime.
     assert_eq!(multiply(0x57, 0x13), 0xfe);
+    for (table, factor) in [
+        (&MUL2, 2),
+        (&MUL3, 3),
+        (&MUL9, 9),
+        (&MUL11, 11),
+        (&MUL13, 13),
+        (&MUL14, 14),
+    ] {
+        for value in 0..=u8::MAX {
+            assert_eq!(table[usize::from(value)], multiply(value, factor));
+        }
+    }
 }
 
 #[test]
