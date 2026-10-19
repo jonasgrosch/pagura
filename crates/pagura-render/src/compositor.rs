@@ -1350,7 +1350,7 @@ impl Context {
     ) -> Result<()> {
         if let [Command::Image(image)] = list.commands.as_slice()
             && !list.group.knockout
-            && self.copy_opaque_image(image, model, output, tile, region)?
+            && self.paint_opaque_image(image, model, output, (tile, region), background)?
         {
             return Ok(());
         }
@@ -1718,10 +1718,10 @@ mod tests {
     }
 
     #[test]
-    fn only_sole_opaque_rgb_images_copy_straight_into_the_output() {
+    fn only_sole_opaque_images_paint_straight_into_the_output() {
         use crate::display::ImageCommand;
         use crate::interpreter::images::Image;
-        fn copies(edit: impl FnOnce(&mut ImageCommand)) -> bool {
+        fn paints(background: [u8; 4], edit: impl FnOnce(&mut ImageCommand)) -> bool {
             let mut list = overprint_list(include_bytes!(
                 "../../../corpus/generated/paint/image-page-rgb.pdf"
             ));
@@ -1747,7 +1747,7 @@ mod tests {
             let mut output =
                 Pixmap::new_with_limits(width, height, options.background, list.limits).unwrap();
             context
-                .copy_opaque_image(image, model, &mut output, tile, tile)
+                .paint_opaque_image(image, model, &mut output, (tile, tile), background)
                 .unwrap()
         }
         fn image(edit: impl FnOnce(&mut Image)) -> impl FnOnce(&mut ImageCommand) {
@@ -1763,14 +1763,29 @@ mod tests {
             _ => None,
         })
         .expect("the fixture paints its image through a transfer");
-        assert!(copies(|_| {}));
-        assert!(!copies(image(|i| i.decode = vec![(1.0, 0.0); 3])));
-        assert!(!copies(image(|i| i.decoded.interpolate = true)));
-        assert!(!copies(|c| c.composite.alpha = 0.5));
-        assert!(!copies(|c| c.transfer = Some(transfer)));
-        // A fractional last column, and an image over half the chunk.
-        assert!(!copies(|c| c.transform.a = 31.5));
-        assert!(!copies(|c| c.transform.a = 16.0));
+        let opaque = [255; 4];
+        let clear = [255, 255, 255, 0];
+        assert!(paints(opaque, |_| {}));
+        // Inverted Decode keeps integer levels; interpolation is bilinear.
+        assert!(paints(opaque, image(|i| i.decode = vec![(1.0, 0.0); 3])));
+        assert!(paints(opaque, image(|i| i.decoded.interpolate = true)));
+        // Minification takes exact area averages.
+        assert!(paints(opaque, |c| c.transform.a = 1.5));
+        // A fractional last column, and an image over half the chunk, mix
+        // their partial coverage with the opaque background.
+        assert!(paints(opaque, |c| c.transform.a = 31.5));
+        assert!(paints(opaque, |c| c.transform.a = 16.0));
+        // A translucent background keeps the group path.
+        assert!(!paints(clear, |_| {}));
+        assert!(!paints(clear, |c| c.transform.a = 16.0));
+        // Fractional Decode levels, translucency, transfers and rotations
+        // that are not quarter turns keep the group path.
+        assert!(!paints(opaque, image(|i| i.decode = vec![(0.25, 0.75); 3])));
+        assert!(!paints(opaque, |c| c.composite.alpha = 0.5));
+        assert!(!paints(opaque, |c| c.transfer = Some(transfer)));
+        assert!(!paints(opaque, |c| {
+            c.transform = Transform::new(1.0, 1.0, -1.0, 1.0, 16.0, 0.0);
+        }));
     }
 
     #[test]

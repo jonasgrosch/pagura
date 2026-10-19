@@ -358,7 +358,9 @@
         "paint/image-page-rgb-crop",
         "paint/image-page-rgb-quarter-turn",
         "paint/image-page-rgb-reflected",
-        "pagura-render compositor::tests::only_sole_opaque_rgb_images_copy_straight_into_the_output",
+        "pagura-render compositor::tests::only_sole_opaque_images_paint_straight_into_the_output",
+        "pagura-render compositor::opaque_image::tests::direct_images_round_exact_rational_oracles_once",
+        "pagura-render compositor::opaque_image::tests::direct_images_paint_and_match_the_group_compositor",
         "paint/image-area-fractional",
         "paint/image-area-reflected",
         "paint/image-area-quarter",
@@ -372,13 +374,17 @@
         "paint/image-area-tie-2048-223",
         "paint/image-area-tie-2048-253",
         "paint/image-area-thresholds",
-        "paint/image-area-zero-coverage"
+        "paint/image-area-zero-coverage",
+        "paint/image-direct-binary-halves",
+        "paint/image-direct-gray-quarter-turn",
+        "paint/image-direct-rgb-fractional",
+        "paint/image-direct-bilinear"
       ],
       "gaps": "Interpolation is device policy rather than an ISO-prescribed filter. Strongly anisotropic transforms use area integration whenever an inverse pixel edge exceeds one source pixel.",
       "review": [
         {
           "locator": "8.9.5.3",
-          "rule": "Implementation policy: nearest neighbours or bilinear associated colour/alpha for magnification, per Interpolate; exact source-cell footprint area integration for minification. Global device coordinates preserve tile parity. Axis-aligned area integration is separable; two boundary rows per column bound temporary storage independently of source height. Threshold oracles use exact rational half-up means. Three half-level fixtures admit either adjacent level under ADR 0004; a separate nearest-level assertion excludes the farther byte allowed by a rounded-oracle tolerance.",
+          "rule": "Implementation policy: nearest neighbours or bilinear associated colour/alpha for magnification, per Interpolate; exact source-cell footprint area integration for minification. Global device coordinates preserve tile parity. Axis-aligned area integration is separable; two boundary rows per column bound temporary storage independently of source height. Threshold oracles use exact rational half-up means. Three half-level fixtures admit either adjacent level under ADR 0004; a separate nearest-level assertion excludes the farther byte allowed by a rounded-oracle tolerance. A sole opaque DeviceGray or DeviceRGB image whose Decode levels are integers is painted straight into the page with the same footprints: exact integer interior sums, f64 end weights and one rounding, partial coverage mixed with an opaque background (ADR 0004, direct image amendment).",
           "verdict": "verified against local primary text; device policy identified explicitly"
         }
       ]

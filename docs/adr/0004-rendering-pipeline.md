@@ -288,3 +288,33 @@ no point contour, glyph paint and rectangular clips only. Other fills,
 strokes, cubic or complex glyphs and nonrectangular clips keep the existing
 rasterization path. The curve sweep is separate from the line sweep, so fills
 without curves run the line sweep unchanged.
+
+## Amendment: direct opaque images (2026-10-19)
+
+Status: accepted, 2026-10-19.
+
+A page whose only mark is one opaque DeviceGray or DeviceRGB image, with an
+RGB page model, no separations, clip, transfer, mask, matte, overprint or
+non-Normal composite, may be painted straight into the 8-bit output instead
+of through a page buffer (11.3.3). Its Decode ranges must be [0 1] or [1 0],
+so every sample code has an integer level: 255 / (2^bits - 1) times the code,
+or 255 minus that (8.9.5.2). The background must be opaque.
+
+The reference is unchanged: the image sampling reference above, with the
+general compositor's footprints, then Normal composition of the pixel's
+coverage byte over the background in exact arithmetic. Minified placements
+that are upright or quarter turns take integer sums of interior codes and
+f64 products for the two end cells of each footprint, then scale the mean
+code to a level and mix a partial pixel with the background in f64, rounding
+once. Magnification takes the nearest sample, or bilinear weights with
+/Interpolate, from the same pixel centres as the sampler. Like the general
+compositor's f64 evaluation, only the f64 geometry, end weights, row accumulation and normalization depart
+from exact arithmetic, by far less than a level: a byte can differ from the
+reference rounding only when the exact value lies that close to a half
+level, and stays within one level. Decoders keep their byte-exact samples.
+Other placements, images and pages use the general compositor.
+
+Fixtures and unit tests compare against independent rational oracles,
+including two-to-one half-level ties, quarter turns, inverted one- and
+two-bit samples, partial coverage and bilinear magnification. Changed pixels
+against the general compositor must be reported with their oracle values.

@@ -40,8 +40,13 @@ impl Sampler {
         t.a.hypot(t.b) > 1.0 + 1e-9 || t.c.hypot(t.d) > 1.0 + 1e-9
     }
 
+    /// The source position of a device pixel's centre.
+    pub(super) fn center(&self, x: u32, y: u32) -> Point {
+        Point::new(f64::from(x) + 0.5, f64::from(y) + 0.5) * self.inverse
+    }
+
     pub(super) fn nearest(&self, x: u32, y: u32) -> Result<usize> {
-        let center = Point::new(f64::from(x) + 0.5, f64::from(y) + 0.5) * self.inverse;
+        let center = self.center(x, y);
         self.index(center.x.floor(), center.y.floor())
     }
 
@@ -57,7 +62,7 @@ impl Sampler {
             charge(work, 1, maximum)?;
             return texel(self.nearest(x, y)?);
         }
-        let center = Point::new(f64::from(x) + 0.5, f64::from(y) + 0.5) * self.inverse;
+        let center = self.center(x, y);
         charge(work, 4, maximum)?;
         let (x, y) = (center.x - 0.5, center.y - 0.5);
         let (left, top) = (x.floor(), y.floor());
