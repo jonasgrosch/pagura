@@ -2,14 +2,11 @@
 //! PNG arithmetic: PNG Second Edition 9.2, Table 9.1, 9.3 and 9.4. TIFF sample
 //! arithmetic: TIFF 6.0 section 14, pp.64-65; PDF supplies high-bit-first packing.
 use crate::bounded::{BoundedBytes, DECODE_BUDGET, decode_limit};
+use crate::flate::WINDOW;
 use crate::predictor::PngFilter;
 use crate::report::syntax;
 use crate::{Predictor, PredictorKind};
 use pagura_core::{Error, Position, Result, ResultExt};
-
-/// The window DEFLATE back-references reach (RFC 1951 3.2.5); a larger
-/// history is never read.
-const DEFLATE_WINDOW: usize = 32 * 1024;
 
 pub(crate) struct Output {
     bytes: BoundedBytes,
@@ -77,11 +74,11 @@ impl Output {
         let cap = self.bytes.max();
         match self.predictor.kind() {
             PredictorKind::None => 0,
-            PredictorKind::Tiff => cap.min(DEFLATE_WINDOW),
+            PredictorKind::Tiff => cap.min(WINDOW),
             PredictorKind::Png => cap
                 .saturating_add(cap / self.row_bytes)
                 .saturating_add(1)
-                .min(DEFLATE_WINDOW),
+                .min(WINDOW),
         }
     }
 

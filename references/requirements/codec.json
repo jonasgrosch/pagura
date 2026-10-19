@@ -132,7 +132,7 @@
           "locator": "RFC 1951 3.2.2; 3.2.7 (dynamic header and code-length alphabet)",
           "rule": "Dynamic headers describe 257..286 literal and 1..32 distance lengths; code-length symbols 0..18 use the prescribed permutation, with repeat 16 copying a preceding length and 17/18 repeating zero, including across the alphabet boundary.",
           "implementation": "Agrees: 15-bit data-code and 7-bit length-code bounds, canonical assignment, required EOB and bounded repeat expansion are enforced.",
-          "fixtures": "Agrees: flate-dynamic-length15, flate-rfc1951-repeat16-across-alphabets, flate-rfc1951-repeat17-zero, and invalid repeat-without-previous/repeat-overflow/missing-eob.",
+          "fixtures": "Agrees: flate-dynamic-length15, flate-dynamic-length15-match (15-bit length and distance codes in one match), flate-rfc1951-repeat16-across-alphabets, flate-rfc1951-repeat17-zero, and invalid repeat-without-previous/repeat-overflow/missing-eob.",
           "verdict": "verified"
         },
         {
@@ -164,7 +164,8 @@
       "documented_choices": [
         "A valid zlib header wins detection; explicitly raw containers use decode_raw_deflate for header collisions. Bytes not recognized as CM=8 enter the reported raw path; Strict rejects that deviation.",
         "General incomplete-tree rejection, the one-bit EOB-only literal exception and acceptance of zero-only unused distance alphabets are decoder choices where RFC 1951 does not explicitly settle validity; they are not verified normative prohibitions or permissions.",
-        "RFC 1951 3.1.1 determines wire packing for non-Huffman extra fields; 3.2.5 describes their integer values in conventional most-significant-bit notation."
+        "RFC 1951 3.1.1 determines wire packing for non-Huffman extra fields; 3.2.5 describes their integer values in conventional most-significant-bit notation.",
+        "Decoding tables are direct lookups of 2^(longest code) entries per alphabet; the fixed code's tables are built once per stream."
       ],
       "external_primary_review": [
         {
