@@ -44,14 +44,14 @@ def emit(source, ident, kind, algorithm, mgf, salt, n, e, message, signature, ou
         message_digest = message
     else:
         message_digest = digest(algorithm, message)
-    print("|".join(map(str, [source, ident, kind, name(algorithm), name(mgf), salt,
-          integer(n), integer(e), message_digest, signature or "-", outcome])))
+    return "|".join(map(str, [source, ident, kind, name(algorithm), name(mgf), salt,
+                    integer(n), integer(e), message_digest, signature or "-", outcome]))
 
 
 def hashes():
     path = ROOT / "cavp/shabytetestvectors.zip"
     if not path.exists():
-        print("# CAVP SHA cache unavailable; bundled cases still run")
+        yield "# CAVP SHA cache unavailable; bundled cases still run"
         return
     with zipfile.ZipFile(io.BytesIO(reference_bytes(path))) as archive:
         for algorithm in ["SHA1", "SHA224"]:
@@ -65,19 +65,19 @@ def hashes():
                     if key != "MD":
                         continue
                     if kind == "Monte":
-                        print("|".join(["monte", algorithm, fields["Seed"], value]))
+                        yield "|".join(["monte", algorithm, fields["Seed"], value])
                         fields["Seed"] = value
                     else:
                         length = int(fields["Len"])
                         assert length % 8 == 0
                         message = fields["Msg"][:length // 4]
-                        print("|".join([kind, algorithm, message or "-", value]))
+                        yield "|".join([kind, algorithm, message or "-", value])
 
 
 def wycheproof():
     directory = ROOT / "wycheproof/testvectors_v1"
     if not directory.exists():
-        print("# Wycheproof RSA cache unavailable; bundled cases still run")
+        yield "# Wycheproof RSA cache unavailable; bundled cases still run"
         return
     for path in sorted(directory.glob("rsa*.json")):
         data = reference_json(path)
@@ -92,18 +92,18 @@ def wycheproof():
                     # RFC 8017 9.2 requires DER and an explicit NULL. These
                     # compatibility encodings are deliberately rejected.
                     assert set(test["flags"]) <= {"MissingNull", "BerEncodedPadding"}, test
-                emit(path.stem, test["tcId"], kind, group["sha"], group.get("mgfSha", group["sha"]),
+                yield emit(path.stem, test["tcId"], kind, group["sha"], group.get("mgfSha", group["sha"]),
                      group.get("sLen", 0), key["modulus"], key["publicExponent"],
                      test["msg"], test["sig"], outcome)
                 count += 1
         assert count == data["numberOfTests"]
-        print(f"# {path.name}: all {count} vectors loaded")
+        yield f"# {path.name}: all {count} vectors loaded"
 
 
 def acvp():
     directory = ROOT / "acvp/RSA-SigVer-FIPS186-5"
     if not directory.exists():
-        print("# ACVP RSA cache unavailable; bundled cases still run")
+        yield "# ACVP RSA cache unavailable; bundled cases still run"
         return
     data = reference_json(directory / "prompt.json")
     results = reference_json(directory / "expectedResults.json")
@@ -119,17 +119,17 @@ def acvp():
         if kind == "pss":
             assert group["maskFunction"] == "mgf1"
         for test in group["tests"]:
-            emit("ACVP-" + kind, test["tcId"], kind, algorithm, algorithm, group.get("saltLen", 0),
+            yield emit("ACVP-" + kind, test["tcId"], kind, algorithm, algorithm, group.get("saltLen", 0),
                  group["n"], group["e"], test["message"], test["signature"],
                  "valid" if expected[(group["tgId"], test["tcId"])] else "invalid")
     for (kind, algorithm), count in sorted(unsupported.items()):
-        print(f"# ACVP {kind}: {count} {algorithm} cases require an unimplemented hash")
+        yield f"# ACVP {kind}: {count} {algorithm} cases require an unimplemented hash"
 
 
 def cavp():
     path = ROOT / "cavp/186-3rsatestvectors.zip"
     if not path.exists():
-        print("# CAVP RSA cache unavailable; bundled cases still run")
+        yield "# CAVP RSA cache unavailable; bundled cases still run"
         return
     with zipfile.ZipFile(io.BytesIO(reference_bytes(path))) as archive:
         for filename, kind in [("SigVer15_186-3.rsp", "v15"), ("SigVerPSS_186-3.rsp", "pss")]:
@@ -160,40 +160,59 @@ def cavp():
                 # zero nibble). RFC 8017 I2OSP gives its signature octets.
                 signature = int(fields["S"], 16)
                 width = max((bits + 7) // 8, (signature.bit_length() + 7) // 8)
-                emit("CAVP-" + kind, index, kind, fields["SHAAlg"], fields["SHAAlg"], salt,
+                yield emit("CAVP-" + kind, index, kind, fields["SHAAlg"], fields["SHAAlg"], salt,
                      fields["n"], fields["e"], fields["Msg"], signature.to_bytes(width, "big").hex(),
                      "valid" if value.startswith("P") else "invalid")
 
 
+RANDOM_POWERS = 150
+
+
 def powers():
+    """Seeded random cases, then boundary moduli around every limb size.
+
+    Bases 0, 1 and exponents 0-3 take special paths that do not depend on the
+    modulus width, so they are combined exhaustively only for moduli below
+    255 bits; wider moduli keep the limb-boundary sizes with fewer cases.
+    """
     rng = random.Random(0x8017)
     cases = []
-    for _ in range(1000):
+    for _ in range(RANDOM_POWERS):
         bits = rng.randrange(2, 1025)
         modulus = rng.getrandbits(bits) | (1 << (bits - 1)) | 1
         cases.append((modulus, rng.randrange(modulus), rng.getrandbits(rng.randrange(257))))
     for bits in [2, 3, 7, 8, 9, 31, 32, 33, 63, 64, 65, 127, 128, 129, 255, 256, 257,
                  511, 512, 513, 1023, 1024, 1025, 2047, 2048, 2049, 3072, 4096, 8192, 16384]:
-        for modulus in [(1 << bits) - 1, (1 << (bits - 1)) + 1]:
-            for base in [0, 1, modulus // 2, modulus - 1]:
-                for exponent in [0, 1, 2, 3, 65537]:
+        if bits < 255:
+            moduli, exponents = [(1 << bits) - 1, (1 << (bits - 1)) + 1], [0, 1, 2, 3, 65537]
+        elif bits < 2047:
+            moduli, exponents = [(1 << bits) - 1, (1 << (bits - 1)) + 1], [2, 65537]
+        else:
+            moduli, exponents = [(1 << bits) - 1], [3, 65537]
+        for modulus in moduli:
+            bases = [0, 1, modulus // 2, modulus - 1] if bits < 255 else [modulus // 2, modulus - 1]
+            for base in bases:
+                for exponent in exponents:
                     cases.append((modulus, base, exponent))
     for modulus, base, exponent in cases:
         width = (modulus.bit_length() + 7) // 8
         def encode(value):
             return value.to_bytes(max(1, (value.bit_length() + 7) // 8), "big").hex()
-        print("|".join([encode(modulus), base.to_bytes(width, "big").hex(),
+        yield ("|".join([encode(modulus), base.to_bytes(width, "big").hex(),
                         encode(exponent) if exponent else "-", pow(base, exponent, modulus).to_bytes(width, "big").hex()]))
 
 
 def timing():
     directory = ROOT / "wycheproof/testvectors_v1"
+    if not directory.exists():
+        yield "# Wycheproof RSA cache unavailable; no timing keys"
+        return
     for bits in [2048, 3072, 4096]:
         data = reference_json(directory / f"rsa_signature_{bits}_sha256_test.json")
         group = data["testGroups"][0]
         test = next(t for t in group["tests"] if t["result"] == "valid")
         key = group["publicKey"]
-        print("|".join([str(bits), integer(key["modulus"]), integer(key["publicExponent"]),
+        yield ("|".join([str(bits), integer(key["modulus"]), integer(key["publicExponent"]),
                         digest("SHA256", test["msg"]), test["sig"]]))
 
 
@@ -236,9 +255,9 @@ def encodings():
             assert representative < n
             signature = pow(representative, d, n)
             assert pow(signature, e, n) == representative
-            emit("RFC8017", str(bits) + "-" + ident, kind, algorithm, mgf, salt,
-                 hex(n), hex(e), message.hex(), signature.to_bytes(width, "big").hex(),
-                 "valid" if valid else "invalid")
+            return emit("RFC8017", str(bits) + "-" + ident, kind, algorithm, mgf, salt,
+                        hex(n), hex(e), message.hex(), signature.to_bytes(width, "big").hex(),
+                        "valid" if valid else "invalid")
 
         algorithms = ["SHA1", "SHA224", "SHA256", "SHA384", "SHA512"] if q > 65521 else ["SHA256"]
         for algorithm in algorithms:
@@ -254,14 +273,14 @@ def encodings():
                 def v15(tail):
                     return b"\0\1" + b"\xff" * (width - len(tail) - 3) + b"\0" + tail
                 tail = info(b"\x05\0")
-                signed(algorithm + "-der", "v15", algorithm, algorithm, 0, v15(tail), True)
+                yield signed(algorithm + "-der", "v15", algorithm, algorithm, 0, v15(tail), True)
                 for label, altered in [("missing-null", info(b"")),
                     ("ber-length", b"\x30\x81" + tail[1:]),
                     ("trailing-data", tail + b"\0"),
                     ("wrong-digest", tail[:-1] + bytes([tail[-1] ^ 1]))]:
-                    signed(algorithm + "-" + label, "v15", algorithm, algorithm, 0, v15(altered), False)
+                    yield signed(algorithm + "-" + label, "v15", algorithm, algorithm, 0, v15(altered), False)
                 encoded = bytearray(v15(tail)); encoded[3] = 0xfe
-                signed(algorithm + "-padding", "v15", algorithm, algorithm, 0, encoded, False)
+                yield signed(algorithm + "-padding", "v15", algorithm, algorithm, 0, encoded, False)
             em_bits = bits - 1
             em_width = (em_bits + 7) // 8
             for salt_len in sorted({0, min(len(hashed), em_width - len(hashed) - 2), em_width - len(hashed) - 2}):
@@ -275,31 +294,22 @@ def encodings():
                     encoded[0] &= 0xff >> (8 * em_width - em_bits)
                     encoded += h + b"\xbc"
                     ident = algorithm + "-" + mgf + "-" + str(salt_len)
-                    signed(ident, "pss", algorithm, mgf, salt_len, encoded, True)
+                    yield signed(ident, "pss", algorithm, mgf, salt_len, encoded, True)
                     wrong = bytearray(encoded); wrong[-1] ^= 1
-                    signed(ident + "-trailer", "pss", algorithm, mgf, salt_len, wrong, False)
+                    yield signed(ident + "-trailer", "pss", algorithm, mgf, salt_len, wrong, False)
                     if salt_len:
-                        signed(ident + "-salt", "pss", algorithm, mgf, salt_len - 1, encoded, False)
+                        yield signed(ident + "-salt", "pss", algorithm, mgf, salt_len - 1, encoded, False)
                     if bits % 8 == 1:
-                        signed(ident + "-extra-octet", "pss", algorithm, mgf, salt_len, b"\1" + encoded, False)
+                        yield signed(ident + "-extra-octet", "pss", algorithm, mgf, salt_len, b"\1" + encoded, False)
                     else:
                         wrong = bytearray(encoded); wrong[0] |= 0x80
-                        signed(ident + "-high-bit", "pss", algorithm, mgf, salt_len, wrong, False)
+                        yield signed(ident + "-high-bit", "pss", algorithm, mgf, salt_len, wrong, False)
+
+
+SUITES = {"hash": hashes, "rsa": lambda: (*wycheproof(), *acvp(), *cavp()), "pow": powers,
+          "timing": timing, "encodings": encodings}
 
 
 if __name__ == "__main__":
-    mode = sys.argv[1]
-    if mode == "hash":
-        hashes()
-    elif mode == "rsa":
-        wycheproof()
-        acvp()
-        cavp()
-    elif mode == "pow":
-        powers()
-    elif mode == "timing":
-        timing()
-    elif mode == "encodings":
-        encodings()
-    else:
-        raise ValueError(f"unknown suite {mode}")
+    for line in SUITES[sys.argv[1]]():
+        print(line)

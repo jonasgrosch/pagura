@@ -63,7 +63,7 @@ def wycheproof():
             for case in group['tests']:
                 # This API is strict DER. Wycheproof's optional BER and
                 # missing-sign-octet legacy cases are deliberately rejected.
-                emit(path.stem, case['tcId'], name, digest(group['sha'], case['msg']),
+                yield emit(path.stem, case['tcId'], name, digest(group['sha'], case['msg']),
                      key, bytes.fromhex(case['sig']), case['result'] == 'valid')
 
 
@@ -79,7 +79,7 @@ def acvp():
             continue
         name = NAMES[group['curve']]
         for t in group['tests']:
-            emit('ACVP-ECDSA-SigVer-FIPS186-5', t['tcId'], name, digest(group['hashAlg'], t['message']),
+            yield emit('ACVP-ECDSA-SigVer-FIPS186-5', t['tcId'], name, digest(group['hashAlg'], t['message']),
                  key_bytes(name, t['qx'], t['qy']), signature(int(t['r'], 16), int(t['s'], 16)), expected[t['tcId']])
 
 
@@ -103,13 +103,19 @@ def cavp():
                         assert group is not None, 'CAVP result before its [curve,hash] header'
                         if group[0] in NAMES:
                             name = NAMES[group[0]]
-                            emit('CAVP-' + Path(filename).stem, index, name, digest(group[1], case['Msg']),
+                            yield emit('CAVP-' + Path(filename).stem, index, name, digest(group[1], case['Msg']),
                                  key_bytes(name, case['Qx'], case['Qy']),
                                  signature(int(case['R'], 16), int(case['S'], 16)), v.startswith('P'))
                         case = {}
 
 
+def suites():
+    """Every cached ECDSA suite; empty without the reference cache."""
+    yield from wycheproof()
+    yield from acvp()
+    yield from cavp()
+
+
 if __name__ == '__main__':
-    wycheproof()
-    acvp()
-    cavp()
+    for line in suites():
+        print(line)
