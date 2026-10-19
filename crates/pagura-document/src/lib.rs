@@ -59,6 +59,9 @@ pub struct Document {
     revisions: Vec<Revision>,
     object_streams: BTreeMap<u32, OnceLock<Result<object::stream::Contents>>>,
     security: Option<security::Security>,
+    /// Opening needed a repair: the header, cross-reference data, trailer,
+    /// catalog or security dictionary deviated from the standard.
+    repaired: bool,
     /// Sorted offsets where physical objects and revisions start.
     boundaries: OnceLock<Result<Box<[usize]>>>,
     pages: OnceLock<Result<Box<[Page]>>>,
@@ -384,6 +387,12 @@ impl Document {
     pub fn content_streams(&self, page: &Page) -> Result<Vec<&IndirectObject>> {
         self.check_page(page)?;
         pages::contents::read(self, page)
+    }
+
+    /// Whether opening needed a repair. Unlike [`Self::diagnostics`] this does
+    /// not change as objects load later or consumers report.
+    pub(crate) const fn repaired_at_open(&self) -> bool {
+        self.repaired
     }
 
     /// Fails with `InvalidArgument` unless `page` came from this document.

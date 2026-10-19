@@ -1,5 +1,6 @@
 //! Typed source views for interactive forms (12.7).
 use crate::navigation::ActionSequence;
+use crate::view::Source;
 use pagura_core::{Dictionary, Name, ObjectId, Position, Rect, Value};
 
 /// All field flags, preserving extension and reserved bits (Table 227).
@@ -239,6 +240,18 @@ pub struct Field<'a> {
     pub additional_actions: Vec<AdditionalAction<'a>>,
     /// Unmodified own dictionary, without inherited entries inserted.
     pub dictionary: &'a Dictionary,
+    /// Where the effective V was read, after inheritance and references.
+    pub(crate) value_source: Option<Source>,
+}
+
+impl Field<'_> {
+    /// Where this field's dictionary was read.
+    pub(crate) const fn source(&self) -> Source {
+        Source {
+            object: self.object,
+            position: self.position,
+        }
+    }
 }
 
 /// A widget associated with a terminal field (12.5.6.19, 12.7.4.2).
@@ -293,4 +306,6 @@ pub struct AcroForm<'a> {
     pub has_xfa: bool,
     /// Unmodified AcroForm dictionary, retaining extension data.
     pub dictionary: &'a Dictionary,
+    /// Reading the form applied a repair or read a repaired object.
+    pub(crate) repaired: bool,
 }

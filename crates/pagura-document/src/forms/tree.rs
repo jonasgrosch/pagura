@@ -66,6 +66,7 @@ pub(super) fn read(document: &Document) -> Result<Option<AcroForm<'_>>> {
     while let Some(pending) = stack.pop() {
         walk.node(&pending, &mut stack)?;
     }
+    walk.form.repaired = walk.context.repaired();
     Ok(Some(walk.form))
 }
 
@@ -108,6 +109,7 @@ fn header<'a>(
         justification: attributes::quadding(context, inherited.get(Key::Q))?,
         has_xfa: context.present(dictionary, b"XFA", source)?.is_some(),
         dictionary,
+        repaired: false,
     })
 }
 
@@ -304,6 +306,7 @@ impl<'a> Walk<'a> {
             )?,
             mapping_name: attributes::optional_text(&mut self.context, dictionary, b"TM", source)?,
             flags,
+            value_source: value.as_ref().map(|&(_, source)| source),
             value: value.map(|(value, _)| value),
             default_value: default_value.map(|(value, _)| value),
             kind,

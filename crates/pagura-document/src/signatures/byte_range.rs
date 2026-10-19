@@ -3,8 +3,20 @@ use crate::{
     ObjectSource,
     view::{Context, Source},
 };
-use pagura_core::{Dictionary, Result, Value};
+use pagura_core::{Dictionary, ErrorKind, ObjectId, Result, Value};
+use std::collections::BTreeMap;
+use std::fmt;
 use std::ops::Range;
+
+/// The enclosing objects one revision's inspection reparsed, so each is
+/// reread once however many signatures it holds; the bytes are charged to
+/// the context's scan budget.
+#[derive(Default)]
+pub(super) struct Scans {
+    /// Where each enclosing object's value starts, once its strict reparse
+    /// succeeded, or the error that made its source ambiguous.
+    verified: BTreeMap<ObjectId, Result<usize>>,
+}
 
 /// A failed byte-range structure check; cryptography has not run.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,10 +47,27 @@ pub enum ByteRangeError {
 }
 /// Exactly two checked ranges borrowing original bytes. No digest is computed.
 /// Private state prevents constructing ranges that are unchecked or mismatched.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Eq)]
 pub struct ByteRange<'a> {
     bytes: &'a [u8],
     ranges: [Range<usize>; 2],
+}
+
+impl fmt::Debug for ByteRange<'_> {
+    /// The ranges only: the borrowed bytes are the whole file.
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ByteRange")
+            .field("ranges", &self.ranges)
+            .finish_non_exhaustive()
+    }
+}
+
+impl PartialEq for ByteRange<'_> {
+    /// The same ranges of the same file, compared without reading it.
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self.bytes, other.bytes) && self.ranges == other.ranges
+    }
 }
 impl<'a> ByteRange<'a> {
     /// Original file ranges in digest order.
@@ -59,6 +88,7 @@ pub(super) fn check<'a>(
     ctx: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
+    scans: &mut Scans,
 ) -> Result<std::result::Result<ByteRange<'a>, ByteRangeError>> {
     if dictionary
         .iter()
@@ -82,7 +112,8 @@ pub(super) fn check<'a>(
     let Some(end) = next.checked_add(tail).filter(|&end| end <= bytes.len()) else {
         return Ok(Err(ByteRangeError::OutsideFile));
     };
-    if length > bytes.len() || next > bytes.len() {
+    // `next` lies within the file because `end` does.
+    if length > bytes.len() {
         return Ok(Err(ByteRangeError::OutsideFile));
     }
     if length > next {
@@ -101,12 +132,21 @@ pub(super) fn check<'a>(
     if extent.end > end {
         return Ok(Err(ByteRangeError::SignatureOutsideSignedBytes));
     }
-    ctx.scan(extent.len(), source)?;
-    let span =
-        super::source::contents_span(ctx, dictionary, object.value(), extent.clone(), source);
+    let id = object.id();
+    let start = if let Some(verified) = scans.verified.get(&id) {
+        verified.clone()
+    } else {
+        ctx.scan(extent.len(), source)?;
+        let verified = super::source::verify(ctx, extent.clone(), source);
+        scans.verified.insert(id, verified.clone());
+        verified
+    };
+    let span = start.and_then(|start| {
+        super::source::contents_span(ctx, dictionary, object.value(), start, extent.end, source)
+    });
     let span = match span {
         Ok(span) => span,
-        Err(error) if error.kind == pagura_core::ErrorKind::Limit => return Err(error),
+        Err(error) if error.kind == ErrorKind::Limit => return Err(error),
         Err(_) => return Ok(Err(ByteRangeError::AmbiguousSource)),
     };
     let Some(span) = span else {

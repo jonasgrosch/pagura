@@ -806,7 +806,7 @@
       "files": {
         ".expect": {
           "path": "corpus/generated/signatures/duplicate-contents.expect",
-          "sha256": "9cf46a73f1fb0cb64b3b2973c64c544ba72c570fc836ec65d166eb4e3e0e2b4c"
+          "sha256": "53f86c0cd3fb767c03d98aab1b55e0f74147e73c9b0f166ba18d4cae188d6b92"
         },
         ".pdf": {
           "path": "corpus/generated/signatures/duplicate-contents.pdf",

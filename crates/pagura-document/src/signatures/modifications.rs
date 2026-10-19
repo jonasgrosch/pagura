@@ -69,17 +69,6 @@ pub(super) fn apply(
             _ => PermittedModifications::NotAnalysedYet,
         };
     }
-    if !doc.diagnostics().is_empty() || doc.suppressed_diagnostics() != 0 {
-        for signature in signatures
-            .fields
-            .iter_mut()
-            .filter_map(|f| f.signature.as_mut())
-            .chain(signatures.usage_rights.iter_mut())
-            .chain(signatures.historical.iter_mut().map(|h| &mut h.signature))
-        {
-            signature.results.permitted_modifications = PermittedModifications::Inconclusive;
-        }
-    }
 }
 
 type Prepared = (Vec<Option<Roles>>, Vec<BTreeSet<pagura_core::ObjectId>>);

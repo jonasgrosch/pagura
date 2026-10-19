@@ -78,10 +78,10 @@ impl Document {
         if index == 0 {
             return Ok(self);
         }
-        if self.security.is_some()
-            || !self.diagnostics().is_empty()
-            || self.suppressed_diagnostics() != 0
-        {
+        // Snapshots are strict; repairs found later in the current revision
+        // never reach them, but a document repaired at opening has no
+        // trustworthy earlier structure.
+        if self.security.is_some() || self.repaired_at_open() {
             return Err(Error::unsupported(
                 HISTORICAL_SOURCE,
                 "historical access requires unrepaired unencrypted source",
@@ -161,8 +161,8 @@ impl Document {
             position: Position::File(revision.offset()),
         };
         let upper = self.revisions[index - 1].offset();
-        let (boundary, consumed) = crate::revision_bounds::boundary(ctx, revision, upper, source)?;
-        ctx.scan(consumed, source)?;
+        let boundary = crate::revision_bounds::boundary(ctx, revision, upper, source)?;
+        ctx.scan(boundary.eol.saturating_sub(revision.end), source)?;
         let bytes = Bytes {
             source: self.bytes.source.clone(),
             end: boundary.eol,

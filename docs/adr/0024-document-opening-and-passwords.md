@@ -42,6 +42,12 @@ A review of `pagura-document` found that opening relied on implicit rules:
 4. **A page carries the identity of its document**, so `Page::links`,
    `Page::label` and `Document::content_streams` refuse a page of another
    document with `InvalidArgument` instead of reading the wrong objects.
+5. **Evidence of repair is fixed when it arises.** The document records
+   whether opening needed a repair, each object whether its load did, and
+   each view whether it applied one. Signature revision coverage, access to
+   earlier revisions and permitted-change analysis use this evidence instead
+   of the document-wide diagnostic log, which grows as other consumers load
+   objects or report information.
 
 ## Consequences
 
@@ -55,6 +61,9 @@ A review of `pagura-document` found that opening relied on implicit rules:
   reports the disagreement instead of serving stale contents.
 - A cached failed load is final for the document; retrying requires
   reopening, as for any other cached result.
+- A repair reported after opening outside the objects a signature analysis
+  reads no longer makes that analysis inconclusive, so some results move
+  from `Inconclusive` to `Analyzed`.
 
 ## Alternatives considered
 

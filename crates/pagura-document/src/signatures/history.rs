@@ -71,9 +71,7 @@ pub(super) fn discover<'a>(
 ) -> Result<Vec<Option<Facts>>> {
     ctx.allocate::<Option<Facts>>(doc.revisions().len(), Source::default())?;
     let mut facts = vec![Some(Facts::read(result, ctx)?)];
-    result.history_complete = !doc.revisions().is_empty()
-        && doc.diagnostics().is_empty()
-        && doc.suppressed_diagnostics() == 0;
+    result.history_complete = !doc.revisions().is_empty() && !doc.repaired_at_open();
     let mut seen = BTreeSet::new();
     for signature in result
         .fields

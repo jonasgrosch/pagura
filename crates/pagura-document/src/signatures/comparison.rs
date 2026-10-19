@@ -48,13 +48,21 @@ pub(super) fn read(
             _ => ChangeKind::Removed,
         };
         ctx.allocate::<ObjectChange>(1, Source::default())?;
-        let (object_roles, doc_mdp, field_mdp, rule) = decision(
+        let (object_roles, mut doc_mdp, mut field_mdp, rule) = decision(
             ctx,
             id,
             (a, b),
             (old, new, signed, policy, &changed_fields),
             past,
         )?;
+        // A comparison with a repaired object compares the repair, not the
+        // source; it proves nothing either way.
+        if a.into_iter().chain(b).any(IndirectObject::is_repaired) {
+            doc_mdp = D::Inconclusive;
+            if field_mdp != D::NotApplicable {
+                field_mdp = D::Inconclusive;
+            }
+        }
         changes.push(ObjectChange {
             target: ChangeTarget::Object(id),
             kind,

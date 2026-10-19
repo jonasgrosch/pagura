@@ -6,14 +6,19 @@ use pagura_core::{
 };
 use std::ops::Range;
 
-pub(super) fn contents_span(
-    ctx: &mut Context<'_>,
-    target: &Dictionary,
-    root: &Value,
-    extent: Range<usize>,
-    source: Source,
-) -> Result<Option<Range<usize>>> {
-    let bytes = &ctx.document.original_bytes()[..extent.end];
+/// A growing `Vec` may hold up to twice its length in capacity.
+const VEC_GROWTH: usize = 2;
+
+/// Reparses the object at `extent` strictly and returns where its value
+/// starts. Duplicate keys or other repaired syntax cannot bind a trustworthy
+/// physical token. Decrypted text values are deliberately not compared with
+/// the original encrypted bytes.
+pub(super) fn verify(ctx: &mut Context<'_>, extent: Range<usize>, source: Source) -> Result<usize> {
+    let bytes = ctx
+        .document
+        .original_bytes()
+        .get(..extent.end)
+        .ok_or_else(|| source.error(Error::syntax("signature source lies outside the file")))?;
     let mut parser = Parser::with_offset(bytes, extent.start, Origin::File, ctx.document.limits())?;
     parser.unsigned()?;
     parser.unsigned()?;
@@ -22,14 +27,29 @@ pub(super) fn contents_span(
     }
     parser.skip_whitespace();
     let start = parser.offset();
-    // Reparse strictly: duplicate keys or other repaired syntax cannot bind a
-    // trustworthy physical token. Decrypted text values are deliberately not
-    // compared with the original encrypted bytes.
     parser.parse()?;
     if !parser.keyword(b"endobj") {
         return Err(source.error(Error::syntax("signature source lacks endobj")));
     }
-    parser.seek(start)?;
+    Ok(start)
+}
+
+/// The original `Contents` token of `target`, a dictionary inside the object
+/// whose verified value starts at `start` and ends before `end`.
+pub(super) fn contents_span(
+    ctx: &mut Context<'_>,
+    target: &Dictionary,
+    root: &Value,
+    start: usize,
+    end: usize,
+    source: Source,
+) -> Result<Option<Range<usize>>> {
+    let bytes = ctx
+        .document
+        .original_bytes()
+        .get(..end)
+        .ok_or_else(|| source.error(Error::syntax("signature source lies outside the file")))?;
+    let mut parser = Parser::with_offset(bytes, start, Origin::File, ctx.document.limits())?;
     let Some(path) = dictionary_path(ctx, root, target, source)? else {
         return Ok(None);
     };
@@ -122,7 +142,7 @@ fn dictionary_path<'a>(
     target: &Dictionary,
     source: Source,
 ) -> Result<Option<Vec<Step<'a>>>> {
-    ctx.allocate::<Node<'_>>(2, source)?;
+    ctx.allocate::<Node<'_>>(VEC_GROWTH, source)?;
     let mut nodes = vec![Node {
         value: root,
         parent: None,
@@ -149,7 +169,7 @@ fn dictionary_path<'a>(
         let depth = node.depth.saturating_add(1);
         match node.value {
             Value::Array(values) => {
-                ctx.allocate::<Node<'_>>(values.len().saturating_mul(2), source)?;
+                ctx.allocate::<Node<'_>>(values.len().saturating_mul(VEC_GROWTH), source)?;
                 nodes.extend(values.iter().enumerate().map(|(index, value)| Node {
                     value,
                     parent: Some((cursor, Step::Index(index))),
@@ -157,7 +177,7 @@ fn dictionary_path<'a>(
                 }));
             }
             Value::Dictionary(dictionary) => {
-                ctx.allocate::<Node<'_>>(dictionary.len().saturating_mul(2), source)?;
+                ctx.allocate::<Node<'_>>(dictionary.len().saturating_mul(VEC_GROWTH), source)?;
                 nodes.extend(dictionary.iter().map(|(key, value)| Node {
                     value,
                     parent: Some((cursor, Step::Key(key))),

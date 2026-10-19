@@ -52,6 +52,8 @@ pub struct IndirectObject {
     source: ObjectSource,
     direct: Vec<DirectObject>,
     direct_source: bool,
+    /// Loading this object needed a reported repair (ADR 0003).
+    pub(crate) repaired: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -93,11 +95,17 @@ impl IndirectObject {
             source,
             direct: Vec::new(),
             direct_source: false,
+            repaired: false,
         }
     }
 
     pub(crate) fn is_direct(&self) -> bool {
         self.direct_source
+    }
+
+    /// Whether loading this object needed a repair.
+    pub(crate) const fn is_repaired(&self) -> bool {
+        self.repaired
     }
 
     pub(crate) fn direct_stream(
