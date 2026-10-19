@@ -7,14 +7,18 @@
 use pagura_core::{Error, Limits, Result};
 use pagura_raster::{FillRule, Path, Point, Segment, Transform};
 
-/// Byte coverage at a device-pixel offset.
-#[derive(Debug, Default)]
-pub(super) struct Coverage {
+/// Byte coverage at a device-pixel offset, owning its levels or borrowing
+/// them from shared storage.
+#[derive(Debug, Default, Clone, Copy)]
+pub(super) struct Coverage<D = Vec<u8>> {
     pub(super) x: i32,
     pub(super) y: i32,
     pub(super) width: usize,
-    pub(super) data: Vec<u8>,
+    pub(super) data: D,
 }
+
+/// Coverage borrowing its levels.
+pub(super) type View<'a> = Coverage<&'a [u8]>;
 
 impl Coverage {
     pub(super) fn empty() -> Self {
@@ -25,9 +29,25 @@ impl Coverage {
             data: Vec::new(),
         }
     }
+}
 
+impl<D: AsRef<[u8]>> Coverage<D> {
     pub(super) fn height(&self) -> usize {
-        self.data.len().checked_div(self.width).unwrap_or(0)
+        self.data
+            .as_ref()
+            .len()
+            .checked_div(self.width)
+            .unwrap_or(0)
+    }
+
+    /// The same coverage, borrowing its levels.
+    pub(super) fn view(&self) -> View<'_> {
+        Coverage {
+            x: self.x,
+            y: self.y,
+            width: self.width,
+            data: self.data.as_ref(),
+        }
     }
 }
 

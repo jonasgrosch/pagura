@@ -258,7 +258,7 @@ fn path(
             coverage::rasterize(&path, transform, FillRule::NonZero, limits, TOLERANCE, page)?
         }
     };
-    paint::blit(target, &coverage, (0, 0), color, clip);
+    paint::blit(target, coverage.view(), (0, 0), color, clip);
     Ok(())
 }
 

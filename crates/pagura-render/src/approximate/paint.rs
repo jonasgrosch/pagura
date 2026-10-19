@@ -1,6 +1,6 @@
 //! Byte source-over kernels, rounding once per store, on a tile of the page.
 
-use super::{clip::ClipMask, coverage::Coverage};
+use super::{clip::ClipMask, coverage::View};
 use crate::Tile;
 use pagura_core::Result;
 use pagura_raster::{Pixmap, Rgba8};
@@ -172,7 +172,7 @@ impl Target {
 )]
 pub(super) fn blit(
     target: &mut Target,
-    mask: &Coverage,
+    mask: View<'_>,
     offset: (i32, i32),
     color: Rgba8,
     clip: Option<&ClipMask>,
@@ -565,14 +565,20 @@ mod tests {
 
     #[test]
     fn tiles_receive_exactly_their_part_of_a_mark() {
-        let mask = Coverage {
+        let mask = super::super::coverage::Coverage {
             x: 1,
             y: 1,
             width: 3,
             data: vec![10, 128, 255, 40, 200, 255],
         };
         let mut page = target(5, 4);
-        blit(&mut page, &mask, (0, 0), Rgba8::opaque(20, 40, 60), None);
+        blit(
+            &mut page,
+            mask.view(),
+            (0, 0),
+            Rgba8::opaque(20, 40, 60),
+            None,
+        );
         let page = page.finish();
         let mut tile = Target::new(
             Tile {
@@ -586,7 +592,13 @@ mod tests {
             Vec::new(),
         )
         .unwrap();
-        blit(&mut tile, &mask, (0, 0), Rgba8::opaque(20, 40, 60), None);
+        blit(
+            &mut tile,
+            mask.view(),
+            (0, 0),
+            Rgba8::opaque(20, 40, 60),
+            None,
+        );
         let tile = tile.finish();
         for (row, pixels) in tile.data().as_chunks::<12>().0.iter().enumerate() {
             let start = ((row + 2) * 5 + 2) * 4;

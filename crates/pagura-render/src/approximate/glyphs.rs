@@ -9,7 +9,7 @@
 //! eviction change time, never pixels.
 
 use super::Resolution;
-use super::coverage::{Coverage, Geometry};
+use super::coverage::{Coverage, Geometry, View};
 use crate::hash::{FastMap, FastSet};
 use pagura_core::{Error, Limits, Result};
 use pagura_raster::{Path, Transform};
@@ -22,7 +22,10 @@ const PHASES: u16 = 128;
 #[derive(Debug, Default)]
 pub(crate) struct GlyphCache {
     masks: FastMap<Key, Mask>,
-    /// The mask built last, when the cache could not retain it.
+    /// Every retained mask's levels, one after another, within the bound.
+    store: Vec<u8>,
+    /// The mask built last; its levels are copied to the store when the
+    /// cache retains it.
     built: Coverage,
     rows: FastMap<Key, Rows>,
     geometries: FastMap<Key, Prepared>,
@@ -58,7 +61,17 @@ impl Key {
 struct Mask {
     // Retaining the outline prevents its address from being reused as a key.
     _outline: Arc<Path>,
-    coverage: Coverage,
+    place: Place,
+}
+
+/// A retained mask's extent and its levels' range in the store.
+#[derive(Debug, Clone, Copy)]
+struct Place {
+    x: i32,
+    y: i32,
+    width: usize,
+    start: usize,
+    end: usize,
 }
 
 impl GlyphCache {
@@ -79,16 +92,16 @@ impl GlyphCache {
         (transform, resolution): (Transform, Resolution),
         limits: Limits,
         scratch: &mut Accumulator,
-    ) -> Result<(&Coverage, (i32, i32))> {
+    ) -> Result<(View<'_>, (i32, i32))> {
         let (px, x) = phase(transform.e, PHASES)?;
         let (py, y) = phase(transform.f, resolution.vertical_phases())?;
         let key = Key::new(outline, resolution, transform, px, py);
-        if self.masks.contains_key(&key) {
-            return Ok((&self.masks[&key].coverage, (x, y)));
+        if let Some(place) = self.masks.get(&key).map(|mask| mask.place) {
+            return Ok((self.retained(place), (x, y)));
         }
         let row_key = Key::new(outline, resolution, transform, 0.0, py);
-        let coverage = if let Some(rows) = self.rows.get(&row_key) {
-            rows.mask(px, limits, scratch)?
+        if let Some(rows) = self.rows.get(&row_key) {
+            rows.mask(px, limits, scratch, &mut self.built)?;
         } else {
             let geometry_key = Key::new(outline, resolution, transform, 0.0, 0.0);
             let rows = if let Some(prepared) = self.geometries.get(&geometry_key) {
@@ -101,29 +114,66 @@ impl GlyphCache {
                 }
                 rows
             };
-            let coverage = rows.mask(px, limits, scratch)?;
+            rows.mask(px, limits, scratch, &mut self.built)?;
             if self.reserve(outline, rows.bytes, limits.document_bytes) {
                 self.rows.insert(row_key, rows);
             }
-            coverage
-        };
-        if self.reserve(
-            outline,
-            entry_bytes(outline, coverage.data.len()),
-            limits.document_bytes,
-        ) {
-            let mask = self.masks.entry(key).or_insert(Mask {
-                _outline: Arc::clone(outline),
-                coverage,
-            });
-            return Ok((&mask.coverage, (x, y)));
         }
-        self.built = coverage;
-        Ok((&self.built, (x, y)))
+        let bytes = entry_bytes(outline, self.built.data.len());
+        if self.reserve(outline, bytes, limits.document_bytes)
+            && let Some(place) = self.store(limits.document_bytes)
+        {
+            self.masks.insert(
+                key,
+                Mask {
+                    _outline: Arc::clone(outline),
+                    place,
+                },
+            );
+            return Ok((self.retained(place), (x, y)));
+        }
+        Ok((self.built.view(), (x, y)))
     }
 
+    fn retained(&self, place: Place) -> View<'_> {
+        Coverage {
+            x: place.x,
+            y: place.y,
+            width: place.width,
+            data: &self.store[place.start..place.end],
+        }
+    }
+
+    /// Copies the mask built last to the store, whose capacity grows by
+    /// doubling within the cache's bound.
+    fn store(&mut self, document_bytes: usize) -> Option<Place> {
+        let start = self.store.len();
+        let end = start.checked_add(self.built.data.len())?;
+        if end > self.store.capacity() {
+            let bound = self.maximum.min(document_bytes).max(end);
+            let target = end.max(self.store.capacity().saturating_mul(2)).min(bound);
+            self.store.try_reserve_exact(target - start).ok()?;
+        }
+        self.store.extend_from_slice(&self.built.data);
+        Some(Place {
+            x: self.built.x,
+            y: self.built.y,
+            width: self.built.width,
+            start,
+            end,
+        })
+    }
+
+    /// Releases every retained entry; the store keeps its capacity.
     fn clear(&mut self) {
-        *self = Self::new(self.maximum);
+        let mut store = std::mem::take(&mut self.store);
+        store.clear();
+        let built = std::mem::take(&mut self.built);
+        *self = Self {
+            store,
+            built,
+            ..Self::new(self.maximum)
+        };
     }
 
     // Each retained outline is charged once; a full cache starts again.
@@ -339,9 +389,19 @@ impl Rows {
         clippy::cast_possible_truncation,
         reason = "canonical phases lie within [0,1)"
     )]
-    fn mask(&self, px: f64, limits: Limits, accumulator: &mut Accumulator) -> Result<Coverage> {
+    /// Builds the mask at horizontal phase `px` into `output`, reusing its
+    /// storage.
+    fn mask(
+        &self,
+        px: f64,
+        limits: Limits,
+        accumulator: &mut Accumulator,
+        output: &mut Coverage,
+    ) -> Result<()> {
         if self.width == 0 {
-            return Ok(Coverage::empty());
+            output.width = 0;
+            output.data.clear();
+            return Ok(());
         }
         accumulator.reset(self.width, self.height, limits)?;
         let px = px as f32;
@@ -372,12 +432,9 @@ impl Rows {
         // blits run without single-pixel tails; transparent coverage leaves
         // a pixel unchanged.
         let row = self.width.next_multiple_of(4);
-        Ok(Coverage {
-            x: self.x,
-            y: self.y,
-            width: row,
-            data: accumulator.finish(row),
-        })
+        (output.x, output.y, output.width) = (self.x, self.y, row);
+        accumulator.finish_into(row, &mut output.data);
+        Ok(())
     }
 }
 
@@ -584,17 +641,25 @@ impl Accumulator {
         row[hi] += height - previous;
     }
 
+    #[cfg(test)]
+    fn finish(&self, row: usize) -> Vec<u8> {
+        let mut data = Vec::new();
+        self.finish_into(row, &mut data);
+        data
+    }
+
+    /// The mask's levels, replacing `data`'s contents, in rows of `row`
+    /// bytes (at least the width), the cells beyond the width transparent.
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
         reason = "coverage is clamped to [0,255] before positive nearest rounding"
     )]
-    /// The mask's levels in rows of `row` bytes (at least the width), the
-    /// cells beyond the width transparent.
-    fn finish(&self, row: usize) -> Vec<u8> {
+    fn finish_into(&self, row: usize, data: &mut Vec<u8>) {
         let level = |value: f32| (value.abs().min(1.0) * 255.0 + 0.5) as u8;
         let (width, stride) = (self.width, self.width + 1);
-        let mut data = vec![0_u8; row * self.height];
+        data.clear();
+        data.resize(row * self.height, 0);
         // Each row's prefix sums stay serial, in the same order. Four rows
         // run side by side so that their additions overlap.
         let mut cells = self.area.chunks_exact(4 * stride);
@@ -625,7 +690,6 @@ impl Accumulator {
                 *out = level(value);
             }
         }
-        data
     }
 }
 
@@ -772,12 +836,17 @@ mod tests {
         )
         .unwrap();
         let mut scratch = Accumulator::default();
+        let mut mask = Coverage::empty();
         for py in [0_u16, 1, 16, 127] {
             let rows = Rows::new(&glyph, f64::from(py) / 128.0, Limits::default()).unwrap();
             for px in [0_u16, 1, 16, 127] {
-                let mask = rows
-                    .mask(f64::from(px) / 128.0, Limits::default(), &mut scratch)
-                    .unwrap();
+                rows.mask(
+                    f64::from(px) / 128.0,
+                    Limits::default(),
+                    &mut scratch,
+                    &mut mask,
+                )
+                .unwrap();
                 assert_eq!(mask.width, 4);
                 assert!(
                     mask.data
@@ -834,7 +903,7 @@ mod tests {
             let (first, offset) = cached
                 .coverage(&path, placement, limits, &mut scratch)
                 .unwrap();
-            let first = first.data.clone();
+            let first = first.data.to_vec();
             let retained = cached.masks.len();
             let (again, _) = cached
                 .coverage(&path, placement, limits, &mut scratch)
@@ -844,16 +913,13 @@ mod tests {
             let (fresh, fresh_offset) = uncached
                 .coverage(&path, placement, limits, &mut scratch)
                 .unwrap();
-            assert_eq!(
-                (first.as_slice(), offset),
-                (fresh.data.as_slice(), fresh_offset)
-            );
+            assert_eq!((first.as_slice(), offset), (fresh.data, fresh_offset));
         }
         // Resolutions snap 4.7 to different vertical lattices: a key per resolution.
         let low = cached.coverage(&path, (transform, Resolution::Low), limits, &mut scratch);
-        let low = low.unwrap().0.data.clone();
+        let low = low.unwrap().0.data.to_vec();
         let high = cached.coverage(&path, (transform, Resolution::High), limits, &mut scratch);
-        assert_ne!(low, high.unwrap().0.data);
+        assert_ne!(low.as_slice(), high.unwrap().0.data);
         assert_eq!(uncached.retained_bytes(), 0);
         assert!(cached.retained_bytes() <= 1 << 20);
     }
