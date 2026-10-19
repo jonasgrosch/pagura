@@ -38,14 +38,6 @@ pub const TYPE1_DUPLICATE_GLYPH: Repair = Repair::new("font.type1-duplicate-glyp
 /// (TN 5176 section 12, Tables 14/15).
 pub const CFF_ENCODING_SUPPLEMENT: Repair = Repair::new("font.cff-encoding-supplement");
 
-/// Make Nonsymbolic the inverse of Symbolic when both flags are set or clear
-/// (ISO 32000-2 9.8.2/Table 121). Valid pairs retain their selection routes
-/// (9.6.5.2/4), even when their character-set metadata disagrees with the program.
-/// Applied by the renderer's immutable font-loader view, never to source bytes.
-/// It is a PDF font-dictionary repair, defined here until the text layer
-/// that applies it owns descriptor-flag handling.
-pub const DESCRIPTOR_FLAGS: Repair = Repair::new("font.descriptor-flags");
-
 /// Every repair tag of this crate.
 pub const ALL: &[Repair] = &[
     SFNT_VERSION,
@@ -62,5 +54,4 @@ pub const ALL: &[Repair] = &[
     CFF_DICT_OPERANDS,
     TYPE1_DUPLICATE_GLYPH,
     CFF_ENCODING_SUPPLEMENT,
-    DESCRIPTOR_FLAGS,
 ];

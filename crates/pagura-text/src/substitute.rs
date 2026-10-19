@@ -1,6 +1,7 @@
 //! Explicit non-embedded simple-font substitution (9.6.2.2; ADR 0009).
 use crate::{
     FontKind, PdfFont, Provider, WritingMode,
+    descriptor::{Descriptor, FontFlags},
     encoding::{self, SimpleMapping},
     features,
     font::{Mapping, Source, to_unicode},
@@ -8,7 +9,7 @@ use crate::{
     objects::{number, optional, required},
     report::Report,
 };
-use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Result, Value};
+use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Result, Value};
 use pagura_document::Document;
 use std::sync::Arc;
 
@@ -19,9 +20,10 @@ pub(crate) use family::standard_name;
 pub(crate) fn load(
     document: &Document,
     font: &Dictionary,
-    descriptor: Option<&Dictionary>,
+    descriptor: Option<Descriptor<'_>>,
     kind: FontKind,
     provider: &dyn Provider,
+    position: Position,
 ) -> Result<PdfFont> {
     if !matches!(kind, FontKind::Type1 | FontKind::TrueType) {
         return Err(unavailable());
@@ -30,24 +32,20 @@ pub(crate) fn load(
         .as_name()
         .ok_or_else(|| Error::syntax("invalid BaseFont"))?;
     let standard = standard_name(base.as_bytes());
-    let symbolic = if let Some(descriptor) = descriptor {
-        optional(document, descriptor, b"Flags")?
-            .and_then(Value::as_integer)
-            .is_some_and(|flags| flags & 4 != 0)
-    } else {
-        false
-    };
+    let flags = descriptor
+        .map(|descriptor| descriptor.normalized_flags(document, position))
+        .transpose()?;
+    let symbolic = flags.is_some_and(|flags| flags.contains(FontFlags::SYMBOLIC));
     if symbolic && !matches!(standard, Some(b"Symbol" | b"ZapfDingbats")) {
         return Err(unavailable());
     }
 
     let selected = match standard {
         Some(name) => name,
-        None => closest(
-            document,
-            descriptor.ok_or_else(unavailable)?,
-            font.get(b"FontDescriptor").and_then(Value::as_reference),
-        )?,
+        None => match (descriptor, flags) {
+            (Some(descriptor), Some(flags)) => closest(document, descriptor, flags)?,
+            _ => return Err(unavailable()),
+        },
     };
     let data = provider.standard_font(selected)?.ok_or_else(unavailable)?;
     let encoding = if kind == FontKind::TrueType && symbolic {
@@ -77,7 +75,7 @@ pub(crate) fn load(
     let metrics = if standard.is_some() && optional(document, font, b"Widths")?.is_none() {
         Metrics::standard(&data.metrics, &names)
     } else {
-        Metrics::simple(document, font, descriptor, 0.001)?
+        Metrics::simple(document, font, descriptor.map(|d| d.dictionary), 0.001)?
     };
     let mapping = Mapping::Simple(Box::new(SimpleMapping::new(
         names,
@@ -126,23 +124,20 @@ fn unavailable() -> Error {
     )
 }
 
+/// The Latin face closest to a nonsymbolic descriptor; `flags` are already
+/// normalized, so exactly one of Symbolic and Nonsymbolic is set.
 fn closest(
     document: &Document,
-    descriptor: &Dictionary,
-    id: Option<ObjectId>,
+    descriptor: Descriptor<'_>,
+    flags: FontFlags,
 ) -> Result<&'static [u8]> {
-    let flags = required(document, descriptor, b"Flags")?
-        .as_integer()
-        .and_then(|flags| u32::try_from(flags).ok())
-        .ok_or_else(|| Error::syntax("invalid font descriptor Flags"))?;
-    if flags & 4 != 0 {
+    if flags.contains(FontFlags::SYMBOLIC) {
         return Err(unavailable());
     }
-    if flags & 32 == 0 {
-        return Err(Error::syntax("font must declare Symbolic or Nonsymbolic"));
-    }
-    let italic = flags & 64 != 0 || number(document, descriptor, b"ItalicAngle", 0.0)? != 0.0;
-    let weight = weight(document, descriptor, id)?;
+    let flags = flags.bits();
+    let italic =
+        flags & 64 != 0 || number(document, descriptor.dictionary, b"ItalicAngle", 0.0)? != 0.0;
+    let weight = weight(document, descriptor.dictionary, descriptor.id)?;
     let bold = flags & 262_144 != 0 || weight >= 600.0;
     Ok(Family::from_flags(flags).canonical(bold, italic))
 }
