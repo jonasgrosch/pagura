@@ -186,12 +186,13 @@ fn convert(
     let ys = &p.row(0, y)[..p.width()];
     let cb = p.row(1, y);
     let cr = p.row(2, y);
+    let shift = repeat.trailing_zeros();
     for run in runs {
         for (group, chunk) in ys[run.clone()].chunks(8).enumerate() {
             let start = run.start + group * 8;
             let len = chunk.len();
-            let cs = start / repeat;
-            let ce = (start + len).div_ceil(repeat);
+            let cs = start >> shift;
+            let ce = (start + len + repeat - 1) >> shift;
             let out = &mut rgb[start..start + len];
             if uniform(&cb[cs..ce], 128) && uniform(&cr[cs..ce], 128) {
                 for (pixel, &v) in out.iter_mut().zip(chunk) {

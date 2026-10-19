@@ -241,17 +241,21 @@ pub fn deficits(luma: &[u8], cb: &[u8], cr: &[u8], repeat: usize, output: &mut [
     {
         return false;
     }
+    let shift = repeat.trailing_zeros();
     for (group, (ys, out)) in luma.chunks(8).zip(output.chunks_mut(8)).enumerate() {
         // Eight samples span at most eight chroma pairs; repeat divides 8.
-        let first = group * 8 / repeat;
+        let first = (group * 8) >> shift;
         let mut pairs = [[0u16; 3]; 8];
-        for (k, pair) in pairs[..ys.len().div_ceil(repeat)].iter_mut().enumerate() {
+        for (k, pair) in pairs[..(ys.len() + repeat - 1) >> shift]
+            .iter_mut()
+            .enumerate()
+        {
             let Some(colour) = Constant::new(cb[first + k], cr[first + k]) else {
                 return false;
             };
             *pair = colour.offsets;
         }
-        let offsets = std::array::from_fn(|c| std::array::from_fn(|i| pairs[i / repeat][c]));
+        let offsets = std::array::from_fn(|c| std::array::from_fn(|i| pairs[i >> shift][c]));
         let [r, g, b] = lanes(ys, offsets);
         for (i, pixel) in out.iter_mut().enumerate() {
             *pixel = [r[i], g[i], b[i], 0];

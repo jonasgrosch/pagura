@@ -79,17 +79,20 @@ impl Plane {
             + self.shortcut.capacity() * size_of::<u32>()
     }
 
-    /// Decodes block `index` of this component and stores its samples.
+    /// Decodes the block at (`row`, `column`) of this component and stores its
+    /// samples.
     pub(in crate::dct) fn decode(
         &mut self,
-        index: usize,
+        (row, column): (usize, usize),
         dc: &Huffman,
         ac: &Huffman,
         bits: &mut Bits<'_>,
         predictor: &mut i32,
         quant: &[u16; 64],
     ) -> Result<()> {
-        if index >= self.blocks {
+        let stride = self.pitch / 8;
+        let index = row * stride + column;
+        if column >= stride || index >= self.blocks {
             return Err(bits.error("JPEG block outside component"));
         }
         if self.shortcut.is_empty() {
@@ -122,8 +125,7 @@ impl Plane {
             [[constant; 8]; 8]
         };
         self.dirty[index] = 1;
-        let stride = self.pitch / 8;
-        let base = index / stride * self.pitch * 8 + index % stride * 8;
+        let base = (row * self.pitch + column) * 8;
         for (y, row) in output.iter().enumerate() {
             let start = base + y * self.pitch;
             self.samples

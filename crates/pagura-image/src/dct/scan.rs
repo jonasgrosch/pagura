@@ -140,6 +140,7 @@ impl Decoder {
         let (mut eob, mut sequence) = (0u32, 0u8);
         let idct = (!frame.progressive).then(Idct::new);
         for mcu in 0..cols * rows {
+            let (row, column) = (mcu / cols, mcu % cols);
             if mcu > 0 && self.restart != 0 && mcu % self.restart == 0 {
                 if eob != 0 {
                     return Err(bits.error("JPEG EOB run crosses restart"));
@@ -164,14 +165,15 @@ impl Decoder {
                 for y in 0..vertical {
                     for x in 0..horizontal {
                         self.work = block_work(self.work, limits)?;
-                        let index = if interleaved {
-                            (mcu / cols * c.v + y) * c.stride + mcu % cols * c.h + x
+                        let (block_row, block_column) = if interleaved {
+                            (row * c.v + y, column * c.h + x)
                         } else {
-                            mcu / cols * c.stride + mcu % cols
+                            (row, column)
                         };
+                        let index = block_row * c.stride + block_column;
                         if let Storage::Native(plane) = &mut c.storage {
                             let tables = (&self.huffman, dc, ac);
-                            let block = (index, &mut predictors[i]);
+                            let block = ((block_row, block_column), &mut predictors[i]);
                             native(plane, c.quant.as_ref(), tables, block, &mut bits)?;
                             continue;
                         }
@@ -279,12 +281,12 @@ fn entropy_bits<'a>(
     bits
 }
 
-/// Decodes block `index` of a component held in a native plane.
+/// Decodes the block at (row, column) of a component held in a native plane.
 fn native(
     plane: &mut super::deferred::Plane,
     quant: Option<&[u16; 64]>,
     (tables, dc, ac): (&[Option<Huffman>; 8], usize, usize),
-    (index, predictor): (usize, &mut i32),
+    (block, predictor): ((usize, usize), &mut i32),
     bits: &mut Bits<'_>,
 ) -> Result<()> {
     let (Some(dc), Some(ac)) = (
@@ -294,7 +296,7 @@ fn native(
         return Err(bits.error("missing JPEG Huffman table"));
     };
     let quant = quant.ok_or_else(|| bits.error("missing JPEG quantizer"))?;
-    plane.decode(index, dc, ac, bits, predictor, quant)
+    plane.decode(block, dc, ac, bits, predictor, quant)
 }
 
 /// Reconstructs a completed sequential block into its component's samples.
