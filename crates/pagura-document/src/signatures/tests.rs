@@ -139,14 +139,14 @@ fn independent_structures() {
             match &signature.results.revision_coverage {
                 RevisionCoverage::Covered { index: 0, .. } => assert!(matches!(
                     &signature.results.permitted_modifications,
-                    PermittedModifications::Analysed(ModificationAnalysis {
+                    PermittedModifications::Analyzed(ModificationAnalysis {
                         outcome: ModificationOutcome::NoChanges,
                         ..
                     })
                 )),
                 RevisionCoverage::Covered { .. } => assert!(matches!(
                     &signature.results.permitted_modifications,
-                    PermittedModifications::Analysed(_)
+                    PermittedModifications::Analyzed(_)
                 )),
                 RevisionCoverage::RepairedDocument | RevisionCoverage::Indeterminate => assert_eq!(
                     signature.results.permitted_modifications,
@@ -154,7 +154,7 @@ fn independent_structures() {
                 ),
                 _ => assert_eq!(
                     signature.results.permitted_modifications,
-                    PermittedModifications::NotAnalysedYet
+                    PermittedModifications::NotAnalyzedYet
                 ),
             }
             assert_eq!(signature.results.signer_trust, SignerTrust::NotCheckedYet);

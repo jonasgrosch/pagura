@@ -43,7 +43,7 @@ fn independent_modification_classifications() {
                     .map_or(usize::MAX, ByteRange::signed_end)
             })
             .unwrap();
-        let PermittedModifications::Analysed(analysis) = &signature.results.permitted_modifications
+        let PermittedModifications::Analyzed(analysis) = &signature.results.permitted_modifications
         else {
             assert_eq!(
                 signature.results.permitted_modifications,
@@ -257,7 +257,7 @@ fn hidden_signatures_and_inaccessible_history_remain_visible() {
             RevisionCoverage::Covered { index: 1, later_revisions, .. } if later_revisions.len() == 1));
         assert!(matches!(
             &historical.signature.results.permitted_modifications,
-            PermittedModifications::Analysed(ModificationAnalysis {
+            PermittedModifications::Analyzed(ModificationAnalysis {
                 outcome: ModificationOutcome::Disallowed,
                 ..
             })
@@ -282,7 +282,7 @@ fn hidden_signatures_and_inaccessible_history_remain_visible() {
 fn shared_rendering_uses_override_appearance_permission() {
     let doc = open("shared-appearance-content");
     let signatures = doc.signatures().unwrap();
-    let PermittedModifications::Analysed(analysis) = &signatures.fields[0]
+    let PermittedModifications::Analyzed(analysis) = &signatures.fields[0]
         .signature
         .as_ref()
         .unwrap()
@@ -367,7 +367,7 @@ fn malformed_signature_sources_are_not_deduplicated_by_missing_byte_ranges() {
             .unwrap()
             .results
             .permitted_modifications,
-        PermittedModifications::NotAnalysedYet
+        PermittedModifications::NotAnalyzedYet
     );
 }
 
@@ -383,7 +383,7 @@ fn exhausted_change_work_preserves_structural_results() {
             .unwrap()
             .results
             .permitted_modifications,
-        PermittedModifications::Analysed(ModificationAnalysis {
+        PermittedModifications::Analyzed(ModificationAnalysis {
             outcome: ModificationOutcome::Allowed,
             ..
         })
@@ -452,7 +452,7 @@ fn large_revision_roles_are_shared_and_all_signatures_survive_limits() {
             Integrity::ByteRangeCheckedCryptographyNotChecked
         );
         assert!(matches!(&signature.results.permitted_modifications,
-            PermittedModifications::Analysed(analysis) if analysis.outcome == if index == 4 {
+            PermittedModifications::Analyzed(analysis) if analysis.outcome == if index == 4 {
                 ModificationOutcome::NoChanges
             } else { ModificationOutcome::Allowed }));
     }
@@ -490,7 +490,7 @@ fn large_revision_roles_are_shared_and_all_signatures_survive_limits() {
         } else {
             assert!(matches!(
                 &signature.results.permitted_modifications,
-                PermittedModifications::Analysed(ModificationAnalysis {
+                PermittedModifications::Analyzed(ModificationAnalysis {
                     outcome: ModificationOutcome::NoChanges,
                     ..
                 })
@@ -513,7 +513,7 @@ fn a_large_form_fill_is_allowed_with_default_limits() {
         signature.results.integrity,
         Integrity::ByteRangeCheckedCryptographyNotChecked
     );
-    let PermittedModifications::Analysed(analysis) = &signature.results.permitted_modifications
+    let PermittedModifications::Analyzed(analysis) = &signature.results.permitted_modifications
     else {
         panic!("form fill must be classified");
     };
@@ -546,7 +546,7 @@ fn snapshot_work_limits_do_not_poison_a_later_analysis() {
     assert!(signatures.history_complete);
     assert!(
         matches!(&signatures.fields[0].signature.as_ref().unwrap().results.permitted_modifications,
-        PermittedModifications::Analysed(analysis) if analysis.outcome == ModificationOutcome::Allowed)
+        PermittedModifications::Analyzed(analysis) if analysis.outcome == ModificationOutcome::Allowed)
     );
 }
 
@@ -584,7 +584,7 @@ fn unrelated_invalid_slots_stay_unparsed_during_change_analysis() {
     let signatures = doc.signatures().unwrap();
     let signature = signatures.fields[0].signature.as_ref().unwrap();
     assert!(matches!(&signature.results.permitted_modifications,
-        PermittedModifications::Analysed(analysis) if analysis.outcome == ModificationOutcome::Allowed));
+        PermittedModifications::Analyzed(analysis) if analysis.outcome == ModificationOutcome::Allowed));
     for revision in 0..doc.revisions().len() {
         let snapshot = doc.revision_document(revision).unwrap();
         assert!(snapshot.slots[&ObjectId::new(99, 0)].object.get().is_none());

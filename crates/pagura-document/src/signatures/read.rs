@@ -237,7 +237,7 @@ impl<'a> Reader<'a> {
                 diagnostics: Vec::new(),
                 certificate_errors: Vec::new(),
                 revision_coverage,
-                permitted_modifications: PermittedModifications::NotAnalysedYet,
+                permitted_modifications: PermittedModifications::NotAnalyzedYet,
                 signer_trust: SignerTrust::NotCheckedYet,
                 validation_time: ValidationTime::NotCheckedYet,
                 revocation: RevocationStatus::NotCheckedYet,

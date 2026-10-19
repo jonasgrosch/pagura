@@ -39,7 +39,7 @@ fn independent_signed_pdfs() {
                 // Permitted-change analysis now runs; its cases live in the signature-changes suite.
                 assert_ne!(
                     signature.results.permitted_modifications,
-                    PermittedModifications::NotAnalysedYet,
+                    PermittedModifications::NotAnalyzedYet,
                     "{name}"
                 );
                 assert_eq!(

@@ -6,11 +6,11 @@ use pagura_core::ObjectId;
 #[non_exhaustive]
 pub enum PermittedModifications {
     /// No usable signed revision has been established.
-    NotAnalysedYet,
+    NotAnalyzedYet,
     /// Revision history or policy cannot be interpreted safely.
     Inconclusive,
     /// Object comparisons under the policy frozen at the signed revision.
-    Analysed(ModificationAnalysis),
+    Analyzed(ModificationAnalysis),
 }
 /// Overall structural result. `Allowed` is conditional on authenticating the
 /// signed bytes and transform parameters; it is never signature validity.

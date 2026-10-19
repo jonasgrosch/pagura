@@ -51,13 +51,13 @@ pub(super) fn apply(
         signature.results.permitted_modifications = match signature.results.revision_coverage {
             RevisionCoverage::Covered { index, .. } if signatures.history_complete => {
                 if index == 0 {
-                    PermittedModifications::Analysed(ModificationAnalysis {
+                    PermittedModifications::Analyzed(ModificationAnalysis {
                         signed_revision: 0,
                         revisions: Vec::new(),
                         outcome: O::NoChanges,
                     })
                 } else if let Ok((roles, updates)) = &prepared {
-                    analyse(doc, &mut ctx, signature, index, roles, updates)
+                    analyze(doc, &mut ctx, signature, index, roles, updates)
                         .unwrap_or(PermittedModifications::Inconclusive)
                 } else {
                     PermittedModifications::Inconclusive
@@ -66,7 +66,7 @@ pub(super) fn apply(
             RevisionCoverage::Covered { .. }
             | RevisionCoverage::RepairedDocument
             | RevisionCoverage::Indeterminate => PermittedModifications::Inconclusive,
-            _ => PermittedModifications::NotAnalysedYet,
+            _ => PermittedModifications::NotAnalyzedYet,
         };
     }
 }
@@ -102,7 +102,7 @@ fn prepare(
     }
     Ok((roles, updates))
 }
-fn analyse(
+fn analyze(
     doc: &Document,
     ctx: &mut Context<'_>,
     signature: &Signature<'_>,
@@ -160,7 +160,7 @@ fn analyse(
             outcome: result.outcome,
         });
     }
-    Ok(PermittedModifications::Analysed(result))
+    Ok(PermittedModifications::Analyzed(result))
 }
 fn combine(a: O, b: O) -> O {
     match (a, b) {
