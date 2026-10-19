@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     cid::CidToGidMap,
-    cmap,
+    cmap::{self, CMapRole},
     descriptor::{Descriptor, FontFlags},
     encoding::{self, BaseEncoding, SimpleMapping},
     features,
@@ -180,12 +180,10 @@ fn composite_mapping(
     let encoding = font
         .get(b"Encoding")
         .ok_or_else(|| Error::syntax("Type0 missing Encoding"))?;
-    let shared = document
-        .resolve(encoding)?
-        .as_name()
-        .is_some_and(|name| !matches!(name.as_bytes(), b"Identity-H" | b"Identity-V"));
+    // Predefined CMaps are static or provider-owned, never the font's.
+    let shared = document.resolve(encoding)?.as_name().is_some();
     Ok(Mapping::Composite {
-        map: cmap::load_with(document, encoding, false, provider)?,
+        map: cmap::load(document, encoding, CMapRole::Encoding, provider)?,
         shared,
     })
 }

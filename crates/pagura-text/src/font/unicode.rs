@@ -1,7 +1,7 @@
 //! ToUnicode maps and collection Unicode of a loaded font (9.10).
 use super::Mapping;
 use crate::{
-    cmap::{self, CMap},
+    cmap::{self, CMap, CMapRole},
     objects::{optional, required},
 };
 use pagura_core::{Dictionary, Error, Position, Result, Value};
@@ -12,7 +12,7 @@ pub(crate) fn to_unicode(
     document: &Document,
     font: &Dictionary,
     mapping: &Mapping,
-) -> Result<Option<CMap>> {
+) -> Result<Option<Arc<CMap>>> {
     let Some(value) = font.get(b"ToUnicode") else {
         return Ok(None);
     };
@@ -31,7 +31,7 @@ pub(crate) fn to_unicode_map(
     document: &Document,
     value: &Value,
     mapping: &Mapping,
-) -> Result<Option<CMap>> {
+) -> Result<Option<Arc<CMap>>> {
     to_unicode_inner(document, value, mapping).map_err(|mut error| {
         error
             .repair
@@ -40,7 +40,11 @@ pub(crate) fn to_unicode_map(
     })
 }
 
-fn to_unicode_inner(document: &Document, value: &Value, mapping: &Mapping) -> Result<Option<CMap>> {
+fn to_unicode_inner(
+    document: &Document,
+    value: &Value,
+    mapping: &Mapping,
+) -> Result<Option<Arc<CMap>>> {
     // Null dictionary values are absent, including indirect or undefined ones
     // (7.3.9-7.3.10). They require no repair in either recovery mode.
     if document.resolve(value)?.is_null() {
@@ -49,20 +53,22 @@ fn to_unicode_inner(document: &Document, value: &Value, mapping: &Mapping) -> Re
     let id = value
         .as_reference()
         .ok_or_else(|| Error::syntax("ToUnicode must be a stream reference"))?;
-    let mut map = cmap::load(document, value, true)?;
-    match mapping {
-        Mapping::Simple(_) => map.simple_compatible(
-            document,
-            Position::Stream {
-                object: id,
-                offset: 0,
-            },
-        ),
+    let map = cmap::load(document, value, CMapRole::ToUnicode, None)?;
+    let start = Position::Stream {
+        object: id,
+        offset: 0,
+    };
+    let map = match mapping {
+        Mapping::Simple(_) => map
+            .simple_compatible(document, start)
+            .map_err(|e| e.in_object(id))?
+            .map_or(map, Arc::new),
         Mapping::Composite { map: encoding, .. } => {
-            map.consistent_with(encoding, document.limits())
+            map.consistent_with(encoding, &document.limits())
+                .map_err(|e| e.in_object(id))?;
+            map
         }
-    }
-    .map_err(|e| e.in_object(id))?;
+    };
     Ok(Some(map))
 }
 
@@ -87,9 +93,9 @@ fn collection<'a>(
     mapping: &'a Mapping,
 ) -> Result<Option<(&'a [u8], &'a [u8])>> {
     if let Mapping::Composite { map, .. } = mapping
-        && let (Some(registry), Some(ordering)) = (&map.registry, &map.ordering)
+        && let Some(collection) = map.collection()
     {
-        return Ok(Some((registry.as_bytes(), ordering.as_bytes())));
+        return Ok(Some(collection));
     }
     cid_collection(document, font)
 }

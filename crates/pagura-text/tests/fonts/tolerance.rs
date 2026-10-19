@@ -121,7 +121,7 @@ fn oversized_cmap_blocks_remain_bounded() -> Result<()> {
         fixture("text", "repair-cmap-block-count.pdf"),
         &OpenOptions {
             limits: Limits {
-                value_nodes: 100,
+                font_entries: 100,
                 ..Limits::default()
             },
             ..OpenOptions::default()
