@@ -1,6 +1,7 @@
 //! CFF DICT evaluation (TN 5176 section 4); CFF2 extensions await primary review.
 use crate::budget::Work;
-use crate::read::{limit, syntax};
+use crate::charstring::{Operands, integer, shared_number};
+use crate::read::syntax;
 use crate::repairs;
 use pagura_core::bytes::Cursor;
 use pagura_core::{Position, Result};
@@ -60,25 +61,31 @@ struct Entry {
 }
 
 impl Dict {
-    pub(super) fn parse(mut r: Cursor<'_>, kind: Kind<'_>, work: &mut Work<'_>) -> Result<Self> {
+    pub(super) fn parse(r: Cursor<'_>, kind: Kind<'_>, work: &mut Work<'_>) -> Result<Self> {
+        match kind {
+            Kind::Cff => Self::parse_with::<MAX_OPERANDS>(r, kind, work),
+            Kind::Cff2 | Kind::Cff2Private(_) => {
+                Self::parse_with::<MAX_CFF2_OPERANDS>(r, kind, work)
+            }
+        }
+    }
+
+    fn parse_with<const N: usize>(
+        mut r: Cursor<'_>,
+        kind: Kind<'_>,
+        work: &mut Work<'_>,
+    ) -> Result<Self> {
         let start = r.position();
-        let ceiling = match kind {
-            Kind::Cff => MAX_OPERANDS,
-            Kind::Cff2 | Kind::Cff2Private(_) => MAX_CFF2_OPERANDS,
-        };
         let mut entries = BTreeMap::new();
         let mut blue_order_fault = None;
-        let mut stack = Vec::new();
+        let mut stack = Operands::<N>::new();
         let mut vsindex = 0;
         while !r.at_end() {
             let at = r.position();
             work.work(1, at)?;
             let byte = r.u8()?;
             if byte >= SHORT_INT {
-                if stack.len() == ceiling {
-                    return Err(syntax(at, "operand stack exceeds the format limit"));
-                }
-                stack.push(number(byte, &mut r, at)?);
+                stack.push(number(byte, &mut r, at)?, at)?;
                 continue;
             }
             let op = if byte == ESCAPE {
@@ -100,13 +107,11 @@ impl Dict {
                     continue;
                 }
                 if op == Operator::BLEND {
-                    let count = stack
-                        .pop()
-                        .ok_or_else(|| syntax(at, "missing CFF2 DICT blend count"))?;
+                    let count = integer(stack.pop(at)?, at)?;
                     let coefficients = variations
                         .get(vsindex)
                         .ok_or_else(|| syntax(at, "missing CFF2 DICT variation data"))?;
-                    blend(&mut stack, integer(count, at)?, coefficients, at)?;
+                    stack.blend(count, coefficients, at)?;
                     continue;
                 }
             }
@@ -179,71 +184,10 @@ impl Dict {
     }
 }
 
-fn entry(stack: &mut Vec<f64>, at: Position) -> Entry {
-    Entry {
-        values: std::mem::take(stack),
-        at,
-    }
-}
-
-/// Replaces the top `count × (1 + coefficients)` operands with `count`
-/// blended values: each default value plus its deltas weighted by the
-/// region scalars (OpenType CFF2 `blend`). DICT delta-encoded arrays are
-/// accumulated by their consumers, after blending.
-pub(super) fn blend(
-    stack: &mut Vec<f64>,
-    count: usize,
-    coefficients: &[f64],
-    at: Position,
-) -> Result<()> {
-    let size = count
-        .checked_mul(coefficients.len() + 1)
-        .ok_or_else(|| limit(at, "CFF2 blend operand count overflow"))?;
-    if count == 0 || size > stack.len() {
-        return Err(syntax(at, "invalid CFF2 blend operands"));
-    }
-    let start = stack.len() - size;
-    let (defaults, deltas) = stack[start..].split_at_mut(count);
-    for (value, deltas) in defaults
-        .iter_mut()
-        .zip(deltas.chunks_exact(coefficients.len().max(1)))
-    {
-        let blended = coefficients
-            .iter()
-            .zip(deltas)
-            .fold(*value, |sum, (k, delta)| sum + k * delta);
-        if !blended.is_finite() {
-            return Err(syntax(at, "nonfinite CFF2 blend result"));
-        }
-        *value = blended;
-    }
-    stack.truncate(start + count);
-    Ok(())
-}
-
-/// A nonnegative integral operand used as an index, count or offset.
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "the value is checked to be an integral u32 first"
-)]
-pub(super) fn integer(n: f64, at: Position) -> Result<usize> {
-    if !n.is_finite() || n < 0.0 || n > f64::from(u32::MAX) || n.fract() != 0.0 {
-        return Err(syntax(at, "invalid charstring integer"));
-    }
-    Ok(pagura_core::convert::u32_to_usize(n as u32))
-}
-
-/// Decodes the number encodings that Type 2 charstrings and DICT data
-/// share, introduced by `byte` in 32..=254 (TN 5177 3.2; TN 5176 Table 3).
-/// Other bytes are format-specific and yield `None`.
-pub(super) fn shared_number(byte: u8, cursor: &mut Cursor<'_>) -> Result<Option<f64>> {
-    Ok(Some(match byte {
-        32..=246 => f64::from(i16::from(byte) - 139),
-        247..=250 => f64::from((u16::from(byte) - 247) * 256 + u16::from(cursor.u8()?) + 108),
-        251..=254 => -f64::from((u16::from(byte) - 251) * 256 + u16::from(cursor.u8()?) + 108),
-        _ => return Ok(None),
-    }))
+fn entry<const N: usize>(stack: &mut Operands<N>, at: Position) -> Entry {
+    let values = stack.as_slice().to_vec();
+    stack.clear();
+    Entry { values, at }
 }
 
 fn number(byte: u8, r: &mut Cursor<'_>, at: Position) -> Result<f64> {

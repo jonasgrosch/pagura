@@ -3,12 +3,14 @@
 use super::Type1;
 use crate::budget::Work;
 use crate::cff::strings;
-use crate::read::{limit, syntax, unsupported};
+use crate::charstring::{Flow, Operands, integer, shared_number};
+use crate::outline::{Pen, finite};
+use crate::read::{syntax, unsupported};
 use crate::{GlyphId, features, repairs};
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Position, Result};
-use pagura_raster::{Path, PathBuilder, Point, Segment, Transform};
+use pagura_raster::{Path, Point, Transform};
 
 mod operator;
 use operator::{Escape, Operator};
@@ -31,212 +33,317 @@ const FLEX_POINT: usize = 2;
 const HINT_REPLACEMENT: usize = 3;
 const FLEX_POINTS: usize = 7;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Mode {
+    Outline,
+    Width,
+}
+
+/// One glyph's outline, advance width and side-bearing point.
+struct Glyph {
+    path: Path,
+    width: f64,
+    bearing: Point,
+}
+
+/// The operands of `seac` (Type 1 6.4).
+#[derive(Debug, Clone, Copy)]
+struct Seac {
+    asb: f64,
+    dx: f64,
+    dy: f64,
+    base: f64,
+    accent: f64,
+}
+
+/// The points collected by a flex in progress (Type 1 8.3).
+#[derive(Debug, Clone, Copy, Default)]
+struct Flex {
+    points: [Point; FLEX_POINTS],
+    len: usize,
+}
+
 struct State {
-    stack: Vec<f64>,
-    results: Vec<f64>,
-    path: PathBuilder,
+    operands: Operands<MAX_OPERANDS>,
+    results: Operands<MAX_OPERANDS>,
+    pen: Pen,
     point: Point,
     width: Option<f64>,
     bearing: Point,
-    open: bool,
-    seac: Option<[f64; 5]>,
-    flex: Option<Vec<Point>>,
-    /// A repair ended the glyph before its end.
-    stopped: bool,
+    seac: Option<Seac>,
+    flex: Option<Flex>,
 }
-#[derive(PartialEq)]
-enum Flow {
-    Return,
-    End,
+
+struct Run<'r, 'w> {
+    font: &'r Type1,
+    work: &'r mut Work<'w>,
+    mode: Mode,
+    /// A repair or a width request ended the glyph before its end.
+    stopped: bool,
 }
 
 pub(super) fn outline(font: &Type1, glyph: GlyphId, work: &mut Work<'_>) -> Result<Path> {
-    Ok(load(font, glyph, 0, work)?.0)
+    run(font, glyph, Mode::Outline, work).map(|g| g.path)
 }
 
-/// The glyph's width, from the whole interpreted glyph.
 pub(super) fn advance(font: &Type1, glyph: GlyphId, work: &mut Work<'_>) -> Result<f64> {
-    Ok(load(font, glyph, 0, work)?.1)
+    run(font, glyph, Mode::Width, work).map(|g| g.width)
 }
 
-fn load(
-    font: &Type1,
-    glyph: GlyphId,
-    depth: usize,
-    work: &mut Work<'_>,
-) -> Result<(Path, f64, Point)> {
-    let charstring = font
-        .glyphs
-        .get(u32_to_usize(glyph.0))
-        .ok_or_else(|| syntax(Position::Unknown, "glyph index outside Type 1 font"))?;
-    let r = charstring.cursor();
-    let (start, end) = (r.position(), Position::Buffer(charstring.end()));
-    work.depth(depth, usize::MAX, start)?;
-    let mut s = State {
-        stack: Vec::new(),
-        results: Vec::new(),
-        path: PathBuilder::new(),
-        point: Point::default(),
-        width: None,
-        bearing: Point::default(),
-        open: false,
-        seac: None,
-        flex: None,
+fn run(font: &Type1, glyph: GlyphId, mode: Mode, work: &mut Work<'_>) -> Result<Glyph> {
+    Run {
+        font,
+        work,
+        mode,
         stopped: false,
-    };
-    run(font, r, 0, &mut s, work)?;
-    if s.flex.is_some() {
-        return Err(syntax(start, "unterminated Type 1 flex"));
     }
-    s.close(work, end)?;
-    if let Some([asb, dx, dy, base, accent]) = s.seac {
-        if depth != 0 {
-            return Err(syntax(start, "nested Type 1 seac composite"));
+    .load(glyph, 0)
+}
+
+impl Run<'_, '_> {
+    fn load(&mut self, glyph: GlyphId, depth: usize) -> Result<Glyph> {
+        let charstring = self
+            .font
+            .glyphs
+            .get(u32_to_usize(glyph.0))
+            .ok_or_else(|| syntax(Position::Unknown, "glyph index outside Type 1 font"))?;
+        let r = charstring.cursor();
+        let (start, end) = (r.position(), Position::Buffer(charstring.end()));
+        self.work.depth(depth, usize::MAX, start)?;
+        let mut s = State {
+            operands: Operands::new(),
+            results: Operands::new(),
+            pen: Pen::new(),
+            point: Point::default(),
+            width: None,
+            bearing: Point::default(),
+            seac: None,
+            flex: None,
+        };
+        self.charstring(r, 0, &mut s)?;
+        if s.flex.is_some() {
+            return Err(syntax(start, "unterminated Type 1 flex"));
         }
-        for (code, transform, is_base) in [
-            (base, Transform::IDENTITY, true),
-            (accent, Transform::translate(dx, dy), false),
-        ] {
-            let code = u8::try_from(integer(code, start)?)
-                .map_err(|_| syntax(start, "invalid Type 1 seac code"))?;
-            let name = strings::standard(code)
-                .ok_or_else(|| syntax(start, "undefined Type 1 seac code"))?;
-            let glyph = font
-                .name(name.as_bytes())
-                .ok_or_else(|| syntax(start, "missing Type 1 seac component"))?;
-            let (path, width, bearing) = load(font, glyph, depth + 1, work)?;
-            // Components already include their side bearings, so the
-            // accent origin moves by (adx, ady) only (Type 1 3.1, 6.4).
-            if is_base && (Some(width) != s.width || bearing != s.bearing)
-                || !is_base && bearing.x != asb
-            {
-                return Err(syntax(start, "inconsistent Type 1 seac metrics"));
+        let width = s
+            .width
+            .ok_or_else(|| syntax(start, "Type 1 charstring has no width"))?;
+        if self.mode == Mode::Width {
+            return Ok(Glyph {
+                path: Path::default(),
+                width,
+                bearing: s.bearing,
+            });
+        }
+        s.pen.close(self.work, end)?;
+        if let Some(seac) = s.seac {
+            if depth != 0 {
+                return Err(syntax(start, "nested Type 1 seac composite"));
             }
-            for &segment in path.segments() {
-                work.segments(1, start)?;
-                match segment {
-                    Segment::MoveTo(p) => {
-                        s.path.move_to(transform.apply(p));
-                    }
-                    Segment::LineTo(p) => {
-                        s.path
-                            .line_to(transform.apply(p))
-                            .map_err(|_| syntax(start, "invalid seac path"))?;
-                    }
-                    Segment::CubicTo {
-                        c1: a,
-                        c2: b,
-                        end: c,
-                    } => {
-                        s.path
-                            .cubic_to(transform.apply(a), transform.apply(b), transform.apply(c))
-                            .map_err(|_| syntax(start, "invalid seac path"))?;
-                    }
-                    Segment::Close => {
-                        s.path.close();
+            for (code, transform, base) in [
+                (seac.base, Transform::IDENTITY, true),
+                (seac.accent, Transform::translate(seac.dx, seac.dy), false),
+            ] {
+                let code = u8::try_from(integer(code, start)?)
+                    .map_err(|_| syntax(start, "invalid Type 1 seac code"))?;
+                let name = strings::standard(code)
+                    .ok_or_else(|| syntax(start, "undefined Type 1 seac code"))?;
+                let component = self
+                    .font
+                    .name(name.as_bytes())
+                    .ok_or_else(|| syntax(start, "missing Type 1 seac component"))?;
+                let component = self.load(component, depth + 1)?;
+                // Components already include their side bearings, so the
+                // accent origin moves by (adx, ady) only (Type 1 3.1, 6.4).
+                let consistent = if base {
+                    component.width == width && component.bearing == s.bearing
+                } else {
+                    component.bearing.x == seac.asb
+                };
+                if !consistent {
+                    return Err(syntax(start, "inconsistent Type 1 seac metrics"));
+                }
+                s.pen.append(self.work, &component.path, transform, start)?;
+            }
+        }
+        Ok(Glyph {
+            path: s.pen.finish(Transform::IDENTITY, start)?,
+            width,
+            bearing: s.bearing,
+        })
+    }
+
+    fn charstring(&mut self, mut r: Cursor<'_>, depth: usize, s: &mut State) -> Result<Flow> {
+        self.work.depth(depth, MAX_SUBR_DEPTH, r.position())?;
+        while !r.at_end() {
+            let at = r.position();
+            self.work.work(1, at)?;
+            let byte = r.u8()?;
+            if byte >= 32 {
+                let n = match shared_number(byte, &mut r)? {
+                    Some(n) => n,
+                    None if byte == LONG_INT => f64::from(r.i32()?),
+                    None => return Err(syntax(at, "invalid Type 1 number")),
+                };
+                s.operands.push(n, at)?;
+                continue;
+            }
+            if s.width.is_none() && !matches!(byte, CALLSUBR | ESCAPE | HSBW) {
+                return Err(syntax(at, "Type 1 width must precede outline operators"));
+            }
+            if byte != ESCAPE || r.rest().first() != Some(&POP) {
+                s.results.clear();
+            }
+            let op = Operator::try_from(byte)
+                .map_err(|_| syntax(at, "invalid Type 1 charstring operator"))?;
+            match op {
+                Operator::Hstem | Operator::Vstem => {
+                    s.operands.exactly(2, at)?;
+                    s.operands.clear();
+                }
+                Operator::Vmoveto | Operator::Rmoveto | Operator::Hmoveto => {
+                    let (dx, dy) = match (op, s.operands.as_slice()) {
+                        (Operator::Vmoveto, &[dy]) => (0.0, dy),
+                        (Operator::Hmoveto, &[dx]) => (dx, 0.0),
+                        (Operator::Rmoveto, &[dx, dy]) => (dx, dy),
+                        _ => return Err(syntax(at, "invalid Type 1 operand count")),
+                    };
+                    s.operands.clear();
+                    s.move_to(dx, dy, self.work, at)?;
+                }
+                Operator::Closepath => {
+                    s.operands.exactly(0, at)?;
+                    s.pen.close(self.work, at)?;
+                }
+                Operator::Callsubr => {
+                    let index = integer(s.operands.pop(at)?, at)?;
+                    let subr = self
+                        .font
+                        .subrs
+                        .get(index)
+                        .ok_or_else(|| syntax(at, "Type 1 subroutine index out of range"))?;
+                    if self.charstring(subr.cursor(), depth + 1, s)? == Flow::End {
+                        return self.end(&r, "data after Type 1 character end");
                     }
                 }
+                Operator::Return => {
+                    if depth == 0 {
+                        return Err(syntax(at, "Type 1 return outside subroutine"));
+                    }
+                    return Ok(Flow::Return);
+                }
+                Operator::Escape => {
+                    let escape = Escape::try_from(r.u8()?);
+                    if s.width.is_none() && !matches!(escape, Ok(Escape::Sbw | Escape::Div)) {
+                        return Err(syntax(at, "Type 1 width must be the first command"));
+                    }
+                    let Ok(escape) = escape else {
+                        self.work.repair(
+                            repairs::CHARSTRING_OPERATOR,
+                            "unknown escaped Type 1 operator ends glyph",
+                            self.font.input(at),
+                        )?;
+                        s.operands.clear();
+                        self.stopped = true;
+                        return Ok(Flow::End);
+                    };
+                    if self.escape(escape, s, at)? {
+                        return self.end(&r, "data after Type 1 seac");
+                    }
+                }
+                Operator::Hsbw => {
+                    let &[sbx, wx] = s.operands.exactly(2, at)? else {
+                        return Err(syntax(at, "invalid Type 1 operand count"));
+                    };
+                    s.set_width(Point::new(sbx, 0.0), wx, at)?;
+                }
+                Operator::Endchar => {
+                    s.operands.exactly(0, at)?;
+                    return self.end(&r, "data after Type 1 endchar");
+                }
+                _ => {
+                    s.draw(op, self.work, at)?;
+                    s.operands.clear();
+                }
+            }
+            if self.mode == Mode::Width && s.width.is_some() {
+                self.stopped = true;
+                return Ok(Flow::End);
             }
         }
+        Err(r.error("unterminated Type 1 charstring"))
     }
-    Ok((
-        s.path.finish(),
-        s.width
-            .ok_or_else(|| syntax(start, "Type 1 charstring has no width"))?,
-        s.bearing,
-    ))
-}
-/// A nonnegative integral operand used as an index, count or offset.
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "the value is checked to be an integral u32"
-)]
-fn integer(n: f64, at: Position) -> Result<usize> {
-    if !n.is_finite() || n < 0.0 || n > f64::from(u32::MAX) || n.fract() != 0.0 {
-        return Err(syntax(at, "invalid charstring integer"));
+
+    /// The end of the glyph: nothing may follow unless a repair stopped it.
+    fn end(&self, r: &Cursor<'_>, message: &'static str) -> Result<Flow> {
+        if !self.stopped && !r.at_end() {
+            return Err(r.error(message));
+        }
+        Ok(Flow::End)
     }
-    usize::try_from(n as u32).map_err(|_| limit(at, "charstring integer overflow"))
+
+    /// An escaped command; `true` if it ends the glyph (`seac`).
+    fn escape(&mut self, op: Escape, s: &mut State, at: Position) -> Result<bool> {
+        match op {
+            Escape::Dotsection => {
+                s.operands.exactly(0, at)?; // Dotsection affects hints only.
+            }
+            Escape::Vstem3 | Escape::Hstem3 => {
+                s.operands.exactly(6, at)?;
+                s.operands.clear();
+            }
+            Escape::Seac => {
+                let &[asb, dx, dy, base, accent] = s.operands.exactly(5, at)? else {
+                    return Err(syntax(at, "invalid Type 1 operand count"));
+                };
+                s.seac = Some(Seac {
+                    asb,
+                    dx,
+                    dy,
+                    base,
+                    accent,
+                });
+                s.operands.clear();
+                return Ok(true);
+            }
+            Escape::Sbw => {
+                let &[sbx, sby, wx, wy] = s.operands.exactly(4, at)? else {
+                    return Err(syntax(at, "invalid Type 1 operand count"));
+                };
+                if s.width.is_some() {
+                    return Err(syntax(at, "duplicate Type 1 width"));
+                }
+                if wy != 0.0 {
+                    return Err(unsupported(
+                        features::TYPE1_POSTSCRIPT,
+                        at,
+                        "nonhorizontal Type 1 advance is not implemented",
+                    ));
+                }
+                s.set_width(Point::new(sbx, sby), wx, at)?;
+            }
+            Escape::Div => {
+                let b = s.operands.pop(at)?;
+                let a = s.operands.pop(at)?;
+                s.operands.push(a / b, at)?;
+            }
+            Escape::Callothersubr => s.othersubr(self.work, at)?,
+            Escape::Pop => {
+                let value = s.results.pop(at)?;
+                s.operands.push(value, at)?;
+            }
+            Escape::Setcurrentpoint => {
+                let &[x, y] = s.operands.exactly(2, at)? else {
+                    return Err(syntax(at, "invalid Type 1 operand count"));
+                };
+                s.point = Point::new(x, y);
+                s.operands.clear();
+            }
+        }
+        Ok(false)
+    }
 }
+
 impl State {
-    fn pop(&mut self, at: Position) -> Result<f64> {
-        self.stack
-            .pop()
-            .ok_or_else(|| syntax(at, "Type 1 stack underflow"))
-    }
-    fn count(&self, n: usize, at: Position) -> Result<()> {
-        if self.stack.len() == n {
-            Ok(())
-        } else {
-            Err(syntax(at, "invalid Type 1 operand count"))
-        }
-    }
-    fn close(&mut self, w: &mut Work<'_>, at: Position) -> Result<()> {
-        if self.open {
-            w.segments(1, at)?;
-            self.path.close();
-            self.open = false;
-        }
-        Ok(())
-    }
-    fn relative(&mut self, dx: f64, dy: f64, at: Position) -> Result<Point> {
-        self.point.x += dx;
-        self.point.y += dy;
-        if !self.point.is_finite() {
-            return Err(syntax(at, "nonfinite Type 1 coordinate"));
-        }
-        Ok(self.point)
-    }
-    fn moveto(&mut self, dx: f64, dy: f64, w: &mut Work<'_>, at: Position) -> Result<()> {
-        let p = self.relative(dx, dy, at)?;
-        // During flex, moves only collect points (Type 1 8.3).
-        if self.flex.is_none() {
-            self.close(w, at)?;
-            w.segments(1, at)?;
-            self.path.move_to(p);
-            self.open = true;
-        }
-        Ok(())
-    }
-    // Type 1 6.4 keeps the charstring current point across closepath.
-    // PathBuilder uses PDF close semantics, so a resumed contour must
-    // explicitly begin at the retained Type 1 point.
-    fn resume(&mut self, w: &mut Work<'_>, at: Position) -> Result<()> {
-        if self.flex.is_some() || self.path.current_point().is_none() {
-            return Err(syntax(at, "Type 1 drawing without a current path"));
-        }
-        if !self.open {
-            w.segments(1, at)?;
-            self.path.move_to(self.point);
-            self.open = true;
-        }
-        Ok(())
-    }
-    fn line(&mut self, dx: f64, dy: f64, w: &mut Work<'_>, at: Position) -> Result<()> {
-        self.resume(w, at)?;
-        let p = self.relative(dx, dy, at)?;
-        w.segments(1, at)?;
-        self.path
-            .line_to(p)
-            .map_err(|_| syntax(at, "Type 1 line before moveto"))?;
-        Ok(())
-    }
-    fn curve(
-        &mut self,
-        [dxa, dya, dxb, dyb, dxc, dyc]: [f64; 6],
-        w: &mut Work<'_>,
-        at: Position,
-    ) -> Result<()> {
-        self.resume(w, at)?;
-        let a = self.relative(dxa, dya, at)?;
-        let b = self.relative(dxb, dyb, at)?;
-        let c = self.relative(dxc, dyc, at)?;
-        w.segments(1, at)?;
-        self.path
-            .cubic_to(a, b, c)
-            .map_err(|_| syntax(at, "Type 1 curve before moveto"))?;
-        Ok(())
-    }
     fn set_width(&mut self, bearing: Point, width: f64, at: Position) -> Result<()> {
         if self.width.is_some() {
             return Err(syntax(at, "duplicate Type 1 width"));
@@ -244,257 +351,137 @@ impl State {
         self.point = bearing;
         self.bearing = bearing;
         self.width = Some(width);
-        self.stack.clear();
+        self.operands.clear();
         Ok(())
     }
-}
-fn run(
-    font: &Type1,
-    mut r: Cursor<'_>,
-    depth: usize,
-    s: &mut State,
-    w: &mut Work<'_>,
-) -> Result<Flow> {
-    w.depth(depth, MAX_SUBR_DEPTH, r.position())?;
-    while !r.at_end() {
-        let at = r.position();
-        w.work(1, at)?;
-        let byte = r.u8()?;
-        if byte >= 32 {
-            if s.stack.len() == MAX_OPERANDS {
-                return Err(syntax(at, "operand stack exceeds the format limit"));
-            }
-            let n = match byte {
-                LONG_INT => f64::from(r.i32()?),
-                247..=250 => f64::from((u16::from(byte) - 247) * 256 + u16::from(r.u8()?) + 108),
-                251..=254 => -f64::from((u16::from(byte) - 251) * 256 + u16::from(r.u8()?) + 108),
-                _ => f64::from(i16::from(byte) - 139),
-            };
-            s.stack.push(n);
-            continue;
+
+    fn relative(&mut self, dx: f64, dy: f64, at: Position) -> Result<Point> {
+        self.point = Point::new(self.point.x + dx, self.point.y + dy);
+        finite(self.point, at)?;
+        Ok(self.point)
+    }
+
+    fn move_to(&mut self, dx: f64, dy: f64, work: &mut Work<'_>, at: Position) -> Result<()> {
+        let to = self.relative(dx, dy, at)?;
+        // During flex, moves only collect points (Type 1 8.3).
+        if self.flex.is_none() {
+            self.pen.move_to(work, to, at)?;
         }
-        if s.width.is_none() && !matches!(byte, CALLSUBR | ESCAPE | HSBW) {
-            return Err(syntax(at, "Type 1 width must precede outline operators"));
+        Ok(())
+    }
+
+    // Type 1 6.4 keeps the charstring current point across closepath.
+    // PathBuilder uses PDF close semantics, so a resumed contour must
+    // explicitly begin at the retained Type 1 point.
+    fn resume(&mut self, work: &mut Work<'_>, at: Position) -> Result<()> {
+        if self.flex.is_some() || self.pen.current().is_none() {
+            return Err(syntax(at, "Type 1 drawing without a current path"));
         }
-        if byte != ESCAPE || r.rest().first() != Some(&POP) {
-            s.results.clear();
+        if !self.pen.is_open() {
+            self.pen.move_to(work, self.point, at)?;
         }
-        let op = Operator::try_from(byte)
-            .map_err(|_| syntax(at, "invalid Type 1 charstring operator"))?;
-        match op {
-            Operator::Hstem | Operator::Vstem => {
-                s.count(2, at)?;
-                s.stack.clear();
+        Ok(())
+    }
+
+    fn line(&mut self, dx: f64, dy: f64, work: &mut Work<'_>, at: Position) -> Result<()> {
+        self.resume(work, at)?;
+        let to = self.relative(dx, dy, at)?;
+        self.pen.line_to(work, to, at)
+    }
+
+    fn curve(
+        &mut self,
+        [dxa, dya, dxb, dyb, dxc, dyc]: [f64; 6],
+        work: &mut Work<'_>,
+        at: Position,
+    ) -> Result<()> {
+        self.resume(work, at)?;
+        let points = [
+            self.relative(dxa, dya, at)?,
+            self.relative(dxb, dyb, at)?,
+            self.relative(dxc, dyc, at)?,
+        ];
+        self.pen.cubic_to(work, points, at)
+    }
+
+    fn draw(&mut self, op: Operator, work: &mut Work<'_>, at: Position) -> Result<()> {
+        let curve = match (op, self.operands.as_slice()) {
+            (Operator::Rlineto, &[dx, dy]) => return self.line(dx, dy, work, at),
+            (Operator::Hlineto, &[dx]) => return self.line(dx, 0.0, work, at),
+            (Operator::Vlineto, &[dy]) => return self.line(0.0, dy, work, at),
+            (Operator::Rrcurveto, &[a, b, c, d, e, f]) => [a, b, c, d, e, f],
+            (Operator::Vhcurveto, &[a, b, c, d]) => [0.0, a, b, c, d, 0.0],
+            (Operator::Hvcurveto, &[a, b, c, d]) => [a, 0.0, b, c, 0.0, d],
+            _ => return Err(syntax(at, "invalid Type 1 drawing operands")),
+        };
+        self.curve(curve, work, at)
+    }
+
+    /// `callothersubr`: the standard flex and hint-replacement OtherSubrs,
+    /// and chapter 8's argument fallback for the others.
+    fn othersubr(&mut self, work: &mut Work<'_>, at: Position) -> Result<()> {
+        let subr = integer(self.operands.pop(at)?, at)?;
+        let count = integer(self.operands.pop(at)?, at)?;
+        let split = self
+            .operands
+            .len()
+            .checked_sub(count)
+            .ok_or_else(|| syntax(at, "Type 1 othersubr stack underflow"))?;
+        let args = self
+            .operands
+            .as_slice()
+            .get(split..)
+            .unwrap_or_default()
+            .to_vec();
+        self.operands.truncate(split);
+        match (subr, args.as_slice()) {
+            (FLEX_START, []) => {
+                if self.flex.is_some() {
+                    return Err(syntax(at, "nested Type 1 flex"));
+                }
+                self.flex = Some(Flex::default());
             }
-            Operator::Vmoveto | Operator::Rmoveto | Operator::Hmoveto => {
-                let (dx, dy) = match (op, s.stack.as_slice()) {
-                    (Operator::Vmoveto, &[dy]) => (0.0, dy),
-                    (Operator::Hmoveto, &[dx]) => (dx, 0.0),
-                    (Operator::Rmoveto, &[dx, dy]) => (dx, dy),
-                    _ => return Err(syntax(at, "invalid Type 1 operand count")),
-                };
-                s.stack.clear();
-                s.moveto(dx, dy, w, at)?;
+            (FLEX_POINT, []) => {
+                let flex = self
+                    .flex
+                    .as_mut()
+                    .ok_or_else(|| syntax(at, "Type 1 flex point without flex start"))?;
+                *flex
+                    .points
+                    .get_mut(flex.len)
+                    .ok_or_else(|| syntax(at, "Type 1 flex has more than seven points"))? =
+                    self.point;
+                flex.len += 1;
             }
-            Operator::Closepath => {
-                s.count(0, at)?;
-                s.close(w, at)?;
+            (FLEX_END, &[_, x, y]) => {
+                let flex = self
+                    .flex
+                    .take()
+                    .ok_or_else(|| syntax(at, "Type 1 flex end without start"))?;
+                let [_reference, a, b, c, d, e, f] = flex.points;
+                if flex.len != FLEX_POINTS {
+                    return Err(syntax(at, "Type 1 flex needs seven points"));
+                }
+                self.pen.cubic_to(work, [a, b, c], at)?;
+                self.pen.cubic_to(work, [d, e, f], at)?;
+                self.results.push(y, at)?;
+                self.results.push(x, at)?;
             }
-            Operator::Callsubr => {
-                let index = integer(s.pop(at)?, at)?;
-                let subr = font
-                    .subrs
-                    .get(index)
-                    .ok_or_else(|| syntax(at, "Type 1 subroutine index out of range"))?;
-                if run(font, subr.cursor(), depth + 1, s, w)? == Flow::End {
-                    if !s.stopped && !r.at_end() {
-                        return Err(r.error("data after Type 1 character end"));
-                    }
-                    return Ok(Flow::End);
+            // Hint replacement returns the subroutine number.
+            (HINT_REPLACEMENT, &[number]) => self.results.push(number, at)?,
+            (FLEX_END..=HINT_REPLACEMENT, _) => {
+                return Err(syntax(at, "invalid standard Type 1 OtherSubr arguments"));
+            }
+            // Type 1 chapter 8 fallback: the arguments return in order,
+            // arg1 popped first.
+            _ => {
+                for &value in args.iter().rev() {
+                    self.results.push(value, at)?;
                 }
             }
-            Operator::Return => {
-                if depth == 0 {
-                    return Err(syntax(at, "Type 1 return outside subroutine"));
-                }
-                return Ok(Flow::Return);
-            }
-            Operator::Escape => {
-                if escape(font, r.u8()?, s, w, at)? {
-                    if !s.stopped && !r.at_end() {
-                        return Err(r.error("data after Type 1 seac"));
-                    }
-                    return Ok(Flow::End);
-                }
-            }
-            Operator::Hsbw => {
-                let &[sbx, wx] = s.stack.as_slice() else {
-                    return Err(syntax(at, "invalid Type 1 operand count"));
-                };
-                s.set_width(Point::new(sbx, 0.0), wx, at)?;
-            }
-            Operator::Endchar => {
-                s.count(0, at)?;
-                if !s.stopped && !r.at_end() {
-                    return Err(r.error("data after Type 1 endchar"));
-                }
-                return Ok(Flow::End);
-            }
-            _ => draw(op, s, w, at)?,
         }
-        if s.stack.len() > MAX_OPERANDS {
-            return Err(syntax(at, "operand stack exceeds the format limit"));
-        }
-        // Finite operands are an invariant: arithmetic writes only the top
-        // operand, and blend validates every value it writes in place.
-        if s.stack.last().is_some_and(|n| !n.is_finite()) {
-            return Err(syntax(at, "nonfinite Type 1 operand"));
-        }
+        Ok(())
     }
-    Err(r.error("unterminated Type 1 charstring"))
-}
-fn draw(op: Operator, s: &mut State, w: &mut Work<'_>, at: Position) -> Result<()> {
-    let args = std::mem::take(&mut s.stack);
-    let curve = match (op, args.as_slice()) {
-        (Operator::Rlineto, &[dx, dy]) => return s.line(dx, dy, w, at),
-        (Operator::Hlineto, &[dx]) => return s.line(dx, 0.0, w, at),
-        (Operator::Vlineto, &[dy]) => return s.line(0.0, dy, w, at),
-        (Operator::Rrcurveto, &[a, b, c, d, e, f]) => [a, b, c, d, e, f],
-        (Operator::Vhcurveto, &[a, b, c, d]) => [0.0, a, b, c, d, 0.0],
-        (Operator::Hvcurveto, &[a, b, c, d]) => [a, 0.0, b, c, 0.0, d],
-        _ => return Err(syntax(at, "invalid Type 1 drawing operands")),
-    };
-    s.curve(curve, w, at)
-}
-/// An escaped command; `true` if it ends the glyph (`seac`, or an unknown
-/// command, which ends it as a reported repair).
-fn escape(font: &Type1, code: u8, s: &mut State, w: &mut Work<'_>, at: Position) -> Result<bool> {
-    let op = Escape::try_from(code);
-    if s.width.is_none() && !matches!(op, Ok(Escape::Sbw | Escape::Div)) {
-        return Err(syntax(at, "Type 1 width must be the first command"));
-    }
-    let Ok(op) = op else {
-        w.repair(
-            repairs::CHARSTRING_OPERATOR,
-            "unknown escaped Type 1 operator ends glyph",
-            font.input(at),
-        )?;
-        s.stack.clear();
-        s.stopped = true;
-        return Ok(true);
-    };
-    match op {
-        Escape::Dotsection => s.count(0, at)?, // Dotsection affects hints only.
-        Escape::Vstem3 | Escape::Hstem3 => {
-            s.count(6, at)?;
-            s.stack.clear();
-        }
-        Escape::Seac => {
-            let &[asb, dx, dy, base, accent] = s.stack.as_slice() else {
-                return Err(syntax(at, "invalid Type 1 operand count"));
-            };
-            s.seac = Some([asb, dx, dy, base, accent]);
-            s.stack.clear();
-            return Ok(true);
-        }
-        Escape::Sbw => {
-            let &[sbx, sby, wx, wy] = s.stack.as_slice() else {
-                return Err(syntax(at, "invalid Type 1 operand count"));
-            };
-            if s.width.is_some() {
-                return Err(syntax(at, "duplicate Type 1 width"));
-            }
-            if wy != 0.0 {
-                return Err(unsupported(
-                    features::TYPE1_POSTSCRIPT,
-                    at,
-                    "nonhorizontal Type 1 advance is not implemented",
-                ));
-            }
-            s.set_width(Point::new(sbx, sby), wx, at)?;
-        }
-        Escape::Div => {
-            let b = s.pop(at)?;
-            let a = s.pop(at)?;
-            s.stack.push(a / b);
-        }
-        Escape::Callothersubr => othersubr(s, w, at)?,
-        Escape::Pop => {
-            let value = s
-                .results
-                .pop()
-                .ok_or_else(|| syntax(at, "Type 1 othersubr result underflow"))?;
-            s.stack.push(value);
-        }
-        Escape::Setcurrentpoint => {
-            let &[x, y] = s.stack.as_slice() else {
-                return Err(syntax(at, "invalid Type 1 operand count"));
-            };
-            s.point = Point::new(x, y);
-            s.stack.clear();
-        }
-    }
-    Ok(false)
-}
-/// `callothersubr`: the standard flex and hint-replacement OtherSubrs,
-/// and chapter 8's argument fallback for the others.
-fn othersubr(s: &mut State, w: &mut Work<'_>, at: Position) -> Result<()> {
-    let subr = integer(s.pop(at)?, at)?;
-    let count = integer(s.pop(at)?, at)?;
-    let split = s
-        .stack
-        .len()
-        .checked_sub(count)
-        .ok_or_else(|| syntax(at, "Type 1 othersubr stack underflow"))?;
-    let args = s.stack.split_off(split);
-    match (subr, args.as_slice()) {
-        (FLEX_START, []) => {
-            if s.flex.is_some() {
-                return Err(syntax(at, "nested Type 1 flex"));
-            }
-            s.flex = Some(Vec::new());
-        }
-        (FLEX_POINT, []) => {
-            let points = s
-                .flex
-                .as_mut()
-                .ok_or_else(|| syntax(at, "Type 1 flex point without flex start"))?;
-            if points.len() == FLEX_POINTS {
-                return Err(syntax(at, "Type 1 flex has more than seven points"));
-            }
-            points.push(s.point);
-        }
-        (FLEX_END, &[_, x, y]) => {
-            let points = s
-                .flex
-                .take()
-                .ok_or_else(|| syntax(at, "Type 1 flex end without start"))?;
-            let &[_reference, a, b, c, d, e, f] = points.as_slice() else {
-                return Err(syntax(at, "Type 1 flex needs seven points"));
-            };
-            w.segments(1, at)?;
-            s.path
-                .cubic_to(a, b, c)
-                .map_err(|_| syntax(at, "Type 1 flex before moveto"))?;
-            w.segments(1, at)?;
-            s.path
-                .cubic_to(d, e, f)
-                .map_err(|_| syntax(at, "Type 1 flex before moveto"))?;
-            s.results.extend([y, x]);
-        }
-        // Hint replacement returns the subroutine number.
-        (HINT_REPLACEMENT, [_]) => s.results.extend(args),
-        (FLEX_END..=HINT_REPLACEMENT, _) => {
-            return Err(syntax(at, "invalid standard Type 1 OtherSubr arguments"));
-        }
-        // Type 1 chapter 8 fallback: the arguments return in order, arg1
-        // popped first.
-        _ => s.results.extend(args.into_iter().rev()),
-    }
-    if s.results.len() > MAX_OPERANDS {
-        return Err(syntax(at, "operand stack exceeds the format limit"));
-    }
-    Ok(())
 }
 
 #[cfg(test)]
