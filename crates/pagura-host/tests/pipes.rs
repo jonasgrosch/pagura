@@ -1,30 +1,19 @@
 #![forbid(unsafe_code)]
 //! Cross-process transport checks (host-native-pipes).
 
-use std::io::Write;
-use std::path::PathBuf;
+use pagura_testkit::{Manifest, frame};
+use std::io::{Read, Write};
 use std::process::{Command, Stdio};
 
-/// The first classic case expected to be unsupported, as (fixture path,
-/// feature tag).
-#[expect(
-    clippy::expect_used,
-    reason = "generated unsupported cases name their fixture and feature"
-)]
-fn unsupported_case() -> (PathBuf, String) {
-    let manifest = pagura_testkit::Manifest::load("classic");
+#[test]
+fn binary_flushes_live_responses_and_reports_structured_unsupported() {
+    let manifest = Manifest::load("classic");
     let case = manifest
         .cases()
         .find(|case| case.string("expected") == Some("unsupported"))
         .expect("the classic manifest has an unsupported case");
-    let feature = case
-        .string("feature")
-        .expect("unsupported cases name a feature");
-    (case.path().expect("a fixture path"), feature.to_owned())
-}
-
-#[test]
-fn binary_flushes_live_responses_and_reports_structured_unsupported() {
+    let feature = case.string("feature").unwrap();
+    let pdf = std::fs::read(case.path().unwrap()).unwrap();
     let mut child = Command::new(env!("CARGO_BIN_EXE_pagura-host"))
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -38,41 +27,32 @@ fn binary_flushes_live_responses_and_reports_structured_unsupported() {
         .write_all(&[9, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0])
         .unwrap();
     let mut hello = [0; 13];
-    std::io::Read::read_exact(&mut output, &mut hello).unwrap();
+    output.read_exact(&mut hello).unwrap();
     assert_eq!(hello, [9, 0, 0, 0, 129, 1, 0, 0, 0, 1, 0, 0, 0]);
-    let (path, feature) = unsupported_case();
-    let pdf = std::fs::read(path).unwrap();
-    let mut open = u32::try_from(pdf.len() + 14)
-        .unwrap()
-        .to_le_bytes()
-        .to_vec();
-    open.extend([2, 2, 0, 0, 0, 0, 0, 0, 0, 0]);
+    let mut open = vec![0, 0, 0, 0, 0];
     open.extend(u32::try_from(pdf.len()).unwrap().to_le_bytes());
     open.extend(pdf);
-    input.write_all(&open).unwrap();
+    input.write_all(&frame(2, 2, &open)).unwrap();
     let mut opened = [0; 17];
-    std::io::Read::read_exact(&mut output, &mut opened).unwrap();
+    output.read_exact(&mut opened).unwrap();
     assert_eq!(opened[4], 130);
     input
         .write_all(&[13, 0, 0, 0, 3, 3, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0])
         .unwrap();
     let mut info = [0; 59];
-    std::io::Read::read_exact(&mut output, &mut info).unwrap();
+    output.read_exact(&mut info).unwrap();
     assert_eq!(info[4], 131);
     let width = u32::from_le_bytes(info[51..55].try_into().unwrap());
     let height = u32::from_le_bytes(info[55..59].try_into().unwrap());
-    let mut tile = vec![4, 4, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0];
+    let mut tile = vec![1, 0, 0, 0, 0, 0, 0, 0];
     tile.extend(1_f64.to_le_bytes());
     for value in [0_u32, 0, width, height] {
         tile.extend(value.to_le_bytes());
     }
-    input
-        .write_all(&u32::try_from(tile.len()).unwrap().to_le_bytes())
-        .unwrap();
-    input.write_all(&tile).unwrap();
+    input.write_all(&frame(4, 4, &tile)).unwrap();
     drop(input);
     let mut responses = Vec::new();
-    std::io::Read::read_to_end(&mut output, &mut responses).unwrap();
+    output.read_to_end(&mut responses).unwrap();
     assert!(child.wait().unwrap().success());
     assert_eq!(responses[4], 255);
     assert_eq!(responses[9], 3);

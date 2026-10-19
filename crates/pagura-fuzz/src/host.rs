@@ -268,7 +268,7 @@ pub fn run(data: &[u8]) {
     let mut input = frames.bytes;
     input.extend_from_slice(tail);
 
-    let session = Session::new(super::limits());
+    let session = Session::new(super::limits().into());
     let mut output = Vec::new();
     let end = session.serve(&mut Cursor::new(input), &mut output);
     assert!(end.is_ok(), "in-memory transport failed: {end:?}");

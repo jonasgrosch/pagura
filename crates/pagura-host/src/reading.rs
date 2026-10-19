@@ -1,9 +1,12 @@
 //! Bounded reading adapter (ISO 32000-2 9.10, 12.3–12.6; ADR 0014).
+//!
+//! Every reading response is encoded here into one capped payload.
 mod navigation;
+mod text;
 
-use crate::protocol::Reader;
+use crate::protocol::{Reader, SessionStats};
 pub(crate) use crate::wire::Writer;
-use pagura::{Error, Limits, Position, Result, SearchOptions};
+use pagura::{DisplayList, Error, Limits, Position, Result, SearchOptions};
 
 /// The bounded search window and continuation cursor.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -133,37 +136,29 @@ pub(crate) fn decode<'a>(kind: u8, reader: &mut Reader<'a>, limits: Limits) -> R
         _ => Request::Stats,
     })
 }
-pub(crate) fn page_text(page: &pagura::TextPage, cap: usize) -> Result<Response> {
-    if page.reading_characters().len() > 1_000_000 {
-        return Err(Error::limit(
-            "page text character count exceeds one million",
-        ));
-    }
+/// `u8 present | [f64 x0, y0, x1, y1]`.
+pub(crate) fn bounds(list: &DisplayList, cap: usize) -> Result<Response> {
+    let bounds = list.content_bounds()?;
     let mut out = Writer::new(cap);
-    out.text(page.text())?;
-    // A shared table prevents ActualText replacements from repeating all source
-    // quads for every semantic character. Construction stays linear in records.
-    out.count(page.glyphs().len())?;
-    for glyph in page.glyphs() {
-        for point in glyph.quad.0 {
-            out.f64(point.x)?;
-            out.f64(point.y)?;
+    out.u8(u8::from(bounds.is_some()))?;
+    if let Some(bounds) = bounds {
+        for value in [bounds.x0(), bounds.y0(), bounds.x1(), bounds.y1()] {
+            out.f64(value)?;
         }
     }
-    out.count(page.reading_characters().len())?;
-    for character in page.reading_characters() {
-        if page.glyphs().get(character.glyphs.clone()).is_none() {
-            return Err(Error::invalid_argument("invalid extracted glyph range"));
-        }
-        out.count(character.range.end)?;
-        out.count(character.glyphs.start)?;
-        out.count(character.glyphs.len())?;
-    }
-    Ok(Response::new(138, out))
+    Ok(Response::new(144, out))
 }
-pub(crate) fn text_charge(page: &pagura::TextPage) -> usize {
-    // TextPage excludes its inline header and allocator bookkeeping; retain the
-    // fixed cache-entry allowance in addition to the owned-capacity estimate.
-    page.retained_bytes().saturating_add(512)
+/// The kind-137 fields, then `u64 text_bytes | u32 text_pages`.
+pub(crate) fn stats(stats: SessionStats, text: (usize, usize), cap: usize) -> Result<Response> {
+    let (text_bytes, text_pages) = text;
+    let mut out = Writer::new(cap);
+    out.u64(stats.source_bytes)?;
+    out.u64(stats.cache_bytes)?;
+    out.u32(stats.documents)?;
+    out.u32(stats.lists)?;
+    out.u64(u64::try_from(text_bytes).unwrap_or(u64::MAX))?;
+    out.count(text_pages)?;
+    Ok(Response::new(143, out))
 }
 pub(crate) use navigation::{labels, links, outlines};
+pub(crate) use text::{page_text, search};
