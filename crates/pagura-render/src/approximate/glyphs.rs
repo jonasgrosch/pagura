@@ -293,6 +293,20 @@ impl Rows {
     fn new(glyph: &Prepared, py: f64, limits: Limits) -> Result<Self> {
         let mut fragments = Vec::new();
         let maximum = (limits.decoded_bytes / 2 / size_of::<Fragment>()).min(limits.raster_work);
+        // One reservation for every row an edge crosses, within the budget.
+        let rows = |a: f32, b: f32| {
+            let (low, high) = (a.min(b), a.max(b));
+            (high.ceil() as usize)
+                .min(glyph.height)
+                .saturating_sub(low.floor().max(0.0) as usize)
+        };
+        let expected = glyph.edges.iter().fold(0_usize, |n, &[_, ay, _, by]| {
+            let (ay, by) = (ay + py as f32, by + py as f32);
+            n.saturating_add(if ay == by { 0 } else { rows(ay, by) })
+        });
+        fragments
+            .try_reserve_exact(expected.min(maximum))
+            .map_err(|_| Error::limit("glyph row allocation failed"))?;
         for &[mut ax, ay, mut bx, by] in &glyph.edges {
             let (mut ay, mut by) = (ay + py as f32, by + py as f32);
             let sign = if ay < by {
