@@ -1,7 +1,8 @@
 # ADR 0016: One meaning per `Limits` field; domain budgets
 
-Status: accepted, 2026-10-18. Refines invariant 3 of `docs/ARCHITECTURE.md`
-and ADR 0012.
+Status: accepted, 2026-10-18. Amended 2026-10-19 (signature, function and
+traversal budgets). Refines invariant 3 of `docs/ARCHITECTURE.md` and ADR
+0012.
 
 ## Context
 
@@ -85,3 +86,59 @@ grouped table on the type keeps it navigable. Peak memory for one page is
 bounded by `render_bytes` rather than by a multiple of `decoded_bytes` once
 the renderer charges the aggregate. Realistic-size codec fixtures decoded
 under `Limits::default()` are still needed to guard the image budgets.
+
+## Amendment, 2026-10-19: signature, function and traversal budgets
+
+The signature work that landed after this ADR borrowed fields again:
+certification path validation (RFC 5280 6, with offline CRLs) charged its
+search to `depth`, `value_nodes`, `operations`, `document_bytes` and
+`string_bytes` and capped host signature verifications at `operations /
+500,000`, so lowering `operations` to harden content streams would silently
+have cut path verifications to two. The ASN.1 reader borrowed `file_bytes`,
+`depth`, `value_nodes`, `document_bytes`, `string_bytes` and
+`decoded_bytes`. Type 4 calculator functions and sampled functions still
+borrowed `operations` and `value_nodes`.
+
+1. **Signature budgets are one nested group,** `Limits::signatures:
+   SignatureLimits`, with the defaults the borrowed fields had. It also
+   takes the RSA fields, which were top-level.
+
+   | Field | Default | Replaces the borrowed use of |
+   |---|---|---|
+   | `asn1_depth` | 64 | `depth` for the nesting of one ASN.1 encoding (ADR 0015) |
+   | `asn1_elements` | 1,000,000 | `value_nodes` for the elements indexed for one encoding |
+   | `asn1_bytes` | 128 MiB | `document_bytes` for the element index, `decoded_bytes` for concatenated BER octets and signed-attribute signature input |
+   | `path_certificates` | 64 | `depth` for the certificates of one path |
+   | `path_work` | 50,000,000 units | `operations` for scanning, comparisons, policy-graph work and signature input bytes |
+   | `path_nodes` | 1,000,000 | `value_nodes` for prepared values, branches, results and policy-graph nodes and edges |
+   | `path_bytes` | 128 MiB | `document_bytes` for the cumulative allocation estimate |
+   | `path_verifications` | 100 | `operations / 500,000` for distinct host signature verifications |
+   | `rsa_modulus_bits`, `rsa_exponent_bits`, `rsa_work` | 16,384 / 256 / 64,000,000 | (moved from the top level) |
+
+   One path budget covers a whole path search, including every candidate's
+   validation and its CRL processing. `file_bytes`, `string_bytes` and
+   `decoded_bytes` no longer apply to ASN.1 values or copied path strings,
+   which are charged to `asn1_bytes`, `path_bytes` and `path_work`.
+2. **`Limits` stays within 256 bytes,** the size up to which clippy accepts
+   `Copy` values passed by value. Converting the remaining by-value
+   parameters across every crate is out of proportion, and raising clippy's
+   threshold would only defer the question. So a domain with many budgets
+   of its own gets a nested group whose fields are `u32`: every default fits
+   32 bits anyway (decision 3), and callers widen with
+   `pagura_core::convert::u32_to_usize`. A unit test enforces the size;
+   `Limits` is 248 bytes with this amendment.
+3. **`function_work`** (default 50,000,000 units, the `operations` default
+   the renderer borrowed) bounds evaluating functions (7.10) during one
+   page's compilation or rendering: one unit per Type 4 operator executed
+   and per sample looked up or interpolated in a sampled, exponential or
+   stitching function.
+4. **The Type 4 operand stack is the constant `Limits::CALCULATOR_STACK`**
+   (100 entries, ISO 32000-1 Annex C, Table C.1), not a budget, replacing
+   the borrowed `value_nodes`. Standard limits otherwise stay next to their
+   parser (decision 1); this one sits on `Limits` because the table above
+   used to borrow a field for it.
+5. **`traversal_work` also covers signature inspection:** walking signature
+   fields and signed revisions, and the DocMDP/FieldMDP change analysis
+   between revisions (12.8), which run on the same bounded navigation
+   context as outlines and name trees.
+
