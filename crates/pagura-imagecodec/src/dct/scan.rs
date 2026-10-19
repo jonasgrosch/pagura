@@ -235,7 +235,7 @@ impl Decoder {
             return coder.finish();
         }
         bits.align(diagnostics, &mut self.padding_reported)?;
-        let end = bits.offset();
+        let end = bits.offset()?;
         scan_end(data, end, &mut self.budget, diagnostics)
     }
 }
