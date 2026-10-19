@@ -3,6 +3,7 @@
 
 use super::*;
 use crate::SessionLimits;
+use crate::protocol::RequestKind;
 use pagura::{Limits, Recovery};
 use pagura_testkit::{fixture, frame, split_frames};
 use std::sync::Arc;
@@ -58,13 +59,13 @@ fn body(kind: u8, payload: &[u8]) -> Vec<u8> {
 }
 
 fn request(body: &[u8]) -> Request<'_> {
-    protocol::decode(body, Limits::default()).unwrap().request
+    protocol::decode(body, &Limits::default()).unwrap().request
 }
 
 /// A session after a hello for `version`.
-fn ready(version: u32) -> Session {
+fn ready(version: Version) -> Session {
     Session {
-        version: Some(version),
+        state: State::Ready(version),
         ..Session::default()
     }
 }
@@ -306,7 +307,7 @@ fn two_pages_have_independent_geometry_and_second_page_pixels() {
 
 #[test]
 fn generations_skip_before_compilation_and_cached_tiles_share_one_list() {
-    let mut session = ready(protocol::VERSION_1_1);
+    let mut session = ready(Version::V1_1);
     open_rectangle(&mut session);
     session.execute(request(&body(7, &words(&[1, 2])))).unwrap();
     // Generation 1 is stale: no page lookup, scale check or compilation.
@@ -340,7 +341,7 @@ fn generations_skip_before_compilation_and_cached_tiles_share_one_list() {
     ));
     session.execute(request(&body(6, &words(&[1])))).unwrap();
     assert!(session.documents.cached_list(1, 0).is_none());
-    let mut original = ready(protocol::VERSION);
+    let mut original = ready(Version::V1);
     assert!(
         original
             .execute(request(&body(7, &words(&[1, 1]))))
@@ -351,7 +352,7 @@ fn generations_skip_before_compilation_and_cached_tiles_share_one_list() {
 #[test]
 fn retention_and_supervisor_cancellation_release_on_close() {
     let control = crate::Cancellation::default();
-    let mut session = ready(protocol::VERSION_1_1).with_cancellation(control.clone());
+    let mut session = ready(Version::V1_1).with_cancellation(control.clone());
     let pdf = open_rectangle(&mut session);
     session.execute(request(&body(7, &words(&[1, 1])))).unwrap();
     let tile = body(8, &generation_tile(1, 1.0, 0, [0, 0, 64, 64]));
@@ -390,10 +391,41 @@ fn retention_and_supervisor_cancellation_release_on_close() {
     let bytes = protocol::encode(7, &Response::Stats(session.stats()), 1024).unwrap();
     assert_eq!(&bytes[..9], &[29, 0, 0, 0, 137, 7, 0, 0, 0]);
     assert_eq!(&bytes[9..], &[0; 24]);
-    assert!(protocol::decode(&[9, 1, 0, 0, 0], Limits::default()).is_ok());
-    assert!(protocol::decode(&[9, 1, 0, 0, 0, 0], Limits::default()).is_err());
-    let mut base = ready(protocol::VERSION);
+    assert!(protocol::decode(&[9, 1, 0, 0, 0], &Limits::default()).is_ok());
+    assert!(protocol::decode(&[9, 1, 0, 0, 0, 0], &Limits::default()).is_err());
+    let mut base = ready(Version::V1);
     assert!(base.execute(Request::Stats).is_err());
+}
+
+#[test]
+fn every_request_is_gated_by_the_version_that_added_it() {
+    // Kinds 1-6 in v1, 7-9 in 1.1, 10-15 in 1.2, 16 in 1.3, 17 in 1.4,
+    // 18-19 in 1.5, 20 in 1.6 and 21 in 1.7.
+    let since = |kind: u8| match kind {
+        1..=6 => 1,
+        7..=9 => 0x0001_0001,
+        10..=15 => 0x0001_0002,
+        16 => 0x0001_0003,
+        17 => 0x0001_0004,
+        18 | 19 => 0x0001_0005,
+        20 => 0x0001_0006,
+        _ => 0x0001_0007,
+    };
+    for &version in Version::ALL {
+        let session = ready(version);
+        for &kind in RequestKind::ALL {
+            let allowed = session.require(kind.since()).is_ok();
+            assert_eq!(
+                allowed,
+                version.code() >= since(kind.code()),
+                "{kind:?} in {version:?}"
+            );
+        }
+    }
+    let error = ready(Version::V1_3)
+        .execute(request(&body(17, &words(&[1]))))
+        .unwrap_err();
+    assert_eq!(error.kind, pagura::ErrorKind::InvalidArgument);
 }
 
 #[test]

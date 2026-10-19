@@ -5,9 +5,9 @@ mod render;
 mod transport;
 
 use crate::config::SessionConfig;
-use crate::protocol::{self, Request, Response, SessionStats, layout};
-use crate::reading;
-use documents::{Documents, HANDLE};
+use crate::protocol::{self, Request, RequestFrame, Response, SessionStats, Version, layout};
+use crate::{editing, reading};
+use documents::Documents;
 use pagura::{Error, Position, Result};
 use std::io::{self, Read, Write};
 use transport::Incoming;
@@ -24,11 +24,18 @@ pub enum SessionEnd {
     ProtocolError,
 }
 
+/// Where the handshake stands.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum State {
+    AwaitingHello,
+    Ready(Version),
+}
+
 /// One synchronous session with immutable documents and monotonically assigned handles.
 #[derive(Debug)]
 pub struct Session {
     config: SessionConfig,
-    version: Option<u32>,
+    state: State,
     last_request: u32,
     documents: Documents,
     cancellation: crate::Cancellation,
@@ -46,7 +53,7 @@ impl Session {
     pub fn new(config: SessionConfig) -> Self {
         Self {
             config,
-            version: None,
+            state: State::AwaitingHello,
             last_request: 0,
             documents: Documents::new(&config),
             cancellation: crate::Cancellation::default(),
@@ -91,11 +98,11 @@ impl Session {
                 Incoming::Malformed(error) => return self.fail(&mut output, 0, error),
             };
             let id = transport::request_id(&body);
-            let frame = match protocol::decode(&body, self.config.engine) {
+            let frame = match protocol::decode(&body, &self.config.engine) {
                 Ok(frame) => frame,
                 Err(error) => return self.fail(&mut output, id, error),
             };
-            if let Err(error) = self.order(frame.id, &frame.request) {
+            if let Err(error) = self.order(&frame) {
                 return self.fail(&mut output, frame.id, error);
             }
             let response = self.execute(frame.request).unwrap_or_else(Response::Error);
@@ -107,244 +114,117 @@ impl Session {
     }
 
     /// Checks identifiers and the handshake; failures end the session.
-    fn order(&mut self, id: u32, request: &Request<'_>) -> Result<()> {
-        if id == 0 || id <= self.last_request {
+    fn order(&mut self, frame: &RequestFrame<'_>) -> Result<()> {
+        if frame.id == 0 || frame.id <= self.last_request {
             return Err(Error::invalid_argument(
                 "request identifiers must increase and be nonzero",
             )
             .at(Position::Buffer(layout::ID_OFFSET)));
         }
-        match request {
-            Request::Hello(version)
-                if self.version.is_none()
-                    && matches!(
-                        *version,
-                        protocol::VERSION
-                            | protocol::VERSION_1_1
-                            | protocol::VERSION_1_2
-                            | protocol::VERSION_1_3
-                            | protocol::VERSION_1_4
-                            | protocol::VERSION_1_5
-                            | protocol::VERSION_1_6
-                            | protocol::VERSION_1_7
-                    ) =>
-            {
-                self.version = Some(*version);
+        match (self.state, frame.request) {
+            (State::AwaitingHello, Request::Hello(version)) => {
+                let version = Version::try_from(version.get())
+                    .map_err(|error| error.at(version.position()))?;
+                self.state = State::Ready(version);
             }
-            Request::Hello(_) => {
-                // The version is the first payload field.
+            (State::Ready(_), Request::Hello(version)) => {
                 return Err(
                     Error::invalid_argument("invalid or repeated protocol handshake")
-                        .at(Position::Buffer(layout::HEADER_BYTES)),
+                        .at(version.position()),
                 );
             }
-            _ if self.version.is_none() => {
+            (State::AwaitingHello, _) => {
                 return Err(Error::invalid_argument("hello must be the first request")
                     .at(Position::Buffer(layout::KIND_OFFSET)));
             }
-            _ => (),
+            (State::Ready(_), _) => (),
         }
-        self.last_request = id;
+        self.last_request = frame.id;
         Ok(())
     }
 
     /// Runs one ordered request; failures are operational error responses.
     fn execute(&mut self, request: Request<'_>) -> Result<Response> {
+        let version = self.require(request.kind().since())?;
         match request {
-            Request::Hello(version) => Ok(Response::Hello(version)),
-            Request::FormFields(_)
-            | Request::SaveForm { .. }
-            | Request::FormWidgets { .. }
-            | Request::FormStyles { .. } => self.editing(request),
+            Request::Hello(_) => Ok(Response::Hello(version)),
             Request::Open {
                 bytes,
                 recovery,
                 password,
             } => self.documents.open(bytes, recovery, password),
-            Request::PageInfo { document, page } => self.documents.page_info(document, page),
-            Request::RenderTile {
-                document,
-                page,
-                scale,
-                tile,
-            } => self.render(document, page, scale, tile, None),
+            Request::PageInfo(page) => self.documents.page_info(page),
+            Request::RenderTile(tile) => self.render(tile, None),
             Request::Generation {
                 document,
                 generation,
-            } => {
-                self.require_extensions()?;
-                self.documents.select_generation(document, generation)
-            }
-            Request::GenerationTile {
-                generation,
-                document,
-                page,
-                scale,
-                tile,
-            } => {
-                self.require_extensions()?;
-                self.generation_tile(generation, document, page, scale, tile)
-            }
+            } => self.documents.select_generation(document, generation),
+            Request::GenerationTile { generation, tile } => self.generation_tile(generation, tile),
             Request::Diagnostics(handle) => self
                 .documents
                 .diagnostics(handle)
                 .map(Response::Diagnostics),
-            Request::DiagnosticDetails(handle) => {
-                if !matches!(
-                    self.version,
-                    Some(
-                        protocol::VERSION_1_4
-                            | protocol::VERSION_1_5
-                            | protocol::VERSION_1_6
-                            | protocol::VERSION_1_7
-                    )
-                ) {
-                    return Err(Error::invalid_argument(
-                        "typed diagnostics require protocol 1.4",
-                    ));
-                }
-                self.documents
-                    .diagnostics(handle)
-                    .map(Response::DiagnosticDetails)
-            }
+            Request::DiagnosticDetails(handle) => self
+                .documents
+                .diagnostics(handle)
+                .map(Response::DiagnosticDetails),
             Request::Close(handle) => self.documents.close(handle),
-            Request::Stats => {
-                self.require_extensions()?;
-                Ok(Response::Stats(self.stats()))
-            }
+            Request::Stats => Ok(Response::Stats(self.stats())),
             Request::Reading(request) => self.reading(request).map(Response::Reading),
+            Request::FormFields(handle) => {
+                editing::fields(self.documents.document(handle)?).map(Response::FormFields)
+            }
+            Request::SaveForm { document, changes } => {
+                editing::save(self.documents.document(document)?, changes.get())
+                    .map(Response::SavedForm)
+            }
+            Request::FormWidgets(page) => {
+                let (context, found) = self.documents.page(page)?;
+                editing::widgets(context.document(), found).map(Response::FormWidgets)
+            }
+            Request::FormStyles(page) => {
+                let (context, found) = self.documents.page(page)?;
+                editing::styles(context.document(), found).map(Response::FormStyles)
+            }
         }
     }
 
-    fn editing(&self, request: Request<'_>) -> Result<Response> {
-        self.require_editing()?;
-        match request {
-            Request::FormFields(handle) => {
-                crate::editing::fields(self.documents.document(handle, HANDLE)?)
-                    .map(Response::FormFields)
-            }
-            Request::SaveForm { document, changes } => {
-                crate::editing::save(self.documents.document(document, HANDLE)?, changes)
-                    .map(Response::SavedForm)
-            }
-            Request::FormStyles { document, page }
-                if self.version == Some(protocol::VERSION_1_7) =>
-            {
-                crate::editing::styles(self.documents.document(document, HANDLE)?, page)
-                    .map(Response::FormStyles)
-            }
-            Request::FormWidgets { document, page }
-                if matches!(
-                    self.version,
-                    Some(protocol::VERSION_1_6 | protocol::VERSION_1_7)
-                ) =>
-            {
-                crate::editing::widgets(self.documents.document(document, HANDLE)?, page)
-                    .map(Response::FormWidgets)
-            }
-            _ => Err(Error::invalid_argument(
-                "inline form editing requires protocol 1.6",
-            )),
+    /// The negotiated version, if it is at least `minimum`.
+    fn require(&self, minimum: Version) -> Result<Version> {
+        match self.state {
+            State::Ready(version) if version >= minimum => Ok(version),
+            _ => Err(minimum.required()),
         }
     }
 
     fn reading(&mut self, request: reading::Request<'_>) -> Result<reading::Response> {
-        if matches!(request, reading::Request::Bounds(..))
-            && !matches!(
-                self.version,
-                Some(
-                    protocol::VERSION_1_3
-                        | protocol::VERSION_1_4
-                        | protocol::VERSION_1_5
-                        | protocol::VERSION_1_6
-                        | protocol::VERSION_1_7
-                )
-            )
-        {
-            return Err(Error::invalid_argument(
-                "content bounds require protocol 1.3",
-            ));
-        }
-        if !matches!(
-            self.version,
-            Some(
-                protocol::VERSION_1_2
-                    | protocol::VERSION_1_3
-                    | protocol::VERSION_1_4
-                    | protocol::VERSION_1_5
-                    | protocol::VERSION_1_6
-                    | protocol::VERSION_1_7
-            )
-        ) {
-            return Err(Error::invalid_argument(
-                "reading request requires protocol 1.2",
-            ));
-        }
         let cap = self.config.session.reading_response_bytes;
         match request {
-            reading::Request::Text(document, page) => {
-                let text = self.documents.text(document, page, HANDLE)?;
+            reading::Request::Text(page) => {
+                let text = self.documents.text(page)?;
                 reading::page_text(&text, cap)
             }
             reading::Request::Search(search) => {
-                let pages = self
-                    .documents
-                    .document(search.document, HANDLE)?
-                    .page_count()?;
+                let pages = self.documents.document(search.document)?.page_count()?;
                 let options = search.validate(pages)?;
-                // Page errors point at the window's start field.
-                reading::search(search, options, cap, |page| {
-                    self.documents.text(search.document, page, HANDLE)
-                })
+                reading::search(&search, options, cap, |page| self.documents.text(page))
             }
-            reading::Request::Links(document, page) => {
-                reading::links(self.documents.document(document, HANDLE)?, page, cap)
+            reading::Request::Links(page) => {
+                reading::links(self.documents.document(page.document)?, page.page, cap)
             }
-            reading::Request::Outlines(document) => {
-                reading::outlines(self.documents.document(document, HANDLE)?, cap)
+            reading::Request::Outlines(handle) => {
+                reading::outlines(self.documents.document(handle)?, cap)
             }
-            reading::Request::Labels(document) => {
-                reading::labels(self.documents.document(document, HANDLE)?, cap)
+            reading::Request::Labels(handle) => {
+                reading::labels(self.documents.document(handle)?, cap)
             }
             reading::Request::Stats => {
                 reading::stats(self.stats(), self.documents.text_accounting(), cap)
             }
-            reading::Request::Bounds(document, page) => {
-                let list = self.documents.compiled(document, page, HANDLE, || true)?;
+            reading::Request::Bounds(page) => {
+                let list = self.documents.compiled(page, || true)?;
                 reading::bounds(&list, cap)
             }
-        }
-    }
-
-    fn require_editing(&self) -> Result<()> {
-        if matches!(
-            self.version,
-            Some(protocol::VERSION_1_5 | protocol::VERSION_1_6 | protocol::VERSION_1_7)
-        ) {
-            Ok(())
-        } else {
-            Err(Error::invalid_argument(
-                "form editing requires protocol 1.5",
-            ))
-        }
-    }
-
-    fn require_extensions(&self) -> Result<()> {
-        if matches!(
-            self.version,
-            Some(
-                protocol::VERSION_1_1
-                    | protocol::VERSION_1_2
-                    | protocol::VERSION_1_3
-                    | protocol::VERSION_1_4
-                    | protocol::VERSION_1_5
-                    | protocol::VERSION_1_6
-                    | protocol::VERSION_1_7
-            )
-        ) {
-            Ok(())
-        } else {
-            Err(Error::invalid_argument("request requires protocol 1.1"))
         }
     }
 

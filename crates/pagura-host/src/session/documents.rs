@@ -2,17 +2,13 @@
 
 use crate::cache::{self, PageCache, PageKey};
 use crate::config::{SessionConfig, SessionLimits};
-use crate::protocol::{Response, SessionStats, layout};
+use crate::protocol::{Field, PageRef, Response, SessionStats};
 use pagura::{
-    Diagnostic, DisplayList, Document, Error, Limits, OpenOptions, Page, Position, Recovery,
-    RenderContext, RenderOptions, Result, TextPage,
+    Diagnostic, DisplayList, Document, Error, Limits, OpenOptions, Page, Recovery, RenderContext,
+    RenderOptions, Result, TextPage,
 };
 use std::collections::BTreeMap;
 use std::sync::Arc;
-
-/// Body offset of a request's leading document handle; a page index follows
-/// it four bytes later.
-pub(super) const HANDLE: usize = layout::HEADER_BYTES;
 
 /// One open document and its session state.
 #[derive(Debug)]
@@ -88,45 +84,38 @@ impl Documents {
         })
     }
 
-    pub(super) fn close(&mut self, handle: u32) -> Result<Response> {
-        let slot = self.slots.remove(&handle).ok_or_else(|| unknown(HANDLE))?;
-        self.lists.close(handle);
-        self.texts.close(handle);
+    pub(super) fn close(&mut self, handle: Field<u32>) -> Result<Response> {
+        let slot = self
+            .slots
+            .remove(&handle.get())
+            .ok_or_else(|| unknown(handle))?;
+        self.lists.close(handle.get());
+        self.texts.close(handle.get());
         let released = slot.context.document().original_bytes().len();
         self.source_bytes = self.source_bytes.saturating_sub(released);
         Ok(Response::Close)
     }
 
-    /// The document of `handle`, which a request names at body offset `at`.
-    pub(super) fn document(&self, handle: u32, at: usize) -> Result<&Document> {
-        self.slots
-            .get(&handle)
-            .map(|slot| slot.context.document())
-            .ok_or_else(|| unknown(at))
+    fn slot(&self, handle: Field<u32>) -> Result<&Slot> {
+        self.slots.get(&handle.get()).ok_or_else(|| unknown(handle))
     }
 
-    /// The document's rendering context and the page; the request names the
-    /// document at body offset `at` and the page four bytes later.
-    pub(super) fn page(
-        &self,
-        document: u32,
-        page: u32,
-        at: usize,
-    ) -> Result<(&RenderContext, &Page)> {
-        let context = &self
-            .slots
-            .get(&document)
-            .ok_or_else(|| unknown(at))?
-            .context;
+    pub(super) fn document(&self, handle: Field<u32>) -> Result<&Document> {
+        self.slot(handle).map(|slot| slot.context.document())
+    }
+
+    /// The document's rendering context and the page.
+    pub(super) fn page(&self, page: PageRef) -> Result<(&RenderContext, &Page)> {
+        let context = &self.slot(page.document)?.context;
         let found = context
             .document()
-            .page(index(page)?)
-            .map_err(|error| error.at(Position::Buffer(at + 4)))?;
+            .page(page.page.index()?)
+            .map_err(|error| error.at(page.page.position()))?;
         Ok((context, found))
     }
 
-    pub(super) fn page_info(&self, document: u32, page: u32) -> Result<Response> {
-        let (_, page) = self.page(document, page, HANDLE)?;
+    pub(super) fn page_info(&self, page: PageRef) -> Result<Response> {
+        let (_, page) = self.page(page)?;
         let crop = page.crop_box();
         Ok(Response::PageInfo {
             crop: [crop.x0(), crop.y0(), crop.x1(), crop.y1()],
@@ -140,16 +129,14 @@ impl Documents {
     /// if `admit` still agrees once compilation has finished.
     pub(super) fn compiled(
         &mut self,
-        document: u32,
-        page: u32,
-        at: usize,
+        page: PageRef,
         admit: impl FnOnce() -> bool,
     ) -> Result<Arc<DisplayList>> {
-        let key = PageKey { document, page };
+        let key = key(page);
         if let Some(list) = self.lists.get(key) {
             return Ok(list);
         }
-        let (context, found) = self.page(document, page, at)?;
+        let (context, found) = self.page(page)?;
         let list = Arc::new(context.compile_page(found)?);
         if admit()
             && let Some(charge) = cache::list_charge(&list)
@@ -160,12 +147,12 @@ impl Documents {
     }
 
     /// The page's extracted text from the cache, or extracted and retained now.
-    pub(super) fn text(&mut self, document: u32, page: u32, at: usize) -> Result<Arc<TextPage>> {
-        let key = PageKey { document, page };
+    pub(super) fn text(&mut self, page: PageRef) -> Result<Arc<TextPage>> {
+        let key = key(page);
         if let Some(text) = self.texts.get(key) {
             return Ok(text);
         }
-        let (context, found) = self.page(document, page, at)?;
+        let (context, found) = self.page(page)?;
         let text = Arc::new(context.text_page(found)?);
         self.texts
             .insert(key, Arc::clone(&text), cache::text_charge(&text));
@@ -173,31 +160,32 @@ impl Documents {
     }
 
     /// Selects a newer viewport generation (1.1); repeating one is idempotent.
-    pub(super) fn select_generation(&mut self, document: u32, generation: u32) -> Result<Response> {
+    pub(super) fn select_generation(
+        &mut self,
+        document: Field<u32>,
+        generation: Field<u32>,
+    ) -> Result<Response> {
         let slot = self
             .slots
-            .get_mut(&document)
-            .ok_or_else(|| unknown(HANDLE))?;
-        if generation == 0 || generation < slot.generation {
+            .get_mut(&document.get())
+            .ok_or_else(|| unknown(document))?;
+        let requested = generation.get();
+        if requested == 0 || requested < slot.generation {
             return Err(Error::invalid_argument("viewport generation must increase")
-                .at(Position::Buffer(HANDLE + 4)));
+                .at(generation.position()));
         }
-        slot.generation = generation;
-        Ok(Response::Generation(generation))
+        slot.generation = requested;
+        Ok(Response::Generation(requested))
     }
 
-    /// The selected generation of a document named at body offset `at`, zero
-    /// before the first.
-    pub(super) fn generation(&self, document: u32, at: usize) -> Result<u32> {
-        self.slots
-            .get(&document)
-            .map(|slot| slot.generation)
-            .ok_or_else(|| unknown(at))
+    /// The selected generation of a document, zero before the first.
+    pub(super) fn generation(&self, document: Field<u32>) -> Result<u32> {
+        self.slot(document).map(|slot| slot.generation)
     }
 
     /// Repairs and information discovered so far, in discovery order.
-    pub(super) fn diagnostics(&self, handle: u32) -> Result<Vec<Diagnostic>> {
-        self.document(handle, HANDLE).map(Document::diagnostics)
+    pub(super) fn diagnostics(&self, handle: Field<u32>) -> Result<Vec<Diagnostic>> {
+        self.document(handle).map(Document::diagnostics)
     }
 
     pub(super) fn stats(&self) -> SessionStats {
@@ -221,11 +209,13 @@ impl Documents {
     }
 }
 
-/// A page index, which every supported target can address.
-pub(super) fn index(value: u32) -> Result<usize> {
-    usize::try_from(value).map_err(|_| Error::invalid_argument("page index exceeds address space"))
+const fn key(page: PageRef) -> PageKey {
+    PageKey {
+        document: page.document.get(),
+        page: page.page.get(),
+    }
 }
 
-fn unknown(at: usize) -> Error {
-    Error::invalid_argument("unknown document handle").at(Position::Buffer(at))
+fn unknown(handle: Field<u32>) -> Error {
+    Error::invalid_argument("unknown document handle").at(handle.position())
 }

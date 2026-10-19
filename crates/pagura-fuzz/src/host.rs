@@ -32,15 +32,12 @@
 
 use super::wrapper;
 use pagura_host::protocol::{
-    ERROR_KIND, VERSION, VERSION_1_1, VERSION_1_2, VERSION_1_3, VERSION_1_4,
+    ActionCode, ErrorCategory, FitCode, PositionKind, RequestKind, ResponseKind, TileStatus,
+    Version,
 };
 use pagura_host::{Session, SessionEnd};
 use std::io::Cursor;
 
-/// The Limit error category of kind 255.
-const LIMIT: u8 = 2;
-/// The InvalidArgument error category of kind 255.
-const INVALID_ARGUMENT: u8 = 7;
 /// The standard Named actions, sent by their exact names.
 const NAMED: [&str; 4] = ["NextPage", "PrevPage", "FirstPage", "LastPage"];
 
@@ -253,15 +250,15 @@ pub fn run(data: &[u8]) {
         rect: [x, y, width, height].map(u32::from),
     };
     let version = if flags.contains(Flags::TYPED_DIAGNOSTICS) {
-        VERSION_1_4
+        Version::V1_4
     } else if flags.contains(Flags::VERSION_1_3) {
-        VERSION_1_3
+        Version::V1_3
     } else if search.is_some() && !flags.contains(Flags::OLDER) {
-        VERSION_1_2
+        Version::V1_2
     } else if flags.contains(Flags::GENERATIONS) {
-        VERSION_1_1
+        Version::V1_1
     } else {
-        VERSION
+        Version::V1
     };
     let (frames, plan) = requests(version, flags, pdf, tile, search.as_ref());
     let requests = frames.kinds;
@@ -298,7 +295,7 @@ pub fn run(data: &[u8]) {
             "response out of order"
         );
         assert!(
-            response.kind == kind | 0x80 || response.kind == ERROR_KIND,
+            response.kind == kind | 0x80 || response.is(ResponseKind::Error),
             "kind {} answers request kind {kind}",
             response.kind
         );
@@ -311,15 +308,15 @@ pub fn run(data: &[u8]) {
             response.payload
         );
     }
-    let hello = responses.first().filter(|r| r.kind == 129);
+    let hello = responses.first().filter(|r| r.is(ResponseKind::Hello));
     assert!(
-        hello.is_none_or(|r| r.payload == version.to_le_bytes()),
+        hello.is_none_or(|r| r.payload == version.code().to_le_bytes()),
         "hello negotiated another version"
     );
     check_session(&requests, &responses, &plan, version);
     check_tiles(&responses, &plan, tile);
     if let (Some(reading), Some(search)) = (&plan.reading, &search)
-        && matches!(version, VERSION_1_2 | VERSION_1_3 | VERSION_1_4)
+        && version >= Version::V1_2
     {
         check_reading(&responses, &plan, reading, search);
     }
@@ -329,49 +326,57 @@ pub fn run(data: &[u8]) {
 /// render_tile, the reading requests, diagnostics, close and the reading
 /// requests on the closed handle.
 fn requests(
-    version: u32,
+    version: Version,
     flags: Flags,
     pdf: &[u8],
     tile: TileRequest,
     search: Option<&SearchRequest>,
 ) -> (Frames, Plan) {
     let mut frames = Frames::default();
-    frames.push(1, &version.to_le_bytes());
+    frames.push(RequestKind::Hello, &version.code().to_le_bytes());
     let mut open = vec![u8::from(!flags.contains(Flags::STRICT))];
     open.extend_from_slice(&0_u32.to_le_bytes());
     open.extend_from_slice(&u32::try_from(pdf.len()).unwrap_or(u32::MAX).to_le_bytes());
     open.extend_from_slice(pdf);
-    let open = frames.push(2, &open);
-    frames.push(3, &words(&[1, tile.page]));
+    let open = frames.push(RequestKind::Open, &open);
+    frames.push(RequestKind::PageInfo, &words(&[1, tile.page]));
     let generations = flags.contains(Flags::GENERATIONS).then(|| {
-        frames.push(7, &words(&[1, 2]));
-        let current = frames.push(8, &generation_tile(2, tile));
-        let newer = frames.push(7, &words(&[1, 3]));
-        let stale = frames.push(8, &generation_tile(2, tile));
+        frames.push(RequestKind::Generation, &words(&[1, 2]));
+        let current = frames.push(RequestKind::GenerationTile, &generation_tile(2, tile));
+        let newer = frames.push(RequestKind::Generation, &words(&[1, 3]));
+        let stale = frames.push(RequestKind::GenerationTile, &generation_tile(2, tile));
         [current, newer, stale]
     });
-    let v1_tile = frames.push(4, &render_tile(tile));
+    let v1_tile = frames.push(RequestKind::RenderTile, &render_tile(tile));
     let page = words(&[1, tile.page]);
     // Fields are evaluated, and so the frames pushed, in the order written;
     // the requests on the closed handle follow close.
     let mut reading = search.map(|search| Reading {
-        text: frames.push(10, &page),
-        search: frames.push(11, &search_payload(search, search.offset, search.limit)),
-        complete: frames.push(11, &search_payload(search, 0, 1024)),
-        links: frames.push(12, &page),
-        outlines: frames.push(13, &words(&[1])),
-        labels: frames.push(14, &words(&[1])),
-        session_stats: frames.push(9, &[]),
-        stats: frames.push(15, &[]),
+        text: frames.push(RequestKind::PageText, &page),
+        search: frames.push(
+            RequestKind::Search,
+            &search_payload(search, search.offset, search.limit),
+        ),
+        complete: frames.push(RequestKind::Search, &search_payload(search, 0, 1024)),
+        links: frames.push(RequestKind::Links, &page),
+        outlines: frames.push(RequestKind::Outlines, &words(&[1])),
+        labels: frames.push(RequestKind::Labels, &words(&[1])),
+        session_stats: frames.push(RequestKind::Stats, &[]),
+        stats: frames.push(RequestKind::ReadingStats, &[]),
         closed_stats: 0,
         closed_text: 0,
     });
-    let typed = flags.intersects(Flags::TYPED_DIAGNOSTICS | Flags::UNNEGOTIATED_DIAGNOSTICS);
-    let diagnostics = frames.push(if typed { 17 } else { 5 }, &words(&[1]));
-    let close = frames.push(6, &words(&[1]));
+    let diagnostics =
+        if flags.intersects(Flags::TYPED_DIAGNOSTICS | Flags::UNNEGOTIATED_DIAGNOSTICS) {
+            RequestKind::DiagnosticDetails
+        } else {
+            RequestKind::Diagnostics
+        };
+    let diagnostics = frames.push(diagnostics, &words(&[1]));
+    let close = frames.push(RequestKind::Close, &words(&[1]));
     if let Some(reading) = &mut reading {
-        reading.closed_stats = frames.push(15, &[]);
-        reading.closed_text = frames.push(10, &page);
+        reading.closed_stats = frames.push(RequestKind::ReadingStats, &[]);
+        reading.closed_text = frames.push(RequestKind::PageText, &page);
     }
     let plan = Plan {
         open,
@@ -388,44 +393,60 @@ fn requests(
 /// diagnostics answer (or exceed the frame budget) and close succeeds.
 /// Older handshakes reject every reading request and v1 the accounting
 /// request of v1.1, as operational InvalidArgument errors.
-fn check_session(requests: &[u8], responses: &[Response<'_>], plan: &Plan, version: u32) {
-    if responses.get(plan.open).is_some_and(|r| r.kind == 130) {
+fn check_session(requests: &[u8], responses: &[Response<'_>], plan: &Plan, version: Version) {
+    if responses
+        .get(plan.open)
+        .is_some_and(|r| r.is(ResponseKind::Open))
+    {
         let diagnostics = responses.get(plan.diagnostics);
+        let typed = requests.get(plan.diagnostics) == Some(&RequestKind::DiagnosticDetails.code());
         assert!(
-            diagnostics.is_some_and(|r| {
-                if requests.get(plan.diagnostics) == Some(&17) {
-                    if version == VERSION_1_4 {
-                        r.kind == 145 || category(r) == Some(LIMIT)
-                    } else {
-                        category(r) == Some(INVALID_ARGUMENT)
-                    }
-                } else {
-                    r.kind == 133 || category(r) == Some(LIMIT)
+            diagnostics.is_some_and(|r| match (typed, version >= Version::V1_4) {
+                (false, _) => {
+                    r.is(ResponseKind::Diagnostics) || category(r) == Some(ErrorCategory::Limit)
                 }
+                (true, true) => {
+                    r.is(ResponseKind::DiagnosticDetails)
+                        || category(r) == Some(ErrorCategory::Limit)
+                }
+                (true, false) => category(r) == Some(ErrorCategory::InvalidArgument),
             }),
             "diagnostics failed after a successful open"
         );
-        let close = responses.get(plan.close).map(|r| r.kind);
-        assert_eq!(close, Some(134), "close failed after a successful open");
+        let close = responses.get(plan.close);
+        assert!(
+            close.is_some_and(|r| r.is(ResponseKind::Close)),
+            "close failed after a successful open"
+        );
     }
-    let rejected = |kind: u8| match kind {
-        9 => version == VERSION,
-        10..=15 => !matches!(version, VERSION_1_2 | VERSION_1_3 | VERSION_1_4),
-        17 => version != VERSION_1_4,
+    let rejected = |kind: u8| match RequestKind::try_from(kind) {
+        Ok(RequestKind::Stats) => version < Version::V1_1,
+        Ok(
+            RequestKind::PageText
+            | RequestKind::Search
+            | RequestKind::Links
+            | RequestKind::Outlines
+            | RequestKind::Labels
+            | RequestKind::ReadingStats,
+        ) => version < Version::V1_2,
+        Ok(RequestKind::DiagnosticDetails) => version < Version::V1_4,
         _ => false,
     };
     for (index, (&kind, response)) in requests.iter().zip(responses).enumerate() {
         if rejected(kind) {
             assert_eq!(
                 category(response),
-                Some(INVALID_ARGUMENT),
-                "request {index} of kind {kind} in a session of version {version:#x}"
+                Some(ErrorCategory::InvalidArgument),
+                "request {index} of kind {kind} in a session of version {version:?}"
             );
         }
     }
     if let Some(stats) = plan.reading.as_ref().map(|r| r.session_stats) {
         assert!(
-            version == VERSION || responses.get(stats).is_some_and(|r| r.kind == 137),
+            version == Version::V1
+                || responses
+                    .get(stats)
+                    .is_some_and(|r| r.is(ResponseKind::Stats)),
             "session accounting failed"
         );
     }
@@ -437,18 +458,18 @@ fn check_session(requests: &[u8], responses: &[Response<'_>], plan: &Plan, versi
 fn check_tiles(responses: &[Response<'_>], plan: &Plan, tile: TileRequest) {
     let v1 = responses
         .get(plan.v1_tile)
-        .filter(|r| r.kind == 132)
+        .filter(|r| r.is(ResponseKind::Tile))
         .and_then(|r| tile_pixels(r, 0, tile));
     let Some([current, newer, stale]) = plan.generations else {
         return;
     };
     let current = responses
         .get(current)
-        .filter(|r| r.kind == 136)
+        .filter(|r| r.is(ResponseKind::GenerationTile))
         .and_then(|r| {
             assert_eq!(
                 r.payload.first(),
-                Some(&1),
+                Some(&TileStatus::Rendered.code()),
                 "the current generation was skipped"
             );
             tile_pixels(r, 5, tile)
@@ -456,11 +477,15 @@ fn check_tiles(responses: &[Response<'_>], plan: &Plan, tile: TileRequest) {
     if let (Some(current), Some(v1)) = (current, v1) {
         assert!(current == v1, "the same tile rendered differently");
     }
-    if responses.get(newer).is_some_and(|r| r.kind == 135) {
+    if responses
+        .get(newer)
+        .is_some_and(|r| r.is(ResponseKind::Generation))
+    {
         let stale = responses.get(stale).map(|r| (r.kind, r.payload));
+        let skipped = [TileStatus::Skipped.code(), 2, 0, 0, 0];
         assert_eq!(
             stale,
-            Some((136, &[0, 2, 0, 0, 0][..])),
+            Some((ResponseKind::GenerationTile.code(), &skipped[..])),
             "a stale tile was not skipped"
         );
     }
@@ -474,18 +499,19 @@ fn check_reading(
     reading: &Reading,
     search: &SearchRequest,
 ) {
-    let success = |index: usize, kind: u8| {
+    let success = |index: usize, kind: ResponseKind| {
         responses
             .get(index)
-            .filter(|r| r.kind == kind)
+            .filter(|r| r.is(kind))
             .map(|r| Fields(r.payload))
     };
-    let pages = success(plan.open, 130).and_then(|mut f| {
+    let pages = success(plan.open, ResponseKind::Open).and_then(|mut f| {
         f.u32()?;
         f.u32()
     });
-    let text = success(reading.text, 138).and_then(|mut f| page_text(&mut f));
-    let found = success(reading.search, 139).and_then(|mut f| search_result(&mut f));
+    let text = success(reading.text, ResponseKind::PageText).and_then(|mut f| page_text(&mut f));
+    let found =
+        success(reading.search, ResponseKind::Search).and_then(|mut f| search_result(&mut f));
     if let Some(found) = &found {
         check_search(found, search, text);
         // A finished window extracted every page, so the complete search,
@@ -493,20 +519,27 @@ fn check_reading(
         // stopped at its limit may not have reached a failing page.
         let complete = responses.get(reading.complete);
         assert!(
-            !found.done || complete.is_some_and(|r| r.kind == 139 || category(r) == Some(LIMIT)),
+            !found.done
+                || complete.is_some_and(|r| {
+                    r.is(ResponseKind::Search) || category(r) == Some(ErrorCategory::Limit)
+                }),
             "the complete search failed where a window of it succeeded"
         );
-        let complete = success(reading.complete, 139).and_then(|mut f| search_result(&mut f));
+        let complete =
+            success(reading.complete, ResponseKind::Search).and_then(|mut f| search_result(&mut f));
         if let Some(complete) = complete.filter(|c| c.done) {
             check_cursor(found, &complete, search);
         }
     }
-    for (index, kind) in [(reading.links, 140), (reading.outlines, 141)] {
+    for (index, kind) in [
+        (reading.links, ResponseKind::Links),
+        (reading.outlines, ResponseKind::Outlines),
+    ] {
         let Some(mut fields) = success(index, kind) else {
             continue;
         };
         let mut destinations = Vec::new();
-        let parsed = if kind == 140 {
+        let parsed = if kind == ResponseKind::Links {
             links(&mut fields, &mut destinations)
         } else {
             outlines(&mut fields, &mut destinations)
@@ -517,11 +550,13 @@ fn check_reading(
             "destination pages {destinations:?} of {count}"
         );
     }
-    if let Some(labels) = success(reading.labels, 142).and_then(|mut f| f.u32()) {
+    if let Some(labels) = success(reading.labels, ResponseKind::Labels).and_then(|mut f| f.u32()) {
         assert_eq!(Some(labels), pages, "labels for every page");
     }
-    let stats = success(reading.session_stats, 137);
-    if let (Some(stats), Some(mut reading_stats)) = (stats, success(reading.stats, 143)) {
+    let stats = success(reading.session_stats, ResponseKind::Stats);
+    if let (Some(stats), Some(mut reading_stats)) =
+        (stats, success(reading.stats, ResponseKind::ReadingStats))
+    {
         assert_eq!(
             reading_stats.take(24),
             Some(stats.0),
@@ -534,7 +569,7 @@ fn check_reading(
             "{text_pages:?} retained text pages"
         );
     }
-    let closed = success(reading.closed_stats, 143).map(|f| f.0);
+    let closed = success(reading.closed_stats, ResponseKind::ReadingStats).map(|f| f.0);
     assert!(
         closed.is_none_or(|bytes| bytes.iter().all(|&b| b == 0)),
         "close kept retained bytes: {closed:?}"
@@ -542,7 +577,7 @@ fn check_reading(
     let closed_text = responses.get(reading.closed_text);
     assert_eq!(
         closed_text.and_then(category),
-        Some(INVALID_ARGUMENT),
+        Some(ErrorCategory::InvalidArgument),
         "page text of a closed document"
     );
 }
@@ -658,10 +693,12 @@ fn tile_pixels<'a>(response: &Response<'a>, skip: usize, tile: TileRequest) -> O
 }
 
 /// The error category of a kind 255 response.
-fn category(response: &Response<'_>) -> Option<u8> {
-    (response.kind == ERROR_KIND)
+fn category(response: &Response<'_>) -> Option<ErrorCategory> {
+    let byte = response
+        .is(ResponseKind::Error)
         .then(|| response.payload.first().copied())
-        .flatten()
+        .flatten()?;
+    ErrorCategory::try_from(byte).ok()
 }
 
 fn words(values: &[u32]) -> Vec<u8> {
@@ -699,8 +736,9 @@ struct Frames {
 
 impl Frames {
     /// Appends a frame and returns its index among the requests.
-    fn push(&mut self, kind: u8, payload: &[u8]) -> usize {
+    fn push(&mut self, kind: RequestKind, payload: &[u8]) -> usize {
         let index = self.kinds.len();
+        let kind = kind.code();
         self.kinds.push(kind);
         let id = u32::try_from(self.kinds.len()).unwrap_or(u32::MAX);
         let length = u32::try_from(payload.len() + 5).unwrap_or(u32::MAX);
@@ -717,6 +755,12 @@ struct Response<'a> {
     kind: u8,
     id: u32,
     payload: &'a [u8],
+}
+
+impl Response<'_> {
+    fn is(&self, kind: ResponseKind) -> bool {
+        self.kind == kind.code()
+    }
 }
 
 /// Splits the output into frames; it must consist of whole frames.
@@ -802,15 +846,15 @@ impl<'a> Fields<'a> {
 /// The documented payload of a response of any kind, read to its end.
 fn layout(response: &Response<'_>) -> Option<()> {
     let mut f = Fields(response.payload);
-    match response.kind {
-        129 | 135 => {
+    match ResponseKind::try_from(response.kind).ok()? {
+        ResponseKind::Hello | ResponseKind::Generation => {
             f.u32()?;
         }
-        130 => {
+        ResponseKind::Open => {
             f.u32()?;
             f.u32()?;
         }
-        131 => {
+        ResponseKind::PageInfo => {
             for _ in 0..4 {
                 f.f64()?;
             }
@@ -820,10 +864,10 @@ fn layout(response: &Response<'_>) -> Option<()> {
             f.u32()?;
             f.u32()?;
         }
-        132 => pixels(&mut f)?,
-        133 | 145 => {
+        ResponseKind::Tile => pixels(&mut f)?,
+        kind @ (ResponseKind::Diagnostics | ResponseKind::DiagnosticDetails) => {
             for _ in 0..f.count()? {
-                if response.kind == 145 {
+                if kind == ResponseKind::DiagnosticDetails {
                     f.flag()?;
                 }
                 super::is_tag(f.text()?).then_some(())?;
@@ -831,41 +875,41 @@ fn layout(response: &Response<'_>) -> Option<()> {
                 context(&mut f)?;
             }
         }
-        134 => {}
-        136 => {
+        ResponseKind::Close => {}
+        ResponseKind::GenerationTile => {
             let rendered = f.flag()?;
             f.u32()?;
             if rendered {
                 pixels(&mut f)?;
             }
         }
-        137 => {
+        ResponseKind::Stats => {
             f.take(24)?;
         }
-        138 => {
+        ResponseKind::PageText => {
             page_text(&mut f)?;
         }
-        139 => {
+        ResponseKind::Search => {
             search_result(&mut f)?;
         }
-        140 => links(&mut f, &mut Vec::new())?,
-        141 => outlines(&mut f, &mut Vec::new())?,
-        142 => {
+        ResponseKind::Links => links(&mut f, &mut Vec::new())?,
+        ResponseKind::Outlines => outlines(&mut f, &mut Vec::new())?,
+        ResponseKind::Labels => {
             for _ in 0..f.count()? {
                 f.text()?;
             }
         }
-        143 => {
+        ResponseKind::ReadingStats => {
             f.take(36)?;
         }
-        144 => {
+        ResponseKind::Bounds => {
             if f.flag()? {
                 for _ in 0..4 {
                     f.f64()?;
                 }
             }
         }
-        ERROR_KIND => error(&mut f)?,
+        ResponseKind::Error => error(&mut f)?,
         _ => return None,
     }
     f.end()
@@ -887,8 +931,9 @@ fn error(f: &mut Fields<'_>) -> Option<()> {
     let feature = f.text()?;
     let repair = f.text()?;
     let message = f.text()?;
-    let valid = (1..=7).contains(&category)
-        && (category == 3) != feature.is_empty()
+    let unsupported = category == ErrorCategory::Unsupported.code();
+    let valid = ErrorCategory::try_from(category).is_ok()
+        && unsupported != feature.is_empty()
         && (feature.is_empty() || super::is_tag(feature))
         && (repair.is_empty() || super::is_tag(repair))
         && !message.is_empty();
@@ -903,12 +948,12 @@ fn context(f: &mut Fields<'_>) -> Option<()> {
         f.u32()?;
         f.u16()?;
     }
-    match f.u8()? {
-        0 => {}
-        1 | 3 => {
+    match PositionKind::try_from(f.u8()?).ok()? {
+        PositionKind::Unknown => {}
+        PositionKind::File | PositionKind::Buffer => {
             f.u64()?;
         }
-        2 => {
+        PositionKind::Stream => {
             f.u64()?;
             f.u32()?;
             f.u16()?;
@@ -1015,21 +1060,21 @@ fn outlines(f: &mut Fields<'_>, destinations: &mut Vec<u32>) -> Option<()> {
 fn target(f: &mut Fields<'_>, destinations: &mut Vec<u32>) -> Option<()> {
     for index in 0..f.count()? {
         (f.count()? <= index).then_some(())?;
-        match f.u8()? {
-            1 => destination(f, destinations)?,
-            2 => {
+        match ActionCode::try_from(f.u8()?).ok()? {
+            ActionCode::GoTo => destination(f, destinations)?,
+            ActionCode::Uri => {
                 f.text()?;
                 if f.flag()? {
                     f.text()?;
                 }
                 f.flag()?;
             }
-            3 => {
+            ActionCode::Named => {
                 let name = f.text()?;
                 (NAMED.contains(&name) || escaped(name)).then_some(())?;
             }
-            4..=6 => {}
-            7 => escaped(f.text()?).then_some(())?,
+            ActionCode::GoToR | ActionCode::Launch | ActionCode::JavaScript => {}
+            ActionCode::Other => escaped(f.text()?).then_some(())?,
             _ => return None,
         }
     }
@@ -1041,11 +1086,11 @@ fn target(f: &mut Fields<'_>, destinations: &mut Vec<u32>) -> Option<()> {
 fn destination(f: &mut Fields<'_>, destinations: &mut Vec<u32>) -> Option<()> {
     destinations.push(f.u32()?);
     let (fit, mask) = (f.u8()?, f.u8()?);
-    let allowed = match fit {
-        0 => mask <= 7,
-        1 | 5 => mask == 0,
-        2 | 3 | 6 | 7 => mask <= 1,
-        4 => mask == 15,
+    let allowed = match FitCode::try_from(fit) {
+        Ok(FitCode::Xyz) => mask <= 7,
+        Ok(FitCode::Fit | FitCode::FitB) => mask == 0,
+        Ok(FitCode::FitH | FitCode::FitV | FitCode::FitBh | FitCode::FitBv) => mask <= 1,
+        Ok(FitCode::FitR) => mask == 15,
         _ => false,
     };
     allowed.then_some(())?;

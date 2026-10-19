@@ -2,7 +2,7 @@
 //! Reading layouts against generator expectations, independent of the JS codec.
 
 use pagura::{Limits, TextPage};
-use pagura_host::protocol;
+use pagura_host::protocol::{self, Version};
 use pagura_host::{Session, SessionConfig, SessionLimits};
 use pagura_testkit::{Frame, fixture, frame, split_frames};
 use std::io::Write;
@@ -12,8 +12,8 @@ fn u32s(values: &[u32]) -> Vec<u8> {
     values.iter().flat_map(|n| n.to_le_bytes()).collect()
 }
 
-fn hello(version: u32) -> Vec<u8> {
-    frame(1, 1, &version.to_le_bytes())
+fn hello(version: Version) -> Vec<u8> {
+    frame(1, 1, &version.code().to_le_bytes())
 }
 
 #[expect(clippy::unwrap_used, reason = "small pinned fixture in test helper")]
@@ -48,7 +48,7 @@ fn native_binary_and_session_match_literal_text_layout() {
     let pdf = fixture("text", "extract-simple.pdf");
     let document = pagura::Document::open(pdf.clone(), &pagura::OpenOptions::default()).unwrap();
     let text = pagura::text_page(&document, document.page(0).unwrap()).unwrap();
-    let mut input = hello(protocol::VERSION_1_2);
+    let mut input = hello(Version::V1_2);
     input.extend(frame(2, 2, &open(&pdf)));
     input.extend(frame(10, 3, &u32s(&[1, 0])));
     input.extend(frame(15, 4, &[]));
@@ -109,15 +109,15 @@ fn all_reading_requests_reject_truncation_and_preserve_older_sessions() {
     for (kind, payload) in &payloads {
         let encoded = frame(*kind, 2, payload);
         let body = &encoded[4..];
-        assert!(protocol::decode(body, Limits::default()).is_ok());
+        assert!(protocol::decode(body, &Limits::default()).is_ok());
         for n in 0..body.len() {
-            assert!(protocol::decode(&body[..n], Limits::default()).is_err());
+            assert!(protocol::decode(&body[..n], &Limits::default()).is_err());
         }
         let mut trailing = body.to_vec();
         trailing.push(0);
-        assert!(protocol::decode(&trailing, Limits::default()).is_err());
+        assert!(protocol::decode(&trailing, &Limits::default()).is_err());
     }
-    for version in [protocol::VERSION, protocol::VERSION_1_1] {
+    for version in [Version::V1, Version::V1_1] {
         let mut input = hello(version);
         for (i, (kind, payload)) in payloads.iter().enumerate() {
             input.extend(frame(*kind, u32::try_from(i + 2).unwrap(), payload));
@@ -131,13 +131,7 @@ fn all_reading_requests_reject_truncation_and_preserve_older_sessions() {
 #[test]
 fn content_bounds_are_additive_and_match_independent_rectangle_geometry() {
     let pdf = fixture("classic", "two-pages.pdf");
-    for version in [
-        protocol::VERSION,
-        protocol::VERSION_1_1,
-        protocol::VERSION_1_2,
-        protocol::VERSION_1_3,
-        protocol::VERSION_1_4,
-    ] {
+    for &version in Version::ALL {
         let mut input = hello(version);
         input.extend(frame(2, 2, &open(&pdf)));
         input.extend(frame(16, 3, &u32s(&[1, 0])));
@@ -149,7 +143,7 @@ fn content_bounds_are_additive_and_match_independent_rectangle_geometry() {
         input.extend(frame(9, 9, &[]));
         let frames = serve(Session::default(), &input);
         assert_eq!(frames[4][0], 131);
-        if matches!(version, protocol::VERSION_1_3 | protocol::VERSION_1_4) {
+        if version >= Version::V1_3 {
             assert_eq!(&frames[8][25..29], &2_u32.to_le_bytes());
             for (id, coordinates) in [(3_u32, [8_f64, 8., 24., 24.]), (4, [32., 32., 64., 64.])] {
                 let mut expected = vec![144];
@@ -170,12 +164,12 @@ fn content_bounds_are_additive_and_match_independent_rectangle_geometry() {
         }
     }
     let blank = fixture("classic", "blank.pdf");
-    let mut input = hello(protocol::VERSION_1_3);
+    let mut input = hello(Version::V1_3);
     input.extend(frame(2, 2, &open(&blank)));
     input.extend(frame(16, 3, &u32s(&[1, 0])));
     assert_eq!(serve(Session::default(), &input)[2], &[144, 3, 0, 0, 0, 0]);
     // 33 payload bytes exceed a 32-byte reading budget.
-    let mut input = hello(protocol::VERSION_1_3);
+    let mut input = hello(Version::V1_3);
     input.extend(frame(2, 2, &open(&pdf)));
     input.extend(frame(16, 3, &u32s(&[1, 0])));
     let bodies = serve(tiny_reading_session(), &input);
@@ -188,7 +182,7 @@ fn text_cache_budget_eviction_and_close_release_accounting() {
     let document = pagura::Document::open(pdf.clone(), &pagura::OpenOptions::default()).unwrap();
     let page: TextPage = pagura::text_page(&document, document.page(0).unwrap()).unwrap();
     assert_eq!(page.text(), "ZZ");
-    let mut input = hello(protocol::VERSION_1_2);
+    let mut input = hello(Version::V1_2);
     input.extend(frame(2, 2, &open(&pdf)));
     input.extend(frame(10, 3, &u32s(&[1, 0])));
     input.extend(frame(15, 4, &[]));

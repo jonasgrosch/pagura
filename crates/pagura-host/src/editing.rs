@@ -3,19 +3,20 @@ mod aliases;
 mod styles;
 pub(crate) use styles::encode as styles;
 
-use crate::protocol::{Encoder, Reader};
+use crate::protocol::Reader;
+use crate::wire::Writer;
 use pagura::editing::{SaveOptions, save_filled_form};
 use pagura::forms::{
     AcroForm, ButtonKind, ButtonValue, ChoiceSelection, ChoiceStyle, Field, FieldFlags, FieldKind,
     FieldValue, FillValue,
 };
-use pagura::{Document, Error, Name, Result};
+use pagura::{Document, Error, Name, Page, Result};
 
 const MAX_FIELDS: usize = 1024;
 const MAX_OPTIONS: usize = 4096;
 
 pub(crate) fn fields(document: &Document) -> Result<Vec<u8>> {
-    let mut out = Encoder::new(document.limits().document_bytes.min(32 * 1024 * 1024));
+    let mut out = Writer::new(document.limits().document_bytes.min(32 * 1024 * 1024));
     let Some(form) = document.acro_form()? else {
         out.count(0)?;
         return Ok(out.finish());
@@ -53,13 +54,13 @@ pub(crate) fn fields(document: &Document) -> Result<Vec<u8>> {
             kind,
             flags | u8::from(field.flags.contains(FieldFlags::READ_ONLY)),
         ])?;
-        out.string(
+        out.text(
             field
                 .alternative_name
                 .as_deref()
                 .unwrap_or(&field.qualified_name),
         )?;
-        out.string(if kind == 3 {
+        out.text(if kind == 3 {
             ""
         } else {
             match &field.value {
@@ -88,7 +89,7 @@ pub(crate) fn fields(document: &Document) -> Result<Vec<u8>> {
 }
 
 fn write_options(
-    out: &mut Encoder,
+    out: &mut Writer,
     form: &AcroForm<'_>,
     field: &Field<'_>,
     index: usize,
@@ -103,7 +104,7 @@ fn write_options(
                     _ => false,
                 };
                 out.count(index)?;
-                out.string(&option.display)?;
+                out.text(&option.display)?;
                 out.push(&[u8::from(selected)])?;
                 out.count(0)?;
             }
@@ -122,7 +123,7 @@ fn write_options(
                         .cloned()
                         .unwrap_or_else(|| state.to_string());
                     out.count(widget_index)?;
-                    out.string(&label)?;
+                    out.text(&label)?;
                     out.push(&[u8::from(widget.appearance_state == Some(*state))])?;
                     out.count(state.len())?;
                     out.push(state.as_bytes())?;
@@ -170,7 +171,7 @@ pub(crate) fn save(document: &Document, changes: &[u8]) -> Result<Vec<u8>> {
             ));
         }
         previous = Some(field);
-        match reader.byte()? {
+        match reader.u8()? {
             0 => {
                 filler.set(field, FillValue::Text(text(&mut reader, document)?))?;
             }
@@ -195,7 +196,7 @@ pub(crate) fn save(document: &Document, changes: &[u8]) -> Result<Vec<u8>> {
             }
             3 => {
                 let widget = index(reader.u32()?)?;
-                let state = Name::new(reader.blob(document.limits().string_bytes)?);
+                let state = Name::new(reader.blob(document.limits().string_bytes)?.get());
                 filler.set(
                     field,
                     FillValue::Button(ButtonValue::Widget {
@@ -224,7 +225,7 @@ pub(crate) fn save(document: &Document, changes: &[u8]) -> Result<Vec<u8>> {
 }
 
 fn text<'a>(reader: &mut Reader<'a>, document: &Document) -> Result<&'a str> {
-    std::str::from_utf8(reader.blob(document.limits().string_bytes)?)
+    std::str::from_utf8(reader.blob(document.limits().string_bytes)?.get())
         .map_err(|_| Error::invalid_argument("form text must be UTF-8"))
 }
 fn index(value: u32) -> Result<usize> {
@@ -232,9 +233,8 @@ fn index(value: u32) -> Result<usize> {
 }
 
 /// Map only widgets actually listed by this page, never the optional P backlink.
-pub(crate) fn widgets(document: &Document, page: u32) -> Result<Vec<u8>> {
-    let page = document.page(index(page)?)?;
-    let mut out = Encoder::new(document.limits().document_bytes.min(32 * 1024 * 1024));
+pub(crate) fn widgets(document: &Document, page: &Page) -> Result<Vec<u8>> {
+    let mut out = Writer::new(document.limits().document_bytes.min(32 * 1024 * 1024));
     let Some(form) = document.acro_form()? else {
         out.count(0)?;
         return Ok(out.finish());
