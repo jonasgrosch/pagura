@@ -197,20 +197,22 @@ fn decode_inner(
         return Err(Error::syntax("invalid CCITT Columns"));
     }
     crate::sample_count(params.columns, 1, 1, 1, limits)?;
-    if data.len() > limits.stream_bytes || data.len().checked_mul(8).is_none() {
-        return Err(Error::limit("CCITT input budget exceeded").at(Position::Buffer(0)));
+    if data.len().checked_mul(8).is_none() {
+        return Err(Error::limit("CCITT input exceeds the address space").at(Position::Buffer(0)));
     }
     if let Some(rows) = params.rows.filter(|_| !params.end_of_block) {
         crate::sample_count(params.columns, rows, 1, 1, limits)?;
     }
     let width = params.columns as usize;
     let stride = width.div_ceil(8);
-    let scratch = workspace(width, stride, limits)?;
+    workspace(width, stride, limits)?;
+    // Every bit read and every zero bit scanned for an EOL is one unit of
+    // decode work (ADR 0016).
     let mut bits = Bits {
         data,
         at: 0,
         work: 0,
-        cap: limits.operations,
+        cap: limits.decode_work,
     };
     let mut output = Vec::new();
     let (mut reference, mut changes) =
@@ -249,7 +251,7 @@ fn decode_inner(
         let length = output
             .len()
             .checked_add(stride)
-            .filter(|&v| v <= limits.decoded_bytes.saturating_sub(scratch))
+            .filter(|&v| v <= limits.decoded_bytes)
             .ok_or(Error::limit("CCITT output budget exceeded"))?;
         changes.clear();
         let row_start = bits.at;
@@ -295,14 +297,18 @@ fn decode_inner(
     Ok(output)
 }
 
-fn workspace(width: usize, stride: usize, limits: &Limits) -> Result<usize> {
-    // Two transition lists bound reference lookup and preserve linear row work.
-    width
+/// Checks the working memory of a decode against `decode_bytes`: two
+/// transition lists, which bound reference lookup and keep row work linear,
+/// and the row being packed.
+fn workspace(width: usize, stride: usize, limits: &Limits) -> Result<()> {
+    let bytes = width
         .checked_add(2)
         .and_then(|v| v.checked_mul(2 * size_of::<usize>()))
-        .and_then(|v| v.checked_add(stride))
-        .filter(|&v| v <= limits.decoded_bytes)
-        .ok_or(Error::limit("CCITT row workspace budget exceeded"))
+        .and_then(|v| v.checked_add(stride));
+    if bytes.is_none_or(|v| v > limits.decode_bytes) {
+        return Err(Error::limit("CCITT row workspace budget exceeded"));
+    }
+    Ok(())
 }
 
 /// Sets the one bits of each run `from..to` a byte range at a time. Changing
