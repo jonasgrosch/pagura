@@ -444,14 +444,32 @@ impl PdfFont {
                 substituted,
                 cid_map,
             } => {
+                let select = || {
+                    if (self.kind == FontKind::TrueType || *substituted)
+                        && program.format() != pagura_font::FontFormat::Cff
+                    {
+                        crate::selection::truetype(
+                            program,
+                            code.value,
+                            name,
+                            unicode,
+                            *truetype_raw,
+                        )
+                    } else {
+                        name.and_then(|name| program.glyph_for_name(name.as_bytes()))
+                    }
+                };
                 let glyph = if self.kind == FontKind::Type0 {
                     cid_glyph(program, cid_map.as_deref(), selector)
-                } else if (self.kind == FontKind::TrueType || *substituted)
-                    && program.format() != pagura_font::FontFormat::Cff
+                } else if let Mapping::Simple(simple) = &self.mapping
+                    && code.len == 1
+                    && let Some(slot) = usize::try_from(code.value)
+                        .ok()
+                        .and_then(|c| simple.selected.get(c))
                 {
-                    crate::selection::truetype(program, code.value, name, unicode, *truetype_raw)
+                    *slot.get_or_init(select)
                 } else {
-                    name.and_then(|name| program.glyph_for_name(name.as_bytes()))
+                    select()
                 };
                 GlyphShape::Outline {
                     program: Arc::clone(program),

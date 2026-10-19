@@ -11,6 +11,8 @@ use std::collections::BTreeMap;
 #[derive(Debug)]
 pub(crate) struct Metrics {
     widths: BTreeMap<u32, f64>,
+    /// A simple font's width of every code; empty for composite fonts.
+    dense: Vec<f64>,
     vertical: BTreeMap<u32, VerticalMetrics>,
     missing: f64,
     default_vertical: (f64, f64),
@@ -18,12 +20,11 @@ pub(crate) struct Metrics {
 
 impl Metrics {
     pub(crate) fn heap_bytes(&self) -> usize {
-        crate::memory::tree::<u32, f64>(self.widths.len()).saturating_add(crate::memory::tree::<
-            u32,
-            VerticalMetrics,
-        >(
-            self.vertical.len()
-        ))
+        (self.dense.capacity() * size_of::<f64>())
+            .saturating_add(crate::memory::tree::<u32, f64>(self.widths.len()))
+            .saturating_add(crate::memory::tree::<u32, VerticalMetrics>(
+                self.vertical.len(),
+            ))
     }
 
     pub(crate) fn standard(
@@ -39,10 +40,20 @@ impl Metrics {
                     ))
                 })
                 .collect(),
+            dense: Vec::new(),
             vertical: BTreeMap::new(),
             missing: 0.0,
             default_vertical: (0.88, -1.0),
         }
+        .densified()
+    }
+
+    /// Stores a simple font's widths, every code below 256, as a table.
+    fn densified(mut self) -> Self {
+        self.dense = (0..256)
+            .map(|code| self.widths.get(&code).copied().unwrap_or(self.missing))
+            .collect();
+        self
     }
 
     pub(crate) fn simple(
@@ -55,6 +66,7 @@ impl Metrics {
             descriptor.map_or(Ok(0.0), |d| number(document, d, b"MissingWidth", 0.0))? * scale;
         let mut result = Self {
             widths: BTreeMap::new(),
+            dense: Vec::new(),
             vertical: BTreeMap::new(),
             missing,
             default_vertical: (0.88, -1.0),
@@ -80,7 +92,7 @@ impl Metrics {
         } else {
             return Err(Error::syntax("simple font missing Widths"));
         }
-        Ok(result)
+        Ok(result.densified())
     }
 
     pub(crate) fn composite(document: &Document, font: &Dictionary) -> Result<Self> {
@@ -99,6 +111,7 @@ impl Metrics {
         };
         let mut result = Self {
             widths: BTreeMap::new(),
+            dense: Vec::new(),
             vertical: BTreeMap::new(),
             missing,
             default_vertical,
@@ -199,6 +212,9 @@ impl Metrics {
     }
 
     pub(crate) fn width(&self, code: u32) -> f64 {
+        if let Some(&width) = usize::try_from(code).ok().and_then(|c| self.dense.get(c)) {
+            return width;
+        }
         self.widths.get(&code).copied().unwrap_or(self.missing)
     }
     pub(crate) fn vertical(&self, code: u32) -> VerticalMetrics {

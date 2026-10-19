@@ -9,6 +9,9 @@ pub(crate) type Encoding = [Option<Name>; 256];
 pub(crate) struct SimpleMapping {
     pub(crate) names: Encoding,
     pub(crate) unicode: [Option<String>; 256],
+    /// Each code's program glyph, selected on first use: a function of the
+    /// code, its name and its Unicode alone (9.6.5).
+    pub(crate) selected: [std::sync::OnceLock<Option<pagura_font::GlyphId>>; 256],
 }
 
 impl SimpleMapping {
@@ -31,6 +34,7 @@ impl SimpleMapping {
         Ok(Self {
             names,
             unicode: texts,
+            selected: std::array::from_fn(|_| std::sync::OnceLock::new()),
         })
     }
 }
