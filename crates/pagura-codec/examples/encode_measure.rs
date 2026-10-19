@@ -65,7 +65,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             }
             .decode(
                 &encoded,
-                input.len(),
+                &Limits {
+                    decoded_bytes: input.len(),
+                    ..limits
+                },
                 &mut Diagnostics::new(Recovery::Strict),
             )?;
             if decoded != *input {

@@ -1,23 +1,49 @@
-//! Eight-bit PNG encoding (PNG Second Edition 5, 6.2, 9, 11.2 and 12.8).
+//! Eight-bit PNG encoding (PNG Second Edition 5, 6.2, 9, 11.2 and 12.8;
+//! cited below as "PNG").
 //!
 //! Rows are tightly packed, top to bottom, without premultiplication. Output
-//! contains only IHDR, contiguous IDAT chunks and IEND, with no colour profile.
-use crate::{
-    encoding::{Bytes, filled, limit},
-    flate,
-};
-use pagura_core::{Error, Limits, Position, Result};
+//! contains only IHDR, contiguous IDAT chunks and IEND, with no color profile.
+//! The filters are the PNG predictors' arithmetic run forwards, and IDAT
+//! holds [`flate::compress`] output; ADR 0020 records why the encoder lives
+//! in this crate.
+use crate::bounded::{BoundedBytes, ENCODE_BUDGET, encode_limit, filled};
+use crate::flate;
+use crate::predictor::PngFilter;
+use pagura_core::{Error, Limits, Result};
 
-/// The eight-bit sample layout of tightly packed input pixels.
+/// The PNG signature (PNG Second Edition 5.2).
+const SIGNATURE: [u8; 8] = *b"\x89PNG\r\n\x1a\n";
+/// Length, type and CRC fields around each chunk's data (PNG 5.3).
+const CHUNK_FIELDS: usize = 12;
+/// IHDR data length (PNG 11.2.2).
+const IHDR_LENGTH: usize = 13;
+/// Signature, IHDR, one IDAT and IEND without image data.
+const FRAMING: usize = SIGNATURE.len() + 3 * CHUNK_FIELDS + IHDR_LENGTH;
+/// The largest image dimension and chunk length, 2^31 - 1 (PNG 5.3, 11.2.2).
+const MAX_FIELD: u32 = 0x7fff_ffff;
+/// Sample depth: this encoder writes eight bits per sample.
+const BIT_DEPTH: u8 = 8;
+/// IDAT data per chunk, an encoder choice below `MAX_FIELD`.
+const IDAT_LENGTH: usize = 65536;
+/// The reflected CRC-32 polynomial of ISO 3309 (PNG 5.5, Annex D).
+const CRC_POLYNOMIAL: u32 = 0xedb8_8320;
+/// The largest absolute signed value of a filtered byte, which bounds the
+/// adaptive heuristic's per-byte score (PNG 12.8).
+const MAX_SCORE: u64 = 128;
+
+/// The eight-bit sample layout of tightly packed input pixels; the
+/// discriminant is the PNG color type (PNG 11.2.2, Table 11.1).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+#[repr(u8)]
 pub enum ColorType {
-    /// One grayscale byte per pixel (PNG colour type 0).
-    Gray,
-    /// Red, green and blue bytes (PNG colour type 2).
-    Rgb,
-    /// Red, green, blue and straight alpha bytes (PNG colour type 6).
+    /// One grayscale byte per pixel (PNG color type 0).
+    Gray = 0,
+    /// Red, green and blue bytes (PNG color type 2).
+    Rgb = 2,
+    /// Red, green, blue and straight alpha bytes (PNG color type 6).
     #[default]
-    Rgba,
+    Rgba = 6,
 }
 
 impl ColorType {
@@ -28,17 +54,12 @@ impl ColorType {
             Self::Rgba => 4,
         }
     }
-    const fn code(self) -> u8 {
-        match self {
-            Self::Gray => 0,
-            Self::Rgb => 2,
-            Self::Rgba => 6,
-        }
-    }
 }
 
-/// PNG encoding settings and per-operation budgets.
+/// PNG encoding settings and per-operation budgets. Start from
+/// [`Options::default`] and adjust with the `with_*` methods.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub struct Options {
     /// Pixel channel layout. Defaults to straight RGBA.
     pub color_type: ColorType,
@@ -48,25 +69,49 @@ pub struct Options {
     pub limits: Limits,
 }
 
+impl Options {
+    /// These options with `color_type`.
+    #[must_use]
+    pub const fn with_color_type(mut self, color_type: ColorType) -> Self {
+        self.color_type = color_type;
+        self
+    }
+
+    /// These options with `level`.
+    #[must_use]
+    pub const fn with_level(mut self, level: flate::Level) -> Self {
+        self.level = level;
+        self
+    }
+
+    /// These options with `limits`.
+    #[must_use]
+    pub const fn with_limits(mut self, limits: Limits) -> Self {
+        self.limits = limits;
+        self
+    }
+}
+
 /// Encodes tightly packed eight-bit Gray, RGB or straight RGBA pixels.
 ///
 /// PNG Second Edition 12.8's adaptive heuristic minimizes the sum of absolute
 /// signed filtered bytes; ties choose the smaller filter tag. All five filters
 /// are considered, including on the first row. Alpha and hidden RGB samples
-/// are preserved exactly (6.2); premultiplied inputs must be converted first.
-/// Dimensions must be nonzero and at most 2^31-1 (11.2.2).
+/// are preserved exactly (PNG 6.2); premultiplied inputs must be converted
+/// first. Dimensions must be nonzero and at most 2^31-1 (PNG 11.2.2).
 ///
 /// Input is bounded by `limits.decoded_bytes` and `limits.pixels`, final PNG
 /// bytes by `limits.stream_bytes`. Scratch comprises a filtered image (one
 /// extra tag per row), two row buffers and bounded Flate scratch. The input is
 /// borrowed. Output is deterministic, non-interlaced, and uses no ancillary
-/// chunks; callers choose any external colour-management policy.
+/// chunks; callers choose any external color-management policy.
 ///
 /// # Errors
 ///
-/// Returns positioned `InvalidArgument` for invalid dimensions or an incorrect pixel
+/// Returns `InvalidArgument` for invalid dimensions or an incorrect pixel
 /// byte count, and `Limit` for arithmetic overflow, allocation failure or a
-/// resource budget exceeded. No incomplete PNG is returned.
+/// resource budget exceeded. Neither carries a position: the input is not a
+/// byte stream with meaningful offsets. No incomplete PNG is returned.
 ///
 /// # Examples
 ///
@@ -77,69 +122,71 @@ pub struct Options {
 /// # Ok::<(), pagura_core::Error>(())
 /// ```
 pub fn encode(pixels: &[u8], width: u32, height: u32, options: &Options) -> Result<Vec<u8>> {
-    if width == 0 || height == 0 || width > 0x7fff_ffff || height > 0x7fff_ffff {
-        return Err(Error::invalid_argument("invalid PNG dimensions").at(Position::Buffer(0)));
+    if !(1..=MAX_FIELD).contains(&width) || !(1..=MAX_FIELD).contains(&height) {
+        return Err(Error::invalid_argument("invalid PNG dimensions"));
     }
-    let width = usize::try_from(width).map_err(|_| limit(0))?;
-    let height = usize::try_from(height).map_err(|_| limit(0))?;
+    let width = usize::try_from(width).map_err(|_| encode_limit())?;
+    let height = usize::try_from(height).map_err(|_| encode_limit())?;
     let count = width
         .checked_mul(height)
         .filter(|&n| n <= options.limits.pixels)
-        .ok_or_else(|| limit(0))?;
+        .ok_or(encode_limit())?;
     let channels = options.color_type.channels();
     let size = count
         .checked_mul(channels)
         .filter(|&n| n <= options.limits.decoded_bytes)
-        .ok_or_else(|| limit(0))?;
+        .ok_or(encode_limit())?;
     if pixels.len() != size {
-        return Err(Error::invalid_argument("PNG pixel byte count mismatch")
-            .at(Position::Buffer(pixels.len())));
+        return Err(Error::invalid_argument("PNG pixel byte count mismatch"));
     }
-    // Signature/chunks need 57 bytes, plus at least eight bytes of zlib.
-    if options.limits.stream_bytes < 65 {
-        return Err(limit(0));
+    if options.limits.stream_bytes < FRAMING + flate::MIN_STREAM {
+        return Err(encode_limit());
     }
-    let row_bytes = width.checked_mul(channels).ok_or_else(|| limit(0))?;
-    // At most 128 per byte in the signed-difference score, without overflow.
+    let row_bytes = width.checked_mul(channels).ok_or(encode_limit())?;
+    // The signed-difference score of a row must not overflow.
     u64::try_from(row_bytes)
         .ok()
-        .and_then(|n| n.checked_mul(128))
-        .ok_or_else(|| limit(0))?;
-    let filtered_size = size.checked_add(height).ok_or_else(|| limit(0))?;
+        .and_then(|n| n.checked_mul(MAX_SCORE))
+        .ok_or(encode_limit())?;
+    let filtered_size = size.checked_add(height).ok_or(encode_limit())?;
     let filtered = filter(pixels, row_bytes, channels, filtered_size)?;
     let mut limits = options.limits;
     limits.decoded_bytes = filtered_size; // tags are framing, not pixel bytes
-    limits.stream_bytes -= 57; // reserve the minimum PNG framing before compression
+    limits.stream_bytes -= FRAMING; // reserve the minimum PNG framing before compression
     let compressed = flate::compress(&filtered, options.level, &limits)?;
     // Release the working image before allocating the final chunked output.
     drop(filtered);
-    let mut output = Bytes::new(options.limits.stream_bytes);
-    output.extend(b"\x89PNG\r\n\x1a\n")?;
-    let mut ihdr = [0; 13];
-    ihdr[..4].copy_from_slice(&dimension(width)?.to_be_bytes());
-    ihdr[4..8].copy_from_slice(&dimension(height)?.to_be_bytes());
-    ihdr[8] = 8;
-    ihdr[9] = options.color_type.code();
+    let mut output = BoundedBytes::new(options.limits.stream_bytes, ENCODE_BUDGET);
+    output.extend(&SIGNATURE)?;
+    let mut ihdr = [0; IHDR_LENGTH];
+    ihdr[..4].copy_from_slice(&field(width)?.to_be_bytes());
+    ihdr[4..8].copy_from_slice(&field(height)?.to_be_bytes());
+    // Compression, filter and interlace methods stay 0 (PNG 11.2.2).
+    ihdr[8] = BIT_DEPTH;
+    ihdr[9] = options.color_type as u8;
     chunk(&mut output, *b"IHDR", &ihdr)?;
-    for bytes in compressed.chunks(65536) {
+    for bytes in compressed.chunks(IDAT_LENGTH) {
         chunk(&mut output, *b"IDAT", bytes)?;
     }
     chunk(&mut output, *b"IEND", &[])?;
-    Ok(output.data)
+    Ok(output.into_vec())
 }
 
-fn dimension(value: usize) -> Result<u32> {
-    u32::try_from(value).map_err(|_| limit(0))
+fn field(value: usize) -> Result<u32> {
+    u32::try_from(value)
+        .ok()
+        .filter(|&value| value <= MAX_FIELD)
+        .ok_or(encode_limit())
 }
 
 fn filter(pixels: &[u8], row_bytes: usize, channels: usize, cap: usize) -> Result<Vec<u8>> {
-    let mut output = Bytes::new(cap);
+    let mut output = BoundedBytes::new(cap, ENCODE_BUDGET);
     let mut candidate = filled(row_bytes, 0)?;
     let mut best = filled(row_bytes, 0)?;
     let mut previous: &[u8] = &[];
     for row in pixels.chunks_exact(row_bytes) {
-        let (mut best_score, mut best_tag) = (u64::MAX, 0);
-        for tag in 0..5 {
+        let (mut best_score, mut best_filter) = (u64::MAX, PngFilter::None);
+        for filter in PngFilter::ALL {
             let mut score = 0;
             for (i, (&byte, target)) in row.iter().zip(&mut candidate).enumerate() {
                 let left = i.checked_sub(channels).map_or(0, |p| row[p]);
@@ -149,32 +196,21 @@ fn filter(pixels: &[u8], row_bytes: usize, channels: usize, cap: usize) -> Resul
                     .and_then(|p| previous.get(p))
                     .copied()
                     .unwrap_or(0);
-                let prediction = match tag {
-                    1 => left,
-                    2 => above,
-                    3 => mean(left, above),
-                    4 => crate::output::paeth(left, above, corner),
-                    _ => 0,
-                };
-                *target = byte.wrapping_sub(prediction);
+                *target = byte.wrapping_sub(filter.predict(left, above, corner));
                 let value = u16::from(*target);
                 score += u64::from(value.min(256 - value));
             }
             if score < best_score {
                 best_score = score;
-                best_tag = tag;
+                best_filter = filter;
                 std::mem::swap(&mut candidate, &mut best);
             }
         }
-        output.extend(&[best_tag])?;
+        output.push(best_filter as u8)?;
         output.extend(&best)?;
         previous = row;
     }
-    Ok(output.data)
-}
-
-fn mean(a: u8, b: u8) -> u8 {
-    (a & b) + ((a ^ b) >> 1)
+    Ok(output.into_vec())
 }
 
 #[expect(
@@ -188,7 +224,7 @@ const fn crc_table() -> [u32; 256] {
         let mut value = index as u32;
         let mut bit = 0;
         while bit < 8 {
-            value = (value >> 1) ^ if value & 1 == 0 { 0 } else { 0xedb8_8320 };
+            value = (value >> 1) ^ if value & 1 == 0 { 0 } else { CRC_POLYNOMIAL };
             bit += 1;
         }
         table[index] = value;
@@ -199,8 +235,8 @@ const fn crc_table() -> [u32; 256] {
 
 const CRC: [u32; 256] = crc_table();
 
-fn chunk(output: &mut Bytes, name: [u8; 4], bytes: &[u8]) -> Result<()> {
-    output.extend(&dimension(bytes.len())?.to_be_bytes())?;
+fn chunk(output: &mut BoundedBytes, name: [u8; 4], bytes: &[u8]) -> Result<()> {
+    output.extend(&field(bytes.len())?.to_be_bytes())?;
     output.extend(&name)?;
     output.extend(bytes)?;
     let mut crc = u32::MAX;

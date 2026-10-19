@@ -188,15 +188,16 @@ def external_format_cases():
                      plain, "predictor-tiff", predictor=2, colors=2, bits=depth, columns=2)
 
 
-def lzw(data, early, reset_at=4096):
+def lzw(data, early, reset_at=4096, initial_clear=True):
     """Phrase encoder with independent decoder-width accounting (7.4.4.2).
 
     Dictionary insertion leads the decoder by one entry, except at EOD.
     Width follows codes the decoder has consumed, not encoder table size.
+    Without the initial clear code the decoder's starting table is the same.
     """
     dictionary = {bytes([i]): i for i in range(256)}
     next_code = 258
-    output = [(256, 9)]
+    output = [(256, 9)] if initial_clear else []
     width = 9
     decoder_next = 258
     has_previous = False
@@ -343,6 +344,13 @@ def cases():
     encoded = dynamic(lengths, [0], [65, 78, 65, 256])
     assert zlib.decompress(encoded, -15) == b"ANA"
     yield vector("flate-dynamic-length15", encoded, b"ANA", "filter-flate", raw=1)
+    # Codes of every length 1-15 in both alphabets: a 15-bit length code and
+    # a 15-bit distance code in one match, past any single-lookup table.
+    distances = [15, 15] + list(range(14, 0, -1))
+    plain = bytes(range(78, 64, -1)) + b"AAA"
+    encoded = dynamic(lengths, distances, list(range(78, 64, -1)) + [(257, 0, 0, 0, 0, 0), 256])
+    assert zlib.decompress(encoded, -15) == plain
+    yield vector("flate-dynamic-length15-match", encoded, plain, "filter-flate", raw=1)
     lengths = [0] * 257
     lengths[256] = 1
     encoded = dynamic(lengths, [0], [256])
@@ -447,6 +455,16 @@ def cases():
                          repair="filter.lzw-full-table" if label == "frozen-table" else "none")
     yield vector("lzw-truncated", lzw(b"hello", 1)[:-2], b"hell", "filter-repairs", "LZWDecode", repair="filter.truncated")
     yield vector("lzw-trailing", lzw(b"hello", 1) + b"\0", b"hello", "filter-repairs", "LZWDecode", repair="filter.trailing-data")
+    # 7.4.4.2: the encoder begins with a clear code. Repair decodes from the
+    # initial table, which a leading clear would only reset to itself.
+    plain = b"TOBEORNOTTOBEORTOBEORNOT"
+    yield vector("lzw-missing-initial-clear", lzw(plain, 1, initial_clear=False), plain, "filter-lzw",
+                 "LZWDecode", repair="filter.lzw-initial-clear")
+    # A first code above EOD names no table entry; it stays a syntax error.
+    bits = f"{258:09b}{257:09b}"
+    bits += "0" * (-len(bits) % 8)
+    yield vector("lzw-missing-initial-clear-phrase", bytes(int(bits[i:i + 8], 2) for i in range(0, len(bits), 8)),
+                 b"", "filter-lzw", "LZWDecode", outcome="syntax", cap=4096)
     yield vector("lzw-invalid-code", bytes.fromhex("804b40"), b"", "filter-lzw", "LZWDecode", outcome="syntax", cap=4096)
     for length in range(10):
         plain = data[:length]
@@ -680,13 +698,14 @@ def inflate_exact(encoded):
 
 
 def verify_encoded_batch(payload):
-    """Validate Rust-produced bytes passed by the Rust tests, not generated here.
+    """Validate Rust-produced bytes from tools/verify_encoders.py, not generated here.
 
     Frames are >BIIIII (kind, encoded size, pixel size, width, height, channels),
     followed by encoded and expected bytes. All expected bytes are independent
     fixture data; this module never imports, runs or calls the product.
+    Returns the number of zlib streams and of PNG images verified.
     """
-    count, pos = 0, 0
+    counts, pos = [0, 0], 0
     while pos < len(payload):
         kind, size, plain_size, width, height, channels = struct.unpack_from(">BIIIII", payload, pos)
         pos += 21
@@ -699,12 +718,7 @@ def verify_encoded_batch(payload):
             assert kind == 1
             w, h, c, pixels, _ = decode_png(encoded)
             assert (w,h,c,pixels) == (width,height,channels,expected)
-        count += 1
+        counts[kind] += 1
     assert pos == len(payload)
-    return count
+    return counts[0], counts[1]
 
-
-if __name__ == "__main__":
-    import sys
-    assert sys.argv[1:] == ["verify"]
-    print(f"Independent Python oracle verified {verify_encoded_batch(sys.stdin.buffer.read())} encoded streams/images")

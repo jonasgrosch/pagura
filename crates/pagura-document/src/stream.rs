@@ -1,7 +1,7 @@
 //! Encoded stream access, decryption and bounded filter application (7.3.8, 7.4, 7.6).
 
 use crate::{Document, IndirectObject, tags};
-use pagura_codec::{Filter, FilterChain};
+use pagura_codec::{CryptFilter, Filter, FilterChain};
 use pagura_core::{Diagnostics, Error, ObjectId, Result, Value};
 use pagura_crypto::standard::CryptMethod;
 use std::borrow::Cow;
@@ -31,7 +31,7 @@ pub(crate) fn decoded<'a>(
     let (data, chain) = document.prepare_stream(object, &mut Vec::new())?;
     let mut diagnostics = Diagnostics::new(document.recovery());
     let decoded = chain
-        .decode(&data, document.limits().decoded_bytes, &mut diagnostics)
+        .decode(&data, &document.limits(), &mut diagnostics)
         .map_err(|error| error.in_object(object.id()))?;
     document.report(
         diagnostics
@@ -65,7 +65,7 @@ pub(crate) fn image<'a>(
     let codec = chain.split_image();
     let mut diagnostics = Diagnostics::new(document.recovery());
     let decoded = chain
-        .decode(&data, document.limits().decoded_bytes, &mut diagnostics)
+        .decode(&data, &document.limits(), &mut diagnostics)
         .map_err(|error| error.in_object(object.id()))?;
     document.report(
         diagnostics
@@ -146,7 +146,8 @@ fn decrypt<'a>(
     }
     let Some(security) = &document.security else {
         if explicit
-            .flatten()
+            .as_ref()
+            .and_then(CryptFilter::name)
             .is_some_and(|name| name.as_bytes() != b"Identity")
         {
             return Err(
@@ -165,7 +166,7 @@ fn decrypt<'a>(
         }
         return Ok(Cow::Borrowed(raw));
     }
-    let selection = match explicit {
+    let selection = match explicit.map(CryptFilter::into_name) {
         None => CryptSelection::Default,
         Some(None) => CryptSelection::Identity,
         Some(Some(name)) => CryptSelection::Named(name),

@@ -1,137 +1,133 @@
-//! Bounded output and incremental predictor reversal (ISO 32000-2 7.4.4.4).
-//! PNG arithmetic: Second Edition 9.2, Table 9.1, 9.3 and 9.4. TIFF sample
-//! arithmetic: TIFF 6.0 section 14, pp.64-65; PDF supplies high-bit-first packing.
-use crate::{Predictor, PredictorKind, syntax};
-use pagura_core::Result;
+//! Bounded decoder output and incremental predictor reversal (7.4.4.4).
+//! PNG arithmetic: PNG Second Edition 9.2, Table 9.1, 9.3 and 9.4. TIFF sample
+//! arithmetic: TIFF 6.0 14, pp.64-65; PDF supplies high-bit-first packing.
+use crate::bounded::{BoundedBytes, DECODE_BUDGET, decode_limit};
+use crate::flate::WINDOW;
+use crate::predictor::PngFilter;
+use crate::report::syntax;
+use crate::{Predictor, PredictorKind};
+use pagura_core::{Error, Position, Result, ResultExt};
 
 pub(crate) struct Output {
-    bytes: Vec<u8>,
-    cap: usize,
+    bytes: BoundedBytes,
     predictor: Predictor,
     row_bytes: usize,
     row_samples: usize,
     pixel_bytes: usize,
     row_offset: usize,
-    png_filter: Option<u8>,
+    png_filter: Option<PngFilter>,
 }
 
 impl Output {
     pub(crate) fn new(cap: usize, predictor: Predictor) -> Result<Self> {
-        if predictor.colors == 0
-            || predictor.columns == 0
-            || !matches!(predictor.bits_per_component, 1 | 2 | 4 | 8 | 16)
-        {
-            return Err(syntax("invalid predictor parameters", 0));
-        }
-        let pixel_bits = usize::from(predictor.colors) * usize::from(predictor.bits_per_component);
+        let colors = usize::from(predictor.colors());
+        let bits = usize::from(predictor.bits_per_component());
         // With Predictor=1 the dimensions do not participate in decoding.
-        let columns = if predictor.kind == PredictorKind::None {
+        let columns = if predictor.kind() == PredictorKind::None {
             0
         } else {
-            predictor.columns
+            predictor.columns()
         };
         let row_samples = usize::try_from(columns)
             .ok()
-            .and_then(|columns| columns.checked_mul(usize::from(predictor.colors)))
-            .ok_or_else(|| crate::limit(0))?;
+            .and_then(|columns| columns.checked_mul(colors))
+            .ok_or(Error::limit(DECODE_BUDGET))?;
         let row_bytes = row_samples
-            .checked_mul(usize::from(predictor.bits_per_component))
+            .checked_mul(bits)
             .map(|bits| bits.div_ceil(8))
-            .ok_or_else(|| crate::limit(0))?;
+            .ok_or(Error::limit(DECODE_BUDGET))?;
         Ok(Self {
-            bytes: Vec::new(),
-            cap,
+            bytes: BoundedBytes::new(cap, DECODE_BUDGET),
             predictor,
             row_bytes,
             row_samples,
-            pixel_bytes: pixel_bits.div_ceil(8),
+            pixel_bytes: (colors * bits).div_ceil(8),
             row_offset: 0,
             png_filter: None,
         })
     }
 
     pub(crate) fn buffer(&self) -> &[u8] {
-        &self.bytes
+        self.bytes.as_slice()
     }
 
     // These two operations are selected only when prediction is absent.
     pub(crate) fn literal(&mut self, byte: u8, offset: usize) -> Result<()> {
-        self.reserve(1, offset)?;
-        self.bytes.push(byte);
-        Ok(())
+        self.bytes.push(byte).at(Position::Buffer(offset))
     }
 
     pub(crate) fn copy(&mut self, distance: usize, length: usize, offset: usize) -> Result<()> {
         let start = self
             .bytes
+            .as_slice()
             .len()
             .checked_sub(distance)
             .filter(|_| distance != 0)
             .ok_or_else(|| syntax("DEFLATE distance exceeds history", offset))?;
-        self.reserve(length, offset)?;
-        let mut remaining = length;
-        while remaining != 0 {
-            let count = remaining.min(self.bytes.len() - start);
-            self.bytes.extend_from_within(start..start + count);
-            remaining -= count;
-        }
-        Ok(())
+        self.bytes
+            .repeat(start, length)
+            .at(Position::Buffer(offset))
     }
 
     // PNG tags belong to pre-predictor history, but not to the decoded cap.
     pub(crate) fn history_capacity(&self) -> usize {
-        match self.predictor.kind {
+        let cap = self.bytes.max();
+        match self.predictor.kind() {
             PredictorKind::None => 0,
-            PredictorKind::Tiff => self.cap.min(32768),
-            PredictorKind::Png => self
-                .cap
-                .saturating_add(self.cap / self.row_bytes)
+            PredictorKind::Tiff => cap.min(WINDOW),
+            PredictorKind::Png => cap
+                .saturating_add(cap / self.row_bytes)
                 .saturating_add(1)
-                .min(32768),
+                .min(WINDOW),
         }
     }
 
     pub(crate) fn write(&mut self, bytes: &[u8], offset: usize) -> Result<()> {
         self.check(bytes.len(), offset)?;
-        if self.predictor.kind == PredictorKind::None {
-            self.reserve(bytes.len(), offset)?;
-            self.bytes.extend_from_slice(bytes);
-            return Ok(());
-        }
-        for &byte in bytes {
-            if self.predictor.kind == PredictorKind::Png && self.png_filter.is_none() {
-                if byte > 4 {
-                    return Err(syntax("invalid PNG predictor tag", offset));
+        let at = Position::Buffer(offset);
+        match self.predictor.kind() {
+            PredictorKind::None => self.bytes.extend(bytes).at(at),
+            PredictorKind::Tiff => {
+                let mut rest = bytes;
+                while !rest.is_empty() {
+                    let (row, tail) =
+                        rest.split_at(rest.len().min(self.row_bytes - self.row_offset));
+                    self.bytes.extend(row).at(at)?;
+                    self.row_offset += row.len();
+                    if self.row_offset == self.row_bytes {
+                        self.tiff_row();
+                        self.row_offset = 0;
+                    }
+                    rest = tail;
                 }
-                self.png_filter = Some(byte);
-                continue;
+                Ok(())
             }
-            self.reserve(1, offset)?;
-            let byte = if self.predictor.kind == PredictorKind::Png {
-                self.png_byte(byte)
-            } else {
-                byte
-            };
-            self.bytes.push(byte);
-            self.row_offset += 1;
-            if self.row_offset == self.row_bytes {
-                if self.predictor.kind == PredictorKind::Tiff {
-                    self.tiff_row();
+            PredictorKind::Png => {
+                for &byte in bytes {
+                    let Some(filter) = self.png_filter else {
+                        self.png_filter = Some(PngFilter::try_from(byte).at(at)?);
+                        continue;
+                    };
+                    let byte = byte.wrapping_add(self.png_prediction(filter));
+                    self.bytes.push(byte).at(at)?;
+                    self.row_offset += 1;
+                    if self.row_offset == self.row_bytes {
+                        self.row_offset = 0;
+                        self.png_filter = None;
+                    }
                 }
-                self.row_offset = 0;
-                self.png_filter = None;
+                Ok(())
             }
         }
-        Ok(())
     }
 
     // Account for PNG tag bytes without charging them to the decoded cap.
     pub(crate) fn check(&self, raw: usize, offset: usize) -> Result<()> {
-        let tags = if self.predictor.kind == PredictorKind::Png {
+        let tags = if self.predictor.kind() == PredictorKind::Png {
             let stride = self
                 .row_bytes
                 .checked_add(1)
-                .ok_or_else(|| crate::limit(offset))?;
+                .ok_or_else(|| decode_limit(offset))?;
             let until_tag = if self.png_filter.is_none() {
                 0
             } else {
@@ -145,72 +141,49 @@ impl Output {
         } else {
             0
         };
-        self.bytes
-            .len()
-            .checked_add(raw - tags)
-            .filter(|&n| n <= self.cap)
-            .ok_or_else(|| crate::limit(offset))?;
-        Ok(())
-    }
-
-    fn reserve(&mut self, count: usize, offset: usize) -> Result<()> {
-        let required = self
-            .bytes
-            .len()
-            .checked_add(count)
-            .filter(|&n| n <= self.cap)
-            .ok_or_else(|| crate::limit(offset))?;
-        if required > self.bytes.capacity() {
-            let target = required
-                .max(self.bytes.capacity().saturating_mul(2).max(64))
-                .min(self.cap);
-            self.bytes
-                .try_reserve_exact(target - self.bytes.len())
-                .map_err(|_| crate::limit(offset))?;
+        if self.bytes.fits(raw - tags) {
+            Ok(())
+        } else {
+            Err(decode_limit(offset))
         }
-        Ok(())
     }
 
-    fn png_byte(&self, byte: u8) -> u8 {
-        let end = self.bytes.len();
+    fn png_prediction(&self, filter: PngFilter) -> u8 {
+        let bytes = self.bytes.as_slice();
+        let end = bytes.len();
         let left = if self.row_offset >= self.pixel_bytes {
-            self.bytes.get(end - self.pixel_bytes).copied().unwrap_or(0)
+            bytes.get(end - self.pixel_bytes).copied().unwrap_or(0)
         } else {
             0
         };
         let above = end
             .checked_sub(self.row_bytes)
-            .and_then(|i| self.bytes.get(i))
+            .and_then(|i| bytes.get(i))
             .copied()
             .unwrap_or(0);
         let upper_left = if self.row_offset >= self.pixel_bytes {
             end.checked_sub(self.row_bytes)
                 .and_then(|i| i.checked_sub(self.pixel_bytes))
-                .and_then(|i| self.bytes.get(i))
+                .and_then(|i| bytes.get(i))
                 .copied()
                 .unwrap_or(0)
         } else {
             0
         };
-        let prediction = match self.png_filter {
-            Some(1) => left,
-            Some(2) => above,
-            Some(3) => (left & above) + ((left ^ above) >> 1),
-            Some(4) => paeth(left, above, upper_left),
-            _ => 0,
-        };
-        byte.wrapping_add(prediction)
+        filter.predict(left, above, upper_left)
     }
 
     fn tiff_row(&mut self) {
-        let start = self.bytes.len() - self.row_bytes;
+        let bits = usize::from(self.predictor.bits_per_component());
+        let colors = usize::from(self.predictor.colors());
+        let row_samples = self.row_samples;
+        let bytes = self.bytes.as_mut_slice();
+        let start = bytes.len() - self.row_bytes;
         // The checked row layout guarantees this range; do not index input offsets.
-        let Some(row) = self.bytes.get_mut(start..) else {
+        let Some(row) = bytes.get_mut(start..) else {
             return;
         };
-        let bits = usize::from(self.predictor.bits_per_component);
-        let colors = usize::from(self.predictor.colors);
-        for sample in colors..self.row_samples {
+        for sample in colors..row_samples {
             let value = read_sample(row, sample, bits).wrapping_add(read_sample(
                 row,
                 sample - colors,
@@ -224,22 +197,7 @@ impl Output {
         if self.row_offset != 0 || self.png_filter.is_some() {
             return Err(syntax("incomplete predictor row", offset));
         }
-        Ok(self.bytes)
-    }
-}
-
-pub(crate) fn paeth(left: u8, above: u8, upper_left: u8) -> u8 {
-    // PNG Second Edition 9.4: exact arithmetic; ties prefer left, then above.
-    let p = i16::from(left) + i16::from(above) - i16::from(upper_left);
-    let a = (p - i16::from(left)).abs();
-    let b = (p - i16::from(above)).abs();
-    let c = (p - i16::from(upper_left)).abs();
-    if a <= b && a <= c {
-        left
-    } else if b <= c {
-        above
-    } else {
-        upper_left
+        Ok(self.bytes.into_vec())
     }
 }
 

@@ -75,7 +75,7 @@ pub(crate) fn parse(
         cache.get_or_init(|| {
             let mut diagnostics = Diagnostics::new(document.recovery());
             let decoded = chain
-                .decode(&encoded, document.limits().decoded_bytes, &mut diagnostics)
+                .decode(&encoded, &document.limits(), &mut diagnostics)
                 .map_err(|error| error.in_object(stream_id))?;
             let contents = headers(
                 decoded.into_owned(),

@@ -2,8 +2,8 @@
 //! structured error for damaged data (clause 7.4). The first byte selects the
 //! filter and predictor; the rest is the encoded input.
 
-use pagura_codec::{Filter, Predictor, PredictorKind};
-use pagura_core::{Diagnostics, Recovery};
+use pagura_codec::{EarlyChange, Filter, Predictor, PredictorKind};
+use pagura_core::{Diagnostics, Limits, Recovery};
 
 const CAP: usize = 1 << 20;
 
@@ -16,12 +16,15 @@ pub fn run(data: &[u8]) {
     let Some((&selector, input)) = data.split_first() else {
         return;
     };
-    let predictor = Predictor {
-        kind: [PredictorKind::None, PredictorKind::Tiff, PredictorKind::Png]
+    // The selector only yields parameters inside Table 8's ranges.
+    let Ok(predictor) = Predictor::new(
+        [PredictorKind::None, PredictorKind::Tiff, PredictorKind::Png]
             [usize::from(selector >> 6) % 3],
-        colors: 1 + (selector & 3),
-        bits_per_component: [1, 2, 4, 8, 16][usize::from((selector >> 2) & 7) % 5],
-        columns: 1 + u32::from(selector >> 4),
+        1 + (selector & 3),
+        [1, 2, 4, 8, 16][usize::from((selector >> 2) & 7) % 5],
+        1 + u32::from(selector >> 4),
+    ) else {
+        return;
     };
     let filter = match selector & 7 {
         0 => Filter::AsciiHex,
@@ -29,13 +32,21 @@ pub fn run(data: &[u8]) {
         2 => Filter::RunLength,
         3 | 4 => Filter::Lzw {
             predictor,
-            early_change: selector & 1 == 0,
+            early_change: if selector & 1 == 0 {
+                EarlyChange::Early
+            } else {
+                EarlyChange::Postponed
+            },
         },
         _ => Filter::Flate { predictor },
     };
     for recovery in [Recovery::Strict, Recovery::Repair] {
         let mut diagnostics = Diagnostics::new(recovery);
-        if let Some(output) = super::checked(filter.decode(input, CAP, &mut diagnostics)) {
+        let limits = Limits {
+            decoded_bytes: CAP,
+            ..Limits::default()
+        };
+        if let Some(output) = super::checked(filter.decode(input, &limits, &mut diagnostics)) {
             assert!(output.len() <= CAP, "decoder exceeded its output cap");
         }
         super::assert_diagnostics(diagnostics.as_slice(), recovery);

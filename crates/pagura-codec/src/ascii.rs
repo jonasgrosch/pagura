@@ -1,7 +1,19 @@
-//! ASCII and run-length filters (ISO 32000-2 7.4.2, 7.4.3, 7.4.5).
-use crate::{Predictor, output::Output, repair, syntax, tags, trailing};
-use pagura_core::syntax::is_whitespace;
+//! ASCII filters (7.4.2, 7.4.3).
+use crate::report::{Trailer, repair, syntax, trailing};
+use crate::{Predictor, output::Output, repairs};
+use pagura_core::syntax::{hex_digit, is_whitespace};
 use pagura_core::{Diagnostics, Result};
+
+/// ASCII85 digits are base-85 (7.4.3).
+const BASE85: u64 = 85;
+/// Digits of a full ASCII85 group.
+const GROUP_DIGITS: usize = 5;
+/// Bytes a full ASCII85 group encodes.
+const GROUP_BYTES: usize = 4;
+/// The ASCII85 digit with value 0.
+const FIRST_DIGIT: u8 = b'!';
+/// The ASCII85 digit with value 84, which pads a final partial group.
+const LAST_DIGIT: u8 = b'u';
 
 pub(crate) fn hex(input: &[u8], cap: usize, diagnostics: &mut Diagnostics) -> Result<Vec<u8>> {
     let mut output = Output::new(cap, Predictor::default())?;
@@ -17,12 +29,7 @@ pub(crate) fn hex(input: &[u8], cap: usize, diagnostics: &mut Diagnostics) -> Re
             terminated = true;
             break;
         }
-        let digit = match byte {
-            b'0'..=b'9' => byte - b'0',
-            b'a'..=b'f' => byte - b'a' + 10,
-            b'A'..=b'F' => byte - b'A' + 10,
-            _ => return Err(syntax("invalid ASCIIHex digit", offset)),
-        };
+        let digit = hex_digit(byte).ok_or_else(|| syntax("invalid ASCIIHex digit", offset))?;
         if let Some(first) = high.take() {
             output.write(&[first * 16 + digit], offset)?;
         } else {
@@ -32,7 +39,7 @@ pub(crate) fn hex(input: &[u8], cap: usize, diagnostics: &mut Diagnostics) -> Re
     if !terminated {
         repair(
             diagnostics,
-            tags::TRUNCATED,
+            repairs::TRUNCATED,
             "ASCIIHex end marker missing",
             end,
         )?;
@@ -40,7 +47,7 @@ pub(crate) fn hex(input: &[u8], cap: usize, diagnostics: &mut Diagnostics) -> Re
     if let Some(first) = high {
         output.write(&[first * 16], end)?;
     }
-    trailing(input, end, true, diagnostics)?;
+    trailing(input, end, Trailer::Whitespace, diagnostics)?;
     output.finish(end)
 }
 
@@ -55,7 +62,7 @@ pub(crate) fn ascii85(input: &[u8], cap: usize, diagnostics: &mut Diagnostics) -
             continue;
         }
         if byte == b'~' {
-            // Clause 7.4.3 ignores all PDF whitespace, including within EOD.
+            // 7.4.3 ignores all PDF whitespace, including within EOD.
             let next = input
                 .get(offset + 1..)
                 .and_then(|tail| tail.iter().position(|&byte| !is_whitespace(byte)))
@@ -74,16 +81,16 @@ pub(crate) fn ascii85(input: &[u8], cap: usize, diagnostics: &mut Diagnostics) -
             if count != 0 {
                 return Err(syntax("ASCII85 z inside a group", offset));
             }
-            output.write(&[0; 4], offset)?;
+            output.write(&[0; GROUP_BYTES], offset)?;
             continue;
         }
-        if !(b'!'..=b'u').contains(&byte) {
+        if !(FIRST_DIGIT..=LAST_DIGIT).contains(&byte) {
             return Err(syntax("invalid ASCII85 digit", offset));
         }
-        group = group * 85 + u64::from(byte - b'!');
+        group = group * BASE85 + u64::from(byte - FIRST_DIGIT);
         count += 1;
-        if count == 5 {
-            write_group(&mut output, group, 4, offset)?;
+        if count == GROUP_DIGITS {
+            write_group(&mut output, group, GROUP_BYTES, offset)?;
             group = 0;
             count = 0;
         }
@@ -94,18 +101,18 @@ pub(crate) fn ascii85(input: &[u8], cap: usize, diagnostics: &mut Diagnostics) -
     if !terminated {
         repair(
             diagnostics,
-            tags::TRUNCATED,
+            repairs::TRUNCATED,
             "ASCII85 end marker missing",
             end,
         )?;
     }
     if count > 1 {
-        for _ in count..5 {
-            group = group * 85 + 84;
+        for _ in count..GROUP_DIGITS {
+            group = group * BASE85 + u64::from(LAST_DIGIT - FIRST_DIGIT);
         }
         write_group(&mut output, group, count - 1, end)?;
     }
-    trailing(input, end, true, diagnostics)?;
+    trailing(input, end, Trailer::Whitespace, diagnostics)?;
     output.finish(end)
 }
 
@@ -119,50 +126,4 @@ fn write_group(output: &mut Output, group: u64, count: usize, offset: usize) -> 
             .ok_or_else(|| syntax("invalid ASCII85 group size", offset))?,
         offset,
     )
-}
-
-pub(crate) fn run_length(
-    input: &[u8],
-    cap: usize,
-    diagnostics: &mut Diagnostics,
-) -> Result<Vec<u8>> {
-    let mut output = Output::new(cap, Predictor::default())?;
-    let mut offset = 0;
-    while let Some(&tag) = input.get(offset) {
-        offset += 1;
-        match tag {
-            128 => {
-                trailing(input, offset, false, diagnostics)?;
-                return output.finish(offset);
-            }
-            0..=127 => {
-                let count = usize::from(tag) + 1;
-                let available = count.min(input.len() - offset);
-                output.write(
-                    input
-                        .get(offset..offset + available)
-                        .ok_or_else(|| syntax("invalid run length", offset))?,
-                    offset,
-                )?;
-                offset += available;
-                if available != count {
-                    break;
-                }
-            }
-            _ => {
-                let Some(&byte) = input.get(offset) else {
-                    break;
-                };
-                output.write(&[byte; 128][..257 - usize::from(tag)], offset)?;
-                offset += 1;
-            }
-        }
-    }
-    repair(
-        diagnostics,
-        tags::TRUNCATED,
-        "RunLength input truncated",
-        input.len(),
-    )?;
-    output.finish(input.len())
 }

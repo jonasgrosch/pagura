@@ -1,16 +1,16 @@
-//! Bounded hash-chain LZ77 matching (RFC 1951 3.2.3/3.2.5 and section 4).
+//! Bounded hash-chain LZ77 matching (RFC 1951 3.2.3, 3.2.5 and 4).
 use super::Level;
-use crate::encoding::filled;
+use super::tables::{MAX_MATCH, MIN_MATCH, WINDOW};
+use crate::bounded::filled;
 use pagura_core::Result;
 
-const WINDOW: usize = 32768;
 const NONE: usize = usize::MAX;
 
-#[derive(Clone, Copy, Debug)]
-pub(super) struct Token {
-    // A literal when distance=0, otherwise a match length.
-    pub(super) value: u16,
-    pub(super) distance: u16,
+/// A literal byte, or a back-reference of 3-258 bytes up to 32 KiB back.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Token {
+    Literal(u8),
+    Match { length: u16, distance: u16 },
 }
 
 pub(super) struct Matcher {
@@ -48,9 +48,9 @@ impl Matcher {
     }
 
     fn find(&self, input: &[u8], pos: usize, mut candidate: usize, end: usize) -> (usize, usize) {
-        let maximum = (end - pos).min(258);
-        let mut best = (2, 0);
-        if maximum < 3 {
+        let maximum = (end - pos).min(MAX_MATCH);
+        let mut best = (MIN_MATCH - 1, 0);
+        if maximum < MIN_MATCH {
             return best;
         }
         let Some(target) = input.get(pos..pos + maximum) else {
@@ -97,18 +97,15 @@ impl Matcher {
         while pos < end {
             let old = self.insert(input, pos);
             let best = self.find(input, pos, old, end);
-            if best.0 >= 3 {
-                if self.lazy && best.0 < 258 && pos + 1 < end {
+            if best.0 >= MIN_MATCH {
+                if self.lazy && best.0 < MAX_MATCH && pos + 1 < end {
                     // Look ahead without inserting: the current position is
                     // already present, and the next iteration will insert once.
                     let next = self
                         .hash(input, pos + 1)
                         .map_or(NONE, |hash| self.heads[hash]);
                     if self.find(input, pos + 1, next, end).0 > best.0 {
-                        tokens.push(Token {
-                            value: u16::from(input[pos]),
-                            distance: 0,
-                        });
+                        tokens.push(Token::Literal(input[pos]));
                         pos += 1;
                         continue;
                     }
@@ -119,10 +116,7 @@ impl Matcher {
                 }
                 pos += best.0;
             } else {
-                tokens.push(Token {
-                    value: u16::from(input[pos]),
-                    distance: 0,
-                });
+                tokens.push(Token::Literal(input[pos]));
                 pos += 1;
             }
         }
@@ -152,8 +146,8 @@ fn common_prefix(left: &[u8], right: &[u8]) -> usize {
     reason = "matches are at most 258 bytes and distances at most 32768"
 )]
 fn match_token(length: usize, distance: usize) -> Token {
-    Token {
-        value: length as u16,
+    Token::Match {
+        length: length as u16,
         distance: distance as u16,
     }
 }

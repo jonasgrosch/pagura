@@ -1,20 +1,14 @@
 //! Generated vector tests; all expected bytes originate outside Pagura.
-use crate::{Filter, FilterChain, features};
-use pagura_core::{Diagnostics, Dictionary, ErrorKind, Name, Position, Recovery, Value};
-use pagura_testkit::{assert_bytes_eq, fixture, fixture_path};
+use super::options;
+use pagura_codec::{Filter, FilterChain, features};
+use pagura_core::{Diagnostics, Dictionary, ErrorKind, Limits, Name, Position, Recovery, Value};
+use pagura_testkit::{assert_bytes_eq, fixture, fixture_names};
 use std::collections::BTreeMap;
 
-pub(super) fn options(name: &str) -> BTreeMap<String, String> {
-    String::from_utf8(fixture("codec", &format!("{name}.params")))
-        .unwrap()
-        .lines()
-        .map(|line| {
-            let (key, value) = line.split_once('=').unwrap();
-            (key.to_owned(), value.to_owned())
-        })
-        .collect()
-}
-
+#[expect(
+    clippy::unwrap_used,
+    reason = "generated parameters are names, integers or null"
+)]
 fn chain(params: &BTreeMap<String, String>) -> pagura_core::Result<FilterChain> {
     let value = |text: &str| match text {
         "null" => Value::Null,
@@ -88,16 +82,7 @@ fn assert_repair_rejection(error: &pagura_core::Error, tag: &str, name: &str) {
 
 #[test]
 fn independent_vectors_exact_errors_repairs_and_caps() {
-    let mut names: Vec<_> = std::fs::read_dir(fixture_path("codec", ""))
-        .unwrap()
-        .map(|entry| entry.unwrap().path())
-        .filter(|path| {
-            path.extension()
-                .is_some_and(|extension| extension == "params")
-        })
-        .map(|path| path.file_stem().unwrap().to_str().unwrap().to_owned())
-        .collect();
-    names.sort();
+    let names = fixture_names("codec", "params");
     assert!(names.len() > 200);
     for name in names {
         let params = options(&name);
@@ -110,20 +95,29 @@ fn independent_vectors_exact_errors_repairs_and_caps() {
         let cap = params["cap"].parse().unwrap();
         let decode = |cap, diagnostics: &mut Diagnostics| -> pagura_core::Result<Vec<u8>> {
             let chain = chain.as_ref().map_err(Clone::clone)?;
+            let limits = Limits {
+                decoded_bytes: cap,
+                ..Limits::default()
+            };
             if params.get("raw").is_some_and(|s| s == "1") {
                 let Some(Filter::Flate { predictor }) = chain.filters().first() else {
                     panic!("invalid raw fixture");
                 };
-                crate::decode_raw_deflate(&encoded, cap, *predictor, diagnostics)
+                pagura_codec::decode_raw_deflate(&encoded, &limits, *predictor, diagnostics)
             } else if params.get("take_crypt").is_some_and(|s| s == "1") {
                 let mut chain = chain.clone();
-                assert!(matches!(chain.take_crypt(), Some(None)), "{name}");
+                assert!(
+                    chain
+                        .take_crypt()
+                        .is_some_and(|crypt| crypt.name().is_none()),
+                    "{name}"
+                );
                 chain
-                    .decode(&encoded, cap, diagnostics)
+                    .decode(&encoded, &limits, diagnostics)
                     .map(std::borrow::Cow::into_owned)
             } else {
                 chain
-                    .decode(&encoded, cap, diagnostics)
+                    .decode(&encoded, &limits, diagnostics)
                     .map(std::borrow::Cow::into_owned)
             }
         };
@@ -180,37 +174,6 @@ fn independent_vectors_exact_errors_repairs_and_caps() {
                     error.kind,
                     "{name}"
                 );
-            }
-        }
-    }
-}
-
-#[test]
-fn malformed_small_inputs_never_panic_or_exceed_cap() {
-    let filters = [
-        Filter::AsciiHex,
-        Filter::Ascii85,
-        Filter::RunLength,
-        Filter::Flate {
-            predictor: crate::Predictor::default(),
-        },
-        Filter::Lzw {
-            predictor: crate::Predictor::default(),
-            early_change: false,
-        },
-        Filter::Lzw {
-            predictor: crate::Predictor::default(),
-            early_change: true,
-        },
-    ];
-    // Exhaustive two-byte input exercises invalid characters, headers, codes,
-    // missing markers and truncated bit reads. No expected-output self oracle.
-    for number in 0..=u16::MAX {
-        let input = number.to_le_bytes();
-        for filter in &filters {
-            let result = filter.decode(&input, 8, &mut Diagnostics::default());
-            if let Ok(bytes) = result {
-                assert!(bytes.len() <= 8);
             }
         }
     }
