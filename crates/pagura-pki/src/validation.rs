@@ -1,4 +1,4 @@
-//! Host-anchored certification paths (RFC 5280 §6, updated by RFC 9618).
+//! Host-anchored certification paths (RFC 5280 6, updated by RFC 9618).
 //!
 //! Certificates supply assertions, never trust anchors. Signature verification
 //! is supplied by the host; no algorithm, clock, trust store or network is used.
@@ -12,6 +12,7 @@ mod path;
 mod policy;
 pub mod revocation;
 
+use crate::x509::extensions::KeyUsage;
 use crate::x509::{AlgorithmIdentifier, Certificate, Name, SubjectPublicKeyInfo};
 use crate::{BitString, ObjectIdentifier, Time, der::Element};
 use pagura_core::Limits;
@@ -30,7 +31,7 @@ impl Oid {
     }
     /// anyPolicy (2.5.29.32.0), also denoting an unrestricted initial policy set.
     pub fn any() -> Self {
-        Self(vec![85, 29, 32, 0])
+        Self::new(crate::x509::extensions::ANY_POLICY)
     }
     /// Original, canonical OID content octets.
     pub fn as_bytes(&self) -> &[u8] {
@@ -38,9 +39,16 @@ impl Oid {
     }
 }
 
-/// Trust information explicitly selected by the host (RFC 5280 §6.1.1(d)).
+impl PartialEq<ObjectIdentifier<'_>> for Oid {
+    fn eq(&self, other: &ObjectIdentifier<'_>) -> bool {
+        self.0 == other.as_bytes()
+    }
+}
+
+/// Trust information explicitly selected by the host (RFC 5280 6.1.1(d)).
 /// The container certificate's signature, validity and extensions are irrelevant.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct TrustAnchor<'a> {
     /// Trusted issuer distinguished name.
     pub name: Name<'a>,
@@ -49,6 +57,10 @@ pub struct TrustAnchor<'a> {
 }
 
 impl<'a> TrustAnchor<'a> {
+    /// A trusted name and key the host selected, such as from its own store.
+    pub const fn new(name: Name<'a>, public_key: SubjectPublicKeyInfo<'a>) -> Self {
+        Self { name, public_key }
+    }
     /// Extracts name/key from a certificate explicitly trusted by the caller.
     /// This is never called by path discovery for an embedded certificate.
     pub const fn from_certificate(certificate: &Certificate<'a>) -> Self {
@@ -59,8 +71,9 @@ impl<'a> TrustAnchor<'a> {
     }
 }
 
-/// A working public key, including inherited parameters (§6.1.4(d)).
+/// A working public key, including inherited parameters (RFC 5280 6.1.4(d)).
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct WorkingPublicKey<'a> {
     /// Public key algorithm OID.
     pub algorithm: ObjectIdentifier<'a>,
@@ -72,6 +85,7 @@ pub struct WorkingPublicKey<'a> {
 
 /// Exact signed bytes and effective issuer key for a single verification.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct SignatureInput<'a> {
     /// Signed object signature algorithm, with exact parameter encoding.
     pub algorithm: AlgorithmIdentifier<'a>,
@@ -84,6 +98,7 @@ pub struct SignatureInput<'a> {
 }
 
 /// A verifier must distinguish a bad signature from unavailable verification.
+/// These are the only answers a verifier can give, so the set is closed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SignatureResult {
     /// The signature is mathematically verified for these exact inputs.
@@ -110,14 +125,15 @@ where
     }
 }
 
-/// Name namespaces supported by the initial subtree inputs (§6.1.1).
+/// Name namespaces supported by the initial subtree inputs (RFC 5280 6.1.1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum NameForm {
     /// Distinguished names in the subject or SAN.
     Directory,
     /// dNSName.
     Dns,
-    /// Both rfc822Name and SmtpUTF8Mailbox (RFC 9598 §6).
+    /// Both rfc822Name and SmtpUTF8Mailbox (RFC 9598 6).
     Mailbox,
     /// uniformResourceIdentifier.
     Uri,
@@ -125,19 +141,22 @@ pub enum NameForm {
     Ip,
 }
 impl NameForm {
-    fn number(self) -> u32 {
+    /// The GeneralName choice of this form (RFC 5280 4.2.1.6).
+    const fn number(self) -> u32 {
+        use crate::x509::extensions::choice;
         match self {
-            Self::Directory => 4,
-            Self::Dns => 2,
-            Self::Mailbox => 1,
-            Self::Uri => 6,
-            Self::Ip => 7,
+            Self::Directory => choice::DIRECTORY_NAME,
+            Self::Dns => choice::DNS_NAME,
+            Self::Mailbox => choice::RFC822_NAME,
+            Self::Uri => choice::URI,
+            Self::Ip => choice::IP_ADDRESS,
         }
     }
 }
 
 /// Requested path discovery behavior.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum SearchMode {
     /// Stop at the first path whose requested checks succeed.
     FirstAcceptable,
@@ -145,8 +164,9 @@ pub enum SearchMode {
     All,
 }
 
-/// Caller inputs, independent of certificate assertions (§6.1.1).
+/// Caller inputs, independent of certificate assertions (RFC 5280 6.1.1).
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct ValidationOptions<'a> {
     /// Evaluation time supplied by the caller, never read from a system clock.
     pub time: Time<'a>,
@@ -162,20 +182,20 @@ pub struct ValidationOptions<'a> {
     pub inhibit_any_policy: bool,
     /// Optional intended EKU OID. Applied to every certificate that asserts EKU.
     pub extended_key_usage: Option<Oid>,
-    /// Required target keyUsage bits, numbered as in RFC 5280 §4.2.1.3.
-    /// An absent keyUsage extension imposes no restriction. Known EKU purposes
-    /// additionally require a compatible usage; private purposes need this mask.
-    pub key_usage: u16,
+    /// Usages the target's keyUsage must assert (RFC 5280 4.2.1.3). An absent
+    /// keyUsage extension imposes no restriction. Known EKU purposes
+    /// additionally require a compatible usage; private purposes need this set.
+    pub key_usage: KeyUsage,
     /// Optional host name constraints, using a parsed nameConstraints extension
     /// value. They constrain every certificate, including the first one.
     pub name_constraints: Option<Element<'a>>,
-    /// Initial empty permitted sets for these forms (§6.1.2(b)); all names of
+    /// Initial empty permitted sets for these forms (RFC 5280 6.1.2(b)); all names of
     /// each listed form are disallowed. Other forms remain unconstrained.
     pub denied_name_forms: Vec<NameForm>,
 }
 
 impl<'a> ValidationOptions<'a> {
-    /// Default policy inputs (§6.1.1), with an explicit evaluation time.
+    /// Default policy inputs (RFC 5280 6.1.1), with an explicit evaluation time.
     pub fn new(time: Time<'a>) -> Self {
         Self {
             time,
@@ -185,7 +205,7 @@ impl<'a> ValidationOptions<'a> {
             inhibit_mapping: false,
             inhibit_any_policy: false,
             extended_key_usage: None,
-            key_usage: 0,
+            key_usage: KeyUsage::default(),
             name_constraints: None,
             denied_name_forms: Vec::new(),
         }
@@ -194,6 +214,7 @@ impl<'a> ValidationOptions<'a> {
 
 /// Definitive basic-path or authenticated revocation failure.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum InvalidReason {
     /// Signature verification explicitly failed.
     Signature,
@@ -219,10 +240,10 @@ pub enum InvalidReason {
     Policy,
     /// anyPolicy occurs in a policy mapping.
     AnyPolicyMapping,
-    /// Extension syntax or profile is invalid; includes its OID content bytes.
-    Extension(Vec<u8>),
-    /// A critical extension cannot be processed; includes its OID.
-    CriticalExtension(Vec<u8>),
+    /// Extension syntax or profile is invalid; names the extension.
+    Extension(Oid),
+    /// A critical extension cannot be processed; names the extension.
+    CriticalExtension(Oid),
     /// No caller-supplied anchor or issuer completes this path.
     Untrusted,
     /// Authenticated offline evidence identifies a revoked certificate.
@@ -233,6 +254,7 @@ pub enum InvalidReason {
 
 /// Reasons a path cannot yet receive a definitive positive result.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Uncertainty {
     /// Signature verifier returned no decision.
     Signature,
@@ -248,7 +270,8 @@ pub enum Uncertainty {
     RevocationData(revocation::UnknownReason),
 }
 
-/// A precise result, never a single boolean.
+/// A precise result, never a single boolean. A path is valid, definitively
+/// invalid or not yet decided, so the set is closed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PathState {
     /// All checks represented by this state completed successfully.
@@ -269,12 +292,13 @@ pub enum PathState {
     },
 }
 
-/// Effective target key after RFC 5280 §6.1.4 parameter inheritance.
+/// Effective target key after RFC 5280 6.1.4 parameter inheritance.
 /// Its authentication depends on the associated path and revocation states.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct EffectivePublicKey {
-    /// Algorithm OID contents.
-    pub algorithm: Vec<u8>,
+    /// Key algorithm.
+    pub algorithm: Oid,
     /// Effective DER parameters, or None when unavailable/not applicable.
     pub parameters: Option<Vec<u8>>,
     /// subjectPublicKey octets, excluding the BIT STRING padding-count byte.
@@ -287,7 +311,7 @@ pub struct EffectivePublicKey {
 #[derive(Debug, Clone)]
 #[must_use]
 pub struct PathReport {
-    /// Basic validation (§6.1), without revocation (§6.3).
+    /// Basic validation (RFC 5280 6.1), without revocation (RFC 5280 6.3).
     basic: PathState,
     /// Final result including the separately supplied revocation evidence.
     state: PathState,
@@ -319,6 +343,7 @@ impl PathReport {
 
 /// One candidate discovered from the caller's certificate pool.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct BuiltPath {
     /// Certificate pool indices in root-to-target order, anchor excluded.
     pub certificates: Vec<usize>,
@@ -331,6 +356,7 @@ pub struct BuiltPath {
 /// Bounded enumeration; complete=false explicitly prevents an exhaustive claim.
 #[derive(Debug, Clone)]
 #[must_use]
+#[non_exhaustive]
 pub struct PathSearch {
     /// Completed paths and untrusted dead ends, each with its own result.
     pub paths: Vec<BuiltPath>,

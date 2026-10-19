@@ -13,3 +13,6 @@ workspace = true
 
 [dependencies]
 pagura-core.workspace = true
+
+[dev-dependencies]
+pagura-testkit.workspace = true

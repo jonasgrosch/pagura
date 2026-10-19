@@ -6,7 +6,9 @@ use super::{
     Check, InvalidReason, Issue, Oid, PathReport, PathState, SignatureInput, SignatureResult,
     SignatureVerifier, TrustAnchor, Uncertainty, ValidationOptions, WorkingPublicKey,
 };
-use crate::der::{Element, Tag};
+use crate::ObjectIdentifier;
+use crate::der::{self, Element};
+use crate::x509::extensions::{self as ext, KeyUsage};
 use crate::x509::{Certificate, SubjectPublicKeyInfo};
 use pagura_core::Limits;
 
@@ -63,13 +65,11 @@ pub(super) fn validate(
 ) -> PathReport {
     let mut position = None;
     let mut check = || -> Check<(Vec<Oid>, Option<PathState>, super::EffectivePublicKey)> {
-        if path.is_empty() || options.key_usage & !0x1ff != 0 {
+        if path.is_empty() {
             return Err(Issue::Invalid(InvalidReason::Input));
         }
-        budget.string(options.time.fraction.len())?;
-        if !valid_time(options.time) {
-            return Err(Issue::Invalid(InvalidReason::Input));
-        }
+        // A Time holds checked calendar values, from DER or Time::from_utc.
+        budget.string(options.time.fraction().len())?;
         budget.depth(path.len())?;
         budget.work(options.policies.len())?;
         budget.nodes(options.policies.len())?;
@@ -92,7 +92,7 @@ pub(super) fn validate(
                 + parameters.map_or(0, <[u8]>::len),
         )?;
         let key = super::EffectivePublicKey {
-            algorithm: key.algorithm.as_bytes().to_vec(),
+            algorithm: Oid::new(key.algorithm),
             parameters: parameters.map(<[u8]>::to_vec),
             key: key.key.as_bytes().to_vec(),
             unused_bits: key.key.unused_bits(),
@@ -156,7 +156,7 @@ impl<'a, 'o, 'v> Validator<'a, 'o, 'v> {
         verifier: &mut impl SignatureVerifier,
         budget: &mut Budget<'_>,
     ) -> Check<()> {
-        // Verify before extending the policy graph (RFC 9618 §6.1).
+        // Verify before extending the policy graph (RFC 9618 6.1).
         match budget.verify(
             SignatureInput {
                 algorithm: certificate.signature_algorithm,
@@ -196,7 +196,7 @@ impl<'a, 'o, 'v> Validator<'a, 'o, 'v> {
         }
         if let Some(purpose) = &self.options.extended_key_usage
             && prepared.eku.as_ref().is_some_and(|eku| {
-                !eku.contains(purpose) && !eku.iter().any(|p| p.0 == [85, 29, 37, 0])
+                !eku.contains(purpose) && !eku.iter().any(|p| *p == ext::ANY_EXTENDED_KEY_USAGE)
             })
         {
             return Err(Issue::Invalid(InvalidReason::ExtendedKeyUsage));
@@ -239,7 +239,10 @@ impl<'a, 'o, 'v> Validator<'a, 'o, 'v> {
         if !prepared.ca {
             return Err(Issue::Invalid(InvalidReason::NotCa));
         }
-        if prepared.usage.is_some_and(|usage| usage & (1 << 5) == 0) {
+        if prepared
+            .usage
+            .is_some_and(|usage| !usage.contains(KeyUsage::KEY_CERT_SIGN))
+        {
             return Err(Issue::Invalid(InvalidReason::KeyCertSign));
         }
         if !self_issued {
@@ -273,60 +276,63 @@ impl<'a, 'o, 'v> Validator<'a, 'o, 'v> {
 pub(super) fn key(spki: SubjectPublicKeyInfo<'_>) -> WorkingPublicKey<'_> {
     WorkingPublicKey {
         algorithm: spki.algorithm.algorithm,
-        parameters: spki
-            .algorithm
-            .parameters
-            .filter(|p| p.tag() != Tag::universal(5, false)),
+        parameters: spki.algorithm.parameters.filter(|p| p.tag() != der::NULL),
         key: spki.key,
     }
 }
+
+/// The keyUsage bits compatible with each known purpose (RFC 5280 4.2.1.12).
+const PURPOSE_USAGES: [(ObjectIdentifier<'static>, KeyUsage); 6] = [
+    (
+        ext::SERVER_AUTH,
+        KeyUsage::DIGITAL_SIGNATURE
+            .union(KeyUsage::KEY_ENCIPHERMENT)
+            .union(KeyUsage::KEY_AGREEMENT),
+    ),
+    (
+        ext::CLIENT_AUTH,
+        KeyUsage::DIGITAL_SIGNATURE.union(KeyUsage::KEY_AGREEMENT),
+    ),
+    (ext::CODE_SIGNING, KeyUsage::DIGITAL_SIGNATURE),
+    (
+        ext::EMAIL_PROTECTION,
+        KeyUsage::DIGITAL_SIGNATURE
+            .union(KeyUsage::CONTENT_COMMITMENT)
+            .union(KeyUsage::KEY_ENCIPHERMENT)
+            .union(KeyUsage::KEY_AGREEMENT),
+    ),
+    (
+        ext::TIME_STAMPING,
+        KeyUsage::DIGITAL_SIGNATURE.union(KeyUsage::CONTENT_COMMITMENT),
+    ),
+    (
+        ext::OCSP_SIGNING,
+        KeyUsage::DIGITAL_SIGNATURE.union(KeyUsage::CONTENT_COMMITMENT),
+    ),
+];
 
 fn target_usage(prepared: &Prepared, options: &ValidationOptions<'_>) -> Check<()> {
     let Some(usage) = prepared.usage else {
         return Ok(());
     };
-    if usage & options.key_usage != options.key_usage {
+    if !usage.contains(options.key_usage) {
         return Err(Issue::Invalid(InvalidReason::KeyUsage));
     }
     let Some(purpose) = &options.extended_key_usage else {
         return Ok(());
     };
-    // RFC 5280 §4.2.1.12: an EKU never overrides an incompatible keyUsage.
-    let allowed = match purpose.0.as_slice() {
-        [43, 6, 1, 5, 5, 7, 3, 1] => 1 | (1 << 2) | (1 << 4),
-        [43, 6, 1, 5, 5, 7, 3, 2] => 1 | (1 << 4),
-        [43, 6, 1, 5, 5, 7, 3, 3] => 1,
-        [43, 6, 1, 5, 5, 7, 3, 4] => 1 | (1 << 1) | (1 << 2) | (1 << 4),
-        [43, 6, 1, 5, 5, 7, 3, 8 | 9] => 1 | (1 << 1),
-        [85, 29, 37, 0] => return Ok(()),
-        _ if options.key_usage != 0 => return Ok(()),
-        _ => return Err(Issue::Unknown(Uncertainty::KeyUsagePurpose)),
-    };
-    if usage & allowed == 0 {
-        return Err(Issue::Invalid(InvalidReason::KeyUsage));
+    if *purpose == ext::ANY_EXTENDED_KEY_USAGE {
+        return Ok(());
     }
-    Ok(())
-}
-fn valid_time(time: crate::Time<'_>) -> bool {
-    let leap = time.year.is_multiple_of(4)
-        && (!time.year.is_multiple_of(100) || time.year.is_multiple_of(400));
-    let days = match time.month {
-        2 => {
-            if leap {
-                29
-            } else {
-                28
-            }
-        }
-        4 | 6 | 9 | 11 => 30,
-        1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
-        _ => return false,
-    };
-    time.year <= 9999
-        && (1..=days).contains(&time.day)
-        && time.hour < 24
-        && time.minute < 60
-        && time.second < 60
-        && time.fraction.bytes().all(|b| b.is_ascii_digit())
-        && !time.fraction.ends_with('0')
+    // RFC 5280 4.2.1.12: an EKU never overrides an incompatible keyUsage.
+    let allowed = PURPOSE_USAGES
+        .iter()
+        .find(|(id, _)| *purpose == *id)
+        .map(|&(_, allowed)| allowed);
+    match allowed {
+        Some(allowed) if !usage.intersects(allowed) => Err(Issue::Invalid(InvalidReason::KeyUsage)),
+        Some(_) => Ok(()),
+        None if !options.key_usage.is_empty() => Ok(()),
+        None => Err(Issue::Unknown(Uncertainty::KeyUsagePurpose)),
+    }
 }
