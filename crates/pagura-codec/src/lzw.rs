@@ -1,6 +1,7 @@
 //! PDF LZW: MSB-first codes of 9 to 12 bits with `/EarlyChange` (7.4.4.2).
 use crate::report::{Trailer, repair, syntax, trailing};
 use crate::{EarlyChange, Predictor, output::Output, repairs};
+use pagura_core::bytes::{BitCursor, Cursor};
 use pagura_core::{Diagnostics, Result};
 
 /// Resets the table and the code width.
@@ -26,12 +27,7 @@ pub(crate) fn decode(
     diagnostics: &mut Diagnostics,
 ) -> Result<Vec<u8>> {
     let mut output = Output::new(cap, predictor)?;
-    let mut reader = Codes {
-        input,
-        offset: 0,
-        buffer: 0,
-        bits: 0,
-    };
+    let mut reader = Codes::new(input);
     let mut table = Table::new();
     let mut width = MIN_WIDTH;
     let mut previous = None;
@@ -42,7 +38,7 @@ pub(crate) fn decode(
         EarlyChange::Early => 1,
         EarlyChange::Postponed => 0,
     };
-    while let Some(code) = reader.read(width) {
+    while let Some(code) = reader.read(width)? {
         if first_code && code != CLEAR {
             // No table entry exists yet for a code above EOD.
             if code > EOD {
@@ -63,8 +59,9 @@ pub(crate) fn decode(
                 width = MIN_WIDTH;
                 previous = None;
             }
-            EOD => return end(&reader, input, output, diagnostics),
+            EOD => return end(reader, input, output, diagnostics),
             _ => {
+                let at = reader.position();
                 // The encoder inserts one entry ahead while more input remains.
                 // At decoder next=4095, another data code would mean the encoder
                 // continued after filling its table instead of issuing clear
@@ -74,23 +71,23 @@ pub(crate) fn decode(
                         diagnostics,
                         repairs::LZW_FULL_TABLE,
                         "LZW full table not cleared; dictionary frozen",
-                        reader.position(),
+                        at,
                     )?;
                     full_table_reported = true;
                 }
                 let special = code == table.next && previous.is_some();
                 let source = if special { previous.unwrap_or(0) } else { code };
                 if source >= table.next || source == CLEAR || source == EOD {
-                    return Err(syntax("invalid LZW dictionary code", reader.position()));
+                    return Err(syntax("invalid LZW dictionary code", at));
                 }
                 let index = usize::from(source);
                 let length = usize::from(table.lengths.get(index).copied().unwrap_or(0));
-                output.check(length + usize::from(special), reader.position())?;
+                output.check(length + usize::from(special), at)?;
                 let first = table.first.get(index).copied().unwrap_or(0);
-                let bytes = table.expand(source, &mut stack, reader.position())?;
-                output.write(bytes, reader.position())?;
+                let bytes = table.expand(source, &mut stack, at)?;
+                output.write(bytes, at)?;
                 if special {
-                    output.write(&[first], reader.position())?;
+                    output.write(&[first], at)?;
                 }
                 if let Some(prev) = previous {
                     // Complete the one pending decoder entry (4095), then
@@ -116,42 +113,61 @@ pub(crate) fn decode(
 /// Finishes at EOD: the rest of its byte must be zero (7.4.4.2) and nothing
 /// may follow.
 fn end(
-    reader: &Codes<'_>,
+    mut reader: Codes<'_>,
     input: &[u8],
     output: Output,
     diagnostics: &mut Diagnostics,
 ) -> Result<Vec<u8>> {
-    if reader.buffer & ((1 << reader.bits) - 1) != 0 {
+    let padding = reader.position();
+    if reader.bits.align()?.value() != 0 {
         repair(
             diagnostics,
             repairs::LZW_PADDING,
             "nonzero LZW end padding ignored",
-            reader.position(),
+            padding,
         )?;
     }
-    trailing(input, reader.offset, Trailer::Nothing, diagnostics)?;
-    output.finish(reader.offset)
+    let end = reader.position();
+    trailing(input, end, Trailer::Nothing, diagnostics)?;
+    output.finish(end)
 }
 
+/// Codes read most significant bit first through a buffered bit cursor.
 struct Codes<'a> {
-    input: &'a [u8],
-    offset: usize,
-    buffer: u32,
-    bits: u8,
+    bits: BitCursor<'a>,
+    len: usize,
 }
-impl Codes<'_> {
-    fn read(&mut self, width: u8) -> Option<u16> {
-        while self.bits < width {
-            self.buffer = (self.buffer << 8) | u32::from(*self.input.get(self.offset)?);
-            self.offset += 1;
-            self.bits += 8;
+
+impl<'a> Codes<'a> {
+    const fn new(input: &'a [u8]) -> Self {
+        Self {
+            bits: BitCursor::new(Cursor::new(input)),
+            len: input.len(),
         }
-        self.bits -= width;
-        u16::try_from((self.buffer >> self.bits) & ((1 << width) - 1)).ok()
     }
+
+    /// The next code, or `None` when fewer than `width` bits remain.
+    fn read(&mut self, width: u8) -> Result<Option<u16>> {
+        if self.bits.remaining_bits() < usize::from(width) {
+            return Ok(None);
+        }
+        Ok(Some(code(self.bits.bits(u32::from(width))?)))
+    }
+
+    /// The input offset of the byte holding the next unread bit, from the
+    /// cursor's remaining bits, which a `Plain` cursor counts exactly.
     fn position(&self) -> usize {
-        self.offset.saturating_sub(1)
+        self.len
+            .saturating_sub(self.bits.remaining_bits().div_ceil(8))
     }
+}
+
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "LZW codes have at most 12 bits"
+)]
+const fn code(value: u32) -> u16 {
+    value as u16
 }
 
 struct Table {
