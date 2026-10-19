@@ -31,7 +31,7 @@ pub(crate) fn decoded<'a>(
     let (data, chain) = document.prepare_stream(object, &mut Vec::new())?;
     let mut diagnostics = Diagnostics::new(document.recovery());
     let decoded = chain
-        .decode(&data, document.limits().decoded_bytes, &mut diagnostics)
+        .decode(&data, &document.limits(), &mut diagnostics)
         .map_err(|error| error.in_object(object.id()))?;
     document.report(
         diagnostics
@@ -65,7 +65,7 @@ pub(crate) fn image<'a>(
     let codec = chain.split_image();
     let mut diagnostics = Diagnostics::new(document.recovery());
     let decoded = chain
-        .decode(&data, document.limits().decoded_bytes, &mut diagnostics)
+        .decode(&data, &document.limits(), &mut diagnostics)
         .map_err(|error| error.in_object(object.id()))?;
     document.report(
         diagnostics

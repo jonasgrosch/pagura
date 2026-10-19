@@ -8,7 +8,7 @@
 use super::bits::{Fault, Read, Reader};
 use crate::bounded::{filled, reserve, with_capacity};
 use crate::report::syntax;
-use pagura_core::Result;
+use pagura_core::{Meter, Position, Result, ResultExt};
 
 /// The first code of each length (RFC 1951 3.2.2, step 2), given how many
 /// codes have each length. Length 0 means "no code" and takes none. The
@@ -62,8 +62,14 @@ pub(super) struct Decoder {
 
 impl Decoder {
     /// The decoder for code `lengths` (lengths at most 15), or a syntax
-    /// error at `offset` if they do not form a usable code.
-    pub(super) fn new(lengths: &[u8], alphabet: Alphabet, offset: usize) -> Result<Self> {
+    /// error at `offset` if they do not form a usable code. Its table's
+    /// entries are charged to `work` before they are built.
+    pub(super) fn new(
+        lengths: &[u8],
+        alphabet: Alphabet,
+        work: &mut Meter,
+        offset: usize,
+    ) -> Result<Self> {
         let mut counts = [0_u16; 16];
         for &length in lengths {
             let slot = counts
@@ -94,6 +100,7 @@ impl Decoder {
         }
         let mut next = first_codes(&counts);
         let size = 1_usize << width;
+        work.charge(size).at(Position::Buffer(offset))?;
         let mut entries = filled(size, Entry::default())?;
         for (symbol, &length) in (0_u16..).zip(lengths) {
             if length == 0 {

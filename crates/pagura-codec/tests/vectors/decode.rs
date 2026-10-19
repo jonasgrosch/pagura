@@ -1,7 +1,7 @@
 //! Generated vector tests; all expected bytes originate outside Pagura.
 use super::options;
 use pagura_codec::{Filter, FilterChain, features};
-use pagura_core::{Diagnostics, Dictionary, ErrorKind, Name, Position, Recovery, Value};
+use pagura_core::{Diagnostics, Dictionary, ErrorKind, Limits, Name, Position, Recovery, Value};
 use pagura_testkit::{assert_bytes_eq, fixture, fixture_names};
 use std::collections::BTreeMap;
 
@@ -95,11 +95,15 @@ fn independent_vectors_exact_errors_repairs_and_caps() {
         let cap = params["cap"].parse().unwrap();
         let decode = |cap, diagnostics: &mut Diagnostics| -> pagura_core::Result<Vec<u8>> {
             let chain = chain.as_ref().map_err(Clone::clone)?;
+            let limits = Limits {
+                decoded_bytes: cap,
+                ..Limits::default()
+            };
             if params.get("raw").is_some_and(|s| s == "1") {
                 let Some(Filter::Flate { predictor }) = chain.filters().first() else {
                     panic!("invalid raw fixture");
                 };
-                pagura_codec::decode_raw_deflate(&encoded, cap, *predictor, diagnostics)
+                pagura_codec::decode_raw_deflate(&encoded, &limits, *predictor, diagnostics)
             } else if params.get("take_crypt").is_some_and(|s| s == "1") {
                 let mut chain = chain.clone();
                 assert!(
@@ -109,11 +113,11 @@ fn independent_vectors_exact_errors_repairs_and_caps() {
                     "{name}"
                 );
                 chain
-                    .decode(&encoded, cap, diagnostics)
+                    .decode(&encoded, &limits, diagnostics)
                     .map(std::borrow::Cow::into_owned)
             } else {
                 chain
-                    .decode(&encoded, cap, diagnostics)
+                    .decode(&encoded, &limits, diagnostics)
                     .map(std::borrow::Cow::into_owned)
             }
         };

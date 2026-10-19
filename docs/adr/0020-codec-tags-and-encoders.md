@@ -55,6 +55,14 @@ and a CRC on top of the predictor code and `compress`.
 4. **Revisit when a consumer is built.** If the writer or the CLI ends up
    producing Flate or PNG output another way, the unused encoder is removed
    rather than kept public.
+5. **Stream decoding is charged to `Limits::decode_work`.** The filter API
+   takes `&Limits`: `decoded_bytes` caps each filter's output, as before, and
+   `decode_work` bounds the work of one stream's chain. Building a Flate
+   Huffman table costs one unit per entry. Without that charge, a hostile
+   stream of 22-byte dynamic blocks with 15-bit codes costs about 65,000
+   table writes per block, with no output for the cap to stop. ADR 0016
+   documents `decode_work` for images and colour profiles; filtered streams
+   are the same kind of decoder work.
 
 ## Alternatives
 

@@ -230,7 +230,7 @@ fn predicted_flate(
     .ok()?;
     let mut strict = Diagnostics::new(pagura_core::Recovery::Strict);
     let samples = pagura_codec::Filter::Flate { predictor }
-        .decode(data, limits.decoded_bytes, &mut strict)
+        .decode(data, limits, &mut strict)
         .ok()?;
     (samples.len() == expected).then_some(samples)
 }

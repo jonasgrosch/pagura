@@ -3,7 +3,7 @@
 //! filter and predictor; the rest is the encoded input.
 
 use pagura_codec::{EarlyChange, Filter, Predictor, PredictorKind};
-use pagura_core::{Diagnostics, Recovery};
+use pagura_core::{Diagnostics, Limits, Recovery};
 
 const CAP: usize = 1 << 20;
 
@@ -42,7 +42,11 @@ pub fn run(data: &[u8]) {
     };
     for recovery in [Recovery::Strict, Recovery::Repair] {
         let mut diagnostics = Diagnostics::new(recovery);
-        if let Some(output) = super::checked(filter.decode(input, CAP, &mut diagnostics)) {
+        let limits = Limits {
+            decoded_bytes: CAP,
+            ..Limits::default()
+        };
+        if let Some(output) = super::checked(filter.decode(input, &limits, &mut diagnostics)) {
             assert!(output.len() <= CAP, "decoder exceeded its output cap");
         }
         super::assert_diagnostics(diagnostics.as_slice(), recovery);

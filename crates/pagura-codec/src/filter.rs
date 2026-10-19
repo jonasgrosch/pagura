@@ -1,6 +1,7 @@
 //! Filter names, parameters and chains (7.4.1, Tables 5 and 6).
+use crate::bounded::DECODE_WORK;
 use crate::{Predictor, ascii, features, flate, lzw, run_length};
-use pagura_core::{Diagnostics, Dictionary, Error, Feature, Name, Result, Value};
+use pagura_core::{Diagnostics, Dictionary, Error, Feature, Limits, Meter, Name, Result, Value};
 use std::borrow::Cow;
 
 /// One decoding step: a filter of 7.4.1, Table 6.
@@ -192,11 +193,15 @@ impl FilterChain {
 
     /// Applies every filter in order. Unencoded input is borrowed.
     ///
+    /// `limits.decoded_bytes` caps the output of every filter, and
+    /// `limits.decode_work` the work of the whole chain: building Flate's
+    /// Huffman tables costs one unit per table entry.
+    ///
     /// # Errors
     ///
-    /// Returns a limit error as soon as the output would exceed
-    /// `max_output` bytes, a syntax error for corrupt data, and
-    /// `Unsupported` for image codecs. Under [`pagura_core::Recovery::Strict`],
+    /// Returns a limit error as soon as an output would exceed
+    /// `limits.decoded_bytes` or the work `limits.decode_work`, a syntax
+    /// error for corrupt data, and `Unsupported` for image codecs. Under [`pagura_core::Recovery::Strict`],
     /// damage that would otherwise be repaired is a syntax error.
     ///
     /// Errors and repairs are positioned at [`Position::Buffer`] offsets in
@@ -207,15 +212,17 @@ impl FilterChain {
     pub fn decode<'a>(
         &self,
         input: &'a [u8],
-        max_output: usize,
+        limits: &Limits,
         diagnostics: &mut Diagnostics,
     ) -> Result<Cow<'a, [u8]>> {
+        let max_output = limits.decoded_bytes;
         if self.filters.is_empty() && input.len() > max_output {
             return Err(crate::bounded::decode_limit(max_output));
         }
+        let mut work = Meter::new(limits.decode_work, DECODE_WORK);
         let mut data = Cow::Borrowed(input);
         for filter in &self.filters {
-            data = Cow::Owned(filter.decode(&data, max_output, diagnostics)?);
+            data = Cow::Owned(filter.decode_with(&data, max_output, &mut work, diagnostics)?);
         }
         Ok(data)
     }
@@ -271,7 +278,8 @@ impl Filter {
         })
     }
 
-    /// Decodes `input` with this filter alone.
+    /// Decodes `input` with this filter alone, within `limits` as
+    /// [`FilterChain::decode`] describes.
     ///
     /// # Errors
     ///
@@ -279,7 +287,18 @@ impl Filter {
     pub fn decode(
         &self,
         input: &[u8],
+        limits: &Limits,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<Vec<u8>> {
+        let mut work = Meter::new(limits.decode_work, DECODE_WORK);
+        self.decode_with(input, limits.decoded_bytes, &mut work, diagnostics)
+    }
+
+    fn decode_with(
+        &self,
+        input: &[u8],
         max_output: usize,
+        work: &mut Meter,
         diagnostics: &mut Diagnostics,
     ) -> Result<Vec<u8>> {
         match self {
@@ -293,7 +312,9 @@ impl Filter {
             Self::AsciiHex => ascii::hex(input, max_output, diagnostics),
             Self::Ascii85 => ascii::ascii85(input, max_output, diagnostics),
             Self::RunLength => run_length::decode(input, max_output, diagnostics),
-            Self::Flate { predictor } => flate::decode(input, max_output, *predictor, diagnostics),
+            Self::Flate { predictor } => {
+                flate::decode(input, max_output, *predictor, work, diagnostics)
+            }
             Self::Lzw {
                 predictor,
                 early_change,
