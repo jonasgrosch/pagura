@@ -105,7 +105,7 @@ fn decode_inner(
         return Err(Error::syntax("filter is forbidden in inline images"));
     }
     let codec = chain.split_image();
-    let decoded = chain.decode(data, document.limits().decoded_bytes, diagnostics)?;
+    let decoded = chain.decode(data, &document.limits(), diagnostics)?;
     dispatch::decode(document, &dict, &decoded, codec.as_ref(), diagnostics)
 }
 
@@ -225,7 +225,7 @@ fn valid_prefix(
 ) -> bool {
     let limits = pagura_core::Limits::default();
     let mut diagnostics = Diagnostics::new(pagura_core::Recovery::Strict);
-    let Ok(decoded) = chain.decode(data, limits.decoded_bytes, &mut diagnostics) else {
+    let Ok(decoded) = chain.decode(data, &limits, &mut diagnostics) else {
         return false;
     };
     match codec {

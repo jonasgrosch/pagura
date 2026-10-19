@@ -37,7 +37,7 @@ mod run_length;
 pub use filter::{CryptFilter, EarlyChange, Filter, FilterChain, ImageCodec};
 pub use predictor::{Predictor, PredictorKind};
 
-use pagura_core::{Diagnostics, Result};
+use pagura_core::{Diagnostics, Limits, Meter, Result};
 
 /// Decodes explicitly unwrapped DEFLATE (RFC 1951 3.2), applying
 /// the optional PDF predictor after inflation.
@@ -49,15 +49,24 @@ use pagura_core::{Diagnostics, Result};
 /// ambiguity. PDF FlateDecode requires the zlib wrapper (7.4.4). This
 /// explicit raw entry point does not report [`repairs::RAW_DEFLATE`].
 ///
+/// `limits` bound the output and the work as for [`FilterChain::decode`].
+///
 /// # Errors
 ///
 /// Returns the same bounded, positioned syntax/limit errors and reported
 /// truncation/trailing-data repairs as [`Filter::decode`].
 pub fn decode_raw_deflate(
     input: &[u8],
-    max_output: usize,
+    limits: &Limits,
     predictor: Predictor,
     diagnostics: &mut Diagnostics,
 ) -> Result<Vec<u8>> {
-    flate::raw(input, max_output, predictor, diagnostics)
+    let mut work = Meter::new(limits.decode_work, bounded::DECODE_WORK);
+    flate::raw(
+        input,
+        limits.decoded_bytes,
+        predictor,
+        &mut work,
+        diagnostics,
+    )
 }

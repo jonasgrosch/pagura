@@ -4,6 +4,9 @@ use pagura_core::{Error, Meter, Position, Result};
 
 /// The `Limit` message when decoded bytes would exceed the caller's cap.
 pub(crate) const DECODE_BUDGET: &str = "decoded stream budget exceeded";
+/// The `Limit` message when decoding one stream would exceed
+/// `Limits::decode_work`: building its Huffman tables, one unit per entry.
+pub(crate) const DECODE_WORK: &str = "stream decode work budget exceeded";
 /// The `Limit` message when an encoder's input, output or scratch would
 /// exceed its budget.
 pub(crate) const ENCODE_BUDGET: &str = "encoding budget exceeded";

@@ -75,10 +75,11 @@ fn detect(document: &Document, key: &FileKey) -> Result<Option<ObjectId>> {
         Ok(_) | Err(_) => return Ok(None),
     };
     let raw = document.raw_stream_data(&object)?;
-    let maximum = document
-        .limits()
-        .decoded_bytes
-        .min(document.limits().document_bytes);
+    let limits = document.limits();
+    let decode_limits = pagura_core::Limits {
+        decoded_bytes: limits.decoded_bytes.min(limits.document_bytes),
+        ..limits
+    };
     let valid = |padded| -> Result<bool> {
         let decoded = if padded {
             key.decrypt_legacy_zero_padded(id, raw)?
@@ -87,7 +88,7 @@ fn detect(document: &Document, key: &FileKey) -> Result<Option<ObjectId>> {
         };
         let mut diagnostics = Diagnostics::new(Recovery::Strict);
         let result = chain
-            .decode(&decoded, maximum, &mut diagnostics)
+            .decode(&decoded, &decode_limits, &mut diagnostics)
             .and_then(|data| {
                 let contents = object_stream::headers(
                     data.into_owned(),

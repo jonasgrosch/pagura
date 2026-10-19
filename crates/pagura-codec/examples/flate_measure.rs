@@ -6,7 +6,7 @@
 //! Verification happens outside the timed loops; allocations and drops are timed.
 
 use pagura_codec::{Filter, Predictor};
-use pagura_core::{Diagnostics, Recovery};
+use pagura_core::{Diagnostics, Limits, Recovery};
 use std::{error::Error, hint::black_box, path::Path, time::Instant};
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -25,10 +25,14 @@ fn main() -> Result<(), Box<dyn Error>> {
     let filter = Filter::Flate {
         predictor: Predictor::default(),
     };
+    let limits = Limits {
+        decoded_bytes: expected.len(),
+        ..Limits::default()
+    };
     let decode = || {
         filter.decode(
             black_box(&input),
-            expected.len(),
+            &limits,
             &mut Diagnostics::new(Recovery::Strict),
         )
     };

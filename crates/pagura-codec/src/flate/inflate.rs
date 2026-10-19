@@ -10,7 +10,7 @@ use super::tables::{
 use super::zlib::{self, Adler32};
 use crate::report::{Trailer, repair, syntax, trailing};
 use crate::{Predictor, PredictorKind, output::Output, repairs};
-use pagura_core::{Diagnostics, Result};
+use pagura_core::{Diagnostics, Meter, Result};
 
 /// Whether DEFLATE data is wrapped in zlib framing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -23,6 +23,7 @@ pub(crate) fn decode(
     input: &[u8],
     cap: usize,
     predictor: Predictor,
+    work: &mut Meter,
     diagnostics: &mut Diagnostics,
 ) -> Result<Vec<u8>> {
     // RFC 1951 stored-block padding can mimic CM=8. Prefer a valid zlib
@@ -40,16 +41,17 @@ pub(crate) fn decode(
         )?;
         Framing::Raw
     };
-    inflate(input, cap, predictor, framing, diagnostics)
+    inflate(input, cap, predictor, framing, work, diagnostics)
 }
 
 pub(crate) fn raw(
     input: &[u8],
     cap: usize,
     predictor: Predictor,
+    work: &mut Meter,
     diagnostics: &mut Diagnostics,
 ) -> Result<Vec<u8>> {
-    inflate(input, cap, predictor, Framing::Raw, diagnostics)
+    inflate(input, cap, predictor, Framing::Raw, work, diagnostics)
 }
 
 fn inflate(
@@ -57,6 +59,7 @@ fn inflate(
     cap: usize,
     predictor: Predictor,
     framing: Framing,
+    work: &mut Meter,
     diagnostics: &mut Diagnostics,
 ) -> Result<Vec<u8>> {
     if framing == Framing::Zlib && input.len() < zlib::HEADER {
@@ -85,7 +88,7 @@ fn inflate(
         window,
         adler: Adler32::new(),
     };
-    match inflater.blocks(&mut bits) {
+    match inflater.blocks(&mut bits, work) {
         Ok(()) => {
             bits.align();
             if framing == Framing::Zlib {
@@ -233,7 +236,7 @@ impl Inflater {
         Ok(())
     }
 
-    fn blocks(&mut self, bits: &mut Reader<'_>) -> Read<()> {
+    fn blocks(&mut self, bits: &mut Reader<'_>, work: &mut Meter) -> Read<()> {
         // The fixed code's tables, built once for every fixed block.
         let mut fixed = None;
         loop {
@@ -242,14 +245,14 @@ impl Inflater {
                 Some(BlockType::Stored) => self.stored(bits)?,
                 Some(BlockType::Fixed) => {
                     if fixed.is_none() {
-                        fixed = Some(fixed_tables(bits.offset)?);
+                        fixed = Some(fixed_tables(work, bits.offset)?);
                     }
                     if let Some((literal, distance)) = &fixed {
                         self.compressed(bits, literal, distance)?;
                     }
                 }
                 Some(BlockType::Dynamic) => {
-                    let (literal, distance) = dynamic(bits)?;
+                    let (literal, distance) = dynamic(bits, work)?;
                     self.compressed(bits, &literal, &distance)?;
                 }
                 None => return Err(syntax("reserved DEFLATE block type", bits.offset).into()),
@@ -387,12 +390,18 @@ impl Inflater {
 }
 
 /// The fixed code's decoders (RFC 1951 3.2.6).
-fn fixed_tables(offset: usize) -> Result<(Decoder, Decoder)> {
+fn fixed_tables(work: &mut Meter, offset: usize) -> Result<(Decoder, Decoder)> {
     Ok((
-        Decoder::new(&fixed_literal_lengths(), Alphabet::LiteralLength, offset)?,
+        Decoder::new(
+            &fixed_literal_lengths(),
+            Alphabet::LiteralLength,
+            work,
+            offset,
+        )?,
         Decoder::new(
             &[FIXED_DISTANCE_BITS; FIXED_DISTANCE_SYMBOLS],
             Alphabet::Distance,
+            work,
             offset,
         )?,
     ))
@@ -400,7 +409,7 @@ fn fixed_tables(offset: usize) -> Result<(Decoder, Decoder)> {
 
 /// Reads a dynamic block's header (RFC 1951 3.2.7) and returns its
 /// literal/length and distance decoders.
-fn dynamic(bits: &mut Reader<'_>) -> Read<(Decoder, Decoder)> {
+fn dynamic(bits: &mut Reader<'_>, work: &mut Meter) -> Read<(Decoder, Decoder)> {
     let literals = bits.read(5)? + usize::from(FIRST_LENGTH);
     if literals > LITERAL_SYMBOLS {
         return Err(syntax("invalid DEFLATE literal count", bits.offset).into());
@@ -415,7 +424,7 @@ fn dynamic(bits: &mut Reader<'_>) -> Read<(Decoder, Decoder)> {
             *slot = value;
         }
     }
-    let codes = Decoder::new(&code_lengths, Alphabet::CodeLength, bits.offset)?;
+    let codes = Decoder::new(&code_lengths, Alphabet::CodeLength, work, bits.offset)?;
     let total = literals + distances;
     // HDIST is five bits, so a header declares at most 32 distance lengths.
     let mut lengths = [0; LITERAL_SYMBOLS + FIXED_DISTANCE_SYMBOLS];
@@ -454,6 +463,7 @@ fn dynamic(bits: &mut Reader<'_>) -> Read<(Decoder, Decoder)> {
             .get(..literals)
             .ok_or_else(|| syntax("invalid literal alphabet", bits.offset))?,
         Alphabet::LiteralLength,
+        work,
         bits.offset,
     )?;
     let distance = Decoder::new(
@@ -461,6 +471,7 @@ fn dynamic(bits: &mut Reader<'_>) -> Read<(Decoder, Decoder)> {
             .get(literals..total)
             .ok_or_else(|| syntax("invalid distance alphabet", bits.offset))?,
         Alphabet::Distance,
+        work,
         bits.offset,
     )?;
     Ok((literal, distance))
