@@ -36,22 +36,12 @@ pub(super) fn load_with(
     if kind == FontKind::Type3 {
         return type3(document, font);
     }
+    // The dictionary with widths and descriptor: the font itself, or the
+    // CIDFont of a Type 0 font (9.7.4).
     let (metrics_font, mapping, metrics_id) = if kind == FontKind::Type0 {
-        let descendants = array(required(document, font, b"DescendantFonts")?)?;
-        if descendants.len() != 1 {
-            return Err(Error::syntax("Type0 requires one descendant font"));
-        }
-        let descendant = document.resolve_dictionary(&descendants[0])?;
-        if !descendant.is_name(b"Subtype", b"CIDFontType0")
-            && !descendant.is_name(b"Subtype", b"CIDFontType2")
-        {
-            return Err(Error::syntax("invalid CIDFont subtype"));
-        }
-        (
-            descendant,
-            Some(composite_mapping(document, font, provider)?),
-            descendants[0].as_reference(),
-        )
+        let (descendant, id) = descendant(document, font)?;
+        let mapping = composite_mapping(document, font, provider)?;
+        (descendant, Some(mapping), id)
     } else {
         (font, None, None)
     };
@@ -83,16 +73,7 @@ pub(super) fn load_with(
     let descriptor = descriptor.ok_or_else(|| {
         Error::unsupported(features::NON_EMBEDDED, "font program is not embedded")
     })?;
-    let symbolic = descriptor
-        .normalized_flags(document, position)?
-        .contains(FontFlags::SYMBOLIC);
-    // 9.6.5.4: symbolic TrueType fonts and fonts without an Encoding use
-    // their bytes as character codes.
-    let route = if symbolic || optional(document, font, b"Encoding")?.is_none() {
-        Route::Raw
-    } else {
-        Route::Named
-    };
+    let route = route(document, font, descriptor, position)?;
     let program = Arc::new(crate::program::load(
         document,
         descriptor,
@@ -145,6 +126,43 @@ pub(super) fn load_with(
         retained: 0,
     }
     .accounted())
+}
+
+/// The single CIDFont of a Type 0 font and its object (9.7.6.1).
+fn descendant<'a>(
+    document: &'a Document,
+    font: &'a Dictionary,
+) -> Result<(&'a Dictionary, Option<ObjectId>)> {
+    let [value] = array(required(document, font, b"DescendantFonts")?)? else {
+        return Err(Error::syntax("Type0 requires one descendant font"));
+    };
+    let descendant = document.resolve_dictionary(value)?;
+    if !descendant.is_name(b"Subtype", b"CIDFontType0")
+        && !descendant.is_name(b"Subtype", b"CIDFontType2")
+    {
+        return Err(Error::syntax("invalid CIDFont subtype"));
+    }
+    Ok((descendant, value.as_reference()))
+}
+
+/// How a font's codes reach its glyphs (9.6.5.4): symbolic TrueType fonts
+/// and fonts without an Encoding use their bytes as character codes.
+fn route(
+    document: &Document,
+    font: &Dictionary,
+    descriptor: Descriptor<'_>,
+    position: Position,
+) -> Result<Route> {
+    let symbolic = descriptor
+        .normalized_flags(document, position)?
+        .contains(FontFlags::SYMBOLIC);
+    Ok(
+        if symbolic || optional(document, font, b"Encoding")?.is_none() {
+            Route::Raw
+        } else {
+            Route::Named
+        },
+    )
 }
 
 fn kind(document: &Document, font: &Dictionary) -> Result<FontKind> {
