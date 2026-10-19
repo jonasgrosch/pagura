@@ -396,7 +396,9 @@ impl FontProgram {
         }
     }
 
-    /// The glyph for `code` in a TrueType `cmap` subtable.
+    /// The glyph for `code` in a TrueType `cmap` subtable. Subtables are
+    /// validated at parse time; a code that a repaired, truncated subtable
+    /// no longer maps has no glyph.
     pub fn glyph_for_code(&self, subtable: CmapSubtable, code: u32) -> Option<GlyphId> {
         match self.parsed.as_ref() {
             Program::Sfnt(p) => p.code(&self.data, subtable, code),

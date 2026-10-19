@@ -4,7 +4,7 @@
 //! program bytes. Truncation is a `Syntax` error and offset overflow a
 //! `Limit` error, as for every binary format (CONTRIBUTING, Conventions 6).
 use pagura_core::bytes::Cursor;
-use pagura_core::{Error, Position, Result};
+use pagura_core::{Error, Feature, Position, Result};
 use std::ops::Range;
 
 const TRUNCATED: &str = "truncated font data";
@@ -50,6 +50,17 @@ pub(crate) const fn syntax(at: Position, message: &'static str) -> Error {
 
 pub(crate) const fn limit(at: Position, message: &'static str) -> Error {
     Error::limit(message).at(at)
+}
+
+pub(crate) const fn unsupported(feature: Feature, at: Position, message: &'static str) -> Error {
+    Error::unsupported(feature, message).at(at)
+}
+
+/// The glyph at `index`, or a `Limit` error if the index exceeds 32 bits.
+pub(crate) fn glyph_id(index: usize, at: Position) -> Result<crate::GlyphId> {
+    u32::try_from(index)
+        .map(crate::GlyphId)
+        .map_err(|_| limit(at, "glyph index overflow"))
 }
 
 /// Checks that every point of an outline is finite: arithmetic beyond

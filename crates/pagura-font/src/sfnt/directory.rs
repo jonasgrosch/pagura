@@ -1,83 +1,119 @@
-//! Bounded sfnt directory recovery; ISO 32000-2 9.9.1/Table 124.
-use super::Tables;
+//! Bounded sfnt directory recovery; 9.9.1/Table 124 and the OpenType table
+//! directory.
+use super::{DIRECTORY, Tables};
 use crate::budget::Work;
-use crate::read::{bad, cursor, here};
+use crate::read::{cursor, here, limit, syntax};
 use crate::repairs;
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Position, Result};
 
-pub(super) fn directory(data: &[u8], work: &mut Work<'_>) -> Result<(u32, Tables, bool)> {
+/// sfnt versions: TrueType outlines, CFF outlines (`OTTO`), and Apple's
+/// original tag for the TrueType container (`true`).
+const TRUETYPE: u32 = 0x0001_0000;
+const OTTO: u32 = u32::from_be_bytes(*b"OTTO");
+const APPLE_TRUE: u32 = u32::from_be_bytes(*b"true");
+/// The offset table and each table record (OpenType table directory).
+const OFFSET_TABLE: usize = 12;
+const TABLE_RECORD: usize = 16;
+/// Tables start on four-byte boundaries.
+const TABLE_ALIGNMENT: usize = 4;
+/// The tables that make up a TrueType-outline font (9.9.1, Table 124).
+const GLYF_TABLES: [&[u8; 4]; 6] = [b"glyf", b"head", b"hhea", b"hmtx", b"loca", b"maxp"];
+
+/// The outline technology an sfnt container declares.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Flavor {
+    /// `glyf` outlines.
+    TrueType,
+    /// `CFF ` or `CFF2` outlines.
+    Cff,
+}
+
+pub(super) struct Directory {
+    pub(super) flavor: Flavor,
+    pub(super) tables: Tables,
+    /// The `post` table was clamped to the available data.
+    pub(super) clipped_post: bool,
+}
+
+pub(super) fn parse(data: &[u8], work: &mut Work<'_>) -> Result<Directory> {
     let mut r = cursor(data);
     let signature = r.u32()?;
+    let at = r.position();
     let count = usize::from(r.u16()?);
-    work.entries(count, Position::Buffer(4))?;
-    r.skip(6)?;
-    let directory_end = 12 + 16 * count;
+    work.entries(count, at)?;
+    r.skip(6)?; // searchRange, entrySelector, rangeShift
+    let directory_end = OFFSET_TABLE + TABLE_RECORD * count;
     let mut tables = Tables::new();
     let mut clipped_post = false;
     for _ in 0..count {
-        let tag: [u8; 4] = r
-            .take(4)?
-            .try_into()
-            .map_err(|_| bad(here(&r), "invalid table tag"))?;
-        r.skip(4)?;
+        let tag = r.take_array::<4>()?;
+        r.skip(4)?; // checksum
+        let record = Position::Buffer(here(&r));
         let start = u32_to_usize(r.u32()?);
+        let len_at = r.position();
         let len = u32_to_usize(r.u32()?);
-        work.decoded(len, Position::Buffer(here(&r) - 4))?;
+        work.decoded(len, len_at)?;
         if len != 0 && start < directory_end {
-            return Err(bad(here(&r) - 8, "sfnt table overlaps directory"));
+            return Err(syntax(record, "sfnt table overlaps directory"));
         }
-        if len != 0 && !start.is_multiple_of(4) {
+        if len != 0 && !start.is_multiple_of(TABLE_ALIGNMENT) {
             work.repair(
                 repairs::TABLE_ALIGNMENT,
                 "unaligned sfnt table offset",
-                Position::Buffer(here(&r) - 8),
+                record,
             )?;
         }
-        let end = start.checked_add(len).ok_or_else(|| {
-            crate::read::limit(Position::Buffer(here(&r) - 8), "table size overflow")
-        })?;
+        let end = start
+            .checked_add(len)
+            .ok_or_else(|| limit(record, "table size overflow"))?;
         if end > data.len() {
             clipped_post |= &tag == b"post";
             work.repair(
                 repairs::TABLE_BOUNDS,
                 "sfnt table exceeds available data",
-                Position::Buffer(here(&r) - 8),
+                record,
             )?;
         }
         let range = start.min(data.len())..end.min(data.len());
         if tables.insert(tag, range).is_some() {
-            return Err(bad(here(&r), "duplicate sfnt table"));
+            return Err(r.error("duplicate sfnt table"));
         }
     }
     let mut ranges: Vec<_> = tables.values().filter(|r| !r.is_empty()).collect();
     ranges.sort_by_key(|r| r.start);
-    if ranges.windows(2).any(|w| w[0].end > w[1].start) {
-        return Err(bad(0, "overlapping sfnt tables"));
+    for pair in ranges.windows(2) {
+        if let [a, b] = pair
+            && a.end > b.start
+        {
+            return Err(syntax(Position::Buffer(b.start), "overlapping sfnt tables"));
+        }
     }
-    Ok((flavor(signature, &tables, work)?, tables, clipped_post))
+    Ok(Directory {
+        flavor: flavor(signature, &tables, work)?,
+        tables,
+        clipped_post,
+    })
 }
 
-fn flavor(signature: u32, tables: &Tables, work: &mut Work<'_>) -> Result<u32> {
+fn flavor(signature: u32, tables: &Tables, work: &mut Work<'_>) -> Result<Flavor> {
     match signature {
-        0x0001_0000 | 0x4f54_544f => return Ok(signature),
         // Apple's original TrueType tag names the same glyf container. It is
         // not a repaired unknown flavor. OpenType's primary text is pending.
-        0x7472_7565 => return Ok(0x0001_0000),
+        TRUETYPE | APPLE_TRUE => return Ok(Flavor::TrueType),
+        OTTO => return Ok(Flavor::Cff),
         _ => {}
     }
     let cff = (tables.contains_key(b"CFF ") || tables.contains_key(b"CFF2"))
         && !tables.contains_key(b"glyf");
-    let glyf = [b"glyf", b"head", b"hhea", b"hmtx", b"loca", b"maxp"]
-        .iter()
-        .all(|t| tables.contains_key(*t));
+    let glyf = GLYF_TABLES.iter().all(|t| tables.contains_key(*t));
     if !cff && !glyf {
-        return Err(bad(0, "unsupported sfnt version"));
+        return Err(syntax(DIRECTORY, "unsupported sfnt version"));
     }
     work.repair(
         repairs::SFNT_VERSION,
         "unknown sfnt version inferred from required tables",
-        Position::Buffer(0),
+        DIRECTORY,
     )?;
-    Ok(if cff { 0x4f54_544f } else { 0x0001_0000 })
+    Ok(if cff { Flavor::Cff } else { Flavor::TrueType })
 }
