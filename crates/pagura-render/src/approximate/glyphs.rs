@@ -569,14 +569,12 @@ impl Accumulator {
     }
 }
 
+/// The area of a unit ramp left of `value`: 0 below 0, v²/2 up to 1 and
+/// v - 1/2 beyond. Without branches: (v - 1) is exact below 2^24, so the
+/// last piece rounds v - 1/2 once, and the other pieces add +0.
 fn primitive(value: f32) -> f32 {
-    if value <= 0.0 {
-        0.0
-    } else if value < 1.0 {
-        value * value * 0.5
-    } else {
-        value - 0.5
-    }
+    let ramp = value.clamp(0.0, 1.0);
+    ramp * ramp * 0.5 + (value - ramp).max(0.0)
 }
 
 #[cfg(test)]
@@ -588,6 +586,37 @@ mod tests {
         let mut raster = Accumulator::default();
         raster.reset(width, height, Limits::default()).unwrap();
         raster
+    }
+
+    #[test]
+    fn branchless_ramp_area_matches_its_pieces() {
+        let pieces = |v: f32| {
+            if v <= 0.0 {
+                0.0
+            } else if v < 1.0 {
+                v * v * 0.5
+            } else {
+                v - 0.5
+            }
+        };
+        let near_one = (0..2000).map(|k| f32::from_bits(1.0_f32.to_bits() - 1000 + k));
+        let tiny = (0..1000).map(f32::from_bits);
+        #[expect(clippy::cast_precision_loss, reason = "small exact integers")]
+        let grid = (-3000..70_000).map(|i| i as f32 * 0.001);
+        for value in near_one.chain(tiny).chain(grid) {
+            assert_eq!(
+                primitive(value).to_bits(),
+                pieces(value).to_bits(),
+                "{value}"
+            );
+        }
+        for value in [1.0, 0.5, 2.0, 16_777_215.0, 1e7] {
+            assert_eq!(
+                primitive(value).to_bits(),
+                pieces(value).to_bits(),
+                "{value}"
+            );
+        }
     }
 
     #[test]
