@@ -7,10 +7,11 @@
 
 use pagura_core::Result;
 
-use super::io::syntax;
+use super::segments::Segment;
+use super::syntax;
 
 pub(super) struct Check<'a> {
-    bytes: &'a [u8],
+    segment: &'a Segment,
     offset: usize,
     a: u32,
     c: u32,
@@ -20,9 +21,9 @@ pub(super) struct Check<'a> {
 }
 
 impl<'a> Check<'a> {
-    pub fn new(bytes: &'a [u8]) -> Self {
+    pub(super) fn new(segment: &'a Segment) -> Self {
         Self {
-            bytes,
+            segment,
             offset: 0,
             a: 0x8000,
             c: 0,
@@ -39,10 +40,10 @@ impl<'a> Check<'a> {
         if self.sentinel {
             self.sentinel = false;
         } else {
-            if self.bytes.get(self.offset).map(|&v| u32::from(v)) != Some(self.buffer) {
+            if self.segment.data.get(self.offset).map(|&v| u32::from(v)) != Some(self.buffer) {
                 return Err(syntax(
                     "invalid JPEG 2000 predictable MQ termination",
-                    self.offset,
+                    self.segment.position(self.offset),
                 ));
             }
             self.offset += 1;
@@ -54,7 +55,7 @@ impl<'a> Check<'a> {
         Ok(())
     }
 
-    pub fn decision(&mut self, estimate: u32, mps: bool) -> Result<()> {
+    pub(super) fn decision(&mut self, estimate: u32, mps: bool) -> Result<()> {
         self.a -= estimate;
         if mps && self.a >= 0x8000 {
             self.c += estimate;
@@ -76,7 +77,7 @@ impl<'a> Check<'a> {
         Ok(())
     }
 
-    pub fn finish(mut self) -> Result<()> {
+    pub(super) fn finish(mut self) -> Result<()> {
         let mut needed = 12_i16 - i16::from(self.bits);
         while needed > 0 {
             self.c <<= self.bits;
@@ -86,10 +87,10 @@ impl<'a> Check<'a> {
         if self.buffer != 255 {
             self.byte_out()?;
         }
-        if self.offset != self.bytes.len() {
+        if self.offset != self.segment.data.len() {
             return Err(syntax(
                 "extra JPEG 2000 predictable MQ termination bytes",
-                self.offset,
+                self.segment.position(self.offset),
             ));
         }
         Ok(())

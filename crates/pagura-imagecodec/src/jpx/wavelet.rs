@@ -1,24 +1,25 @@
 //! Inverse wavelet synthesis, T.800 F.2–F.3.
 
-use pagura_core::Result;
+use pagura_core::convert::u32_to_usize;
+use pagura_core::{Error, Result};
 
 use crate::budget::Budget;
 
-use super::io::{area, usize_from};
+use super::area;
 
 pub(super) struct Plane {
-    pub x0: u32,
-    pub y0: u32,
-    pub width: u32,
-    pub height: u32,
+    pub(super) x0: u32,
+    pub(super) y0: u32,
+    pub(super) width: u32,
+    pub(super) height: u32,
     // An empty buffer denotes an identically zero plane, including nonempty grids.
-    pub values: Vec<f64>,
+    pub(super) values: Vec<f64>,
     // Conservative support: rows outside this interval are exactly zero.
-    pub rows: std::ops::Range<usize>,
+    pub(super) rows: std::ops::Range<usize>,
 }
 
 impl Plane {
-    pub fn new(x0: u32, y0: u32, x1: u32, y1: u32) -> Self {
+    pub(super) fn new(x0: u32, y0: u32, x1: u32, y1: u32) -> Self {
         Self {
             x0,
             y0,
@@ -29,7 +30,7 @@ impl Plane {
         }
     }
 
-    pub fn include_rows(&mut self, rows: std::ops::Range<usize>) {
+    pub(super) fn include_rows(&mut self, rows: std::ops::Range<usize>) {
         if !rows.is_empty() {
             self.rows = if self.rows.is_empty() {
                 rows
@@ -39,7 +40,7 @@ impl Plane {
         }
     }
 
-    pub fn materialize(&mut self, budget: &mut Budget) -> Result<()> {
+    pub(super) fn materialize(&mut self, budget: &mut Budget) -> Result<()> {
         if self.values.is_empty() {
             self.values = budget.filled(area(self.width, self.height)?, 0.0)?;
         }
@@ -47,40 +48,93 @@ impl Plane {
     }
 
     /// Drops the plane and returns its coefficients to the memory budget.
-    pub fn release(self, budget: &mut Budget) {
+    pub(super) fn release(self, budget: &mut Budget) {
         let count = self.values.len();
         drop(self);
         budget.release::<f64>(count);
     }
 }
 
+// The 9/7 lifting parameters and scaling factor (T.800 Table F.4).
+const ALPHA: f64 = -1.586_134_342_059_924;
+const BETA: f64 = -0.052_980_118_572_961;
+const GAMMA: f64 = 0.882_911_075_530_934;
+const DELTA: f64 = 0.443_506_852_043_971;
 const K: f64 = 1.230_174_104_914_001;
+
+/// The magnitude up to which f64 lifting and component transform arithmetic
+/// on integers is exact: 2^48, conservatively below the 53-bit significand.
+const EXACT: f64 = 281_474_976_710_656.0;
+
+/// The samples a lifting step updates: those of the low-pass or those of
+/// the high-pass band.
+#[derive(Clone, Copy)]
+enum Phase {
+    Low,
+    High,
+}
+
+impl Phase {
+    /// The index of the first updated sample, given that of the first
+    /// low-pass sample.
+    const fn first(self, low: usize) -> usize {
+        match self {
+            Self::Low => low,
+            Self::High => 1 - low,
+        }
+    }
+}
+
+/// One lifting step: the samples it updates and the update.
+type Step = (Phase, fn(f64) -> f64);
+
+/// The inverse lifting steps in order: each updates its samples by a
+/// function of the sum of their two neighbours (T.800 F.3.8.1 for the 5/3
+/// filter, T.800 F.3.8.2 for the 9/7 filter).
+fn steps(reversible: bool) -> &'static [Step] {
+    const REVERSIBLE: [Step; 2] = [
+        (Phase::Low, |sum| -((sum + 2.0) / 4.0).floor()),
+        (Phase::High, |sum| (sum / 2.0).floor()),
+    ];
+    const IRREVERSIBLE: [Step; 4] = [
+        (Phase::Low, |sum| -DELTA * sum),
+        (Phase::High, |sum| -GAMMA * sum),
+        (Phase::Low, |sum| -BETA * sum),
+        (Phase::High, |sum| -ALPHA * sum),
+    ];
+    if reversible {
+        &REVERSIBLE
+    } else {
+        &IRREVERSIBLE
+    }
+}
+
+/// Rejects reversible intermediates beyond exact arithmetic.
+fn check_exact(values: &[f64]) -> Result<()> {
+    if values.iter().any(|v| v.abs() > EXACT) {
+        return Err(Error::unsupported(
+            super::UNSUPPORTED,
+            "JPEG 2000 reversible intermediate exceeds exact integer precision",
+        ));
+    }
+    Ok(())
+}
 
 // Horizontal scaling is fused into interleaving; vertical scaling follows row synthesis.
 fn inverse_line(line: &mut [f64], origin: u32, reversible: bool) -> Result<()> {
     if line.len() == 1 {
+        // T.800 F.3.6: a lone high-pass sample is halved.
         if origin % 2 == 1 {
             line[0] *= 0.5;
         }
         return Ok(());
     }
     let low = usize::from(!origin.is_multiple_of(2));
-    let high = 1 - low;
-    if reversible {
-        lift(line, low, |sum| -((sum + 2.0) / 4.0).floor());
-        lift(line, high, |sum| (sum / 2.0).floor());
-    } else {
-        lift(line, low, |sum| -0.443_506_852_043_971 * sum);
-        lift(line, high, |sum| -0.882_911_075_530_934 * sum);
-        lift(line, low, |sum| 0.052_980_118_572_961 * sum);
-        lift(line, high, |sum| 1.586_134_342_059_924 * sum);
+    for &(phase, update) in steps(reversible) {
+        lift(line, phase.first(low), update);
     }
-    // Integers below this conservative threshold retain exact lifting and RCT arithmetic.
-    if reversible && line.iter().any(|v| v.abs() > 281_474_976_710_656.0) {
-        return Err(super::unsupported(
-            "JPEG 2000 reversible intermediate exceeds exact integer precision",
-            0,
-        ));
+    if reversible {
+        check_exact(line)?;
     }
     Ok(())
 }
@@ -107,21 +161,21 @@ pub(super) fn synthesize(
     let [x0, y0, x1, y1] = bounds;
     let bands = [low, high[0], high[1], high[2]];
     let mut result = Plane::new(x0, y0, x1, y1);
-    // F.3's lifting and scaling map an all-zero input to zero. Uncoded bands
+    // T.800 F.3's lifting and scaling map an all-zero input to zero. Uncoded bands
     // need neither coefficient storage nor synthesis, regardless of grid size.
     if bands.iter().all(|band| band.values.is_empty()) {
         return Ok(result);
     }
     result.materialize(budget)?;
-    let width = usize_from(result.width)?;
-    let height = usize_from(result.height)?;
+    let width = u32_to_usize(result.width);
+    let height = u32_to_usize(result.height);
     for (orientation, band) in bands.iter().enumerate() {
         if band.values.is_empty() {
             continue;
         }
         let start_x = usize::from((x0 % 2 == 1) ^ (orientation % 2 == 1));
         let start_y = usize::from((y0 % 2 == 1) ^ (orientation >= 2));
-        let band_width = usize_from(band.width)?;
+        let band_width = u32_to_usize(band.width);
         let scale = if reversible || width <= 1 {
             1.0
         } else if orientation % 2 == 0 {
@@ -139,7 +193,7 @@ pub(super) fn synthesize(
         }
     }
     if width != 0 {
-        // F.3: horizontal lifting cannot spread support between rows. Its two
+        // T.800 F.3: horizontal lifting cannot spread support between rows. Its two
         // full-row visits include the 5/3 range check or the four 9/7 half-lifts.
         let visits = if width > 1 {
             2
@@ -153,7 +207,7 @@ pub(super) fn synthesize(
         for (y, row) in rows.chunks_exact_mut(width).enumerate() {
             inverse_line(row, x0, reversible)?;
             if !reversible && height > 1 {
-                let scale = if (start_y + y) % 2 == (y0 % 2) as usize {
+                let scale = if (start_y + y) % 2 == usize::from(y0 % 2 == 1) {
                     K
                 } else {
                     1.0 / K
@@ -164,7 +218,7 @@ pub(super) fn synthesize(
             }
         }
     }
-    // F.3.2 requires horizontal synthesis before vertical synthesis. Lift whole
+    // T.800 F.3.2 requires horizontal synthesis before vertical synthesis. Lift whole
     // rows against their neighbours: columns are independent, so the same
     // arithmetic needs neither column gathers/scatters nor a scratch buffer.
     if height == 1 {
@@ -176,33 +230,12 @@ pub(super) fn synthesize(
         }
     } else {
         let low = usize::from(!y0.is_multiple_of(2));
-        let high = 1 - low;
-        if reversible {
-            lift_rows(&mut result, low, |sum| -((sum + 2.0) / 4.0).floor(), budget)?;
-            lift_rows(&mut result, high, |sum| (sum / 2.0).floor(), budget)?;
-        } else {
-            lift_rows(&mut result, low, |sum| -0.443_506_852_043_971 * sum, budget)?;
-            lift_rows(
-                &mut result,
-                high,
-                |sum| -0.882_911_075_530_934 * sum,
-                budget,
-            )?;
-            lift_rows(&mut result, low, |sum| 0.052_980_118_572_961 * sum, budget)?;
-            lift_rows(&mut result, high, |sum| 1.586_134_342_059_924 * sum, budget)?;
+        for &(phase, update) in steps(reversible) {
+            lift_rows(&mut result, phase.first(low), update, budget)?;
         }
         if reversible {
             budget.work(width * result.rows.len())?;
-        }
-        if reversible
-            && result.values[result.rows.start * width..result.rows.end * width]
-                .iter()
-                .any(|v| v.abs() > 281_474_976_710_656.0)
-        {
-            return Err(super::unsupported(
-                "JPEG 2000 reversible intermediate exceeds exact integer precision",
-                0,
-            ));
+            check_exact(&result.values[result.rows.start * width..result.rows.end * width])?;
         }
     }
     Ok(result)
@@ -214,8 +247,8 @@ fn lift_rows(
     update: impl Fn(f64) -> f64,
     budget: &mut Budget,
 ) -> Result<()> {
-    let width = usize_from(plane.width)?;
-    let height = usize_from(plane.height)?;
+    let width = u32_to_usize(plane.width);
+    let height = u32_to_usize(plane.height);
     // A lift can spread nonzero support by at most one row. Keeping an interval
     // is conservative when there are holes, and needs no per-coefficient flags.
     let start = plane.rows.start.saturating_sub(1);
@@ -274,7 +307,7 @@ mod tests {
                                         bounds[3].div_ceil(2),
                                     ]
                                 } else {
-                                    super::super::progression::band_bounds(bounds, band)
+                                    crate::jpx::progression::band_bounds(bounds, band)
                                 };
                                 let [bx0, by0, bx1, by1] = band_bounds;
                                 let mut plane = Plane::new(bx0, by0, bx1, by1);
@@ -344,7 +377,7 @@ mod tests {
         let lh = Plane::new(1, 1, 4, 6);
         let hh = Plane::new(0, 1, 4, 6);
         for reversible in [false, true] {
-            // F.3: zero coefficients reconstruct zero; no image samples are lost.
+            // T.800 F.3: zero coefficients reconstruct zero; no image samples are lost.
             let result = synthesize(
                 &low,
                 [&hl, &lh, &hh],

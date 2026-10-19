@@ -3,7 +3,7 @@
 use pagura_core::{ErrorKind, Limits, Position};
 use pagura_testkit::fixture;
 
-use super::{JpxColor, decode};
+use super::{EnumeratedColorSpace, JpxColor, decode, is_codestream};
 
 #[test]
 fn independent_sample_vectors() -> Result<(), Box<dyn std::error::Error>> {
@@ -63,12 +63,30 @@ fn independent_sample_vectors() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
+fn codestreams_are_told_from_jp2_files_by_their_soc_marker() {
+    assert!(is_codestream(&fixture("jpx", "gray.jpx")));
+    assert!(!is_codestream(&fixture("jpx", "color-1.jpx")));
+    assert!(!is_codestream(&[0xff]));
+    assert_eq!(EnumeratedColorSpace::new(16), EnumeratedColorSpace::SRGB);
+    assert_eq!(EnumeratedColorSpace::new(2).value(), 2);
+}
+
+#[test]
 fn container_color_palette_and_opacity() -> pagura_core::Result<()> {
     for (name, expected) in [
-        ("color-1", JpxColor::Enumerated(17)),
-        ("pdf-colour-12", JpxColor::Enumerated(12)),
-        ("palette", JpxColor::Enumerated(16)),
-        ("channel-alpha", JpxColor::Enumerated(16)),
+        (
+            "color-1",
+            JpxColor::Enumerated(EnumeratedColorSpace::GRAYSCALE),
+        ),
+        (
+            "pdf-colour-12",
+            JpxColor::Enumerated(EnumeratedColorSpace::CMYK),
+        ),
+        ("palette", JpxColor::Enumerated(EnumeratedColorSpace::SRGB)),
+        (
+            "channel-alpha",
+            JpxColor::Enumerated(EnumeratedColorSpace::SRGB),
+        ),
     ] {
         let image = decode(&fixture("jpx", &format!("{name}.jpx")), &Limits::default())?;
         assert_eq!(image.color, expected);
@@ -127,7 +145,7 @@ fn malformed_inputs_have_positions() -> Result<(), Box<dyn std::error::Error>> {
         }
         checked += 1;
     }
-    assert_eq!(checked, 41);
+    assert_eq!(checked, 40);
     Ok(())
 }
 
@@ -242,7 +260,7 @@ fn reserved_coding_modes_are_rejected() -> Result<(), Box<dyn std::error::Error>
     let data = fixture("jpx", "gray.jpx");
     let cod = data
         .windows(2)
-        .position(|v| v == [255, 82])
+        .position(|v| v == super::marker::Marker::COD.bytes())
         .ok_or("missing COD")?;
     for mode in [64, 128, 255] {
         let mut changed = data.clone();
@@ -289,7 +307,7 @@ fn packed_and_progression_boundaries_never_panic() {
 
 #[test]
 fn options_preserve_opacity_kind_origin_and_stored_samples() -> pagura_core::Result<()> {
-    use super::{OpacityKind, Options, decode_with_options};
+    use super::{Association, ChannelType, OpacityKind, Options, decode_with_options};
     for (name, kind) in [
         ("channel-alpha", OpacityKind::Straight),
         ("channel-premultiplied", OpacityKind::Premultiplied),
@@ -316,12 +334,31 @@ fn options_preserve_opacity_kind_origin_and_stored_samples() -> pagura_core::Res
             &Options {
                 ignore_color: true,
                 ignore_opacity: true,
-                ignore_palette: false,
+                ..Options::default()
             },
         )?;
         assert_eq!(ignored.image.color, JpxColor::Unspecified);
         assert_eq!(ignored.opacity, None);
         assert_eq!(ignored.image.alpha, None);
+        // The definitions are returned whether or not they were interpreted.
+        let opacity = if kind == OpacityKind::Straight {
+            ChannelType::Opacity
+        } else {
+            ChannelType::PremultipliedOpacity
+        };
+        let expected = [
+            (0, opacity, Association::Image),
+            (1, ChannelType::Color, Association::from(3)),
+            (2, ChannelType::Color, Association::from(1)),
+            (3, ChannelType::Color, Association::from(2)),
+        ];
+        for definitions in [&ignored.channel_definitions, &decoded.channel_definitions] {
+            let read: Vec<_> = definitions
+                .iter()
+                .map(|d| (d.channel, d.kind, d.association))
+                .collect();
+            assert_eq!(read, expected);
+        }
         // Ignore cdef retains source channel zero; interpreting it moves exactly
         // that plane to opacity, without rescaling either it or the colour planes.
         assert_eq!(ignored.image.components[0], decoded.image.components[3]);
@@ -329,6 +366,13 @@ fn options_preserve_opacity_kind_origin_and_stored_samples() -> pagura_core::Res
         assert_eq!(ignored.image.components[2], decoded.image.components[0]);
         assert_eq!(ignored.image.components[3], decoded.image.components[1]);
     }
+    Ok(())
+}
+
+#[test]
+fn options_report_palette_origins_and_ignore_color_and_opacity_separately()
+-> pagura_core::Result<()> {
+    use super::{Options, decode_with_options};
     let palette = decode_with_options(
         &fixture("jpx", "palette-opacity-origin.jpx"),
         &Limits::default(),
@@ -353,7 +397,7 @@ fn options_preserve_opacity_kind_origin_and_stored_samples() -> pagura_core::Res
         &Options {
             ignore_color: true,
             ignore_opacity: false,
-            ignore_palette: false,
+            ..Options::default()
         },
     )?;
     assert_eq!(color_only.image.color, JpxColor::Unspecified);
@@ -364,14 +408,17 @@ fn options_preserve_opacity_kind_origin_and_stored_samples() -> pagura_core::Res
         &Options {
             ignore_color: false,
             ignore_opacity: true,
-            ignore_palette: false,
+            ..Options::default()
         },
     )?;
-    assert_eq!(channel_only.image.color, JpxColor::Enumerated(16));
+    assert_eq!(
+        channel_only.image.color,
+        JpxColor::Enumerated(EnumeratedColorSpace::SRGB)
+    );
     assert!(channel_only.opacity.is_none());
-    // A PDF colour-space override does not need to interpret an embedded space.
+    // A PDF color-space override does not need to interpret an embedded space.
     let decoded = decode_with_options(
-        &fixture("jpx", "pdf-colour-19.jpx"),
+        &fixture("jpx", "enumerated-ciejab.jpx"),
         &Limits::default(),
         &Options {
             ignore_color: true,
@@ -491,4 +538,177 @@ fn realistic_sizes_decode_under_default_limits() -> Result<(), Box<dyn std::erro
         },
     )?;
     Ok(())
+}
+
+#[test]
+fn channel_selection_moves_planes_and_their_opacity() -> pagura_core::Result<()> {
+    use super::{Options, decode_with_options};
+    let bytes = fixture("jpx", "channel-alpha.jpx");
+    let decoded = decode_with_options(&bytes, &Limits::default(), &Options::default())?;
+    assert_eq!(decoded.image.alpha, Some(3));
+    let mut selected = decoded.clone();
+    selected.select_channels(&[3, 0, 2])?;
+    assert_eq!(selected.image.components.len(), 3);
+    assert_eq!(selected.component_geometry.len(), 3);
+    for (index, source) in [3, 0, 2].into_iter().enumerate() {
+        assert_eq!(
+            selected.image.components[index],
+            decoded.image.components[source]
+        );
+    }
+    assert_eq!(selected.image.alpha, Some(0));
+    assert_eq!(selected.opacity.map(|o| o.channel), Some(0));
+    let mut dropped = decoded.clone();
+    dropped.select_channels(&[1, 0])?;
+    assert_eq!((dropped.image.alpha, dropped.opacity), (None, None));
+    for order in [[0, 0].as_slice(), &[4], &[0, 1, 2, 3, 0]] {
+        let mut invalid = decoded.clone();
+        let error = invalid.select_channels(order).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::InvalidArgument, "{order:?}");
+    }
+    Ok(())
+}
+
+#[test]
+fn every_enumerated_color_space_is_returned_for_the_caller_to_judge() {
+    // T.801 CIEJab (19): PDF excludes it (7.4.9), but that is the PDF
+    // layer's rule, not the codec's.
+    let image = decode(&fixture("jpx", "enumerated-ciejab.jpx"), &Limits::default()).unwrap();
+    assert_eq!(
+        image.color,
+        JpxColor::Enumerated(EnumeratedColorSpace::CIEJAB)
+    );
+}
+
+/// Decodes `data` with repairs and returns the result with the one repair
+/// reported; checks that strict decoding refuses that repair.
+fn repaired(
+    data: &[u8],
+    repair: pagura_core::Repair,
+) -> Result<(super::Decoded, Position), Box<dyn std::error::Error>> {
+    let options = super::Options::default();
+    let error = super::decode_with_options(data, &Limits::default(), &options)
+        .err()
+        .ok_or("strict decoding accepted the repair")?;
+    assert_eq!(
+        (error.kind, error.repair),
+        (ErrorKind::Syntax, Some(repair))
+    );
+    let mut diagnostics = pagura_core::Diagnostics::new(pagura_core::Recovery::Repair);
+    let decoded =
+        super::decode_with_diagnostics(data, &Limits::default(), &options, &mut diagnostics)?;
+    let [report] = diagnostics.as_slice() else {
+        return Err(format!("expected one repair: {diagnostics:?}").into());
+    };
+    assert_eq!(report.repair(), Some(repair));
+    Ok((decoded, report.position))
+}
+
+#[test]
+fn inconsistent_tile_part_counts_are_a_reported_repair() -> Result<(), Box<dyn std::error::Error>> {
+    // Both tile-parts declare one part (T.800 A.4.2). Their order and
+    // lengths still delimit them, as an unknown count (zero) would.
+    let data = fixture("jpx", "tile-part-count.jpx");
+    let mut unknown = data.clone();
+    let mut sot = unknown
+        .windows(2)
+        .position(|w| w == [0xff, 0x90])
+        .ok_or("no SOT")?;
+    let first = sot;
+    while unknown.get(sot..sot + 2) == Some(&[0xff, 0x90]) {
+        unknown[sot + 11] = 0;
+        let length = u32::from_be_bytes(unknown[sot + 6..sot + 10].try_into()?);
+        sot += usize::try_from(length)?;
+    }
+    let expected =
+        super::decode_with_options(&unknown, &Limits::default(), &super::Options::default())?;
+    let (decoded, position) = repaired(&data, crate::repairs::JPX_TILE_PART_COUNT)?;
+    assert_eq!(decoded, expected);
+    // Reported once, at the first tile-part that contradicts its count.
+    let second =
+        first + usize::try_from(u32::from_be_bytes(data[first + 6..first + 10].try_into()?))?;
+    assert_eq!(position, Position::Buffer(second));
+    Ok(())
+}
+
+#[test]
+fn a_mapping_outside_the_header_serves_its_palette_as_a_repair()
+-> Result<(), Box<dyn std::error::Error>> {
+    let data = fixture("jpx", "palette.jpx");
+    let expected =
+        super::decode_with_options(&data, &Limits::default(), &super::Options::default())?;
+    let find = |data: &[u8], kind: &[u8]| -> Result<usize, Box<dyn std::error::Error>> {
+        Ok(data
+            .windows(4)
+            .position(|w| w == kind)
+            .ok_or("missing box")?
+            - 4)
+    };
+    let length = |data: &[u8], at: usize| -> Result<usize, Box<dyn std::error::Error>> {
+        Ok(usize::try_from(u32::from_be_bytes(
+            data[at..at + 4].try_into()?,
+        ))?)
+    };
+    // Take the component mapping box out of the JP2 header, where T.800
+    // I.5.3.5 places it, and put it just before the codestream box.
+    let at = find(&data, b"cmap")?;
+    let mapping = data[at..at + length(&data, at)?].to_vec();
+    let mut without = [&data[..at], &data[at + mapping.len()..]].concat();
+    let header = find(&without, b"jp2h")?;
+    let shorter = u32::try_from(length(&without, header)? - mapping.len())?;
+    without[header..header + 4].copy_from_slice(&shorter.to_be_bytes());
+    let codestream = find(&without, b"jp2c")?;
+    let mut moved = without.clone();
+    moved.splice(codestream..codestream, mapping.iter().copied());
+    let (decoded, position) = repaired(&moved, crate::repairs::JPX_MAPPING_LOCATION)?;
+    assert_eq!(decoded, expected);
+    assert_eq!(position, Position::Buffer(codestream));
+    // After the codestream, a mapping cannot apply to it.
+    let late = [without.as_slice(), &mapping].concat();
+    let mut diagnostics = pagura_core::Diagnostics::new(pagura_core::Recovery::Repair);
+    let error = super::decode_with_diagnostics(
+        &late,
+        &Limits::default(),
+        &super::Options::default(),
+        &mut diagnostics,
+    )
+    .err()
+    .ok_or("late mapping accepted")?;
+    assert_eq!(
+        (error.message, error.position),
+        (
+            "misplaced or repeated JP2 component mapping",
+            Position::Buffer(without.len())
+        )
+    );
+    Ok(())
+}
+
+#[test]
+fn ignoring_the_palette_returns_the_stored_indices() -> Result<(), Box<dyn std::error::Error>> {
+    let data = fixture("jpx", "palette.jpx");
+    let expanded =
+        super::decode_with_options(&data, &Limits::default(), &super::Options::default())?;
+    let options = super::Options {
+        ignore_palette: true,
+        ..super::Options::default()
+    };
+    let indices = super::decode_with_options(&data, &Limits::default(), &options)?;
+    // The raw codestream holds the indices; the container's palette is not
+    // applied (as for a PDF Indexed space, 7.4.9).
+    let codestream = start_of_codestream(&data)?;
+    let raw = decode(&data[codestream..], &Limits::default())?;
+    assert_eq!(indices.image.components, raw.components);
+    assert_ne!(indices.image.components, expanded.image.components);
+    assert_eq!(indices.channel_definitions, Vec::new());
+    Ok(())
+}
+
+/// The contents of the first codestream box of a JP2 file.
+fn start_of_codestream(data: &[u8]) -> Result<usize, Box<dyn std::error::Error>> {
+    Ok(data
+        .windows(4)
+        .position(|w| w == b"jp2c")
+        .ok_or("no codestream")?
+        + 4)
 }

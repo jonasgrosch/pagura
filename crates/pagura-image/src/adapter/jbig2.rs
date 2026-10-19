@@ -37,7 +37,7 @@ pub(crate) fn decode(
         .transpose()?;
     let limits = document.limits();
     let decoded = jbig2::decode(data, globals.as_deref(), &limits)?;
-    if decoded.width != width || decoded.height != height {
+    if decoded.width() != width || decoded.height() != height {
         return Err(Error::syntax(
             "JBIG2 dimensions disagree with image dictionary",
         ));
@@ -45,7 +45,7 @@ pub(crate) fn decode(
     // JBIG2 black is 1; PDF image samples default to black 0 (7.4.7).
     let count = parameters::budget(width, height, 1, 1, &limits)?;
     if count
-        .checked_add(decoded.data.len())
+        .checked_add(decoded.data().len())
         .is_none_or(|v| v > limits.decoded_bytes)
     {
         return Err(Error::limit("JBIG2 adapter sample budget exceeded"));
@@ -54,7 +54,7 @@ pub(crate) fn decode(
         .map_err(|_| Error::limit("JBIG2 row exceeds the address space"))?;
     let columns = usize::try_from(width).map_err(|_| Error::limit("JBIG2 width overflow"))?;
     let mut samples = Vec::with_capacity(count);
-    for row in decoded.data.chunks_exact(stride.max(1)) {
+    for row in decoded.data().chunks_exact(stride.max(1)) {
         samples.extend((0..columns).map(|x| {
             let bit = row.get(x / 8).map_or(0, |byte| (byte >> (7 - x % 8)) & 1);
             bit ^ 1

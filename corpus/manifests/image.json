@@ -6076,6 +6076,28 @@
       }
     },
     {
+      "id": "image/jpx-ciejab-rejected",
+      "kind": "vector",
+      "description": "jpx ciejab rejected",
+      "requirements": [
+        "image-jpx"
+      ],
+      "files": {
+        ".out": {
+          "path": "corpus/generated/image/jpx-ciejab-rejected.out",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        ".params": {
+          "path": "corpus/generated/image/jpx-ciejab-rejected.params",
+          "sha256": "8f04b2edd8a41f68d181b1870bc7658a7186995e42b37b02546934cd9fc01da0"
+        },
+        ".pdf": {
+          "path": "corpus/generated/image/jpx-ciejab-rejected.pdf",
+          "sha256": "7b00adf79b0bf2c4ccff8bf2e26de4bb28fc8bd93f88ee9d09e639969af6d19e"
+        }
+      }
+    },
+    {
       "id": "image/jpx-premultiplied-mode-0",
       "kind": "vector",
       "description": "jpx premultiplied mode 0",

@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![warn(unreachable_pub)]
 //! Image codecs behind PDF's image filters (ISO 32000-2 clauses 7.4.6–7.4.9;
 //! ADR 0010 and ADR 0027): DCT (JPEG, ITU-T T.81), CCITT fax (T.4 and T.6),
 //! JBIG2 (T.88) and JPEG 2000 (T.800).
@@ -13,6 +14,7 @@ pub mod dct;
 pub mod features;
 pub mod jbig2;
 pub mod jpx;
+mod mq;
 pub mod repairs;
 
 use pagura_core::convert::usize_to_u64;

@@ -841,6 +841,10 @@ def jpx_options_cases():
         yield image_pdf_vector(name,base.replace(original,replacement,1),expected,
             b'/Filter /JPXDecode '+dictionary,requirement='image-jpx',width=width,height=height,
             components=3,space='DeviceRGB')
+    # 7.4.9 excludes CIEJab: without /ColorSpace the container's color is used.
+    ciejab = base.replace(original,box(b'colr',b'\1\0\0'+struct.pack('>I',19)),1)
+    yield image_pdf_vector('jpx-ciejab-rejected',ciejab,[],b'/Filter /JPXDecode',requirement='image-jpx',
+        width=width,height=height,components=3,outcome='syntax')
 
     alpha = [0,32,64,128,192,255]
     shuffled = [alpha,planes[2],planes[0],planes[1]]

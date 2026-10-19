@@ -1,23 +1,27 @@
 //! Ignore opacity semantics while retaining ordinary channel associations
 //! (ISO 32000-2 7.4.9, Table 87; T.800 I.5.3.6).
 use pagura_core::{Error, Limits, Result};
-use pagura_imagecodec::jpx;
+use pagura_imagecodec::jpx::{self, Association, ChannelType};
 
-pub(super) fn discard_opacity(
-    data: &[u8],
-    decoded: &mut jpx::Decoded,
-    limits: &Limits,
-) -> Result<()> {
-    let Some(header) = find(data, *b"jp2h")? else {
+/// What a channel definition makes of a channel.
+#[derive(Clone, Copy)]
+enum Role {
+    /// Kept, with no color association.
+    Unassociated,
+    /// Kept as color `n`, counted from zero.
+    Color(usize),
+    /// Opacity of any kind, which is dropped.
+    Opacity,
+}
+
+/// Drops the opacity channels of `decoded`, whose channel definitions the
+/// codec did not interpret, and orders the other channels by their color
+/// associations when the definitions give them.
+pub(super) fn discard_opacity(decoded: &mut jpx::Decoded, limits: &Limits) -> Result<()> {
+    if decoded.channel_definitions.is_empty() {
         return Ok(());
-    };
-    let Some(definitions) = find(header, *b"cdef")? else {
-        return Ok(());
-    };
-    let count = decoded.image.components.len();
-    if decoded.component_geometry.len() != count {
-        return Err(Error::syntax("invalid JPX component geometry count"));
     }
+    let count = decoded.image.components.len();
     let bytes = decoded
         .image
         .components
@@ -29,6 +33,8 @@ pub(super) fn discard_opacity(
             sum.checked_add(count.checked_mul(
                 size_of::<jpx::JpxComponent>()
                     + size_of::<jpx::ComponentGeometry>()
+                    + size_of::<Role>()
+                    + size_of::<(usize, usize)>()
                     + 3 * size_of::<usize>(),
             )?)
         });
@@ -42,99 +48,60 @@ pub(super) fn discard_opacity(
     {
         return Err(Error::limit("JPX ignored opacity metadata budget exceeded"));
     }
-    let mut rank: Vec<_> = (count..2 * count).collect();
-    let entries = definitions
-        .get(2..)
-        .ok_or(Error::syntax("short JPX channel definitions"))?;
+    let mut roles = vec![Role::Unassociated; count];
     let mut associated = false;
-    for record in entries.as_chunks::<6>().0 {
-        let channel = usize::from(u16::from_be_bytes([record[0], record[1]]));
-        let kind = u16::from_be_bytes([record[2], record[3]]);
-        let association = u16::from_be_bytes([record[4], record[5]]);
-        let value = rank
-            .get_mut(channel)
+    for definition in &decoded.channel_definitions {
+        let role = roles
+            .get_mut(usize::from(definition.channel))
             .ok_or(Error::syntax("invalid JPX channel index"))?;
-        if matches!(kind, 1 | 2) {
-            if *value < count {
-                return Err(Error::syntax("conflicting JPX channel classifications"));
+        match (definition.kind, definition.association) {
+            (ChannelType::Opacity | ChannelType::PremultipliedOpacity, _) => {
+                if matches!(role, Role::Color(_)) {
+                    return Err(Error::syntax("conflicting JPX channel classifications"));
+                }
+                *role = Role::Opacity;
             }
-            *value = usize::MAX;
-        } else if kind == 0 && association != 0 && association != u16::MAX {
-            if *value < count || *value == usize::MAX {
-                return Err(Error::syntax("conflicting JPX channel classifications"));
+            (ChannelType::Color, Association::Color(color)) => {
+                if !matches!(role, Role::Unassociated) {
+                    return Err(Error::syntax("conflicting JPX channel classifications"));
+                }
+                *role = Role::Color(usize::from(color.get()) - 1);
+                associated = true;
             }
-            *value = usize::from(association - 1);
-            associated = true;
+            _ => {}
         }
     }
-    let keep = rank.iter().filter(|&&r| r != usize::MAX).count();
-    let mut seen = vec![false; keep];
-    let (mut color, mut opacity) = (0, keep);
-    for target in &mut rank {
-        if *target == usize::MAX {
-            *target = opacity;
-            opacity += 1;
-        } else if associated {
-            let slot = seen.get_mut(*target).ok_or(Error::unsupported(
-                crate::features::JPX_SAMPLE_LAYOUT,
-                "incomplete JPX ordinary channel associations",
-            ))?;
-            if std::mem::replace(slot, true) {
-                return Err(Error::syntax("repeated JPX ordinary channel association"));
+    let order: Vec<usize> = if associated {
+        // Every kept channel needs its own color, and the colors number the
+        // kept channels from zero: sorted, they are 0, 1, 2, …
+        let mut colors = Vec::with_capacity(count);
+        for (channel, role) in roles.iter().enumerate() {
+            match *role {
+                Role::Color(color) => colors.push((color, channel)),
+                Role::Opacity => {}
+                Role::Unassociated => return Err(incomplete()),
             }
-        } else {
-            *target = color;
-            color += 1;
         }
-    }
-    for i in 0..count {
-        while rank[i] != i {
-            let j = rank[i];
-            decoded.image.components.swap(i, j);
-            decoded.component_geometry.swap(i, j);
-            rank.swap(i, j);
+        if colors.iter().any(|&(color, _)| color >= colors.len()) {
+            return Err(incomplete());
         }
-    }
-    decoded.image.components.truncate(keep);
-    decoded.component_geometry.truncate(keep);
-    Ok(())
+        colors.sort_unstable();
+        if colors.windows(2).any(|pair| pair[0].0 == pair[1].0) {
+            return Err(Error::syntax("repeated JPX ordinary channel association"));
+        }
+        colors.into_iter().map(|(_, channel)| channel).collect()
+    } else {
+        let kept = roles.iter().enumerate();
+        kept.filter(|(_, role)| !matches!(role, Role::Opacity))
+            .map(|(channel, _)| channel)
+            .collect()
+    };
+    decoded.select_channels(&order)
 }
 
-// The codec has already validated the container. Repeat only bounded box
-// navigation to recover the channel classifications suppressed by its option.
-fn find(mut data: &[u8], kind: [u8; 4]) -> Result<Option<&[u8]>> {
-    while !data.is_empty() {
-        let header = data.get(..8).ok_or(Error::syntax("short JPX box"))?;
-        let short = u32::from_be_bytes([header[0], header[1], header[2], header[3]]);
-        let (length, start) = match short {
-            0 => (data.len(), 8),
-            1 => {
-                let bytes = data
-                    .get(8..16)
-                    .ok_or(Error::syntax("short JPX extended box"))?;
-                let bytes: [u8; 8] = bytes
-                    .try_into()
-                    .map_err(|_| Error::syntax("short JPX box length"))?;
-                (
-                    usize::try_from(u64::from_be_bytes(bytes))
-                        .map_err(|_| Error::limit("JPX box overflow"))?,
-                    16,
-                )
-            }
-            n => (
-                usize::try_from(n).map_err(|_| Error::limit("JPX box overflow"))?,
-                8,
-            ),
-        };
-        let payload = data
-            .get(start..length)
-            .ok_or(Error::syntax("invalid JPX box length"))?;
-        if header[4..8] == kind {
-            return Ok(Some(payload));
-        }
-        data = data
-            .get(length..)
-            .ok_or(Error::syntax("invalid JPX box length"))?;
-    }
-    Ok(None)
+fn incomplete() -> Error {
+    Error::unsupported(
+        crate::features::JPX_SAMPLE_LAYOUT,
+        "incomplete JPX ordinary channel associations",
+    )
 }

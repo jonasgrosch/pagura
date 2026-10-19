@@ -129,10 +129,15 @@ fn decode_jbig2(data: &[u8], has_globals: bool, limits: &Limits) {
         (None, data)
     };
     if let Some(bitmap) = super::checked(jbig2::decode(data, globals, limits)) {
-        let row = usize::try_from(bitmap.width.div_ceil(8)).ok();
-        let height = usize::try_from(bitmap.height).ok();
+        let row = usize::try_from(bitmap.width().div_ceil(8)).ok();
+        let height = usize::try_from(bitmap.height()).ok();
         assert_eq!(
-            Some(bitmap.data.len()),
+            row,
+            Some(bitmap.stride()),
+            "JBIG2 stride disagrees with its width"
+        );
+        assert_eq!(
+            Some(bitmap.data().len()),
             row.zip(height).and_then(|(r, h)| r.checked_mul(h)),
             "JBIG2 bitmap disagrees with its size"
         );

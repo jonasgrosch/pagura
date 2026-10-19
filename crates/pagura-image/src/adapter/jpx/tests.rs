@@ -5,48 +5,6 @@ use crate::{ImageAlpha, Precision, Samples};
 use pagura_core::{ErrorKind, Limits};
 use pagura_imagecodec::jpx;
 
-const fn new_component(bits: u8, width: u32, height: u32, samples: Vec<u16>) -> jpx::JpxComponent {
-    jpx::JpxComponent {
-        bits,
-        signed: false,
-        width,
-        height,
-        samples,
-    }
-}
-
-const fn new_image(
-    width: u32,
-    height: u32,
-    components: Vec<jpx::JpxComponent>,
-    color: jpx::JpxColor,
-) -> jpx::JpxImage {
-    jpx::JpxImage {
-        width,
-        height,
-        components,
-        color,
-        alpha: None,
-    }
-}
-
-const fn new_geometry(step: [u32; 2], origin: [u32; 2]) -> jpx::ComponentGeometry {
-    jpx::ComponentGeometry { step, origin }
-}
-
-const fn new_decoded(
-    image: jpx::JpxImage,
-    reference_origin: [u32; 2],
-    component_geometry: Vec<jpx::ComponentGeometry>,
-) -> jpx::Decoded {
-    jpx::Decoded {
-        image,
-        reference_origin,
-        component_geometry,
-        opacity: None,
-    }
-}
-
 /// A 2×1 image whose dictionary has no /ColorSpace.
 const fn empty() -> Declared {
     Declared {
@@ -58,17 +16,22 @@ const fn empty() -> Declared {
 }
 
 fn gray(components: Vec<jpx::JpxComponent>) -> jpx::JpxImage {
-    new_image(2, 1, components, jpx::JpxColor::Enumerated(17))
+    jpx::JpxImage::new(
+        2,
+        1,
+        components,
+        jpx::JpxColor::Enumerated(jpx::EnumeratedColorSpace::GRAYSCALE),
+    )
 }
 
 fn placed(image: jpx::JpxImage) -> jpx::Decoded {
-    let geometry = vec![new_geometry([1, 1], [0, 0]); image.components.len()];
-    new_decoded(image, [0, 0], geometry)
+    let geometry = vec![jpx::ComponentGeometry::new([1, 1], [0, 0]); image.components.len()];
+    jpx::Decoded::new(image, [0, 0], geometry)
 }
 
 #[test]
 fn alpha_precision_premultiplication_and_live_storage_are_preserved() {
-    let component = |bits, samples| new_component(bits, 2, 1, samples);
+    let component = |bits, samples| jpx::JpxComponent::new(bits, 2, 1, samples);
     let mut decoded = gray(vec![component(3, vec![0, 7]), component(9, vec![0, 511])]);
     decoded.alpha = Some(1);
     let adapted = jpx_image::adapt(
@@ -126,8 +89,8 @@ fn alpha_precision_premultiplication_and_live_storage_are_preserved() {
 #[test]
 fn unused_opacity_layout_is_ignored() {
     let mut decoded = gray(vec![
-        new_component(8, 2, 1, vec![12, 26]),
-        new_component(8, 1, 1, vec![0]),
+        jpx::JpxComponent::new(8, 2, 1, vec![12, 26]),
+        jpx::JpxComponent::new(8, 1, 1, vec![0]),
     ]);
     decoded.alpha = Some(1);
     let adapted = jpx_image::adapt(
@@ -144,7 +107,7 @@ fn unused_opacity_layout_is_ignored() {
 #[test]
 fn retained_jpx_metadata_capacity_counts_against_the_adapter_budget() {
     for geometry in [false, true] {
-        let mut decoded = placed(gray(vec![new_component(8, 2, 1, vec![12, 26])]));
+        let mut decoded = placed(gray(vec![jpx::JpxComponent::new(8, 2, 1, vec![12, 26])]));
         if geometry {
             decoded.component_geometry.reserve_exact(127);
         } else {

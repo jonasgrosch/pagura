@@ -39,6 +39,11 @@ impl Budget {
         self.work.charge(units)
     }
 
+    /// Charges `count × unit` of work.
+    pub(crate) fn work_product(&mut self, count: usize, unit: usize) -> Result<()> {
+        self.work.charge_product(count, unit)
+    }
+
     /// Charges working memory for `count` values of `T`, for buffers
     /// allocated later with [`vector`].
     pub(crate) fn memory<T>(&mut self, count: usize) -> Result<()> {
@@ -92,6 +97,26 @@ impl Budget {
         self.work.charge(count)?;
         values.resize(count, value);
         Ok(values)
+    }
+
+    /// Reserves room for `additional` more values in a working vector,
+    /// charging them before allocating.
+    pub(crate) fn reserve<T>(&mut self, values: &mut Vec<T>, additional: usize) -> Result<()> {
+        self.memory.reserve(values, additional)
+    }
+
+    /// Appends `count` copies of `value` to an output vector, charged to the
+    /// output budget and as work, for output that grows as it is decoded.
+    pub(crate) fn extend_output<T: Clone>(
+        &mut self,
+        values: &mut Vec<T>,
+        count: usize,
+        value: T,
+    ) -> Result<()> {
+        self.output.reserve(values, count)?;
+        self.work.charge(count)?;
+        values.resize(values.len() + count, value);
+        Ok(())
     }
 
     /// Appends `value` to a working vector, doubling its capacity and
@@ -219,5 +244,25 @@ mod tests {
         let mut budget = Budget::new(&Limits::default(), MESSAGES);
         budget.append(&mut bytes, &[1, 2, 3]).unwrap();
         assert_eq!((bytes.as_slice(), bytes.capacity()), (&[1, 2, 3][..], 4));
+    }
+
+    #[test]
+    fn reservations_and_output_growth_charge_their_meters() {
+        let mut budget = budget(6, 8, 3);
+        let mut values: Vec<u32> = Vec::new();
+        budget.reserve(&mut values, 2).unwrap();
+        assert!(values.capacity() >= 2);
+        assert_eq!(
+            budget.reserve(&mut values, 1).unwrap_err().message,
+            MESSAGES.memory
+        );
+        let mut output = vec![7_u8];
+        budget.extend_output(&mut output, 3, 0).unwrap();
+        assert_eq!(output, [7, 0, 0, 0]);
+        let error = budget.extend_output(&mut output, 1, 0).unwrap_err();
+        assert_eq!(error.message, MESSAGES.output);
+        // Growing the output charged 3 units of work; 3 remain.
+        budget.work(3).unwrap();
+        assert_eq!(budget.work(1).unwrap_err().message, MESSAGES.work);
     }
 }

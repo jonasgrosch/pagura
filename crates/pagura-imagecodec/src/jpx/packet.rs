@@ -1,26 +1,35 @@
 //! Packet headers, tag trees and contributions, T.800 B.9–B.10.
 
-use pagura_core::{Error, Result};
+use pagura_core::bytes::Cursor;
+use pagura_core::convert::u32_to_usize;
+use pagura_core::{Error, Position, Result};
 
 use crate::budget::Budget;
 
-use super::io::{Reader, syntax};
+use super::coding::PacketMarkers;
+use super::marker::Marker;
+use super::packed::Headers;
 use super::progression::{Precinct, band_bounds};
 use super::segments::{self, Segment};
+use super::syntax;
 use super::wavelet::Plane;
 
-struct Bits<'a, 'b> {
-    reader: &'a mut Reader<'b>,
+/// Packet header bits: most significant first, with a stuffed zero bit
+/// after each 0xFF byte (T.800 B.10.1).
+struct Bits<'a> {
+    bytes: Cursor<'a>,
     byte: u8,
+    /// Unread bits of `byte`, in its low bits.
     remaining: u8,
-    byte_position: usize,
+    /// Where `byte` is.
+    byte_position: Position,
 }
 
-impl<'a, 'b> Bits<'a, 'b> {
-    fn new(reader: &'a mut Reader<'b>) -> Self {
-        let byte_position = reader.position();
+impl<'a> Bits<'a> {
+    const fn new(bytes: Cursor<'a>) -> Self {
+        let byte_position = bytes.position();
         Self {
-            reader,
+            bytes,
             byte: 0,
             remaining: 0,
             byte_position,
@@ -29,10 +38,10 @@ impl<'a, 'b> Bits<'a, 'b> {
 
     fn bit(&mut self) -> Result<bool> {
         if self.remaining == 0 {
-            let stuffed = self.byte == 255;
-            self.byte_position = self.reader.position();
-            self.byte = self.reader.u8()?;
-            if stuffed && self.byte & 128 != 0 {
+            let stuffed = self.byte == 0xff;
+            self.byte_position = self.bytes.position();
+            self.byte = self.bytes.u8()?;
+            if stuffed && self.byte & 0x80 != 0 {
                 return Err(syntax(
                     "invalid JPEG 2000 packet bit stuffing",
                     self.byte_position,
@@ -44,28 +53,42 @@ impl<'a, 'b> Bits<'a, 'b> {
         Ok((self.byte >> self.remaining) & 1 != 0)
     }
 
-    fn number(&mut self, count: u8) -> Result<usize> {
-        if u32::from(count) >= usize::BITS {
-            return Err(Error::limit(
-                "JPEG 2000 packet number exceeds address space",
-            ));
+    /// The position of the byte holding the next unread bit.
+    const fn position(&self) -> Position {
+        if self.remaining == 0 {
+            self.bytes.position()
+        } else {
+            self.byte_position
         }
-        let mut value = 0_usize;
-        for _ in 0..count {
-            value = (value << 1) | usize::from(self.bit()?);
-        }
-        Ok(value)
     }
 
-    fn finish(self) -> Result<()> {
-        if self.byte == 255 {
-            let position = self.reader.position();
-            if self.reader.u8()? & 128 != 0 {
+    /// Discards the unread bits of the current byte, and the stuffed byte
+    /// that follows a final 0xFF (T.800 B.10.1).
+    fn align(&mut self) -> Result<()> {
+        self.remaining = 0;
+        if self.byte == 0xff {
+            let position = self.bytes.position();
+            if self.bytes.u8()? & 0x80 != 0 {
                 return Err(syntax("invalid JPEG 2000 packet padding byte", position));
             }
         }
+        self.byte = 0;
         Ok(())
     }
+}
+
+/// Reads a `count`-bit number (T.800 B.10.7.1).
+fn number(bits: &mut Bits<'_>, count: u32) -> Result<usize> {
+    if count >= usize::BITS {
+        return Err(Error::limit(
+            "JPEG 2000 packet number exceeds address space",
+        ));
+    }
+    let mut value = 0_usize;
+    for _ in 0..count {
+        value = (value << 1) | usize::from(bits.bit()?);
+    }
+    Ok(value)
 }
 
 #[derive(Clone, Copy, Default)]
@@ -102,7 +125,7 @@ impl Tree {
 
     fn below(
         &mut self,
-        bits: &mut Bits<'_, '_>,
+        bits: &mut Bits<'_>,
         x: usize,
         y: usize,
         threshold: usize,
@@ -145,32 +168,33 @@ impl Tree {
 }
 
 pub(super) struct CodeBlock {
-    pub x: usize,
-    pub y: usize,
-    pub width: usize,
-    pub height: usize,
-    pub zero_planes: u8,
-    pub passes: usize,
-    pub segments: Vec<Segment>,
-    pub base: usize,
+    pub(super) x: usize,
+    pub(super) y: usize,
+    pub(super) width: usize,
+    pub(super) height: usize,
+    pub(super) zero_planes: u8,
+    pub(super) passes: usize,
+    pub(super) segments: Vec<Segment>,
+    /// Where the block's first contribution starts.
+    pub(super) start: Position,
     lblock: u8,
 }
 
 pub(super) struct Band {
-    pub plane: Plane,
-    pub orientation: u8,
-    pub partitions: Vec<Partition>,
+    pub(super) plane: Plane,
+    pub(super) orientation: u8,
+    pub(super) partitions: Vec<Partition>,
 }
 
 pub(super) struct Partition {
-    pub blocks: Vec<CodeBlock>,
+    pub(super) blocks: Vec<CodeBlock>,
     columns: usize,
     inclusion: Tree,
     zero_planes: Tree,
 }
 
 impl Band {
-    pub fn new(
+    pub(super) fn new(
         plane: Plane,
         orientation: u8,
         block: [u8; 2],
@@ -204,16 +228,8 @@ impl Partition {
         let [x0, y0, x1, y1] = bounds;
         let (w, h) = (1_u32 << exponents[0], 1_u32 << exponents[1]);
         let (bx0, by0, bx1, by1) = (x0 / w, y0 / h, x1.div_ceil(w), y1.div_ceil(h));
-        let columns = if x0 == x1 {
-            0
-        } else {
-            super::io::usize_from(bx1 - bx0)?
-        };
-        let rows = if y0 == y1 {
-            0
-        } else {
-            super::io::usize_from(by1 - by0)?
-        };
+        let columns = if x0 == x1 { 0 } else { u32_to_usize(bx1 - bx0) };
+        let rows = if y0 == y1 { 0 } else { u32_to_usize(by1 - by0) };
         let count = columns
             .checked_mul(rows)
             .ok_or_else(|| Error::limit("JPEG 2000 code-block count overflow"))?;
@@ -228,14 +244,14 @@ impl Partition {
                         ((y + 1) * h).min(y1),
                     );
                     blocks.push(CodeBlock {
-                        x: super::io::usize_from(sx - plane.x0)?,
-                        y: super::io::usize_from(sy - plane.y0)?,
-                        width: super::io::usize_from(ex - sx)?,
-                        height: super::io::usize_from(ey - sy)?,
+                        x: u32_to_usize(sx - plane.x0),
+                        y: u32_to_usize(sy - plane.y0),
+                        width: u32_to_usize(ex - sx),
+                        height: u32_to_usize(ey - sy),
                         zero_planes: 0,
                         passes: 0,
                         segments: Vec::new(),
-                        base: 0,
+                        start: Position::Unknown,
                         lblock: 3,
                     });
                 }
@@ -251,7 +267,7 @@ impl Partition {
 
     fn header(
         &mut self,
-        bits: &mut Bits<'_, '_>,
+        bits: &mut Bits<'_>,
         layer: usize,
         modes: u8,
         band: usize,
@@ -260,14 +276,10 @@ impl Partition {
     ) -> Result<()> {
         for (index, block) in self.blocks.iter_mut().enumerate() {
             budget.work(1)?;
+            // There are columns × rows blocks, so with blocks there are columns.
+            let (x, y) = (index % self.columns, index / self.columns);
             let included = if block.passes == 0 {
-                self.inclusion.below(
-                    bits,
-                    index % self.columns,
-                    index / self.columns,
-                    layer + 1,
-                    budget,
-                )?
+                self.inclusion.below(bits, x, y, layer + 1, budget)?
             } else {
                 bits.bit()?
             };
@@ -275,31 +287,26 @@ impl Partition {
                 continue;
             }
             if block.passes == 0 {
-                let mut threshold = 1;
-                while !self.zero_planes.below(
-                    bits,
-                    index % self.columns,
-                    index / self.columns,
-                    threshold,
-                    budget,
-                )? {
+                let mut threshold = 1_u8;
+                while !self
+                    .zero_planes
+                    .below(bits, x, y, usize::from(threshold), budget)?
+                {
                     threshold += 1;
                     if threshold > 32 {
                         return Err(syntax(
                             "JPEG 2000 zero bit-plane tag tree exceeds precision",
-                            bits.reader.position(),
+                            bits.position(),
                         ));
                     }
                 }
-                block.zero_planes = u8::try_from(threshold - 1).map_err(|_| {
-                    syntax("JPEG 2000 zero bit-plane overflow", bits.reader.position())
-                })?;
+                block.zero_planes = threshold - 1;
             }
             let count = passes(bits)?;
-            if block.passes + count > 88 {
+            if block.passes + count > segments::MAX_PASSES {
                 return Err(syntax(
                     "JPEG 2000 code-block has too many coding passes",
-                    bits.reader.position(),
+                    bits.position(),
                 ));
             }
             while bits.bit()? {
@@ -308,7 +315,7 @@ impl Partition {
                 if block.lblock > 31 {
                     return Err(syntax(
                         "JPEG 2000 code-block length exponent overflow",
-                        bits.reader.position(),
+                        bits.position(),
                     ));
                 }
             }
@@ -319,30 +326,13 @@ impl Partition {
                     .last()
                     .is_none_or(|s| s.first + s.passes == segments::end(s.first, modes));
                 if need_new {
-                    budget.push(
-                        &mut block.segments,
-                        Segment {
-                            first: block.passes,
-                            passes: 0,
-                            data: Vec::new(),
-                            base: 0,
-                            spans: Vec::new(),
-                        },
-                    )?;
+                    budget.push(&mut block.segments, Segment::new(block.passes))?;
                 }
                 let segment_index = block.segments.len() - 1;
                 let segment = &mut block.segments[segment_index];
                 let new_passes = remaining.min(segments::end(segment.first, modes) - block.passes);
-                let exponent = u8::try_from(new_passes.ilog2())
-                    .map_err(|_| syntax("JPEG 2000 pass count overflow", bits.reader.position()))?;
-                let length_bits = block
-                    .lblock
-                    .checked_add(exponent)
-                    .filter(|&n| u32::from(n) < usize::BITS)
-                    .ok_or_else(|| {
-                        Error::limit("JPEG 2000 code-block length exceeds address space")
-                    })?;
-                let length = bits.number(length_bits)?;
+                // T.800 B.10.7.1: Lblock plus floor(log2) of the passes.
+                let length = number(bits, u32::from(block.lblock) + new_passes.ilog2())?;
                 budget.push(
                     contributions,
                     Contribution {
@@ -368,41 +358,40 @@ struct Contribution {
     length: usize,
 }
 
-fn passes(bits: &mut Bits<'_, '_>) -> Result<usize> {
+fn passes(bits: &mut Bits<'_>) -> Result<usize> {
     if !bits.bit()? {
         return Ok(1);
     }
     if !bits.bit()? {
         return Ok(2);
     }
-    let count = bits.number(2)?;
+    let count = number(bits, 2)?;
     if count < 3 {
         return Ok(3 + count);
     }
-    let count = bits.number(5)?;
+    let count = number(bits, 5)?;
     if count < 31 {
         return Ok(6 + count);
     }
-    Ok(37 + bits.number(7)?)
+    Ok(37 + number(bits, 7)?)
 }
 
 pub(super) struct Parameters {
-    pub layer: usize,
-    pub precinct: usize,
-    pub markers: [bool; 2],
-    pub sequence: u16,
-    pub modes: u8,
-    pub tile_headers: bool,
+    pub(super) layer: usize,
+    pub(super) precinct: usize,
+    pub(super) markers: PacketMarkers,
+    pub(super) sequence: u16,
+    pub(super) modes: u8,
+    pub(super) tile_headers: bool,
 }
 
 fn headers(
-    reader: &mut Reader<'_>,
+    reader: &mut Cursor<'_>,
     bands: &mut [Band],
     parameters: &Parameters,
     budget: &mut Budget,
 ) -> Result<Vec<Contribution>> {
-    let start = reader.offset;
-    let mut bits = Bits::new(reader);
+    let mut bits = Bits::new(reader.clone());
     let mut contributions = Vec::new();
     if bits.bit()? {
         for (index, band) in bands.iter_mut().enumerate() {
@@ -416,68 +405,81 @@ fn headers(
             )?;
         }
     }
-    bits.finish()?;
-    if parameters.markers[1] && reader.u16()? != 0xff92 {
-        return Err(syntax("missing JPEG 2000 EPH marker", reader.position()));
+    // T.800 B.10.1: a header that ends on 0xFF is followed by a stuffed byte.
+    bits.align()?;
+    let rest = &mut bits.bytes;
+    if parameters.markers.eph && rest.take_array()? != Marker::EPH.bytes() {
+        return Err(rest.error("missing JPEG 2000 EPH marker"));
     }
-    reader.packet_boundary(start)?;
+    *reader = rest.clone();
     Ok(contributions)
 }
 
 pub(super) fn read(
-    body: &mut Reader<'_>,
-    packed: Option<&mut Reader<'_>>,
+    body: &mut Cursor<'_>,
+    packed: Option<&mut Headers<'_>>,
     bands: &mut [Band],
     parameters: &Parameters,
     budget: &mut Budget,
 ) -> Result<()> {
     budget.work(1)?;
-    if body.data.get(body.offset..body.offset.saturating_add(2)) == Some(&[255, 145])
-        && (!parameters.markers[0]
-            || body.u16()? != 0xff91
+    // T.800 A.8.1: Lsop is 4, then the packet sequence number.
+    if body.rest().starts_with(&Marker::SOP.bytes())
+        && (!parameters.markers.sop
+            || body.take_array()? != Marker::SOP.bytes()
             || body.u16()? != 4
             || body.u16()? != parameters.sequence)
     {
-        return Err(syntax("invalid JPEG 2000 SOP marker", body.position()));
+        return Err(body.error("invalid JPEG 2000 SOP marker"));
     }
     let contributions = match packed {
-        Some(reader) => headers(reader, bands, parameters, budget)?,
+        Some(packed) => packed.header(|reader| headers(reader, bands, parameters, budget))?,
         None => headers(body, bands, parameters, budget)?,
     };
     for contribution in contributions {
+        // headers() made each contribution from these bands, blocks and
+        // segments, so the indices are in range.
         let block = &mut bands[contribution.band].partitions[parameters.precinct].blocks
             [contribution.block];
-        if contribution.segment == 0 && block.segments[0].data.is_empty() {
-            block.base = body.position();
-        }
-        let segment = &mut block.segments[contribution.segment];
-        if segment.data.is_empty() {
-            segment.base = body.position();
-        }
         let source = body.position();
+        if contribution.segment == 0 && block.segments.first().is_some_and(|s| s.data.is_empty()) {
+            block.start = source;
+        }
         if parameters.tile_headers && contribution.length > body.remaining() {
             return Err(super::unsupported(
                 "JPEG 2000 PPT headers preceding a later tile-part are not implemented",
-                body.position(),
+                source,
             ));
         }
         let bytes = body.take(contribution.length)?;
         if bytes.last() == Some(&255) {
             return Err(syntax(
                 "JPEG 2000 code-block contribution ends in FF",
-                source + bytes.len() - 1,
+                Position::Buffer(bytes.len() - 1).within(source),
             ));
         }
-        if !bytes.is_empty() {
-            budget.push(
-                &mut segment.spans,
-                super::io::Span {
-                    logical: segment.data.len(),
-                    source,
-                },
-            )?;
-        }
-        budget.append(&mut segment.data, bytes)?;
+        block.segments[contribution.segment].append(bytes, source, budget)?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Bits, number};
+    use pagura_core::ErrorKind;
+    use pagura_core::bytes::Cursor;
+
+    #[test]
+    fn numbers_wider_than_32_bits_are_read() {
+        // 0xFF is followed by a stuffed byte whose high bit is not data.
+        let data = [0x12, 0xff, 0x2b, 0x56, 0x78, 0x9a, 0xbc];
+        let mut bits = Bits::new(Cursor::new(&data));
+        assert_eq!(number(&mut bits, 4).unwrap(), 0x1);
+        if usize::BITS == 64 {
+            let wide = number(&mut bits, 35).unwrap();
+            assert_eq!(u64::try_from(wide).unwrap(), 0x1_7fab_5678);
+        }
+        let error = number(&mut bits, usize::BITS).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit);
+    }
 }

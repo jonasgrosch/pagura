@@ -24,7 +24,7 @@ mod stream;
 mod xobject;
 
 pub use image::{DecodedImage, ImageAlpha, ImageKind, MaskKind, Precision, Samples};
-pub use pagura_imagecodec::jpx::JpxColor;
+pub use pagura_imagecodec::jpx::{EnumeratedColorSpace, JpxColor};
 
 use pagura_core::{Dictionary, Limits, Result};
 use pagura_document::{Document, IndirectObject};

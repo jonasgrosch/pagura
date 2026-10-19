@@ -11,7 +11,8 @@
 use pagura_core::{Dictionary, ErrorKind, Limits, ObjectId, Position, Recovery, Value};
 use pagura_document::{Document, OpenOptions};
 use pagura_image::{
-    ImageKind, JpxColor, MaskKind, Samples, decode_inline, decode_xobject, inline_data_length,
+    EnumeratedColorSpace, ImageKind, JpxColor, MaskKind, Samples, decode_inline, decode_xobject,
+    inline_data_length,
 };
 use pagura_testkit::{fixture, fixture_names, fixture_path};
 use std::collections::BTreeMap;
@@ -208,7 +209,7 @@ fn space_name(kind: &ImageKind) -> &str {
             color: JpxColor::Icc(_),
         } => "icc",
         ImageKind::EmbeddedColor {
-            color: JpxColor::Enumerated(18),
+            color: JpxColor::Enumerated(EnumeratedColorSpace::SYCC),
         } => "sYCC",
         ImageKind::Stencil { .. } => "stencil",
         _ => panic!("unexpected image colour description"),
