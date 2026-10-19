@@ -1,27 +1,39 @@
 //! Bounded, unhinted Type 2 charstrings (Adobe Technical Note 5177).
-use super::{Cff, Private, dict, strings};
-use crate::GlyphId;
+use super::{Cff, Private, Version, dict, strings};
 use crate::budget::Work;
-use crate::read::{bad, here, slice};
-use crate::repairs;
+use crate::read::{here, limit, syntax};
+use crate::{GlyphId, repairs};
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Position, Result};
 use pagura_raster::{Path, PathBuilder, Point, Segment, Transform};
 
-/// TN 5177 Appendix B: operand stack, subroutine nesting, stem hints and
-/// charstring length.
+mod operator;
+use operator::{Escape, Operator};
+
+/// TN 5177 Appendix B: operand stack, subroutine nesting, stem hints,
+/// transient array and charstring length.
 const MAX_OPERANDS: usize = 48;
 const MAX_SUBR_DEPTH: usize = 10;
 const MAX_STEM_HINTS: usize = 96;
+const TRANSIENT_SLOTS: usize = 32;
 const MAX_CHARSTRING_BYTES: usize = 65_535;
 /// The CFF2 operand stack (OpenType CFF2). CFF2 nesting has no verified
 /// format ceiling; `Limits::depth` bounds it.
 const MAX_CFF2_OPERANDS: usize = 513;
+/// The number encoding introduced by byte 28: a 16-bit integer (TN 5177 3.2).
+const SHORT_INT: u8 = 28;
+/// Byte 255 introduces a 16.16 fixed-point number (TN 5177 3.2).
+const FIXED: u8 = 255;
+/// `random` is a 32-bit linear congruential generator (implementation
+/// policy: TN 5177 4.4 only fixes the range (0, 1]).
+const RANDOM_MULTIPLIER: u32 = 1_664_525;
+const RANDOM_INCREMENT: u32 = 1_013_904_223;
+const RANDOM_RANGE: f64 = 4_294_967_296.0;
 
 struct State {
     stack: Vec<f64>,
-    transient: [f64; 32],
+    transient: [f64; TRANSIENT_SLOTS],
     path: PathBuilder,
     point: Point,
     open: bool,
@@ -51,14 +63,20 @@ enum Flow {
     End,
 }
 
-pub(super) fn glyph(
+pub(super) fn outline(
     font: &Cff,
     data: &[u8],
     glyph: GlyphId,
     work: &mut Work<'_>,
-) -> Result<(Path, f64)> {
-    load(font, data, glyph, 0, work)
+) -> Result<Path> {
+    Ok(load(font, data, glyph, 0, work)?.0)
 }
+
+/// The glyph's width, from the whole interpreted glyph.
+pub(super) fn advance(font: &Cff, data: &[u8], glyph: GlyphId, work: &mut Work<'_>) -> Result<f64> {
+    Ok(load(font, data, glyph, 0, work)?.1)
+}
+
 fn load(
     font: &Cff,
     data: &[u8],
@@ -66,18 +84,19 @@ fn load(
     depth: usize,
     work: &mut Work<'_>,
 ) -> Result<(Path, f64)> {
-    let range = font
+    let charstring = font
         .glyphs
-        .get(u32_to_usize(glyph.0))
-        .ok_or_else(|| bad(0, "glyph index outside CFF"))?;
-    work.depth(depth, usize::MAX, Position::Buffer(range.start))?;
+        .get(data, u32_to_usize(glyph.0))
+        .ok_or_else(|| syntax(Position::Unknown, "glyph index outside CFF"))?;
+    let at = charstring.position();
+    work.depth(depth, usize::MAX, at)?;
     let private = font
         .private(glyph)
-        .ok_or_else(|| bad(range.start, "glyph without a CFF Private DICT"))?;
+        .ok_or_else(|| syntax(at, "glyph without a CFF Private DICT"))?;
     let mut state = State {
         // Type 2 charstrings hold at most 48 operands (CFF2: 513).
         stack: Vec::with_capacity(48),
-        transient: [0.0; 32],
+        transient: [0.0; TRANSIENT_SLOTS],
         path: PathBuilder::new(),
         point: Point::default(),
         open: false,
@@ -91,33 +110,25 @@ fn load(
         vsindex: private.vsindex,
         stopped: false,
     };
-    run(
-        font,
-        private,
-        data,
-        slice(data, range.clone(), "CFF charstring outside font")?,
-        0,
-        &mut state,
-        work,
-    )?;
-    state.close(work, range.start)?;
+    run(font, private, data, charstring, 0, &mut state, work)?;
+    state.close(work, at)?;
     if let Some([dx, dy, base, accent]) = state.seac {
         if depth != 0 {
-            return Err(bad(range.start, "nested seac composite"));
+            return Err(syntax(at, "nested seac composite"));
         }
         if font.cids.is_some() {
-            return Err(bad(range.start, "seac in CID-keyed CFF"));
+            return Err(syntax(at, "seac in CID-keyed CFF"));
         }
         let mut component = |code: f64, transform: Transform| -> Result<()> {
-            let code = u8::try_from(dict::integer(code, range.start)?)
-                .map_err(|_| bad(range.start, "invalid seac character code"))?;
+            let code = u8::try_from(dict::integer(code, at)?)
+                .map_err(|_| syntax(at, "invalid seac character code"))?;
             let name = strings::standard(code)
-                .ok_or_else(|| bad(range.start, "undefined seac character code"))?;
+                .ok_or_else(|| syntax(at, "undefined seac character code"))?;
             let glyph = font
                 .name(name.as_bytes())
-                .ok_or_else(|| bad(range.start, "missing seac component"))?;
+                .ok_or_else(|| syntax(at, "missing seac component"))?;
             let (path, _) = load(font, data, glyph, depth + 1, work)?;
-            append(&mut state.path, &path, transform, work, range.start)
+            append(&mut state.path, &path, transform, work, at)
         };
         component(base, Transform::IDENTITY)?;
         component(accent, Transform::translate(dx, dy))?;
@@ -125,7 +136,7 @@ fn load(
     let path = state.path.finish().transformed(private.matrix);
     let width = state.width.unwrap_or(private.default_width) * private.matrix.a;
     if !width.is_finite() {
-        return Err(bad(range.start, "nonfinite charstring width"));
+        return Err(syntax(at, "nonfinite charstring width"));
     }
     Ok((path, width))
 }
@@ -134,10 +145,10 @@ fn append(
     path: &Path,
     transform: Transform,
     work: &mut Work<'_>,
-    at: usize,
+    at: Position,
 ) -> Result<()> {
     for &segment in path.segments() {
-        work.segments(1, Position::Buffer(at))?;
+        work.segments(1, at)?;
         match segment {
             Segment::MoveTo(p) => {
                 builder.move_to(transform.apply(p));
@@ -145,7 +156,7 @@ fn append(
             Segment::LineTo(p) => {
                 builder
                     .line_to(transform.apply(p))
-                    .map_err(|_| bad(at, "invalid seac path"))?;
+                    .map_err(|_| syntax(at, "invalid seac path"))?;
             }
             Segment::CubicTo {
                 c1: a,
@@ -154,7 +165,7 @@ fn append(
             } => {
                 builder
                     .cubic_to(transform.apply(a), transform.apply(b), transform.apply(c))
-                    .map_err(|_| bad(at, "invalid seac path"))?;
+                    .map_err(|_| syntax(at, "invalid seac path"))?;
             }
             Segment::Close => {
                 builder.close();
@@ -164,23 +175,23 @@ fn append(
     Ok(())
 }
 impl State {
-    fn pop(&mut self, at: usize) -> Result<f64> {
+    fn pop(&mut self, at: Position) -> Result<f64> {
         self.stack
             .pop()
-            .ok_or_else(|| bad(at, "charstring stack underflow"))
+            .ok_or_else(|| syntax(at, "charstring stack underflow"))
     }
-    fn count(&self, n: usize, at: usize) -> Result<()> {
+    fn count(&self, n: usize, at: Position) -> Result<()> {
         if self.stack.len() == n {
             Ok(())
         } else {
-            Err(bad(at, "invalid charstring operand count"))
+            Err(syntax(at, "invalid charstring operand count"))
         }
     }
-    fn width(&mut self, private: &Private, present: bool, at: usize) -> Result<()> {
+    fn width(&mut self, private: &Private, present: bool, at: Position) -> Result<()> {
         if self.width.is_none() {
             self.width = Some(if present {
                 if self.stack.is_empty() {
-                    return Err(bad(at, "missing charstring width"));
+                    return Err(syntax(at, "missing charstring width"));
                 }
                 self.stack.remove(0) + private.nominal_width
             } else {
@@ -189,65 +200,78 @@ impl State {
         }
         Ok(())
     }
-    fn close(&mut self, work: &mut Work<'_>, at: usize) -> Result<()> {
+    fn close(&mut self, work: &mut Work<'_>, at: Position) -> Result<()> {
         if self.open {
-            work.segments(1, Position::Buffer(at))?;
+            work.segments(1, at)?;
             self.path.close();
             self.open = false;
         }
         Ok(())
     }
-    fn point(&mut self, dx: f64, dy: f64, at: usize) -> Result<Point> {
+    fn point(&mut self, dx: f64, dy: f64, at: Position) -> Result<Point> {
         self.point.x += dx;
         self.point.y += dy;
         if !self.point.is_finite() {
-            return Err(bad(at, "nonfinite charstring coordinate"));
+            return Err(syntax(at, "nonfinite charstring coordinate"));
         }
         Ok(self.point)
     }
-    fn moveto(&mut self, dx: f64, dy: f64, work: &mut Work<'_>, at: usize) -> Result<()> {
+    fn moveto(&mut self, dx: f64, dy: f64, work: &mut Work<'_>, at: Position) -> Result<()> {
         self.close(work, at)?;
         let p = self.point(dx, dy, at)?;
-        work.segments(1, Position::Buffer(at))?;
+        work.segments(1, at)?;
         self.path.move_to(p);
         self.open = true;
         Ok(())
     }
-    fn line(&mut self, dx: f64, dy: f64, work: &mut Work<'_>, at: usize) -> Result<()> {
+    fn line(&mut self, dx: f64, dy: f64, work: &mut Work<'_>, at: Position) -> Result<()> {
         if !self.open {
-            return Err(bad(at, "charstring line before moveto"));
+            return Err(syntax(at, "charstring line before moveto"));
         }
         let p = self.point(dx, dy, at)?;
-        work.segments(1, Position::Buffer(at))?;
+        work.segments(1, at)?;
         self.path
             .line_to(p)
-            .map_err(|_| bad(at, "charstring line without current point"))?;
+            .map_err(|_| syntax(at, "charstring line without current point"))?;
         Ok(())
     }
-    fn curve(&mut self, deltas: &[f64], work: &mut Work<'_>, at: usize) -> Result<()> {
-        if !self.open || deltas.len() != 6 {
-            return Err(bad(at, "invalid charstring curve"));
-        }
-        let a = self.point(deltas[0], deltas[1], at)?;
-        let b = self.point(deltas[2], deltas[3], at)?;
-        let c = self.point(deltas[4], deltas[5], at)?;
-        work.segments(1, Position::Buffer(at))?;
+    fn curve(&mut self, deltas: &[f64], work: &mut Work<'_>, at: Position) -> Result<()> {
+        let (true, &[dxa, dya, dxb, dyb, dxc, dyc]) = (self.open, deltas) else {
+            return Err(syntax(at, "invalid charstring curve"));
+        };
+        let a = self.point(dxa, dya, at)?;
+        let b = self.point(dxb, dyb, at)?;
+        let c = self.point(dxc, dyc, at)?;
+        work.segments(1, at)?;
         self.path
             .cubic_to(a, b, c)
-            .map_err(|_| bad(at, "charstring curve without current point"))?;
+            .map_err(|_| syntax(at, "charstring curve without current point"))?;
         Ok(())
     }
 }
 
 /// Checks the format ceilings of a charstring about to run: its nesting
 /// and, for CFF, its length.
-fn enter(cff2: bool, r: &Cursor<'_>, depth: usize, work: &Work<'_>) -> Result<()> {
-    let nesting = if cff2 { usize::MAX } else { MAX_SUBR_DEPTH };
-    work.depth(depth, nesting, Position::Buffer(here(r)))?;
-    if !cff2 && r.remaining() > MAX_CHARSTRING_BYTES {
-        return Err(bad(here(r), "Type 2 charstring exceeds 65,535 bytes"));
+fn enter(version: Version, r: &Cursor<'_>, depth: usize, work: &Work<'_>) -> Result<()> {
+    let nesting = match version {
+        Version::Cff1 => MAX_SUBR_DEPTH,
+        Version::Cff2 => usize::MAX,
+    };
+    work.depth(depth, nesting, r.position())?;
+    if version == Version::Cff1 && r.remaining() > MAX_CHARSTRING_BYTES {
+        return Err(r.error("Type 2 charstring exceeds 65,535 bytes"));
     }
     Ok(())
+}
+
+/// Whether `op` exists in `version`: CFF2 replaces `return` and `endchar`
+/// with implicit ends, and adds `vsindex` and `blend`.
+fn available(op: Operator, version: Version) -> bool {
+    match op {
+        Operator::Return | Operator::Endchar => version == Version::Cff1,
+        Operator::Vsindex | Operator::Blend => version == Version::Cff2,
+        _ => true,
+    }
 }
 
 fn run(
@@ -259,123 +283,134 @@ fn run(
     state: &mut State,
     work: &mut Work<'_>,
 ) -> Result<Flow> {
-    enter(font.cff2, &r, depth, work)?;
-    let ceiling = if font.cff2 {
-        MAX_CFF2_OPERANDS
-    } else {
-        MAX_OPERANDS
+    let version = font.version;
+    enter(version, &r, depth, work)?;
+    let ceiling = match version {
+        Version::Cff1 => MAX_OPERANDS,
+        Version::Cff2 => MAX_CFF2_OPERANDS,
     };
     while !r.at_end() {
-        let at = here(&r);
-        work.work(1, Position::Buffer(at))?;
+        let at = r.position();
+        work.work(1, at)?;
         let byte = r.u8()?;
-        if byte == 28 || byte >= 32 {
+        if byte == SHORT_INT || byte >= 32 {
             if state.stack.len() == ceiling {
-                return Err(bad(at, "operand stack exceeds the format limit"));
+                return Err(syntax(at, "operand stack exceeds the format limit"));
             }
-            state.stack.push(dict::number(&mut r, byte, false)?);
+            state.stack.push(number(byte, &mut r)?);
             continue;
         }
-        match byte {
-            1 | 3 | 18 | 23 | 19 | 20 => {
-                hints(font.cff2, private, byte, &mut r, state, at)?;
+        let op = Operator::try_from(byte)
+            .ok()
+            .filter(|&op| available(op, version))
+            .ok_or_else(|| syntax(at, "invalid Type 2 charstring operator"))?;
+        match op {
+            Operator::Hstem
+            | Operator::Vstem
+            | Operator::Hstemhm
+            | Operator::Vstemhm
+            | Operator::Hintmask
+            | Operator::Cntrmask => hints(version, private, op, &mut r, state, at)?,
+            Operator::Vmoveto | Operator::Rmoveto | Operator::Hmoveto => {
+                move_operator(version, private, op, state, work, at)?;
             }
-            4 | 21 | 22 => {
-                move_operator(font.cff2, private, byte, state, work, at)?;
-            }
-            5..=8 | 24..=27 | 30 | 31 => draw(byte, state, work, at)?,
-            10 | 29 => {
-                let subrs = if byte == 10 {
+            Operator::Callsubr | Operator::Callgsubr => {
+                let subrs = if op == Operator::Callsubr {
                     &private.subrs
                 } else {
                     &font.global
                 };
-                let n = state.pop(at)?;
-                let bias = if subrs.len() < 1240 {
-                    107.0
-                } else if subrs.len() < 33900 {
-                    1131.0
-                } else {
-                    32768.0
-                };
-                let index = dict::integer(n + bias, at)?;
-                let range = subrs
-                    .get(index)
-                    .ok_or_else(|| bad(at, "charstring subroutine index out of range"))?;
-                if run(
-                    font,
-                    private,
-                    data,
-                    slice(data, range.clone(), "CFF subroutine outside font")?,
-                    depth + 1,
-                    state,
-                    work,
-                )? == Flow::End
-                {
+                let index = dict::integer(state.pop(at)? + bias(subrs.len()), at)?;
+                let subr = subrs
+                    .get(data, index)
+                    .ok_or_else(|| syntax(at, "charstring subroutine index out of range"))?;
+                if run(font, private, data, subr, depth + 1, state, work)? == Flow::End {
                     if !state.stopped && !r.at_end() {
-                        return Err(bad(here(&r), "data after charstring end"));
+                        return Err(r.error("data after charstring end"));
                     }
                     return Ok(Flow::End);
                 }
             }
-            11 if !font.cff2 => {
+            Operator::Return => {
                 if depth == 0 {
-                    return Err(bad(at, "return outside charstring subroutine"));
+                    return Err(syntax(at, "return outside charstring subroutine"));
                 }
                 return Ok(Flow::Return);
             }
-            12 => {
+            Operator::Escape => {
                 if escape(r.u8()?, state, work, at)? {
                     return Ok(Flow::End);
                 }
             }
-            14 if !font.cff2 => {
-                return finish(private, state, &r, at);
-            }
-            15 if font.cff2 => {
+            Operator::Endchar => return finish(private, state, &r, at),
+            Operator::Vsindex => {
                 state.count(1, at)?;
                 state.vsindex = dict::integer(state.pop(at)?, at)?;
                 if state.vsindex >= font.variations.len() {
-                    return Err(bad(at, "CFF2 vsindex out of range"));
+                    return Err(syntax(at, "CFF2 vsindex out of range"));
                 }
             }
-            16 if font.cff2 => blend(font, state, at)?,
-            _ => return Err(bad(at, "invalid Type 2 charstring operator")),
+            Operator::Blend => blend(font, state, at)?,
+            _ => draw(op, state, work, at)?,
         }
         if state.stack.len() > ceiling {
-            return Err(bad(at, "operand stack exceeds the format limit"));
+            return Err(syntax(at, "operand stack exceeds the format limit"));
         }
         // Finite operands are an invariant: arithmetic writes only the top
         // operand, and blend validates every value it writes in place.
         if state.stack.last().is_some_and(|n| !n.is_finite()) {
-            return Err(bad(at, "nonfinite charstring operand"));
+            return Err(syntax(at, "nonfinite charstring operand"));
         }
     }
-    end_of_program(font.cff2, depth, state, here(&r))
+    end_of_program(version, depth, state, &r)
 }
 
-fn end_of_program(cff2: bool, depth: usize, state: &State, at: usize) -> Result<Flow> {
-    if cff2 {
-        if depth == 0 && !state.stack.is_empty() {
-            return Err(bad(at, "unconsumed CFF2 operands"));
+fn end_of_program(version: Version, depth: usize, state: &State, r: &Cursor<'_>) -> Result<Flow> {
+    match version {
+        Version::Cff2 if depth == 0 && !state.stack.is_empty() => {
+            Err(r.error("unconsumed CFF2 operands"))
         }
-        Ok(if depth == 0 { Flow::End } else { Flow::Return })
+        Version::Cff2 if depth == 0 => Ok(Flow::End),
+        // CFF2 subroutines return implicitly at their end.
+        Version::Cff2 => Ok(Flow::Return),
+        Version::Cff1 => Err(r.error("unterminated charstring")),
+    }
+}
+
+fn number(byte: u8, r: &mut Cursor<'_>) -> Result<f64> {
+    if byte == SHORT_INT {
+        return Ok(f64::from(r.i16()?));
+    }
+    match dict::shared_number(byte, r)? {
+        Some(n) => Ok(n),
+        None if byte == FIXED => r.fixed(),
+        None => Err(r.error("invalid Type 2 charstring number")),
+    }
+}
+
+/// The subroutine number bias for a subroutine INDEX of `count` (TN 5177
+/// 4.7).
+fn bias(count: usize) -> f64 {
+    if count < 1240 {
+        107.0
+    } else if count < 33900 {
+        1131.0
     } else {
-        Err(bad(at, "unterminated charstring"))
+        32768.0
     }
 }
 
-fn blend(font: &Cff, state: &mut State, at: usize) -> Result<()> {
+fn blend(font: &Cff, state: &mut State, at: Position) -> Result<()> {
     let count = dict::integer(state.pop(at)?, at)?;
     let coefficients = font
         .variations
         .get(state.vsindex)
-        .ok_or_else(|| bad(at, "missing CFF2 variation data"))?;
+        .ok_or_else(|| syntax(at, "missing CFF2 variation data"))?;
     let size = count
         .checked_mul(coefficients.len() + 1)
-        .ok_or_else(|| crate::read::limit(Position::Buffer(at), "CFF2 blend count overflow"))?;
+        .ok_or_else(|| limit(at, "CFF2 blend count overflow"))?;
     if count == 0 || size > state.stack.len() {
-        return Err(bad(at, "invalid CFF2 blend operands"));
+        return Err(syntax(at, "invalid CFF2 blend operands"));
     }
     let start = state.stack.len() - size;
     for i in 0..count {
@@ -384,7 +419,7 @@ fn blend(font: &Cff, state: &mut State, at: usize) -> Result<()> {
             value += coefficient * state.stack[start + count + i * coefficients.len() + j];
         }
         if !value.is_finite() {
-            return Err(bad(at, "nonfinite charstring blend result"));
+            return Err(syntax(at, "nonfinite charstring blend result"));
         }
         state.stack[start + i] = value;
     }
@@ -392,9 +427,9 @@ fn blend(font: &Cff, state: &mut State, at: usize) -> Result<()> {
     Ok(())
 }
 
-/// Takes the operands off the stack for one drawing operator; the stack's
+/// The path operators (TN 5177 4.1), consuming every operand; the stack's
 /// storage returns, empty, for the next operands.
-fn draw(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
+fn draw(op: Operator, s: &mut State, w: &mut Work<'_>, at: Position) -> Result<()> {
     let mut args = std::mem::take(&mut s.stack);
     let result = draw_operands(op, &args, s, w, at);
     args.clear();
@@ -402,16 +437,22 @@ fn draw(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
     result
 }
 
-fn draw_operands(op: u8, args: &[f64], s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
+fn draw_operands(
+    op: Operator,
+    args: &[f64],
+    s: &mut State,
+    w: &mut Work<'_>,
+    at: Position,
+) -> Result<()> {
     let n = args.len();
     match op {
-        5 if n >= 2 && n.is_multiple_of(2) => {
+        Operator::Rlineto if n >= 2 && n.is_multiple_of(2) => {
             for a in args.as_chunks::<2>().0 {
                 s.line(a[0], a[1], w, at)?;
             }
         }
-        6 | 7 if n > 0 => {
-            let mut horizontal = op == 6;
+        Operator::Hlineto | Operator::Vlineto if n > 0 => {
+            let mut horizontal = op == Operator::Hlineto;
             for &a in args {
                 s.line(
                     if horizontal { a } else { 0.0 },
@@ -422,29 +463,29 @@ fn draw_operands(op: u8, args: &[f64], s: &mut State, w: &mut Work<'_>, at: usiz
                 horizontal = !horizontal;
             }
         }
-        8 if n >= 6 && n.is_multiple_of(6) => {
+        Operator::Rrcurveto if n >= 6 && n.is_multiple_of(6) => {
             for a in args.as_chunks::<6>().0 {
                 s.curve(a, w, at)?;
             }
         }
-        24 if n >= 8 && (n - 2).is_multiple_of(6) => {
+        Operator::Rcurveline if n >= 8 && (n - 2).is_multiple_of(6) => {
             for a in args[..n - 2].as_chunks::<6>().0 {
                 s.curve(a, w, at)?;
             }
             s.line(args[n - 2], args[n - 1], w, at)?;
         }
-        25 if n >= 8 && (n - 6).is_multiple_of(2) => {
+        Operator::Rlinecurve if n >= 8 && (n - 6).is_multiple_of(2) => {
             for a in args[..n - 6].as_chunks::<2>().0 {
                 s.line(a[0], a[1], w, at)?;
             }
             s.curve(&args[n - 6..], w, at)?;
         }
-        26 | 27 if n >= 4 && matches!(n % 4, 0 | 1) => {
+        Operator::Vvcurveto | Operator::Hhcurveto if n >= 4 && matches!(n % 4, 0 | 1) => {
             let mut offset = n % 4;
             let mut extra = if offset == 1 { args[0] } else { 0.0 };
             while offset < n {
                 let a = &args[offset..offset + 4];
-                let deltas = if op == 26 {
+                let deltas = if op == Operator::Vvcurveto {
                     [extra, a[0], a[1], a[2], 0.0, a[3]]
                 } else {
                     [a[0], extra, a[1], a[2], a[3], 0.0]
@@ -454,9 +495,9 @@ fn draw_operands(op: u8, args: &[f64], s: &mut State, w: &mut Work<'_>, at: usiz
                 offset += 4;
             }
         }
-        30 | 31 if n >= 4 && matches!(n % 4, 0 | 1) => {
+        Operator::Vhcurveto | Operator::Hvcurveto if n >= 4 && matches!(n % 4, 0 | 1) => {
             let mut offset = 0;
-            let mut horizontal = op == 31;
+            let mut horizontal = op == Operator::Hvcurveto;
             while n - offset >= 4 {
                 let a = &args[offset..offset + 4];
                 let extra = if n - offset == 5 {
@@ -474,105 +515,117 @@ fn draw_operands(op: u8, args: &[f64], s: &mut State, w: &mut Work<'_>, at: usiz
                 horizontal = !horizontal;
             }
         }
-        _ => return Err(bad(at, "invalid charstring drawing operands")),
+        _ => return Err(syntax(at, "invalid charstring drawing operands")),
     }
     Ok(())
 }
 
-fn escape(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<bool> {
+/// An escaped operator; `true` if it ended the glyph. An unknown one ends
+/// the glyph as a reported repair: TN 5177 gives it no semantics.
+fn escape(code: u8, s: &mut State, w: &mut Work<'_>, at: Position) -> Result<bool> {
+    let Ok(op) = Escape::try_from(code) else {
+        w.repair(
+            repairs::CHARSTRING_OPERATOR,
+            "unknown escaped Type 2 operator ends glyph",
+            at,
+        )?;
+        s.stack.clear();
+        s.stopped = true;
+        return Ok(true);
+    };
     match op {
-        0 => {} // TN 5177 Appendix C: deprecated dotsection is a no-op.
-        3 | 4 | 10 | 11 | 12 | 15 | 24 => {
+        Escape::Dotsection => {} // TN 5177 Appendix C: deprecated, a no-op.
+        Escape::And
+        | Escape::Or
+        | Escape::Add
+        | Escape::Sub
+        | Escape::Div
+        | Escape::Eq
+        | Escape::Mul => {
             let b = s.pop(at)?;
             let a = s.pop(at)?;
             let value = match op {
-                3 => f64::from(a != 0.0 && b != 0.0),
-                4 => f64::from(a != 0.0 || b != 0.0),
-                10 => a + b,
-                11 => a - b,
-                12 => a / b,
-                15 => f64::from(a == b),
+                Escape::And => f64::from(a != 0.0 && b != 0.0),
+                Escape::Or => f64::from(a != 0.0 || b != 0.0),
+                Escape::Add => a + b,
+                Escape::Sub => a - b,
+                Escape::Div => a / b,
+                Escape::Eq => f64::from(a == b),
                 _ => a * b,
             };
             s.stack.push(value);
         }
-        5 | 9 | 14 | 26 => {
+        Escape::Not | Escape::Abs | Escape::Neg | Escape::Sqrt => {
             let a = s.pop(at)?;
             s.stack.push(match op {
-                5 => f64::from(a == 0.0),
-                9 => a.abs(),
-                14 => -a,
+                Escape::Not => f64::from(a == 0.0),
+                Escape::Abs => a.abs(),
+                Escape::Neg => -a,
                 _ => a.sqrt(),
             });
         }
-        18 => {
+        Escape::Drop => {
             s.pop(at)?;
         }
-        20 => {
+        Escape::Put => {
             let index = dict::integer(s.pop(at)?, at)?;
             let value = s.pop(at)?;
             *s.transient
                 .get_mut(index)
-                .ok_or_else(|| bad(at, "invalid transient array index"))? = value;
+                .ok_or_else(|| syntax(at, "invalid transient array index"))? = value;
         }
-        21 => {
+        Escape::Get => {
             let index = dict::integer(s.pop(at)?, at)?;
             s.stack.push(
                 *s.transient
                     .get(index)
-                    .ok_or_else(|| bad(at, "invalid transient array index"))?,
+                    .ok_or_else(|| syntax(at, "invalid transient array index"))?,
             );
         }
-        22 => {
+        Escape::Ifelse => {
             let v2 = s.pop(at)?;
             let v1 = s.pop(at)?;
             let b = s.pop(at)?;
             let a = s.pop(at)?;
             s.stack.push(if v1 <= v2 { a } else { b });
         }
-        23 => {
-            // TN 5177 4.4 specifies (0,1]; the algorithm is implementation policy.
-            s.random = s.random.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
-            s.stack.push((f64::from(s.random) + 1.0) / 4_294_967_296.0);
+        Escape::Random => {
+            s.random = s
+                .random
+                .wrapping_mul(RANDOM_MULTIPLIER)
+                .wrapping_add(RANDOM_INCREMENT);
+            s.stack.push((f64::from(s.random) + 1.0) / RANDOM_RANGE);
         }
-        27 => {
+        Escape::Dup => {
             let a = s.pop(at)?;
             s.stack.extend([a, a]);
         }
-        28 => {
+        Escape::Exch => {
             let b = s.pop(at)?;
             let a = s.pop(at)?;
             s.stack.extend([b, a]);
         }
-        29 => index(s, at)?,
-        30 => {
+        Escape::Index => index(s, at)?,
+        Escape::Roll => {
             let shift = s.pop(at)?;
-            let count = dict::integer(s.pop(at)?, at)?;
+            let count_value = s.pop(at)?;
+            let count = dict::integer(count_value, at)?;
             if count > s.stack.len() || shift.fract() != 0.0 || shift.abs() > f64::from(i32::MAX) {
-                return Err(bad(at, "invalid charstring roll"));
+                return Err(syntax(at, "invalid charstring roll"));
             }
             if count == 0 {
                 return Ok(false);
             }
-            let rotation = dict::integer(shift.rem_euclid(count as f64), at)?;
+            let rotation = dict::integer(shift.rem_euclid(count_value), at)?;
             let start = s.stack.len() - count;
             s.stack[start..].rotate_right(rotation);
         }
-        34..=37 => flex(op, s, w, at)?,
-        _ => {
-            w.repair(
-                repairs::CHARSTRING_OPERATOR,
-                "unknown escaped Type 2 operator ends glyph",
-                Position::Buffer(at),
-            )?;
-            s.stack.clear();
-            s.stopped = true;
-            return Ok(true);
-        }
+        Escape::Hflex | Escape::Flex | Escape::Hflex1 | Escape::Flex1 => flex(op, s, w, at)?,
     }
     Ok(false)
 }
-fn flex(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
+
+fn flex(op: Escape, s: &mut State, w: &mut Work<'_>, at: Position) -> Result<()> {
     let mut a = std::mem::take(&mut s.stack);
     let curves = flex_curves(op, &a, at);
     a.clear();
@@ -582,18 +635,20 @@ fn flex(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
     s.curve(&second, w, at)
 }
 
-/// The two curves of a flex operator's operands.
-fn flex_curves(op: u8, a: &[f64], at: usize) -> Result<([f64; 6], [f64; 6])> {
+/// The two curves of a flex operator (TN 5177 4.1 and Appendix C).
+fn flex_curves(op: Escape, a: &[f64], at: Position) -> Result<([f64; 6], [f64; 6])> {
     Ok(match (op, a) {
-        (34, [a, b, c, d, e, f, g]) => ([*a, 0.0, *b, *c, *d, 0.0], [*e, 0.0, *f, -c, *g, 0.0]),
-        (35, [a, b, c, d, e, f, g, h, i, j, k, l, _]) => {
+        (Escape::Hflex, [a, b, c, d, e, f, g]) => {
+            ([*a, 0.0, *b, *c, *d, 0.0], [*e, 0.0, *f, -c, *g, 0.0])
+        }
+        (Escape::Flex, [a, b, c, d, e, f, g, h, i, j, k, l, _]) => {
             ([*a, *b, *c, *d, *e, *f], [*g, *h, *i, *j, *k, *l])
         }
-        (36, [a, b, c, d, e, f, g, h, i]) => (
+        (Escape::Hflex1, [a, b, c, d, e, f, g, h, i]) => (
             [*a, *b, *c, *d, *e, 0.0],
             [*f, 0.0, *g, *h, *i, -(b + d + h)],
         ),
-        (37, [a, b, c, d, e, f, g, h, i, j, k]) => {
+        (Escape::Flex1, [a, b, c, d, e, f, g, h, i, j, k]) => {
             let dx = a + c + e + g + i;
             let dy = b + d + f + h + j;
             (
@@ -608,53 +663,55 @@ fn flex_curves(op: u8, a: &[f64], at: usize) -> Result<([f64; 6], [f64; 6])> {
                 ],
             )
         }
-        _ => return Err(bad(at, "invalid flex operands")),
+        _ => return Err(syntax(at, "invalid flex operands")),
     })
 }
 
+/// Hint declarations and masks (TN 5177 4.3). Hints are validated and
+/// skipped: outlines are unhinted.
 fn hints(
-    cff2: bool,
+    version: Version,
     private: &Private,
-    byte: u8,
+    op: Operator,
     r: &mut Cursor<'_>,
     state: &mut State,
-    at: usize,
+    at: Position,
 ) -> Result<()> {
-    if cff2 {
+    if version == Version::Cff2 {
         state.width = Some(0.0);
     }
     state.width(private, state.stack.len() % 2 == 1, at)?;
     if !state.stack.len().is_multiple_of(2) {
-        return Err(bad(at, "odd charstring hint operands"));
+        return Err(syntax(at, "odd charstring hint operands"));
     }
-    let mask = matches!(byte, 19 | 20);
-    let phase = match byte {
-        1 => HintPhase::Horizontal,
-        18 => HintPhase::HorizontalMask,
-        3 => HintPhase::Vertical,
-        23 => HintPhase::VerticalMask,
-        20 => HintPhase::Counter,
+    let mask = matches!(op, Operator::Hintmask | Operator::Cntrmask);
+    let phase = match op {
+        Operator::Hstem => HintPhase::Horizontal,
+        Operator::Hstemhm => HintPhase::HorizontalMask,
+        Operator::Vstem => HintPhase::Vertical,
+        Operator::Vstemhm => HintPhase::VerticalMask,
+        Operator::Cntrmask => HintPhase::Counter,
         _ => HintPhase::Mask,
     };
-    if !cff2 {
-        if (!mask || byte == 20) && phase < state.hint_phase
+    if version == Version::Cff1 {
+        if (!mask || op == Operator::Cntrmask) && phase < state.hint_phase
             || state.hint_phase >= HintPhase::Counter && !state.stack.is_empty()
         {
-            return Err(bad(at, "charstring hints out of order"));
+            return Err(syntax(at, "charstring hints out of order"));
         }
         state.hint_phase = state.hint_phase.max(phase);
     }
     if !mask && state.stack.is_empty() {
-        return Err(bad(at, "charstring stem operator without operands"));
+        return Err(syntax(at, "charstring stem operator without operands"));
     }
     state.hints += state.stack.len() / 2;
     if state.hints > MAX_STEM_HINTS {
-        return Err(bad(at, "charstring stems exceed 96"));
+        return Err(syntax(at, "charstring stems exceed 96"));
     }
     state.stack.clear();
     if mask {
         if state.hints == 0 {
-            return Err(bad(at, "charstring mask without stems"));
+            return Err(syntax(at, "charstring mask without stems"));
         }
         let bytes = r.take(state.hints.div_ceil(8))?;
         let unused = (8 - state.hints % 8) % 8;
@@ -662,30 +719,34 @@ fn hints(
             .last()
             .is_some_and(|last| last & ((1 << unused) - 1) != 0)
         {
-            return Err(bad(here(r) - 1, "nonzero charstring mask padding"));
+            return Err(syntax(
+                Position::Buffer(here(r) - 1),
+                "nonzero charstring mask padding",
+            ));
         }
     }
     Ok(())
 }
 
 fn move_operator(
-    cff2: bool,
+    version: Version,
     private: &Private,
-    byte: u8,
+    op: Operator,
     state: &mut State,
     work: &mut Work<'_>,
-    at: usize,
+    at: Position,
 ) -> Result<()> {
-    let n = if byte == 21 { 2 } else { 1 };
-    if cff2 {
+    let n = if op == Operator::Rmoveto { 2 } else { 1 };
+    if version == Version::Cff2 {
         state.width = Some(0.0);
     }
     state.width(private, state.stack.len() == n + 1, at)?;
     state.count(n, at)?;
-    let (dx, dy) = match byte {
-        4 => (0.0, state.stack[0]),
-        22 => (state.stack[0], 0.0),
-        _ => (state.stack[0], state.stack[1]),
+    let (dx, dy) = match (op, state.stack.as_slice()) {
+        (Operator::Vmoveto, &[dy]) => (0.0, dy),
+        (Operator::Hmoveto, &[dx]) => (dx, 0.0),
+        (_, &[dx, dy]) => (dx, dy),
+        _ => return Err(syntax(at, "invalid charstring moveto operands")),
     };
     state.stack.clear();
     state.hint_phase = HintPhase::Path;
@@ -693,25 +754,50 @@ fn move_operator(
     Ok(())
 }
 
-fn finish(private: &Private, state: &mut State, r: &Cursor<'_>, at: usize) -> Result<Flow> {
+fn finish(private: &Private, state: &mut State, r: &Cursor<'_>, at: Position) -> Result<Flow> {
     state.width(private, matches!(state.stack.len(), 1 | 5), at)?;
     match state.stack.as_slice() {
         [] => {}
         [dx, dy, base, accent] => state.seac = Some([*dx, *dy, *base, *accent]),
-        _ => return Err(bad(at, "invalid endchar operands")),
+        _ => return Err(syntax(at, "invalid endchar operands")),
     }
     state.stack.clear();
     if !r.at_end() {
-        return Err(bad(here(r), "data after charstring endchar"));
+        return Err(r.error("data after charstring endchar"));
     }
     Ok(Flow::End)
 }
 
-fn index(s: &mut State, at: usize) -> Result<()> {
+fn index(s: &mut State, at: Position) -> Result<()> {
     let index = dict::integer(s.pop(at)?.max(0.0), at)?;
-    if index >= s.stack.len() {
-        return Err(bad(at, "charstring index outside stack"));
-    }
-    s.stack.push(s.stack[s.stack.len() - index - 1]);
+    let value = *s
+        .stack
+        .iter()
+        .rev()
+        .nth(index)
+        .ok_or_else(|| syntax(at, "charstring index outside stack"))?;
+    s.stack.push(value);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{bias, number};
+    use crate::read::cursor;
+
+    #[test]
+    fn subroutine_bias_follows_the_index_size() {
+        assert_eq!(bias(0), 107.0);
+        assert_eq!(bias(1239), 107.0);
+        assert_eq!(bias(1240), 1131.0);
+        assert_eq!(bias(33899), 1131.0);
+        assert_eq!(bias(33900), 32768.0);
+    }
+
+    #[test]
+    fn short_integers_and_fixed_point_numbers() {
+        assert_eq!(number(28, &mut cursor(&[0x01, 0x00])).unwrap(), 256.0);
+        assert_eq!(number(255, &mut cursor(&[0, 1, 0x80, 0])).unwrap(), 1.5);
+        assert_eq!(number(139, &mut cursor(&[])).unwrap(), 0.0);
+    }
 }

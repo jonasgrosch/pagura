@@ -1,52 +1,98 @@
 //! CFF2 ItemVariationStore at normalized default coordinates (OpenType CFF2).
 use crate::budget::Work;
-use crate::read::{bad, here};
+use crate::read::{cursor, here, limit, syntax};
+use pagura_core::Result;
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
-use pagura_core::{Position, Result};
 
+/// A vstore length of 0xffff means "to the end of the table".
+const TO_END: u16 = 0xffff;
+/// The only ItemVariationStore format.
+const STORE_FORMAT: u16 = 1;
+/// 1.0 as F2DOT14: region coordinates lie in -1..=1.
+const F2DOT14_ONE: i16 = 16384;
+/// ItemVariationData wordDeltaCount: the long-words flag and the count.
+const LONG_WORDS: u16 = 0x8000;
+const WORD_COUNT: u16 = 0x7fff;
+
+/// The region scalars of each ItemVariationData, at the default instance.
 pub(super) fn parse(mut r: Cursor<'_>, work: &mut Work<'_>) -> Result<Vec<Vec<f64>>> {
-    let length = usize::from(r.u16()?);
-    let mut store = if length == 65535 {
-        r.take_cursor(r.remaining())?
+    let length = r.u16()?;
+    let base = here(&r);
+    let data = if length == TO_END {
+        r.take_rest()
     } else {
-        r.take_cursor(length)?
+        r.take(usize::from(length))?
     };
-    if store.u16()? != 1 {
-        return Err(bad(here(&store), "invalid ItemVariationStore format"));
+    let mut store = cursor(data).with_base(base);
+    if store.u16()? != STORE_FORMAT {
+        return Err(store.error("invalid ItemVariationStore format"));
     }
     let region_offset = u32_to_usize(store.u32()?);
     let count = usize::from(store.u16()?);
-    work.entries(count, Position::Buffer(here(&store)))?;
+    work.entries(count, store.position())?;
     let mut offsets = Vec::with_capacity(count);
     for _ in 0..count {
         offsets.push(u32_to_usize(store.u32()?));
     }
-    let mut regions = store.cursor_at(region_offset)?;
-    let axes = usize::from(regions.u16()?);
-    let region_count = usize::from(regions.u16()?);
-    work.entries(region_count, Position::Buffer(here(&regions)))?;
-    let cells = axes.checked_mul(region_count).ok_or_else(|| {
-        crate::read::limit(
-            Position::Buffer(here(&regions)),
-            "variation region count overflow",
-        )
-    })?;
-    work.work(cells, Position::Buffer(here(&regions)))?;
-    let mut scalars = Vec::with_capacity(region_count);
-    for _ in 0..region_count {
+    let scalars = regions(store.cursor_at(region_offset)?, work)?;
+    let mut result = Vec::with_capacity(count);
+    for offset in offsets {
+        let mut item = store.cursor_at(offset)?;
+        let items = usize::from(item.u16()?);
+        let words = item.u16()?;
+        let regions = usize::from(item.u16()?);
+        let long = words & LONG_WORDS != 0;
+        let words = usize::from(words & WORD_COUNT);
+        if words > regions {
+            return Err(item.error("invalid variation delta count"));
+        }
+        work.entries(regions, item.position())?;
+        let mut coefficients = Vec::with_capacity(regions);
+        for _ in 0..regions {
+            let index = usize::from(item.u16()?);
+            coefficients.push(
+                *scalars
+                    .get(index)
+                    .ok_or_else(|| item.error("variation region index out of range"))?,
+            );
+        }
+        let (word, short) = if long { (4, 2) } else { (2, 1) };
+        let row = words
+            .checked_mul(word)
+            .and_then(|bytes| bytes.checked_add((regions - words) * short))
+            .and_then(|row| row.checked_mul(items))
+            .ok_or_else(|| limit(item.position(), "variation delta size overflow"))?;
+        item.skip(row)?;
+        result.push(coefficients);
+    }
+    Ok(result)
+}
+
+/// The scalar of each region at the default instance: zero when any axis
+/// peaks away from zero, otherwise one.
+fn regions(mut r: Cursor<'_>, work: &mut Work<'_>) -> Result<Vec<f64>> {
+    let axes = usize::from(r.u16()?);
+    let count = usize::from(r.u16()?);
+    work.entries(count, r.position())?;
+    work.work(
+        axes.checked_mul(count)
+            .ok_or_else(|| limit(r.position(), "variation region count overflow"))?,
+        r.position(),
+    )?;
+    let coordinate = -F2DOT14_ONE..=F2DOT14_ONE;
+    let mut scalars = Vec::with_capacity(count);
+    for _ in 0..count {
         let mut scalar = 1.0;
         for _ in 0..axes {
-            let start = regions.i16()?;
-            let peak = regions.i16()?;
-            let end = regions.i16()?;
-            if !(-16384..=16384).contains(&start)
-                || !(-16384..=16384).contains(&peak)
-                || !(-16384..=16384).contains(&end)
+            let start = r.i16()?;
+            let peak = r.i16()?;
+            let end = r.i16()?;
+            if ![start, peak, end].iter().all(|c| coordinate.contains(c))
                 || start > peak
                 || peak > end
             {
-                return Err(bad(here(&regions), "invalid variation region axis"));
+                return Err(syntax(r.position(), "invalid variation region axis"));
             }
             // Peak zero and supports crossing zero do not participate in
             // the scalar, per the Item Variation Store interpolation rules.
@@ -56,43 +102,5 @@ pub(super) fn parse(mut r: Cursor<'_>, work: &mut Work<'_>) -> Result<Vec<Vec<f6
         }
         scalars.push(scalar);
     }
-    let mut result = Vec::with_capacity(count);
-    for offset in offsets {
-        let mut item = store.cursor_at(offset)?;
-        let items = usize::from(item.u16()?);
-        let words = item.u16()?;
-        let regions = usize::from(item.u16()?);
-        let long = words & 0x8000 != 0;
-        let words = usize::from(words & 0x7fff);
-        if words > regions {
-            return Err(bad(here(&item), "invalid variation delta count"));
-        }
-        work.entries(regions, Position::Buffer(here(&item)))?;
-        let mut coefficients = Vec::with_capacity(regions);
-        for _ in 0..regions {
-            let index = usize::from(item.u16()?);
-            coefficients.push(
-                *scalars
-                    .get(index)
-                    .ok_or_else(|| bad(here(&item), "variation region index out of range"))?,
-            );
-        }
-        let row = words
-            .checked_mul(if long { 4 } else { 2 })
-            .and_then(|bytes| bytes.checked_add((regions - words) * if long { 2 } else { 1 }))
-            .ok_or_else(|| {
-                crate::read::limit(
-                    Position::Buffer(here(&item)),
-                    "variation delta size overflow",
-                )
-            })?;
-        item.skip(items.checked_mul(row).ok_or_else(|| {
-            crate::read::limit(
-                Position::Buffer(here(&item)),
-                "variation delta size overflow",
-            )
-        })?)?;
-        result.push(coefficients);
-    }
-    Ok(result)
+    Ok(scalars)
 }
