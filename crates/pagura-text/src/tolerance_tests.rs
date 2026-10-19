@@ -1,9 +1,11 @@
 //! Independent strict/repair oracles for extraction faults and font tolerance.
 use super::*;
+use pagura_core::{Dictionary, Error, Limits, ObjectId, Result};
 use pagura_core::{
     ErrorKind, Recovery, Value,
     syntax::{Origin, Parser},
 };
+use pagura_document::Document;
 use pagura_document::OpenOptions;
 use pagura_testkit::fixture;
 

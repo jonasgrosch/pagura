@@ -1,10 +1,13 @@
 //! Independently generated vectors (tools/fixturegen/text.py).
 use super::*;
+use pagura_core::{Dictionary, Error, Limits, ObjectId, Position, Result};
 use pagura_core::{
     ErrorKind, Value,
     syntax::{Origin, Parser},
 };
+use pagura_document::Document;
 use pagura_document::OpenOptions;
+use pagura_raster::Transform;
 use pagura_testkit::fixture;
 
 fn document(name: &str) -> Result<Document> {
