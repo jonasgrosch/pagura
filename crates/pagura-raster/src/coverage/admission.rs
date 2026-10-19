@@ -163,13 +163,19 @@ mod tests {
                 );
             }
             let path = band(128, false);
-            let image =
-                crate::Mask::from_path_at(2, 2, &path, transform, FillRule::NonZero, 4, origin)
-                    .unwrap();
+            let image = crate::Mask::from_path(
+                crate::IntRect::new(origin.0, origin.1, 2, 2).unwrap(),
+                Arc::clone(&path),
+                transform,
+                FillRule::NonZero,
+                limits,
+            )
+            .unwrap();
             // Integral of 1-x/4 and x/4 over one unit-wide pixel column.
             assert_eq!(image.coverage(), [223, 0, 32, 0]);
-            let glyph =
-                Arc::new(crate::GlyphGeometry::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+            let glyph = Arc::new(
+                crate::GlyphGeometry::new(&path, Transform::IDENTITY, &limits, usize::MAX).unwrap(),
+            );
             let shape = Shape {
                 geometry: Geometry::Glyph(glyph),
                 transform,
@@ -196,7 +202,8 @@ mod tests {
                 }
                 let path = Arc::new(builder.finish());
                 let glyph = Arc::new(
-                    crate::GlyphGeometry::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
+                    crate::GlyphGeometry::new(&path, Transform::IDENTITY, &limits, usize::MAX)
+                        .unwrap(),
                 );
                 for origin in [(0, 0), (17, 29), (1 << 30, 1 << 30)] {
                     let transform = Transform::translate(f64::from(origin.0), f64::from(origin.1));
@@ -310,28 +317,25 @@ mod tests {
             .unwrap();
         builder.close();
         let path = builder.finish();
+        let mask = |x, y, size, transform, rule| {
+            let limits = pagura_core::Limits {
+                pixels: 64,
+                ..pagura_core::Limits::default()
+            };
+            let area = crate::IntRect::new(x, y, size, size).unwrap();
+            crate::Mask::from_path(area, path.clone(), transform, rule, limits).unwrap()
+        };
         for rule in [FillRule::NonZero, FillRule::EvenOdd] {
-            let reference =
-                crate::Mask::from_path(8, 8, &path, Transform::IDENTITY, rule, 64).unwrap();
+            let reference = mask(0, 0, 8, Transform::IDENTITY, rule);
             for origin in [(0, 0), (17, 29), (1 << 30, 1 << 30)] {
                 let transform = Transform::translate(f64::from(origin.0), f64::from(origin.1));
-                let whole =
-                    crate::Mask::from_path_at(8, 8, &path, transform, rule, 64, origin).unwrap();
+                let whole = mask(origin.0, origin.1, 8, transform, rule);
                 assert_eq!(whole.coverage(), reference.coverage());
-                for y in 0..8 {
-                    for x in 0..8 {
-                        let tile = crate::Mask::from_path_at(
-                            1,
-                            1,
-                            &path,
-                            transform,
-                            rule,
-                            1,
-                            (origin.0 + x, origin.1 + y),
-                        )
-                        .unwrap();
-                        assert_eq!(tile.coverage()[0], whole.coverage()[(y * 8 + x) as usize]);
-                    }
+                for (i, &value) in whole.coverage().iter().enumerate() {
+                    let (x, y) = (i % 8, i / 8);
+                    let x = origin.0 + u32::try_from(x).unwrap();
+                    let y = origin.1 + u32::try_from(y).unwrap();
+                    assert_eq!(mask(x, y, 1, transform, rule).coverage(), [value]);
                 }
             }
         }

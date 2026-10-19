@@ -4,7 +4,7 @@ use crate::flatten::{CurveStack, Polyline, bounded, flatten_into};
 use crate::{FillRule, Point};
 use pagura_core::{Error, Limits, Result};
 
-use super::super::{Shape, bytes, charge};
+use super::super::{Shape, capacity_bytes, charge};
 
 pub(super) const GRID: i64 = 1 << 20;
 
@@ -39,16 +39,16 @@ pub(super) struct Geometry {
 impl Geometry {
     pub(super) fn retained_bytes(&self) -> usize {
         [
-            bytes(&self.exact),
-            bytes(&self.points),
-            bytes(&self.segments),
-            bytes(&self.contours),
-            bytes(&self.rules),
-            bytes(&self.flattened),
-            bytes(&self.curves),
+            capacity_bytes(&self.exact),
+            capacity_bytes(&self.points),
+            capacity_bytes(&self.segments),
+            capacity_bytes(&self.contours),
+            capacity_bytes(&self.rules),
+            capacity_bytes(&self.flattened),
+            capacity_bytes(&self.curves),
         ]
         .into_iter()
-        .chain(self.flattened.iter().map(|c| bytes(&c.points)))
+        .chain(self.flattened.iter().map(|c| capacity_bytes(&c.points)))
         .fold(0, usize::saturating_add)
     }
 

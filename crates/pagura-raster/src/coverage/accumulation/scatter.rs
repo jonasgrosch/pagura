@@ -1,6 +1,6 @@
 //! Counting-sorted row admission and integer pieces with shared grid crossings.
 
-use super::super::{bytes, charge, index, sort_work};
+use super::super::{capacity_bytes, charge, index, sort_work};
 use super::dda::{Dda, ordinate, quotient};
 use super::geometry::{GRID, Geometry, reserve};
 use pagura_core::{Error, Limits, Result};
@@ -73,14 +73,14 @@ pub(super) struct Scatter {
 impl Scatter {
     pub(super) fn retained_bytes(&self) -> usize {
         [
-            bytes(&self.pieces),
-            bytes(&self.risks),
-            bytes(&self.spans),
-            bytes(&self.carry),
-            bytes(&self.active),
-            bytes(&self.order),
-            bytes(&self.offsets),
-            bytes(&self.seen),
+            capacity_bytes(&self.pieces),
+            capacity_bytes(&self.risks),
+            capacity_bytes(&self.spans),
+            capacity_bytes(&self.carry),
+            capacity_bytes(&self.active),
+            capacity_bytes(&self.order),
+            capacity_bytes(&self.offsets),
+            capacity_bytes(&self.seen),
         ]
         .into_iter()
         .fold(0, usize::saturating_add)

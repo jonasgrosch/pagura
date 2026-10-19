@@ -1,6 +1,8 @@
 //! One-cell strip sweep, using source geometry for ghosts and dense cells.
 
-use super::super::{Edge, Exact, RASTER_WORK, Rectangle, bytes, clipped, normalize_boundaries};
+use super::super::{
+    Edge, Exact, RASTER_WORK, Rectangle, capacity_bytes, clipped, normalize_boundaries,
+};
 use super::geometry::{GRID, Geometry, reserve};
 use super::scatter::{Active, Piece};
 use crate::Point;
@@ -17,8 +19,8 @@ impl Resolver {
     pub(super) fn retained_bytes(&self) -> usize {
         self.scratch
             .retained_bytes()
-            .saturating_add(bytes(&self.sources))
-            .saturating_add(bytes(&self.pieces))
+            .saturating_add(capacity_bytes(&self.sources))
+            .saturating_add(capacity_bytes(&self.pieces))
     }
 
     pub(super) fn prepare_row(&mut self, active: &[Active]) -> Result<()> {
@@ -208,8 +210,7 @@ impl Resolver {
             &mut self.scratch.row,
         )?;
         let mut output = [0];
-        self.scratch
-            .sweep_edges(1, &mut output, (0, 0), groups, 0.0)?;
+        self.scratch.sweep_edges(1, &mut output, 0, groups, 0.0)?;
         Ok(output[0])
     }
 }

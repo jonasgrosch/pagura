@@ -257,7 +257,7 @@ pub(crate) fn outline(
     outline_boundary(path, transform, rule, limits).map(Some)
 }
 
-pub(crate) fn outline_boundary(
+fn outline_boundary(
     path: &Path,
     transform: Transform,
     rule: FillRule,
@@ -441,7 +441,19 @@ fn charge(work: &mut usize, amount: usize, limits: &Limits) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Mask, Paint, Pixmap, Rgba8, fill_path, fill_path_at};
+    use crate::{IntRect, Mask, Paint, Pixmap, Rasterizer, Rgba8};
+
+    fn area(x: u32, y: u32, width: u32, height: u32) -> IntRect {
+        IntRect::new(x, y, width, height).unwrap()
+    }
+
+    /// The coverage of `path` over the 8 × 8 pixels at the device origin.
+    fn coverage(path: &Path, transform: Transform, rule: FillRule, limits: Limits) -> Vec<u8> {
+        Mask::from_path(area(0, 0, 8, 8), path.clone(), transform, rule, limits)
+            .unwrap()
+            .coverage()
+            .to_vec()
+    }
 
     #[test]
     fn exact_collinearity_does_not_widen_a_nearly_collinear_triangle() {
@@ -500,35 +512,50 @@ mod tests {
         let mut path = PathBuilder::new();
         path.rect(3.0, 1.0, 0.0, 6.0);
         let mut path = path.finish();
-        let paint = Paint::Solid(Rgba8::BLACK);
+        let limits = Limits::default();
+        let mut page = PathBuilder::new();
+        page.rect(0.0, 0.0, 8.0, 8.0);
+        let page = Mask::from_path(
+            area(0, 0, 8, 8),
+            page.finish(),
+            Transform::IDENTITY,
+            FillRule::NonZero,
+            limits,
+        )
+        .unwrap();
         for rule in [FillRule::NonZero, FillRule::EvenOdd] {
-            path.classify_fill(rule, &Limits::default(), &mut 0)
-                .unwrap();
-            let clip = Mask::from_path(8, 8, &path, Transform::IDENTITY, rule, 64).unwrap();
+            path.classify_fill(rule, &limits, &mut 0).unwrap();
+            let clip = coverage(&path, Transform::IDENTITY, rule, limits);
             let mut full = Pixmap::new(8, 8, Rgba8::TRANSPARENT, 64).unwrap();
-            fill_path(&mut full, &path, Transform::IDENTITY, rule, &paint, None).unwrap();
+            Rasterizer::default()
+                .fill_path(
+                    &mut full,
+                    path.clone(),
+                    Transform::IDENTITY,
+                    rule,
+                    &Paint::Solid(Rgba8::BLACK),
+                    &page,
+                )
+                .unwrap();
             for y in 0..8 {
                 for x in 0..8 {
-                    let mut tile = Pixmap::new(1, 1, Rgba8::TRANSPARENT, 1).unwrap();
-                    fill_path_at(
-                        &mut tile,
-                        &path,
+                    let tile = Mask::from_path(
+                        area(x, y, 1, 1),
+                        path.clone(),
                         Transform::IDENTITY,
                         rule,
-                        &paint,
-                        None,
-                        (x, y),
+                        limits,
                     )
                     .unwrap();
-                    let offset = usize::try_from((y * 8 + x) * 4).unwrap();
-                    assert_eq!(tile.data(), &full.data()[offset..offset + 4]);
+                    let index = usize::try_from(y * 8 + x).unwrap();
+                    assert_eq!(tile.coverage(), [full.data()[index * 4 + 3]]);
                     let expected = if (2..4).contains(&x) && (1..7).contains(&y) {
                         128
                     } else {
                         0
                     };
-                    assert_eq!(tile.data()[3], expected);
-                    assert_eq!(clip.coverage()[(y * 8 + x) as usize], expected);
+                    assert_eq!(tile.coverage(), [expected]);
+                    assert_eq!(clip[index], expected);
                 }
             }
         }
@@ -549,21 +576,12 @@ mod tests {
                 .x
                 .is_sign_positive()
         );
-        let mut target = Pixmap::new(8, 8, Rgba8::TRANSPARENT, 64).unwrap();
         let mut path = path.finish();
         path.classify_fill(FillRule::EvenOdd, &Limits::default(), &mut 0)
             .unwrap();
-        fill_path(
-            &mut target,
-            &path,
-            transform,
-            FillRule::EvenOdd,
-            &Paint::Solid(Rgba8::BLACK),
-            None,
-        )
-        .unwrap();
-        assert_eq!(target.data()[(2 * 8) * 4 + 3], 0);
-        assert_eq!(target.data()[(3 * 8) * 4 + 3], 255);
+        let coverage = coverage(&path, transform, FillRule::EvenOdd, Limits::default());
+        assert_eq!(coverage[2 * 8], 0);
+        assert_eq!(coverage[3 * 8], 255);
     }
 
     #[test]
@@ -683,17 +701,8 @@ mod tests {
                     path.classify_fill(rule, &Limits::default(), &mut 0)
                         .unwrap();
                     assert_eq!(path.fill_region(rule), Some(FillRegion::EmptyBoundary));
-                    let mut target = Pixmap::new(8, 8, Rgba8::TRANSPARENT, 64).unwrap();
-                    fill_path(
-                        &mut target,
-                        &path,
-                        Transform::IDENTITY,
-                        rule,
-                        &Paint::Solid(Rgba8::BLACK),
-                        None,
-                    )
-                    .unwrap();
-                    assert!(target.data().as_chunks::<4>().0.iter().any(|p| p[3] != 0));
+                    let coverage = coverage(&path, Transform::IDENTITY, rule, Limits::default());
+                    assert!(coverage.iter().any(|&v| v != 0));
                 }
             }
         }
@@ -873,20 +882,18 @@ mod tests {
             Some(FillRegion::EmptyBoundary)
         );
         let transform = Transform::new(1.0, 0.0, 0.0, 0.0, 0.0, 3.0);
-        let mut target = Pixmap::new(8, 8, Rgba8::TRANSPARENT, 64).unwrap();
-        crate::stroke_path(
-            &mut target,
+        let (outline, device) = crate::stroke_outline(
             &path,
             transform,
             &Stroke {
                 width: 2.0,
                 ..Stroke::default()
             },
-            &Paint::Solid(Rgba8::BLACK),
-            None,
+            &Limits::default(),
         )
         .unwrap();
-        assert!(target.data().iter().all(|&v| v == 0));
+        let coverage = coverage(&outline, device, FillRule::NonZero, Limits::default());
+        assert!(coverage.iter().all(|&v| v == 0));
     }
 
     #[test]
@@ -906,27 +913,9 @@ mod tests {
                     .unwrap()
                     .is_none()
             );
-            let mut target = Pixmap::new_with_limits(8, 8, Rgba8::TRANSPARENT, limits).unwrap();
-            fill_path(
-                &mut target,
-                &path,
-                Transform::IDENTITY,
-                rule,
-                &Paint::Solid(Rgba8::BLACK),
-                None,
-            )
-            .unwrap();
-            assert_eq!(
-                target
-                    .data()
-                    .as_chunks::<4>()
-                    .0
-                    .iter()
-                    .filter(|p| p[3] != 0)
-                    .count(),
-                1
-            );
-            assert_eq!(target.data()[(2 * 8 + 3) * 4 + 3], 255);
+            let coverage = coverage(&path, Transform::IDENTITY, rule, limits);
+            assert_eq!(coverage.iter().filter(|&&v| v != 0).count(), 1);
+            assert_eq!(coverage[2 * 8 + 3], 255);
         }
     }
 

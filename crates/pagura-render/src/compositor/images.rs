@@ -30,7 +30,7 @@ impl Context {
         let mut bounds = PathBuilder::new();
         bounds.rect(0.0, 0.0, 1.0, 1.0);
         let Some(clip) =
-            clip.clipped_path(&bounds.finish(), transform, FillRule::NonZero, self.limits)?
+            clip.clipped_path(bounds.finish(), transform, FillRule::NonZero, self.limits)?
         else {
             return Ok(());
         };
@@ -43,7 +43,6 @@ impl Context {
         let stencil = self.stencil_color(command, model)?;
         let template = self.image_source(command, model, stencil)?;
         let image = &command.image;
-        let origin = clip.origin();
         let mut mask_samples = MaskSamples { table: [None; 256] };
         self.charge(clip.coverage().len())?;
         if clip.spans().next().is_none() {
@@ -52,17 +51,15 @@ impl Context {
         let mut texels = Texels::new(image, model);
         let available = self.limits.decoded_bytes.saturating_sub(self.allocated);
         let (mut sampler, mut mask_sampler) =
-            prepare(image, inverse, origin.0, clip.width(), available)?;
+            prepare(image, inverse, clip.area().x(), clip.width(), available)?;
         let sampling_bytes = sampler.bytes() + mask_sampler.as_ref().map_or(0, Prepared::bytes);
         self.trim_raster(sampling_bytes);
         self.allocated += sampling_bytes;
-        for (row, column, coverage) in clip.spans() {
-            let y =
-                origin.1 + u32::try_from(row).map_err(|_| Error::limit("image row exceeds u32"))?;
-            for (offset, &coverage) in coverage.iter().enumerate() {
-                let column = column + offset;
-                let x = origin.0
-                    + u32::try_from(column)
+        for span in clip.spans() {
+            let y = span.y();
+            for (offset, &coverage) in span.coverage().iter().enumerate() {
+                let x = span.x()
+                    + u32::try_from(offset)
                         .map_err(|_| Error::limit("image column exceeds u32"))?;
                 let mut work = 0;
                 let maximum = self.limits.raster_work.saturating_sub(self.work);
@@ -523,7 +520,7 @@ mod tests {
             device: Transform::IDENTITY,
             page_device: Transform::IDENTITY,
             view_unit: 1.0,
-            crop: PathBuilder::new().finish(),
+            crop: Arc::new(PathBuilder::new().finish()),
             allocated: 0,
             work: 0,
             clip: None,

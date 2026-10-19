@@ -22,11 +22,9 @@ fn compare_shapes(shapes: &[Shape], origin: (u32, u32), tiles: bool) {
     let mut candidate = vec![0; 64];
     let limits = Limits::default();
     super::super::coverage_exact(
-        8,
-        8,
+        crate::IntRect::new(origin.0, origin.1, 8, 8).unwrap(),
         shapes,
         &mut exact,
-        origin,
         &limits,
         &mut super::super::Exact::default(),
     )
@@ -245,7 +243,13 @@ fn random_contours_and_mixed_rule_groups_match_the_sweep_and_tiles() {
                 unreachable!()
             };
             shape.geometry = crate::coverage::Geometry::Glyph(Arc::new(
-                crate::GlyphGeometry::new(path, [1.0, 0.0, 0.0, 1.0], &Limits::default()).unwrap(),
+                crate::GlyphGeometry::new(
+                    path,
+                    Transform::IDENTITY,
+                    &Limits::default(),
+                    usize::MAX,
+                )
+                .unwrap(),
             ));
         }
         compare_shapes(&shapes, origin, case % 8 == 0);

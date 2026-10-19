@@ -1,9 +1,8 @@
 //! Closed-form rectangle coverage and fractional clipping bounds (8.5.3–8.5.4).
 
 use super::{Geometry, Row, Shape, index};
-use crate::Segment;
 use crate::flatten::bounded;
-use crate::quantize_unit;
+use crate::{IntRect, Segment, quantize_unit};
 use pagura_core::{Error, Result};
 
 #[derive(Debug, Clone, Copy)]
@@ -76,11 +75,10 @@ impl Rectangle {
     // separately quantized masks. Keep only other shapes in the winding state.
     pub(super) fn intersection(
         shapes: &[Shape],
-        origin: (u32, u32),
-        size: (u32, u32),
+        area: IntRect,
         row: &mut Row,
     ) -> Result<(Self, usize)> {
-        let mut bounds = Self::viewport(origin, size);
+        let mut bounds = Self::from(area);
         let mut groups = 0;
         // Paths that are not rectangles are validated when they are flattened.
         for shape in shapes {
@@ -95,15 +93,6 @@ impl Rectangle {
         Ok((bounds, groups))
     }
 
-    pub(super) fn viewport(origin: (u32, u32), size: (u32, u32)) -> Self {
-        Self {
-            left: f64::from(origin.0),
-            top: f64::from(origin.1),
-            right: f64::from(origin.0) + f64::from(size.0),
-            bottom: f64::from(origin.1) + f64::from(size.1),
-        }
-    }
-
     pub(super) fn intersect(&mut self, other: Self) {
         self.left = self.left.max(other.left);
         self.top = self.top.max(other.top);
@@ -115,13 +104,13 @@ impl Rectangle {
         self.left >= self.right || self.top >= self.bottom
     }
 
-    pub(super) fn write(self, out: &mut [u8], stride: usize, origin: (u32, u32)) -> Result<()> {
+    pub(super) fn write(self, out: &mut [u8], stride: usize, area: IntRect) -> Result<()> {
         out.fill(0);
         if self.is_empty() {
             return Ok(());
         }
-        let left = self.left - f64::from(origin.0);
-        let right = self.right - f64::from(origin.0);
+        let left = self.left - f64::from(area.x());
+        let right = self.right - f64::from(area.x());
         let start = index(left.floor(), stride);
         let end = index(right.ceil(), stride);
         let column =
@@ -130,7 +119,7 @@ impl Rectangle {
         let last = right - (right.ceil() - 1.0).max(left);
         for (y, row) in out.chunks_exact_mut(stride).enumerate() {
             let y = f64::from(u32::try_from(y).map_err(|_| Error::limit("row exceeds u32"))?)
-                + f64::from(origin.1);
+                + f64::from(area.y());
             let height = (self.bottom.min(y + 1.0) - self.top.max(y)).clamp(0.0, 1.0);
             if height > 0.0 {
                 let run = &mut row[start..end];
@@ -144,6 +133,17 @@ impl Rectangle {
             }
         }
         Ok(())
+    }
+}
+
+impl From<IntRect> for Rectangle {
+    fn from(area: IntRect) -> Self {
+        Self {
+            left: f64::from(area.x()),
+            top: f64::from(area.y()),
+            right: f64::from(area.right()),
+            bottom: f64::from(area.bottom()),
+        }
     }
 }
 

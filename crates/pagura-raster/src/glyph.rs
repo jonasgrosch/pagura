@@ -6,6 +6,7 @@
 //! a small curved contour can collapse to a point without becoming the
 //! geometric point of ISO 32000-2, 8.5.3.3.1.
 
+use crate::coverage::capacity_bytes;
 use crate::flatten::{bounded, flatten};
 use crate::{Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Result};
@@ -43,21 +44,34 @@ pub struct GlyphGeometry {
 }
 
 impl GlyphGeometry {
-    /// Subdivides an outline under the translation-free map `[a, b, c, d]`.
+    /// Subdivides an outline under the linear part of `linear`; its
+    /// translation is ignored, because each placement supplies its own
+    /// origin ([`Rasterizer::clipped_glyph`](crate::Rasterizer::clipped_glyph)).
     ///
     /// Uses the shared flattener at the unchanged 1/256-device-pixel tolerance.
     /// The instance translation never participates in subdivision.
     /// Limits apply equally when this computation precedes cache admission.
+    /// `max_bytes` bounds [`Self::retained_bytes`]; a cache passes its
+    /// remaining allowance.
     ///
     /// # Errors
-    /// Returns invalid geometry, excessive coordinates, segment or depth limits.
-    pub fn new(outline: &Path, linear: [f64; 4], limits: &Limits) -> Result<Self> {
-        let [a, b, c, d] = linear;
-        let transform = Transform::new(a, b, c, d, 0.0, 0.0);
+    /// Returns invalid geometry, excessive coordinates, segment, depth or
+    /// byte limits.
+    pub fn new(
+        outline: &Path,
+        linear: Transform,
+        limits: &Limits,
+        max_bytes: usize,
+    ) -> Result<Self> {
+        let transform = Transform {
+            e: 0.0,
+            f: 0.0,
+            ..linear
+        };
         if !transform.is_finite() {
             return Err(Error::invalid_argument("glyph linear map is not finite"));
         }
-        if limits.decoded_bytes < size_of::<Self>() {
+        if max_bytes < size_of::<Self>() {
             return Err(Error::limit("glyph geometry byte budget exceeded"));
         }
         let mut contours = flatten(outline, transform, limits)?;
@@ -78,7 +92,7 @@ impl GlyphGeometry {
             vertices,
             bounds: None,
         };
-        if result.retained_bytes() > limits.decoded_bytes {
+        if result.retained_bytes() > max_bytes {
             return Err(Error::limit("glyph geometry byte budget exceeded"));
         }
         result.bounds = bounds(&result.contours);
@@ -105,14 +119,8 @@ impl GlyphGeometry {
     /// Shared outline ownership and a cache index need separate accounting.
     pub fn retained_bytes(&self) -> usize {
         self.contours.iter().fold(
-            size_of::<Self>().saturating_add(
-                self.contours
-                    .capacity()
-                    .saturating_mul(size_of::<GlyphContour>()),
-            ),
-            |bytes, contour| {
-                bytes.saturating_add(contour.points.capacity().saturating_mul(size_of::<Point>()))
-            },
+            size_of::<Self>().saturating_add(capacity_bytes(&self.contours)),
+            |bytes, contour| bytes.saturating_add(capacity_bytes(&contour.points)),
         )
     }
 }
@@ -177,6 +185,13 @@ mod tests {
     use super::*;
     use crate::PathBuilder;
 
+    /// A cache allowance as large as the default decoded-stream cap.
+    const BUDGET: usize = 256 << 20;
+
+    fn linear([a, b, c, d]: [f64; 4]) -> Transform {
+        Transform::new(a, b, c, d, 0.0, 0.0)
+    }
+
     fn tiny_curve() -> Path {
         let mut path = PathBuilder::new();
         path.move_to(Point::new(4.0, 4.0));
@@ -192,8 +207,13 @@ mod tests {
 
     #[test]
     fn collapsed_curve_is_not_a_geometric_point() {
-        let geometry =
-            GlyphGeometry::new(&tiny_curve(), [1.0, 0.0, 0.0, 1.0], &Limits::default()).unwrap();
+        let geometry = GlyphGeometry::new(
+            &tiny_curve(),
+            Transform::IDENTITY,
+            &Limits::default(),
+            BUDGET,
+        )
+        .unwrap();
         let contour = &geometry.contours()[0];
         assert_eq!(contour.points(), &[Point::new(4.0, 4.0); 2]);
         assert!(!contour.is_degenerate());
@@ -204,7 +224,8 @@ mod tests {
     #[test]
     fn collapsed_curve_requires_contour_metadata_at_rasterization() {
         let path = tiny_curve();
-        let geometry = GlyphGeometry::new(&path, [1.0, 0.0, 0.0, 1.0], &Limits::default()).unwrap();
+        let geometry =
+            GlyphGeometry::new(&path, Transform::IDENTITY, &Limits::default(), BUDGET).unwrap();
         let mut polygon = PathBuilder::new();
         for contour in geometry.contours() {
             let mut points = contour.points().iter();
@@ -218,12 +239,14 @@ mod tests {
         }
         let rasterize = |path: &Path| {
             crate::Mask::from_path(
-                8,
-                8,
-                path,
+                crate::IntRect::new(0, 0, 8, 8).unwrap(),
+                path.clone(),
                 Transform::IDENTITY,
                 crate::FillRule::NonZero,
-                64,
+                Limits {
+                    pixels: 64,
+                    ..Limits::default()
+                },
             )
             .unwrap()
         };
@@ -250,7 +273,9 @@ mod tests {
     fn point_classification_precedes_subdivision_under_a_singular_map() {
         let mut path = PathBuilder::new();
         path.rect(1.0, 1.0, 2.0, 2.0);
-        let geometry = GlyphGeometry::new(&path.finish(), [0.0; 4], &Limits::default()).unwrap();
+        let geometry =
+            GlyphGeometry::new(&path.finish(), linear([0.0; 4]), &Limits::default(), BUDGET)
+                .unwrap();
         assert!(
             geometry.contours()[0]
                 .points()
@@ -267,8 +292,13 @@ mod tests {
         path.line_to(Point::new(3.0, 4.0)).unwrap();
         path.close();
         path.line_to(Point::new(5.0, 6.0)).unwrap();
-        let geometry =
-            GlyphGeometry::new(&path.finish(), [0.0, 2.0, -3.0, 0.0], &Limits::default()).unwrap();
+        let geometry = GlyphGeometry::new(
+            &path.finish(),
+            linear([0.0, 2.0, -3.0, 0.0]),
+            &Limits::default(),
+            BUDGET,
+        )
+        .unwrap();
         assert_eq!(geometry.contours().len(), 2);
         assert_eq!(
             geometry.contours()[1].points(),
@@ -285,7 +315,7 @@ mod tests {
             ..Limits::default()
         };
         assert_eq!(
-            GlyphGeometry::new(&path, [1.0, 0.0, 0.0, 1.0], &limits)
+            GlyphGeometry::new(&path, Transform::IDENTITY, &limits, BUDGET)
                 .unwrap_err()
                 .kind,
             pagura_core::ErrorKind::Limit
@@ -296,19 +326,19 @@ mod tests {
             ..Limits::default()
         };
         assert_eq!(
-            GlyphGeometry::new(&path, [1e6, 0.0, 0.0, 1e6], &limits)
+            GlyphGeometry::new(&path, linear([1e6, 0.0, 0.0, 1e6]), &limits, BUDGET)
                 .unwrap_err()
                 .kind,
             pagura_core::ErrorKind::Limit
         );
         assert_eq!(
-            GlyphGeometry::new(&path, [f64::NAN, 0.0, 0.0, 1.0], &limits)
+            GlyphGeometry::new(&path, linear([f64::NAN, 0.0, 0.0, 1.0]), &limits, BUDGET)
                 .unwrap_err()
                 .kind,
             pagura_core::ErrorKind::InvalidArgument
         );
         assert_eq!(
-            GlyphGeometry::new(&path, [1e12, 0.0, 0.0, 1e12], &limits)
+            GlyphGeometry::new(&path, linear([1e12, 0.0, 0.0, 1e12]), &limits, BUDGET)
                 .unwrap_err()
                 .kind,
             pagura_core::ErrorKind::Limit
@@ -329,13 +359,14 @@ mod tests {
         .unwrap();
         let path = path.finish();
         let scale = 1.0 / 32.0;
-        for linear in [
+        for map in [
             [scale, 0.0, 0.0, scale],
             [-scale, 0.0, 0.0, scale],
             [0.0, scale, -scale, 0.0],
         ] {
-            let geometry = GlyphGeometry::new(&path, linear, &Limits::default()).unwrap();
-            let [a, b, c, d] = linear;
+            let geometry =
+                GlyphGeometry::new(&path, linear(map), &Limits::default(), BUDGET).unwrap();
+            let [a, b, c, d] = map;
             let vertices = geometry.contours()[0].points();
             assert_eq!(vertices.first(), Some(&Point::default()));
             assert_eq!(vertices.last(), Some(&Point::new(a, b)));
@@ -372,8 +403,13 @@ mod tests {
         path.line_to(Point::new(1.25, 2.5)).unwrap();
         path.close();
         path.move_to(Point::new(3.0, 4.0));
-        let geometry =
-            GlyphGeometry::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &Limits::default()).unwrap();
+        let geometry = GlyphGeometry::new(
+            &path.finish(),
+            Transform::IDENTITY,
+            &Limits::default(),
+            BUDGET,
+        )
+        .unwrap();
         assert_eq!(geometry.contours().len(), 2);
         assert!(geometry.contours()[0].is_degenerate());
         assert!(geometry.contours()[0].is_closed());
@@ -389,18 +425,15 @@ mod tests {
             path.rect(f64::from(x), 0.0, 0.5, 0.5);
         }
         let path = path.finish();
-        let limits = Limits {
-            decoded_bytes: 1024,
-            ..Limits::default()
-        };
         assert_eq!(
-            GlyphGeometry::new(&path, [1.0, 0.0, 0.0, 1.0], &limits)
+            GlyphGeometry::new(&path, Transform::IDENTITY, &Limits::default(), 1024)
                 .unwrap_err()
                 .kind,
             pagura_core::ErrorKind::Limit
         );
-        let geometry = GlyphGeometry::new(&path, [1.0, 0.0, 0.0, 1.0], &Limits::default()).unwrap();
-        assert!(geometry.retained_bytes() <= Limits::default().decoded_bytes);
+        let geometry =
+            GlyphGeometry::new(&path, Transform::IDENTITY, &Limits::default(), BUDGET).unwrap();
+        assert!(geometry.retained_bytes() <= BUDGET);
         assert!(geometry.retained_bytes() >= 400 * size_of::<Point>());
     }
 
@@ -412,23 +445,24 @@ mod tests {
             ..Limits::default()
         };
         assert_eq!(
-            GlyphGeometry::new(&path, [1e6, 0.0, 0.0, 1e6], &limits)
+            GlyphGeometry::new(&path, linear([1e6, 0.0, 0.0, 1e6]), &limits, BUDGET)
                 .unwrap_err()
                 .kind,
             pagura_core::ErrorKind::Limit
         );
-        let limits = Limits {
-            decoded_bytes: 0,
-            ..Limits::default()
-        };
         assert_eq!(
-            GlyphGeometry::new(&Path::default(), [1.0, 0.0, 0.0, 1.0], &limits)
+            GlyphGeometry::new(&Path::default(), Transform::IDENTITY, &Limits::default(), 0)
                 .unwrap_err()
                 .kind,
             pagura_core::ErrorKind::Limit
         );
-        let geometry =
-            GlyphGeometry::new(&Path::default(), [1.0, 0.0, 0.0, 1.0], &Limits::default()).unwrap();
+        let geometry = GlyphGeometry::new(
+            &Path::default(),
+            Transform::IDENTITY,
+            &Limits::default(),
+            BUDGET,
+        )
+        .unwrap();
         assert_eq!(geometry.contours(), []);
         assert_eq!(geometry.vertices(), 0);
     }
@@ -438,18 +472,25 @@ mod tests {
         path.move_to(Point::new(0.25, 0.25));
         path.close();
         let glyph = std::sync::Arc::new(
-            GlyphGeometry::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &Limits::default()).unwrap(),
+            GlyphGeometry::new(
+                &path.finish(),
+                Transform::IDENTITY,
+                &Limits::default(),
+                BUDGET,
+            )
+            .unwrap(),
         );
         let mut path = PathBuilder::new();
         path.rect(10.5, 20.5, 1.0, 1.0);
-        let clip = crate::Mask::from_path_at(
-            2,
-            2,
-            &path.finish(),
+        let clip = crate::Mask::from_path(
+            crate::IntRect::new(10, 20, 2, 2).unwrap(),
+            path.finish(),
             Transform::IDENTITY,
             crate::FillRule::NonZero,
-            4,
-            (10, 20),
+            Limits {
+                pixels: 4,
+                ..Limits::default()
+            },
         )
         .unwrap();
         let mask = crate::Rasterizer::default()
@@ -457,8 +498,11 @@ mod tests {
             .unwrap()
             .unwrap();
         assert_eq!(mask.coverage(), [64]);
-        assert_eq!(mask.origin(), (10, 20));
-        let spans: Vec<_> = mask.spans().collect();
+        assert_eq!(mask.area(), crate::IntRect::new(10, 20, 1, 1).unwrap());
+        let spans: Vec<_> = mask
+            .spans()
+            .map(|span| (span.row(), span.column(), span.coverage()))
+            .collect();
         assert_eq!(spans, [(0, 0, &[64][..])]);
     }
 }

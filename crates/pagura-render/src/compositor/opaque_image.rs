@@ -58,12 +58,12 @@ impl Context {
         let mut bounds = PathBuilder::new();
         bounds.rect(0.0, 0.0, 1.0, 1.0);
         let Some(clip) = clip
-            .clipped_path(&bounds.finish(), transform, FillRule::NonZero, self.limits)
+            .clipped_path(bounds.finish(), transform, FillRule::NonZero, self.limits)
             .map_err(|error| crate::display::contextual(error, command.position))?
         else {
             return Ok(false);
         };
-        if clip.origin() != (region.x, region.y)
+        if (clip.area().x(), clip.area().y()) != (region.x, region.y)
             || clip.width() != region.width
             || clip.height() != region.height
             || clip.coverage().iter().any(|&value| value != 255)

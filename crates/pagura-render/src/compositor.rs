@@ -27,7 +27,7 @@ use crate::transparency::{Composite, Group, MaskMethod, Model, SoftMask};
 use crate::{RenderOptions, Tile};
 use pagura_core::{Error, Limits, Result};
 use pagura_raster::{
-    FillRule, Mask, Path, PathBuilder, Pixmap, Point, Transform, adjusted_stroke_outline,
+    FillRule, IntRect, Mask, Path, PathBuilder, Pixmap, Point, Transform, adjusted_stroke_outline,
     stroke_outline,
 };
 use std::sync::Arc;
@@ -199,7 +199,7 @@ struct Context {
     device: Transform,
     page_device: Transform,
     view_unit: f64,
-    crop: Path,
+    crop: Arc<Path>,
     allocated: usize,
     work: usize,
     clip: Option<(usize, Tile, Arc<Mask>)>,
@@ -253,7 +253,7 @@ impl Context {
             device: list.device_transform(options),
             page_device: list.device_transform(options),
             view_unit: list.user_unit,
-            crop: crop.finish(),
+            crop: Arc::new(crop.finish()),
             allocated,
             work: plan.work,
             clip: None,
@@ -375,21 +375,13 @@ impl Context {
             f64::from(tile.width),
             f64::from(tile.height),
         );
-        let viewport = viewport.finish();
         let (path, transform) = if self.soft_source {
-            (&viewport, Transform::IDENTITY)
+            (Arc::new(viewport.finish()), Transform::IDENTITY)
         } else {
-            (&self.crop, self.page_device)
+            (Arc::clone(&self.crop), self.page_device)
         };
-        let mut mask = Mask::from_path_with_limits(
-            tile.width,
-            tile.height,
-            path,
-            transform,
-            FillRule::NonZero,
-            self.limits,
-            (tile.x, tile.y),
-        )?;
+        let area = IntRect::new(tile.x, tile.y, tile.width, tile.height)?;
+        let mut mask = Mask::from_path(area, path, transform, FillRule::NonZero, self.limits)?;
         let mut chain = Vec::new();
         let mut current = clip.map(AsRef::as_ref);
         while let Some(node) = current {
@@ -397,14 +389,12 @@ impl Context {
             current = node.parent.as_deref();
         }
         for node in chain.into_iter().rev() {
-            let next = Mask::from_path_with_limits(
-                tile.width,
-                tile.height,
-                &node.path,
+            let next = Mask::from_path(
+                area,
+                Arc::clone(&node.path),
                 self.device,
                 node.rule,
                 self.limits,
-                (tile.x, tile.y),
             )?;
             mask.intersect(&next)?;
         }
@@ -611,12 +601,12 @@ impl Context {
             .narrow_mut()
             .ok_or(Error::invalid_argument("missing colour buffer"))?;
         let stride = tile.width as usize;
-        let (x, y) = mask.origin();
-        let offset = (y - tile.y) as usize * stride + (x - tile.x) as usize;
-        for (row, column, coverage) in mask.spans() {
+        let area = mask.area();
+        let offset = (area.y() - tile.y) as usize * stride + (area.x() - tile.x) as usize;
+        for span in mask.spans() {
             buffer.path(
-                offset + row * stride + column,
-                coverage,
+                offset + span.row() * stride + span.column(),
+                span.coverage(),
                 color,
                 p.composite.alpha,
             )?;
@@ -692,10 +682,9 @@ impl Context {
             .as_ref()
             .map(|m| self.soft_mask(m, target.tile, model, depth + 1))
             .transpose()?;
-        let (ox, oy) = mask.origin();
-        for (row, col, coverage) in mask.spans() {
-            let y = oy + u32::try_from(row).map_err(|_| Error::limit("mask row exceeds u32"))?;
-            let x = ox + u32::try_from(col).map_err(|_| Error::limit("mask column exceeds u32"))?;
+        for span in mask.spans() {
+            let coverage = span.coverage();
+            let (x, y) = (span.x(), span.y());
             let start = target
                 .span(x, y, coverage.len())
                 .ok_or(Error::invalid_argument("mask outside group"))?;
@@ -730,7 +719,10 @@ impl Context {
                         model,
                         rate,
                         boundary.as_ref().map(|mask| {
-                            f64::from(mask.coverage()[row * boundary_width + col + column]) / 255.0
+                            f64::from(
+                                mask.coverage()
+                                    [span.row() * boundary_width + span.column() + column],
+                            ) / 255.0
                         }),
                     )?
                     else {
@@ -813,7 +805,7 @@ impl Context {
             && let Some(path) = &shading.bbox_path
         {
             let Some(clipped) = mask.clipped_path(
-                path,
+                Arc::clone(path),
                 pattern.transform.then(self.device),
                 FillRule::NonZero,
                 self.limits,
@@ -1018,7 +1010,8 @@ impl Context {
         ))?;
         let clip = self.clip(command.clip.as_ref(), target.tile)?;
         let clip = if let Some(path) = &command.shading.bbox_path {
-            let Some(mask) = clip.clipped_path(path, transform, FillRule::NonZero, self.limits)?
+            let Some(mask) =
+                clip.clipped_path(Arc::clone(path), transform, FillRule::NonZero, self.limits)?
             else {
                 return Ok(());
             };
@@ -1039,14 +1032,11 @@ impl Context {
             .as_ref()
             .map(|mask| self.soft_mask(mask, target.tile, model, depth + 1))
             .transpose()?;
-        let origin = clip.origin();
-        for (row, column, coverage) in clip.spans() {
-            let y = origin.1
-                + u32::try_from(row).map_err(|_| Error::limit("shading row exceeds u32"))?;
-            for (offset, &coverage) in coverage.iter().enumerate() {
-                let column = column + offset;
-                let x = origin.0
-                    + u32::try_from(column)
+        for span in clip.spans() {
+            let y = span.y();
+            for (offset, &coverage) in span.coverage().iter().enumerate() {
+                let x = span.x()
+                    + u32::try_from(offset)
                         .map_err(|_| Error::limit("shading column exceeds u32"))?;
                 let source = self.shading_sample(command, inverse, (x, y), model, rate, None)?;
                 let Some(mut source) = source else { continue };
@@ -1821,7 +1811,17 @@ mod tests {
         let mut path = PathBuilder::new();
         path.rect(0.0, 0.0, 2.0, 2.0);
         let path = Arc::new(path.finish());
-        let clip = Mask::from_path(2, 2, &path, Transform::IDENTITY, FillRule::NonZero, 4).unwrap();
+        let clip = Mask::from_path(
+            IntRect::new(0, 0, 2, 2).unwrap(),
+            Arc::clone(&path),
+            Transform::IDENTITY,
+            FillRule::NonZero,
+            Limits {
+                pixels: 4,
+                ..limits
+            },
+        )
+        .unwrap();
         let mut context = Context {
             overprint: crate::overprint::Policy::Ignore,
             elide_opaque_groups: false,
@@ -1836,7 +1836,7 @@ mod tests {
             device: Transform::IDENTITY,
             page_device: Transform::IDENTITY,
             view_unit: 1.0,
-            crop: (*path).clone(),
+            crop: Arc::clone(&path),
             allocated: 0,
             work: 0,
             clip: None,
@@ -1909,7 +1909,7 @@ mod tests {
             device: Transform::IDENTITY,
             page_device: Transform::IDENTITY,
             view_unit: 1.0,
-            crop: crop.finish(),
+            crop: Arc::new(crop.finish()),
             allocated: 0,
             work: 0,
             clip: None,

@@ -6,7 +6,7 @@ mod geometry;
 mod resolver;
 mod scatter;
 
-use super::{Shape, bytes, charge, sort_work};
+use super::{Shape, capacity_bytes, charge, sort_work};
 use certificate::Certificates;
 use geometry::{Geometry, reserve};
 use pagura_core::{Error, Limits, Result};
@@ -42,9 +42,9 @@ impl Accumulator {
             self.scatter.retained_bytes(),
             self.certificates.retained_bytes(),
             self.resolver.retained_bytes(),
-            bytes(&self.prefix),
-            bytes(&self.spans),
-            bytes(&self.cell),
+            capacity_bytes(&self.prefix),
+            capacity_bytes(&self.spans),
+            capacity_bytes(&self.cell),
         ]
         .into_iter()
         .fold(0, usize::saturating_add)

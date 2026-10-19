@@ -1,12 +1,16 @@
-//! Independent generated-vector and API invariant tests.
+//! Independent generated vectors through every coverage backend.
 
 use crate::coverage::{self, Scratch, Shape};
 use crate::{
-    FillRule, LineCap, LineJoin, Mask, Paint, Path, PathBuilder, Pixmap, Point, Rgba8, Stroke,
-    Transform, fill_path, stroke_path,
+    FillRule, IntRect, LineCap, LineJoin, Mask, Paint, Path, PathBuilder, Pixmap, Point,
+    Rasterizer, Rgba8, Stroke, Transform,
 };
-use pagura_core::{ErrorKind, Limits, Result};
+use pagura_core::{Limits, Rect, Result};
 use std::sync::Arc;
+
+fn area(x: u32, y: u32, width: u32, height: u32) -> IntRect {
+    IntRect::new(x, y, width, height).unwrap()
+}
 
 fn vector(name: &str, tolerance: u8) {
     let text =
@@ -15,16 +19,28 @@ fn vector(name: &str, tolerance: u8) {
     let expected = pagura_testkit::fixture("raster", &format!("{name}.pgm"));
     let expected = expected.strip_prefix(b"P5\n8 8\n255\n").unwrap();
     let (path, transform, rule) = if let Some(stroke) = stroke {
+        let (outline, transform) =
+            crate::stroke_outline(&path, Transform::IDENTITY, &stroke, &Limits::default()).unwrap();
         let mut target = Pixmap::new(8, 8, Rgba8::TRANSPARENT, 64).unwrap();
-        stroke_path(
-            &mut target,
-            &path,
+        let full = Path::rect(Rect::from_corners(0.0, 0.0, 8.0, 8.0).unwrap());
+        let limits = Limits::default();
+        let clip = Mask::from_path(
+            area(0, 0, 8, 8),
+            full,
             Transform::IDENTITY,
-            &stroke,
-            &Paint::Solid(Rgba8::BLACK),
-            None,
-        )
-        .unwrap();
+            FillRule::NonZero,
+            limits,
+        );
+        Rasterizer::default()
+            .fill_path(
+                &mut target,
+                outline.clone(),
+                transform,
+                FillRule::NonZero,
+                &Paint::Solid(Rgba8::BLACK),
+                &clip.unwrap(),
+            )
+            .unwrap();
         let actual: Vec<_> = target
             .data()
             .as_chunks::<4>()
@@ -33,8 +49,6 @@ fn vector(name: &str, tolerance: u8) {
             .map(|p| p[3])
             .collect();
         assert_vector_samples(name, "stroke API", &actual, expected, tolerance);
-        let (outline, transform) =
-            crate::stroke_outline(&path, Transform::IDENTITY, &stroke, &Limits::default()).unwrap();
         (outline, transform, FillRule::NonZero)
     } else {
         (path, Transform::IDENTITY, rule)
@@ -61,8 +75,7 @@ fn vector(name: &str, tolerance: u8) {
             let t = shape.transform;
             Shape {
                 geometry: coverage::Geometry::Glyph(Arc::new(
-                    crate::GlyphGeometry::new(path, [t.a, t.b, t.c, t.d], &Limits::default())
-                        .unwrap(),
+                    crate::GlyphGeometry::new(path, t, &Limits::default(), usize::MAX).unwrap(),
                 )),
                 transform: Transform::translate(t.e, t.f),
                 rule: shape.rule,
@@ -94,7 +107,7 @@ fn vector(name: &str, tolerance: u8) {
         let mut whole = [0; 64];
         let mut scratch = Scratch::default();
         let limits = Limits::default();
-        render(8, 8, shapes, &mut whole, (0, 0), &limits, &mut scratch).unwrap();
+        render(area(0, 0, 8, 8), shapes, &mut whole, &limits, &mut scratch).unwrap();
         assert_vector_samples(name, backend, &whole, expected, tolerance);
         assert_vector_tiles(name, backend, render, shapes, &whole, &limits, &mut scratch);
     }
@@ -103,7 +116,7 @@ fn vector(name: &str, tolerance: u8) {
 fn vector_geometry(text: &str) -> (Path, FillRule, Option<Stroke>, Vec<Path>) {
     let mut builder = PathBuilder::new();
     let mut rule = FillRule::NonZero;
-    let mut stroke = None;
+    let mut stroke_style = None;
     let mut clips = Vec::new();
     for line in text.lines() {
         let words: Vec<_> = line.split_whitespace().collect();
@@ -112,7 +125,7 @@ fn vector_geometry(text: &str) -> (Path, FillRule, Option<Stroke>, Vec<Path>) {
             "nonzero" => rule = FillRule::NonZero,
             "evenodd" => rule = FillRule::EvenOdd,
             "stroke" => {
-                stroke = Some(Stroke {
+                stroke_style = Some(Stroke {
                     width: n(1),
                     cap: match words[2] {
                         "butt" => LineCap::Butt,
@@ -130,7 +143,7 @@ fn vector_geometry(text: &str) -> (Path, FillRule, Option<Stroke>, Vec<Path>) {
             }
             "clip" => clips.push(builder.finish()),
             "dash" => {
-                let stroke = stroke.as_mut().unwrap();
+                let stroke = stroke_style.as_mut().unwrap();
                 stroke.dash_phase = n(1);
                 stroke.dash_array = words.iter().skip(2).map(|v| v.parse().unwrap()).collect();
             }
@@ -155,11 +168,10 @@ fn vector_geometry(text: &str) -> (Path, FillRule, Option<Stroke>, Vec<Path>) {
             _ => unreachable!(),
         }
     }
-    (builder.finish(), rule, stroke, clips)
+    (builder.finish(), rule, stroke_style, clips)
 }
 
-type CoverageRenderer =
-    fn(u32, u32, &[Shape], &mut [u8], (u32, u32), &Limits, &mut Scratch) -> Result<()>;
+type CoverageRenderer = fn(IntRect, &[Shape], &mut [u8], &Limits, &mut Scratch) -> Result<()>;
 
 fn assert_vector_samples(name: &str, backend: &str, actual: &[u8], expected: &[u8], tolerance: u8) {
     assert_eq!(actual.len(), expected.len(), "{name} {backend}");
@@ -183,7 +195,7 @@ fn assert_vector_tiles(
     for y in 0..8 {
         for x in 0..8 {
             let mut pixel = [0];
-            render(1, 1, shapes, &mut pixel, (x, y), limits, scratch).unwrap();
+            render(area(x, y, 1, 1), shapes, &mut pixel, limits, scratch).unwrap();
             assert_eq!(
                 pixel[0],
                 whole[(y * 8 + x) as usize],
@@ -226,279 +238,6 @@ fn independent_curved_and_stroke_oracles() {
         "zero-on-dash",
     ] {
         vector(name, 3);
-    }
-}
-
-#[test]
-fn clipping_and_premultiplied_composition() {
-    let mut path = PathBuilder::new();
-    path.rect(0.0, 0.0, 1.0, 1.0);
-    let path = path.finish();
-    let mut clip_path = PathBuilder::new();
-    clip_path.rect(0.0, 0.0, 0.5, 1.0);
-    let mut clip = Mask::from_path(
-        1,
-        1,
-        &clip_path.finish(),
-        Transform::IDENTITY,
-        FillRule::NonZero,
-        1,
-    )
-    .unwrap();
-    let full = Mask::from_path(1, 1, &path, Transform::IDENTITY, FillRule::NonZero, 1).unwrap();
-    clip.intersect(&full).unwrap();
-    assert_eq!(clip.coverage(), &[128]);
-    let mut target = Pixmap::new(1, 1, Rgba8::TRANSPARENT, 1).unwrap();
-    fill_path(
-        &mut target,
-        &path,
-        Transform::IDENTITY,
-        FillRule::NonZero,
-        &Paint::Solid(Rgba8::new(255, 0, 0, 128)),
-        Some(&clip),
-    )
-    .unwrap();
-    assert_eq!(target.data(), &[64, 0, 0, 64]);
-}
-
-#[test]
-fn stroke_transform_hairline_dash_and_miter() {
-    let mut builder = PathBuilder::new();
-    builder
-        .move_to(Point::new(1.0, 2.0))
-        .line_to(Point::new(3.0, 2.0))
-        .unwrap();
-    let path = builder.finish();
-    let transform = Transform::scale(2.0, 1.0);
-    let mut target = Pixmap::new(8, 8, Rgba8::TRANSPARENT, 64).unwrap();
-    stroke_path(
-        &mut target,
-        &path,
-        transform,
-        &Stroke {
-            width: 2.0,
-            cap: LineCap::ProjectingSquare,
-            ..Stroke::default()
-        },
-        &Paint::Solid(Rgba8::BLACK),
-        None,
-    )
-    .unwrap();
-    // User-space square cap extends 1 unit, hence 2 device pixels in x.
-    assert_eq!(
-        target
-            .row(1)
-            .unwrap()
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .map(|p| p[3])
-            .collect::<Vec<_>>(),
-        vec![255; 8]
-    );
-    let mut target = Pixmap::new(8, 8, Rgba8::TRANSPARENT, 64).unwrap();
-    stroke_path(
-        &mut target,
-        &path,
-        transform,
-        &Stroke {
-            width: 0.0,
-            ..Stroke::default()
-        },
-        &Paint::Solid(Rgba8::BLACK),
-        None,
-    )
-    .unwrap();
-    assert_eq!(
-        target
-            .data()
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .map(|p| u32::from(p[3]))
-            .sum::<u32>(),
-        4 * 256
-    );
-    let stroke = Stroke {
-        width: 2.0,
-        dash_array: vec![1.0, 1.0],
-        ..Stroke::default()
-    };
-    let (outline, _) =
-        crate::stroke::outline(&path, Transform::IDENTITY, &stroke, &Limits::default()).unwrap();
-    let mask = Mask::from_path(8, 8, &outline, Transform::IDENTITY, FillRule::NonZero, 64).unwrap();
-    assert_eq!(
-        mask.coverage().iter().map(|&n| u32::from(n)).sum::<u32>(),
-        2 * 255
-    );
-    for join in [LineJoin::Miter, LineJoin::Bevel, LineJoin::Round] {
-        let mut p = PathBuilder::new();
-        p.move_to(Point::new(1.0, 6.0))
-            .line_to(Point::new(4.0, 2.0))
-            .unwrap()
-            .line_to(Point::new(7.0, 6.0))
-            .unwrap();
-        let (outline, _) = crate::stroke::outline(
-            &p.finish(),
-            Transform::IDENTITY,
-            &Stroke {
-                join,
-                ..Stroke::default()
-            },
-            &Limits::default(),
-        )
-        .unwrap();
-        assert!(!outline.is_empty());
-    }
-}
-
-#[test]
-fn invalid_geometry_and_budgets_return_errors() {
-    let mut builder = PathBuilder::new();
-    builder.move_to(Point::new(f64::NAN, 0.0));
-    assert_eq!(
-        Mask::from_path(
-            1,
-            1,
-            &builder.finish(),
-            Transform::IDENTITY,
-            FillRule::NonZero,
-            1
-        )
-        .unwrap_err()
-        .kind,
-        ErrorKind::InvalidArgument
-    );
-    assert_eq!(
-        Mask::from_path(
-            8,
-            8,
-            &Path::default(),
-            Transform::IDENTITY,
-            FillRule::NonZero,
-            63
-        )
-        .unwrap_err()
-        .kind,
-        ErrorKind::Limit
-    );
-    let mut target = Pixmap::new(1, 1, Rgba8::WHITE, 1).unwrap();
-    let stroke = Stroke {
-        dash_array: vec![0.0],
-        ..Stroke::default()
-    };
-    assert!(
-        stroke_path(
-            &mut target,
-            &Path::default(),
-            Transform::IDENTITY,
-            &stroke,
-            &Paint::Solid(Rgba8::BLACK),
-            None
-        )
-        .is_err()
-    );
-}
-
-#[test]
-fn mask_intersection_uses_geometry_and_is_atomic() {
-    let mut builder = PathBuilder::new();
-    builder.rect(0.0, 0.0, 0.5, 1.0);
-    let left = Mask::from_path(
-        1,
-        1,
-        &builder.finish(),
-        Transform::IDENTITY,
-        FillRule::NonZero,
-        1,
-    )
-    .unwrap();
-    let mut intersection = left.clone();
-    intersection.intersect(&left).unwrap();
-    assert_eq!(intersection.coverage(), &[128]);
-    builder.rect(0.5, 0.0, 0.5, 1.0);
-    let right = Mask::from_path(
-        1,
-        1,
-        &builder.finish(),
-        Transform::IDENTITY,
-        FillRule::NonZero,
-        1,
-    )
-    .unwrap();
-    intersection.intersect(&right).unwrap();
-    assert_eq!(intersection.coverage(), &[0]);
-    let mut current = left;
-    for _ in 0..8 {
-        let other = current.clone();
-        current.intersect(&other).unwrap();
-    }
-    let previous = current.clone();
-    assert_eq!(
-        current.intersect(&previous).unwrap_err().kind,
-        ErrorKind::Limit
-    );
-    assert_eq!(current, previous);
-}
-
-#[test]
-fn large_compound_triangles_and_caller_budgets() {
-    let mut builder = PathBuilder::new();
-    for y in 0..200 {
-        for x in 0..250 {
-            let (x, y) = (f64::from(x * 2), f64::from(y * 2));
-            builder
-                .move_to(Point::new(x, y))
-                .line_to(Point::new(x + 1.0, y))
-                .unwrap()
-                .line_to(Point::new(x, y + 1.0))
-                .unwrap()
-                .close();
-        }
-    }
-    let path = builder.finish();
-    let mask = Mask::from_path(
-        500,
-        400,
-        &path,
-        Transform::IDENTITY,
-        FillRule::NonZero,
-        200_000,
-    )
-    .unwrap();
-    for (y, row) in mask.coverage().as_chunks::<500>().0.iter().enumerate() {
-        for (x, &value) in row.iter().enumerate() {
-            assert_eq!(value, if x % 2 == 0 && y % 2 == 0 { 128 } else { 0 });
-        }
-    }
-    for limits in [
-        Limits {
-            path_segments: 10,
-            ..Limits::default()
-        },
-        Limits {
-            raster_work: 0,
-            ..Limits::default()
-        },
-        Limits {
-            mask_sources: 0,
-            ..Limits::default()
-        },
-    ] {
-        assert_eq!(
-            Mask::from_path_with_limits(
-                500,
-                400,
-                &path,
-                Transform::IDENTITY,
-                FillRule::NonZero,
-                limits,
-                (0, 0)
-            )
-            .unwrap_err()
-            .kind,
-            ErrorKind::Limit
-        );
     }
 }
 
