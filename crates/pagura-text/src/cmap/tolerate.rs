@@ -1,6 +1,6 @@
 //! Bounded, reported CMap interpretations; strict mode rejects each deviation.
 use super::{CMap, Code, ParseContext, Range, charge};
-use crate::repairs;
+use crate::{GlyphText, repairs};
 use pagura_core::{Error, Position, Result, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -167,21 +167,21 @@ impl CMap {
             let old = self.unicode.insert(code, None).flatten();
             self.unicode_bytes = self
                 .unicode_bytes
-                .saturating_sub(old.as_ref().map_or(0, String::len));
+                .saturating_sub(old.as_deref().map_or(0, str::len));
             return Ok(());
         };
         let old = self
             .unicode
             .get(&code)
-            .and_then(Option::as_ref)
-            .map_or(0, String::len);
+            .and_then(Option::as_deref)
+            .map_or(0, str::len);
         self.unicode_bytes = self.unicode_bytes.saturating_sub(old);
         charge(
             &mut self.unicode_bytes,
             text.len(),
             context.limits.decoded_bytes,
         )?;
-        self.unicode.insert(code, Some(text));
+        self.unicode.insert(code, Some(GlyphText::from(text)));
         Ok(())
     }
 
@@ -228,8 +228,8 @@ impl CMap {
         self.unicode_bytes = self
             .unicode
             .values()
-            .filter_map(Option::as_ref)
-            .map(String::len)
+            .filter_map(Option::as_deref)
+            .map(str::len)
             .sum();
         self.spaces = vec![Range {
             first: Code { value: 0, len: 1 },

@@ -9,7 +9,7 @@
 //! separate assistive-technology view and never changes page search or selection.
 use pagura_core::{Error, Limits, Name, ObjectId, Result};
 use pagura_raster::Point;
-use pagura_text::{FontKind, WritingMode};
+use pagura_text::{FontKind, GlyphText, WritingMode};
 use std::{ops::Range, sync::Arc};
 
 pub mod features;
@@ -88,7 +88,7 @@ pub struct MarkedSpan {
 #[derive(Debug, Clone)]
 pub struct PositionedGlyph {
     /// ToUnicode or glyph-name Unicode, without a guessed value on failure.
-    pub unicode: Option<String>,
+    pub unicode: Option<GlyphText>,
     /// Index in [`PositionedText::fonts`].
     pub font: usize,
     /// Text-state font size before the text matrix and CTM.

@@ -28,7 +28,7 @@ pub(crate) fn estimate(font: &PdfFont) -> usize {
                     .unicode
                     .iter()
                     .flatten()
-                    .fold(0_usize, |sum, text| sum.saturating_add(text.capacity())),
+                    .fold(0_usize, |sum, text| sum.saturating_add(text.heap_bytes())),
             ),
         Mapping::Composite { map, shared: false } => size_of_val(map.as_ref())
             .saturating_add(2 * size_of::<usize>())

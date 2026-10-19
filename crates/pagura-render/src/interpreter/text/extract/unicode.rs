@@ -1,17 +1,16 @@
 //! Extraction-only fallback after ToUnicode, encoding names and collections.
 //! ISO 32000-2 9.10.2 permits reader-selected text when those methods fail.
 use pagura_core::{Error, Limits, Result};
-use pagura_text::{Glyph, GlyphShape};
-use std::borrow::Cow;
+use pagura_text::{Glyph, GlyphShape, GlyphText};
 
-pub(super) fn recover<'a>(
-    glyph: &'a Glyph,
+pub(super) fn recover(
+    glyph: &Glyph,
     base_font: &[u8],
     work: &mut usize,
     limits: Limits,
-) -> Result<Option<Cow<'a, str>>> {
+) -> Result<Option<GlyphText>> {
     if let Some(text) = &glyph.unicode {
-        return Ok(Some(Cow::Borrowed(text)));
+        return Ok(Some(text.clone()));
     }
     let GlyphShape::Outline { program, glyph, .. } = &glyph.shape else {
         return Ok(None);
@@ -23,7 +22,7 @@ pub(super) fn recover<'a>(
         .checked_add(name.len())
         .filter(|n| *n <= limits.text_work)
         .ok_or_else(|| Error::limit("glyph-name Unicode work budget exceeded"))?;
-    Ok(pagura_text::glyph_name_unicode_for_font(name.as_bytes(), base_font).map(Cow::Owned))
+    Ok(pagura_text::glyph_name_unicode_for_font(name.as_bytes(), base_font).map(GlyphText::from))
 }
 
 #[cfg(test)]

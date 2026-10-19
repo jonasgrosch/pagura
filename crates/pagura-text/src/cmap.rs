@@ -1,6 +1,6 @@
 //! Bounded declarative CMaps, ISO 32000-2 9.7.5–9.7.6 and 9.10.3.
 use crate::{
-    WritingMode,
+    GlyphText, WritingMode,
     cid::Cid,
     cid::map::{CidMap, CidRange, Step},
     features, repairs,
@@ -85,7 +85,7 @@ pub(crate) struct CMap {
     spaces: Vec<Range>,
     mappings: CidMap,
     notdef: CidMap,
-    unicode: BTreeMap<Code, Option<String>>,
+    unicode: BTreeMap<Code, Option<GlyphText>>,
     pub(crate) mode: WritingMode,
     pub(crate) use_name: Option<Name>,
     mode_explicit: bool,
@@ -114,14 +114,14 @@ impl CMap {
             .saturating_mul(size_of::<Range>())
             .saturating_add(self.mappings.heap_bytes())
             .saturating_add(self.notdef.heap_bytes())
-            .saturating_add(crate::memory::tree::<Code, Option<String>>(
+            .saturating_add(crate::memory::tree::<Code, Option<GlyphText>>(
                 self.unicode.len(),
             ))
             .saturating_add(
                 self.unicode
                     .values()
                     .flatten()
-                    .fold(0_usize, |sum, text| sum.saturating_add(text.capacity())),
+                    .fold(0_usize, |sum, text| sum.saturating_add(text.heap_bytes())),
             )
             .saturating_add(names)
     }
@@ -399,7 +399,7 @@ impl CMap {
                 }
                 charge(
                     &mut self.unicode_bytes,
-                    text.as_ref().map_or(0, String::len),
+                    text.as_deref().map_or(0, str::len),
                     limits.decoded_bytes,
                 )?;
                 self.unicode.insert(code, text);
@@ -497,8 +497,8 @@ impl CMap {
     pub(crate) fn notdef(&self, code: Code, work: &mut usize, limits: Limits) -> Result<Cid> {
         Ok(self.notdef.get(code, work, limits)?.unwrap_or(Cid::NOTDEF))
     }
-    pub(crate) fn text(&self, code: Code) -> Option<&str> {
-        self.unicode.get(&code).and_then(|text| text.as_deref())
+    pub(crate) fn text(&self, code: Code) -> Option<GlyphText> {
+        self.unicode.get(&code).and_then(Option::clone)
     }
 }
 
@@ -794,7 +794,7 @@ mod tests {
                     u32::from(map.notdef(code, &mut work, document.limits())?),
                     integer(&row[3])?
                 );
-                assert_eq!(map.text(code), text(&row[4]));
+                assert_eq!(map.text(code).as_deref(), text(&row[4]));
                 offset += usize::from(code.len);
             }
             assert_eq!(offset, input.len());

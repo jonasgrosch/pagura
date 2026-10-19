@@ -1,6 +1,6 @@
 //! Simple encodings and the glyph-name algorithm (9.6.5, 9.10.2, Annex D).
-use crate::{repairs, report::Report, tables};
-use pagura_core::{Diagnostic, Dictionary, Error, Limits, Name, Result, Value};
+use crate::{GlyphText, repairs, report::Report, tables};
+use pagura_core::{Diagnostic, Dictionary, Error, Limits, Meter, Name, Result, Value};
 use pagura_document::Document;
 
 pub(crate) type Encoding = [Option<Name>; 256];
@@ -8,27 +8,23 @@ pub(crate) type Encoding = [Option<Name>; 256];
 #[derive(Debug)]
 pub(crate) struct SimpleMapping {
     pub(crate) names: Encoding,
-    pub(crate) unicode: [Option<String>; 256],
+    pub(crate) unicode: [Option<GlyphText>; 256],
     /// Each code's program glyph, selected on first use: a function of the
     /// code, its name and its Unicode alone (9.6.5).
     pub(crate) selected: [std::sync::OnceLock<Option<pagura_font::GlyphId>>; 256],
 }
 
 impl SimpleMapping {
-    pub(crate) fn new(names: Encoding, limits: Limits, base_font: &[u8]) -> Result<Self> {
+    pub(crate) fn new(names: Encoding, limits: &Limits, base_font: &[u8]) -> Result<Self> {
         let dingbats = is_dingbats(base_font);
-        let mut work = 0;
-        let mut bytes = 0;
+        // A name's text is at most a few bytes per name byte, so charging the
+        // names bounds both the work and the text.
+        let mut work = Meter::new(limits.font_work, "simple encoding work budget exceeded");
         let mut texts = std::array::from_fn(|_| None);
         for (slot, name) in texts.iter_mut().zip(&names) {
             if let Some(name) = name {
-                crate::cmap::charge(&mut work, name.len(), limits.operations)?;
-                *slot = unicode_with(name.as_bytes(), dingbats);
-                crate::cmap::charge(
-                    &mut bytes,
-                    slot.as_ref().map_or(0, String::len),
-                    limits.decoded_bytes,
-                )?;
+                work.charge(name.len())?;
+                *slot = unicode_with(name.as_bytes(), dingbats).map(GlyphText::from);
             }
         }
         Ok(Self {
