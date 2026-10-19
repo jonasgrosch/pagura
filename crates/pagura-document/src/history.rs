@@ -17,6 +17,13 @@ pub(crate) struct Cache {
     loading: Mutex<()>,
 }
 
+impl Cache {
+    /// Whether no earlier revision has been read through this cache.
+    pub(crate) fn is_unused(&self) -> bool {
+        self.snapshots.get().is_none()
+    }
+}
+
 #[derive(Debug, Default)]
 pub(crate) struct Snapshot {
     value: OnceLock<Result<Document>>,

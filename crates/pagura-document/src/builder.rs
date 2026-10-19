@@ -5,7 +5,10 @@
 //! object table; dissolving a scratch document discards its caches and their
 //! retained-memory charges. The opened document is never changed, and it
 //! publishes only objects parsed against its final object table, trailer and
-//! security handler (ARCHITECTURE invariant 8).
+//! security handler (ARCHITECTURE invariant 8). Two results survive because
+//! they cannot depend on what changes: object-stream contents that read no
+//! replaced object, and the catalog scan, which runs on the final table and
+//! handler and precedes only a new trailer `Root`, which no object load reads.
 
 use crate::xref::rebuild::{self, StreamSlots};
 use crate::xref::{self, XrefOrigin, XrefTable};
@@ -60,7 +63,19 @@ pub(crate) struct DocumentBuilder {
     security: Option<security::Security>,
     diagnostics: diagnostics::Log,
     retained: Arc<memory::Budget>,
+    /// The terminator index, which depends only on the slots and revisions.
+    boundaries: OnceLock<Result<Box<[usize]>>>,
     origin: XrefOrigin,
+}
+
+/// What dissolving a frozen document keeps.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Caches {
+    /// Nothing: the next freeze has a different table, trailer or handler.
+    Discard,
+    /// Loaded objects, object-stream contents and the terminator index, with
+    /// their charges: only the trailer's `Root` changes before the next freeze.
+    Keep,
 }
 
 impl DocumentBuilder {
@@ -149,6 +164,7 @@ impl DocumentBuilder {
             security: None,
             diagnostics,
             retained,
+            boundaries: OnceLock::new(),
             origin: table.origin,
         })
     }
@@ -172,7 +188,7 @@ impl DocumentBuilder {
                 self.with_scratch(|document| rebuild::object_streams(document, streams, remaining));
             self = builder;
             self.apply(slots?)?;
-            let (builder, root) = self.with_scratch(rebuild::root);
+            let (builder, root) = self.with_view(rebuild::root, Caches::Keep);
             self = builder;
             if let Some(root) = root? {
                 self.set_root(root)?;
@@ -185,10 +201,15 @@ impl DocumentBuilder {
 
     /// Reads through a scratch document, then dissolves it with its caches.
     fn with_scratch<T>(self, read: impl FnOnce(&Document) -> T) -> (Self, T) {
+        self.with_view(read, Caches::Discard)
+    }
+
+    /// Reads through a frozen document, then dissolves it, keeping `caches`.
+    fn with_view<T>(self, read: impl FnOnce(&Document) -> T, caches: Caches) -> (Self, T) {
         let mark = self.retained.used();
         let document = self.freeze();
         let result = read(&document);
-        (document.thaw(mark), result)
+        (document.thaw(mark, caches), result)
     }
 
     fn freeze(self) -> Document {
@@ -203,7 +224,7 @@ impl DocumentBuilder {
             object_streams: self.object_streams,
             security: self.security,
             repaired: self.diagnostics.has_repairs(),
-            boundaries: OnceLock::new(),
+            boundaries: self.boundaries,
             pages: OnceLock::new(),
             diagnostics: Mutex::new(self.diagnostics),
             retained: self.retained,
@@ -230,6 +251,16 @@ impl DocumentBuilder {
                 None => self.retained.charge(memory::slot_bytes(), Some(id))?,
             }
             self.slots.insert(id, Slot::new(replacement.location));
+        }
+        // Each object stream is decoded once: the plan's contents become the
+        // cache the opened document reads its compressed objects from.
+        for (stream, contents) in plan.contents {
+            let Some(cache) = self.object_streams.get(&stream) else {
+                continue;
+            };
+            self.retained
+                .charge(contents.retained_bytes(), Some(ObjectId::new(stream, 0)))?;
+            cache.get_or_init(|| Ok(contents));
         }
         Ok(())
     }
@@ -284,9 +315,16 @@ fn structure_bytes(table: &XrefTable, revision_entries: bool) -> usize {
 }
 
 impl Document {
-    /// Dissolves a scratch document: its caches go, and the budget returns
-    /// to `mark`, its use before the document was frozen.
-    fn thaw(self, mark: usize) -> DocumentBuilder {
+    /// Dissolves a frozen document. With [`Caches::Discard`] its caches go,
+    /// and the budget returns to `mark`, its use before the document was
+    /// frozen. With [`Caches::Keep`] they stay, unless the reader built a
+    /// cache that depends on more, such as the page tree.
+    fn thaw(self, mark: usize, caches: Caches) -> DocumentBuilder {
+        let caches = if self.pages.get().is_some() || !self.historical.is_unused() {
+            Caches::Discard
+        } else {
+            caches
+        };
         let Self {
             bytes,
             limits,
@@ -296,17 +334,21 @@ impl Document {
             revisions,
             mut object_streams,
             security,
+            mut boundaries,
             diagnostics,
             retained,
             ..
         } = self;
-        for slot in slots.values_mut() {
-            slot.object.take();
+        if caches == Caches::Discard {
+            for slot in slots.values_mut() {
+                slot.object.take();
+            }
+            for contents in object_streams.values_mut() {
+                contents.take();
+            }
+            boundaries.take();
+            retained.rewind(mark);
         }
-        for contents in object_streams.values_mut() {
-            contents.take();
-        }
-        retained.rewind(mark);
         DocumentBuilder {
             bytes,
             limits,
@@ -320,6 +362,7 @@ impl Document {
                 .into_inner()
                 .unwrap_or_else(PoisonError::into_inner),
             retained,
+            boundaries,
             origin: XrefOrigin::Primary,
         }
     }

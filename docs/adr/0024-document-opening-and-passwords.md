@@ -32,7 +32,13 @@ A review of `pagura-document` found that opening relied on implicit rules:
    objects parsed against its final table, trailer and handler. A snapshot
    of an earlier revision (`Document::object_at_revision`) is built the same
    way: strictly, from a prefix of the shared bytes, with a retained budget
-   that also charges the source document's.
+   that also charges the source document's. Two results of reconstruction
+   survive: an object stream's decoded contents, when decoding read no other
+   object (its `Length`, `Filter` and `DecodeParms` are direct) and no
+   compressed definition supersedes it, travel in the plan into the document's
+   cache; and the catalog scan runs on the final table and handler and keeps
+   its caches, because only the trailer's `Root` changes after it and no
+   object load reads `Root`.
 2. **A top-level object load caches its result, success or failure.** A
    load that starts with no other object in progress depends only on the
    document. Nested failures can depend on the load path (cycles, depth)
@@ -51,14 +57,14 @@ A review of `pagura-document` found that opening relied on implicit rules:
 
 ## Consequences
 
-- Objects read while opening are parsed again when the opened document
-  first needs them: the encryption dictionary of every encrypted file and,
-  for reconstructed files, the objects the catalog scan visited. The
-  budget needed to open a reconstructed file can therefore exceed what the
-  document retains once open.
-- A reconstructed object stream's contents are decoded once for the plan
-  and again lazily; if its dependencies were replaced, the opened document
-  reports the disagreement instead of serving stale contents.
+- The encryption dictionary of every encrypted file is parsed again when
+  the opened document first needs it, so the budget needed to open can
+  exceed what the document retains once open.
+- A reconstructed object stream with an indirect length, filter or parameter
+  is decoded once for the plan and again lazily against the final table; if
+  its dependencies were replaced, the opened document reports the
+  disagreement instead of serving stale contents. Every other object stream
+  is decoded once.
 - A cached failed load is final for the document; retrying requires
   reopening, as for any other cached result.
 - A repair reported after opening outside the objects a signature analysis
