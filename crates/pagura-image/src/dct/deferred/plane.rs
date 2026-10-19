@@ -155,17 +155,15 @@ impl Plane {
         let error = (bound as f32) * 1.000_000_2;
         let values = super::spatial::spatial(&input);
         let byte = |value: f32| ((value.clamp(0.0, 255.0)) as u32).to_le_bytes()[0];
+        let values = values.as_flattened();
+        let lower: [u8; 64] = std::array::from_fn(|i| byte(values[i] + 128.5 - error));
+        let upper: [u8; 64] = std::array::from_fn(|i| byte(values[i] + 128.5 + error));
+        let mut result: [[u8; 8]; 8] =
+            std::array::from_fn(|y| std::array::from_fn(|x| lower[y * 8 + x]));
         let mut mask = 0u64;
-        let mut result = [[0u8; 8]; 8];
-        for (y, row) in values.iter().enumerate() {
-            let shifted = row.map(|value| value + 128.5);
-            let lower = shifted.map(|z| byte(z - error));
-            let upper = shifted.map(|z| byte(z + error));
-            result[y] = lower;
-            if lower != upper {
-                for x in 0..8 {
-                    mask |= u64::from(lower[x] != upper[x]) << (y * 8 + x);
-                }
+        if lower != upper {
+            for (i, (low, high)) in lower.iter().zip(&upper).enumerate() {
+                mask |= u64::from(low != high) << i;
             }
         }
         if mask != 0 {
