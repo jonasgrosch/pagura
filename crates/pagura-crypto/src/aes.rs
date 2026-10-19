@@ -1,8 +1,8 @@
 //! AES-128/256 (FIPS 197-upd1) with CBC chaining, for the security handler.
 //!
-//! AES uses forward and inverse S-box tables, including in key expansion.
-//! Their indices depend on secret data; cache access and finite-field
-//! arithmetic can have data-dependent timing. This implementation is not
+//! AES uses forward and inverse S-box tables and GF(2^8) product tables,
+//! including in key expansion. Their indices depend on secret data, so cache
+//! access can have data-dependent timing. This implementation is not
 //! constant-time. CBC follows SP 800-38A 6.2, with the four-block AES-128/256
 //! encryption and decryption examples in Appendices F.2.1/F.2.2 and F.2.5/F.2.6.
 use pagura_core::{Error, Position, Result};
@@ -26,6 +26,20 @@ const fn multiply(mut a: u8, mut b: u8) -> u8 {
         i += 1;
     }
     value
+}
+
+/// Every product `factor • value`, computed at compile time.
+const fn products(factor: u8) -> [u8; 256] {
+    let mut table = [0; 256];
+    let mut value = 0u8;
+    loop {
+        table[value as usize] = multiply(value, factor);
+        if value == u8::MAX {
+            break;
+        }
+        value += 1;
+    }
+    table
 }
 
 /// The S-box of FIPS 197 5.1.1: the inverse in GF(2^8), then the affine map.
@@ -71,8 +85,32 @@ const fn invert(table: &[u8; 256]) -> [u8; 256] {
     inverse
 }
 
+/// The state is column-major (FIPS 197 3.4): byte `4c + r` is row `r` of
+/// column `c`. Row `r` rotates left by `step * r` columns.
+const fn row_rotation(step: usize) -> [usize; 16] {
+    let mut sources = [0; 16];
+    let mut index = 0;
+    while index < 16 {
+        let (column, row) = (index / 4, index % 4);
+        sources[index] = 4 * ((column + step * row) % 4) + row;
+        index += 1;
+    }
+    sources
+}
+
 const SBOX: [u8; 256] = sbox();
 const INV_SBOX: [u8; 256] = invert(&SBOX);
+const MUL2: [u8; 256] = products(2);
+const MUL3: [u8; 256] = products(3);
+const MUL9: [u8; 256] = products(9);
+const MUL11: [u8; 256] = products(11);
+const MUL13: [u8; 256] = products(13);
+const MUL14: [u8; 256] = products(14);
+/// FIPS 197 5.1.2: row `r` rotates left by `r` positions.
+const SHIFT_ROWS: [usize; 16] = row_rotation(1);
+/// FIPS 197 5.3.1: rotating left by `3r` rotates right by `r`.
+const INV_SHIFT_ROWS: [usize; 16] = row_rotation(3);
+
 /// Expanded AES key; Debug output never prints the key schedule, which is
 /// cleared when dropped.
 #[derive(Clone)]
@@ -118,7 +156,7 @@ impl Aes {
                 temp.rotate_left(1);
                 sub_bytes(&mut temp);
                 temp[0] ^= rcon;
-                rcon = multiply(rcon, 2);
+                rcon = MUL2[usize::from(rcon)];
             } else if key.len() == 32 && offset % 32 == 16 {
                 sub_bytes(&mut temp);
             }
@@ -210,45 +248,40 @@ fn inv_sub_bytes(block: &mut [u8; 16]) {
     }
 }
 
-/// FIPS 197 5.1.2: row `r` of the column-major state rotates left by `r`.
 fn shift_rows(block: &mut [u8; 16]) {
-    rotate_rows(block, 1);
+    let state = *block;
+    *block = SHIFT_ROWS.map(|source| state[source]);
 }
 
-/// FIPS 197 5.3.1: rotating left by `3r` rotates row `r` right by `r`.
 fn inv_shift_rows(block: &mut [u8; 16]) {
-    rotate_rows(block, 3);
-}
-
-fn rotate_rows(block: &mut [u8; 16], step: usize) {
-    let original = *block;
-    for row in 0..4 {
-        for column in 0..4 {
-            block[4 * column + row] = original[4 * ((column + step * row) % 4) + row];
-        }
-    }
+    let state = *block;
+    *block = INV_SHIFT_ROWS.map(|source| state[source]);
 }
 
 /// FIPS 197 5.1.3, equation 5.7.
 fn mix_columns(block: &mut [u8; 16]) {
-    mix(block, [2, 3, 1, 1]);
+    for column in block.as_chunks_mut::<4>().0 {
+        let [s0, s1, s2, s3] = *column;
+        let [i0, i1, i2, i3] = column.map(usize::from);
+        *column = [
+            MUL2[i0] ^ MUL3[i1] ^ s2 ^ s3,
+            s0 ^ MUL2[i1] ^ MUL3[i2] ^ s3,
+            s0 ^ s1 ^ MUL2[i2] ^ MUL3[i3],
+            MUL3[i0] ^ s1 ^ s2 ^ MUL2[i3],
+        ];
+    }
 }
 
 /// FIPS 197 5.3.3, equation 5.15.
 fn inv_mix_columns(block: &mut [u8; 16]) {
-    mix(block, [14, 11, 13, 9]);
-}
-
-/// Multiplies each column by the circulant matrix with first row `coefficients`.
-fn mix(block: &mut [u8; 16], coefficients: [u8; 4]) {
     for column in block.as_chunks_mut::<4>().0 {
-        let mut result = [0; 4];
-        for (row, out) in result.iter_mut().enumerate() {
-            for (i, byte) in column.iter().enumerate() {
-                *out ^= multiply(*byte, coefficients[(i + 4 - row) % 4]);
-            }
-        }
-        *column = result;
+        let [i0, i1, i2, i3] = column.map(usize::from);
+        *column = [
+            MUL14[i0] ^ MUL11[i1] ^ MUL13[i2] ^ MUL9[i3],
+            MUL9[i0] ^ MUL14[i1] ^ MUL11[i2] ^ MUL13[i3],
+            MUL13[i0] ^ MUL9[i1] ^ MUL14[i2] ^ MUL11[i3],
+            MUL11[i0] ^ MUL13[i1] ^ MUL9[i2] ^ MUL14[i3],
+        ];
     }
 }
 
