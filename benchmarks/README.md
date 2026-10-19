@@ -186,7 +186,7 @@ macOS additionally needs Xcode command-line tools (Swift/CoreGraphics).
 Install competitors **outside the repository** with the explicitly networked
 `python3 tools/competitors.py setup`
 before running. The checked-in Python/Node/Cargo locks pin pypdfium2 5.14.0
-(PDFium 156), PyMuPDF 1.28.2, Pillow 13.0.0, pdf.js 6.4.299, Canvas 1.0.11 and
+(PDFium 156), PyMuPDF 2.0 (MuPDF 1.28.5), Pillow 13.0.0, pdf.js 6.4.299, Canvas 1.0.11 and
 hayro 0.8.0. Supply Wasmtime 49.0.3 separately, verifying its downloaded archive
 against the release's published SHA-256. No setup/download occurs during a run.
 Keep at least 15 GB free for build artifacts and representative PPMs.
