@@ -12,14 +12,57 @@ pub fn uniform(input: &[u8], value: u8) -> bool {
         && tail.iter().all(|&v| v == value)
 }
 
+/// `floor(x)` of `x` clamped to `0..=255`, with NaN as 0: the byte that a
+/// saturating float-to-integer conversion of the clamped value gives.
+///
+/// Baseline x86-64 has no saturating vector conversion, so there the value
+/// is shifted by 2^23, which leaves the nearest integer in the low mantissa
+/// bits, and one comparison turns it into the floor. Other targets convert
+/// directly. Both give the same byte for every input.
 #[inline]
+#[must_use]
 #[expect(
-    clippy::cast_possible_truncation,
     clippy::manual_clamp,
-    reason = "rounded samples are clamped to the byte range"
+    reason = "max and min map NaN to zero, as the saturating conversion does"
 )]
+pub fn floor_byte(x: f32) -> u8 {
+    let x = x.max(0.0).min(255.0);
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    {
+        const SHIFT: f32 = 8_388_608.0;
+        let shifted = x + SHIFT;
+        let nearest = shifted - SHIFT;
+        shifted.to_bits().to_le_bytes()[0].wrapping_sub(u8::from(nearest > x))
+    }
+    #[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
+    {
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "the value is clamped to the byte range"
+        )]
+        let byte = x as u8;
+        byte
+    }
+}
+
+/// The shifted form of [`floor_byte`], tested on every target.
+#[cfg(test)]
+#[expect(
+    clippy::manual_clamp,
+    reason = "max and min map NaN to zero, as the saturating conversion does"
+)]
+fn floor_byte_shifted(x: f32) -> u8 {
+    const SHIFT: f32 = 8_388_608.0;
+    let x = x.max(0.0).min(255.0);
+    let shifted = x + SHIFT;
+    let nearest = shifted - SHIFT;
+    shifted.to_bits().to_le_bytes()[0].wrapping_sub(u8::from(nearest > x))
+}
+
+#[inline]
 fn quantize(value: f32) -> u8 {
-    (value.max(0.0).min(255.0) as i32).to_le_bytes()[0]
+    floor_byte(value)
 }
 /// Converts native luma and chroma replicated `repeat` times to interleaved
 /// RGB, exactly as Table 13 rounds each byte triple. Returns false for
@@ -113,6 +156,39 @@ fn green(y: f64, cb: f64, cr: f64) -> u8 {
 }
 #[cfg(test)]
 mod tests {
+    #[test]
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "the reference saturating conversion"
+    )]
+    fn floor_bytes_equal_saturating_conversions() {
+        let reference = |x: f32| x.clamp(0.0, 255.0) as u8;
+        let mut special = vec![
+            f32::NAN,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            -0.0,
+            0.0,
+            f32::MAX,
+        ];
+        for k in -2..=258 {
+            let k = k as f32;
+            for x in [k, k - 0.5, k + 0.5] {
+                special.extend([x, x.next_up(), x.next_down()]);
+            }
+        }
+        for x in special {
+            assert_eq!(super::floor_byte(x), reference(x), "{x}");
+            assert_eq!(super::floor_byte_shifted(x), reference(x), "{x}");
+        }
+        for bits in (0..=u32::MAX).step_by(4099) {
+            let x = f32::from_bits(bits);
+            assert_eq!(super::floor_byte(x), reference(x), "{bits:#x}");
+            assert_eq!(super::floor_byte_shifted(x), reference(x), "{bits:#x}");
+        }
+    }
+
     #[test]
     fn every_byte_triple_matches_independent_table_13_arithmetic() {
         let ys: Vec<u8> = (0..=255).collect();

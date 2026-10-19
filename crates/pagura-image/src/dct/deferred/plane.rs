@@ -165,7 +165,7 @@ impl Plane {
         let bound = l1 * (1.0 / 1_048_576.0) + 1.0 / 16384.0;
         let error = (bound as f32) * 1.000_000_2;
         let values = super::spatial::spatial(&input);
-        let byte = |value: f32| (value.clamp(0.0, 255.0) as i32).to_le_bytes()[0];
+        let byte = crate::deferred::floor_byte;
         let values = values.as_flattened();
         let lower: [u8; 64] = std::array::from_fn(|i| byte(values[i] + 128.5 - error));
         let upper: [u8; 64] = std::array::from_fn(|i| byte(values[i] + 128.5 + error));

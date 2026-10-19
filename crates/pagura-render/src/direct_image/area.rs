@@ -885,12 +885,8 @@ fn materialization_limits(image: &Image, p: &Placement, limits: Limits) -> Resul
     })
 }
 
-#[expect(
-    clippy::cast_possible_truncation,
-    reason = "finite rounded channel is clamped to the byte domain"
-)]
 fn rounded_byte(value: f32) -> u8 {
-    ((value + 0.5).clamp(0.0, 255.0) as i32).to_le_bytes()[0]
+    pagura_image::deferred::floor_byte(value + 0.5)
 }
 
 fn temporary_budget<const N: usize>(
