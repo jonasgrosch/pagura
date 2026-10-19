@@ -1,10 +1,11 @@
 //! Lazy strict revision snapshots sharing source storage and cache accounting.
+use crate::builder::DocumentBuilder;
 use crate::features::{HISTORICAL_ENCRYPTION, HISTORICAL_SOURCE};
 use crate::{
-    Document, IndirectObject, OpenOptions,
+    Document, IndirectObject,
     view::{Context, Source},
 };
-use pagura_core::{Error, ErrorKind, ObjectId, Position, Recovery, Result};
+use pagura_core::{Error, ErrorKind, ObjectId, Position, Result};
 use std::{
     ops::Deref,
     sync::{Arc, Mutex, OnceLock, PoisonError},
@@ -95,7 +96,7 @@ impl Document {
                     .len()
                     .checked_mul(size_of::<Snapshot>())
                     .ok_or_else(|| Error::limit("revision cache metadata overflow"))?;
-                self.retained.charge(bytes, ObjectId::new(0, 0))?;
+                self.retained.charge(bytes, None)?;
                 store.snapshots.get_or_init(|| {
                     (0..self.revisions.len())
                         .map(|_| Snapshot::default())
@@ -166,11 +167,6 @@ impl Document {
             source: self.bytes.source.clone(),
             end: boundary.eol,
         };
-        let options = OpenOptions {
-            recovery: Recovery::Strict,
-            password: Vec::new(),
-            ..self.options.clone()
-        };
         let mut table = crate::xref::XrefTable::default();
         if let Some(previous) = previous {
             ctx.allocate::<usize>(previous.slots.len().saturating_mul(12), source)?;
@@ -217,6 +213,6 @@ impl Document {
                 "encrypted historical revision is unsupported",
             )));
         }
-        Self::from_source(bytes, &options, table, Vec::new(), Some(self))
+        DocumentBuilder::revision(bytes, self, table)?.build(&[])
     }
 }

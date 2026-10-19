@@ -27,24 +27,20 @@ fn pages_share_one_copy_of_each_resource_dictionary() {
 }
 
 mod retained_tests {
-    use super::super::Page;
-    use crate::{Document, OpenOptions};
+    use crate::{Document, Page};
     use pagura_core::{Dictionary, ErrorKind, Limits};
-    use pagura_testkit::fixture;
+
     use std::sync::Arc;
 
     fn open(bytes: usize) -> Document {
-        let document = Document::open(
-            fixture("document", "pages-shared-resources.pdf"),
-            &OpenOptions {
-                limits: Limits {
-                    document_bytes: bytes,
-                    ..Limits::default()
-                },
-                ..OpenOptions::default()
+        let document = crate::tests::document(
+            "pages-shared-resources",
+            pagura_core::Recovery::default(),
+            Limits {
+                document_bytes: bytes,
+                ..Limits::default()
             },
-        )
-        .unwrap();
+        );
         for id in document.object_ids() {
             document.object(id).unwrap();
         }
@@ -87,8 +83,8 @@ mod retained_tests {
 }
 
 mod recovery_tests {
-    use crate::{Document, OpenOptions, repairs};
-    use pagura_core::{ErrorKind, Limits, ObjectId, Recovery, Rect};
+    use crate::{Document, OpenOptions, Page, repairs};
+    use pagura_core::{Dictionary, ErrorKind, Limits, ObjectId, Recovery, Rect};
     use pagura_testkit::fixture;
     use std::sync::Arc;
 
@@ -189,8 +185,8 @@ mod recovery_tests {
             let mut unique = Vec::new();
             let mut expected = 0;
             for page in pages {
-                expected += size_of::<super::super::Page>() + page.dictionary.retained_bytes()
-                    - size_of::<pagura_core::Dictionary>()
+                expected += size_of::<Page>() + page.dictionary.retained_bytes()
+                    - size_of::<Dictionary>()
                     + page
                         .source_path
                         .iter()
@@ -237,9 +233,9 @@ mod recovery_tests {
             let mut document = preloaded("pages-repeat-branch", usize::MAX);
             let initial = document.retained.used();
             if work {
-                document.options.limits.value_nodes = 4;
+                document.limits.traversal_work = 4;
             } else {
-                document.options.limits.pages = 1;
+                document.limits.pages = 1;
             }
             let error = document.pages().unwrap_err();
             assert_eq!(error.kind, ErrorKind::Limit);
@@ -273,5 +269,28 @@ mod recovery_tests {
             .unwrap_err();
             assert_eq!(error.repair, Some(tag));
         }
+    }
+}
+
+#[test]
+fn rotate_values_are_multiples_of_ninety_in_any_turn() {
+    use crate::Rotation;
+    for (degrees, expected) in [
+        (0, Rotation::None),
+        (90, Rotation::Clockwise90),
+        (-90, Rotation::Clockwise270),
+        (450, Rotation::Clockwise90),
+        (-180, Rotation::Clockwise180),
+        (720, Rotation::None),
+    ] {
+        assert_eq!(Rotation::try_from(degrees).unwrap(), expected, "{degrees}");
+        assert_eq!(
+            i64::from(expected.degrees()),
+            degrees.rem_euclid(360),
+            "{degrees}"
+        );
+    }
+    for degrees in [45, 1, -1, 91, 359] {
+        assert!(Rotation::try_from(degrees).is_err(), "{degrees}");
     }
 }

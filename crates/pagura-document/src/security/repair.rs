@@ -5,8 +5,32 @@
 
 use crate::{Document, ObjectSource, repairs};
 use pagura_core::syntax::{Origin, Parser};
-use pagura_core::{Diagnostic, Diagnostics, Error, ObjectId, Position, Result};
+use pagura_core::{
+    Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, ObjectId, Position, Result,
+};
 use pagura_crypto::standard::{self, FileKey, SecurityParams};
+
+/// Whether the encryption dictionary declares the key `Length` (Table 20).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum KeyLength {
+    Declared,
+    Missing,
+}
+
+impl KeyLength {
+    pub(crate) fn of(dictionary: &Dictionary) -> Self {
+        if dictionary.contains_key(b"Length") {
+            Self::Declared
+        } else {
+            Self::Missing
+        }
+    }
+}
+
+/// The fixed length of the `O` and `U` password hashes (Table 21).
+const fn hash_length(params: &SecurityParams) -> usize {
+    if params.revision >= 5 { 48 } else { 32 }
+}
 
 pub(crate) fn position(document: &Document, id: Option<ObjectId>) -> Result<Position> {
     id.map_or(Ok(Position::Unknown), |id| {
@@ -20,7 +44,7 @@ pub(crate) fn hashes(
     params: &mut SecurityParams,
     diagnostics: &mut Diagnostics,
 ) -> Result<()> {
-    let expected = if params.revision >= 5 { 48 } else { 32 };
+    let expected = hash_length(params);
     if params.owner_hash.len() != expected || params.user_hash.len() != expected {
         literal_hashes(document, id, params, diagnostics)?;
     }
@@ -29,15 +53,14 @@ pub(crate) fn hashes(
             .iter()
             .any(|hash| zero_padded(hash, expected))
     {
-        let mut diagnostic = Diagnostic::new(
-            repairs::HASH_PADDING,
-            "zero padding after fixed-length security password hashes discarded",
-        )
-        .at(position(document, id)?);
-        if let Some(id) = id {
-            diagnostic = diagnostic.in_object(id);
-        }
-        diagnostics.repair(diagnostic)?;
+        diagnostics.repair(
+            Diagnostic::new(
+                repairs::HASH_PADDING,
+                "zero padding after fixed-length security password hashes discarded",
+            )
+            .at(position(document, id)?)
+            .in_object_opt(id),
+        )?;
         for hash in [&mut params.owner_hash, &mut params.user_hash] {
             if zero_padded(hash, expected) {
                 hash.truncate(expected);
@@ -55,17 +78,18 @@ pub(crate) fn authenticate(
     document: &Document,
     id: Option<ObjectId>,
     params: &SecurityParams,
-    missing_length: bool,
+    length: KeyLength,
+    password: &[u8],
     diagnostics: &mut Diagnostics,
 ) -> Result<FileKey> {
-    let original = match standard::authenticate(params, &document.options.password) {
+    let original = match standard::authenticate(params, password) {
         Ok(key) => return Ok(key),
         Err(error) => error,
     };
-    if !missing_length
+    if length != KeyLength::Missing
         || params.version != 2
         || params.revision != 3
-        || original.kind != pagura_core::ErrorKind::Password
+        || original.kind != ErrorKind::Password
     {
         return Err(original);
     }
@@ -74,25 +98,24 @@ pub(crate) fn authenticate(
     // The 5-byte default has already failed. Each other size is tried once.
     for length in 6..=16 {
         candidate.key_length = length;
-        match standard::authenticate(&candidate, &document.options.password) {
+        match standard::authenticate(&candidate, password) {
             Ok(key) if found.is_none() => found = Some(key),
             Ok(_) => return Err(original),
-            Err(error) if error.kind == pagura_core::ErrorKind::Password => {}
+            Err(error) if error.kind == ErrorKind::Password => {}
             Err(error) => return Err(error),
         }
     }
     let Some(key) = found else {
         return Err(original);
     };
-    let mut diagnostic = Diagnostic::new(
-        repairs::KEY_LENGTH_MISSING,
-        "missing legacy Length recovered from a unique authenticated key size",
-    )
-    .at(position(document, id)?);
-    if let Some(id) = id {
-        diagnostic = diagnostic.in_object(id);
-    }
-    diagnostics.repair(diagnostic)?;
+    diagnostics.repair(
+        Diagnostic::new(
+            repairs::KEY_LENGTH_MISSING,
+            "missing legacy Length recovered from a unique authenticated key size",
+        )
+        .at(position(document, id)?)
+        .in_object_opt(id),
+    )?;
     Ok(key)
 }
 
@@ -135,7 +158,7 @@ fn literal_hashes(
         return Ok(());
     }
     parser.seek(parser.offset() + 2)?;
-    let expected = if params.revision >= 5 { 48 } else { 32 };
+    let expected = hash_length(params);
     if expected > document.limits().string_bytes {
         return Err(
             Error::limit("recovered security hash exceeds the string budget").in_object(id),
@@ -204,8 +227,8 @@ fn raw_literal(token: &[u8], expected: usize) -> Option<Vec<u8>> {
                 b'n' => b'\n',
                 b'r' => b'\r',
                 b't' => b'\t',
-                b'b' => 8,
-                b'f' => 12,
+                b'b' => b'\x08',
+                b'f' => b'\x0c',
                 b'\r' => {
                     if iter.peek() == Some(&b'\n') {
                         iter.next();
@@ -214,16 +237,17 @@ fn raw_literal(token: &[u8], expected: usize) -> Option<Vec<u8>> {
                 }
                 b'\n' => continue,
                 first @ b'0'..=b'7' => {
-                    let mut code = u16::from(first - b'0');
+                    // Up to three octal digits; high-order overflow is ignored (7.3.4.2).
+                    let mut code = first - b'0';
                     for _ in 0..2 {
                         if let Some(next @ b'0'..=b'7') = iter.peek().copied() {
                             iter.next();
-                            code = code * 8 + u16::from(next - b'0');
+                            code = code.wrapping_mul(8).wrapping_add(next - b'0');
                         } else {
                             break;
                         }
                     }
-                    code.to_le_bytes()[0]
+                    code
                 }
                 other => other,
             }

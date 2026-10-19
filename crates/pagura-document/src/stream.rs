@@ -1,8 +1,8 @@
 //! Encoded stream access, decryption and bounded filter application (7.3.8, 7.4, 7.6).
 
 use crate::{Document, IndirectObject, features, repairs};
-use pagura_codec::{Filter, FilterChain};
-use pagura_core::{Diagnostics, Error, ObjectId, Result, Value};
+use pagura_codec::{Filter, FilterChain, ImageCodec};
+use pagura_core::{Diagnostics, Dictionary, Error, ObjectId, Result, Value};
 use pagura_crypto::standard::CryptMethod;
 use std::borrow::Cow;
 
@@ -29,15 +29,26 @@ pub(crate) fn decoded<'a>(
     object: &IndirectObject,
 ) -> Result<Cow<'a, [u8]>> {
     let (data, chain) = document.prepare_stream(object, &mut Vec::new())?;
+    decode(document, object.id(), data, &chain)
+}
+
+/// Applies `chain` to the data of stream `id`, reporting its repairs for
+/// that object. Data that no filter changed keeps its original borrow.
+pub(crate) fn decode<'a>(
+    document: &Document,
+    id: ObjectId,
+    data: Cow<'a, [u8]>,
+    chain: &FilterChain,
+) -> Result<Cow<'a, [u8]>> {
     let mut diagnostics = Diagnostics::new(document.recovery());
     let decoded = chain
         .decode(&data, document.limits().decoded_bytes, &mut diagnostics)
-        .map_err(|error| error.in_object(object.id()))?;
+        .map_err(|error| error.in_object(id))?;
     document.report(
         diagnostics
             .take()
             .into_iter()
-            .map(|diagnostic| diagnostic.in_object(object.id())),
+            .map(|diagnostic| diagnostic.in_object(id)),
     );
     Ok(match decoded {
         Cow::Owned(bytes) => Cow::Owned(bytes),
@@ -53,7 +64,7 @@ pub struct ImageStream<'a> {
     /// The data after decryption and all non-image filters.
     pub data: Cow<'a, [u8]>,
     /// The trailing image codec and its `/DecodeParms`, if the stream has one.
-    pub codec: Option<(pagura_codec::ImageCodec, Option<pagura_core::Dictionary>)>,
+    pub codec: Option<(ImageCodec, Option<Dictionary>)>,
 }
 
 pub(crate) fn image<'a>(
@@ -64,20 +75,7 @@ pub(crate) fn image<'a>(
     let (data, mut chain) =
         document.prepare_stream_with_parameters(object, parameters, &mut Vec::new())?;
     let codec = chain.split_image();
-    let mut diagnostics = Diagnostics::new(document.recovery());
-    let decoded = chain
-        .decode(&data, document.limits().decoded_bytes, &mut diagnostics)
-        .map_err(|error| error.in_object(object.id()))?;
-    document.report(
-        diagnostics
-            .take()
-            .into_iter()
-            .map(|diagnostic| diagnostic.in_object(object.id())),
-    );
-    let data = match decoded {
-        Cow::Owned(bytes) => Cow::Owned(bytes),
-        Cow::Borrowed(_) => data,
-    };
+    let data = decode(document, object.id(), data, &chain)?;
     Ok(ImageStream { data, codec })
 }
 
@@ -159,7 +157,7 @@ fn decrypt<'a>(
     };
     let dictionary = object
         .dictionary()
-        .ok_or(Error::syntax("stream requires a dictionary"))?;
+        .ok_or_else(|| Error::syntax("stream requires a dictionary").in_object(object.id()))?;
     if dictionary.is_name(b"Type", b"XRef") && !object.is_direct() {
         if explicit.is_some() {
             return Err(Error::syntax("xref streams cannot be encrypted").in_object(object.id()));
@@ -238,15 +236,14 @@ pub(crate) fn start(
         Some([b'\r', b'\n', ..]) => Ok(offset + 2),
         Some([b'\n', ..]) => Ok(offset + 1),
         Some([b'\r', ..]) => {
-            let mut diagnostic = pagura_core::Diagnostic::new(
-                repairs::STREAM_EOL,
-                "bare CR after stream keyword; one CR used as the line terminator",
-            )
-            .at(parser.position());
-            if let Some(id) = id {
-                diagnostic = diagnostic.in_object(id);
-            }
-            diagnostics.repair(diagnostic)?;
+            diagnostics.repair(
+                pagura_core::Diagnostic::new(
+                    repairs::STREAM_EOL,
+                    "bare CR after stream keyword; one CR used as the line terminator",
+                )
+                .at(parser.position())
+                .in_object_opt(id),
+            )?;
             Ok(offset + 1)
         }
         _ => Err(
@@ -257,23 +254,19 @@ pub(crate) fn start(
 
 #[cfg(test)]
 mod tests {
-    use crate::{Document, OpenOptions};
+    use crate::Document;
     use pagura_core::{ErrorKind, Limits, Name, ObjectId, Recovery, Value};
-    use pagura_testkit::fixture;
 
     fn open(name: &str, decoded_bytes: usize) -> Document {
-        Document::open(
-            fixture("image", &format!("{name}.pdf")),
-            &OpenOptions {
-                recovery: Recovery::Strict,
-                limits: Limits {
-                    decoded_bytes,
-                    ..Limits::default()
-                },
-                ..OpenOptions::default()
+        crate::tests::open(
+            "image",
+            name,
+            Recovery::Strict,
+            Limits {
+                decoded_bytes,
+                ..Limits::default()
             },
         )
-        .unwrap()
     }
 
     fn parameters(document: &Document, object: &crate::IndirectObject) -> Value {
