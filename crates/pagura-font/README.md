@@ -19,13 +19,14 @@ No external known-answer font dataset has been used.
 
 The public interface returns glyph-space paths, horizontal advances, font
 matrices, name and CID mappings, cmap selections, and built-in encodings.
-Bytes and parsed metadata are shared across clones. Outlines are decoded on
-demand; they are not cached. Parse success validates the container and mapping
-tables, while `outline` validates the requested glyph and its dependencies.
-`advance` returns `None` if a charstring cannot be interpreted; `outline`
-provides the corresponding structured error. OpenType advances come from
-`hmtx` when present, including the shared final advance for trailing side
-bearings. Per ISO 9.9.1 Table 124, OpenType CFF requires CFF and cmap without
+Bytes and parsed metadata are shared across clones; `FontBytes::Static` data,
+such as bundled `include_bytes!` fonts, is used in place without a copy.
+Outlines are decoded on demand; they are not cached. Parse success validates
+the container and mapping tables, while `outline` validates the requested
+glyph and its dependencies. `advance` returns `None` if a charstring cannot
+be interpreted; `outline` provides the corresponding structured error.
+OpenType advances come from `hmtx` when present, including the shared final
+advance for trailing side bearings. Per 9.9.1 Table 124, OpenType CFF requires CFF and cmap without
 requiring glyf's header/metrics tables; absent horizontal tables use CFF widths.
 PDF `(3,1)` cmap selection is distinct from `(3,10)` and platform 0, as required
 by 9.6.5.4. `has_cmap_subtable` reports the exact selection's usable presence.
@@ -175,7 +176,7 @@ Legacy `true` signatures are accepted directly; unknown signatures require an
 unambiguous complete table set and `font.sfnt-version`. Reserved component bits
 are ignored; conflicting transforms make that glyph unusable.
 
-ISO 9.9.1/Table 124 supplies the embedding conformance requirement and 9.6.5.4
+9.9.1/Table 124 supplies the embedding conformance requirement and 9.6.5.4
 constrains cmap selection. The TrueType/OpenType internal layouts above still
 await primary-text review. Local corpus inspection supports these recovery
 choices without establishing format conformance. Type 1 6.3/Appendix 2 and
@@ -210,9 +211,10 @@ cardinality, spacing and BlueScale constraints remains outside this unhinted
 API. The corresponding CFF2 recovery is project policy pending primary text.
 
 `FontProgram::retained_bytes()` is computed once after parsing and returned in
-constant time. It estimates the input and parsed-state Arc allocations, vector
-capacities, Type 1 decrypted buffers, encoding arrays, name/CID trees and
-variation data. sfnt table slices and CFF INDEX ranges do not duplicate input
+constant time. It estimates the shared input bytes (static input is not heap
+and is not counted), the Arc allocations, vector capacities, Type 1 decrypted
+buffers, encoding arrays, name/CID trees and variation
+data. sfnt table slices and CFF INDEX ranges do not duplicate input
 bytes. Trees use ADR 0012's 64 bytes of estimated bookkeeping per entry; names
 conservatively add their logical lengths, including names core may store
 inline. Arithmetic saturates. This is not allocator telemetry, peak memory,

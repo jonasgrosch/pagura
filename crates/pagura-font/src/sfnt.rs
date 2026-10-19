@@ -1,4 +1,5 @@
 //! sfnt directory and horizontal metrics (ISO 32000-2, 9.9).
+use crate::memory::{names, vector};
 use crate::read::{Read, bad, cap};
 use crate::{CmapSubtable, GlyphId};
 use crate::{recovery::repair, repairs};
@@ -9,7 +10,6 @@ use std::ops::Range;
 
 mod cmap;
 mod glyf;
-mod memory;
 mod names;
 
 type Tables = BTreeMap<[u8; 4], Range<usize>>;
@@ -27,7 +27,11 @@ pub(crate) struct Sfnt {
 }
 
 impl Sfnt {
-    pub fn parse(data: &[u8], limits: &Limits, diagnostics: &mut Diagnostics) -> Result<Self> {
+    pub(crate) fn parse(
+        data: &[u8],
+        limits: &Limits,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<Self> {
         let (signature, tables, clipped_post) = directory(data, limits, diagnostics)?;
         let table = |tag: &[u8; 4]| -> Result<Read<'_>> {
             let range = tables
@@ -131,19 +135,19 @@ impl Sfnt {
             names,
         })
     }
-    pub fn is_cid(&self) -> bool {
+    pub(crate) fn is_cid(&self) -> bool {
         self.cff.as_ref().is_some_and(crate::cff::Cff::is_cid)
     }
-    pub fn cid(&self, cid: u32) -> Option<GlyphId> {
+    pub(crate) fn cid(&self, cid: u32) -> Option<GlyphId> {
         self.cff.as_ref()?.cid(cid)
     }
-    pub fn encoding(&self) -> Option<&[Option<Name>; 256]> {
+    pub(crate) fn encoding(&self) -> Option<&[Option<Name>; 256]> {
         self.cff.as_ref()?.encoding()
     }
-    pub fn glyph_count(&self) -> u32 {
+    pub(crate) fn glyph_count(&self) -> u32 {
         self.glyph_count
     }
-    pub fn matrix(&self) -> Transform {
+    pub(crate) fn matrix(&self) -> Transform {
         self.cff.as_ref().map_or_else(
             || {
                 let scale = 1.0 / f64::from(self.units);
@@ -152,7 +156,7 @@ impl Sfnt {
             crate::cff::Cff::matrix,
         )
     }
-    pub fn advance(&self, data: &[u8], glyph: GlyphId, limits: &Limits) -> Option<f64> {
+    pub(crate) fn advance(&self, data: &[u8], glyph: GlyphId, limits: &Limits) -> Option<f64> {
         if let Some(advances) = &self.advances {
             advances
                 .get(usize::try_from(glyph.0).ok()?)
@@ -162,7 +166,7 @@ impl Sfnt {
             self.cff.as_ref()?.advance(data, glyph, limits)
         }
     }
-    pub fn glyph_name(&self, glyph: GlyphId) -> Option<&Name> {
+    pub(crate) fn glyph_name(&self, glyph: GlyphId) -> Option<&Name> {
         self.cff
             .as_ref()
             .and_then(|cff| cff.glyph_name(glyph))
@@ -173,23 +177,23 @@ impl Sfnt {
                     .as_ref()
             })
     }
-    pub fn name(&self, name: &[u8]) -> Option<GlyphId> {
+    pub(crate) fn name(&self, name: &[u8]) -> Option<GlyphId> {
         self.cff
             .as_ref()
             .and_then(|cff| cff.name(name))
             .or_else(|| self.names.by_name.get(name).copied())
     }
-    pub fn has_cmap(&self, subtable: CmapSubtable) -> bool {
+    pub(crate) fn has_cmap(&self, subtable: CmapSubtable) -> bool {
         self.cmaps.iter().any(|c| c.selection == subtable)
     }
-    pub fn code(&self, data: &[u8], subtable: CmapSubtable, code: u32) -> Option<GlyphId> {
+    pub(crate) fn code(&self, data: &[u8], subtable: CmapSubtable, code: u32) -> Option<GlyphId> {
         self.cmaps
             .iter()
             .filter(|c| c.selection == subtable)
             .find_map(|c| c.lookup(data, code))
             .filter(|g| g.0 < self.glyph_count())
     }
-    pub fn outline(
+    pub(crate) fn outline(
         &self,
         data: &[u8],
         glyph: GlyphId,
@@ -201,6 +205,16 @@ impl Sfnt {
         } else {
             glyf::outline(self, data, glyph, limits, diagnostics)
         }
+    }
+
+    /// Heap beyond the table bytes, which the program's input owns.
+    pub(crate) fn heap_bytes(&self) -> usize {
+        vector(&self.locations)
+            .saturating_add(self.advances.as_ref().map_or(0, vector))
+            .saturating_add(vector(&self.cmaps))
+            .saturating_add(names(&self.names.by_name))
+            .saturating_add(crate::names::heap_bytes(&self.names.by_glyph))
+            .saturating_add(self.cff.as_ref().map_or(0, crate::cff::Cff::heap_bytes))
     }
 }
 

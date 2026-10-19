@@ -1,5 +1,6 @@
 //! CFF containers, DICTs and INDEXes (Adobe Technical Note 5176).
 use crate::GlyphId;
+use crate::memory::{encoding, names, nested, tree, vector};
 use crate::read::{Read, bad, cap};
 use pagura_core::{Diagnostics, Limits, Name, Recovery, Result};
 use pagura_raster::{Path, Transform};
@@ -7,7 +8,6 @@ use std::collections::BTreeMap;
 use std::ops::Range;
 
 mod dict;
-mod memory;
 mod predefined;
 mod select;
 pub(crate) mod strings;
@@ -123,7 +123,7 @@ fn charset_maps(
 }
 
 impl Cff {
-    pub fn parse(
+    pub(crate) fn parse(
         data: &[u8],
         range: Range<usize>,
         limits: &Limits,
@@ -137,7 +137,7 @@ impl Cff {
         } = header(data, range.clone(), limits, diagnostics)?;
         let table = Read::new(&data[range.clone()], range.start);
         if !cff2 {
-            top.check(false, string_ranges.len(), diagnostics)?;
+            top.validate(false, string_ranges.len(), diagnostics)?;
         }
         if top.has(0x0c14) {
             return Err(format_error(
@@ -218,30 +218,30 @@ impl Cff {
             variations,
         })
     }
-    pub fn glyph_count(&self) -> u32 {
+    pub(crate) fn glyph_count(&self) -> u32 {
         u32::try_from(self.glyphs.len()).unwrap_or(0)
     }
-    pub fn matrix(&self) -> Transform {
+    pub(crate) fn matrix(&self) -> Transform {
         self.matrix
     }
-    pub fn is_cid(&self) -> bool {
+    pub(crate) fn is_cid(&self) -> bool {
         self.cids.is_some()
     }
-    pub fn cid(&self, cid: u32) -> Option<GlyphId> {
+    pub(crate) fn cid(&self, cid: u32) -> Option<GlyphId> {
         self.cids.as_ref()?.get(&cid).copied()
     }
-    pub fn glyph_name(&self, glyph: GlyphId) -> Option<&Name> {
+    pub(crate) fn glyph_name(&self, glyph: GlyphId) -> Option<&Name> {
         self.glyph_names
             .get(usize::try_from(glyph.0).ok()?)?
             .as_ref()
     }
-    pub fn name(&self, name: &[u8]) -> Option<GlyphId> {
+    pub(crate) fn name(&self, name: &[u8]) -> Option<GlyphId> {
         self.names.get(name).copied()
     }
-    pub fn encoding(&self) -> Option<&[Option<Name>; 256]> {
+    pub(crate) fn encoding(&self) -> Option<&[Option<Name>; 256]> {
         self.encoding.as_deref()
     }
-    pub fn outline(
+    pub(crate) fn outline(
         &self,
         data: &[u8],
         glyph: GlyphId,
@@ -250,7 +250,7 @@ impl Cff {
     ) -> Result<Path> {
         Ok(type2::glyph(self, data, glyph, limits, diagnostics)?.0)
     }
-    pub fn advance(&self, data: &[u8], glyph: GlyphId, limits: &Limits) -> Option<f64> {
+    pub(crate) fn advance(&self, data: &[u8], glyph: GlyphId, limits: &Limits) -> Option<f64> {
         if self.cff2 {
             None
         } else {
@@ -265,6 +265,24 @@ impl Cff {
             limits,
             &mut Diagnostics::new(Recovery::Strict),
         )
+    }
+
+    /// Heap reachable through CFF metadata; INDEX ranges borrow the
+    /// original bytes.
+    pub(crate) fn heap_bytes(&self) -> usize {
+        self.private
+            .iter()
+            .fold(vector(&self.private), |sum, p| {
+                sum.saturating_add(vector(&p.subrs))
+            })
+            .saturating_add(vector(&self.glyphs))
+            .saturating_add(vector(&self.global))
+            .saturating_add(vector(&self.select))
+            .saturating_add(names(&self.names))
+            .saturating_add(crate::names::heap_bytes(&self.glyph_names))
+            .saturating_add(self.cids.as_ref().map_or(0, tree))
+            .saturating_add(self.encoding.as_deref().map_or(0, encoding))
+            .saturating_add(nested(&self.variations))
     }
 }
 
@@ -296,7 +314,7 @@ fn private_dict(
         dict::parse(bytes, limits, diagnostics)?
     };
     if !context.cff2 {
-        private.check(true, 0, diagnostics)?;
+        private.validate(true, 0, diagnostics)?;
     }
     private.check_blues(diagnostics)?;
     let subrs = if private.has(19) {
@@ -460,7 +478,7 @@ fn dictionaries(
                 dict::parse(bytes, limits, diagnostics)?
             };
             if !cff2 {
-                dict.check(false, context.strings, diagnostics)?;
+                dict.validate(false, context.strings, diagnostics)?;
             }
             if cff2 && dict.has(0x0c07) {
                 // Secondary outline readers disagree for this unreviewed
