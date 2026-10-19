@@ -34,7 +34,7 @@ pub use pagura_document::forms;
 /// Actions are data: Pagura never follows a URI, opens a file or runs a script.
 pub use pagura_document::navigation;
 pub mod signatures;
-pub use pagura_document::{Document, IndirectObject, OpenOptions, Page, Rotation};
+pub use pagura_document::{Document, IndirectObject, OpenOptions, Page, Password, Rotation};
 pub use pagura_raster::{Pixmap, Rgba8};
 /// Form appearance programs and resources kept as data (12.7.4.3).
 pub use pagura_render::form_appearance;

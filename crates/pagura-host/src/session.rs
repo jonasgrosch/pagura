@@ -2,7 +2,7 @@
 
 use crate::cache::PageCache;
 use crate::protocol::{self, Request, Response};
-use pagura::{Document, Error, Limits, OpenOptions, Position, RenderOptions, Result};
+use pagura::{Document, Error, Limits, OpenOptions, Password, Position, RenderOptions, Result};
 use std::collections::BTreeMap;
 use std::io::{self, Read, Write};
 use std::sync::Arc;
@@ -419,7 +419,7 @@ impl Session {
         let options = OpenOptions {
             limits: self.limits,
             recovery,
-            password: password.to_vec(),
+            password: Password::bytes(password),
         };
         let document = Document::open(bytes, &options)?;
         let pages = u32::try_from(document.page_count()?)

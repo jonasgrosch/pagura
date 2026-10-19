@@ -16,6 +16,9 @@ pub const SECURITY_VERSION: Feature = Feature::new("security.version");
 pub const CRYPT_METHOD: Feature = Feature::new("security.CFM");
 /// A crypt filter key length that differs from the file key (Table 25).
 pub const CRYPT_KEY_LENGTH: Feature = Feature::new("security.crypt-length");
+/// A text password with a character PDFDocEncoding cannot represent, for a
+/// revision 2–4 handler (7.6.4.3.2, Algorithm 2 step a).
+pub const PASSWORD_ENCODING: Feature = Feature::new("security.password-encoding");
 /// XFA interpretation and filling (12.7.8).
 pub const XFA: Feature = Feature::new("form.xfa");
 /// Rich text generation and filling (12.7.4.3).
@@ -35,6 +38,7 @@ pub const ALL: &[Feature] = &[
     SECURITY_VERSION,
     CRYPT_METHOD,
     CRYPT_KEY_LENGTH,
+    PASSWORD_ENCODING,
     XFA,
     RICH_TEXT,
     FIELD_TYPE,

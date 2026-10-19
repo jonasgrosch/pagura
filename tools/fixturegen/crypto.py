@@ -927,6 +927,13 @@ def parameter_edge_cases():
     yield Vector(case.name, {**case.files, ".pdf": encrypted_pdf(p, key, "V2")}, case.requirements,
                  "U+20AC uses PDFDocEncoding byte 0xa0; Unicode text interfaces must convert before hashing",
                  extra={"text_password_codepoint": "U+20AC", "prepared_encoding": "PDFDocEncoding"})
+    # Revision 6 takes the same text as UTF-8: SASLprep leaves U+20AC unchanged
+    # (7.6.4.3.3; RFC 4013 section 2), so the hash input is E2 82 AC.
+    p, key = parameters(6, "\u20ac".encode(), b"owner-secret")
+    case = vector("r6-utf8-euro", p, key, "\u20ac".encode(), b"owner-secret", "AESV3")
+    yield Vector(case.name, {**case.files, ".pdf": encrypted_pdf(p, key, "AESV3")}, case.requirements,
+                 "U+20AC is UTF-8 E2 82 AC for revision 6; text interfaces must not use PDFDocEncoding",
+                 extra={"text_password_codepoint": "U+20AC", "prepared_encoding": "UTF-8"})
     # Readers preserve raw permission bits in the digest; reserved bits do not
     # become access rights (7.6.4.2, Table 22). These are reader inputs, not
     # examples of conforming permission generation.

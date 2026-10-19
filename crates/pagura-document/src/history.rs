@@ -2,7 +2,7 @@
 use crate::builder::DocumentBuilder;
 use crate::features::{HISTORICAL_ENCRYPTION, HISTORICAL_SOURCE};
 use crate::{
-    Document, IndirectObject,
+    Document, IndirectObject, Password,
     view::{Context, Source},
 };
 use pagura_core::{Error, ErrorKind, ObjectId, Position, Result};
@@ -213,6 +213,6 @@ impl Document {
                 "encrypted historical revision is unsupported",
             )));
         }
-        DocumentBuilder::revision(bytes, self, table)?.build(&[])
+        DocumentBuilder::revision(bytes, self, table)?.build(&Password::default())
     }
 }

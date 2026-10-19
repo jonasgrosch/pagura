@@ -4,7 +4,7 @@ mod padding;
 mod policy;
 mod repair;
 
-use crate::{Document, IndirectObject, Location, ObjectSource, features, repairs};
+use crate::{Document, IndirectObject, Location, ObjectSource, Password, features, repairs};
 use pagura_core::{Dictionary, Error, ErrorKind, Name, ObjectId, Result, ResultExt, Value};
 use pagura_crypto::standard::{CryptMethod, FileKey, SecurityParams};
 use policy::Policy;
@@ -36,7 +36,7 @@ struct CryptFilter {
 const REVISION_3_PERMISSIONS: u32 = 0x0d00;
 
 /// Reads the encryption dictionary and authenticates `password` (7.6.4).
-pub(crate) fn read(document: &Document, password: &[u8]) -> Result<Option<Security>> {
+pub(crate) fn read(document: &Document, password: &Password) -> Result<Option<Security>> {
     let Some(encrypt) = document
         .trailer()
         .get(b"Encrypt")
@@ -55,7 +55,7 @@ fn handler(
     document: &Document,
     encrypt: &Value,
     id: Option<ObjectId>,
-    password: &[u8],
+    password: &Password,
 ) -> Result<Security> {
     uncompressed(document, encrypt, "Encrypt dictionary cannot be compressed")?;
     let dictionary = document.resolve_dictionary(encrypt)?;
@@ -93,15 +93,17 @@ fn handler(
         &mut policy,
     )?;
     let length = repair::KeyLength::of(dictionary);
-    let key = authenticate_document(
-        document,
-        id,
-        &params,
-        length,
-        password,
-        &methods,
-        &mut policy,
-    )?;
+    let key = password.with_handler_bytes(params.revision, |password| {
+        authenticate_document(
+            document,
+            id,
+            &params,
+            length,
+            password,
+            &methods,
+            &mut policy,
+        )
+    })?;
     let derivation = padding::select(document, key.as_ref(), &params, &methods, &mut policy)?;
     let Methods {
         filters,
