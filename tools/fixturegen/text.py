@@ -167,7 +167,7 @@ def original_cases():
         yield error_case("nonembedded-" + subtype.decode().lower(), b"<< /Subtype /"+subtype+b" /BaseFont /Helvetica >>", "font.non-embedded")
     yield error_case("predefined-cmap", b"<< /Subtype /Type0 /Encoding /UniJIS-UTF16-H /DescendantFonts [<< /Subtype /CIDFontType0 >>] >>", "font.predefined-cmap")
     yield error_case("differences-overflow", type3(b"<< /Differences [255 /A /B] >>", 65, [500]), "syntax")
-    yield error_case("width-count", type3(b"<< /Differences [65 /A] >>", 65, [500]).replace(b"/LastChar 65", b"/LastChar 66"), "syntax")
+
     yield error_case("unicode-surrogate", type3(b"<< /Differences [65 /A] >>", 65, [500], extra=b"/ToUnicode 5 0 R"), "syntax", [stream(b"1 begincodespacerange <00> <ff> endcodespacerange 1 beginbfchar <41> <D800> endbfchar")])
     yield error_case("unicode-cycle", type3(b"<< /Differences [65 /A] >>", 65, [500], extra=b"/ToUnicode 5 0 R"), "cycle", [stream(b"", b"/UseCMap 5 0 R")])
     yield error_case("unicode-range-overflow", type3(b"<< /Differences [65 /A] >>", 65, [500], extra=b"/ToUnicode 5 0 R"), "syntax", [stream(b"1 begincodespacerange <00> <ff> endcodespacerange 1 beginbfrange <41> <42> <00ff> endbfrange")])
@@ -405,15 +405,16 @@ def annex_cases():
         yield Vector("annex-"+name, {".base": name.encode(), ".out": expected([(code,names.get(code)) for code in range(256)])}, ("text-simple-encoding",), "All code-to-name slots, including undefined slots, from Annex D", {"driver": "encoding-names"})
 
 
-def embedded_document(program, *, subtype=b"TrueType", fontfile=b"/FontFile2", font_extra=b"", stream_extra=b"", encoding=b"/WinAnsiEncoding", flags=32, first=32, widths=None, cmap=None, cmap_extra=b"", unicode_map=None, cid_map=None, descendant_extra=b"", cid_subtype=b"CIDFontType2", omit_cid_map=False, unicode_extra=b"", parents=()):
+def embedded_document(program, *, subtype=b"TrueType", fontfile=b"/FontFile2", font_extra=b"", stream_extra=b"", encoding=b"/WinAnsiEncoding", flags=32, first=32, last=None, widths=None, cmap=None, cmap_extra=b"", unicode_map=None, cid_map=None, descendant_extra=b"", cid_subtype=b"CIDFontType2", omit_cid_map=False, unicode_extra=b"", parents=()):
     """PDF-level bindings; the independent font writer supplies program bytes."""
     widths = widths if widths is not None else [600] * 192
+    last = last if last is not None else first + len(widths) - 1
     encoding_entry = b" /Encoding " + encoding if encoding else b""
     if subtype == b"Type0":
         root = b"<< /Type /Font /Subtype /Type0 /BaseFont /Fixture /DescendantFonts [7 0 R]" + encoding_entry
     else:
         root = b"<< /Type /Font /Subtype /" + subtype + b" /BaseFont /Fixture /FontDescriptor 5 0 R" + encoding_entry
-        root += b" /FirstChar %d /LastChar %d /Widths [" % (first,first+len(widths)-1) + b" ".join(str(w).encode() for w in widths) + b"]"
+        root += b" /FirstChar %d /LastChar %d /Widths [" % (first,last) + b" ".join(str(w).encode() for w in widths) + b"]"
     root += (b" /ToUnicode 9 0 R" if unicode_map is not None else b"") + b" " + font_extra + b" >>"
     descriptor = b"<< /Type /FontDescriptor /FontName /Fixture /Flags %d /FontBBox [0 0 300 300] /ItalicAngle 0 /Ascent 800 /Descent -200 /CapHeight 700 /StemV 80 " % flags + fontfile + b" 6 0 R >>"
     descendant = b"<< /Type /Font /Subtype /" + cid_subtype + b" /BaseFont /Fixture /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor 5 0 R " + descendant_extra
@@ -1297,6 +1298,14 @@ def tolerance_cases():
     inp=b"\0\1\0\2\0\3\0\4\0\5"
     result=[row(i,i,width=.4+.1*i,length=2) for i in range(1,5)]+[row(5,0,length=2)]
     yield vector("repair-cid-to-gid-identity",["font.cid-to-gid-identity"],inp,result,subtype=b"Type0",encoding=b"/Identity-H",omit_cid_map=True,descendant_extra=widths)
+    # Table 109: Widths has LastChar - FirstChar + 1 entries. Codes the array
+    # does not reach use MissingWidth (0 here); entries past LastChar are unused.
+    for name, last, widths in [("short", 68, [500, 600]), ("long", 66, [500, 600, 700, 800]), ("reversed", 64, [500, 600])]:
+        reached = {65: .5, 66: .6} if name != "reversed" else {}
+        rows = [row(65+i, i+1, chr(65+i), width=reached.get(65+i, 0)) for i in range(4)]
+        files = {".pdf": embedded_document(program, stream_extra=b"/Length1 %d" % len(program), first=65, last=last, widths=widths),
+                 ".input": b"ABCD", ".out": expected(rows), ".repair": b"font.widths-length\n", ".matrix": expected([(.001,0,0,.001,0,0)])}
+        yield Vector("repair-widths-"+name, files, ("text-simple-widths",), "Strict rejects a Widths length that disagrees with FirstChar and LastChar; repair mode uses MissingWidth past the array", {"driver": "text-repair"})
 
 
 def tolerance_paint_cases():

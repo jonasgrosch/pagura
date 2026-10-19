@@ -27,6 +27,10 @@ pub const DESCRIPTOR_FLAGS: Repair = Repair::new("font.descriptor-flags");
 /// Reversed d1 bounds are ignored only for procedures with no drawing commands
 /// (9.6.4, Table 111); the declared horizontal advance is retained.
 pub const TYPE3_EMPTY_BOUNDS: Repair = Repair::new("font.type3-empty-bounds");
+/// A simple font's `Widths` array whose length disagrees with `FirstChar` and
+/// `LastChar` (Table 109): codes past its end use `MissingWidth` and extra
+/// entries are ignored.
+pub const WIDTHS_LENGTH: Repair = Repair::new("font.widths-length");
 /// A font stream whose `Length1` to `Length3` are absent, invalid or disagree
 /// with its decoded program (Table 125). The program is parsed as decoded.
 pub const STREAM_LENGTHS: Repair = Repair::new("font.stream-lengths");
@@ -43,5 +47,6 @@ pub const ALL: &[Repair] = &[
     DESCRIPTOR_FLAGS,
     DESCRIPTOR_WEIGHT,
     TYPE3_EMPTY_BOUNDS,
+    WIDTHS_LENGTH,
     STREAM_LENGTHS,
 ];
