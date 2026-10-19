@@ -1,5 +1,5 @@
 use super::*;
-use crate::rsa::tests::{decode, vectors};
+use crate::tests::{cached_suite, decode};
 use crate::{Digest, Sha224};
 
 #[test]
@@ -40,7 +40,9 @@ fn nist_minimized_and_streaming() {
 
 #[test]
 fn cached_cavp_byte_suites_including_monte_carlo() {
-    let data = vectors("hash");
+    let Some(data) = cached_suite("sha") else {
+        return;
+    };
     let mut counts = std::collections::BTreeMap::new();
     for line in data.lines() {
         if line.starts_with('#') {

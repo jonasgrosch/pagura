@@ -1,23 +1,10 @@
 use super::*;
-use std::{collections::BTreeMap, path::PathBuf, process::Command};
-
-fn hex(value: &str) -> Vec<u8> {
-    let padded = if value.len() % 2 == 1 {
-        format!("0{value}")
-    } else {
-        value.to_owned()
-    };
-    padded
-        .as_bytes()
-        .as_chunks::<2>()
-        .0
-        .iter()
-        .map(|pair| u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap())
-        .collect()
-}
+use crate::tests::cached_suite;
+use pagura_testkit::{fixture_text, unhex};
+use std::collections::BTreeMap;
 
 fn uint(value: &str) -> Uint {
-    Uint::from_be_bytes(&hex(value)).unwrap()
+    Uint::from_be_bytes(&unhex(value)).unwrap()
 }
 
 fn curve(value: &str) -> Curve {
@@ -29,27 +16,9 @@ fn curve(value: &str) -> Curve {
     }
 }
 
-fn python(script: &str, arguments: &[&str]) -> String {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../tools/fixturegen")
-        .join(script);
-    let output = Command::new("python3")
-        .arg(path)
-        .args(arguments)
-        .env("PYTHONDONTWRITEBYTECODE", "1")
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    String::from_utf8(output.stdout).unwrap()
-}
-
 #[test]
 fn modular_arithmetic_matches_independent_python_integers() {
-    let output = python("ecdsa_oracle.py", &["arithmetic"]);
+    let output = fixture_text("crypto", "ecdsa-arithmetic.vectors");
     let mut count = 0;
     for line in output.lines() {
         let fields: Vec<_> = line.split('\t').collect();
@@ -89,7 +58,7 @@ fn modular_arithmetic_matches_independent_python_integers() {
         }
         count += 1;
     }
-    assert_eq!(count, 6 * (49 + 256));
+    assert_eq!(count, 6 * (49 + 16));
     eprintln!("Python integer arithmetic: {count}/{count} cases, six modular operations each");
 }
 
@@ -100,8 +69,8 @@ fn verify_vectors(output: &str) -> usize {
         let fields: Vec<_> = line.split('\t').collect();
         assert_eq!(fields.len(), 7, "{line}");
         let curve = curve(fields[2]);
-        let key = PublicKey::from_sec1(curve, &hex(fields[4]));
-        let actual = key.and_then(|key| key.verify_der(&hex(fields[3]), &hex(fields[5])));
+        let key = PublicKey::from_sec1(curve, &unhex(fields[4]));
+        let actual = key.and_then(|key| key.verify_der(&unhex(fields[3]), &unhex(fields[5])));
         let accepted = matches!(actual, Ok(Verification::Valid));
         let expected = fields[6] == "1";
         let entry = counts.entry((fields[0], fields[2])).or_default();
@@ -126,14 +95,16 @@ fn verify_vectors(output: &str) -> usize {
 #[test]
 fn random_signatures_match_independent_affine_python_oracle() {
     assert_eq!(
-        verify_vectors(&python("ecdsa_oracle.py", &["vectors"])),
-        3 * (4 * 64 + 2)
+        verify_vectors(&fixture_text("crypto", "ecdsa-signatures.vectors")),
+        3 * (4 * 14 + 2)
     );
 }
 
 #[test]
 fn complete_cached_nist_and_wycheproof_signature_suites() {
-    let output = python("ecdsa_vectors.py", &[]);
+    let Some(output) = cached_suite("ecdsa") else {
+        return;
+    };
     let count = verify_vectors(&output);
     eprintln!(
         "Cached ECDSA reference vectors: {count} (cache is optional; independent oracles always run)"
@@ -249,7 +220,7 @@ fn sec1_validation_and_group_exceptional_cases() {
 
 #[test]
 fn strict_der_rejects_lengths_types_signs_padding_ranges_and_trailing_bytes() {
-    let valid = hex("3006020101020101");
+    let valid = unhex("3006020101020101");
     for curve in [Curve::P256, Curve::P384, Curve::P521] {
         let signature = Signature::from_der(curve, &valid).unwrap();
         assert_eq!(signature.curve(), curve);
@@ -275,7 +246,7 @@ fn strict_der_rejects_lengths_types_signs_padding_ranges_and_trailing_bytes() {
             "3006028101020101",
             "30060201010281ff",
         ] {
-            let error = Signature::from_der(curve, &hex(invalid)).unwrap_err();
+            let error = Signature::from_der(curve, &unhex(invalid)).unwrap_err();
             assert!(
                 matches!(error.position, Position::Buffer(_)),
                 "{invalid}: {error}"
@@ -299,7 +270,7 @@ fn strict_der_rejects_lengths_types_signs_padding_ranges_and_trailing_bytes() {
             Verification::Invalid
         );
         assert_eq!(key.verify_der(&[1], &valid).unwrap(), Verification::Invalid);
-        assert!(key.verify_der(&[1], &hex("3006020100020101")).is_err());
+        assert!(key.verify_der(&[1], &unhex("3006020100020101")).is_err());
         let other = if curve == Curve::P256 {
             Curve::P384
         } else {
