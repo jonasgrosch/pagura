@@ -1,5 +1,6 @@
 //! CFF DICT evaluation (TN 5176 section 4); CFF2 extensions await primary review.
-use crate::read::{Read, bad, cap};
+use crate::read::{bad, cap, here};
+use pagura_core::bytes::Cursor;
 use pagura_core::{Diagnostics, Limits, Position, Result};
 use pagura_raster::Transform;
 use std::collections::BTreeMap;
@@ -63,7 +64,7 @@ pub(super) fn integer(n: f64, at: usize) -> Result<usize> {
     usize::try_from(n as u32).map_err(|_| crate::read::limit(at, "CFF integer overflow"))
 }
 
-pub(super) fn number(r: &mut Read<'_>, byte: u8, real: bool) -> Result<f64> {
+pub(super) fn number(r: &mut Cursor<'_>, byte: u8, real: bool) -> Result<f64> {
     Ok(match byte {
         28 => f64::from(r.i16()?),
         29 if real => f64::from(r.i32()?),
@@ -72,15 +73,15 @@ pub(super) fn number(r: &mut Read<'_>, byte: u8, real: bool) -> Result<f64> {
         247..=250 => f64::from((u16::from(byte) - 247) * 256 + u16::from(r.u8()?) + 108),
         251..=254 => -f64::from((u16::from(byte) - 251) * 256 + u16::from(r.u8()?) + 108),
         255 if !real => f64::from(r.i32()?) / 65536.0,
-        _ => return Err(bad(r.at(), "invalid CFF number")),
+        _ => return Err(bad(here(r), "invalid CFF number")),
     })
 }
-fn real_number(r: &mut Read<'_>) -> Result<f64> {
+fn real_number(r: &mut Cursor<'_>) -> Result<f64> {
     let mut text = String::new();
     loop {
         let byte = r.u8()?;
         for (i, nibble) in [byte >> 4, byte & 15].into_iter().enumerate() {
-            cap(text.len(), 64, r.at())?;
+            cap(text.len(), 64, here(r))?;
             match nibble {
                 0..=9 => text.push(char::from(b'0' + nibble)),
                 10 => text.push('.'),
@@ -89,24 +90,28 @@ fn real_number(r: &mut Read<'_>) -> Result<f64> {
                 14 => text.push('-'),
                 15 => {
                     if i == 0 && byte & 15 != 15 {
-                        return Err(bad(r.at() - 1, "invalid CFF real padding"));
+                        return Err(bad(here(r) - 1, "invalid CFF real padding"));
                     }
                     return text
                         .parse::<f64>()
                         .ok()
                         .filter(|n| n.is_finite())
-                        .ok_or_else(|| bad(r.at(), "invalid CFF real"));
+                        .ok_or_else(|| bad(here(r), "invalid CFF real"));
                 }
-                _ => return Err(bad(r.at(), "reserved CFF real nibble")),
+                _ => return Err(bad(here(r), "reserved CFF real nibble")),
             }
         }
     }
 }
-pub(super) fn parse(r: Read<'_>, limits: &Limits, diagnostics: &mut Diagnostics) -> Result<Dict> {
+pub(super) fn parse(r: Cursor<'_>, limits: &Limits, diagnostics: &mut Diagnostics) -> Result<Dict> {
     parse_inner(r, limits, None, false, diagnostics)
 }
 
-pub(super) fn parse_private(r: Read<'_>, limits: &Limits, variations: &[Vec<f64>]) -> Result<Dict> {
+pub(super) fn parse_private(
+    r: Cursor<'_>,
+    limits: &Limits,
+    variations: &[Vec<f64>],
+) -> Result<Dict> {
     parse_inner(
         r,
         limits,
@@ -116,32 +121,33 @@ pub(super) fn parse_private(r: Read<'_>, limits: &Limits, variations: &[Vec<f64>
     )
 }
 
-pub(super) fn parse_cff2(r: Read<'_>, limits: &Limits) -> Result<Dict> {
+pub(super) fn parse_cff2(r: Cursor<'_>, limits: &Limits) -> Result<Dict> {
     parse_inner(r, limits, None, true, &mut Diagnostics::default())
 }
 
 fn parse_inner(
-    mut r: Read<'_>,
+    mut r: Cursor<'_>,
     limits: &Limits,
     variations: Option<&[Vec<f64>]>,
     cff2: bool,
     diagnostics: &mut Diagnostics,
 ) -> Result<Dict> {
+    let start = here(&r);
     let mut entries = BTreeMap::new();
     let mut blue_order_fault = None;
     let mut stack = Vec::new();
     let mut work = 0;
     let mut vsindex = 0;
-    while r.pos < r.data.len() {
+    while !r.at_end() {
         work += 1;
-        cap(work, limits.operations, r.at())?;
-        let at = r.at();
+        cap(work, limits.operations, here(&r))?;
+        let at = here(&r);
         let byte = r.u8()?;
         if byte >= 28 {
             cap(
                 stack.len() + 1,
                 if cff2 { 513 } else { 48 }.min(limits.value_nodes),
-                r.at(),
+                here(&r),
             )?;
             stack.push(number(&mut r, byte, true)?);
         } else {
@@ -153,11 +159,11 @@ fn parse_inner(
             if let Some(variations) = variations {
                 if op == 22 {
                     let [value] = stack.as_slice() else {
-                        return Err(bad(r.at(), "invalid CFF2 DICT vsindex operands"));
+                        return Err(bad(here(&r), "invalid CFF2 DICT vsindex operands"));
                     };
-                    vsindex = integer(*value, r.at())?;
+                    vsindex = integer(*value, here(&r))?;
                     if vsindex >= variations.len() {
-                        return Err(bad(r.at(), "CFF2 DICT vsindex out of range"));
+                        return Err(bad(here(&r), "CFF2 DICT vsindex out of range"));
                     }
                     entries.insert(
                         22,
@@ -166,11 +172,11 @@ fn parse_inner(
                             at,
                         },
                     );
-                    cap(entries.len(), limits.value_nodes, r.at())?;
+                    cap(entries.len(), limits.value_nodes, here(&r))?;
                     continue;
                 }
                 if op == 23 {
-                    blend(&mut stack, vsindex, variations, r.at())?;
+                    blend(&mut stack, vsindex, variations, here(&r))?;
                     continue;
                 }
             }
@@ -185,7 +191,7 @@ fn parse_inner(
                 continue;
             }
             if matches!(op, 7 | 9) && !entries.contains_key(&(op - 1)) {
-                blue_order_fault.get_or_insert(r.at() - 1);
+                blue_order_fault.get_or_insert(here(&r) - 1);
             }
             if entries
                 .insert(
@@ -197,17 +203,17 @@ fn parse_inner(
                 )
                 .is_some()
             {
-                return Err(bad(r.at(), "duplicate CFF DICT operator"));
+                return Err(bad(here(&r), "duplicate CFF DICT operator"));
             }
-            cap(entries.len(), limits.value_nodes, r.at())?;
+            cap(entries.len(), limits.value_nodes, here(&r))?;
         }
     }
     if !stack.is_empty() {
-        return Err(bad(r.at(), "unterminated CFF DICT operands"));
+        return Err(bad(here(&r), "unterminated CFF DICT operands"));
     }
     Ok(Dict {
         entries,
-        at: r.base,
+        at: start,
         blue_order_fault,
     })
 }
@@ -252,24 +258,33 @@ fn blend(stack: &mut Vec<f64>, vsindex: usize, variations: &[Vec<f64>], at: usiz
 
 #[cfg(test)]
 mod tests {
-    use super::{Read, parse_private};
+    use super::parse_private;
+    use crate::read::cursor;
     use pagura_core::{ErrorKind, Limits, Position};
     #[test]
     fn blends_preserve_preceding_operands_and_feed_dict_operators() {
         // The first coefficient is zero at default, the second one is one.
         let data = [144, 149, 159, 169, 140, 23, 6]; // 5,10,20,30,1 blend BlueValues
-        let dict =
-            parse_private(Read::new(&data, 100), &Limits::default(), &[vec![0.0, 1.0]]).unwrap();
+        let dict = parse_private(
+            cursor(&data).with_base(100),
+            &Limits::default(),
+            &[vec![0.0, 1.0]],
+        )
+        .unwrap();
         assert_eq!(dict.values(6), Some([5.0, 40.0].as_slice()));
         let small = Limits {
             value_nodes: 1,
             ..Limits::default()
         };
-        assert!(parse_private(Read::new(&[139, 19, 139, 22], 0), &small, &[vec![1.0]]).is_err());
+        assert!(parse_private(cursor(&[139, 19, 139, 22]), &small, &[vec![1.0]]).is_err());
         for malformed in [&[140, 23][..], &[140, 22][..], &[139, 23][..]] {
-            let e = parse_private(Read::new(malformed, 20), &Limits::default(), &[vec![1.0]])
-                .err()
-                .unwrap();
+            let e = parse_private(
+                cursor(malformed).with_base(20),
+                &Limits::default(),
+                &[vec![1.0]],
+            )
+            .err()
+            .unwrap();
             assert_eq!(e.kind, ErrorKind::Syntax);
             assert!(matches!(e.position, Position::Buffer(_)));
         }

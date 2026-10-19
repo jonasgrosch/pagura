@@ -1,6 +1,7 @@
 //! OpenType post glyph names. Standard names are defined by the post format.
 use crate::GlyphId;
-use crate::read::{Read, bad, cap};
+use crate::read::{bad, cap, here};
+use pagura_core::bytes::Cursor;
 use pagura_core::{Limits, Name, Result};
 use std::collections::BTreeMap;
 
@@ -13,7 +14,8 @@ pub(super) struct PostNames {
     pub by_glyph: Vec<Option<Name>>,
 }
 
-pub(super) fn parse(mut r: Read<'_>, count: usize, limits: &Limits) -> Result<PostNames> {
+pub(super) fn parse(mut r: Cursor<'_>, count: usize, limits: &Limits) -> Result<PostNames> {
+    let start = here(&r);
     let version = r.u32()?;
     r.skip(28)?;
     let standard: Vec<_> = STANDARD
@@ -23,7 +25,7 @@ pub(super) fn parse(mut r: Read<'_>, count: usize, limits: &Limits) -> Result<Po
     let by_glyph = match version {
         0x0001_0000 => {
             if count > standard.len() {
-                return Err(bad(r.at(), "post standard-name count exceeded"));
+                return Err(bad(here(&r), "post standard-name count exceeded"));
             }
             crate::names::indexed(
                 count,
@@ -31,14 +33,14 @@ pub(super) fn parse(mut r: Read<'_>, count: usize, limits: &Limits) -> Result<Po
                     .iter()
                     .take(count)
                     .enumerate()
-                    .map(|(i, name)| Ok((glyph_id(i, r.at())?, name))),
+                    .map(|(i, name)| Ok((glyph_id(i, here(&r))?, name))),
                 limits,
-                r.base,
+                start,
             )?
         }
         0x0002_0000 => {
             if usize::from(r.u16()?) != count {
-                return Err(bad(r.at(), "post glyph count mismatch"));
+                return Err(bad(here(&r), "post glyph count mismatch"));
             }
             let mut indices = Vec::with_capacity(count);
             let mut custom_count = 0;
@@ -49,16 +51,16 @@ pub(super) fn parse(mut r: Read<'_>, count: usize, limits: &Limits) -> Result<Po
                 }
                 indices.push(index);
             }
-            cap(custom_count, limits.value_nodes, r.at())?;
+            cap(custom_count, limits.value_nodes, here(&r))?;
             let mut custom = Vec::with_capacity(custom_count);
             let mut bytes = 0;
             for _ in 0..custom_count {
                 let len = usize::from(r.u8()?);
                 bytes += len;
-                cap(bytes, limits.string_bytes, r.at())?;
+                cap(bytes, limits.string_bytes, here(&r))?;
                 let name = r.take(len)?;
                 if name.contains(&0) {
-                    return Err(bad(r.at(), "NUL in post glyph name"));
+                    return Err(bad(here(&r), "NUL in post glyph name"));
                 }
                 custom.push(Name::new(name));
             }
@@ -70,11 +72,11 @@ pub(super) fn parse(mut r: Read<'_>, count: usize, limits: &Limits) -> Result<Po
                     } else {
                         custom.get(index - 258)
                     }
-                    .ok_or_else(|| bad(r.at(), "invalid post glyph name"))?;
-                    Ok((glyph_id(i, r.at())?, name))
+                    .ok_or_else(|| bad(here(&r), "invalid post glyph name"))?;
+                    Ok((glyph_id(i, here(&r))?, name))
                 }),
                 limits,
-                r.base,
+                start,
             )?
         }
         0x0003_0000 => Vec::new(),
@@ -83,13 +85,15 @@ pub(super) fn parse(mut r: Read<'_>, count: usize, limits: &Limits) -> Result<Po
                 crate::features::FORMAT,
                 "post name format is not implemented",
             )
-            .at(pagura_core::Position::Buffer(r.base)));
+            .at(pagura_core::Position::Buffer(start)));
         }
     };
     let mut by_name = BTreeMap::new();
     for (i, name) in by_glyph.iter().enumerate() {
         if let Some(name) = name {
-            by_name.entry(name.clone()).or_insert(glyph_id(i, r.at())?);
+            by_name
+                .entry(name.clone())
+                .or_insert(glyph_id(i, here(&r))?);
         }
     }
     Ok(PostNames { by_name, by_glyph })

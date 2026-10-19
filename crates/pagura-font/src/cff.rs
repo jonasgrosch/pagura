@@ -1,7 +1,9 @@
 //! CFF containers, DICTs and INDEXes (Adobe Technical Note 5176).
 use crate::GlyphId;
 use crate::memory::{encoding, names, nested, tree, vector};
-use crate::read::{Read, bad, cap};
+use crate::read::{bad, cap, here, slice};
+use pagura_core::bytes::Cursor;
+use pagura_core::convert::u32_to_usize;
 use pagura_core::{Diagnostics, Limits, Name, Recovery, Result};
 use pagura_raster::{Path, Transform};
 use std::collections::BTreeMap;
@@ -40,9 +42,9 @@ pub(crate) struct Cff {
     variations: Vec<Vec<f64>>,
 }
 
-pub(super) fn index(r: &mut Read<'_>, limits: &Limits, cff2: bool) -> Result<Vec<Range<usize>>> {
+pub(super) fn index(r: &mut Cursor<'_>, limits: &Limits, cff2: bool) -> Result<Vec<Range<usize>>> {
     let count = if cff2 {
-        r.offset()?
+        u32_to_usize(r.u32()?)
     } else {
         usize::from(r.u16()?)
     };
@@ -53,14 +55,14 @@ pub(super) fn index(r: &mut Read<'_>, limits: &Limits, cff2: bool) -> Result<Vec
             .min(limits.objects)
             .min(limits.value_nodes)
             .min(limits.decoded_bytes / size_of::<Range<usize>>()),
-        r.at(),
+        here(r),
     )?;
     if count == 0 {
         return Ok(Vec::new());
     }
     let size = r.u8()?;
     if !(1..=4).contains(&size) {
-        return Err(bad(r.at(), "invalid CFF offset size"));
+        return Err(bad(here(r), "invalid CFF offset size"));
     }
     let mut offsets = Vec::with_capacity(count + 1);
     let mut previous = 1;
@@ -70,18 +72,18 @@ pub(super) fn index(r: &mut Read<'_>, limits: &Limits, cff2: bool) -> Result<Vec
             n = n
                 .checked_mul(256)
                 .and_then(|n| n.checked_add(usize::from(r.u8().ok()?)))
-                .ok_or_else(|| bad(r.at(), "invalid CFF offset"))?;
+                .ok_or_else(|| bad(here(r), "invalid CFF offset"))?;
         }
         if n < previous || (i == 0 && n != 1) {
-            return Err(bad(r.at(), "invalid CFF INDEX offsets"));
+            return Err(bad(here(r), "invalid CFF INDEX offsets"));
         }
         offsets.push(n - 1);
         previous = n;
     }
-    let start = r.at();
+    let start = here(r);
     let len = *offsets
         .last()
-        .ok_or_else(|| bad(r.at(), "missing CFF offset"))?;
+        .ok_or_else(|| bad(here(r), "missing CFF offset"))?;
     cap(len, limits.decoded_bytes, start)?;
     r.skip(len)?;
     Ok(offsets
@@ -135,7 +137,7 @@ impl Cff {
             global,
             cff2,
         } = header(data, range.clone(), limits, diagnostics)?;
-        let table = Read::new(&data[range.clone()], range.start);
+        let table = slice(data, range.clone(), "invalid CFF table")?;
         if !cff2 {
             top.validate(false, string_ranges.len(), diagnostics)?;
         }
@@ -145,12 +147,12 @@ impl Cff {
                 "synthetic CFF font is not supported",
             ));
         }
-        let mut charstrings = table.tail(top.offset(17, None)?)?;
+        let mut charstrings = table.cursor_at(top.offset(17, None)?)?;
         let glyphs = index(&mut charstrings, limits, cff2)?;
         if glyphs.is_empty() {
-            return Err(bad(charstrings.at(), "CFF has no glyphs"));
+            return Err(bad(here(&charstrings), "CFF has no glyphs"));
         }
-        cap(glyphs.len(), limits.objects, charstrings.at())?;
+        cap(glyphs.len(), limits.objects, here(&charstrings))?;
         if !cff2 && top.number(0x0c06, 2.0)? != 2.0 {
             return Err(format_error(
                 range.start,
@@ -158,7 +160,7 @@ impl Cff {
             ));
         }
         let variations = if cff2 && top.has(24) {
-            variation::parse(table.tail(top.offset(24, None)?)?, limits)?
+            variation::parse(table.cursor_at(top.offset(24, None)?)?, limits)?
         } else {
             Vec::new()
         };
@@ -167,7 +169,7 @@ impl Cff {
         let charset = if cff2 {
             Vec::new()
         } else {
-            charset(table, top.offset(15, Some(0))?, glyphs.len(), limits)?
+            charset(&table, top.offset(15, Some(0))?, glyphs.len(), limits)?
         };
         let (names, cids) =
             charset_maps(&charset, &top, &string_ranges, data, limits, range.start)?;
@@ -175,7 +177,7 @@ impl Cff {
             None
         } else {
             Some(strings::encoding(
-                table,
+                &table,
                 top.offset(16, Some(0))?,
                 &charset,
                 &string_ranges,
@@ -190,7 +192,7 @@ impl Cff {
             strings: string_ranges.len(),
         };
         let (private, select) = dictionaries(
-            table,
+            &table,
             &top,
             data,
             glyphs.len(),
@@ -231,9 +233,7 @@ impl Cff {
         self.cids.as_ref()?.get(&cid).copied()
     }
     pub(crate) fn glyph_name(&self, glyph: GlyphId) -> Option<&Name> {
-        self.glyph_names
-            .get(usize::try_from(glyph.0).ok()?)?
-            .as_ref()
+        self.glyph_names.get(u32_to_usize(glyph.0))?.as_ref()
     }
     pub(crate) fn name(&self, name: &[u8]) -> Option<GlyphId> {
         self.names.get(name).copied()
@@ -267,6 +267,11 @@ impl Cff {
         )
     }
 
+    /// The Private DICT that selects `glyph`'s subroutines and widths.
+    fn private(&self, glyph: GlyphId) -> Option<&Private> {
+        self.private.get(*self.select.get(u32_to_usize(glyph.0))?)
+    }
+
     /// Heap reachable through CFF metadata; INDEX ranges borrow the
     /// original bytes.
     pub(crate) fn heap_bytes(&self) -> usize {
@@ -287,7 +292,7 @@ impl Cff {
 }
 
 fn private_dict(
-    table: Read<'_>,
+    table: &Cursor<'_>,
     top: &dict::Dict,
     limits: &Limits,
     context: Context<'_>,
@@ -297,17 +302,17 @@ fn private_dict(
     let pair = match top.values(18) {
         Some(pair) => pair,
         None if context.cff2 => &[0.0, 0.0],
-        None => return Err(bad(table.base, "missing CFF Private DICT")),
+        None => return Err(bad(here(table), "missing CFF Private DICT")),
     };
     if pair.len() != 2 {
-        return Err(bad(table.base, "invalid CFF Private operands"));
+        return Err(bad(here(table), "invalid CFF Private operands"));
     }
-    let size = dict::integer(pair[0], table.base)?;
-    let offset = dict::integer(pair[1], table.base)?;
-    cap(size, limits.operations, table.base)?;
-    let mut r = table.tail(offset)?;
-    let at = r.at();
-    let bytes = Read::new(r.take(size)?, at);
+    let size = dict::integer(pair[0], here(table))?;
+    let offset = dict::integer(pair[1], here(table))?;
+    cap(size, limits.operations, here(table))?;
+    let mut r = table.cursor_at(offset)?;
+    let at = here(&r);
+    let bytes = r.take_cursor(size)?;
     let mut private = if context.cff2 {
         dict::parse_private(bytes, limits, context.variations)?
     } else {
@@ -319,7 +324,7 @@ fn private_dict(
     private.check_blues(diagnostics)?;
     let subrs = if private.has(19) {
         index(
-            &mut table.tail(
+            &mut table.cursor_at(
                 offset
                     .checked_add(private.offset(19, None)?)
                     .ok_or_else(|| crate::read::limit(at, "private offset overflow"))?,
@@ -343,14 +348,14 @@ fn private_dict(
     })
 }
 
-fn charset(table: Read<'_>, offset: usize, glyphs: usize, limits: &Limits) -> Result<Vec<u16>> {
+fn charset(table: &Cursor<'_>, offset: usize, glyphs: usize, limits: &Limits) -> Result<Vec<u16>> {
     if offset == 0 {
         if glyphs > 229 {
-            return Err(bad(table.base, "ISOAdobe charset glyph count exceeded"));
+            return Err(bad(here(table), "ISOAdobe charset glyph count exceeded"));
         }
         return (0..glyphs)
             .map(|i| {
-                u16::try_from(i).map_err(|_| crate::read::limit(table.base, "charset overflow"))
+                u16::try_from(i).map_err(|_| crate::read::limit(here(table), "charset overflow"))
             })
             .collect();
     }
@@ -363,11 +368,11 @@ fn charset(table: Read<'_>, offset: usize, glyphs: usize, limits: &Limits) -> Re
         return predefined
             .get(..glyphs)
             .map(<[u16]>::to_vec)
-            .ok_or_else(|| bad(table.base, "predefined CFF charset glyph count exceeded"));
+            .ok_or_else(|| bad(here(table), "predefined CFF charset glyph count exceeded"));
     }
-    let mut r = table.tail(offset)?;
+    let mut r = table.cursor_at(offset)?;
     let format = r.u8()?;
-    cap(glyphs, limits.value_nodes, r.at())?;
+    cap(glyphs, limits.value_nodes, here(&r))?;
     let mut result = Vec::with_capacity(glyphs);
     result.push(0);
     while result.len() < glyphs {
@@ -376,10 +381,10 @@ fn charset(table: Read<'_>, offset: usize, glyphs: usize, limits: &Limits) -> Re
             0 => 0,
             1 => u16::from(r.u8()?),
             2 => r.u16()?,
-            _ => return Err(bad(r.at(), "invalid CFF charset format")),
+            _ => return Err(bad(here(&r), "invalid CFF charset format")),
         };
         if usize::from(left) + 1 > glyphs - result.len() || first.checked_add(left).is_none() {
-            return Err(bad(r.at(), "CFF charset range exceeds glyph count"));
+            return Err(bad(here(&r), "CFF charset range exceeds glyph count"));
         }
         result.extend(first..=first + left);
     }
@@ -398,14 +403,10 @@ fn header(
     limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<Header> {
-    let mut r = Read::new(
-        data.get(range.clone())
-            .ok_or_else(|| bad(range.start, "invalid CFF table"))?,
-        range.start,
-    );
+    let mut r = slice(data, range, "invalid CFF table")?;
     let major = r.u8()?;
     if !matches!(major, 1 | 2) {
-        return Err(bad(r.at(), "invalid CFF version"));
+        return Err(bad(here(&r), "invalid CFF version"));
     }
     let cff2 = major == 2;
     r.u8()?;
@@ -413,28 +414,27 @@ fn header(
     let (top, strings, global) = if cff2 {
         let size = usize::from(r.u16()?);
         if header < 5 {
-            return Err(bad(r.at(), "invalid CFF2 header"));
+            return Err(bad(here(&r), "invalid CFF2 header"));
         }
-        r = r.tail(header)?;
-        let at = r.at();
-        let top = dict::parse_cff2(Read::new(r.take(size)?, at), limits)?;
+        r = r.cursor_at(header)?;
+        let top = dict::parse_cff2(r.take_cursor(size)?, limits)?;
         (top, Vec::new(), index(&mut r, limits, true)?)
     } else {
         let offset_size = r.u8()?;
         if header < 4 || !(1..=4).contains(&offset_size) {
-            return Err(bad(r.at(), "invalid CFF header"));
+            return Err(bad(here(&r), "invalid CFF header"));
         }
-        r = r.tail(header)?;
+        r = r.cursor_at(header)?;
         if index(&mut r, limits, false)?.len() != 1 {
-            return Err(bad(r.at(), "embedded CFF must contain one font"));
+            return Err(bad(here(&r), "embedded CFF must contain one font"));
         }
         let tops = index(&mut r, limits, false)?;
         let top = tops
             .first()
             .filter(|_| tops.len() == 1)
-            .ok_or_else(|| bad(r.at(), "CFF Top DICT count mismatch"))?;
+            .ok_or_else(|| bad(here(&r), "CFF Top DICT count mismatch"))?;
         let top = dict::parse(
-            Read::new(&data[top.clone()], top.start),
+            slice(data, top.clone(), "CFF Top DICT outside font")?,
             limits,
             diagnostics,
         )?;
@@ -451,7 +451,7 @@ fn header(
 }
 
 fn dictionaries(
-    table: Read<'_>,
+    table: &Cursor<'_>,
     top: &dict::Dict,
     data: &[u8],
     glyphs: usize,
@@ -461,17 +461,17 @@ fn dictionaries(
 ) -> Result<(Vec<Private>, Vec<usize>)> {
     let cff2 = context.cff2;
     let (private, select) = if top.has(0x0c1e) || cff2 && top.has(0x0c24) {
-        let mut array = table.tail(top.offset(0x0c24, None)?)?;
+        let mut array = table.cursor_at(top.offset(0x0c24, None)?)?;
         let fonts = index(&mut array, limits, cff2)?;
         if fonts.is_empty() || fonts.len() > if cff2 { 65536 } else { 256 } {
-            return Err(bad(array.at(), "invalid CFF FDArray count"));
+            return Err(bad(here(&array), "invalid CFF FDArray count"));
         }
         let mut private = Vec::with_capacity(fonts.len());
         let mut remaining = *limits;
         for font in fonts {
             cap(font.len(), remaining.operations, font.start)?;
             remaining.operations = remaining.operations.saturating_sub(font.len());
-            let bytes = Read::new(&data[font.clone()], font.start);
+            let bytes = slice(data, font.clone(), "CFF Font DICT outside font")?;
             let mut dict = if cff2 {
                 dict::parse_cff2(bytes, limits)?
             } else {
@@ -505,7 +505,7 @@ fn dictionaries(
             vec![0; glyphs]
         } else {
             select::parse(
-                table.tail(top.offset(0x0c25, None)?)?,
+                table.cursor_at(top.offset(0x0c25, None)?)?,
                 glyphs,
                 private.len(),
                 limits,

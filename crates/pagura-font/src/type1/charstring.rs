@@ -1,8 +1,9 @@
 //! Type 1 charstrings: unhinted outlines, subroutines and StandardEncoding seac.
 use super::{Type1, unsupported};
 use crate::GlyphId;
-use crate::read::{Read, bad, cap};
+use crate::read::{bad, cap, cursor, here};
 use crate::{recovery::repair, repairs};
+use pagura_core::bytes::Cursor;
 use pagura_core::{Diagnostics, Limits, Position, Result};
 use pagura_raster::{Path, PathBuilder, Point, Segment, Transform};
 
@@ -86,7 +87,7 @@ fn load(
         seac: None,
         flex: None,
     };
-    run(font, Read::new(bytes, 0), 0, &mut s, work)?;
+    run(font, cursor(bytes), 0, &mut s, work)?;
     if s.flex.is_some() {
         return Err(bad(0, "unterminated Type 1 flex"));
     }
@@ -229,14 +230,14 @@ impl State {
 }
 fn run(
     font: &Type1,
-    mut r: Read<'_>,
+    mut r: Cursor<'_>,
     depth: usize,
     s: &mut State,
     w: &mut Work<'_>,
 ) -> Result<Flow> {
-    cap(depth, w.limits.depth.min(10), r.at())?;
-    while r.pos < r.data.len() {
-        let at = r.at();
+    cap(depth, w.limits.depth.min(10), here(&r))?;
+    while !r.at_end() {
+        let at = here(&r);
         w.operations = w.operations.saturating_add(1);
         cap(w.operations, w.limits.operations, at)?;
         let byte = r.u8()?;
@@ -254,7 +255,7 @@ fn run(
         if s.width.is_none() && !matches!(byte, 10 | 12 | 13) {
             return Err(bad(at, "Type 1 width must precede outline operators"));
         }
-        if byte != 12 || r.data.get(r.pos) != Some(&17) {
+        if byte != 12 || r.rest().first() != Some(&17) {
             s.results.clear();
         }
         match byte {
@@ -283,9 +284,9 @@ fn run(
                     .subrs
                     .get(index)
                     .ok_or_else(|| bad(at, "Type 1 subroutine index out of range"))?;
-                if run(font, Read::new(bytes, 0), depth + 1, s, w)? == Flow::End {
-                    if !w.stopped && r.pos != r.data.len() {
-                        return Err(bad(r.at(), "data after Type 1 character end"));
+                if run(font, cursor(bytes), depth + 1, s, w)? == Flow::End {
+                    if !w.stopped && !r.at_end() {
+                        return Err(bad(here(&r), "data after Type 1 character end"));
                     }
                     return Ok(Flow::End);
                 }
@@ -298,8 +299,8 @@ fn run(
             }
             12 => {
                 if escape(r.u8()?, s, w, at)? {
-                    if !w.stopped && r.pos != r.data.len() {
-                        return Err(bad(r.at(), "data after Type 1 seac"));
+                    if !w.stopped && !r.at_end() {
+                        return Err(bad(here(&r), "data after Type 1 seac"));
                     }
                     return Ok(Flow::End);
                 }
@@ -316,8 +317,8 @@ fn run(
             }
             14 => {
                 s.count(0, at)?;
-                if !w.stopped && r.pos != r.data.len() {
-                    return Err(bad(r.at(), "data after Type 1 endchar"));
+                if !w.stopped && !r.at_end() {
+                    return Err(bad(here(&r), "data after Type 1 endchar"));
                 }
                 return Ok(Flow::End);
             }
@@ -330,7 +331,7 @@ fn run(
             return Err(crate::read::limit(at, "nonfinite Type 1 operand"));
         }
     }
-    Err(bad(r.at(), "unterminated Type 1 charstring"))
+    Err(bad(here(&r), "unterminated Type 1 charstring"))
 }
 fn draw(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
     let args = std::mem::take(&mut s.stack);

@@ -1,7 +1,9 @@
 //! Validated cmap formats 0, 2, 4, 6, 10, 12 and 13; selection never expands code ranges.
-use crate::read::{Read, bad, cap};
+use crate::read::{bad, cap, cursor, here};
 use crate::{CmapSubtable, GlyphId};
 use crate::{recovery::repair, repairs};
+use pagura_core::bytes::Cursor;
+use pagura_core::convert::u32_to_usize;
 use pagura_core::{Diagnostics, Limits, Position, Result};
 use std::ops::Range;
 
@@ -15,39 +17,40 @@ pub(super) struct Cmap {
 }
 
 pub(super) fn parse(
-    mut r: Read<'_>,
+    mut r: Cursor<'_>,
     glyphs: usize,
     limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<Vec<Cmap>> {
+    let start = here(&r);
     if r.u16()? != 0 {
-        return Err(bad(r.at(), "invalid cmap version"));
+        return Err(bad(here(&r), "invalid cmap version"));
     }
     let count = usize::from(r.u16()?);
-    cap(count, limits.objects.min(limits.value_nodes), r.at())?;
+    cap(count, limits.objects.min(limits.value_nodes), here(&r))?;
     let mut work = count;
     let mut result = Vec::new();
     for _ in 0..count {
-        if r.data.len() - r.pos < 8 {
+        if r.remaining() < 8 {
             repair(
                 diagnostics,
                 repairs::CMAP_TRUNCATED,
                 "incomplete cmap directory",
-                Position::Buffer(r.at()),
+                Position::Buffer(here(&r)),
             )?;
             break;
         }
         let platform = r.u16()?;
         let encoding = r.u16()?;
-        let offset = r.offset()?;
-        let mut sub = match r.tail(offset) {
+        let offset = u32_to_usize(r.u32()?);
+        let mut sub = match r.cursor_at(offset) {
             Ok(sub) => sub,
             Err(error) => {
                 repair(
                     diagnostics,
                     repairs::CMAP_TRUNCATED,
                     error.message,
-                    Position::Buffer(r.base.saturating_add(offset)),
+                    Position::Buffer(start.saturating_add(offset)),
                 )?;
                 continue;
             }
@@ -67,7 +70,7 @@ pub(super) fn parse(
         if !matches!(format, 0 | 2 | 4 | 6 | 10 | 12 | 13) {
             continue;
         }
-        let length = match validate(r.tail(offset)?, glyphs, limits, &mut work, diagnostics) {
+        let length = match validate(r.cursor_at(offset)?, glyphs, limits, &mut work, diagnostics) {
             Ok(length) => length,
             Err(error) if malformed(&error) => {
                 repair(
@@ -93,7 +96,7 @@ pub(super) fn parse(
         };
         result.push(Cmap {
             selection,
-            range: r.base + offset..r.base + offset + length,
+            range: start + offset..start + offset + length,
             format,
         });
     }
@@ -113,33 +116,34 @@ pub(super) fn parse(
 }
 
 fn validate(
-    mut r: Read<'_>,
+    mut r: Cursor<'_>,
     glyphs: usize,
     limits: &Limits,
     work: &mut usize,
     diagnostics: &mut Diagnostics,
 ) -> Result<usize> {
+    let start = here(&r);
     let format = r.u16()?;
     let length = if matches!(format, 10 | 12 | 13) {
         if r.u16()? != 0 {
-            return Err(bad(r.at(), "invalid cmap reserved field"));
+            return Err(bad(here(&r), "invalid cmap reserved field"));
         }
-        r.offset()?
+        u32_to_usize(r.u32()?)
     } else {
         usize::from(r.u16()?)
     };
-    let length = if length > r.data.len() {
+    let length = if length > r.data().len() {
         repair(
             diagnostics,
             repairs::CMAP_TRUNCATED,
             "cmap length exceeds available data",
-            Position::Buffer(r.base),
+            Position::Buffer(start),
         )?;
-        r.data.len()
+        r.data().len()
     } else {
         length
     };
-    let mut r = Read::new(&r.data[..length], r.base);
+    let mut r = cursor(r.data().get(..length).unwrap_or_default()).with_base(start);
     let header = match format {
         0 => 6,
         2 => 518,
@@ -152,7 +156,7 @@ fn validate(
             diagnostics,
             repairs::CMAP_TRUNCATED,
             "incomplete cmap subtable header",
-            Position::Buffer(r.base),
+            Position::Buffer(start),
         )?;
         return Ok(0);
     }
@@ -160,11 +164,11 @@ fn validate(
         0 => {
             r.skip(6)?;
             *work = work.saturating_add(256);
-            cap(*work, limits.operations, r.at())?;
+            cap(*work, limits.operations, here(&r))?;
             let count = available(&r, 256, 1, diagnostics)?;
             for &glyph in r.take(count)? {
                 if usize::from(glyph) >= glyphs {
-                    return Err(bad(r.at(), "invalid cmap glyph"));
+                    return Err(bad(here(&r), "invalid cmap glyph"));
                 }
             }
         }
@@ -175,24 +179,24 @@ fn validate(
             let first = usize::from(r.u16()?);
             let count = usize::from(r.u16()?);
             if first + count > 65536 {
-                return Err(bad(r.at(), "invalid trimmed cmap range"));
+                return Err(bad(here(&r), "invalid trimmed cmap range"));
             }
             *work = work.saturating_add(count);
-            cap(*work, limits.operations, r.at())?;
+            cap(*work, limits.operations, here(&r))?;
             let count = available(&r, count, 2, diagnostics)?;
             for _ in 0..count {
                 if usize::from(r.u16()?) >= glyphs {
-                    return Err(bad(r.at(), "invalid cmap glyph"));
+                    return Err(bad(here(&r), "invalid cmap glyph"));
                 }
             }
         }
         4 => validate_four(r, glyphs, limits, work, diagnostics)?,
         12 | 13 => {
             r.skip(12)?;
-            let count = r.offset()?;
+            let count = u32_to_usize(r.u32()?);
             *work = work.saturating_add(count);
-            cap(count, limits.value_nodes, r.at())?;
-            cap(*work, limits.operations, r.at())?;
+            cap(count, limits.value_nodes, here(&r))?;
+            cap(*work, limits.operations, here(&r))?;
             let count = available(&r, count, 12, diagnostics)?;
             let mut previous = None;
             for _ in 0..count {
@@ -206,38 +210,39 @@ fn validate(
                         .checked_add(if format == 13 { 0 } else { end - start })
                         .is_none_or(|g| u64::from(g) >= glyphs as u64)
                 {
-                    return Err(bad(r.at(), "invalid cmap group"));
+                    return Err(bad(here(&r), "invalid cmap group"));
                 }
                 previous = Some(end);
             }
         }
-        _ => return Err(bad(r.at(), "invalid cmap format")),
+        _ => return Err(bad(here(&r), "invalid cmap format")),
     }
     Ok(length)
 }
 
 fn validate_four(
-    mut r: Read<'_>,
+    mut r: Cursor<'_>,
     glyphs: usize,
     limits: &Limits,
     work: &mut usize,
     diagnostics: &mut Diagnostics,
 ) -> Result<()> {
+    let table = here(&r);
     r.skip(6)?;
     let twice = usize::from(r.u16()?);
     if twice == 0 || twice % 2 != 0 {
-        return Err(bad(r.at(), "invalid cmap segment count"));
+        return Err(bad(here(&r), "invalid cmap segment count"));
     }
     let count = twice / 2;
-    cap(count, limits.value_nodes, r.at())?;
+    cap(count, limits.value_nodes, here(&r))?;
     r.skip(6)?;
     let ends = r.take(twice)?;
     if r.u16()? != 0 {
-        return Err(bad(r.at(), "invalid cmap padding"));
+        return Err(bad(here(&r), "invalid cmap padding"));
     }
     let starts = r.take(twice)?;
     r.skip(twice)?;
-    let range_pos = r.pos;
+    let range_pos = r.offset();
     r.take(twice)?;
     // Ordered end codes let validation use the segment it is already walking,
     // rather than binary-searching it again for every character. Keep the old
@@ -248,25 +253,25 @@ fn validate_four(
         let end = u16::from_be_bytes([ends[2 * i], ends[2 * i + 1]]);
         let start = u16::from_be_bytes([starts[2 * i], starts[2 * i + 1]]);
         if start > end || previous.is_some_and(|p| start <= p) {
-            return Err(bad(r.at(), "overlapping cmap segments"));
+            return Err(bad(here(&r), "overlapping cmap segments"));
         }
         previous = Some(end);
         *work = work.saturating_add(usize::from(end - start) + 1);
-        cap(*work, limits.operations, r.at())?;
-        let offset = word(r.data, range_pos + 2 * i)?;
+        cap(*work, limits.operations, here(&r))?;
+        let offset = word(r.data(), range_pos + 2 * i)?;
         if offset % 2 != 0 {
             repair(
                 diagnostics,
                 repairs::CMAP_ALIGNMENT,
                 "unaligned cmap glyph array",
-                Position::Buffer(r.base + range_pos + 2 * i),
+                Position::Buffer(table + range_pos + 2 * i),
             )?;
         }
         for code in start..=end {
             let glyph = match if ordered {
-                lookup_four_segment(r.data, code, count, range_pos, i)
+                lookup_four_segment(r.data(), code, count, range_pos, i)
             } else {
-                lookup_four(r.data, code, count, range_pos)
+                lookup_four(r.data(), code, count, range_pos)
             } {
                 Ok(glyph) => glyph,
                 Err(error) if malformed(&error) => {
@@ -274,25 +279,25 @@ fn validate_four(
                         diagnostics,
                         repairs::CMAP_TRUNCATED,
                         error.message,
-                        Position::Buffer(r.base + range_pos + 2 * i),
+                        Position::Buffer(table + range_pos + 2 * i),
                     )?;
                     continue;
                 }
                 Err(error) => return Err(error),
             };
             if usize::from(glyph) >= glyphs {
-                return Err(bad(r.at(), "invalid cmap glyph"));
+                return Err(bad(here(&r), "invalid cmap glyph"));
             }
         }
     }
     if previous != Some(65535) {
-        return Err(bad(r.at(), "missing cmap sentinel"));
+        return Err(bad(here(&r), "missing cmap sentinel"));
     }
     Ok(())
 }
 
 fn word(data: &[u8], pos: usize) -> Result<u16> {
-    let mut r = Read::new(data, 0);
+    let mut r = cursor(data);
     r.skip(pos)?;
     r.u16()
 }
@@ -348,7 +353,7 @@ fn lookup_four_segment(
 
 impl Cmap {
     pub(super) fn lookup(&self, data: &[u8], code: u32) -> Option<GlyphId> {
-        let mut r = Read::new(data.get(self.range.clone())?, self.range.start);
+        let mut r = cursor(data.get(self.range.clone())?).with_base(self.range.start);
         let glyph = match self.format {
             0 => {
                 if code > 255 {
@@ -361,7 +366,7 @@ impl Cmap {
                 if code > 65535 {
                     return None;
                 }
-                u32::from(extended::lookup_two(r.data, code).ok()?)
+                u32::from(extended::lookup_two(r.data(), code).ok()?)
             }
             6 | 10 => {
                 let (first, count) = if self.format == 10 {
@@ -381,16 +386,16 @@ impl Cmap {
                 let code = u16::try_from(code).ok()?;
                 r.skip(6).ok()?;
                 let count = usize::from(r.u16().ok()?) / 2;
-                u32::from(lookup_four(r.data, code, count, 16 + 6 * count).ok()?)
+                u32::from(lookup_four(r.data(), code, count, 16 + 6 * count).ok()?)
             }
             12 | 13 => {
                 r.skip(12).ok()?;
-                let count = r.offset().ok()?.min(r.data.len().saturating_sub(16) / 12);
+                let count = u32_to_usize(r.u32().ok()?).min(r.data().len().saturating_sub(16) / 12);
                 let mut low = 0;
                 let mut high = count;
                 while low < high {
                     let mid = low + (high - low) / 2;
-                    let mut group = r.tail(16 + 12 * mid).ok()?;
+                    let mut group = r.cursor_at(16 + 12 * mid).ok()?;
                     let start = group.u32().ok()?;
                     let end = group.u32().ok()?;
                     let gid = group.u32().ok()?;
@@ -418,18 +423,18 @@ fn charge(work: &mut usize, count: usize, limits: &Limits, at: usize) -> Result<
 }
 
 pub(super) fn available(
-    r: &Read<'_>,
+    r: &Cursor<'_>,
     count: usize,
     stride: usize,
     diagnostics: &mut Diagnostics,
 ) -> Result<usize> {
-    let available = (r.data.len() - r.pos) / stride;
+    let available = r.remaining() / stride;
     if count > available {
         repair(
             diagnostics,
             repairs::CMAP_TRUNCATED,
             "cmap entries exceed available data",
-            Position::Buffer(r.at()),
+            Position::Buffer(here(r)),
         )?;
     }
     Ok(count.min(available))
@@ -442,7 +447,7 @@ fn malformed(error: &pagura_core::Error) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{lookup_four, validate_four};
-    use crate::read::Read;
+    use crate::read::cursor;
     use pagura_core::{Diagnostics, Limits, Position, Recovery};
 
     fn format_four() -> Vec<u8> {
@@ -463,7 +468,7 @@ mod tests {
         let mut diagnostics = Diagnostics::new(Recovery::Strict);
         let mut work = 0;
         validate_four(
-            Read::new(&data, 0),
+            cursor(&data),
             9,
             &Limits::default(),
             &mut work,
@@ -491,7 +496,7 @@ mod tests {
             ..Limits::default()
         };
         assert_eq!(
-            validate_four(Read::new(&data, 0), 9, &limits, &mut work, &mut diagnostics)
+            validate_four(cursor(&data), 9, &limits, &mut work, &mut diagnostics)
                 .unwrap_err()
                 .kind,
             pagura_core::ErrorKind::Limit
@@ -505,7 +510,7 @@ mod tests {
         data[16..18].copy_from_slice(&0x22_u16.to_be_bytes());
         let mut diagnostics = Diagnostics::new(Recovery::Strict);
         let error = validate_four(
-            Read::new(&data, 0),
+            cursor(&data),
             9,
             &Limits::default(),
             &mut 0,
