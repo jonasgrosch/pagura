@@ -1,12 +1,16 @@
 //! Independent locked-data glyph oracles and strict/repaired descriptor results.
 use super::*;
+use pagura_core::{Error, Limits, ObjectId, Result};
 use pagura_core::{
     Name, Recovery, Value,
     syntax::{Origin, Parser},
 };
+use pagura_document::Document;
 use pagura_document::OpenOptions;
+use pagura_font::FontProgram;
 use pagura_testkit::fixture;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 struct Outlines;
 
