@@ -1,8 +1,12 @@
 use crate::*;
+use pagura_core::{Dictionary, Error, Limits, ObjectId, Result};
 use pagura_core::{Name, Value};
+use pagura_document::Document;
 use pagura_document::OpenOptions;
+use pagura_font::FontProgram;
 use pagura_testkit::fixture;
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 fn load(name: &str) -> Result<(Document, Dictionary)> {
     let document = Document::open(
