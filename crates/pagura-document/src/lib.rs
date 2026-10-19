@@ -10,6 +10,7 @@
 //! [`Document::diagnostics`].
 
 mod access;
+mod builder;
 mod catalog;
 mod diagnostics;
 pub mod features;
@@ -19,6 +20,7 @@ mod load;
 mod memory;
 pub mod navigation;
 mod object;
+mod options;
 mod pages;
 pub mod repairs;
 mod revision_bounds;
@@ -29,54 +31,59 @@ mod view;
 mod xref;
 
 pub use object::{IndirectObject, ObjectSource};
+pub use options::OpenOptions;
 pub use pages::{Page, Rotation};
 pub use pagura_codec::{ImageCodec, Prefix};
 pub use stream::ImageStream;
-pub use xref::{Location, Revision, RevisionKind, XrefEntry};
+pub use xref::{Revision, RevisionKind};
 
 use pagura_core::{
     Diagnostic, Diagnostics, Dictionary, Error, Limits, ObjectId, Recovery, Result, Value,
 };
 use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::fmt;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
-
-/// How to open a document.
-#[derive(Clone, Default, PartialEq, Eq)]
-pub struct OpenOptions {
-    /// Resource budgets for every operation on the document.
-    pub limits: Limits,
-    /// Whether malformed input may be repaired (reported) or is an error.
-    pub recovery: Recovery,
-    /// Password for encrypted documents; empty tries the empty password.
-    pub password: Vec<u8>,
-}
-
-impl std::fmt::Debug for OpenOptions {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter
-            .debug_struct("OpenOptions")
-            .field("limits", &self.limits)
-            .field("recovery", &self.recovery)
-            .field("password", &"[redacted]")
-            .finish()
-    }
-}
+use xref::Location;
 
 /// An opened, immutable PDF document.
-#[derive(Debug)]
 pub struct Document {
+    /// Identifies this document to its pages: they hold a weak reference,
+    /// which keeps the allocation, and so its address, from being reused.
+    token: Arc<()>,
     bytes: history::Bytes,
-    options: OpenOptions,
+    limits: Limits,
+    recovery: Recovery,
     trailer: Dictionary,
     slots: BTreeMap<ObjectId, Slot>,
-    pages: OnceLock<Result<Box<[Page]>>>,
     revisions: Vec<Revision>,
     object_streams: BTreeMap<u32, OnceLock<Result<object::stream::Contents>>>,
     security: Option<security::Security>,
+    /// Sorted offsets where physical objects and revisions start.
+    boundaries: OnceLock<Result<Box<[usize]>>>,
+    pages: OnceLock<Result<Box<[Page]>>>,
     diagnostics: Mutex<diagnostics::Log>,
     retained: Arc<memory::Budget>,
     historical: history::Cache,
+}
+
+// Pages are processed in parallel; keep the document shareable.
+const _: fn() = || {
+    fn shareable<T: Send + Sync>() {}
+    shareable::<Document>();
+};
+
+impl fmt::Debug for Document {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("Document")
+            .field("bytes", &self.bytes.len())
+            .field("objects", &self.slots.len())
+            .field("revisions", &self.revisions.len())
+            .field("encrypted", &self.security.is_some())
+            .field("recovery", &self.recovery)
+            .finish_non_exhaustive()
+    }
 }
 
 /// One cross-reference entry and its lazily parsed object.
@@ -84,6 +91,15 @@ pub struct Document {
 struct Slot {
     location: Location,
     object: OnceLock<Result<IndirectObject>>,
+}
+
+impl Slot {
+    const fn new(location: Location) -> Self {
+        Self {
+            location,
+            object: OnceLock::new(),
+        }
+    }
 }
 
 impl Document {
@@ -99,28 +115,10 @@ impl Document {
     /// to authorize those embedded streams.
     pub fn open(bytes: impl Into<Arc<[u8]>>, options: &OpenOptions) -> Result<Self> {
         let bytes = bytes.into();
-        let limits = options.limits;
-        if bytes.len() > limits.file_bytes {
+        if bytes.len() > options.limits.file_bytes {
             return Err(Error::limit("file size budget exceeded"));
         }
-        let mut diagnostics = Diagnostics::new(options.recovery);
-        let table = xref::read(&bytes, limits, &mut diagnostics)?;
-        let primary = table.rebuild_remaining.is_none();
-        match Self::from_table(
-            bytes.clone(),
-            options,
-            table,
-            diagnostics.as_slice().to_vec(),
-        ) {
-            Ok(document) => Ok(document),
-            Err(error)
-                if primary && options.recovery == Recovery::Repair && xref::structural(&error) =>
-            {
-                let table = xref::rebuild::read(&bytes, limits, &mut diagnostics, error.position)?;
-                Self::from_table(bytes, options, table, diagnostics.take())
-            }
-            Err(error) => Err(error),
-        }
+        builder::open(bytes, options)
     }
 
     /// The original, unmodified file bytes.
@@ -130,12 +128,12 @@ impl Document {
 
     /// The resource budgets in effect.
     pub fn limits(&self) -> Limits {
-        self.options.limits
+        self.limits
     }
 
     /// The recovery mode in effect.
     pub fn recovery(&self) -> Recovery {
-        self.options.recovery
+        self.recovery
     }
 
     /// The effective trailer dictionary of the newest revision.
@@ -165,8 +163,9 @@ impl Document {
     }
 
     /// Distinct diagnostics, in discovery order. Identity is the diagnostic kind/tag,
-    /// object and position; the first message is retained. At most 1,024 entries
-    /// are retained across opening, lazy decoding and external reports.
+    /// object and position; the first message is retained. At most 1,024 repairs
+    /// and 1,024 informational entries are retained across opening, lazy decoding
+    /// and external reports.
     pub fn diagnostics(&self) -> Vec<Diagnostic> {
         self.diagnostics
             .lock()
@@ -175,7 +174,7 @@ impl Document {
             .clone()
     }
 
-    /// Number of reports omitted after the 1,024-entry diagnostic cap was reached.
+    /// Number of reports omitted after a 1,024-entry diagnostic cap was reached.
     /// Repeated retained identities are deduplicated without incrementing this
     /// count. Omitted identities are not stored, so their repeated reports count
     /// again. The count saturates at `usize::MAX` (ADR 0012).
@@ -213,7 +212,7 @@ impl Document {
     ///
     /// Under [`Recovery::Strict`], the error of `diagnostic`'s repair.
     pub fn repair(&self, diagnostic: Diagnostic) -> Result<()> {
-        let mut diagnostics = Diagnostics::new(self.recovery());
+        let mut diagnostics = Diagnostics::new(self.recovery);
         diagnostics.repair(diagnostic)?;
         self.report(diagnostics.take());
         Ok(())
@@ -240,18 +239,8 @@ impl Document {
     /// Returns errors from loading the referenced object and a limit error
     /// for reference chains deeper than [`Limits::depth`].
     pub fn resolve<'a>(&'a self, value: &'a Value) -> Result<&'a Value> {
-        static NULL: Value = Value::Null;
-        let mut current = value;
-        for _ in 0..=self.limits().depth {
-            let Value::Reference(id) = current else {
-                return Ok(current);
-            };
-            if !self.slots.contains_key(id) {
-                return Ok(&NULL);
-            }
-            current = self.object(*id)?.value();
-        }
-        Err(Error::limit("reference chain too long"))
+        self.resolve_inner(value, &mut Vec::new())
+            .map(|(value, _)| value)
     }
 
     /// Resolves `value` and requires a dictionary.
@@ -261,9 +250,10 @@ impl Document {
     /// As [`Document::resolve`], plus a syntax error if the result is not a
     /// dictionary.
     pub fn resolve_dictionary<'a>(&'a self, value: &'a Value) -> Result<&'a Dictionary> {
-        self.resolve(value)?
+        let (value, origin) = self.resolve_inner(value, &mut Vec::new())?;
+        value
             .as_dictionary()
-            .ok_or(Error::syntax("expected a dictionary"))
+            .ok_or_else(|| Error::syntax("expected a dictionary").in_object_opt(origin))
     }
 
     /// The document catalog (`/Root`).
@@ -400,13 +390,25 @@ impl Document {
     /// Returns errors from interpreting the page tree, including a limit error
     /// if retaining its complete pages/resources exceeds [`Limits::document_bytes`].
     pub fn pages(&self) -> Result<&[Page]> {
-        match self
-            .pages
-            .get_or_init(|| pages::read(self).map(Vec::into_boxed_slice))
-        {
-            Ok(pages) => Ok(pages),
-            Err(error) => Err(error.clone()),
-        }
+        let pages = if let Some(pages) = self.pages.get() {
+            pages
+        } else {
+            // Walk outside the cell: every dependency is loaded before a lock
+            // is held (ADR 0012). A walk that loses a race to publish drops
+            // its reservation, so only the published walk stays charged.
+            let walk = pages::read(self);
+            let mut published = None;
+            let pages = self.pages.get_or_init(|| {
+                let (pages, reservation) = walk?;
+                published = Some(reservation);
+                Ok(pages.into_boxed_slice())
+            });
+            if let Some(reservation) = published {
+                reservation.commit();
+            }
+            pages
+        };
+        pages.as_deref().map_err(Clone::clone)
     }
 
     /// Number of pages.
@@ -439,8 +441,48 @@ impl Document {
     /// Returns a syntax error for a malformed `/Contents` entry and errors
     /// from loading the stream objects. Repaired direct streams use their
     /// containing object's identity and retain individual file source ranges.
+    /// Fails with `InvalidArgument` for a page of another document.
     pub fn content_streams(&self, page: &Page) -> Result<Vec<&IndirectObject>> {
+        self.check_page(page)?;
         pages::contents::read(self, page)
+    }
+
+    /// Fails with `InvalidArgument` unless `page` came from this document.
+    pub(crate) fn check_page(&self, page: &Page) -> Result<()> {
+        if std::ptr::eq(page.document().as_ptr(), Arc::as_ptr(&self.token)) {
+            Ok(())
+        } else {
+            Err(Error::invalid_argument("page belongs to another document"))
+        }
+    }
+
+    /// Sorted offsets where physical objects and revisions start, built on
+    /// first use and charged to the retained budget.
+    pub(crate) fn boundaries(&self) -> Result<&[usize]> {
+        let boundaries = if let Some(boundaries) = self.boundaries.get() {
+            boundaries
+        } else {
+            let bytes = self
+                .slots
+                .len()
+                .saturating_add(self.revisions.len())
+                .saturating_mul(size_of::<usize>());
+            let built = self
+                .retained
+                .charge(bytes, None)
+                .map(|()| object::recovery::boundaries(self).into_boxed_slice());
+            let charged = built.is_ok();
+            let mut published = false;
+            let boundaries = self.boundaries.get_or_init(|| {
+                published = true;
+                built
+            });
+            if charged && !published {
+                self.retained.release(bytes);
+            }
+            boundaries
+        };
+        boundaries.as_deref().map_err(Clone::clone)
     }
 }
 

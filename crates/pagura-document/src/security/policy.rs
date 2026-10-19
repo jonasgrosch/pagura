@@ -4,8 +4,9 @@ use super::repair;
 use crate::Document;
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, ObjectId, Position, Repair, Result, Value};
 
+/// The repairs of one encryption dictionary, reported at its source.
 pub(super) struct Policy {
-    pub diagnostics: Diagnostics,
+    pub(super) diagnostics: Diagnostics,
     object: Option<ObjectId>,
     position: Position,
 }
@@ -19,21 +20,14 @@ impl Policy {
         })
     }
 
+    /// Fields in this policy share one source context, so one occurrence per
+    /// tag is kept even when a large CF dictionary repeats the deviation.
     pub(super) fn repair(&mut self, tag: Repair, message: &'static str) -> Result<()> {
-        // Fields in this policy share one source context. Retain one occurrence
-        // per tag even when a large CF dictionary repeats the same deviation.
-        if self.diagnostics.as_slice().iter().any(|item| {
-            item.repair() == Some(tag)
-                && item.object == self.object
-                && item.position == self.position
-        }) {
-            return Ok(());
-        }
-        let mut diagnostic = Diagnostic::new(tag, message).at(self.position);
-        if let Some(id) = self.object {
-            diagnostic = diagnostic.in_object(id);
-        }
-        self.diagnostics.repair(diagnostic)
+        self.diagnostics.repair_once(
+            Diagnostic::new(tag, message)
+                .at(self.position)
+                .in_object_opt(self.object),
+        )
     }
 
     pub(super) fn unsigned_permissions(&mut self, dictionary: &Dictionary) -> Result<Option<i32>> {
@@ -50,7 +44,7 @@ impl Policy {
             crate::repairs::PERMISSIONS_UNSIGNED,
             "unsigned 32-bit permissions reinterpreted as signed two's complement",
         )?;
-        Ok(Some(i32::from_le_bytes(unsigned.to_le_bytes())))
+        Ok(Some(unsigned.cast_signed()))
     }
 
     pub(super) fn permissions(&mut self, key: &pagura_crypto::standard::FileKey) -> Result<()> {
@@ -91,8 +85,11 @@ impl Policy {
                         .all(|id| id.as_string().is_some_and(|id| id.len() >= 16))
             });
         if !valid {
-            self.repair(crate::repairs::DOCUMENT_ID,
-                "required two direct file identifiers of at least 16 bytes are malformed; existing key-derivation bytes preserved")?;
+            self.repair(
+                crate::repairs::DOCUMENT_ID,
+                "required two direct file identifiers of at least 16 bytes are malformed; \
+                 existing key-derivation bytes preserved",
+            )?;
         }
         Ok(())
     }

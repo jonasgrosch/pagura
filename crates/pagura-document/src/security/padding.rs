@@ -8,8 +8,10 @@
 use crate::object::{self, stream as object_stream};
 use crate::{Document, Location};
 use pagura_codec::{Filter, FilterChain};
-use pagura_core::{Diagnostic, Diagnostics, Error, ErrorKind, ObjectId, Recovery, Result};
-use pagura_crypto::standard::{CryptMethod, FileKey};
+use pagura_core::{
+    Diagnostic, Diagnostics, Error, ErrorKind, ObjectId, Position, Recovery, Result,
+};
+use pagura_crypto::standard::{CryptMethod, FileKey, SecurityParams};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Derivation {
@@ -20,28 +22,28 @@ pub(super) enum Derivation {
 pub(super) fn select(
     document: &Document,
     key: Option<&FileKey>,
-    short: bool,
-    methods: (CryptMethod, CryptMethod),
-    policy: &mut crate::security::policy::Policy,
+    params: &SecurityParams,
+    methods: &super::Methods,
+    policy: &mut super::policy::Policy,
 ) -> Result<Derivation> {
-    if short
-        && methods == (CryptMethod::Rc4, CryptMethod::Rc4)
+    if super::short_rc4_key(params)
+        && methods.strings == CryptMethod::Rc4
+        && methods.streams == CryptMethod::Rc4
         && let Some(key) = key
         && let Some(witness) = detect(document, key)?
     {
-        let mut diagnostic = Diagnostic::new(
-            crate::repairs::KEY_PADDING,
-            "authenticated short RC4 file key zero-padded for xref-validated object decryption",
-        )
-        .in_object(witness);
-        if let Some(crate::Slot {
-            location: Location::Offset(offset),
-            ..
-        }) = document.slots.get(&witness)
-        {
-            diagnostic = diagnostic.at(pagura_core::Position::File(*offset));
-        }
-        policy.diagnostics.repair(diagnostic)?;
+        let position = match document.slots.get(&witness).map(|slot| slot.location) {
+            Some(Location::Offset(offset)) => Position::File(offset),
+            _ => Position::Unknown,
+        };
+        policy.diagnostics.repair(
+            Diagnostic::new(
+                crate::repairs::KEY_PADDING,
+                "authenticated short RC4 file key zero-padded for xref-validated object decryption",
+            )
+            .at(position)
+            .in_object(witness),
+        )?;
         return Ok(Derivation::ZeroPadded);
     }
     Ok(Derivation::Standard)
@@ -93,7 +95,7 @@ fn detect(document: &Document, key: &FileKey) -> Result<Option<ObjectId>> {
                 let contents = object_stream::headers(
                     data.into_owned(),
                     dictionary,
-                    document.limits(),
+                    &document.limits(),
                     id,
                     &mut diagnostics,
                 )?;

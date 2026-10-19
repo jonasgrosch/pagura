@@ -1,18 +1,24 @@
 //! Cross-reference streams, ISO 32000-2 clause 7.5.8.
 
-use crate::xref::{Location, XrefEntry, integer_offset};
+use super::{Location, RevisionKind, Section, XrefEntry, integer_offset};
+use pagura_codec::{Filter, FilterChain};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Diagnostics, Dictionary, Error, Limits, ObjectId, Position, Result, Value};
 use std::collections::BTreeMap;
 
+/// Entry types of Table 18.
+const FREE: u64 = 0;
+const IN_USE: u64 = 1;
+const COMPRESSED: u64 = 2;
+
 pub(crate) fn read(
     bytes: &[u8],
     offset: usize,
-    limits: Limits,
+    limits: &Limits,
     diagnostics: &mut Diagnostics,
-) -> Result<(BTreeMap<u32, XrefEntry>, Dictionary)> {
-    let mut parser =
-        Parser::with_offset(bytes, offset, Origin::File, limits)?.with_recovery(diagnostics.mode());
+) -> Result<Section> {
+    let mut parser = Parser::with_offset(bytes, offset, Origin::File, *limits)?
+        .with_recovery(diagnostics.mode());
     let number = u32::try_from(parser.unsigned()?)
         .map_err(|_| Error::syntax("xref stream number out of range"))?;
     let generation = u16::try_from(parser.unsigned()?)
@@ -24,9 +30,9 @@ pub(crate) fn read(
 
 fn read_body(
     parser: &mut Parser<'_>,
-    limits: Limits,
+    limits: &Limits,
     diagnostics: &mut Diagnostics,
-) -> Result<(BTreeMap<u32, XrefEntry>, Dictionary)> {
+) -> Result<Section> {
     if !parser.keyword(b"obj") {
         return Err(Error::syntax("expected xref stream object header"));
     }
@@ -39,19 +45,18 @@ fn read_body(
     if dictionary.contains_key(b"F") {
         return Err(Error::syntax("xref stream cannot be external"));
     }
-    let raw = direct_stream(parser, &dictionary, limits, diagnostics)?;
+    let raw = bootstrap_stream_data(parser, &dictionary, limits, diagnostics)?;
     if !parser.keyword(b"endobj") {
         return Err(Error::syntax("missing xref stream endobj"));
     }
+    let end = parser.offset();
     diagnostics.absorb(parser.take_diagnostics())?;
-    let chain = pagura_codec::FilterChain::from_entries(
-        dictionary.get(b"Filter"),
-        dictionary.get(b"DecodeParms"),
-    )?;
+    let chain =
+        FilterChain::from_entries(dictionary.get(b"Filter"), dictionary.get(b"DecodeParms"))?;
     if chain
         .filters()
         .iter()
-        .any(|f| matches!(f, pagura_codec::Filter::Crypt(_)))
+        .any(|filter| matches!(filter, Filter::Crypt(_)))
     {
         return Err(Error::syntax("xref stream cannot use a Crypt filter"));
     }
@@ -63,14 +68,20 @@ fn read_body(
     {
         return Err(Error::syntax("object offset outside the file"));
     }
-    Ok((entries, dictionary))
+    Ok(Section {
+        entries,
+        trailer: dictionary,
+        kind: RevisionKind::Stream,
+        end,
+    })
 }
 
-/// Bootstrap streams require direct `/Length` (7.5.8.2).
-pub(crate) fn direct_stream<'a>(
+/// The data of a stream read before any object can be resolved, such as a
+/// cross-reference stream, which requires a direct `/Length` (7.5.8.2).
+pub(crate) fn bootstrap_stream_data<'a>(
     parser: &mut Parser<'a>,
     dictionary: &Dictionary,
-    limits: Limits,
+    limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<&'a [u8]> {
     let length =
@@ -99,29 +110,38 @@ pub(crate) fn direct_stream<'a>(
 fn entries(
     data: &[u8],
     dictionary: &Dictionary,
-    limits: Limits,
+    limits: &Limits,
 ) -> Result<BTreeMap<u32, XrefEntry>> {
     let size = integer_offset(dictionary, b"Size")?
         .filter(|&n| n > 0)
         .ok_or(Error::syntax("xref stream Size must be positive"))?;
-    let widths = dictionary
+    let [kind_width, second_width, third_width] = dictionary
         .get(b"W")
         .and_then(Value::as_array)
-        .filter(|values| values.len() == 3)
-        .ok_or(Error::syntax("xref stream W must have three widths"))?;
-    let widths = widths
-        .iter()
+        .and_then(|values| <&[Value; 3]>::try_from(values).ok())
+        .ok_or(Error::syntax("xref stream W must have three widths"))?
+        .each_ref()
         .map(|value| {
             value
                 .as_integer()
                 .and_then(|n| usize::try_from(n).ok())
                 .ok_or(Error::syntax("xref field width must be nonnegative"))
-        })
-        .collect::<Result<Vec<_>>>()?;
-    let row = widths.iter().try_fold(0_usize, |sum, &width| {
-        sum.checked_add(width)
-            .ok_or(Error::limit("xref row width overflow"))
-    })?;
+        });
+    let (kind_width, second_width, third_width) = (kind_width?, second_width?, third_width?);
+    // Every entry type has a second field without a default (Table 18), so a
+    // zero width there leaves no entry representable: each row would be
+    // empty and any Index would fit an empty stream.
+    if second_width == 0 {
+        return Err(Error::syntax(
+            "xref stream W gives the second field no width",
+        ));
+    }
+    let row = [kind_width, second_width, third_width]
+        .into_iter()
+        .try_fold(0_usize, |sum, width| {
+            sum.checked_add(width)
+                .ok_or(Error::limit("xref row width overflow"))
+        })?;
     let index = match dictionary.get(b"Index") {
         None => vec![0, size],
         Some(Value::Array(values)) if values.len() % 2 == 0 => values
@@ -138,12 +158,12 @@ fn entries(
         _ => return Err(Error::syntax("xref Index must contain subsection pairs")),
     };
     let mut total = 0_usize;
-    for pair in index.as_chunks::<2>().0 {
-        if pair[0].checked_add(pair[1]).is_none_or(|end| end > size) {
+    for &[first, count] in index.as_chunks::<2>().0 {
+        if first.checked_add(count).is_none_or(|end| end > size) {
             return Err(Error::syntax("xref Index exceeds Size"));
         }
         total = total
-            .checked_add(pair[1])
+            .checked_add(count)
             .filter(|&n| n <= limits.objects)
             .ok_or(Error::limit("cross-reference entry budget exceeded"))?;
     }
@@ -154,13 +174,13 @@ fn entries(
     }
     let mut data = data;
     let mut result = BTreeMap::new();
-    for pair in index.as_chunks::<2>().0 {
-        for number in pair[0]..pair[0] + pair[1] {
+    for &[first, count] in index.as_chunks::<2>().0 {
+        for number in first..first + count {
             let number = u32::try_from(number)
                 .map_err(|_| Error::syntax("xref object number out of range"))?;
-            let kind = field(&mut data, widths[0], 1)?;
-            let second = field(&mut data, widths[1], 0)?;
-            let third = field(&mut data, widths[2], 0)?;
+            let kind = field(&mut data, kind_width, IN_USE)?;
+            let second = field(&mut data, second_width, 0)?;
+            let third = field(&mut data, third_width, 0)?;
             let entry = entry(number, kind, second, third)?;
             if result.insert(number, entry).is_some() {
                 return Err(Error::syntax("xref Index subsections overlap"));
@@ -172,18 +192,18 @@ fn entries(
 
 fn entry(number: u32, kind: u64, second: u64, third: u64) -> Result<XrefEntry> {
     let (generation, location) = match kind {
-        0 => (
+        FREE => (
             u16::try_from(third).map_err(|_| Error::syntax("free generation out of range"))?,
             Location::Free,
         ),
-        1 if number != 0 => (
+        IN_USE if number != 0 => (
             u16::try_from(third).map_err(|_| Error::syntax("object generation out of range"))?,
             Location::Offset(
                 usize::try_from(second).map_err(|_| Error::syntax("object offset out of range"))?,
             ),
         ),
-        1 => return Err(Error::syntax("object 0 cannot be in use")),
-        2 if number != 0 => (
+        IN_USE => return Err(Error::syntax("object 0 cannot be in use")),
+        COMPRESSED if number != 0 => (
             0,
             Location::Compressed {
                 stream: u32::try_from(second)
@@ -192,7 +212,7 @@ fn entry(number: u32, kind: u64, second: u64, third: u64) -> Result<XrefEntry> {
                     .map_err(|_| Error::syntax("object stream index out of range"))?,
             },
         ),
-        2 => return Err(Error::syntax("object 0 cannot be compressed")),
+        COMPRESSED => return Err(Error::syntax("object 0 cannot be compressed")),
         _ => (0, Location::Free), // Unknown types resolve to null, 7.5.8.3.
     };
     Ok(XrefEntry {
@@ -205,8 +225,8 @@ fn field(data: &mut &[u8], width: usize, default: u64) -> Result<u64> {
     if width == 0 {
         return Ok(default);
     }
-    let bytes = data
-        .get(..width)
+    let (bytes, rest) = data
+        .split_at_checked(width)
         .ok_or(Error::syntax("truncated xref field"))?;
     // Saturation preserves the distinction between the known types 0/1/2
     // and any arbitrarily wide unknown type. Unused fields of unknown types
@@ -215,9 +235,7 @@ fn field(data: &mut &[u8], width: usize, default: u64) -> Result<u64> {
     let value = bytes.iter().fold(0_u64, |value, &byte| {
         value.saturating_mul(256).saturating_add(u64::from(byte))
     });
-    *data = data
-        .get(width..)
-        .ok_or(Error::syntax("truncated xref field"))?;
+    *data = rest;
     Ok(value)
 }
 
@@ -238,32 +256,45 @@ mod tests {
     }
 
     #[test]
-    fn all_zero_widths_use_defaults_without_requiring_encoded_rows() {
-        let dictionary = dictionary(b"<< /Size 2 /W [0 0 0] /Index [1 1] >>");
-        let table = entries(b"", &dictionary, Limits::default()).unwrap();
-        assert_eq!(table.get(&1).unwrap().location, Location::Offset(0));
+    fn zero_width_rows_are_rejected_before_any_entry_exists() {
+        // W [0 0 0] would let an empty payload stand for every entry of Index.
+        for widths in ["[0 0 0]", "[1 0 2]"] {
+            let dictionary = dictionary(
+                format!("<< /Size 4000001 /W {widths} /Index [1 4000000] >>").as_bytes(),
+            );
+            let error = entries(b"", &dictionary, &Limits::default()).unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Syntax, "{widths}");
+            assert_eq!(
+                error.message,
+                "xref stream W gives the second field no width"
+            );
+        }
+        // A zero type width still defaults the type to 1 (7.5.8.2).
+        let dictionary = dictionary(b"<< /Size 2 /W [0 1 0] /Index [1 1] >>");
+        let table = entries(&[9], &dictionary, &Limits::default()).unwrap();
+        assert_eq!(table.get(&1).unwrap().location, Location::Offset(9));
         assert_eq!(table.get(&1).unwrap().generation, 0);
     }
 
     #[test]
     fn arbitrarily_wide_unknown_types_ignore_their_other_fields() {
         let dictionary = dictionary(b"<< /Size 8 /W [9 9 9] /Index [7 1] >>");
-        let table = entries(&[255; 27], &dictionary, Limits::default()).unwrap();
+        let table = entries(&[255; 27], &dictionary, &Limits::default()).unwrap();
         assert_eq!(table.get(&7).unwrap().location, Location::Free);
     }
 
     #[test]
     fn overlapping_subsections_and_negative_widths_fail() {
-        for bytes in [
-            b"<< /Size 2 /W [0 0 0] /Index [1 1 1 1] >>".as_slice(),
-            b"<< /Size 2 /W [-1 0 0] >>",
-        ] {
-            assert_eq!(
-                entries(b"", &dictionary(bytes), Limits::default())
-                    .unwrap_err()
-                    .kind,
-                ErrorKind::Syntax
-            );
-        }
+        let overlap = dictionary(b"<< /Size 2 /W [1 1 0] /Index [1 1 1 1] >>");
+        let error = entries(&[1, 9, 1, 9], &overlap, &Limits::default()).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Syntax);
+        assert_eq!(error.message, "xref Index subsections overlap");
+        let negative = dictionary(b"<< /Size 2 /W [-1 1 0] >>");
+        assert_eq!(
+            entries(b"", &negative, &Limits::default())
+                .unwrap_err()
+                .kind,
+            ErrorKind::Syntax
+        );
     }
 }

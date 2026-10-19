@@ -289,7 +289,7 @@ fn tree_action_outline_and_result_budgets_return_no_partial_views() {
             document.object(id).unwrap();
         }
         document.pages().unwrap();
-        document.options.limits.depth = 1;
+        document.limits.depth = 1;
         assert_eq!(
             snapshot(&document, kind).unwrap_err().kind,
             ErrorKind::Limit,
@@ -305,13 +305,13 @@ fn tree_action_outline_and_result_budgets_return_no_partial_views() {
     assert_eq!(document.retained.used(), retained);
     // Limit changes are test-local; parsed source caches stay admitted once.
     let mut document = document;
-    document.options.limits.traversal_work = 2;
+    document.limits.traversal_work = 2;
     assert_eq!(
         snapshot(&document, "trees").unwrap_err().kind,
         ErrorKind::Limit
     );
-    document.options.limits.traversal_work = Limits::default().traversal_work;
-    document.options.limits.document_bytes = 1;
+    document.limits.traversal_work = Limits::default().traversal_work;
+    document.limits.document_bytes = 1;
     assert_eq!(
         snapshot(&document, "trees").unwrap_err().kind,
         ErrorKind::Limit
@@ -380,7 +380,7 @@ fn lookup_query_does_not_borrow_for_the_tree_lifetime_and_labels_are_bounded() {
         Limits::default(),
     );
     assert_eq!(document.page_label(0).unwrap(), "Intro");
-    document.options.limits.string_bytes = 4;
+    document.limits.string_bytes = 4;
     assert_eq!(document.page_label(0).unwrap_err().kind, ErrorKind::Limit);
     assert_eq!(
         document.page_label(10).unwrap_err().kind,

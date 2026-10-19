@@ -73,21 +73,19 @@ pub(crate) fn parse(
         path.pop();
         let (encoded, chain) = prepared?;
         cache.get_or_init(|| {
+            let decoded = crate::stream::decode(document, stream_id, encoded, &chain, 0)?;
             let mut diagnostics = Diagnostics::new(document.recovery());
-            let decoded = chain
-                .decode(&encoded, document.limits().decoded_bytes, &mut diagnostics)
-                .map_err(|error| error.in_object(stream_id))?;
             let contents = headers(
                 decoded.into_owned(),
                 dictionary,
-                document.limits(),
+                &document.limits(),
                 stream_id,
                 &mut diagnostics,
             )
             .map_err(|error| error.in_object(stream_id))?;
             document
                 .retained
-                .charge(contents.retained_bytes(), stream_id)?;
+                .charge(contents.retained_bytes(), Some(stream_id))?;
             document.report(
                 diagnostics
                     .take()
@@ -156,13 +154,16 @@ fn physical<'a>(
         .get(&stream_id)
         .ok_or_else(|| Error::missing_object("object stream is missing").in_object(stream_id))?;
     if !matches!(slot.location, Location::Offset(_)) {
-        if matches!(slot.location, Location::Compressed { stream, index: 0 } if stream == stream_id.number)
-        {
-            let mut error =
-                Error::syntax("object-stream self entry requires its physical stream definition")
-                    .in_object(stream_id);
-            error.repair = Some(repairs::OBJECT_STREAM_SELF_ENTRY);
-            return Err(error);
+        let self_entry = Location::Compressed {
+            stream: stream_id.number,
+            index: 0,
+        };
+        if slot.location == self_entry {
+            return Err(Error::syntax(
+                "object-stream self entry requires its physical stream definition",
+            )
+            .in_object(stream_id)
+            .with_repair(repairs::OBJECT_STREAM_SELF_ENTRY));
         }
         return Err(Error::syntax("object streams cannot be compressed").in_object(stream_id));
     }
@@ -172,7 +173,7 @@ fn physical<'a>(
 pub(crate) fn headers(
     data: Vec<u8>,
     dictionary: &pagura_core::Dictionary,
-    limits: pagura_core::Limits,
+    limits: &pagura_core::Limits,
     id: ObjectId,
     diagnostics: &mut Diagnostics,
 ) -> Result<Contents> {
@@ -180,14 +181,15 @@ pub(crate) fn headers(
         .ok_or(Error::syntax("ObjStm N is missing").in_object(id))?;
     let first = integer_offset(dictionary, b"First")?
         .ok_or(Error::syntax("ObjStm First is missing").in_object(id))?;
-    // Each pair requires at least two digits and separating white space.
-    if count > limits.objects || count > data.len() / 4 {
-        return Err(Error::limit("object stream header budget exceeded").in_object(id));
-    }
     let header = data
         .get(..first)
         .ok_or(Error::syntax("ObjStm First lies outside decoded data").in_object(id))?;
-    let mut parser = Parser::new(header, Origin::Stream(id), limits);
+    // The pairs live in the header: each needs two digits and two separators
+    // (the last needs one), so the header bounds the entries reserved below.
+    if count > limits.objects || count.saturating_mul(4) > header.len().saturating_add(1) {
+        return Err(Error::limit("object stream header budget exceeded").in_object(id));
+    }
+    let mut parser = Parser::new(header, Origin::Stream(id), *limits);
     let mut entries = Vec::with_capacity(count);
     let mut numbers = BTreeSet::new();
     for index in 0..count {
@@ -255,9 +257,14 @@ pub(crate) fn headers(
         return Err(Error::syntax("first ObjStm object offset must be zero").in_object(id));
     }
     if !dictionary.is_name(b"Type", b"ObjStm") {
-        diagnostics.repair(Diagnostic::new(repairs::OBJECT_STREAM_TYPE,
-            "object-stream Type inferred from cross-reference entries and validated N/First header")
-            .in_object(id))?;
+        diagnostics.repair(
+            Diagnostic::new(
+                repairs::OBJECT_STREAM_TYPE,
+                "object-stream Type inferred from cross-reference entries and validated \
+                 N/First header",
+            )
+            .in_object(id),
+        )?;
     }
     Ok(Contents { data, entries })
 }
@@ -272,21 +279,8 @@ fn stream_dictionary(dictionary: &pagura_core::Dictionary) -> bool {
                 .and_then(Value::as_integer)
                 .is_some()
             && dictionary.get(b"Type").is_none_or(|value| {
-                value.as_name().is_some_and(|name| {
-                    ![
-                        b"Catalog".as_slice(),
-                        b"Page",
-                        b"Pages",
-                        b"XRef",
-                        b"Font",
-                        b"XObject",
-                        b"Annot",
-                        b"Metadata",
-                        b"Action",
-                        b"Filespec",
-                        b"Outlines",
-                    ]
-                    .contains(&name.as_bytes())
-                })
+                value
+                    .as_name()
+                    .is_some_and(|name| !crate::catalog::other_type(name.as_bytes(), b"ObjStm"))
             }))
 }

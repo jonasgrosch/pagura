@@ -102,10 +102,10 @@ impl Document {
 
 impl Page {
     /// This page's Link annotations as inert targets (12.5.6.5, Table 176).
-    /// `document` must be the document from which this page was obtained.
     ///
     /// # Errors
-    /// Returns positioned annotation, action, destination or budget errors.
+    /// Returns positioned annotation, action, destination or budget errors,
+    /// and `InvalidArgument` if `document` is not the one this page came from.
     pub fn links<'a>(&'a self, document: &'a Document) -> Result<Vec<Link<'a>>> {
         links::read(document, self)
     }
@@ -113,8 +113,10 @@ impl Page {
     /// This page's display label (12.4.2).
     ///
     /// # Errors
-    /// As [`Document::page_label`]. `document` must own this page.
+    /// As [`Document::page_label`], and `InvalidArgument` if `document` is not
+    /// the one this page came from.
     pub fn label(&self, document: &Document) -> Result<String> {
+        document.check_page(self)?;
         document.page_label(self.index())
     }
 }

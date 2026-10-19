@@ -22,18 +22,6 @@ pub(crate) fn document(name: &str, recovery: Recovery, limits: Limits) -> Docume
     open("document", name, recovery, limits)
 }
 
-#[cfg(test)]
-mod shareability {
-    use crate::Document;
-
-    #[test]
-    fn documents_are_shareable_across_threads() {
-        fn assert_send_sync<T: Send + Sync>() {}
-        assert_send_sync::<Document>();
-    }
-}
-
-#[cfg(test)]
 mod structure_tests {
     use crate::{Document, Location, ObjectSource, OpenOptions, RevisionKind};
     use pagura_core::{ErrorKind, Limits, ObjectId, Recovery, Value};
@@ -435,9 +423,20 @@ mod reconstruction {
             ("security-rebuilt-object-stream", 7, 1),
         ] {
             let bytes = fixture("document", &format!("{name}.pdf"));
+            let limits = pagura_core::Limits::default();
             let mut diagnostics = Diagnostics::new(Recovery::Repair);
-            let table = crate::xref::read(&bytes, pagura_core::Limits::default(), &mut diagnostics)
-                .unwrap();
+            let header = crate::xref::header(&bytes, &mut diagnostics).unwrap();
+            let primary = crate::xref::read(
+                &bytes,
+                header,
+                &limits,
+                &mut Diagnostics::new(Recovery::Repair),
+            )
+            .unwrap_err();
+            assert!(crate::xref::structural(&primary), "{name}");
+            let table =
+                crate::xref::rebuild::read(&bytes, &limits, &mut diagnostics, primary.position)
+                    .unwrap();
             assert_eq!(
                 table.trailer.get(b"Encrypt"),
                 Some(&Value::Reference(ObjectId::new(encrypt, 0)))
@@ -448,7 +447,10 @@ mod reconstruction {
                     .unwrap(),
                 (0_u8..16).map(|n| n * 17).collect::<Vec<_>>()
             );
-            assert_eq!(table.rebuild_streams.len(), streams);
+            let crate::xref::XrefOrigin::Rebuilt { streams: found, .. } = &table.origin else {
+                panic!("{name}: table was not rebuilt");
+            };
+            assert_eq!(found.len(), streams);
             assert_eq!(diagnostics.as_slice()[0].tag(), "xref.rebuilt");
             assert!(table.entries.contains_key(&encrypt));
         }
@@ -485,10 +487,13 @@ mod reconstruction {
         let mut bytes = original;
         bytes.splice(marker..marker, b"/Filter /JPXDecode ".iter().copied());
         let mut diagnostics = Diagnostics::new(Recovery::Repair);
-        let error = crate::xref::read(&bytes, pagura_core::Limits::default(), &mut diagnostics)
+        let error = crate::xref::read(&bytes, 0, &pagura_core::Limits::default(), &mut diagnostics)
             .unwrap_err();
         assert!(error.is_unsupported());
         assert!(diagnostics.is_empty());
+        // Opening in repair mode keeps the decoder error instead of rebuilding.
+        let error = Document::open(bytes, &OpenOptions::default()).unwrap_err();
+        assert!(error.is_unsupported());
         let bytes = fixture("document", "rebuild-startxref-outside.pdf");
         let result = Document::open(
             bytes,
@@ -646,5 +651,41 @@ mod repaired_authentication {
                 ErrorKind::Password
             );
         }
+    }
+}
+
+mod page_ownership {
+    use pagura_core::{ErrorKind, Limits, Recovery};
+
+    #[test]
+    fn pages_are_refused_by_other_documents() {
+        let open = || {
+            super::document(
+                "navigation-links-actions",
+                Recovery::Repair,
+                Limits::default(),
+            )
+        };
+        let (first, second) = (open(), open());
+        let page = first.page(0).unwrap().clone();
+        assert!(page.links(&first).is_ok());
+        assert!(first.content_streams(&page).is_ok());
+        assert_eq!(page.label(&first).unwrap(), "1");
+        // The same bytes opened again are another document.
+        assert_ne!(&page, second.page(0).unwrap());
+        for error in [
+            page.links(&second).unwrap_err(),
+            second.content_streams(&page).unwrap_err(),
+            page.label(&second).unwrap_err(),
+        ] {
+            assert_eq!(error.kind, ErrorKind::InvalidArgument);
+        }
+        // A page outliving its document still names it, not a successor.
+        drop(first);
+        let third = open();
+        assert_eq!(
+            third.content_streams(&page).unwrap_err().kind,
+            ErrorKind::InvalidArgument
+        );
     }
 }

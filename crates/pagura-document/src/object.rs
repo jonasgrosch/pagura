@@ -3,9 +3,10 @@
 pub(crate) mod recovery;
 pub(crate) mod stream;
 
-use recovery::{corrected_offset, end, stream_extent, zero_catalog_header};
+use recovery::{StreamContext, corrected_offset, end, stream_extent, zero_catalog_header};
 
 use crate::Document;
+use crate::memory::path_bytes;
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Result, Value};
 use std::ops::Range;
 
@@ -72,19 +73,7 @@ impl IndirectObject {
                     .saturating_mul(size_of::<DirectObject>()),
             ),
             |sum, direct| {
-                let path = direct.path.iter().fold(
-                    direct
-                        .path
-                        .capacity()
-                        .saturating_mul(size_of::<pagura_core::syntax::PathComponent>()),
-                    |sum, part| {
-                        sum.saturating_add(
-                            part.retained_bytes()
-                                .saturating_sub(size_of::<pagura_core::syntax::PathComponent>()),
-                        )
-                    },
-                );
-                sum.saturating_add(path)
+                sum.saturating_add(path_bytes(&direct.path, direct.path.capacity()))
                     .saturating_add(direct.object.retained_bytes())
             },
         )
@@ -199,7 +188,16 @@ pub(crate) fn parse_at(
             if !parser.keyword(b"stream") {
                 return Err(Error::syntax("missing direct stream keyword").in_object(id));
             }
-            stream_extent(document, id, dictionary, parser, path, &mut repairs, true).map(Some)
+            stream_extent(
+                document,
+                id,
+                dictionary,
+                parser,
+                path,
+                &mut repairs,
+                StreamContext::Direct,
+            )
+            .map(Some)
         })
         .map_err(in_object)?;
     let stream = if parser.keyword(b"stream") {
@@ -212,7 +210,7 @@ pub(crate) fn parse_at(
             &mut parser,
             path,
             &mut repairs,
-            false,
+            StreamContext::Indirect,
         )?)
     } else {
         None
@@ -244,7 +242,7 @@ pub(crate) fn parse_at(
             .in_object(id),
         )?;
     } else {
-        end(&mut parser, document.limits(), id, &mut repairs)?;
+        end(&mut parser, &document.limits(), id, &mut repairs)?;
     }
     let source = ObjectSource::File(offset..parser.offset());
     repairs.absorb(
@@ -292,23 +290,13 @@ fn direct_objects(
             }
             .ok_or_else(|| Error::syntax("invalid direct stream path").in_object(id))?;
         }
-        let path_bytes = direct.path.iter().fold(
-            direct
-                .path
-                .capacity()
-                .saturating_mul(size_of::<pagura_core::syntax::PathComponent>()),
-            |sum, part| {
-                sum.saturating_add(
-                    part.retained_bytes()
-                        .saturating_sub(size_of::<pagura_core::syntax::PathComponent>()),
-                )
-            },
-        );
-        retained = retained.saturating_add(path_bytes).saturating_add(
-            dictionary
-                .retained_bytes()
-                .saturating_sub(size_of::<Value>()),
-        );
+        retained = retained
+            .saturating_add(path_bytes(&direct.path, direct.path.capacity()))
+            .saturating_add(
+                dictionary
+                    .retained_bytes()
+                    .saturating_sub(size_of::<Value>()),
+            );
         if retained > budget {
             return Err(
                 Error::limit("direct stream retained-memory budget exceeded").in_object(id),
@@ -402,17 +390,14 @@ mod direct_tests {
     }
 
     fn open(bytes: usize) -> Document {
-        Document::open(
-            fixture("document", "direct-stream-array.pdf"),
-            &OpenOptions {
-                limits: Limits {
-                    document_bytes: bytes,
-                    ..Limits::default()
-                },
-                ..OpenOptions::default()
+        crate::tests::document(
+            "direct-stream-array",
+            Recovery::default(),
+            Limits {
+                document_bytes: bytes,
+                ..Limits::default()
             },
         )
-        .unwrap()
     }
 
     #[test]

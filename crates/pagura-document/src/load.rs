@@ -1,114 +1,25 @@
 //! Lazy object loading, dependency budgets and reference resolution (7.3.10).
 
-use crate::xref::rebuild;
-use crate::{Document, IndirectObject, Location, OpenOptions, Slot, object, security, xref};
+use crate::{Document, IndirectObject, Location, object};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Error, ObjectId, Result, Value};
-use std::sync::{Arc, Mutex, OnceLock};
 
 impl Document {
-    pub(crate) fn from_table(
-        bytes: Arc<[u8]>,
-        options: &OpenOptions,
-        table: xref::XrefTable,
-        diagnostics: Vec<pagura_core::Diagnostic>,
-    ) -> Result<Self> {
-        Self::from_source(bytes.into(), options, table, diagnostics, None)
-    }
-
-    pub(crate) fn from_source(
-        bytes: crate::history::Bytes,
-        options: &OpenOptions,
-        table: xref::XrefTable,
-        diagnostics: Vec<pagura_core::Diagnostic>,
-        parent: Option<&Document>,
-    ) -> Result<Self> {
-        let root = table
-            .trailer
-            .get(b"Root")
-            .and_then(Value::as_reference)
-            .or_else(|| {
-                table
-                    .entries
-                    .iter()
-                    .find(|(number, _)| **number != 0)
-                    .map(|(&number, entry)| ObjectId::new(number, entry.generation))
-            })
-            .unwrap_or(ObjectId::new(0, 0));
-        let retained = Arc::new(parent.map_or_else(
-            || crate::memory::Budget::new(options.limits.document_bytes),
-            |parent| crate::memory::Budget::child(parent.retained.clone()),
-        ));
-        retained.charge(structure_bytes(&table, parent.is_none()), root)?;
-        let rebuilt = table.rebuild_remaining;
-        let rebuild_streams = table.rebuild_streams;
-        let object_streams: std::collections::BTreeMap<_, _> = table
-            .entries
-            .values()
-            .filter_map(|entry| match entry.location {
-                Location::Compressed { stream, .. } => Some((stream, OnceLock::new())),
-                _ => None,
-            })
-            .collect();
-        retained.charge(
-            object_streams
-                .len()
-                .saturating_mul(crate::memory::stream_slot_bytes()),
-            root,
-        )?;
-        let slots = table
-            .entries
-            .into_iter()
-            .filter_map(|(number, entry)| match entry.location {
-                Location::Free => None,
-                location => Some((
-                    ObjectId::new(number, entry.generation),
-                    Slot {
-                        location,
-                        object: OnceLock::new(),
-                    },
-                )),
-            })
-            .collect();
-        let mut document = Self {
-            bytes,
-            options: options.clone(),
-            trailer: table.trailer,
-            slots,
-            revisions: table.revisions,
-            object_streams,
-            security: None,
-            pages: OnceLock::new(),
-            diagnostics: Mutex::new(crate::diagnostics::Log::default()),
-            retained,
-            historical: crate::history::Cache::default(),
-        };
-        document.report(diagnostics);
-        document.security = security::read(&document)?;
-        document.options.password.clear();
-        if let Some(remaining) = rebuilt {
-            rebuild::load_streams(&mut document, rebuild_streams, remaining)?;
-            match document.catalog() {
-                Ok(catalog) if crate::catalog::candidate(&document, catalog)? => {}
-                Err(error) if !xref::structural(&error) => return Err(error),
-                _ => rebuild::catalog(&mut document)?,
-            }
-        }
-        crate::catalog::validate(&document)?;
-        Ok(document)
-    }
-
+    /// Loads `id` while the objects in `path` are being loaded.
+    ///
+    /// A load that starts with an empty `path` depends only on the document,
+    /// so its result is cached even when it fails: recovery such as offset
+    /// correction or terminator scans then runs at most once per object.
+    /// Nested failures can depend on `path` (cycles, depth) and are not cached.
     pub(crate) fn object_inner(
         &self,
         id: ObjectId,
         path: &mut Vec<ObjectId>,
     ) -> Result<&IndirectObject> {
         if path.contains(&id) {
-            return Err(
-                Error::new(pagura_core::ErrorKind::Cycle, "object loading cycle").in_object(id),
-            );
+            return Err(Error::cycle("object loading cycle").in_object(id));
         }
-        if path.len() >= self.limits().depth {
+        if path.len() >= self.limits.depth {
             return Err(Error::limit("object loading depth exceeded").in_object(id));
         }
         let slot = self.slots.get(&id).ok_or_else(|| {
@@ -117,22 +28,32 @@ impl Document {
         if let Some(object) = slot.object.get() {
             return object.as_ref().map_err(Clone::clone);
         }
+        let top_level = path.is_empty();
         path.push(id);
-        let result = match slot.location {
+        let parsed = match slot.location {
             Location::Offset(offset) => object::parse_at(self, id, offset, path),
             Location::Compressed { stream, index } => {
                 object::stream::parse(self, id, stream, index, path)
             }
-            Location::Free => Err(Error::missing_object("object is free").in_object(id)),
+            Location::Free => Err(Error::missing_object("object is free")),
         };
         path.pop();
-        let (mut object, diagnostics) = result.map_err(|error| error.in_object(id))?;
-        if let Some(security) = &self.security {
-            security.decrypt_object(&mut object)?;
-        }
+        let loaded = parsed
+            .and_then(|(mut object, diagnostics)| {
+                if let Some(security) = &self.security {
+                    security.decrypt_object(&mut object)?;
+                }
+                Ok((object, diagnostics))
+            })
+            .map_err(|error| error.in_object(id));
+        let loaded = match loaded {
+            Err(error) if !top_level => return Err(error),
+            loaded => loaded,
+        };
         slot.object
             .get_or_init(|| {
-                self.retained.charge(object.retained_bytes(), id)?;
+                let (object, diagnostics) = loaded?;
+                self.retained.charge(object.retained_bytes(), Some(id))?;
                 self.report(diagnostics);
                 Ok(object)
             })
@@ -140,6 +61,8 @@ impl Document {
             .map_err(Clone::clone)
     }
 
+    /// Follows references from `value` to a direct value, also returning the
+    /// object that holds it, if it is not `value` itself.
     pub(crate) fn resolve_inner<'a>(
         &'a self,
         value: &'a Value,
@@ -148,7 +71,7 @@ impl Document {
         static NULL: Value = Value::Null;
         let mut current = value;
         let mut origin = None;
-        for _ in 0..=self.limits().depth {
+        for _ in 0..=self.limits.depth {
             let Value::Reference(id) = current else {
                 return Ok((current, origin));
             };
@@ -175,11 +98,7 @@ impl Document {
         })
     }
 
-    pub(crate) fn resolve_deep_entry(
-        &self,
-        value: &Value,
-        path: &mut Vec<ObjectId>,
-    ) -> Result<Value> {
+    fn resolve_deep_entry(&self, value: &Value, path: &mut Vec<ObjectId>) -> Result<Value> {
         Ok(match self.resolve_inner(value, path)?.0 {
             Value::Dictionary(dictionary) => Value::Dictionary(
                 dictionary
@@ -197,46 +116,8 @@ impl Document {
     /// limits and recovery mode.
     pub(crate) fn file_parser(&self, offset: usize) -> Result<Parser<'_>> {
         Ok(
-            Parser::with_offset(&self.bytes, offset, Origin::File, self.limits())?
-                .with_recovery(self.recovery()),
+            Parser::with_offset(&self.bytes, offset, Origin::File, self.limits)?
+                .with_recovery(self.recovery),
         )
-    }
-}
-
-// Charge shared xref deltas once, at the source document. Snapshot slot maps
-// and trailers remain separate retained allocations (ADR 0012).
-fn structure_bytes(table: &xref::XrefTable, include_entries: bool) -> usize {
-    let structure = table
-        .entries
-        .values()
-        .filter(|entry| !matches!(entry.location, Location::Free))
-        .count()
-        .saturating_mul(crate::memory::slot_bytes())
-        .saturating_add(table.trailer.retained_bytes())
-        .saturating_add(
-            table
-                .revisions
-                .capacity()
-                .saturating_mul(size_of::<crate::Revision>()),
-        );
-    let structure = table.revisions.iter().fold(structure, |sum, revision| {
-        sum.saturating_add(
-            revision
-                .trailer()
-                .retained_bytes()
-                .saturating_sub(size_of::<pagura_core::Dictionary>()),
-        )
-    });
-    if include_entries {
-        table.revisions.iter().fold(structure, |sum, revision| {
-            sum.saturating_add(
-                revision
-                    .entries
-                    .len()
-                    .saturating_mul(size_of::<(u32, xref::XrefEntry)>() + 64),
-            )
-        })
-    } else {
-        structure
     }
 }
