@@ -22,6 +22,10 @@ pub const XFA: Feature = Feature::new("form.xfa");
 pub const RICH_TEXT: Feature = Feature::new("form.rich-text");
 /// Filling unsupported or nonterminal field types.
 pub const FIELD_TYPE: Feature = Feature::new("form.field-type");
+/// Reading an earlier revision of a document repaired at opening (7.5.6).
+pub const HISTORICAL_SOURCE: Feature = Feature::new("document.historical-source");
+/// Reading an earlier revision of an encrypted document (7.5.6, 7.6).
+pub const HISTORICAL_ENCRYPTION: Feature = Feature::new("document.historical-encryption");
 
 /// Every feature tag above.
 pub const ALL: &[Feature] = &[
@@ -34,6 +38,8 @@ pub const ALL: &[Feature] = &[
     XFA,
     RICH_TEXT,
     FIELD_TYPE,
+    HISTORICAL_SOURCE,
+    HISTORICAL_ENCRYPTION,
 ];
 
 #[cfg(test)]
@@ -44,7 +50,10 @@ mod tests {
     fn tags_are_unique_and_well_formed() {
         for (index, tag) in ALL.iter().enumerate() {
             let (area, item) = tag.as_str().split_once('.').unwrap();
-            assert!(["stream", "security", "form"].contains(&area), "{tag}");
+            assert!(
+                ["stream", "security", "form", "document"].contains(&area),
+                "{tag}"
+            );
             assert!(
                 !item.is_empty() && item.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
             );
