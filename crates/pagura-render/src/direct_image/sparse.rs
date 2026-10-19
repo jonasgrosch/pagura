@@ -145,7 +145,14 @@ impl Plan {
         if !convert(p, y, repeat, &self.source_runs, &mut self.rgb) {
             return false;
         }
-        out.fill([0.0; 4]);
+        // Columns outside the target ranges see only background; every
+        // column inside one is written below.
+        let mut start = 0;
+        for range in &self.targets {
+            out[start..range.start].fill([0.0; 4]);
+            start = range.end;
+        }
+        out[start..].fill([0.0; 4]);
         let pixels = &self.rgb;
         for range in &self.targets {
             for (out, band) in out[range.clone()].iter_mut().zip(&bands[range.clone()]) {
