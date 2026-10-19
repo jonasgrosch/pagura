@@ -9,7 +9,7 @@
 /// field (ADR 0016), never a borrowed one, so tuning one budget cannot
 /// silently retune an unrelated parser. Limits defined by a standard (such
 /// as a charstring stack depth) are named constants next to their parser,
-/// not fields.
+/// not fields; [`Limits::CALCULATOR_STACK`] is the one shared here.
 ///
 /// | Domain | Fields |
 /// |---|---|
@@ -20,7 +20,8 @@
 /// | Fonts and CMaps | `font_work`, `font_entries` |
 /// | Content and rendering | `operations`, `display_commands`, `path_segments`, `raster_work`, `mask_sources`, `pixels`, `render_bytes` |
 /// | Page text | `text_items`, `text_work` |
-/// | Signatures | `rsa_modulus_bits`, `rsa_exponent_bits`, `rsa_work` |
+/// | Functions | `function_work` |
+/// | Signatures | `signatures`: [`SignatureLimits`] for ASN.1, certification paths and RSA |
 ///
 /// Defaults target real-world viewing inside a 32-bit WebAssembly address
 /// space, and every default fits a 32-bit `usize`. Callers processing
@@ -28,6 +29,11 @@
 /// the defaults (`Limits { pages: 10, ..Limits::default() }`), so that new
 /// fields keep their defaults. Functions take `&Limits`; only a constructor
 /// that stores the limits takes them by value.
+///
+/// The struct stays within 256 bytes, the size up to which clippy accepts
+/// `Copy` values passed by value: a domain with many budgets of its own gets
+/// a nested group of `u32` fields, as [`SignatureLimits`] does, rather than
+/// more top-level fields. A unit test enforces the size.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Limits {
     /// Maximum input file size in bytes.
@@ -53,7 +59,9 @@ pub struct Limits {
     pub pages: usize,
     /// Maximum number of nodes visited by one walk over a document graph:
     /// the page tree, outlines, name and number trees, the structure tree,
-    /// annotation and form-field hierarchies.
+    /// annotation and form-field hierarchies, and the signature fields,
+    /// signed revisions and DocMDP/FieldMDP change analysis of signature
+    /// inspection (12.8).
     pub traversal_work: usize,
     /// Maximum number of pixels in one rendered surface.
     pub pixels: usize,
@@ -93,14 +101,84 @@ pub struct Limits {
     /// Maximum work units for laying out, ordering, structuring and
     /// searching one page's text (ADR 0014).
     pub text_work: usize,
-    /// Maximum RSA modulus bit length, also bounded by the implementation ceiling.
-    pub rsa_modulus_bits: usize,
+    /// Maximum work units for evaluating functions (7.10) during one page's
+    /// compilation or rendering: one unit per Type 4 calculator operator
+    /// executed and per sample looked up or interpolated in a sampled,
+    /// exponential or stitching function.
+    pub function_work: usize,
+    /// Budgets of signature validation (ADR 0015).
+    pub signatures: SignatureLimits,
+}
+
+impl Limits {
+    /// Operand-stack entries of a Type 4 (PostScript calculator) function
+    /// (7.10.5), the architectural limit of ISO 32000-1 Annex C, Table C.1.
+    /// A standard limit, not a budget, so it is not a field.
+    pub const CALCULATOR_STACK: usize = 100;
+}
+
+/// Budgets of signature validation (ADR 0015): ASN.1 encodings,
+/// certification paths (RFC 5280 6) and RSA verification. The fields are
+/// `u32`, which every default fits, so that [`Limits`] stays small; widen
+/// them with [`u32_to_usize`](crate::convert::u32_to_usize).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SignatureLimits {
+    /// Maximum nesting depth of one ASN.1 encoding (X.690 8.1): a signature's
+    /// CMS, a certificate, a CRL or a timestamp.
+    pub asn1_depth: u32,
+    /// Maximum number of elements indexed for one ASN.1 encoding. A component
+    /// that is checked again as DER is indexed again under the same limit.
+    pub asn1_elements: u32,
+    /// Maximum bytes one ASN.1 operation allocates besides its input: the
+    /// element index and traversal stack of one encoding, or one value copied
+    /// out of it (concatenated BER OCTET STRING content, the DER signature
+    /// input of signed attributes).
+    pub asn1_bytes: u32,
+    /// Maximum number of certificates in one certification path, excluding
+    /// the trust anchor (RFC 5280 6.1).
+    pub path_certificates: u32,
+    /// Maximum work units for one certification path validation or search,
+    /// including its CRL processing: scanned bytes, name and OID comparisons,
+    /// policy-graph operations and the bytes of each signature input.
+    pub path_work: u32,
+    /// Maximum values one path validation or search prepares: certificates,
+    /// extension and reparsed DER elements, queued branches, result paths and
+    /// policy-graph nodes and edges.
+    pub path_nodes: u32,
+    /// Maximum estimated bytes one path validation or search allocates: copied
+    /// names, OIDs and policy storage, temporary extension indexes and results.
+    pub path_bytes: u32,
+    /// Maximum distinct signature verifications one path validation or search
+    /// asks the host to perform; repeated inputs are answered from memory.
+    pub path_verifications: u32,
+    /// Maximum RSA modulus bit length, also bounded by the implementation
+    /// ceiling.
+    pub rsa_modulus_bits: u32,
     /// Maximum RSA public exponent bit length.
-    pub rsa_exponent_bits: usize,
+    pub rsa_exponent_bits: u32,
     /// Maximum radix-2^64 limb products in one RSA verification, including
     /// Montgomery reduction. Key setup is bounded by `rsa_modulus_bits`.
     /// The caller must separately bound the number of verifications.
-    pub rsa_work: usize,
+    pub rsa_work: u32,
+}
+
+impl Default for SignatureLimits {
+    fn default() -> Self {
+        const MIB: u32 = 1024 * 1024;
+        Self {
+            asn1_depth: 64,
+            asn1_elements: 1_000_000,
+            asn1_bytes: 128 * MIB,
+            path_certificates: 64,
+            path_work: 50_000_000,
+            path_nodes: 1_000_000,
+            path_bytes: 128 * MIB,
+            path_verifications: 100,
+            rsa_modulus_bits: 16_384,
+            rsa_exponent_bits: 256,
+            rsa_work: 64_000_000,
+        }
+    }
 }
 
 impl Default for Limits {
@@ -135,19 +213,20 @@ impl Default for Limits {
             font_entries: 1_000_000,
             text_items: 1_000_000,
             text_work: 50_000_000,
-            rsa_modulus_bits: 16_384,
-            rsa_exponent_bits: 256,
-            rsa_work: 64_000_000,
+            function_work: 50_000_000,
+            signatures: SignatureLimits::default(),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::Limits;
+    use super::{Limits, SignatureLimits};
 
     #[test]
     fn defaults_fit_a_32_bit_address_space() {
+        // Destructured exhaustively so that a new field is checked too; the
+        // signature group is u32 by type.
         let Limits {
             file_bytes,
             document_bytes,
@@ -173,9 +252,8 @@ mod tests {
             font_entries,
             text_items,
             text_work,
-            rsa_modulus_bits,
-            rsa_exponent_bits,
-            rsa_work,
+            function_work,
+            signatures: _,
         } = Limits::default();
         for value in [
             file_bytes,
@@ -202,12 +280,17 @@ mod tests {
             font_entries,
             text_items,
             text_work,
-            rsa_modulus_bits,
-            rsa_exponent_bits,
-            rsa_work,
+            function_work,
         ] {
             assert!(u32::try_from(value).is_ok(), "{value}");
         }
+    }
+
+    #[test]
+    fn limits_stay_small_enough_to_pass_by_value() {
+        // clippy's large_types_passed_by_value default threshold.
+        assert!(size_of::<Limits>() <= 256, "{}", size_of::<Limits>());
+        assert_eq!(Limits::default().signatures, SignatureLimits::default());
     }
 
     #[test]

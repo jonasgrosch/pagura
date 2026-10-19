@@ -144,7 +144,10 @@ fn verification_limits_are_per_signature_results() {
         fixture("cms-signatures", "rsa-sha256.pdf"),
         &OpenOptions {
             limits: pagura::Limits {
-                rsa_work: 1,
+                signatures: pagura::SignatureLimits {
+                    rsa_work: 1,
+                    ..pagura::SignatureLimits::default()
+                },
                 ..pagura::Limits::default()
             },
             ..OpenOptions::default()
