@@ -14,6 +14,10 @@ pub const VERSION_1_2: u32 = 0x0001_0002;
 pub const VERSION_1_3: u32 = 0x0001_0003;
 /// Protocol 1.4, adding typed diagnostic snapshots without changing older layouts.
 pub const VERSION_1_4: u32 = 0x0001_0004;
+/// Protocol 1.5, adding text passwords to open without changing older layouts.
+pub const VERSION_1_5: u32 = 0x0001_0005;
+/// Bit of open's mode byte, from protocol 1.5, marking the password as text.
+pub const PASSWORD_TEXT: u8 = 2;
 /// Kind byte for structured error responses.
 pub const ERROR_KIND: u8 = 255;
 
@@ -22,7 +26,7 @@ pub const ERROR_KIND: u8 = 255;
 pub enum Request<'a> {
     /// Negotiate a version before accessing documents.
     Hello(u32),
-    /// Open immutable PDF bytes, with the chosen recovery policy and raw password bytes.
+    /// Open immutable PDF bytes, with the chosen recovery policy and password.
     Open {
         /// PDF source bytes (ISO 32000-2 clause 7.5).
         bytes: &'a [u8],
@@ -30,6 +34,8 @@ pub enum Request<'a> {
         recovery: Recovery,
         /// Password bytes, never interpreted as instructions.
         password: &'a [u8],
+        /// Whether the password is handler bytes or text (v1.5).
+        password_kind: PasswordKind,
     },
     /// Describe a zero-based page.
     PageInfo {
@@ -79,6 +85,16 @@ pub enum Request<'a> {
     Stats,
     /// Reading operations, with additions gated by the negotiated version.
     Reading(crate::reading::Request<'a>),
+}
+
+/// How open's password bytes are meant.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PasswordKind {
+    /// Bytes passed to the security handler unchanged (all versions).
+    Bytes,
+    /// UTF-8 text, encoded for the handler's revision (v1.5; ISO 32000-2
+    /// 7.6.4.3).
+    Text,
 }
 
 /// Session-owned retention accounting, not allocator or total-heap telemetry.
@@ -176,7 +192,8 @@ pub fn decode(body: &[u8], limits: pagura::Limits) -> Result<RequestFrame<'_>> {
     let request = match kind {
         1 => Request::Hello(reader.u32()?),
         2 => {
-            let recovery = match reader.byte()? {
+            let mode = reader.byte()?;
+            let recovery = match mode & !PASSWORD_TEXT {
                 0 => Recovery::Strict,
                 1 => Recovery::Repair,
                 _ => {
@@ -184,12 +201,18 @@ pub fn decode(body: &[u8], limits: pagura::Limits) -> Result<RequestFrame<'_>> {
                         .at(Position::Buffer(reader.offset.saturating_sub(1))));
                 }
             };
+            let password_kind = if mode & PASSWORD_TEXT == 0 {
+                PasswordKind::Bytes
+            } else {
+                PasswordKind::Text
+            };
             let password = reader.blob(limits.string_bytes)?;
             let bytes = reader.blob(limits.file_bytes)?;
             Request::Open {
                 bytes,
                 recovery,
                 password,
+                password_kind,
             }
         }
         3 => Request::PageInfo {
