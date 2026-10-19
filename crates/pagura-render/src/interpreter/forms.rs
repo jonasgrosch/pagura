@@ -218,6 +218,7 @@ impl Compiler<'_> {
             position: self.position,
             forms: self.forms.clone(),
             extraction: None,
+            drawn: self.drawn,
         }
     }
 }

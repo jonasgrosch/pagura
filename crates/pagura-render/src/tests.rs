@@ -1046,3 +1046,133 @@ fn image_reduction_half_levels_choose_a_nearest_level() {
         }
     }
 }
+
+/// A one-page PDF drawing `jpeg` (`width` by `height` DeviceRGB samples) by
+/// the content `placement`, on a `side` by `side` point page.
+fn jpeg_page(jpeg: &[u8], (width, height): (u32, u32), side: u32, placement: &str) -> Vec<u8> {
+    let content = format!("q {placement} cm /Im Do Q");
+    let mut objects: Vec<Vec<u8>> = vec![
+        b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_vec(),
+        format!(
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {side} {side}] \
+             /Resources << /XObject << /Im 4 0 R >> >> /Contents 5 0 R >>"
+        )
+        .into_bytes(),
+    ];
+    let mut image = format!(
+        "<< /Type /XObject /Subtype /Image /Width {width} /Height {height} \
+         /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {} >>\nstream\n",
+        jpeg.len()
+    )
+    .into_bytes();
+    image.extend_from_slice(jpeg);
+    image.extend_from_slice(b"\nendstream");
+    objects.push(image);
+    objects.push(
+        format!(
+            "<< /Length {} >>\nstream\n{content}\nendstream",
+            content.len()
+        )
+        .into_bytes(),
+    );
+    let mut pdf = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (index, object) in objects.iter().enumerate() {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(format!("{} 0 obj\n", index + 1).as_bytes());
+        pdf.extend_from_slice(object);
+        pdf.extend_from_slice(b"\nendobj\n");
+    }
+    let xref = pdf.len();
+    pdf.extend_from_slice(
+        format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).as_bytes(),
+    );
+    for offset in offsets {
+        pdf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n",
+            objects.len() + 1
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+#[test]
+fn drawn_size_jpeg_is_approximate_and_switchable_to_the_exact_path() {
+    use crate::ImageReconstruction;
+    let jpeg = pagura_testkit::fixture("image", "jpeg-interleaved-420.in");
+    // 17 samples over 4.25 device pixels keep four cells per block axis,
+    // over 8.5 pixels all eight; a quarter turn and a flip change nothing.
+    for (placement, reduced) in [
+        ("4.25 0 0 4.25 0.5 0.25", true),
+        ("0 4.25 -4.25 0 5 0.5", true),
+        ("8.5 0 0 -8.5 0.25 9", false),
+    ] {
+        let document = Document::open(
+            jpeg_page(&jpeg, (17, 17), 10, placement),
+            &OpenOptions::default(),
+        )
+        .unwrap();
+        let page = document.page(0).unwrap();
+        let exact = RenderOptions {
+            images: ImageReconstruction::Exact,
+            ..RenderOptions::default()
+        };
+        let drawn = RenderOptions::default();
+        assert_eq!(drawn.images, ImageReconstruction::DrawnSizeJpeg);
+        let list = compile_page(&document, page)
+            .unwrap()
+            .render(&drawn)
+            .unwrap();
+        let reference = crate::render_page(&document, page, &exact).unwrap();
+        // A separately compiled list keeps every sample.
+        assert_eq!(list.data(), reference.data(), "{placement}");
+        let approximate = crate::render_page(&document, page, &drawn).unwrap();
+        let worst = approximate
+            .data()
+            .iter()
+            .zip(reference.data())
+            .map(|(&a, &b)| a.abs_diff(b))
+            .max()
+            .unwrap();
+        assert_eq!(worst > 0, reduced, "{placement}: {worst}");
+        assert!(worst <= 24, "{placement}: {worst}");
+        let context = crate::RenderContext::new(std::sync::Arc::new(
+            Document::open(
+                jpeg_page(&jpeg, (17, 17), 10, placement),
+                &OpenOptions::default(),
+            )
+            .unwrap(),
+        ));
+        let shared = context.document().page(0).unwrap();
+        assert_eq!(
+            context.render_page(shared, &drawn).unwrap().data(),
+            approximate.data()
+        );
+        assert_eq!(
+            context.render_page(shared, &exact).unwrap().data(),
+            reference.data()
+        );
+        for y in 0..approximate.height() {
+            for x in 0..approximate.width() {
+                let tile = Tile {
+                    x,
+                    y,
+                    width: 1,
+                    height: 1,
+                };
+                let pixel = crate::render_tile(&document, page, &drawn, tile).unwrap();
+                let i = usize::try_from((y * approximate.width() + x) * 4).unwrap();
+                assert_eq!(
+                    pixel.data(),
+                    &approximate.data()[i..i + 4],
+                    "{placement} ({x},{y})"
+                );
+            }
+        }
+    }
+}

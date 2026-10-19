@@ -3,7 +3,7 @@ use super::{
     Decoder,
     entropy::{Bits, Huffman},
     frame::Storage,
-    transform::{Idct, reconstruct},
+    transform::{Cells, Idct, reconstruct},
 };
 use pagura_core::{Diagnostic, Diagnostics, Error, Limits, Position, Result};
 
@@ -139,6 +139,7 @@ impl Decoder {
         let mut predictors = [0i32; 4];
         let (mut eob, mut sequence) = (0u32, 0u8);
         let idct = (!frame.progressive).then(Idct::new);
+        let cells = (!frame.progressive && frame.cells < 8).then(|| Cells::new(frame.cells));
         for mcu in 0..cols * rows {
             if mcu > 0 && self.restart != 0 && mcu % self.restart == 0 {
                 if eob != 0 {
@@ -205,7 +206,7 @@ impl Decoder {
                             )?;
                         }
                         if let Some(idct) = &idct {
-                            store(c, idct, &sequential, index)
+                            store(c, idct, cells.as_ref(), &sequential, index)
                                 .ok_or_else(|| bits.error("JPEG block outside component"))?;
                         }
                     }
@@ -245,13 +246,17 @@ impl Decoder {
 fn store(
     component: &mut super::frame::Component,
     idct: &Idct,
+    cells: Option<&Cells>,
     block: &[i32; 64],
     index: usize,
 ) -> Option<()> {
     let quant = component.quant.as_ref()?;
     let stride = component.stride;
     match &mut component.storage {
-        Storage::Bytes(plane) => reconstruct(idct, quant, block, plane, stride, index),
+        Storage::Bytes(plane) => match cells {
+            Some(cells) => cells.reconstruct(idct, quant, block, plane, stride, index),
+            None => reconstruct(idct, quant, block, plane, stride, index),
+        },
         Storage::Words(plane) => reconstruct(idct, quant, block, plane, stride, index),
         Storage::Coefficients(_) => None,
     }

@@ -88,7 +88,7 @@ pub use text::extract::{compile_page_with_text, text_page};
 /// `Unsupported` tags. No partial list is returned on failure.
 pub fn compile_page(document: &Document, page: &Page) -> Result<DisplayList> {
     let fonts = std::sync::Mutex::new(text::cache::FontCache::new(document.limits()));
-    compile_cached(document, page, None, &fonts)
+    compile_cached(document, page, None, &fonts, None)
 }
 
 /// Compiles a page using external font resources supplied explicitly (ADR 0009).
@@ -102,16 +102,32 @@ pub fn compile_page_with(
     provider: &dyn pagura_text::Provider,
 ) -> Result<DisplayList> {
     let fonts = std::sync::Mutex::new(text::cache::FontCache::new(document.limits()));
-    compile_cached(document, page, Some(provider), &fonts)
+    compile_cached(document, page, Some(provider), &fonts, None)
 }
 
+/// Compiles a page for one rendering with `options`, decoding images near
+/// their drawn size when [`crate::ImageReconstruction::DrawnSizeJpeg`] applies.
+pub(crate) fn compile_drawn(
+    document: &Document,
+    page: &Page,
+    provider: Option<&dyn pagura_text::Provider>,
+    options: &crate::RenderOptions,
+) -> Result<DisplayList> {
+    let fonts = std::sync::Mutex::new(text::cache::FontCache::new(document.limits()));
+    compile_cached(document, page, provider, &fonts, options.drawn_scale(page))
+}
+
+/// Compiles a page; `drawn` is the device scale at which images may be
+/// decoded near their drawn size, or None to decode them exactly.
 pub(crate) fn compile_cached(
     document: &Document,
     page: &Page,
     provider: Option<&dyn pagura_text::Provider>,
     fonts: &std::sync::Mutex<text::cache::FontCache>,
+    drawn: Option<f64>,
 ) -> Result<DisplayList> {
     let mut compiler = Compiler::new(document, page)?;
+    compiler.drawn = drawn;
     compiler.compilation = std::rc::Rc::new(Compilation {
         colors: crate::icc::Cache::default(),
         provider,
@@ -191,6 +207,9 @@ struct Compiler<'a> {
     position: Position,
     forms: Vec<ObjectId>,
     extraction: Option<text::extract::Extraction>,
+    /// Device pixels per default user-space unit for drawn-size image
+    /// decoding; None outside page space or when images decode exactly.
+    drawn: Option<f64>,
 }
 
 impl<'a> Compiler<'a> {
@@ -222,6 +241,7 @@ impl<'a> Compiler<'a> {
             position: Position::Unknown,
             forms: Vec::new(),
             extraction: None,
+            drawn: None,
         })
     }
 

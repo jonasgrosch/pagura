@@ -452,20 +452,20 @@ struct Area {
 impl Area {
     fn new(sampler: &Sampler, clip: &Mask, swapped: bool) -> Result<Self> {
         let t = sampler.inverse;
-        let (width, height) = (sampler.width, sampler.height);
+        let (width, height) = (sampler.axis(false), sampler.axis(true));
         let ((column_scale, column_offset, columns), (row_scale, row_offset, rows)) = if swapped {
             ((t.b, t.f, height), (t.c, t.e, width))
         } else {
             ((t.a, t.e, width), (t.d, t.f, height))
         };
         let (x, y) = clip.origin();
-        let spans = |pixels: std::ops::Range<u32>, scale, offset, maximum| -> Result<Vec<Span>> {
+        let spans = |pixels: std::ops::Range<u32>, scale, offset, axis| -> Result<Vec<Span>> {
             let mut spans = Vec::new();
             spans
                 .try_reserve_exact(pixels.len())
                 .map_err(|_| Error::limit("image footprint allocation failed"))?;
             for pixel in pixels {
-                spans.push(Span::new(pixel, scale, offset, maximum)?);
+                spans.push(Span::new(pixel, scale, offset, axis)?);
             }
             Ok(spans)
         };
@@ -879,6 +879,7 @@ mod tests {
                 decode: None,
                 mask: MaskKind::None,
                 interpolate: self.interpolate,
+                reduction: None,
             };
             let image = Image {
                 decoded,

@@ -238,18 +238,13 @@ fn prepare(
 }
 
 pub(super) fn sampler_for(image: &Image, inverse: Transform) -> Sampler {
+    let (width, height) = image.decoded.extent();
     Sampler {
         width: image.decoded.width,
         height: image.decoded.height,
+        extent: (width, height),
         interpolate: image.decoded.interpolate,
-        inverse: inverse.then(Transform::new(
-            f64::from(image.decoded.width),
-            0.0,
-            0.0,
-            -f64::from(image.decoded.height),
-            0.0,
-            f64::from(image.decoded.height),
-        )),
+        inverse: inverse.then(Transform::new(width, 0.0, 0.0, -height, 0.0, height)),
     }
 }
 fn mask_texel(image: &Image, pixel: usize) -> Result<Texel> {
@@ -568,6 +563,7 @@ mod tests {
                 decode: None,
                 mask: MaskKind::None,
                 interpolate: false,
+                reduction: None,
             },
             space: Some(if components == 1 {
                 crate::color::Space::Gray
@@ -820,6 +816,7 @@ mod tests {
                 decode: None,
                 mask: MaskKind::None,
                 interpolate: false,
+                reduction: None,
             },
             space: Some(crate::color::Space::Gray),
             mask: None,

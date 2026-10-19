@@ -50,6 +50,8 @@ pub struct RenderOptions {
     pub background: Rgba8,
     /// Whether to simulate overprinting (8.6.7; 11.7.4).
     pub overprint: OverprintPreview,
+    /// How images drawn smaller than their samples are reconstructed.
+    pub images: ImageReconstruction,
 }
 
 impl Default for RenderOptions {
@@ -58,7 +60,36 @@ impl Default for RenderOptions {
             scale: 1.0,
             background: Rgba8::WHITE,
             overprint: OverprintPreview::Auto,
+            images: ImageReconstruction::default(),
         }
+    }
+}
+
+/// How images drawn smaller than their samples are reconstructed (ADR 0004).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum ImageReconstruction {
+    /// Every sample is decoded; device pixels take exact area means, each
+    /// within one level of its exact result.
+    Exact,
+    /// The approximate drawn-size JPEG path. An eight-bit DeviceGray or
+    /// DeviceRGB DCTDecode image XObject without masks or Decode array keeps
+    /// 1, 2, 3, 4 or 6 cells per eight-sample block axis: the fewest that
+    /// leave at least two cells per device pixel. Cells are
+    /// block area means (`pagura_image::dct::decode_cells`), so pixels can
+    /// differ from [`Self::Exact`] by more than one level. It applies when a
+    /// page is compiled and rendered in one call, at that call's scale; a
+    /// separately compiled [`DisplayList`] decodes exactly.
+    #[default]
+    DrawnSizeJpeg,
+}
+
+impl RenderOptions {
+    /// Device pixels per default user-space unit at which images are
+    /// decoded near their drawn size, if this path applies.
+    fn drawn_scale(&self, page: &Page) -> Option<f64> {
+        let scale = self.scale * page.user_unit();
+        (self.images == ImageReconstruction::DrawnSizeJpeg && scale.is_finite() && scale > 0.0)
+            .then_some(scale)
     }
 }
 
@@ -140,7 +171,7 @@ fn pixels(extent: f64) -> Result<u32> {
 /// error for budget violations, and syntax errors for malformed content.
 /// No partial page is ever returned.
 pub fn render_page(document: &Document, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
-    compile_page(document, page)?.render(options)
+    interpreter::compile_drawn(document, page, None, options)?.render(options)
 }
 
 /// Renders a whole page using explicitly supplied external font resources.
@@ -153,7 +184,7 @@ pub fn render_page_with(
     options: &RenderOptions,
     provider: &dyn Provider,
 ) -> Result<Pixmap> {
-    compile_page_with(document, page, provider)?.render(options)
+    interpreter::compile_drawn(document, page, Some(provider), options)?.render(options)
 }
 
 /// Renders one tile of a page. Tiles of one page with the same options
@@ -170,7 +201,7 @@ pub fn render_tile(
     options: &RenderOptions,
     tile: Tile,
 ) -> Result<Pixmap> {
-    compile_page(document, page)?.render_tile(options, tile)
+    interpreter::compile_drawn(document, page, None, options)?.render_tile(options, tile)
 }
 
 /// Renders a tile using explicitly supplied external font resources.
@@ -184,7 +215,7 @@ pub fn render_tile_with(
     tile: Tile,
     provider: &dyn Provider,
 ) -> Result<Pixmap> {
-    compile_page_with(document, page, provider)?.render_tile(options, tile)
+    interpreter::compile_drawn(document, page, Some(provider), options)?.render_tile(options, tile)
 }
 
 #[cfg(test)]

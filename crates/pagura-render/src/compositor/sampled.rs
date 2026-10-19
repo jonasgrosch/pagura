@@ -31,10 +31,34 @@ impl Texel {
 pub(super) struct Sampler {
     pub(super) width: u32,
     pub(super) height: u32,
+    /// The extent of the image's unit square in samples: its dimensions, or
+    /// less where a reduced JPEG's last cells reach into block padding.
+    pub(super) extent: (f64, f64),
     pub(super) interpolate: bool,
     pub(super) inverse: Transform,
 }
 impl Sampler {
+    /// Sampler of a `width` by `height` grid covering the unit square.
+    #[cfg(test)]
+    pub(super) fn grid(width: u32, height: u32, interpolate: bool, inverse: Transform) -> Self {
+        Self {
+            width,
+            height,
+            extent: (f64::from(width), f64::from(height)),
+            interpolate,
+            inverse,
+        }
+    }
+
+    /// The extent and sample count of the horizontal or vertical source axis.
+    pub(super) fn axis(&self, vertical: bool) -> (f64, u32) {
+        if vertical {
+            (self.extent.1, self.height)
+        } else {
+            (self.extent.0, self.width)
+        }
+    }
+
     pub(super) fn minifying(&self) -> bool {
         let t = self.inverse;
         t.a.hypot(t.b) > 1.0 + 1e-9 || t.c.hypot(t.d) > 1.0 + 1e-9
@@ -117,7 +141,7 @@ impl Sampler {
         let mut weight = 0.0;
         for row in y0..y1 {
             for col in x0..x1 {
-                let area = intersection(&polygon, f64::from(col), f64::from(row));
+                let area = intersection(&polygon, self.cell(col, row));
                 if area > 0.0 {
                     out.add(texel(self.index(f64::from(col), f64::from(row))?)?, area);
                     weight += area;
@@ -130,6 +154,15 @@ impl Sampler {
             out
         })
     }
+    /// The part of a sample cell within the image's extent.
+    fn cell(&self, col: u32, row: u32) -> [(f64, f64); 2] {
+        let (x, y) = (f64::from(col), f64::from(row));
+        [
+            (x, (x + 1.0).min(self.extent.0)),
+            (y, (y + 1.0).min(self.extent.1)),
+        ]
+    }
+
     fn index(&self, x: f64, y: f64) -> Result<usize> {
         let x = coordinate(x, self.width.saturating_sub(1));
         let y = coordinate(y, self.height.saturating_sub(1));
@@ -152,16 +185,12 @@ pub(super) fn charge(work: &mut usize, count: usize, maximum: usize) -> Result<(
 pub(super) fn coordinate(value: f64, maximum: u32) -> u32 {
     value.clamp(0.0, f64::from(maximum)) as u32
 }
-fn intersection(polygon: &[Point; 4], x: f64, y: f64) -> f64 {
+/// The area of a convex polygon within the rectangle `[x0, x1] × [y0, y1]`.
+fn intersection(polygon: &[Point; 4], [(x, x1), (y, y1)]: [(f64, f64); 2]) -> f64 {
     let mut points = [Point::default(); 12];
     points[..4].copy_from_slice(polygon);
     let mut len = 4;
-    for (axis, bound, sign) in [
-        (0, x, 1.0),
-        (0, x + 1.0, -1.0),
-        (1, y, 1.0),
-        (1, y + 1.0, -1.0),
-    ] {
+    for (axis, bound, sign) in [(0, x, 1.0), (0, x1, -1.0), (1, y, 1.0), (1, y1, -1.0)] {
         if len == 0 {
             return 0.0;
         }
@@ -206,12 +235,7 @@ mod tests {
             Transform::new(-2.4, 0.0, 0.0, -3.2, 31.1, 29.7),
             Transform::new(0.0, -3.2, 2.4, 0.0, -1.25, 29.7),
         ] {
-            let sampler = Sampler {
-                width: 32,
-                height: 32,
-                interpolate: false,
-                inverse,
-            };
+            let sampler = Sampler::grid(32, 32, false, inverse);
             let mut sampler = sampler.prepare(0, 10, usize::MAX).unwrap();
             for y in 0..10 {
                 for x in 0..10 {
@@ -226,7 +250,8 @@ mod tests {
                     let mut weight = 0.0;
                     for row in 0..32 {
                         for col in 0..32 {
-                            let area = intersection(&points, f64::from(col), f64::from(row));
+                            let (x, y) = (f64::from(col), f64::from(row));
+                            let area = intersection(&points, [(x, x + 1.0), (y, y + 1.0)]);
                             sum += area * f64::from((row + col) % 2);
                             weight += area;
                         }

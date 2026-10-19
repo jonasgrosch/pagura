@@ -39,9 +39,9 @@ pub use pagura_raster::{Pixmap, Rgba8};
 /// Form appearance programs and resources kept as data (12.7.4.3).
 pub use pagura_render::form_appearance;
 pub use pagura_render::{
-    DisplayList, OverprintPreview, Provider, RenderContext, RenderOptions, SearchOptions,
-    TextMatch, TextPage, Tile, compile_page_with, compile_page_with_text, device_size,
-    render_page_with, render_tile_with,
+    DisplayList, ImageReconstruction, OverprintPreview, Provider, RenderContext, RenderOptions,
+    SearchOptions, TextMatch, TextPage, Tile, compile_page_with, compile_page_with_text,
+    device_size, render_page_with, render_tile_with,
 };
 pub use pagura_write::{Builder, NewObject};
 
@@ -118,7 +118,15 @@ pub fn text_page(document: &Document, page: &Page) -> Result<TextPage> {
 /// # Errors
 /// As [`compile_page`] and [`DisplayList::render`].
 pub fn render_page(document: &Document, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
-    compile_page(document, page)?.render(options)
+    #[cfg(feature = "bundled-data")]
+    return render_page_with(
+        document,
+        page,
+        options,
+        &pagura_data::Bundled::new(document.limits()),
+    );
+    #[cfg(not(feature = "bundled-data"))]
+    pagura_render::render_page(document, page, options)
 }
 
 /// Renders one tile. For repeated work, keep a [`render_context`].
@@ -131,7 +139,16 @@ pub fn render_tile(
     options: &RenderOptions,
     tile: Tile,
 ) -> Result<Pixmap> {
-    compile_page(document, page)?.render_tile(options, tile)
+    #[cfg(feature = "bundled-data")]
+    return render_tile_with(
+        document,
+        page,
+        options,
+        tile,
+        &pagura_data::Bundled::new(document.limits()),
+    );
+    #[cfg(not(feature = "bundled-data"))]
+    pagura_render::render_tile(document, page, options, tile)
 }
 
 /// Prepares normal widget appearances for an in-memory form session (12.7.4.3).

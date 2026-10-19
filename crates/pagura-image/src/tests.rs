@@ -189,6 +189,7 @@ fn decode_arrays_stencils_color_keys_and_inline_abbreviations() {
         &keyed,
         &[12, 26],
         None,
+        8,
         &mut pagura_core::Diagnostics::new(Recovery::Strict),
     )
     .unwrap();
@@ -200,6 +201,7 @@ fn decode_arrays_stencils_color_keys_and_inline_abbreviations() {
             &keyed,
             &[12, 26],
             None,
+            8,
             &mut pagura_core::Diagnostics::new(Recovery::Strict)
         )
         .unwrap_err()

@@ -106,7 +106,7 @@ fn decode_inner(
     }
     let codec = chain.split_image();
     let decoded = chain.decode(data, document.limits().decoded_bytes, diagnostics)?;
-    dispatch::decode(document, &dict, &decoded, codec.as_ref(), diagnostics)
+    dispatch::decode(document, &dict, &decoded, codec.as_ref(), 8, diagnostics)
 }
 
 pub(crate) fn data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usize> {
