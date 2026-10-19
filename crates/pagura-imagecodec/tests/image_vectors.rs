@@ -11,6 +11,7 @@ use pagura_core::{Diagnostics, ErrorKind, Limits, Recovery};
 use pagura_imagecodec::{ccitt, dct};
 use pagura_testkit::{fixture, fixture_names};
 use std::collections::BTreeMap;
+use std::num::NonZeroU32;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 type Params = BTreeMap<String, String>;
@@ -97,18 +98,20 @@ fn jpeg_vectors() {
 fn fax_vectors() {
     let count = each_case("ccitt", |name, params| {
         let encoded = fixture("image", &format!("{name}.in"));
-        let fax = ccitt::CcittParams {
-            k: number(params, "k", 0),
-            columns: u32::try_from(number(params, "width", 13)).unwrap(),
-            rows: u32::try_from(number(params, "height", 6))
-                .ok()
-                .filter(|&rows| rows != 0),
-            end_of_block: number(params, "eob", 1) != 0,
-            end_of_line: number(params, "eol", 0) != 0,
-            encoded_byte_align: number(params, "align", 0) != 0,
-            black_is_1: number(params, "black", 0) != 0,
-            damaged_rows_before_error: u32::try_from(number(params, "damaged", 0)).unwrap(),
-        };
+        let mut fax = ccitt::CcittParams::default();
+        fax.encoding = ccitt::Encoding::from_k(number(params, "k", 0));
+        fax.columns = u32::try_from(number(params, "width", 13))
+            .ok()
+            .and_then(NonZeroU32::new)
+            .unwrap();
+        fax.rows = u32::try_from(number(params, "height", 6))
+            .ok()
+            .and_then(NonZeroU32::new);
+        fax.end_of_block = number(params, "eob", 1) != 0;
+        fax.end_of_line = number(params, "eol", 0) != 0;
+        fax.encoded_byte_align = number(params, "align", 0) != 0;
+        fax.black_is_1 = number(params, "black", 0) != 0;
+        fax.damaged_rows_before_error = u32::try_from(number(params, "damaged", 0)).unwrap();
         let limits = Limits::default();
         if params["outcome"] == "repair" {
             let error = ccitt::decode(&encoded, &fax, &limits).unwrap_err();
@@ -188,11 +191,9 @@ fn image_budgets_precede_allocations() {
             .kind,
         ErrorKind::Limit
     );
-    let params = ccitt::CcittParams {
-        columns: 13,
-        rows: Some(6),
-        ..ccitt::CcittParams::default()
-    };
+    let mut params = ccitt::CcittParams::default();
+    params.columns = NonZeroU32::new(13).unwrap();
+    params.rows = NonZeroU32::new(6);
     assert_eq!(
         ccitt::decode(&[], &params, &limits).unwrap_err().kind,
         ErrorKind::Limit
@@ -227,11 +228,9 @@ fn truncated_and_mutated_codecs_never_invent_samples() {
         }
     }
     let data = fixture("image", "fax-complex--1.in");
-    let params = ccitt::CcittParams {
-        k: -1,
-        columns: 73,
-        ..ccitt::CcittParams::default()
-    };
+    let mut params = ccitt::CcittParams::default();
+    params.encoding = ccitt::Encoding::Group4;
+    params.columns = NonZeroU32::new(73).unwrap();
     for end in 0..data.len() {
         assert!(
             ccitt::decode(&data[..end], &params, &limits).is_err(),

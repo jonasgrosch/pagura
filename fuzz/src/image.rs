@@ -81,17 +81,19 @@ fn decode_ccitt(data: &[u8], limits: &Limits) {
     };
     let [k, flags, c0, c1, r0, r1, damaged] = *head;
     let rows = u16::from_le_bytes([r0, r1]);
-    let params = ccitt::CcittParams {
-        k: i64::from(i8::from_le_bytes([k])),
-        end_of_line: flags & 1 != 0,
-        encoded_byte_align: flags & 2 != 0,
-        end_of_block: flags & 4 != 0,
-        black_is_1: flags & 8 != 0,
-        columns: u32::from(u16::from_le_bytes([c0, c1])),
-        rows: (rows != 0).then_some(u32::from(rows)),
-        damaged_rows_before_error: u32::from(damaged),
+    let mut params = ccitt::CcittParams::default();
+    params.encoding = ccitt::Encoding::from_k(i64::from(i8::from_le_bytes([k])));
+    params.end_of_line = flags & 1 != 0;
+    params.encoded_byte_align = flags & 2 != 0;
+    params.end_of_block = flags & 4 != 0;
+    params.black_is_1 = flags & 8 != 0;
+    let Some(columns) = std::num::NonZeroU32::new(u32::from(u16::from_le_bytes([c0, c1]))) else {
+        return;
     };
-    let row = usize::try_from(params.columns.div_ceil(8)).unwrap_or(usize::MAX);
+    params.columns = columns;
+    params.rows = std::num::NonZeroU32::new(u32::from(rows));
+    params.damaged_rows_before_error = u32::from(damaged);
+    let row = usize::try_from(params.columns.get().div_ceil(8)).unwrap_or(usize::MAX);
     let strict = super::checked(ccitt::decode(data, &params, limits));
     for recovery in [Recovery::Strict, Recovery::Repair] {
         let mut diagnostics = Diagnostics::new(recovery);

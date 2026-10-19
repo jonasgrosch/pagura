@@ -270,7 +270,7 @@ fn valid_prefix(
             };
             // Framing follows the encoded fax rows, not the eventual image
             // grid. decode_inline reports any Columns/Width repair later.
-            let row = u64::from(params.columns).div_ceil(8);
+            let row = u64::from(params.columns.get()).div_ceil(8);
             candidate(
                 pagura_imagecodec::ccitt::decode(&decoded, &params, limits)
                     .map(|bytes| usize_to_u64(bytes.len()) == row * u64::from(height)),

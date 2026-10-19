@@ -44,6 +44,11 @@ impl Budget {
         self.work.charge_product(count, unit)
     }
 
+    /// The work meter, for decoders that take a [`Meter`].
+    pub(crate) const fn work_meter(&mut self) -> &mut Meter {
+        &mut self.work
+    }
+
     /// Charges working memory for `count` values of `T`, for buffers
     /// allocated later with [`vector`].
     pub(crate) fn memory<T>(&mut self, count: usize) -> Result<()> {

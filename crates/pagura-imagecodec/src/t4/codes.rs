@@ -1,7 +1,9 @@
-//! ITU-T T.4 Tables 1–3 run codes and T.6 two-dimensional modes.
-use super::Bits;
-use pagura_core::{Error, Result};
+//! The modified Huffman run-length codes (T.4 Tables 1–3) and the
+//! two-dimensional mode codes (T.4 Table 4, T.6 Table 1).
+use super::{Bits, Color};
+use pagura_core::Result;
 
+// Terminating codes by run length 0–63 (T.4 Table 2).
 const WHITE: [&str; 64] = [
     "00110101", "000111", "0111", "1000", "1011", "1100", "1110", "1111", "10011", "10100",
     "00111", "01000", "001000", "000011", "110100", "110101", "101010", "101011", "0100111",
@@ -78,6 +80,8 @@ const BLACK: [&str; 64] = [
     "000001100110",
     "000001100111",
 ];
+// Make-up codes for 64–1728 (T.4 Table 3), then the extended make-up codes
+// for 1792–2560, which both colours share.
 const WHITE_MAKEUP: [&str; 27] = [
     "11011",
     "10010",
@@ -152,22 +156,39 @@ const COMMON: [&str; 13] = [
     "000000011111",
 ];
 
+/// A node of a prefix tree: the children for a 0 and a 1 bit (0 for none)
+/// and the run length a complete code stands for.
 #[derive(Clone, Copy)]
 struct Node {
-    children: [usize; 2],
-    value: Option<usize>,
+    children: [u16; 2],
+    value: Option<u16>,
 }
+
 const EMPTY: Node = Node {
     children: [0; 2],
     value: None,
 };
 
-const fn tree(black: bool) -> [Node; 416] {
-    let mut nodes = [EMPTY; 416];
+/// Nodes of one colour's tree: the codes have at most 13 bits and share
+/// prefixes, so 416 nodes hold every terminating and make-up code.
+const NODES: usize = 416;
+
+/// The longest run-length code, in bits.
+const LONGEST: usize = 13;
+
+/// Compiles one colour's normative code words into a prefix tree, so that
+/// decoding a run visits at most thirteen nodes.
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "table indexes are below 64 and run lengths at most 2560"
+)]
+const fn tree(color: Color) -> [Node; NODES] {
+    let mut nodes = [EMPTY; NODES];
     let mut next = 1;
     let mut table = 0;
     while table < 3 {
-        let (codes, base, step): (&[&str], usize, usize) = if table == 0 {
+        let black = matches!(color, Color::Black);
+        let (codes, base, step): (&[&str], u16, u16) = if table == 0 {
             (if black { &BLACK } else { &WHITE }, 0, 1)
         } else if table == 1 {
             (if black { &BLACK_MAKEUP } else { &WHITE_MAKEUP }, 64, 64)
@@ -184,209 +205,77 @@ const fn tree(black: bool) -> [Node; 416] {
                     nodes[node].children[bit] = next;
                     next += 1;
                 }
-                node = nodes[node].children[bit];
+                node = nodes[node].children[bit] as usize;
                 index += 1;
             }
-            nodes[node].value = Some(base + symbol * step);
+            nodes[node].value = Some(base + symbol as u16 * step);
             symbol += 1;
         }
         table += 1;
     }
     nodes
 }
-static WHITE_TREE: [Node; 416] = tree(false);
-static BLACK_TREE: [Node; 416] = tree(true);
 
-/// Every 13-bit prefix mapped to `run << 4 | length` for the code it starts
-/// with, or zero when it starts no complete code.
-#[expect(
-    clippy::cast_possible_truncation,
-    reason = "runs are at most 2560 and code lengths at most 13, so both fit 16 bits"
-)]
-const fn prefixes(tree: &[Node; 416]) -> [u16; 8192] {
-    let mut result = [0; 8192];
-    let mut prefix = 0;
-    while prefix < 8192 {
-        let (mut node, mut length) = (0, 0_usize);
-        while length < 13 {
-            node = tree[node].children[(prefix >> (12 - length)) & 1];
-            length += 1;
-            if node == 0 {
-                break;
-            }
-            if let Some(value) = tree[node].value {
-                result[prefix] = ((value as u16) << 4) | length as u16;
-                break;
-            }
-        }
-        prefix += 1;
-    }
-    result
-}
-static WHITE_PREFIXES: [u16; 8192] = prefixes(&WHITE_TREE);
-static BLACK_PREFIXES: [u16; 8192] = prefixes(&BLACK_TREE);
+static WHITE_TREE: [Node; NODES] = tree(Color::White);
+static BLACK_TREE: [Node; NODES] = tree(Color::Black);
 
-pub(super) fn run(bits: &mut Bits<'_>, black: bool) -> Result<usize> {
-    // One lookup when 13 bits remain. Truncated, invalid and over-budget
-    // codes take the bitwise walk below, which positions their errors.
-    if let Some(prefix) = bits.peek(13) {
-        let table = if black {
-            &BLACK_PREFIXES
-        } else {
-            &WHITE_PREFIXES
-        };
-        let entry = table[prefix];
-        if entry != 0 && bits.advance(usize::from(entry & 15)) {
-            return Ok(usize::from(entry >> 4));
-        }
-    }
-    let tree = if black { &BLACK_TREE } else { &WHITE_TREE };
+/// Decodes one terminating or make-up code of `color`: a run length, which
+/// is a make-up length when it is 64 or more.
+pub(super) fn run(bits: &mut Bits<'_, '_>, color: Color) -> Result<usize> {
+    let tree = match color {
+        Color::White => &WHITE_TREE,
+        Color::Black => &BLACK_TREE,
+    };
+    let at = bits.position();
     let mut node = 0;
-    for _ in 0..13 {
-        node = tree[node].children[usize::from(bits.bit()?)];
+    for _ in 0..LONGEST {
+        node = usize::from(tree[node].children[usize::from(bits.bit()?)]);
         if node == 0 {
             break;
         }
         if let Some(value) = tree[node].value {
-            return Ok(value);
+            return Ok(usize::from(value));
         }
     }
-    Err(bits.error("invalid CCITT run code"))
+    Err(super::syntax_at("invalid T.4 run-length code", at))
 }
 
+/// A two-dimensional coding mode (T.4 4.2.1.3, T.6 2.2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Mode {
+    /// Pass mode: the reference run below is passed over.
     Pass,
+    /// Horizontal mode: two one-dimensional runs follow.
     Horizontal,
+    /// Vertical mode: the changing element is this far from `b1`, -3 to 3.
     Vertical(i8),
-}
-/// The mode code a 7-bit prefix starts with, and its length (T.6 Table 1).
-/// Extension and invalid prefixes yield `None`.
-const fn prefix_mode(prefix: usize) -> Option<(usize, Mode)> {
-    Some(match prefix {
-        64..=127 => (1, Mode::Vertical(0)),
-        16..=31 => (3, Mode::Horizontal),
-        32..=47 => (3, Mode::Vertical(-1)),
-        48..=63 => (3, Mode::Vertical(1)),
-        8..=15 => (4, Mode::Pass),
-        4 | 5 => (6, Mode::Vertical(-2)),
-        6 | 7 => (6, Mode::Vertical(2)),
-        2 => (7, Mode::Vertical(-3)),
-        3 => (7, Mode::Vertical(3)),
-        _ => return None,
-    })
+    /// The extension code that enters uncompressed mode.
+    Extension,
 }
 
-pub(super) fn mode(bits: &mut Bits<'_>) -> Result<Mode> {
-    if let Some((length, mode)) = bits.peek(7).and_then(prefix_mode)
-        && bits.advance(length)
-    {
-        return Ok(mode);
-    }
+/// Decodes one mode code (T.4 Table 4, T.6 Table 1).
+pub(super) fn mode(bits: &mut Bits<'_, '_>) -> Result<Mode> {
+    let at = bits.position();
     let mut code = 0u8;
     for length in 1..=7 {
-        code = (code << 1) | bits.bit()?;
-        match (length, code) {
-            (1, 1) => return Ok(Mode::Vertical(0)),
-            (3, 1) => return Ok(Mode::Horizontal),
-            (3, 2) => return Ok(Mode::Vertical(-1)),
-            (3, 3) => return Ok(Mode::Vertical(1)),
-            (4, 1) => return Ok(Mode::Pass),
-            (6, 2) => return Ok(Mode::Vertical(-2)),
-            (6, 3) => return Ok(Mode::Vertical(2)),
-            (7, 2) => return Ok(Mode::Vertical(-3)),
-            (7, 3) => return Ok(Mode::Vertical(3)),
-            (7, 1) => {
-                return Err(Error::unsupported(
-                    crate::features::CCITT_EXTENSION,
-                    "CCITT extension mode is unsupported",
-                ));
-            }
-            _ => (),
-        }
+        code = (code << 1) | u8::from(bits.bit()?);
+        let mode = match (length, code) {
+            (1, 0b1) => Mode::Vertical(0),
+            (3, 0b001) => Mode::Horizontal,
+            (3, 0b010) => Mode::Vertical(-1),
+            (3, 0b011) => Mode::Vertical(1),
+            (4, 0b0001) => Mode::Pass,
+            (6, 0b00_0010) => Mode::Vertical(-2),
+            (6, 0b00_0011) => Mode::Vertical(2),
+            (7, 0b000_0010) => Mode::Vertical(-3),
+            (7, 0b000_0011) => Mode::Vertical(3),
+            (7, 0b000_0001) => Mode::Extension,
+            _ => continue,
+        };
+        return Ok(mode);
     }
-    Err(bits.error("invalid CCITT two-dimensional mode"))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{
-        BLACK, BLACK_MAKEUP, BLACK_PREFIXES, Bits, COMMON, Mode, WHITE, WHITE_MAKEUP,
-        WHITE_PREFIXES, prefix_mode, run,
-    };
-    use pagura_core::{ErrorKind, Position};
-
-    fn code(bits: &str) -> usize {
-        usize::from_str_radix(bits, 2).unwrap()
-    }
-
-    #[test]
-    fn run_prefixes_are_exactly_the_extensions_of_tables_1_to_3() {
-        for (black, table) in [(false, &WHITE_PREFIXES), (true, &BLACK_PREFIXES)] {
-            let lists: [(&[&str], usize, usize); 3] = [
-                (if black { &BLACK } else { &WHITE }, 0, 1),
-                (if black { &BLACK_MAKEUP } else { &WHITE_MAKEUP }, 64, 64),
-                (&COMMON, 1792, 64),
-            ];
-            let mut expected = [0_u16; 8192];
-            for (codes, base, step) in lists {
-                for (symbol, bits) in codes.iter().enumerate() {
-                    let first = code(bits) << (13 - bits.len());
-                    for entry in &mut expected[first..first + (1 << (13 - bits.len()))] {
-                        assert_eq!(*entry, 0, "run codes are prefix-free");
-                        *entry = u16::try_from((base + symbol * step) << 4 | bits.len()).unwrap();
-                    }
-                }
-            }
-            assert_eq!(table, &expected);
-        }
-    }
-
-    #[test]
-    fn mode_prefixes_are_exactly_the_extensions_of_t6_table_1() {
-        let modes = [
-            ("1", Mode::Vertical(0)),
-            ("001", Mode::Horizontal),
-            ("010", Mode::Vertical(-1)),
-            ("011", Mode::Vertical(1)),
-            ("0001", Mode::Pass),
-            ("000010", Mode::Vertical(-2)),
-            ("000011", Mode::Vertical(2)),
-            ("0000010", Mode::Vertical(-3)),
-            ("0000011", Mode::Vertical(3)),
-        ];
-        for prefix in 0..128 {
-            let expected = modes
-                .iter()
-                .find(|(bits, _)| prefix >> (7 - bits.len()) == code(bits))
-                .map(|&(bits, mode)| (bits.len(), mode));
-            assert_eq!(prefix_mode(prefix), expected, "{prefix:07b}");
-        }
-    }
-
-    #[test]
-    fn exhausted_work_inside_a_looked_up_code_fails_at_the_same_bit() {
-        // White make-up 1792 is 00000001000; the remaining bits are padding.
-        let data = [0b0000_0001, 0b0000_0000, 0];
-        for cap in 0..=11 {
-            let mut bits = Bits {
-                data: &data,
-                at: 0,
-                work: 0,
-                cap,
-            };
-            let result = run(&mut bits, false);
-            if cap == 11 {
-                assert_eq!(result.unwrap(), 1792);
-                assert_eq!((bits.at, bits.work), (11, 11));
-                continue;
-            }
-            let error = result.unwrap_err();
-            assert_eq!(error.kind, ErrorKind::Limit);
-            assert_eq!(error.message, "CCITT work budget exceeded");
-            // Every affordable bit is read before the walk stops.
-            assert_eq!(error.position, Position::Buffer(cap / 8));
-            assert_eq!((bits.at, bits.work), (cap, cap + 1));
-        }
-    }
+    Err(super::syntax_at(
+        "invalid T.4 two-dimensional mode code",
+        at,
+    ))
 }
