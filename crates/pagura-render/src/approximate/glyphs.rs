@@ -265,7 +265,8 @@ impl Prepared {
 /// One edge clipped to one row, with its area scale.
 #[derive(Debug)]
 struct Fragment {
-    row: usize,
+    /// The index of the row's first cell in the accumulator.
+    start: usize,
     left: f32,
     right: f32,
     scale: f32,
@@ -277,6 +278,8 @@ struct Fragment {
 struct Rows {
     _outline: Arc<Path>,
     fragments: Vec<Fragment>,
+    /// An upper bound on the cells the fragments visit at any phase.
+    work: usize,
     x: i32,
     y: i32,
     width: usize,
@@ -307,6 +310,7 @@ impl Rows {
         fragments
             .try_reserve_exact(expected.min(maximum))
             .map_err(|_| Error::limit("glyph row allocation failed"))?;
+        let mut work = 0_usize;
         for &[mut ax, ay, mut bx, by] in &glyph.edges {
             let (mut ay, mut by) = (ay + py as f32, by + py as f32);
             let sign = if ay < by {
@@ -345,8 +349,9 @@ impl Rows {
                 } else {
                     height / (right - left)
                 };
+                work = work.saturating_add((right - left).ceil() as usize + 3);
                 fragments.push(Fragment {
-                    row,
+                    start: row * (glyph.width + 1),
                     left,
                     right,
                     scale,
@@ -361,6 +366,7 @@ impl Rows {
         Ok(Self {
             _outline: Arc::clone(&glyph.outline),
             fragments,
+            work,
             x: glyph.x,
             y: glyph.y,
             width: glyph.width,
@@ -379,14 +385,16 @@ impl Rows {
         }
         accumulator.reset(self.width, self.height, limits)?;
         let px = px as f32;
-        for fragment in &self.fragments {
-            accumulator.segment(
-                fragment.row,
-                fragment.left + px,
-                fragment.right + px,
-                fragment.height,
-                fragment.scale,
-            )?;
+        // A fragment visits at most ceil(right - left) + 2 cells at any
+        // phase, so within the bound no fragment can exceed the work budget.
+        if self.work <= accumulator.maximum {
+            for f in &self.fragments {
+                accumulator.add(f.start, f.left + px, f.right + px, f.height, f.scale);
+            }
+        } else {
+            for f in &self.fragments {
+                accumulator.segment(f.start, f.left + px, f.right + px, f.height, f.scale)?;
+            }
         }
         Ok(Coverage {
             x: self.x,
@@ -456,7 +464,7 @@ impl Accumulator {
     #[inline(always)]
     fn segment(
         &mut self,
-        row: usize,
+        start: usize,
         left: f32,
         right: f32,
         height: f32,
@@ -468,12 +476,29 @@ impl Accumulator {
         if self.work > self.maximum {
             return Err(Error::limit("glyph coverage work budget exceeded"));
         }
-        let row = &mut self.area[row * (self.width + 1)..(row + 1) * (self.width + 1)];
+        self.add(start, left, right, height, scale);
+        Ok(())
+    }
+
+    /// Adds one fragment's signed area to the row whose first cell is
+    /// `start`, without charging work.
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        clippy::inline_always,
+        reason = "finite fragment endpoints saturate to the checked local raster extent; \
+                  two callers per mask"
+    )]
+    #[inline(always)]
+    fn add(&mut self, start: usize, left: f32, right: f32, height: f32, scale: f32) {
+        let lo = (left as usize).min(self.width);
+        let hi = (right.ceil() as usize).min(self.width);
+        let row = &mut self.area[start..=start + self.width];
         if hi == lo + 1 && left >= lo as f32 && right <= hi as f32 {
             let value = (hi as f32 - left.midpoint(right)) * height;
             row[lo] += value;
             row[hi] += height - value;
-            return Ok(());
+            return;
         }
         let mut previous = 0.0;
         for (offset, cell) in row[lo..hi].iter_mut().enumerate() {
@@ -487,7 +512,6 @@ impl Accumulator {
             previous = value;
         }
         row[hi] += height - previous;
-        Ok(())
     }
 
     #[expect(
@@ -636,7 +660,7 @@ mod tests {
             // Each vertical edge crosses rows 0 and 1 by half a pixel.
             let sign = if ay < by { 1.0 } else { -1.0 };
             raster.segment(0, ax, bx, 0.5 * sign, 0.0).unwrap();
-            raster.segment(1, ax, bx, 0.5 * sign, 0.0).unwrap();
+            raster.segment(65, ax, bx, 0.5 * sign, 0.0).unwrap();
         }
         let output = raster.finish();
         for row in output.as_chunks::<64>().0.iter().take(2) {
