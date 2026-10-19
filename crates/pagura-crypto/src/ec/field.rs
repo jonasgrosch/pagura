@@ -6,7 +6,7 @@
 
 use std::cmp::Ordering;
 
-use crate::bigint::montgomery_factor;
+use crate::bigint::{montgomery_factor, montgomery_multiply};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct Uint(pub(crate) [u64; 9]);
@@ -161,45 +161,19 @@ impl Modulus {
         }
     }
 
-    /// Computes a*b/R mod p. Each multiply-add is at most 2^128-1.
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "explicit low half of a double-limb accumulator"
-    )]
+    /// Computes a*b/R mod p (Montgomery multiplication).
     pub(crate) fn mul(&self, a: Uint, b: Uint) -> Uint {
-        let mut product = [0_u64; 19];
-        for i in 0..self.limbs {
-            let mut carry = 0_u128;
-            for j in 0..self.limbs {
-                let value =
-                    u128::from(a.0[i]) * u128::from(b.0[j]) + u128::from(product[i + j]) + carry;
-                product[i + j] = value as u64;
-                carry = value >> 64;
-            }
-            product[i + self.limbs] = carry as u64;
-        }
-        for i in 0..self.limbs {
-            let quotient = product[i].wrapping_mul(self.factor);
-            let mut carry = 0_u128;
-            for j in 0..self.limbs {
-                let value = u128::from(quotient) * u128::from(self.value.0[j])
-                    + u128::from(product[i + j])
-                    + carry;
-                product[i + j] = value as u64;
-                carry = value >> 64;
-            }
-            for word in &mut product[i + self.limbs..=2 * self.limbs] {
-                let value = u128::from(*word) + carry;
-                *word = value as u64;
-                carry = value >> 64;
-            }
-        }
+        let limbs = self.limbs;
+        let mut scratch = [0_u64; 19];
         let mut result = Uint::ZERO;
-        result.0[..self.limbs].copy_from_slice(&product[self.limbs..2 * self.limbs]);
-        // REDC yields a value below 2*p, so one subtraction suffices.
-        if product[2 * self.limbs] != 0 || result.ge(self.value) {
-            result = result.sub(self.value, self.limbs).0;
-        }
+        montgomery_multiply(
+            &a.0[..limbs],
+            &b.0[..limbs],
+            &self.value.0[..limbs],
+            self.factor,
+            &mut scratch[..=2 * limbs],
+            &mut result.0[..limbs],
+        );
         result
     }
 

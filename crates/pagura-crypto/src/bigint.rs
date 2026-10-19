@@ -141,46 +141,8 @@ impl Modulus {
         Ok(value)
     }
 
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "low radix-2^64 limbs; carries are shifted by 64"
-    )]
     fn multiply(&self, a: &[u64], b: &[u64], out: &mut [u64], scratch: &mut [u64]) {
-        let count = self.limbs.len();
-        scratch.fill(0);
-        for (i, &left) in a.iter().enumerate() {
-            let mut carry = 0u128;
-            for (j, &right) in b.iter().enumerate() {
-                let product =
-                    u128::from(left) * u128::from(right) + u128::from(scratch[i + j]) + carry;
-                scratch[i + j] = product as u64;
-                carry = product >> 64;
-            }
-            scratch[i + count] = carry as u64;
-        }
-        for i in 0..count {
-            let factor = scratch[i].wrapping_mul(self.factor);
-            let mut carry = 0u128;
-            for (j, &modulus) in self.limbs.iter().enumerate() {
-                let product =
-                    u128::from(factor) * u128::from(modulus) + u128::from(scratch[i + j]) + carry;
-                scratch[i + j] = product as u64;
-                carry = product >> 64;
-            }
-            // Propagate into the one extra limb; all intermediate values < 2*n*R.
-            for word in &mut scratch[i + count..] {
-                let sum = u128::from(*word) + carry;
-                *word = sum as u64;
-                carry = sum >> 64;
-                if carry == 0 {
-                    break;
-                }
-            }
-        }
-        out.copy_from_slice(&scratch[count..2 * count]);
-        if scratch[2 * count] != 0 || at_least(out, &self.limbs) {
-            subtract(out, &self.limbs);
-        }
+        montgomery_multiply(a, b, &self.limbs, self.factor, scratch, out);
     }
 }
 
@@ -194,6 +156,59 @@ pub(crate) const fn montgomery_factor(low: u64) -> u64 {
         step += 1;
     }
     inverse.wrapping_neg()
+}
+
+/// Montgomery multiplication: `out = a·b/R mod n` with `R = 2^(64·limbs)`,
+/// for residues `a, b < n` of `n.len()` limbs. `scratch` holds the
+/// double-width product and one carry limb (`2·limbs + 1` words).
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "low radix-2^64 limbs; carries are shifted by 64"
+)]
+pub(crate) fn montgomery_multiply(
+    a: &[u64],
+    b: &[u64],
+    n: &[u64],
+    factor: u64,
+    scratch: &mut [u64],
+    out: &mut [u64],
+) {
+    let count = n.len();
+    scratch.fill(0);
+    for (i, &left) in a.iter().enumerate() {
+        let mut carry = 0u128;
+        for (j, &right) in b.iter().enumerate() {
+            let product = u128::from(left) * u128::from(right) + u128::from(scratch[i + j]) + carry;
+            scratch[i + j] = product as u64;
+            carry = product >> 64;
+        }
+        scratch[i + count] = carry as u64;
+    }
+    // REDC: add the multiple of n that cancels each low limb.
+    for i in 0..count {
+        let quotient = scratch[i].wrapping_mul(factor);
+        let mut carry = 0u128;
+        for (j, &modulus) in n.iter().enumerate() {
+            let product =
+                u128::from(quotient) * u128::from(modulus) + u128::from(scratch[i + j]) + carry;
+            scratch[i + j] = product as u64;
+            carry = product >> 64;
+        }
+        // Propagate into the one extra limb; all intermediate values < 2*n*R.
+        for word in &mut scratch[i + count..] {
+            let sum = u128::from(*word) + carry;
+            *word = sum as u64;
+            carry = sum >> 64;
+            if carry == 0 {
+                break;
+            }
+        }
+    }
+    out.copy_from_slice(&scratch[count..2 * count]);
+    // The result is below 2n, so one subtraction suffices.
+    if scratch[2 * count] != 0 || at_least(out, n) {
+        subtract(out, n);
+    }
 }
 
 pub(crate) fn bit_length(bytes: &[u8], max_bits: usize) -> Result<usize> {
