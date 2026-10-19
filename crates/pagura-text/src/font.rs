@@ -187,6 +187,16 @@ impl PdfFont {
         self.writing_mode
     }
 
+    /// The outline program that draws this font's glyphs: embedded, or a
+    /// provider's substitute. `None` for Type 3 fonts and for fonts whose
+    /// provider supplies metrics only.
+    pub fn program(&self) -> Option<&Arc<FontProgram>> {
+        match &self.source {
+            Source::Program { program, .. } | Source::CidSubstitute { program } => Some(program),
+            Source::Type3 { .. } | Source::MetricsOnly => None,
+        }
+    }
+
     /// The `/Resources` of a Type 3 font, for its glyph procedures.
     pub fn type3_resources(&self) -> Option<&Dictionary> {
         match &self.source {

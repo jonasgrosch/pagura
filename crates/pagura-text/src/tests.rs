@@ -265,6 +265,23 @@ fn font_error_vectors() -> Result<()> {
 }
 
 #[test]
+fn only_outline_fonts_expose_their_program() -> Result<()> {
+    let type3 = document("type3-differences")?;
+    assert!(PdfFont::load(&type3, dictionary(&type3)?)?.program().is_none());
+    let embedded = document("embedded-cid-cff")?;
+    let font = PdfFont::load(&embedded, dictionary(&embedded)?)?;
+    let program = font
+        .program()
+        .ok_or_else(|| Error::syntax("missing embedded program"))?;
+    let glyph = font.decode(b"\0\x11")?.remove(0);
+    let GlyphShape::Outline { program: drawn, .. } = glyph.shape else {
+        return Err(Error::syntax("expected an outline glyph"));
+    };
+    assert!(std::sync::Arc::ptr_eq(program, &drawn));
+    Ok(())
+}
+
+#[test]
 fn decode_limits_and_positions() -> Result<()> {
     let document = document("type3-differences")?;
     let mut font = PdfFont::load(&document, dictionary(&document)?)?;
