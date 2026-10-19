@@ -104,9 +104,9 @@ when allocations are freed. Neither value is process RSS.
 
 The session reuses immutable display lists keyed by document handle and page
 index across tiles and zoom levels. Close releases all lists for that handle.
-The LRU retains at most eight entries, with a default accounting budget of
-min(Limits.decoded_bytes, 64 MiB). Session::with_cache_bytes can reduce this or
-set zero to disable retention. Oversized lists render without being retained.
+The LRU retains at most eight entries, with an accounting budget of
+SessionLimits::list_cache_bytes (default 64 MiB); zero disables retention.
+Oversized lists render without being retained.
 
 The charge is 4096 bytes per painted mark and a
 fixed 512-byte header charge. These are explicit **estimates**, not measured
@@ -163,14 +163,18 @@ InvalidArgument and keep serving. Handles and frame budgets follow request 5.
 
 ## Budgets and capabilities
 
-Session::new accepts facade Limits. Maximum body length is
-`min(u32::MAX, max(file_bytes + string_bytes + 14, pixels*4 + 18,
-decoded_bytes, 1024))` with saturating arithmetic. The 1024-byte minimum allows
-structured errors even with zero operation budgets. Check it before reserving
-request memory; allocations use fallible reservation. Each pdf/password blob is
-also checked against file_bytes/string_bytes. Retained source bytes **across
-all open documents** must fit file_bytes; live document count is capped by
-objects. Each document also receives all Limits. Handles cannot overflow.
+Session::new accepts a SessionConfig: the facade Limits that each document
+receives, and SessionLimits for the session as a whole (ADR 0031). No session
+budget borrows a Limits field. Maximum body length is
+SessionLimits::max_frame_bytes, by default `min(u32::MAX, max(file_bytes +
+string_bytes + 14, pixels*4 + 18, reading_response_bytes + 5, 1024))` with
+saturating arithmetic. The 1024-byte minimum allows structured errors even with
+zero operation budgets. Check it before reserving request memory; allocations
+use fallible reservation. Each pdf/password blob is also checked against
+file_bytes/string_bytes. Retained
+source bytes **across all open documents** must fit total_source_bytes
+(default 512 MiB), and at most max_documents (default 256) documents are open
+at once; close releases both. Handles cannot overflow.
 Tiles are checked against pixels and the response frame cap before painting.
 Responses are bounded during encoding; an unencodable success is replaced by a
 Limit error. The same limits apply on native and wasm. Limits do not constitute
@@ -313,8 +317,9 @@ URIs remain explicitly inert. External http/https/mailto targets require user
 confirmation after scheme validation. PDF strings never enter HTML markup.
 
 Page text has at most one million semantic characters; larger pages return
-Limit before encoding. Every reading response payload is capped at min(Limits.decoded_bytes,32 MiB),
-and the ordinary frame cap also applies. Output is built with fallible bounded
+Limit before encoding. Every reading response payload is capped at
+SessionLimits::reading_response_bytes (default 32 MiB), and the ordinary frame
+cap also applies. Output is built with fallible bounded
 reservations. Oversized responses yield Limit with no partial output. Invalid
 handles/pages/windows/cursors/options are operational InvalidArgument; engine
 Syntax, Unsupported, Cycle, Password, Limit and refused repairs preserve the
@@ -322,9 +327,9 @@ existing error fields. Truncation, invalid UTF-8 queries, oversized query blobs,
 unknown kinds and trailing bytes are terminal protocol errors as before.
 
 Extracted TextPages have an independent LRU, keyed by document and page, at most
-eight entries and min(Limits.document_bytes,16 MiB) by default. The configurable
-Session::with_text_cache_bytes budget charges TextPage::retained_bytes() plus
-512 bytes per entry for its inline header and cache bookkeeping. The engine's
+eight entries, with an accounting budget of SessionLimits::text_cache_bytes
+(default 16 MiB; zero disables retention). It charges TextPage::retained_bytes()
+plus 512 bytes per entry for its inline header and cache bookkeeping. The engine's
 capacity estimate counts both page and logical text, vectors, strings and shared
 source allocations once per page; Arc reference counts do not change it.
 Allocation sizes differ by target: text_bytes and, near the byte budget,

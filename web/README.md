@@ -61,9 +61,9 @@ Opening another file replaces the instance and releases its caches.
 
 Compiled display lists are cached per document/page, independently of zoom or
 device pixels. The session keeps an LRU with a default 64 MiB accounting budget
-(or Limits.decoded_bytes, if smaller) and at most eight entries. Close releases
+(SessionLimits::list_cache_bytes) and at most eight entries. Close releases
 all entries for that document. Lists exceeding the accounting budget render
-without retention. Session::with_cache_bytes(0) disables retention.
+without retention. A zero budget disables retention.
 
 Accounting charges 4096 bytes per painted mark, plus a fixed 512-byte header
 charge; the input file size does not affect compiled-list admission. These are estimates: DisplayList
