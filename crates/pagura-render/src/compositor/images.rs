@@ -49,12 +49,14 @@ impl Context {
             return Ok(());
         }
         let mut texels = Texels::new(image, model);
-        let available = self.limits.decoded_bytes.saturating_sub(self.allocated);
+        let available = self.memory.remaining();
         let (mut sampler, mut mask_sampler) =
             prepare(image, inverse, origin.0, clip.width(), available)?;
         let sampling_bytes = sampler.bytes() + mask_sampler.as_ref().map_or(0, Prepared::bytes);
         self.trim_raster(sampling_bytes);
-        self.allocated += sampling_bytes;
+        let held = self
+            .memory
+            .hold(sampling_bytes, "image sampling memory exceeded")?;
         for run in runs(&clip) {
             let run = run?;
             let y = run.y;
@@ -83,7 +85,7 @@ impl Context {
                 target.composite((x, y), source, &command.composite, soft, frame)?;
             }
         }
-        self.allocated -= sampling_bytes;
+        drop(held);
         Ok(())
     }
     fn image_source(

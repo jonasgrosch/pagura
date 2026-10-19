@@ -117,7 +117,6 @@ impl Context {
             // All reads of the initial parent pixel precede this pixel's write.
             target.composite(point, source, &command.composite, soft, frame)?;
         }
-        self.allocated -= surface.bytes();
         Ok(())
     }
 }

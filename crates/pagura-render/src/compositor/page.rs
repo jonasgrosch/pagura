@@ -1,6 +1,6 @@
 //! The page: chunked rendering, spot passes and conversion to output pixels.
 
-use super::{Backdrop, Context, Frame, Separations, Surface, plan, transfer};
+use super::{Backdrop, Context, Frame, Separations, plan, transfer};
 use crate::display::DisplayList;
 use crate::transparency::Model;
 use crate::{RenderOptions, Tile};
@@ -17,8 +17,6 @@ impl Context {
         plan: &plan::Plan,
         separations: Arc<Separations>,
     ) -> Result<(Self, Model)> {
-        let transfers = transfer::Regions::new(&list.commands, list.limits)?;
-        let allocated = transfers.as_ref().map_or(0, transfer::Regions::bytes);
         let elide_opaque_groups =
             plan.format == plan::Format::F64 && !separations.enabled && list.scene().normal;
         let model = list.group.model.unwrap_or(if separations.enabled {
@@ -26,20 +24,19 @@ impl Context {
         } else {
             Model::Rgb
         });
-        let context = Self {
+        let mut context = Self {
             overprint: options.overprint.resolve(list.print_intent),
             separations,
             elide_opaque_groups,
             view_unit: list.user_unit,
-            allocated,
             work: plan.work,
-            transfers,
             ..Self::new(
                 list.limits,
                 list.device_transform(options),
                 crate::device::rectangle(list.crop),
             )
         };
+        context.transfers = transfer::Regions::new(&list.commands, list.limits, &context.memory)?;
         Ok((context, model))
     }
 }
@@ -134,7 +131,6 @@ impl Context {
             regions.suspended = false;
         }
         self.write_output(&page, &spots, model, output, tile)?;
-        self.allocated -= page.bytes() + spots.iter().map(Surface::bytes).sum::<usize>();
         Ok(())
     }
 }

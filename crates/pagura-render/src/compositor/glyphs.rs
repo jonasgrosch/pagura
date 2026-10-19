@@ -50,7 +50,7 @@ impl Context {
                     placement,
                     self.device,
                     &Limits {
-                        decoded_bytes: self.limits.decoded_bytes.saturating_sub(self.allocated),
+                        decoded_bytes: self.memory.remaining(),
                         ..self.limits
                     },
                     &mut self.raster,
@@ -59,11 +59,7 @@ impl Context {
                 self.charge(geometry.vertices())?;
                 let bytes = geometry.retained_bytes();
                 self.trim_raster(bytes);
-                self.allocated = self
-                    .allocated
-                    .checked_add(bytes)
-                    .filter(|&n| n <= self.limits.decoded_bytes)
-                    .ok_or(Error::limit("glyph geometry memory exceeded"))?;
+                let held = self.memory.hold(bytes, "glyph geometry memory exceeded")?;
                 let clip = if let Some(clip) = &clip {
                     Arc::clone(clip)
                 } else {
@@ -72,7 +68,7 @@ impl Context {
                     value
                 };
                 let limits = Limits {
-                    decoded_bytes: self.limits.decoded_bytes.saturating_sub(self.allocated),
+                    decoded_bytes: self.memory.remaining(),
                     ..self.limits
                 };
                 let Some(mask) = self.raster.clipped_glyph(
@@ -82,16 +78,14 @@ impl Context {
                     limits,
                 )?
                 else {
-                    self.allocated -= bytes;
                     return Ok(());
                 };
                 let Some(mask) = self.pattern_mask(&run.paint, mask)? else {
-                    self.allocated -= bytes;
                     return Ok(());
                 };
                 let result = self.paint_path(&run.paint, &mask, target, frame);
                 self.raster.recycle(mask);
-                self.allocated -= bytes;
+                drop(held);
                 self.trim_raster(0);
                 result
             })();

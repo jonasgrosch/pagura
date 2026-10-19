@@ -6,6 +6,7 @@
 //! involving a nondefault transfer remain unsupported: averaging colours before
 //! selecting a nonlinear transfer loses their correlation with spatial regions.
 
+use super::memory::{Held, Memory};
 use super::{Context, Frame, Source, Surface};
 use crate::Tile;
 use crate::display::Command;
@@ -24,10 +25,17 @@ pub(super) struct Regions {
     tile: Tile,
     pub(super) opaque: bool,
     pub(super) suspended: bool,
+    held: Held,
 }
 
+const MEMORY: &str = "transfer region memory budget exceeded";
+
 impl Regions {
-    pub(super) fn new(commands: &[Command], limits: Limits) -> Result<Option<Self>> {
+    pub(super) fn new(
+        commands: &[Command],
+        limits: Limits,
+        memory: &Memory,
+    ) -> Result<Option<Self>> {
         let mut walk = Walk {
             functions: BTreeMap::new(),
             cells: BTreeSet::new(),
@@ -44,7 +52,7 @@ impl Regions {
             .enumerate()
             .map(|(i, f)| (Arc::as_ptr(f) as usize, i + 1))
             .collect();
-        Ok(Some(Self {
+        let mut regions = Self {
             functions,
             ids,
             heads: Vec::new(),
@@ -56,7 +64,10 @@ impl Regions {
             },
             opaque: true,
             suspended: false,
-        }))
+            held: memory.hold(0, MEMORY)?,
+        };
+        regions.held.add(regions.bytes(), MEMORY)?;
+        Ok(Some(regions))
     }
     pub(super) fn bytes(&self) -> usize {
         self.heads
@@ -69,16 +80,14 @@ impl Regions {
             )
             .saturating_add(self.ids.len().saturating_mul(64))
     }
-    pub(super) fn begin(&mut self, tile: Tile, maximum: usize) -> Result<()> {
+    pub(super) fn begin(&mut self, tile: Tile) -> Result<()> {
         self.heads.clear();
         let count = usize::try_from(u64::from(tile.width) * u64::from(tile.height))
             .map_err(|_| Error::limit("transfer region size overflow"))?;
         let added = count
             .saturating_sub(self.heads.capacity())
             .saturating_mul(size_of::<usize>());
-        if self.bytes().saturating_add(added) > maximum {
-            return Err(Error::limit("transfer region memory budget exceeded"));
-        }
+        self.held.add(added, MEMORY)?;
         self.heads
             .try_reserve_exact(count)
             .map_err(|_| Error::limit("transfer region allocation failed"))?;
@@ -221,15 +230,7 @@ impl Walk {
 impl Context {
     pub(super) fn begin_transfers(&mut self, tile: Tile) -> Result<()> {
         if let Some(regions) = &mut self.transfers {
-            let before = regions.bytes();
-            regions.begin(
-                tile,
-                self.limits
-                    .decoded_bytes
-                    .saturating_sub(self.allocated)
-                    .saturating_add(before),
-            )?;
-            self.allocated += regions.bytes() - before;
+            regions.begin(tile)?;
         }
         Ok(())
     }
@@ -343,21 +344,28 @@ mod tests {
         )
         .unwrap();
         let list = crate::compile_page(&document, document.page(0).unwrap()).unwrap();
-        let mut regions = Regions::new(&list.commands, Limits::default())
-            .unwrap()
-            .unwrap();
+        let regions = |memory: &Memory| {
+            Regions::new(&list.commands, Limits::default(), memory)
+                .unwrap()
+                .unwrap()
+        };
         let tile = Tile {
             x: 7,
             y: 9,
             width: 2,
             height: 2,
         };
-        let required = regions.bytes() + 4 * size_of::<usize>();
+        let required = regions(&Memory::new(usize::MAX)).bytes() + 4 * size_of::<usize>();
+        let short = Memory::new(required - 1);
         assert_eq!(
-            regions.begin(tile, required - 1).unwrap_err().kind,
+            regions(&short).begin(tile).unwrap_err().kind,
             ErrorKind::Limit
         );
-        regions.begin(tile, required).unwrap();
+        assert_eq!(short.used(), 0);
+        let exact = Memory::new(required);
+        let mut regions = regions(&exact);
+        regions.begin(tile).unwrap();
+        assert_eq!(exact.used(), required);
         let function = regions.functions[0].clone();
         let error = regions
             .record(Some(&function), true, (7, 9), 0.5)
@@ -436,14 +444,17 @@ mod tests {
             depth: 64,
             ..Limits::default()
         };
-        let regions = Regions::new(&commands, limits).unwrap().unwrap();
+        let memory = Memory::new(limits.decoded_bytes);
+        let regions = Regions::new(&commands, limits, &memory).unwrap().unwrap();
         assert_eq!(regions.functions.len(), 1);
         let small = Limits {
             traversal_work: 10,
             ..limits
         };
         assert_eq!(
-            Regions::new(&commands, small).err().map(|e| e.kind),
+            Regions::new(&commands, small, &memory)
+                .err()
+                .map(|e| e.kind),
             Some(ErrorKind::Limit)
         );
     }

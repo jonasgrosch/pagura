@@ -68,12 +68,14 @@ impl Source {
     }
 }
 
+/// A group's pixels over its tile, holding their bytes until dropped.
 pub(super) struct Surface {
     pub(super) tile: Tile,
     pixels: Vec<Pixel>,
     /// The page's bounded storage; `pixels` is then empty.
     narrow: Option<narrow::Buffer>,
     solid: Option<SolidSpan>,
+    _held: super::memory::Held,
 }
 
 #[derive(Clone, Copy)]
@@ -84,20 +86,28 @@ struct SolidSpan {
 }
 
 impl Surface {
-    pub(super) fn new(tile: Tile, pixels: Vec<Pixel>) -> Self {
+    /// A surface whose bytes `held` keeps charged to the render's memory.
+    pub(super) fn new(tile: Tile, pixels: Vec<Pixel>, held: super::memory::Held) -> Self {
         Self {
             tile,
             pixels,
             narrow: None,
             solid: None,
+            _held: held,
         }
     }
-    pub(super) fn with_buffer(tile: Tile, buffer: narrow::Buffer) -> Self {
+    /// Bounded page storage whose bytes `held` keeps charged.
+    pub(super) fn with_buffer(
+        tile: Tile,
+        buffer: narrow::Buffer,
+        held: super::memory::Held,
+    ) -> Self {
         Self {
             tile,
             pixels: Vec::new(),
             narrow: Some(buffer),
             solid: None,
+            _held: held,
         }
     }
     pub(super) fn narrow(&self) -> Option<&narrow::Buffer> {
@@ -107,6 +117,12 @@ impl Surface {
     pub(super) fn narrow_mut(&mut self) -> Option<&mut narrow::Buffer> {
         self.solid = None;
         self.narrow.as_mut()
+    }
+    /// A surface outside any render's memory.
+    #[cfg(test)]
+    pub(super) fn detached(tile: Tile, pixels: Vec<Pixel>) -> Self {
+        let held = super::memory::Memory::new(0).hold(0, "detached surface");
+        Self::new(tile, pixels, held.expect("an empty holding fits any budget"))
     }
     pub(super) fn pixels(&self) -> &[Pixel] {
         &self.pixels
@@ -177,10 +193,6 @@ impl Surface {
             },
         });
         Ok(true)
-    }
-    pub(super) fn bytes(&self) -> usize {
-        self.pixels.len() * size_of::<Pixel>()
-            + self.narrow.as_ref().map_or(0, narrow::Buffer::bytes)
     }
     /// Composites `source` into the pixel at device `(x, y)` of `frame`'s
     /// group, after the soft mask over this surface and the state's constant
@@ -423,7 +435,7 @@ mod tests {
             width: 8,
             height: 1,
         };
-        let mut surface = Surface::new(tile, vec![Pixel::default(); 8]);
+        let mut surface = Surface::detached(tile, vec![Pixel::default(); 8]);
         let color = [0.25, 0.5, 0.75, 0.0];
         for (start, count) in [(2, 2), (4, 4), (1, 2), (2, 5)] {
             assert!(surface.fill_solid(start, count, color).unwrap());
@@ -452,8 +464,11 @@ mod tests {
             height: 1,
         };
         let buffer = narrow::Buffer::new(super::super::plan::Format::N16, 4, [255; 4]).unwrap();
-        let mut surface = Surface::with_buffer(tile, buffer);
-        assert_eq!(surface.bytes(), 32);
+        assert_eq!(buffer.bytes(), 32);
+        let memory = super::super::memory::Memory::new(32);
+        let held = memory.hold(buffer.bytes(), "bounded page").unwrap();
+        let mut surface = Surface::with_buffer(tile, buffer, held);
+        assert_eq!(memory.remaining(), 0);
         // Solid intervals describe f64 pixels only; bounded stores go
         // through `narrow_mut`, which also ends any interval.
         assert!(surface.fill_solid(0, 2, [0.5; 4]).is_err());
@@ -469,7 +484,7 @@ mod tests {
             width: 1,
             height: 1,
         };
-        let mut surface = Surface::new(tile, vec![Pixel::default()]);
+        let mut surface = Surface::detached(tile, vec![Pixel::default()]);
         for zero in [0.0_f64, -0.0, 0.0] {
             assert!(surface.fill_solid(0, 1, [zero; 4]).unwrap());
             assert_eq!(

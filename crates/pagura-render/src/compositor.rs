@@ -8,6 +8,7 @@ mod colorants;
 pub(crate) use colorants::Separations;
 mod glyphs;
 mod images;
+mod memory;
 mod narrow;
 mod opaque_image;
 mod output;
@@ -22,6 +23,7 @@ mod soft_mask;
 mod surface;
 mod transfer;
 mod view;
+use memory::Memory;
 pub(crate) use page::render;
 pub(crate) use regions::content_bounds;
 use regions::group_region;
@@ -53,7 +55,7 @@ struct Context {
     page_device: Transform,
     view_unit: f64,
     crop: Path,
-    allocated: usize,
+    memory: Memory,
     work: usize,
     clip: Option<(usize, Tile, Arc<Mask>)>,
     mask: Option<CachedMask>,
@@ -81,7 +83,7 @@ impl Context {
             page_device: device,
             view_unit: 1.0,
             crop,
-            allocated: 0,
+            memory: Memory::new(limits.decoded_bytes),
             work: 0,
             clip: None,
             mask: None,
@@ -111,11 +113,12 @@ impl Context {
     }
     fn trim_raster(&mut self, bytes: usize) {
         if self
-            .allocated
+            .memory
+            .used()
             .saturating_add(bytes)
             .saturating_add(self.raster.retained_bytes())
             .saturating_add(self.glyphs.retained_bytes())
-            > self.limits.decoded_bytes
+            > self.memory.maximum()
         {
             self.raster.clear();
             self.glyphs.clear();
@@ -131,10 +134,9 @@ impl Context {
         let bytes = count
             .checked_mul(size_of::<Pixel>())
             .ok_or(Error::limit("group byte size overflow"))?;
-        self.allocated
-            .checked_add(bytes)
-            .filter(|&n| n <= self.limits.decoded_bytes)
-            .ok_or(Error::limit("group memory budget exceeded"))?;
+        if bytes > self.memory.remaining() {
+            return Err(Error::limit("group memory budget exceeded"));
+        }
         self.work
             .checked_add(count)
             .filter(|&v| v <= self.limits.raster_work)
@@ -144,7 +146,7 @@ impl Context {
     fn surface(&mut self, tile: Tile, initial: Backdrop<'_>) -> Result<Surface> {
         let (count, bytes) = self.admit_surface(tile)?;
         self.trim_raster(bytes);
-        self.allocated += bytes;
+        let held = self.memory.hold(bytes, "group memory budget exceeded")?;
         self.work += count;
         let mut pixels = Vec::new();
         pixels
@@ -161,7 +163,7 @@ impl Context {
                 }
             }
         }
-        Ok(Surface::new(tile, pixels))
+        Ok(Surface::new(tile, pixels, held))
     }
     fn page_surface(
         &mut self,
@@ -175,16 +177,11 @@ impl Context {
         let count = tile.width as usize * tile.height as usize;
         let bytes = count * if format == plan::Format::N16 { 8 } else { 16 };
         self.trim_raster(bytes);
-        self.allocated = self
-            .allocated
-            .checked_add(bytes)
-            .filter(|&n| n <= self.limits.decoded_bytes)
-            .ok_or(Error::limit("colour buffer memory exceeded"))?;
+        let held = self.memory.hold(bytes, "colour buffer memory exceeded")?;
         self.charge(count)?;
-        Ok(Surface::with_buffer(
-            tile,
-            narrow::Buffer::new(format, count, background)?,
-        ))
+        let buffer = narrow::Buffer::new(format, count, background)?;
+        debug_assert_eq!(buffer.bytes(), bytes, "the held bytes are the buffer's");
+        Ok(Surface::with_buffer(tile, buffer, held))
     }
     fn clip(&mut self, clip: Option<&Arc<Clip>>, tile: Tile) -> Result<Arc<Mask>> {
         let tile = self.viewport.unwrap_or(tile);
@@ -445,7 +442,7 @@ impl Context {
         // Retained raster buffers share the live group-surface byte allowance.
         // Surface admissions can release this optional storage before failing.
         let limits = Limits {
-            decoded_bytes: self.limits.decoded_bytes.saturating_sub(self.allocated),
+            decoded_bytes: self.memory.remaining(),
             ..self.limits
         };
         let mask = match &p.mark {
@@ -602,7 +599,6 @@ impl Context {
             };
             parent.composite(point, source, &group.composite, soft, frame)?;
         }
-        self.allocated -= surface.bytes();
         Ok(())
     }
 }
