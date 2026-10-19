@@ -1,12 +1,13 @@
 //! Supplemental mappings are additional codes for main-encoded glyphs
 //! (TN 5176 section 12, Tables 14/15). Invalid records never replace mappings.
-use crate::read::Read;
+use crate::read::here;
 use crate::{recovery::repair, repairs};
+use pagura_core::bytes::Cursor;
 use pagura_core::{Diagnostics, Limits, Name, Position, Result};
 use std::ops::Range;
 
 pub(super) fn read(
-    r: &mut Read<'_>,
+    r: &mut Cursor<'_>,
     encoding: &mut [Option<Name>; 256],
     encoded: &[u16],
     strings: &[Range<usize>],
@@ -14,13 +15,13 @@ pub(super) fn read(
     limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<()> {
-    if r.pos == r.data.len() {
-        return report(diagnostics, r.at());
+    if r.at_end() {
+        return report(diagnostics, here(r));
     }
     let count = r.u8()?;
     for _ in 0..count {
-        let at = r.at();
-        if r.data.len() - r.pos < 3 {
+        let at = here(r);
+        if r.remaining() < 3 {
             report(diagnostics, at)?;
             break;
         }

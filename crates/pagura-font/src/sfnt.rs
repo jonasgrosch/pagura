@@ -1,8 +1,10 @@
 //! sfnt directory and horizontal metrics (ISO 32000-2, 9.9).
 use crate::memory::{names, vector};
-use crate::read::{Read, bad, cap};
+use crate::read::{bad, cap, here, slice};
 use crate::{CmapSubtable, GlyphId};
 use crate::{recovery::repair, repairs};
+use pagura_core::bytes::Cursor;
+use pagura_core::convert::u32_to_usize;
 use pagura_core::{Diagnostics, Limits, Name, Position, Result};
 use pagura_raster::{Path, Transform};
 use std::collections::BTreeMap;
@@ -33,11 +35,11 @@ impl Sfnt {
         diagnostics: &mut Diagnostics,
     ) -> Result<Self> {
         let (signature, tables, clipped_post) = directory(data, limits, diagnostics)?;
-        let table = |tag: &[u8; 4]| -> Result<Read<'_>> {
+        let table = |tag: &[u8; 4]| -> Result<Cursor<'_>> {
             let range = tables
                 .get(tag)
                 .ok_or_else(|| bad(0, "missing required sfnt table"))?;
-            Ok(Read::new(&data[range.clone()], range.start))
+            slice(data, range.clone(), "sfnt table outside font")
         };
         let (units, location_format, glyph_count, advances, cff) = if signature == 0x4f54_544f {
             let cff = cff_tables(data, &tables, limits, diagnostics)?;
@@ -49,7 +51,7 @@ impl Sfnt {
             if tables.contains_key(b"maxp") {
                 let mut maxp = table(b"maxp")?;
                 if maxp.u32()? != 0x0000_5000 || usize::from(maxp.u16()?) != count {
-                    return Err(bad(maxp.at(), "CFF and maxp glyph counts disagree"));
+                    return Err(bad(here(&maxp), "CFF and maxp glyph counts disagree"));
                 }
             }
             let units = if tables.contains_key(b"head") {
@@ -222,7 +224,7 @@ mod directory;
 use directory::directory;
 
 fn locations(
-    mut r: Read<'_>,
+    mut r: Cursor<'_>,
     count: usize,
     format: i16,
     glyph_bytes: usize,
@@ -232,12 +234,12 @@ fn locations(
     let mut previous = 0;
     let word = if format == 0 { 2 } else { 4 };
     for _ in 0..=count {
-        if r.data.len() - r.pos < word {
+        if r.remaining() < word {
             repair(
                 diagnostics,
                 repairs::TABLE_BOUNDS,
                 "truncated glyph-location table",
-                Position::Buffer(r.at()),
+                Position::Buffer(here(&r)),
             )?;
             result.resize(count + 1, None);
             break;
@@ -245,17 +247,17 @@ fn locations(
         let offset = if format == 0 {
             usize::from(r.u16()?) * 2
         } else {
-            r.offset()?
+            u32_to_usize(r.u32()?)
         };
         if offset < previous {
-            return Err(bad(r.at(), "invalid glyph location"));
+            return Err(bad(here(&r), "invalid glyph location"));
         }
         if offset > glyph_bytes {
             repair(
                 diagnostics,
                 repairs::TABLE_BOUNDS,
                 "glyph location exceeds available outlines",
-                Position::Buffer(r.at() - word),
+                Position::Buffer(here(&r) - word),
             )?;
         }
         result.push(Some(offset));
@@ -265,41 +267,41 @@ fn locations(
 }
 
 fn metrics(
-    mut hhea: Read<'_>,
-    mut hmtx: Read<'_>,
+    mut hhea: Cursor<'_>,
+    mut hmtx: Cursor<'_>,
     glyph_count: usize,
     diagnostics: &mut Diagnostics,
 ) -> Result<Vec<u16>> {
     if hhea.u32()? != 0x0001_0000 {
-        return Err(bad(hhea.at(), "invalid hhea version"));
+        return Err(bad(here(&hhea), "invalid hhea version"));
     }
     hhea.skip(28)?;
     if hhea.i16()? != 0 {
-        return Err(bad(hhea.at(), "invalid horizontal metric data format"));
+        return Err(bad(here(&hhea), "invalid horizontal metric data format"));
     }
     let metrics = usize::from(hhea.u16()?);
     if metrics == 0 || metrics > glyph_count {
-        return Err(bad(hhea.at(), "invalid horizontal metric count"));
+        return Err(bad(here(&hhea), "invalid horizontal metric count"));
     }
     // Only advances are consumed by this outline API. Missing side bearings
     // may be ignored if every explicitly stored advance remains available.
     let minimum = metrics * 4 - 2;
-    if hmtx.data.len() < minimum {
-        return Err(bad(hmtx.at(), "missing required horizontal advances"));
+    if hmtx.remaining() < minimum {
+        return Err(bad(here(&hmtx), "missing required horizontal advances"));
     }
-    if hmtx.data.len() < metrics * 4 + (glyph_count - metrics) * 2 {
+    if hmtx.remaining() < metrics * 4 + (glyph_count - metrics) * 2 {
         repair(
             diagnostics,
             repairs::TABLE_BOUNDS,
             "truncated unused horizontal side bearings",
-            Position::Buffer(hmtx.base + hmtx.data.len()),
+            Position::Buffer(here(&hmtx) + hmtx.remaining()),
         )?;
     }
     let mut advances = Vec::with_capacity(glyph_count);
     let mut last = 0;
     for _ in 0..metrics {
         last = hmtx.u16()?;
-        if hmtx.data.len() - hmtx.pos >= 2 {
+        if hmtx.remaining() >= 2 {
             hmtx.skip(2)?;
         }
         advances.push(last);
@@ -308,23 +310,23 @@ fn metrics(
     Ok(advances)
 }
 
-fn header(mut head: Read<'_>) -> Result<(u16, i16)> {
+fn header(mut head: Cursor<'_>) -> Result<(u16, i16)> {
     if head.u32()? != 0x0001_0000 {
-        return Err(bad(head.at(), "invalid head version"));
+        return Err(bad(here(&head), "invalid head version"));
     }
     head.skip(8)?;
     if head.u32()? != 0x5f0f_3cf5 {
-        return Err(bad(head.at(), "invalid head magic"));
+        return Err(bad(here(&head), "invalid head magic"));
     }
     head.skip(2)?;
     let units = head.u16()?;
     if !(16..=16384).contains(&units) {
-        return Err(bad(head.at(), "invalid unitsPerEm"));
+        return Err(bad(here(&head), "invalid unitsPerEm"));
     }
     head.skip(30)?;
     let location_format = head.i16()?;
     if !matches!(location_format, 0 | 1) || head.i16()? != 0 {
-        return Err(bad(head.at(), "invalid glyph data format"));
+        return Err(bad(here(&head), "invalid glyph data format"));
     }
     Ok((units, location_format))
 }
@@ -342,7 +344,7 @@ fn cff_tables(
     crate::cff::Cff::parse(data, range.clone(), limits, diagnostics)
 }
 
-fn maxp_count(mut maxp: Read<'_>, signature: u32, limits: &Limits) -> Result<usize> {
+fn maxp_count(mut maxp: Cursor<'_>, signature: u32, limits: &Limits) -> Result<usize> {
     let maxp_version = maxp.u32()?;
     if maxp_version
         != if signature == 0x0001_0000 {
@@ -351,19 +353,19 @@ fn maxp_count(mut maxp: Read<'_>, signature: u32, limits: &Limits) -> Result<usi
             0x0000_5000
         }
     {
-        return Err(bad(maxp.at(), "invalid maxp version for glyf"));
+        return Err(bad(here(&maxp), "invalid maxp version for glyf"));
     }
     let glyph_count = usize::from(maxp.u16()?);
     if signature == 0x0001_0000 {
         maxp.skip(26)?;
     }
     if glyph_count == 0 {
-        return Err(bad(maxp.at(), "font has no glyphs"));
+        return Err(bad(here(&maxp), "font has no glyphs"));
     }
     cap(
         glyph_count,
         limits.objects.min(limits.value_nodes),
-        maxp.at(),
+        here(&maxp),
     )?;
     Ok(glyph_count)
 }

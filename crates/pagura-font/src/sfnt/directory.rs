@@ -1,7 +1,8 @@
 //! Bounded sfnt directory recovery; ISO 32000-2 9.9.1/Table 124.
 use super::Tables;
-use crate::read::{Read, bad, cap};
+use crate::read::{bad, cap, cursor, here};
 use crate::{recovery::repair, repairs};
+use pagura_core::convert::u32_to_usize;
 use pagura_core::{Diagnostics, Limits, Position, Result};
 
 pub(super) fn directory(
@@ -9,7 +10,7 @@ pub(super) fn directory(
     limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<(u32, Tables, bool)> {
-    let mut r = Read::new(data, 0);
+    let mut r = cursor(data);
     let signature = r.u32()?;
     let count = usize::from(r.u16()?);
     cap(
@@ -28,37 +29,37 @@ pub(super) fn directory(
         let tag: [u8; 4] = r
             .take(4)?
             .try_into()
-            .map_err(|_| bad(r.at(), "invalid table tag"))?;
+            .map_err(|_| bad(here(&r), "invalid table tag"))?;
         r.skip(4)?;
-        let start = r.offset()?;
-        let len = r.offset()?;
-        cap(len, limits.decoded_bytes, r.at() - 4)?;
+        let start = u32_to_usize(r.u32()?);
+        let len = u32_to_usize(r.u32()?);
+        cap(len, limits.decoded_bytes, here(&r) - 4)?;
         if len != 0 && start < directory_end {
-            return Err(bad(r.at() - 8, "sfnt table overlaps directory"));
+            return Err(bad(here(&r) - 8, "sfnt table overlaps directory"));
         }
-        if len != 0 && start % 4 != 0 {
+        if len != 0 && !start.is_multiple_of(4) {
             repair(
                 diagnostics,
                 repairs::TABLE_ALIGNMENT,
                 "unaligned sfnt table offset",
-                Position::Buffer(r.at() - 8),
+                Position::Buffer(here(&r) - 8),
             )?;
         }
         let end = start
             .checked_add(len)
-            .ok_or_else(|| crate::read::limit(r.at() - 8, "table size overflow"))?;
+            .ok_or_else(|| crate::read::limit(here(&r) - 8, "table size overflow"))?;
         if end > data.len() {
             clipped_post |= &tag == b"post";
             repair(
                 diagnostics,
                 repairs::TABLE_BOUNDS,
                 "sfnt table exceeds available data",
-                Position::Buffer(r.at() - 8),
+                Position::Buffer(here(&r) - 8),
             )?;
         }
         let range = start.min(data.len())..end.min(data.len());
         if tables.insert(tag, range).is_some() {
-            return Err(bad(r.at(), "duplicate sfnt table"));
+            return Err(bad(here(&r), "duplicate sfnt table"));
         }
     }
     let mut ranges: Vec<_> = tables.values().filter(|r| !r.is_empty()).collect();

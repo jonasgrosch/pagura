@@ -1,5 +1,40 @@
-//! Checked, big-endian font-buffer access.
+//! Font-buffer cursors, positioned errors and budget checks.
+//!
+//! Tables are read through `pagura_core::bytes::Cursor`, positioned in the
+//! program bytes. Truncation is a `Syntax` error and offset overflow a
+//! `Limit` error, as for every binary format (CONTRIBUTING, Conventions 6).
+use pagura_core::bytes::Cursor;
 use pagura_core::{Error, Limits, Position, Result};
+use std::ops::Range;
+
+const TRUNCATED: &str = "truncated font data";
+
+/// A cursor over the whole program.
+pub(crate) const fn cursor(data: &[u8]) -> Cursor<'_> {
+    Cursor::new(data).with_message(TRUNCATED)
+}
+
+/// A cursor over `range` of the program, positioned in the program, or a
+/// `Syntax` error with `message` if the range is outside it.
+pub(crate) fn slice<'a>(
+    data: &'a [u8],
+    range: Range<usize>,
+    message: &'static str,
+) -> Result<Cursor<'a>> {
+    let start = range.start;
+    let bytes = data.get(range).ok_or_else(|| bad(start, message))?;
+    Ok(cursor(bytes).with_base(start))
+}
+
+/// The program offset of the cursor's next byte. Font cursors report
+/// buffer positions, so this is their base plus their offset.
+pub(crate) fn here(cursor: &Cursor<'_>) -> usize {
+    if let Position::Buffer(offset) = cursor.position() {
+        offset
+    } else {
+        cursor.offset()
+    }
+}
 
 pub(crate) fn bad(at: usize, message: &'static str) -> Error {
     Error::syntax(message).at(Position::Buffer(at))
@@ -14,67 +49,6 @@ pub(crate) fn cap(count: usize, ceiling: usize, at: usize) -> Result<()> {
         Err(limit(at, "font resource budget exceeded"))
     } else {
         Ok(())
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub(crate) struct Read<'a> {
-    pub data: &'a [u8],
-    pub pos: usize,
-    pub base: usize,
-}
-impl<'a> Read<'a> {
-    pub(crate) fn new(data: &'a [u8], base: usize) -> Self {
-        Self { data, pos: 0, base }
-    }
-    pub(crate) fn at(self) -> usize {
-        self.base.saturating_add(self.pos)
-    }
-    pub(crate) fn take(&mut self, len: usize) -> Result<&'a [u8]> {
-        let end = self
-            .pos
-            .checked_add(len)
-            .ok_or_else(|| limit(self.at(), "font offset overflow"))?;
-        let bytes = self
-            .data
-            .get(self.pos..end)
-            .ok_or_else(|| bad(self.at(), "truncated font data"))?;
-        self.pos = end;
-        Ok(bytes)
-    }
-    pub(crate) fn u8(&mut self) -> Result<u8> {
-        Ok(self.take(1)?[0])
-    }
-    pub(crate) fn u16(&mut self) -> Result<u16> {
-        let b = self.take(2)?;
-        Ok(u16::from_be_bytes([b[0], b[1]]))
-    }
-    pub(crate) fn i16(&mut self) -> Result<i16> {
-        let b = self.take(2)?;
-        Ok(i16::from_be_bytes([b[0], b[1]]))
-    }
-    pub(crate) fn u32(&mut self) -> Result<u32> {
-        let b = self.take(4)?;
-        Ok(u32::from_be_bytes([b[0], b[1], b[2], b[3]]))
-    }
-    pub(crate) fn i32(&mut self) -> Result<i32> {
-        let b = self.take(4)?;
-        Ok(i32::from_be_bytes([b[0], b[1], b[2], b[3]]))
-    }
-    pub(crate) fn offset(&mut self) -> Result<usize> {
-        usize::try_from(self.u32()?).map_err(|_| limit(self.at(), "font offset overflow"))
-    }
-    pub(crate) fn skip(&mut self, len: usize) -> Result<()> {
-        self.take(len)?;
-        Ok(())
-    }
-    pub(crate) fn tail(&self, at: usize) -> Result<Self> {
-        Ok(Self::new(
-            self.data
-                .get(at..)
-                .ok_or_else(|| bad(self.base, "font offset outside buffer"))?,
-            self.base.saturating_add(at),
-        ))
     }
 }
 
@@ -99,4 +73,32 @@ pub(crate) fn finite_path(path: &pagura_raster::Path) -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{cursor, slice};
+    use pagura_core::{ErrorKind, Position};
+
+    #[test]
+    fn slices_keep_program_positions_and_reject_ranges_outside_it() {
+        let data = [0, 1, 2, 3, 4, 5];
+        let mut table = slice(&data, 2..5, "table outside font").unwrap();
+        assert_eq!(table.u16().unwrap(), 0x0203);
+        let error = table.u16().unwrap_err();
+        assert_eq!(
+            (error.kind, error.position),
+            (ErrorKind::Syntax, Position::Buffer(4))
+        );
+        assert_eq!(error.message, "truncated font data");
+        let error = slice(&data, 4..9, "table outside font").unwrap_err();
+        assert_eq!(
+            (error.kind, error.position),
+            (ErrorKind::Syntax, Position::Buffer(4))
+        );
+        assert_eq!(
+            cursor(&data).cursor_at(7).unwrap_err().kind,
+            ErrorKind::Syntax
+        );
+    }
 }

@@ -1,6 +1,7 @@
 //! ISOAdobe glyph names and StandardEncoding (TN 5176 appendices).
 use super::predefined;
-use crate::read::{Read, bad, cap};
+use crate::read::{bad, cap, here};
+use pagura_core::bytes::Cursor;
 use pagura_core::{Diagnostics, Limits, Name, Result};
 
 mod supplements;
@@ -64,7 +65,9 @@ pub(super) fn sid(
         .get(usize::from(sid) - 391)
         .ok_or_else(|| bad(0, "CFF SID outside String INDEX"))?;
     cap(range.len(), limits.string_bytes, range.start)?;
-    let bytes = &data[range.clone()];
+    let bytes = data
+        .get(range.clone())
+        .ok_or_else(|| bad(range.start, "CFF string outside font"))?;
     if bytes.contains(&0) {
         return Err(bad(range.start, "NUL in CFF glyph name"));
     }
@@ -72,7 +75,7 @@ pub(super) fn sid(
 }
 
 pub(super) fn encoding(
-    table: Read<'_>,
+    table: &Cursor<'_>,
     offset: usize,
     charset: &[u16],
     strings: &[Range<usize>],
@@ -95,11 +98,11 @@ pub(super) fn encoding(
         }
         return Ok(result);
     }
-    let mut r = table.tail(offset)?;
+    let mut r = table.cursor_at(offset)?;
     let format = r.u8()?;
     let count = usize::from(r.u8()?);
     if !matches!(format & 127, 0 | 1) {
-        return Err(bad(r.at(), "invalid CFF encoding format"));
+        return Err(bad(here(&r), "invalid CFF encoding format"));
     }
     let mut gid = 1;
     for _ in 0..count {
@@ -107,17 +110,17 @@ pub(super) fn encoding(
         let left = match format & 127 {
             0 => 0,
             1 => r.u8()?,
-            _ => return Err(bad(r.at(), "invalid CFF encoding format")),
+            _ => return Err(bad(here(&r), "invalid CFF encoding format")),
         };
         let end = first
             .checked_add(left)
-            .ok_or_else(|| crate::read::limit(r.at(), "CFF encoding code overflow"))?;
+            .ok_or_else(|| crate::read::limit(here(&r), "CFF encoding code overflow"))?;
         for code in first..=end {
             let sid = *charset
                 .get(gid)
-                .ok_or_else(|| bad(r.at(), "CFF encoding exceeds charset"))?;
+                .ok_or_else(|| bad(here(&r), "CFF encoding exceeds charset"))?;
             if result[usize::from(code)].is_some() {
-                return Err(bad(r.at(), "duplicate CFF encoding code"));
+                return Err(bad(here(&r), "duplicate CFF encoding code"));
             }
             result[usize::from(code)] = Some(self::sid(sid, strings, data, limits)?);
             gid += 1;
