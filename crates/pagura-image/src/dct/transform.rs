@@ -138,11 +138,12 @@ pub(super) fn output(
 }
 
 /// Reconstructs one dequantized block of zigzag coefficients into its eight
-/// rows of a component plane (T.81 A.3.3, F.2.1.5).
+/// rows of a component plane (T.81 A.3.3, F.2.1.5). Coefficients past the
+/// slice are zero; it holds at least the DC coefficient.
 pub(super) fn reconstruct<T: Sample>(
     idct: &Idct,
     quant: &[u16; 64],
-    coefficients: &[i32; 64],
+    coefficients: &[i32],
     plane: &mut [T],
     stride: usize,
     index: usize,
@@ -150,8 +151,9 @@ pub(super) fn reconstruct<T: Sample>(
     let pitch = stride * 8;
     let start = (index / stride * 8 * pitch).checked_add(index % stride * 8)?;
     let rows = plane.get_mut(start..start.checked_add(7 * pitch + 8)?)?;
-    if coefficients[1..].iter().all(|&v| v == 0) {
-        let value = idct.constant::<T>(f64::from(coefficients[0]) * f64::from(quant[0]));
+    let (&dc, ac) = coefficients.split_first()?;
+    if ac.iter().all(|&v| v == 0) {
+        let value = idct.constant::<T>(f64::from(dc) * f64::from(quant[0]));
         for row in rows.chunks_mut(pitch) {
             row.get_mut(..8)?.fill(value);
         }

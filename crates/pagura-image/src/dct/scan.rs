@@ -139,6 +139,9 @@ impl Decoder {
         let mut predictors = [0i32; 4];
         let (mut eob, mut sequence) = (0u32, 0u8);
         let idct = (!frame.progressive).then(Idct::new);
+        // Sequential blocks share one buffer, cleared after each block up to
+        // the coefficients that block wrote.
+        let mut sequential = [0; 64];
         for mcu in 0..cols * rows {
             if mcu > 0 && self.restart != 0 && mcu % self.restart == 0 {
                 if eob != 0 {
@@ -173,14 +176,13 @@ impl Decoder {
                         } else {
                             mcu / cols * c.stride + mcu % cols
                         };
-                        let mut sequential = [0; 64];
                         let block = match &mut c.storage {
                             Storage::Coefficients(blocks) => blocks
                                 .get_mut(index)
-                                .ok_or(bits.error("JPEG block outside component"))?,
+                                .ok_or_else(|| bits.error("JPEG block outside component"))?,
                             _ => &mut sequential,
                         };
-                        if let Some(coder) = &mut arithmetic {
+                        let written = if let Some(coder) = &mut arithmetic {
                             coder.block(
                                 block,
                                 &scan,
@@ -191,22 +193,26 @@ impl Decoder {
                                 &mut predictors[i],
                                 frame.precision,
                             )?;
+                            64
                         } else {
                             decode_block(
                                 block,
                                 &scan,
                                 frame.progressive,
                                 frame.precision,
-                                &self.huffman,
-                                (dc, ac),
+                                (
+                                    self.huffman.get(dc).and_then(Option::as_ref),
+                                    self.huffman.get(ac).and_then(Option::as_ref),
+                                ),
                                 &mut predictors[i],
                                 &mut eob,
                                 &mut bits,
-                            )?;
-                        }
+                            )?
+                        };
                         if let Some(idct) = &idct {
-                            store(c, idct, &sequential, index)
+                            store(c, idct, &sequential[..written], index)
                                 .ok_or_else(|| bits.error("JPEG block outside component"))?;
+                            sequential[..written].fill(0);
                         }
                     }
                 }
@@ -237,7 +243,7 @@ impl Decoder {
             return Ok(offset);
         }
         bits.align(diagnostics, &mut self.padding_reported)?;
-        scan_end(data, bits.offset, &mut self.work, limits, diagnostics)
+        scan_end(data, bits.offset(), &mut self.work, limits, diagnostics)
     }
 }
 
@@ -245,7 +251,7 @@ impl Decoder {
 fn store(
     component: &mut super::frame::Component,
     idct: &Idct,
-    block: &[i32; 64],
+    block: &[i32],
     index: usize,
 ) -> Option<()> {
     let quant = component.quant.as_ref()?;
@@ -356,32 +362,35 @@ fn decode_block(
     scan: &Scan,
     progressive: bool,
     precision: u8,
-    tables: &[Option<Huffman>; 8],
-    selectors: (usize, usize),
+    (dc, ac): (Option<&Huffman>, Option<&Huffman>),
     predictor: &mut i32,
     eob: &mut u32,
     bits: &mut Bits<'_>,
-) -> Result<()> {
-    let missing = bits.error("missing JPEG Huffman table");
-    let table = |index| {
-        tables
-            .get(index)
-            .and_then(Option::as_ref)
-            .ok_or_else(|| missing.clone())
+) -> Result<usize> {
+    // One past the last coefficient written; later ones are unchanged.
+    let mut written = usize::from(scan.start == 0);
+    // A missing table is reported at the data unit's first bit, even after
+    // its DC difference has been decoded.
+    let unit = (dc.is_none() || ac.is_none()).then(|| bits.offset());
+    let missing = || {
+        Error::syntax("missing JPEG Huffman table").at(Position::Buffer(unit.unwrap_or_default()))
     };
     if scan.start == 0 {
         if scan.high == 0 {
-            let size = table(selectors.0)?.symbol(bits)?;
+            let table = dc.ok_or_else(missing)?;
+            let code = table.code(bits)?;
+            let size = code.symbol;
             if size > precision + 3 {
+                bits.skip(code);
                 return Err(bits.error("invalid JPEG DC magnitude"));
             }
-            *predictor = predictor
-                .checked_add(bits.signed(size)?)
-                .filter(|&v| {
-                    let bound = 1 << (precision + 3);
-                    (-bound..bound).contains(&v)
-                })
-                .ok_or(bits.error("JPEG DC predictor out of range"))?;
+            // Both the predictor and a difference are below 2^15 in magnitude.
+            let value = *predictor + bits.magnitude(code, size)?;
+            let bound = 1 << (precision + 3);
+            if !(-bound..bound).contains(&value) {
+                return Err(bits.error("JPEG DC predictor out of range"));
+            }
+            *predictor = value;
             block[0] = *predictor << scan.low;
         } else {
             block[0] |= i32::try_from(bits.read(1)?)
@@ -389,25 +398,29 @@ fn decode_block(
                 << scan.low;
         }
         if progressive {
-            return Ok(());
+            return Ok(written);
         }
     }
-    let table = table(selectors.1)?;
+    let table = ac.ok_or_else(missing)?;
     if scan.high != 0 {
-        return refine(block, scan, table, eob, bits);
+        refine(block, scan, table, eob, bits)?;
+        return Ok(scan.end + 1);
     }
     if *eob > 0 {
         *eob -= 1;
-        return Ok(());
+        return Ok(written);
     }
+    // The spectral band; its end is validated at most 63 (T.81 B.2.3).
+    let band = &mut block[..=scan.end];
     let mut k = scan.start.max(1);
-    while k <= scan.end {
-        let symbol = table.symbol(bits)?;
-        let (run, size) = (usize::from(symbol >> 4), symbol & 15);
+    while k < band.len() {
+        let code = table.code(bits)?;
+        let (run, size) = (usize::from(code.symbol >> 4), code.symbol & 15);
         if size == 0 {
+            bits.skip(code);
             if run == 15 {
                 k += 16;
-                if k > scan.end + 1 {
+                if k > band.len() {
                     return Err(bits.error("JPEG zero run exceeds spectral band"));
                 }
             } else if progressive {
@@ -422,17 +435,20 @@ fn decode_block(
             }
         } else {
             if size > precision + 2 {
+                bits.skip(code);
                 return Err(bits.error("invalid JPEG AC magnitude"));
             }
             k += run;
-            if k > scan.end {
+            let Some(coefficient) = band.get_mut(k) else {
+                bits.skip(code);
                 return Err(bits.error("JPEG AC run exceeds spectral band"));
-            }
-            block[k] = bits.signed(size)? << scan.low;
+            };
+            *coefficient = bits.magnitude(code, size)? << scan.low;
             k += 1;
+            written = k;
         }
     }
-    Ok(())
+    Ok(written)
 }
 
 fn correction(value: &mut i32, bit: i32, bits: &mut Bits<'_>) -> Result<()> {
