@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 /// The operand stack depth Annex C (Table C.1) gives for PostScript
 /// calculator functions; deeper stacks are refused.
-const STACK: usize = 100;
+const STACK: usize = Limits::CALCULATOR_STACK;
 /// Operands held in place before the stack spills to the heap: enough for
 /// typical tint and shading programs, without zeroing the whole Annex C
 /// stack on every evaluation.
@@ -394,7 +394,7 @@ impl Stack<'_> {
         *self.work = self
             .work
             .checked_add(count)
-            .filter(|&n| n <= self.limits.operations)
+            .filter(|&n| n <= self.limits.function_work)
             .ok_or(Error::limit("calculator work exceeded"))?;
         Ok(())
     }
@@ -777,7 +777,7 @@ mod tests {
             );
         }
         let limits = Limits {
-            operations: 2,
+            function_work: 2,
             ..limits
         };
         assert_eq!(

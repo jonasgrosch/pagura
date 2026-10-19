@@ -560,7 +560,7 @@ fn compositing_memory_work_and_shared_function_budgets_are_bounded() {
         (
             "shading-axial",
             pagura_core::Limits {
-                operations: 2,
+                function_work: 2,
                 ..pagura_core::Limits::default()
             },
         ),

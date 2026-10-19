@@ -389,7 +389,7 @@ mod tests {
         assert_eq!(regions.apply(0, [0.25; 3], &mut work).unwrap(), [0.75; 3]);
         assert_eq!(
             regions
-                .apply(0, [0.25; 3], &mut Limits::default().operations)
+                .apply(0, [0.25; 3], &mut Limits::default().function_work)
                 .unwrap_err()
                 .kind,
             ErrorKind::Limit

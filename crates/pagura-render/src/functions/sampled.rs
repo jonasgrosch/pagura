@@ -133,7 +133,7 @@ impl Sampled {
             let position = Weights::new(x, size, self.cubic);
             vertices = vertices
                 .checked_mul(position.len)
-                .filter(|&n| n <= limits.operations)
+                .filter(|&n| n <= limits.function_work)
                 .ok_or(Error::limit("sampled interpolation corner budget exceeded"))?;
             *slot = position;
         }
@@ -143,7 +143,7 @@ impl Sampled {
         for corner in 0..vertices {
             *work = work
                 .checked_add(input.len() + outputs)
-                .filter(|&v| v <= limits.operations)
+                .filter(|&v| v <= limits.function_work)
                 .ok_or(Error::limit("sample evaluation work exceeded"))?;
             let (mut offset, mut stride, mut weight) = (0_usize, outputs, 1.0);
             let mut remaining = corner;
@@ -282,7 +282,7 @@ mod tests {
             bytes,
             &OpenOptions {
                 limits: Limits {
-                    operations: 32,
+                    function_work: 32,
                     ..Limits::default()
                 },
                 ..OpenOptions::default()

@@ -63,5 +63,4 @@ variant, so what it inherits is reviewed in one place.
 
 The compositor keeps its own surface accounting until its `Frame` refactor,
 which follows the open compositor changes. Function, calculator and sampled
-evaluation work still charge `operations`, which ADR 0016 does not assign
-to them; a dedicated field is a `pagura-core` follow-up.
+evaluation work charge `function_work` (ADR 0016).

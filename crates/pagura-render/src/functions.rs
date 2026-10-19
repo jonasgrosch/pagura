@@ -227,7 +227,7 @@ impl Function {
         depth: usize,
         work: &mut usize,
     ) -> Result<()> {
-        if depth >= self.limits.depth || *work >= self.limits.operations {
+        if depth >= self.limits.depth || *work >= self.limits.function_work {
             return Err(Error::limit("function evaluation budget exceeded"));
         }
         *work += 1;
