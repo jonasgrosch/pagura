@@ -9,7 +9,7 @@ use crate::display::ImageCommand;
 use crate::interpreter::images::Image;
 use pagura_core::{Error, Result};
 use pagura_image::{MaskKind, Samples};
-use pagura_raster::{FillRule, PathBuilder, Pixmap};
+use pagura_raster::{FillRule, Pixmap};
 
 impl Context {
     // Keep image preparation separate from the general tile compositor.
@@ -49,16 +49,23 @@ impl Context {
         let Ok((count, _)) = self.admit_surface(region) else {
             return Ok(false);
         };
-        if self.work + count >= self.limits.raster_work {
+        if self
+            .work
+            .checked_add(count)
+            .is_none_or(|work| work >= self.limits.raster_work)
+        {
             return Ok(false);
         }
         let clip = self
             .clip(None, region)
             .map_err(|error| crate::display::contextual(error, command.position))?;
-        let mut bounds = PathBuilder::new();
-        bounds.rect(0.0, 0.0, 1.0, 1.0);
         let Some(clip) = clip
-            .clipped_path(&bounds.finish(), transform, FillRule::NonZero, self.limits)
+            .clipped_path(
+                &crate::device::unit_square(),
+                transform,
+                FillRule::NonZero,
+                self.limits,
+            )
             .map_err(|error| crate::display::contextual(error, command.position))?
         else {
             return Ok(false);
@@ -72,13 +79,12 @@ impl Context {
         }
         self.charge(count)?;
         self.charge(1)?;
-        let result = (|| {
-            self.charge(count)?;
-            self.charge(count)?;
-            copy_samples(output, tile, region, &sampler, samples)?;
-            Ok(true)
-        })();
-        result.map_err(|error| crate::display::contextual(error, command.position))
+        // The visits of the mark itself report its position.
+        self.charge(count)
+            .and_then(|()| self.charge(count))
+            .and_then(|()| copy_samples(output, tile, region, &sampler, samples))
+            .map(|()| true)
+            .map_err(|error| crate::display::contextual(error, command.position))
     }
 }
 
@@ -96,10 +102,9 @@ fn copy_samples(
             u64::from(y - tile.y) * u64::from(tile.width) + u64::from(region.x - tile.x),
         )
         .map_err(|_| Error::limit("image output index exceeds usize"))?;
-        let row = output
-            .data_mut()
-            .get_mut(start * 4..(start + width) * 4)
-            .ok_or(Error::invalid_argument("image outside output"))?;
+        let row = output.data_mut().get_mut(start * 4..(start + width) * 4);
+        debug_assert!(row.is_some(), "chunks lie inside the output tile");
+        let Some(row) = row else { continue };
         for (x, pixel) in (region.x..region.x + region.width).zip(row.as_chunks_mut::<4>().0) {
             let &[red, green, blue] = samples
                 .get(sampler.nearest(x, y)?)
