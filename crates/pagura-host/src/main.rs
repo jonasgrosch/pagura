@@ -6,7 +6,7 @@ use std::io;
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
-    match Session::default().serve(&mut io::stdin().lock(), &mut io::stdout().lock()) {
+    match Session::default().serve(io::stdin().lock(), io::stdout().lock()) {
         Ok(SessionEnd::Eof) => ExitCode::SUCCESS,
         Ok(SessionEnd::ProtocolError) => ExitCode::FAILURE,
         Err(error) => {
