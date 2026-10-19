@@ -41,10 +41,16 @@ pub struct DctImage {
     pub components: u8,
     /// Interleaved 8-bit samples after any colour transform, top row first.
     pub samples: Vec<u8>,
+    /// Samples kept per eight-sample block axis: 8, or fewer when
+    /// [`decode_cells`] reconstructed an eight-bit frame near its drawn size.
+    /// `width` and `height` then count cells, the last of which may extend
+    /// past the frame edge into its padding.
+    pub cells: u8,
 }
 
 struct Decoder {
     frame: Option<Frame>,
+    cells: usize,
     quant: [Option<[u16; 64]>; 4],
     huffman: [Option<Huffman>; 8],
     conditioning: arithmetic::Conditioning,
@@ -90,10 +96,52 @@ pub fn decode_with_diagnostics(
     limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<DctImage> {
+    decode_cells(data, color_transform, limits, diagnostics, 8)
+}
+
+/// The number of cells along an axis of `length` samples that keeps `cells`
+/// per eight: whole blocks plus the cells that a partial block touches.
+pub fn scaled_length(length: u32, cells: u8) -> u32 {
+    transform::scaled(length, usize::from(cells))
+}
+
+/// Decodes as [`decode_with_diagnostics`], keeping `cells` samples per
+/// eight-sample block axis of an eight-bit frame: 1, 2, 3, 4, 6 or 8.
+///
+/// This is an approximate path for images drawn smaller than their samples
+/// (ADR 0004). Each cell is the area mean of its block's samples: for up to
+/// four cells, the mean of the unclamped T.81 A.3.3 samples from an
+/// integrated cosine basis, rounded and clamped once; for six, the mean of
+/// the exact block's samples. Every coefficient is consumed and validated as
+/// in a full decode, and storage only shrinks. Chroma keeps its sampling
+/// ratio to luma, and Table 13 conversion is unchanged. Twelve-bit frames
+/// keep all eight samples; [`DctImage::cells`] reports the result.
+///
+/// # Errors
+/// As [`decode_with_diagnostics`], plus `InvalidArgument` for another count.
+pub fn decode_cells(
+    data: &[u8],
+    color_transform: Option<i64>,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+    cells: u8,
+) -> Result<DctImage> {
+    if !matches!(cells, 1 | 2 | 3 | 4 | 6 | 8) {
+        return Err(Error::invalid_argument(
+            "JPEG cells per block axis must be 1, 2, 3, 4, 6 or 8",
+        ));
+    }
     if data.len() > limits.stream_bytes {
         return Err(Error::limit("JPEG input budget exceeded").at(Position::Buffer(0)));
     }
-    decode_inner(data, color_transform, limits, diagnostics).map_err(|e| e.at(Position::Buffer(0)))
+    decode_inner(
+        data,
+        color_transform,
+        limits,
+        diagnostics,
+        usize::from(cells),
+    )
+    .map_err(|e| e.at(Position::Buffer(0)))
 }
 
 fn decode_inner(
@@ -101,12 +149,14 @@ fn decode_inner(
     color_transform: Option<i64>,
     limits: &Limits,
     diagnostics: &mut Diagnostics,
+    cells: usize,
 ) -> Result<DctImage> {
     if data.get(..2) != Some(&[255, 216]) {
         return Err(Error::syntax("missing JPEG SOI"));
     }
     let mut decoder = Decoder {
         frame: None,
+        cells,
         quant: [None; 4],
         huffman: std::array::from_fn(|_| None),
         conditioning: arithmetic::Conditioning::default(),
@@ -128,52 +178,53 @@ fn decode_inner(
             return Err(Error::syntax("unexpected JPEG standalone marker").at(Position::Buffer(at)));
         }
         let payload = segment(data, &mut offset)?;
-        let result =
-            match marker {
-                0xc0..=0xc2 | 0xc9 | 0xca => {
-                    if decoder.frame.is_some() {
-                        return Err(Error::syntax("multiple JPEG frames").at(Position::Buffer(at)));
-                    }
-                    decoder.frame = Some(Frame::parse(payload, marker, limits)?);
-                    Ok(())
+        let result = match marker {
+            0xc0..=0xc2 | 0xc9 | 0xca => {
+                if decoder.frame.is_some() {
+                    return Err(Error::syntax("multiple JPEG frames").at(Position::Buffer(at)));
                 }
-                0xcb | 0xcd..=0xcf => Err(Error::unsupported(
-                    crate::features::JPEG_ARITHMETIC,
-                    "arithmetic JPEG coding is unsupported",
-                )),
-                0xc3 | 0xc5..=0xc7 | 0xde | 0xdf => Err(Error::unsupported(
-                    crate::features::JPEG_PROCESS,
-                    "JPEG lossless or hierarchical process is unsupported",
-                )),
-                0xdb => quant_tables(payload, &mut decoder.quant),
-                0xc4 => entropy::tables(payload, &mut decoder.huffman),
-                0xcc => decoder.conditioning.define(payload),
-                0xdd if payload.len() == 2 => {
-                    decoder.restart = usize::from(u16::from_be_bytes([payload[0], payload[1]]));
-                    Ok(())
+                decoder.frame = Some(Frame::parse_cells(payload, marker, limits, decoder.cells)?);
+                Ok(())
+            }
+            0xcb | 0xcd..=0xcf => Err(Error::unsupported(
+                crate::features::JPEG_ARITHMETIC,
+                "arithmetic JPEG coding is unsupported",
+            )),
+            0xc3 | 0xc5..=0xc7 | 0xde | 0xdf => Err(Error::unsupported(
+                crate::features::JPEG_PROCESS,
+                "JPEG lossless or hierarchical process is unsupported",
+            )),
+            0xdb => quant_tables(payload, &mut decoder.quant),
+            0xc4 => entropy::tables(payload, &mut decoder.huffman),
+            0xcc => decoder.conditioning.define(payload),
+            0xdd if payload.len() == 2 => {
+                decoder.restart = usize::from(u16::from_be_bytes([payload[0], payload[1]]));
+                Ok(())
+            }
+            0xda => {
+                offset = decoder.scan(payload, data, offset, limits, diagnostics)?;
+                Ok(())
+            }
+            0xee if payload.starts_with(b"Adobe") => {
+                if payload.len() < 12 || payload[11] > 2 {
+                    return Err(Error::syntax("invalid Adobe JPEG marker").at(Position::Buffer(at)));
                 }
-                0xda => {
-                    offset = decoder.scan(payload, data, offset, limits, diagnostics)?;
-                    Ok(())
+                if payload.len() > 12 && !decoder.adobe_reported {
+                    diagnostics.repair(
+                        Diagnostic::new(
+                            tags::ADOBE_MARKER,
+                            "extended Adobe JPEG marker uses its known prefix (7.4.8, Table 13)",
+                        )
+                        .at(Position::Buffer(at)),
+                    )?;
+                    decoder.adobe_reported = true;
                 }
-                0xee if payload.starts_with(b"Adobe") => {
-                    if payload.len() < 12 || payload[11] > 2 {
-                        return Err(
-                            Error::syntax("invalid Adobe JPEG marker").at(Position::Buffer(at))
-                        );
-                    }
-                    if payload.len() > 12 && !decoder.adobe_reported {
-                        diagnostics.repair(Diagnostic::new(tags::ADOBE_MARKER,
-                        "extended Adobe JPEG marker uses its known prefix (7.4.8, Table 13)")
-                        .at(Position::Buffer(at)))?;
-                        decoder.adobe_reported = true;
-                    }
-                    decoder.adobe = Some(payload[11]);
-                    Ok(())
-                }
-                0xe0..=0xef | 0xfe => Ok(()),
-                _ => Err(Error::syntax("invalid or unsupported JPEG marker")),
-            };
+                decoder.adobe = Some(payload[11]);
+                Ok(())
+            }
+            0xe0..=0xef | 0xfe => Ok(()),
+            _ => Err(Error::syntax("invalid or unsupported JPEG marker")),
+        };
         result.map_err(|e| e.at(Position::Buffer(at)))?;
     }
 }

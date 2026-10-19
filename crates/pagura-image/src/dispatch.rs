@@ -11,6 +11,7 @@ pub(crate) fn decode(
     dict: &Dictionary,
     data: &[u8],
     codec: Option<&Codec>,
+    cells: u8,
     diagnostics: &mut Diagnostics,
 ) -> Result<DecodedImage> {
     let (width, height) = p::dimensions(dict)?;
@@ -52,6 +53,7 @@ pub(crate) fn decode(
         decode: None,
         mask: MaskKind::None,
         interpolate: false,
+        reduction: None,
     };
     let params = codec.and_then(|(_, params)| params.as_ref());
     match codec.map(|(codec, _)| codec) {
@@ -68,14 +70,7 @@ pub(crate) fn decode(
             )?;
         }
         Some(ImageCodec::Dct) => {
-            image.samples = decode_dct(
-                data,
-                params,
-                (width, height, components, bits),
-                &limits,
-                diagnostics,
-            )?;
-            image.bits_per_component = 8;
+            decode_dct(data, params, &mut image, bits, &limits, cells, diagnostics)?;
         }
         Some(ImageCodec::CcittFax) => {
             if bits != 1 || components != 1 {
@@ -169,13 +164,16 @@ fn color_transform(params: Option<&Dictionary>) -> Result<Option<i64>> {
 fn decode_dct(
     data: &[u8],
     params: Option<&Dictionary>,
-    dimensions: (u32, u32, u8, u8),
+    image: &mut DecodedImage,
+    bits: u8,
     limits: &pagura_core::Limits,
+    cells: u8,
     diagnostics: &mut Diagnostics,
-) -> Result<Samples> {
-    let (width, height, components, bits) = dimensions;
+) -> Result<()> {
+    let (width, height, components) = (image.width, image.height, image.components);
+    image.bits_per_component = 8;
     let transform = color_transform(params)?;
-    let decoded = match dct::decode_with_diagnostics(data, transform, limits, diagnostics) {
+    let decoded = match dct::decode_cells(data, transform, limits, diagnostics, cells) {
         Ok(decoded) => decoded,
         Err(error) => {
             if !data.starts_with(&[0xff, 0xd8])
@@ -190,13 +188,14 @@ fn decode_dct(
                     )
                     .at(pagura_core::Position::Buffer(0)),
                 )?;
-                return Ok(Samples::Bytes(samples));
+                image.samples = Samples::Bytes(samples);
+                return Ok(());
             }
             return Err(error);
         }
     };
-    if decoded.width != width
-        || decoded.height != height
+    if decoded.width != dct::scaled_length(width, decoded.cells)
+        || decoded.height != dct::scaled_length(height, decoded.cells)
         || decoded.components != components
         || bits != 8
     {
@@ -204,7 +203,17 @@ fn decode_dct(
             "JPEG metadata disagrees with image dictionary",
         ));
     }
-    Ok(Samples::Bytes(decoded.samples))
+    image.samples = Samples::Bytes(decoded.samples);
+    if decoded.cells < 8 {
+        image.width = decoded.width;
+        image.height = decoded.height;
+        image.reduction = Some(crate::Reduction {
+            cells: decoded.cells,
+            width,
+            height,
+        });
+    }
+    Ok(())
 }
 
 fn predicted_flate(

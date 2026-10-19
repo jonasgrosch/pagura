@@ -219,6 +219,7 @@ impl Compiler<'_> {
             forms: self.forms.clone(),
             extraction: None,
             glyphs: Vec::new(),
+            drawn: self.drawn,
         }
     }
 }

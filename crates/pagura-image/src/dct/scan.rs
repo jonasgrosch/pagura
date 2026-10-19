@@ -3,7 +3,7 @@ use super::{
     Decoder,
     entropy::{Bits, Huffman},
     frame::Storage,
-    transform::{Idct, reconstruct},
+    transform::{Cells, Idct, reconstruct},
 };
 use pagura_core::{Diagnostic, Diagnostics, Error, Limits, Position, Result};
 
@@ -110,6 +110,10 @@ impl Scan {
 }
 
 impl Decoder {
+    #[expect(
+        clippy::too_many_lines,
+        reason = "one MCU loop for both entropy coders, every component layout and drawn-size cells"
+    )]
     pub(super) fn scan(
         &mut self,
         payload: &[u8],
@@ -142,6 +146,7 @@ impl Decoder {
         // Sequential blocks share one buffer, cleared after each block up to
         // the coefficients that block wrote.
         let mut sequential = [0; 64];
+        let cells = (!frame.progressive && frame.cells < 8).then(|| Cells::new(frame.cells));
         for mcu in 0..cols * rows {
             if mcu > 0 && self.restart != 0 && mcu % self.restart == 0 {
                 if eob != 0 {
@@ -210,7 +215,7 @@ impl Decoder {
                             )?
                         };
                         if let Some(idct) = &idct {
-                            store(c, idct, &sequential[..written], index)
+                            store(c, idct, cells.as_ref(), &sequential[..written], index)
                                 .ok_or_else(|| bits.error("JPEG block outside component"))?;
                             sequential[..written].fill(0);
                         }
@@ -251,14 +256,18 @@ impl Decoder {
 fn store(
     component: &mut super::frame::Component,
     idct: &Idct,
-    block: &[i32],
+    cells: Option<&Cells>,
+    coefficients: &[i32],
     index: usize,
 ) -> Option<()> {
     let quant = component.quant.as_ref()?;
     let stride = component.stride;
     match &mut component.storage {
-        Storage::Bytes(plane) => reconstruct(idct, quant, block, plane, stride, index),
-        Storage::Words(plane) => reconstruct(idct, quant, block, plane, stride, index),
+        Storage::Bytes(plane) => match cells {
+            Some(cells) => cells.reconstruct(idct, quant, coefficients, plane, stride, index),
+            None => reconstruct(idct, quant, coefficients, plane, stride, index),
+        },
+        Storage::Words(plane) => reconstruct(idct, quant, coefficients, plane, stride, index),
         Storage::Coefficients(_) => None,
     }
 }

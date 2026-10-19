@@ -74,8 +74,13 @@ pub enum Accuracy {
     /// curves become 0.15-pixel chords at 1/128-pixel vertical origins; from
     /// 108 dpi, area-balanced 1/4-pixel chords at 1/16-pixel vertical
     /// origins. Opaque RGB pages of solid-colour marks, images, shadings and
-    /// simple groups take this path; any other page renders exactly. It does
-    /// not meet the one-level contract.
+    /// simple groups take this path; any other page renders exactly. When a
+    /// page is compiled and rendered in one call, an eight-bit DeviceGray or
+    /// DeviceRGB DCTDecode image XObject without masks or Decode array keeps
+    /// 1, 2, 3, 4 or 6 cells per eight-sample block axis: the fewest that
+    /// leave at least two cells per device pixel. Cells are block area
+    /// means (`pagura_image::dct::decode_cells`). It does not meet the
+    /// one-level contract.
     RowFragments,
 }
 
@@ -87,6 +92,16 @@ impl Default for RenderOptions {
             overprint: OverprintPreview::Auto,
             accuracy: Accuracy::Exact,
         }
+    }
+}
+
+impl RenderOptions {
+    /// Device pixels per default user-space unit at which images are
+    /// decoded near their drawn size: on the row-fragment path only.
+    fn drawn_scale(&self, page: &Page) -> Option<f64> {
+        let scale = self.scale * page.user_unit();
+        (self.accuracy == Accuracy::RowFragments && scale.is_finite() && scale > 0.0)
+            .then_some(scale)
     }
 }
 
@@ -168,7 +183,7 @@ fn pixels(extent: f64) -> Result<u32> {
 /// error for budget violations, and syntax errors for malformed content.
 /// No partial page is ever returned.
 pub fn render_page(document: &Document, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
-    compile_page(document, page)?.render(options)
+    interpreter::compile_drawn(document, page, None, options)?.render(options)
 }
 
 /// Renders a whole page using explicitly supplied external font resources.
@@ -181,7 +196,7 @@ pub fn render_page_with(
     options: &RenderOptions,
     provider: &dyn Provider,
 ) -> Result<Pixmap> {
-    compile_page_with(document, page, provider)?.render(options)
+    interpreter::compile_drawn(document, page, Some(provider), options)?.render(options)
 }
 
 /// Renders one tile of a page. Tiles of one page with the same options
@@ -198,7 +213,7 @@ pub fn render_tile(
     options: &RenderOptions,
     tile: Tile,
 ) -> Result<Pixmap> {
-    compile_page(document, page)?.render_tile(options, tile)
+    interpreter::compile_drawn(document, page, None, options)?.render_tile(options, tile)
 }
 
 /// Renders a tile using explicitly supplied external font resources.
@@ -212,7 +227,7 @@ pub fn render_tile_with(
     tile: Tile,
     provider: &dyn Provider,
 ) -> Result<Pixmap> {
-    compile_page_with(document, page, provider)?.render_tile(options, tile)
+    interpreter::compile_drawn(document, page, Some(provider), options)?.render_tile(options, tile)
 }
 
 #[cfg(test)]

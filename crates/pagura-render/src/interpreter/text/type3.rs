@@ -102,6 +102,8 @@ impl Compiler<'_> {
         }
         let text_object = self.state.text.object.take();
         let mut child = self.detached();
+        // Glyph space does not give an image its device size.
+        child.drawn = None;
         self.state.text.object = text_object;
         child.forms.push(id);
         child.state.ctm = transform;

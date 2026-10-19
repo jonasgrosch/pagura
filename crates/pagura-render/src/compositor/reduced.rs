@@ -16,14 +16,21 @@ pub(super) struct Span {
 }
 
 impl Span {
-    pub(super) fn new(pixel: u32, scale: f64, offset: f64, maximum: u32) -> Result<Self> {
+    /// The cells under device `pixel` along a source axis of `maximum` cells
+    /// whose image extent is `extent` (at most `maximum`).
+    pub(super) fn new(
+        pixel: u32,
+        scale: f64,
+        offset: f64,
+        (extent, maximum): (f64, u32),
+    ) -> Result<Self> {
         let a = f64::from(pixel) * scale + offset;
         let b = (f64::from(pixel) + 1.0) * scale + offset;
         if !a.is_finite() || !b.is_finite() {
             return Err(Error::limit("image sampling transform overflow"));
         }
-        let low = a.min(b).clamp(0.0, f64::from(maximum));
-        let high = a.max(b).clamp(0.0, f64::from(maximum));
+        let low = a.min(b).clamp(0.0, extent);
+        let high = a.max(b).clamp(0.0, extent);
         let first = coordinate(low.floor(), maximum);
         let end = coordinate(if high > low { high.ceil() } else { low.floor() }, maximum);
         let weight =
@@ -99,17 +106,17 @@ impl Sampler {
             out.columns
                 .try_reserve_exact(count)
                 .map_err(|_| Error::limit("image reduction allocation failed"))?;
-            let (scale, offset, maximum) = if out.swapped {
-                (t.b, t.f, out.sampler.height)
+            let (scale, offset, axis) = if out.swapped {
+                (t.b, t.f, out.sampler.axis(true))
             } else {
-                (t.a, t.e, out.sampler.width)
+                (t.a, t.e, out.sampler.axis(false))
             };
             for index in 0..width {
                 let pixel = origin
                     .checked_add(index)
                     .ok_or(Error::limit("image column overflow"))?;
                 out.columns.push(Column {
-                    span: Span::new(pixel, scale, offset, maximum)?,
+                    span: Span::new(pixel, scale, offset, axis)?,
                     ..Default::default()
                 });
             }
@@ -150,12 +157,12 @@ impl Prepared {
     ) -> Result<Texel> {
         let t = self.sampler.inverse;
         if self.vertical.is_none_or(|(row, _)| row != y) {
-            let (scale, offset, bound) = if self.swapped {
-                (t.c, t.e, self.sampler.width)
+            let (scale, offset, axis) = if self.swapped {
+                (t.c, t.e, self.sampler.axis(false))
             } else {
-                (t.d, t.f, self.sampler.height)
+                (t.d, t.f, self.sampler.axis(true))
             };
-            self.vertical = Some((y, Span::new(y, scale, offset, bound)?));
+            self.vertical = Some((y, Span::new(y, scale, offset, axis)?));
         }
         let span = self
             .vertical
@@ -227,12 +234,7 @@ mod tests {
             Transform::new(0.0, -2.0, 0.25, 0.0, 0.0, 8.0),
             Transform::new(2.25, 0.0, 0.0, 0.3, -0.5, -0.25),
         ] {
-            let make = || Sampler {
-                width: 8,
-                height: 8,
-                interpolate: true,
-                inverse,
-            };
+            let make = || Sampler::grid(8, 8, true, inverse);
             let mut sampler = make().prepare(0, 4, usize::MAX).unwrap();
             let mut visits = [0; 64];
             let texel = |index: usize| Texel {
@@ -287,12 +289,12 @@ mod tests {
             let [side, low, expected] = values[..] else {
                 panic!("invalid area vector");
             };
-            let mut sampler = Sampler {
-                width: side,
-                height: side,
-                interpolate: false,
-                inverse: Transform::new(f64::from(side), 0.0, 0.0, f64::from(side), 0.0, 0.0),
-            }
+            let mut sampler = Sampler::grid(
+                side,
+                side,
+                false,
+                Transform::new(f64::from(side), 0.0, 0.0, f64::from(side), 0.0, 0.0),
+            )
             .prepare(0, 1, usize::MAX)
             .unwrap();
             let value = sampler
@@ -315,12 +317,7 @@ mod tests {
 
     #[test]
     fn reduction_is_bounded_and_does_not_evaluate_unrequested_columns() {
-        let make = || Sampler {
-            width: 8,
-            height: 8,
-            interpolate: false,
-            inverse: Transform::new(2.0, 0.0, 0.0, 0.5, 0.0, 0.0),
-        };
+        let make = || Sampler::grid(8, 8, false, Transform::new(2.0, 0.0, 0.0, 0.5, 0.0, 0.0));
         assert!(make().prepare(0, 4, 0).is_err());
         let mut sampler = make().prepare(0, 4, usize::MAX).unwrap();
         let mut visits = 0;
@@ -337,14 +334,10 @@ mod tests {
         assert_eq!(visits, 2);
         // Rounded endpoints can coincide during strongly anisotropic scaling.
         // Empty intervals must never evaluate zero-weight colour functions.
-        let mut collapsed = Sampler {
-            width: 2,
-            height: 1,
-            interpolate: false,
-            inverse: Transform::new(2.0, 0.0, 0.0, 1e-20, 0.0, 0.5),
-        }
-        .prepare(0, 1, usize::MAX)
-        .unwrap();
+        let mut collapsed =
+            Sampler::grid(2, 1, false, Transform::new(2.0, 0.0, 0.0, 1e-20, 0.0, 0.5))
+                .prepare(0, 1, usize::MAX)
+                .unwrap();
         let value = collapsed
             .sample(0, 0, &mut 0, usize::MAX, |_| {
                 panic!("empty intervals must not evaluate colours")

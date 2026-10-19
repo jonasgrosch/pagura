@@ -32,7 +32,11 @@ struct Axis {
 /// byte mask has its own grid.
 struct Bytes<'a, F> {
     color: F,
+    /// Stored samples per row and column.
     size: (u32, u32),
+    /// The extent of the unit square in stored samples
+    /// ([`pagura_image::DecodedImage::extent`]).
+    extent: (f64, f64),
     mask: Option<(&'a [u8], (u32, u32))>,
 }
 
@@ -62,6 +66,7 @@ pub(super) fn paint(
         },
     };
     let size = (image.decoded.width, image.decoded.height);
+    let extent = image.decoded.extent();
     match &source.quick {
         Quick::Rgb(bytes) => {
             let color = |index: usize| {
@@ -70,7 +75,12 @@ pub(super) fn paint(
                     .ok_or(Error::syntax("missing RGB sample"))?;
                 Ok([rgb[0], rgb[1], rgb[2]])
             };
-            let bytes = Bytes { color, size, mask };
+            let bytes = Bytes {
+                color,
+                size,
+                extent,
+                mask,
+            };
             dispatch(&bytes, target, bounds, placement, clip, limits)
         }
         Quick::One(bytes, table) => {
@@ -81,7 +91,12 @@ pub(super) fn paint(
                 let c = table[usize::from(*value)];
                 Ok([c.r, c.g, c.b])
             };
-            let bytes = Bytes { color, size, mask };
+            let bytes = Bytes {
+                color,
+                size,
+                extent,
+                mask,
+            };
             dispatch(&bytes, target, bounds, placement, clip, limits)
         }
         Quick::General => Ok(false),
@@ -157,7 +172,7 @@ fn render<F: Fn(usize) -> Result<[u8; 3]>, const OPAQUE: bool>(
             x,
             (image_bounds[0], image_bounds[2]),
             (inverse.a, inverse.e),
-            (bytes.size.0, mask_width),
+            ((bytes.size.0, bytes.extent.0), mask_width),
             false,
         )?;
         column.clip = rectangle.map_or(1.0, |r| overlap(x, r[0], r[2]));
@@ -168,7 +183,7 @@ fn render<F: Fn(usize) -> Result<[u8; 3]>, const OPAQUE: bool>(
             y,
             (image_bounds[1], image_bounds[3]),
             (inverse.d, inverse.f),
-            (bytes.size.1, mask_height),
+            ((bytes.size.1, bytes.extent.1), mask_height),
             true,
         )?;
         let clip_y = rectangle.map_or(1.0, |r| overlap(y, r[1], r[3]));
@@ -285,7 +300,7 @@ fn axis(
     pixel: u32,
     (low, high): (f64, f64),
     (scale, translation): (f64, f64),
-    (length, mask): (u32, u32),
+    ((length, extent), mask): ((u32, f64), u32),
     flip: bool,
 ) -> Result<Axis> {
     if length == 0 || mask == 0 {
@@ -302,7 +317,7 @@ fn axis(
         index.inside = (0.0..1.0).contains(&value);
         if index.inside {
             let p = if flip { 1.0 - value } else { value };
-            index.image = ((p * f64::from(length)) as usize).min(length as usize - 1);
+            index.image = ((p * extent) as usize).min(length as usize - 1);
             index.mask = ((p * f64::from(mask)) as usize).min(mask as usize - 1);
         }
     }
@@ -325,16 +340,16 @@ mod tests {
     fn colour_and_mask_grids_have_independent_rational_indices() {
         // Device column 2 of an image eight columns wide samples it at 9/32
         // and 11/32 of its width.
-        let x = axis(2, (0.0, 8.0), (0.125, 0.0), (8, 16), false).unwrap();
+        let x = axis(2, (0.0, 8.0), (0.125, 0.0), ((8, 8.0), 16), false).unwrap();
         assert_eq!(x.samples.map(|s| s.image), [2, 2]);
         assert_eq!(x.samples.map(|s| s.mask), [4, 5]);
         assert!(x.samples.iter().all(|s| s.inside));
-        let y = axis(2, (0.0, 8.0), (0.125, 0.0), (8, 16), true).unwrap();
+        let y = axis(2, (0.0, 8.0), (0.125, 0.0), ((8, 8.0), 16), true).unwrap();
         assert_eq!(y.samples.map(|s| s.image), [5, 5]);
         assert_eq!(y.samples.map(|s| s.mask), [11, 10]);
-        let outside = axis(2, (0.0, 8.0), (1.0, 0.0), (8, 16), false).unwrap();
+        let outside = axis(2, (0.0, 8.0), (1.0, 0.0), ((8, 8.0), 16), false).unwrap();
         assert!(outside.samples.iter().all(|s| !s.inside));
-        assert!(axis(2, (0.0, 8.0), (f64::INFINITY, 0.0), (8, 16), false).is_err());
-        assert!(axis(2, (0.0, 8.0), (0.125, 0.0), (0, 16), false).is_err());
+        assert!(axis(2, (0.0, 8.0), (f64::INFINITY, 0.0), ((8, 8.0), 16), false).is_err());
+        assert!(axis(2, (0.0, 8.0), (0.125, 0.0), ((0, 0.0), 16), false).is_err());
     }
 }

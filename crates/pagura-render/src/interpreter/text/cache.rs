@@ -198,8 +198,9 @@ pub(in crate::interpreter) struct Cache {
     fonts: Fonts,
     resources: Vec<Dictionary>,
     pub(in crate::interpreter) page_resources: Option<Arc<Dictionary>>,
+    /// Images by object, resource identity and JPEG cells per block axis.
     pub(in crate::interpreter) images:
-        BTreeMap<(pagura_core::ObjectId, usize), Arc<super::super::images::Image>>,
+        BTreeMap<(pagura_core::ObjectId, usize, u8), Arc<super::super::images::Image>>,
     pub(super) bytes: usize,
     pub(super) entries: usize,
 }

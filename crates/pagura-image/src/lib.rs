@@ -186,6 +186,33 @@ pub struct DecodedImage {
     pub mask: MaskKind,
     /// `/Interpolate`.
     pub interpolate: bool,
+    /// Present when a JPEG image was reconstructed near its drawn size;
+    /// `width` and `height` then count its reduced cells.
+    pub reduction: Option<Reduction>,
+}
+
+/// A JPEG image reconstructed with fewer samples than its dictionary
+/// declares, by [`decode_xobject_cells`]: an approximate path (ADR 0004).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Reduction {
+    /// Samples kept per eight-sample block axis: 1, 2, 3, 4 or 6.
+    pub cells: u8,
+    /// The declared `/Width` in samples (Table 87).
+    pub width: u32,
+    /// The declared `/Height` in samples (Table 87).
+    pub height: u32,
+}
+
+impl Reduction {
+    /// The declared image extent in reduced cells. A final cell that
+    /// reaches into its block's padding covers only part of a cell.
+    pub fn extent(&self) -> (f64, f64) {
+        let scale = f64::from(self.cells) / 8.0;
+        (
+            f64::from(self.width) * scale,
+            f64::from(self.height) * scale,
+        )
+    }
 }
 
 impl DecodedImage {
@@ -202,6 +229,15 @@ impl DecodedImage {
             4 => Some(Value::name(b"DeviceCMYK")),
             _ => None,
         }
+    }
+
+    /// The extent of the image's unit square in stored samples: its
+    /// dimensions, or the declared extent of a [`Reduction`].
+    pub fn extent(&self) -> (f64, f64) {
+        self.reduction.map_or(
+            (f64::from(self.width), f64::from(self.height)),
+            |reduction| reduction.extent(),
+        )
     }
 
     /// Precision of the ordinary colour component at `index`, or None when
@@ -226,6 +262,23 @@ impl DecodedImage {
 /// `Unsupported` for codecs or features not implemented, and limit errors
 /// when the image exceeds [`pagura_core::Limits`] (pixels, decoded bytes).
 pub fn decode_xobject(document: &Document, image: &IndirectObject) -> Result<DecodedImage> {
+    decode_xobject_cells(document, image, 8)
+}
+
+/// Decodes an image XObject as [`decode_xobject`], reconstructing an
+/// eight-bit DCTDecode image with `cells` samples per eight-sample block
+/// axis (1, 2, 3, 4, 6 or 8; see [`dct::decode_cells`]). Other images, and
+/// eight cells, decode exactly. A reduced result records its
+/// [`Reduction`]. This is an approximate path for images drawn smaller than
+/// their samples; the caller chooses `cells` from the placement.
+///
+/// # Errors
+/// As [`decode_xobject`], plus `InvalidArgument` for another cell count.
+pub fn decode_xobject_cells(
+    document: &Document,
+    image: &IndirectObject,
+    cells: u8,
+) -> Result<DecodedImage> {
     let mut diagnostics = pagura_core::Diagnostics::new(document.recovery());
     let result = (|| {
         let dictionary = image
@@ -265,6 +318,7 @@ pub fn decode_xobject(document: &Document, image: &IndirectObject) -> Result<Dec
             &dictionary,
             &stream.data,
             stream.codec.as_ref(),
+            cells,
             &mut diagnostics,
         )
     })();

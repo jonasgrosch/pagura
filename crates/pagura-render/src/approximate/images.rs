@@ -209,7 +209,10 @@ impl<'a> Source<'a> {
     fn column(&self, value: f64) -> Result<Option<Coordinate>> {
         coordinate(
             value,
-            self.command.image.decoded.width,
+            (
+                self.command.image.decoded.width,
+                self.command.image.decoded.extent().0,
+            ),
             self.command.image.mask.as_ref().map(|m| m.decoded.width),
             false,
         )
@@ -218,7 +221,10 @@ impl<'a> Source<'a> {
     fn row(&self, value: f64) -> Result<Option<Coordinate>> {
         coordinate(
             value,
-            self.command.image.decoded.height,
+            (
+                self.command.image.decoded.height,
+                self.command.image.decoded.extent().1,
+            ),
             self.command.image.mask.as_ref().map(|m| m.decoded.height),
             true,
         )
@@ -433,7 +439,7 @@ struct Coordinate {
 )]
 fn coordinate(
     value: f64,
-    length: u32,
+    (length, extent): (u32, f64),
     mask: Option<u32>,
     vertical: bool,
 ) -> Result<Option<Coordinate>> {
@@ -447,7 +453,7 @@ fn coordinate(
         return Err(Error::syntax("empty image sample axis"));
     }
     let p = if vertical { 1.0 - value } else { value };
-    let color = ((p * f64::from(length)) as usize).min(length as usize - 1);
+    let color = ((p * extent) as usize).min(length as usize - 1);
     let mask = mask.map_or(0, |length| {
         ((p * f64::from(length)).floor() as usize).min(length as usize - 1)
     });
@@ -466,17 +472,17 @@ mod tests {
             (0.5, 4, 4, 1),
             (0.875, 7, 1, 1),
         ] {
-            let c = coordinate(p, 8, Some(2), false).unwrap().unwrap();
+            let c = coordinate(p, (8, 8.0), Some(2), false).unwrap().unwrap();
             assert_eq!((c.color, c.mask), (forward, mask));
             assert_eq!(
-                coordinate(p, 8, None, true).unwrap().unwrap().color,
+                coordinate(p, (8, 8.0), None, true).unwrap().unwrap().color,
                 reverse
             );
         }
-        assert!(coordinate(1.0, 8, None, false).unwrap().is_none());
-        assert!(coordinate(-0.1, 8, None, false).unwrap().is_none());
-        assert!(coordinate(f64::NAN, 8, None, false).is_err());
-        assert!(coordinate(0.0, 0, None, false).is_err());
+        assert!(coordinate(1.0, (8, 8.0), None, false).unwrap().is_none());
+        assert!(coordinate(-0.1, (8, 8.0), None, false).unwrap().is_none());
+        assert!(coordinate(f64::NAN, (8, 8.0), None, false).is_err());
+        assert!(coordinate(0.0, (0, 0.0), None, false).is_err());
     }
 
     #[test]

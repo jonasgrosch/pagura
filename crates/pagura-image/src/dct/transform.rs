@@ -1,4 +1,5 @@
 //! T.81 A.3.3 inverse DCT and PDF Table 13 colour transforms.
+mod cells;
 mod idct;
 mod rgb;
 
@@ -6,6 +7,7 @@ use super::{
     DctImage,
     frame::{Frame, Storage},
 };
+pub(super) use cells::Cells;
 pub(super) use idct::Idct;
 use pagura_core::{Error, Limits, Result};
 use rgb::{Offsets, Rgb};
@@ -28,6 +30,18 @@ fn sample(value: f64) -> u8 {
 
 pub(super) trait Sample: Copy + Default {
     fn from_idct(value: f64) -> Self;
+    /// Reconstructs one block at full size, or into fewer cells.
+    fn reconstruct(
+        idct: &Idct,
+        cells: Option<&Cells>,
+        quant: &[u16; 64],
+        coefficients: &[i32; 64],
+        plane: &mut [Self],
+        (stride, index): (usize, usize),
+    ) -> Option<()> {
+        debug_assert!(cells.is_none());
+        reconstruct(idct, quant, coefficients, plane, stride, index)
+    }
     /// The samples of a sequential component, reconstructed during its scan.
     fn plane(storage: &mut Storage) -> Option<&mut Vec<Self>>;
     fn fused(_frame: &Frame, _planes: &[Vec<Self>], _samples: &mut [Self]) -> bool {
@@ -37,6 +51,19 @@ pub(super) trait Sample: Copy + Default {
 }
 
 impl Sample for u8 {
+    fn reconstruct(
+        idct: &Idct,
+        cells: Option<&Cells>,
+        quant: &[u16; 64],
+        coefficients: &[i32; 64],
+        plane: &mut [Self],
+        (stride, index): (usize, usize),
+    ) -> Option<()> {
+        match cells {
+            Some(cells) => cells.reconstruct(idct, quant, coefficients, plane, stride, index),
+            None => reconstruct(idct, quant, coefficients, plane, stride, index),
+        }
+    }
     fn fused(frame: &Frame, planes: &[Vec<Self>], samples: &mut [Self]) -> bool {
         fused_rgb(frame, planes, samples)
     }
@@ -169,6 +196,13 @@ pub(super) fn reconstruct<T: Sample>(
     Some(())
 }
 
+/// The length of a frame axis that keeps `cells` samples per eight: whole
+/// blocks plus the partial cells of a final partial block.
+pub(super) fn scaled(length: u32, cells: usize) -> u32 {
+    let cells = u64::try_from(cells).unwrap_or(8);
+    u32::try_from((u64::from(length) * cells).div_ceil(8)).unwrap_or(length)
+}
+
 fn output_native<T: Sample>(
     frame: &mut Frame,
     adobe: Option<u8>,
@@ -177,8 +211,13 @@ fn output_native<T: Sample>(
 ) -> Result<DctImage> {
     let n = u8::try_from(frame.components.len())
         .map_err(|_| Error::syntax("invalid JPEG component count"))?;
-    let count = crate::parameters::budget(frame.width, frame.height, n, 8, limits)?;
+    let (width, height) = (
+        scaled(frame.width, frame.cells),
+        scaled(frame.height, frame.cells),
+    );
+    let count = crate::parameters::budget(width, height, n, 8, limits)?;
     let idct = Idct::new();
+    let cells = (frame.cells < 8).then(|| Cells::new(frame.cells));
     let mut planes = Vec::with_capacity(usize::from(n));
     for c in &mut frame.components {
         if c.approximation[0] < 0 || (!frame.progressive && c.approximation.iter().any(|&v| v < 0))
@@ -193,10 +232,18 @@ fn output_native<T: Sample>(
         let Storage::Coefficients(blocks) = &c.storage else {
             return Err(Error::syntax("JPEG component precision mismatch"));
         };
-        let mut plane = vec![T::default(); c.stride * c.rows * 64];
+        let side = frame.cells;
+        let mut plane = vec![T::default(); c.stride * c.rows * side * side];
         for (index, coefficients) in blocks.iter().enumerate() {
-            reconstruct(&idct, &quant, coefficients, &mut plane, c.stride, index)
-                .ok_or(Error::syntax("JPEG block outside component"))?;
+            T::reconstruct(
+                &idct,
+                cells.as_ref(),
+                &quant,
+                coefficients,
+                &mut plane,
+                (c.stride, index),
+            )
+            .ok_or(Error::syntax("JPEG block outside component"))?;
         }
         planes.push(plane);
     }
@@ -216,27 +263,31 @@ fn output_native<T: Sample>(
     let mut samples = vec![T::default(); count];
     if convert && T::fused(frame, &planes, &mut samples) {
         return Ok(DctImage {
-            width: frame.width,
-            height: frame.height,
+            width,
+            height,
             components: n,
             samples: T::finish(samples, usize::from(n), false),
+            cells: u8::try_from(frame.cells).unwrap_or(8),
         });
     }
     let components = usize::from(n);
-    let width = frame.width as usize;
     for (i, c) in frame.components.iter().enumerate() {
-        let pitch = c.stride * 8;
-        for (y, row) in samples.chunks_exact_mut(width * components).enumerate() {
+        let pitch = c.stride * frame.cells;
+        for (y, row) in samples
+            .chunks_exact_mut(width as usize * components)
+            .enumerate()
+        {
             let sy = y * c.v / frame.max_v;
             let source = &planes[i][sy * pitch..(sy + 1) * pitch];
             expand(source, &mut row[i..], components, c.h, frame.max_h);
         }
     }
     Ok(DctImage {
-        width: frame.width,
-        height: frame.height,
+        width,
+        height,
         components: n,
         samples: T::finish(samples, components, convert),
+        cells: u8::try_from(frame.cells).unwrap_or(8),
     })
 }
 
@@ -256,9 +307,9 @@ fn fused_rgb(frame: &Frame, planes: &[Vec<u8>], samples: &mut [u8]) -> bool {
         return false;
     }
     let repeat = frame.max_h / cb.h;
-    let width = frame.width as usize;
-    let pitch = y.stride * 8;
-    let chroma_pitch = cb.stride * 8;
+    let width = scaled(frame.width, frame.cells) as usize;
+    let pitch = y.stride * frame.cells;
+    let chroma_pitch = cb.stride * frame.cells;
     let mut offsets = Offsets::default();
     let mut filled = None;
     for (line, output) in samples.chunks_exact_mut(width * 3).enumerate() {

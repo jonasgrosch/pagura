@@ -79,8 +79,18 @@ impl RenderContext {
     /// # Errors
     /// As [`crate::compile_page`]. A page from another document is rejected.
     pub fn compile_page(&self, page: &Page) -> Result<DisplayList> {
+        self.compile(page, None)
+    }
+
+    fn compile(&self, page: &Page, drawn: Option<f64>) -> Result<DisplayList> {
         self.check_owned(page)?;
-        interpreter::compile_cached(&self.document, page, self.provider.as_deref(), &self.fonts)
+        interpreter::compile_cached(
+            &self.document,
+            page,
+            self.provider.as_deref(),
+            &self.fonts,
+            drawn,
+        )
     }
 
     /// Compiles a page with in-memory form values, sharing fonts and outlines.
@@ -138,7 +148,7 @@ impl RenderContext {
     /// # Errors
     /// As [`Self::compile_page`] and [`DisplayList::render`].
     pub fn render_page(&self, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
-        let list = self.compile_page(page)?;
+        let list = self.compile(page, options.drawn_scale(page))?;
         let (width, height) = list.device_size(options)?;
         let tile = Tile {
             x: 0,
@@ -154,7 +164,7 @@ impl RenderContext {
     /// # Errors
     /// As [`Self::compile_page`] and [`DisplayList::render_tile`].
     pub fn render_tile(&self, page: &Page, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
-        self.compile_page(page)?
+        self.compile(page, options.drawn_scale(page))?
             .render_tile_with(options, tile, Some(&self.glyphs))
     }
 }

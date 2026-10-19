@@ -48,6 +48,8 @@ impl Compiler<'_> {
                     .ok_or(Error::syntax("pattern requires Resources"))?,
             )?;
             let mut child = self.detached();
+            // Pattern space does not give an image its device size.
+            child.drawn = None;
             child.forms.push(t.id);
             child.state = self.initial_state.clone();
             child.state.ctm = Transform::IDENTITY;

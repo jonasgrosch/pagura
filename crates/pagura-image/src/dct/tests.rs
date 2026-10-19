@@ -173,3 +173,139 @@ fn twelve_bit_native_buffers_are_admitted_before_allocation() {
     .unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
 }
+
+/// Exact rational area means of a full decode's samples over cell (row,
+/// column) of `cells` per eight, when the cell lies inside the frame.
+fn cell_mean(
+    full: &super::DctImage,
+    cells: u32,
+    (row, column): (u32, u32),
+    c: usize,
+) -> Option<u8> {
+    let components = usize::from(full.components);
+    let (x0, x1) = (column * 8, (column + 1) * 8);
+    let (y0, y1) = (row * 8, (row + 1) * 8);
+    if x1 > full.width * cells || y1 > full.height * cells {
+        return None;
+    }
+    // Work in units of 1/cells of a sample: cell edges fall on 8 units.
+    let overlap = |s: u32, low: u32, high: u32| {
+        (cells * (s + 1))
+            .min(high)
+            .saturating_sub((cells * s).max(low))
+    };
+    let mut sum = 0u64;
+    for y in 0..full.height {
+        let wy = overlap(y, y0, y1);
+        for x in 0..full.width {
+            let w = u64::from(wy * overlap(x, x0, x1));
+            let index = (y as usize * full.width as usize + x as usize) * components + c;
+            sum += w * u64::from(full.samples[index]);
+        }
+    }
+    u8::try_from((sum + 32) / 64).ok()
+}
+
+#[test]
+fn six_cells_are_exact_means_of_the_full_gray_samples() {
+    let limits = Limits::default();
+    let mut strict = pagura_core::Diagnostics::new(pagura_core::Recovery::Strict);
+    for name in [
+        "jpeg-baseline-gray",
+        "jpeg-restart",
+        "jpeg-progressive",
+        "jpeg-extended",
+    ] {
+        let data = fixture("image", &format!("{name}.in"));
+        let full = super::decode(&data, Some(0), &limits).unwrap();
+        let six = super::decode_cells(&data, Some(0), &limits, &mut strict, 6).unwrap();
+        assert_eq!(six.cells, 6);
+        assert_eq!(
+            (six.width, six.height),
+            (
+                super::scaled_length(full.width, 6),
+                super::scaled_length(full.height, 6)
+            )
+        );
+        let mut compared = 0;
+        for row in 0..six.height {
+            for column in 0..six.width {
+                if let Some(expected) = cell_mean(&full, 6, (row, column), 0) {
+                    let actual = six.samples[(row * six.width + column) as usize];
+                    assert_eq!(actual, expected, "{name} ({row},{column})");
+                    compared += 1;
+                }
+            }
+        }
+        assert!(compared > 0, "{name}");
+    }
+}
+
+#[test]
+fn reduced_frames_decode_and_fail_as_full_frames_do() {
+    let limits = Limits {
+        pixels: 4096,
+        decoded_bytes: 1 << 20,
+        operations: 100_000,
+        ..Limits::default()
+    };
+    let mut repair = pagura_core::Diagnostics::new(pagura_core::Recovery::Repair);
+    for name in [
+        "jpeg-baseline-gray",
+        "jpeg-baseline-rgb",
+        "jpeg-420",
+        "jpeg-interleaved-420",
+        "jpeg-interleaved-progressive",
+        "jpeg-progressive-rgb",
+        "jpeg-arithmetic-sequential",
+        "jpeg-cmyk",
+        "jpeg-bad-huffman",
+        "jpeg-missing-scan",
+        "jpeg-truncated",
+    ] {
+        let data = fixture("image", &format!("{name}.in"));
+        let full = super::decode(&data, None, &limits);
+        for cells in [1, 2, 3, 4, 6, 8] {
+            let reduced = super::decode_cells(&data, None, &limits, &mut repair, cells);
+            match (&full, &reduced) {
+                (Ok(full), Ok(reduced)) => {
+                    assert_eq!(reduced.cells, cells, "{name}");
+                    assert_eq!(reduced.components, full.components, "{name}");
+                    assert_eq!(reduced.width, super::scaled_length(full.width, cells));
+                    assert_eq!(reduced.height, super::scaled_length(full.height, cells));
+                    let count = reduced.width as usize
+                        * reduced.height as usize
+                        * usize::from(reduced.components);
+                    assert_eq!(reduced.samples.len(), count, "{name} {cells}");
+                    if cells == 8 {
+                        assert_eq!(reduced, full, "{name}");
+                    }
+                }
+                (Err(full), Err(reduced)) => assert_eq!(reduced.kind, full.kind, "{name}"),
+                _ => panic!("{name} with {cells} cells: {full:?} but {reduced:?}"),
+            }
+        }
+        for end in (0..data.len()).step_by(3) {
+            let prefix = &data[..end];
+            assert_eq!(
+                super::decode_cells(prefix, None, &limits, &mut repair, 3).is_ok(),
+                super::decode(prefix, None, &limits).is_ok(),
+                "{name} prefix {end}"
+            );
+        }
+    }
+}
+
+#[test]
+fn twelve_bit_frames_keep_every_sample_and_counts_are_validated() {
+    let limits = Limits::default();
+    let mut strict = pagura_core::Diagnostics::new(pagura_core::Recovery::Strict);
+    let data = fixture("image", "jpeg-12bit-sequential.in");
+    let reduced = super::decode_cells(&data, Some(0), &limits, &mut strict, 2).unwrap();
+    assert_eq!(reduced.cells, 8);
+    assert_eq!(reduced, super::decode(&data, Some(0), &limits).unwrap());
+    for cells in [0, 5, 7, 9, 16] {
+        let error = super::decode_cells(&data, Some(0), &limits, &mut strict, cells).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::InvalidArgument);
+    }
+}

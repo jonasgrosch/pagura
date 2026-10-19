@@ -36,6 +36,8 @@ impl Compiler<'_> {
             .and_then(Value::as_reference)
             .ok_or(Error::syntax("soft mask requires a group stream"))?;
         let mut child = self.detached();
+        // Soft masks keep exactly decoded images.
+        child.drawn = None;
         child.state.clip = None;
         child.state.clip_depth = 0;
         child.state.composite = Composite {

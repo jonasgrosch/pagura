@@ -54,7 +54,8 @@ impl Compiler<'_> {
                 .transpose()?
                 .unwrap_or(true);
             self.extract_graphic_object(id, !visible)?;
-            let image = self.image_resource(id, resources, &mut Vec::new())?;
+            let cells = self.drawn_cells(dict)?;
+            let image = self.image_resource(id, resources, &mut Vec::new(), cells)?;
             if self.visible && visible {
                 self.image_mark(image)?;
             }
@@ -64,11 +65,62 @@ impl Compiler<'_> {
         }
     }
 
+    /// JPEG samples kept per eight-sample block axis for an image XObject
+    /// drawn at the current CTM ([`crate::Accuracy::RowFragments`]). Eight, an
+    /// exact decode, unless the image is an opaque DeviceGray or DeviceRGB
+    /// DCTDecode image without Decode array, minified in page space.
+    fn drawn_cells(&self, dict: &Dictionary) -> Result<u8> {
+        const EXACT: u8 = 8;
+        let Some(scale) = self.drawn else {
+            return Ok(EXACT);
+        };
+        let resolve = |key: &[u8]| {
+            dict.get(key)
+                .map(|value| self.document.resolve(value))
+                .transpose()
+                .map(|value| value.filter(|value| !value.is_null()))
+        };
+        let terminal = match resolve(b"Filter")? {
+            Some(Value::Array(filters)) => filters
+                .last()
+                .map(|value| self.document.resolve(value))
+                .transpose()?,
+            filter => filter,
+        };
+        let mut exact = terminal
+            .and_then(Value::as_name)
+            .is_none_or(|n| n != b"DCTDecode")
+            || resolve(b"ColorSpace")?
+                .and_then(Value::as_name)
+                .is_none_or(|n| n != b"DeviceGray" && n != b"DeviceRGB")
+            || resolve(b"ImageMask")?.and_then(Value::as_bool) == Some(true);
+        for key in [b"Mask".as_slice(), b"SMask", b"Decode"] {
+            exact |= resolve(key)?.is_some();
+        }
+        if exact {
+            return Ok(EXACT);
+        }
+        let dimension = |key: &[u8]| -> Result<Option<f64>> {
+            Ok(resolve(key)?
+                .and_then(Value::as_integer)
+                .filter(|&n| n > 0)
+                .and_then(|n| u32::try_from(n).ok())
+                .map(f64::from))
+        };
+        let (Some(width), Some(height)) = (dimension(b"Width")?, dimension(b"Height")?) else {
+            return Ok(EXACT);
+        };
+        let t = self.state.ctm;
+        let ratio = (width / (t.a.hypot(t.b) * scale)).min(height / (t.c.hypot(t.d) * scale));
+        Ok(drawn_cells(ratio))
+    }
+
     fn image_resource(
         &self,
         id: ObjectId,
         resources: &Dictionary,
         stack: &mut Vec<ObjectId>,
+        cells: u8,
     ) -> Result<Arc<Image>> {
         if stack.contains(&id) {
             return Err(Error::cycle("recursive image mask").in_object(id));
@@ -76,13 +128,13 @@ impl Compiler<'_> {
         if stack.len() >= self.document.limits().depth {
             return Err(Error::limit("image mask nesting exceeded"));
         }
-        let key = (id, self.resource_identity(resources)?);
+        let key = (id, self.resource_identity(resources)?, cells);
         if let Some(image) = self.state.text.cache.borrow().images.get(&key) {
             return Ok(Arc::clone(image));
         }
         stack.push(id);
         let object = self.document.object(id)?;
-        let decoded = pagura_image::decode_xobject(self.document, object)?;
+        let decoded = pagura_image::decode_xobject_cells(self.document, object, cells)?;
         let image = self
             .prepare_image(
                 decoded,
@@ -126,7 +178,7 @@ impl Compiler<'_> {
             .map_err(|_| Error::limit("image pixel count exceeds usize"))?;
         let mask = match decoded.mask {
             MaskKind::Soft(id) | MaskKind::Stencil(id) => {
-                Some(self.image_resource(id, resources, stack)?)
+                Some(self.image_resource(id, resources, stack, 8)?)
             }
             MaskKind::InData => {
                 return Err(Error::unsupported(
@@ -411,6 +463,17 @@ impl Compiler<'_> {
         Ok(())
     }
 }
+
+/// The fewest JPEG cells per eight-sample block axis, of 1, 2, 3, 4 and 6,
+/// that leave at least two cells per device pixel; else all eight. `ratio`
+/// is the image's samples per device pixel along its less minified axis.
+fn drawn_cells(ratio: f64) -> u8 {
+    [1, 2, 3, 4, 6]
+        .into_iter()
+        .find(|&cells| ratio * f64::from(cells) >= 16.0)
+        .unwrap_or(8)
+}
+
 fn sample_bytes(samples: &Samples) -> usize {
     samples
         .len()
@@ -483,4 +546,27 @@ fn decode_ranges(decoded: &DecodedImage, space: Option<&Space>) -> Result<Vec<(f
         decode.push(range);
     }
     Ok(decode)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn drawn_cells_keep_at_least_two_cells_per_device_pixel() {
+        for (ratio, cells) in [
+            (f64::NAN, 8),
+            (0.5, 8),
+            (1.0, 8),
+            (2.6, 8),
+            (8.0 / 3.0, 6),
+            (3.9, 6),
+            (4.0, 4),
+            (5.4, 3),
+            (8.0, 2),
+            (15.9, 2),
+            (16.0, 1),
+            (f64::INFINITY, 1),
+        ] {
+            assert_eq!(super::drawn_cells(ratio), cells, "{ratio}");
+        }
+    }
 }
