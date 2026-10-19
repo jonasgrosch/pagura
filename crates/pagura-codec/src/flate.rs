@@ -1,18 +1,29 @@
-//! Zlib/DEFLATE, RFC 1950 sections 2.2/2.3 and RFC 1951 section 3.2.
-//! [`compress`] chooses stored, fixed or dynamic blocks with bounded LZ77 work.
-//! Canonical Huffman codes are expanded into direct lookup tables. Backrefs
-//! read predictor-free output directly; predictors retain a bounded circular
-//! window of pre-predictor bytes (at most 32 KiB).
-use pagura_core::Result;
+//! Zlib/DEFLATE, RFC 1950 2.2/2.3 and RFC 1951 3.2.
+//!
+//! Decoding (`inflate`) expands each canonical Huffman code into a direct
+//! lookup table, one lookup per symbol; the fixed code's tables are built
+//! once per stream. Backrefs read predictor-free output directly; predictors
+//! retain a bounded circular window of pre-predictor bytes (at most 32 KiB).
+//! [`compress`] (`deflate`) chooses stored, fixed or dynamic blocks with
+//! bounded LZ77 work (`matcher`). Both directions share the RFC 1951
+//! tables (`tables`), the canonical code assignment (`huffman`), the bit
+//! packing (`bits`) and the zlib framing (`zlib`).
+use pagura_core::{Limits, Result};
 
-mod adler;
+mod bits;
 mod deflate;
 mod huffman;
 mod inflate;
 mod matcher;
 mod tables;
+mod zlib;
 
 pub(crate) use inflate::{decode, raw};
+pub(crate) use tables::WINDOW;
+
+/// The shortest zlib stream: header, an empty fixed block (ten bits padded
+/// to two bytes) and the Adler-32 trailer.
+pub(crate) const MIN_STREAM: usize = zlib::HEADER + 2 + zlib::TRAILER;
 
 /// Compression effort. Both modes emit deterministic RFC 1950 zlib streams.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -33,10 +44,13 @@ pub enum Level {
 /// `Limits::decoded_bytes` bounds input and `Limits::stream_bytes` bounds output.
 /// Empty input produces a complete stream; no preset dictionary is used.
 ///
+/// No product path calls this yet; ADR 0020 records the intended consumer
+/// (Flate-encoded streams written by `pagura-write`).
+///
 /// # Errors
 ///
-/// Returns a positioned `Limit` error before exceeding either byte budget or
-/// when bounded scratch/output storage cannot be allocated.
+/// Returns a `Limit` error, without a position, before exceeding either
+/// byte budget or when bounded scratch/output storage cannot be allocated.
 ///
 /// # Examples
 ///
@@ -47,6 +61,6 @@ pub enum Level {
 /// assert!(zlib.len() >= 8);
 /// # Ok::<(), pagura_core::Error>(())
 /// ```
-pub fn compress(data: &[u8], level: Level, limits: &pagura_core::Limits) -> Result<Vec<u8>> {
+pub fn compress(data: &[u8], level: Level, limits: &Limits) -> Result<Vec<u8>> {
     deflate::compress(data, level, limits)
 }

@@ -1,21 +1,23 @@
 //! DEFLATE decoding (RFC 1951 3.2) inside optional zlib framing (RFC 1950 2.2).
-use super::adler;
-use super::tables::{DIST_BASE, DIST_EXTRA, LENGTH_BASE, LENGTH_EXTRA};
+use super::bits::{Fault, Read, Reader};
+use super::huffman::{Alphabet, Decoder};
+use super::tables::{
+    BlockType, CODE_LENGTH_ORDER, CODE_LENGTH_SYMBOLS, DIST_BASE, DIST_EXTRA, END_OF_BLOCK,
+    FIRST_LENGTH, FIXED_DISTANCE_BITS, FIXED_DISTANCE_SYMBOLS, LAST_LENGTH, LENGTH_BASE,
+    LENGTH_EXTRA, LITERAL_SYMBOLS, MAX_MATCH, MAX_STORED, MIN_CODE_LENGTH_CODES, REPEAT_PREVIOUS,
+    REPEAT_ZERO, REPEAT_ZERO_LONG, WINDOW, fixed_literal_lengths,
+};
+use super::zlib::{self, Adler32};
 use crate::report::{Trailer, repair, syntax, trailing};
-use crate::{Predictor, output::Output, repairs};
-use pagura_core::{Diagnostics, Error, Result};
+use crate::{Predictor, PredictorKind, output::Output, repairs};
+use pagura_core::{Diagnostics, Result};
 
-#[derive(Debug)]
-enum Fault {
-    End,
-    Invalid(Error),
+/// Whether DEFLATE data is wrapped in zlib framing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Framing {
+    Zlib,
+    Raw,
 }
-impl From<Error> for Fault {
-    fn from(error: Error) -> Self {
-        Self::Invalid(error)
-    }
-}
-type InflateResult<T> = std::result::Result<T, Fault>;
 
 pub(crate) fn decode(
     input: &[u8],
@@ -26,17 +28,19 @@ pub(crate) fn decode(
     // RFC 1951 stored-block padding can mimic CM=8. Prefer a valid zlib
     // header, otherwise recognize a structurally valid raw stored block.
     // Never retry raw decoding after accepting a zlib header.
-    let candidate = input.first().is_some_and(|byte| byte & 15 == 8);
-    let wrapped = candidate && (valid_zlib_header(input) || !raw_stored_header(input));
-    if !wrapped {
+    let candidate = input.first().is_some_and(|&cmf| zlib::is_deflate(cmf));
+    let framing = if candidate && (valid_zlib_header(input) || !raw_stored_header(input)) {
+        Framing::Zlib
+    } else {
         repair(
             diagnostics,
             repairs::RAW_DEFLATE,
             "FlateDecode data lacks the zlib wrapper; decoded as raw DEFLATE",
             0,
         )?;
-    }
-    inflate(input, cap, predictor, diagnostics, wrapped)
+        Framing::Raw
+    };
+    inflate(input, cap, predictor, framing, diagnostics)
 }
 
 pub(crate) fn raw(
@@ -45,17 +49,17 @@ pub(crate) fn raw(
     predictor: Predictor,
     diagnostics: &mut Diagnostics,
 ) -> Result<Vec<u8>> {
-    inflate(input, cap, predictor, diagnostics, false)
+    inflate(input, cap, predictor, Framing::Raw, diagnostics)
 }
 
 fn inflate(
     input: &[u8],
     cap: usize,
     predictor: Predictor,
+    framing: Framing,
     diagnostics: &mut Diagnostics,
-    wrapped: bool,
 ) -> Result<Vec<u8>> {
-    if wrapped && input.len() < 2 {
+    if framing == Framing::Zlib && input.len() < zlib::HEADER {
         repair(
             diagnostics,
             repairs::TRUNCATED,
@@ -64,14 +68,13 @@ fn inflate(
         )?;
         return Output::new(cap, predictor)?.finish(input.len());
     }
-    let (start, window) = if wrapped { header(input)? } else { (0, 32768) };
-    let mut bits = Bits {
-        input,
-        offset: start,
-        bit: 0,
+    let (start, window) = match framing {
+        Framing::Zlib => header(input)?,
+        Framing::Raw => (0, WINDOW),
     };
+    let mut bits = Reader::new(input, start);
     let output = Output::new(cap, predictor)?;
-    let history = if predictor.kind() == crate::PredictorKind::None {
+    let history = if predictor.kind() == PredictorKind::None {
         None
     } else {
         Some(History::new(output.history_capacity().min(window))?)
@@ -80,16 +83,16 @@ fn inflate(
         output,
         history,
         window,
-        adler_a: 1,
-        adler_b: 0,
-        adler_pending: 0,
+        adler: Adler32::new(),
     };
     match inflater.blocks(&mut bits) {
         Ok(()) => {
             bits.align();
-            if wrapped {
+            if framing == Framing::Zlib {
                 let checksum_offset = bits.offset;
-                let Some(checksum) = input.get(checksum_offset..).and_then(|tail| tail.get(..4))
+                let Some(checksum) = input
+                    .get(checksum_offset..)
+                    .and_then(|tail| tail.first_chunk::<{ zlib::TRAILER }>())
                 else {
                     repair(
                         diagnostics,
@@ -99,12 +102,7 @@ fn inflate(
                     )?;
                     return inflater.output.finish(input.len());
                 };
-                let expected = checksum
-                    .iter()
-                    .fold(0_u32, |value, &byte| (value << 8) | u32::from(byte));
-                inflater.adler_a %= 65521;
-                inflater.adler_b %= 65521;
-                if expected != (inflater.adler_b << 16) | inflater.adler_a {
+                if u32::from_be_bytes(*checksum) != inflater.adler.finish() {
                     repair(
                         diagnostics,
                         repairs::CHECKSUM_MISMATCH,
@@ -112,7 +110,7 @@ fn inflate(
                         checksum_offset,
                     )?;
                 }
-                bits.offset += 4;
+                bits.offset += zlib::TRAILER;
             }
             trailing(input, bits.offset, Trailer::Nothing, diagnostics)?;
             inflater.output.finish(bits.offset)
@@ -131,9 +129,7 @@ fn inflate(
 }
 
 fn valid_zlib_header(input: &[u8]) -> bool {
-    matches!(input.get(..2), Some([cmf, flg])
-        if cmf & 15 == 8 && cmf >> 4 <= 7
-            && (u16::from(*cmf) * 256 + u16::from(*flg)) % 31 == 0)
+    matches!(input.get(..zlib::HEADER), Some(&[cmf, flg]) if zlib::window(cmf, flg).is_some())
 }
 
 fn raw_stored_header(input: &[u8]) -> bool {
@@ -141,6 +137,7 @@ fn raw_stored_header(input: &[u8]) -> bool {
         if lo ^ nlo == 255 && hi ^ nhi == 255)
 }
 
+/// Where the DEFLATE data starts and the window the header declares.
 fn header(input: &[u8]) -> Result<(usize, usize)> {
     let Some((&cmf, tail)) = input.split_first() else {
         return Err(syntax("zlib header missing", 0));
@@ -148,174 +145,13 @@ fn header(input: &[u8]) -> Result<(usize, usize)> {
     let Some(&flg) = tail.first() else {
         return Err(syntax("zlib header truncated", input.len()));
     };
-    if cmf >> 4 > 7 || (u16::from(cmf) * 256 + u16::from(flg)) % 31 != 0 {
-        return Err(syntax("invalid zlib header", 0));
-    }
-    if flg & 32 != 0 {
+    let window = zlib::window(cmf, flg).ok_or_else(|| syntax("invalid zlib header", 0))?;
+    if flg & zlib::PRESET_DICTIONARY != 0 {
         // RFC 1950 2.3 forbids FDICT in an enclosing format without preset
-        // dictionaries; ISO 32000-2 7.4.4 defines none for FlateDecode.
+        // dictionaries; 7.4.4 defines none for FlateDecode.
         return Err(syntax("zlib preset dictionary forbidden by PDF", 1));
     }
-    Ok((2, 1 << ((cmf >> 4) + 8)))
-}
-
-struct Bits<'a> {
-    input: &'a [u8],
-    offset: usize,
-    bit: u8,
-}
-impl Bits<'_> {
-    fn peek(&self, width: u8) -> (usize, u8) {
-        if let Some(bytes) = self
-            .input
-            .get(self.offset..)
-            .and_then(|tail| tail.first_chunk::<4>())
-        {
-            let value = u32::from_le_bytes(*bytes) >> self.bit;
-            return (
-                usize::try_from(value & ((1 << width) - 1)).unwrap_or(0),
-                width,
-            );
-        }
-        let mut value = 0_usize;
-        let mut available = 0;
-        for index in 0..3 {
-            let Some(&byte) = self
-                .offset
-                .checked_add(index)
-                .and_then(|i| self.input.get(i))
-            else {
-                break;
-            };
-            value |= usize::from(byte) << (index * 8);
-            available += 8;
-        }
-        (
-            value >> self.bit & ((1 << width) - 1),
-            (available - self.bit).min(width),
-        )
-    }
-    fn read(&mut self, width: u8) -> InflateResult<usize> {
-        let (value, available) = self.peek(width);
-        if available < width {
-            return Err(Fault::End);
-        }
-        self.advance(width);
-        Ok(value)
-    }
-    fn advance(&mut self, width: u8) {
-        let total = self.bit + width;
-        self.offset += usize::from(total / 8);
-        self.bit = total % 8;
-    }
-    fn align(&mut self) {
-        if self.bit != 0 {
-            self.offset += 1;
-            self.bit = 0;
-        }
-    }
-}
-
-#[derive(Clone, Copy, Default)]
-struct Entry {
-    symbol: u16,
-    bits: u8,
-}
-struct Huffman {
-    entries: Vec<Entry>,
-    width: u8,
-}
-impl Huffman {
-    fn new(lengths: &[u8], allow_single: bool, allow_empty: bool, offset: usize) -> Result<Self> {
-        let mut counts = [0_usize; 16];
-        for &length in lengths {
-            let slot = counts
-                .get_mut(usize::from(length))
-                .ok_or_else(|| syntax("invalid Huffman code length", offset))?;
-            *slot += 1;
-        }
-        let width = lengths.iter().copied().max().unwrap_or(0);
-        if width == 0 {
-            if allow_empty {
-                return Ok(Self {
-                    entries: Vec::new(),
-                    width: 0,
-                });
-            }
-            return Err(syntax("empty Huffman alphabet", offset));
-        }
-        let mut remaining = 1_isize;
-        for &count in counts.iter().skip(1) {
-            remaining = remaining * 2
-                - isize::try_from(count)
-                    .map_err(|_| syntax("Huffman alphabet too large", offset))?;
-            if remaining < 0 {
-                return Err(syntax("oversubscribed Huffman alphabet", offset));
-            }
-        }
-        // RFC 1951 3.2.7 explicitly allows a one-bit single distance code.
-        // General incomplete-tree rejection is decoder policy: 3.2.1/3.2.2
-        // require prefix/canonical codes but do not explicitly require a
-        // complete tree. The same one-symbol exception permits EOB-only blocks.
-        if remaining != 0 && !(allow_single && width == 1 && counts[1] == 1) {
-            return Err(syntax("incomplete Huffman alphabet", offset));
-        }
-        let mut next = [0_usize; 16];
-        // Zero lengths do not participate in canonical code assignment.
-        next[1] = 0;
-        for bits in 2..=15 {
-            next[bits] = (next[bits - 1] + counts[bits - 1]) << 1;
-        }
-        let size = 1_usize << width;
-        let mut entries = Vec::new();
-        entries
-            .try_reserve_exact(size)
-            .map_err(|_| crate::bounded::decode_limit(offset))?;
-        entries.resize(size, Entry::default());
-        for (symbol, &length) in lengths.iter().enumerate() {
-            if length == 0 {
-                continue;
-            }
-            let slot = next
-                .get_mut(usize::from(length))
-                .ok_or_else(|| syntax("invalid Huffman length", offset))?;
-            let reversed = slot.reverse_bits() >> (usize::BITS - u32::from(length));
-            *slot += 1;
-            let entry = Entry {
-                symbol: u16::try_from(symbol)
-                    .map_err(|_| syntax("Huffman symbol too large", offset))?,
-                bits: length,
-            };
-            for index in (reversed..size).step_by(1 << length) {
-                if let Some(target) = entries.get_mut(index) {
-                    *target = entry;
-                }
-            }
-        }
-        Ok(Self { entries, width })
-    }
-    fn read(&self, bits: &mut Bits<'_>) -> InflateResult<u16> {
-        if self.width == 0 {
-            return Err(syntax("distance code in empty alphabet", bits.offset).into());
-        }
-        let (index, available) = bits.peek(self.width);
-        let entry = self
-            .entries
-            .get(index)
-            .copied()
-            .ok_or_else(|| syntax("invalid Huffman code", bits.offset))?;
-        if entry.bits == 0 {
-            if available < self.width {
-                return Err(Fault::End);
-            }
-            return Err(syntax("invalid Huffman code", bits.offset).into());
-        }
-        if entry.bits > available {
-            return Err(Fault::End);
-        }
-        bits.advance(entry.bits);
-        Ok(entry.symbol)
-    }
+    Ok((zlib::HEADER, window))
 }
 
 // Allocated only when predictor reversal would change the history bytes.
@@ -384,52 +220,50 @@ struct Inflater {
     output: Output,
     history: Option<History>,
     window: usize,
-    adler_a: u32,
-    adler_b: u32,
-    adler_pending: usize,
+    adler: Adler32,
 }
+
 impl Inflater {
     fn emit(&mut self, bytes: &[u8], offset: usize) -> Result<()> {
         self.output.write(bytes, offset)?;
-        adler::update(
-            bytes,
-            &mut self.adler_a,
-            &mut self.adler_b,
-            &mut self.adler_pending,
-        );
+        self.adler.update(bytes);
         if let Some(history) = &mut self.history {
             history.write(bytes, offset)?;
         }
         Ok(())
     }
-    fn blocks(&mut self, bits: &mut Bits<'_>) -> InflateResult<()> {
+
+    fn blocks(&mut self, bits: &mut Reader<'_>) -> Read<()> {
+        // The fixed code's tables, built once for every fixed block.
+        let mut fixed = None;
         loop {
             let final_block = bits.read(1)? != 0;
-            match bits.read(2)? {
-                0 => self.stored(bits)?,
-                1 => {
-                    let mut lengths = [8; 288];
-                    lengths[144..256].fill(9);
-                    lengths[256..280].fill(7);
-                    let literal = Huffman::new(&lengths, false, false, bits.offset)?;
-                    let distance = Huffman::new(&[5; 32], false, false, bits.offset)?;
-                    self.compressed(bits, &literal, &distance)?;
+            match BlockType::from_bits(bits.read(2)?) {
+                Some(BlockType::Stored) => self.stored(bits)?,
+                Some(BlockType::Fixed) => {
+                    if fixed.is_none() {
+                        fixed = Some(fixed_tables(bits.offset)?);
+                    }
+                    if let Some((literal, distance)) = &fixed {
+                        self.compressed(bits, literal, distance)?;
+                    }
                 }
-                2 => {
+                Some(BlockType::Dynamic) => {
                     let (literal, distance) = dynamic(bits)?;
                     self.compressed(bits, &literal, &distance)?;
                 }
-                _ => return Err(syntax("reserved DEFLATE block type", bits.offset).into()),
+                None => return Err(syntax("reserved DEFLATE block type", bits.offset).into()),
             }
             if final_block {
                 return Ok(());
             }
         }
     }
-    fn stored(&mut self, bits: &mut Bits<'_>) -> InflateResult<()> {
+
+    fn stored(&mut self, bits: &mut Reader<'_>) -> Read<()> {
         bits.align();
         let length = bits.read(16)?;
-        if bits.read(16)? != (length ^ 65535) {
+        if bits.read(16)? != (length ^ MAX_STORED) {
             return Err(syntax("DEFLATE stored length mismatch", bits.offset).into());
         }
         let remaining = bits.input.len().saturating_sub(bits.offset);
@@ -446,23 +280,19 @@ impl Inflater {
         }
         Ok(())
     }
+
     fn compressed(
         &mut self,
-        bits: &mut Bits<'_>,
-        literal: &Huffman,
-        distance: &Huffman,
-    ) -> InflateResult<()> {
+        bits: &mut Reader<'_>,
+        literal: &Decoder,
+        distance: &Decoder,
+    ) -> Read<()> {
         // Without prediction, decoded bytes already are the DEFLATE history.
         // Accumulate their checksum once per block rather than once per symbol.
         if self.history.is_none() {
             let start = self.output.buffer().len();
             let result = self.compressed_inner::<true>(bits, literal, distance);
-            adler::update(
-                &self.output.buffer()[start..],
-                &mut self.adler_a,
-                &mut self.adler_b,
-                &mut self.adler_pending,
-            );
+            self.adler.update(&self.output.buffer()[start..]);
             return result;
         }
         self.compressed_inner::<false>(bits, literal, distance)
@@ -470,10 +300,10 @@ impl Inflater {
 
     fn compressed_inner<const RAW: bool>(
         &mut self,
-        bits: &mut Bits<'_>,
-        literal: &Huffman,
-        distance: &Huffman,
-    ) -> InflateResult<()> {
+        bits: &mut Reader<'_>,
+        literal: &Decoder,
+        distance: &Decoder,
+    ) -> Read<()> {
         loop {
             match literal.read(bits)? {
                 symbol @ 0..=255 => {
@@ -485,9 +315,9 @@ impl Inflater {
                         self.emit(&[byte], bits.offset)?;
                     }
                 }
-                256 => return Ok(()),
-                symbol @ 257..=285 => {
-                    let index = usize::from(symbol - 257);
+                END_OF_BLOCK => return Ok(()),
+                symbol @ FIRST_LENGTH..=LAST_LENGTH => {
+                    let index = usize::from(symbol - FIRST_LENGTH);
                     let base = LENGTH_BASE
                         .get(index)
                         .copied()
@@ -497,9 +327,9 @@ impl Inflater {
                         .copied()
                         .ok_or_else(|| syntax("invalid DEFLATE length", bits.offset))?;
                     let length = base + bits.read(extra)?;
-                    // RFC 1951 section 3.2.5 assigns code 284 lengths 227..257;
+                    // RFC 1951 3.2.5 assigns code 284 lengths 227..257;
                     // length 258 has its own code (285).
-                    if symbol == 284 && length == 258 {
+                    if symbol == LAST_LENGTH - 1 && length == MAX_MATCH {
                         return Err(syntax(
                             "DEFLATE length code exceeds assigned range",
                             bits.offset,
@@ -529,8 +359,9 @@ impl Inflater {
             }
         }
     }
+
     fn copy(&mut self, distance: usize, length: usize, offset: usize) -> Result<()> {
-        let mut scratch = [0; 258];
+        let mut scratch = [0; MAX_MATCH];
         let seed = distance.min(length);
         let target = scratch
             .get_mut(..seed)
@@ -555,36 +386,45 @@ impl Inflater {
     }
 }
 
-fn dynamic(bits: &mut Bits<'_>) -> InflateResult<(Huffman, Huffman)> {
-    let literals = bits.read(5)? + 257;
-    if literals > 286 {
+/// The fixed code's decoders (RFC 1951 3.2.6).
+fn fixed_tables(offset: usize) -> Result<(Decoder, Decoder)> {
+    Ok((
+        Decoder::new(&fixed_literal_lengths(), Alphabet::LiteralLength, offset)?,
+        Decoder::new(
+            &[FIXED_DISTANCE_BITS; FIXED_DISTANCE_SYMBOLS],
+            Alphabet::Distance,
+            offset,
+        )?,
+    ))
+}
+
+/// Reads a dynamic block's header (RFC 1951 3.2.7) and returns its
+/// literal/length and distance decoders.
+fn dynamic(bits: &mut Reader<'_>) -> Read<(Decoder, Decoder)> {
+    let literals = bits.read(5)? + usize::from(FIRST_LENGTH);
+    if literals > LITERAL_SYMBOLS {
         return Err(syntax("invalid DEFLATE literal count", bits.offset).into());
     }
     let distances = bits.read(5)? + 1;
-    let count = bits.read(4)? + 4;
-    let order = [
-        16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15,
-    ];
-    let mut code_lengths = [0; 19];
-    for &symbol in order.iter().take(count) {
+    let count = bits.read(4)? + MIN_CODE_LENGTH_CODES;
+    let mut code_lengths = [0; CODE_LENGTH_SYMBOLS];
+    for &symbol in CODE_LENGTH_ORDER.iter().take(count) {
         let value =
             u8::try_from(bits.read(3)?).map_err(|_| syntax("invalid code length", bits.offset))?;
         if let Some(slot) = code_lengths.get_mut(symbol) {
             *slot = value;
         }
     }
-    let codes = Huffman::new(&code_lengths, false, false, bits.offset)?;
+    let codes = Decoder::new(&code_lengths, Alphabet::CodeLength, bits.offset)?;
     let total = literals + distances;
-    let mut lengths = [0; 318];
+    // HDIST is five bits, so a header declares at most 32 distance lengths.
+    let mut lengths = [0; LITERAL_SYMBOLS + FIXED_DISTANCE_SYMBOLS];
     let mut cursor = 0;
     while cursor < total {
         let symbol = codes.read(bits)?;
-        let (value, repeat) = match symbol {
-            0..=15 => (
-                u8::try_from(symbol).map_err(|_| syntax("invalid code length", bits.offset))?,
-                1,
-            ),
-            16 => (
+        let (value, repeat) = match u8::try_from(symbol) {
+            Ok(length @ 0..=15) => (length, 1),
+            Ok(REPEAT_PREVIOUS) => (
                 lengths
                     .get(cursor.checked_sub(1).ok_or_else(|| {
                         syntax("Huffman repeat without previous length", bits.offset)
@@ -593,8 +433,8 @@ fn dynamic(bits: &mut Bits<'_>) -> InflateResult<(Huffman, Huffman)> {
                     .ok_or_else(|| syntax("Huffman repeat without previous length", bits.offset))?,
                 bits.read(2)? + 3,
             ),
-            17 => (0, bits.read(3)? + 3),
-            18 => (0, bits.read(7)? + 11),
+            Ok(REPEAT_ZERO) => (0, bits.read(3)? + 3),
+            Ok(REPEAT_ZERO_LONG) => (0, bits.read(7)? + 11),
             _ => return Err(syntax("invalid code-length symbol", bits.offset).into()),
         };
         let end = cursor + repeat;
@@ -606,23 +446,21 @@ fn dynamic(bits: &mut Bits<'_>) -> InflateResult<(Huffman, Huffman)> {
         }
         cursor = end;
     }
-    if lengths.get(256).copied().unwrap_or(0) == 0 {
+    if lengths.get(usize::from(END_OF_BLOCK)).copied().unwrap_or(0) == 0 {
         return Err(syntax("DEFLATE end code missing from alphabet", bits.offset).into());
     }
-    let literal = Huffman::new(
+    let literal = Decoder::new(
         lengths
             .get(..literals)
             .ok_or_else(|| syntax("invalid literal alphabet", bits.offset))?,
-        true,
-        false,
+        Alphabet::LiteralLength,
         bits.offset,
     )?;
-    let distance = Huffman::new(
+    let distance = Decoder::new(
         lengths
             .get(literals..total)
             .ok_or_else(|| syntax("invalid distance alphabet", bits.offset))?,
-        true,
-        true,
+        Alphabet::Distance,
         bits.offset,
     )?;
     Ok((literal, distance))
