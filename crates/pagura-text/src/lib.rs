@@ -28,6 +28,7 @@ use std::sync::Arc;
 mod cid_substitute;
 mod cidmap;
 mod cmap;
+mod descriptor;
 mod encoding;
 pub mod features;
 mod font;
@@ -212,19 +213,33 @@ impl PdfFont {
         font: &Dictionary,
         provider: &dyn Provider,
     ) -> Result<Self> {
-        font::load_with(document, font, Some(provider), false)
+        font::load_with(document, font, Some(provider), Position::Unknown, false)
     }
 
-    /// Loads a font for rendering: as [`Self::load_with`] (or [`Self::load`]
-    /// without a provider), except that an embedded TrueType program in a
-    /// `FlateDecode` stream whose `Length1` covers every table is decoded
-    /// only up to the end of the last table that drawing glyphs reads
-    /// (`head`, `hhea`, `hmtx`, `maxp`, `loca`, `glyf`, `cmap`, `post`).
-    /// Tables that end past that point are left out of the program's table
-    /// directory, so outlines, metrics and glyph selection are those of the
-    /// whole program; the unread tables, the stream's checksum, its length
-    /// against `Length1` and any damage after that point are not examined,
-    /// and are not reported.
+    /// Loads a font with an optional provider, locating the descriptor-flags
+    /// repair at `position`, typically the `Tf` operator that selected the
+    /// font.
+    ///
+    /// # Errors
+    /// As [`Self::load_with`].
+    pub fn load_at(
+        document: &Document,
+        font: &Dictionary,
+        provider: Option<&dyn Provider>,
+        position: Position,
+    ) -> Result<Self> {
+        font::load_with(document, font, provider, position, false)
+    }
+
+    /// Loads a font for rendering: as [`Self::load_at`], except that an
+    /// embedded TrueType program in a `FlateDecode` stream whose `Length1`
+    /// covers every table is decoded only up to the end of the last table
+    /// that drawing glyphs reads (`head`, `hhea`, `hmtx`, `maxp`, `loca`,
+    /// `glyf`, `cmap`, `post`). Tables that end past that point are left out
+    /// of the program's table directory, so outlines, metrics and glyph
+    /// selection are those of the whole program; the unread tables, the
+    /// stream's checksum, its length against `Length1` and any damage after
+    /// that point are not examined, and are not reported.
     ///
     /// # Errors
     /// As [`Self::load_with`].
@@ -232,8 +247,9 @@ impl PdfFont {
         document: &Document,
         font: &Dictionary,
         provider: Option<&dyn Provider>,
+        position: Position,
     ) -> Result<Self> {
-        font::load_with(document, font, provider, true)
+        font::load_with(document, font, provider, position, true)
     }
 
     /// Horizontal width in text space, by simple character code or CID.

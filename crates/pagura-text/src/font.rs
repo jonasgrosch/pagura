@@ -2,6 +2,7 @@
 use crate::{
     FontKind, GlyphShape, PdfFont, WritingMode,
     cmap::{self, CMap, Code},
+    descriptor::{Descriptor, FontFlags},
     encoding::{self, SimpleMapping},
     features,
     metrics::Metrics,
@@ -39,15 +40,17 @@ pub(crate) enum Mapping {
 }
 
 pub(crate) fn load(document: &Document, font: &Dictionary) -> Result<PdfFont> {
-    load_with(document, font, None, false)
+    load_with(document, font, None, Position::Unknown, false)
 }
 
-/// With `rendering`, a TrueType program is decoded only as far as drawing
-/// reads it ([`PdfFont::load_for_rendering`]).
+/// Loads `font`; `position` locates the descriptor-flags repair. With
+/// `rendering`, a TrueType program is decoded only as far as drawing reads
+/// it ([`PdfFont::load_for_rendering`]).
 pub(crate) fn load_with(
     document: &Document,
     font: &Dictionary,
     provider: Option<&dyn crate::Provider>,
+    position: Position,
     rendering: bool,
 ) -> Result<PdfFont> {
     let kind = kind(document, font)?;
@@ -73,16 +76,19 @@ pub(crate) fn load_with(
     } else {
         (font, None, None)
     };
-    let descriptor = optional(document, metrics_font, b"FontDescriptor")?
-        .map(|v| document.resolve_dictionary(v))
-        .transpose()?;
-    let embedded = descriptor.is_some_and(|dict| {
+    let descriptor = Descriptor::of(document, metrics_font)?;
+    let embedded = descriptor.is_some_and(|descriptor| {
         [b"FontFile".as_slice(), b"FontFile2", b"FontFile3"]
             .iter()
-            .any(|key| dict.contains_key(key))
+            .any(|key| descriptor.dictionary.contains_key(key))
     });
     if !embedded && let Some(provider) = provider {
         if let Some(mapping) = mapping {
+            // CID substitution ignores the flags, but a contradictory pair is
+            // still the descriptor's reported repair.
+            if let Some(descriptor) = descriptor {
+                descriptor.normalized_flags(document, position)?;
+            }
             return crate::cid_substitute::load(
                 document,
                 font,
@@ -92,15 +98,17 @@ pub(crate) fn load_with(
                 provider,
             );
         }
-        return crate::substitute::load(document, font, descriptor, kind, provider);
+        return crate::substitute::load(document, font, descriptor, kind, provider, position);
     }
     let descriptor = descriptor.ok_or_else(|| {
         Error::unsupported(features::NON_EMBEDDED, "font program is not embedded")
     })?;
-    let symbolic = symbolic(document, descriptor)?;
+    let symbolic = descriptor
+        .normalized_flags(document, position)?
+        .contains(FontFlags::SYMBOLIC);
     let program = Arc::new(crate::program::load(
         document,
-        descriptor,
+        descriptor.dictionary,
         kind,
         metrics_font,
         rendering,
@@ -108,7 +116,7 @@ pub(crate) fn load_with(
     let metrics = if kind == FontKind::Type0 {
         Metrics::composite(document, metrics_font)?
     } else {
-        Metrics::simple(document, font, Some(descriptor), 0.001)?
+        Metrics::simple(document, font, Some(descriptor.dictionary), 0.001)?
     };
     let mapping = if let Some(mapping) = mapping {
         mapping
@@ -179,19 +187,6 @@ fn composite_mapping(
         map: cmap::load_with(document, encoding, false, provider)?,
         shared,
     })
-}
-
-fn symbolic(document: &Document, descriptor: &Dictionary) -> Result<bool> {
-    let flags = optional(document, descriptor, b"Flags")?
-        .and_then(Value::as_integer)
-        .ok_or_else(|| Error::syntax("invalid font descriptor Flags"))?;
-    let symbolic = flags & 4 != 0;
-    if symbolic == (flags & 32 != 0) {
-        return Err(Error::syntax(
-            "font must set exactly one of Symbolic and Nonsymbolic",
-        ));
-    }
-    Ok(symbolic)
 }
 
 fn simple_mapping(

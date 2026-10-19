@@ -37,9 +37,3 @@ pub const TYPE1_DUPLICATE_GLYPH: Repair = Repair::new("font.type1-duplicate-glyp
 /// Drop unusable supplemental mappings, preserving the main encoding
 /// (TN 5176 section 12, Tables 14/15).
 pub const CFF_ENCODING_SUPPLEMENT: Repair = Repair::new("font.cff-encoding-supplement");
-
-/// Make Nonsymbolic the inverse of Symbolic when both flags are set or clear
-/// (ISO 32000-2 9.8.2/Table 121). Valid pairs retain their selection routes
-/// (9.6.5.2/4), even when their character-set metadata disagrees with the program.
-/// Applied by the renderer's immutable font-loader view, never to source bytes.
-pub const DESCRIPTOR_FLAGS: Repair = Repair::new("font.descriptor-flags");

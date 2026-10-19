@@ -880,11 +880,11 @@ def symbol_substitute_cases(data, lock):
         ("text-symbol-substitution",),"After the named Latin route lacks a glyph, a known Symbol TrueType face falls back to its AFM code mapping",{"driver":"bundled-symbol"})
 
 
-def cid_substitute_document(ordering, cmap, *, extra=b"", descendant=b"", subtype=b"CIDFontType2", unicode_map=None):
+def cid_substitute_document(ordering, cmap, *, extra=b"", descendant=b"", subtype=b"CIDFontType2", unicode_map=None, flags=4):
     font = b"<< /Subtype /Type0 /BaseFont /Collection /DescendantFonts [5 0 R] /Encoding "+cmap
     font += (b" /ToUnicode 8 0 R" if unicode_map else b"")+b" >>"
     cidfont = b"<< /Subtype /"+subtype+b" /BaseFont /Collection /CIDSystemInfo << /Registry (Adobe) /Ordering ("+ordering.encode()+b") /Supplement 0 >> /FontDescriptor 6 0 R "+descendant+b" >>"
-    return pdf(font,[cidfont,b"<< /Flags 4 /FontName /Collection >>",stream(extra) if extra else b"null",stream(unicode_map) if unicode_map else b"null"])
+    return pdf(font,[cidfont,b"<< /Flags %d /FontName /Collection >>" % flags,stream(extra) if extra else b"null",stream(unicode_map) if unicode_map else b"null"])
 
 
 def cid_substitute_cases(data, lock):
@@ -935,6 +935,10 @@ def cid_substitute_cases(data, lock):
     cmap=b"/WMode 1 def 1 begincodespacerange <0000> <ffff> endcodespacerange 1 begincidchar <0001> 1 endcidchar"
     yield Vector("substitute-cid-wmode",{".pdf":cid_substitute_document("Japan1",b"7 0 R",extra=cmap),".error":b"font.cid-substitute-vertical\n"},
                  ("text-cid-substitution",),"Embedded CMap WMode 1 also rejects horizontal-only substitution",{"driver":"bundled-cid-error"})
+    # Table 121: Symbolic and Nonsymbolic both set (36) contradict each other,
+    # which is a descriptor repair even when a substitute ignores the flags.
+    yield Vector("repair-cid-substitute-flags",{".pdf":cid_substitute_document("Japan1",b"/Identity-H",flags=36),".repair":b"font.descriptor-flags\n"},
+                 ("text-cid-substitution",),"A substituted CIDFont reports a contradictory descriptor flag pair; strict mode rejects it",{"driver":"text-repair"})
 
 
 def bundled_cases():

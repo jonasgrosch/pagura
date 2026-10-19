@@ -8620,6 +8620,25 @@
       "driver": "bundled-cid-error"
     },
     {
+      "id": "text/repair-cid-substitute-flags",
+      "kind": "vector",
+      "description": "A substituted CIDFont reports a contradictory descriptor flag pair; strict mode rejects it",
+      "requirements": [
+        "text-cid-substitution"
+      ],
+      "files": {
+        ".pdf": {
+          "path": "corpus/generated/text/repair-cid-substitute-flags.pdf",
+          "sha256": "705d870fe2bf1432e03907d59fab4d4fe189bbf1d4fd3496add8566df3b3673c"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-cid-substitute-flags.repair",
+          "sha256": "b823c5af7647df9943f5d1759f3f720a8993cb293805b209345be9313a80aa8c"
+        }
+      },
+      "driver": "text-repair"
+    },
+    {
       "id": "text/standard14-Courier",
       "kind": "vector",
       "description": "AFM-derived standard font widths, encoding, descriptors and substitute glyphs",
