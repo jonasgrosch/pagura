@@ -217,10 +217,15 @@ pub(super) fn fill_rectangle(
 
 /// Blends `color` at one coverage over the pixels of page row `y` from
 /// `x0` (inclusive) to `x1` (exclusive) that lie in the tile.
+/// The source products are those of [`blend`], formed once per run.
 fn blend_run(target: &mut Target, y: i64, (x0, x1): (i64, i64), color: Rgba8, alpha: u16) {
     if let Some((_, pixels)) = target.span(y, x0, x1) {
+        let alpha = alpha * u16::from(color.a) / 255;
+        let source = [color.r, color.g, color.b, 255].map(|c| u16::from(c) * alpha);
         for pixel in pixels.as_chunks_mut::<4>().0 {
-            blend(pixel, color, alpha);
+            for (out, &source) in pixel.iter_mut().zip(&source) {
+                *out = div255(source + u16::from(*out) * (255 - alpha));
+            }
         }
     }
 }
@@ -456,6 +461,33 @@ mod tests {
                             / 255;
                     assert_eq!(u32::from(actual), expected);
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn rectangle_runs_blend_as_single_pixels() {
+        for color in [
+            Rgba8::opaque(13, 91, 183),
+            Rgba8 {
+                r: 40,
+                g: 80,
+                b: 120,
+                a: 160,
+            },
+        ] {
+            for alpha in 0..=255 {
+                let mut target = target(3, 1);
+                target
+                    .pixels
+                    .data_mut()
+                    .copy_from_slice(&[7, 200, 99, 255, 0, 0, 0, 0, 255, 128, 3, 90]);
+                let mut expected = target.pixels.data().to_vec();
+                for pixel in expected.as_chunks_mut::<4>().0 {
+                    blend(pixel, color, alpha);
+                }
+                blend_run(&mut target, 0, (0, 3), color, alpha);
+                assert_eq!(target.pixels.data(), expected.as_slice());
             }
         }
     }
