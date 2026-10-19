@@ -1,5 +1,6 @@
 //! Coefficient bit modelling, T.800 D.1–D.7, Tables D.1–D.7.
 
+use pagura_core::bytes::{BitCursor, Cursor, J2kFf7};
 use pagura_core::{Error, Position, Result};
 
 use crate::budget::Budget;
@@ -298,76 +299,94 @@ impl Entropy<'_> {
     }
 }
 
+/// Raw (bypass) coding passes, T.800 D.6: bits most significant first with
+/// a stuffed zero bit after each 0xFF byte, the packet-header rule. Past the
+/// end of its segment the decoder reads one bits, as from the 0xFF bytes the
+/// MQ decoder appends (T.800 C.3.4); predictable termination rejects that.
 struct Raw<'a> {
-    data: &'a [u8],
+    bits: BitCursor<'a, J2kFf7>,
     segment: &'a Segment,
-    offset: usize,
-    byte: u8,
-    remaining: u8,
     synthetic: bool,
 }
 
-impl Raw<'_> {
-    fn finish(mut self, predictable: bool) -> Result<()> {
-        for (offset, bytes) in self.data.windows(2).enumerate() {
-            if bytes[0] == 255 && bytes[1] & 128 != 0 {
-                return Err(syntax(
-                    "invalid JPEG 2000 bypass bit stuffing",
-                    self.segment.position(offset + 1),
-                ));
-            }
+impl<'a> Raw<'a> {
+    /// Checks the stuffing of the whole segment, so that reading bits can
+    /// only run out of data.
+    fn new(segment: &'a Segment) -> Result<Self> {
+        if let Some(offset) = segment
+            .data
+            .windows(2)
+            .position(|pair| pair[0] == 0xff && pair[1] & 0x80 != 0)
+        {
+            return Err(syntax(
+                "invalid JPEG 2000 bypass bit stuffing",
+                segment.position(offset + 1),
+            ));
         }
+        Ok(Self {
+            bits: BitCursor::new(Cursor::new(&segment.data)),
+            segment,
+            synthetic: false,
+        })
+    }
+
+    fn bit(&mut self) -> Result<bool> {
+        if self.bits.remaining_bits() == 0 {
+            self.synthetic = true;
+            return Ok(true);
+        }
+        // The cursor's positions are offsets in the reassembled segment.
+        self.bits
+            .bit()
+            .map_err(|_| Error::syntax("invalid JPEG 2000 bypass data"))
+    }
+
+    fn finish(mut self, predictable: bool) -> Result<()> {
         if !predictable {
             return Ok(());
         }
-        // D.6: unused raw bits alternate 0,1; a final FF requires a stuffed byte.
-        if self.remaining == 0 && self.byte == 255 {
-            self.byte = self.data.get(self.offset).copied().ok_or_else(|| {
-                syntax(
-                    "missing JPEG 2000 bypass termination byte",
-                    self.segment.position(self.offset),
-                )
-            })?;
-            if self.byte & 128 != 0 {
-                return Err(syntax(
-                    "invalid JPEG 2000 bypass bit stuffing",
-                    self.segment.position(self.offset),
-                ));
+        // T.800 D.6: after the last decision, the rest of the byte holds
+        // alternating bits 0, 1, 0, …; after a final 0xFF they fill the
+        // seven bits of the stuffed byte that must follow it.
+        let (value, width) = if self.bits.is_aligned() {
+            let read = self.bits.byte_cursor()?.offset();
+            if read
+                .checked_sub(1)
+                .and_then(|last| self.segment.data.get(last))
+                == Some(&0xff)
+            {
+                if self.bits.remaining_bits() == 0 {
+                    return Err(syntax(
+                        "missing JPEG 2000 bypass termination byte",
+                        self.segment.position(read),
+                    ));
+                }
+                (self.bits.bits(7).map_err(|_| self.invalid(read))?, 7)
+            } else {
+                (0, 0)
             }
-            self.offset += 1;
-            self.remaining = 7;
-        }
-        let mask = (1_u16 << self.remaining) - 1;
-        let expected = (0..self.remaining).fold(0_u16, |v, i| (v << 1) | u16::from(i % 2));
-        if self.synthetic
-            || u16::from(self.byte) & mask != expected
-            || self.offset != self.data.len()
-        {
-            return Err(syntax(
-                "invalid JPEG 2000 predictable bypass termination",
-                self.segment.position(self.offset.saturating_sub(1)),
-            ));
+        } else {
+            // A partly read 0xFF has one bits left, which cannot be padding.
+            let padding = self
+                .bits
+                .align()
+                .map_err(|_| self.invalid(self.segment.data.len()))?;
+            (u32::from(padding.value()), padding.width())
+        };
+        let read = self.bits.byte_cursor()?.offset();
+        let expected = (0..width).fold(0, |bits, i| (bits << 1) | (i % 2));
+        if self.synthetic || value != expected || read != self.segment.data.len() {
+            return Err(self.invalid(read));
         }
         Ok(())
     }
 
-    fn bit(&mut self) -> Result<bool> {
-        if self.remaining == 0 {
-            let stuffed = self.byte == 255;
-            let next = self.data.get(self.offset).copied();
-            self.synthetic |= next.is_none();
-            self.byte = next.unwrap_or(255);
-            if stuffed && next.is_some() && self.byte & 128 != 0 {
-                return Err(syntax(
-                    "invalid JPEG 2000 bypass bit stuffing",
-                    self.segment.position(self.offset),
-                ));
-            }
-            self.offset += usize::from(next.is_some());
-            self.remaining = if stuffed { 7 } else { 8 };
-        }
-        self.remaining -= 1;
-        Ok(self.byte & (1 << self.remaining) != 0)
+    /// An invalid termination, at the last byte read before `read`.
+    fn invalid(&self, read: usize) -> Error {
+        syntax(
+            "invalid JPEG 2000 predictable bypass termination",
+            self.segment.position(read.saturating_sub(1)),
+        )
     }
 }
 
@@ -416,14 +435,7 @@ fn decode_segment(
         end == usize::from(p.planes) * 3 - 2 || end == segments::end(segment.first, p.modes);
     let predictable = terminated && p.modes & segments::PREDICTABLE != 0;
     let mut decoder = if segments::raw(segment.first, p.modes) {
-        Entropy::Raw(Raw {
-            data: &segment.data,
-            segment,
-            offset: 0,
-            byte: 0,
-            remaining: 0,
-            synthetic: false,
-        })
+        Entropy::Raw(Raw::new(segment)?)
     } else {
         Entropy::Mq(Decoder::new(segment, *contexts, predictable))
     };

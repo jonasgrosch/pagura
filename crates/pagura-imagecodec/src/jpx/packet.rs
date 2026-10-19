@@ -1,6 +1,6 @@
 //! Packet headers, tag trees and contributions, T.800 B.9–B.10.
 
-use pagura_core::bytes::Cursor;
+use pagura_core::bytes::{BitCursor, Cursor, J2kFf7};
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Position, Result};
 
@@ -16,66 +16,7 @@ use super::wavelet::Plane;
 
 /// Packet header bits: most significant first, with a stuffed zero bit
 /// after each 0xFF byte (T.800 B.10.1).
-struct Bits<'a> {
-    bytes: Cursor<'a>,
-    byte: u8,
-    /// Unread bits of `byte`, in its low bits.
-    remaining: u8,
-    /// Where `byte` is.
-    byte_position: Position,
-}
-
-impl<'a> Bits<'a> {
-    const fn new(bytes: Cursor<'a>) -> Self {
-        let byte_position = bytes.position();
-        Self {
-            bytes,
-            byte: 0,
-            remaining: 0,
-            byte_position,
-        }
-    }
-
-    fn bit(&mut self) -> Result<bool> {
-        if self.remaining == 0 {
-            let stuffed = self.byte == 0xff;
-            self.byte_position = self.bytes.position();
-            self.byte = self.bytes.u8()?;
-            if stuffed && self.byte & 0x80 != 0 {
-                return Err(syntax(
-                    "invalid JPEG 2000 packet bit stuffing",
-                    self.byte_position,
-                ));
-            }
-            self.remaining = if stuffed { 7 } else { 8 };
-        }
-        self.remaining -= 1;
-        Ok((self.byte >> self.remaining) & 1 != 0)
-    }
-
-    /// The position of the byte holding the next unread bit.
-    const fn position(&self) -> Position {
-        if self.remaining == 0 {
-            self.bytes.position()
-        } else {
-            self.byte_position
-        }
-    }
-
-    /// Discards the unread bits of the current byte, and the stuffed byte
-    /// that follows a final 0xFF (T.800 B.10.1).
-    fn align(&mut self) -> Result<()> {
-        self.remaining = 0;
-        if self.byte == 0xff {
-            let position = self.bytes.position();
-            if self.bytes.u8()? & 0x80 != 0 {
-                return Err(syntax("invalid JPEG 2000 packet padding byte", position));
-            }
-        }
-        self.byte = 0;
-        Ok(())
-    }
-}
+type Bits<'a> = BitCursor<'a, J2kFf7>;
 
 /// Reads a `count`-bit number (T.800 B.10.7.1).
 fn number(bits: &mut Bits<'_>, count: u32) -> Result<usize> {
@@ -84,11 +25,15 @@ fn number(bits: &mut Bits<'_>, count: u32) -> Result<usize> {
             "JPEG 2000 packet number exceeds address space",
         ));
     }
-    let mut value = 0_usize;
-    for _ in 0..count {
-        value = (value << 1) | usize::from(bits.bit()?);
+    let mut value = 0_u64;
+    let mut left = count;
+    while left != 0 {
+        let take = left.min(32);
+        value = (value << take) | u64::from(bits.bits(take)?);
+        left -= take;
     }
-    Ok(value)
+    usize::try_from(value)
+        .map_err(|_| Error::limit("JPEG 2000 packet number exceeds address space"))
 }
 
 #[derive(Clone, Copy, Default)]
@@ -407,7 +352,7 @@ fn headers(
     }
     // T.800 B.10.1: a header that ends on 0xFF is followed by a stuffed byte.
     bits.align()?;
-    let rest = &mut bits.bytes;
+    let rest = bits.byte_cursor()?;
     if parameters.markers.eph && rest.take_array()? != Marker::EPH.bytes() {
         return Err(rest.error("missing JPEG 2000 EPH marker"));
     }
@@ -470,7 +415,7 @@ mod tests {
     use pagura_core::bytes::Cursor;
 
     #[test]
-    fn numbers_wider_than_32_bits_are_read() {
+    fn numbers_wider_than_32_bits_are_read_in_parts() {
         // 0xFF is followed by a stuffed byte whose high bit is not data.
         let data = [0x12, 0xff, 0x2b, 0x56, 0x78, 0x9a, 0xbc];
         let mut bits = Bits::new(Cursor::new(&data));
