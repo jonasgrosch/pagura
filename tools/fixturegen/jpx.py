@@ -755,8 +755,12 @@ def constant_tiles(colors, width, height, tile, levels=5, bits=8):
     return stream+b"\xff\xd9"
 
 
-def rejection(name, data, requirements, rule):
-    return Vector(name,{".jpx":data,".error":b"syntax\n"},requirements,rule,extra={"error":"syntax"})
+def rejection(name, data, requirements, rule, offset: int | None = None):
+    """A syntax error; `offset` is where the decoder reports it, if pinned."""
+    files = {".jpx":data,".error":b"syntax\n"}
+    if offset is not None:
+        files[".offset"] = f"{offset}\n".encode()
+    return Vector(name,files,requirements,rule,extra={"error":"syntax"})
 
 
 def cases():
@@ -815,7 +819,10 @@ def cases():
     for order in range(5):
         yield vector(f"spatial-offset-{order}",codestream([odd],9,7,levels=2,origin=(3,5),precincts=[(1,1),(2,2),(2,3)],progression=order),[odd],9,7,("jpx-precincts","jpx-progression"))
     yield vector("poc-forward-declaration",codestream([[30,70,110]],1,3,levels=1,origin=(0,1),precincts=[(0,0),(1,1)],late_poc=[(0,0,1,2,1,3)]),[[30,70,110]],1,3,("jpx-poc","jpx-precincts"))
-    yield Vector("roi-precision-limit",{".jpx":codestream([[128]*64],8,8,roi=37),".error":b"unsupported\n"},("jpx-roi","jpx-part1"),"ROI coding precision beyond the 30-bit coefficient representation is explicitly unsupported",extra={"error":"unsupported"})
+    # Coding parameters are checked where they take effect: the first SOT.
+    roi_limit = codestream([[128]*64],8,8,roi=37)
+    roi_sot = roi_limit.index(b"\xff\x90")
+    yield Vector("roi-precision-limit",{".jpx":roi_limit,".error":b"unsupported\n",".offset":f"{roi_sot}\n".encode()},("jpx-roi","jpx-part1"),"ROI coding precision beyond the 30-bit coefficient representation is explicitly unsupported",extra={"error":"unsupported"})
     raw = codestream([gray],8,8)
     packet_size = len(raw)-raw.index(b"\xff\x93")-4
     variable_length = [packet_size & 127]
@@ -848,9 +855,10 @@ def cases():
     alpha = [(i*5) % 256 for i in range(64)]
     definitions = struct.pack(">H",4)+b"".join(struct.pack(">HHH",*v) for v in ((0,1,0),(1,0,3),(2,0,1),(3,0,2)))
     yield vector("channel-alpha",jp2(codestream([alpha,rgb[2],rgb[0],rgb[1]],8,8),8,8,4,extra=box(b"cdef",definitions)),rgb+[alpha],8,8,("jpx-boxes",),color="rgb",alpha=3)
-    # PDF 7.4.9 names the additional enumerations; their Part 2 definitions need T.801.
-    forbidden_color = jp2(codestream(rgb,8,8),8,8,3).replace(struct.pack(">I",16),struct.pack(">I",19),1)
-    yield Vector("pdf-colour-19",{".jpx":forbidden_color,".error":b"syntax\n"},("jpx-boxes","jpx-pdf-contract"),"PDF 7.4.9 excludes enumerated CIEJab 19",extra={"error":"syntax"})
+    # The codec returns every enumeration; PDF 7.4.9 excluding CIEJab 19 is
+    # checked by the image layer (image.py, jpx-ciejab-rejected).
+    ciejab = jp2(codestream(rgb,8,8),8,8,3).replace(struct.pack(">I",16),struct.pack(">I",19),1)
+    yield vector("enumerated-ciejab",ciejab,rgb,8,8,("jpx-boxes",),color="ciejab")
     cmyk = [gray,gray,gray,gray]
     cmyk_data = jp2(codestream(cmyk,8,8),8,8,4).replace(struct.pack(">I",16),struct.pack(">I",12),1)
     yield vector("pdf-colour-12",cmyk_data,cmyk,8,8,("jpx-boxes","jpx-pdf-contract"),color="cmyk")
@@ -963,7 +971,7 @@ def cases():
     yield rejection("nested-zero-box",nested_zero,("jpx-boxes",),"I.4 permits a zero-length child only in a zero-length parent")
     mismatch = bytearray(raw)
     mismatch[mismatch.index(b"\xff\x52")+13] = 0
-    yield rejection("quant-transform-mismatch",bytes(mismatch),("jpx-marker-syntax",),"A.6.4 quantization representation must match the wavelet transform")
+    yield rejection("quant-transform-mismatch",bytes(mismatch),("jpx-marker-syntax",),"A.6.4 quantization representation must match the wavelet transform",mismatch.index(b"\xff\x90"))
     # B.12.3: keep the original first-resolution prefix. With zero high
     # bands, F.3.8.1 reduces to exact integer linear interpolation of LL:
     # even coordinates keep LL; odd coordinates average adjacent LL samples.
@@ -1125,15 +1133,16 @@ def cases():
     yield rejection("tile-part-index-255",bytes(invalid_part),("jpx-tiles","jpx-marker-syntax"),"A.4.2 limits the tile-part index to 254")
     precision = bytearray(codestream(rgb,8,8,mct=True))
     precision[45] = 6
-    yield rejection("transform-precision",bytes(precision),("jpx-rct",),"G.2 requires equal input precision for the first three transform components")
+    yield rejection("transform-precision",bytes(precision),("jpx-rct",),"G.2 requires equal input precision for the first three transform components",precision.index(b"\xff\x90"))
     spatial = bytearray(sampling)
     spatial[spatial.index(b"\xff\x52")+5] = 2
-    yield rejection("spatial-sampling",bytes(spatial),("jpx-precincts","jpx-subsampling"),"B.12.1.3 requires power-of-two component separations")
+    yield rejection("spatial-sampling",bytes(spatial),("jpx-precincts","jpx-subsampling"),"B.12.1.3 requires power-of-two component separations",spatial.index(b"\xff\x90"))
     final_ff = bytearray(raw)
     final_ff[-3] = 255
     yield rejection("contribution-final-ff",bytes(final_ff),("jpx-hostile",),"B.10.7 forbids a code-block packet contribution ending in FF")
     direct = box(b"cmap",b"\0\0\0\0")
-    yield rejection("mapping-without-palette",jp2(raw,8,8,1,extra=direct),("jpx-palette",),"I.5.3.4 requires palette and component mapping boxes together")
+    unpaired = jp2(raw,8,8,1,extra=direct)
+    yield rejection("mapping-without-palette",unpaired,("jpx-palette",),"I.5.3.4 requires palette and component mapping boxes together",unpaired.index(b"cmap")-4)
     single_palette = box(b"pclr",b"\0\1\1\7\0")
     yield vector("palette-direct-map",jp2(raw,8,8,1,extra=single_palette+direct),[gray],8,8,("jpx-palette",))
     bad_pad = box(b"pclr",b"\0\1\1\3\x80")
@@ -1141,7 +1150,7 @@ def cases():
     yield rejection("resolution-empty",jp2(raw,8,8,1,extra=box(b"res ",b"")),("jpx-boxes",),"I.5.3.7 requires a capture or display resolution child")
     yield rejection("resolution-repeat",jp2(raw,8,8,1,extra=res+res),("jpx-boxes",),"I.5.3.7 permits at most one resolution superbox")
     signed_alpha = jp2(codestream([gray,gray],8,8,signed=True),8,8,2,bits=136,extra=box(b"cdef",struct.pack(">H6H",2,0,0,1,1,1,0)))
-    yield rejection("opacity-signed",signed_alpha,("jpx-options",),"I.5.3.6 requires unsigned opacity components")
+    yield rejection("opacity-signed",signed_alpha,("jpx-options",),"I.5.3.6 requires unsigned opacity components",signed_alpha.index(b"cdef")-4)
     yield Vector("grid-high-origin",{".jpx":codestream([[128]],1,1,origin=(1 << 31,0)),".error":b"unsupported\n"},("jpx-subsampling",),"A.5.1 permits 32-bit grids; the current arithmetic explicitly supports 31 bits",extra={"error":"unsupported"})
     whole = codestream(rgb,8,8,packed="ppm")
     start,stop = whole.index(b"\xff\x60"),whole.index(b"\xff\x90")

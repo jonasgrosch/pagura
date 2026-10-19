@@ -1,12 +1,13 @@
 //! Coefficient bit modelling, T.800 D.1–D.7, Tables D.1–D.7.
 
-use pagura_core::Result;
+use pagura_core::{Error, Position, Result};
 
 use crate::budget::Budget;
 
-use super::io::syntax;
-use super::mq::{Context, Decoder};
+use super::mq::Decoder;
 use super::segments::{self, Segment};
+use super::syntax;
+use crate::mq::Context;
 
 #[derive(Clone, Copy, Default)]
 pub(super) struct Sample {
@@ -19,8 +20,8 @@ pub(super) struct Sample {
 }
 
 impl Sample {
-    /// D.2.1, H.1, E-6–E-8: r=1/2, with a coefficient-specific decoded prefix.
-    pub fn reconstruct(self, roi: u8, reversible: bool) -> f64 {
+    /// T.800 D.2.1, H.1, E-6–E-8: r=1/2, with a coefficient-specific decoded prefix.
+    pub(super) fn reconstruct(self, roi: u8, reversible: bool) -> f64 {
         let mut magnitude = self.magnitude;
         let mut missing = self.missing;
         if roi != 0 && magnitude >= (1_u32 << roi) {
@@ -47,7 +48,7 @@ impl Sample {
 const NEGATIVE: u8 = 1;
 const REFINED: u8 = 2;
 
-// D.3, Figure D.2: row-major neighbours, excluding the centre.
+// T.800 D.3, Figure D.2: row-major neighbours, excluding the centre.
 const NEIGHBOURS: [(isize, isize, u8); 8] = [
     (-1, -1, 1),
     (0, -1, 2),
@@ -70,7 +71,7 @@ struct Block {
 
 impl Block {
     fn update_neighbours(&mut self, x: usize, y: usize) {
-        // Significance is monotonic (D.3). Update the eight dependent contexts
+        // Significance is monotonic (T.800 D.3). Update the eight dependent contexts
         // once, rather than rescanning their neighbourhoods on every pass.
         for (dx, dy, mask) in NEIGHBOURS {
             let Some(nx) = x.checked_add_signed(-dx).filter(|&n| n < self.width) else {
@@ -132,14 +133,14 @@ impl Block {
             if dx != 0 && dy != 0 || neighbours & mask == 0 {
                 continue;
             }
-            // A set context bit guarantees this neighbour is inside the block.
-            let nx = x
+            // A set context bit names a neighbour inside the block; a broken
+            // invariant fails the decode rather than skipping the neighbour.
+            let neighbour = x
                 .checked_add_signed(dx)
-                .ok_or_else(|| syntax("JPEG 2000 neighbour overflow", 0))?;
-            let ny = y
-                .checked_add_signed(dy)
-                .ok_or_else(|| syntax("JPEG 2000 neighbour overflow", 0))?;
-            let sign = if self.samples[ny * self.width + nx].flags & NEGATIVE != 0 {
+                .zip(y.checked_add_signed(dy))
+                .and_then(|(nx, ny)| self.samples.get(ny * self.width + nx))
+                .ok_or_else(|| Error::syntax("JPEG 2000 sign context outside the code-block"))?;
+            let sign = if neighbour.flags & NEGATIVE != 0 {
                 -1
             } else {
                 1
@@ -272,12 +273,12 @@ impl Block {
 }
 
 pub(super) struct Parameters {
-    pub width: usize,
-    pub height: usize,
-    pub orientation: u8,
-    pub planes: u8,
-    pub passes: usize,
-    pub modes: u8,
+    pub(super) width: usize,
+    pub(super) height: usize,
+    pub(super) orientation: u8,
+    pub(super) planes: u8,
+    pub(super) passes: usize,
+    pub(super) modes: u8,
 }
 
 enum Entropy<'a> {
@@ -299,8 +300,8 @@ impl Entropy<'_> {
 
 struct Raw<'a> {
     data: &'a [u8],
+    segment: &'a Segment,
     offset: usize,
-    base: usize,
     byte: u8,
     remaining: u8,
     synthetic: bool,
@@ -310,7 +311,10 @@ impl Raw<'_> {
     fn finish(mut self, predictable: bool) -> Result<()> {
         for (offset, bytes) in self.data.windows(2).enumerate() {
             if bytes[0] == 255 && bytes[1] & 128 != 0 {
-                return Err(syntax("invalid JPEG 2000 bypass bit stuffing", offset + 1));
+                return Err(syntax(
+                    "invalid JPEG 2000 bypass bit stuffing",
+                    self.segment.position(offset + 1),
+                ));
             }
         }
         if !predictable {
@@ -318,18 +322,20 @@ impl Raw<'_> {
         }
         // D.6: unused raw bits alternate 0,1; a final FF requires a stuffed byte.
         if self.remaining == 0 && self.byte == 255 {
-            self.byte =
-                self.data.get(self.offset).copied().ok_or_else(|| {
-                    syntax("missing JPEG 2000 bypass termination byte", self.offset)
-                })?;
-            self.offset += 1;
-            self.remaining = 7;
+            self.byte = self.data.get(self.offset).copied().ok_or_else(|| {
+                syntax(
+                    "missing JPEG 2000 bypass termination byte",
+                    self.segment.position(self.offset),
+                )
+            })?;
             if self.byte & 128 != 0 {
                 return Err(syntax(
                     "invalid JPEG 2000 bypass bit stuffing",
-                    self.offset - 1,
+                    self.segment.position(self.offset),
                 ));
             }
+            self.offset += 1;
+            self.remaining = 7;
         }
         let mask = (1_u16 << self.remaining) - 1;
         let expected = (0..self.remaining).fold(0_u16, |v, i| (v << 1) | u16::from(i % 2));
@@ -339,7 +345,7 @@ impl Raw<'_> {
         {
             return Err(syntax(
                 "invalid JPEG 2000 predictable bypass termination",
-                self.offset.saturating_sub(1),
+                self.segment.position(self.offset.saturating_sub(1)),
             ));
         }
         Ok(())
@@ -354,7 +360,7 @@ impl Raw<'_> {
             if stuffed && next.is_some() && self.byte & 128 != 0 {
                 return Err(syntax(
                     "invalid JPEG 2000 bypass bit stuffing",
-                    self.base + self.offset,
+                    self.segment.position(self.offset),
                 ));
             }
             self.offset += usize::from(next.is_some());
@@ -370,20 +376,16 @@ pub(super) fn decode(
     p: &Parameters,
     budget: &mut Budget,
 ) -> Result<Vec<Sample>> {
-    let base = segments.first().map_or(0, |s| s.base);
-    let valid_modes = segments::BYPASS
-        | segments::RESET
-        | segments::TERMINATE
-        | segments::CAUSAL
-        | segments::PREDICTABLE
-        | segments::SYMBOLS;
+    let start = segments
+        .first()
+        .map_or(Position::Unknown, |segment| segment.position(0));
     if p.planes == 0
-        || p.planes > 30
+        || p.planes > segments::MAX_PLANES
         || p.passes == 0
         || p.passes > usize::from(p.planes) * 3 - 2
-        || p.modes & !valid_modes != 0
+        || p.modes & !segments::ALL != 0
     {
-        return Err(syntax("invalid JPEG 2000 bit planes", base));
+        return Err(syntax("invalid JPEG 2000 bit planes", start));
     }
     let count = p.width * p.height;
     let mut block = Block {
@@ -401,14 +403,14 @@ pub(super) fn decode(
     Ok(block.samples)
 }
 
-fn decode_segment_inner(
+fn decode_segment(
     block: &mut Block,
     segment: &Segment,
     p: &Parameters,
     contexts: &mut [Context; 19],
     budget: &mut Budget,
 ) -> Result<()> {
-    // B.10.6/D.4: a final layer may end at a nonterminated coding pass.
+    // T.800 B.10.6/D.4: a final layer may end at a nonterminated coding pass.
     let end = segment.first + segment.passes;
     let terminated =
         end == usize::from(p.planes) * 3 - 2 || end == segments::end(segment.first, p.modes);
@@ -416,21 +418,21 @@ fn decode_segment_inner(
     let mut decoder = if segments::raw(segment.first, p.modes) {
         Entropy::Raw(Raw {
             data: &segment.data,
+            segment,
             offset: 0,
-            base: 0,
             byte: 0,
             remaining: 0,
             synthetic: false,
         })
     } else {
-        Entropy::Mq(Decoder::new(&segment.data, 0, *contexts, predictable)?)
+        Entropy::Mq(Decoder::new(segment, *contexts, predictable))
     };
     for pass in segment.first..segment.first + segment.passes {
-        let plane = p.planes
-            - 1
-            - u8::try_from(pass.div_ceil(3))
-                .map_err(|_| syntax("JPEG 2000 bit plane overflow", 0))?;
-        // D.3.1/D.3.4: propagation and cleanup cannot code a significant
+        // decode() bounds the passes by the planes, so the plane exists.
+        let coded = u8::try_from(pass.div_ceil(3)).unwrap_or(u8::MAX);
+        debug_assert!(coded < p.planes, "pass {pass} is beyond the coded planes");
+        let plane = (p.planes - 1).saturating_sub(coded);
+        // T.800 D.3.1/D.3.4: propagation and cleanup cannot code a significant
         // coefficient. Even empty passes still reset contexts and read symbols.
         if pass % 3 == 2 || block.insignificant != 0 {
             budget.work(block.samples.len())?;
@@ -446,7 +448,10 @@ fn decode_segment_inner(
                         symbol = (symbol << 1) | u8::from(decoder.bit(18)?);
                     }
                     if symbol != 10 {
-                        return Err(syntax("invalid JPEG 2000 cleanup segmentation symbol", 0));
+                        return Err(syntax(
+                            "invalid JPEG 2000 cleanup segmentation symbol",
+                            segment.position(0),
+                        ));
                     }
                 }
             }
@@ -468,25 +473,6 @@ fn decode_segment_inner(
     Ok(())
 }
 
-fn decode_segment(
-    block: &mut Block,
-    segment: &Segment,
-    p: &Parameters,
-    contexts: &mut [Context; 19],
-    budget: &mut Budget,
-) -> Result<()> {
-    decode_segment_inner(block, segment, p, contexts, budget).map_err(|mut error| {
-        if let pagura_core::Position::Buffer(offset) = error.position {
-            error.position = pagura_core::Position::Buffer(super::io::source_position(
-                &segment.spans,
-                offset,
-                segment.base,
-            ));
-        }
-        error
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::{Block, NEIGHBOURS, Sample};
@@ -506,7 +492,7 @@ mod tests {
                         insignificant: width * height,
                     };
                     // Insert in reverse scan order to exercise neighbours on both
-                    // sides of stripe boundaries (D.3, D.7), including partial stripes.
+                    // sides of stripe boundaries (T.800 D.3, D.7), including partial stripes.
                     for index in (0..width * height).rev() {
                         block.samples[index].magnitude = 1;
                         block.update_neighbours(index % width, index / width);

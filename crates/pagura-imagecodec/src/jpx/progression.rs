@@ -2,17 +2,17 @@
 //!
 //! T.800 B.2–B.7 and B.12 define the geometry and progression volumes.
 
+use pagura_core::bytes::Cursor;
+use pagura_core::convert::{u32_to_usize, usize_to_u64};
 use pagura_core::{Error, Result};
 
 use crate::budget::Budget;
 
-use super::io::syntax;
-use super::io::{Reader, area};
-
+use super::{area, syntax};
 #[derive(Clone, Copy)]
 pub(super) struct Precinct {
-    pub bounds: [u32; 4],
-    pub position: [u64; 2],
+    pub(super) bounds: [u32; 4],
+    pub(super) position: [u64; 2],
 }
 
 pub(super) fn precincts(
@@ -88,32 +88,76 @@ pub(super) fn band_bounds(bounds: [u32; 4], orientation: u8) -> [u32; 4] {
     [x(x0), y(y0), x(x1), y(y1)]
 }
 
+/// The most resolution levels a tile-component has: 32 decomposition
+/// levels and the lowest resolution (T.800 A.6.1, Table A.15).
+pub(super) const MAX_RESOLUTIONS: usize = 33;
+
+/// The order in which packets follow each other (T.800 B.12, Table A.16):
+/// by layer, resolution, component and position, in the order the name
+/// lists them.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(super) enum ProgressionOrder {
+    /// Layer, resolution, component, position.
+    #[default]
+    Lrcp,
+    /// Resolution, layer, component, position.
+    Rlcp,
+    /// Resolution, position, component, layer.
+    Rpcl,
+    /// Position, component, resolution, layer.
+    Pcrl,
+    /// Component, position, resolution, layer.
+    Cprl,
+}
+
+impl ProgressionOrder {
+    /// Whether positions on the reference grid order the packets, which
+    /// needs power-of-two component sampling (T.800 B.12.1.3, B.12.1.4).
+    pub(super) const fn is_spatial(self) -> bool {
+        matches!(self, Self::Rpcl | Self::Pcrl)
+    }
+}
+
+impl TryFrom<u8> for ProgressionOrder {
+    type Error = u8;
+
+    fn try_from(code: u8) -> std::result::Result<Self, u8> {
+        match code {
+            0 => Ok(Self::Lrcp),
+            1 => Ok(Self::Rlcp),
+            2 => Ok(Self::Rpcl),
+            3 => Ok(Self::Pcrl),
+            4 => Ok(Self::Cprl),
+            _ => Err(code),
+        }
+    }
+}
+
+/// One progression volume of a POC marker segment (T.800 A.6.6).
 #[derive(Clone, Copy)]
 pub(super) struct Change {
-    pub resolution_start: usize,
-    pub component_start: usize,
-    pub layer_end: usize,
-    pub resolution_end: usize,
-    pub component_end: usize,
-    pub order: u8,
+    pub(super) resolution_start: usize,
+    pub(super) component_start: usize,
+    pub(super) layer_end: usize,
+    pub(super) resolution_end: usize,
+    pub(super) component_end: usize,
+    pub(super) order: ProgressionOrder,
 }
 
 pub(super) fn changes(
-    fields: &mut Reader<'_>,
+    fields: &mut Cursor<'_>,
     components: usize,
     layers: usize,
     budget: &mut Budget,
 ) -> Result<Vec<Change>> {
     let unit = if components <= 256 { 7 } else { 9 };
-    if fields.remaining() == 0 || !fields.remaining().is_multiple_of(unit) {
-        return Err(syntax(
-            "invalid JPEG 2000 progression change length",
-            fields.position(),
-        ));
+    if fields.at_end() || !fields.remaining().is_multiple_of(unit) {
+        return Err(fields.error("invalid JPEG 2000 progression change length"));
     }
     let count = fields.remaining() / unit;
     let mut result = budget.with_capacity(count)?;
-    while fields.remaining() != 0 {
+    while !fields.at_end() {
+        let at = fields.position();
         let resolution_start = usize::from(fields.u8()?);
         let component_start = if components <= 256 {
             usize::from(fields.u8()?)
@@ -127,24 +171,21 @@ pub(super) fn changes(
         } else {
             usize::from(fields.u16()?)
         };
-        // Table A.32 assigns zero the end-index value 256, including the wide field.
+        // T.800 Table A.32 assigns zero the end-index value 256, including the wide field.
         if component_end == 0 {
             component_end = 256;
         }
-        let order = fields.u8()?;
-        if resolution_start >= resolution_end
-            || resolution_end > 33
-            || component_start >= component_end
-            || component_end > components
-            || layer_end == 0
-            || layer_end > layers
-            || order > 4
-        {
-            return Err(syntax(
-                "invalid JPEG 2000 progression change range",
-                fields.position() - unit,
-            ));
-        }
+        let order = ProgressionOrder::try_from(fields.u8()?)
+            .ok()
+            .filter(|_| {
+                resolution_start < resolution_end
+                    && resolution_end <= MAX_RESOLUTIONS
+                    && component_start < component_end
+                    && component_end <= components
+                    && layer_end != 0
+                    && layer_end <= layers
+            })
+            .ok_or_else(|| syntax("invalid JPEG 2000 progression change range", at))?;
         result.push(Change {
             resolution_start,
             component_start,
@@ -159,29 +200,27 @@ pub(super) fn changes(
 
 #[derive(Clone, Copy)]
 pub(super) struct Packet {
-    pub layer: usize,
-    pub resolution: usize,
-    pub component: usize,
-    pub precinct: usize,
-    pub id: usize,
-    pub position: [u64; 2],
+    pub(super) layer: usize,
+    pub(super) resolution: usize,
+    pub(super) component: usize,
+    pub(super) precinct: usize,
+    pub(super) id: usize,
+    pub(super) position: [u64; 2],
 }
 
 impl Packet {
-    fn key(self, order: u8) -> [u64; 5] {
+    /// The packet's place in `order`. Spatial orders use the precinct's
+    /// reference-grid position (T.800 B.12.1.3 to B.12.1.5).
+    fn key(self, order: ProgressionOrder) -> [u64; 5] {
         let [x, y] = self.position;
-        let (l, r, c, p) = (
-            self.layer as u64,
-            self.resolution as u64,
-            self.component as u64,
-            self.precinct as u64,
-        );
+        let [l, r, c, p] =
+            [self.layer, self.resolution, self.component, self.precinct].map(usize_to_u64);
         match order {
-            1 => [r, l, c, p, 0],
-            2 => [r, y, x, c, l],
-            3 => [y, x, c, r, l],
-            4 => [c, y, x, r, l],
-            _ => [l, r, c, p, 0],
+            ProgressionOrder::Lrcp => [l, r, c, p, 0],
+            ProgressionOrder::Rlcp => [r, l, c, p, 0],
+            ProgressionOrder::Rpcl => [r, y, x, c, l],
+            ProgressionOrder::Pcrl => [y, x, c, r, l],
+            ProgressionOrder::Cprl => [c, y, x, r, l],
         }
     }
 }
@@ -189,7 +228,7 @@ impl Packet {
 pub(super) fn order(
     packets: &[Packet],
     changes: &[Change],
-    default: u8,
+    default: ProgressionOrder,
     visited: &[bool],
     budget: &mut Budget,
 ) -> Result<Vec<Packet>> {
@@ -199,7 +238,7 @@ pub(super) fn order(
         resolution_start: 0,
         component_start: 0,
         layer_end: usize::MAX,
-        resolution_end: 33,
+        resolution_end: MAX_RESOLUTIONS,
         component_end: usize::MAX,
         order: default,
     }];
@@ -222,14 +261,7 @@ pub(super) fn order(
             }
         }
         let count = result.len() - start;
-        budget.work(
-            count
-                .checked_mul(
-                    usize::try_from(count.bit_width())
-                        .map_err(|_| Error::limit("JPEG 2000 progression work overflow"))?,
-                )
-                .ok_or_else(|| Error::limit("JPEG 2000 progression work overflow"))?,
-        )?;
+        budget.work_product(count, u32_to_usize(count.bit_width()))?;
         result[start..].sort_unstable_by_key(|p| p.key(change.order));
     }
     Ok(result)

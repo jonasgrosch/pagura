@@ -8,7 +8,7 @@ use pagura_core::{
     Feature, Name,
     syntax::{Parser, is_whitespace},
 };
-use pagura_image::{DecodedImage, ImageKind, JpxColor, MaskKind, Samples};
+use pagura_image::{DecodedImage, EnumeratedColorSpace, ImageKind, JpxColor, MaskKind, Samples};
 
 pub(crate) const STENCIL_PATTERN: Feature = Feature::new("image.stencil-pattern");
 pub(crate) const EMBEDDED_COLOR: Feature = Feature::new("image.embedded-color");
@@ -225,8 +225,8 @@ impl Compiler<'_> {
             }
             ImageKind::EmbeddedColor { color } => {
                 let name: &[u8] = match (color, decoded.components()) {
-                    (JpxColor::Enumerated(16), 3) => b"DeviceRGB",
-                    (JpxColor::Enumerated(17), 1) => b"DeviceGray",
+                    (JpxColor::Enumerated(EnumeratedColorSpace::SRGB), 3) => b"DeviceRGB",
+                    (JpxColor::Enumerated(EnumeratedColorSpace::GRAYSCALE), 1) => b"DeviceGray",
                     _ => {
                         return Err(Error::unsupported(
                             EMBEDDED_COLOR,

@@ -8,17 +8,7 @@ use crate::image::Association;
 use crate::{ImageAlpha, ImageKind, Precision, Samples, features, parameters};
 use pagura_core::convert::{u32_to_usize, usize_to_u64};
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Limits, Position, Result, Value};
-use pagura_imagecodec::jpx;
-
-/// The enumerated color spaces of JP2 color specification boxes that PDF
-/// tells apart (T.800 I.5.3.3, Table I.10).
-mod space {
-    pub(super) const CMYK: u32 = 12;
-    pub(super) const SRGB: u32 = 16;
-    pub(super) const GRAYSCALE: u32 = 17;
-    pub(super) const SYCC: u32 = 18;
-    pub(super) const CIEJAB: u32 = 19;
-}
+use pagura_imagecodec::jpx::{self, EnumeratedColorSpace as Space};
 
 /// `/SMaskInData` (Table 87): what an opacity channel in the data means.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -80,10 +70,7 @@ pub(crate) fn decode(
     diagnostics: &mut Diagnostics,
 ) -> Result<Adapted> {
     let mode = SMaskInData::read(dictionary)?;
-    // A raw codestream starts with the SOC marker (T.800 A.4.1), a JP2 file
-    // with its signature box (T.800 I.5.1).
-    let codestream = data.starts_with(&[0xff, 0x4f]);
-    if codestream {
+    if jpx::is_codestream(data) {
         diagnostics.repair(
             Diagnostic::new(
                 crate::repairs::JPX_CODESTREAM,
@@ -98,15 +85,13 @@ pub(crate) fn decode(
             "Indexed JPX opacity requires channel mapping",
         ));
     }
-    let options = jpx::Options {
-        ignore_color: declared.components.is_some(),
-        ignore_opacity: !mode.opacity(),
-        ignore_palette: declared.indexed,
-    };
+    let mut options = jpx::Options::default();
+    options.ignore_color = declared.components.is_some();
+    options.ignore_opacity = !mode.opacity();
+    options.ignore_palette = declared.indexed;
     let mut decoded = jpx::decode_with_diagnostics(data, limits, &options, diagnostics)?;
-    // A bare codestream has no channel definitions to discard.
-    if !mode.opacity() && !codestream {
-        channels::discard_opacity(data, &mut decoded, limits)?;
+    if !mode.opacity() {
+        channels::discard_opacity(&mut decoded, limits)?;
     }
     adapt(decoded, mode, declared, limits)
 }
@@ -428,19 +413,19 @@ fn interleave(
 
 fn embedded_space(color: jpx::JpxColor, count: u8) -> Result<ImageKind> {
     let space = match (&color, count) {
-        (jpx::JpxColor::Enumerated(space::GRAYSCALE), 1) => Some(b"DeviceGray".as_slice()),
-        (jpx::JpxColor::Enumerated(space::SRGB), 3) => Some(b"DeviceRGB".as_slice()),
-        (jpx::JpxColor::Enumerated(space::CMYK), 4) => Some(b"DeviceCMYK".as_slice()),
-        (jpx::JpxColor::Enumerated(space::CMYK | space::SRGB | space::GRAYSCALE), _) => {
+        (jpx::JpxColor::Enumerated(Space::GRAYSCALE), 1) => Some(b"DeviceGray".as_slice()),
+        (jpx::JpxColor::Enumerated(Space::SRGB), 3) => Some(b"DeviceRGB".as_slice()),
+        (jpx::JpxColor::Enumerated(Space::CMYK), 4) => Some(b"DeviceCMYK".as_slice()),
+        (jpx::JpxColor::Enumerated(Space::CMYK | Space::SRGB | Space::GRAYSCALE), _) => {
             return Err(Error::syntax(
                 "JPX colour space disagrees with channel count",
             ));
         }
-        (jpx::JpxColor::Enumerated(space::CIEJAB), _) => {
+        (jpx::JpxColor::Enumerated(Space::CIEJAB), _) => {
             return Err(Error::syntax("CIEJab is forbidden for PDF JPX images"));
         }
-        (jpx::JpxColor::Enumerated(space::SYCC), 3) | (jpx::JpxColor::Icc(_), _) => None,
-        (jpx::JpxColor::Enumerated(space::SYCC), _) => {
+        (jpx::JpxColor::Enumerated(Space::SYCC), 3) | (jpx::JpxColor::Icc(_), _) => None,
+        (jpx::JpxColor::Enumerated(Space::SYCC), _) => {
             return Err(Error::syntax("JPX sYCC requires three colour channels"));
         }
         (jpx::JpxColor::Enumerated(_), _) => {
@@ -452,6 +437,12 @@ fn embedded_space(color: jpx::JpxColor, count: u8) -> Result<ImageKind> {
         (jpx::JpxColor::Unspecified, _) => {
             return Err(Error::syntax(
                 "JPX without dictionary ColorSpace requires container colour information",
+            ));
+        }
+        _ => {
+            return Err(Error::unsupported(
+                features::JPX_COLOR,
+                "JPX colour description is not implemented",
             ));
         }
     };

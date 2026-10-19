@@ -1656,6 +1656,10 @@
         ".jpx": {
           "path": "corpus/generated/jpx/roi-precision-limit.jpx",
           "sha256": "e7c6e1cc3427624a67487a0d6e4da946650ca6f5d6043fc908d1395bfd682ef9"
+        },
+        ".offset": {
+          "path": "corpus/generated/jpx/roi-precision-limit.offset",
+          "sha256": "bd5fa6e75f0ddfcd9ff32e0a2297554cd81188f177f14d7ce416310efa0b5c77"
         }
       },
       "error": "unsupported"
@@ -1881,24 +1885,24 @@
       "alpha": 3
     },
     {
-      "id": "jpx/pdf-colour-19",
+      "id": "jpx/enumerated-ciejab",
       "kind": "vector",
-      "description": "PDF 7.4.9 excludes enumerated CIEJab 19",
+      "description": "Independently encoded input pixels",
       "requirements": [
-        "jpx-boxes",
-        "jpx-pdf-contract"
+        "jpx-boxes"
       ],
       "files": {
-        ".error": {
-          "path": "corpus/generated/jpx/pdf-colour-19.error",
-          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
-        },
         ".jpx": {
-          "path": "corpus/generated/jpx/pdf-colour-19.jpx",
+          "path": "corpus/generated/jpx/enumerated-ciejab.jpx",
           "sha256": "e9b573ab90fe961df1147eb02c50e36e55577cd2ac097f3332f78f9687823dbd"
+        },
+        ".samples": {
+          "path": "corpus/generated/jpx/enumerated-ciejab.samples",
+          "sha256": "5f4397da25c808ef7e2e10165abd2e70ccfee320bf3bd2b1c544bbb7cecd2cf4"
         }
       },
-      "error": "syntax"
+      "color": "ciejab",
+      "alpha": null
     },
     {
       "id": "jpx/pdf-colour-12",
@@ -2415,6 +2419,10 @@
         ".jpx": {
           "path": "corpus/generated/jpx/quant-transform-mismatch.jpx",
           "sha256": "2597235559c5f403cc4a9d05395ea3f8c736ad176975c313595cf68ba18f4d63"
+        },
+        ".offset": {
+          "path": "corpus/generated/jpx/quant-transform-mismatch.offset",
+          "sha256": "979b894f2d91bf199766571d58024f020d1a44a417da5f48e1fa1cdf554a14f5"
         }
       },
       "error": "syntax"
@@ -5537,6 +5545,10 @@
         ".jpx": {
           "path": "corpus/generated/jpx/transform-precision.jpx",
           "sha256": "9ceb4390ca7253ca64f9d8c8b78ddae390bab69f1539a9c4ad5cdb241ce16a8e"
+        },
+        ".offset": {
+          "path": "corpus/generated/jpx/transform-precision.offset",
+          "sha256": "826b6832e45ba17d625debc95ae8554e148550b00c05b47fa8f7be1c555bc83c"
         }
       },
       "error": "syntax"
@@ -5557,6 +5569,10 @@
         ".jpx": {
           "path": "corpus/generated/jpx/spatial-sampling.jpx",
           "sha256": "7a3a442d351a0ea5c3e230c84dc7cee56ed80edbe9531717c6c023aa55cdd95a"
+        },
+        ".offset": {
+          "path": "corpus/generated/jpx/spatial-sampling.offset",
+          "sha256": "826b6832e45ba17d625debc95ae8554e148550b00c05b47fa8f7be1c555bc83c"
         }
       },
       "error": "syntax"
@@ -5595,6 +5611,10 @@
         ".jpx": {
           "path": "corpus/generated/jpx/mapping-without-palette.jpx",
           "sha256": "f6dcc4c69dd9bf1cfceb4c95ec8e721ee8951967bf520fe2711b45e49bf1c954"
+        },
+        ".offset": {
+          "path": "corpus/generated/jpx/mapping-without-palette.offset",
+          "sha256": "94d5a38598be77593d4781b8fbd74cb4e2cd05bb006b1b531988ab2db90de9c9"
         }
       },
       "error": "syntax"
@@ -5691,6 +5711,10 @@
         ".jpx": {
           "path": "corpus/generated/jpx/opacity-signed.jpx",
           "sha256": "9a11517bede9c6417cbfb9d7d49709ebc040685ebe38f81b6a7052a6147ec6b4"
+        },
+        ".offset": {
+          "path": "corpus/generated/jpx/opacity-signed.offset",
+          "sha256": "94d5a38598be77593d4781b8fbd74cb4e2cd05bb006b1b531988ab2db90de9c9"
         }
       },
       "error": "syntax"
