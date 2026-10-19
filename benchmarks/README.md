@@ -138,8 +138,14 @@ an analytic test control, not an extra measured competitor.
 
 `adapters/wasi.mjs` runs that conversion adapter in Node/V8 WASI preview1, with
 only input/output directories preopened. V8 uses `--single-threaded --no-liftoff
---wasm-num-compilation-tasks=1`: optimizing compilation/instantiation happens
-before Rust stage timers, and remains included in process CPU/wall/RSS. Wasmtime
+--no-wasm-lazy-compilation --wasm-num-compilation-tasks=1`: optimizing compilation of
+the whole module happens at instantiation, before Rust stage timers, and remains included
+in process CPU/wall/RSS. Without `--no-wasm-lazy-compilation`, V8 compiles each function
+on its first call, inside the timed stages; runs before 2026-10-19 measured that way,
+which added about 0.7–1 s to the timed stages and made V8 appear 3–10× slower than
+native instead of about 1.4–1.9×. Process wall time now includes compiling the whole
+module instead, so V8's process ratio rises while its stage ratio falls. Compare V8
+cells only within one setting; `summary.md` repeats this note whenever V8 is timed. Wasmtime
 49.0.3 uses a locally generated, hash-recorded Cranelift AOT artifact (optimization
 level 2, parallel compilation disabled). Never load an untrusted AOT artifact.
 Both use explicit SIMD128 compiler flags; native uses compiler autovectorization

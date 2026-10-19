@@ -60,7 +60,7 @@ def main():
                 if runtime == "native":
                     command = [native, str(source), str(output)]
                 elif runtime == "v8":
-                    command = [os.environ.get("PAGURA_NODE", "node"), "--single-threaded", "--no-liftoff",
+                    command = [os.environ.get("PAGURA_NODE", "node"), "--single-threaded", "--no-liftoff", "--no-wasm-lazy-compilation",
                                str(ROOT / "benchmarks/adapters/wasi.mjs"), wasm, str(source), str(output)]
                 else:
                     command = [wasmtime, "run", "-C", "cache=n", "-C", "parallel-compilation=n",
