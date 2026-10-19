@@ -9,6 +9,7 @@ members = [
     "crates/pagura-font",
     "crates/pagura-text",
     "crates/pagura-data",
+    "crates/pagura-imagecodec",
     "crates/pagura-image",
     "crates/pagura-render",
     "crates/pagura-write",
@@ -36,6 +37,7 @@ pagura-document = { path = "crates/pagura-document" }
 pagura-font = { path = "crates/pagura-font" }
 pagura-host = { path = "crates/pagura-host" }
 pagura-image = { path = "crates/pagura-image" }
+pagura-imagecodec = { path = "crates/pagura-imagecodec" }
 pagura-pki = { path = "crates/pagura-pki" }
 pagura-raster = { path = "crates/pagura-raster" }
 pagura-render = { path = "crates/pagura-render" }

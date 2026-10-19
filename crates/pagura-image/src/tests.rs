@@ -1,9 +1,8 @@
 //! Independent generated image vectors and dictionary invariants.
-use crate::{
-    ImageKind, MaskKind, Samples, ccitt, dct, decode_inline, decode_xobject, inline_data_length,
-};
+use crate::{ImageKind, MaskKind, Samples, decode_inline, decode_xobject, inline_data_length};
 use pagura_core::{Dictionary, ErrorKind, Limits, Name, ObjectId, Recovery, Value};
 use pagura_document::{Document, OpenOptions};
+use pagura_imagecodec::{ccitt, dct};
 use pagura_testkit::{fixture, fixture_path};
 use std::collections::BTreeMap;
 
@@ -86,7 +85,10 @@ fn independent_vectors() {
             };
             if p["outcome"] == "repair" {
                 let error = ccitt::decode(&encoded, &params, &limits).unwrap_err();
-                assert_eq!(error.repair, Some(ccitt::tags::DAMAGED_ROW));
+                assert_eq!(
+                    error.repair,
+                    Some(pagura_imagecodec::repairs::CCITT_DAMAGED_ROW)
+                );
                 let mut diagnostics = pagura_core::Diagnostics::new(Recovery::Repair);
                 let decoded =
                     ccitt::decode_with_diagnostics(&encoded, &params, &limits, &mut diagnostics)
@@ -258,7 +260,7 @@ fn image_and_codec_budgets_precede_allocations() {
 #[test]
 fn fax_parameters_defaults_and_type_validation() {
     assert_eq!(
-        ccitt::CcittParams::from_dictionary(None).unwrap(),
+        crate::adapter::fax::params(None).unwrap(),
         ccitt::CcittParams::default()
     );
     for (key, value) in [
@@ -269,7 +271,7 @@ fn fax_parameters_defaults_and_type_validation() {
         (b"DamagedRowsBeforeError", Value::Integer(-1)),
     ] {
         assert_eq!(
-            ccitt::CcittParams::from_dictionary(Some(&dictionary(&[(key, value)])))
+            crate::adapter::fax::params(Some(&dictionary(&[(key, value)])))
                 .unwrap_err()
                 .kind,
             ErrorKind::Syntax
@@ -470,5 +472,8 @@ fn deferred_jpeg_height_is_an_explicit_capability_gap() {
     let frame = encoded.windows(2).position(|w| w == [255, 192]).unwrap();
     encoded[frame + 5..frame + 7].fill(0);
     let error = dct::decode(&encoded, None, &Limits::default()).unwrap_err();
-    assert_eq!(error.feature(), Some(crate::features::JPEG_PROCESS));
+    assert_eq!(
+        error.feature(),
+        Some(pagura_imagecodec::features::JPEG_PROCESS)
+    );
 }

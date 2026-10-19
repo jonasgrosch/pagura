@@ -292,6 +292,7 @@ fn options_preserve_opacity_kind_origin_and_stored_samples() -> pagura_core::Res
             &Options {
                 ignore_color: true,
                 ignore_opacity: true,
+                ignore_palette: false,
             },
         )?;
         assert_eq!(ignored.image.color, JpxColor::Unspecified);
@@ -328,6 +329,7 @@ fn options_preserve_opacity_kind_origin_and_stored_samples() -> pagura_core::Res
         &Options {
             ignore_color: true,
             ignore_opacity: false,
+            ignore_palette: false,
         },
     )?;
     assert_eq!(color_only.image.color, JpxColor::Unspecified);
@@ -338,6 +340,7 @@ fn options_preserve_opacity_kind_origin_and_stored_samples() -> pagura_core::Res
         &Options {
             ignore_color: false,
             ignore_opacity: true,
+            ignore_palette: false,
         },
     )?;
     assert_eq!(channel_only.image.color, JpxColor::Enumerated(16));

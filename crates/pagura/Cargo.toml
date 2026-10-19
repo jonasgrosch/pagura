@@ -34,5 +34,6 @@ pagura-codec.workspace = true
 pagura-font.workspace = true
 pagura-host.workspace = true
 pagura-image.workspace = true
+pagura-imagecodec.workspace = true
 pagura-testkit.workspace = true
 pagura-text.workspace = true

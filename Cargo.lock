@@ -14,6 +14,7 @@ dependencies = [
  "pagura-font",
  "pagura-host",
  "pagura-image",
+ "pagura-imagecodec",
  "pagura-pki",
  "pagura-raster",
  "pagura-render",
@@ -90,6 +91,16 @@ dependencies = [
  "pagura-codec",
  "pagura-core",
  "pagura-document",
+ "pagura-imagecodec",
+ "pagura-testkit",
+]
+
+[[package]]
+name = "pagura-imagecodec"
+version = "0.1.0"
+dependencies = [
+ "pagura-codec",
+ "pagura-core",
  "pagura-testkit",
 ]
 

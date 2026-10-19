@@ -8,7 +8,8 @@ pagura           ──► pagura-render, pagura-write, pagura-document, pagura-
 pagura-render    ──► pagura-text, pagura-font (glyph outline diagnostics), pagura-image, pagura-document, pagura-raster, pagura-crypto (MD5 for ICC profile IDs)
 pagura-data      ──► pagura-text (its Provider), pagura-font
 pagura-text      ──► pagura-font, pagura-document, pagura-raster
-pagura-image     ──► pagura-document, pagura-codec
+pagura-image     ──► pagura-imagecodec, pagura-document, pagura-codec
+pagura-imagecodec ──► pagura-codec (the filter.JPXDecode tag)
 pagura-font      ──► pagura-raster
 pagura-document  ──► pagura-codec, pagura-crypto
 every crate      ──► pagura-core
@@ -25,7 +26,8 @@ Dependencies point downward only and are fixed in the crate manifests.
 | `pagura-raster` | geometry, paths, flattening, exact-area fill, stroking, masks, `Pixmap` | PDF |
 | `pagura-font` | font programs (TrueType/OpenType, CFF/CFF2, Type 1) as outlines, advances, encodings and cmaps | PDF dictionaries |
 | `pagura-text` | PDF font dictionaries, encodings, widths, CMaps and ToUnicode; shown strings to positioned glyphs | content streams, pixels |
-| `pagura-image` | image XObjects and inline images; JPEG, CCITT, JBIG2 and JPEG 2000 decoding to samples | painting, colour conversion |
+| `pagura-imagecodec` | JPEG, CCITT fax, JBIG2 and JPEG 2000 decoding from encoded bytes to samples (ADR 0027) | PDF objects and dictionaries |
+| `pagura-image` | image XObjects and inline images: dictionaries, masks and codec adapters, decoded to samples | painting, colour conversion |
 | `pagura-render` | content interpretation into a display list in PDF terms; page-to-device transform; tiles; painting through `pagura-raster` | file structure |
 | `pagura-write` | deterministic serialization | parsing |
 | `pagura` | the public facade and the `pagura` CLI | — |

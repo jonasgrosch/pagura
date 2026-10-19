@@ -65,7 +65,7 @@ pub(crate) fn stencil_space(
     {
         diagnostics.repair(
             Diagnostic::new(
-                crate::tags::STENCIL_COLOR_SPACE,
+                crate::repairs::STENCIL_COLOR_SPACE,
                 "extraneous stencil ColorSpace ignored (8.9.5.1, Table 87)",
             )
             .at(Position::Buffer(0)),
@@ -109,19 +109,7 @@ pub(crate) fn budget(
     bits: u8,
     limits: &Limits,
 ) -> Result<usize> {
-    let pixels = u64::from(width) * u64::from(height);
-    let count = pixels
-        .checked_mul(u64::from(components))
-        .and_then(|v| usize::try_from(v).ok())
-        .ok_or(Error::limit("image sample size overflow"))?;
-    if pixels > limits.pixels as u64
-        || count
-            .checked_mul(if bits > 8 { 2 } else { 1 })
-            .is_none_or(|bytes| bytes > limits.decoded_bytes)
-    {
-        return Err(Error::limit("image sample budget exceeded"));
-    }
-    Ok(count)
+    pagura_imagecodec::sample_count(width, height, components, bits, limits)
 }
 
 pub(crate) fn components(space: &Value) -> Result<u8> {
@@ -263,12 +251,12 @@ pub(crate) fn packed_data<'a>(
     if data.len() != length {
         let (tag, message) = if data.len() < length {
             (
-                crate::tags::DATA_SHORT,
+                crate::repairs::DATA_SHORT,
                 "short image data padded with zero bytes (8.9.3, 8.9.5.1)",
             )
         } else {
             (
-                crate::tags::DATA_EXCESS,
+                crate::repairs::DATA_EXCESS,
                 "excess image data ignored (8.9.3, 8.9.5.1)",
             )
         };

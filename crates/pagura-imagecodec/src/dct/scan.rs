@@ -273,7 +273,7 @@ fn scan_end(
                 {
                     diagnostics.repair(
                         Diagnostic::new(
-                            super::tags::TRAILING_RESTART,
+                            crate::repairs::JPEG_TRAILING_RESTART,
                             "JPEG restart marker after final MCU ignored (T.81 B.2.1, B.2.4.4)",
                         )
                         .at(Position::Buffer(marker)),
@@ -291,7 +291,7 @@ fn scan_end(
                 }
                 diagnostics.repair(
                     Diagnostic::new(
-                        super::tags::ENTROPY_EXCESS,
+                        crate::repairs::JPEG_ENTROPY_EXCESS,
                         "extra JPEG entropy bytes before final EOI ignored (T.81 B.2.1)",
                     )
                     .at(Position::Buffer(start)),

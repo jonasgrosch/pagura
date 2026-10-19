@@ -102,7 +102,7 @@ pub(super) fn decode(
     let template = (flags >> 1) & 3;
     if flags & 0x10 != 0 {
         return Err(Error::unsupported(
-            super::tags::EXTENDED_TEMPLATE,
+            crate::features::JBIG2_EXTENDED_TEMPLATE,
             "extended JBIG2 adaptive templates are not implemented",
         ));
     }

@@ -231,8 +231,8 @@ impl Compiler<'_> {
             } => Some(color::blending(&context, resources, value)?),
             ImageKind::EmbeddedColor { color } => {
                 let name: &[u8] = match (color, decoded.components) {
-                    (pagura_image::jpx::JpxColor::Enumerated(16), 3) => b"DeviceRGB",
-                    (pagura_image::jpx::JpxColor::Enumerated(17), 1) => b"DeviceGray",
+                    (pagura_image::JpxColor::Enumerated(16), 3) => b"DeviceRGB",
+                    (pagura_image::JpxColor::Enumerated(17), 1) => b"DeviceGray",
                     _ => {
                         return Err(Error::unsupported(
                             EMBEDDED_COLOR,

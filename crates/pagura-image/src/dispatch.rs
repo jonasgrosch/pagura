@@ -1,8 +1,9 @@
 //! Image codec dispatch and cross-checking of dictionary and stream metadata.
-use crate::{DecodedImage, ImageKind, MaskKind, Samples, dct, jbig2, parameters as p};
+use crate::{DecodedImage, ImageKind, MaskKind, Samples, parameters as p};
 use pagura_codec::ImageCodec;
 use pagura_core::{Diagnostics, Dictionary, Error, Result, Value};
 use pagura_document::Document;
+use pagura_imagecodec::{dct, jbig2};
 
 type Codec = (ImageCodec, Option<Dictionary>);
 
@@ -82,7 +83,7 @@ pub(crate) fn decode(
                 return Err(Error::syntax("CCITT requires one-bit components"));
             }
             image.samples =
-                crate::fax_image::decode(data, params, width, height, &limits, diagnostics)?;
+                crate::adapter::fax::decode(data, params, width, height, &limits, diagnostics)?;
         }
         Some(ImageCodec::Jbig2) => {
             if bits != 1 || components != 1 {
@@ -91,7 +92,7 @@ pub(crate) fn decode(
             image.samples = decode_jbig2(document, dict, data, params, width, height)?;
         }
         Some(ImageCodec::Jpx) => {
-            crate::jpx_image::decode(data, dict, &mut image, &limits, diagnostics)?;
+            crate::adapter::jpx::decode(data, dict, &mut image, &limits, diagnostics)?;
         }
     }
     let mut dictionary = dict.clone();
@@ -185,7 +186,7 @@ fn decode_dct(
             {
                 diagnostics.repair(
                     pagura_core::Diagnostic::new(
-                        crate::tags::FILTER_MISMATCH,
+                        crate::repairs::FILTER_MISMATCH,
                         "DCTDecode replaced by validated Flate image data (7.4.4, 7.4.8)",
                     )
                     .at(pagura_core::Position::Buffer(0)),

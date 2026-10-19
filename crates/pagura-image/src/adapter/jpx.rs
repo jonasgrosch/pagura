@@ -1,6 +1,9 @@
 //! PDF JPEG 2000 adaptation: ISO 32000-2 7.4.9 and Table 87.
-use crate::{DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples, features, jpx, parameters};
+mod channels;
+
+use crate::{DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples, features, parameters};
 use pagura_core::{Dictionary, Error, Limits, Result, Value};
+use pagura_imagecodec::jpx;
 
 pub(crate) fn decode(
     data: &[u8],
@@ -20,10 +23,6 @@ pub(crate) fn decode(
             "PDF JPXDecode requires a full JPEG 2000 container",
         ));
     }
-    let options = jpx::Options {
-        ignore_color: !matches!(image.kind, ImageKind::Color { color_space: None }),
-        ignore_opacity: mode == 0,
-    };
     let indexed = matches!(&image.kind, ImageKind::Color { color_space: Some(Value::Array(space)) }
         if space.first().and_then(Value::as_name).is_some_and(|name| name == b"Indexed"));
     if indexed && mode != 0 {
@@ -32,9 +31,14 @@ pub(crate) fn decode(
             "Indexed JPX opacity requires channel mapping",
         ));
     }
-    let mut decoded = jpx::decode_pdf(data, limits, &options, diagnostics, indexed)?;
+    let options = jpx::Options {
+        ignore_color: !matches!(image.kind, ImageKind::Color { color_space: None }),
+        ignore_opacity: mode == 0,
+        ignore_palette: indexed,
+    };
+    let mut decoded = jpx::decode_with_diagnostics(data, limits, &options, diagnostics)?;
     if mode == 0 {
-        super::jpx_channels::discard_opacity(data, &mut decoded, limits)?;
+        channels::discard_opacity(data, &mut decoded, limits)?;
     }
     adapt(decoded, mode, image, limits)
 }
@@ -323,7 +327,7 @@ fn embedded_space(color: jpx::JpxColor, count: u8) -> Result<ImageKind> {
         }
         (jpx::JpxColor::Enumerated(_), _) => {
             return Err(Error::unsupported(
-                features::JPX_COLOUR,
+                features::JPX_COLOR,
                 "JPX enumerated colour space is not implemented",
             ));
         }

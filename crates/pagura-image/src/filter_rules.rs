@@ -35,7 +35,7 @@ pub(crate) fn validate(
     if abbreviated {
         diagnostics.repair(
             Diagnostic::new(
-                crate::tags::FILTER_ABBREVIATION,
+                crate::repairs::FILTER_ABBREVIATION,
                 "recognized inline filter abbreviation used on an image XObject (8.9.7, Table 92)",
             )
             .at(Position::Buffer(0)),

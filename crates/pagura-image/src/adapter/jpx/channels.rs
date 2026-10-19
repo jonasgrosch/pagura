@@ -1,7 +1,7 @@
 //! Ignore opacity semantics while retaining ordinary channel associations
 //! (ISO 32000-2 7.4.9, Table 87; T.800 I.5.3.6).
-use crate::jpx;
 use pagura_core::{Error, Limits, Result};
+use pagura_imagecodec::jpx;
 
 pub(super) fn discard_opacity(
     data: &[u8],

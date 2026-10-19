@@ -1,6 +1,8 @@
 //! Fax row geometry: 7.4.6 Table 11 and 8.9.5.1 Table 87.
-use crate::{Samples, ccitt, parameters};
+use crate::Samples;
+use crate::parameters::{self, boolean, integer};
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Limits, Position, Result};
+use pagura_imagecodec::ccitt::{self, CcittParams};
 
 pub(crate) fn decode(
     data: &[u8],
@@ -10,9 +12,9 @@ pub(crate) fn decode(
     limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<Samples> {
-    let params = ccitt::CcittParams::from_dictionary(dictionary)?;
+    let params = params(dictionary)?;
     if params.columns != width {
-        diagnostics.repair(Diagnostic::new(crate::tags::CCITT_COLUMNS,
+        diagnostics.repair(Diagnostic::new(crate::repairs::CCITT_COLUMNS,
             "CCITT Columns retained for decoding; rows cropped or white-padded to image Width (7.4.6 Table 11; 8.9.5.1 Table 87)")
             .at(Position::Buffer(0)))?;
         parameters::budget(params.columns, height, 1, 1, limits)?;
@@ -56,6 +58,30 @@ pub(crate) fn decode(
     Ok(Samples::Bytes(samples))
 }
 
+/// Reads the Table 11 parameters, including defaults.
+pub(crate) fn params(params: Option<&Dictionary>) -> Result<CcittParams> {
+    let Some(p) = params else {
+        return Ok(CcittParams::default());
+    };
+    let columns = u32::try_from(integer(p, b"Columns", 1728)?)
+        .ok()
+        .filter(|&v| v > 0)
+        .ok_or(Error::syntax("invalid CCITT Columns"))?;
+    let rows =
+        u32::try_from(integer(p, b"Rows", 0)?).map_err(|_| Error::syntax("invalid CCITT Rows"))?;
+    Ok(CcittParams {
+        k: integer(p, b"K", 0)?,
+        columns,
+        rows: if rows == 0 { None } else { Some(rows) },
+        end_of_line: boolean(p, b"EndOfLine", false)?,
+        encoded_byte_align: boolean(p, b"EncodedByteAlign", false)?,
+        end_of_block: boolean(p, b"EndOfBlock", true)?,
+        black_is_1: boolean(p, b"BlackIs1", false)?,
+        damaged_rows_before_error: u32::try_from(integer(p, b"DamagedRowsBeforeError", 0)?)
+            .map_err(|_| Error::syntax("invalid CCITT damaged row count"))?,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -82,7 +108,7 @@ mod tests {
         assert_eq!(error.kind, ErrorKind::Limit);
         assert_eq!(
             reports.as_slice()[0].repair(),
-            Some(crate::tags::CCITT_COLUMNS)
+            Some(crate::repairs::CCITT_COLUMNS)
         );
     }
 
