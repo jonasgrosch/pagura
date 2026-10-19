@@ -271,6 +271,63 @@
       "rounds": 72
     },
     {
+      "id": "crypto/rsa-encodings",
+      "kind": "vector",
+      "description": "RFC 8017 9.1/9.2 encodings and targeted mutations, signed with Python integers",
+      "requirements": [
+        "crypto-rsa-pkcs1v15-verification",
+        "crypto-rsa-pss-verification"
+      ],
+      "files": {
+        ".vectors": {
+          "path": "corpus/generated/crypto/rsa-encodings.vectors",
+          "sha256": "3ea4577674a56723dd047bf32ccce8de82eb7736dd111c2bac3922f207141cf3"
+        }
+      }
+    },
+    {
+      "id": "crypto/modular-power",
+      "kind": "vector",
+      "description": "Python pow() over seeded random and boundary moduli, bases and exponents",
+      "requirements": [
+        "crypto-rsa-public-arithmetic"
+      ],
+      "files": {
+        ".vectors": {
+          "path": "corpus/generated/crypto/modular-power.vectors",
+          "sha256": "aeb48ba70933cabd00273b9113afc112ddc3b4dbb3664543e53907194a12739c"
+        }
+      }
+    },
+    {
+      "id": "crypto/ecdsa-arithmetic",
+      "kind": "vector",
+      "description": "Python modular add, sub, mul and inverse over each curve's field and scalar primes",
+      "requirements": [
+        "crypto-ecdsa-public-key-validation"
+      ],
+      "files": {
+        ".vectors": {
+          "path": "corpus/generated/crypto/ecdsa-arithmetic.vectors",
+          "sha256": "bec9bec6d73f0fff6cc5bdba51400ae755d9f939f65b1eb6878d48c615f80810"
+        }
+      }
+    },
+    {
+      "id": "crypto/ecdsa-signatures",
+      "kind": "vector",
+      "description": "Seeded keys, nonces and digests signed and checked with affine Python arithmetic",
+      "requirements": [
+        "crypto-ecdsa-verification"
+      ],
+      "files": {
+        ".vectors": {
+          "path": "corpus/generated/crypto/ecdsa-signatures.vectors",
+          "sha256": "147648e00c067931090ae9229dcef74e787051b801b5d6b6a0689c40a5e2f5e3"
+        }
+      }
+    },
+    {
       "id": "crypto/cbc-aes128-f2",
       "kind": "vector",
       "description": "SP 800-38A F.2.1/F.2.2 four-block encryption/decryption and intermediate blocks",
