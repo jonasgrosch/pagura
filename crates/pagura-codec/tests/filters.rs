@@ -261,7 +261,8 @@ fn huffman_tables_are_charged_to_the_decode_work_budget_before_they_are_built() 
     use pagura_core::{Diagnostics, ErrorKind};
     use pagura_testkit::fixture;
     // Code-length, literal/length and distance codes of 4, 15 and 15 bits:
-    // tables of 16 + 32,768 + 32,768 entries.
+    // tables of 16 + 1,024 + 1,024 entries; codes beyond 10 bits are
+    // searched, not tabulated.
     let encoded = fixture("codec", "flate-dynamic-length15-match.in");
     let expected = fixture("codec", "flate-dynamic-length15-match.out");
     let work = |decode_work| Limits {
@@ -276,8 +277,8 @@ fn huffman_tables_are_charged_to_the_decode_work_budget_before_they_are_built() 
             &mut Diagnostics::default(),
         )
     };
-    assert_eq!(decode(&work(65_552)).unwrap(), expected);
-    let error = decode(&work(65_551)).unwrap_err();
+    assert_eq!(decode(&work(2_064)).unwrap(), expected);
+    let error = decode(&work(2_063)).unwrap_err();
     assert_eq!(
         (error.kind, error.message),
         (ErrorKind::Limit, "stream decode work budget exceeded")

@@ -6,6 +6,7 @@
 //! Each selected occurrence of a leaf contributes one bit to its code length.
 //! Stable weight/creation-order ties make the construction deterministic.
 use super::bits::{Fault, Read, Reader};
+use super::tables::FIXED_LITERAL_SYMBOLS;
 use crate::bounded::{filled, reserve, with_capacity};
 use crate::report::syntax;
 use pagura_core::{Meter, Position, Result, ResultExt};
@@ -21,10 +22,18 @@ fn first_codes(counts: &[u16; 16]) -> [u16; 16] {
     next
 }
 
+/// Codes of at most this many bits are decoded with one lookup in a table
+/// of at most 2^10 entries; longer ones with a canonical search over the
+/// remaining lengths. A direct table for 15-bit codes has 32,768 entries,
+/// and a dynamic block about 22 bytes long can ask for two of them.
+const PRIMARY_BITS: u8 = 10;
+const PRIMARY: usize = 1 << PRIMARY_BITS;
+
 #[derive(Debug, Clone, Copy, Default)]
 struct Entry {
     symbol: u16,
-    /// The code's length; zero where no code starts with these bits.
+    /// The code's length; zero where no code of at most the table's width
+    /// starts with these bits.
     bits: u8,
 }
 
@@ -52,24 +61,35 @@ impl Alphabet {
     }
 }
 
-/// A decoding table for one canonical code: every code, in reading order,
-/// indexes its symbol directly, so a symbol costs one lookup.
+/// A decoding table for one canonical code.
 pub(super) struct Decoder {
+    /// Indexed by the next `lookup` input bits.
     entries: Vec<Entry>,
+    /// The table's width: the longest code, at most `PRIMARY_BITS`.
+    lookup: u8,
     /// The longest code; zero for an alphabet without codes.
     width: u8,
+    /// How many codes have each length.
+    counts: [u16; 16],
+    /// The first code of each length.
+    first_code: [u16; 16],
+    /// Where each length's symbols start in `symbols`.
+    first_symbol: [u16; 16],
+    /// Symbols in canonical order: by code length, then by value.
+    symbols: [u16; FIXED_LITERAL_SYMBOLS],
 }
 
 impl Decoder {
-    /// The decoder for code `lengths` (lengths at most 15), or a syntax
-    /// error at `offset` if they do not form a usable code. Its table's
-    /// entries are charged to `work` before they are built.
+    /// The decoder for code `lengths` (at most 288 symbols, lengths at most
+    /// 15), or a syntax error at `offset` if they do not form a usable code.
+    /// Its table's entries are charged to `work` before they are built.
     pub(super) fn new(
         lengths: &[u8],
         alphabet: Alphabet,
         work: &mut Meter,
         offset: usize,
     ) -> Result<Self> {
+        debug_assert!(lengths.len() <= FIXED_LITERAL_SYMBOLS);
         let mut counts = [0_u16; 16];
         for &length in lengths {
             let slot = counts
@@ -79,14 +99,21 @@ impl Decoder {
         }
         counts[0] = 0;
         let width = lengths.iter().copied().max().unwrap_or(0);
+        let mut decoder = Self {
+            entries: Vec::new(),
+            lookup: width.min(PRIMARY_BITS),
+            width,
+            counts,
+            first_code: [0; 16],
+            first_symbol: [0; 16],
+            symbols: [0; FIXED_LITERAL_SYMBOLS],
+        };
         if width == 0 {
-            if alphabet.allows_no_codes() {
-                return Ok(Self {
-                    entries: Vec::new(),
-                    width: 0,
-                });
-            }
-            return Err(syntax("empty Huffman alphabet", offset));
+            return if alphabet.allows_no_codes() {
+                Ok(decoder)
+            } else {
+                Err(syntax("empty Huffman alphabet", offset))
+            };
         }
         let mut remaining = 1_i32;
         for &count in &counts[1..] {
@@ -98,43 +125,60 @@ impl Decoder {
         if remaining != 0 && !(alphabet.allows_single_code() && width == 1 && counts[1] == 1) {
             return Err(syntax("incomplete Huffman alphabet", offset));
         }
-        let mut next = first_codes(&counts);
-        let size = 1_usize << width;
+        decoder.first_code = first_codes(&counts);
+        let mut start = 0;
+        for (first, &count) in decoder.first_symbol.iter_mut().zip(&counts).skip(1) {
+            *first = start;
+            start += count;
+        }
+        let size = 1_usize << decoder.lookup;
         work.charge(size).at(Position::Buffer(offset))?;
-        let mut entries = filled(size, Entry::default())?;
+        decoder.entries = filled(size, Entry::default())?;
+        let mut next_symbol = decoder.first_symbol;
+        let mut next_code = decoder.first_code;
         for (symbol, &length) in (0_u16..).zip(lengths) {
             if length == 0 {
                 continue;
             }
-            let code = &mut next[usize::from(length)];
-            // Table indices are the code's bits in reading order.
-            let reversed = usize::from(code.reverse_bits() >> (16 - length));
-            *code += 1;
-            let entry = Entry {
-                symbol,
-                bits: length,
-            };
-            for index in (reversed..size).step_by(1 << length) {
-                if let Some(target) = entries.get_mut(index) {
-                    *target = entry;
+            let index = usize::from(length);
+            decoder.symbols[usize::from(next_symbol[index])] = symbol;
+            next_symbol[index] += 1;
+            let code = next_code[index];
+            next_code[index] += 1;
+            if length <= decoder.lookup {
+                // Table indices are the code's bits in reading order.
+                let reversed = usize::from(code.reverse_bits() >> (16 - length));
+                for entry in decoder
+                    .entries
+                    .iter_mut()
+                    .skip(reversed)
+                    .step_by(1 << length)
+                {
+                    *entry = Entry {
+                        symbol,
+                        bits: length,
+                    };
                 }
             }
         }
-        Ok(Self { entries, width })
+        Ok(decoder)
     }
 
     pub(super) fn read(&self, bits: &mut Reader<'_>) -> Read<u16> {
         if self.width == 0 {
             return Err(syntax("distance code in empty alphabet", bits.offset).into());
         }
-        let (index, available) = bits.peek(self.width);
+        let (index, available) = bits.peek(self.lookup);
         let entry = self
             .entries
             .get(index)
             .copied()
             .ok_or_else(|| syntax("invalid Huffman code", bits.offset))?;
         if entry.bits == 0 {
-            if available < self.width {
+            if self.width > self.lookup {
+                return self.read_long(bits);
+            }
+            if available < self.lookup {
                 return Err(Fault::End);
             }
             return Err(syntax("invalid Huffman code", bits.offset).into());
@@ -144,6 +188,36 @@ impl Decoder {
         }
         bits.advance(entry.bits);
         Ok(entry.symbol)
+    }
+
+    /// Canonical decoding of a code longer than the table (RFC 1951 3.2.2):
+    /// the codes of one length are consecutive numbers, so the first `n`
+    /// bits are a code of length `n` exactly when they fall in that range.
+    /// The table holds every code of at most `PRIMARY_BITS` bits, so a miss
+    /// means the search can start one bit longer.
+    #[cold]
+    fn read_long(&self, bits: &mut Reader<'_>) -> Read<u16> {
+        let (value, available) = bits.peek(self.width);
+        // The first bits read are the code's most significant ones.
+        let mut code =
+            (value & (PRIMARY - 1)).reverse_bits() >> (usize::BITS - u32::from(PRIMARY_BITS));
+        for length in PRIMARY_BITS + 1..=self.width {
+            code = (code << 1) | ((value >> (length - 1)) & 1);
+            let index = usize::from(length);
+            if let Some(rank) = code.checked_sub(usize::from(self.first_code[index]))
+                && rank < usize::from(self.counts[index])
+            {
+                if length > available {
+                    return Err(Fault::End);
+                }
+                bits.advance(length);
+                return Ok(self.symbols[usize::from(self.first_symbol[index]) + rank]);
+            }
+        }
+        if available < self.width {
+            return Err(Fault::End);
+        }
+        Err(syntax("invalid Huffman code", bits.offset).into())
     }
 }
 
@@ -265,7 +339,40 @@ impl<const N: usize> Book<N> {
 
 #[cfg(test)]
 mod tests {
-    use super::Book;
+    use super::{Alphabet, Book, Decoder};
+    use crate::flate::bits::{Fault, Reader};
+    use pagura_core::Meter;
+
+    #[test]
+    fn table_and_long_codes_decode_every_symbol_and_detect_truncation() {
+        // A complete code with every length from 1 to 15: lengths up to 10
+        // come from the table, longer ones from the canonical search.
+        let mut lengths = [0_u8; 16];
+        for (symbol, length) in lengths.iter_mut().enumerate().take(15) {
+            *length = u8::try_from(symbol + 1).unwrap();
+        }
+        lengths[15] = 15;
+        let mut work = Meter::new(usize::MAX, "test budget exceeded");
+        let decoder = Decoder::new(&lengths, Alphabet::LiteralLength, &mut work, 0).unwrap();
+        assert_eq!(work.used(), 1 << 10);
+        let book = Book::from_lengths(lengths);
+        for (symbol, &length) in lengths.iter().enumerate() {
+            // The encoder's codes are stored in reading order, low bit first.
+            let bytes = u32::from(book.codes[symbol]).to_le_bytes();
+            let mut bits = Reader::new(&bytes, 0);
+            let decoded = decoder.read(&mut bits).unwrap();
+            assert_eq!(usize::from(decoded), symbol);
+            assert_eq!(bits.offset, usize::from(length / 8), "{symbol}");
+            let short = usize::from(length).div_ceil(8) - 1;
+            if length > 8 && !length.is_multiple_of(8) {
+                let mut bits = Reader::new(&bytes[..short], 0);
+                assert!(
+                    matches!(decoder.read(&mut bits), Err(Fault::End)),
+                    "{symbol}"
+                );
+            }
+        }
+    }
 
     #[test]
     fn package_merge_matches_exhaustive_small_oracle() {

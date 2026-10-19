@@ -165,7 +165,7 @@
         "A valid zlib header wins detection; explicitly raw containers use decode_raw_deflate for header collisions. Bytes not recognized as CM=8 enter the reported raw path; Strict rejects that deviation.",
         "General incomplete-tree rejection, the one-bit EOB-only literal exception and acceptance of zero-only unused distance alphabets are decoder choices where RFC 1951 does not explicitly settle validity; they are not verified normative prohibitions or permissions.",
         "RFC 1951 3.1.1 determines wire packing for non-Huffman extra fields; 3.2.5 describes their integer values in conventional most-significant-bit notation.",
-        "Decoding tables are direct lookups of 2^(longest code) entries per alphabet; the fixed code's tables are built once per stream. Building them is charged to Limits::decode_work, one unit per entry, for the whole filter chain, so a stream of small dynamic blocks with 15-bit codes ends with a Limit error instead of unbounded table work."
+        "Decoding tables resolve codes of at most 10 bits in one lookup and longer codes by canonical search over per-length first codes, so a table has at most 2^10 entries whatever its code lengths; a direct table for 15-bit codes would have 32,768. The fixed code's tables are built once per stream. Building them is charged to Limits::decode_work, one unit per entry, for the whole filter chain, so a stream of small dynamic blocks with 15-bit codes ends with a Limit error instead of unbounded table work."
       ],
       "external_primary_review": [
         {

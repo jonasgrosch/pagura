@@ -1,7 +1,8 @@
 //! Zlib/DEFLATE, RFC 1950 2.2/2.3 and RFC 1951 3.2.
 //!
-//! Decoding (`inflate`) expands each canonical Huffman code into a direct
-//! lookup table, one lookup per symbol; the fixed code's tables are built
+//! Decoding (`inflate`) expands each canonical Huffman code into a lookup
+//! table of at most 2^10 entries: codes up to 10 bits take one lookup, and
+//! longer ones a short canonical search. The fixed code's tables are built
 //! once per stream. Backrefs read predictor-free output directly; predictors
 //! retain a bounded circular window of pre-predictor bytes (at most 32 KiB).
 //! [`compress`] (`deflate`) chooses stored, fixed or dynamic blocks with
