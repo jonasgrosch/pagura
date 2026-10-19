@@ -5,6 +5,186 @@
   "license": "MIT OR Apache-2.0 (project-owned)",
   "cases": [
     {
+      "id": "content/precision-two-partial",
+      "kind": "pdf",
+      "description": "Independent exact Normal-composition stack: two-partial",
+      "expected": "render",
+      "requirements": [
+        "content-compositor-precision"
+      ],
+      "path": "corpus/generated/content/precision-two-partial.pdf",
+      "sha256": "b27e64e123c1c321de8228a5b89cf345a0d20e71818c8a91da6f2f50e70b8ba5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/precision-two-partial.ppm",
+      "oracle_sha256": "81de944dab7d2e3d7e09080eed7315e7b00111db916b5caa6fafae168d948488",
+      "dpi": 72,
+      "width": 1,
+      "height": 1,
+      "tolerance": 1
+    },
+    {
+      "id": "content/precision-byte-threshold",
+      "kind": "pdf",
+      "description": "Independent exact Normal-composition stack: byte-threshold",
+      "expected": "render",
+      "requirements": [
+        "content-compositor-precision"
+      ],
+      "path": "corpus/generated/content/precision-byte-threshold.pdf",
+      "sha256": "ade72617bd4f3005239ba1990a14d3063d799fc91ec45a2964f7d4be38513f6f",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/precision-byte-threshold.ppm",
+      "oracle_sha256": "8f783cf66b05fbae96158eb460ba6c61add01646c6424171227845541dcb1cf1",
+      "dpi": 72,
+      "width": 1,
+      "height": 1,
+      "tolerance": 1
+    },
+    {
+      "id": "content/precision-slivers-254",
+      "kind": "pdf",
+      "description": "Independent exact Normal-composition stack: slivers-254",
+      "expected": "render",
+      "requirements": [
+        "content-compositor-precision"
+      ],
+      "path": "corpus/generated/content/precision-slivers-254.pdf",
+      "sha256": "b0d780aba6b05d4b1fc85b6f0e5f0ef9c9041a153d01875ab8c73c874863ed35",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/precision-slivers-254.ppm",
+      "oracle_sha256": "0fe78bcd441d5a31cb631b2abb7fb1308f442e2572a81f6e4b5681a4efb75330",
+      "dpi": 72,
+      "width": 1,
+      "height": 1,
+      "tolerance": 1
+    },
+    {
+      "id": "content/precision-slivers-255",
+      "kind": "pdf",
+      "description": "Independent exact Normal-composition stack: slivers-255",
+      "expected": "render",
+      "requirements": [
+        "content-compositor-precision"
+      ],
+      "path": "corpus/generated/content/precision-slivers-255.pdf",
+      "sha256": "41de2c0441d413135e6e8b6f92c271390ae126941282f1642299b4f4363e86f0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/precision-slivers-255.ppm",
+      "oracle_sha256": "0fe78bcd441d5a31cb631b2abb7fb1308f442e2572a81f6e4b5681a4efb75330",
+      "dpi": 72,
+      "width": 1,
+      "height": 1,
+      "tolerance": 1
+    },
+    {
+      "id": "content/precision-slivers-1000",
+      "kind": "pdf",
+      "description": "Independent exact Normal-composition stack: slivers-1000",
+      "expected": "render",
+      "requirements": [
+        "content-compositor-precision"
+      ],
+      "path": "corpus/generated/content/precision-slivers-1000.pdf",
+      "sha256": "f2375ce7da8c74a59da5dd925a03260ea8574773b5f02d9acb8c7889453a1504",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/precision-slivers-1000.ppm",
+      "oracle_sha256": "e4d80c7ae369ded6d8bf147c17152bc1c298db100f7d11bdfdc2a7e98ef3f2f1",
+      "dpi": 72,
+      "width": 1,
+      "height": 1,
+      "tolerance": 1
+    },
+    {
+      "id": "content/precision-slivers-270000",
+      "kind": "pdf",
+      "description": "Independent exact Normal-composition stack: slivers-270000",
+      "expected": "render",
+      "requirements": [
+        "content-compositor-precision"
+      ],
+      "path": "corpus/generated/content/precision-slivers-270000.pdf",
+      "sha256": "f833d26293beeccb5017e3cd099a36284f8060b6b8f9bf294f0678af126e8eb0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/precision-slivers-270000.ppm",
+      "oracle_sha256": "3ff6c5463ace13c0f26a735ac1af2bb96ab8a9ba1cb4398359cf2466f63a4d1b",
+      "dpi": 72,
+      "width": 1,
+      "height": 1,
+      "tolerance": 1
+    },
+    {
+      "id": "content/precision-translucent-stagnation",
+      "kind": "pdf",
+      "description": "Independent exact Normal-composition stack: translucent-stagnation",
+      "expected": "render",
+      "requirements": [
+        "content-compositor-precision"
+      ],
+      "path": "corpus/generated/content/precision-translucent-stagnation.pdf",
+      "sha256": "71f3808c32a76717c0fb2bbf39a1ea4bcb20e86916651bfd9b566da34987dfbb",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/precision-translucent-stagnation.ppm",
+      "oracle_sha256": "6bc46b8374432994e3dd80e574310cdbd54fdec3b7ec87eb32a5404c02079ab6",
+      "dpi": 72,
+      "width": 1,
+      "height": 1,
+      "tolerance": 1
+    },
+    {
+      "id": "content/precision-tiny-alpha",
+      "kind": "pdf",
+      "description": "Independent exact Normal-composition stack: tiny-alpha",
+      "expected": "render",
+      "requirements": [
+        "content-compositor-precision"
+      ],
+      "path": "corpus/generated/content/precision-tiny-alpha.pdf",
+      "sha256": "29082eaf75314c14e9df15339c8844b895d423592b8bcc410d68b768f6962dde",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/precision-tiny-alpha.ppm",
+      "oracle_sha256": "b21d88ba4166e35174925710d9c2fa4aeedf24ea994663ad4354ffc6c72d7170",
+      "dpi": 72,
+      "width": 1,
+      "height": 1,
+      "tolerance": 1
+    },
+    {
+      "id": "content/precision-steady-state",
+      "kind": "pdf",
+      "description": "Independent exact Normal-composition stack: steady-state",
+      "expected": "render",
+      "requirements": [
+        "content-compositor-precision"
+      ],
+      "path": "corpus/generated/content/precision-steady-state.pdf",
+      "sha256": "b009de51b865f56178ebfb42b882470e5ea50f4ea4aaecf15c942901fdecedc4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/precision-steady-state.ppm",
+      "oracle_sha256": "699c96ca6248830a7510dd24d94172041cff1a47e117d1a68f532d621dc2f451",
+      "dpi": 72,
+      "width": 1,
+      "height": 1,
+      "tolerance": 1
+    },
+    {
       "id": "content/bounds-image",
       "kind": "pdf",
       "description": "An image contributes its transformed unit rectangle",

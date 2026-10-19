@@ -2,14 +2,17 @@
 //!
 //! Consecutive identical opaque spans need no second store. All other mutation
 //! invalidates the interval; floating-point pixels remain authoritative.
+//! An admitted page holds bounded N16/F32 storage instead (ADR 0004).
 
-use super::Pixel;
+use super::{Pixel, narrow};
 use crate::Tile;
 use pagura_core::{Error, Result};
 
 pub(super) struct Surface {
     pub(super) tile: Tile,
     pixels: Vec<Pixel>,
+    /// The page's bounded storage; `pixels` is then empty.
+    narrow: Option<narrow::Buffer>,
     solid: Option<SolidSpan>,
 }
 
@@ -25,8 +28,25 @@ impl Surface {
         Self {
             tile,
             pixels,
+            narrow: None,
             solid: None,
         }
+    }
+    pub(super) fn with_buffer(tile: Tile, buffer: narrow::Buffer) -> Self {
+        Self {
+            tile,
+            pixels: Vec::new(),
+            narrow: Some(buffer),
+            solid: None,
+        }
+    }
+    pub(super) fn narrow(&self) -> Option<&narrow::Buffer> {
+        self.narrow.as_ref()
+    }
+    /// Every store into bounded storage also ends the solid interval.
+    pub(super) fn narrow_mut(&mut self) -> Option<&mut narrow::Buffer> {
+        self.solid = None;
+        self.narrow.as_mut()
     }
     pub(super) fn pixels(&self) -> &[Pixel] {
         &self.pixels
@@ -100,6 +120,7 @@ impl Surface {
     }
     pub(super) fn bytes(&self) -> usize {
         self.pixels.len() * size_of::<Pixel>()
+            + self.narrow.as_ref().map_or(0, narrow::Buffer::bytes)
     }
 }
 
@@ -133,6 +154,24 @@ mod tests {
         assert!(!surface.fill_solid(1, 7, color).unwrap());
         assert_eq!(surface.pixel(4, 0).alpha, 0.25);
         assert!(surface.fill_solid(8, 1, color).is_err());
+    }
+
+    #[test]
+    fn bounded_pages_hold_no_solid_interval() {
+        let tile = Tile {
+            x: 0,
+            y: 0,
+            width: 4,
+            height: 1,
+        };
+        let buffer = narrow::Buffer::new(super::super::plan::Format::N16, 4, [255; 4]).unwrap();
+        let mut surface = Surface::with_buffer(tile, buffer);
+        assert_eq!(surface.bytes(), 32);
+        // Solid intervals describe f64 pixels only; bounded stores go
+        // through `narrow_mut`, which also ends any interval.
+        assert!(surface.fill_solid(0, 2, [0.5; 4]).is_err());
+        assert!(surface.narrow_mut().is_some());
+        assert!(surface.pixels().is_empty());
     }
 
     #[test]
