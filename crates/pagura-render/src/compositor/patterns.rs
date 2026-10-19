@@ -86,18 +86,30 @@ impl Context {
         let soft = soft.as_deref().map(Vec::as_slice);
         self.charge(surface.pixels().len())?;
         // The cell surface spans the mask, so both share pixel indices.
-        for (index, point, pixel) in surface.painted() {
-            let coverage = mask.coverage().get(index).copied().unwrap_or(0);
-            if coverage == 0 {
+        for (y, first, pixels) in surface.rows() {
+            let coverage = mask.coverage().get(first..first + pixels.len());
+            let start = target.span(tile.x, y, pixels.len());
+            debug_assert!(
+                coverage.is_some() && start.is_some(),
+                "the cell surface spans the mask within the target"
+            );
+            let (Some(coverage), Some(start)) = (coverage, start) else {
                 continue;
-            }
-            let factor = f64::from(coverage) / 255.0;
-            let source = Source {
-                spot: self.spot_batch.is_some(),
-                ..Source::new(pixel.color, pixel.group * factor, pixel.shape * factor)
             };
-            // All reads of the initial parent pixel precede this pixel's write.
-            target.composite(point, source, &command.composite, soft, frame);
+            for (((index, x), pixel), &coverage) in
+                (start..).zip(tile.x..).zip(pixels).zip(coverage)
+            {
+                if coverage == 0 || pixel.shape <= 0.0 {
+                    continue;
+                }
+                let factor = f64::from(coverage) / 255.0;
+                let source = Source {
+                    spot: self.spot_batch.is_some(),
+                    ..Source::new(pixel.color, pixel.group * factor, pixel.shape * factor)
+                };
+                // All reads of the initial parent pixel precede this pixel's write.
+                target.composite(index, (x, y), source, &command.composite, soft, frame);
+            }
         }
         self.release(surface);
         Ok(())

@@ -59,7 +59,10 @@ impl Context {
         for run in runs(&clip) {
             let run = run?;
             let y = run.y;
-            for (x, coverage) in run.pixels() {
+            let start = target.span(run.x, y, run.coverage.len());
+            debug_assert!(start.is_some(), "masks are clipped to their group's tile");
+            let Some(start) = start else { continue };
+            for (index, (x, coverage)) in (start..).zip(run.pixels()) {
                 let mut work = 0;
                 let maximum = self.limits.raster_work.saturating_sub(self.work);
                 let mut value = sampler.sample(x, y, &mut work, maximum, |pixel| {
@@ -81,7 +84,7 @@ impl Context {
                 self.charge(work)?;
                 let source = covered_source(value, coverage, template);
                 self.image_transfer(command, (x, y), source)?;
-                target.composite((x, y), source, &command.composite, soft, frame);
+                target.composite(index, (x, y), source, &command.composite, soft, frame);
             }
         }
         self.memory.refund(sampling_bytes);

@@ -47,7 +47,10 @@ impl Context {
         for run in runs(&clip) {
             let run = run?;
             let y = run.y;
-            for (x, coverage) in run.pixels() {
+            let start = target.span(run.x, y, run.coverage.len());
+            debug_assert!(start.is_some(), "masks are clipped to their group's tile");
+            let Some(start) = start else { continue };
+            for (index, (x, coverage)) in (start..).zip(run.pixels()) {
                 let source =
                     self.shading_sample(command, inverse, (x, y), frame.model, rate, None)?;
                 let Some(mut source) = source else { continue };
@@ -61,7 +64,7 @@ impl Context {
                     source,
                     true,
                 )?;
-                target.composite((x, y), source, &command.composite, soft, frame);
+                target.composite(index, (x, y), source, &command.composite, soft, frame);
             }
         }
         Ok(())

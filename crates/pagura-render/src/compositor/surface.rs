@@ -185,69 +185,74 @@ impl Surface {
         });
         true
     }
-    /// Composites `source` into the pixel at device `(x, y)` of `frame`'s
-    /// group, after the soft mask over this surface and the state's constant
-    /// alpha (11.3.7, 11.4).
+    /// Composites `source` into pixel `index` of this surface, at device
+    /// `(x, y)` of `frame`'s group, after the soft mask over this surface and
+    /// the state's constant alpha (11.3.7, 11.4). Callers find the index of
+    /// a run's first pixel once, with [`Self::span`].
     pub(super) fn composite(
         &mut self,
+        index: usize,
         (x, y): (u32, u32),
         source: Source,
         state: &Composite,
         soft: Option<&[f64]>,
         frame: Frame<'_>,
     ) {
-        let index = self.index(x, y);
-        let mask = index.and_then(|i| soft?.get(i)).copied().unwrap_or(1.0);
+        let mask = soft.and_then(|m| m.get(index)).copied().unwrap_or(1.0);
         if let Some(buffer) = self.narrow_mut() {
             // Admission keeps every mark that reaches bounded storage Normal
             // source-over in RGB, which only F32 pages take (ADR 0004).
-            let stored = index.is_some_and(|i| buffer.paint(i, source.apply(state, mask)).is_ok());
+            let stored = buffer.paint(index, source.apply(state, mask)).is_ok();
             debug_assert!(stored, "marks reach bounded storage inside an F32 page");
             return;
         }
-        let pixel = index.and_then(|i| self.pixels_mut().get_mut(i));
+        let pixel = self.pixels_mut().get_mut(index);
         debug_assert!(pixel.is_some(), "marks are clipped to their group's tile");
         if let Some(pixel) = pixel {
             frame.paint(pixel, source.apply(state, mask), state, (x, y));
         }
     }
-    /// Every painted pixel, with its index and device position.
-    pub(super) fn painted(&self) -> impl Iterator<Item = (usize, (u32, u32), Pixel)> + '_ {
-        points(self.tile)
-            .zip(self.pixels.iter().copied())
+    /// Pixels per row; at least one, so an empty surface has no rows.
+    fn width(&self) -> usize {
+        pagura_core::convert::u32_to_usize(self.tile.width).max(1)
+    }
+    /// The rows from the top, each with its device row and the index of its
+    /// first pixel.
+    pub(super) fn rows(&self) -> impl Iterator<Item = (u32, usize, &[Pixel])> {
+        let width = self.width();
+        (self.tile.y..self.tile.y + self.tile.height)
+            .zip(self.pixels.chunks_exact(width))
             .enumerate()
-            .filter(|(_, (_, pixel))| pixel.shape > 0.0)
-            .map(|(index, (point, pixel))| (index, point, pixel))
+            .map(move |(row, (y, pixels))| (y, row * width, pixels))
     }
     /// Removes the initial backdrop from a non-isolated group's colours, so
     /// they composite into the parent once (11.4.4).
     pub(super) fn remove_backdrop(&mut self, backdrop: Backdrop<'_>) {
-        let painted = points(self.tile)
-            .zip(self.pixels_mut())
-            .filter(|(_, pixel)| pixel.shape > 0.0);
-        for ((x, y), pixel) in painted {
-            let base = backdrop.pixel(x, y);
-            pixel.color = if pixel.group > 0.0 {
-                [0, 1, 2, 3].map(|i| {
-                    ((pixel.color[i] - (1.0 - pixel.group) * base.color[i]) / pixel.group)
-                        .clamp(0.0, 1.0)
-                })
-            } else {
-                [0.0; 4]
-            };
+        let Tile {
+            x,
+            y,
+            width,
+            height,
+            ..
+        } = self.tile;
+        let columns = self.width();
+        for (y, pixels) in (y..y + height).zip(self.pixels_mut().chunks_exact_mut(columns)) {
+            for (x, pixel) in (x..x + width).zip(pixels) {
+                if pixel.shape <= 0.0 {
+                    continue;
+                }
+                let base = backdrop.pixel(x, y);
+                pixel.color = if pixel.group > 0.0 {
+                    [0, 1, 2, 3].map(|i| {
+                        ((pixel.color[i] - (1.0 - pixel.group) * base.color[i]) / pixel.group)
+                            .clamp(0.0, 1.0)
+                    })
+                } else {
+                    [0.0; 4]
+                };
+            }
         }
     }
-}
-
-/// The device positions of a tile, row by row.
-fn points(tile: Tile) -> impl Iterator<Item = (u32, u32)> {
-    let Tile {
-        x,
-        y,
-        width,
-        height,
-    } = tile;
-    (y..y + height).flat_map(move |y| (x..x + width).map(move |x| (x, y)))
 }
 
 /// A row of nonzero mask coverage from device `(x, y)`: all full or all

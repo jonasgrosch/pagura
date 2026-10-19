@@ -436,7 +436,11 @@ impl Context {
                 self.transfer_run(p.transfer.as_ref(), &p.composite, (x, y), count)?;
                 continue;
             }
+            let start = target.span(x, y, count);
+            debug_assert!(start.is_some(), "masks are clipped to their group's tile");
+            let Some(start) = start else { continue };
             for (offset, (x, coverage)) in run.pixels().enumerate() {
+                let index = start + offset;
                 let source = match &fill {
                     Fill::Solid(color) => color.covered(coverage),
                     Fill::Shading(pattern, inverse) => {
@@ -464,7 +468,7 @@ impl Context {
                     }
                 };
                 self.transfer_mark(p.transfer.as_ref(), &p.composite, (x, y), source, true)?;
-                target.composite((x, y), source, &p.composite, soft, frame);
+                target.composite(index, (x, y), source, &p.composite, soft, frame);
             }
         }
         Ok(())
@@ -640,12 +644,21 @@ impl Context {
             }
         }
         let soft = soft.as_deref().map(Vec::as_slice);
-        for (_, point, pixel) in surface.painted() {
-            let source = Source {
-                spot: self.spot_batch.is_some(),
-                ..Source::new(pixel.color, pixel.group, pixel.shape)
-            };
-            parent.composite(point, source, &group.composite, soft, frame);
+        for (y, _, pixels) in surface.rows() {
+            // The group's tile lies within its parent's, row for row.
+            let start = parent.span(tile.x, y, pixels.len());
+            debug_assert!(start.is_some(), "groups are clipped to their parent's tile");
+            let Some(start) = start else { continue };
+            for ((index, x), pixel) in (start..).zip(tile.x..).zip(pixels) {
+                if pixel.shape <= 0.0 {
+                    continue;
+                }
+                let source = Source {
+                    spot: self.spot_batch.is_some(),
+                    ..Source::new(pixel.color, pixel.group, pixel.shape)
+                };
+                parent.composite(index, (x, y), source, &group.composite, soft, frame);
+            }
         }
         self.release(surface);
         Ok(())
