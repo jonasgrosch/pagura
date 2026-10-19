@@ -504,15 +504,21 @@ impl Accumulator {
     )]
     #[inline(always)]
     fn add(&mut self, start: usize, left: f32, right: f32, height: f32, scale: f32) {
-        let lo = (left as usize).min(self.width);
-        let hi = (right.ceil() as usize).min(self.width);
         let row = &mut self.area[start..=start + self.width];
-        if hi == lo + 1 && left >= lo as f32 && right <= hi as f32 {
-            let value = (hi as f32 - left.midpoint(right)) * height;
-            row[lo] += value;
-            row[hi] += height - value;
+        // A fragment within one cell of the row. One that ends where it
+        // starts, on a cell boundary, adds its height to that cell and zero
+        // to the next, as the general case does.
+        let floor = left.floor();
+        let next = floor + 1.0;
+        let cell = floor as usize;
+        if right <= next && floor >= 0.0 && cell < self.width {
+            let value = (next - left.midpoint(right)) * height;
+            row[cell] += value;
+            row[cell + 1] += height - value;
             return;
         }
+        let lo = (left as usize).min(self.width);
+        let hi = (right.ceil() as usize).min(self.width);
         let mut previous = 0.0;
         for (offset, cell) in row[lo..hi].iter_mut().enumerate() {
             let boundary = (lo + offset + 1) as f32;
