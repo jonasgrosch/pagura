@@ -368,11 +368,15 @@ impl Rows {
                 )?;
             }
         }
+        // Rows padded with transparent cells to whole four-pixel blocks let
+        // blits run without single-pixel tails; transparent coverage leaves
+        // a pixel unchanged.
+        let row = self.width.next_multiple_of(4);
         Ok(Coverage {
             x: self.x,
             y: self.y,
-            width: self.width,
-            data: accumulator.finish(),
+            width: row,
+            data: accumulator.finish(row),
         })
     }
 }
@@ -469,7 +473,8 @@ pub(super) struct Accumulator {
 
 impl Accumulator {
     /// Zeroes `width` by `height` cells and the work count. The cells and the
-    /// finished mask are charged together to the render's allocation budget,
+    /// finished mask, its rows padded to four cells, are charged together to
+    /// the render's allocation budget,
     /// and capacity retained from a larger earlier mask is released when that
     /// budget no longer covers it.
     fn reset(&mut self, width: usize, height: usize, limits: Limits) -> Result<()> {
@@ -480,9 +485,13 @@ impl Accumulator {
         let cells = count
             .checked_add(height)
             .ok_or(Error::limit("glyph coverage allocation budget exceeded"))?;
+        let mask = width
+            .checked_next_multiple_of(4)
+            .and_then(|row| row.checked_mul(height))
+            .ok_or(Error::limit("glyph coverage allocation budget exceeded"))?;
         let available = limits
             .decoded_bytes
-            .checked_sub(count)
+            .checked_sub(mask)
             .ok_or(Error::limit("glyph coverage allocation budget exceeded"))?
             / size_of::<f32>();
         if cells > available {
@@ -580,19 +589,22 @@ impl Accumulator {
         clippy::cast_sign_loss,
         reason = "coverage is clamped to [0,255] before positive nearest rounding"
     )]
-    fn finish(&self) -> Vec<u8> {
+    /// The mask's levels in rows of `row` bytes (at least the width), the
+    /// cells beyond the width transparent.
+    fn finish(&self, row: usize) -> Vec<u8> {
         let level = |value: f32| (value.abs().min(1.0) * 255.0 + 0.5) as u8;
         let (width, stride) = (self.width, self.width + 1);
-        let mut data = vec![0_u8; width * self.height];
+        let mut data = vec![0_u8; row * self.height];
         // Each row's prefix sums stay serial, in the same order. Four rows
         // run side by side so that their additions overlap.
         let mut cells = self.area.chunks_exact(4 * stride);
-        let mut outputs = data.chunks_exact_mut(4 * width);
+        let mut outputs = data.chunks_exact_mut(4 * row);
         for (cells, output) in cells.by_ref().zip(outputs.by_ref()) {
             let [d0, d1, d2, d3] = [0, 1, 2, 3].map(|i| &cells[i * stride..i * stride + width]);
-            let (o0, output) = output.split_at_mut(width);
-            let (o1, output) = output.split_at_mut(width);
-            let (o2, o3) = output.split_at_mut(width);
+            let (o0, output) = output.split_at_mut(row);
+            let (o1, output) = output.split_at_mut(row);
+            let (o2, o3) = output.split_at_mut(row);
+            let [o0, o1, o2, o3] = [o0, o1, o2, o3].map(|output| &mut output[..width]);
             let mut value = [0.0_f32; 4];
             for (column, out) in o0.iter_mut().enumerate() {
                 value[0] += d0[column];
@@ -606,9 +618,9 @@ impl Accumulator {
             }
         }
         let rows = self.area[self.area.len() - cells.remainder().len()..].chunks_exact(stride);
-        for (row, output) in rows.zip(outputs.into_remainder().chunks_exact_mut(width)) {
+        for (cells, output) in rows.zip(outputs.into_remainder().chunks_exact_mut(row)) {
             let mut value = 0.0_f32;
-            for (out, &delta) in output.iter_mut().zip(row) {
+            for (out, &delta) in output[..width].iter_mut().zip(cells) {
                 value += delta;
                 *out = level(value);
             }
@@ -723,7 +735,7 @@ mod tests {
                     expected.push(u8::try_from(level).unwrap());
                 }
             }
-            assert_eq!(raster.finish(), expected);
+            assert_eq!(raster.finish(width), expected);
         }
     }
 
@@ -737,10 +749,10 @@ mod tests {
         };
         raster.reset(2, 2, limits).unwrap();
         assert!(raster.area.capacity() * size_of::<f32>() + 4 <= limits.decoded_bytes);
-        assert_eq!(raster.finish(), [0; 4]);
+        assert_eq!(raster.finish(2), [0; 4]);
         raster.segment(0, 0.5, 0.5, 1.0, 0.0).unwrap();
         raster.reset(2, 2, limits).unwrap();
-        assert_eq!((raster.work, raster.finish()), (0, vec![0; 4]));
+        assert_eq!((raster.work, raster.finish(2)), (0, vec![0; 4]));
         let smaller = Limits {
             decoded_bytes: 27,
             ..limits
@@ -766,11 +778,19 @@ mod tests {
                 let mask = rows
                     .mask(f64::from(px) / 128.0, Limits::default(), &mut scratch)
                     .unwrap();
+                assert_eq!(mask.width, 4);
+                assert!(
+                    mask.data
+                        .as_chunks::<4>()
+                        .0
+                        .iter()
+                        .all(|row| row[2..] == [0, 0])
+                );
                 for (index, a, b) in [
                     (0, 128 - px, 128 - py),
                     (1, px, 128 - py),
-                    (2, 128 - px, py),
-                    (3, px, py),
+                    (4, 128 - px, py),
+                    (5, px, py),
                 ] {
                     assert_eq!(
                         mask.data[index],
@@ -790,7 +810,7 @@ mod tests {
             raster.segment(0, ax, bx, 0.5 * sign, 0.0).unwrap();
             raster.segment(65, ax, bx, 0.5 * sign, 0.0).unwrap();
         }
-        let output = raster.finish();
+        let output = raster.finish(64);
         for row in output.as_chunks::<64>().0.iter().take(2) {
             assert_eq!(row[0], 96);
             assert_eq!(row[63], 96);
