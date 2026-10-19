@@ -1,6 +1,6 @@
 //! Evaluate visible tiling instances as one non-isolated, non-knockout group
 //! (8.7.3; 11.6.7). Outer path coverage, alpha and blend are applied once.
-use super::{Backdrop, Context, Model, Source, Surface};
+use super::{Backdrop, Context, Frame, Source, Surface};
 use crate::Tile;
 use crate::display::PathCommand;
 use crate::pattern::{Tiling, TilingType};
@@ -12,12 +12,9 @@ impl Context {
     /// (11.6.7). Retain geometric boundary coverage for that colour mixture.
     pub(super) fn pattern_boundary(
         &self,
-        pattern: Option<&crate::display::ShadingCommand>,
+        pattern: &crate::display::ShadingCommand,
         mask: &Mask,
     ) -> Result<Option<Mask>> {
-        let Some(pattern) = pattern else {
-            return Ok(None);
-        };
         let Some(path) = pattern.shading.bbox_path.as_ref().filter(|path| {
             pattern.shading.background.is_some()
                 && path
@@ -38,10 +35,6 @@ impl Context {
         .map(Some)
     }
 
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "explicit source, backdrop and geometry state"
-    )]
     pub(super) fn tiling(
         &mut self,
         command: &PathCommand,
@@ -49,10 +42,7 @@ impl Context {
         pattern: &Tiling,
         mask: &Mask,
         target: &mut Surface,
-        initial: Backdrop<'_>,
-        model: Model,
-        knockout: bool,
-        depth: usize,
+        frame: Frame<'_>,
     ) -> Result<()> {
         let transform = fit(transform.then(self.device), pattern)?;
         let inverse = transform.inverse().ok_or(Error::unsupported(
@@ -69,86 +59,59 @@ impl Context {
             (iy0, iy1),
             self.limits.display_commands,
         )?)?;
-        let backdrop = if knockout {
-            initial
+        let backdrop = if frame.knockout {
+            frame.initial
         } else {
             Backdrop::Surface(target)
         };
         let mut surface = self.surface(tile, backdrop)?;
-        let device = self.device;
-        let soft_source = self.soft_source;
-        self.soft_source = true;
-        let result = (|| {
-            for y in iy0..=iy1 {
-                for x in ix0..=ix1 {
-                    self.device = Transform::translate(
-                        x as f64 * pattern.step[0],
-                        y as f64 * pattern.step[1],
-                    )
-                    .then(transform);
-                    self.clip = None;
-                    self.discard_mask();
-                    self.commands(
-                        &pattern.commands,
-                        &mut surface,
-                        backdrop,
-                        model,
-                        false,
-                        depth + 1,
-                    )?;
-                }
+        let members = Frame::group(backdrop, frame.model, false, frame.depth);
+        for y in iy0..=iy1 {
+            for x in ix0..=ix1 {
+                let device =
+                    Transform::translate(x as f64 * pattern.step[0], y as f64 * pattern.step[1])
+                        .then(transform);
+                self.within(device, true, |this| {
+                    this.commands(&pattern.commands, &mut surface, members)
+                })?;
             }
-            Ok(())
-        })();
-        self.device = device;
-        self.soft_source = soft_source;
-        self.clip = None;
-        result?;
-        let width =
-            usize::try_from(tile.width).map_err(|_| Error::limit("pattern width exceeds usize"))?;
-        remove_backdrop(&mut surface, backdrop)?;
+        }
+        surface.remove_backdrop(backdrop);
         let soft = command
             .composite
             .mask
             .as_ref()
-            .map(|m| self.soft_mask(m, target.tile, model, depth + 1))
+            .map(|m| self.soft_mask(m, target.tile, frame.model, frame.depth + 1))
             .transpose()?;
+        let soft = soft.as_deref().map(Vec::as_slice);
         self.charge(surface.pixels().len())?;
-        for (row, pixels) in surface.pixels().chunks_exact(width).enumerate() {
-            let y =
-                tile.y + u32::try_from(row).map_err(|_| Error::limit("pattern row overflow"))?;
-            for (col, pixel) in pixels.iter().enumerate().filter(|(_, p)| p.shape > 0.0) {
-                let x = tile.x
-                    + u32::try_from(col).map_err(|_| Error::limit("pattern column overflow"))?;
-                let coverage = mask.coverage()[row * width + col];
-                if coverage == 0 {
+        // The cell surface spans the mask, so both share pixel indices.
+        for (y, first, pixels) in surface.rows() {
+            let coverage = mask.coverage().get(first..first + pixels.len());
+            let start = target.span(tile.x, y, pixels.len());
+            debug_assert!(
+                coverage.is_some() && start.is_some(),
+                "the cell surface spans the mask within the target"
+            );
+            let (Some(coverage), Some(start)) = (coverage, start) else {
+                continue;
+            };
+            for (((index, x), pixel), &coverage) in
+                (start..).zip(tile.x..).zip(pixels).zip(coverage)
+            {
+                if coverage == 0 || pixel.shape <= 0.0 {
                     continue;
                 }
-                let index = target
-                    .index(x, y)
-                    .ok_or(Error::invalid_argument("pattern outside target"))?;
                 let factor = f64::from(coverage) / 255.0;
                 let source = Source {
                     spot: self.spot_batch.is_some(),
                     ..Source::new(pixel.color, pixel.group * factor, pixel.shape * factor)
-                }
-                .apply(
-                    &command.composite,
-                    soft.as_ref()
-                        .and_then(|m| m.get(index))
-                        .copied()
-                        .unwrap_or(1.0),
-                );
+                };
                 // All reads of the initial parent pixel precede this pixel's write.
-                let base = initial.pixel(x, y);
-                target
-                    .pixels_mut()
-                    .get_mut(index)
-                    .ok_or(Error::invalid_argument("pattern index outside target"))?
-                    .paint(source, &command.composite, base, knockout, model);
+                target.composite(index, (x, y), source, &command.composite, soft, frame);
             }
         }
-        self.allocated -= surface.bytes();
+        self.release(surface);
         Ok(())
     }
 }
@@ -233,29 +196,6 @@ fn fit(t: Transform, pattern: &Tiling) -> Result<Transform> {
         }
     }
     Ok(fitted)
-}
-
-fn remove_backdrop(surface: &mut Surface, backdrop: Backdrop<'_>) -> Result<()> {
-    let tile = surface.tile;
-    let width =
-        usize::try_from(tile.width).map_err(|_| Error::limit("pattern width exceeds usize"))?;
-    for (row, pixels) in surface.pixels_mut().chunks_exact_mut(width).enumerate() {
-        let y = tile.y + u32::try_from(row).map_err(|_| Error::limit("pattern row overflow"))?;
-        for (col, pixel) in pixels.iter_mut().enumerate().filter(|(_, p)| p.shape > 0.0) {
-            let x =
-                tile.x + u32::try_from(col).map_err(|_| Error::limit("pattern column overflow"))?;
-            let base = backdrop.pixel(x, y);
-            pixel.color = if pixel.group > 0.0 {
-                [0, 1, 2, 3].map(|i| {
-                    ((pixel.color[i] - (1.0 - pixel.group) * base.color[i]) / pixel.group)
-                        .clamp(0.0, 1.0)
-                })
-            } else {
-                [0.0; 4]
-            };
-        }
-    }
-    Ok(())
 }
 
 fn instance_count((x0, x1): (i64, i64), (y0, y1): (i64, i64), maximum: usize) -> Result<usize> {

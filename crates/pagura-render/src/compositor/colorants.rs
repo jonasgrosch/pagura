@@ -40,9 +40,13 @@ struct Discovery {
     spots: Vec<Spot>,
     patterns: BTreeSet<usize>,
 }
+/// Spot colourants a simulated page may use; each batch of four needs one
+/// more replay of the page (ADR 0004).
+pub(super) const MAX_SPOTS: usize = 32;
+
 #[derive(Default)]
 pub(super) struct Preview {
-    last: Option<([f64; 32], [f64; 4])>,
+    last: Option<([f64; MAX_SPOTS], [f64; 4])>,
 }
 
 impl Separations {
@@ -53,7 +57,7 @@ impl Separations {
         if !(found.nonzero || found.overprint && found.tint) {
             return Ok(Self::default());
         }
-        if found.spots.len() > 32 {
+        if found.spots.len() > MAX_SPOTS {
             return Err(Error::limit("page spot colourant budget exceeded"));
         }
         let transforms = transforms(&found.spots);
@@ -69,12 +73,14 @@ impl Separations {
     pub(super) fn len(&self) -> usize {
         self.spots.len()
     }
-    fn equivalent(&self, tints: &[f64; 32], work: &mut usize) -> Result<[f64; 4]> {
+    fn equivalent(&self, tints: &[f64; MAX_SPOTS], work: &mut usize) -> Result<[f64; 4]> {
         let mut output = [1.0; 4];
         for transform in &self.transforms {
-            let mut input = [0.0; 32];
+            let mut input = [0.0; crate::color::MAX_COMPONENTS];
             for &(i, spot) in &transform.inputs {
-                input[i] = tints[spot];
+                if let (Some(input), Some(&tint)) = (input.get_mut(i), tints.get(spot)) {
+                    *input = tint;
+                }
             }
             if input.iter().all(|&v| v == 0.0) {
                 continue;
@@ -96,9 +102,9 @@ impl Separations {
 // Resolve name and definition identity once; varying pixel tints use only indices.
 fn transforms(spots: &[Spot]) -> Vec<TintTransform> {
     let mut transforms = Vec::new();
-    let mut used = [false; 32];
+    let mut used = [false; MAX_SPOTS];
     for (index, spot) in spots.iter().enumerate() {
-        if used[index] {
+        if used.get(index).is_none_or(|&used| used) {
             continue;
         }
         let Space::Tint {
@@ -110,7 +116,9 @@ fn transforms(spots: &[Spot]) -> Vec<TintTransform> {
         let inputs = names.iter().enumerate().filter_map(|(i, name)| {
             let j = spots.iter().position(|s| s.name == *name
                 && matches!(&s.space, Space::Tint { function: f, .. } if Arc::ptr_eq(f, function)))?;
-            used[j] = true;
+            if let Some(used) = used.get_mut(j) {
+                *used = true;
+            }
             Some((i, j))
         }).collect();
         transforms.push(TintTransform {
@@ -155,6 +163,7 @@ impl Discovery {
                 ..
             } => {
                 self.overprint |= p.composite.overprint;
+                // The list outlives the walk, so no two patterns share an address.
                 if self.patterns.insert(Arc::as_ptr(pattern) as usize) {
                     match &pattern.kind {
                         crate::pattern::Kind::Tiling(t) => {
@@ -189,7 +198,7 @@ impl Discovery {
                 {
                     continue;
                 }
-                if self.spots.len() > 32 {
+                if self.spots.len() > MAX_SPOTS {
                     continue;
                 }
                 self.spots.push(Spot {
@@ -207,7 +216,7 @@ impl Preview {
         plan: &Separations,
         model: Model,
         color: [f64; 4],
-        tints: &[f64; 32],
+        tints: &[f64; MAX_SPOTS],
         work: &mut usize,
     ) -> Result<[f64; 3]> {
         let process = if model == Model::Cmyk {
@@ -236,18 +245,6 @@ fn process(name: &Name) -> Option<usize> {
 }
 
 impl Context {
-    pub(super) fn color(
-        &mut self,
-        color: &Color,
-        model: Model,
-        state: &Composite,
-        direct: bool,
-    ) -> Result<Source> {
-        let Color::Solid { space, components } = color else {
-            return Err(Error::invalid_argument("pattern is not a solid colour"));
-        };
-        self.source(space, components, model, state, direct)
-    }
     pub(super) fn source(
         &mut self,
         space: &Space,
@@ -419,14 +416,14 @@ mod tests {
     #[test]
     fn repeated_display_tints_do_not_spend_calculator_work() {
         let document = pagura_document::Document::open(
-            include_bytes!("../../../../corpus/generated/overprint/devicen-on.pdf").to_vec(),
+            pagura_testkit::fixture("overprint", "devicen-on.pdf"),
             &pagura_document::OpenOptions::default(),
         )
         .unwrap();
         let list = crate::compile_page(&document, document.page(0).unwrap()).unwrap();
         let separations = Separations::new(&list.commands, list.limits).unwrap();
         let mut preview = Preview::default();
-        let mut tints = [0.0; 32];
+        let mut tints = [0.0; MAX_SPOTS];
         tints[..2].copy_from_slice(&[0.6, 0.2]);
         let mut work = 0;
         let first = preview

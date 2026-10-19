@@ -61,6 +61,7 @@ page: every child context charges the same meters, and cached images and
 patterns stay charged once. Adding a context kind means adding a `Child`
 variant, so what it inherits is reviewed in one place.
 
-The compositor keeps its own surface accounting until its `Frame` refactor,
-which follows the open compositor changes. Function, calculator and sampled
+The compositor counts its own surfaces and caches (`Context::memory`), on
+`decoded_bytes` until the rasterizer's retained buffers move to
+`render_bytes`. Function, calculator and sampled
 evaluation work charge `function_work` (ADR 0016).

@@ -155,6 +155,11 @@ pub(super) fn glyph_visible(
         .checked_add(1)
         .filter(|&n| n <= maximum)
         .ok_or(Error::limit("glyph bounds work exceeded"))?;
+    hull_visible(hull, tile)
+}
+/// Whether a glyph placement's device hull meets `tile`, padded by the pixel
+/// that antialiasing can reach. Both renderers test this before flattening.
+pub(crate) fn hull_visible(hull: [Point; 2], tile: Tile) -> Result<bool> {
     if hull.iter().any(|p| p.x.is_nan() || p.y.is_nan()) {
         return Err(Error::limit("glyph bounds overflow"));
     }
@@ -358,16 +363,14 @@ fn content_region(
     }
     work.charge(commands.len())?;
     let mut total: Option<Rect> = None;
-    for command in commands {
+    for command in commands.iter().filter(|c| c.paints()) {
         let (bounds, chain) = match command {
-            Command::Glyphs(run) if !run.paint.color.paints() => continue,
             Command::Glyphs(run) => {
                 let r = run.bounds;
                 let r = Rect::from_corners(r.x0() - 1.0, r.y0() - 1.0, r.x1() + 1.0, r.y1() + 1.0)
                     .ok_or(Error::limit("content bounds overflow"))?;
                 (Some(r), run.paint.clip.as_ref())
             }
-            Command::Path(p) if !p.color.paints() => continue,
             Command::Path(p) => {
                 let bounds = content_path_hull(p, work)?;
                 let pad = stroke_pad(p, Transform::IDENTITY);
@@ -384,14 +387,6 @@ fn content_region(
                     .transpose()?;
                 (bounds, p.clip.as_ref())
             }
-            Command::Image(i)
-                if i.image
-                    .space
-                    .as_ref()
-                    .map_or_else(|| !i.stencil.paints(), |space| !space.paints()) =>
-            {
-                continue;
-            }
             Command::Image(i) => (
                 hull_rect(control_hull(
                     &crate::device::unit_square(),
@@ -400,7 +395,6 @@ fn content_region(
                 )?),
                 i.clip.as_ref(),
             ),
-            Command::Shading(s) if !s.shading.space.paints() => continue,
             Command::Shading(s) => {
                 let bounds = if let Some(bbox) = s.shading.bbox {
                     let pad = if bbox.is_empty() { 1.0 } else { 0.0 };

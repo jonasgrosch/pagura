@@ -88,6 +88,14 @@ colour, then bounds and removes what remains, so that the 8-bit path is
 retired only once its replacement is cheap. Fixture oracles compute the exact result independently in
 Python, and a fixture may carry a tolerance of 1 against it.
 
+**Scope of the 8-bit path** (2026-10-19). One scene classification
+(`crates/pagura-render/src/display/scene.rs`) decides both which pages take the
+8-bit path and where the compositor may composite an opaque knockout group
+straight into its parent. Opaque Normal knockout reduces to source-over
+(11.4.6), but knockout groups stay off the 8-bit path: every text object and
+every `B` or `b` operator emits one, so admitting them would move nearly every
+page onto the kernel with the defect above. The scope widens only with its fix.
+
 **Sampled oracles** (amended 2026-10-18). Some rendering fixtures have no
 closed-form coverage for the generator to integrate: a stroke-adjusted pen
 around a curve, the predefined annotation icons, and the circle a degenerate

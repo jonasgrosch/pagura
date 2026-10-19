@@ -6,7 +6,7 @@
 //! involving a nondefault transfer remain unsupported: averaging colours before
 //! selecting a nonlinear transfer loses their correlation with spatial regions.
 
-use super::{Backdrop, Context, Model, Source, Surface};
+use super::{Context, Frame, Source, Surface};
 use crate::Tile;
 use crate::display::Command;
 use crate::display::{ImageCommand, PathCommand};
@@ -25,6 +25,8 @@ pub(super) struct Regions {
     pub(super) opaque: bool,
     pub(super) suspended: bool,
 }
+
+pub(super) const MEMORY: &str = "transfer region memory budget exceeded";
 
 impl Regions {
     pub(super) fn new(commands: &[Command], limits: Limits) -> Result<Option<Self>> {
@@ -69,16 +71,15 @@ impl Regions {
             )
             .saturating_add(self.ids.len().saturating_mul(64))
     }
-    pub(super) fn begin(&mut self, tile: Tile, maximum: usize) -> Result<()> {
+    /// Selects nothing over `tile`, charging any growth to `memory`.
+    pub(super) fn begin(&mut self, tile: Tile, memory: &mut Meter) -> Result<()> {
         self.heads.clear();
         let count = usize::try_from(u64::from(tile.width) * u64::from(tile.height))
             .map_err(|_| Error::limit("transfer region size overflow"))?;
         let added = count
             .saturating_sub(self.heads.capacity())
             .saturating_mul(size_of::<usize>());
-        if self.bytes().saturating_add(added) > maximum {
-            return Err(Error::limit("transfer region memory budget exceeded"));
-        }
+        memory.charge(added).map_err(|_| Error::limit(MEMORY))?;
         self.heads
             .try_reserve_exact(count)
             .map_err(|_| Error::limit("transfer region allocation failed"))?;
@@ -99,29 +100,24 @@ impl Regions {
         let (x, y) = point;
         let x = x.checked_sub(self.tile.x).filter(|&v| v < self.tile.width);
         let y = y.checked_sub(self.tile.y).filter(|&v| v < self.tile.height);
-        let (Some(x), Some(y)) = (x, y) else {
-            return Err(Error::invalid_argument(
-                "transfer mark outside output region",
-            ));
-        };
-        let index = usize::try_from(u64::from(y) * u64::from(self.tile.width) + u64::from(x))
-            .map_err(|_| Error::limit("transfer region index overflow"))?;
+        let index = x.zip(y).and_then(|(x, y)| {
+            usize::try_from(u64::from(y) * u64::from(self.tile.width) + u64::from(x)).ok()
+        });
         let function = if opaque && self.opaque {
-            transfer
-                .map(|f| {
-                    self.ids.get(&(Arc::as_ptr(f) as usize)).copied().ok_or(
-                        Error::invalid_argument("unknown transfer function selection"),
-                    )
-                })
-                .transpose()?
-                .unwrap_or(0)
+            let id = transfer.map(|f| self.ids.get(&(Arc::as_ptr(f) as usize)).copied());
+            debug_assert!(
+                id.is_none_or(|id| id.is_some()),
+                "the walk finds every transfer a mark can select"
+            );
+            id.flatten().unwrap_or(0)
         } else {
             0
         };
-        let selected = self
-            .heads
-            .get_mut(index)
-            .ok_or(Error::invalid_argument("invalid transfer pixel"))?;
+        let selected = index.and_then(|i| self.heads.get_mut(i));
+        debug_assert!(selected.is_some(), "marks lie inside the output region");
+        let Some(selected) = selected else {
+            return Ok(());
+        };
         if coverage < 1.0 && (function != 0 || *selected != 0) {
             return Err(Error::unsupported(
                 crate::features::TRANSPARENCY_TRANSFER,
@@ -140,11 +136,13 @@ impl Regions {
         color: [f64; 3],
         work: &mut usize,
     ) -> Result<[f64; 3]> {
-        let selected = *self
-            .heads
-            .get(index)
-            .ok_or(Error::invalid_argument("invalid transfer pixel"))?;
-        let Some(functions) = selected.checked_sub(1).and_then(|i| self.functions.get(i)) else {
+        let selected = self.heads.get(index).copied();
+        debug_assert!(selected.is_some(), "output pixels lie inside the region");
+        let Some(functions) = selected
+            .unwrap_or(0)
+            .checked_sub(1)
+            .and_then(|i| self.functions.get(i))
+        else {
             return Ok(color);
         };
         let mut mapped = color;
@@ -221,15 +219,7 @@ impl Walk {
 impl Context {
     pub(super) fn begin_transfers(&mut self, tile: Tile) -> Result<()> {
         if let Some(regions) = &mut self.transfers {
-            let before = regions.bytes();
-            regions.begin(
-                tile,
-                self.limits
-                    .decoded_bytes
-                    .saturating_sub(self.allocated)
-                    .saturating_add(before),
-            )?;
-            self.allocated += regions.bytes() - before;
+            regions.begin(tile, &mut self.memory)?;
         }
         Ok(())
     }
@@ -242,22 +232,13 @@ impl Context {
         &mut self,
         group: &Group,
         surface: &mut Surface,
-        initial: Backdrop<'_>,
-        model: Model,
-        depth: usize,
+        members: Frame<'_>,
     ) -> Result<()> {
         let opaque = self.transfers.as_ref().is_none_or(|r| r.opaque);
         if let Some(regions) = &mut self.transfers {
             regions.opaque &= group.composite.simple();
         }
-        let result = self.commands(
-            &group.commands,
-            surface,
-            initial,
-            model,
-            group.attributes.knockout,
-            depth + 1,
-        );
+        let result = self.commands(&group.commands, surface, members);
         if let Some(regions) = &mut self.transfers {
             regions.opaque = opaque;
         }
@@ -323,20 +304,11 @@ impl Context {
 /// and overprinting marks when overprint is simulated. Under an ignoring
 /// policy an overprint flag has no effect, so it cannot matter (8.6.7).
 pub(super) fn validate(command: &Command, overprint: crate::overprint::Policy) -> Result<()> {
-    let (composite, pattern) = match command {
-        Command::Path(p) => (
-            &p.composite,
-            matches!(p.color, crate::color::Color::Pattern { .. }),
-        ),
-        Command::Glyphs(run) => (
-            &run.paint.composite,
-            matches!(run.paint.color, crate::color::Color::Pattern { .. }),
-        ),
-        Command::Image(i) => (&i.composite, false),
-        Command::Shading(s) => (&s.composite, false),
-        Command::Group(_) => return Ok(()),
+    let Some(marking) = command.marking() else {
+        return Ok(());
     };
-    let overprints = composite.overprint && overprint == crate::overprint::Policy::Simulate;
+    let pattern = matches!(marking.color, Some(crate::color::Color::Pattern { .. }));
+    let overprints = marking.composite.overprint && overprint == crate::overprint::Policy::Simulate;
     if overprints || pattern {
         return Err(Error::unsupported(
             crate::features::TRANSPARENCY_TRANSFER,
@@ -361,21 +333,29 @@ mod tests {
         )
         .unwrap();
         let list = crate::compile_page(&document, document.page(0).unwrap()).unwrap();
-        let mut regions = Regions::new(&list.commands, Limits::default())
-            .unwrap()
-            .unwrap();
+        let regions = || {
+            Regions::new(&list.commands, Limits::default())
+                .unwrap()
+                .unwrap()
+        };
         let tile = Tile {
             x: 7,
             y: 9,
             width: 2,
             height: 2,
         };
-        let required = regions.bytes() + 4 * size_of::<usize>();
+        // Four selection heads: the budget admits exactly their bytes.
+        let required = 4 * size_of::<usize>();
+        let mut short = Meter::new(required - 1, "test");
         assert_eq!(
-            regions.begin(tile, required - 1).unwrap_err().kind,
+            regions().begin(tile, &mut short).unwrap_err().kind,
             ErrorKind::Limit
         );
-        regions.begin(tile, required).unwrap();
+        assert_eq!(short.used(), 0);
+        let mut exact = Meter::new(required, "test");
+        let mut regions = regions();
+        regions.begin(tile, &mut exact).unwrap();
+        assert_eq!(exact.used(), required);
         let function = regions.functions[0].clone();
         let error = regions
             .record(Some(&function), true, (7, 9), 0.5)

@@ -1,7 +1,7 @@
 //! Image colour, shape and opacity enter the common compositor (8.9; 11.6.5.2).
 use super::reduced::Prepared;
 use super::sampled::{Sampler, Texel};
-use super::{Backdrop, Context, Model, Source, Surface};
+use super::{Context, Frame, Model, Source, Surface, runs};
 use crate::{display::ImageCommand, interpreter::images::Image};
 use pagura_core::{Error, Result};
 use pagura_image::{ImageKind, MaskKind, Samples};
@@ -14,11 +14,9 @@ impl Context {
         &mut self,
         command: &ImageCommand,
         target: &mut Surface,
-        initial: Backdrop<'_>,
-        model: Model,
-        knockout: bool,
-        depth: usize,
+        frame: Frame<'_>,
     ) -> Result<()> {
+        let model = frame.model;
         let transform = command.transform.then(self.device);
         if !transform.is_finite() {
             return Err(Error::limit("image transform overflow"));
@@ -38,32 +36,33 @@ impl Context {
             .composite
             .mask
             .as_ref()
-            .map(|m| self.soft_mask(m, target.tile, model, depth + 1))
+            .map(|m| self.soft_mask(m, target.tile, model, frame.depth + 1))
             .transpose()?;
-        let stencil = self.stencil_color(command, model)?;
-        let template = self.image_source(command, model, stencil)?;
+        let soft = soft.as_deref().map(Vec::as_slice);
+        let (template, stencil) = self.image_source(command, model)?;
         let image = &command.image;
         let origin = clip.origin();
         let mut mask_samples = MaskSamples { table: [None; 256] };
         self.charge(clip.coverage().len())?;
-        if clip.spans().next().is_none() {
+        if runs(&clip).next().is_none() {
             return Ok(());
         }
-        let mut texels = Texels::new(image, model);
-        let available = self.limits.decoded_bytes.saturating_sub(self.allocated);
+        let mut texels = Texels::new(image, model, self);
+        let available = self.memory.remaining();
         let (mut sampler, mut mask_sampler) =
             prepare(image, inverse, origin.0, clip.width(), available)?;
         let sampling_bytes = sampler.bytes() + mask_sampler.as_ref().map_or(0, Prepared::bytes);
         self.trim_raster(sampling_bytes);
-        self.allocated += sampling_bytes;
-        for (row, column, coverage) in clip.spans() {
-            let y =
-                origin.1 + u32::try_from(row).map_err(|_| Error::limit("image row exceeds u32"))?;
-            for (offset, &coverage) in coverage.iter().enumerate() {
-                let column = column + offset;
-                let x = origin.0
-                    + u32::try_from(column)
-                        .map_err(|_| Error::limit("image column exceeds u32"))?;
+        self.memory
+            .charge(sampling_bytes)
+            .map_err(|_| Error::limit("image sampling memory exceeded"))?;
+        for run in runs(&clip) {
+            let run = run?;
+            let y = run.y;
+            let start = target.span(run.x, y, run.coverage.len());
+            debug_assert!(start.is_some(), "masks are clipped to their group's tile");
+            let Some(start) = start else { continue };
+            for (index, (x, coverage)) in (start..).zip(run.pixels()) {
                 let mut work = 0;
                 let maximum = self.limits.raster_work.saturating_sub(self.work);
                 let mut value = sampler.sample(x, y, &mut work, maximum, |pixel| {
@@ -84,64 +83,31 @@ impl Context {
                 }
                 self.charge(work)?;
                 let source = covered_source(value, coverage, template);
-                let index = target
-                    .index(x, y)
-                    .ok_or(Error::invalid_argument("image outside surface"))?;
-                let mask = soft
-                    .as_ref()
-                    .and_then(|m| m.get(index))
-                    .copied()
-                    .unwrap_or(1.0);
                 self.image_transfer(command, (x, y), source)?;
-                if let Some(buffer) = target.narrow_mut() {
-                    buffer.paint(index, source.apply(&command.composite, mask))?;
-                    continue;
-                }
-                target
-                    .pixels_mut()
-                    .get_mut(index)
-                    .ok_or(Error::invalid_argument("image index outside surface"))?
-                    .paint(
-                        source.apply(&command.composite, mask),
-                        &command.composite,
-                        initial.pixel(x, y),
-                        knockout,
-                        model,
-                    );
+                target.composite(index, (x, y), source, &command.composite, soft, frame);
             }
         }
-        self.allocated -= sampling_bytes;
+        self.memory.refund(sampling_bytes);
         Ok(())
     }
+    /// The colour template of an image's samples and, for a stencil mask, the
+    /// fill colour it paints (8.9.6.2).
     fn image_source(
         &mut self,
         command: &ImageCommand,
         model: Model,
-        stencil: Option<Source>,
-    ) -> Result<Source> {
-        if let Some(stencil) = stencil {
-            return Ok(stencil);
-        }
-        let space = command
-            .image
-            .space
-            .as_ref()
-            .ok_or(Error::syntax("image missing colour space"))?;
-        Ok(self.sampled_source(space, model, &command.composite))
-    }
-    fn stencil_color(&mut self, command: &ImageCommand, model: Model) -> Result<Option<Source>> {
-        let stencil = if command.image.space.is_none() {
-            if matches!(command.stencil, crate::color::Color::Pattern { .. }) {
-                return Err(Error::unsupported(
-                    crate::features::PATTERN_IMAGE_MASK,
-                    "pattern-coloured image stencils are not implemented",
-                ));
+    ) -> Result<(Source, Option<Source>)> {
+        match (&command.image.space, &command.stencil) {
+            (Some(space), _) => Ok((self.sampled_source(space, model, &command.composite), None)),
+            (None, crate::color::Color::Solid { space, components }) => {
+                let stencil = self.source(space, components, model, &command.composite, true)?;
+                Ok((stencil, Some(stencil)))
             }
-            Some(self.color(&command.stencil, model, &command.composite, true)?)
-        } else {
-            None
-        };
-        Ok(stencil)
+            (None, crate::color::Color::Pattern { .. }) => Err(Error::unsupported(
+                crate::features::PATTERN_IMAGE_MASK,
+                "pattern-coloured image stencils are not implemented",
+            )),
+        }
     }
     fn image_texel(
         &mut self,
@@ -349,11 +315,14 @@ enum Texels<'a> {
     },
 }
 impl<'a> Texels<'a> {
-    fn new(image: &'a Image, model: Model) -> Self {
+    fn new(image: &'a Image, model: Model, context: &Context) -> Self {
         // Decode and clipping apply per sample before any weighted sum (8.9.5.2).
         // For DeviceGray, and DeviceRGB into RGB, each channel depends on one
-        // sample, so a 256-entry table equals the scalar result.
-        if matches!(model, Model::Gray | Model::Rgb)
+        // sample, so a 256-entry table equals the scalar result. A spot pass
+        // paints process colours as no ink, which only the scalar path knows.
+        let process = context.spot_batch.is_none();
+        if process
+            && matches!(model, Model::Gray | Model::Rgb)
             && matches!(image.space, Some(crate::color::Space::Gray))
             && (1..=8).contains(&image.decoded.bits_per_component)
             && image.decoded.components == 1
@@ -376,7 +345,8 @@ impl<'a> Texels<'a> {
             });
             return Self::Gray { pixels, colors };
         }
-        if model == Model::Rgb
+        if process
+            && model == Model::Rgb
             && matches!(image.space, Some(crate::color::Space::Rgb))
             && image.decoded.bits_per_component == 8
             && image.decoded.components == 3
@@ -506,30 +476,7 @@ mod tests {
     use std::sync::Arc;
     fn context() -> Context {
         let limits = pagura_core::Limits::default();
-        Context {
-            overprint: crate::overprint::Policy::Ignore,
-            elide_opaque_groups: false,
-            separations: Arc::new(super::super::Separations::default()),
-            preview: super::super::colorants::Preview::default(),
-            spot_batch: None,
-            mask_colors: false,
-            raster: pagura_raster::Rasterizer::default(),
-            bounds: super::super::regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
-            glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
-            limits,
-            device: Transform::IDENTITY,
-            page_device: Transform::IDENTITY,
-            view_unit: 1.0,
-            crop: PathBuilder::new().finish(),
-            allocated: 0,
-            work: 0,
-            clip: None,
-            mask: None,
-            function_work: 0,
-            soft_source: false,
-            transfers: None,
-            viewport: None,
-        }
+        Context::new(limits, Transform::IDENTITY, PathBuilder::new().finish())
     }
 
     fn command(image: Image) -> ImageCommand {
@@ -673,7 +620,7 @@ mod tests {
         });
         image.decode[0] = (0.0, 255.0);
         let command = command(image);
-        let mut tables = Texels::new(&command.image, Model::Rgb);
+        let mut tables = Texels::new(&command.image, Model::Rgb, &context());
         assert!(matches!(tables, Texels::Cached(_)));
         let mut context = context();
         for raw in (0..=255_u8).rev().chain(0..=255) {
@@ -707,7 +654,7 @@ mod tests {
                 let mut image = byte_image(components, 8);
                 image.decoded.mask = mask.clone();
                 let command = command(image);
-                let mut tables = Texels::new(&command.image, Model::Rgb);
+                let mut tables = Texels::new(&command.image, Model::Rgb, &context());
                 assert!(matches!(tables, Texels::Gray { .. } | Texels::Rgb { .. }));
                 let mut context = context();
                 for pixel in 0..256 {
@@ -751,7 +698,7 @@ mod tests {
                     image.decode[1] = (range.1, range.0);
                 }
                 let command = command(image);
-                let mut texels = Texels::new(&command.image, model);
+                let mut texels = Texels::new(&command.image, model, &context());
                 assert!(matches!(texels, Texels::Rgb { .. } | Texels::Gray { .. }));
                 let mut context = context();
                 for pixel in 0..256 {
@@ -782,13 +729,19 @@ mod tests {
     fn byte_tables_exclude_masks_matte_and_nonmatching_spaces() {
         let mut image = byte_image(3, 8);
         image.decoded.mask = MaskKind::ColorKey(vec![(0, 0); 3]);
-        assert!(matches!(Texels::new(&image, Model::Rgb), Texels::Cached(_)));
+        assert!(matches!(
+            Texels::new(&image, Model::Rgb, &context()),
+            Texels::Cached(_)
+        ));
         image.decoded.mask = MaskKind::None;
         image.matte = Some(vec![0.0; 3]);
-        assert!(matches!(Texels::new(&image, Model::Rgb), Texels::Uncached));
+        assert!(matches!(
+            Texels::new(&image, Model::Rgb, &context()),
+            Texels::Uncached
+        ));
         image.matte = None;
         assert!(matches!(
-            Texels::new(&image, Model::Cmyk),
+            Texels::new(&image, Model::Cmyk, &context()),
             Texels::Cached(_)
         ));
         image.space = Some(crate::color::Space::Icc {
@@ -796,7 +749,10 @@ mod tests {
             profile: None,
             range: [[0.0, 1.0]; 4],
         });
-        assert!(matches!(Texels::new(&image, Model::Rgb), Texels::Cached(_)));
+        assert!(matches!(
+            Texels::new(&image, Model::Rgb, &context()),
+            Texels::Cached(_)
+        ));
     }
 
     #[test]
@@ -833,7 +789,7 @@ mod tests {
             transfer: None,
             position: pagura_core::Position::Unknown,
         };
-        let mut texels = Texels::new(&command.image, Model::Rgb);
+        let mut texels = Texels::new(&command.image, Model::Rgb, &context());
         let mut context = context();
         let sample = texels
             .sample(&mut context, &command, 0, Model::Rgb, None)
@@ -843,5 +799,28 @@ mod tests {
             [32768.0 / 65535.0, 32768.0 / 65535.0, 32768.0 / 65535.0, 0.0]
         );
         assert_eq!(sample.alpha, 1.0);
+    }
+
+    #[test]
+    fn spot_passes_paint_process_images_as_no_ink() {
+        // A spot pass replays process-colour marks as "no ink" (all planes 1)
+        // whatever the blending space, so the per-sample tables must agree
+        // with the scalar path there too.
+        for components in [1, 3] {
+            let command = command(byte_image(components, 8));
+            let mut context = context();
+            context.spot_batch = Some(0);
+            let mut texels = Texels::new(&command.image, Model::Rgb, &context);
+            for pixel in [0, 64, 255] {
+                let actual = texels
+                    .sample(&mut context, &command, pixel, Model::Rgb, None)
+                    .unwrap();
+                let scalar = context
+                    .image_texel(&command, pixel, Model::Rgb, None)
+                    .unwrap();
+                assert_eq!(actual.color, scalar.color, "{components} components");
+                assert_eq!(scalar.color, [1.0; 4]);
+            }
+        }
     }
 }
