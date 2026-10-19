@@ -16,6 +16,7 @@ pub mod jbig2;
 pub mod jpx;
 mod mq;
 pub mod repairs;
+mod t4;
 
 use pagura_core::convert::usize_to_u64;
 use pagura_core::{Error, Limits, Result};

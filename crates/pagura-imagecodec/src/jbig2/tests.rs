@@ -432,12 +432,16 @@ fn unknown_length_allocates_actual_rows_and_keeps_following_segment() {
     // next segment is a one-row MMR region below it on the 5×5 page.
     let page = expected.len();
     let (region, contexts, follower) = (3, 1024, 1);
+    // The follower's two changing-element lists of a 5-pixel row.
+    let lists = 2 * 13 * size_of::<usize>();
     // The first region's contexts and bitmap are released before the
     // follower allocates its own, so the first region sets the peak.
     let memory = 2 * SEGMENT_BYTES + region + contexts * size_of::<Context>();
-    assert!(3 * SEGMENT_BYTES + follower < memory);
-    // The follower's MMR bits are bounded by its data length, not charged.
-    let work = 3 + (25 + 15 + 5) * PIXEL_WORK + page + region + contexts + follower;
+    assert!(3 * SEGMENT_BYTES + follower + lists < memory);
+    // Every MMR bit read is work: the row's two horizontal-mode codes take
+    // 12 and 11 bits, the end-of-block code 24.
+    let mmr_bits = 12 + 11 + 24;
+    let work = 3 + (25 + 15 + 5) * PIXEL_WORK + page + region + contexts + follower + mmr_bits;
     let limits = Limits {
         pixels: 25,
         decode_work: work,

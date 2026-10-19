@@ -4,7 +4,8 @@ use crate::Precision;
 use crate::parameters::{self, boolean, integer};
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Limits, Result};
-use pagura_imagecodec::ccitt::{self, CcittParams};
+use pagura_imagecodec::ccitt::{self, CcittParams, Encoding};
+use std::num::NonZeroU32;
 
 pub(crate) fn decode(
     data: &[u8],
@@ -15,14 +16,14 @@ pub(crate) fn decode(
     diagnostics: &mut Diagnostics,
 ) -> Result<Pixels> {
     let params = params(dictionary)?;
-    if params.columns != width {
+    if params.columns.get() != width {
         diagnostics.repair(Diagnostic::new(crate::repairs::CCITT_COLUMNS,
             "CCITT Columns retained for decoding; rows cropped or white-padded to image Width (7.4.6 Table 11; 8.9.5.1 Table 87)")
             )?;
-        parameters::budget(params.columns, height, 1, 1, limits)?;
+        parameters::budget(params.columns.get(), height, 1, 1, limits)?;
     }
     let packed = ccitt::decode_with_diagnostics(data, &params, limits, diagnostics)?;
-    if params.columns == width {
+    if params.columns.get() == width {
         let samples =
             parameters::unpack_with_diagnostics(&packed, width, height, 1, 1, limits, diagnostics)?;
         return Ok(Pixels {
@@ -39,7 +40,7 @@ pub(crate) fn decode(
     {
         return Err(Error::limit("CCITT image adapter storage budget exceeded"));
     }
-    let stride = usize::try_from(u64::from(params.columns).div_ceil(8))
+    let stride = usize::try_from(u64::from(params.columns.get()).div_ceil(8))
         .map_err(|_| Error::limit("CCITT row exceeds addressable samples"))?;
     let length = stride
         .checked_mul(u32_to_usize(height))
@@ -52,7 +53,7 @@ pub(crate) fn decode(
     for (y, row) in samples.chunks_exact_mut(u32_to_usize(width)).enumerate() {
         for (x, sample) in row
             .iter_mut()
-            .take(u32_to_usize(params.columns))
+            .take(u32_to_usize(params.columns.get()))
             .enumerate()
         {
             let byte = data.get(y * stride + x / 8).copied().unwrap_or(0);
@@ -63,27 +64,26 @@ pub(crate) fn decode(
 }
 
 /// Reads the Table 11 parameters, including defaults.
-pub(crate) fn params(params: Option<&Dictionary>) -> Result<CcittParams> {
-    let Some(p) = params else {
-        return Ok(CcittParams::default());
+pub(crate) fn params(dictionary: Option<&Dictionary>) -> Result<CcittParams> {
+    let mut params = CcittParams::default();
+    let Some(p) = dictionary else {
+        return Ok(params);
     };
-    let columns = u32::try_from(integer(p, b"Columns", 1728)?)
+    params.encoding = Encoding::from_k(integer(p, b"K", 0)?);
+    params.columns = u32::try_from(integer(p, b"Columns", 1728)?)
         .ok()
-        .filter(|&v| v > 0)
+        .and_then(NonZeroU32::new)
         .ok_or(Error::syntax("invalid CCITT Columns"))?;
-    let rows =
-        u32::try_from(integer(p, b"Rows", 0)?).map_err(|_| Error::syntax("invalid CCITT Rows"))?;
-    Ok(CcittParams {
-        k: integer(p, b"K", 0)?,
-        columns,
-        rows: if rows == 0 { None } else { Some(rows) },
-        end_of_line: boolean(p, b"EndOfLine", false)?,
-        encoded_byte_align: boolean(p, b"EncodedByteAlign", false)?,
-        end_of_block: boolean(p, b"EndOfBlock", true)?,
-        black_is_1: boolean(p, b"BlackIs1", false)?,
-        damaged_rows_before_error: u32::try_from(integer(p, b"DamagedRowsBeforeError", 0)?)
-            .map_err(|_| Error::syntax("invalid CCITT damaged row count"))?,
-    })
+    params.rows = NonZeroU32::new(
+        u32::try_from(integer(p, b"Rows", 0)?).map_err(|_| Error::syntax("invalid CCITT Rows"))?,
+    );
+    params.end_of_line = boolean(p, b"EndOfLine", false)?;
+    params.encoded_byte_align = boolean(p, b"EncodedByteAlign", false)?;
+    params.end_of_block = boolean(p, b"EndOfBlock", true)?;
+    params.black_is_1 = boolean(p, b"BlackIs1", false)?;
+    params.damaged_rows_before_error = u32::try_from(integer(p, b"DamagedRowsBeforeError", 0)?)
+        .map_err(|_| Error::syntax("invalid CCITT damaged row count"))?;
+    Ok(params)
 }
 
 #[cfg(test)]
