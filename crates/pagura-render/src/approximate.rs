@@ -25,6 +25,7 @@ mod paint;
 
 use crate::color::Color;
 use crate::display::{Command, Mark, PathCommand};
+use crate::hash::FastMap;
 use crate::transparency::Model;
 use crate::{DisplayList, RenderOptions, Tile};
 use clip::{ClipMask, clip_mask, rectangle};
@@ -34,7 +35,6 @@ use pagura_raster::{
     FillRule, Pixmap, Point, Rgba8, Transform, adjusted_stroke_outline, stroke_outline,
 };
 use paint::Target;
-use std::collections::HashMap;
 
 /// Device-space chord tolerance for filled and stroked paths.
 const TOLERANCE: f64 = 0.0625;
@@ -133,7 +133,7 @@ pub(crate) fn render(
     let resolution = Resolution::new(options);
     let mut target = Target::new(tile, options.background, list.limits)?;
     let geometry = (device, page, list.limits);
-    let mut clips = HashMap::new();
+    let mut clips = FastMap::default();
     let mut scratch = glyphs::Accumulator::default();
     let mut stack = vec![list.commands.iter()];
     while let Some(iter) = stack.last_mut() {

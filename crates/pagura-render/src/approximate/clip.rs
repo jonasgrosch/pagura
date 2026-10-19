@@ -2,9 +2,10 @@
 
 use super::coverage::{self, Coverage};
 use crate::display::Clip;
+use crate::hash::FastMap;
 use pagura_core::{Error, Limits, Result};
 use pagura_raster::{Path, Segment, Transform};
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 /// Clip-path flattening tolerance in device pixels.
 const TOLERANCE: f64 = 0.25;
@@ -85,7 +86,7 @@ pub(super) fn rectangle(path: &Path, device: Transform) -> Option<[f64; 4]> {
 pub(super) fn clip_mask<'a>(
     clip: Option<&Arc<Clip>>,
     (device, page, limits): (Transform, (u32, u32), Limits),
-    cache: &'a mut HashMap<usize, ClipMask>,
+    cache: &'a mut FastMap<usize, ClipMask>,
 ) -> Result<Option<&'a ClipMask>> {
     let Some(clip) = clip else {
         return Ok(None);

@@ -96,7 +96,7 @@ pub(crate) struct GlyphRun {
     pub(crate) positions: Vec<(usize, pagura_core::Position)>,
     pub(crate) bounds: Rect,
     origins: Rect,
-    index: std::collections::HashMap<GlyphKey, u32>,
+    index: crate::hash::FastMap<GlyphKey, u32>,
 }
 
 impl GlyphRun {
@@ -129,7 +129,7 @@ impl GlyphRun {
                 x1: f64::NEG_INFINITY,
                 y1: f64::NEG_INFINITY,
             },
-            index: std::collections::HashMap::new(),
+            index: crate::hash::FastMap::default(),
         }
     }
     pub(crate) fn push(
@@ -378,7 +378,7 @@ struct CachedGeometry {
 /// Optional per-render working memory; neither output nor work limits use hits.
 #[derive(Debug, Default)]
 pub(crate) struct GlyphCache {
-    entries: std::collections::HashMap<GlyphKey, CachedGeometry>,
+    entries: crate::hash::FastMap<GlyphKey, CachedGeometry>,
     bytes: usize,
     maximum: usize,
 }

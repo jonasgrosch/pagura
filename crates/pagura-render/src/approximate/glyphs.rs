@@ -10,9 +10,9 @@
 
 use super::Resolution;
 use super::coverage::{Coverage, Geometry};
+use crate::hash::{FastMap, FastSet};
 use pagura_core::{Error, Limits, Result};
 use pagura_raster::{Path, Transform};
-use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 /// Horizontal subpixel origins per device pixel.
@@ -21,10 +21,10 @@ const PHASES: u16 = 128;
 /// Retained glyph masks, row fragments and geometry, bounded in bytes.
 #[derive(Debug, Default)]
 pub(crate) struct GlyphCache {
-    masks: HashMap<Key, Mask>,
-    rows: HashMap<Key, Rows>,
-    geometries: HashMap<Key, Prepared>,
-    outlines: HashSet<usize>,
+    masks: FastMap<Key, Mask>,
+    rows: FastMap<Key, Rows>,
+    geometries: FastMap<Key, Prepared>,
+    outlines: FastSet<usize>,
     bytes: usize,
     maximum: usize,
 }

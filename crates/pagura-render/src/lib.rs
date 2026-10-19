@@ -14,6 +14,7 @@ mod compositor;
 mod context;
 mod display;
 mod functions;
+mod hash;
 mod icc;
 mod interpreter;
 mod operators;
