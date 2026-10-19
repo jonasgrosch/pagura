@@ -324,14 +324,18 @@ impl Rows {
                 continue;
             }
             let slope = (bx - ax) / (by - ay);
-            for row in ay.floor().max(0.0) as usize..(by.ceil() as usize).min(glyph.height) {
+            let rows = ay.floor().max(0.0) as usize..(by.ceil() as usize).min(glyph.height);
+            // Finite endpoints within the glyph's extent give finite row
+            // ends for a finite slope; an infinite one makes the first
+            // fragment's end NaN or infinite.
+            if !slope.is_finite() && !rows.is_empty() {
+                return Err(Error::limit("glyph row arithmetic exceeded"));
+            }
+            for row in rows {
                 let low = ay.max(row as f32);
                 let high = by.min(row as f32 + 1.0);
                 let x0 = ax + slope * (low - ay);
                 let x1 = ax + slope * (high - ay);
-                if !x0.is_finite() || !x1.is_finite() {
-                    return Err(Error::limit("glyph row arithmetic exceeded"));
-                }
                 if fragments.len() >= maximum {
                     return Err(Error::limit("glyph row fragment budget exceeded"));
                 }
