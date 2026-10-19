@@ -350,7 +350,7 @@ fn metadata_repairs_coalesce_and_identify_the_operator_or_record() {
 fn finite(path: &pagura_raster::Path) -> bool {
     path.segments().iter().all(|segment| match *segment {
         Segment::MoveTo(p) | Segment::LineTo(p) => p.is_finite(),
-        Segment::CubicTo(a, b, c) => a.is_finite() && b.is_finite() && c.is_finite(),
+        Segment::CubicTo { c1, c2, end } => c1.is_finite() && c2.is_finite() && end.is_finite(),
         Segment::Close => true,
     })
 }
