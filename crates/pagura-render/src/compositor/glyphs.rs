@@ -2,7 +2,9 @@
 
 use super::{Context, Frame, Surface, path_active, regions};
 use crate::Tile;
+use crate::display::Placement;
 use pagura_core::{Error, Limits, Result};
+use pagura_raster::Mask;
 use std::sync::Arc;
 
 impl Context {
@@ -38,59 +40,67 @@ impl Context {
             while let Some(&(_, p)) = positions.next_if(|(i, _)| *i <= index) {
                 position = p;
             }
-            let result = (|| {
-                let hull = run
-                    .source(placement)?
-                    .device_hull(placement.origin, self.device);
-                if !regions::glyph_visible(hull, tile, &mut self.work, self.limits.raster_work)? {
-                    return Ok(());
-                }
-                let geometry = self.glyphs.geometry(
-                    run,
-                    placement,
-                    self.device,
-                    &Limits {
-                        decoded_bytes: self.memory.remaining(),
-                        ..self.limits
-                    },
-                    &mut self.raster,
-                )?;
-                // Every placement scans its flattened outline, cached or not.
-                self.charge(geometry.vertices())?;
-                let bytes = geometry.retained_bytes();
-                self.trim_raster(bytes);
-                let held = self.memory.hold(bytes, "glyph geometry memory exceeded")?;
-                let clip = if let Some(clip) = &clip {
-                    Arc::clone(clip)
-                } else {
-                    let value = self.clip(run.paint.clip.as_ref(), tile)?;
-                    clip = Some(Arc::clone(&value));
-                    value
-                };
-                let limits = Limits {
-                    decoded_bytes: self.memory.remaining(),
-                    ..self.limits
-                };
-                let Some(mask) = self.raster.clipped_glyph(
-                    &clip,
-                    geometry,
-                    placement.origin * self.device,
-                    limits,
-                )?
-                else {
-                    return Ok(());
-                };
-                let Some(mask) = self.pattern_mask(&run.paint, mask)? else {
-                    return Ok(());
-                };
-                let result = self.paint_path(&run.paint, &mask, target, frame);
-                self.raster.recycle(mask);
-                drop(held);
-                self.trim_raster(0);
-                result
-            })();
-            result.map_err(|e| crate::display::contextual(e, position))?;
+            self.glyph(run, placement, tile, target, frame, &mut clip)
+                .map_err(|e| crate::display::contextual(e, position))?;
         }
         Ok(())
+    }
+    /// Paints one placement of `run`, culled before its outline is flattened;
+    /// `clip` caches the run's clip mask across placements.
+    fn glyph(
+        &mut self,
+        run: &crate::display::GlyphRun,
+        placement: Placement,
+        tile: Tile,
+        target: &mut Surface,
+        frame: Frame<'_>,
+        clip: &mut Option<Arc<Mask>>,
+    ) -> Result<()> {
+        let hull = run
+            .source(placement)?
+            .device_hull(placement.origin, self.device);
+        if !regions::glyph_visible(hull, tile, &mut self.work, self.limits.raster_work)? {
+            return Ok(());
+        }
+        let geometry = self.glyphs.geometry(
+            run,
+            placement,
+            self.device,
+            &Limits {
+                decoded_bytes: self.memory.remaining(),
+                ..self.limits
+            },
+            &mut self.raster,
+        )?;
+        // Every placement scans its flattened outline, cached or not.
+        self.charge(geometry.vertices())?;
+        let bytes = geometry.retained_bytes();
+        self.trim_raster(bytes);
+        let held = self.memory.hold(bytes, "glyph geometry memory exceeded")?;
+        let clip = if let Some(clip) = clip {
+            Arc::clone(clip)
+        } else {
+            let value = self.clip(run.paint.clip.as_ref(), tile)?;
+            *clip = Some(Arc::clone(&value));
+            value
+        };
+        let limits = Limits {
+            decoded_bytes: self.memory.remaining(),
+            ..self.limits
+        };
+        let Some(mask) =
+            self.raster
+                .clipped_glyph(&clip, geometry, placement.origin * self.device, limits)?
+        else {
+            return Ok(());
+        };
+        let Some(mask) = self.pattern_mask(&run.paint, mask)? else {
+            return Ok(());
+        };
+        let result = self.paint_path(&run.paint, &mask, target, frame);
+        self.raster.recycle(mask);
+        drop(held);
+        self.trim_raster(0);
+        result
     }
 }

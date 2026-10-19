@@ -10,7 +10,7 @@ use std::sync::{Arc, OnceLock};
 mod glyphs;
 mod opaque;
 pub(crate) mod scene;
-pub(crate) use glyphs::{GlyphCache, GlyphRun};
+pub(crate) use glyphs::{GlyphCache, GlyphRun, Placement};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Clip {

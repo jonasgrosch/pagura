@@ -94,6 +94,33 @@ impl Context {
             viewport: None,
         }
     }
+    /// Runs `paint` with `device` as the device transform and `soft_source`
+    /// deciding the clip viewport, then restores both whatever it returns.
+    /// The clip cache always starts and ends empty, and the soft-mask cache
+    /// too when the device transform changes.
+    fn within<T>(
+        &mut self,
+        device: Transform,
+        soft_source: bool,
+        paint: impl FnOnce(&mut Self) -> Result<T>,
+    ) -> Result<T> {
+        let moved = device != self.device;
+        let outer = (
+            std::mem::replace(&mut self.device, device),
+            std::mem::replace(&mut self.soft_source, soft_source),
+        );
+        self.clip = None;
+        if moved {
+            self.discard_mask();
+        }
+        let result = paint(self);
+        (self.device, self.soft_source) = outer;
+        self.clip = None;
+        if moved {
+            self.discard_mask();
+        }
+        result
+    }
     fn region(&mut self, group: &Group, tile: Tile) -> Result<Option<Tile>> {
         group_region(
             group,

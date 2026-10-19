@@ -20,6 +20,23 @@ impl Context {
     pub(super) fn discard_mask(&mut self) {
         self.mask = None;
     }
+    /// Runs `paint` as a mask source: it selects no transfers, belongs to no
+    /// spot pass and reads colours in the mask group's own space.
+    fn mask_pass<T>(&mut self, paint: impl FnOnce(&mut Self) -> Result<T>) -> Result<T> {
+        let suspended = self
+            .transfers
+            .as_mut()
+            .map(|r| std::mem::replace(&mut r.suspended, true));
+        let spot_batch = self.spot_batch.take();
+        let mask_colors = std::mem::replace(&mut self.mask_colors, true);
+        let result = paint(self);
+        if let (Some(regions), Some(suspended)) = (&mut self.transfers, suspended) {
+            regions.suspended = suspended;
+        }
+        self.spot_batch = spot_batch;
+        self.mask_colors = mask_colors;
+        result
+    }
     pub(super) fn soft_mask(
         &mut self,
         mask: &Arc<SoftMask>,
@@ -49,24 +66,11 @@ impl Context {
         if let Some(surface) = &mut surface {
             // Mask G has its own BBox; the page crop is applied to the painted
             // object later, not to the mask source (11.6.5.1).
-            let previous = std::mem::replace(&mut self.soft_source, true);
-            self.clip = None;
-            let suspended = self.transfers.as_ref().is_some_and(|r| r.suspended);
-            if let Some(regions) = &mut self.transfers {
-                regions.suspended = true;
-            }
-            let spot_batch = self.spot_batch.take();
-            let mask_colors = std::mem::replace(&mut self.mask_colors, true);
             let members = Frame::group(initial, model, mask.group.attributes.knockout, depth);
-            let result = self.commands(&mask.group.commands, surface, members);
-            self.soft_source = previous;
-            if let Some(regions) = &mut self.transfers {
-                regions.suspended = suspended;
-            }
-            self.spot_batch = spot_batch;
-            self.mask_colors = mask_colors;
-            self.clip = None;
-            result?;
+            let device = self.device;
+            self.within(device, true, |this| {
+                this.mask_pass(|this| this.commands(&mask.group.commands, surface, members))
+            })?;
         }
         self.discard_mask();
         let count = usize::try_from(u64::from(tile.width) * u64::from(tile.height))

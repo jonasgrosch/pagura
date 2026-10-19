@@ -65,32 +65,17 @@ impl Context {
             Backdrop::Surface(target)
         };
         let mut surface = self.surface(tile, backdrop)?;
-        let device = self.device;
-        let soft_source = self.soft_source;
-        self.soft_source = true;
-        let result = (|| {
-            for y in iy0..=iy1 {
-                for x in ix0..=ix1 {
-                    self.device = Transform::translate(
-                        x as f64 * pattern.step[0],
-                        y as f64 * pattern.step[1],
-                    )
-                    .then(transform);
-                    self.clip = None;
-                    self.discard_mask();
-                    self.commands(
-                        &pattern.commands,
-                        &mut surface,
-                        Frame::group(backdrop, frame.model, false, frame.depth),
-                    )?;
-                }
+        let members = Frame::group(backdrop, frame.model, false, frame.depth);
+        for y in iy0..=iy1 {
+            for x in ix0..=ix1 {
+                let device =
+                    Transform::translate(x as f64 * pattern.step[0], y as f64 * pattern.step[1])
+                        .then(transform);
+                self.within(device, true, |this| {
+                    this.commands(&pattern.commands, &mut surface, members)
+                })?;
             }
-            Ok(())
-        })();
-        self.device = device;
-        self.soft_source = soft_source;
-        self.clip = None;
-        result?;
+        }
         surface.remove_backdrop(backdrop);
         let soft = command
             .composite
