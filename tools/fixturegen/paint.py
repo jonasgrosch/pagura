@@ -6,6 +6,7 @@ image oracles explicitly map source sample rectangles into page coordinates.
 No product executable is imported or run.
 """
 from fractions import Fraction as F
+import math
 import struct
 import zlib
 from .model import Case, RENDER, OPEN, UNSUPPORTED
@@ -232,6 +233,94 @@ def image_cases():
                b"<< /XObject << /I 5 0 R >> >>",[((2+x,2,1,2),(v,v,v)) for x,v in enumerate(values)],requirement="paint-image-resampling")
 
 
+def direct_image_oracle(width, height, components, bits, codes, placement, *, inverted=False, interpolate=False, size=SIZE):
+    """Exact page pixels of one opaque image over white: rational area means
+    when minified, nearest or bilinear centre samples when magnified (8.9.5.3),
+    each mixed by its pixel's coverage byte and rounded half up once.
+    `placement` maps the unit square to device pixels, axis-aligned or by a
+    quarter turn. Returns the PPM and the number of exact rounding ties."""
+    a, b, c, d, e, f = (F(v) for v in placement)
+    step = 255 // ((1 << bits) - 1)
+    def level(column, row, channel):
+        value = codes[(row * width + column) * components + min(channel, components - 1)] * step
+        return 255 - value if inverted else value
+    def rect(u0, u1, v0, v1):
+        p = (u0 * a + v0 * c + e, u0 * b + v0 * d + f)
+        q = (u1 * a + v1 * c + e, u1 * b + v1 * d + f)
+        return min(p[0], q[0]), max(p[0], q[0]), min(p[1], q[1]), max(p[1], q[1])
+    def overlap(lo, hi, p):
+        return max(F(0), min(hi, F(p + 1)) - max(lo, F(p)))
+    full = rect(F(0), F(1), F(0), F(1))
+    minifying = F(width) / abs(a or b) > 1 or F(height) / abs(c or d) > 1
+    det = a * d - b * c
+    pixels, ties = bytearray(), 0
+    for y in range(size):
+        for x in range(size):
+            covered = overlap(full[0], full[1], x) * overlap(full[2], full[3], y)
+            coverage = int(covered * 255 + F(1, 2))
+            for channel in range(3):
+                if coverage == 0:
+                    pixels.append(255)
+                    continue
+                if minifying:
+                    total, area = F(0), F(0)
+                    for row in range(height):
+                        for column in range(width):
+                            cell = rect(F(column, width), F(column + 1, width), 1 - F(row + 1, height), 1 - F(row, height))
+                            part = overlap(cell[0], cell[1], x) * overlap(cell[2], cell[3], y)
+                            total += part * level(column, row, channel)
+                            area += part
+                    value = total / area
+                else:
+                    px, py = F(2 * x + 1, 2) - e, F(2 * y + 1, 2) - f
+                    column = (px * d - py * c) / det * width
+                    row = height - (py * a - px * b) / det * height
+                    clamp = lambda v, n: min(max(v, 0), n - 1)
+                    if not interpolate:
+                        value = F(level(clamp(math.floor(column), width), clamp(math.floor(row), height), channel))
+                    else:
+                        column, row = column - F(1, 2), row - F(1, 2)
+                        left, top = math.floor(column), math.floor(row)
+                        fx, fy = column - left, row - top
+                        value = sum(level(clamp(left + dx, width), clamp(top + dy, height), channel) * wx * wy
+                                    for dx, wx in ((0, 1 - fx), (1, fx)) for dy, wy in ((0, 1 - fy), (1, fy)))
+                mixed = (value * coverage + 255 * (255 - coverage)) / 255
+                ties += (mixed - math.floor(mixed)) == F(1, 2)
+                pixels.append(math.floor(mixed + F(1, 2)))
+    return b"P6\n%d %d\n255\n" % (size, size) + bytes(pixels), ties
+
+
+def direct_image_cases():
+    """Sole opaque images that the compositor paints straight into the page:
+    one-bit and inverted two-bit quarter-turned two-to-one means, reflected
+    RGB minification with fractional edges mixed by coverage, and bilinear
+    /Interpolate magnification by eight. Dyadic placements keep the product's
+    f64 sums exact, so half-level ties round up like the oracle; the
+    fractional case has none. Every oracle byte is matched exactly."""
+    def make(name, width, height, components, bits, codes, placement, *, inverted=False, interpolate=False, ties_expected=False):
+        a, b, c, d, e, f = placement
+        # Device pixels to PDF user space: y is measured from the page bottom.
+        matrix = (a, -b, c, -d, e, SIZE - f)
+        wire = codecs.Wire()
+        for value in codes:
+            wire.put(value, bits)
+        space = b"/DeviceGray" if components == 1 else b"/DeviceRGB"
+        extra = (b" /Decode [1 0]" if inverted else b"") + (b" /Interpolate true" if interpolate else b"")
+        image = stream(wire.bytes(), b"/Subtype /Image /Width %d /Height %d /BitsPerComponent %d /ColorSpace %s%s" % (width, height, bits, space, extra))
+        oracle, ties = direct_image_oracle(width, height, components, bits, codes, placement, inverted=inverted, interpolate=interpolate)
+        assert (ties > 0) == ties_expected, (name, ties)
+        content = b"q " + b" ".join(str(v).encode() for v in matrix) + b" cm /I Do Q"
+        return case(name, content, [image], b"<< /XObject << /I 5 0 R >> >>", oracle=oracle, requirement="paint-image-resampling")
+    binary = [(x * 7 + y * 3 + x * y) % 5 % 2 for y in range(32) for x in range(32)]
+    yield make("image-direct-binary-halves", 32, 32, 1, 1, binary, (16, 0, 0, -16, 8, 24), ties_expected=True)
+    two = [(x * 5 + y * 3) % 4 for y in range(24) for x in range(20)]
+    yield make("image-direct-gray-quarter-turn", 20, 24, 1, 2, two, (0, 10, 12, 0, 4, 6), inverted=True)
+    rgb = [(x * 31 + y * 71 + channel * 113 + x * y) % 256 for y in range(36) for x in range(48) for channel in range(3)]
+    yield make("image-direct-rgb-fractional", 48, 36, 3, 8, rgb, (-20.5, 0, 0, 13.75, 26.25, 4.5))
+    small = [17, 85, 170, 255, 0, 120, 60, 200, 30, 240, 90, 10, 220, 5, 140, 75, 180, 35]
+    yield make("image-direct-bilinear", 3, 2, 3, 8, small, (24, 0, 0, -16, 4, 26), interpolate=True, ties_expected=True)
+
+
 def cases():
     yield from text_cases()
     yield from image_cases()
@@ -247,6 +336,7 @@ def cases():
     yield damaged_glyph_case()
     yield from separable_area_cases()
     yield from area_threshold_cases()
+    yield from direct_image_cases()
 
 
 def type1_lengths(program):

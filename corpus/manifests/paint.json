@@ -3379,6 +3379,86 @@
           "sha256": "3eb6d9ca20414eb1f793c112a0cc6ee9b7f8fda4d956a54aacbe7dca156e7cea"
         }
       }
+    },
+    {
+      "id": "paint/image-direct-binary-halves",
+      "kind": "pdf",
+      "description": "image direct binary halves",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-direct-binary-halves.pdf",
+      "sha256": "ffa5a7a1cd785f2a8711fd2486a80aad7732777a0d9e7b67c2a498886d8e5979",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-direct-binary-halves.ppm",
+      "oracle_sha256": "86a1a9952d99b60524772b81b4653de0ac89f4c97b2ae4b5dbda47f17bb01002",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-direct-gray-quarter-turn",
+      "kind": "pdf",
+      "description": "image direct gray quarter turn",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-direct-gray-quarter-turn.pdf",
+      "sha256": "8bc0e3dc1bdf54322d5d33eb8a7378e42291a403a66a0056a27e80ef38f5069a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-direct-gray-quarter-turn.ppm",
+      "oracle_sha256": "db19533fcfcf2beb3bf09b4756602de89d493a4807004cb62d4354464e7965fc",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-direct-rgb-fractional",
+      "kind": "pdf",
+      "description": "image direct rgb fractional",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-direct-rgb-fractional.pdf",
+      "sha256": "a23f02bcd40ec50d5533217b276ab190ddfd9bb834c1c30202fabb5724085720",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-direct-rgb-fractional.ppm",
+      "oracle_sha256": "6d185a2719c4a9508d5a5cd17f755443a91f08fd4c6526dda0dbf84f8b5eb881",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-direct-bilinear",
+      "kind": "pdf",
+      "description": "image direct bilinear",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-direct-bilinear.pdf",
+      "sha256": "155298fdf9bddf5b260763f2ceb8223eb88a63d6bf044ba21ddfbaab99278538",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-direct-bilinear.ppm",
+      "oracle_sha256": "568829b03884adf1438abe6354b5c4561b3999986db89ce4fc36dc35924fca1b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
     }
   ]
 }

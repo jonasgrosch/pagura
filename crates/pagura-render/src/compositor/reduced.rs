@@ -4,17 +4,19 @@
 use super::sampled::{Sampler, Texel, charge, coordinate};
 use pagura_core::{Error, Result};
 
+/// The source cells under one device pixel along one axis: `first..end`, with
+/// fractional end weights, unit interior weights and the reciprocal extent.
 #[derive(Clone, Copy, Default)]
-struct Span {
-    first: u32,
-    end: u32,
-    first_weight: f64,
-    last_weight: f64,
-    normalization: f64,
+pub(super) struct Span {
+    pub(super) first: u32,
+    pub(super) end: u32,
+    pub(super) first_weight: f64,
+    pub(super) last_weight: f64,
+    pub(super) normalization: f64,
 }
 
 impl Span {
-    fn new(pixel: u32, scale: f64, offset: f64, maximum: u32) -> Result<Self> {
+    pub(super) fn new(pixel: u32, scale: f64, offset: f64, maximum: u32) -> Result<Self> {
         let a = f64::from(pixel) * scale + offset;
         let b = (f64::from(pixel) + 1.0) * scale + offset;
         if !a.is_finite() || !b.is_finite() {
@@ -35,7 +37,13 @@ impl Span {
         })
     }
 
-    fn weight(self, cell: u32) -> f64 {
+    /// Whether no source cell lies under the pixel, as when its extent
+    /// rounds to a point; the sampler then contributes zero opacity.
+    pub(super) fn is_empty(&self) -> bool {
+        self.end <= self.first
+    }
+
+    pub(super) fn weight(self, cell: u32) -> f64 {
         if cell == self.first {
             self.first_weight
         } else if cell + 1 == self.end {
