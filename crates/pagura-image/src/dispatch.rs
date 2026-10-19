@@ -9,7 +9,7 @@ type Codec = (ImageCodec, Option<Dictionary>);
 pub(crate) fn decode(
     document: &Document,
     dict: &Dictionary,
-    data: &[u8],
+    data: std::borrow::Cow<'_, [u8]>,
     codec: Option<&Codec>,
     cells: u8,
     diagnostics: &mut Diagnostics,
@@ -59,34 +59,43 @@ pub(crate) fn decode(
     match codec.map(|(codec, _)| codec) {
         None => {
             image.bits_per_component = bits;
-            image.samples = p::unpack_with_diagnostics(
-                data,
-                width,
-                height,
-                components,
-                bits,
-                &limits,
-                diagnostics,
-            )?;
+            let count =
+                usize::try_from(u64::from(width) * u64::from(height) * u64::from(components)).ok();
+            image.samples = match data {
+                // Whole bytes of exactly the declared extent are the samples.
+                std::borrow::Cow::Owned(mut bytes) if bits == 8 && count == Some(bytes.len()) => {
+                    bytes.shrink_to_fit();
+                    Samples::Bytes(bytes)
+                }
+                data => p::unpack_with_diagnostics(
+                    &data,
+                    width,
+                    height,
+                    components,
+                    bits,
+                    &limits,
+                    diagnostics,
+                )?,
+            };
         }
         Some(ImageCodec::Dct) => {
-            decode_dct(data, params, &mut image, bits, &limits, cells, diagnostics)?;
+            decode_dct(&data, params, &mut image, bits, &limits, cells, diagnostics)?;
         }
         Some(ImageCodec::CcittFax) => {
             if bits != 1 || components != 1 {
                 return Err(Error::syntax("CCITT requires one-bit components"));
             }
             image.samples =
-                crate::fax_image::decode(data, params, width, height, &limits, diagnostics)?;
+                crate::fax_image::decode(&data, params, width, height, &limits, diagnostics)?;
         }
         Some(ImageCodec::Jbig2) => {
             if bits != 1 || components != 1 {
                 return Err(Error::syntax("JBIG2 requires one-bit components"));
             }
-            image.samples = decode_jbig2(document, dict, data, params, width, height)?;
+            image.samples = decode_jbig2(document, dict, &data, params, width, height)?;
         }
         Some(ImageCodec::Jpx) => {
-            crate::jpx_image::decode(data, dict, &mut image, &limits, diagnostics)?;
+            crate::jpx_image::decode(&data, dict, &mut image, &limits, diagnostics)?;
         }
     }
     let mut dictionary = dict.clone();

@@ -316,7 +316,7 @@ pub fn decode_xobject_cells(
         dispatch::decode(
             document,
             &dictionary,
-            &stream.data,
+            stream.data,
             stream.codec.as_ref(),
             cells,
             &mut diagnostics,

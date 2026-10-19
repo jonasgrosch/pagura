@@ -187,7 +187,7 @@ fn decode_arrays_stencils_color_keys_and_inline_abbreviations() {
     let image = crate::dispatch::decode(
         &document,
         &keyed,
-        &[12, 26],
+        std::borrow::Cow::Borrowed(&[12, 26]),
         None,
         8,
         &mut pagura_core::Diagnostics::new(Recovery::Strict),
@@ -199,7 +199,7 @@ fn decode_arrays_stencils_color_keys_and_inline_abbreviations() {
         crate::dispatch::decode(
             &document,
             &keyed,
-            &[12, 26],
+            std::borrow::Cow::Borrowed(&[12, 26]),
             None,
             8,
             &mut pagura_core::Diagnostics::new(Recovery::Strict)
