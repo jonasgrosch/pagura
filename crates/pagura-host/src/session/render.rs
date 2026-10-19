@@ -1,27 +1,18 @@
 //! Tile rendering, viewport generations and supervisor cancellation.
 
 use super::Session;
-use super::documents::HANDLE;
-use crate::protocol::{Response, layout};
-use pagura::{Error, Position, RenderOptions, Result, Tile};
+use crate::protocol::{Field, Pixels, Response, TileRequest, layout};
+use pagura::{Error, RenderOptions, Result};
 
 impl Session {
     /// Renders a tile; with a generation, a cancelled tile is skipped
     /// instead (1.1). Geometry and budgets are checked before compilation.
     pub(super) fn render(
         &mut self,
-        document: u32,
-        page: u32,
-        scale: f64,
-        tile: Tile,
+        request: TileRequest,
         generation: Option<u32>,
     ) -> Result<Response> {
-        // A generated tile's fields follow its generation word.
-        let at = if generation.is_some() {
-            HANDLE + 4
-        } else {
-            HANDLE
-        };
+        let tile = request.tile.get();
         // Bound response storage before rendering or allocating straight pixels.
         let overhead = if generation.is_some() {
             layout::GENERATION_TILE_OVERHEAD
@@ -38,16 +29,17 @@ impl Session {
         {
             return Err(Error::limit("tile response budget exceeded"));
         }
-        let (_, found) = self.documents.page(document, page, at)?;
+        let (_, page) = self.documents.page(request.page)?;
+        let scale = request.scale.get();
         if !(scale.is_finite() && scale > 0.0) {
             return Err(Error::invalid_argument("scale must be positive and finite")
-                .at(Position::Buffer(at + 8)));
+                .at(request.scale.position()));
         }
         let options = RenderOptions {
             scale,
             ..RenderOptions::default()
         };
-        let (width, height) = pagura::device_size(found, &options)?;
+        let (width, height) = pagura::device_size(page, &options)?;
         if tile.width == 0
             || tile.height == 0
             || tile
@@ -60,26 +52,22 @@ impl Session {
                 .is_none_or(|bottom| bottom > height)
         {
             return Err(
-                Error::invalid_argument("tile lies outside the page").at(Position::Buffer(at + 16))
+                Error::invalid_argument("tile lies outside the page").at(request.tile.position())
             );
         }
         let cancellation = &self.cancellation;
         let cancelled = || generation.is_some() && cancellation.is_cancelled();
         // A list compiled for a cancelled tile is not admitted to the cache.
-        let list = self
-            .documents
-            .compiled(document, page, at, || !cancelled())?;
+        let list = self.documents.compiled(request.page, || !cancelled())?;
         if let Some(generation) = generation.filter(|_| cancelled()) {
             return Ok(Response::Skipped(generation));
         }
         let pixmap = list.render_tile(&options, tile)?;
-        if let Some(generation) = generation.filter(|_| cancelled()) {
-            return Ok(Response::Skipped(generation));
-        }
-        Ok(Response::Tile {
-            width: pixmap.width(),
-            height: pixmap.height(),
-            rgba: pixmap.to_straight_rgba(),
+        let pixels = Pixels::new(pixmap.width(), pixmap.height(), pixmap.to_straight_rgba());
+        Ok(match generation {
+            Some(generation) if cancelled() => Response::Skipped(generation),
+            Some(generation) => Response::GenerationTile { generation, pixels },
+            None => Response::Tile(pixels),
         })
     }
 
@@ -88,39 +76,23 @@ impl Session {
     /// before page lookup, compilation or painting.
     pub(super) fn generation_tile(
         &mut self,
-        generation: u32,
-        document: u32,
-        page: u32,
-        scale: f64,
-        tile: Tile,
+        generation: Field<u32>,
+        request: TileRequest,
     ) -> Result<Response> {
-        let current = self.documents.generation(document, HANDLE + 4)?;
-        if generation < current {
-            return Ok(Response::Skipped(generation));
+        let current = self.documents.generation(request.page.document)?;
+        let requested = generation.get();
+        if requested < current {
+            return Ok(Response::Skipped(requested));
         }
-        if generation == 0 || generation != current {
+        if requested == 0 || requested != current {
             return Err(
                 Error::invalid_argument("viewport generation was not selected")
-                    .at(Position::Buffer(HANDLE)),
+                    .at(generation.position()),
             );
         }
         if self.cancellation.is_cancelled() {
-            return Ok(Response::Skipped(generation));
+            return Ok(Response::Skipped(requested));
         }
-        Ok(
-            match self.render(document, page, scale, tile, Some(generation))? {
-                Response::Tile {
-                    width,
-                    height,
-                    rgba,
-                } => Response::GenerationTile {
-                    generation,
-                    width,
-                    height,
-                    rgba,
-                },
-                response => response,
-            },
-        )
+        self.render(request, Some(requested))
     }
 }
