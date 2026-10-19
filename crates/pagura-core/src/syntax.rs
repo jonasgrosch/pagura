@@ -330,7 +330,17 @@ impl<'a> Parser<'a> {
     /// Parses a name at the current position (clause 7.3.5).
     fn name(&mut self) -> Result<Name> {
         self.position += 1;
-        let mut bytes = Vec::new();
+        let start = self.position;
+        while self.current().is_some_and(|b| is_regular(b) && b != b'#') {
+            self.position += 1;
+            if self.position - start > self.limits.string_bytes {
+                return Err(self.limit("string or name length budget exceeded"));
+            }
+        }
+        if self.current() != Some(b'#') {
+            return Ok(Name::new(&self.data[start..self.position]));
+        }
+        let mut bytes = self.data[start..self.position].to_vec();
         while self.current().is_some_and(is_regular) {
             let mut byte = self.next_byte()?;
             if byte == b'#' {
@@ -727,11 +737,20 @@ impl<'a> Parser<'a> {
         let saved = self.position;
         self.skip_whitespace();
         let start = self.position;
-        let generation = self.unsigned().ok().and_then(|g| u16::try_from(g).ok());
-        let zeroes = self.position > start + 1 && self.data.get(start) == Some(&b'0');
-        if let Some(generation) = generation
+        // Most integer operands are not references. Establish the trailing R
+        // before validating/converting the speculative generation token.
+        let token = self
+            .current()
+            .filter(u8::is_ascii_digit)
+            .and_then(|_| self.word().ok());
+        if let Some(token) = token
             && self.keyword(b"R")
+            && token.iter().all(u8::is_ascii_digit)
+            && let Some(generation) = std::str::from_utf8(token)
+                .ok()
+                .and_then(|text| text.parse::<u16>().ok())
         {
+            let zeroes = token.len() > 1 && self.data.get(start) == Some(&b'0');
             return Some((ObjectId::new(number, generation), zeroes));
         }
         self.position = saved;
@@ -758,6 +777,56 @@ mod tests {
         for expected in 1..=5 {
             assert_eq!(parser.parse().unwrap(), Value::Integer(expected));
         }
+    }
+
+    #[test]
+    fn name_prefixes_keep_decoded_limits_and_escape_positions() {
+        let limits = Limits {
+            string_bytes: 3,
+            ..Limits::default()
+        };
+        for input in [b"/abc".as_slice(), b"/ab#63"] {
+            let mut parser = Parser::new(input, Origin::Buffer, limits);
+            assert_eq!(
+                parser.parse().unwrap(),
+                Value::Name(crate::Name::new(b"abc"))
+            );
+        }
+        for input in [b"/abcd".as_slice(), b"/ab#63d"] {
+            let mut parser = Parser::new(input, Origin::Buffer, limits);
+            let error = parser.parse().unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Limit);
+            assert_eq!(error.position, Position::Buffer(input.len()));
+        }
+        let mut parser = Parser::new(b"/ab#q", Origin::Buffer, limits);
+        let error = parser.parse().unwrap_err();
+        assert_eq!(error.repair, Some(super::NAME_ESCAPE));
+        assert_eq!(error.position, Position::Buffer(3));
+        let mut parser = Parser::new(b"/ab#00", Origin::Buffer, limits);
+        let error = parser.parse().unwrap_err();
+        assert_eq!(error.message, "name contains a null byte");
+        assert_eq!(error.position, Position::Buffer(6));
+    }
+
+    #[test]
+    fn reference_lookahead_restores_every_unsuccessful_candidate() {
+        for input in [
+            b"1 /A".as_slice(),
+            b"1 +0 R",
+            b"1 65536 R",
+            b"1 2x R",
+            b"1 0 Rigid",
+            b"1 % comment\n2 3",
+        ] {
+            let mut parser = Parser::new(input, Origin::Buffer, Limits::default());
+            assert_eq!(parser.parse().unwrap(), Value::Integer(1));
+            assert_eq!(parser.offset(), 1);
+        }
+        let mut parser = Parser::new(b"1 % comment\n65535 R", Origin::Buffer, Limits::default());
+        assert_eq!(
+            parser.parse().unwrap(),
+            Value::Reference(crate::ObjectId::new(1, 65535))
+        );
     }
 
     #[test]

@@ -234,6 +234,10 @@ fn validate_four(
     r.skip(twice)?;
     let range_pos = r.pos;
     r.take(twice)?;
+    // Ordered end codes let validation use the segment it is already walking,
+    // rather than binary-searching it again for every character. Keep the old
+    // lookup on disordered input, including its error/repair discovery order.
+    let ordered = ends.as_chunks::<2>().0.windows(2).all(|w| w[0] < w[1]);
     let mut previous = None;
     for i in 0..count {
         let end = u16::from_be_bytes([ends[2 * i], ends[2 * i + 1]]);
@@ -254,7 +258,11 @@ fn validate_four(
             )?;
         }
         for code in start..=end {
-            let glyph = match lookup_four(r.data, code, count, range_pos) {
+            let glyph = match if ordered {
+                lookup_four_segment(r.data, code, count, range_pos, i)
+            } else {
+                lookup_four(r.data, code, count, range_pos)
+            } {
                 Ok(glyph) => glyph,
                 Err(error) if malformed(&error) => {
                     repair(
@@ -298,6 +306,16 @@ fn lookup_four(data: &[u8], code: u16, count: usize, ranges: usize) -> Result<u1
     if low == count {
         return Ok(0);
     }
+    lookup_four_segment(data, code, count, ranges, low)
+}
+
+fn lookup_four_segment(
+    data: &[u8],
+    code: u16,
+    count: usize,
+    ranges: usize,
+    low: usize,
+) -> Result<u16> {
     let start = word(data, 16 + 2 * count + 2 * low)?;
     if code < start {
         return Ok(0);
@@ -414,4 +432,82 @@ pub(super) fn available(
 
 fn malformed(error: &pagura_core::Error) -> bool {
     error.repair.is_none() && error.kind == pagura_core::ErrorKind::Syntax
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{lookup_four, validate_four};
+    use crate::read::Read;
+    use pagura_core::{Diagnostics, Limits, Position, Recovery};
+
+    fn format_four() -> Vec<u8> {
+        // Three segments: 20..22 use delta -31; 30..32 use a glyph array
+        // and delta -1; ffff is the required missing-code sentinel.
+        [
+            4_u16, 46, 0, 6, 4, 1, 2, 0x22, 0x32, 0xffff, 0, 0x20, 0x30, 0xffff, 0xffe1, 0xffff, 1,
+            0, 4, 0, 5, 0, 9,
+        ]
+        .into_iter()
+        .flat_map(u16::to_be_bytes)
+        .collect()
+    }
+
+    #[test]
+    fn format_four_validates_both_mapping_routes_and_keeps_work_charges() {
+        let data = format_four();
+        let mut diagnostics = Diagnostics::new(Recovery::Strict);
+        let mut work = 0;
+        validate_four(
+            Read::new(&data, 0),
+            9,
+            &Limits::default(),
+            &mut work,
+            &mut diagnostics,
+        )
+        .unwrap();
+        assert_eq!(work, 7);
+        assert_eq!(diagnostics.as_slice(), []);
+        for (code, glyph) in [
+            (0x1f, 0),
+            (0x20, 1),
+            (0x21, 2),
+            (0x22, 3),
+            (0x23, 0),
+            (0x30, 4),
+            (0x31, 0),
+            (0x32, 8),
+            (0xffff, 0),
+        ] {
+            assert_eq!(lookup_four(&data, code, 3, 34).unwrap(), glyph);
+        }
+        let mut work = 0;
+        let limits = Limits {
+            operations: 6,
+            ..Limits::default()
+        };
+        assert_eq!(
+            validate_four(Read::new(&data, 0), 9, &limits, &mut work, &mut diagnostics)
+                .unwrap_err()
+                .kind,
+            pagura_core::ErrorKind::Limit
+        );
+    }
+
+    #[test]
+    fn disordered_end_codes_preserve_the_structural_error_position() {
+        let mut data = format_four();
+        data[14..16].copy_from_slice(&0x32_u16.to_be_bytes());
+        data[16..18].copy_from_slice(&0x22_u16.to_be_bytes());
+        let mut diagnostics = Diagnostics::new(Recovery::Strict);
+        let error = validate_four(
+            Read::new(&data, 0),
+            9,
+            &Limits::default(),
+            &mut 0,
+            &mut diagnostics,
+        )
+        .unwrap_err();
+        assert_eq!(error.message, "overlapping cmap segments");
+        assert_eq!(error.position, Position::Buffer(40));
+    }
 }
