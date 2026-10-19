@@ -3,11 +3,13 @@
 use super::footprint::{Band, Tap};
 use pagura_core::{Error, Limits, Result};
 
+/// One footprint: the two source bytes from `byte` on, shifted right by
+/// `shift` and masked to its taps, index table `table`.
 struct Entry {
-    byte: usize,
-    shift: u32,
-    mask: u16,
-    table: usize,
+    byte: u32,
+    shift: u8,
+    mask: u8,
+    table: u8,
 }
 /// Footprint lookup tables keyed by tap phase; at most 64 phases.
 pub(super) struct Plan {
@@ -103,11 +105,13 @@ impl Plan {
                 phases.push(key);
                 index
             };
+            // Phases are at most 64 and footprints at most eight taps.
             entries.push(Entry {
-                byte: first / 8,
-                shift: u32::try_from(16 - n - first % 8).unwrap_or(0),
-                mask: u16::try_from((1usize << n) - 1).unwrap_or(0),
-                table,
+                byte: u32::try_from(first / 8)
+                    .map_err(|_| Error::limit("binary row exceeds plan range"))?,
+                shift: u8::try_from(16 - n - first % 8).unwrap_or(0),
+                mask: u8::try_from((1usize << n) - 1).unwrap_or(0),
+                table: u8::try_from(table).unwrap_or(0),
             });
         }
         Ok(Some(Self {
@@ -125,10 +129,13 @@ impl Plan {
             return false;
         }
         for (e, out) in self.entries.iter().zip(output) {
-            let pair = (u16::from(source[e.byte]) << 8)
-                | u16::from(source.get(e.byte + 1).copied().unwrap_or(0));
-            let index = usize::from(u8::try_from((pair >> e.shift) & e.mask).unwrap_or(0));
-            *out = self.tables[e.table][index];
+            let byte = e.byte as usize;
+            let pair = u16::from_be_bytes([
+                source.get(byte).copied().unwrap_or(0),
+                source.get(byte + 1).copied().unwrap_or(0),
+            ]);
+            let index = pair.wrapping_shr(u32::from(e.shift)).to_le_bytes()[0] & e.mask;
+            *out = self.tables[usize::from(e.table)][usize::from(index)];
         }
         true
     }
