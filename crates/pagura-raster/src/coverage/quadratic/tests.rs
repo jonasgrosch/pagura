@@ -388,20 +388,31 @@ fn ring(path: &mut PathBuilder, radius: f64, diagonal: f64, handle: f64, reverse
     path.close();
 }
 
-#[test]
-fn crossings_beside_the_other_parabola_branch_are_found_in_every_tile() {
-    // A crossbar over a bowl, as overlapping TrueType contours draw it. Near
-    // this pixel the bar also meets the other branch of an arc's parabola, so
-    // the genuine crossing is a near-double root of the elimination.
+// An outer ring and a reversed inner one, as a TrueType 'o'.
+fn annulus() -> PathBuilder {
     let mut path = PathBuilder::new();
     ring(&mut path, 11.0, 7.75, 4.5, false);
     ring(&mut path, 8.75, 6.125, 3.625, true);
+    path
+}
+
+// A crossbar over the annulus, as overlapping TrueType contours draw it.
+fn crossbar() -> crate::Path {
+    let mut path = annulus();
     path.move_to(Point::new(-14.25, 9.75));
     path.line_to(Point::new(14.25, 7.25)).unwrap();
     path.line_to(Point::new(14.25, 8.125)).unwrap();
     path.line_to(Point::new(-14.25, 10.625)).unwrap();
     path.close();
-    let geometry = glyph(&path.finish());
+    path.finish()
+}
+
+#[test]
+fn crossings_beside_the_other_parabola_branch_are_found_in_every_tile() {
+    // Near this pixel the crossbar also meets the other branch of an arc's
+    // parabola, so the genuine crossing is a near-double root of the
+    // elimination.
+    let geometry = glyph(&crossbar());
     assert!(geometry.curves().is_some());
     let shapes = [shape(
         geometry,
@@ -427,5 +438,107 @@ fn crossings_beside_the_other_parabola_branch_are_found_in_every_tile() {
             (f64::from(value) - 166.660).abs() <= 0.5,
             "tile at {left},{top}: {value}"
         );
+    }
+}
+
+#[test]
+fn quadrature_oracle_reproduces_closed_form_and_earlier_areas() {
+    let nonzero = FillRule::NonZero;
+    let bowl = oracle::areas(&bowl(), Transform::IDENTITY, nonzero);
+    assert!((bowl.at(0, 0) - 2.0 / 3.0).abs() <= 1e-14);
+    // Four quadratic quarters with their controls at a square's corners
+    // bound a triangle of r²/2 each, plus two thirds of the triangle beyond
+    // its chord: 10r²/3 in all.
+    let (r, x, y) = (3.3, 5.25, 4.6);
+    let on = [(r, 0.0), (0.0, r), (-r, 0.0), (0.0, -r)];
+    let corners = [(r, r), (-r, r), (-r, -r), (r, -r)];
+    let point = |(dx, dy): (f64, f64)| Point::new(x + dx, y + dy);
+    let mut path = PathBuilder::new();
+    path.move_to(point(on[0]));
+    for k in 0..4 {
+        quadratic_to(
+            &mut path,
+            point(on[k]),
+            point(corners[k]),
+            point(on[(k + 1) % 4]),
+        );
+    }
+    path.close();
+    let disc = oracle::areas(&path.finish(), Transform::IDENTITY, nonzero);
+    assert!((disc.total() - 10.0 * r * r / 3.0).abs() <= 1e-12);
+    // The independent value that pins the crossbar pixel above.
+    let crossbar = oracle::areas(&crossbar(), Transform::translate(18.625, 18.75), nonzero);
+    assert!((255.0 * crossbar.at(17, 27) - 166.660).abs() <= 5e-4);
+}
+
+// Renders a placement through `coverage` and checks every pixel, and an empty
+// one-pixel margin, against the independent quadrature of the true outline.
+fn assert_within_one_level(outline: &crate::Path, linear: [f64; 4], offset: Point, rule: FillRule) {
+    let limits = Limits::default();
+    let geometry = Arc::new(GlyphGeometry::new(outline, linear, &limits).unwrap());
+    assert!(geometry.curves().is_some(), "{linear:?} is not admitted");
+    let shapes = [shape(
+        geometry,
+        Transform::translate(offset.x, offset.y),
+        rule,
+    )];
+    assert!(anchor(&shapes).is_some());
+    let [a, b, c, d] = linear;
+    let exact = oracle::areas(
+        outline,
+        Transform::new(a, b, c, d, offset.x, offset.y),
+        rule,
+    );
+    let (left, top) = (exact.left - 1, exact.top - 1);
+    let (width, height) = (exact.width + 2, exact.height + 2);
+    let mut out = vec![0; width * height];
+    coverage(
+        u32::try_from(width).unwrap(),
+        u32::try_from(height).unwrap(),
+        &shapes,
+        &mut out,
+        (u32::try_from(left).unwrap(), u32::try_from(top).unwrap()),
+        &limits,
+        &mut Scratch::default(),
+    )
+    .unwrap();
+    for (y, line) in (top..).zip(out.chunks(width)) {
+        for (x, &value) in (left..).zip(line) {
+            let expected = 255.0 * exact.at(x, y);
+            assert!(
+                (f64::from(value) - expected).abs() <= 1.0,
+                "{linear:?} at {offset:?}, {rule:?}: pixel {x},{y} is {value}, not {expected}"
+            );
+        }
+    }
+}
+
+#[test]
+fn curve_sweep_stays_within_one_level_of_the_true_outline() {
+    // A text matrix's y flip, an anisotropic scale, a rotation and a shear,
+    // at pseudo-random fractional offsets. Correct rounding of the true
+    // area stays within half a level; the contract allows one.
+    let (sin, cos) = 0.4_f64.sin_cos();
+    let maps = [
+        [1.0, 0.0, 0.0, -1.0],
+        [0.75, 0.0, 0.0, 1.25],
+        [cos, sin, -sin, cos],
+        [1.0, 0.0, 0.375, 1.0],
+    ];
+    let mut seed = 0x2545_f491_4f6c_dd1d_u64;
+    let mut fraction = || {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        (seed >> 11) as f64 / (1_u64 << 53) as f64
+    };
+    for (outline, size) in [(bowl(), 6.0), (annulus().finish(), 1.0), (crossbar(), 1.0)] {
+        for map in maps {
+            // Only the crossbar's overlap tells the rules apart.
+            for rule in [FillRule::NonZero, FillRule::EvenOdd] {
+                let offset = Point::new(40.0 + fraction(), 40.0 + fraction());
+                assert_within_one_level(&outline, map.map(|v| v * size), offset, rule);
+            }
+        }
     }
 }

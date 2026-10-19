@@ -202,4 +202,6 @@ pub(super) fn anchor(shapes: &[Shape]) -> Option<Point> {
 }
 
 #[cfg(test)]
+mod oracle;
+#[cfg(test)]
 mod tests;
