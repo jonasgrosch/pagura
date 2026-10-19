@@ -53,3 +53,51 @@ pub mod features {
 pub const fn unicode_notice() -> &'static str {
     include_str!("../../../data/unicode/LICENSE")
 }
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use super::features;
+    use std::path::PathBuf;
+
+    /// Decodes a hexadecimal vector field; `-` stands for no bytes.
+    pub(crate) fn decode(field: &str) -> Vec<u8> {
+        if field == "-" {
+            Vec::new()
+        } else {
+            pagura_testkit::unhex(field)
+        }
+    }
+
+    /// A reference suite exported from the private cache by
+    /// `python3 tools/signature_vectors.py`, which `tools/check.py` runs
+    /// before the tests; `None` with a note when it has not been exported
+    /// (as on CI, which has no cache).
+    pub(crate) fn cached_suite(name: &str) -> Option<String> {
+        let root = std::env::var_os("PAGURA_REFERENCES_DIR")
+            .map(PathBuf::from)
+            .or_else(|| {
+                let home = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"))?;
+                Some(PathBuf::from(home).join(".cache/pagura-references"))
+            })?;
+        let path = root
+            .join("signatures/export/crypto")
+            .join(format!("{name}.txt"));
+        let text = std::fs::read_to_string(&path).ok();
+        if text.is_none() {
+            eprintln!(
+                "{}: not exported (python3 tools/signature_vectors.py); the bundled cases still run",
+                path.display()
+            );
+        }
+        text
+    }
+
+    #[test]
+    fn feature_tags_are_listed_once_in_the_security_area() {
+        for (index, tag) in features::ALL.iter().enumerate() {
+            assert!(tag.as_str().starts_with("security."), "{tag:?}");
+            assert!(!features::ALL[..index].contains(tag), "{tag:?}");
+        }
+        assert_eq!(features::ALL, [features::REVISION, features::VERSION3]);
+    }
+}

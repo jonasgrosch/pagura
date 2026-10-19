@@ -27,7 +27,7 @@
       "tests": [
         "crates/pagura-crypto/src/hash/sha1/tests.rs",
         "crates/pagura-crypto/src/hash/sha1/nist-subset.txt",
-        "tools/fixturegen/rsa_oracle.py hashes"
+        "tools/signature_vectors.py sha (cached CAVP suites, exported from the private cache)"
       ],
       "gaps": "Byte-aligned messages only. SHA-1 is available for historical mathematical verification and fails the separate strength policy. Full CAVP suites use the external pinned cache; a public-domain minimized subset is bundled."
     },
@@ -41,7 +41,7 @@
       "tests": [
         "crates/pagura-crypto/src/bigint/tests.rs",
         "crates/pagura-crypto/src/rsa/tests.rs malformed_keys_and_resource_limits",
-        "tools/fixturegen/rsa_oracle.py pow"
+        "crypto/modular-power (tools/fixturegen/rsa_oracle.py powers)"
       ],
       "gaps": "Verification-only arithmetic on public data, variable-time; no signing or private-key operations. Keys require canonical unsigned components, odd n > 1 and odd 3 <= e < n. Primality and proper key generation are not established."
     },
@@ -55,7 +55,7 @@
       "tests": [
         "crates/pagura-crypto/src/rsa/tests.rs",
         "crates/pagura-crypto/src/rsa/nist-subset.txt",
-        "tools/fixturegen/rsa_oracle.py rsa and encodings"
+        "crypto/rsa-encodings and tools/signature_vectors.py rsa (cached suites)"
       ],
       "gaps": "Strict DER DigestInfo with NULL parameters, exact width and at least eight FF bytes. SHA-1/224/256/384/512 only; BER and absent-NULL Wycheproof acceptable cases are deliberately rejected. Full Wycheproof/CAVP/ACVP suites require the external pinned cache. ACVP SHA3/SHAKE RSA-PSS cases are explicitly unsupported, not counted as passes."
     },
@@ -70,7 +70,7 @@
         "crates/pagura-crypto/src/rsa/pss/tests.rs",
         "crates/pagura-crypto/src/rsa/tests.rs",
         "crates/pagura-crypto/src/rsa/nist-subset.txt",
-        "tools/fixturegen/rsa_oracle.py rsa and encodings"
+        "crypto/rsa-encodings and tools/signature_vectors.py rsa (cached suites)"
       ],
       "gaps": "Resolved parameters support MGF1, trailer field 1, exact salt lengths including zero, and distinct message/MGF hashes. ASN.1 parameter decoding and enforcement of PSS key restrictions belong to PKI. Unsupported hash families are reported separately. Recovered encoding mismatches are Invalid, not Syntax errors."
     },
@@ -100,10 +100,10 @@
         "crates/pagura-crypto/src/ecdsa/tests.rs random_signatures_match_independent_affine_python_oracle",
         "crates/pagura-crypto/src/ecdsa/tests.rs complete_cached_nist_and_wycheproof_signature_suites",
         "crates/pagura-crypto/src/ecdsa/tests.rs digest_truncation_is_leftmost_bits_not_modulo_or_byte_truncation",
-        "tools/fixturegen/ecdsa_oracle.py",
-        "tools/fixturegen/ecdsa_vectors.py"
+        "crypto/ecdsa-signatures (tools/fixturegen/ecdsa_oracle.py)",
+        "tools/signature_vectors.py ecdsa (cached suites)"
       ],
-      "gaps": "Prehashed ECDSA on P-256/P-384/P-521 only; digest selection and computation are caller-owned. Truncation uses leftmost order-sized bits, including P-521. Both high and low s are accepted. Full NIST/Wycheproof vectors use the external pinned cache; independent Python affine and arithmetic oracles always run."
+      "gaps": "Prehashed ECDSA on P-256/P-384/P-521 only; digest selection and computation are caller-owned. Truncation uses leftmost order-sized bits, including P-521. Both high and low s are accepted. Full NIST/Wycheproof vectors use the external pinned cache, exported by tools/signature_vectors.py; the independent Python affine and arithmetic oracles are committed fixtures and always run."
     },
     {
       "id": "crypto-ecdsa-public-key-validation",
@@ -114,7 +114,7 @@
       "status": "implemented",
       "tests": [
         "crates/pagura-crypto/src/ecdsa/tests.rs sec1_validation_and_group_exceptional_cases",
-        "tools/fixturegen/ecdsa_oracle.py arithmetic"
+        "crypto/ecdsa-arithmetic (tools/fixturegen/ecdsa_oracle.py)"
       ],
       "gaps": "Finite canonical SEC1 compressed/uncompressed points with in-range coordinates on the named curve are required. Cofactor one and prime group order make a separate n*Q check redundant for these three curves. Identity, hybrid, off-curve, wrong-width and trailing encodings are rejected."
     },
@@ -128,7 +128,7 @@
       "tests": [
         "crates/pagura-crypto/src/ecdsa/tests.rs strict_der_rejects_lengths_types_signs_padding_ranges_and_trailing_bytes",
         "crates/pagura-crypto/src/ecdsa/der.rs",
-        "tools/fixturegen/ecdsa_vectors.py"
+        "tools/signature_vectors.py ecdsa (cached suites)"
       ],
       "gaps": "Exactly two minimally encoded positive INTEGERs with 1 <= r,s < n are required; indefinite/nonminimal lengths, trailing data and oversized encodings are rejected. Wycheproof acceptable BER/legacy cases are deliberately rejected; IEEE P1363 is not this API."
     }
