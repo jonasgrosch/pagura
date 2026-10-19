@@ -1,22 +1,26 @@
+//! Wire layouts against independently written byte oracles.
+
 use super::*;
-use pagura::{Feature, Limits, Repair};
+use pagura::{ErrorKind, Feature, Limits, ObjectId, Repair};
 
 #[test]
 fn hello_has_an_independent_literal_wire_oracle() {
     // host-wire-v1: length=9, response kind=129, id=7, version=1.
     assert_eq!(
-        encode(7, &Response::Hello(1), 9).unwrap(),
+        encode(7, &Response::Hello(Version::V1), 9).unwrap(),
         [9, 0, 0, 0, 129, 7, 0, 0, 0, 1, 0, 0, 0]
     );
     assert_eq!(
-        decode(&[1, 7, 0, 0, 0, 1, 0, 0, 0], Limits::default()).unwrap(),
+        decode(&[1, 7, 0, 0, 0, 1, 0, 0, 0], &Limits::default()).unwrap(),
         RequestFrame {
             id: 7,
-            request: Request::Hello(1)
+            request: Request::Hello(Field::new(1, 5))
         }
     );
     assert_eq!(
-        encode(7, &Response::Hello(1), 8).unwrap_err().kind,
+        encode(7, &Response::Hello(Version::V1), 8)
+            .unwrap_err()
+            .kind,
         ErrorKind::Limit
     );
 }
@@ -130,9 +134,9 @@ fn generation_layouts_are_additive_and_truncations_fail() {
     }
     bodies.push(tile);
     for body in bodies {
-        assert!(decode(&body, Limits::default()).is_ok());
+        assert!(decode(&body, &Limits::default()).is_ok());
         for end in 0..body.len() {
-            assert!(decode(&body[..end], Limits::default()).is_err());
+            assert!(decode(&body[..end], &Limits::default()).is_err());
         }
     }
 }
@@ -151,41 +155,38 @@ fn decoding_rejects_every_truncation_and_trailing_bytes() {
         vec![6, 6, 0, 0, 0, 1, 0, 0, 0],
     ];
     for body in bodies {
-        assert!(decode(&body, Limits::default()).is_ok());
+        assert!(decode(&body, &Limits::default()).is_ok());
         for cut in 0..body.len() {
-            let error = decode(&body[..cut], Limits::default()).unwrap_err();
+            let error = decode(&body[..cut], &Limits::default()).unwrap_err();
             assert_eq!(error.kind, ErrorKind::Syntax);
             assert!(matches!(error.position, Position::Buffer(_)));
         }
         let mut extra = body;
         extra.push(0);
         assert_eq!(
-            decode(&extra, Limits::default()).unwrap_err().kind,
+            decode(&extra, &Limits::default()).unwrap_err().kind,
             ErrorKind::Syntax
         );
     }
     let invalid_mode = [2, 1, 0, 0, 0, 2];
     assert_eq!(
-        decode(&invalid_mode, Limits::default()).unwrap_err().kind,
+        decode(&invalid_mode, &Limits::default()).unwrap_err().kind,
         ErrorKind::Syntax
     );
     let too_long_password = [2, 1, 0, 0, 0, 0, 255, 255, 255, 255];
     assert_eq!(
-        decode(&too_long_password, Limits::default())
+        decode(&too_long_password, &Limits::default())
             .unwrap_err()
             .kind,
         ErrorKind::Limit
     );
-    let bad_tile = Response::Tile {
-        width: 1,
-        height: 1,
-        rgba: vec![0; 3],
-    };
+    let bad_tile = Response::Tile(Pixels::new(1, 1, vec![0; 3]));
     assert_eq!(
         encode(1, &bad_tile, 1024).unwrap_err().kind,
         ErrorKind::InvalidArgument
     );
 }
+
 #[test]
 fn diagnostic_kinds_have_independent_wire_oracles_and_legacy_filtering() {
     let information = Diagnostic::information("test.same", "info");
@@ -222,4 +223,55 @@ fn diagnostic_kinds_have_independent_wire_oracles_and_legacy_filtering() {
         &encode(9, &Response::Diagnostics(records), 1024).unwrap()[4..],
         legacy
     );
+}
+
+#[test]
+fn code_tables_round_trip_and_reject_unassigned_codes() {
+    fn round_trip<C>(all: &[C], code: impl Fn(C) -> u8)
+    where
+        C: Copy + std::fmt::Debug + PartialEq + TryFrom<u8, Error = Error>,
+    {
+        let mut assigned = [false; 256];
+        for &value in all {
+            assigned[usize::from(code(value))] = true;
+            assert_eq!(C::try_from(code(value)).unwrap(), value);
+        }
+        for byte in 0..=u8::MAX {
+            assert_eq!(
+                C::try_from(byte).is_ok(),
+                assigned[usize::from(byte)],
+                "{byte}"
+            );
+        }
+    }
+    round_trip(RequestKind::ALL, RequestKind::code);
+    round_trip(ResponseKind::ALL, ResponseKind::code);
+    round_trip(ErrorCategory::ALL, ErrorCategory::code);
+    round_trip(DiagnosticCode::ALL, DiagnosticCode::code);
+    round_trip(PositionKind::ALL, PositionKind::code);
+    round_trip(TileStatus::ALL, TileStatus::code);
+    round_trip(FitCode::ALL, FitCode::code);
+    round_trip(ActionCode::ALL, ActionCode::code);
+    // Responses answer requests with the high bit set (PROTOCOL.md).
+    for &kind in RequestKind::ALL {
+        assert_eq!(kind.response().code(), kind.code() | 0x80);
+    }
+    assert_eq!(
+        Version::ALL.iter().map(|v| v.code()).collect::<Vec<_>>(),
+        [1, 0x0001_0001, 0x0001_0002, 0x0001_0003, 0x0001_0004]
+    );
+    assert!(Version::try_from(2).is_err());
+    assert_eq!(Version::LATEST, *Version::ALL.last().unwrap());
+    assert_eq!(SearchFlags::from_bits(7).map(SearchFlags::bits), Some(7));
+    assert_eq!(SearchFlags::from_bits(8), None);
+    assert_eq!(OutlineStyle::from_bits(4), None);
+    assert_eq!(
+        OpenFlags::from_bits(0).map(OpenFlags::recovery),
+        Some(Recovery::Strict)
+    );
+    assert_eq!(
+        OpenFlags::from_bits(1).map(OpenFlags::recovery),
+        Some(Recovery::Repair)
+    );
+    assert_eq!(OpenFlags::from_bits(2), None);
 }

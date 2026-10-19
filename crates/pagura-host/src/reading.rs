@@ -1,153 +1,170 @@
-//! Bounded reading adapter (ISO 32000-2 9.10, 12.3–12.6; ADR 0014).
+//! Bounded reading adapter (9.10, 12.3–12.6; ADR 0014).
 //!
-//! Every reading response is encoded here into one capped payload.
+//! Every reading response is encoded here into one capped payload, which the
+//! frame encoder sends without copying.
+
 mod navigation;
 mod text;
 
-use crate::protocol::{Reader, SessionStats};
-pub(crate) use crate::wire::Writer;
-use pagura::{DisplayList, Error, Limits, Position, Result, SearchOptions};
+pub(crate) use navigation::{labels, links, outlines};
+pub(crate) use text::{page_text, search};
+
+use crate::protocol::{Field, PageRef, RequestKind, ResponseKind, SearchFlags, SessionStats};
+use crate::wire::Writer;
+use pagura::{DisplayList, Error, Result, SearchOptions};
+
+/// Most matches one search request returns.
+pub const MAX_SEARCH_MATCHES: u32 = 1024;
+/// Most pages one search window spans.
+pub const MAX_SEARCH_PAGES: u32 = 16;
+/// Most UTF-8 bytes in a search query; `Limits::string_bytes` can lower it.
+pub const MAX_QUERY_BYTES: usize = 4096;
+/// Most semantic characters in one page text response.
+pub const MAX_PAGE_CHARACTERS: usize = 1_000_000;
 
 /// The bounded search window and continuation cursor.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub struct Search<'a> {
     /// Session-local document handle.
-    pub document: u32,
+    pub document: Field<u32>,
     /// First page, inclusive; also the continuation page.
-    pub start: u32,
-    /// Last page, exclusive; at most sixteen pages per request.
-    pub end: u32,
+    pub start: Field<u32>,
+    /// Last page, exclusive; at most [`MAX_SEARCH_PAGES`] after `start`.
+    pub end: Field<u32>,
     /// Match ordinal on the first page, for continuation within a page.
-    pub offset: u32,
-    /// Maximum matches to return, from 1 through 1024.
-    pub limit: u32,
-    /// Bit 0 case-sensitive, bit 1 whole words, bit 2 join line hyphens.
-    pub flags: u8,
-    /// Nonempty UTF-8 query, at most 4096 bytes.
-    pub query: &'a str,
+    pub offset: Field<u32>,
+    /// Maximum matches to return, from 1 through [`MAX_SEARCH_MATCHES`].
+    pub limit: Field<u32>,
+    /// [`SearchFlags`] bits; undefined bits are an operational error.
+    pub flags: Field<u8>,
+    /// Nonempty UTF-8 query, at most [`MAX_QUERY_BYTES`].
+    pub query: Field<&'a str>,
 }
+
 impl Search<'_> {
-    pub(crate) fn validate(self, pages: usize) -> Result<SearchOptions> {
-        if self.start > self.end {
-            return Err(Error::invalid_argument("search start exceeds end").at(Position::Buffer(9)));
-        }
-        if u64::from(self.end) > u64::try_from(pages).unwrap_or(u64::MAX) {
+    /// Checks the window against a document of `pages` pages.
+    pub(crate) fn validate(&self, pages: usize) -> Result<SearchOptions> {
+        let (start, end) = (self.start.get(), self.end.get());
+        if start > end {
             return Err(
-                Error::invalid_argument("search end outside document").at(Position::Buffer(13))
+                Error::invalid_argument("search start exceeds end").at(self.start.position())
             );
         }
-        if self.end - self.start > 16 {
+        if usize::try_from(end).ok().is_none_or(|end| end > pages) {
+            return Err(
+                Error::invalid_argument("search end outside document").at(self.end.position())
+            );
+        }
+        if end - start > MAX_SEARCH_PAGES {
             return Err(
                 Error::invalid_argument("search window exceeds sixteen pages")
-                    .at(Position::Buffer(13)),
+                    .at(self.end.position()),
             );
         }
-        if !(1..=1024).contains(&self.limit) {
+        if !(1..=MAX_SEARCH_MATCHES).contains(&self.limit.get()) {
             return Err(
                 Error::invalid_argument("search limit must be 1 through 1024")
-                    .at(Position::Buffer(21)),
+                    .at(self.limit.position()),
             );
         }
-        if self.flags > 7 {
-            return Err(
-                Error::invalid_argument("unknown search option bits").at(Position::Buffer(25))
-            );
-        }
-        if self.query.is_empty() || self.query.len() > 4096 {
+        let flags = SearchFlags::from_bits(self.flags.get()).ok_or_else(|| {
+            Error::invalid_argument("unknown search option bits").at(self.flags.position())
+        })?;
+        let query = self.query.get();
+        if query.is_empty() || query.len() > MAX_QUERY_BYTES {
             return Err(Error::invalid_argument(
                 "search query must contain 1 through 4096 UTF-8 bytes",
             )
-            .at(Position::Buffer(30)));
+            .at(self.query.position()));
         }
-        if self.start == self.end && self.offset != 0 {
+        if start == end && self.offset.get() != 0 {
             return Err(
                 Error::invalid_argument("empty search window requires zero cursor")
-                    .at(Position::Buffer(17)),
+                    .at(self.offset.position()),
             );
         }
         Ok(SearchOptions {
-            case_insensitive: self.flags & 1 == 0,
-            whole_words: self.flags & 2 != 0,
-            join_hyphenated: self.flags & 4 != 0,
+            case_insensitive: !flags.contains(SearchFlags::CASE_SENSITIVE),
+            whole_words: flags.contains(SearchFlags::WHOLE_WORDS),
+            join_hyphenated: flags.contains(SearchFlags::JOIN_HYPHENATED),
         })
     }
 }
-/// Requests added by protocol v1.2.
+
+/// Requests added by protocol 1.2 and 1.3.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub enum Request<'a> {
-    /// Reading-order page text and selection geometry (document, page).
-    Text(u32, u32),
+    /// Reading-order page text and selection geometry.
+    Text(PageRef),
     /// A resumable search window.
     Search(Search<'a>),
-    /// Link annotations (document, page).
-    Links(u32, u32),
-    /// Preorder outline tree for a document.
-    Outlines(u32),
-    /// Labels in page order for a document.
-    Labels(u32),
+    /// Link annotations of a page.
+    Links(PageRef),
+    /// Preorder outline tree of a document.
+    Outlines(Field<u32>),
+    /// Labels of a document, in page order.
+    Labels(Field<u32>),
     /// Extended session accounting; kind 9 remains unchanged.
     Stats,
-    /// Conservative painted bounds in default user space (document, page; v1.3).
-    Bounds(u32, u32),
+    /// Conservative painted bounds in default user space (1.3).
+    Bounds(PageRef),
 }
-/// A fully bounded reading payload. Its wire kind and data are constructed only
-/// by the adapter; v1/v1.1 serialization never changes.
+
+impl Request<'_> {
+    /// The request's kind byte.
+    pub const fn kind(&self) -> RequestKind {
+        match self {
+            Self::Text(_) => RequestKind::PageText,
+            Self::Search(_) => RequestKind::Search,
+            Self::Links(_) => RequestKind::Links,
+            Self::Outlines(_) => RequestKind::Outlines,
+            Self::Labels(_) => RequestKind::Labels,
+            Self::Stats => RequestKind::ReadingStats,
+            Self::Bounds(_) => RequestKind::Bounds,
+        }
+    }
+}
+
+/// A fully bounded reading payload. Its kind and bytes are constructed only
+/// by this adapter.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Response {
-    pub(crate) kind: u8,
-    pub(crate) payload: Vec<u8>,
+    kind: ResponseKind,
+    payload: Vec<u8>,
 }
+
 impl Response {
-    pub(crate) fn new(kind: u8, writer: Writer) -> Self {
+    pub(crate) fn new(kind: ResponseKind, writer: Writer) -> Self {
         Self {
             kind,
             payload: writer.finish(),
         }
     }
+
+    /// The response's kind byte.
+    pub const fn kind(&self) -> ResponseKind {
+        self.kind
+    }
+
+    /// The encoded payload, after kind and id.
+    pub fn payload(&self) -> &[u8] {
+        &self.payload
+    }
 }
-pub(crate) fn decode<'a>(kind: u8, reader: &mut Reader<'a>, limits: Limits) -> Result<Request<'a>> {
-    Ok(match kind {
-        10 => Request::Text(reader.u32()?, reader.u32()?),
-        11 => {
-            let (document, start, end, offset, limit) = (
-                reader.u32()?,
-                reader.u32()?,
-                reader.u32()?,
-                reader.u32()?,
-                reader.u32()?,
-            );
-            let flags = reader.byte()?;
-            let query = std::str::from_utf8(reader.blob(limits.string_bytes.min(4096))?)
-                .map_err(|_| Error::syntax("search query is not UTF-8").at(Position::Buffer(30)))?;
-            Request::Search(Search {
-                document,
-                start,
-                end,
-                offset,
-                limit,
-                flags,
-                query,
-            })
-        }
-        12 => Request::Links(reader.u32()?, reader.u32()?),
-        13 => Request::Outlines(reader.u32()?),
-        14 => Request::Labels(reader.u32()?),
-        16 => Request::Bounds(reader.u32()?, reader.u32()?),
-        _ => Request::Stats,
-    })
-}
+
 /// `u8 present | [f64 x0, y0, x1, y1]`.
 pub(crate) fn bounds(list: &DisplayList, cap: usize) -> Result<Response> {
     let bounds = list.content_bounds()?;
     let mut out = Writer::new(cap);
-    out.u8(u8::from(bounds.is_some()))?;
+    out.flag(bounds.is_some())?;
     if let Some(bounds) = bounds {
-        for value in [bounds.x0(), bounds.y0(), bounds.x1(), bounds.y1()] {
-            out.f64(value)?;
-        }
+        out.f64s(&[bounds.x0(), bounds.y0(), bounds.x1(), bounds.y1()])?;
     }
-    Ok(Response::new(144, out))
+    Ok(Response::new(ResponseKind::Bounds, out))
 }
+
 /// The kind-137 fields, then `u64 text_bytes | u32 text_pages`.
 pub(crate) fn stats(stats: SessionStats, text: (usize, usize), cap: usize) -> Result<Response> {
     let (text_bytes, text_pages) = text;
@@ -158,7 +175,5 @@ pub(crate) fn stats(stats: SessionStats, text: (usize, usize), cap: usize) -> Re
     out.u32(stats.lists)?;
     out.u64(u64::try_from(text_bytes).unwrap_or(u64::MAX))?;
     out.count(text_pages)?;
-    Ok(Response::new(143, out))
+    Ok(Response::new(ResponseKind::ReadingStats, out))
 }
-pub(crate) use navigation::{labels, links, outlines};
-pub(crate) use text::{page_text, search};

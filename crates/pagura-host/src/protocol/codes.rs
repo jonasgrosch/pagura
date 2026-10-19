@@ -1,0 +1,427 @@
+//! Every wire code space as an enum (PROTOCOL.md). The numbers appear only
+//! here; `web/protocol_constants.mjs` is generated from these tables.
+
+use pagura::{DiagnosticKind, Error, ErrorKind, Recovery, Result};
+
+/// Defines a fieldless wire enum with its code table, `TryFrom` for decoding
+/// and the variant names the JavaScript constants use.
+macro_rules! wire_codes {
+    (
+        $(#[$meta:meta])*
+        pub enum $name:ident: $repr:ty, unknown = $unknown:expr;
+        $($(#[$doc:meta])* $variant:ident = $code:literal,)+
+    ) => {
+        $(#[$meta])*
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+        #[repr($repr)]
+        #[non_exhaustive]
+        pub enum $name {
+            $($(#[$doc])* $variant = $code,)+
+        }
+
+        impl $name {
+            /// Every code, in ascending order.
+            pub const ALL: &[Self] = &[$(Self::$variant,)+];
+
+            /// The code on the wire.
+            pub const fn code(self) -> $repr {
+                self as $repr
+            }
+
+            /// The variant's name, as `web/protocol_constants.mjs` spells it.
+            pub const fn name(self) -> &'static str {
+                match self {
+                    $(Self::$variant => stringify!($variant),)+
+                }
+            }
+        }
+
+        impl From<$name> for $repr {
+            fn from(value: $name) -> Self {
+                value.code()
+            }
+        }
+
+        impl TryFrom<$repr> for $name {
+            type Error = Error;
+
+            /// # Errors
+            /// Returns an error without a position for an unassigned code;
+            /// the decoder places it.
+            fn try_from(code: $repr) -> Result<Self> {
+                match code {
+                    $($code => Ok(Self::$variant),)+
+                    _ => Err($unknown),
+                }
+            }
+        }
+    };
+}
+
+wire_codes! {
+    /// A protocol version, negotiated by hello. Later versions only add
+    /// requests, so `>=` is "supports".
+    pub enum Version: u32, unknown = Error::invalid_argument("invalid or repeated protocol handshake");
+    /// The compatible base version.
+    V1 = 1,
+    /// Viewport generations and session accounting.
+    V1_1 = 0x0001_0001,
+    /// Reading operations.
+    V1_2 = 0x0001_0002,
+    /// Painted content bounds.
+    V1_3 = 0x0001_0003,
+    /// Typed diagnostic snapshots.
+    V1_4 = 0x0001_0004,
+}
+
+impl Version {
+    /// The newest version this host speaks.
+    pub const LATEST: Self = Self::V1_4;
+
+    /// The error for a request that needs this version in an older session.
+    pub(crate) const fn required(self) -> Error {
+        Error::invalid_argument(match self {
+            Self::V1 => "request requires a protocol handshake",
+            Self::V1_1 => "request requires protocol 1.1",
+            Self::V1_2 => "reading request requires protocol 1.2",
+            Self::V1_3 => "content bounds require protocol 1.3",
+            Self::V1_4 => "typed diagnostics require protocol 1.4",
+        })
+    }
+}
+
+wire_codes! {
+    /// The kind byte of a request frame.
+    pub enum RequestKind: u8, unknown = Error::syntax("unknown request kind");
+    /// Negotiate the version.
+    Hello = 1,
+    /// Open PDF bytes.
+    Open = 2,
+    /// Describe a page.
+    PageInfo = 3,
+    /// Render a tile.
+    RenderTile = 4,
+    /// Repairs discovered so far.
+    Diagnostics = 5,
+    /// Release a document.
+    Close = 6,
+    /// Select a viewport generation (1.1).
+    Generation = 7,
+    /// A tile of a viewport generation (1.1).
+    GenerationTile = 8,
+    /// Session accounting (1.1).
+    Stats = 9,
+    /// Page text (1.2).
+    PageText = 10,
+    /// A search window (1.2).
+    Search = 11,
+    /// Page links (1.2).
+    Links = 12,
+    /// Outlines (1.2).
+    Outlines = 13,
+    /// Page labels (1.2).
+    Labels = 14,
+    /// Reading accounting (1.2).
+    ReadingStats = 15,
+    /// Painted content bounds (1.3).
+    Bounds = 16,
+    /// Repairs and information with their kinds (1.4).
+    DiagnosticDetails = 17,
+}
+
+impl RequestKind {
+    /// The first version that accepts this request.
+    pub const fn since(self) -> Version {
+        match self {
+            Self::Hello
+            | Self::Open
+            | Self::PageInfo
+            | Self::RenderTile
+            | Self::Diagnostics
+            | Self::Close => Version::V1,
+            Self::Generation | Self::GenerationTile | Self::Stats => Version::V1_1,
+            Self::PageText
+            | Self::Search
+            | Self::Links
+            | Self::Outlines
+            | Self::Labels
+            | Self::ReadingStats => Version::V1_2,
+            Self::Bounds => Version::V1_3,
+            Self::DiagnosticDetails => Version::V1_4,
+        }
+    }
+
+    /// The kind of a successful response; failures are [`ResponseKind::Error`].
+    pub const fn response(self) -> ResponseKind {
+        match self {
+            Self::Hello => ResponseKind::Hello,
+            Self::Open => ResponseKind::Open,
+            Self::PageInfo => ResponseKind::PageInfo,
+            Self::RenderTile => ResponseKind::Tile,
+            Self::Diagnostics => ResponseKind::Diagnostics,
+            Self::Close => ResponseKind::Close,
+            Self::Generation => ResponseKind::Generation,
+            Self::GenerationTile => ResponseKind::GenerationTile,
+            Self::Stats => ResponseKind::Stats,
+            Self::PageText => ResponseKind::PageText,
+            Self::Search => ResponseKind::Search,
+            Self::Links => ResponseKind::Links,
+            Self::Outlines => ResponseKind::Outlines,
+            Self::Labels => ResponseKind::Labels,
+            Self::ReadingStats => ResponseKind::ReadingStats,
+            Self::Bounds => ResponseKind::Bounds,
+            Self::DiagnosticDetails => ResponseKind::DiagnosticDetails,
+        }
+    }
+}
+
+wire_codes! {
+    /// The kind byte of a response frame.
+    pub enum ResponseKind: u8, unknown = Error::syntax("unknown response kind");
+    /// The negotiated version.
+    Hello = 129,
+    /// A new handle and page count.
+    Open = 130,
+    /// Page geometry.
+    PageInfo = 131,
+    /// Tile pixels.
+    Tile = 132,
+    /// Repairs.
+    Diagnostics = 133,
+    /// The handle was released.
+    Close = 134,
+    /// The selected generation.
+    Generation = 135,
+    /// A generated tile or its skip status.
+    GenerationTile = 136,
+    /// Session accounting.
+    Stats = 137,
+    /// Page text.
+    PageText = 138,
+    /// Search matches and cursor.
+    Search = 139,
+    /// Page links.
+    Links = 140,
+    /// Outlines.
+    Outlines = 141,
+    /// Page labels.
+    Labels = 142,
+    /// Reading accounting.
+    ReadingStats = 143,
+    /// Painted content bounds.
+    Bounds = 144,
+    /// Typed diagnostics.
+    DiagnosticDetails = 145,
+    /// A structured failure.
+    Error = 255,
+}
+
+wire_codes! {
+    /// The category byte of an error response, one per [`ErrorKind`].
+    pub enum ErrorCategory: u8, unknown = Error::syntax("unknown error category");
+    /// Malformed input.
+    Syntax = 1,
+    /// A budget was exceeded.
+    Limit = 2,
+    /// A feature is not supported.
+    Unsupported = 3,
+    /// A referenced object is missing.
+    MissingObject = 4,
+    /// A reference cycle.
+    Cycle = 5,
+    /// The password did not authenticate.
+    Password = 6,
+    /// The caller passed an invalid argument.
+    InvalidArgument = 7,
+}
+
+impl TryFrom<&ErrorKind> for ErrorCategory {
+    type Error = Error;
+
+    /// # Errors
+    /// A kind added to pagura-core has no category until a protocol version
+    /// assigns one, and cannot be encoded faithfully.
+    fn try_from(kind: &ErrorKind) -> Result<Self> {
+        Ok(match kind {
+            ErrorKind::Syntax => Self::Syntax,
+            ErrorKind::Limit => Self::Limit,
+            ErrorKind::Unsupported(_) => Self::Unsupported,
+            ErrorKind::MissingObject => Self::MissingObject,
+            ErrorKind::Cycle => Self::Cycle,
+            ErrorKind::Password => Self::Password,
+            ErrorKind::InvalidArgument => Self::InvalidArgument,
+            _ => {
+                return Err(Error::invalid_argument(
+                    "error kind has no wire code in this protocol version",
+                ));
+            }
+        })
+    }
+}
+
+wire_codes! {
+    /// The kind byte of a typed diagnostic record (1.4).
+    pub enum DiagnosticCode: u8, unknown = Error::syntax("unknown diagnostic kind");
+    /// A repair that was applied.
+    Repair = 0,
+    /// Information that changes nothing.
+    Information = 1,
+}
+
+impl TryFrom<&DiagnosticKind> for DiagnosticCode {
+    type Error = Error;
+
+    /// # Errors
+    /// A kind added to pagura-core has no code until a protocol version
+    /// assigns one.
+    fn try_from(kind: &DiagnosticKind) -> Result<Self> {
+        match kind {
+            DiagnosticKind::Repair(_) => Ok(Self::Repair),
+            DiagnosticKind::Information(_) => Ok(Self::Information),
+            _ => Err(Error::invalid_argument(
+                "diagnostic kind has no wire code in this protocol version",
+            )),
+        }
+    }
+}
+
+wire_codes! {
+    /// The position kind byte of an error or diagnostic context.
+    pub enum PositionKind: u8, unknown = Error::syntax("unknown position kind");
+    /// No offset.
+    Unknown = 0,
+    /// A file offset.
+    File = 1,
+    /// An offset in a decoded stream.
+    Stream = 2,
+    /// An offset in a request body or another buffer.
+    Buffer = 3,
+}
+
+wire_codes! {
+    /// The status byte of a generated tile response (1.1).
+    pub enum TileStatus: u8, unknown = Error::syntax("unknown tile status");
+    /// A stale or cancelled tile, without pixels.
+    Skipped = 0,
+    /// Pixels follow.
+    Rendered = 1,
+}
+
+wire_codes! {
+    /// The fit byte of a destination (Table 149).
+    pub enum FitCode: u8, unknown = Error::syntax("unknown destination fit");
+    /// XYZ left, top, zoom.
+    Xyz = 0,
+    /// Fit.
+    Fit = 1,
+    /// FitH top.
+    FitH = 2,
+    /// FitV left.
+    FitV = 3,
+    /// FitR left, bottom, right, top.
+    FitR = 4,
+    /// FitB.
+    FitB = 5,
+    /// FitBH top.
+    FitBh = 6,
+    /// FitBV left.
+    FitBv = 7,
+}
+
+wire_codes! {
+    /// The type byte of a target action (12.6).
+    pub enum ActionCode: u8, unknown = Error::syntax("unknown action type");
+    /// An internal destination.
+    GoTo = 1,
+    /// A URI.
+    Uri = 2,
+    /// A named action.
+    Named = 3,
+    /// A remote destination, inert.
+    GoToR = 4,
+    /// A launch action, inert.
+    Launch = 5,
+    /// A script, inert; no script bytes are sent.
+    JavaScript = 6,
+    /// Any other action, inert.
+    Other = 7,
+}
+
+/// Defines a bit-field newtype with named flags.
+macro_rules! wire_flags {
+    (
+        $(#[$meta:meta])*
+        pub struct $name:ident;
+        $($(#[$doc:meta])* $flag:ident = $bit:literal,)+
+    ) => {
+        $(#[$meta])*
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+        pub struct $name(u8);
+
+        impl $name {
+            $($(#[$doc])* pub const $flag: Self = Self($bit);)+
+            /// Every flag with its name, as `web/protocol_constants.mjs` spells it.
+            pub const ALL: &[(&str, Self)] = &[$((stringify!($flag), Self::$flag),)+];
+
+            /// The flags, or `None` if an undefined bit is set.
+            pub const fn from_bits(bits: u8) -> Option<Self> {
+                if (bits & !(0 $(| $bit)+)) == 0 { Some(Self(bits)) } else { None }
+            }
+
+            /// The byte on the wire.
+            pub const fn bits(self) -> u8 {
+                self.0
+            }
+
+            /// Whether every flag of `other` is set.
+            pub const fn contains(self, other: Self) -> bool {
+                self.0 & other.0 == other.0
+            }
+
+            /// Sets every flag of `other`.
+            pub const fn insert(&mut self, other: Self) {
+                self.0 |= other.0;
+            }
+        }
+    };
+}
+
+wire_flags! {
+    /// The option bits of a search request (1.2).
+    pub struct SearchFlags;
+    /// Match case exactly.
+    CASE_SENSITIVE = 1,
+    /// Match whole words only.
+    WHOLE_WORDS = 2,
+    /// Join words hyphenated across a line break.
+    JOIN_HYPHENATED = 4,
+}
+
+wire_flags! {
+    /// The style bits of an outline item (Table 151).
+    pub struct OutlineStyle;
+    /// Italic text.
+    ITALIC = 1,
+    /// Bold text.
+    BOLD = 2,
+}
+
+wire_flags! {
+    /// The flags byte of an open request. Without flags the document is
+    /// validated strictly; a later protocol version may assign more bits,
+    /// and an unassigned bit is a terminal syntax error.
+    pub struct OpenFlags;
+    /// Reported recovery instead of strict validation (ADR 0003).
+    REPAIR = 1,
+}
+
+impl OpenFlags {
+    /// The recovery policy the flags select.
+    pub const fn recovery(self) -> Recovery {
+        if self.contains(Self::REPAIR) {
+            Recovery::Repair
+        } else {
+            Recovery::Strict
+        }
+    }
+}
