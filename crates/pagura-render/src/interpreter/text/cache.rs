@@ -3,8 +3,6 @@ use super::{Arc, Compiler, Dictionary, Error, PdfFont, Result, Value};
 use pagura_raster::Path;
 use std::collections::BTreeMap;
 
-mod flags;
-
 /// One immutable font and its outlines. Active compilations share this record;
 /// eviction removes its document admission without reassigning its identity.
 #[derive(Debug)]
@@ -487,7 +485,11 @@ fn cached_font(
     // Parsing and provider calls happen outside the shared cache lock.
     // A competitive compilation reads a TrueType program only as far as
     // drawing needs ([`PdfFont::load_for_rendering`]).
-    let loaded = flags::load(document, dictionary, provider, position, rendering);
+    let loaded = if rendering {
+        PdfFont::load_for_rendering(document, dictionary, provider, position)
+    } else {
+        PdfFont::load_at(document, dictionary, provider, position)
+    };
     let font = Arc::new(loaded.map_err(|mut error| {
         if matches!(
             error.position,
@@ -495,7 +497,7 @@ fn cached_font(
         ) {
             error.position = position;
         }
-        if error.repair == Some(pagura_font::repairs::DESCRIPTOR_FLAGS) {
+        if error.repair == Some(pagura_text::repairs::DESCRIPTOR_FLAGS) {
             error
         } else if let Some(id) = key {
             error.in_object(id)

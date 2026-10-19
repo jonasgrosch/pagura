@@ -165,10 +165,10 @@ fn descriptor_substitution_retains_pdf_metrics_and_rejects_unsafe_symbols() -> R
         ));
         assert_eq!(document.diagnostics().len(), 1);
     }
-    for name in [
-        "substitute-unsafe-symbolic",
-        "substitute-unsafe-symbolic-both",
-        "substitute-unsafe-symbolic-known-base",
+    for (name, contradictory) in [
+        ("substitute-unsafe-symbolic", false),
+        ("substitute-unsafe-symbolic-both", true),
+        ("substitute-unsafe-symbolic-known-base", false),
     ] {
         let document = open(name)?;
         assert_eq!(
@@ -177,7 +177,22 @@ fn descriptor_substitution_retains_pdf_metrics_and_rejects_unsafe_symbols() -> R
                 .kind,
             ErrorKind::Unsupported(features::NON_EMBEDDED)
         );
-        assert_eq!(document.diagnostics(), NO_DIAGNOSTICS);
+        // Both Symbolic and Nonsymbolic set is a reported descriptor repair
+        // that keeps Symbolic (9.8.2); the symbolic font is still refused.
+        let repairs: Vec<_> = document
+            .diagnostics()
+            .iter()
+            .map(|d| (d.repair(), d.object))
+            .collect();
+        let expected = if contradictory {
+            vec![(
+                Some(pagura_text::repairs::DESCRIPTOR_FLAGS),
+                Some(ObjectId::new(5, 0)),
+            )]
+        } else {
+            Vec::new()
+        };
+        assert_eq!(repairs, expected, "{name}");
     }
     Ok(())
 }

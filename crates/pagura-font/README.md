@@ -262,9 +262,9 @@ Each policy rejects with its tag in strict mode and reports through the
 public parse diagnostics in repair mode, without modifying original bytes.
 
 
-The renderer reports `font.descriptor-flags` only for an invalid descriptor
-flag pair: both Symbolic and Nonsymbolic set, or both clear (ISO 32000-2
-9.8.2/Table 121). It preserves Symbolic as the primary reader bit and makes
+`pagura-text` reports `font.descriptor-flags` while loading a font, only for
+an invalid descriptor flag pair (both Symbolic and Nonsymbolic set, or both
+clear) or a missing `/Flags` (ISO 32000-2 9.8.2/Table 121). It preserves Symbolic as the primary reader bit and makes
 Nonsymbolic its inverse. A valid pair remains unchanged even if its character-set
 metadata disagrees with the program's repertoire or cmap platforms. Such a
 disagreement alone does not require deviating from the selection algorithm.
