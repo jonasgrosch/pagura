@@ -6,7 +6,8 @@
 pagura-cli       ──► pagura (the `pagura` command-line tool; the facade only)
 pagura-host      ──► pagura
 pagura           ──► pagura-render, pagura-write, pagura-document, pagura-text and pagura-font (text model, provider types), pagura-raster, pagura-pki (CMS signature verification), pagura-data (optional bundled fonts and CMaps), pagura-crypto (Unicode data notice)
-pagura-render    ──► pagura-text, pagura-font (glyph outline diagnostics), pagura-image, pagura-document, pagura-raster, pagura-crypto (MD5 for ICC profile IDs)
+pagura-render    ──► pagura-text, pagura-font (glyph outline diagnostics), pagura-image, pagura-document, pagura-raster, pagura-color
+pagura-color     ──► pagura-crypto (MD5 for ICC profile IDs)
 pagura-data      ──► pagura-text (its Provider), pagura-font
 pagura-text      ──► pagura-font, pagura-document, pagura-raster
 pagura-image     ──► pagura-document, pagura-codec
@@ -28,6 +29,7 @@ Dependencies point downward only and are fixed in the crate manifests.
 | `pagura-font` | font programs (TrueType/OpenType, CFF/CFF2, Type 1) as outlines, advances, encodings and cmaps | PDF dictionaries |
 | `pagura-text` | PDF font dictionaries, encodings, widths, CMaps and ToUnicode; shown strings to positioned glyphs | content streams, pixels |
 | `pagura-image` | image XObjects and inline images; JPEG, CCITT, JBIG2 and JPEG 2000 decoding to samples | painting, colour conversion |
+| `pagura-color` | ICC profile transforms and CIE colorimetry from bytes and numbers (ADR 0028) | PDF objects |
 | `pagura-render` | content interpretation into a display list in PDF terms; page-to-device transform; tiles; painting through `pagura-raster` | file structure |
 | `pagura-write` | deterministic serialization | parsing |
 | `pagura` | the public facade: every public type, and the free functions with the feature-selected font data | — |
@@ -37,8 +39,8 @@ Dependencies point downward only and are fixed in the crate manifests.
 | `pagura-fuzz` | test-only fuzz drivers, shared by the libFuzzer targets in `fuzz/` and the stable replay of `fuzz/regressions/` (ADR 0030) | product code |
 
 Add a crate only for a substantial, independently testable responsibility
-with a clear dependency direction. Colour management (ICC) is the next
-candidate; until then it lives in `pagura-render`.
+with a clear dependency direction, as `pagura-color` is for colour
+management (ADR 0028).
 
 ## Invariants
 
