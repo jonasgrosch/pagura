@@ -253,3 +253,31 @@ fn null_unicode_entries_are_absent_without_repairs() -> Result<()> {
     }
     Ok(())
 }
+
+#[test]
+fn widths_length_mismatches_are_reported_repairs() -> Result<()> {
+    for name in [
+        "repair-widths-short",
+        "repair-widths-long",
+        "repair-widths-reversed",
+    ] {
+        let strict = open(name, Recovery::Strict)?;
+        let error = PdfFont::load(&strict, dictionary(&strict)?)
+            .err()
+            .ok_or_else(|| Error::syntax("expected a strict rejection"))?;
+        assert_eq!(error.repair, Some(repairs::WIDTHS_LENGTH), "{name}: {error}");
+        assert!(strict.diagnostics().is_empty(), "{name}");
+        let repaired = open(name, Recovery::Repair)?;
+        let font = PdfFont::load(&repaired, dictionary(&repaired)?)?;
+        check_glyphs(&font, name, "out")?;
+        assert_eq!(tags(name)?, [repairs::WIDTHS_LENGTH.as_str()], "{name}");
+        assert!(
+            repaired
+                .diagnostics()
+                .iter()
+                .any(|item| item.repair() == Some(repairs::WIDTHS_LENGTH)),
+            "{name}"
+        );
+    }
+    Ok(())
+}

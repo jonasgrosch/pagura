@@ -4924,6 +4924,99 @@
       "extraction_only": false
     },
     {
+      "id": "text/repair-widths-short",
+      "kind": "vector",
+      "description": "Strict rejects a Widths length that disagrees with FirstChar and LastChar; repair mode uses MissingWidth past the array",
+      "requirements": [
+        "text-simple-widths"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-widths-short.input",
+          "sha256": "e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-widths-short.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-widths-short.out",
+          "sha256": "6057ed07b91be3999af24f94dc99a57544791249c4695541cc4afb16be28c956"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-widths-short.pdf",
+          "sha256": "d111b199e8e4196f1e36d65b1c09d1c74fc41e4893a106ff8b533bdf2b6ced4b"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-widths-short.repair",
+          "sha256": "2374ca341c684ab85dfd26854ff00b9a70aaa62a34d8645d7db49ec8dd962eb3"
+        }
+      },
+      "driver": "text-repair"
+    },
+    {
+      "id": "text/repair-widths-long",
+      "kind": "vector",
+      "description": "Strict rejects a Widths length that disagrees with FirstChar and LastChar; repair mode uses MissingWidth past the array",
+      "requirements": [
+        "text-simple-widths"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-widths-long.input",
+          "sha256": "e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-widths-long.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-widths-long.out",
+          "sha256": "6057ed07b91be3999af24f94dc99a57544791249c4695541cc4afb16be28c956"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-widths-long.pdf",
+          "sha256": "6f83fb91e4b0944c9cc3c35afb4c07b739fd10f0d3668044615c05b81447a394"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-widths-long.repair",
+          "sha256": "2374ca341c684ab85dfd26854ff00b9a70aaa62a34d8645d7db49ec8dd962eb3"
+        }
+      },
+      "driver": "text-repair"
+    },
+    {
+      "id": "text/repair-widths-reversed",
+      "kind": "vector",
+      "description": "Strict rejects a Widths length that disagrees with FirstChar and LastChar; repair mode uses MissingWidth past the array",
+      "requirements": [
+        "text-simple-widths"
+      ],
+      "files": {
+        ".input": {
+          "path": "corpus/generated/text/repair-widths-reversed.input",
+          "sha256": "e12e115acf4552b2568b55e93cbd39394c4ef81c82447fafc997882a02d23677"
+        },
+        ".matrix": {
+          "path": "corpus/generated/text/repair-widths-reversed.matrix",
+          "sha256": "e94cd0c6aa7303f74e043e7a8b517f9491814745dbc0423645a776e077725236"
+        },
+        ".out": {
+          "path": "corpus/generated/text/repair-widths-reversed.out",
+          "sha256": "786a2130cc5ba6504c170cd37fd5f2ab96bd766ee49b00a38324b18ee5b25ac8"
+        },
+        ".pdf": {
+          "path": "corpus/generated/text/repair-widths-reversed.pdf",
+          "sha256": "f3cd9e2825c90aa0c40dfb8c897ea77f08d27ef44541d6a476f503ad7d08467e"
+        },
+        ".repair": {
+          "path": "corpus/generated/text/repair-widths-reversed.repair",
+          "sha256": "2374ca341c684ab85dfd26854ff00b9a70aaa62a34d8645d7db49ec8dd962eb3"
+        }
+      },
+      "driver": "text-repair"
+    },
+    {
       "id": "text/strict-substitution-simple",
       "kind": "vector",
       "description": "Strict rejects malformed Unicode before returning a substitute; Repair keeps its outline, PDF width and fallback Unicode",
@@ -5485,24 +5578,6 @@
         ".pdf": {
           "path": "corpus/generated/text/differences-overflow.pdf",
           "sha256": "572071c8d7d1df157e6c51cb9134116228ad03e77d5a56a055d0055f5259a6a8"
-        }
-      }
-    },
-    {
-      "id": "text/width-count",
-      "kind": "vector",
-      "description": "Font loading reports malformed or unavailable capability explicitly",
-      "requirements": [
-        "text-font-policy"
-      ],
-      "files": {
-        ".error": {
-          "path": "corpus/generated/text/width-count.error",
-          "sha256": "b415c58666433ac5e18424c94c2385d50a25bd5037c893224ea585e617f91039"
-        },
-        ".pdf": {
-          "path": "corpus/generated/text/width-count.pdf",
-          "sha256": "ae90a2f0c7150ff0c617417977d276a60bbd576e5286975b4443b0b04ac58d71"
         }
       }
     },

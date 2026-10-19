@@ -239,7 +239,6 @@ fn font_error_vectors() -> Result<()> {
         "nonembedded-truetype",
         "predefined-cmap",
         "differences-overflow",
-        "width-count",
         "binding-wrong-fontfile",
     ] {
         let document = document(name)?;
