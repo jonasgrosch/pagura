@@ -219,6 +219,7 @@ impl Compiler<'_> {
             forms: self.forms.clone(),
             extraction: None,
             glyphs: Vec::new(),
+            hulls: crate::display::GlyphHulls::default(),
             drawn: self.drawn,
         }
     }

@@ -209,6 +209,8 @@ struct Compiler<'a> {
     extraction: Option<text::extract::Extraction>,
     /// Reused decoded glyphs of one shown string.
     glyphs: Vec<pagura_text::Glyph>,
+    /// Glyph source hulls met in this compilation.
+    hulls: crate::display::GlyphHulls,
     /// Device pixels per default user-space unit for drawn-size image
     /// decoding; None outside page space or when images decode exactly.
     drawn: Option<f64>,
@@ -244,6 +246,7 @@ impl<'a> Compiler<'a> {
             forms: Vec::new(),
             extraction: None,
             glyphs: Vec::new(),
+            hulls: crate::display::GlyphHulls::default(),
             drawn: None,
         })
     }

@@ -302,6 +302,7 @@ mod tests {
             Arc::new(outline.finish()),
             pagura_raster::Transform::IDENTITY,
             Position::Unknown,
+            &mut crate::display::GlyphHulls::default(),
         )
         .unwrap();
         run.glyphs.resize(1000, run.glyphs[0]);
@@ -329,6 +330,7 @@ mod tests {
                     Arc::clone(&outline),
                     pagura_raster::Transform::IDENTITY,
                     Position::Unknown,
+                    &mut crate::display::GlyphHulls::default(),
                 )
                 .unwrap();
             }

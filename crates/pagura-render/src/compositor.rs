@@ -1956,6 +1956,7 @@ mod tests {
                 Arc::new(path.finish()),
                 Transform::translate(x, 0.25),
                 pagura_core::Position::Unknown,
+                &mut crate::display::GlyphHulls::default(),
             )
             .unwrap();
         }

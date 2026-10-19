@@ -478,7 +478,7 @@ impl Compiler<'_> {
         let super::Command::Glyphs(run) = &mut self.list.commands[index] else {
             return Err(Error::invalid_argument("invalid text run"));
         };
-        run.push(outline, transform, self.position)
+        run.push(outline, transform, self.position, &mut self.hulls)
     }
 }
 
