@@ -15,12 +15,11 @@ pub fn uniform(input: &[u8], value: u8) -> bool {
 #[inline]
 #[expect(
     clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
     clippy::manual_clamp,
     reason = "rounded samples are clamped to the byte range"
 )]
 fn quantize(value: f32) -> u8 {
-    (value.max(0.0).min(255.0) as u32).to_le_bytes()[0]
+    (value.max(0.0).min(255.0) as i32).to_le_bytes()[0]
 }
 /// Converts native luma and chroma replicated `repeat` times to interleaved
 /// RGB, exactly as Table 13 rounds each byte triple. Returns false for

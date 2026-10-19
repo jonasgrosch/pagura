@@ -145,7 +145,6 @@ impl Plane {
     /// recomputed in binary64 in the reference's order.
     #[expect(
         clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
         clippy::cast_precision_loss,
         reason = "outward-rounded error bound and clamped byte samples; the coefficient bound covers f32 conversion"
     )]
@@ -156,7 +155,7 @@ impl Plane {
         let bound = l1 * (1.0 / 1_048_576.0) + 1.0 / 16384.0;
         let error = (bound as f32) * 1.000_000_2;
         let values = super::spatial::spatial(&input);
-        let byte = |value: f32| ((value.clamp(0.0, 255.0)) as u32).to_le_bytes()[0];
+        let byte = |value: f32| (value.clamp(0.0, 255.0) as i32).to_le_bytes()[0];
         let values = values.as_flattened();
         let lower: [u8; 64] = std::array::from_fn(|i| byte(values[i] + 128.5 - error));
         let upper: [u8; 64] = std::array::from_fn(|i| byte(values[i] + 128.5 + error));

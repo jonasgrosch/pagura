@@ -860,11 +860,10 @@ fn materialization_limits(image: &Image, p: &Placement, limits: Limits) -> Resul
 
 #[expect(
     clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
     reason = "finite rounded channel is clamped to the byte domain"
 )]
 fn rounded_byte(value: f32) -> u8 {
-    ((value + 0.5).clamp(0.0, 255.0) as u32).to_le_bytes()[0]
+    ((value + 0.5).clamp(0.0, 255.0) as i32).to_le_bytes()[0]
 }
 
 fn temporary_budget<const N: usize>(

@@ -8,12 +8,11 @@ use super::footprint::{Band, Tap};
 #[inline]
 #[expect(
     clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
     clippy::manual_clamp,
     reason = "rounded samples are clamped to the byte range"
 )]
 fn quantize(value: f32) -> u8 {
-    (value.max(0.0).min(255.0) as u32).to_le_bytes()[0]
+    (value.max(0.0).min(255.0) as i32).to_le_bytes()[0]
 }
 
 /// Reduces one source row, retaining normalized fractional samples.
@@ -133,12 +132,11 @@ pub(super) fn combine_gray(
 #[inline]
 #[expect(
     clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
     clippy::manual_clamp,
     reason = "gray channels are rounded and clamped to the byte domain"
 )]
 fn gray_pixel(value: f32) -> [u8; 4] {
-    let gray = (value + 0.5).max(0.0).min(255.0) as u32;
+    let gray = ((value + 0.5).max(0.0).min(255.0) as i32).cast_unsigned();
     (gray | (gray << 8) | (gray << 16) | 0xff00_0000).to_le_bytes()
 }
 
