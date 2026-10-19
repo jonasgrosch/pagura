@@ -12,6 +12,7 @@ pub struct RenderContext {
     document: Arc<Document>,
     provider: Option<Arc<dyn Provider>>,
     pub(crate) fonts: Arc<Mutex<interpreter::text::cache::FontCache>>,
+    glyphs: Arc<Mutex<crate::approximate::GlyphCache>>,
 }
 
 impl std::fmt::Debug for RenderContext {
@@ -43,6 +44,9 @@ impl RenderContext {
             document,
             provider,
             fonts,
+            glyphs: Arc::new(Mutex::new(crate::approximate::GlyphCache::new(
+                crate::approximate::CACHE_BYTES,
+            ))),
         }
     }
 
@@ -54,11 +58,20 @@ impl RenderContext {
     /// Estimated font-input, dictionary, outline and bookkeeping bytes
     /// retained, bounded by [`pagura_core::Limits::document_bytes`]. Parsed font internals
     /// retain their own limits; this is not allocator or peak-memory telemetry.
+    /// Glyph masks retained for [`crate::Accuracy::RowFragments`] add at most
+    /// 16 MiB, also bounded by the document limit.
     pub fn retained_bytes(&self) -> usize {
-        self.fonts
+        let fonts = self
+            .fonts
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .bytes
+            .bytes;
+        let glyphs = self
+            .glyphs
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .retained_bytes();
+        fonts.saturating_add(glyphs)
     }
 
     /// Compiles a page, reusing this document's fonts and glyph outlines.
@@ -125,7 +138,15 @@ impl RenderContext {
     /// # Errors
     /// As [`Self::compile_page`] and [`DisplayList::render`].
     pub fn render_page(&self, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
-        self.compile_page(page)?.render(options)
+        let list = self.compile_page(page)?;
+        let (width, height) = list.device_size(options)?;
+        let tile = Tile {
+            x: 0,
+            y: 0,
+            width,
+            height,
+        };
+        list.render_tile_with(options, tile, Some(&self.glyphs))
     }
 
     /// Compiles and renders a tile with shared resources.
@@ -133,6 +154,7 @@ impl RenderContext {
     /// # Errors
     /// As [`Self::compile_page`] and [`DisplayList::render_tile`].
     pub fn render_tile(&self, page: &Page, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
-        self.compile_page(page)?.render_tile(options, tile)
+        self.compile_page(page)?
+            .render_tile_with(options, tile, Some(&self.glyphs))
     }
 }

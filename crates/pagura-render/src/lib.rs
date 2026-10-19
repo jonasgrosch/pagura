@@ -6,6 +6,7 @@
 //! expansion. The list renders into device tiles through `pagura-raster`.
 //! [`render_page`] and [`render_tile`] compile and render in one call.
 
+mod approximate;
 mod blend;
 mod cie;
 mod color;
@@ -50,6 +51,28 @@ pub struct RenderOptions {
     pub background: Rgba8,
     /// Whether to simulate overprinting (8.6.7; 11.7.4).
     pub overprint: OverprintPreview,
+    /// The accuracy contract pixels are rendered to (ADR 0004).
+    pub accuracy: Accuracy,
+}
+
+/// The accuracy contract of a rendering (ADR 0004).
+///
+/// The exact path is the reference and the default. An approximate path is
+/// named for its mechanism and can always be switched back to the exact one;
+/// its measured accuracy is kept with the change that introduces it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Accuracy {
+    /// Every pixel within one level of its exact result.
+    #[default]
+    Exact,
+    /// Signed-area coverage after flattening curves to 1/16-pixel chords
+    /// (1/4 pixel for clip paths), glyph masks from reused row fragments at
+    /// 1/128-pixel origins, four samples per pixel for axis-aligned images,
+    /// and byte composition. Opaque RGB pages of solid-colour marks, images,
+    /// shadings and simple groups take this path; any other page renders
+    /// exactly. It does not meet the one-level contract.
+    RowFragments,
 }
 
 impl Default for RenderOptions {
@@ -58,6 +81,7 @@ impl Default for RenderOptions {
             scale: 1.0,
             background: Rgba8::WHITE,
             overprint: OverprintPreview::Auto,
+            accuracy: Accuracy::Exact,
         }
     }
 }

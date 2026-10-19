@@ -32,7 +32,7 @@ pub(crate) enum Command {
     Shading(ShadingCommand),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct ImageCommand {
     pub(crate) image: Arc<crate::interpreter::images::Image>,
     pub(crate) transform: Transform,
@@ -43,7 +43,7 @@ pub(crate) struct ImageCommand {
     pub(crate) position: pagura_core::Position,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct ShadingCommand {
     pub(crate) shading: Arc<crate::shading::Shading>,
     pub(crate) position: pagura_core::Position,
@@ -513,6 +513,20 @@ impl DisplayList {
         }
     }
 
+    /// A list holding only `command`, with this page's geometry and limits.
+    pub(crate) fn single(&self, command: Command) -> Self {
+        Self {
+            commands: vec![command],
+            crop: self.crop,
+            rotation: self.rotation,
+            user_unit: self.user_unit,
+            limits: self.limits,
+            group: crate::transparency::Attributes::default(),
+            print_intent: self.print_intent,
+            separations: OnceLock::new(),
+        }
+    }
+
     pub(crate) fn separations(&self) -> Result<Arc<crate::compositor::Separations>> {
         self.separations
             .get_or_init(|| {
@@ -589,6 +603,16 @@ impl DisplayList {
     /// # Errors
     /// As [`Self::render`], plus `InvalidArgument` for tiles outside the page.
     pub fn render_tile(&self, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
+        self.render_tile_with(options, tile, None)
+    }
+
+    /// As [`Self::render_tile`], reusing a context's approximate glyph masks.
+    pub(crate) fn render_tile_with(
+        &self,
+        options: &RenderOptions,
+        tile: Tile,
+        glyphs: Option<&std::sync::Mutex<crate::approximate::GlyphCache>>,
+    ) -> Result<Pixmap> {
         let (width, height) = self.device_size(options)?;
         if tile.width == 0
             || tile.height == 0
@@ -596,6 +620,26 @@ impl DisplayList {
             || tile.y.checked_add(tile.height).is_none_or(|n| n > height)
         {
             return Err(Error::invalid_argument("tile lies outside the page"));
+        }
+        if options.accuracy == crate::Accuracy::RowFragments
+            && crate::approximate::admits(self, options)?
+        {
+            // A contended or absent shared cache only costs time: masks are
+            // a pure function of their key.
+            let mut local;
+            let mut shared = glyphs.and_then(|cache| cache.try_lock().ok());
+            let cache = if let Some(cache) = shared.as_deref_mut() {
+                cache
+            } else {
+                local = crate::approximate::GlyphCache::new(crate::approximate::CACHE_BYTES);
+                &mut local
+            };
+            match crate::approximate::render(self, options, tile, cache) {
+                // The approximate path's own working budgets must not make a
+                // page fail that the exact path renders within its limits.
+                Err(error) if error.kind == pagura_core::ErrorKind::Limit => {}
+                result => return result,
+            }
         }
         if self.preview_separations(options)?.enabled
             || self.group.knockout
