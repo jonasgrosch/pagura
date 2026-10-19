@@ -312,8 +312,10 @@ impl<'a> Window<'a> {
         self.valid = 64 - skip;
     }
 
+    // `bit` never passes `limit`, `count` never exceeds `valid` or 32, and
+    // shifts stay below 64, so the window's arithmetic cannot wrap.
     fn available(&self) -> usize {
-        self.limit - self.bit
+        self.limit.wrapping_sub(self.bit)
     }
 
     /// The next `count` bits, 1 ≤ count ≤ `valid`.
@@ -322,13 +324,13 @@ impl<'a> Window<'a> {
         reason = "at most 32 bits are requested"
     )]
     fn peek(&self, count: u32) -> u32 {
-        (self.word >> (64 - count)) as u32
+        self.word.wrapping_shr(64u32.wrapping_sub(count)) as u32
     }
 
     fn consume(&mut self, count: u32) {
-        self.bit += count as usize;
-        self.word <<= count;
-        self.valid -= count;
+        self.bit = self.bit.wrapping_add(count as usize);
+        self.word = self.word.wrapping_shl(count);
+        self.valid = self.valid.wrapping_sub(count);
     }
 
     /// Reads `count` ≤ 24 bits, or None past the segment.
@@ -410,8 +412,8 @@ impl<'a> Window<'a> {
         // the window. Reading one bit even for none removes a branch.
         let raw = self.peek(size.max(1)) & 0u32.wrapping_sub(u32::from(size != 0));
         self.consume(size);
-        let negative = 0i32.wrapping_sub(i32::from(raw < ((1u32 << size) >> 1)));
-        let correction = negative & (1i32 - (1i32 << size));
+        let negative = 0i32.wrapping_sub(i32::from(raw < 1u32.wrapping_shl(size) >> 1));
+        let correction = negative & 1i32.wrapping_sub(1i32.wrapping_shl(size));
         Some(i32::from(token.value).wrapping_add(i32::try_from(raw).ok()?.wrapping_add(correction)))
     }
 }
@@ -470,11 +472,12 @@ fn block(
             return None;
         }
         let value = window.magnitude(token)?;
+        // Baseline magnitudes have at most 11 bits and quantizers 8.
+        let product = value.wrapping_mul(i32::from(quant[k]));
         if !nonconstant {
             output[1..].fill(0);
             nonconstant = true;
         }
-        let product = value * i32::from(quant[k]);
         l1 = l1.wrapping_add(u64::from(product.unsigned_abs()));
         output[crate::dct::transform::ORDER[k]] = product;
         k += 1;

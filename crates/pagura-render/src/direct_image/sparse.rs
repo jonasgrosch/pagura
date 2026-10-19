@@ -158,10 +158,12 @@ impl Plan {
                     continue;
                 }
                 let last = pixels[b.sample];
-                let mut sum = [0u32; 4];
+                // Deficits are at most 255 and rows at most 65535 samples, so
+                // signed sums are exact and convert to f32 in one step.
+                let mut sum = [0i32; 4];
                 for p in &pixels[a.sample + 1..b.sample] {
                     for c in 0..4 {
-                        sum[c] = sum[c].wrapping_add(u32::from(p[c]));
+                        sum[c] = sum[c].wrapping_add(i32::from(p[c]));
                     }
                 }
                 let middle = if t.len() > 2 { t[1].weight } else { 0.0 };
