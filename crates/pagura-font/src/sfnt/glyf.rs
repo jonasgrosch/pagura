@@ -1,8 +1,9 @@
 //! Unhinted TrueType contours, implied quadratic points, and components.
 use super::Sfnt;
 use crate::GlyphId;
-use crate::read::{Read, bad, cap};
+use crate::read::{bad, cap, here, slice};
 use crate::{recovery::repair, repairs};
+use pagura_core::bytes::Cursor;
 use pagura_core::{Diagnostics, Limits, Position, Result};
 use pagura_raster::{Path, PathBuilder, Point, Segment, Transform};
 
@@ -96,11 +97,7 @@ fn load(
         return Err(bad(font.glyf.end, "truncated glyph"));
     }
     let base = font.glyf.start + start;
-    let mut r = Read::new(
-        data.get(base..font.glyf.start + end)
-            .ok_or_else(|| bad(base, "truncated glyph"))?,
-        base,
-    );
+    let mut r = slice(data, base..font.glyf.start + end, "truncated glyph")?;
     let contours = r.i16()?;
     r.skip(8)?;
     match contours {
@@ -114,26 +111,26 @@ fn load(
     }
 }
 
-fn simple(r: &mut Read<'_>, contours: usize, work: &mut Work<'_>) -> Result<Shape> {
-    cap(contours, work.limits.value_nodes, r.at())?;
+fn simple(r: &mut Cursor<'_>, contours: usize, work: &mut Work<'_>) -> Result<Shape> {
+    cap(contours, work.limits.value_nodes, here(r))?;
     let mut ends = Vec::with_capacity(contours);
     let mut count = 0;
     for _ in 0..contours {
         let end = usize::from(r.u16()?);
         if end < count {
-            return Err(bad(r.at(), "unordered contour endpoints"));
+            return Err(bad(here(r), "unordered contour endpoints"));
         }
         count = end + 1;
         ends.push(count);
     }
-    work.charge(count, count, count.saturating_add(contours * 2), r.at())?;
+    work.charge(count, count, count.saturating_add(contours * 2), here(r))?;
     let instructions = usize::from(r.u16()?);
     r.skip(instructions)?;
     let mut flags = Vec::with_capacity(count);
     while flags.len() < count {
         let flag = r.u8()?;
         if flag & 0x80 != 0 {
-            return Err(bad(r.at(), "reserved glyph flag"));
+            return Err(bad(here(r), "reserved glyph flag"));
         }
         let repeats = if flag & 8 != 0 {
             usize::from(r.u8()?) + 1
@@ -141,7 +138,7 @@ fn simple(r: &mut Read<'_>, contours: usize, work: &mut Work<'_>) -> Result<Shap
             1
         };
         if repeats > count - flags.len() {
-            return Err(bad(r.at(), "glyph flag repeat exceeds point count"));
+            return Err(bad(here(r), "glyph flag repeat exceeds point count"));
         }
         flags.resize(flags.len() + repeats, flag);
     }
@@ -150,7 +147,7 @@ fn simple(r: &mut Read<'_>, contours: usize, work: &mut Work<'_>) -> Result<Shap
     for &flag in &flags {
         x = x
             .checked_add(delta(r, flag, 2, 16)?)
-            .ok_or_else(|| crate::read::limit(r.at(), "glyph coordinate overflow"))?;
+            .ok_or_else(|| crate::read::limit(here(r), "glyph coordinate overflow"))?;
         vertices.push(Vertex {
             point: Point::new(f64::from(x), 0.0),
             on: flag & 1 != 0,
@@ -160,7 +157,7 @@ fn simple(r: &mut Read<'_>, contours: usize, work: &mut Work<'_>) -> Result<Shap
     for (vertex, &flag) in vertices.iter_mut().zip(&flags) {
         y = y
             .checked_add(delta(r, flag, 4, 32)?)
-            .ok_or_else(|| crate::read::limit(r.at(), "glyph coordinate overflow"))?;
+            .ok_or_else(|| crate::read::limit(here(r), "glyph coordinate overflow"))?;
         vertex.point.y = f64::from(y);
     }
     let mut builder = PathBuilder::new();
@@ -175,7 +172,7 @@ fn simple(r: &mut Read<'_>, contours: usize, work: &mut Work<'_>) -> Result<Shap
     })
 }
 
-fn delta(r: &mut Read<'_>, flags: u8, short: u8, same: u8) -> Result<i32> {
+fn delta(r: &mut Cursor<'_>, flags: u8, short: u8, same: u8) -> Result<i32> {
     if flags & short != 0 {
         let n = i32::from(r.u8()?);
         Ok(if flags & same != 0 { n } else { -n })
@@ -243,7 +240,7 @@ fn contour(builder: &mut PathBuilder, vertices: &[Vertex]) -> Result<()> {
 fn composite(
     font: &Sfnt,
     data: &[u8],
-    r: &mut Read<'_>,
+    r: &mut Cursor<'_>,
     depth: usize,
     work: &mut Work<'_>,
 ) -> Result<Shape> {
@@ -251,7 +248,7 @@ fn composite(
     let mut builder = PathBuilder::new();
     let mut have_instructions = false;
     loop {
-        work.charge(1, 0, 0, r.at())?;
+        work.charge(1, 0, 0, here(r))?;
         let Component {
             flags,
             glyph,
@@ -272,13 +269,13 @@ fn composite(
             }
         } else {
             let parent: Point = *points
-                .get(usize::try_from(a).map_err(|_| bad(r.at(), "invalid component point"))?)
-                .ok_or_else(|| bad(r.at(), "missing parent attachment point"))?;
+                .get(usize::try_from(a).map_err(|_| bad(here(r), "invalid component point"))?)
+                .ok_or_else(|| bad(here(r), "missing parent attachment point"))?;
             let child = transform.apply(
                 *shape
                     .points
-                    .get(usize::try_from(b).map_err(|_| bad(r.at(), "invalid component point"))?)
-                    .ok_or_else(|| bad(r.at(), "missing child attachment point"))?,
+                    .get(usize::try_from(b).map_err(|_| bad(here(r), "invalid component point"))?)
+                    .ok_or_else(|| bad(here(r), "missing child attachment point"))?,
             );
             Point::new(parent.x - child.x, parent.y - child.y)
         };
@@ -296,12 +293,12 @@ fn composite(
             shape.path.segments().len(),
             shape.points.len(),
             shape.path.segments().len(),
-            r.at(),
+            here(r),
         )?;
         for &p in &shape.points {
             let p = transform.apply(p);
             if !p.is_finite() {
-                return Err(crate::read::limit(r.at(), "nonfinite component point"));
+                return Err(crate::read::limit(here(r), "nonfinite component point"));
             }
             points.push(p);
         }
@@ -313,7 +310,7 @@ fn composite(
                 Segment::LineTo(p) => {
                     builder
                         .line_to(transform.apply(p))
-                        .map_err(|_| bad(r.at(), "invalid component path"))?;
+                        .map_err(|_| bad(here(r), "invalid component path"))?;
                 }
                 Segment::CubicTo {
                     c1: a,
@@ -322,7 +319,7 @@ fn composite(
                 } => {
                     builder
                         .cubic_to(transform.apply(a), transform.apply(b), transform.apply(c))
-                        .map_err(|_| bad(r.at(), "invalid component path"))?;
+                        .map_err(|_| bad(here(r), "invalid component path"))?;
                 }
                 Segment::Close => {
                     builder.close();
@@ -351,19 +348,19 @@ struct Component {
     b: i32,
     transform: Transform,
 }
-fn component(r: &mut Read<'_>, diagnostics: &mut Diagnostics) -> Result<Component> {
+fn component(r: &mut Cursor<'_>, diagnostics: &mut Diagnostics) -> Result<Component> {
     let raw = r.u16()?;
     if raw & !0x1fef != 0 {
         repair(
             diagnostics,
             repairs::COMPONENT_FLAGS,
             "reserved composite glyph flags ignored",
-            Position::Buffer(r.at() - 2),
+            Position::Buffer(here(r) - 2),
         )?;
     }
     let flags = raw & 0x1fef;
     if flags & 0x1800 == 0x1800 {
-        return Err(bad(r.at(), "conflicting component offset flags"));
+        return Err(bad(here(r), "conflicting component offset flags"));
     }
     let glyph = GlyphId(u32::from(r.u16()?));
     let words = flags & 1 != 0;
@@ -393,7 +390,7 @@ fn component(r: &mut Read<'_>, diagnostics: &mut Diagnostics) -> Result<Componen
         .count()
         > 1
     {
-        return Err(bad(r.at(), "conflicting component transforms"));
+        return Err(bad(here(r), "conflicting component transforms"));
     }
     let mut fixed = || -> Result<f64> { Ok(f64::from(r.i16()?) / 16384.0) };
     if flags & 8 != 0 {

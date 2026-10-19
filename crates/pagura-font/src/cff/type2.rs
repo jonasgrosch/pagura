@@ -1,8 +1,10 @@
 //! Bounded, unhinted Type 2 charstrings (Adobe Technical Note 5177).
 use super::{Cff, Private, dict, strings};
 use crate::GlyphId;
-use crate::read::{Read, bad, cap};
+use crate::read::{bad, cap, here, slice};
 use crate::{recovery::repair, repairs};
+use pagura_core::bytes::Cursor;
+use pagura_core::convert::u32_to_usize;
 use pagura_core::{Diagnostics, Limits, Position, Result};
 use pagura_raster::{Path, PathBuilder, Point, Segment, Transform};
 
@@ -83,13 +85,13 @@ fn load(
     work: &mut Work<'_>,
 ) -> Result<(Path, f64)> {
     cap(depth, work.limits.depth.min(64), 0)?;
-    let index =
-        usize::try_from(glyph.0).map_err(|_| crate::read::limit(0, "glyph index overflow"))?;
     let range = font
         .glyphs
-        .get(index)
+        .get(u32_to_usize(glyph.0))
         .ok_or_else(|| bad(0, "glyph index outside CFF"))?;
-    let private = &font.private[font.select[index]];
+    let private = font
+        .private(glyph)
+        .ok_or_else(|| bad(range.start, "glyph without a CFF Private DICT"))?;
     let mut state = State {
         // Type 2 charstrings hold at most 48 operands (CFF2: 513).
         stack: Vec::with_capacity(48),
@@ -110,7 +112,7 @@ fn load(
         font,
         private,
         data,
-        Read::new(&data[range.clone()], range.start),
+        slice(data, range.clone(), "CFF charstring outside font")?,
         0,
         &mut state,
         work,
@@ -261,7 +263,7 @@ fn run(
     font: &Cff,
     private: &Private,
     data: &[u8],
-    mut r: Read<'_>,
+    mut r: Cursor<'_>,
     depth: usize,
     state: &mut State,
     work: &mut Work<'_>,
@@ -269,13 +271,13 @@ fn run(
     cap(
         depth,
         work.limits.depth.min(if font.cff2 { 64 } else { 10 }),
-        r.at(),
+        here(&r),
     )?;
     if !font.cff2 {
-        cap(r.data.len(), 65535, r.at())?;
+        cap(r.remaining(), 65535, here(&r))?;
     }
-    while r.pos < r.data.len() {
-        let at = r.at();
+    while !r.at_end() {
+        let at = here(&r);
         work.operation(at)?;
         let byte = r.u8()?;
         if byte == 28 || byte >= 32 {
@@ -317,14 +319,14 @@ fn run(
                     font,
                     private,
                     data,
-                    Read::new(&data[range.clone()], range.start),
+                    slice(data, range.clone(), "CFF subroutine outside font")?,
                     depth + 1,
                     state,
                     work,
                 )? == Flow::End
                 {
-                    if !work.stopped && r.pos != r.data.len() {
-                        return Err(bad(r.at(), "data after charstring end"));
+                    if !work.stopped && !r.at_end() {
+                        return Err(bad(here(&r), "data after charstring end"));
                     }
                     return Ok(Flow::End);
                 }
@@ -364,7 +366,7 @@ fn run(
             return Err(crate::read::limit(at, "nonfinite charstring operand"));
         }
     }
-    end_of_program(font.cff2, depth, state, r.at())
+    end_of_program(font.cff2, depth, state, here(&r))
 }
 
 fn end_of_program(cff2: bool, depth: usize, state: &State, at: usize) -> Result<Flow> {
@@ -630,7 +632,7 @@ fn hints(
     cff2: bool,
     private: &Private,
     byte: u8,
-    r: &mut Read<'_>,
+    r: &mut Cursor<'_>,
     state: &mut State,
     at: usize,
 ) -> Result<()> {
@@ -674,7 +676,7 @@ fn hints(
             .last()
             .is_some_and(|last| last & ((1 << unused) - 1) != 0)
         {
-            return Err(bad(r.at() - 1, "nonzero charstring mask padding"));
+            return Err(bad(here(r) - 1, "nonzero charstring mask padding"));
         }
     }
     Ok(())
@@ -705,7 +707,7 @@ fn move_operator(
     Ok(())
 }
 
-fn finish(private: &Private, state: &mut State, r: &Read<'_>, at: usize) -> Result<Flow> {
+fn finish(private: &Private, state: &mut State, r: &Cursor<'_>, at: usize) -> Result<Flow> {
     state.width(private, matches!(state.stack.len(), 1 | 5), at)?;
     match state.stack.as_slice() {
         [] => {}
@@ -713,8 +715,8 @@ fn finish(private: &Private, state: &mut State, r: &Read<'_>, at: usize) -> Resu
         _ => return Err(bad(at, "invalid endchar operands")),
     }
     state.stack.clear();
-    if r.pos != r.data.len() {
-        return Err(bad(r.at(), "data after charstring endchar"));
+    if !r.at_end() {
+        return Err(bad(here(r), "data after charstring endchar"));
     }
     Ok(Flow::End)
 }
