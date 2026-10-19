@@ -399,3 +399,73 @@ approximate path changes a fixture, the fixture records that path's measured
 bound, listed with this amendment. Every approximate path is named, can be
 switched to the exact path through `RenderOptions`, and its per-category
 accuracy table is kept with the change that introduces it.
+
+## Amendment: signed-area glyph coverage (2026-10-19)
+
+Status: accepted, 2026-10-20.
+
+A glyph whose canonical polygon has a certified winding may be covered by
+signed-area accumulation in f64, in place of certified integer accumulation
+and the strip sweep. Its reference and oracle stay the placed canonical
+polygon (amendment of 2026-10-18). Glyphs admitted to the curve sweep keep it
+and its true-curve reference. Rectangles keep closed-form coverage. Point
+contours, uncertified glyphs and glyphs under nonrectangular clips keep the
+existing paths. Selection depends only on the canonical geometry and the
+retained clip stack.
+
+**Certificate.** It is computed once per canonical geometry and cached with
+it. Each contour splits into strictly y-monotone chains; horizontal edges
+enclose no area. Between consecutive chain-end heights, the chains crossing the
+slab must alternate in direction from the left, starting with one sign s
+common to the glyph. Chains adjacent at the slab's middle must not meet
+inside the slab, since the first meeting in a slab is between such neighbours
+(Shamos and Hoey). Neighbours are compared at every vertex height of either
+one, or skipped when their x ranges within the slab are separated. An
+interpolated comparison must exceed 2^-45 M, where M >= 1 bounds the
+coordinates; that is more than 2^8 times its rounding error. Only identical
+vertices may touch, and only at slab ends. The winding is then 0 or s almost
+everywhere, so each cell's |signed area| is its nonzero area. Any doubt fails
+the certificate. The sweep stops and leaves the glyph uncertified once the
+chains crossing its slabs, counted per slab, plus its segment steps exceed
+32E + 1024 for E edges, so its work stays linear in E even for geometries
+the cache does not keep.
+
+**Kernel.** With t the exact device origin and f = t - floor(t), a vertex
+x maps to X = (x + f_x) - c, where c = floor(x_min + f_x); y maps likewise.
+Rounding is monotone, so every placed vertex stays within the frame. Edges
+are clipped to integer rows. Each row piece adds the exact trapezoid areas of
+the cells it crosses as prefix differences. One prefix sum per row, from the
+glyph's first column, gives each cell's signed area, and |area| is quantized
+once with the existing quantizer. A cell depends only on the geometry, t and
+the cell. Tiles, chunks and integer clip rectangles therefore cut the result
+exactly. Cells cut by a fractional rectangle-clip edge take the polygon path's
+geometric clip. Every other cell keeps the kernel's value, whichever tile or
+redundant-rectangle omission produced it. Rows are processed in bands of at
+most 2^16 accumulators. Work charges count vertex visits, row-piece columns
+and band cells, independently of the geometry cache.
+
+**Error bound.** Let u = 2^-53, E the polygon's vertex count, C its chain
+count, B >= 1 its largest relative coordinate, W = floor(width) + 4 and
+H = floor(height) + 2. To first order in u:
+
+- Placing a vertex errs by at most u(B + W + 1) in x and u(B + H + 1) in y. A
+  row crossing interpolates within 6uW more, and a single-column piece's
+  midpoint within u(W + 1).
+- Moving a piece's ends by dx and dy changes its contribution to any prefix
+  by at most |d| dx + 2 dy, where d is its signed height and |d| <= 1. A row
+  has at most E pieces.
+- The computed terms of one piece err by at most 32u|d| in total. Each chain
+  crosses a row band once, so the |d| of one row sum to at most C.
+- A row's prefix sums add at most E W terms of total magnitude at most C, so
+  summation errs by at most E C W u.
+
+So a cell's area errs by at most u(E(3B + 8W + 2H + 4) + 32C + E C W).
+Admission requires twice this to be at most 2^-20 pixel area, and W <= 2^16.
+Each byte is then within 0.5 + 255 * 2^-20 + 10^-9 < 0.50025 levels of the
+exact area of the placed polygon. Underflow adds at most 2^-1074 per
+operation. On the 40 benchmark pages the bound admits every certified glyph.
+
+Fixtures and unit tests compare against independent per-cell polygon
+clipping. Changed cells against the previous backends must be reported with
+their oracle values; on the 40 benchmark pages at 72, 150 and 300 dpi, every
+non-tie change moved a cell to the correctly rounded exact area.
