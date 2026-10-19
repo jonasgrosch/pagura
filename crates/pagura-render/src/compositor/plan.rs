@@ -222,7 +222,7 @@ mod tests {
             transfer: None,
             composite: Composite {
                 alpha,
-                ..Composite::opaque()
+                ..Composite::default()
             },
         })
     }
@@ -263,14 +263,14 @@ mod tests {
                     knockout: true,
                     ..Attributes::default()
                 },
-                composite: Composite::opaque(),
+                composite: Composite::default(),
             });
             assert_eq!(page(&list(vec![group])).unwrap().format, expected);
         }
         let Command::Path(mut p) = path(1.0) else {
             unreachable!()
         };
-        p.composite.blend = crate::blend::BlendMode::Dodge;
+        p.composite.blend = crate::blend::BlendMode::ColorDodge;
         assert_eq!(
             page(&list(vec![Command::Path(p)])).unwrap().reason,
             Some(Reason::Blend)

@@ -55,7 +55,8 @@ pub(super) fn write(
         && (height > area.height() + 1e-9
             || lines.iter().any(|line| line.width > area.width() + 1e-9))
     {
-        return Err(Error::invalid_argument(
+        return Err(Error::unsupported(
+            crate::features::APPEARANCE_TEXT_FIT,
             "DoNotScroll field text does not fit its widget",
         ));
     }
@@ -71,7 +72,10 @@ pub(super) fn write(
     };
     if let Some(cells) = layout.comb {
         if cells == 0 || chars.len() > cells {
-            return Err(Error::invalid_argument("invalid Comb cell count"));
+            return Err(Error::unsupported(
+                crate::features::APPEARANCE_TEXT_FIT,
+                "field text exceeds its comb cells",
+            ));
         }
         let cell = area.width() / cells as f64;
         let offset = match layout.quadding {
@@ -118,7 +122,7 @@ fn encode(
     let mut chars = Vec::new();
     let mut input = text.chars().peekable();
     while let Some(c) = input.next() {
-        if chars.len() >= limits.value_nodes {
+        if chars.len() >= limits.text_items {
             return Err(Error::limit("appearance character budget exceeded"));
         }
         let c = if c == '\r' {
@@ -187,7 +191,7 @@ fn lines(
     let mut result = Vec::new();
     let (mut start, mut i, mut measured, mut last_space) = (0, 0, 0.0, None);
     while let Some(c) = chars.get(i) {
-        if *work >= limits.operations {
+        if *work >= limits.text_work {
             return Err(Error::limit("appearance layout work budget exceeded"));
         }
         *work += 1;
@@ -246,7 +250,10 @@ fn auto_size(
     let fits = |size, work: &mut usize| -> Result<bool> {
         if let Some(cells) = layout.comb {
             if cells == 0 || chars.len() > cells {
-                return Err(Error::invalid_argument("invalid Comb cell count"));
+                return Err(Error::unsupported(
+                    crate::features::APPEARANCE_TEXT_FIT,
+                    "field text exceeds its comb cells",
+                ));
             }
             return Ok(chars
                 .iter()
@@ -280,7 +287,8 @@ fn auto_size(
     }
     let size = (low * 64.0).floor() / 64.0;
     if size < 1.0 / 64.0 {
-        return Err(Error::invalid_argument(
+        return Err(Error::unsupported(
+            crate::features::APPEARANCE_TEXT_FIT,
             "field text cannot fit at the minimum auto-size",
         ));
     }

@@ -1,10 +1,15 @@
 //! Integration evidence for the vector pipeline.
 
-use crate::{RenderOptions, Tile, compile_page};
+use super::support::{assert_close, tolerance};
 use pagura_core::{ErrorKind, Position, Recovery};
 use pagura_document::{Document, OpenOptions};
 use pagura_raster::Rgba8;
+use pagura_render::{RenderOptions, Tile, compile_page};
 
+#[expect(
+    clippy::unwrap_used,
+    reason = "a fixture that fails to open fails the test"
+)]
 fn open(name: &str) -> Document {
     Document::open(
         pagura_testkit::fixture("content", &format!("{name}.pdf")),
@@ -261,10 +266,12 @@ const RENDER: &[&str] = &[
     "space-CalRGB",
     "annotation-no-normal",
     "annotation-hidden",
+    "annotation-image-budget",
 ];
 
 #[test]
 fn independent_content_pixels() {
+    let manifest = pagura_testkit::Manifest::load("content");
     for &name in RENDER {
         let document = open(name);
         let list = compile_page(&document, document.page(0).unwrap())
@@ -278,34 +285,7 @@ fn independent_content_pixels() {
             &target.to_rgb_over(Rgba8::WHITE),
         );
         let expected = pagura_testkit::fixture("content", &format!("{name}.ppm"));
-        assert_eq!(actual.len(), expected.len(), "{name}");
-        for (i, (&a, &e)) in actual.iter().zip(&expected).enumerate() {
-            assert!(
-                a.abs_diff(e)
-                    <= if name.starts_with("stroke-closed-") {
-                        3
-                    } else {
-                        u8::from(
-                            name == "knockout-opaque-rounding"
-                                || name.starts_with("dash-")
-                                || name.starts_with("fractional")
-                                || name.starts_with("icc-")
-                                || name.starts_with("default-underlying-")
-                                || name.starts_with("stroke-closed-")
-                                || name.starts_with("cie-")
-                                || name == "annotation-sheared"
-                                || name.starts_with("shading-")
-                                || name.starts_with("pattern-")
-                                || name.starts_with("blend-")
-                                || name.starts_with("group-")
-                                || name.starts_with("soft-")
-                                || name.starts_with("function-")
-                                || name == "decimal-stroke-half-tie",
-                        )
-                    },
-                "{name} byte {i}: {a} vs {e}"
-            );
-        }
+        assert_close(name, &actual, &expected, tolerance(&manifest, name));
     }
 }
 
@@ -314,11 +294,9 @@ fn all_supported_fixtures_assemble_as_single_pixel_tiles() {
     for &name in RENDER {
         let document = open(name);
         let list = compile_page(&document, document.page(0).unwrap()).unwrap();
-        let options = RenderOptions {
-            scale: 1.25,
-            background: Rgba8::new(17, 35, 61, 96),
-            ..RenderOptions::default()
-        };
+        let options = RenderOptions::default()
+            .with_scale(1.25)
+            .with_background(Rgba8::new(17, 35, 61, 96));
         let full = list.render(&options).unwrap();
         for y in 0..full.height() {
             for x in 0..full.width() {
@@ -368,34 +346,6 @@ fn unsupported_forward_icc_transforms_identify_the_profile() {
         );
         assert_eq!(error.object, Some(pagura_core::ObjectId::new(5, 0)));
     }
-}
-
-#[test]
-fn annex_a_validation_precedes_unsupported_and_unknown_is_syntax() {
-    use pagura_core::Value;
-    for (operator, operands) in [
-        (b"Tj".as_slice(), vec![Value::Integer(1)]),
-        (b"Tf", vec![Value::name(b"F")]),
-        (b"cm", vec![]),
-        (b"q", vec![Value::Integer(1)]),
-        (b"d", vec![Value::Integer(1), Value::Integer(1)]),
-    ] {
-        assert_eq!(
-            crate::operators::validate(operator, &operands)
-                .unwrap_err()
-                .kind,
-            ErrorKind::Syntax
-        );
-    }
-    assert_eq!(
-        crate::operators::validate(b"Tj", &[Value::String(vec![])]).unwrap(),
-        Some(crate::operators::Implemented)
-    );
-    assert!(
-        crate::operators::validate(b"future", &[])
-            .unwrap()
-            .is_none()
-    );
 }
 
 #[test]
@@ -610,7 +560,7 @@ fn compositing_memory_work_and_shared_function_budgets_are_bounded() {
         (
             "shading-axial",
             pagura_core::Limits {
-                operations: 2,
+                function_work: 2,
                 ..pagura_core::Limits::default()
             },
         ),
@@ -627,7 +577,8 @@ fn compositing_memory_work_and_shared_function_budgets_are_bounded() {
         let error = list.render(&RenderOptions::default()).expect_err(name);
         assert_eq!(error.kind, ErrorKind::Limit, "{name}: {error}");
     }
-    // Preparation and rendering each enforce their page work budget.
+    // Preparation enforces the page work budget; the compositor tests check
+    // that rendering does too.
     let document = Document::open(
         pagura_testkit::fixture("content", "group-i1-k0.pdf"),
         &OpenOptions {
@@ -642,13 +593,6 @@ fn compositing_memory_work_and_shared_function_budgets_are_bounded() {
     let error = compile_page(&document, document.page(0).unwrap()).unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
     assert!(error.object.is_some());
-    let document = open("group-i1-k0");
-    let mut list = compile_page(&document, document.page(0).unwrap()).unwrap();
-    list.limits.raster_work = 1;
-    assert_eq!(
-        list.render(&RenderOptions::default()).unwrap_err().kind,
-        ErrorKind::Limit
-    );
     // The F32 page now fits the former F64-sized threshold. Keep a
     // successful admission beside the smaller-budget rejection above.
     let document = Document::open(
@@ -757,6 +701,7 @@ fn required_path_colour_and_configuration_validation() {
 
 #[test]
 fn mesh_pattern_and_adjusted_geometry_match_independent_oracles() {
+    let manifest = pagura_testkit::Manifest::load("content");
     for name in [
         "adjust-oblique",
         "adjust-affine-pen",
@@ -765,6 +710,7 @@ fn mesh_pattern_and_adjusted_geometry_match_independent_oracles() {
         "tiling-underlying",
         "tiling-ignored-colour",
         "tiling-ignored-inline",
+        "tiling-ignored-inline-icc",
         "tiling-alpha-once",
         "tiling-blend",
         "mesh-triangle",
@@ -795,18 +741,7 @@ fn mesh_pattern_and_adjusted_geometry_match_independent_oracles() {
             &pixels.to_rgb_over(Rgba8::WHITE),
         );
         let expected = pagura_testkit::fixture("content", &format!("{name}.ppm"));
-        let tolerance = if name == "adjust-arch" || name.starts_with("annotation-icon-") {
-            3
-        } else {
-            1
-        };
-        assert_eq!(actual.len(), expected.len(), "{name}");
-        for (index, (&a, &b)) in actual.iter().zip(&expected).enumerate() {
-            assert!(
-                a.abs_diff(b) <= tolerance,
-                "{name} byte {index}: {a} vs {b}"
-            );
-        }
+        assert_close(name, &actual, &expected, tolerance(&manifest, name));
     }
 }
 
@@ -823,11 +758,9 @@ fn mesh_patterns_and_view_fitting_preserve_global_tile_coordinates() {
     ] {
         let document = open(name);
         let list = compile_page(&document, document.page(0).unwrap()).unwrap();
-        let options = RenderOptions {
-            scale: 1.25,
-            background: Rgba8::new(17, 35, 61, 96),
-            ..RenderOptions::default()
-        };
+        let options = RenderOptions::default()
+            .with_scale(1.25)
+            .with_background(Rgba8::new(17, 35, 61, 96));
         let full = list.render(&options).unwrap();
         for y in 0..full.height() {
             for x in 0..full.width() {
@@ -897,43 +830,44 @@ fn group_bounds_and_page_chunks_fit_a_small_surface_budget() {
 
 #[test]
 fn empty_fill_boundaries_match_oracles_and_device_tiles() {
-    for (name, tolerance) in [
-        ("zero-width-rectangle", 0),
-        ("zero-width-rectangle-reversed", 0),
-        ("zero-height-rectangle", 0),
-        ("zero-height-rectangle-reversed", 0),
-        ("integral-boundary", 0),
-        ("collinear-triangle", 0),
-        ("oblique-collinear-triangle", 1),
-        ("open-segment-evenodd", 0),
-        ("collinear-cubic", 0),
-        ("singular-transform", 0),
-        ("multiple-subpaths", 0),
-        ("point-and-segment", 0),
-        ("point-pair-evenodd", 0),
-        ("point-pair-nonzero", 0),
-        ("half-alpha", 0),
-        ("trailing-move", 0),
-        ("stroke-state-independent", 0),
-        ("degenerate-clip", 0),
-        ("degenerate-clip-evenodd", 0),
-        ("zero-area-clip-content", 0),
-        ("zero-width-pattern-bbox", 0),
-        ("zero-size-pattern-bbox", 0),
-        ("zero-width-shading-bbox", 0),
-        ("zero-width-shading-pattern-bbox", 0),
-        ("zero-width-shading-pattern-background", 0),
-        ("zero-size-shading-bbox", 0),
-        ("zero-size-shading-pattern-bbox", 0),
-        ("zero-size-shading-pattern-background", 0),
-        ("paint-before-clip", 0),
-        ("hairline-clipped-geometrically", 0),
-        ("cancelled-evenodd", 0),
-        ("cancelled-nonzero-subdivided", 0),
-        ("positive-sliver", 0),
-        ("tiny-nonpoint-curve", 0),
-        ("positive-bow-tie", 0),
-        ("transparent-compositor", 0),
+    let manifest = pagura_testkit::Manifest::load("zero_area");
+    for name in [
+        "zero-width-rectangle",
+        "zero-width-rectangle-reversed",
+        "zero-height-rectangle",
+        "zero-height-rectangle-reversed",
+        "integral-boundary",
+        "collinear-triangle",
+        "oblique-collinear-triangle",
+        "open-segment-evenodd",
+        "collinear-cubic",
+        "singular-transform",
+        "multiple-subpaths",
+        "point-and-segment",
+        "point-pair-evenodd",
+        "point-pair-nonzero",
+        "half-alpha",
+        "trailing-move",
+        "stroke-state-independent",
+        "degenerate-clip",
+        "degenerate-clip-evenodd",
+        "zero-area-clip-content",
+        "zero-width-pattern-bbox",
+        "zero-size-pattern-bbox",
+        "zero-width-shading-bbox",
+        "zero-width-shading-pattern-bbox",
+        "zero-width-shading-pattern-background",
+        "zero-size-shading-bbox",
+        "zero-size-shading-pattern-bbox",
+        "zero-size-shading-pattern-background",
+        "paint-before-clip",
+        "hairline-clipped-geometrically",
+        "cancelled-evenodd",
+        "cancelled-nonzero-subdivided",
+        "positive-sliver",
+        "tiny-nonpoint-curve",
+        "positive-bow-tie",
+        "transparent-compositor",
     ] {
         let document = Document::open(
             pagura_testkit::fixture("zero_area", &format!("{name}.pdf")),
@@ -949,10 +883,7 @@ fn empty_fill_boundaries_match_oracles_and_device_tiles() {
         let actual =
             pagura_testkit::ppm(full.width(), full.height(), &full.to_rgb_over(Rgba8::WHITE));
         let expected = pagura_testkit::fixture("zero_area", &format!("{name}.ppm"));
-        assert_eq!(actual.len(), expected.len(), "{name}");
-        for (i, (&a, &e)) in actual.iter().zip(&expected).enumerate() {
-            assert!(a.abs_diff(e) <= tolerance, "{name} byte {i}: {a} vs {e}");
-        }
+        assert_close(name, &actual, &expected, tolerance(&manifest, name));
         for y in 0..8 {
             for x in 0..8 {
                 let tile = list
@@ -982,11 +913,9 @@ fn image_tiles_preserve_global_coordinates_at_large_scales() {
         )
         .unwrap();
         let list = compile_page(&document, document.page(0).unwrap()).unwrap();
-        let options = RenderOptions {
-            scale: 41.1,
-            background: Rgba8::new(17, 35, 61, 96),
-            ..RenderOptions::default()
-        };
+        let options = RenderOptions::default()
+            .with_scale(41.1)
+            .with_background(Rgba8::new(17, 35, 61, 96));
         let full = list.render(&options).unwrap();
         for y in (0..full.height()).step_by(133) {
             for x in (0..full.width()).step_by(197) {
@@ -1045,4 +974,12 @@ fn image_reduction_half_levels_choose_a_nearest_level() {
             }
         }
     }
+}
+
+#[test]
+fn compiled_pages_and_contexts_cross_threads() {
+    // ADR 0004 renders tiles of one display list in parallel.
+    fn shared<T: Send + Sync>() {}
+    shared::<pagura_render::DisplayList>();
+    shared::<pagura_render::RenderContext>();
 }

@@ -1,5 +1,6 @@
 //! Image resources and inline content framing (8.9).
 use super::{Arc, Compiler, Dictionary, Error, ObjectId, Result, Value, resource};
+use crate::operators::Target;
 use crate::{
     color::{self, Space},
     display::{Command, ImageCommand},
@@ -20,11 +21,7 @@ pub(crate) struct Image {
     pub(crate) intent: Option<crate::icc::Intent>,
 }
 impl Compiler<'_> {
-    pub(super) fn xobject(&mut self, values: &[Value], resources: &Dictionary) -> Result<()> {
-        let name = values
-            .first()
-            .and_then(Value::as_name)
-            .ok_or(Error::syntax("XObject name expected"))?;
+    pub(super) fn xobject(&mut self, name: &Name, resources: &Dictionary) -> Result<()> {
         let value = resource(self.document, resources, b"XObject", name.as_bytes())?;
         let id = value
             .as_reference()
@@ -40,13 +37,15 @@ impl Compiler<'_> {
                 .transpose()?
                 .and_then(Value::as_bool)
                 .unwrap_or(false);
-            if self.uncolored_glyph() && !stencil {
+            // An uncoloured Type 3 glyph (9.6.4) and an uncoloured tiling cell
+            // (8.6.8) paint only image masks; other images are framed, not decoded.
+            if (self.uncolored_glyph() || self.stencil_pattern) && !stencil {
                 return Ok(());
             }
 
             let visible = dict
                 .get(b"OC")
-                .map(|v| self.visibility.visible(self.document, v))
+                .map(|v| self.session.visibility.visible(self.document, v))
                 .transpose()?
                 .unwrap_or(true);
             self.extract_graphic_object(id, !visible)?;
@@ -56,7 +55,7 @@ impl Compiler<'_> {
             }
             Ok(())
         } else {
-            self.form(values, resources)
+            self.form(name, resources)
         }
     }
 
@@ -73,7 +72,7 @@ impl Compiler<'_> {
             return Err(Error::limit("image mask nesting exceeded"));
         }
         let key = (id, self.resource_identity(resources)?);
-        if let Some(image) = self.state.text.cache.borrow().images.get(&key) {
+        if let Some(image) = self.session.paint.borrow().images.get(&key) {
             return Ok(Arc::clone(image));
         }
         stack.push(id);
@@ -90,9 +89,8 @@ impl Compiler<'_> {
             )
             .map_err(|e| e.in_object(id))?;
         stack.pop();
-        self.state
-            .text
-            .cache
+        self.session
+            .paint
             .borrow_mut()
             .images
             .insert(key, Arc::clone(&image));
@@ -185,7 +183,7 @@ impl Compiler<'_> {
             }
             bytes = bytes.saturating_add(sample_bytes(&alpha.samples));
         }
-        self.paint_charge(bytes, 1)?;
+        self.session.retain(bytes)?;
         Ok(Arc::new(Image {
             decoded,
             space,
@@ -220,7 +218,7 @@ impl Compiler<'_> {
     }
 
     fn image_space(&self, decoded: &DecodedImage, resources: &Dictionary) -> Result<Option<Space>> {
-        let context = crate::icc::ColorContext::new(self.document, &self.compilation.colors);
+        let context = self.session.colors();
         let space = match &decoded.kind {
             ImageKind::Color {
                 color_space: Some(value),
@@ -250,12 +248,8 @@ impl Compiler<'_> {
         if self.uncolored_glyph() && image.space.is_some() {
             return Ok(());
         }
-        self.marks = self
-            .marks
-            .checked_add(1)
-            .filter(|&n| n <= self.document.limits().display_commands)
-            .ok_or(Error::limit("image display list budget exceeded"))?;
-        let mut composite = self.state.composite.clone();
+        self.session.charge_marks(1)?;
+        let mut composite = self.state.composite(Target::Fill);
         if let Some(intent) = image.intent {
             composite.conversion.intent = intent;
         }
@@ -263,16 +257,16 @@ impl Compiler<'_> {
         if !matches!(image.decoded.mask, MaskKind::None) {
             composite.mask = None;
         }
-        self.list.commands.push(Command::Image(ImageCommand {
+        self.commands.push(Command::Image(ImageCommand {
             image,
             transform: self.state.ctm,
             clip: self.state.clip.clone(),
-            stencil: self.state.fill.clone(),
+            stencil: self.state.fill.color.clone(),
             composite,
             transfer: self.state.transfer.clone(),
             position: self.position,
         }));
-        self.paint_charge(0, 0)
+        Ok(())
     }
 
     fn inline_framing(
@@ -302,8 +296,7 @@ impl Compiler<'_> {
                     .and_then(Value::as_name)
                     .is_some_and(|n| n == b"ICCBased")
             }) {
-                let context =
-                    crate::icc::ColorContext::new(self.document, &self.compilation.colors);
+                let context = self.session.colors();
                 let count = color::blending(&context, resources, space)?.components();
                 Value::name(match count {
                     1 => b"DeviceGray",
@@ -328,14 +321,10 @@ impl Compiler<'_> {
         if !self.operands.is_empty() {
             return Err(Error::syntax("operands before BI"));
         }
-        self.glyph_operator(b"BI")?;
+        self.glyph_ignores(crate::operators::Operator::BeginImage)?;
         let mut dictionary = Dictionary::new();
         loop {
-            self.operations = self
-                .operations
-                .checked_add(1)
-                .filter(|&n| n <= self.document.limits().operations)
-                .ok_or(Error::limit("inline image dictionary budget exceeded"))?;
+            self.session.charge_operations(1)?;
             if parser.peek() == Some(b'I') {
                 if parser.word()? != b"ID" {
                     return Err(Error::syntax("inline image requires ID"));
@@ -390,7 +379,9 @@ impl Compiler<'_> {
             .or_else(|| dictionary.get(b"IM"))
             .and_then(Value::as_bool)
             .unwrap_or(false);
-        if self.uncolored_glyph() && !stencil {
+        // An uncoloured Type 3 glyph (9.6.4) and an uncoloured tiling cell
+        // (8.6.8) paint only image masks; other images are framed, not decoded.
+        if (self.uncolored_glyph() || self.stencil_pattern) && !stencil {
             return Ok(());
         }
         let image = pagura_image::decode_inline(
@@ -424,7 +415,11 @@ pub(crate) fn max_sample(image: &DecodedImage, component: usize) -> Result<u16> 
     Ok(u16::MAX >> (16 - bits))
 }
 impl Image {
-    pub(crate) fn components(&self, pixel: usize, values: &mut [f64; 32]) -> Result<()> {
+    pub(crate) fn components(
+        &self,
+        pixel: usize,
+        values: &mut [f64; color::MAX_COMPONENTS],
+    ) -> Result<()> {
         let n = usize::from(self.decoded.components);
         for (component, out) in values.iter_mut().enumerate().take(n) {
             let sample = self

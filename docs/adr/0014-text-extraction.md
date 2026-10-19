@@ -44,7 +44,7 @@ word, line or reading order for untagged pages, and no search semantics.
    first.
 4. **API.**
    - `pagura_render::{compile_page_with_text, text_page}` take a document,
-     page and optional provider, like `compile_page_with`.
+     page and optional provider, like `compile_page_with_provider`.
    - `RenderContext::{compile_page_with_text, text_page}` reuse the
      document's fonts.
    - The facade's `text_page` uses the feature-selected data.

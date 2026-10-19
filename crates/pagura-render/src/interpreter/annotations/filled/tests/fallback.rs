@@ -52,8 +52,10 @@ fn need_appearances_does_not_turn_resource_failures_into_success() {
         fixture("forms", "render-text-need-appearances.pdf"),
         &OpenOptions {
             recovery: Recovery::Strict,
+            // Appearance layout work is text work (ADR 0016); a budget too
+            // small for the generated text must stay an error.
             limits: pagura_core::Limits {
-                operations: 128,
+                text_work: 1,
                 ..Default::default()
             },
             ..Default::default()

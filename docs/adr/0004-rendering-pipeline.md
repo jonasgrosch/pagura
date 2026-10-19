@@ -88,6 +88,18 @@ colour, then bounds and removes what remains, so that the 8-bit path is
 retired only once its replacement is cheap. Fixture oracles compute the exact result independently in
 Python, and a fixture may carry a tolerance of 1 against it.
 
+**Sampled oracles** (amended 2026-10-18). Some rendering fixtures have no
+closed-form coverage for the generator to integrate: a stroke-adjusted pen
+around a curve, the predefined annotation icons, and the circle a degenerate
+closed subpath paints. Their oracles sample coverage densely, and the
+sampling can itself be off by up to three levels, so these cases carry a
+tolerance of 3: `content/adjust-arch`,
+`content/annotation-icon-{Comment,Help,Insert,Key,NewParagraph,Note,Paragraph}`
+and `content/stroke-closed-{duplicates,point}`. They are the only content or
+paint cases above 1. The render tests take every tolerance from the case's
+manifest entry and fail any other case above 1
+(`crates/pagura-render/tests/render/support.rs`).
+
 ## Consequences
 
 The 8-bit surface is not the final imaging model: transparency groups, soft

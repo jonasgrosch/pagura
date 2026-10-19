@@ -156,7 +156,7 @@ impl Context {
             value.color = color.color.map(|v| v * value.alpha);
             return Ok(value);
         }
-        let mut components = [0.0; 32];
+        let mut components = [0.0; crate::color::MAX_COMPONENTS];
         image.components(pixel, &mut components)?;
         let (space, count) = expand_indexed(image, &mut components)?;
         let mut shape = 1.0;
@@ -261,7 +261,7 @@ fn mask_texel(image: &Image, pixel: usize) -> Result<Texel> {
     let alpha = if let ImageKind::Stencil { inverted } = image.decoded.kind {
         f64::from(u8::from((sample == 1) == inverted))
     } else {
-        let mut values = [0.0; 32];
+        let mut values = [0.0; crate::color::MAX_COMPONENTS];
         image.components(pixel, &mut values)?;
         values[0].clamp(0.0, 1.0)
     };
@@ -280,7 +280,7 @@ fn precision_max(bits: u8) -> Result<f64> {
 
 fn expand_indexed<'a>(
     image: &'a Image,
-    values: &mut [f64; 32],
+    values: &mut [f64; crate::color::MAX_COMPONENTS],
 ) -> Result<(&'a crate::color::Space, usize)> {
     use crate::color::Space;
     let space = image
@@ -288,12 +288,9 @@ fn expand_indexed<'a>(
         .as_ref()
         .ok_or(Error::syntax("colour image missing space"))?;
     if let Space::Indexed { base, high, lookup } = space {
-        let n = base.components();
-        let decoded = crate::color::indexed_components(base, *high, lookup, values[0])?;
-        for (out, value) in values.iter_mut().zip(decoded) {
-            *out = value;
-        }
-        Ok((base, n))
+        let decoded = Space::lookup(base, *high, lookup, values[0])?;
+        values[..decoded.len()].copy_from_slice(&decoded);
+        Ok((base, decoded.len()))
     } else {
         Ok((space, usize::from(image.decoded.components)))
     }
@@ -541,7 +538,7 @@ mod tests {
             transform: Transform::IDENTITY,
             clip: None,
             stencil: crate::color::Color::default(),
-            composite: crate::transparency::Composite::opaque(),
+            composite: crate::transparency::Composite::default(),
             transfer: None,
             position: pagura_core::Position::Unknown,
         }
@@ -601,7 +598,7 @@ mod tests {
         assert_eq!(
             value.color[..3]
                 .iter()
-                .map(|&v| super::super::quantize(v))
+                .map(|&v| crate::device::quantize_unit(v))
                 .collect::<Vec<_>>(),
             [2, 129, 0]
         );
@@ -624,7 +621,7 @@ mod tests {
                     let numerator = if inverted { maximum - raw } else { raw };
                     let expected = u8::try_from((numerator * 255 + maximum / 2) / maximum).unwrap();
                     let alpha = samples.sample(&image, pixel).unwrap();
-                    assert_eq!(super::super::quantize(alpha), expected);
+                    assert_eq!(crate::device::quantize_unit(alpha), expected);
                 }
             }
         }
@@ -648,7 +645,7 @@ mod tests {
         let mut samples = MaskSamples { table: [None; 256] };
         for (pixel, expected) in [0, 128, 255].into_iter().enumerate() {
             assert_eq!(
-                super::super::quantize(samples.sample(&image, pixel).unwrap()),
+                crate::device::quantize_unit(samples.sample(&image, pixel).unwrap()),
                 expected
             );
         }
@@ -660,7 +657,7 @@ mod tests {
             bits: vec![8],
         };
         assert_eq!(
-            super::super::quantize(samples.sample(&image, 0).unwrap()),
+            crate::device::quantize_unit(samples.sample(&image, 0).unwrap()),
             128
         );
     }
@@ -695,7 +692,7 @@ mod tests {
             // (8.6.6.3; 8.9.5.2), independently fixing every expected channel.
             let expected = palette(raw);
             for (value, expected) in actual.color.iter().zip(expected) {
-                assert_eq!(super::super::quantize(*value), expected);
+                assert_eq!(crate::device::quantize_unit(*value), expected);
             }
             assert_eq!(actual.alpha, 1.0);
             assert_eq!(actual.shape, 1.0);
@@ -832,7 +829,7 @@ mod tests {
             transform: Transform::IDENTITY,
             clip: None,
             stencil: crate::color::Color::default(),
-            composite: crate::transparency::Composite::opaque(),
+            composite: crate::transparency::Composite::default(),
             transfer: None,
             position: pagura_core::Position::Unknown,
         };

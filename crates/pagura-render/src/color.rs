@@ -5,6 +5,62 @@ use pagura_core::{Dictionary, Error, Result, Value};
 use pagura_raster::Rgba8;
 use std::sync::Arc;
 
+/// The most components a colour space may have: this renderer's
+/// implementation limit for DeviceN colourants, not a format maximum
+/// (Annex C, Table C.1 discusses practical processor limits).
+pub(crate) const MAX_COMPONENTS: usize = 32;
+
+/// Up to [`MAX_COMPONENTS`] colour components, without allocating.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Components {
+    values: [f64; MAX_COMPONENTS],
+    len: usize,
+}
+impl Components {
+    /// `len` zero components; `len` is at most [`MAX_COMPONENTS`].
+    pub(crate) fn zeros(len: usize) -> Self {
+        Self {
+            values: [0.0; MAX_COMPONENTS],
+            len: len.min(MAX_COMPONENTS),
+        }
+    }
+}
+impl std::ops::Deref for Components {
+    type Target = [f64];
+    fn deref(&self) -> &[f64] {
+        &self.values[..self.len]
+    }
+}
+impl std::ops::DerefMut for Components {
+    fn deref_mut(&mut self) -> &mut [f64] {
+        &mut self.values[..self.len]
+    }
+}
+impl FromIterator<f64> for Components {
+    /// Collects at most [`MAX_COMPONENTS`] values; any more are dropped.
+    fn from_iter<I: IntoIterator<Item = f64>>(values: I) -> Self {
+        let mut out = Self::zeros(0);
+        for (slot, value) in out.values.iter_mut().zip(values) {
+            *slot = value;
+            out.len += 1;
+        }
+        out
+    }
+}
+
+/// The alternate-space components a Separation or DeviceN tint transform
+/// gives for `c` (8.6.6.4), each tint clamped to `0..=1` first.
+pub(crate) fn tint(
+    function: &crate::functions::Function,
+    c: &[f64],
+    work: &mut usize,
+) -> Result<Components> {
+    let input: Components = c.iter().map(|v| v.clamp(0.0, 1.0)).collect();
+    let mut output = Components::zeros(function.outputs());
+    function.evaluate_into(&input, &mut output, work)?;
+    Ok(output)
+}
+
 #[derive(Debug, Clone)]
 pub(crate) enum Space {
     Pattern(Option<Arc<Self>>),
@@ -35,9 +91,11 @@ pub(crate) enum Space {
 
 #[derive(Debug, Clone)]
 pub(crate) enum Color {
+    /// A colour in a non-pattern space. Components are shared, so `q` and
+    /// display commands copy colours without allocating.
     Solid {
         space: Space,
-        components: Vec<f64>,
+        components: Arc<[f64]>,
     },
     Pattern {
         base: Option<Arc<Space>>,
@@ -69,7 +127,10 @@ impl Color {
             Space::Special { inputs, .. } => vec![1.0; *inputs],
             _ => vec![0.0; space.components()],
         };
-        Self::Solid { space, components }
+        Self::Solid {
+            space,
+            components: components.into(),
+        }
     }
     pub(crate) fn validate_simple_operator(
         &self,
@@ -87,15 +148,15 @@ impl Color {
             {
                 return Err(Error::syntax("colour space requires SCN or scn"));
             }
-            let mut diagnostic = pagura_core::Diagnostic::new(
-                crate::repairs::COLOR_OPERATOR,
-                "colour space requires SCN or scn",
-            )
-            .at(position);
-            if let pagura_core::Position::Stream { object, .. } = position {
-                diagnostic = diagnostic.in_object(object);
-            }
-            crate::interpreter::repair(document, diagnostic)?;
+            crate::interpreter::repair(
+                document,
+                pagura_core::Diagnostic::new(
+                    crate::repairs::COLOR_OPERATOR,
+                    "colour space requires SCN or scn",
+                )
+                .at(position)
+                .in_object_opt(position.object()),
+            )?;
         }
         Ok(())
     }
@@ -115,60 +176,11 @@ impl Color {
             .collect::<Result<_>>()?;
         Ok(())
     }
-    pub(crate) fn select_pattern(
-        &mut self,
-        document: &ColorContext<'_>,
-        resources: &Dictionary,
-        values: &[Value],
-        initial: pagura_raster::Transform,
-        position: pagura_core::Position,
-    ) -> Result<()> {
-        let Self::Pattern { base, selected } = self else {
-            return self.set(values);
-        };
-        let Some((name, components)) = values.split_last() else {
-            return Err(Error::syntax("missing pattern name"));
-        };
-        let name = name
-            .as_name()
-            .ok_or(Error::syntax("pattern name expected"))?;
-        let mut pattern =
-            crate::pattern::Pattern::parse(document, resources, name.as_bytes(), initial)?;
-        match &mut pattern.kind {
-            crate::pattern::Kind::Tiling(t) if t.uncolored => {
-                let space = base.as_ref().ok_or(Error::syntax(
-                    "uncoloured pattern requires underlying space",
-                ))?;
-                let mut color = Color::new(space.as_ref().clone());
-                color.set(components)?;
-                t.color = Some(color);
-            }
-            _ if !components.is_empty() => {
-                if components.iter().any(|v| v.as_number().is_none())
-                    || base
-                        .as_ref()
-                        .is_none_or(|s| s.components() != components.len())
-                {
-                    return Err(Error::syntax("invalid unused pattern colour operands"));
-                }
-                let mut diagnostic = pagura_core::Diagnostic::new(
-                    crate::repairs::PATTERN_UNDERLYING,
-                    "coloured pattern uses intrinsic colours; extra scn operands ignored (8.7.3.2, Table 73)",
-                ).at(position);
-                if let pagura_core::Position::Stream { object, .. } = position {
-                    diagnostic = diagnostic.in_object(object);
-                }
-                crate::interpreter::repair(document.document(), diagnostic)?;
-            }
-            _ => {}
-        }
-        *selected = Some(Arc::new(pattern));
-        Ok(())
-    }
     pub(crate) fn to_rgba(
         &self,
         transfer: Option<&crate::functions::Transfer>,
         intent: crate::icc::Intent,
+        work: &mut usize,
     ) -> Result<Rgba8> {
         let Self::Solid { space, components } = self else {
             return Err(Error::invalid_argument("pattern is not a uniform colour"));
@@ -176,17 +188,13 @@ impl Color {
         if !space.paints() {
             return Ok(Rgba8::TRANSPARENT);
         }
-        let mut rgb = space.convert_with_intent(components, intent)?;
+        let mut rgb = space.convert(components, intent, work)?;
         if let Some(transfer) = transfer {
             for (channel, function) in rgb.iter_mut().zip(transfer.iter()) {
-                *channel = function
-                    .evaluate(&[channel.clamp(0.0, 1.0)])?
-                    .first()
-                    .copied()
-                    .ok_or(Error::syntax("transfer function has no output"))?;
+                *channel = function.evaluate_scalar(channel.clamp(0.0, 1.0), work)?;
             }
         }
-        let [r, g, b] = rgb.map(channel);
+        let [r, g, b] = rgb.map(crate::device::quantize_unit);
         Ok(Rgba8::opaque(r, g, b))
     }
 }
@@ -203,7 +211,7 @@ impl Space {
     }
 
     /// Map Indexed lookup bytes to the base space's source range (8.6.6.3).
-    pub(crate) fn decode_lookup(&self, bytes: &[u8]) -> Vec<f64> {
+    pub(crate) fn decode_lookup(&self, bytes: &[u8]) -> Components {
         match self {
             Self::Cie(cie) => crate::cie::decode_lookup(cie, bytes),
             Self::Icc { range, .. } => bytes
@@ -215,6 +223,27 @@ impl Space {
                 .collect(),
             _ => bytes.iter().map(|&v| f64::from(v) / 255.0).collect(),
         }
+    }
+
+    /// The base-space components of entry `value` of an Indexed palette,
+    /// rounded and clamped to `0..=high` (8.6.6.3).
+    ///
+    /// # Errors
+    /// `Syntax` if the palette lacks the entry; parsing admits only
+    /// complete palettes.
+    pub(crate) fn lookup(base: &Self, high: u8, lookup: &[u8], value: f64) -> Result<Components> {
+        let value = value.round().clamp(0.0, f64::from(high));
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "index is rounded and clamped to 0..=255"
+        )]
+        let index = value as usize;
+        let count = base.components();
+        let bytes = lookup
+            .get(index * count..(index + 1) * count)
+            .ok_or(Error::syntax("truncated Indexed colour lookup"))?;
+        Ok(base.decode_lookup(bytes))
     }
 
     /// None contributes neither colour, opacity nor shape (8.6.6.4–8.6.6.5).
@@ -255,16 +284,20 @@ impl Space {
         }
     }
 
-    pub(crate) fn convert_with_intent(
+    /// Converts components to encoded sRGB: the one device conversion,
+    /// through Indexed palettes, tint transforms and ICC alternates.
+    pub(crate) fn convert(
         &self,
         c: &[f64],
         intent: crate::icc::Intent,
+        work: &mut usize,
     ) -> Result<[f64; 3]> {
         let n = |i: usize| c.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0);
         match self {
-            Self::Pattern(_) => Err(Error::invalid_argument(
-                "pattern is not a component colour space",
-            )),
+            Self::Pattern(_) => {
+                debug_assert!(false, "solid colours never use a Pattern space");
+                Ok([0.0; 3])
+            }
             Self::Special { .. } => Ok([1.0 - n(0); 3]),
             Self::Gray => Ok([n(0); 3]),
             Self::Rgb => Ok([n(0), n(1), n(2)]),
@@ -285,44 +318,24 @@ impl Space {
                 let clipped = Self::clip_icc(c, range);
                 let clipped = &clipped[..base.components()];
                 profile.as_ref().map_or_else(
-                    || base.convert_with_intent(clipped, intent),
+                    || base.convert(clipped, intent, work),
                     |p| p.convert(clipped, intent),
                 )
             }
             Self::Tint { base, function, .. } => {
-                let tint: Vec<_> = c.iter().map(|v| v.clamp(0.0, 1.0)).collect();
-                base.convert_with_intent(&function.evaluate(&tint)?, intent)
+                let alternate = tint(function, c, work)?;
+                base.convert(&alternate, intent, work)
             }
             Self::Indexed { base, high, lookup } => {
                 let components =
-                    indexed_components(base, *high, lookup, c.first().copied().unwrap_or(0.0))?;
-                base.convert_with_intent(&components, intent)
+                    Self::lookup(base, *high, lookup, c.first().copied().unwrap_or(0.0))?;
+                base.convert(&components, intent, work)
             }
         }
     }
 }
 
 /// Decode one Indexed entry in its base space's source range (8.6.6.3).
-pub(crate) fn indexed_components(
-    base: &Space,
-    high: u8,
-    lookup: &[u8],
-    value: f64,
-) -> Result<Vec<f64>> {
-    let value = value.round().clamp(0.0, f64::from(high));
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "index rounded and clamped to 0..255"
-    )]
-    let index = value as usize;
-    let count = base.components();
-    let bytes = lookup
-        .get(index * count..(index + 1) * count)
-        .ok_or(Error::syntax("truncated Indexed colour lookup"))?;
-    Ok(base.decode_lookup(bytes))
-}
-
 pub(crate) fn named(
     document: &ColorContext<'_>,
     resources: &Dictionary,
@@ -483,7 +496,7 @@ fn device_n_space(
         .get(4)
         .map(|v| document.resolve_dictionary(v))
         .transpose()?;
-    let count = device_n_components(document, names)?;
+    let names = device_n_names(document, names)?;
     if let Some(attributes) = attributes
         && attributes
             .get(b"Subtype")
@@ -491,28 +504,14 @@ fn device_n_space(
             .transpose()?
             .and_then(Value::as_name)
             .is_some_and(|n| n == b"NChannel")
+        && names.iter().any(|n| n == b"None")
     {
-        for name in document.resolve(names)?.as_array().unwrap_or_default() {
-            if document
-                .resolve(name)?
-                .as_name()
-                .is_some_and(|n| n == b"None")
-            {
-                return Err(Error::syntax("None is forbidden in NChannel"));
-            }
-        }
+        return Err(Error::syntax("None is forbidden in NChannel"));
     }
-    if document.resolve(names)?.as_array().is_some_and(|names| {
-        names.iter().all(|n| {
-            document
-                .resolve(n)
-                .ok()
-                .and_then(Value::as_name)
-                .is_some_and(|n| n == b"None")
-        })
-    }) {
+    // 8.6.6.5: a DeviceN space naming only None paints nothing.
+    if names.iter().all(|n| n == b"None") {
         return Ok(Space::Special {
-            inputs: count,
+            inputs: names.len(),
             all: false,
         });
     }
@@ -521,37 +520,25 @@ fn device_n_space(
         resources,
         base,
         function,
-        document
-            .resolve(names)?
-            .as_array()
-            .unwrap_or_default()
-            .iter()
-            .map(|value| {
-                document
-                    .resolve(value)?
-                    .as_name()
-                    .cloned()
-                    .ok_or(Error::syntax("DeviceN colourant must be a name"))
-            })
-            .collect::<Result<Vec<_>>>()?,
+        names,
         (depth, defaults),
     )
 }
 
-fn device_n_components(document: &ColorContext<'_>, names: &Value) -> Result<usize> {
+/// The colourant names of a DeviceN space, validated once (8.6.6.5).
+fn device_n_names(document: &ColorContext<'_>, names: &Value) -> Result<Vec<pagura_core::Name>> {
     let names = document
         .resolve(names)?
         .as_array()
         .filter(|n| !n.is_empty())
         .ok_or(Error::syntax("DeviceN requires colourant names"))?;
-    // 32 is this renderer's implementation budget, not a format maximum;
-    // Annex C / Table C.1 discusses practical processor limits.
-    if names.len() > 32 {
+    if names.len() > MAX_COMPONENTS {
         return Err(Error::limit(
             "DeviceN component count exceeds implementation limit (Annex C)",
         ));
     }
     let mut seen = std::collections::BTreeSet::new();
+    let mut out = Vec::with_capacity(names.len());
     for name in names {
         let name = document
             .resolve(name)?
@@ -563,8 +550,9 @@ fn device_n_components(document: &ColorContext<'_>, names: &Value) -> Result<usi
         if name != b"None" && !seen.insert(name.as_bytes()) {
             return Err(Error::syntax("duplicate DeviceN colourant"));
         }
+        out.push(name.clone());
     }
-    Ok(names.len())
+    Ok(out)
 }
 
 fn tint_space(
@@ -776,18 +764,6 @@ fn alternate_components(
         }
         _ => return Err(Error::syntax("invalid ICC alternate family")),
     })
-}
-
-/// Quantizes a colour component in `0..=1` to an 8-bit channel, rounding to
-/// nearest; out-of-range components are clamped first (clause 8.6.4.1).
-pub(crate) fn channel(value: f64) -> u8 {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "clamped to 0..=255 before conversion"
-    )]
-    let channel = (value.clamp(0.0, 1.0) * 255.0).round() as u8;
-    channel
 }
 
 fn indexed_space(

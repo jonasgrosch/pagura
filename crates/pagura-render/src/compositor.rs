@@ -110,10 +110,7 @@ impl Pixel {
                     color[i]
                 }
             });
-            (
-                color,
-                blend_mode.apply(base.straight(), color, model.components()),
-            )
+            (color, blend_mode.apply(base.straight(), color, model))
         };
         let value = [0, 1, 2, 3].map(|i| {
             (1.0 - opacity) * base.color[i]
@@ -222,13 +219,6 @@ impl Context {
         plan: &plan::Plan,
         separations: Arc<Separations>,
     ) -> Result<Self> {
-        let mut crop = PathBuilder::new();
-        crop.rect(
-            list.crop.x0(),
-            list.crop.y0(),
-            list.crop.width(),
-            list.crop.height(),
-        );
         let transfers = transfer::Regions::new(&list.commands, list.limits)?;
         let allocated = transfers.as_ref().map_or(0, transfer::Regions::bytes);
         let elide_opaque_groups = plan.format == plan::Format::F64
@@ -253,7 +243,7 @@ impl Context {
             device: list.device_transform(options),
             page_device: list.device_transform(options),
             view_unit: list.user_unit,
-            crop: crop.finish(),
+            crop: crate::device::rectangle(list.crop),
             allocated,
             work: plan.work,
             clip: None,
@@ -757,7 +747,7 @@ impl Context {
         // Preserve the explicit singular-pen error even for off-tile marks.
         let inverse = match &p.mark {
             Mark::Fill(_) => Transform::IDENTITY,
-            Mark::Stroke(_, ctm, _) => ctm.inverse().ok_or(Error::unsupported(
+            Mark::Stroke { ctm, .. } => ctm.inverse().ok_or(Error::unsupported(
                 crate::features::SINGULAR_STROKE,
                 "singular stroke transform",
             ))?,
@@ -784,7 +774,11 @@ impl Context {
                 self.raster
                     .clipped_path(&clip, Arc::clone(&p.path), self.device, *rule, limits)?
             }
-            Mark::Stroke(stroke, ctm, adjust) => {
+            Mark::Stroke {
+                pen: stroke,
+                ctm,
+                adjust,
+            } => {
                 let path = p.path.transformed(inverse);
                 let outline = if *adjust {
                     adjusted_stroke_outline
@@ -1099,11 +1093,11 @@ impl Context {
         boundary: Option<f64>,
     ) -> Result<Option<Source>> {
         let background = boundary
-            .and(command.shading.background)
+            .and(command.shading.background.as_ref())
             .map(|values| {
                 self.source(
                     &command.shading.space,
-                    &values[..command.shading.space.components()],
+                    values,
                     model,
                     &command.composite,
                     false,
@@ -1114,7 +1108,7 @@ impl Context {
             path.fill_region(FillRule::NonZero)
                 .is_some_and(|region| region != pagura_raster::FillRegion::Ordinary)
         });
-        let mut values = [0.0; 32];
+        let mut values = crate::color::Components::zeros(command.shading.space.components());
         let mut color = [0.0; 4];
         let mut covered = 0;
         let divisor =
@@ -1152,7 +1146,7 @@ impl Context {
                 }
                 let sample = self.source(
                     &command.shading.space,
-                    &values[..command.shading.space.components()],
+                    &values,
                     model,
                     &command.composite,
                     false,
@@ -1266,10 +1260,7 @@ impl Context {
                 if value != last {
                     mapped = if let Some(function) = &mask.transfer {
                         function
-                            .evaluate_with_work(&[value], &mut self.function_work)?
-                            .first()
-                            .copied()
-                            .ok_or(Error::syntax("mask transfer has no output"))?
+                            .evaluate_scalar(value, &mut self.function_work)?
                             .clamp(0.0, 1.0)
                     } else {
                         value
@@ -1477,14 +1468,6 @@ fn mask_value(mask: &SoftMask, pixel: Pixel, model: Model) -> f64 {
 fn coordinate(v: f64, lo: u32, hi: u32) -> u32 {
     v.clamp(f64::from(lo), f64::from(hi)) as u32
 }
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "finite premultiplied channel clamped and rounded to 0..255"
-)]
-fn quantize(v: f64) -> u8 {
-    (v.clamp(0.0, 1.0) * 255.0 + 0.5 + 1e-9).floor().min(255.0) as u8
-}
 
 fn pattern_source(p: &PathCommand) -> Option<crate::display::ShadingCommand> {
     if let crate::color::Color::Pattern {
@@ -1527,6 +1510,19 @@ mod tests {
         )
         .unwrap();
         crate::compile_page(&document, document.page(0).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn rendering_enforces_its_own_work_budget() {
+        // Compiling within budget does not exempt the render from its own.
+        let mut list = overprint_list(include_bytes!(
+            "../../../corpus/generated/content/group-i1-k0.pdf"
+        ));
+        list.limits.raster_work = 1;
+        assert_eq!(
+            list.render(&RenderOptions::default()).unwrap_err().kind,
+            pagura_core::ErrorKind::Limit
+        );
     }
 
     #[test]
@@ -1661,7 +1657,7 @@ mod tests {
 
     #[test]
     fn full_normal_stores_preserve_the_f64_evaluation() {
-        let state = Composite::opaque();
+        let state = Composite::default();
         for alpha in [0.0, 1.0] {
             for backdrop in [-0.0, 0.0, 0.1, 0.5, 1.0] {
                 for source in [-0.0, 0.0, f64::MIN_POSITIVE, 0.3, 0.5, 1.0] {
@@ -1800,7 +1796,7 @@ mod tests {
         for (pixel, mut expected) in surface.pixels().iter().zip(backdrops) {
             expected.paint(
                 source,
-                &Composite::opaque(),
+                &Composite::default(),
                 Pixel::default(),
                 false,
                 Model::Rgb,
@@ -1875,7 +1871,7 @@ mod tests {
                 bounds: None,
                 commands: Vec::new(),
                 attributes: crate::transparency::Attributes::default(),
-                composite: Composite::opaque(),
+                composite: Composite::default(),
             },
             method: MaskMethod::Alpha,
             backdrop: [0.0; 4],
@@ -1929,7 +1925,7 @@ mod tests {
             clip: None,
             color: crate::color::Color::Solid {
                 space: crate::color::Space::Rgb,
-                components: vec![0.2, 0.5, 0.8],
+                components: vec![0.2, 0.5, 0.8].into(),
             },
             position: pagura_core::Position::Unknown,
             transfer: None,
@@ -1970,7 +1966,7 @@ mod tests {
         for blend in [
             crate::blend::BlendMode::Normal,
             crate::blend::BlendMode::Multiply,
-            crate::blend::BlendMode::Dodge,
+            crate::blend::BlendMode::ColorDodge,
         ] {
             run.paint.composite.blend = blend;
             for knockout in [false, true] {

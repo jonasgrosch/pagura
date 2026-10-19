@@ -24,6 +24,9 @@ pub const OPTIONAL_GROUP: Repair = Repair::new("content.optional-group");
 /// 9.3.6: retain accumulated glyph clips through ET after a nonclipping reset.
 /// Most readers keep the clip when recovering this prohibited transition.
 pub const TEXT_CLIP_RESET: Repair = Repair::new("content.text-clip-reset");
+/// 9.8.1, Table 120: text extraction reads BaseFont and FontBBox; an
+/// unreadable value leaves the font unnamed and its glyphs the default box.
+pub const TEXT_FONT_METADATA: Repair = Repair::new("content.text-font-metadata");
 /// 7.9.5; 12.5.5: skip an appearance with a zero-sized source or target
 /// rectangle. Most readers paint nothing where fitting has no area.
 pub const APPEARANCE_EMPTY: Repair = Repair::new("annotation.appearance-empty");
@@ -31,7 +34,7 @@ pub const APPEARANCE_EMPTY: Repair = Repair::new("annotation.appearance-empty");
 /// content sequence, after all painting and text objects have finished.
 pub const GRAPHICS_UNCLOSED: Repair = Repair::new("content.graphics-unclosed");
 /// 9.6.4, Table 111: retain the horizontal Widths advance when d0/d1 disagrees.
-pub const TYPE3_WIDTH: Repair = Repair::new("font.type3-width");
+pub const TYPE3_WIDTH: Repair = Repair::new("content.type3-width");
 /// 8.7.3.2, Table 73: coloured patterns require only a name; discard extra
 /// numeric operands supplied with an underlying pattern colour space.
 pub const PATTERN_UNDERLYING: Repair = Repair::new("content.pattern-underlying");
@@ -47,6 +50,7 @@ pub const ALL: &[Repair] = &[
     OPTIONAL_PROPERTIES,
     OPTIONAL_GROUP,
     TEXT_CLIP_RESET,
+    TEXT_FONT_METADATA,
     APPEARANCE_EMPTY,
     GRAPHICS_UNCLOSED,
     TYPE3_WIDTH,
@@ -55,7 +59,7 @@ pub const ALL: &[Repair] = &[
 
 /// Information, not a repair: an untouched field keeps its valid stored
 /// appearance because generating a replacement is unsupported.
-pub const APPEARANCE_KEPT: &str = "form.appearance-kept";
+pub const APPEARANCE_KEPT: &str = "appearance.kept";
 
 /// Every information tag above.
 pub const INFORMATION: &[&str] = &[APPEARANCE_KEPT];

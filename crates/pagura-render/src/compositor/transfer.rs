@@ -389,7 +389,7 @@ mod tests {
         assert_eq!(regions.apply(0, [0.25; 3], &mut work).unwrap(), [0.75; 3]);
         assert_eq!(
             regions
-                .apply(0, [0.25; 3], &mut Limits::default().operations)
+                .apply(0, [0.25; 3], &mut Limits::default().function_work)
                 .unwrap_err()
                 .kind,
             ErrorKind::Limit
@@ -410,24 +410,10 @@ mod tests {
     #[test]
     fn shared_tiling_cells_are_walked_once_within_the_traversal_budget() {
         use crate::color::Color;
-        let mut square = pagura_raster::PathBuilder::new();
-        square.rect(0.0, 0.0, 1.0, 1.0);
-        let path = Arc::new(square.finish());
-        let document = Document::open(
-            fixture("recovery", "transfer-opaque.pdf"),
-            &OpenOptions::default(),
-        )
-        .unwrap();
-        let transfer = crate::compile_page(&document, document.page(0).unwrap())
-            .unwrap()
-            .commands
-            .iter()
-            .find_map(|command| match command {
-                Command::Path(p) => p.transfer.clone(),
-                Command::Image(i) => i.transfer.clone(),
-                _ => None,
-            })
-            .expect("the fixture paints through a transfer");
+        let path = Arc::new(crate::device::unit_square());
+        let transfer: Transfer = Arc::new(std::array::from_fn(|_| {
+            Arc::new(crate::functions::Function::identity(Limits::default()))
+        }));
         let fill = |color, transfer: Option<Transfer>| {
             Command::Path(PathCommand {
                 path: Arc::clone(&path),
@@ -446,12 +432,9 @@ mod tests {
             let pattern = Arc::new(crate::pattern::Pattern {
                 transform: pagura_raster::Transform::IDENTITY,
                 kind: crate::pattern::Kind::Tiling(crate::pattern::Tiling {
-                    id: pagura_core::ObjectId::new(1, 0),
                     bbox: pagura_core::Rect::from_corners(0.0, 0.0, 1.0, 1.0).unwrap(),
                     step: [1.0; 2],
-                    uncolored: false,
-                    spacing: 1,
-                    color: None,
+                    spacing: crate::pattern::TilingType::NoDistortion,
                     commands,
                 }),
             });
@@ -486,10 +469,8 @@ mod tests {
     #[test]
     fn overprint_flags_matter_for_transfers_only_when_simulated() {
         use crate::overprint::Policy;
-        let mut square = pagura_raster::PathBuilder::new();
-        square.rect(0.0, 0.0, 1.0, 1.0);
         let command = Command::Path(PathCommand {
-            path: Arc::new(square.finish()),
+            path: Arc::new(crate::device::unit_square()),
             mark: crate::display::Mark::Fill(pagura_raster::FillRule::NonZero),
             clip: None,
             color: crate::color::Color::default(),

@@ -1,10 +1,11 @@
 //! Optional semantic output from the existing interpreter (9.4.4; 14.6).
 use super::{
-    Arc, Compiler, Dictionary, Error, Glyph, GlyphShape, Rc, RefCell, Result, Transform, Value,
-    cache, resource,
+    Arc, Compiler, Dictionary, Error, Glyph, GlyphShape, Result, Transform, Value, cache, resource,
 };
+use crate::repairs;
 use pagura_core::{Name, ObjectId, Rect};
 use pagura_raster::Point;
+use pagura_text::repairs::MARKED_PROPERTY;
 use pagura_text::{
     LayoutOptions, MarkedContent, MarkedSpan, PositionedGlyph, PositionedText, Quad, TextFont,
     TextPage,
@@ -13,15 +14,35 @@ use std::collections::BTreeMap;
 
 mod unicode;
 
-#[derive(Clone)]
-pub(in crate::interpreter) struct Extraction {
-    output: Rc<RefCell<Output>>,
+/// Where one content context records text: its marked-content ancestry
+/// and the object that owns its marked-content identifiers. Forms inherit
+/// it; annotation appearances, pattern cells, soft masks and Type 3
+/// procedures have none.
+pub(in crate::interpreter) struct Scope {
     path: Arc<[Arc<MarkedContent>]>,
     spans: Vec<usize>,
     container: ObjectId,
 }
+impl Scope {
+    pub(in crate::interpreter) fn new(container: ObjectId) -> Self {
+        Self {
+            path: Arc::from([]),
+            spans: Vec::new(),
+            container,
+        }
+    }
+    /// The scope of a form XObject drawn in this one.
+    pub(in crate::interpreter) fn within(&self, form: ObjectId) -> Self {
+        Self {
+            path: Arc::clone(&self.path),
+            spans: Vec::new(),
+            container: form,
+        }
+    }
+}
+/// A compilation's positioned text, collected in the session.
 #[derive(Default)]
-struct Output {
+pub(in crate::interpreter) struct Output {
     text: PositionedText,
     fonts: BTreeMap<usize, Font>,
     bytes: usize,
@@ -48,8 +69,9 @@ pub fn compile_page_with_text(
     page: &pagura_document::Page,
     provider: Option<&dyn pagura_text::Provider>,
 ) -> Result<(crate::DisplayList, TextPage)> {
-    let fonts = std::sync::Mutex::new(cache::FontCache::new(document.limits()));
-    compile_with_text(document, page, provider, &fonts)
+    super::super::Shared::standalone(document, provider, |shared| {
+        compile_with_text(document, page, shared)
+    })
 }
 
 /// Extracts a page's positioned text; painting commands are discarded and
@@ -69,38 +91,22 @@ pub fn text_page(
 pub(crate) fn compile_with_text(
     document: &pagura_document::Document,
     page: &pagura_document::Page,
-    provider: Option<&dyn pagura_text::Provider>,
-    fonts: &std::sync::Mutex<cache::FontCache>,
+    shared: &super::super::Shared<'_>,
 ) -> Result<(crate::DisplayList, TextPage)> {
-    let output = Rc::new(RefCell::new(Output::default()));
-    let mut compiler = Compiler::new(document, page)?;
-    compiler.compilation = Rc::new(super::super::Compilation {
-        colors: crate::icc::Cache::default(),
-        provider,
-        fonts: Some(fonts),
-        filler: None,
-    });
-    compiler.extraction = Some(Extraction {
-        output: Rc::clone(&output),
-        path: Arc::from([]),
-        spans: Vec::new(),
-        container: page.id(),
-    });
-    compiler.page(page).map_err(|e| e.in_object(page.id()))?;
-    let text = std::mem::take(&mut output.borrow_mut().text);
+    let (list, output) =
+        super::super::compile(document, page, shared, None, Some(Output::default()))?;
+    let text = output.map(|output| output.text).unwrap_or_default();
     let text = TextPage::from_positioned(text, LayoutOptions::default(), document.limits())?
         .with_structure(document, page)?;
-    Ok((compiler.list, text))
+    Ok((list, text))
 }
 
 impl Compiler<'_> {
-    pub(in crate::interpreter) fn inherit_extraction(&self, child: &mut Self, hidden: bool) {
-        if let Some(extraction) = &self.extraction {
-            let mut inherited = extraction.clone();
-            inherited.container = child.forms.last().copied().unwrap_or(extraction.container);
-            child.extraction = Some(inherited);
-            child.visible &= !hidden;
-        }
+    /// This context's text scope and the session's text output, when the
+    /// compilation extracts text and this context contributes page text.
+    fn recorder(&self) -> Option<(&Scope, std::cell::RefMut<'_, Output>)> {
+        let scope = self.extraction.as_ref()?;
+        Some((scope, self.session.text.as_ref()?.borrow_mut()))
     }
 
     pub(in crate::interpreter) fn extract_form_sequence(
@@ -108,15 +114,11 @@ impl Compiler<'_> {
         object: &pagura_document::IndirectObject,
         resources: &Dictionary,
     ) -> Result<()> {
-        let start = self
-            .extraction
-            .as_ref()
-            .map(|e| e.output.borrow().text.glyphs.len());
+        let start = self.recorder().map(|(_, output)| output.text.glyphs.len());
         self.sequence(&[object], resources)?;
-        if let Some(extract) = &self.extraction
+        if let Some((extract, mut output)) = self.recorder()
             && let Some(start) = start
         {
-            let mut output = extract.output.borrow_mut();
             output.charge(size_of::<pagura_text::TextObject>(), self.document.limits())?;
             let end = output.text.glyphs.len();
             output.text.objects.push(pagura_text::TextObject {
@@ -134,8 +136,7 @@ impl Compiler<'_> {
         object: ObjectId,
         hidden: bool,
     ) -> Result<()> {
-        if let Some(extract) = &self.extraction {
-            let mut output = extract.output.borrow_mut();
+        if let Some((extract, mut output)) = self.recorder() {
             output.charge(size_of::<pagura_text::TextObject>(), self.document.limits())?;
             let end = output.text.glyphs.len();
             output.text.objects.push(pagura_text::TextObject {
@@ -167,24 +168,21 @@ impl Compiler<'_> {
         object: Option<ObjectId>,
         dictionary: &Dictionary,
     ) -> Result<()> {
-        let Some(extract) = &self.extraction else {
+        let Some((_, mut output)) = self.recorder() else {
             return Ok(());
         };
-        let mut output = extract.output.borrow_mut();
         let key = std::ptr::from_ref(font).addr();
         if output.fonts.contains_key(&key) {
             return Ok(());
         }
-        let base_name = dictionary
-            .get(b"BaseFont")
-            .and_then(|v| self.document.resolve(v).ok())
+        let base_name = font_metadata(self.document, dictionary.get(b"BaseFont"), self.position)?
             .and_then(Value::as_name)
             .cloned();
         output.charge(
             256 + base_name.as_ref().map_or(0, Name::len),
             self.document.limits(),
         )?;
-        let bbox = font_box(self.document, dictionary, font.font.kind());
+        let bbox = font_box(self.document, dictionary, font.font.kind(), self.position)?;
         let index = output.text.fonts.len();
         output.text.fonts.push(TextFont {
             object,
@@ -195,8 +193,7 @@ impl Compiler<'_> {
         Ok(())
     }
     pub(super) fn extract_show(&mut self) -> Result<()> {
-        if let Some(extract) = &self.extraction {
-            let mut output = extract.output.borrow_mut();
+        if let Some((_, mut output)) = self.recorder() {
             output.show = output
                 .show
                 .checked_add(1)
@@ -211,11 +208,10 @@ impl Compiler<'_> {
         matrix: Transform,
         transform: Transform,
     ) -> Result<()> {
-        let Some(extract) = &self.extraction else {
+        let Some((extract, mut output)) = self.recorder() else {
             return Ok(());
         };
-        let mut output = extract.output.borrow_mut();
-        if output.text.glyphs.len() >= self.document.limits().value_nodes {
+        if output.text.glyphs.len() >= self.document.limits().text_items {
             return Err(Error::limit("positioned glyph count exceeded"));
         }
         let unicode = output.unicode(
@@ -299,7 +295,7 @@ impl Compiler<'_> {
             axis,
             em,
             advance_end,
-            render_mode: text.mode,
+            render_mode: text.mode.code(),
             hidden: !self.visible,
             marked_content: Arc::clone(&extract.path),
             show: output.show,
@@ -309,46 +305,33 @@ impl Compiler<'_> {
     }
     pub(in crate::interpreter) fn extract_begin(
         &mut self,
-        word: &[u8],
-        v: &[Value],
+        tag: &Name,
+        properties: Option<&Value>,
         resources: &Dictionary,
     ) -> Result<()> {
-        let Some(extract) = &mut self.extraction else {
+        if self.recorder().is_none() {
             return Ok(());
-        };
-        let tag = v
-            .first()
-            .and_then(Value::as_name)
-            .cloned()
-            .ok_or(Error::syntax("marked content tag expected"))?;
-        let dictionary = if word == b"BDC" {
-            let properties = v
-                .get(1)
-                .ok_or(Error::syntax("marked content properties expected"))?;
-            let result = (|| {
-                let properties = if let Some(name) = properties.as_name() {
-                    resource(self.document, resources, b"Properties", name.as_bytes())?
-                } else {
-                    properties
-                };
-                self.document.resolve_dictionary(properties)
-            })();
-            match result {
-                Ok(dictionary) => Some(dictionary),
-                Err(error) => {
-                    ignore_metadata_fault(self.document, error, self.position)?;
-                    None
-                }
+        }
+        let tag = tag.clone();
+        let dictionary = match properties
+            .map(|properties| marked_properties(self.document, resources, properties))
+            .transpose()
+        {
+            Ok(dictionary) => dictionary,
+            Err(error) => {
+                ignore_metadata_fault(self.document, error, self.position, MARKED_PROPERTY)?;
+                None
             }
-        } else {
-            None
         };
         let actual_text = property(self.document, dictionary, b"ActualText", self.position)?;
         let alt = property(self.document, dictionary, b"Alt", self.position)?;
         // Expansion text is metadata for speech, not a page replacement.
         let _ = property(self.document, dictionary, b"E", self.position)?;
-        let mut output = extract.output.borrow_mut();
-        if output.text.marked.len() >= self.document.limits().value_nodes {
+        let (Some(extract), Some(output)) = (&mut self.extraction, &self.session.text) else {
+            return Ok(());
+        };
+        let mut output = output.borrow_mut();
+        if output.text.marked.len() >= self.document.limits().text_items {
             return Err(Error::limit("marked content count exceeded"));
         }
         output.charge(
@@ -363,7 +346,7 @@ impl Compiler<'_> {
             id,
             tag,
             container: Some(extract.container),
-            mcid: marked_id(self.document, dictionary)?,
+            mcid: marked_id(self.document, dictionary, self.position)?,
             actual_text,
             alt,
         });
@@ -381,17 +364,22 @@ impl Compiler<'_> {
         Ok(())
     }
     pub(in crate::interpreter) fn extract_end(&mut self) -> Result<()> {
-        let Some(extract) = &mut self.extraction else {
+        let (Some(extract), Some(output)) = (&mut self.extraction, &self.session.text) else {
             return Ok(());
         };
         let id = extract
             .spans
             .pop()
             .ok_or(Error::syntax("unbalanced extraction marked content"))?;
-        let mut output = extract.output.borrow_mut();
+        let mut output = output.borrow_mut();
         let end = output.text.glyphs.len();
-        output.text.marked[id].glyphs.end = end;
-        extract.path = Arc::clone(&output.text.marked[id].ancestors);
+        let span = output
+            .text
+            .marked
+            .get_mut(id)
+            .ok_or(Error::syntax("unbalanced extraction marked content"))?;
+        span.glyphs.end = end;
+        extract.path = Arc::clone(&span.ancestors);
         Ok(())
     }
 }
@@ -424,34 +412,75 @@ impl Output {
         Ok(())
     }
 }
-fn font_box(
-    document: &pagura_document::Document,
-    dictionary: &Dictionary,
+/// The FontBBox selection quads use (9.8.1): a Type 3 font's own, else its
+/// descriptor's, a Type 0 font's from its descendant.
+fn font_box<'a>(
+    document: &'a pagura_document::Document,
+    dictionary: &'a Dictionary,
     kind: pagura_text::FontKind,
-) -> Option<Rect> {
+    position: pagura_core::Position,
+) -> Result<Option<Rect>> {
+    let lookup = |dictionary: &'a Dictionary, key: &[u8]| {
+        font_metadata(document, dictionary.get(key), position)
+    };
     let dictionary = if kind == pagura_text::FontKind::Type0 {
-        let first = document
-            .resolve(dictionary.get(b"DescendantFonts")?)
-            .ok()?
-            .as_array()?
-            .first()?;
-        document.resolve_dictionary(first).ok()?
+        let Some(first) = lookup(dictionary, b"DescendantFonts")?
+            .and_then(Value::as_array)
+            .and_then(<[Value]>::first)
+        else {
+            return Ok(None);
+        };
+        match font_metadata(document, Some(first), position)?.and_then(Value::as_dictionary) {
+            Some(dictionary) => dictionary,
+            None => return Ok(None),
+        }
     } else {
         dictionary
     };
     let dictionary = if kind == pagura_text::FontKind::Type3 {
         dictionary
     } else {
-        document
-            .resolve_dictionary(dictionary.get(b"FontDescriptor")?)
-            .ok()?
+        match lookup(dictionary, b"FontDescriptor")?.and_then(Value::as_dictionary) {
+            Some(dictionary) => dictionary,
+            None => return Ok(None),
+        }
     };
-    document
-        .resolve(dictionary.get(b"FontBBox")?)
-        .ok()?
-        .as_array()
-        .and_then(Rect::from_array)
+    Ok(lookup(dictionary, b"FontBBox")?
+        .and_then(Value::as_array)
+        .and_then(Rect::from_array))
 }
+/// Resolves a font entry text extraction reads; faults are reported as
+/// [`repairs::TEXT_FONT_METADATA`] and leave it absent.
+fn font_metadata<'a>(
+    document: &'a pagura_document::Document,
+    value: Option<&'a Value>,
+    position: pagura_core::Position,
+) -> Result<Option<&'a Value>> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    match document.resolve(value) {
+        Ok(value) => Ok(Some(value)),
+        Err(error) => {
+            ignore_metadata_fault(document, error, position, repairs::TEXT_FONT_METADATA)?;
+            Ok(None)
+        }
+    }
+}
+/// The property list of `BDC` (14.6.2): inline or a `Properties` resource.
+fn marked_properties<'a>(
+    document: &'a pagura_document::Document,
+    resources: &'a Dictionary,
+    properties: &'a Value,
+) -> Result<&'a Dictionary> {
+    let properties = if let Some(name) = properties.as_name() {
+        resource(document, resources, b"Properties", name.as_bytes())?
+    } else {
+        properties
+    };
+    document.resolve_dictionary(properties)
+}
+
 fn property(
     document: &pagura_document::Document,
     dictionary: Option<&Dictionary>,
@@ -461,37 +490,46 @@ fn property(
     let Some(value) = dictionary.and_then(|d| d.get(name)) else {
         return Ok(None);
     };
-    let result = (|| {
-        let value = document.resolve(value)?;
-        if value.is_null() {
-            return Ok(None);
-        }
-        let message = match name {
-            b"ActualText" => "non-string marked ActualText ignored (14.9.4)",
-            b"Alt" => "non-string marked Alt ignored (14.9.3)",
-            _ => "non-string marked E ignored (14.9.5)",
-        };
-        let bytes = value.as_string().ok_or(Error::syntax(message))?;
-        // E is speech metadata, not replacement text in either exported view.
-        // Validate its type without repeatedly decoding an unused resource.
-        if name == b"E" {
-            return Ok(None);
-        }
-        pagura_text::decode_text_string(bytes, document.limits()).map(Some)
-    })();
-    match result {
+    match property_text(document, value, name) {
         Err(error) => {
-            ignore_metadata_fault(document, error, position)?;
+            ignore_metadata_fault(document, error, position, MARKED_PROPERTY)?;
             Ok(None)
         }
         result => result,
     }
 }
 
+/// The text of marked-content property `name` (14.9.3–14.9.5), if it has any.
+fn property_text(
+    document: &pagura_document::Document,
+    value: &Value,
+    name: &[u8],
+) -> Result<Option<String>> {
+    let value = document.resolve(value)?;
+    if value.is_null() {
+        return Ok(None);
+    }
+    let message = match name {
+        b"ActualText" => "non-string marked ActualText ignored (14.9.4)",
+        b"Alt" => "non-string marked Alt ignored (14.9.3)",
+        _ => "non-string marked E ignored (14.9.5)",
+    };
+    let bytes = value.as_string().ok_or(Error::syntax(message))?;
+    // E is speech metadata, not replacement text in either exported view.
+    // Validate its type without repeatedly decoding an unused resource.
+    if name == b"E" {
+        return Ok(None);
+    }
+    pagura_text::decode_text_string(bytes, document.limits()).map(Some)
+}
+
+/// Tolerates a malformed or missing object in metadata only extraction
+/// reads, reporting it as `tag`; a budget error stays an error.
 fn ignore_metadata_fault(
     document: &pagura_document::Document,
     error: Error,
     position: pagura_core::Position,
+    tag: pagura_core::Repair,
 ) -> Result<()> {
     if !matches!(
         error.kind,
@@ -501,35 +539,28 @@ fn ignore_metadata_fault(
     ) {
         return Err(error);
     }
-    let mut diagnostic =
-        pagura_core::Diagnostic::new(pagura_text::repairs::MARKED_PROPERTY, error.message)
-            .at(position);
-    if let pagura_core::Position::Stream { object, .. } = position {
-        diagnostic = diagnostic.in_object(object);
-    }
-    crate::interpreter::repair(document, diagnostic)
+    crate::interpreter::repair(
+        document,
+        pagura_core::Diagnostic::new(tag, error.message)
+            .at(position)
+            .in_object_opt(position.object()),
+    )
 }
 
 fn marked_id(
     document: &pagura_document::Document,
     dictionary: Option<&Dictionary>,
+    position: pagura_core::Position,
 ) -> Result<Option<i64>> {
     let Some(value) = dictionary.and_then(|d| d.get(b"MCID")) else {
         return Ok(None);
     };
     match document.resolve(value) {
         Ok(value) => Ok(value.as_integer().filter(|n| *n >= 0)),
-        Err(error)
-            if matches!(
-                error.kind,
-                pagura_core::ErrorKind::Syntax
-                    | pagura_core::ErrorKind::MissingObject
-                    | pagura_core::ErrorKind::Cycle
-            ) =>
-        {
+        Err(error) => {
+            ignore_metadata_fault(document, error, position, MARKED_PROPERTY)?;
             Ok(None)
         }
-        Err(error) => Err(error),
     }
 }
 
@@ -575,19 +606,18 @@ mod tests {
     fn string(value: &Value) -> &str {
         std::str::from_utf8(value.as_string().unwrap()).unwrap()
     }
-    fn names() -> Vec<&'static str> {
-        include_str!("../../../../../corpus/manifests/text.json")
-            .split("\"id\": \"text/")
-            .skip(1)
-            .filter_map(|s| s.split('"').next())
-            .filter(|s| s.starts_with("tagged-"))
+    fn names() -> Vec<String> {
+        pagura_testkit::Manifest::load("text")
+            .cases()
+            .map(|case| case.name().to_owned())
+            .filter(|name| name.starts_with("tagged-"))
             .collect()
     }
     #[test]
     fn tagged_copy_ranges_quads_and_parent_ownership_match_independent_graphs() {
         let names = names();
         assert_eq!(names.len(), 58);
-        for name in names {
+        for name in names.iter().map(String::as_str) {
             if fixture_path("text", &format!("{name}.error")).exists() {
                 continue;
             }
@@ -808,10 +838,50 @@ mod tests {
                             .any(|d| d.tag().as_bytes() == tag)
                     );
                     assert!(text.structure_fallback().is_none());
-                    check_glyphs(name, &text);
+                    check_glyphs(&name, &text);
                 }
             }
         }
+    }
+
+    #[test]
+    fn font_metadata_faults_are_reported_and_budget_errors_kept() {
+        let open = |name: &str, recovery| {
+            Document::open(
+                fixture("content", &format!("{name}.pdf")),
+                &OpenOptions {
+                    recovery,
+                    ..OpenOptions::default()
+                },
+            )
+            .unwrap()
+        };
+        // A FontBBox reference loop exhausts the reference budget; it is not
+        // a tolerated metadata fault, in either recovery mode.
+        for recovery in [Recovery::Strict, Recovery::Repair] {
+            let document = open("text-font-bbox-loop", recovery);
+            let page = document.page(0).unwrap();
+            crate::compile_page(&document, page).unwrap();
+            let error = super::text_page(&document, page, None).unwrap_err();
+            assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
+        }
+        let tag = crate::repairs::TEXT_FONT_METADATA;
+        let strict = open("text-font-bbox-malformed", Recovery::Strict);
+        let error = super::text_page(&strict, strict.page(0).unwrap(), None).unwrap_err();
+        assert_eq!(error.repair, Some(tag), "{error}");
+        assert!(matches!(
+            error.position,
+            pagura_core::Position::Stream { .. }
+        ));
+        let repaired = open("text-font-bbox-malformed", Recovery::Repair);
+        let text = super::text_page(&repaired, repaired.page(0).unwrap(), None).unwrap();
+        assert_eq!(text.glyphs().len(), 1);
+        assert!(
+            repaired
+                .diagnostics()
+                .iter()
+                .any(|d| d.repair() == Some(tag))
+        );
     }
 
     #[test]

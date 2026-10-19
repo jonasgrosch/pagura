@@ -180,7 +180,7 @@ fn prepare_inner(
     {
         return Ok(original.clone());
     }
-    if original.is_none() && (!button && !variable || bounds(widget).is_err()) {
+    if original.is_none() && (!button && !variable || bounds(widget).is_none()) {
         return Ok(Appearance::Hidden);
     }
     if filler.form().has_xfa {
@@ -206,7 +206,7 @@ fn prepare_inner(
             .and_then(Value::as_array)
             .and_then(Rect::from_array)
             .ok_or(Error::syntax("existing appearance has invalid BBox"))?,
-        None => bounds(widget)?,
+        None => bounds(widget).ok_or(Error::syntax("widget rectangle has no area"))?,
     };
     let existing = old
         .map(|d| optional_dictionary(document, d, b"Resources"))
@@ -316,13 +316,11 @@ fn normal(
     }
     Ok(Some(Appearance::Existing(id)))
 }
-fn bounds(widget: &Widget<'_>) -> Result<Rect> {
+/// The widget's appearance box, if its Rect has a finite positive area;
+/// a widget without one has nothing to generate (12.5.5).
+fn bounds(widget: &Widget<'_>) -> Option<Rect> {
     let (width, height) = (widget.rectangle.width(), widget.rectangle.height());
-    Rect::from_corners(0.0, 0.0, width, height)
-        .filter(|_| width > 0.0 && height > 0.0)
-        .ok_or(Error::invalid_argument(
-            "appearance widget rectangle must have finite positive area",
-        ))
+    Rect::from_corners(0.0, 0.0, width, height).filter(|_| width > 0.0 && height > 0.0)
 }
 fn inset(bbox: Rect, padding: f64) -> Result<Rect> {
     let (x0, y0) = (bbox.x0() + padding, bbox.y0() + padding);
@@ -331,7 +329,8 @@ fn inset(bbox: Rect, padding: f64) -> Result<Rect> {
     // rectangle to normalize.
     Rect::from_corners(x0, y0, x1, y1)
         .filter(|rect| x0 < x1 && y0 < y1 && rect.width().is_finite() && rect.height().is_finite())
-        .ok_or(Error::invalid_argument(
+        .ok_or(Error::unsupported(
+            crate::features::APPEARANCE_TEXT_FIT,
             "widget has no area inside its text padding",
         ))
 }

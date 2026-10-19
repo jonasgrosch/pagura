@@ -1,13 +1,10 @@
 //! Document-bound ICC profile cache for one compilation (8.6.5.5). Profile
 //! parsing and evaluation live in `pagura-color`.
 
-use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
+use pagura_core::{Dictionary, Error, Meter, ObjectId, Result, Value};
 use pagura_document::Document;
 use std::collections::BTreeMap;
-use std::{
-    cell::{Cell, RefCell},
-    sync::Arc,
-};
+use std::{cell::RefCell, sync::Arc};
 
 pub(crate) use pagura_color::Intent;
 
@@ -35,7 +32,6 @@ impl Profile {
 #[derive(Debug, Default)]
 pub(crate) struct Cache {
     profiles: RefCell<BTreeMap<ObjectId, CachedProfile>>,
-    bytes: Cell<usize>,
 }
 #[derive(Debug)]
 struct CachedProfile {
@@ -44,14 +40,24 @@ struct CachedProfile {
 }
 /// Per-compilation colour context, shared by forms and masks. Intrinsic profile
 /// transforms are cached by immutable object identity; resource-dependent
-/// Alternate spaces are resolved separately at each use.
+/// Alternate spaces are resolved separately at each use. Cached profiles are
+/// charged to the compilation's `render_bytes` meter.
 pub(crate) struct ColorContext<'a> {
     document: &'a Document,
     cache: &'a Cache,
+    retained: &'a RefCell<Meter>,
 }
 impl<'a> ColorContext<'a> {
-    pub(crate) fn new(document: &'a Document, cache: &'a Cache) -> Self {
-        Self { document, cache }
+    pub(crate) fn new(
+        document: &'a Document,
+        cache: &'a Cache,
+        retained: &'a RefCell<Meter>,
+    ) -> Self {
+        Self {
+            document,
+            cache,
+            retained,
+        }
     }
     /// The document whose objects colour spaces refer to.
     pub(crate) fn document(&self) -> &'a Document {
@@ -105,16 +111,7 @@ impl<'a> ColorContext<'a> {
             .map_or(0, |p| p.retained_bytes())
             .checked_add(64 + size_of::<CachedProfile>())
             .ok_or(Error::limit("ICC cache byte size overflow"))?;
-        let total = self
-            .cache
-            .bytes
-            .get()
-            .checked_add(charge)
-            .filter(|&n| n <= self.limits().decoded_bytes)
-            .ok_or(Error::limit("ICC cache byte budget exceeded"))?;
-        if self.cache.profiles.borrow().len() >= self.limits().value_nodes {
-            return Err(Error::limit("ICC cache entry budget exceeded"));
-        }
+        self.retained.borrow_mut().charge(charge)?;
         self.cache.profiles.borrow_mut().insert(
             id,
             CachedProfile {
@@ -122,7 +119,6 @@ impl<'a> ColorContext<'a> {
                 profile: profile.clone(),
             },
         );
-        self.cache.bytes.set(total);
         Ok(profile)
     }
 }
@@ -142,12 +138,14 @@ mod tests {
         .unwrap();
         let id = ObjectId::new(5, 0);
         let cache = Cache::default();
-        let context = ColorContext::new(&document, &cache);
+        let meter = RefCell::new(Meter::new(usize::MAX, "test budget exceeded"));
+        let context = ColorContext::new(&document, &cache, &meter);
         let first = context.profile(id, 3).unwrap().unwrap();
-        let retained = cache.bytes.get();
+        let retained = meter.borrow().used();
+        assert!(retained >= first.retained_bytes());
         let second = context.profile(id, 3).unwrap().unwrap();
         assert!(Arc::ptr_eq(&first, &second));
-        assert_eq!(cache.bytes.get(), retained);
+        assert_eq!(meter.borrow().used(), retained);
         assert_eq!(
             context.profile(id, 1).unwrap_err().kind,
             pagura_core::ErrorKind::Syntax

@@ -3,6 +3,7 @@
 
 use pagura_core::{Error, Result, Value};
 use pagura_document::Document;
+use pagura_raster::Transform;
 
 /// The magnitude above which geometric parameters (shading coordinates,
 /// pattern matrices) leave the range where their arithmetic stays exact
@@ -65,4 +66,13 @@ pub(crate) fn number(document: &Document, value: &Value, magnitude: f64) -> Resu
         return Err(Error::limit("number exceeds numeric working range"));
     }
     Ok(number)
+}
+
+/// Resolves a six-number `Matrix` array (8.3.4).
+///
+/// # Errors
+/// As [`array`]; any finite entries are accepted.
+pub(crate) fn matrix(document: &Document, value: &Value) -> Result<Transform> {
+    let [a, b, c, d, e, f] = array(document, value, f64::MAX)?;
+    Ok(Transform::new(a, b, c, d, e, f))
 }

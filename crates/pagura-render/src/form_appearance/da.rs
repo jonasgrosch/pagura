@@ -1,4 +1,5 @@
 //! Strict, bounded default appearance parsing (12.7.4.3; 9.3).
+use crate::operators::{MAX_OPERANDS, Token, token};
 use pagura_core::{
     Error, Limits, Name, Result, Value,
     syntax::{Origin, Parser},
@@ -17,7 +18,7 @@ pub(super) struct DefaultAppearance {
     pub rise: f64,
 }
 impl DefaultAppearance {
-    pub fn parse(bytes: &[u8], limits: Limits) -> Result<Self> {
+    pub(super) fn parse(bytes: &[u8], limits: Limits) -> Result<Self> {
         if bytes.len() > limits.string_bytes {
             return Err(Error::limit("default appearance string budget exceeded"));
         }
@@ -38,7 +39,7 @@ impl DefaultAppearance {
         let mut font = false;
         let mut matrix = false;
         let mut tokens = 0usize;
-        while let Some(next) = parser.peek() {
+        while parser.peek().is_some() {
             if tokens >= limits.operations {
                 return Err(
                     Error::limit("default appearance token budget exceeded").at(parser.position())
@@ -48,17 +49,18 @@ impl DefaultAppearance {
             if operands.is_empty() {
                 start = parser.offset();
             }
-            if matches!(next, b'/' | b'+' | b'-' | b'.' | b'0'..=b'9' | b'[') {
-                if operands.len() >= 8 {
-                    return Err(
-                        Error::syntax("excess default appearance operands").at(parser.position())
-                    );
-                }
-                operands.push(parser.parse()?);
-                continue;
-            }
             let position = parser.position();
-            let op = parser.word()?;
+            let op = match token(&mut parser)? {
+                Some(Token::Operand(value)) => {
+                    if operands.len() >= MAX_OPERANDS {
+                        return Err(Error::limit("content operand budget exceeded").at(position));
+                    }
+                    operands.push(value);
+                    continue;
+                }
+                Some(Token::Operator(op)) => op,
+                None => break,
+            };
             let special = result
                 .apply(op, &operands, &mut font, &mut matrix)
                 .map_err(|e| e.at(position))?;

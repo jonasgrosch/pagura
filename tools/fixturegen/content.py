@@ -404,6 +404,14 @@ def annotation_cases():
             pixels.extend((alpha,0,255-alpha))
     yield Case('annotation-sheared',pdf(matrix=b'[1 1 -1 1 0 0]'),RENDER,('content-annotations',),'All four transformed corners determine the fitted envelope; exact rational pixel intersections',oracle=b'P6\n8 8\n255\n'+pixels,extra={'tolerance':1})
     yield Case('annotation-state-isolation',pdf(form=b'0 0 2 4 re f',page=b'0 0 1 rg 0 0 8 8 re f 4 0 0 4 2 2 cm'),RENDER,('content-annotations',),'Appearance starts in default graphics state rather than page final colour and CTM',oracle=opaque_rectangles(8,8,[((0,0,8,8),BLUE),((2,1,4,6),BLACK)]))
+    # The page paints one 64x64 image and an annotation appearance a second
+    # one; both are retained by one compilation and count against one budget.
+    import zlib
+    side=64
+    def solid(rgb):
+        return stream(zlib.compress(bytes(rgb)*side*side),b'/Type /XObject /Subtype /Image /Width %d /Height %d /BitsPerComponent 8 /ColorSpace /DeviceRGB /Filter /FlateDecode' % (side,side))
+    budget=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /XObject << /I 6 0 R >> >> /Contents 4 0 R /Annots [<< /Subtype /Stamp /Rect [4 0 8 8] /AP << /N 5 0 R >> >>] >>',stream(b'4 0 0 8 0 0 cm /I Do'),stream(b'/J Do',b'/Type /XObject /Subtype /Form /BBox [0 0 1 1] /Resources << /XObject << /J 7 0 R >> >>'),solid(RED),solid(BLUE)])
+    yield Case('annotation-image-budget',budget,RENDER,('content-annotations',),'An annotation appearance shares the page compilation\'s retained-image budget',oracle=opaque_rectangles(8,8,[((0,0,4,8),RED),((4,0,4,8),BLUE)]),extra={'api':'compile_page','image_samples':side*side*3})
     yield render('annotation-link-borderless',b'',page_extra=b'/Annots [<< /Subtype /Link /Rect [0 0 8 8] /Border [0 0 0] >>]',requirements=('content-annotations',))
     yield Case('annotation-flags',pdf(extra=b'/F 8'),RENDER,('content-annotation-view',),'12.5.3: fixed display-size annotation at default scale',oracle=opaque_rectangles(8,8,[((0,0,8,8),BLUE),((2,1,4,6),RED)]))
     for name,options in [
@@ -521,6 +529,9 @@ def shading_cases():
     axial=b'/ShadingType 2 /Coords [0 0 8 0] '+function
     yield shade('shading-axial',axial,lambda x,y:(1-x/8,0,x/8))
     yield shade('shading-axial-clip',axial+b'/BBox [2 1 6 7]',lambda x,y:(1-x/8,0,x/8) if 2<x<6 and 1<y<7 else None)
+    # 8.7.4.2: a shading BBox clips like W, within the clip nesting budget;
+    # the default depth is 64, so 64 clips leave no room for the BBox.
+    yield Case('shading-bbox-clip-depth',single_page([b'0 0 8 8 re W n '*64+b'/S sh'],media_box=b'[0 0 8 8]',resources=b'<< /Shading << /S << /ColorSpace /DeviceRGB '+axial+b'/BBox [2 1 6 7] >> >> >>'),OPEN,('content-shadings',),'A shading BBox nests within the clip depth budget',extra={'render_error':'Limit'})
     yield shade('shading-background-ignored',b'/ShadingType 2 /Coords [2 0 6 0] /Background [0 1 0] '+function,lambda x,y:(1-(x-2)/4,0,(x-2)/4) if 2<x<6 else None)
     yield shade('shading-axial-extend',b'/ShadingType 2 /Coords [2 0 6 0] /Extend [true true] '+function,lambda x,y:(1-min(1,max(0,(x-2)/4)),0,min(1,max(0,(x-2)/4))))
     yield shade('shading-axial-empty',b'/ShadingType 2 /Coords [2 2 2 2] '+function,lambda x,y:None)
@@ -905,8 +916,25 @@ def remaining_vector_cases():
     yield from group_region_cases()
     yield from note_icon_cases()
     yield from tiling_cases()
+    yield from font_metadata_cases()
     yield from generated_annotation_cases()
     yield from mesh_cases()
+
+
+def font_metadata_cases():
+    """9.8.1: text extraction reads BaseFont and FontBBox for selection; an
+    unreadable value is reported, and a reference loop is a budget error."""
+    from .font import truetype
+    program=truetype()
+    def pdf(bbox, extra=()):
+        return document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+            b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /Font << /F 5 0 R >> >> /Contents 4 0 R >>',
+            stream(b'BT /F 8 Tf 0 0 Td (A) Tj ET'),
+            b'<< /Type /Font /Subtype /TrueType /BaseFont /Fixture /FirstChar 65 /LastChar 65 /Widths [600] /FontDescriptor 6 0 R >>',
+            b'<< /Type /FontDescriptor /FontName /Fixture /Flags 32 /FontBBox '+bbox+b' /ItalicAngle 0 /Ascent 800 /Descent -200 /CapHeight 700 /StemV 80 /FontFile2 7 0 R >>',
+            stream(program,b'/Length1 %d ' % len(program)),*extra])
+    yield Case('text-font-bbox-loop',pdf(b'8 0 R',[b'9 0 R',b'8 0 R']),OPEN,('content-reported-recovery',),'A FontBBox reference loop exhausts the reference budget during extraction',extra={'extraction_error':'Limit'})
+    yield Case('text-font-bbox-malformed',pdf(b'8 0 R',[b'<< /Broken']),OPEN,('content-reported-recovery',),'An unparsable FontBBox object is reported during extraction, which then uses the default glyph box; rendering never reads it',extra={'extraction_repair':'content.text-font-metadata'})
 
 
 def tiling_cases():
@@ -930,6 +958,10 @@ def tiling_cases():
         ('tiling-underlying-reuse',{'paint':2,'space':b'[/Pattern /DeviceRGB]','body':b'/C cs 1 0 0 /P scn 0 0 4 8 re f 0 0 1 /P scn 4 0 4 8 re f','cell':b'0 0 1 1 re f'},[((x,y,1,1),RED if x<4 else BLUE) for y in range(0,8,2) for x in range(0,8,2)]),
     ]:
         yield Case(name,pdf(**options),RENDER,('content-tiling',),'8.6.6.2, 8.7.2–8.7.3 and 11.6.7: explicit lattice cells, clips, initial state and one outer composite',oracle=opaque_rectangles(8,8,geometry))
+    # 8.6.8: an uncoloured cell frames and ignores an inline colour image,
+    # here in a named ICCBased space whose channel count gives its length.
+    icc=document([b'<< /Type /Catalog /Pages 2 0 R >>',b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << /ColorSpace << /C [/Pattern /DeviceRGB] >> /Pattern << /P 5 0 R >> >> /Contents 4 0 R >>',stream(b'/C cs 1 0 0 /P scn 0 0 8 8 re f'),stream(b'BI /W 1 /H 1 /CS /I /BPC 8 ID \0\0\xff EI 0 0 1 1 re f',b'/Type /Pattern /PatternType 1 /PaintType 2 /TilingType 1 /BBox [0 0 2 2] /XStep 2 /YStep 2 /Resources << /ColorSpace << /I [/ICCBased 6 0 R] >> >>'),stream(icc_profile(3),b'/N 3')])
+    yield Case('tiling-ignored-inline-icc',icc,RENDER,('content-tiling',),'8.6.8: an ignored inline image in a named ICCBased space is framed by its channel count',oracle=opaque_rectangles(8,8,motif))
     for name,options in [('tiling-zero-step',{'step':b'0 2'}),('tiling-missing-underlying',{'paint':2}),('tiling-coloured-underlying',{'space':b'[/Pattern /DeviceRGB]','body':b'/C cs 1 0 0 /P scn'})]:
         if name == 'tiling-coloured-underlying':
             yield Case(name,pdf(**options),OPEN,('content-tiling',),'Coloured pattern ignores unused underlying colour with a repair',strict_valid=False,repairs=('content.pattern-underlying',))

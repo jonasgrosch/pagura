@@ -1,47 +1,147 @@
 //! Graphics-state parameters, colour selection and ExtGState (8.4, 8.6).
 
 use super::{
-    Color, Compiler, Dictionary, Error, LineCap, LineJoin, Result, Value, color, features, integer,
-    number, rendering_intent, resource, unsupported,
+    Arc, Clip, Color, Compiler, Dictionary, Error, LineCap, LineJoin, Name, Result, Stroke,
+    Transform, Value, color, features, resource, text, unsupported,
 };
+use crate::operators::{ColorOperation, Operation, Operator, Parameter, Target};
+use crate::transparency::{Composite, Conversion};
+
+/// The graphics state saved by `q` and restored by `Q` (8.4, Table 51).
+/// Text objects, Type 3 procedure state and compilation-wide budgets are
+/// not graphics state and live in [`Compiler`] and its session.
+#[derive(Debug, Clone)]
+pub(super) struct Graphics {
+    pub(super) ctm: Transform,
+    pub(super) fill: Paint,
+    pub(super) stroke: Paint,
+    /// Line width, cap, join, miter limit and dash (Table 51).
+    pub(super) pen: Stroke,
+    pub(super) clip: Option<Arc<Clip>>,
+    pub(super) clip_depth: usize,
+    pub(super) stroke_adjustment: bool,
+    pub(super) transfer: Option<crate::functions::Transfer>,
+    /// Blend mode, soft mask, alpha source and colour conversion, shared by
+    /// filling and stroking. Its alpha and overprint are unused: they are
+    /// per paint, see [`Self::composite`].
+    pub(super) blending: Composite,
+    pub(super) text: text::TextState,
+}
+
+/// What one painting operation contributes: colour, constant alpha and
+/// overprint, kept separately for filling and stroking (`ca`/`CA`, `op`/`OP`).
+#[derive(Debug, Clone)]
+pub(super) struct Paint {
+    pub(super) color: Color,
+    pub(super) alpha: f64,
+    pub(super) overprint: bool,
+}
+
+impl Default for Paint {
+    fn default() -> Self {
+        Self {
+            color: Color::default(),
+            alpha: 1.0,
+            overprint: false,
+        }
+    }
+}
+
+impl Default for Graphics {
+    fn default() -> Self {
+        Self {
+            ctm: Transform::IDENTITY,
+            fill: Paint::default(),
+            stroke: Paint::default(),
+            pen: Stroke::default(),
+            clip: None,
+            clip_depth: 0,
+            stroke_adjustment: false,
+            transfer: None,
+            blending: Composite::default(),
+            text: text::TextState::default(),
+        }
+    }
+}
+
+impl Graphics {
+    /// The compositing parameters for a fill (`ca`, `op`) or stroke (`CA`, `OP`).
+    pub(super) fn composite(&self, target: Target) -> Composite {
+        let paint = match target {
+            Target::Fill => &self.fill,
+            Target::Stroke => &self.stroke,
+        };
+        Composite {
+            alpha: paint.alpha,
+            overprint: paint.overprint,
+            ..self.blending.clone()
+        }
+    }
+
+    /// The state a transparency group's contents start from (11.6.6):
+    /// opaque, Normal and unmasked.
+    pub(super) fn isolate(&mut self) {
+        self.fill.alpha = 1.0;
+        self.stroke.alpha = 1.0;
+        self.blending.blend = crate::blend::BlendMode::Normal;
+        self.blending.mask = None;
+    }
+
+    /// The state a tiling cell starts from (8.7.3.1): this initial state in
+    /// pattern space, unclipped and opaque, keeping only the rendering intent.
+    pub(super) fn pattern_cell(&self) -> Self {
+        Self {
+            ctm: Transform::IDENTITY,
+            clip: None,
+            clip_depth: 0,
+            fill: Paint {
+                color: self.fill.color.clone(),
+                ..Paint::default()
+            },
+            stroke: Paint {
+                color: self.stroke.color.clone(),
+                ..Paint::default()
+            },
+            blending: Composite {
+                conversion: Conversion {
+                    intent: self.blending.conversion.intent,
+                    ..Conversion::default()
+                },
+                ..Composite::default()
+            },
+            ..self.clone()
+        }
+    }
+}
 
 impl Compiler<'_> {
-    pub(super) fn parameter(&mut self, word: &[u8], v: &[Value]) -> Result<()> {
-        match word {
-            b"w" => self.state.stroke.width = number(v, 0)?.max(0.0),
-            b"J" => {
-                self.state.stroke.cap = match integer(v, 0)?.clamp(0, 2) {
+    pub(super) fn parameter(&mut self, parameter: Parameter<'_>) -> Result<()> {
+        match parameter {
+            Parameter::LineWidth(width) => self.state.pen.width = width.max(0.0),
+            Parameter::LineCap(cap) => {
+                self.state.pen.cap = match cap.clamp(0, 2) {
                     0 => LineCap::Butt,
                     1 => LineCap::Round,
-                    2 => LineCap::ProjectingSquare,
-                    _ => return Err(Error::syntax("invalid line cap")),
+                    _ => LineCap::ProjectingSquare,
                 }
             }
-            b"j" => {
-                self.state.stroke.join = match integer(v, 0)?.clamp(0, 2) {
+            Parameter::LineJoin(join) => {
+                self.state.pen.join = match join.clamp(0, 2) {
                     0 => LineJoin::Miter,
                     1 => LineJoin::Round,
-                    2 => LineJoin::Bevel,
-                    _ => return Err(Error::syntax("invalid line join")),
+                    _ => LineJoin::Bevel,
                 }
             }
-            b"M" => {
-                self.state.stroke.miter_limit = number(v, 0)?.max(1.0);
+            Parameter::MiterLimit(limit) => self.state.pen.miter_limit = limit.max(1.0),
+            // Flatness is a device tolerance (10.6.2); exact-area filling
+            // flattens to its own documented tolerance and ignores it.
+            Parameter::Flatness => {}
+            // Table 69 permits relative colorimetric for unknown intents.
+            Parameter::Intent(name) => {
+                self.state.blending.conversion.intent =
+                    crate::icc::Intent::from_name(name.as_bytes());
             }
-            b"i" => {
-                self.state.flatness = number(v, 0)?.clamp(0.0, 100.0);
-            }
-            b"ri" => {
-                self.state.intent =
-                    rendering_intent(v.first().ok_or(Error::syntax("missing rendering intent"))?)?;
-                self.state.composite.conversion.intent =
-                    crate::icc::Intent::from_name(&self.state.intent);
-            }
-            b"d" => {
-                let array = v
-                    .first()
-                    .and_then(Value::as_array)
-                    .ok_or(Error::syntax("dash array expected"))?;
+            Parameter::Dash { array, phase } => {
                 let dash = array
                     .iter()
                     .map(|n| {
@@ -53,44 +153,37 @@ impl Compiler<'_> {
                 if !dash.is_empty() && dash.iter().all(|&n| n == 0.0) {
                     return Err(Error::syntax("dash array is all zero"));
                 }
-                let phase = number(v, 1)?;
-                self.state.stroke.dash_array = dash;
-                self.state.stroke.dash_phase = phase;
+                self.state.pen.dash_array = dash;
+                self.state.pen.dash_phase = phase;
             }
-            _ => return Err(Error::syntax("invalid graphics parameter")),
         }
         Ok(())
     }
 
-    pub(super) fn color(&mut self, word: &[u8], v: &[Value], resources: &Dictionary) -> Result<()> {
-        let context = crate::icc::ColorContext::new(self.document, &self.compilation.colors);
-        let stroking = matches!(word, b"G" | b"RG" | b"K" | b"CS" | b"SC" | b"SCN");
-        let color = if stroking {
-            &mut self.state.stroke_color
-        } else {
-            &mut self.state.fill
+    pub(super) fn color(
+        &mut self,
+        target: Target,
+        operation: ColorOperation<'_>,
+        resources: &Dictionary,
+    ) -> Result<()> {
+        if let ColorOperation::ComponentsOrPattern(v) = operation {
+            return self.select_pattern(target, v, resources);
+        }
+        let context = self.session.colors();
+        let color = match target {
+            Target::Stroke => &mut self.state.stroke.color,
+            Target::Fill => &mut self.state.fill.color,
         };
-        match word {
-            b"CS" | b"cs" => {
-                let name = v
-                    .first()
-                    .and_then(Value::as_name)
-                    .ok_or(Error::syntax("colour space name expected"))?;
+        match operation {
+            ColorOperation::Space(name) => {
                 *color = Color::new(color::named(&context, resources, name.as_bytes())?);
             }
-            b"g" | b"G" | b"rg" | b"RG" | b"k" | b"K" => {
-                let name = match word {
-                    b"g" | b"G" => b"DeviceGray".as_slice(),
-                    b"rg" | b"RG" => b"DeviceRGB",
-                    _ => b"DeviceCMYK",
-                };
-                *color = Color::new(color::named(&context, resources, name)?);
+            ColorOperation::Device(device, v) => {
+                *color = Color::new(color::named(&context, resources, device.name())?);
                 color.set(v)?;
             }
-            b"SCN" | b"scn" => {
-                color.select_pattern(&context, resources, v, self.initial_ctm, self.position)?;
-            }
-            _ => {
+            ColorOperation::ComponentsOrPattern(_) => {}
+            ColorOperation::Components(v) => {
                 color.validate_simple_operator(self.document, v, self.position)?;
                 color.set(v)?;
             }
@@ -98,23 +191,47 @@ impl Compiler<'_> {
         Ok(())
     }
 
-    pub(super) fn extgstate(&mut self, v: &[Value], resources: &Dictionary) -> Result<()> {
-        let name = v
-            .first()
-            .and_then(Value::as_name)
-            .ok_or(Error::syntax("ExtGState name expected"))?;
+    /// `gs` (8.4.5): `Font` selects a font and `TK` sets text knockout
+    /// directly; the other entries apply through [`Self::extgstate`].
+    pub(super) fn graphics_state(&mut self, name: &Name, resources: &Dictionary) -> Result<()> {
         let value = resource(self.document, resources, b"ExtGState", name.as_bytes())?;
         let dictionary = self.document.resolve_dictionary(value)?;
-        for (key, value) in dictionary {
-            if !defined_entry(key.as_bytes()) {
-                continue;
+        let uncolored = self.uncolored_glyph();
+        if let Some(font) = dictionary.get(b"Font") {
+            let [font, size] = self
+                .document
+                .resolve(font)?
+                .as_array()
+                .and_then(|a| <&[Value; 2]>::try_from(a).ok())
+                .ok_or(Error::syntax("ExtGState Font requires font and size"))?;
+            let size = self
+                .document
+                .resolve(size)?
+                .as_number()
+                .ok_or(Error::syntax("invalid ExtGState font size"))?;
+            self.select_font(font, size)?;
+        }
+        if let Some(knockout) = dictionary.get(b"TK") {
+            let knockout = self
+                .document
+                .resolve(knockout)?
+                .as_bool()
+                .ok_or(Error::syntax("TK must be boolean"))?;
+            if self.text_object.is_none() && !uncolored {
+                self.state.text.knockout = knockout;
             }
-            if self.stencil_pattern
-                && matches!(
-                    key.as_bytes(),
-                    b"TR" | b"TR2" | b"BG" | b"BG2" | b"UCR" | b"UCR2" | b"HT" | b"UseBlackPtComp"
-                )
-            {
+        }
+        self.extgstate(dictionary, resources)
+    }
+
+    /// Applies the entries of an ExtGState dictionary (Table 58) that the
+    /// current context does not ignore (see [`Self::ignores_entry`]).
+    fn extgstate(&mut self, dictionary: &Dictionary, resources: &Dictionary) -> Result<()> {
+        let ignored = self.ignored_entries();
+        let present = |key: &[u8]| dictionary.contains_key(key) && !ignored.contains(key);
+        let overprint = present(b"OP") && !present(b"op");
+        for (key, value) in dictionary {
+            if !defined_entry(key.as_bytes()) || ignored.contains(key.as_bytes()) {
                 continue;
             }
             let replacement = match key.as_bytes() {
@@ -123,11 +240,11 @@ impl Compiler<'_> {
                 b"UCR" => Some(b"UCR2".as_slice()),
                 _ => None,
             };
-            if replacement.is_some_and(|name| dictionary.contains_key(name)) {
+            if replacement.is_some_and(present) {
                 continue;
             }
             if key == b"SMask" {
-                self.state.composite.mask = self.soft_mask(value, resources)?;
+                self.state.blending.mask = self.soft_mask(value, resources)?;
                 continue;
             }
             if matches!(key.as_bytes(), b"BG" | b"BG2" | b"UCR" | b"UCR2") {
@@ -138,7 +255,7 @@ impl Compiler<'_> {
                     }
                     None
                 } else {
-                    Some(std::sync::Arc::new(crate::functions::Function::parse(
+                    Some(Arc::new(crate::functions::Function::parse(
                         self.document,
                         value,
                         1,
@@ -146,9 +263,9 @@ impl Compiler<'_> {
                     )?))
                 };
                 if matches!(key.as_bytes(), b"BG" | b"BG2") {
-                    self.state.composite.conversion.black = function;
+                    self.state.blending.conversion.black = function;
                 } else {
-                    self.state.composite.conversion.ucr = function;
+                    self.state.blending.conversion.ucr = function;
                 }
                 continue;
             }
@@ -166,26 +283,37 @@ impl Compiler<'_> {
                 continue;
             }
             let value = self.document.resolve(value)?;
-            let operator: Option<&[u8]> = match key.as_bytes() {
-                b"LW" => Some(b"w".as_slice()),
-                b"LC" => Some(b"J"),
-                b"LJ" => Some(b"j"),
-                b"ML" => Some(b"M"),
-                b"RI" => Some(b"ri"),
-                b"FL" => Some(b"i"),
+            // Table 58 entries that set an operator's parameter.
+            let operator = match key.as_bytes() {
+                b"LW" => Some(Operator::LineWidth),
+                b"LC" => Some(Operator::LineCap),
+                b"LJ" => Some(Operator::LineJoin),
+                b"ML" => Some(Operator::MiterLimit),
+                b"RI" => Some(Operator::Intent),
+                b"FL" => Some(Operator::Flatness),
                 _ => None,
             };
             if let Some(operator) = operator {
-                crate::operators::validate(operator, std::slice::from_ref(value))?;
-                self.parameter(operator, std::slice::from_ref(value))?;
+                if let Operation::Parameter(parameter) =
+                    operator.decode(std::slice::from_ref(value))?
+                {
+                    self.parameter(parameter)?;
+                }
                 continue;
             }
             self.extgstate_entry(key.as_bytes(), value)?;
         }
-        if dictionary.contains_key(b"OP") && !dictionary.contains_key(b"op") {
-            self.state.composite.overprint = self.state.stroke_overprint;
+        if overprint {
+            self.state.fill.overprint = self.state.stroke.overprint;
         }
         Ok(())
+    }
+
+    fn ignored_entries(&self) -> IgnoredEntries {
+        IgnoredEntries {
+            uncolored_glyph: self.uncolored_glyph(),
+            uncolored_cell: self.stencil_pattern,
+        }
     }
 
     pub(super) fn extgstate_entry(&mut self, key: &[u8], value: &Value) -> Result<()> {
@@ -204,7 +332,9 @@ impl Compiler<'_> {
                     .iter()
                     .map(|v| self.document.resolve(v).cloned())
                     .collect::<Result<Vec<_>>>()?;
-                self.parameter(b"d", &array)?;
+                if let Operation::Parameter(parameter) = Operator::Dash.decode(&array)? {
+                    self.parameter(parameter)?;
+                }
             }
             b"SA" => {
                 self.state.stroke_adjustment =
@@ -216,13 +346,13 @@ impl Compiler<'_> {
                     .ok_or(Error::syntax("alpha must be numeric"))?
                     .clamp(0.0, 1.0);
                 if key == b"CA" {
-                    self.state.stroke_alpha = alpha;
+                    self.state.stroke.alpha = alpha;
                 } else {
-                    self.state.composite.alpha = alpha;
+                    self.state.fill.alpha = alpha;
                 }
             }
             b"BM" => {
-                self.state.composite.blend = crate::blend::BlendMode::parse(self.document, value)?;
+                self.state.blending.blend = crate::blend::BlendMode::parse(self.document, value)?;
             }
             // Retain both flags independently; OP supplies op only when the
             // dictionary omits op (Table 57).
@@ -231,19 +361,19 @@ impl Compiler<'_> {
                     .as_bool()
                     .ok_or(Error::syntax("overprint flag must be boolean"))?;
                 if key == b"OP" {
-                    self.state.stroke_overprint = flag;
+                    self.state.stroke.overprint = flag;
                 } else {
-                    self.state.composite.overprint = flag;
+                    self.state.fill.overprint = flag;
                 }
             }
             b"OPM" => {
                 if !matches!(value.as_integer(), Some(0 | 1)) {
                     return Err(Error::syntax("invalid overprint mode"));
                 }
-                self.state.composite.nonzero_overprint = value.as_integer() == Some(1);
+                self.state.blending.nonzero_overprint = value.as_integer() == Some(1);
             }
             b"AIS" => {
-                self.state.composite.alpha_is_shape = value
+                self.state.blending.alpha_is_shape = value
                     .as_bool()
                     .ok_or(Error::syntax("AIS must be boolean"))?;
             }
@@ -300,6 +430,52 @@ fn device_parameter(key: &[u8], value: &Value) -> Result<()> {
         _ => {}
     }
     Ok(())
+}
+
+/// ExtGState entries a context ignores: `Font`, which `gs` applies itself;
+/// colour-related entries inside an uncoloured Type 3 glyph (9.6.4); device
+/// colour-rendering entries inside an uncoloured tiling cell (8.6.8).
+#[derive(Debug, Clone, Copy)]
+struct IgnoredEntries {
+    uncolored_glyph: bool,
+    uncolored_cell: bool,
+}
+impl IgnoredEntries {
+    fn contains(self, key: &[u8]) -> bool {
+        key == b"Font"
+            || (self.uncolored_glyph && color_entry(key))
+            || (self.uncolored_cell
+                && matches!(
+                    key,
+                    b"TR" | b"TR2" | b"BG" | b"BG2" | b"UCR" | b"UCR2" | b"HT" | b"UseBlackPtComp"
+                ))
+    }
+}
+
+/// The colour-related ExtGState entries an uncoloured Type 3 glyph ignores
+/// (9.6.4, Table 111).
+fn color_entry(key: &[u8]) -> bool {
+    matches!(
+        key,
+        b"RI"
+            | b"BG"
+            | b"BG2"
+            | b"UCR"
+            | b"UCR2"
+            | b"TR"
+            | b"TR2"
+            | b"HT"
+            | b"UseBlackPtComp"
+            | b"CA"
+            | b"ca"
+            | b"BM"
+            | b"SMask"
+            | b"AIS"
+            | b"OP"
+            | b"op"
+            | b"OPM"
+            | b"TK"
+    )
 }
 
 /// Table 58 is exhaustive for standard ExtGState entries. Skip extension values

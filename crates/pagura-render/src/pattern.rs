@@ -1,4 +1,5 @@
-//! Shading patterns anchored to their parent stream's initial user space (8.7.2).
+//! Tiling and shading patterns, anchored to the initial user space of the
+//! stream that selects them (8.7.2).
 
 use crate::icc::ColorContext;
 use crate::numbers::{self, GEOMETRY};
@@ -7,6 +8,8 @@ use pagura_core::{Dictionary, Error, ObjectId, Rect, Result, Value};
 use pagura_raster::Transform;
 use std::sync::Arc;
 
+/// A selected pattern, ready to paint (8.7.2). Tiling cells are interpreted
+/// before a `Pattern` exists, so a pattern is never half-built.
 #[derive(Debug)]
 pub(crate) struct Pattern {
     pub(crate) kind: Kind,
@@ -17,17 +20,89 @@ pub(crate) enum Kind {
     Shading(Arc<Shading>),
     Tiling(Tiling),
 }
+/// An interpreted tiling cell and how it repeats (8.7.3, Table 74).
 #[derive(Debug)]
 pub(crate) struct Tiling {
+    pub(crate) bbox: Rect,
+    pub(crate) step: [f64; 2],
+    pub(crate) spacing: TilingType,
+    pub(crate) commands: Vec<crate::display::Command>,
+}
+
+/// A pattern resource as parsed, before any tiling cell is interpreted.
+#[derive(Debug)]
+pub(crate) struct Definition {
+    /// The pattern object, when it is indirect; it identifies repeated
+    /// selections of one pattern.
+    pub(crate) object: Option<ObjectId>,
+    pub(crate) transform: Transform,
+    pub(crate) kind: DefinitionKind,
+}
+#[derive(Debug)]
+pub(crate) enum DefinitionKind {
+    Shading(Arc<Shading>),
+    Tiling(TilingDefinition),
+}
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct TilingDefinition {
     pub(crate) id: ObjectId,
     pub(crate) bbox: Rect,
     pub(crate) step: [f64; 2],
-    pub(crate) uncolored: bool,
-    pub(crate) spacing: usize,
-    pub(crate) color: Option<crate::color::Color>,
-    pub(crate) commands: Vec<crate::display::Command>,
+    pub(crate) paint: PaintType,
+    pub(crate) spacing: TilingType,
 }
-impl Pattern {
+impl TilingDefinition {
+    pub(crate) fn tiling(self, commands: Vec<crate::display::Command>) -> Tiling {
+        Tiling {
+            bbox: self.bbox,
+            step: self.step,
+            spacing: self.spacing,
+            commands,
+        }
+    }
+}
+
+/// Whether a tiling cell specifies its own colours (Table 74 `PaintType`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum PaintType {
+    /// 1: the cell's content specifies colours.
+    Colored,
+    /// 2: the cell is a stencil painted in the colour given with `scn`.
+    Uncolored,
+}
+impl TryFrom<i64> for PaintType {
+    type Error = Error;
+    fn try_from(value: i64) -> Result<Self> {
+        match value {
+            1 => Ok(Self::Colored),
+            2 => Ok(Self::Uncolored),
+            _ => Err(Error::syntax("invalid PaintType")),
+        }
+    }
+}
+
+/// How tiling-cell spacing adjusts to the device (Table 74 `TilingType`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TilingType {
+    /// 1: constant spacing, distorting the cell by at most a device pixel.
+    ConstantSpacing,
+    /// 2: no distortion; spacing may vary by a device pixel.
+    NoDistortion,
+    /// 3: constant spacing with faster tiling, allowing more distortion.
+    Faster,
+}
+impl TryFrom<i64> for TilingType {
+    type Error = Error;
+    fn try_from(value: i64) -> Result<Self> {
+        match value {
+            1 => Ok(Self::ConstantSpacing),
+            2 => Ok(Self::NoDistortion),
+            3 => Ok(Self::Faster),
+            _ => Err(Error::syntax("invalid TilingType")),
+        }
+    }
+}
+impl Definition {
     pub(crate) fn parse(
         document: &ColorContext<'_>,
         resources: &Dictionary,
@@ -72,19 +147,23 @@ impl Pattern {
             return Err(Error::limit("pattern transform overflow"));
         }
         let kind = if kind == 1 {
-            Kind::Tiling(Tiling::parse(document, value, d)?)
+            DefinitionKind::Tiling(TilingDefinition::parse(document, value, d)?)
         } else {
-            Kind::Shading(Arc::new(Shading::parse(
+            DefinitionKind::Shading(Arc::new(Shading::parse(
                 document,
                 resources,
                 d.get(b"Shading")
                     .ok_or(Error::syntax("pattern requires Shading"))?,
             )?))
         };
-        Ok(Self { kind, transform })
+        Ok(Self {
+            object: value.as_reference(),
+            transform,
+            kind,
+        })
     }
 }
-impl Tiling {
+impl TilingDefinition {
     fn parse(document: &ColorContext<'_>, value: &Value, d: &Dictionary) -> Result<Self> {
         let id = value
             .as_reference()
@@ -99,16 +178,8 @@ impl Tiling {
                 .and_then(Value::as_integer)
                 .ok_or(Error::syntax("missing pattern type parameter"))
         };
-        let uncolored = match integer(b"PaintType")? {
-            1 => false,
-            2 => true,
-            _ => return Err(Error::syntax("invalid PaintType")),
-        };
-        let spacing = usize::try_from(integer(b"TilingType")?)
-            .map_err(|_| Error::syntax("invalid TilingType"))?;
-        if !matches!(spacing, 1..=3) {
-            return Err(Error::syntax("invalid TilingType"));
-        }
+        let paint = PaintType::try_from(integer(b"PaintType")?)?;
+        let spacing = TilingType::try_from(integer(b"TilingType")?)?;
         let b = numbers::array::<4>(
             document.document(),
             d.get(b"BBox")
@@ -136,10 +207,8 @@ impl Tiling {
             id,
             bbox,
             step,
-            uncolored,
+            paint,
             spacing,
-            color: None,
-            commands: Vec::new(),
         })
     }
 }

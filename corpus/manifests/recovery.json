@@ -96,7 +96,7 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
-        "font.type3-width"
+        "content.type3-width"
       ],
       "oracle": "corpus/generated/recovery/type3-vertical-metric.ppm",
       "oracle_sha256": "a68965c847b00309465b6611a5e66b16ac2c699886ca1832a37af89006d6506a",
@@ -118,7 +118,7 @@
       "pages": 1,
       "strict_valid": false,
       "repairs": [
-        "font.type3-width"
+        "content.type3-width"
       ],
       "oracle": "corpus/generated/recovery/type3-width-advance.ppm",
       "oracle_sha256": "a68965c847b00309465b6611a5e66b16ac2c699886ca1832a37af89006d6506a",

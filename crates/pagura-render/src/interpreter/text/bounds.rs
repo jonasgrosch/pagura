@@ -16,11 +16,11 @@ pub(super) fn bounds(commands: &[Command]) -> Option<Arc<Path>> {
             Command::Path(p) => {
                 let pad = match &p.mark {
                     Mark::Fill(_) => (0.0, 0.0),
-                    Mark::Stroke(s, t, _) if s.width > 0.0 => {
+                    Mark::Stroke { pen: s, ctm: t, .. } if s.width > 0.0 => {
                         let r = s.width * s.miter_limit.max(2.0);
                         (r * t.a.hypot(t.c), r * t.b.hypot(t.d))
                     }
-                    Mark::Stroke(_, _, _) => return None,
+                    Mark::Stroke { .. } => return None,
                 };
                 for segment in p.path.segments() {
                     match *segment {

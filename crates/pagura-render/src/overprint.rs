@@ -6,6 +6,7 @@ use pagura_document::{Document, Page};
 /// Display policy for overprinting (8.6.7; 11.7.4), independent of compilation.
 /// Disabling simulation paints overprinting marks as ordinary composite content.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum OverprintPreview {
     /// Simulate only when PDF/X print intent is declared: an output intent with
     /// `S /GTS_PDFX`, or a `GTS_PDFXVersion` string in the document's Info dictionary.
@@ -35,7 +36,9 @@ impl OverprintPreview {
     }
 }
 
-/// Advisory metadata must not turn a paintable page into a rendering error.
+/// Advisory metadata must not turn a paintable page into a rendering error,
+/// so every unreadable entry counts as absent. Core reports a reference cycle
+/// as `Limit`, which leaves no budget error to tell apart here.
 /// Page-level intents are also permitted by PDF 2.0 (14.11.5, Table 401).
 pub(crate) fn print_intent(document: &Document, page: &Page) -> bool {
     let info = document
@@ -63,7 +66,7 @@ fn output_intent(document: &Document, dictionary: &Dictionary) -> Option<bool> {
         .get(b"OutputIntents")
         .and_then(|v| document.resolve(v).ok())
         .and_then(Value::as_array)?;
-    Some(intents.iter().take(document.limits().value_nodes).any(|v| {
+    Some(intents.iter().any(|v| {
         document
             .resolve_dictionary(v)
             .ok()

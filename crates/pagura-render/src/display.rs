@@ -5,8 +5,8 @@ use crate::{RenderOptions, Tile};
 use pagura_core::{Error, Limits, Meter, Rect, Result};
 use pagura_document::{Page, Rotation};
 use pagura_raster::{
-    FillRule, Mask, Paint, Path, PathBuilder, Pixmap, Rasterizer, Stroke, Transform,
-    adjusted_stroke_outline, stroke_outline,
+    FillRule, Mask, Paint, Path, Pixmap, Rasterizer, Stroke, Transform, adjusted_stroke_outline,
+    stroke_outline,
 };
 use std::sync::{Arc, OnceLock};
 
@@ -20,7 +20,13 @@ pub(crate) struct Clip {
 #[derive(Debug)]
 pub(crate) enum Mark {
     Fill(FillRule),
-    Stroke(Stroke, Transform, bool),
+    /// A stroke with its pen, the CTM the pen is in (8.5.3.1) and whether
+    /// stroke adjustment applies (10.7.5).
+    Stroke {
+        pen: Stroke,
+        ctm: Transform,
+        adjust: bool,
+    },
 }
 
 #[derive(Debug)]
@@ -309,27 +315,19 @@ impl GlyphRun {
             limits,
         )?))
     }
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "the opaque renderer's tile state"
-    )]
-    fn rasterize(
-        &self,
-        target: &mut Pixmap,
-        device: Transform,
-        mask: &Mask,
-        raster: &mut Rasterizer,
-        cache: &mut GlyphCache,
-        limits: Limits,
-        glyphs: &mut Meter,
-    ) -> Result<()> {
-        let paint = Paint::Solid(self.paint.color.to_rgba(
-            self.paint.transfer.as_ref(),
-            self.paint.composite.conversion.intent,
-        )?);
+    fn rasterize(&self, out: &mut Opaque<'_>, cache: &mut GlyphCache, paint: Paint) -> Result<()> {
+        let Opaque {
+            target,
+            device,
+            mask,
+            raster,
+            limits,
+            glyphs,
+        } = out;
+        let (device, limits) = (*device, *limits);
         for (index, &placement) in self.glyphs.iter().enumerate() {
             let geometry = cache
-                .geometry(self, placement, device, &limits, raster)
+                .geometry(self, placement, device, limits, raster)
                 .and_then(|geometry| glyphs.charge(geometry.vertices()).map(|()| geometry))
                 .map_err(|error| contextual(error, self.position(index)))?;
             if cache
@@ -522,8 +520,7 @@ impl GlyphCache {
 /// An immutable interpreted page, retaining source colours and default-user-space
 /// geometry separately from device pixels (ISO 32000-2, 8.4–8.6; ADR 0004).
 ///
-/// Compile with [`crate::compile_page`]; [`crate::render_page`] and
-/// [`crate::render_tile`] compile and render in one call.
+/// Compile with [`crate::compile_page`] or [`crate::RenderContext`].
 #[derive(Debug)]
 pub struct DisplayList {
     pub(crate) commands: Vec<Command>,
@@ -652,17 +649,11 @@ impl DisplayList {
         let mut target =
             Pixmap::new_with_limits(tile.width, tile.height, options.background, self.limits)?;
         // The crop is a geometric clip, including fractional final rows/columns.
-        let mut crop = PathBuilder::new();
-        crop.rect(
-            self.crop.x0(),
-            self.crop.y0(),
-            self.crop.width(),
-            self.crop.height(),
-        );
+        let crop = crate::device::rectangle(self.crop);
         let crop = Mask::from_path_with_limits(
             tile.width,
             tile.height,
-            &crop.finish(),
+            &crop,
             device,
             FillRule::NonZero,
             self.limits,
@@ -670,6 +661,8 @@ impl DisplayList {
         )?;
         let mut raster = Rasterizer::default();
         let mut glyph_cache = GlyphCache::new(self.limits.decoded_bytes);
+        // Function evaluation work shared by the page's colours and transfers.
+        let mut work = 0;
         // Glyph placements share one geometry per outline, so each charges
         // its scan here; the compositor charges the same to its raster work.
         let mut glyphs = Meter::new(self.limits.raster_work, "glyph raster work exceeded");
@@ -719,18 +712,27 @@ impl DisplayList {
                 }
                 last_clip = identity;
             }
-            let result = if let Command::Glyphs(run) = original {
-                run.rasterize(
-                    &mut target,
-                    device,
-                    &mask,
-                    &mut raster,
-                    &mut glyph_cache,
-                    self.limits,
-                    &mut glyphs,
+            let paint = command
+                .color
+                .to_rgba(
+                    command.transfer.as_ref(),
+                    command.composite.conversion.intent,
+                    &mut work,
                 )
+                .map(Paint::Solid)
+                .map_err(|e| contextual(e, command.position))?;
+            let mut out = Opaque {
+                target: &mut target,
+                device,
+                mask: &mask,
+                raster: &mut raster,
+                limits: &self.limits,
+                glyphs: &mut glyphs,
+            };
+            let result = if let Command::Glyphs(run) = original {
+                run.rasterize(&mut out, &mut glyph_cache, paint)
             } else {
-                command.rasterize(&mut target, device, &mask, &mut raster, self.limits)
+                command.rasterize(&mut out, paint)
             };
             result.map_err(|e| contextual(e, command.position))?;
         }
@@ -763,24 +765,38 @@ fn count_marks(commands: &[Command]) -> usize {
         .sum()
 }
 
+/// Where the opaque renderer paints one command: the tile, its device
+/// transform and clip mask, the shared rasterizer and the page's limits.
+struct Opaque<'a> {
+    target: &'a mut Pixmap,
+    device: Transform,
+    mask: &'a Mask,
+    raster: &'a mut Rasterizer,
+    limits: &'a Limits,
+    /// Outline vertices scanned by glyph placements across the render.
+    glyphs: &'a mut Meter,
+}
+
 impl PathCommand {
-    fn rasterize(
-        &self,
-        target: &mut Pixmap,
-        device: Transform,
-        mask: &Mask,
-        raster: &mut Rasterizer,
-        limits: Limits,
-    ) -> Result<()> {
-        let paint = Paint::Solid(
-            self.color
-                .to_rgba(self.transfer.as_ref(), self.composite.conversion.intent)?,
-        );
+    fn rasterize(&self, out: &mut Opaque<'_>, paint: Paint) -> Result<()> {
+        let Opaque {
+            target,
+            device,
+            mask,
+            raster,
+            limits,
+            ..
+        } = out;
+        let device = *device;
         match &self.mark {
             Mark::Fill(rule) => {
                 raster.fill_path(target, Arc::clone(&self.path), device, *rule, &paint, mask)?;
             }
-            Mark::Stroke(stroke, ctm, adjust) => {
+            Mark::Stroke {
+                pen: stroke,
+                ctm,
+                adjust,
+            } => {
                 let inverse = ctm.inverse().ok_or(Error::unsupported(
                     crate::features::SINGULAR_STROKE,
                     "singular stroke transform is not implemented",
@@ -791,7 +807,7 @@ impl PathCommand {
                 } else {
                     stroke_outline
                 };
-                let (path, transform) = outline(&path, ctm.then(device), stroke, &limits)?;
+                let (path, transform) = outline(&path, ctm.then(device), stroke, limits)?;
                 raster.fill_path(
                     target,
                     Arc::new(path),
@@ -829,12 +845,7 @@ fn opaque_commands(commands: &[Command]) -> bool {
 }
 
 pub(crate) fn contextual(error: Error, position: pagura_core::Position) -> Error {
-    let error = error.at(position);
-    if let pagura_core::Position::Stream { object, .. } = position {
-        error.in_object(object)
-    } else {
-        error
-    }
+    error.at(position).in_object_opt(position.object())
 }
 impl Command {
     pub(crate) fn position(&self) -> pagura_core::Position {
@@ -852,7 +863,7 @@ impl Command {
 mod tests {
     use super::*;
     use pagura_core::Position;
-    use pagura_raster::Point;
+    use pagura_raster::{PathBuilder, Point};
 
     fn paint(alpha: f64) -> PathCommand {
         PathCommand {
@@ -894,7 +905,7 @@ mod tests {
                     knockout: true,
                     ..Default::default()
                 },
-                composite: crate::transparency::Composite::opaque(),
+                composite: crate::transparency::Composite::default(),
             })]
         } else {
             commands
@@ -924,10 +935,7 @@ mod tests {
             )
             .unwrap();
             let error = list(run, false)
-                .render(&RenderOptions {
-                    scale: 4.0,
-                    ..RenderOptions::default()
-                })
+                .render(&RenderOptions::default().with_scale(4.0))
                 .unwrap_err();
             assert_eq!(
                 error.kind,

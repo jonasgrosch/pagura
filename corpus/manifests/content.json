@@ -2188,6 +2188,25 @@
       "height": 8
     },
     {
+      "id": "content/tiling-ignored-inline-icc",
+      "kind": "pdf",
+      "description": "8.6.8: an ignored inline image in a named ICCBased space is framed by its channel count",
+      "expected": "render",
+      "requirements": [
+        "content-tiling"
+      ],
+      "path": "corpus/generated/content/tiling-ignored-inline-icc.pdf",
+      "sha256": "fb9592a0e9f5db85e04b2a6fbeacdd8f4f06f13d83b566c5b4f625fc2b3d1c89",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/tiling-ignored-inline-icc.ppm",
+      "oracle_sha256": "25bd4603c2bcab7a64d435485a63b5aa2a3c121618bedde18b56365195d028ec",
+      "dpi": 72,
+      "width": 8,
+      "height": 8
+    },
+    {
       "id": "content/tiling-zero-step",
       "kind": "pdf",
       "description": "Table 74 and 8.7.3.3: malformed lattice or colour operands",
@@ -2232,6 +2251,36 @@
       "repairs": [
         "content.pattern-underlying"
       ]
+    },
+    {
+      "id": "content/text-font-bbox-loop",
+      "kind": "pdf",
+      "description": "A FontBBox reference loop exhausts the reference budget during extraction",
+      "expected": "open",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/text-font-bbox-loop.pdf",
+      "sha256": "52d922f55d4170eb8b9b8176e7663bde3c207d8a73e9b0eb8e035c86923f0f81",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "extraction_error": "Limit"
+    },
+    {
+      "id": "content/text-font-bbox-malformed",
+      "kind": "pdf",
+      "description": "An unparsable FontBBox object is reported during extraction, which then uses the default glyph box; rendering never reads it",
+      "expected": "open",
+      "requirements": [
+        "content-reported-recovery"
+      ],
+      "path": "corpus/generated/content/text-font-bbox-malformed.pdf",
+      "sha256": "d28c2d296cca058602b1e254a4f55bb3f0302c8645f7ce56d44b3220d7336d31",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "extraction_repair": "content.text-font-metadata"
     },
     {
       "id": "content/annotation-link-border",
@@ -3521,6 +3570,27 @@
       "height": 8
     },
     {
+      "id": "content/annotation-image-budget",
+      "kind": "pdf",
+      "description": "An annotation appearance shares the page compilation's retained-image budget",
+      "expected": "render",
+      "requirements": [
+        "content-annotations"
+      ],
+      "path": "corpus/generated/content/annotation-image-budget.pdf",
+      "sha256": "1f27ada8e642fa9518a8704945167220376c98a1e8704476e564ab451ffe9405",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/annotation-image-budget.ppm",
+      "oracle_sha256": "ee9aebb338dfafecf206b0e76918bc6d445266e03fecc268b28872ea8363b000",
+      "dpi": 72,
+      "width": 8,
+      "height": 8,
+      "api": "compile_page",
+      "image_samples": 12288
+    },
+    {
       "id": "content/annotation-link-borderless",
       "kind": "pdf",
       "description": "annotation-link-borderless",
@@ -4350,6 +4420,21 @@
       "width": 8,
       "height": 8,
       "tolerance": 1
+    },
+    {
+      "id": "content/shading-bbox-clip-depth",
+      "kind": "pdf",
+      "description": "A shading BBox nests within the clip depth budget",
+      "expected": "open",
+      "requirements": [
+        "content-shadings"
+      ],
+      "path": "corpus/generated/content/shading-bbox-clip-depth.pdf",
+      "sha256": "566b35806fa67632974ee9aaabb1b38530714f9fb2005389b56654d3f6f918c5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Limit"
     },
     {
       "id": "content/shading-background-ignored",

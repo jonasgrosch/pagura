@@ -359,10 +359,7 @@ impl Session {
             return Err(Error::invalid_argument("scale must be positive and finite")
                 .at(Position::Buffer(13 + offset)));
         }
-        let options = RenderOptions {
-            scale,
-            ..RenderOptions::default()
-        };
+        let options = RenderOptions::default().with_scale(scale);
         // Validate geometry before compilation or cache admission.
         let (width, height) = pagura::device_size(page, &options)?;
         if tile.width == 0

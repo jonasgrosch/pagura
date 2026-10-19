@@ -1,6 +1,6 @@
 //! Check mark generation only for widgets without existing appearances (12.7.5.2).
 use super::{Appearance, Program, bounds, finish, form_dictionary, inset, style::Style};
-use pagura_core::{Dictionary, Name, Result, Value};
+use pagura_core::{Dictionary, Error, Name, Result, Value};
 use pagura_document::{
     Document,
     forms::{Field, FieldValue, Widget},
@@ -11,7 +11,7 @@ pub(super) fn check_mark(
     state: Option<&Name>,
     field: &Field<'_>,
 ) -> Result<Appearance> {
-    let bbox = bounds(widget)?;
+    let bbox = bounds(widget).ok_or(Error::syntax("widget rectangle has no area"))?;
     let style = Style::read(document, widget.dictionary)?;
     let mut content = Program::new(document.limits());
     style.paint(&mut content, bbox)?;

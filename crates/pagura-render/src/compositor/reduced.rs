@@ -298,7 +298,7 @@ mod tests {
                 })
                 .unwrap();
             assert_eq!(
-                u32::from(super::super::quantize(value.color[0])),
+                u32::from(crate::device::quantize_unit(value.color[0])),
                 expected,
                 "{side} {low}"
             );

@@ -1,94 +1,91 @@
 //! Path construction, painting and deferred clipping (8.5).
 
 use super::{
-    Arc, Clip, Command, Compiler, Error, FillRule, Mark, PathCommand, Point, Result, Value, finite,
-    nested, number, point,
+    Arc, Clip, Command, Compiler, Error, FillRule, Mark, PathCommand, Point, Result, finite, nested,
 };
+use crate::operators::{Construct, Painting, Target};
 
 impl Compiler<'_> {
-    pub(super) fn construct(&mut self, word: &[u8], v: &[Value]) -> Result<()> {
+    pub(super) fn construct(&mut self, construct: Construct) -> Result<()> {
         if self.pending_clip.is_some() {
             return Err(Error::syntax("construction follows clipping operator"));
         }
-        let p = |i| point(v, i).map(|p| p * self.state.ctm);
-        match word {
-            b"m" => {
-                let point = p(0)?;
-                finite(point)?;
-                self.path.move_to(point);
+        let ctm = self.state.ctm;
+        let device = |p: Point| {
+            let p = p * ctm;
+            finite(p).map(|()| p)
+        };
+        match construct {
+            Construct::MoveTo(point) => {
+                self.path.move_to(device(point)?);
             }
-            b"l" => {
-                let point = p(0)?;
-                finite(point)?;
+            Construct::LineTo(point) => {
                 self.path
-                    .line_to(point)
+                    .line_to(device(point)?)
                     .ok_or(Error::syntax("line has no current point"))?;
             }
-            b"c" | b"v" | b"y" => {
+            Construct::CurveTo([a, b, end]) => {
+                self.curve([device(a)?, device(b)?, device(end)?])?;
+            }
+            Construct::CurveToInitial([b, end]) => {
                 let current = self
                     .path
                     .current_point()
                     .ok_or(Error::syntax("curve has no current point"))?;
-                let (a, b, end) = match word {
-                    b"c" => (p(0)?, p(2)?, p(4)?),
-                    b"v" => (current, p(0)?, p(2)?),
-                    _ => (p(0)?, p(2)?, p(2)?),
-                };
-                for point in [a, b, end] {
-                    finite(point)?;
-                }
-                self.path
-                    .cubic_to(a, b, end)
-                    .ok_or(Error::syntax("curve has no current point"))?;
+                self.curve([current, device(b)?, device(end)?])?;
             }
-            b"h" => {
+            Construct::CurveToFinal([a, end]) => {
+                let end = device(end)?;
+                self.curve([device(a)?, end, end])?;
+            }
+            Construct::Close => {
                 if self.path.current_point().is_none() {
                     return Err(Error::syntax("close has no current point"));
                 }
                 self.path.close();
             }
-            b"re" => {
-                let x = number(v, 0)?;
-                let y = number(v, 1)?;
-                let w = number(v, 2)?;
-                let h = number(v, 3)?;
-                let points = [
-                    Point::new(x, y),
-                    Point::new(x + w, y),
-                    Point::new(x + w, y + h),
-                    Point::new(x, y + h),
-                ]
-                .map(|p| p * self.state.ctm);
-                for (i, point) in points.into_iter().enumerate() {
-                    finite(point)?;
-                    if i == 0 {
-                        self.path.move_to(point);
-                    } else {
-                        self.path.line_to(point);
-                    }
+            Construct::Rectangle {
+                origin,
+                width,
+                height,
+            } => {
+                let corners = [
+                    origin,
+                    Point::new(origin.x + width, origin.y),
+                    Point::new(origin.x + width, origin.y + height),
+                    Point::new(origin.x, origin.y + height),
+                ];
+                let [first, rest @ ..] = corners;
+                self.path.move_to(device(first)?);
+                for corner in rest {
+                    self.path
+                        .line_to(device(corner)?)
+                        .ok_or(Error::syntax("line has no current point"))?;
                 }
                 self.path.close();
             }
-            _ => return Err(Error::syntax("invalid path operator")),
         }
         Ok(())
     }
 
-    pub(super) fn paint(&mut self, word: &[u8]) -> Result<()> {
+    fn curve(&mut self, [a, b, end]: [Point; 3]) -> Result<()> {
+        self.path
+            .cubic_to(a, b, end)
+            .map(|_| ())
+            .ok_or(Error::syntax("curve has no current point"))
+    }
+
+    pub(super) fn paint(&mut self, painting: Painting) -> Result<()> {
         if self.path.is_empty() {
             return Err(Error::syntax("painting requires a current path"));
         }
-        if matches!(word, b"s" | b"b" | b"b*") {
+        if painting.close {
             self.path.close();
         }
         let mut path = self.path.finish();
-        let rule = if matches!(word, b"f*" | b"B*" | b"b*") {
-            FillRule::EvenOdd
-        } else {
-            FillRule::NonZero
-        };
-        let fill = matches!(word, b"f" | b"F" | b"f*" | b"B" | b"B*" | b"b" | b"b*");
-        let stroke = matches!(word, b"S" | b"s" | b"B" | b"B*" | b"b" | b"b*");
+        let rule = painting.fill.unwrap_or(FillRule::NonZero);
+        let fill = painting.fill.is_some();
+        let stroke = painting.stroke;
         if fill && self.visible {
             self.prepare_fill(&mut path, rule)?;
         }
@@ -97,50 +94,43 @@ impl Compiler<'_> {
         }
         let path = Arc::new(path);
         if self.visible {
-            self.marks = self
-                .marks
-                .checked_add(usize::from(fill) + usize::from(stroke))
-                .filter(|&n| n <= self.document.limits().display_commands)
-                .ok_or(Error::limit("display list budget exceeded"))?;
+            self.session
+                .charge_marks(usize::from(fill) + usize::from(stroke))?;
         }
-        let start = self.list.commands.len();
+        let start = self.commands.len();
         if fill && self.visible {
-            self.list.commands.push(Command::Path(PathCommand {
+            self.commands.push(Command::Path(PathCommand {
                 path: Arc::clone(&path),
                 position: self.position,
                 mark: Mark::Fill(rule),
                 clip: self.state.clip.clone(),
-                color: self.state.fill.clone(),
+                color: self.state.fill.color.clone(),
                 transfer: self.state.transfer.clone(),
-                composite: self.state.composite.clone(),
+                composite: self.state.composite(Target::Fill),
             }));
         }
         if stroke && self.visible {
-            self.list.commands.push(Command::Path(PathCommand {
+            self.commands.push(Command::Path(PathCommand {
                 path: Arc::clone(&path),
                 position: self.position,
-                mark: Mark::Stroke(
-                    self.state.stroke.clone(),
-                    self.state.ctm,
-                    self.state.stroke_adjustment,
-                ),
-                clip: self.state.clip.clone(),
-                color: self.state.stroke_color.clone(),
-                transfer: self.state.transfer.clone(),
-                composite: crate::transparency::Composite {
-                    alpha: self.state.stroke_alpha,
-                    overprint: self.state.stroke_overprint,
-                    ..self.state.composite.clone()
+                mark: Mark::Stroke {
+                    pen: self.state.pen.clone(),
+                    ctm: self.state.ctm,
+                    adjust: self.state.stroke_adjustment,
                 },
+                clip: self.state.clip.clone(),
+                color: self.state.stroke.color.clone(),
+                transfer: self.state.transfer.clone(),
+                composite: self.state.composite(Target::Stroke),
             }));
         }
         if fill && stroke && self.visible {
             // The combined operation is a single object for transparency
             // (11.7.4.4); its fill and stroke do not composite with each other.
-            let overprint = self.state.composite.overprint
-                && self.state.stroke_overprint
-                && self.state.composite.alpha == self.state.stroke_alpha;
-            let mut commands = self.list.commands.split_off(start);
+            let overprint = self.state.fill.overprint
+                && self.state.stroke.overprint
+                && self.state.fill.alpha == self.state.stroke.alpha;
+            let mut commands = self.commands.split_off(start);
             if overprint {
                 for command in &mut commands {
                     if let Command::Path(p) = command {
@@ -150,8 +140,7 @@ impl Compiler<'_> {
                     }
                 }
             }
-            self.list
-                .commands
+            self.commands
                 .push(Command::Group(crate::transparency::Group {
                     position: self.position,
                     commands,
@@ -161,9 +150,9 @@ impl Compiler<'_> {
                         ..Default::default()
                     },
                     composite: if overprint {
-                        self.state.composite.clone()
+                        self.state.composite(Target::Fill)
                     } else {
-                        crate::transparency::Composite::opaque()
+                        crate::transparency::Composite::default()
                     },
                 }));
         }
@@ -179,9 +168,9 @@ impl Compiler<'_> {
         path: &mut pagura_raster::Path,
         rule: FillRule,
     ) -> Result<()> {
-        let mut work = self.fill_work.get();
+        let mut work = self.session.fill_work.get();
         let result = path.classify_fill(rule, &self.document.limits(), &mut work);
-        self.fill_work.set(work);
+        self.session.fill_work.set(work);
         result
     }
 
@@ -208,26 +197,38 @@ mod tests {
     use super::*;
 
     #[test]
-    fn fill_certification_is_charged_once_and_shared_with_detached_compilers() {
+    fn fill_certification_is_charged_once_and_shared_with_child_contexts() {
         let document = pagura_document::Document::open(
             pagura_testkit::fixture("zero_area", "zero-width-rectangle.pdf"),
             &pagura_document::OpenOptions::default(),
         )
         .unwrap();
-        let compiler = Compiler::new(&document, document.page(0).unwrap()).unwrap();
+        let page = document.page(0).unwrap();
+        let fonts =
+            std::sync::Mutex::new(super::super::text::cache::FontCache::new(document.limits()));
+        let visibility = crate::optional::Visibility::new(&document).unwrap();
+        let shared = super::super::Shared {
+            provider: None,
+            fonts: &fonts,
+            visibility: &visibility,
+        };
+        let session = super::super::Session::new(&document, page, &shared, None, None);
+        let compiler = Compiler::new(&session);
         let mut builder = pagura_raster::PathBuilder::new();
         builder.rect(3.5, 1.0, 0.0, 6.0);
         let mut path = builder.finish();
         compiler.prepare_fill(&mut path, FillRule::NonZero).unwrap();
-        let first = compiler.fill_work.get();
+        let first = session.fill_work.get();
         assert!(first > 0);
         compiler.prepare_fill(&mut path, FillRule::NonZero).unwrap();
-        assert_eq!(compiler.fill_work.get(), first);
-        let child = compiler.detached();
+        assert_eq!(session.fill_work.get(), first);
+        let child = compiler
+            .child(super::super::session::Child::SoftMask)
+            .unwrap();
         let mut other = path.transformed(pagura_raster::Transform::IDENTITY);
         child.prepare_fill(&mut other, FillRule::NonZero).unwrap();
-        assert_eq!(compiler.fill_work.get(), first * 2);
-        compiler.fill_work.set(document.limits().raster_work);
+        assert_eq!(session.fill_work.get(), first * 2);
+        session.fill_work.set(document.limits().raster_work);
         let mut other = path.transformed(pagura_raster::Transform::IDENTITY);
         assert_eq!(
             child

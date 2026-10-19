@@ -2,7 +2,7 @@
 //! Values and field types inherit through Parent; appearance characteristics do
 //! not. Nonempty values require text layout or a supplied appearance stream.
 
-use super::shapes::{annotation_color, border, rect_path};
+use super::shapes::{annotation_color, border};
 use crate::interpreter::{Compiler, Dictionary, Error, Mark, Rect, Result, Transform, Value};
 use pagura_raster::{FillRule, PathBuilder, Point, Stroke};
 
@@ -50,7 +50,7 @@ impl Compiler<'_> {
         if let Some(color) = annotation_color(self.document, mk, b"BG", None)? {
             self.annotation_mark(
                 d,
-                rect_path(rect),
+                crate::device::rectangle(rect),
                 Mark::Fill(FillRule::NonZero),
                 color,
                 rect,
@@ -87,15 +87,15 @@ impl Compiler<'_> {
         self.annotation_mark(
             d,
             path.finish(),
-            Mark::Stroke(
-                Stroke {
+            Mark::Stroke {
+                pen: Stroke {
                     width: border.width,
                     dash_array: border.dash,
                     ..Stroke::default()
                 },
-                Transform::IDENTITY,
-                false,
-            ),
+                ctm: Transform::IDENTITY,
+                adjust: false,
+            },
             color,
             rect,
         )

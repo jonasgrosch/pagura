@@ -1,5 +1,6 @@
 //! Normal annotation appearances and screen visibility (12.5.2–12.5.5).
 
+pub(super) mod filled;
 mod shapes;
 mod widgets;
 
@@ -8,6 +9,7 @@ use super::{
     forms::FormBody,
 };
 use crate::form_appearance::Appearance;
+use pagura_core::ResultExt;
 
 impl Compiler<'_> {
     pub(super) fn annotations(&mut self, page: &Page) -> Result<()> {
@@ -19,25 +21,17 @@ impl Compiler<'_> {
             .resolve(values)?
             .as_array()
             .ok_or(Error::syntax("Annots must be an array"))?;
-        if values.len() > self.document.limits().value_nodes {
+        if values.len() > self.document.limits().traversal_work {
             return Err(Error::limit("annotation count exceeded"));
         }
-        let compilation = std::rc::Rc::clone(&self.compilation);
-        let filled = compilation
+        let filled = self
+            .session
             .filler
-            .map(super::annotations_filled::FilledAnnotations::new)
+            .map(filled::FilledAnnotations::new)
             .transpose()?;
         for value in values {
             self.annotation(value, page.resources(), filled.as_ref())
-                .map_err(|error| {
-                    if let Some(id) = value.as_reference()
-                        && error.object.is_none()
-                    {
-                        error.in_object(id)
-                    } else {
-                        error
-                    }
-                })?;
+                .in_object_opt(value.as_reference())?;
         }
         Ok(())
     }
@@ -46,7 +40,7 @@ impl Compiler<'_> {
         &mut self,
         value: &Value,
         resources: &Dictionary,
-        filled: Option<&super::annotations_filled::FilledAnnotations<'_, '_>>,
+        filled: Option<&filled::FilledAnnotations<'_, '_>>,
     ) -> Result<()> {
         let d = self.document.resolve_dictionary(value)?;
         let flags = d
@@ -56,18 +50,16 @@ impl Compiler<'_> {
                     .resolve(v)?
                     .as_integer()
                     .ok_or(Error::syntax("annotation F must be integer"))
+                    .and_then(AnnotationFlags::parse)
             })
             .transpose()?
-            .unwrap_or(0);
-        if flags < 0 || flags & !1023 != 0 {
-            return Err(Error::syntax("invalid annotation flags"));
-        }
-        if flags & (2 | 32) != 0 {
+            .unwrap_or_default();
+        if flags.intersects(AnnotationFlags::HIDDEN.union(AnnotationFlags::NO_VIEW)) {
             self.extract_annotation(value, true)?;
             return Ok(());
         }
         if let Some(oc) = d.get(b"OC")
-            && !self.visibility.visible(self.document, oc)?
+            && !self.session.visibility.visible(self.document, oc)?
         {
             self.extract_annotation(value, true)?;
             return Ok(());
@@ -78,7 +70,7 @@ impl Compiler<'_> {
             .transpose()?
             .and_then(Value::as_name)
             .ok_or(Error::syntax("annotation has no Subtype"))?;
-        if flags & 1 != 0 && !standard_type(subtype.as_bytes()) {
+        if flags.intersects(AnnotationFlags::INVISIBLE) && !standard_type(subtype.as_bytes()) {
             self.extract_annotation(value, true)?;
             return Ok(());
         }
@@ -90,7 +82,7 @@ impl Compiler<'_> {
                 .transpose()?
                 .flatten()
         {
-            let start = self.list.commands.len();
+            let start = self.commands.len();
             self.paint_filled_appearance(&appearance, rect, resources)?;
             self.annotation_view(start, rect, flags);
             return Ok(());
@@ -109,39 +101,32 @@ impl Compiler<'_> {
         let Some(id) = normal_appearance(self.document, d, ap)? else {
             return Ok(());
         };
-        let start = self.list.commands.len();
+        let start = self.commands.len();
         self.paint_filled_appearance(&Appearance::Existing(id), rect, resources)?;
-        let flags = if subtype == b"Text" {
-            flags | 8 | 16
-        } else {
-            flags
-        };
-        self.annotation_view(start, rect, flags);
+        self.annotation_view(start, rect, flags.for_subtype(subtype.as_bytes()));
         Ok(())
     }
 
-    pub(super) fn annotation_view(&mut self, start: usize, rect: Rect, flags: i64) {
-        if flags & (8 | 16) == 0 {
+    pub(super) fn annotation_view(&mut self, start: usize, rect: Rect, flags: AnnotationFlags) {
+        if !flags.intersects(AnnotationFlags::NO_ZOOM.union(AnnotationFlags::NO_ROTATE)) {
             return;
         }
-        let commands = self.list.commands.split_off(start);
-        let mut bounds = pagura_raster::PathBuilder::new();
-        bounds.rect(rect.x0(), rect.y0(), rect.width(), rect.height());
-        self.list
-            .commands
+        let commands = self.commands.split_off(start);
+        let bounds = crate::device::rectangle(rect);
+        self.commands
             .push(crate::display::Command::Group(crate::transparency::Group {
                 position: self.position,
-                bounds: Some(std::sync::Arc::new(bounds.finish())),
+                bounds: Some(std::sync::Arc::new(bounds)),
                 commands,
                 attributes: crate::transparency::Attributes {
                     view: Some(crate::transparency::ViewFit {
                         anchor: Point::new(rect.x0(), rect.y1()),
-                        no_zoom: flags & 8 != 0,
-                        no_rotate: flags & 16 != 0,
+                        no_zoom: flags.intersects(AnnotationFlags::NO_ZOOM),
+                        no_rotate: flags.intersects(AnnotationFlags::NO_ROTATE),
                     }),
                     ..Default::default()
                 },
-                composite: crate::transparency::Composite::opaque(),
+                composite: crate::transparency::Composite::default(),
             }));
     }
 
@@ -200,26 +185,59 @@ impl Compiler<'_> {
                 ..Graphics::default()
             },
         );
-        let start = self.list.commands.len();
+        let start = self.commands.len();
         let extraction = self.extraction.take();
         let result = self.form_body(body, resources);
         self.extraction = extraction;
         if result.is_ok() && !form.contains_key(b"Group") {
-            let mut bounds = pagura_raster::PathBuilder::new();
-            bounds.rect(rect.x0(), rect.y0(), rect.width(), rect.height());
-            let commands = self.list.commands.split_off(start);
-            self.list
-                .commands
+            let bounds = crate::device::rectangle(rect);
+            let commands = self.commands.split_off(start);
+            self.commands
                 .push(crate::display::Command::Group(crate::transparency::Group {
                     position: self.position,
                     commands,
-                    bounds: Some(std::sync::Arc::new(bounds.finish())),
+                    bounds: Some(std::sync::Arc::new(bounds)),
                     attributes: crate::transparency::Attributes::default(),
-                    composite: crate::transparency::Composite::opaque(),
+                    composite: crate::transparency::Composite::default(),
                 }));
         }
         self.state = saved;
         result
+    }
+}
+
+/// Annotation flags (12.5.3, Table 167).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(super) struct AnnotationFlags(u16);
+impl AnnotationFlags {
+    const INVISIBLE: Self = Self(1);
+    const HIDDEN: Self = Self(1 << 1);
+    const NO_ZOOM: Self = Self(1 << 3);
+    const NO_ROTATE: Self = Self(1 << 4);
+    const NO_VIEW: Self = Self(1 << 5);
+    /// Table 167 defines bits 1 to 10.
+    const DEFINED: u16 = (1 << 10) - 1;
+
+    fn parse(value: i64) -> Result<Self> {
+        u16::try_from(value)
+            .ok()
+            .filter(|bits| bits & !Self::DEFINED == 0)
+            .map(Self)
+            .ok_or(Error::syntax("invalid annotation flags"))
+    }
+    const fn intersects(self, other: Self) -> bool {
+        self.0 & other.0 != 0
+    }
+    const fn union(self, other: Self) -> Self {
+        Self(self.0 | other.0)
+    }
+    /// Text annotations behave as if NoZoom and NoRotate were set (12.5.6.4).
+    pub(super) fn for_subtype(self, subtype: &[u8]) -> Self {
+        if subtype == b"Text" {
+            self.union(Self::NO_ZOOM).union(Self::NO_ROTATE)
+        } else {
+            self
+        }
     }
 }
 
@@ -438,6 +456,33 @@ mod tests {
             compile_page(&repaired, page).unwrap();
             assert_eq!(repaired.diagnostics(), diagnostics);
         }
+    }
+
+    #[test]
+    fn appearances_share_the_page_compilations_retained_byte_budget() {
+        let manifest = pagura_testkit::Manifest::load("content");
+        let case = manifest.case("annotation-image-budget").unwrap();
+        let samples =
+            usize::try_from(case.get("image_samples").unwrap().as_u64().unwrap()).unwrap();
+        let compile = |render_bytes| {
+            let document = Document::open(
+                fixture("content", "annotation-image-budget.pdf"),
+                &OpenOptions {
+                    limits: pagura_core::Limits {
+                        render_bytes,
+                        ..pagura_core::Limits::default()
+                    },
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            compile_page(&document, document.page(0).unwrap()).map(|list| list.commands.len())
+        };
+        // The page's image and the appearance's image are both retained by
+        // one compilation: room for one and a half images is not enough.
+        let error = compile(samples * 3 / 2).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit);
+        assert_eq!(compile(samples * 3).unwrap(), 2);
     }
 
     #[test]

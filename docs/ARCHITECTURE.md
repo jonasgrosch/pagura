@@ -28,7 +28,7 @@ Dependencies point downward only and are fixed in the crate manifests.
 | `pagura-text` | PDF font dictionaries, encodings, widths, CMaps and ToUnicode; shown strings to positioned glyphs | content streams, pixels |
 | `pagura-image` | image XObjects and inline images; JPEG, CCITT, JBIG2 and JPEG 2000 decoding to samples | painting, colour conversion |
 | `pagura-color` | ICC profile transforms and CIE colorimetry from bytes and numbers (ADR 0028) | PDF objects |
-| `pagura-render` | content interpretation into a display list in PDF terms; page-to-device transform; tiles; painting through `pagura-raster` | file structure |
+| `pagura-render` | content interpretation into a display list in PDF terms, one session per page (ADR 0028); page-to-device transform; tiles; painting through `pagura-raster` | file structure |
 | `pagura-write` | deterministic serialization | parsing |
 | `pagura` | the public facade and the `pagura` CLI | — |
 | `pagura-host` | the stdio session protocol, native and `wasm32-wasip1` | — |

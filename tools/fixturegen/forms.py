@@ -199,7 +199,7 @@ def cases():
     yield vector('checkbox-generated-off',o,mode='off',value='',expected='button|Off|0:Off',content=b'q\nQ\n',appearance='generated',requirement='forms-fill-button')
     # Generation failures are separate from successful, atomic value validation.
     o=base(flags=1<<23);o[11]['Rect']=[0,0,20,20]
-    yield vector('text-no-scroll-overflow',o,value='ABCDEFGH',expected='text|ABCDEFGH',appearance='error:invalid-argument')
+    yield vector('text-no-scroll-overflow',o,value='ABCDEFGH',expected='text|ABCDEFGH',appearance='error:unsupported:appearance.text-fit')
     o=base()
     yield vector('text-missing-font-character',o,value='Ω',expected='text|Ω',appearance='error:unsupported:appearance.font-encoding')
     o=base();o[10]['DA']=b'0 g'

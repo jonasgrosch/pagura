@@ -3,7 +3,7 @@
 use super::{Backdrop, Context, Model, Source, Surface};
 use crate::Tile;
 use crate::display::PathCommand;
-use crate::pattern::Tiling;
+use crate::pattern::{Tiling, TilingType};
 use pagura_core::{Error, Result};
 use pagura_raster::{Mask, Point, Transform};
 
@@ -184,7 +184,7 @@ fn intervals(lo: f64, hi: f64, b0: f64, b1: f64, step: f64) -> Result<(i64, i64)
 /// Type 2 preserves the exact matrix; pixel quantization alone varies spacing
 /// by at most one pixel. Type 1 refuses distortion beyond its one-pixel bound.
 fn fit(t: Transform, pattern: &Tiling) -> Result<Transform> {
-    if pattern.spacing == 2 {
+    if pattern.spacing == TilingType::NoDistortion {
         return Ok(t);
     }
     let vector = |x: f64, y: f64| {
@@ -214,7 +214,7 @@ fn fit(t: Transform, pattern: &Tiling) -> Result<Transform> {
             "device lattice collapses the pattern",
         ));
     }
-    if pattern.spacing == 1 {
+    if pattern.spacing == TilingType::ConstantSpacing {
         let bbox = pattern.bbox;
         for p in [
             Point::new(bbox.x0(), bbox.y0()),

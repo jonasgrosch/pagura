@@ -190,7 +190,7 @@
         "forms/render-fallback-oblique-tm",
         "pagura-render interpreter::annotations_filled_tests"
       ],
-      "gaps": "Reader policy: an untouched field with NeedAppearances may retain an existing AP on Unsupported, reported as form.appearance-kept information, valid in Strict mode too. Edited fields and other errors fail explicitly. Source objects are immutable."
+      "gaps": "Reader policy: an untouched field with NeedAppearances may retain an existing AP on Unsupported, reported as appearance.kept information, valid in Strict mode too. Edited fields and other errors fail explicitly. Source objects are immutable."
     }
   ]
 }

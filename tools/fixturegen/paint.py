@@ -285,7 +285,7 @@ def extra_cases():
     objects=type3(b"400 0 d0 BT /F 10 Tf (A) Tj ET",resources=b"<< /Font << /F 5 0 R >> >>")
     yield Case("type3-recursion",page(b"BT /F 20 Tf (A) Tj ET",objects,FONT),OPEN,("paint-budgets",),"Recursive CharProc fails with a cycle",extra={"render_error":"cycle"})
     objects=type3(b"401 0 d0")
-    yield Case("type3-inconsistent-width",page(b"BT /F 20 Tf (A) Tj ET",objects,FONT),OPEN,("paint-text-errors",),"CharProc width disagrees with Widths; Widths advance retained with a repair",repairs=("font.type3-width",),strict_valid=False)
+    yield Case("type3-inconsistent-width",page(b"BT /F 20 Tf (A) Tj ET",objects,FONT),OPEN,("paint-text-errors",),"CharProc width disagrees with Widths; Widths advance retained with a repair",repairs=("content.type3-width",),strict_valid=False)
     # An Indexed palette is unblended in its base colour space, before conversion.
     mask=stream(bytes([128,128]),b"/Subtype /Image /Width 2 /Height 1 /BitsPerComponent 8 /ColorSpace /DeviceGray /Matte [1 1 1]")
     yield image_case("image-indexed-matte",bytes([0,0]),b"/ColorSpace [/Indexed /DeviceRGB 0 <ff7f7f>] /BitsPerComponent 8 /SMask 6 0 R",[],2,1,masks=[mask],colors=[RED,RED],alpha=[F(128,255)]*2,requirement="paint-image-soft-mask")

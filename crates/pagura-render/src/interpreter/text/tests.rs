@@ -1,8 +1,8 @@
 //! Pixel oracles, tile parity and hostile-input admission for text and images.
-use crate::{RenderOptions, Tile, compile_page};
+use crate::{RenderOptions, compile_page};
 use pagura_core::{ErrorKind, Recovery};
 use pagura_document::{Document, OpenOptions};
-use pagura_testkit::{fixture, fixture_path};
+use pagura_testkit::fixture;
 
 fn open(name: &str) -> Document {
     Document::open(
@@ -15,121 +15,46 @@ fn open(name: &str) -> Document {
     .unwrap()
 }
 #[test]
-fn independent_paint_oracles_and_device_tiles() {
-    let directory = fixture_path("paint", "");
-    let mut paths: Vec<_> = std::fs::read_dir(directory)
-        .unwrap()
-        .map(|p| p.unwrap().path())
-        .filter(|p| p.extension().is_some_and(|e| e == "ppm"))
-        .collect();
-    paths.sort();
-    for path in paths {
-        let name = path.file_stem().unwrap().to_str().unwrap();
-        let document = open(name);
-        let list = if name.starts_with("image-fax-grid-") || name == "image-inline-fax-grid" {
-            let error = compile_page(&document, document.page(0).unwrap()).unwrap_err();
-            assert_eq!(
-                error.repair,
-                Some(pagura_image::tags::CCITT_COLUMNS),
-                "{name}"
-            );
-            assert!(document.diagnostics().is_empty(), "{name}");
-            let repaired = Document::open(
-                fixture("paint", &format!("{name}.pdf")),
-                &OpenOptions::default(),
-            )
-            .unwrap();
-            let list = compile_page(&repaired, repaired.page(0).unwrap()).unwrap();
-            assert_eq!(
-                repaired
-                    .diagnostics()
-                    .iter()
-                    .filter_map(pagura_core::Diagnostic::repair)
-                    .collect::<Vec<_>>(),
-                [pagura_image::tags::CCITT_COLUMNS],
-                "{name}"
-            );
-            list
-        } else {
-            compile_page(&document, document.page(0).unwrap()).unwrap()
-        };
-        let oracle = std::fs::read(&path).unwrap();
-        let (width, height) = list.device_size(&RenderOptions::default()).unwrap();
-        let header = format!("P6\n{width} {height}\n255\n");
-        let data = oracle.strip_prefix(header.as_bytes()).unwrap();
-        let image = list.render(&RenderOptions::default()).unwrap();
-        let tolerance = u8::from(
-            matches!(
-                name,
-                "text-triangle-area" | "image-dct" | "text-knockout-opaque-overlap"
-            ) || name.starts_with("image-area-"),
-        );
-        for (actual, expected) in image
-            .data()
-            .as_chunks::<4>()
-            .0
-            .iter()
-            .zip(data.as_chunks::<3>().0)
-        {
-            for i in 0..3 {
-                assert!(
-                    actual[i].abs_diff(expected[i]) <= tolerance,
-                    "{name}: {actual:?} != {expected:?}"
-                );
-            }
-            assert_eq!(actual[3], 255);
-        }
-        for scale in [1.0, 1.5] {
-            let options = RenderOptions {
-                scale,
-                ..Default::default()
-            };
-            let full = list.render(&options).unwrap();
-            let (width, height) = list.device_size(&options).unwrap();
-            for y in (0..height).step_by(if height > 64 { 37 } else { 7 }) {
-                for x in (0..width).step_by(if width > 64 { 41 } else { 9 }) {
-                    let tile = Tile {
-                        x,
-                        y,
-                        width: (width - x).min(if width > 64 { 41 } else { 9 }),
-                        height: (height - y).min(if height > 64 { 37 } else { 7 }),
-                    };
-                    let image = list.render_tile(&options, tile).unwrap();
-                    for row in 0..tile.height {
-                        let offset = usize::try_from(x).unwrap() * 4;
-                        let count = usize::try_from(tile.width).unwrap() * 4;
-                        assert_eq!(
-                            image.row(row).unwrap(),
-                            &full.row(y + row).unwrap()[offset..offset + count],
-                            "{name} scale {scale}: {tile:?}"
-                        );
-                    }
-                }
-            }
-        }
-    }
-}
-#[test]
 fn paint_cache_admission_is_atomic_and_shared_across_saved_states() {
     let document = open("text-mode-0");
-    let mut compiler = super::super::Compiler::new(&document, document.page(0).unwrap()).unwrap();
-    compiler.paint_charge(10, 1).unwrap();
+    let fonts = std::sync::Mutex::new(super::cache::FontCache::new(document.limits()));
+    let visibility = crate::optional::Visibility::new(&document).unwrap();
+    let shared = super::super::Shared {
+        provider: None,
+        fonts: &fonts,
+        visibility: &visibility,
+    };
+    let session =
+        super::super::Session::new(&document, document.page(0).unwrap(), &shared, None, None);
+    let mut compiler = super::super::Compiler::new(&session);
+    compiler.session.retain(10).unwrap();
     compiler.save_graphics().unwrap();
-    compiler.paint_charge(20, 1).unwrap();
+    compiler.session.retain(20).unwrap();
     compiler.restore_graphics().unwrap();
-    assert_eq!(compiler.state.text.cache.borrow().bytes, 30);
-    let error = compiler.paint_charge(usize::MAX, 0).unwrap_err();
+    assert_eq!(session.retained(), 30);
+    let error = compiler.session.retain(usize::MAX).unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
-    assert_eq!(compiler.state.text.cache.borrow().bytes, 30);
-    assert_eq!(compiler.state.text.cache.borrow().entries, 2);
+    assert_eq!(session.retained(), 30);
+    {
+        let _held = session.hold(5).unwrap();
+        assert_eq!(session.retained(), 35);
+    }
+    assert_eq!(session.retained(), 30);
 }
 #[test]
 fn fonts_and_outlines_are_reused() {
     let document = open("text-tj-adjustments");
-    let mut compiler = super::super::Compiler::new(&document, document.page(0).unwrap()).unwrap();
-    compiler.page(document.page(0).unwrap()).unwrap();
-    let cache = compiler.state.text.cache.borrow();
-    assert_eq!(cache.font_counts(), (1, 1));
+    let fonts = std::sync::Mutex::new(super::cache::FontCache::new(document.limits()));
+    let visibility = crate::optional::Visibility::new(&document).unwrap();
+    let shared = super::super::Shared {
+        provider: None,
+        fonts: &fonts,
+        visibility: &visibility,
+    };
+    let session =
+        super::super::Session::new(&document, document.page(0).unwrap(), &shared, None, None);
+    super::super::Compiler::new(&session).page().unwrap();
+    assert_eq!(session.paint.borrow().font_counts(), (1, 1));
 }
 
 #[test]

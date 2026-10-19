@@ -5,27 +5,127 @@
 use pagura_core::{Error, Limits, ObjectId, Position, Result};
 use std::sync::Arc;
 
+/// The operand stack depth Annex C (Table C.1) gives for PostScript
+/// calculator functions; deeper stacks are refused.
+const STACK: usize = Limits::CALCULATOR_STACK;
+/// Operands held in place before the stack spills to the heap: enough for
+/// typical tint and shading programs, without zeroing the whole Annex C
+/// stack on every evaluation.
+const INLINE: usize = 16;
+
 #[derive(Debug, Clone)]
-pub(super) struct Calculator(Arc<[Instruction]>, ObjectId);
+pub(super) struct Calculator {
+    program: Arc<[Instruction]>,
+    object: ObjectId,
+}
 #[derive(Debug, Clone)]
 enum Instruction {
     Push(Operand),
-    Op(&'static str, usize),
-    Conditional(Arc<[Instruction]>, Option<Arc<[Instruction]>>, usize),
+    Op {
+        op: PsOp,
+        offset: usize,
+    },
+    /// `{then} if` or `{then} {otherwise} ifelse`.
+    Conditional {
+        then: Arc<[Instruction]>,
+        otherwise: Option<Arc<[Instruction]>>,
+        offset: usize,
+    },
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 enum Operand {
     Integer(i32),
     Real(f64),
     Boolean(bool),
 }
 
-const OPERATORS: &[&str] = &[
-    "abs", "add", "atan", "ceiling", "cos", "cvi", "cvr", "div", "exp", "floor", "idiv", "ln",
-    "log", "mod", "mul", "neg", "round", "sin", "sqrt", "sub", "truncate", "and", "bitshift", "eq",
-    "ge", "gt", "le", "lt", "ne", "not", "or", "xor", "copy", "dup", "exch", "index", "pop",
-    "roll", "if", "ifelse",
-];
+/// The operators of Table 42, except the conditionals.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PsOp {
+    Abs,
+    Add,
+    Atan,
+    Ceiling,
+    Cos,
+    Cvi,
+    Cvr,
+    Div,
+    Exp,
+    Floor,
+    Idiv,
+    Ln,
+    Log,
+    Mod,
+    Mul,
+    Neg,
+    Round,
+    Sin,
+    Sqrt,
+    Sub,
+    Truncate,
+    And,
+    Bitshift,
+    Eq,
+    Ge,
+    Gt,
+    Le,
+    Lt,
+    Ne,
+    Not,
+    Or,
+    Xor,
+    Copy,
+    Dup,
+    Exch,
+    Index,
+    Pop,
+    Roll,
+}
+impl PsOp {
+    fn parse(word: &str) -> Option<Self> {
+        Some(match word {
+            "abs" => Self::Abs,
+            "add" => Self::Add,
+            "atan" => Self::Atan,
+            "ceiling" => Self::Ceiling,
+            "cos" => Self::Cos,
+            "cvi" => Self::Cvi,
+            "cvr" => Self::Cvr,
+            "div" => Self::Div,
+            "exp" => Self::Exp,
+            "floor" => Self::Floor,
+            "idiv" => Self::Idiv,
+            "ln" => Self::Ln,
+            "log" => Self::Log,
+            "mod" => Self::Mod,
+            "mul" => Self::Mul,
+            "neg" => Self::Neg,
+            "round" => Self::Round,
+            "sin" => Self::Sin,
+            "sqrt" => Self::Sqrt,
+            "sub" => Self::Sub,
+            "truncate" => Self::Truncate,
+            "and" => Self::And,
+            "bitshift" => Self::Bitshift,
+            "eq" => Self::Eq,
+            "ge" => Self::Ge,
+            "gt" => Self::Gt,
+            "le" => Self::Le,
+            "lt" => Self::Lt,
+            "ne" => Self::Ne,
+            "not" => Self::Not,
+            "or" => Self::Or,
+            "xor" => Self::Xor,
+            "copy" => Self::Copy,
+            "dup" => Self::Dup,
+            "exch" => Self::Exch,
+            "index" => Self::Index,
+            "pop" => Self::Pop,
+            "roll" => Self::Roll,
+            _ => return None,
+        })
+    }
+}
 
 struct Parser<'a> {
     bytes: &'a [u8],
@@ -77,7 +177,7 @@ impl<'a> Parser<'a> {
             self.nodes += 1;
             let instruction = if self.bytes.get(self.offset) == Some(&b'{') {
                 let offset = self.offset;
-                let yes = self.procedure(depth + 1)?;
+                let then = self.procedure(depth + 1)?;
                 self.whitespace();
                 let otherwise = if self.bytes.get(self.offset) == Some(&b'{') {
                     Some(self.procedure(depth + 1)?)
@@ -90,7 +190,11 @@ impl<'a> Parser<'a> {
                         "calculator brace expression requires conditional operator",
                     ));
                 }
-                Instruction::Conditional(yes, otherwise, offset)
+                Instruction::Conditional {
+                    then,
+                    otherwise,
+                    offset,
+                }
             } else {
                 let (word, start) = self.word()?;
                 match word {
@@ -102,31 +206,34 @@ impl<'a> Parser<'a> {
                         ));
                     }
                     _ => {
-                        if let Some(&op) = OPERATORS.iter().find(|&&op| op == word) {
-                            Instruction::Op(op, start)
+                        if let Some(op) = PsOp::parse(word) {
+                            Instruction::Op { op, offset: start }
                         } else if let Ok(n) = word.parse::<i32>() {
                             Instruction::Push(Operand::Integer(n))
                         } else {
-                            let mut parser = pagura_core::syntax::Parser::new(
-                                word.as_bytes(),
-                                pagura_core::syntax::Origin::Buffer,
-                                *self.limits,
-                            );
-                            let value = parser
-                                .parse()
-                                .ok()
-                                .filter(|_| parser.at_end())
-                                .and_then(|v| v.as_number())
-                                .ok_or(Error::syntax(
-                                    "unknown calculator operator or invalid PDF number",
-                                ))?;
-                            Instruction::Push(Operand::Real(value))
+                            Instruction::Push(Operand::Real(self.real(word)?))
                         }
                     }
                 }
             };
             program.push(instruction);
         }
+    }
+    /// A real in PDF syntax (7.3.3): no exponent and no radix.
+    fn real(&self, word: &str) -> Result<f64> {
+        let mut parser = pagura_core::syntax::Parser::new(
+            word.as_bytes(),
+            pagura_core::syntax::Origin::Buffer,
+            *self.limits,
+        );
+        parser
+            .parse()
+            .ok()
+            .filter(|_| parser.at_end())
+            .and_then(|v| v.as_number())
+            .ok_or(Error::syntax(
+                "unknown calculator operator or invalid PDF number",
+            ))
     }
     fn word(&mut self) -> Result<(&'a str, usize)> {
         self.whitespace();
@@ -168,30 +275,116 @@ impl Calculator {
         if parser.offset != bytes.len() {
             return Err(Error::syntax("trailing calculator program data"));
         }
-        Ok(Self(program, object))
+        Ok(Self { program, object })
     }
+    /// Runs the program on `input` and writes the stack, which must hold
+    /// exactly `output.len()` numbers, to `output`.
     pub(super) fn evaluate(
         &self,
         input: &[f64],
-        outputs: usize,
+        output: &mut [f64],
         work: &mut usize,
         limits: &Limits,
-    ) -> Result<Vec<f64>> {
+    ) -> Result<()> {
         let mut stack = Stack {
-            values: input.iter().copied().map(Operand::Real).collect(),
+            values: Operands::new(),
             limits,
             work,
-            object: self.1,
+            object: self.object,
         };
-        stack.execute(&self.0, 0)?;
-        if stack.values.len() != outputs {
+        for &value in input {
+            stack.push(Operand::Real(value))?;
+        }
+        stack.execute(&self.program, 0)?;
+        if stack.values.len != output.len() {
             return Err(Error::syntax("wrong calculator output count"));
         }
-        stack.values.iter().map(numeric).collect()
+        for (index, out) in output.iter_mut().enumerate() {
+            *out = numeric(stack.values.get(index)?)?;
+        }
+        Ok(())
     }
 }
+
+/// The operand stack, filled as it grows: the first [`INLINE`] operands live
+/// in place and deeper ones spill to the heap, up to [`STACK`].
+struct Operands {
+    inline: [Operand; INLINE],
+    spill: Vec<Operand>,
+    len: usize,
+}
+impl Operands {
+    const fn new() -> Self {
+        Self {
+            inline: [Operand::Integer(0); INLINE],
+            spill: Vec::new(),
+            len: 0,
+        }
+    }
+    fn get(&self, index: usize) -> Result<Operand> {
+        let value = if index >= self.len {
+            None
+        } else if let Some(spilled) = index.checked_sub(INLINE) {
+            self.spill.get(spilled)
+        } else {
+            self.inline.get(index)
+        };
+        value
+            .copied()
+            .ok_or(Error::syntax("calculator stack underflow"))
+    }
+    fn push(&mut self, value: Operand) -> Result<()> {
+        if self.len >= STACK {
+            return Err(Error::limit("calculator stack exceeded"));
+        }
+        if let Some(slot) = self.inline.get_mut(self.len) {
+            *slot = value;
+        } else {
+            self.spill.push(value);
+        }
+        self.len += 1;
+        Ok(())
+    }
+    fn pop(&mut self) -> Result<Operand> {
+        let value = self.get(
+            self.len
+                .checked_sub(1)
+                .ok_or(Error::syntax("calculator stack underflow"))?,
+        )?;
+        self.len -= 1;
+        if self.len >= INLINE {
+            self.spill.pop();
+        }
+        Ok(value)
+    }
+    /// Rotates the operands in `range` towards the top by `shift` places.
+    fn rotate_right(&mut self, range: std::ops::Range<usize>, shift: usize) -> Result<()> {
+        if let Some(values) = self.inline.get_mut(range.clone())
+            && range.end <= self.len
+        {
+            values.rotate_right(shift);
+            return Ok(());
+        }
+        // A spilled stack is rare; gather, rotate and write back.
+        let mut values = range
+            .clone()
+            .map(|index| self.get(index))
+            .collect::<Result<Vec<_>>>()?;
+        values.rotate_right(shift);
+        let (low, high) = values.split_at(INLINE.saturating_sub(range.start).min(values.len()));
+        if let Some(slots) = self.inline.get_mut(range.start..range.start + low.len()) {
+            slots.copy_from_slice(low);
+        }
+        let first = range.start.max(INLINE) - INLINE;
+        if let Some(slots) = self.spill.get_mut(first..first + high.len()) {
+            slots.copy_from_slice(high);
+        }
+        Ok(())
+    }
+}
+
 struct Stack<'a> {
-    values: Vec<Operand>,
+    values: Operands,
     limits: &'a Limits,
     work: &'a mut usize,
     object: ObjectId,
@@ -201,12 +394,12 @@ impl Stack<'_> {
         *self.work = self
             .work
             .checked_add(count)
-            .filter(|&n| n <= self.limits.operations)
+            .filter(|&n| n <= self.limits.function_work)
             .ok_or(Error::limit("calculator work exceeded"))?;
         Ok(())
     }
     fn push(&mut self, value: Operand) -> Result<()> {
-        if self.values.len() >= self.limits.value_nodes {
+        if self.values.len >= STACK {
             return Err(Error::limit("calculator stack exceeded"));
         }
         if let Operand::Real(v) = value
@@ -216,13 +409,19 @@ impl Stack<'_> {
                 "calculator arithmetic is undefined or overflows",
             ));
         }
-        self.values.push(value);
-        Ok(())
+        self.values.push(value)
     }
     fn pop(&mut self) -> Result<Operand> {
-        self.values
-            .pop()
-            .ok_or(Error::syntax("calculator stack underflow"))
+        self.values.pop()
+    }
+    /// The operands from depth `count` to the top, oldest first.
+    fn top(&self, count: usize, underflow: &'static str) -> Result<std::ops::Range<usize>> {
+        let start = self
+            .values
+            .len
+            .checked_sub(count)
+            .ok_or(Error::syntax(underflow))?;
+        Ok(start..self.values.len)
     }
     fn integer(&mut self) -> Result<i32> {
         if let Operand::Integer(v) = self.pop()? {
@@ -238,8 +437,12 @@ impl Stack<'_> {
         for instruction in program {
             self.charge(1)?;
             match instruction {
-                Instruction::Push(value) => self.push(value.clone())?,
-                Instruction::Conditional(yes, otherwise, offset) => {
+                Instruction::Push(value) => self.push(*value)?,
+                Instruction::Conditional {
+                    then,
+                    otherwise,
+                    offset,
+                } => {
                     let Operand::Boolean(test) = self.pop()? else {
                         return Err(Error::syntax("calculator condition must be boolean").at(
                             Position::Stream {
@@ -249,12 +452,12 @@ impl Stack<'_> {
                         ));
                     };
                     if test {
-                        self.execute(yes, depth + 1)?;
+                        self.execute(then, depth + 1)?;
                     } else if let Some(otherwise) = otherwise {
                         self.execute(otherwise, depth + 1)?;
                     }
                 }
-                Instruction::Op(op, offset) => self.operator(op).map_err(|e| {
+                Instruction::Op { op, offset } => self.operator(*op).map_err(|e| {
                     e.at(Position::Stream {
                         object: self.object,
                         offset: *offset,
@@ -264,75 +467,67 @@ impl Stack<'_> {
         }
         Ok(())
     }
-    fn operator(&mut self, op: &str) -> Result<()> {
+    fn operator(&mut self, op: PsOp) -> Result<()> {
+        use PsOp as P;
         match op {
-            "dup" | "exch" | "pop" | "copy" | "index" | "roll" => self.stack_operator(op),
-            "and" | "or" | "xor" | "not" | "bitshift" => self.logical(op),
-            "eq" | "ne" | "ge" | "gt" | "le" | "lt" => self.compare(op),
-            "add" | "sub" | "mul" | "div" | "idiv" | "mod" | "exp" | "atan" => self.binary(op),
-            _ => self.unary(op),
+            P::Dup | P::Exch | P::Pop | P::Copy | P::Index | P::Roll => self.stack_operator(op),
+            P::And | P::Or | P::Xor | P::Not | P::Bitshift => self.logical(op),
+            P::Eq | P::Ne | P::Ge | P::Gt | P::Le | P::Lt => self.compare(op),
+            P::Add | P::Sub | P::Mul | P::Div | P::Idiv | P::Mod | P::Exp | P::Atan => {
+                self.binary(op)
+            }
+            P::Abs
+            | P::Ceiling
+            | P::Cos
+            | P::Cvi
+            | P::Cvr
+            | P::Floor
+            | P::Ln
+            | P::Log
+            | P::Neg
+            | P::Round
+            | P::Sin
+            | P::Sqrt
+            | P::Truncate => self.unary(op),
         }
     }
-    fn stack_operator(&mut self, op: &str) -> Result<()> {
+    fn stack_operator(&mut self, op: PsOp) -> Result<()> {
         match op {
-            "pop" => {
+            PsOp::Pop => {
                 self.pop()?;
             }
-            "dup" => {
-                let value = self
-                    .values
-                    .last()
-                    .cloned()
-                    .ok_or(Error::syntax("calculator stack underflow"))?;
+            PsOp::Dup => {
+                let value = self.pop()?;
+                self.push(value)?;
                 self.push(value)?;
             }
-            "exch" => {
+            PsOp::Exch => {
                 let a = self.pop()?;
                 let b = self.pop()?;
                 self.push(a)?;
                 self.push(b)?;
             }
-            "copy" => {
+            PsOp::Copy => {
                 let count = usize::try_from(self.integer()?)
                     .map_err(|_| Error::syntax("negative calculator copy"))?;
-                let start = self
-                    .values
-                    .len()
-                    .checked_sub(count)
-                    .ok_or(Error::syntax("calculator copy underflow"))?;
-                if self
-                    .values
-                    .len()
-                    .checked_add(count)
-                    .is_none_or(|n| n > self.limits.value_nodes)
-                {
+                let copied = self.top(count, "calculator copy underflow")?;
+                if self.values.len.checked_add(count).is_none_or(|n| n > STACK) {
                     return Err(Error::limit("calculator stack exceeded"));
                 }
                 self.charge(count)?;
-                let copy = self
-                    .values
-                    .get(start..)
-                    .ok_or(Error::syntax("calculator copy underflow"))?
-                    .to_vec();
-                self.values.extend(copy);
+                for index in copied {
+                    let value = self.values.get(index)?;
+                    self.values.push(value)?;
+                }
             }
-            "index" => {
+            PsOp::Index => {
                 let n = usize::try_from(self.integer()?)
                     .map_err(|_| Error::syntax("negative calculator index"))?;
-                let index = self
-                    .values
-                    .len()
-                    .checked_sub(n)
-                    .and_then(|v| v.checked_sub(1))
-                    .ok_or(Error::syntax("calculator index underflow"))?;
-                self.push(
-                    self.values
-                        .get(index)
-                        .cloned()
-                        .ok_or(Error::syntax("calculator index underflow"))?,
-                )?;
+                let below = self.top(n.saturating_add(1), "calculator index underflow")?;
+                let value = self.values.get(below.start)?;
+                self.push(value)?;
             }
-            "roll" => {
+            PsOp::Roll => {
                 let shift = self.integer()?;
                 let n = self.integer()?;
                 if n < 0 {
@@ -340,33 +535,26 @@ impl Stack<'_> {
                 }
                 let count =
                     usize::try_from(n).map_err(|_| Error::limit("roll size exceeds usize"))?;
-                let start = self
-                    .values
-                    .len()
-                    .checked_sub(count)
-                    .ok_or(Error::syntax("calculator roll underflow"))?;
+                let rolled = self.top(count, "calculator roll underflow")?;
                 self.charge(count)?;
                 if n > 0 {
                     let shift = usize::try_from(shift.rem_euclid(n))
                         .map_err(|_| Error::limit("roll shift exceeds usize"))?;
-                    self.values
-                        .get_mut(start..)
-                        .ok_or(Error::syntax("calculator roll underflow"))?
-                        .rotate_right(shift);
+                    self.values.rotate_right(rolled, shift)?;
                 }
             }
             _ => return Err(Error::syntax("unknown calculator stack operator")),
         }
         Ok(())
     }
-    fn binary(&mut self, op: &str) -> Result<()> {
-        if matches!(op, "idiv" | "mod") {
+    fn binary(&mut self, op: PsOp) -> Result<()> {
+        if matches!(op, PsOp::Idiv | PsOp::Mod) {
             let b = self.integer()?;
             let a = self.integer()?;
-            if op == "mod" && a == i32::MIN && b == -1 {
+            if op == PsOp::Mod && a == i32::MIN && b == -1 {
                 return self.push(Operand::Integer(0));
             }
-            let result = if op == "idiv" {
+            let result = if op == PsOp::Idiv {
                 a.checked_div(b)
             } else {
                 a.checked_rem(b)
@@ -376,30 +564,30 @@ impl Stack<'_> {
         }
         let b = self.pop()?;
         let a = self.pop()?;
-        if let (Operand::Integer(a), Operand::Integer(b)) = (&a, &b) {
+        if let (Operand::Integer(a), Operand::Integer(b)) = (a, b) {
             let result = match op {
-                "add" => a.checked_add(*b),
-                "sub" => a.checked_sub(*b),
-                "mul" => a.checked_mul(*b),
+                PsOp::Add => a.checked_add(b),
+                PsOp::Sub => a.checked_sub(b),
+                PsOp::Mul => a.checked_mul(b),
                 _ => None,
             };
             if let Some(result) = result {
                 return self.push(Operand::Integer(result));
             }
         }
-        let (a, b) = (numeric(&a)?, numeric(&b)?);
+        let (a, b) = (numeric(a)?, numeric(b)?);
         let result = match op {
-            "add" => a + b,
-            "sub" => a - b,
-            "mul" => a * b,
-            "div" => {
+            PsOp::Add => a + b,
+            PsOp::Sub => a - b,
+            PsOp::Mul => a * b,
+            PsOp::Div => {
                 if b == 0.0 {
                     return Err(Error::syntax("calculator division by zero"));
                 }
                 a / b
             }
-            "exp" => a.powf(b),
-            "atan" => {
+            PsOp::Exp => a.powf(b),
+            PsOp::Atan => {
                 if a == 0.0 && b == 0.0 {
                     return Err(Error::syntax("undefined calculator atan"));
                 }
@@ -409,22 +597,25 @@ impl Stack<'_> {
         };
         self.push(Operand::Real(result))
     }
-    fn unary(&mut self, op: &str) -> Result<()> {
+    fn unary(&mut self, op: PsOp) -> Result<()> {
         let value = self.pop()?;
         if let Operand::Integer(v) = value {
-            if matches!(op, "floor" | "ceiling" | "round" | "truncate" | "cvi") {
+            if matches!(
+                op,
+                PsOp::Floor | PsOp::Ceiling | PsOp::Round | PsOp::Truncate | PsOp::Cvi
+            ) {
                 return self.push(Operand::Integer(v));
             }
             if let Some(v) = match op {
-                "abs" => v.checked_abs(),
-                "neg" => v.checked_neg(),
+                PsOp::Abs => v.checked_abs(),
+                PsOp::Neg => v.checked_neg(),
                 _ => None,
             } {
                 return self.push(Operand::Integer(v));
             }
         }
-        let v = numeric(&value)?;
-        if op == "cvi" {
+        let v = numeric(value)?;
+        if op == PsOp::Cvi {
             let v = v.trunc();
             if !(f64::from(i32::MIN)..=f64::from(i32::MAX)).contains(&v) {
                 return Err(Error::syntax("calculator integer conversion out of range"));
@@ -436,34 +627,28 @@ impl Stack<'_> {
             return self.push(Operand::Integer(v as i32));
         }
         let result = match op {
-            "abs" => v.abs(),
-            "neg" => -v,
-            "floor" => v.floor(),
-            "ceiling" => v.ceil(),
-            "round" => (v + 0.5).floor(),
-            "truncate" => v.trunc(),
-            "cvr" => v,
-            "sqrt" => v.sqrt(),
-            "ln" => {
+            PsOp::Abs => v.abs(),
+            PsOp::Neg => -v,
+            PsOp::Floor => v.floor(),
+            PsOp::Ceiling => v.ceil(),
+            PsOp::Round => (v + 0.5).floor(),
+            PsOp::Truncate => v.trunc(),
+            PsOp::Cvr => v,
+            PsOp::Sqrt => v.sqrt(),
+            PsOp::Ln | PsOp::Log => {
                 if v <= 0.0 {
                     return Err(Error::syntax("calculator log outside domain"));
                 }
-                v.ln()
+                if op == PsOp::Ln { v.ln() } else { v.log10() }
             }
-            "log" => {
-                if v <= 0.0 {
-                    return Err(Error::syntax("calculator log outside domain"));
-                }
-                v.log10()
-            }
-            "sin" => v.to_radians().sin(),
-            "cos" => v.to_radians().cos(),
+            PsOp::Sin => v.to_radians().sin(),
+            PsOp::Cos => v.to_radians().cos(),
             _ => return Err(Error::syntax("unknown calculator unary operator")),
         };
         self.push(Operand::Real(result))
     }
-    fn logical(&mut self, op: &str) -> Result<()> {
-        if op == "bitshift" {
+    fn logical(&mut self, op: PsOp) -> Result<()> {
+        if op == PsOp::Bitshift {
             let shift = self.integer()?;
             let value = self.integer()?.cast_unsigned();
             let amount = shift.unsigned_abs();
@@ -477,7 +662,7 @@ impl Stack<'_> {
             return self.push(Operand::Integer(result.cast_signed()));
         }
         let b = self.pop()?;
-        if op == "not" {
+        if op == PsOp::Not {
             return self.push(match b {
                 Operand::Integer(v) => Operand::Integer(!v),
                 Operand::Boolean(v) => Operand::Boolean(!v),
@@ -489,57 +674,65 @@ impl Stack<'_> {
         let a = self.pop()?;
         self.push(match (a, b) {
             (Operand::Integer(a), Operand::Integer(b)) => Operand::Integer(match op {
-                "and" => a & b,
-                "or" => a | b,
+                PsOp::And => a & b,
+                PsOp::Or => a | b,
                 _ => a ^ b,
             }),
             (Operand::Boolean(a), Operand::Boolean(b)) => Operand::Boolean(match op {
-                "and" => a & b,
-                "or" => a | b,
+                PsOp::And => a & b,
+                PsOp::Or => a | b,
                 _ => a ^ b,
             }),
             _ => return Err(Error::syntax("mismatched calculator logical operands")),
         })
     }
-    fn compare(&mut self, op: &str) -> Result<()> {
+    fn compare(&mut self, op: PsOp) -> Result<()> {
         let b = self.pop()?;
         let a = self.pop()?;
-        let equal = match (&a, &b) {
+        let equal = match (a, b) {
             (Operand::Boolean(a), Operand::Boolean(b)) => a == b,
-            _ => numeric(&a)
+            _ => numeric(a)
                 .ok()
-                .zip(numeric(&b).ok())
+                .zip(numeric(b).ok())
                 .is_some_and(|(a, b)| a == b),
         };
-        let result = if op == "eq" {
-            equal
-        } else if op == "ne" {
-            !equal
-        } else {
-            let (a, b) = (numeric(&a)?, numeric(&b)?);
-            match op {
-                "ge" => a >= b,
-                "gt" => a > b,
-                "le" => a <= b,
-                "lt" => a < b,
-                _ => return Err(Error::syntax("unknown calculator comparison")),
+        let result = match op {
+            PsOp::Eq => equal,
+            PsOp::Ne => !equal,
+            _ => {
+                let (a, b) = (numeric(a)?, numeric(b)?);
+                match op {
+                    PsOp::Ge => a >= b,
+                    PsOp::Gt => a > b,
+                    PsOp::Le => a <= b,
+                    PsOp::Lt => a < b,
+                    _ => return Err(Error::syntax("unknown calculator comparison")),
+                }
             }
         };
         self.push(Operand::Boolean(result))
     }
 }
-fn numeric(value: &Operand) -> Result<f64> {
+fn numeric(value: Operand) -> Result<f64> {
     match value {
-        Operand::Integer(n) => Ok(f64::from(*n)),
-        Operand::Real(n) => Ok(*n),
+        Operand::Integer(n) => Ok(f64::from(n)),
+        Operand::Real(n) => Ok(n),
         Operand::Boolean(_) => Err(Error::syntax("calculator requires numeric operand")),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::Calculator;
+    use super::{Calculator, INLINE, Operand, Operands, STACK};
     use pagura_core::{ErrorKind, Limits, ObjectId};
+
+    fn run(program: &str, limits: &Limits) -> pagura_core::Result<f64> {
+        let program = Calculator::parse(program.as_bytes(), limits, ObjectId::new(1, 0))?;
+        let mut output = [0.0];
+        program.evaluate(&[], &mut output, &mut 0, limits)?;
+        Ok(output[0])
+    }
+
     #[test]
     fn independent_calculator_arithmetic_stack_and_branches() {
         for (program, expected) in [
@@ -549,6 +742,7 @@ mod tests {
             ("{ 1 2 lt {4} {9} ifelse }", 4.0),
             ("{ 1 2 2 copy add add add }", 6.0),
             ("{ 1 2 3 3 -1 roll pop pop }", 2.0),
+            ("{ 5 6 1 index exch pop exch pop }", 5.0),
             ("{ -1 -1 bitshift }", 2_147_483_647.0),
             ("{ 2147483647 1 add }", 2_147_483_648.0),
             ("{ false {1 0 div} if 7 }", 7.0),
@@ -557,11 +751,8 @@ mod tests {
             ("{ 3 cvr 2 exp sqrt }", 3.0),
             ("{ true false or not {0} {5} ifelse }", 5.0),
         ] {
-            let limits = Limits::default();
-            let program =
-                Calculator::parse(program.as_bytes(), &limits, ObjectId::new(1, 0)).unwrap();
-            let output = program.evaluate(&[], 1, &mut 0, &limits).unwrap();
-            assert!((output[0] - expected).abs() < 1e-8);
+            let output = run(program, &Limits::default()).unwrap();
+            assert!((output - expected).abs() < 1e-8, "{program}");
         }
     }
     #[test]
@@ -577,21 +768,78 @@ mod tests {
             "{-2147483648 -1 idiv}",
             "{1 -1 copy}",
             "{true 1 and}",
+            "{1 1 index}",
         ] {
-            let p = Calculator::parse(source.as_bytes(), &limits, ObjectId::new(1, 0)).unwrap();
             assert_eq!(
-                p.evaluate(&[], 1, &mut 0, &limits).unwrap_err().kind,
-                ErrorKind::Syntax
+                run(source, &limits).unwrap_err().kind,
+                ErrorKind::Syntax,
+                "{source}"
             );
         }
-        let p = Calculator::parse(b"{1 2 add 3 mul}", &limits, ObjectId::new(1, 0)).unwrap();
         let limits = Limits {
-            operations: 2,
+            function_work: 2,
             ..limits
         };
         assert_eq!(
-            p.evaluate(&[], 1, &mut 0, &limits).unwrap_err().kind,
+            run("{1 2 add 3 mul}", &limits).unwrap_err().kind,
             ErrorKind::Limit
         );
+    }
+    #[test]
+    fn the_operand_stack_holds_the_annex_c_depth() {
+        let limits = Limits::default();
+        let fill = |count: usize| {
+            let mut program = String::from("{");
+            for _ in 0..count {
+                program.push_str(" 1");
+            }
+            for _ in 1..count {
+                program.push_str(" add");
+            }
+            program + " }"
+        };
+        assert_eq!(run(&fill(STACK), &limits).unwrap(), 100.0);
+        assert_eq!(
+            run(&fill(STACK + 1), &limits).unwrap_err().kind,
+            ErrorKind::Limit
+        );
+        // copy past the depth is refused before copying.
+        let program = format!("{{ {} {} copy }}", "1 ".repeat(60), 60);
+        assert_eq!(run(&program, &limits).unwrap_err().kind, ErrorKind::Limit);
+    }
+    #[test]
+    fn spilled_operands_behave_like_one_stack() {
+        // Push, roll and pop across the inline/spill boundary against a
+        // plain vector holding the same integers.
+        let integer = |value: Operand| match value {
+            Operand::Integer(v) => v,
+            _ => unreachable!("the test pushes integers only"),
+        };
+        let mut stack = Operands::new();
+        let mut model = Vec::new();
+        for value in 0..40 {
+            stack.push(Operand::Integer(value)).unwrap();
+            model.push(value);
+        }
+        for (start, end, shift) in [
+            (0, 40, 7),
+            (10, 20, 3),
+            (16, 40, 5),
+            (2, 16, 4),
+            (15, 17, 1),
+        ] {
+            stack.rotate_right(start..end, shift).unwrap();
+            model[start..end].rotate_right(shift);
+            let actual: Vec<_> = (0..model.len())
+                .map(|i| integer(stack.get(i).unwrap()))
+                .collect();
+            assert_eq!(actual, model, "{start}..{end} by {shift}");
+        }
+        while let Some(expected) = model.pop() {
+            assert_eq!(integer(stack.pop().unwrap()), expected);
+            assert_eq!(stack.len, model.len());
+        }
+        assert!(stack.pop().is_err());
+        const { assert!(INLINE < 40 && 40 < STACK) };
     }
 }

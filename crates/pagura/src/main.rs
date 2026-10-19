@@ -76,10 +76,7 @@ impl Flags {
     }
 
     fn render_options(&self, dpi: f64) -> RenderOptions {
-        RenderOptions {
-            overprint: self.overprint,
-            ..RenderOptions::from_dpi(dpi)
-        }
+        RenderOptions::from_dpi(dpi).with_overprint(self.overprint)
     }
 
     fn with_strict(&self, strict: bool) -> Self {

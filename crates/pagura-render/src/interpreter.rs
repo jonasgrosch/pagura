@@ -1,15 +1,12 @@
 //! Content compilation from immutable objects and optional in-memory form values.
 
 mod annotations;
-mod annotations_filled;
-#[cfg(test)]
-mod annotations_filled_tests;
 mod forms;
 pub(crate) mod images;
 mod masks;
 mod path;
 mod pattern;
-mod pattern_inline;
+mod session;
 mod shading;
 mod state;
 pub(crate) mod text;
@@ -17,10 +14,14 @@ pub(crate) mod text;
 use crate::color::{self, Color};
 use crate::display::{Clip, Command, DisplayList, Mark, PathCommand};
 use crate::features;
+use crate::operators::{MAX_OPERANDS, Operation, Operator, Token, token};
+use crate::optional::Visibility;
 use pagura_core::syntax::{Origin, Parser};
-use pagura_core::{Dictionary, Error, Feature, ObjectId, Position, Rect, Result, Value};
+use pagura_core::{Dictionary, Error, Feature, Name, ObjectId, Position, Rect, Result, Value};
 use pagura_document::{Document, IndirectObject, Page};
 use pagura_raster::{FillRule, LineCap, LineJoin, PathBuilder, Point, Stroke, Transform};
+use session::Session;
+use state::Graphics;
 use std::sync::Arc;
 
 pub(crate) fn repair(document: &Document, diagnostic: pagura_core::Diagnostic) -> Result<()> {
@@ -30,8 +31,8 @@ pub(crate) fn repair(document: &Document, diagnostic: pagura_core::Diagnostic) -
     Ok(())
 }
 
-pub(crate) use annotations_filled::compile_filled_cached;
-pub use annotations_filled::compile_filled_page;
+pub use annotations::filled::compile_filled_page;
+pub(crate) use annotations::filled::compile_filled_shared;
 pub(crate) use text::extract::compile_with_text;
 pub use text::extract::{compile_page_with_text, text_page};
 
@@ -44,92 +45,85 @@ pub use text::extract::{compile_page_with_text, text_page};
 /// Returns positioned syntax errors, resource-limit errors and stable
 /// `Unsupported` tags. No partial list is returned on failure.
 pub fn compile_page(document: &Document, page: &Page) -> Result<DisplayList> {
-    let fonts = std::sync::Mutex::new(text::cache::FontCache::new(document.limits()));
-    compile_cached(document, page, None, &fonts)
+    compile_page_with_provider(document, page, None)
 }
 
-/// Compiles a page using external font resources supplied explicitly (ADR 0009).
-/// Use [`crate::RenderContext`] to share fonts across multiple pages.
+/// Compiles a page, taking fonts the document does not embed from
+/// `provider` (ADR 0009). Use [`crate::RenderContext`] to share fonts and the
+/// optional-content configuration across pages.
 ///
 /// # Errors
 /// As [`compile_page`], including errors from the provider.
-pub fn compile_page_with(
-    document: &Document,
-    page: &Page,
-    provider: &dyn pagura_text::Provider,
-) -> Result<DisplayList> {
-    let fonts = std::sync::Mutex::new(text::cache::FontCache::new(document.limits()));
-    compile_cached(document, page, Some(provider), &fonts)
-}
-
-pub(crate) fn compile_cached(
+pub fn compile_page_with_provider(
     document: &Document,
     page: &Page,
     provider: Option<&dyn pagura_text::Provider>,
-    fonts: &std::sync::Mutex<text::cache::FontCache>,
 ) -> Result<DisplayList> {
-    let mut compiler = Compiler::new(document, page)?;
-    compiler.compilation = std::rc::Rc::new(Compilation {
-        colors: crate::icc::Cache::default(),
-        provider,
-        fonts: Some(fonts),
-        filler: None,
-    });
-    compiler.page(page).map_err(|e| e.in_object(page.id()))?;
-    Ok(compiler.list)
+    Shared::standalone(document, provider, |shared| {
+        compile_shared(document, page, shared)
+    })
 }
 
-// Resources shared by detached forms and masks within one compilation.
-struct Compilation<'a> {
-    filler: Option<&'a pagura_document::forms::FormFiller<'a>>,
-    colors: crate::icc::Cache,
-    provider: Option<&'a dyn pagura_text::Provider>,
-    fonts: Option<&'a std::sync::Mutex<text::cache::FontCache>>,
+pub(crate) fn compile_shared(
+    document: &Document,
+    page: &Page,
+    shared: &Shared<'_>,
+) -> Result<DisplayList> {
+    compile(document, page, shared, None, None).map(|(list, _)| list)
 }
 
-#[derive(Debug, Clone)]
-struct Graphics {
-    text: text::TextState,
-    ctm: Transform,
-    fill: Color,
-    stroke_color: Color,
-    stroke: Stroke,
-    clip: Option<Arc<Clip>>,
-    clip_depth: usize,
-    intent: Vec<u8>,
-    flatness: f64,
-    stroke_adjustment: bool,
-    transfer: Option<crate::functions::Transfer>,
-    composite: crate::transparency::Composite,
-    stroke_alpha: f64,
-    stroke_overprint: bool,
+/// Document-bound resources that compilations borrow: the provider, the font
+/// cache and the default optional-content configuration (ADR 0009). A
+/// [`crate::RenderContext`] keeps them across pages.
+pub(crate) struct Shared<'a> {
+    pub(crate) provider: Option<&'a dyn pagura_text::Provider>,
+    pub(crate) fonts: &'a std::sync::Mutex<text::cache::FontCache>,
+    pub(crate) visibility: &'a Visibility,
 }
 
-impl Default for Graphics {
-    fn default() -> Self {
-        Self {
-            text: text::TextState::default(),
-            ctm: Transform::IDENTITY,
-            fill: Color::default(),
-            stroke_color: Color::default(),
-            stroke: Stroke::default(),
-            clip: None,
-            clip_depth: 0,
-            intent: b"RelativeColorimetric".to_vec(),
-            flatness: 1.0,
-            stroke_adjustment: false,
-            transfer: None,
-            composite: crate::transparency::Composite::opaque(),
-            stroke_alpha: 1.0,
-            stroke_overprint: false,
-        }
+impl Shared<'_> {
+    /// Runs `compile` with resources that live for this one call.
+    pub(crate) fn standalone<T>(
+        document: &Document,
+        provider: Option<&dyn pagura_text::Provider>,
+        compile: impl FnOnce(&Shared<'_>) -> Result<T>,
+    ) -> Result<T> {
+        let fonts = std::sync::Mutex::new(text::cache::FontCache::new(document.limits()));
+        let visibility = Visibility::new(document)?;
+        compile(&Shared {
+            provider,
+            fonts: &fonts,
+            visibility: &visibility,
+        })
     }
 }
 
-struct Compiler<'a> {
-    document: &'a Document,
-    compilation: std::rc::Rc<Compilation<'a>>,
-    list: DisplayList,
+/// Interprets a page and its annotations in one session, with in-memory
+/// form values when `filler` is given, also collecting positioned text when
+/// `text` is given.
+fn compile(
+    document: &Document,
+    page: &Page,
+    shared: &Shared<'_>,
+    filler: Option<&pagura_document::forms::FormFiller<'_>>,
+    text: Option<text::extract::Output>,
+) -> Result<(DisplayList, Option<text::extract::Output>)> {
+    let session = Session::new(document, page, shared, filler, text);
+    let mut compiler = Compiler::new(&session);
+    let group = compiler.page().map_err(|e| e.in_object(page.id()))?;
+    let mut list = DisplayList::new(page, document.limits());
+    list.group = group;
+    list.commands = compiler.commands;
+    list.print_intent = crate::overprint::print_intent(document, page);
+    Ok((list, session.text.map(std::cell::RefCell::into_inner)))
+}
+
+/// One content context: the page, or a form, soft mask, tiling cell or
+/// Type 3 glyph interpreted inside it (see [`session::Child`]).
+struct Compiler<'s> {
+    session: &'s Session<'s>,
+    document: &'s Document,
+    commands: Vec<Command>,
     state: Graphics,
     saved: Vec<Graphics>,
     path: PathBuilder,
@@ -138,80 +132,52 @@ struct Compiler<'a> {
     compatibility: usize,
     marked: Vec<bool>,
     visible: bool,
-    visibility: Arc<crate::optional::Visibility>,
-    operations: usize,
-    fill_work: std::rc::Rc<std::cell::Cell<usize>>,
-    marks: usize,
     initial_ctm: Transform,
     initial_state: Graphics,
     stencil_pattern: bool,
     position: Position,
     forms: Vec<ObjectId>,
-    extraction: Option<text::extract::Extraction>,
+    /// The open text object (9.4.1): not graphics state, so `q`/`Q` and
+    /// child contexts never copy it.
+    text_object: Option<text::TextObject>,
+    /// The display-list index of the glyph run this context is extending
+    /// (9.3.8); any operator other than text showing or text state ends it.
+    text_run: Option<usize>,
+    procedure: Option<text::type3::Procedure>,
+    extraction: Option<text::extract::Scope>,
+    /// Coloured patterns and shading patterns already selected in this
+    /// context: their cells and transforms depend only on its initial state.
+    patterns: std::collections::BTreeMap<ObjectId, Arc<crate::pattern::Pattern>>,
 }
 
-impl<'a> Compiler<'a> {
-    fn new(document: &'a Document, page: &Page) -> Result<Self> {
-        Ok(Self {
-            document,
-            compilation: std::rc::Rc::new(Compilation {
-                colors: crate::icc::Cache::default(),
-                provider: None,
-                fonts: None,
-                filler: None,
-            }),
-            list: DisplayList::new(page, document.limits()),
-            state: Graphics::default(),
-            saved: Vec::new(),
-            path: PathBuilder::new(),
-            pending_clip: None,
-            operands: Vec::new(),
-            compatibility: 0,
-            marked: Vec::new(),
-            visible: true,
-            visibility: Arc::new(crate::optional::Visibility::new(document)?),
-            operations: 0,
-            fill_work: std::rc::Rc::default(),
-            marks: 0,
-            initial_ctm: Transform::IDENTITY,
-            initial_state: Graphics::default(),
-            stencil_pattern: false,
-            position: Position::Unknown,
-            forms: Vec::new(),
-            extraction: None,
-        })
-    }
-
-    fn page(&mut self, page: &Page) -> Result<()> {
-        self.paint_charge(page.resources().retained_bytes(), 0)?;
-        self.state.text.cache.borrow_mut().page_resources =
-            Some(Arc::new(page.resources().clone()));
-        let context = crate::icc::ColorContext::new(self.document, &self.compilation.colors);
-        self.list.group =
+impl Compiler<'_> {
+    /// Interprets the page's content and annotations; returns the page
+    /// group's attributes (11.4.7).
+    fn page(&mut self) -> Result<crate::transparency::Attributes> {
+        let page = self.session.page;
+        let context = self.session.colors();
+        let group =
             crate::transparency::Attributes::parse(&context, page.dictionary(), page.resources())?
                 .unwrap_or_default();
-        self.state.fill = Color::new(color::named(&context, page.resources(), b"DeviceGray")?);
-        self.state.stroke_color = self.state.fill.clone();
+        self.state.fill.color =
+            Color::new(color::named(&context, page.resources(), b"DeviceGray")?);
+        self.state.stroke.color = self.state.fill.color.clone();
         let streams = self.document.content_streams(page)?;
         self.sequence(&streams, page.resources())?;
         self.annotations(page)?;
-        self.list.print_intent = crate::overprint::print_intent(self.document, page);
-        Ok(())
+        Ok(group)
     }
 
     fn sequence(&mut self, streams: &[&IndirectObject], resources: &Dictionary) -> Result<()> {
         let mut bytes = Vec::new();
         let mut origins = Vec::new();
+        let mut held = self.session.hold(0)?;
         for stream in streams {
             let data = self.document.stream_data(stream)?;
-            let end = bytes
-                .len()
-                .checked_add(data.len())
-                .and_then(|n| n.checked_add(1))
-                .filter(|&n| n <= self.document.limits().decoded_bytes)
-                .ok_or(Error::limit("content sequence byte budget exceeded"))?;
+            let length = data.len().saturating_add(1);
+            held.add(length)?;
             bytes
-                .try_reserve(end - bytes.len())
+                .try_reserve(length)
                 .map_err(|_| Error::limit("content sequence allocation failed"))?;
             origins.push((bytes.len(), stream.id()));
             bytes.extend_from_slice(&data);
@@ -226,17 +192,13 @@ impl<'a> Compiler<'a> {
         origins: &[(usize, ObjectId)],
         resources: &Dictionary,
     ) -> Result<()> {
-        // Pattern execution restores the parent's initial graphics state (8.7.3.1).
-        self.state.composite.conversion.intent = crate::icc::Intent::from_name(&self.state.intent);
+        // Patterns selected in this content start from this state (8.7.3.1).
         self.initial_state = self.state.clone();
         let mut parser = Parser::new(bytes, Origin::Buffer, self.document.limits());
         let mut stream_index = 0;
-        while let Some(byte) = parser.peek() {
-            self.operations = self
-                .operations
-                .checked_add(1)
-                .filter(|&n| n <= self.document.limits().operations)
-                .ok_or(Error::limit("content token budget exceeded"))
+        while parser.peek().is_some() {
+            self.session
+                .charge_operations(1)
                 .map_err(|e| stream_error(e, parser.offset(), origins))?;
             let offset = parser.offset();
             while origins
@@ -253,20 +215,12 @@ impl<'a> Compiler<'a> {
             } else {
                 self.position = Position::Buffer(offset);
             }
-            let result = if matches!(
-                byte,
-                b'/' | b'(' | b'[' | b'<' | b'+' | b'-' | b'.' | b'0'..=b'9'
-            ) {
-                parser.parse().and_then(|value| self.operand(value))
-            } else {
-                parser.word().and_then(|word| match word {
-                    b"true" => self.operand(Value::Boolean(true)),
-                    b"false" => self.operand(Value::Boolean(false)),
-                    b"null" => self.operand(Value::Null),
-                    b"BI" => self.pattern_inline(&mut parser, resources),
-                    _ => self.operator(word, resources),
-                })
-            };
+            let result = token(&mut parser).and_then(|token| match token {
+                Some(Token::Operand(value)) => self.operand(value),
+                Some(Token::Operator(b"BI")) => self.inline_image(&mut parser, resources),
+                Some(Token::Operator(word)) => self.operator(word, resources),
+                None => Ok(()),
+            });
             result.map_err(|e| stream_error(e, offset, origins))?;
         }
         if !self.operands.is_empty()
@@ -274,7 +228,7 @@ impl<'a> Compiler<'a> {
             || !self.marked.is_empty()
             || !self.path.is_empty()
             || self.pending_clip.is_some()
-            || self.state.text.object.is_some()
+            || self.text_object.is_some()
         {
             return Err(stream_error(
                 Error::syntax("content sequence ends with unfinished state"),
@@ -287,18 +241,16 @@ impl<'a> Compiler<'a> {
                 Error::syntax("unclosed saved graphics states"),
                 bytes.len().saturating_sub(1),
                 origins,
-            );
+            )
+            .position;
             repair(
                 self.document,
                 pagura_core::Diagnostic::new(
                     crate::repairs::GRAPHICS_UNCLOSED,
                     "unmatched q states discarded at end of content sequence (7.8.2, 8.4.2)",
                 )
-                .at(position.position)
-                .in_object(match position.position {
-                    Position::Stream { object, .. } => object,
-                    _ => return Err(position),
-                }),
+                .at(position)
+                .in_object_opt(position.object()),
             )?;
             self.saved.clear();
         }
@@ -306,7 +258,7 @@ impl<'a> Compiler<'a> {
     }
 
     fn operand(&mut self, value: Value) -> Result<()> {
-        if self.operands.len() >= 32 {
+        if self.operands.len() >= MAX_OPERANDS {
             return Err(Error::limit("content operand budget exceeded"));
         }
         no_references(&value)?;
@@ -315,27 +267,13 @@ impl<'a> Compiler<'a> {
     }
 
     fn operator(&mut self, word: &[u8], resources: &Dictionary) -> Result<()> {
-        if !matches!(
-            word,
-            b"Tj"
-                | b"TJ"
-                | b"'"
-                | b"\""
-                | b"Tc"
-                | b"Tw"
-                | b"Tz"
-                | b"TL"
-                | b"Ts"
-                | b"Tf"
-                | b"Tm"
-                | b"Td"
-                | b"TD"
-                | b"T*"
-        ) {
-            self.state.text.run = None;
+        let parsed = Operator::parse(word);
+        // A glyph run continues only across text-showing and text-state
+        // operators; any other operator ends it.
+        if !parsed.is_some_and(Operator::keeps_text_run) {
+            self.text_run = None;
         }
-        let tag = crate::operators::validate(word, &self.operands)?;
-        let Some(_) = tag else {
+        let Some(operator) = parsed else {
             if self.compatibility > 0 {
                 self.operands.clear();
                 return Ok(());
@@ -343,11 +281,13 @@ impl<'a> Compiler<'a> {
             return Err(Error::syntax("unknown content operator"));
         };
         let operands = std::mem::take(&mut self.operands);
-        let result = self.glyph_operator(word).and_then(|ignore| {
-            if ignore || self.pattern_ignores(word, &operands, resources)? {
+        let result = operator.decode(&operands).and_then(|operation| {
+            if self.glyph_ignores(operator)?
+                || self.pattern_ignores(operator, operation, resources)?
+            {
                 Ok(())
             } else {
-                self.execute(word, &operands, resources)
+                self.execute(operation, resources)
             }
         });
         self.operands = operands;
@@ -355,31 +295,31 @@ impl<'a> Compiler<'a> {
         if self.path.len() > self.document.limits().path_segments {
             return Err(Error::limit("path segment budget exceeded"));
         }
-        result?;
-        self.paint_charge(0, 0)
+        result
     }
 
     fn repair(&self, tag: pagura_core::Repair, message: &'static str) -> Result<()> {
-        let mut diagnostic = pagura_core::Diagnostic::new(tag, message).at(self.position);
-        if let Position::Stream { object, .. } = self.position {
-            diagnostic = diagnostic.in_object(object);
-        }
-        repair(self.document, diagnostic)
+        repair(
+            self.document,
+            pagura_core::Diagnostic::new(tag, message)
+                .at(self.position)
+                .in_object_opt(self.position.object()),
+        )
     }
 
-    fn execute(&mut self, word: &[u8], v: &[Value], resources: &Dictionary) -> Result<()> {
-        match word {
-            b"q" => self.save_graphics()?,
-            b"Q" => self.restore_graphics()?,
-            b"cm" => {
-                let matrix = matrix(v)?.then(self.state.ctm);
+    fn execute(&mut self, operation: Operation<'_>, resources: &Dictionary) -> Result<()> {
+        match operation {
+            Operation::Save => self.save_graphics()?,
+            Operation::Restore => self.restore_graphics()?,
+            Operation::Concat(matrix) => {
+                let matrix = matrix.then(self.state.ctm);
                 if !matrix.is_finite() {
                     return Err(Error::syntax("CTM arithmetic overflow"));
                 }
                 self.state.ctm = matrix;
             }
-            b"w" | b"J" | b"j" | b"M" | b"d" | b"i" | b"ri" => self.parameter(word, v)?,
-            b"m" | b"l" | b"c" | b"v" | b"y" | b"h" | b"re" => {
+            Operation::Parameter(parameter) => self.parameter(parameter)?,
+            Operation::Construct(construct) => {
                 if self.pending_clip.is_some() {
                     self.repair(
                         crate::repairs::CLIP_ORDER,
@@ -387,11 +327,11 @@ impl<'a> Compiler<'a> {
                     )?;
                 }
                 let pending = self.pending_clip.take();
-                let result = self.construct(word, v);
+                let result = self.construct(construct);
                 self.pending_clip = pending;
                 result?;
             }
-            b"S" | b"s" | b"f" | b"F" | b"f*" | b"B" | b"B*" | b"b" | b"b*" | b"n" => {
+            Operation::Paint(painting) => {
                 if self.path.is_empty() {
                     self.repair(
                         crate::repairs::EMPTY_PATH,
@@ -399,122 +339,72 @@ impl<'a> Compiler<'a> {
                     )?;
                     self.pending_clip = None;
                 } else {
-                    self.paint(word)?;
+                    self.paint(painting)?;
                 }
             }
-            b"W" | b"W*" => {
+            Operation::Clip(rule) => {
                 if self.pending_clip.is_some() {
                     return Err(Error::syntax("multiple clipping operators for one path"));
                 }
-                self.pending_clip = Some(if word == b"W" {
-                    FillRule::NonZero
-                } else {
-                    FillRule::EvenOdd
-                });
+                self.pending_clip = Some(rule);
             }
-            b"g" | b"G" | b"rg" | b"RG" | b"k" | b"K" | b"CS" | b"cs" | b"SC" | b"SCN" | b"sc"
-            | b"scn" => {
-                self.color(word, v, resources)?;
-                self.compile_pattern(word)?;
-            }
-            b"gs" => self.paint_gstate(v, resources)?,
-            b"Do" => self.xobject(v, resources)?,
-            b"BT" | b"ET" | b"Tc" | b"Tw" | b"Tz" | b"TL" | b"Tf" | b"Tr" | b"Ts" | b"Td"
-            | b"TD" | b"Tm" | b"T*" | b"Tj" | b"TJ" | b"'" | b"\"" | b"d0" | b"d1" => {
-                if self.extraction.is_some() {
-                    self.text_operator::<true>(word, v, resources)?;
-                } else {
-                    self.text_operator::<false>(word, v, resources)?;
-                }
-            }
-            b"BX" => {
+            Operation::Color(target, color) => self.color(target, color, resources)?,
+            Operation::GraphicsState(name) => self.graphics_state(name, resources)?,
+            Operation::XObject(name) => self.xobject(name, resources)?,
+            Operation::Text(text) => self.text_operator(text, resources)?,
+            Operation::Glyph(metrics) => self.glyph_metrics(metrics)?,
+            Operation::BeginCompatibility => {
                 self.compatibility = nested(self.compatibility, self.document.limits().depth)?;
             }
-            b"EX" => {
+            Operation::EndCompatibility => {
                 self.compatibility = self
                     .compatibility
                     .checked_sub(1)
                     .ok_or(Error::syntax("EX without BX"))?;
             }
-            b"BMC" | b"BDC" => self.begin_marked(word, v, resources)?,
-            b"EMC" => {
+            Operation::BeginMarked { tag, properties } => {
+                self.begin_marked(tag, properties, resources)?;
+            }
+            Operation::EndMarked => {
                 self.visible = self
                     .marked
                     .pop()
                     .ok_or(Error::syntax("EMC without marked content"))?;
-                if self.extraction.is_some() {
-                    self.extract_end()?;
-                }
+                self.extract_end()?;
             }
-            b"MP" | b"DP" => {}
-            b"ID" | b"EI" => return Err(Error::syntax("inline image delimiter outside image")),
-            b"sh" => self.shading(v, resources)?,
-            _ => {
-                return Err(Error::unsupported(
-                    features::operator_tag(word),
-                    "content operator is not implemented",
-                ));
+            Operation::MarkPoint => {}
+            Operation::ImageDelimiter => {
+                return Err(Error::syntax("inline image delimiter outside image"));
             }
+            Operation::Shade(name) => self.shading(name, resources)?,
         }
         Ok(())
     }
-    fn begin_marked(&mut self, word: &[u8], v: &[Value], resources: &Dictionary) -> Result<()> {
+    fn begin_marked(
+        &mut self,
+        tag: &Name,
+        properties: Option<&Value>,
+        resources: &Dictionary,
+    ) -> Result<()> {
         if self.marked.len() >= self.document.limits().depth {
             return Err(Error::limit("marked content nesting exceeded"));
         }
         let mut visible = true;
-        if word == b"BDC"
-            && v.first()
-                .and_then(Value::as_name)
-                .is_some_and(|n| n == b"OC")
+        if tag == b"OC"
+            && let Some(properties) = properties
         {
-            let properties = v
-                .get(1)
-                .ok_or(Error::syntax("missing optional content properties"))?;
             let properties = if let Some(name) = properties.as_name() {
                 resource(self.document, resources, b"Properties", name.as_bytes())?
             } else {
                 properties
             };
-            visible = self.visibility.marked(self.document, properties)?;
+            visible = self.session.visibility.marked(self.document, properties)?;
         }
         self.marked.push(self.visible);
         self.visible &= visible;
-        if self.extraction.is_some() {
-            self.extract_begin(word, v, resources)?;
-        }
+        self.extract_begin(tag, properties, resources)?;
         Ok(())
     }
-}
-
-fn number(v: &[Value], index: usize) -> Result<f64> {
-    v.get(index)
-        .and_then(Value::as_number)
-        .ok_or(Error::syntax("numeric operand expected"))
-}
-
-fn integer(v: &[Value], index: usize) -> Result<i64> {
-    v.get(index)
-        .and_then(Value::as_integer)
-        .ok_or(Error::syntax("integer operand expected"))
-}
-
-fn point(v: &[Value], index: usize) -> Result<Point> {
-    Ok(Point::new(number(v, index)?, number(v, index + 1)?))
-}
-
-fn matrix(v: &[Value]) -> Result<Transform> {
-    if v.len() != 6 {
-        return Err(Error::syntax("matrix must have six numbers"));
-    }
-    Ok(Transform::new(
-        number(v, 0)?,
-        number(v, 1)?,
-        number(v, 2)?,
-        number(v, 3)?,
-        number(v, 4)?,
-        number(v, 5)?,
-    ))
 }
 
 fn nested(current: usize, maximum: usize) -> Result<usize> {
@@ -547,23 +437,6 @@ fn finite(point: Point) -> Result<()> {
         return Err(Error::syntax("path arithmetic overflow"));
     }
     Ok(())
-}
-
-fn rendering_intent(value: &Value) -> Result<Vec<u8>> {
-    let name = value
-        .as_name()
-        .ok_or(Error::syntax("rendering intent must be a name"))?;
-    // ISO 8.6.5.8 Table 69 permits RelativeColorimetric for unknown intents.
-    Ok(
-        if matches!(
-            name.as_bytes(),
-            b"RelativeColorimetric" | b"AbsoluteColorimetric" | b"Perceptual" | b"Saturation"
-        ) {
-            name.as_bytes().to_vec()
-        } else {
-            b"RelativeColorimetric".to_vec()
-        },
-    )
 }
 
 fn resource<'a>(

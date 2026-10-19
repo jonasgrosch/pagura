@@ -6,7 +6,7 @@
 
 mod mesh;
 
-use crate::color::{self, Space};
+use crate::color::{self, Components, Space};
 use crate::functions::Function;
 use crate::icc::ColorContext;
 use pagura_core::{Dictionary, Error, Rect, Result, Value};
@@ -18,10 +18,46 @@ pub(crate) struct Shading {
     pub(crate) bbox: Option<Rect>,
     pub(crate) bbox_path: Option<pagura_raster::Path>,
     pub(crate) antialias: bool,
-    pub(crate) background: Option<[f64; 32]>,
+    pub(crate) background: Option<Components>,
     functions: Functions,
     geometry: Geometry,
 }
+/// Table 77 `ShadingType`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ShadingType {
+    Function,
+    Axial,
+    Radial,
+    FreeTriangles,
+    LatticeTriangles,
+    Coons,
+    TensorProduct,
+}
+impl TryFrom<i64> for ShadingType {
+    type Error = Error;
+    fn try_from(value: i64) -> Result<Self> {
+        Ok(match value {
+            1 => Self::Function,
+            2 => Self::Axial,
+            3 => Self::Radial,
+            4 => Self::FreeTriangles,
+            5 => Self::LatticeTriangles,
+            6 => Self::Coons,
+            7 => Self::TensorProduct,
+            _ => return Err(Error::syntax("invalid ShadingType")),
+        })
+    }
+}
+impl ShadingType {
+    /// Types 4 to 7 describe colour by a mesh in a stream (8.7.4.5.5–8).
+    const fn is_mesh(self) -> bool {
+        matches!(
+            self,
+            Self::FreeTriangles | Self::LatticeTriangles | Self::Coons | Self::TensorProduct
+        )
+    }
+}
+
 #[derive(Debug)]
 enum Geometry {
     Mesh(Box<mesh::Mesh>),
@@ -70,10 +106,8 @@ impl Shading {
             .map(|v| document.resolve(v))
             .transpose()?
             .and_then(Value::as_integer)
-            .ok_or(Error::syntax("shading requires ShadingType"))?;
-        if !(1..=7).contains(&kind) {
-            return Err(Error::syntax("invalid ShadingType"));
-        }
+            .ok_or(Error::syntax("shading requires ShadingType"))
+            .and_then(ShadingType::try_from)?;
         let space = color::blending(
             document,
             resources,
@@ -81,7 +115,7 @@ impl Shading {
                 .ok_or(Error::syntax("shading requires ColorSpace"))?,
         )?;
         if matches!(space, Space::Pattern(_))
-            || (kind < 4 && matches!(space, Space::Indexed { .. }))
+            || (!kind.is_mesh() && matches!(space, Space::Indexed { .. }))
             || (matches!(space, Space::Indexed { .. }) && d.contains_key(b"Function"))
         {
             return Err(Error::syntax("analytic shading cannot use Indexed"));
@@ -101,11 +135,7 @@ impl Shading {
                 Ok(b)
             })
             .transpose()?;
-        let bbox_path = bbox.map(|b| {
-            let mut path = pagura_raster::PathBuilder::new();
-            path.rect(b.x0(), b.y0(), b.width(), b.height());
-            path.finish()
-        });
+        let bbox_path = bbox.map(crate::device::rectangle);
         let antialias = d
             .get(b"AntiAlias")
             .map(|v| {
@@ -124,7 +154,7 @@ impl Shading {
                     .as_array()
                     .filter(|v| v.len() == components)
                     .ok_or(Error::syntax("wrong shading Background dimension"))?;
-                let mut background = [0.0; 32];
+                let mut background = Components::zeros(components);
                 for (out, v) in background.iter_mut().zip(values) {
                     *out = document
                         .resolve(v)?
@@ -134,7 +164,7 @@ impl Shading {
                 Ok(background)
             })
             .transpose()?;
-        if kind >= 4 {
+        if kind.is_mesh() {
             let mesh = mesh::Mesh::parse(document, d, value, kind, components)?;
             return Ok(Self {
                 space,
@@ -164,33 +194,23 @@ impl Shading {
             geometry,
         })
     }
+    /// Writes the colour at `point` into `output`, which holds the shading
+    /// space's components, if the shading covers the point.
     pub(crate) fn sample(
         &self,
         point: Point,
-        output: &mut [f64; 32],
+        output: &mut [f64],
         work: &mut usize,
         raster_work: &mut usize,
     ) -> Result<bool> {
-        if let Geometry::Mesh(mesh) = &self.geometry {
-            if !mesh.sample(point, output, raster_work)? {
-                return Ok(false);
-            }
-            let input = *output;
-            let count = if matches!(mesh.functions, Functions::Identity) {
-                self.space.components()
-            } else {
-                1
-            };
-            mesh.functions.evaluate(
-                &input[..count],
-                &mut output[..self.space.components()],
-                work,
-            )?;
-            return Ok(true);
-        }
         let (input, count) = match self.geometry {
-            Geometry::Mesh(_) => {
-                return Err(Error::invalid_argument("invalid analytic shading geometry"));
+            Geometry::Mesh(ref mesh) => {
+                let mut input = Components::zeros(mesh.inputs());
+                if !mesh.sample(point, &mut input, raster_work)? {
+                    return Ok(false);
+                }
+                mesh.functions.evaluate(&input, output, work)?;
+                return Ok(true);
             }
             Geometry::Function { domain, inverse } => {
                 let p = point * inverse;
@@ -242,11 +262,7 @@ impl Shading {
                 ([domain[0] + t * (domain[1] - domain[0]), 0.0], 1)
             }
         };
-        self.functions.evaluate(
-            &input[..count],
-            &mut output[..self.space.components()],
-            work,
-        )?;
+        self.functions.evaluate(&input[..count], output, work)?;
         Ok(true)
     }
 }
@@ -254,9 +270,9 @@ impl Shading {
 fn geometry(
     document: &ColorContext<'_>,
     d: &Dictionary,
-    kind: i64,
+    kind: ShadingType,
 ) -> Result<(Geometry, Vec<[f64; 2]>)> {
-    if kind == 1 {
+    if kind == ShadingType::Function {
         let domain = optional_numbers(document, d, b"Domain", [0.0, 1.0, 0.0, 1.0])?;
         if domain[0] >= domain[1] || domain[2] >= domain[3] {
             return Err(Error::syntax("invalid shading Domain"));
@@ -299,7 +315,7 @@ fn geometry(
     let coords = d
         .get(b"Coords")
         .ok_or(Error::syntax("shading requires Coords"))?;
-    let geometry = if kind == 2 {
+    let geometry = if kind == ShadingType::Axial {
         let c = numbers::<4>(document, coords)?;
         Geometry::Axial {
             start: Point::new(c[0], c[1]),

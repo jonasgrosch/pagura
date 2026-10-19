@@ -19,6 +19,7 @@ pagura-core.workspace = true
 pagura-document.workspace = true
 pagura-raster.workspace = true
 pagura-render.workspace = true
+pagura-text.workspace = true
 pagura-write.workspace = true
 
 [features]
@@ -35,4 +36,3 @@ pagura-font.workspace = true
 pagura-host.workspace = true
 pagura-image.workspace = true
 pagura-testkit.workspace = true
-pagura-text.workspace = true

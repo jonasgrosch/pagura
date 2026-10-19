@@ -1,7 +1,7 @@
 //! Strict/repaired boundaries and tile invariance for recovery and transfers.
-use crate::{RenderOptions, Tile, compile_page};
 use pagura_core::{ErrorKind, ObjectId, Position, Recovery};
 use pagura_document::{Document, OpenOptions};
+use pagura_render::{RenderOptions, Tile, compile_page};
 use pagura_testkit::fixture;
 
 #[test]
@@ -38,8 +38,8 @@ fn coloured_patterns_and_soft_mask_artwork_are_strictly_valid() {
 fn reported_repairs_reject_strictly_and_keep_stream_context() {
     for (name, tag, object) in [
         ("unclosed-graphics", "content.graphics-unclosed", 4),
-        ("type3-width-advance", "font.type3-width", 6),
-        ("type3-vertical-metric", "font.type3-width", 6),
+        ("type3-width-advance", "content.type3-width", 6),
+        ("type3-vertical-metric", "content.type3-width", 6),
         (
             "pattern-coloured-underlying",
             "content.pattern-underlying",

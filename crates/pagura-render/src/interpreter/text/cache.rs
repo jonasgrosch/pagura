@@ -3,6 +3,10 @@ use super::{Arc, Compiler, Dictionary, Error, PdfFont, Result, Value};
 use pagura_raster::Path;
 use std::collections::BTreeMap;
 
+#[expect(
+    unreachable_pub,
+    reason = "the text lane moves this module; its visibility changes there"
+)]
 mod flags;
 
 /// One immutable font and its outlines. Active compilations share this record;
@@ -102,7 +106,6 @@ pub(crate) struct FontCache {
     pub(crate) bytes: usize,
     font_bytes: usize,
     maximum: usize,
-    entries: usize,
     outlines: usize,
 }
 
@@ -113,7 +116,6 @@ impl FontCache {
             bytes: 0,
             font_bytes: 0,
             maximum: limits.document_bytes,
-            entries: limits.display_commands,
             outlines: 0,
         }
     }
@@ -137,7 +139,7 @@ impl FontCache {
             return existing;
         }
         let bytes = font_bytes(&font, key, dictionary);
-        if bytes > self.maximum || self.entries == 0 {
+        if bytes > self.maximum {
             return Arc::new(CachedFont::new(font, key, false));
         }
         if !self.fits(bytes) || self.fonts.len() >= 256 {
@@ -189,7 +191,6 @@ impl FontCache {
         self.bytes
             .checked_add(bytes)
             .is_some_and(|n| n <= self.maximum)
-            && self.fonts.len().saturating_add(self.outlines) < self.entries
     }
 }
 
@@ -197,11 +198,8 @@ impl FontCache {
 pub(in crate::interpreter) struct Cache {
     fonts: Fonts,
     resources: Vec<Dictionary>,
-    pub(in crate::interpreter) page_resources: Option<Arc<Dictionary>>,
     pub(in crate::interpreter) images:
         BTreeMap<(pagura_core::ObjectId, usize), Arc<super::super::images::Image>>,
-    pub(super) bytes: usize,
-    pub(super) entries: usize,
 }
 
 #[cfg(test)]
@@ -218,35 +216,13 @@ impl Cache {
 }
 
 impl Compiler<'_> {
-    pub(in crate::interpreter) fn paint_charge(&self, bytes: usize, entries: usize) -> Result<()> {
-        let limits = self.document.limits();
-        let mut cache = self.state.text.cache.borrow_mut();
-        let bytes = cache
-            .bytes
-            .checked_add(bytes)
-            .filter(|&n| n <= limits.decoded_bytes)
-            .ok_or(Error::limit("text and image retained byte budget exceeded"))?;
-        let entries = cache
-            .entries
-            .checked_add(entries)
-            .filter(|&n| {
-                n.checked_add(self.marks)
-                    .is_some_and(|total| total <= limits.display_commands)
-            })
-            .ok_or(Error::limit("text and image cache entry budget exceeded"))?;
-        cache.bytes = bytes;
-        cache.entries = entries;
-        Ok(())
-    }
-
     pub(in crate::interpreter) fn resource_identity(
         &self,
         resources: &Dictionary,
     ) -> Result<usize> {
         if let Some(key) = self
-            .state
-            .text
-            .cache
+            .session
+            .paint
             .borrow()
             .resources
             .iter()
@@ -254,8 +230,8 @@ impl Compiler<'_> {
         {
             return Ok(key);
         }
-        self.paint_charge(resources.retained_bytes(), 1)?;
-        let mut cache = self.state.text.cache.borrow_mut();
+        self.session.retain(resources.retained_bytes())?;
+        let mut cache = self.session.paint.borrow_mut();
         if cache.resources.len() >= 256 {
             return Err(Error::limit("image resource cache budget exceeded"));
         }
@@ -264,32 +240,19 @@ impl Compiler<'_> {
         Ok(key)
     }
 
-    pub(super) fn select_font(&mut self, value: &Value, size: f64) -> Result<()> {
-        if self.extraction.is_some() {
-            self.select_font_mode::<true>(value, size)
-        } else {
-            self.select_font_mode::<false>(value, size)
-        }
-    }
-
-    pub(super) fn select_font_mode<const EXTRACT: bool>(
-        &mut self,
-        value: &Value,
-        size: f64,
-    ) -> Result<()> {
+    pub(in crate::interpreter) fn select_font(&mut self, value: &Value, size: f64) -> Result<()> {
         let dictionary = self.document.resolve_dictionary(value)?;
         let key = value.as_reference();
-        let local = self.state.text.cache.borrow().fonts.get(key, dictionary);
+        let local = self.session.paint.borrow().fonts.get(key, dictionary);
         let in_page = local.is_some();
         let shared = if in_page {
             None
         } else {
-            self.compilation.fonts.and_then(|fonts| {
-                fonts
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner)
-                    .get(key, dictionary)
-            })
+            self.session
+                .fonts
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .get(key, dictionary)
         };
         let shared_hit = shared.is_some();
         let cached = local.or(shared);
@@ -307,17 +270,15 @@ impl Compiler<'_> {
                 } else {
                     0
                 });
-                self.paint_charge(bytes, 1)?;
+                self.session.retain(bytes)?;
             }
-            let mut cache = self.state.text.cache.borrow_mut();
+            let mut cache = self.session.paint.borrow_mut();
             if cache.fonts.len() >= 256 {
                 return Err(Error::limit("font cache budget exceeded"));
             }
             cache.fonts.insert(key, dictionary, Arc::clone(&font));
         }
-        if EXTRACT {
-            self.extract_font(&font, key, dictionary)?;
-        }
+        self.extract_font(&font, key, dictionary)?;
         self.state.text.font = Some(font);
         self.state.text.size = size;
         Ok(())
@@ -332,11 +293,12 @@ impl Compiler<'_> {
             self.document,
             key,
             dictionary,
-            self.compilation.provider,
-            self.compilation.fonts,
+            self.session.provider,
+            Some(self.session.fonts),
             self.position,
         )?;
-        self.paint_charge(font_bytes(&font.font, key, dictionary), 1)?;
+        self.session
+            .retain(font_bytes(&font.font, key, dictionary))?;
         Ok(font)
     }
 
@@ -354,81 +316,34 @@ impl Compiler<'_> {
             let result = program.outline_with_diagnostics(glyph, &mut diagnostics);
             self.document
                 .report(diagnostics.take().into_iter().map(|mut diagnostic| {
-                    diagnostic.position = self.position;
-                    diagnostic.object = font.object;
-                    diagnostic
+                    diagnostic.position = operator_position(diagnostic.position, self.position);
+                    diagnostic.in_object_opt(font.object)
                 }));
             Arc::new(result.map_err(|mut error| {
-                error.position = self.position;
+                error.position = operator_position(error.position, self.position);
                 error
             })?)
         };
-        self.paint_charge(super::path_bytes(&path), 1)?;
-        if let Some(fonts) = self.compilation.fonts {
-            fonts
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .outline(font, glyph.0, Arc::clone(&path));
-        } else {
-            font.remember(glyph.0, Arc::clone(&path));
-        }
+        self.session.retain(super::path_bytes(&path))?;
+        self.session
+            .fonts
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .outline(font, glyph.0, Arc::clone(&path));
         Ok(path)
     }
+}
 
-    // Text entries are separated before delegating the remaining ExtGState to
-    // the existing implementation, preserving its precedence and validation.
-    pub(in crate::interpreter) fn paint_gstate(
-        &mut self,
-        values: &[Value],
-        resources: &Dictionary,
-    ) -> Result<()> {
-        let name = values
-            .first()
-            .and_then(Value::as_name)
-            .ok_or(Error::syntax("ExtGState name expected"))?;
-        let value = super::resource(self.document, resources, b"ExtGState", name.as_bytes())?;
-        let dict = self.document.resolve_dictionary(value)?;
-        let uncolored = self.uncolored_glyph();
-        if let Some(font) = dict.get(b"Font") {
-            let array = self
-                .document
-                .resolve(font)?
-                .as_array()
-                .filter(|a| a.len() == 2)
-                .ok_or(Error::syntax("ExtGState Font requires font and size"))?;
-            let size = self
-                .document
-                .resolve(&array[1])?
-                .as_number()
-                .ok_or(Error::syntax("invalid ExtGState font size"))?;
-            self.select_font(&array[0], size)?;
-        }
-        if let Some(knockout) = dict.get(b"TK") {
-            let knockout = self
-                .document
-                .resolve(knockout)?
-                .as_bool()
-                .ok_or(Error::syntax("TK must be boolean"))?;
-            if self.state.text.object.is_none() && !uncolored {
-                self.state.text.knockout = knockout;
-            }
-        }
-        if !dict.contains_key(b"Font") && !uncolored {
-            return self.extgstate(values, resources);
-        }
-        let filtered: Dictionary = dict
-            .iter()
-            .filter(|(k, _)| *k != b"Font" && !(uncolored && color_parameter(k.as_bytes())))
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect();
-        let mut states = Dictionary::new();
-        states.insert(name.clone(), Value::Dictionary(filtered));
-        let mut local = resources.clone();
-        local.insert(
-            pagura_core::Name::new(b"ExtGState"),
-            Value::Dictionary(states),
-        );
-        self.extgstate(values, &local)
+/// Font programs report offsets in their own decoded bytes, which no document
+/// position names; such faults point at the operator that used the font.
+/// This replaces a buffer offset, which `Error::at` would keep.
+pub(super) fn operator_position(
+    position: pagura_core::Position,
+    operator: pagura_core::Position,
+) -> pagura_core::Position {
+    match position {
+        pagura_core::Position::Unknown | pagura_core::Position::Buffer(_) => operator,
+        known => known,
     }
 }
 
@@ -470,18 +385,12 @@ fn cached_font(
     // Parsing and provider calls happen outside the shared cache lock.
     let loaded = flags::load(document, dictionary, provider, position);
     let font = Arc::new(loaded.map_err(|mut error| {
-        if matches!(
-            error.position,
-            pagura_core::Position::Unknown | pagura_core::Position::Buffer(_)
-        ) {
-            error.position = position;
-        }
+        error.position = operator_position(error.position, position);
+        // A descriptor-flags fault names the descriptor, not the font.
         if error.repair == Some(pagura_font::tags::DESCRIPTOR_FLAGS) {
             error
-        } else if let Some(id) = key {
-            error.in_object(id)
         } else {
-            error
+            error.in_object_opt(key)
         }
     })?);
     Ok(match fonts {
@@ -491,30 +400,6 @@ fn cached_font(
             .remember(key, dictionary, font),
         None => Arc::new(CachedFont::new(font, key, false)),
     })
-}
-
-fn color_parameter(key: &[u8]) -> bool {
-    matches!(
-        key,
-        b"RI"
-            | b"BG"
-            | b"BG2"
-            | b"UCR"
-            | b"UCR2"
-            | b"TR"
-            | b"TR2"
-            | b"HT"
-            | b"UseBlackPtComp"
-            | b"CA"
-            | b"ca"
-            | b"BM"
-            | b"SMask"
-            | b"AIS"
-            | b"OP"
-            | b"op"
-            | b"OPM"
-            | b"TK"
-    )
 }
 
 // PdfFont includes its own representation and owned data. Only renderer-owned

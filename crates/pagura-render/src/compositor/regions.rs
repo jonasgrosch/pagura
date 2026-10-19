@@ -101,16 +101,9 @@ fn commands_region(
             }
             Command::Path(p) => (paint_region(p, tile, device, work)?, p.clip.as_ref()),
             Command::Image(i) => {
-                let mut path = pagura_raster::PathBuilder::new();
-                path.rect(0.0, 0.0, 1.0, 1.0);
+                let path = crate::device::unit_square();
                 (
-                    path_region(
-                        &path.finish(),
-                        i.transform.then(device),
-                        tile,
-                        (0.0, 0.0),
-                        work,
-                    )?,
+                    path_region(&path, i.transform.then(device), tile, (0.0, 0.0), work)?,
                     i.clip.as_ref(),
                 )
             }
@@ -204,7 +197,11 @@ fn empty_outline(
 fn stroke_pad(p: &PathCommand, device: Transform) -> (f64, f64) {
     match &p.mark {
         Mark::Fill(_) => (0.0, 0.0),
-        Mark::Stroke(s, t, adjust) => {
+        Mark::Stroke {
+            pen: s,
+            ctm: t,
+            adjust,
+        } => {
             let t = t.then(device);
             let r = s.width * 0.5;
             let extra = if *adjust { 0.5 } else { 0.0 };
@@ -395,21 +392,24 @@ fn content_region(
             {
                 continue;
             }
-            Command::Image(i) => {
-                let mut path = pagura_raster::PathBuilder::new();
-                path.rect(0.0, 0.0, 1.0, 1.0);
-                (
-                    hull_rect(control_hull(&path.finish(), i.transform, work)?),
-                    i.clip.as_ref(),
-                )
-            }
+            Command::Image(i) => (
+                hull_rect(control_hull(
+                    &crate::device::unit_square(),
+                    i.transform,
+                    work,
+                )?),
+                i.clip.as_ref(),
+            ),
             Command::Shading(s) if !s.shading.space.paints() => continue,
             Command::Shading(s) => {
                 let bounds = if let Some(bbox) = s.shading.bbox {
-                    let mut path = pagura_raster::PathBuilder::new();
-                    path.rect(bbox.x0(), bbox.y0(), bbox.width(), bbox.height());
                     let pad = if bbox.is_empty() { 1.0 } else { 0.0 };
-                    hull_rect(control_hull(&path.finish(), s.transform, work)?).and_then(|r| {
+                    hull_rect(control_hull(
+                        &crate::device::rectangle(bbox),
+                        s.transform,
+                        work,
+                    )?)
+                    .and_then(|r| {
                         Rect::from_corners(r.x0() - pad, r.y0() - pad, r.x1() + pad, r.y1() + pad)
                     })
                 } else {

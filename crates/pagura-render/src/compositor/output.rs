@@ -1,8 +1,9 @@
 //! RGB output without colour-space or transfer dispatch per pixel (11.3.3).
 //! Bounded page storage rounds each level once to the nearest byte (ADR 0004).
 
-use super::{Context, Model, Pixel, Surface, quantize};
+use super::{Context, Model, Pixel, Surface};
 use crate::Tile;
+use crate::device::quantize_unit;
 use pagura_core::{Error, Result};
 use pagura_raster::Pixmap;
 
@@ -106,11 +107,11 @@ fn rgb(output: &mut [[u8; 4]], pixels: &[Pixel]) {
             continue;
         }
         if pixel.alpha == 1.0 {
-            // Division by unit alpha is exact; quantize applies the same clamp.
+            // Division by unit alpha is exact; quantize_unit applies the same clamp.
             *target = [
-                quantize(pixel.color[0]),
-                quantize(pixel.color[1]),
-                quantize(pixel.color[2]),
+                quantize_unit(pixel.color[0]),
+                quantize_unit(pixel.color[1]),
+                quantize_unit(pixel.color[2]),
                 255,
             ];
         } else {
@@ -123,14 +124,14 @@ fn rgb(output: &mut [[u8; 4]], pixels: &[Pixel]) {
 /// Source-over onto the output background, quantized once (11.3.3).
 fn composite_output(target: &mut [u8; 4], color: [f64; 3], alpha: f64) {
     if alpha == 1.0 {
-        let [red, green, blue] = color.map(quantize);
+        let [red, green, blue] = color.map(quantize_unit);
         *target = [red, green, blue, 255];
         return;
     }
     for (i, out) in target.iter_mut().enumerate().take(3) {
-        *out = quantize(color[i] * alpha + f64::from(*out) / 255.0 * (1.0 - alpha));
+        *out = quantize_unit(color[i] * alpha + f64::from(*out) / 255.0 * (1.0 - alpha));
     }
-    target[3] = quantize(alpha + f64::from(target[3]) / 255.0 * (1.0 - alpha));
+    target[3] = quantize_unit(alpha + f64::from(target[3]) / 255.0 * (1.0 - alpha));
 }
 
 #[cfg(test)]
@@ -177,12 +178,12 @@ mod tests {
                     if alpha != 0.0 {
                         let color = Model::Rgb.rgb(pixel.straight());
                         for (i, out) in expected.iter_mut().enumerate().take(3) {
-                            *out = quantize(
+                            *out = quantize_unit(
                                 color[i] * alpha + f64::from(*out) / 255.0 * (1.0 - alpha),
                             );
                         }
                         expected[3] =
-                            quantize(alpha + f64::from(expected[3]) / 255.0 * (1.0 - alpha));
+                            quantize_unit(alpha + f64::from(expected[3]) / 255.0 * (1.0 - alpha));
                     }
                     let mut actual = [background];
                     rgb(&mut actual, &[pixel]);
