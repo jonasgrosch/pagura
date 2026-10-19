@@ -29,7 +29,8 @@ impl Target {
         painted
             .try_reserve_exact(tile.height as usize)
             .map_err(|_| pagura_core::Error::limit("surface allocation failed"))?;
-        painted.resize(tile.height as usize, [0; 2]);
+        // An empty extent is [u32::MAX, 0], so extending it is a min and a max.
+        painted.resize(tile.height as usize, [u32::MAX, 0]);
         Ok(Self {
             pixels,
             tile,
@@ -70,11 +71,7 @@ impl Target {
             (hi - i64::from(tile.x)) as u32,
         );
         let painted = &mut self.painted[row as usize];
-        *painted = if painted[0] == painted[1] {
-            [left, right]
-        } else {
-            [painted[0].min(left), painted[1].max(right)]
-        };
+        *painted = [painted[0].min(left), painted[1].max(right)];
         let start = row as usize * stride + left as usize;
         let end = start + (hi - lo) as usize;
         Some((lo, &mut self.pixels.data_mut()[start * 4..end * 4]))
@@ -96,7 +93,7 @@ impl Target {
         let lo = (x0 - i64::from(tile.x)).clamp(0, i64::from(tile.width)) as u32;
         let hi = (x1 - i64::from(tile.x)).clamp(0, i64::from(tile.width)) as u32;
         let [left, right] = self.painted[row as usize];
-        lo >= hi || left == right || hi <= left || right <= lo
+        lo >= hi || left >= right || hi <= left || right <= lo
     }
 }
 
@@ -229,10 +226,17 @@ fn blend_run(target: &mut Target, y: i64, (x0, x1): (i64, i64), color: Rgba8, al
     if let Some((_, pixels)) = target.span(y, x0, x1) {
         let alpha = alpha * u16::from(color.a) / 255;
         let source = [color.r, color.g, color.b, 255].map(|c| u16::from(c) * alpha);
-        for pixel in pixels.as_chunks_mut::<4>().0 {
-            for (out, &source) in pixel.iter_mut().zip(&source) {
+        // Four pixels at a time, so that every target's vectorizer sees
+        // sixteen independent products.
+        let sources: [u16; 16] = std::array::from_fn(|i| source[i % 4]);
+        let (blocks, tail) = pixels.as_chunks_mut::<16>();
+        for block in blocks {
+            for (out, &source) in block.iter_mut().zip(&sources) {
                 *out = div255(source + u16::from(*out) * (255 - alpha));
             }
+        }
+        for (out, &source) in tail.iter_mut().zip(&sources) {
+            *out = div255(source + u16::from(*out) * (255 - alpha));
         }
     }
 }
@@ -485,16 +489,17 @@ mod tests {
             },
         ] {
             for alpha in 0..=255 {
-                let mut target = target(3, 1);
-                target
-                    .pixels
-                    .data_mut()
-                    .copy_from_slice(&[7, 200, 99, 255, 0, 0, 0, 0, 255, 128, 3, 90]);
+                // Seven pixels: four side by side and three alone.
+                let mut target = target(7, 1);
+                target.pixels.data_mut().copy_from_slice(&[
+                    7, 200, 99, 255, 0, 0, 0, 0, 255, 128, 3, 90, 1, 2, 3, 4, 250, 251, 252, 253,
+                    60, 70, 80, 90, 128, 128, 128, 255,
+                ]);
                 let mut expected = target.pixels.data().to_vec();
                 for pixel in expected.as_chunks_mut::<4>().0 {
                     blend(pixel, color, alpha);
                 }
-                blend_run(&mut target, 0, (0, 3), color, alpha);
+                blend_run(&mut target, 0, (0, 7), color, alpha);
                 assert_eq!(target.pixels.data(), expected.as_slice());
             }
         }
