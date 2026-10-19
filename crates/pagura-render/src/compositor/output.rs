@@ -1,0 +1,137 @@
+//! RGB output without colour-space or transfer dispatch per pixel (11.3.3).
+
+use super::{Context, Model, Pixel, Surface, quantize};
+use crate::Tile;
+use pagura_core::{Error, Result};
+use pagura_raster::Pixmap;
+
+impl Context {
+    pub(super) fn write_output(
+        &mut self,
+        page: &Surface,
+        spots: &[Surface],
+        model: Model,
+        output: &mut Pixmap,
+        tile: Tile,
+    ) -> Result<()> {
+        let Tile { x, y, width, .. } = page.tile;
+        let stride =
+            usize::try_from(tile.width).map_err(|_| Error::limit("output width exceeds usize"))?;
+        for (row, pixels) in page
+            .pixels()
+            .chunks_exact(
+                usize::try_from(width).map_err(|_| Error::limit("chunk width exceeds usize"))?,
+            )
+            .enumerate()
+        {
+            let start = (usize::try_from(y - tile.y)
+                .map_err(|_| Error::limit("output row exceeds usize"))?
+                + row)
+                * stride
+                + usize::try_from(x - tile.x)
+                    .map_err(|_| Error::limit("output column exceeds usize"))?;
+            if model == Model::Rgb && spots.is_empty() && self.transfers.is_none() {
+                rgb(
+                    output.data_mut()[start * 4..(start + pixels.len()) * 4]
+                        .as_chunks_mut::<4>()
+                        .0,
+                    pixels,
+                );
+                continue;
+            }
+            for (column, (target, pixel)) in output.data_mut()
+                [start * 4..(start + pixels.len()) * 4]
+                .as_chunks_mut::<4>()
+                .0
+                .iter_mut()
+                .zip(pixels)
+                .enumerate()
+            {
+                let alpha = pixel.alpha;
+                if alpha == 0.0 {
+                    continue;
+                }
+                let color = if spots.is_empty() {
+                    model.rgb(pixel.straight())
+                } else {
+                    let index = row
+                        * usize::try_from(width)
+                            .map_err(|_| Error::limit("chunk width exceeds usize"))?
+                        + column;
+                    let mut tints = [0.0; 32];
+                    for (batch, surface) in spots.iter().enumerate() {
+                        for (i, value) in surface.pixels()[index].straight().into_iter().enumerate()
+                        {
+                            tints[batch * 4 + i] = 1.0 - value;
+                        }
+                    }
+                    self.charge(self.separations.len())?;
+                    self.preview.rgb(
+                        &self.separations,
+                        model,
+                        pixel.straight(),
+                        &tints,
+                        &mut self.function_work,
+                    )?
+                };
+                let color = self.transfer_color(row * pixels.len() + column, color)?;
+                composite_output(target, color, alpha);
+            }
+        }
+        Ok(())
+    }
+}
+
+fn rgb(output: &mut [[u8; 4]], pixels: &[Pixel]) {
+    for (target, pixel) in output.iter_mut().zip(pixels) {
+        if pixel.alpha == 0.0 {
+            continue;
+        }
+        if pixel.alpha == 1.0 {
+            // Division by unit alpha is exact; quantize applies the same clamp.
+            *target = [
+                quantize(pixel.color[0]),
+                quantize(pixel.color[1]),
+                quantize(pixel.color[2]),
+                255,
+            ];
+        } else {
+            let [red, green, blue, _] = pixel.straight();
+            composite_output(target, [red, green, blue], pixel.alpha);
+        }
+    }
+}
+
+/// Source-over onto the output background, quantized once (11.3.3).
+fn composite_output(target: &mut [u8; 4], color: [f64; 3], alpha: f64) {
+    if alpha == 1.0 {
+        let [red, green, blue] = color.map(quantize);
+        *target = [red, green, blue, 255];
+        return;
+    }
+    for (i, out) in target.iter_mut().enumerate().take(3) {
+        *out = quantize(color[i] * alpha + f64::from(*out) / 255.0 * (1.0 - alpha));
+    }
+    target[3] = quantize(alpha + f64::from(target[3]) / 255.0 * (1.0 - alpha));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn output_preserves_opaque_clamping_and_rational_source_over() {
+        let mut output = [[17, 85, 170, 64], [0, 64, 128, 64], [17, 85, 170, 64]];
+        let pixels = [
+            Pixel::source([0.5, 0.25, 2.0, 0.0], 1.0),
+            Pixel::source([0.25, 0.5, 1.0, 0.0], 0.5),
+            Pixel::default(),
+        ];
+        rgb(&mut output, &pixels);
+        // Exact halves and quarters, with one final half-up byte rounding.
+        assert_eq!(
+            output,
+            [[128, 64, 255, 255], [32, 96, 192, 160], [17, 85, 170, 64]]
+        );
+    }
+}

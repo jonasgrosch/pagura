@@ -113,8 +113,8 @@ impl Context {
             .as_ref()
             .map(|m| self.soft_mask(m, target.tile, model, depth + 1))
             .transpose()?;
-        self.charge(surface.pixels.len())?;
-        for (row, pixels) in surface.pixels.chunks_exact(width).enumerate() {
+        self.charge(surface.pixels().len())?;
+        for (row, pixels) in surface.pixels().chunks_exact(width).enumerate() {
             let y =
                 tile.y + u32::try_from(row).map_err(|_| Error::limit("pattern row overflow"))?;
             for (col, pixel) in pixels.iter().enumerate().filter(|(_, p)| p.shape > 0.0) {
@@ -142,7 +142,7 @@ impl Context {
                 // All reads of the initial parent pixel precede this pixel's write.
                 let base = initial.pixel(x, y);
                 target
-                    .pixels
+                    .pixels_mut()
                     .get_mut(index)
                     .ok_or(Error::invalid_argument("pattern index outside target"))?
                     .paint(source, &command.composite, base, knockout, model);
@@ -239,7 +239,7 @@ fn remove_backdrop(surface: &mut Surface, backdrop: Backdrop<'_>) -> Result<()> 
     let tile = surface.tile;
     let width =
         usize::try_from(tile.width).map_err(|_| Error::limit("pattern width exceeds usize"))?;
-    for (row, pixels) in surface.pixels.chunks_exact_mut(width).enumerate() {
+    for (row, pixels) in surface.pixels_mut().chunks_exact_mut(width).enumerate() {
         let y = tile.y + u32::try_from(row).map_err(|_| Error::limit("pattern row overflow"))?;
         for (col, pixel) in pixels.iter_mut().enumerate().filter(|(_, p)| p.shape > 0.0) {
             let x =

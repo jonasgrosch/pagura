@@ -92,7 +92,7 @@ impl Context {
                     .unwrap_or(1.0);
                 self.image_transfer(command, (x, y), source)?;
                 target
-                    .pixels
+                    .pixels_mut()
                     .get_mut(index)
                     .ok_or(Error::invalid_argument("image index outside surface"))?
                     .paint(

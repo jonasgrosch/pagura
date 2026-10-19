@@ -12,6 +12,10 @@
       ],
       "status": "page-anchored integer accumulation with geometric certificates; exact local sweep and unsnapped ghost/dense fallback",
       "tests": [
+        "raster/quad-union-128-nonzero",
+        "raster/quad-union-128-evenodd",
+        "raster/quad-union-129-nonzero",
+        "raster/quad-union-129-evenodd",
         "raster/triangle",
         "raster/concave",
         "raster/self-intersection",

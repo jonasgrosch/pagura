@@ -549,3 +549,12 @@ fn independent_winding_and_collapsing_contours() {
         }
     }
 }
+
+#[test]
+fn independent_quadrilateral_component_oracles() {
+    for count in [128, 129] {
+        for rule in ["nonzero", "evenodd"] {
+            vector(&format!("quad-union-{count}-{rule}"), 0);
+        }
+    }
+}

@@ -116,6 +116,20 @@ def sampled(name, path, predicate, requirement="raster-strokes"):
 
 
 def cases():
+    # Coincident quadrilaterals have the same union as one contour. Even-odd
+    # coverage depends only on parity, including at the cell-density boundary.
+    quad = [(0, 0), (1, F(1, 4)), (1, F(5, 4)), (0, 1)]
+    contour = "m 0 0\nl 1 .25\nl 1 1.25\nl 0 1\nh\n"
+    for count in (128, 129):
+        for rule in ("nonzero", "evenodd"):
+            visible = rule == "nonzero" or count % 2 != 0
+            yield Vector(f"quad-union-{count}-{rule}", {
+                ".path": (rule + "\n" + contour * count).encode(),
+                ".pgm": pgm(clipped_area(quad, x, y) if visible else F(0)
+                            for y in range(SIZE) for x in range(SIZE))},
+                ("raster-exact-area",),
+                "Rational union/parity of coincident slanted quadrilaterals",
+                extra={"tolerance": 0})
     yield polygon_case("triangle", [(F(1, 4), F(1, 4)), (F(29, 4), F(5, 4)), (F(7, 4), F(27, 4))])
     yield polygon_case("concave", [(-2, 1), (7, 1), (7, 3), (3, 3), (3, 7), (-2, 7)])
     yield polygon_case("fractional-rectangle", [(F(1, 4), F(1, 2)), (F(21, 4), F(1, 2)), (F(21, 4), F(13, 2)), (F(1, 4), F(13, 2))])

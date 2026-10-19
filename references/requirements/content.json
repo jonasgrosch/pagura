@@ -344,6 +344,9 @@
         "content/group-alpha-shape-1",
         "content/blend-isolated-page",
         "content/alpha-accumulation",
+        "pagura-render compositor::output::tests::output_preserves_opaque_clamping_and_rational_source_over",
+        "pagura-render compositor::surface::tests::repeated_solid_intervals_survive_overlap_and_general_mutation",
+        "pagura-render compositor::surface::tests::solid_intervals_preserve_source_channel_bits",
         "content/group-incoming-alpha"
       ],
       "gaps": "calibrated group blending; subtractive overprint; transfer-region selection"
