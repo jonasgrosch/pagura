@@ -1,6 +1,7 @@
 //! Font dictionary loading (9.6–9.7; Tables 109–117).
 use super::{
-    FontKind, Mapping, PdfFont, Source, WritingMode, to_unicode, unicode::collection_unicode,
+    FontKind, Mapping, Ownership, PdfFont, Source, WritingMode, to_unicode,
+    unicode::collection_unicode,
 };
 use crate::{
     cid::CidToGidMap,
@@ -10,6 +11,7 @@ use crate::{
     features,
     metrics::{GLYPH_SPACE_UNITS, Metrics},
     objects::{array, optional, required},
+    selection::Route,
 };
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Result, Value};
 use pagura_document::Document;
@@ -84,6 +86,13 @@ pub(super) fn load_with(
     let symbolic = descriptor
         .normalized_flags(document, position)?
         .contains(FontFlags::SYMBOLIC);
+    // 9.6.5.4: symbolic TrueType fonts and fonts without an Encoding use
+    // their bytes as character codes.
+    let route = if symbolic || optional(document, font, b"Encoding")?.is_none() {
+        Route::Raw
+    } else {
+        Route::Named
+    };
     let program = Arc::new(crate::program::load(
         document,
         descriptor,
@@ -108,7 +117,7 @@ pub(super) fn load_with(
             document,
             font,
             kind,
-            symbolic,
+            route,
             program.builtin_encoding(),
         )?))
     };
@@ -124,8 +133,8 @@ pub(super) fn load_with(
         writing_mode: mode,
         source: Source::Program {
             program,
-            truetype_raw: symbolic || optional(document, font, b"Encoding")?.is_none(),
-            substituted: false,
+            route,
+            ownership: Ownership::Embedded,
             cid_map,
         },
         mapping,
@@ -167,11 +176,10 @@ fn simple_mapping(
     document: &Document,
     font: &Dictionary,
     kind: FontKind,
-    symbolic: bool,
+    route: Route,
     builtin: Option<&encoding::Encoding>,
 ) -> Result<SimpleMapping> {
-    if kind == FontKind::TrueType && (symbolic || optional(document, font, b"Encoding")?.is_none())
-    {
+    if kind == FontKind::TrueType && route == Route::Raw {
         return SimpleMapping::new(std::array::from_fn(|_| None), document.limits(), b"");
     }
     let default = if kind == FontKind::TrueType {
@@ -324,22 +332,22 @@ mod tests {
         let font: Dictionary = [(Name::new(b"Encoding"), Value::name(b"InvalidEncoding"))]
             .into_iter()
             .collect();
-        let mapping = simple_mapping(&document, &font, FontKind::TrueType, true, None)?;
+        let mapping = simple_mapping(&document, &font, FontKind::TrueType, Route::Raw, None)?;
         assert!(mapping.names.iter().all(Option::is_none));
         assert!(mapping.unicode.iter().all(Option::is_none));
-        assert!(simple_mapping(&document, &font, FontKind::TrueType, false, None).is_err());
+        assert!(simple_mapping(&document, &font, FontKind::TrueType, Route::Named, None).is_err());
         let mapping = simple_mapping(
             &document,
             &Dictionary::new(),
             FontKind::TrueType,
-            false,
+            Route::Raw,
             None,
         )?;
         assert!(mapping.names.iter().all(Option::is_none));
         let named: Dictionary = [(Name::new(b"Encoding"), Value::name(b"WinAnsiEncoding"))]
             .into_iter()
             .collect();
-        let mapping = simple_mapping(&document, &named, FontKind::TrueType, false, None)?;
+        let mapping = simple_mapping(&document, &named, FontKind::TrueType, Route::Named, None)?;
         assert_eq!(mapping.unicode[65].as_deref(), Some("A"));
         Ok(())
     }

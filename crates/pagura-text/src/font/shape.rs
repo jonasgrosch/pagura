@@ -1,5 +1,5 @@
 //! Glyph selection: from a code, name or CID to a drawable shape (9.6.5, 9.7.6).
-use super::{FontKind, Mapping, PdfFont, Source};
+use super::{FontKind, Mapping, Ownership, PdfFont, Source};
 use crate::{
     GlyphShape,
     cid::{Cid, CidToGidMap},
@@ -39,21 +39,15 @@ impl PdfFont {
                 }),
             Source::Program {
                 program,
-                truetype_raw,
-                substituted,
+                route,
+                ownership,
                 cid_map,
             } => {
                 let select = || {
-                    if (self.kind == FontKind::TrueType || *substituted)
+                    if (self.kind == FontKind::TrueType || *ownership == Ownership::Provider)
                         && program.format() != pagura_font::FontFormat::Cff
                     {
-                        crate::selection::truetype(
-                            program,
-                            code.value,
-                            name,
-                            unicode,
-                            *truetype_raw,
-                        )
+                        crate::selection::truetype(program, code.value, name, unicode, *route)
                     } else {
                         name.and_then(|name| program.glyph_for_name(name.as_bytes()))
                     }

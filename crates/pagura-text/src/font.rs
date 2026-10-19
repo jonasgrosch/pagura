@@ -5,6 +5,7 @@ use crate::{
     cmap::{self, CMap},
     encoding::SimpleMapping,
     features, memory, metrics,
+    selection::Route,
 };
 use pagura_core::{Dictionary, Error, Limits, Name, ObjectId, Position, Result};
 use pagura_document::Document;
@@ -88,10 +89,19 @@ pub(crate) enum Source {
     },
     Program {
         program: Arc<FontProgram>,
-        truetype_raw: bool,
-        substituted: bool,
+        route: Route,
+        ownership: Ownership,
         cid_map: Option<CidToGidMap>,
     },
+}
+
+/// Who owns an outline program, for storage estimates (ADR 0012).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Ownership {
+    /// Parsed from the document's font stream: the font owns it.
+    Embedded,
+    /// A provider's substitute: shared, owned by the provider's cache.
+    Provider,
 }
 
 #[derive(Debug)]
