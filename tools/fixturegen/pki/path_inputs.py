@@ -1,6 +1,6 @@
 """Standards-derived conservative DN, unconstrained SAN and search cases."""
-from fixtures import seq, set_of, oid, tlv
-from paths import name, certificate, CA_BASIC, san, nc
+from .fixtures import seq, set_of, oid, tlv
+from .paths import name, certificate, CA_BASIC, san, nc
 
 
 def distinguished(value, attribute=(2, 5, 4, 3), tag=12):
@@ -36,6 +36,3 @@ def main():
           *[certificate(issuer, root, n, (CA_BASIC,)).hex() for n in range(2, 112)],
           certificate(target, issuer, 120).hex(), sep='\t')
 
-
-if __name__ == '__main__':
-    main()

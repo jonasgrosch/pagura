@@ -1,18 +1,19 @@
-#!/usr/bin/env python3
-"""NIST PKITS CRL cases, PDF expectations and exact independent signatures.
+"""
+NIST PKITS CRL cases, PDF expectations and exact independent signatures.
 
 No PKITS data or reference prose is copied into the repository. This harness
 selects the objects named by each PDF case, without interpreting CRL statuses.
 RSA/DSA arithmetic is independent of the product's callback-based verification.
 """
+from __future__ import annotations
+
 import itertools
 import pathlib
 import re
 import subprocess
-import sys
 import zipfile
 
-from pkits import Der, cert, metadata, normalized, verify
+from .pkits import Der, Signed, cert, metadata, normalized, verify
 
 
 def main(root):
@@ -45,18 +46,18 @@ def main(root):
                     (additional if selected.startswith("certs/") else chosen).append(selected)
             path = path[:-1] + additional + path[-1:]
             pool = [certificates[name] for name in path]
-            signed = pool[1:]
+            signed: list[Signed] = list(pool[1:])
             for name in chosen:
                 tbs, algorithm, signature = list(Der(z.read(name)).children())
-                signed.append(dict(tbs=tbs, algorithm=algorithm, signature=signature))
+                signed.append(Signed(tbs=tbs, algorithm=algorithm, signature=signature))
             for child, issuer in itertools.product(signed, pool):
-                effective = [issuer['params']]
-                if issuer['params'] is None:
-                    effective += [c['params'] for c in pool if c['oid'].content == issuer['oid'].content and c['params']]
+                effective = [issuer.params]
+                if issuer.params is None:
+                    effective += [c.params for c in pool if c.oid.content == issuer.oid.content and c.params]
                 for params in effective:
-                    record = (child['algorithm'].encoded.hex(), child['tbs'].encoded.hex(),
-                              child['signature'].content.hex(), issuer['oid'].content.hex(),
-                              params.encoded.hex() if params else '-', issuer['bits'].content.hex())
+                    record = (child.algorithm.encoded.hex(), child.tbs.encoded.hex(),
+                              child.signature.content.hex(), issuer.oid.content.hex(),
+                              params.encoded.hex() if params else '-', issuer.bits.content.hex())
                     if record not in records:
                         records.add(record)
                         verified = verify(child, issuer, params)
@@ -76,6 +77,3 @@ def main(root):
                 category = 'BasicInvalid'
             print('CASE', ident, section, int(expected), category, ','.join(path), ','.join(chosen), sep='\t')
 
-
-if __name__ == '__main__':
-    main(pathlib.Path(sys.argv[1]))

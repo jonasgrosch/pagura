@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
-"""PKITS cases and exact signature records, independently of the Rust engine.
+"""
+PKITS cases and exact signature records, independently of the Rust engine.
 
 Expectations and initial settings are read from the cached NIST PDF. Certificate
 signatures are independently evaluated with Python integer arithmetic (RSA
@@ -7,15 +7,17 @@ PKCS#1 v1.5/SHA-1 and DSA/SHA-1); the Rust verifier accepts only exact recorded
 input tuples. CRLs are deliberately not converted into expected revocation
 assertions. No external bytes or document text are redistributed.
 """
+from __future__ import annotations
+
 import hashlib
 import itertools
 import pathlib
 import re
 import subprocess
-import sys
 import zipfile
+from dataclasses import dataclass
 
-from fixtures import oid
+from .fixtures import oid
 
 
 class Der:
@@ -40,6 +42,25 @@ class Der:
         return int.from_bytes(self.content, 'big')
 
 
+@dataclass(frozen=True)
+class Signed:
+    """A signed PKITS object: its TBS value, algorithm and signature."""
+    tbs: Der
+    algorithm: Der
+    signature: Der
+
+
+@dataclass(frozen=True)
+class Cert(Signed):
+    """The fields of a PKITS certificate that path tests and signatures use."""
+    issuer: Der
+    subject: Der
+    oid: Der
+    params: Der | None
+    bits: Der
+    fields: list[Der]
+
+
 def cert(data):
     tbs, algorithm, signature = list(Der(data).children())
     fields = list(tbs.children())
@@ -47,43 +68,43 @@ def cert(data):
     spki = fields[k + 5]
     alg, bits = list(spki.children())
     key_oid, *parameters = list(alg.children())
-    return dict(tbs=tbs, algorithm=algorithm, signature=signature,
+    return Cert(tbs=tbs, algorithm=algorithm, signature=signature,
                 issuer=fields[k + 2], subject=fields[k + 4], oid=key_oid,
                 params=parameters[0] if parameters and parameters[0].tag != 5 else None,
                 bits=bits, fields=fields)
 
 
 def verify(child, issuer, params):
-    signature = child['signature'].content
-    if signature[0] != 0 or issuer['bits'].content[0] != 0:
+    signature = child.signature.content
+    if signature[0] != 0 or issuer.bits.content[0] != 0:
         return False
-    algorithm = list(child['algorithm'].children())[0].content
+    algorithm = list(child.algorithm.children())[0].content
     sha1_rsa = Der(oid(1, 2, 840, 113549, 1, 1, 5)).content
     sha256_rsa = Der(oid(1, 2, 840, 113549, 1, 1, 11)).content
     sha1_dsa = Der(oid(1, 2, 840, 10040, 4, 3)).content
-    digest = hashlib.sha1(child['tbs'].encoded).digest()
+    digest = hashlib.sha1(child.tbs.encoded).digest()
     if algorithm in (sha1_rsa, sha256_rsa):
-        if issuer['oid'].content != Der(oid(1, 2, 840, 113549, 1, 1, 1)).content:
+        if issuer.oid.content != Der(oid(1, 2, 840, 113549, 1, 1, 1)).content:
             return False
-        n, e = [v.number() for v in Der(issuer['bits'].content[1:]).children()]
+        n, e = [v.number() for v in Der(issuer.bits.content[1:]).children()]
         if int.from_bytes(signature[1:], 'big') >= n:
             return False
         size = (n.bit_length() + 7) // 8
         decoded = pow(int.from_bytes(signature[1:], 'big'), e, n).to_bytes(size, 'big')
         # RFC 8017 DigestInfo for SHA-1; strict padding, not suffix matching.
         if algorithm == sha256_rsa:
-            digest_info = bytes.fromhex('3031300d060960864801650304020105000420') + hashlib.sha256(child['tbs'].encoded).digest()
+            digest_info = bytes.fromhex('3031300d060960864801650304020105000420') + hashlib.sha256(child.tbs.encoded).digest()
         else:
             digest_info = bytes.fromhex('3021300906052b0e03021a05000414') + digest
         expected = b'\0\1' + b'\xff' * (size - len(digest_info) - 3) + b'\0' + digest_info
         return len(signature[1:]) == size and decoded == expected
     if algorithm == sha1_dsa:
-        if issuer['oid'].content != Der(oid(1, 2, 840, 10040, 4, 1)).content:
+        if issuer.oid.content != Der(oid(1, 2, 840, 10040, 4, 1)).content:
             return False
         if params is None:
             return None
         p, q, g = [v.number() for v in params.children()]
-        y = Der(issuer['bits'].content[1:]).number()
+        y = Der(issuer.bits.content[1:]).number()
         r, s = [v.number() for v in Der(signature[1:]).children()]
         if not (0 < r < q and 0 < s < q):
             return False
@@ -175,13 +196,13 @@ def main(root):
         for ident, section, body, path, variants in metadata(text, files):
             pool = [certificates[name] for name in path]
             for child, issuer in itertools.product(pool[1:], pool):
-                effective = [issuer['params']]
-                if issuer['params'] is None:
-                    effective += [c['params'] for c in pool if c['oid'].content == issuer['oid'].content and c['params']]
+                effective = [issuer.params]
+                if issuer.params is None:
+                    effective += [c.params for c in pool if c.oid.content == issuer.oid.content and c.params]
                 for params in effective:
-                    record = (child['algorithm'].encoded.hex(), child['tbs'].encoded.hex(),
-                              child['signature'].content.hex(), issuer['oid'].content.hex(),
-                              params.encoded.hex() if params else '-', issuer['bits'].content.hex())
+                    record = (child.algorithm.encoded.hex(), child.tbs.encoded.hex(),
+                              child.signature.content.hex(), issuer.oid.content.hex(),
+                              params.encoded.hex() if params else '-', issuer.bits.content.hex())
                     if record not in records:
                         records.add(record)
                         verified = verify(child, issuer, params)
@@ -193,6 +214,3 @@ def main(root):
                       int(explicit), int(mapping), int(any_policy), ','.join(policies),
                       expected_policies(section, body, policies) if expected else '-', *path, sep='\t')
 
-
-if __name__ == '__main__':
-    main(pathlib.Path(sys.argv[1]))

@@ -1,9 +1,9 @@
 use super::*;
 use crate::der::Document;
 use pagura_core::SignatureLimits;
+use pagura_testkit::fixture_text;
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::path::PathBuf;
 
 fn unhex(text: &str) -> Vec<u8> {
     if text == "-" {
@@ -33,38 +33,19 @@ pub(super) fn references() -> PathBuf {
     )
 }
 
-/// Runs an independent generator under `tools/fixturegen/pki`.
-fn python(script: &str, args: &[&Path]) -> String {
-    let output = Command::new("python3")
-        .arg(
-            Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("../../tools/fixturegen/pki")
-                .join(script),
-        )
-        .args(args)
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    String::from_utf8(output.stdout).unwrap()
-}
-
-/// The records a path generator prints, by the name of its fixture file.
-pub(super) fn fixture_text(_area: &str, file: &str) -> String {
-    python(&file.replace(".txt", ".py").replace('-', "_"), &[])
-}
-
-/// The records a PKITS reader prints from the reference cache, if any.
+/// A file that tools/pki_vectors.py exported from the PKITS cache, if any.
 pub(super) fn exported(file: &str) -> Option<String> {
-    let text = python(&file.replace(".txt", ".py"), &[&references()]);
-    if text.starts_with("ABSENT\t") {
-        eprintln!("PKITS cache absent; generated tests still run");
+    let text = std::fs::read_to_string(references().join("export/pki").join(file)).ok();
+    if text
+        .as_ref()
+        .is_none_or(|text| text.starts_with("ABSENT\t"))
+    {
+        eprintln!(
+            "PKITS export {file} absent; run tools/pki_vectors.py. Generated tests still run"
+        );
         return None;
     }
-    Some(text)
+    text
 }
 fn record_key(input: SignatureInput<'_>) -> Vec<Vec<u8>> {
     let bits = |bits: BitString<'_>| {

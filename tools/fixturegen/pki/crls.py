@@ -3,8 +3,10 @@
 Structural fixtures use explicit synthetic signature attestations; PKITS tests
 use exact records from independent RSA/DSA arithmetic instead.
 """
-from fixtures import seq, explicit, integer, tlv, bitstring, extension, RSA_SHA256
-from paths import ROOT, CA, LEAF, certificate, CA_BASIC
+from __future__ import annotations
+
+from .fixtures import seq, explicit, integer, tlv, bitstring, extension, RSA_SHA256
+from .paths import ROOT, CA, LEAF, certificate, CA_BASIC
 
 
 def point(uri, reasons=None):
@@ -25,7 +27,8 @@ def revoked(serial=3, reason=None, date=b'241201000000Z', extra=()):
     return seq(integer(serial), tlv(23, date), seq(*extensions) if extensions else b'')
 
 
-def crl(issuer=CA, entries=(), extensions=(), this=b'240101000000Z', next=b'300101000000Z', signature=b'crl'):
+def crl(issuer=CA, entries=(), extensions=(), this=b'240101000000Z', next: bytes | None = b'300101000000Z',
+        signature=b'crl'):
     body = seq(integer(1), RSA_SHA256, issuer, tlv(23, this), tlv(23, next) if next else b'',
                seq(*entries) if entries else b'', explicit(0, seq(*extensions)) if extensions else b'')
     return seq(body, RSA_SHA256, bitstring(signature))
@@ -104,6 +107,3 @@ def main():
         if len(crls) > 1:
             print('CASE', ident + '-reversed', expected, *(c.hex() for c in certs), *(c.hex() for c in (root_crl, *reversed(crls))), sep='\t')
 
-
-if __name__ == '__main__':
-    main()
