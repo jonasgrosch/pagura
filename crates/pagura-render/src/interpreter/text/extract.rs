@@ -342,7 +342,8 @@ impl Compiler<'_> {
             axis,
             em,
             advance_end,
-            render_mode: pagura_extract::TextRenderingMode::try_from(text.mode)?,
+            // `Tr` accepts only 0 to 7.
+            render_mode: pagura_extract::TextRenderingMode::from_low_bits(text.mode),
             hidden: !self.visible,
             marked_content: Arc::clone(&extract.path),
             show: output.show,
