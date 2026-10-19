@@ -312,5 +312,42 @@ fn delegate_bounds(command: &Command, device: Transform, (width, height): (u32, 
     }
 }
 
+/// Whether the target lacks a rounding instruction: baseline x86-64 calls a
+/// library function for `floor`, `ceil` and `round`.
+const NO_ROUNDING_INSTRUCTION: bool =
+    cfg!(all(target_arch = "x86_64", not(target_feature = "sse4.1")));
+
+/// `value.round().clamp(0.0, 255.0) as u8`, for every input.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "clamped to the byte range"
+)]
+#[inline]
+fn byte(value: f64) -> u8 {
+    if NO_ROUNDING_INSTRUCTION {
+        byte_by_truncation(value)
+    } else {
+        value.round().clamp(0.0, 255.0) as u8
+    }
+}
+
+/// [`byte`] from the truncation and its remainder, which is exact: below
+/// 2^52 by Sterbenz's lemma (or as the value itself below 1), and from there
+/// every value is integral. Saturating conversions keep NaN, infinities and
+/// huge values in their bytes.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    reason = "saturating conversions, clamped to the byte range"
+)]
+#[inline]
+fn byte_by_truncation(value: f64) -> u8 {
+    let truncated = value as i64;
+    let rounded = truncated.saturating_add(i64::from(value - truncated as f64 >= 0.5));
+    rounded.clamp(0, 255) as u8
+}
+
 #[cfg(test)]
 mod tests;

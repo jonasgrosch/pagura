@@ -87,7 +87,6 @@ pub(super) fn eligible(command: &ImageCommand, device: Transform) -> bool {
 
 #[expect(
     clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
     clippy::cast_precision_loss,
     reason = "sample counts are the fixed 2x2 grid and pixel bounds fit u32"
 )]
@@ -145,9 +144,7 @@ fn paint_box(
         colors.clear();
         for (column, prepared) in columns.iter().enumerate() {
             let x = bounds.x + column as u32;
-            let shape = ((prepared.extent * (y1 - y0).max(0.0)) * 255.0)
-                .round()
-                .clamp(0.0, 255.0) as u16;
+            let shape = u16::from(super::byte(prepared.extent * (y1 - y0).max(0.0) * 255.0));
             let coverage = clip.map_or(255, |c| c.at(i64::from(x), i64::from(y)));
             let coverage = u8::try_from(shape * u16::from(coverage) / 255).unwrap_or(255);
             if coverage == 0 {
@@ -340,11 +337,6 @@ impl<'a> Quick<'a> {
     }
 }
 
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "channels clamped to byte range"
-)]
 fn texel(
     command: &ImageCommand,
     index: usize,
@@ -381,7 +373,7 @@ fn texel(
                 .ok_or(Error::syntax("missing image colour space"))?;
             let rgb =
                 space.convert_with_intent(&values[..n], command.composite.conversion.intent)?;
-            let [r, g, b] = rgb.map(|c| (c * 255.0).round().clamp(0.0, 255.0) as u8);
+            let [r, g, b] = rgb.map(|c| super::byte(c * 255.0));
             let color = Rgba8::opaque(r, g, b);
             if let Some(key) = key {
                 palette.insert(key, color);
@@ -404,11 +396,6 @@ fn texel(
     Ok(Some(color))
 }
 
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "mask values are clamped to byte range"
-)]
 fn mask_alpha(image: &Image, index: usize) -> Result<u8> {
     if let ImageKind::Stencil { inverted } = image.decoded.kind {
         let value = image
@@ -428,7 +415,7 @@ fn mask_alpha(image: &Image, index: usize) -> Result<u8> {
     }
     let mut values = [0.0; 32];
     image.components(index, &mut values)?;
-    Ok((values[0] * 255.0).round().clamp(0.0, 255.0) as u8)
+    Ok(super::byte(values[0] * 255.0))
 }
 
 #[derive(Clone, Copy)]

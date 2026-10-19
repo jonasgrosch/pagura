@@ -214,8 +214,7 @@ pub(super) fn blit(
 /// is stored as one fill.
 #[expect(
     clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "rectangle boundaries are clamped to the page and coverage to a byte"
+    reason = "rectangle boundaries are clamped to the page"
 )]
 pub(super) fn fill_rectangle(
     target: &mut Target,
@@ -241,7 +240,8 @@ pub(super) fn fill_rectangle(
             continue;
         }
         let vertical = (y1.min(y as f64 + 1.0) - y0.max(y as f64)).clamp(0.0, 1.0);
-        let area = |width: f64| (width * vertical * 255.0).round() as u16;
+        // Widths and the vertical coverage are within [0, 1].
+        let area = |width: f64| u16::from(super::byte(width * vertical * 255.0));
         if hi - lo == 1 {
             blend_run(target, y, (lo, hi), color, area(x1 - x0));
             continue;

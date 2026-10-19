@@ -299,9 +299,9 @@ impl Rows {
         // One reservation for every row an edge crosses, within the budget.
         let rows = |a: f32, b: f32| {
             let (low, high) = (a.min(b), a.max(b));
-            (high.ceil() as usize)
+            ceil_index(high)
                 .min(glyph.height)
-                .saturating_sub(low.floor().max(0.0) as usize)
+                .saturating_sub(low as usize)
         };
         let expected = glyph.edges.iter().fold(0_usize, |n, &[_, ay, _, by]| {
             let (ay, by) = (ay + py as f32, by + py as f32);
@@ -406,7 +406,7 @@ fn clip<const CHECKED: bool>(
             continue;
         }
         let slope = (bx - ax) / (by - ay);
-        let rows = ay.floor().max(0.0) as usize..(by.ceil() as usize).min(glyph.height);
+        let rows = ay as usize..ceil_index(by).min(glyph.height);
         // Finite endpoints within the glyph's extent give finite row
         // ends for a finite slope; an infinite one makes the first
         // fragment's end NaN or infinite.
@@ -437,7 +437,7 @@ fn clip<const CHECKED: bool>(
             } else {
                 height / (right - left)
             };
-            work = work.saturating_add((right - left).ceil() as usize + 3);
+            work = work.saturating_add(ceil_index(right - left) + 3);
             let start = row * (glyph.width + 1);
             let start = if CHECKED {
                 u32::try_from(start).map_err(|_| Error::limit("glyph extent budget exceeded"))?
@@ -522,7 +522,7 @@ impl Accumulator {
         scale: f32,
     ) -> Result<()> {
         let lo = (left as usize).min(self.width);
-        let hi = (right.ceil() as usize).min(self.width);
+        let hi = ceil_index(right).min(self.width);
         self.work = self.work.saturating_add(hi - lo + 1);
         if self.work > self.maximum {
             return Err(Error::limit("glyph coverage work budget exceeded"));
@@ -546,17 +546,21 @@ impl Accumulator {
         // A fragment within one cell of the row. One that ends where it
         // starts, on a cell boundary, adds its height to that cell and zero
         // to the next, as the general case does.
-        let floor = left.floor();
-        let next = floor + 1.0;
-        let cell = floor as usize;
-        if right <= next && floor >= 0.0 && cell < self.width {
-            let value = (next - left.midpoint(right)) * height;
+        // Truncation is the floor here: the left end is not negative.
+        let cell = left as usize;
+        let next = cell as f32 + 1.0;
+        if left >= 0.0 && cell < self.width && right <= next {
+            // Halving the f32 sum is `midpoint`'s result here: both ends are
+            // bounded, and halving is exact or, below the normal range, the
+            // only rounding (tested).
+            #[expect(clippy::manual_midpoint, reason = "bounded ends; one rounding")]
+            let value = (next - (left + right) * 0.5) * height;
             row[cell] += value;
             row[cell + 1] += height - value;
             return;
         }
         let lo = (left as usize).min(self.width);
-        let hi = (right.ceil() as usize).min(self.width);
+        let hi = ceil_index(right).min(self.width);
         let mut previous = 0.0;
         for (offset, cell) in row[lo..hi].iter_mut().enumerate() {
             let boundary = (lo + offset + 1) as f32;
@@ -611,6 +615,35 @@ impl Accumulator {
         }
         data
     }
+}
+
+/// `value.ceil() as usize`, saturating. Baseline x86-64 has no rounding
+/// instruction and calls a library function for `ceil`; there the truncated
+/// value and one comparison give the same index for every input.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "saturating conversion"
+)]
+#[inline]
+fn ceil_index(value: f32) -> usize {
+    if super::NO_ROUNDING_INSTRUCTION {
+        ceil_by_truncation(value)
+    } else {
+        value.ceil() as usize
+    }
+}
+
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    reason = "saturating conversions; below 2^24 the truncation is exact, above it every value is integral"
+)]
+#[inline]
+pub(super) fn ceil_by_truncation(value: f32) -> usize {
+    let truncated = value as usize;
+    truncated.saturating_add(usize::from((truncated as f32) < value))
 }
 
 /// The area of a unit ramp left of `value`: 0 below 0, v²/2 up to 1 and

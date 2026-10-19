@@ -332,7 +332,7 @@ fn accumulate(
                 } else {
                     sum.abs().min(1.0)
                 };
-                data.push((coverage * 255.0).round().clamp(0.0, 255.0) as u8);
+                data.push(super::byte(coverage * 255.0));
             }
         }
     }
