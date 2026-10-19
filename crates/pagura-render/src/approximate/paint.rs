@@ -120,11 +120,13 @@ pub(super) fn blit(
     }
 }
 
-/// Fills an axis-aligned device rectangle by its exact per-pixel area.
+/// Fills an axis-aligned device rectangle by its exact per-pixel area. Each
+/// row is its left edge pixel, its interior at the row's vertical coverage
+/// and its right edge pixel; an opaque colour over a fully covered interior
+/// is stored as one fill.
 #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
-    clippy::cast_possible_wrap,
     reason = "rectangle boundaries are clamped to the page and coverage to a byte"
 )]
 pub(super) fn fill_rectangle(
@@ -143,31 +145,34 @@ pub(super) fn fill_rectangle(
     }
     let lo = x0.floor() as i64;
     let hi = x1.ceil() as i64;
-    for y in y0.floor() as usize..y1.ceil() as usize {
+    for y in y0.floor() as i64..y1.ceil() as i64 {
         let vertical = (y1.min(y as f64 + 1.0) - y0.max(y as f64)).clamp(0.0, 1.0);
-        let coverage = (vertical * 255.0).round() as u16;
-        let (single, left, right) = (
-            ((x1 - x0) * vertical * 255.0).round() as u16,
-            ((lo as f64 + 1.0 - x0) * vertical * 255.0).round() as u16,
-            ((x1 - (hi - 1) as f64) * vertical * 255.0).round() as u16,
-        );
-        let Some((start, row)) = target.span(y as i64, lo, hi) else {
+        let area = |width: f64| (width * vertical * 255.0).round() as u16;
+        if hi - lo == 1 {
+            blend_run(target, y, (lo, hi), color, area(x1 - x0));
             continue;
-        };
-        for (column, pixel) in row.as_chunks_mut::<4>().0.iter_mut().enumerate() {
-            let x = start + column as i64;
-            let alpha = if hi - lo == 1 {
-                single
-            } else if x == lo {
-                left
-            } else if x == hi - 1 {
-                right
-            } else if coverage == 255 && color.a == 255 {
-                *pixel = [color.r, color.g, color.b, 255];
-                continue;
-            } else {
-                coverage
-            };
+        }
+        blend_run(target, y, (lo, lo + 1), color, area(lo as f64 + 1.0 - x0));
+        let coverage = area(1.0);
+        if coverage == 255 && color.a == 255 {
+            if let Some((_, interior)) = target.span(y, lo + 1, hi - 1) {
+                interior
+                    .as_chunks_mut::<4>()
+                    .0
+                    .fill([color.r, color.g, color.b, 255]);
+            }
+        } else {
+            blend_run(target, y, (lo + 1, hi - 1), color, coverage);
+        }
+        blend_run(target, y, (hi - 1, hi), color, area(x1 - (hi - 1) as f64));
+    }
+}
+
+/// Blends `color` at one coverage over the pixels of page row `y` from
+/// `x0` (inclusive) to `x1` (exclusive) that lie in the tile.
+fn blend_run(target: &mut Target, y: i64, (x0, x1): (i64, i64), color: Rgba8, alpha: u16) {
+    if let Some((_, pixels)) = target.span(y, x0, x1) {
+        for pixel in pixels.as_chunks_mut::<4>().0 {
             blend(pixel, color, alpha);
         }
     }
