@@ -2,6 +2,8 @@
 use super::{
     Decoder,
     entropy::{Bits, Huffman},
+    frame::Storage,
+    transform::{Idct, reconstruct},
 };
 use pagura_core::{Diagnostic, Diagnostics, Error, Limits, Position, Result};
 
@@ -136,6 +138,7 @@ impl Decoder {
             .transpose()?;
         let mut predictors = [0i32; 4];
         let (mut eob, mut sequence) = (0u32, 0u8);
+        let idct = (!frame.progressive).then(Idct::new);
         for mcu in 0..cols * rows {
             if mcu > 0 && self.restart != 0 && mcu % self.restart == 0 {
                 if eob != 0 {
@@ -170,10 +173,13 @@ impl Decoder {
                         } else {
                             mcu / cols * c.stride + mcu % cols
                         };
-                        let block = c
-                            .blocks
-                            .get_mut(index)
-                            .ok_or(bits.error("JPEG block outside component"))?;
+                        let mut sequential = [0; 64];
+                        let block = match &mut c.storage {
+                            Storage::Coefficients(blocks) => blocks
+                                .get_mut(index)
+                                .ok_or(bits.error("JPEG block outside component"))?,
+                            _ => &mut sequential,
+                        };
                         if let Some(coder) = &mut arithmetic {
                             coder.block(
                                 block,
@@ -198,6 +204,10 @@ impl Decoder {
                                 &mut bits,
                             )?;
                         }
+                        if let Some(idct) = &idct {
+                            store(c, idct, &sequential, index)
+                                .ok_or_else(|| bits.error("JPEG block outside component"))?;
+                        }
                     }
                 }
             }
@@ -205,6 +215,18 @@ impl Decoder {
         if eob != 0 {
             return Err(bits.error("JPEG EOB run exceeds scan"));
         }
+        self.finish(bits, arithmetic, data, limits, diagnostics)
+    }
+
+    /// Charges the scan's remaining entropy work and locates its end.
+    fn finish(
+        &mut self,
+        mut bits: Bits<'_>,
+        arithmetic: Option<super::arithmetic::Arithmetic<'_>>,
+        data: &[u8],
+        limits: &Limits,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<usize> {
         if let Some(coder) = arithmetic {
             let (offset, used) = coder.finish()?;
             self.work = self
@@ -216,6 +238,22 @@ impl Decoder {
         }
         bits.align(diagnostics, &mut self.padding_reported)?;
         scan_end(data, bits.offset, &mut self.work, limits, diagnostics)
+    }
+}
+
+/// Reconstructs a completed sequential block into its component's samples.
+fn store(
+    component: &mut super::frame::Component,
+    idct: &Idct,
+    block: &[i32; 64],
+    index: usize,
+) -> Option<()> {
+    let quant = component.quant.as_ref()?;
+    let stride = component.stride;
+    match &mut component.storage {
+        Storage::Bytes(plane) => reconstruct(idct, quant, block, plane, stride, index),
+        Storage::Words(plane) => reconstruct(idct, quant, block, plane, stride, index),
+        Storage::Coefficients(_) => None,
     }
 }
 

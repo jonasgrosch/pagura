@@ -121,8 +121,8 @@ fn decode_inner(
         let at = offset;
         let marker = marker(data, &mut offset)?;
         if marker == 0xd9 {
-            let frame = decoder.frame.ok_or(Error::syntax("JPEG has no frame"))?;
-            return transform::output(&frame, decoder.adobe, color_transform, limits);
+            let mut frame = decoder.frame.ok_or(Error::syntax("JPEG has no frame"))?;
+            return transform::output(&mut frame, decoder.adobe, color_transform, limits);
         }
         if matches!(marker, 0xd0..=0xd8 | 0x01) {
             return Err(Error::syntax("unexpected JPEG standalone marker").at(Position::Buffer(at)));

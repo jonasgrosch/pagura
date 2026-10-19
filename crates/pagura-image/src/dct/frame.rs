@@ -1,5 +1,24 @@
-//! T.81 frame geometry and bounded coefficient storage.
+//! T.81 frame geometry and bounded coefficient or sample storage.
 use pagura_core::{Error, Limits, Result};
+
+/// A component's data units. A sequential scan completes each block before
+/// the next (T.81 F.2), so its samples are reconstructed at once; progressive
+/// scans refine coefficients until the frame ends (G.1.2).
+pub(super) enum Storage {
+    Coefficients(Vec<[i32; 64]>),
+    Bytes(Vec<u8>),
+    Words(Vec<u16>),
+}
+
+impl Storage {
+    fn new(blocks: usize, progressive: bool, twelve_bit: bool) -> Self {
+        match (progressive, twelve_bit) {
+            (true, _) => Self::Coefficients(vec![[0; 64]; blocks]),
+            (false, false) => Self::Bytes(vec![0; blocks * 64]),
+            (false, true) => Self::Words(vec![0; blocks * 64]),
+        }
+    }
+}
 
 pub(super) struct Component {
     pub(super) id: u8,
@@ -8,7 +27,7 @@ pub(super) struct Component {
     pub(super) table: usize,
     pub(super) stride: usize,
     pub(super) rows: usize,
-    pub(super) blocks: Vec<[i32; 64]>,
+    pub(super) storage: Storage,
     pub(super) quant: Option<[u16; 64]>,
     pub(super) approximation: [i8; 64],
 }
@@ -76,7 +95,7 @@ impl Frame {
                 table,
                 stride: 0,
                 rows: 0,
-                blocks: Vec::new(),
+                storage: Storage::Coefficients(Vec::new()),
                 quant: None,
                 approximation: [-1; 64],
             });
@@ -95,6 +114,8 @@ impl Frame {
         let mcu_rows = (height as usize).div_ceil(8 * max_v);
         // Coefficients coexist with native planes and expanded samples. For
         // P=12 the latter coexist with the final byte buffer as well.
+        // Sequential frames store native samples instead of coefficients;
+        // they keep this bound.
         let twelve_bit = data[0] == 12;
         let mut memory =
             u64::from(width) * u64::from(height) * u64::from(n) * if twelve_bit { 3 } else { 1 };
@@ -108,8 +129,9 @@ impl Frame {
         if memory > limits.decoded_bytes as u64 {
             return Err(Error::limit("JPEG coefficient and sample budget exceeded"));
         }
+        let progressive = matches!(process, 0xc2 | 0xca);
         for c in &mut components {
-            c.blocks = vec![[0; 64]; c.stride * c.rows];
+            c.storage = Storage::new(c.stride * c.rows, progressive, twelve_bit);
         }
         Ok(Self {
             width,
@@ -119,7 +141,7 @@ impl Frame {
             max_v,
             mcu_cols,
             mcu_rows,
-            progressive: matches!(process, 0xc2 | 0xca),
+            progressive,
             arithmetic: matches!(process, 0xc9 | 0xca),
             precision: data[0],
             baseline: process == 0xc0,

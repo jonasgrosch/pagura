@@ -8,7 +8,7 @@ use super::Sample;
 #[cfg(test)]
 use super::sample;
 
-pub(super) struct Idct {
+pub(in crate::dct) struct Idct {
     basis: [[f64; 8]; 8],
     narrow: [[f32; 8]; 8],
 }
@@ -18,7 +18,7 @@ impl Idct {
         clippy::cast_possible_truncation,
         reason = "rounded basis has a bounded f32 error"
     )]
-    pub(super) fn new() -> Self {
+    pub(in crate::dct) fn new() -> Self {
         let mut basis = [[0.0; 8]; 8];
         for (u, row) in basis.iter_mut().enumerate() {
             for (x, value) in row.iter_mut().enumerate() {
@@ -33,11 +33,16 @@ impl Idct {
         }
     }
 
-    pub(super) fn block<T: Sample>(&self, coefficients: &[f64; 64]) -> [[T; 8]; 8] {
+    /// The one value of a block whose AC coefficients are zero.
+    pub(super) fn constant<T: Sample>(&self, dc: f64) -> T {
         // Keep the two reference multiplications: replacing them by /8 moves
         // negative DC values across exact half ties in the existing decoder.
+        T::from_idct(dc * self.basis[0][0] * self.basis[0][0])
+    }
+
+    pub(super) fn block<T: Sample>(&self, coefficients: &[f64; 64]) -> [[T; 8]; 8] {
         if coefficients[1..].iter().all(|&v| v == 0.0) {
-            return [[T::from_idct(coefficients[0] * self.basis[0][0] * self.basis[0][0]); 8]; 8];
+            return [[self.constant(coefficients[0]); 8]; 8];
         }
         if let Some(values) = self.fast(coefficients) {
             return values.map(|row| row.map(|value| T::from_idct(f64::from(value))));
