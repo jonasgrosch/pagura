@@ -530,6 +530,9 @@ def main(argv=None):
         bases = {name: engines()[name] for name in NATIVE if name in needed}
         if "pagura" in bases:
             bases["pagura"] = [str(native)]
+            # Timing-only selection of an approximate rendering path for Pagura.
+            if accuracy := os.environ.get("PAGURA_BENCH_ACCURACY"):
+                bases["pagura"] += ["--accuracy", accuracy]
         if "pdfjs" in bases:
             bases["pdfjs"] = [node, "--single-threaded", *bases["pdfjs"][1:]]
         identities = {name: identify(name, command) for name, command in bases.items()}
@@ -578,6 +581,10 @@ def main(argv=None):
                         for content in ("text-heavy", "image-heavy")]
         else:
             selected = full_plan
+        # Timing-only restriction of the predeclared plan to some content categories.
+        if content := os.environ.get("PAGURA_BENCH_CONTENT"):
+            selected = [case for case in selected
+                        if metadata[case["id"], case["page"]]["content"] in content.split(",")]
         if reference:
             reference_selection = {(cell["case"], cell["page"], cell["dpi"]): cell for cell in reference["report"]["round5"]["selection"]}
             for case in selected:
