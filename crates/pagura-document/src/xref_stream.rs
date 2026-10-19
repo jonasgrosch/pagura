@@ -55,7 +55,7 @@ fn read_body(
     {
         return Err(Error::syntax("xref stream cannot use a Crypt filter"));
     }
-    let data = chain.decode(raw, limits.decoded_bytes, diagnostics)?;
+    let data = chain.decode(raw, &limits, diagnostics)?;
     let entries = entries(&data, &dictionary, limits)?;
     if entries
         .values()

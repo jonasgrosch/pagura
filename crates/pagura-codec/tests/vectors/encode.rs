@@ -24,7 +24,10 @@ fn every_codec_vector_round_trips_through_compress_and_flate_decode() {
                 }
                 .decode(
                     &encoded,
-                    plain.len(),
+                    &Limits {
+                        decoded_bytes: plain.len(),
+                        ..Limits::default()
+                    },
                     &mut Diagnostics::new(Recovery::Strict),
                 )
                 .unwrap();
