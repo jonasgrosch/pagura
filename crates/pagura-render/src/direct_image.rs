@@ -325,12 +325,7 @@ fn nearest(
         })
         .collect();
     let contiguous = components == 3 && identity && columns.windows(2).all(|w| w[1] == w[0] + 3);
-    let format = Format {
-        tables: &tables,
-        components,
-        identity,
-        contiguous,
-    };
+    let format = Format::new(&tables, components, identity, contiguous);
     for (y, row) in target
         .data_mut()
         .chunks_exact_mut(width as usize * 4)
@@ -402,12 +397,12 @@ fn nearest_rows(
     let columns: Vec<usize> = (left..right)
         .map(|x| index((x as f64 + 0.5) * inverse.a + inverse.e).min(source_width - 1) * components)
         .collect();
-    let format = Format {
-        tables: &tables,
+    let format = Format::new(
+        &tables,
         components,
         identity,
-        contiguous: components == 3 && identity && columns.windows(2).all(|w| w[1] == w[0] + 3),
-    };
+        components == 3 && identity && columns.windows(2).all(|w| w[1] == w[0] + 3),
+    );
     let mut source = filled(row_bytes, 0u8)?;
     let mut cached = filled((right - left) * 4, 0u8)?;
     let mut previous = None;
@@ -491,12 +486,27 @@ fn cover_row(
 /// How nearest samples become RGBA bytes.
 struct Format<'a> {
     tables: &'a [[u8; 256]],
+    /// Opaque device pixels of one-component sample values.
+    gray: [[u8; 4]; 256],
     components: usize,
     identity: bool,
     contiguous: bool,
 }
 
-impl Format<'_> {
+impl<'a> Format<'a> {
+    fn new(tables: &'a [[u8; 256]], components: usize, identity: bool, contiguous: bool) -> Self {
+        let gray = tables.first().map_or([[0; 4]; 256], |table| {
+            table.map(|value| [value, value, value, 255])
+        });
+        Self {
+            tables,
+            gray,
+            components,
+            identity,
+            contiguous,
+        }
+    }
+
     fn blit(&self, row: &mut [u8], source: &[u8], columns: &[usize]) {
         let pixels = row.as_chunks_mut::<4>().0;
         if self.contiguous {
@@ -520,8 +530,7 @@ impl Format<'_> {
             }
         } else {
             for (out, &sx) in pixels.iter_mut().zip(columns) {
-                let value = self.tables[0][usize::from(source[sx])];
-                *out = [value, value, value, 255];
+                *out = self.gray[usize::from(source[sx])];
             }
         }
     }
