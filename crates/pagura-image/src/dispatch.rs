@@ -1,5 +1,5 @@
 //! Image codec dispatch and cross-checking of dictionary and stream metadata.
-use crate::deferred::SampleLayout;
+use crate::deferred::{SampleBuffers, SampleLayout};
 use crate::{DecodedImage, ImageKind, MaskKind, Samples, dct, jbig2, parameters as p};
 use pagura_codec::ImageCodec;
 use pagura_core::{Diagnostics, Dictionary, Error, Result, Value};
@@ -19,7 +19,7 @@ pub(crate) fn decode(
         dict,
         data,
         codec,
-        SampleLayout::Interleaved,
+        (SampleLayout::Interleaved, None),
         diagnostics,
     )
 }
@@ -29,7 +29,7 @@ pub(crate) fn decode_with(
     dict: &Dictionary,
     data: &[u8],
     codec: Option<&Codec>,
-    layout: SampleLayout,
+    (layout, buffers): (SampleLayout, Option<&SampleBuffers>),
     diagnostics: &mut Diagnostics,
 ) -> Result<DecodedImage> {
     let deferred = layout == SampleLayout::Deferred;
@@ -96,7 +96,7 @@ pub(crate) fn decode_with(
                 data,
                 params,
                 (width, height, components, bits),
-                deferred,
+                (deferred, buffers),
                 &limits,
                 diagnostics,
             )?;
@@ -200,7 +200,7 @@ fn decode_dct(
     data: &[u8],
     params: Option<&Dictionary>,
     dimensions: (u32, u32, u8, u8),
-    deferred: bool,
+    (deferred, buffers): (bool, Option<&SampleBuffers>),
     limits: &pagura_core::Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<Samples> {
@@ -210,7 +210,7 @@ fn decode_dct(
     // ordinary decoder below then reports its own errors and repairs.
     if deferred
         && bits == 8
-        && let Some(decoded) = dct::decode_deferred(data, transform, limits, diagnostics)
+        && let Some(decoded) = dct::decode_deferred(data, transform, limits, buffers, diagnostics)
     {
         let (size, samples) = match decoded {
             dct::Deferred::Planar(planar) => (

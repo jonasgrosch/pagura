@@ -89,7 +89,8 @@ impl Compiler<'_> {
         };
         stack.push(id);
         let object = self.document.object(id)?;
-        let decoded = pagura_image::decode_xobject_with(self.document, object, layout)?;
+        let decoded =
+            pagura_image::decode_xobject_with(self.document, object, layout, self.buffers)?;
         let image = self
             .prepare_image(
                 decoded,

@@ -116,21 +116,26 @@ pub(crate) fn compile_cached(
         page,
         provider,
         fonts,
-        pagura_image::deferred::SampleLayout::Interleaved,
+        (pagura_image::deferred::SampleLayout::Interleaved, None),
     )
 }
 
 /// Compiles as [`compile_cached`]; with the deferred layout, an image that is
-/// the page's first mark keeps deferred samples for [`crate::direct_image`].
-pub(crate) fn compile_cached_with(
-    document: &Document,
+/// the page's first mark keeps deferred samples for [`crate::direct_image`],
+/// in storage from `buffers` when given.
+pub(crate) fn compile_cached_with<'a>(
+    document: &'a Document,
     page: &Page,
-    provider: Option<&dyn pagura_text::Provider>,
-    fonts: &std::sync::Mutex<text::cache::FontCache>,
-    layout: pagura_image::deferred::SampleLayout,
+    provider: Option<&'a dyn pagura_text::Provider>,
+    fonts: &'a std::sync::Mutex<text::cache::FontCache>,
+    (layout, buffers): (
+        pagura_image::deferred::SampleLayout,
+        Option<&'a pagura_image::deferred::SampleBuffers>,
+    ),
 ) -> Result<DisplayList> {
     let mut compiler = Compiler::new(document, page)?;
     compiler.layout = layout;
+    compiler.buffers = buffers;
     compiler.compilation = std::rc::Rc::new(Compilation {
         colors: crate::icc::Cache::default(),
         provider,
@@ -211,6 +216,7 @@ struct Compiler<'a> {
     forms: Vec<ObjectId>,
     extraction: Option<text::extract::Extraction>,
     layout: pagura_image::deferred::SampleLayout,
+    buffers: Option<&'a pagura_image::deferred::SampleBuffers>,
 }
 
 impl<'a> Compiler<'a> {
@@ -243,6 +249,7 @@ impl<'a> Compiler<'a> {
             forms: Vec::new(),
             extraction: None,
             layout: pagura_image::deferred::SampleLayout::Interleaved,
+            buffers: None,
         })
     }
 

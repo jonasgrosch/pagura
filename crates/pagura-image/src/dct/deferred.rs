@@ -14,7 +14,7 @@ mod spatial;
 pub(super) use plane::Plane;
 
 use super::{DctImage, Decoder, frame::Frame, frame::Storage};
-use crate::deferred::Planar;
+use crate::deferred::{Planar, SampleBuffers};
 use pagura_core::{Diagnostics, Error, Limits, Result};
 
 /// The result of a deferred decode.
@@ -44,13 +44,14 @@ pub(crate) fn decode_deferred(
     data: &[u8],
     color_transform: Option<i64>,
     limits: &Limits,
+    buffers: Option<&SampleBuffers>,
     diagnostics: &mut Diagnostics,
 ) -> Option<Deferred> {
     if data.len() > limits.stream_bytes {
         return None;
     }
     let mut scratch = Diagnostics::new(diagnostics.mode());
-    let outcome = super::run(data, color_transform, limits, &mut scratch, true)
+    let outcome = super::run(data, color_transform, limits, &mut scratch, (true, buffers))
         .and_then(|decoder| finish(decoder, color_transform, limits));
     let Ok(Finished::Done(result)) = outcome else {
         return None;
@@ -84,6 +85,7 @@ pub(super) fn prepare(
     adobe: Option<u8>,
     color_transform: Option<i64>,
     limits: &Limits,
+    buffers: Option<&SampleBuffers>,
 ) -> Result<()> {
     if !qualifies(frame, adobe, color_transform) {
         return Err(Error::unsupported(
@@ -107,6 +109,7 @@ pub(super) fn prepare(
             c.stride * c.rows,
             c.stride,
             if index == 0 { 255 } else { 128 },
+            buffers,
         )?));
     }
     Ok(())

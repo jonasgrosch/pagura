@@ -32,7 +32,12 @@ fn filled<T: Clone>(length: usize, value: T, message: &'static str) -> Result<Ve
 }
 
 impl Plane {
-    pub(in crate::dct) fn new(blocks: usize, stride: usize, background: u8) -> Result<Self> {
+    pub(in crate::dct) fn new(
+        blocks: usize,
+        stride: usize,
+        background: u8,
+        buffers: Option<&crate::deferred::SampleBuffers>,
+    ) -> Result<Self> {
         let length = blocks
             .checked_mul(64)
             .ok_or(Error::limit("JPEG native storage overflow"))?;
@@ -41,7 +46,12 @@ impl Plane {
             .try_reserve_exact(4096)
             .map_err(|_| Error::limit("JPEG native prefix allocation failed"))?;
         Ok(Self {
-            samples: filled(length, background, "JPEG native allocation failed")?,
+            samples: match buffers {
+                Some(buffers) => buffers
+                    .filled(length, background)
+                    .ok_or(Error::limit("JPEG native allocation failed"))?,
+                None => filled(length, background, "JPEG native allocation failed")?,
+            },
             dirty: filled(blocks, 0, "JPEG block flag allocation failed")?,
             pitch: stride * 8,
             scratch: [0; 64],
@@ -202,7 +212,7 @@ mod tests {
     #[test]
     fn certified_samples_are_the_ordered_annex_a_result() {
         let reference = Reference::new();
-        let mut plane = Plane::new(1, 1, 255).unwrap();
+        let mut plane = Plane::new(1, 1, 255, None).unwrap();
         let mut bits = Bits::new(&[], 0);
         bits.limit_stream(0, 100_000_000);
         let mut state = 0x75a3_194bu32;

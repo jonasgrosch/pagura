@@ -12,6 +12,8 @@ pub struct RenderContext {
     document: Arc<Document>,
     provider: Option<Arc<dyn Provider>>,
     pub(crate) fonts: Arc<Mutex<interpreter::text::cache::FontCache>>,
+    /// Planes of the last directly painted image, reused by the next.
+    buffers: Arc<pagura_image::deferred::SampleBuffers>,
 }
 
 impl std::fmt::Debug for RenderContext {
@@ -43,6 +45,7 @@ impl RenderContext {
             document,
             provider,
             fonts,
+            buffers: Arc::default(),
         }
     }
 
@@ -52,13 +55,16 @@ impl RenderContext {
     }
 
     /// Estimated font-input, dictionary, outline and bookkeeping bytes
-    /// retained, bounded by [`pagura_core::Limits::document_bytes`]. Parsed font internals
-    /// retain their own limits; this is not allocator or peak-memory telemetry.
+    /// retained, bounded by [`pagura_core::Limits::document_bytes`], plus
+    /// image planes kept for reuse, bounded by
+    /// [`pagura_core::Limits::decoded_bytes`]. Parsed font internals retain
+    /// their own limits; this is not allocator or peak-memory telemetry.
     pub fn retained_bytes(&self) -> usize {
         self.fonts
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .bytes
+            .saturating_add(self.buffers.retained_bytes())
     }
 
     /// Compiles a page, reusing this document's fonts and glyph outlines.
@@ -126,7 +132,12 @@ impl RenderContext {
     /// As [`Self::compile_page`] and [`DisplayList::render`].
     pub fn render_page(&self, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
         self.check_owned(page)?;
-        crate::direct_image::render(|layout| self.compile_with(page, layout), options, None)
+        crate::direct_image::render(
+            |layout| self.compile_with(page, layout),
+            options,
+            None,
+            Some(&self.buffers),
+        )
     }
 
     /// Compiles and renders a tile with shared resources.
@@ -139,6 +150,7 @@ impl RenderContext {
             |layout| self.compile_with(page, layout),
             options,
             Some(tile),
+            Some(&self.buffers),
         )
     }
 
@@ -152,7 +164,7 @@ impl RenderContext {
             page,
             self.provider.as_deref(),
             &self.fonts,
-            layout,
+            (layout, Some(&self.buffers)),
         )
     }
 }

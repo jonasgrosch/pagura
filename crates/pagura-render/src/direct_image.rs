@@ -31,8 +31,12 @@ use crate::{
     interpreter::images::Image,
 };
 use pagura_core::{Error, Limits, Result};
-use pagura_image::{MaskKind, Samples, deferred::SampleLayout};
+use pagura_image::{
+    MaskKind, Samples,
+    deferred::{SampleBuffers, SampleLayout},
+};
 use pagura_raster::Transform;
+use std::sync::Arc;
 
 /// The widest footprint, in source samples along either axis, whose f32
 /// accumulation stays well within half a level.
@@ -41,19 +45,25 @@ const MAXIMUM_SCALE: f64 = 63.0;
 /// Compiles and renders a page, or one tile of it, painting directly when
 /// `options.images` is [`ImageReconstruction::Fused`] and the page qualifies.
 /// Tiles are cut from the directly painted page, so they assemble into it.
+///
+/// With `buffers`, the planes of a deferred image are kept for the next
+/// page once this one no longer needs them.
 pub(crate) fn render(
     compile: impl Fn(SampleLayout) -> Result<DisplayList>,
     options: &RenderOptions,
     tile: Option<Tile>,
+    buffers: Option<&SampleBuffers>,
 ) -> Result<Pixmap> {
     if options.images == ImageReconstruction::Fused
         && let Ok(list) = compile(SampleLayout::Deferred)
     {
         if let Some(page) = paint(&list, options) {
-            let Some(tile) = tile else {
-                return Ok(page);
+            let pixmap = match tile {
+                None => Some(page),
+                Some(tile) => cut(&page, tile, list.limits),
             };
-            if let Some(pixmap) = cut(&page, tile, list.limits) {
+            if let Some(pixmap) = pixmap {
+                recycle(list, buffers);
                 return Ok(pixmap);
             }
         }
@@ -61,8 +71,25 @@ pub(crate) fn render(
         if !deferred(&list.commands) {
             return finish(&list, options, tile);
         }
+        recycle(list, buffers);
     }
     finish(&compile(SampleLayout::Interleaved)?, options, tile)
+}
+
+/// Keeps the planes of `list`'s deferred images in `buffers`.
+fn recycle(list: DisplayList, buffers: Option<&SampleBuffers>) {
+    let Some(buffers) = buffers else {
+        return;
+    };
+    let limit = list.limits.decoded_bytes;
+    for command in list.commands {
+        if let Command::Image(command) = command
+            && let Ok(image) = Arc::try_unwrap(command.image)
+            && let Samples::Planar(planar) = image.decoded.samples
+        {
+            buffers.recycle(*planar, limit);
+        }
+    }
 }
 
 fn finish(list: &DisplayList, options: &RenderOptions, tile: Option<Tile>) -> Result<Pixmap> {

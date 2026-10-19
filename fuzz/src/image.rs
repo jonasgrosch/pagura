@@ -179,6 +179,7 @@ fn xobject(data: &[u8], root: u32, recovery: Recovery) {
             &document,
             object,
             SampleLayout::Deferred,
+            None,
         ));
         // A deferred decode that fails is repeated exactly, so it never loses
         // an image (it may keep one whose interleaved samples exceed a limit).

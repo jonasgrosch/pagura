@@ -237,13 +237,13 @@ impl DecodedImage {
 /// `Unsupported` for codecs or features not implemented, and limit errors
 /// when the image exceeds [`pagura_core::Limits`] (pixels, decoded bytes).
 pub fn decode_xobject(document: &Document, image: &IndirectObject) -> Result<DecodedImage> {
-    decode_xobject_with(document, image, deferred::SampleLayout::Interleaved)
+    decode_xobject_with(document, image, deferred::SampleLayout::Interleaved, None)
 }
 
 /// Decodes a base image XObject as [`decode_xobject`], keeping samples in
-/// `layout` where it applies. Errors and diagnostics are those of
-/// [`decode_xobject`]: a deferred decode that fails is repeated in the
-/// interleaved layout.
+/// `layout` where it applies, in storage from `buffers` when given. Errors
+/// and diagnostics are those of [`decode_xobject`]: a deferred decode that
+/// fails is repeated in the interleaved layout.
 ///
 /// # Errors
 ///
@@ -252,6 +252,7 @@ pub fn decode_xobject_with(
     document: &Document,
     image: &IndirectObject,
     layout: deferred::SampleLayout,
+    buffers: Option<&deferred::SampleBuffers>,
 ) -> Result<DecodedImage> {
     let mut diagnostics = pagura_core::Diagnostics::new(document.recovery());
     let result = (|| {
@@ -292,7 +293,7 @@ pub fn decode_xobject_with(
             &dictionary,
             &stream.data,
             stream.codec.as_ref(),
-            layout,
+            (layout, buffers),
             &mut diagnostics,
         )
     })();
