@@ -122,7 +122,7 @@ impl Type1 {
             glyphs.len(),
             names.iter().map(|(name, glyph)| Ok((*glyph, name))),
             work,
-            start,
+            Position::Buffer(start),
         )?;
         Ok(Self {
             glyphs,
@@ -205,11 +205,11 @@ fn flatten(data: &[u8], work: &mut Work<'_>) -> Result<(Vec<u8>, bool)> {
             .get(pos..pos.saturating_add(4))
             .ok_or_else(|| bad(pos, "truncated PFB size"))?;
         let size = usize::try_from(u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
-            .map_err(|_| crate::read::limit(pos, "PFB size overflow"))?;
+            .map_err(|_| crate::read::limit(Position::Buffer(pos), "PFB size overflow"))?;
         pos += 4;
         let end = pos
             .checked_add(size)
-            .ok_or_else(|| crate::read::limit(pos, "PFB size overflow"))?;
+            .ok_or_else(|| crate::read::limit(Position::Buffer(pos), "PFB size overflow"))?;
         work.decoded(result.len().saturating_add(size), Position::Buffer(pos))?;
         result.extend_from_slice(
             data.get(pos..end)

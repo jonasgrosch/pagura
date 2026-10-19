@@ -1,7 +1,9 @@
 //! Bounded glyph-index lookup of program glyph names, independent of PDF
 //! encodings.
+use crate::GlyphId;
 use crate::budget::Work;
-use crate::{GlyphId, memory, read};
+use crate::memory::vector;
+use crate::read::{limit, syntax};
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Name, Position, Result};
 
@@ -13,24 +15,24 @@ pub(crate) fn indexed<'a>(
     count: usize,
     entries: impl Iterator<Item = Result<(GlyphId, &'a Name)>>,
     work: &mut Work<'_>,
-    at: usize,
+    at: Position,
 ) -> Result<Vec<Option<Name>>> {
     let mut entries = entries.peekable();
     if entries.peek().is_none() {
         return Ok(Vec::new());
     }
-    work.entries(count, Position::Buffer(at))?;
+    work.entries(count, at)?;
     let mut names = Vec::new();
     names
         .try_reserve_exact(count)
-        .map_err(|_| read::limit(at, "glyph-name index allocation failed"))?;
+        .map_err(|_| limit(at, "glyph-name index allocation failed"))?;
     names.resize(count, None);
     for entry in entries {
         let (glyph, name) = entry?;
-        work.work(name.len(), Position::Buffer(at))?;
+        work.work(name.len(), at)?;
         let slot = names
             .get_mut(u32_to_usize(glyph.0))
-            .ok_or_else(|| read::bad(at, "glyph-name index outside program"))?;
+            .ok_or_else(|| syntax(at, "glyph-name index outside program"))?;
         *slot = Some(name.clone());
     }
     Ok(names)
@@ -40,9 +42,7 @@ pub(crate) fn heap_bytes(names: &Vec<Option<Name>>) -> usize {
     names
         .iter()
         .flatten()
-        .fold(memory::vector(names), |n, name| {
-            n.saturating_add(name.len())
-        })
+        .fold(vector(names), |n, name| n.saturating_add(name.len()))
 }
 
 #[cfg(test)]
@@ -51,6 +51,8 @@ mod tests {
     use crate::GlyphId;
     use crate::budget::{FontBudget, Work};
     use pagura_core::{Diagnostics, ErrorKind, Limits, Name, Position, Recovery};
+
+    const AT: Position = Position::Buffer(123);
 
     #[test]
     fn repeated_name_payloads_are_bounded_before_cloning() {
@@ -61,26 +63,22 @@ mod tests {
         };
         let mut diagnostics = Diagnostics::new(Recovery::Strict);
         let mut work = Work::new(FontBudget::new(&limits), &mut diagnostics);
-        let error =
-            indexed(4, (0..4).map(|i| Ok((GlyphId(i), &name))), &mut work, 123).unwrap_err();
-        assert_eq!(
-            (error.kind, error.position),
-            (ErrorKind::Limit, Position::Buffer(123))
-        );
+        let error = indexed(4, (0..4).map(|i| Ok((GlyphId(i), &name))), &mut work, AT).unwrap_err();
+        assert_eq!((error.kind, error.position), (ErrorKind::Limit, AT));
         let mut work = Work::new(FontBudget::new(&Limits::default()), &mut diagnostics);
         assert_eq!(
             indexed(
                 usize::MAX,
                 std::iter::once(Ok((GlyphId(0), &name))),
                 &mut work,
-                123
+                AT
             )
             .unwrap_err()
             .kind,
             ErrorKind::Limit
         );
         assert_eq!(
-            indexed(usize::MAX, std::iter::empty(), &mut work, 123).unwrap(),
+            indexed(usize::MAX, std::iter::empty(), &mut work, AT).unwrap(),
             []
         );
     }
@@ -91,10 +89,7 @@ mod tests {
         let mut diagnostics = Diagnostics::new(Recovery::Strict);
         let mut work = Work::new(FontBudget::new(&Limits::default()), &mut diagnostics);
         let error =
-            indexed(1, std::iter::once(Ok((GlyphId(1), &name))), &mut work, 456).unwrap_err();
-        assert_eq!(
-            (error.kind, error.position),
-            (ErrorKind::Syntax, Position::Buffer(456))
-        );
+            indexed(1, std::iter::once(Ok((GlyphId(1), &name))), &mut work, AT).unwrap_err();
+        assert_eq!((error.kind, error.position), (ErrorKind::Syntax, AT));
     }
 }

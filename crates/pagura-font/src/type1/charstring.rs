@@ -44,8 +44,8 @@ fn load(
     work: &mut Work<'_>,
 ) -> Result<(Path, f64, Point)> {
     work.depth(depth, usize::MAX, Position::Unknown)?;
-    let index =
-        usize::try_from(glyph.0).map_err(|_| crate::read::limit(0, "glyph index overflow"))?;
+    let index = usize::try_from(glyph.0)
+        .map_err(|_| crate::read::limit(Position::Buffer(0), "glyph index overflow"))?;
     let bytes = font
         .glyphs
         .get(index)
@@ -127,7 +127,8 @@ fn integer(n: f64, at: usize) -> Result<usize> {
     if !n.is_finite() || n < 0.0 || n > f64::from(u32::MAX) || n.fract() != 0.0 {
         return Err(bad(at, "invalid charstring integer"));
     }
-    usize::try_from(n as u32).map_err(|_| crate::read::limit(at, "charstring integer overflow"))
+    usize::try_from(n as u32)
+        .map_err(|_| crate::read::limit(Position::Buffer(at), "charstring integer overflow"))
 }
 impl State {
     fn pop(&mut self, at: usize) -> Result<f64> {

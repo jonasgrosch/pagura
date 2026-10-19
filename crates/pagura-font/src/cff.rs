@@ -100,8 +100,10 @@ fn charset_maps(
     let mut names = BTreeMap::new();
     let mut cids = top.has(0x0c1e).then(BTreeMap::new);
     for (i, sid) in charset.iter().copied().enumerate() {
-        let glyph =
-            GlyphId(u32::try_from(i).map_err(|_| crate::read::limit(at, "glyph count overflow"))?);
+        let glyph = GlyphId(
+            u32::try_from(i)
+                .map_err(|_| crate::read::limit(Position::Buffer(at), "glyph count overflow"))?,
+        );
         if let Some(cids) = &mut cids {
             if f64::from(sid) >= top.number(0x0c22, 8720.0)? {
                 return Err(bad(at, "CID outside CFF CIDCount"));
@@ -183,7 +185,7 @@ impl Cff {
             glyphs.len(),
             names.iter().map(|(name, glyph)| Ok((*glyph, name))),
             work,
-            range.start,
+            Position::Buffer(range.start),
         )?;
         Ok(Self {
             glyphs,
@@ -286,11 +288,9 @@ fn private_dict(
     private.check_blues(work)?;
     let subrs = if private.has(19) {
         index(
-            &mut table.cursor_at(
-                offset
-                    .checked_add(private.offset(19, None)?)
-                    .ok_or_else(|| crate::read::limit(at, "private offset overflow"))?,
-            )?,
+            &mut table.cursor_at(offset.checked_add(private.offset(19, None)?).ok_or_else(
+                || crate::read::limit(Position::Buffer(at), "private offset overflow"),
+            )?)?,
             work,
             context.cff2,
         )?
@@ -319,7 +319,9 @@ fn charset(
         }
         return (0..glyphs)
             .map(|i| {
-                u16::try_from(i).map_err(|_| crate::read::limit(here(table), "charset overflow"))
+                u16::try_from(i).map_err(|_| {
+                    crate::read::limit(Position::Buffer(here(table)), "charset overflow")
+                })
             })
             .collect();
     }

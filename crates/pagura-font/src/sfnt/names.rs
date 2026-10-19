@@ -36,7 +36,7 @@ pub(super) fn parse(mut r: Cursor<'_>, count: usize, work: &mut Work<'_>) -> Res
                     .enumerate()
                     .map(|(i, name)| Ok((glyph_id(i, here(&r))?, name))),
                 work,
-                start,
+                Position::Buffer(start),
             )?
         }
         0x0002_0000 => {
@@ -77,7 +77,7 @@ pub(super) fn parse(mut r: Cursor<'_>, count: usize, work: &mut Work<'_>) -> Res
                     Ok((glyph_id(i, here(&r))?, name))
                 }),
                 work,
-                start,
+                Position::Buffer(start),
             )?
         }
         0x0003_0000 => Vec::new(),
@@ -103,5 +103,5 @@ pub(super) fn parse(mut r: Cursor<'_>, count: usize, work: &mut Work<'_>) -> Res
 fn glyph_id(i: usize, at: usize) -> Result<GlyphId> {
     u32::try_from(i)
         .map(GlyphId)
-        .map_err(|_| crate::read::limit(at, "glyph index overflow"))
+        .map_err(|_| crate::read::limit(Position::Buffer(at), "glyph index overflow"))
 }

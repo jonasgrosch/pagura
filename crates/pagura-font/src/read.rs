@@ -22,7 +22,9 @@ pub(crate) fn slice<'a>(
     message: &'static str,
 ) -> Result<Cursor<'a>> {
     let start = range.start;
-    let bytes = data.get(range).ok_or_else(|| bad(start, message))?;
+    let bytes = data
+        .get(range)
+        .ok_or_else(|| syntax(Position::Buffer(start), message))?;
     Ok(cursor(bytes).with_base(start))
 }
 
@@ -36,12 +38,18 @@ pub(crate) fn here(cursor: &Cursor<'_>) -> usize {
     }
 }
 
+/// A `Syntax` error at buffer offset `at`, for parsers whose errors are
+/// not yet positioned through their cursors.
 pub(crate) fn bad(at: usize, message: &'static str) -> Error {
-    Error::syntax(message).at(Position::Buffer(at))
+    syntax(Position::Buffer(at), message)
 }
 
-pub(crate) fn limit(at: usize, message: &'static str) -> Error {
-    Error::limit(message).at(Position::Buffer(at))
+pub(crate) const fn syntax(at: Position, message: &'static str) -> Error {
+    Error::syntax(message).at(at)
+}
+
+pub(crate) const fn limit(at: Position, message: &'static str) -> Error {
+    Error::limit(message).at(at)
 }
 
 /// Checks that every point of an outline is finite: arithmetic beyond
@@ -55,7 +63,7 @@ pub(crate) fn finite_path(path: &pagura_raster::Path) -> Result<()> {
             Segment::Close => true,
         };
         if !finite {
-            return Err(Error::syntax("nonfinite glyph outline").at(Position::Unknown));
+            return Err(syntax(Position::Unknown, "nonfinite glyph outline"));
         }
     }
     Ok(())

@@ -22,8 +22,9 @@ impl CharStrings {
             self.glyphs.swap(0, notdef);
             for glyph in self.names.values_mut() {
                 if glyph.0 == 0 {
-                    glyph.0 = u32::try_from(notdef)
-                        .map_err(|_| crate::read::limit(at, "glyph index overflow"))?;
+                    glyph.0 = u32::try_from(notdef).map_err(|_| {
+                        crate::read::limit(Position::Buffer(at), "glyph index overflow")
+                    })?;
                 } else if usize::try_from(glyph.0).ok() == Some(notdef) {
                     glyph.0 = 0;
                 }
@@ -59,10 +60,9 @@ impl CharStrings {
                         if self.glyphs.len() >= count {
                             return Err(bad(at, "more Type 1 charstrings than declared"));
                         }
-                        let glyph =
-                            GlyphId(u32::try_from(self.glyphs.len()).map_err(|_| {
-                                crate::read::limit(at, "Type 1 glyph count overflow")
-                            })?);
+                        let glyph = GlyphId(u32::try_from(self.glyphs.len()).map_err(|_| {
+                            crate::read::limit(Position::Buffer(at), "Type 1 glyph count overflow")
+                        })?);
                         self.glyphs.push(char_bytes(program, len_iv, r.pos)?);
                         entry.insert(glyph);
                     }

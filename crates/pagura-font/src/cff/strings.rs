@@ -112,9 +112,9 @@ pub(super) fn encoding(
             1 => r.u8()?,
             _ => return Err(bad(here(&r), "invalid CFF encoding format")),
         };
-        let end = first
-            .checked_add(left)
-            .ok_or_else(|| crate::read::limit(here(&r), "CFF encoding code overflow"))?;
+        let end = first.checked_add(left).ok_or_else(|| {
+            crate::read::limit(Position::Buffer(here(&r)), "CFF encoding code overflow")
+        })?;
         for code in first..=end {
             let sid = *charset
                 .get(gid)

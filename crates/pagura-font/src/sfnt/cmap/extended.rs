@@ -57,10 +57,10 @@ pub(super) fn lookup_two(data: &[u8], code: u32) -> Result<u16> {
     if code > 65535 {
         return Ok(0);
     }
-    let high =
-        usize::try_from(code >> 8).map_err(|_| crate::read::limit(0, "cmap code overflow"))?;
-    let low =
-        usize::try_from(code & 255).map_err(|_| crate::read::limit(0, "cmap code overflow"))?;
+    let high = usize::try_from(code >> 8)
+        .map_err(|_| crate::read::limit(Position::Buffer(0), "cmap code overflow"))?;
+    let low = usize::try_from(code & 255)
+        .map_err(|_| crate::read::limit(Position::Buffer(0), "cmap code overflow"))?;
     let key = usize::from(word(data, 6 + 2 * if high == 0 { low } else { high })?);
     if high == 0 && key != 0 || high != 0 && key == 0 {
         return Ok(0);
