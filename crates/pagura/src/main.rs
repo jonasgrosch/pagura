@@ -12,7 +12,7 @@ use std::error::Error;
 use std::fmt::Write as _;
 use std::fs::File;
 use std::hint::black_box;
-use std::io::{Read, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::Path;
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
@@ -190,22 +190,38 @@ fn run(args: &[String]) -> CliResult {
     }
 }
 
-fn load(path: &str, limits: Limits) -> CliResult<Vec<u8>> {
-    let file = File::open(path)?;
+/// Reads a file within the size budget. A regular file is read once into
+/// storage of its length; anything else, or a file whose length changes while
+/// it is read, is read again to its end.
+fn load(path: &str, limits: Limits) -> CliResult<std::sync::Arc<[u8]>> {
+    let mut file = File::open(path)?;
     let limit = u64::try_from(limits.file_bytes)?;
-    if file.metadata()?.len() > limit {
+    let metadata = file.metadata()?;
+    if metadata.len() > limit {
         return Err("input exceeds the file size budget".into());
+    }
+    if metadata.is_file() {
+        let length = usize::try_from(metadata.len())?;
+        let mut bytes: std::sync::Arc<[u8]> = std::iter::repeat_n(0, length).collect();
+        let buffer = std::sync::Arc::get_mut(&mut bytes).ok_or("input storage is shared")?;
+        match file.read_exact(buffer) {
+            Ok(()) if file.read(&mut [0])? == 0 => return Ok(bytes),
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::UnexpectedEof => {}
+            Err(error) => return Err(error.into()),
+        }
+        file.seek(SeekFrom::Start(0))?;
     }
     let mut data = Vec::new();
     file.take(limit + 1).read_to_end(&mut data)?;
     if data.len() > limits.file_bytes {
         return Err("input grew beyond the file size budget".into());
     }
-    Ok(data)
+    Ok(data.into())
 }
 
 fn open(path: &str, flags: &Flags) -> CliResult<Document> {
-    open_bytes(load(path, flags.open_options().limits)?.into(), flags)
+    open_bytes(load(path, flags.open_options().limits)?, flags)
 }
 
 fn open_bytes(bytes: std::sync::Arc<[u8]>, flags: &Flags) -> CliResult<Document> {
@@ -432,8 +448,8 @@ fn json_error(error: &(dyn Error + 'static)) -> String {
 /// in Repair mode and retries the current page. Earlier strict compilations
 /// needed no repair; non-repair errors do not make the strict audit fail.
 fn scan(input: &str, dpi: f64, flags: &Flags) -> String {
-    let bytes: std::sync::Arc<[u8]> = match load(input, flags.open_options().limits) {
-        Ok(bytes) => bytes.into(),
+    let bytes = match load(input, flags.open_options().limits) {
+        Ok(bytes) => bytes,
         Err(error) => return scan_open_error(&*error),
     };
     let repair_flags = flags.with_strict(false);
@@ -519,7 +535,7 @@ fn microbench(input: &str, operation: &str, count: u32, dpi: f64, flags: &Flags)
         return Err("iteration count must be 1 to 100000".into());
     }
     let options = OpenOptions::default();
-    let bytes: std::sync::Arc<[u8]> = load(input, options.limits)?.into();
+    let bytes = load(input, options.limits)?;
     let render_options = flags.render_options(dpi);
     let warm = pagura::render_context(std::sync::Arc::new(Document::open(
         bytes.clone(),
