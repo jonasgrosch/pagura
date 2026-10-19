@@ -55,8 +55,9 @@ Implemented formats:
   mandatory argument fallback for unrecognized OtherSubrs, hint replacement, and StandardEncoding seac. Hint replacement consumes its
   operands and returns the requested subroutine number without applying hints.
 
-All font errors carry a `Position::Buffer`. For decrypted Type 1
-charstrings the position refers to the decrypted charstring buffer.
+All font errors carry a `Position::Buffer`. Type 1 offsets count in the
+decoded copy they occur in: the PFB-unframed cleartext or the decrypted
+eexec plaintext.
 
 Two kinds of bound apply (ADR 0016, ADR 0023). **Format ceilings** are fixed
 by the font specifications and named next to their parser: operand stacks of
@@ -193,8 +194,9 @@ For rendering, a successfully recovered unusable glyph is an empty path with
 `font.glyph-data`; paint nothing for it and continue PDF text positioning and
 other glyphs. Failed composite dependencies discard the entire requested
 glyph. Budget failures still propagate. Diagnostics retain the first position
-of each repair kind per parse or outline operation, coalescing repetitions. Type 1 decrypted charstring positions refer to that decrypted
-buffer. Bytes shared by the font remain unchanged.
+of each repair kind per parse or outline operation, coalescing repetitions.
+Type 1 positions count in the decoded copies, as for errors. Bytes shared by
+the font remain unchanged.
 
 The caller must create the sink using `Document::recovery()`, call the
 corresponding diagnostic-aware method, attach the font stream object to parse
@@ -218,7 +220,7 @@ API. The corresponding CFF2 recovery is project policy pending primary text.
 `FontProgram::retained_bytes()` is computed once after parsing and returned in
 constant time. It estimates the shared input bytes (static input is not heap
 and is not counted), the Arc allocations, vector capacities, Type 1 decrypted
-buffers, encoding arrays, name/CID trees and variation
+charstrings with their offsets, encoding arrays, name/CID trees and variation
 data. sfnt table slices and CFF INDEX ranges do not duplicate input
 bytes. Trees use ADR 0012's 64 bytes of estimated bookkeeping per entry; names
 conservatively add their logical lengths, including names core may store
