@@ -347,7 +347,7 @@ fn lookup_four_segment(
 }
 
 impl Cmap {
-    pub fn lookup(&self, data: &[u8], code: u32) -> Option<GlyphId> {
+    pub(super) fn lookup(&self, data: &[u8], code: u32) -> Option<GlyphId> {
         let mut r = Read::new(data.get(self.range.clone())?, self.range.start);
         let glyph = match self.format {
             0 => {

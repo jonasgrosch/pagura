@@ -16,7 +16,7 @@ pub(super) struct CharStrings {
     pub names: BTreeMap<Name, GlyphId>,
 }
 impl CharStrings {
-    pub fn normalize(&mut self, at: usize) -> Result<()> {
+    pub(super) fn normalize(&mut self, at: usize) -> Result<()> {
         if self.glyphs.is_empty() || !self.names.contains_key(b".notdef".as_slice()) {
             return Err(bad(at, "Type 1 font has no .notdef charstring"));
         }
@@ -37,7 +37,7 @@ impl CharStrings {
         Ok(())
     }
 
-    pub fn read(
+    pub(super) fn read(
         &mut self,
         r: &mut Tokens<'_>,
         len_iv: Option<usize>,
