@@ -7,6 +7,10 @@
 mod codes;
 mod decode;
 mod encode;
+// The generator of web/protocol_constants.mjs, compiled only for its drift
+// test and for the example behind the `codegen` feature.
+#[cfg(any(test, feature = "codegen"))]
+mod javascript;
 
 pub use codes::{
     ActionCode, DiagnosticCode, ErrorCategory, FitCode, OpenFlags, OutlineStyle, PositionKind,
@@ -38,6 +42,13 @@ pub(crate) mod layout {
     pub(crate) const TILE_OVERHEAD: usize = HEADER_BYTES + 4 + 4;
     /// A generated tile body without its pixels: status and generation too.
     pub(crate) const GENERATION_TILE_OVERHEAD: usize = TILE_OVERHEAD + 1 + 4;
+}
+
+/// The wire tables as an ECMAScript module, for the example that regenerates
+/// `web/protocol_constants.mjs`; only the `codegen` feature exposes it.
+#[cfg(feature = "codegen")]
+pub fn javascript_constants() -> String {
+    javascript::javascript_constants()
 }
 
 /// A decoded request field and the body offset it was read from.

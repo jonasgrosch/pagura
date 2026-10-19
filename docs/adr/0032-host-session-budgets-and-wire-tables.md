@@ -15,6 +15,12 @@ frame cap, as well as each document's own decoding; `document_bytes` sized
 the text cache. Tuning one engine budget silently retuned the session, which
 is exactly what ADR 0016 rules out for `Limits`.
 
+Its wire codes were bare integers in four places: the Rust encoder and
+decoder, the session's gating, the fuzz driver (which re-declared two error
+categories) and the browser codec in `web/`, which also hard-coded the frame
+cap computed from `Limits::default()`. Nothing checked that the copies
+agreed.
+
 ## Decision
 
 1. **`SessionLimits` holds the session's budgets,** next to `Limits`, each
@@ -35,6 +41,25 @@ is exactly what ADR 0016 rules out for `Limits`.
 3. **One registry owns what a document retains.** Open documents, their
    viewport generations and both page caches live in one place, so closing
    a handle releases all of them together.
+4. **Every code space is an enum** in `pagura_host::protocol`: versions,
+   request and response kinds, error categories, diagnostic kinds, position
+   kinds, tile status, destination fits and action types, plus the open,
+   search and outline bit fields (an open request's flags byte has room for
+   bits that later versions assign). Each has `TryFrom` for decoding
+   and its variant names. Requests decode exhaustively by kind into fields
+   that remember their body offsets, and each kind names the version that
+   added it, so gating is one comparison. The form editing requests
+   (1.5 to 1.7) are kinds like any other; the field, change and widget
+   codes inside their payloads stay with the editing adapter, and only its
+   budgets are shared.
+5. **`web/protocol_constants.mjs` is generated from those enums** and the
+   default budgets. A pagura-host test fails when the checked-in file
+   differs, and the browser codec imports the file instead of repeating
+   numbers. The generator is Rust, not a script under `tools/gen/`, because
+   the tables it emits are the Rust enums themselves; it is compiled only
+   for that test and for the example behind the `codegen` feature
+   (`cargo run -p pagura-host --features codegen --example
+   protocol_constants`), so it is neither product code nor public API.
 
 ## Consequences
 
@@ -42,6 +67,9 @@ is exactly what ADR 0016 rules out for `Limits`.
   it retains, independently of the per-document budgets.
 - A caller that lowered `Limits::file_bytes` to bound session memory must
   now set `SessionLimits::total_source_bytes` as well.
+- Changing a wire code or a default budget in Rust fails the drift test
+  until the web constants are regenerated, so the viewer cannot silently
+  disagree with the host it ships with.
 - `Session::new` takes a `SessionConfig` (`From<Limits>` keeps the old call
   shape), and `with_cache_bytes`/`with_text_cache_bytes` are replaced by
   the corresponding `SessionLimits` fields.
