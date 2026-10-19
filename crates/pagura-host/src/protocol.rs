@@ -17,7 +17,7 @@ pub use codes::{
     RequestKind, ResponseKind, SearchFlags, TileStatus, Version,
 };
 pub use decode::decode;
-pub use encode::encode;
+pub use encode::{Encoded, encode};
 
 use pagura::{Diagnostic, Error, Position, Recovery, Tile};
 

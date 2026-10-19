@@ -107,7 +107,7 @@ impl Session {
             }
             let response = self.execute(frame.request).unwrap_or_else(Response::Error);
             // The document owns its source now; release a potentially large
-            // request buffer before allocating the encoded response.
+            // request buffer before writing the response.
             drop(body);
             self.send(&mut output, id, &response)?;
         }
@@ -214,10 +214,16 @@ impl Session {
     }
 
     fn send(&self, output: &mut impl Write, id: u32, response: &Response) -> io::Result<()> {
-        let bytes = protocol::encode(id, response, self.max_frame_bytes())
-            .or_else(|error| protocol::encode(id, &Response::Error(error), self.max_frame_bytes()))
-            .map_err(io::Error::other)?;
-        output.write_all(&bytes)?;
+        let max = self.max_frame_bytes();
+        let failure;
+        let frame = match protocol::encode(id, response, max) {
+            Ok(frame) => frame,
+            Err(error) => {
+                failure = Response::Error(error);
+                protocol::encode(id, &failure, max).map_err(io::Error::other)?
+            }
+        };
+        frame.write_to(output)?;
         output.flush()
     }
 

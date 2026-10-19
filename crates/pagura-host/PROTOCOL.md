@@ -176,15 +176,17 @@ budget borrows a Limits field. Maximum body length is
 SessionLimits::max_frame_bytes, by default `min(u32::MAX, max(file_bytes +
 string_bytes + 14, pixels*4 + 18, reading_response_bytes + 5, 1024))` with
 saturating arithmetic. The 1024-byte minimum allows structured errors even with
-zero operation budgets. Check it before reserving request memory; allocations
-use fallible reservation. Each pdf/password blob is also checked against
-file_bytes/string_bytes. Retained
+zero operation budgets. It is checked before reserving request memory; the body
+then grows with the bytes received, through fallible reservations. Each
+pdf/password blob is also checked against file_bytes/string_bytes. Retained
 source bytes **across all open documents** must fit total_source_bytes
 (default 512 MiB), and at most max_documents (default 256) documents are open
 at once; close releases both. Handles cannot overflow.
 Tiles are checked against pixels and the response frame cap before painting.
 Responses are bounded during encoding; an unencodable success is replaced by a
-Limit error. The same limits apply on native and wasm. Limits do not constitute
+Limit error. Tile pixels and reading payloads are written after the encoded
+fields without being copied into the frame. The same limits apply on native
+and wasm. Limits do not constitute
 an OS memory sandbox: document caches and temporary buffers also consume memory.
 
 The browser grants **no preopened directories, sockets, arguments or

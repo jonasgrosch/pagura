@@ -388,7 +388,9 @@ fn retention_and_supervisor_cancellation_release_on_close() {
             lists: 0
         }
     );
-    let bytes = protocol::encode(7, &Response::Stats(session.stats()), 1024).unwrap();
+    let bytes = protocol::encode(7, &Response::Stats(session.stats()), 1024)
+        .unwrap()
+        .to_vec();
     assert_eq!(&bytes[..9], &[29, 0, 0, 0, 137, 7, 0, 0, 0]);
     assert_eq!(&bytes[9..], &[0; 24]);
     assert!(protocol::decode(&[9, 1, 0, 0, 0], &Limits::default()).is_ok());

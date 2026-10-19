@@ -4,6 +4,10 @@ use crate::protocol::layout;
 use pagura::{Error, Position};
 use std::io::{self, Read};
 
+/// The first body allocation; later ones double what has arrived, so memory
+/// grows with received bytes rather than with the declared length.
+const FIRST_CHUNK: usize = 64 * 1024;
+
 /// What the stream delivered.
 #[derive(Debug)]
 pub(super) enum Incoming {
@@ -39,14 +43,18 @@ pub(super) fn read(input: &mut impl Read, max_body: usize) -> io::Result<Incomin
         return framing(Error::limit("request frame budget exceeded"));
     }
     let mut body = Vec::new();
-    if body.try_reserve_exact(length).is_err() {
-        return Ok(Incoming::Malformed(Error::limit(
-            "request allocation failed",
-        )));
-    }
-    body.resize(length, 0);
-    if !fill(input, &mut body)? {
-        return framing(Error::syntax("truncated frame body"));
+    while body.len() < length {
+        let additional = (length - body.len()).min(body.len().max(FIRST_CHUNK));
+        if body.try_reserve_exact(additional).is_err() {
+            return Ok(Incoming::Malformed(Error::limit(
+                "request allocation failed",
+            )));
+        }
+        // `take` stops at the reserved capacity, so the read never grows it.
+        let limit = u64::try_from(additional).unwrap_or(u64::MAX);
+        if input.by_ref().take(limit).read_to_end(&mut body)? < additional {
+            return framing(Error::syntax("truncated frame body"));
+        }
     }
     Ok(Incoming::Body(body))
 }
@@ -107,7 +115,7 @@ mod tests {
     }
 
     #[test]
-    fn interrupted_reads_retry_until_a_frame_or_eof() {
+    fn interrupted_reads_retry_and_bodies_grow_only_with_received_bytes() {
         let frame = pagura_testkit::frame(1, 7, &[1, 0, 0, 0]);
         let mut input = Trickle {
             bytes: &frame,
@@ -117,9 +125,16 @@ mod tests {
             panic!("a complete frame");
         };
         assert_eq!(body, &frame[layout::LENGTH_BYTES..]);
+        assert_eq!(body.capacity(), body.len());
         assert!(matches!(read(&mut input, 1024).unwrap(), Incoming::Eof));
         let mut cut: &[u8] = &frame[..frame.len() - 1];
         let Incoming::Malformed(error) = read(&mut cut, 1024).unwrap() else {
+            panic!("a truncated frame");
+        };
+        assert_eq!(error.position, Position::Buffer(layout::FRAME_START));
+        // A declared 256 MiB body that never arrives is truncated, not refused.
+        let mut header: &[u8] = &(256_u32 << 20).to_le_bytes();
+        let Incoming::Malformed(error) = read(&mut header, usize::MAX).unwrap() else {
             panic!("a truncated frame");
         };
         assert_eq!(error.position, Position::Buffer(layout::FRAME_START));

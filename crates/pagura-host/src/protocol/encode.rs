@@ -1,8 +1,44 @@
-//! Response encoding through the one bounded writer.
+//! Response encoding. Tile pixels and reading payloads are never copied
+//! into the frame: they follow the encoded fields as a borrowed tail.
 
 use super::{DiagnosticCode, ErrorCategory, Pixels, Response, TileStatus, layout};
 use crate::wire::Writer;
 use pagura::{Diagnostic, Error, Result};
+use std::fmt;
+use std::io::{self, Write};
+
+/// One encoded response frame: its length prefix and fields, then a borrowed
+/// tail of pixels or reading payload.
+pub struct Encoded<'a> {
+    pub(super) head: Vec<u8>,
+    pub(super) tail: &'a [u8],
+}
+
+impl Encoded<'_> {
+    /// Writes the whole frame, without copying the tail.
+    ///
+    /// # Errors
+    /// Returns the output's I/O errors.
+    pub fn write_to(&self, output: &mut impl Write) -> io::Result<()> {
+        output.write_all(&self.head)?;
+        output.write_all(self.tail)
+    }
+
+    /// The whole frame in one buffer.
+    pub fn to_vec(&self) -> Vec<u8> {
+        [self.head.as_slice(), self.tail].concat()
+    }
+}
+
+impl fmt::Debug for Encoded<'_> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("Encoded")
+            .field("head", &self.head)
+            .field("tail_bytes", &self.tail.len())
+            .finish()
+    }
+}
 
 /// Encode a response including its length prefix, checking the cap before
 /// any allocation.
@@ -12,18 +48,23 @@ use pagura::{Diagnostic, Error, Result};
 /// or available memory. A tile whose byte count does not match its
 /// dimensions is `InvalidArgument`, as is an error or diagnostic kind added
 /// to pagura-core that no protocol version encodes yet.
-pub fn encode(id: u32, response: &Response, max_body: usize) -> Result<Vec<u8>> {
+pub fn encode(id: u32, response: &Response, max_body: usize) -> Result<Encoded<'_>> {
     let cap = max_body.min(layout::MAX_BODY_BYTES);
     let mut out = Writer::new(cap.saturating_add(layout::LENGTH_BYTES));
     let length = out.slot::<{ layout::LENGTH_BYTES }>()?;
     out.u8(response.kind().code())?;
     out.u32(id)?;
     let tail = payload(&mut out, response)?;
-    out.push(tail)?;
-    let body = u32::try_from(out.len() - layout::LENGTH_BYTES)
-        .map_err(|_| Error::limit("response frame budget exceeded"))?;
+    let body = (out.len() - layout::LENGTH_BYTES)
+        .checked_add(tail.len())
+        .filter(|&body| body <= cap)
+        .and_then(|body| u32::try_from(body).ok())
+        .ok_or(Error::limit("response frame budget exceeded"))?;
     out.fill(length, body.to_le_bytes());
-    Ok(out.finish())
+    Ok(Encoded {
+        head: out.finish(),
+        tail,
+    })
 }
 
 /// Writes the fields of `response` and returns the bytes that follow them.

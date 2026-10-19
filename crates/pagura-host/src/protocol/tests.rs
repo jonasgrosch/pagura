@@ -7,7 +7,9 @@ use pagura::{ErrorKind, Feature, Limits, ObjectId, Repair};
 fn hello_has_an_independent_literal_wire_oracle() {
     // host-wire-v1: length=9, response kind=129, id=7, version=1.
     assert_eq!(
-        encode(7, &Response::Hello(Version::V1), 9).unwrap(),
+        encode(7, &Response::Hello(Version::V1), 9)
+            .unwrap()
+            .to_vec(),
         [9, 0, 0, 0, 129, 7, 0, 0, 0, 1, 0, 0, 0]
     );
     assert_eq!(
@@ -35,7 +37,7 @@ fn error_wire_preserves_feature_object_and_stream_position() {
             object: ObjectId::new(9, 2),
             offset: 17,
         });
-    let actual = encode(5, &Response::Error(error), 1024).unwrap();
+    let actual = encode(5, &Response::Error(error), 1024).unwrap().to_vec();
     let mut expected = vec![255, 5, 0, 0, 0, 3, 11, 0, 0, 0];
     expected.extend(b"operator.Tj");
     expected.extend([0; 4]); // No refused repair.
@@ -50,7 +52,7 @@ fn error_wire_preserves_feature_object_and_stream_position() {
             .at(Position::File(10))
             .in_object(object),
     ]);
-    let bytes = encode(6, &diagnostics, 1024).unwrap();
+    let bytes = encode(6, &diagnostics, 1024).unwrap().to_vec();
     assert!(bytes.windows(20).any(|s| s == b"syntax.duplicate-key"));
     for position in [Position::Unknown, Position::File(4), Position::Buffer(5)] {
         assert!(encode(8, &Response::Error(Error::syntax("bad").at(position)), 1024).is_ok());
@@ -64,7 +66,7 @@ fn strict_repair_has_an_independent_frozen_v1_wire_oracle() {
         .at(Position::File(17))
         .to_error()
         .unwrap();
-    let actual = encode(2, &Response::Error(error), 1024).unwrap();
+    let actual = encode(2, &Response::Error(error), 1024).unwrap().to_vec();
     // kind/id/category, empty feature tag, refused repair, message, context.
     let mut expected = vec![255, 2, 0, 0, 0, 1, 0, 0, 0, 0, 19, 0, 0, 0];
     expected.extend(b"file.trailing-bytes");
@@ -78,7 +80,9 @@ fn strict_repair_has_an_independent_frozen_v1_wire_oracle() {
     frame.extend(expected);
     assert_eq!(actual, frame);
     assert_eq!(
-        encode(2, &Response::Error(Error::syntax("bad")), 1024).unwrap()[10..18],
+        encode(2, &Response::Error(Error::syntax("bad")), 1024)
+            .unwrap()
+            .to_vec()[10..18],
         [0; 8]
     );
 }
@@ -96,7 +100,7 @@ fn every_error_category_and_context_has_a_fixed_wire_code() {
     ];
     for (index, kind) in kinds.into_iter().enumerate() {
         let response = Response::Error(Error::new(kind, "failure"));
-        let bytes = encode(9, &response, 1024).unwrap();
+        let bytes = encode(9, &response, 1024).unwrap().to_vec();
         assert_eq!(usize::from(bytes[9]), index + 1);
         assert_eq!(&bytes[bytes.len() - 2..], &[0, 0]); // No object, unknown position.
     }
@@ -105,25 +109,27 @@ fn every_error_category_and_context_has_a_fixed_wire_code() {
         &Response::Error(Error::syntax("bad").at(Position::Buffer(17))),
         1024,
     )
-    .unwrap();
+    .unwrap()
+    .to_vec();
     assert_eq!(&bytes[bytes.len() - 10..], &[0, 3, 17, 0, 0, 0, 0, 0, 0, 0]);
     let bytes = encode(
         1,
         &Response::Error(Error::syntax("bad").at(Position::File(5))),
         1024,
     )
-    .unwrap();
+    .unwrap()
+    .to_vec();
     assert_eq!(&bytes[bytes.len() - 10..], &[0, 1, 5, 0, 0, 0, 0, 0, 0, 0]);
 }
 
 #[test]
 fn generation_layouts_are_additive_and_truncations_fail() {
     assert_eq!(
-        encode(9, &Response::Skipped(1), 1024).unwrap(),
+        encode(9, &Response::Skipped(1), 1024).unwrap().to_vec(),
         [10, 0, 0, 0, 136, 9, 0, 0, 0, 0, 1, 0, 0, 0]
     );
     assert_eq!(
-        encode(8, &Response::Generation(2), 1024).unwrap(),
+        encode(8, &Response::Generation(2), 1024).unwrap().to_vec(),
         [9, 0, 0, 0, 135, 8, 0, 0, 0, 2, 0, 0, 0]
     );
     let mut bodies = vec![vec![7, 2, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0]];
@@ -205,7 +211,9 @@ fn diagnostic_kinds_have_independent_wire_oracles_and_legacy_filtering() {
     repair_bytes.extend([0, 0]);
     expected.push(0);
     expected.extend(&repair_bytes);
-    let actual = encode(9, &Response::DiagnosticDetails(records.clone()), 1024).unwrap();
+    let actual = encode(9, &Response::DiagnosticDetails(records.clone()), 1024)
+        .unwrap()
+        .to_vec();
     assert_eq!(&actual[4..], expected);
     assert_eq!(
         encode(
@@ -220,8 +228,40 @@ fn diagnostic_kinds_have_independent_wire_oracles_and_legacy_filtering() {
     let mut legacy = vec![133, 9, 0, 0, 0, 1, 0, 0, 0];
     legacy.extend(repair_bytes);
     assert_eq!(
-        &encode(9, &Response::Diagnostics(records), 1024).unwrap()[4..],
+        &encode(9, &Response::Diagnostics(records), 1024)
+            .unwrap()
+            .to_vec()[4..],
         legacy
+    );
+}
+
+#[test]
+fn tile_pixels_follow_the_fields_without_being_copied() {
+    // host-wire-v1 tile: length=13+4, kind=132, id=3, width=1, height=1, RGBA.
+    let tile = Response::Tile(Pixels::new(1, 1, vec![1, 2, 3, 4]));
+    let encoded = encode(3, &tile, 1024).unwrap();
+    assert_eq!(
+        encoded.head,
+        [17, 0, 0, 0, 132, 3, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]
+    );
+    let Response::Tile(pixels) = &tile else {
+        unreachable!("a tile response");
+    };
+    assert!(std::ptr::eq(encoded.tail, pixels.rgba.as_slice()));
+    let mut written = Vec::new();
+    encoded.write_to(&mut written).unwrap();
+    assert_eq!(written, encoded.to_vec());
+    // The cap covers the borrowed pixels: 17 body bytes do not fit 16.
+    assert_eq!(encode(3, &tile, 16).unwrap_err().kind, ErrorKind::Limit);
+    let generated = Response::GenerationTile {
+        generation: 5,
+        pixels: Pixels::new(1, 1, vec![9; 4]),
+    };
+    assert_eq!(
+        encode(4, &generated, 1024).unwrap().to_vec(),
+        [
+            22, 0, 0, 0, 136, 4, 0, 0, 0, 1, 5, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 9, 9, 9, 9
+        ]
     );
 }
 

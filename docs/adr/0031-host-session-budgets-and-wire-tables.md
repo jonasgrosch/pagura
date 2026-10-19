@@ -21,6 +21,11 @@ categories) and the browser codec in `web/`, which also hard-coded the frame
 cap computed from `Limits::default()`. Nothing checked that the copies
 agreed.
 
+Tile pixels were copied into the frame: the encoder appended the straight
+RGBA pixels to the frame buffer, so a 64 MiB tile briefly needed 128 MiB,
+and WebAssembly linear memory never shrinks again. Request bodies were
+zero-filled to their declared length before any byte arrived.
+
 ## Decision
 
 1. **`SessionLimits` holds the session's budgets,** next to `Limits`, each
@@ -57,6 +62,14 @@ agreed.
    for that test and for the example behind the `codegen` feature
    (`cargo run -p pagura-host --features codegen --example
    protocol_constants`), so it is neither product code nor public API.
+6. **Responses stream their bulk.** Encoding produces the length prefix and
+   fields, then borrows the tile pixels or reading payload as a tail that is
+   written without copying. Request bodies grow with the bytes received:
+   the first allocation is 64 KiB, and each later one at most doubles what
+   has arrived, never past the declared length. Both are held until the
+   open and tile workloads in `web/host_benchmark.mjs` and
+   `web/tile_benchmark.mjs` show no regression in time or peak memory,
+   natively and on WASI.
 
 ## Consequences
 
@@ -67,6 +80,9 @@ agreed.
 - Changing a wire code or a default budget in Rust fails the drift test
   until the web constants are regenerated, so the viewer cannot silently
   disagree with the host it ships with.
+- Peak memory for a tile response is one copy of its pixels, and a request
+  that declares a large body but sends little reserves little. A large open
+  makes about log2(size / 64 KiB) reservations instead of one.
 - `Session::new` takes a `SessionConfig` (`From<Limits>` keeps the old call
   shape), and `with_cache_bytes`/`with_text_cache_bytes` are replaced by
   the corresponding `SessionLimits` fields.
