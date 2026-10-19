@@ -231,6 +231,13 @@ pub(super) fn blend_span(pixels: &mut [u8], coverage: &[u8], color: Rgba8) {
         black_span(pixels, coverage);
         return;
     }
+    // An opaque colour at coverage 0 keeps the pixel and at 255 stores the
+    // colour (c * 255 + p * 0 and c * 0 + p * 255 both round exactly), so
+    // one fixed-width blend over the span stores what runs would.
+    if color.a == 255 {
+        partial_span(&mut pixels[..coverage.len() * 4], coverage, color);
+        return;
+    }
     let mut start = 0;
     while start < coverage.len() {
         if coverage[start] == 0 {
