@@ -3,8 +3,10 @@ use crate::{
     VerticalMetrics,
     cmap::charge,
     objects::{array, number, optional},
+    repairs,
+    report::Report,
 };
-use pagura_core::{Dictionary, Error, Result, Value};
+use pagura_core::{Diagnostic, Dictionary, Error, Result, Value};
 use pagura_document::Document;
 use std::collections::BTreeMap;
 
@@ -81,12 +83,23 @@ impl Metrics {
                 .and_then(|v| u8::try_from(v).ok())
                 .ok_or_else(|| Error::syntax("invalid LastChar"))?;
             let widths = array(value)?;
-            if last < first || widths.len() != usize::from(last - first) + 1 {
-                return Err(Error::syntax(
-                    "Widths length disagrees with FirstChar and LastChar",
-                ));
-            }
-            for (code, value) in (u32::from(first)..=u32::from(last)).zip(widths) {
+            let expected = usize::from(last.saturating_sub(first)) + 1;
+            let count = if last < first || widths.len() != expected {
+                // Table 109: codes past the array use MissingWidth and
+                // entries past LastChar are unused.
+                Report::new(document).diagnostic(Diagnostic::new(
+                    repairs::WIDTHS_LENGTH,
+                    "Widths length disagrees with FirstChar and LastChar; missing codes use MissingWidth (Table 109)",
+                ))?;
+                if last < first {
+                    0
+                } else {
+                    expected.min(widths.len())
+                }
+            } else {
+                expected
+            };
+            for (code, value) in (u32::from(first)..).zip(widths).take(count) {
                 result.widths.insert(code, scaled(document, value, scale)?);
             }
         } else {
