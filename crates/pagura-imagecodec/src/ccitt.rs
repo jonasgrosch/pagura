@@ -1,4 +1,5 @@
 //! CCITT Group 3/4 fax (ITU-T T.4/T.6; ISO 32000-2 clause 7.4.6).
+#[path = "t4/codes.rs"]
 mod codes;
 use pagura_core::{Diagnostic, Diagnostics, Error, ErrorKind, Limits, Position, Recovery, Result};
 
