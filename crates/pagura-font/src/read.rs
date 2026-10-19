@@ -24,13 +24,13 @@ pub(crate) struct Read<'a> {
     pub base: usize,
 }
 impl<'a> Read<'a> {
-    pub fn new(data: &'a [u8], base: usize) -> Self {
+    pub(crate) fn new(data: &'a [u8], base: usize) -> Self {
         Self { data, pos: 0, base }
     }
-    pub fn at(self) -> usize {
+    pub(crate) fn at(self) -> usize {
         self.base.saturating_add(self.pos)
     }
-    pub fn take(&mut self, len: usize) -> Result<&'a [u8]> {
+    pub(crate) fn take(&mut self, len: usize) -> Result<&'a [u8]> {
         let end = self
             .pos
             .checked_add(len)
@@ -42,33 +42,33 @@ impl<'a> Read<'a> {
         self.pos = end;
         Ok(bytes)
     }
-    pub fn u8(&mut self) -> Result<u8> {
+    pub(crate) fn u8(&mut self) -> Result<u8> {
         Ok(self.take(1)?[0])
     }
-    pub fn u16(&mut self) -> Result<u16> {
+    pub(crate) fn u16(&mut self) -> Result<u16> {
         let b = self.take(2)?;
         Ok(u16::from_be_bytes([b[0], b[1]]))
     }
-    pub fn i16(&mut self) -> Result<i16> {
+    pub(crate) fn i16(&mut self) -> Result<i16> {
         let b = self.take(2)?;
         Ok(i16::from_be_bytes([b[0], b[1]]))
     }
-    pub fn u32(&mut self) -> Result<u32> {
+    pub(crate) fn u32(&mut self) -> Result<u32> {
         let b = self.take(4)?;
         Ok(u32::from_be_bytes([b[0], b[1], b[2], b[3]]))
     }
-    pub fn i32(&mut self) -> Result<i32> {
+    pub(crate) fn i32(&mut self) -> Result<i32> {
         let b = self.take(4)?;
         Ok(i32::from_be_bytes([b[0], b[1], b[2], b[3]]))
     }
-    pub fn offset(&mut self) -> Result<usize> {
+    pub(crate) fn offset(&mut self) -> Result<usize> {
         usize::try_from(self.u32()?).map_err(|_| limit(self.at(), "font offset overflow"))
     }
-    pub fn skip(&mut self, len: usize) -> Result<()> {
+    pub(crate) fn skip(&mut self, len: usize) -> Result<()> {
         self.take(len)?;
         Ok(())
     }
-    pub fn tail(&self, at: usize) -> Result<Self> {
+    pub(crate) fn tail(&self, at: usize) -> Result<Self> {
         Ok(Self::new(
             self.data
                 .get(at..)

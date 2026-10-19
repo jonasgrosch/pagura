@@ -1,4 +1,4 @@
-//! Stable repairs for font programs (ISO 32000-2 9.9; ADR 0003).
+//! Stable repairs for font programs (9.9; ADR 0003).
 use pagura_core::Repair;
 
 /// Infer the sfnt flavor from intact required tables when its version is unknown.
@@ -42,4 +42,25 @@ pub const CFF_ENCODING_SUPPLEMENT: Repair = Repair::new("font.cff-encoding-suppl
 /// (ISO 32000-2 9.8.2/Table 121). Valid pairs retain their selection routes
 /// (9.6.5.2/4), even when their character-set metadata disagrees with the program.
 /// Applied by the renderer's immutable font-loader view, never to source bytes.
+/// It is a PDF font-dictionary repair, defined here until the text layer
+/// that applies it owns descriptor-flag handling.
 pub const DESCRIPTOR_FLAGS: Repair = Repair::new("font.descriptor-flags");
+
+/// Every repair tag of this crate.
+pub const ALL: &[Repair] = &[
+    SFNT_VERSION,
+    TABLE_ALIGNMENT,
+    TABLE_BOUNDS,
+    CMAP_TRUNCATED,
+    CMAP_DATA,
+    CMAP_ALIGNMENT,
+    COMPONENT_FLAGS,
+    CHARSTRING_OPERATOR,
+    GLYPH_DATA,
+    CFF_BLUE_ORDER,
+    CFF_DICT_OPERATOR,
+    CFF_DICT_OPERANDS,
+    TYPE1_DUPLICATE_GLYPH,
+    CFF_ENCODING_SUPPLEMENT,
+    DESCRIPTOR_FLAGS,
+];

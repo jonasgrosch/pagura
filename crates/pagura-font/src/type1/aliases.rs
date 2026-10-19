@@ -27,7 +27,7 @@ impl Aliases {
             _ => None,
         })
     }
-    pub fn reader(&self, word: &[u8]) -> bool {
+    pub(super) fn reader(&self, word: &[u8]) -> bool {
         self.kind(word) == Some(Kind::Reader)
     }
     fn assignment(&self, word: &[u8], assignment: Assignment) -> bool {
@@ -38,7 +38,7 @@ impl Aliases {
                     Assignment::Put => b"put",
                 }
     }
-    pub fn finish(&self, r: &mut Tokens<'_>, assignment: Assignment) -> Result<()> {
+    pub(super) fn finish(&self, r: &mut Tokens<'_>, assignment: Assignment) -> Result<()> {
         let mut word = r.required()?;
         if word == b"noaccess" {
             word = r.required()?;
@@ -52,7 +52,12 @@ impl Aliases {
             ))
         }
     }
-    pub fn definition(&mut self, token: &[u8], r: &mut Tokens<'_>, limits: &Limits) -> Result<()> {
+    pub(super) fn definition(
+        &mut self,
+        token: &[u8],
+        r: &mut Tokens<'_>,
+        limits: &Limits,
+    ) -> Result<()> {
         let Some(name) = token.strip_prefix(b"/") else {
             return Ok(());
         };

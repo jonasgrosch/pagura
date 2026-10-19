@@ -10,7 +10,7 @@ pub(super) struct Tokens<'a> {
     operations: usize,
 }
 impl<'a> Tokens<'a> {
-    pub fn new(data: &'a [u8], limits: &'a Limits) -> Self {
+    pub(super) fn new(data: &'a [u8], limits: &'a Limits) -> Self {
         Self {
             data,
             pos: 0,
@@ -18,7 +18,7 @@ impl<'a> Tokens<'a> {
             operations: 0,
         }
     }
-    pub fn next(&mut self) -> Result<Option<&'a [u8]>> {
+    pub(super) fn next(&mut self) -> Result<Option<&'a [u8]>> {
         loop {
             let token = self.raw()?;
             if token.is_none_or(|t| !matches!(t.first(), Some(b'{' | b'('))) {
@@ -26,7 +26,7 @@ impl<'a> Tokens<'a> {
             }
         }
     }
-    pub fn raw(&mut self) -> Result<Option<&'a [u8]>> {
+    pub(super) fn raw(&mut self) -> Result<Option<&'a [u8]>> {
         loop {
             while self.data.get(self.pos).is_some_and(|b| white(*b)) {
                 self.pos += 1;
@@ -102,7 +102,7 @@ impl<'a> Tokens<'a> {
         }
         Err(bad(self.pos, "unterminated Type 1 string or procedure"))
     }
-    pub fn procedure(&mut self) -> Result<Option<&'a [u8]>> {
+    pub(super) fn procedure(&mut self) -> Result<Option<&'a [u8]>> {
         let start = self.pos;
         let token = self.raw()?;
         if let Some(body) = token
@@ -115,21 +115,21 @@ impl<'a> Tokens<'a> {
             Ok(None)
         }
     }
-    pub fn peek(&mut self) -> Result<Option<&'a [u8]>> {
+    pub(super) fn peek(&mut self) -> Result<Option<&'a [u8]>> {
         let pos = self.pos;
         let token = self.next()?;
         self.pos = pos;
         Ok(token)
     }
-    pub fn required(&mut self) -> Result<&'a [u8]> {
+    pub(super) fn required(&mut self) -> Result<&'a [u8]> {
         self.next()?
             .ok_or_else(|| bad(self.pos, "truncated Type 1 dictionary"))
     }
-    pub fn integer(&mut self) -> Result<usize> {
+    pub(super) fn integer(&mut self) -> Result<usize> {
         let token = self.required()?;
         integer(token, self.pos)
     }
-    pub fn binary(&mut self, aliases: &super::aliases::Aliases) -> Result<&'a [u8]> {
+    pub(super) fn binary(&mut self, aliases: &super::aliases::Aliases) -> Result<&'a [u8]> {
         let size = self.integer()?;
         cap(size, self.limits.decoded_bytes.min(65535), self.pos)?;
         if !aliases.reader(self.required()?) {
@@ -153,7 +153,7 @@ impl<'a> Tokens<'a> {
         self.pos = end;
         Ok(bytes)
     }
-    pub fn matrix(&mut self) -> Result<Transform> {
+    pub(super) fn matrix(&mut self) -> Result<Transform> {
         while self.data.get(self.pos).is_some_and(|b| white(*b)) {
             self.pos += 1;
         }

@@ -4,7 +4,7 @@ use crate::read::bad;
 use pagura_core::{Diagnostics, Position, Result};
 
 impl Dict {
-    pub(super) fn validate(
+    pub(in crate::cff) fn validate(
         &mut self,
         private: bool,
         strings: usize,

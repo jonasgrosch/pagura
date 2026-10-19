@@ -1,7 +1,8 @@
 #![forbid(unsafe_code)]
+#![warn(unreachable_pub)]
 //! Font programs: glyph outlines and metrics from TrueType and OpenType
 //! (`glyf` and CFF/CFF2 outlines), bare CFF including CID-keyed CFF, and
-//! Type 1 (ADR 0009).
+//! Type 1 (ADR 0009, ADR 0023).
 //!
 //! This crate is PDF-agnostic: it parses font program bytes (the decoded
 //! `/FontFile*` streams) and answers glyph questions. Mapping character codes
@@ -10,6 +11,7 @@
 
 use pagura_core::{Diagnostics, Limits, Name, Recovery, Result};
 use pagura_raster::{Path, Transform};
+use std::ops::Deref;
 use std::sync::Arc;
 
 mod cff;
@@ -31,11 +33,15 @@ pub mod features {
     pub const TYPE1_POSTSCRIPT: Feature = Feature::new("font.type1-postscript");
     /// CFF2 variation expressions outside the default-instance interpreter.
     pub const VARIATIONS: Feature = Feature::new("font.variations");
+
+    /// Every feature tag of this crate.
+    pub const ALL: &[Feature] = &[FORMAT, TYPE1_POSTSCRIPT, VARIATIONS];
 }
 
 /// The container format of a font program, as named by the PDF stream that
-/// holds it (ISO 32000-2 clause 9.9, Table 124: `/FontFile`, `/FontFile2`, `/FontFile3` subtypes).
+/// holds it (9.9, Table 124: `/FontFile`, `/FontFile2`, `/FontFile3` subtypes).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum FontFormat {
     /// Type 1 (`/FontFile`): cleartext and eexec-encrypted portions.
     Type1,
@@ -53,6 +59,7 @@ pub struct GlyphId(pub u32);
 
 /// A TrueType `cmap` subtable selection (platform, encoding).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum CmapSubtable {
     /// (3, 1): Windows Unicode BMP.
     WindowsUnicode,
@@ -66,11 +73,89 @@ pub enum CmapSubtable {
     MacRoman,
 }
 
+/// The bytes of a font program, shared by every clone of the parsed
+/// program.
+///
+/// Data that lives for the whole process, such as fonts bundled with
+/// `include_bytes!`, is used in place rather than copied. Convert with
+/// `From`: `&'static [u8]` becomes [`FontBytes::Static`], and `Vec<u8>`,
+/// `Box<[u8]>` and `Arc<[u8]>` become [`FontBytes::Shared`].
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub enum FontBytes {
+    /// Bytes that outlive every program, used without copying.
+    Static(&'static [u8]),
+    /// Heap bytes, shared by reference counting.
+    Shared(Arc<[u8]>),
+}
+
+impl FontBytes {
+    /// The bytes.
+    pub fn as_slice(&self) -> &[u8] {
+        match self {
+            Self::Static(bytes) => bytes,
+            Self::Shared(bytes) => bytes,
+        }
+    }
+
+    /// Heap bytes held for the program: none for static data.
+    fn heap_len(&self) -> usize {
+        match self {
+            Self::Static(_) => 0,
+            Self::Shared(bytes) => bytes.len(),
+        }
+    }
+}
+
+impl Deref for FontBytes {
+    type Target = [u8];
+
+    fn deref(&self) -> &[u8] {
+        self.as_slice()
+    }
+}
+
+impl AsRef<[u8]> for FontBytes {
+    fn as_ref(&self) -> &[u8] {
+        self.as_slice()
+    }
+}
+
+impl From<&'static [u8]> for FontBytes {
+    fn from(bytes: &'static [u8]) -> Self {
+        Self::Static(bytes)
+    }
+}
+
+impl<const N: usize> From<&'static [u8; N]> for FontBytes {
+    fn from(bytes: &'static [u8; N]) -> Self {
+        Self::Static(bytes)
+    }
+}
+
+impl From<Arc<[u8]>> for FontBytes {
+    fn from(bytes: Arc<[u8]>) -> Self {
+        Self::Shared(bytes)
+    }
+}
+
+impl From<Vec<u8>> for FontBytes {
+    fn from(bytes: Vec<u8>) -> Self {
+        Self::Shared(bytes.into())
+    }
+}
+
+impl From<Box<[u8]>> for FontBytes {
+    fn from(bytes: Box<[u8]>) -> Self {
+        Self::Shared(bytes.into())
+    }
+}
+
 /// A parsed font program. Cheap to clone; the bytes are shared.
 #[derive(Debug, Clone)]
 pub struct FontProgram {
     format: FontFormat,
-    data: Arc<[u8]>,
+    data: FontBytes,
     parsed: Arc<Program>,
     limits: Limits,
     retained_bytes: usize,
@@ -91,7 +176,7 @@ impl FontProgram {
     /// Returns positioned syntax errors for malformed programs or exceeded
     /// font budgets, and `Unsupported` for unimplemented formats or features.
     /// Glyph programs are validated on demand by [`Self::outline`].
-    pub fn parse(data: impl Into<Arc<[u8]>>, format: FontFormat, limits: &Limits) -> Result<Self> {
+    pub fn parse(data: impl Into<FontBytes>, format: FontFormat, limits: &Limits) -> Result<Self> {
         Self::parse_with_diagnostics(
             data,
             format,
@@ -101,7 +186,7 @@ impl FontProgram {
         .map_err(recovery::legacy_error)
     }
 
-    /// Parses a font with explicit, reported recovery (ISO 32000-2 9.9).
+    /// Parses a font with explicit, reported recovery (9.9).
     ///
     /// Forward the diagnostics to the owning document after this call, including
     /// on error. Original program bytes are retained unchanged. Diagnostics are
@@ -112,7 +197,7 @@ impl FontProgram {
     /// Strict mode rejects each repair with its stable tag. Required tables,
     /// undecodable containers and exhausted resource budgets remain errors.
     pub fn parse_with_diagnostics(
-        data: impl Into<Arc<[u8]>>,
+        data: impl Into<FontBytes>,
         format: FontFormat,
         limits: &Limits,
         diagnostics: &mut Diagnostics,
@@ -124,7 +209,7 @@ impl FontProgram {
     }
 
     fn parse_inner(
-        data: Arc<[u8]>,
+        data: FontBytes,
         format: FontFormat,
         limits: &Limits,
         diagnostics: &mut Diagnostics,
@@ -150,7 +235,7 @@ impl FontProgram {
     }
 
     /// The container format.
-    pub fn format(&self) -> FontFormat {
+    pub const fn format(&self) -> FontFormat {
         self.format
     }
 
@@ -161,18 +246,20 @@ impl FontProgram {
 
     /// Estimated heap bytes retained by this parsed program (ADR 0012).
     ///
-    /// Computed once at parse time with saturating arithmetic. Counts the input
-    /// and parsed-state Arc allocations, owned vector capacities, decrypted
-    /// Type 1 buffers, encodings, name/CID indexes and variation data. Tree
-    /// entries use 64 bytes of estimated bookkeeping; name payloads are charged
-    /// by length, conservatively including names that core may store inline.
+    /// Computed once at parse time with saturating arithmetic. Counts shared
+    /// input bytes (not [`FontBytes::Static`] data, which is not heap), the
+    /// Arc allocations, owned vector capacities, decrypted Type 1 buffers,
+    /// encodings, name/CID indexes and variation data. Tree entries use
+    /// `pagura_core::INDEX_ENTRY_OVERHEAD` bytes of estimated bookkeeping;
+    /// name payloads are charged by length, conservatively including names
+    /// that core may store inline.
     ///
     /// This is an accounting estimate, not allocator telemetry or peak memory.
     /// It excludes this value's inline storage, any caller's Arc around it,
     /// temporary parse/outline storage and caller-owned diagnostics. Clones
     /// share the counted allocations: charge the estimate once per distinct
     /// program, rather than once per clone. Outlines are not retained.
-    pub fn retained_bytes(&self) -> usize {
+    pub const fn retained_bytes(&self) -> usize {
         self.retained_bytes
     }
 
@@ -195,7 +282,7 @@ impl FontProgram {
     }
 
     /// Glyph space to text space: `/FontMatrix` for Type 1 and CFF, and
-    /// `1 / unitsPerEm` scaling for TrueType outlines (clause 9.2.4).
+    /// `1 / unitsPerEm` scaling for TrueType outlines (9.2.4).
     pub fn font_matrix(&self) -> Transform {
         match self.parsed.as_ref() {
             Program::Sfnt(p) => p.matrix(),
@@ -280,10 +367,11 @@ impl FontProgram {
     }
 
     /// The program's name for a glyph: TrueType `post`, or a name-keyed
-    /// Type 1/CFF charset. Unnamed glyphs and bare CID-keyed CFF/CFF2 charsets
-    /// return `None`; an OpenType container can also provide `post` names.
-    /// This constant-time metadata lookup does not select or change a glyph.
-    /// Readers may use it after other Unicode mappings fail (PDF 9.10.2).
+    /// Type 1/CFF charset. Unnamed glyphs and bare CID-keyed CFF/CFF2
+    /// charsets return `None`; an OpenType container can also provide
+    /// `post` names. This constant-time metadata lookup does not select or
+    /// change a glyph. Readers may use it after other Unicode mappings fail
+    /// (9.10.2).
     pub fn glyph_name(&self, glyph: GlyphId) -> Option<&Name> {
         match self.parsed.as_ref() {
             Program::Sfnt(p) => p.glyph_name(glyph),
@@ -294,7 +382,7 @@ impl FontProgram {
 
     /// Whether the program has a usable TrueType `cmap` subtable of this kind
     /// (formats 0, 2, 4, 6, 10, 12 or 13). How a PDF character code selects a TrueType
-    /// glyph depends on which subtables exist (clause 9.6.5.4).
+    /// glyph depends on which subtables exist (9.6.5.4).
     pub fn has_cmap_subtable(&self, subtable: CmapSubtable) -> bool {
         match self.parsed.as_ref() {
             Program::Sfnt(p) => p.has_cmap(subtable),
