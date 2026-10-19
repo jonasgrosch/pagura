@@ -16,6 +16,7 @@ mod accumulation;
 mod admission;
 pub(crate) mod quadratic;
 mod rectangle;
+mod signed;
 use rectangle::Rectangle;
 pub(crate) use rectangle::Rows;
 
@@ -273,9 +274,11 @@ pub(crate) struct Scratch {
     exact: Exact,
     accumulation: Vec<accumulation::Accumulator>,
     curves: Vec<quadratic::Sweep>,
+    signed: signed::Signed,
     exact_bytes: usize,
     accumulation_bytes: usize,
     curve_bytes: usize,
+    signed_bytes: usize,
 }
 
 impl Scratch {
@@ -303,6 +306,7 @@ impl Scratch {
         self.exact_bytes
             .saturating_add(self.accumulation_bytes)
             .saturating_add(self.curve_bytes)
+            .saturating_add(self.signed_bytes)
     }
 }
 
@@ -341,6 +345,64 @@ pub(crate) fn coverage(
         scratch.exact.row.charge(out.len())?;
         return prepared.0.write(out, width as usize, origin);
     }
+    // Certified glyphs accumulate signed areas. Cells that a fractional clip
+    // edge cuts take the polygon path's geometric clip, so every interior cell
+    // keeps the kernel's value whichever tile or clip omission produced it.
+    if let Some(glyph) = signed::admit(shapes) {
+        let mut work = scratch.exact.row.work;
+        let viewport = (origin, (width, height));
+        let result = scratch
+            .signed
+            .render(glyph, out, viewport, prepared.0, limits, &mut work);
+        scratch.signed_bytes = scratch.signed.retained_bytes();
+        scratch.exact.row.work = work;
+        if !result? {
+            return Ok(());
+        }
+        let mut cut = Vec::new();
+        cut.try_reserve_exact(out.len())
+            .map_err(|_| Error::limit("mask allocation failed"))?;
+        cut.resize(out.len(), 0);
+        polygon(
+            width,
+            height,
+            shapes,
+            &mut cut,
+            origin,
+            limits,
+            scratch,
+            (prepared, None),
+        )?;
+        signed::patch(out, &cut, width as usize, origin, prepared.0);
+        return Ok(());
+    }
+    polygon(
+        width,
+        height,
+        shapes,
+        out,
+        origin,
+        limits,
+        scratch,
+        (prepared, boundary_anchor),
+    )
+}
+
+// The line sweep or certified integer accumulation, for everything else.
+#[expect(
+    clippy::too_many_arguments,
+    reason = "the coverage entry point's arguments plus its prepared clip"
+)]
+fn polygon(
+    width: u32,
+    height: u32,
+    shapes: &[Shape],
+    out: &mut [u8],
+    origin: (u32, u32),
+    limits: &Limits,
+    scratch: &mut Scratch,
+    (prepared, boundary_anchor): ((Rectangle, usize), Option<Point>),
+) -> Result<()> {
     if let Some(anchor) =
         boundary_anchor.or_else(|| admission::sweep_anchor(shapes, limits.path_segments))
     {

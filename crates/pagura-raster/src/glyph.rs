@@ -11,6 +11,8 @@ use crate::flatten::{bounded, flatten};
 use crate::{Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Result};
 
+mod winding;
+
 /// One flattened contour relative to a glyph's device origin.
 pub type GlyphContour = crate::flatten::Polyline;
 
@@ -43,6 +45,7 @@ pub struct GlyphGeometry {
     bounds: Option<[Point; 2]>,
     polygon_bounds: Option<[Point; 2]>,
     curves: Option<Vec<Piece>>,
+    signed: bool,
 }
 
 impl GlyphGeometry {
@@ -85,12 +88,15 @@ impl GlyphGeometry {
             bounds: None,
             polygon_bounds: None,
             curves,
+            signed: false,
         };
         if result.retained_bytes() > limits.decoded_bytes {
             return Err(Error::limit("glyph geometry byte budget exceeded"));
         }
         result.polygon_bounds = bounds(&result.contours);
         result.bounds = result.polygon_bounds;
+        result.signed = result.curves.is_none()
+            && signed_area(&result.contours, result.polygon_bounds, vertices);
         if let (Some(pieces), Some([lo, hi])) = (&result.curves, &mut result.bounds) {
             for p in pieces.iter().flat_map(|piece| piece.endpoints()) {
                 lo.x = lo.x.min(p.x);
@@ -110,6 +116,12 @@ impl GlyphGeometry {
     /// Relative device bounds of the polygon alone.
     pub(crate) fn polygon_bounds(&self) -> Option<[Point; 2]> {
         self.polygon_bounds
+    }
+
+    /// Whether signed-area accumulation gives this polygon's exact nonzero
+    /// coverage within the bound of ADR 0004.
+    pub(crate) fn signed_area(&self) -> bool {
+        self.signed
     }
 
     /// Monotone pieces for the curve sweep, if this outline was admitted.
@@ -175,6 +187,31 @@ fn curves(
     let cap = (vertices.saturating_sub(1) / 4).min(32);
     let pieces = quadratic::build::prepare(outline, transform, limits, cap)?;
     Ok(pieces.filter(|pieces| pieces.iter().any(|piece| piece.is_curved())))
+}
+
+// Signed accumulation needs a certified winding, and its first-order f64 error
+// bound (ADR 0004, signed-area amendment) doubled must stay below 2^-20 of a
+// pixel: E vertices, C monotone chains, coordinates up to B, at most W columns
+// of accumulators and H rows per placement. The bound needs only the chains,
+// so it is checked before the certificate's sweep.
+fn signed_area(contours: &[GlyphContour], bounds: Option<[Point; 2]>, vertices: usize) -> bool {
+    let Some([lo, hi]) = bounds else {
+        return false;
+    };
+    let Some(chains) = winding::MonotoneChains::new(contours) else {
+        return false;
+    };
+    let width = (hi.x - lo.x).floor() + 4.0;
+    let height = (hi.y - lo.y).floor() + 2.0;
+    let magnitude = [lo.x, lo.y, hi.x, hi.y]
+        .into_iter()
+        .fold(1.0, |m: f64, v| m.max(v.abs()));
+    let (edges, count) = (vertices as f64, chains.count() as f64);
+    let terms = edges * (3.0 * magnitude + 8.0 * width + 2.0 * height + 4.0)
+        + 32.0 * count
+        + edges * count * width;
+    // f64::EPSILON is 2^-52, twice the unit roundoff.
+    width <= 65536.0 && f64::EPSILON * terms <= 2f64.powi(-20) && chains.certified()
 }
 
 fn bounds(contours: &[GlyphContour]) -> Option<[Point; 2]> {
