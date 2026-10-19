@@ -335,7 +335,7 @@ impl Compiler<'_> {
             dictionary,
             self.compilation.provider,
             self.compilation.fonts,
-            self.position,
+            (self.position, self.drawn.is_some()),
         )?;
         self.paint_charge(font_bytes(&font.font, key, dictionary), 1)?;
         Ok(font)
@@ -447,7 +447,7 @@ pub(crate) fn pdf_font(
         dictionary,
         provider,
         fonts,
-        pagura_core::Position::Unknown,
+        (pagura_core::Position::Unknown, false),
     )?;
     Ok(Arc::clone(&entry.font))
 }
@@ -458,7 +458,7 @@ fn cached_font(
     dictionary: &Dictionary,
     provider: Option<&dyn pagura_text::Provider>,
     fonts: Option<&std::sync::Mutex<FontCache>>,
-    position: pagura_core::Position,
+    (position, rendering): (pagura_core::Position, bool),
 ) -> Result<Arc<CachedFont>> {
     if let Some(entry) = fonts.and_then(|cache| {
         cache
@@ -469,7 +469,9 @@ fn cached_font(
         return Ok(entry);
     }
     // Parsing and provider calls happen outside the shared cache lock.
-    let loaded = flags::load(document, dictionary, provider, position);
+    // A row-fragment compilation reads a TrueType program only as far as
+    // drawing needs ([`PdfFont::load_for_rendering`]).
+    let loaded = flags::load(document, dictionary, provider, position, rendering);
     let font = Arc::new(loaded.map_err(|mut error| {
         if matches!(
             error.position,

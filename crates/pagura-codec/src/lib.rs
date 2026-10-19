@@ -229,6 +229,18 @@ pub struct FilterChain {
     filters: Vec<Filter>,
 }
 
+/// What a prefix decode ([`FilterChain::decode_prefix`]) should do after a
+/// block of output.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Prefix {
+    /// Decode another block.
+    More,
+    /// The output decoded so far suffices.
+    Enough,
+    /// Stop; the caller decodes the whole stream instead.
+    Abandon,
+}
+
 impl FilterChain {
     /// Builds a chain from a stream dictionary's `/Filter` and
     /// `/DecodeParms` entries, which the caller has already resolved to
@@ -313,6 +325,34 @@ impl FilterChain {
         }
         match self.filters.pop() {
             Some(Filter::Image { codec, params }) => Some((codec, params)),
+            _ => None,
+        }
+    }
+
+    /// The leading decoded bytes of a stream whose only filter is
+    /// `FlateDecode` without a predictor, decoded a DEFLATE block at a time
+    /// until `enough` accepts the output so far. The bytes are those a whole
+    /// decode starts with. `None` for any other chain, for data that lacks a
+    /// valid zlib header or is truncated or invalid before that point, when
+    /// `enough` abandons, or when the stream ends first: callers then use
+    /// [`Self::decode`], which reports those conditions. The rest of the
+    /// stream, including its checksum, is not read.
+    pub fn decode_prefix(
+        &self,
+        input: &[u8],
+        max_output: usize,
+        enough: &mut dyn FnMut(&[u8]) -> Prefix,
+    ) -> Option<Vec<u8>> {
+        match self.filters.as_slice() {
+            [
+                Filter::Flate {
+                    predictor:
+                        Predictor {
+                            kind: PredictorKind::None,
+                            ..
+                        },
+                },
+            ] => flate::prefix(input, max_output, enough),
             _ => None,
         }
     }

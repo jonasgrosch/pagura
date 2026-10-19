@@ -39,13 +39,16 @@ pub(crate) enum Mapping {
 }
 
 pub(crate) fn load(document: &Document, font: &Dictionary) -> Result<PdfFont> {
-    load_with(document, font, None)
+    load_with(document, font, None, false)
 }
 
+/// With `rendering`, a TrueType program is decoded only as far as drawing
+/// reads it ([`PdfFont::load_for_rendering`]).
 pub(crate) fn load_with(
     document: &Document,
     font: &Dictionary,
     provider: Option<&dyn crate::Provider>,
+    rendering: bool,
 ) -> Result<PdfFont> {
     let kind = kind(document, font)?;
     if kind == FontKind::Type3 {
@@ -100,6 +103,7 @@ pub(crate) fn load_with(
         descriptor,
         kind,
         metrics_font,
+        rendering,
     )?);
     let metrics = if kind == FontKind::Type0 {
         Metrics::composite(document, metrics_font)?

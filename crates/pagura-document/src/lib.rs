@@ -34,7 +34,7 @@ mod xref_stream;
 
 pub use object::{IndirectObject, ObjectSource};
 pub use pages::{Page, Rotation};
-pub use pagura_codec::ImageCodec;
+pub use pagura_codec::{ImageCodec, Prefix};
 pub use stream::ImageStream;
 pub use xref::{Location, Revision, RevisionKind, XrefEntry};
 
@@ -282,6 +282,27 @@ impl Document {
     /// for embedded encrypted data awaiting EFOpen authorization (7.6.6).
     pub fn stream_data<'a>(&'a self, object: &IndirectObject) -> Result<Cow<'a, [u8]>> {
         stream::decoded(self, object)
+    }
+
+    /// The leading decoded bytes of a stream whose only filter is
+    /// `FlateDecode` without parameters, decoded until `enough` accepts them
+    /// ([`pagura_codec::FilterChain::decode_prefix`]). `None` when the
+    /// stream is anything else or the prefix is not available; callers then
+    /// use [`Document::stream_data`]. No diagnostics are reported: the bytes
+    /// are those a whole decode starts with, and its later checks are not
+    /// made.
+    ///
+    /// # Errors
+    ///
+    /// As [`Document::stream_data`] for preparing the stream (decryption,
+    /// external streams and filter entries).
+    pub fn stream_data_prefix(
+        &self,
+        object: &IndirectObject,
+        enough: &mut dyn FnMut(&[u8]) -> Prefix,
+    ) -> Result<Option<Vec<u8>>> {
+        let (data, chain) = self.prepare_stream(object, &mut Vec::new())?;
+        Ok(chain.decode_prefix(&data, self.limits().decoded_bytes, enough))
     }
 
     /// The data of an image stream with every filter except a trailing image

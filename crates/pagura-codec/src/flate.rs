@@ -203,6 +203,42 @@ fn inflate(
     }
 }
 
+/// The leading output of zlib data, inflated a block at a time until
+/// `enough` accepts it: the bytes a whole decode would start with. `None`
+/// when the data lacks a valid zlib header, when any block before that point
+/// is truncated or invalid, when `enough` abandons the prefix, or when the
+/// stream ends first; a caller then decodes the whole stream, which reports
+/// those conditions as before.
+pub(crate) fn prefix(
+    input: &[u8],
+    cap: usize,
+    enough: &mut dyn FnMut(&[u8]) -> crate::Prefix,
+) -> Option<Vec<u8>> {
+    if !valid_zlib_header(input) {
+        return None;
+    }
+    let (start, window) = header(input).ok()?;
+    let mut bits = Bits::new(input, start);
+    let none = Predictor {
+        kind: PredictorKind::None,
+        colors: 1,
+        bits_per_component: 8,
+        columns: 1,
+    };
+    let output = Output::new(cap, none).ok()?;
+    let mut inflater = Inflater::new(output, none, cap, window, input.len());
+    loop {
+        let final_block = bits.read(1).ok()? != 0;
+        inflater.block(&mut bits).ok()?;
+        match enough(&inflater.sink.bytes[..inflater.sink.len]) {
+            crate::Prefix::Enough => return inflater.sink.finish(bits.offset()).ok(),
+            crate::Prefix::Abandon => return None,
+            crate::Prefix::More if final_block => return None,
+            crate::Prefix::More => {}
+        }
+    }
+}
+
 fn valid_zlib_header(input: &[u8]) -> bool {
     matches!(input.get(..2), Some([cmf, flg])
         if cmf & 15 == 8 && cmf >> 4 <= 7
@@ -519,29 +555,34 @@ impl Inflater {
     fn blocks(&mut self, bits: &mut Bits<'_>) -> InflateResult<()> {
         loop {
             let final_block = bits.read(1)? != 0;
-            match bits.read(2)? {
-                0 => self.stored(bits)?,
-                1 => {
-                    if !self.fixed {
-                        let mut lengths = [8; 288];
-                        lengths[144..256].fill(9);
-                        lengths[256..280].fill(7);
-                        table::litlen(&mut self.litlen, &lengths, false, bits.offset())?;
-                        table::distance(&mut self.distance, &[5; 32], false, bits.offset())?;
-                        self.fixed = true;
-                    }
-                    self.compressed(bits)?;
-                }
-                2 => {
-                    self.fixed = false;
-                    dynamic(bits, &mut self.litlen, &mut self.distance)?;
-                    self.compressed(bits)?;
-                }
-                _ => return Err(syntax("reserved DEFLATE block type", bits.offset()).into()),
-            }
+            self.block(bits)?;
             if final_block {
                 return Ok(());
             }
+        }
+    }
+
+    /// One block after its final-block bit.
+    fn block(&mut self, bits: &mut Bits<'_>) -> InflateResult<()> {
+        match bits.read(2)? {
+            0 => self.stored(bits),
+            1 => {
+                if !self.fixed {
+                    let mut lengths = [8; 288];
+                    lengths[144..256].fill(9);
+                    lengths[256..280].fill(7);
+                    table::litlen(&mut self.litlen, &lengths, false, bits.offset())?;
+                    table::distance(&mut self.distance, &[5; 32], false, bits.offset())?;
+                    self.fixed = true;
+                }
+                self.compressed(bits)
+            }
+            2 => {
+                self.fixed = false;
+                dynamic(bits, &mut self.litlen, &mut self.distance)?;
+                self.compressed(bits)
+            }
+            _ => Err(syntax("reserved DEFLATE block type", bits.offset()).into()),
         }
     }
 
