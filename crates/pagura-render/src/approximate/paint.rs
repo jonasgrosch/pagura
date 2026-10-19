@@ -16,8 +16,15 @@ pub(super) struct Target {
 }
 
 impl Target {
-    pub(super) fn new(tile: Tile, background: Rgba8, limits: pagura_core::Limits) -> Result<Self> {
-        let pixels = Pixmap::new_with_limits(tile.width, tile.height, background, limits)?;
+    /// A tile filled with `background`, stored in `storage` when its
+    /// allocation suffices.
+    pub(super) fn new(
+        tile: Tile,
+        background: Rgba8,
+        limits: pagura_core::Limits,
+        storage: Vec<u8>,
+    ) -> Result<Self> {
+        let pixels = Pixmap::with_storage(tile.width, tile.height, background, limits, storage)?;
         let mut painted = Vec::new();
         painted
             .try_reserve_exact(tile.height as usize)
@@ -395,6 +402,7 @@ mod tests {
             },
             Rgba8::WHITE,
             pagura_core::Limits::default(),
+            Vec::new(),
         )
         .unwrap()
     }
@@ -527,6 +535,7 @@ mod tests {
             },
             Rgba8::WHITE,
             pagura_core::Limits::default(),
+            Vec::new(),
         )
         .unwrap();
         blit(&mut tile, &mask, (0, 0), Rgba8::opaque(20, 40, 60), None);

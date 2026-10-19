@@ -13,6 +13,8 @@ pub struct RenderContext {
     provider: Option<Arc<dyn Provider>>,
     pub(crate) fonts: Arc<Mutex<interpreter::text::cache::FontCache>>,
     glyphs: Arc<Mutex<crate::approximate::GlyphCache>>,
+    /// A rendered surface's storage returned by [`Self::recycle`].
+    spare: Arc<Mutex<Vec<u8>>>,
 }
 
 impl std::fmt::Debug for RenderContext {
@@ -47,6 +49,20 @@ impl RenderContext {
             glyphs: Arc::new(Mutex::new(crate::approximate::GlyphCache::new(
                 crate::approximate::CACHE_BYTES,
             ))),
+            spare: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+
+    /// Returns a rendered surface's storage to the context, which keeps the
+    /// largest it has been given and stores its next row-fragment rendering
+    /// ([`crate::Accuracy::RowFragments`]) there, when it is large enough,
+    /// instead of allocating new memory. Pixels are the same either way.
+    pub fn recycle(&self, pixmap: Pixmap) {
+        if let Ok(mut spare) = self.spare.try_lock() {
+            let storage = pixmap.into_storage();
+            if storage.capacity() > spare.capacity() {
+                *spare = storage;
+            }
         }
     }
 
@@ -156,7 +172,7 @@ impl RenderContext {
             width,
             height,
         };
-        list.render_tile_with(options, tile, Some(&self.glyphs))
+        list.render_tile_with(options, tile, Some(&self.glyphs), Some(&self.spare))
     }
 
     /// Compiles and renders a tile with shared resources.
@@ -165,6 +181,6 @@ impl RenderContext {
     /// As [`Self::compile_page`] and [`DisplayList::render_tile`].
     pub fn render_tile(&self, page: &Page, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
         self.compile(page, options.drawn_scale(page))?
-            .render_tile_with(options, tile, Some(&self.glyphs))
+            .render_tile_with(options, tile, Some(&self.glyphs), Some(&self.spare))
     }
 }

@@ -1177,3 +1177,30 @@ fn drawn_size_jpeg_is_approximate_and_switchable_to_the_exact_path() {
         }
     }
 }
+
+#[test]
+fn recycled_surface_storage_renders_the_same_pixels() {
+    use crate::Accuracy;
+    let jpeg = pagura_testkit::fixture("image", "jpeg-interleaved-420.in");
+    let bytes = jpeg_page(&jpeg, (17, 17), 10, "4.25 0 0 4.25 0.5 0.25");
+    let context = crate::RenderContext::new(std::sync::Arc::new(
+        Document::open(bytes, &OpenOptions::default()).unwrap(),
+    ));
+    let page = context.document().page(0).unwrap();
+    for dpi in [72.0, 150.0, 30.0] {
+        let options = RenderOptions {
+            accuracy: Accuracy::RowFragments,
+            background: Rgba8::opaque(250, 240, 230),
+            ..RenderOptions::from_dpi(dpi)
+        };
+        let fresh = context.render_page(page, &options).unwrap();
+        let mut dirty = fresh.clone().into_storage();
+        dirty.fill(7);
+        let limits = pagura_core::Limits::default();
+        let dirty = crate::Pixmap::with_storage(1, 1, Rgba8::BLACK, limits, dirty).unwrap();
+        context.recycle(dirty);
+        let reused = context.render_page(page, &options).unwrap();
+        assert_eq!(reused.data(), fresh.data(), "{dpi}");
+        context.recycle(reused);
+    }
+}

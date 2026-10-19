@@ -627,15 +627,18 @@ impl DisplayList {
     /// # Errors
     /// As [`Self::render`], plus `InvalidArgument` for tiles outside the page.
     pub fn render_tile(&self, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
-        self.render_tile_with(options, tile, None)
+        self.render_tile_with(options, tile, None, None)
     }
 
     /// As [`Self::render_tile`], reusing a context's approximate glyph masks.
+    /// `storage` is a context's spare surface storage
+    /// ([`crate::RenderContext::recycle`]), which the row-fragment path takes.
     pub(crate) fn render_tile_with(
         &self,
         options: &RenderOptions,
         tile: Tile,
         glyphs: Option<&std::sync::Mutex<crate::approximate::GlyphCache>>,
+        storage: Option<&std::sync::Mutex<Vec<u8>>>,
     ) -> Result<Pixmap> {
         let (width, height) = self.device_size(options)?;
         if tile.width == 0
@@ -658,7 +661,11 @@ impl DisplayList {
                 local = crate::approximate::GlyphCache::new(crate::approximate::CACHE_BYTES);
                 &mut local
             };
-            match crate::approximate::render(self, options, tile, cache) {
+            let storage = storage
+                .and_then(|spare| spare.try_lock().ok())
+                .map(|mut spare| std::mem::take(&mut *spare))
+                .unwrap_or_default();
+            match crate::approximate::render(self, options, tile, cache, storage) {
                 // The approximate path's own working budgets must not make a
                 // page fail that the exact path renders within its limits.
                 Err(error) if error.kind == pagura_core::ErrorKind::Limit => {}

@@ -127,11 +127,12 @@ pub(crate) fn render(
     options: &RenderOptions,
     tile: Tile,
     glyphs: &mut GlyphCache,
+    storage: Vec<u8>,
 ) -> Result<Pixmap> {
     let page = list.device_size(options)?;
     let device = list.device_transform(options);
     let resolution = Resolution::new(options);
-    let mut target = Target::new(tile, options.background, list.limits)?;
+    let mut target = Target::new(tile, options.background, list.limits, storage)?;
     let geometry = (device, page, list.limits);
     let mut clips = FastMap::default();
     let mut scratch = glyphs::Accumulator::default();

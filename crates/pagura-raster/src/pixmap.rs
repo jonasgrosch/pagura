@@ -30,6 +30,39 @@ impl Pixmap {
     /// Returns `InvalidArgument` for a zero dimension and a limit error if
     /// the surface would exceed `max_pixels`.
     pub fn new(width: u32, height: u32, background: Rgba8, max_pixels: usize) -> Result<Self> {
+        Self::filled(width, height, background, max_pixels, Vec::new())
+    }
+
+    /// As [`Self::new_with_limits`], storing the surface in `storage`, an
+    /// earlier surface's bytes ([`Self::into_storage`]), whose allocation is
+    /// reused when it is large enough. The surface is the same.
+    ///
+    /// # Errors
+    /// As [`Self::new_with_limits`].
+    pub fn with_storage(
+        width: u32,
+        height: u32,
+        background: Rgba8,
+        limits: Limits,
+        storage: Vec<u8>,
+    ) -> Result<Self> {
+        let mut surface = Self::filled(width, height, background, limits.pixels, storage)?;
+        surface.limits = limits;
+        Ok(surface)
+    }
+
+    /// The surface's bytes, for reuse by [`Self::with_storage`].
+    pub fn into_storage(self) -> Vec<u8> {
+        self.data
+    }
+
+    fn filled(
+        width: u32,
+        height: u32,
+        background: Rgba8,
+        max_pixels: usize,
+        mut data: Vec<u8>,
+    ) -> Result<Self> {
         if width == 0 || height == 0 {
             return Err(Error::invalid_argument(
                 "surface dimensions must be positive",
@@ -42,7 +75,7 @@ impl Pixmap {
         let bytes = pixels
             .checked_mul(4)
             .ok_or(Error::limit("surface byte size overflows"))?;
-        let mut data = Vec::new();
+        data.clear();
         data.try_reserve_exact(bytes)
             .map_err(|_| Error::limit("surface allocation failed"))?;
         let pixel = premultiply(background);

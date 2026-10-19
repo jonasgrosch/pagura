@@ -360,6 +360,7 @@ fn convert(
             }
         };
         write_new(&path, &encode_ppm(&pixmap))?;
+        context.recycle(pixmap);
         stages.push((index, render_time, emit_started.elapsed()));
     }
     if flags.timings {
