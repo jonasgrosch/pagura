@@ -673,11 +673,16 @@ fn render<const N: usize>(
         tile[slot * length..(slot + 1) * length].copy_from_slice(packed);
         if slot == 15 || row + 1 == right {
             let start = row - slot;
+            let mut sources: [&[[u8; 4]]; 16] = [&[]; 16];
+            for (source, packed) in sources.iter_mut().zip(tile.chunks_exact(length.max(1))) {
+                *source = packed;
+            }
+            let sources = &sources[..=slot];
             for (column, y) in columns.clone().enumerate() {
                 let offset = (y * placement.width as usize + start) * 4;
                 let out = &mut target.data_mut()[offset..offset + (slot + 1) * 4];
-                for (i, pixel) in out.as_chunks_mut::<4>().0.iter_mut().enumerate() {
-                    *pixel = tile[i * length + column];
+                for (pixel, source) in out.as_chunks_mut::<4>().0.iter_mut().zip(sources) {
+                    *pixel = source[column];
                 }
                 if !filter.deficit {
                     super::cover_row(out, start, y, placement.extent, options.background);
