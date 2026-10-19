@@ -128,7 +128,7 @@ fn drawn_tables(
         return Ok(None);
     };
     let mut enough = |data: &[u8]| directory_end(data, length);
-    let Some(mut data) = document.stream_data_prefix(object, &mut enough)? else {
+    let Some(mut data) = document.stream_data_prefix(object, length, &mut enough)? else {
         return Ok(None);
     };
     if data.len() > length {

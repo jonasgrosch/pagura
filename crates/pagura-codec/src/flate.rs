@@ -214,7 +214,7 @@ fn inflate(
 /// those conditions as before.
 pub(crate) fn prefix(
     input: &[u8],
-    cap: usize,
+    (cap, size): (usize, usize),
     enough: &mut dyn FnMut(&[u8]) -> crate::Prefix,
 ) -> Option<Vec<u8>> {
     if !valid_zlib_header(input) {
@@ -229,7 +229,7 @@ pub(crate) fn prefix(
         columns: 1,
     };
     let output = Output::new(cap, none).ok()?;
-    let mut inflater = Inflater::new(output, none, cap, window, (input.len(), 0));
+    let mut inflater = Inflater::new(output, none, cap, window, (input.len(), size));
     loop {
         let final_block = bits.read(1).ok()? != 0;
         inflater.block(&mut bits).ok()?;

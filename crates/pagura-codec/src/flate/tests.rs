@@ -342,15 +342,30 @@ fn prefixes_end_on_a_block_with_the_whole_decode_s_bytes() {
             crate::Prefix::More
         }
     };
-    let prefix = super::prefix(&stream, data.len(), &mut enough).unwrap();
+    let prefix = super::prefix(&stream, (data.len(), data.len()), &mut enough).unwrap();
     assert!(prefix.len() >= 70_000 && prefix.len() < data.len());
     assert_eq!(prefix, data[..prefix.len()]);
     assert_eq!(calls, 2);
     // The stream ends before enough, the caller abandons, or the data has
     // no zlib header: the caller decodes the whole stream.
-    assert!(super::prefix(&stream, data.len(), &mut |_| crate::Prefix::More).is_none());
-    assert!(super::prefix(&stream, data.len(), &mut |_| crate::Prefix::Abandon).is_none());
-    assert!(super::prefix(&stream[2..], data.len(), &mut |_| crate::Prefix::Enough).is_none());
+    assert!(
+        super::prefix(&stream, (data.len(), data.len()), &mut |_| {
+            crate::Prefix::More
+        })
+        .is_none()
+    );
+    assert!(
+        super::prefix(&stream, (data.len(), data.len()), &mut |_| {
+            crate::Prefix::Abandon
+        })
+        .is_none()
+    );
+    assert!(
+        super::prefix(&stream[2..], (data.len(), 0), &mut |_| {
+            crate::Prefix::Enough
+        })
+        .is_none()
+    );
     // The output cap still applies.
-    assert!(super::prefix(&stream, 1000, &mut |_| crate::Prefix::Enough).is_none());
+    assert!(super::prefix(&stream, (1000, 0), &mut |_| crate::Prefix::Enough).is_none());
 }

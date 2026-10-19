@@ -310,13 +310,17 @@ impl Document {
     ///
     /// As [`Document::stream_data`] for preparing the stream (decryption,
     /// external streams and filter entries).
+    ///
+    /// `size` is the whole stream's expected decoded length, an allocation
+    /// hint only.
     pub fn stream_data_prefix(
         &self,
         object: &IndirectObject,
+        size: usize,
         enough: &mut dyn FnMut(&[u8]) -> Prefix,
     ) -> Result<Option<Vec<u8>>> {
         let (data, chain) = self.prepare_stream(object, &mut Vec::new())?;
-        Ok(chain.decode_prefix(&data, self.limits().decoded_bytes, enough))
+        Ok(chain.decode_prefix(&data, (self.limits().decoded_bytes, size), enough))
     }
 
     /// The data of an image stream with every filter except a trailing image

@@ -336,11 +336,12 @@ impl FilterChain {
     /// valid zlib header or is truncated or invalid before that point, when
     /// `enough` abandons, or when the stream ends first: callers then use
     /// [`Self::decode`], which reports those conditions. The rest of the
-    /// stream, including its checksum, is not read.
+    /// stream, including its checksum, is not read. `size` is the whole
+    /// stream's expected decoded length, an allocation hint only.
     pub fn decode_prefix(
         &self,
         input: &[u8],
-        max_output: usize,
+        (max_output, size): (usize, usize),
         enough: &mut dyn FnMut(&[u8]) -> Prefix,
     ) -> Option<Vec<u8>> {
         match self.filters.as_slice() {
@@ -352,7 +353,7 @@ impl FilterChain {
                             ..
                         },
                 },
-            ] => flate::prefix(input, max_output, enough),
+            ] => flate::prefix(input, (max_output, size), enough),
             _ => None,
         }
     }
