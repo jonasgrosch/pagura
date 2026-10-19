@@ -310,60 +310,15 @@ impl Rows {
         fragments
             .try_reserve_exact(expected.min(maximum))
             .map_err(|_| Error::limit("glyph row allocation failed"))?;
-        let mut work = 0_usize;
-        for &[mut ax, ay, mut bx, by] in &glyph.edges {
-            let (mut ay, mut by) = (ay + py as f32, by + py as f32);
-            let sign = if ay < by {
-                1.0
-            } else {
-                std::mem::swap(&mut ax, &mut bx);
-                std::mem::swap(&mut ay, &mut by);
-                -1.0
-            };
-            if ay == by {
-                continue;
-            }
-            let slope = (bx - ax) / (by - ay);
-            let rows = ay.floor().max(0.0) as usize..(by.ceil() as usize).min(glyph.height);
-            // Finite endpoints within the glyph's extent give finite row
-            // ends for a finite slope; an infinite one makes the first
-            // fragment's end NaN or infinite.
-            if !slope.is_finite() && !rows.is_empty() {
-                return Err(Error::limit("glyph row arithmetic exceeded"));
-            }
-            for row in rows {
-                let low = ay.max(row as f32);
-                let high = by.min(row as f32 + 1.0);
-                let x0 = ax + slope * (low - ay);
-                let x1 = ax + slope * (high - ay);
-                if fragments.len() >= maximum {
-                    return Err(Error::limit("glyph row fragment budget exceeded"));
-                }
-                if fragments.len() == fragments.capacity() {
-                    let extra = fragments.len().max(16).min(maximum - fragments.len());
-                    fragments
-                        .try_reserve_exact(extra)
-                        .map_err(|_| Error::limit("glyph row allocation failed"))?;
-                }
-                let left = x0.min(x1);
-                let right = x0.max(x1);
-                let height = (high - low) * sign;
-                let scale = if right - left < 1e-6 {
-                    0.0
-                } else {
-                    height / (right - left)
-                };
-                work = work.saturating_add((right - left).ceil() as usize + 3);
-                fragments.push(Fragment {
-                    start: u32::try_from(row * (glyph.width + 1))
-                        .map_err(|_| Error::limit("glyph extent budget exceeded"))?,
-                    left,
-                    right,
-                    scale,
-                    height,
-                });
-            }
-        }
+        // Within the budget, the reservation holds every fragment and every
+        // row start fits 32 bits, so the per-fragment checks cannot fire.
+        let work = if expected <= maximum
+            && u32::try_from(glyph.height.saturating_mul(glyph.width + 1)).is_ok()
+        {
+            clip::<false>(glyph, py, maximum, &mut fragments)?
+        } else {
+            clip::<true>(glyph, py, maximum, &mut fragments)?
+        };
         let bytes = entry_bytes(
             &glyph.outline,
             fragments.capacity().saturating_mul(size_of::<Fragment>()),
@@ -420,6 +375,85 @@ impl Rows {
             data: accumulator.finish(),
         })
     }
+}
+
+/// Clips `glyph`'s edges at vertical phase `py` to rows, appending their
+/// fragments, and returns the cells the fragments visit at most. With
+/// `CHECKED`, each fragment is checked against the budget, the reserved
+/// capacity and 32-bit row starts.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "normalized finite geometry and checked raster extents bound row indices"
+)]
+fn clip<const CHECKED: bool>(
+    glyph: &Prepared,
+    py: f64,
+    maximum: usize,
+    fragments: &mut Vec<Fragment>,
+) -> Result<usize> {
+    let mut work = 0_usize;
+    for &[mut ax, ay, mut bx, by] in &glyph.edges {
+        let (mut ay, mut by) = (ay + py as f32, by + py as f32);
+        let sign = if ay < by {
+            1.0
+        } else {
+            std::mem::swap(&mut ax, &mut bx);
+            std::mem::swap(&mut ay, &mut by);
+            -1.0
+        };
+        if ay == by {
+            continue;
+        }
+        let slope = (bx - ax) / (by - ay);
+        let rows = ay.floor().max(0.0) as usize..(by.ceil() as usize).min(glyph.height);
+        // Finite endpoints within the glyph's extent give finite row
+        // ends for a finite slope; an infinite one makes the first
+        // fragment's end NaN or infinite.
+        if !slope.is_finite() && !rows.is_empty() {
+            return Err(Error::limit("glyph row arithmetic exceeded"));
+        }
+        for row in rows {
+            let low = ay.max(row as f32);
+            let high = by.min(row as f32 + 1.0);
+            let x0 = ax + slope * (low - ay);
+            let x1 = ax + slope * (high - ay);
+            if CHECKED {
+                if fragments.len() >= maximum {
+                    return Err(Error::limit("glyph row fragment budget exceeded"));
+                }
+                if fragments.len() == fragments.capacity() {
+                    let extra = fragments.len().max(16).min(maximum - fragments.len());
+                    fragments
+                        .try_reserve_exact(extra)
+                        .map_err(|_| Error::limit("glyph row allocation failed"))?;
+                }
+            }
+            let left = x0.min(x1);
+            let right = x0.max(x1);
+            let height = (high - low) * sign;
+            let scale = if right - left < 1e-6 {
+                0.0
+            } else {
+                height / (right - left)
+            };
+            work = work.saturating_add((right - left).ceil() as usize + 3);
+            let start = row * (glyph.width + 1);
+            let start = if CHECKED {
+                u32::try_from(start).map_err(|_| Error::limit("glyph extent budget exceeded"))?
+            } else {
+                start as u32
+            };
+            fragments.push(Fragment {
+                start,
+                left,
+                right,
+                scale,
+                height,
+            });
+        }
+    }
+    Ok(work)
 }
 
 /// Signed-area cells in f32, one sentinel per row; reusable working storage
