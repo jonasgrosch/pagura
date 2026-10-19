@@ -27,8 +27,8 @@ use crate::transparency::{Composite, Group, MaskMethod, Model, SoftMask};
 use crate::{RenderOptions, Tile};
 use pagura_core::{Error, Limits, Result};
 use pagura_raster::{
-    Coverage, FillRule, Mask, Path, PathBuilder, Pixmap, Point, Transform, adjusted_stroke_outline,
-    stroke_outline,
+    ClipRegion, Coverage, FillRule, Mask, Path, PathBuilder, Pixmap, Point, Transform,
+    adjusted_stroke_outline, stroke_outline,
 };
 use std::sync::Arc;
 
@@ -188,7 +188,7 @@ impl Backdrop<'_> {
 // Rasterizes one fill against a clip, as `Rasterizer::clipped_path` does.
 type Fill<T> = fn(
     &mut pagura_raster::Rasterizer,
-    &Mask,
+    &ClipRegion,
     Arc<Path>,
     Transform,
     FillRule,
@@ -212,7 +212,7 @@ struct Context {
     crop: Path,
     allocated: usize,
     work: usize,
-    clip: Option<(usize, Tile, Arc<Mask>)>,
+    clip: Option<(usize, Tile, Arc<ClipRegion>)>,
     mask: Option<CachedMask>,
     function_work: usize,
     soft_source: bool,
@@ -369,14 +369,16 @@ impl Context {
             narrow::Buffer::new(format, count, background)?,
         ))
     }
-    fn clip(&mut self, clip: Option<&Arc<Clip>>, tile: Tile) -> Result<Arc<Mask>> {
+    // Clipping paths stay geometry: each mark integrates them with its own
+    // outline, so a clip costs no coverage of its own (8.5.4).
+    fn clip(&mut self, clip: Option<&Arc<Clip>>, tile: Tile) -> Result<Arc<ClipRegion>> {
         let tile = self.viewport.unwrap_or(tile);
         let id = clip.map_or(0, |c| Arc::as_ptr(c) as usize);
-        if let Some((key, region, mask)) = &self.clip
+        if let Some((key, cached, region)) = &self.clip
             && *key == id
-            && *region == tile
+            && *cached == tile
         {
-            return Ok(Arc::clone(mask));
+            return Ok(Arc::clone(region));
         }
         let mut viewport = PathBuilder::new();
         viewport.rect(
@@ -391,7 +393,7 @@ impl Context {
         } else {
             (&self.crop, self.page_device)
         };
-        let mut mask = Mask::from_path_with_limits(
+        let mut region = ClipRegion::from_path(
             tile.width,
             tile.height,
             path,
@@ -407,7 +409,7 @@ impl Context {
             current = node.parent.as_deref();
         }
         for node in chain.into_iter().rev() {
-            let next = Mask::from_path_with_limits(
+            let next = ClipRegion::from_path(
                 tile.width,
                 tile.height,
                 &node.path,
@@ -416,11 +418,11 @@ impl Context {
                 self.limits,
                 (tile.x, tile.y),
             )?;
-            mask.intersect(&next)?;
+            region.intersect(&next)?;
         }
-        let mask = Arc::new(mask);
-        self.clip = Some((id, tile, Arc::clone(&mask)));
-        Ok(mask)
+        let region = Arc::new(region);
+        self.clip = Some((id, tile, Arc::clone(&region)));
+        Ok(region)
     }
     fn commands(
         &mut self,
@@ -1075,9 +1077,9 @@ impl Context {
             else {
                 return Ok(());
             };
-            Arc::new(mask)
+            mask
         } else {
-            clip
+            clip.mask()?
         };
         let rate = if command.shading.antialias { 2 } else { 1 };
         self.charge(
@@ -1886,7 +1888,16 @@ mod tests {
         let mut path = PathBuilder::new();
         path.rect(0.0, 0.0, 2.0, 2.0);
         let path = Arc::new(path.finish());
-        let clip = Mask::from_path(2, 2, &path, Transform::IDENTITY, FillRule::NonZero, 4).unwrap();
+        let clip = ClipRegion::from_path(
+            2,
+            2,
+            &path,
+            Transform::IDENTITY,
+            FillRule::NonZero,
+            limits,
+            (0, 0),
+        )
+        .unwrap();
         let mut context = Context {
             overprint: crate::overprint::Policy::Ignore,
             elide_opaque_groups: false,

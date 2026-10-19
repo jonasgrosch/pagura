@@ -296,7 +296,7 @@ mod tests {
         let clip = rasterize(&viewport.finish());
         let mask = crate::Rasterizer::default()
             .clipped_glyph(
-                &clip,
+                clip.region(),
                 std::sync::Arc::new(geometry),
                 Point::default(),
                 Limits::default(),
@@ -512,7 +512,12 @@ mod tests {
         )
         .unwrap();
         let mask = crate::Rasterizer::default()
-            .clipped_glyph(&clip, glyph, Point::new(10.5, 20.5), Limits::default())
+            .clipped_glyph(
+                clip.region(),
+                glyph,
+                Point::new(10.5, 20.5),
+                Limits::default(),
+            )
             .unwrap()
             .unwrap();
         assert_eq!(mask.coverage(), [64]);

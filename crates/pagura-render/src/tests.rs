@@ -121,6 +121,7 @@ const RENDER: &[&str] = &[
     "blend-isolated-page",
     "shading-axial",
     "shading-axial-clip",
+    "shading-axial-clip-path",
     "shading-background-ignored",
     "shading-axial-extend",
     "shading-axial-empty",

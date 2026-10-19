@@ -1,15 +1,14 @@
 //! Filling, stroking and clipping with exact polygon area coverage.
 
-use crate::coverage::{Geometry, Shape};
-
+mod region;
 mod reuse;
 mod runs;
 pub(crate) mod spans;
 use crate::{Paint, Path, Pixmap, Transform};
 use pagura_core::{Error, Limits, Result};
+pub use region::ClipRegion;
 pub use reuse::Rasterizer;
 pub use runs::{Coverage, Rectangle};
-use std::sync::Arc;
 
 /// Which points a fill covers (ISO 32000-2 clause 8.5.3.3).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -77,23 +76,19 @@ impl Default for Stroke {
     }
 }
 
-/// A coverage mask, used for clipping: 255 keeps a pixel, 0 removes it.
+/// The integrated coverage of a [`ClipRegion`]: 255 keeps a pixel, 0 removes it.
 #[derive(Clone, PartialEq, Eq)]
 pub struct Mask {
-    width: u32,
-    height: u32,
+    region: ClipRegion,
     coverage: Vec<u8>,
-    origin: (u32, u32),
-    shapes: Vec<Shape>,
-    limits: Limits,
 }
 
 /// Summarizes instead of dumping coverage data.
 impl std::fmt::Debug for Mask {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Mask")
-            .field("width", &self.width)
-            .field("height", &self.height)
+            .field("width", &self.region.width)
+            .field("height", &self.region.height)
             .finish_non_exhaustive()
     }
 }
@@ -101,7 +96,12 @@ impl std::fmt::Debug for Mask {
 impl Mask {
     /// Global device origin of this coverage region.
     pub fn origin(&self) -> (u32, u32) {
-        self.origin
+        self.region.origin
+    }
+
+    /// The geometry this mask integrates, as a clip region.
+    pub fn region(&self) -> &ClipRegion {
+        &self.region
     }
 
     /// Rasterizes only the path bounds intersected with this clip's surface.
@@ -117,15 +117,7 @@ impl Mask {
         rule: FillRule,
         limits: Limits,
     ) -> Result<Option<Self>> {
-        fill_mask(
-            path,
-            transform,
-            rule,
-            Some(self),
-            (self.width, self.height),
-            self.origin,
-            limits,
-        )
+        self.region.clipped_path(path, transform, rule, limits)
     }
     /// Rasterizes the area `path` covers under `rule` into a mask of the
     /// given size.
@@ -187,75 +179,38 @@ impl Mask {
         limits: Limits,
         origin: (u32, u32),
     ) -> Result<Self> {
-        if path.segments().len() > limits.path_segments {
-            return Err(Error::limit("path segment budget exceeded"));
-        }
-        let outline = crate::empty_fill::outline(path, transform, rule, &limits)?;
-        let (path, transform, rule) = if let Some(outline) = outline {
-            (outline, Transform::IDENTITY, FillRule::NonZero)
-        } else {
-            (path.clone(), transform, rule)
-        };
-        let shapes = vec![Shape {
-            geometry: Geometry::Path(Arc::new(path)),
-            transform,
-            rule,
-        }];
-        Self::from_shapes(width, height, shapes, limits, origin)
+        Self::integrate(ClipRegion::from_path(
+            width, height, path, transform, rule, limits, origin,
+        )?)
     }
 
-    fn from_shapes(
-        width: u32,
-        height: u32,
-        shapes: Vec<Shape>,
-        limits: Limits,
-        origin: (u32, u32),
-    ) -> Result<Self> {
-        if shapes.len() > limits.mask_sources {
-            return Err(Error::limit("mask source budget exceeded"));
-        }
-        if origin.0.checked_add(width).is_none() || origin.1.checked_add(height).is_none() {
-            return Err(Error::limit("tile extent overflows u32"));
-        }
-        if width == 0 || height == 0 {
-            return Err(Error::invalid_argument("mask dimensions must be positive"));
-        }
-        let count = usize::try_from(u64::from(width) * u64::from(height))
-            .ok()
-            .filter(|&count| count <= limits.pixels)
-            .ok_or(Error::limit("mask pixel budget exceeded"))?;
+    fn integrate(region: ClipRegion) -> Result<Self> {
+        let count = region.pixels()?;
         let mut coverage = Vec::new();
         coverage
             .try_reserve_exact(count)
             .map_err(|_| Error::limit("mask allocation failed"))?;
         coverage.resize(count, 0);
         crate::coverage::coverage(
-            width,
-            height,
-            &shapes,
+            region.width,
+            region.height,
+            &region.shapes,
             &mut coverage,
-            origin,
-            &limits,
+            region.origin,
+            &region.limits,
             &mut crate::coverage::Scratch::default(),
         )?;
-        Ok(Self {
-            width,
-            height,
-            coverage,
-            origin,
-            shapes,
-            limits,
-        })
+        Ok(Self { region, coverage })
     }
 
     /// Width in pixels.
     pub fn width(&self) -> u32 {
-        self.width
+        self.region.width
     }
 
     /// Height in pixels.
     pub fn height(&self) -> u32 {
-        self.height
+        self.region.height
     }
 
     /// Per-pixel coverage, row-major.
@@ -270,7 +225,7 @@ impl Mask {
         // Mask construction checked that its width fits the allocated buffer.
         spans::rows(
             &self.coverage,
-            usize::try_from(self.width).unwrap_or(usize::MAX),
+            usize::try_from(self.region.width).unwrap_or(usize::MAX),
         )
     }
 
@@ -283,49 +238,11 @@ impl Mask {
     /// Geometry is intersected before integration; fractional coverage is not
     /// multiplied. The mask is unchanged if intersection fails.
     pub fn intersect(&mut self, other: &Self) -> Result<()> {
-        if (self.width, self.height, self.origin) != (other.width, other.height, other.origin) {
-            return Err(Error::invalid_argument("mask sizes differ"));
+        let mut region = self.region.clone();
+        region.intersect(&other.region)?;
+        if region.shapes.len() != self.region.shapes.len() {
+            *self = Self::integrate(region)?;
         }
-        self.restrict(other)
-    }
-
-    fn restrict(&mut self, other: &Self) -> Result<()> {
-        let needed: Vec<_> = other
-            .shapes
-            .iter()
-            .filter(|shape| !shape.covers(self.origin, (self.width, self.height)))
-            .collect();
-        if needed.is_empty() {
-            return Ok(());
-        }
-        let count = self
-            .shapes
-            .len()
-            .checked_add(needed.len())
-            .filter(|&n| n <= self.limits.mask_sources)
-            .ok_or(Error::limit("mask intersection count budget exceeded"))?;
-        let mut shapes = Vec::new();
-        shapes
-            .try_reserve_exact(count)
-            .map_err(|_| Error::limit("mask geometry allocation failed"))?;
-        shapes.extend(self.shapes.iter().cloned());
-        shapes.extend(needed.into_iter().cloned());
-        let mut coverage = Vec::new();
-        coverage
-            .try_reserve_exact(self.coverage.len())
-            .map_err(|_| Error::limit("mask allocation failed"))?;
-        coverage.resize(self.coverage.len(), 0);
-        crate::coverage::coverage(
-            self.width,
-            self.height,
-            &shapes,
-            &mut coverage,
-            self.origin,
-            &self.limits,
-            &mut crate::coverage::Scratch::default(),
-        )?;
-        self.coverage = coverage;
-        self.shapes = shapes;
         Ok(())
     }
 }
@@ -363,6 +280,7 @@ pub fn fill_path_at(
     clip: Option<&Mask>,
     origin: (u32, u32),
 ) -> Result<()> {
+    let clip = clip.map(Mask::region);
     check_clip(target, clip)?;
     let limits = *target.limits();
     let Some(mask) = fill_mask(
@@ -377,7 +295,7 @@ pub fn fill_path_at(
     else {
         return Ok(());
     };
-    let (x, y) = mask.origin;
+    let (x, y) = mask.origin();
     composite(target, &mask, *paint, (x - origin.0, y - origin.1))?;
     Ok(())
 }
@@ -386,7 +304,7 @@ fn fill_mask(
     path: &Path,
     transform: Transform,
     rule: FillRule,
-    clip: Option<&Mask>,
+    clip: Option<&ClipRegion>,
     size: (u32, u32),
     origin: (u32, u32),
     limits: Limits,
@@ -476,7 +394,7 @@ pub fn stroke_path_at(
     clip: Option<&Mask>,
     origin: (u32, u32),
 ) -> Result<()> {
-    check_clip(target, clip)?;
+    check_clip(target, clip.map(Mask::region))?;
     let (outline, transform) = crate::stroke::outline(path, transform, stroke, target.limits())?;
     fill_path_at(
         target,
@@ -504,7 +422,7 @@ pub fn stroke_path_adjusted_at(
     clip: Option<&Mask>,
     origin: (u32, u32),
 ) -> Result<()> {
-    check_clip(target, clip)?;
+    check_clip(target, clip.map(Mask::region))?;
     let (outline, transform) = crate::adjust::outline(path, transform, stroke, target.limits())?;
     fill_path_at(
         target,
@@ -517,8 +435,8 @@ pub fn stroke_path_adjusted_at(
     )
 }
 
-fn check_clip(target: &Pixmap, clip: Option<&Mask>) -> Result<()> {
-    if clip.is_some_and(|mask| (mask.width, mask.height) != (target.width(), target.height())) {
+fn check_clip(target: &Pixmap, clip: Option<&ClipRegion>) -> Result<()> {
+    if clip.is_some_and(|clip| (clip.width, clip.height) != (target.width(), target.height())) {
         return Err(Error::invalid_argument("clip size differs from surface"));
     }
     Ok(())
