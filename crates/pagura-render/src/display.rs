@@ -2,7 +2,7 @@
 
 use crate::color::Color;
 use crate::{RenderOptions, Tile};
-use pagura_core::{Error, Limits, Rect, Result};
+use pagura_core::{Error, Limits, Meter, Rect, Result};
 use pagura_document::{Page, Rotation};
 use pagura_raster::{
     ClipRegion, FillRule, Paint, Path, PathBuilder, Pixmap, Rasterizer, Stroke, Transform,
@@ -332,6 +332,10 @@ impl GlyphRun {
             limits,
         )?))
     }
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "the opaque renderer's tile state"
+    )]
     fn rasterize(
         &self,
         target: &mut Pixmap,
@@ -340,6 +344,7 @@ impl GlyphRun {
         raster: &mut Rasterizer,
         cache: &mut GlyphCache,
         limits: Limits,
+        glyphs: &mut Meter,
     ) -> Result<()> {
         let paint = Paint::Solid(self.paint.color.to_rgba(
             self.paint.transfer.as_ref(),
@@ -348,6 +353,7 @@ impl GlyphRun {
         for (index, &placement) in self.glyphs.iter().enumerate() {
             let geometry = cache
                 .geometry(self, placement, device, &limits, raster)
+                .and_then(|geometry| glyphs.charge(geometry.vertices()).map(|()| geometry))
                 .map_err(|error| contextual(error, self.position(index)))?;
             if cache
                 .retained_bytes()
@@ -714,6 +720,9 @@ impl DisplayList {
         )?;
         let mut raster = Rasterizer::default();
         let mut glyph_cache = GlyphCache::new(self.limits.decoded_bytes);
+        // Glyph placements share one geometry per outline, so each charges
+        // its scan here; the compositor charges the same to its raster work.
+        let mut glyphs = Meter::new(self.limits.raster_work, "glyph raster work exceeded");
         let mut last_clip = None;
         let mut clip_region = crop.clone();
         let mut stack = vec![self.commands.iter()];
@@ -768,6 +777,7 @@ impl DisplayList {
                     &mut raster,
                     &mut glyph_cache,
                     self.limits,
+                    &mut glyphs,
                 )
             } else {
                 command.rasterize(&mut target, device, &clip_region, &mut raster, self.limits)
@@ -960,6 +970,38 @@ mod tests {
             group: crate::transparency::Attributes::default(),
             print_intent: false,
             separations: OnceLock::new(),
+        }
+    }
+    #[test]
+    fn every_glyph_placement_pays_for_its_outline() {
+        // One 400-vertex outline placed 1000 times: the geometry is cached,
+        // but each placement still scans all of it.
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(0.0, 0.0));
+        for i in 1..400 {
+            let t = f64::from(i) / 400.0 * std::f64::consts::TAU;
+            path.line_to(Point::new(0.25 + 0.25 * t.cos(), 0.5 + 0.25 * t.sin()))
+                .unwrap();
+        }
+        path.close();
+        let path = Arc::new(path.finish());
+        for alpha in [1.0, 0.5] {
+            let mut run = GlyphRun::new(paint(alpha));
+            let mut hulls = GlyphHulls::default();
+            for i in 0..1000 {
+                run.push(
+                    Arc::clone(&path),
+                    Transform::translate(f64::from(i % 4) * 0.25, 0.0),
+                    Position::Unknown,
+                    &mut hulls,
+                )
+                .unwrap();
+            }
+            let mut list = list(run, false);
+            list.render(&RenderOptions::default()).unwrap();
+            list.limits.raster_work = 100_000;
+            let error = list.render(&RenderOptions::default()).unwrap_err();
+            assert_eq!(error.kind, pagura_core::ErrorKind::Limit, "alpha {alpha}");
         }
     }
     #[test]
