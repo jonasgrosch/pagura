@@ -247,7 +247,7 @@ fn solid_runs_preserve_unit_and_fractional_backdrop_alpha_evaluation() {
     };
     let color = [79.0 / 255.0, 0.125, 0.5, 0.0];
     let backdrops = [Pixel::default(), Pixel::source([0.25; 4], 1.0)];
-    let mut surface = Surface::detached(tile, backdrops.to_vec());
+    let mut surface = Surface::new(tile, backdrops.to_vec());
     assert!(surface.fill_solid(0, 2, color));
     let bits = |p: Pixel| {
         (
@@ -304,7 +304,7 @@ fn soft_mask_values_share_the_live_raster_memory_allowance() {
     let retained = context.raster.retained_bytes();
     assert!(retained >= 512);
     context.limits.decoded_bytes = retained + 64;
-    context.memory = Memory::new(context.limits.decoded_bytes);
+    context.memory = Meter::new(context.limits.decoded_bytes, "test");
     let mask = Arc::new(SoftMask {
         group: Group {
             position: pagura_core::Position::Unknown,
@@ -335,7 +335,7 @@ fn soft_mask_values_share_the_live_raster_memory_allowance() {
 }
 
 #[test]
-fn surfaces_hold_their_bytes_until_dropped_even_on_failure() {
+fn surfaces_hold_their_bytes_until_released() {
     let limits = Limits {
         decoded_bytes: 4 * size_of::<Pixel>(),
         ..Limits::default()
@@ -359,9 +359,14 @@ fn surfaces_hold_their_bytes_until_dropped_even_on_failure() {
             "group memory budget exceeded"
         )
     );
-    drop(surface);
+    context.release(surface);
     assert_eq!(context.memory.used(), 0);
-    context.surface(tile, Backdrop::Transparent).unwrap();
+    let surface = context.surface(tile, Backdrop::Transparent).unwrap();
+    assert_eq!(context.memory.used(), 4 * size_of::<Pixel>());
+    context.release(surface);
+    // Scoped holdings return their bytes whatever the scope returns.
+    let failed = context.holding(8, "held", |_| Err::<(), _>(Error::limit("inner")));
+    assert_eq!(failed.unwrap_err().message, "inner");
     assert_eq!(context.memory.used(), 0);
 }
 fn glyph_context(limits: Limits) -> Context {
@@ -405,7 +410,7 @@ fn glyph_surface() -> Surface {
         width: 4,
         height: 4,
     };
-    Surface::detached(tile, vec![Pixel::source([0.3, 0.6, 0.9, 0.0], 1.0); 16])
+    Surface::new(tile, vec![Pixel::source([0.3, 0.6, 0.9, 0.0], 1.0); 16])
 }
 #[test]
 fn batched_spans_preserve_the_f64_fold_and_cache_blind_limits() {

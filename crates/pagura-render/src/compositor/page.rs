@@ -4,7 +4,7 @@ use super::{Backdrop, Context, Frame, Separations, plan, transfer};
 use crate::display::DisplayList;
 use crate::transparency::Model;
 use crate::{RenderOptions, Tile};
-use pagura_core::Result;
+use pagura_core::{Error, Result};
 use pagura_raster::Pixmap;
 use std::sync::Arc;
 
@@ -36,7 +36,13 @@ impl Context {
                 crate::device::rectangle(list.crop),
             )
         };
-        context.transfers = transfer::Regions::new(&list.commands, list.limits, &context.memory)?;
+        context.transfers = transfer::Regions::new(&list.commands, list.limits)?;
+        if let Some(regions) = &context.transfers {
+            context
+                .memory
+                .charge(regions.bytes())
+                .map_err(|_| Error::limit(transfer::MEMORY))?;
+        }
         Ok((context, model))
     }
 }
@@ -131,6 +137,10 @@ impl Context {
             regions.suspended = false;
         }
         self.write_output(&page, &spots, model, output, tile)?;
+        self.release(page);
+        for surface in spots {
+            self.release(surface);
+        }
         Ok(())
     }
 }

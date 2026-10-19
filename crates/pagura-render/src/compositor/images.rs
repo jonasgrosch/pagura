@@ -53,9 +53,9 @@ impl Context {
             prepare(image, inverse, origin.0, clip.width(), available)?;
         let sampling_bytes = sampler.bytes() + mask_sampler.as_ref().map_or(0, Prepared::bytes);
         self.trim_raster(sampling_bytes);
-        let held = self
-            .memory
-            .hold(sampling_bytes, "image sampling memory exceeded")?;
+        self.memory
+            .charge(sampling_bytes)
+            .map_err(|_| Error::limit("image sampling memory exceeded"))?;
         for run in runs(&clip) {
             let run = run?;
             let y = run.y;
@@ -84,7 +84,7 @@ impl Context {
                 target.composite((x, y), source, &command.composite, soft, frame);
             }
         }
-        drop(held);
+        self.memory.refund(sampling_bytes);
         Ok(())
     }
     /// The colour template of an image's samples and, for a stencil mask, the

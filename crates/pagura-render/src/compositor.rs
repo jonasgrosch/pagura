@@ -8,7 +8,6 @@ mod colorants;
 pub(crate) use colorants::Separations;
 mod glyphs;
 mod images;
-mod memory;
 mod narrow;
 mod opaque_image;
 mod output;
@@ -23,7 +22,6 @@ mod soft_mask;
 mod surface;
 mod transfer;
 mod view;
-use memory::Memory;
 pub(crate) use page::render;
 use regions::group_region;
 pub(crate) use regions::{content_bounds, hull_visible};
@@ -34,7 +32,7 @@ use surface::{Backdrop, Frame, Pixel, Source, Surface, runs};
 use crate::Tile;
 use crate::display::{Clip, Command, Mark, PathCommand};
 use crate::transparency::{Group, Model};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 use pagura_raster::{
     FillRule, Mask, Path, PathBuilder, Transform, adjusted_stroke_outline, stroke_outline,
 };
@@ -55,7 +53,11 @@ struct Context {
     page_device: Transform,
     view_unit: f64,
     crop: Path,
-    memory: Memory,
+    /// Live compositor memory: surfaces, the cached soft mask, glyph geometry
+    /// in use, image sampling and transfer regions. Raster and glyph caches
+    /// yield to it (`trim_raster`), and raster calls receive what remains.
+    /// An error abandons the render, so only completed work releases bytes.
+    memory: Meter,
     work: usize,
     /// The last clip mask, for the clip and tile it was built for.
     clip: Option<(Option<Arc<Clip>>, Tile, Arc<Mask>)>,
@@ -84,7 +86,7 @@ impl Context {
             page_device: device,
             view_unit: 1.0,
             crop,
-            memory: Memory::new(limits.decoded_bytes),
+            memory: Meter::new(limits.decoded_bytes, "compositor memory budget exceeded"),
             work: 0,
             clip: None,
             mask: None,
@@ -146,7 +148,7 @@ impl Context {
             .saturating_add(bytes)
             .saturating_add(self.raster.retained_bytes())
             .saturating_add(self.glyphs.retained_bytes())
-            > self.memory.maximum()
+            > self.memory.max()
         {
             self.raster.clear();
             self.glyphs.clear();
@@ -174,7 +176,9 @@ impl Context {
     fn surface(&mut self, tile: Tile, initial: Backdrop<'_>) -> Result<Surface> {
         let (count, bytes) = self.admit_surface(tile)?;
         self.trim_raster(bytes);
-        let held = self.memory.hold(bytes, "group memory budget exceeded")?;
+        self.memory
+            .charge(bytes)
+            .map_err(|_| Error::limit("group memory budget exceeded"))?;
         self.work += count;
         let mut pixels = Vec::new();
         pixels
@@ -191,7 +195,27 @@ impl Context {
                 }
             }
         }
-        Ok(Surface::new(tile, pixels, held))
+        Ok(Surface::new(tile, pixels))
+    }
+    /// Frees a surface and returns its bytes to the compositor memory budget.
+    fn release(&mut self, surface: Surface) {
+        self.memory.refund(surface.bytes());
+        drop(surface);
+    }
+    /// Runs `paint` while `bytes` of compositor memory are held, and returns
+    /// them afterwards.
+    fn holding<T>(
+        &mut self,
+        bytes: usize,
+        message: &'static str,
+        paint: impl FnOnce(&mut Self) -> Result<T>,
+    ) -> Result<T> {
+        self.memory
+            .charge(bytes)
+            .map_err(|_| Error::limit(message))?;
+        let result = paint(self);
+        self.memory.refund(bytes);
+        result
     }
     fn page_surface(
         &mut self,
@@ -205,11 +229,14 @@ impl Context {
         let count = tile.width as usize * tile.height as usize;
         let bytes = count * if format == plan::Format::N16 { 8 } else { 16 };
         self.trim_raster(bytes);
-        let held = self.memory.hold(bytes, "colour buffer memory exceeded")?;
+        self.memory
+            .charge(bytes)
+            .map_err(|_| Error::limit("colour buffer memory exceeded"))?;
         self.charge(count)?;
-        let buffer = narrow::Buffer::new(format, count, background)?;
-        debug_assert_eq!(buffer.bytes(), bytes, "the held bytes are the buffer's");
-        Ok(Surface::with_buffer(tile, buffer, held))
+        Ok(Surface::with_buffer(
+            tile,
+            narrow::Buffer::new(format, count, background)?,
+        ))
     }
     fn clip(&mut self, clip: Option<&Arc<Clip>>, tile: Tile) -> Result<Arc<Mask>> {
         let tile = self.viewport.unwrap_or(tile);
@@ -620,6 +647,7 @@ impl Context {
             };
             parent.composite(point, source, &group.composite, soft, frame);
         }
+        self.release(surface);
         Ok(())
     }
 }

@@ -76,31 +76,37 @@ impl Context {
         self.charge(geometry.vertices())?;
         let bytes = geometry.retained_bytes();
         self.trim_raster(bytes);
-        let held = self.memory.hold(bytes, "glyph geometry memory exceeded")?;
-        let clip = if let Some(clip) = clip {
-            Arc::clone(clip)
-        } else {
-            let value = self.clip(run.paint.clip.as_ref(), tile)?;
-            *clip = Some(Arc::clone(&value));
-            value
-        };
-        let limits = Limits {
-            decoded_bytes: self.memory.remaining(),
-            ..self.limits
-        };
-        let Some(mask) =
-            self.raster
-                .clipped_glyph(&clip, geometry, placement.origin * self.device, limits)?
-        else {
-            return Ok(());
-        };
-        let Some(mask) = self.pattern_mask(&run.paint, mask)? else {
-            return Ok(());
-        };
-        let result = self.paint_path(&run.paint, &mask, target, frame);
-        self.raster.recycle(mask);
-        drop(held);
-        self.trim_raster(0);
-        result
+        let painted = self.holding(bytes, "glyph geometry memory exceeded", |this| {
+            let clip = if let Some(clip) = clip {
+                Arc::clone(clip)
+            } else {
+                let value = this.clip(run.paint.clip.as_ref(), tile)?;
+                *clip = Some(Arc::clone(&value));
+                value
+            };
+            let limits = Limits {
+                decoded_bytes: this.memory.remaining(),
+                ..this.limits
+            };
+            let Some(mask) = this.raster.clipped_glyph(
+                &clip,
+                geometry,
+                placement.origin * this.device,
+                limits,
+            )?
+            else {
+                return Ok(false);
+            };
+            let Some(mask) = this.pattern_mask(&run.paint, mask)? else {
+                return Ok(false);
+            };
+            let result = this.paint_path(&run.paint, &mask, target, frame);
+            this.raster.recycle(mask);
+            result.map(|()| true)
+        })?;
+        if painted {
+            self.trim_raster(0);
+        }
+        Ok(())
     }
 }

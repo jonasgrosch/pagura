@@ -1,6 +1,5 @@
 //! Soft masks: the mask group rendered to per-pixel values (11.6.5).
 
-use super::memory::Held;
 use super::{Backdrop, Context, Frame, Pixel};
 use crate::Tile;
 use crate::transparency::{MaskMethod, Model, SoftMask};
@@ -13,12 +12,14 @@ pub(super) struct CachedMask {
     pub(super) model: Model,
     pub(super) values: Arc<Vec<f64>>,
     /// The values' bytes, released when the cache entry goes.
-    pub(super) _held: Held,
+    pub(super) bytes: usize,
 }
 
 impl Context {
     pub(super) fn discard_mask(&mut self) {
-        self.mask = None;
+        if let Some(mask) = self.mask.take() {
+            self.memory.refund(mask.bytes);
+        }
     }
     /// Runs `paint` as a mask source: it selects no transfers, belongs to no
     /// spot pass and reads colours in the mask group's own space.
@@ -79,9 +80,9 @@ impl Context {
             .checked_mul(size_of::<f64>())
             .ok_or(Error::limit("mask bytes overflow"))?;
         self.trim_raster(bytes);
-        let held = self
-            .memory
-            .hold(bytes, "soft-mask memory budget exceeded")?;
+        self.memory
+            .charge(bytes)
+            .map_err(|_| Error::limit("soft-mask memory budget exceeded"))?;
         self.charge(count)?;
         let mut values = Vec::new();
         values
@@ -109,14 +110,16 @@ impl Context {
                 values.push(mapped);
             }
         }
-        drop(surface);
+        if let Some(surface) = surface {
+            self.release(surface);
+        }
         let values = Arc::new(values);
         self.mask = Some(CachedMask {
             mask: Arc::clone(mask),
             tile,
             model: parent_model,
             values: Arc::clone(&values),
-            _held: held,
+            bytes,
         });
         Ok(values)
     }
