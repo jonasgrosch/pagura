@@ -30,6 +30,13 @@ import round5_compare as compare
 NATIVE = tuple(name for name in ("pagura", "pdfium", "mupdf", "quartz", "hayro", "pdfjs", "poppler")
                if name != "quartz" or sys.platform == "darwin")
 WASM = ("v8-wasi", "wasmtime")
+# Eager compilation keeps V8's optimizing compile at instantiation, before the stage timers,
+# as wasmtime's AOT artifact does; lazy compilation would compile each function on first call.
+V8_FLAGS = ("--single-threaded", "--no-liftoff", "--no-wasm-lazy-compilation", "--wasm-num-compilation-tasks=1")
+V8_NOTE = ("V8 compiles the whole module at instantiation (`--no-wasm-lazy-compilation`), before the stage timers, "
+           "as wasmtime does ahead of time. Runs before 2026-10-19 compiled each function lazily inside the timed "
+           "stages, adding about 0.7-1 s to them; process wall time now includes compiling the whole module instead. "
+           "Compare V8 cells only within one setting.")
 CONTENT = ("text-heavy", "image-heavy", "vector-heavy", "mixed")
 X86_V3 = "pagura-x86-64-v3"
 
@@ -215,7 +222,7 @@ def wasm_command(name, node, wasmtime, artifacts, pages, output):
     if "password" in case:
         args += ["--password", case["password"]]
     if name == "v8-wasi":
-        return [node, "--single-threaded", "--no-liftoff", "--wasm-num-compilation-tasks=1",
+        return [node, *V8_FLAGS,
                 str(ROOT / "benchmarks/adapters/wasi.mjs"), str(artifacts / "convert.wasm"), str(source), str(output), *args]
     if "::" in str(source.parent) or "::" in str(output):
         raise ValueError("Wasmtime directory mappings cannot contain '::'")
@@ -598,7 +605,7 @@ def main(argv=None):
                                     "pages_at_300_dpi": len(high_resolution)},
             "sampling": "randomized complete blocks, one shared Pagura sample per block; comparisons correlated; no retries",
             "stage_boundaries": "open=load/parse/enumerate; render=load page+compile+paint; emit=convert/encode/write",
-            "wasm_features": ["bundled-data", "simd128"], "v8_flags": ["--single-threaded", "--no-liftoff", "--wasm-num-compilation-tasks=1"],
+            "wasm_features": ["bundled-data", "simd128"], "v8_flags": list(V8_FLAGS),
             "wasmtime_flags": ["Cranelift AOT opt-level=2", "parallel-compilation=n"], "agreement_backend": f"Pillow {PIL.__version__}",
             "simd": {"pagura": native_simd(compiler["host"], compiler["native_target_features"]),
                      "native_tracks": compiler["native_tracks"], "wasm": "SIMD128",
@@ -652,6 +659,9 @@ def main(argv=None):
             print(summary, flush=True)
         else:
             write_summary(output / "conversion.json", output / "summary.md")
+        if "v8-wasi" in names:
+            with (output / "summary.md").open("a") as stream:
+                stream.write(f"\n{V8_NOTE}\n")
         if args.pagura_x86_64_v3 and identities[X86_V3]["status"] != "available":
             with (output / "summary.md").open("a") as stream:
                 stream.write(f"\n| Optional native track | Status | Reason |\n|---|---|---|\n"

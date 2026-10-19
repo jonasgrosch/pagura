@@ -10,13 +10,21 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from round5 import (CONTENT, X86_V3, build_x86_v3, cpu_summary, failure_sink, idle_record, measurement,
-                    native_simd, parity, remaining_time, sha, subset_300, target_features, verify_runtime_parity)
+from round5 import (CONTENT, V8_FLAGS, X86_V3, build_x86_v3, cpu_summary, failure_sink, idle_record, measurement,
+                    native_simd, parity, remaining_time, sha, subset_300, target_features, verify_runtime_parity,
+                    wasm_command)
 from machine_record import probe, snapshot
 from benchkit.engines import identify
 
 
 class MatrixContracts(unittest.TestCase):
+    def test_v8_compiles_the_whole_module_before_stage_timers(self):
+        page = {"path": "/input/a.pdf", "dpi": 72, "page": 0}
+        command = wasm_command("v8-wasi", "node", "wasmtime", Path("/artifacts"), [page], Path("/output"))
+        self.assertEqual(command[1:1 + len(V8_FLAGS)], list(V8_FLAGS))
+        self.assertIn("--no-wasm-lazy-compilation", V8_FLAGS)
+        self.assertIn("--no-liftoff", V8_FLAGS)
+
     def test_coregraphics_is_only_selected_on_macos(self):
         for system in ("darwin", "linux"):
             with self.subTest(platform=system), patch.object(sys, "platform", system):
