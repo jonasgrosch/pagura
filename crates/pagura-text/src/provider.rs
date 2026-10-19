@@ -226,8 +226,54 @@ impl CidToUnicode {
         }
         Ok(Self(values))
     }
+
+    /// One Unicode scalar per CID, the shape of most collection data.
+    ///
+    /// # Errors
+    /// As [`Self::new`], plus a syntax error for a repeated CID.
+    pub fn from_scalars(
+        values: impl IntoIterator<Item = (u16, char)>,
+        limits: &Limits,
+    ) -> Result<Self> {
+        let mut map = BTreeMap::new();
+        for (cid, scalar) in values {
+            if map.len() >= limits.value_nodes {
+                return Err(Error::limit("CID Unicode entry budget exceeded"));
+            }
+            if map.insert(u32::from(cid), scalar.to_string()).is_some() {
+                return Err(Error::syntax("duplicate CID Unicode entry"));
+            }
+        }
+        Self::new(map, limits)
+    }
+
     /// Unicode for a CID. Absence remains unknown rather than guessed.
     pub fn get(&self, cid: u32) -> Option<&str> {
         self.0.get(&cid).map(String::as_str)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn scalars_match_strings_and_reject_repeats() -> Result<()> {
+        let limits = Limits::default();
+        let scalars = CidToUnicode::from_scalars([(3, 'A'), (1, '\u{1f600}')], &limits)?;
+        let strings = CidToUnicode::new(
+            BTreeMap::from([(3, "A".to_owned()), (1, "\u{1f600}".to_owned())]),
+            &limits,
+        )?;
+        for cid in 0..5 {
+            assert_eq!(scalars.get(cid), strings.get(cid), "{cid}");
+        }
+        assert!(CidToUnicode::from_scalars([(1, 'A'), (1, 'B')], &limits).is_err());
+        let small = Limits {
+            value_nodes: 1,
+            ..Limits::default()
+        };
+        assert!(CidToUnicode::from_scalars([(1, 'A'), (2, 'B')], &small).is_err());
+        Ok(())
     }
 }
