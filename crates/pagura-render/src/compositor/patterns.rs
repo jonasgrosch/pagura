@@ -12,12 +12,9 @@ impl Context {
     /// (11.6.7). Retain geometric boundary coverage for that colour mixture.
     pub(super) fn pattern_boundary(
         &self,
-        pattern: Option<&crate::display::ShadingCommand>,
+        pattern: &crate::display::ShadingCommand,
         mask: &Mask,
     ) -> Result<Option<Mask>> {
-        let Some(pattern) = pattern else {
-            return Ok(None);
-        };
         let Some(path) = pattern.shading.bbox_path.as_ref().filter(|path| {
             pattern.shading.background.is_some()
                 && path
@@ -115,7 +112,7 @@ impl Context {
                 ..Source::new(pixel.color, pixel.group * factor, pixel.shape * factor)
             };
             // All reads of the initial parent pixel precede this pixel's write.
-            target.composite(point, source, &command.composite, soft, frame)?;
+            target.composite(point, source, &command.composite, soft, frame);
         }
         Ok(())
     }

@@ -281,7 +281,7 @@ fn solid_runs_preserve_unit_and_fractional_backdrop_alpha_evaluation() {
     let color = [79.0 / 255.0, 0.125, 0.5, 0.0];
     let backdrops = [Pixel::default(), Pixel::source([0.25; 4], 1.0)];
     let mut surface = Surface::detached(tile, backdrops.to_vec());
-    assert!(surface.fill_solid(0, 2, color).unwrap());
+    assert!(surface.fill_solid(0, 2, color));
     let bits = |p: Pixel| {
         (
             p.color.map(f64::to_bits),
@@ -301,7 +301,7 @@ fn solid_runs_preserve_unit_and_fractional_backdrop_alpha_evaluation() {
     surface.pixels_mut()[1].alpha = 0.5;
     let before = surface.pixels()[0].color;
     // Fractional backdrops take the general f64 compositing expression.
-    assert!(!surface.fill_solid(0, 2, [0.75; 4]).unwrap());
+    assert!(!surface.fill_solid(0, 2, [0.75; 4]));
     assert_eq!(
         surface.pixels()[0].color.map(f64::to_bits),
         before.map(f64::to_bits)

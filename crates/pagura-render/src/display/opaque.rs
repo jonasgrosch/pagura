@@ -40,6 +40,10 @@ impl DisplayList {
                 stack.pop();
                 continue;
             };
+            debug_assert!(
+                !matches!(command, Command::Shading(_) | Command::Image(_)),
+                "the scene classification keeps sampled marks off the opaque path"
+            );
             let original = command;
             let command = match command {
                 Command::Path(command) => command,
@@ -51,9 +55,7 @@ impl DisplayList {
                     stack.push(group.commands.iter());
                     continue;
                 }
-                Command::Shading(_) | Command::Image(_) => {
-                    return Err(Error::invalid_argument("shading in opaque renderer"));
-                }
+                Command::Shading(_) | Command::Image(_) => continue,
             };
             let identity = command.clip.as_ref().map(Arc::as_ptr);
             if identity != last_clip {

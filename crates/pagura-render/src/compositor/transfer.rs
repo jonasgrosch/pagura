@@ -108,29 +108,24 @@ impl Regions {
         let (x, y) = point;
         let x = x.checked_sub(self.tile.x).filter(|&v| v < self.tile.width);
         let y = y.checked_sub(self.tile.y).filter(|&v| v < self.tile.height);
-        let (Some(x), Some(y)) = (x, y) else {
-            return Err(Error::invalid_argument(
-                "transfer mark outside output region",
-            ));
-        };
-        let index = usize::try_from(u64::from(y) * u64::from(self.tile.width) + u64::from(x))
-            .map_err(|_| Error::limit("transfer region index overflow"))?;
+        let index = x.zip(y).and_then(|(x, y)| {
+            usize::try_from(u64::from(y) * u64::from(self.tile.width) + u64::from(x)).ok()
+        });
         let function = if opaque && self.opaque {
-            transfer
-                .map(|f| {
-                    self.ids.get(&(Arc::as_ptr(f) as usize)).copied().ok_or(
-                        Error::invalid_argument("unknown transfer function selection"),
-                    )
-                })
-                .transpose()?
-                .unwrap_or(0)
+            let id = transfer.map(|f| self.ids.get(&(Arc::as_ptr(f) as usize)).copied());
+            debug_assert!(
+                id.is_none_or(|id| id.is_some()),
+                "the walk finds every transfer a mark can select"
+            );
+            id.flatten().unwrap_or(0)
         } else {
             0
         };
-        let selected = self
-            .heads
-            .get_mut(index)
-            .ok_or(Error::invalid_argument("invalid transfer pixel"))?;
+        let selected = index.and_then(|i| self.heads.get_mut(i));
+        debug_assert!(selected.is_some(), "marks lie inside the output region");
+        let Some(selected) = selected else {
+            return Ok(());
+        };
         if coverage < 1.0 && (function != 0 || *selected != 0) {
             return Err(Error::unsupported(
                 crate::features::TRANSPARENCY_TRANSFER,
@@ -149,11 +144,13 @@ impl Regions {
         color: [f64; 3],
         work: &mut usize,
     ) -> Result<[f64; 3]> {
-        let selected = *self
-            .heads
-            .get(index)
-            .ok_or(Error::invalid_argument("invalid transfer pixel"))?;
-        let Some(functions) = selected.checked_sub(1).and_then(|i| self.functions.get(i)) else {
+        let selected = self.heads.get(index).copied();
+        debug_assert!(selected.is_some(), "output pixels lie inside the region");
+        let Some(functions) = selected
+            .unwrap_or(0)
+            .checked_sub(1)
+            .and_then(|i| self.functions.get(i))
+        else {
             return Ok(color);
         };
         let mut mapped = color;

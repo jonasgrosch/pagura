@@ -61,7 +61,7 @@ impl Context {
                     source,
                     true,
                 )?;
-                target.composite((x, y), source, &command.composite, soft, frame)?;
+                target.composite((x, y), source, &command.composite, soft, frame);
             }
         }
         Ok(())
@@ -156,25 +156,20 @@ impl Context {
     }
 }
 
-pub(super) fn pattern_source(p: &PathCommand) -> Option<crate::display::ShadingCommand> {
-    if let crate::color::Color::Pattern {
-        selected: Some(pattern),
-        ..
-    } = &p.color
-    {
-        let crate::pattern::Kind::Shading(shading) = &pattern.kind else {
-            return None;
-        };
-        Some(crate::display::ShadingCommand {
-            shading: Arc::clone(shading),
-            position: p.position,
-            transform: pattern.transform,
-            clip: None,
-            composite: p.composite.clone(),
-            transfer: None,
-            background: true,
-        })
-    } else {
-        None
+/// A shading pattern fill as a shading mark under the path's compositing
+/// state, in pattern space `transform` (8.7.4.5).
+pub(super) fn pattern_source(
+    p: &PathCommand,
+    transform: Transform,
+    shading: &Arc<crate::shading::Shading>,
+) -> crate::display::ShadingCommand {
+    crate::display::ShadingCommand {
+        shading: Arc::clone(shading),
+        position: p.position,
+        transform,
+        clip: None,
+        composite: p.composite.clone(),
+        transfer: None,
+        background: true,
     }
 }

@@ -113,10 +113,12 @@ impl Surface {
     pub(super) fn narrow(&self) -> Option<&narrow::Buffer> {
         self.narrow.as_ref()
     }
-    /// Every store into bounded storage also ends the solid interval.
+    /// Every store into bounded storage also ends the solid interval; an
+    /// f64 surface keeps its interval.
     pub(super) fn narrow_mut(&mut self) -> Option<&mut narrow::Buffer> {
+        let buffer = self.narrow.as_mut()?;
         self.solid = None;
-        self.narrow.as_mut()
+        Some(buffer)
     }
     /// A surface outside any render's memory.
     #[cfg(test)]
@@ -151,28 +153,27 @@ impl Surface {
         self.index(last, y)?;
         self.index(x, y)
     }
-    pub(super) fn fill_solid(
-        &mut self,
-        start: usize,
-        count: usize,
-        color: [f64; 4],
-    ) -> Result<bool> {
-        let pixels = self
-            .pixels
-            .get_mut(start..start + count)
-            .ok_or(Error::invalid_argument("mask outside group"))?;
+    pub(super) fn fill_solid(&mut self, start: usize, count: usize, color: [f64; 4]) -> bool {
+        let pixels = self.pixels.get_mut(start..start + count);
+        debug_assert!(
+            pixels.is_some(),
+            "solid runs come from this surface's spans"
+        );
+        let Some(pixels) = pixels else {
+            return false;
+        };
         let end = start + count;
         let color_bits = color.map(f64::to_bits);
         if self
             .solid
             .is_some_and(|s| s.color == color_bits && start >= s.start && end <= s.end)
         {
-            return Ok(true);
+            return true;
         }
         // The Normal formula returns the source exactly at zero or unit backdrop
         // alpha (11.3.3). Other alphas take the general f64 evaluation.
         if !pixels.iter().all(|p| p.alpha == 0.0 || p.alpha == 1.0) {
-            return Ok(false);
+            return false;
         }
         pixels.fill(Pixel {
             color,
@@ -192,7 +193,7 @@ impl Surface {
                 color: color_bits,
             },
         });
-        Ok(true)
+        true
     }
     /// Composites `source` into the pixel at device `(x, y)` of `frame`'s
     /// group, after the soft mask over this surface and the state's constant
@@ -204,22 +205,21 @@ impl Surface {
         state: &Composite,
         soft: Option<&[f64]>,
         frame: Frame<'_>,
-    ) -> Result<()> {
-        let index = self
-            .index(x, y)
-            .ok_or(Error::invalid_argument("mark outside its group"))?;
-        let mask = soft.and_then(|m| m.get(index)).copied().unwrap_or(1.0);
-        // Admission keeps every mark that reaches bounded storage Normal
-        // source-over in RGB (ADR 0004).
+    ) {
+        let index = self.index(x, y);
+        let mask = index.and_then(|i| soft?.get(i)).copied().unwrap_or(1.0);
         if let Some(buffer) = self.narrow_mut() {
-            return buffer.paint(index, source.apply(state, mask));
+            // Admission keeps every mark that reaches bounded storage Normal
+            // source-over in RGB, which only F32 pages take (ADR 0004).
+            let stored = index.is_some_and(|i| buffer.paint(i, source.apply(state, mask)).is_ok());
+            debug_assert!(stored, "marks reach bounded storage inside an F32 page");
+            return;
         }
-        let pixel = self
-            .pixels_mut()
-            .get_mut(index)
-            .ok_or(Error::invalid_argument("mark outside its group"))?;
-        frame.paint(pixel, source.apply(state, mask), state, (x, y));
-        Ok(())
+        let pixel = index.and_then(|i| self.pixels_mut().get_mut(i));
+        debug_assert!(pixel.is_some(), "marks are clipped to their group's tile");
+        if let Some(pixel) = pixel {
+            frame.paint(pixel, source.apply(state, mask), state, (x, y));
+        }
     }
     /// Every painted pixel, with its index and device position.
     pub(super) fn painted(&self) -> impl Iterator<Item = (usize, (u32, u32), Pixel)> + '_ {
@@ -438,7 +438,7 @@ mod tests {
         let mut surface = Surface::detached(tile, vec![Pixel::default(); 8]);
         let color = [0.25, 0.5, 0.75, 0.0];
         for (start, count) in [(2, 2), (4, 4), (1, 2), (2, 5)] {
-            assert!(surface.fill_solid(start, count, color).unwrap());
+            assert!(surface.fill_solid(start, count, color));
         }
         assert_eq!(surface.pixel(0, 0).alpha, 0.0);
         for x in 1..8 {
@@ -446,13 +446,25 @@ mod tests {
             assert_eq!(pixel.color, color);
             assert_eq!([pixel.alpha, pixel.group, pixel.shape], [1.0; 3]);
         }
-        assert!(surface.fill_solid(3, 2, [0.5; 4]).unwrap());
-        assert!(surface.fill_solid(1, 7, color).unwrap());
+        assert!(surface.fill_solid(3, 2, [0.5; 4]));
+        assert!(surface.fill_solid(1, 7, color));
         assert!(surface.pixels()[1..].iter().all(|p| p.color == color));
         surface.pixels_mut()[4].alpha = 0.25;
-        assert!(!surface.fill_solid(1, 7, color).unwrap());
+        assert!(!surface.fill_solid(1, 7, color));
         assert_eq!(surface.pixel(4, 0).alpha, 0.25);
-        assert!(surface.fill_solid(8, 1, color).is_err());
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "solid runs come from this surface's spans")]
+    fn solid_runs_outside_the_surface_are_an_invariant() {
+        let tile = Tile {
+            x: 0,
+            y: 0,
+            width: 8,
+            height: 1,
+        };
+        Surface::detached(tile, vec![Pixel::default(); 8]).fill_solid(8, 1, [0.25; 4]);
     }
 
     #[test]
@@ -471,9 +483,25 @@ mod tests {
         assert_eq!(memory.remaining(), 0);
         // Solid intervals describe f64 pixels only; bounded stores go
         // through `narrow_mut`, which also ends any interval.
-        assert!(surface.fill_solid(0, 2, [0.5; 4]).is_err());
         assert!(surface.narrow_mut().is_some());
         assert!(surface.pixels().is_empty());
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[should_panic(expected = "solid runs come from this surface's spans")]
+    fn bounded_pages_take_no_solid_runs() {
+        let tile = Tile {
+            x: 0,
+            y: 0,
+            width: 4,
+            height: 1,
+        };
+        let buffer = narrow::Buffer::new(super::super::plan::Format::N16, 4, [255; 4]).unwrap();
+        let held = super::super::memory::Memory::new(32)
+            .hold(buffer.bytes(), "bounded page")
+            .unwrap();
+        Surface::with_buffer(tile, buffer, held).fill_solid(0, 2, [0.5; 4]);
     }
 
     #[test]
@@ -486,7 +514,7 @@ mod tests {
         };
         let mut surface = Surface::detached(tile, vec![Pixel::default()]);
         for zero in [0.0_f64, -0.0, 0.0] {
-            assert!(surface.fill_solid(0, 1, [zero; 4]).unwrap());
+            assert!(surface.fill_solid(0, 1, [zero; 4]));
             assert_eq!(
                 surface.pixel(0, 0).color.map(f64::to_bits),
                 [zero.to_bits(); 4]

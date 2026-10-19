@@ -236,18 +236,6 @@ fn process(name: &Name) -> Option<usize> {
 }
 
 impl Context {
-    pub(super) fn color(
-        &mut self,
-        color: &Color,
-        model: Model,
-        state: &Composite,
-        direct: bool,
-    ) -> Result<Source> {
-        let Color::Solid { space, components } = color else {
-            return Err(Error::invalid_argument("pattern is not a solid colour"));
-        };
-        self.source(space, components, model, state, direct)
-    }
     pub(super) fn source(
         &mut self,
         space: &Space,

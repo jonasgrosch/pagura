@@ -82,7 +82,7 @@ impl Context {
                 self.charge(work)?;
                 let source = covered_source(value, coverage, template);
                 self.image_transfer(command, (x, y), source)?;
-                target.composite((x, y), source, &command.composite, soft, frame)?;
+                target.composite((x, y), source, &command.composite, soft, frame);
             }
         }
         drop(held);
@@ -105,18 +105,16 @@ impl Context {
         Ok(self.sampled_source(space, model, &command.composite))
     }
     fn stencil_color(&mut self, command: &ImageCommand, model: Model) -> Result<Option<Source>> {
-        let stencil = if command.image.space.is_none() {
-            if matches!(command.stencil, crate::color::Color::Pattern { .. }) {
-                return Err(Error::unsupported(
-                    crate::features::PATTERN_IMAGE_MASK,
-                    "pattern-coloured image stencils are not implemented",
-                ));
-            }
-            Some(self.color(&command.stencil, model, &command.composite, true)?)
-        } else {
-            None
-        };
-        Ok(stencil)
+        match (&command.image.space, &command.stencil) {
+            (Some(_), _) => Ok(None),
+            (None, crate::color::Color::Solid { space, components }) => self
+                .source(space, components, model, &command.composite, true)
+                .map(Some),
+            (None, crate::color::Color::Pattern { .. }) => Err(Error::unsupported(
+                crate::features::PATTERN_IMAGE_MASK,
+                "pattern-coloured image stencils are not implemented",
+            )),
+        }
     }
     fn image_texel(
         &mut self,

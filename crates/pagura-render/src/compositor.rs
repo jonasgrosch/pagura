@@ -296,23 +296,19 @@ impl Context {
         result
     }
     // Admission fixes the page and its flattened descendants to RGB.
-    fn narrow_path(&mut self, p: &PathCommand, mask: &Mask, target: &mut Surface) -> Result<()> {
-        let color = self.color(&p.color, Model::Rgb, &p.composite, true)?.color;
+    fn narrow_path(
+        &mut self,
+        mask: &Mask,
+        (color, alpha): ([f64; 4], f64),
+        tile: Tile,
+        buffer: &mut narrow::Buffer,
+    ) -> Result<()> {
         self.charge(mask.coverage().len())?;
-        let tile = target.tile;
-        let buffer = target
-            .narrow_mut()
-            .ok_or(Error::invalid_argument("missing colour buffer"))?;
         let stride = tile.width as usize;
         let (x, y) = mask.origin();
         let offset = (y - tile.y) as usize * stride + (x - tile.x) as usize;
         for (row, column, coverage) in mask.spans() {
-            buffer.path(
-                offset + row * stride + column,
-                coverage,
-                color,
-                p.composite.alpha,
-            )?;
+            buffer.path(offset + row * stride + column, coverage, color, alpha)?;
         }
         Ok(())
     }
@@ -323,48 +319,45 @@ impl Context {
         target: &mut Surface,
         frame: Frame<'_>,
     ) -> Result<()> {
-        if target.narrow().is_some() {
-            return self.narrow_path(p, mask, target);
-        }
-        if let crate::color::Color::Pattern {
-            selected: Some(pattern),
-            ..
-        } = &p.color
-            && let crate::pattern::Kind::Tiling(tiling) = &pattern.kind
+        let fill =
+            match &p.color {
+                crate::color::Color::Solid { space, components } => {
+                    Fill::Solid(self.source(space, components, frame.model, &p.composite, true)?)
+                }
+                crate::color::Color::Pattern {
+                    selected: Some(pattern),
+                    ..
+                } => match &pattern.kind {
+                    crate::pattern::Kind::Tiling(tiling) => {
+                        return self.tiling(p, pattern.transform, tiling, mask, target, frame);
+                    }
+                    crate::pattern::Kind::Shading(shading) => {
+                        let inverse = pattern.transform.then(self.device).inverse().ok_or(
+                            Error::unsupported(
+                                crate::features::SHADING_TRANSFORM,
+                                "singular pattern transform",
+                            ),
+                        )?;
+                        Fill::Shading(pattern_source(p, pattern.transform, shading), inverse)
+                    }
+                },
+                // An unselected pattern paints nothing.
+                crate::color::Color::Pattern { selected: None, .. } => return Ok(()),
+            };
+        // Admission keeps patterns and every mark that is not Normal
+        // source-over off bounded page storage (ADR 0004).
+        let tile = target.tile;
+        if let Fill::Solid(color) = &fill
+            && let Some(buffer) = target.narrow_mut()
         {
-            return self.tiling(p, pattern.transform, tiling, mask, target, frame);
+            return self.narrow_path(mask, (color.color, p.composite.alpha), tile, buffer);
         }
-        self.paint_color(p, mask, target, frame)
-    }
-    fn paint_color(
-        &mut self,
-        p: &PathCommand,
-        mask: &Mask,
-        target: &mut Surface,
-        frame: Frame<'_>,
-    ) -> Result<()> {
-        let pattern = pattern_source(p);
         self.charge(mask.coverage().len())?;
-        let color = if pattern.is_none() {
-            Some(self.color(&p.color, frame.model, &p.composite, true)?)
-        } else {
-            None
+        let boundary = match &fill {
+            Fill::Shading(pattern, _) => self.pattern_boundary(pattern, mask)?,
+            Fill::Solid(_) => None,
         };
-        let inverse = pattern
-            .as_ref()
-            .map(|p| {
-                p.transform
-                    .then(self.device)
-                    .inverse()
-                    .ok_or(Error::unsupported(
-                        crate::features::SHADING_TRANSFORM,
-                        "singular pattern transform",
-                    ))
-            })
-            .transpose()?;
-        let boundary = self.pattern_boundary(pattern.as_ref(), mask)?;
-        let boundary_width = usize::try_from(mask.width())
-            .map_err(|_| Error::limit("pattern mask width exceeds usize"))?;
+        let columns = pagura_core::convert::u32_to_usize(mask.width());
         let soft = p
             .composite
             .mask
@@ -378,43 +371,43 @@ impl Context {
             if run.coverage.first() == Some(&255)
                 && p.composite.simple()
                 && !frame.knockout
-                && let Some(color) = color
+                && let Fill::Solid(color) = &fill
                 && color.preserve == [false; 4]
                 && let Some(start) = target.span(x, y, count)
-                && target.fill_solid(start, count, color.color)?
+                && target.fill_solid(start, count, color.color)
             {
                 self.transfer_run(p.transfer.as_ref(), &p.composite, (x, y), count)?;
                 continue;
             }
             for (offset, (x, coverage)) in run.pixels().enumerate() {
-                let source = if let Some(color) = color {
-                    color.covered(coverage)
-                } else if let (Some(pattern), Some(inverse)) = (&pattern, inverse) {
-                    let rate = if pattern.shading.antialias { 2 } else { 1 };
-                    self.charge(rate * rate)?;
-                    let Some(source) = self.shading_sample(
-                        pattern,
-                        inverse,
-                        (x, y),
-                        frame.model,
-                        rate,
+                let source = match &fill {
+                    Fill::Solid(color) => color.covered(coverage),
+                    Fill::Shading(pattern, inverse) => {
+                        let rate = if pattern.shading.antialias { 2 } else { 1 };
+                        self.charge(rate * rate)?;
                         // The boundary mask spans the coverage mask.
-                        boundary.as_ref().map(|mask| {
-                            let index = run.row * boundary_width + run.column + offset;
+                        let boundary = boundary.as_ref().map(|mask| {
+                            let index = run.row * columns + run.column + offset;
                             mask.coverage()
                                 .get(index)
                                 .map_or(0.0, |&v| f64::from(v) / 255.0)
-                        }),
-                    )?
-                    else {
-                        continue;
-                    };
-                    source.covered(coverage)
-                } else {
-                    return Err(Error::invalid_argument("missing pattern source"));
+                        });
+                        let Some(source) = self.shading_sample(
+                            pattern,
+                            *inverse,
+                            (x, y),
+                            frame.model,
+                            rate,
+                            boundary,
+                        )?
+                        else {
+                            continue;
+                        };
+                        source.covered(coverage)
+                    }
                 };
                 self.transfer_mark(p.transfer.as_ref(), &p.composite, (x, y), source, true)?;
-                target.composite((x, y), source, &p.composite, soft, frame)?;
+                target.composite((x, y), source, &p.composite, soft, frame);
             }
         }
         Ok(())
@@ -528,18 +521,16 @@ impl Context {
         self.charge(group.commands.len())?;
         let members = Frame::group(Backdrop::Transparent, frame.model, false, frame.depth);
         for command in &group.commands {
-            if let Command::Glyphs(run) = command {
-                self.glyphs(run, tile, parent, members)?;
-                continue;
-            }
-            let Command::Path(p) = command else {
-                return Err(Error::invalid_argument(
-                    "opaque knockout has a non-fill member",
-                ));
-            };
-            if command.paints() {
-                self.path_in(p, tile, parent, members)
-                    .map_err(|e| crate::display::contextual(e, p.position))?;
+            debug_assert!(
+                matches!(command, Command::Path(_) | Command::Glyphs(_)),
+                "the scene classification elides knockout groups of fills only"
+            );
+            match command {
+                Command::Glyphs(run) => self.glyphs(run, tile, parent, members)?,
+                Command::Path(p) if command.paints() => self
+                    .path_in(p, tile, parent, members)
+                    .map_err(|e| crate::display::contextual(e, p.position))?,
+                _ => {}
             }
         }
         Ok(())
@@ -597,10 +588,17 @@ impl Context {
                 spot: self.spot_batch.is_some(),
                 ..Source::new(pixel.color, pixel.group, pixel.shape)
             };
-            parent.composite(point, source, &group.composite, soft, frame)?;
+            parent.composite(point, source, &group.composite, soft, frame);
         }
         Ok(())
     }
+}
+
+/// What a path paints with on its covered pixels.
+enum Fill {
+    Solid(Source),
+    /// A shading pattern as a shading mark, with its device-to-shading map.
+    Shading(crate::display::ShadingCommand, Transform),
 }
 
 #[expect(
