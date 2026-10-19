@@ -1,7 +1,7 @@
 //! RGB output without colour-space or transfer dispatch per pixel (11.3.3).
 //! Bounded page storage rounds each level once to the nearest byte (ADR 0004).
 
-use super::{Context, Model, Pixel, Surface};
+use super::{Context, Model, Pixel, Surface, colorants};
 use crate::Tile;
 use crate::device::quantize_unit;
 use pagura_core::{Error, Result};
@@ -29,43 +29,33 @@ impl Context {
             * stride
             + usize::try_from(x - tile.x)
                 .map_err(|_| Error::limit("output column exceeds usize"))?;
+        let columns =
+            usize::try_from(width).map_err(|_| Error::limit("chunk width exceeds usize"))?;
         if let Some(buffer) = page.narrow() {
             // Admission keeps spot passes and transfer feeds on f64 storage.
-            let width = width as usize;
-            for row in 0..height as usize {
+            for row in 0..pagura_core::convert::u32_to_usize(height) {
                 let start = origin + row * stride;
-                buffer.output(
-                    row * width,
-                    &mut output.data_mut()[start * 4..(start + width) * 4],
-                );
+                let out = output.data_mut().get_mut(start * 4..(start + columns) * 4);
+                debug_assert!(out.is_some(), "chunks lie inside the output tile");
+                if let Some(out) = out {
+                    buffer.output(row * columns, out);
+                }
             }
             return Ok(());
         }
-        for (row, pixels) in page
-            .pixels()
-            .chunks_exact(
-                usize::try_from(width).map_err(|_| Error::limit("chunk width exceeds usize"))?,
-            )
-            .enumerate()
-        {
+        for (row, pixels) in page.pixels().chunks_exact(columns).enumerate() {
             let start = origin + row * stride;
+            let out = output
+                .data_mut()
+                .get_mut(start * 4..(start + pixels.len()) * 4);
+            debug_assert!(out.is_some(), "chunks lie inside the output tile");
+            let Some(out) = out else { continue };
+            let out = out.as_chunks_mut::<4>().0;
             if model == Model::Rgb && spots.is_empty() && self.transfers.is_none() {
-                rgb(
-                    output.data_mut()[start * 4..(start + pixels.len()) * 4]
-                        .as_chunks_mut::<4>()
-                        .0,
-                    pixels,
-                );
+                rgb(out, pixels);
                 continue;
             }
-            for (column, (target, pixel)) in output.data_mut()
-                [start * 4..(start + pixels.len()) * 4]
-                .as_chunks_mut::<4>()
-                .0
-                .iter_mut()
-                .zip(pixels)
-                .enumerate()
-            {
+            for (column, (target, pixel)) in out.iter_mut().zip(pixels).enumerate() {
                 let alpha = pixel.alpha;
                 if alpha == 0.0 {
                     continue;
@@ -73,16 +63,17 @@ impl Context {
                 let color = if spots.is_empty() {
                     model.rgb(pixel.straight())
                 } else {
-                    let index = row
-                        * usize::try_from(width)
-                            .map_err(|_| Error::limit("chunk width exceeds usize"))?
-                        + column;
-                    let mut tints = [0.0; 32];
-                    for (batch, surface) in spots.iter().enumerate() {
-                        for (i, value) in surface.pixels()[index].straight().into_iter().enumerate()
-                        {
-                            tints[batch * 4 + i] = 1.0 - value;
-                        }
+                    // Spot planes share the page surface's tile, four inks each.
+                    let index = row * columns + column;
+                    let inks = spots.iter().flat_map(|surface| {
+                        surface
+                            .pixels()
+                            .get(index)
+                            .map_or([0.0; 4], |p| p.straight())
+                    });
+                    let mut tints = [0.0; colorants::MAX_SPOTS];
+                    for (tint, ink) in tints.iter_mut().zip(inks) {
+                        *tint = 1.0 - ink;
                     }
                     self.charge(self.separations.len())?;
                     self.preview.rgb(
