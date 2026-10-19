@@ -1,31 +1,55 @@
+//! The one budget a path validation or search charges, including its CRL
+//! processing (`Limits::path_*`, ADR 0016).
+
 use super::{Check, Issue, SignatureInput, SignatureResult, SignatureVerifier, Uncertainty};
-use pagura_core::Limits;
+use pagura_core::convert::u32_to_usize;
+use pagura_core::{Limits, Meter, SignatureLimits};
 use std::collections::BTreeMap;
 
+/// The stable names `Uncertainty::Limit` reports for each exhausted bound.
+const WORK: &str = "pki.path-work";
+const NODES: &str = "pki.path-nodes";
+const BYTES: &str = "pki.path-bytes";
+const CERTIFICATES: &str = "pki.path-certificates";
+const VERIFICATIONS: &str = "pki.path-verifications";
+const ALLOCATION: &str = "pki.allocation";
+
 pub(super) struct Budget<'a> {
-    pub limits: &'a Limits,
-    work: usize,
-    nodes: usize,
-    bytes: usize,
+    pub(super) limits: &'a Limits,
+    work: Meter,
+    nodes: Meter,
+    bytes: Meter,
+    verifications: Meter,
     signatures: BTreeMap<Vec<Vec<u8>>, SignatureResult>,
-    calls: usize,
 }
 
 impl<'a> Budget<'a> {
-    pub fn new(limits: &'a Limits) -> Self {
+    pub(super) const fn new(limits: &'a Limits) -> Self {
         Self {
             limits,
-            work: 0,
-            nodes: 0,
-            bytes: 0,
+            work: Meter::new(
+                u32_to_usize(limits.signatures.path_work),
+                "path validation work budget exceeded",
+            ),
+            nodes: Meter::new(
+                u32_to_usize(limits.signatures.path_nodes),
+                "path validation node budget exceeded",
+            ),
+            bytes: Meter::new(
+                u32_to_usize(limits.signatures.path_bytes),
+                "path validation byte budget exceeded",
+            ),
+            verifications: Meter::new(
+                u32_to_usize(limits.signatures.path_verifications),
+                "path validation verification budget exceeded",
+            ),
             signatures: BTreeMap::new(),
-            calls: 0,
         }
     }
-    // A separate call count derived from Limits::operations prevents a padded
-    // unsigned certificate set from amplifying expensive host cryptography.
-    // Default 50,000,000 operations admits at most 100 distinct verifications.
-    pub fn verify(
+    /// Verifies through the host once per distinct input. Repeated inputs are
+    /// memoized, and `path_verifications` caps the distinct calls, so a padded
+    /// unsigned certificate set cannot amplify expensive host cryptography.
+    pub(super) fn verify(
         &mut self,
         input: SignatureInput<'_>,
         verifier: &mut impl SignatureVerifier,
@@ -50,84 +74,75 @@ impl<'a> Budget<'a> {
         if let Some(result) = self.signatures.get(&key) {
             return Ok(*result);
         }
-        if self.calls >= self.limits.operations / 500_000 {
-            return Err(Issue::Unknown(Uncertainty::Limit("pki.signatures")));
-        }
+        charge(&mut self.verifications, 1, VERIFICATIONS)?;
         self.node()?;
         self.bytes(256)?;
-        self.calls += 1;
         let result = verifier.verify(input, self.limits);
         self.signatures.insert(key, result);
         Ok(result)
     }
-    pub fn work(&mut self, amount: usize) -> Check<()> {
-        Self::charge(
-            &mut self.work,
-            amount,
-            self.limits.operations,
-            "pki.operations",
-        )
+    pub(super) fn work(&mut self, amount: usize) -> Check<()> {
+        charge(&mut self.work, amount, WORK)
     }
-    pub fn node(&mut self) -> Check<()> {
+    pub(super) fn node(&mut self) -> Check<()> {
         self.nodes(1)
     }
-    pub fn nodes(&mut self, amount: usize) -> Check<()> {
+    pub(super) fn nodes(&mut self, amount: usize) -> Check<()> {
         self.work(amount)?;
-        Self::charge(
-            &mut self.nodes,
-            amount,
-            self.limits.value_nodes,
-            "pki.value-nodes",
-        )
+        charge(&mut self.nodes, amount, NODES)
     }
-    pub fn der_limits(&self) -> Limits {
+    /// Limits for reparsing an extension value: its elements also count
+    /// against the nodes this validation has left.
+    pub(super) fn der_limits(&self) -> Limits {
+        let remaining = u32::try_from(self.nodes.remaining()).unwrap_or(u32::MAX);
         Limits {
-            value_nodes: self.limits.value_nodes.saturating_sub(self.nodes),
+            signatures: SignatureLimits {
+                asn1_elements: self.limits.signatures.asn1_elements.min(remaining),
+                ..self.limits.signatures
+            },
             ..*self.limits
         }
     }
-    pub fn bytes(&mut self, amount: usize) -> Check<()> {
-        Self::charge(
-            &mut self.bytes,
-            amount,
-            self.limits.document_bytes,
-            "pki.document-bytes",
-        )
+    pub(super) fn bytes(&mut self, amount: usize) -> Check<()> {
+        charge(&mut self.bytes, amount, BYTES)
     }
-    pub fn string(&mut self, amount: usize) -> Check<()> {
-        if amount > self.limits.string_bytes {
-            return Err(Issue::Unknown(Uncertainty::Limit("pki.string-bytes")));
-        }
+    /// A copied string: its bytes and the work of scanning them.
+    pub(super) fn string(&mut self, amount: usize) -> Check<()> {
         self.bytes(amount)?;
         self.work(amount)
     }
-    pub fn push<T>(&mut self, values: &mut Vec<T>, value: T) -> Check<()> {
+    pub(super) fn push<T>(&mut self, values: &mut Vec<T>, value: T) -> Check<()> {
         if values.len() == values.capacity() {
             let growth = values.capacity().max(1);
             let capacity = values
                 .capacity()
                 .checked_add(growth)
-                .ok_or(Issue::Unknown(Uncertainty::Limit("pki.document-bytes")))?;
+                .ok_or(Issue::Unknown(Uncertainty::Limit(BYTES)))?;
             self.bytes(capacity.saturating_mul(size_of::<T>()))?;
             self.work(values.len().saturating_mul(size_of::<T>()))?;
             values
                 .try_reserve_exact(growth)
-                .map_err(|_| Issue::Unknown(Uncertainty::Limit("pki.allocation")))?;
+                .map_err(|_| Issue::Unknown(Uncertainty::Limit(ALLOCATION)))?;
         }
         values.push(value);
         Ok(())
     }
-    pub fn depth(&self, amount: usize) -> Check<()> {
-        if amount > self.limits.depth {
-            return Err(Issue::Unknown(Uncertainty::Limit("pki.depth")));
+    /// The most certificates a path may hold, anchor excluded.
+    pub(super) const fn max_certificates(&self) -> usize {
+        u32_to_usize(self.limits.signatures.path_certificates)
+    }
+    /// Checks that a path of `certificates`, anchor excluded, is admitted.
+    pub(super) fn depth(&self, certificates: usize) -> Check<()> {
+        if certificates > self.max_certificates() {
+            return Err(Issue::Unknown(Uncertainty::Limit(CERTIFICATES)));
         }
         Ok(())
     }
-    fn charge(value: &mut usize, amount: usize, limit: usize, name: &'static str) -> Check<()> {
-        *value = value
-            .checked_add(amount)
-            .filter(|&n| n <= limit)
-            .ok_or(Issue::Unknown(Uncertainty::Limit(name)))?;
-        Ok(())
-    }
+}
+
+/// Charges `amount`; an exhausted meter reports the stable `limit` name.
+fn charge(meter: &mut Meter, amount: usize, limit: &'static str) -> Check<()> {
+    meter
+        .charge(amount)
+        .map_err(|_| Issue::Unknown(Uncertainty::Limit(limit)))
 }

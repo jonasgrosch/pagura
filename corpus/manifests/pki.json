@@ -1,0 +1,1491 @@
+{
+  "schema": 2,
+  "area": "pki",
+  "source": "Pagura independently authored fixtures",
+  "license": "MIT OR Apache-2.0 (project-owned)",
+  "cases": [
+    {
+      "id": "pki/named-oids",
+      "kind": "vector",
+      "description": "the OBJECT IDENTIFIERs pagura-pki names as constants, encoded from their dotted form",
+      "requirements": [
+        "pki-der"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/named-oids.der",
+          "sha256": "7a83117d11567866be9761bcc706e2d098730f29c77f06ac6f89b1e0dd64020b"
+        }
+      },
+      "structure": "oids",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/x509-v3",
+      "kind": "vector",
+      "description": "v3 certificate with every typed extension and one unknown critical one",
+      "requirements": [
+        "pki-x509-certificate"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-v3.der",
+          "sha256": "8aa1956af6b0f4f213002ae1b56d3539a22401566ef7e7a6e280ed155b144af3"
+        }
+      },
+      "structure": "certificate",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/x509-v1",
+      "kind": "vector",
+      "description": "v1 certificate: version omitted as DEFAULT (X.690 11.5)",
+      "requirements": [
+        "pki-x509-certificate"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-v1.der",
+          "sha256": "450d2a72eaf6b0168eb924ca896db919d7e3007c566aa6208bdce84a68707735"
+        }
+      },
+      "structure": "certificate",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/x509-v2-unique-ids",
+      "kind": "vector",
+      "description": "v2 certificate with issuer and subject unique identifiers (RFC 5280 4.1.2.8)",
+      "requirements": [
+        "pki-x509-certificate"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-v2-unique-ids.der",
+          "sha256": "0721891e08117a2df3e5308930ea2899506fc9f21287bdb4a3a038f7adf8fc99"
+        }
+      },
+      "structure": "certificate",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/x509-v1-unique-id",
+      "kind": "vector",
+      "description": "unique identifiers require v2 or v3 (RFC 5280 4.1.2.8)",
+      "requirements": [
+        "pki-x509-certificate"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-v1-unique-id.der",
+          "sha256": "1a99494a0c554fcf9a6ab3421c0b9bf2a26704f49c90be777478122551855f40"
+        }
+      },
+      "structure": "certificate",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/x509-v2-extensions",
+      "kind": "vector",
+      "description": "extensions require v3 (RFC 5280 4.1.2.9)",
+      "requirements": [
+        "pki-x509-certificate"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-v2-extensions.der",
+          "sha256": "f6cf4c12bcda15955552f73b0a84eef72d4bfdd83bd4a39d79df384d1e953394"
+        }
+      },
+      "structure": "certificate",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/x509-algorithm-mismatch",
+      "kind": "vector",
+      "description": "outer and TBS signature algorithms differ (RFC 5280 4.1.1.2)",
+      "requirements": [
+        "pki-x509-certificate"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-algorithm-mismatch.der",
+          "sha256": "049f5288ecb94185b3b0f88112888fbaad485a16689d5a5e36430010f2700ce4"
+        }
+      },
+      "structure": "certificate",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/x509-duplicate-extension",
+      "kind": "vector",
+      "description": "an extension type appears twice (RFC 5280 4.2)",
+      "requirements": [
+        "pki-x509-certificate"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-duplicate-extension.der",
+          "sha256": "5b5b7388d6134073f3fc9af8297bb35223cfa4d893e6a869bee315aebe508356"
+        }
+      },
+      "structure": "certificate",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/x509-explicit-default-version",
+      "kind": "vector",
+      "description": "v1 encoded explicitly although DER omits the DEFAULT (X.690 11.5)",
+      "requirements": [
+        "pki-x509-certificate"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-explicit-default-version.der",
+          "sha256": "8ed72fd61a0902738c0cc4d04fea4734c9415278b4559d5cbdb4012a1d3983ea"
+        }
+      },
+      "structure": "certificate",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/x509-oversized-version",
+      "kind": "vector",
+      "description": "a version INTEGER wider than 64 bits is malformed, not a budget failure",
+      "requirements": [
+        "pki-x509-certificate"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-oversized-version.der",
+          "sha256": "b1e330065ee464e6b592aa7aa51cd7a3a04703d088453c640e81b0d8722f0b14"
+        }
+      },
+      "structure": "certificate",
+      "expect": "reject",
+      "error": "syntax"
+    },
+    {
+      "id": "pki/x509-explicit-default-critical",
+      "kind": "vector",
+      "description": "critical encoded as its DEFAULT FALSE (X.690 11.5)",
+      "requirements": [
+        "pki-x509-certificate"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-explicit-default-critical.der",
+          "sha256": "aef486aebf8562c7a6ff052e917b8f690974e9b1a0d0028c79c17307a91c2efd"
+        }
+      },
+      "structure": "certificate",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/x509-empty-rdn",
+      "kind": "vector",
+      "description": "a relative distinguished name has no attribute (RFC 5280 4.1.2.4)",
+      "requirements": [
+        "pki-x509-certificate"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-empty-rdn.der",
+          "sha256": "7a2959d8edcef8d4f7314b0054d0f38821f44e35b4775830e22fbbb85710ebbf"
+        }
+      },
+      "structure": "certificate",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/x509-crl-v2",
+      "kind": "vector",
+      "description": "v2 CRL with entry and CRL extensions",
+      "requirements": [
+        "pki-x509-crl"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-crl-v2.der",
+          "sha256": "e4b0d4b25c60a685ee58578d8bf3a69e72a55960735ee9e6505a6527f828bda2"
+        }
+      },
+      "structure": "crl",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/x509-crl-v1",
+      "kind": "vector",
+      "description": "v1 CRL: no version, no extensions",
+      "requirements": [
+        "pki-x509-crl"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-crl-v1.der",
+          "sha256": "9623f8cd1191910d1e4f1f6ef70d48315132dde36fac19783fbe2531ed07fb74"
+        }
+      },
+      "structure": "crl",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/x509-crl-v1-entry-extensions",
+      "kind": "vector",
+      "description": "entry extensions require v2 (RFC 5280 5.3)",
+      "requirements": [
+        "pki-x509-crl"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-crl-v1-entry-extensions.der",
+          "sha256": "3260e9b0526c703e5b4f3e6505aa79b4e006a45165d1f6c62bdad6965022463b"
+        }
+      },
+      "structure": "crl",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/x509-crl-v1-extensions",
+      "kind": "vector",
+      "description": "CRL extensions require v2 (RFC 5280 5.1.2.7)",
+      "requirements": [
+        "pki-x509-crl"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-crl-v1-extensions.der",
+          "sha256": "77796d7ad7fe59a41e0f7b45d16e3a8fec366ea096189d529f97b3e3b1ed8024"
+        }
+      },
+      "structure": "crl",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/x509-crl-algorithm-mismatch",
+      "kind": "vector",
+      "description": "outer and TBS signature algorithms differ (RFC 5280 5.1.1.2)",
+      "requirements": [
+        "pki-x509-crl"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-crl-algorithm-mismatch.der",
+          "sha256": "d7cd5a0f86f12d1f55d2c472fca82311791f816c1fa453f010fdb785a38056a6"
+        }
+      },
+      "structure": "crl",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/x509-crl-version-2",
+      "kind": "vector",
+      "description": "v3 does not exist for CRLs (RFC 5280 5.1.2.1)",
+      "requirements": [
+        "pki-x509-crl"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-crl-version-2.der",
+          "sha256": "fcdb866d3e390f62a94103ef4c0ef0213f7a1489fed07c3d4e3a3112f1e0a8a9"
+        }
+      },
+      "structure": "crl",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/x509-crl-oversized-version",
+      "kind": "vector",
+      "description": "a version INTEGER wider than 64 bits is malformed",
+      "requirements": [
+        "pki-x509-crl"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-crl-oversized-version.der",
+          "sha256": "05615d07002f27f8b0c0947c4b94f61359c408bfcffae7840768a5d593af6985"
+        }
+      },
+      "structure": "crl",
+      "expect": "reject",
+      "error": "syntax"
+    },
+    {
+      "id": "pki/x509-crl-duplicate-extension",
+      "kind": "vector",
+      "description": "a CRL extension type appears twice (RFC 5280 5.2)",
+      "requirements": [
+        "pki-x509-crl"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/x509-crl-duplicate-extension.der",
+          "sha256": "dc176814cf531b4ae65390606371ae6cf5afc819622a26a864cdb29070d9857a"
+        }
+      },
+      "structure": "crl",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/basic-constraints-ca",
+      "kind": "vector",
+      "description": "cA with a zero path length (RFC 5280 4.2.1.9)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/basic-constraints-ca.der",
+          "sha256": "092770a4a731a5cf021a63cbebc9ecb24a41bf9cd4e9b4fe92c2c1db620e95b5"
+        }
+      },
+      "structure": "extension",
+      "expect": "accept",
+      "view": "basic-constraints"
+    },
+    {
+      "id": "pki/basic-constraints-end-entity",
+      "kind": "vector",
+      "description": "an end entity: cA absent as DEFAULT FALSE",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/basic-constraints-end-entity.der",
+          "sha256": "e4f60d0aa6d7f3d3b6a6494b1c861b99f649c6f9ec51abaf201b20f297327c95"
+        }
+      },
+      "structure": "extension",
+      "expect": "accept",
+      "view": "basic-constraints"
+    },
+    {
+      "id": "pki/basic-constraints-path-without-ca",
+      "kind": "vector",
+      "description": "pathLenConstraint without cA TRUE (RFC 5280 4.2.1.9)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/basic-constraints-path-without-ca.der",
+          "sha256": "1b65f68a522c858715f5dd951cd0402dc16691778814bf0759822b7a257421d0"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "basic-constraints"
+    },
+    {
+      "id": "pki/basic-constraints-explicit-false",
+      "kind": "vector",
+      "description": "cA encoded as its DEFAULT FALSE (X.690 11.5)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/basic-constraints-explicit-false.der",
+          "sha256": "139a28812e7519f744d2d3bf3c6009155566f1c52df8605f822d7714f1477afa"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "basic-constraints"
+    },
+    {
+      "id": "pki/basic-constraints-negative-path",
+      "kind": "vector",
+      "description": "a negative path length (RFC 5280 4.2.1.9: INTEGER (0..MAX))",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/basic-constraints-negative-path.der",
+          "sha256": "06ffdf8492d83b49b5e84b935c9cf2adec89002391a7853ac9f8e4e7c752f645"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "basic-constraints"
+    },
+    {
+      "id": "pki/key-usage-digital-signature",
+      "kind": "vector",
+      "description": "digitalSignature only",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/key-usage-digital-signature.der",
+          "sha256": "ff382a43633e7c2f077fcf84725814f8be46058b2b0870f5cb6413a9cad5d9a4"
+        }
+      },
+      "structure": "extension",
+      "expect": "accept",
+      "view": "key-usage"
+    },
+    {
+      "id": "pki/key-usage-decipher-only",
+      "kind": "vector",
+      "description": "decipherOnly, the ninth named bit, in a second octet",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/key-usage-decipher-only.der",
+          "sha256": "eecf9991ccc4b67cf222a5758467fe2955b234420776e8ff02ce2156429d1a48"
+        }
+      },
+      "structure": "extension",
+      "expect": "accept",
+      "view": "key-usage"
+    },
+    {
+      "id": "pki/key-usage-trailing-zero",
+      "kind": "vector",
+      "description": "a trailing zero named bit is kept (X.690 11.2.2)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/key-usage-trailing-zero.der",
+          "sha256": "3807e4aaf4fa93c162efb8991194a4c8f5a4afbba156fcbc94357733e04785ba"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "key-usage"
+    },
+    {
+      "id": "pki/key-usage-empty",
+      "kind": "vector",
+      "description": "no usage bit (RFC 5280 4.2.1.3: at least one bit is set)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/key-usage-empty.der",
+          "sha256": "fbf7dfa6d256e8d6cae164fda0e5623d454501de0cdd56c2d8fbed4df1523d07"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "key-usage"
+    },
+    {
+      "id": "pki/key-usage-unknown-bit",
+      "kind": "vector",
+      "description": "bit 9 is not a named key usage",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/key-usage-unknown-bit.der",
+          "sha256": "17da60cb05669b07fc0577c9a73f94b0ea28ecd8de34c28d8c6aef80f17fc853"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "key-usage"
+    },
+    {
+      "id": "pki/key-usage-three-octets",
+      "kind": "vector",
+      "description": "more octets than nine named bits need",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/key-usage-three-octets.der",
+          "sha256": "d08f389f878bfab941b43b4e0b3b10f14f980fb218016c9e1bd45de8ab45f4a6"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "key-usage"
+    },
+    {
+      "id": "pki/aki-key-only",
+      "kind": "vector",
+      "description": "keyIdentifier alone (RFC 5280 4.2.1.1)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/aki-key-only.der",
+          "sha256": "87939bdb1a608d361aa93a8135cae649b828cedb2ad67c1f98c0502ace67cc47"
+        }
+      },
+      "structure": "extension",
+      "expect": "accept",
+      "view": "authority-key-identifier"
+    },
+    {
+      "id": "pki/aki-issuer-serial",
+      "kind": "vector",
+      "description": "keyIdentifier with the paired authority issuer and serial",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/aki-issuer-serial.der",
+          "sha256": "44d7262cf2a4b3c6a042f3a71a2813fa87d7dc4809082bff3c9ade41cf01270c"
+        }
+      },
+      "structure": "extension",
+      "expect": "accept",
+      "view": "authority-key-identifier"
+    },
+    {
+      "id": "pki/aki-issuer-without-serial",
+      "kind": "vector",
+      "description": "authorityCertIssuer without authorityCertSerialNumber (RFC 5280 4.2.1.1)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/aki-issuer-without-serial.der",
+          "sha256": "21a5785ba7fc8e8a42c97cf7a3e28c1de201e3eefffcaa178005e7da063319d3"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "authority-key-identifier"
+    },
+    {
+      "id": "pki/general-names-every-choice",
+      "kind": "vector",
+      "description": "otherName, rfc822Name, dNSName, directoryName, URI, iPAddress and registeredID (RFC 5280 4.2.1.6)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/general-names-every-choice.der",
+          "sha256": "2aae23a0bfdf8b4b779108bce7d45e6b49314b50297210accb17d9ad2d7f66c1"
+        }
+      },
+      "structure": "extension",
+      "expect": "accept",
+      "view": "general-names"
+    },
+    {
+      "id": "pki/general-name-non-ia5",
+      "kind": "vector",
+      "description": "a dNSName outside IA5String",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/general-name-non-ia5.der",
+          "sha256": "2cb30d97ad015099327954054b2cbeff586f999ceebbd6f0e53d2a8b2bb92e7b"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "general-names"
+    },
+    {
+      "id": "pki/general-name-constructed-dns",
+      "kind": "vector",
+      "description": "a dNSName in constructed form",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/general-name-constructed-dns.der",
+          "sha256": "1c50e886ce3eb714cae12a7650bc07b5b3285cf877455fc632f670cc13834438"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "general-names"
+    },
+    {
+      "id": "pki/general-name-unknown-choice",
+      "kind": "vector",
+      "description": "context tag 9 is not a GeneralName choice",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/general-name-unknown-choice.der",
+          "sha256": "4eb32ca63cc26498e76eda59506aaee9d4d3fb08250ce233da314db257ffe48b"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "general-names"
+    },
+    {
+      "id": "pki/general-name-bad-registered-id",
+      "kind": "vector",
+      "description": "a registeredID with a nonminimal arc (X.690 8.19.2)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/general-name-bad-registered-id.der",
+          "sha256": "4de0f20e5f109ba7aa9a2e38ae5750e4e0d6245386a7000d74b4308f03322c0f"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "general-names"
+    },
+    {
+      "id": "pki/general-names-empty",
+      "kind": "vector",
+      "description": "GeneralNames is SIZE (1..MAX)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/general-names-empty.der",
+          "sha256": "e4f60d0aa6d7f3d3b6a6494b1c861b99f649c6f9ec51abaf201b20f297327c95"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "general-names"
+    },
+    {
+      "id": "pki/certificate-policies-qualified",
+      "kind": "vector",
+      "description": "a qualified policy and anyPolicy (RFC 5280 4.2.1.4)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/certificate-policies-qualified.der",
+          "sha256": "23a98f31c26ea24e682ef75d4704eaab518ced6d1c80842f96c6b076038a15c5"
+        }
+      },
+      "structure": "extension",
+      "expect": "accept",
+      "view": "certificate-policies"
+    },
+    {
+      "id": "pki/certificate-policies-repeated",
+      "kind": "vector",
+      "description": "a policy OID appears twice (RFC 5280 4.2.1.4)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/certificate-policies-repeated.der",
+          "sha256": "a4c4f015c1290844afd5dfefff061cf10909560b2c74b4ec997cbdb0c55f5b5b"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "certificate-policies"
+    },
+    {
+      "id": "pki/certificate-policies-empty-qualifiers",
+      "kind": "vector",
+      "description": "policyQualifiers is SIZE (1..MAX)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/certificate-policies-empty-qualifiers.der",
+          "sha256": "64a280f7ec94998c2a157bfb547b522e518b49d5b2c0be8a9bc466cd8d52f9c8"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "certificate-policies"
+    },
+    {
+      "id": "pki/policy-constraints-inhibit",
+      "kind": "vector",
+      "description": "inhibitPolicyMapping alone (RFC 5280 4.2.1.11)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/policy-constraints-inhibit.der",
+          "sha256": "486084ca3f0f02bce55686c58fa6f49940f705c78995dc57f6835584de1de231"
+        }
+      },
+      "structure": "extension",
+      "expect": "accept",
+      "view": "policy-constraints"
+    },
+    {
+      "id": "pki/policy-constraints-empty",
+      "kind": "vector",
+      "description": "neither counter is present (RFC 5280 4.2.1.11)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/policy-constraints-empty.der",
+          "sha256": "e4f60d0aa6d7f3d3b6a6494b1c861b99f649c6f9ec51abaf201b20f297327c95"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "policy-constraints"
+    },
+    {
+      "id": "pki/policy-constraints-negative",
+      "kind": "vector",
+      "description": "a negative skip count (SkipCerts is INTEGER (0..MAX))",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/policy-constraints-negative.der",
+          "sha256": "444c1df08ad6a7710b276746f4b7281a1ee307996b1c2cc309db725868898314"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "policy-constraints"
+    },
+    {
+      "id": "pki/name-constraints-distances",
+      "kind": "vector",
+      "description": "excluded subtree with nonzero minimum and a maximum (RFC 5280 4.2.1.10)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/name-constraints-distances.der",
+          "sha256": "7d0c36157a8d49594c563ef6bac047cc4b7e7cfcf80772e4d7f735b1fb701f78"
+        }
+      },
+      "structure": "extension",
+      "expect": "accept",
+      "view": "name-constraints"
+    },
+    {
+      "id": "pki/name-constraints-explicit-minimum",
+      "kind": "vector",
+      "description": "minimum encoded as its DEFAULT zero (X.690 11.5)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/name-constraints-explicit-minimum.der",
+          "sha256": "4ee0750b947912e0b5d517f3935ddca975a78bee97c75464505ee6c3a260bba0"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "name-constraints"
+    },
+    {
+      "id": "pki/name-constraints-empty",
+      "kind": "vector",
+      "description": "neither permitted nor excluded subtrees (RFC 5280 4.2.1.10)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/name-constraints-empty.der",
+          "sha256": "e4f60d0aa6d7f3d3b6a6494b1c861b99f649c6f9ec51abaf201b20f297327c95"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "name-constraints"
+    },
+    {
+      "id": "pki/policy-mappings-pair",
+      "kind": "vector",
+      "description": "issuerDomainPolicy then subjectDomainPolicy (RFC 5280 4.2.1.5)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/policy-mappings-pair.der",
+          "sha256": "256a0106fe81373db5f6885da6d9efc0558f36e436d033f41dcb028f18a27c2a"
+        }
+      },
+      "structure": "extension",
+      "expect": "accept",
+      "view": "policy-mappings"
+    },
+    {
+      "id": "pki/policy-mappings-three-oids",
+      "kind": "vector",
+      "description": "a mapping has exactly two OIDs",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/policy-mappings-three-oids.der",
+          "sha256": "1674e2b3acfdd3aec8d95b073adcaef3aff919b65c27703e420a012344cd5539"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "policy-mappings"
+    },
+    {
+      "id": "pki/access-descriptions-ca-issuers",
+      "kind": "vector",
+      "description": "a caIssuers location (RFC 5280 4.2.2.1)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/access-descriptions-ca-issuers.der",
+          "sha256": "a4b315e13d61a5c6c7f5a79483ed6507ea86d6658fad9658808f5d0d9e18b493"
+        }
+      },
+      "structure": "extension",
+      "expect": "accept",
+      "view": "access-descriptions"
+    },
+    {
+      "id": "pki/extended-key-usage-empty",
+      "kind": "vector",
+      "description": "ExtKeyUsageSyntax is SIZE (1..MAX) (RFC 5280 4.2.1.12)",
+      "requirements": [
+        "pki-x509-extensions"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/extended-key-usage-empty.der",
+          "sha256": "e4f60d0aa6d7f3d3b6a6494b1c861b99f649c6f9ec51abaf201b20f297327c95"
+        }
+      },
+      "structure": "extension",
+      "expect": "reject",
+      "view": "object-identifiers"
+    },
+    {
+      "id": "pki/cms-detached",
+      "kind": "vector",
+      "description": "detached id-data SignedData, v1 signer",
+      "requirements": [
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-detached.der",
+          "sha256": "95b227ddedf87b919ce463f2ea90882e089cd89907e0a316c8ddf2b29f34e685"
+        }
+      },
+      "structure": "cms",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/cms-key-identifier",
+      "kind": "vector",
+      "description": "subjectKeyIdentifier signer: SignerInfo and SignedData v3 (RFC 5652 5.1, 5.3)",
+      "requirements": [
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-key-identifier.der",
+          "sha256": "d96088049dfd2432aa77d98c90dcf5e3299e7b50eb9fc185eaafd6bc38c090e1"
+        }
+      },
+      "structure": "cms",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/cms-ber-content",
+      "kind": "vector",
+      "description": "indefinite SignedData with constructed encapsulated octets",
+      "requirements": [
+        "pki-der",
+        "pki-ber-subset",
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-ber-content.der",
+          "sha256": "9e30e44497c3357fa60a9958bdc0bc3ca1808f070e6404203246a410cd13a813"
+        }
+      },
+      "structure": "cms-ber",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/cms-other-revocation",
+      "kind": "vector",
+      "description": "OtherRevocationInfoFormat requires SignedData v5 (RFC 5652 5.1)",
+      "requirements": [
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-other-revocation.der",
+          "sha256": "91e9affd762d50e10b2e1ea501a50216863ac775f4a4a878b49120b3e945c020"
+        }
+      },
+      "structure": "cms",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/cms-attribute-certificate",
+      "kind": "vector",
+      "description": "a v1 attribute certificate requires SignedData v3 (RFC 5652 5.1)",
+      "requirements": [
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-attribute-certificate.der",
+          "sha256": "733549517de1daa83a425f831c8ea11bdb54432137e3e1e3ec24e02a549bff89"
+        }
+      },
+      "structure": "cms",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/cms-invalid-certificate-choice",
+      "kind": "vector",
+      "description": "context tag 4 is not a CertificateChoices alternative (RFC 5652 10.2.2)",
+      "requirements": [
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-invalid-certificate-choice.der",
+          "sha256": "b9e2da6cec7379007b232dbab7e697450f3cdf90a962379037628ff231feeab1"
+        }
+      },
+      "structure": "cms",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/cms-signer-version-mismatch",
+      "kind": "vector",
+      "description": "subjectKeyIdentifier requires SignerInfo v3 (RFC 5652 5.3)",
+      "requirements": [
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-signer-version-mismatch.der",
+          "sha256": "05fa0f92c8b016e6bf4fd635856c33b35d1e48a00efbb27f7b23d53b83e3362a"
+        }
+      },
+      "structure": "cms",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/cms-version-mismatch",
+      "kind": "vector",
+      "description": "SignedData v3 for id-data content with v1 signers (RFC 5652 5.1)",
+      "requirements": [
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-version-mismatch.der",
+          "sha256": "e076ab57e8c228df62c552fbd31b2c079158dfdbe44d8b25a609cf19c29863ca"
+        }
+      },
+      "structure": "cms",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/cms-oversized-version",
+      "kind": "vector",
+      "description": "a version INTEGER wider than 64 bits is malformed",
+      "requirements": [
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-oversized-version.der",
+          "sha256": "33277561177baf2de47b15a69a30e875958186f502de72342ae9a783236c3d2c"
+        }
+      },
+      "structure": "cms",
+      "expect": "reject",
+      "error": "syntax"
+    },
+    {
+      "id": "pki/cms-malformed-certificate",
+      "kind": "vector",
+      "description": "an embedded certificate with a malformed schema is kept apart; the SignedData stays readable",
+      "requirements": [
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-malformed-certificate.der",
+          "sha256": "84fca886ea6cb9330a2f86f1903d11d91b362753968162301bc99022335a196b"
+        }
+      },
+      "structure": "cms",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/cms-unordered-digests",
+      "kind": "vector",
+      "description": "digestAlgorithms out of DER SET OF order (X.690 11.6)",
+      "requirements": [
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-unordered-digests.der",
+          "sha256": "5a7b6bdb2f57d20e98cf3a59bad49208492b9a5694135df0434e5eaa01be39c6"
+        }
+      },
+      "structure": "cms",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/cms-ber-unordered-digests",
+      "kind": "vector",
+      "description": "a BER container keeps its digestAlgorithms order as a reported repair",
+      "requirements": [
+        "pki-der",
+        "pki-ber-subset",
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-ber-unordered-digests.der",
+          "sha256": "4e09b49adb652704e21863c0d1d9962be9bf9e73989cf8a1ca201041fb481367"
+        }
+      },
+      "structure": "cms-ber",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/cms-wrong-attribute-order",
+      "kind": "vector",
+      "description": "signed attributes out of DER SET OF order (X.690 11.6)",
+      "requirements": [
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-wrong-attribute-order.der",
+          "sha256": "2f2294f98369cd0f8911bd3632968c469da38228b6e68664b2669e41854e4727"
+        }
+      },
+      "structure": "cms",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/cms-ber-signed-attrs-length",
+      "kind": "vector",
+      "description": "BER length on signed attributes, which are always DER (RFC 5652 5.3)",
+      "requirements": [
+        "pki-der",
+        "pki-ber-subset",
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-ber-signed-attrs-length.der",
+          "sha256": "c574855c7b9c9bac7d96e7db281f464723c73326ff01de0030b3a9c9e8d6cd41"
+        }
+      },
+      "structure": "cms-ber",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/cms-ber-signed-attrs-indefinite",
+      "kind": "vector",
+      "description": "indefinite signed attributes in a BER container",
+      "requirements": [
+        "pki-der",
+        "pki-ber-subset",
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-ber-signed-attrs-indefinite.der",
+          "sha256": "069d848983538fd5fcb1976a80c521e11a625fb1442078c7c5c7f0993a105c8c"
+        }
+      },
+      "structure": "cms-ber",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/cms-missing-digest",
+      "kind": "vector",
+      "description": "message-digest attribute absent (RFC 5652 11.2)",
+      "requirements": [
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-missing-digest.der",
+          "sha256": "5e0b2d51d281802a5f3e5b66266bd8ecedd9a462b083b0a0f1864292b840c037"
+        }
+      },
+      "structure": "cms",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/cms-duplicate-digest",
+      "kind": "vector",
+      "description": "message-digest attribute repeated (RFC 5652 11.2)",
+      "requirements": [
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-duplicate-digest.der",
+          "sha256": "e0fd6c037c71adcf6e26398ce7a5cf2bd325a9b001165af47b1aa2f228faecca"
+        }
+      },
+      "structure": "cms",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/cms-wrong-content-type",
+      "kind": "vector",
+      "description": "content-type attribute differs from eContentType (RFC 5652 11.1)",
+      "requirements": [
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-wrong-content-type.der",
+          "sha256": "49830fb164945d4d87c4c58a2948603cf002dfca33663d0362ba2a27471e25bb"
+        }
+      },
+      "structure": "cms",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/cms-ber-unordered-attributes",
+      "kind": "vector",
+      "description": "unordered signed attributes stay invalid in a BER container",
+      "requirements": [
+        "pki-der",
+        "pki-ber-subset",
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-ber-unordered-attributes.der",
+          "sha256": "16236201ca83142264ae679127ca8ee9e014e498af30576668cb8463e0f86e82"
+        }
+      },
+      "structure": "cms-ber",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/cms-extra-field",
+      "kind": "vector",
+      "description": "a field after signerInfos",
+      "requirements": [
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-extra-field.der",
+          "sha256": "38f166dbd0d77dd32f06a7e2a3724e8944906ee11c793e08af9a3df26e4ac11b"
+        }
+      },
+      "structure": "cms",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/cms-signature-input",
+      "kind": "vector",
+      "description": "the DER SET that cms-detached's signer signs (RFC 5652 5.4)",
+      "requirements": [
+        "pki-cms-signed-data"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/cms-signature-input.der",
+          "sha256": "5f5e39875c73950ee664717edadcc8c9be9fb63b3d427f7424511855c344d344"
+        }
+      },
+      "structure": "signed-set",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/tst-all-fields",
+      "kind": "vector",
+      "description": "TSTInfo with every optional field",
+      "requirements": [
+        "pki-timestamp"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/tst-all-fields.der",
+          "sha256": "f0079cbe0248e7cbc63682efd423d71a66bb3dd6a47d2f78eaffa956092e301b"
+        }
+      },
+      "structure": "timestamp",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/tst-minimal",
+      "kind": "vector",
+      "description": "TSTInfo with required fields only and whole seconds",
+      "requirements": [
+        "pki-timestamp"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/tst-minimal.der",
+          "sha256": "214c38edaab6800f14c41a1cb8c50a05752b04779ab974c6fd5cd31057eb6f4d"
+        }
+      },
+      "structure": "timestamp",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/tst-negative-serial-nonce",
+      "kind": "vector",
+      "description": "RFC 3161 2.4.2 restricts neither the serial number's nor the nonce's sign",
+      "requirements": [
+        "pki-timestamp"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/tst-negative-serial-nonce.der",
+          "sha256": "bb43a2327ba23ffbc92a83cd3aa4a6881f15595c9940dc50be8638855aa9a809"
+        }
+      },
+      "structure": "timestamp",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/tst-fraction-trailing-zero",
+      "kind": "vector",
+      "description": "fraction with a trailing zero (RFC 3161 2.4.2; X.690 11.7.3)",
+      "requirements": [
+        "pki-timestamp"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/tst-fraction-trailing-zero.der",
+          "sha256": "d5e593887c5acb0dd2f3b28396649183e24f4091351d24a01e8b479d8a501f25"
+        }
+      },
+      "structure": "timestamp",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/tst-default-ordering",
+      "kind": "vector",
+      "description": "ordering encoded as its DEFAULT FALSE (X.690 11.5)",
+      "requirements": [
+        "pki-timestamp"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/tst-default-ordering.der",
+          "sha256": "61f26da5868d91ac076ae917100172c5f535a507fe03599eed3c8c3feef4a680"
+        }
+      },
+      "structure": "timestamp",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/tst-invalid-millis",
+      "kind": "vector",
+      "description": "millis outside 1..999 (RFC 3161 2.4.2)",
+      "requirements": [
+        "pki-timestamp"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/tst-invalid-millis.der",
+          "sha256": "9f9c00b2bcbb0493d406ce63811015cca17be8dcbfae6f99b876ff066c8c23b2"
+        }
+      },
+      "structure": "timestamp",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/tst-invalid-micros",
+      "kind": "vector",
+      "description": "micros outside 1..999 (RFC 3161 2.4.2)",
+      "requirements": [
+        "pki-timestamp"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/tst-invalid-micros.der",
+          "sha256": "e22d209f6a42f2cc8dc1572b937a484364d95ab74b6780dc7947bcbf9504aa48"
+        }
+      },
+      "structure": "timestamp",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/tst-version-2",
+      "kind": "vector",
+      "description": "TSTInfo version other than v1 (RFC 3161 2.4.2)",
+      "requirements": [
+        "pki-timestamp"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/tst-version-2.der",
+          "sha256": "5508c4155e90cf4568c8d2ed1930a246c348e95ec1dcac05dd0ac85d0aea1ef8"
+        }
+      },
+      "structure": "timestamp",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/ecdsa-signature",
+      "kind": "vector",
+      "description": "two nonnegative INTEGERs (RFC 3279 2.2.3)",
+      "requirements": [
+        "pki-ecdsa-envelope"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/ecdsa-signature.der",
+          "sha256": "0967e4b019415a3ec9f2a573bc9c7f1a327c5324e73be2fc5879efa093a7987e"
+        }
+      },
+      "structure": "ecdsa",
+      "expect": "accept"
+    },
+    {
+      "id": "pki/ecdsa-negative",
+      "kind": "vector",
+      "description": "a negative s cannot be a signature component",
+      "requirements": [
+        "pki-ecdsa-envelope"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/ecdsa-negative.der",
+          "sha256": "d87f99fda2e6d31e732a046f48252e34718906d3e963c7c3a77fe16c702dabe1"
+        }
+      },
+      "structure": "ecdsa",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/ecdsa-extra-field",
+      "kind": "vector",
+      "description": "a third INTEGER",
+      "requirements": [
+        "pki-ecdsa-envelope"
+      ],
+      "files": {
+        ".der": {
+          "path": "corpus/generated/pki/ecdsa-extra-field.der",
+          "sha256": "ef7f0a1d548c93a548baad3fc05229e7f5edf7b844dcb2ef3e287665d7a89f5a"
+        }
+      },
+      "structure": "ecdsa",
+      "expect": "reject"
+    },
+    {
+      "id": "pki/paths",
+      "kind": "vector",
+      "description": "anchor, issuer and target triples for RFC 5280 6.1 basic checks and RFC 9549/9598 names",
+      "requirements": [
+        "pki-path-validation"
+      ],
+      "files": {
+        ".txt": {
+          "path": "corpus/generated/pki/paths.txt",
+          "sha256": "4918f565ec6da470813c1db5e54b5383b25632b5b34d2e7edd786b035f158865"
+        }
+      },
+      "structure": "records"
+    },
+    {
+      "id": "pki/graphs",
+      "kind": "vector",
+      "description": "an issuer pool with shared names, cycles and an unknown matching rule for path building",
+      "requirements": [
+        "pki-path-validation"
+      ],
+      "files": {
+        ".txt": {
+          "path": "corpus/generated/pki/graphs.txt",
+          "sha256": "99070303d43a33b26ab58d60fa6b347402a8fbe22816bdaab6d93f4ee16c13d0"
+        }
+      },
+      "structure": "records"
+    },
+    {
+      "id": "pki/path-inputs",
+      "kind": "vector",
+      "description": "caller inputs: initial name constraints, denied name forms and conservative name matching",
+      "requirements": [
+        "pki-path-validation"
+      ],
+      "files": {
+        ".txt": {
+          "path": "corpus/generated/pki/path-inputs.txt",
+          "sha256": "a0e090552e6f907b59ddc6eca1df93ad87440d6a5c476666c8145df6b388f0e0"
+        }
+      },
+      "structure": "records"
+    },
+    {
+      "id": "pki/crls",
+      "kind": "vector",
+      "description": "CRLs for RFC 5280 6.3 scope, reasons, freshness, delta CRLs and critical extensions",
+      "requirements": [
+        "pki-path-validation",
+        "pki-crl-revocation"
+      ],
+      "files": {
+        ".txt": {
+          "path": "corpus/generated/pki/crls.txt",
+          "sha256": "ed2ead6cde7fce88ba83e9c3bd9039141a4ef81b0fd4bc55e4c5a0a41c782771"
+        }
+      },
+      "structure": "records"
+    },
+    {
+      "id": "pki/path-security",
+      "kind": "vector",
+      "description": "signed certificates and CRLs whose signer and issuer bindings must not be bypassed",
+      "requirements": [
+        "pki-path-validation",
+        "pki-crl-revocation"
+      ],
+      "files": {
+        ".txt": {
+          "path": "corpus/generated/pki/path-security.txt",
+          "sha256": "717877c998de1eec7d67b75c69f63c4bac5236c6084e66d1ba00e46ee384245d"
+        }
+      },
+      "structure": "records"
+    }
+  ]
+}

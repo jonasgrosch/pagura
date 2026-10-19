@@ -1,29 +1,51 @@
 use super::*;
 use crate::der::Document;
+use pagura_core::SignatureLimits;
+use pagura_testkit::fixture_text;
 use std::collections::BTreeMap;
-use std::process::Command;
+use std::path::PathBuf;
 
 fn unhex(text: &str) -> Vec<u8> {
     if text == "-" {
         return Vec::new();
     }
-    text.as_bytes()
-        .as_chunks::<2>()
-        .0
-        .iter()
-        .map(|pair| u8::from_str_radix(std::str::from_utf8(pair).unwrap(), 16).unwrap())
-        .collect()
+    pagura_testkit::unhex(text)
 }
 fn time() -> Time<'static> {
-    Time {
-        year: 2020,
-        month: 1,
-        day: 1,
-        hour: 0,
-        minute: 0,
-        second: 0,
-        fraction: "",
+    Time::from_utc(2020, 1, 1, 0, 0, 0).unwrap()
+}
+
+/// The signature reference cache, located as tools/pki_vectors.py does.
+pub(super) fn references() -> PathBuf {
+    std::env::var_os("PAGURA_SIGNATURE_REFERENCES_DIR").map_or_else(
+        || {
+            std::env::var_os("PAGURA_REFERENCES_DIR")
+                .map(PathBuf::from)
+                .or_else(|| {
+                    std::env::var_os("HOME")
+                        .or_else(|| std::env::var_os("USERPROFILE"))
+                        .map(|home| PathBuf::from(home).join(".cache/pagura-references"))
+                })
+                .unwrap_or_default()
+                .join("signatures")
+        },
+        PathBuf::from,
+    )
+}
+
+/// A file that tools/pki_vectors.py exported from the PKITS cache, if any.
+pub(super) fn exported(file: &str) -> Option<String> {
+    let text = std::fs::read_to_string(references().join("export/pki").join(file)).ok();
+    if text
+        .as_ref()
+        .is_none_or(|text| text.starts_with("ABSENT\t"))
+    {
+        eprintln!(
+            "PKITS export {file} absent; run tools/pki_vectors.py. Generated tests still run"
+        );
+        return None;
     }
+    text
 }
 fn record_key(input: SignatureInput<'_>) -> Vec<Vec<u8>> {
     let bits = |bits: BitString<'_>| {
@@ -147,22 +169,7 @@ fn assert_pkits_path(
 }
 
 fn pkits_text() -> Option<String> {
-    let output = Command::new("python3")
-        .arg(crate::tests::generator("pkits.py"))
-        .arg(crate::tests::references())
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let text = String::from_utf8(output.stdout).unwrap();
-    if text.starts_with("ABSENT\t") {
-        eprintln!("External PKITS suite absent; generated path validation tests still run");
-        return None;
-    }
-    Some(text)
+    exported("pkits.txt")
 }
 
 #[test]
@@ -270,26 +277,14 @@ fn cached_pkits_certification_paths() {
 }
 
 fn synthetic() -> String {
-    let output = Command::new("python3")
-        .arg(crate::tests::generator("paths.py"))
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    String::from_utf8(output.stdout).unwrap()
+    fixture_text("pki", "paths.txt")
 }
 fn structural_verifier(_: SignatureInput<'_>, _: &Limits) -> SignatureResult {
     SignatureResult::Verified
 }
 fn synthetic_options() -> ValidationOptions<'static> {
-    let mut options = ValidationOptions::new(Time {
-        year: 2025,
-        ..time()
-    });
-    options.key_usage = 1; // digitalSignature when the target asserts keyUsage.
+    let mut options = ValidationOptions::new(Time::from_utc(2025, 1, 1, 0, 0, 0).unwrap());
+    options.key_usage = KeyUsage::DIGITAL_SIGNATURE; // When the target asserts keyUsage.
     options.extended_key_usage = Some(Oid(vec![43, 6, 1, 5, 5, 7, 3, 8]));
     options
 }
@@ -386,24 +381,32 @@ fn host_trust_revocation_and_search_bounds() {
             ..
         }
     ));
+    let bound = |signatures: SignatureLimits| Limits {
+        signatures,
+        ..limits
+    };
+    let budgets = limits.signatures;
     for bounded in [
-        Limits { depth: 1, ..limits },
-        Limits {
-            value_nodes: 1,
-            ..limits
-        },
-        Limits {
-            operations: 1,
-            ..limits
-        },
-        Limits {
-            document_bytes: 1,
-            ..limits
-        },
-        Limits {
-            string_bytes: 1,
-            ..limits
-        },
+        bound(SignatureLimits {
+            path_certificates: 1,
+            ..budgets
+        }),
+        bound(SignatureLimits {
+            path_nodes: 1,
+            ..budgets
+        }),
+        bound(SignatureLimits {
+            path_work: 1,
+            ..budgets
+        }),
+        bound(SignatureLimits {
+            path_bytes: 1,
+            ..budgets
+        }),
+        bound(SignatureLimits {
+            path_verifications: 0,
+            ..budgets
+        }),
     ] {
         let search = build_paths(
             2,
@@ -425,10 +428,7 @@ fn host_trust_revocation_and_search_bounds() {
             ..
         }
     ));
-    let expired = ValidationOptions::new(Time {
-        year: 2031,
-        ..time()
-    });
+    let expired = ValidationOptions::new(Time::from_utc(2031, 1, 1, 0, 0, 0).unwrap());
     assert!(matches!(
         validate_path(&pool[1..], anchor, &expired, &mut unknown, &limits).state,
         PathState::Invalid {
@@ -441,7 +441,10 @@ fn host_trust_revocation_and_search_bounds() {
 #[test]
 fn policy_graph_shares_parents_and_bounds_edges() {
     let limits = Limits {
-        value_nodes: 5000,
+        signatures: SignatureLimits {
+            path_nodes: 5000,
+            ..Limits::default().signatures
+        },
         ..Limits::default()
     };
     let mut budget = budget::Budget::new(&limits);
@@ -465,7 +468,10 @@ fn policy_graph_shares_parents_and_bounds_edges() {
     }
     assert_eq!(graph.finish(&ids, 40, &mut budget).unwrap(), ids);
     let limits = Limits {
-        value_nodes: 5,
+        signatures: SignatureLimits {
+            path_nodes: 5,
+            ..limits.signatures
+        },
         ..limits
     };
     let mut budget = budget::Budget::new(&limits);
@@ -478,12 +484,7 @@ fn policy_graph_shares_parents_and_bounds_edges() {
 
 #[test]
 fn issuer_graphs_keep_each_path_state_and_bound_branching() {
-    let output = Command::new("python3")
-        .arg(crate::tests::generator("graphs.py"))
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let text = String::from_utf8(output.stdout).unwrap();
+    let text = fixture_text("pki", "graphs.txt");
     let bytes = text
         .lines()
         .map(|line| unhex(line.split('\t').nth(1).unwrap()))
@@ -560,7 +561,10 @@ fn issuer_graphs_keep_each_path_state_and_bound_branching() {
             .any(|p| p.report.basic == PathState::Valid)
     );
     let bounded = Limits {
-        value_nodes: 300,
+        signatures: SignatureLimits {
+            path_nodes: 300,
+            ..limits.signatures
+        },
         ..limits
     };
     let mut branches = pool[..7].to_vec();
@@ -575,7 +579,9 @@ fn issuer_graphs_keep_each_path_state_and_bound_branching() {
     );
     assert!(!result.complete);
     assert!(matches!(result.stopped, Some(Uncertainty::Limit(_))));
-    assert!(result.paths.len() <= bounded.value_nodes);
+    assert!(
+        result.paths.len() <= pagura_core::convert::u32_to_usize(bounded.signatures.path_nodes)
+    );
 }
 
 #[test]
@@ -598,7 +604,7 @@ fn caller_time_and_purpose_inputs_are_checked() {
     let anchor = TrustAnchor::from_certificate(&certs[0]);
     let pool = [&certs[1], &certs[2]];
     let mut options = synthetic_options();
-    options.key_usage = 0;
+    options.key_usage = KeyUsage::default();
     assert!(matches!(
         validate_path(&pool, anchor, &options, &mut structural_verifier, &limits).basic,
         PathState::Invalid {
@@ -614,19 +620,17 @@ fn caller_time_and_purpose_inputs_are_checked() {
             ..
         }
     ));
-    options.key_usage = 1 << 2; // Private-purpose application explicitly requires keyEncipherment.
+    // A private-purpose application explicitly requires keyEncipherment.
+    options.key_usage = KeyUsage::KEY_ENCIPHERMENT;
     assert_eq!(
         validate_path(&pool, anchor, &options, &mut structural_verifier, &limits).basic,
         PathState::Valid
     );
-    options.time.month = 13;
-    assert!(matches!(
-        validate_path(&pool, anchor, &options, &mut structural_verifier, &limits).basic,
-        PathState::Invalid {
-            reason: InvalidReason::Input,
-            ..
-        }
-    ));
+    // An impossible caller time cannot be built, so it never reaches validation.
+    assert_eq!(
+        Time::from_utc(2025, 13, 1, 0, 0, 0).unwrap_err().kind,
+        pagura_core::ErrorKind::InvalidArgument
+    );
     assert!(matches!(
         validate_path(&[], anchor, &options, &mut structural_verifier, &limits).basic,
         PathState::Invalid {
@@ -659,10 +663,7 @@ fn validity_endpoints_are_inclusive_and_fractional_time_is_exact() {
             PathState::Valid
         );
     }
-    let after = ValidationOptions::new(Time {
-        fraction: "0001",
-        ..certs[2].not_after
-    });
+    let after = ValidationOptions::new(certs[2].not_after.with_fraction("0001").unwrap());
     assert!(matches!(
         validate_path(&path, anchor, &after, &mut structural_verifier, &limits).basic,
         PathState::Invalid {
@@ -670,10 +671,18 @@ fn validity_endpoints_are_inclusive_and_fractional_time_is_exact() {
             ..
         }
     ));
-    let before = ValidationOptions::new(Time {
-        year: 2023,
-        ..certs[2].not_before
-    });
+    let not_before = certs[2].not_before;
+    let before = ValidationOptions::new(
+        Time::from_utc(
+            2023,
+            not_before.month(),
+            not_before.day(),
+            not_before.hour(),
+            not_before.minute(),
+            not_before.second(),
+        )
+        .unwrap(),
+    );
     assert!(matches!(
         validate_path(&path, anchor, &before, &mut structural_verifier, &limits).basic,
         PathState::Invalid {
@@ -755,14 +764,17 @@ fn signature_input_work_is_admitted_before_calling_the_host() {
         SignatureResult::Verified
     };
     let bounded = Limits {
-        operations: 128,
+        signatures: SignatureLimits {
+            path_work: 128,
+            ..limits.signatures
+        },
         ..limits
     };
     let result = validate_path(&path, anchor, &synthetic_options(), &mut verifier, &bounded);
     assert!(matches!(
         result.basic,
         PathState::Indeterminate {
-            reason: Uncertainty::Limit("pki.operations"),
+            reason: Uncertainty::Limit("pki.path-work"),
             ..
         }
     ));
@@ -770,16 +782,7 @@ fn signature_input_work_is_admitted_before_calling_the_host() {
 }
 
 fn input_fixtures() -> String {
-    let output = Command::new("python3")
-        .arg(crate::tests::generator("path_inputs.py"))
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    String::from_utf8(output.stdout).unwrap()
+    fixture_text("pki", "path-inputs.txt")
 }
 #[test]
 fn conservative_names_and_unconstrained_sans() {
@@ -801,10 +804,7 @@ fn conservative_names_and_unconstrained_sans() {
         let result = validate_path(
             &[&certificates[1], &certificates[2]],
             TrustAnchor::from_certificate(&certificates[0]),
-            &ValidationOptions::new(Time {
-                year: 2025,
-                ..time()
-            }),
+            &ValidationOptions::new(Time::from_utc(2025, 1, 1, 0, 0, 0).unwrap()),
             &mut structural_verifier,
             &limits,
         );
@@ -839,10 +839,7 @@ fn padded_issuer_pool_memoizes_and_caps_host_verification() {
         .collect::<Vec<_>>();
     let pool = certs.iter().collect::<Vec<_>>();
     let anchor = TrustAnchor::from_certificate(&certs[0]);
-    let mut options = ValidationOptions::new(Time {
-        year: 2025,
-        ..time()
-    });
+    let mut options = ValidationOptions::new(Time::from_utc(2025, 1, 1, 0, 0, 0).unwrap());
     let mut calls = 0;
     let mut verifier = |_: SignatureInput<'_>, _: &Limits| {
         calls += 1;
@@ -875,16 +872,23 @@ fn padded_issuer_pool_memoizes_and_caps_host_verification() {
     );
     assert_eq!(calls, 100);
     assert!(!full.complete && !full.exhaustive);
-    assert_eq!(full.stopped, Some(Uncertainty::Limit("pki.signatures")));
+    assert_eq!(
+        full.stopped,
+        Some(Uncertainty::Limit("pki.path-verifications"))
+    );
     assert!(matches!(
         full.paths.last().unwrap().report.basic,
         PathState::Indeterminate {
-            reason: Uncertainty::Limit("pki.signatures"),
+            reason: Uncertainty::Limit("pki.path-verifications"),
             ..
         }
     ));
     let bounded = Limits {
-        operations: 500_000,
+        signatures: SignatureLimits {
+            path_work: 500_000,
+            path_verifications: 1,
+            ..limits.signatures
+        },
         ..limits
     };
     calls = 0;

@@ -6,3 +6,5 @@
 data/** -text
 # Form values keep their exact line endings (fixtures.py records their hashes).
 corpus/generated/forms/*.value -text
+# DER fixtures are binary whatever bytes they contain.
+*.der binary

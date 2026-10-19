@@ -3,7 +3,7 @@
 The signature callback in these structural tests explicitly attests synthetic
 inputs. Mathematical signatures are exercised separately by PKITS records.
 """
-from fixtures import seq, set_of, oid, tlv, explicit, integer, bitstring, extension, RSA_SHA256, SPKI
+from .fixtures import seq, set_of, oid, tlv, explicit, integer, bitstring, extension, RSA_SHA256, SPKI
 
 
 def name(text, tag=12):
@@ -89,7 +89,7 @@ def cases():
     yield 'counter-arbitrary-width', 'valid', (extension(54, integer(2**160), True), extension(36, seq(tlv(0x80, b'\1' + b'\0'*20)), True)), (), LEAF, CA
 
 
-if __name__ == '__main__':
+def main():
     # A deliberately unusable certificate container for an explicitly trusted
     # name/key: anchor certificate validity and extensions must not be evaluated.
     anchor = certificate(ROOT, ROOT, 1, [extension(99, seq(), True)],

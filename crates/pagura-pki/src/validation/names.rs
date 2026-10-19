@@ -1,13 +1,16 @@
-//! Conservative RFC 5280 §7 and RFC 4518 comparison; RFC 9549/9598 domain constraints.
+//! Conservative RFC 5280 7 and RFC 4518 comparison; RFC 9549/9598 domain constraints.
 use super::budget::Budget;
 use super::{Check, InvalidReason, Issue, Uncertainty};
-use crate::ObjectIdentifier;
-use crate::der::{Element, Fields, Tag, single};
+use crate::der::{self, Element, Fields, Form, Tag, single};
 use crate::types::StringValue;
 use crate::x509::{
     Name,
     extensions::{self, GeneralName},
 };
+use crate::{ObjectIdentifier, oids};
+
+/// The id-at arc, 2.5.4, of X.520 attribute types.
+const ID_AT: [u8; 2] = [85, 4];
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Attribute {
@@ -20,10 +23,14 @@ struct Attribute {
 pub(super) struct Dn(Vec<Vec<Attribute>>);
 
 impl Dn {
-    pub fn read(name: Name<'_>, budget: &mut Budget<'_>) -> Check<Self> {
+    pub(super) fn read(name: Name<'_>, budget: &mut Budget<'_>) -> Check<Self> {
         Self::read_rdns(name.element().children(), budget)
     }
-    pub fn relative(base: Name<'_>, rdn: Element<'_>, budget: &mut Budget<'_>) -> Check<Self> {
+    pub(super) fn relative(
+        base: Name<'_>,
+        rdn: Element<'_>,
+        budget: &mut Budget<'_>,
+    ) -> Check<Self> {
         let mut name = Self::read(base, budget)?;
         let tail = Self::read_rdns(std::iter::once(rdn), budget)?;
         for rdn in tail.0 {
@@ -43,19 +50,20 @@ impl Dn {
             for attribute in rdn.children() {
                 budget.node()?;
                 let mut fields = Fields::sequence(attribute).map_err(|_| unknown())?;
-                let oid = ObjectIdentifier::parse(fields.take().map_err(|_| unknown())?)
-                    .map_err(|_| unknown())?
-                    .as_bytes();
+                let id = ObjectIdentifier::parse(fields.take().map_err(|_| unknown())?)
+                    .map_err(|_| unknown())?;
+                let oid = id.as_bytes();
                 let value = fields.take().map_err(|_| unknown())?;
                 fields.finish().map_err(|_| unknown())?;
-                // The standard X.520 caseIgnore family, UID and domainComponent.
-                // Unknown matching rules cannot be safely guessed from ASN.1 tags.
-                let x520 = oid.len() == 3
-                    && oid[..2] == [85, 4]
-                    && matches!(oid[2], 3..=13 | 15..=19 | 41..=46 | 51 | 54 | 65 | 97);
-                let dc = oid == [9, 146, 38, 137, 147, 242, 44, 100, 1, 25];
-                let uid = oid == [9, 146, 38, 137, 147, 242, 44, 100, 1, 1];
-                let email = oid == [42, 134, 72, 134, 247, 13, 1, 9, 1];
+                // The standard X.520 caseIgnore family (id-at arcs 2.5.4.n), UID
+                // and domainComponent. Unknown matching rules cannot be safely
+                // guessed from ASN.1 tags.
+                let x520 = oid.strip_prefix(&ID_AT).is_some_and(|arc| {
+                    matches!(arc, [3..=13 | 15..=19 | 41..=46 | 51 | 54 | 65 | 97])
+                });
+                let dc = id == oids::DOMAIN_COMPONENT;
+                let uid = id == oids::USER_ID;
+                let email = id == oids::EMAIL_ADDRESS;
                 budget.string(value.encoded().len())?;
                 budget.bytes(oid.len() + 64)?;
                 let prepared = if x520 || dc || uid || email {
@@ -78,7 +86,7 @@ impl Dn {
         }
         Ok(Self(result))
     }
-    pub fn owned_bytes(&self) -> usize {
+    pub(super) fn owned_bytes(&self) -> usize {
         self.0
             .iter()
             .map(|rdn| {
@@ -89,7 +97,7 @@ impl Dn {
             })
             .sum()
     }
-    pub fn equal(&self, other: &Self, budget: &mut Budget<'_>) -> Check<bool> {
+    pub(super) fn equal(&self, other: &Self, budget: &mut Budget<'_>) -> Check<bool> {
         budget.work(
             self.0
                 .iter()
@@ -99,7 +107,7 @@ impl Dn {
         )?;
         rdns_equal(&self.0, &other.0, budget)
     }
-    pub fn is_empty(&self) -> bool {
+    pub(super) fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
     fn subtree(&self, constraint: &Self, budget: &mut Budget<'_>) -> Check<bool> {
@@ -108,10 +116,10 @@ impl Dn {
         }
         rdns_equal(&self.0[..constraint.0.len()], &constraint.0, budget)
     }
-    pub fn emails(&self, budget: &mut Budget<'_>) -> Check<Vec<General>> {
+    pub(super) fn emails(&self, budget: &mut Budget<'_>) -> Check<Vec<General>> {
         let mut values = Vec::new();
         for attribute in self.0.iter().flatten() {
-            if attribute.oid == [42, 134, 72, 134, 247, 13, 1, 9, 1] {
+            if attribute.oid == oids::EMAIL_ADDRESS.as_bytes() {
                 budget.node()?;
                 budget.bytes(96 + attribute.value.len())?;
                 budget.work(attribute.value.len())?;
@@ -240,13 +248,17 @@ impl General {
             Self::Other(n) => *n,
         }
     }
-    pub fn read(value: GeneralName<'_>, constraint: bool, budget: &mut Budget<'_>) -> Check<Self> {
+    pub(super) fn read(
+        value: GeneralName<'_>,
+        constraint: bool,
+        budget: &mut Budget<'_>,
+    ) -> Check<Self> {
         Ok(match value {
             GeneralName::Directory(name) => Self::Directory(Dn::read(name, budget)?),
             GeneralName::Dns(bytes) => Self::Dns(domain(bytes, constraint, budget)?),
             GeneralName::Mailbox(bytes) => {
                 if constraint {
-                    // RFC 9549 §2.2 removes individual-mailbox constraints.
+                    // RFC 9549 2.2 removes individual-mailbox constraints.
                     Self::Mail(domain(bytes, true, budget)?)
                 } else {
                     Self::Mail(mailbox(bytes, false, budget)?)
@@ -274,23 +286,23 @@ impl General {
                 Self::Ip(bytes.to_vec())
             }
             GeneralName::RegisteredId(_) => Self::Other(8),
-            GeneralName::Other(element) if element.tag() == Tag::context(0, true) => {
+            GeneralName::Other(element) if element.tag() == Tag::context(0, Form::Constructed) => {
                 let mut fields = Fields::new(element);
                 let oid = ObjectIdentifier::parse(fields.take().map_err(|_| bad())?)
                     .map_err(|_| bad())?;
                 let value = fields
                     .take()
                     .map_err(|_| bad())?
-                    .expect(Tag::context(0, true))
+                    .expect(Tag::context(0, Form::Constructed))
                     .map_err(|_| bad())?;
                 fields.finish().map_err(|_| bad())?;
-                if oid.is(&[43, 6, 1, 5, 5, 7, 8, 9]) {
+                if oid == extensions::SMTP_UTF8_MAILBOX {
                     if constraint {
                         return Err(bad());
                     }
                     let value = single(value)
                         .map_err(|_| bad())?
-                        .expect(Tag::universal(12, false))
+                        .expect(der::UTF8_STRING)
                         .map_err(|_| bad())?;
                     Self::Mail(mailbox(value.content(), true, budget)?)
                 } else {
@@ -422,26 +434,23 @@ pub(super) struct Constraints {
     excluded: Vec<General>,
 }
 impl Constraints {
-    pub fn is_empty(&self) -> bool {
+    pub(super) fn is_empty(&self) -> bool {
         self.denied == 0 && self.permitted.is_empty() && self.excluded.is_empty()
     }
-    pub fn deny(&mut self, forms: &[super::NameForm], budget: &mut Budget<'_>) -> Check<()> {
+    pub(super) fn deny(&mut self, forms: &[super::NameForm], budget: &mut Budget<'_>) -> Check<()> {
         budget.work(forms.len())?;
         for form in forms {
             self.denied |= 1 << form.number();
         }
         Ok(())
     }
-    pub fn add(&mut self, value: Element<'_>, budget: &mut Budget<'_>) -> Check<()> {
+    pub(super) fn add(&mut self, value: Element<'_>, budget: &mut Budget<'_>) -> Check<()> {
         budget.bytes(value.encoded().len().saturating_mul(64))?;
         budget.nodes(value.walk().count())?;
         budget.work(value.encoded().len())?;
         let constraints = extensions::NameConstraints::parse(value).map_err(|_| bad())?;
         let mut permitted = Vec::new();
-        for (subtrees, excluded) in [
-            (&constraints.permitted, false),
-            (&constraints.excluded, true),
-        ] {
+        for (subtrees, excluded) in [(constraints.permitted, false), (constraints.excluded, true)] {
             for subtree in subtrees {
                 budget.node()?;
                 budget.bytes(96)?;
@@ -465,7 +474,7 @@ impl Constraints {
         }
         Ok(())
     }
-    pub fn append(&mut self, other: &Self, budget: &mut Budget<'_>) -> Check<()> {
+    pub(super) fn append(&mut self, other: &Self, budget: &mut Budget<'_>) -> Check<()> {
         let bytes = other
             .permitted
             .iter()
@@ -483,7 +492,7 @@ impl Constraints {
     fn covers(&self, kind: u32) -> bool {
         (self.denied | self.forms) & (1 << kind) != 0
     }
-    pub fn check_certificate(
+    pub(super) fn check_certificate(
         &self,
         certificate: &crate::x509::Certificate<'_>,
         budget: &mut Budget<'_>,
@@ -499,16 +508,15 @@ impl Constraints {
             }
         }
         if let Some(extension) = certificate.extension(extensions::SUBJECT_ALT_NAME) {
-            budget.bytes(extension.value.len().saturating_mul(64))?;
-            let doc = crate::der::Document::parse(extension.value, &budget.der_limits()).map_err(
-                |error| {
+            budget.bytes(extension.value().len().saturating_mul(64))?;
+            let doc =
+                der::Document::parse(extension.value(), &budget.der_limits()).map_err(|error| {
                     if matches!(error.kind, pagura_core::ErrorKind::Limit) {
                         Issue::Unknown(Uncertainty::Limit("pki.der"))
                     } else {
                         bad()
                     }
-                },
-            )?;
+                })?;
             budget.nodes(doc.root().walk().count())?;
             for name in extensions::general_names(doc.root()).map_err(|_| bad())? {
                 budget.node()?;
@@ -537,7 +545,7 @@ impl Constraints {
         }
         self.check(&names, budget)
     }
-    pub fn check(&self, names: &[General], budget: &mut Budget<'_>) -> Check<()> {
+    pub(super) fn check(&self, names: &[General], budget: &mut Budget<'_>) -> Check<()> {
         for name in names {
             budget.work(1)?;
             if self.denied & (1 << name.kind()) != 0 {

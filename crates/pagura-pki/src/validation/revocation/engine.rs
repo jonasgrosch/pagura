@@ -3,11 +3,13 @@ use super::{RevocationOutcome, UnknownReason};
 use crate::validation::budget::Budget;
 use crate::validation::names::Dn;
 use crate::validation::{
-    self, Check, EffectivePublicKey, InvalidReason, Issue, PathReport, PathState, SignatureInput,
-    SignatureResult, SignatureVerifier, TrustAnchor, Uncertainty, ValidationOptions,
-    WorkingPublicKey,
+    self, Check, EffectivePublicKey, InvalidReason, Issue, Oid, PathReport, PathState,
+    SignatureInput, SignatureResult, SignatureVerifier, TrustAnchor, Uncertainty,
+    ValidationOptions, WorkingPublicKey,
 };
-use crate::x509::extensions::{AuthorityKeyIdentifier, SUBJECT_KEY_IDENTIFIER};
+use crate::x509::extensions::{
+    AUTHORITY_KEY_IDENTIFIER, AuthorityKeyIdentifier, GeneralName, KeyUsage, SUBJECT_KEY_IDENTIFIER,
+};
 use crate::x509::{Certificate, CertificateList};
 use crate::{Time, types};
 
@@ -22,7 +24,7 @@ pub(super) struct Cached {
     pub authorizations: Vec<Authorization>,
 }
 impl Cached {
-    pub fn active(&self) -> bool {
+    pub(super) fn active(&self) -> bool {
         self.authorizations.iter().any(|a| a.active)
     }
 }
@@ -162,7 +164,7 @@ impl Engine<'_, '_> {
     ) -> Check<()> {
         let anchor_name = Dn::read(anchor.name, budget)?;
         let mut signer_options = ValidationOptions::new(options.time);
-        signer_options.key_usage = 1 << 6;
+        signer_options.key_usage = KeyUsage::CRL_SIGN;
         signer_options.search = validation::SearchMode::All;
         signer_options.name_constraints = options.name_constraints;
         budget.bytes(options.denied_name_forms.len().saturating_mul(8))?;
@@ -340,7 +342,7 @@ fn owned_key(key: WorkingPublicKey<'_>, budget: &mut Budget<'_>) -> Check<Effect
             + parameters.map_or(0, <[u8]>::len),
     )?;
     Ok(EffectivePublicKey {
-        algorithm: key.algorithm.as_bytes().to_vec(),
+        algorithm: Oid::new(key.algorithm),
         parameters: parameters.map(<[u8]>::to_vec),
         key: key.key.as_bytes().to_vec(),
         unused_bits: key.key.unused_bits(),
@@ -367,7 +369,12 @@ fn authority_matches(
     certificate: &Certificate<'_>,
     budget: &mut Budget<'_>,
 ) -> Check<bool> {
-    let Some(ext) = crl.extensions.iter().find(|e| e.id.is(parse::AKI)).copied() else {
+    let Some(ext) = crl
+        .extensions
+        .iter()
+        .find(|e| e.id() == AUTHORITY_KEY_IDENTIFIER)
+        .copied()
+    else {
         return Ok(true);
     };
     let doc = document(ext, budget)?;
@@ -382,18 +389,17 @@ fn authority_matches(
             return Ok(false);
         }
     }
-    if let Some(serial) = aki.serial {
+    // The schema pairs the issuer names with the serial (RFC 5280 4.2.1.1).
+    if let Some(authority) = aki.certificate {
+        let serial = authority.serial;
         budget.work(serial.as_bytes().len())?;
         if serial != certificate.serial {
             return Ok(false);
         }
         let issuer = Dn::read(certificate.issuer, budget)?;
-        let Some(names) = aki.issuer else {
-            return Ok(false);
-        };
         let mut matched = false;
-        for name in names {
-            if let crate::x509::extensions::GeneralName::Directory(name) = name {
+        for &name in &authority.issuer {
+            if let GeneralName::Directory(name) = name {
                 matched |= issuer.equal(&Dn::read(name, budget)?, budget)?;
             }
         }

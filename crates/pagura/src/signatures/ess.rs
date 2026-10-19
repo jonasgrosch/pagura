@@ -3,7 +3,7 @@ use super::{SubFilter, algorithms};
 use pagura_core::Result;
 use pagura_crypto::HashAlgorithm;
 use pagura_pki::cms::{Attribute, SignedAttributes};
-use pagura_pki::der::{Element, Fields, SEQUENCE, Tag, single};
+use pagura_pki::der::{Element, Fields, Form, SEQUENCE, Tag, single};
 use pagura_pki::oids::{SIGNING_CERTIFICATE, SIGNING_CERTIFICATE_V2};
 use pagura_pki::x509::{AlgorithmIdentifier, Certificate};
 use pagura_pki::{Integer, types};
@@ -27,10 +27,10 @@ pub(super) fn check(
     }
     let mut matches = true;
     if let Some(attribute) = v2 {
-        matches &= check_attribute(attribute, certificate, true, weak, budget)?;
+        matches &= check_attribute(&attribute, certificate, true, weak, budget)?;
     }
     if let Some(attribute) = v1 {
-        matches &= check_attribute(attribute, certificate, false, weak, budget)?;
+        matches &= check_attribute(&attribute, certificate, false, weak, budget)?;
     }
     Ok(matches)
 }
@@ -94,7 +94,7 @@ fn check_attribute(
 fn issuer_serial(issuer: Element<'_>, certificate: &Certificate<'_>) -> Result<bool> {
     let mut fields = Fields::sequence(issuer)?;
     let names = fields.take()?.expect(SEQUENCE)?;
-    let name = single(single(names)?.expect(Tag::context(4, true))?)?;
+    let name = single(single(names)?.expect(Tag::context(4, Form::Constructed))?)?;
     pagura_pki::x509::Name::parse(name)?;
     let serial = Integer::parse(fields.take()?)?;
     serial.unsigned()?;

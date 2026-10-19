@@ -1,18 +1,12 @@
 use super::*;
 use crate::der::Document;
 use crate::validation::{InvalidReason, PathState, SignatureInput, SignatureResult, Uncertainty};
+use crate::x509::extensions::KeyUsage;
+use pagura_core::SignatureLimits;
+use pagura_testkit::{fixture_text, unhex};
 use std::collections::BTreeMap;
-use std::process::Command;
 
 type Records = BTreeMap<Vec<Vec<u8>>, SignatureResult>;
-fn unhex(text: &str) -> Vec<u8> {
-    text.as_bytes()
-        .as_chunks::<2>()
-        .0
-        .iter()
-        .map(|b| u8::from_str_radix(std::str::from_utf8(b).unwrap(), 16).unwrap())
-        .collect()
-}
 fn key(input: SignatureInput<'_>) -> Vec<Vec<u8>> {
     vec![
         input.algorithm.element.encoded().to_vec(),
@@ -31,15 +25,7 @@ fn key(input: SignatureInput<'_>) -> Vec<Vec<u8>> {
     ]
 }
 fn time() -> Time<'static> {
-    Time {
-        year: 2020,
-        month: 1,
-        day: 1,
-        hour: 0,
-        minute: 0,
-        second: 0,
-        fraction: "",
-    }
+    Time::from_utc(2020, 1, 1, 0, 0, 0).unwrap()
 }
 struct Data {
     certificates: BTreeMap<String, Vec<u8>>,
@@ -146,21 +132,9 @@ fn run_with_options(
 
 #[test]
 fn cached_pkits_offline_revocation() {
-    let output = Command::new("python3")
-        .arg(crate::tests::generator("revocation.py"))
-        .arg(crate::tests::references())
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let text = String::from_utf8(output.stdout).unwrap();
-    if text.starts_with("ABSENT") {
-        eprintln!("PKITS cache absent; offline revocation corpus unavailable");
+    let Some(text) = crate::validation::tests::exported("revocation.txt") else {
         return;
-    }
+    };
     let data = Data::read(&text);
     let limits = Limits::default();
     let mut counts = BTreeMap::<u32, [usize; 5]>::new();
@@ -242,16 +216,7 @@ fn structural_signature(input: SignatureInput<'_>, _: &Limits) -> SignatureResul
     }
 }
 fn synthetic_crls() -> String {
-    let output = Command::new("python3")
-        .arg(crate::tests::generator("crls.py"))
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    String::from_utf8(output.stdout).unwrap()
+    fixture_text("pki", "crls.txt")
 }
 fn assert_outcome(ident: &str, expected: &str, report: &PathReport) {
     let outcome = report.revocation().last().unwrap();
@@ -283,7 +248,7 @@ fn assert_outcome(ident: &str, expected: &str, report: &PathReport) {
             } else {
                 (2024, 12, 1)
             };
-            assert_eq!((time.year, time.month, time.day), expected_date);
+            assert_eq!((time.year(), time.month(), time.day()), expected_date);
             format!("{reason:?}") == value
         }
         (_, None) if expected == "Signature" => matches!(
@@ -296,7 +261,7 @@ fn assert_outcome(ident: &str, expected: &str, report: &PathReport) {
         (_, None) if expected == "Limit" => matches!(
             report.state(),
             PathState::Indeterminate {
-                reason: Uncertainty::Limit("pki.signatures"),
+                reason: Uncertainty::Limit("pki.path-verifications"),
                 ..
             }
         ),
@@ -313,7 +278,11 @@ fn independent_crl_scope_freshness_deltas_and_critical_extensions() {
         let parse_limits = Limits::default();
         let limits = if matches!(f[2], "Limit" | "InvalidBound") {
             Limits {
-                operations: 1_500_000,
+                signatures: SignatureLimits {
+                    path_work: 1_500_000,
+                    path_verifications: 3,
+                    ..parse_limits.signatures
+                },
                 ..parse_limits
             }
         } else {
@@ -334,10 +303,7 @@ fn independent_crl_scope_freshness_deltas_and_critical_extensions() {
         let pool = certificates.iter().collect::<Vec<_>>();
         let crls = crls.iter().collect::<Vec<_>>();
         let anchor = TrustAnchor::from_certificate(&certificates[0]);
-        let mut options = ValidationOptions::new(Time {
-            year: 2025,
-            ..time()
-        });
+        let mut options = ValidationOptions::new(Time::from_utc(2025, 1, 1, 0, 0, 0).unwrap());
         let mut calls = 0;
         let mut verifier = |input: SignatureInput<'_>, limits: &Limits| {
             calls += 1;
@@ -348,11 +314,14 @@ fn independent_crl_scope_freshness_deltas_and_critical_extensions() {
             }
         };
         if f[2] == "InvalidBound" {
-            options.key_usage = 1;
+            options.key_usage = KeyUsage::DIGITAL_SIGNATURE;
             let result =
                 build_paths_with_crls(2, &pool, &[anchor], &crls, &options, &mut verifier, &limits);
             assert!(!result.complete && !result.exhaustive);
-            assert_eq!(result.stopped, Some(Uncertainty::Limit("pki.signatures")));
+            assert_eq!(
+                result.stopped,
+                Some(Uncertainty::Limit("pki.path-verifications"))
+            );
             assert!(matches!(
                 result.paths[0].report.state(),
                 PathState::Invalid {
@@ -403,16 +372,7 @@ fn independent_crl_scope_freshness_deltas_and_critical_extensions() {
 }
 
 fn security_data() -> Data {
-    let output = Command::new("python3")
-        .arg(crate::tests::generator("path_security.py"))
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Data::read(&String::from_utf8(output.stdout).unwrap())
+    Data::read(&fixture_text("pki", "path-security.txt"))
 }
 fn check_security_cases(accept: impl Fn(&[String]) -> bool, expected: usize) {
     let data = security_data();
@@ -425,10 +385,7 @@ fn check_security_cases(accept: impl Fn(&[String]) -> bool, expected: usize) {
             crate::validation::SearchMode::FirstAcceptable,
             crate::validation::SearchMode::All,
         ] {
-            let mut options = ValidationOptions::new(Time {
-                year: 2025,
-                ..time()
-            });
+            let mut options = ValidationOptions::new(Time::from_utc(2025, 1, 1, 0, 0, 0).unwrap());
             options.search = mode;
             let anchor = case[4].split(',').position(|name| name == case[3]).unwrap();
             let search = run_with_options(&data, case, &limits, &options, target, anchor);
@@ -571,10 +528,7 @@ fn crl_issuer_filtering_avoids_cross_product_signature_checks() {
         crate::validation::SearchMode::FirstAcceptable,
         crate::validation::SearchMode::All,
     ] {
-        let mut options = ValidationOptions::new(Time {
-            year: 2025,
-            ..time()
-        });
+        let mut options = ValidationOptions::new(Time::from_utc(2025, 1, 1, 0, 0, 0).unwrap());
         options.search = mode;
         let mut calls = 0;
         let mut verifier = |input: SignatureInput<'_>, _: &Limits| {

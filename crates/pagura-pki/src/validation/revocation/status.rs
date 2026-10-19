@@ -5,10 +5,10 @@ use crate::Time;
 use crate::validation::budget::Budget;
 use crate::validation::names::Dn;
 use crate::validation::{Check, Issue, Uncertainty};
-use crate::x509::{Certificate, CertificateList};
+use crate::x509::{Certificate, CertificateList, extensions};
 
 impl Engine<'_, '_> {
-    pub fn status(
+    pub(super) fn status(
         &self,
         certificate: &Certificate<'_>,
         budget: &mut Budget<'_>,
@@ -99,7 +99,7 @@ impl Engine<'_, '_> {
                 return Err(parse::unknown(reason));
             }
         };
-        if delta.is_none() && certificate.extension(parse::FRESHEST).is_some() {
+        if delta.is_none() && certificate.extension(extensions::FRESHEST_CRL).is_some() {
             return Err(parse::unknown(UnknownReason::MissingDelta));
         }
         if self.superseded(i, delta, budget)? {
@@ -266,7 +266,7 @@ fn same_key(a: &Cached, b: &Cached, budget: &mut Budget<'_>) -> Check<bool> {
         for y in b.authorizations.iter().filter(|a| a.active) {
             budget.work(
                 x.key.key.len()
-                    + x.key.algorithm.len()
+                    + x.key.algorithm.as_bytes().len()
                     + x.key.parameters.as_ref().map_or(0, Vec::len)
                     + 1,
             )?;
@@ -316,12 +316,12 @@ fn entry(
         budget.node()?;
         let mut reason = RevocationReason::Unspecified;
         for &ext in &entry.extensions {
-            match ext.id.as_bytes() {
-                [85, 29, 29] => {
+            match ext.id() {
+                extensions::CERTIFICATE_ISSUER => {
                     let doc = document(ext, budget)?;
                     current_issuers = parse::names(doc.root(), budget)?;
                 }
-                [85, 29, 21] => {
+                extensions::REASON_CODE => {
                     let doc = document(ext, budget)?;
                     reason = parse::reason(doc.root())?;
                 }
@@ -336,13 +336,7 @@ fn entry(
             }
             // RFC 5280 6.3.3(i–j) uses the matching authenticated entry;
             // a future revocationDate does not turn its status into Good.
-            status = Some((
-                reason,
-                Time {
-                    fraction: "",
-                    ..entry.date
-                },
-            ));
+            status = Some((reason, entry.date.whole_seconds()));
         }
     }
     Ok(status)

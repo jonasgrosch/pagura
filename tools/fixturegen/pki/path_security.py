@@ -3,9 +3,9 @@
 Exact synthetic signature attestations bind each signed object to its issuer
 key. They test state transitions, not signature arithmetic (covered by PKITS).
 """
-from fixtures import seq, explicit, integer, bitstring, extension, oid, tlv, RSA, RSA_SHA256
-from paths import name, GOOD_TIME, CA_BASIC
-from crls import point, URI
+from .fixtures import seq, explicit, integer, bitstring, extension, oid, tlv, RSA, RSA_SHA256
+from .paths import name, GOOD_TIME, CA_BASIC
+from .crls import point, URI
 
 
 KEYS = {n: seq(integer(257 + n * 2), integer(65537)) for n in (*range(1, 12), 99)}
@@ -30,7 +30,6 @@ def cert(ident, subject, issuer_name, serial, public_key, issuer_key, extensions
 
 def list_(ident, issuer_name, issuer_key, status='1'):
     # Build the signed range directly, independently of the Rust reader.
-    from fixtures import tlv
     body = seq(integer(1), RSA_SHA256, issuer_name, tlv(23, b'240101000000Z'), tlv(23, b'300101000000Z'))
     signed('CRL', ident, body, ident.encode(), issuer_key, status)
 
@@ -104,6 +103,3 @@ def main():
             print('SIGNATURE', RSA_SHA256.hex(), body.hex(), (b'\0' + signature).hex(),
                   '2a864886f70d010101', '-', (b'\0' + key).hex(), result, sep='\t')
 
-
-if __name__ == '__main__':
-    main()

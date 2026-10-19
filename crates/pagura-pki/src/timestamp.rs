@@ -1,14 +1,30 @@
-//! RFC 3161 §2.4.2 TSTInfo. These are asserted, unverified timestamp fields.
+//! RFC 3161 2.4.2 TSTInfo. These are asserted, unverified timestamp fields.
 
-use crate::der::{Element, Fields, SEQUENCE, Tag, single};
-use crate::x509::AlgorithmIdentifier;
+use crate::der::{self, Element, Fields, Form, SEQUENCE, Tag, single};
 use crate::x509::extensions::{GeneralName, implicit_nonnegative, nonnegative};
-use crate::x509::{Extension, parse_extensions};
+use crate::x509::{AlgorithmIdentifier, Extension, optional_true, parse_extensions};
 use crate::{Integer, ObjectIdentifier, Time, types};
 use pagura_core::Result;
 
-/// A MessageImprint, used by timestamp structures (RFC 3161 §2.4.1).
+/// id-ct-TSTInfo, 1.2.840.113549.1.9.16.1.4.
+pub const ID_TST_INFO: ObjectIdentifier<'static> =
+    ObjectIdentifier::from_static(&[42, 134, 72, 134, 247, 13, 1, 9, 16, 1, 4]);
+
+/// Accuracy's IMPLICIT fractions (RFC 3161 2.4.2).
+const MILLIS: Tag = Tag::context(0, Form::Primitive);
+const MICROS: Tag = Tag::context(1, Form::Primitive);
+/// TSTInfo's `tsa [0]` (a tagged CHOICE, so explicit) and IMPLICIT
+/// `extensions [1]` (RFC 3161 2.4.2).
+const TSA: Tag = Tag::context(0, Form::Constructed);
+const EXTENSIONS: Tag = Tag::context(1, Form::Constructed);
+/// The only TSTInfo version, `v1` (RFC 3161 2.4.2).
+const VERSION_1: u64 = 1;
+/// Accuracy's millis and micros range (RFC 3161 2.4.2).
+const FRACTION: std::ops::RangeInclusive<u16> = 1..=999;
+
+/// A MessageImprint, used by timestamp structures (RFC 3161 2.4.1).
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct MessageImprint<'a> {
     /// Digest algorithm and parameters.
     pub algorithm: AlgorithmIdentifier<'a>,
@@ -30,17 +46,15 @@ impl<'a> MessageImprint<'a> {
     }
 }
 
-/// id-ct-TSTInfo OID contents, 1.2.840.113549.1.9.16.1.4.
-pub const ID_TST_INFO: &[u8] = &[42, 134, 72, 134, 247, 13, 1, 9, 16, 1, 4];
-
 /// Asserted timestamp accuracy, never a clock-trust claim.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct Accuracy<'a> {
     /// Whole seconds; absent means zero.
     pub seconds: Option<Integer<'a>>,
-    /// Milliseconds, 1–999 when present.
+    /// Milliseconds, 1–999 when present; absent means zero.
     pub millis: Option<u16>,
-    /// Microseconds, 1–999 when present.
+    /// Microseconds, 1–999 when present; absent means zero.
     pub micros: Option<u16>,
 }
 
@@ -51,18 +65,9 @@ impl<'a> Accuracy<'a> {
     /// Rejects negative seconds, out-of-range fractions and malformed ordering.
     pub fn parse(element: Element<'a>) -> Result<Self> {
         let mut fields = Fields::sequence(element)?;
-        let seconds = fields
-            .optional(Tag::universal(2, false))
-            .map(nonnegative)
-            .transpose()?;
-        let millis = fields
-            .optional(Tag::context(0, false))
-            .map(fraction)
-            .transpose()?;
-        let micros = fields
-            .optional(Tag::context(1, false))
-            .map(fraction)
-            .transpose()?;
+        let seconds = fields.optional(der::INTEGER).map(nonnegative).transpose()?;
+        let millis = fields.optional(MILLIS).map(fraction).transpose()?;
+        let micros = fields.optional(MICROS).map(fraction).transpose()?;
         fields.finish()?;
         Ok(Self {
             seconds,
@@ -73,21 +78,23 @@ impl<'a> Accuracy<'a> {
 }
 
 fn fraction(element: Element<'_>) -> Result<u16> {
-    let value = implicit_nonnegative(element)?.to_u64()?;
-    if !(1..=999).contains(&value) {
-        return Err(element.error("timestamp accuracy fraction outside 1..999"));
-    }
-    u16::try_from(value).map_err(|_| element.error("timestamp accuracy fraction exceeds u16"))
+    let integer = implicit_nonnegative(element)?;
+    integer
+        .to_u64()
+        .and_then(|value| u16::try_from(value).ok())
+        .filter(|value| FRACTION.contains(value))
+        .ok_or_else(|| integer.error("timestamp accuracy fraction outside 1..999"))
 }
 
 /// Parsed timestamp information, without signature, imprint or trust validation.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct TstInfo<'a> {
     /// TSA policy identifier.
     pub policy: ObjectIdentifier<'a>,
     /// Claimed digest of the timestamped data.
     pub message_imprint: MessageImprint<'a>,
-    /// TSA serial number, retained at arbitrary size.
+    /// TSA serial number, retained at arbitrary size and sign.
     pub serial: Integer<'a>,
     /// Asserted generation time with exact decimal fractions.
     pub gen_time: Time<'a>,
@@ -109,44 +116,32 @@ impl<'a> TstInfo<'a> {
     /// Parses version 1 TSTInfo with optional fields in schema order.
     ///
     /// # Errors
-    /// Rejects wrong versions, malformed fields, explicit defaults, negative
-    /// serials/nonces and noncanonical timestamp times or accuracy fractions.
+    /// Rejects wrong versions, malformed fields, explicit defaults and
+    /// noncanonical timestamp times or accuracy fractions.
     pub fn parse(element: Element<'a>) -> Result<Self> {
-        if element.is_ber() {
-            crate::der::Document::parse_at(
-                element.encoded(),
-                element.range().start,
-                element.limits(),
-            )?;
-        }
+        element.require_der()?;
         let mut fields = Fields::sequence(element)?;
         let version = fields.take()?;
-        if Integer::parse(version)?.to_u64()? != 1 {
+        if Integer::parse(version)?.to_u64() != Some(VERSION_1) {
             return Err(version.error("unsupported TSTInfo version"));
         }
         let policy = ObjectIdentifier::parse(fields.take()?)?;
         let message_imprint = MessageImprint::parse(fields.take()?)?;
-        let serial = nonnegative(fields.take()?)?;
+        // RFC 3161 2.4.2 restricts neither the serial number's nor the nonce's sign.
+        let serial = Integer::parse(fields.take()?)?;
         let gen_time = Time::generalized(fields.take()?)?;
         let accuracy = fields.optional(SEQUENCE).map(Accuracy::parse).transpose()?;
-        let ordering = if let Some(value) = fields.optional(Tag::universal(1, false)) {
-            if !types::boolean(value)? {
-                return Err(value.error("explicit timestamp DEFAULT FALSE"));
-            }
-            true
-        } else {
-            false
-        };
+        let ordering = optional_true(&mut fields, "explicit timestamp DEFAULT FALSE")?;
         let nonce = fields
-            .optional(Tag::universal(2, false))
-            .map(nonnegative)
+            .optional(der::INTEGER)
+            .map(Integer::parse)
             .transpose()?;
         let tsa = fields
-            .optional(Tag::context(0, true))
+            .optional(TSA)
             .map(|value| GeneralName::parse(single(value)?))
             .transpose()?;
         let extensions = fields
-            .optional(Tag::context(1, true))
+            .optional(EXTENSIONS)
             .map(parse_extensions)
             .transpose()?
             .unwrap_or_default();
