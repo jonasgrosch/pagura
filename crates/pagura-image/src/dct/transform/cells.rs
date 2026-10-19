@@ -100,13 +100,16 @@ impl Cells {
             }
             block = six(&idct.block::<u8>(&natural));
         } else {
-            let mut natural = [[0.0f32; 8]; 8];
+            let mut natural = [0.0f32; 64];
+            // Natural positions that hold a nonzero coefficient.
+            let mut set = 0_u64;
             for ((&coefficient, &q), &position) in coefficients.iter().zip(quant).zip(&ORDER) {
                 if coefficient != 0 {
-                    natural[position / 8][position % 8] = dequantize(coefficient, q);
+                    natural[position] = dequantize(coefficient, q);
+                    set |= 1 << position;
                 }
             }
-            for (out, row) in block.iter_mut().zip(self.means(&natural)) {
+            for (out, row) in block.iter_mut().zip(self.means(&natural, set)) {
                 out[..4].copy_from_slice(&row);
             }
         }
@@ -116,27 +119,32 @@ impl Cells {
         Some(())
     }
 
-    /// Separable cell means of the unclamped samples, rounded once.
-    fn means(&self, natural: &[[f32; 8]; 8]) -> [[u8; 4]; 4] {
-        let n = self.count;
+    /// Separable cell means of the unclamped samples, rounded once. Only
+    /// the natural positions in `set` hold nonzero coefficients; they are
+    /// visited in row-major order, as a dense pass that skips zeros would.
+    /// Cells past the count have zero weights and are not stored.
+    fn means(&self, natural: &[f32; 64], mut set: u64) -> [[u8; 4]; 4] {
         let mut horizontal = [[0.0f32; 4]; 8];
-        for (input, output) in natural.iter().zip(&mut horizontal) {
-            for (&value, basis) in input.iter().zip(&self.basis) {
-                if value == 0.0 {
-                    continue;
-                }
-                for (out, &weight) in output.iter_mut().zip(basis).take(n) {
-                    *out += value * weight;
-                }
+        let mut rows = 0_u8;
+        while set != 0 {
+            let position = set.trailing_zeros() as usize;
+            set &= set - 1;
+            let value = natural[position];
+            rows |= 1 << (position / 8);
+            for (out, &weight) in horizontal[position / 8]
+                .iter_mut()
+                .zip(&self.basis[position % 8])
+            {
+                *out += value * weight;
             }
         }
         let mut vertical = [[0.0f32; 4]; 4];
-        for (input, basis) in horizontal.iter().zip(&self.basis) {
-            if input.iter().all(|&value| value == 0.0) {
+        for (v, (input, basis)) in horizontal.iter().zip(&self.basis).enumerate() {
+            if rows & (1 << v) == 0 || input.iter().all(|&value| value == 0.0) {
                 continue;
             }
-            for (output, &weight) in vertical.iter_mut().zip(basis).take(n) {
-                for (out, &value) in output.iter_mut().zip(input).take(n) {
+            for (output, &weight) in vertical.iter_mut().zip(basis) {
+                for (out, &value) in output.iter_mut().zip(input) {
                     *out += value * weight;
                 }
             }
