@@ -266,7 +266,7 @@ impl Prepared {
 #[derive(Debug)]
 struct Fragment {
     /// The index of the row's first cell in the accumulator.
-    start: usize,
+    start: u32,
     left: f32,
     right: f32,
     scale: f32,
@@ -351,7 +351,8 @@ impl Rows {
                 };
                 work = work.saturating_add((right - left).ceil() as usize + 3);
                 fragments.push(Fragment {
-                    start: row * (glyph.width + 1),
+                    start: u32::try_from(row * (glyph.width + 1))
+                        .map_err(|_| Error::limit("glyph extent budget exceeded"))?,
                     left,
                     right,
                     scale,
@@ -389,11 +390,23 @@ impl Rows {
         // phase, so within the bound no fragment can exceed the work budget.
         if self.work <= accumulator.maximum {
             for f in &self.fragments {
-                accumulator.add(f.start, f.left + px, f.right + px, f.height, f.scale);
+                accumulator.add(
+                    f.start as usize,
+                    f.left + px,
+                    f.right + px,
+                    f.height,
+                    f.scale,
+                );
             }
         } else {
             for f in &self.fragments {
-                accumulator.segment(f.start, f.left + px, f.right + px, f.height, f.scale)?;
+                accumulator.segment(
+                    f.start as usize,
+                    f.left + px,
+                    f.right + px,
+                    f.height,
+                    f.scale,
+                )?;
             }
         }
         Ok(Coverage {
