@@ -1,23 +1,18 @@
 //! FDSelect 0/3 (TN 5176 section 19); format 4 awaits OpenType primary review.
-use crate::read::{bad, cap, here};
+use crate::budget::Work;
+use crate::read::{bad, here};
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
-use pagura_core::{Limits, Result};
+use pagura_core::{Position, Result};
 
 pub(super) fn parse(
     mut r: Cursor<'_>,
     glyphs: usize,
     fonts: usize,
-    limits: &Limits,
+    work: &mut Work<'_>,
     cff2: bool,
 ) -> Result<Vec<usize>> {
-    cap(
-        glyphs,
-        limits
-            .value_nodes
-            .min(limits.decoded_bytes / size_of::<usize>()),
-        here(&r),
-    )?;
+    work.entries(glyphs, Position::Buffer(here(&r)))?;
     let format = r.u8()?;
     let mut result = Vec::with_capacity(glyphs);
     match format {
@@ -26,7 +21,7 @@ pub(super) fn parse(
                 result.push(usize::from(r.u8()?));
             }
         }
-        3 | 4 if format == 3 || cff2 => ranges(&mut r, format, glyphs, &mut result, limits)?,
+        3 | 4 if format == 3 || cff2 => ranges(&mut r, format, glyphs, &mut result, work)?,
         _ => return Err(bad(here(&r), "invalid FDSelect format")),
     }
     if result.iter().any(|&fd| fd >= fonts) {
@@ -39,13 +34,13 @@ fn ranges(
     format: u8,
     glyphs: usize,
     result: &mut Vec<usize>,
-    limits: &Limits,
+    work: &mut Work<'_>,
 ) -> Result<()> {
     let count = boundary(r, format)?;
     if count == 0 || count > glyphs {
         return Err(bad(here(r), "invalid FDSelect range count"));
     }
-    cap(count.saturating_add(glyphs), limits.operations, here(r))?;
+    work.work(count.saturating_add(glyphs), Position::Buffer(here(r)))?;
     let mut first = boundary(r, format)?;
     if first != 0 {
         return Err(bad(here(r), "FDSelect must start at glyph zero"));

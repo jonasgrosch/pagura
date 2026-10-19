@@ -1,10 +1,12 @@
 //! Unhinted TrueType contours, implied quadratic points, and components.
 use super::Sfnt;
 use crate::GlyphId;
-use crate::read::{bad, cap, here, slice};
-use crate::{recovery::repair, repairs};
+use crate::budget::Work;
+use crate::read::{bad, here, slice};
+use crate::repairs;
 use pagura_core::bytes::Cursor;
-use pagura_core::{Diagnostics, Limits, Position, Result};
+use pagura_core::convert::u32_to_usize;
+use pagura_core::{Position, Result};
 use pagura_raster::{Path, PathBuilder, Point, Segment, Transform};
 
 #[derive(Clone, Copy)]
@@ -17,64 +19,30 @@ struct Shape {
     path: Path,
     points: Vec<Point>,
 }
-struct Work<'a> {
-    limits: &'a Limits,
-    diagnostics: &'a mut Diagnostics,
-    operations: usize,
-    points: usize,
-    segments: usize,
-}
-impl Work<'_> {
-    fn charge(
-        &mut self,
-        operations: usize,
-        points: usize,
-        segments: usize,
-        at: usize,
-    ) -> Result<()> {
-        self.operations = self.operations.saturating_add(operations);
-        self.points = self.points.saturating_add(points);
-        self.segments = self.segments.saturating_add(segments);
-        cap(self.operations, self.limits.operations, at)?;
-        cap(
-            self.points,
-            self.limits
-                .value_nodes
-                .min(self.limits.decoded_bytes / size_of::<Vertex>()),
-            at,
-        )?;
-        cap(self.segments, self.limits.path_segments, at)
-    }
-}
-
 pub(super) fn outline(
     font: &Sfnt,
     data: &[u8],
     glyph: GlyphId,
-    limits: &Limits,
-    diagnostics: &mut Diagnostics,
+    work: &mut Work<'_>,
 ) -> Result<Path> {
-    let mut work = Work {
-        limits,
-        diagnostics,
-        operations: 0,
-        points: 0,
-        segments: 0,
-    };
-    Ok(load(font, data, glyph, 0, &mut work)?.path)
+    Ok(load(font, data, glyph, &mut Vec::new(), work)?.path)
 }
 
+/// Loads `glyph`, whose composite ancestors are `parents`.
 fn load(
     font: &Sfnt,
     data: &[u8],
     glyph: GlyphId,
-    depth: usize,
+    parents: &mut Vec<GlyphId>,
     work: &mut Work<'_>,
 ) -> Result<Shape> {
-    cap(depth, work.limits.depth.min(64), font.glyf.start)?;
-    work.charge(1, 0, 0, font.glyf.start)?;
-    let index =
-        usize::try_from(glyph.0).map_err(|_| crate::read::limit(0, "glyph index overflow"))?;
+    let table = Position::Buffer(font.glyf.start);
+    if parents.contains(&glyph) {
+        return Err(bad(font.glyf.start, "recursive composite glyph"));
+    }
+    work.depth(parents.len(), usize::MAX, table)?;
+    work.work(1, table)?;
+    let index = u32_to_usize(glyph.0);
     let start = font
         .locations
         .get(index)
@@ -106,13 +74,18 @@ fn load(
             usize::try_from(contours).map_err(|_| bad(base, "invalid contour count"))?,
             work,
         ),
-        -1 => composite(font, data, &mut r, depth, work),
+        -1 => {
+            parents.push(glyph);
+            let shape = composite(font, data, &mut r, parents, work);
+            parents.pop();
+            shape
+        }
         _ => Err(bad(base, "invalid negative contour count")),
     }
 }
 
 fn simple(r: &mut Cursor<'_>, contours: usize, work: &mut Work<'_>) -> Result<Shape> {
-    cap(contours, work.limits.value_nodes, here(r))?;
+    work.entries(contours, Position::Buffer(here(r)))?;
     let mut ends = Vec::with_capacity(contours);
     let mut count = 0;
     for _ in 0..contours {
@@ -123,7 +96,10 @@ fn simple(r: &mut Cursor<'_>, contours: usize, work: &mut Work<'_>) -> Result<Sh
         count = end + 1;
         ends.push(count);
     }
-    work.charge(count, count, count.saturating_add(contours * 2), here(r))?;
+    let at = Position::Buffer(here(r));
+    work.work(count, at)?;
+    work.entries(count, at)?;
+    work.segments(count.saturating_add(contours * 2), at)?;
     let instructions = usize::from(r.u16()?);
     r.skip(instructions)?;
     let mut flags = Vec::with_capacity(count);
@@ -147,7 +123,7 @@ fn simple(r: &mut Cursor<'_>, contours: usize, work: &mut Work<'_>) -> Result<Sh
     for &flag in &flags {
         x = x
             .checked_add(delta(r, flag, 2, 16)?)
-            .ok_or_else(|| crate::read::limit(here(r), "glyph coordinate overflow"))?;
+            .ok_or_else(|| bad(here(r), "glyph coordinate overflow"))?;
         vertices.push(Vertex {
             point: Point::new(f64::from(x), 0.0),
             on: flag & 1 != 0,
@@ -157,7 +133,7 @@ fn simple(r: &mut Cursor<'_>, contours: usize, work: &mut Work<'_>) -> Result<Sh
     for (vertex, &flag) in vertices.iter_mut().zip(&flags) {
         y = y
             .checked_add(delta(r, flag, 4, 32)?)
-            .ok_or_else(|| crate::read::limit(here(r), "glyph coordinate overflow"))?;
+            .ok_or_else(|| bad(here(r), "glyph coordinate overflow"))?;
         vertex.point.y = f64::from(y);
     }
     let mut builder = PathBuilder::new();
@@ -241,23 +217,23 @@ fn composite(
     font: &Sfnt,
     data: &[u8],
     r: &mut Cursor<'_>,
-    depth: usize,
+    parents: &mut Vec<GlyphId>,
     work: &mut Work<'_>,
 ) -> Result<Shape> {
     let mut points = Vec::new();
     let mut builder = PathBuilder::new();
     let mut have_instructions = false;
     loop {
-        work.charge(1, 0, 0, here(r))?;
+        work.work(1, Position::Buffer(here(r)))?;
         let Component {
             flags,
             glyph,
             a,
             b,
             mut transform,
-        } = component(r, work.diagnostics)?;
+        } = component(r, work)?;
         let xy = flags & 2 != 0;
-        let shape = load(font, data, glyph, depth + 1, work)?;
+        let shape = load(font, data, glyph, parents, work)?;
         let offset = if xy {
             let p = Point::new(f64::from(a), f64::from(b));
             // OpenType leaves legacy offsets unspecified; use unscaled offsets
@@ -289,16 +265,14 @@ fn composite(
         } else {
             offset.y
         };
-        work.charge(
-            shape.path.segments().len(),
-            shape.points.len(),
-            shape.path.segments().len(),
-            here(r),
-        )?;
+        let at = Position::Buffer(here(r));
+        work.work(shape.path.segments().len(), at)?;
+        work.entries(shape.points.len(), at)?;
+        work.segments(shape.path.segments().len(), at)?;
         for &p in &shape.points {
             let p = transform.apply(p);
             if !p.is_finite() {
-                return Err(crate::read::limit(here(r), "nonfinite component point"));
+                return Err(bad(here(r), "nonfinite component point"));
             }
             points.push(p);
         }
@@ -348,11 +322,10 @@ struct Component {
     b: i32,
     transform: Transform,
 }
-fn component(r: &mut Cursor<'_>, diagnostics: &mut Diagnostics) -> Result<Component> {
+fn component(r: &mut Cursor<'_>, work: &mut Work<'_>) -> Result<Component> {
     let raw = r.u16()?;
     if raw & !0x1fef != 0 {
-        repair(
-            diagnostics,
+        work.repair(
             repairs::COMPONENT_FLAGS,
             "reserved composite glyph flags ignored",
             Position::Buffer(here(r) - 2),

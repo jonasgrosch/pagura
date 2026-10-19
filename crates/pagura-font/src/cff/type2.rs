@@ -1,36 +1,24 @@
 //! Bounded, unhinted Type 2 charstrings (Adobe Technical Note 5177).
 use super::{Cff, Private, dict, strings};
 use crate::GlyphId;
-use crate::read::{bad, cap, here, slice};
-use crate::{recovery::repair, repairs};
+use crate::budget::Work;
+use crate::read::{bad, here, slice};
+use crate::repairs;
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
-use pagura_core::{Diagnostics, Limits, Position, Result};
+use pagura_core::{Position, Result};
 use pagura_raster::{Path, PathBuilder, Point, Segment, Transform};
 
-struct Work<'a> {
-    limits: &'a Limits,
-    diagnostics: &'a mut Diagnostics,
-    stopped: bool,
-    operations: usize,
-    segments: usize,
-}
-impl Work<'_> {
-    fn operation(&mut self, at: usize) -> Result<()> {
-        self.operations = self.operations.saturating_add(1);
-        cap(self.operations, self.limits.operations, at)
-    }
-    fn segment(&mut self, at: usize) -> Result<()> {
-        self.segments = self.segments.saturating_add(1);
-        cap(
-            self.segments,
-            self.limits
-                .path_segments
-                .min(self.limits.decoded_bytes / size_of::<Segment>()),
-            at,
-        )
-    }
-}
+/// TN 5177 Appendix B: operand stack, subroutine nesting, stem hints and
+/// charstring length.
+const MAX_OPERANDS: usize = 48;
+const MAX_SUBR_DEPTH: usize = 10;
+const MAX_STEM_HINTS: usize = 96;
+const MAX_CHARSTRING_BYTES: usize = 65_535;
+/// The CFF2 operand stack (OpenType CFF2). CFF2 nesting has no verified
+/// format ceiling; `Limits::depth` bounds it.
+const MAX_CFF2_OPERANDS: usize = 513;
+
 struct State {
     stack: Vec<f64>,
     transient: [f64; 32],
@@ -43,6 +31,8 @@ struct State {
     vsindex: usize,
     hint_phase: HintPhase,
     random: u32,
+    /// A repair ended the glyph before its end.
+    stopped: bool,
 }
 // TN 5177 section 3.1 orders declarations before masks and path construction.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -65,17 +55,9 @@ pub(super) fn glyph(
     font: &Cff,
     data: &[u8],
     glyph: GlyphId,
-    limits: &Limits,
-    diagnostics: &mut Diagnostics,
+    work: &mut Work<'_>,
 ) -> Result<(Path, f64)> {
-    let mut work = Work {
-        limits,
-        diagnostics,
-        stopped: false,
-        operations: 0,
-        segments: 0,
-    };
-    load(font, data, glyph, 0, &mut work)
+    load(font, data, glyph, 0, work)
 }
 fn load(
     font: &Cff,
@@ -84,11 +66,11 @@ fn load(
     depth: usize,
     work: &mut Work<'_>,
 ) -> Result<(Path, f64)> {
-    cap(depth, work.limits.depth.min(64), 0)?;
     let range = font
         .glyphs
         .get(u32_to_usize(glyph.0))
         .ok_or_else(|| bad(0, "glyph index outside CFF"))?;
+    work.depth(depth, usize::MAX, Position::Buffer(range.start))?;
     let private = font
         .private(glyph)
         .ok_or_else(|| bad(range.start, "glyph without a CFF Private DICT"))?;
@@ -107,6 +89,7 @@ fn load(
         // Inherited selection agrees with skrifa 0.46.2; CFF2's primary
         // text remains pending review (see the requirement registry).
         vsindex: private.vsindex,
+        stopped: false,
     };
     run(
         font,
@@ -142,10 +125,7 @@ fn load(
     let path = state.path.finish().transformed(private.matrix);
     let width = state.width.unwrap_or(private.default_width) * private.matrix.a;
     if !width.is_finite() {
-        return Err(crate::read::limit(
-            range.start,
-            "nonfinite charstring width",
-        ));
+        return Err(bad(range.start, "nonfinite charstring width"));
     }
     Ok((path, width))
 }
@@ -157,7 +137,7 @@ fn append(
     at: usize,
 ) -> Result<()> {
     for &segment in path.segments() {
-        work.segment(at)?;
+        work.segments(1, Position::Buffer(at))?;
         match segment {
             Segment::MoveTo(p) => {
                 builder.move_to(transform.apply(p));
@@ -211,7 +191,7 @@ impl State {
     }
     fn close(&mut self, work: &mut Work<'_>, at: usize) -> Result<()> {
         if self.open {
-            work.segment(at)?;
+            work.segments(1, Position::Buffer(at))?;
             self.path.close();
             self.open = false;
         }
@@ -221,14 +201,14 @@ impl State {
         self.point.x += dx;
         self.point.y += dy;
         if !self.point.is_finite() {
-            return Err(crate::read::limit(at, "nonfinite charstring coordinate"));
+            return Err(bad(at, "nonfinite charstring coordinate"));
         }
         Ok(self.point)
     }
     fn moveto(&mut self, dx: f64, dy: f64, work: &mut Work<'_>, at: usize) -> Result<()> {
         self.close(work, at)?;
         let p = self.point(dx, dy, at)?;
-        work.segment(at)?;
+        work.segments(1, Position::Buffer(at))?;
         self.path.move_to(p);
         self.open = true;
         Ok(())
@@ -238,7 +218,7 @@ impl State {
             return Err(bad(at, "charstring line before moveto"));
         }
         let p = self.point(dx, dy, at)?;
-        work.segment(at)?;
+        work.segments(1, Position::Buffer(at))?;
         self.path
             .line_to(p)
             .map_err(|_| bad(at, "charstring line without current point"))?;
@@ -251,12 +231,23 @@ impl State {
         let a = self.point(deltas[0], deltas[1], at)?;
         let b = self.point(deltas[2], deltas[3], at)?;
         let c = self.point(deltas[4], deltas[5], at)?;
-        work.segment(at)?;
+        work.segments(1, Position::Buffer(at))?;
         self.path
             .cubic_to(a, b, c)
             .map_err(|_| bad(at, "charstring curve without current point"))?;
         Ok(())
     }
+}
+
+/// Checks the format ceilings of a charstring about to run: its nesting
+/// and, for CFF, its length.
+fn enter(cff2: bool, r: &Cursor<'_>, depth: usize, work: &Work<'_>) -> Result<()> {
+    let nesting = if cff2 { usize::MAX } else { MAX_SUBR_DEPTH };
+    work.depth(depth, nesting, Position::Buffer(here(r)))?;
+    if !cff2 && r.remaining() > MAX_CHARSTRING_BYTES {
+        return Err(bad(here(r), "Type 2 charstring exceeds 65,535 bytes"));
+    }
+    Ok(())
 }
 
 fn run(
@@ -268,24 +259,20 @@ fn run(
     state: &mut State,
     work: &mut Work<'_>,
 ) -> Result<Flow> {
-    cap(
-        depth,
-        work.limits.depth.min(if font.cff2 { 64 } else { 10 }),
-        here(&r),
-    )?;
-    if !font.cff2 {
-        cap(r.remaining(), 65535, here(&r))?;
-    }
+    enter(font.cff2, &r, depth, work)?;
+    let ceiling = if font.cff2 {
+        MAX_CFF2_OPERANDS
+    } else {
+        MAX_OPERANDS
+    };
     while !r.at_end() {
         let at = here(&r);
-        work.operation(at)?;
+        work.work(1, Position::Buffer(at))?;
         let byte = r.u8()?;
         if byte == 28 || byte >= 32 {
-            cap(
-                state.stack.len() + 1,
-                if font.cff2 { 513 } else { 48 }.min(work.limits.value_nodes),
-                at,
-            )?;
+            if state.stack.len() == ceiling {
+                return Err(bad(at, "operand stack exceeds the format limit"));
+            }
             state.stack.push(dict::number(&mut r, byte, false)?);
             continue;
         }
@@ -325,7 +312,7 @@ fn run(
                     work,
                 )? == Flow::End
                 {
-                    if !work.stopped && !r.at_end() {
+                    if !state.stopped && !r.at_end() {
                         return Err(bad(here(&r), "data after charstring end"));
                     }
                     return Ok(Flow::End);
@@ -355,15 +342,13 @@ fn run(
             16 if font.cff2 => blend(font, state, at)?,
             _ => return Err(bad(at, "invalid Type 2 charstring operator")),
         }
-        cap(
-            state.stack.len(),
-            if font.cff2 { 513 } else { 48 }.min(work.limits.value_nodes),
-            at,
-        )?;
+        if state.stack.len() > ceiling {
+            return Err(bad(at, "operand stack exceeds the format limit"));
+        }
         // Finite operands are an invariant: arithmetic writes only the top
         // operand, and blend validates every value it writes in place.
         if state.stack.last().is_some_and(|n| !n.is_finite()) {
-            return Err(crate::read::limit(at, "nonfinite charstring operand"));
+            return Err(bad(at, "nonfinite charstring operand"));
         }
     }
     end_of_program(font.cff2, depth, state, here(&r))
@@ -399,7 +384,7 @@ fn blend(font: &Cff, state: &mut State, at: usize) -> Result<()> {
             value += coefficient * state.stack[start + count + i * coefficients.len() + j];
         }
         if !value.is_finite() {
-            return Err(crate::read::limit(at, "nonfinite charstring blend result"));
+            return Err(bad(at, "nonfinite charstring blend result"));
         }
         state.stack[start + i] = value;
     }
@@ -575,14 +560,13 @@ fn escape(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<bool> {
         }
         34..=37 => flex(op, s, w, at)?,
         _ => {
-            repair(
-                w.diagnostics,
+            w.repair(
                 repairs::CHARSTRING_OPERATOR,
                 "unknown escaped Type 2 operator ends glyph",
                 Position::Buffer(at),
             )?;
             s.stack.clear();
-            w.stopped = true;
+            s.stopped = true;
             return Ok(true);
         }
     }
@@ -664,7 +648,9 @@ fn hints(
         return Err(bad(at, "charstring stem operator without operands"));
     }
     state.hints += state.stack.len() / 2;
-    cap(state.hints, 96, at)?;
+    if state.hints > MAX_STEM_HINTS {
+        return Err(bad(at, "charstring stems exceed 96"));
+    }
     state.stack.clear();
     if mask {
         if state.hints == 0 {

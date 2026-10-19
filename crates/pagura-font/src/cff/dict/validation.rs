@@ -1,14 +1,15 @@
 //! Operand types and dictionary domains from TN 5176 Tables 9, 10 and 23.
 use super::{Dict, integer};
+use crate::budget::Work;
 use crate::read::bad;
-use pagura_core::{Diagnostics, Position, Result};
+use pagura_core::{Position, Result};
 
 impl Dict {
     pub(in crate::cff) fn validate(
         &mut self,
         private: bool,
         strings: usize,
-        diagnostics: &mut Diagnostics,
+        work: &mut Work<'_>,
     ) -> Result<()> {
         let mut ignored = Vec::new();
         for (&op, entry) in &self.entries {
@@ -40,8 +41,7 @@ impl Dict {
             };
             if !valid {
                 if private && matches!(op, 6..=11 | 0x0c09..=0x0c0e | 0x0c11..=0x0c12) {
-                    crate::recovery::repair(
-                        diagnostics,
+                    work.repair(
                         crate::repairs::CFF_DICT_OPERANDS,
                         "unused CFF hint operator with invalid operands ignored",
                         Position::Buffer(at),

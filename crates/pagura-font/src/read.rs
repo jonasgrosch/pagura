@@ -1,10 +1,10 @@
-//! Font-buffer cursors, positioned errors and budget checks.
+//! Font-buffer cursors and positioned errors.
 //!
 //! Tables are read through `pagura_core::bytes::Cursor`, positioned in the
 //! program bytes. Truncation is a `Syntax` error and offset overflow a
 //! `Limit` error, as for every binary format (CONTRIBUTING, Conventions 6).
 use pagura_core::bytes::Cursor;
-use pagura_core::{Error, Limits, Position, Result};
+use pagura_core::{Error, Position, Result};
 use std::ops::Range;
 
 const TRUNCATED: &str = "truncated font data";
@@ -44,18 +44,8 @@ pub(crate) fn limit(at: usize, message: &'static str) -> Error {
     Error::limit(message).at(Position::Buffer(at))
 }
 
-pub(crate) fn cap(count: usize, ceiling: usize, at: usize) -> Result<()> {
-    if count > ceiling {
-        Err(limit(at, "font resource budget exceeded"))
-    } else {
-        Ok(())
-    }
-}
-
-pub(crate) fn input(data: &[u8], limits: &Limits) -> Result<()> {
-    cap(data.len(), limits.file_bytes.min(limits.decoded_bytes), 0)
-}
-
+/// Checks that every point of an outline is finite: arithmetic beyond
+/// `f64` range is malformed glyph data.
 pub(crate) fn finite_path(path: &pagura_raster::Path) -> Result<()> {
     use pagura_raster::Segment;
     for segment in path.segments() {
@@ -69,7 +59,7 @@ pub(crate) fn finite_path(path: &pagura_raster::Path) -> Result<()> {
             Segment::Close => true,
         };
         if !finite {
-            return Err(limit(0, "nonfinite glyph outline"));
+            return Err(Error::syntax("nonfinite glyph outline").at(Position::Unknown));
         }
     }
     Ok(())
