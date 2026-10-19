@@ -12,7 +12,7 @@ pub(crate) struct Source {
     pub position: Position,
 }
 impl Source {
-    pub fn error(self, mut error: Error) -> Error {
+    pub(crate) fn error(self, mut error: Error) -> Error {
         if error.position == Position::Unknown {
             error.position = self.position;
         }
@@ -36,7 +36,7 @@ pub(crate) struct Context<'a> {
     pages: Option<std::collections::BTreeMap<ObjectId, usize>>,
 }
 impl<'a> Context<'a> {
-    pub fn new(doc: &'a Document) -> Self {
+    pub(crate) fn new(doc: &'a Document) -> Self {
         Self {
             doc,
             work: std::rc::Rc::default(),
@@ -45,7 +45,7 @@ impl<'a> Context<'a> {
         }
     }
     /// A different source revision using this traversal's aggregate work budget.
-    pub fn for_document<'b>(&self, doc: &'b Document) -> Context<'b> {
+    pub(crate) fn for_document<'b>(&self, doc: &'b Document) -> Context<'b> {
         Context {
             doc,
             work: self.work.clone(),
@@ -53,7 +53,7 @@ impl<'a> Context<'a> {
             pages: None,
         }
     }
-    pub fn catalog(&mut self) -> Result<(&'a Dictionary, Source)> {
+    pub(crate) fn catalog(&mut self) -> Result<(&'a Dictionary, Source)> {
         self.doc.catalog()?;
         let root = self
             .doc
@@ -62,14 +62,14 @@ impl<'a> Context<'a> {
             .ok_or(Error::syntax("catalog Root is absent"))?;
         self.dictionary(root, Source::default())
     }
-    pub fn source(&self, id: ObjectId) -> Result<Source> {
+    pub(crate) fn source(&self, id: ObjectId) -> Result<Source> {
         let object = self.doc.object(id)?;
         Ok(Source {
             object: Some(id),
             position: object.source().position(),
         })
     }
-    pub fn page_index(&mut self, id: ObjectId, source: Source) -> Result<usize> {
+    pub(crate) fn page_index(&mut self, id: ObjectId, source: Source) -> Result<usize> {
         if self.pages.is_none() {
             let pages = self.doc.pages()?;
             self.allocate::<(ObjectId, usize)>(pages.len().saturating_mul(4), source)?;
@@ -90,7 +90,7 @@ impl<'a> Context<'a> {
                 ))
             })
     }
-    pub fn step(&mut self, depth: usize, source: Source) -> Result<()> {
+    pub(crate) fn step(&mut self, depth: usize, source: Source) -> Result<()> {
         let limits = self.limits;
         let mut work = self.work.get();
         if depth > limits.depth || work.steps >= limits.value_nodes.min(limits.objects) {
@@ -100,7 +100,7 @@ impl<'a> Context<'a> {
         self.work.set(work);
         Ok(())
     }
-    pub fn allocate<T>(&mut self, count: usize, source: Source) -> Result<()> {
+    pub(crate) fn allocate<T>(&mut self, count: usize, source: Source) -> Result<()> {
         let mut work = self.work.get();
         work.bytes = count
             .checked_mul(size_of::<T>())
@@ -110,7 +110,7 @@ impl<'a> Context<'a> {
         self.work.set(work);
         Ok(())
     }
-    pub fn scan(&self, count: usize, source: Source) -> Result<()> {
+    pub(crate) fn scan(&self, count: usize, source: Source) -> Result<()> {
         let mut work = self.work.get();
         work.scanned = work
             .scanned
@@ -120,7 +120,7 @@ impl<'a> Context<'a> {
         self.work.set(work);
         Ok(())
     }
-    pub fn resolve(
+    pub(crate) fn resolve(
         &mut self,
         mut value: &'a Value,
         mut source: Source,
@@ -147,7 +147,7 @@ impl<'a> Context<'a> {
         }
         Err(source.error(Error::limit("navigation reference depth exceeded")))
     }
-    pub fn dictionary(
+    pub(crate) fn dictionary(
         &mut self,
         value: &'a Value,
         source: Source,
@@ -160,7 +160,7 @@ impl<'a> Context<'a> {
     }
     /// Preserve the original reference while applying dictionary-null absence
     /// (7.3.9), so subsequent traversal retains its source identity.
-    pub fn present(
+    pub(crate) fn present(
         &mut self,
         dictionary: &'a Dictionary,
         key: &[u8],
@@ -172,7 +172,7 @@ impl<'a> Context<'a> {
         let (resolved, _) = self.resolve(value, source)?;
         Ok((!resolved.is_null()).then_some(value))
     }
-    pub fn entry(
+    pub(crate) fn entry(
         &mut self,
         dictionary: &'a Dictionary,
         key: &[u8],
@@ -184,7 +184,7 @@ impl<'a> Context<'a> {
             .transpose()
             .map(|v| v.filter(|v| !v.is_null()))
     }
-    pub fn type_name(
+    pub(crate) fn type_name(
         &mut self,
         dictionary: &'a Dictionary,
         expected: &[u8],
@@ -198,7 +198,7 @@ impl<'a> Context<'a> {
         }
         Ok(())
     }
-    pub fn required(
+    pub(crate) fn required(
         &mut self,
         dictionary: &'a Dictionary,
         key: &[u8],
@@ -207,7 +207,7 @@ impl<'a> Context<'a> {
         self.entry(dictionary, key, source)?
             .ok_or_else(|| source.error(Error::syntax("required navigation entry is absent")))
     }
-    pub fn repair(&self, tag: Repair, message: &'static str, source: Source) -> Result<()> {
+    pub(crate) fn repair(&self, tag: Repair, message: &'static str, source: Source) -> Result<()> {
         let mut diagnostics = Diagnostics::new(self.doc.recovery());
         let mut diagnostic = Diagnostic::new(tag, message).at(source.position);
         diagnostic.object = source.object;

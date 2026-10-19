@@ -11,7 +11,7 @@ pub(super) struct Policy {
 }
 
 impl Policy {
-    pub fn new(document: &Document, object: Option<ObjectId>) -> Result<Self> {
+    pub(super) fn new(document: &Document, object: Option<ObjectId>) -> Result<Self> {
         Ok(Self {
             diagnostics: Diagnostics::new(document.recovery()),
             object,
@@ -19,7 +19,7 @@ impl Policy {
         })
     }
 
-    pub fn repair(&mut self, tag: Repair, message: &'static str) -> Result<()> {
+    pub(super) fn repair(&mut self, tag: Repair, message: &'static str) -> Result<()> {
         // Fields in this policy share one source context. Retain one occurrence
         // per tag even when a large CF dictionary repeats the same deviation.
         if self.diagnostics.as_slice().iter().any(|item| {
@@ -36,7 +36,7 @@ impl Policy {
         self.diagnostics.repair(diagnostic)
     }
 
-    pub fn unsigned_permissions(&mut self, dictionary: &Dictionary) -> Result<Option<i32>> {
+    pub(super) fn unsigned_permissions(&mut self, dictionary: &Dictionary) -> Result<Option<i32>> {
         let Some(value) = dictionary.get(b"P").and_then(Value::as_integer) else {
             return Ok(None);
         };
@@ -53,7 +53,7 @@ impl Policy {
         Ok(Some(i32::from_le_bytes(unsigned.to_le_bytes())))
     }
 
-    pub fn permissions(&mut self, key: &pagura_crypto::standard::FileKey) -> Result<()> {
+    pub(super) fn permissions(&mut self, key: &pagura_crypto::standard::FileKey) -> Result<()> {
         use pagura_crypto::standard::{PermissionsCheck, PermissionsValidation};
         if let PermissionsValidation::Inconsistent(check) = key.permissions_validation() {
             self.repair(
@@ -80,7 +80,7 @@ impl Policy {
     /// Preserve the original first identifier: Algorithms 2/3 consume its exact
     /// bytes. R5/R6 do not use identifiers for key derivation. Missing legacy
     /// key material remains an error in parameter extraction, not an invented ID.
-    pub fn identifiers(&mut self, trailer: &Dictionary) -> Result<()> {
+    pub(super) fn identifiers(&mut self, trailer: &Dictionary) -> Result<()> {
         let valid = trailer
             .get(b"ID")
             .and_then(Value::as_array)
@@ -98,7 +98,7 @@ impl Policy {
     }
 
     #[cfg(test)]
-    pub fn permissive() -> Self {
+    pub(super) fn permissive() -> Self {
         Self {
             diagnostics: Diagnostics::new(pagura_core::Recovery::Repair),
             object: None,

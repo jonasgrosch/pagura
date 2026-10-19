@@ -36,7 +36,7 @@ pub(super) struct Roles {
     pub ambiguous: bool,
 }
 impl Roles {
-    pub fn get(&self, id: ObjectId) -> impl Iterator<Item = Usage> + '_ {
+    pub(super) fn get(&self, id: ObjectId) -> impl Iterator<Item = Usage> + '_ {
         self.uses.get(&id).into_iter().flatten().copied()
     }
 }
