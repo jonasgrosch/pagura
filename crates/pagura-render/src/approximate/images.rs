@@ -1,7 +1,10 @@
 //! Axis-aligned images from four equal-area midpoint samples per device
 //! pixel, over the pixel's intersection with the image. Premultiplied sums
 //! round once when stored. This approximates the image integration of
-//! 8.9.5.3; other images take the exact compositor.
+//! 8.9.5.3; other images take the exact compositor. Byte images take
+//! [`bytes`], with the same values.
+
+mod bytes;
 
 use super::{clip::ClipMask, paint::Target};
 use crate::{Tile, display::ImageCommand, interpreter::images::Image};
@@ -37,7 +40,26 @@ pub(super) fn paint(
         m.e.max(m.e + m.a),
         m.f.max(m.f + m.d),
     ];
+    // A clip that covers every pixel painted changes none of them.
+    let clip = clip.filter(|c| {
+        !c.covers(
+            i64::from(bounds.x),
+            i64::from(bounds.y),
+            bounds.width as usize,
+            bounds.height as usize,
+        )
+    });
     let mut source = Source::new(command)?;
+    if bytes::paint(
+        &source,
+        target,
+        bounds,
+        (inverse, image_bounds),
+        clip,
+        limits,
+    )? {
+        return Ok(true);
+    }
     paint_box(
         &mut source,
         target,
@@ -425,10 +447,7 @@ fn coordinate(
         return Err(Error::syntax("empty image sample axis"));
     }
     let p = if vertical { 1.0 - value } else { value };
-    let mut color = (p * f64::from(length)) as usize;
-    if vertical {
-        color = color.min(length as usize - 1);
-    }
+    let color = ((p * f64::from(length)) as usize).min(length as usize - 1);
     let mask = mask.map_or(0, |length| {
         ((p * f64::from(length)).floor() as usize).min(length as usize - 1)
     });

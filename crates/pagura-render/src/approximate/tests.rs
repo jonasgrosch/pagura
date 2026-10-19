@@ -42,27 +42,30 @@ fn any_tile_partition_assembles_into_the_page() {
     for (group, name) in [("paint", "text-heavy-page.pdf"), ("paint", "text-cff.pdf")] {
         let context = context(group, name);
         let page = context.document().page(0).unwrap();
-        let options = options(150.0);
-        let full = context.render_page(page, &options).unwrap();
-        let (width, height) = (full.width(), full.height());
-        for side in [37_u32, 128] {
-            for y in (0..height).step_by(side as usize) {
-                for x in (0..width).step_by(side as usize) {
-                    let tile = Tile {
-                        x,
-                        y,
-                        width: (width - x).min(side),
-                        height: (height - y).min(side),
-                    };
-                    let pixels = context.render_tile(page, &options, tile).unwrap();
-                    for row in 0..tile.height {
-                        let start = ((y + row) * width + x) as usize * 4;
-                        let length = tile.width as usize * 4;
-                        assert_eq!(
-                            pixels.row(row).unwrap(),
-                            &full.data()[start..start + length],
-                            "{name} tile {tile:?} row {row}"
-                        );
+        // One resolution on each side of the lattice change.
+        for dpi in [72.0, 150.0] {
+            let options = options(dpi);
+            let full = context.render_page(page, &options).unwrap();
+            let (width, height) = (full.width(), full.height());
+            for side in [37_u32, 128] {
+                for y in (0..height).step_by(side as usize) {
+                    for x in (0..width).step_by(side as usize) {
+                        let tile = Tile {
+                            x,
+                            y,
+                            width: (width - x).min(side),
+                            height: (height - y).min(side),
+                        };
+                        let pixels = context.render_tile(page, &options, tile).unwrap();
+                        for row in 0..tile.height {
+                            let start = ((y + row) * width + x) as usize * 4;
+                            let length = tile.width as usize * 4;
+                            assert_eq!(
+                                pixels.row(row).unwrap(),
+                                &full.data()[start..start + length],
+                                "{name} {dpi} dpi tile {tile:?} row {row}"
+                            );
+                        }
                     }
                 }
             }

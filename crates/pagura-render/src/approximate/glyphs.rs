@@ -3,21 +3,20 @@
 //! Each outline is flattened once per linear map. Its edges are clipped to
 //! rows once per vertical phase, and those fragments are reused across
 //! horizontal phases, with area division done when a fragment is prepared.
-//! Origins snap to a 1/128-pixel lattice; integer translation is applied when
-//! the mask is painted. A mask is a pure function of its key, so retention
-//! and eviction change time, never pixels.
+//! Origins snap to a 1/128-pixel lattice horizontally and to the
+//! resolution's lattice vertically; integer translation is applied when the
+//! mask is painted. A mask is a pure function of its key, so retention and
+//! eviction change time, never pixels.
 
+use super::Resolution;
 use super::coverage::{Coverage, Geometry};
 use pagura_core::{Error, Limits, Result};
 use pagura_raster::{Path, Transform};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-/// Subpixel origins per device pixel on each axis.
+/// Horizontal subpixel origins per device pixel.
 const PHASES: u16 = 128;
-
-/// Device-space chord tolerance for glyph outlines.
-const TOLERANCE: f64 = 0.0625;
 
 /// Retained glyph masks, row fragments and geometry, bounded in bytes.
 #[derive(Debug, Default)]
@@ -33,13 +32,21 @@ pub(crate) struct GlyphCache {
 #[derive(Debug, PartialEq, Eq, Hash)]
 struct Key {
     outline: usize,
+    resolution: Resolution,
     matrix: [u64; 6],
 }
 
 impl Key {
-    fn new(outline: &Arc<Path>, transform: Transform, px: f64, py: f64) -> Self {
+    fn new(
+        outline: &Arc<Path>,
+        resolution: Resolution,
+        transform: Transform,
+        px: f64,
+        py: f64,
+    ) -> Self {
         Self {
             outline: Arc::as_ptr(outline) as usize,
+            resolution,
             matrix: [transform.a, transform.b, transform.c, transform.d, px, py].map(f64::to_bits),
         }
     }
@@ -61,36 +68,38 @@ impl GlyphCache {
         }
     }
 
-    /// The coverage of `outline` under `transform`, and the integer device
-    /// offset at which to paint it.
+    /// The coverage of `outline` under `transform` at `resolution`, and the
+    /// integer device offset at which to paint it. `scratch` is reused
+    /// working storage; it never carries values between masks.
     pub(super) fn coverage(
         &mut self,
         outline: &Arc<Path>,
-        transform: Transform,
+        (transform, resolution): (Transform, Resolution),
         limits: Limits,
+        scratch: &mut Accumulator,
     ) -> Result<(Arc<Coverage>, (i32, i32))> {
-        let (px, x) = phase(transform.e)?;
-        let (py, y) = phase(transform.f)?;
-        let key = Key::new(outline, transform, px, py);
+        let (px, x) = phase(transform.e, PHASES)?;
+        let (py, y) = phase(transform.f, resolution.vertical_phases())?;
+        let key = Key::new(outline, resolution, transform, px, py);
         if let Some(mask) = self.masks.get(&key) {
             return Ok((Arc::clone(&mask.coverage), (x, y)));
         }
-        let row_key = Key::new(outline, transform, 0.0, py);
+        let row_key = Key::new(outline, resolution, transform, 0.0, py);
         let coverage = if let Some(rows) = self.rows.get(&row_key) {
-            rows.mask(px, limits)?
+            rows.mask(px, limits, scratch)?
         } else {
-            let geometry_key = Key::new(outline, transform, 0.0, 0.0);
+            let geometry_key = Key::new(outline, resolution, transform, 0.0, 0.0);
             let rows = if let Some(prepared) = self.geometries.get(&geometry_key) {
                 Rows::new(prepared, py, limits)?
             } else {
-                let prepared = Prepared::new(outline, transform, limits)?;
+                let prepared = Prepared::new(outline, transform, resolution, limits)?;
                 let rows = Rows::new(&prepared, py, limits)?;
                 if self.reserve(outline, prepared.bytes, limits.document_bytes) {
                     self.geometries.insert(geometry_key, prepared);
                 }
                 rows
             };
-            let coverage = rows.mask(px, limits)?;
+            let coverage = rows.mask(px, limits, scratch)?;
             if self.reserve(outline, rows.bytes, limits.document_bytes) {
                 self.rows.insert(row_key, rows);
             }
@@ -160,9 +169,10 @@ fn entry_bytes(path: &Path, storage: usize) -> usize {
         .saturating_add(256)
 }
 
-/// Splits a device coordinate into its snapped fraction and integer part.
-fn phase(value: f64) -> Result<(f64, i32)> {
-    let value = (value * f64::from(PHASES)).round() / f64::from(PHASES);
+/// Splits a device coordinate into its fraction, snapped to `phases` per
+/// pixel, and integer part.
+fn phase(value: f64, phases: u16) -> Result<(f64, i32)> {
+    let value = (value * f64::from(phases)).round() / f64::from(phases);
     if !value.is_finite() || value.abs() > 1e8 {
         return Err(Error::limit("glyph origin exceeds working range"));
     }
@@ -192,11 +202,16 @@ impl Prepared {
         clippy::cast_sign_loss,
         reason = "validated geometry is normalized before f32 storage and extents are budgeted"
     )]
-    fn new(path: &Arc<Path>, transform: Transform, limits: Limits) -> Result<Self> {
+    fn new(
+        path: &Arc<Path>,
+        transform: Transform,
+        resolution: Resolution,
+        limits: Limits,
+    ) -> Result<Self> {
         let geometry = Geometry::new(
             path,
             transform,
-            TOLERANCE,
+            resolution.glyph_flattening(),
             Limits {
                 decoded_bytes: limits.decoded_bytes / 2,
                 ..limits
@@ -344,11 +359,11 @@ impl Rows {
         clippy::cast_possible_truncation,
         reason = "canonical phases lie within [0,1)"
     )]
-    fn mask(&self, px: f64, limits: Limits) -> Result<Coverage> {
+    fn mask(&self, px: f64, limits: Limits, accumulator: &mut Accumulator) -> Result<Coverage> {
         if self.width == 0 {
             return Ok(Coverage::empty());
         }
-        let mut accumulator = Accumulator::new(self.width, self.height, limits)?;
+        accumulator.reset(self.width, self.height, limits)?;
         let px = px as f32;
         for fragment in &self.fragments {
             accumulator.segment(
@@ -368,39 +383,63 @@ impl Rows {
     }
 }
 
-/// Signed-area cells in f32, one sentinel per row.
-struct Accumulator {
+/// Signed-area cells in f32, one sentinel per row; reusable working storage
+/// for one mask at a time.
+#[derive(Debug, Default)]
+pub(super) struct Accumulator {
     area: Vec<f32>,
     width: usize,
+    height: usize,
     work: usize,
     maximum: usize,
 }
 
 impl Accumulator {
-    fn new(width: usize, height: usize, limits: Limits) -> Result<Self> {
+    /// Zeroes `width` by `height` cells and the work count. The cells and the
+    /// finished mask are charged together to the render's allocation budget,
+    /// and capacity retained from a larger earlier mask is released when that
+    /// budget no longer covers it.
+    fn reset(&mut self, width: usize, height: usize, limits: Limits) -> Result<()> {
         let count = width
             .checked_mul(height)
             .filter(|&n| n <= limits.pixels && n <= limits.raster_work)
             .ok_or(Error::limit("glyph coverage extent budget exceeded"))?;
-        count
+        let cells = count
             .checked_add(height)
-            .and_then(|n| n.checked_mul(4))
-            .and_then(|n| n.checked_add(count))
-            .filter(|&n| n <= limits.decoded_bytes)
             .ok_or(Error::limit("glyph coverage allocation budget exceeded"))?;
-        Ok(Self {
-            area: vec![0.0; count + height],
-            width,
-            work: 0,
-            maximum: limits.raster_work,
-        })
+        let available = limits
+            .decoded_bytes
+            .checked_sub(count)
+            .ok_or(Error::limit("glyph coverage allocation budget exceeded"))?
+            / size_of::<f32>();
+        if cells > available {
+            return Err(Error::limit("glyph coverage allocation budget exceeded"));
+        }
+        if self.area.capacity() > available {
+            self.area = Vec::new();
+        }
+        self.area.clear();
+        self.area
+            .try_reserve_exact(cells)
+            .map_err(|_| Error::limit("glyph coverage allocation failed"))?;
+        self.area.resize(cells, 0.0);
+        self.width = width;
+        self.height = height;
+        self.work = 0;
+        self.maximum = limits.raster_work;
+        Ok(())
     }
 
+    // Inlining lets the placement loop keep the row stride and work limit in
+    // registers across fragments.
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
-        reason = "finite fragment endpoints saturate to the checked local raster extent"
+        clippy::inline_always,
+        reason = "finite fragment endpoints saturate to the checked local raster extent; \
+                  one caller per mask"
     )]
+    #[inline(always)]
     fn segment(
         &mut self,
         row: usize,
@@ -442,17 +481,29 @@ impl Accumulator {
         clippy::cast_sign_loss,
         reason = "coverage is clamped to [0,255] before positive nearest rounding"
     )]
-    fn finish(self) -> Vec<u8> {
-        let mut data = vec![0_u8; self.area.len() - self.area.len() / (self.width + 1)];
+    fn finish(&self) -> Vec<u8> {
+        let level = |value: f32| (value.abs().min(1.0) * 255.0 + 0.5) as u8;
+        let mut data = vec![0_u8; self.width * self.height];
         for (row, output) in self
             .area
             .chunks_exact(self.width + 1)
             .zip(data.chunks_exact_mut(self.width))
         {
+            // The prefix sums stay serial, in the same order; only their
+            // conversions to levels are independent, four at a time.
             let mut value = 0.0_f32;
-            for (out, &delta) in output.iter_mut().zip(row) {
+            let (blocks, tail) = output.as_chunks_mut::<4>();
+            let (deltas, rest) = row.split_at(blocks.len() * 4);
+            for (out, delta) in blocks.iter_mut().zip(deltas.as_chunks::<4>().0) {
+                let a = value + delta[0];
+                let b = a + delta[1];
+                let c = b + delta[2];
+                value = c + delta[3];
+                *out = [a, b, c, value].map(level);
+            }
+            for (out, &delta) in tail.iter_mut().zip(rest) {
                 value += delta;
-                *out = (value.abs().min(1.0) * 255.0 + 0.5) as u8;
+                *out = level(value);
             }
         }
         data
@@ -474,12 +525,61 @@ mod tests {
     use super::*;
     use pagura_raster::PathBuilder;
 
+    fn accumulator(width: usize, height: usize) -> Accumulator {
+        let mut raster = Accumulator::default();
+        raster.reset(width, height, Limits::default()).unwrap();
+        raster
+    }
+
     #[test]
     fn phases_carry_across_integer_and_negative_origins() {
-        assert_eq!(phase(3.999).unwrap(), (0.0, 4));
-        assert_eq!(phase(-0.25).unwrap(), (0.75, -1));
-        assert_eq!(phase(0.125).unwrap(), (0.125, 0));
-        assert!(phase(f64::INFINITY).is_err());
+        assert_eq!(phase(3.999, 128).unwrap(), (0.0, 4));
+        assert_eq!(phase(-0.25, 128).unwrap(), (0.75, -1));
+        assert_eq!(phase(0.125, 128).unwrap(), (0.125, 0));
+        assert_eq!(phase(0.97, 16).unwrap(), (0.0, 1));
+        assert_eq!(phase(0.1, 16).unwrap(), (0.125, 0));
+        assert!(phase(f64::INFINITY, 128).is_err());
+    }
+
+    #[test]
+    fn block_and_tail_levels_match_independent_integer_prefix_areas() {
+        let deltas = [513_i16, -1025, 511, 1024, -255, 1537, -2048, 1791];
+        for width in 1..=33 {
+            let mut raster = accumulator(width, 3);
+            let mut expected = Vec::new();
+            for row in 0..3 {
+                let mut winding = 0_i32;
+                for column in 0..width {
+                    let delta = deltas[(row + column) % deltas.len()];
+                    raster.area[row * (width + 1) + column] = f32::from(delta) / 1024.0;
+                    winding += i32::from(delta);
+                    let level = (winding.abs().min(1024) * 255 + 512) / 1024;
+                    expected.push(u8::try_from(level).unwrap());
+                }
+            }
+            assert_eq!(raster.finish(), expected);
+        }
+    }
+
+    #[test]
+    fn reused_scratch_is_zeroed_and_released_beyond_the_allocation_budget() {
+        let mut raster = accumulator(32, 16);
+        raster.area.fill(1.0);
+        let limits = Limits {
+            decoded_bytes: 32,
+            ..Limits::default()
+        };
+        raster.reset(2, 2, limits).unwrap();
+        assert!(raster.area.capacity() * size_of::<f32>() + 4 <= limits.decoded_bytes);
+        assert_eq!(raster.finish(), [0; 4]);
+        raster.segment(0, 0.5, 0.5, 1.0, 0.0).unwrap();
+        raster.reset(2, 2, limits).unwrap();
+        assert_eq!((raster.work, raster.finish()), (0, vec![0; 4]));
+        let smaller = Limits {
+            decoded_bytes: 27,
+            ..limits
+        };
+        assert!(raster.reset(2, 2, smaller).is_err());
     }
 
     #[test]
@@ -489,13 +589,17 @@ mod tests {
         let glyph = Prepared::new(
             &Arc::new(path.finish()),
             Transform::IDENTITY,
+            Resolution::Low,
             Limits::default(),
         )
         .unwrap();
+        let mut scratch = Accumulator::default();
         for py in [0_u16, 1, 16, 127] {
             let rows = Rows::new(&glyph, f64::from(py) / 128.0, Limits::default()).unwrap();
             for px in [0_u16, 1, 16, 127] {
-                let mask = rows.mask(f64::from(px) / 128.0, Limits::default()).unwrap();
+                let mask = rows
+                    .mask(f64::from(px) / 128.0, Limits::default(), &mut scratch)
+                    .unwrap();
                 for (index, a, b) in [
                     (0, 128 - px, 128 - py),
                     (1, px, 128 - py),
@@ -513,7 +617,7 @@ mod tests {
 
     #[test]
     fn last_bit_and_half_coverage_have_independent_rectangle_areas() {
-        let mut raster = Accumulator::new(64, 3, Limits::default()).unwrap();
+        let mut raster = accumulator(64, 3);
         for [ax, ay, bx, by] in [[0.25, 0.5, 0.25, 1.5], [63.75, 1.5, 63.75, 0.5_f32]] {
             // Each vertical edge crosses rows 0 and 1 by half a pixel.
             let sign = if ay < by { 1.0 } else { -1.0 };
@@ -536,16 +640,30 @@ mod tests {
         let path = Arc::new(path.finish());
         let transform = Transform::new(1.5, 0.0, 0.0, 1.5, 10.3, 4.7);
         let limits = Limits::default();
+        let mut scratch = Accumulator::default();
         let mut cached = GlyphCache::new(1 << 20);
         let mut uncached = GlyphCache::new(0);
-        let (first, offset) = cached.coverage(&path, transform, limits).unwrap();
-        let (again, _) = cached.coverage(&path, transform, limits).unwrap();
-        assert!(Arc::ptr_eq(&first, &again));
-        let (fresh, fresh_offset) = uncached.coverage(&path, transform, limits).unwrap();
-        assert_eq!(
-            (first.data.as_slice(), offset),
-            (fresh.data.as_slice(), fresh_offset)
-        );
+        for resolution in [Resolution::Low, Resolution::High] {
+            let placement = (transform, resolution);
+            let (first, offset) = cached
+                .coverage(&path, placement, limits, &mut scratch)
+                .unwrap();
+            let (again, _) = cached
+                .coverage(&path, placement, limits, &mut scratch)
+                .unwrap();
+            assert!(Arc::ptr_eq(&first, &again));
+            let (fresh, fresh_offset) = uncached
+                .coverage(&path, placement, limits, &mut scratch)
+                .unwrap();
+            assert_eq!(
+                (first.data.as_slice(), offset),
+                (fresh.data.as_slice(), fresh_offset)
+            );
+        }
+        // Resolutions snap 4.7 to different vertical lattices: a key per resolution.
+        let low = cached.coverage(&path, (transform, Resolution::Low), limits, &mut scratch);
+        let high = cached.coverage(&path, (transform, Resolution::High), limits, &mut scratch);
+        assert_ne!(low.unwrap().0.data, high.unwrap().0.data);
         assert_eq!(uncached.retained_bytes(), 0);
         assert!(cached.retained_bytes() <= 1 << 20);
     }

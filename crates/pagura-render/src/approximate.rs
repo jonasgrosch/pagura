@@ -2,9 +2,9 @@
 //!
 //! It renders opaque RGB pages of solid-colour marks, axis-aligned images and
 //! simple groups straight into premultiplied RGBA8 with byte source-over:
-//! - glyphs from prepared row fragments at 1/128-pixel origins
-//!   ([`glyphs`]), and other paths by signed area after flattening curves
-//!   to chords ([`coverage`]);
+//! - glyphs from prepared row fragments at subpixel origins ([`glyphs`],
+//!   with a lattice and curve flattening per [`Resolution`]), and other
+//!   paths by signed area after flattening curves to chords ([`coverage`]);
 //! - axis-aligned images from four midpoint samples per pixel ([`images`]);
 //! - groups of Normal composition at full opacity flattened onto the page,
 //!   so knockout among their marks is not applied;
@@ -38,6 +38,48 @@ use std::collections::HashMap;
 
 /// Device-space chord tolerance for filled and stroked paths.
 const TOLERANCE: f64 = 0.0625;
+
+/// Glyph flattening and vertical origin lattice for a rendering resolution.
+///
+/// Below 1.5 device pixels per unit (108 dpi), glyph features approach one
+/// pixel, so vertical placement keeps 1/128-pixel origins and curves
+/// 0.15-pixel chords. From there up, curve pieces within 1/4 pixel become
+/// two area-balanced chords and vertical origins snap to 1/16 pixel, which
+/// reuses each glyph's row fragments across eight times fewer phases. Both
+/// were measured at 72, 150 and 300 dpi against the competitive accuracy
+/// gate.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum Resolution {
+    /// Below 1.5 device pixels per unit.
+    Low,
+    /// At least 1.5 device pixels per unit.
+    High,
+}
+
+impl Resolution {
+    fn new(options: &RenderOptions) -> Self {
+        if options.scale < 1.5 {
+            Self::Low
+        } else {
+            Self::High
+        }
+    }
+
+    /// Vertical glyph origins per device pixel.
+    fn vertical_phases(self) -> u16 {
+        match self {
+            Self::Low => 128,
+            Self::High => 16,
+        }
+    }
+
+    fn glyph_flattening(self) -> coverage::Flattening {
+        match self {
+            Self::Low => coverage::Flattening::Chords(0.15),
+            Self::High => coverage::Flattening::Balanced(0.25),
+        }
+    }
+}
 
 /// The glyph cache retained by a rendering context, in bytes.
 pub(crate) const CACHE_BYTES: usize = 16 * 1024 * 1024;
@@ -88,9 +130,11 @@ pub(crate) fn render(
 ) -> Result<Pixmap> {
     let page = list.device_size(options)?;
     let device = list.device_transform(options);
+    let resolution = Resolution::new(options);
     let mut target = Target::new(tile, options.background, list.limits)?;
     let geometry = (device, page, list.limits);
     let mut clips = HashMap::new();
+    let mut scratch = glyphs::Accumulator::default();
     let mut stack = vec![list.commands.iter()];
     while let Some(iter) = stack.last_mut() {
         let Some(command) = iter.next() else {
@@ -120,8 +164,12 @@ pub(crate) fn render(
                         ..source.linear
                     }
                     .then(device);
-                    let (coverage, offset) =
-                        glyphs.coverage(&source.outline, transform, list.limits)?;
+                    let (coverage, offset) = glyphs.coverage(
+                        &source.outline,
+                        (transform, resolution),
+                        list.limits,
+                        &mut scratch,
+                    )?;
                     paint::blit(&mut target, &coverage, offset, color, clip);
                 }
             }

@@ -68,10 +68,13 @@ pub enum Accuracy {
     Exact,
     /// Signed-area coverage after flattening curves to 1/16-pixel chords
     /// (1/4 pixel for clip paths), glyph masks from reused row fragments at
-    /// 1/128-pixel origins, four samples per pixel for axis-aligned images,
-    /// and byte composition. Opaque RGB pages of solid-colour marks, images,
-    /// shadings and simple groups take this path; any other page renders
-    /// exactly. It does not meet the one-level contract.
+    /// 1/128-pixel horizontal origins, four samples per pixel for
+    /// axis-aligned images, and byte composition. Below 108 dpi, glyph
+    /// curves become 0.15-pixel chords at 1/128-pixel vertical origins; from
+    /// 108 dpi, area-balanced 1/4-pixel chords at 1/16-pixel vertical
+    /// origins. Opaque RGB pages of solid-colour marks, images, shadings and
+    /// simple groups take this path; any other page renders exactly. It does
+    /// not meet the one-level contract.
     RowFragments,
 }
 

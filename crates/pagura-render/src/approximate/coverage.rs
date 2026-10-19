@@ -1,6 +1,8 @@
 //! Signed-area coverage of flattened paths. Curves become chords within a
 //! device tolerance, and overlapping contours accumulate their winding before
 //! the nonzero or even-odd rule clamps it; neither step is exact (ADR 0004).
+//! Glyph geometry may instead flatten each curve piece to two chords that
+//! keep its signed area ([`Flattening::Balanced`]).
 
 use pagura_core::{Error, Limits, Result};
 use pagura_raster::{FillRule, Path, Point, Segment, Transform};
@@ -49,9 +51,20 @@ pub(super) fn rasterize(
         return Ok(Coverage::empty());
     }
     let local = transform.then(Transform::translate(-f64::from(x), -f64::from(y)));
-    let edges = flattened_edges(path, local, tolerance, &limits)?;
+    let edges = flattened_edges(path, local, Flattening::Chords(tolerance), &limits)?;
     let data = accumulate(&edges, width, height, rule, &limits)?;
     Ok(Coverage { x, y, width, data })
+}
+
+/// How curves become edges.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) enum Flattening {
+    /// Recursive subdivision until each piece's endpoint chord lies within
+    /// this device tolerance.
+    Chords(f64),
+    /// The same subdivision, then each piece becomes two chords through a
+    /// vertex placed so that they enclose the piece's signed area.
+    Balanced(f64),
 }
 
 /// A path flattened once under a linear map, without its translation.
@@ -66,7 +79,7 @@ impl Geometry {
     pub(super) fn new(
         path: &Path,
         transform: Transform,
-        tolerance: f64,
+        flattening: Flattening,
         limits: Limits,
     ) -> Result<Self> {
         let transform = Transform {
@@ -74,19 +87,33 @@ impl Geometry {
             f: 0.0,
             ..transform
         };
-        let (min, max) = bounds(path, transform, limits)?;
+        let (mut min, mut max) = bounds(path, transform, limits)?;
         let flatten_limits = Limits {
             path_segments: limits
                 .path_segments
                 .min(limits.decoded_bytes / (2 * size_of::<(Point, Point)>())),
             ..limits
         };
-        let edges = flattened_edges(path, transform, tolerance, &flatten_limits)?;
+        let edges = flattened_edges(path, transform, flattening, &flatten_limits)?;
         edges
             .len()
             .checked_mul(size_of::<(Point, Point)>())
             .filter(|&n| n <= limits.decoded_bytes)
             .ok_or(Error::limit("glyph geometry allocation budget exceeded"))?;
+        if matches!(flattening, Flattening::Balanced(_)) {
+            // A balanced vertex may leave the control polygon's bounds.
+            min = Point::new(f64::INFINITY, f64::INFINITY);
+            max = Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
+            for p in edges.iter().flat_map(|&(a, b)| [a, b]) {
+                if !p.is_finite() || p.x.abs().max(p.y.abs()) > 1e8 {
+                    return Err(Error::limit("coverage coordinate range exceeded"));
+                }
+                min.x = min.x.min(p.x);
+                min.y = min.y.min(p.y);
+                max.x = max.x.max(p.x);
+                max.y = max.y.max(p.y);
+            }
+        }
         Ok(Self { edges, min, max })
     }
 }
@@ -167,7 +194,7 @@ fn snap(p: Point) -> Point {
 fn flattened_edges(
     path: &Path,
     local: Transform,
-    tolerance: f64,
+    flattening: Flattening,
     limits: &Limits,
 ) -> Result<Vec<(Point, Point)>> {
     let mut edges = Vec::new();
@@ -190,7 +217,7 @@ fn flattened_edges(
             Segment::CubicTo(a, b, c) => {
                 flatten(
                     [current, snap(a * local), snap(b * local), snap(c * local)],
-                    tolerance,
+                    flattening,
                     0,
                     &mut edges,
                     limits,
@@ -325,7 +352,7 @@ pub(super) fn primitive(x: f64) -> f64 {
 
 fn flatten(
     p: [Point; 4],
-    tolerance: f64,
+    flattening: Flattening,
     depth: usize,
     edges: &mut Vec<(Point, Point)>,
     limits: &Limits,
@@ -333,6 +360,8 @@ fn flatten(
     if edges.len() >= limits.path_segments || depth > limits.depth.min(64) {
         return Err(Error::limit("coverage flattening budget exceeded"));
     }
+    let (Flattening::Chords(tolerance) | Flattening::Balanced(tolerance)) = flattening;
+    let balanced = matches!(flattening, Flattening::Balanced(_));
     let [a, b, c, d] = p;
     let dx = d.x - a.x;
     let dy = d.y - a.y;
@@ -352,8 +381,20 @@ fn flatten(
                 t >= 0.0 && t <= len
             })
     };
+    // A balanced piece needs a chord to move its vertex across, so a closed
+    // loop subdivides until it is a point.
+    let flat = flat && (!balanced || len >= 1e-20 || (a == b && a == c && a == d));
     if flat {
-        edges.push((a, d));
+        if balanced && len >= 1e-20 {
+            if edges.len().saturating_add(2) > limits.path_segments {
+                return Err(Error::limit("coverage flattening budget exceeded"));
+            }
+            let middle = balanced_vertex(p);
+            edges.push((a, middle));
+            edges.push((middle, d));
+        } else {
+            edges.push((a, d));
+        }
         return Ok(());
     }
     let mid = |a: Point, b: Point| Point::new(a.x.midpoint(b.x), a.y.midpoint(b.y));
@@ -363,8 +404,25 @@ fn flatten(
     let abc = mid(ab, bc);
     let bcd = mid(bc, cd);
     let m = mid(abc, bcd);
-    flatten([a, ab, abc, m], tolerance, depth + 1, edges, limits)?;
-    flatten([m, bcd, cd, d], tolerance, depth + 1, edges, limits)
+    flatten([a, ab, abc, m], flattening, depth + 1, edges, limits)?;
+    flatten([m, bcd, cd, d], flattening, depth + 1, edges, limits)
+}
+
+/// The vertex of two chords from `a` to `d` that enclose the cubic's signed
+/// area against the chord `ad`. Integrating the Bernstein basis gives that
+/// area; the vertex starts at the curve's midpoint and moves along the
+/// chord's normal until its triangle has it.
+fn balanced_vertex([a, b, c, d]: [Point; 4]) -> Point {
+    let relative = |p: Point| Point::new(p.x - a.x, p.y - a.y);
+    let (b, c, d) = (relative(b), relative(c), relative(d));
+    let cross = |p: Point, q: Point| p.x * q.y - p.y * q.x;
+    let area = ((cross(b, c) + cross(b, d)) * 3.0 + cross(c, d) * 6.0) / 20.0;
+    let middle = Point::new(
+        (3.0 * b.x + 3.0 * c.x + d.x) / 8.0,
+        (3.0 * b.y + 3.0 * c.y + d.y) / 8.0,
+    );
+    let shift = 2.0 * (cross(middle, d) * 0.5 - area) / (d.x * d.x + d.y * d.y);
+    Point::new(a.x + middle.x - d.y * shift, a.y + middle.y + d.x * shift)
 }
 
 #[cfg(test)]
@@ -473,6 +531,36 @@ mod tests {
             )
             .is_err()
         );
+    }
+
+    #[test]
+    fn balanced_pieces_keep_independent_polynomial_areas_within_edge_budgets() {
+        let shoelace = |edges: &[(Point, Point)]| -> f64 {
+            edges
+                .iter()
+                .map(|(a, b)| (a.x * b.y - a.y * b.x) * 0.5)
+                .sum()
+        };
+        let a = Point::new(0.0, 0.0);
+        let b = Point::new(0.0, 1.0);
+        let c = Point::new(1.0, 1.0);
+        let d = Point::new(1.0, 0.0);
+        // x = 3t^2 - 2t^3, y = 3t - 3t^2 encloses 3/5 with its chord.
+        let middle = balanced_vertex([a, b, c, d]);
+        assert!((middle.x - 0.5).abs() < 1e-12 && (middle.y - 1.2).abs() < 1e-12);
+        let mut edges = Vec::new();
+        let balanced = Flattening::Balanced(1.0);
+        flatten([a, b, c, d], balanced, 0, &mut edges, &Limits::default()).unwrap();
+        assert!((shoelace(&edges) + 0.6).abs() < 1e-12);
+        let one = Limits {
+            path_segments: 1,
+            ..Limits::default()
+        };
+        assert!(flatten([a, b, c, d], balanced, 0, &mut Vec::new(), &one).is_err());
+        // The closed cubic with controls (0,1) and (1,0) encloses 3/20.
+        edges.clear();
+        flatten([a, b, d, a], balanced, 0, &mut edges, &Limits::default()).unwrap();
+        assert!((shoelace(&edges) + 0.15).abs() < 1e-12);
     }
 
     #[test]

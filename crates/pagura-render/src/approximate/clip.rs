@@ -46,8 +46,12 @@ impl ClipMask {
                 if x < 0 || y < 0 || x >= c.width as i64 {
                     0
                 } else {
-                    c.data
-                        .get(y as usize * c.width + x as usize)
+                    // Checked, so a far row cannot wrap onto a covered one.
+                    usize::try_from(y)
+                        .ok()
+                        .and_then(|row| row.checked_mul(c.width))
+                        .and_then(|row| row.checked_add(x as usize))
+                        .and_then(|index| c.data.get(index))
                         .copied()
                         .unwrap_or(0)
                 }
@@ -178,5 +182,24 @@ fn intersect(a: &mut Coverage, b: &Coverage) {
             *value =
                 u8::try_from((u16::from(*value) * u16::from(other) + 127) / 255).unwrap_or(255);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn far_rows_cannot_wrap_onto_covered_ones() {
+        let mask = ClipMask::Coverage(Coverage {
+            x: 0,
+            y: 0,
+            width: 65_536,
+            data: vec![255; 65_536],
+        });
+        // One covered row; row 65536 is outside, and its linear index is 2^32.
+        assert_eq!(mask.at(0, 0), 255);
+        assert_eq!(mask.at(0, 1), 0);
+        assert_eq!(mask.at(0, 65_536), 0);
     }
 }

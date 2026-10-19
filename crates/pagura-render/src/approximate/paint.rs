@@ -34,7 +34,7 @@ impl Target {
         clippy::cast_sign_loss,
         reason = "indices are clamped to the tile, whose extent fits usize"
     )]
-    fn span(&mut self, y: i64, x0: i64, x1: i64) -> Option<(i64, &mut [u8])> {
+    pub(super) fn span(&mut self, y: i64, x0: i64, x1: i64) -> Option<(i64, &mut [u8])> {
         let tile = self.tile;
         let row = y - i64::from(tile.y);
         if row < 0 || row >= i64::from(tile.height) {
@@ -175,6 +175,10 @@ pub(super) fn fill_rectangle(
 
 pub(super) fn blend_span(pixels: &mut [u8], coverage: &[u8], color: Rgba8) {
     let coverage = &coverage[..coverage.len().min(pixels.len() / 4)];
+    if color == Rgba8::BLACK {
+        black_span(pixels, coverage);
+        return;
+    }
     let mut start = 0;
     while start < coverage.len() {
         if coverage[start] == 0 {
@@ -197,6 +201,23 @@ pub(super) fn blend_span(pixels: &mut [u8], coverage: &[u8], color: Rgba8) {
         }
         start = end;
     }
+}
+
+/// Opaque black: each colour channel keeps the complement of its coverage,
+/// and alpha, opaque on every page this path renders, is kept. Fixed-width
+/// weights expose four pixels' independent products to every target's
+/// vectorizer.
+fn black_span(pixels: &mut [u8], coverage: &[u8]) {
+    let (blocks, tail) = pixels[..coverage.len() * 4].as_chunks_mut::<16>();
+    let (alphas, remainder) = coverage.as_chunks::<4>();
+    for (output, a) in blocks.iter_mut().zip(alphas) {
+        let [a, b, c, d] = a.map(|v| 255 - u16::from(v));
+        let weights = [a, a, a, 255, b, b, b, 255, c, c, c, 255, d, d, d, 255];
+        for (out, weight) in output.iter_mut().zip(weights) {
+            *out = div255(u16::from(*out) * weight);
+        }
+    }
+    scalar_span(tail, remainder, Rgba8::BLACK);
 }
 
 #[inline]
@@ -318,6 +339,27 @@ mod tests {
     fn byte_division_matches_independent_integer_rounding() {
         for value in 0..=65025 {
             assert_eq!(u16::from(div255(value)), (value + 127) / 255);
+        }
+    }
+
+    #[test]
+    fn black_lanes_match_independent_integer_source_over() {
+        for backdrop in 0..=255_u16 {
+            for alpha in 0..=255_u16 {
+                let mut pixels = [u8::try_from(backdrop).unwrap(); 28];
+                for p in pixels.as_chunks_mut::<4>().0 {
+                    p[3] = 255;
+                }
+                blend_span(
+                    &mut pixels,
+                    &[u8::try_from(alpha).unwrap(); 7],
+                    Rgba8::BLACK,
+                );
+                let expected = u8::try_from((backdrop * (255 - alpha) + 127) / 255).unwrap();
+                for p in pixels.as_chunks::<4>().0 {
+                    assert_eq!(*p, [expected, expected, expected, 255]);
+                }
+            }
         }
     }
 
