@@ -107,10 +107,13 @@ impl From<Error> for Fault {
 }
 type InflateResult<T> = std::result::Result<T, Fault>;
 
+/// `size` is the expected output length, an allocation hint only (0 for
+/// none).
 pub(crate) fn decode(
     input: &[u8],
     cap: usize,
     predictor: Predictor,
+    size: usize,
     diagnostics: &mut Diagnostics,
 ) -> Result<Vec<u8>> {
     // RFC 1951 stored-block padding can mimic CM=8. Prefer a valid zlib
@@ -126,7 +129,7 @@ pub(crate) fn decode(
             0,
         )?;
     }
-    inflate(input, cap, predictor, diagnostics, wrapped)
+    inflate(input, (cap, size), predictor, diagnostics, wrapped)
 }
 
 pub(crate) fn raw(
@@ -135,12 +138,12 @@ pub(crate) fn raw(
     predictor: Predictor,
     diagnostics: &mut Diagnostics,
 ) -> Result<Vec<u8>> {
-    inflate(input, cap, predictor, diagnostics, false)
+    inflate(input, (cap, 0), predictor, diagnostics, false)
 }
 
 fn inflate(
     input: &[u8],
-    cap: usize,
+    (cap, size): (usize, usize),
     predictor: Predictor,
     diagnostics: &mut Diagnostics,
     wrapped: bool,
@@ -161,7 +164,7 @@ fn inflate(
     };
     let mut bits = Bits::new(input, start);
     let output = Output::new(cap, predictor)?;
-    let mut inflater = Inflater::new(output, predictor, cap, window, input.len());
+    let mut inflater = Inflater::new(output, predictor, cap, window, (input.len(), size));
     match inflater.blocks(&mut bits) {
         Ok(()) => {
             bits.align();
@@ -226,7 +229,7 @@ pub(crate) fn prefix(
         columns: 1,
     };
     let output = Output::new(cap, none).ok()?;
-    let mut inflater = Inflater::new(output, none, cap, window, input.len());
+    let mut inflater = Inflater::new(output, none, cap, window, (input.len(), 0));
     loop {
         let final_block = bits.read(1).ok()? != 0;
         inflater.block(&mut bits).ok()?;
@@ -290,8 +293,16 @@ struct Sink {
 }
 
 impl Sink {
-    fn new(output: Output, predicted: bool, cap: usize, input: usize) -> Self {
+    /// Without a predictor, storage for an expected `size` is allocated at
+    /// once, twice over plus a margin so that the doubling bookkeeping never
+    /// outgrows it for that size; [`Self::finish`] trims it to the capacity
+    /// the bookkeeping reached, as without the hint. Untouched storage
+    /// stays unused.
+    fn new(output: Output, predicted: bool, cap: usize, (input, size): (usize, usize)) -> Self {
         let mut bytes = Vec::new();
+        if !predicted && size > 0 {
+            let _ = bytes.try_reserve_exact(size.saturating_mul(2).saturating_add(1024).min(cap));
+        }
         if predicted {
             // A small first window; it grows to its bound only for large streams.
             // A power of two, so its doublings end exactly at the bound.
@@ -540,10 +551,16 @@ struct Inflater {
 }
 
 impl Inflater {
-    fn new(output: Output, predictor: Predictor, cap: usize, window: usize, input: usize) -> Self {
+    fn new(
+        output: Output,
+        predictor: Predictor,
+        cap: usize,
+        window: usize,
+        (input, size): (usize, usize),
+    ) -> Self {
         let predicted = predictor.kind != PredictorKind::None;
         Self {
-            sink: Sink::new(output, predicted, cap, input),
+            sink: Sink::new(output, predicted, cap, (input, size)),
             adler: Adler32::new(),
             window,
             litlen: LitlenTable::new(),

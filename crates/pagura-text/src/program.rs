@@ -52,7 +52,7 @@ fn load_stream(
     let whole = prefix.is_none();
     let data = match prefix {
         Some(data) => std::borrow::Cow::Owned(data),
-        None => document.stream_data(object)?,
+        None => document.stream_data_sized(object, declared_length(document, dictionary))?,
     };
     // A prefix was checked against Length1 when it was decoded.
     if whole && let Some(problem) = length_problem(document, dictionary, key, format, data.len())? {
@@ -84,6 +84,22 @@ fn load_stream(
         }
         error
     })
+}
+
+/// The program length a font stream's `Length1` to `Length3` declare, as an
+/// allocation hint for decoding it (0 when absent or unreadable).
+fn declared_length(document: &Document, dictionary: &Dictionary) -> usize {
+    let mut total = 0_usize;
+    for key in [b"Length1".as_slice(), b"Length2", b"Length3"] {
+        let length = optional(document, dictionary, key)
+            .ok()
+            .flatten()
+            .and_then(Value::as_integer)
+            .and_then(|n| usize::try_from(n).ok())
+            .unwrap_or(0);
+        total = total.saturating_add(length);
+    }
+    total.min(document.limits().decoded_bytes)
 }
 
 /// The tables that drawing glyphs from a TrueType program reads.
