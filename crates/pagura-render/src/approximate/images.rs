@@ -129,6 +129,11 @@ fn paint_box(
             extent: (x1 - x0).max(0.0),
         });
     }
+    // One row of sums, reused for every row.
+    let mut colors = Vec::new();
+    colors
+        .try_reserve_exact(width)
+        .map_err(|_| Error::limit("image coordinate allocation failed"))?;
     for y in bounds.y..bounds.y + bounds.height {
         let y0 = f64::from(y).max(image_bounds[1]);
         let y1 = (f64::from(y) + 1.0).min(image_bounds[3]);
@@ -137,7 +142,7 @@ fn paint_box(
             let p = Point::new(0.0, y0 + (sy as f64 + 0.5) * (y1 - y0) / SAMPLES as f64) * inverse;
             *sample = source.row(p.y)?;
         }
-        let mut colors = Vec::new();
+        colors.clear();
         for (column, prepared) in columns.iter().enumerate() {
             let x = bounds.x + column as u32;
             let shape = ((prepared.extent * (y1 - y0).max(0.0)) * 255.0)
