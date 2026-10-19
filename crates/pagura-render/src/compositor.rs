@@ -57,7 +57,8 @@ struct Context {
     crop: Path,
     memory: Memory,
     work: usize,
-    clip: Option<(usize, Tile, Arc<Mask>)>,
+    /// The last clip mask, for the clip and tile it was built for.
+    clip: Option<(Option<Arc<Clip>>, Tile, Arc<Mask>)>,
     mask: Option<CachedMask>,
     function_work: usize,
     soft_source: bool,
@@ -185,9 +186,11 @@ impl Context {
     }
     fn clip(&mut self, clip: Option<&Arc<Clip>>, tile: Tile) -> Result<Arc<Mask>> {
         let tile = self.viewport.unwrap_or(tile);
-        let id = clip.map_or(0, |c| Arc::as_ptr(c) as usize);
         if let Some((key, region, mask)) = &self.clip
-            && *key == id
+            && match (key, clip) {
+                (Some(key), Some(clip)) => Arc::ptr_eq(key, clip),
+                (key, clip) => key.is_none() && clip.is_none(),
+            }
             && *region == tile
         {
             return Ok(Arc::clone(mask));
@@ -233,7 +236,7 @@ impl Context {
             mask.intersect(&next)?;
         }
         let mask = Arc::new(mask);
-        self.clip = Some((id, tile, Arc::clone(&mask)));
+        self.clip = Some((clip.cloned(), tile, Arc::clone(&mask)));
         Ok(mask)
     }
     fn commands(

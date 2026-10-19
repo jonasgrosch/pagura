@@ -8,7 +8,7 @@ use pagura_core::{Error, Result};
 use std::sync::Arc;
 
 pub(super) struct CachedMask {
-    pub(super) id: usize,
+    pub(super) mask: Arc<SoftMask>,
     pub(super) tile: Tile,
     pub(super) model: Model,
     pub(super) values: Arc<Vec<f64>>,
@@ -27,9 +27,8 @@ impl Context {
         parent_model: Model,
         depth: usize,
     ) -> Result<Arc<Vec<f64>>> {
-        let id = Arc::as_ptr(mask) as usize;
         if let Some(cached) = &self.mask
-            && cached.id == id
+            && Arc::ptr_eq(&cached.mask, mask)
             && cached.tile == tile
             && cached.model == parent_model
         {
@@ -109,7 +108,7 @@ impl Context {
         drop(surface);
         let values = Arc::new(values);
         self.mask = Some(CachedMask {
-            id,
+            mask: Arc::clone(mask),
             tile,
             model: parent_model,
             values: Arc::clone(&values),

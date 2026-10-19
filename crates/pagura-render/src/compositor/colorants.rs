@@ -155,6 +155,7 @@ impl Discovery {
                 ..
             } => {
                 self.overprint |= p.composite.overprint;
+                // The list outlives the walk, so no two patterns share an address.
                 if self.patterns.insert(Arc::as_ptr(pattern) as usize) {
                     match &pattern.kind {
                         crate::pattern::Kind::Tiling(t) => {
