@@ -50,70 +50,53 @@ impl Output {
         })
     }
 
-    pub(crate) fn buffer(&self) -> &[u8] {
-        &self.bytes
+    /// Output bytes the cap still allows.
+    pub(crate) fn room(&self) -> usize {
+        self.cap.saturating_sub(self.bytes.len())
     }
 
-    // These two operations are selected only when prediction is absent.
-    pub(crate) fn literal(&mut self, byte: u8, offset: usize) -> Result<()> {
-        self.reserve(1, offset)?;
-        self.bytes.push(byte);
-        Ok(())
-    }
-
-    pub(crate) fn copy(&mut self, distance: usize, length: usize, offset: usize) -> Result<()> {
-        let start = self
-            .bytes
-            .len()
-            .checked_sub(distance)
-            .filter(|_| distance != 0)
-            .ok_or_else(|| syntax("DEFLATE distance exceeds history", offset))?;
-        self.reserve(length, offset)?;
-        let mut remaining = length;
-        while remaining != 0 {
-            let count = remaining.min(self.bytes.len() - start);
-            self.bytes.extend_from_within(start..start + count);
-            remaining -= count;
+    /// Whether `bytes`, written next, carry only valid PNG row tags.
+    pub(crate) fn valid_tags(&self, bytes: &[u8]) -> bool {
+        if self.predictor.kind != PredictorKind::Png {
+            return true;
         }
-        Ok(())
+        let first = if self.png_filter.is_none() {
+            0
+        } else {
+            self.row_bytes - self.row_offset
+        };
+        bytes
+            .iter()
+            .skip(first)
+            .step_by(self.row_bytes.saturating_add(1))
+            .all(|&tag| tag <= 4)
     }
 
-    // PNG tags belong to pre-predictor history, but not to the decoded cap.
-    pub(crate) fn history_capacity(&self) -> usize {
-        match self.predictor.kind {
-            PredictorKind::None => 0,
-            PredictorKind::Tiff => self.cap.min(32768),
-            PredictorKind::Png => self
-                .cap
-                .saturating_add(self.cap / self.row_bytes)
-                .saturating_add(1)
-                .min(32768),
-        }
-    }
-
-    pub(crate) fn write(&mut self, bytes: &[u8], offset: usize) -> Result<()> {
+    pub(crate) fn write(&mut self, mut bytes: &[u8], offset: usize) -> Result<()> {
         self.check(bytes.len(), offset)?;
         if self.predictor.kind == PredictorKind::None {
             self.reserve(bytes.len(), offset)?;
             self.bytes.extend_from_slice(bytes);
             return Ok(());
         }
-        for &byte in bytes {
+        // A row at a time: tags first, then the row's bytes in one segment.
+        while let Some((&tag, rest)) = bytes.split_first() {
             if self.predictor.kind == PredictorKind::Png && self.png_filter.is_none() {
-                if byte > 4 {
+                if tag > 4 {
                     return Err(syntax("invalid PNG predictor tag", offset));
                 }
-                self.png_filter = Some(byte);
+                self.png_filter = Some(tag);
+                bytes = rest;
                 continue;
             }
-            self.reserve(1, offset)?;
-            let byte = if self.predictor.kind == PredictorKind::Png {
-                self.png_byte(byte)
+            let (segment, rest) = bytes.split_at(bytes.len().min(self.row_bytes - self.row_offset));
+            self.grow(segment.len(), offset)?;
+            if self.predictor.kind == PredictorKind::Png {
+                self.png_segment(segment);
             } else {
-                byte
-            };
-            self.bytes.push(byte);
-            self.row_offset += 1;
+                self.bytes.extend_from_slice(segment);
+            }
+            self.row_offset += segment.len();
             if self.row_offset == self.row_bytes {
                 if self.predictor.kind == PredictorKind::Tiff {
                     self.tiff_row();
@@ -121,6 +104,7 @@ impl Output {
                 self.row_offset = 0;
                 self.png_filter = None;
             }
+            bytes = rest;
         }
         Ok(())
     }
@@ -171,35 +155,67 @@ impl Output {
         Ok(())
     }
 
-    fn png_byte(&self, byte: u8) -> u8 {
-        let end = self.bytes.len();
-        let left = if self.row_offset >= self.pixel_bytes {
-            self.bytes.get(end - self.pixel_bytes).copied().unwrap_or(0)
-        } else {
-            0
+    /// Reserves `count` more bytes, to the capacity reserving them one at a
+    /// time would reach; callers count retained capacity.
+    fn grow(&mut self, count: usize, offset: usize) -> Result<()> {
+        let needed = self
+            .bytes
+            .len()
+            .checked_add(count)
+            .filter(|&n| n <= self.cap)
+            .ok_or_else(|| crate::limit(offset))?;
+        let mut target = self.bytes.capacity();
+        while target < needed {
+            target = target.saturating_mul(2).max(64).min(self.cap);
+        }
+        if target > self.bytes.capacity() {
+            self.bytes
+                .try_reserve_exact(target - self.bytes.len())
+                .map_err(|_| crate::limit(offset))?;
+        }
+        Ok(())
+    }
+
+    /// Reverses the current row's PNG filter for the row's next bytes.
+    fn png_segment(&mut self, segment: &[u8]) {
+        let start = self.bytes.len();
+        let row = start - self.row_offset;
+        let (stride, step) = (self.row_bytes, self.pixel_bytes);
+        let filter = self.png_filter.unwrap_or(0);
+        if filter == 0 || (row == 0 && filter == 2) {
+            self.bytes.extend_from_slice(segment);
+            return;
+        }
+        if filter == 2 {
+            // Up: no dependence within the row.
+            self.bytes
+                .extend_from_within(start - stride..start - stride + segment.len());
+            for (byte, &raw) in self.bytes[start..].iter_mut().zip(segment) {
+                *byte = byte.wrapping_add(raw);
+            }
+            return;
+        }
+        self.bytes.extend_from_slice(segment);
+        let (from, to) = (start - row, self.bytes.len() - row);
+        let (before, current) = self.bytes.split_at_mut(row);
+        let previous = before
+            .get(row.saturating_sub(stride)..)
+            .filter(|_| row != 0);
+        // Byte by byte up to the second whole pixel, then whole pixels of
+        // common widths, then the remaining bytes.
+        let head = from.max(step).next_multiple_of(step).min(to);
+        unfilter_bytes(filter, current, previous, step, from, head);
+        let body = head + (to - head) / step * step;
+        let done = match step {
+            1 => unfilter_pixels::<1>(filter, current, previous, head, body),
+            2 => unfilter_pixels::<2>(filter, current, previous, head, body),
+            3 => unfilter_pixels::<3>(filter, current, previous, head, body),
+            4 => unfilter_pixels::<4>(filter, current, previous, head, body),
+            6 => unfilter_pixels::<6>(filter, current, previous, head, body),
+            8 => unfilter_pixels::<8>(filter, current, previous, head, body),
+            _ => head,
         };
-        let above = end
-            .checked_sub(self.row_bytes)
-            .and_then(|i| self.bytes.get(i))
-            .copied()
-            .unwrap_or(0);
-        let upper_left = if self.row_offset >= self.pixel_bytes {
-            end.checked_sub(self.row_bytes)
-                .and_then(|i| i.checked_sub(self.pixel_bytes))
-                .and_then(|i| self.bytes.get(i))
-                .copied()
-                .unwrap_or(0)
-        } else {
-            0
-        };
-        let prediction = match self.png_filter {
-            Some(1) => left,
-            Some(2) => above,
-            Some(3) => (left & above) + ((left ^ above) >> 1),
-            Some(4) => paeth(left, above, upper_left),
-            _ => 0,
-        };
-        byte.wrapping_add(prediction)
+        unfilter_bytes(filter, current, previous, step, done, to);
     }
 
     fn tiff_row(&mut self) {
@@ -225,6 +241,96 @@ impl Output {
             return Err(syntax("incomplete predictor row", offset));
         }
         Ok(self.bytes)
+    }
+}
+
+/// Reverses PNG filter 1, 3 or 4 (PNG Second Edition 9.2) for `current[from..to]`,
+/// one byte at a time; `previous` is the row above, absent for the first row.
+fn unfilter_bytes(
+    filter: u8,
+    current: &mut [u8],
+    previous: Option<&[u8]>,
+    step: usize,
+    from: usize,
+    to: usize,
+) {
+    for index in from..to {
+        let left = index
+            .checked_sub(step)
+            .and_then(|i| current.get(i))
+            .copied()
+            .unwrap_or(0);
+        let above = previous
+            .and_then(|row| row.get(index))
+            .copied()
+            .unwrap_or(0);
+        let upper_left = index
+            .checked_sub(step)
+            .and_then(|i| previous.and_then(|row| row.get(i)))
+            .copied()
+            .unwrap_or(0);
+        if let Some(byte) = current.get_mut(index) {
+            *byte = byte.wrapping_add(predict(filter, left, above, upper_left));
+        }
+    }
+}
+
+/// [`unfilter_bytes`] for whole `STEP`-byte pixels from `from` (a multiple
+/// of `STEP`, at least one pixel in) to `to`, keeping the left pixel in
+/// registers. Returns where it stopped.
+fn unfilter_pixels<const STEP: usize>(
+    filter: u8,
+    current: &mut [u8],
+    previous: Option<&[u8]>,
+    from: usize,
+    to: usize,
+) -> usize {
+    let (done, rest) = current.split_at_mut(from.min(current.len()));
+    let (Some(&first), Some(pixels)) = (
+        done.last_chunk::<STEP>(),
+        rest.get_mut(..to.saturating_sub(from)),
+    ) else {
+        return from;
+    };
+    let mut left = first;
+    let (pixels, _) = pixels.as_chunks_mut::<STEP>();
+    match previous.and_then(|row| row.get(from - STEP..to)) {
+        Some(row) => {
+            let above = row.get(STEP..).unwrap_or_default().as_chunks::<STEP>().0;
+            let corner = row.as_chunks::<STEP>().0;
+            for ((pixel, above), corner) in pixels.iter_mut().zip(above).zip(corner) {
+                // Built in registers, so the next pixel need not reload it.
+                left = std::array::from_fn(|channel| {
+                    pixel[channel].wrapping_add(predict(
+                        filter,
+                        left[channel],
+                        above[channel],
+                        corner[channel],
+                    ))
+                });
+                *pixel = left;
+            }
+        }
+        None => {
+            for pixel in pixels {
+                left = std::array::from_fn(|channel| {
+                    pixel[channel].wrapping_add(predict(filter, left[channel], 0, 0))
+                });
+                *pixel = left;
+            }
+        }
+    }
+    to
+}
+
+#[inline]
+fn predict(filter: u8, left: u8, above: u8, upper_left: u8) -> u8 {
+    match filter {
+        1 => left,
+        2 => above,
+        3 => (left & above) + ((left ^ above) >> 1),
+        4 => paeth(left, above, upper_left),
+        _ => 0,
     }
 }
 
