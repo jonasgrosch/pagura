@@ -558,3 +558,284 @@ fn independent_quadrilateral_component_oracles() {
         }
     }
 }
+
+#[test]
+fn independent_convex_miter_stroke_oracles() {
+    for compound in ["opposed", "reversed", "filled", "fallback"] {
+        vector(&format!("convex-miter-compound-{compound}"), 0);
+    }
+    for shape in [
+        "rectangle",
+        "triangle",
+        "octagon",
+        "closed-hole",
+        "reversed-side",
+        "icosagon",
+        "thin",
+        "wide",
+        "sixteen-thin",
+        "sixteen-wide",
+        "sixteen-filled",
+        "sixteen-near-miter",
+        "sixteen-reversed-inner",
+    ] {
+        for order in ["forward", "reverse"] {
+            vector(&format!("convex-miter-{shape}-{order}"), 0);
+        }
+    }
+}
+
+#[test]
+fn convex_strokes_preserve_reflected_oracles_at_large_origins() {
+    let text = String::from_utf8(pagura_testkit::fixture(
+        "raster",
+        "convex-miter-icosagon-forward.path",
+    ))
+    .unwrap();
+    let (path, _, stroke, _) = vector_geometry(&text);
+    let stroke = stroke.unwrap();
+    let expected = pagura_testkit::fixture("raster", "convex-miter-icosagon-forward.pgm");
+    let expected = expected.strip_prefix(b"P5\n8 8\n255\n").unwrap();
+    for origin in [(0, 0), (17, 29), (1 << 30, 1 << 30)] {
+        let transform = Transform::scale(-1.0, 1.0).then(Transform::translate(
+            f64::from(origin.0) + 8.0,
+            f64::from(origin.1),
+        ));
+        let (outline, transform) =
+            crate::stroke_outline(&path, transform, &stroke, &Limits::default()).unwrap();
+        let mask =
+            Mask::from_path_at(8, 8, &outline, transform, FillRule::NonZero, 64, origin).unwrap();
+        for y in 0..8 {
+            for x in 0..8 {
+                assert_eq!(
+                    mask.coverage()[y * 8 + x],
+                    expected[y * 8 + 7 - x],
+                    "{origin:?} {x},{y}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn sixteen_sided_oracles_exercise_boundary_and_reversed_inner_fallback() {
+    for shape in ["thin", "wide", "filled", "near-miter", "reversed-inner"] {
+        for order in ["forward", "reverse"] {
+            let text = String::from_utf8(pagura_testkit::fixture(
+                "raster",
+                &format!("convex-miter-sixteen-{shape}-{order}.path"),
+            ))
+            .unwrap();
+            let (path, _, stroke, _) = vector_geometry(&text);
+            let (outline, _) = crate::stroke_outline(
+                &path,
+                Transform::IDENTITY,
+                &stroke.unwrap(),
+                &Limits::default(),
+            )
+            .unwrap();
+            assert_eq!(
+                outline.boundary.is_some(),
+                shape != "reversed-inner",
+                "{shape} {order}"
+            );
+        }
+    }
+}
+
+// The sixteen-sided fixture at a width whose boundary once rounded
+// differently from its components, with each point moved by `offset`.
+fn sixteen_sided(offset: Point) -> (Path, Stroke) {
+    let text = String::from_utf8(pagura_testkit::fixture(
+        "raster",
+        "convex-miter-sixteen-thin-forward.path",
+    ))
+    .unwrap();
+    let (path, _, stroke, _) = vector_geometry(&text);
+    let mut moved = PathBuilder::new();
+    for segment in path.segments() {
+        match *segment {
+            crate::Segment::MoveTo(p) => {
+                moved.move_to(Point::new(p.x + offset.x, p.y + offset.y));
+            }
+            crate::Segment::LineTo(p) => {
+                moved
+                    .line_to(Point::new(p.x + offset.x, p.y + offset.y))
+                    .unwrap();
+            }
+            crate::Segment::Close => {
+                moved.close();
+            }
+            crate::Segment::CubicTo(..) => panic!("polygon"),
+        }
+    }
+    let stroke = Stroke {
+        width: 1.09375,
+        ..stroke.unwrap()
+    };
+    (moved.finish(), stroke)
+}
+
+// The component construction alone, independently of the boundary proof.
+fn components(path: &Path, transform: Transform, stroke: &Stroke) -> Path {
+    let limits = Limits::default();
+    let stretch = transform.a.hypot(transform.b) + transform.c.hypot(transform.d);
+    let mut components = PathBuilder::new();
+    for contour in crate::flatten::flatten(path, transform, &limits).unwrap() {
+        for run in crate::stroke::dash(contour.points, contour.closed, stroke, &limits).unwrap() {
+            crate::stroke::draw(
+                &mut components,
+                &run,
+                stroke.width / 2.0,
+                crate::flatten::TOLERANCE / stretch,
+                stroke,
+                &limits,
+            )
+            .unwrap();
+        }
+    }
+    components.finish()
+}
+
+#[test]
+fn boundary_strokes_preserve_component_rounding_under_uniform_scales() {
+    let limits = Limits::default();
+    for phase in 0..256 {
+        let (path, stroke) = sixteen_sided(Point::new(
+            f64::from(phase) / 97.0,
+            f64::from(phase) / 113.0,
+        ));
+        for scale in [0.75, 1.0, 1.25] {
+            let transform = Transform::scale(scale, scale);
+            let (outline, pen) = crate::stroke_outline(&path, transform, &stroke, &limits).unwrap();
+            assert!(outline.boundary.is_some());
+            let components = components(&path, transform, &stroke);
+            assert_eq!(outline.segments(), components.segments());
+            let old = Mask::from_path(12, 12, &components, pen, FillRule::NonZero, 144).unwrap();
+            let new = Mask::from_path(12, 12, &outline, pen, FillRule::NonZero, 144).unwrap();
+            assert_eq!(new.coverage(), old.coverage(), "{phase} {scale}");
+        }
+    }
+}
+
+// Far from its user origin a stroke leaves the sweep's frame. Its boundary
+// would then be accumulated with different rounding (phase 185 at scale 1.25),
+// so coverage keeps the components there.
+#[test]
+fn boundary_strokes_keep_components_outside_the_sweep_frame() {
+    let limits = Limits::default();
+    for phase in 0..256 {
+        let (path, stroke) = sixteen_sided(Point::new(
+            70_000.0 + f64::from(phase) / 97.0,
+            70_000.0 + f64::from(phase) / 113.0,
+        ));
+        for scale in [0.75, 1.0, 1.25] {
+            let transform = Transform::scale(scale, scale)
+                .then(Transform::translate(-70_000.0 * scale, -70_000.0 * scale));
+            let (outline, pen) = crate::stroke_outline(&path, transform, &stroke, &limits).unwrap();
+            assert!(outline.boundary.is_some());
+            let components = components(&path, transform, &stroke);
+            let old = Mask::from_path(12, 12, &components, pen, FillRule::NonZero, 144).unwrap();
+            let new = Mask::from_path(12, 12, &outline, pen, FillRule::NonZero, 144).unwrap();
+            assert_eq!(new.coverage(), old.coverage(), "{phase} {scale}");
+        }
+    }
+}
+
+// A nonrectangular clip far from its own user origin leaves the sweep's frame
+// too, so the clipped stroke keeps its components.
+#[test]
+fn boundary_strokes_keep_components_under_distant_clips() {
+    let limits = Limits::default();
+    let mut circle = PathBuilder::new();
+    for i in 0..64 {
+        let angle = f64::from(i) * std::f64::consts::TAU / 64.0;
+        let point = Point::new(70_006.0 + 8.0 * angle.cos(), 70_006.0 + 8.0 * angle.sin());
+        if i == 0 {
+            circle.move_to(point);
+        } else {
+            circle.line_to(point).unwrap();
+        }
+    }
+    circle.close();
+    let clip = Mask::from_path(
+        12,
+        12,
+        &circle.finish(),
+        Transform::translate(-70_000.0, -70_000.0),
+        FillRule::NonZero,
+        144,
+    )
+    .unwrap();
+    for phase in 0..256 {
+        let (path, stroke) = sixteen_sided(Point::new(
+            f64::from(phase) / 97.0,
+            f64::from(phase) / 113.0,
+        ));
+        for scale in [0.75, 1.0, 1.25] {
+            let transform = Transform::scale(scale, scale);
+            let (outline, pen) = crate::stroke_outline(&path, transform, &stroke, &limits).unwrap();
+            assert!(outline.boundary.is_some());
+            let components = components(&path, transform, &stroke);
+            let clipped = |path: &Path| {
+                let mask = clip
+                    .clipped_path(path, pen, FillRule::NonZero, limits)
+                    .unwrap()
+                    .unwrap();
+                (mask.origin(), mask.coverage().to_vec())
+            };
+            assert_eq!(clipped(&outline), clipped(&components), "{phase} {scale}");
+        }
+    }
+}
+
+#[test]
+fn boundary_strokes_clean_repeated_closure_and_exclude_dashes_and_affine_pens() {
+    let text = String::from_utf8(pagura_testkit::fixture(
+        "raster",
+        "convex-miter-sixteen-thin-forward.path",
+    ))
+    .unwrap();
+    let (path, _, stroke, _) = vector_geometry(&text);
+    let mut repeated = PathBuilder::new();
+    let crate::Segment::MoveTo(first) = path.segments()[0] else {
+        panic!("start")
+    };
+    for segment in path.segments() {
+        match *segment {
+            crate::Segment::MoveTo(p) => {
+                repeated.move_to(p);
+            }
+            crate::Segment::LineTo(p) => {
+                repeated.line_to(p).unwrap();
+            }
+            crate::Segment::Close => {
+                repeated.line_to(first).unwrap();
+                repeated.close();
+            }
+            crate::Segment::CubicTo(..) => panic!("polygon"),
+        }
+    }
+    let path = repeated.finish();
+    let stroke = stroke.unwrap();
+    let limits = Limits::default();
+    let (boundary, _) =
+        crate::stroke_outline(&path, Transform::IDENTITY, &stroke, &limits).unwrap();
+    assert!(boundary.boundary.is_some());
+    for transform in [
+        Transform::scale(1.0, 2.0),
+        Transform {
+            c: 0.5,
+            ..Transform::IDENTITY
+        },
+    ] {
+        let (outline, _) = crate::stroke_outline(&path, transform, &stroke, &limits).unwrap();
+        assert!(outline.boundary.is_none());
+    }
+    let dashed = Stroke {
+        dash_array: vec![1000.0, 1.0],
+        ..stroke
+    };
+    let (outline, _) = crate::stroke_outline(&path, Transform::IDENTITY, &dashed, &limits).unwrap();
+    assert!(outline.boundary.is_none());
+}

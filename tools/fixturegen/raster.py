@@ -9,7 +9,8 @@ sampling of their geometric definitions; their maximum accepted difference is
 from fractions import Fraction as F
 import math
 
-from .model import Vector
+from .model import Case, RENDER, Vector
+from .pdf import document, stream
 
 AREA = "raster"
 SIZE = 8
@@ -115,7 +116,165 @@ def sampled(name, path, predicate, requirement="raster-strokes"):
                   extra={"tolerance": 3, "sample_rate": rate})
 
 
+
+def convex_miter_cases():
+    """Parallel supporting lines define convex miter strokes, in Fraction."""
+    def cross(a, b):
+        return a[0] * b[1] - a[1] * b[0]
+
+    def offset_lines(points, distance):
+        lines = []
+        for a, b in zip(points, points[1:] + points[:1]):
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            square = dx * dx + dy * dy
+            numerator, denominator = math.isqrt(square.numerator), math.isqrt(square.denominator)
+            length = F(numerator, denominator)
+            assert length * length == square
+            normal = (-distance * dy / length, distance * dx / length)
+            lines.append((tuple(p + n for p, n in zip(a, normal)),
+                          tuple(p + n for p, n in zip(b, normal))))
+        return lines
+
+    def intersection(first, second):
+        a, b = first
+        c, d = second
+        v, w = tuple(q - p for p, q in zip(a, b)), tuple(q - p for p, q in zip(c, d))
+        t = cross(tuple(q - p for p, q in zip(a, c)), w) / cross(v, w)
+        return tuple(p + t * q for p, q in zip(a, v))
+
+    def interior(points, lines):
+        for a, b in lines:
+            direction = tuple(q - p for p, q in zip(a, b))
+            def side(p):
+                return cross(direction, tuple(q - r for r, q in zip(a, p)))
+            output = []
+            for p, q in zip(points, points[1:] + points[:1]):
+                sp, sq = side(p), side(q)
+                if sp >= 0:
+                    output.append(p)
+                if (sp >= 0) != (sq >= 0):
+                    output.append(tuple(x + sp / (sp - sq) * (y - x) for x, y in zip(p, q)))
+            points = output
+        return points
+
+    shapes = [
+        ("rectangle", [(2, 2), (6, 2), (6, 6), (2, 6)], F(1, 2)),
+        ("triangle", [(1, 1), (7, 1), (7, F(11, 2))], F(1, 2)),
+        ("octagon", [(1, 2), (F(5, 2), 0), (F(11, 2), 0), (7, 2),
+                     (7, 5), (F(11, 2), 7), (F(5, 2), 7), (1, 5)], F(3, 4)),
+        ("closed-hole", [(2, 2), (6, 2), (6, 6), (2, 6)], F(4)),
+        ("reversed-side", [(2, 2), (6, 2), (6, 6), (2, 6)], F(6)),
+    ]
+    directions = [(5, 0), (12, 5), (4, 3), (3, 4), (5, 12),
+                  (0, 5), (-5, 12), (-3, 4), (-4, 3), (-12, 5)]
+    steps = directions + [(-x, -y) for x, y in directions]
+    polygon, current = [], (0, 0)
+    for x, y in steps:
+        polygon.append(current)
+        current = (current[0] + x, current[1] + y)
+    assert current == (0, 0)
+    offset = tuple(F(8) / 2 - F(min(p[a] for p in polygon) + max(p[a] for p in polygon), 32)
+                   for a in (0, 1))
+    polygon = [(F(x, 16) + offset[0], F(y, 16) + offset[1]) for x, y in polygon]
+    shapes.extend((name, polygon, width) for name, width in
+                  [("icosagon", F(1, 2)), ("thin", F(1, 64)), ("wide", F(4))])
+    for name, points, width in shapes:
+        points = [tuple(map(F, p)) for p in points]
+        lines = offset_lines(points, -width / 2)
+        outer = [intersection(lines[i - 1], lines[i]) for i in range(len(lines))]
+        inner = interior(points, offset_lines(points, width / 2))
+        expected = pgm(clipped_area(outer, x, y) - clipped_area(inner, x, y)
+                       for y in range(SIZE) for x in range(SIZE))
+        for order in ("forward", "reverse"):
+            ordered = points if order == "forward" else list(reversed(points))
+            path = f"stroke {float(width)} butt miter 10\n"
+            path += "".join(("m" if i == 0 else "l") + f" {float(x)} {float(y)}\n"
+                            for i, (x, y) in enumerate(ordered)) + "h\n"
+            yield Vector(f"convex-miter-{name}-{order}", {".path": path.encode(), ".pgm": expected},
+                         ("raster-strokes",), "Rational parallel supporting lines and inward half-plane intersection",
+                         extra={"tolerance": 0})
+
+    # Sixteen strict turns exercise the boundary construction; each edge has
+    # rational length, so the supporting-line oracle remains entirely exact.
+    quadrant = [(5, 0), (12, 5), (3, 4), (5, 12)]
+    steps16 = []
+    for quarter in range(4):
+        for x, y in quadrant:
+            for _ in range(quarter):
+                x, y = -y, x
+            steps16.append((F(x, 16), F(y, 16)))
+    for name, width, miter, reverse_side in [
+        ("sixteen-thin", F(1, 64), F(10), False),
+        ("sixteen-wide", F(3, 2), F(10), False),
+        ("sixteen-filled", F(8), F(10), False),
+        ("sixteen-near-miter", F(3, 4), F(1037, 1000), False),
+        ("sixteen-reversed-inner", F(3, 4), F(10), True),
+    ]:
+        points, current = [], (F(0), F(0))
+        for i, (x, y) in enumerate(steps16):
+            points.append(current)
+            factor = F(1, 1024) if reverse_side and i in (0, 8) else F(1)
+            current = (current[0] + factor * x, current[1] + factor * y)
+        assert current == (0, 0)
+        shift = tuple(F(4) - (min(p[a] for p in points) + max(p[a] for p in points)) / 2
+                      for a in (0, 1))
+        points = [(x + shift[0], y + shift[1]) for x, y in points]
+        lines = offset_lines(points, -width / 2)
+        outer = [intersection(lines[i - 1], lines[i]) for i in range(len(lines))]
+        inner = interior(points, offset_lines(points, width / 2))
+        expected = pgm(clipped_area(outer, x, y) - clipped_area(inner, x, y)
+                       for y in range(SIZE) for x in range(SIZE))
+        for order in ("forward", "reverse"):
+            ordered = points if order == "forward" else list(reversed(points))
+            path = f"stroke {float(width)} butt miter {float(miter)}\n"
+            path += "".join(("m" if i == 0 else "l") + f" {float(x)} {float(y)}\n"
+                            for i, (x, y) in enumerate(ordered)) + "h\n"
+            yield Vector(f"convex-miter-{name}-{order}", {".path": path.encode(), ".pgm": expected},
+                         ("raster-strokes",), "Sixteen rational sides, exact parallel offsets and inward half-plane intersection",
+                         extra={"tolerance": 0})
+            commands = "1 0 0 -1 0 8 cm 0 g 0 0 8 8 re f 1 G "
+            commands += f"{float(width)} w 0 J 0 j {float(miter)} M "
+            commands += " ".join(f"{float(x)} {float(y)} " + ("m" if i == 0 else "l")
+                                 for i, (x, y) in enumerate(ordered)) + " h S"
+            pdf = document([
+                b"<< /Type /Catalog /Pages 2 0 R >>",
+                b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+                b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources << >> /Contents 4 0 R >>",
+                stream(commands.encode()),
+            ])
+            ppm = b"P6\n8 8\n255\n" + b"".join(bytes([v, v, v]) for v in expected[-SIZE * SIZE:])
+            yield Case(f"convex-miter-{name}-{order}-pdf", pdf, RENDER, ("raster-strokes",),
+                       "Sixteen-sided white miter stroke on black, exact rational pixel area", oracle=ppm)
+
+    shifted = [(x + F(3, 4), y + F(1, 2)) for x, y in polygon]
+    triangle = [(F(1), F(1)), (F(5), F(1)), (F(5), F(4))]
+    compounds = [
+        ("opposed", F(3, 4), [(polygon, False), (shifted, True)]),
+        ("reversed", F(3, 4), [(polygon, True), (shifted, True)]),
+        ("filled", F(4), [(polygon, True), (shifted, False)]),
+        ("fallback", F(3, 4), [(polygon, True), (triangle, False)]),
+    ]
+    for name, width, parts in compounds:
+        path = f"stroke {float(width)} butt miter 10\n"
+        contours = []
+        for points, reverse in parts:
+            lines = offset_lines(points, -width / 2)
+            outer = [intersection(lines[i - 1], lines[i]) for i in range(len(lines))]
+            inner = interior(points, offset_lines(points, width / 2))
+            contours.extend([outer, list(reversed(inner))])
+            ordered = list(reversed(points)) if reverse else points
+            path += "".join(("m" if i == 0 else "l") + f" {float(x)} {float(y)}\n"
+                            for i, (x, y) in enumerate(ordered)) + "h\n"
+        yield Vector(f"convex-miter-compound-{name}", {
+            ".path": path.encode(),
+            ".pgm": pgm(winding_area([("nonzero", contours)], x, y)
+                        for y in range(SIZE) for x in range(SIZE))},
+            ("raster-strokes",), "Exact rational union of independently offset stroke regions",
+            extra={"tolerance": 0})
+
+
 def cases():
+    yield from convex_miter_cases()
     # Coincident quadrilaterals have the same union as one contour. Even-odd
     # coverage depends only on parity, including at the cell-density boundary.
     quad = [(0, 0), (1, F(1, 4)), (1, F(5, 4)), (0, 1)]
