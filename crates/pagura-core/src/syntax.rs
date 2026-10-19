@@ -676,6 +676,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a number, or `N G R` when the integer starts a reference.
+    /// Tokens whose digits and point span at most [`SHORT_DIGITS`] bytes convert without text parsing.
     fn number_or_reference(&mut self) -> Result<Value> {
         let start = self.position;
         let token = self.word()?;
@@ -685,10 +686,19 @@ impl<'a> Parser<'a> {
         let signed = digits.is_some();
         let digits = digits.unwrap_or(token);
         let mut dots = 0;
+        // At most 15 bytes of digits and point: the value and its decimal places, exactly.
+        let short = digits.len() <= SHORT_DIGITS;
+        let (mut mantissa, mut decimals) = (0_i64, 0);
         let valid = !digits.is_empty()
             && digits != b"."
             && digits.iter().all(|&byte| match byte {
-                b'0'..=b'9' => true,
+                b'0'..=b'9' => {
+                    if short {
+                        mantissa = mantissa * 10 + i64::from(byte - b'0');
+                        decimals += dots;
+                    }
+                    true
+                }
                 b'.' => {
                     dots += 1;
                     dots == 1
@@ -698,16 +708,24 @@ impl<'a> Parser<'a> {
         if !valid {
             return Err(Error::syntax("invalid number").at(self.origin.position(start)));
         }
-        let text = std::str::from_utf8(token).map_err(|_| self.error("invalid number"))?;
-        if dots == 1 {
-            return match text.parse::<f64>() {
-                Ok(number) if number.is_finite() => Ok(Value::Real(number)),
-                _ => Err(self.error("real number out of range")),
-            };
+        let negative = token.first() == Some(&b'-');
+        if short && dots == 1 {
+            let magnitude = short_real(mantissa, decimals);
+            return Ok(Value::Real(if negative { -magnitude } else { magnitude }));
         }
-        let integer: i64 = text
-            .parse()
-            .map_err(|_| self.error("integer out of range"))?;
+        let integer = if short {
+            if negative { -mantissa } else { mantissa }
+        } else {
+            let text = std::str::from_utf8(token).map_err(|_| self.error("invalid number"))?;
+            if dots == 1 {
+                return match text.parse::<f64>() {
+                    Ok(number) if number.is_finite() => Ok(Value::Real(number)),
+                    _ => Err(self.error("real number out of range")),
+                };
+            }
+            text.parse()
+                .map_err(|_| self.error("integer out of range"))?
+        };
         if !signed && let Some((reference, generation_zeroes)) = self.reference_tail(integer) {
             if generation_zeroes || (token.len() > 1 && token.first() == Some(&b'0')) {
                 self.diagnostics.repair(
@@ -758,6 +776,20 @@ impl<'a> Parser<'a> {
     }
 }
 
+/// The most digit and point bytes, sign excluded, that [`short_real`] converts.
+const SHORT_DIGITS: usize = 15;
+
+/// `mantissa / 10^decimals` for a token of at most [`SHORT_DIGITS`] digits.
+/// Both operands are integers below 2^53, so each is exact in `f64`, and one
+/// correctly rounded division gives the correctly rounded decimal value, as
+/// text parsing does.
+fn short_real(mantissa: i64, decimals: usize) -> f64 {
+    const POWERS: [f64; SHORT_DIGITS] = [
+        1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14,
+    ];
+    mantissa as f64 / POWERS[decimals]
+}
+
 #[cfg(test)]
 mod tests {
     use super::{Origin, Parser};
@@ -776,6 +808,62 @@ mod tests {
         let mut parser = Parser::new(b"1 2 3 4 5", Origin::Buffer, limits);
         for expected in 1..=5 {
             assert_eq!(parser.parse().unwrap(), Value::Integer(expected));
+        }
+    }
+
+    /// The text conversion the short path replaces, for comparison.
+    fn text_value(token: &str) -> Value {
+        if token.contains('.') {
+            Value::Real(token.parse().unwrap())
+        } else {
+            Value::Integer(token.parse().unwrap())
+        }
+    }
+
+    #[test]
+    fn short_numbers_match_text_conversion_bit_for_bit() {
+        let mut seed = 0x2545_f491_4f6c_dd1d_u64;
+        let mut tokens = vec![
+            "0".to_owned(),
+            "-0".into(),
+            "+0".into(),
+            "-0.0".into(),
+            "+.000".into(),
+            "-.5".into(),
+            "3.".into(),
+            "007".into(),
+            "0.1".into(),
+            "0.3".into(),
+            "999999999999999".into(),
+            "99999999999999.9".into(),
+            ".99999999999999".into(),
+            "9007199254740993".into(),
+            "0.00000000000001".into(),
+        ];
+        for length in 1..=17 {
+            for _ in 0..400 {
+                let mut token = String::new();
+                for _ in 0..length {
+                    seed ^= seed << 13;
+                    seed ^= seed >> 7;
+                    seed ^= seed << 17;
+                    token.push(char::from(b'0' + u8::try_from(seed % 10).unwrap()));
+                }
+                let point = usize::try_from(seed >> 32).unwrap() % (length + 2);
+                if point <= length {
+                    token.insert(point, '.');
+                }
+                let sign = ["", "-", "+"][usize::try_from(seed >> 40).unwrap() % 3];
+                tokens.push(format!("{sign}{token}"));
+            }
+        }
+        for token in tokens {
+            let actual = parse(token.as_bytes()).unwrap();
+            let expected = text_value(&token);
+            match (&actual, &expected) {
+                (Value::Real(a), Value::Real(b)) => assert_eq!(a.to_bits(), b.to_bits(), "{token}"),
+                _ => assert_eq!(actual, expected, "{token}"),
+            }
         }
     }
 
