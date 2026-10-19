@@ -77,6 +77,47 @@ impl Target {
         Some((lo, &mut self.pixels.data_mut()[start * 4..end * 4]))
     }
 
+    /// Calls `paint` with each page row from `y` for `rows` rows that lies in
+    /// the tile, the first column of its pixels from `x0` (inclusive) to `x1`
+    /// (exclusive) that lie in the tile, and those pixels; as [`Self::span`]
+    /// for each row, with the tile clipping done once.
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        clippy::cast_possible_wrap,
+        reason = "indices are clamped to the tile, whose extent fits usize"
+    )]
+    #[inline]
+    pub(super) fn rows(
+        &mut self,
+        (y, rows): (i64, usize),
+        (x0, x1): (i64, i64),
+        mut paint: impl FnMut(i64, i64, &mut [u8]),
+    ) {
+        let tile = self.tile;
+        let lo = x0.max(i64::from(tile.x));
+        let hi = x1.min(i64::from(tile.x) + i64::from(tile.width));
+        let top = y.max(i64::from(tile.y));
+        let bottom = (y + rows as i64).min(i64::from(tile.y) + i64::from(tile.height));
+        if lo >= hi || top >= bottom {
+            return;
+        }
+        let stride = tile.width as usize;
+        let (left, right) = (
+            (lo - i64::from(tile.x)) as u32,
+            (hi - i64::from(tile.x)) as u32,
+        );
+        let count = (hi - lo) as usize * 4;
+        let data = self.pixels.data_mut();
+        for py in top..bottom {
+            let row = (py - i64::from(tile.y)) as usize;
+            let painted = &mut self.painted[row];
+            *painted = [painted[0].min(left), painted[1].max(right)];
+            let start = (row * stride + left as usize) * 4;
+            paint(py, lo, &mut data[start..start + count]);
+        }
+    }
+
     /// Whether every pixel of page row `y` from column `x0` (inclusive) to
     /// `x1` (exclusive) that lies in the tile still holds the background.
     #[expect(
@@ -142,27 +183,29 @@ pub(super) fn blit(
     let x = i64::from(mask.x) + i64::from(offset.0);
     let y = i64::from(mask.y) + i64::from(offset.1);
     let clip = clip.filter(|c| !c.covers(x, y, mask.width, mask.height()));
-    for (row, coverage) in mask.data.chunks_exact(mask.width).enumerate() {
-        let py = y + row as i64;
-        let Some((start, pixels)) = target.span(py, x, x + mask.width as i64) else {
-            continue;
-        };
-        let coverage = &coverage[(start - x) as usize..];
-        if let Some(clip) = clip {
-            for (column, (pixel, &alpha)) in pixels
-                .as_chunks_mut::<4>()
-                .0
-                .iter_mut()
-                .zip(coverage)
-                .enumerate()
-            {
-                let c = clip.at(start + column as i64, py);
-                blend(pixel, color, u16::from(alpha) * u16::from(c) / 255);
+    let width = mask.width;
+    target.rows(
+        (y, mask.height()),
+        (x, x + width as i64),
+        |py, start, pixels| {
+            let row = (py - y) as usize * width;
+            let coverage = &mask.data[row + (start - x) as usize..row + width];
+            if let Some(clip) = clip {
+                for (column, (pixel, &alpha)) in pixels
+                    .as_chunks_mut::<4>()
+                    .0
+                    .iter_mut()
+                    .zip(coverage)
+                    .enumerate()
+                {
+                    let c = clip.at(start + column as i64, py);
+                    blend(pixel, color, u16::from(alpha) * u16::from(c) / 255);
+                }
+            } else {
+                blend_span(pixels, coverage, color);
             }
-        } else {
-            blend_span(pixels, coverage, color);
-        }
-    }
+        },
+    );
 }
 
 /// Fills an axis-aligned device rectangle by its exact per-pixel area. Each
