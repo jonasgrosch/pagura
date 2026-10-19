@@ -294,7 +294,22 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    fn value(&mut self, depth: usize, streams: &mut Option<Context<'a, '_>>) -> Result<Value> {
+    /// Parses a number, or `N G R`, exactly as [`Self::parse`] does when the
+    /// next token starts with a sign, digit or point. Content operands (7.8.2)
+    /// use it to skip the general dispatch.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::parse`].
+    pub fn number(&mut self) -> Result<Value> {
+        self.nodes = 0;
+        self.admit(0)?;
+        self.skip_whitespace();
+        self.number_or_reference()
+    }
+
+    // Charges one value against the depth and value-node budgets.
+    fn admit(&mut self, depth: usize) -> Result<()> {
         if depth > self.limits.depth {
             return Err(self.limit("object nesting depth exceeded"));
         }
@@ -302,6 +317,11 @@ impl<'a> Parser<'a> {
             return Err(self.limit("object value budget exceeded"));
         }
         self.nodes += 1;
+        Ok(())
+    }
+
+    fn value(&mut self, depth: usize, streams: &mut Option<Context<'a, '_>>) -> Result<Value> {
+        self.admit(depth)?;
         match self.peek() {
             Some(b'/') => self.name().map(Value::Name),
             Some(b'(') => self.literal_string().map(Value::String),
@@ -676,8 +696,17 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a number, or `N G R` when the integer starts a reference.
-    /// Tokens whose digits and point span at most [`SHORT_DIGITS`] bytes convert without text parsing.
     fn number_or_reference(&mut self) -> Result<Value> {
+        if let Some((value, length)) = short_number(&self.data[self.position..]) {
+            self.position += length;
+            return Ok(value);
+        }
+        self.general_number()
+    }
+
+    /// Any number token, references and their repairs, and number errors.
+    /// Tokens whose digits and point span at most [`SHORT_DIGITS`] bytes convert without text parsing.
+    fn general_number(&mut self) -> Result<Value> {
         let start = self.position;
         let token = self.word()?;
         let digits = token
@@ -774,6 +803,77 @@ impl<'a> Parser<'a> {
         self.position = saved;
         None
     }
+}
+
+/// A valid number token of at most [`SHORT_DIGITS`] digit and point bytes
+/// that cannot start `N G R`, with its length: what the general number path
+/// returns, found in one pass. Anything else is left to that path.
+fn short_number(data: &[u8]) -> Option<(Value, usize)> {
+    let negative = data.first() == Some(&b'-');
+    let sign = usize::from(negative || data.first() == Some(&b'+'));
+    let (mut mantissa, mut decimals, mut dots, mut count) = (0_i64, 0, 0, 0);
+    for &byte in &data[sign..] {
+        match byte {
+            // At most SHORT_DIGITS + 1 digits accumulate: below 10^16, so
+            // this cannot wrap, and it needs no overflow checks.
+            b'0'..=b'9' => {
+                mantissa = mantissa
+                    .wrapping_mul(10)
+                    .wrapping_add(i64::from(byte - b'0'));
+                decimals += dots;
+            }
+            b'.' if dots == 0 => dots = 1,
+            _ if is_regular(byte) => return None,
+            _ => break,
+        }
+        count += 1;
+        if count > SHORT_DIGITS {
+            return None;
+        }
+    }
+    if count == dots {
+        return None;
+    }
+    let length = sign + count;
+    if dots == 1 {
+        let magnitude = short_real(mantissa, decimals);
+        return Some((
+            Value::Real(if negative { -magnitude } else { magnitude }),
+            length,
+        ));
+    }
+    if sign == 0 && reference_may_follow(&data[length..]) {
+        return None;
+    }
+    Some((
+        Value::Integer(if negative { -mantissa } else { mantissa }),
+        length,
+    ))
+}
+
+/// Whether `G R` could follow an unsigned integer: digits, then `R` as a
+/// complete token, separated by white space or comments. A superset of the
+/// references that [`Parser::reference_tail`] accepts.
+fn reference_may_follow(data: &[u8]) -> bool {
+    fn skip(mut data: &[u8]) -> &[u8] {
+        loop {
+            data = &data[data.iter().take_while(|&&b| is_whitespace(b)).count()..];
+            if data.first() != Some(&b'%') {
+                return data;
+            }
+            data = &data[data
+                .iter()
+                .take_while(|&&b| b != b'\r' && b != b'\n')
+                .count()..];
+        }
+    }
+    let data = skip(data);
+    let digits = data.iter().take_while(|b| b.is_ascii_digit()).count();
+    if digits == 0 {
+        return false;
+    }
+    let data = skip(&data[digits..]);
+    data.first() == Some(&b'R') && data.get(1).is_none_or(|&b| !is_regular(b))
 }
 
 /// The most digit and point bytes, sign excluded, that [`short_real`] converts.
@@ -946,6 +1046,67 @@ mod tests {
             .parse()
             .unwrap_err();
         assert_eq!(error.position, Position::Stream { object, offset: 2 });
+    }
+}
+
+#[cfg(test)]
+mod short_number_tests {
+    use super::{Origin, Parser};
+    use crate::{Limits, Recovery, Value};
+
+    // The value (reals by bit pattern), offset and repairs a parse left.
+    fn outcome(mut parser: Parser<'_>, value: crate::Result<Value>) -> (String, usize, usize) {
+        let value = match value {
+            Ok(Value::Real(real)) => format!("real {:x}", real.to_bits()),
+            other => format!("{other:?}"),
+        };
+        (value, parser.offset(), parser.take_diagnostics().len())
+    }
+
+    #[test]
+    fn short_numbers_match_the_general_path_with_any_tail() {
+        // Signs, points, leading zeros, the 15-byte bound, and malformed tokens.
+        let tokens = "0 7 -0 +0 007 -007 42 -42 +42 0. .5 -.5 +.000 1.5 -0.0 3.25 \
+            999999999999999 99999999999999.9 .99999999999999 9999999999999999 \
+            1234567890.123456 4294967296 65536 1..5 1.2.3 + - . +. --1 +-1 1e5 \
+            12a 1- 0x10"
+            .split(' ');
+        // Delimiters, comments and every way `G R` can or cannot follow.
+        let tails = "| |\n|/Name|]|>>|(text)|<00>|[1]|%comment\n1| 0 R| 0 R | 0 R/| 0 R]\
+            | 00 R| 12 0 R| 0  R|\r\n0\r\nR| 0%c\nR|%c\n0 R| 0 %c\r R| 65535 R\
+            | 65536 R| 0 Rx| 0 R1| 0R| 0 obj| 0 m| 1.5 R| -1 R| +1 R| R| 1| 1 \
+            | 0 0 R"
+            .split('|');
+        // The one-pass path must leave what the general path leaves.
+        for token in tokens {
+            for tail in tails.clone() {
+                let data = format!("{token}{tail}");
+                let parser = || {
+                    Parser::new(data.as_bytes(), Origin::Buffer, Limits::default())
+                        .with_recovery(Recovery::Repair)
+                };
+                let (mut general, mut short) = (parser(), parser());
+                let expected = general.general_number();
+                let actual = short.number();
+                assert_eq!(
+                    outcome(short, actual),
+                    outcome(general, expected),
+                    "{data:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn number_entry_keeps_the_value_budget() {
+        let limits = Limits {
+            value_nodes: 0,
+            ..Limits::default()
+        };
+        let mut general = Parser::new(b"1.5", Origin::Buffer, limits);
+        let mut short = Parser::new(b"1.5", Origin::Buffer, limits);
+        assert_eq!(short.number(), general.parse());
+        assert_eq!(short.offset(), general.offset());
     }
 }
 

@@ -272,13 +272,14 @@ impl<'a> Compiler<'a> {
         // Pattern execution restores the parent's initial graphics state (8.7.3.1).
         self.state.composite.conversion.intent = crate::icc::Intent::from_name(&self.state.intent);
         self.initial_state = self.state.clone();
-        let mut parser = Parser::new(bytes, Origin::Buffer, self.document.limits());
+        let limits = self.document.limits();
+        let mut parser = Parser::new(bytes, Origin::Buffer, limits);
         let mut stream_index = 0;
         while let Some(byte) = parser.peek() {
             self.operations = self
                 .operations
                 .checked_add(1)
-                .filter(|&n| n <= self.document.limits().operations)
+                .filter(|&n| n <= limits.operations)
                 .ok_or(Error::limit("content token budget exceeded"))
                 .map_err(|e| stream_error(e, parser.offset(), origins))?;
             let offset = parser.offset();
@@ -296,19 +297,18 @@ impl<'a> Compiler<'a> {
             } else {
                 self.position = Position::Buffer(offset);
             }
-            let result = if matches!(
-                byte,
-                b'/' | b'(' | b'[' | b'<' | b'+' | b'-' | b'.' | b'0'..=b'9'
-            ) {
-                parser.parse().and_then(|value| self.operand(value))
-            } else {
-                parser.word().and_then(|word| match word {
+            let result = match byte {
+                b'/' | b'(' | b'[' | b'<' => parser.parse().and_then(|value| self.operand(value)),
+                b'+' | b'-' | b'.' | b'0'..=b'9' => {
+                    parser.number().and_then(|value| self.operand(value))
+                }
+                _ => parser.word().and_then(|word| match word {
                     b"true" => self.operand(Value::Boolean(true)),
                     b"false" => self.operand(Value::Boolean(false)),
                     b"null" => self.operand(Value::Null),
                     b"BI" => self.pattern_inline(&mut parser, resources),
                     _ => self.operator(word, resources),
-                })
+                }),
             };
             result.map_err(|e| stream_error(e, offset, origins))?;
         }
@@ -352,7 +352,13 @@ impl<'a> Compiler<'a> {
         if self.operands.len() >= 32 {
             return Err(Error::limit("content operand budget exceeded"));
         }
-        no_references(&value)?;
+        // Only references and containers can hold a reference.
+        if matches!(
+            value,
+            Value::Reference(_) | Value::Array(_) | Value::Dictionary(_)
+        ) {
+            no_references(&value)?;
+        }
         self.operands.push(value);
         Ok(())
     }
