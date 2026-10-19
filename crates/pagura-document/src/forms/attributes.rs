@@ -13,10 +13,10 @@ pub(super) struct Entry<'a> {
 pub(super) struct Inherited<'a>([Option<Entry<'a>>; 8]);
 const KEYS: [&[u8]; 8] = [b"FT", b"Ff", b"V", b"DV", b"DA", b"Q", b"Opt", b"MaxLen"];
 impl<'a> Inherited<'a> {
-    pub fn get(&self, key: &[u8]) -> Option<Entry<'a>> {
+    pub(super) fn get(&self, key: &[u8]) -> Option<Entry<'a>> {
         KEYS.iter().position(|k| *k == key).and_then(|i| self.0[i])
     }
-    pub fn overlay(
+    pub(super) fn overlay(
         mut self,
         ctx: &mut Context<'a>,
         d: &'a Dictionary,
@@ -29,7 +29,11 @@ impl<'a> Inherited<'a> {
         }
         Ok(self)
     }
-    pub fn defaults(ctx: &mut Context<'a>, d: &'a Dictionary, source: Source) -> Result<Self> {
+    pub(super) fn defaults(
+        ctx: &mut Context<'a>,
+        d: &'a Dictionary,
+        source: Source,
+    ) -> Result<Self> {
         let mut inherited = Self::default();
         for (i, key) in [(4, b"DA".as_slice()), (5, b"Q")] {
             inherited.0[i] = ctx

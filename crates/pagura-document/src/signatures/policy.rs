@@ -55,7 +55,7 @@ pub(super) struct Policy {
     pub field_unknown: bool,
 }
 impl Policy {
-    pub fn locked(
+    pub(super) fn locked(
         &self,
         ctx: &mut Context<'_>,
         id: ObjectId,

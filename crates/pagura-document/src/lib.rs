@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![warn(unreachable_pub)]
 //! Immutable PDF documents: cross-reference data, lazily parsed and cached
 //! indirect objects, decoded streams and the typed page tree.
 //!
