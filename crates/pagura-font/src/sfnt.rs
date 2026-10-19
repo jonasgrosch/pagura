@@ -41,7 +41,7 @@ impl Sfnt {
         let (units, location_format, glyph_count, advances, cff) = if signature == 0x4f54_544f {
             let cff = cff_tables(data, &tables, work)?;
             let count = usize::try_from(cff.glyph_count())
-                .map_err(|_| crate::read::limit(0, "glyph count overflow"))?;
+                .map_err(|_| crate::read::limit(Position::Buffer(0), "glyph count overflow"))?;
             // ISO 32000-2, 9.9.1 Table 124: CFF OpenType needs CFF and cmap,
             // without imposing glyf's head/hhea/hmtx/loca/maxp requirements.
             table(b"cmap")?;
@@ -118,7 +118,7 @@ impl Sfnt {
             locations,
             advances,
             glyph_count: u32::try_from(glyph_count)
-                .map_err(|_| crate::read::limit(0, "glyph count overflow"))?,
+                .map_err(|_| crate::read::limit(Position::Buffer(0), "glyph count overflow"))?,
             units,
             cmaps,
             names,

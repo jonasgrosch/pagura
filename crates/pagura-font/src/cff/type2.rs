@@ -373,7 +373,7 @@ fn blend(font: &Cff, state: &mut State, at: usize) -> Result<()> {
         .ok_or_else(|| bad(at, "missing CFF2 variation data"))?;
     let size = count
         .checked_mul(coefficients.len() + 1)
-        .ok_or_else(|| crate::read::limit(at, "CFF2 blend count overflow"))?;
+        .ok_or_else(|| crate::read::limit(Position::Buffer(at), "CFF2 blend count overflow"))?;
     if count == 0 || size > state.stack.len() {
         return Err(bad(at, "invalid CFF2 blend operands"));
     }

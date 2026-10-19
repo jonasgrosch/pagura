@@ -34,9 +34,9 @@ pub(super) fn directory(data: &[u8], work: &mut Work<'_>) -> Result<(u32, Tables
                 Position::Buffer(here(&r) - 8),
             )?;
         }
-        let end = start
-            .checked_add(len)
-            .ok_or_else(|| crate::read::limit(here(&r) - 8, "table size overflow"))?;
+        let end = start.checked_add(len).ok_or_else(|| {
+            crate::read::limit(Position::Buffer(here(&r) - 8), "table size overflow")
+        })?;
         if end > data.len() {
             clipped_post |= &tag == b"post";
             work.repair(
