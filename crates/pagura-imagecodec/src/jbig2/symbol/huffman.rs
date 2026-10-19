@@ -1,20 +1,23 @@
-//! Huffman dictionaries, T.88 (02/2000), 6.5 and 7.4.2.
+//! Huffman symbol dictionaries (T.88 6.5 and 7.4.2).
+use crate::budget::Budget;
 use crate::jbig2::{
     Bitmap,
-    budget::Work,
-    huffman::{Bits, Table},
-    reader::Reader,
+    bitmap::{self, Fill, charge_pixels, set},
+    huffman::{self, Oob, Selector, Table},
+    mmr::{self, Eofb},
     refinement::{Model, Parameters},
-    symbol::{Dictionary, Retained, Settings},
+    symbol::{Dictionary, Retained, Settings, SymbolFlags, positive, release_symbols},
     text::Config,
-    text::huffman::{self as huffman_text, Identifiers, Placement, Procedure},
+    text::huffman::{Aggregation, Identifiers, Placement},
 };
-use pagura_core::{Error, Limits, Position, Result};
+use pagura_core::bytes::{BitCursor, Cursor};
+use pagura_core::convert::u32_to_usize;
+use pagura_core::{Error, Limits, Result};
 use std::rc::Rc;
 
 struct Header {
     settings: Settings,
-    flags: u16,
+    flags: SymbolFlags,
     heights: Rc<Table>,
     widths: Rc<Table>,
     sizes: Rc<Table>,
@@ -24,134 +27,130 @@ struct Header {
     added: usize,
 }
 impl Header {
-    fn read(reader: &mut Reader<'_>, custom: &[Rc<Table>]) -> Result<Self> {
-        let flags = reader.u16()?;
-        let aggregation = flags & 2 != 0;
-        if flags & 0xec00 != 0 || !aggregation && flags & 0x1380 != 0 {
+    fn read(
+        cursor: &mut Cursor<'_>,
+        flags: SymbolFlags,
+        custom: &[Rc<Table>],
+        budget: &mut Budget,
+    ) -> Result<Self> {
+        debug_assert!(flags.huffman(), "arithmetic symbol dictionary");
+        // Huffman dictionaries have no generic template, and only
+        // aggregation uses instance tables, contexts and a refinement
+        // template.
+        let aggregation_only = SymbolFlags::INSTANCE_TABLE
+            | SymbolFlags::CONTEXTS_USED
+            | SymbolFlags::CONTEXTS_RETAINED
+            | SymbolFlags::REFINEMENT_TEMPLATE;
+        if flags.0 & (SymbolFlags::TEMPLATE | SymbolFlags::RESERVED) != 0
+            || !flags.aggregate() && flags.0 & aggregation_only != 0
+        {
             return Err(Error::syntax("invalid JBIG2 Huffman dictionary flags"));
         }
-        let mut custom = custom.iter();
-        let heights = huffman_text::select((flags >> 2) & 3, &[4, 5], &mut custom, false)?;
-        let widths = huffman_text::select((flags >> 4) & 3, &[2, 3], &mut custom, true)?;
-        let sizes = huffman_text::select(
-            if flags & 64 != 0 { 3 } else { 0 },
-            &[1],
-            &mut custom,
-            false,
+        let mut select = Selector::new(custom, budget);
+        let heights = select.select(
+            (flags.0 >> SymbolFlags::HEIGHT_TABLE_SHIFT) & 3,
+            &[4, 5],
+            Oob::Without,
         )?;
-        let instances = huffman_text::select(
-            if flags & 128 != 0 { 3 } else { 0 },
-            &[1],
-            &mut custom,
-            false,
+        let widths = select.select(
+            (flags.0 >> SymbolFlags::WIDTH_TABLE_SHIFT) & 3,
+            &[2, 3],
+            Oob::With,
         )?;
-        if custom.next().is_some() {
-            return Err(Error::syntax("unused JBIG2 user Huffman table"));
-        }
-        let adaptive_start = reader.offset;
-        let parameters = if aggregation {
-            Some(Parameters::read(reader, u8::from(flags & 0x1000 != 0))?)
-        } else {
-            None
-        };
+        let sizes = select.select(
+            Selector::one_bit(flags.0 & SymbolFlags::SIZE_TABLE != 0),
+            &[1],
+            Oob::Without,
+        )?;
+        let instances = select.select(
+            Selector::one_bit(flags.0 & SymbolFlags::INSTANCE_TABLE != 0),
+            &[1],
+            Oob::Without,
+        )?;
+        select.finish()?;
+        let parameters = flags
+            .refinement()
+            .map(|template| Parameters::read(cursor, template))
+            .transpose()?;
         Ok(Self {
-            settings: Settings::new(flags, &reader.data[adaptive_start..reader.offset])?,
+            settings: Settings::new(flags, None, parameters),
             flags,
             heights,
             widths,
             sizes,
             instances,
             parameters,
-            exported: reader.u32()? as usize,
-            added: reader.u32()? as usize,
+            exported: u32_to_usize(cursor.u32()?),
+            added: u32_to_usize(cursor.u32()?),
         })
     }
 }
-struct Builder {
+struct Builder<'a> {
     header: Header,
     symbols: Vec<Rc<Bitmap>>,
-    procedure: Option<Procedure>,
-    limits: Limits,
-    overhead: usize,
-    bytes: usize,
+    aggregation: Option<Aggregation>,
+    limits: &'a Limits,
     total: usize,
-    id_bits: u8,
+    /// The width of the symbol identifiers of aggregates, at most 32.
+    id_bits: u32,
 }
-impl Builder {
+impl<'a> Builder<'a> {
     fn new(
         header: Header,
         imported: &[Rc<Bitmap>],
         retained: Option<&Retained>,
-        limits: &Limits,
+        limits: &'a Limits,
+        budget: &mut Budget,
     ) -> Result<Self> {
         let total = imported
             .len()
             .checked_add(header.added)
-            .filter(|&n| n <= limits.value_nodes && n <= limits.objects)
-            .ok_or_else(|| Error::limit("JBIG2 symbol count exceeds budget"))?;
+            .ok_or_else(|| Error::limit("JBIG2 symbol count overflow"))?;
         if header.exported > total {
             return Err(Error::syntax("JBIG2 export count exceeds symbols"));
         }
-        // Reference arrays, per-symbol bitmap allocations, widths, and the four code tables coexist.
-        let tables_bytes = header.heights.bytes()
-            + header.widths.bytes()
-            + header.sizes.bytes()
-            + header.instances.bytes();
-        let overhead = total
-            .checked_mul(
-                size_of::<Rc<Bitmap>>() * 2
-                    + size_of::<Bitmap>()
-                    + 2 * size_of::<usize>()
-                    + size_of::<u32>(),
-            )
-            .and_then(|n| n.checked_add(tables_bytes))
-            .filter(|&n| n <= limits.decoded_bytes)
-            .ok_or_else(|| Error::limit("JBIG2 Huffman symbol tables exceed byte budget"))?;
-        let mut local = *limits;
-        local.decoded_bytes -= overhead;
-        let old = if header.flags & 256 != 0 {
+        let mut symbols = Vec::new();
+        budget.reserve(&mut symbols, total)?;
+        symbols.extend(imported.iter().cloned());
+        let old = if header.flags.contexts_used() {
             let source = retained
                 .ok_or_else(|| Error::syntax("missing retained JBIG2 refinement contexts"))?;
             header.settings.check(source)?;
             Some(
-                retained
-                    .and_then(|r| r.refinement.as_deref())
+                source
+                    .refinement
+                    .as_deref()
                     .ok_or_else(|| Error::syntax("missing retained JBIG2 refinement contexts"))?,
             )
         } else {
             None
         };
-        let procedure = header
+        let aggregation = header
             .parameters
-            .map(|p| Model::new(p, old, &local).and_then(Procedure::aggregation))
+            .map(|p| {
+                let model = Model::new(p, old, budget)?;
+                Aggregation::new(model, budget)
+            })
             .transpose()?;
-        if let Some(p) = &procedure {
-            local.decoded_bytes = local
-                .decoded_bytes
-                .checked_sub(p.bytes())
-                .ok_or_else(|| Error::limit("JBIG2 refinement contexts exceed budget"))?;
+        let id_bits = total.saturating_sub(1).bit_width().max(1);
+        if id_bits > 32 {
+            return Err(Error::limit("JBIG2 symbol identifier width overflow"));
         }
-        let mut symbols = Vec::with_capacity(total);
-        symbols.extend(imported.iter().cloned());
-        let id_bits = u8::try_from(total.saturating_sub(1).bit_width().max(1))
-            .map_err(|_| Error::limit("JBIG2 symbol identifier width overflow"))?;
         Ok(Self {
             header,
             symbols,
-            procedure,
-            limits: local,
-            overhead,
-            bytes: 0,
+            aggregation,
+            limits,
             total,
             id_bits,
         })
     }
-    fn class(&mut self, bits: &mut Bits<'_>, height: u32, work: &mut Work) -> Result<()> {
+    fn class(&mut self, bits: &mut BitCursor<'_>, height: u32, budget: &mut Budget) -> Result<()> {
         let mut width = 0i64;
-        let mut class = Vec::with_capacity(self.total - self.symbols.len());
+        let mut class = Vec::new();
         let mut collective_width = 0u32;
         loop {
-            work.operations(1, &self.limits)?;
+            budget.work(1)?;
             let Some(delta) = self.header.widths.decode(bits)? else {
                 break;
             };
@@ -159,198 +158,183 @@ impl Builder {
                 return Err(Error::syntax("excess JBIG2 dictionary symbols"));
             }
             width += delta;
-            let width = positive(width)?;
-            if self.procedure.is_some() {
-                let glyph = self.aggregate(bits, (width, height), work)?;
-                self.bytes = self
-                    .bytes
-                    .checked_add(glyph.data.len())
-                    .filter(|&n| n <= self.limits.decoded_bytes)
-                    .ok_or_else(|| Error::limit("JBIG2 symbols exceed byte budget"))?;
-                self.symbols.push(Rc::new(glyph));
-            } else {
+            let size = (positive(width, "invalid JBIG2 symbol width")?, height);
+            let Some(aggregation) = &mut self.aggregation else {
                 collective_width = collective_width
-                    .checked_add(width)
+                    .checked_add(size.0)
                     .ok_or_else(|| Error::limit("JBIG2 collective width overflow"))?;
-                class.push(width);
-            }
+                budget.push(&mut class, size.0)?;
+                continue;
+            };
+            // Refinement and aggregate coding (T.88 6.5.8.2).
+            let count = usize::try_from(self.header.instances.required(bits)?)
+                .ok()
+                .filter(|&n| n != 0)
+                .ok_or_else(|| Error::syntax("invalid JBIG2 aggregation count"))?;
+            let glyph = if count == 1 {
+                let id = u32_to_usize(bits.bits(self.id_bits)?);
+                let symbol = self
+                    .symbols
+                    .get(id)
+                    .ok_or_else(|| Error::syntax("JBIG2 aggregation identifier out of range"))?;
+                aggregation.single(bits, symbol, size, self.limits, budget)?
+            } else {
+                aggregation.region(
+                    bits,
+                    &self.symbols,
+                    Placement {
+                        size,
+                        instances: count,
+                        config: Config::aggregation(),
+                        identifiers: Identifiers::Fixed(self.id_bits),
+                    },
+                    self.limits,
+                    budget,
+                )?
+            };
+            self.symbols.push(bitmap::share(glyph, budget)?);
         }
-        if self.procedure.is_none() {
+        if self.aggregation.is_none() {
             if class.is_empty() {
                 return Err(Error::syntax("empty JBIG2 symbol height class"));
             }
-            let mut temporary = self.limits;
-            temporary.decoded_bytes = temporary.decoded_bytes.saturating_sub(self.bytes);
             let collective = collective(
                 bits,
                 (collective_width, height),
                 &self.header.sizes,
-                &temporary,
-                work,
+                self.limits,
+                budget,
             )?;
-            temporary.decoded_bytes = temporary
-                .decoded_bytes
-                .saturating_sub(collective.data.len());
             let mut x_offset = 0;
-            for width in class {
-                let glyph = extract(&collective, x_offset, width, &temporary)?;
-                temporary.decoded_bytes = temporary.decoded_bytes.saturating_sub(glyph.data.len());
-                self.bytes += glyph.data.len();
-                self.symbols.push(Rc::new(glyph));
+            for &width in &class {
+                let glyph = extract(&collective, x_offset, width, self.limits, budget)?;
+                self.symbols.push(bitmap::share(glyph, budget)?);
                 x_offset += width;
             }
+            collective.release(budget);
         }
+        budget.release::<u32>(class.capacity());
         Ok(())
     }
-    fn aggregate(
-        &mut self,
-        bits: &mut Bits<'_>,
-        size: (u32, u32),
-        work: &mut Work,
-    ) -> Result<Bitmap> {
-        let count = usize::try_from(self.header.instances.required(bits)?)
-            .ok()
-            .filter(|&n| n != 0)
-            .ok_or_else(|| Error::syntax("invalid JBIG2 aggregation count"))?;
-        let procedure = self
-            .procedure
-            .as_mut()
-            .ok_or_else(|| Error::syntax("missing JBIG2 aggregation procedure"))?;
-        let mut local = self.limits;
-        local.decoded_bytes = local.decoded_bytes.saturating_sub(self.bytes);
-        if count == 1 {
-            // The refinement decoder charges its own model; the other seven tables remain live.
-            local.decoded_bytes += procedure.model.as_ref().map_or(0, Model::context_bytes);
-            procedure.single(bits, &self.symbols, size, self.id_bits, &local, work)
-        } else {
-            local.decoded_bytes += procedure.bytes();
-            procedure.region(
-                bits,
-                &self.symbols,
-                Placement {
-                    size,
-                    instances: count,
-                    config: Config::aggregation(),
-                    identifiers: Identifiers::Fixed(self.id_bits),
-                },
-                &local,
-                work,
-            )
+    fn finish(self, bits: &mut BitCursor<'_>, budget: &mut Budget) -> Result<Dictionary> {
+        let output = exports(bits, &self.symbols, self.header.exported, budget)?;
+        huffman::finish(bits)?;
+        release_symbols(self.symbols, budget);
+        let Header {
+            settings,
+            flags,
+            heights,
+            widths,
+            sizes,
+            instances,
+            ..
+        } = self.header;
+        for table in [heights, widths, sizes, instances] {
+            huffman::unshare(table, budget);
         }
-    }
-    fn finish(self, bits: &mut Bits<'_>, work: &mut Work) -> Result<Dictionary> {
-        let output = exports(
-            bits,
-            &self.symbols,
-            self.header.exported,
-            &self.limits,
-            work,
-        )?;
-        bits.finish()?;
-        let contexts = if self.header.flags & 512 != 0 {
+        let contexts = if flags.contexts_retained() {
             Some(Retained {
-                settings: self.header.settings,
+                settings,
                 generic: Vec::new(),
-                refinement: self.procedure.and_then(|p| p.model.map(|m| m.contexts)),
+                refinement: self
+                    .aggregation
+                    .map(|aggregation| aggregation.into_refinement_contexts(budget)),
             })
         } else {
+            if let Some(aggregation) = self.aggregation {
+                aggregation.release(budget);
+            }
             None
         };
-        let retained_bytes = contexts
-            .as_ref()
-            .and_then(|r| r.refinement.as_ref())
-            .map_or(0, |c| {
-                c.len() * size_of::<crate::jbig2::arithmetic::Context>()
-            });
         Ok(Dictionary {
             symbols: output,
-            bytes: self.overhead + self.bytes + retained_bytes,
             contexts,
         })
     }
 }
 
+/// Decodes a Huffman symbol dictionary segment's data after its `flags`
+/// (T.88 7.4.2).
 pub(crate) fn decode(
-    reader: &mut Reader<'_>,
+    cursor: &mut Cursor<'_>,
+    flags: SymbolFlags,
     imported: &[Rc<Bitmap>],
     custom: &[Rc<Table>],
     retained: Option<&Retained>,
     limits: &Limits,
-    work: &mut Work,
+    budget: &mut Budget,
 ) -> Result<Dictionary> {
-    work.operations(crate::jbig2::huffman::STANDARD_ROWS, limits)?;
-    let header = Header::read(reader, custom)?;
-    let mut builder = Builder::new(header, imported, retained, limits)?;
-    let base = match reader.position() {
-        Position::Buffer(n) => n,
-        _ => 0,
-    };
-    let mut bits = Bits::new(reader.rest(), base);
+    budget.work(huffman::STANDARD_ROWS)?;
+    let header = Header::read(cursor, flags, custom, budget)?;
+    let mut builder = Builder::new(header, imported, retained, limits, budget)?;
+    let mut bits = huffman::bits(cursor)?;
     let mut height = 0i64;
     while builder.symbols.len() < builder.total {
-        work.operations(1, limits)?;
+        budget.work(1)?;
         height += builder.header.heights.required(&mut bits)?;
-        builder.class(&mut bits, positive(height)?, work)?;
+        let height = positive(height, "invalid JBIG2 symbol height")?;
+        builder.class(&mut bits, height, budget)?;
     }
-    builder.finish(&mut bits, work)
+    builder.finish(&mut bits, budget)
 }
 fn collective(
-    bits: &mut Bits<'_>,
+    bits: &mut BitCursor<'_>,
     size: (u32, u32),
     sizes: &Table,
     limits: &Limits,
-    work: &mut Work,
+    budget: &mut Budget,
 ) -> Result<Bitmap> {
     let bytes = usize::try_from(sizes.required(bits)?)
         .map_err(|_| Error::syntax("negative JBIG2 collective data size"))?;
     let (width, height) = size;
-    let (_, raw_size) = crate::jbig2::bitmap::layout(width, height, limits)?;
-    work.pixels(u64::from(width) * u64::from(height) * 2, limits)?;
-    bits.align();
-    let position = bits.position();
-    let data = bits.take(if bytes == 0 { raw_size } else { bytes })?;
+    let (_, raw_size) = bitmap::layout(width, height, limits)?;
+    // Decoding the collective bitmap and extracting its symbols.
+    charge_pixels(
+        budget,
+        (u64::from(width) * u64::from(height)).saturating_mul(2),
+    )?;
+    let mut data = huffman::bytes(bits, if bytes == 0 { raw_size } else { bytes })?;
     if bytes != 0 {
-        return crate::jbig2::mmr::decode(
-            data,
-            width,
-            height,
-            limits,
-            match position {
-                Position::Buffer(n) => n,
-                _ => 0,
-            },
-        );
+        let bitmap = mmr::decode(&mut data, size, Eofb::Optional, limits, budget)?;
+        if !data.at_end() {
+            return Err(data.error("trailing JBIG2 MMR data"));
+        }
+        return Ok(bitmap);
     }
-    let mut bitmap = Bitmap::new(width, height, false, limits)?;
-    bitmap.data.copy_from_slice(data);
-    let padding = (8 - width % 8) % 8;
-    if padding != 0
-        && bitmap
-            .data
-            .chunks(bitmap.stride())
-            .any(|row| row[row.len() - 1] & ((1 << padding) - 1) != 0)
+    // Uncompressed rows, whose padding bits must be zero (T.88 6.5.9).
+    let mut bitmap = Bitmap::new(width, height, Fill::White, limits, budget)?;
+    let raw = data.take_rest();
+    let used = width % 8;
+    let padding = if used == 0 { 0 } else { u8::MAX >> used };
+    if raw
+        .chunks(bitmap.stride)
+        .any(|row| row.last().is_some_and(|last| last & padding != 0))
     {
         return Err(Error::syntax("nonzero JBIG2 raw symbol padding"));
     }
+    bitmap.data.copy_from_slice(raw);
     Ok(bitmap)
 }
 fn exports(
-    bits: &mut Bits<'_>,
+    bits: &mut BitCursor<'_>,
     symbols: &[Rc<Bitmap>],
     expected: usize,
-    limits: &Limits,
-    work: &mut Work,
+    budget: &mut Budget,
 ) -> Result<Vec<Rc<Bitmap>>> {
-    let table = Table::standard(1)?;
-    let mut output = Vec::with_capacity(expected);
+    let table = Table::standard(1, budget)?;
+    let mut output = Vec::new();
+    budget.reserve(&mut output, expected)?;
     let mut index = 0;
     let mut export = false;
     while index < symbols.len() {
-        work.operations(1, limits)?;
+        budget.work(1)?;
         let count = usize::try_from(table.required(bits)?)
             .map_err(|_| Error::syntax("invalid JBIG2 export run"))?;
         if count > symbols.len() - index {
             return Err(Error::syntax("JBIG2 export run exceeds symbols"));
+        }
+        if export && count > expected - output.len() {
+            return Err(Error::syntax("too many JBIG2 exported symbols"));
         }
         if export {
             output.extend(symbols[index..index + count].iter().cloned());
@@ -361,19 +345,23 @@ fn exports(
     if output.len() != expected {
         return Err(Error::syntax("incorrect JBIG2 exported symbol count"));
     }
+    table.release(budget);
     Ok(output)
 }
-fn positive(value: i64) -> Result<u32> {
-    u32::try_from(value)
-        .ok()
-        .filter(|&n| n != 0)
-        .ok_or_else(|| Error::syntax("invalid JBIG2 symbol dimensions"))
-}
-fn extract(collective: &Bitmap, offset: u32, width: u32, limits: &Limits) -> Result<Bitmap> {
-    let mut bitmap = Bitmap::new(width, collective.height, false, limits)?;
-    for y in 0..collective.height {
-        for x in 0..width {
-            bitmap.set(x, y, collective.pixel(i64::from(offset + x), i64::from(y)));
+fn extract(
+    collective: &Bitmap,
+    offset: u32,
+    width: u32,
+    limits: &Limits,
+    budget: &mut Budget,
+) -> Result<Bitmap> {
+    let mut bitmap = Bitmap::new(width, collective.height, Fill::White, limits, budget)?;
+    for y in 0..i64::from(collective.height) {
+        let source = collective.row(y);
+        if let Some(target) = bitmap.row_mut(y) {
+            for x in 0..width {
+                set(target, u32_to_usize(x), source.get(i64::from(offset + x)));
+            }
         }
     }
     Ok(bitmap)

@@ -1,180 +1,289 @@
-//! Huffman text and aggregation, T.88 (02/2000), 6.4 and 7.4.3.
+//! Huffman text regions and aggregation (T.88 6.4 and 7.4.3).
+use crate::budget::Budget;
 use crate::jbig2::{
     Bitmap,
-    arithmetic::Decoder,
-    budget::Work,
-    huffman::{Bits, Table},
-    reader::Reader,
+    arithmetic::{Context, Decoder},
+    bitmap::charge_pixels,
+    generic::Prediction,
+    huffman::{self, Line, Oob, Selector, Table, line, small},
     refinement::{Model, Parameters, Request},
-    text::Config,
+    text::{Config, TextFlags, add, dimension},
 };
-use pagura_core::{Error, Limits, Position, Result};
+use pagura_core::bytes::{BitCursor, Cursor};
+use pagura_core::convert::u32_to_usize;
+use pagura_core::{Error, Limits, Result};
 use std::rc::Rc;
 
-pub(crate) fn select(
-    selection: u16,
-    standards: &[usize],
-    custom: &mut std::slice::Iter<'_, Rc<Table>>,
-    oob: bool,
-) -> Result<Rc<Table>> {
-    let table = if usize::from(selection) < standards.len() {
-        Rc::new(Table::standard(standards[usize::from(selection)])?)
-    } else if selection == 3 {
-        custom
-            .next()
-            .cloned()
-            .ok_or_else(|| Error::syntax("missing JBIG2 user Huffman table"))?
-    } else {
-        return Err(Error::syntax("reserved JBIG2 Huffman table selection"));
-    };
-    if table.has_oob() != oob {
-        return Err(Error::syntax(
-            "incorrect JBIG2 Huffman table OOB capability",
-        ));
-    }
-    Ok(table)
+/// The tables of Huffman text or of aggregate coding (T.88 7.4.3.1.6).
+struct Tables {
+    /// SBHUFFFS: the first S coordinate of a strip.
+    fs: Rc<Table>,
+    /// SBHUFFDS: the S difference to the next instance, or out-of-band.
+    ds: Rc<Table>,
+    /// SBHUFFDT: the T difference to the next strip.
+    dt: Rc<Table>,
+    /// SBHUFFRDW and SBHUFFRDH: the refinement width and height difference.
+    rdw: Rc<Table>,
+    rdh: Rc<Table>,
+    /// SBHUFFRDX and SBHUFFRDY: the refinement offsets.
+    rdx: Rc<Table>,
+    rdy: Rc<Table>,
+    /// SBHUFFRSIZE: the size of the refinement data.
+    rsize: Rc<Table>,
 }
 
-pub(crate) struct Procedure {
-    tables: Vec<Rc<Table>>,
-    pub(crate) model: Option<Model>,
+/// The table selections of a Huffman text region (T.88 7.4.3.1.2).
+impl Tables {
+    /// Drops the tables, releasing those built for this segment.
+    fn release(self, budget: &mut Budget) {
+        let Self {
+            fs,
+            ds,
+            dt,
+            rdw,
+            rdh,
+            rdx,
+            rdy,
+            rsize,
+        } = self;
+        for table in [fs, ds, dt, rdw, rdh, rdx, rdy, rsize] {
+            huffman::unshare(table, budget);
+        }
+    }
 }
-impl Procedure {
-    pub(crate) fn aggregation(model: Model) -> Result<Self> {
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Selections(u16);
+
+impl Selections {
+    /// Two-bit fields: SBHUFFFS, SBHUFFDS, SBHUFFDT, SBHUFFRDW,
+    /// SBHUFFRDH, SBHUFFRDX and SBHUFFRDY.
+    const FS_SHIFT: u32 = 0;
+    const DS_SHIFT: u32 = 2;
+    const DT_SHIFT: u32 = 4;
+    const RDW_SHIFT: u32 = 6;
+    const RDH_SHIFT: u32 = 8;
+    const RDX_SHIFT: u32 = 10;
+    const RDY_SHIFT: u32 = 12;
+    /// Bit 14, SBHUFFRSIZE: a user table for refinement data sizes.
+    const RSIZE: u16 = 0x4000;
+    /// Bits 6–14: the refinement tables, which unrefined text leaves zero.
+    const REFINEMENT: u16 = 0x7fc0;
+    /// Bit 15: reserved.
+    const RESERVED: u16 = 0x8000;
+
+    const fn field(self, shift: u32) -> u16 {
+        (self.0 >> shift) & 3
+    }
+}
+
+/// Huffman decoding of symbol instances with their tables.
+struct Procedure {
+    tables: Tables,
+}
+
+/// Refinement and aggregate coding of a Huffman symbol dictionary (T.88
+/// 6.5.8.2), which always refines.
+pub(crate) struct Aggregation {
+    procedure: Procedure,
+    model: Model,
+}
+
+impl Aggregation {
+    /// Aggregate coding with its fixed tables (T.88 6.5.8.2.2).
+    pub(crate) fn new(model: Model, budget: &mut Budget) -> Result<Self> {
+        let mut table = |number| Table::standard(number, budget).map(Rc::new);
+        let tables = Tables {
+            fs: table(6)?,
+            ds: table(8)?,
+            dt: table(11)?,
+            rdw: table(15)?,
+            rdh: table(15)?,
+            rdx: table(15)?,
+            rdy: table(15)?,
+            rsize: table(1)?,
+        };
         Ok(Self {
-            tables: [6, 8, 11, 15, 15, 15, 15, 1]
-                .into_iter()
-                .map(|n| Table::standard(n).map(Rc::new))
-                .collect::<Result<_>>()?,
-            model: Some(model),
+            procedure: Procedure { tables },
+            model,
         })
     }
-    fn read(
-        reader: &mut Reader<'_>,
-        flags: u16,
-        custom: &[Rc<Table>],
-        limits: &Limits,
-    ) -> Result<Self> {
-        let selections = reader.u16()?;
-        if selections & 0x8000 != 0
-            || flags & 2 == 0 && (selections & 0x7fc0 != 0 || flags & 0x8000 != 0)
-        {
-            return Err(Error::syntax("invalid JBIG2 text Huffman flags"));
-        }
-        let mut custom = custom.iter();
-        let tables = vec![
-            select(selections & 3, &[6, 7], &mut custom, false)?,
-            select((selections >> 2) & 3, &[8, 9, 10], &mut custom, true)?,
-            select((selections >> 4) & 3, &[11, 12, 13], &mut custom, false)?,
-            select((selections >> 6) & 3, &[14, 15], &mut custom, false)?,
-            select((selections >> 8) & 3, &[14, 15], &mut custom, false)?,
-            select((selections >> 10) & 3, &[14, 15], &mut custom, false)?,
-            select((selections >> 12) & 3, &[14, 15], &mut custom, false)?,
-            select(
-                if selections & 0x4000 != 0 { 3 } else { 0 },
-                &[1],
-                &mut custom,
-                false,
-            )?,
-        ];
-        if custom.next().is_some() {
-            return Err(Error::syntax("unused JBIG2 user Huffman table"));
-        }
-        let model = if flags & 2 != 0 {
-            Some(Model::new(
-                Parameters::read(reader, u8::from(flags & 0x8000 != 0))?,
-                None,
-                limits,
-            )?)
-        } else {
-            None
-        };
-        Ok(Self { tables, model })
+
+    /// The refinement contexts, for a later dictionary to reuse; the
+    /// tables are released.
+    pub(crate) fn into_refinement_contexts(self, budget: &mut Budget) -> Vec<Context> {
+        self.procedure.tables.release(budget);
+        self.model.contexts
     }
-    pub(crate) fn bytes(&self) -> usize {
-        self.tables.iter().map(|t| t.bytes()).sum::<usize>()
-            + self.model.as_ref().map_or(0, Model::context_bytes)
+
+    /// Drops the tables and the model, releasing their memory.
+    pub(crate) fn release(self, budget: &mut Budget) {
+        self.procedure.tables.release(budget);
+        self.model.release(budget);
     }
-    fn number(&self, n: usize, bits: &mut Bits<'_>) -> Result<i64> {
-        self.tables[n].required(bits)
-    }
-    fn refined(
-        &mut self,
-        bits: &mut Bits<'_>,
-        symbol: &Bitmap,
-        limits: &Limits,
-        work: &mut Work,
-    ) -> Result<Option<Bitmap>> {
-        if self.model.is_none() || bits.read(1)? == 0 {
-            return Ok(None);
-        }
-        let dw = self.number(3, bits)?;
-        let dh = self.number(4, bits)?;
-        let request = Request {
-            width: dimension(symbol.width, dw)?,
-            height: dimension(symbol.height, dh)?,
-            dx: (dw >> 1) + self.number(5, bits)?,
-            dy: (dh >> 1) + self.number(6, bits)?,
-            prediction: false,
-        };
-        self.bitmap(bits, symbol, request, limits, work).map(Some)
-    }
-    fn bitmap(
-        &mut self,
-        bits: &mut Bits<'_>,
-        symbol: &Bitmap,
-        request: Request,
-        limits: &Limits,
-        work: &mut Work,
-    ) -> Result<Bitmap> {
-        let count = usize::try_from(self.number(7, bits)?)
-            .map_err(|_| Error::syntax("negative JBIG2 refinement data size"))?;
-        bits.align();
-        let base = match bits.position() {
-            Position::Buffer(n) => n,
-            _ => 0,
-        };
-        let data = bits.take(count)?;
-        self.model
-            .as_mut()
-            .ok_or_else(|| Error::syntax("missing JBIG2 refinement model"))?
-            .decode(
-                &mut Decoder::new(data, base)?,
-                symbol,
-                request,
-                limits,
-                work,
-            )
-    }
+
+    /// Decodes a refinement of one `symbol` (T.88 6.5.8.2.2).
     pub(crate) fn single(
         &mut self,
-        bits: &mut Bits<'_>,
-        symbols: &[Rc<Bitmap>],
+        bits: &mut BitCursor<'_>,
+        symbol: &Bitmap,
         size: (u32, u32),
-        id_bits: u8,
         limits: &Limits,
-        work: &mut Work,
+        budget: &mut Budget,
     ) -> Result<Bitmap> {
-        let id = bits.read(id_bits)? as usize;
-        let symbol = symbols
-            .get(id)
-            .ok_or_else(|| Error::syntax("JBIG2 aggregation identifier out of range"))?;
+        let tables = &self.procedure.tables;
         let request = Request {
             width: size.0,
             height: size.1,
-            dx: self.number(5, bits)?,
-            dy: self.number(6, bits)?,
-            prediction: false,
+            dx: tables.rdx.required(bits)?,
+            dy: tables.rdy.required(bits)?,
+            prediction: Prediction::Off,
         };
-        self.bitmap(bits, symbol, request, limits, work)
+        self.procedure
+            .bitmap(bits, symbol, request, &mut self.model, limits, budget)
     }
+
+    /// Decodes an aggregate of several symbol instances.
     pub(crate) fn region(
         &mut self,
-        bits: &mut Bits<'_>,
+        bits: &mut BitCursor<'_>,
         symbols: &[Rc<Bitmap>],
         placement: Placement<'_>,
         limits: &Limits,
-        work: &mut Work,
+        budget: &mut Budget,
+    ) -> Result<Bitmap> {
+        self.procedure.region(
+            bits,
+            symbols,
+            placement,
+            Some(&mut self.model),
+            limits,
+            budget,
+        )
+    }
+}
+
+impl Procedure {
+    fn read(
+        cursor: &mut Cursor<'_>,
+        flags: TextFlags,
+        custom: &[Rc<Table>],
+        budget: &mut Budget,
+    ) -> Result<Self> {
+        let selections = Selections(cursor.u16()?);
+        if selections.0 & Selections::RESERVED != 0
+            || flags.refinement().is_none() && selections.0 & Selections::REFINEMENT != 0
+        {
+            return Err(Error::syntax("invalid JBIG2 text Huffman flags"));
+        }
+        let mut select = Selector::new(custom, budget);
+        let refinement = [14, 15];
+        let tables = Tables {
+            fs: select.select(
+                selections.field(Selections::FS_SHIFT),
+                &[6, 7],
+                Oob::Without,
+            )?,
+            ds: select.select(
+                selections.field(Selections::DS_SHIFT),
+                &[8, 9, 10],
+                Oob::With,
+            )?,
+            dt: select.select(
+                selections.field(Selections::DT_SHIFT),
+                &[11, 12, 13],
+                Oob::Without,
+            )?,
+            rdw: select.select(
+                selections.field(Selections::RDW_SHIFT),
+                &refinement,
+                Oob::Without,
+            )?,
+            rdh: select.select(
+                selections.field(Selections::RDH_SHIFT),
+                &refinement,
+                Oob::Without,
+            )?,
+            rdx: select.select(
+                selections.field(Selections::RDX_SHIFT),
+                &refinement,
+                Oob::Without,
+            )?,
+            rdy: select.select(
+                selections.field(Selections::RDY_SHIFT),
+                &refinement,
+                Oob::Without,
+            )?,
+            rsize: select.select(
+                Selector::one_bit(selections.0 & Selections::RSIZE != 0),
+                &[1],
+                Oob::Without,
+            )?,
+        };
+        select.finish()?;
+        Ok(Self { tables })
+    }
+    /// The refinement of an instance of `symbol` if `model` refines and the
+    /// instance's refinement bit asks for it (T.88 6.4.11).
+    fn refined(
+        &self,
+        bits: &mut BitCursor<'_>,
+        symbol: &Bitmap,
+        model: Option<&mut Model>,
+        limits: &Limits,
+        budget: &mut Budget,
+    ) -> Result<Option<Bitmap>> {
+        let Some(model) = model else {
+            return Ok(None);
+        };
+        if !bits.bit()? {
+            return Ok(None);
+        }
+        let dw = self.tables.rdw.required(bits)?;
+        let dh = self.tables.rdh.required(bits)?;
+        let request = Request {
+            width: dimension(symbol.width, dw)?,
+            height: dimension(symbol.height, dh)?,
+            dx: (dw >> 1) + self.tables.rdx.required(bits)?,
+            dy: (dh >> 1) + self.tables.rdy.required(bits)?,
+            prediction: Prediction::Off,
+        };
+        self.bitmap(bits, symbol, request, model, limits, budget)
+            .map(Some)
+    }
+
+    /// Decodes the arithmetic-coded refinement that follows its size.
+    fn bitmap(
+        &self,
+        bits: &mut BitCursor<'_>,
+        symbol: &Bitmap,
+        request: Request,
+        model: &mut Model,
+        limits: &Limits,
+        budget: &mut Budget,
+    ) -> Result<Bitmap> {
+        let count = usize::try_from(self.tables.rsize.required(bits)?)
+            .map_err(|_| Error::syntax("negative JBIG2 refinement data size"))?;
+        let mut data = huffman::bytes(bits, count)?;
+        model.decode(
+            &mut Decoder::new(&mut data)?,
+            symbol,
+            request,
+            limits,
+            budget,
+        )
+    }
+
+    /// Decodes the instances of a text region or aggregate (T.88 6.4.5),
+    /// refining them with `model` if given.
+    fn region(
+        &self,
+        bits: &mut BitCursor<'_>,
+        symbols: &[Rc<Bitmap>],
+        placement: Placement<'_>,
+        mut model: Option<&mut Model>,
+        limits: &Limits,
+        budget: &mut Budget,
     ) -> Result<Bitmap> {
         let Placement {
             size,
@@ -182,66 +291,54 @@ impl Procedure {
             config,
             identifiers,
         } = placement;
-        work.operations(instances, limits)?;
-        let overhead = self.bytes();
-        if overhead > limits.decoded_bytes {
-            return Err(Error::limit("JBIG2 Huffman text contexts exceed budget"));
-        }
-        let mut local = *limits;
-        local.decoded_bytes -= overhead;
-        let mut bitmap = Bitmap::new(size.0, size.1, config.default_black, &local)?;
-        local.decoded_bytes = local.decoded_bytes.saturating_sub(bitmap.data.len());
-        // Model::decode accounts for its own contexts.
-        local.decoded_bytes += self.model.as_ref().map_or(0, Model::context_bytes);
-        let mut strip = -self.number(2, bits)? * config.strips;
+        budget.work(instances)?;
+        let mut bitmap = Bitmap::new(size.0, size.1, config.fill, limits, budget)?;
+        let mut strip = -self.tables.dt.required(bits)? * config.strips;
         let mut first = 0i64;
         let mut count = 0;
         while count < instances {
-            strip = crate::jbig2::text::add(strip, self.number(2, bits)? * config.strips)?;
-            first = crate::jbig2::text::add(first, self.number(0, bits)?)?;
+            strip = add(strip, self.tables.dt.required(bits)? * config.strips)?;
+            first = add(first, self.tables.fs.required(bits)?)?;
             let mut s = first;
             loop {
-                let t = crate::jbig2::text::add(
-                    strip,
-                    i64::from(
-                        bits.read(
-                            u8::try_from(config.strips.trailing_zeros())
-                                .map_err(|_| Error::syntax("invalid JBIG2 strip size"))?,
-                        )?,
-                    ),
-                )?;
+                let t = add(strip, i64::from(bits.bits(config.strips.trailing_zeros())?))?;
                 let id = match identifiers {
                     Identifiers::Table(table) => usize::try_from(table.required(bits)?)
                         .map_err(|_| Error::syntax("negative JBIG2 symbol identifier"))?,
-                    Identifiers::Fixed(n) => bits.read(n)? as usize,
+                    Identifiers::Fixed(n) => u32_to_usize(bits.bits(n)?),
                 };
                 let symbol = symbols
                     .get(id)
                     .ok_or_else(|| Error::syntax("JBIG2 Huffman symbol identifier out of range"))?;
-                let refined = self.refined(bits, symbol, &local, work)?;
+                let refined = self.refined(bits, symbol, model.as_deref_mut(), limits, budget)?;
                 let glyph = refined.as_ref().unwrap_or(symbol);
-                work.pixels(u64::from(glyph.width) * u64::from(glyph.height), limits)?;
+                charge_pixels(budget, u64::from(glyph.width) * u64::from(glyph.height))?;
                 let (x, y) = config.origin(s, t, glyph)?;
                 bitmap.combine_signed(glyph, x, y, config.operator);
-                s = crate::jbig2::text::add(s, config.advance(glyph))?;
+                s = add(s, config.advance(glyph))?;
+                if let Some(refined) = refined {
+                    refined.release(budget);
+                }
                 count += 1;
-                let Some(delta) = self.tables[1].decode(bits)? else {
+                let Some(delta) = self.tables.ds.decode(bits)? else {
                     break;
                 };
                 if count >= instances {
                     return Err(Error::syntax("excess JBIG2 Huffman symbol instances"));
                 }
-                s = crate::jbig2::text::add(s, delta + config.offset)?;
+                s = add(s, delta + config.offset)?;
             }
         }
         Ok(bitmap)
     }
 }
 
+/// How symbol identifiers are coded: with the table of a text region
+/// (T.88 7.4.3.1.7), or in a fixed number of bits in an aggregate.
 #[derive(Clone, Copy)]
 pub(crate) enum Identifiers<'a> {
     Table(&'a Table),
-    Fixed(u8),
+    Fixed(u32),
 }
 pub(crate) struct Placement<'a> {
     pub(crate) size: (u32, u32),
@@ -250,33 +347,18 @@ pub(crate) struct Placement<'a> {
     pub(crate) identifiers: Identifiers<'a>,
 }
 
-fn dimension(base: u32, delta: i64) -> Result<u32> {
-    u32::try_from(i64::from(base) + delta)
-        .ok()
-        .filter(|&n| n != 0)
-        .ok_or_else(|| Error::syntax("invalid JBIG2 refined symbol dimension"))
-}
-
-/// Run-coded identifier lengths, 7.4.3.1.7 and Table 29.
-fn identifiers(
-    bits: &mut Bits<'_>,
-    count: usize,
-    limits: &Limits,
-    work: &mut Work,
-) -> Result<Table> {
-    if count == 0 || count > limits.value_nodes || count.saturating_mul(64) > limits.decoded_bytes {
-        return Err(Error::limit(
-            "JBIG2 Huffman identifier table exceeds budget",
-        ));
+/// Run-coded identifier lengths (T.88 7.4.3.1.7 and Table 29).
+fn identifiers(bits: &mut BitCursor<'_>, count: usize, budget: &mut Budget) -> Result<Table> {
+    let mut lengths = Vec::new();
+    budget.reserve(&mut lengths, count)?;
+    // The prefix lengths of the 35 run codes (T.88 7.4.3.1.7).
+    let mut runs = [line(0, 0, 0); 35];
+    for (n, run) in (0..).zip(&mut runs) {
+        *run = line(small(bits, 4)?, 0, n);
     }
-    let mut runs = Vec::with_capacity(35);
-    for n in 0..35 {
-        runs.push((bits.small(4)?, 0, n, 0));
-    }
-    let runs = Table::new(&runs)?;
-    let mut lengths = Vec::with_capacity(count);
+    let runs = Table::new(&runs, budget)?;
     while lengths.len() < count {
-        work.operations(1, limits)?;
+        budget.work(1)?;
         let code = runs.required(bits)?;
         let (length, repeat) = match code {
             0..=31 => (
@@ -287,10 +369,10 @@ fn identifiers(
                 *lengths.last().ok_or_else(|| {
                     Error::syntax("JBIG2 Huffman length repeat lacks predecessor")
                 })?,
-                bits.read(2)? as usize + 3,
+                u32_to_usize(bits.bits(2)?) + 3,
             ),
-            33 => (0, bits.read(3)? as usize + 3),
-            34 => (0, bits.read(7)? as usize + 11),
+            33 => (0, u32_to_usize(bits.bits(3)?) + 3),
+            34 => (0, u32_to_usize(bits.bits(7)?) + 11),
             _ => return Err(Error::syntax("invalid JBIG2 Huffman length run")),
         };
         if repeat > count - lengths.len() {
@@ -298,70 +380,72 @@ fn identifiers(
         }
         lengths.resize(lengths.len() + repeat, length);
     }
-    bits.align();
-    let parameters: Vec<_> = lengths
-        .iter()
-        .enumerate()
-        .map(|(n, &length)| {
-            Ok((
-                length,
-                0,
-                i64::try_from(n).map_err(|_| Error::limit("JBIG2 symbol identifier overflow"))?,
-                0,
-            ))
-        })
-        .collect::<Result<_>>()?;
-    Table::new(&parameters)
+    bits.align()?;
+    runs.release(budget);
+    let mut parameters = Vec::new();
+    budget.reserve(&mut parameters, count)?;
+    for (n, &length) in (0..).zip(&lengths) {
+        parameters.push(line(length, 0, n));
+    }
+    budget.release::<u8>(count);
+    let table = Table::new(&parameters, budget)?;
+    budget.release::<Line>(count);
+    Ok(table)
 }
 
+/// Decodes a Huffman text region segment's data after its `flags` (T.88
+/// 7.4.3).
 pub(crate) fn decode(
-    reader: &mut Reader<'_>,
+    cursor: &mut Cursor<'_>,
+    flags: TextFlags,
     size: (u32, u32),
     symbols: &[Rc<Bitmap>],
     custom: &[Rc<Table>],
     limits: &Limits,
-    work: &mut Work,
+    budget: &mut Budget,
 ) -> Result<Bitmap> {
-    work.operations(crate::jbig2::huffman::STANDARD_ROWS, limits)?;
-    let flags = reader.u16()?;
-    let mut procedure = Procedure::read(reader, flags, custom, limits)?;
-    let instances = reader.u32()? as usize;
-    let base = match reader.position() {
-        Position::Buffer(n) => n,
-        _ => 0,
-    };
-    let mut bits = Bits::new(reader.rest(), base);
+    budget.work(huffman::STANDARD_ROWS)?;
+    let procedure = Procedure::read(cursor, flags, custom, budget)?;
+    let mut model = flags
+        .refinement()
+        .map(|template| Model::new(Parameters::read(cursor, template)?, None, budget))
+        .transpose()?;
+    let instances = u32_to_usize(cursor.u32()?);
+    let mut bits = huffman::bits(cursor)?;
     let identifiers = if symbols.is_empty() {
         if instances != 0 {
             return Err(Error::syntax("JBIG2 Huffman text region has no symbols"));
         }
         for _ in 0..35 {
-            bits.read(4)?;
+            bits.bits(4)?;
         }
-        bits.align();
+        bits.align()?;
         None
     } else {
-        Some(identifiers(&mut bits, symbols.len(), limits, work)?)
+        Some(identifiers(&mut bits, symbols.len(), budget)?)
     };
-    let mut local = *limits;
-    local.decoded_bytes = local
-        .decoded_bytes
-        .checked_sub(identifiers.as_ref().map_or(0, Table::bytes))
-        .ok_or_else(|| Error::limit("JBIG2 Huffman identifier table exceeds byte budget"))?;
     let bitmap = procedure.region(
         &mut bits,
         symbols,
         Placement {
             size,
             instances,
-            config: Config::from_flags(flags),
+            config: flags.config(),
             identifiers: identifiers
                 .as_ref()
                 .map_or(Identifiers::Fixed(0), Identifiers::Table),
         },
-        &local,
-        work,
+        model.as_mut(),
+        limits,
+        budget,
     )?;
-    bits.finish()?;
+    huffman::finish(&mut bits)?;
+    procedure.tables.release(budget);
+    if let Some(identifiers) = identifiers {
+        identifiers.release(budget);
+    }
+    if let Some(model) = model {
+        model.release(budget);
+    }
     Ok(bitmap)
 }

@@ -1,5 +1,8 @@
-//! T.6 two-dimensional coding for generic regions (T.88 clause 6.2.6).
-use super::Bitmap;
+//! MMR-coded generic regions (T.88 6.2.6): T.6 two-dimensional rows with
+//! T.88's end-of-block rules.
+use super::{Bitmap, bitmap::Fill};
+use crate::budget::Budget;
+use pagura_core::bytes::Cursor;
 use pagura_core::{Error, Limits, Position, Result};
 
 // Run-length codewords from the T.4 white/black terminating and makeup
@@ -216,16 +219,28 @@ const fn tree(black: bool) -> [Node; 512] {
 const WHITE_TREE: [Node; 512] = tree(false);
 const BLACK_TREE: [Node; 512] = tree(true);
 
+/// Whether the data must end with an EOFB code (T.88 6.2.6).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Eofb {
+    /// EOFB may be omitted when the data ends with the last row.
+    Optional,
+    /// EOFB must follow the last row, as in a gray-scale bitplane.
+    Required,
+}
+
 struct Bits<'a> {
     data: &'a [u8],
     byte: usize,
     bit: u8,
-    base: usize,
+    /// Where `data` starts in the decoder's input.
+    start: Position,
 }
+
 impl Bits<'_> {
     fn next(&mut self) -> Result<u8> {
         let byte = self.data.get(self.byte).ok_or_else(|| {
-            Error::syntax("truncated JBIG2 MMR data").at(Position::Buffer(self.base + self.byte))
+            Error::syntax("truncated JBIG2 MMR data")
+                .at(Position::Buffer(self.byte).within(self.start))
         })?;
         let value = (byte >> (7 - self.bit)) & 1;
         self.bit += 1;
@@ -288,9 +303,11 @@ impl Bits<'_> {
         Err(Error::syntax("invalid JBIG2 MMR mode"))
     }
 
-    fn finish(&mut self, required: bool) -> Result<()> {
+    /// Reads the EOFB when `eofb` requires it or more than padding is left,
+    /// then the padding up to the next byte.
+    fn finish(&mut self, eofb: Eofb) -> Result<()> {
         let remaining = (self.data.len() - self.byte) * 8 - usize::from(self.bit);
-        if required || remaining > 7 {
+        if eofb == Eofb::Required || remaining > 7 {
             for _ in 0..2 {
                 for _ in 0..11 {
                     if self.next()? != 0 {
@@ -329,11 +346,12 @@ fn reference(
     first: bool,
     cursor: &mut ReferenceCursor,
 ) -> (u32, u32) {
+    let above = bitmap.row(i64::from(y) - 1);
     let mut b1 = bitmap.width;
     while cursor.position < bitmap.width {
         let x = cursor.position;
-        let before = bitmap.pixel(i64::from(x) - 1, i64::from(y) - 1);
-        let after = bitmap.pixel(i64::from(x), i64::from(y) - 1);
+        let before = above.get(i64::from(x) - 1);
+        let after = above.get(i64::from(x));
         if (x > start || (first && x == 0)) && before != after && after != u8::from(black) {
             b1 = x;
             break;
@@ -350,10 +368,7 @@ fn reference(
     let mut b2 = b1;
     if b2 < bitmap.width {
         b2 += 1;
-        while b2 < bitmap.width
-            && bitmap.pixel(i64::from(b2), i64::from(y) - 1)
-                == bitmap.pixel(i64::from(b1), i64::from(y) - 1)
-        {
+        while b2 < bitmap.width && above.get(i64::from(b2)) == above.get(i64::from(b1)) {
             b2 += 1;
         }
     }
@@ -369,36 +384,23 @@ fn paint(bitmap: &mut Bitmap, y: u32, start: u32, end: u32, black: bool) {
     }
 }
 
+/// Decodes a `size` MMR bitmap at the start of `bytes` and moves past the
+/// whole bytes it occupies.
 pub(super) fn decode(
-    data: &[u8],
-    width: u32,
-    height: u32,
+    bytes: &mut Cursor<'_>,
+    size: (u32, u32),
+    eofb: Eofb,
     limits: &Limits,
-    base: usize,
+    budget: &mut Budget,
 ) -> Result<Bitmap> {
-    let (bitmap, consumed) = decode_prefix(data, width, height, limits, base, false)?;
-    if consumed != data.len() {
-        return Err(Error::syntax("trailing JBIG2 MMR data"));
-    }
-    Ok(bitmap)
-}
-
-/// A gray-scale bitplane has an obligatory EOFB and consumes whole bytes (6.2.6).
-pub(super) fn decode_prefix(
-    data: &[u8],
-    width: u32,
-    height: u32,
-    limits: &Limits,
-    base: usize,
-    required: bool,
-) -> Result<(Bitmap, usize)> {
+    let (width, height) = size;
     let mut bits = Bits {
-        data,
+        data: bytes.rest(),
         byte: 0,
         bit: 0,
-        base,
+        start: bytes.position(),
     };
-    let mut bitmap = Bitmap::new(width, height, false, limits)?;
+    let mut bitmap = Bitmap::new(width, height, Fill::White, limits, budget)?;
     for y in 0..height {
         let mut x = 0;
         let mut black = false;
@@ -438,6 +440,7 @@ pub(super) fn decode_prefix(
             x = end;
         }
     }
-    bits.finish(required)?;
-    Ok((bitmap, bits.byte))
+    bits.finish(eofb)?;
+    bytes.skip(bits.byte)?;
+    Ok(bitmap)
 }

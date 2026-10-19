@@ -13,6 +13,7 @@ pub mod dct;
 pub mod features;
 pub mod jbig2;
 pub mod jpx;
+mod mq;
 pub mod repairs;
 
 use pagura_core::convert::usize_to_u64;
