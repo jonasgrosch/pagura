@@ -7,7 +7,7 @@ use crate::{
     metrics::Metrics,
     report::Report,
 };
-use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Result};
+use pagura_core::{Diagnostic, Dictionary, Error, Meter, ObjectId, Result};
 use pagura_document::Document;
 use pagura_font::{CmapSubtable, FontProgram, GlyphId};
 
@@ -29,14 +29,8 @@ pub(crate) fn load(
         ));
     }
     let (registry, ordering) = cid_collection(document, descendant)?.ok_or_else(unavailable)?;
-    if map
-        .registry
-        .as_ref()
-        .is_some_and(|r| r.as_bytes() != registry)
-        || map
-            .ordering
-            .as_ref()
-            .is_some_and(|o| o.as_bytes() != ordering)
+    if map.registry().is_some_and(|r| r != registry)
+        || map.ordering().is_some_and(|o| o != ordering)
     {
         return Err(Error::syntax(
             "CIDFont and CMap character collections disagree (9.7.3)",
@@ -52,9 +46,12 @@ pub(crate) fn load(
     // Inspect reachable CIDs, not the substitute's own CID charset. Stop at the
     // first hole; the diagnostic covers incomplete font coverage as a whole.
     let report = Report::new(document);
-    let mut work = 0;
+    let mut work = Meter::new(
+        document.limits().font_work,
+        "CID substitute coverage work budget exceeded",
+    );
     for cid in map.cids() {
-        crate::cmap::charge(&mut work, 1, document.limits().operations)?;
+        work.charge(1)?;
         if glyph(&program, Some(&unicode), cid).is_none() {
             report.diagnostic(
                 Diagnostic::information(

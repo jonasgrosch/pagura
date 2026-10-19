@@ -1,6 +1,9 @@
 //! Unicode text of one glyph, cheap to clone along the decoding hot path.
 use std::{fmt, ops::Deref, sync::Arc};
 
+/// Text up to this many bytes is collected on the stack before it is shared.
+const STACK: usize = 32;
+
 /// The Unicode text of one glyph (9.10.2), from `/ToUnicode`, glyph names or
 /// a character collection. The text is validated once, when it is created,
 /// and shared: cloning never copies it and dereferencing to `str` is free.
@@ -11,6 +14,25 @@ impl GlyphText {
     /// The text as a string slice.
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+
+    /// Collects `chars` with one allocation for the shared text.
+    pub(crate) fn from_chars(chars: impl IntoIterator<Item = char>) -> Self {
+        let mut bytes = [0; STACK];
+        let mut len = 0;
+        let mut chars = chars.into_iter();
+        while let Some(scalar) = chars.next() {
+            let end = len + scalar.len_utf8();
+            let Some(slot) = bytes.get_mut(len..end) else {
+                let mut text = String::from(std::str::from_utf8(&bytes[..len]).unwrap_or_default());
+                text.push(scalar);
+                text.extend(chars);
+                return Self::from(text);
+            };
+            scalar.encode_utf8(slot);
+            len = end;
+        }
+        Self::from(std::str::from_utf8(&bytes[..len]).unwrap_or_default())
     }
 
     /// Bytes charged for this text: its length, as for an owned string.
@@ -83,7 +105,7 @@ mod tests {
 
     #[test]
     fn text_is_shared_and_charged_by_length() {
-        let long = "b".repeat(40);
+        let long = "b".repeat(STACK + 1);
         for text in ["", "A", "😀", "ﬃ", long.as_str()] {
             let value = GlyphText::from(text);
             assert_eq!(value, text);
@@ -93,5 +115,8 @@ mod tests {
             assert!(std::ptr::eq(clone.as_str(), value.as_str()));
         }
         assert_eq!(GlyphText::from('Ω').to_string(), "Ω");
+        for text in ["", "AB😀", long.as_str(), "😀".repeat(9).as_str()] {
+            assert_eq!(GlyphText::from_chars(text.chars()), text);
+        }
     }
 }

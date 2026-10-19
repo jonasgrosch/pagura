@@ -1,5 +1,9 @@
 //! Host-supplied data absent from a PDF (ADR 0009).
-use crate::{GlyphText, WritingMode, cid::Cid, cmap::CMap};
+use crate::{
+    GlyphText, WritingMode,
+    cid::Cid,
+    cmap::{CMap, CMapRole},
+};
 use pagura_core::{Error, Limits, Meter, Name, Result, syntax::Origin};
 use pagura_font::FontProgram;
 use std::{collections::BTreeMap, sync::Arc};
@@ -148,13 +152,14 @@ impl PredefinedCMap {
         if bytes.len() > limits.decoded_bytes {
             return Err(Error::limit("CMap resource byte budget exceeded"));
         }
-        let mut map = CMap::parse(bytes, Origin::Buffer, *limits, false)?;
-        let mut work = map.parse_work;
-        if let Some(name) = &map.use_name {
-            let base = parent(name.as_bytes())?;
-            map.inherit_resource(base.0.as_ref().clone(), *limits, &mut work)?;
+        let mut map = CMap::parse(bytes, Origin::Buffer, limits, CMapRole::Encoding)?;
+        if let Some(name) = map.use_name().cloned() {
+            map.inherit_resource(parent(name.as_bytes())?.0)?;
         }
-        map.validate(*limits, &mut work)?;
+        map.validate(&mut Meter::new(
+            limits.font_work,
+            "CMap work budget exceeded",
+        ))?;
         Ok(Self(Arc::new(map)))
     }
 
@@ -170,10 +175,7 @@ impl PredefinedCMap {
 
     /// Registry and ordering from CIDSystemInfo, when present.
     pub fn collection(&self) -> Option<(&[u8], &[u8])> {
-        Some((
-            self.0.registry.as_ref()?.as_bytes(),
-            self.0.ordering.as_ref()?.as_bytes(),
-        ))
+        self.0.collection()
     }
 
     /// Decodes the first code of `bytes`, with the CMap's notdef mapping for
@@ -186,16 +188,16 @@ impl PredefinedCMap {
         if bytes.is_empty() {
             return Err(Error::syntax("empty CMap input"));
         }
-        let mut work = 0;
-        let (code, in_codespace) = self.0.next(bytes, &mut work, *limits)?;
+        let mut work = Meter::new(limits.font_work, "CMap decoding work budget exceeded");
+        let (code, in_codespace) = self.0.next(bytes, &mut work)?;
         let mapped = if in_codespace {
-            self.0.cid(code, &mut work, *limits)?
+            self.0.cid(code, &mut work)?
         } else {
             None
         };
         let cid = match mapped {
             Some(cid) => cid,
-            None => self.0.notdef(code, &mut work, *limits)?,
+            None => self.0.notdef(code, &mut work)?,
         };
         Ok(CMapCode {
             code: code.value,
@@ -232,7 +234,8 @@ impl CidToUnicode {
         Ok(Self(table.into()))
     }
 
-    /// One Unicode scalar per CID, the shape of most collection data.
+    /// One Unicode scalar per CID, the shape of most collection data,
+    /// without a `String` per entry.
     ///
     /// # Errors
     /// Returns a limit error for more than `font_entries` entries or a syntax

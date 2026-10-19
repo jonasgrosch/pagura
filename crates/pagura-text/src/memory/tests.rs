@@ -59,12 +59,12 @@ fn owned_unicode_and_type3_resources_increase_the_estimate() -> Result<()> {
     let (document, dict) = load("tt-unicode-priority")?;
     let mut font = PdfFont::load(&document, &dict)?;
     let base = font.retained_bytes();
-    font.to_unicode = Some(cmap::CMap::parse(
+    font.to_unicode = Some(Arc::new(cmap::CMap::parse(
         b"1 begincodespacerange <00> <ff> endcodespacerange 1 beginbfchar <41> <0041> endbfchar",
         pagura_core::syntax::Origin::Buffer,
-        document.limits(),
-        true,
-    )?);
+        &document.limits(),
+        cmap::CMapRole::ToUnicode,
+    )?));
     assert!(font.accounted().retained_bytes() > base);
     Ok(())
 }
