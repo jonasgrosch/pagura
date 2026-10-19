@@ -315,3 +315,17 @@ fn structure_metadata_capacity_and_heap_roles_are_accounted() -> Result<()> {
     assert_eq!(relaid.retained_bytes(), memory::estimate(&relaid));
     Ok(())
 }
+
+#[test]
+fn rendering_modes_match_their_operands() -> Result<()> {
+    for bits in 0..8 {
+        let mode = TextRenderingMode::try_from(bits)?;
+        assert_eq!(TextRenderingMode::from_low_bits(bits), mode);
+        assert_eq!(u8::from(mode), bits);
+        assert_eq!(mode.clips(), bits >= 4);
+        assert_eq!(mode.fills(), matches!(bits % 4, 0 | 2));
+        assert_eq!(mode.strokes(), matches!(bits % 4, 1 | 2));
+    }
+    assert!(TextRenderingMode::try_from(8).is_err());
+    Ok(())
+}
