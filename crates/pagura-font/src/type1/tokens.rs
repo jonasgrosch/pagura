@@ -1,22 +1,24 @@
 //! Bounded lexical extraction of static Type 1 dictionary entries.
-use crate::read::{bad, cap};
-use pagura_core::{Limits, Result};
+use crate::budget::Work;
+use crate::read::bad;
+use pagura_core::{Position, Result};
 use pagura_raster::Transform;
 
-pub(super) struct Tokens<'a> {
+/// Type 1 chapter 10: tokens and RD strings are at most 65,535 bytes.
+const MAX_TOKEN_BYTES: usize = 65_535;
+
+/// Tokens of one Type 1 buffer, charged to the parse's work budget.
+pub(super) struct Tokens<'a, 'w, 'd> {
     data: &'a [u8],
     pub pos: usize,
-    limits: &'a Limits,
-    operations: usize,
+    work: &'w mut Work<'d>,
 }
-impl<'a> Tokens<'a> {
-    pub(super) fn new(data: &'a [u8], limits: &'a Limits) -> Self {
-        Self {
-            data,
-            pos: 0,
-            limits,
-            operations: 0,
-        }
+impl<'a, 'w, 'd> Tokens<'a, 'w, 'd> {
+    pub(super) const fn new(data: &'a [u8], work: &'w mut Work<'d>) -> Self {
+        Self { data, pos: 0, work }
+    }
+    pub(super) fn work(&mut self) -> &mut Work<'d> {
+        self.work
     }
     pub(super) fn next(&mut self) -> Result<Option<&'a [u8]>> {
         loop {
@@ -44,8 +46,7 @@ impl<'a> Tokens<'a> {
             let Some(&byte) = self.data.get(self.pos) else {
                 return Ok(None);
             };
-            self.operations = self.operations.saturating_add(1);
-            cap(self.operations, self.limits.operations, self.pos)?;
+            self.work.work(1, Position::Buffer(self.pos))?;
             let start = self.pos;
             self.pos += 1;
             if matches!(byte, b'{' | b'(') {
@@ -60,7 +61,11 @@ impl<'a> Tokens<'a> {
                 }
             }
             if !matches!(byte, b'{' | b'(') {
-                cap(self.pos - start, self.limits.string_bytes.min(65535), start)?;
+                let len = self.pos - start;
+                if len > MAX_TOKEN_BYTES {
+                    return Err(bad(start, "Type 1 token exceeds 65,535 bytes"));
+                }
+                self.work.string(len, Position::Buffer(start))?;
             }
             return Ok(Some(&self.data[start..self.pos]));
         }
@@ -91,7 +96,8 @@ impl<'a> Tokens<'a> {
             }
             if byte == open {
                 depth += 1;
-                cap(depth, self.limits.depth.min(64), self.pos)?;
+                self.work
+                    .depth(depth, usize::MAX, Position::Buffer(self.pos))?;
             }
             if byte == close {
                 depth -= 1;
@@ -131,7 +137,10 @@ impl<'a> Tokens<'a> {
     }
     pub(super) fn binary(&mut self, aliases: &super::aliases::Aliases) -> Result<&'a [u8]> {
         let size = self.integer()?;
-        cap(size, self.limits.decoded_bytes.min(65535), self.pos)?;
+        if size > MAX_TOKEN_BYTES {
+            return Err(bad(self.pos, "Type 1 RD string exceeds 65,535 bytes"));
+        }
+        self.work.decoded(size, Position::Buffer(self.pos))?;
         if !aliases.reader(self.required()?) {
             return Err(super::unsupported(
                 self.pos,
@@ -201,7 +210,8 @@ fn white(byte: u8) -> bool {
 #[cfg(test)]
 mod tests {
     use super::Tokens;
-    use pagura_core::Limits;
+    use crate::budget::{FontBudget, Work};
+    use pagura_core::{Diagnostics, Limits, Recovery};
 
     #[test]
     fn balanced_literals_are_not_copied_or_mistaken_for_single_name_tokens() {
@@ -212,7 +222,9 @@ mod tests {
             string_bytes: 8,
             ..Limits::default()
         };
-        let mut tokens = Tokens::new(&data, &limits);
+        let mut diagnostics = Diagnostics::new(Recovery::Strict);
+        let mut work = Work::new(FontBudget::new(&limits), &mut diagnostics);
+        let mut tokens = Tokens::new(&data, &mut work);
         assert_eq!(tokens.next().unwrap(), Some(b"end".as_slice()));
         assert_eq!(tokens.next().unwrap(), None);
     }

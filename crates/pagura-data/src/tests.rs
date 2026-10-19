@@ -285,10 +285,12 @@ fn parsing_budgets_fail_before_publication() {
     for limits in [
         Limits {
             operations: 0,
+            font_work: 0,
             ..Limits::default()
         },
         Limits {
             value_nodes: 0,
+            font_entries: 0,
             ..Limits::default()
         },
         Limits {

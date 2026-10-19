@@ -1,8 +1,9 @@
 //! OpenType post glyph names. Standard names are defined by the post format.
 use crate::GlyphId;
-use crate::read::{bad, cap, here};
+use crate::budget::Work;
+use crate::read::{bad, here};
 use pagura_core::bytes::Cursor;
-use pagura_core::{Limits, Name, Result};
+use pagura_core::{Name, Position, Result};
 use std::collections::BTreeMap;
 
 // The standard Macintosh glyph-name order (post versions 1 and 2).
@@ -14,7 +15,7 @@ pub(super) struct PostNames {
     pub by_glyph: Vec<Option<Name>>,
 }
 
-pub(super) fn parse(mut r: Cursor<'_>, count: usize, limits: &Limits) -> Result<PostNames> {
+pub(super) fn parse(mut r: Cursor<'_>, count: usize, work: &mut Work<'_>) -> Result<PostNames> {
     let start = here(&r);
     let version = r.u32()?;
     r.skip(28)?;
@@ -34,7 +35,7 @@ pub(super) fn parse(mut r: Cursor<'_>, count: usize, limits: &Limits) -> Result<
                     .take(count)
                     .enumerate()
                     .map(|(i, name)| Ok((glyph_id(i, here(&r))?, name))),
-                limits,
+                work,
                 start,
             )?
         }
@@ -51,13 +52,13 @@ pub(super) fn parse(mut r: Cursor<'_>, count: usize, limits: &Limits) -> Result<
                 }
                 indices.push(index);
             }
-            cap(custom_count, limits.value_nodes, here(&r))?;
+            work.entries(custom_count, Position::Buffer(here(&r)))?;
             let mut custom = Vec::with_capacity(custom_count);
             let mut bytes = 0;
             for _ in 0..custom_count {
                 let len = usize::from(r.u8()?);
                 bytes += len;
-                cap(bytes, limits.string_bytes, here(&r))?;
+                work.string(bytes, Position::Buffer(here(&r)))?;
                 let name = r.take(len)?;
                 if name.contains(&0) {
                     return Err(bad(here(&r), "NUL in post glyph name"));
@@ -75,7 +76,7 @@ pub(super) fn parse(mut r: Cursor<'_>, count: usize, limits: &Limits) -> Result<
                     .ok_or_else(|| bad(here(&r), "invalid post glyph name"))?;
                     Ok((glyph_id(i, here(&r))?, name))
                 }),
-                limits,
+                work,
                 start,
             )?
         }
@@ -85,7 +86,7 @@ pub(super) fn parse(mut r: Cursor<'_>, count: usize, limits: &Limits) -> Result<
                 crate::features::FORMAT,
                 "post name format is not implemented",
             )
-            .at(pagura_core::Position::Buffer(start)));
+            .at(Position::Buffer(start)));
         }
     };
     let mut by_name = BTreeMap::new();

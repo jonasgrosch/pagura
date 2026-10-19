@@ -3,9 +3,10 @@
 //! Follows Adobe Type 1 Font Format, referenced by ISO 32000-2, 9.9.
 //! This is a font reader, without a PostScript execution environment.
 use crate::GlyphId;
+use crate::budget::Work;
 use crate::memory::{encoding, names, nested};
-use crate::read::{bad, cap};
-use pagura_core::{Diagnostics, Limits, Name, Position, Recovery, Result};
+use crate::read::bad;
+use pagura_core::{Name, Position, Result};
 use pagura_raster::{Path, Transform};
 use std::collections::BTreeMap;
 
@@ -46,33 +47,29 @@ pub(super) fn decrypt(data: &[u8], seed: u16, discard: usize, at: usize) -> Resu
 }
 
 impl Type1 {
-    pub(crate) fn parse(
-        data: &[u8],
-        limits: &Limits,
-        diagnostics: &mut Diagnostics,
-    ) -> Result<Self> {
-        let (flat, binary) = flatten(data, limits)?;
+    pub(crate) fn parse(data: &[u8], work: &mut Work<'_>) -> Result<Self> {
+        let (flat, binary) = flatten(data, work)?;
         let Clear {
             matrix,
             encoding,
             start,
             encrypted,
             mut aliases,
-        } = cleartext(&flat, limits)?;
+        } = cleartext(&flat, work)?;
         let cipher = flat
             .get(start..)
             .ok_or_else(|| bad(start, "missing eexec data"))?;
         let cipher = if binary {
             cipher.to_vec()
         } else {
-            eexec_bytes(cipher, limits)?
+            eexec_bytes(cipher, work)?
         };
         let plain = if encrypted {
             decrypt(&cipher, 55665, 4, start)?
         } else {
             cipher
         };
-        let mut r = Tokens::new(&plain, limits);
+        let mut r = Tokens::new(&plain, work);
         let mut len_iv = Some(4);
         let mut subrs = Vec::new();
         let mut have_subrs = false;
@@ -100,20 +97,20 @@ impl Type1 {
                         return Err(bad(r.pos, "duplicate Type 1 Subrs array"));
                     }
                     have_subrs = true;
-                    subrs = subroutines(&mut r, len_iv, limits, &aliases)?;
+                    subrs = subroutines(&mut r, len_iv, &aliases)?;
                 }
                 b"/CharStrings" => {
                     if have_chars {
                         return Err(bad(r.pos, "invalid Type 1 dictionary organization"));
                     }
                     have_chars = true;
-                    chars.read(&mut r, len_iv, limits, subrs.len(), &aliases, diagnostics)?;
+                    chars.read(&mut r, len_iv, &aliases)?;
                 }
                 b"closefile" => {
                     closed = true;
                     break;
                 }
-                _ => aliases.definition(token, &mut r, limits)?,
+                _ => aliases.definition(token, &mut r)?,
             }
         }
         if !closed {
@@ -124,7 +121,7 @@ impl Type1 {
         let glyph_names = crate::names::indexed(
             glyphs.len(),
             names.iter().map(|(name, glyph)| Ok((*glyph, name))),
-            limits,
+            work,
             start,
         )?;
         Ok(Self {
@@ -153,18 +150,11 @@ impl Type1 {
     pub(crate) fn encoding(&self) -> &[Option<Name>; 256] {
         &self.encoding
     }
-    pub(crate) fn outline(
-        &self,
-        glyph: GlyphId,
-        limits: &Limits,
-        diagnostics: &mut Diagnostics,
-    ) -> Result<Path> {
-        Ok(charstring::glyph(self, glyph, limits, diagnostics)?.0)
+    pub(crate) fn outline(&self, glyph: GlyphId, work: &mut Work<'_>) -> Result<Path> {
+        Ok(charstring::glyph(self, glyph, work)?.0)
     }
-    pub(crate) fn advance(&self, glyph: GlyphId, limits: &Limits) -> Option<f64> {
-        charstring::glyph(self, glyph, limits, &mut Diagnostics::new(Recovery::Strict))
-            .ok()
-            .map(|g| g.1)
+    pub(crate) fn advance(&self, glyph: GlyphId, work: &mut Work<'_>) -> Option<f64> {
+        charstring::glyph(self, glyph, work).ok().map(|g| g.1)
     }
 
     /// Type 1 keeps decrypted charstrings and subroutines, not decrypted
@@ -185,17 +175,15 @@ fn unsupported(at: usize, message: &'static str) -> pagura_core::Error {
     pagura_core::Error::unsupported(crate::features::TYPE1_POSTSCRIPT, message)
         .at(Position::Buffer(at))
 }
-fn flatten(data: &[u8], limits: &Limits) -> Result<(Vec<u8>, bool)> {
+fn flatten(data: &[u8], work: &mut Work<'_>) -> Result<(Vec<u8>, bool)> {
     if data.first() != Some(&128) {
         return Ok((data.to_vec(), false));
     }
     let mut pos = 0;
     let mut result = Vec::new();
-    let mut segments = 0;
     let mut binary = false;
     loop {
-        segments += 1;
-        cap(segments, limits.operations, pos)?;
+        work.work(1, Position::Buffer(pos))?;
         if data.get(pos) != Some(&128) {
             return Err(bad(pos, "invalid PFB segment marker"));
         }
@@ -222,7 +210,7 @@ fn flatten(data: &[u8], limits: &Limits) -> Result<(Vec<u8>, bool)> {
         let end = pos
             .checked_add(size)
             .ok_or_else(|| crate::read::limit(pos, "PFB size overflow"))?;
-        cap(result.len().saturating_add(size), limits.decoded_bytes, pos)?;
+        work.decoded(result.len().saturating_add(size), Position::Buffer(pos))?;
         result.extend_from_slice(
             data.get(pos..end)
                 .ok_or_else(|| bad(pos, "truncated PFB segment"))?,
@@ -231,7 +219,7 @@ fn flatten(data: &[u8], limits: &Limits) -> Result<(Vec<u8>, bool)> {
     }
     Ok((result, binary))
 }
-fn eexec_bytes(data: &[u8], limits: &Limits) -> Result<Vec<u8>> {
+fn eexec_bytes(data: &[u8], work: &Work<'_>) -> Result<Vec<u8>> {
     if !data
         .iter()
         .filter(|b| !b.is_ascii_whitespace())
@@ -253,7 +241,7 @@ fn eexec_bytes(data: &[u8], limits: &Limits) -> Result<Vec<u8>> {
             _ => break,
         };
         if let Some(h) = high.take() {
-            cap(result.len() + 1, limits.decoded_bytes, i)?;
+            work.decoded(result.len() + 1, Position::Buffer(i))?;
             result.push(h * 16 + digit);
         } else {
             high = Some(digit);
@@ -272,11 +260,11 @@ struct Clear {
     encrypted: bool,
     aliases: aliases::Aliases,
 }
-fn cleartext(flat: &[u8], limits: &Limits) -> Result<Clear> {
+fn cleartext(flat: &[u8], work: &mut Work<'_>) -> Result<Clear> {
     if !flat.starts_with(b"%!") {
         return Err(bad(0, "missing Type 1 header"));
     }
-    let mut clear = Tokens::new(flat, limits);
+    let mut clear = Tokens::new(flat, work);
     let mut aliases = aliases::Aliases::default();
     let mut matrix = None;
     let mut font_type = false;
@@ -338,7 +326,7 @@ fn cleartext(flat: &[u8], limits: &Limits) -> Result<Clear> {
                 encrypted = true;
                 break;
             }
-            _ => aliases.definition(token, &mut clear, limits)?,
+            _ => aliases.definition(token, &mut clear)?,
         }
     }
     if !font_type {
@@ -363,20 +351,13 @@ fn cleartext(flat: &[u8], limits: &Limits) -> Result<Clear> {
 }
 
 fn subroutines(
-    r: &mut Tokens<'_>,
+    r: &mut Tokens<'_, '_, '_>,
     len_iv: Option<usize>,
-    limits: &Limits,
     aliases: &aliases::Aliases,
 ) -> Result<Vec<Vec<u8>>> {
     let count = r.integer()?;
-    cap(
-        count,
-        limits
-            .objects
-            .min(limits.value_nodes)
-            .min(limits.decoded_bytes / size_of::<Vec<u8>>()),
-        r.pos,
-    )?;
+    let at = Position::Buffer(r.pos);
+    r.work().entries(count, at)?;
     let mut subrs = vec![Vec::new(); count];
     let mut assigned = vec![false; count];
     let mut assignments = 0;

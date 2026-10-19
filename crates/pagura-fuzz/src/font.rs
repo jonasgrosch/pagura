@@ -37,7 +37,7 @@ pub fn run(data: &[u8]) {
         font.font_matrix(),
         font.builtin_encoding(),
     );
-    // `Limits::objects` caps the glyph count, so this loop is bounded.
+    // `Limits::font_entries` caps the glyph count, so this loop is bounded.
     for glyph in (0..font.glyph_count()).map(GlyphId) {
         super::checked(font.outline(glyph));
         let _ = font.advance(glyph);

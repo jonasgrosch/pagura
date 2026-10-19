@@ -96,13 +96,13 @@ fn check_vector(
                     font.data().to_vec(),
                     format,
                     &Limits {
-                        operations: usize::try_from(u(2)).unwrap(),
+                        font_work: usize::try_from(u(2)).unwrap(),
                         ..Limits::default()
                     },
                 )
                 .unwrap();
                 let error = limited.outline(GlyphId(u(1))).unwrap_err();
-                assert_eq!(error.kind, ErrorKind::Syntax);
+                assert_eq!(error.kind, ErrorKind::Limit);
                 assert!(matches!(error.position, Position::Buffer(_)));
             }
             "outline" => {
@@ -229,11 +229,11 @@ fn budgets_and_blank_glyphs() {
             FontProgram::parse(bytes.clone(), format, &limits)
                 .unwrap_err()
                 .kind,
-            ErrorKind::Syntax
+            ErrorKind::Limit
         );
         for limits in [
             Limits {
-                operations: 1,
+                font_work: 1,
                 ..Limits::default()
             },
             Limits {
@@ -245,7 +245,7 @@ fn budgets_and_blank_glyphs() {
                 ..Limits::default()
             },
             Limits {
-                value_nodes: 1,
+                font_entries: 1,
                 ..Limits::default()
             },
         ] {
@@ -254,7 +254,7 @@ fn budgets_and_blank_glyphs() {
                     p.outline(GlyphId(if format == FontFormat::TrueType { 3 } else { 1 }))
                         .is_err()
                 ),
-                Err(e) => assert_eq!(e.kind, ErrorKind::Syntax),
+                Err(e) => assert_eq!(e.kind, ErrorKind::Limit),
             }
         }
     }
@@ -383,9 +383,8 @@ fn compare_segment(a: Segment, b: Segment, name: &str) {
 #[test]
 fn mutated_programs_respect_small_budgets() {
     let limits = Limits {
-        operations: 2000,
-        value_nodes: 1000,
-        objects: 1000,
+        font_work: 2000,
+        font_entries: 1000,
         depth: 8,
         path_segments: 500,
         decoded_bytes: 16384,
@@ -506,9 +505,9 @@ fn extended_font_formats_from_independent_vectors() {
     }
 }
 
-fn budget(font: &FontProgram, glyph: GlyphId, operations: usize, segments: usize) {
+fn budget(font: &FontProgram, glyph: GlyphId, work: usize, segments: usize) {
     let limits = Limits {
-        operations,
+        font_work: work,
         path_segments: segments,
         ..Limits::default()
     };
@@ -516,7 +515,7 @@ fn budget(font: &FontProgram, glyph: GlyphId, operations: usize, segments: usize
     assert_eq!(p.outline(glyph).unwrap().segments().len(), segments);
     for limits in [
         Limits {
-            operations: operations - 1,
+            font_work: work - 1,
             ..limits
         },
         Limits {
@@ -526,7 +525,7 @@ fn budget(font: &FontProgram, glyph: GlyphId, operations: usize, segments: usize
     ] {
         let p = FontProgram::parse(font.data().to_vec(), font.format(), &limits).unwrap();
         let error = p.outline(glyph).unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Syntax);
+        assert_eq!(error.kind, ErrorKind::Limit);
         assert!(matches!(error.position, Position::Buffer(_)));
     }
 }
@@ -568,10 +567,11 @@ fn compressed_unicode_ranges_do_not_expand() {
     let p = FontProgram::parse(
         bytes,
         FontFormat::TrueType,
+        // The whole program holds about 20 entries, far fewer than the
+        // 1,114,112 codes its format 13 group maps.
         &Limits {
-            objects: 8,
-            value_nodes: 8,
-            operations: 64,
+            font_entries: 32,
+            font_work: 64,
             ..Limits::default()
         },
     )

@@ -1,10 +1,11 @@
 //! CFF2 ItemVariationStore at normalized default coordinates (OpenType CFF2).
-use crate::read::{bad, cap, here};
+use crate::budget::Work;
+use crate::read::{bad, here};
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
-use pagura_core::{Limits, Result};
+use pagura_core::{Position, Result};
 
-pub(super) fn parse(mut r: Cursor<'_>, limits: &Limits) -> Result<Vec<Vec<f64>>> {
+pub(super) fn parse(mut r: Cursor<'_>, work: &mut Work<'_>) -> Result<Vec<Vec<f64>>> {
     let length = usize::from(r.u16()?);
     let mut store = if length == 65535 {
         r.take_cursor(r.remaining())?
@@ -16,7 +17,7 @@ pub(super) fn parse(mut r: Cursor<'_>, limits: &Limits) -> Result<Vec<Vec<f64>>>
     }
     let region_offset = u32_to_usize(store.u32()?);
     let count = usize::from(store.u16()?);
-    cap(count, limits.value_nodes, here(&store))?;
+    work.entries(count, Position::Buffer(here(&store)))?;
     let mut offsets = Vec::with_capacity(count);
     for _ in 0..count {
         offsets.push(u32_to_usize(store.u32()?));
@@ -24,21 +25,11 @@ pub(super) fn parse(mut r: Cursor<'_>, limits: &Limits) -> Result<Vec<Vec<f64>>>
     let mut regions = store.cursor_at(region_offset)?;
     let axes = usize::from(regions.u16()?);
     let region_count = usize::from(regions.u16()?);
-    cap(
-        region_count,
-        limits
-            .value_nodes
-            .min(limits.decoded_bytes / size_of::<f64>()),
-        here(&regions),
-    )?;
-    let work = axes
+    work.entries(region_count, Position::Buffer(here(&regions)))?;
+    let cells = axes
         .checked_mul(region_count)
         .ok_or_else(|| crate::read::limit(here(&regions), "variation region count overflow"))?;
-    cap(
-        work,
-        limits.operations.min(limits.value_nodes),
-        here(&regions),
-    )?;
+    work.work(cells, Position::Buffer(here(&regions)))?;
     let mut scalars = Vec::with_capacity(region_count);
     for _ in 0..region_count {
         let mut scalar = 1.0;
@@ -63,7 +54,6 @@ pub(super) fn parse(mut r: Cursor<'_>, limits: &Limits) -> Result<Vec<Vec<f64>>>
         scalars.push(scalar);
     }
     let mut result = Vec::with_capacity(count);
-    let mut total = 0_usize;
     for offset in offsets {
         let mut item = store.cursor_at(offset)?;
         let items = usize::from(item.u16()?);
@@ -74,12 +64,7 @@ pub(super) fn parse(mut r: Cursor<'_>, limits: &Limits) -> Result<Vec<Vec<f64>>>
         if words > regions {
             return Err(bad(here(&item), "invalid variation delta count"));
         }
-        total = total.saturating_add(regions);
-        cap(
-            total,
-            limits.value_nodes.min(limits.operations),
-            here(&item),
-        )?;
+        work.entries(regions, Position::Buffer(here(&item)))?;
         let mut coefficients = Vec::with_capacity(regions);
         for _ in 0..regions {
             let index = usize::from(item.u16()?);

@@ -1,18 +1,28 @@
 //! CFF DICT evaluation (TN 5176 section 4); CFF2 extensions await primary review.
-use crate::read::{bad, cap, here};
+use crate::budget::Work;
+use crate::read::{bad, here};
 use pagura_core::bytes::Cursor;
-use pagura_core::{Diagnostics, Limits, Position, Result};
+use pagura_core::{Position, Result};
 use pagura_raster::Transform;
 use std::collections::BTreeMap;
 
 mod blues;
 mod validation;
 
+/// DICT operand stack ceilings: TN 5176 Appendix B (48) and CFF2 (513).
+const MAX_OPERANDS: usize = 48;
+const MAX_CFF2_OPERANDS: usize = 513;
+/// The longest real accepted, in characters. TN 5176 sets no limit; the
+/// shortest round-trip form of any `f64` is far shorter.
+const MAX_REAL_CHARS: usize = 64;
+
+#[derive(Debug)]
 pub(super) struct Dict {
     entries: BTreeMap<u16, Entry>,
     at: usize,
     blue_order_fault: Option<usize>,
 }
+#[derive(Debug)]
 struct Entry {
     values: Vec<f64>,
     at: usize,
@@ -81,7 +91,9 @@ fn real_number(r: &mut Cursor<'_>) -> Result<f64> {
     loop {
         let byte = r.u8()?;
         for (i, nibble) in [byte >> 4, byte & 15].into_iter().enumerate() {
-            cap(text.len(), 64, here(r))?;
+            if text.len() > MAX_REAL_CHARS {
+                return Err(bad(here(r), "CFF real exceeds 64 characters"));
+            }
             match nibble {
                 0..=9 => text.push(char::from(b'0' + nibble)),
                 10 => text.push('.'),
@@ -103,52 +115,46 @@ fn real_number(r: &mut Cursor<'_>) -> Result<f64> {
         }
     }
 }
-pub(super) fn parse(r: Cursor<'_>, limits: &Limits, diagnostics: &mut Diagnostics) -> Result<Dict> {
-    parse_inner(r, limits, None, false, diagnostics)
+pub(super) fn parse(r: Cursor<'_>, work: &mut Work<'_>) -> Result<Dict> {
+    parse_inner(r, work, None, false)
 }
 
 pub(super) fn parse_private(
     r: Cursor<'_>,
-    limits: &Limits,
+    work: &mut Work<'_>,
     variations: &[Vec<f64>],
 ) -> Result<Dict> {
-    parse_inner(
-        r,
-        limits,
-        Some(variations),
-        true,
-        &mut Diagnostics::default(),
-    )
+    parse_inner(r, work, Some(variations), true)
 }
 
-pub(super) fn parse_cff2(r: Cursor<'_>, limits: &Limits) -> Result<Dict> {
-    parse_inner(r, limits, None, true, &mut Diagnostics::default())
+pub(super) fn parse_cff2(r: Cursor<'_>, work: &mut Work<'_>) -> Result<Dict> {
+    parse_inner(r, work, None, true)
 }
 
 fn parse_inner(
     mut r: Cursor<'_>,
-    limits: &Limits,
+    work: &mut Work<'_>,
     variations: Option<&[Vec<f64>]>,
     cff2: bool,
-    diagnostics: &mut Diagnostics,
 ) -> Result<Dict> {
     let start = here(&r);
     let mut entries = BTreeMap::new();
     let mut blue_order_fault = None;
     let mut stack = Vec::new();
-    let mut work = 0;
     let mut vsindex = 0;
+    let ceiling = if cff2 {
+        MAX_CFF2_OPERANDS
+    } else {
+        MAX_OPERANDS
+    };
     while !r.at_end() {
-        work += 1;
-        cap(work, limits.operations, here(&r))?;
         let at = here(&r);
+        work.work(1, Position::Buffer(at))?;
         let byte = r.u8()?;
         if byte >= 28 {
-            cap(
-                stack.len() + 1,
-                if cff2 { 513 } else { 48 }.min(limits.value_nodes),
-                here(&r),
-            )?;
+            if stack.len() == ceiling {
+                return Err(bad(at, "operand stack exceeds the format limit"));
+            }
             stack.push(number(&mut r, byte, true)?);
         } else {
             let op = if byte == 12 {
@@ -165,6 +171,7 @@ fn parse_inner(
                     if vsindex >= variations.len() {
                         return Err(bad(here(&r), "CFF2 DICT vsindex out of range"));
                     }
+                    work.entries(1, Position::Buffer(at))?;
                     entries.insert(
                         22,
                         Entry {
@@ -172,7 +179,6 @@ fn parse_inner(
                             at,
                         },
                     );
-                    cap(entries.len(), limits.value_nodes, here(&r))?;
                     continue;
                 }
                 if op == 23 {
@@ -181,8 +187,7 @@ fn parse_inner(
                 }
             }
             if !cff2 && reserved(op) {
-                crate::recovery::repair(
-                    diagnostics,
+                work.repair(
                     crate::repairs::CFF_DICT_OPERATOR,
                     "reserved CFF DICT operator ignored",
                     Position::Buffer(at),
@@ -193,6 +198,7 @@ fn parse_inner(
             if matches!(op, 7 | 9) && !entries.contains_key(&(op - 1)) {
                 blue_order_fault.get_or_insert(here(&r) - 1);
             }
+            work.entries(1, Position::Buffer(at))?;
             if entries
                 .insert(
                     op,
@@ -205,7 +211,6 @@ fn parse_inner(
             {
                 return Err(bad(here(&r), "duplicate CFF DICT operator"));
             }
-            cap(entries.len(), limits.value_nodes, here(&r))?;
         }
     }
     if !stack.is_empty() {
@@ -248,7 +253,7 @@ fn blend(stack: &mut Vec<f64>, vsindex: usize, variations: &[Vec<f64>], at: usiz
             value += coefficient * stack[first + count + i * coefficients.len() + j];
         }
         if !value.is_finite() {
-            return Err(crate::read::limit(at, "nonfinite CFF2 DICT blend result"));
+            return Err(bad(at, "nonfinite CFF2 DICT blend result"));
         }
         stack[first + i] = value;
     }
@@ -258,35 +263,46 @@ fn blend(stack: &mut Vec<f64>, vsindex: usize, variations: &[Vec<f64>], at: usiz
 
 #[cfg(test)]
 mod tests {
-    use super::parse_private;
+    use super::{Dict, parse, parse_private};
+    use crate::budget::{FontBudget, Work};
     use crate::read::cursor;
-    use pagura_core::{ErrorKind, Limits, Position};
+    use pagura_core::{Diagnostics, ErrorKind, Limits, Position, Recovery};
+
+    fn private(data: &[u8], variations: &[Vec<f64>], limits: &Limits) -> pagura_core::Result<Dict> {
+        let mut diagnostics = Diagnostics::new(Recovery::Strict);
+        let mut work = Work::new(FontBudget::new(limits), &mut diagnostics);
+        parse_private(cursor(data).with_base(100), &mut work, variations)
+    }
+
     #[test]
     fn blends_preserve_preceding_operands_and_feed_dict_operators() {
         // The first coefficient is zero at default, the second one is one.
         let data = [144, 149, 159, 169, 140, 23, 6]; // 5,10,20,30,1 blend BlueValues
-        let dict = parse_private(
-            cursor(&data).with_base(100),
-            &Limits::default(),
-            &[vec![0.0, 1.0]],
-        )
-        .unwrap();
+        let dict = private(&data, &[vec![0.0, 1.0]], &Limits::default()).unwrap();
         assert_eq!(dict.values(6), Some([5.0, 40.0].as_slice()));
         let small = Limits {
-            value_nodes: 1,
+            font_entries: 1,
             ..Limits::default()
         };
-        assert!(parse_private(cursor(&[139, 19, 139, 22]), &small, &[vec![1.0]]).is_err());
+        let error = private(&[139, 19, 139, 22], &[vec![1.0]], &small).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit);
         for malformed in [&[140, 23][..], &[140, 22][..], &[139, 23][..]] {
-            let e = parse_private(
-                cursor(malformed).with_base(20),
-                &Limits::default(),
-                &[vec![1.0]],
-            )
-            .err()
-            .unwrap();
+            let e = private(malformed, &[vec![1.0]], &Limits::default()).unwrap_err();
             assert_eq!(e.kind, ErrorKind::Syntax);
             assert!(matches!(e.position, Position::Buffer(_)));
         }
+    }
+
+    #[test]
+    fn the_operand_stack_ceiling_is_a_format_error() {
+        let mut diagnostics = Diagnostics::new(Recovery::Strict);
+        let mut work = Work::new(FontBudget::new(&Limits::default()), &mut diagnostics);
+        let mut stack = vec![139; 49];
+        stack.push(6);
+        let error = parse(cursor(&stack), &mut work).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Syntax);
+        stack.truncate(48);
+        stack.push(6);
+        parse(cursor(&stack), &mut work).unwrap();
     }
 }

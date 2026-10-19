@@ -1,31 +1,19 @@
 //! Type 1 charstrings: unhinted outlines, subroutines and StandardEncoding seac.
 use super::{Type1, unsupported};
 use crate::GlyphId;
-use crate::read::{bad, cap, cursor, here};
-use crate::{recovery::repair, repairs};
+use crate::budget::Work;
+use crate::read::{bad, cursor, here};
+use crate::repairs;
 use pagura_core::bytes::Cursor;
-use pagura_core::{Diagnostics, Limits, Position, Result};
+use pagura_core::{Position, Result};
 use pagura_raster::{Path, PathBuilder, Point, Segment, Transform};
 
-struct Work<'a> {
-    limits: &'a Limits,
-    diagnostics: &'a mut Diagnostics,
-    stopped: bool,
-    operations: usize,
-    segments: usize,
-}
-impl Work<'_> {
-    fn segment(&mut self, at: usize) -> Result<()> {
-        self.segments = self.segments.saturating_add(1);
-        cap(
-            self.segments,
-            self.limits
-                .path_segments
-                .min(self.limits.decoded_bytes / size_of::<Segment>()),
-            at,
-        )
-    }
-}
+/// Type 1 Appendix 1: the operand stack holds 24 values and subroutine
+/// calls nest ten deep. A flex has seven points (Type 1 8.3).
+const MAX_OPERANDS: usize = 24;
+const MAX_SUBR_DEPTH: usize = 10;
+const MAX_FLEX_POINTS: usize = 7;
+
 struct State {
     stack: Vec<f64>,
     results: Vec<f64>,
@@ -36,6 +24,8 @@ struct State {
     open: bool,
     seac: Option<[f64; 5]>,
     flex: Option<Vec<Point>>,
+    /// A repair ended the glyph before its end.
+    stopped: bool,
 }
 #[derive(PartialEq)]
 enum Flow {
@@ -43,24 +33,8 @@ enum Flow {
     End,
 }
 
-pub(super) fn glyph(
-    font: &Type1,
-    glyph: GlyphId,
-    limits: &Limits,
-    diagnostics: &mut Diagnostics,
-) -> Result<(Path, f64)> {
-    let (path, width, _) = load(
-        font,
-        glyph,
-        0,
-        &mut Work {
-            limits,
-            diagnostics,
-            stopped: false,
-            operations: 0,
-            segments: 0,
-        },
-    )?;
+pub(super) fn glyph(font: &Type1, glyph: GlyphId, work: &mut Work<'_>) -> Result<(Path, f64)> {
+    let (path, width, _) = load(font, glyph, 0, work)?;
     Ok((path, width))
 }
 fn load(
@@ -69,7 +43,7 @@ fn load(
     depth: usize,
     work: &mut Work<'_>,
 ) -> Result<(Path, f64, Point)> {
-    cap(depth, work.limits.depth.min(64), 0)?;
+    work.depth(depth, usize::MAX, Position::Unknown)?;
     let index =
         usize::try_from(glyph.0).map_err(|_| crate::read::limit(0, "glyph index overflow"))?;
     let bytes = font
@@ -86,6 +60,7 @@ fn load(
         open: false,
         seac: None,
         flex: None,
+        stopped: false,
     };
     run(font, cursor(bytes), 0, &mut s, work)?;
     if s.flex.is_some() {
@@ -114,7 +89,7 @@ fn load(
                 return Err(bad(0, "inconsistent Type 1 seac metrics"));
             }
             for &segment in path.segments() {
-                work.segment(0)?;
+                work.segments(1, Position::Unknown)?;
                 match segment {
                     Segment::MoveTo(p) => {
                         s.path.move_to(transform.apply(p));
@@ -169,7 +144,7 @@ impl State {
     }
     fn close(&mut self, w: &mut Work<'_>, at: usize) -> Result<()> {
         if self.open {
-            w.segment(at)?;
+            w.segments(1, Position::Buffer(at))?;
             self.path.close();
             self.open = false;
         }
@@ -179,7 +154,7 @@ impl State {
         self.point.x += dx;
         self.point.y += dy;
         if !self.point.is_finite() {
-            return Err(crate::read::limit(at, "nonfinite Type 1 coordinate"));
+            return Err(bad(at, "nonfinite Type 1 coordinate"));
         }
         Ok(self.point)
     }
@@ -187,7 +162,7 @@ impl State {
         let p = self.relative(dx, dy, at)?;
         if self.flex.is_none() {
             self.close(w, at)?;
-            w.segment(at)?;
+            w.segments(1, Position::Buffer(at))?;
             self.path.move_to(p);
             self.open = true;
         }
@@ -201,7 +176,7 @@ impl State {
             return Err(bad(at, "Type 1 drawing without a current path"));
         }
         if !self.open {
-            w.segment(at)?;
+            w.segments(1, Position::Buffer(at))?;
             self.path.move_to(self.point);
             self.open = true;
         }
@@ -210,7 +185,7 @@ impl State {
     fn line(&mut self, dx: f64, dy: f64, w: &mut Work<'_>, at: usize) -> Result<()> {
         self.resume(w, at)?;
         let p = self.relative(dx, dy, at)?;
-        w.segment(at)?;
+        w.segments(1, Position::Buffer(at))?;
         self.path
             .line_to(p)
             .ok_or_else(|| bad(at, "Type 1 line before moveto"))?;
@@ -221,7 +196,7 @@ impl State {
         let a = self.relative(d[0], d[1], at)?;
         let b = self.relative(d[2], d[3], at)?;
         let c = self.relative(d[4], d[5], at)?;
-        w.segment(at)?;
+        w.segments(1, Position::Buffer(at))?;
         self.path
             .cubic_to(a, b, c)
             .ok_or_else(|| bad(at, "Type 1 curve before moveto"))?;
@@ -235,14 +210,15 @@ fn run(
     s: &mut State,
     w: &mut Work<'_>,
 ) -> Result<Flow> {
-    cap(depth, w.limits.depth.min(10), here(&r))?;
+    w.depth(depth, MAX_SUBR_DEPTH, Position::Buffer(here(&r)))?;
     while !r.at_end() {
         let at = here(&r);
-        w.operations = w.operations.saturating_add(1);
-        cap(w.operations, w.limits.operations, at)?;
+        w.work(1, Position::Buffer(at))?;
         let byte = r.u8()?;
         if byte >= 32 {
-            cap(s.stack.len() + 1, 24.min(w.limits.value_nodes), at)?;
+            if s.stack.len() == MAX_OPERANDS {
+                return Err(bad(at, "operand stack exceeds the format limit"));
+            }
             let n = match byte {
                 32..=246 => f64::from(i16::from(byte) - 139),
                 247..=250 => f64::from((u16::from(byte) - 247) * 256 + u16::from(r.u8()?) + 108),
@@ -285,7 +261,7 @@ fn run(
                     .get(index)
                     .ok_or_else(|| bad(at, "Type 1 subroutine index out of range"))?;
                 if run(font, cursor(bytes), depth + 1, s, w)? == Flow::End {
-                    if !w.stopped && !r.at_end() {
+                    if !s.stopped && !r.at_end() {
                         return Err(bad(here(&r), "data after Type 1 character end"));
                     }
                     return Ok(Flow::End);
@@ -299,7 +275,7 @@ fn run(
             }
             12 => {
                 if escape(r.u8()?, s, w, at)? {
-                    if !w.stopped && !r.at_end() {
+                    if !s.stopped && !r.at_end() {
                         return Err(bad(here(&r), "data after Type 1 seac"));
                     }
                     return Ok(Flow::End);
@@ -317,18 +293,20 @@ fn run(
             }
             14 => {
                 s.count(0, at)?;
-                if !w.stopped && !r.at_end() {
+                if !s.stopped && !r.at_end() {
                     return Err(bad(here(&r), "data after Type 1 endchar"));
                 }
                 return Ok(Flow::End);
             }
             _ => return Err(bad(at, "invalid Type 1 charstring operator")),
         }
-        cap(s.stack.len(), 24.min(w.limits.value_nodes), at)?;
+        if s.stack.len() > MAX_OPERANDS {
+            return Err(bad(at, "operand stack exceeds the format limit"));
+        }
         // Finite operands are an invariant: arithmetic writes only the top
         // operand, and blend validates every value it writes in place.
         if s.stack.last().is_some_and(|n| !n.is_finite()) {
-            return Err(crate::read::limit(at, "nonfinite Type 1 operand"));
+            return Err(bad(at, "nonfinite Type 1 operand"));
         }
     }
     Err(bad(here(&r), "unterminated Type 1 charstring"))
@@ -397,14 +375,13 @@ fn escape(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<bool> {
             s.stack.clear();
         }
         _ => {
-            repair(
-                w.diagnostics,
+            w.repair(
                 repairs::CHARSTRING_OPERATOR,
                 "unknown escaped Type 1 operator ends glyph",
                 Position::Buffer(at),
             )?;
             s.stack.clear();
-            w.stopped = true;
+            s.stopped = true;
             return Ok(true);
         }
     }
@@ -429,7 +406,9 @@ fn othersubr(s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
                 .flex
                 .as_mut()
                 .ok_or_else(|| bad(at, "Type 1 flex point without flex start"))?;
-            cap(points.len() + 1, 7, at)?;
+            if points.len() == MAX_FLEX_POINTS {
+                return Err(bad(at, "Type 1 flex exceeds seven points"));
+            }
             points.push(s.point);
         }
         (0, [_, x, y]) => {
@@ -440,11 +419,11 @@ fn othersubr(s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
             let [_, a, b, c, d, e, f] = points.as_slice() else {
                 return Err(bad(at, "Type 1 flex needs seven points"));
             };
-            w.segment(at)?;
+            w.segments(1, Position::Buffer(at))?;
             s.path
                 .cubic_to(*a, *b, *c)
                 .ok_or_else(|| bad(at, "Type 1 flex before moveto"))?;
-            w.segment(at)?;
+            w.segments(1, Position::Buffer(at))?;
             s.path
                 .cubic_to(*d, *e, *f)
                 .ok_or_else(|| bad(at, "Type 1 flex before moveto"))?;
@@ -456,5 +435,8 @@ fn othersubr(s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
         (0..=3, _) => return Err(bad(at, "invalid standard Type 1 OtherSubr arguments")),
         _ => s.results.extend(args.into_iter().rev()), // Type 1 chapter 8 fallback, arg1 first.
     }
-    cap(s.results.len(), 24.min(w.limits.value_nodes), at)
+    if s.results.len() > MAX_OPERANDS {
+        return Err(bad(at, "operand stack exceeds the format limit"));
+    }
+    Ok(())
 }

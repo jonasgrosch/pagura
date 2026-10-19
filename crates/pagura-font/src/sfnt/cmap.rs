@@ -1,10 +1,11 @@
 //! Validated cmap formats 0, 2, 4, 6, 10, 12 and 13; selection never expands code ranges.
-use crate::read::{bad, cap, cursor, here};
+use crate::budget::Work;
+use crate::read::{bad, cursor, here};
+use crate::repairs;
 use crate::{CmapSubtable, GlyphId};
-use crate::{recovery::repair, repairs};
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
-use pagura_core::{Diagnostics, Limits, Position, Result};
+use pagura_core::{Position, Result};
 use std::ops::Range;
 
 mod extended;
@@ -16,24 +17,18 @@ pub(super) struct Cmap {
     format: u16,
 }
 
-pub(super) fn parse(
-    mut r: Cursor<'_>,
-    glyphs: usize,
-    limits: &Limits,
-    diagnostics: &mut Diagnostics,
-) -> Result<Vec<Cmap>> {
+pub(super) fn parse(mut r: Cursor<'_>, glyphs: usize, work: &mut Work<'_>) -> Result<Vec<Cmap>> {
     let start = here(&r);
     if r.u16()? != 0 {
         return Err(bad(here(&r), "invalid cmap version"));
     }
     let count = usize::from(r.u16()?);
-    cap(count, limits.objects.min(limits.value_nodes), here(&r))?;
-    let mut work = count;
+    work.entries(count, Position::Buffer(here(&r)))?;
+    work.work(count, Position::Buffer(here(&r)))?;
     let mut result = Vec::new();
     for _ in 0..count {
         if r.remaining() < 8 {
-            repair(
-                diagnostics,
+            work.repair(
                 repairs::CMAP_TRUNCATED,
                 "incomplete cmap directory",
                 Position::Buffer(here(&r)),
@@ -46,8 +41,7 @@ pub(super) fn parse(
         let mut sub = match r.cursor_at(offset) {
             Ok(sub) => sub,
             Err(error) => {
-                repair(
-                    diagnostics,
+                work.repair(
                     repairs::CMAP_TRUNCATED,
                     error.message,
                     Position::Buffer(start.saturating_add(offset)),
@@ -58,27 +52,17 @@ pub(super) fn parse(
         let format = match sub.u16() {
             Ok(format) => format,
             Err(error) => {
-                repair(
-                    diagnostics,
-                    repairs::CMAP_TRUNCATED,
-                    error.message,
-                    error.position,
-                )?;
+                work.repair(repairs::CMAP_TRUNCATED, error.message, error.position)?;
                 continue;
             }
         };
         if !matches!(format, 0 | 2 | 4 | 6 | 10 | 12 | 13) {
             continue;
         }
-        let length = match validate(r.cursor_at(offset)?, glyphs, limits, &mut work, diagnostics) {
+        let length = match validate(r.cursor_at(offset)?, glyphs, work) {
             Ok(length) => length,
             Err(error) if malformed(&error) => {
-                repair(
-                    diagnostics,
-                    repairs::CMAP_DATA,
-                    error.message,
-                    error.position,
-                )?;
+                work.repair(repairs::CMAP_DATA, error.message, error.position)?;
                 continue;
             }
             Err(error) => return Err(error),
@@ -115,13 +99,7 @@ pub(super) fn parse(
     Ok(result)
 }
 
-fn validate(
-    mut r: Cursor<'_>,
-    glyphs: usize,
-    limits: &Limits,
-    work: &mut usize,
-    diagnostics: &mut Diagnostics,
-) -> Result<usize> {
+fn validate(mut r: Cursor<'_>, glyphs: usize, work: &mut Work<'_>) -> Result<usize> {
     let start = here(&r);
     let format = r.u16()?;
     let length = if matches!(format, 10 | 12 | 13) {
@@ -133,8 +111,7 @@ fn validate(
         usize::from(r.u16()?)
     };
     let length = if length > r.data().len() {
-        repair(
-            diagnostics,
+        work.repair(
             repairs::CMAP_TRUNCATED,
             "cmap length exceeds available data",
             Position::Buffer(start),
@@ -152,8 +129,7 @@ fn validate(
         _ => 20,
     };
     if length < header {
-        repair(
-            diagnostics,
+        work.repair(
             repairs::CMAP_TRUNCATED,
             "incomplete cmap subtable header",
             Position::Buffer(start),
@@ -163,17 +139,16 @@ fn validate(
     match format {
         0 => {
             r.skip(6)?;
-            *work = work.saturating_add(256);
-            cap(*work, limits.operations, here(&r))?;
-            let count = available(&r, 256, 1, diagnostics)?;
+            work.work(256, Position::Buffer(here(&r)))?;
+            let count = available(&r, 256, 1, work)?;
             for &glyph in r.take(count)? {
                 if usize::from(glyph) >= glyphs {
                     return Err(bad(here(&r), "invalid cmap glyph"));
                 }
             }
         }
-        2 => extended::validate_two(r, glyphs, limits, work, diagnostics)?,
-        10 => extended::validate_ten(r, glyphs, limits, work, diagnostics)?,
+        2 => extended::validate_two(r, glyphs, work)?,
+        10 => extended::validate_ten(r, glyphs, work)?,
         6 => {
             r.skip(6)?;
             let first = usize::from(r.u16()?);
@@ -181,23 +156,21 @@ fn validate(
             if first + count > 65536 {
                 return Err(bad(here(&r), "invalid trimmed cmap range"));
             }
-            *work = work.saturating_add(count);
-            cap(*work, limits.operations, here(&r))?;
-            let count = available(&r, count, 2, diagnostics)?;
+            work.work(count, Position::Buffer(here(&r)))?;
+            let count = available(&r, count, 2, work)?;
             for _ in 0..count {
                 if usize::from(r.u16()?) >= glyphs {
                     return Err(bad(here(&r), "invalid cmap glyph"));
                 }
             }
         }
-        4 => validate_four(r, glyphs, limits, work, diagnostics)?,
+        4 => validate_four(r, glyphs, work)?,
         12 | 13 => {
             r.skip(12)?;
             let count = u32_to_usize(r.u32()?);
-            *work = work.saturating_add(count);
-            cap(count, limits.value_nodes, here(&r))?;
-            cap(*work, limits.operations, here(&r))?;
-            let count = available(&r, count, 12, diagnostics)?;
+            work.entries(count, Position::Buffer(here(&r)))?;
+            work.work(count, Position::Buffer(here(&r)))?;
+            let count = available(&r, count, 12, work)?;
             let mut previous = None;
             for _ in 0..count {
                 let start = r.u32()?;
@@ -220,13 +193,7 @@ fn validate(
     Ok(length)
 }
 
-fn validate_four(
-    mut r: Cursor<'_>,
-    glyphs: usize,
-    limits: &Limits,
-    work: &mut usize,
-    diagnostics: &mut Diagnostics,
-) -> Result<()> {
+fn validate_four(mut r: Cursor<'_>, glyphs: usize, work: &mut Work<'_>) -> Result<()> {
     let table = here(&r);
     r.skip(6)?;
     let twice = usize::from(r.u16()?);
@@ -234,7 +201,7 @@ fn validate_four(
         return Err(bad(here(&r), "invalid cmap segment count"));
     }
     let count = twice / 2;
-    cap(count, limits.value_nodes, here(&r))?;
+    work.entries(count, Position::Buffer(here(&r)))?;
     r.skip(6)?;
     let ends = r.take(twice)?;
     if r.u16()? != 0 {
@@ -256,12 +223,10 @@ fn validate_four(
             return Err(bad(here(&r), "overlapping cmap segments"));
         }
         previous = Some(end);
-        *work = work.saturating_add(usize::from(end - start) + 1);
-        cap(*work, limits.operations, here(&r))?;
+        work.work(usize::from(end - start) + 1, Position::Buffer(here(&r)))?;
         let offset = word(r.data(), range_pos + 2 * i)?;
         if offset % 2 != 0 {
-            repair(
-                diagnostics,
+            work.repair(
                 repairs::CMAP_ALIGNMENT,
                 "unaligned cmap glyph array",
                 Position::Buffer(table + range_pos + 2 * i),
@@ -275,8 +240,7 @@ fn validate_four(
             } {
                 Ok(glyph) => glyph,
                 Err(error) if malformed(&error) => {
-                    repair(
-                        diagnostics,
+                    work.repair(
                         repairs::CMAP_TRUNCATED,
                         error.message,
                         Position::Buffer(table + range_pos + 2 * i),
@@ -417,21 +381,15 @@ impl Cmap {
     }
 }
 
-fn charge(work: &mut usize, count: usize, limits: &Limits, at: usize) -> Result<()> {
-    *work = work.saturating_add(count);
-    cap(*work, limits.operations, at)
-}
-
 pub(super) fn available(
     r: &Cursor<'_>,
     count: usize,
     stride: usize,
-    diagnostics: &mut Diagnostics,
+    work: &mut Work<'_>,
 ) -> Result<usize> {
     let available = r.remaining() / stride;
     if count > available {
-        repair(
-            diagnostics,
+        work.repair(
             repairs::CMAP_TRUNCATED,
             "cmap entries exceed available data",
             Position::Buffer(here(r)),
@@ -447,8 +405,9 @@ fn malformed(error: &pagura_core::Error) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{lookup_four, validate_four};
+    use crate::budget::{FontBudget, Work};
     use crate::read::cursor;
-    use pagura_core::{Diagnostics, Limits, Position, Recovery};
+    use pagura_core::{Diagnostics, ErrorKind, Limits, Position, Recovery};
 
     fn format_four() -> Vec<u8> {
         // Three segments: 20..22 use delta -31; 30..32 use a glyph array
@@ -466,16 +425,20 @@ mod tests {
     fn format_four_validates_both_mapping_routes_and_keeps_work_charges() {
         let data = format_four();
         let mut diagnostics = Diagnostics::new(Recovery::Strict);
-        let mut work = 0;
-        validate_four(
-            cursor(&data),
-            9,
-            &Limits::default(),
-            &mut work,
-            &mut diagnostics,
-        )
-        .unwrap();
-        assert_eq!(work, 7);
+        // Seven codes are validated: one work unit each.
+        for (work, valid) in [(7, true), (6, false)] {
+            let limits = Limits {
+                font_work: work,
+                ..Limits::default()
+            };
+            let mut work = Work::new(FontBudget::new(&limits), &mut diagnostics);
+            let result = validate_four(cursor(&data), 9, &mut work);
+            if valid {
+                result.unwrap();
+            } else {
+                assert_eq!(result.unwrap_err().kind, ErrorKind::Limit);
+            }
+        }
         assert_eq!(diagnostics.as_slice(), []);
         for (code, glyph) in [
             (0x1f, 0),
@@ -490,17 +453,6 @@ mod tests {
         ] {
             assert_eq!(lookup_four(&data, code, 3, 34).unwrap(), glyph);
         }
-        let mut work = 0;
-        let limits = Limits {
-            operations: 6,
-            ..Limits::default()
-        };
-        assert_eq!(
-            validate_four(cursor(&data), 9, &limits, &mut work, &mut diagnostics)
-                .unwrap_err()
-                .kind,
-            pagura_core::ErrorKind::Limit
-        );
     }
 
     #[test]
@@ -509,14 +461,8 @@ mod tests {
         data[14..16].copy_from_slice(&0x32_u16.to_be_bytes());
         data[16..18].copy_from_slice(&0x22_u16.to_be_bytes());
         let mut diagnostics = Diagnostics::new(Recovery::Strict);
-        let error = validate_four(
-            cursor(&data),
-            9,
-            &Limits::default(),
-            &mut 0,
-            &mut diagnostics,
-        )
-        .unwrap_err();
+        let mut work = Work::new(FontBudget::new(&Limits::default()), &mut diagnostics);
+        let error = validate_four(cursor(&data), 9, &mut work).unwrap_err();
         assert_eq!(error.message, "overlapping cmap segments");
         assert_eq!(error.position, Position::Buffer(40));
     }
