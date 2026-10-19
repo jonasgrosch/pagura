@@ -189,6 +189,21 @@ impl TextRenderingMode {
             Self::FillClip | Self::StrokeClip | Self::FillStrokeClip | Self::Clip
         )
     }
+
+    /// The mode in the low three bits of `bits`, for an operand the caller
+    /// has already checked to be 0 to 7; higher bits are ignored.
+    pub const fn from_low_bits(bits: u8) -> Self {
+        match bits & 7 {
+            0 => Self::Fill,
+            1 => Self::Stroke,
+            2 => Self::FillStroke,
+            3 => Self::Invisible,
+            4 => Self::FillClip,
+            5 => Self::StrokeClip,
+            6 => Self::FillStrokeClip,
+            _ => Self::Clip,
+        }
+    }
 }
 
 impl TryFrom<u8> for TextRenderingMode {

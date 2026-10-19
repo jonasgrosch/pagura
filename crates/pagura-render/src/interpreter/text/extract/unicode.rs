@@ -21,7 +21,7 @@ pub(super) fn recover<'a>(
     };
     *work = work
         .checked_add(name.len())
-        .filter(|n| *n <= limits.operations)
+        .filter(|n| *n <= limits.text_work)
         .ok_or_else(|| Error::limit("glyph-name Unicode work budget exceeded"))?;
     Ok(pagura_text::glyph_name_unicode_for_font(name.as_bytes(), base_font).map(Cow::Owned))
 }
@@ -62,7 +62,7 @@ mod tests {
             Some("A")
         );
         let no_work = Limits {
-            operations: 0,
+            text_work: 0,
             ..limits
         };
         assert!(recover(&glyph, b"", &mut 0, no_work).is_err());
@@ -79,7 +79,7 @@ mod tests {
     fn aggregate_name_work_is_bounded_without_mutating_the_glyph() {
         let glyph = raw_glyph();
         let limits = Limits {
-            operations: 2,
+            text_work: 2,
             ..Limits::default()
         };
         let mut work = 0;
