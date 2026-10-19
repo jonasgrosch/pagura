@@ -272,6 +272,79 @@ fn close(p: Point, a: Point, b: Point, bound: f64) -> bool {
 mod tests {
     use super::*;
     use crate::PathBuilder;
+    use pagura_core::ErrorKind;
+
+    #[test]
+    fn subdivision_stops_at_the_depth_bound() {
+        let corner = [
+            Point::new(0.0, 0.0),
+            Point::new(0.0, 100.0),
+            Point::new(100.0, 100.0),
+            Point::new(100.0, 0.0),
+        ];
+        let (mut points, mut count, mut pending) = (Vec::new(), 0, CurveStack::new());
+        let limits = Limits::default();
+        let mut flatten = |transform| {
+            curve(
+                corner,
+                transform,
+                &mut pending,
+                &mut points,
+                &mut count,
+                &limits,
+            )
+        };
+        flatten(Transform::IDENTITY).unwrap();
+        // Far beyond MAX_COORDINATE, the curve spans about 1e102 pixels and
+        // would need some 170 halvings to reach the tolerance.
+        let error = flatten(Transform::scale(1e100, 1e100)).unwrap_err();
+        assert_eq!(
+            (error.kind, error.message),
+            (ErrorKind::Limit, "curve subdivision depth exceeded")
+        );
+        assert_eq!(points.last(), Some(&corner[3]));
+        assert!(pending.len() <= MAX_SUBDIVISION_DEPTH);
+    }
+
+    #[test]
+    fn coordinates_beyond_the_working_range_are_limits() {
+        assert!(bounded(Point::new(1e12, -1e12)).is_ok());
+        assert_eq!(
+            bounded(Point::new(-1.5e12, 0.0)).unwrap_err().kind,
+            ErrorKind::Limit
+        );
+        assert_eq!(
+            bounded(Point::new(0.0, f64::INFINITY)).unwrap_err().kind,
+            ErrorKind::InvalidArgument
+        );
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(1.0, 1.0));
+        let path = path.finish();
+        let limits = Limits::default();
+        // In range in user space, beyond it in device space.
+        let scaled = flatten(&path, Transform::scale(2e12, 1.0), &limits).unwrap_err();
+        assert_eq!(scaled.kind, ErrorKind::Limit);
+        let invalid = flatten(&path, Transform::translate(f64::NAN, 0.0), &limits).unwrap_err();
+        assert_eq!(invalid.kind, ErrorKind::InvalidArgument);
+    }
+
+    #[test]
+    fn curves_after_close_start_at_the_subpath_start() {
+        let mut path = PathBuilder::new();
+        path.polygon([Point::new(1.0, 1.0), Point::new(5.0, 1.0)]);
+        path.cubic_to(
+            Point::new(1.0, 3.0),
+            Point::new(3.0, 5.0),
+            Point::new(5.0, 5.0),
+        )
+        .unwrap();
+        let contours = flatten(&path.finish(), Transform::IDENTITY, &Limits::default()).unwrap();
+        assert_eq!(contours.len(), 2);
+        assert!(contours[0].closed && !contours[1].closed);
+        assert_eq!(contours[1].points.first(), Some(&Point::new(1.0, 1.0)));
+        assert_eq!(contours[1].points.last(), Some(&Point::new(5.0, 5.0)));
+        assert!(contours[1].points.len() > 2);
+    }
 
     fn distance(p: Point, a: Point, b: Point) -> f64 {
         let dx = b.x - a.x;

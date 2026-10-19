@@ -309,4 +309,12 @@ mod tests {
         assert_eq!(&pixmap.to_straight_rgba()[..4], &[255, 0, 0, 128]);
         assert_eq!(&pixmap.to_rgb_over(Rgba8::WHITE)[..3], &[255, 127, 127]);
     }
+
+    #[test]
+    fn rows_outside_the_surface_are_none() {
+        let pixmap = Pixmap::new(3, 2, Rgba8::BLACK, 6).unwrap();
+        assert_eq!(pixmap.row(1), Some(&[0, 0, 0, 255].repeat(3)[..]));
+        assert_eq!(pixmap.row(2), None);
+        assert_eq!(pixmap.row(u32::MAX), None);
+    }
 }
