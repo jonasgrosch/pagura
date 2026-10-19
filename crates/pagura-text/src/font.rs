@@ -7,7 +7,7 @@ use crate::{
     features, memory, metrics,
     selection::Route,
 };
-use pagura_core::{Dictionary, Error, Limits, Name, ObjectId, Position, Result};
+use pagura_core::{Dictionary, Error, Limits, Meter, Name, ObjectId, Position, Result};
 use pagura_document::Document;
 use pagura_font::FontProgram;
 use pagura_raster::Transform;
@@ -118,7 +118,7 @@ pub struct PdfFont {
     pub(crate) source: Source,
     pub(crate) mapping: Mapping,
     pub(crate) metrics: metrics::Metrics,
-    pub(crate) to_unicode: Option<CMap>,
+    pub(crate) to_unicode: Option<Arc<CMap>>,
     pub(crate) limits: Limits,
     pub(crate) cid_unicode: Option<Arc<CidToUnicode>>,
     pub(crate) retained: usize,
@@ -286,19 +286,22 @@ impl PdfFont {
             return Err(Error::limit("text string byte budget exceeded"));
         }
         let mut offset = 0;
-        let mut work = 0;
-        let mut unicode_bytes = 0;
+        let mut work = Meter::new(self.limits.font_work, "text decoding work budget exceeded");
+        let mut text_bytes = Meter::new(
+            self.limits.string_bytes,
+            "decoded glyph text byte budget exceeded",
+        );
         while let Some(input) = string.get(offset..).filter(|s| !s.is_empty()) {
-            cmap::charge(&mut work, 1, self.limits.operations)
-                .map_err(|e| e.at(Position::Buffer(offset)))?;
-            if glyphs.len() >= self.limits.value_nodes {
+            work.charge(1).map_err(|e| e.at(Position::Buffer(offset)))?;
+            if glyphs.len() >= self.limits.text_items {
                 return Err(
                     Error::limit("decoded glyph budget exceeded").at(Position::Buffer(offset))
                 );
             }
             let result = self.decode_glyph(input, &mut work, unicode);
             let (glyph, text) = result.map_err(|e| e.at(Position::Buffer(offset)))?;
-            cmap::charge(&mut unicode_bytes, text, self.limits.decoded_bytes)
+            text_bytes
+                .charge(text)
                 .map_err(|e| e.at(Position::Buffer(offset)))?;
             offset += usize::from(glyph.byte_len);
             glyphs.push(glyph);
@@ -311,7 +314,7 @@ impl PdfFont {
     fn decode_glyph(
         &self,
         input: &[u8],
-        work: &mut usize,
+        work: &mut Meter,
         unicode: bool,
     ) -> Result<(Glyph, usize)> {
         let (code, selector, name, fallback) = match &self.mapping {
@@ -330,17 +333,13 @@ impl PdfFont {
                 )
             }
             Mapping::Composite { map, .. } => {
-                let (code, valid) = map.next(input, work, self.limits)?;
-                let mut cid = if valid {
-                    map.cid(code, work, self.limits)?
-                } else {
-                    None
-                };
+                let (code, valid) = map.next(input, work)?;
+                let mut cid = if valid { map.cid(code, work)? } else { None };
                 let unicode = cid.and_then(|cid| self.cid_unicode.as_ref()?.text(cid));
                 if cid.is_some_and(|cid| self.lacks_gid_entry(cid)) {
                     cid = Some(cid::Cid::NOTDEF);
                 } else if cid.is_none_or(|cid| !self.has_cid(cid)) {
-                    cid = Some(map.notdef(code, work, self.limits)?);
+                    cid = Some(map.notdef(code, work)?);
                 }
                 let cid = cid
                     .filter(|cid| self.has_cid(*cid))
@@ -385,18 +384,19 @@ mod tests {
             Some(ErrorKind::Limit)
         );
         font.limits.string_bytes = 100;
-        font.limits.value_nodes = 1;
+        font.limits.text_items = 1;
         assert_eq!(
             font.decode(b"AA").err().map(|e| e.position),
             Some(Position::Buffer(1))
         );
-        font.limits.value_nodes = 100;
-        font.limits.decoded_bytes = 1;
+        // The glyph text of one string is bounded like a decoded string.
+        font.limits.text_items = 100;
+        font.limits.string_bytes = 1;
         assert_eq!(
             font.decode(b"C").err().map(|e| e.kind),
             Some(ErrorKind::Limit)
         );
-        font.limits.operations = 0;
+        font.limits.font_work = 0;
         assert_eq!(
             font.decode(b"A").err().map(|e| e.kind),
             Some(ErrorKind::Limit)
