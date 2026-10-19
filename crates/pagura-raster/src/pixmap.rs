@@ -2,6 +2,7 @@
 
 use crate::Rgba8;
 use crate::quantize::multiply;
+use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Limits, Result};
 
 /// A row-major, top-left-origin surface of premultiplied RGBA8 pixels.
@@ -100,8 +101,8 @@ impl Pixmap {
 
     /// The bytes of row `y`, or `None` outside the surface.
     pub fn row(&self, y: u32) -> Option<&[u8]> {
-        let stride = usize::try_from(self.width).ok()? * 4;
-        let start = usize::try_from(y).ok()?.checked_mul(stride)?;
+        let stride = u32_to_usize(self.width) * 4;
+        let start = u32_to_usize(y).checked_mul(stride)?;
         self.data.get(start..start.checked_add(stride)?)
     }
 

@@ -1,16 +1,17 @@
 //! Conservative device bounds from the convex hull of path control points.
 
 use crate::flatten::{bounded, validate};
-use crate::{Path, Point, Segment, Transform};
-use pagura_core::{Error, Limits, Result};
+use crate::{IntRect, Path, Point, Segment, Transform};
+use pagura_core::{Limits, Result};
 
+/// The pixels of `viewport` that the path's control points can touch, or
+/// `None` if there are none.
 pub(crate) fn region(
     path: &Path,
     transform: Transform,
-    size: (u32, u32),
-    origin: (u32, u32),
+    viewport: IntRect,
     limits: &Limits,
-) -> Result<Option<(u32, u32, u32, u32)>> {
+) -> Result<Option<IntRect>> {
     validate(path, transform, limits)?;
     // Start with an empty hull. Seeding the maximum from the viewport origin
     // would turn geometry entirely above/left of it into a spurious boundary
@@ -38,38 +39,27 @@ pub(crate) fn region(
             Segment::Close => {}
         }
     }
-    hull_region([min, max], size, origin)
+    hull_region([min, max], viewport)
 }
 
-pub(crate) fn hull_region(
-    [min, max]: [Point; 2],
-    size: (u32, u32),
-    origin: (u32, u32),
-) -> Result<Option<(u32, u32, u32, u32)>> {
-    let right = origin
-        .0
-        .checked_add(size.0)
-        .ok_or(Error::limit("tile extent overflows u32"))?;
-    let bottom = origin
-        .1
-        .checked_add(size.1)
-        .ok_or(Error::limit("tile extent overflows u32"))?;
+/// The pixels of `viewport` that the device-space hull `[min, max]` can
+/// touch, or `None` if there are none.
+pub(crate) fn hull_region([min, max]: [Point; 2], viewport: IntRect) -> Result<Option<IntRect>> {
     if min.x > max.x || min.y > max.y {
         return Ok(None);
     }
     bounded(min)?;
     bounded(max)?;
-    let x0 = coordinate(min.x.floor(), origin.0, right);
-    let y0 = coordinate(min.y.floor(), origin.1, bottom);
+    let (left, right) = (viewport.x(), viewport.right());
+    let (top, bottom) = (viewport.y(), viewport.bottom());
     // Include the floor cell even at an integral maximum: a true point subpath
     // encloses a device pixel under 8.5.3.3.1. Ordinary bounds remain conservative.
-    let x1 = coordinate(max.x.floor() + 1.0, origin.0, right);
-    let y1 = coordinate(max.y.floor() + 1.0, origin.1, bottom);
-    Ok(if x0 < x1 && y0 < y1 {
-        Some((x0, y0, x1 - x0, y1 - y0))
-    } else {
-        None
-    })
+    Ok(IntRect::from_edges(
+        coordinate(min.x.floor(), left, right),
+        coordinate(min.y.floor(), top, bottom),
+        coordinate(max.x.floor() + 1.0, left, right),
+        coordinate(max.y.floor() + 1.0, top, bottom),
+    ))
 }
 
 #[expect(
@@ -86,6 +76,10 @@ mod tests {
     use super::*;
     use crate::PathBuilder;
 
+    fn viewport() -> IntRect {
+        IntRect::new(100, 100, 16, 16).unwrap()
+    }
+
     #[test]
     fn disjoint_hulls_are_culled_on_every_side() {
         for (x, y) in [(84.0, 100.0), (100.0, 84.0), (120.0, 100.0), (100.0, 120.0)] {
@@ -95,8 +89,7 @@ mod tests {
                 region(
                     &path.finish(),
                     Transform::IDENTITY,
-                    (16, 16),
-                    (100, 100),
+                    viewport(),
                     &Limits::default()
                 )
                 .unwrap(),
@@ -107,8 +100,7 @@ mod tests {
             region(
                 &PathBuilder::new().finish(),
                 Transform::IDENTITY,
-                (16, 16),
-                (100, 100),
+                viewport(),
                 &Limits::default()
             )
             .unwrap(),
@@ -124,12 +116,11 @@ mod tests {
             region(
                 &path.finish(),
                 Transform::IDENTITY,
-                (16, 16),
-                (100, 100),
+                viewport(),
                 &Limits::default()
             )
             .unwrap(),
-            Some((100, 100, 1, 1)),
+            IntRect::new(100, 100, 1, 1).ok(),
         );
     }
 }

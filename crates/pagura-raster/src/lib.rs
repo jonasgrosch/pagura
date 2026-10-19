@@ -21,16 +21,15 @@ mod quantize;
 mod raster;
 mod stroke;
 
-pub use geometry::{Point, Transform};
+pub use geometry::{IntRect, Point, Transform};
 pub use glyph::{GlyphContour, GlyphGeometry};
 pub use paint::{Paint, Rgba8};
 pub use path::{FillRegion, NoCurrentPoint, Path, PathBuilder, Segment};
 pub use pixmap::Pixmap;
 pub use quantize::quantize_unit;
 pub use raster::{
-    FillRule, LineCap, LineJoin, Mask, Rasterizer, Stroke, adjusted_stroke_outline,
-    empty_fill_outline, fill_path, fill_path_at, stroke_outline, stroke_path,
-    stroke_path_adjusted_at, stroke_path_at,
+    FillRule, LineCap, LineJoin, Mask, Rasterizer, Span, Stroke, adjusted_stroke_outline,
+    empty_fill_outline, stroke_outline,
 };
 
 #[cfg(test)]

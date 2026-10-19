@@ -29,7 +29,7 @@ impl Compiler<'_> {
             let shading =
                 Arc::get_mut(s).ok_or(Error::invalid_argument("shared uncompiled shading"))?;
             if let Some(path) = &mut shading.bbox_path {
-                self.prepare_fill(path, FillRule::NonZero)?;
+                self.prepare_fill(Arc::make_mut(path), FillRule::NonZero)?;
             }
         }
         if let Kind::Tiling(t) = &mut unique.kind {

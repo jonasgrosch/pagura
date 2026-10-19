@@ -8,7 +8,8 @@
 //! preserving winding and bounding work by the surface.
 
 use crate::flatten::{CurveStack, Polyline, bounded, flatten_into};
-use crate::{FillRule, Path, Point, Transform, quantize_unit};
+use crate::{FillRule, IntRect, Path, Point, Transform, quantize_unit};
+use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Limits, Meter, Result};
 use std::sync::Arc;
 
@@ -35,12 +36,13 @@ impl Shape {
             Geometry::Glyph(glyph) => glyph.vertices(),
         }
     }
-    pub(crate) fn covers(&self, origin: (u32, u32), size: (u32, u32)) -> bool {
+    /// Whether this shape is a rectangle containing every pixel of `area`.
+    pub(crate) fn covers(&self, area: IntRect) -> bool {
         self.rectangle().is_some_and(|rectangle| {
-            rectangle.left <= f64::from(origin.0)
-                && rectangle.top <= f64::from(origin.1)
-                && rectangle.right >= f64::from(origin.0) + f64::from(size.0)
-                && rectangle.bottom >= f64::from(origin.1) + f64::from(size.1)
+            rectangle.left <= f64::from(area.x())
+                && rectangle.top <= f64::from(area.y())
+                && rectangle.right >= f64::from(area.right())
+                && rectangle.bottom >= f64::from(area.bottom())
         })
     }
 }
@@ -271,29 +273,34 @@ pub(crate) struct Exact {
 impl Exact {
     pub(crate) fn retained_bytes(&self) -> usize {
         let buffers = [
-            bytes(&self.row.areas),
-            bytes(&self.row.covers),
-            bytes(&self.row.touched),
-            bytes(&self.edges),
-            bytes(&self.raw),
-            bytes(&self.boundary),
-            bytes(&self.vertices),
-            bytes(&self.active),
-            bytes(&self.winding.values),
-            bytes(&self.sweep.winding.values),
-            bytes(&self.sweep.events),
-            bytes(&self.sweep.ordered),
-            bytes(&self.contours),
-            bytes(&self.curves),
+            capacity_bytes(&self.row.areas),
+            capacity_bytes(&self.row.covers),
+            capacity_bytes(&self.row.touched),
+            capacity_bytes(&self.edges),
+            capacity_bytes(&self.raw),
+            capacity_bytes(&self.boundary),
+            capacity_bytes(&self.vertices),
+            capacity_bytes(&self.active),
+            capacity_bytes(&self.winding.values),
+            capacity_bytes(&self.sweep.winding.values),
+            capacity_bytes(&self.sweep.events),
+            capacity_bytes(&self.sweep.ordered),
+            capacity_bytes(&self.contours),
+            capacity_bytes(&self.curves),
         ];
         buffers
             .into_iter()
-            .chain(self.contours.iter().map(|contour| bytes(&contour.points)))
+            .chain(
+                self.contours
+                    .iter()
+                    .map(|contour| capacity_bytes(&contour.points)),
+            )
             .fold(0, usize::saturating_add)
     }
 }
 
-fn bytes<T>(values: &Vec<T>) -> usize {
+/// The bytes a vector's capacity holds, saturating.
+pub(crate) fn capacity_bytes<T>(values: &Vec<T>) -> usize {
     values.capacity().saturating_mul(size_of::<T>())
 }
 
@@ -322,109 +329,97 @@ impl Scratch {
     }
 }
 
+/// The rectangle intersection of a shape set and its count of other shapes,
+/// computed before either backend runs.
+#[derive(Debug, Clone, Copy)]
+struct Prepared {
+    bounds: Rectangle,
+    groups: usize,
+}
+
+/// Integrates the intersection of `shapes` over `area` into `out`, one byte
+/// per pixel, row-major.
 pub(crate) fn coverage(
-    width: u32,
-    height: u32,
+    area: IntRect,
     shapes: &[Shape],
     out: &mut [u8],
-    origin: (u32, u32),
     limits: &Limits,
     scratch: &mut Scratch,
 ) -> Result<()> {
-    let prepared = scratch
-        .exact
-        .prepare(shapes, origin, (width, height), limits)?;
-    if prepared.1 == 0 && !shapes.is_empty() {
+    let prepared = scratch.exact.prepare(shapes, area, limits)?;
+    if prepared.groups == 0 && !shapes.is_empty() {
         scratch.exact.row.charge(out.len())?;
-        return prepared.0.write(out, width as usize, origin);
+        return prepared.bounds.write(out, u32_to_usize(area.width()), area);
     }
     if let Some(anchor) = admission::sweep_anchor(shapes, limits.path_segments) {
-        let result = scratch.exact.render(
-            width,
-            shapes,
-            out,
-            origin,
-            limits,
-            (prepared.0, prepared.1, anchor),
-        );
+        let result = scratch
+            .exact
+            .render(area, shapes, out, limits, prepared, anchor);
         scratch.exact_bytes = scratch.exact.retained_bytes();
         result
     } else {
         let work = scratch.exact.row.work.used();
-        let result =
-            scratch
-                .accumulator()?
-                .render(shapes, out, origin, (width, height), limits, work);
-        scratch.accumulation_bytes =
-            bytes(&scratch.accumulation).saturating_add(scratch.accumulation[0].retained_bytes());
+        let accumulator = scratch.accumulator()?;
+        let origin = (area.x(), area.y());
+        let size = (area.width(), area.height());
+        let result = accumulator.render(shapes, out, origin, size, limits, work);
+        let retained = accumulator.retained_bytes();
+        scratch.accumulation_bytes = capacity_bytes(&scratch.accumulation).saturating_add(retained);
         result
     }
 }
 
 #[cfg(test)]
 pub(crate) fn coverage_accumulated(
-    width: u32,
-    height: u32,
+    area: IntRect,
     shapes: &[Shape],
     out: &mut [u8],
-    origin: (u32, u32),
     limits: &Limits,
     scratch: &mut Scratch,
 ) -> Result<()> {
     // Exercise accumulation even for rectangles and short component contours.
+    let origin = (area.x(), area.y());
+    let size = (area.width(), area.height());
     scratch
         .accumulator()?
-        .render(shapes, out, origin, (width, height), limits, 0)
+        .render(shapes, out, origin, size, limits, 0)
 }
 
 #[cfg(test)]
 fn coverage_exact(
-    width: u32,
-    height: u32,
+    area: IntRect,
     shapes: &[Shape],
     out: &mut [u8],
-    origin: (u32, u32),
     limits: &Limits,
     scratch: &mut Exact,
 ) -> Result<()> {
-    let prepared = scratch.prepare(shapes, origin, (width, height), limits)?;
-    scratch.render(
-        width,
-        shapes,
-        out,
-        origin,
-        limits,
-        (prepared.0, prepared.1, Point::new(0.0, 0.0)),
-    )
+    let prepared = scratch.prepare(shapes, area, limits)?;
+    scratch.render(area, shapes, out, limits, prepared, Point::default())
 }
 
 impl Exact {
-    fn prepare(
-        &mut self,
-        shapes: &[Shape],
-        origin: (u32, u32),
-        size: (u32, u32),
-        limits: &Limits,
-    ) -> Result<(Rectangle, usize)> {
+    fn prepare(&mut self, shapes: &[Shape], area: IntRect, limits: &Limits) -> Result<Prepared> {
         self.row.work = Meter::new(limits.raster_work, RASTER_WORK);
         self.row.maximum_events = limits.path_segments;
-        Rectangle::intersection(shapes, origin, size, &mut self.row)
+        let (bounds, groups) = Rectangle::intersection(shapes, area, &mut self.row)?;
+        Ok(Prepared { bounds, groups })
     }
 
+    /// Sweeps `shapes` with edges translated by `anchor`, an integer point
+    /// near the geometry that keeps strip coordinates small.
     fn render(
         &mut self,
-        width: u32,
+        area: IntRect,
         shapes: &[Shape],
         out: &mut [u8],
-        origin: (u32, u32),
         limits: &Limits,
-        (bounds, groups, anchor): (Rectangle, usize, Point),
+        Prepared { bounds, groups }: Prepared,
+        anchor: Point,
     ) -> Result<()> {
-        let stride =
-            usize::try_from(width).map_err(|_| Error::limit("mask width exceeds usize"))?;
+        let stride = u32_to_usize(area.width());
         if groups == 0 && !shapes.is_empty() {
             self.row.charge(out.len())?;
-            return bounds.write(out, stride, origin);
+            return bounds.write(out, stride, area);
         }
         let bounds = Rectangle {
             left: bounds.left - anchor.x,
@@ -432,7 +427,7 @@ impl Exact {
             top: bounds.top - anchor.y,
             bottom: bounds.bottom - anchor.y,
         };
-        self.row.reset(stride, origin.0)?;
+        self.row.reset(stride, area.x())?;
         self.row.origin -= anchor.x;
         self.edges.clear();
         self.raw.clear();
@@ -455,14 +450,14 @@ impl Exact {
             limits,
             &mut self.row,
         )?;
-        self.sweep_edges(stride, out, origin, groups, anchor.y)
+        self.sweep_edges(stride, out, area.y(), groups, anchor.y)
     }
 
     fn sweep_edges(
         &mut self,
         stride: usize,
         out: &mut [u8],
-        origin: (u32, u32),
+        top: u32,
         groups: usize,
         anchor_y: f64,
     ) -> Result<()> {
@@ -503,7 +498,7 @@ impl Exact {
         out.fill(0);
         for (y, output) in out.chunks_exact_mut(stride).enumerate() {
             let lo = f64::from(u32::try_from(y).map_err(|_| Error::limit("row exceeds u32"))?)
-                + f64::from(origin.1)
+                + f64::from(top)
                 - anchor_y;
             let hi = lo + 1.0;
             while vertices.next_if(|&y| y <= lo).is_some() {}
@@ -1003,6 +998,3 @@ pub(crate) fn charge(work: &mut usize, amount: usize, maximum: usize) -> Result<
 
 #[cfg(test)]
 mod tests;
-
-#[cfg(test)]
-mod glyph_tests;

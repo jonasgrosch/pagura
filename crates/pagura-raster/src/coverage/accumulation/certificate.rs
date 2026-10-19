@@ -1,6 +1,6 @@
 //! Sufficient winding certificates and exact integration of horizontal runs.
 
-use super::super::{bytes, charge, inside, sort_work};
+use super::super::{capacity_bytes, charge, inside, sort_work};
 use super::geometry::{GRID, Geometry, reserve};
 use super::scatter::{Piece, SpanEvent, add};
 use pagura_core::{Limits, Result};
@@ -23,9 +23,9 @@ pub(super) struct Certificates {
 
 impl Certificates {
     pub(super) fn retained_bytes(&self) -> usize {
-        bytes(&self.hits)
-            .saturating_add(bytes(&self.levels))
-            .saturating_add(bytes(&self.winding))
+        capacity_bytes(&self.hits)
+            .saturating_add(capacity_bytes(&self.levels))
+            .saturating_add(capacity_bytes(&self.winding))
     }
 
     pub(super) fn cell(

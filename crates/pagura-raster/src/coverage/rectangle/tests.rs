@@ -1,6 +1,8 @@
 use super::*;
-use crate::{FillRule, LineCap, Mask, PathBuilder, Point, Stroke, Transform, stroke_outline};
-use pagura_core::Limits;
+use crate::{
+    FillRule, IntRect, LineCap, Mask, Path, PathBuilder, Point, Stroke, Transform, stroke_outline,
+};
+use pagura_core::{Limits, Result};
 use std::sync::Arc;
 
 fn shape(points: &[Point], close: bool) -> Shape {
@@ -19,24 +21,32 @@ fn shape(points: &[Point], close: bool) -> Shape {
     }
 }
 
-fn path(shape: &Shape) -> &crate::Path {
+fn path(shape: &Shape) -> &Path {
     let Geometry::Path(path) = &shape.geometry else {
         panic!("expected path geometry")
     };
     path
 }
 
+/// A mask of `path` over `x..x + size` × `y..y + size`, with a pixel
+/// budget of exactly its size.
+fn try_mask(
+    path: &Path,
+    transform: Transform,
+    rule: FillRule,
+    (x, y): (u32, u32),
+    size: u32,
+) -> Result<Mask> {
+    let limits = Limits {
+        pixels: usize::try_from(size * size).unwrap(),
+        ..Limits::default()
+    };
+    let area = IntRect::new(x, y, size, size).unwrap();
+    Mask::from_path(area, path.clone(), transform, rule, limits)
+}
+
 fn mask(shape: &Shape, size: u32, origin: (u32, u32)) -> Mask {
-    Mask::from_path_at(
-        size,
-        size,
-        path(shape),
-        shape.transform,
-        shape.rule,
-        64,
-        origin,
-    )
-    .unwrap()
+    try_mask(path(shape), shape.transform, shape.rule, origin, size).unwrap()
 }
 
 #[test]
@@ -92,13 +102,12 @@ fn rational_interval_product_on_an_eighth_pixel_lattice() {
                     f64::from(width) / 8.0,
                     f64::from(height) / 8.0,
                 );
-                let actual = Mask::from_path(
-                    4,
-                    4,
+                let actual = try_mask(
                     &path.finish(),
                     Transform::IDENTITY,
                     FillRule::NonZero,
-                    16,
+                    (0, 0),
+                    4,
                 )
                 .unwrap();
                 for y in 0..4 {
@@ -125,26 +134,8 @@ fn fractional_clip_intersection_and_global_tiles() {
     b.rect(11.125, 19.0, 2.0, 3.5);
     let a = a.finish();
     let b = b.finish();
-    let mut whole = Mask::from_path_at(
-        4,
-        4,
-        &a,
-        Transform::IDENTITY,
-        FillRule::NonZero,
-        16,
-        (10, 20),
-    )
-    .unwrap();
-    let clip = Mask::from_path_at(
-        4,
-        4,
-        &b,
-        Transform::IDENTITY,
-        FillRule::EvenOdd,
-        16,
-        (10, 20),
-    )
-    .unwrap();
+    let mut whole = try_mask(&a, Transform::IDENTITY, FillRule::NonZero, (10, 20), 4).unwrap();
+    let clip = try_mask(&b, Transform::IDENTITY, FillRule::EvenOdd, (10, 20), 4).unwrap();
     whole.intersect(&clip).unwrap();
     // Intersected bounds [11 1/8, 12 3/4] x [20 1/8, 22 1/2].
     assert_eq!(
@@ -154,12 +145,9 @@ fn fractional_clip_intersection_and_global_tiles() {
     for y in 0..4 {
         for x in 0..4 {
             let origin = (10 + x, 20 + y);
-            let mut tile =
-                Mask::from_path_at(1, 1, &a, Transform::IDENTITY, FillRule::NonZero, 1, origin)
-                    .unwrap();
+            let mut tile = try_mask(&a, Transform::IDENTITY, FillRule::NonZero, origin, 1).unwrap();
             tile.intersect(
-                &Mask::from_path_at(1, 1, &b, Transform::IDENTITY, FillRule::EvenOdd, 1, origin)
-                    .unwrap(),
+                &try_mask(&b, Transform::IDENTITY, FillRule::EvenOdd, origin, 1).unwrap(),
             )
             .unwrap();
             assert_eq!(
@@ -174,26 +162,24 @@ fn fractional_clip_intersection_and_global_tiles() {
 fn rectangle_clips_preserve_holes_and_disconnected_contours() {
     let mut path = PathBuilder::new();
     path.rect(-1.0, -1.0, 5.0, 5.0).rect(0.5, 0.5, 2.0, 2.0);
-    let mut clipped = Mask::from_path(
-        3,
-        3,
+    let mut clipped = try_mask(
         &path.finish(),
         Transform::IDENTITY,
         FillRule::EvenOdd,
-        9,
+        (0, 0),
+        3,
     )
     .unwrap();
     let mut path = PathBuilder::new();
     path.rect(0.25, 0.25, 2.5, 2.5);
     clipped
         .intersect(
-            &Mask::from_path(
-                3,
-                3,
+            &try_mask(
                 &path.finish(),
                 Transform::IDENTITY,
                 FillRule::NonZero,
-                9,
+                (0, 0),
+                3,
             )
             .unwrap(),
         )
@@ -218,26 +204,24 @@ fn only_single_nondegenerate_device_rectangles_take_the_closed_form() {
     rectangle.transform = Transform::translate(f64::INFINITY, 0.0);
     assert!(rectangle.rectangle().is_none());
     assert!(
-        Mask::from_path(
-            2,
-            2,
+        try_mask(
             path(&rectangle),
             rectangle.transform,
             rectangle.rule,
-            4
+            (0, 0),
+            2
         )
         .is_err()
     );
     rectangle.transform = Transform::translate(1e13, 0.0);
     assert!(rectangle.rectangle().is_none());
     assert!(
-        Mask::from_path(
-            2,
-            2,
+        try_mask(
             path(&rectangle),
             rectangle.transform,
             rectangle.rule,
-            4
+            (0, 0),
+            2
         )
         .is_err()
     );
@@ -286,8 +270,13 @@ fn canonical_glyph_rectangles_use_closed_form_area_but_points_do_not() {
     );
     let glyph = Shape {
         geometry: Geometry::Glyph(Arc::new(
-            crate::GlyphGeometry::new(path(&original), [1.0, 0.0, 0.0, 1.0], &Limits::default())
-                .unwrap(),
+            crate::GlyphGeometry::new(
+                path(&original),
+                Transform::IDENTITY,
+                &Limits::default(),
+                1 << 20,
+            )
+            .unwrap(),
         )),
         transform: Transform::IDENTITY,
         rule: FillRule::NonZero,
@@ -295,11 +284,9 @@ fn canonical_glyph_rectangles_use_closed_form_area_but_points_do_not() {
     assert!(glyph.rectangle().is_some());
     let mut out = [0; 4];
     crate::coverage::coverage(
-        2,
-        2,
+        IntRect::new(0, 0, 2, 2).unwrap(),
         &[glyph],
         &mut out,
-        (0, 0),
         &Limits::default(),
         &mut crate::coverage::Scratch::default(),
     )
@@ -308,8 +295,13 @@ fn canonical_glyph_rectangles_use_closed_form_area_but_points_do_not() {
     let original = shape(&[Point::new(0.25, 0.25); 4], true);
     let glyph = Shape {
         geometry: Geometry::Glyph(Arc::new(
-            crate::GlyphGeometry::new(path(&original), [1.0, 0.0, 0.0, 1.0], &Limits::default())
-                .unwrap(),
+            crate::GlyphGeometry::new(
+                path(&original),
+                Transform::IDENTITY,
+                &Limits::default(),
+                1 << 20,
+            )
+            .unwrap(),
         )),
         transform: Transform::IDENTITY,
         rule: FillRule::NonZero,
@@ -317,11 +309,9 @@ fn canonical_glyph_rectangles_use_closed_form_area_but_points_do_not() {
     assert!(glyph.rectangle().is_none());
     let mut out = [0; 4];
     crate::coverage::coverage(
-        2,
-        2,
+        IntRect::new(0, 0, 2, 2).unwrap(),
         &[glyph],
         &mut out,
-        (0, 0),
         &Limits::default(),
         &mut crate::coverage::Scratch::default(),
     )

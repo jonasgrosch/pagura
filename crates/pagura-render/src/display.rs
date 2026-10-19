@@ -5,7 +5,7 @@ use crate::{RenderOptions, Tile};
 use pagura_core::{Error, Limits, Rect, Result};
 use pagura_document::{Page, Rotation};
 use pagura_raster::{
-    FillRule, Mask, Paint, Path, PathBuilder, Pixmap, Rasterizer, Stroke, Transform,
+    FillRule, IntRect, Mask, Paint, Path, PathBuilder, Pixmap, Rasterizer, Stroke, Transform,
     adjusted_stroke_outline, stroke_outline,
 };
 use std::sync::{Arc, OnceLock};
@@ -304,8 +304,9 @@ impl GlyphRun {
         let l = source.linear.then(d);
         Ok(Arc::new(pagura_raster::GlyphGeometry::new(
             &source.outline,
-            [l.a, l.b, l.c, l.d],
+            l,
             limits,
+            limits.decoded_bytes,
         )?))
     }
     fn rasterize(
@@ -652,16 +653,10 @@ impl DisplayList {
             self.crop.width(),
             self.crop.height(),
         );
-        let crop = Mask::from_path_with_limits(
-            tile.width,
-            tile.height,
-            &crop.finish(),
-            device,
-            FillRule::NonZero,
-            self.limits,
-            (tile.x, tile.y),
-        )?;
+        let area = IntRect::new(tile.x, tile.y, tile.width, tile.height)?;
+        let crop = Mask::from_path(area, crop.finish(), device, FillRule::NonZero, self.limits)?;
         let mut raster = Rasterizer::default();
+        raster.set_retained_limit(self.limits.decoded_bytes);
         let mut glyph_cache = GlyphCache::new(self.limits.decoded_bytes);
         let mut last_clip = None;
         let mut mask = crop.clone();
@@ -696,14 +691,12 @@ impl DisplayList {
                     clip = node.parent.as_deref();
                 }
                 for node in chain.into_iter().rev() {
-                    let next = Mask::from_path_with_limits(
-                        tile.width,
-                        tile.height,
-                        &node.path,
+                    let next = Mask::from_path(
+                        area,
+                        Arc::clone(&node.path),
                         device,
                         node.rule,
                         self.limits,
-                        (tile.x, tile.y),
                     )?;
                     mask.intersect(&next)?;
                 }

@@ -11,12 +11,13 @@ use crate::functions::Function;
 use crate::icc::ColorContext;
 use pagura_core::{Dictionary, Error, Rect, Result, Value};
 use pagura_raster::{Point, Transform};
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub(crate) struct Shading {
     pub(crate) space: Space,
     pub(crate) bbox: Option<Rect>,
-    pub(crate) bbox_path: Option<pagura_raster::Path>,
+    pub(crate) bbox_path: Option<Arc<pagura_raster::Path>>,
     pub(crate) antialias: bool,
     pub(crate) background: Option<[f64; 32]>,
     functions: Functions,
@@ -104,7 +105,7 @@ impl Shading {
         let bbox_path = bbox.map(|b| {
             let mut path = pagura_raster::PathBuilder::new();
             path.rect(b.x0(), b.y0(), b.width(), b.height());
-            path.finish()
+            Arc::new(path.finish())
         });
         let antialias = d
             .get(b"AntiAlias")

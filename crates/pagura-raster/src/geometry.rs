@@ -1,5 +1,6 @@
-//! Points, vectors and affine transforms.
+//! Points, vectors, affine transforms and device pixel rectangles.
 
+use pagura_core::{Error, Result};
 use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub, SubAssign};
 
 /// A point, or the vector from the origin to it, in a two-dimensional
@@ -73,7 +74,8 @@ impl Add for Point {
 
 impl AddAssign for Point {
     fn add_assign(&mut self, other: Self) {
-        *self = *self + other;
+        self.x += other.x;
+        self.y += other.y;
     }
 }
 
@@ -87,7 +89,8 @@ impl Sub for Point {
 
 impl SubAssign for Point {
     fn sub_assign(&mut self, other: Self) {
-        *self = *self - other;
+        self.x -= other.x;
+        self.y -= other.y;
     }
 }
 
@@ -219,6 +222,90 @@ impl Transform {
     }
 }
 
+/// A non-empty rectangle of whole device pixels: columns `x..x + width`
+/// and rows `y..y + height`, with both far edges within `u32`.
+///
+/// It places a mask, tile or clip in global device space, so that tiles of
+/// one page integrate identical geometry.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct IntRect {
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+}
+
+impl IntRect {
+    /// Creates a rectangle from its top-left pixel and its size.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InvalidArgument` for a zero width or height and `Limit` if
+    /// the right or bottom edge exceeds `u32`.
+    pub fn new(x: u32, y: u32, width: u32, height: u32) -> Result<Self> {
+        if width == 0 || height == 0 {
+            return Err(Error::invalid_argument(
+                "pixel rectangle dimensions must be positive",
+            ));
+        }
+        if x.checked_add(width).is_none() || y.checked_add(height).is_none() {
+            return Err(Error::limit("pixel rectangle exceeds u32 coordinates"));
+        }
+        Ok(Self {
+            x,
+            y,
+            width,
+            height,
+        })
+    }
+
+    /// The rectangle `x0..x1` × `y0..y1`, or `None` if it is empty.
+    pub(crate) fn from_edges(x0: u32, y0: u32, x1: u32, y1: u32) -> Option<Self> {
+        (x0 < x1 && y0 < y1).then(|| Self {
+            x: x0,
+            y: y0,
+            width: x1 - x0,
+            height: y1 - y0,
+        })
+    }
+
+    /// The leftmost column.
+    pub const fn x(self) -> u32 {
+        self.x
+    }
+
+    /// The top row.
+    pub const fn y(self) -> u32 {
+        self.y
+    }
+
+    /// The number of columns, at least 1.
+    pub const fn width(self) -> u32 {
+        self.width
+    }
+
+    /// The number of rows, at least 1.
+    pub const fn height(self) -> u32 {
+        self.height
+    }
+
+    /// The column just right of the rectangle.
+    pub const fn right(self) -> u32 {
+        // Cannot overflow: `new` and `from_edges` keep the edge within u32.
+        self.x + self.width
+    }
+
+    /// The row just below the rectangle.
+    pub const fn bottom(self) -> u32 {
+        self.y + self.height
+    }
+
+    /// The number of pixels, which always fits `u64`.
+    pub(crate) fn pixels(self) -> u64 {
+        u64::from(self.width) * u64::from(self.height)
+    }
+}
+
 /// `p * t` maps `p` by `t`, matching PDF's row-vector notation.
 impl Mul<Transform> for Point {
     type Output = Point;
@@ -230,7 +317,46 @@ impl Mul<Transform> for Point {
 
 #[cfg(test)]
 mod tests {
-    use super::{Point, Transform};
+    use super::{IntRect, Point, Transform};
+    use pagura_core::ErrorKind;
+
+    #[test]
+    fn pixel_rectangles_are_non_empty_and_within_u32() {
+        let area = IntRect::new(10, 20, 3, 4).unwrap();
+        assert_eq!(
+            (
+                area.x(),
+                area.y(),
+                area.right(),
+                area.bottom(),
+                area.pixels()
+            ),
+            (10, 20, 13, 24, 12)
+        );
+        let edge = IntRect::new(u32::MAX - 1, 0, 1, u32::MAX).unwrap();
+        assert_eq!((edge.right(), edge.bottom()), (u32::MAX, u32::MAX));
+        assert_eq!(
+            IntRect::new(0, 0, 0, 1).unwrap_err().kind,
+            ErrorKind::InvalidArgument
+        );
+        assert_eq!(
+            IntRect::new(0, 0, 1, 0).unwrap_err().kind,
+            ErrorKind::InvalidArgument
+        );
+        assert_eq!(
+            IntRect::new(u32::MAX, 0, 1, 1).unwrap_err().kind,
+            ErrorKind::Limit
+        );
+        assert_eq!(
+            IntRect::new(0, 1, 1, u32::MAX).unwrap_err().kind,
+            ErrorKind::Limit
+        );
+        assert_eq!(IntRect::from_edges(1, 1, 1, 2), None);
+        assert_eq!(
+            IntRect::from_edges(1, 1, 2, 2),
+            IntRect::new(1, 1, 1, 1).ok()
+        );
+    }
 
     #[test]
     fn vector_operators_match_componentwise_arithmetic() {

@@ -1,38 +1,18 @@
 //! Reusable working storage for a sequence of independent path fills.
 
 use super::{FillRule, Mask};
-use crate::coverage::{Geometry, Scratch, Shape};
-use crate::{Paint, Path, Pixmap, Transform};
+use crate::coverage::{Geometry, Scratch, Shape, capacity_bytes};
+use crate::{GlyphGeometry, IntRect, Paint, Path, Pixmap, Point, Transform};
 use pagura_core::{Error, Limits, Result};
 use std::sync::Arc;
-
-// Borrowed callers acquire ownership only after bounds and budget validation.
-pub(super) enum PathSource<'a> {
-    Borrowed(&'a Path),
-    Shared(Arc<Path>),
-}
-impl PathSource<'_> {
-    fn path(&self) -> &Path {
-        match self {
-            Self::Borrowed(path) => path,
-            Self::Shared(path) => path,
-        }
-    }
-    fn into_shared(self) -> Arc<Path> {
-        match self {
-            Self::Borrowed(path) => Arc::new(path.clone()),
-            Self::Shared(path) => path,
-        }
-    }
-}
 
 /// Owns temporary raster storage for one rendering context, without caching
 /// geometry or quantizing positions. Independent fills retain their own masks;
 /// return a consumed mask with [`Self::recycle`] to reuse its allocation too.
 ///
-/// Retained capacities are bounded by the most recent call's
-/// [`Limits::decoded_bytes`]. Temporary geometry keeps the per-fill segment and
-/// work budgets. Nothing is shared between rendering contexts or threads.
+/// Retained capacities are bounded by [`Self::set_retained_limit`], which is
+/// zero for a new rasterizer. Temporary geometry keeps the per-fill segment
+/// and work budgets. Nothing is shared between rendering contexts or threads.
 #[derive(Debug, Default)]
 pub struct Rasterizer {
     scratch: Scratch,
@@ -48,12 +28,24 @@ impl Rasterizer {
     pub fn retained_bytes(&self) -> usize {
         self.scratch_bytes
             .saturating_add(self.coverage.capacity())
-            .saturating_add(self.shapes.capacity().saturating_mul(size_of::<Shape>()))
+            .saturating_add(capacity_bytes(&self.shapes))
     }
 
-    /// Releases all working buffers. It does not affect previously returned masks.
+    /// Bounds the bytes kept in working buffers between fills, releasing
+    /// them now if they exceed `bytes`. The caller owns this allowance: a
+    /// renderer passes what its own memory accounting leaves free.
+    pub fn set_retained_limit(&mut self, bytes: usize) {
+        self.maximum = bytes;
+        self.trim();
+    }
+
+    /// Releases all working buffers, keeping the retained limit. It does not
+    /// affect previously returned masks.
     pub fn clear(&mut self) {
-        *self = Self::default();
+        *self = Self {
+            maximum: self.maximum,
+            ..Self::default()
+        };
     }
 
     /// Returns a consumed mask's storage. Geometry is released immediately;
@@ -68,35 +60,29 @@ impl Rasterizer {
 
     fn trim(&mut self) {
         if self.retained_bytes() > self.maximum {
-            let maximum = self.maximum;
             self.clear();
-            self.maximum = maximum;
         }
     }
 
     /// Fills a path clipped geometrically to `clip`, restricted to its device
-    /// bounds (8.5.3.3). Shared path ownership avoids copying path segments.
-    /// Global coordinates and all coverage arithmetic match [`Mask::clipped_path`].
+    /// bounds (8.5.3.3). A shared path is not copied. Global coordinates and
+    /// all coverage arithmetic match [`Mask::clipped_path`].
     ///
     /// # Errors
     /// Returns invalid geometry and caller-budget errors as
-    /// [`Mask::from_path_with_limits`]. No partial mask is returned on failure;
+    /// [`Mask::from_path`]. No partial mask is returned on failure;
     /// the rasterizer remains usable after an error.
     pub fn clipped_path(
         &mut self,
         clip: &Mask,
-        path: Arc<Path>,
+        path: impl Into<Arc<Path>>,
         transform: Transform,
         rule: FillRule,
         limits: Limits,
     ) -> Result<Option<Mask>> {
-        self.path_mask(
-            PathSource::Shared(path),
-            transform,
-            rule,
-            limits,
-            ((clip.width, clip.height), clip.origin, Some(clip)),
-        )
+        self.trim();
+        let result = self.fill(clip, path.into(), transform, rule, limits);
+        self.complete(result)
     }
 
     /// Rasterizes canonical glyph contours at their exact device origin.
@@ -108,37 +94,12 @@ impl Rasterizer {
     pub fn clipped_glyph(
         &mut self,
         clip: &Mask,
-        glyph: Arc<crate::GlyphGeometry>,
-        origin: crate::Point,
+        glyph: Arc<GlyphGeometry>,
+        origin: Point,
         limits: Limits,
     ) -> Result<Option<Mask>> {
-        self.maximum = limits.decoded_bytes;
         self.trim();
-        let result = (|| {
-            crate::flatten::bounded(origin)?;
-            let Some(bounds) = glyph.bounds() else {
-                return Ok(None);
-            };
-            let transform = Transform::translate(origin.x, origin.y);
-            let Some(region) = crate::bounds::hull_region(
-                bounds.map(|p| p * transform),
-                (clip.width, clip.height),
-                clip.origin,
-            )?
-            else {
-                return Ok(None);
-            };
-            self.fill_shape(
-                Shape {
-                    geometry: Geometry::Glyph(glyph),
-                    transform,
-                    rule: FillRule::NonZero,
-                },
-                region,
-                limits,
-                Some(clip),
-            )
-        })();
+        let result = self.place(clip, glyph, origin, limits);
         self.complete(result)
     }
 
@@ -152,164 +113,151 @@ impl Rasterizer {
         result
     }
 
-    /// Fills one canonical glyph and recycles its mask storage.
-    ///
-    /// # Errors
-    /// As [`Self::clipped_glyph`]; rejects incompatible target and clip sizes.
-    pub fn fill_glyph(
-        &mut self,
-        target: &mut Pixmap,
-        glyph: Arc<crate::GlyphGeometry>,
-        origin: crate::Point,
-        paint: &Paint,
-        clip: &Mask,
-    ) -> Result<()> {
-        super::check_clip(target, Some(clip))?;
-        if let Some(mask) = self.clipped_glyph(clip, glyph, origin, *target.limits())? {
-            let offset = (mask.origin.0 - clip.origin.0, mask.origin.1 - clip.origin.1);
-            let result = super::composite(target, &mask, *paint, offset);
-            self.recycle(mask);
-            result?;
-        }
-        Ok(())
-    }
-
-    pub(super) fn path_mask(
-        &mut self,
-        path: PathSource<'_>,
-        transform: Transform,
-        rule: FillRule,
-        limits: Limits,
-        viewport: ((u32, u32), (u32, u32), Option<&Mask>),
-    ) -> Result<Option<Mask>> {
-        self.maximum = limits.decoded_bytes;
-        self.trim();
-        let result = self.fill(path, transform, rule, limits, viewport);
-        self.complete(result)
-    }
-
     fn fill(
         &mut self,
-        path: PathSource<'_>,
+        clip: &Mask,
+        path: Arc<Path>,
         transform: Transform,
         rule: FillRule,
         limits: Limits,
-        (size, origin, clip): ((u32, u32), (u32, u32), Option<&Mask>),
     ) -> Result<Option<Mask>> {
         // Only retained fill/clip certificates opt into boundary scan conversion.
         // Ordinary paths and stroke outlines take the original raster path.
         let (path, transform, rule) =
-            if path.path().fill_region(rule) == Some(crate::FillRegion::EmptyBoundary) {
-                let outline =
-                    crate::empty_fill::outline_boundary(path.path(), transform, rule, &limits)?;
-                (
-                    PathSource::Shared(Arc::new(outline)),
-                    Transform::IDENTITY,
-                    FillRule::NonZero,
-                )
-            } else {
-                (path, transform, rule)
+            match crate::empty_fill::outline(&path, transform, rule, &limits)? {
+                Some(outline) => (Arc::new(outline), Transform::IDENTITY, FillRule::NonZero),
+                None => (path, transform, rule),
             };
-        let Some((x, y, width, height)) =
-            crate::bounds::region(path.path(), transform, size, origin, &limits)?
+        let Some(area) = crate::bounds::region(&path, transform, clip.area, &limits)? else {
+            return Ok(None);
+        };
+        let shape = Shape {
+            geometry: Geometry::Path(path),
+            transform,
+            rule,
+        };
+        self.fill_shape(shape, area, limits, clip)
+    }
+
+    fn place(
+        &mut self,
+        clip: &Mask,
+        glyph: Arc<GlyphGeometry>,
+        origin: Point,
+        limits: Limits,
+    ) -> Result<Option<Mask>> {
+        crate::flatten::bounded(origin)?;
+        let Some(bounds) = glyph.bounds() else {
+            return Ok(None);
+        };
+        let transform = Transform::translate(origin.x, origin.y);
+        let Some(area) = crate::bounds::hull_region(bounds.map(|p| p * transform), clip.area)?
         else {
             return Ok(None);
         };
-        self.fill_shape(
-            Shape {
-                geometry: Geometry::Path(path.into_shared()),
-                transform,
-                rule,
-            },
-            (x, y, width, height),
-            limits,
-            clip,
-        )
+        let shape = Shape {
+            geometry: Geometry::Glyph(glyph),
+            transform,
+            rule: FillRule::NonZero,
+        };
+        self.fill_shape(shape, area, limits, clip)
     }
 
     fn fill_shape(
         &mut self,
         shape: Shape,
-        (x, y, width, height): (u32, u32, u32, u32),
+        area: IntRect,
         limits: Limits,
-        clip: Option<&Mask>,
+        clip: &Mask,
     ) -> Result<Option<Mask>> {
         self.shapes.clear();
         if limits.mask_sources == 0 {
             return Err(Error::limit("mask source budget exceeded"));
         }
         self.shapes.push(shape);
-        for shape in clip.into_iter().flat_map(|clip| &clip.shapes) {
-            if !shape.covers((x, y), (width, height)) {
+        for shape in &clip.shapes {
+            if !shape.covers(area) {
                 if self.shapes.len() >= limits.mask_sources {
                     return Err(Error::limit("mask source budget exceeded"));
                 }
                 self.shapes.push(shape.clone());
             }
         }
-        let count = usize::try_from(u64::from(width) * u64::from(height))
-            .ok()
-            .filter(|&n| n <= limits.pixels)
-            .ok_or(Error::limit("mask pixel budget exceeded"))?;
+        let count = super::pixel_budget(area, &limits)?;
         self.coverage
             .try_reserve_exact(count.saturating_sub(self.coverage.len()))
             .map_err(|_| Error::limit("mask allocation failed"))?;
         self.coverage.resize(count, 0);
         crate::coverage::coverage(
-            width,
-            height,
+            area,
             &self.shapes,
             &mut self.coverage,
-            (x, y),
             &limits,
             &mut self.scratch,
         )?;
         self.scratch_bytes = self.scratch.retained_bytes();
         Ok(Some(Mask {
-            width,
-            height,
-            origin: (x, y),
+            area,
             limits,
             coverage: std::mem::take(&mut self.coverage),
             shapes: std::mem::take(&mut self.shapes),
         }))
     }
 
-    /// Fills a tile and immediately recycles the temporary mask.
+    /// Fills a path into `target`, whose pixels are those of `clip`, and
+    /// immediately recycles the temporary mask.
     ///
     /// # Errors
-    /// As [`Self::clipped_path`]; rejects a clip whose size differs from the tile.
+    /// As [`Self::clipped_path`]; rejects a clip whose size differs from the target.
     pub fn fill_path(
         &mut self,
         target: &mut Pixmap,
-        path: Arc<Path>,
+        path: impl Into<Arc<Path>>,
         transform: Transform,
         rule: FillRule,
         paint: &Paint,
         clip: &Mask,
     ) -> Result<()> {
-        super::check_clip(target, Some(clip))?;
-        let origin = clip.origin;
+        super::check_clip(target, clip)?;
         if let Some(mask) = self.clipped_path(clip, path, transform, rule, *target.limits())? {
-            let offset = (
-                mask.origin.0.checked_sub(origin.0),
-                mask.origin.1.checked_sub(origin.1),
-            );
-            let result = match offset {
-                (Some(x), Some(y)) => super::composite(target, &mask, *paint, (x, y)),
-                _ => Err(Error::invalid_argument("mask precedes tile origin")),
-            };
-            self.recycle(mask);
-            result?;
+            self.paint(target, mask, *paint, clip);
         }
         Ok(())
+    }
+
+    /// Fills one canonical glyph into `target`, whose pixels are those of
+    /// `clip`, and recycles its mask storage.
+    ///
+    /// # Errors
+    /// As [`Self::clipped_glyph`]; rejects a clip whose size differs from the target.
+    pub fn fill_glyph(
+        &mut self,
+        target: &mut Pixmap,
+        glyph: Arc<GlyphGeometry>,
+        origin: Point,
+        paint: &Paint,
+        clip: &Mask,
+    ) -> Result<()> {
+        super::check_clip(target, clip)?;
+        if let Some(mask) = self.clipped_glyph(clip, glyph, origin, *target.limits())? {
+            self.paint(target, mask, *paint, clip);
+        }
+        Ok(())
+    }
+
+    /// Composites a mask clipped to `clip` into `target` and recycles it.
+    fn paint(&mut self, target: &mut Pixmap, mask: Mask, paint: Paint, clip: &Mask) {
+        // A clipped mask lies within its clip, so the offsets cannot underflow.
+        let offset = (mask.area.x() - clip.area.x(), mask.area.y() - clip.area.y());
+        super::composite(target, &mask, paint, offset);
+        self.recycle(mask);
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::PathBuilder;
+    use crate::{IntRect, PathBuilder};
 
     fn rectangle(x: f64, y: f64, width: f64, height: f64) -> Arc<Path> {
         let mut path = PathBuilder::new();
@@ -320,18 +268,20 @@ mod tests {
     #[test]
     fn recycled_masks_intersect_geometry_and_release_paths() {
         let limits = Limits::default();
-        let clip = Mask::from_path_at(
-            2,
-            2,
-            &rectangle(10.25, 20.25, 1.5, 1.5),
+        let clip = Mask::from_path(
+            IntRect::new(10, 20, 2, 2).unwrap(),
+            rectangle(10.25, 20.25, 1.5, 1.5),
             Transform::IDENTITY,
             FillRule::NonZero,
-            4,
-            (10, 20),
+            Limits {
+                pixels: 4,
+                ..limits
+            },
         )
         .unwrap();
         let path = rectangle(10.75, 20.0, 1.0, 2.0);
         let mut raster = Rasterizer::default();
+        raster.set_retained_limit(1 << 20);
         for _ in 0..3 {
             let mask = raster
                 .clipped_path(
@@ -344,25 +294,27 @@ mod tests {
                 .unwrap()
                 .unwrap();
             // Rectangle intersection areas: 3/16 and 9/16 in each row.
-            assert_eq!(mask.origin(), (10, 20));
+            assert_eq!(mask.area(), IntRect::new(10, 20, 2, 2).unwrap());
             assert_eq!(mask.coverage(), [48, 143, 48, 143]);
             assert_eq!(Arc::strong_count(&path), 2);
             raster.recycle(mask);
             assert_eq!(Arc::strong_count(&path), 1);
             assert!(raster.retained_bytes() > 0);
-            assert!(raster.retained_bytes() <= limits.decoded_bytes);
+            assert!(raster.retained_bytes() <= 1 << 20);
         }
     }
 
     #[test]
     fn errors_and_smaller_budgets_do_not_leak_sweep_state() {
         let clip = Mask::from_path(
-            2,
-            2,
-            &rectangle(0.0, 0.0, 2.0, 2.0),
+            IntRect::new(0, 0, 2, 2).unwrap(),
+            rectangle(0.0, 0.0, 2.0, 2.0),
             Transform::IDENTITY,
             FillRule::NonZero,
-            4,
+            Limits {
+                pixels: 4,
+                ..Limits::default()
+            },
         )
         .unwrap();
         let path = rectangle(0.25, 0.25, 0.5, 0.5);
@@ -383,17 +335,14 @@ mod tests {
                 .is_err()
         );
         assert_eq!(Arc::strong_count(&path), 1);
-        let uncached = Limits {
-            decoded_bytes: 0,
-            ..Limits::default()
-        };
+        raster.set_retained_limit(0);
         let mask = raster
             .clipped_path(
                 &clip,
                 path,
                 Transform::IDENTITY,
                 FillRule::EvenOdd,
-                uncached,
+                Limits::default(),
             )
             .unwrap()
             .unwrap();

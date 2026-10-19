@@ -6,6 +6,7 @@ use crate::display::PathCommand;
 use crate::pattern::Tiling;
 use pagura_core::{Error, Result};
 use pagura_raster::{Mask, Point, Transform};
+use std::sync::Arc;
 
 impl Context {
     /// Shading patterns first paint their background, then the clipped shading
@@ -26,14 +27,12 @@ impl Context {
         }) else {
             return Ok(None);
         };
-        Mask::from_path_with_limits(
-            mask.width(),
-            mask.height(),
-            path,
+        Mask::from_path(
+            mask.area(),
+            Arc::clone(path),
             pattern.transform.then(self.device),
             pagura_raster::FillRule::NonZero,
             self.limits,
-            mask.origin(),
         )
         .map(Some)
     }
@@ -268,7 +267,7 @@ fn instance_count((x0, x1): (i64, i64), (y0, y1): (i64, i64), maximum: usize) ->
 }
 
 fn mask_tile(mask: &Mask) -> Tile {
-    let (x, y) = mask.origin();
+    let (x, y) = (mask.area().x(), mask.area().y());
     Tile {
         x,
         y,

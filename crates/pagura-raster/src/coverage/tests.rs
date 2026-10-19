@@ -1,5 +1,10 @@
 use super::*;
 
+/// The pixels `origin.0..origin.0 + width` × `origin.1..origin.1 + height`.
+fn area(origin: (u32, u32), (width, height): (u32, u32)) -> IntRect {
+    IntRect::new(origin.0, origin.1, width, height).unwrap()
+}
+
 fn edge(a: f64, b: f64) -> Edge {
     Edge {
         a: Point::new(a, 0.0),
@@ -144,11 +149,9 @@ fn many_subpixel_slivers_keep_their_combined_area() {
                 let mut scratch = Scratch::default();
                 let mut whole = [0; 6];
                 coverage(
-                    3,
-                    2,
+                    area(origin, (3, 2)),
                     &shapes,
                     &mut whole,
-                    origin,
                     &Limits::default(),
                     &mut scratch,
                 )
@@ -186,11 +189,9 @@ fn many_subpixel_slivers_keep_their_combined_area() {
                     for x in 0..3 {
                         let mut tile = [0];
                         coverage(
-                            1,
-                            1,
+                            area((origin.0 + x, origin.1 + y), (1, 1)),
                             &shapes,
                             &mut tile,
-                            (origin.0 + x, origin.1 + y),
                             &Limits::default(),
                             &mut scratch,
                         )
@@ -230,11 +231,9 @@ fn retained_storage_tracks_backend_switches_and_partial_errors() {
             rule: FillRule::NonZero,
         }];
         coverage(
-            8,
-            8,
+            area((0, 0), (8, 8)),
             &shapes,
             &mut output,
-            (0, 0),
             &Limits::default(),
             &mut scratch,
         )
@@ -242,7 +241,7 @@ fn retained_storage_tracks_backend_switches_and_partial_errors() {
         assert_eq!(
             scratch.retained_bytes(),
             scratch.exact.retained_bytes()
-                + bytes(&scratch.accumulation)
+                + capacity_bytes(&scratch.accumulation)
                 + scratch
                     .accumulation
                     .iter()
@@ -260,16 +259,136 @@ fn retained_storage_tracks_backend_switches_and_partial_errors() {
         raster_work: 16,
         ..Limits::default()
     };
-    assert!(coverage(8, 8, &shapes, &mut output, (0, 0), &limits, &mut scratch).is_err());
+    assert!(
+        coverage(
+            area((0, 0), (8, 8)),
+            &shapes,
+            &mut output,
+            &limits,
+            &mut scratch
+        )
+        .is_err()
+    );
     assert!(scratch.retained_bytes() > 0);
     assert_eq!(
         scratch.retained_bytes(),
         scratch.exact.retained_bytes()
-            + bytes(&scratch.accumulation)
+            + capacity_bytes(&scratch.accumulation)
             + scratch
                 .accumulation
                 .iter()
                 .map(accumulation::Accumulator::retained_bytes)
                 .sum::<usize>()
     );
+}
+
+/// Glyph polygons through both backends.
+mod glyph {
+    use super::*;
+    use crate::{GlyphGeometry, PathBuilder};
+
+    #[test]
+    fn glyph_point_classification_and_trailing_contours_survive_both_backends() {
+        let limits = Limits::default();
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(0.0, 0.0));
+        path.line_to(Point::new(0.0, 1.0)).unwrap();
+        path.close();
+        path.move_to(Point::new(7.0, 7.0));
+        // This singular linear map collapses the source controls, so the first
+        // contour is a genuine point. The final open point still paints nothing.
+        let geometry = Arc::new(
+            GlyphGeometry::new(
+                &path.finish(),
+                Transform::new(1.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+                &limits,
+                usize::MAX,
+            )
+            .unwrap(),
+        );
+        assert!(geometry.contours()[0].is_degenerate());
+        for origin in [(0, 0), (17, 29), (1 << 30, 1 << 30)] {
+            let shape = Shape {
+                geometry: Geometry::Glyph(Arc::clone(&geometry)),
+                transform: Transform::translate(
+                    f64::from(origin.0) + 2.25,
+                    f64::from(origin.1) + 3.75,
+                ),
+                rule: FillRule::NonZero,
+            };
+            for render in [coverage, coverage_accumulated] {
+                let mut output = [0; 64];
+                render(
+                    area(origin, (8, 8)),
+                    std::slice::from_ref(&shape),
+                    &mut output,
+                    &limits,
+                    &mut Scratch::default(),
+                )
+                .unwrap();
+                let mut expected = [0; 64];
+                expected[3 * 8 + 2] = 255;
+                assert_eq!(output, expected);
+                let mut pixel = [0];
+                render(
+                    area((origin.0 + 2, origin.1 + 3), (1, 1)),
+                    std::slice::from_ref(&shape),
+                    &mut pixel,
+                    &limits,
+                    &mut Scratch::default(),
+                )
+                .unwrap();
+                assert_eq!(pixel, [255]);
+                let restricted = Limits {
+                    path_segments: geometry.vertices() - 1,
+                    ..limits
+                };
+                assert_eq!(
+                    render(
+                        area(origin, (8, 8)),
+                        std::slice::from_ref(&shape),
+                        &mut output,
+                        &restricted,
+                        &mut Scratch::default()
+                    )
+                    .unwrap_err()
+                    .kind,
+                    pagura_core::ErrorKind::Limit
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn coincident_glyph_approximation_vertices_do_not_create_a_floor_cell() {
+        let limits = Limits::default();
+        let mut path = PathBuilder::new();
+        let p = Point::new(4.0, 4.0);
+        path.move_to(p);
+        path.cubic_to(Point::new(4.0001, 4.0), Point::new(4.0, 4.0001), p)
+            .unwrap();
+        path.close();
+        let glyph = Arc::new(
+            GlyphGeometry::new(&path.finish(), Transform::IDENTITY, &limits, usize::MAX).unwrap(),
+        );
+        assert!(!glyph.contours()[0].is_degenerate());
+        assert!(glyph.contours()[0].points().iter().all(|point| *point == p));
+        let shapes = [Shape {
+            geometry: Geometry::Glyph(glyph),
+            transform: Transform::IDENTITY,
+            rule: FillRule::NonZero,
+        }];
+        for render in [coverage, coverage_accumulated] {
+            let mut output = [255; 64];
+            render(
+                area((0, 0), (8, 8)),
+                &shapes,
+                &mut output,
+                &limits,
+                &mut Scratch::default(),
+            )
+            .unwrap();
+            assert_eq!(output, [0; 64]);
+        }
+    }
 }
