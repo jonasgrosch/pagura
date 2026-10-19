@@ -1,0 +1,158 @@
+{
+  "schema": 2,
+  "area": "pki",
+  "scope": "Bounded, verification-free ASN.1, X.509, CMS and timestamp parsing in pagura-pki. Expected results derive from X.690 and the RFC schemas; parsing establishes no integrity, trust, validity at a time or revocation status (ADR 0015).",
+  "requirements": [
+    {
+      "id": "pki-der",
+      "reference": "ITU-T X.690 (02/2021)",
+      "clauses": [
+        "8.1.2-8.1.5 identifiers, lengths and end-of-contents",
+        "8.2, 8.3, 8.6, 8.8, 8.19 primitive encodings",
+        "10.1-10.2 and 11.1-11.8 DER restrictions"
+      ],
+      "status": "implemented",
+      "tests": [
+        "crates/pagura-pki/tests/der.rs",
+        "crates/pagura-pki/tests/fixtures.rs",
+        "corpus/manifests/pki.json"
+      ],
+      "gaps": "A generic reader cannot tell SET from SET OF or recognise IMPLICIT types and DEFAULT fields; the typed schemas apply those checks. Unknown universal types fail with an explicit feature."
+    },
+    {
+      "id": "pki-ber-subset",
+      "reference": "ITU-T X.690 (02/2021); RFC 5652",
+      "clauses": [
+        "X.690 8.1.3.6 indefinite length, 10.1 length form, 10.2 constructed strings",
+        "RFC 5652 5.3 signed attributes are DER"
+      ],
+      "status": "implemented",
+      "tests": [
+        "crates/pagura-pki/tests/der.rs",
+        "crates/pagura-pki/tests/fixtures.rs",
+        "corpus/manifests/pki.json"
+      ],
+      "gaps": "Only indefinite constructed lengths, nonminimal definite lengths and constructed OCTET STRINGs are tolerated, each as a reported repair. This is not a complete BER decoder."
+    },
+    {
+      "id": "pki-x509-certificate",
+      "reference": "RFC 5280",
+      "clauses": [
+        "4.1 certificate fields, versions, unique identifiers and validity",
+        "4.1.2.5 PKIX time profile"
+      ],
+      "status": "implemented",
+      "tests": [
+        "crates/pagura-pki/tests/x509.rs",
+        "crates/pagura-pki/tests/fixtures.rs",
+        "corpus/manifests/pki.json"
+      ],
+      "gaps": "Serial-number profile, the UTCTime/GeneralizedTime choice by year and name matching belong to validation."
+    },
+    {
+      "id": "pki-x509-extensions",
+      "reference": "RFC 5280",
+      "clauses": [
+        "4.2 extension envelopes",
+        "4.2.1.1-4.2.1.12 and 4.2.2.1 extension values"
+      ],
+      "status": "implemented",
+      "tests": [
+        "crates/pagura-pki/tests/x509.rs",
+        "crates/pagura-pki/tests/fixtures.rs",
+        "corpus/manifests/pki.json"
+      ],
+      "gaps": "Extensions without a typed view stay available as DER trees; recognising an extension is the caller's explicit decision."
+    },
+    {
+      "id": "pki-x509-crl",
+      "reference": "RFC 5280",
+      "clauses": [
+        "5.1 CertificateList fields and versions",
+        "5.2-5.3 CRL and entry extension envelopes"
+      ],
+      "status": "implemented",
+      "tests": [
+        "crates/pagura-pki/tests/x509.rs",
+        "crates/pagura-pki/tests/fixtures.rs",
+        "corpus/manifests/pki.json"
+      ],
+      "gaps": "CRL signatures, freshness and extension semantics are not evaluated."
+    },
+    {
+      "id": "pki-cms-signed-data",
+      "reference": "RFC 5652",
+      "clauses": [
+        "3 ContentInfo",
+        "5.1-5.4 SignedData, SignerInfo, signed attributes and their signature input",
+        "10.2.1-10.2.2 revocation and certificate choices",
+        "11.1-11.2 content-type and message-digest attributes"
+      ],
+      "status": "implemented",
+      "tests": [
+        "crates/pagura-pki/tests/cms.rs",
+        "crates/pagura-pki/tests/fixtures.rs",
+        "corpus/manifests/pki.json"
+      ],
+      "gaps": "No digest or signature is computed or verified; embedded certificates never become trusted."
+    },
+    {
+      "id": "pki-timestamp",
+      "reference": "RFC 3161",
+      "clauses": [
+        "2.4.1 MessageImprint",
+        "2.4.2 TSTInfo, accuracy and fractional GeneralizedTime"
+      ],
+      "status": "implemented",
+      "tests": [
+        "crates/pagura-pki/tests/timestamp.rs",
+        "crates/pagura-pki/tests/fixtures.rs",
+        "corpus/manifests/pki.json"
+      ],
+      "gaps": "Timestamp tokens are not authenticated and the imprint is not compared."
+    },
+    {
+      "id": "pki-ecdsa-envelope",
+      "reference": "RFC 3279",
+      "clauses": [
+        "2.2.3 Ecdsa-Sig-Value"
+      ],
+      "status": "implemented",
+      "tests": [
+        "crates/pagura-pki/tests/der.rs",
+        "crates/pagura-pki/tests/fixtures.rs",
+        "corpus/manifests/pki.json"
+      ],
+      "gaps": "Envelope only; curve-order ranges and the signature equation belong to pagura-crypto."
+    },
+    {
+      "id": "pki-path-validation",
+      "reference": "RFC 5280; RFC 9618; RFC 9549; RFC 9598",
+      "clauses": [
+        "RFC 5280 6.1 basic path validation and 6.2 path building inputs",
+        "RFC 9618 5 policy graph",
+        "RFC 9549 2 and RFC 9598 3-6 name constraints"
+      ],
+      "status": "partial",
+      "tests": [
+        "crates/pagura-pki/src/validation/tests.rs",
+        "corpus/manifests/pki.json"
+      ],
+      "gaps": "Trust anchors, evaluation time and signature verification are caller-supplied. Directory names compare byte-identical values or ASCII caseIgnore values; other repertoires stay indeterminate. PKITS runs only with the private reference cache."
+    },
+    {
+      "id": "pki-crl-revocation",
+      "reference": "RFC 5280",
+      "clauses": [
+        "6.3 CRL validation",
+        "5.2-5.3 CRL and entry extensions"
+      ],
+      "status": "partial",
+      "tests": [
+        "crates/pagura-pki/src/validation/revocation/tests.rs",
+        "corpus/manifests/pki.json"
+      ],
+      "gaps": "Offline CRLs only; OCSP is deferred and no distribution point is dereferenced."
+    }
+  ]
+}

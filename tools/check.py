@@ -10,6 +10,8 @@ OFFLINE = ["--locked", "--offline"]
 COMMANDS = [
     ([sys.executable, "tools/policy.py"], {}),
     ([sys.executable, "tools/fixtures.py", "--check"], {}),
+    # Cached PKITS and Wycheproof encoding cases for pagura-pki; a no-op without the cache.
+    ([sys.executable, "tools/pki_vectors.py"], {}),
     ([sys.executable, "tools/bundled_data.py", "verify"], {}),
     (CARGO + ["fmt", "--all", "--", "--check"], {}),
     (CARGO + ["clippy", *OFFLINE, "--workspace", "--all-targets", "--", "-D", "warnings"], {}),

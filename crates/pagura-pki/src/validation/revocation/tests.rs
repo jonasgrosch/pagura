@@ -1,10 +1,9 @@
 use super::*;
 use crate::der::Document;
-use crate::validation::tests::fixture_text;
 use crate::validation::{InvalidReason, PathState, SignatureInput, SignatureResult, Uncertainty};
 use crate::x509::extensions::KeyUsage;
 use pagura_core::SignatureLimits;
-use pagura_testkit::unhex;
+use pagura_testkit::{fixture_text, unhex};
 use std::collections::BTreeMap;
 
 type Records = BTreeMap<Vec<Vec<u8>>, SignatureResult>;
