@@ -2,7 +2,7 @@
 use crate::{
     PdfFont,
     encoding::SimpleMapping,
-    font::{Mapping, Source},
+    font::{Mapping, Ownership, Source},
 };
 
 pub(crate) fn tree<K, V>(entries: usize) -> usize {
@@ -64,11 +64,11 @@ fn source(source: &Source) -> usize {
             })),
         Source::Program {
             program,
-            substituted,
+            ownership,
             cid_map,
             ..
         } => {
-            let program_bytes = if *substituted {
+            let program_bytes = if *ownership == Ownership::Provider {
                 0
             } else {
                 program

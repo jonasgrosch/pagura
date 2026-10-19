@@ -4,10 +4,11 @@ use crate::{
     descriptor::{Descriptor, FontFlags},
     encoding::{self, SimpleMapping},
     features,
-    font::{Mapping, Source, to_unicode},
+    font::{Mapping, Ownership, Source, to_unicode},
     metrics::{GLYPH_SPACE_UNITS, Metrics},
     objects::{number, optional, required},
     report::Report,
+    selection::Route,
 };
 use pagura_core::{Diagnostic, Dictionary, Error, Position, Result};
 use pagura_document::Document;
@@ -104,8 +105,8 @@ pub(crate) fn load(
         .as_ref()
         .map_or(Source::MetricsOnly, |program| Source::Program {
             program: Arc::clone(program),
-            truetype_raw: false,
-            substituted: true,
+            route: Route::Named,
+            ownership: Ownership::Provider,
             cid_map: None,
         });
     if data.program.is_some() {
