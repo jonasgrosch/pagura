@@ -47,19 +47,20 @@ macro_rules! operators {
         /// An Annex A content operator.
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         pub(crate) enum Operator {
-            $(#[doc = concat!("`", $name, "`")] $variant,)*
+            $(#[doc = concat!("`", stringify!($name), "`")] $variant,)*
         }
         impl Operator {
-            /// The operator a content-stream keyword names, if any.
+            /// The operator a content-stream keyword names, if any. Literal
+            /// patterns let the match compile to a decision tree.
             pub(crate) fn parse(word: &[u8]) -> Option<Self> {
                 Some(match word {
-                    $(w if w == $name.as_bytes() => Self::$variant,)*
+                    $($name => Self::$variant,)*
                     _ => return None,
                 })
             }
             /// The operator's PDF spelling.
             #[cfg(test)]
-            pub(crate) const fn name(self) -> &'static str {
+            pub(crate) const fn name(self) -> &'static [u8] {
                 match self {
                     $(Self::$variant => $name,)*
                 }
@@ -72,79 +73,79 @@ macro_rules! operators {
 }
 
 operators! {
-    CloseFillStroke = "b",
-    FillStroke = "B",
-    CloseFillStrokeEvenOdd = "b*",
-    FillStrokeEvenOdd = "B*",
-    BeginMarkedProperties = "BDC",
-    BeginImage = "BI",
-    BeginMarked = "BMC",
-    BeginText = "BT",
-    BeginCompatibility = "BX",
-    CurveTo = "c",
-    Concat = "cm",
-    StrokeSpace = "CS",
-    FillSpace = "cs",
-    Dash = "d",
-    GlyphWidth = "d0",
-    GlyphBox = "d1",
-    PaintXObject = "Do",
-    MarkPointProperties = "DP",
-    EndImage = "EI",
-    EndMarked = "EMC",
-    EndText = "ET",
-    EndCompatibility = "EX",
-    Fill = "f",
-    FillObsolete = "F",
-    FillEvenOdd = "f*",
-    StrokeGray = "G",
-    FillGray = "g",
-    GraphicsState = "gs",
-    ClosePath = "h",
-    Flatness = "i",
-    ImageData = "ID",
-    LineJoin = "j",
-    LineCap = "J",
-    StrokeCmyk = "K",
-    FillCmyk = "k",
-    LineTo = "l",
-    MoveTo = "m",
-    MiterLimit = "M",
-    MarkPoint = "MP",
-    EndPath = "n",
-    Save = "q",
-    Restore = "Q",
-    Rectangle = "re",
-    StrokeRgb = "RG",
-    FillRgb = "rg",
-    Intent = "ri",
-    CloseStroke = "s",
-    Stroke = "S",
-    StrokeColor = "SC",
-    StrokeColorN = "SCN",
-    FillColor = "sc",
-    FillColorN = "scn",
-    Shade = "sh",
-    NextLine = "T*",
-    CharacterSpacing = "Tc",
-    MoveText = "Td",
-    MoveTextSetLeading = "TD",
-    Font = "Tf",
-    ShowText = "Tj",
-    ShowTextArray = "TJ",
-    Leading = "TL",
-    TextMatrix = "Tm",
-    RenderMode = "Tr",
-    Rise = "Ts",
-    WordSpacing = "Tw",
-    HorizontalScaling = "Tz",
-    CurveToInitial = "v",
-    LineWidth = "w",
-    Clip = "W",
-    ClipEvenOdd = "W*",
-    CurveToFinal = "y",
-    NextLineShowText = "'",
-    NextLineShowSpaced = "\"",
+    CloseFillStroke = b"b",
+    FillStroke = b"B",
+    CloseFillStrokeEvenOdd = b"b*",
+    FillStrokeEvenOdd = b"B*",
+    BeginMarkedProperties = b"BDC",
+    BeginImage = b"BI",
+    BeginMarked = b"BMC",
+    BeginText = b"BT",
+    BeginCompatibility = b"BX",
+    CurveTo = b"c",
+    Concat = b"cm",
+    StrokeSpace = b"CS",
+    FillSpace = b"cs",
+    Dash = b"d",
+    GlyphWidth = b"d0",
+    GlyphBox = b"d1",
+    PaintXObject = b"Do",
+    MarkPointProperties = b"DP",
+    EndImage = b"EI",
+    EndMarked = b"EMC",
+    EndText = b"ET",
+    EndCompatibility = b"EX",
+    Fill = b"f",
+    FillObsolete = b"F",
+    FillEvenOdd = b"f*",
+    StrokeGray = b"G",
+    FillGray = b"g",
+    GraphicsState = b"gs",
+    ClosePath = b"h",
+    Flatness = b"i",
+    ImageData = b"ID",
+    LineJoin = b"j",
+    LineCap = b"J",
+    StrokeCmyk = b"K",
+    FillCmyk = b"k",
+    LineTo = b"l",
+    MoveTo = b"m",
+    MiterLimit = b"M",
+    MarkPoint = b"MP",
+    EndPath = b"n",
+    Save = b"q",
+    Restore = b"Q",
+    Rectangle = b"re",
+    StrokeRgb = b"RG",
+    FillRgb = b"rg",
+    Intent = b"ri",
+    CloseStroke = b"s",
+    Stroke = b"S",
+    StrokeColor = b"SC",
+    StrokeColorN = b"SCN",
+    FillColor = b"sc",
+    FillColorN = b"scn",
+    Shade = b"sh",
+    NextLine = b"T*",
+    CharacterSpacing = b"Tc",
+    MoveText = b"Td",
+    MoveTextSetLeading = b"TD",
+    Font = b"Tf",
+    ShowText = b"Tj",
+    ShowTextArray = b"TJ",
+    Leading = b"TL",
+    TextMatrix = b"Tm",
+    RenderMode = b"Tr",
+    Rise = b"Ts",
+    WordSpacing = b"Tw",
+    HorizontalScaling = b"Tz",
+    CurveToInitial = b"v",
+    LineWidth = b"w",
+    Clip = b"W",
+    ClipEvenOdd = b"W*",
+    CurveToFinal = b"y",
+    NextLineShowText = b"'",
+    NextLineShowSpaced = b"\"",
 }
 
 /// A decoded operation with typed operands.
@@ -359,10 +360,6 @@ impl Operator {
         )
     }
 
-    /// Checks the operands (Annex A) and decodes the operation.
-    ///
-    /// # Errors
-    /// `Syntax` for a wrong operand count or type.
     /// Checks the operands (Annex A) and decodes the operation.
     ///
     /// # Errors
@@ -759,7 +756,7 @@ mod tests {
     fn every_annex_a_operator_parses_back_from_its_name() {
         assert_eq!(Operator::ALL.len(), 73);
         for &operator in Operator::ALL {
-            assert_eq!(Operator::parse(operator.name().as_bytes()), Some(operator));
+            assert_eq!(Operator::parse(operator.name()), Some(operator));
         }
         assert_eq!(Operator::parse(b"future"), None);
         assert_eq!(Operator::parse(b"TJ "), None);
