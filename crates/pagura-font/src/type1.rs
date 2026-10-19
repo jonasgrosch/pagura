@@ -5,7 +5,7 @@
 use crate::budget::Work;
 use crate::cff::strings;
 use crate::memory::{encoding, names, vector};
-use crate::read::{self, glyph_id, syntax, unsupported};
+use crate::read::{self, glyph_id, here, syntax, unsupported};
 use crate::{GlyphId, features};
 use pagura_core::bytes::Cursor;
 use pagura_core::convert::u32_to_usize;
@@ -18,11 +18,13 @@ mod aliases;
 mod charstring;
 mod charstrings;
 mod cipher;
+mod locator;
 mod tokens;
 
 use aliases::{Aliases, Assignment};
 use charstrings::CharStrings;
 use cipher::{CHARSTRING_KEY, EEXEC_DISCARD, EEXEC_KEY, decrypt};
+use locator::{Locator, Space};
 use tokens::Tokens;
 
 /// PFB framing (Adobe TN 5040): each segment starts with a marker byte and
@@ -62,15 +64,19 @@ pub(crate) struct Type1 {
     glyph_names: Vec<Option<Name>>,
     encoding: Box<[Option<Name>; 256]>,
     matrix: Transform,
+    locator: Locator,
 }
 
 impl Type1 {
     pub(crate) fn parse(data: &[u8], work: &mut Work<'_>) -> Result<Self> {
-        let (flat, binary) = flatten(data, work)?;
-        let mut clear = cleartext(&flat, work)?;
-        let plain = eexec(&flat, &clear, binary, work)?;
+        let (flat, framing) = flatten(data, work)?;
+        let mut locator = Locator::new(framing.segments);
+        let mut clear = cleartext(&flat, work).map_err(|e| locator.place(e, Space::Flat))?;
+        let plain = eexec(&flat, &clear, framing.binary, &mut locator, work)
+            .map_err(|e| locator.place(e, Space::Flat))?;
         let aliases = std::mem::take(&mut clear.aliases);
-        let Private { subrs, charstrings } = private(&plain, aliases, work)?;
+        let Private { subrs, charstrings } =
+            private(&plain, aliases, &locator, work).map_err(|e| locator.place(e, Space::Plain))?;
         let glyph_names = crate::names::indexed(
             charstrings.glyphs.len(),
             charstrings
@@ -78,7 +84,7 @@ impl Type1 {
                 .iter()
                 .map(|(name, &glyph)| Ok((glyph, name))),
             work,
-            Position::Buffer(clear.start),
+            locator.position(clear.start, Space::Flat),
         )?;
         Ok(Self {
             glyph_count: glyph_id(charstrings.glyphs.len(), Position::Unknown)?.0,
@@ -88,6 +94,7 @@ impl Type1 {
             glyph_names,
             encoding: clear.encoding,
             matrix: clear.matrix,
+            locator,
         })
     }
 
@@ -112,12 +119,20 @@ impl Type1 {
     }
 
     pub(crate) fn outline(&self, glyph: GlyphId, work: &mut Work<'_>) -> Result<Path> {
-        charstring::outline(self, glyph, work)
+        charstring::outline(self, glyph, work).map_err(|e| self.locator.place(e, Space::Plain))
     }
 
     /// The charstring width, if the glyph interprets.
     pub(crate) fn advance(&self, glyph: GlyphId, work: &mut Work<'_>) -> Option<f64> {
         charstring::advance(self, glyph, work).ok()
+    }
+
+    /// The input position of a plaintext position.
+    fn input(&self, at: Position) -> Position {
+        match at {
+            Position::Buffer(offset) => self.locator.position(offset, Space::Plain),
+            other => other,
+        }
     }
 
     pub(crate) fn heap_bytes(&self) -> usize {
@@ -126,6 +141,7 @@ impl Type1 {
             .saturating_add(names(&self.names))
             .saturating_add(crate::names::heap_bytes(&self.glyph_names))
             .saturating_add(encoding(&self.encoding))
+            .saturating_add(self.locator.heap_bytes())
     }
 }
 
@@ -152,14 +168,20 @@ fn charstring_bytes(bytes: &[u8], start: usize, len_iv: Option<usize>) -> Result
     })
 }
 
-/// The program with PFB framing removed, and whether a segment was binary.
-fn flatten<'a>(data: &'a [u8], work: &mut Work<'_>) -> Result<(Cow<'a, [u8]>, bool)> {
+/// PFB framing removed: the segment data and where each segment came from.
+#[derive(Default)]
+struct Framing {
+    segments: Vec<(usize, usize)>,
+    binary: bool,
+}
+
+fn flatten<'a>(data: &'a [u8], work: &mut Work<'_>) -> Result<(Cow<'a, [u8]>, Framing)> {
     if data.first() != Some(&PFB_MARKER) {
-        return Ok((Cow::Borrowed(data), false));
+        return Ok((Cow::Borrowed(data), Framing::default()));
     }
     let mut r = read::cursor(data);
     let mut result = Vec::new();
-    let mut binary = false;
+    let mut framing = Framing::default();
     loop {
         let at = r.position();
         work.work(1, at)?;
@@ -176,12 +198,13 @@ fn flatten<'a>(data: &'a [u8], work: &mut Work<'_>) -> Result<(Cow<'a, [u8]>, bo
         if !matches!(kind, PFB_ASCII | PFB_BINARY) {
             return Err(r.error("invalid PFB segment kind"));
         }
-        binary |= kind == PFB_BINARY;
+        framing.binary |= kind == PFB_BINARY;
         let size = u32_to_usize(u32::from_le_bytes(r.take_array()?));
         work.decoded(result.len().saturating_add(size), r.position())?;
+        framing.segments.push((result.len(), here(&r)));
         result.extend_from_slice(r.take(size)?);
     }
-    Ok((Cow::Owned(result), binary))
+    Ok((Cow::Owned(result), framing))
 }
 
 /// The eexec section's plaintext: hexadecimal data decoded unless PFB
@@ -190,6 +213,7 @@ fn eexec<'a>(
     flat: &'a [u8],
     clear: &Clear,
     binary: bool,
+    locator: &mut Locator,
     work: &mut Work<'_>,
 ) -> Result<Cow<'a, [u8]>> {
     let start = clear.start;
@@ -201,14 +225,21 @@ fn eexec<'a>(
     } else {
         cipher::hex(cipher, start, work)?
     };
-    let cipher = decoded.map_or(Cow::Borrowed(cipher), Cow::Owned);
+    let (cipher, hex) = if let Some(cipher::Hex { bytes, pairs }) = decoded {
+        work.entries(pairs.len(), Position::Buffer(start))?;
+        (Cow::Owned(bytes), Some(pairs))
+    } else {
+        (Cow::Borrowed(cipher), None)
+    };
+    let discard = if clear.encrypted { EEXEC_DISCARD } else { 0 };
+    locator.section(start, discard, hex);
     if !clear.encrypted {
         return Ok(cipher);
     }
     Ok(Cow::Owned(decrypt(
         &cipher,
         EEXEC_KEY,
-        EEXEC_DISCARD,
+        discard,
         Position::Buffer(start),
     )?))
 }
@@ -323,7 +354,12 @@ struct Private {
     charstrings: CharStrings,
 }
 
-fn private(plain: &[u8], mut aliases: Aliases, work: &mut Work<'_>) -> Result<Private> {
+fn private(
+    plain: &[u8],
+    mut aliases: Aliases,
+    locator: &Locator,
+    work: &mut Work<'_>,
+) -> Result<Private> {
     let mut r = Tokens::new(plain, work);
     let mut len_iv = Some(DEFAULT_LEN_IV);
     let mut subrs = None;
@@ -359,7 +395,7 @@ fn private(plain: &[u8], mut aliases: Aliases, work: &mut Work<'_>) -> Result<Pr
                     ));
                 }
                 let mut read = CharStrings::default();
-                read.read(&mut r, len_iv, &aliases)?;
+                read.read(&mut r, len_iv, &aliases, locator)?;
                 charstrings = Some(read);
             }
             b"closefile" => {

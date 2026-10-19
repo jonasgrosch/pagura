@@ -1,6 +1,7 @@
 //! Length-delimited CharStrings extraction (Type 1 chapters 6 and 10).
 //! Duplicate names keep the first definition as reported recovery policy.
 use super::aliases::{Aliases, Assignment};
+use super::locator::{Locator, Space};
 use super::tokens::Tokens;
 use super::{Charstring, charstring_bytes};
 use crate::read::{glyph_id, syntax};
@@ -21,6 +22,7 @@ impl CharStrings {
         r: &mut Tokens<'_, '_, '_>,
         len_iv: Option<usize>,
         aliases: &Aliases,
+        locator: &Locator,
     ) -> Result<()> {
         let count = r.integer()?;
         let at = r.position();
@@ -32,14 +34,17 @@ impl CharStrings {
             let Some(name) = token.strip_prefix(b"/") else {
                 continue;
             };
-            let at = Position::Buffer(r.token_start());
+            let name_at = r.token_start();
+            // Errors stay in plaintext offsets until the parse places them;
+            // repairs are reported with their input position.
+            let at = Position::Buffer(name_at);
             let (program, start) = r.binary(aliases)?;
             aliases.finish(r, Assignment::Define)?;
             match self.names.entry(Name::try_new(name).map_err(|e| e.at(at))?) {
                 Entry::Occupied(_) => r.work().repair(
                     repairs::TYPE1_DUPLICATE_GLYPH,
                     "later duplicate Type 1 glyph name ignored",
-                    at,
+                    locator.position(name_at, Space::Plain),
                 )?,
                 Entry::Vacant(entry) => {
                     if self.glyphs.len() >= count {

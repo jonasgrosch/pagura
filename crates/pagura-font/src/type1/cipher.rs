@@ -37,9 +37,18 @@ pub(super) fn decrypt(data: &[u8], key: u16, discard: usize, at: Position) -> Re
     Ok(result)
 }
 
+/// Hexadecimal eexec data decoded to bytes.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) struct Hex {
+    pub(super) bytes: Vec<u8>,
+    /// The decoded index and flat offset of each digit pair that does not
+    /// directly follow the previous one.
+    pub(super) pairs: Vec<(usize, usize)>,
+}
+
 /// Hexadecimal eexec `data` (at flat offset `start`) decoded, or `None` if
 /// the data is binary.
-pub(super) fn hex(data: &[u8], start: usize, work: &Work<'_>) -> Result<Option<Vec<u8>>> {
+pub(super) fn hex(data: &[u8], start: usize, work: &Work<'_>) -> Result<Option<Hex>> {
     let mut digits = data
         .iter()
         .filter(|b| !b.is_ascii_whitespace())
@@ -48,6 +57,7 @@ pub(super) fn hex(data: &[u8], start: usize, work: &Work<'_>) -> Result<Option<V
         return Ok(None);
     }
     let mut decoded = Vec::new();
+    let mut pairs = Vec::new();
     let mut high = None;
     for (i, &byte) in data.iter().enumerate() {
         if byte.is_ascii_whitespace() {
@@ -56,10 +66,17 @@ pub(super) fn hex(data: &[u8], start: usize, work: &Work<'_>) -> Result<Option<V
         let Some(digit) = hex_digit(byte) else {
             break;
         };
+        let at = start + i;
         if let Some(high) = high.take() {
-            work.decoded(decoded.len() + 1, Position::Buffer(start + i))?;
+            work.decoded(decoded.len() + 1, Position::Buffer(at))?;
             decoded.push(high * 16 + digit);
         } else {
+            let expected = pairs
+                .last()
+                .map(|&(index, flat)| flat + 2 * (decoded.len() - index));
+            if expected != Some(at) {
+                pairs.push((decoded.len(), at));
+            }
             high = Some(digit);
         }
     }
@@ -69,7 +86,10 @@ pub(super) fn hex(data: &[u8], start: usize, work: &Work<'_>) -> Result<Option<V
             "odd eexec hexadecimal data",
         ));
     }
-    Ok(Some(decoded))
+    Ok(Some(Hex {
+        bytes: decoded,
+        pairs,
+    }))
 }
 
 #[cfg(test)]
@@ -113,11 +133,12 @@ mod tests {
     }
 
     #[test]
-    fn hex_data_skips_whitespace_and_ends_at_a_non_digit() {
+    fn hex_data_records_where_digit_pairs_restart() {
         let mut diagnostics = Diagnostics::new(Recovery::Strict);
         let work = Work::new(FontBudget::new(&Limits::default()), &mut diagnostics);
         let decoded = hex(b"0aFF\n 12 x", 50, &work).unwrap().unwrap();
-        assert_eq!(decoded, [0x0a, 0xff, 0x12]);
+        assert_eq!(decoded.bytes, [0x0a, 0xff, 0x12]);
+        assert_eq!(decoded.pairs, [(0, 50), (2, 56)]);
         assert_eq!(hex(b"\x80abc", 0, &work).unwrap(), None);
         assert_eq!(hex(b"abc", 0, &work).unwrap_err().kind, ErrorKind::Syntax);
     }

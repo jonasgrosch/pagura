@@ -316,7 +316,7 @@ fn run(
                 return Ok(Flow::Return);
             }
             Operator::Escape => {
-                if escape(r.u8()?, s, w, at)? {
+                if escape(font, r.u8()?, s, w, at)? {
                     if !s.stopped && !r.at_end() {
                         return Err(r.error("data after Type 1 seac"));
                     }
@@ -364,7 +364,7 @@ fn draw(op: Operator, s: &mut State, w: &mut Work<'_>, at: Position) -> Result<(
 }
 /// An escaped command; `true` if it ends the glyph (`seac`, or an unknown
 /// command, which ends it as a reported repair).
-fn escape(code: u8, s: &mut State, w: &mut Work<'_>, at: Position) -> Result<bool> {
+fn escape(font: &Type1, code: u8, s: &mut State, w: &mut Work<'_>, at: Position) -> Result<bool> {
     let op = Escape::try_from(code);
     if s.width.is_none() && !matches!(op, Ok(Escape::Sbw | Escape::Div)) {
         return Err(syntax(at, "Type 1 width must be the first command"));
@@ -373,7 +373,7 @@ fn escape(code: u8, s: &mut State, w: &mut Work<'_>, at: Position) -> Result<boo
         w.repair(
             repairs::CHARSTRING_OPERATOR,
             "unknown escaped Type 1 operator ends glyph",
-            at,
+            font.input(at),
         )?;
         s.stack.clear();
         s.stopped = true;
@@ -495,6 +495,7 @@ fn othersubr(s: &mut State, w: &mut Work<'_>, at: Position) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use super::super::locator::Locator;
     use super::super::{Charstring, Type1};
     use super::{advance, outline};
     use crate::GlyphId;
@@ -515,6 +516,7 @@ mod tests {
             glyph_names: Vec::new(),
             encoding: Box::new(std::array::from_fn(|_| None)),
             matrix: Transform::IDENTITY,
+            locator: Locator::default(),
         }
     }
 
