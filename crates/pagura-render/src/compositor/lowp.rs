@@ -157,7 +157,12 @@ fn black(block: &mut [[u8; 4]; 4], mask: &[u8; 4]) {
         *weights = [255u16.wrapping_sub(c); 4];
         *alpha = [0, 0, 0, 255u16.wrapping_mul(c)];
     }
-    for ((out, &weight), &alpha) in block.as_flattened_mut().iter_mut().zip(&weights).zip(&alpha) {
+    for ((out, &weight), &alpha) in block
+        .as_flattened_mut()
+        .iter_mut()
+        .zip(&weights)
+        .zip(&alpha)
+    {
         *out = divide(u16::from(*out).wrapping_mul(weight).wrapping_add(alpha)) as u8;
     }
 }
@@ -212,8 +217,9 @@ mod tests {
     fn coverage_and_alpha_round_their_product_first() {
         for alpha in [0, 1, 128, 254, 255] {
             for length in 0..11 {
-                let coverage: Vec<u8> = (0..length).map(|i| (i * 37 % 256) as u8).collect();
-                let lanes: Vec<_> = (0..length).map(|i| [(i * 23 % 256) as u8; 4]).collect();
+                let byte = |i: usize, step: usize| u8::try_from(i * step % 256).unwrap();
+                let coverage: Vec<u8> = (0..length).map(|i| byte(i, 37)).collect();
+                let lanes: Vec<_> = (0..length).map(|i| [byte(i, 23); 4]).collect();
                 for color in [[200, 10, 90, 255], [0, 0, 0, 255]] {
                     let mut lanes = lanes.clone();
                     let mut single = lanes.clone();
@@ -233,7 +239,9 @@ mod tests {
         for alpha in [0, 1, 128, 255] {
             for coverage in [0, 1, 77, 254, 255] {
                 for length in 0..11 {
-                    let mut runs: Vec<_> = (0..length).map(|i| [(i * 41 % 256) as u8, 3, 250, 255]).collect();
+                    let mut runs: Vec<_> = (0..length)
+                        .map(|i| [u8::try_from(i * 41 % 256).unwrap(), 3, 250, 255])
+                        .collect();
                     let mut single = runs.clone();
                     let source = Source::new([12, 200, 99, 255], alpha);
                     run(&mut runs, coverage, &source);

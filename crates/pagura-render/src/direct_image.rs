@@ -98,16 +98,15 @@ fn finish(
     tile: Option<Tile>,
     lent: Lent<'_>,
 ) -> Result<Pixmap> {
-    let tile = match tile {
-        Some(tile) => tile,
-        None => {
-            let (width, height) = list.device_size(options)?;
-            Tile {
-                x: 0,
-                y: 0,
-                width,
-                height,
-            }
+    let tile = if let Some(tile) = tile {
+        tile
+    } else {
+        let (width, height) = list.device_size(options)?;
+        Tile {
+            x: 0,
+            y: 0,
+            width,
+            height,
         }
     };
     list.render_tile_with(options, tile, lent)

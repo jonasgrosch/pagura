@@ -258,7 +258,6 @@ fn balanced_vertex([a, b, c, d]: [Point; 4]) -> Point {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pagura_raster::PathBuilder;
 
     #[test]
     fn balanced_pieces_keep_independent_polynomial_areas_within_edge_budgets() {
@@ -289,6 +288,4 @@ mod tests {
         flatten([a, b, d, a], balanced, 0, &mut edges, &Limits::default()).unwrap();
         assert!((shoelace(&edges) + 0.15).abs() < 1e-12);
     }
-
-
 }

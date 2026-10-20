@@ -501,7 +501,6 @@ mod byte_pattern_tests {
                             byte_composition: true,
                             clip_product: false,
                             geometric_compounds: false,
-                            fragments: false,
                         },
                         &mut None,
                         Vec::new(),

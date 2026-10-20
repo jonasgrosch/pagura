@@ -578,7 +578,9 @@ mod tests {
             ..Default::default()
         });
         assert!(Arc::ptr_eq(
-            &disabled.remember(id, &dictionary, (Arc::clone(&font), false)).font,
+            &disabled
+                .remember(id, &dictionary, (Arc::clone(&font), false))
+                .font,
             &font
         ));
         assert_eq!(disabled.bytes, 0);
@@ -605,7 +607,11 @@ mod tests {
         fonts.outline(&first, 19, Arc::clone(&path));
         assert_eq!(fonts.bytes, bytes);
         fonts.maximum = bytes;
-        fonts.remember(Some(pagura_core::ObjectId::new(6, 0)), &dictionary, (font, false));
+        fonts.remember(
+            Some(pagura_core::ObjectId::new(6, 0)),
+            &dictionary,
+            (font, false),
+        );
         assert!(fonts.get(id, &dictionary, false).is_none());
         assert_eq!(fonts.outlines, 0);
         assert!(first.outline(19).is_none());
@@ -619,14 +625,23 @@ mod tests {
         let mut cache = FontCache::new(pagura_core::Limits::default());
         let drawing = cache.remember(id, &dictionary, (Arc::clone(&font), true));
         assert!(cache.get(id, &dictionary, false).is_none());
-        assert!(Arc::ptr_eq(&cache.get(id, &dictionary, true).unwrap(), &drawing));
+        assert!(Arc::ptr_eq(
+            &cache.get(id, &dictionary, true).unwrap(),
+            &drawing
+        ));
         let whole = cache.remember(id, &dictionary, (Arc::clone(&font), false));
         assert!(!whole.drawing && !Arc::ptr_eq(&whole, &drawing));
         assert!(cache.get(id, &dictionary, false).is_none());
         let mut complete = FontCache::new(pagura_core::Limits::default());
         let whole = complete.remember(id, &dictionary, (Arc::clone(&font), false));
-        assert!(Arc::ptr_eq(&complete.get(id, &dictionary, true).unwrap(), &whole));
-        assert!(Arc::ptr_eq(&complete.remember(id, &dictionary, (font, true)), &whole));
+        assert!(Arc::ptr_eq(
+            &complete.get(id, &dictionary, true).unwrap(),
+            &whole
+        ));
+        assert!(Arc::ptr_eq(
+            &complete.remember(id, &dictionary, (font, true)),
+            &whole
+        ));
     }
 
     #[test]
@@ -640,8 +655,16 @@ mod tests {
             path.rect(0.0, 0.0, width, 1.0);
             cache.outline(&font, 1, Arc::new(path.finish()));
         }
-        let first = cache.get(id, &dictionary, false).unwrap().outline(1).unwrap();
-        let second = cache.get(None, &dictionary, false).unwrap().outline(1).unwrap();
+        let first = cache
+            .get(id, &dictionary, false)
+            .unwrap()
+            .outline(1)
+            .unwrap();
+        let second = cache
+            .get(None, &dictionary, false)
+            .unwrap()
+            .outline(1)
+            .unwrap();
         assert_ne!(first, second);
         assert_eq!(cache.outlines, 2);
     }
@@ -655,8 +678,11 @@ mod tests {
             ..Default::default()
         });
         let old = cache.remember(id, &dictionary, (Arc::clone(&font), false));
-        cache.remember(Some(pagura_core::ObjectId::new(6, 0)),
-            &dictionary, (Arc::clone(&font), false));
+        cache.remember(
+            Some(pagura_core::ObjectId::new(6, 0)),
+            &dictionary,
+            (Arc::clone(&font), false),
+        );
         let replacement = cache.remember(id, &dictionary, (font, false));
         let bytes = cache.bytes;
         let mut path = pagura_raster::PathBuilder::new();
@@ -689,8 +715,11 @@ mod tests {
         let mut measured = FontCache::new(pagura_core::Limits::default());
         measured.remember(id, &dictionary, (Arc::clone(&small), false));
         let small_charge = measured.bytes;
-        measured.remember(Some(pagura_core::ObjectId::new(6, 0)),
-            &expanded, (Arc::clone(&large), false));
+        measured.remember(
+            Some(pagura_core::ObjectId::new(6, 0)),
+            &expanded,
+            (Arc::clone(&large), false),
+        );
         let large_charge = measured.bytes - small_charge;
         assert_eq!(
             large_charge - small_charge,
@@ -702,7 +731,11 @@ mod tests {
         });
         cache.remember(id, &dictionary, (Arc::clone(&small), false));
         assert_eq!(cache.bytes, small_charge);
-        cache.remember(Some(pagura_core::ObjectId::new(6, 0)), &expanded, (large, false));
+        cache.remember(
+            Some(pagura_core::ObjectId::new(6, 0)),
+            &expanded,
+            (large, false),
+        );
         assert_eq!(cache.fonts.len(), 1);
         assert_eq!(cache.bytes, small_charge);
         let mut direct = FontCache::new(pagura_core::Limits::default());

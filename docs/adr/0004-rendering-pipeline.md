@@ -438,8 +438,10 @@ takes, per primitive, the faster approximation that keeps the gate:
   result. On byte pages, the fully covered interior of an opaque image, or
   one with a soft mask, takes the exact integer area sampler of the direct
   opaque images amendment, for its colour and for its mask's levels, rounded
-  to bytes and composed once; its boundary pixels and every other image keep
-  the image sampling reference.
+  to bytes and composed once; a matte is removed from those means, which is
+  exact for the composed colour c - matte (1 - opacity) up to clipping. A
+  one-sample stencil mask is painted as a fill of its unit square. Boundary
+  pixels and every other image keep the image sampling reference.
 - **Fonts.** Embedded TrueType programs are decoded only as far as drawing
   reads them; damage in later tables is neither examined nor reported.
 

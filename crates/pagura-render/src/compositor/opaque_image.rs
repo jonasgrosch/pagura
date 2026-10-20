@@ -559,7 +559,7 @@ impl<'a, const N: usize> Levels<'a, N> {
             || !(matches!(image.decoded.mask, MaskKind::None)
                 || colour_only && matches!(image.decoded.mask, MaskKind::Soft(_)))
             || image.mask.is_some() && !colour_only
-            || image.matte.is_some() && !colour_only
+            || image.matte.is_some()
             || image.decode.len() != N
         {
             return None;

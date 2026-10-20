@@ -116,7 +116,11 @@ pub(crate) fn compile_cached(
         page,
         provider,
         fonts,
-        (pagura_image::deferred::SampleLayout::Interleaved, None, false),
+        (
+            pagura_image::deferred::SampleLayout::Interleaved,
+            None,
+            false,
+        ),
     )
 }
 

@@ -190,7 +190,15 @@ fn pixels(extent: f64) -> Result<u32> {
 pub fn render_page(document: &Document, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
     let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
     direct_image::render(
-        |layout| interpreter::compile_cached_with(document, page, None, &fonts, (layout, None, options.accuracy == Accuracy::Competitive)),
+        |layout| {
+            interpreter::compile_cached_with(
+                document,
+                page,
+                None,
+                &fonts,
+                (layout, None, options.accuracy == Accuracy::Competitive),
+            )
+        },
         options,
         None,
         (None, compositor::Lent::default()),
@@ -210,7 +218,13 @@ pub fn render_page_with(
     let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
     direct_image::render(
         |layout| {
-            interpreter::compile_cached_with(document, page, Some(provider), &fonts, (layout, None, options.accuracy == Accuracy::Competitive))
+            interpreter::compile_cached_with(
+                document,
+                page,
+                Some(provider),
+                &fonts,
+                (layout, None, options.accuracy == Accuracy::Competitive),
+            )
         },
         options,
         None,
@@ -234,7 +248,15 @@ pub fn render_tile(
 ) -> Result<Pixmap> {
     let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
     direct_image::render(
-        |layout| interpreter::compile_cached_with(document, page, None, &fonts, (layout, None, options.accuracy == Accuracy::Competitive)),
+        |layout| {
+            interpreter::compile_cached_with(
+                document,
+                page,
+                None,
+                &fonts,
+                (layout, None, options.accuracy == Accuracy::Competitive),
+            )
+        },
         options,
         Some(tile),
         (None, compositor::Lent::default()),
@@ -255,7 +277,13 @@ pub fn render_tile_with(
     let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
     direct_image::render(
         |layout| {
-            interpreter::compile_cached_with(document, page, Some(provider), &fonts, (layout, None, options.accuracy == Accuracy::Competitive))
+            interpreter::compile_cached_with(
+                document,
+                page,
+                Some(provider),
+                &fonts,
+                (layout, None, options.accuracy == Accuracy::Competitive),
+            )
         },
         options,
         Some(tile),

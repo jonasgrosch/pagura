@@ -620,10 +620,6 @@ impl Context {
     /// Paints a run of solid glyphs into byte storage from row-fragment
     /// masks, scaled by the clip's prepared product. Work is charged for each
     /// glyph's bounds and every level of its mask, as for a dense mask.
-    #[expect(
-        clippy::cast_possible_wrap,
-        reason = "mask extents and device tiles are bounded by the pixel budget"
-    )]
     fn fragment_glyphs(
         &mut self,
         run: &crate::display::GlyphRun,
@@ -805,12 +801,7 @@ impl Context {
         let (x, y) = origin;
         let offset = (y - tile.y) as usize * stride + (x - tile.x) as usize;
         if let Some((width, coverage)) = dense
-            && buffer.small_mask(
-                (offset, stride, width),
-                coverage,
-                color,
-                p.composite.alpha,
-            )?
+            && buffer.small_mask((offset, stride, width), coverage, color, p.composite.alpha)?
         {
             return Ok(());
         }
@@ -1519,8 +1510,6 @@ pub(crate) struct Policy {
     pub(crate) clip_product: bool,
     /// Keep geometric integration of compound paths without a stroke boundary.
     pub(crate) geometric_compounds: bool,
-    /// Solid glyphs in byte storage take masks from row fragments.
-    pub(crate) fragments: bool,
 }
 
 impl Policy {
@@ -1531,7 +1520,6 @@ impl Policy {
         byte_composition: true,
         clip_product: true,
         geometric_compounds: true,
-        fragments: true,
     };
 
     fn rasterizer(self) -> Result<pagura_raster::Rasterizer> {
@@ -1644,7 +1632,8 @@ fn render_policy(
         context.raster = bands.rasterizer()?;
         context.spare = spare;
     }
-    let mut fragments = fragments.filter(|_| bands.is_some_and(|b| b.fragments));
+    // Solid glyphs in byte storage take masks from row fragments when given.
+    let mut fragments = fragments.filter(|_| bands.is_some());
     if let Some(slot) = fragments.as_deref_mut() {
         context.fragments = slot.take();
     }
@@ -1664,72 +1653,72 @@ impl Context {
         (plan, bands): (plan::Plan, Option<Policy>),
     ) -> Result<Pixmap> {
         let context = self;
-    let model = list.group.model.unwrap_or(if context.separations.enabled {
-        Model::Cmyk
-    } else {
-        Model::Rgb
-    });
-    // Wide retained groups have a much larger live working set. Keep their
-    // existing square chunks; narrow pages can retain full-width byte bands.
-    let band_width = if bands.is_some() && plan.format != plan::Format::F64 {
-        tile.width
-    } else {
-        plan.side
-    };
-    let band_height = bands.map_or(plan.side, |b| {
-        if plan.format == plan::Format::F64 {
-            b.rows.min(plan.side)
+        let model = list.group.model.unwrap_or(if context.separations.enabled {
+            Model::Cmyk
         } else {
-            b.rows
+            Model::Rgb
+        });
+        // Wide retained groups have a much larger live working set. Keep their
+        // existing square chunks; narrow pages can retain full-width byte bands.
+        let band_width = if bands.is_some() && plan.format != plan::Format::F64 {
+            tile.width
+        } else {
+            plan.side
+        };
+        let band_height = bands.map_or(plan.side, |b| {
+            if plan.format == plan::Format::F64 {
+                b.rows.min(plan.side)
+            } else {
+                b.rows
+            }
+        });
+        if plan.format == plan::Format::U8
+            && band_width >= tile.width
+            && options.background.a == 255
+            && !matches!(list.commands.as_slice(), [Command::Image(_)])
+        {
+            return context.byte_page(list, model, tile, band_height, options.background);
         }
-    });
-    if plan.format == plan::Format::U8
-        && band_width >= tile.width
-        && options.background.a == 255
-        && !matches!(list.commands.as_slice(), [Command::Image(_)])
-    {
-        return context.byte_page(list, model, tile, band_height, options.background);
-    }
-    let mut output = Pixmap::with_storage(
-        tile.width,
-        tile.height,
-        options.background,
-        list.limits,
-        std::mem::take(&mut context.spare),
-    )?;
-    let mut y = tile.y;
-    while y < tile.y + tile.height {
-        let height = (tile.y + tile.height - y).min(band_height);
-        let mut x = tile.x;
-        while x < tile.x + tile.width {
-            let width = (tile.x + tile.width - x).min(band_width);
-            let region = Tile {
-                x,
-                y,
-                width,
-                height,
-            };
-            context.render_chunk(
-                list,
-                model,
-                &mut output,
-                tile,
-                region,
-                (
-                    plan.format,
-                    [
-                        options.background.r,
-                        options.background.g,
-                        options.background.b,
-                        options.background.a,
-                    ],
-                ),
-            )?;
-            x += width;
+        let mut output = Pixmap::with_storage(
+            tile.width,
+            tile.height,
+            options.background,
+            list.limits,
+            std::mem::take(&mut context.spare),
+        )?;
+        let mut y = tile.y;
+        while y < tile.y + tile.height {
+            let height = (tile.y + tile.height - y).min(band_height);
+            let mut x = tile.x;
+            while x < tile.x + tile.width {
+                let width = (tile.x + tile.width - x).min(band_width);
+                let region = Tile {
+                    x,
+                    y,
+                    width,
+                    height,
+                };
+                context.render_chunk(
+                    list,
+                    model,
+                    &mut output,
+                    tile,
+                    region,
+                    (
+                        plan.format,
+                        [
+                            options.background.r,
+                            options.background.g,
+                            options.background.b,
+                            options.background.a,
+                        ],
+                    ),
+                )?;
+                x += width;
+            }
+            y += height;
         }
-        y += height;
-    }
-    Ok(output)
+        Ok(output)
     }
 }
 

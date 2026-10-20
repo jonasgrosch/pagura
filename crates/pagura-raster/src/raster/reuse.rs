@@ -103,7 +103,12 @@ impl Rasterizer {
         for shape in clip.shapes.iter().filter(|s| !s.covers(origin, size)) {
             if let Some(r) = shape.rectangle() {
                 rectangle = Some(rectangle.map_or([r.left, r.top, r.right, r.bottom], |b| {
-                    [b[0].max(r.left), b[1].max(r.top), b[2].min(r.right), b[3].min(r.bottom)]
+                    [
+                        b[0].max(r.left),
+                        b[1].max(r.top),
+                        b[2].min(r.right),
+                        b[3].min(r.bottom),
+                    ]
                 }));
             } else {
                 others = true;
@@ -486,12 +491,12 @@ impl Rasterizer {
         let (x, y, width, _) = region;
         if let Some(product) = clip.product.as_deref() {
             let stride = clip.width as usize;
-            let left = x
-                .checked_sub(clip.origin.0)
-                .ok_or(Error::invalid_argument("mask precedes clip"))? as usize;
-            let top = y
-                .checked_sub(clip.origin.1)
-                .ok_or(Error::invalid_argument("mask precedes clip"))? as usize;
+            let left =
+                x.checked_sub(clip.origin.0)
+                    .ok_or(Error::invalid_argument("mask precedes clip"))? as usize;
+            let top =
+                y.checked_sub(clip.origin.1)
+                    .ok_or(Error::invalid_argument("mask precedes clip"))? as usize;
             for (row, coverage) in mask.coverage.chunks_exact_mut(width as usize).enumerate() {
                 let start = (top + row) * stride + left;
                 let factors = product
@@ -616,7 +621,11 @@ fn multiply_mask(target: &mut [u8], coverage: &[u8]) {
     clippy::cast_sign_loss,
     reason = "factors in [0, 1] scale to bytes"
 )]
-fn clip_rectangle(coverage: &mut [u8], (x, y, width): (u32, u32, u32), [left, top, right, bottom]: [f64; 4]) {
+fn clip_rectangle(
+    coverage: &mut [u8],
+    (x, y, width): (u32, u32, u32),
+    [left, top, right, bottom]: [f64; 4],
+) {
     let factor = |start: u32, low: f64, high: f64| {
         let start = f64::from(start);
         (high.min(start + 1.0) - low.max(start)).clamp(0.0, 1.0)
@@ -726,7 +735,8 @@ mod tests {
         let mut raster = Rasterizer::with_approximate_clip_product(1.0 / 64.0).unwrap();
         // Two rectangles intersect into one: [1.5, 0.25] to [3.25, 2.75].
         let mut clip = region(&rectangle(0.5, 0.25, 2.75, 3.0), 4);
-        clip.intersect(&region(&rectangle(1.5, 0.0, 2.5, 2.75), 4)).unwrap();
+        clip.intersect(&region(&rectangle(1.5, 0.0, 2.5, 2.75), 4))
+            .unwrap();
         raster.prepare_clip(&mut clip).unwrap();
         assert_eq!(clip.rectangle(), Some([1.5, 0.25, 3.25, 2.75]));
         assert!(clip.product().is_none());
@@ -738,27 +748,58 @@ mod tests {
         triangle.line_to(Point::new(4.0, 4.0)).unwrap();
         triangle.close();
         let mask = raster
-            .clipped_path(&clip, Arc::new(triangle.finish()), Transform::IDENTITY, FillRule::NonZero, Limits::default())
+            .clipped_path(
+                &clip,
+                Arc::new(triangle.finish()),
+                Transform::IDENTITY,
+                FillRule::NonZero,
+                Limits::default(),
+            )
             .unwrap()
             .unwrap();
-        let alone = Mask::from_path(4, 4, &triangle_path(), Transform::IDENTITY, FillRule::NonZero, 16).unwrap();
-        for y in 0..3usize {
-            for x in 1..4usize {
-                let horizontal = [0.0, 0.5, 1.0, 0.25][x];
-                let vertical = [0.75, 1.0, 0.75][y];
-                let level = (horizontal * vertical * 255.0_f64).round() as u32;
+        let alone = Mask::from_path(
+            4,
+            4,
+            &triangle_path(),
+            Transform::IDENTITY,
+            FillRule::NonZero,
+            16,
+        )
+        .unwrap();
+        // Rounded products of the column and row factors.
+        let levels = [[0, 96, 191, 48], [0, 128, 255, 64], [0, 96, 191, 48]];
+        for (y, levels) in levels.iter().enumerate() {
+            for (x, &level) in levels.iter().enumerate().skip(1) {
                 let value = u32::from(alone.coverage()[y * 4 + x]);
                 let (mx, my) = mask.origin();
                 let index = (y - my as usize) * mask.width() as usize + x - mx as usize;
-                assert_eq!(u32::from(mask.coverage()[index]), (value * level + 127) / 255, "{x} {y}");
+                assert_eq!(
+                    u32::from(mask.coverage()[index]),
+                    (value * level + 127) / 255,
+                    "{x} {y}"
+                );
             }
         }
         // A rectangle within the rectangles integrates exactly with them.
         let mask = raster
-            .clipped_path(&clip, rectangle(0.0, 0.5, 4.0, 1.0), Transform::IDENTITY, FillRule::NonZero, Limits::default())
+            .clipped_path(
+                &clip,
+                rectangle(0.0, 0.5, 4.0, 1.0),
+                Transform::IDENTITY,
+                FillRule::NonZero,
+                Limits::default(),
+            )
             .unwrap()
             .unwrap();
-        let exact = clip.clipped_path(&rectangle(0.0, 0.5, 4.0, 1.0), Transform::IDENTITY, FillRule::NonZero, Limits::default()).unwrap().unwrap();
+        let exact = clip
+            .clipped_path(
+                &rectangle(0.0, 0.5, 4.0, 1.0),
+                Transform::IDENTITY,
+                FillRule::NonZero,
+                Limits::default(),
+            )
+            .unwrap()
+            .unwrap();
         assert_eq!(mask.coverage(), exact.coverage());
     }
 

@@ -161,7 +161,9 @@ impl Bytes {
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
-        reason = "rectangles are intersected with the surface before indexing"
+        clippy::cast_possible_wrap,
+        reason = "mask extents are budgeted; rectangles are intersected with the surface \
+                  before indexing"
     )]
     pub(super) fn mask(
         &mut self,
@@ -210,7 +212,11 @@ impl Bytes {
         }
         let extent = [column as u32, (column + count) as u32];
         let source = super::lowp::Source::new(color, alpha);
-        let rows = self.pixels.as_chunks_mut::<4>().0.chunks_exact_mut(self.width);
+        let rows = self
+            .pixels
+            .as_chunks_mut::<4>()
+            .0
+            .chunks_exact_mut(self.width);
         let painted = self.painted[first..].iter_mut();
         for ((y, pixels), painted) in (y0..y1).zip(rows.skip(first)).zip(painted) {
             let start = (y - origin.1) as usize * stride + (x0 - origin.0) as usize;
@@ -257,7 +263,12 @@ impl Bytes {
         colors: &[[u8; 4]],
         opacities: &[[u8; 4]],
     ) -> Result<()> {
-        for ((pixel, &color), opacity) in self.run(offset, colors.len())?.iter_mut().zip(colors).zip(opacities) {
+        for ((pixel, &color), opacity) in self
+            .run(offset, colors.len())?
+            .iter_mut()
+            .zip(colors)
+            .zip(opacities)
+        {
             super::lowp::pixel(pixel, color, opacity[0]);
         }
         Ok(())
@@ -565,14 +576,12 @@ mod tests {
         assert!(!inside(rectangle, (2, 0, 1)));
         let mut row = vec![255, 255, 255, 200];
         scale_edges(rectangle, (0, 0), &mut row);
-        // Columns overlap 0, 1/2, 1 and 1/4; the row overlaps 3/4.
-        let expected: Vec<u8> = [0.0, 0.5, 1.0, 0.25]
+        // Columns overlap 0, 1/2, 1 and 1/4; the row overlaps 3/4, so the
+        // rounded levels are 0, 96, 191 and 48.
+        let expected: Vec<u8> = [0u32, 96, 191, 48]
             .iter()
             .zip([255u32, 255, 255, 200])
-            .map(|(h, v)| {
-                let level = (h * 0.75 * 255.0_f64).round() as u32;
-                u8::try_from((v * level + 127) / 255).unwrap()
-            })
+            .map(|(level, v)| u8::try_from((v * level + 127) / 255).unwrap())
             .collect();
         assert_eq!(row, expected);
     }

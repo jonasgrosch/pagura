@@ -145,15 +145,9 @@ impl Decoder {
         for mcu in 0..cols * rows {
             let (row, column) = (mcu / cols, mcu % cols);
             if mcu > 0 && self.restart != 0 && mcu % self.restart == 0 {
-                if eob != 0 {
-                    return Err(bits.error("JPEG EOB run crosses restart"));
-                }
-                if let Some(coder) = &mut arithmetic {
-                    coder.restart(sequence)?;
-                } else {
-                    bits.restart(sequence, diagnostics, &mut self.padding_reported)?;
-                }
-                sequence = (sequence + 1) % 8;
+                let (entropy, reported) =
+                    ((&mut bits, arithmetic.as_mut()), &mut self.padding_reported);
+                restart(entropy, (eob, &mut sequence), (diagnostics, reported))?;
                 predictors.fill(0);
             }
             for &(i, dc, ac) in &scan.selected {
@@ -254,6 +248,28 @@ impl Decoder {
         bits.align(diagnostics, &mut self.padding_reported)?;
         scan_end(data, bits.offset(), &mut self.work, limits, diagnostics)
     }
+}
+
+/// Resets the entropy decoder at the next restart marker, which must follow
+/// a complete EOB run and carry the expected sequence number (T.81 B.2.1).
+fn restart(
+    (bits, arithmetic): (
+        &mut Bits<'_>,
+        Option<&mut super::arithmetic::Arithmetic<'_>>,
+    ),
+    (eob, sequence): (u32, &mut u8),
+    (diagnostics, reported): (&mut Diagnostics, &mut bool),
+) -> Result<()> {
+    if eob != 0 {
+        return Err(bits.error("JPEG EOB run crosses restart"));
+    }
+    if let Some(coder) = arithmetic {
+        coder.restart(*sequence)?;
+    } else {
+        bits.restart(*sequence, diagnostics, reported)?;
+    }
+    *sequence = (*sequence + 1) % 8;
+    Ok(())
 }
 
 /// Charges one data unit's 64 coefficients against the work budget.

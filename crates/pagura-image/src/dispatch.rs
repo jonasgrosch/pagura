@@ -24,6 +24,26 @@ pub(crate) fn decode(
     )
 }
 
+/// Samples of unfiltered image data. Whole bytes of exactly the declared
+/// extent are the samples themselves when the data is owned.
+fn unfiltered(
+    data: std::borrow::Cow<'_, [u8]>,
+    (width, height, components, bits): (u32, u32, u8, u8),
+    limits: &pagura_core::Limits,
+    diagnostics: &mut Diagnostics,
+) -> Result<Samples> {
+    let count = usize::try_from(u64::from(width) * u64::from(height) * u64::from(components)).ok();
+    Ok(match data {
+        std::borrow::Cow::Owned(mut bytes) if bits == 8 && count == Some(bytes.len()) => {
+            bytes.shrink_to_fit();
+            Samples::Bytes(bytes)
+        }
+        data => {
+            p::unpack_with_diagnostics(&data, width, height, components, bits, limits, diagnostics)?
+        }
+    })
+}
+
 pub(crate) fn decode_with(
     document: &Document,
     dict: &Dictionary,
@@ -81,24 +101,12 @@ pub(crate) fn decode_with(
         }
         None => {
             image.bits_per_component = bits;
-            let count =
-                usize::try_from(u64::from(width) * u64::from(height) * u64::from(components)).ok();
-            image.samples = match data {
-                // Whole bytes of exactly the declared extent are the samples.
-                std::borrow::Cow::Owned(mut bytes) if bits == 8 && count == Some(bytes.len()) => {
-                    bytes.shrink_to_fit();
-                    Samples::Bytes(bytes)
-                }
-                data => p::unpack_with_diagnostics(
-                    &data,
-                    width,
-                    height,
-                    components,
-                    bits,
-                    &limits,
-                    diagnostics,
-                )?,
-            };
+            image.samples = unfiltered(
+                data,
+                (width, height, components, bits),
+                &limits,
+                diagnostics,
+            )?;
         }
         Some(ImageCodec::Dct) => {
             image.samples = decode_dct(

@@ -20,17 +20,7 @@ impl Context {
         knockout: bool,
         depth: usize,
     ) -> Result<()> {
-        // Keep an expanded palette only while its image is painted.
-        if matches!(
-            command.image.space,
-            Some(crate::color::Space::Indexed { .. })
-        ) && self
-            .palette
-            .as_ref()
-            .is_some_and(|p| !p.matches(&command.image))
-        {
-            self.clear_palette();
-        }
+        self.keep_palette_for(&command.image);
         let transform = command.transform.then(self.device);
         if !transform.is_finite() {
             return Err(Error::limit("image transform overflow"));
@@ -46,9 +36,7 @@ impl Context {
         else {
             return Ok(());
         };
-        if matches!(target.narrow(), Some(super::narrow::Buffer::U8(_)))
-            && self.constant_stencil((command, &clip), target, initial, model, knockout, depth)?
-        {
+        if self.constant_stencil((command, &clip), target, initial, model, knockout, depth)? {
             return Ok(());
         }
         let soft = command
@@ -165,7 +153,8 @@ impl Context {
         depth: usize,
     ) -> Result<bool> {
         let image = &command.image;
-        if image.decoded.width != 1
+        if !matches!(target.narrow(), Some(super::narrow::Buffer::U8(_)))
+            || image.decoded.width != 1
             || image.decoded.height != 1
             || !matches!(image.decoded.kind, ImageKind::Stencil { .. })
             || !matches!(image.decoded.mask, MaskKind::None)

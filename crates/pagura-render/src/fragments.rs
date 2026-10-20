@@ -73,4 +73,3 @@ const NO_ROUNDING_INSTRUCTION: bool =
 
 #[cfg(test)]
 mod tests;
-
