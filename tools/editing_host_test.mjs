@@ -1,6 +1,6 @@
 /** Hosted test of the browser's actual client, WASI bridge and form sample. */
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { SessionClient } from '../web/client.mjs';
 import { runHost } from '../web/worker.mjs';
@@ -88,7 +88,8 @@ if (!isMainThread) {
       const input = formDocument({ missingFont: true, needAppearances: true, ...extra });
       const view = await client.open(input, 0);
       assert.deepEqual(await client.saveForm(view.document, []), input, 'no-op does not regenerate NeedAppearances');
-      const pixels = await client.renderTile(view.document, 0, 1, tile);
+      const display = await client.open(input, 1);
+      const pixels = await client.renderTile(display.document, 0, 1, tile);
       const output = await client.saveForm(view.document, [{ index: 0, kind: 0, value: 'Updated München' }]);
       assert.deepEqual(output.subarray(0, input.length), input);
       const result = await client.open(output, 0);
@@ -102,7 +103,8 @@ if (!isMainThread) {
       const appended = new TextDecoder().decode(output.subarray(input.length));
       assert.ok(!appended.includes('(Previous value) Tj'), 'old unmarked text is not duplicated into the new appearance');
       assert.ok(appended.includes('/WinAnsiEncoding'), 'fallback is explicitly serialized');
-      await client.close(view.document); await client.close(result.document);
+      await writeFile(`target/form-compatibility-${extra.unmarked ? 'unmarked' : 'empty'}.pdf`, output);
+      await client.close(display.document); await client.close(view.document); await client.close(result.document);
     }
     const unknown = await client.open(formDocument({ missingFont: true, unknownFont: true }), 0);
     await assert.rejects(client.saveForm(unknown.document, [{ index: 0, kind: 0, value: 'Rejected' }]), /standard font/);

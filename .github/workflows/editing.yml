@@ -48,7 +48,12 @@ jobs:
         with:
           node-version: 26.8.1
       - name: Browser editing bridge
-        run: node tools/editing_host_test.mjs
+        run: |
+          node tools/editing_host_test.mjs
+          for file in target/form-compatibility-*.pdf; do
+            qpdf --check "$file"
+            pdftoppm -f 1 -singlefile -scale-to 600 "$file" "${file%.pdf}"
+          done
       - name: Publish browser module
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
