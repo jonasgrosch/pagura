@@ -165,6 +165,7 @@ fn empty() -> DecodedImage {
         decode: None,
         mask: MaskKind::None,
         interpolate: false,
+        reduction: None,
     }
 }
 

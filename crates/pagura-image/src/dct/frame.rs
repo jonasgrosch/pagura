@@ -25,10 +25,10 @@ impl Storage {
 }
 
 impl Storage {
-    fn new(blocks: usize, progressive: bool, twelve_bit: bool) -> Self {
+    fn new(blocks: usize, progressive: bool, twelve_bit: bool, cells: usize) -> Self {
         match (progressive, twelve_bit) {
             (true, _) => Self::Coefficients(vec![[0; 64]; blocks]),
-            (false, false) => Self::Bytes(vec![0; blocks * 64]),
+            (false, false) => Self::Bytes(vec![0; blocks * cells * cells]),
             (false, true) => Self::Words(vec![0; blocks * 64]),
         }
     }
@@ -57,9 +57,14 @@ pub(super) struct Frame {
     pub(super) baseline: bool,
     pub(super) arithmetic: bool,
     pub(super) precision: u8,
+    /// Samples kept per block axis: eight, or fewer for an eight-bit frame
+    /// reconstructed near its drawn size.
+    pub(super) cells: usize,
 }
 impl Frame {
-    pub(super) fn parse(data: &[u8], process: u8, limits: &Limits) -> Result<Self> {
+    /// Parses a frame header. An eight-bit frame keeps `cells` samples per
+    /// block axis (1, 2, 3, 4, 6 or 8); twelve-bit frames keep all eight.
+    pub(super) fn parse(data: &[u8], process: u8, limits: &Limits, cells: usize) -> Result<Self> {
         if data.len() < 6 {
             return Err(Error::syntax("truncated JPEG frame"));
         }
@@ -144,8 +149,9 @@ impl Frame {
             return Err(Error::limit("JPEG coefficient and sample budget exceeded"));
         }
         let progressive = matches!(process, 0xc2 | 0xca);
+        let cells = if twelve_bit { 8 } else { cells };
         for c in &mut components {
-            c.storage = Storage::new(c.stride * c.rows, progressive, twelve_bit);
+            c.storage = Storage::new(c.stride * c.rows, progressive, twelve_bit, cells);
         }
         Ok(Self {
             width,
@@ -159,6 +165,7 @@ impl Frame {
             arithmetic: matches!(process, 0xc9 | 0xca),
             precision: data[0],
             baseline: process == 0xc0,
+            cells,
         })
     }
 }

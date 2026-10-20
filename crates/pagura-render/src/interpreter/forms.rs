@@ -224,6 +224,7 @@ impl Compiler<'_> {
             glyphs: Vec::new(),
             hulls: crate::display::GlyphHulls::default(),
             drawing: self.drawing,
+            drawn: None,
         }
     }
 }

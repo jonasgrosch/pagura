@@ -52,7 +52,7 @@ pub(crate) fn decode_with(
     (layout, buffers): (SampleLayout, Option<&SampleBuffers>),
     diagnostics: &mut Diagnostics,
 ) -> Result<DecodedImage> {
-    let deferred = layout == SampleLayout::Deferred;
+    let (deferred, cells) = (layout == SampleLayout::Deferred, layout.cells());
     let (width, height) = p::dimensions(dict)?;
     let limits = document.limits();
     p::budget(width, height, 1, 1, &limits)?;
@@ -92,6 +92,7 @@ pub(crate) fn decode_with(
         decode: None,
         mask: MaskKind::None,
         interpolate: false,
+        reduction: None,
     };
     let params = codec.and_then(|(_, params)| params.as_ref());
     match codec.map(|(codec, _)| codec) {
@@ -109,15 +110,14 @@ pub(crate) fn decode_with(
             )?;
         }
         Some(ImageCodec::Dct) => {
-            image.samples = decode_dct(
+            decode_dct(
                 &data,
                 params,
-                (width, height, components, bits),
-                (deferred, buffers),
+                (&mut image, bits),
+                (deferred, cells, buffers),
                 &limits,
                 diagnostics,
             )?;
-            image.bits_per_component = 8;
         }
         Some(ImageCodec::CcittFax) => {
             if bits != 1 || components != 1 {
@@ -211,17 +211,21 @@ fn color_transform(params: Option<&Dictionary>) -> Result<Option<i64>> {
         .transpose()
 }
 
+/// Decodes DCTDecode samples into `image`, in native planes when `deferred`
+/// and otherwise with `cells` samples per eight-sample block axis.
+///
 /// An independently validated lossless image cannot be a JPEG with a damaged
 /// SOI: all Flate framing, checksums, row tags and sample counts must agree.
 fn decode_dct(
     data: &[u8],
     params: Option<&Dictionary>,
-    dimensions: (u32, u32, u8, u8),
-    (deferred, buffers): (bool, Option<&SampleBuffers>),
+    (image, bits): (&mut DecodedImage, u8),
+    (deferred, cells, buffers): (bool, u8, Option<&SampleBuffers>),
     limits: &pagura_core::Limits,
     diagnostics: &mut Diagnostics,
-) -> Result<Samples> {
-    let (width, height, components, bits) = dimensions;
+) -> Result<()> {
+    let (width, height, components) = (image.width, image.height, image.components);
+    image.bits_per_component = 8;
     let transform = color_transform(params)?;
     // A deferred decode that fails or does not apply leaves no trace: the
     // ordinary decoder below then reports its own errors and repairs.
@@ -248,9 +252,10 @@ fn decode_dct(
                 "JPEG metadata disagrees with image dictionary",
             ));
         }
-        return Ok(samples);
+        image.samples = samples;
+        return Ok(());
     }
-    let decoded = match dct::decode_with_diagnostics(data, transform, limits, diagnostics) {
+    let decoded = match dct::decode_cells(data, transform, limits, diagnostics, cells) {
         Ok(decoded) => decoded,
         Err(error) => {
             if !data.starts_with(&[0xff, 0xd8])
@@ -265,13 +270,14 @@ fn decode_dct(
                     )
                     .at(pagura_core::Position::Buffer(0)),
                 )?;
-                return Ok(Samples::Bytes(samples));
+                image.samples = Samples::Bytes(samples);
+                return Ok(());
             }
             return Err(error);
         }
     };
-    if decoded.width != width
-        || decoded.height != height
+    if decoded.width != dct::scaled_length(width, decoded.cells)
+        || decoded.height != dct::scaled_length(height, decoded.cells)
         || decoded.components != components
         || bits != 8
     {
@@ -279,7 +285,17 @@ fn decode_dct(
             "JPEG metadata disagrees with image dictionary",
         ));
     }
-    Ok(Samples::Bytes(decoded.samples))
+    image.samples = Samples::Bytes(decoded.samples);
+    if decoded.cells < 8 {
+        image.width = decoded.width;
+        image.height = decoded.height;
+        image.reduction = Some(crate::Reduction {
+            cells: decoded.cells,
+            width,
+            height,
+        });
+    }
+    Ok(())
 }
 
 fn predicted_flate(

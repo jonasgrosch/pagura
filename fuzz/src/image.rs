@@ -187,11 +187,54 @@ fn xobject(data: &[u8], root: u32, recovery: Recovery) {
             image.is_none() || deferred.is_some(),
             "deferred decoding loses an image"
         );
+        let cells = [1, 2, 3, 4, 6][root as usize % 5];
+        let reduced = super::checked(pagura_image::decode_xobject_with(
+            &document,
+            object,
+            SampleLayout::Cells(cells),
+            None,
+        ));
+        // Drawn-size cells consume and validate every coefficient, and only
+        // shrink storage.
+        assert!(
+            image.is_none() || reduced.is_some(),
+            "drawn-size decoding loses an image"
+        );
+        if let (Some(image), Some(reduced)) = (&image, &reduced) {
+            assert_reduced(image, reduced);
+        }
         if let (Some(image), Some(deferred)) = (image, deferred) {
             assert_deferred(&image, &deferred);
         }
     }
     super::assert_diagnostics(&document.diagnostics(), recovery);
+}
+
+/// A reduced image keeps its declared extent and every other property.
+fn assert_reduced(image: &DecodedImage, reduced: &DecodedImage) {
+    assert_decoded(reduced);
+    let Some(reduction) = reduced.reduction else {
+        assert_eq!(image, reduced, "an unreduced image changes");
+        return;
+    };
+    assert_eq!(
+        (reduction.width, reduction.height),
+        (image.width, image.height),
+        "a reduction loses the declared size"
+    );
+    assert_eq!(
+        (reduced.width, reduced.height),
+        (
+            dct::scaled_length(image.width, reduction.cells),
+            dct::scaled_length(image.height, reduction.cells)
+        ),
+        "reduced cells disagree with the declared size"
+    );
+    assert_eq!(
+        (reduced.components, &reduced.kind, &reduced.mask),
+        (image.components, &image.kind, &image.mask),
+        "a reduction changes the image's interpretation"
+    );
 }
 
 /// Deferred samples are the exact samples in another layout.
