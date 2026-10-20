@@ -1,4 +1,6 @@
 //! Stateless browser editing adapter; each save returns a new immutable PDF.
+mod aliases;
+
 use crate::protocol::{Encoder, Reader};
 use pagura::editing::{SaveOptions, save_filled_form};
 use pagura::forms::{
@@ -131,6 +133,19 @@ fn write_options(
 }
 
 pub(crate) fn save(document: &Document, changes: &[u8]) -> Result<Vec<u8>> {
+    let normalized = aliases::normalize(document)?
+        .map(|bytes| {
+            Document::open(
+                bytes,
+                &pagura::OpenOptions {
+                    recovery: pagura::Recovery::Strict,
+                    limits: *document.limits(),
+                    ..Default::default()
+                },
+            )
+        })
+        .transpose()?;
+    let document = normalized.as_ref().unwrap_or(document);
     let mut reader = Reader::new(changes);
     let count = index(reader.u32()?)?;
     if count > MAX_FIELDS {
@@ -211,36 +226,11 @@ pub(crate) fn widgets(document: &Document, page: u32) -> Result<Vec<u8>> {
         out.count(0)?;
         return Ok(out.finish());
     };
-    if form.widgets.len() > MAX_OPTIONS || form.fields.len() > MAX_FIELDS {
-        return Err(Error::limit("browser form widget budget exceeded"));
-    }
-    let mut by_id = std::collections::BTreeMap::new();
-    for (index, widget) in form.widgets.iter().enumerate() {
-        if let Some(id) = widget.object
-            && document
-                .object(id)?
-                .dictionary()
-                .is_some_and(|d| std::ptr::eq(d, widget.dictionary))
-        {
-            by_id.insert(id, index);
-        }
-    }
+    let mut matcher = aliases::Matcher::new(document, &form)?;
     let mut selected = std::collections::BTreeSet::new();
-    if let Some(annots) = page.dictionary().get(b"Annots") {
-        let annots = document
-            .resolve(annots)?
-            .as_array()
-            .ok_or(Error::syntax("Annots must be an array"))?;
-        if annots.len() > document.limits().value_nodes {
-            return Err(Error::limit("annotation count exceeded"));
-        }
-        for annotation in annots {
-            if let Some(index) = annotation.as_reference().and_then(|id| by_id.get(&id)) {
-                let widget = &form.widgets[*index];
-                if overlay_visible(document, widget)? {
-                    selected.insert(*index);
-                }
-            }
+    for (_, index) in matcher.page(document, page)? {
+        if overlay_visible(document, &form.widgets[index])? {
+            selected.insert(index);
         }
     }
     out.count(selected.len())?;

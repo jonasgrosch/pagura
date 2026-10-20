@@ -66,6 +66,17 @@ if (!isMainThread) {
     assert.equal((await client.formFields(reopened.document))[0].value, 'Second edit');
     assert.throws(() => encodeChanges([changes[0], changes[0]]), /duplicate/);
     assert.throws(() => encodeChanges([{ index: 0, kind: 1, indices: [-1] }]), /Invalid/);
+    const duplicated = formDocument({ duplicateText: true }), duplicateView = await client.open(duplicated, 0);
+    assert.equal((await client.formWidgets(duplicateView.document, 0)).length, 5, 'exact duplicated widget remains interactive');
+    const duplicateSaved = await client.saveForm(duplicateView.document, [{ index: 0, kind: 0, value: 'Reconciled' }]);
+    assert.deepEqual(duplicateSaved.subarray(0, duplicated.length), duplicated);
+    const duplicateReopened = await client.open(duplicateSaved, 0);
+    const duplicatePixels = await client.renderTile(duplicateReopened.document, 0, 1, tile);
+    const canonicalSaved = await client.saveForm(opened.document, [{ index: 0, kind: 0, value: 'Reconciled' }]);
+    const canonicalReopened = await client.open(canonicalSaved, 0);
+    assert.deepEqual(duplicatePixels.rgba, (await client.renderTile(canonicalReopened.document, 0, 1, tile)).rgba, 'reconciled references display saved field appearance');
+    const different = await client.open(formDocument({ duplicateText: true, differentText: true }), 0);
+    assert.equal((await client.formWidgets(different.document, 0)).length, 4, 'same name and rectangle do not establish widget identity');
     // Independently authored analogue of a real-world colour-operator mismatch.
     // Display recovery must not force saving through a repaired document.
     const compatibleBytes = formDocument({ colourRepair: true });
