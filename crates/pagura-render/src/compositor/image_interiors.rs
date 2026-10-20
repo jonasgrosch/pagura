@@ -3,6 +3,7 @@
 //! palettes expand once into codes instead of unpacking a Texel per footprint,
 //! and a matte is removed from each sample once, as the image sampler does.
 use super::{Context, Model, Surface, narrow};
+use crate::hash::FastMap;
 use crate::{color::Space, display::ImageCommand, interpreter::images::Image};
 use pagura_core::{Error, Result};
 use pagura_image::{DecodedImage, ImageKind, MaskKind, Samples};
@@ -10,16 +11,14 @@ use pagura_raster::{Mask, Pixmap, Rgba8};
 use std::sync::{Arc, Weak};
 
 /// One expanded image, a palette's colours or samples without their matte,
-/// shared by every band of its immutable source image.
-pub(super) struct Palette {
+/// shared by every band of its immutable source image. The weak reference
+/// keeps the source's address, its key, from being reused.
+struct Palette {
     source: Weak<Image>,
     image: Arc<Image>,
     bytes: usize,
 }
 impl Palette {
-    pub(super) fn matches(&self, image: &Arc<Image>) -> bool {
-        self.source.as_ptr() == Arc::as_ptr(image)
-    }
     fn new(source: &Arc<Image>, image: Arc<Image>) -> Self {
         let bytes = match &image.decoded.samples {
             Samples::Bytes(v) => v.capacity(),
@@ -35,28 +34,52 @@ impl Palette {
     }
 }
 
-impl Context {
-    /// Keeps an expanded image only while its source is painted.
-    pub(super) fn keep_palette_for(&mut self, image: &Arc<Image>) {
-        if (matches!(image.space, Some(Space::Indexed { .. })) || image.matte.is_some())
-            && self.palette.as_ref().is_some_and(|p| !p.matches(image))
-        {
-            self.clear_palette();
-        }
+/// The expanded images of a page by source. Every band replays every
+/// command, so images are kept in the order they are first painted, as long
+/// as they fit, rather than evicting each other in every band.
+#[derive(Default)]
+pub(super) struct Palettes {
+    kept: FastMap<usize, Palette>,
+    bytes: usize,
+}
+impl Palettes {
+    pub(super) fn is_empty(&self) -> bool {
+        self.kept.is_empty()
     }
-    pub(super) fn clear_palette(&mut self) {
-        // An image operation may hold a live clone. It must retain its byte
-        // charge until that operation releases the last non-cache owner.
-        if self
-            .palette
-            .as_ref()
-            .is_some_and(|p| Arc::strong_count(&p.image) > 1)
-        {
-            return;
+    fn get(&self, source: &Arc<Image>) -> Option<Arc<Image>> {
+        let palette = self.kept.get(&Arc::as_ptr(source).addr())?;
+        Some(Arc::clone(&palette.image))
+    }
+    /// Keeps `palette` if every kept image together stays within `budget`.
+    fn keep(&mut self, palette: Palette, budget: usize) -> bool {
+        let bytes = self.bytes.saturating_add(palette.bytes);
+        if bytes > budget {
+            return false;
         }
-        if let Some(palette) = self.palette.take() {
-            self.allocated -= palette.bytes;
-        }
+        self.bytes = bytes;
+        self.kept.insert(palette.source.as_ptr().addr(), palette);
+        true
+    }
+    /// Releases every image that no image operation holds, returning their
+    /// bytes: an operation's clone retains its charge until it is dropped.
+    fn clear(&mut self) -> usize {
+        let mut released = 0;
+        self.kept.retain(|_, palette| {
+            let held = Arc::strong_count(&palette.image) > 1;
+            if !held {
+                released += palette.bytes;
+            }
+            held
+        });
+        self.bytes -= released;
+        released
+    }
+}
+
+impl Context {
+    /// Releases every expanded image that no image operation holds.
+    pub(super) fn clear_palettes(&mut self) {
+        self.allocated -= self.palettes.clear();
     }
     fn interior_image(
         &mut self,
@@ -68,10 +91,8 @@ impl Context {
             || command.image.matte.is_some();
         let pair = if expanded {
             self.charge(command.image.decoded.samples.len().saturating_add(256))?;
-            if let Some(palette) = &self.palette
-                && palette.matches(&command.image)
-            {
-                (Arc::clone(&palette.image), 0)
+            if let Some(image) = self.palettes.get(&command.image) {
+                (image, 0)
             } else {
                 let maximum = available - output_bytes;
                 let image = if command.image.matte.is_some() {
@@ -85,17 +106,10 @@ impl Context {
                 let palette = Palette::new(&command.image, Arc::new(image));
                 let image = Arc::clone(&palette.image);
                 let bytes = palette.bytes;
-                if bytes <= (self.limits.decoded_bytes / 16).min(16 * 1024 * 1024)
-                    && bytes.saturating_add(output_bytes) <= available
-                {
-                    self.clear_palette();
-                    if self.palette.is_none() {
-                        self.allocated += bytes;
-                        self.palette = Some(palette);
-                        (image, 0)
-                    } else {
-                        (image, bytes)
-                    }
+                let budget = (self.limits.decoded_bytes / 16).min(16 * 1024 * 1024);
+                if bytes <= maximum && self.palettes.keep(palette, budget) {
+                    self.allocated += bytes;
+                    (image, 0)
                 } else {
                     (image, bytes)
                 }
@@ -236,14 +250,8 @@ fn compose(
 
 /// An eight-bit DeviceGray or DeviceRGB image whose soft mask has its
 /// sample grid, with the matte removed from every sample (11.6.5.3) as the
-/// image sampler does: decoded, unclipped components c at opacity a become
-/// matte + (c - matte) / a, clipped, and zero where a is zero.
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_precision_loss,
-    reason = "clipped levels scale to bytes"
-)]
+/// image sampler does.
+#[expect(clippy::cast_precision_loss, reason = "codes are exact in f64")]
 fn unmatted(image: &Image, maximum: usize) -> Option<Image> {
     let matte = image.matte.as_deref()?;
     let mask = image.mask.as_deref()?;
@@ -260,6 +268,9 @@ fn unmatted(image: &Image, maximum: usize) -> Option<Image> {
     let [(low, high)] = mask.decode.as_slice() else {
         return None;
     };
+    let retained = samples
+        .len()
+        .saturating_add(2 * size_of::<Image>() + 4 * size_of::<usize>());
     if !space
         || image.decoded.bits_per_component != 8
         || mask.decoded.bits_per_component != 8
@@ -267,10 +278,7 @@ fn unmatted(image: &Image, maximum: usize) -> Option<Image> {
         || (mask.decoded.width, mask.decoded.height) != (image.decoded.width, image.decoded.height)
         || image.decode.len() != components
         || samples.len() != codes.len().checked_mul(components)?
-        || samples
-            .len()
-            .saturating_add(2 * size_of::<Image>() + 4 * size_of::<usize>())
-            > maximum
+        || retained > maximum
     {
         return None;
     }
@@ -283,16 +291,13 @@ fn unmatted(image: &Image, maximum: usize) -> Option<Image> {
         .collect();
     let mut pixels = Vec::new();
     pixels.try_reserve_exact(samples.len()).ok()?;
-    for (pixel, &code) in samples.chunks_exact(components).zip(codes) {
-        let alpha = opacity[usize::from(code)];
-        for ((&sample, channel), &matte) in pixel.iter().zip(&channels).zip(matte) {
-            let value = if alpha > 0.0 {
-                (matte + (channel[usize::from(sample)] - matte) / alpha).clamp(0.0, 1.0)
-            } else {
-                0.0
-            };
-            pixels.push((value * 255.0).round() as u8);
-        }
+    pixels.resize(samples.len(), 0);
+    let levels = (channels.as_slice(), matte, &opacity);
+    let rows = (maximum - retained) / (256 * components);
+    if components == 1 {
+        remove_matte::<1>(&mut pixels, (samples, codes), levels, rows)?;
+    } else {
+        remove_matte::<3>(&mut pixels, (samples, codes), levels, rows)?;
     }
     Some(Image {
         decoded: DecodedImage {
@@ -313,6 +318,68 @@ fn unmatted(image: &Image, maximum: usize) -> Option<Image> {
         decode: vec![(0.0, 1.0); components],
         intent: image.intent,
     })
+}
+
+/// Removes the matte from the `N`-component `samples` at their opacity
+/// `codes` into `pixels`. A code divided for as many pixels as a component
+/// has levels then takes a row of every level's byte per component, up to
+/// `rows` rows: the same expression, one lookup for each later pixel.
+fn remove_matte<const N: usize>(
+    pixels: &mut [u8],
+    (samples, codes): (&[u8], &[u8]),
+    (channels, matte, opacity): (&[[f64; 256]], &[f64], &[f64; 256]),
+    rows: usize,
+) -> Option<()> {
+    let channels: &[[f64; 256]; N] = channels.try_into().ok()?;
+    let matte: &[f64; N] = matte.try_into().ok()?;
+    let mut table: Vec<[[u8; 256]; N]> = Vec::new();
+    let rows = rows.min(codes.len() / 256);
+    let rows = if table.try_reserve_exact(rows).is_ok() {
+        rows
+    } else {
+        0
+    };
+    let mut row_of = [None; 256];
+    let mut divided = [0_usize; 256];
+    let pixels = pixels.as_chunks_mut::<N>().0.iter_mut();
+    for ((output, pixel), &code) in pixels.zip(samples.as_chunks::<N>().0).zip(codes) {
+        let code = usize::from(code);
+        if let Some(row) = row_of[code] {
+            let row: &[[u8; 256]; N] = &table[row];
+            for ((output, &sample), row) in output.iter_mut().zip(pixel).zip(row) {
+                *output = row[usize::from(sample)];
+            }
+            continue;
+        }
+        let alpha = opacity[code];
+        for (k, (output, &sample)) in output.iter_mut().zip(pixel).enumerate() {
+            *output = unmatte(channels[k][usize::from(sample)], alpha, matte[k]);
+        }
+        divided[code] += 1;
+        if divided[code] == 256 && table.len() < rows {
+            row_of[code] = Some(table.len());
+            table.push(std::array::from_fn(|k| {
+                std::array::from_fn(|level| unmatte(channels[k][level], alpha, matte[k]))
+            }));
+        }
+    }
+    Some(())
+}
+
+/// The byte of a decoded, unclipped component c at opacity a without its
+/// matte: matte + (c - matte) / a, clipped, and zero where a is zero.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "clipped levels scale to bytes"
+)]
+fn unmatte(component: f64, alpha: f64, matte: f64) -> u8 {
+    let value = if alpha > 0.0 {
+        (matte + (component - matte) / alpha).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    (value * 255.0).round() as u8
 }
 
 fn expand(image: &Image, maximum: usize) -> Result<Option<Image>> {
@@ -436,6 +503,118 @@ mod tests {
         image.matte = Some(vec![0.0]);
         assert!(unmatted(&image, 4096).is_none());
     }
+    /// The image sampler's matte removal, one division per component.
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "clipped levels scale to bytes"
+    )]
+    fn divided(image: &Image) -> Vec<u8> {
+        let (Samples::Bytes(samples), Samples::Bytes(codes)) = (
+            &image.decoded.samples,
+            &image.mask.as_ref().unwrap().decoded.samples,
+        ) else {
+            unreachable!()
+        };
+        let [(low, high)] = image.mask.as_ref().unwrap().decode[..] else {
+            unreachable!()
+        };
+        let components = usize::from(image.decoded.components);
+        let mut pixels = Vec::new();
+        for (pixel, &code) in samples.chunks_exact(components).zip(codes) {
+            let alpha = (low + f64::from(code) / 255.0 * (high - low)).clamp(0.0, 1.0);
+            for ((&sample, &(low, high)), &matte) in pixel
+                .iter()
+                .zip(&image.decode)
+                .zip(image.matte.as_ref().unwrap())
+            {
+                let channel = low + f64::from(sample) / 255.0 * (high - low);
+                let value = if alpha > 0.0 {
+                    (matte + (channel - matte) / alpha).clamp(0.0, 1.0)
+                } else {
+                    0.0
+                };
+                pixels.push((value * 255.0).round() as u8);
+            }
+        }
+        pixels
+    }
+    #[test]
+    fn matte_rows_equal_division_for_every_level_at_every_code() {
+        // Each component meets every level at every opacity code twice under
+        // each set of component decodes, mask decode and matte: divided per
+        // sample, then from the code's row once it has one.
+        let parameters = [
+            ([(0.0, 1.0); 3], (0.0, 1.0), [0.0, 0.2, 1.0]),
+            (
+                [(1.0, 0.0), (0.2, 0.9), (-0.5, 1.5)],
+                (1.0, 0.0),
+                [0.5, 1.0 / 3.0, 0.77],
+            ),
+            ([(0.0, 1.0); 3], (0.1, 0.8), [1.0; 3]),
+            (
+                [(0.3, 0.3), (0.0, 2.0), (1.0, -1.0)],
+                (-0.2, 1.3),
+                [0.999, 0.001, 0.5],
+            ),
+        ];
+        for (decode, mask_decode, matte) in parameters {
+            for components in [1, 3] {
+                let sweeps: Vec<u8> = (0..=255_u8).flat_map(|code| [code; 2]).collect();
+                let codes: Vec<u8> = sweeps.iter().flat_map(|&code| [code; 256]).collect();
+                let samples: Vec<u8> = (0..sweeps.len())
+                    .flat_map(|_| 0..=255_u8)
+                    .flat_map(|level| {
+                        [level, 255 - level, level ^ 0x5a]
+                            .into_iter()
+                            .take(components)
+                    })
+                    .collect();
+                let decoded = |components: u8, samples| DecodedImage {
+                    width: 256,
+                    height: u32::try_from(sweeps.len()).unwrap(),
+                    bits_per_component: 8,
+                    components,
+                    samples: Samples::Bytes(samples),
+                    kind: ImageKind::Color { color_space: None },
+                    decode: None,
+                    mask: MaskKind::Soft(pagura_core::ObjectId::new(1, 0)),
+                    interpolate: false,
+                    reduction: None,
+                };
+                let image = Image {
+                    decoded: decoded(u8::try_from(components).unwrap(), samples),
+                    space: Some(if components == 1 {
+                        Space::Gray
+                    } else {
+                        Space::Rgb
+                    }),
+                    mask: Some(Arc::new(Image {
+                        decoded: decoded(1, codes),
+                        space: Some(Space::Gray),
+                        mask: None,
+                        matte: None,
+                        decode: vec![mask_decode],
+                        intent: None,
+                    })),
+                    matte: Some(matte[..components].to_vec()),
+                    decode: decode[..components].to_vec(),
+                    intent: None,
+                };
+                let expected = Samples::Bytes(divided(&image));
+                let retained = 256 * sweeps.len() * components
+                    + 2 * size_of::<Image>()
+                    + 4 * size_of::<usize>();
+                // Every code, five of them, or none take rows.
+                for rows in [usize::MAX / 1024, 5, 0] {
+                    let maximum = retained.saturating_add(rows * 256 * components);
+                    let straight = unmatted(&image, maximum).unwrap();
+                    assert_eq!(straight.decoded.samples, expected);
+                }
+                assert!(unmatted(&image, retained - 1).is_none());
+            }
+        }
+    }
     use crate::compositor::Policy;
     use crate::display::{Clip, Command, DisplayList};
     use crate::{RenderOptions, Tile};
@@ -473,18 +652,90 @@ mod tests {
         let source = Arc::new(image());
         let converted = Arc::new(expand(&source, 4096).unwrap().unwrap());
         let cached = Palette::new(&source, Arc::clone(&converted));
-        assert!(cached.matches(&source));
-        assert!(!cached.matches(&Arc::new(image())));
+        let bytes = cached.bytes;
+        let mut palettes = Palettes::default();
+        assert!(palettes.keep(cached, bytes));
+        assert!(Arc::ptr_eq(&palettes.get(&source).unwrap(), &converted));
+        assert!(palettes.get(&Arc::new(image())).is_none());
         let Samples::Bytes(pixels) = &converted.decoded.samples else {
             unreachable!()
         };
-        assert!(cached.bytes >= pixels.capacity() + 2 * size_of::<Image>());
+        assert!(bytes >= pixels.capacity() + 2 * size_of::<Image>());
         drop(source);
-        assert!(cached.source.upgrade().is_none());
+        assert!(palettes.kept.values().all(|p| p.source.upgrade().is_none()));
         assert_eq!(
             converted.decoded.samples,
             Samples::Bytes(vec![255, 0, 0, 0, 255, 0, 0, 0, 255, 0, 0, 255])
         );
+        // A held expansion keeps its charge until its holder drops it.
+        assert_eq!(palettes.clear(), 0);
+        drop(converted);
+        assert_eq!(palettes.clear(), bytes);
+        assert!(palettes.is_empty());
+    }
+    #[test]
+    fn expansions_stay_for_the_page_within_their_budget() {
+        // Two indexed images painted in turn in every band: both stay while
+        // they fit; otherwise the first stays and the second expands again.
+        let source = Arc::new(image());
+        let bytes = Palette::new(&source, Arc::new(expand(&source, 4096).unwrap().unwrap())).bytes;
+        let tight = Limits {
+            decoded_bytes: 16 * (bytes + bytes / 2),
+            ..Limits::default()
+        };
+        for (limits, both) in [(Limits::default(), true), (tight, false)] {
+            let list = DisplayList {
+                commands: Vec::new(),
+                crop: Rect {
+                    x0: 0.0,
+                    y0: 0.0,
+                    x1: 4.0,
+                    y1: 4.0,
+                },
+                rotation: Rotation::None,
+                user_unit: 1.0,
+                limits,
+                group: crate::transparency::Attributes::default(),
+                print_intent: false,
+                separations: OnceLock::new(),
+            };
+            let options = RenderOptions::default();
+            let separations = list.preview_separations(&options).unwrap();
+            let plan = super::super::plan::byte_page(&list, &separations).unwrap();
+            let mut context = Context::new(&list, &options, &plan, separations).unwrap();
+            let before = context.allocated;
+            let commands = [image(), image()].map(|image| ImageCommand {
+                image: Arc::new(image),
+                transform: Transform::IDENTITY,
+                clip: None,
+                stencil: crate::color::Color::default(),
+                composite: crate::transparency::Composite::opaque(),
+                transfer: None,
+                position: Position::Unknown,
+            });
+            let mut first = Vec::new();
+            for band in 0..3 {
+                for (index, command) in commands.iter().enumerate() {
+                    let available = limits.decoded_bytes - context.allocated;
+                    let (image, temporary) = context
+                        .interior_image(command, available, 0)
+                        .unwrap()
+                        .unwrap();
+                    let kept = both || index == 0;
+                    assert_eq!(temporary, if kept { 0 } else { bytes });
+                    if band == 0 {
+                        first.push(Arc::as_ptr(&image));
+                    } else if kept {
+                        assert_eq!(Arc::as_ptr(&image), first[index]);
+                    }
+                }
+                let kept = if both { 2 } else { 1 };
+                assert_eq!(context.allocated, before + kept * bytes);
+            }
+            context.clear_palettes();
+            assert_eq!(context.allocated, before);
+            assert!(context.palettes.is_empty());
+        }
     }
     #[test]
     fn palette_codes_clamp_to_high_and_decline_noncanonical_decode() {
