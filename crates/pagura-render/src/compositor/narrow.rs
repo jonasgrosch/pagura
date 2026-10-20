@@ -38,6 +38,19 @@ impl Bytes {
     pub(super) fn new(
         (width, height): (usize, usize),
         background: [u8; 4],
+        storage: Vec<u8>,
+    ) -> Result<Self> {
+        let mut bytes = Self::banded((width, height), background, storage)?;
+        bytes.fill_to(height);
+        Ok(bytes)
+    }
+
+    /// [`Self::new`] for a surface addressed in bands from the top: each
+    /// row takes its background when a window first reaches it, so that
+    /// the band's stores find it in cache.
+    pub(super) fn banded(
+        (width, height): (usize, usize),
+        background: [u8; 4],
         mut storage: Vec<u8>,
     ) -> Result<Self> {
         let count = width
@@ -48,11 +61,6 @@ impl Bytes {
         storage
             .try_reserve_exact(count)
             .map_err(|_| Error::limit("colour buffer allocation failed"))?;
-        // A gray or transparent background is one repeated byte.
-        storage.resize(count, background[0]);
-        if background.iter().any(|&b| b != background[0]) {
-            storage.as_chunks_mut::<4>().0.fill(background);
-        }
         let mut painted = Vec::new();
         painted
             .try_reserve_exact(height)
@@ -68,6 +76,32 @@ impl Bytes {
         })
     }
 
+    /// Extends the pixels with background rows up to row `end`. Capacity
+    /// for every row was reserved at construction.
+    fn fill_to(&mut self, end: usize) {
+        let start = self.pixels.len();
+        let end = end.min(self.painted.len()) * self.width * 4;
+        if end <= start {
+            return;
+        }
+        // A gray or transparent background is one repeated byte.
+        self.pixels.resize(end, self.background[0]);
+        if self.background.iter().any(|&b| b != self.background[0]) {
+            self.pixels[start..]
+                .as_chunks_mut::<4>()
+                .0
+                .fill(self.background);
+        }
+    }
+
+    /// Whether no store has reached the rows of the current window, which
+    /// then all hold the background.
+    fn blank(&self) -> bool {
+        self.painted[self.first..self.first + self.rows]
+            .iter()
+            .all(|&[lo, hi]| lo >= hi)
+    }
+
     /// Addresses `rows` rows from `skip` rows below the current first row.
     pub(super) fn window(&mut self, skip: usize, rows: usize) -> Result<()> {
         let first = self.first + skip;
@@ -75,6 +109,7 @@ impl Bytes {
             return Err(Error::invalid_argument("band outside byte storage"));
         }
         (self.first, self.rows) = (first, rows);
+        self.fill_to(first + rows);
         Ok(())
     }
 
@@ -144,11 +179,9 @@ impl Bytes {
         let pixels = self.run(offset, coverage.len())?;
         let source = super::lowp::Source::new(color, alpha);
         // Rectangle and full runs hold one coverage throughout.
-        match coverage {
-            [first, rest @ ..] if rest.iter().all(|c| c == first) => {
-                super::lowp::run(pixels, *first, &source);
-            }
-            _ => super::lowp::row(pixels, coverage, &source),
+        match uniform(coverage) {
+            Some(coverage) => super::lowp::run(pixels, coverage, &source),
+            None => super::lowp::row(pixels, coverage, &source),
         }
         Ok(())
     }
@@ -212,12 +245,28 @@ impl Bytes {
         }
         let extent = [column as u32, (column + count) as u32];
         let source = super::lowp::Source::new(color, alpha);
+        let height = (y1 - y0) as usize;
         let rows = self
             .pixels
             .as_chunks_mut::<4>()
             .0
             .chunks_exact_mut(self.width);
-        let painted = self.painted[first..].iter_mut();
+        let painted = self.painted[first..first + height].iter_mut();
+        // A mask wholly inside an unscaled clip blends its rows as they are.
+        if clip.product.is_none()
+            && clip
+                .rectangle
+                .is_none_or(|r| inside(r, (x0, y0, count)) && inside(r, (x0, y1 - 1, count)))
+        {
+            for painted in painted {
+                *painted = [painted[0].min(extent[0]), painted[1].max(extent[1])];
+            }
+            let start = (y0 - origin.1) as usize * stride + (x0 - origin.0) as usize;
+            let masks = mask[start..].chunks(stride).map(|row| &row[..count]);
+            let targets = rows.skip(first).map(|row| &mut row[column..column + count]);
+            super::lowp::rows(targets.zip(masks).take(height), &source);
+            return Ok(());
+        }
         for ((y, pixels), painted) in (y0..y1).zip(rows.skip(first)).zip(painted) {
             let start = (y - origin.1) as usize * stride + (x0 - origin.0) as usize;
             let row = &mask[start..start + count];
@@ -283,9 +332,19 @@ impl Bytes {
     }
 
     /// The premultiplied RGBA bytes, row by row.
-    pub(super) fn into_rgba(self) -> Vec<u8> {
+    pub(super) fn into_rgba(mut self) -> Vec<u8> {
+        self.fill_to(self.painted.len());
         self.pixels
     }
+}
+
+/// The one level that every coverage of a nonempty run holds, compared
+/// sixteen at a time.
+fn uniform(coverage: &[u8]) -> Option<u8> {
+    let &first = coverage.first()?;
+    let (blocks, tail) = coverage.as_chunks::<16>();
+    (blocks.iter().all(|block| *block == [first; 16]) && tail.iter().all(|&c| c == first))
+        .then_some(first)
 }
 
 impl Buffer {
@@ -314,6 +373,16 @@ impl Buffer {
             Self::N16(v) => v.len() * 8,
             Self::F32(v) => v.len() * 16,
         }
+    }
+    /// Whether painting an opaque `color` at `alpha` anywhere in the current
+    /// window changes no pixel: it is the background of a window that no
+    /// store has reached (see [`Bytes::blend`]).
+    pub(super) fn unchanged_by(&self, color: [f64; 4], alpha: f64) -> bool {
+        let Self::U8(bytes) = self else {
+            return false;
+        };
+        let (color, alpha) = byte_source(color, alpha);
+        alpha == 255 && color == bytes.background && bytes.blank()
     }
     /// Stores a dense mask of `width` columns whose first pixel is at
     /// `offset`, in rows `stride` apart, when this is byte storage.
@@ -599,6 +668,39 @@ mod tests {
         let pixels = bytes.into_rgba();
         assert_eq!(&pixels[24..32], &[0, 0, 0, 255, 127, 127, 127, 255]);
         assert!(pixels[..24].iter().all(|&v| v == 255));
+    }
+
+    #[test]
+    fn banded_rows_take_their_background_when_first_addressed() {
+        let background = [250, 240, 230, 255];
+        let mut buffer = Buffer::U8(Bytes::banded((2, 4), background, vec![7; 64]).unwrap());
+        let Buffer::U8(bytes) = &mut buffer else {
+            unreachable!()
+        };
+        bytes.window(0, 2).unwrap();
+        // The background over a blank window changes nothing; other colours
+        // and translucent background do.
+        let opaque = [250.0 / 255.0, 240.0 / 255.0, 230.0 / 255.0, 1.0];
+        assert!(buffer.unchanged_by(opaque, 1.0));
+        assert!(!buffer.unchanged_by(opaque, 0.5));
+        assert!(!buffer.unchanged_by([0.0, 0.0, 0.0, 1.0], 1.0));
+        let Buffer::U8(bytes) = &mut buffer else {
+            unreachable!()
+        };
+        bytes.blend(2, &[255], [0, 0, 0, 255], 255).unwrap();
+        assert!(!buffer.unchanged_by(opaque, 1.0));
+        let Buffer::U8(bytes) = buffer else {
+            unreachable!()
+        };
+        // Rows that no window reached hold the background too.
+        let pixels = bytes.into_rgba();
+        assert_eq!(pixels.len(), 32);
+        assert_eq!(&pixels[8..12], &[0, 0, 0, 255]);
+        for (index, pixel) in pixels.as_chunks::<4>().0.iter().enumerate() {
+            if index != 2 {
+                assert_eq!(pixel, &background, "{index}");
+            }
+        }
     }
 
     fn value(buffer: &Buffer) -> u8 {

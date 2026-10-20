@@ -686,7 +686,7 @@ mod tests {
             crop: PathBuilder::new().finish(),
             allocated: 0,
             work: 0,
-            clip: None,
+            clip: Vec::new(),
             mask: None,
             function_work: 0,
             soft_source: false,
