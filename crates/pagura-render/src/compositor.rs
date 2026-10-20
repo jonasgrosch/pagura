@@ -1594,10 +1594,11 @@ pub(crate) fn render_competitive(
     lent: Lent<'_>,
 ) -> Result<Pixmap> {
     let mut shared = lent.glyphs.and_then(|cache| cache.try_lock().ok());
-    let cache = shared.as_deref_mut().map_or_else(
+    let mut cache = shared.as_deref_mut().map_or_else(
         || crate::fragments::GlyphCache::new(crate::fragments::CACHE_BYTES),
         std::mem::take,
     );
+    cache.make_room(list.glyph_placements(), list.limits.document_bytes);
     let spare = lent
         .spare
         .and_then(|spare| spare.try_lock().ok())
