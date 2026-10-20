@@ -30,7 +30,7 @@ export function widgetControl(doc, field, widget, changed) {
   const sync = (draft) => {
     node.classList.toggle('form-dirty', Boolean(draft));
     if (button) {
-      node.checked = draft ? draft.kind === 3 && (draft.widget === widget.index || (!radio || widget.flags & 4) && sameName(draft.state, options[0].state)) : options[0].selected;
+      node.checked = Boolean(draft ? draft.kind === 3 && (draft.widget === widget.index || (!radio || widget.flags & 4) && sameName(draft.state, options[0].state)) : options[0].selected);
     } else if (node.tagName === 'SELECT') {
       const indices = draft?.indices ?? field.options.filter((o) => o.selected).map((o) => o.key);
       for (const option of node.options) option.selected = option.value === '' ? !indices.length : indices.includes(Number(option.value));
