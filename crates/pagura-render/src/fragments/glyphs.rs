@@ -198,19 +198,18 @@ impl GlyphCache {
         let storage = bytes.saturating_sub(outline);
         let source = Arc::as_ptr(path) as usize;
         let full = storage.saturating_add(outline).saturating_add(64);
-        let mut charge = if self.outlines.contains(&source) {
-            storage
-        } else {
-            full
-        };
+        let mut known = self.outlines.contains(&source);
+        let mut charge = if known { storage } else { full };
         if self.bytes.saturating_add(charge) > maximum {
             if full > maximum {
                 return false;
             }
             self.clear();
-            charge = full;
+            (known, charge) = (false, full);
         }
-        self.outlines.insert(source);
+        if !known {
+            self.outlines.insert(source);
+        }
         self.bytes += charge;
         true
     }
