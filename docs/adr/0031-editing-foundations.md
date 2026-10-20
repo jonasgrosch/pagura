@@ -1,6 +1,7 @@
 # ADR 0031: Immutable editing transactions and incremental form saves
 
-Status: implemented on the editing branch; final hosted validation pending, 2026-10-20.
+Status: implemented on the editing branch, 2026-10-20. Hosted checks are recorded
+against each PR head.
 
 ## Context and prerequisite review
 
@@ -23,6 +24,8 @@ remain visible dependency commits, not new editing implementation.
 
 Review findings affecting the design:
 
+- #24's generated stream Length bypassed name/depth bounds on empty stream
+  dictionaries. The shared validator now enforces both, with boundary tests.
 - #24's serializer is reusable, but its reference validator assumes every
   target is in a new-document builder. Factor syntax validation from reference
   resolution rather than duplicating the serializer.

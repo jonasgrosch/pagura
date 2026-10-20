@@ -42,7 +42,8 @@ contract; `editing-interoperability` also checks saved outputs with qpdf and
 compares Poppler page counts against their original inputs. Poppler 24.02.0
 rejects the original `document/hybrid-precedence` fixture and its saved version;
 qpdf 11.9.0 accepts both. This is recorded as a baseline incompatibility, not a
-successful Poppler reopen. Validation is pending on the final branch head.
+successful Poppler reopen. The PR check results record validation for each exact
+branch head.
 No local builds, benchmarks or test suites run in this lane.
 
 ## Overprint display policy

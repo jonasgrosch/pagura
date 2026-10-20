@@ -422,7 +422,13 @@ fn choices_use_display_values_and_sorted_indices() {
         field.dictionary.get(b"I"),
         Some(&Value::Array(vec![Value::Integer(0), Value::Integer(2)]))
     );
-    assert!(matches!(field.dictionary.get(b"V"), Some(Value::Array(values)) if values.len() == 2));
+    assert_eq!(
+        field.dictionary.get(b"V"),
+        Some(&Value::Array(vec![
+            Value::String(b"AA".to_vec()),
+            Value::String(b"CC".to_vec()),
+        ]))
+    );
 }
 
 #[test]
