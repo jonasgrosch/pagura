@@ -241,15 +241,16 @@ impl Bytes {
         if x0 >= x1 || y0 >= y1 {
             return Ok(());
         }
-        let count = (x1 - x0) as usize;
-        let (first, column) =
-            self.position((y0 - surface.1) as usize * self.width + (x0 - surface.0) as usize)?;
-        if first + (y1 - y0) as usize > self.first + self.rows || column + count > self.width {
-            return Err(Error::invalid_argument("mask outside colour buffer"));
+        let (count, height) = ((x1 - x0) as usize, (y1 - y0) as usize);
+        let outside = || Error::invalid_argument("mask outside colour buffer");
+        let row = usize::try_from(y0 - surface.1).map_err(|_| outside())?;
+        let column = usize::try_from(x0 - surface.0).map_err(|_| outside())?;
+        if row + height > self.rows || column + count > self.width {
+            return Err(outside());
         }
+        let first = self.first + row;
         let extent = [column as u32, (column + count) as u32];
         let source = super::lowp::Source::new(color, alpha);
-        let height = (y1 - y0) as usize;
         let rows = self
             .pixels
             .as_chunks_mut::<4>()
