@@ -36,7 +36,7 @@ pub(crate) fn encode(document: &Document, page: u32) -> Result<Vec<u8>> {
         if size <= 0.0 {
             size = 12.0;
         }
-        let (mut left, mut baseline) = (2.0, (widget.rectangle.height() + size * 0.6) / 2.0);
+        let (mut left, mut baseline) = (2.0, f64::midpoint(widget.rectangle.height(), size * 0.6));
         if matches!(
             field.kind,
             FieldKind::Text {

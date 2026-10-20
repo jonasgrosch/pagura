@@ -383,6 +383,25 @@ pub fn encode(id: u32, response: &Response, max_body: usize) -> Result<Vec<u8>> 
     Ok(out.bytes)
 }
 
+fn encode_diagnostic_details(out: &mut Encoder, items: &[Diagnostic]) -> Result<()> {
+    out.count(items.len())?;
+    for item in items {
+        out.push(&[match item.kind {
+            DiagnosticKind::Repair(_) => 0,
+            DiagnosticKind::Information(_) => 1,
+            // A kind added to pagura-core needs a code in a new
+            // protocol version; until then it cannot be encoded.
+            _ => {
+                return Err(Error::invalid_argument(
+                    "diagnostic kind has no wire code in this protocol version",
+                ));
+            }
+        }])?;
+        encode_diagnostic(out, item)?;
+    }
+    Ok(())
+}
+
 fn encode_payload(out: &mut Encoder, response: &Response) -> Result<()> {
     match response {
         Response::Hello(version) => out.push(&version.to_le_bytes())?,
@@ -418,23 +437,7 @@ fn encode_payload(out: &mut Encoder, response: &Response) -> Result<()> {
                 encode_diagnostic(out, item)?;
             }
         }
-        Response::DiagnosticDetails(items) => {
-            out.count(items.len())?;
-            for item in items {
-                out.push(&[match item.kind {
-                    DiagnosticKind::Repair(_) => 0,
-                    DiagnosticKind::Information(_) => 1,
-                    // A kind added to pagura-core needs a code in a new
-                    // protocol version; until then it cannot be encoded.
-                    _ => {
-                        return Err(Error::invalid_argument(
-                            "diagnostic kind has no wire code in this protocol version",
-                        ));
-                    }
-                }])?;
-                encode_diagnostic(out, item)?;
-            }
-        }
+        Response::DiagnosticDetails(items) => encode_diagnostic_details(out, items)?,
         Response::Generation(generation) => out.push(&generation.to_le_bytes())?,
         Response::Skipped(generation) => {
             out.push(&[0])?;
