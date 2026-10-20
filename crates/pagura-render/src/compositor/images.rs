@@ -2,7 +2,8 @@
 use super::reduced::Prepared;
 use super::sampled::{Sampler, Texel};
 use super::{Backdrop, Context, Model, Source, Surface};
-use crate::{display::ImageCommand, interpreter::images::Image};
+use crate::display::ImageCommand;
+use crate::interpreter::images::{Image, max_sample};
 use pagura_core::{Error, Result};
 use pagura_image::{ImageKind, MaskKind, Samples};
 use pagura_raster::{FillRule, PathBuilder, Transform};
@@ -70,10 +71,9 @@ impl Context {
                     texels.sample(self, command, pixel, model, stencil)
                 })?;
                 if let (Some(mask), Some(mask_sampler)) = (&image.mask, &mut mask_sampler) {
-                    let sample = mask_sampler.sample(x, y, &mut work, maximum, |pixel| {
-                        mask_samples.texel(mask, pixel)
+                    let factor = mask_sampler.sample(x, y, &mut work, maximum, |pixel| {
+                        mask_samples.sample(mask, pixel)
                     })?;
-                    let factor = sample.alpha;
                     value.color = value.color.map(|v| v * factor);
                     value.alpha *= factor;
                     if matches!(image.decoded.mask, MaskKind::Stencil(_))
@@ -225,13 +225,17 @@ fn prepare(
     origin: u32,
     width: u32,
     bytes: usize,
-) -> Result<(Prepared, Option<Prepared>)> {
+) -> Result<(Prepared, Option<Prepared<f64>>)> {
     let sampler = sampler_for(image, inverse).prepare(origin, width, bytes)?;
     let mask = image
         .mask
         .as_ref()
         .map(|mask| {
-            sampler_for(mask, inverse).prepare(origin, width, bytes.saturating_sub(sampler.bytes()))
+            sampler_for(mask, inverse).prepare_opacity(
+                origin,
+                width,
+                bytes.saturating_sub(sampler.bytes()),
+            )
         })
         .transpose()?;
     Ok((sampler, mask))
@@ -303,15 +307,6 @@ pub(super) struct MaskSamples {
     table: [Option<f64>; 256],
 }
 impl MaskSamples {
-    fn texel(&mut self, image: &Image, pixel: usize) -> Result<Texel> {
-        let alpha = self.sample(image, pixel)?;
-        Ok(Texel {
-            color: [alpha; 4],
-            alpha,
-            shape: alpha,
-        })
-    }
-
     pub(super) fn sample(&mut self, image: &Image, pixel: usize) -> Result<f64> {
         if image.decoded.components == 1
             && (1..=8).contains(&image.decoded.bits_per_component)
@@ -350,7 +345,68 @@ enum Texels<'a> {
         pixels: &'a [[u8; 3]],
         channels: [[f64; 256]; 3],
     },
+    /// As `Rgb`, with decoded but unclipped channels and a matte to remove.
+    MattedRgb {
+        pixels: &'a [[u8; 3]],
+        channels: [[f64; 256]; 3],
+        matte: Matte<'a>,
+    },
 }
+
+/// Matte removal for an image whose soft mask holds one sample of 1 to 8
+/// bits per pixel (11.6.5.3), with the mask's opacity per sample code.
+struct Matte<'a> {
+    codes: &'a [u8],
+    opacity: [f64; 256],
+    color: [f64; 3],
+}
+impl<'a> Matte<'a> {
+    fn new(image: &'a Image) -> Option<Self> {
+        let &[red, green, blue] = image.matte.as_deref()? else {
+            return None;
+        };
+        let mask = image.mask.as_ref()?;
+        if mask.decoded.components != 1
+            || !(1..=8).contains(&mask.decoded.bits_per_component)
+            || !matches!(mask.decoded.kind, ImageKind::Color { .. })
+        {
+            return None;
+        }
+        let Samples::Bytes(codes) = &mask.decoded.samples else {
+            return None;
+        };
+        let [(low, high)] = mask.decode.as_slice() else {
+            return None;
+        };
+        let maximum = f64::from(max_sample(&mask.decoded, 0).ok()?);
+        Some(Self {
+            codes,
+            // As `mask_texel`: Decode, then clipping to [0, 1].
+            opacity: std::array::from_fn(|code| {
+                (low + code as f64 / maximum * (high - low)).clamp(0.0, 1.0)
+            }),
+            color: [red, green, blue],
+        })
+    }
+
+    /// Removes the matte from decoded, unclipped components, then clips them
+    /// as the DeviceRGB conversion does. Zero opacity gives black.
+    fn remove(&self, pixel: usize, color: [f64; 3]) -> Result<[f64; 3]> {
+        let &code = self
+            .codes
+            .get(pixel)
+            .ok_or(Error::syntax("missing mask sample"))?;
+        let opacity = self.opacity[usize::from(code)];
+        Ok(std::array::from_fn(|i| {
+            if opacity > 0.0 {
+                (self.color[i] + (color[i] - self.color[i]) / opacity).clamp(0.0, 1.0)
+            } else {
+                0.0
+            }
+        }))
+    }
+}
+
 impl<'a> Texels<'a> {
     fn new(image: &'a Image, model: Model) -> Self {
         // Decode and clipping apply per sample before any weighted sum (8.9.5.2).
@@ -379,11 +435,12 @@ impl<'a> Texels<'a> {
             });
             return Self::Gray { pixels, colors };
         }
+        let matte = Matte::new(image);
         if model == Model::Rgb
             && matches!(image.space, Some(crate::color::Space::Rgb))
             && image.decoded.bits_per_component == 8
             && image.decoded.components == 3
-            && image.matte.is_none()
+            && (image.matte.is_none() || matte.is_some())
             && !matches!(
                 image.decoded.mask,
                 MaskKind::ColorKey(_) | MaskKind::Embedded(_)
@@ -393,12 +450,22 @@ impl<'a> Texels<'a> {
         {
             let (pixels, remainder) = bytes.as_chunks::<3>();
             if remainder.is_empty() {
-                let channels = [red, green, blue].map(|&(low, high)| {
-                    std::array::from_fn(|sample| {
-                        (low + sample as f64 / 255.0 * (high - low)).clamp(0.0, 1.0)
-                    })
-                });
-                return Self::Rgb { pixels, channels };
+                // A matte is removed from decoded components before clipping.
+                let decode = |&(low, high): &(f64, f64)| -> [f64; 256] {
+                    std::array::from_fn(|sample| low + sample as f64 / 255.0 * (high - low))
+                };
+                let clipped = |range| decode(range).map(|v| v.clamp(0.0, 1.0));
+                return match matte {
+                    Some(matte) => Self::MattedRgb {
+                        pixels,
+                        channels: [red, green, blue].map(decode),
+                        matte,
+                    },
+                    None => Self::Rgb {
+                        pixels,
+                        channels: [red, green, blue].map(clipped),
+                    },
+                };
             }
         }
         if (1..=4).contains(&image.decoded.components)
@@ -446,6 +513,28 @@ impl<'a> Texels<'a> {
                         channels[2][usize::from(blue)],
                         0.0,
                     ],
+                    alpha: 1.0,
+                    shape: 1.0,
+                });
+            }
+            Self::MattedRgb {
+                pixels,
+                channels,
+                matte,
+            } => {
+                let &[red, green, blue] = pixels
+                    .get(pixel)
+                    .ok_or(Error::syntax("missing image sample"))?;
+                let [red, green, blue] = matte.remove(
+                    pixel,
+                    [
+                        channels[0][usize::from(red)],
+                        channels[1][usize::from(green)],
+                        channels[2][usize::from(blue)],
+                    ],
+                )?;
+                return Ok(Texel {
+                    color: [red, green, blue, 0.0],
                     alpha: 1.0,
                     shape: 1.0,
                 });
@@ -607,6 +696,48 @@ mod tests {
         );
         assert_eq!(value.alpha, 1.0);
         assert_eq!(value.shape, 1.0);
+    }
+
+    #[test]
+    fn matte_tables_equal_scalar_texels_for_every_sample_and_mask_code() {
+        for matte in [[1.0; 3], [0.0; 3], [2.0, -1.0, 0.5]] {
+            for range in [(0.0, 1.0), (1.0, 0.0), (-0.5, 1.5)] {
+                for bits in [1, 2, 4, 8] {
+                    for polarity in [(0.0, 1.0), (1.0, 0.0), (0.25, 0.75)] {
+                        let mut image = byte_image(3, 8);
+                        image.matte = Some(matte.to_vec());
+                        image.decode = vec![range; 3];
+                        let mut mask = byte_image(1, bits);
+                        mask.decode[0] = polarity;
+                        image.mask = Some(Arc::new(mask));
+                        image.decoded.mask = MaskKind::Soft(pagura_core::ObjectId::new(1, 0));
+                        let command = command(image);
+                        let mut context = context();
+                        let mut table = Texels::new(&command.image, Model::Rgb);
+                        assert!(matches!(table, Texels::MattedRgb { .. }));
+                        for pixel in 0..256 {
+                            let expected = context
+                                .image_texel(&command, pixel, Model::Rgb, None)
+                                .unwrap();
+                            let actual = table
+                                .sample(&mut context, &command, pixel, Model::Rgb, None)
+                                .unwrap();
+                            assert_eq!(
+                                actual.color.map(f64::to_bits),
+                                expected.color.map(f64::to_bits)
+                            );
+                            assert_eq!(actual.alpha.to_bits(), expected.alpha.to_bits());
+                            assert_eq!(actual.shape.to_bits(), expected.shape.to_bits());
+                        }
+                    }
+                }
+            }
+        }
+        // A stencil mask or a short matte keeps the scalar path.
+        let mut image = byte_image(3, 8);
+        image.matte = Some(vec![1.0; 2]);
+        image.mask = Some(Arc::new(byte_image(1, 8)));
+        assert!(matches!(Texels::new(&image, Model::Rgb), Texels::Uncached));
     }
 
     #[test]

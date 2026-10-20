@@ -1,7 +1,7 @@
 //! Separable area integration (ADR 0010), streamed in device scan order.
 //! Two boundary rows per column suffice even for mixed shrinking/enlarging.
 //! Only requested pixels are evaluated; clipping never evaluates hidden colours.
-use super::sampled::{Sampler, Texel, charge, coordinate};
+use super::sampled::{Sampler, Texel, Weighted, charge, coordinate};
 use pagura_core::{Error, Result};
 
 /// The source cells under one device pixel along one axis: `first..end`, with
@@ -53,20 +53,24 @@ impl Span {
         }
     }
 
-    fn normalize(self, value: Texel) -> Texel {
+    fn normalize<T: Weighted>(self, value: T) -> T {
         value.scale(self.normalization)
     }
 }
 
 #[derive(Default)]
-struct Column {
+struct Column<T> {
     span: Span,
-    rows: [Option<(u32, Texel)>; 2],
+    rows: [Option<(u32, T)>; 2],
 }
 
-pub(super) struct Prepared {
+/// Every prepared column is charged as a colour column, so the budget and its
+/// limit errors do not depend on the sampled type.
+const COLUMN_BYTES: usize = size_of::<Column<Texel>>();
+
+pub(super) struct Prepared<T = Texel> {
     sampler: Sampler,
-    columns: Vec<Column>,
+    columns: Vec<Column<T>>,
     origin: u32,
     swapped: bool,
     vertical: Option<(u32, Span)>,
@@ -74,7 +78,27 @@ pub(super) struct Prepared {
 }
 
 impl Sampler {
+    /// Prepares colour sampling for device columns `origin..origin + width`.
     pub(super) fn prepare(self, origin: u32, width: u32, bytes: usize) -> Result<Prepared> {
+        self.prepare_columns(origin, width, bytes)
+    }
+
+    /// Prepares scalar opacity sampling, as [`Self::prepare`] does colour.
+    pub(super) fn prepare_opacity(
+        self,
+        origin: u32,
+        width: u32,
+        bytes: usize,
+    ) -> Result<Prepared<f64>> {
+        self.prepare_columns(origin, width, bytes)
+    }
+
+    fn prepare_columns<T: Weighted>(
+        self,
+        origin: u32,
+        width: u32,
+        bytes: usize,
+    ) -> Result<Prepared<T>> {
         let t = self.inverse;
         if !t.is_finite() {
             return Err(Error::limit("image sampling transform overflow"));
@@ -91,10 +115,7 @@ impl Sampler {
         if out.minifying && ((t.b == 0.0 && t.c == 0.0) || out.swapped) {
             let count = usize::try_from(width)
                 .ok()
-                .filter(|&n| {
-                    n.checked_mul(size_of::<Column>())
-                        .is_some_and(|n| n <= bytes)
-                })
+                .filter(|&n| n.checked_mul(COLUMN_BYTES).is_some_and(|n| n <= bytes))
                 .ok_or(Error::limit("image reduction memory exceeded"))?;
             out.columns
                 .try_reserve_exact(count)
@@ -118,9 +139,10 @@ impl Sampler {
     }
 }
 
-impl Prepared {
+impl<T: Weighted> Prepared<T> {
+    /// The bytes charged for this sampler's columns.
     pub(super) fn bytes(&self) -> usize {
-        self.columns.capacity() * size_of::<Column>()
+        self.columns.capacity() * COLUMN_BYTES
     }
 
     pub(super) fn sample(
@@ -129,8 +151,8 @@ impl Prepared {
         y: u32,
         work: &mut usize,
         maximum: usize,
-        texel: impl FnMut(usize) -> Result<Texel>,
-    ) -> Result<Texel> {
+        texel: impl FnMut(usize) -> Result<T>,
+    ) -> Result<T> {
         if !self.columns.is_empty() {
             self.reduce(x, y, work, maximum, texel)
         } else if self.minifying {
@@ -146,8 +168,8 @@ impl Prepared {
         y: u32,
         work: &mut usize,
         maximum: usize,
-        mut texel: impl FnMut(usize) -> Result<Texel>,
-    ) -> Result<Texel> {
+        mut texel: impl FnMut(usize) -> Result<T>,
+    ) -> Result<T> {
         let t = self.sampler.inverse;
         if self.vertical.is_none_or(|(row, _)| row != y) {
             let (scale, offset, bound) = if self.swapped {
@@ -175,7 +197,7 @@ impl Prepared {
                 .map_err(|_| Error::limit("image row work exceeds usize"))?,
             maximum,
         )?;
-        let mut out = Texel::default();
+        let mut out = T::default();
         for step in span.first..span.end {
             // Retain the boundary reached next in either scan direction.
             let row = if (if self.swapped { t.c } else { t.d }) < 0.0 {
@@ -193,7 +215,7 @@ impl Prepared {
                             .map_err(|_| Error::limit("image column work exceeds usize"))?,
                         maximum,
                     )?;
-                    let mut value = Texel::default();
+                    let mut value = T::default();
                     for col in column.span.first..column.span.end {
                         let (col, row) = if self.swapped { (row, col) } else { (col, row) };
                         let index = usize::try_from(
@@ -360,5 +382,68 @@ mod tests {
                 .sample(0, 0, &mut 0, 0, |_| panic!("work must be reserved first"))
                 .is_err()
         );
+    }
+}
+
+#[cfg(test)]
+mod scalar_tests {
+    use super::*;
+    use pagura_raster::Transform;
+
+    #[test]
+    fn scalar_opacities_keep_alpha_bits_visits_work_and_charges() {
+        for inverse in [
+            Transform::new(2.4, 0.0, 0.0, 3.2, -1.25, -2.75),
+            Transform::new(-2.4, 0.0, 0.0, -3.2, 31.1, 29.7),
+            Transform::new(0.0, -3.2, 2.4, 0.0, -1.25, 29.7),
+            Transform::new(1.8, 0.2, 0.3, 1.6, -1.0, -2.0),
+            Transform::new(0.5, 0.0, 0.0, 0.7, -0.25, 0.125),
+        ] {
+            for interpolate in [false, true] {
+                let make = || Sampler {
+                    width: 32,
+                    height: 32,
+                    interpolate,
+                    inverse,
+                };
+                let mut color = make().prepare(0, 10, usize::MAX).unwrap();
+                let mut alpha = make().prepare_opacity(0, 10, usize::MAX).unwrap();
+                assert_eq!(alpha.bytes(), color.bytes());
+                if color.bytes() > 0 {
+                    let short = color.bytes() - 1;
+                    assert!(make().prepare(0, 10, short).is_err());
+                    assert!(make().prepare_opacity(0, 10, short).is_err());
+                }
+                let sample = |index: usize| {
+                    f64::from(u8::try_from((index * 73 + 19) % 256).unwrap()) / 255.0
+                };
+                for y in 0..10 {
+                    for x in 0..10 {
+                        let (mut work_a, mut work_b) = (0, 0);
+                        let (mut visits_a, mut visits_b) = (Vec::new(), Vec::new());
+                        let expected = color
+                            .sample(x, y, &mut work_a, usize::MAX, |i| {
+                                visits_a.push(i);
+                                let alpha = sample(i);
+                                Ok(Texel {
+                                    color: [alpha; 4],
+                                    alpha,
+                                    shape: alpha,
+                                })
+                            })
+                            .unwrap();
+                        let actual = alpha
+                            .sample(x, y, &mut work_b, usize::MAX, |i| {
+                                visits_b.push(i);
+                                Ok(sample(i))
+                            })
+                            .unwrap();
+                        assert_eq!(actual.to_bits(), expected.alpha.to_bits());
+                        assert_eq!(work_a, work_b);
+                        assert_eq!(visits_a, visits_b);
+                    }
+                }
+            }
+        }
     }
 }
