@@ -19,6 +19,57 @@ pub(in crate::dct) const ORDER: [usize; 64] = [
     52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63,
 ];
 
+/// A block's zigzag coefficients with the positions of its nonzero ones.
+#[derive(Clone, Copy)]
+pub(in crate::dct) struct Sparse<'a> {
+    values: &'a [i32; 64],
+    nonzero: u64,
+}
+
+impl<'a> Sparse<'a> {
+    pub(in crate::dct) fn new(values: &'a [i32; 64]) -> Self {
+        let nonzero = (0..)
+            .zip(values)
+            .fold(0, |set, (k, &value)| set | u64::from(value != 0) << k);
+        Self { values, nonzero }
+    }
+
+    /// A block whose nonzero coefficients are at the positions `nonzero`;
+    /// all others are zero.
+    pub(in crate::dct) fn known(values: &'a [i32; 64], nonzero: u64) -> Self {
+        debug_assert_eq!(Self::new(values).nonzero, nonzero);
+        Self { values, nonzero }
+    }
+
+    /// The zigzag positions of the nonzero coefficients.
+    #[cfg(test)]
+    pub(in crate::dct) fn nonzero(self) -> u64 {
+        self.nonzero
+    }
+
+    fn dc(self) -> i32 {
+        self.values[0]
+    }
+
+    /// Whether every AC coefficient is zero.
+    fn constant(self) -> bool {
+        self.nonzero & !1 == 0
+    }
+
+    /// The nonzero coefficients' zigzag positions and values, in zigzag
+    /// order.
+    fn iter(self) -> impl Iterator<Item = (usize, i32)> {
+        let mut rest = self.nonzero;
+        std::iter::from_fn(move || {
+            (rest != 0).then(|| {
+                let k = rest.trailing_zeros() as usize;
+                rest &= rest - 1;
+                (k, self.values[k])
+            })
+        })
+    }
+}
+
 /// Whether the target lacks a rounding instruction: baseline x86-64 calls a
 /// library function for `round`.
 const NO_ROUNDING_INSTRUCTION: bool =
@@ -60,7 +111,7 @@ pub(super) trait Sample: Copy + Default {
         idct: &Idct,
         cells: Option<&Cells>,
         quant: &[u16; 64],
-        coefficients: &[i32; 64],
+        coefficients: Sparse<'_>,
         plane: &mut [Self],
         (stride, index): (usize, usize),
     ) -> Option<()> {
@@ -80,7 +131,7 @@ impl Sample for u8 {
         idct: &Idct,
         cells: Option<&Cells>,
         quant: &[u16; 64],
-        coefficients: &[i32; 64],
+        coefficients: Sparse<'_>,
         plane: &mut [Self],
         (stride, index): (usize, usize),
     ) -> Option<()> {
@@ -190,12 +241,11 @@ pub(super) fn output(
 }
 
 /// Reconstructs one dequantized block of zigzag coefficients into its eight
-/// rows of a component plane (T.81 A.3.3, F.2.1.5). Coefficients past the
-/// slice are zero; it holds at least the DC coefficient.
+/// rows of a component plane (T.81 A.3.3, F.2.1.5).
 pub(super) fn reconstruct<T: Sample>(
     idct: &Idct,
     quant: &[u16; 64],
-    coefficients: &[i32],
+    coefficients: Sparse<'_>,
     plane: &mut [T],
     stride: usize,
     index: usize,
@@ -203,17 +253,17 @@ pub(super) fn reconstruct<T: Sample>(
     let pitch = stride * 8;
     let start = (index / stride * 8 * pitch).checked_add(index % stride * 8)?;
     let rows = plane.get_mut(start..start.checked_add(7 * pitch + 8)?)?;
-    let (&dc, ac) = coefficients.split_first()?;
-    if ac.iter().all(|&v| v == 0) {
-        let value = idct.constant::<T>(f64::from(dc) * f64::from(quant[0]));
+    if coefficients.constant() {
+        let value = idct.constant::<T>(f64::from(coefficients.dc()) * f64::from(quant[0]));
         for row in rows.chunks_mut(pitch) {
             row.get_mut(..8)?.fill(value);
         }
         return Some(());
     }
+    // Zero coefficients dequantize to the zeros already in place.
     let mut natural = [0.0; 64];
-    for ((&coefficient, &q), &position) in coefficients.iter().zip(quant).zip(&ORDER) {
-        natural[position] = f64::from(coefficient) * f64::from(q);
+    for (k, coefficient) in coefficients.iter() {
+        natural[ORDER[k]] = f64::from(coefficient) * f64::from(quant[k]);
     }
     for (row, samples) in rows.chunks_mut(pitch).zip(&idct.block::<T>(&natural)) {
         row.get_mut(..8)?.copy_from_slice(samples);
@@ -264,7 +314,7 @@ fn output_native<T: Sample>(
                 &idct,
                 cells.as_ref(),
                 &quant,
-                coefficients,
+                Sparse::new(coefficients),
                 &mut plane,
                 (c.stride, index),
             )
@@ -590,7 +640,15 @@ mod tests {
             };
             for (index, block) in blocks.iter_mut().enumerate() {
                 block[0] = i32::try_from(8 * (16 * i + index)).unwrap();
-                super::reconstruct(&idct, &[1; 64], block, plane, twin.stride, index).unwrap();
+                super::reconstruct(
+                    &idct,
+                    &[1; 64],
+                    super::Sparse::new(block),
+                    plane,
+                    twin.stride,
+                    index,
+                )
+                .unwrap();
             }
         }
         let image = super::output(&mut frame, None, Some(0), &limits).unwrap();

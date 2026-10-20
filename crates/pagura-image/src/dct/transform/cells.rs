@@ -8,7 +8,7 @@
 //! samples, so this reconstruction is approximate (ADR 0004). With six cells,
 //! a block whose samples may leave the range averages the clamped, rounded
 //! full block instead.
-use super::{Idct, ORDER, Sample};
+use super::{Idct, ORDER, Sample, Sparse};
 
 /// cos(kπ/16) for k = 0..=8, written out so that every target evaluates the
 /// same basis; the exact path's guarded transform does not depend on it.
@@ -77,54 +77,60 @@ impl Cells {
 
     /// Reconstructs one block of zigzag coefficients into its `count` rows
     /// of `count` cells in a component plane of `stride` blocks per row.
-    /// Coefficients past the slice are zero; it holds at least the DC
-    /// coefficient.
     pub(in crate::dct) fn reconstruct(
         &self,
         idct: &Idct,
         quant: &[u16; 64],
-        coefficients: &[i32],
+        coefficients: Sparse<'_>,
         plane: &mut [u8],
         stride: usize,
         index: usize,
     ) -> Option<()> {
-        let n = self.count;
-        let pitch = stride * n;
-        let start = (index / stride * n * pitch).checked_add(index % stride * n)?;
-        let rows = plane.get_mut(start..start.checked_add((n - 1) * pitch + n)?)?;
-        let (&dc, ac) = coefficients.split_first()?;
-        let block = if n == 1 || ac.iter().all(|&v| v == 0) {
+        let block = (idct, quant, coefficients);
+        match self.count {
+            1 => self.store::<1>(block, plane, stride, index),
+            2 => self.store::<2>(block, plane, stride, index),
+            3 => self.store::<3>(block, plane, stride, index),
+            4 => self.store::<4>(block, plane, stride, index),
+            _ => self.store::<6>(block, plane, stride, index),
+        }
+    }
+
+    fn store<const N: usize>(
+        &self,
+        (idct, quant, coefficients): (&Idct, &[u16; 64], Sparse<'_>),
+        plane: &mut [u8],
+        stride: usize,
+        index: usize,
+    ) -> Option<()> {
+        let pitch = stride * N;
+        let start = (index / stride * N * pitch).checked_add(index % stride * N)?;
+        let rows = plane.get_mut(start..start.checked_add((N - 1) * pitch + N)?)?;
+        let block = if N == 1 || coefficients.constant() {
             // A constant block, or the DC mean of every unclamped sample.
-            let value = idct.constant::<u8>(f64::from(dc) * f64::from(quant[0]));
-            [[value; 6]; 6]
+            let value = idct.constant::<u8>(f64::from(coefficients.dc()) * f64::from(quant[0]));
+            [[value; N]; N]
         } else {
             let mut natural = [0.0f32; 64];
             // Natural positions that hold a nonzero coefficient.
             let mut set = 0_u64;
-            for ((&coefficient, &q), &position) in coefficients.iter().zip(quant).zip(&ORDER) {
-                if coefficient != 0 {
-                    natural[position] = dequantize(coefficient, q);
-                    set |= 1 << position;
-                }
+            for (k, coefficient) in coefficients.iter() {
+                natural[ORDER[k]] = dequantize(coefficient, quant[k]);
+                set |= 1 << ORDER[k];
             }
-            if n == 6 && may_overshoot(&natural, set, &self.reach) {
+            if N == 6 && may_overshoot(&natural, set, &self.reach) {
+                // Zero coefficients dequantize to the zeros already in place.
                 let mut exact = [0.0; 64];
-                for ((&coefficient, &q), &position) in coefficients.iter().zip(quant).zip(&ORDER) {
-                    exact[position] = f64::from(coefficient) * f64::from(q);
+                for (k, coefficient) in coefficients.iter() {
+                    exact[ORDER[k]] = f64::from(coefficient) * f64::from(quant[k]);
                 }
-                six(&idct.block::<u8>(&exact))
-            } else if n == 6 {
-                self.means::<6>(&natural, set)
-            } else if n == 2 {
-                widen(self.means::<2>(&natural, set))
-            } else if n == 3 {
-                widen(self.means::<3>(&natural, set))
+                corner(six(&idct.block::<u8>(&exact)))
             } else {
-                widen(self.means::<4>(&natural, set))
+                self.means::<N>(&natural, set)
             }
         };
         for (row, cells) in rows.chunks_mut(pitch).zip(&block) {
-            row.get_mut(..n)?.copy_from_slice(&cells[..n]);
+            row.get_mut(..N)?.copy_from_slice(cells);
         }
         Some(())
     }
@@ -132,29 +138,35 @@ impl Cells {
     /// Separable cell means of the unclamped samples, rounded once. Only
     /// the natural positions in `set` hold nonzero coefficients; they are
     /// visited in row-major order, as a dense pass that skips zeros would.
-    /// Cells past the count have zero weights and are not stored.
-    fn means<const N: usize>(&self, natural: &[f32; 64], mut set: u64) -> [[u8; N]; N] {
-        let mut horizontal = [[0.0f32; N]; 8];
-        let mut rows = 0_u8;
-        while set != 0 {
-            let position = set.trailing_zeros() as usize;
-            set &= set - 1;
-            let value = natural[position];
-            rows |= 1 << (position / 8);
-            for (out, &weight) in horizontal[position / 8]
-                .iter_mut()
-                .zip(&self.basis[position % 8][..N])
-            {
-                *out += value * weight;
-            }
-        }
+    /// Each row's horizontal means are summed before they enter the
+    /// vertical ones. Cells past the count have zero weights and are not
+    /// stored.
+    fn means<const N: usize>(&self, natural: &[f32; 64], set: u64) -> [[u8; N]; N] {
         let mut vertical = [[0.0f32; N]; N];
-        for (v, (input, basis)) in horizontal.iter().zip(&self.basis).enumerate() {
-            if rows & (1 << v) == 0 || input.iter().all(|&value| value == 0.0) {
+        for (v, (row, basis)) in natural
+            .as_chunks::<8>()
+            .0
+            .iter()
+            .zip(&self.basis)
+            .enumerate()
+        {
+            let mut columns = (set >> (8 * v)) & 255;
+            if columns == 0 {
                 continue;
             }
-            for (output, &weight) in vertical.iter_mut().zip(&basis[..N]) {
-                for (out, &value) in output.iter_mut().zip(input) {
+            let mut horizontal = [0.0f32; N];
+            while columns != 0 {
+                let u = columns.trailing_zeros() as usize;
+                columns &= columns - 1;
+                for (out, &weight) in horizontal.iter_mut().zip(&self.basis[u]) {
+                    *out += row[u] * weight;
+                }
+            }
+            if horizontal.iter().all(|&value| value == 0.0) {
+                continue;
+            }
+            for (output, &weight) in vertical.iter_mut().zip(basis) {
+                for (out, &value) in output.iter_mut().zip(&horizontal) {
                     *out += value * weight;
                 }
             }
@@ -163,15 +175,9 @@ impl Cells {
     }
 }
 
-/// `N` by `N` cells in the corner of a six by six block. Each cell's mean
-/// sums the same terms in the same order whatever `N` is, so a smaller `N`
-/// computes the same first cells.
-fn widen<const N: usize>(cells: [[u8; N]; N]) -> [[u8; 6]; 6] {
-    let mut block = [[0u8; 6]; 6];
-    for (out, row) in block.iter_mut().zip(cells) {
-        out[..N].copy_from_slice(&row);
-    }
-    block
+/// The first `N` by `N` cells of a six by six block.
+fn corner<const N: usize>(cells: [[u8; 6]; 6]) -> [[u8; N]; N] {
+    std::array::from_fn(|i| std::array::from_fn(|j| cells[i][j]))
 }
 
 #[expect(
@@ -241,7 +247,7 @@ fn six(block: &[[u8; 8]; 8]) -> [[u8; 6]; 6] {
 
 #[cfg(test)]
 mod tests {
-    use super::{Cells, Idct, ORDER, overlap};
+    use super::{Cells, Idct, ORDER, Sparse, overlap};
 
     /// Annex A sample value of one frequency pair at sample (x, y), in f64
     /// from the platform cosine, independent of the written-out table.
@@ -312,7 +318,7 @@ mod tests {
                 let quant = [3u16; 64];
                 let mut plane = vec![0u8; n * n];
                 cells
-                    .reconstruct(&idct, &quant, &coefficients, &mut plane, 1, 0)
+                    .reconstruct(&idct, &quant, Sparse::new(&coefficients), &mut plane, 1, 0)
                     .unwrap();
                 let mut natural = [0.0; 64];
                 let (mut single, mut set) = ([0.0f32; 64], 0_u64);
@@ -356,7 +362,14 @@ mod tests {
                 let mut coefficients = [0i32; 64];
                 coefficients[0] = i32::try_from(8 * index).unwrap();
                 cells
-                    .reconstruct(&idct, &[1; 64], &coefficients, &mut plane, stride, index)
+                    .reconstruct(
+                        &idct,
+                        &[1; 64],
+                        Sparse::new(&coefficients),
+                        &mut plane,
+                        stride,
+                        index,
+                    )
                     .unwrap();
             }
             for (offset, &value) in plane.iter().enumerate() {
@@ -366,7 +379,14 @@ mod tests {
             }
             assert!(
                 cells
-                    .reconstruct(&idct, &[1; 64], &[0; 64], &mut plane, stride, stride * rows)
+                    .reconstruct(
+                        &idct,
+                        &[1; 64],
+                        Sparse::new(&[0; 64]),
+                        &mut plane,
+                        stride,
+                        stride * rows
+                    )
                     .is_none()
             );
         }
