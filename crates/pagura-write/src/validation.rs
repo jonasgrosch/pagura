@@ -23,6 +23,7 @@ pub fn object(
             if data.len() > limits.stream_bytes {
                 return Err(Error::limit("writer stream budget exceeded"));
             }
+            name(&Name::new(crate::writer::STREAM_LENGTH), limits)?;
             // The dictionary and the automatically written Length value.
             nodes.charge(2)?;
             entries(dictionary, true, 1, limits, &mut nodes, contains)

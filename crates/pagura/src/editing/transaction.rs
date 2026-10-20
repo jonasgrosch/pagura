@@ -138,7 +138,7 @@ impl<'a> Transaction<'a> {
                 &limits,
             );
         }
-        source_policy(self.document, options)?;
+        source_policy(self.document, options.signatures)?;
         let revision = self
             .document
             .revisions()
@@ -283,7 +283,7 @@ fn source_size(document: &Document) -> Result<u32> {
     Ok(size)
 }
 
-fn source_policy(document: &Document, options: &SaveOptions) -> Result<()> {
+fn source_policy(document: &Document, signatures: SignaturePolicy) -> Result<()> {
     if document.recovery() != Recovery::Strict {
         return Err(Error::unsupported(
             features::REPAIRED,
@@ -300,7 +300,7 @@ fn source_policy(document: &Document, options: &SaveOptions) -> Result<()> {
             "encrypted incremental writing is unavailable",
         ));
     }
-    if options.signatures == SignaturePolicy::Reject {
+    if signatures == SignaturePolicy::Reject {
         // Until document PR #67 lands, history_complete also depends on the
         // document's diagnostic log. Inspect a fresh strict snapshot so earlier
         // rendering/information reports cannot alter this security decision.

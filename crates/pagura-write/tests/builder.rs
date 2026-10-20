@@ -277,3 +277,35 @@ fn generated_length_obeys_depth_limit_in_an_empty_stream_dictionary() {
         pagura_write::validate_object(&object, &Limits { depth: 1, ..limits }, &|_| true).is_ok()
     );
 }
+
+#[test]
+fn generated_length_name_obeys_string_budget() {
+    let object = NewObject::Stream {
+        dictionary: Dictionary::new(),
+        data: Vec::new(),
+    };
+    assert_eq!(
+        pagura_write::validate_object(
+            &object,
+            &Limits {
+                string_bytes: 5,
+                ..Limits::default()
+            },
+            &|_| true
+        )
+        .unwrap_err()
+        .kind,
+        ErrorKind::Limit
+    );
+    assert!(
+        pagura_write::validate_object(
+            &object,
+            &Limits {
+                string_bytes: 6,
+                ..Limits::default()
+            },
+            &|_| true
+        )
+        .is_ok()
+    );
+}
