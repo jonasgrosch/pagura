@@ -5,6 +5,7 @@ import { Worker, isMainThread, parentPort, workerData } from 'node:worker_thread
 import { SessionClient } from '../web/client.mjs';
 import { runHost } from '../web/worker.mjs';
 import { formDocument } from '../web/form_document.mjs';
+import { testButtonArtwork } from './form_buttons_test.mjs';
 import { testFormPreview } from './form_preview_test.mjs';
 import { testFormEditor } from './form_editor_test.mjs';
 import { encodeChanges } from '../web/editing_protocol.mjs';
@@ -14,6 +15,7 @@ if (!isMainThread) {
 } else {
   await testFormEditor();
   await testFormPreview();
+  await testButtonArtwork();
   const module = await WebAssembly.compile(await readFile(process.argv[2] ?? 'target/wasm32-wasip1/release/pagura-host.wasm'));
   class BrowserWorker {
     listeners = new Map();
@@ -89,6 +91,12 @@ if (!isMainThread) {
       const view = await client.open(input, 0);
       assert.deepEqual(await client.saveForm(view.document, []), input, 'no-op does not regenerate NeedAppearances');
       const display = await client.open(input, 1);
+      if (extra.unmarked) {
+        const style = (await client.formStyles(display.document, 0)).find(style => style.index === 0);
+        assert.equal(style.size, 12, 'native text uses actual appearance size');
+        assert.equal(style.left, 2, 'native text uses actual appearance origin');
+        assert.equal(style.baseline, 20, 'native text uses actual appearance baseline');
+      }
       const pixels = await client.renderTile(display.document, 0, 1, tile);
       const output = await client.saveForm(view.document, [{ index: 0, kind: 0, value: 'Updated München' }]);
       assert.deepEqual(output.subarray(0, input.length), input);

@@ -18,6 +18,8 @@ pub const VERSION_1_4: u32 = 0x0001_0004;
 pub const VERSION_1_5: u32 = 0x0001_0005;
 /// Protocol 1.6, adding page-local form widget geometry.
 pub const VERSION_1_6: u32 = 0x0001_0006;
+/// Protocol 1.7, adding actual form text presentation metrics.
+pub const VERSION_1_7: u32 = 0x0001_0007;
 /// Kind byte for structured error responses.
 pub const ERROR_KIND: u8 = 255;
 
@@ -87,6 +89,13 @@ pub enum Request<'a> {
     FormFields(u32),
     /// Inspect editable widgets on a page (v1.6).
     FormWidgets {
+        /// Immutable source handle.
+        document: u32,
+        /// Zero-based page index.
+        page: u32,
+    },
+    /// Inspect text presentation from stored widget appearances (v1.7).
+    FormStyles {
         /// Immutable source handle.
         document: u32,
         /// Zero-based page index.
@@ -178,6 +187,8 @@ pub enum Response {
     FormFields(Vec<u8>),
     /// Bounded page-local widget geometry.
     FormWidgets(Vec<u8>),
+    /// Bounded native text editor metrics.
+    FormStyles(Vec<u8>),
     /// Complete saved PDF bytes; the original handle remains unchanged (v1.5).
     SavedForm(Vec<u8>),
     /// Repairs in discovery order.
@@ -253,6 +264,10 @@ pub fn decode(body: &[u8], limits: pagura::Limits) -> Result<RequestFrame<'_>> {
         },
         9 => Request::Stats,
         17 => Request::DiagnosticDetails(reader.u32()?),
+        21 => Request::FormStyles {
+            document: reader.u32()?,
+            page: reader.u32()?,
+        },
         20 => Request::FormWidgets {
             document: reader.u32()?,
             page: reader.u32()?,
@@ -352,6 +367,7 @@ pub fn encode(id: u32, response: &Response, max_body: usize) -> Result<Vec<u8>> 
         Response::Reading(response) => response.kind,
         Response::FormFields(_) => 146,
         Response::FormWidgets(_) => 148,
+        Response::FormStyles(_) => 149,
         Response::SavedForm(_) => 147,
         Response::Error(_) => ERROR_KIND,
     }])?;
@@ -441,7 +457,9 @@ fn encode_payload(out: &mut Encoder, response: &Response) -> Result<()> {
             out.push(&stats.lists.to_le_bytes())?;
         }
         Response::Reading(response) => out.push(&response.payload)?,
-        Response::FormFields(payload) | Response::FormWidgets(payload) => out.push(payload)?,
+        Response::FormFields(payload)
+        | Response::FormWidgets(payload)
+        | Response::FormStyles(payload) => out.push(payload)?,
         Response::SavedForm(bytes) => {
             out.count(bytes.len())?;
             out.push(bytes)?;

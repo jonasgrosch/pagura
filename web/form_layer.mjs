@@ -27,10 +27,13 @@ export function widgetControl(doc, field, widget, changed) {
   if (radio) node.setAttribute('aria-label', `${field.name}: ${options[0].label}`);
   node.setAttribute('autocomplete', 'off'); node.setAttribute('data-widget', String(widget.index));
   node.style.fontSize = `${Math.min(12, Math.max(6, (widget.rect[3] - widget.rect[1]) * 0.6))}px`;
+  const selected = (draft) => Boolean(draft ? draft.kind === 3 && (draft.widget === widget.index || (!radio || widget.flags & 4) && sameName(draft.state, options[0]?.state)) : options[0]?.selected);
+  const control = { node, field: field.index, widget, selected, artwork: null };
   const sync = (draft) => {
     node.classList.toggle('form-dirty', Boolean(draft));
     if (button) {
-      node.checked = Boolean(draft ? draft.kind === 3 && (draft.widget === widget.index || (!radio || widget.flags & 4) && sameName(draft.state, options[0].state)) : options[0].selected);
+      node.checked = selected(draft);
+      for (const [state, canvas] of control.artwork ?? []) canvas.hidden = state !== node.checked;
     } else if (node.tagName === 'SELECT') {
       const indices = draft?.indices ?? field.options.filter((o) => o.selected).map((o) => o.key);
       for (const option of node.options) option.selected = option.value === '' ? !indices.length : indices.includes(Number(option.value));
@@ -44,5 +47,5 @@ export function widgetControl(doc, field, widget, changed) {
     else if (node.tagName === 'SELECT') changed({ index: field.index, kind: 1, indices: Array.from(node.selectedOptions).filter((o) => o.value !== '').map((o) => Number(o.value)) });
     else changed({ index: field.index, kind: field.kind === 0 ? 0 : 4, value: node.value });
   });
-  sync(); return { node, field: field.index, widget, sync };
+  control.sync = sync; sync(); return control;
 }

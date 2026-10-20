@@ -66,6 +66,43 @@ pub fn text_page(
     compile_page_with_text(document, page, provider).map(|(_, text)| text)
 }
 
+/// Extracts the actual glyph positions of one stored annotation appearance.
+/// Coordinates include appearance fitting and remain in default page user space.
+/// Page content and other annotations are not interpreted.
+///
+/// # Errors
+/// As appearance rendering and bounded text extraction.
+pub fn appearance_text(
+    document: &pagura_document::Document,
+    page: &pagura_document::Page,
+    appearance: ObjectId,
+    rect: Rect,
+    provider: Option<&dyn pagura_text::Provider>,
+) -> Result<PositionedText> {
+    let output = Rc::new(RefCell::new(Output::default()));
+    let mut compiler = Compiler::new(document, page)?;
+    compiler.compilation = Rc::new(super::super::Compilation {
+        colors: crate::icc::Cache::default(),
+        provider,
+        fonts: None,
+        filler: None,
+    });
+    compiler.extraction = Some(Extraction {
+        output: Rc::clone(&output),
+        path: Arc::from([]),
+        spans: Vec::new(),
+        container: appearance,
+    });
+    compiler.paint_appearance(
+        crate::interpreter::forms::FormBody::Stored(document.object(appearance)?),
+        rect,
+        page.resources(),
+        true,
+    )?;
+    let text = std::mem::take(&mut output.borrow_mut().text);
+    Ok(text)
+}
+
 pub(crate) fn compile_with_text(
     document: &pagura_document::Document,
     page: &pagura_document::Page,

@@ -195,6 +195,7 @@ impl Session {
                             | protocol::VERSION_1_4
                             | protocol::VERSION_1_5
                             | protocol::VERSION_1_6
+                            | protocol::VERSION_1_7
                     ) =>
             {
                 self.version = Some(*version);
@@ -218,9 +219,10 @@ impl Session {
     fn execute(&mut self, request: Request<'_>) -> Result<Response> {
         match request {
             Request::Hello(version) => Ok(Response::Hello(version)),
-            Request::FormFields(_) | Request::SaveForm { .. } | Request::FormWidgets { .. } => {
-                self.editing(request)
-            }
+            Request::FormFields(_)
+            | Request::SaveForm { .. }
+            | Request::FormWidgets { .. }
+            | Request::FormStyles { .. } => self.editing(request),
             Request::Reading(request) => self.reading(request).map(Response::Reading),
             Request::Stats => {
                 self.require_extensions()?;
@@ -298,7 +300,12 @@ impl Session {
             Request::DiagnosticDetails(handle) => {
                 if !matches!(
                     self.version,
-                    Some(protocol::VERSION_1_4 | protocol::VERSION_1_5 | protocol::VERSION_1_6)
+                    Some(
+                        protocol::VERSION_1_4
+                            | protocol::VERSION_1_5
+                            | protocol::VERSION_1_6
+                            | protocol::VERSION_1_7
+                    )
                 ) {
                     return Err(Error::invalid_argument(
                         "typed diagnostics require protocol 1.4",
@@ -321,8 +328,16 @@ impl Session {
             Request::SaveForm { document, changes } => {
                 crate::editing::save(self.document(document)?, changes).map(Response::SavedForm)
             }
+            Request::FormStyles { document, page }
+                if self.version == Some(protocol::VERSION_1_7) =>
+            {
+                crate::editing::styles(self.document(document)?, page).map(Response::FormStyles)
+            }
             Request::FormWidgets { document, page }
-                if self.version == Some(protocol::VERSION_1_6) =>
+                if matches!(
+                    self.version,
+                    Some(protocol::VERSION_1_6 | protocol::VERSION_1_7)
+                ) =>
             {
                 crate::editing::widgets(self.document(document)?, page).map(Response::FormWidgets)
             }
@@ -500,6 +515,7 @@ impl Session {
                         | protocol::VERSION_1_4
                         | protocol::VERSION_1_5
                         | protocol::VERSION_1_6
+                        | protocol::VERSION_1_7
                 )
             )
         {
@@ -515,6 +531,7 @@ impl Session {
                     | protocol::VERSION_1_4
                     | protocol::VERSION_1_5
                     | protocol::VERSION_1_6
+                    | protocol::VERSION_1_7
             )
         ) {
             return Err(Error::invalid_argument(
@@ -637,7 +654,7 @@ impl Session {
     fn require_editing(&self) -> Result<()> {
         if matches!(
             self.version,
-            Some(protocol::VERSION_1_5 | protocol::VERSION_1_6)
+            Some(protocol::VERSION_1_5 | protocol::VERSION_1_6 | protocol::VERSION_1_7)
         ) {
             Ok(())
         } else {
@@ -657,6 +674,7 @@ impl Session {
                     | protocol::VERSION_1_4
                     | protocol::VERSION_1_5
                     | protocol::VERSION_1_6
+                    | protocol::VERSION_1_7
             )
         ) {
             Ok(())

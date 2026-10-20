@@ -56,3 +56,11 @@ export function decodeWidgets(r) {
     return { index, field, flags, rect };
   });
 }
+
+export function decodeStyles(r) {
+  return Array.from({ length: count(r, MAX_OPTIONS, 33) }, () => {
+    const index = r.u32(), font = r.text(), size = r.f64(), left = r.f64(), baseline = r.f64(), align = r.u8();
+    if (![size, left, baseline].every(Number.isFinite) || size <= 0 || align > 2) throw new Error('Invalid form text presentation');
+    return { index, font, size, left, baseline, align };
+  });
+}

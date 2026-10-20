@@ -76,7 +76,7 @@ pub(crate) fn repair(document: &Document, diagnostic: pagura_core::Diagnostic) -
 pub(crate) use annotations_filled::compile_filled_cached;
 pub use annotations_filled::compile_filled_page;
 pub(crate) use text::extract::compile_with_text;
-pub use text::extract::{compile_page_with_text, text_page};
+pub use text::extract::{appearance_text, compile_page_with_text, text_page};
 
 /// Compiles a page into the vector display list (7.8.2; 8.4–8.6; ADR 0004).
 /// All content streams are one token sequence, including compound operands.

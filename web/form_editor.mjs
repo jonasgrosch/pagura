@@ -1,3 +1,5 @@
+import { ButtonArtwork } from './form_buttons.mjs';
+import { applyTextStyle } from './form_typography.mjs';
 import { FormPreview } from './form_preview.mjs';
 import { widgetControl, positionWidget } from './form_layer.mjs';
 
@@ -8,6 +10,7 @@ export class FormEditor {
     this.message = doc.getElementById('form-status'); this.saveButton = doc.getElementById('form-download');
     this.openButton = doc.getElementById('edit-open'); this.resetButton = doc.getElementById('form-reset');
     this.changes = new Map(); this.pages = new Map(); this.fields = null; this.editing = null;
+    this.buttons = preview ? new ButtonArtwork(this) : null;
     this.preview = preview ? new FormPreview(this) : null;
     this.token = 0; this.active = true; this.busy = false;
     this.openButton.addEventListener('click', () => {
@@ -70,21 +73,28 @@ export class FormEditor {
       record = { layer, parent, controls: [] }; this.pages.set(index, record); parent.append(layer);
       try {
         const widgets = await editing.client.formWidgets(editing.handle, index);
+        const view = this.state();
+        const styles = new Map((await view.client.formStyles?.(view.handle, index) ?? []).map(style => [style.index, style]));
         if (token !== this.token || this.pages.get(index) !== record) return;
         for (const widget of widgets) {
           const field = this.fields.get(widget.field); if (!field) throw new Error('Unknown form field');
           const control = widgetControl(this.doc, field, widget, (change) => this.change(change));
-          if (control) { record.controls.push(control); layer.append(control.node); control.sync(this.changes.get(field.index)); }
+          if (control) {
+            control.applyStyle = (style) => { if (!style) return; control.textStyle = style; if (this.doc.activeElement !== control.node) applyTextStyle(this.doc, control.node, widget, style); };
+            control.node.addEventListener('blur', () => { if (control.textStyle) applyTextStyle(this.doc, control.node, widget, control.textStyle); });
+            control.applyStyle(styles.get(widget.index)); record.controls.push(control); layer.append(control.node); control.sync(this.changes.get(field.index));
+          }
         }
       } catch (error) { if (token === this.token) this.message.textContent = `Form controls unavailable: ${error}`; }
     }
     for (const control of record.controls) positionWidget(control.node, control.widget.rect, info, zoom);
+    await this.buttons?.page(index, record, info, zoom);
     await this.preview?.page(index, record, info, zoom);
     record.layer.inert = this.busy; record.layer.hidden = !this.active;
   }
   change(change) {
     if (this.busy) return;
-    this.changes.set(change.index, change); this.sync(); this.preview?.schedule();
+    this.changes.set(change.index, change); this.sync(); if (this.fields.get(change.index)?.kind !== 2) this.preview?.schedule();
     this.message.textContent = 'Unsaved changes'; this.controls();
   }
   sync() { for (const record of this.pages.values()) for (const control of record.controls) control.sync(this.changes.get(control.field)); }

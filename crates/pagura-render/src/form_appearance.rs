@@ -44,6 +44,15 @@ pub enum UpdatePolicy {
     PreserveExisting,
 }
 
+/// Declared font name and effective horizontal text size for native editors.
+///
+/// # Errors
+/// As default-appearance parsing; unsupported transformations are rejected.
+pub fn default_text_style(bytes: &[u8], limits: Limits) -> Result<(Name, f64)> {
+    let appearance = DefaultAppearance::parse(bytes, limits)?;
+    Ok((appearance.font, appearance.size * appearance.matrix[3]))
+}
+
 /// Normal appearance selected for one widget (12.5.5).
 #[derive(Debug, Clone, PartialEq)]
 pub enum Appearance {

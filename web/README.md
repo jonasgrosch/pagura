@@ -52,7 +52,7 @@ exceeding a budget displays an error rather than silently truncating a document.
 
 ## Session and caching
 
-The browser negotiates protocol v1.6 for form editing and typed diagnostics; existing protocol v1 clients remain
+The browser negotiates protocol v1.7 for form editing and typed diagnostics; existing protocol v1 clients remain
 supported. See crates/pagura-host/PROTOCOL.md for the byte layouts. A viewport
 change invalidates queued old-generation tiles before transmission. The host
 also skips a stale generation before compilation or painting. The current

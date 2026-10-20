@@ -156,18 +156,19 @@ impl Compiler<'_> {
             },
             Appearance::Hidden => return Ok(()),
         };
-        self.paint_appearance(body, rect, resources)
+        self.paint_appearance(body, rect, resources, false)
             .map_err(|e| match body.id() {
                 Some(id) => e.in_object(id),
                 None => e,
             })
     }
 
-    fn paint_appearance(
+    pub(in crate::interpreter) fn paint_appearance(
         &mut self,
         body: FormBody<'_>,
         rect: Rect,
         resources: &Dictionary,
+        extract_text: bool,
     ) -> Result<()> {
         let form = body.dictionary()?;
         let (bbox, transform) = self.form_geometry(form)?;
@@ -198,9 +199,15 @@ impl Compiler<'_> {
             },
         );
         let start = self.list.commands.len();
-        let extraction = self.extraction.take();
+        let extraction = if extract_text {
+            None
+        } else {
+            self.extraction.take()
+        };
         let result = self.form_body(body, resources);
-        self.extraction = extraction;
+        if !extract_text {
+            self.extraction = extraction;
+        }
         if result.is_ok() && !form.contains_key(b"Group") {
             let mut bounds = pagura_raster::PathBuilder::new();
             bounds.rect(rect.x0(), rect.y0(), rect.width(), rect.height());

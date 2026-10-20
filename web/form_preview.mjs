@@ -49,8 +49,10 @@ export class FormPreview {
     const scale = zoom * ratio;
     let pixels = 0;
     try {
+      const styles = new Map((await snapshot.client.formStyles?.(snapshot.handle, index) ?? []).map(style => [style.index, style]));
+      if (snapshot !== this.snapshot || this.editor.pages.get(index) !== record || record.previewKey !== key) return;
       for (const control of record.controls) {
-        if (!this.editor.changes.has(control.field)) continue;
+        if (!this.editor.changes.has(control.field) || this.editor.fields?.get(control.field)?.kind === 2) continue;
         const [x0, y0, x1, y1] = control.widget.rect;
         const bounds = quadBounds([pagePoint(info, scale, x0, y0), pagePoint(info, scale, x1, y1)]);
         const x = Math.max(0, Math.floor(bounds.left)), y = Math.max(0, Math.floor(bounds.top));
@@ -69,6 +71,7 @@ export class FormPreview {
         const context = canvas.getContext('2d'); if (!context) throw new Error('Canvas 2D rendering is unavailable');
         context.putImageData(new ImageData(new Uint8ClampedArray(image.rgba), image.width, image.height), 0, 0);
         record.layer.append(canvas); record.previewCanvases.push(canvas);
+        control.applyStyle?.(styles.get(control.widget.index));
         control.node.classList.toggle('form-previewed', true);
       }
     } catch (error) {

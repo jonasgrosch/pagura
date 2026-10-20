@@ -25,7 +25,8 @@ mod transparency;
 pub use context::RenderContext;
 pub use display::DisplayList;
 pub use interpreter::{
-    compile_filled_page, compile_page, compile_page_with, compile_page_with_text, text_page,
+    appearance_text, compile_filled_page, compile_page, compile_page_with, compile_page_with_text,
+    text_page,
 };
 pub use overprint::OverprintPreview;
 
@@ -34,7 +35,7 @@ use pagura_document::{Document, Page, Rotation};
 use pagura_raster::Rgba8;
 
 pub use pagura_raster::Pixmap;
-pub use pagura_text::{Provider, SearchOptions, TextMatch, TextPage};
+pub use pagura_text::{PositionedText, Provider, SearchOptions, TextMatch, TextPage};
 
 /// Stable tags for rendering capabilities not implemented yet.
 pub mod features;

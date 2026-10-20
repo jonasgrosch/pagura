@@ -97,3 +97,11 @@ Blurred fields have no synthetic border or fill. A focus ring and hover outline
 identify interactive controls. Failed previews retain drafts and report the
 failure; save remains an explicit action. Preview pixel and source budgets are
 bounded and superseded snapshots are closed.
+
+Checkbox and radio artwork is now prepared before enabling the controls. A
+click switches cached on/off canvases synchronously, without a timer, save,
+renderer request or download. Preparation is bounded to 64 state batches and
+4 megapixels per visible page/zoom. Text controls use protocol 1.7 metrics from
+stored appearance glyphs (declared DA is the empty-field fallback). Unchanged
+text remains painted by the PDF on focus; the native input supplies its caret
+and selection. Updated draft appearances refresh these metrics after blur.

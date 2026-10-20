@@ -97,6 +97,29 @@ pub fn compile_filled_page(filler: &forms::FormFiller<'_>, page: &Page) -> Resul
     pagura_render::compile_filled_page(filler, page, None)
 }
 
+/// Extracts actual positioned text from a stored widget appearance.
+/// Uses the feature-selected font provider, without interpreting the page.
+///
+/// # Errors
+/// As [`pagura_render::appearance_text`].
+pub fn appearance_text(
+    document: &Document,
+    page: &Page,
+    appearance: ObjectId,
+    rect: Rect,
+) -> Result<pagura_render::PositionedText> {
+    #[cfg(feature = "bundled-data")]
+    return pagura_render::appearance_text(
+        document,
+        page,
+        appearance,
+        rect,
+        Some(&pagura_data::Bundled::new(document.limits())),
+    );
+    #[cfg(not(feature = "bundled-data"))]
+    pagura_render::appearance_text(document, page, appearance, rect, None)
+}
+
 /// Extracts one page's positioned text, with the feature-selected font data.
 /// For many pages, keep a [`render_context`] and use
 /// [`RenderContext::text_page`].

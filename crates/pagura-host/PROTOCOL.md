@@ -417,3 +417,14 @@ operational error; differing dictionaries are not aliases. Changed browser saves
 append a reference-reconciliation revision before the normal strict form save.
 No-op saves retain original bytes. Comparisons are capped at 64 MiB of estimated
 dictionary bytes and page Annots arrays at 4096 entries.
+
+## Native editor presentation (v1.7)
+
+`hello(65543)` adds request 21: `u32 document,page`. Response 149 is `u32 count`
+followed by records: `u32 widgetIndex`, UTF-8 font name, three little-endian f64
+values (font size, left inset, baseline measured down from widget top), and u8
+quadding (0 left, 1 center, 2 right). Glyph positions come from isolated stored
+appearance interpretation, including its matrix and fitting; DA supplies a
+fallback for empty/unavailable text. The source handle's rendering policy also
+applies here. Source decoding is capped at 32 MiB per request; at most 4096
+widgets are described. Versions 1.0–1.6 retain their existing layouts.

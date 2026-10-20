@@ -60,10 +60,13 @@ dialog::backdrop { background: #0007; }
 .form-preview { position: absolute; display: block; pointer-events: none; z-index: 0; }
 .form-widget { appearance: none; position: absolute; z-index: 1; left: 0; top: 0; transform-origin: 0 0; pointer-events: auto; box-sizing: border-box; margin: 0; padding: 1px 2px; min-width: 0; border: 1px solid transparent; border-radius: 0; font-family: Helvetica, Arial, sans-serif; line-height: 1.2; color: transparent; background: transparent; resize: none; }
 .form-widget:hover { box-shadow: inset 0 0 0 1px #64748b55; }
-.form-widget.form-dirty:not(.form-previewed), .form-widget:focus { color: #111; background: #fff; background-clip: padding-box; }
-.form-widget:focus { outline: 1.5px solid #337ac6; outline-offset: 2px; box-shadow: none; }
+.form-widget.form-dirty:not(.form-previewed), .form-widget.form-dirty:focus { color: #111; background: #fff; background-clip: padding-box; }
+.form-widget:focus { caret-color: #111; outline: 1.5px solid #337ac6; outline-offset: 2px; box-shadow: none; }
 .form-widget option { color: #111; background: white; }
 .form-widget[type=checkbox], .form-widget[type=radio] { padding: 0; cursor: pointer; color: transparent; background: transparent; }
 .form-widget:is([type=checkbox],[type=radio]):focus { outline-offset: 3px; }
 
 .form-widget:is([type=checkbox],[type=radio]):is(.form-dirty,:focus) { background: transparent; }
+
+.form-widget:not(.form-dirty)::selection { color: transparent; background: #337ac633; }
+.form-widget:disabled { cursor: progress; }

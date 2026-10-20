@@ -106,3 +106,28 @@ fn widget_geometry_is_version_gated_without_closing_the_session() {
         assert_eq!(frames[3].kind(), 131);
     }
 }
+
+#[test]
+fn stored_text_metrics_are_additive_and_version_gated() {
+    let original = fixture("forms", "render-text.pdf");
+    for version in [protocol::VERSION_1_6, protocol::VERSION_1_7] {
+        let mut input = frame(1, 1, &version.to_le_bytes());
+        input.extend(frame(2, 2, &opening(&original).unwrap()));
+        input.extend(frame(21, 3, &[1, 0, 0, 0, 0, 0, 0, 0]));
+        input.extend(frame(20, 4, &[1, 0, 0, 0, 0, 0, 0, 0]));
+        let mut output = Vec::new();
+        Session::default()
+            .serve(&mut input.as_slice(), &mut output)
+            .unwrap();
+        let frames = split_frames(&output);
+        assert_eq!(
+            frames[2].kind(),
+            if version == protocol::VERSION_1_7 {
+                149
+            } else {
+                255
+            }
+        );
+        assert_eq!(frames[3].kind(), 148);
+    }
+}

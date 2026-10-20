@@ -1,5 +1,7 @@
 //! Stateless browser editing adapter; each save returns a new immutable PDF.
 mod aliases;
+mod styles;
+pub(crate) use styles::encode as styles;
 
 use crate::protocol::{Encoder, Reader};
 use pagura::editing::{SaveOptions, save_filled_form};
