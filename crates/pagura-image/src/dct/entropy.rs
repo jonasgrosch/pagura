@@ -7,6 +7,7 @@
 //! report the byte positions of a decoder that loads each byte only when it
 //! needs one of its bits.
 mod fused;
+mod sequential;
 
 use pagura_core::{Diagnostic, Diagnostics, Error, Position, Result};
 
@@ -17,8 +18,10 @@ const LOOKAHEAD: u32 = 9;
 /// The longest Huffman code (T.81 C.2).
 const LONGEST: u32 = 16;
 
-/// A decoded Huffman code that is not yet consumed.
+/// A decoded Huffman code that is not yet consumed. Eight-byte alignment
+/// lets a lookup index scale by a shift.
 #[derive(Clone, Copy, Default)]
+#[repr(align(8))]
 pub(super) struct Code {
     /// A DC magnitude size, or an AC run and size (T.81 F.1.2.1, F.1.2.2).
     pub(super) symbol: u8,
@@ -27,6 +30,9 @@ pub(super) struct Code {
     /// Code plus magnitude bits when the magnitude was decoded with the code
     /// (T.81 F.2.2.1); otherwise zero.
     fused: u8,
+    /// Code plus magnitude bits in a lookup entry, whether or not the
+    /// magnitude fits in the lookup; zero in an entry whose code is longer.
+    total: u8,
     /// That magnitude's value, sign-extended (Table F.2).
     value: i16,
 }
@@ -84,29 +90,37 @@ impl Huffman {
                 Ok(code)
             };
         }
-        let window = bits.peek(LONGEST);
-        for length in LOOKAHEAD + 1..=LONGEST {
-            if length > bits.count {
-                return Err(bits.exhausted());
-            }
-            let i = length as usize - 1;
-            if let Some(relative) = u32::try_from(window >> (LONGEST - length))
-                .ok()
-                .and_then(|code| code.checked_sub(self.first[i]))
-                .filter(|&v| v < u32::from(self.count[i]))
-            {
-                return Ok(Code {
-                    symbol: self.symbols[self.offset[i] + relative as usize],
-                    length: u8::try_from(length).unwrap_or(0),
-                    ..Code::default()
-                });
-            }
+        if let Some((symbol, length)) = self.long(bits.peek(LONGEST), bits.count) {
+            return Ok(Code {
+                symbol,
+                length: u8::try_from(length).unwrap_or(0),
+                ..Code::default()
+            });
+        }
+        if bits.count < LONGEST {
+            return Err(bits.exhausted());
         }
         // The bit-serial decode of T.81 F.2.2.3 has read all sixteen bits
         // when it rejects the code.
         let mut past = bits.clone();
         past.consume(LONGEST);
         Err(past.error("invalid JPEG Huffman code"))
+    }
+
+    /// The symbol and length of the code longer than the lookup that starts
+    /// the sixteen bits `window`, among codes of at most `loaded` bits.
+    fn long(&self, window: usize, loaded: u32) -> Option<(u8, u32)> {
+        for length in LOOKAHEAD + 1..=LONGEST.min(loaded) {
+            let i = length as usize - 1;
+            if let Some(relative) = u32::try_from(window >> (LONGEST - length))
+                .ok()
+                .and_then(|code| code.checked_sub(self.first[i]))
+                .filter(|&v| v < u32::from(self.count[i]))
+            {
+                return Some((self.symbols[self.offset[i] + relative as usize], length));
+            }
+        }
+        None
     }
 }
 
@@ -201,6 +215,7 @@ fn enter(lookup: &mut [Code; 1 << LOOKAHEAD], code: u32, length: u8, symbol: u8,
         *slot = Code {
             symbol,
             length,
+            total: length.saturating_add(size),
             ..Code::default()
         };
         if fits {
@@ -277,47 +292,30 @@ impl<'a> Bits<'a> {
         Error::syntax(message).at(Position::Buffer(self.next))
     }
 
-    /// Unless 32 bits are buffered, loads bytes until at least 56 are, or up
-    /// to a marker or the end of the data.
+    fn cursor(&self) -> Cursor {
+        Cursor {
+            next: self.next,
+            window: self.window,
+            count: self.count,
+        }
+    }
+
+    fn resume(&mut self, cursor: Cursor) {
+        self.next = cursor.next;
+        self.window = cursor.window;
+        self.count = cursor.count;
+    }
+
+    /// As [`Cursor::fill`].
     #[expect(
         clippy::inline_always,
         reason = "every coefficient takes this path; it shares the block loop's registers"
     )]
     #[inline(always)]
     fn fill(&mut self) {
-        if self.count >= 32 {
-            return;
-        }
-        if let Some(word) = self
-            .data
-            .get(self.next..)
-            .and_then(|tail| tail.first_chunk::<8>())
-            .filter(|word| !has_marker_byte(**word))
-        {
-            self.window |= u64::from_be_bytes(*word) >> self.count;
-            // Whole bytes only.
-            let bytes = (63 - self.count) / 8;
-            self.next += bytes as usize;
-            self.count += 8 * bytes;
-            return;
-        }
-        self.fill_bytes();
-    }
-
-    fn fill_bytes(&mut self) {
-        while self.count < 56
-            && let Some(&byte) = self.data.get(self.next)
-        {
-            if byte == 255 {
-                if self.data.get(self.next + 1) != Some(&0) {
-                    return;
-                }
-                self.next += 1;
-            }
-            self.next += 1;
-            self.window |= u64::from(byte) << (56 - self.count);
-            self.count += 8;
-        }
+        let mut cursor = self.cursor();
+        cursor.fill(self.data);
+        self.resume(cursor);
     }
 
     /// The next `width` (1 to 16) bits, zero past the loaded ones.
@@ -457,6 +455,60 @@ impl<'a> Bits<'a> {
     /// Charges reference refinement work against this scan's stream budget.
     pub(super) fn charge_refinement(&mut self, work: usize) -> Result<()> {
         fused::charge(self, work)
+    }
+}
+
+/// The load position and window of [`Bits`], held apart from it so that a
+/// block loop keeps them in registers.
+#[derive(Clone, Copy)]
+struct Cursor {
+    next: usize,
+    window: u64,
+    count: u32,
+}
+
+impl Cursor {
+    /// Unless 32 bits are buffered, loads bytes until at least 56 are, or up
+    /// to a marker or the end of the data.
+    #[expect(
+        clippy::inline_always,
+        reason = "every coefficient takes this path; it shares the block loop's registers"
+    )]
+    #[inline(always)]
+    fn fill(&mut self, data: &[u8]) {
+        if self.count >= 32 {
+            return;
+        }
+        if let Some(word) = data
+            .get(self.next..)
+            .and_then(|tail| tail.first_chunk::<8>())
+            .filter(|word| !has_marker_byte(**word))
+        {
+            self.window |= u64::from_be_bytes(*word) >> self.count;
+            // Whole bytes only.
+            let bytes = (63 - self.count) / 8;
+            self.next += bytes as usize;
+            self.count += 8 * bytes;
+            return;
+        }
+        *self = self.fill_bytes(data);
+    }
+
+    fn fill_bytes(mut self, data: &[u8]) -> Self {
+        while self.count < 56
+            && let Some(&byte) = data.get(self.next)
+        {
+            if byte == 255 {
+                if data.get(self.next + 1) != Some(&0) {
+                    break;
+                }
+                self.next += 1;
+            }
+            self.next += 1;
+            self.window |= u64::from(byte) << (56 - self.count);
+            self.count += 8;
+        }
+        self
     }
 }
 
