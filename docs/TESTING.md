@@ -5,6 +5,10 @@ generation; analytic raster expectations; cross-engine rendering; save/reopen;
 profile validation; deterministic mutation tests; adversarial resource tests;
 and performance evidence. No single renderer or validator is a complete oracle.
 
+The proposed [renderer-unification gates](plans/unified-renderer-validation.md)
+distinguish independent references, internal parity, and release evidence, and
+specify additional tests and harness work. They have not yet been implemented.
+
 `python3 tools/check.py` runs formatting, architecture/safety policy checks,
 Clippy, Rust tests, Python harness tests, fixture regeneration checks, and
 CLI integration tests. It needs no network and cannot refresh golden outputs.
