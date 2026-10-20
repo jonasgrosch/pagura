@@ -100,7 +100,6 @@ impl Context {
             || !command.composite.simple()
             || command.composite.overprint
             || command.transfer.is_some()
-            || command.image.matte.is_some()
             || !matches!(
                 command.image.space,
                 Some(Space::Rgb | Space::Gray | Space::Indexed { .. })
@@ -112,6 +111,13 @@ impl Context {
         let soft = match (&command.image.mask, &command.image.decoded.mask) {
             (None, MaskKind::None) => None,
             (Some(mask), MaskKind::Soft(_)) if mask.mask.is_none() => Some(Arc::clone(mask)),
+            _ => return Ok(false),
+        };
+        // A matte of a DeviceGray or DeviceRGB image is removed once composed.
+        let matte = match (command.image.matte.as_deref(), &command.image.space) {
+            (None, _) => None,
+            (Some(&[gray]), Some(Space::Gray)) if soft.is_some() => Some([gray; 3]),
+            (Some(&[r, g, b]), Some(Space::Rgb)) if soft.is_some() => Some([r, g, b]),
             _ => return Ok(false),
         };
         let count = usize::try_from(u64::from(clip.width()) * u64::from(clip.height()))
@@ -168,6 +174,9 @@ impl Context {
         if !result? {
             return Ok(false);
         }
+        if let (Some(matte), Some(opacity)) = (matte, &opacity) {
+            remove_matte(output.data_mut(), opacity.data(), matte);
+        }
         let tile = target.tile;
         let Some(narrow::Buffer::U8(bytes)) = target.narrow_mut() else {
             return Ok(false);
@@ -195,6 +204,36 @@ impl Context {
             }
         }
         Ok(true)
+    }
+}
+
+/// Replaces premultiplied-with-matte colour levels by the colour they hold
+/// at each opacity (11.6.5.3): composed at that opacity, the colour is
+/// c - matte (1 - opacity), which removing the matte from area means keeps.
+/// Zero opacity gives black, as the image sampler does.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "levels are clamped to the byte range"
+)]
+fn remove_matte(colors: &mut [u8], opacities: &[u8], matte: [f64; 3]) {
+    let matte = matte.map(|m| m.clamp(0.0, 1.0) * 255.0);
+    for (color, opacity) in colors
+        .as_chunks_mut::<4>()
+        .0
+        .iter_mut()
+        .zip(opacities.as_chunks::<4>().0)
+    {
+        let alpha = f64::from(opacity[0]) / 255.0;
+        for (channel, matte) in color[..3].iter_mut().zip(matte) {
+            *channel = if alpha > 0.0 {
+                (matte + (f64::from(*channel) - matte) / alpha)
+                    .round()
+                    .clamp(0.0, 255.0) as u8
+            } else {
+                0
+            };
+        }
     }
 }
 

@@ -46,6 +46,11 @@ impl Context {
         else {
             return Ok(());
         };
+        if matches!(target.narrow(), Some(super::narrow::Buffer::U8(_)))
+            && self.constant_stencil((command, &clip), target, initial, model, knockout, depth)?
+        {
+            return Ok(());
+        }
         let soft = command
             .composite
             .mask
@@ -146,6 +151,46 @@ impl Context {
             }
             result => result,
         }
+    }
+    /// Paints a one-sample stencil mask, which paints its colour over its
+    /// whole unit square or nothing, as a fill of that square: on byte
+    /// storage, where both store the same coverage bytes.
+    fn constant_stencil(
+        &mut self,
+        (command, clip): (&ImageCommand, &pagura_raster::Mask),
+        target: &mut Surface,
+        initial: Backdrop<'_>,
+        model: Model,
+        knockout: bool,
+        depth: usize,
+    ) -> Result<bool> {
+        let image = &command.image;
+        if image.decoded.width != 1
+            || image.decoded.height != 1
+            || !matches!(image.decoded.kind, ImageKind::Stencil { .. })
+            || !matches!(image.decoded.mask, MaskKind::None)
+            || image.mask.is_some()
+            || command.composite.mask.is_some()
+            || !matches!(command.stencil, crate::color::Color::Solid { .. })
+        {
+            return Ok(false);
+        }
+        if mask_texel(image, 0)?.alpha == 0.0 {
+            // An unpainted sample still validates the stencil's colour.
+            self.stencil_color(command, model)?;
+            return Ok(true);
+        }
+        let paint = crate::display::PathCommand {
+            path: std::sync::Arc::default(),
+            mark: crate::display::Mark::Fill(FillRule::NonZero),
+            clip: None,
+            color: command.stencil.clone(),
+            position: command.position,
+            transfer: command.transfer.clone(),
+            composite: command.composite.clone(),
+        };
+        self.paint_path((&paint, clip), target, initial, model, knockout, depth)?;
+        Ok(true)
     }
     fn image_source(
         &mut self,
