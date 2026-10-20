@@ -213,8 +213,8 @@ struct Context {
     fragments: Option<Fragments>,
     /// Storage lent for the next byte page surface.
     spare: Vec<u8>,
-    /// The last expanded indexed image of byte-page interiors.
-    palette: Option<image_interiors::Palette>,
+    /// Expanded images of byte-page interiors kept for the page by source.
+    palettes: image_interiors::Palettes,
     raster: pagura_raster::Rasterizer,
     limits: Limits,
     device: Transform,
@@ -273,7 +273,7 @@ impl Context {
             ),
             fragments: None,
             spare: Vec::new(),
-            palette: None,
+            palettes: image_interiors::Palettes::default(),
             glyphs: crate::display::GlyphCache::new(list.limits.decoded_bytes),
             limits: list.limits,
             device: list.device_transform(options),
@@ -310,7 +310,7 @@ impl Context {
     }
     fn trim_raster(&mut self, bytes: usize) {
         if self.allocated.saturating_add(bytes) > self.limits.decoded_bytes {
-            self.clear_palette();
+            self.clear_palettes();
         }
         if self
             .allocated
@@ -2309,7 +2309,7 @@ mod tests {
             bounds: regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
             fragments: None,
             spare: Vec::new(),
-            palette: None,
+            palettes: image_interiors::Palettes::default(),
             glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
             limits,
             device: Transform::IDENTITY,
@@ -2384,7 +2384,7 @@ mod tests {
             bounds: regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
             fragments: None,
             spare: Vec::new(),
-            palette: None,
+            palettes: image_interiors::Palettes::default(),
             glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
             raster: pagura_raster::Rasterizer::default(),
             limits,
