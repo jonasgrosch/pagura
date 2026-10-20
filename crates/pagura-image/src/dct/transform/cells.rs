@@ -1,12 +1,13 @@
 //! Drawn-size reconstruction: each eight-sample block axis keeps n cells
 //! (n = 1, 2, 3, 4 or 6), the area means of its T.81 A.3.3 samples.
 //!
-//! Up to four cells per axis, an integrated cosine basis maps dequantized
-//! coefficients straight to the cell means of the unclamped samples, which
-//! are rounded and clamped once; every coefficient contributes. Six cells
-//! average the clamped, rounded full block instead. Where a block overshoots
-//! the sample range, the unclamped means differ from the exact path's means
-//! of clamped samples, so this reconstruction is approximate (ADR 0004).
+//! An integrated cosine basis maps dequantized coefficients straight to the
+//! cell means of the unclamped samples, which are rounded and clamped once;
+//! every coefficient contributes. Where a block overshoots the sample range,
+//! the unclamped means differ from the exact path's means of clamped
+//! samples, so this reconstruction is approximate (ADR 0004). With six cells,
+//! a block whose samples may leave the range averages the clamped, rounded
+//! full block instead.
 use super::{Idct, ORDER, Sample};
 
 /// cos(kπ/16) for k = 0..=8, written out so that every target evaluates the
@@ -41,9 +42,11 @@ fn overlap(x: usize, j: usize, n: usize) -> u32 {
 /// Cells kept per block axis, with the basis or weights that produce them.
 pub(in crate::dct) struct Cells {
     count: usize,
-    /// For one to four cells: the mean of each frequency's basis function
-    /// over each cell, scaled as the T.81 A.3.3 IDCT.
-    basis: [[f32; 4]; 8],
+    /// The mean of each frequency's basis function over each cell, scaled
+    /// as the T.81 A.3.3 IDCT.
+    basis: [[f32; 6]; 8],
+    /// Each natural position's basis peak, for six cells' range check.
+    reach: [f32; 64],
 }
 
 impl Cells {
@@ -53,21 +56,23 @@ impl Cells {
         reason = "the integrated basis is evaluated in f32 by this approximate path"
     )]
     pub(in crate::dct) fn new(count: usize) -> Self {
-        let mut basis = [[0.0; 4]; 8];
-        if count <= 4 {
-            for (u, row) in basis.iter_mut().enumerate() {
-                let scale = if u == 0 { COSINE[4] * 0.5 } else { 0.5 };
-                for (j, value) in row.iter_mut().take(count).enumerate() {
-                    let mut sum = 0.0;
-                    for x in 0..8 {
-                        let weight = f64::from(overlap(x, j, count)) / 8.0;
-                        sum += weight * cosine((2 * x + 1) * u);
-                    }
-                    *value = (sum * scale) as f32;
+        let mut basis = [[0.0; 6]; 8];
+        for (u, row) in basis.iter_mut().enumerate() {
+            let scale = if u == 0 { COSINE[4] * 0.5 } else { 0.5 };
+            for (j, value) in row.iter_mut().take(count).enumerate() {
+                let mut sum = 0.0;
+                for x in 0..8 {
+                    let weight = f64::from(overlap(x, j, count)) / 8.0;
+                    sum += weight * cosine((2 * x + 1) * u);
                 }
+                *value = (sum * scale) as f32;
             }
         }
-        Self { count, basis }
+        Self {
+            count,
+            basis,
+            reach: reach(),
+        }
     }
 
     /// Reconstructs one block of zigzag coefficients into its `count` rows
@@ -93,12 +98,6 @@ impl Cells {
             // A constant block, or the DC mean of every unclamped sample.
             let value = idct.constant::<u8>(f64::from(dc) * f64::from(quant[0]));
             block = [[value; 6]; 6];
-        } else if n == 6 {
-            let mut natural = [0.0; 64];
-            for ((&coefficient, &q), &position) in coefficients.iter().zip(quant).zip(&ORDER) {
-                natural[position] = f64::from(coefficient) * f64::from(q);
-            }
-            block = six(&idct.block::<u8>(&natural));
         } else {
             let mut natural = [0.0f32; 64];
             // Natural positions that hold a nonzero coefficient.
@@ -109,8 +108,18 @@ impl Cells {
                     set |= 1 << position;
                 }
             }
-            for (out, row) in block.iter_mut().zip(self.means(&natural, set)) {
-                out[..4].copy_from_slice(&row);
+            if n == 6 && may_overshoot(&natural, set, &self.reach) {
+                let mut exact = [0.0; 64];
+                for ((&coefficient, &q), &position) in coefficients.iter().zip(quant).zip(&ORDER) {
+                    exact[position] = f64::from(coefficient) * f64::from(q);
+                }
+                block = six(&idct.block::<u8>(&exact));
+            } else if n == 6 {
+                block = self.means::<6>(&natural, set);
+            } else {
+                for (out, row) in block.iter_mut().zip(self.means::<4>(&natural, set)) {
+                    out[..4].copy_from_slice(&row);
+                }
             }
         }
         for (row, cells) in rows.chunks_mut(pitch).zip(&block) {
@@ -123,8 +132,8 @@ impl Cells {
     /// the natural positions in `set` hold nonzero coefficients; they are
     /// visited in row-major order, as a dense pass that skips zeros would.
     /// Cells past the count have zero weights and are not stored.
-    fn means(&self, natural: &[f32; 64], mut set: u64) -> [[u8; 4]; 4] {
-        let mut horizontal = [[0.0f32; 4]; 8];
+    fn means<const N: usize>(&self, natural: &[f32; 64], mut set: u64) -> [[u8; N]; N] {
+        let mut horizontal = [[0.0f32; N]; 8];
         let mut rows = 0_u8;
         while set != 0 {
             let position = set.trailing_zeros() as usize;
@@ -133,17 +142,17 @@ impl Cells {
             rows |= 1 << (position / 8);
             for (out, &weight) in horizontal[position / 8]
                 .iter_mut()
-                .zip(&self.basis[position % 8])
+                .zip(&self.basis[position % 8][..N])
             {
                 *out += value * weight;
             }
         }
-        let mut vertical = [[0.0f32; 4]; 4];
+        let mut vertical = [[0.0f32; N]; N];
         for (v, (input, basis)) in horizontal.iter().zip(&self.basis).enumerate() {
             if rows & (1 << v) == 0 || input.iter().all(|&value| value == 0.0) {
                 continue;
             }
-            for (output, &weight) in vertical.iter_mut().zip(basis) {
+            for (output, &weight) in vertical.iter_mut().zip(&basis[..N]) {
                 for (out, &value) in output.iter_mut().zip(input) {
                     *out += value * weight;
                 }
@@ -159,6 +168,37 @@ impl Cells {
 )]
 fn dequantize(coefficient: i32, quant: u16) -> f32 {
     (i64::from(coefficient) * i64::from(quant)) as f32
+}
+
+/// The largest magnitude of each natural position's T.81 A.3.3 basis
+/// function over the block's samples: C(u) cos at its farthest sample, per
+/// axis, times one quarter.
+fn reach() -> [f32; 64] {
+    // C(0) = 1/sqrt 2 with cosine 1; odd frequencies peak at cos(pi/16),
+    // 2 and 6 at cos(pi/8), and 4 at cos(pi/4).
+    let axis = [
+        COSINE[4], COSINE[1], COSINE[2], COSINE[1], COSINE[4], COSINE[1], COSINE[2], COSINE[1],
+    ];
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "a bound with a one-level margin"
+    )]
+    std::array::from_fn(|position| (0.25 * axis[position % 8] * axis[position / 8]) as f32)
+}
+
+/// Whether a block's samples may leave [0, 255]: its DC level plus or minus
+/// the sum of its AC magnitudes, each at its basis function's peak, with a
+/// margin of one level.
+fn may_overshoot(natural: &[f32; 64], set: u64, reach: &[f32; 64]) -> bool {
+    let mut extent = 0.0f32;
+    let mut rest = set & !1;
+    while rest != 0 {
+        let position = rest.trailing_zeros() as usize;
+        rest &= rest - 1;
+        extent += natural[position].abs() * reach[position];
+    }
+    let level = 128.0 + natural[0] / 8.0;
+    level - extent < 1.0 || level + extent > 254.0
 }
 
 /// Six cells per axis: exact rational means of the reconstructed samples
@@ -239,10 +279,11 @@ mod tests {
     }
 
     #[test]
-    fn cell_means_round_the_unclamped_annex_a_means_once() {
+    fn cell_means_round_the_unclamped_annex_a_means_once_unless_six_overshoot() {
         let idct = Idct::new();
         let mut state = 0x5eed_1234u32;
-        for n in [1, 2, 3, 4] {
+        let mut overshooting = 0;
+        for n in [1, 2, 3, 4, 6] {
             let cells = Cells::new(n);
             for case in 0..600 {
                 let mut coefficients = [0i32; 64];
@@ -262,8 +303,20 @@ mod tests {
                     .reconstruct(&idct, &quant, &coefficients, &mut plane, 1, 0)
                     .unwrap();
                 let mut natural = [0.0; 64];
+                let (mut single, mut set) = ([0.0f32; 64], 0_u64);
                 for (&coefficient, &position) in coefficients.iter().zip(&ORDER) {
                     natural[position] = f64::from(coefficient) * 3.0;
+                    if coefficient != 0 {
+                        single[position] = super::dequantize(coefficient, 3);
+                        set |= 1 << position;
+                    }
+                }
+                if n == 6 && set & !1 != 0 && super::may_overshoot(&single, set, &super::reach()) {
+                    // Six cells average the clamped, rounded full block.
+                    let expected = super::six(&idct.block::<u8>(&natural));
+                    assert_eq!(plane, expected.as_flattened(), "case={case}");
+                    overshooting += 1;
+                    continue;
                 }
                 for i in 0..n {
                     for j in 0..n {
@@ -277,42 +330,7 @@ mod tests {
                 }
             }
         }
-    }
-
-    #[test]
-    fn six_cells_average_the_exact_block_with_one_rounding() {
-        let idct = Idct::new();
-        let cells = Cells::new(6);
-        let mut state = 0x0bad_cafeu32;
-        for _ in 0..200 {
-            let mut coefficients = [0i32; 64];
-            for value in coefficients.iter_mut().take(20) {
-                state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
-                *value = i32::try_from((state >> 16) % 257).unwrap() - 128;
-            }
-            let quant = [5u16; 64];
-            let mut natural = [0.0; 64];
-            for (&coefficient, &position) in coefficients.iter().zip(&ORDER) {
-                natural[position] = f64::from(coefficient) * 5.0;
-            }
-            let full = idct.block::<u8>(&natural);
-            let mut plane = vec![0u8; 36];
-            cells
-                .reconstruct(&idct, &quant, &coefficients, &mut plane, 1, 0)
-                .unwrap();
-            for i in 0..6 {
-                for j in 0..6 {
-                    let mut sum = 0u32;
-                    for (y, row) in full.iter().enumerate() {
-                        for (x, &sample) in row.iter().enumerate() {
-                            sum += overlap(x, j, 6) * overlap(y, i, 6) * u32::from(sample);
-                        }
-                    }
-                    // sum/64 rounded half up.
-                    assert_eq!(u32::from(plane[i * 6 + j]), (2 * sum + 64) / 128);
-                }
-            }
-        }
+        assert!(overshooting > 0);
     }
 
     #[test]

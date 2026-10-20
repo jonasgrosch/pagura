@@ -207,7 +207,7 @@ fn cell_mean(
 }
 
 #[test]
-fn six_cells_are_exact_means_of_the_full_gray_samples() {
+fn six_cells_stay_within_a_level_of_the_full_gray_sample_means() {
     let limits = Limits::default();
     let mut strict = pagura_core::Diagnostics::new(pagura_core::Recovery::Strict);
     for name in [
@@ -231,8 +231,10 @@ fn six_cells_are_exact_means_of_the_full_gray_samples() {
         for row in 0..six.height {
             for column in 0..six.width {
                 if let Some(expected) = cell_mean(&full, 6, (row, column), 0) {
+                    // Means of the unclamped samples, rounded once, against
+                    // means of the rounded, clamped samples.
                     let actual = six.samples[(row * six.width + column) as usize];
-                    assert_eq!(actual, expected, "{name} ({row},{column})");
+                    assert!(actual.abs_diff(expected) <= 1, "{name} ({row},{column})");
                     compared += 1;
                 }
             }
