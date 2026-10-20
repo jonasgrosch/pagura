@@ -154,3 +154,21 @@ library signature/source restrictions survive. The comparison budget is a
 separate 64 MiB of estimated dictionary-comparison bytes per matching operation;
 page arrays are capped at 4096 annotations. Synthetic duplicate, near-match,
 ambiguity, no-op and saved-render equivalence checks cover this behavior.
+
+## Viewer appearance policy (2026-10-21)
+
+Real-world forms can have valid cached appearances despite absent DA font
+resources, unmarked flattened text, or zero-area empty appearance streams.
+The browser explicitly selects `UpdatePolicy::PreserveExisting`; the library
+continues to default to specification behavior. Preserve untouched cached APs,
+create missing APs before clearing NeedAppearances, and repair only edited
+variable-text appearances. Exact standard-14 names can receive explicit
+resources; custom font names are not guessed. Unmarked text-show operations are
+removed while vector artwork is retained inside an isolated graphics scope.
+Clipping text and external XObjects remain unsupported in that fallback.
+
+The same save path supplies disposable draft snapshots for on-page rendering.
+This avoids an independent HTML checkbox glyph or text preview that disagrees
+with saved output. Debounce edits, coalesce in-flight work, paint only edited
+widget regions, retain the original saved source, and close superseded handles.
+Drafts survive failed previews and never trigger a download automatically.

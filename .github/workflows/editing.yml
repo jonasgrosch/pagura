@@ -34,9 +34,10 @@ jobs:
         env:
           PAGURA_EDIT_OUTPUT: ${{ runner.temp }}/pagura-editing
         run: |
-          cargo clippy --locked --offline -p pagura-write -p pagura -p pagura-host --all-targets -- -D warnings
+          cargo clippy --locked --offline -p pagura-write -p pagura -p pagura-host -p pagura-render --all-targets -- -D warnings
           cargo test --locked --offline -p pagura-write
           cargo test --locked --offline -p pagura --test editing
+          cargo test --locked --offline -p pagura-render form_appearance
           cargo test --locked --offline -p pagura-host
       - name: Check saved files and compare independent-reader baselines
         env:
