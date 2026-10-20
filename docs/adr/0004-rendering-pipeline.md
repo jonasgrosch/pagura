@@ -323,3 +323,77 @@ Fixtures and unit tests compare against independent rational oracles,
 including two-to-one half-level ties, quarter turns, inverted one- and
 two-bit samples, partial coverage and bilinear magnification. Changed pixels
 against the general compositor must be reported with their oracle values.
+
+## Amendment: competitive accuracy gate (accepted, 2026-10-20)
+
+Status: accepted, 2026-10-20.
+
+The one-level contract stays the reference and the default. An approximate
+path, one that can leave a pixel more than one level from its exact result,
+may become the default only when it meets the absolute goals below on the
+40-page benchmark set at 72, 150 and 300 dpi. The goals are fixed numbers.
+They were derived on 2026-10-19 from the best competitor in each cell, not
+from any single engine, measured on main 99bfb290 against the then-latest
+releases (hayro 0.8.0, PDFium 156.0.8076 via pypdfium2 5.14.0, MuPDF 1.28.5 via
+PyMuPDF 2.0, pdf.js 6.4.299, Poppler, Quartz on macOS 15.8), and do not move
+when competitors change.
+
+**Accuracy goals.** Measured against Pagura's exact rendering of the same
+page, pixel-weighted per category and DPI. Each value is at least 10% better
+than the best competitor's value for that measure, rounded to a round number
+on the ambitious side:
+- MAE: mean absolute RGB error;
+- within ±1: share of pixels whose largest channel error is at most one;
+- P99.9: 99.9th percentile of the largest channel error.
+
+No page may be less accurate than the best competitor on that page. The
+maximum error is not gated, because every engine reaches 231–255 on some
+pages.
+
+| Category | DPI | MAE ≤ | Within ±1 ≥ | P99.9 ≤ |
+|---|---:|---:|---:|---:|
+| Text | 72 / 150 / 300 | 1.0 / 0.5 / 0.3 | 93 / 96 / 98% | 60 / 40 / 30 |
+| Vector | 72 / 150 / 300 | 0.6 / 0.15 / 0.05 | 95 / 99.2 / 99.6% | 50 / 30 / 20 |
+| Mixed | 72 / 150 / 300 | 1.5 / 0.75 / 0.25 | 92 / 94 / 98% | 110 / 90 / 40 |
+| Images | 72 / 150 / 300 | 3.0 / 0.75 / 0.4 | 85 / 94 / 98.5% | 80 / 60 / 90 |
+
+Each value is the competitors' best figure for that measure, improved by at
+least 10% and then rounded towards the more ambitious side.
+
+The best competitor differs by cell. It is hayro for most text and vector
+cells, MuPDF for vector at 72 dpi, and pdf.js for images at 72 and 150 dpi,
+mixed at 150 dpi and some percentiles. The engines considered were PDFium,
+MuPDF, hayro, pdf.js, Poppler and Quartz.
+
+**Speed goals.** For each category and DPI, the geometric mean over the
+category's documents of Pagura's engine time (open plus every page render)
+must be at most the value below, in milliseconds, on each benchmark runner.
+Each value is 0.9 times the fastest competitor on that runner, rounded down
+in 0.5 ms steps below 10 ms, 1 ms steps up to 30 ms and 5 ms steps above. The
+fastest competitor differs by runner. On M4 it is hayro in every cell. On x86
+it is PDFium for text at 72 and 150 dpi and for all vector, MuPDF for images
+at 72 dpi, and hayro otherwise. On Graviton it is PDFium for text, vector and
+mixed, MuPDF for images at 72 dpi, and hayro for images at 150 and 300 dpi.
+
+| Category | M4 (ms ≤) | x86 (ms ≤) | Graviton (ms ≤) |
+|---|---|---|---|
+| Text | 5.5 / 8 / 7.5 | 11 / 20 / 26 | 9.5 / 15 / 19 |
+| Vector | 3 / 4.5 / 9 | 6 / 11 / 29 | 5.5 / 8.5 / 19 |
+| Mixed | 4 / 6.5 / 7 | 9.5 / 17 / 23 | 8.5 / 14 / 17 |
+| Images | 13 / 19 / 16 | 25 / 45 / 50 | 27 / 40 / 40 |
+
+The values are for 72 / 150 / 300 dpi, from the 2026-10-19 runs on main
+99bfb290.
+
+**Ratchet.** Both margins tighten over time from 10% towards the original
+20%. Each tightening adds a new dated table to this section. A path that
+falls behind a tightened table returns to the exact default.
+
+**Unchanged.** Rendering stays deterministic and byte-identical across
+platforms and tile layouts. Work and storage stay bounded and charged to
+`Limits`. No `unsafe` code or dependency exceptions are introduced (ADR 0008).
+Conformance fixtures keep their independent oracles. Where an approved
+approximate path changes a fixture, the fixture records that path's measured
+bound, listed with this amendment. Every approximate path is named, can be
+switched to the exact path through `RenderOptions`, and its per-category
+accuracy table is kept with the change that introduces it.
