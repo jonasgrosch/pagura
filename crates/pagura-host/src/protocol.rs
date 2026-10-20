@@ -14,6 +14,8 @@ pub const VERSION_1_2: u32 = 0x0001_0002;
 pub const VERSION_1_3: u32 = 0x0001_0003;
 /// Protocol 1.4, adding typed diagnostic snapshots without changing older layouts.
 pub const VERSION_1_4: u32 = 0x0001_0004;
+/// Protocol 1.5, adding form field inspection and atomic filled-form saves.
+pub const VERSION_1_5: u32 = 0x0001_0005;
 /// Kind byte for structured error responses.
 pub const ERROR_KIND: u8 = 255;
 
@@ -79,6 +81,15 @@ pub enum Request<'a> {
     Stats,
     /// Reading operations, with additions gated by the negotiated version.
     Reading(crate::reading::Request<'a>),
+    /// Inspect bounded form controls (v1.5).
+    FormFields(u32),
+    /// Apply a batch to a temporary filler and return saved bytes (v1.5).
+    SaveForm {
+        /// Immutable source handle.
+        document: u32,
+        /// Bounded editing payload described in PROTOCOL.md.
+        changes: &'a [u8],
+    },
 }
 
 /// Session-owned retention accounting, not allocator or total-heap telemetry.
@@ -154,6 +165,10 @@ pub enum Response {
     Stats(SessionStats),
     /// Bounded reading response, encoded by the reading adapter.
     Reading(crate::reading::Response),
+    /// Encoded bounded form controls (v1.5).
+    FormFields(Vec<u8>),
+    /// Complete saved PDF bytes; the original handle remains unchanged (v1.5).
+    SavedForm(Vec<u8>),
     /// Repairs in discovery order.
     Diagnostics(Vec<Diagnostic>),
     /// All diagnostics in discovery order, with explicit kinds (v1.4).
@@ -227,6 +242,11 @@ pub fn decode(body: &[u8], limits: pagura::Limits) -> Result<RequestFrame<'_>> {
         },
         9 => Request::Stats,
         17 => Request::DiagnosticDetails(reader.u32()?),
+        18 => Request::FormFields(reader.u32()?),
+        19 => Request::SaveForm {
+            document: reader.u32()?,
+            changes: reader.blob(limits.document_bytes.min(32 * 1024 * 1024))?,
+        },
         10..=16 => Request::Reading(crate::reading::decode(kind, &mut reader, limits)?),
         _ => return Err(Error::syntax("unknown request kind").at(Position::Buffer(0))),
     };
@@ -242,8 +262,15 @@ pub(crate) struct Reader<'a> {
 }
 
 impl<'a> Reader<'a> {
-    const fn new(bytes: &'a [u8]) -> Self {
+    pub(crate) const fn new(bytes: &'a [u8]) -> Self {
         Self { bytes, offset: 0 }
+    }
+    pub(crate) fn finish(&self) -> Result<()> {
+        if self.offset == self.bytes.len() {
+            Ok(())
+        } else {
+            Err(self.error("trailing request payload"))
+        }
     }
     fn error(&self, message: &'static str) -> Error {
         Error::syntax(message).at(Position::Buffer(self.offset))
@@ -308,6 +335,8 @@ pub fn encode(id: u32, response: &Response, max_body: usize) -> Result<Vec<u8>> 
         Response::Skipped(_) | Response::GenerationTile { .. } => 136,
         Response::Stats(_) => 137,
         Response::Reading(response) => response.kind,
+        Response::FormFields(_) => 146,
+        Response::SavedForm(_) => 147,
         Response::Error(_) => ERROR_KIND,
     }])?;
     out.push(&id.to_le_bytes())?;
@@ -396,6 +425,11 @@ fn encode_payload(out: &mut Encoder, response: &Response) -> Result<()> {
             out.push(&stats.lists.to_le_bytes())?;
         }
         Response::Reading(response) => out.push(&response.payload)?,
+        Response::FormFields(payload) => out.push(payload)?,
+        Response::SavedForm(bytes) => {
+            out.count(bytes.len())?;
+            out.push(bytes)?;
+        }
         Response::Close => (),
         Response::Error(error) => {
             out.push(&[match error.kind {
@@ -441,13 +475,22 @@ fn encode_tile(out: &mut Encoder, width: u32, height: u32, rgba: &[u8]) -> Resul
     out.push(rgba)
 }
 
-struct Encoder {
+pub(crate) struct Encoder {
     bytes: Vec<u8>,
     cap: usize,
 }
 
 impl Encoder {
-    fn push(&mut self, bytes: &[u8]) -> Result<()> {
+    pub(crate) fn new(cap: usize) -> Self {
+        Self {
+            bytes: Vec::new(),
+            cap,
+        }
+    }
+    pub(crate) fn finish(self) -> Vec<u8> {
+        self.bytes
+    }
+    pub(crate) fn push(&mut self, bytes: &[u8]) -> Result<()> {
         if self
             .bytes
             .len()
@@ -462,14 +505,14 @@ impl Encoder {
         self.bytes.extend_from_slice(bytes);
         Ok(())
     }
-    fn count(&mut self, count: usize) -> Result<()> {
+    pub(crate) fn count(&mut self, count: usize) -> Result<()> {
         self.push(
             &u32::try_from(count)
                 .map_err(|_| Error::limit("response count overflows"))?
                 .to_le_bytes(),
         )
     }
-    fn string(&mut self, string: &str) -> Result<()> {
+    pub(crate) fn string(&mut self, string: &str) -> Result<()> {
         self.count(string.len())?;
         self.push(string.as_bytes())
     }

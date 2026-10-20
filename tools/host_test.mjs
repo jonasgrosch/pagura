@@ -439,7 +439,8 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     'file', 'strict', 'filename', 'diagnostic-count', 'repair-list', 'diagnostics', 'custom-zoom',
     'password-dialog', 'password', 'password-feedback', 'password-form', 'password-cancel',
     'find-open', 'find-close', 'find-panel', 'find-query', 'find-case', 'find-word', 'find-next', 'find-previous', 'find-count',
-    'outline-tree', 'page-label', 'reading-status', 'copy-page'];
+    'outline-tree', 'page-label', 'reading-status', 'copy-page',
+    'edit-open', 'form-panel', 'form-fields', 'form-status', 'form-apply', 'form-reset', 'form-download'];
   const elements = new Map(ids.map((id) => [id, new Element(id)]));
   const original = new Map(['window', 'document', 'Worker', 'ImageData', 'requestAnimationFrame', 'crossOriginIsolated', 'fetch', 'navigator', 'ResizeObserver']
     .map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));

@@ -52,3 +52,13 @@ dialog::backdrop { background: #0007; }
 @media (max-width: 650px) { #outline-sidebar { flex-basis: 8rem; } }
 
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+#form-panel { flex: 0 0 18rem; max-height: none; border-right: 1px solid #d6d8df; padding: 1rem; }
+#form-panel h2 { font-size: 1rem; margin: 0 0 .5rem; }
+#form-fields label { display: block; margin: 1rem 0; overflow-wrap: anywhere; }
+#form-fields label > span { display: block; margin-bottom: .3rem; }
+#form-fields input, #form-fields textarea, #form-fields select { width: 100%; font: inherit; padding: .4rem; border: 1px solid #b4b8c2; border-radius: .3rem; background: #fff; color: #212631; }
+#form-fields input:disabled { color: #6d7280; background: #f3f4f7; }
+#form-fields textarea { min-height: 6rem; }
+.form-actions { display: flex; flex-wrap: wrap; gap: .5rem; position: sticky; bottom: 0; background: white; padding-top: .6rem; }
+@media(max-width:650px) { #form-panel { flex-basis: 12rem; padding: .6rem; } }

@@ -6,6 +6,7 @@
 
 mod cache;
 mod control;
+mod editing;
 pub mod protocol;
 pub mod reading;
 mod session;

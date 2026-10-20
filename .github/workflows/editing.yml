@@ -7,6 +7,9 @@ on:
       - 'crates/pagura/tests/editing.rs'
       - 'crates/pagura-write/**'
       - 'crates/pagura-document/**'
+      - 'crates/pagura-host/**'
+      - 'web/**'
+      - 'tools/editing_host_test.mjs'
       - '.github/workflows/editing.yml'
       - 'tools/editing_readers.py'
   workflow_dispatch:
@@ -21,17 +24,26 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Install pinned Rust
-        run: rustup toolchain install 1.99.1 --profile minimal --component clippy,rustfmt
+        run: rustup toolchain install 1.99.1 --profile minimal --component clippy,rustfmt --target wasm32-wasip1
       - name: Independent readers
         run: sudo apt-get update && sudo apt-get install -y qpdf poppler-utils
       - name: Writer and editing regressions
         env:
           PAGURA_EDIT_OUTPUT: ${{ runner.temp }}/pagura-editing
         run: |
-          cargo clippy --locked --offline -p pagura-write -p pagura --all-targets -- -D warnings
+          cargo clippy --locked --offline -p pagura-write -p pagura -p pagura-host --all-targets -- -D warnings
           cargo test --locked --offline -p pagura-write
           cargo test --locked --offline -p pagura --test editing
+          cargo test --locked --offline -p pagura-host
       - name: Check saved files and compare independent-reader baselines
         env:
           PAGURA_EDIT_OUTPUT: ${{ runner.temp }}/pagura-editing
         run: python3 tools/editing_readers.py
+      - name: Build browser editing module
+        run: cargo build --locked --offline --release -p pagura-host --features bundled-data --target wasm32-wasip1
+      - name: Publish browser module
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: editing-browser-wasm
+          path: target/wasm32-wasip1/release/pagura-host.wasm
+          if-no-files-found: error

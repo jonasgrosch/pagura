@@ -1,3 +1,4 @@
+import { FormEditor } from './form_editor.mjs';
 import { pageUserPoint } from './page_geometry.mjs';
 import { ReadingView } from './reading_view.mjs';
 import { destinationView } from './destinations.mjs';
@@ -24,6 +25,33 @@ const reader = new ReadingView({
   navigate, destination: followDestination, report: (error) => { $('reading-status').textContent = String(error); }, controls,
   notice: readingNotice,
 });
+const editor = new FormEditor({
+  state: () => ({ client, handle, epoch: documentEpoch, recovery: source?.recovery }),
+  adopt: adoptSaved, download: downloadPdf,
+});
+if (new URL(window.location.href).searchParams.get('edit') === '1') { editor.active = true; $('strict').checked = true; }
+function downloadPdf() {
+  if (!source) return;
+  const url = URL.createObjectURL(new Blob([source.bytes], { type: 'application/pdf' }));
+  const link = document.createElement('a'); link.href = url;
+  link.download = ($('filename').textContent.replace(/\.pdf$/i, '') || 'document') + '-filled.pdf';
+  link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+async function adoptSaved(bytes, epoch) {
+  if (epoch !== documentEpoch) return false;
+  const current = client, previous = handle, position = anchor();
+  const opened = await current.open(bytes, 0);
+  if (epoch !== documentEpoch) { await current.close(opened.document); return false; }
+  ++documentEpoch; handle = opened.document;
+  source.password.fill(0); source = { bytes, password: new Uint8Array(), recovery: 0 };
+  reader.reset(); infos.clear(); views.clear(); surface.replaceChildren();
+  layout = new PageLayout(opened.pages); page = Math.min(position.index, Math.max(0, opened.pages - 1));
+  await current.close(previous);
+  if (current !== client || handle !== opened.document) return false;
+  controls(); void reader.open();
+  if (opened.pages) { await pageInfo(page, documentEpoch); updateLayout(); restore({ ...position, index: page }); invalidate(); }
+  return true;
+}
 function readingNotice(message) { $('reading-status').textContent = message; }
 function report(error) { errorBox.textContent = String(error); errorBox.hidden = false; status.textContent = 'Page unavailable'; }
 function controls() {
@@ -35,6 +63,7 @@ function controls() {
   $('count').textContent = `of ${count}`;
   $('page-label').textContent = count ? `Label: ${reader.label(page)}` : '';
   $('copy-page').disabled = !count;
+  editor.controls();
 }
 function createClient() {
   if (!crossOriginIsolated || typeof SharedArrayBuffer !== 'function') throw new Error('Cross-origin isolation is required. Start python3 tools/serve_web.py and open http://localhost:8000.');
@@ -63,7 +92,7 @@ async function recover(error) {
     if (opened.pages) { await pageInfo(page, epoch); if (epoch !== documentEpoch) return; }
     updateLayout();
     if (opened.pages) restore({ ...position, index: page });
-    controls(); void reader.open();
+    controls(); void reader.open(); editor.recovered();
     errorBox.textContent = `${error}. PDF host restarted; document reopened at page ${page + 1}, ${Math.round(zoom * 100)}%.`;
     errorBox.hidden = false; invalidate();
   } catch (failure) {
@@ -279,7 +308,7 @@ async function openFile(file) {
   if (!file) return;
   cancelPassword();
   source?.password.fill(0); source = null; recoveryAttempts = 0;
-  const epoch = ++documentEpoch; reader.reset();
+  const epoch = ++documentEpoch; reader.reset(); editor.reset();
   handle = null; infos.clear(); views.clear(); surface.replaceChildren(); surface.hidden = true;
   layout = new PageLayout(0); page = 0; controls(); errorBox.hidden = true;
   $('filename').textContent = file.name; status.textContent = 'Opening…';
@@ -307,7 +336,7 @@ async function openFile(file) {
       if (epoch !== documentEpoch) return;
     }
     if (epoch !== documentEpoch) return;
-    handle = opened.document; layout = new PageLayout(opened.pages); controls(); void reader.open();
+    handle = opened.document; layout = new PageLayout(opened.pages); controls(); void reader.open(); void editor.open();
     if (!opened.pages) { status.textContent = 'Document has no pages'; return; }
     await pageInfo(0, epoch); if (epoch !== documentEpoch) return;
     zoom = zoomInput.value.startsWith('fit-') ? fit(zoomInput.value, infos.get(0)) : zoomInput.value === 'custom' ? zoom : Number(zoomInput.value);

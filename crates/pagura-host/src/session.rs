@@ -193,6 +193,7 @@ impl Session {
                             | protocol::VERSION_1_2
                             | protocol::VERSION_1_3
                             | protocol::VERSION_1_4
+                            | protocol::VERSION_1_5
                     ) =>
             {
                 self.version = Some(*version);
@@ -216,6 +217,14 @@ impl Session {
     fn execute(&mut self, request: Request<'_>) -> Result<Response> {
         match request {
             Request::Hello(version) => Ok(Response::Hello(version)),
+            Request::FormFields(handle) => {
+                self.require_editing()?;
+                crate::editing::fields(self.document(handle)?).map(Response::FormFields)
+            }
+            Request::SaveForm { document, changes } => {
+                self.require_editing()?;
+                crate::editing::save(self.document(document)?, changes).map(Response::SavedForm)
+            }
             Request::Reading(request) => self.reading(request).map(Response::Reading),
             Request::Stats => {
                 self.require_extensions()?;
@@ -303,7 +312,10 @@ impl Session {
                 Ok(Response::Diagnostics(self.document(handle)?.diagnostics()))
             }
             Request::DiagnosticDetails(handle) => {
-                if self.version != Some(protocol::VERSION_1_4) {
+                if !matches!(
+                    self.version,
+                    Some(protocol::VERSION_1_4 | protocol::VERSION_1_5)
+                ) {
                     return Err(Error::invalid_argument(
                         "typed diagnostics require protocol 1.4",
                     ));
@@ -465,7 +477,7 @@ impl Session {
         if matches!(request, Request::Bounds(..))
             && !matches!(
                 self.version,
-                Some(protocol::VERSION_1_3 | protocol::VERSION_1_4)
+                Some(protocol::VERSION_1_3 | protocol::VERSION_1_4 | protocol::VERSION_1_5)
             )
         {
             return Err(Error::invalid_argument(
@@ -474,7 +486,12 @@ impl Session {
         }
         if !matches!(
             self.version,
-            Some(protocol::VERSION_1_2 | protocol::VERSION_1_3 | protocol::VERSION_1_4)
+            Some(
+                protocol::VERSION_1_2
+                    | protocol::VERSION_1_3
+                    | protocol::VERSION_1_4
+                    | protocol::VERSION_1_5
+            )
         ) {
             return Err(Error::invalid_argument(
                 "reading request requires protocol 1.2",
@@ -593,6 +610,16 @@ impl Session {
             .map(Response::Skipped)
     }
 
+    fn require_editing(&self) -> Result<()> {
+        if self.version == Some(protocol::VERSION_1_5) {
+            Ok(())
+        } else {
+            Err(Error::invalid_argument(
+                "form editing requires protocol 1.5",
+            ))
+        }
+    }
+
     fn require_extensions(&self) -> Result<()> {
         if matches!(
             self.version,
@@ -601,6 +628,7 @@ impl Session {
                     | protocol::VERSION_1_2
                     | protocol::VERSION_1_3
                     | protocol::VERSION_1_4
+                    | protocol::VERSION_1_5
             )
         ) {
             Ok(())
