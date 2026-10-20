@@ -55,13 +55,23 @@ pub(super) fn resources(
     }
     Ok(result)
 }
-pub(super) fn replace(bytes: &[u8], text: &[u8], limits: Limits) -> Result<Vec<u8>> {
+pub(super) fn replace_with_policy(
+    bytes: &[u8],
+    text: &[u8],
+    limits: Limits,
+    policy: super::UpdatePolicy,
+) -> Result<Vec<u8>> {
     let region = text_region(bytes, limits)?;
     let mut out = Program::new(limits);
     if let Some(region) = region {
         out.bytes(&bytes[..region.start])?;
         out.bytes(text)?;
         out.bytes(&bytes[region.end..])?;
+    } else if policy == super::UpdatePolicy::PreserveExisting {
+        out.text("q\n")?;
+        out.bytes(&super::compatibility::without_text(bytes, limits)?)?;
+        out.text("\nQ\n")?;
+        out.bytes(text)?;
     } else {
         out.bytes(bytes)?;
         out.text("\n")?;

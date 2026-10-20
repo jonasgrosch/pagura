@@ -138,11 +138,11 @@ pub(crate) fn save(document: &Document, changes: &[u8]) -> Result<Vec<u8>> {
     if count > MAX_FIELDS {
         return Err(Error::limit("browser form change budget exceeded"));
     }
-    let normalized = if count == 0 {
-        None
-    } else {
-        aliases::normalize(document)?
-    };
+    if count == 0 {
+        reader.finish()?;
+        return pagura::editing::Transaction::new(document).commit(&SaveOptions::default());
+    }
+    let normalized = aliases::normalize(document)?;
     let normalized = normalized
         .map(|bytes| {
             Document::open(
@@ -212,7 +212,13 @@ pub(crate) fn save(document: &Document, changes: &[u8]) -> Result<Vec<u8>> {
         }
     }
     reader.finish()?;
-    save_filled_form(&filler, &SaveOptions::default())
+    save_filled_form(
+        &filler,
+        &SaveOptions {
+            form_appearances: pagura::form_appearance::UpdatePolicy::PreserveExisting,
+            ..Default::default()
+        },
+    )
 }
 
 fn text<'a>(reader: &mut Reader<'a>, document: &Document) -> Result<&'a str> {

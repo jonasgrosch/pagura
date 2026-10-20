@@ -355,6 +355,7 @@ fn signatures_require_explicit_policy_and_original_signed_bytes_survive() {
     let saved = transaction
         .commit(&SaveOptions {
             signatures: SignaturePolicy::PreserveSignedBytes,
+            ..Default::default()
         })
         .unwrap();
     assert!(saved.starts_with(&original));

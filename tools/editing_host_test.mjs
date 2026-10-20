@@ -80,6 +80,31 @@ if (!isMainThread) {
     assert.equal((await client.formWidgets(different.document, 0)).length, 4, 'same name and rectangle do not establish widget identity');
     const ambiguous = await client.open(formDocument({ duplicateText: true, ambiguousText: true }), 0);
     await assert.rejects(client.formWidgets(ambiguous.document, 0), /ambiguous/);
+    // Missing standard font resources, unmarked old text and degenerate APs
+    // independently reproduce the interoperability conditions, without private data.
+    for (const extra of [{ unmarked: true }, { emptyAppearance: true }]) {
+      const input = formDocument({ missingFont: true, needAppearances: true, ...extra });
+      const view = await client.open(input, 0);
+      assert.deepEqual(await client.saveForm(view.document, []), input, 'no-op does not regenerate NeedAppearances');
+      const pixels = await client.renderTile(view.document, 0, 1, tile);
+      const output = await client.saveForm(view.document, [{ index: 0, kind: 0, value: 'Updated München' }]);
+      assert.deepEqual(output.subarray(0, input.length), input);
+      const result = await client.open(output, 0);
+      assert.equal((await client.formFields(result.document))[0].value, 'Updated München');
+      const rendered = await client.renderTile(result.document, 0, 1, tile);
+      for (let y = 0; y < 440; y++) for (let x = 0; x < 600; x++) {
+        if (x >= 40 && x < 380 && y >= 112 && y < 140) continue;
+        const offset = (y * 600 + x) * 4;
+        assert.deepEqual(rendered.rgba.subarray(offset, offset + 4), pixels.rgba.subarray(offset, offset + 4), 'unedited pixels remain exact');
+      }
+      const appended = new TextDecoder().decode(output.subarray(input.length));
+      assert.ok(!appended.includes('(Previous value) Tj'), 'old unmarked text is not duplicated into the new appearance');
+      assert.ok(appended.includes('/WinAnsiEncoding'), 'fallback is explicitly serialized');
+      await client.close(view.document); await client.close(result.document);
+    }
+    const unknown = await client.open(formDocument({ missingFont: true, unknownFont: true }), 0);
+    await assert.rejects(client.saveForm(unknown.document, [{ index: 0, kind: 0, value: 'Rejected' }]), /standard font/);
+    assert.equal((await client.formFields(unknown.document))[0].value, '', 'unknown font failure remains atomic');
     // Independently authored analogue of a real-world colour-operator mismatch.
     // Display recovery must not force saving through a repaired document.
     const compatibleBytes = formDocument({ colourRepair: true });

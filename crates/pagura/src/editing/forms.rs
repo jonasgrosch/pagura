@@ -66,14 +66,18 @@ pub fn save_filled_form(filler: &FormFiller<'_>, options: &SaveOptions) -> Resul
             })?;
         }
     }
-    prepare_appearances(filler, &mut transaction)?;
+    prepare_appearances(filler, &mut transaction, options.form_appearances)?;
     if filler.form().need_appearances {
         clear_need_appearances(filler, &mut transaction)?;
     }
     transaction.commit(options)
 }
 
-fn prepare_appearances(filler: &FormFiller<'_>, transaction: &mut Transaction<'_>) -> Result<()> {
+fn prepare_appearances(
+    filler: &FormFiller<'_>,
+    transaction: &mut Transaction<'_>,
+    policy: form_appearance::UpdatePolicy,
+) -> Result<()> {
     #[cfg(feature = "bundled-data")]
     let provider = pagura_data::Bundled::new(filler.document().limits());
     #[cfg(feature = "bundled-data")]
@@ -90,7 +94,8 @@ fn prepare_appearances(filler: &FormFiller<'_>, transaction: &mut Transaction<'_
             .get(widget.field)
             .ok_or(Error::invalid_argument("widget field index is absent"))?;
         refuse_password(field)?;
-        let appearance = form_appearance::prepare_widget(filler, index, provider)?;
+        let appearance =
+            form_appearance::prepare_widget_with_policy(filler, index, provider, policy)?;
         if let Appearance::Generated(stream) = appearance {
             // Saving only a selected generated button state would lose the
             // opposite state and make the reopened field impossible to toggle.

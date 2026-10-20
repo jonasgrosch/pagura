@@ -29,6 +29,8 @@ pub enum SignaturePolicy {
 pub struct SaveOptions {
     /// Treatment of existing signatures. No-op saves need no exception.
     pub signatures: SignaturePolicy,
+    /// Appearance update policy used by filled-form saves only.
+    pub form_appearances: crate::form_appearance::UpdatePolicy,
 }
 
 /// Stable unsupported editing capabilities.

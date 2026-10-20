@@ -1,5 +1,5 @@
 /** Small independently authored AcroForm for the local editing demo and host tests. */
-export function formDocument({ hiddenText = false, omitText = false, colourRepair = false, duplicateText = false, differentText = false, ambiguousText = false } = {}) {
+export function formDocument({ hiddenText = false, omitText = false, colourRepair = false, duplicateText = false, differentText = false, ambiguousText = false, missingFont = false, unknownFont = false, unmarked = false, emptyAppearance = false, needAppearances = false } = {}) {
   const stream = (text, extra = '') => `<< /Length ${text.length} ${extra} >>\nstream\n${text}endstream`;
   const appearance = '/Type /XObject /Subtype /Form /BBox [0 0 18 18] /Resources << >>';
   const objects = [null,
@@ -21,6 +21,13 @@ export function formDocument({ hiddenText = false, omitText = false, colourRepai
     stream('', '/Type /XObject /Subtype /Form /BBox [0 0 240 28] /Resources << >>'),
     '<< /FunctionType 2 /Domain [0 1] /C0 [1 1 1] /C1 [0 0 0] /N 1 >>',
   ];
+  if (needAppearances) objects[4] = objects[4].replace('/Fields', '/NeedAppearances true /Fields');
+  if (missingFont) objects[4] = objects[4].replace('/Helv 12 Tf', `/${unknownFont ? 'CustomFont' : 'Helvetica'} 12 Tf`).replace('/DR << /Font << /Helv 5 0 R >> >>', '');
+  if (unmarked) {
+    objects[7] = objects[7].replace('/V ()', '/V (Previous value)');
+    objects[15] = stream('q 0.8 G 1 1 338 26 re S Q\nBT /Helv 12 Tf 2 8 Td (Previous value) Tj ET\n', '/Type /XObject /Subtype /Form /BBox [0 0 340 28] /Resources << /Font << /Helv 5 0 R >> >>');
+  }
+  if (emptyAppearance) objects[15] = stream('q Q\n', '/Type /XObject /Subtype /Form /BBox [0 0 0 0] /Resources << >>');
   if (duplicateText) objects.push(differentText ? objects[7].replace('/MaxLen 80', '/MaxLen 81') : objects[7]);
   if (ambiguousText) objects.push(objects[7]);
   let pdf = '%PDF-1.7\n'; const offsets = [0];
