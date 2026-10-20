@@ -135,6 +135,15 @@ impl GlyphCache {
         Ok((self.built.view(), (x, y)))
     }
 
+    /// Makes room for the masks of a page's `placements` glyph placements, so
+    /// that they are not rehashed as the cache fills: most placements need a
+    /// mask of their own. The hint stops at the entries the bound can hold.
+    pub(crate) fn make_room(&mut self, placements: usize, document_bytes: usize) {
+        let room = self.maximum.min(document_bytes).saturating_sub(self.bytes) / ENTRY_BYTES;
+        // A hint only: a failed reservation leaves the map to grow as it fills.
+        self.masks.try_reserve(placements.min(room)).ok();
+    }
+
     fn retained(&self, place: Place) -> View<'_> {
         Coverage {
             x: place.x,
@@ -209,6 +218,9 @@ impl GlyphCache {
     }
 }
 
+/// Bytes charged for a retained entry besides its levels and outline.
+const ENTRY_BYTES: usize = 256;
+
 fn entry_bytes(path: &Path, storage: usize) -> usize {
     storage
         .saturating_add(
@@ -216,7 +228,7 @@ fn entry_bytes(path: &Path, storage: usize) -> usize {
                 .len()
                 .saturating_mul(size_of::<pagura_raster::Segment>()),
         )
-        .saturating_add(256)
+        .saturating_add(ENTRY_BYTES)
 }
 
 /// Splits a device coordinate into its fraction, snapped to `phases` per
