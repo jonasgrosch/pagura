@@ -22,7 +22,9 @@ use pagura_image::{MaskKind, Samples};
 use pagura_raster::{FillRule, Mask, PathBuilder, Pixmap};
 
 /// Longest run of byte codes whose integer sum fits in a `u32`.
-const RUN: usize = (u32::MAX / 255) as usize;
+const RUN: usize = RUN_LINES as usize;
+/// [`RUN`] as a count of source lines.
+const RUN_LINES: u32 = u32::MAX / 255;
 
 impl Context {
     // Keep image preparation separate from the general tile compositor.
@@ -215,7 +217,7 @@ impl Context {
     ) -> Result<()> {
         let mut values = filled(plan.columns.len(), [0.0; N])?;
         let mut sums = filled(plan.lines(), [0.0; N])?;
-        let mut cached = None;
+        let mut codes = filled(if plan.swapped { 0 } else { plan.lines() }, [0; N])?;
         let mut current = None;
         let origin = clip.origin();
         for (row, column, coverage) in clip.spans() {
@@ -228,7 +230,7 @@ impl Context {
                 if plan.swapped {
                     self.turned_row(levels, plan, span, &mut sums, &mut values)?;
                 } else {
-                    self.upright_row(levels, plan, span, (&mut sums, &mut cached), &mut values)?;
+                    self.upright_row(levels, plan, span, (&mut sums, &mut codes), &mut values)?;
                 }
                 current = Some(y);
             }
@@ -252,38 +254,83 @@ impl Context {
         Ok(())
     }
 
+    /// The footprint means of one device row of an upright placement. The
+    /// row's source lines are summed first, its end lines weighted around an
+    /// exact integer sum of the lines between them, and each column's
+    /// footprint then sums that line as [`line_sums`] sums a source line.
     fn upright_row<const N: usize>(
         &mut self,
         levels: &Levels<'_, N>,
         plan: &Area,
         span: Span,
-        (sums, cached): (&mut [[f64; N]], &mut Option<u32>),
+        (line, codes): (&mut [[f64; N]], &mut [[u32; N]]),
         values: &mut [[f64; N]],
     ) -> Result<()> {
-        values.fill([0.0; N]);
-        for step in span.first..span.end {
-            // Visit last the boundary row that the next device row shares.
-            let row = if plan.descending {
-                span.end - 1 - (step - span.first)
-            } else {
-                step
-            };
-            if *cached != Some(row) {
-                self.charge(plan.samples)?;
-                line_sums(levels.row(row)?, &plan.columns, sums)?;
-                *cached = Some(row);
+        let (first, end) = (plan.first as usize, plan.end as usize);
+        let cells = |row: u32| -> Result<&[[u8; N]]> {
+            levels
+                .row(row)?
+                .get(first..end)
+                .ok_or(Error::syntax("image footprint outside samples"))
+        };
+        self.charge(line.len().saturating_mul((span.end - span.first) as usize))?;
+        match span.end - span.first {
+            0 => line.fill([0.0; N]),
+            1 => {
+                for (out, sample) in line.iter_mut().zip(cells(span.first)?) {
+                    *out = sample.map(|v| span.first_weight * f64::from(v));
+                }
             }
-            self.charge(values.len())?;
-            let weight = span.weight(row);
-            for (value, sum) in values.iter_mut().zip(sums.iter()) {
-                for (value, sum) in value.iter_mut().zip(sum) {
-                    *value += weight * sum;
+            _ => {
+                for (out, (top, bottom)) in line
+                    .iter_mut()
+                    .zip(cells(span.first)?.iter().zip(cells(span.end - 1)?))
+                {
+                    *out = std::array::from_fn(|c| {
+                        span.first_weight * f64::from(top[c])
+                            + span.last_weight * f64::from(bottom[c])
+                    });
+                }
+                let interior = span.first + 1..span.end - 1;
+                for start in interior.clone().step_by(RUN) {
+                    // A run's codes sum below 2^32, so wrapping additions are
+                    // exact and, free of overflow checks, vectorize.
+                    codes.fill([0; N]);
+                    for row in start..interior.end.min(start.saturating_add(RUN_LINES)) {
+                        let samples = cells(row)?.as_flattened();
+                        for (code, &value) in codes.as_flattened_mut().iter_mut().zip(samples) {
+                            *code = code.wrapping_add(u32::from(value));
+                        }
+                    }
+                    for (out, &code) in line.as_flattened_mut().iter_mut().zip(codes.as_flattened())
+                    {
+                        *out += f64::from(code);
+                    }
                 }
             }
         }
+        self.charge(plan.samples)?;
         for (value, column) in values.iter_mut().zip(&plan.columns) {
+            let cells = line
+                .get(column.first as usize - first..column.end as usize - first)
+                .ok_or(Error::invalid_argument("image footprint outside line"))?;
+            let total = match cells {
+                [] => [0.0; N],
+                [only] => only.map(|v| column.first_weight * v),
+                [head, interior @ .., tail] => {
+                    let mut total = [0.0; N];
+                    for cell in interior {
+                        for (total, &v) in total.iter_mut().zip(cell) {
+                            *total += v;
+                        }
+                    }
+                    std::array::from_fn(|c| {
+                        column.first_weight * head[c] + total[c] + column.last_weight * tail[c]
+                    })
+                }
+            };
             let normalization = column.normalization * span.normalization;
-            *value = value.map(|v| v * normalization);
+            *value = total.map(|v| v * normalization);
         }
         Ok(())
     }
@@ -466,9 +513,8 @@ struct Area {
     columns: Vec<Span>,
     rows: Vec<Span>,
     swapped: bool,
-    /// Whether source rows run against device rows.
-    descending: bool,
-    /// Source lines under all columns of a quarter turn.
+    /// Source cells under all column footprints: columns of an upright
+    /// placement, lines of a quarter turn.
     first: u32,
     end: u32,
     /// Source cells under all column footprints.
@@ -506,28 +552,30 @@ impl Area {
             columns,
             rows,
             swapped,
-            descending: row_scale < 0.0,
             first,
             end,
             samples,
         })
     }
 
-    /// Footprint sums kept per device row: one per column, or one per
-    /// source line under the columns of a quarter turn.
+    /// Sums kept per device row: one per source cell under the columns, in
+    /// the source line that an upright row accumulates or in the source
+    /// lines under the columns of a quarter turn.
     fn lines(&self) -> usize {
-        if self.swapped {
-            (self.end - self.first) as usize
-        } else {
-            self.columns.len()
-        }
+        (self.end - self.first) as usize
     }
 
     fn bytes<const N: usize>(&self) -> usize {
+        let codes = if self.swapped {
+            0
+        } else {
+            self.lines().saturating_mul(size_of::<[u32; N]>())
+        };
         (self.columns.len() + self.rows.len())
             .saturating_mul(size_of::<Span>())
             .saturating_add(self.columns.len().saturating_mul(size_of::<[f64; N]>()))
             .saturating_add(self.lines().saturating_mul(size_of::<[f64; N]>()))
+            .saturating_add(codes)
     }
 }
 
