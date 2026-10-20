@@ -1,6 +1,7 @@
 //! Portable one-round byte source-over for [`crate::Accuracy::Competitive`].
 //! Weighted byte sums are at most 65025; adding the half-rounding bias and
-//! its high byte remains below 65536. Wrapping lane arithmetic cannot wrap.
+//! its high byte remains below 65536. Wrapping lane arithmetic cannot wrap,
+//! neither in 16-bit lanes nor in the 16-bit halves of a 32-bit word.
 
 #[inline]
 fn divide(value: u16) -> u16 {
@@ -23,10 +24,14 @@ pub(super) fn pixel(target: &mut [u8; 4], source: [u8; 4], alpha: u8) {
     }
 }
 
-/// A source colour and alpha prepared for [`row`]: four pixels' lanes.
+/// A source colour and alpha prepared for [`row`] and [`run`].
 #[derive(Debug, Clone, Copy)]
 pub(super) struct Source {
+    /// Four pixels' lanes.
     color: [u16; 16],
+    /// Channels 0 and 2, and 1 and 3, in the halves of a word.
+    even: u32,
+    odd: u32,
     pixel: [u8; 4],
     alpha: u8,
 }
@@ -37,18 +42,25 @@ impl Source {
         for (lanes, &value) in color.iter_mut().zip(pixel.iter().cycle()) {
             *lanes = u16::from(value);
         }
+        let word = u32::from_le_bytes(pixel);
         Self {
             color,
+            even: word & HALVES,
+            odd: (word >> 8) & HALVES,
             pixel,
             alpha,
         }
     }
 }
 
+/// The low byte of each 16-bit half of a word.
+const HALVES: u32 = 0x00ff_00ff;
+
 /// Source-over of `source` at its alpha times each coverage, rounding each
-/// store once. Four pixels at a time in uniform lanes, so that every
-/// target's vectorizer sees sixteen independent products of one form; at
-/// full alpha the coverage is the weight.
+/// store once. Four pixels at a time, each a word whose channel pairs are
+/// mixed in its halves, so that every target's vectorizer sees eight
+/// independent products of one form; at full alpha the coverage is the
+/// weight.
 pub(super) fn row(target: &mut [[u8; 4]], coverage: &[u8], source: &Source) {
     rows(std::iter::once((target, coverage)), source);
 }
@@ -57,25 +69,18 @@ pub(super) fn row(target: &mut [[u8; 4]], coverage: &[u8], source: &Source) {
 #[inline(never)]
 pub(super) fn rows<'a>(rows: impl Iterator<Item = (&'a mut [[u8; 4]], &'a [u8])>, source: &Source) {
     if source.alpha == 255 {
-        if source.pixel == [0, 0, 0, 255] {
-            for (target, coverage) in rows {
-                blocks(target, coverage, source, |block, mask| {
-                    black(block, spread(mask));
-                });
-            }
-        } else {
-            for (target, coverage) in rows {
-                blocks(target, coverage, source, |block, mask| {
-                    blend(block, &source.color, spread(mask));
-                });
-            }
-        }
-    } else {
-        let alpha = u16::from(source.alpha);
         for (target, coverage) in rows {
             blocks(target, coverage, source, |block, mask| {
-                let opacity = spread(mask).map(|c| divide(c.wrapping_mul(alpha)));
-                blend(block, &source.color, opacity);
+                blend(block, source, words(mask));
+            });
+        }
+    } else {
+        let alpha = u32::from(source.alpha);
+        for (target, coverage) in rows {
+            blocks(target, coverage, source, |block, mask| {
+                // The product lies in the low half; the high half stays zero.
+                let opacity = words(mask).map(|c| halves(c.wrapping_mul(alpha)));
+                blend(block, source, opacity);
             });
         }
     }
@@ -141,66 +146,39 @@ pub(super) fn run(target: &mut [[u8; 4]], coverage: u8, source: &Source) {
     }
 }
 
-/// Each of four pixels' levels in all four of its channels' lanes.
+/// Each of four pixels' levels in a word.
 #[inline(always)]
 #[expect(clippy::inline_always, reason = "one block per four pixels")]
-fn spread([a, b, c, d]: [u8; 4]) -> [u16; 16] {
-    [a, a, a, a, b, b, b, b, c, c, c, c, d, d, d, d].map(u16::from)
+fn words(mask: [u8; 4]) -> [u32; 4] {
+    let word = u32::from_le_bytes(mask);
+    [0, 8, 16, 24].map(|shift| (word >> shift) & 0xff)
 }
 
-/// Four pixels of source-over at per-lane opacities of at most 255. All
+/// [`divide`] in both halves of a word.
+#[inline(always)]
+#[expect(clippy::inline_always, reason = "two per pixel")]
+fn halves(value: u32) -> u32 {
+    let value = value.wrapping_add(0x0080_0080);
+    (value.wrapping_add((value >> 8) & HALVES) >> 8) & HALVES
+}
+
+/// Four pixels of source-over at per-pixel opacities of at most 255. All
 /// lane arithmetic wraps, so that it vectorizes with overflow checks on.
 #[inline(always)]
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::inline_always,
-    reason = "convex byte mixtures fit in a byte; one block per four pixels"
-)]
-fn blend(block: &mut [[u8; 4]; 4], color: &[u16; 16], opacity: [u16; 16]) {
-    let pixels = block.as_flattened_mut();
-    let mut mixed = [0u16; 16];
-    for (((out, &target), &color), opacity) in
-        mixed.iter_mut().zip(&*pixels).zip(color).zip(opacity)
-    {
-        let rest = 255u16.wrapping_sub(opacity);
-        *out = divide(
-            color
-                .wrapping_mul(opacity)
-                .wrapping_add(u16::from(target).wrapping_mul(rest)),
-        );
+#[expect(clippy::inline_always, reason = "one block per four pixels")]
+fn blend(block: &mut [[u8; 4]; 4], source: &Source, opacity: [u32; 4]) {
+    let mut pixels = block.map(u32::from_le_bytes);
+    for (pixel, opacity) in pixels.iter_mut().zip(opacity) {
+        let rest = 255u32.wrapping_sub(opacity);
+        let even = (*pixel & HALVES)
+            .wrapping_mul(rest)
+            .wrapping_add(source.even.wrapping_mul(opacity));
+        let odd = ((*pixel >> 8) & HALVES)
+            .wrapping_mul(rest)
+            .wrapping_add(source.odd.wrapping_mul(opacity));
+        *pixel = halves(even) | (halves(odd) << 8);
     }
-    for (pixel, value) in pixels.iter_mut().zip(mixed) {
-        *pixel = value as u8;
-    }
-}
-
-/// The alpha lane of each of four pixels.
-const ALPHA_LANES: [u16; 16] = [0, 0, 0, !0, 0, 0, 0, !0, 0, 0, 0, !0, 0, 0, 0, !0];
-
-/// [`blend`] for opaque black: colour channels keep the complement of the
-/// coverage, and alpha mixes 255 with itself by the same weights.
-#[inline(always)]
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::inline_always,
-    reason = "convex byte mixtures fit in a byte; one block per four pixels"
-)]
-fn black(block: &mut [[u8; 4]; 4], coverage: [u16; 16]) {
-    let pixels = block.as_flattened_mut();
-    let mut mixed = [0u16; 16];
-    for (((out, &target), coverage), lane) in mixed
-        .iter_mut()
-        .zip(&*pixels)
-        .zip(coverage)
-        .zip(ALPHA_LANES)
-    {
-        let source = 255u16.wrapping_mul(coverage) & lane;
-        let rest = 255u16.wrapping_sub(coverage);
-        *out = divide(u16::from(target).wrapping_mul(rest).wrapping_add(source));
-    }
-    for (pixel, value) in pixels.iter_mut().zip(mixed) {
-        *pixel = value as u8;
-    }
+    *block = pixels.map(u32::to_le_bytes);
 }
 
 /// Multiplies byte coverages, rounding each product once. Full and empty
