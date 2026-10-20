@@ -440,8 +440,11 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     'password-dialog', 'password', 'password-feedback', 'password-form', 'password-cancel',
     'find-open', 'find-close', 'find-panel', 'find-query', 'find-case', 'find-word', 'find-next', 'find-previous', 'find-count',
     'outline-tree', 'page-label', 'reading-status', 'copy-page',
-    'edit-open', 'form-status', 'form-reset', 'form-download'];
+    'edit-open', 'form-status', 'form-reset', 'form-download',
+    'document-sidebar', 'thumbnails-panel', 'thumbnail-list', 'thumbnails-tab', 'outline-tab', 'outline-sidebar',
+    'sidebar-toggle', 'rotate-view', 'empty-state', 'reading-dismiss', 'more-menu', 'diagnostics-dialog', 'diagnostics-open', 'diagnostics-close'];
   const elements = new Map(ids.map((id) => [id, new Element(id)]));
+  elements.get('document-sidebar').hidden = true; // Thumbnail scheduling has its own bounded-queue tests.
   const original = new Map(['window', 'document', 'Worker', 'ImageData', 'requestAnimationFrame', 'crossOriginIsolated', 'fetch', 'navigator', 'ResizeObserver']
     .map((key) => [key, Object.getOwnPropertyDescriptor(globalThis, key)]));
   const fakeWindow = new Element('window'); fakeWindow.devicePixelRatio = 1;
@@ -468,9 +471,10 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
   const pick = async (entry) => {
     const picker = elements.get('file'); picker.files = [new File([await readFile(join(root, entry.path))], entry.id + '.pdf')]; picker.dispatch('change');
   };
-  const ready = () => elements.get('status').textContent === 'Visible tiles rendered';
+  const ready = () => elements.get('status').textContent === 'Ready';
   const view = (index) => elements.get('page-surface').children.find((element) => element.getAttribute('data-page') === String(index));
-  const canvases = (index = 0) => view(index)?.children.filter((element) => element.tagName === 'CANVAS') ?? [];
+  const content = index => view(index)?.children.find(node => node.className === 'page-content');
+  const canvases = (index = 0) => content(index)?.children.filter((element) => element.tagName === 'CANVAS') ?? [];
   try {
     await import(`../web/viewer.mjs?test=${diagnosticKinds ? 'diagnostic-kinds' : startup?.name ?? 'continuous'}`);
     if (startup) {
@@ -621,7 +625,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     await pick(encrypted); await waitFor(() => elements.get('password-dialog').open); elements.get('password-cancel').dispatch('click');
     await waitFor(() => elements.get('status').textContent === 'Opening cancelled'); assert.equal(canvases().length, 0);
     await pick({ id: 'extract-simple', path: 'corpus/generated/text/extract-simple.pdf' }); await waitFor(ready);
-    const text = () => view(0)?.children.find((n) => n.className === 'text-layer');
+    const text = () => content(0)?.children.find((n) => n.className === 'text-layer');
     assert.equal(text().children.map((n) => n.textContent).join(''), 'ZZ');
     assert.equal(text().getAttribute('role'), 'document');
     assert.equal(text().children[0].style.transform, 'matrix(4,0,0,6,10,214)');
@@ -634,7 +638,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     assert.equal(globalThis.document.activeElement, elements.get('find-query'));
     elements.get('find-query').value = 'z'; elements.get('find-query').dispatch('input');
     await waitFor(() => elements.get('find-count').textContent === '1 / 2');
-    const marks = () => view(0).children.find((n) => n.className === 'search-highlights')?.children ?? [];
+    const marks = () => content(0).children.find((n) => n.className === 'search-highlights')?.children ?? [];
     assert.equal(marks().length, 2); assert.equal(marks()[0].style.left, '10px'); assert.equal(marks()[0].style.top, '214px');
     elements.get('find-next').dispatch('click'); await waitFor(() => elements.get('find-count').textContent === '2 / 2');
     assert.equal(marks()[1].className, 'search-match current-match');
@@ -658,7 +662,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     elements.get('page').value = '#2'; elements.get('page').dispatch('change'); await waitFor(() => ready() && elements.get('page').value === '2');
     assert.equal(elements.get('page-label').textContent, 'Label: A-8');
     await pick({ id: 'links', path: 'corpus/generated/document/navigation-links-actions.pdf' }); await waitFor(ready);
-    const links = view(0).children.find((n) => n.className === 'link-layer').children;
+    const links = content(0).children.find((n) => n.className === 'link-layer').children;
     assert.equal(links[0].getAttribute('role'), 'link'); assert.equal(links[0].getAttribute('tabindex'), '0');
     assert.equal(links[0].getAttribute('href'), undefined);
     const linkNames = ['Go to page 2', 'GoToR action (not run)', 'GoToR action (not run)', 'Multiple actions (not run)',
@@ -681,7 +685,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     elements.get('find-open').dispatch('click'); elements.get('find-query').value = 'navigation'; elements.get('find-query').dispatch('input');
     await waitFor(() => elements.get('find-count').textContent === '1 / 2');
     elements.get('find-next').dispatch('click'); await waitFor(() => ready() && elements.get('page').value === '2');
-    assert.ok(view(1).children.find((n) => n.className === 'search-highlights').children.some((n) => n.className === 'search-match current-match'));
+    assert.ok(content(1).children.find((n) => n.className === 'search-highlights').children.some((n) => n.className === 'search-match current-match'));
     elements.get('find-previous').dispatch('click'); await waitFor(() => ready() && elements.get('page').value === '1');
     elements.get('find-close').dispatch('click');
     let uiConfirmed = 0, uiOpened = [];
@@ -695,7 +699,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     assert.ok(text().children.every((n)=>n.tagName==='SPAN'));
     fakeWindow.confirm = (message) => { assert.match(message,/https:\/\/example.invalid\/chapter/); uiConfirmed++; return false; };
     fakeWindow.open = (url, target, features) => { assert.equal(target,'_blank'); assert.equal(features,'noopener,noreferrer'); uiOpened.push(url); };
-    const externalLink = () => view(0).children.find((n)=>n.className==='link-layer').children[0];
+    const externalLink = () => content(0).children.find((n)=>n.className==='link-layer').children[0];
     assert.equal(externalLink().getAttribute('aria-label'), 'Open https://example.invalid/chapter (external; asks before opening)');
     assert.equal(externalLink().getAttribute('title'), externalLink().getAttribute('aria-label'));
     externalLink().dispatch('keydown',{key:'Enter'}); assert.equal(uiConfirmed,1); assert.deepEqual(uiOpened,[]);

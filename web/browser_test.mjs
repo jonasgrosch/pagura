@@ -62,8 +62,9 @@ async function checkNavigation() {
   const {navigationDocument}=await import(new URL('./navigation_document.mjs',location.href));
   const data=new DataTransfer(); data.items.add(new File([navigationDocument()],'content-fits.pdf',{type:'application/pdf'}));
   $('file').files=data.files; $('file').dispatchEvent(new Event('change',{bubbles:true}));
-  const ready=()=>$('status').textContent==='Visible tiles rendered' && $('error').hidden;
+  const ready=()=>$('status').textContent==='Ready' && $('error').hidden;
   await wait(()=>ready() && document.querySelectorAll('[role=treeitem]').length===6);
+  $('outline-tab').click();
   const samples=[];
   for(let index=0;index<6;index++) {
     const viewport=$('viewport'), painted=index<3, page=painted?1:2;

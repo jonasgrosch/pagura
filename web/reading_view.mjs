@@ -160,7 +160,7 @@ export class ReadingView {
     if (record && match.quads.length) {
       const points = pageQuad(record.info, this.state().zoom, match.quads[0]);
       this.pendingScroll = null;
-      this.state().scrollMatch(match.page, Math.min(...points.map((p) => p[1])));
+      this.state().scrollMatch(match.page, Math.min(...points.map((p) => p[1])), points);
     }
   }
 

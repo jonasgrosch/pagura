@@ -8,31 +8,42 @@
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-  <header>
-    <strong>Pagura</strong>
-    <label class="button" for="file">Open PDF</label>
-    <input id="file" type="file" accept="application/pdf,.pdf">
-    <span id="filename">Choose a PDF or drop it here</span>
-    <label><input id="strict" type="checkbox"> Strict rendering</label>
+  <header class="toolbar">
+    <div class="document-tools">
+      <button id="sidebar-toggle" class="icon-button" aria-label="Toggle sidebar" title="Show or hide sidebar" aria-controls="document-sidebar" aria-expanded="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button>
+      <label class="button icon-button" for="file" title="Open PDF"><span class="sr-only">Open PDF</span><svg viewBox="0 0 24 24"><path d="M3 19V5h7l2 3h9v11zM3 11h18"/></svg></label>
+      <input id="file" type="file" accept="application/pdf,.pdf">
+      <div class="document-title"><span id="filename">Pagura</span><div id="form-status" role="status" aria-live="polite"></div></div>
+    </div>
+    <nav aria-label="Document controls">
+      <div class="tool-group page-navigation">
+        <button id="previous" class="icon-button" disabled aria-label="Previous page" title="Previous page"><svg viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></svg></button>
+        <label class="page-number"><span class="sr-only">Page</span><input id="page" type="text" value="1" aria-label="Page" aria-describedby="page-label" disabled><span id="count">of 0</span></label><span id="page-label" class="sr-only"></span>
+        <button id="next" class="icon-button" disabled aria-label="Next page" title="Next page"><svg viewBox="0 0 24 24"><path d="m10 6 6 6-6 6"/></svg></button>
+      </div>
+      <div class="tool-group">
+        <select id="zoom" aria-label="Zoom" title="Zoom" disabled>
+          <option value="fit-width">Fit width</option><option value="fit-page" selected>Fit page</option>
+          <option id="custom-zoom" value="custom">Custom</option>
+          <option value="0.5">50%</option><option value="0.75">75%</option>
+          <option value="1">100%</option><option value="1.5">150%</option>
+          <option value="2">200%</option><option value="3">300%</option>
+        </select>
+        <button id="rotate-view" class="icon-button" aria-label="Rotate view left" title="Rotate current page left (view only)" disabled><svg viewBox="0 0 24 24"><path d="M8 8H3V3m0 5a9 9 0 1 1 0 8"/><path d="M10 8h6v9h-6z"/></svg></button>
+      </div>
+      <button id="find-open" class="icon-button" aria-label="Find" title="Find (⌘F / Ctrl+F)" aria-controls="find-panel"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></button>
+      <button id="form-download" class="save-button" disabled title="Save PDF (⌘S / Ctrl+S)"><svg viewBox="0 0 24 24"><path d="M12 3v12m-4-4 4 4 4-4M4 15v5h16v-5"/></svg><span>Save</span></button>
+      <details id="more-menu" class="more-menu">
+        <summary class="icon-button" aria-label="More actions" title="More actions"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></summary>
+        <div class="menu-panel">
+          <button id="edit-open" aria-pressed="true" disabled>Fill forms</button>
+          <button id="copy-page" disabled>Copy page text</button>
+          <button id="form-reset" disabled>Discard form changes</button>
+          <hr><button id="diagnostics-open">Document diagnostics…</button>
+        </div>
+      </details>
+    </nav>
   </header>
-  <nav aria-label="Page controls">
-    <button id="previous" disabled aria-label="Previous page">←</button>
-    <label>Page <input id="page" type="text" value="1" aria-describedby="page-label" disabled></label>
-    <span id="count">of 0</span><span id="page-label"></span>
-    <button id="next" disabled aria-label="Next page">→</button>
-    <label>Zoom <select id="zoom" disabled>
-      <option value="fit-width">Fit width</option><option value="fit-page">Fit page</option>
-      <option id="custom-zoom" value="custom">Custom</option>
-      <option value="0.5">50%</option><option value="0.75">75%</option>
-      <option value="1" selected>100%</option><option value="1.5">150%</option>
-      <option value="2">200%</option><option value="3">300%</option>
-    </select></label>
-    <button id="find-open" aria-controls="find-panel">Find</button><button id="copy-page" disabled>Copy page text</button>
-    <button id="edit-open" aria-pressed="true" disabled>Fill forms</button>
-    <button id="form-reset" disabled>Discard changes</button>
-    <button id="form-download" disabled>Save PDF</button>
-    <span id="status" role="status" aria-live="polite">Starting engine…</span>
-  </nav>
   <section id="find-panel" role="search" aria-label="Search document" hidden>
     <label>Find <input id="find-query" type="search" maxlength="4096" autocomplete="off"></label>
     <label><input id="find-case" type="checkbox"> Match case</label>
@@ -40,15 +51,26 @@
     <button id="find-previous" aria-label="Previous match">Previous</button><button id="find-next" aria-label="Next match">Next</button>
     <span id="find-count" role="status" aria-live="polite">0 / 0</span><button id="find-close" aria-label="Close search">Close</button>
   </section>
-  <div id="form-status" role="status" aria-live="polite"></div>
-  <div id="reading-status" role="status" aria-live="polite"></div>
   <div id="error" role="alert" hidden></div>
-  <div id="reading-layout"><aside id="outline-sidebar" aria-label="Document outline"><div id="outline-tree" role="tree" aria-label="Document outline"></div></aside>
-  <main id="viewport" aria-label="PDF pages" role="region" tabindex="0"><div id="page-surface" hidden></div></main></div>
-  <aside>
+  <div id="reading-notice"><span id="reading-status" role="status" aria-live="polite"></span><button id="reading-dismiss" aria-label="Dismiss notice">Dismiss</button></div>
+  <div id="reading-layout">
+    <aside id="document-sidebar" aria-label="Document navigation">
+      <div class="sidebar-tabs" role="tablist" aria-label="Sidebar view">
+        <button id="thumbnails-tab" role="tab" aria-selected="true" aria-controls="thumbnails-panel">Thumbnails</button>
+        <button id="outline-tab" role="tab" aria-selected="false" aria-controls="outline-sidebar" tabindex="-1">Contents</button>
+      </div>
+      <div id="thumbnails-panel" role="tabpanel" aria-labelledby="thumbnails-tab" tabindex="0"><div id="thumbnail-list"></div></div>
+      <div id="outline-sidebar" role="tabpanel" aria-labelledby="outline-tab" hidden><p class="outline-empty">No table of contents</p><div id="outline-tree" role="tree" aria-label="Document outline"></div></div>
+    </aside>
+    <main id="viewport" aria-label="PDF pages" role="region" tabindex="0"><div id="page-surface" hidden></div><div id="empty-state"><svg viewBox="0 0 24 24"><path d="M6 2h8l4 4v16H6zM14 2v5h4M9 12h6m-6 4h6"/></svg><h1>Your documents, quietly in focus.</h1><p>Open a PDF or drop it here to read and fill forms.</p></div></main>
+  </div>
+  <span id="status" class="sr-only" role="status" aria-live="polite">Starting engine…</span>
+  <dialog id="diagnostics-dialog" aria-labelledby="diagnostics-title">
+    <div class="dialog-heading"><h2 id="diagnostics-title">Document diagnostics</h2><button id="diagnostics-close" aria-label="Close diagnostics">Done</button></div>
+    <p>Technical details for this document. Your PDF stays in this browser.</p>
+    <label><input id="strict" type="checkbox"> Use strict rendering for the next PDF opened</label>
     <details id="diagnostics"><summary id="diagnostic-count">Repairs: 0 · Information: 0</summary><ul id="repair-list"></ul></details>
-    <p>Local preview engine. Unsupported content is reported explicitly. Documents stay in this browser.</p>
-  </aside>
+  </dialog>
   <dialog id="password-dialog" aria-labelledby="password-title" aria-describedby="password-feedback">
     <form id="password-form">
       <h2 id="password-title">Unlock PDF</h2>

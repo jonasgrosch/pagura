@@ -58,7 +58,7 @@ export class FormEditor {
       const fields = await editing.client.formFields(editing.handle);
       if (token !== this.token) return;
       this.fields = new Map(fields.map((field) => [field.index, field]));
-      this.message.textContent = fields.length ? 'Click a field on the page to fill it. Save PDF includes your changes.' : '';
+      this.message.textContent = fields.length ? 'Fillable PDF' : '';
       this.controls(); this.redraw(); this.preview?.schedule(); return true;
     } catch (error) { if (token === this.token) this.message.textContent = `Form editing unavailable: ${error}`; }
     this.controls();

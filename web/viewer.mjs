@@ -1,3 +1,5 @@
+import { Thumbnails } from './thumbnails.mjs';
+import { rotatedSize, rotatePoint, rasterBounds, rotationTransform } from './view_rotation.mjs';
 import { FormEditor } from './form_editor.mjs';
 import { pageUserPoint } from './page_geometry.mjs';
 import { ReadingView } from './reading_view.mjs';
@@ -14,14 +16,16 @@ const pageInput = $('page'), zoomInput = $('zoom');
 const TILE = 256, MAX_TILES = 128, MAX_PAGES = 32, MAX_EXTENT = 10000000;
 let client, handle = null, layout = new PageLayout(0), page = 0, zoom = 1;
 let documentEpoch = 0, generation = 0, drawing = false, scheduled = false, dirty = false;
-const infos = new Map(), views = new Map();
+const infos = new Map(), views = new Map(), rotations = new Map();
 const debug = new URL(window.location.href).searchParams.get('debug') === '1'
   && ['localhost', '127.0.0.1', '[::1]'].includes(new URL(window.location.href).hostname);
 let source = null, recoveryAttempts = 0, recovering = false;
 
 const reader = new ReadingView({
   state: () => ({ client, handle, epoch: documentEpoch, page, count: layout.count, zoom,
-    scrollMatch: (index, y) => { viewport.scrollTop = layout.top(index, zoom) + Math.max(0, y - 40); invalidate(); } }),
+    scrollMatch: (index, y, points) => { const info = infos.get(index);
+      if (info && points) y = Math.min(...points.map(([x, y]) => rotatePoint(x, y, info.width * zoom, info.height * zoom, rotations.get(index) ?? 0)[1]));
+      viewport.scrollTop = layout.top(index, zoom) + Math.max(0, y - 40); invalidate(); } }),
   navigate, destination: followDestination, report: (error) => { $('reading-status').textContent = String(error); }, controls,
   notice: readingNotice,
 });
@@ -29,6 +33,14 @@ const editor = new FormEditor({
   state: () => ({ client, handle, epoch: documentEpoch, recovery: source?.recovery, bytes: source?.bytes, password: source?.password }),
   adopt: adoptSaved, download: downloadPdf, redraw: invalidate,
 });
+const thumbnails = new Thumbnails({
+  state: () => ({ client, handle, epoch: documentEpoch, count: layout.count, page,
+    idle: !drawing && !dirty && !editor.busy, visible: !$('document-sidebar').hidden && !$('thumbnails-panel').hidden,
+    label: index => reader.label(index), rotation: index => rotations.get(index) ?? 0 }),
+  navigate, panel: $('thumbnails-panel'), list: $('thumbnail-list'),
+});
+function displaySize(info, index = page) { return rotatedSize(info.width, info.height, rotations.get(index) ?? 0); }
+function displayInfo(info, index = page) { return { ...info, ...displaySize(info, index), rotation: (info.rotation + (rotations.get(index) ?? 0)) % 360 }; }
 // Fillable fields are interactive by default; strict rendering is an opt-in diagnostic mode.
 function downloadPdf() {
   if (!source) return;
@@ -63,7 +75,9 @@ function controls() {
   if (document.activeElement !== pageInput) pageInput.value = String(page + 1);
   $('count').textContent = `of ${count}`;
   $('page-label').textContent = count ? `Label: ${reader.label(page)}` : '';
-  $('copy-page').disabled = !count;
+  $('copy-page').disabled = !count; $('rotate-view').disabled = !count;
+  $('empty-state').hidden = handle !== null || !!source;
+  thumbnails.refresh();
   editor.controls();
 }
 function createClient() {
@@ -123,7 +137,7 @@ function updateLayout() {
   const height = layout.height(zoom);
   if (!Number.isFinite(height) || height > MAX_EXTENT) throw new Error('Document exceeds the viewer layout budget; reduce zoom');
   let width = Math.max(1, viewport.clientWidth - 48);
-  for (const info of infos.values()) if (info.width) width = Math.max(width, info.width * zoom);
+  for (const [index, info] of infos) if (info.width) width = Math.max(width, displaySize(info, index).width * zoom);
   if (width > MAX_EXTENT) throw new Error('Page exceeds the viewer layout budget; reduce zoom');
   surface.style.height = `${height}px`;
   surface.style.width = `${width}px`;
@@ -131,7 +145,8 @@ function updateLayout() {
   for (const [index, view] of views) {
     const info = infos.get(index);
     Object.assign(view.element.style, { top: `${layout.top(index, zoom)}px`,
-      width: `${(info?.width ?? 612) * zoom}px`, height: `${layout.heights[index] * zoom}px` });
+      width: `${(info?.width ? displaySize(info, index).width : 612) * zoom}px`, height: `${layout.heights[index] * zoom}px` });
+    if (info?.width) Object.assign(view.content.style, { width: `${info.width * zoom}px`, height: `${info.height * zoom}px`, transform: rotationTransform(info.width * zoom, info.height * zoom, rotations.get(index) ?? 0) });
   }
 }
 function geometry(info) {
@@ -147,7 +162,7 @@ async function pageInfo(index, epoch) {
     if (epoch !== documentEpoch) return null;
     const position = anchor(), info = geometry(raw);
     const offset = position.fraction * layout.heights[position.index] * zoom;
-    infos.set(index, info); layout.setHeight(index, info.height); updateLayout();
+    infos.set(index, info); layout.setHeight(index, displaySize(info, index).height); updateLayout();
     // Newly measured heights keep the same pixel offset in the anchor page;
     // zoom changes instead retain a proportional position in known geometry.
     position.fraction = Math.min(offset, layout.heights[position.index] * zoom + layout.gap - 1)
@@ -167,11 +182,11 @@ function pageView(index) {
   element.setAttribute('data-page', String(index)); element.setAttribute('role', 'region');
   element.setAttribute('aria-label', `Page ${index + 1}`); element.setAttribute('aria-busy', 'true');
   const message = document.createElement('p'); message.className = 'page-message'; message.textContent = `Loading page ${index + 1}…`;
-  element.append(message);
+  const content = document.createElement('div'); content.className = 'page-content'; content.append(message); element.append(content);
   let following = null, nextIndex = Infinity;
   for (const [number, view] of views) if (number > index && number < nextIndex) { following = view.element; nextIndex = number; }
   surface.insertBefore(element, following);
-  const view = { element, message, tiles: new Map(), failed: false }; views.set(index, view); return view;
+  const view = { element, content, message, tiles: new Map(), failed: false }; views.set(index, view); return view;
 }
 function visiblePages() {
   const top = Math.max(0, viewport.scrollTop - 24), bottom = top + viewport.clientHeight;
@@ -183,10 +198,12 @@ function tileRequests(index, info) {
   const ratio = window.devicePixelRatio, scale = zoom * ratio;
   const width = Math.max(1, Math.ceil(info.width * scale - 1e-9)), height = Math.max(1, Math.ceil(info.height * scale - 1e-9));
   const bounds = views.get(index).element.getBoundingClientRect(), visible = viewport.getBoundingClientRect();
-  const left = Math.max(0, Math.floor((visible.left - bounds.left) * ratio / TILE) * TILE);
-  const top = Math.max(0, Math.floor((visible.top - bounds.top) * ratio / TILE) * TILE);
-  const right = Math.min(width, Math.ceil((visible.right - bounds.left) * ratio));
-  const bottom = Math.min(height, Math.ceil((visible.bottom - bounds.top) * ratio));
+  const region = rasterBounds(bounds, visible, info.width * zoom, info.height * zoom, rotations.get(index) ?? 0);
+  if (!region) return [];
+  const left = Math.max(0, Math.floor(region.left * ratio / TILE) * TILE);
+  const top = Math.max(0, Math.floor(region.top * ratio / TILE) * TILE);
+  const right = Math.min(width, Math.ceil(region.right * ratio));
+  const bottom = Math.min(height, Math.ceil(region.bottom * ratio));
   const requests = [];
   for (let y = top; y < bottom; y += TILE) for (let x = left; x < right; x += TILE) {
     if (requests.length >= MAX_TILES) throw new Error('Visible page exceeds the tile budget; use a smaller window');
@@ -196,7 +213,7 @@ function tileRequests(index, info) {
 }
 function failPage(index, error) {
   const view = views.get(index); if (!view) return;
-  view.failed = true; view.tiles.clear(); view.element.replaceChildren(view.message);
+  view.failed = true; view.tiles.clear(); view.content.replaceChildren(view.message);
   view.message.hidden = false; view.message.setAttribute('role', 'alert'); view.message.textContent = String(error);
   view.element.setAttribute('aria-busy', 'false'); report(`Page ${index + 1}: ${error}`);
 }
@@ -249,11 +266,11 @@ async function draw() {
           Object.assign(canvas.style, { left: `${tile.x / ratio}px`, top: `${tile.y / ratio}px`, width: `${image.width / ratio}px`, height: `${image.height / ratio}px` });
           const context = canvas.getContext('2d'); if (!context) throw new Error('Canvas 2D rendering is unavailable');
           context.putImageData(new ImageData(new Uint8ClampedArray(image.rgba.buffer, image.rgba.byteOffset, image.rgba.byteLength), image.width, image.height), 0, 0);
-          view.tiles.set(key, canvas); view.element.append(canvas);
+          view.tiles.set(key, canvas); view.content.append(canvas);
         }
         view.message.hidden = true; view.element.setAttribute('aria-busy', 'false');
-        await reader.page(index, info, view.element);
-        if (epoch === documentEpoch && token === generation) await editor.page(index, info, view.element, zoom);
+        await reader.page(index, info, view.content);
+        if (epoch === documentEpoch && token === generation) await editor.page(index, info, view.content, zoom);
         if (epoch !== documentEpoch || token !== generation) return;
       } catch (error) { if (epoch === documentEpoch && token === generation) failPage(index, error); }
     }
@@ -261,13 +278,14 @@ async function draw() {
       await diagnostics(epoch);
       if (epoch === documentEpoch && token === generation) {
         controls();
-        status.textContent = [...views.values()].some((view) => view.failed) ? 'Some pages are unavailable' : 'Visible tiles rendered';
+        status.textContent = [...views.values()].some((view) => view.failed) ? 'Some pages are unavailable' : 'Ready';
       }
     }
   } catch (error) { if (epoch === documentEpoch && token === generation) report(error); }
-  finally { drawing = false; if (dirty) schedule(); }
+  finally { drawing = false; if (dirty) schedule(); else thumbnails.schedule(); }
 }
 function fit(mode, info) {
+  info = displayInfo(info);
   const width = (viewport.clientWidth - 48) / info.width;
   return mode === 'fit-page' ? Math.min(width, (viewport.clientHeight - 48) / info.height) : width;
 }
@@ -286,11 +304,11 @@ async function navigate(index) {
     const info = await pageInfo(index, epoch); if (!info || epoch !== documentEpoch) return;
     page = index;
     if (zoomInput.value.startsWith('fit-')) changeZoom(fit(zoomInput.value, info));
-    viewport.scrollTop = layout.top(index, zoom); pageInput.value = String(index + 1); controls(); invalidate();
+    viewport.scrollTop = layout.top(index, zoom); pageInput.value = String(index + 1); controls(); thumbnails.select(page, true); invalidate();
   } catch (error) { if (epoch === documentEpoch) report(error); }
 }
 async function followDestination(action) {
-  const epoch = documentEpoch, previous = infos.get(page);
+  const epoch = documentEpoch, rawPrevious = infos.get(page), previous = rawPrevious?.width ? displayInfo(rawPrevious) : null;
   const retained = previous?.width ? pageUserPoint(previous, zoom,
     viewport.scrollLeft - (parseFloat(surface.style.width) - previous.width * zoom) / 2,
     viewport.scrollTop - layout.top(page, zoom)) : null;
@@ -298,11 +316,11 @@ async function followDestination(action) {
   if (!info || epoch !== documentEpoch) return;
   const bounds = action.fit >= 5 ? (await client.contentBounds(handle, action.page)).bounds : null;
   if (epoch !== documentEpoch) return;
-  const plan = destinationView(action, info, viewport.clientWidth - 48, viewport.clientHeight - 48, zoom, retained ? { left: retained[0], top: retained[1] } : {}, bounds);
+  const plan = destinationView(action, displayInfo(info, action.page), viewport.clientWidth - 48, viewport.clientHeight - 48, zoom, retained ? { left: retained[0], top: retained[1] } : {}, bounds);
   zoomInput.value = 'custom'; changeZoom(plan.zoom, 0);
   await navigate(action.page); if (epoch !== documentEpoch) return;
   if (plan.y !== null) viewport.scrollTop = layout.top(action.page, zoom) + plan.y;
-  if (plan.x !== null) viewport.scrollLeft = Math.max(0, (parseFloat(surface.style.width) - info.width * zoom) / 2 + plan.x);
+  if (plan.x !== null) viewport.scrollLeft = Math.max(0, (parseFloat(surface.style.width) - displaySize(info, action.page).width * zoom) / 2 + plan.x);
   invalidate();
   if (plan.notice) readingNotice(plan.notice);
 }
@@ -310,7 +328,7 @@ async function openFile(file) {
   if (!file) return;
   cancelPassword();
   source?.password.fill(0); source = null; recoveryAttempts = 0;
-  const epoch = ++documentEpoch; reader.reset(); editor.reset();
+  const epoch = ++documentEpoch; reader.reset(); editor.reset(); rotations.clear();
   handle = null; infos.clear(); views.clear(); surface.replaceChildren(); surface.hidden = true;
   layout = new PageLayout(0); page = 0; controls(); errorBox.hidden = true;
   $('filename').textContent = file.name; status.textContent = 'Opening…';
@@ -346,6 +364,38 @@ async function openFile(file) {
     zoom = Math.min(8, Math.max(0.1, zoom)); updateLayout(); viewport.scrollTop = 0; viewport.scrollLeft = 0; invalidate();
   } catch (error) { if (epoch === documentEpoch) report(error); }
 }
+$('rotate-view').addEventListener('click', () => {
+  const info = infos.get(page); if (!info?.width) return;
+  rotations.set(page, ((rotations.get(page) ?? 0) + 270) % 360);
+  layout.setHeight(page, displaySize(info).height);
+  // CSS rotates the complete page, including hit targets; existing pixels are reusable.
+  if (zoomInput.value.startsWith('fit-')) changeZoom(fit(zoomInput.value, info), 0);
+  updateLayout(); viewport.scrollTop = layout.top(page, zoom); thumbnails.refresh(); invalidate();
+});
+$('sidebar-toggle').addEventListener('click', () => {
+  const sidebar = $('document-sidebar'); sidebar.hidden = !sidebar.hidden;
+  $('sidebar-toggle').setAttribute('aria-expanded', String(!sidebar.hidden)); thumbnails.select(page, true);
+});
+function sidebarTab(outline) {
+  $('thumbnails-panel').hidden = outline; $('outline-sidebar').hidden = !outline;
+  for (const [id, selected] of [['thumbnails-tab', !outline], ['outline-tab', outline]]) {
+    $(id).setAttribute('aria-selected', String(selected)); $(id).tabIndex = selected ? 0 : -1;
+  }
+  thumbnails.select(page, true);
+}
+$('thumbnails-tab').addEventListener('click', () => sidebarTab(false));
+$('outline-tab').addEventListener('click', () => sidebarTab(true));
+for (const id of ['thumbnails-tab', 'outline-tab']) $(id).addEventListener('keydown', event => {
+  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+  event.preventDefault(); const outline = event.key === 'End' || (event.key !== 'Home' && id === 'thumbnails-tab');
+  sidebarTab(outline); $(outline ? 'outline-tab' : 'thumbnails-tab').focus();
+});
+$('reading-dismiss').addEventListener('click', () => { $('reading-status').textContent = ''; });
+$('diagnostics-open').addEventListener('click', () => $('diagnostics-dialog').showModal());
+$('diagnostics-close').addEventListener('click', () => { $('diagnostics-dialog').close(); $('more-menu').querySelector('summary').focus(); });
+$('more-menu').addEventListener('click', event => { if (event.target.closest('button')) $('more-menu').open = false; });
+document.addEventListener('click', event => { if (!event.target.closest('#more-menu')) $('more-menu').open = false; });
+document.addEventListener('keydown', event => { if (event.key === 'Escape' && $('more-menu').open) { $('more-menu').open = false; $('more-menu').querySelector('summary').focus(); } });
 $('previous').addEventListener('click', () => { void navigate(page - 1); });
 $('next').addEventListener('click', () => { void navigate(page + 1); });
 pageInput.addEventListener('change', () => { void navigate(pageInput.value.startsWith('#') ? Number(pageInput.value.slice(1)) - 1 : reader.pageIndex(pageInput.value)); });
@@ -398,14 +448,14 @@ function resizeViewport() {
     if (value === zoom) invalidate(); else changeZoom(value);
   } else if (ratio !== window.devicePixelRatio) changeZoom(zoom);
   else invalidate();
-  ratio = window.devicePixelRatio;
+  ratio = window.devicePixelRatio; thumbnails.refresh();
 }
 window.addEventListener('resize', resizeViewport);
 // Search/outline panels resize the document region without resizing the window.
 const regionObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => requestAnimationFrame(resizeViewport)) : null;
 regionObserver?.observe(viewport);
 window.addEventListener('beforeunload', (event) => { if (editor.changes.size) { event.preventDefault(); event.returnValue = ''; } });
-window.addEventListener('pagehide', () => { ++documentEpoch; handle = null; dirty = false; regionObserver?.disconnect(); reader.reset(); source?.password.fill(0); source = null; client?.destroy(); });
+window.addEventListener('pagehide', () => { thumbnails.destroy(); ++documentEpoch; handle = null; dirty = false; regionObserver?.disconnect(); reader.reset(); source?.password.fill(0); source = null; client?.destroy(); });
 if (debug) window.paguraDebug = Object.freeze({ fail: (reason) => client.injectFailure(reason),
   readingProfile: async () => {
     const { profileTextLayer } = await import('./reading_profile.mjs');

@@ -11,6 +11,7 @@ on:
       - 'web/**'
       - 'tools/editing_host_test.mjs'
       - 'tools/form_*test.mjs'
+      - 'tools/viewer_navigation_test.mjs'
       - 'crates/pagura-render/src/form_appearance/**'
       - 'crates/pagura-render/src/form_appearance.rs'
       - '.github/workflows/editing.yml'
@@ -26,6 +27,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 26.8.1
+      - name: Viewer navigation and thumbnail contracts
+        run: node tools/viewer_navigation_test.mjs
       - name: Install pinned Rust
         run: rustup toolchain install 1.99.1 --profile minimal --component clippy,rustfmt --target wasm32-wasip1
       - name: Independent readers

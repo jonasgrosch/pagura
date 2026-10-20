@@ -18,11 +18,22 @@ page elements are discarded. Previous/next and numbered navigation scroll to a
 page without changing documents. Unimplemented content produces a tagged error
 on the affected page and clears partial pixels for that page. Other pages can
 still render. Strict validation rejects repairs and names the refused repair;
-normal viewing lists applied repairs and informational diagnostics separately
-below the document. Information, such as permitted font substitution, is
+normal viewing lists applied repairs and informational diagnostics under
+More actions → Document diagnostics. Information, such as permitted font substitution, is
 available in both recovery modes.
 
 ## Controls
+
+- A compact toolbar keeps page navigation, zoom, Rotate view, Find and Save visible.
+  More actions contains form interaction, copy-page text, discard, and diagnostics.
+- The collapsible sidebar switches between thumbnails and the document outline.
+  Thumbnail rows are virtualized and keyboard navigable; up to 32 low-resolution
+  canvases are retained (under 3 MiB of RGBA pixels). One thumbnail request runs
+  at a time, after visible-page work, and stale document results are discarded.
+  Thumbnails reflect the saved document; unsaved form drafts remain on the page.
+- Rotate view turns the current page left in 90-degree steps, including text,
+  links and form hit targets. This is a viewing preference, **not a saved edit**.
+  It survives form saves but resets when another document is opened.
 
 - Zoom: fit width, fit page, percentage presets, or Ctrl/Command-wheel. Two-finger
   touch pinch also changes document zoom. Fit presets use the selected page's
