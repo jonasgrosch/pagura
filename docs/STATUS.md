@@ -27,6 +27,15 @@ primary standards.
 | Safety | Workspace-only product dependencies; every product target forbids unsafe; clippy pedantic, `missing_docs`, no `unwrap`/`expect`/`panic`; eleven cargo-fuzz targets with a bounded smoke run (`tools/fuzz_smoke.py`) and every finding replayed on stable Rust | Process sandbox, long fuzz campaigns |
 | Benchmarks | Stage-timed conversion track (open/render/emit, document mode), regression track, raw-format normalization, competitors out of tree (PDFium, MuPDF, pdf.js, hayro, CoreGraphics, Poppler) | Controlled runners; release gate |
 
+## Accuracy policy
+
+`RenderOptions::accuracy` selects `Accuracy::Exact`, the default, which keeps
+every pixel within one level of its exact result, or `Accuracy::Competitive`,
+an approximate path measured against ADR 0004's competitive accuracy gate:
+row-fragment glyph masks, signed-cell fills, clip products, one-round byte
+composition and fused decoding of sole JPEG pages. The CLI exposes
+`--accuracy exact|competitive`; the host protocol and viewer render exactly.
+
 ## Overprint display policy
 
 `RenderOptions::overprint` selects `OverprintPreview::{Auto, Always, Never}`;

@@ -642,7 +642,8 @@
       "dpi": 72,
       "width": 32,
       "height": 32,
-      "tolerance": 0
+      "tolerance": 0,
+      "competitive_tolerance": 1
     },
     {
       "id": "paint/text-extgstate-font",
@@ -2291,7 +2292,8 @@
       "dpi": 72,
       "width": 64,
       "height": 64,
-      "tolerance": 1
+      "tolerance": 1,
+      "competitive_tolerance": 25
     },
     {
       "id": "paint/bundled-symbol-differences",
@@ -2324,7 +2326,8 @@
       "dpi": 72,
       "width": 64,
       "height": 64,
-      "tolerance": 1
+      "tolerance": 1,
+      "competitive_tolerance": 27
     },
     {
       "id": "paint/bundled-zapfdingbats",
@@ -2357,7 +2360,8 @@
       "dpi": 72,
       "width": 64,
       "height": 64,
-      "tolerance": 1
+      "tolerance": 1,
+      "competitive_tolerance": 14
     },
     {
       "id": "paint/bundled-zapfdingbats-differences",
@@ -2390,7 +2394,8 @@
       "dpi": 72,
       "width": 64,
       "height": 64,
-      "tolerance": 1
+      "tolerance": 1,
+      "competitive_tolerance": 19
     },
     {
       "id": "paint/bundled-cjk-cmap",
@@ -3438,7 +3443,8 @@
       "dpi": 72,
       "width": 32,
       "height": 32,
-      "tolerance": 0
+      "tolerance": 0,
+      "competitive_tolerance": 1
     },
     {
       "id": "paint/image-direct-bilinear",
