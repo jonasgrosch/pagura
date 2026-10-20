@@ -197,6 +197,9 @@ type Fill<T> = fn(
     Limits,
 ) -> Result<Option<T>>;
 
+/// Clip regions kept for the marks of one band.
+const CLIP_REGIONS: usize = 4;
+
 struct Context {
     overprint: crate::overprint::Policy,
     elide_opaque_groups: bool,
@@ -220,7 +223,9 @@ struct Context {
     crop: Path,
     allocated: usize,
     work: usize,
-    clip: Option<(usize, Tile, Arc<ClipRegion>)>,
+    /// Recently prepared clip regions by clip identity and tile, the most
+    /// recent first; marks of a band often alternate between a few clips.
+    clip: Vec<(usize, Tile, Arc<ClipRegion>)>,
     mask: Option<CachedMask>,
     function_work: usize,
     soft_source: bool,
@@ -277,7 +282,7 @@ impl Context {
             crop: crop.finish(),
             allocated,
             work: plan.work,
-            clip: None,
+            clip: Vec::new(),
             mask: None,
             function_work: 0,
             soft_source: false,
@@ -365,6 +370,7 @@ impl Context {
         tile: Tile,
         format: plan::Format,
         background: [u8; 4],
+        banded: bool,
     ) -> Result<Surface> {
         if format == plan::Format::F64 {
             return self.surface(tile, Backdrop::Transparent);
@@ -387,11 +393,13 @@ impl Context {
             .ok_or(Error::limit("colour buffer memory exceeded"))?;
         self.charge(count)?;
         let buffer = if format == plan::Format::U8 {
-            narrow::Buffer::U8(narrow::Bytes::new(
-                (tile.width as usize, tile.height as usize),
-                background,
-                std::mem::take(&mut self.spare),
-            )?)
+            let size = (tile.width as usize, tile.height as usize);
+            let storage = std::mem::take(&mut self.spare);
+            narrow::Buffer::U8(if banded {
+                narrow::Bytes::banded(size, background, storage)?
+            } else {
+                narrow::Bytes::new(size, background, storage)?
+            })
         } else {
             narrow::Buffer::new(format, count, background)?
         };
@@ -402,11 +410,15 @@ impl Context {
     fn clip(&mut self, clip: Option<&Arc<Clip>>, tile: Tile) -> Result<Arc<ClipRegion>> {
         let tile = self.viewport.unwrap_or(tile);
         let id = clip.map_or(0, |c| Arc::as_ptr(c) as usize);
-        if let Some((key, cached, region)) = &self.clip
-            && *key == id
-            && *cached == tile
+        if let Some(index) = self
+            .clip
+            .iter()
+            .position(|(key, cached, _)| *key == id && *cached == tile)
         {
-            return Ok(Arc::clone(region));
+            let entry = self.clip.remove(index);
+            let region = Arc::clone(&entry.2);
+            self.clip.insert(0, entry);
+            return Ok(region);
         }
         let mut viewport = PathBuilder::new();
         viewport.rect(
@@ -452,7 +464,8 @@ impl Context {
         // integrated once here and multiplied into each mark.
         self.raster.prepare_clip(&mut region)?;
         let region = Arc::new(region);
-        self.clip = Some((id, tile, Arc::clone(&region)));
+        self.clip.truncate(CLIP_REGIONS - 1);
+        self.clip.insert(0, (id, tile, Arc::clone(&region)));
         Ok(region)
     }
     fn commands(
@@ -801,6 +814,9 @@ impl Context {
         let buffer = target
             .narrow_mut()
             .ok_or(Error::invalid_argument("missing colour buffer"))?;
+        if buffer.unchanged_by(color, p.composite.alpha) {
+            return Ok(());
+        }
         let stride = tile.width as usize;
         let (x, y) = origin;
         let offset = (y - tile.y) as usize * stride + (x - tile.x) as usize;
@@ -1046,7 +1062,7 @@ impl Context {
         depth: usize,
     ) -> Result<()> {
         let viewport = self.viewport.replace(tile);
-        self.clip = None;
+        self.clip.clear();
         let result = self.commands(
             &group.commands,
             parent,
@@ -1056,7 +1072,7 @@ impl Context {
             depth + 1,
         );
         self.viewport = viewport;
-        self.clip = None;
+        self.clip.clear();
         result
     }
     fn opaque_group(
@@ -1420,7 +1436,7 @@ impl Context {
             // Mask G has its own BBox; the page crop is applied to the painted
             // object later, not to the mask source (11.6.5.1).
             let previous = std::mem::replace(&mut self.soft_source, true);
-            self.clip = None;
+            self.clip.clear();
             let suspended = self.transfers.as_ref().is_some_and(|r| r.suspended);
             if let Some(regions) = &mut self.transfers {
                 regions.suspended = true;
@@ -1441,7 +1457,7 @@ impl Context {
             }
             self.spot_batch = spot_batch;
             self.mask_colors = mask_colors;
-            self.clip = None;
+            self.clip.clear();
             result?;
         }
         self.discard_mask();
@@ -1741,7 +1757,7 @@ impl Context {
     ) -> Result<Pixmap> {
         self.begin_transfers(tile)?;
         let background = [background.r, background.g, background.b, 255];
-        let mut page = self.page_surface(tile, plan::Format::U8, background)?;
+        let mut page = self.page_surface(tile, plan::Format::U8, background, true)?;
         let mut y = tile.y;
         while y < tile.y + tile.height {
             let height = (tile.y + tile.height - y).min(rows);
@@ -1752,7 +1768,7 @@ impl Context {
                 height,
             };
             page.window(band)?;
-            self.clip = None;
+            self.clip.clear();
             self.discard_mask();
             self.commands(
                 &list.commands,
@@ -1781,10 +1797,10 @@ impl Context {
         {
             return Ok(());
         }
-        self.clip = None;
+        self.clip.clear();
         self.discard_mask();
         self.begin_transfers(region)?;
-        let mut page = self.page_surface(region, format, background)?;
+        let mut page = self.page_surface(region, format, background, false)?;
         self.commands(
             &list.commands,
             &mut page,
@@ -1801,7 +1817,7 @@ impl Context {
         let mut spots = Vec::with_capacity(self.separations.batches());
         for batch in 0..self.separations.batches() {
             self.spot_batch = Some(batch);
-            self.clip = None;
+            self.clip.clear();
             let mut surface = self.surface(region, Backdrop::Transparent)?;
             self.commands(
                 &list.commands,
@@ -2302,7 +2318,7 @@ mod tests {
             crop: (*path).clone(),
             allocated: 0,
             work: 0,
-            clip: None,
+            clip: Vec::new(),
             mask: None,
             function_work: 0,
             soft_source: false,
@@ -2378,7 +2394,7 @@ mod tests {
             crop: crop.finish(),
             allocated: 0,
             work: 0,
-            clip: None,
+            clip: Vec::new(),
             mask: None,
             function_work: 0,
             soft_source: false,

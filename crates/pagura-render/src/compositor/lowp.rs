@@ -46,37 +46,61 @@ impl Source {
 }
 
 /// Source-over of `source` at its alpha times each coverage, rounding each
-/// store once. Four pixels at a time, so that every target's vectorizer sees
-/// sixteen independent products; at full alpha the coverage is the weight.
-#[inline(never)]
-#[expect(
-    clippy::cast_possible_truncation,
-    reason = "rounded byte coverage fits in a byte"
-)]
+/// store once. Four pixels at a time in uniform lanes, so that every
+/// target's vectorizer sees sixteen independent products of one form; at
+/// full alpha the coverage is the weight.
 pub(super) fn row(target: &mut [[u8; 4]], coverage: &[u8], source: &Source) {
-    let (blocks, tail) = target.as_chunks_mut::<4>();
-    let (masks, mask_tail) = coverage.as_chunks::<4>();
-    let mut opacity = [0u16; 16];
+    rows(std::iter::once((target, coverage)), source);
+}
+
+/// [`row`] for each target row and its coverage, as one mask's rows.
+#[inline(never)]
+pub(super) fn rows<'a>(rows: impl Iterator<Item = (&'a mut [[u8; 4]], &'a [u8])>, source: &Source) {
     if source.alpha == 255 {
         if source.pixel == [0, 0, 0, 255] {
-            for (block, mask) in blocks.iter_mut().zip(masks) {
-                black(block, mask);
+            for (target, coverage) in rows {
+                blocks(target, coverage, source, |block, mask| {
+                    black(block, spread(mask));
+                });
             }
         } else {
-            for (block, mask) in blocks.iter_mut().zip(masks) {
-                for (lanes, &coverage) in opacity.as_chunks_mut::<4>().0.iter_mut().zip(mask) {
-                    *lanes = [u16::from(coverage); 4];
-                }
-                blend(block, &source.color, &opacity);
+            for (target, coverage) in rows {
+                blocks(target, coverage, source, |block, mask| {
+                    blend(block, &source.color, spread(mask));
+                });
             }
         }
     } else {
         let alpha = u16::from(source.alpha);
-        for (block, mask) in blocks.iter_mut().zip(masks) {
-            for (lanes, &coverage) in opacity.as_chunks_mut::<4>().0.iter_mut().zip(mask) {
-                *lanes = [divide(u16::from(coverage).wrapping_mul(alpha)); 4];
-            }
-            blend(block, &source.color, &opacity);
+        for (target, coverage) in rows {
+            blocks(target, coverage, source, |block, mask| {
+                let opacity = spread(mask).map(|c| divide(c.wrapping_mul(alpha)));
+                blend(block, &source.color, opacity);
+            });
+        }
+    }
+}
+
+/// Applies `paint` to each block of four pixels with some coverage, and
+/// source-over to the pixels past the last whole block.
+#[inline(always)]
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::inline_always,
+    reason = "rounded byte coverage fits in a byte; one call per row of a mask"
+)]
+fn blocks(
+    target: &mut [[u8; 4]],
+    coverage: &[u8],
+    source: &Source,
+    mut paint: impl FnMut(&mut [[u8; 4]; 4], [u8; 4]),
+) {
+    let (blocks, tail) = target.as_chunks_mut::<4>();
+    let (masks, mask_tail) = coverage.as_chunks::<4>();
+    // Transparent coverage leaves a pixel unchanged.
+    for (block, &mask) in blocks.iter_mut().zip(masks) {
+        if mask != [0; 4] {
+            paint(block, mask);
         }
     }
     for (out, &coverage) in tail.iter_mut().zip(mask_tail) {
@@ -117,7 +141,14 @@ pub(super) fn run(target: &mut [[u8; 4]], coverage: u8, source: &Source) {
     }
 }
 
-/// Four pixels of source-over at per-channel opacities of at most 255. All
+/// Each of four pixels' levels in all four of its channels' lanes.
+#[inline(always)]
+#[expect(clippy::inline_always, reason = "one block per four pixels")]
+fn spread([a, b, c, d]: [u8; 4]) -> [u16; 16] {
+    [a, a, a, a, b, b, b, b, c, c, c, c, d, d, d, d].map(u16::from)
+}
+
+/// Four pixels of source-over at per-lane opacities of at most 255. All
 /// lane arithmetic wraps, so that it vectorizes with overflow checks on.
 #[inline(always)]
 #[expect(
@@ -125,15 +156,26 @@ pub(super) fn run(target: &mut [[u8; 4]], coverage: u8, source: &Source) {
     clippy::inline_always,
     reason = "convex byte mixtures fit in a byte; one block per four pixels"
 )]
-fn blend(block: &mut [[u8; 4]; 4], color: &[u16; 16], opacity: &[u16; 16]) {
-    for ((out, &color), &opacity) in block.as_flattened_mut().iter_mut().zip(color).zip(opacity) {
+fn blend(block: &mut [[u8; 4]; 4], color: &[u16; 16], opacity: [u16; 16]) {
+    let pixels = block.as_flattened_mut();
+    let mut mixed = [0u16; 16];
+    for (((out, &target), &color), opacity) in
+        mixed.iter_mut().zip(&*pixels).zip(color).zip(opacity)
+    {
+        let rest = 255u16.wrapping_sub(opacity);
         *out = divide(
             color
                 .wrapping_mul(opacity)
-                .wrapping_add(u16::from(*out).wrapping_mul(255u16.wrapping_sub(opacity))),
-        ) as u8;
+                .wrapping_add(u16::from(target).wrapping_mul(rest)),
+        );
+    }
+    for (pixel, value) in pixels.iter_mut().zip(mixed) {
+        *pixel = value as u8;
     }
 }
+
+/// The alpha lane of each of four pixels.
+const ALPHA_LANES: [u16; 16] = [0, 0, 0, !0, 0, 0, 0, !0, 0, 0, 0, !0, 0, 0, 0, !0];
 
 /// [`blend`] for opaque black: colour channels keep the complement of the
 /// coverage, and alpha mixes 255 with itself by the same weights.
@@ -143,27 +185,21 @@ fn blend(block: &mut [[u8; 4]; 4], color: &[u16; 16], opacity: &[u16; 16]) {
     clippy::inline_always,
     reason = "convex byte mixtures fit in a byte; one block per four pixels"
 )]
-fn black(block: &mut [[u8; 4]; 4], mask: &[u8; 4]) {
-    let mut weights = [0u16; 16];
-    let mut alpha = [0u16; 16];
-    for ((weights, alpha), &coverage) in weights
-        .as_chunks_mut::<4>()
-        .0
+fn black(block: &mut [[u8; 4]; 4], coverage: [u16; 16]) {
+    let pixels = block.as_flattened_mut();
+    let mut mixed = [0u16; 16];
+    for (((out, &target), coverage), lane) in mixed
         .iter_mut()
-        .zip(alpha.as_chunks_mut::<4>().0)
-        .zip(mask)
+        .zip(&*pixels)
+        .zip(coverage)
+        .zip(ALPHA_LANES)
     {
-        let c = u16::from(coverage);
-        *weights = [255u16.wrapping_sub(c); 4];
-        *alpha = [0, 0, 0, 255u16.wrapping_mul(c)];
+        let source = 255u16.wrapping_mul(coverage) & lane;
+        let rest = 255u16.wrapping_sub(coverage);
+        *out = divide(u16::from(target).wrapping_mul(rest).wrapping_add(source));
     }
-    for ((out, &weight), &alpha) in block
-        .as_flattened_mut()
-        .iter_mut()
-        .zip(&weights)
-        .zip(&alpha)
-    {
-        *out = divide(u16::from(*out).wrapping_mul(weight).wrapping_add(alpha)) as u8;
+    for (pixel, value) in pixels.iter_mut().zip(mixed) {
+        *pixel = value as u8;
     }
 }
 
