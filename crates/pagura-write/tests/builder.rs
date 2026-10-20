@@ -256,3 +256,24 @@ fn insert_and_root_errors_name_the_object() {
         (ErrorKind::Limit, Some(missing))
     );
 }
+
+#[test]
+fn generated_length_obeys_depth_limit_in_an_empty_stream_dictionary() {
+    let object = NewObject::Stream {
+        dictionary: Dictionary::new(),
+        data: Vec::new(),
+    };
+    let limits = Limits {
+        depth: 0,
+        ..Limits::default()
+    };
+    assert_eq!(
+        pagura_write::validate_object(&object, &limits, &|_| true)
+            .unwrap_err()
+            .kind,
+        ErrorKind::Limit
+    );
+    assert!(
+        pagura_write::validate_object(&object, &Limits { depth: 1, ..limits }, &|_| true).is_ok()
+    );
+}

@@ -46,4 +46,13 @@ pub mod features {
     pub const PASSWORD: Feature = Feature::new("edit.password");
     /// A button without reusable state appearances cannot yet be saved.
     pub const BUTTON_APPEARANCE: Feature = Feature::new("edit.button-appearance");
+    /// Every editing capability tag.
+    pub const ALL: &[Feature] = &[
+        ENCRYPTED,
+        REPAIRED,
+        SIGNED,
+        DIRECT_FIELD,
+        PASSWORD,
+        BUTTON_APPEARANCE,
+    ];
 }

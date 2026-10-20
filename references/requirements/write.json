@@ -1,7 +1,7 @@
 {
   "schema": 2,
   "area": "write",
-  "scope": "Serialization and classic-file-structure rules were checked against the locally supplied ISO 32000-2:2020 sponsored EC3 text, clauses 7.3 and 7.5. The builder intentionally emits unencrypted PDF 1.7, not a conforming PDF 2.0 file: it has neither a 2.0 version declaration nor the file identifier required for that version. Incremental updates, object/xref stream writing and document-level schemas are not verified or implemented.",
+  "scope": "Serialization and classic-file-structure rules were checked against locally supplied ISO 32000-2:2020 sponsored EC3, clauses 7.3 and 7.5. Incremental revisions and IDs were checked against 7.5.6, 7.5.8 and 14.4; form persistence against 12.7.5 and Table 234. The new-file builder targets unencrypted PDF 1.7. Generic serialization does not verify document-level schemas; editing boundaries and evidence are in ADR 0031.",
   "requirements": [
     {
       "id": "deterministic-writing",
@@ -30,7 +30,36 @@
         "pagura-write/tests/round_trip.rs: written values parse back unchanged, at and beyond each limit",
         "pagura-write unit tests (src/writer.rs): exact serialized bytes, hex strings, stream length and the output budget"
       ],
-      "gaps": "PDF 2.0 header/ID generation, incremental updates, object/xref stream output, encryption writing, signature preservation and cross-engine validation. Generic serialization does not validate every dictionary schema."
+      "gaps": "PDF 2.0 new-file header/ID generation, object-stream output, encryption writing and document-level schemas. Incremental and form-save evidence is tracked separately below."
+    },
+    {
+      "id": "incremental-save",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "7.5.6",
+        "7.5.8",
+        "14.4"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura/tests/editing.rs: prefix, revisions, trailer IDs, generations, object allocation, stream/hybrid sources, resource bounds, signatures",
+        "tools/editing_readers.py: qpdf structural checks and Poppler original/saved comparison"
+      ],
+      "gaps": "Full rewrite, freed objects, encryption-on-write, signed-change permission enforcement. Poppler rejects the original and saved hybrid-precedence fixture; qpdf accepts both."
+    },
+    {
+      "id": "filled-form-save",
+      "reference": "iso32000-2-full-text",
+      "clauses": [
+        "12.7.5.2",
+        "12.7.5.3",
+        "12.7.5.4 Table 234"
+      ],
+      "status": "partial",
+      "tests": [
+        "pagura/tests/editing.rs: text, choice, checkbox/radio appearance round trips, Unicode/inheritance and atomic refusal"
+      ],
+      "gaps": "Buttons needing generated state appearances, nested direct fields/widgets, XFA and rich text. Changed password fields are refused; no password value/appearance is emitted."
     }
   ],
   "primary_text": {

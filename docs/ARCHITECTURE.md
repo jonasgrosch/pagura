@@ -11,6 +11,7 @@ pagura-text      ──► pagura-font, pagura-document, pagura-raster
 pagura-image     ──► pagura-document, pagura-codec
 pagura-font      ──► pagura-raster
 pagura-document  ──► pagura-codec, pagura-crypto
+pagura-write     ──► pagura-crypto (SHA-256 for revision identifiers)
 every crate      ──► pagura-core
 ```
 
@@ -94,11 +95,15 @@ See ADR 0014.
 
 ## Editing (M7)
 
-Editing uses immutable snapshots and transactions with copy-on-write resources,
-explicit undo/redo, and dependent cache invalidation. Incremental save, full
-save, signature-aware save and sanitizing redaction have separate contracts. A
-rendered scene is never the sole editing representation. Forms and tags must
-survive edits. A repaired document is saved only by full rewrite.
+`pagura::editing::Transaction` owns a bounded overlay over an immutable
+`Document`. Staging and rollback never invalidate source caches; commit returns
+new bytes to reopen as another snapshot. `pagura-write` owns shared syntax
+validation and classic/xref-stream append serialization. The facade owns source
+policy, generation-aware references and filling orchestration, reusing the
+existing appearance generator (ADR 0031). Full rewrite, undo/redo, signature
+permission enforcement and sanitizing redaction have separate future contracts.
+A rendered scene is never the sole editing representation. Modified incremental
+saves require strict input; repair-mode inputs require a future full rewrite.
 
 ## Performance policy
 

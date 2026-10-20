@@ -1,6 +1,6 @@
 # ADR 0031: Immutable editing transactions and incremental form saves
 
-Status: implementation in progress, 2026-10-20.
+Status: implemented on the editing branch; final hosted validation pending, 2026-10-20.
 
 ## Context and prerequisite review
 
@@ -73,6 +73,8 @@ Review findings affecting the design:
    required normal appearances before clearing NeedAppearances. Failed
    generation or serialization returns no partial file; the filler stays intact.
    XFA/rich text/unsupported appearances keep their existing explicit errors.
+   Buttons currently need existing normal state dictionaries: generating just
+   their selected state would discard the opposite state needed for later use.
 6. Output is bounded by file_bytes; staged objects have a separate caller-owned
    document_bytes allowance, matching FormFiller. Count retained capacities and
    map entries. Structural/value/depth/stream/string limits apply before writing.
@@ -105,3 +107,15 @@ performance lanes use this machine. Short source/format/diff checks only.
 Hosted CI must use explicit hosted labels; no self-hosted runner dispatch.
 Full rewrite, redaction, encryption-on-write, signed-permission enforcement,
 undo/redo, file IO, CLI and viewer editing controls are subsequent work.
+
+## Independent-reader baseline
+
+Hosted qpdf 11.9.0 accepts `hybrid-precedence` before and after saving. Hosted
+Poppler 24.02.0 rejects both, so changing the new revision representation alone
+does not resolve its original-file incompatibility. Keep the source fixture and
+Pagura reopen assertions unchanged. The reader check validates every original
+and saved file with qpdf, requires successful Poppler reopen and equal page counts
+where Poppler accepts the original, and explicitly reports baseline failures.
+It does not present those failures as interoperability passes. No reader source
+code was used. Full rewrite to repair another reader's input interpretation is
+outside an append-only save contract.

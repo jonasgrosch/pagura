@@ -149,11 +149,15 @@ impl<'a> Transaction<'a> {
         if self.document.revisions().len() >= limits.revisions {
             return Err(Error::limit("incremental revision budget exceeded"));
         }
-        let format = match revision.kind() {
-            pagura_document::RevisionKind::Table => XrefFormat::Table,
-            pagura_document::RevisionKind::Stream | pagura_document::RevisionKind::Hybrid => {
-                XrefFormat::Stream
-            }
+        let format = if self
+            .document
+            .revisions()
+            .iter()
+            .any(|revision| revision.kind() != pagura_document::RevisionKind::Table)
+        {
+            XrefFormat::Stream
+        } else {
+            XrefFormat::Table
         };
         let extra = usize::from(format == XrefFormat::Stream);
         let count = self.document.revisions().iter().try_fold(

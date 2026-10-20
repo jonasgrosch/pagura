@@ -23,34 +23,49 @@ fn open(bytes: Vec<u8>) -> Document {
 // Source syntax is independent of pagura-write. A nonzero generation, custom
 // trailer entry and Info/ID exercise preservation that a new-file builder lacks.
 fn source() -> Vec<u8> {
+    raw_pdf(
+        &[
+            (1, 0, "<< /Type /Catalog /Pages 2 0 R >>"),
+            (2, 0, "<< /Type /Pages /Kids [3 7 R] /Count 1 >>"),
+            (
+                3,
+                7,
+                "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 40 60] >>",
+            ),
+            (4, 0, "<< /Producer (independent) >>"),
+        ],
+        "/Size 5 /Root 1 0 R /Info 4 0 R /ID [<0102><0304>] /Private (keep)",
+    )
+}
+
+fn raw_pdf(objects: &[(u32, u16, &str)], trailer: &str) -> Vec<u8> {
     let mut bytes = b"%PDF-1.7\n".to_vec();
     let mut offsets = Vec::new();
-    for (number, generation, value) in [
-        (1, 0, "<< /Type /Catalog /Pages 2 0 R >>"),
-        (2, 0, "<< /Type /Pages /Kids [3 7 R] /Count 1 >>"),
-        (
-            3,
-            7,
-            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 40 60] >>",
-        ),
-        (4, 0, "<< /Producer (independent) >>"),
-    ] {
-        offsets.push((bytes.len(), generation));
+    for &(number, generation, value) in objects {
+        offsets.push((number, bytes.len(), generation));
         bytes.extend_from_slice(format!("{number} {generation} obj\n{value}\nendobj\n").as_bytes());
     }
     let xref = bytes.len();
-    bytes.extend_from_slice(b"xref\n0 5\n0000000000 65535 f \n");
-    for (offset, generation) in offsets {
-        bytes.extend_from_slice(format!("{offset:010} {generation:05} n \n").as_bytes());
+    bytes.extend_from_slice(b"xref\n0 1\n0000000000 65535 f \n");
+    for (number, offset, generation) in offsets {
+        bytes
+            .extend_from_slice(format!("{number} 1\n{offset:010} {generation:05} n \n").as_bytes());
     }
-    bytes.extend_from_slice(format!("trailer\n<< /Size 5 /Root 1 0 R /Info 4 0 R /ID [<0102><0304>] /Private (keep) >>\nstartxref\n{xref}\n%%EOF\n").as_bytes());
+    bytes.extend_from_slice(
+        format!("trailer\n<< {trailer} >>\nstartxref\n{xref}\n%%EOF\n").as_bytes(),
+    );
     bytes
 }
 
-fn exported(name: &str, bytes: &[u8]) {
+fn exported(name: &str, bytes: &[u8], original: &[u8]) {
     if let Some(directory) = std::env::var_os("PAGURA_EDIT_OUTPUT") {
         let directory = std::path::PathBuf::from(directory);
-        std::fs::create_dir_all(&directory).unwrap();
+        std::fs::create_dir_all(directory.join("originals")).unwrap();
+        std::fs::write(
+            directory.join("originals").join(format!("{name}.pdf")),
+            original,
+        )
+        .unwrap();
         std::fs::write(directory.join(format!("{name}.pdf")), bytes).unwrap();
     }
 }
@@ -118,7 +133,7 @@ fn original_prefix_generations_trailer_and_repeated_revisions_survive() {
     let twice = second.commit(&SaveOptions::default()).unwrap();
     assert!(twice.starts_with(&saved));
     assert_eq!(open(twice.clone()).revisions().len(), 3);
-    exported("incremental", &twice);
+    exported("incremental", &twice, &original);
 }
 
 #[test]
@@ -179,11 +194,6 @@ fn stream_and_hybrid_sources_keep_untouched_compressed_objects() {
         "hybrid-precedence",
     ] {
         let original = fixture("document", &format!("{name}.pdf"));
-        if let Some(directory) = std::env::var_os("PAGURA_EDIT_OUTPUT") {
-            let directory = std::path::PathBuf::from(directory).join("originals");
-            std::fs::create_dir_all(&directory).unwrap();
-            std::fs::write(directory.join(format!("{name}.pdf")), &original).unwrap();
-        }
         let document = open(original.clone());
         let root = document
             .trailer()
@@ -211,8 +221,11 @@ fn stream_and_hybrid_sources_keep_untouched_compressed_objects() {
         );
         assert!(!reopened.revisions()[0].trailer().contains_key(b"XRefStm"));
         assert!(reopened.revisions()[0].trailer().contains_key(b"W"));
-        assert_eq!(reopened.revisions()[0].kind(), pagura_document::RevisionKind::Stream);
-        exported(name, &saved);
+        assert_eq!(
+            reopened.revisions()[0].kind(),
+            pagura_document::RevisionKind::Stream
+        );
+        exported(name, &saved, &original);
     }
 }
 
@@ -381,7 +394,7 @@ fn assert_form_roundtrip(name: &str, input: FillValue<'_>) -> (Vec<u8>, Document
     .unwrap()
     .to_rgb_over(Rgba8::WHITE);
     assert_eq!(before, after, "{name}: persisted appearance differs");
-    exported(name, &saved);
+    exported(name, &saved, &original);
     (saved, reopened)
 }
 
@@ -462,4 +475,123 @@ fn password_and_missing_button_state_appearances_fail_atomically() {
             .kind,
         ErrorKind::Unsupported(features::BUTTON_APPEARANCE)
     );
+}
+
+#[test]
+fn unicode_inherited_values_save_without_mutating_the_parent() {
+    let original = raw_pdf(
+        &[
+            (1, 0, "<< /Type /Catalog /Pages 2 0 R /AcroForm 4 0 R >>"),
+            (2, 0, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>"),
+            (
+                3,
+                0,
+                "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 40 60] >>",
+            ),
+            (4, 0, "<< /Fields [5 0 R] >>"),
+            (5, 0, "<< /T (parent) /FT /Tx /V (old) /Kids [6 0 R] >>"),
+            (6, 0, "<< /T (child) /Parent 5 0 R >>"),
+        ],
+        "/Size 7 /Root 1 0 R",
+    );
+    let document = open(original);
+    let mut filler = document.form_filler().unwrap().unwrap();
+    filler.set(1, FillValue::Text("Ω😀")).unwrap();
+    let reopened = open(save_filled_form(&filler, &SaveOptions::default()).unwrap());
+    let form = reopened.acro_form().unwrap().unwrap();
+    assert!(matches!(&form.fields[1].value, Some(FieldValue::Text(text)) if text == "Ω😀"));
+    assert_eq!(
+        reopened
+            .object(ObjectId::new(5, 0))
+            .unwrap()
+            .dictionary()
+            .unwrap()
+            .get(b"V"),
+        Some(&Value::String(b"old".to_vec()))
+    );
+}
+
+#[test]
+fn nested_direct_fields_never_replace_the_enclosing_form() {
+    let original = raw_pdf(
+        &[
+            (1, 0, "<< /Type /Catalog /Pages 2 0 R /AcroForm 4 0 R >>"),
+            (2, 0, "<< /Type /Pages /Kids [3 0 R] /Count 1 >>"),
+            (
+                3,
+                0,
+                "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 40 60] >>",
+            ),
+            (4, 0, "<< /Fields [<< /T (direct) /FT /Tx >>] >>"),
+        ],
+        "/Size 5 /Root 1 0 R",
+    );
+    // The reader admits this malformed direct field only through repair mode.
+    let document = Document::open(original.clone(), &OpenOptions::default()).unwrap();
+    let mut filler = document.form_filler().unwrap().unwrap();
+    filler.set(0, FillValue::Text("ABC")).unwrap();
+    assert_eq!(
+        save_filled_form(&filler, &SaveOptions::default())
+            .unwrap_err()
+            .kind,
+        ErrorKind::Unsupported(features::DIRECT_FIELD)
+    );
+    assert_eq!(document.original_bytes(), original);
+}
+
+#[test]
+fn normal_appearance_replacement_preserves_rollover_and_down() {
+    let document = open(fixture("forms", "render-text-update.pdf"));
+    let mut setup = Transaction::new(&document);
+    setup
+        .edit_dictionary(ObjectId::new(11, 0), |dictionary| {
+            let mut appearances = dictionary
+                .get(b"AP")
+                .unwrap()
+                .as_dictionary()
+                .unwrap()
+                .clone();
+            appearances.insert(Name::new(b"R"), Value::Reference(ObjectId::new(80, 0)));
+            appearances.insert(Name::new(b"D"), Value::Reference(ObjectId::new(81, 0)));
+            dictionary.insert(Name::new(b"AP"), Value::Dictionary(appearances));
+            Ok(())
+        })
+        .unwrap();
+    let document = open(setup.commit(&SaveOptions::default()).unwrap());
+    let mut filler = document.form_filler().unwrap().unwrap();
+    filler.set(0, FillValue::Text("ABC")).unwrap();
+    let reopened = open(save_filled_form(&filler, &SaveOptions::default()).unwrap());
+    let form = reopened.acro_form().unwrap().unwrap();
+    let appearances = form.widgets[0]
+        .dictionary
+        .get(b"AP")
+        .unwrap()
+        .as_dictionary()
+        .unwrap();
+    assert_eq!(
+        appearances.get(b"R"),
+        Some(&Value::Reference(ObjectId::new(80, 0)))
+    );
+    assert_eq!(
+        appearances.get(b"D"),
+        Some(&Value::Reference(ObjectId::new(81, 0)))
+    );
+    assert_ne!(
+        appearances.get(b"N"),
+        Some(&Value::Reference(ObjectId::new(80, 0)))
+    );
+}
+
+#[test]
+fn allocation_respects_declared_unused_numbers_and_failed_adds_are_atomic() {
+    let original = String::from_utf8(source())
+        .unwrap()
+        .replace("/Size 5", "/Size 100");
+    let document = open(original.into_bytes());
+    let mut transaction = Transaction::new(&document);
+    assert!(transaction.add(Value::Real(f64::INFINITY).into()).is_err());
+    let id = transaction.add(Value::Integer(42).into()).unwrap();
+    assert_eq!(id, ObjectId::new(100, 0));
+    let reopened = open(transaction.commit(&SaveOptions::default()).unwrap());
+    assert_eq!(reopened.trailer().get(b"Size"), Some(&Value::Integer(101)));
 }

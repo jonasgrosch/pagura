@@ -8,6 +8,7 @@ on:
       - 'crates/pagura-write/**'
       - 'crates/pagura-document/**'
       - '.github/workflows/editing.yml'
+      - 'tools/editing_readers.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -27,24 +28,10 @@ jobs:
         env:
           PAGURA_EDIT_OUTPUT: ${{ runner.temp }}/pagura-editing
         run: |
+          cargo clippy --locked --offline -p pagura-write -p pagura --all-targets -- -D warnings
           cargo test --locked --offline -p pagura-write
           cargo test --locked --offline -p pagura --test editing
-      - name: Reopen every saved fixture independently
+      - name: Check saved files and compare independent-reader baselines
         env:
           PAGURA_EDIT_OUTPUT: ${{ runner.temp }}/pagura-editing
-        shell: bash
-        run: |
-          shopt -s nullglob
-          files=("$PAGURA_EDIT_OUTPUT"/*.pdf)
-          test "${#files[@]}" -ge 10
-          qpdf --version
-          pdfinfo -v
-          for file in "$PAGURA_EDIT_OUTPUT"/originals/*.pdf; do
-            echo "Original baseline: $file"
-            qpdf --check "$file" || true
-            pdfinfo "$file" || true
-          done
-          for file in "${files[@]}"; do
-            qpdf --check "$file"
-            pdfinfo "$file"
-          done
+        run: python3 tools/editing_readers.py
