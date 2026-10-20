@@ -53,6 +53,10 @@ impl Writer {
         self.output
     }
 
+    pub(crate) fn bytes(&self) -> &[u8] {
+        &self.output
+    }
+
     /// Appends `bytes` after charging them to the file budget. Capacity
     /// grows geometrically, but never beyond the budget.
     ///
@@ -60,7 +64,7 @@ impl Writer {
     ///
     /// Returns a `Limit` error, leaving the output unchanged, if the file
     /// would exceed its budget or the allocation fails.
-    fn put(&mut self, bytes: &[u8]) -> Result<()> {
+    pub(crate) fn put(&mut self, bytes: &[u8]) -> Result<()> {
         self.budget.charge(bytes.len())?;
         // The meter has charged exactly the bytes written, these included.
         let required = self.budget.used();
@@ -77,7 +81,7 @@ impl Writer {
     }
 
     /// Writes formatted text through [`Writer::put`].
-    fn text(&mut self, arguments: fmt::Arguments<'_>) -> Result<()> {
+    pub(crate) fn text(&mut self, arguments: fmt::Arguments<'_>) -> Result<()> {
         // Numbers, names and identities format without error, so formatting
         // fails only when `put` does, and `put` fails only on the budget.
         fmt::Write::write_fmt(self, arguments).map_err(|_| Error::limit(FILE_BUDGET))
@@ -135,7 +139,11 @@ impl Writer {
 
     /// Writes a dictionary. A stream's `length` replaces the value of its
     /// `/Length` entry, or is appended if there is none.
-    fn dictionary(&mut self, dictionary: &Dictionary, mut length: Option<usize>) -> Result<()> {
+    pub(crate) fn dictionary(
+        &mut self,
+        dictionary: &Dictionary,
+        mut length: Option<usize>,
+    ) -> Result<()> {
         self.put(b"<<")?;
         for (key, value) in dictionary {
             self.text(format_args!(" {key} "))?;

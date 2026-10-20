@@ -153,6 +153,12 @@ impl Document {
         self.slots.len()
     }
 
+    /// Whether the effective xref contains this exact in-use identity.
+    /// Does not parse the object or follow references (7.3.10).
+    pub fn contains_object(&self, id: ObjectId) -> bool {
+        self.slots.contains_key(&id)
+    }
+
     /// Identities of all in-use objects, in ascending order.
     pub fn object_ids(&self) -> impl ExactSizeIterator<Item = ObjectId> + '_ {
         self.slots.keys().copied()

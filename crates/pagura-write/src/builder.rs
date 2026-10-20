@@ -1,12 +1,10 @@
 //! Collecting objects and validating them before serialization.
 
 use crate::NewObject;
-use crate::writer::{STREAM_LENGTH, Writer, XREF_ENTRY_BYTES};
-use pagura_core::{Error, Limits, Meter, Name, ObjectId, Result, ResultExt, Value, convert};
+use crate::validation;
+use crate::writer::{Writer, XREF_ENTRY_BYTES};
+use pagura_core::{Error, Limits, ObjectId, Result, ResultExt, Value, convert};
 use std::collections::BTreeMap;
-
-/// The `Limit` message of the per-object value budget.
-const VALUE_BUDGET: &str = "writer value budget exceeded";
 
 /// The `Limit` message of the cross-reference table's size.
 const XREF_BUDGET: &str = "writer cross-reference budget exceeded";
@@ -78,7 +76,7 @@ impl Builder {
             );
         }
         for (&number, object) in &self.objects {
-            self.validate_object(object)
+            validation::object(object, &self.limits, &|id| self.get(id).is_some())
                 .in_object(ObjectId::new(number, 0))?;
         }
         let size = self.xref_size()?;
@@ -120,71 +118,5 @@ impl Builder {
             return Err(Error::limit(XREF_BUDGET));
         }
         Ok(size)
-    }
-
-    /// Checks what the writer will write for `object`, with the budgets the
-    /// parser applies when it reads the object back.
-    fn validate_object(&self, object: &NewObject) -> Result<()> {
-        let mut nodes = Meter::new(self.limits.value_nodes, VALUE_BUDGET);
-        match object {
-            NewObject::Value(value) => self.validate(value, 0, &mut nodes),
-            NewObject::Stream { dictionary, data } => {
-                if data.len() > self.limits.stream_bytes {
-                    return Err(Error::limit("writer stream budget exceeded"));
-                }
-                // The dictionary, and the `/Length` written in place of any given.
-                nodes.charge(2)?;
-                let entries = dictionary
-                    .into_iter()
-                    .filter(|(key, _)| key.as_bytes() != STREAM_LENGTH);
-                self.validate_entries(entries, 1, &mut nodes)
-            }
-        }
-    }
-
-    fn validate(&self, value: &Value, depth: usize, nodes: &mut Meter) -> Result<()> {
-        if depth > self.limits.depth {
-            return Err(Error::limit("writer nesting depth exceeded"));
-        }
-        nodes.charge(1)?;
-        match value {
-            Value::Real(value) if !value.is_finite() => {
-                Err(Error::invalid_argument("PDF reals must be finite"))
-            }
-            Value::String(bytes) if bytes.len() > self.limits.string_bytes => {
-                Err(Error::limit("writer string budget exceeded"))
-            }
-            Value::Name(name) => self.validate_name(name),
-            Value::Reference(id) if self.get(*id).is_none() => {
-                Err(Error::missing_object("dangling object reference"))
-            }
-            Value::Array(values) => values
-                .iter()
-                .try_for_each(|value| self.validate(value, depth + 1, nodes)),
-            Value::Dictionary(dictionary) => self.validate_entries(dictionary, depth + 1, nodes),
-            _ => Ok(()),
-        }
-    }
-
-    fn validate_entries<'a>(
-        &self,
-        entries: impl IntoIterator<Item = (&'a Name, &'a Value)>,
-        depth: usize,
-        nodes: &mut Meter,
-    ) -> Result<()> {
-        entries.into_iter().try_for_each(|(key, value)| {
-            self.validate_name(key)?;
-            self.validate(value, depth, nodes)
-        })
-    }
-
-    fn validate_name(&self, name: &Name) -> Result<()> {
-        if name.len() > self.limits.string_bytes {
-            return Err(Error::limit("writer name budget exceeded"));
-        }
-        if name.as_bytes().contains(&0) {
-            return Err(Error::invalid_argument("PDF names cannot contain NUL"));
-        }
-        Ok(())
     }
 }

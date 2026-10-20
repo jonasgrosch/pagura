@@ -68,6 +68,12 @@ pub struct Revision {
 }
 
 impl Revision {
+    /// Number of cross-reference entries recorded in this revision,
+    /// including free entries. Used to budget a subsequent update (7.5.6).
+    pub fn entry_count(&self) -> usize {
+        self.entries.len()
+    }
+
     /// Byte offset of the revision's primary cross-reference structure.
     pub fn offset(&self) -> usize {
         self.offset
