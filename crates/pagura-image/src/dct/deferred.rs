@@ -51,8 +51,14 @@ pub(crate) fn decode_deferred(
         return None;
     }
     let mut scratch = Diagnostics::new(diagnostics.mode());
-    let outcome = super::run(data, color_transform, limits, &mut scratch, (true, buffers))
-        .and_then(|decoder| finish(decoder, color_transform, limits));
+    let outcome = super::run(
+        data,
+        color_transform,
+        limits,
+        &mut scratch,
+        (8, true, buffers),
+    )
+    .and_then(|decoder| finish(decoder, color_transform, limits));
     let Ok(Finished::Done(result)) = outcome else {
         return None;
     };
@@ -158,6 +164,7 @@ fn gray(frame: &Frame, limits: &Limits) -> Result<DctImage> {
         height: frame.height,
         components: 1,
         samples,
+        cells: 8,
     })
 }
 

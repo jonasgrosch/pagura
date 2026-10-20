@@ -118,6 +118,15 @@ impl RenderOptions {
             ..Self::default()
         }
     }
+
+    /// Device pixels per default user-space unit of `page` when compiling
+    /// for [`Accuracy::Competitive`], at which minified images may be
+    /// decoded near their drawn size; None on the exact path.
+    pub(crate) fn drawn_scale(&self, page: &Page) -> Option<f64> {
+        let scale = self.scale * page.user_unit();
+        (self.accuracy == Accuracy::Competitive && scale.is_finite() && scale > 0.0)
+            .then_some(scale)
+    }
 }
 
 /// A rectangle of device pixels within a rendered page.
@@ -196,7 +205,7 @@ pub fn render_page(document: &Document, page: &Page, options: &RenderOptions) ->
                 page,
                 None,
                 &fonts,
-                (layout, None, options.accuracy == Accuracy::Competitive),
+                (layout, None, options.drawn_scale(page)),
             )
         },
         options,
@@ -223,7 +232,7 @@ pub fn render_page_with(
                 page,
                 Some(provider),
                 &fonts,
-                (layout, None, options.accuracy == Accuracy::Competitive),
+                (layout, None, options.drawn_scale(page)),
             )
         },
         options,
@@ -254,7 +263,7 @@ pub fn render_tile(
                 page,
                 None,
                 &fonts,
-                (layout, None, options.accuracy == Accuracy::Competitive),
+                (layout, None, options.drawn_scale(page)),
             )
         },
         options,
@@ -282,7 +291,7 @@ pub fn render_tile_with(
                 page,
                 Some(provider),
                 &fonts,
-                (layout, None, options.accuracy == Accuracy::Competitive),
+                (layout, None, options.drawn_scale(page)),
             )
         },
         options,

@@ -955,6 +955,7 @@ mod tests {
                 decode: None,
                 mask: MaskKind::None,
                 interpolate: self.interpolate,
+                reduction: None,
             };
             let image = Image {
                 decoded,

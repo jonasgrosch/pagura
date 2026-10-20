@@ -163,7 +163,7 @@ impl RenderContext {
     pub fn render_page(&self, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
         self.check_owned(page)?;
         crate::direct_image::render(
-            |layout| self.compile_with(page, (layout, options.accuracy)),
+            |layout| self.compile_with(page, (layout, options.drawn_scale(page))),
             options,
             None,
             (Some(&self.buffers), self.lent()),
@@ -177,7 +177,7 @@ impl RenderContext {
     pub fn render_tile(&self, page: &Page, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
         self.check_owned(page)?;
         crate::direct_image::render(
-            |layout| self.compile_with(page, (layout, options.accuracy)),
+            |layout| self.compile_with(page, (layout, options.drawn_scale(page))),
             options,
             Some(tile),
             (Some(&self.buffers), self.lent()),
@@ -187,18 +187,14 @@ impl RenderContext {
     fn compile_with(
         &self,
         page: &Page,
-        (layout, accuracy): (pagura_image::deferred::SampleLayout, crate::Accuracy),
+        (layout, drawn): (pagura_image::deferred::SampleLayout, Option<f64>),
     ) -> Result<DisplayList> {
         interpreter::compile_cached_with(
             &self.document,
             page,
             self.provider.as_deref(),
             &self.fonts,
-            (
-                layout,
-                Some(&self.buffers),
-                accuracy == crate::Accuracy::Competitive,
-            ),
+            (layout, Some(&self.buffers), drawn),
         )
     }
 
