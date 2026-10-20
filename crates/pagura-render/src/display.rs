@@ -562,6 +562,11 @@ impl DisplayList {
         count_marks(&self.commands)
     }
 
+    /// Number of glyph placements among the marks.
+    pub(crate) fn glyph_placements(&self) -> usize {
+        count_glyphs(&self.commands)
+    }
+
     /// Whether the page contains no painted marks.
     pub fn is_empty(&self) -> bool {
         self.len() == 0
@@ -753,6 +758,17 @@ impl DisplayList {
             options.scale * self.user_unit,
         ))
     }
+}
+
+fn count_glyphs(commands: &[Command]) -> usize {
+    commands
+        .iter()
+        .map(|command| match command {
+            Command::Path(_) | Command::Shading(_) | Command::Image(_) => 0,
+            Command::Group(group) => count_glyphs(&group.commands),
+            Command::Glyphs(run) => run.glyphs.len(),
+        })
+        .sum()
 }
 
 fn count_marks(commands: &[Command]) -> usize {

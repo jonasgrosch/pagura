@@ -514,8 +514,8 @@ takes, per primitive, the faster approximation that keeps the gate:
   image sampling reference. An opaque DeviceGray or DeviceRGB DCTDecode
   image without `Mask`, `SMask` or `Decode`, drawn from page content and not
   as the page's sole mark, is reconstructed near its drawn size: with 1, 2,
-  3, 4 or 6 cells per eight-sample block axis, the fewest that leave three
-  cells per device pixel along its less minified axis. A cell is the mean of
+  3, 4 or 6 cells per eight-sample block axis, the fewest that leave two and
+  a half cells per device pixel along its less minified axis. A cell is the mean of
   its block's unclamped T.81 A.3.3 samples from an integrated cosine basis,
   rounded once; with six cells, a block that may leave the sample range
   takes the means of its exact samples. The samplers then take the cells,
@@ -535,8 +535,8 @@ pixel's largest channel error.
 
 | Category | DPI | MAE (goal) | Within ±1 (goal) | P99.9 (goal) | Max |
 |---|---:|---|---|---|---:|
-| Text | 72 | 0.406 (≤ 1.0) | 94.14% (≥ 93%) | 19 (≤ 60) | 255 |
-| Text | 150 | 0.116 (≤ 0.5) | 97.38% (≥ 96%) | 7 (≤ 40) | 255 |
+| Text | 72 | 0.408 (≤ 1.0) | 94.09% (≥ 93%) | 19 (≤ 60) | 255 |
+| Text | 150 | 0.116 (≤ 0.5) | 97.37% (≥ 96%) | 7 (≤ 40) | 255 |
 | Text | 300 | 0.040 (≤ 0.3) | 99.08% (≥ 98%) | 5 (≤ 30) | 255 |
 | Vector | 72 | 0.032 (≤ 0.6) | 99.59% (≥ 95%) | 9 (≤ 50) | 213 |
 | Vector | 150 | 0.009 (≤ 0.15) | 99.84% (≥ 99.2%) | 3 (≤ 30) | 255 |
