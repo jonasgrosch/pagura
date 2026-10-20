@@ -30,7 +30,7 @@ use crate::{RenderOptions, Tile};
 use pagura_core::{Error, Limits, Result};
 use pagura_raster::{
     ClipRegion, Coverage, FillRule, Mask, Path, PathBuilder, Pixmap, Point, Transform,
-    adjusted_stroke_outline, stroke_outline,
+    adjusted_stroke_outline, stroke_outline, tiled_stroke_outline,
 };
 use std::sync::Arc;
 
@@ -1013,8 +1013,11 @@ impl Context {
             ),
             Mark::Stroke(stroke, ctm, adjust) => {
                 let path = p.path.transformed(inverse);
+                // Signed cells integrate strokes from pieces that do not overlap.
                 let outline = if *adjust {
                     adjusted_stroke_outline
+                } else if self.raster.approximates() {
+                    tiled_stroke_outline
                 } else {
                     stroke_outline
                 };
