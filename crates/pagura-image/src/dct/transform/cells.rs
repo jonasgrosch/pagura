@@ -92,12 +92,11 @@ impl Cells {
         let pitch = stride * n;
         let start = (index / stride * n * pitch).checked_add(index % stride * n)?;
         let rows = plane.get_mut(start..start.checked_add((n - 1) * pitch + n)?)?;
-        let mut block = [[0u8; 6]; 6];
         let (&dc, ac) = coefficients.split_first()?;
-        if n == 1 || ac.iter().all(|&v| v == 0) {
+        let block = if n == 1 || ac.iter().all(|&v| v == 0) {
             // A constant block, or the DC mean of every unclamped sample.
             let value = idct.constant::<u8>(f64::from(dc) * f64::from(quant[0]));
-            block = [[value; 6]; 6];
+            [[value; 6]; 6]
         } else {
             let mut natural = [0.0f32; 64];
             // Natural positions that hold a nonzero coefficient.
@@ -113,15 +112,17 @@ impl Cells {
                 for ((&coefficient, &q), &position) in coefficients.iter().zip(quant).zip(&ORDER) {
                     exact[position] = f64::from(coefficient) * f64::from(q);
                 }
-                block = six(&idct.block::<u8>(&exact));
+                six(&idct.block::<u8>(&exact))
             } else if n == 6 {
-                block = self.means::<6>(&natural, set);
+                self.means::<6>(&natural, set)
+            } else if n == 2 {
+                widen(self.means::<2>(&natural, set))
+            } else if n == 3 {
+                widen(self.means::<3>(&natural, set))
             } else {
-                for (out, row) in block.iter_mut().zip(self.means::<4>(&natural, set)) {
-                    out[..4].copy_from_slice(&row);
-                }
+                widen(self.means::<4>(&natural, set))
             }
-        }
+        };
         for (row, cells) in rows.chunks_mut(pitch).zip(&block) {
             row.get_mut(..n)?.copy_from_slice(&cells[..n]);
         }
@@ -160,6 +161,17 @@ impl Cells {
         }
         vertical.map(|row| row.map(|value| u8::from_idct(f64::from(value))))
     }
+}
+
+/// `N` by `N` cells in the corner of a six by six block. Each cell's mean
+/// sums the same terms in the same order whatever `N` is, so a smaller `N`
+/// computes the same first cells.
+fn widen<const N: usize>(cells: [[u8; N]; N]) -> [[u8; 6]; 6] {
+    let mut block = [[0u8; 6]; 6];
+    for (out, row) in block.iter_mut().zip(cells) {
+        out[..N].copy_from_slice(&row);
+    }
+    block
 }
 
 #[expect(
