@@ -74,6 +74,11 @@ impl Rasterizer {
         Ok(raster)
     }
 
+    /// Whether fills accumulate signed cells ([`Self::with_approximate_cells`]).
+    pub fn approximates(&self) -> bool {
+        self.scratch.approximate.is_some()
+    }
+
     /// Keeps unprepared compound paths on geometric integration. Retained
     /// stroke-boundary proofs, classified fills and glyphs keep the cell policy.
     #[must_use]

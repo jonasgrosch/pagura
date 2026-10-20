@@ -33,8 +33,10 @@ pub enum FillRegion {
 pub struct Path {
     segments: Vec<Segment>,
     fill_certificates: [Option<FillRegion>; 2],
-    // A stroke outline's proven two-boundary equivalent. Coverage uses it only
-    // where the strip sweep admits it in these components' frame.
+    // A stroke outline's proven equivalent without overlapping parts: the two
+    // boundaries of a convex closed run, or pieces that meet without
+    // overlapping. The strip sweep uses it only where it admits it in these
+    // components' frame; signed cells integrate it in place of the outline.
     pub(crate) boundary: Option<Arc<Path>>,
 }
 
