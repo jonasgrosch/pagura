@@ -469,3 +469,96 @@ Fixtures and unit tests compare against independent per-cell polygon
 clipping. Changed cells against the previous backends must be reported with
 their oracle values; on the 40 benchmark pages at 72, 150 and 300 dpi, every
 non-tie change moved a cell to the correctly rounded exact area.
+
+## Amendment: the competitive path (proposed, 2026-10-20)
+
+Status: proposed, 2026-10-20.
+
+`RenderOptions::accuracy` selects the path: `Accuracy::Exact`, the default,
+keeps the one-level contract; `Accuracy::Competitive` (CLI `--accuracy
+competitive`) is the approximate path measured against the gate above. It
+takes, per primitive, the faster approximation that keeps the gate:
+
+- **Glyphs** of a solid colour in byte storage are masks from row fragments.
+  An outline is flattened once per linear map, its edges are clipped to rows
+  once per vertical origin, and those fragments are reused across horizontal
+  origins. Origins snap to 1/128 pixel horizontally and, vertically, to
+  1/128 pixel below 108 dpi, 1/16 pixel from 108 dpi and 1/64 pixel from
+  216 dpi. Curves become 0.15-pixel chords below 108 dpi and two
+  area-balanced chords per 1/4-pixel piece from 108 dpi. Masks are a pure
+  function of their key and are retained per rendering context, at most
+  16 MiB within `Limits::document_bytes` (ADR 0012).
+- **Other fills and strokes** accumulate signed areas in f32 cells after
+  flattening curves to 1/64-pixel chords. Cells are indexed in global device
+  columns, so any tile partition assembles into the page. Rectangles,
+  degenerate contours and compound paths without a retained stroke boundary
+  keep geometric integration.
+- **Clips.** A clip path that contains a mark's global control hull is
+  dropped for that mark. A quadrilateral mark within quadrilateral clips is
+  integrated with them geometrically. Any other clip region's own cell
+  coverage is integrated once per band and multiplied into each mark, which
+  approximates the intersection where both boundaries cross one pixel.
+- **Composition.** Where the exact path would admit 16-bit or f32 storage,
+  Normal composition of an opaque page rounds each store once into one byte
+  page, painted in full-width bands of 256 rows. Retained groups, blend
+  modes, soft masks and other compositing keep the general compositor.
+- **Images.** A page whose only mark is one opaque DeviceGray or DeviceRGB
+  image, upright or turned by a quarter, is decoded, converted and filtered
+  in one pass straight into the output, within one level of the exact
+  result. On byte pages, the fully covered interior of an opaque image, or
+  one with a soft mask, takes the exact integer area sampler of the direct
+  opaque images amendment, for its colour and for its mask's levels, rounded
+  to bytes and composed once; a matte is first removed from each sample, as
+  the image sampling reference does. A one-sample stencil mask is painted as
+  a fill of its unit square. Boundary pixels and every other image keep the
+  image sampling reference.
+- **Fonts.** Embedded TrueType programs are decoded only as far as drawing
+  reads them; damage in later tables is neither examined nor reported.
+
+Rendering stays deterministic and byte-identical between native and
+WebAssembly builds (with and without SIMD128) and across tile layouts. Work
+and storage are charged to `Limits`; a page that exceeds this path's own
+working budgets renders exactly.
+
+**Accuracy** against the exact path on main 752b52e7, pixel-weighted per
+category and DPI over the gate's pages (the predeclared 20-page subset at
+300 dpi). MAE is over RGB; within ±1, P99.9 and the maximum are over each
+pixel's largest channel error.
+
+| Category | DPI | MAE (goal) | Within ±1 (goal) | P99.9 (goal) | Max |
+|---|---:|---|---|---|---:|
+| Text | 72 | 0.402 (≤ 1.0) | 94.26% (≥ 93%) | 19 (≤ 60) | 255 |
+| Text | 150 | 0.115 (≤ 0.5) | 97.40% (≥ 96%) | 7 (≤ 40) | 255 |
+| Text | 300 | 0.040 (≤ 0.3) | 99.08% (≥ 98%) | 5 (≤ 30) | 255 |
+| Vector | 72 | 0.032 (≤ 0.6) | 99.59% (≥ 95%) | 9 (≤ 50) | 213 |
+| Vector | 150 | 0.009 (≤ 0.15) | 99.84% (≥ 99.2%) | 3 (≤ 30) | 255 |
+| Vector | 300 | 0.006 (≤ 0.05) | 99.89% (≥ 99.6%) | 2 (≤ 20) | 255 |
+| Mixed | 72 | 0.140 (≤ 1.5) | 97.99% (≥ 92%) | 15 (≤ 110) | 255 |
+| Mixed | 150 | 0.050 (≤ 0.75) | 98.85% (≥ 94%) | 6 (≤ 90) | 255 |
+| Mixed | 300 | 0.016 (≤ 0.25) | 99.65% (≥ 98%) | 3 (≤ 40) | 255 |
+| Images | 72 | 0.004 (≤ 3.0) | 100.00% (≥ 85%) | 1 (≤ 80) | 1 |
+| Images | 150 | 0.011 (≤ 0.75) | 100.00% (≥ 94%) | 1 (≤ 60) | 1 |
+| Images | 300 | 0.000 (≤ 0.4) | 100.00% (≥ 98.5%) | 0 (≤ 90) | 1 |
+
+No page is worse than the best of PDFium, MuPDF, hayro, pdf.js, Poppler and
+Quartz on that page in MAE, within ±1 or P99.9, at any of the three
+resolutions, over all 40 pages (39 at 300 dpi: one page has no competitor
+image there).
+
+**Fixtures.** Every render fixture stays within its exact tolerance under
+this path, except these, whose measured bounds the manifests record as
+`competitive_tolerance` (`tools/fixturegen/competitive.py`) and conformance
+checks:
+
+| Fixture | Bound | Cause |
+|---|---:|---|
+| classic/alpha-unsupported, content/alpha, paint/image-direct-rgb-fractional, paint/text-knockout-false, zero_area/half-alpha | 1 | one byte rounding per store |
+| content/alpha-accumulation | 66 | byte rounding accumulated per mark |
+| content/precision-slivers-254, content/precision-slivers-255 | 33 | byte rounding accumulated per mark |
+| content/precision-slivers-1000 | 122 | byte rounding accumulated per mark |
+| content/precision-slivers-270000, content/precision-translucent-stagnation | 127 | byte rounding accumulated per mark |
+| paint/bundled-symbol | 25 | glyph origins snapped to the lattice |
+| paint/bundled-symbol-differences | 27 | glyph origins snapped to the lattice |
+| paint/bundled-zapfdingbats | 14 | glyph origins snapped to the lattice |
+| paint/bundled-zapfdingbats-differences | 19 | glyph origins snapped to the lattice |
+| zero_area/zero-width-shading-bbox | 64 | the empty BBox's boundary outline as a clip in cells |

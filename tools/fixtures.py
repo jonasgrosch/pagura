@@ -13,6 +13,7 @@ import pkgutil
 from pathlib import Path
 
 import fixturegen
+from fixturegen.competitive import BOUNDS as COMPETITIVE_BOUNDS
 from fixturegen.model import RENDER, UNSUPPORTED, Case, Vector
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -71,6 +72,10 @@ def render_area(module) -> dict[Path, bytes]:
         else:
             raise SystemExit(f"{area}: unknown case type {type(case).__name__}")
         entry.update(case.extra)
+        if entry["id"] in COMPETITIVE_BOUNDS:
+            if entry.get("expected") != RENDER:
+                raise SystemExit(f"{entry['id']}: competitive bounds apply to render cases")
+            entry["competitive_tolerance"] = COMPETITIVE_BOUNDS[entry["id"]]
         entries.append(entry)
     if len({e["id"] for e in entries}) != len(entries):
         raise SystemExit(f"{area}: duplicate case names")
@@ -97,6 +102,10 @@ def main(check: bool) -> None:
             path.write_bytes(data)
         for path in stale:
             path.unlink()
+    listed = {json.loads(data)["area"] + "/" for p, data in expected.items() if p.parent == MANIFESTS}
+    unknown = [name for name in COMPETITIVE_BOUNDS if not any(name.startswith(area) for area in listed)]
+    if unknown:
+        raise SystemExit(f"competitive bounds name unknown areas: {unknown}")
     cases = sum(1 for p in expected if p.parent == MANIFESTS)
     print(f"{'Verified' if check else 'Generated'} fixtures for {cases} areas, {len(expected)} files")
 
