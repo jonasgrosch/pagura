@@ -8,7 +8,8 @@ from .config import ROOT, POLICY_PATH, read_json, sha
 from .corpus import corpus_cases
 from .engines import engines, identify, conversion_command, revision_engine
 from .images import normalize, pixel_difference
-from .measurement import measure, preserve_failure
+from .measurement import measure
+from .artifacts import ArtifactStore
 from .statistics import comparison_statistics, evaluate_cell
 from .reports import local_report_path, conversion_markdown, new_report
 
@@ -22,6 +23,7 @@ def page_report(cases, bases, identities, policy, *, samples, warmups, seed, inp
         raise ValueError("empty conversion corpus")
     report = new_report(identities, samples, warmups, seed, input_digest, operation, revision, process_per_page=True)
     report["measurement_options"] = {"rss_enabled": policy.get("measure_rss", True)}
+    artifacts = ArtifactStore.for_report(report, policy)
     rng = random.Random(seed)
     jobs = list(cases)
     rng.shuffle(jobs)
@@ -29,9 +31,8 @@ def page_report(cases, bases, identities, policy, *, samples, warmups, seed, inp
     directory.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="conversion-", dir=directory) as temporary:
         for case in jobs:
-            # The verified hashes protect both files consumed here and those used by children.
-            if sha(Path(case["path"]).read_bytes()) != case["sha256"]:
-                raise ValueError("PDF changed after manifest validation")
+            snapshot = artifacts.snapshot(case)
+            invocation_case = {**case, "path": str(snapshot)} if snapshot is not None else None
             expected = None
             if "oracle" in case:
                 oracle = Path(case["oracle"]) if Path(case["oracle"]).is_absolute() else ROOT / case["oracle"]
@@ -47,9 +48,11 @@ def page_report(cases, bases, identities, policy, *, samples, warmups, seed, inp
                         "operation": operation, "pdf_sha256": case["sha256"],
                         "oracle_pixels_sha256": sha(expected[2]) if expected else None,
                         "verification": "independent-oracle" if expected else "unverified",
-                        "status": "unavailable", "samples": [], "warmup_failures": [], "commands": {}}
+                        "status": "unavailable", "samples": [], "warmup_samples": [], "warmup_failures": [], "commands": {}}
                 report["cells"].append(cell)
-                if all(identities[name]["status"] == "available" for name in ("pagura", engine)):
+                if snapshot is None:
+                    cell.update(status="invalid-evidence", reason="PDF snapshot unavailable; artifact evidence incomplete")
+                elif all(identities[name]["status"] == "available" for name in ("pagura", engine)):
                     cell["status"] = "measured"
                     for pair in range(-warmups, samples):
                         order = ["pagura", engine]
@@ -58,14 +61,16 @@ def page_report(cases, bases, identities, policy, *, samples, warmups, seed, inp
                         images = {}
                         for name in order:
                             output = Path(temporary) / (name + ".ppm")
-                            command = conversion_command(name, bases[name], case, output)
+                            command = conversion_command(name, bases[name], invocation_case, output)
                             cell["commands"][name] = command
+                            context = artifacts.freeze_execution(cases=[case], snapshot=snapshot, engine=name,
+                                comparison_engine=engine, pair=pair, order=order, command=command,
+                                output_paths={case["page"]: output})
                             decoded = []
                             result = measure(command, output, expected, policy, page=case["page"],
-                                             stages_required=name != "poppler", image_sink=decoded, tolerance=case.get("tolerance", 0))
+                                             stages_required=name != "poppler", image_sink=decoded, tolerance=case.get("tolerance", 0),
+                                             artifact_store=artifacts, execution_context=context)
                             sample["pagura" if name == "pagura" else "baseline"] = result
-                            preserve_failure(output, result, policy,
-                                             f"{temporary}/{case['id']}/{case['page']}/{case['dpi']}/{name}/{pair}")
                             if pair >= 0 and result["status"] in ("ok", "unverified", "incorrect"):
                                 image = decoded[0]
                                 images[name] = image
@@ -74,8 +79,10 @@ def page_report(cases, bases, identities, policy, *, samples, warmups, seed, inp
                             if len(images) == 2:
                                 sample["agreement"] = pixel_difference(images["pagura"], images[engine])
                             cell["samples"].append(sample)
-                        elif any(sample[key]["status"] not in ("ok", "unverified") for key in ("pagura", "baseline")):
-                            cell["warmup_failures"].append(sample)
+                        else:
+                            cell["warmup_samples"].append(sample)
+                            if any(sample[key]["status"] not in ("ok", "unverified") for key in ("pagura", "baseline")):
+                                cell["warmup_failures"].append(sample)
                 cell["statistics"] = {metric: comparison_statistics(cell, policy, metric)
                                       for metric in ("elapsed_ns", "engine_ns", "open_ns", "render_ns", "emit_ns")}
                 # A per-cell gate remains fail-closed for unverified results. Regression and
@@ -94,6 +101,7 @@ def page_report(cases, bases, identities, policy, *, samples, warmups, seed, inp
                         "pixels_sha256": [sha(a[2]), sha(b[2])],
                         "scope": "first successful measured output per engine; investigation only",
                         **pixel_difference(a, b)})
+    artifacts.finish()
     report["gate"] = {"pass": False, "reasons": ["conversion/regression evidence is exploratory and ineligible for release"]}
     return report
 

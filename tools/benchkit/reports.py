@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .config import ROOT, POLICY_PATH, MATRIX_PATH, source_digest, sha
 from .corpus import manifest_digest
+from .runner_evidence import coordination_pointer
 
 
 def markdown(report):
@@ -21,7 +22,10 @@ def markdown(report):
     for cell in sorted(report["cells"], key=lambda c: (c["case"], c["engine"])):
         samples = cell["samples"]
         correct = sum(s["pagura"]["status"] == s["baseline"]["status"] == "ok" for s in samples)
-        if samples:
+        timed = samples and all(type(sample.get(key, {}).get("elapsed_ns")) is int
+                                and sample[key]["elapsed_ns"] > 0
+                                for sample in samples for key in ("pagura", "baseline"))
+        if timed:
             a, b = (statistics.median(s[k]["elapsed_ns"] for s in samples) / 1e6 for k in ["pagura", "baseline"])
             ratio = f"{a / b:.3f}" if correct == len(samples) else "invalid output"
             lines.append(f"| {cell['case']} | {cell['engine']} | {correct}/{len(samples)} | {a:.3f} | {b:.3f} | {ratio} |")
@@ -99,6 +103,7 @@ def new_report(identities, samples, warmups, seed, input_digest, operation, revi
               "input_sha256": input_digest, "revision": revision, "engine_identities": identities,
               "settings": {"background": "white", "normalization": "RGB8 over white", "page_process": "reopen per page" if process_per_page else "one open per document"},
               "runner": {"system": platform.platform(), "machine": platform.machine(), "python": sys.version,
+                         "coordination": coordination_pointer(),
                          "controlled": False, "note": "no idle/thermal/power attestation; process and stage tracks separate"},
               "cells": [], "agreement": [],
               "gate": {"pass": False, "reasons": ["incomplete exploratory checkpoint"]}}

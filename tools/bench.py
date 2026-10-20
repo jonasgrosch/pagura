@@ -2,11 +2,11 @@
 import argparse
 import json
 from pathlib import Path
-from benchkit.config import read_json
 from benchkit.engines import engines, identify
 from benchkit.conversion import run_conversion
 from benchkit.legacy import run
 from benchkit.gate import gate
+from benchkit.runner_evidence import read_bound_report
 from benchkit.reports import write_summary
 
 
@@ -43,6 +43,10 @@ def main(argv=None):
     summary_args.add_argument("output")
     gate_args = sub.add_parser("gate")
     gate_args.add_argument("report")
+    gate_args.add_argument("--runner-receipt", type=Path,
+                           help="completed runner receipt supplied independently of the report")
+    gate_args.add_argument("--runner-receipt-sha256",
+                           help="independently pinned SHA-256 of the completed receipt")
     args = parser.parse_args(argv)
     if args.command == "doctor":
         print(json.dumps({k: identify(k, v) for k, v in engines().items()}, indent=2))
@@ -55,7 +59,8 @@ def main(argv=None):
             parser.error("samples must be 2..1000 and warmups 0..100")
         run(args)
     else:
-        verdict = gate(read_json(args.report))
+        verdict = gate(read_bound_report(args.report), report_path=Path(args.report),
+                       receipt_path=args.runner_receipt, receipt_sha256=args.runner_receipt_sha256)
         print(json.dumps(verdict, indent=2))
         raise SystemExit(0 if verdict["pass"] else 2)
 

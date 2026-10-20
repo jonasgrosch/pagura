@@ -24,6 +24,15 @@ create worker threads. Omitting `--jobs` preserves existing defaults and inherit
 concurrency settings. Do not start this workflow alongside another active local
 build, conformance run, profile, or benchmark.
 
+During an agreed local window, use the [runner wrapper](runner-coordination.md)
+to hold both cooperative locks around that command and retain a source-bound
+receipt. Its locks do not establish dedicated-runner conditions. Benchmark
+reports now retain raw artifacts and warmups; `bench.py gate` requires a final
+runner receipt and its independently obtained SHA-256 pin. Missing, changed or
+incomplete artifacts block admission. The four reviewed image-direct references
+are covered by the [narrow rendering policy](references/image-direct-policy.md);
+they do not establish a reference model for every fixture family.
+
 Synthetic PDFs are generated independently in Python (`tools/fixturegen/<area>.py`,
 standard library only, never importing Pagura) with known structure and geometry.
 Each area writes `corpus/generated/<area>/` and `corpus/manifests/<area>.json`. Product writer round-trips are tested separately,

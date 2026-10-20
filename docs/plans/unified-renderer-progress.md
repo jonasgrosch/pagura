@@ -58,8 +58,8 @@ only; their placeholder source bytes are not conformance fixtures or proofs.
 
 The caller must bind settings to the actual render invocation. A returned
 dictionary is not an execution attestation, mathematical proof, or release
-receipt. Current measurements discard temporary outputs and do not retain
-durable per-sample artifacts. Therefore `gate.py` and `evaluate_cell` continue
+receipt. First-slice measurements discarded temporary outputs; the second slice
+below adds durable per-sample artifacts. `gate.py` and `evaluate_cell` continue
 requiring exact oracle pixel hashes; the existing test rejecting tolerance-only
 release evidence remains in force. Release matrix aggregation remains blocked.
 
@@ -97,7 +97,74 @@ The local log is retained in `benchmarks/results/local/validation/first-slice.lo
 Syntax, whitespace and dry-run inspection also passed. No performance benchmark
 ran. Cooperative locking and `--jobs 1` are not dedicated-runner attestations.
 
-Next, complete U1 artifact/fixture bindings and U2 runner coordination, then
-start S0's private, initially all-command scene index. Follow S1/I1/C0 only
-after their independent gates are executable. Do not infer permission to weaken
-release admission from the existence of the standalone helper.
+The first slice was committed as `f530be92`.
+
+## Second slice: reference, artifact and runner bindings
+
+Implementation passed integrated validation on 2026-10-21 (Europe/Berlin).
+No scene-index changes are included. The following evidence links are now implemented:
+
+- Four existing `paint/image-direct-*` fixtures carry reviewed Exact and
+  Competitive reference records. The manifest pins the PDF, PPM, rational
+  derivation, rendering policy and repository-local generator/verifier source
+  closure. The [policy](../references/image-direct-policy.md) and
+  [derivation](../references/image-direct-derivation.md) specify this narrow
+  opaque, 32-by-32, 72-DPI model. Existing pixels and tolerances are unchanged.
+  Other families, true curves and rigorous enclosures remain future work.
+- Conformance renders a verified input snapshot with explicit mode, overprint,
+  page and DPI, then verifies actual bytes against independent frozen pins.
+  Alternate corpus views lose their reference annotation and stay unverified.
+- Render, conversion and document benchmarks retain owned input snapshots, raw
+  outputs and immutable execution receipts, including successful warmups and
+  failure evidence. Frozen contexts bind argv, engine identity, page/DPI,
+  pair/order, reference pins and settings. Output normalization and hashing run
+  outside timing. Input snapshots default to a 64 MiB per-file limit, independently
+  of the default 1 GiB total artifact budget; exhaustion marks
+  evidence incomplete and prevents later launches. This is warm-filesystem
+  evidence because input and executable preflight hashing warms caches.
+- The [runner wrapper](../runner-coordination.md) holds both shared local locks,
+  retains ownership while its process group runs, and binds source boundaries
+  and final report bytes. Measurement cancellation forwards into the separately
+  owned renderer group and stops sampling after its cleanup. The wrapper cannot
+  track deliberately escaped daemons or attest dedicated hardware.
+- The release gate requires an independently supplied final runner-receipt pin.
+  It rechecks the report, corpus, engine identities, retained input/output bytes,
+  reference settings and all sample/warmup contexts. A pointer inside a candidate
+  report cannot supply its own trust anchor. Exact oracle hashes, controlled
+  runner evidence and the existing unimplemented matrix blocks still apply.
+
+These bindings are necessary validation infrastructure, not proof that the
+renderer is faster, universally accurate, or ready for release. The next renderer
+change is S0's private, initially all-command scene index, after this slice passes
+its checks. S1/I1/C0 still require their own independent accuracy and performance
+gates and predeclared rejection criteria.
+
+### Second-slice validation
+
+All 182 Python tests passed, including real owned-process cancellation cleanup,
+fault-injected lock cleanup/final receipt failure, missing/tampered artifacts,
+reference/settings mismatches, output-format restrictions and retained warmups.
+The four annotated fixtures also passed actual CLI scan/render verification in
+both Exact and Competitive modes. Regeneration updated only their paint-manifest
+metadata; all 304 existing paint PDF/oracle files remained byte-identical.
+
+The complete `python3 tools/check.py --jobs 1` workflow then passed under
+`tools/runner.py` during the user-reserved local window: policy, all 20 fixture
+areas/13,499 generated files, all 107 bundled data files, formatting, Clippy,
+workspace/doc tests, documentation, native/WASM builds, host checks, 182 Python
+tests and all 1,237 generated-PDF conformance cases. Duration: 737.82 seconds.
+The wrapper recorded both exit codes as zero, unchanged before/after source,
+and a completed receipt after lock cleanup. No performance benchmark ran.
+
+- Validated source SHA-256:
+  `977fa8a203b4f3baacc9e7821735bf13d3042e8e07881377ac93925a058901a8`.
+- Local log: `benchmarks/results/local/validation/bindings-full-001.log`, SHA-256
+  `f5881c8c67d0c4626f2bc877a25445029e113a5d43cd287bcf570810849611c3`.
+- Local receipt: `benchmarks/results/local/validation/bindings-full-001.json`, SHA-256
+  `20aad9455bbe9973b4ed5ca8a99648b1d49422d246cfa1d50116c0e13d7f5316`.
+
+These are local validation receipts, not release benchmark or dedicated-hardware
+attestations. The first focused run exposed macOS temporary-path alias assumptions
+in test fixtures; canonical paths fixed those assertions before the successful
+rerun. Independent review also moved terminal receipt publication after lock
+cleanup so a failed cleanup/write cannot leave an earlier success receipt.

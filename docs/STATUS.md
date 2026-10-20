@@ -30,13 +30,14 @@ primary standards.
 ## Accuracy policy
 
 The [renderer-unification plan](plans/unified-renderer.md) is committed. Its
-[first tooling slice](plans/unified-renderer-progress.md) adds reference-byte
-verification, lower bootstrap bounds, and check-concurrency controls. The new
-tests and full check passed with bounded concurrency on 2026-10-20. The
-standalone reference verifier is not connected to release admission; complete
-artifact retention, independent fixture annotations, runner receipts, and matrix
-aggregation remain prerequisites. No renderer behavior or performance result
-changes in this slice.
+[implementation log](plans/unified-renderer-progress.md) records the validated
+first slice: reference-byte verification, lower bootstrap bounds and bounded
+check concurrency. The second slice connects four reviewed image references,
+durable benchmark artifacts and cooperative runner receipts. Its complete
+single-job check passed on 2026-10-21, including 182 Python tests and 1,237 PDF
+conformance cases. Controlled-runner attestation and matrix aggregation
+remain release prerequisites. No renderer behavior or measured speed changes
+are claimed by these tooling slices.
 
 `RenderOptions::accuracy` selects `Accuracy::Exact`, the default, which keeps
 every pixel within one level of its exact result, or `Accuracy::Competitive`,

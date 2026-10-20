@@ -12,6 +12,7 @@ import json
 import pkgutil
 from pathlib import Path
 
+from benchkit.reference_cases import build_case_references, requires_reference
 import fixturegen
 from fixturegen.competitive import BOUNDS as COMPETITIVE_BOUNDS
 from fixturegen.model import RENDER, UNSUPPORTED, Case, Vector
@@ -76,6 +77,11 @@ def render_area(module) -> dict[Path, bytes]:
             if entry.get("expected") != RENDER:
                 raise SystemExit(f"{entry['id']}: competitive bounds apply to render cases")
             entry["competitive_tolerance"] = COMPETITIVE_BOUNDS[entry["id"]]
+        if requires_reference(entry):
+            if not isinstance(case, Case) or case.expected != RENDER:
+                raise ValueError("reference annotations require a generated PDF render case")
+            entry["render_references"] = build_case_references(
+                ROOT, entry, pdf_bytes=case.pdf, oracle_bytes=case.oracle)
         entries.append(entry)
     if len({e["id"] for e in entries}) != len(entries):
         raise SystemExit(f"{area}: duplicate case names")

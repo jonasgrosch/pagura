@@ -8,11 +8,13 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+from .runner_evidence import coordination_pointer
 from .config import ROOT, POLICY_PATH, MATRIX_PATH, read_json, source_digest, sha
 from .corpus import render_cases, manifest_digest
 from .engines import engines, identify, command_for
 from .images import ppm
-from .measurement import measure, preserve_failure
+from .measurement import measure
+from .artifacts import ArtifactStore
 from .gate import gate
 from .reports import local_report_path, markdown
 
@@ -48,8 +50,10 @@ def run(args):
               "runner": {"system": platform.platform(), "machine": platform.machine(), "processor": platform.processor(),
                          "hardware": hardware, "rustc": rustc, "python": sys.version,
                          "cpu_count": os.cpu_count(), "controlled": False,
+                         "coordination": coordination_pointer(),
                          "note": "shared desktop; no thermal/power/idle attestation; OS filesystem cache warm after warmups"},
               "engine_identities": identities, "cells": []}
+    artifacts = ArtifactStore.for_report(report, policy)
     rng = random.Random(args.seed)
     jobs = [(case, engine) for case in cases for engine in requested if engine != "pagura"]
     rng.shuffle(jobs)
@@ -59,12 +63,16 @@ def run(args):
     report_path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="run-", dir=output_dir) as directory:
         for case, engine in jobs:
+            snapshot = artifacts.snapshot(case)
+            invocation_case = {**case, "path": str(snapshot)} if snapshot is not None else None
             expected = ppm((ROOT / case["oracle"]).read_bytes())
             cell = {"case": case["id"], "engine": engine, "operation": "render-e2e",
                     "pdf_sha256": case["sha256"], "oracle_pixels_sha256": sha(expected[2]),
-                    "status": "unavailable", "samples": [], "warmup_failures": [], "commands": {}}
+                    "status": "unavailable", "samples": [], "warmup_samples": [], "warmup_failures": [], "commands": {}}
             report["cells"].append(cell)
-            if all(identities[n]["status"] == "available" for n in ["pagura", engine]):
+            if snapshot is None:
+                cell.update(status="invalid-evidence", reason="PDF snapshot unavailable; artifact evidence incomplete")
+            elif all(identities[n]["status"] == "available" for n in ["pagura", engine]):
                 cell["status"] = "measured"
                 for pair in range(-args.warmups, args.samples):
                     order = ["pagura", engine]
@@ -73,18 +81,24 @@ def run(args):
                     for name in order:
                         output = Path(directory) / f"{name}.ppm"
                         output.unlink(missing_ok=True)
-                        command = command_for(name, bases[name], case, output)
+                        command = command_for(name, bases[name], invocation_case, output)
                         cell["commands"][name] = command
-                        result = measure(command, output, expected, policy)
+                        context = artifacts.freeze_execution(cases=[case], snapshot=snapshot, engine=name,
+                            comparison_engine=engine, pair=pair, order=order, command=command,
+                            output_paths={case.get("page", 0): output})
+                        result = measure(command, output, expected, policy,
+                                         artifact_store=artifacts, execution_context=context)
                         sample["pagura" if name == "pagura" else "baseline"] = result
-                        preserve_failure(output, result, policy, f"{directory}/{case['id']}/{name}/{pair}")
                     if pair >= 0:
                         cell["samples"].append(sample)
-                    elif any(sample[k]["status"] != "ok" for k in ["pagura", "baseline"]):
-                        cell["warmup_failures"].append(sample)
+                    else:
+                        cell["warmup_samples"].append(sample)
+                        if any(sample[k]["status"] != "ok" for k in ["pagura", "baseline"]):
+                            cell["warmup_failures"].append(sample)
             report_path.write_text(json.dumps(report, indent=2) + "\n")
             bad = sum(s[k]["status"] != "ok" for s in cell["samples"] for k in ["pagura", "baseline"])
             print(f"{case['id']} / {engine}: {cell['status']}, {bad} incorrect/failed measured outputs", flush=True)
+    artifacts.finish()
     verdict = gate(report)
     report["gate"] = verdict
     report_path.write_text(json.dumps(report, indent=2) + "\n")

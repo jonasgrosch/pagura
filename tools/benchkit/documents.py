@@ -12,6 +12,7 @@ from .reports import new_report
 from .statistics import comparison_statistics
 from .timings import parse_document_stages
 from .engines import password_command
+from .artifacts import ArtifactStore, read_bounded_regular
 
 GOOD = ("ok", "unverified")
 METRICS = ("elapsed_ns", "engine_ns", "open_ns", "render_ns", "emit_ns")
@@ -59,7 +60,7 @@ def expected_pages(pages):
         image = None
         if "oracle" in case:
             path = ROOT / case["oracle"]
-            data = path.read_bytes()
+            data = read_bounded_regular(path, 64 * 1024 * 1024)
             if sha(data) != case["oracle_sha256"]:
                 raise ValueError("oracle changed after manifest validation")
             pixels = normalize(data)
@@ -68,7 +69,8 @@ def expected_pages(pages):
     return expected
 
 
-def measure_document(command, output, expected, policy, *, stages_required, image_sink):
+def measure_document(command, output, expected, policy, *, stages_required, image_sink,
+                     artifact_store=None, execution_context=None):
     """Time one process, then verify every output and one global stage record.
 
     The caller supplies a new empty output directory per process. Shared open,
@@ -76,12 +78,26 @@ def measure_document(command, output, expected, policy, *, stages_required, imag
     """
     if any(output.iterdir()):
         raise ValueError("document output directory must be empty")
+    if artifact_store is not None:
+        try:
+            artifact_store.before_launch(execution_context, command)
+        except (OSError, ValueError, TypeError) as error:
+            artifact_store.incomplete(error)
+            return {"status": "invalid-evidence", "exit_code": None, "artifact_error": str(error),
+                    "pages": [{"page": page, "status": "invalid-evidence", "exit_code": None} for page in expected]}
+
+    def retain(result):
+        if artifact_store is not None:
+            outputs = {int(page): Path(path) for page, path in execution_context["output_paths"].items()}
+            artifact_store.capture(execution_context, result, outputs, page=None)
+        return result
+
     result, diagnostic = run_process(command, policy, log_budget=min(policy["maximum_output_bytes"], 1024 + 256 * len(expected)))
     indices = list(expected)
     result["pages"] = []
     if result["exit_code"] != 0 or result["status"] == "timeout":
         result["pages"] = [{"page": page, "status": result["status"], "exit_code": result["exit_code"], "feature": result.get("feature")} for page in indices]
-        return result
+        return retain(result)
     files = {}
     output_error = None
     for path in output.iterdir():
@@ -96,7 +112,7 @@ def measure_document(command, output, expected, policy, *, stages_required, imag
     for page, pinned in expected.items():
         oracle = None
         if pinned is not None:
-            data = pinned["path"].read_bytes()
+            data = read_bounded_regular(pinned["path"], policy["maximum_output_bytes"])
             if sha(data) != pinned["sha256"]:
                 raise ValueError("oracle changed after manifest validation")
             oracle = normalize(data)
@@ -105,16 +121,14 @@ def measure_document(command, output, expected, policy, *, stages_required, imag
         try:
             if path is None:
                 raise ValueError("missing page output")
-            if path.stat().st_size > policy["maximum_output_bytes"]:
-                raise ValueError("oversize output")
-            data = path.read_bytes()
+            data = read_bounded_regular(path, policy["maximum_output_bytes"])
             actual = normalize(data)
             run.update(verify_pixels(actual, oracle, pinned.get("tolerance", 0) if pinned else 0))
             run.update(width=actual[0], height=actual[1], pixels_sha256=sha(actual[2]), output_sha256=sha(data))
             image_sink[page] = path
         except (ValueError, OSError) as error:
             run.update(status="invalid-output", diagnostic=str(error))
-        if path is not None:
+        if path is not None and artifact_store is None:
             preserve_failure(path, run, policy, str(output / str(page)))
         result["pages"].append(run)
     statuses = [run["status"] for run in result["pages"]]
@@ -138,7 +152,7 @@ def measure_document(command, output, expected, policy, *, stages_required, imag
         result.update(status="invalid-timings", diagnostic=str(error))
         for run in result["pages"]:
             run["status"] = "invalid-timings"
-    return result
+    return retain(result)
 
 
 def _statistics(cell, policy, metrics):
@@ -152,6 +166,7 @@ def document_report(cases, bases, identities, policy, *, samples, warmups, seed,
     jobs = document_jobs(cases, bases)
     report = new_report(identities, samples, warmups, seed, input_digest, operation, revision, process_per_page=False)
     report["measurement_options"] = {"rss_enabled": policy.get("measure_rss", True)}
+    artifacts = ArtifactStore.for_report(report, policy)
     rng = random.Random(seed)
     rng.shuffle(jobs)
     directory = ROOT / "benchmarks/results/local"
@@ -159,8 +174,8 @@ def document_report(cases, bases, identities, policy, *, samples, warmups, seed,
     with tempfile.TemporaryDirectory(prefix="document-", dir=directory) as temporary:
         for job_index, pages in enumerate(jobs):
             case = pages[0]
-            if sha(Path(case["path"]).read_bytes()) != case["sha256"]:
-                raise ValueError("PDF changed after manifest validation")
+            snapshot = artifacts.snapshot(case)
+            invocation_pages = [{**item, "path": str(snapshot)} for item in pages] if snapshot is not None else None
             expected = expected_pages(pages)
             representatives = {}
             retained = Path(temporary) / f"representatives-{job_index}"
@@ -172,16 +187,20 @@ def document_report(cases, bases, identities, policy, *, samples, warmups, seed,
                           "pdf_sha256": case["sha256"], "status": "unavailable", "commands": {}}
                 verification = ("independent-oracle" if all(value is not None for value in expected.values()) else
                                 "unverified" if all(value is None for value in expected.values()) else "mixed; includes unverified")
-                document = {**common, "pages": list(expected), "verification": verification, "samples": [], "warmup_failures": []}
+                document = {**common, "pages": list(expected), "verification": verification,
+                            "samples": [], "warmup_samples": [], "warmup_failures": []}
                 cells = {}
                 for page, oracle in expected.items():
-                    cells[page] = {**common, "page": page, "samples": [], "warmup_failures": [],
+                    cells[page] = {**common, "page": page, "samples": [], "warmup_samples": [], "warmup_failures": [],
                         "verification": "independent-oracle" if oracle else "unverified",
                         "oracle_pixels_sha256": oracle["pixels_sha256"] if oracle else None,
                         "tolerance": oracle.get("tolerance", 0) if oracle else 0}
                 report["document_cells"].append(document)
                 report["cells"].extend(cells.values())
-                if all(identities[name]["status"] == "available" for name in ("pagura", engine)):
+                if snapshot is None:
+                    for cell in [document, *cells.values()]:
+                        cell.update(status="invalid-evidence", reason="PDF snapshot unavailable; artifact evidence incomplete")
+                elif all(identities[name]["status"] == "available" for name in ("pagura", engine)):
                     document["status"] = "measured"
                     for cell in cells.values():
                         cell["status"] = "measured"
@@ -193,16 +212,23 @@ def document_report(cases, bases, identities, policy, *, samples, warmups, seed,
                         for name in order:
                             output = Path(temporary) / f"{job_index}-{engine}-{pair}-{name}"
                             output.mkdir()
-                            command = document_command(name, bases[name], pages, output)
+                            command = document_command(name, bases[name], invocation_pages, output)
                             document["commands"][name] = command
+                            width = len(str(case["page_count"])) if name == "poppler" else 4
+                            paths = {item["page"]: output / f"page-{item['page'] + 1:0{width}d}.ppm" for item in pages}
+                            context = artifacts.freeze_execution(cases=pages, snapshot=snapshot, engine=name,
+                                comparison_engine=engine, pair=pair, order=order, command=command, output_paths=paths)
                             decoded = {}
-                            run = measure_document(command, output, expected, policy, stages_required=name != "poppler", image_sink=decoded)
+                            run = measure_document(command, output, expected, policy, stages_required=name != "poppler", image_sink=decoded,
+                                                   artifact_store=artifacts, execution_context=context)
                             sample["pagura" if name == "pagura" else "baseline"] = run
                             images[name] = decoded
                         if pair >= 0:
                             document["samples"].append(sample)
-                        elif any(sample[key]["status"] not in GOOD for key in ("pagura", "baseline")):
-                            document["warmup_failures"].append(sample)
+                        else:
+                            document["warmup_samples"].append(sample)
+                            if any(sample[key]["status"] not in GOOD for key in ("pagura", "baseline")):
+                                document["warmup_failures"].append(sample)
                         page_runs = {key: {run["page"]: run for run in sample[key]["pages"]} for key in ("pagura", "baseline")}
                         for page in cells:
                             page_sample = {"pair": pair, "order": order}
@@ -211,14 +237,18 @@ def document_report(cases, bases, identities, policy, *, samples, warmups, seed,
                                 if pair >= 0 and page_sample[key]["status"] in (*GOOD, "incorrect"):
                                     if (name, page) not in representatives:
                                         target = retained / (sha(f"{name}/{page}".encode()) + ".ppm")
-                                        shutil.copyfile(images[name][page], target)
+                                        target.write_bytes(read_bounded_regular(images[name][page], policy["maximum_output_bytes"]))
                                         representatives[name, page] = (pair, target, page_sample[key]["pixels_sha256"])
                             if pair >= 0:
                                 if all(page in images[name] for name in order):
-                                    page_sample["agreement"] = pixel_difference(normalize(images["pagura"][page].read_bytes()), normalize(images[engine][page].read_bytes()))
+                                    page_sample["agreement"] = pixel_difference(
+                                        normalize(read_bounded_regular(images["pagura"][page], policy["maximum_output_bytes"])),
+                                        normalize(read_bounded_regular(images[engine][page], policy["maximum_output_bytes"])))
                                 cells[page]["samples"].append(page_sample)
-                            elif any(page_sample[key]["status"] not in GOOD for key in ("pagura", "baseline")):
-                                cells[page]["warmup_failures"].append(page_sample)
+                            else:
+                                cells[page]["warmup_samples"].append(page_sample)
+                                if any(page_sample[key]["status"] not in GOOD for key in ("pagura", "baseline")):
+                                    cells[page]["warmup_failures"].append(page_sample)
                         for name in order:
                             shutil.rmtree(Path(temporary) / f"{job_index}-{engine}-{pair}-{name}")
                 _statistics(document, policy, METRICS)
@@ -232,10 +262,12 @@ def document_report(cases, bases, identities, policy, *, samples, warmups, seed,
                     for second in names[index + 1:]:
                         a_pair, a_path, a_hash = representatives[first, page]
                         b_pair, b_path, b_hash = representatives[second, page]
-                        a, b = normalize(a_path.read_bytes()), normalize(b_path.read_bytes())
+                        a = normalize(read_bounded_regular(a_path, policy["maximum_output_bytes"]))
+                        b = normalize(read_bounded_regular(b_path, policy["maximum_output_bytes"]))
                         report["agreement"].append({"case": case["id"], "dpi": case["dpi"], "page": page,
                             "engines": [first, second], "pairs": [a_pair, b_pair], "pixels_sha256": [a_hash, b_hash],
                             "scope": "first decoded measured output per engine; investigation only", **pixel_difference(a, b)})
             shutil.rmtree(retained)
+    artifacts.finish()
     report["gate"] = {"pass": False, "reasons": ["conversion/regression evidence is exploratory and ineligible for release"]}
     return report

@@ -60,6 +60,8 @@ def corpus_cases(directory, manifest, selection="all", dpis=(72,)):
                     if dpi != case["dpi"] or page != 0:
                         clone.pop("oracle", None)
                         clone.pop("oracle_sha256", None)
+                        clone.pop("reference_profile", None)
+                        clone.pop("render_references", None)
                     elif sha((ROOT / case["oracle"]).read_bytes()) != case["oracle_sha256"]:
                         raise ValueError("changed generated oracle")
                     cases.append(clone)
