@@ -13,25 +13,56 @@ def quantile(values, probability):
     return ordered[lo] + (ordered[hi] - ordered[lo]) * (position - lo)
 
 
+def _positive_finite(value):
+    try:
+        return type(value) in (int, float) and math.isfinite(value) and value > 0
+    except OverflowError:
+        return False
+
+
+def _positive_ratio(numerator, denominator):
+    try:
+        value = numerator / denominator
+    except (OverflowError, ZeroDivisionError) as error:
+        raise ValueError("derived ratios must be finite and positive") from error
+    if not _positive_finite(value):
+        raise ValueError("derived ratios must be finite and positive")
+    return value
+
+
 def ratio_bounds(target, baseline, resamples=5000, confidence=0.95, seed=42017):
-    """Paired nonparametric percentile bootstrap; resample complete randomized pairs."""
+    """Paired percentile bootstrap estimates, resampling complete randomized pairs.
+
+    Confidence applies separately to each one-sided bound, not jointly to the
+    two endpoints. These estimates do not guarantee coverage for arbitrary
+    sample sizes, distributions or temporally dependent measurements.
+    """
+    if type(resamples) is not int or resamples <= 0:
+        raise ValueError("resamples must be a positive integer")
+    if type(confidence) not in (int, float) or not 0 < confidence < 1 or not math.isfinite(confidence):
+        raise ValueError("confidence must be finite and strictly between zero and one")
     if len(target) != len(baseline) or len(target) < 2:
         raise ValueError("at least two complete pairs required")
-    if any(not math.isfinite(x) or x <= 0 for x in target + baseline):
+    if not all(_positive_finite(x) for values in (target, baseline) for x in values):
         raise ValueError("samples must be finite and positive")
     rng, count = random.Random(seed), len(target)
     bounds = {"median": [], "p95": []}
     for _ in range(resamples):
         indices = rng.choices(range(count), k=count)
         a, b = [target[i] for i in indices], [baseline[i] for i in indices]
-        bounds["median"].append(statistics.median(a) / statistics.median(b))
-        bounds["p95"].append(quantile(a, 0.95) / quantile(b, 0.95))
-    return {
-        "median_ratio": statistics.median(target) / statistics.median(baseline),
-        "p95_ratio": quantile(target, 0.95) / quantile(baseline, 0.95),
+        bounds["median"].append(_positive_ratio(statistics.median(a), statistics.median(b)))
+        bounds["p95"].append(_positive_ratio(quantile(a, 0.95), quantile(b, 0.95)))
+    result = {
+        "median_ratio": _positive_ratio(statistics.median(target), statistics.median(baseline)),
+        "p95_ratio": _positive_ratio(quantile(target, 0.95), quantile(baseline, 0.95)),
         "median_upper": quantile(bounds["median"], confidence),
         "p95_upper": quantile(bounds["p95"], confidence),
+        "median_lower": quantile(bounds["median"], 1 - confidence),
+        "p95_lower": quantile(bounds["p95"], 1 - confidence),
     }
+    if not all(_positive_finite(value) for value in result.values()):
+        raise ValueError("derived bounds must be finite and positive")
+    return result
 
 
 def evaluate_cell(cell, policy):
@@ -54,21 +85,28 @@ def evaluate_cell(cell, policy):
             run = sample.get(key, {})
             if run.get("status") != "ok" or run.get("exit_code") != 0 or run.get("pixels_sha256") != oracle:
                 reasons.append("incorrect, failed or missing output")
-            if not isinstance(run.get("elapsed_ns"), (int, float)) or not math.isfinite(run["elapsed_ns"]) or run["elapsed_ns"] <= 0:
+            if not _positive_finite(run.get("elapsed_ns")):
                 reasons.append("invalid timing")
-            if not isinstance(run.get("peak_rss_bytes"), int) or run["peak_rss_bytes"] <= 0:
+            if type(run.get("peak_rss_bytes")) is not int or run["peak_rss_bytes"] <= 0:
                 reasons.append("missing peak RSS")
     metrics = {}
     if not reasons:
-        metrics = ratio_bounds([s["pagura"]["elapsed_ns"] for s in samples],
-                               [s["baseline"]["elapsed_ns"] for s in samples],
-                               policy["bootstrap_resamples"], policy["confidence"])
-        for statistic in policy["statistics"]:
-            if metrics[statistic + "_upper"] > policy["latency_ratio_max"]:
-                reasons.append(f"{statistic} confidence bound misses 20% latency target")
-        metrics["peak_rss_ratio"] = max(s["pagura"]["peak_rss_bytes"] for s in samples) / max(s["baseline"]["peak_rss_bytes"] for s in samples)
-        if metrics["peak_rss_ratio"] > policy["peak_rss_ratio_max"]:
-            reasons.append("peak memory regression")
+        try:
+            metrics = ratio_bounds([s["pagura"]["elapsed_ns"] for s in samples],
+                                   [s["baseline"]["elapsed_ns"] for s in samples],
+                                   policy["bootstrap_resamples"], policy["confidence"])
+            metrics["peak_rss_ratio"] = _positive_ratio(
+                max(s["pagura"]["peak_rss_bytes"] for s in samples),
+                max(s["baseline"]["peak_rss_bytes"] for s in samples))
+        except ValueError as error:
+            metrics = {}
+            reasons.append(f"invalid statistics: {error}")
+        else:
+            for statistic in policy["statistics"]:
+                if metrics[statistic + "_upper"] > policy["latency_ratio_max"]:
+                    reasons.append(f"{statistic} confidence bound misses 20% latency target")
+            if metrics["peak_rss_ratio"] > policy["peak_rss_ratio_max"]:
+                reasons.append("peak memory regression")
     return {"pass": not reasons, "reasons": sorted(set(reasons)), "metrics": metrics}
 
 
@@ -91,13 +129,16 @@ def comparison_statistics(cell, policy, metric="elapsed_ns"):
             if type(value) is not int or value <= 0:
                 return {"status": "unavailable-timing"}
             values[key].append(value)
-    metrics = ratio_bounds(values["pagura"], values["baseline"],
-                           policy["bootstrap_resamples"], policy["confidence"])
+    try:
+        metrics = ratio_bounds(values["pagura"], values["baseline"],
+                               policy["bootstrap_resamples"], policy["confidence"])
+        rss = [[sample[key].get("peak_rss_bytes") for sample in samples] for key in values]
+        metrics["peak_rss_ratio"] = (_positive_ratio(max(rss[0]), max(rss[1])) if all(
+            type(value) is int and value > 0 for group in rss for value in group) else None)
+    except ValueError as error:
+        return {"status": "invalid-statistics", "reason": str(error)}
     for key in values:
         metrics[key + "_median_ns"] = statistics.median(values[key])
         metrics[key + "_p95_ns"] = quantile(values[key], 0.95)
-    rss = [[sample[key].get("peak_rss_bytes") for sample in samples] for key in values]
-    metrics["peak_rss_ratio"] = (max(rss[0]) / max(rss[1]) if all(
-        type(value) is int and value > 0 for group in rss for value in group) else None)
     return {"status": "measured", **metrics}
 

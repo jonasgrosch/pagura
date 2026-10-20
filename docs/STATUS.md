@@ -29,6 +29,15 @@ primary standards.
 
 ## Accuracy policy
 
+The [renderer-unification plan](plans/unified-renderer.md) is committed. Its
+[first tooling slice](plans/unified-renderer-progress.md) adds reference-byte
+verification, lower bootstrap bounds, and check-concurrency controls. The new
+tests and full check passed with bounded concurrency on 2026-10-20. The
+standalone reference verifier is not connected to release admission; complete
+artifact retention, independent fixture annotations, runner receipts, and matrix
+aggregation remain prerequisites. No renderer behavior or performance result
+changes in this slice.
+
 `RenderOptions::accuracy` selects `Accuracy::Exact`, the default, which keeps
 every pixel within one level of its exact result, or `Accuracy::Competitive`,
 an approximate path measured against ADR 0004's competitive accuracy gate:

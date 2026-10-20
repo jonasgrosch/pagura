@@ -7,11 +7,22 @@ and performance evidence. No single renderer or validator is a complete oracle.
 
 The proposed [renderer-unification gates](plans/unified-renderer-validation.md)
 distinguish independent references, internal parity, and release evidence, and
-specify additional tests and harness work. They have not yet been implemented.
+specify additional tests and harness work. Initial tooling is recorded in the
+[implementation log](plans/unified-renderer-progress.md); the complete gates
+are not yet implemented.
 
 `python3 tools/check.py` runs formatting, architecture/safety policy checks,
 Clippy, Rust tests, Python harness tests, fixture regeneration checks, and
 CLI integration tests. It needs no network and cannot refresh golden outputs.
+
+`python3 tools/check.py --jobs 1 --dry-run` prints the planned commands and
+environment overrides without running any checks. On an exclusively allocated
+runner, `python3 tools/check.py --jobs 1` limits Cargo build jobs, Rust test
+harness threads, and conformance workers. Commands remain sequential. The flag
+does not reserve a runner or control every thread: host/browser checks can still
+create worker threads. Omitting `--jobs` preserves existing defaults and inherited
+concurrency settings. Do not start this workflow alongside another active local
+build, conformance run, profile, or benchmark.
 
 Synthetic PDFs are generated independently in Python (`tools/fixturegen/<area>.py`,
 standard library only, never importing Pagura) with known structure and geometry.

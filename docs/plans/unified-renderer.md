@@ -1,10 +1,11 @@
 # Unified renderer implementation plan
 
-Status: proposed, 2026-10-20. Baseline:
+Status: plan committed; initial tooling under implementation, 2026-10-20. Baseline:
 `359e19dda5b78a23675678b6a153da7ab7fdc2c5`.
 
-The deliverable in this branch is the plan, not a renderer implementation or a
-performance result. [ADR 0016](../adr/0016-unified-renderer.md) defines the
+The [implementation log](unified-renderer-progress.md) records partial U1/U2
+delivery and pending validation; renderer work and performance results remain
+future stages. [ADR 0016](../adr/0016-unified-renderer.md) defines the
 architecture; the [validation plan](unified-renderer-validation.md) defines
 binding evidence and proposed experiment thresholds. Existing accepted
 contracts continue to apply until a change is reviewed and validated.
