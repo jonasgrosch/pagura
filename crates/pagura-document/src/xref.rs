@@ -65,13 +65,16 @@ pub struct Revision {
     pub(crate) kind: RevisionKind,
     pub(crate) trailer: Dictionary,
     pub(crate) entries: std::sync::Arc<BTreeMap<u32, XrefEntry>>,
+    // Physical entries charged before hybrid/linearized sections are combined.
+    parsed_entries: usize,
 }
 
 impl Revision {
     /// Number of cross-reference entries recorded in this revision,
-    /// including free entries. Used to budget a subsequent update (7.5.6).
+    /// including free and overridden hybrid/linearized entries. Matches the
+    /// reader's object budget so a subsequent update remains reopenable (7.5.6).
     pub fn entry_count(&self) -> usize {
-        self.entries.len()
+        self.parsed_entries
     }
 
     /// Byte offset of the revision's primary cross-reference structure.
@@ -153,6 +156,7 @@ fn primary(
         if table.revisions.len() >= limits.revisions {
             return Err(Error::limit("revision budget exceeded").at(Position::File(offset)));
         }
+        let available = remaining;
         let (mut entries, trailer, mut kind) = section(
             bytes,
             offset,
@@ -203,6 +207,7 @@ fn primary(
             kind,
             trailer,
             entries: std::sync::Arc::new(entries),
+            parsed_entries: available.saturating_sub(remaining),
         });
         let Some(prev) = prev else {
             break;
@@ -260,6 +265,9 @@ fn join_linearized_base(
         std::sync::Arc::make_mut(&mut entries)
             .append(std::sync::Arc::make_mut(&mut first_page.entries));
         first_page.entries = entries;
+        first_page.parsed_entries = first_page
+            .parsed_entries
+            .saturating_add(main.parsed_entries);
         for (key, value) in main.trailer {
             if !first_page.trailer.contains_key(key.as_bytes()) {
                 first_page.trailer.insert(key, value);

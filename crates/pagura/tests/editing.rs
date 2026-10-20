@@ -600,3 +600,48 @@ fn allocation_respects_declared_unused_numbers_and_failed_adds_are_atomic() {
     let reopened = open(transaction.commit(&SaveOptions::default()).unwrap()).unwrap();
     assert_eq!(reopened.trailer().get(b"Size"), Some(&Value::Integer(101)));
 }
+
+#[test]
+fn hybrid_overrides_and_the_new_xref_stream_are_charged_before_save() {
+    // Independently authored fixture: seven table entries plus seven stream
+    // entries, although merging the overrides leaves only seven identities.
+    let original = fixture("document", "hybrid-precedence.pdf");
+    for objects in [14, 15, 16] {
+        let document = Document::open(
+            original.clone(),
+            &OpenOptions {
+                recovery: Recovery::Strict,
+                limits: Limits {
+                    objects,
+                    ..Limits::default()
+                },
+                ..OpenOptions::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(document.revisions()[0].entry_count(), 14);
+        let mut transaction = Transaction::new(&document);
+        transaction
+            .edit_dictionary(ObjectId::new(1, 0), |dictionary| {
+                dictionary.insert(Name::new(b"Lang"), Value::String(b"en-US".to_vec()));
+                Ok(())
+            })
+            .unwrap();
+        let result = transaction.commit(&SaveOptions::default());
+        if objects < 16 {
+            assert_eq!(result.unwrap_err().kind, ErrorKind::Limit);
+        } else {
+            let reopened = Document::open(
+                result.unwrap(),
+                &OpenOptions {
+                    recovery: Recovery::Strict,
+                    limits: document.limits(),
+                    ..OpenOptions::default()
+                },
+            )
+            .unwrap();
+            assert_eq!(reopened.revisions()[0].entry_count(), 2);
+            assert_eq!(reopened.pages().unwrap().len(), 1);
+        }
+    }
+}
