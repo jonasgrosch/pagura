@@ -125,3 +125,19 @@ where Poppler accepts the original, and explicitly reports baseline failures.
 It does not present those failures as interoperability passes. No reader source
 code was used. Full rewrite to repair another reader's input interpretation is
 outside an append-only save contract.
+
+### Inline browser editing and display compatibility
+
+Protocol 1.6 adds bounded page-local widget geometry based on Annots membership.
+A dedicated browser form layer maps widgets through the existing page transform;
+its controls retain drafts outside virtualized page nodes. Saving applies the
+batch, reopens the returned bytes for preview, and downloads them. The side-panel
+prototype is replaced by on-page inputs, checkboxes, radio buttons and choices.
+
+Rendering defaults to reported compatibility recovery; strict rendering remains
+an explicit diagnostic option. Editing uses a separately opened strict snapshot
+of the exact same source bytes for both metadata and persistence. This avoids
+making display-only colour-operator repairs a reason to hide an otherwise usable
+page, without changing the transaction API's strict-source or signature policy.
+A synthetic form with a colour-operator mismatch verifies this separation. No
+private user document is included in hosted tests.

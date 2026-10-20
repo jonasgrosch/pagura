@@ -52,7 +52,7 @@ exceeding a budget displays an error rather than silently truncating a document.
 
 ## Session and caching
 
-The browser negotiates protocol v1.5 for form editing and typed diagnostics; existing protocol v1 clients remain
+The browser negotiates protocol v1.6 for form editing and typed diagnostics; existing protocol v1 clients remain
 supported. See crates/pagura-host/PROTOCOL.md for the byte layouts. A viewport
 change invalidates queued old-generation tiles before transmission. The host
 also skips a stale generation before compilation or painting. The current
@@ -327,7 +327,11 @@ or timing behavior.
 
 ## Form editing
 
-Use `/?edit=1&demo=form` for the built-in sample. Build the host with bundled-data
-for standard-font appearances. With Strict validation enabled, open a fillable
-PDF, choose Edit form, change fields, Apply changes, then Download PDF.
-See [editing guide](../docs/EDITING.md) for save restrictions and CI artifacts.
+Open `/?demo=form` for a sample. Use the host built with bundled-data for standard
+fonts. Fillable fields are interactive directly on the page. Click to type,
+select choices, or toggle checkboxes/radio buttons, then choose **Save PDF**.
+Drafts survive zoom and scrolling; **Discard changes** restores saved values.
+**Fill forms** hides or shows controls. Normal rendering uses reported repairs;
+**Strict rendering** is an opt-in diagnostic mode. Metadata and writes use a
+separate strict snapshot, preserving the library's save restrictions.
+See [editing guide](../docs/EDITING.md) for current field/appearance limitations.

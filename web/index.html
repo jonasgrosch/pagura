@@ -13,7 +13,7 @@
     <label class="button" for="file">Open PDF</label>
     <input id="file" type="file" accept="application/pdf,.pdf">
     <span id="filename">Choose a PDF or drop it here</span>
-    <label><input id="strict" type="checkbox"> Strict validation</label>
+    <label><input id="strict" type="checkbox"> Strict rendering</label>
   </header>
   <nav aria-label="Page controls">
     <button id="previous" disabled aria-label="Previous page">←</button>
@@ -28,7 +28,9 @@
       <option value="2">200%</option><option value="3">300%</option>
     </select></label>
     <button id="find-open" aria-controls="find-panel">Find</button><button id="copy-page" disabled>Copy page text</button>
-    <button id="edit-open" aria-controls="form-panel" disabled>Edit form</button>
+    <button id="edit-open" aria-pressed="true" disabled>Fill forms</button>
+    <button id="form-reset" disabled>Discard changes</button>
+    <button id="form-download" disabled>Save PDF</button>
     <span id="status" role="status" aria-live="polite">Starting engine…</span>
   </nav>
   <section id="find-panel" role="search" aria-label="Search document" hidden>
@@ -38,14 +40,10 @@
     <button id="find-previous" aria-label="Previous match">Previous</button><button id="find-next" aria-label="Next match">Next</button>
     <span id="find-count" role="status" aria-live="polite">0 / 0</span><button id="find-close" aria-label="Close search">Close</button>
   </section>
+  <div id="form-status" role="status" aria-live="polite"></div>
   <div id="reading-status" role="status" aria-live="polite"></div>
   <div id="error" role="alert" hidden></div>
   <div id="reading-layout"><aside id="outline-sidebar" aria-label="Document outline"><div id="outline-tree" role="tree" aria-label="Document outline"></div></aside>
-  <aside id="form-panel" aria-label="Edit PDF form" hidden>
-    <h2>Form fields</h2><p id="form-status" role="status" aria-live="polite"></p>
-    <div id="form-fields"></div>
-    <div class="form-actions"><button id="form-apply" disabled>Apply changes</button><button id="form-reset">Reset draft</button><button id="form-download" disabled>Download PDF</button></div>
-  </aside>
   <main id="viewport" aria-label="PDF pages" role="region" tabindex="0"><div id="page-surface" hidden></div></main></div>
   <aside>
     <details id="diagnostics"><summary id="diagnostic-count">Repairs: 0 · Information: 0</summary><ul id="repair-list"></ul></details>

@@ -202,3 +202,106 @@ fn text<'a>(reader: &mut Reader<'a>, document: &Document) -> Result<&'a str> {
 fn index(value: u32) -> Result<usize> {
     usize::try_from(value).map_err(|_| Error::limit("form index exceeds platform range"))
 }
+
+/// Map only widgets actually listed by this page, never the optional P backlink.
+pub(crate) fn widgets(document: &Document, page: u32) -> Result<Vec<u8>> {
+    let page = document.page(index(page)?)?;
+    let mut out = Encoder::new(document.limits().document_bytes.min(32 * 1024 * 1024));
+    let Some(form) = document.acro_form()? else {
+        out.count(0)?;
+        return Ok(out.finish());
+    };
+    if form.widgets.len() > MAX_OPTIONS || form.fields.len() > MAX_FIELDS {
+        return Err(Error::limit("browser form widget budget exceeded"));
+    }
+    let mut by_id = std::collections::BTreeMap::new();
+    for (index, widget) in form.widgets.iter().enumerate() {
+        if let Some(id) = widget.object
+            && document
+                .object(id)?
+                .dictionary()
+                .is_some_and(|d| std::ptr::eq(d, widget.dictionary))
+        {
+            by_id.insert(id, index);
+        }
+    }
+    let mut selected = std::collections::BTreeSet::new();
+    if let Some(annots) = page.dictionary().get(b"Annots") {
+        let annots = document
+            .resolve(annots)?
+            .as_array()
+            .ok_or(Error::syntax("Annots must be an array"))?;
+        if annots.len() > document.limits().value_nodes {
+            return Err(Error::limit("annotation count exceeded"));
+        }
+        for annotation in annots {
+            if let Some(index) = annotation.as_reference().and_then(|id| by_id.get(&id)) {
+                let widget = &form.widgets[*index];
+                if overlay_visible(document, widget)? {
+                    selected.insert(*index);
+                }
+            }
+        }
+    }
+    out.count(selected.len())?;
+    for index in selected {
+        let widget = &form.widgets[index];
+        let field = &form.fields[widget.field];
+        out.count(index)?;
+        out.count(widget.field)?;
+        let radio = matches!(
+            field.kind,
+            FieldKind::Button {
+                kind: ButtonKind::Radio,
+                ..
+            }
+        );
+        let list = matches!(
+            field.kind,
+            FieldKind::Choice {
+                style: ChoiceStyle::List,
+                ..
+            }
+        );
+        out.push(&[u8::from(radio)
+            | (u8::from(field.flags.contains(FieldFlags::NO_TOGGLE_TO_OFF)) << 1)
+            | (u8::from(field.flags.contains(FieldFlags::RADIOS_IN_UNISON)) << 2)
+            | (u8::from(list) << 3)])?;
+        let rect = widget.rectangle;
+        for value in [rect.x0(), rect.y0(), rect.x1(), rect.y1()] {
+            out.push(&value.to_le_bytes())?;
+        }
+    }
+    Ok(out.finish())
+}
+
+fn overlay_visible(document: &Document, widget: &pagura::forms::Widget<'_>) -> Result<bool> {
+    let integer = |value: &pagura::Value| {
+        document
+            .resolve(value)?
+            .as_integer()
+            .ok_or(Error::syntax("annotation flag or rotation must be integer"))
+    };
+    let flags = widget
+        .dictionary
+        .get(b"F")
+        .map(integer)
+        .transpose()?
+        .unwrap_or(0);
+    if flags < 0 || flags & !1023 != 0 {
+        return Err(Error::syntax("invalid annotation flags"));
+    }
+    let rotation = widget
+        .dictionary
+        .get(b"MK")
+        .map(|v| document.resolve_dictionary(v))
+        .transpose()?
+        .and_then(|d| d.get(b"R"));
+    let rotated = rotation.map(integer).transpose()?.unwrap_or(0) % 360 != 0;
+    // View-dependent/optional-content widgets need their own visual policy.
+    Ok(flags & (2 | 8 | 16 | 32 | 256) == 0
+        && !widget.dictionary.contains_key(b"OC")
+        && !rotated
+        && widget.rectangle.width() > 0.0
+        && widget.rectangle.height() > 0.0)
+}

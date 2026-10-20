@@ -397,3 +397,16 @@ remain usable. The ordinary framing and document budgets also apply.
 Saving uses the default library policy: strict source, no encrypted input,
 reject signatures or uncertain signature history, and explicit unsupported
 errors for unavailable appearance generation. No script/action is executed.
+
+## Inline widget geometry (v1.6)
+
+`hello(65542)` adds request 20: `u32 document,page`. Response 148 contains
+`u32 count` and records `u32 widget_index,field_index; u8 flags; f64 x0,y0,x1,y1`.
+Rectangles are normalized default user-space rectangles. Flags encode radio
+(bit 0), NoToggleToOff (1), RadiosInUnison (2), and list-box choice (3).
+At most 4096 widgets and 1024 fields are accepted. Membership comes from the
+page's Annots array; the optional P backlink never assigns a widget to a page.
+Hidden/NoView, ToggleNoView, NoZoom/NoRotate, optional-content and rotated-MK
+widgets are excluded until the browser implements their view policies. Direct
+widget identities and read-only/unsupported field controls are not editable.
+Earlier versions receive operational InvalidArgument; other layouts are unchanged.

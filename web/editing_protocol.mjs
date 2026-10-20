@@ -47,3 +47,12 @@ export function encodeChanges(changes) {
   for (const bytes of chunks) { result.set(bytes, offset); offset += bytes.length; }
   return result;
 }
+
+export function decodeWidgets(r) {
+  return Array.from({ length: count(r, MAX_OPTIONS, 41) }, () => {
+    const index = r.u32(), field = r.u32(), flags = r.u8();
+    const rect = Array.from({ length: 4 }, () => r.f64());
+    if (flags > 15 || rect.some((n) => !Number.isFinite(n)) || rect[2] <= rect[0] || rect[3] <= rect[1]) throw new Error('Invalid form widget geometry');
+    return { index, field, flags, rect };
+  });
+}

@@ -78,3 +78,31 @@ fn malformed_edits_are_atomic_and_old_versions_reject_new_operations() {
         assert_eq!(frames[3].kind(), 131);
     }
 }
+
+#[test]
+fn widget_geometry_is_version_gated_without_closing_the_session() {
+    let original = fixture("forms", "render-text.pdf");
+    for version in [protocol::VERSION_1_5, protocol::VERSION_1_6] {
+        let mut input = frame(1, 1, &version.to_le_bytes());
+        input.extend(frame(2, 2, &opening(&original).unwrap()));
+        input.extend(frame(20, 3, &[1, 0, 0, 0, 0, 0, 0, 0]));
+        input.extend(frame(3, 4, &[1, 0, 0, 0, 0, 0, 0, 0]));
+        let mut output = Vec::new();
+        assert_eq!(
+            Session::default()
+                .serve(&mut input.as_slice(), &mut output)
+                .unwrap(),
+            SessionEnd::Eof
+        );
+        let frames = split_frames(&output);
+        assert_eq!(
+            frames[2].kind(),
+            if version == protocol::VERSION_1_6 {
+                148
+            } else {
+                255
+            }
+        );
+        assert_eq!(frames[3].kind(), 131);
+    }
+}

@@ -1,4 +1,4 @@
-import { decodeFields, encodeChanges } from './editing_protocol.mjs';
+import { decodeFields, decodeWidgets, encodeChanges } from './editing_protocol.mjs';
 import { decodeReading, encodeReading } from './reading_protocol.mjs';
 /** Project-owned protocol v1 codec. See crates/pagura-host/PROTOCOL.md. */
 export const MAX_FRAME = 512 * 1024 * 1024 + 32 * 1024 * 1024 + 14;
@@ -8,6 +8,7 @@ export const VERSION_1_2 = 0x00010002;
 export const VERSION_1_3 = 0x00010003;
 export const VERSION_1_4 = 0x00010004;
 export const VERSION_1_5 = 0x00010005;
+export const VERSION_1_6 = 0x00010006;
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 class Reader {
@@ -102,6 +103,7 @@ export function decodeResponse(body) {
     case 137: value = { sourceBytes: r.offset64(), cacheBytes: r.offset64(), documents: r.u32(), lists: r.u32() }; break;
     case 138: case 139: case 140: case 141: case 142: case 143: case 144: value = decodeReading(kind, r); break;
     case 146: value = decodeFields(r); break;
+    case 148: value = decodeWidgets(r); break;
     case 147: { const length = r.u32(); if (length > MAX_FILE) throw new Error('Saved PDF exceeds budget'); value = r.take(length); break; }
     case 255: {
       const category = r.u8(), tag = r.text(), repair = r.text(), message = r.text();
@@ -158,7 +160,7 @@ export function encodeRequest(kind, id, values = {}) {
       if (values.bytes.length > MAX_FILE || values.password.length > 32 * 1024 * 1024) throw new Error('Open byte budget exceeded');
       if (![0, 1].includes(values.recovery)) throw new Error('Invalid recovery mode');
       size = 14 + values.password.length + values.bytes.length; break;
-    case 3: case 7: size = 13; break;
+    case 3: case 7: case 20: size = 13; break;
     case 4: case 8:
       if (!Number.isFinite(values.scale) || values.scale <= 0) throw new Error('Scale must be positive and finite');
       size = kind === 8 ? 41 : 37; break;
@@ -175,10 +177,10 @@ export function encodeRequest(kind, id, values = {}) {
   if (kind === 1) integer(values.version ?? 1);
   if (kind === 2) { bytes[offset++] = values.recovery; blob(values.password); blob(values.bytes); }
   if (kind === 8) integer(values.generation);
-  if ((kind >= 3 && kind <= 8) || kind === 17 || kind === 18 || kind === 19) integer(values.document);
+  if ((kind >= 3 && kind <= 8) || kind === 17 || kind === 18 || kind === 19 || kind === 20) integer(values.document);
   if (kind === 19) blob(changes);
   if (kind === 7) integer(values.generation);
-  if (kind === 3 || kind === 4 || kind === 8) integer(values.page);
+  if (kind === 3 || kind === 4 || kind === 8 || kind === 20) integer(values.page);
   if (kind === 4 || kind === 8) {
     view.setFloat64(offset, values.scale, true); offset += 8;
     for (const key of ['x', 'y', 'width', 'height']) integer(values[key]);

@@ -26,10 +26,10 @@ const reader = new ReadingView({
   notice: readingNotice,
 });
 const editor = new FormEditor({
-  state: () => ({ client, handle, epoch: documentEpoch, recovery: source?.recovery }),
-  adopt: adoptSaved, download: downloadPdf,
+  state: () => ({ client, handle, epoch: documentEpoch, recovery: source?.recovery, bytes: source?.bytes, password: source?.password }),
+  adopt: adoptSaved, download: downloadPdf, redraw: invalidate,
 });
-if (new URL(window.location.href).searchParams.get('edit') === '1') { editor.active = true; $('strict').checked = true; }
+// Fillable fields are interactive by default; strict rendering is an opt-in diagnostic mode.
 function downloadPdf() {
   if (!source) return;
   const url = URL.createObjectURL(new Blob([source.bytes], { type: 'application/pdf' }));
@@ -40,11 +40,11 @@ function downloadPdf() {
 async function adoptSaved(bytes, epoch) {
   if (epoch !== documentEpoch) return false;
   const current = client, previous = handle, position = anchor();
-  const opened = await current.open(bytes, 0);
+  const opened = await current.open(bytes, source.recovery);
   if (epoch !== documentEpoch) { await current.close(opened.document); return false; }
   ++documentEpoch; handle = opened.document;
   errorBox.textContent = ''; errorBox.hidden = true;
-  source.password.fill(0); source = { bytes, password: new Uint8Array(), recovery: 0 };
+  source.password.fill(0); source = { bytes, password: new Uint8Array(), recovery: source.recovery };
   reader.reset(); infos.clear(); views.clear(); surface.replaceChildren();
   layout = new PageLayout(opened.pages); page = Math.min(position.index, Math.max(0, opened.pages - 1));
   await current.close(previous);
@@ -218,7 +218,7 @@ async function draw() {
     // Heights become precise only as the visible range is loaded.
     for (let pass = 0; pass < MAX_PAGES; pass++) {
       const indexes = visiblePages();
-      reader.prune(indexes);
+      reader.prune(indexes); editor.prune(indexes);
       for (const [index, view] of views) if (!indexes.includes(index)) { view.element.remove(); views.delete(index); }
       for (const index of indexes) pageView(index);
       const missing = indexes.find((index) => !infos.get(index)?.width);
@@ -253,6 +253,7 @@ async function draw() {
         }
         view.message.hidden = true; view.element.setAttribute('aria-busy', 'false');
         await reader.page(index, info, view.element);
+        if (epoch === documentEpoch && token === generation) await editor.page(index, info, view.element, zoom);
         if (epoch !== documentEpoch || token !== generation) return;
       } catch (error) { if (epoch === documentEpoch && token === generation) failPage(index, error); }
     }
@@ -275,7 +276,7 @@ function changeZoom(value, point = viewport.clientHeight / 2) {
   const position = anchor(point), previousZoom = zoom;
   zoom = Math.min(8, Math.max(0.1, value));
   try { updateLayout(); } catch (error) { zoom = previousZoom; report(error); return; }
-  for (const view of views.values()) view.element.remove(); views.clear(); reader.prune([]);
+  for (const view of views.values()) view.element.remove(); views.clear(); reader.prune([]); editor.prune([]);
   $('custom-zoom').textContent = `${Math.round(zoom * 100)}%`; restore(position); invalidate();
 }
 async function navigate(index) {
@@ -402,6 +403,7 @@ window.addEventListener('resize', resizeViewport);
 // Search/outline panels resize the document region without resizing the window.
 const regionObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => requestAnimationFrame(resizeViewport)) : null;
 regionObserver?.observe(viewport);
+window.addEventListener('beforeunload', (event) => { if (editor.changes.size) { event.preventDefault(); event.returnValue = ''; } });
 window.addEventListener('pagehide', () => { ++documentEpoch; handle = null; dirty = false; regionObserver?.disconnect(); reader.reset(); source?.password.fill(0); source = null; client?.destroy(); });
 if (debug) window.paguraDebug = Object.freeze({ fail: (reason) => client.injectFailure(reason),
   readingProfile: async () => {

@@ -54,12 +54,23 @@ for ownership, budgets, pending dependency review and validation evidence.
 
 Serve the viewer with `python3 tools/serve_web.py` after obtaining a WASI host
 built with `--features bundled-data` (the editing CI publishes this artifact).
-Open `http://localhost:8000/?edit=1&demo=form` for the sample, or select your own
-fillable PDF with Strict validation enabled. Edit fields in the side panel,
-choose **Apply changes**, inspect the updated page, then **Download PDF**.
-Reopen the downloaded PDF to check persistence. The original file is untouched;
-no PDF is uploaded. Text and choice appearances are regenerated; checkbox and
-radio buttons use their existing appearance states. The browser retains drafts
-until applied or reset; opening another file discards them. Editing on the page,
-undo/redo, password/rich-text fields and signature editing are not supported.
-Signed, encrypted and repair-mode saves retain the library's refusal policy.
+Open `http://localhost:8000/?demo=form` for the sample, or select your own
+fillable PDF. Click the highlighted fields directly on the page: type into text
+fields, select choices, and toggle checkbox/radio widgets. **Save PDF** applies
+pending edits, previews the saved document and downloads it in one action.
+**Discard changes** restores the last saved values. **Fill forms** toggles the
+interactive overlay without discarding drafts. Reopen the download to check
+persistence. Original files are untouched and no PDF is uploaded.
+
+Normal display uses reported compatibility repairs. **Strict rendering** is an
+opt-in diagnostic mode. Form metadata and saves use a separate strict snapshot
+of the original bytes, so tolerant display does not relax structural save checks.
+Sources requiring structural repairs still cannot be edited. Content-only repairs
+such as a numeric sc used in an ICC colour space can display compatibly while
+unrelated form changes append without rewriting the original content stream.
+
+The overlay follows CropBox, page Rotate, UserUnit and zoom; drafts survive page
+virtualization. Optional-content, NoZoom/NoRotate, ToggleNoView and rotated-MK
+widgets are omitted pending their dedicated interaction semantics. General PDF
+text editing, undo/redo, password/rich-text fields and signature editing remain
+unsupported. Signed/encrypted sources retain the library's refusal policy.
