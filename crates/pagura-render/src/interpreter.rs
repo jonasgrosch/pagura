@@ -111,7 +111,38 @@ pub(crate) fn compile_cached(
     provider: Option<&dyn pagura_text::Provider>,
     fonts: &std::sync::Mutex<text::cache::FontCache>,
 ) -> Result<DisplayList> {
+    compile_cached_with(
+        document,
+        page,
+        provider,
+        fonts,
+        (
+            pagura_image::deferred::SampleLayout::Interleaved,
+            None,
+            false,
+        ),
+    )
+}
+
+/// Compiles as [`compile_cached`]; with the deferred layout, an image that is
+/// the page's first mark keeps deferred samples for [`crate::direct_image`],
+/// in storage from `buffers` when given. With `drawing`, font programs are
+/// read only as far as drawing needs them (`PdfFont::load_for_rendering`).
+pub(crate) fn compile_cached_with<'a>(
+    document: &'a Document,
+    page: &Page,
+    provider: Option<&'a dyn pagura_text::Provider>,
+    fonts: &'a std::sync::Mutex<text::cache::FontCache>,
+    (layout, buffers, drawing): (
+        pagura_image::deferred::SampleLayout,
+        Option<&'a pagura_image::deferred::SampleBuffers>,
+        bool,
+    ),
+) -> Result<DisplayList> {
     let mut compiler = Compiler::new(document, page)?;
+    compiler.layout = layout;
+    compiler.buffers = buffers;
+    compiler.drawing = drawing;
     compiler.compilation = std::rc::Rc::new(Compilation {
         colors: crate::icc::Cache::default(),
         provider,
@@ -191,6 +222,14 @@ struct Compiler<'a> {
     position: Position,
     forms: Vec<ObjectId>,
     extraction: Option<text::extract::Extraction>,
+    layout: pagura_image::deferred::SampleLayout,
+    buffers: Option<&'a pagura_image::deferred::SampleBuffers>,
+    /// Reused decoded glyphs of one shown string.
+    glyphs: Vec<pagura_text::Glyph>,
+    /// Glyph source hulls met in this compilation.
+    hulls: crate::display::GlyphHulls,
+    /// Whether font programs are read only as far as drawing needs them.
+    drawing: bool,
 }
 
 impl<'a> Compiler<'a> {
@@ -222,6 +261,11 @@ impl<'a> Compiler<'a> {
             position: Position::Unknown,
             forms: Vec::new(),
             extraction: None,
+            layout: pagura_image::deferred::SampleLayout::Interleaved,
+            buffers: None,
+            glyphs: Vec::new(),
+            hulls: crate::display::GlyphHulls::default(),
+            drawing: false,
         })
     }
 

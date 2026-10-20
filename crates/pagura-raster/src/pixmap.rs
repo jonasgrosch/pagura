@@ -30,6 +30,39 @@ impl Pixmap {
     /// Returns `InvalidArgument` for a zero dimension and a limit error if
     /// the surface would exceed `max_pixels`.
     pub fn new(width: u32, height: u32, background: Rgba8, max_pixels: usize) -> Result<Self> {
+        Self::filled(width, height, background, max_pixels, Vec::new())
+    }
+
+    /// As [`Self::new_with_limits`], storing the surface in `storage`, an
+    /// earlier surface's bytes ([`Self::into_storage`]), whose allocation is
+    /// reused when it is large enough. The surface is the same.
+    ///
+    /// # Errors
+    /// As [`Self::new_with_limits`].
+    pub fn with_storage(
+        width: u32,
+        height: u32,
+        background: Rgba8,
+        limits: Limits,
+        storage: Vec<u8>,
+    ) -> Result<Self> {
+        let mut surface = Self::filled(width, height, background, limits.pixels, storage)?;
+        surface.limits = limits;
+        Ok(surface)
+    }
+
+    /// The surface's bytes, for reuse by [`Self::with_storage`].
+    pub fn into_storage(self) -> Vec<u8> {
+        self.data
+    }
+
+    fn filled(
+        width: u32,
+        height: u32,
+        background: Rgba8,
+        max_pixels: usize,
+        mut data: Vec<u8>,
+    ) -> Result<Self> {
         if width == 0 || height == 0 {
             return Err(Error::invalid_argument(
                 "surface dimensions must be positive",
@@ -42,11 +75,20 @@ impl Pixmap {
         let bytes = pixels
             .checked_mul(4)
             .ok_or(Error::limit("surface byte size overflows"))?;
-        let mut data = Vec::new();
+        data.clear();
         data.try_reserve_exact(bytes)
             .map_err(|_| Error::limit("surface allocation failed"))?;
         let pixel = premultiply(background);
-        data.extend(std::iter::repeat_n(pixel, pixels).flatten());
+        // A gray or transparent background is one repeated byte; any other
+        // is written a whole pixel at a time rather than byte by byte.
+        if pixel.iter().all(|&byte| byte == pixel[0]) {
+            data.resize(bytes, pixel[0]);
+        } else {
+            data.resize(bytes, 0);
+            for target in data.as_chunks_mut::<4>().0 {
+                *target = pixel;
+            }
+        }
         Ok(Self {
             width,
             height,
@@ -71,6 +113,51 @@ impl Pixmap {
         let mut surface = Self::new(width, height, background, limits.pixels)?;
         surface.limits = limits;
         Ok(surface)
+    }
+
+    /// Takes an existing, tightly packed premultiplied RGBA8 allocation.
+    ///
+    /// Components use the same layout as [`Self::data_mut`]. Ownership is
+    /// transferred without initialization or a second pixel copy.
+    ///
+    /// # Errors
+    /// Returns `InvalidArgument` for zero dimensions or an incorrect byte
+    /// count, and `Limit` when the pixel or decoded-byte budget is exceeded.
+    pub fn from_premultiplied(
+        width: u32,
+        height: u32,
+        data: Vec<u8>,
+        limits: Limits,
+    ) -> Result<Self> {
+        if width == 0 || height == 0 {
+            return Err(Error::invalid_argument(
+                "surface dimensions must be positive",
+            ));
+        }
+        let pixels = usize::try_from(u64::from(width) * u64::from(height))
+            .ok()
+            .filter(|&n| n <= limits.pixels)
+            .ok_or(Error::limit("surface pixel budget exceeded"))?;
+        let bytes = pixels
+            .checked_mul(4)
+            .filter(|&n| n <= limits.decoded_bytes)
+            .ok_or(Error::limit("surface byte budget exceeded"))?;
+        if data.len() != bytes {
+            return Err(Error::invalid_argument(
+                "surface byte count differs from dimensions",
+            ));
+        }
+        if data.capacity() > limits.decoded_bytes {
+            return Err(Error::limit(
+                "surface retained allocation exceeds byte budget",
+            ));
+        }
+        Ok(Self {
+            width,
+            height,
+            data,
+            limits,
+        })
     }
 
     pub(crate) fn limits(&self) -> &Limits {
@@ -168,6 +255,59 @@ fn unpremultiply(pixel: [u8; 4]) -> [u8; 4] {
 mod tests {
     use super::{Pixmap, div255};
     use crate::Rgba8;
+
+    #[test]
+    fn owned_rgba_transfer_preserves_allocation_and_checks_budgets() {
+        let mut data = Vec::with_capacity(32);
+        data.extend_from_slice(&[128, 0, 0, 128, 0, 0, 255, 255]);
+        let pointer = data.as_ptr();
+        let surface =
+            Pixmap::from_premultiplied(2, 1, data, pagura_core::Limits::default()).unwrap();
+        assert_eq!(surface.data().as_ptr(), pointer);
+        assert_eq!(surface.data(), [128, 0, 0, 128, 0, 0, 255, 255]);
+        let mut spare = Vec::with_capacity(32);
+        spare.resize(8, 0);
+        assert!(
+            Pixmap::from_premultiplied(
+                2,
+                1,
+                spare,
+                pagura_core::Limits {
+                    decoded_bytes: 8,
+                    ..pagura_core::Limits::default()
+                }
+            )
+            .is_err()
+        );
+        assert!(Pixmap::from_premultiplied(0, 1, vec![], pagura_core::Limits::default()).is_err());
+        assert!(
+            Pixmap::from_premultiplied(2, 1, vec![0; 4], pagura_core::Limits::default()).is_err()
+        );
+        assert!(
+            Pixmap::from_premultiplied(
+                2,
+                1,
+                vec![0; 8],
+                pagura_core::Limits {
+                    decoded_bytes: 7,
+                    ..pagura_core::Limits::default()
+                }
+            )
+            .is_err()
+        );
+        assert!(
+            Pixmap::from_premultiplied(
+                2,
+                1,
+                vec![0; 8],
+                pagura_core::Limits {
+                    pixels: 1,
+                    ..pagura_core::Limits::default()
+                }
+            )
+            .is_err()
+        );
+    }
 
     #[test]
     fn div255_rounds_exactly() {

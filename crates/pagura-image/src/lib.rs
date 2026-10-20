@@ -9,6 +9,7 @@
 
 pub mod ccitt;
 pub mod dct;
+pub mod deferred;
 pub mod features;
 pub mod jbig2;
 pub mod jpx;
@@ -138,6 +139,12 @@ pub enum Samples {
         /// Precision of each ordinary colour component, in interleave order.
         bits: Vec<u8>,
     },
+    /// A baseline YCbCr JPEG in its component planes, from
+    /// [`deferred::SampleLayout::Deferred`]. Values are RGB bytes on demand.
+    Planar(Box<deferred::Planar>),
+    /// One-bit, one-component samples in packed rows, from
+    /// [`deferred::SampleLayout::Deferred`].
+    Packed(deferred::Packed),
 }
 
 impl Samples {
@@ -146,6 +153,8 @@ impl Samples {
         match self {
             Self::Bytes(values) => values.len(),
             Self::Words(values) | Self::Mixed { values, .. } => values.len(),
+            Self::Planar(planar) => planar.width() * planar.height() * 3,
+            Self::Packed(packed) => packed.width() * packed.height(),
         }
     }
 
@@ -159,6 +168,8 @@ impl Samples {
         match self {
             Self::Bytes(values) => values.get(index).copied().map(u16::from),
             Self::Words(values) | Self::Mixed { values, .. } => values.get(index).copied(),
+            Self::Planar(planar) => planar.get(index),
+            Self::Packed(packed) => packed.get(index),
         }
     }
 }
@@ -226,6 +237,23 @@ impl DecodedImage {
 /// `Unsupported` for codecs or features not implemented, and limit errors
 /// when the image exceeds [`pagura_core::Limits`] (pixels, decoded bytes).
 pub fn decode_xobject(document: &Document, image: &IndirectObject) -> Result<DecodedImage> {
+    decode_xobject_with(document, image, deferred::SampleLayout::Interleaved, None)
+}
+
+/// Decodes a base image XObject as [`decode_xobject`], keeping samples in
+/// `layout` where it applies, in storage from `buffers` when given. Errors
+/// and diagnostics are those of [`decode_xobject`]: a deferred decode that
+/// fails is repeated in the interleaved layout.
+///
+/// # Errors
+///
+/// As [`decode_xobject`].
+pub fn decode_xobject_with(
+    document: &Document,
+    image: &IndirectObject,
+    layout: deferred::SampleLayout,
+    buffers: Option<&deferred::SampleBuffers>,
+) -> Result<DecodedImage> {
     let mut diagnostics = pagura_core::Diagnostics::new(document.recovery());
     let result = (|| {
         let dictionary = image
@@ -260,11 +288,12 @@ pub fn decode_xobject(document: &Document, image: &IndirectObject) -> Result<Dec
         let (width, height) = parameters::dimensions(&dictionary)?;
         parameters::budget(width, height, 1, 1, &document.limits())?;
         let stream = stream::read(document, image, &mut diagnostics)?;
-        dispatch::decode(
+        dispatch::decode_with(
             document,
             &dictionary,
-            &stream.data,
+            stream.data,
             stream.codec.as_ref(),
+            (layout, buffers),
             &mut diagnostics,
         )
     })();

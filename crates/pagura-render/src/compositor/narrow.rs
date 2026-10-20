@@ -1,13 +1,293 @@
 //! Normal premultiplied stores on the 0..255 level scale (11.3.3).
 //! N16's single integer rounding contracts error below 128/257 levels;
 //! F32 admission bounds accumulated rounding before this buffer is allocated.
+//! U8, under [`crate::Accuracy::Competitive`] only, rounds each store once.
 use super::{Source, plan::Format};
 use pagura_core::{Error, Result};
 
 pub(super) enum Buffer {
+    U8(Bytes),
     N16(Vec<[u16; 4]>),
     F32(Vec<[f32; 4]>),
 }
+
+/// Premultiplied RGBA bytes in rows of `width` pixels, rounding once per
+/// store. Each row records the columns that stores have reached; every other
+/// pixel of the row still holds the background.
+pub(super) struct Bytes {
+    pixels: Vec<u8>,
+    width: usize,
+    background: [u8; 4],
+    /// Per row, the columns `[lo, hi)` that any store has reached; an empty
+    /// extent is `[u32::MAX, 0]`, so extending it is a min and a max.
+    painted: Vec<[u32; 2]>,
+    /// The rows that offsets address: `[first, first + rows)`.
+    first: usize,
+    rows: usize,
+}
+
+impl Bytes {
+    /// The bytes a `width` by `height` surface holds: its pixels and the
+    /// painted extent of each row.
+    pub(super) fn charge(width: usize, height: usize) -> usize {
+        width * height * 4 + height * size_of::<[u32; 2]>()
+    }
+
+    /// A `width` by `height` surface of `background`, in `storage` when its
+    /// allocation suffices.
+    pub(super) fn new(
+        (width, height): (usize, usize),
+        background: [u8; 4],
+        mut storage: Vec<u8>,
+    ) -> Result<Self> {
+        let count = width
+            .checked_mul(height)
+            .and_then(|n| n.checked_mul(4))
+            .ok_or(Error::limit("colour buffer size overflow"))?;
+        storage.clear();
+        storage
+            .try_reserve_exact(count)
+            .map_err(|_| Error::limit("colour buffer allocation failed"))?;
+        // A gray or transparent background is one repeated byte.
+        storage.resize(count, background[0]);
+        if background.iter().any(|&b| b != background[0]) {
+            storage.as_chunks_mut::<4>().0.fill(background);
+        }
+        let mut painted = Vec::new();
+        painted
+            .try_reserve_exact(height)
+            .map_err(|_| Error::limit("colour buffer allocation failed"))?;
+        painted.resize(height, [u32::MAX, 0]);
+        Ok(Self {
+            pixels: storage,
+            width,
+            background,
+            painted,
+            first: 0,
+            rows: height,
+        })
+    }
+
+    /// Addresses `rows` rows from `skip` rows below the current first row.
+    pub(super) fn window(&mut self, skip: usize, rows: usize) -> Result<()> {
+        let first = self.first + skip;
+        if first + rows > self.painted.len() {
+            return Err(Error::invalid_argument("band outside byte storage"));
+        }
+        (self.first, self.rows) = (first, rows);
+        Ok(())
+    }
+
+    /// The surface row and column of a window offset.
+    fn position(&self, offset: usize) -> Result<(usize, usize)> {
+        let (row, column) = (offset / self.width, offset % self.width);
+        if row >= self.rows {
+            return Err(Error::invalid_argument("mask outside colour buffer"));
+        }
+        Ok((self.first + row, column))
+    }
+
+    /// The pixels from `offset` for `count` columns of one row, recorded as
+    /// painted.
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "columns are below the surface width, which fits u32"
+    )]
+    fn run(&mut self, offset: usize, count: usize) -> Result<&mut [[u8; 4]]> {
+        let (row, column) = self.position(offset)?;
+        if column + count > self.width {
+            return Err(Error::invalid_argument("run crosses a colour buffer row"));
+        }
+        let painted = self
+            .painted
+            .get_mut(row)
+            .ok_or(Error::invalid_argument("mask outside colour buffer"))?;
+        *painted = [
+            painted[0].min(column as u32),
+            painted[1].max((column + count) as u32),
+        ];
+        let start = row * self.width + column;
+        Ok(&mut self.pixels.as_chunks_mut::<4>().0[start..start + count])
+    }
+
+    /// Blends `color` at each coverage of `coverage` from `offset` within one
+    /// row. An opaque colour equal to the background leaves background pixels
+    /// as they are at every coverage (c·a + c·(255 − a) rounds back to c), so
+    /// such a run is restricted to the columns already painted.
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "columns are below the surface width, which fits u32"
+    )]
+    pub(super) fn blend(
+        &mut self,
+        offset: usize,
+        coverage: &[u8],
+        color: [u8; 4],
+        alpha: u8,
+    ) -> Result<()> {
+        let (mut offset, mut coverage) = (offset, coverage);
+        if alpha == 255 && color == self.background && color[3] == 255 {
+            let (row, column) = self.position(offset)?;
+            let [lo, hi] = *self
+                .painted
+                .get(row)
+                .ok_or(Error::invalid_argument("mask outside colour buffer"))?;
+            let start = column.max(lo as usize);
+            let end = (column + coverage.len()).min(hi as usize);
+            if start >= end {
+                return Ok(());
+            }
+            offset += start - column;
+            coverage = &coverage[start - column..end - column];
+            debug_assert!(start as u32 >= lo && end as u32 <= hi);
+        }
+        let pixels = self.run(offset, coverage.len())?;
+        let source = super::lowp::Source::new(color, alpha);
+        // Rectangle and full runs hold one coverage throughout.
+        match coverage {
+            [first, rest @ ..] if rest.iter().all(|c| c == first) => {
+                super::lowp::run(pixels, *first, &source);
+            }
+            _ => super::lowp::row(pixels, coverage, &source),
+        }
+        Ok(())
+    }
+
+    /// Blends `mask`, rows of `stride` levels whose first pixel is at
+    /// `origin` in device space, into the part of `bounds` (a device
+    /// rectangle within this surface, whose first pixel is `surface`) that
+    /// it covers, scaled by `clip`'s levels when given: a product over the
+    /// device rectangle it names.
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        clippy::cast_possible_wrap,
+        reason = "mask extents are budgeted; rectangles are intersected with the surface \
+                  before indexing"
+    )]
+    pub(super) fn mask(
+        &mut self,
+        (mask, stride, origin): (&[u8], usize, (i64, i64)),
+        (surface, bounds): ((i64, i64), [i64; 4]),
+        (color, alpha): ([u8; 4], u8),
+        clip: MaskClip<'_>,
+        scratch: &mut Vec<u8>,
+    ) -> Result<()> {
+        if stride == 0 {
+            return Ok(());
+        }
+        let rows = (mask.len() / stride) as i64;
+        let mut area = [
+            origin.0.max(bounds[0]),
+            origin.1.max(bounds[1]),
+            (origin.0 + stride as i64).min(bounds[2]),
+            (origin.1 + rows).min(bounds[3]),
+        ];
+        if let Some((_, rectangle)) = clip.product {
+            area = [
+                area[0].max(rectangle[0]),
+                area[1].max(rectangle[1]),
+                area[2].min(rectangle[2]),
+                area[3].min(rectangle[3]),
+            ];
+        }
+        if let Some([left, top, right, bottom]) = clip.rectangle {
+            let pixel = |value: f64, round: fn(f64) -> f64| round(value.clamp(-1e9, 1e9)) as i64;
+            area = [
+                area[0].max(pixel(left, f64::floor)),
+                area[1].max(pixel(top, f64::floor)),
+                area[2].min(pixel(right, f64::ceil)),
+                area[3].min(pixel(bottom, f64::ceil)),
+            ];
+        }
+        let [x0, y0, x1, y1] = area;
+        if x0 >= x1 || y0 >= y1 {
+            return Ok(());
+        }
+        let count = (x1 - x0) as usize;
+        let (first, column) =
+            self.position((y0 - surface.1) as usize * self.width + (x0 - surface.0) as usize)?;
+        if first + (y1 - y0) as usize > self.first + self.rows || column + count > self.width {
+            return Err(Error::invalid_argument("mask outside colour buffer"));
+        }
+        let extent = [column as u32, (column + count) as u32];
+        let source = super::lowp::Source::new(color, alpha);
+        let rows = self
+            .pixels
+            .as_chunks_mut::<4>()
+            .0
+            .chunks_exact_mut(self.width);
+        let painted = self.painted[first..].iter_mut();
+        for ((y, pixels), painted) in (y0..y1).zip(rows.skip(first)).zip(painted) {
+            let start = (y - origin.1) as usize * stride + (x0 - origin.0) as usize;
+            let row = &mask[start..start + count];
+            let mut scaled = false;
+            if let Some((product, [cx0, cy0, cx1, _])) = clip.product {
+                let at = (y - cy0) as usize * (cx1 - cx0) as usize + (x0 - cx0) as usize;
+                let factors = product
+                    .get(at..at + count)
+                    .ok_or(Error::invalid_argument("mask exceeds clip"))?;
+                scratch.clear();
+                scratch.extend_from_slice(row);
+                super::lowp::multiply(scratch, factors);
+                scaled = true;
+            }
+            if let Some(rectangle) = clip.rectangle
+                && !inside(rectangle, (x0, y, count))
+            {
+                if !scaled {
+                    scratch.clear();
+                    scratch.extend_from_slice(row);
+                    scaled = true;
+                }
+                scale_edges(rectangle, (x0, y), scratch);
+            }
+            let coverage = if scaled { scratch.as_slice() } else { row };
+            *painted = [painted[0].min(extent[0]), painted[1].max(extent[1])];
+            super::lowp::row(&mut pixels[column..column + count], coverage, &source);
+        }
+        Ok(())
+    }
+
+    /// Stores `pixels` from `offset` within one row.
+    pub(super) fn copy(&mut self, offset: usize, pixels: &[[u8; 4]]) -> Result<()> {
+        self.run(offset, pixels.len())?.copy_from_slice(pixels);
+        Ok(())
+    }
+
+    /// Composes opaque `colors` from `offset` within one row at the levels
+    /// of `opacities`, whose first channel is each pixel's alpha.
+    pub(super) fn over(
+        &mut self,
+        offset: usize,
+        colors: &[[u8; 4]],
+        opacities: &[[u8; 4]],
+    ) -> Result<()> {
+        for ((pixel, &color), opacity) in self
+            .run(offset, colors.len())?
+            .iter_mut()
+            .zip(colors)
+            .zip(opacities)
+        {
+            super::lowp::pixel(pixel, color, opacity[0]);
+        }
+        Ok(())
+    }
+
+    fn pixel(&mut self, index: usize, color: [u8; 4], alpha: u8) -> Result<()> {
+        let pixel = self
+            .run(index, 1)
+            .map_err(|_| Error::invalid_argument("source outside colour buffer"))?;
+        super::lowp::pixel(&mut pixel[0], color, alpha);
+        Ok(())
+    }
+
+    /// The premultiplied RGBA bytes, row by row.
+    pub(super) fn into_rgba(self) -> Vec<u8> {
+        self.pixels
+    }
+}
+
 impl Buffer {
     pub(super) fn new(format: Format, count: usize, background: [u8; 4]) -> Result<Self> {
         fn filled<T: Clone>(count: usize, value: T) -> Result<Vec<T>> {
@@ -19,6 +299,7 @@ impl Buffer {
             Ok(pixels)
         }
         match format {
+            Format::U8 => Ok(Self::U8(Bytes::new((count, 1), background, Vec::new())?)),
             Format::N16 => Ok(Self::N16(filled(
                 count,
                 background.map(|v| u16::from(v) * 257),
@@ -29,10 +310,33 @@ impl Buffer {
     }
     pub(super) fn bytes(&self) -> usize {
         match self {
+            Self::U8(v) => Bytes::charge(v.width, v.painted.len()),
             Self::N16(v) => v.len() * 8,
             Self::F32(v) => v.len() * 16,
         }
     }
+    /// Stores a dense mask of `width` columns whose first pixel is at
+    /// `offset`, in rows `stride` apart, when this is byte storage.
+    pub(super) fn small_mask(
+        &mut self,
+        (offset, stride, width): (usize, usize, usize),
+        coverage: &[u8],
+        color: [f64; 4],
+        alpha: f64,
+    ) -> Result<bool> {
+        let Self::U8(bytes) = self else {
+            return Ok(false);
+        };
+        if width == 0 || width > 64 || coverage.len() / width > 64 {
+            return Ok(false);
+        }
+        let (color, alpha) = byte_source(color, alpha);
+        for (row, mask) in coverage.chunks_exact(width).enumerate() {
+            bytes.blend(offset + row * stride, mask, color, alpha)?;
+        }
+        Ok(true)
+    }
+
     /// Stores one run of `Mask::spans`, which holds only full or only
     /// fractional coverage. A full run of an opaque source stores the source
     /// itself, so it is written as one slice fill.
@@ -46,6 +350,10 @@ impl Buffer {
         let full = coverage.first() == Some(&255);
         debug_assert!(!full || coverage.iter().all(|&c| c == 255));
         match self {
+            Self::U8(bytes) => {
+                let (color, alpha) = byte_source(color, alpha);
+                bytes.blend(offset, coverage, color, alpha)?;
+            }
             Self::N16(pixels) => {
                 let color = [word(color[0]), word(color[1]), word(color[2]), 65535];
                 let row = pixels
@@ -89,6 +397,10 @@ impl Buffer {
         Ok(())
     }
     pub(super) fn paint(&mut self, index: usize, source: Source) -> Result<()> {
+        if let Self::U8(bytes) = self {
+            let (color, alpha) = byte_source(source.color, source.alpha);
+            return bytes.pixel(index, color, alpha);
+        }
         let Self::F32(pixels) = self else {
             return Err(Error::invalid_argument("dynamic source in N16 buffer"));
         };
@@ -106,6 +418,12 @@ impl Buffer {
     }
     pub(super) fn output(&self, offset: usize, target: &mut [u8]) {
         match self {
+            Self::U8(bytes) => {
+                let start = (bytes.first * bytes.width + offset) * 4;
+                let source = &bytes.pixels[start.min(bytes.pixels.len())..];
+                let count = target.len().min(source.len());
+                target[..count].copy_from_slice(&source[..count]);
+            }
             Self::N16(pixels) => {
                 for (out, pixel) in target
                     .as_chunks_mut::<4>()
@@ -130,6 +448,64 @@ impl Buffer {
         }
     }
 }
+/// The clip of a mask in byte storage: a product over a device rectangle,
+/// and an axis-aligned rectangle whose coverage separates into a column and
+/// a row factor.
+#[derive(Debug, Clone, Copy, Default)]
+pub(super) struct MaskClip<'a> {
+    pub(super) product: Option<(&'a [u8], [i64; 4])>,
+    pub(super) rectangle: Option<[f64; 4]>,
+}
+
+/// The share of the pixel from `start` that lies in `[low, high)`.
+#[expect(clippy::cast_precision_loss, reason = "device coordinates are bounded")]
+fn overlap(start: i64, low: f64, high: f64) -> f64 {
+    let start = start as f64;
+    (high.min(start + 1.0) - low.max(start)).clamp(0.0, 1.0)
+}
+
+/// Whether the `count` pixels of row `y` from column `x0` lie wholly inside
+/// `rectangle`.
+#[expect(clippy::cast_possible_wrap, reason = "mask widths are bounded")]
+fn inside([left, top, right, bottom]: [f64; 4], (x0, y, count): (i64, i64, usize)) -> bool {
+    overlap(y, top, bottom) == 1.0
+        && overlap(x0, left, right) == 1.0
+        && overlap(x0 + count as i64 - 1, left, right) == 1.0
+}
+
+/// Scales a coverage row from device `(x0, y)` by `rectangle`'s coverage
+/// there, a column factor times a row factor, rounding each product once.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    reason = "factors in [0, 1] scale to bytes; mask widths are bounded"
+)]
+fn scale_edges([left, top, right, bottom]: [f64; 4], (x0, y): (i64, i64), row: &mut [u8]) {
+    let vertical = overlap(y, top, bottom);
+    for (column, value) in row.iter_mut().enumerate() {
+        let horizontal = overlap(x0 + column as i64, left, right);
+        if vertical == 1.0 && horizontal == 1.0 {
+            continue;
+        }
+        let level = (horizontal * vertical * 255.0).round() as u16;
+        *value = ((u16::from(*value) * level + 127) / 255) as u8;
+    }
+}
+
+/// An opaque byte colour and byte alpha for a normalized source.
+pub(super) fn byte_source(color: [f64; 4], alpha: f64) -> ([u8; 4], u8) {
+    (
+        [
+            byte(scalar(color[0] * 255.0)),
+            byte(scalar(color[1] * 255.0)),
+            byte(scalar(color[2] * 255.0)),
+            255,
+        ],
+        byte(scalar(alpha * 255.0)),
+    )
+}
+
 fn lerp(pixel: &mut [f32; 4], target: [f32; 4], alpha: f32) {
     if alpha == 1.0 {
         *pixel = target;
@@ -192,6 +568,39 @@ fn mix(source: u16, backdrop: u16, coverage: u8) -> u16 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn rectangle_edges_scale_by_column_and_row_overlap() {
+        let rectangle = [1.5, 0.25, 3.25, 2.0];
+        assert!(inside(rectangle, (2, 1, 1)));
+        assert!(!inside(rectangle, (1, 1, 2)));
+        assert!(!inside(rectangle, (2, 0, 1)));
+        let mut row = vec![255, 255, 255, 200];
+        scale_edges(rectangle, (0, 0), &mut row);
+        // Columns overlap 0, 1/2, 1 and 1/4; the row overlaps 3/4, so the
+        // rounded levels are 0, 96, 191 and 48.
+        let expected: Vec<u8> = [0u32, 96, 191, 48]
+            .iter()
+            .zip([255u32, 255, 255, 200])
+            .map(|(level, v)| u8::try_from((v * level + 127) / 255).unwrap())
+            .collect();
+        assert_eq!(row, expected);
+    }
+
+    #[test]
+    fn byte_bands_address_their_rows_and_skip_unpainted_background() {
+        let mut bytes = Bytes::new((3, 4), [255; 4], Vec::new()).unwrap();
+        bytes.window(1, 2).unwrap();
+        bytes.blend(3, &[255, 128], [0, 0, 0, 255], 255).unwrap();
+        assert!(bytes.window(2, 3).is_err());
+        assert!(bytes.blend(6, &[255], [0, 0, 0, 255], 255).is_err());
+        // A background-coloured run leaves unpainted rows untouched.
+        bytes.blend(0, &[10, 10, 10], [255; 4], 255).unwrap();
+        // Window row 1 is surface row 2, whose pixels start at byte 24.
+        let pixels = bytes.into_rgba();
+        assert_eq!(&pixels[24..32], &[0, 0, 0, 255, 127, 127, 127, 255]);
+        assert!(pixels[..24].iter().all(|&v| v == 255));
+    }
+
     fn value(buffer: &Buffer) -> u8 {
         let mut out = [0; 4];
         buffer.output(0, &mut out);

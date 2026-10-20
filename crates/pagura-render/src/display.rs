@@ -73,6 +73,50 @@ struct GlyphKey {
     linear: [u64; 4],
 }
 
+/// The user-space and outline hulls of each glyph source met in one
+/// compilation, so that later runs of the same glyph and linear map reuse
+/// them. Each entry keeps its outline, so no key's address is reused.
+#[derive(Debug, Default)]
+pub(crate) struct GlyphHulls(
+    crate::hash::FastMap<GlyphKey, (Arc<Path>, [[pagura_raster::Point; 2]; 2])>,
+);
+
+/// The user-space hull of `outline` under `linear` and the outline's own
+/// hull, from every on- and off-curve point.
+fn source_hulls(outline: &Path, linear: Transform) -> Result<[[pagura_raster::Point; 2]; 2]> {
+    let mut lo = pagura_raster::Point::new(f64::INFINITY, f64::INFINITY);
+    let mut hi = pagura_raster::Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
+    let mut outline_lo = lo;
+    let mut outline_hi = hi;
+    let mut record = |p: pagura_raster::Point| -> Result<()> {
+        outline_lo.x = outline_lo.x.min(p.x);
+        outline_lo.y = outline_lo.y.min(p.y);
+        outline_hi.x = outline_hi.x.max(p.x);
+        outline_hi.y = outline_hi.y.max(p.y);
+        let p = p * linear;
+        if !p.is_finite() {
+            return Err(Error::syntax("text matrix arithmetic overflow"));
+        }
+        lo.x = lo.x.min(p.x);
+        lo.y = lo.y.min(p.y);
+        hi.x = hi.x.max(p.x);
+        hi.y = hi.y.max(p.y);
+        Ok(())
+    };
+    for segment in outline.segments() {
+        match *segment {
+            pagura_raster::Segment::MoveTo(p) | pagura_raster::Segment::LineTo(p) => record(p)?,
+            pagura_raster::Segment::CubicTo(a, b, c) => {
+                record(a)?;
+                record(b)?;
+                record(c)?;
+            }
+            pagura_raster::Segment::Close => {}
+        }
+    }
+    Ok([[lo, hi], [outline_lo, outline_hi]])
+}
+
 #[derive(Debug)]
 pub(crate) struct GlyphSource {
     pub(crate) outline: Arc<Path>,
@@ -96,7 +140,7 @@ pub(crate) struct GlyphRun {
     pub(crate) positions: Vec<(usize, pagura_core::Position)>,
     pub(crate) bounds: Rect,
     origins: Rect,
-    index: std::collections::HashMap<GlyphKey, u32>,
+    index: crate::hash::FastMap<GlyphKey, u32>,
 }
 
 impl GlyphRun {
@@ -129,7 +173,7 @@ impl GlyphRun {
                 x1: f64::NEG_INFINITY,
                 y1: f64::NEG_INFINITY,
             },
-            index: std::collections::HashMap::new(),
+            index: crate::hash::FastMap::default(),
         }
     }
     pub(crate) fn push(
@@ -137,6 +181,7 @@ impl GlyphRun {
         outline: Arc<Path>,
         matrix: Transform,
         position: pagura_core::Position,
+        hulls: &mut GlyphHulls,
     ) -> Result<()> {
         let linear = Transform::new(matrix.a, matrix.b, matrix.c, matrix.d, 0.0, 0.0);
         let key = GlyphKey {
@@ -146,40 +191,19 @@ impl GlyphRun {
         let source = if let Some(&source) = self.index.get(&key) {
             source
         } else {
+            let [hull, outline_hull] = if let Some((_, known)) = hulls.0.get(&key) {
+                *known
+            } else {
+                let found = source_hulls(&outline, linear)?;
+                hulls
+                    .0
+                    .try_reserve(1)
+                    .map_err(|_| Error::limit("glyph hull allocation failed"))?;
+                hulls.0.insert(key, (Arc::clone(&outline), found));
+                found
+            };
             let source = u32::try_from(self.sources.len())
                 .map_err(|_| Error::limit("glyph source count exceeded"))?;
-            let mut lo = pagura_raster::Point::new(f64::INFINITY, f64::INFINITY);
-            let mut hi = pagura_raster::Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
-            let mut outline_lo = lo;
-            let mut outline_hi = hi;
-            let mut record = |p: pagura_raster::Point| -> Result<()> {
-                outline_lo.x = outline_lo.x.min(p.x);
-                outline_lo.y = outline_lo.y.min(p.y);
-                outline_hi.x = outline_hi.x.max(p.x);
-                outline_hi.y = outline_hi.y.max(p.y);
-                let p = p * linear;
-                if !p.is_finite() {
-                    return Err(Error::syntax("text matrix arithmetic overflow"));
-                }
-                lo.x = lo.x.min(p.x);
-                lo.y = lo.y.min(p.y);
-                hi.x = hi.x.max(p.x);
-                hi.y = hi.y.max(p.y);
-                Ok(())
-            };
-            for segment in outline.segments() {
-                match *segment {
-                    pagura_raster::Segment::MoveTo(p) | pagura_raster::Segment::LineTo(p) => {
-                        record(p)?;
-                    }
-                    pagura_raster::Segment::CubicTo(a, b, c) => {
-                        record(a)?;
-                        record(b)?;
-                        record(c)?;
-                    }
-                    pagura_raster::Segment::Close => {}
-                }
-            }
             self.sources
                 .try_reserve(1)
                 .map_err(|_| Error::limit("glyph source allocation failed"))?;
@@ -189,8 +213,8 @@ impl GlyphRun {
             self.sources.push(GlyphSource {
                 outline,
                 linear,
-                hull: [lo, hi],
-                outline_hull: [outline_lo, outline_hi],
+                hull,
+                outline_hull,
             });
             self.index.insert(key, source);
             source
@@ -333,7 +357,8 @@ impl GlyphSource {
         let origin = origin * device;
         point_hull(relative.map(|p| pagura_raster::Point::new(p.x + origin.x, p.y + origin.y)))
     }
-    fn relative_hull(&self, device: Transform) -> [pagura_raster::Point; 2] {
+    /// The device hull of the glyph at a device origin of zero.
+    pub(crate) fn relative_hull(&self, device: Transform) -> [pagura_raster::Point; 2] {
         let linear = self.linear.then(Transform::new(
             device.a, device.b, device.c, device.d, 0.0, 0.0,
         ));
@@ -378,7 +403,7 @@ struct CachedGeometry {
 /// Optional per-render working memory; neither output nor work limits use hits.
 #[derive(Debug, Default)]
 pub(crate) struct GlyphCache {
-    entries: std::collections::HashMap<GlyphKey, CachedGeometry>,
+    entries: crate::hash::FastMap<GlyphKey, CachedGeometry>,
     bytes: usize,
     maximum: usize,
 }
@@ -589,6 +614,17 @@ impl DisplayList {
     /// # Errors
     /// As [`Self::render`], plus `InvalidArgument` for tiles outside the page.
     pub fn render_tile(&self, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
+        self.render_tile_with(options, tile, crate::compositor::Lent::default())
+    }
+
+    /// As [`Self::render_tile`], with storage a rendering context lends to
+    /// the competitive path.
+    pub(crate) fn render_tile_with(
+        &self,
+        options: &RenderOptions,
+        tile: Tile,
+        lent: crate::compositor::Lent<'_>,
+    ) -> Result<Pixmap> {
         let (width, height) = self.device_size(options)?;
         if tile.width == 0
             || tile.height == 0
@@ -596,6 +632,14 @@ impl DisplayList {
             || tile.y.checked_add(tile.height).is_none_or(|n| n > height)
         {
             return Err(Error::invalid_argument("tile lies outside the page"));
+        }
+        if options.accuracy == crate::Accuracy::Competitive {
+            match crate::compositor::render_competitive(self, options, tile, lent) {
+                // The competitive path's own working budgets must not make a
+                // page fail that the exact path renders within its limits.
+                Err(error) if error.kind == pagura_core::ErrorKind::Limit => {}
+                result => return result,
+            }
         }
         if self.preview_separations(options)?.enabled
             || self.group.knockout
@@ -837,6 +881,7 @@ mod tests {
                 Arc::clone(&path),
                 Transform::translate(x, 0.0),
                 Position::Unknown,
+                &mut GlyphHulls::default(),
             )
             .unwrap();
         }
@@ -883,6 +928,7 @@ mod tests {
             Arc::new(path.finish()),
             Transform::new(1e-5, 0.0, 0.0, 1e-5, 5e11, 0.0),
             Position::Unknown,
+            &mut GlyphHulls::default(),
         )
         .unwrap();
         let device = Transform::new(1e6, 0.0, 0.0, 1e6, -5e17, 0.0);
@@ -1032,7 +1078,13 @@ mod tests {
         let mut run = run(0.4, &[0.0], 1.0);
         let outline = Arc::clone(&run.sources[0].outline);
         let signed = Transform::new(1.0, -0.0, -0.0, 1.0, 0.0, 0.0);
-        run.push(outline, signed, Position::Unknown).unwrap();
+        run.push(
+            outline,
+            signed,
+            Position::Unknown,
+            &mut GlyphHulls::default(),
+        )
+        .unwrap();
         assert_ne!(run.glyphs[0].source, run.glyphs[1].source);
         let limits = Limits::default();
         let mut cache = GlyphCache::new(limits.decoded_bytes);

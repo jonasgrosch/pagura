@@ -11,11 +11,16 @@ use pagura_core::{Error, Limits, Result};
 use rgb::{Offsets, Rgb};
 
 // T.81 Figure A.6 diagonal coefficient order, independent of any encoder.
-const ORDER: [usize; 64] = [
+pub(in crate::dct) const ORDER: [usize; 64] = [
     0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20,
     13, 6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51, 58, 59,
     52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63,
 ];
+
+/// Whether the target lacks a rounding instruction: baseline x86-64 calls a
+/// library function for `round`.
+const NO_ROUNDING_INSTRUCTION: bool =
+    cfg!(all(target_arch = "x86_64", not(target_feature = "sse4.1")));
 
 #[expect(
     clippy::cast_possible_truncation,
@@ -23,7 +28,27 @@ const ORDER: [usize; 64] = [
     reason = "rounded samples are clamped to the byte domain"
 )]
 fn sample(value: f64) -> u8 {
-    value.round().clamp(0.0, 255.0) as u8
+    if NO_ROUNDING_INSTRUCTION {
+        sample_by_truncation(value)
+    } else {
+        value.round().clamp(0.0, 255.0) as u8
+    }
+}
+
+/// [`sample`] from the truncation and its remainder, which is exact: below
+/// 2^52 by Sterbenz's lemma (or as the value itself below 1), and from there
+/// every value is integral. Saturating conversions keep NaN, infinities and
+/// huge values in their bytes.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    reason = "saturating conversions, clamped to the byte domain"
+)]
+fn sample_by_truncation(value: f64) -> u8 {
+    let truncated = value as i64;
+    let rounded = truncated.saturating_add(i64::from(value - truncated as f64 >= 0.5));
+    rounded.clamp(0, 255) as u8
 }
 
 pub(super) trait Sample: Copy + Default {

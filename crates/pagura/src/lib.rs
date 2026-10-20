@@ -39,7 +39,7 @@ pub use pagura_raster::{Pixmap, Rgba8};
 /// Form appearance programs and resources kept as data (12.7.4.3).
 pub use pagura_render::form_appearance;
 pub use pagura_render::{
-    DisplayList, OverprintPreview, Provider, RenderContext, RenderOptions, SearchOptions,
+    Accuracy, DisplayList, OverprintPreview, Provider, RenderContext, RenderOptions, SearchOptions,
     TextMatch, TextPage, Tile, compile_page_with, compile_page_with_text, device_size,
     render_page_with, render_tile_with,
 };
