@@ -381,6 +381,7 @@ viewport.addEventListener('touchmove', (event) => {
 }, { passive: false });
 for (const type of ['touchend', 'touchcancel']) viewport.addEventListener(type, () => { pinch = null; });
 window.addEventListener('keydown', (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') { event.preventDefault(); if (handle !== null) void editor.save(); return; }
   if (['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON'].includes(event.target?.tagName) || event.target?.closest?.('[role=tree]') || event.altKey) return;
   if (['PageDown', 'PageUp', 'Home', 'End'].includes(event.key)) {
     event.preventDefault(); void navigate(event.key === 'Home' ? 0 : event.key === 'End' ? layout.count - 1 : page + (event.key === 'PageDown' ? 1 : -1));
