@@ -166,6 +166,7 @@ fn paint_checked(list: &DisplayList, options: &RenderOptions) -> Result<Option<P
         || command.clip.is_some()
         || image.mask.is_some()
         || image.matte.is_some()
+        || image.decoded.reduction.is_some()
         || !matches!(image.decoded.mask, MaskKind::None)
         || !matches!(
             (&image.space, components),

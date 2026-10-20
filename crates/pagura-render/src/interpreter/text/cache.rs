@@ -216,7 +216,7 @@ pub(in crate::interpreter) struct Cache {
     resources: Vec<Dictionary>,
     pub(in crate::interpreter) page_resources: Option<Arc<Dictionary>>,
     pub(in crate::interpreter) images:
-        BTreeMap<(pagura_core::ObjectId, usize), Arc<super::super::images::Image>>,
+        BTreeMap<(pagura_core::ObjectId, usize, u8), Arc<super::super::images::Image>>,
     pub(super) bytes: usize,
     pub(super) entries: usize,
 }

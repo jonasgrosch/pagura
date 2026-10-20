@@ -197,9 +197,46 @@ pub struct DecodedImage {
     pub mask: MaskKind,
     /// `/Interpolate`.
     pub interpolate: bool,
+    /// Present when a JPEG image was reconstructed near its drawn size;
+    /// `width` and `height` then count its reduced cells.
+    pub reduction: Option<Reduction>,
+}
+
+/// A JPEG image reconstructed with fewer samples than its dictionary
+/// declares, in the [`deferred::SampleLayout::Cells`] layout: an
+/// approximate path (ADR 0004).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Reduction {
+    /// Samples kept per eight-sample block axis: 1, 2, 3, 4 or 6.
+    pub cells: u8,
+    /// The declared `/Width` in samples (Table 87).
+    pub width: u32,
+    /// The declared `/Height` in samples (Table 87).
+    pub height: u32,
+}
+
+impl Reduction {
+    /// The declared image extent in reduced cells. A final cell that
+    /// reaches into its block's padding covers only part of a cell.
+    pub fn extent(&self) -> (f64, f64) {
+        let scale = f64::from(self.cells) / 8.0;
+        (
+            f64::from(self.width) * scale,
+            f64::from(self.height) * scale,
+        )
+    }
 }
 
 impl DecodedImage {
+    /// The extent of the image's unit square in stored samples: its
+    /// dimensions, or the declared extent of a [`Reduction`].
+    pub fn extent(&self) -> (f64, f64) {
+        self.reduction.map_or(
+            (f64::from(self.width), f64::from(self.height)),
+            |reduction| reduction.extent(),
+        )
+    }
+
     /// Device fallback for an embedded colour description that the painter
     /// cannot support (7.4.9). The original profile or enumerated space remains
     /// available in [`ImageKind::EmbeddedColor`].

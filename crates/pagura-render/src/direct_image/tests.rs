@@ -23,6 +23,7 @@ fn list(rotation: Rotation) -> DisplayList {
         decode: None,
         mask: MaskKind::None,
         interpolate: false,
+        reduction: None,
     };
     let image = Image {
         decoded,

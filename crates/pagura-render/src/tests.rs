@@ -1088,8 +1088,15 @@ fn image_reduction_half_levels_choose_a_nearest_level() {
 
 /// A one-page PDF drawing `jpeg` (`width` by `height` DeviceRGB samples) by
 /// the content `placement`, on a `side` by `side` point page.
-fn jpeg_page(jpeg: &[u8], (width, height): (u32, u32), side: u32, placement: &str) -> Vec<u8> {
-    let content = format!("q {placement} cm /Im Do Q");
+/// A page of `side` points that runs `marks`, then draws a DCTDecode image of
+/// `width` by `height` samples at `placement`.
+fn jpeg_page(
+    jpeg: &[u8],
+    (width, height): (u32, u32),
+    side: u32,
+    (marks, placement): (&str, &str),
+) -> Vec<u8> {
+    let content = format!("{marks} q {placement} cm /Im Do Q");
     let mut objects: Vec<Vec<u8>> = vec![
         b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_vec(),
@@ -1141,10 +1148,82 @@ fn jpeg_page(jpeg: &[u8], (width, height): (u32, u32), side: u32, placement: &st
 }
 
 #[test]
+fn drawn_size_jpeg_cells_are_approximate_and_assemble_from_tiles() {
+    use crate::Accuracy;
+    let jpeg = pagura_testkit::fixture("image", "jpeg-interleaved-420.in");
+    // A mark before the image keeps it from the direct path, which decodes
+    // exactly. 17 samples over 4.25 device pixels keep six cells per block
+    // axis, over 8.5 pixels all eight; a quarter turn and a flip change
+    // nothing.
+    for (placement, reduced) in [
+        ("4.25 0 0 4.25 0.5 0.25", true),
+        ("0 4.25 -4.25 0 5 0.5", true),
+        ("8.5 0 0 -8.5 0.25 9", false),
+    ] {
+        let bytes = || jpeg_page(&jpeg, (17, 17), 10, ("0 0 1 rg 9 9 1 1 re f", placement));
+        let document = Document::open(bytes(), &OpenOptions::default()).unwrap();
+        let page = document.page(0).unwrap();
+        let exact = RenderOptions::default();
+        let competitive = RenderOptions {
+            accuracy: Accuracy::Competitive,
+            ..RenderOptions::default()
+        };
+        let difference = |a: &pagura_raster::Pixmap, b: &pagura_raster::Pixmap| {
+            a.data()
+                .iter()
+                .zip(b.data())
+                .map(|(&a, &b)| a.abs_diff(b))
+                .max()
+                .unwrap()
+        };
+        // A separately compiled list keeps every sample.
+        let unreduced = compile_page(&document, page)
+            .unwrap()
+            .render(&competitive)
+            .unwrap();
+        let reference = crate::render_page(&document, page, &exact).unwrap();
+        let approximate = crate::render_page(&document, page, &competitive).unwrap();
+        let cells = difference(&approximate, &unreduced);
+        assert_eq!(cells > 0, reduced, "{placement}: {cells}");
+        let worst = difference(&approximate, &reference);
+        assert!(worst <= 24, "{placement}: {worst}");
+        let context = crate::RenderContext::new(std::sync::Arc::new(
+            Document::open(bytes(), &OpenOptions::default()).unwrap(),
+        ));
+        let shared = context.document().page(0).unwrap();
+        assert_eq!(
+            context.render_page(shared, &competitive).unwrap().data(),
+            approximate.data()
+        );
+        assert_eq!(
+            context.render_page(shared, &exact).unwrap().data(),
+            reference.data()
+        );
+        for y in 0..approximate.height() {
+            for x in 0..approximate.width() {
+                let tile = Tile {
+                    x,
+                    y,
+                    width: 1,
+                    height: 1,
+                };
+                let pixel = crate::render_tile(&document, page, &competitive, tile).unwrap();
+                let i = usize::try_from((y * approximate.width() + x) * 4).unwrap();
+                assert_eq!(
+                    pixel.data(),
+                    &approximate.data()[i..i + 4],
+                    "{placement} ({x},{y})"
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn recycled_surface_storage_renders_the_same_pixels() {
     use crate::Accuracy;
     let jpeg = pagura_testkit::fixture("image", "jpeg-interleaved-420.in");
-    let bytes = jpeg_page(&jpeg, (17, 17), 10, "4.25 0 0 4.25 0.5 0.25");
+    let bytes = jpeg_page(&jpeg, (17, 17), 10, ("", "4.25 0 0 4.25 0.5 0.25"));
     let context = crate::RenderContext::new(std::sync::Arc::new(
         Document::open(bytes, &OpenOptions::default()).unwrap(),
     ));
