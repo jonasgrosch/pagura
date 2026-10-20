@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "frozen_utc": "2026-10-20T22:51:01.705156+00:00",
+  "authorization": "User confirmed all other Pagura compute is paused.",
+  "protocol": "Preflight-only refusals launch no benchmark command and reveal no performance samples. They are retained scheduling events, not confirmation analyses, and may be repeated while waiting for the already authorized quiet period. The single replacement opportunity is consumed when the guard starts the benchmark process, even if that process fails before producing a sample. After that launch there is no automatic restart. The sampling plan, candidate, references, seed and decision thresholds remain frozen.",
+  "measured_plan": "scene-index-resume-plan.json",
+  "review": "Independent benchmark reviewer agreed before any measured child launched.",
+  "reservation": "The requested window was about 35 minutes, not an absolute timestamp. Each launched job has a 35 minute cancellation deadline; jobs remain serial and the contention guard remains active."
+}

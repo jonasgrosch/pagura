@@ -168,3 +168,62 @@ attestations. The first focused run exposed macOS temporary-path alias assumptio
 in test fixtures; canonical paths fixed those assertions before the successful
 rerun. Independent review also moved terminal receipt publication after lock
 cleanup so a failed cleanup/write cannot leave an earlier success receipt.
+
+## S0a: lazy root bounds experiment (2026-10-21)
+
+The worktree now contains the first renderer optimization candidate: reuse of
+existing glyph-run device hulls across compositor bands/chunks in both policies.
+It retains the original command traversal, error ordering and work charges.
+Twelve focused tests and strict all-target Clippy passed. This is an experimental
+candidate; the complete repository check and performance admission are pending.
+
+The 24-cell pilot retained and independently verified all 480 outputs, including
+warmups. Eligible full-render median ratios were approximately 0.817 in each
+mode. These small-sample results do not meet the whole P1 gate and do not show a
+general text or competitor speedup. Default knockout text is outside admission.
+The fixed index object occupies 2,064 bytes on the current native target.
+
+The planned 200-pair confirmation was stopped when another worktree started a
+full check inside the reserved compute window. Its entire partial run is invalid;
+its timings have not been analyzed or pooled. The foreign job began after the
+pilot had ended. The single replacement preflight then detected a new release
+build in `practical-gould` and refused to launch; it produced no samples. The
+performance gate remains inconclusive, with no automatic third confirmation.
+The active contention guard passed controlled success, refusal, cancellation
+and deadline checks. It never signals another worktree's process. A subsequent
+full-check preflight refused a fresh `friendly-rosalind` release build, before
+launching any validation. The candidate remains uncommitted pending the required
+complete check.
+
+See the [experiment record](../../benchmarks/results/scene-index-experiment.md)
+for evidence paths, hashes, narrow scope and the still-open gates. No candidate
+commit or completed implementation acceptance is claimed here.
+
+The user later confirmed other compute was paused. A frozen, independently
+reviewed resumption waited through zero-child preflight refusals, then launched
+confirmation004 after three quiet snapshots. A new `practical-gould` release
+build began about one minute later; the active guard stopped our child and
+retained process evidence. The entire partial run is excluded without timing
+analysis. Full validation and committing remain pending; no automatic measured
+restart is planned. See the experiment record for exact timestamps and hashes.
+
+### Completed S0a correctness validation
+
+On 2026-10-21 the user instructed “just go ahead”. The complete
+`python3 tools/check.py --jobs 1` workflow then passed under the cooperative
+runner at `nice -n 10`, without requiring source changes. Another worktree was
+active; this is correctness validation, not an uncontended performance run.
+
+Policy, all 20 fixture areas/13,499 files, 107 bundled files, formatting, workspace
+Clippy/tests, documentation/doc tests, native/WASM builds, host integration,
+182 Python tests and all 1,237 generated-PDF conformance cases passed. All
+12 new bounds-reuse tests passed within the full suite.
+
+The runner recorded 965.647 seconds, both exit codes zero,
+and unchanged source SHA-256
+`44dbd6cee7134c2304dbd51b73291d46a7ff630bd0937c02d71c4dfb38bad91f`.
+The [experiment record](../../benchmarks/results/scene-index-experiment.md)
+binds the log and receipt hashes.
+
+This slice is retained as an experimental branch change. P1 remains unpassed;
+no production admission, general speedup or competitor superiority is claimed.

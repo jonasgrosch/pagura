@@ -39,6 +39,15 @@ conformance cases. Controlled-runner attestation and matrix aggregation
 remain release prerequisites. No renderer behavior or measured speed changes
 are claimed by these tooling slices.
 
+The renderer prototype adds lazy root glyph-run hull reuse, shared by both
+compositor modes. The complete single-job check passed on 2026-10-21, including
+12 new regression tests, 182 Python tests and 1,237 PDF conformance cases. It
+remains **experimental and not performance-admitted**: confirmation runs were
+canceled for external compute contention. It does not implement sparse dispatch
+or improve default-knockout text. The
+[experiment record](../benchmarks/results/scene-index-experiment.md) preserves
+the pilot, invalid confirmation and fixed memory overhead.
+
 `RenderOptions::accuracy` selects `Accuracy::Exact`, the default, which keeps
 every pixel within one level of its exact result, or `Accuracy::Competitive`,
 an approximate path measured against ADR 0004's competitive accuracy gate:

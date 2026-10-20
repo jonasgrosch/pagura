@@ -85,6 +85,27 @@ rule means broadcast/legacy execution, not empty coverage.
 
 ## Spatial scheduling without changing semantics
 
+The first renderer experiment, **S0a**, reuses existing glyph-run hulls lazily
+in `compositor/index.rs`. It retains full command traversal. Admission is limited
+to the first 64 root command ordinals, runs with at least two glyph sources,
+repeated bands/chunks, and finite ordered bounds under the canonical transform.
+Groups and other scopes continue through the existing path. The first hull is
+computed after the same semantic work charges; later visits reuse its bits.
+Visibility, padding and rounding remain in `regions.rs`.
+
+This experiment uses fixed stack storage rather than dynamically allocated
+metadata: the index object is 2,064 bytes on the current native target, even
+when disabled. That is not a measurement of total stack-frame growth. It is
+outside the decoded-heap/surface allowance, allocates no heap storage, performs
+no preparatory geometry pass, and does not change semantic budget admission.
+The fixed overhead and measured peak memory remain subject to P1. This is an
+explicit experiment detail, not a waiver of the live-memory rules below for
+future dynamic preparation. Sparse command dispatch remains S1.
+
+The [experiment record](../../benchmarks/results/scene-index-experiment.md)
+records correctness checks and the still-incomplete performance decision.
+The candidate is not admitted as a speed optimization.
+
 1. The first implementation indexes only commands whose existing visit is
    demonstrably effect-free outside a conservative bound. Keep uncertain
    strokes, shading/transfer work, groups, masks, and error-sensitive commands

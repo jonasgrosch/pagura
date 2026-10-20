@@ -1,0 +1,490 @@
+{
+  "schema": 1,
+  "status": "experimental-not-admitted",
+  "baseline_commit": "676a872eb9f6c279cbf1e3929ace3a0c99db9fc3",
+  "pilot": {
+    "path": "local/scene-index/pilot-001/report.json",
+    "sha256": "9b506b9b704c9eb7da4b4e4d71d6b870a0fcb3deeed356a8efe0c2dfdc1261cd",
+    "interpretation": "Exploratory only; completed before the foreign check began. No acceptance decision."
+  },
+  "confirmation": {
+    "path": "local/scene-index/confirmation-001/report.json",
+    "sha256": "cab29fc5e7994b6fe7bf5b760345989d2ad304867368a7c9179f255e5f0092d2",
+    "receipt_sha256": "df5407976dd32bdad80d960dda90c3727739e115e186769c6bb0650bf56299e5",
+    "status": "invalid-external-concurrent-compute",
+    "started_at": "2026-10-20T22:31:04.438599+00:00",
+    "ended_at": "2026-10-20T22:33:22.689690+00:00",
+    "exit_code": 143,
+    "statistics": "Not inspected, summarized, or pooled; the entire partial run is excluded."
+  },
+  "external_job": {
+    "pid": 86912,
+    "started_at": "2026-10-20T22:28:43+00:00",
+    "command": "python3 tools/check.py",
+    "worktree": "friendly-rosalind-1d61b0",
+    "detection": "Observed live through ps; root signaled only its own runner PID87728."
+  },
+  "validation": {
+    "focused_tests": "12 passed",
+    "clippy": "pagura-render all targets passed with -D warnings",
+    "full_check": "passed: full single-job workflow; correctness validation only",
+    "full_check_guard": {
+      "path": "local/scene-index/full-check-001-guard/guard.json",
+      "sha256": "16f432bf31af95d0974382df7a4df18748b97b54404737b7acdf47255b40d981",
+      "status": "refused-external-contention",
+      "started_utc": "2026-10-20T22:46:37.798546+00:00",
+      "exit_code": 75,
+      "external_worktree": "friendly-rosalind-1d61b0",
+      "command": "cargo build --release -p pagura",
+      "check_started": false
+    },
+    "full_check_result": {
+      "command": "python3 tools/check.py --jobs 1",
+      "outer_priority": "nice -n 10",
+      "status": "passed",
+      "scope": "Correctness validation under the user instruction just go ahead. Other Pagura work was active; this is not exclusive performance evidence.",
+      "started_utc": "2026-10-20T23:01:44.955054+00:00",
+      "ended_utc": "2026-10-20T23:17:50.602349+00:00",
+      "duration_seconds": 965.647,
+      "source_sha256": "44dbd6cee7134c2304dbd51b73291d46a7ff630bd0937c02d71c4dfb38bad91f",
+      "source_unchanged": true,
+      "child_exit_code": 0,
+      "wrapper_exit_code": 0,
+      "log_path": "local/scene-index/full-check-002.log",
+      "log_sha256": "24dc9734beaebfb1c46e0c433bb63dec5eb3ca64cec831fed8e0ef2ba9017283",
+      "receipt_path": "local/scene-index/full-check-002-receipt.json",
+      "receipt_sha256": "1ab4d04110f9430aa7e45abf09fc75f7428fd31bc782cf7c96c1dd0ef7d10f7a",
+      "python_tests": 182,
+      "pdf_conformance_passed": 1237,
+      "pdf_conformance_failed": 0,
+      "new_regression_tests_passed": 12
+    }
+  },
+  "candidate": {
+    "production_admission": false,
+    "sparse_dispatch": false,
+    "accuracy_policy_changed": false,
+    "fixed_index_object_bytes_current_target": 2064,
+    "memory_note": "This is object size, not measured total stack growth; present even when disabled.",
+    "commit_status": "Validated experimental branch candidate; no production performance admission"
+  },
+  "pilot_cells": [
+    {
+      "case": "default-knockout64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 1.204698267190692,
+        "p95_ratio": 0.7847987047468494,
+        "median_upper": 1.4421189359476203,
+        "p95_upper": 1.2155116360581957,
+        "median_lower": 0.7486083223489431,
+        "p95_lower": 0.7486083223489431
+      },
+      "peak_rss_ratio": 0.9271349460798601
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "tiled",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9491606861722791,
+        "p95_ratio": 0.9867306919180192,
+        "median_upper": 1.1078690570311331,
+        "p95_upper": 1.048806727243177,
+        "median_lower": 0.9307272289255567,
+        "p95_lower": 0.9335110745020917
+      },
+      "peak_rss_ratio": 0.9982558139534884
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "tile",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 1.0028400852878465,
+        "p95_ratio": 0.7527408737283064,
+        "median_upper": 1.1385184918951947,
+        "p95_upper": 1.072776119402985,
+        "median_lower": 0.6301125541125541,
+        "p95_lower": 0.6906193362193362
+      },
+      "peak_rss_ratio": 1.0335570469798658
+    },
+    {
+      "case": "tiny",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 1.0595816822582622,
+        "p95_ratio": 0.7705950164050723,
+        "median_upper": 1.2417173904162753,
+        "p95_upper": 1.2109115648488922,
+        "median_lower": 0.6294211145758764,
+        "p95_lower": 0.6334688231796838
+      },
+      "peak_rss_ratio": 0.976303317535545
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "target",
+      "latency": {
+        "median_ratio": 0.8175548090765751,
+        "p95_ratio": 0.7832843594036408,
+        "median_upper": 0.9470774711305041,
+        "p95_upper": 0.9340558987434912,
+        "median_lower": 0.6633725931361577,
+        "p95_lower": 0.687780487471575
+      },
+      "peak_rss_ratio": 0.9908116385911179
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "target",
+      "latency": {
+        "median_ratio": 0.8172322854999721,
+        "p95_ratio": 1.0717776881365364,
+        "median_upper": 1.1392227051904884,
+        "p95_upper": 1.1392227051904884,
+        "median_lower": 0.7861379448420842,
+        "p95_lower": 0.7871518458819803
+      },
+      "peak_rss_ratio": 1.1280637254901962
+    },
+    {
+      "case": "nested64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9652888194309729,
+        "p95_ratio": 1.1700852101532413,
+        "median_upper": 1.2508933835538767,
+        "p95_upper": 1.2508933835538767,
+        "median_lower": 0.6489807360657542,
+        "p95_lower": 0.6489807360657542
+      },
+      "peak_rss_ratio": 0.9977392614920875
+    },
+    {
+      "case": "overcapacity128",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.8226919305127487,
+        "p95_ratio": 1.0497608168496437,
+        "median_upper": 1.2702094808126412,
+        "p95_upper": 1.150167447631088,
+        "median_lower": 0.7602424500073579,
+        "p95_lower": 0.783367582754806
+      },
+      "peak_rss_ratio": 1.0330532212885155
+    },
+    {
+      "case": "tiny",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9278688524590164,
+        "p95_ratio": 0.5162524646043823,
+        "median_upper": 1.0477992831541219,
+        "p95_upper": 0.9584786885245902,
+        "median_lower": 0.47174643423137874,
+        "p95_lower": 0.47174643423137874
+      },
+      "peak_rss_ratio": 0.9509803921568627
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "tiled",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9306756872588641,
+        "p95_ratio": 1.010791582029162,
+        "median_upper": 1.305579629596747,
+        "p95_upper": 1.1245777339949556,
+        "median_lower": 0.7730818457393062,
+        "p95_lower": 0.8432116493359575
+      },
+      "peak_rss_ratio": 1.0054757015742641
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9424486940278956,
+        "p95_ratio": 1.1722602513171525,
+        "median_upper": 1.2741426131511528,
+        "p95_upper": 1.2385639899395486,
+        "median_lower": 0.9097052350230187,
+        "p95_lower": 0.928197766710553
+      },
+      "peak_rss_ratio": 1.0084615384615385
+    },
+    {
+      "case": "default-knockout64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 1.026029700053858,
+        "p95_ratio": 1.0007580777572764,
+        "median_upper": 1.0454822147754173,
+        "p95_upper": 1.04215080922397,
+        "median_lower": 0.9728903450751701,
+        "p95_lower": 0.9839821720544919
+      },
+      "peak_rss_ratio": 0.9988929889298893
+    },
+    {
+      "case": "dense64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.822226632104859,
+        "p95_ratio": 1.2114888741812322,
+        "median_upper": 1.2974729265619291,
+        "p95_upper": 1.2974729265619291,
+        "median_lower": 0.7879060298212529,
+        "p95_lower": 0.8185140872948653
+      },
+      "peak_rss_ratio": 1.1187159297395517
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.7592977985036595,
+        "p95_ratio": 0.8123912916246453,
+        "median_upper": 1.1112583834081593,
+        "p95_upper": 1.0754475741971679,
+        "median_lower": 0.5437744823628654,
+        "p95_lower": 0.5827552875296145
+      },
+      "peak_rss_ratio": 0.9857677902621723
+    },
+    {
+      "case": "tiny",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.8941367639533526,
+        "p95_ratio": 0.8032089492864583,
+        "median_upper": 1.2746731866568077,
+        "p95_upper": 1.0815466518237888,
+        "median_lower": 0.595840434192673,
+        "p95_lower": 0.6640292857292075
+      },
+      "peak_rss_ratio": 0.9565217391304348
+    },
+    {
+      "case": "nested64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9838514445233929,
+        "p95_ratio": 1.0229535726385268,
+        "median_upper": 1.0657655153984902,
+        "p95_upper": 1.0498741054810015,
+        "median_lower": 0.9588095109374868,
+        "p95_lower": 0.9799846439867518
+      },
+      "peak_rss_ratio": 0.9543325526932084
+    },
+    {
+      "case": "dense64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.7963474343080309,
+        "p95_ratio": 0.7949082669459183,
+        "median_upper": 1.3108069897641803,
+        "p95_upper": 1.19181845598314,
+        "median_lower": 0.5424676961865742,
+        "p95_lower": 0.5547084612418406
+      },
+      "peak_rss_ratio": 0.9977924944812362
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "tile",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.8318997650743931,
+        "p95_ratio": 0.3016576911831158,
+        "median_upper": 0.9755877373177853,
+        "p95_upper": 0.8755414252153484,
+        "median_lower": 0.2555842656080837,
+        "p95_lower": 0.2613575845061951
+      },
+      "peak_rss_ratio": 0.9765625
+    },
+    {
+      "case": "one-source64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.6396307997740343,
+        "p95_ratio": 0.7988007805912802,
+        "median_upper": 1.5736192421746293,
+        "p95_upper": 1.0527688129549408,
+        "median_lower": 0.4527471935037654,
+        "p95_lower": 0.48741532191441317
+      },
+      "peak_rss_ratio": 0.9967767929089444
+    },
+    {
+      "case": "one-source64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.998230985479045,
+        "p95_ratio": 1.2822990772152385,
+        "median_upper": 1.629385203849219,
+        "p95_upper": 1.4042700968998645,
+        "median_lower": 0.8571610905845,
+        "p95_lower": 0.9457758494062348
+      },
+      "peak_rss_ratio": 0.9172245891661595
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.6758552478304164,
+        "p95_ratio": 0.7557712414014579,
+        "median_upper": 1.1069259718439124,
+        "p95_upper": 0.8766319720169767,
+        "median_lower": 0.4599293717008026,
+        "p95_lower": 0.5781188470433087
+      },
+      "peak_rss_ratio": 0.8979695431472081
+    },
+    {
+      "case": "tiny",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 1.0252812196653913,
+        "p95_ratio": 0.7185074448031276,
+        "median_upper": 1.148587643020595,
+        "p95_upper": 1.0977220287487282,
+        "median_lower": 0.6209490215403769,
+        "p95_lower": 0.6295945671391457
+      },
+      "peak_rss_ratio": 1.0
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.7466353612007882,
+        "p95_ratio": 0.705434079496608,
+        "median_upper": 1.5540886605329192,
+        "p95_upper": 1.0906182549997903,
+        "median_lower": 0.4886535137063359,
+        "p95_lower": 0.49689426623512334
+      },
+      "peak_rss_ratio": 1.0007739938080495
+    },
+    {
+      "case": "overcapacity128",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9506624311884033,
+        "p95_ratio": 1.1743370871945105,
+        "median_upper": 2.9647398062773433,
+        "p95_upper": 2.6026650118103776,
+        "median_lower": 0.38058881249744064,
+        "p95_lower": 0.4126346814052836
+      },
+      "peak_rss_ratio": 1.009433962264151
+    }
+  ],
+  "replacement_protocol": {
+    "status": "stopped: preflight refused external release build; no samples launched",
+    "identifier": "confirmation-002",
+    "measured_pairs": 200,
+    "warmups": 5,
+    "order_seed": 982451,
+    "cells": "same 24 cells",
+    "code_and_thresholds": "unchanged",
+    "supersedes": "The original sole-confirmation identifier only because confirmation-001 violated the execution conditions before sampling, independently of its outcomes.",
+    "guards": "Preflight and active exclusion monitoring; 35 minute window; no interim metric analysis.",
+    "stopping": "One replacement only. Any new contamination, expiry, cancellation, failed guard or unresolved statistical validity leaves the result inconclusive/not admitted. No automatic third attempt.",
+    "guard_sha256": "457c942acc97a64d6647cae5b0d3c83f3fa0b6ea29b8e9b3f67cefff4494fc10",
+    "guard_behavior_tests": "local/scene-index/guard-tests-002/results.json: success, refusal, live cancellation and expiry passed; foreign probe remained alive"
+  },
+  "confirmation_replacement": {
+    "status": "refused-external-contention",
+    "started_utc": "2026-10-20T22:45:32.874822+00:00",
+    "finished_utc": "2026-10-20T22:45:33.049460+00:00",
+    "exit_code": 75,
+    "samples_launched": 0,
+    "guard_path": "local/scene-index/confirmation-002-guard/guard.json",
+    "guard_sha256": "a518d5b283969b2c7e98e01eab2d30f7d0ddc2f8bbbf829359cfe1c1e293e2b5",
+    "receipt_path": "local/scene-index/confirmation-002-receipt.json",
+    "receipt_sha256": "92c3c03afe0534899f8d33ff29f01150560054932d7fd7551fcc50e8c8a902b8",
+    "external_worktree": "practical-gould-04128e",
+    "external_work": "cargo build --release with pagura-render rustc",
+    "interpretation": "Performance admission remains inconclusive. No automatic third confirmation attempt."
+  },
+  "user_authorized_resumption": {
+    "status": "invalid-external-concurrent-compute",
+    "authorization": "User confirmed all other Pagura compute paused.",
+    "frozen_plan": "scene-index-resume-plan.json",
+    "scheduling_clarification": "scene-index-scheduling-clarification.json",
+    "preflight_003": {
+      "status": "refused-before-child-launch",
+      "samples_launched": 0,
+      "path": "local/scene-index/confirmation-003-guard/guard.json",
+      "sha256": "12bca5e729f4c45a20688b6f9e2f19a26dc645bc3675c310af954b68c9743d19"
+    },
+    "measured_run": "confirmation-004",
+    "launched_utc": "2026-10-20T22:51:48.025252+00:00",
+    "finished_utc": "2026-10-20T22:52:56.056053+00:00",
+    "guard_exit_code": 143,
+    "wrapper_exit_code": 143,
+    "guard_path": "local/scene-index/confirmation-004-guard/guard.json",
+    "guard_sha256": "10aa223b78bf9215d1682e955b86285e32f92e7b3a72cd5f02e366a563378ec7",
+    "receipt_path": "local/scene-index/confirmation-004-receipt.json",
+    "receipt_sha256": "cd9dbd1eeb498edc5736a1f04f5801ae07aea1a35cf93b022cb392d2116c1b24",
+    "report_path": "local/scene-index/confirmation-004/report.json",
+    "report_sha256": "4a74000ee88e41de4788a91560609ee3aab7debf13e5bdfa6f4d8d979e531810",
+    "external_worktree": "practical-gould-04128e",
+    "external_pid": 11970,
+    "external_command": "cargo build --release",
+    "external_started_utc": "2026-10-20T22:52:51+00:00",
+    "statistics": "Entire partial run excluded; timings not inspected, analyzed or pooled. No automatic measured restart.",
+    "full_validation": "Held while foreign compute continues; not run in this resumed window."
+  }
+}
