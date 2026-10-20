@@ -442,7 +442,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     'outline-tree', 'page-label', 'reading-status', 'copy-page',
     'edit-open', 'form-status', 'form-reset', 'form-download',
     'document-sidebar', 'thumbnails-panel', 'thumbnail-list', 'thumbnails-tab', 'outline-tab', 'outline-sidebar',
-    'sidebar-toggle', 'rotate-view', 'empty-state', 'reading-dismiss', 'more-menu', 'diagnostics-dialog', 'diagnostics-open', 'diagnostics-close'];
+    'sidebar-toggle', 'rotate-view', 'empty-state', 'reading-dismiss', 'cache-summary', 'more-menu', 'diagnostics-dialog', 'diagnostics-open', 'diagnostics-close'];
   const elements = new Map(ids.map((id) => [id, new Element(id)]));
   elements.get('document-sidebar').hidden = true; // Thumbnail scheduling has its own bounded-queue tests.
   const original = new Map(['window', 'document', 'Worker', 'ImageData', 'requestAnimationFrame', 'crossOriginIsolated', 'fetch', 'navigator', 'ResizeObserver']

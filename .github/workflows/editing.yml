@@ -12,6 +12,7 @@ on:
       - 'tools/editing_host_test.mjs'
       - 'tools/form_*test.mjs'
       - 'tools/viewer_navigation_test.mjs'
+      - 'tools/tile_cache_test.mjs'
       - 'crates/pagura-render/src/form_appearance/**'
       - 'crates/pagura-render/src/form_appearance.rs'
       - '.github/workflows/editing.yml'
@@ -31,7 +32,9 @@ jobs:
         with:
           node-version: 26.8.1
       - name: Viewer navigation and thumbnail contracts
-        run: node tools/viewer_navigation_test.mjs
+        run: |
+          node tools/viewer_navigation_test.mjs
+          node tools/tile_cache_test.mjs
       - name: Install pinned Rust
         run: rustup toolchain install 1.99.1 --profile minimal --component clippy,rustfmt --target wasm32-wasip1
       - name: Independent readers

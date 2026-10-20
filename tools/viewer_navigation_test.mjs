@@ -14,6 +14,7 @@ for (const rotation of [0, 90, 180, 270]) {
 assert.deepEqual(rasterBounds({ left: 0, top: 0 }, { left: 20, top: 30, right: 80, bottom: 90 }, 600, 800, 270), { left: 510, top: 20, right: 570, bottom: 80 });
 assert.equal(rasterBounds({ left: 0, top: 0 }, { left: 900, top: 900, right: 1000, bottom: 1000 }, 600, 800, 90), null);
 
+const thumbnailDraws = [];
 class Element {
   constructor() { this.children = []; this.style = {}; this.attributes = {}; this.scrollTop = 0; this.clientHeight = 600; }
   addEventListener() {}
@@ -23,7 +24,7 @@ class Element {
   setAttribute(key, value) { this.attributes[key] = value; }
   removeAttribute(key) { delete this.attributes[key]; }
   get firstChild() { return this.children[0]; }
-  getContext() { return { putImageData() {} }; }
+  getContext() { return { putImageData() {}, drawImage(...args) { thumbnailDraws.push(args); } }; }
 }
 const original = { document: globalThis.document, ImageData: globalThis.ImageData };
 globalThis.document = { createElement: () => new Element() }; globalThis.ImageData = class {};
@@ -42,6 +43,17 @@ try {
   await thumbnails.renderNext(); assert.equal(metadata, 0, 'foreground rendering blocks thumbnail work');
   state.idle = true; await thumbnails.renderNext(); assert.equal(renders, 1);
   await thumbnails.renderNext(); assert.equal(renders, 2); assert.equal(thumbnails.cache.size, 2);
+  const firstThumbnail = thumbnails.cache.get(0);
+  assert.equal(firstThumbnail.canvas.height, 332, 'thumbnails render at two physical pixels per CSS pixel');
+  const patch = new Element(); Object.assign(patch.style, { left:'10px', top:'20px', width:'30px', height:'40px' });
+  const record = { info:{width:600,height:800}, zoom:1, layer:new Element(), buttonCanvases:[patch], previewCanvases:[] };
+  state.forms = index => index === 0 ? record : undefined; state.dirtyForms = true;
+  thumbnails.revision++; thumbnails.paint(0, thumbnails.rows.get(0));
+  assert.equal(renders, 2, 'draft compositing reuses field pixels without a host render or save');
+  const composed = thumbnailDraws.at(-1);
+  assert.equal(composed[0], patch); assert.ok(Math.abs(composed[1] - 4.15) < 1e-6); assert.ok(Math.abs(composed[2] - 8.3) < 1e-6);
+  state.forms = () => undefined; state.dirtyForms = false; thumbnails.revision++; thumbnails.paint(0, thumbnails.rows.get(0));
+  assert.equal(firstThumbnail.composite, null, 'discard/reset removes stale form artwork');
   state.visible = false; await thumbnails.renderNext(); assert.equal(renders, 2, 'hidden sidebar does no work');
   state.visible = true; let release;
   pending = { promise: new Promise(resolve => { release = resolve; }) };

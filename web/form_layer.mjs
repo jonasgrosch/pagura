@@ -2,6 +2,7 @@ import { pagePoint } from './page_geometry.mjs';
 
 /** Position controls in PDF user space; the same transform handles crop/rotation/zoom. */
 export function positionWidget(node, rect, info, zoom) {
+  node.style.setProperty?.('--field-ui-scale', String(info.userUnit * zoom));
   const [x0, y0, x1, y1] = rect;
   const origin = pagePoint(info, zoom, x0, y1), x = pagePoint(info, zoom, x0 + 1, y1), y = pagePoint(info, zoom, x0, y1 - 1);
   Object.assign(node.style, { width: `${x1 - x0}px`, height: `${y1 - y0}px`,

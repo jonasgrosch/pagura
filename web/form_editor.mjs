@@ -5,8 +5,8 @@ import { widgetControl, positionWidget } from './form_layer.mjs';
 
 /** Drafts live independently of virtualized page controls and immutable host documents. */
 export class FormEditor {
-  constructor({ state, adopt, download, redraw = () => {}, document: doc = document, preview = true }) {
-    Object.assign(this, { state, adopt, download, redraw, doc });
+  constructor({ state, adopt, download, redraw = () => {}, document: doc = document, preview = true, presentationChanged = () => {} }) {
+    Object.assign(this, { state, adopt, download, redraw, doc, presentationChanged });
     this.message = doc.getElementById('form-status'); this.saveButton = doc.getElementById('form-download');
     this.openButton = doc.getElementById('edit-open'); this.resetButton = doc.getElementById('form-reset');
     this.changes = new Map(); this.pages = new Map(); this.fields = null; this.editing = null;
@@ -34,7 +34,7 @@ export class FormEditor {
     ++this.token; this.prune([]); this.changes.clear(); this.fields = null; this.busy = false;
     const editing = this.editing; this.editing = null;
     if (editing?.owned) void editing.client.close(editing.handle).catch(() => {});
-    this.message.textContent = ''; this.controls();
+    this.message.textContent = ''; this.controls(); this.presentationChanged();
   }
   recovered() { void this.open({ keepDraft: true }); }
   async open({ keepDraft = false } = {}) {
@@ -87,17 +87,18 @@ export class FormEditor {
         }
       } catch (error) { if (token === this.token) this.message.textContent = `Form controls unavailable: ${error}`; }
     }
+    record.info = info; record.zoom = zoom;
     for (const control of record.controls) positionWidget(control.node, control.widget.rect, info, zoom);
     await this.buttons?.page(index, record, info, zoom);
     await this.preview?.page(index, record, info, zoom);
-    record.layer.inert = this.busy; record.layer.hidden = !this.active;
+    record.layer.inert = this.busy; record.layer.hidden = !this.active; this.presentationChanged();
   }
   change(change) {
     if (this.busy) return;
     this.changes.set(change.index, change); this.sync(); if (this.fields.get(change.index)?.kind !== 2) this.preview?.schedule();
     this.message.textContent = 'Unsaved changes'; this.controls();
   }
-  sync() { for (const record of this.pages.values()) for (const control of record.controls) control.sync(this.changes.get(control.field)); }
+  sync() { for (const record of this.pages.values()) for (const control of record.controls) control.sync(this.changes.get(control.field)); this.presentationChanged(); }
   async save() {
     if (this.busy) return;
     if (!this.changes.size) { this.download(); return; }

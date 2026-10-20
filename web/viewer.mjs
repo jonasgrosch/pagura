@@ -1,5 +1,7 @@
+import { TileCache, TilePreloader, formsAllowPreload } from './tile_cache.mjs';
+import { tilesInRegion, aheadRegion } from './tile_region.mjs';
 import { Thumbnails } from './thumbnails.mjs';
-import { rotatedSize, rotatePoint, rasterBounds, rotationTransform } from './view_rotation.mjs';
+import { rotatedSize, rotatePoint, rotationTransform } from './view_rotation.mjs';
 import { FormEditor } from './form_editor.mjs';
 import { pageUserPoint } from './page_geometry.mjs';
 import { ReadingView } from './reading_view.mjs';
@@ -13,10 +15,16 @@ import { requestPassword, cancelPassword } from './password.mjs';
 const $ = (id) => document.getElementById(id);
 const viewport = $('viewport'), surface = $('page-surface'), status = $('status'), errorBox = $('error');
 const pageInput = $('page'), zoomInput = $('zoom');
-const TILE = 256, MAX_TILES = 128, MAX_PAGES = 32, MAX_EXTENT = 10000000;
+const MAX_TILES = 128, MAX_PAGES = 32, MAX_EXTENT = 10000000;
 let client, handle = null, layout = new PageLayout(0), page = 0, zoom = 1;
 let documentEpoch = 0, generation = 0, drawing = false, scheduled = false, dirty = false;
 const infos = new Map(), views = new Map(), rotations = new Map();
+const tileCache = new TileCache();
+let direction = { axis: 'y', sign: 1 }, lastScroll = [0, 0], pointerDown = false, lastInteraction = 0;
+function interactionQuiet() {
+  return !pointerDown && !document.hidden && performance.now() - lastInteraction >= 500
+    && (document.activeElement?.id === 'file' || !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName));
+}
 const debug = new URL(window.location.href).searchParams.get('debug') === '1'
   && ['localhost', '127.0.0.1', '[::1]'].includes(new URL(window.location.href).hostname);
 let source = null, recoveryAttempts = 0, recovering = false;
@@ -31,12 +39,20 @@ const reader = new ReadingView({
 });
 const editor = new FormEditor({
   state: () => ({ client, handle, epoch: documentEpoch, recovery: source?.recovery, bytes: source?.bytes, password: source?.password }),
-  adopt: adoptSaved, download: downloadPdf, redraw: invalidate,
+  adopt: adoptSaved, download: downloadPdf, redraw: invalidate, presentationChanged: () => thumbnails?.refreshDrafts(),
+});
+const preloader = new TilePreloader({
+  allowed: () => handle !== null && !drawing && !dirty && interactionQuiet() && !editor.busy
+    && !editor.preview?.running && !editor.preview?.timer && formsAllowPreload(editor.active, editor.fields),
+  idle: () => (client?.queued ?? 0) === 0,
+  render: renderAhead, updated: () => { updateCacheStats(); thumbnails.schedule(); },
 });
 const thumbnails = new Thumbnails({
   state: () => ({ client, handle, epoch: documentEpoch, count: layout.count, page,
-    idle: !drawing && !dirty && !editor.busy, visible: !$('document-sidebar').hidden && !$('thumbnails-panel').hidden,
-    label: index => reader.label(index), rotation: index => rotations.get(index) ?? 0 }),
+    idle: !drawing && !dirty && !editor.busy && !editor.preview?.running && !editor.preview?.timer
+      && interactionQuiet() && !preloader.running && !(preloader.allowed() && preloader.jobs.length), visible: !$('document-sidebar').hidden && !$('thumbnails-panel').hidden,
+    label: index => reader.label(index), rotation: index => rotations.get(index) ?? 0,
+    forms: index => editor.pages.get(index), dirtyForms: editor.changes.size > 0 }),
   navigate, panel: $('thumbnails-panel'), list: $('thumbnail-list'),
 });
 function displaySize(info, index = page) { return rotatedSize(info.width, info.height, rotations.get(index) ?? 0); }
@@ -54,7 +70,7 @@ async function adoptSaved(bytes, epoch) {
   const current = client, previous = handle, position = anchor();
   const opened = await current.open(bytes, source.recovery);
   if (epoch !== documentEpoch) { await current.close(opened.document); return false; }
-  ++documentEpoch; handle = opened.document;
+  ++documentEpoch; tileCache.clear(); preloader.cancel(); handle = opened.document;
   errorBox.textContent = ''; errorBox.hidden = true;
   source.password.fill(0); source = { bytes, password: new Uint8Array(), recovery: source.recovery };
   reader.reset(); infos.clear(); views.clear(); surface.replaceChildren();
@@ -88,12 +104,13 @@ function createClient() {
 }
 async function recover(error) {
   if (recovering) return;
+  tileCache.clear(); preloader.cancel();
   if (!source || recoveryAttempts >= 1) {
     handle = null; client?.destroy();
     for (const view of views.values()) view.element.remove(); views.clear();
     report(`${error}. Automatic recovery stopped; reopen the file to retry.`); return;
   }
-  recovering = true; recoveryAttempts++;
+  recovering = true; recoveryAttempts++; tileCache.clear(); preloader.cancel();
   const saved = source, position = anchor(), epoch = ++documentEpoch;
   handle = null; infos.clear(); views.clear(); surface.replaceChildren();
   report(`${error}. Restarting the PDF host…`); status.textContent = 'Recovering document…';
@@ -118,6 +135,7 @@ async function recover(error) {
   } finally { recovering = false; }
 }
 function invalidate() {
+  preloader.cancel();
   if (handle !== null) { generation = client.invalidate(handle); status.textContent = 'Updating visible pages…'; }
   dirty = true; schedule();
 }
@@ -195,25 +213,62 @@ function visiblePages() {
   return Array.from({ length: last - first + 1 }, (_, offset) => first + offset);
 }
 function tileRequests(index, info) {
-  const ratio = window.devicePixelRatio, scale = zoom * ratio;
-  const width = Math.max(1, Math.ceil(info.width * scale - 1e-9)), height = Math.max(1, Math.ceil(info.height * scale - 1e-9));
-  const bounds = views.get(index).element.getBoundingClientRect(), visible = viewport.getBoundingClientRect();
-  const region = rasterBounds(bounds, visible, info.width * zoom, info.height * zoom, rotations.get(index) ?? 0);
-  if (!region) return [];
-  const left = Math.max(0, Math.floor(region.left * ratio / TILE) * TILE);
-  const top = Math.max(0, Math.floor(region.top * ratio / TILE) * TILE);
-  const right = Math.min(width, Math.ceil(region.right * ratio));
-  const bottom = Math.min(height, Math.ceil(region.bottom * ratio));
-  const requests = [];
-  for (let y = top; y < bottom; y += TILE) for (let x = left; x < right; x += TILE) {
-    if (requests.length >= MAX_TILES) throw new Error('Visible page exceeds the tile budget; use a smaller window');
-    requests.push({ x, y, width: Math.min(TILE, width - x), height: Math.min(TILE, height - y) });
-  }
-  return requests;
+  return tilesInRegion(info, zoom, window.devicePixelRatio, rotations.get(index) ?? 0,
+    views.get(index).element.getBoundingClientRect(), viewport.getBoundingClientRect(), MAX_TILES);
+}
+function removeView(index, view) {
+  // Detach cached canvases from discarded page trees so they cannot retain form/text DOM.
+  for (const canvas of view.tiles.values()) canvas.remove();
+  view.tiles.clear(); view.element.remove(); views.delete(index);
+}
+function tileCanvas(image) {
+  const canvas = document.createElement('canvas'); canvas.className = 'tile'; canvas.width = image.width; canvas.height = image.height;
+  canvas.setAttribute('aria-hidden', 'true');
+  const context = canvas.getContext('2d'); if (!context) throw new Error('Canvas 2D rendering is unavailable');
+  context.putImageData(new ImageData(new Uint8ClampedArray(image.rgba.buffer, image.rgba.byteOffset, image.rgba.byteLength), image.width, image.height), 0, 0);
+  return canvas;
+}
+function updateCacheStats() {
+  const stats = tileCache.stats();
+  $('cache-summary').textContent = `Page tiles: ${(stats.bytes / 1048576).toFixed(1)} MiB / 64 MiB · ${stats.entries} cached · ${stats.hits} reused · ${preloader.completed} preloaded`;
+}
+function planAhead() {
+  if (!preloader.allowed() || !layout.count) return;
+  const region = aheadRegion(viewport.getBoundingClientRect(), direction), surfaceBounds = surface.getBoundingClientRect();
+  const first = layout.pageAt(viewport.scrollTop + region.top - viewport.getBoundingClientRect().top - 24, zoom);
+  const last = layout.pageAt(viewport.scrollTop + region.bottom - viewport.getBoundingClientRect().top - 24, zoom);
+  const pages = Array.from({ length: Math.min(3, last - first + 1) }, (_, i) => direction.sign > 0 ? first + i : last - i);
+  const jobs = pages.map(index => ({ index, info: infos.get(index)?.width ? infos.get(index) : null, region, surfaceBounds,
+    epoch: documentEpoch, token: generation, client, handle, zoom, ratio: window.devicePixelRatio, rotation: rotations.get(index) ?? 0,
+    top: layout.top(index, zoom), direction: { ...direction } }));
+  preloader.plan(Array.from({ length: 16 }, (_, i) => jobs[i % jobs.length]));
+}
+async function renderAhead(job, current) {
+  const valid = () => current() && job.epoch === documentEpoch && job.token === generation && job.client === client;
+  if (!valid()) return false;
+  if (!job.info) job.info = geometry(await job.client.pageInfo(job.handle, job.index));
+  if (!valid()) return false;
+  const size = rotatedSize(job.info.width, job.info.height, job.rotation), scale = job.zoom * job.ratio;
+  const bounds = { left: job.surfaceBounds.left + (parseFloat(surface.style.width) - size.width * job.zoom) / 2,
+    top: job.surfaceBounds.top + job.top };
+  const tiles = tilesInRegion(job.info, job.zoom, job.ratio, job.rotation, bounds, job.region);
+  tiles.sort((a, b) => {
+    const coordinate = tile => rotatePoint(tile.x / job.ratio, tile.y / job.ratio, job.info.width * job.zoom, job.info.height * job.zoom, job.rotation)[job.direction.axis === 'y' ? 1 : 0];
+    return job.direction.sign * (coordinate(a) - coordinate(b));
+  });
+  const tile = tiles.find(tile => !tileCache.has(TileCache.key(job.index, scale, tile)));
+  if (!tile) return false;
+  const image = await job.client.renderGenerationTile(job.handle, job.index, scale, tile, job.token);
+  if (!valid() || image.cancelled) return false;
+  const canvas = tileCanvas(image);
+  if (!tileCache.put(TileCache.key(job.index, scale, tile), canvas)) { canvas.width = 0; canvas.height = 0; return false; }
+  return true;
 }
 function failPage(index, error) {
   const view = views.get(index); if (!view) return;
-  view.failed = true; view.tiles.clear(); view.content.replaceChildren(view.message);
+  view.failed = true;
+  for (const key of tileCache.items.keys()) if (key.startsWith(`${index}:`)) tileCache.delete(key);
+  view.tiles.clear(); view.content.replaceChildren(view.message);
   view.message.hidden = false; view.message.setAttribute('role', 'alert'); view.message.textContent = String(error);
   view.element.setAttribute('aria-busy', 'false'); report(`Page ${index + 1}: ${error}`);
 }
@@ -236,7 +291,7 @@ async function draw() {
     for (let pass = 0; pass < MAX_PAGES; pass++) {
       const indexes = visiblePages();
       reader.prune(indexes); editor.prune(indexes);
-      for (const [index, view] of views) if (!indexes.includes(index)) { view.element.remove(); views.delete(index); }
+      for (const [index, view] of views) if (!indexes.includes(index)) removeView(index, view);
       for (const index of indexes) pageView(index);
       const missing = indexes.find((index) => !infos.get(index)?.width);
       if (missing === undefined) break;
@@ -244,28 +299,35 @@ async function draw() {
       if (epoch !== documentEpoch || token !== generation) return;
     }
     updateLayout();
-    let total = 0;
+    const requested = new Map(); let total = 0;
+    for (const index of visiblePages()) {
+      const info = infos.get(index); if (!info?.width || views.get(index)?.failed) continue;
+      const tiles = tileRequests(index, info); total += tiles.length; requested.set(index, tiles);
+    }
+    if (total > MAX_TILES) throw new Error('Visible pages exceed the tile budget; increase zoom');
+    tileCache.pin([...requested].flatMap(([index, tiles]) => tiles.map(tile => TileCache.key(index, zoom * window.devicePixelRatio, tile))));
     for (const index of visiblePages()) {
       if (epoch !== documentEpoch || token !== generation) return;
       const info = infos.get(index), view = pageView(index);
       if (!info?.width || view.failed) continue;
-      const requests = tileRequests(index, info); total += requests.length;
-      if (total > MAX_TILES) throw new Error('Visible pages exceed the tile budget; increase zoom');
+      const requests = requested.get(index) ?? [];
       const keys = new Set(requests.map(({ x, y }) => `${x},${y}`));
       for (const [key, canvas] of view.tiles) if (!keys.has(key)) { canvas.remove(); view.tiles.delete(key); }
       try {
         for (const tile of requests) {
           if (epoch !== documentEpoch || token !== generation) return;
           const key = `${tile.x},${tile.y}`; if (view.tiles.has(key)) continue;
-          status.textContent = 'Rendering visible tiles…';
-          const image = await client.renderGenerationTile(documentHandle, index, zoom * window.devicePixelRatio, tile, token);
-          if (epoch !== documentEpoch || token !== generation || image.cancelled) return;
-          const canvas = document.createElement('canvas'); canvas.className = 'tile'; canvas.width = image.width; canvas.height = image.height;
-          canvas.setAttribute('aria-hidden', 'true');
+          const cacheKey = TileCache.key(index, zoom * window.devicePixelRatio, tile);
+          let canvas = tileCache.get(cacheKey);
+          if (!canvas) {
+            status.textContent = 'Rendering visible tiles…';
+            const image = await client.renderGenerationTile(documentHandle, index, zoom * window.devicePixelRatio, tile, token);
+            if (epoch !== documentEpoch || token !== generation || image.cancelled) return;
+            canvas = tileCanvas(image);
+            if (!tileCache.put(cacheKey, canvas)) { canvas.width = 0; canvas.height = 0; throw new Error('Visible tiles exceed the raster cache budget'); }
+          }
           const ratio = window.devicePixelRatio;
-          Object.assign(canvas.style, { left: `${tile.x / ratio}px`, top: `${tile.y / ratio}px`, width: `${image.width / ratio}px`, height: `${image.height / ratio}px` });
-          const context = canvas.getContext('2d'); if (!context) throw new Error('Canvas 2D rendering is unavailable');
-          context.putImageData(new ImageData(new Uint8ClampedArray(image.rgba.buffer, image.rgba.byteOffset, image.rgba.byteLength), image.width, image.height), 0, 0);
+          Object.assign(canvas.style, { left: `${tile.x / ratio}px`, top: `${tile.y / ratio}px`, width: `${canvas.width / ratio}px`, height: `${canvas.height / ratio}px` });
           view.tiles.set(key, canvas); view.content.append(canvas);
         }
         view.message.hidden = true; view.element.setAttribute('aria-busy', 'false');
@@ -278,11 +340,12 @@ async function draw() {
       await diagnostics(epoch);
       if (epoch === documentEpoch && token === generation) {
         controls();
+        updateCacheStats();
         status.textContent = [...views.values()].some((view) => view.failed) ? 'Some pages are unavailable' : 'Ready';
       }
     }
   } catch (error) { if (epoch === documentEpoch && token === generation) report(error); }
-  finally { drawing = false; if (dirty) schedule(); else thumbnails.schedule(); }
+  finally { drawing = false; if (dirty) schedule(); else { planAhead(); thumbnails.schedule(); } }
 }
 function fit(mode, info) {
   info = displayInfo(info);
@@ -294,7 +357,7 @@ function changeZoom(value, point = viewport.clientHeight / 2) {
   const position = anchor(point), previousZoom = zoom;
   zoom = Math.min(8, Math.max(0.1, value));
   try { updateLayout(); } catch (error) { zoom = previousZoom; report(error); return; }
-  for (const view of views.values()) view.element.remove(); views.clear(); reader.prune([]); editor.prune([]);
+  for (const [index, view] of views) removeView(index, view); tileCache.pin([]); reader.prune([]); editor.prune([]);
   $('custom-zoom').textContent = `${Math.round(zoom * 100)}%`; restore(position); invalidate();
 }
 async function navigate(index) {
@@ -328,7 +391,7 @@ async function openFile(file) {
   if (!file) return;
   cancelPassword();
   source?.password.fill(0); source = null; recoveryAttempts = 0;
-  const epoch = ++documentEpoch; reader.reset(); editor.reset(); rotations.clear();
+  const epoch = ++documentEpoch; preloader.cancel(); tileCache.clear(); reader.reset(); editor.reset(); rotations.clear();
   handle = null; infos.clear(); views.clear(); surface.replaceChildren(); surface.hidden = true;
   layout = new PageLayout(0); page = 0; controls(); errorBox.hidden = true;
   $('filename').textContent = file.name; status.textContent = 'Opening…';
@@ -393,6 +456,7 @@ for (const id of ['thumbnails-tab', 'outline-tab']) $(id).addEventListener('keyd
 $('reading-dismiss').addEventListener('click', () => { $('reading-status').textContent = ''; });
 $('diagnostics-open').addEventListener('click', () => $('diagnostics-dialog').showModal());
 $('diagnostics-close').addEventListener('click', () => { $('diagnostics-dialog').close(); $('more-menu').querySelector('summary').focus(); });
+$('more-menu').addEventListener('toggle', () => { $('more-menu').querySelector('summary').setAttribute('aria-expanded', String($('more-menu').open)); });
 $('more-menu').addEventListener('click', event => { if (event.target.closest('button')) $('more-menu').open = false; });
 document.addEventListener('click', event => { if (!event.target.closest('#more-menu')) $('more-menu').open = false; });
 document.addEventListener('keydown', event => { if (event.key === 'Escape' && $('more-menu').open) { $('more-menu').open = false; $('more-menu').querySelector('summary').focus(); } });
@@ -408,6 +472,9 @@ window.addEventListener('dragover', (event) => { event.preventDefault(); documen
 window.addEventListener('dragleave', (event) => { if (!event.relatedTarget) document.body.classList.remove('dragging'); });
 window.addEventListener('drop', (event) => { event.preventDefault(); document.body.classList.remove('dragging'); void openFile(event.dataTransfer.files[0]); });
 viewport.addEventListener('scroll', () => {
+  const dx = viewport.scrollLeft - lastScroll[0], dy = viewport.scrollTop - lastScroll[1];
+  if (dx || dy) direction = Math.abs(dy) >= Math.abs(dx) ? { axis: 'y', sign: Math.sign(dy) } : { axis: 'x', sign: Math.sign(dx) };
+  lastScroll = [viewport.scrollLeft, viewport.scrollTop];
   if (layout.count) { page = layout.dominantPage(viewport.scrollTop, viewport.clientHeight, zoom, page); controls(); }
   invalidate();
 }, { passive: true });
@@ -439,6 +506,16 @@ window.addEventListener('keydown', (event) => {
     event.preventDefault(); zoomInput.value = event.key === '0' ? '1' : 'custom'; changeZoom(event.key === '0' ? 1 : zoom * (event.key === '-' ? 1 / 1.2 : 1.2));
   }
 });
+let quietTimer;
+function noteInteraction() {
+  lastInteraction = performance.now(); preloader.cancel(); clearTimeout(quietTimer);
+  quietTimer = setTimeout(() => { planAhead(); thumbnails.schedule(); }, 550);
+}
+for (const type of ['input', 'keydown', 'focusin']) document.addEventListener(type, noteInteraction, true);
+document.addEventListener('pointerdown', () => { pointerDown = true; noteInteraction(); }, true);
+for (const type of ['pointerup', 'pointercancel']) document.addEventListener(type, () => { pointerDown = false; noteInteraction(); }, true);
+document.addEventListener('focusout', noteInteraction, true);
+document.addEventListener('visibilitychange', noteInteraction);
 let ratio = window.devicePixelRatio;
 function resizeViewport() {
   if (handle === null) return;
@@ -455,8 +532,8 @@ window.addEventListener('resize', resizeViewport);
 const regionObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => requestAnimationFrame(resizeViewport)) : null;
 regionObserver?.observe(viewport);
 window.addEventListener('beforeunload', (event) => { if (editor.changes.size) { event.preventDefault(); event.returnValue = ''; } });
-window.addEventListener('pagehide', () => { thumbnails.destroy(); ++documentEpoch; handle = null; dirty = false; regionObserver?.disconnect(); reader.reset(); source?.password.fill(0); source = null; client?.destroy(); });
-if (debug) window.paguraDebug = Object.freeze({ fail: (reason) => client.injectFailure(reason),
+window.addEventListener('pagehide', () => { clearTimeout(quietTimer); preloader.destroy(); tileCache.clear(); thumbnails.destroy(); ++documentEpoch; handle = null; dirty = false; regionObserver?.disconnect(); reader.reset(); source?.password.fill(0); source = null; client?.destroy(); });
+if (debug) window.paguraDebug = Object.freeze({ tileCache: () => ({ ...tileCache.stats(), preloaded: preloader.completed, discarded: preloader.discarded, pending: preloader.jobs.length }), fail: (reason) => client.injectFailure(reason),
   readingProfile: async () => {
     const { profileTextLayer } = await import('./reading_profile.mjs');
     const epoch = documentEpoch, text = await client.pageText(handle, page), info = await pageInfo(page, epoch);

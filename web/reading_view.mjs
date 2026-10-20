@@ -12,7 +12,7 @@ export class ReadingView {
     this.matches = []; this.current = -1; this.searchId = 0; this.searchNote = '';
     this.tree = new OutlineTree(this.$('outline-tree'), (target) => this.activate(target));
     this.$('find-open').addEventListener('click', () => this.showSearch());
-    this.$('find-close').addEventListener('click', () => { this.$('find-panel').hidden = true; this.cancelSearch(); this.$('find-open').focus(); });
+    this.$('find-close').addEventListener('click', () => { this.$('find-panel').hidden = true; this.$('find-open').setAttribute('aria-expanded', 'false'); this.cancelSearch(); this.$('find-open').focus(); });
     for (const id of ['find-query', 'find-case', 'find-word']) this.$(id).addEventListener(id === 'find-query' ? 'input' : 'change', () => { void this.search(); });
     this.$('find-next').addEventListener('click', () => { void this.move(1); }); this.$('find-previous').addEventListener('click', () => { void this.move(-1); });
     this.$('find-query').addEventListener('keydown', (event) => {
@@ -120,7 +120,7 @@ export class ReadingView {
     return activateTarget(target, { destination: this.destination, report: this.report, notice: this.notice,
       named: (name) => { const s = this.state(); return this.navigate(({ NextPage: s.page + 1, PrevPage: s.page - 1, FirstPage: 0, LastPage: s.count - 1 })[name]); } });
   }
-  showSearch() { this.$('find-panel').hidden = false; this.$('find-query').focus(); }
+  showSearch() { this.$('find-panel').hidden = false; this.$('find-open').setAttribute('aria-expanded', 'true'); this.$('find-query').focus(); }
   count(suffix) { if (suffix !== undefined) this.searchNote = suffix; this.$('find-count').textContent = `${this.matches.length ? this.current + 1 : 0} / ${this.matches.length}${this.searchNote}`; }
   async search() {
     this.cancelSearch(); const id = this.searchId, s = this.state(), query = this.$('find-query').value;

@@ -13,8 +13,8 @@ CDN or build step for the HTML/CSS/JavaScript. Do not open index.html as a file
 URL: the server provides the required COOP/COEP headers.
 
 Select a PDF or drop it onto the viewer. Pages scroll continuously. Metadata
-and pixels load as pages approach the visible region; offscreen canvases and
-page elements are discarded. Previous/next and numbered navigation scroll to a
+and pixels load as pages approach the visible region. Offscreen page DOM is
+removed; recently used raster tiles remain in a bounded cache. Previous/next and numbered navigation scroll to a
 page without changing documents. Unimplemented content produces a tagged error
 on the affected page and clears partial pixels for that page. Other pages can
 still render. Strict validation rejects repairs and names the refused repair;
@@ -29,10 +29,13 @@ available in both recovery modes.
 - Text selection retains native range/copy behavior, with a single SVG fill over
   selected glyph quads to avoid dark overlaps from per-character highlights.
 - The collapsible sidebar switches between thumbnails and the document outline.
-  Thumbnail rows are virtualized and keyboard navigable; up to 32 low-resolution
-  canvases are retained (under 3 MiB of RGBA pixels). One thumbnail request runs
+  Thumbnail rows are virtualized and keyboard navigable; up to 32 thumbnails
+  are retained (under 24 MiB including separate base/draft RGBA canvases). One thumbnail request runs
   at a time, after visible-page work, and stale document results are discarded.
-  Thumbnails reflect the saved document; unsaved form drafts remain on the page.
+  Thumbnails render at twice CSS density. Visible pages composite the same cached
+  form artwork used on the page after a short input coalescing delay, without
+  saving or rendering another document. Offscreen draft previews are marked
+  until their page is viewed; saving refreshes the document-wide baseline.
 - Rotate view turns the current page left in 90-degree steps, including text,
   links and form hit targets. This is a viewing preference, **not a saved edit**.
   It survives form saves but resets when another document is opened.
@@ -64,6 +67,25 @@ zoom × devicePixelRatio. Layout extents are limited to 10 million CSS pixels;
 exceeding a budget displays an error rather than silently truncating a document.
 
 ## Session and caching
+
+Full-size raster canvases share a 64 MiB RGBA backing-store budget (and 512-entry
+cap), including attached visible tiles. Visible keys are pinned; least recently
+used unpinned tiles are evicted and their backing dimensions cleared. Cache keys
+include page, exact raster scale and tile geometry. CSS view rotation reuses the
+same pixels. Save/adoption, open, host recovery and page shutdown clear the cache;
+zoom/DPR changes use distinct scale keys. This accounts for retained raster
+pixels, not total browser RSS, GPU copies or the engine's own caches.
+
+After 500 ms without interaction, up to 16 tiles in a half-viewport strip
+(maximum 512 CSS px) are considered ahead of scrolling, on either axis. Only one
+speculative request runs at a time, after the foreground queue drains. Direction,
+zoom, navigation and input changes cancel the plan; stale results are discarded.
+Preloading pauses while form metadata is unknown or form filling is active on a
+form document, and while input, saving or draft previews are active. The current
+host cannot interrupt a tile already executing; pausing avoids new speculative
+work, and generation checks prevent stale queued requests from being sent.
+Thumbnails have lower priority than visible tiles and eligible preloading.
+On-demand diagnostics show retained bytes, cache reuse and completed preloads.
 
 The browser negotiates protocol v1.7 for form editing and typed diagnostics; existing protocol v1 clients remain
 supported. See crates/pagura-host/PROTOCOL.md for the byte layouts. A viewport
