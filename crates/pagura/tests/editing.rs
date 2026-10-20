@@ -10,7 +10,14 @@ use pagura::{
 use pagura_testkit::fixture;
 
 fn open(bytes: Vec<u8>) -> Document {
-    Document::open(bytes, &OpenOptions::default()).unwrap()
+    Document::open(
+        bytes,
+        &OpenOptions {
+            recovery: Recovery::Strict,
+            ..Default::default()
+        },
+    )
+    .unwrap()
 }
 
 // Source syntax is independent of pagura-write. A nonzero generation, custom
@@ -232,6 +239,7 @@ fn modified_repair_mode_and_encrypted_sources_are_refused_but_noop_is_exact() {
         original.clone(),
         &OpenOptions {
             password: b"user-secret".to_vec(),
+            recovery: Recovery::Strict,
             ..Default::default()
         },
     )
@@ -257,6 +265,7 @@ fn output_and_revision_limits_do_not_publish_partial_saves() {
     let document = Document::open(
         original.clone(),
         &OpenOptions {
+            recovery: Recovery::Strict,
             limits: Limits {
                 file_bytes: original.len(),
                 ..Default::default()
@@ -279,6 +288,7 @@ fn output_and_revision_limits_do_not_publish_partial_saves() {
     let document = Document::open(
         original,
         &OpenOptions {
+            recovery: Recovery::Strict,
             limits: Limits {
                 revisions: 1,
                 ..Default::default()
@@ -296,6 +306,19 @@ fn output_and_revision_limits_do_not_publish_partial_saves() {
             .kind,
         ErrorKind::Limit
     );
+}
+
+#[test]
+fn informational_diagnostics_do_not_change_save_permission() {
+    let document = open(source());
+    document.report([pagura::Diagnostic::information(
+        "font.substituted",
+        "test information",
+    )]);
+    let mut transaction = Transaction::new(&document);
+    transaction.add(Value::Integer(42).into()).unwrap();
+    let saved = transaction.commit(&SaveOptions::default()).unwrap();
+    assert_eq!(open(saved).revisions().len(), 2);
 }
 
 #[test]
@@ -319,6 +342,14 @@ fn signatures_require_explicit_policy_and_original_signed_bytes_survive() {
     assert!(saved.starts_with(&original));
     let reopened = open(saved);
     let signatures = pagura::signatures(&reopened).unwrap();
+    assert_eq!(
+        signatures
+            .fields
+            .iter()
+            .filter(|field| field.signature.is_some())
+            .count(),
+        1
+    );
     assert!(signatures.fields.iter().filter_map(|field| field.signature.as_ref()).all(|signature| signature.results.integrity == pagura::signatures::Integrity::Verified));
 }
 

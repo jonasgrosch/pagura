@@ -291,7 +291,25 @@ fn source_policy(document: &Document, options: &SaveOptions) -> Result<()> {
         ));
     }
     if options.signatures == SignaturePolicy::Reject {
-        let signatures = document.signatures()?;
+        // Until document PR #67 lands, history_complete also depends on the
+        // document's diagnostic log. Inspect a fresh strict snapshot so earlier
+        // rendering/information reports cannot alter this security decision.
+        // This temporary copy/cache is separately bounded by the source limits.
+        let original = document.original_bytes();
+        let mut bytes = Vec::new();
+        bytes
+            .try_reserve_exact(original.len())
+            .map_err(|_| Error::limit("signature policy source copy exceeds memory"))?;
+        bytes.extend_from_slice(original);
+        let snapshot = Document::open(
+            bytes,
+            &crate::OpenOptions {
+                limits: document.limits(),
+                recovery: Recovery::Strict,
+                ..Default::default()
+            },
+        )?;
+        let signatures = snapshot.signatures()?;
         if !signatures.history_complete
             || !signatures.historical.is_empty()
             || signatures.certification.is_some()

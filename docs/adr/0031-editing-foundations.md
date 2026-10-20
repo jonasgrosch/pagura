@@ -61,6 +61,11 @@ Review findings affecting the design:
    `PreserveSignedBytes` policy permits an append without asserting trust,
    certification permission or continued signature validity. Malformed discovery
    remains an error. Source bytes and their signed ranges never change.
+   Until #67 lands, the default signature-presence check uses a fresh strict
+   source snapshot: this bounds an additional input copy and temporary cache by
+   the source limits, and prevents rendering diagnostics from changing save
+   permission. Replace that bridge with fixed source evidence when #67 is
+   accepted; do not relax uncertainty handling in the meantime.
 5. `save_filled_form` creates one transaction, writes validated V/I/AS changes,
    and persists existing appearance-generator output as new Form XObjects.
    Preserve rollover/down appearances and original resources. Generate all
