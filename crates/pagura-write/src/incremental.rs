@@ -5,6 +5,16 @@ use pagura_core::{Dictionary, Error, Limits, Name, ObjectId, Result, ResultExt, 
 use pagura_crypto::sha256;
 use std::collections::BTreeMap;
 
+/// Cross-reference representation for the appended revision (7.5.4, 7.5.8).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum XrefFormat {
+    /// Sparse classic table; suitable for classic-table source files.
+    Table,
+    /// Unencoded xref stream; retains modern-reader compatibility for stream
+    /// and hybrid sources, including unchanged compressed objects.
+    Stream,
+}
+
 /// Serializes replacements as a new revision after the exact original bytes.
 ///
 /// The caller supplies a verified previous xref offset and effective trailer,
@@ -23,6 +33,7 @@ pub fn write_incremental(
     previous_xref: usize,
     trailer: &Dictionary,
     objects: &BTreeMap<ObjectId, NewObject>,
+    format: XrefFormat,
     limits: &Limits,
 ) -> Result<Vec<u8>> {
     let mut writer = Writer::new(limits.file_bytes);
@@ -30,6 +41,61 @@ pub fn write_incremental(
         writer.put(original)?;
         return Ok(writer.into_bytes());
     }
+    let (mut trailer, xref_id, count) =
+        prepare(original, previous_xref, trailer, objects, format, limits)?;
+    let permanent = permanent_id(&trailer, original)?;
+    writer.put(original)?;
+    writer.put(b"\n")?;
+    let mut offsets = Vec::new();
+    offsets
+        .try_reserve_exact(count)
+        .map_err(|_| Error::limit("incremental xref storage budget exceeded"))?;
+    for (&id, object) in objects {
+        offsets.push((id, writer.offset()));
+        writer.object(id, object).in_object(id)?;
+    }
+    // Bind the changing identifier to the original plus canonical new objects;
+    // the trailer is deliberately outside its own hash (14.4).
+    let version = sha256(writer.bytes()).to_vec();
+    trailer.insert(
+        Name::new(b"ID"),
+        Value::Array(vec![Value::String(permanent), Value::String(version)]),
+    );
+    validation::object(
+        &NewObject::Value(Value::Dictionary(trailer.clone())),
+        limits,
+        &|_| true,
+    )?;
+    let xref = writer.offset();
+    match format {
+        XrefFormat::Table => {
+            writer.put(b"xref\n")?;
+            for (id, offset) in offsets {
+                writer.text(format_args!(
+                    "{} 1\n{offset:010} {:05} n \n",
+                    id.number, id.generation
+                ))?;
+            }
+            writer.put(b"trailer\n")?;
+            writer.dictionary(&trailer, None)?;
+        }
+        XrefFormat::Stream => {
+            offsets.push((xref_id, xref));
+            write_xref_stream(&mut writer, xref_id, trailer, &offsets, limits)?;
+        }
+    }
+    writer.text(format_args!("\nstartxref\n{xref}\n%%EOF\n"))?;
+    Ok(writer.into_bytes())
+}
+
+fn prepare(
+    original: &[u8],
+    previous_xref: usize,
+    trailer: &Dictionary,
+    objects: &BTreeMap<ObjectId, NewObject>,
+    format: XrefFormat,
+    limits: &Limits,
+) -> Result<(Dictionary, ObjectId, usize)> {
     if previous_xref >= original.len()
         || trailer.get(b"Root").and_then(Value::as_reference).is_none()
         || trailer
@@ -46,7 +112,25 @@ pub fn write_incremental(
         .and_then(|size| u32::try_from(size).ok())
         .filter(|size| *size > 0)
         .ok_or(Error::invalid_argument("incremental trailer requires Size"))?;
+    let count = objects
+        .len()
+        .checked_add(usize::from(format == XrefFormat::Stream))
+        .ok_or(Error::limit("incremental xref count overflow"))?;
+    if count > limits.objects
+        || count
+            .checked_mul(size_of::<(ObjectId, usize)>())
+            .is_none_or(|bytes| bytes > limits.document_bytes)
+    {
+        return Err(Error::limit("incremental xref storage budget exceeded"));
+    }
     let size = validate_objects(objects, size, limits)?;
+    let xref_id = ObjectId::new(size, 0);
+    let size = if format == XrefFormat::Stream {
+        size.checked_add(1)
+            .ok_or(Error::limit("xref stream object number range exhausted"))?
+    } else {
+        size
+    };
     if trailer.retained_bytes() > limits.document_bytes {
         return Err(Error::limit("incremental trailer storage budget exceeded"));
     }
@@ -72,41 +156,60 @@ pub fn write_incremental(
                 .map_err(|_| Error::limit("xref offset exceeds integer range"))?,
         ),
     );
-    let permanent = permanent_id(&trailer, original)?;
-    writer.put(original)?;
-    writer.put(b"\n")?;
-    let mut offsets = Vec::new();
-    offsets
-        .try_reserve_exact(objects.len())
-        .map_err(|_| Error::limit("incremental xref storage budget exceeded"))?;
-    for (&id, object) in objects {
-        offsets.push((id, writer.offset()));
-        writer.object(id, object).in_object(id)?;
+    Ok((trailer, xref_id, count))
+}
+
+fn write_xref_stream(
+    writer: &mut Writer,
+    id: ObjectId,
+    mut dictionary: Dictionary,
+    offsets: &[(ObjectId, usize)],
+    limits: &Limits,
+) -> Result<()> {
+    // Type (1 byte), absolute offset (8), generation (2), all big endian.
+    let length = offsets
+        .len()
+        .checked_mul(11)
+        .filter(|length| *length <= limits.stream_bytes && *length <= limits.document_bytes)
+        .ok_or(Error::limit("incremental xref stream budget exceeded"))?;
+    let mut data = Vec::new();
+    data.try_reserve_exact(length)
+        .map_err(|_| Error::limit("incremental xref stream allocation failed"))?;
+    let count = offsets
+        .len()
+        .checked_mul(2)
+        .filter(|count| {
+            *count <= limits.value_nodes
+                && count.saturating_mul(size_of::<Value>()) <= limits.document_bytes
+        })
+        .ok_or(Error::limit("incremental xref index budget exceeded"))?;
+    let mut index = Vec::new();
+    index
+        .try_reserve_exact(count)
+        .map_err(|_| Error::limit("incremental xref index allocation failed"))?;
+    for &(object, offset) in offsets {
+        data.push(1);
+        data.extend_from_slice(
+            &u64::try_from(offset)
+                .map_err(|_| Error::limit("xref offset exceeds stream range"))?
+                .to_be_bytes(),
+        );
+        data.extend_from_slice(&object.generation.to_be_bytes());
+        index.extend([Value::Integer(i64::from(object.number)), Value::Integer(1)]);
     }
-    // Bind the changing identifier to the original plus canonical new objects;
-    // the trailer is deliberately outside its own hash (14.4).
-    let version = sha256(writer.bytes()).to_vec();
-    trailer.insert(
-        Name::new(b"ID"),
-        Value::Array(vec![Value::String(permanent), Value::String(version)]),
+    dictionary.insert(Name::new(b"Type"), Value::name(b"XRef"));
+    dictionary.insert(
+        Name::new(b"W"),
+        Value::Array(vec![
+            Value::Integer(1),
+            Value::Integer(8),
+            Value::Integer(2),
+        ]),
     );
-    validation::object(
-        &NewObject::Value(Value::Dictionary(trailer.clone())),
-        limits,
-        &|_| true,
-    )?;
-    let xref = writer.offset();
-    writer.put(b"xref\n")?;
-    for (id, offset) in offsets {
-        writer.text(format_args!(
-            "{} 1\n{offset:010} {:05} n \n",
-            id.number, id.generation
-        ))?;
-    }
-    writer.put(b"trailer\n")?;
-    writer.dictionary(&trailer, None)?;
-    writer.text(format_args!("\nstartxref\n{xref}\n%%EOF\n"))?;
-    Ok(writer.into_bytes())
+    dictionary.insert(Name::new(b"Index"), Value::Array(index));
+    let object = NewObject::Stream { dictionary, data };
+    validation::object(&object, limits, &|_| true)?;
+    writer.object(id, &object)
 }
 
 fn validate_objects(

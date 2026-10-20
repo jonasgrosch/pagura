@@ -51,7 +51,8 @@ Review findings affecting the design:
    exactly, including for sources unsupported for modified saves.
 3. `pagura-write` owns syntax and append-only revision serialization; it does
    not parse documents. Share its existing object validation and serializer.
-   Append sparse classic xref subsections, absolute offsets, a new trailer and
+   Append sparse classic xref subsections for table sources and sparse,
+   unencoded xref streams for stream/hybrid sources. Use absolute offsets and
    Prev. Preserve unknown trailer entries, Root, Info and the permanent ID;
    remove xref-stream transport keys when converting the trailer to a table.
    Hash the original and appended object bytes for deterministic version IDs.

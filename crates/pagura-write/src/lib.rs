@@ -18,7 +18,7 @@ mod object;
 mod validation;
 mod writer;
 
-pub use incremental::write_incremental;
+pub use incremental::{XrefFormat, write_incremental};
 pub use validation::object as validate_object;
 
 pub use builder::Builder;

@@ -179,6 +179,11 @@ fn stream_and_hybrid_sources_keep_untouched_compressed_objects() {
         "hybrid-precedence",
     ] {
         let original = fixture("document", &format!("{name}.pdf"));
+        if let Some(directory) = std::env::var_os("PAGURA_EDIT_OUTPUT") {
+            let directory = std::path::PathBuf::from(directory).join("originals");
+            std::fs::create_dir_all(&directory).unwrap();
+            std::fs::write(directory.join(format!("{name}.pdf")), &original).unwrap();
+        }
         let document = open(original.clone());
         let root = document
             .trailer()
@@ -205,7 +210,8 @@ fn stream_and_hybrid_sources_keep_untouched_compressed_objects() {
             document.pages().unwrap().len()
         );
         assert!(!reopened.revisions()[0].trailer().contains_key(b"XRefStm"));
-        assert!(!reopened.revisions()[0].trailer().contains_key(b"W"));
+        assert!(reopened.revisions()[0].trailer().contains_key(b"W"));
+        assert_eq!(reopened.revisions()[0].kind(), pagura_document::RevisionKind::Stream);
         exported(name, &saved);
     }
 }

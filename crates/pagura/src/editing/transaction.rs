@@ -3,7 +3,7 @@
 use super::{SaveOptions, SignaturePolicy, features};
 use crate::{Dictionary, Document, Error, Name, NewObject, ObjectId, Recovery, Result, Value};
 use pagura_core::{INDEX_ENTRY_OVERHEAD, ResultExt};
-use pagura_write::validate_object;
+use pagura_write::{XrefFormat, validate_object};
 use std::{collections::BTreeMap, fmt};
 
 /// A transaction over one immutable source snapshot.
@@ -134,6 +134,7 @@ impl<'a> Transaction<'a> {
                 0,
                 self.document.trailer(),
                 &self.objects,
+                XrefFormat::Table,
                 &limits,
             );
         }
@@ -148,13 +149,17 @@ impl<'a> Transaction<'a> {
         if self.document.revisions().len() >= limits.revisions {
             return Err(Error::limit("incremental revision budget exceeded"));
         }
-        let count = self
-            .document
-            .revisions()
-            .iter()
-            .try_fold(self.objects.len(), |total, revision| {
-                total.checked_add(revision.entry_count())
-            });
+        let format = match revision.kind() {
+            pagura_document::RevisionKind::Table => XrefFormat::Table,
+            pagura_document::RevisionKind::Stream | pagura_document::RevisionKind::Hybrid => {
+                XrefFormat::Stream
+            }
+        };
+        let extra = usize::from(format == XrefFormat::Stream);
+        let count = self.document.revisions().iter().try_fold(
+            self.objects.len().saturating_add(extra),
+            |total, revision| total.checked_add(revision.entry_count()),
+        );
         if count.is_none_or(|count| count > limits.objects) {
             return Err(Error::limit(
                 "incremental cross-reference entry budget exceeded",
@@ -188,6 +193,7 @@ impl<'a> Transaction<'a> {
             revision.offset(),
             &trailer,
             &self.objects,
+            format,
             &limits,
         )
     }

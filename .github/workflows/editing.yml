@@ -39,6 +39,11 @@ jobs:
           test "${#files[@]}" -ge 10
           qpdf --version
           pdfinfo -v
+          for file in "$PAGURA_EDIT_OUTPUT"/originals/*.pdf; do
+            echo "Original baseline: $file"
+            qpdf --check "$file" || true
+            pdfinfo "$file" || true
+          done
           for file in "${files[@]}"; do
             qpdf --check "$file"
             pdfinfo "$file"
