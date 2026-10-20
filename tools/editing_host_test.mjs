@@ -28,6 +28,8 @@ if (!isMainThread) {
   try {
     await client.hello();
     const original = formDocument(), opened = await client.open(original, 0);
+    const tile = { x: 0, y: 0, width: 600, height: 440 };
+    const beforePixels = await client.renderTile(opened.document, 0, 1, tile);
     const fields = await client.formFields(opened.document);
     assert.deepEqual(fields.map((f) => f.name), ['Full name', 'Team', 'Subscribe', 'Preferred contact']);
     const yes = fields[2].options[0], phone = fields[3].options.find((o) => o.label === 'Phone');
@@ -41,6 +43,8 @@ if (!isMainThread) {
     assert.deepEqual(saved.subarray(0, original.length), original);
     assert.deepEqual(await client.formFields(opened.document), fields, 'source remains immutable');
     const updated = await client.open(saved, 0), after = await client.formFields(updated.document);
+    const afterPixels = await client.renderTile(updated.document, 0, 1, tile);
+    assert.notDeepEqual(afterPixels.rgba, beforePixels.rgba, 'saved form changes the page preview');
     assert.equal(after[0].value, 'Jonas Browser Test');
     assert.equal(after[1].options.find((o) => o.selected).label, 'Research');
     assert.equal(after[2].options.filter((o) => o.selected).length, 1);

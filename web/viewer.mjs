@@ -43,6 +43,7 @@ async function adoptSaved(bytes, epoch) {
   const opened = await current.open(bytes, 0);
   if (epoch !== documentEpoch) { await current.close(opened.document); return false; }
   ++documentEpoch; handle = opened.document;
+  errorBox.textContent = ''; errorBox.hidden = true;
   source.password.fill(0); source = { bytes, password: new Uint8Array(), recovery: 0 };
   reader.reset(); infos.clear(); views.clear(); surface.replaceChildren();
   layout = new PageLayout(opened.pages); page = Math.min(position.index, Math.max(0, opened.pages - 1));
