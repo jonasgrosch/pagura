@@ -25,7 +25,7 @@ export class ReadingView {
       if (this.selectionScheduled) return;
       this.selectionScheduled = true;
       requestAnimationFrame(() => { this.selectionScheduled = false;
-        paintSelection(window.getSelection(), [...this.pages.values()].map(record => record.textLayer).filter(Boolean));
+        paintSelection(window.getSelection(), [...this.pages.entries()].sort(([a], [b]) => a - b).map(([, record]) => record.textLayer).filter(Boolean));
       });
     });
     document.addEventListener('copy', (event) => {

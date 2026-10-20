@@ -86,7 +86,7 @@ dialog button { background: #f4f4f5; border-color: #d0d0d3; }
 body.dragging #viewport { outline: 3px dashed #4286d3; outline-offset: -8px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-width: 980px) { .toolbar { flex-wrap: wrap; gap: 8px; } .document-tools { flex-basis: 100%; } nav { width: 100%; justify-content: flex-end; } .page-navigation { margin-right: auto; } #form-status { max-width: 75vw; } }
-@media (max-width: 560px) { .toolbar { padding: 8px; } nav { gap: 3px; } .tool-group { padding-right: 3px; } #document-sidebar { flex-basis: 158px; } .thumbnail-picture { width: 124px; } .thumbnail canvas { max-width: 124px; object-fit: contain; } #zoom { width: 84px; } .save-button span { display: none; } #viewport { padding: 24px; } }
+@media (max-width: 560px) { nav { flex-wrap: wrap; } .toolbar { padding: 8px; } nav { gap: 3px; } .tool-group { padding-right: 3px; } #document-sidebar { flex-basis: 158px; } .thumbnail-picture { width: 124px; } .thumbnail canvas { max-width: 124px; object-fit: contain; } #zoom { width: 84px; } .save-button span { display: none; } #viewport { padding: 24px; } }
 .text-layer, .link-layer, .search-highlights { position: absolute; inset: 0; overflow: hidden; }
 .text-layer { z-index: 2; user-select: text; color: transparent; }
 .text-layer span { position: absolute; left: 0; top: 0; display: inline-block; width: 1px; height: 1px; font: 1px/1px monospace; white-space: pre; transform-origin: 0 0; }
