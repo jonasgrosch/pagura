@@ -493,6 +493,16 @@ takes, per primitive, the faster approximation that keeps the gate:
   columns, so any tile partition assembles into the page. Rectangles,
   degenerate contours and compound paths without a retained stroke boundary
   keep geometric integration.
+- **Strokes** become pieces that meet without overlapping, retained as the
+  stroke boundary: each segment's quadrilateral ends at the inner miter
+  point on the inner side of a turn and at its normal on the outer side, the
+  outer wedge takes the join, and a round cap is the half disc beyond its
+  endpoint. The pieces cover the components' set once, so signed cells
+  integrate them without a union. A stroke keeps its overlapping components,
+  and so geometric integration, when a run reverses, turns tighter than the
+  pen around a short segment, has an open centreline whose directions span a
+  half turn or a closed one that is not convex, or when the bounding boxes
+  of its runs' pens meet.
 - **Clips.** A clip path that contains a mark's global control hull is
   dropped for that mark. A quadrilateral mark within quadrilateral clips is
   integrated with them geometrically. Any other clip region's own cell
@@ -542,7 +552,7 @@ pixel's largest channel error.
 | Vector | 150 | 0.009 (≤ 0.15) | 99.84% (≥ 99.2%) | 3 (≤ 30) | 255 |
 | Vector | 300 | 0.006 (≤ 0.05) | 99.89% (≥ 99.6%) | 2 (≤ 20) | 255 |
 | Mixed | 72 | 0.140 (≤ 1.5) | 97.99% (≥ 92%) | 15 (≤ 110) | 255 |
-| Mixed | 150 | 0.050 (≤ 0.75) | 98.85% (≥ 94%) | 6 (≤ 90) | 255 |
+| Mixed | 150 | 0.051 (≤ 0.75) | 98.85% (≥ 94%) | 6 (≤ 90) | 255 |
 | Mixed | 300 | 0.016 (≤ 0.25) | 99.65% (≥ 98%) | 3 (≤ 40) | 255 |
 | Images | 72 | 0.004 (≤ 3.0) | 100.00% (≥ 85%) | 1 (≤ 80) | 1 |
 | Images | 150 | 0.011 (≤ 0.75) | 100.00% (≥ 94%) | 1 (≤ 60) | 1 |
