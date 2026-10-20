@@ -41,13 +41,13 @@ impl Context {
             if !self.device.is_finite() {
                 return Err(Error::limit("annotation view transform overflow"));
             }
-            self.clip = None;
+            self.clip.clear();
             self.discard_mask();
         }
         let result = self.group(group, target, initial, model, knockout, depth);
         if group.attributes.view.is_some() {
             self.device = device;
-            self.clip = None;
+            self.clip.clear();
             self.discard_mask();
         }
         result

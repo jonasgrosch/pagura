@@ -175,7 +175,7 @@ impl Context {
                 Pixmap::new_with_limits(clip.width(), clip.height(), Rgba8::WHITE, self.limits)
             })
             .transpose()?;
-        let cached = self.clip.take();
+        let cached = std::mem::take(&mut self.clip);
         let viewport = self.viewport.take();
         self.allocated += temporary;
         let mut result = self.paint_image_colour(&source(image), model, &mut output, region);

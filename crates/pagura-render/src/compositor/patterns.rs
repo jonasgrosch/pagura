@@ -86,7 +86,7 @@ impl Context {
                         y as f64 * pattern.step[1],
                     )
                     .then(transform);
-                    self.clip = None;
+                    self.clip.clear();
                     self.discard_mask();
                     self.commands(
                         &pattern.commands,
@@ -102,7 +102,7 @@ impl Context {
         })();
         self.device = device;
         self.soft_source = soft_source;
-        self.clip = None;
+        self.clip.clear();
         result?;
         let width =
             usize::try_from(tile.width).map_err(|_| Error::limit("pattern width exceeds usize"))?;
