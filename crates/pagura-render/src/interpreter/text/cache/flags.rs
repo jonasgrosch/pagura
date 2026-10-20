@@ -8,27 +8,30 @@ use pagura_text::{PdfFont, Provider};
 
 mod descriptor;
 
+/// With `rendering`, as [`PdfFont::load_for_rendering`].
 pub(super) fn load(
     document: &Document,
     font: &Dictionary,
     provider: Option<&dyn Provider>,
     position: Position,
+    rendering: bool,
 ) -> Result<PdfFont> {
     let Some(descriptor) = descriptor::Descriptor::find(document, font)? else {
-        return original(document, font, provider);
+        return original(document, font, provider, rendering);
     };
     let Some(flags) = descriptor.flags(document)? else {
-        return original(document, font, provider);
+        return original(document, font, provider, rendering);
     };
     let symbolic = flags & 4 != 0;
     if symbolic != (flags & 32 != 0) {
-        return original(document, font, provider);
+        return original(document, font, provider, rendering);
     }
     report(document, &descriptor, position)?;
     original(
         document,
         &descriptor.corrected(document, symbolic)?,
         provider,
+        rendering,
     )
 }
 
@@ -36,7 +39,11 @@ fn original(
     document: &Document,
     font: &Dictionary,
     provider: Option<&dyn Provider>,
+    rendering: bool,
 ) -> Result<PdfFont> {
+    if rendering {
+        return PdfFont::load_for_rendering(document, font, provider);
+    }
     provider.map_or_else(
         || PdfFont::load(document, font),
         |p| PdfFont::load_with(document, font, p),

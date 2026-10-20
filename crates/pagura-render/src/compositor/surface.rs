@@ -118,6 +118,30 @@ impl Surface {
         });
         Ok(true)
     }
+    /// Restricts byte storage to the rows of `band`, a full-width band of
+    /// the surface at or below its current tile, which becomes its tile.
+    pub(super) fn window(&mut self, band: Tile) -> Result<()> {
+        let skip = band
+            .y
+            .checked_sub(self.tile.y)
+            .filter(|_| (band.x, band.width) == (self.tile.x, self.tile.width))
+            .ok_or(Error::invalid_argument("band outside byte storage"))?;
+        let Some(narrow::Buffer::U8(bytes)) = &mut self.narrow else {
+            return Err(Error::invalid_argument("bands need byte storage"));
+        };
+        bytes.window(skip as usize, band.height as usize)?;
+        self.tile = band;
+        self.solid = None;
+        Ok(())
+    }
+    pub(super) fn into_rgba(self) -> Result<Vec<u8>> {
+        let Some(narrow::Buffer::U8(bytes)) = self.narrow else {
+            return Err(Error::invalid_argument(
+                "byte output requires a byte surface",
+            ));
+        };
+        Ok(bytes.into_rgba())
+    }
     pub(super) fn bytes(&self) -> usize {
         self.pixels.len() * size_of::<Pixel>()
             + self.narrow.as_ref().map_or(0, narrow::Buffer::bytes)

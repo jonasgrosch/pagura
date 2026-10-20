@@ -229,6 +229,18 @@ pub struct FilterChain {
     filters: Vec<Filter>,
 }
 
+/// What a prefix decode ([`FilterChain::decode_prefix`]) should do after a
+/// block of output.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Prefix {
+    /// Decode another block.
+    More,
+    /// The output decoded so far suffices.
+    Enough,
+    /// Stop; the caller decodes the whole stream instead.
+    Abandon,
+}
+
 impl FilterChain {
     /// Builds a chain from a stream dictionary's `/Filter` and
     /// `/DecodeParms` entries, which the caller has already resolved to
@@ -317,6 +329,35 @@ impl FilterChain {
         }
     }
 
+    /// The leading decoded bytes of a stream whose only filter is
+    /// `FlateDecode` without a predictor, decoded a DEFLATE block at a time
+    /// until `enough` accepts the output so far. The bytes are those a whole
+    /// decode starts with. `None` for any other chain, for data that lacks a
+    /// valid zlib header or is truncated or invalid before that point, when
+    /// `enough` abandons, or when the stream ends first: callers then use
+    /// [`Self::decode`], which reports those conditions. The rest of the
+    /// stream, including its checksum, is not read. `size` is the whole
+    /// stream's expected decoded length, an allocation hint only.
+    pub fn decode_prefix(
+        &self,
+        input: &[u8],
+        (max_output, size): (usize, usize),
+        enough: &mut dyn FnMut(&[u8]) -> Prefix,
+    ) -> Option<Vec<u8>> {
+        match self.filters.as_slice() {
+            [
+                Filter::Flate {
+                    predictor:
+                        Predictor {
+                            kind: PredictorKind::None,
+                            ..
+                        },
+                },
+            ] => flate::prefix(input, (max_output, size), enough),
+            _ => None,
+        }
+    }
+
     /// Applies every filter in order. Unencoded input is borrowed.
     ///
     /// # Errors
@@ -331,12 +372,34 @@ impl FilterChain {
         max_output: usize,
         diagnostics: &mut Diagnostics,
     ) -> Result<Cow<'a, [u8]>> {
+        self.decode_sized(input, max_output, 0, diagnostics)
+    }
+
+    /// As [`Self::decode`]; `size` is the expected length of the chain's
+    /// output, an allocation hint for its last filter only (0 for none).
+    /// Output and errors are those of `decode`.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::decode`].
+    pub fn decode_sized<'a>(
+        &self,
+        input: &'a [u8],
+        max_output: usize,
+        size: usize,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<Cow<'a, [u8]>> {
         if self.filters.is_empty() && input.len() > max_output {
             return Err(limit(max_output));
         }
         let mut data = Cow::Borrowed(input);
-        for filter in &self.filters {
-            data = Cow::Owned(filter.decode(&data, max_output, diagnostics)?);
+        for (index, filter) in self.filters.iter().enumerate() {
+            let size = if index + 1 == self.filters.len() {
+                size
+            } else {
+                0
+            };
+            data = Cow::Owned(filter.decode_sized(&data, max_output, size, diagnostics)?);
         }
         Ok(data)
     }
@@ -403,6 +466,23 @@ impl Filter {
         max_output: usize,
         diagnostics: &mut Diagnostics,
     ) -> Result<Vec<u8>> {
+        self.decode_sized(input, max_output, 0, diagnostics)
+    }
+
+    /// As [`Self::decode`]; `size` is the expected output length, an
+    /// allocation hint only (0 for none). Output and errors are those of
+    /// `decode`.
+    ///
+    /// # Errors
+    ///
+    /// See [`FilterChain::decode`].
+    pub fn decode_sized(
+        &self,
+        input: &[u8],
+        max_output: usize,
+        size: usize,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<Vec<u8>> {
         match self {
             Self::Image { codec, .. } => Err(Error::unsupported(
                 codec.feature(),
@@ -414,7 +494,9 @@ impl Filter {
             Self::AsciiHex => ascii::hex(input, max_output, diagnostics),
             Self::Ascii85 => ascii::ascii85(input, max_output, diagnostics),
             Self::RunLength => ascii::run_length(input, max_output, diagnostics),
-            Self::Flate { predictor } => flate::decode(input, max_output, *predictor, diagnostics),
+            Self::Flate { predictor } => {
+                flate::decode(input, max_output, *predictor, size, diagnostics)
+            }
             Self::Lzw {
                 predictor,
                 early_change,

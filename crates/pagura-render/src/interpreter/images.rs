@@ -80,9 +80,17 @@ impl Compiler<'_> {
         if let Some(image) = self.state.text.cache.borrow().images.get(&key) {
             return Ok(Arc::clone(image));
         }
+        // Only an image that can be the page's sole mark keeps deferred
+        // samples; masks and later marks need exact ones.
+        let layout = if stack.is_empty() && self.list.commands.is_empty() {
+            self.layout
+        } else {
+            pagura_image::deferred::SampleLayout::Interleaved
+        };
         stack.push(id);
         let object = self.document.object(id)?;
-        let decoded = pagura_image::decode_xobject(self.document, object)?;
+        let decoded =
+            pagura_image::decode_xobject_with(self.document, object, layout, self.buffers)?;
         let image = self
             .prepare_image(
                 decoded,
@@ -412,13 +420,11 @@ impl Compiler<'_> {
     }
 }
 fn sample_bytes(samples: &Samples) -> usize {
-    samples
-        .len()
-        .saturating_mul(if matches!(samples, Samples::Bytes(_)) {
-            1
-        } else {
-            2
-        })
+    match samples {
+        Samples::Bytes(values) => values.len(),
+        Samples::Planar(_) | Samples::Packed(_) => pagura_image::deferred::storage_bytes(samples),
+        Samples::Words(_) | Samples::Mixed { .. } => samples.len().saturating_mul(2),
+    }
 }
 pub(crate) fn max_sample(image: &DecodedImage, component: usize) -> Result<u16> {
     let bits = image

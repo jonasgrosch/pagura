@@ -5,8 +5,7 @@ use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Limits, Position, 
 pub(crate) fn decode(
     data: &[u8],
     dictionary: Option<&Dictionary>,
-    width: u32,
-    height: u32,
+    (width, height, packed): (u32, u32, bool),
     limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<Samples> {
@@ -17,10 +16,13 @@ pub(crate) fn decode(
             .at(Position::Buffer(0)))?;
         parameters::budget(params.columns, height, 1, 1, limits)?;
     }
-    let packed = ccitt::decode_with_diagnostics(data, &params, limits, diagnostics)?;
+    let packed_rows = ccitt::decode_with_diagnostics(data, &params, limits, diagnostics)?;
+    if params.columns == width && packed {
+        return parameters::packed(&packed_rows, width, height, limits, diagnostics);
+    }
     if params.columns == width {
         return parameters::unpack_with_diagnostics(
-            &packed,
+            &packed_rows,
             width,
             height,
             1,
@@ -30,7 +32,7 @@ pub(crate) fn decode(
         );
     }
     let count = parameters::budget(width, height, 1, 1, limits)?;
-    if packed
+    if packed_rows
         .capacity()
         .checked_add(count)
         .is_none_or(|n| n > limits.decoded_bytes)
@@ -42,7 +44,7 @@ pub(crate) fn decode(
     let length = stride
         .checked_mul(height as usize)
         .ok_or(Error::limit("CCITT image size overflow"))?;
-    let data = parameters::packed_data(&packed, length, diagnostics)?;
+    let data = parameters::packed_data(&packed_rows, length, diagnostics)?;
     // Columns controls encoded runs and reference rows. Width controls the
     // painting grid. Cropping is on the right; extension uses fax white before
     // applying Decode. Byte-alignment bits never become image samples.
@@ -78,7 +80,14 @@ mod tests {
             pixels: 8,
             ..Limits::default()
         };
-        let error = decode(&[], Some(&params(1024)), 1, 1, &limits, &mut reports).unwrap_err();
+        let error = decode(
+            &[],
+            Some(&params(1024)),
+            (1, 1, false),
+            &limits,
+            &mut reports,
+        )
+        .unwrap_err();
         assert_eq!(error.kind, ErrorKind::Limit);
         assert_eq!(
             reports.as_slice()[0].repair(),
@@ -103,8 +112,7 @@ mod tests {
         let error = decode(
             &stream.data,
             Some(&params(5)),
-            1024,
-            3,
+            (1024, 3, false),
             &limits,
             &mut Diagnostics::new(Recovery::Repair),
         )
@@ -119,8 +127,7 @@ mod tests {
         let error = decode(
             &[0x60],
             Some(&params(5)),
-            3,
-            1,
+            (3, 1, false),
             &Limits::default(),
             &mut Diagnostics::new(Recovery::Repair),
         )

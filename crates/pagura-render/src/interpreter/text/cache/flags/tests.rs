@@ -58,7 +58,7 @@ fn generated_flags_have_strict_tags_exact_pixels_and_text() {
             .unwrap()
             .dictionary()
             .unwrap();
-        let font = load(&document, dictionary, None, Position::Buffer(0)).unwrap();
+        let font = load(&document, dictionary, None, Position::Buffer(0), false).unwrap();
         let glyph = font.decode(&[65]).unwrap().remove(0);
         assert_eq!(glyph.advance, 0.6, "{name}");
         let decoded = expected

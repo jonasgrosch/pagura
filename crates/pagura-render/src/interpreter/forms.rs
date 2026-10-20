@@ -218,6 +218,12 @@ impl Compiler<'_> {
             position: self.position,
             forms: self.forms.clone(),
             extraction: None,
+            // Groups and other detached content keep exact samples.
+            layout: pagura_image::deferred::SampleLayout::Interleaved,
+            buffers: None,
+            glyphs: Vec::new(),
+            hulls: crate::display::GlyphHulls::default(),
+            drawing: self.drawing,
         }
     }
 }

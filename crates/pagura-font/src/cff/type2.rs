@@ -91,7 +91,8 @@ fn load(
         .ok_or_else(|| bad(0, "glyph index outside CFF"))?;
     let private = &font.private[font.select[index]];
     let mut state = State {
-        stack: Vec::new(),
+        // Type 2 charstrings hold at most 48 operands (CFF2: 513).
+        stack: Vec::with_capacity(48),
         transient: [0.0; 32],
         path: PathBuilder::new(),
         point: Point::default(),
@@ -400,8 +401,17 @@ fn blend(font: &Cff, state: &mut State, at: usize) -> Result<()> {
     Ok(())
 }
 
+/// Takes the operands off the stack for one drawing operator; the stack's
+/// storage returns, empty, for the next operands.
 fn draw(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
-    let args = std::mem::take(&mut s.stack);
+    let mut args = std::mem::take(&mut s.stack);
+    let result = draw_operands(op, &args, s, w, at);
+    args.clear();
+    s.stack = args;
+    result
+}
+
+fn draw_operands(op: u8, args: &[f64], s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
     let n = args.len();
     match op {
         5 if n >= 2 && n.is_multiple_of(2) => {
@@ -411,7 +421,7 @@ fn draw(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
         }
         6 | 7 if n > 0 => {
             let mut horizontal = op == 6;
-            for a in args {
+            for &a in args {
                 s.line(
                     if horizontal { a } else { 0.0 },
                     if horizontal { 0.0 } else { a },
@@ -573,8 +583,18 @@ fn escape(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<bool> {
     Ok(false)
 }
 fn flex(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
-    let a = std::mem::take(&mut s.stack);
-    let (first, second) = match (op, a.as_slice()) {
+    let mut a = std::mem::take(&mut s.stack);
+    let curves = flex_curves(op, &a, at);
+    a.clear();
+    s.stack = a;
+    let (first, second) = curves?;
+    s.curve(&first, w, at)?;
+    s.curve(&second, w, at)
+}
+
+/// The two curves of a flex operator's operands.
+fn flex_curves(op: u8, a: &[f64], at: usize) -> Result<([f64; 6], [f64; 6])> {
+    Ok(match (op, a) {
         (34, [a, b, c, d, e, f, g]) => ([*a, 0.0, *b, *c, *d, 0.0], [*e, 0.0, *f, -c, *g, 0.0]),
         (35, [a, b, c, d, e, f, g, h, i, j, k, l, _]) => {
             ([*a, *b, *c, *d, *e, *f], [*g, *h, *i, *j, *k, *l])
@@ -599,9 +619,7 @@ fn flex(op: u8, s: &mut State, w: &mut Work<'_>, at: usize) -> Result<()> {
             )
         }
         _ => return Err(bad(at, "invalid flex operands")),
-    };
-    s.curve(&first, w, at)?;
-    s.curve(&second, w, at)
+    })
 }
 
 fn hints(

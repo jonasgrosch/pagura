@@ -309,10 +309,13 @@ impl Compiler<'_> {
             .font
             .clone()
             .ok_or(Error::syntax("text showing requires a font"))?;
-        let glyphs = font.font.decode(bytes).map_err(|mut e| {
-            e.position = self.position;
-            e
-        })?;
+        let mut glyphs = std::mem::take(&mut self.glyphs);
+        font.font
+            .decode_into(bytes, EXTRACT, &mut glyphs)
+            .map_err(|mut e| {
+                e.position = self.position;
+                e
+            })?;
         self.operations = self
             .operations
             .checked_add(glyphs.len())
@@ -321,9 +324,10 @@ impl Compiler<'_> {
         if EXTRACT {
             self.extract_show()?;
         }
-        for glyph in glyphs {
+        for glyph in glyphs.drain(..) {
             self.show_glyph::<EXTRACT>(&font, glyph, resources)?;
         }
+        self.glyphs = glyphs;
         Ok(())
     }
 
@@ -474,7 +478,7 @@ impl Compiler<'_> {
         let super::Command::Glyphs(run) = &mut self.list.commands[index] else {
             return Err(Error::invalid_argument("invalid text run"));
         };
-        run.push(outline, transform, self.position)
+        run.push(outline, transform, self.position, &mut self.hulls)
     }
 }
 
