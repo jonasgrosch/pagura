@@ -224,13 +224,12 @@ pub(crate) fn parse_at(
         end(&mut parser, document.limits(), id, &mut repairs)?;
     }
     let source = ObjectSource::File(offset..parser.offset());
-    repairs.extend(
+    repairs.absorb(
         parser
             .take_diagnostics()
             .into_iter()
-            .map(|diagnostic| diagnostic.in_object(id))
-            .collect::<Vec<_>>(),
-    );
+            .map(|diagnostic| diagnostic.in_object(id)),
+    )?;
     let direct = direct_objects(id, &value, direct, document.limits().document_bytes)?;
     let mut object = IndirectObject::new(id, value, stream, source);
     object.direct = direct;
@@ -338,7 +337,7 @@ pub(crate) fn end(
         )?;
         return parser.seek(at + 6);
     }
-    let mut probe = pagura_core::syntax::Parser::at(
+    let mut probe = pagura_core::syntax::Parser::with_offset(
         parser.data(),
         parser.offset(),
         pagura_core::syntax::Origin::File,
@@ -363,9 +362,13 @@ pub(crate) fn header(bytes: &[u8], offset: usize, limits: pagura_core::Limits) -
     if !bytes.get(offset).is_some_and(u8::is_ascii_digit) {
         return None;
     }
-    let mut parser =
-        pagura_core::syntax::Parser::at(bytes, offset, pagura_core::syntax::Origin::File, limits)
-            .ok()?;
+    let mut parser = pagura_core::syntax::Parser::with_offset(
+        bytes,
+        offset,
+        pagura_core::syntax::Origin::File,
+        limits,
+    )
+    .ok()?;
     let number = u32::try_from(parser.unsigned().ok()?).ok()?;
     let generation = u16::try_from(parser.unsigned().ok()?).ok()?;
     (number != 0 && parser.keyword(b"obj")).then_some(ObjectId::new(number, generation))
@@ -554,7 +557,7 @@ pub(crate) fn terminator_in(
         if !separated {
             continue;
         }
-        let mut probe = pagura_core::syntax::Parser::at(
+        let mut probe = pagura_core::syntax::Parser::with_offset(
             bytes,
             marker,
             pagura_core::syntax::Origin::File,
@@ -877,7 +880,8 @@ mod length_dependencies {
 mod direct_tests {
     use super::DirectObject;
     use crate::{Document, OpenOptions};
-    use pagura_core::syntax::{DIRECT_STREAM, PathComponent};
+    use pagura_core::repairs::DIRECT_STREAM;
+    use pagura_core::syntax::PathComponent;
     use pagura_core::{ErrorKind, Limits, ObjectId, Recovery, Value};
     use pagura_testkit::fixture;
 

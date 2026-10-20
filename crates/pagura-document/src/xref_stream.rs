@@ -12,7 +12,7 @@ pub(crate) fn read(
     diagnostics: &mut Diagnostics,
 ) -> Result<(BTreeMap<u32, XrefEntry>, Dictionary)> {
     let mut parser =
-        Parser::at(bytes, offset, Origin::File, limits)?.with_recovery(diagnostics.mode());
+        Parser::with_offset(bytes, offset, Origin::File, limits)?.with_recovery(diagnostics.mode());
     let number = u32::try_from(parser.unsigned()?)
         .map_err(|_| Error::syntax("xref stream number out of range"))?;
     let generation = u16::try_from(parser.unsigned()?)
@@ -43,7 +43,7 @@ fn read_body(
     if !parser.keyword(b"endobj") {
         return Err(Error::syntax("missing xref stream endobj"));
     }
-    diagnostics.extend(parser.take_diagnostics());
+    diagnostics.absorb(parser.take_diagnostics())?;
     let chain = pagura_codec::FilterChain::from_entries(
         dictionary.get(b"Filter"),
         dictionary.get(b"DecodeParms"),

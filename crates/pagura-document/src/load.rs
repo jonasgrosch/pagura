@@ -195,7 +195,7 @@ impl Document {
     /// limits and recovery mode.
     pub(crate) fn file_parser(&self, offset: usize) -> Result<Parser<'_>> {
         Ok(
-            Parser::at(&self.bytes, offset, Origin::File, self.limits())?
+            Parser::with_offset(&self.bytes, offset, Origin::File, self.limits())?
                 .with_recovery(self.recovery()),
         )
     }

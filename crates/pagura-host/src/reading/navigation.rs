@@ -12,7 +12,7 @@ fn destination(out: &mut Writer, dest: Destination) -> Result<()> {
         DestinationView::Fit => (1, [None; 4]),
         DestinationView::FitH(top) => (2, [top, None, None, None]),
         DestinationView::FitV(left) => (3, [left, None, None, None]),
-        DestinationView::FitR(r) => (4, [Some(r.x0), Some(r.y0), Some(r.x1), Some(r.y1)]),
+        DestinationView::FitR(r) => (4, [Some(r.x0()), Some(r.y0()), Some(r.x1()), Some(r.y1())]),
         DestinationView::FitB => (5, [None; 4]),
         DestinationView::FitBh(top) => (6, [top, None, None, None]),
         DestinationView::FitBv(left) => (7, [left, None, None, None]),
@@ -92,7 +92,16 @@ pub(crate) fn links(doc: &Document, page: u32, cap: usize) -> Result<Response> {
         if link.quad_points.is_empty() {
             let r = link.rectangle;
             out.count(1)?;
-            out.quad(&[r.x0, r.y0, r.x1, r.y0, r.x1, r.y1, r.x0, r.y1])?;
+            out.quad(&[
+                r.x0(),
+                r.y0(),
+                r.x1(),
+                r.y0(),
+                r.x1(),
+                r.y1(),
+                r.x0(),
+                r.y1(),
+            ])?;
         } else {
             out.count(link.quad_points.len())?;
             for quad in &link.quad_points {

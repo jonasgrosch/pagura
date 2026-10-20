@@ -75,14 +75,14 @@ in product code, no `#[allow]`) enforces part of it; review enforces the rest.
   internals, no speculative abstraction.
 - Borrow rather than clone, iterate rather than index where it reads better,
   and preallocate only with checked, budgeted sizes.
-- Unit tests live next to the code (`#[cfg(test)] mod tests`); cross-crate
-  behaviour is tested in `crates/pagura/tests` with helpers from
-  `pagura-testkit`.
+- Tests follow the placement rules under [Conventions](#conventions);
+  shared test helpers live in `pagura-testkit`.
 
 ## Tags, fixtures and requirements
 
 - `Feature` and `Repair` tags are stable API, `area.item` (for example
-  `filter.DCTDecode`, `xref.rebuilt`), defined as constants in each crate.
+  `filter.DCTDecode`, `xref.rebuilt`), defined as constants in each crate's
+  `features` and `repairs` modules (see [Conventions](#conventions)).
 - Fixtures come from `tools/fixturegen/<area>.py` (standard library only; never
   imports or runs Pagura) via `python3 tools/fixtures.py`, written to
   `corpus/generated/<area>/` and `corpus/manifests/<area>.json`. Every case has
@@ -91,6 +91,92 @@ in product code, no `#[allow]`) enforces part of it; review enforces the rest.
 - Real-world, adversarial and upstream corpora are fetched by
   `tools/zipcorpus.py` and `tools/corpus.py` into `$PAGURA_CORPORA_DIR`, outside
   the repository, and scored with `tools/scoreboard.py`. Never commit them.
+
+## Conventions
+
+These settle choices that code review otherwise argues case by case (ADR
+0017). New code follows them; existing code is brought in line crate by
+crate.
+
+1. **Modules.** Use `foo.rs` next to a `foo/` directory, never `mod.rs`.
+   Group related files in a directory (`security/`, `xref/`), not with
+   `foo_bar.rs` name prefixes. Nest at most four levels below `src/`.
+2. **Tests.**
+   - Unit tests go in an inline `#[cfg(test)] mod tests`, one per module.
+     Once they exceed about 150 lines they move to `foo/tests.rs`.
+   - Tests that use only a crate's public API go in `crates/<crate>/tests/`;
+     tests of behaviour across crates go in `crates/pagura/tests`.
+   - No `*_tests.rs` siblings, no `#[path]` sharing of test code (put shared
+     helpers in `pagura-testkit`), and no interpreters (Python, Node)
+     spawned from cargo tests: generator checks belong in `tools/check.py`.
+3. **Tags.** Each crate defines its `Feature` tags in `pub mod features`
+   and its `Repair` tags in `pub mod repairs`, each ending with
+   `pub const ALL`. `Feature::new` and `Repair::new` are called nowhere
+   else. Each tag area (`font.`, `image.`, `filter.` …) is owned by one
+   crate. Spelling is American (`color`), matching PDF names. The facade
+   re-exports every tag, and a workspace test checks that tags are unique,
+   well formed and in their owner's area.
+4. **Recovery.** Repairs are reported only through
+   `Diagnostics::repair`, `Diagnostics::repair_once` (to coalesce a
+   deviation repeated per glyph, code or row) or the document's reporting
+   API built on them; nested sinks are merged with `Diagnostics::absorb`.
+   A lookup in a `Document` is never `.ok()`ed: a `Limit` is re-raised and
+   any other fault that is tolerated is reported as a repair.
+5. **Budgets.** Work and memory are charged only through
+   `pagura_core::Meter`, before the work or allocation they protect.
+   Each `Limits` field means exactly what its documentation says; a new
+   kind of budget gets a new field and an ADR 0016 amendment, never a
+   borrowed one. Limits that a standard defines are named constants.
+6. **Binary input.** Binary formats are read only through
+   `pagura_core::bytes::{Cursor, BitCursor}`. Truncated input is a `Syntax`
+   error and offset overflow is a `Limit` error. Spec codes (opcodes,
+   markers, segment types, wire codes) are `#[repr(u8)]` enums with
+   `TryFrom` or named constants; bit fields are a newtype with named
+   constants. No bare literals.
+7. **Text strings.** PDF text strings are decoded and encoded only through
+   `pagura_core::text_string`, with the caller's `Diagnostics` selecting
+   strict or reported repair.
+8. **Types.**
+   - Types with invariants have private fields and accessors.
+   - Public enums and option or record structs are `#[non_exhaustive]`,
+     unless a standard closes the set (as clause 7.3 does for `Value`) or
+     functional record update is the intended construction (as for
+     `Limits`); the type's documentation then says why.
+   - Items in private modules are `pub(crate)` or `pub(super)`
+     (`unreachable_pub`).
+   - A function with more than one parameter takes no `bool`; use an enum.
+     Positional tuples with more than two fields become structs.
+9. **Errors.**
+   - Use the constructors (`Error::syntax`, `Error::limit` …), not
+     `Error::new(ErrorKind::…)`.
+   - Use `Position::Unknown` when no offset is meaningful, never a
+     placeholder such as `Buffer(0)`. PDF-agnostic parsers report
+     `Position::Buffer` offsets, and the PDF layer places them with
+     `Error::within` / `Diagnostic::within`.
+   - Context builders keep the innermost context; add outer context with
+     the builders or `ResultExt`, never by assigning fields.
+   - An internal invariant is a `debug_assert!` or is made unrepresentable,
+     not an `InvalidArgument` error, which is reserved for callers' mistakes.
+10. **Signatures.** Functions take `&Limits`; only constructors that store
+    limits take them by value. A provider is always `Option<&dyn Provider>`.
+    Variants of an entry point are named `*_with_<what>`
+    (`parse_with_diagnostics`).
+11. **Conversions.** Widen integers with `From` or `pagura_core::convert`;
+    never mix `as` casts and `try_from(..).unwrap_or(MAX)` for the same
+    conversion. Floats are quantized to bytes through one shared helper in
+    `pagura-raster`.
+12. **Citations.** A bare clause number (`7.3.10`, `Table 73`) means
+    ISO 32000-2. Other standards are always prefixed: `T.88 7.4.14`,
+    `T.800 C.3`, `RFC 1951 3.2.5`, `T.88 Table 29`.
+13. **CI.** `tools/check.py` runs clippy and the tests with
+    `--no-default-features` and `--all-features` for `pagura`, `pagura-data`
+    and `pagura-host`, and verifies every generated table.
+14. **Generated tables.** Generators live in `tools/gen/`, every generated
+    file starts with a provenance header naming its generator and inputs,
+    and `tools/check.py` verifies that it is current.
+15. **Benchmarks.** Profiling programs live in a crate's `examples/` (as
+    `render_profile` does); timings they print are hypotheses until the
+    performance policy in `docs/ARCHITECTURE.md` is met.
 
 ## Workflow
 

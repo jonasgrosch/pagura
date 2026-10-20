@@ -74,7 +74,7 @@ fn dictionary_at(
     ignored: &[&[u8]],
     depth: usize,
 ) -> Result<bool> {
-    for (key, value) in a.iter() {
+    for (key, value) in a {
         if ignored.contains(&key.as_bytes()) {
             continue;
         }

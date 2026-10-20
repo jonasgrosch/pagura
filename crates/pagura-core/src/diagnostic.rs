@@ -1,10 +1,14 @@
 //! Typed repair and informational diagnostics (ADR 0003).
 
 use crate::{Error, ObjectId, Position, Result};
+use std::collections::BTreeSet;
 use std::fmt;
 
 /// Whether malformed input may be repaired.
+///
+/// New modes may be added, so matches outside this crate need a wildcard arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+#[non_exhaustive]
 pub enum Recovery {
     /// Every deviation from the standard is an error. Used for validation
     /// and before incremental saving.
@@ -17,7 +21,8 @@ pub enum Recovery {
 
 /// A stable, machine-readable tag for a kind of repair, `area.item`, for
 /// example `xref.rebuilt` or `stream.length-corrected`. Each crate defines
-/// its own constants; published tags must not change.
+/// its own constants in a `repairs` module (see `CONTRIBUTING.md`);
+/// published tags must not change.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Repair(&'static str);
 
@@ -40,7 +45,10 @@ impl fmt::Display for Repair {
 }
 
 /// Whether a diagnostic reports repaired input or information about valid input.
+///
+/// New kinds may be added, so matches outside this crate need a wildcard arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[non_exhaustive]
 pub enum DiagnosticKind {
     /// A bounded correction of malformed input, permitted only in Repair mode.
     Repair(Repair),
@@ -67,7 +75,13 @@ impl DiagnosticKind {
 }
 
 /// One reported repair or informational observation.
+///
+/// The builders keep the innermost context, exactly like [`Error`]'s: a
+/// position or object recorded closer to the fault is never overwritten.
+/// Fields stay public for reading; the type is `#[non_exhaustive]` so other
+/// crates build it through [`Diagnostic::new`] or [`Diagnostic::information`].
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub struct Diagnostic {
     /// Whether this describes repaired input or information.
     pub kind: DiagnosticKind,
@@ -110,30 +124,56 @@ impl Diagnostic {
         self.kind.repair()
     }
 
-    /// Sets the position.
+    /// Sets the position unless one is already known. As for
+    /// [`Error::at`], the object context stays separate.
     #[must_use]
     pub const fn at(mut self, position: Position) -> Self {
-        self.position = position;
+        if matches!(self.position, Position::Unknown) {
+            self.position = position;
+        }
         self
     }
 
-    /// Sets the object context.
+    /// Sets the object context unless an inner object is already recorded.
     #[must_use]
     pub const fn in_object(mut self, id: ObjectId) -> Self {
-        self.object = Some(id);
+        if self.object.is_none() {
+            self.object = Some(id);
+        }
         self
+    }
+
+    /// [`Diagnostic::in_object`] for an object that may not be known.
+    #[must_use]
+    pub const fn in_object_opt(self, id: Option<ObjectId>) -> Self {
+        match id {
+            Some(id) => self.in_object(id),
+            None => self,
+        }
+    }
+
+    /// Places a buffer-relative position in the input the buffer came from;
+    /// see [`Position::within`]. A resulting stream position also records the
+    /// stream as the object context, unless an inner object is recorded.
+    #[must_use]
+    pub const fn within(mut self, start: Position) -> Self {
+        self.position = self.position.within(start);
+        let object = self.position.object();
+        self.in_object_opt(object)
     }
 
     /// The error this repair becomes under [`Recovery::Strict`], or `None`
     /// for information that must not reject valid input.
-    pub fn to_error(&self) -> Option<Error> {
-        let repair = self.repair()?;
-        let mut error = Error::syntax(self.message).at(self.position);
-        error.repair = Some(repair);
-        Some(match self.object {
-            Some(object) => error.in_object(object),
-            None => error,
-        })
+    pub const fn to_error(&self) -> Option<Error> {
+        match self.repair() {
+            Some(repair) => Some(
+                Error::syntax(self.message)
+                    .at(self.position)
+                    .in_object_opt(self.object)
+                    .with_repair(repair),
+            ),
+            None => None,
+        }
     }
 }
 
@@ -158,10 +198,14 @@ impl fmt::Display for Diagnostic {
 ///
 /// Code that is about to repair input calls [`Diagnostics::repair`] first;
 /// in strict mode that returns the error instead of permitting the repair.
+/// Every way of adding a diagnostic goes through that check, so a strict
+/// sink never holds a repair.
 #[derive(Debug, Clone, Default)]
 pub struct Diagnostics {
     mode: Recovery,
     items: Vec<Diagnostic>,
+    /// The kinds in `items`, so [`Diagnostics::repair_once`] need not scan.
+    kinds: BTreeSet<DiagnosticKind>,
 }
 
 impl Diagnostics {
@@ -170,6 +214,7 @@ impl Diagnostics {
         Self {
             mode,
             items: Vec::new(),
+            kinds: BTreeSet::new(),
         }
     }
 
@@ -190,8 +235,39 @@ impl Diagnostics {
         {
             return Err(error);
         }
+        self.kinds.insert(diagnostic.kind);
         self.items.push(diagnostic);
         Ok(())
+    }
+
+    /// Records a diagnostic unless one of the same kind (the same repair or
+    /// information tag) is already recorded; strict mode still rejects every
+    /// repair.
+    ///
+    /// Use this where one damaged structure can repeat the same deviation
+    /// many times (every glyph, code or row): the first occurrence is kept
+    /// with its position, the sink does not grow per occurrence, and the
+    /// check costs a lookup among the distinct kinds recorded, not a scan of
+    /// every diagnostic.
+    ///
+    /// # Errors
+    ///
+    /// As [`Diagnostics::repair`].
+    pub fn repair_once(&mut self, diagnostic: Diagnostic) -> Result<()> {
+        if self.kinds.contains(&diagnostic.kind) {
+            return Ok(());
+        }
+        self.repair(diagnostic)
+    }
+
+    /// Records diagnostics collected by a nested sink or parser, each through
+    /// [`Diagnostics::repair`], so this sink's mode applies to them too.
+    ///
+    /// # Errors
+    ///
+    /// Under [`Recovery::Strict`], returns the first repair as a syntax error.
+    pub fn absorb(&mut self, items: impl IntoIterator<Item = Diagnostic>) -> Result<()> {
+        items.into_iter().try_for_each(|item| self.repair(item))
     }
 
     /// Diagnostics recorded so far, in discovery order.
@@ -206,21 +282,18 @@ impl Diagnostics {
 
     /// Moves the recorded diagnostics out, leaving the sink empty.
     pub fn take(&mut self) -> Vec<Diagnostic> {
+        self.kinds.clear();
         std::mem::take(&mut self.items)
-    }
-
-    /// Appends diagnostics already authorized elsewhere, e.g. by a nested parser.
-    pub fn extend(&mut self, items: impl IntoIterator<Item = Diagnostic>) {
-        self.items.extend(items);
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Diagnostic, Diagnostics, Recovery, Repair};
-    use crate::{ErrorKind, Position};
+    use super::{Diagnostic, DiagnosticKind, Diagnostics, Recovery, Repair};
+    use crate::{ErrorKind, ObjectId, Position};
 
     const TRAILING: Repair = Repair::new("file.trailing-bytes");
+    const OTHER: Repair = Repair::new("file.other");
 
     #[test]
     fn strict_mode_turns_repairs_into_errors() {
@@ -234,14 +307,15 @@ mod tests {
         repair.repair(diagnostic.clone()).unwrap();
         assert_eq!(repair.as_slice(), [diagnostic]);
     }
+
     #[test]
     fn information_is_not_a_repair_in_either_recovery_mode() {
         let information = Diagnostic::information("font.substituted", "bundled outlines")
-            .in_object(crate::ObjectId::new(7, 0))
+            .in_object(ObjectId::new(7, 0))
             .at(Position::File(12));
         assert_eq!(
             information.kind,
-            super::DiagnosticKind::Information("font.substituted")
+            DiagnosticKind::Information("font.substituted")
         );
         assert_eq!(information.tag(), "font.substituted");
         assert_eq!(information.repair(), None);
@@ -260,5 +334,91 @@ mod tests {
         assert_eq!(repair.kind.tag(), information.kind.tag());
         assert_eq!(repair.kind.repair(), Some(Repair::new("font.substituted")));
         assert!(Diagnostics::new(Recovery::Strict).repair(repair).is_err());
+    }
+
+    #[test]
+    fn builders_keep_the_innermost_context_like_errors() {
+        let stream = ObjectId::new(3, 0);
+        let diagnostic = Diagnostic::new(TRAILING, "bytes after %%EOF")
+            .at(Position::Buffer(4))
+            .within(Position::Stream {
+                object: stream,
+                offset: 10,
+            })
+            .at(Position::File(1))
+            .in_object(ObjectId::new(8, 0));
+        assert_eq!(
+            diagnostic.position,
+            Position::Stream {
+                object: stream,
+                offset: 14
+            }
+        );
+        assert_eq!(diagnostic.object, Some(stream));
+        let error = diagnostic.to_error().unwrap();
+        assert_eq!(
+            (error.position, error.object, error.repair),
+            (diagnostic.position, Some(stream), Some(TRAILING))
+        );
+        let placed = Diagnostic::new(TRAILING, "bytes after %%EOF")
+            .in_object_opt(None)
+            .in_object_opt(Some(ObjectId::new(5, 0)))
+            .at(Position::File(2))
+            .at(Position::File(9));
+        assert_eq!(
+            (placed.position, placed.object),
+            (Position::File(2), Some(ObjectId::new(5, 0)))
+        );
+    }
+
+    #[test]
+    fn repair_once_keeps_the_first_occurrence_per_kind_but_strict_rejects_each() {
+        let mut sink = Diagnostics::new(Recovery::Repair);
+        for offset in 0..100 {
+            sink.repair_once(Diagnostic::new(TRAILING, "first").at(Position::Buffer(offset)))
+                .unwrap();
+        }
+        sink.repair_once(Diagnostic::new(OTHER, "second")).unwrap();
+        sink.repair_once(Diagnostic::information("file.note", "third"))
+            .unwrap();
+        sink.repair_once(Diagnostic::information("file.note", "again"))
+            .unwrap();
+        let tags: Vec<_> = sink.as_slice().iter().map(Diagnostic::tag).collect();
+        assert_eq!(tags, ["file.trailing-bytes", "file.other", "file.note"]);
+        assert_eq!(sink.as_slice()[0].position, Position::Buffer(0));
+        // Taking the diagnostics forgets their kinds as well.
+        assert_eq!(sink.take().len(), 3);
+        sink.repair_once(Diagnostic::new(TRAILING, "again"))
+            .unwrap();
+        assert_eq!(sink.as_slice().len(), 1);
+        let mut strict = Diagnostics::new(Recovery::Strict);
+        for _ in 0..2 {
+            let error = strict
+                .repair_once(Diagnostic::new(TRAILING, "first"))
+                .unwrap_err();
+            assert_eq!(error.repair, Some(TRAILING));
+        }
+        strict
+            .repair_once(Diagnostic::information("file.note", "kept"))
+            .unwrap();
+        assert_eq!(strict.as_slice().len(), 1);
+    }
+
+    #[test]
+    fn absorbing_respects_the_receiving_mode() {
+        let mut nested = Diagnostics::new(Recovery::Repair);
+        nested
+            .repair(Diagnostic::information("file.note", "nested"))
+            .unwrap();
+        nested.repair(Diagnostic::new(TRAILING, "nested")).unwrap();
+        nested.repair(Diagnostic::new(OTHER, "nested")).unwrap();
+        let mut repair = Diagnostics::new(Recovery::Repair);
+        repair.absorb(nested.as_slice().to_vec()).unwrap();
+        assert_eq!(repair.as_slice(), nested.as_slice());
+        let mut strict = Diagnostics::new(Recovery::Strict);
+        let error = strict.absorb(nested.take()).unwrap_err();
+        assert_eq!(error.repair, Some(TRAILING));
+        let kinds: Vec<_> = strict.as_slice().iter().map(|item| item.kind).collect();
+        assert_eq!(kinds, [DiagnosticKind::Information("file.note")]);
     }
 }

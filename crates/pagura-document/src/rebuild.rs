@@ -59,7 +59,7 @@ pub(crate) fn read(
         if parser.offset() <= offset {
             parser.seek(offset + 1)?;
         }
-        diagnostics.extend(parser.take_diagnostics());
+        diagnostics.absorb(parser.take_diagnostics())?;
     }
     if scan.table.entries.is_empty() {
         return Err(
@@ -111,12 +111,12 @@ fn object(
         skip_direct(parser, dictionary, id, limits, diagnostics)?;
         Ok(None)
     })?;
-    diagnostics.extend(
+    diagnostics.absorb(
         parser
             .take_diagnostics()
             .into_iter()
             .map(|item| item.in_object(id)),
-    );
+    )?;
     if let Some(dictionary) = value.as_dictionary() {
         // Even an xref stream with a damaged body can have a usable trailer.
         if dictionary.is_name(b"Type", b"XRef") {
@@ -203,11 +203,11 @@ fn skip_stream(
     diagnostics: &mut Diagnostics,
 ) -> Result<bool> {
     let before = parser.offset();
-    let mut exact = Parser::at(parser.data(), before, Origin::File, limits)?;
+    let mut exact = Parser::with_offset(parser.data(), before, Origin::File, limits)?;
     let mut attempt = Diagnostics::new(diagnostics.mode());
     match crate::xref_stream::direct_stream(&mut exact, dictionary, limits, &mut attempt) {
         Ok(_) => {
-            diagnostics.extend(attempt.take());
+            diagnostics.absorb(attempt.take())?;
             parser.seek(exact.offset())?;
             return Ok(true);
         }
@@ -233,7 +233,7 @@ fn skip_stream(
     {
         let at = start + relative;
         let line_boundary = relative == 0 || matches!(bytes.get(relative - 1), Some(b'\n' | b'\r'));
-        let mut probe = Parser::at(parser.data(), at, Origin::File, limits)?;
+        let mut probe = Parser::with_offset(parser.data(), at, Origin::File, limits)?;
         if probe.keyword(b"endstream") {
             let after = probe.offset();
             if probe.keyword(b"endobj") {

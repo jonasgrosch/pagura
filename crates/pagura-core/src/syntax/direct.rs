@@ -1,7 +1,7 @@
 //! Source-backed recovery of direct streams (7.3.8.1).
 
 use super::Parser;
-use crate::{Dictionary, Name, Result};
+use crate::{Dictionary, Error, Meter, Name, Result};
 use std::ops::Range;
 
 /// One step from a parsed value to a nested dictionary or array element.
@@ -26,6 +26,7 @@ impl PathComponent {
 /// An illegal direct stream recovered without changing the parsed value tree.
 /// Its dictionary remains at `path`; payload bytes remain in the input slice.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct DirectStream {
     /// Path to its dictionary in the parsed value.
     pub path: Vec<PathComponent>,
@@ -40,18 +41,61 @@ pub struct DirectStream {
 pub type DirectStreamHandler<'a, 'h> =
     dyn FnMut(&mut Parser<'a>, &Dictionary) -> Result<Option<Range<usize>>> + 'h;
 
-pub(super) struct Context<'a, 'h> {
-    pub handler: &'h mut DirectStreamHandler<'a, 'h>,
-    pub path: Vec<PathComponent>,
-    pub found: Vec<DirectStream>,
-    pub count: usize,
-    pub bytes: usize,
+/// Direct-stream recovery state for one [`Parser::parse_with_streams`] call.
+/// The handler borrow (`'b`) is independent of what the handler captures
+/// (`'h`), so a caller's closure is not forced to outlive its borrow.
+pub(super) struct Context<'a, 'b, 'h> {
+    pub(super) handler: &'b mut DirectStreamHandler<'a, 'h>,
+    pub(super) path: Vec<PathComponent>,
+    pub(super) found: Vec<DirectStream>,
+    pub(super) count: usize,
+    metadata: Meter,
+}
+
+impl<'a, 'b, 'h> Context<'a, 'b, 'h> {
+    pub(super) fn new(handler: &'b mut DirectStreamHandler<'a, 'h>, budget: usize) -> Self {
+        Self {
+            handler,
+            path: Vec::new(),
+            found: Vec::new(),
+            count: 0,
+            metadata: Meter::new(budget, "direct stream metadata budget exceeded"),
+        }
+    }
+
+    /// Retains a descriptor for the stream whose dictionary is at the current
+    /// path. Descriptor growth and the copied path are charged to
+    /// [`Limits::document_bytes`](crate::Limits::document_bytes) before anything is copied.
+    pub(super) fn record(&mut self, source: Range<usize>, data: Range<usize>) -> Result<()> {
+        let capacity = if self.found.len() == self.found.capacity() {
+            self.found.capacity().saturating_mul(2).max(1)
+        } else {
+            self.found.capacity()
+        };
+        let growth = capacity
+            .saturating_sub(self.found.capacity())
+            .saturating_mul(size_of::<DirectStream>());
+        let bytes = self.path.iter().fold(growth, |sum, part| {
+            sum.saturating_add(part.retained_bytes())
+        });
+        self.metadata.charge(bytes)?;
+        self.found
+            .try_reserve_exact(capacity.saturating_sub(self.found.len()))
+            .map_err(|_| Error::limit("direct stream metadata allocation failed"))?;
+        self.found.push(DirectStream {
+            path: self.path.clone(),
+            source,
+            data,
+        });
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::PathComponent;
-    use crate::syntax::{DIRECT_STREAM, Origin, Parser};
+    use crate::repairs::DIRECT_STREAM;
+    use crate::syntax::{Origin, Parser};
     use crate::{Limits, Name, Recovery};
 
     #[test]

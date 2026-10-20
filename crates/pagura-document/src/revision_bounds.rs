@@ -17,7 +17,7 @@ pub(crate) fn boundary(
 ) -> Result<(Boundary, usize)> {
     let bytes = ctx.doc.original_bytes();
     let offset = revision.end_section;
-    let mut parser = Parser::at(&bytes[..end], offset, Origin::File, ctx.doc.limits())?;
+    let mut parser = Parser::with_offset(&bytes[..end], offset, Origin::File, ctx.doc.limits())?;
     if parser.keyword(b"xref") {
         while !parser.keyword(b"trailer") {
             ctx.step(0, source)?;

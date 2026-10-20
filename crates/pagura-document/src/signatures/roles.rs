@@ -313,7 +313,7 @@ fn dictionary(
     if usage.role == R::Signature {
         return signature_dependencies(doc, ctx, roles, d, depth);
     }
-    for (key, value) in d.iter() {
+    for (key, value) in d {
         let key = key.as_bytes();
         let role = match (usage.role, key) {
             (R::Catalog, b"Pages") | (R::PageTree, b"Kids") => R::PageTree,
@@ -487,7 +487,7 @@ fn signature_dependencies(
         role: ObjectRole::Other,
         field: None,
     };
-    for (key, value) in d.iter() {
+    for (key, value) in d {
         if key.as_bytes() != b"Reference" {
             walk(doc, ctx, roles, value, usage, depth)?;
             continue;
@@ -501,7 +501,7 @@ fn signature_dependencies(
                 roles.ambiguous = true;
                 continue;
             };
-            for (key, value) in reference.iter() {
+            for (key, value) in reference {
                 if key.as_bytes() == b"Data" && Some(value) == doc.trailer().get(b"Root") {
                     continue;
                 }
@@ -513,7 +513,7 @@ fn signature_dependencies(
 }
 
 fn trailer(doc: &Document, ctx: &mut Context<'_>, roles: &mut Roles) -> Result<()> {
-    for (key, value) in doc.trailer().iter() {
+    for (key, value) in doc.trailer() {
         if key.as_bytes() == b"Root" || super::equality::TRAILER_KEYS.contains(&key.as_bytes()) {
             continue;
         }

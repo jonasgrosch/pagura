@@ -4,6 +4,14 @@
 use crate::{Document, tags};
 use pagura_core::{Diagnostic, Diagnostics, ObjectId, Rect, Result, Value};
 
+/// US Letter, the viewing convention for a page without a usable MediaBox.
+const LETTER: Rect = if let Some(rect) = Rect::from_corners(0.0, 0.0, 612.0, 792.0) {
+    rect
+} else {
+    // Evaluated at compile time: finite corners always form a rectangle.
+    unreachable!()
+};
+
 /// The Letter fallback is a viewing convention also used by PDF.js, not an
 /// ISO default. Prefer a valid CropBox when the required MediaBox is unusable.
 /// Resolution errors (including limits and damaged object streams) propagate.
@@ -24,12 +32,7 @@ pub(crate) fn boxes(
                     "missing or invalid MediaBox replaced by valid CropBox or Letter viewing convention")
                     .in_object(id),
             )?;
-        crop_rectangle.unwrap_or(Rect {
-            x0: 0.0,
-            y0: 0.0,
-            x1: 612.0,
-            y1: 792.0,
-        })
+        crop_rectangle.unwrap_or(LETTER)
     };
     let crop = if let Some(crop) = crop_rectangle.and_then(|crop| crop.intersection(&media)) {
         crop

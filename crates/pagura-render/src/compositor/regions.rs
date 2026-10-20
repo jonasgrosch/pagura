@@ -366,7 +366,7 @@ fn content_region(
             Command::Glyphs(run) if !run.paint.color.paints() => continue,
             Command::Glyphs(run) => {
                 let r = run.bounds;
-                let r = Rect::from_corners(r.x0 - 1.0, r.y0 - 1.0, r.x1 + 1.0, r.y1 + 1.0)
+                let r = Rect::from_corners(r.x0() - 1.0, r.y0() - 1.0, r.x1() + 1.0, r.y1() + 1.0)
                     .ok_or(Error::limit("content bounds overflow"))?;
                 (Some(r), run.paint.clip.as_ref())
             }
@@ -376,8 +376,13 @@ fn content_region(
                 let pad = stroke_pad(p, Transform::IDENTITY);
                 let bounds = bounds
                     .map(|r| {
-                        Rect::from_corners(r.x0 - pad.0, r.y0 - pad.1, r.x1 + pad.0, r.y1 + pad.1)
-                            .ok_or(Error::limit("content bounds overflow"))
+                        Rect::from_corners(
+                            r.x0() - pad.0,
+                            r.y0() - pad.1,
+                            r.x1() + pad.0,
+                            r.y1() + pad.1,
+                        )
+                        .ok_or(Error::limit("content bounds overflow"))
                     })
                     .transpose()?;
                 (bounds, p.clip.as_ref())
@@ -402,10 +407,10 @@ fn content_region(
             Command::Shading(s) => {
                 let bounds = if let Some(bbox) = s.shading.bbox {
                     let mut path = pagura_raster::PathBuilder::new();
-                    path.rect(bbox.x0, bbox.y0, bbox.width(), bbox.height());
+                    path.rect(bbox.x0(), bbox.y0(), bbox.width(), bbox.height());
                     let pad = if bbox.is_empty() { 1.0 } else { 0.0 };
                     hull_rect(control_hull(&path.finish(), s.transform, work)?).and_then(|r| {
-                        Rect::from_corners(r.x0 - pad, r.y0 - pad, r.x1 + pad, r.y1 + pad)
+                        Rect::from_corners(r.x0() - pad, r.y0() - pad, r.x1() + pad, r.y1() + pad)
                     })
                 } else {
                     Some(clip)
@@ -444,12 +449,7 @@ fn content_region(
             chain = node.parent.as_ref();
         }
         if visible {
-            total = Some(total.map_or(bounds, |r| Rect {
-                x0: r.x0.min(bounds.x0),
-                y0: r.y0.min(bounds.y0),
-                x1: r.x1.max(bounds.x1),
-                y1: r.y1.max(bounds.y1),
-            }));
+            total = Some(total.map_or(bounds, |r| r.union(&bounds)));
         }
     }
     Ok(total)
@@ -507,17 +507,21 @@ fn content_hull(path: &Arc<Path>, work: &mut Work<'_>) -> Result<Option<Rect>> {
     }
     let pad = if contains_point || point { 1.0 } else { 0.0 };
     Ok(Some(
-        Rect::from_corners(rect.x0 - pad, rect.y0 - pad, rect.x1 + pad, rect.y1 + pad)
-            .ok_or(Error::limit("content bounds overflow"))?,
+        Rect::from_corners(
+            rect.x0() - pad,
+            rect.y0() - pad,
+            rect.x1() + pad,
+            rect.y1() + pad,
+        )
+        .ok_or(Error::limit("content bounds overflow"))?,
     ))
 }
 fn hull_rect([lo, hi]: [Point; 2]) -> Option<Rect> {
-    (lo.x <= hi.x && lo.y <= hi.y).then_some(Rect {
-        x0: lo.x,
-        y0: lo.y,
-        x1: hi.x,
-        y1: hi.y,
-    })
+    if lo.x <= hi.x && lo.y <= hi.y {
+        Rect::from_corners(lo.x, lo.y, hi.x, hi.y)
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -639,7 +643,8 @@ mod tests {
             )?;
             let list = crate::compile_page(&document, document.page(0)?)?;
             assert_eq!(
-                list.content_bounds()?.map(|r| [r.x0, r.y0, r.x1, r.y1]),
+                list.content_bounds()?
+                    .map(|r| [r.x0(), r.y0(), r.x1(), r.y1()]),
                 expected,
                 "{name}"
             );
@@ -679,7 +684,8 @@ mod tests {
             )?;
             let list = crate::compile_page(&document, document.page(0)?)?;
             assert_eq!(
-                list.content_bounds()?.map(|r| [r.x0, r.y0, r.x1, r.y1]),
+                list.content_bounds()?
+                    .map(|r| [r.x0(), r.y0(), r.x1(), r.y1()]),
                 Some([3.25, 3.25, 5.25, 5.25])
             );
         }

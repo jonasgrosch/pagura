@@ -110,8 +110,8 @@ impl Style {
             paint_color(out, color, false)?;
             out.text(&format!(
                 "{} {} {} {} re f\n",
-                bbox.x0,
-                bbox.y0,
+                bbox.x0(),
+                bbox.y0(),
                 bbox.width(),
                 bbox.height()
             ))?;
@@ -131,16 +131,16 @@ impl Style {
             if self.underline {
                 out.text(&format!(
                     "{} {} m {} {} l S\n",
-                    bbox.x0 + inset,
-                    bbox.y0 + inset,
-                    bbox.x1 - inset,
-                    bbox.y0 + inset
+                    bbox.x0() + inset,
+                    bbox.y0() + inset,
+                    bbox.x1() - inset,
+                    bbox.y0() + inset
                 ))?;
             } else {
                 out.text(&format!(
                     "{} {} {} {} re S\n",
-                    bbox.x0 + inset,
-                    bbox.y0 + inset,
+                    bbox.x0() + inset,
+                    bbox.y0() + inset,
                     bbox.width() - 2.0 * inset,
                     bbox.height() - 2.0 * inset
                 ))?;

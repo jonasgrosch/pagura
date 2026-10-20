@@ -312,12 +312,11 @@ impl TextPage {
                 if !failure.recoverable {
                     return Err(error);
                 }
-                crate::repairs::Report::new(document).diagnostic(pagura_core::Diagnostic {
-                    kind: pagura_core::DiagnosticKind::Repair(crate::repairs::STRUCTURE_FALLBACK),
-                    message: error.message,
-                    position: error.position,
-                    object: error.object,
-                })?;
+                crate::repairs::Report::new(document).diagnostic(
+                    pagura_core::Diagnostic::new(crate::repairs::STRUCTURE_FALLBACK, error.message)
+                        .in_object_opt(error.object)
+                        .at(error.position),
+                )?;
                 self.structure_fallback = Some(error);
             }
         }

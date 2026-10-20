@@ -89,7 +89,7 @@ fn on_states<'a>(
     })?;
     ctx.allocate::<&Name>(d.len(), source)?;
     let mut states = Vec::new();
-    for (key, _) in d.iter() {
+    for (key, _) in d {
         ctx.step(0, source)?;
         if key.as_bytes() != b"Off" {
             states.push(key);

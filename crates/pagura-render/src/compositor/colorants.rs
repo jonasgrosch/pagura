@@ -384,12 +384,7 @@ mod tests {
                 transform: pagura_raster::Transform::IDENTITY,
                 kind: crate::pattern::Kind::Tiling(crate::pattern::Tiling {
                     id: pagura_core::ObjectId::new(1, 0),
-                    bbox: pagura_core::Rect {
-                        x0: 0.0,
-                        y0: 0.0,
-                        x1: 1.0,
-                        y1: 1.0,
-                    },
+                    bbox: pagura_core::Rect::from_corners(0.0, 0.0, 1.0, 1.0).unwrap(),
                     step: [1.0; 2],
                     uncolored: false,
                     spacing: 2,

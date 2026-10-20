@@ -1,4 +1,5 @@
 use super::*;
+use pagura_core::SignatureLimits;
 use std::process::Command;
 
 pub(crate) fn decode(hex: &str) -> Vec<u8> {
@@ -241,7 +242,10 @@ fn shared_limits_and_verification_outcome_contract() {
     );
     assert!(key.verify_pss(pss, &digest[..31], &signature).is_err());
     let limits = Limits {
-        rsa_modulus_bits: key.modulus_bits() - 1,
+        signatures: SignatureLimits {
+            rsa_modulus_bits: u32::try_from(key.modulus_bits() - 1).unwrap(),
+            ..limits.signatures
+        },
         ..limits
     };
     assert_eq!(
@@ -249,7 +253,10 @@ fn shared_limits_and_verification_outcome_contract() {
         pagura_core::ErrorKind::Limit
     );
     let limits = Limits {
-        rsa_exponent_bits: 1,
+        signatures: SignatureLimits {
+            rsa_exponent_bits: 1,
+            ..SignatureLimits::default()
+        },
         ..Limits::default()
     };
     assert_eq!(
@@ -257,7 +264,10 @@ fn shared_limits_and_verification_outcome_contract() {
         pagura_core::ErrorKind::Limit
     );
     let limits = Limits {
-        rsa_work: 0,
+        signatures: SignatureLimits {
+            rsa_work: 0,
+            ..SignatureLimits::default()
+        },
         ..Limits::default()
     };
     let key = RsaPublicKey::new(&n, &e, &limits).unwrap();

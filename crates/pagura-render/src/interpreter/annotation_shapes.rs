@@ -54,10 +54,10 @@ impl Compiler<'_> {
             .min(rect.width() * 0.5)
             .min(rect.height() * 0.5);
         let inner = Rect::from_corners(
-            rect.x0 + inset,
-            rect.y0 + inset,
-            rect.x1 - inset,
-            rect.y1 - inset,
+            rect.x0() + inset,
+            rect.y0() + inset,
+            rect.x1() - inset,
+            rect.y1() - inset,
         )
         .ok_or(Error::syntax("invalid border rectangle"))?;
         if square && let Some(color) = annotation_color(self.document, d, b"IC", None)? {
@@ -77,10 +77,10 @@ impl Compiler<'_> {
         };
         let mut path = PathBuilder::new();
         if underline {
-            path.move_to(Point::new(inner.x0, inner.y0));
-            path.line_to(Point::new(inner.x1, inner.y0));
+            path.move_to(Point::new(inner.x0(), inner.y0()));
+            path.line_to(Point::new(inner.x1(), inner.y0()));
         } else {
-            path.rect(inner.x0, inner.y0, inner.width(), inner.height());
+            path.rect(inner.x0(), inner.y0(), inner.width(), inner.height());
         }
         let stroke = Stroke {
             width,
@@ -103,7 +103,7 @@ impl Compiler<'_> {
             .and_then(Value::as_name)
             .map_or(b"Note".as_slice(), pagura_core::Name::as_bytes);
         let scale = Transform::scale(rect.width() / 16.0, rect.height() / 16.0)
-            .then(Transform::translate(rect.x0, rect.y0));
+            .then(Transform::translate(rect.x0(), rect.y0()));
         let (background, foreground) = icon(name);
         if let Some(color) = annotation_color(
             self.document,
@@ -186,7 +186,7 @@ impl Compiler<'_> {
 }
 pub(super) fn rect_path(r: Rect) -> Path {
     let mut p = PathBuilder::new();
-    p.rect(r.x0, r.y0, r.width(), r.height());
+    p.rect(r.x0(), r.y0(), r.width(), r.height());
     p.finish()
 }
 fn scalar(document: &pagura_document::Document, d: &Dictionary, key: &[u8]) -> Result<Option<f64>> {
