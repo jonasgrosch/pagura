@@ -62,7 +62,8 @@
       "dpi": 72,
       "width": 1,
       "height": 1,
-      "tolerance": 1
+      "tolerance": 1,
+      "competitive_tolerance": 33
     },
     {
       "id": "content/precision-slivers-255",
@@ -82,7 +83,8 @@
       "dpi": 72,
       "width": 1,
       "height": 1,
-      "tolerance": 1
+      "tolerance": 1,
+      "competitive_tolerance": 33
     },
     {
       "id": "content/precision-slivers-1000",
@@ -102,7 +104,8 @@
       "dpi": 72,
       "width": 1,
       "height": 1,
-      "tolerance": 1
+      "tolerance": 1,
+      "competitive_tolerance": 122
     },
     {
       "id": "content/precision-slivers-270000",
@@ -122,7 +125,8 @@
       "dpi": 72,
       "width": 1,
       "height": 1,
-      "tolerance": 1
+      "tolerance": 1,
+      "competitive_tolerance": 127
     },
     {
       "id": "content/precision-translucent-stagnation",
@@ -142,7 +146,8 @@
       "dpi": 72,
       "width": 1,
       "height": 1,
-      "tolerance": 1
+      "tolerance": 1,
+      "competitive_tolerance": 127
     },
     {
       "id": "content/precision-tiny-alpha",
@@ -4010,7 +4015,8 @@
       "dpi": 72,
       "width": 8,
       "height": 8,
-      "api": "compile_page"
+      "api": "compile_page",
+      "competitive_tolerance": 1
     },
     {
       "id": "content/alpha-stroke",
@@ -4750,7 +4756,8 @@
       "dpi": 72,
       "width": 8,
       "height": 8,
-      "api": "compile_page"
+      "api": "compile_page",
+      "competitive_tolerance": 66
     },
     {
       "id": "content/group-incoming-alpha",
