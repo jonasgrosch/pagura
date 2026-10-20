@@ -43,7 +43,7 @@ export class Thumbnails {
     this.list.style.height = `${state.count * ROW}px`;
     if (!state.visible) return;
     const first = Math.max(0, Math.floor(this.panel.scrollTop / ROW) - 1);
-    const end = Math.min(state.count, first + Math.ceil(this.panel.clientHeight / ROW) + 3);
+    const end = Math.min(state.count, first + Math.min(CACHE_SIZE, Math.ceil(this.panel.clientHeight / ROW) + 3));
     for (const [index, row] of this.rows) if (index < first || index >= end) { row.button.remove(); this.rows.delete(index); }
     for (let index = first; index < end; index++) {
       let row = this.rows.get(index);

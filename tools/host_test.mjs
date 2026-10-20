@@ -515,9 +515,11 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
         }
       }
       if (entry.id === 'classic/many-rectangles') {
+        const retained = [...canvases()];
         const viewport = elements.get('viewport'); viewport.scrollTop = 400; viewport.dispatch('scroll');
         await waitFor(() => canvases().length === 2 && canvases().every((canvas) => parseFloat(canvas.style.top) === 256) && ready());
         viewport.scrollTop = 0; viewport.dispatch('scroll'); await waitFor(() => canvases().length === 4 && ready());
+        assert.ok(retained.every(canvas => canvases().includes(canvas)), 'scrolling back reuses the same full-resolution canvases');
       }
     }
     const twoPages = manifest.cases.find((entry) => entry.id === 'classic/two-pages');

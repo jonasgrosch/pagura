@@ -112,15 +112,17 @@ body.dragging #viewport { outline: 3px dashed #4286d3; outline-offset: -8px; }
 .form-layer { position: absolute; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
 .form-preview { position: absolute; display: block; pointer-events: none; z-index: 0; }
 .form-widget { appearance: none; position: absolute; z-index: 1; left: 0; top: 0; transform-origin: 0 0; pointer-events: auto; box-sizing: border-box; margin: 0; padding: 1px 2px; min-width: 0; border: 1px solid transparent; border-radius: 0; font-family: Helvetica, Arial, sans-serif; line-height: 1.2; color: transparent; background: transparent; resize: none; }
-.form-widget { outline: none; transition: outline-color 80ms ease; }
-@media (hover: hover) { .form-widget:hover:not(:disabled):not(:focus) { outline: calc(1px / var(--field-ui-scale, 1)) solid #7c95b680; outline-offset: calc(2px / var(--field-ui-scale, 1)); box-shadow: none; } }
+.form-widget { outline: none; }
+.form-outline { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; z-index: 2; outline: 1.5px solid transparent; outline-offset: 2px; transition: outline-color 80ms ease; }
+@media (hover: hover) { .form-widget:hover:not(:disabled):not(:focus) + .form-outline { outline: 1px solid #7c95b680; } }
 .form-widget.form-dirty:not(.form-previewed), .form-widget.form-dirty:focus { color: #111; background: #fff; background-clip: padding-box; }
-.form-widget:focus { caret-color: #111; outline: calc(1.5px / var(--field-ui-scale, 1)) solid var(--focus); outline-offset: calc(2px / var(--field-ui-scale, 1)); box-shadow: none; }
+.form-widget:focus { caret-color: #111; outline: none; box-shadow: none; }
+.form-widget:focus + .form-outline { outline-color: var(--focus); }
 .form-widget option { color: #111; background: white; }
 .form-widget[type=checkbox], .form-widget[type=radio] { padding: 0; cursor: pointer; color: transparent; background: transparent; }
-.form-widget:is([type=checkbox],[type=radio]):focus:not(:focus-visible) { outline: none; }
-.form-widget:is([type=checkbox],[type=radio]):focus-visible { outline-offset: calc(3px / var(--field-ui-scale, 1)); }
-.form-widget:is([type=checkbox],[type=radio]):active:not(:disabled) { outline: calc(1.5px / var(--field-ui-scale, 1)) solid var(--accent); outline-offset: calc(2px / var(--field-ui-scale, 1)); }
+.form-widget:is([type=checkbox],[type=radio]):focus:not(:focus-visible) + .form-outline { outline-color: transparent; }
+.form-widget:is([type=checkbox],[type=radio]):focus-visible + .form-outline { outline-offset: 3px; }
+.form-widget:is([type=checkbox],[type=radio]):active:not(:disabled) + .form-outline { outline-color: var(--accent); outline-offset: 2px; }
 
 .form-widget:is([type=checkbox],[type=radio]):is(.form-dirty,:focus) { background: transparent; }
 
@@ -131,4 +133,4 @@ body.dragging #viewport { outline: 3px dashed #4286d3; outline-offset: -8px; }
 #reading-notice:has(#reading-status:empty) { display: none; }
 #reading-dismiss { margin-left: auto; }
 
-@media (prefers-reduced-motion: reduce) { .form-widget { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .form-outline { transition: none; } }

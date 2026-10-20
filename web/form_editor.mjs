@@ -82,13 +82,13 @@ export class FormEditor {
           if (control) {
             control.applyStyle = (style) => { if (!style) return; control.textStyle = style; if (this.doc.activeElement !== control.node) applyTextStyle(this.doc, control.node, widget, style); };
             control.node.addEventListener('blur', () => { if (control.textStyle) applyTextStyle(this.doc, control.node, widget, control.textStyle); });
-            control.applyStyle(styles.get(widget.index)); record.controls.push(control); layer.append(control.node); control.sync(this.changes.get(field.index));
+            control.applyStyle(styles.get(widget.index)); record.controls.push(control); control.outline = this.doc.createElement('span'); control.outline.className = 'form-outline'; control.outline.setAttribute('aria-hidden', 'true'); layer.append(control.node, control.outline); control.sync(this.changes.get(field.index));
           }
         }
       } catch (error) { if (token === this.token) this.message.textContent = `Form controls unavailable: ${error}`; }
     }
     record.info = info; record.zoom = zoom;
-    for (const control of record.controls) positionWidget(control.node, control.widget.rect, info, zoom);
+    for (const control of record.controls) positionWidget(control.node, control.widget.rect, info, zoom, control.outline);
     await this.buttons?.page(index, record, info, zoom);
     await this.preview?.page(index, record, info, zoom);
     record.layer.inert = this.busy; record.layer.hidden = !this.active; this.presentationChanged();

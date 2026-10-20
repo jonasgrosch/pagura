@@ -47,8 +47,11 @@ export async function testFormEditor() {
   // Independent expected transforms: cropped, scaled and rotated page coordinates.
   const expected = ['matrix(2,0,0,2,20,140)', 'matrix(0,2,-2,0,260,20)', 'matrix(-2,0,0,-2,380,260)', 'matrix(0,-2,2,0,140,380)'];
   for (const [i, rotation] of [0, 90, 180, 270].entries()) {
-    const node = new Element(); positionWidget(node, [20, 100, 60, 150], { crop: [10, 20, 210, 220], userUnit: 2, rotation }, 1);
+    const node = new Element(), outline = new Element(); positionWidget(node, [20, 100, 60, 150], { crop: [10, 20, 210, 220], userUnit: 2, rotation }, 1, outline);
     assert.equal(node.style.transform, expected[i]); assert.equal(node.style.width, '40px'); assert.equal(node.style.height, '50px');
+    assert.equal(outline.style.width, '80px'); assert.equal(outline.style.height, '100px');
+    const matrix = outline.style.transform.match(/matrix\(([^)]+)\)/)[1].split(',').map(Number);
+    assert.equal(Math.hypot(matrix[0], matrix[1]), 1, 'focus ring has rotation but no zoom scaling');
   }
   const button = { ...field, index: 1, kind: 2, options: [{ key: 3, label: 'Email', state: Uint8Array.of(69), selected: false }, { key: 4, label: 'Phone', state: Uint8Array.of(80), selected: true }] };
   const radio = widgetControl(document, button, { ...widget, index: 3, flags: 1 }, () => {});

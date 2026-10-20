@@ -57,7 +57,7 @@ export class TilePreloader {
     const current = () => !this.stopped && version === this.version && this.allowed();
     try { if (await this.render(job, current)) this.completed++; else this.discarded++; }
     catch { this.jobs = []; } // Speculative failures must not turn a readable page into an error.
-    finally { this.running = false; this.updated(); this.schedule(); }
+    finally { this.running = false; if (!this.stopped) { this.updated(); this.schedule(); } }
   }
   destroy() { this.stopped = true; this.cancel(); }
 }

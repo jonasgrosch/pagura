@@ -38,5 +38,8 @@ idle=true; const running = preloader.step(); await preloader.step(); assert.equa
 preloader.cancel(); release(); await running; assert.equal(admitted,0); assert.equal(preloader.jobs.length,0);
 preloader.plan([1]); allowed=false; time=2000; await preloader.step(); assert.equal(started,1, 'form focus/activity pauses dispatch');
 allowed=true; const fresh = preloader.step(); release(); await fresh; assert.equal(admitted,1);
-preloader.destroy(); preloader.plan([2]); await preloader.step(); assert.equal(started,2, 'closed viewers never resume background work');
+let updates = 0; preloader.updated = () => updates++;
+time=3000; preloader.plan([2]); const closing = preloader.step(); preloader.destroy(); release(); await closing;
+assert.equal(updates, 0, 'an in-flight result after shutdown cannot touch viewer DOM');
+preloader.plan([3]); await preloader.step(); assert.equal(started,3, 'closed viewers never resume background work');
 console.log('Tile LRU/pinning, byte limits, scale keys, directional geometry and foreground/form priority passed');

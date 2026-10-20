@@ -64,6 +64,7 @@ try {
   for (let i = 0; i < 40; i++) { panel.scrollTop = i * 202 * 7; thumbnails.refresh(); await thumbnails.renderNext(); }
   assert.equal(thumbnails.cache.size, 32, 'thumbnail pixel memory remains bounded');
   assert.ok(list.children.length <= 6, 'scrolling evicts offscreen DOM');
+  panel.clientHeight = 20000; thumbnails.refresh(); assert.ok(list.children.length <= 32, 'extreme viewport sizes retain the thumbnail memory bound');
   state.epoch++; thumbnails.refresh();
   state.client.renderTile = async () => { throw new Error('unsupported page'); };
   await thumbnails.renderNext(); assert.equal(thumbnails.cache.values().next().value.error, true);
