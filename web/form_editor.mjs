@@ -6,7 +6,7 @@ export class FormEditor {
     this.message = doc.getElementById('form-status'); this.applyButton = doc.getElementById('form-apply');
     this.downloadButton = doc.getElementById('form-download'); this.openButton = doc.getElementById('edit-open');
     this.changes = new Map(); this.token = 0; this.active = false; this.busy = false;
-    this.openButton.addEventListener('click', () => { this.active = !this.active; this.panel.hidden = !this.active; if (this.active) void this.open(); });
+    this.openButton.addEventListener('click', () => { this.active = !this.active; this.panel.hidden = !this.active; if (this.active && !this.changes.size && !this.busy) void this.open(); });
     this.applyButton.addEventListener('click', () => { void this.apply(); });
     doc.getElementById('form-reset').addEventListener('click', () => { void this.open(); });
     this.downloadButton.addEventListener('click', () => { if (!this.changes.size && !this.busy) this.download(); });
@@ -35,6 +35,7 @@ export class FormEditor {
       if (token !== this.token) return;
       for (const field of fields) this.list.append(this.control(field));
       this.message.textContent = fields.length ? 'Edit the fields, then apply changes to update the preview.' : 'This PDF has no fillable form fields.';
+      this.controls(); return true;
     } catch (error) { if (token === this.token) this.message.textContent = String(error); }
     this.controls();
   }
@@ -75,8 +76,8 @@ export class FormEditor {
       if (!adopted || token !== this.token) return;
       this.busy = false; this.list.inert = false;
       const loading = this.open(), refreshed = this.token;
-      await loading;
-      if (refreshed === this.token) this.message.textContent = 'Changes applied. The updated PDF is ready to download.';
+      const loaded = await loading;
+      if (loaded && refreshed === this.token) this.message.textContent = 'Changes applied. The updated PDF is ready to download.';
     } catch (error) { if (token === this.token) this.message.textContent = String(error); }
     finally { if (token === this.token) { this.busy = false; this.list.inert = false; this.controls(); } }
   }
