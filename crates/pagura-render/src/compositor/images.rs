@@ -20,7 +20,6 @@ impl Context {
         knockout: bool,
         depth: usize,
     ) -> Result<()> {
-        self.keep_palette_for(&command.image);
         let transform = command.transform.then(self.device);
         if !transform.is_finite() {
             return Err(Error::limit("image transform overflow"));
@@ -121,7 +120,7 @@ impl Context {
         self.allocated -= sampling_bytes;
         Ok(())
     }
-    /// Prepares the image and mask samplers, releasing a cached palette
+    /// Prepares the image and mask samplers, releasing cached palettes
     /// when the budget does not cover both.
     fn image_samplers(
         &mut self,
@@ -132,8 +131,10 @@ impl Context {
     ) -> Result<(Prepared, Option<Prepared<f64>>)> {
         let available = self.limits.decoded_bytes.saturating_sub(self.allocated);
         match prepare(image, inverse, origin, width, available) {
-            Err(error) if error.kind == pagura_core::ErrorKind::Limit && self.palette.is_some() => {
-                self.clear_palette();
+            Err(error)
+                if error.kind == pagura_core::ErrorKind::Limit && !self.palettes.is_empty() =>
+            {
+                self.clear_palettes();
                 let available = self.limits.decoded_bytes.saturating_sub(self.allocated);
                 prepare(image, inverse, origin, width, available)
             }
@@ -674,7 +675,7 @@ mod tests {
             glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
             fragments: None,
             spare: Vec::new(),
-            palette: None,
+            palettes: super::super::image_interiors::Palettes::default(),
             limits,
             device: Transform::IDENTITY,
             page_device: Transform::IDENTITY,
