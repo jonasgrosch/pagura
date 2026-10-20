@@ -149,7 +149,7 @@ pub(crate) fn save(document: &Document, changes: &[u8]) -> Result<Vec<u8>> {
                 bytes,
                 &pagura::OpenOptions {
                     recovery: pagura::Recovery::Strict,
-                    limits: *document.limits(),
+                    limits: document.limits(),
                     ..Default::default()
                 },
             )

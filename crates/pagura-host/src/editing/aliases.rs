@@ -101,7 +101,7 @@ pub(super) fn normalize(document: &Document) -> Result<Option<Vec<u8>>> {
     };
     let mut matcher = Matcher::new(document, &form)?;
     let mut transaction = Transaction::new(document);
-    for page in document.pages() {
+    for page in document.pages()? {
         let source = annotations(document, page)?;
         let mut replacements = Vec::new();
         for (offset, index) in matcher.page(document, page)? {
