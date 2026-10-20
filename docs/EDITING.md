@@ -74,3 +74,8 @@ virtualization. Optional-content, NoZoom/NoRotate, ToggleNoView and rotated-MK
 widgets are omitted pending their dedicated interaction semantics. General PDF
 text editing, undo/redo, password/rich-text fields and signature editing remain
 unsupported. Signed/encrypted sources retain the library's refusal policy.
+
+For duplicated widget dictionaries, the browser can reconcile page references
+only when the complete dictionary matches exactly one form-tree widget. This
+happens during a changed save, preserves original bytes, and refuses ambiguous
+matches. Matching a name or rectangle alone is never sufficient.

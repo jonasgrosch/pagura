@@ -58,11 +58,8 @@ impl<'a> Matcher<'a> {
             let mut found = None;
             for &index in self.identities.values() {
                 let widget = &self.form.widgets[index];
-                // Only complete merged-field copies can be reconciled. Separate
-                // widgets have Parent identities whose semantics must stay exact.
-                if !widget.merged || dictionary.contains_key(b"Parent") {
-                    continue;
-                }
+                // Complete dictionary equality also preserves Parent identity
+                // for separate widgets; any second candidate is ambiguous.
                 self.remaining = self
                     .remaining
                     .checked_sub(size.max(self.bytes[index]))

@@ -141,3 +141,16 @@ making display-only colour-operator repairs a reason to hide an otherwise usable
 page, without changing the transaction API's strict-source or signature policy.
 A synthetic form with a colour-operator mismatch verifies this separation. No
 private user document is included in hosted tests.
+
+A local compatibility case also contained separate copies of widget dictionaries
+in Annots and the form tree. The browser adapter recognizes a duplicate only
+when its complete dictionary equals exactly one canonical indirect widget;
+Parent references, values, flags, resources and appearances are all compared.
+Name or rectangle similarity is insufficient and ambiguous matches are refused.
+Before a changed browser save, an incremental transaction repoints affected
+page Annots entries to canonical identities, then the normal strict form save
+runs. No-op saves do not normalize. Original bytes, unrelated annotations and
+library signature/source restrictions survive. The comparison budget is a
+separate 64 MiB of estimated dictionary-comparison bytes per matching operation;
+page arrays are capped at 4096 annotations. Synthetic duplicate, near-match,
+ambiguity, no-op and saved-render equivalence checks cover this behavior.

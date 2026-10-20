@@ -133,7 +133,17 @@ fn write_options(
 }
 
 pub(crate) fn save(document: &Document, changes: &[u8]) -> Result<Vec<u8>> {
-    let normalized = aliases::normalize(document)?
+    let mut reader = Reader::new(changes);
+    let count = index(reader.u32()?)?;
+    if count > MAX_FIELDS {
+        return Err(Error::limit("browser form change budget exceeded"));
+    }
+    let normalized = if count == 0 {
+        None
+    } else {
+        aliases::normalize(document)?
+    };
+    let normalized = normalized
         .map(|bytes| {
             Document::open(
                 bytes,
@@ -146,11 +156,6 @@ pub(crate) fn save(document: &Document, changes: &[u8]) -> Result<Vec<u8>> {
         })
         .transpose()?;
     let document = normalized.as_ref().unwrap_or(document);
-    let mut reader = Reader::new(changes);
-    let count = index(reader.u32()?)?;
-    if count > MAX_FIELDS {
-        return Err(Error::limit("browser form change budget exceeded"));
-    }
     let mut filler = document
         .form_filler()?
         .ok_or(Error::invalid_argument("document has no form"))?;

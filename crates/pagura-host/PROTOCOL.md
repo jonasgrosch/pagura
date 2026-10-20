@@ -410,3 +410,10 @@ Hidden/NoView, ToggleNoView, NoZoom/NoRotate, optional-content and rotated-MK
 widgets are excluded until the browser implements their view policies. Direct
 widget identities and read-only/unsupported field controls are not editable.
 Earlier versions receive operational InvalidArgument; other layouts are unchanged.
+
+Exact duplicate widget dictionaries may map to their unique canonical form-tree
+widget even when Annots uses another object number. Ambiguous candidates are an
+operational error; differing dictionaries are not aliases. Changed browser saves
+append a reference-reconciliation revision before the normal strict form save.
+No-op saves retain original bytes. Comparisons are capped at 64 MiB of estimated
+dictionary bytes and page Annots arrays at 4096 entries.
