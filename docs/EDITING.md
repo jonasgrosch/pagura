@@ -79,3 +79,21 @@ For duplicated widget dictionaries, the browser can reconcile page references
 only when the complete dictionary matches exactly one form-tree widget. This
 happens during a changed save, preserves original bytes, and refuses ambiguous
 matches. Matching a name or rectangle alone is never sufficient.
+
+The browser selects `UpdatePolicy::PreserveExisting`: cached appearances of
+untouched fields survive even when NeedAppearances is set. Missing appearances
+are still generated before clearing that flag. An edited field can supply an
+absent exact standard-14 font name as an explicit font resource (WinAnsi for
+Latin fonts), without replacing existing font resources or guessing custom
+fonts. A zero-area AP is rebuilt at the widget bounds. Unmarked text-show
+operators are replaced while retaining non-text artwork; text clipping and
+external XObjects in such an appearance remain unsupported. The library default
+continues to follow the specification's Tx replacement/append behavior.
+
+Draft previews use disposable snapshots built from the last saved source, never
+from previous drafts. Debounced updates paint only changed widget regions using
+the same renderer as saved output, including original checkbox/radio artwork.
+Blurred fields have no synthetic border or fill. A focus ring and hover outline
+identify interactive controls. Failed previews retain drafts and report the
+failure; save remains an explicit action. Preview pixel and source budgets are
+bounded and superseded snapshots are closed.

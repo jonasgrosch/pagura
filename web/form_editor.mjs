@@ -1,19 +1,21 @@
+import { FormPreview } from './form_preview.mjs';
 import { widgetControl, positionWidget } from './form_layer.mjs';
 
 /** Drafts live independently of virtualized page controls and immutable host documents. */
 export class FormEditor {
-  constructor({ state, adopt, download, redraw = () => {}, document: doc = document }) {
+  constructor({ state, adopt, download, redraw = () => {}, document: doc = document, preview = true }) {
     Object.assign(this, { state, adopt, download, redraw, doc });
     this.message = doc.getElementById('form-status'); this.saveButton = doc.getElementById('form-download');
     this.openButton = doc.getElementById('edit-open'); this.resetButton = doc.getElementById('form-reset');
     this.changes = new Map(); this.pages = new Map(); this.fields = null; this.editing = null;
+    this.preview = preview ? new FormPreview(this) : null;
     this.token = 0; this.active = true; this.busy = false;
     this.openButton.addEventListener('click', () => {
       this.active = !this.active; this.controls();
       if (this.active && !this.fields) void this.open({ keepDraft: true });
       else { for (const record of this.pages.values()) record.layer.hidden = !this.active; this.redraw(); }
     });
-    this.resetButton.addEventListener('click', () => { this.changes.clear(); this.sync(); this.message.textContent = 'Changes discarded.'; this.controls(); });
+    this.resetButton.addEventListener('click', () => { this.preview?.clear(); this.changes.clear(); this.sync(); this.message.textContent = 'Changes discarded.'; this.controls(); });
     this.saveButton.addEventListener('click', () => { void this.save(); });
   }
   controls() {
@@ -25,6 +27,7 @@ export class FormEditor {
   }
   prune(indexes) { for (const [index, record] of this.pages) if (!indexes.includes(index)) { record.layer.remove(); this.pages.delete(index); } }
   reset() {
+    this.preview?.clear();
     ++this.token; this.prune([]); this.changes.clear(); this.fields = null; this.busy = false;
     const editing = this.editing; this.editing = null;
     if (editing?.owned) void editing.client.close(editing.handle).catch(() => {});
@@ -53,7 +56,7 @@ export class FormEditor {
       if (token !== this.token) return;
       this.fields = new Map(fields.map((field) => [field.index, field]));
       this.message.textContent = fields.length ? 'Click a field on the page to fill it. Save PDF includes your changes.' : '';
-      this.controls(); this.redraw(); return true;
+      this.controls(); this.redraw(); this.preview?.schedule(); return true;
     } catch (error) { if (token === this.token) this.message.textContent = `Form editing unavailable: ${error}`; }
     this.controls();
   }
@@ -76,11 +79,12 @@ export class FormEditor {
       } catch (error) { if (token === this.token) this.message.textContent = `Form controls unavailable: ${error}`; }
     }
     for (const control of record.controls) positionWidget(control.node, control.widget.rect, info, zoom);
+    await this.preview?.page(index, record, info, zoom);
     record.layer.inert = this.busy; record.layer.hidden = !this.active;
   }
   change(change) {
     if (this.busy) return;
-    this.changes.set(change.index, change); this.sync();
+    this.changes.set(change.index, change); this.sync(); this.preview?.schedule();
     this.message.textContent = 'Unsaved changes'; this.controls();
   }
   sync() { for (const record of this.pages.values()) for (const control of record.controls) control.sync(this.changes.get(control.field)); }
@@ -89,6 +93,7 @@ export class FormEditor {
     if (!this.changes.size) { this.download(); return; }
     const state = this.state(), token = this.token, editing = this.editing;
     if (!editing) return;
+    this.preview?.clear();
     this.busy = true; this.controls(); this.message.textContent = 'Saving PDF…';
     try {
       const bytes = await editing.client.saveForm(editing.handle, [...this.changes.values()].sort((a, b) => a.index - b.index));

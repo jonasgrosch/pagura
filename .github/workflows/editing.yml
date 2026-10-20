@@ -10,6 +10,9 @@ on:
       - 'crates/pagura-host/**'
       - 'web/**'
       - 'tools/editing_host_test.mjs'
+      - 'tools/form_*test.mjs'
+      - 'crates/pagura-render/src/form_appearance/**'
+      - 'crates/pagura-render/src/form_appearance.rs'
       - '.github/workflows/editing.yml'
       - 'tools/editing_readers.py'
   workflow_dispatch:

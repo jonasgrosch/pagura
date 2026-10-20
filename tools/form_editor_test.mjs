@@ -25,7 +25,7 @@ export async function testFormEditor() {
     formFields: async () => [field], formWidgets: async (handle) => { assert.equal(handle, 9); return [widget]; },
     saveForm: async (handle) => { assert.equal(handle, 9); if (fail) throw new Error('Unsupported appearance'); if (wait) await new Promise((resolve) => { finishSave = resolve; }); return Uint8Array.of(1); },
   };
-  const editor = new FormEditor({ document, state: () => ({ client, handle, epoch, recovery: 1, bytes: Uint8Array.of(1) }),
+  const editor = new FormEditor({ document, preview: false, state: () => ({ client, handle, epoch, recovery: 1, bytes: Uint8Array.of(1) }),
     adopt: async () => { adopted++; epoch++; return true; }, download: () => { downloaded++; } });
   const parent = new Element(); await editor.open(); await editor.page(0, info, parent, 1);
   const input = editor.pages.get(0).controls[0].node; input.value = 'Draft'; input.fire('input');

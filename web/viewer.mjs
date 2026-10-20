@@ -208,7 +208,7 @@ async function diagnostics(epoch) {
   $('repair-list').replaceChildren(...items.map((item) => {
     const li = document.createElement('li'); li.textContent = `${item.kind === 'repair' ? 'Repair' : 'Information'} [${item.tag}] ${item.message}`; return li;
   }));
-  $('diagnostics').open = items.length > 0;
+  // Keep diagnostics available without expanding implementation details over the document.
 }
 async function draw() {
   if (drawing || handle === null || !layout.count) return;

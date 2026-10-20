@@ -5,6 +5,7 @@ import { Worker, isMainThread, parentPort, workerData } from 'node:worker_thread
 import { SessionClient } from '../web/client.mjs';
 import { runHost } from '../web/worker.mjs';
 import { formDocument } from '../web/form_document.mjs';
+import { testFormPreview } from './form_preview_test.mjs';
 import { testFormEditor } from './form_editor_test.mjs';
 import { encodeChanges } from '../web/editing_protocol.mjs';
 if (!isMainThread) {
@@ -12,6 +13,7 @@ if (!isMainThread) {
   catch (error) { parentPort.postMessage({ type: 'fatal', message: String(error) }); }
 } else {
   await testFormEditor();
+  await testFormPreview();
   const module = await WebAssembly.compile(await readFile(process.argv[2] ?? 'target/wasm32-wasip1/release/pagura-host.wasm'));
   class BrowserWorker {
     listeners = new Map();

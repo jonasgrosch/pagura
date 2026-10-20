@@ -235,19 +235,26 @@ fn prepare_inner(
     if button {
         return buttons::check_mark(document, widget, state, field);
     }
-    variable_appearance(filler, widget, field, original, provider, (policy, fonts))
+    variable_appearance(
+        filler,
+        widget,
+        field,
+        original.as_ref(),
+        provider,
+        (policy, fonts),
+    )
 }
 fn variable_appearance(
     filler: &FormFiller<'_>,
     widget: &Widget<'_>,
     field: &Field<'_>,
-    original: Option<Appearance>,
+    original: Option<&Appearance>,
     provider: Option<&dyn Provider>,
     (policy, fonts): (UpdatePolicy, FontCache<'_>),
 ) -> Result<Appearance> {
     let document = filler.document();
     let original_id = match original {
-        Some(Appearance::Existing(id)) => Some(id),
+        Some(Appearance::Existing(id)) => Some(*id),
         _ => None,
     };
     let mut source = original_id.map(|id| document.object(id)).transpose()?;
