@@ -90,7 +90,9 @@ body.dragging #viewport { outline: 3px dashed #4286d3; outline-offset: -8px; }
 .text-layer, .link-layer, .search-highlights { position: absolute; inset: 0; overflow: hidden; }
 .text-layer { z-index: 2; user-select: text; color: transparent; }
 .text-layer span { position: absolute; left: 0; top: 0; display: inline-block; width: 1px; height: 1px; font: 1px/1px monospace; white-space: pre; transform-origin: 0 0; }
-.text-layer ::selection { background: #3488ff66; color: transparent; }
+.text-layer ::selection { background: transparent; color: transparent; }
+.selection-highlights { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; stroke: none; }
+.selection-highlights path { fill: #4389e044; stroke: none; }
 .link-layer { z-index: 3; pointer-events: none; }
 .pdf-link { position: absolute; pointer-events: auto; cursor: pointer; }
 .pdf-link:focus-visible { background: #3488ff44; outline: 2px solid #145ad6; outline-offset: -2px; }

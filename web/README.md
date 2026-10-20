@@ -26,6 +26,8 @@ available in both recovery modes.
 
 - A compact toolbar keeps page navigation, zoom, Rotate view, Find and Save visible.
   More actions contains form interaction, copy-page text, discard, and diagnostics.
+- Text selection retains native range/copy behavior, with a single SVG fill over
+  selected glyph quads to avoid dark overlaps from per-character highlights.
 - The collapsible sidebar switches between thumbnails and the document outline.
   Thumbnail rows are virtualized and keyboard navigable; up to 32 low-resolution
   canvases are retained (under 3 MiB of RGBA pixels). One thumbnail request runs

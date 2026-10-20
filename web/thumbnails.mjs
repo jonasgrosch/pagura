@@ -28,7 +28,7 @@ export class Thumbnails {
     this.refresh();
   }
   refresh() {
-    const state = this.state();
+    const state = { ...this.state() };
     if (this.epoch !== state.epoch) this.reset();
     this.list.style.height = `${state.count * ROW}px`;
     if (!state.visible) return;
@@ -72,7 +72,7 @@ export class Thumbnails {
   }
   async renderNext() {
     if (this.stopped) return;
-    const state = this.state();
+    const state = { ...this.state() };
     if (!state.visible || state.handle === null) return;
     const index = [...this.rows.keys()].find(index => !this.cache.has(index));
     if (index === undefined) return;

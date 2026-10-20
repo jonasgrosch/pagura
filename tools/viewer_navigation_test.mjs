@@ -1,3 +1,4 @@
+import { selectionPath, paintSelection, registerSelectionGeometry } from '../web/selection_layer.mjs';
 import assert from 'node:assert/strict';
 import { rotatedSize, rotatePoint, unrotatePoint, rasterBounds } from '../web/view_rotation.mjs';
 import { Thumbnails } from '../web/thumbnails.mjs';
@@ -59,3 +60,24 @@ try {
   assert.equal(thumbnails.cache.size, 0);
 } finally { thumbnails.destroy(); Object.assign(globalThis, original); }
 console.log('Viewer rotation, thumbnail priority, virtualization, epoch and cache bounds passed');
+
+// Mixed/mirrored glyph orientations share one winding and one translucent fill.
+const quad = [[0,0],[10,0],[10,12],[0,12]];
+assert.equal(selectionPath([quad]), selectionPath([[...quad].reverse()]));
+const selectionDoc = { createElementNS: () => new Element() };
+const parent = new Element(), layer = new Element(); layer.parentElement = parent; parent.append(layer);
+layer.closest = () => layer;
+const spanA = { textContent: 'A', firstChild: { nodeType: 3 }, childNodes: [1] };
+const spanB = { textContent: 'B', firstChild: { nodeType: 3 }, childNodes: [1] };
+spanA.firstChild.parentElement = spanB.firstChild.parentElement = layer;
+registerSelectionGeometry(layer, [{ span: spanA, quads: [quad] }, { span: spanB, quads: [[[8,0],[18,0],[18,12],[8,12]]] }]);
+const range = { startContainer: spanA.firstChild, startOffset: 0, endContainer: spanB.firstChild, endOffset: 1, intersectsNode: () => true };
+const selection = { isCollapsed: false, rangeCount: 1, getRangeAt: () => range };
+paintSelection(selection, [layer], selectionDoc);
+assert.equal(parent.children.length, 2); assert.equal(parent.children[1].children.length, 1, 'overlapping glyphs use one fill, not stacked highlight elements');
+assert.equal((parent.children[1].firstChild.attributes.d.match(/M/g) ?? []).length, 2);
+range.endContainer = spanB; spanB.closest = () => layer; range.endOffset = 0;
+paintSelection(selection, [layer], selectionDoc);
+assert.equal((parent.children[1].firstChild.attributes.d.match(/M/g) ?? []).length, 1, 'end at a span boundary excludes that character');
+selection.isCollapsed = true; paintSelection(selection, [layer], selectionDoc); assert.equal(parent.children.length, 1);
+console.log('Selection winding, boundary and overlay lifecycle passed');

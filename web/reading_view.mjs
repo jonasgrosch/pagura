@@ -1,3 +1,4 @@
+import { paintSelection } from './selection_layer.mjs';
 import { textLayer, selectedText } from './text_layer.mjs';
 import { pageQuad, placeQuad } from './page_geometry.mjs';
 import { targetLabel, activateTarget } from './link_actions.mjs';
@@ -20,6 +21,13 @@ export class ReadingView {
     });
     this.$('copy-page').addEventListener('click', () => { void this.copyPage(); });
     window.addEventListener('keydown', (event) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') { event.preventDefault(); this.showSearch(); } });
+    document.addEventListener('selectionchange', () => {
+      if (this.selectionScheduled) return;
+      this.selectionScheduled = true;
+      requestAnimationFrame(() => { this.selectionScheduled = false;
+        paintSelection(window.getSelection(), [...this.pages.values()].map(record => record.textLayer).filter(Boolean));
+      });
+    });
     document.addEventListener('copy', (event) => {
       const text = selectedText(window.getSelection());
       if (text !== null && event.clipboardData) { event.preventDefault(); event.clipboardData.setData('text/plain', text); }
@@ -75,7 +83,7 @@ export class ReadingView {
         const quads = data.characters.reduce((n, c) => n + c.quadCount, 0);
         if (total > 100000 || quads > 100000) throw new Error('Visible text exceeds the DOM geometry budget');
         const layer = textLayer(data, info, zoom);
-        record.text = { text: data.text }; record.characterCount = data.characters.length;
+        record.textLayer = layer; record.text = { text: data.text }; record.characterCount = data.characters.length;
         element.append(layer); this.$('copy-page').disabled = false;
       } else this.$('reading-status').textContent = `Page ${index + 1} text: ${results[0].reason}`;
       if (results[1].status === 'fulfilled') {
