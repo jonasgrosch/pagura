@@ -56,6 +56,22 @@ pub(crate) fn flatten_into(
     result: &mut Vec<Polyline>,
     pending: &mut CurveStack,
 ) -> Result<usize> {
+    flatten_into_at_tolerance(path, transform, limits, result, pending, TOLERANCE)
+}
+
+pub(crate) fn flatten_into_at_tolerance(
+    path: &Path,
+    transform: Transform,
+    limits: &Limits,
+    result: &mut Vec<Polyline>,
+    pending: &mut CurveStack,
+    tolerance: f64,
+) -> Result<usize> {
+    if !tolerance.is_finite() || tolerance <= 0.0 || tolerance > 0.25 {
+        return Err(Error::invalid_argument(
+            "flattening tolerance outside (0, 0.25]",
+        ));
+    }
     pending.clear();
     if !transform.is_finite() {
         return Err(Error::invalid_argument("path transform is not finite"));
@@ -104,13 +120,14 @@ pub(crate) fn flatten_into(
                     bounded(point)?;
                     bounded(point * transform)?;
                 }
-                curve(
+                curve_at_tolerance(
                     [start, first, second, end],
                     transform,
                     pending,
                     &mut current.points,
                     &mut count,
                     limits,
+                    tolerance,
                 )?;
             }
             Segment::Close => current.closed = true,
@@ -143,6 +160,7 @@ fn append(points: &mut Vec<Point>, point: Point, count: &mut usize, limits: &Lim
     Ok(())
 }
 
+#[cfg(test)]
 fn curve(
     points: [Point; 4],
     transform: Transform,
@@ -151,6 +169,18 @@ fn curve(
     count: &mut usize,
     limits: &Limits,
 ) -> Result<()> {
+    curve_at_tolerance(points, transform, pending, out, count, limits, TOLERANCE)
+}
+
+fn curve_at_tolerance(
+    points: [Point; 4],
+    transform: Transform,
+    pending: &mut CurveStack,
+    out: &mut Vec<Point>,
+    count: &mut usize,
+    limits: &Limits,
+    tolerance: f64,
+) -> Result<()> {
     let mut points = points;
     let mut depth = 0;
     loop {
@@ -158,7 +188,7 @@ fn curve(
         // A Bézier lies in its control hull (ISO 32000-2, 8.5.2.2).
         // The tolerance neighbourhood of a segment is convex, so admitting
         // both inner controls certifies the whole curve, including cusps.
-        if close(b, a, d) && close(c, a, d) {
+        if close(b, a, d, tolerance) && close(c, a, d, tolerance) {
             append(out, points[3], count, limits)?;
             let Some(next) = pending.pop() else {
                 return Ok(());
@@ -196,7 +226,7 @@ fn midpoint(a: Point, b: Point) -> Point {
     Point::new((a.x + b.x) * 0.5, (a.y + b.y) * 0.5)
 }
 
-fn close(p: Point, a: Point, b: Point) -> bool {
+fn close(p: Point, a: Point, b: Point, bound: f64) -> bool {
     let dx = b.x - a.x;
     let dy = b.y - a.y;
     let square = dx * dx + dy * dy;
@@ -208,12 +238,12 @@ fn close(p: Point, a: Point, b: Point) -> bool {
     let x = p.x - a.x - t * dx;
     let y = p.y - a.y - t * dy;
     let distance = x * x + y * y;
-    let tolerance = TOLERANCE * TOLERANCE;
+    let tolerance = bound * bound;
     // Preserve hypot's rounding decision at the boundary. Away from this
     // guard, rounding the two products and their sum cannot cross it; the
     // guard assumes hypot is accurate to within a few ulps.
     if (distance - tolerance).abs() <= 16.0 * f64::EPSILON * tolerance {
-        x.hypot(y) <= TOLERANCE
+        x.hypot(y) <= bound
     } else {
         distance <= tolerance
     }
@@ -332,7 +362,7 @@ mod tests {
                     Point::new(0.0, y),
                 ),
             ] {
-                assert_eq!(close(p, a, b), distance(p, a, b) <= TOLERANCE);
+                assert_eq!(close(p, a, b, TOLERANCE), distance(p, a, b) <= TOLERANCE);
             }
         }
     }

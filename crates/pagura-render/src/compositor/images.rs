@@ -20,6 +20,17 @@ impl Context {
         knockout: bool,
         depth: usize,
     ) -> Result<()> {
+        // Keep an expanded palette only while its image is painted.
+        if matches!(
+            command.image.space,
+            Some(crate::color::Space::Indexed { .. })
+        ) && self
+            .palette
+            .as_ref()
+            .is_some_and(|p| !p.matches(&command.image))
+        {
+            self.clear_palette();
+        }
         let transform = command.transform.then(self.device);
         if !transform.is_finite() {
             return Err(Error::limit("image transform overflow"));
@@ -50,14 +61,18 @@ impl Context {
         if clip.spans().next().is_none() {
             return Ok(());
         }
+        // Byte pages take fully covered interiors from the integer sampler.
+        let interiors = self.image_interiors(command, target, model, &clip)?;
         let mut texels = Texels::new(image, model);
-        let available = self.limits.decoded_bytes.saturating_sub(self.allocated);
         let (mut sampler, mut mask_sampler) =
-            prepare(image, inverse, origin.0, clip.width(), available)?;
+            self.image_samplers(image, inverse, origin.0, clip.width())?;
         let sampling_bytes = sampler.bytes() + mask_sampler.as_ref().map_or(0, Prepared::bytes);
         self.trim_raster(sampling_bytes);
         self.allocated += sampling_bytes;
         for (row, column, coverage) in clip.spans() {
+            if interiors && coverage.first() == Some(&255) {
+                continue;
+            }
             let y =
                 origin.1 + u32::try_from(row).map_err(|_| Error::limit("image row exceeds u32"))?;
             for (offset, &coverage) in coverage.iter().enumerate() {
@@ -112,6 +127,25 @@ impl Context {
         }
         self.allocated -= sampling_bytes;
         Ok(())
+    }
+    /// Prepares the image and mask samplers, releasing a cached palette
+    /// when the budget does not cover both.
+    fn image_samplers(
+        &mut self,
+        image: &Image,
+        inverse: Transform,
+        origin: u32,
+        width: u32,
+    ) -> Result<(Prepared, Option<Prepared<f64>>)> {
+        let available = self.limits.decoded_bytes.saturating_sub(self.allocated);
+        match prepare(image, inverse, origin, width, available) {
+            Err(error) if error.kind == pagura_core::ErrorKind::Limit && self.palette.is_some() => {
+                self.clear_palette();
+                let available = self.limits.decoded_bytes.saturating_sub(self.allocated);
+                prepare(image, inverse, origin, width, available)
+            }
+            result => result,
+        }
     }
     fn image_source(
         &mut self,
@@ -608,6 +642,9 @@ mod tests {
             raster: pagura_raster::Rasterizer::default(),
             bounds: super::super::regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
             glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
+            fragments: None,
+            spare: Vec::new(),
+            palette: None,
             limits,
             device: Transform::IDENTITY,
             page_device: Transform::IDENTITY,

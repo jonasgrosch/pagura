@@ -253,6 +253,40 @@ pub(crate) fn unpack_with_diagnostics(
     Ok(Samples::Bytes(values))
 }
 
+/// One-bit, one-component samples kept in their padded rows, with the same
+/// short and excess data repairs as [`unpack_with_diagnostics`]. Missing
+/// bytes are zero.
+pub(crate) fn packed(
+    data: &[u8],
+    width: u32,
+    height: u32,
+    limits: &Limits,
+    diagnostics: &mut Diagnostics,
+) -> Result<Samples> {
+    budget(width, height, 1, 1, limits)?;
+    let stride = usize::try_from(u64::from(width).div_ceil(8))
+        .map_err(|_| Error::limit("image row overflow"))?;
+    let length = stride
+        .checked_mul(height as usize)
+        .ok_or(Error::limit("image size overflow"))?;
+    if length > limits.decoded_bytes {
+        return Err(Error::limit("packed image budget exceeded"));
+    }
+    let data = packed_data(data, length, diagnostics)?;
+    let mut bytes = Vec::new();
+    bytes
+        .try_reserve_exact(length)
+        .map_err(|_| Error::limit("packed image allocation failed"))?;
+    bytes.extend_from_slice(data);
+    bytes.resize(length, 0);
+    Ok(Samples::Packed(crate::deferred::Packed {
+        width: width as usize,
+        height: height as usize,
+        stride,
+        bytes,
+    }))
+}
+
 /// Check packed row length without allocating missing bytes. Callers supply
 /// zero for a missing byte and must ignore unused bits at each row's end.
 pub(crate) fn packed_data<'a>(

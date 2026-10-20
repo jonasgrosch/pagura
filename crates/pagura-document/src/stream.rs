@@ -24,14 +24,21 @@ pub(crate) fn raw<'a>(document: &'a Document, object: &IndirectObject) -> Result
         .ok_or_else(|| Error::syntax("stream lies outside the file").in_object(object.id()))
 }
 
+/// `size` is the expected decoded length, an allocation hint only.
 pub(crate) fn decoded<'a>(
     document: &'a Document,
     object: &IndirectObject,
+    size: usize,
 ) -> Result<Cow<'a, [u8]>> {
     let (data, chain) = document.prepare_stream(object, &mut Vec::new())?;
     let mut diagnostics = Diagnostics::new(document.recovery());
     let decoded = chain
-        .decode(&data, document.limits().decoded_bytes, &mut diagnostics)
+        .decode_sized(
+            &data,
+            document.limits().decoded_bytes,
+            size,
+            &mut diagnostics,
+        )
         .map_err(|error| error.in_object(object.id()))?;
     document.report(
         diagnostics
@@ -55,17 +62,26 @@ pub struct ImageStream<'a> {
     pub codec: Option<(pagura_codec::ImageCodec, Option<pagura_core::Dictionary>)>,
 }
 
+/// `size` is the expected length after the non-image filters, an
+/// allocation hint only.
 pub(crate) fn image<'a>(
     document: &'a Document,
     object: &IndirectObject,
     parameters: Option<&Value>,
+    size: usize,
 ) -> Result<ImageStream<'a>> {
     let (data, mut chain) =
         document.prepare_stream_with_parameters(object, parameters, &mut Vec::new())?;
     let codec = chain.split_image();
+    let size = if codec.is_some() { 0 } else { size };
     let mut diagnostics = Diagnostics::new(document.recovery());
     let decoded = chain
-        .decode(&data, document.limits().decoded_bytes, &mut diagnostics)
+        .decode_sized(
+            &data,
+            document.limits().decoded_bytes,
+            size,
+            &mut diagnostics,
+        )
         .map_err(|error| error.in_object(object.id()))?;
     document.report(
         diagnostics

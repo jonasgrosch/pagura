@@ -11,8 +11,11 @@ mod cie;
 mod color;
 mod compositor;
 mod context;
+mod direct_image;
 mod display;
+mod fragments;
 mod functions;
+mod hash;
 mod icc;
 mod interpreter;
 mod operators;
@@ -41,6 +44,48 @@ pub mod features;
 /// In-memory form appearance programs and resource dictionaries (12.7.4.3).
 pub mod form_appearance;
 
+/// The accuracy contract of a rendering (ADR 0004).
+///
+/// The exact path is the reference and the default. The competitive path is
+/// approximate: it is measured against the competitive accuracy gate of ADR
+/// 0004, and can always be switched back to the exact path.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Accuracy {
+    /// Every pixel within one level of its exact result.
+    #[default]
+    Exact,
+    /// One faster approximation per primitive, chosen against the competitive
+    /// accuracy gate:
+    /// - Solid-colour glyphs are masks built from row fragments that are
+    ///   reused across horizontal origins. Origins snap to 1/128 pixel
+    ///   horizontally, and vertically to 1/128 pixel below 108 dpi, 1/16
+    ///   pixel from 108 dpi and 1/64 pixel from 216 dpi; curves become
+    ///   0.15-pixel chords below 108 dpi and area-balanced 1/4-pixel chords
+    ///   from 108 dpi.
+    /// - Other fills and strokes accumulate signed areas in cells after
+    ///   flattening curves to 1/64-pixel chords. Compound paths without a
+    ///   retained stroke boundary keep geometric integration of their union.
+    /// - Clipping paths that a mark does not lie inside multiply into it as
+    ///   their own cell coverage, integrated once per band.
+    /// - Normal composition of an opaque page rounds once into byte storage
+    ///   in full-width bands of 256 rows wherever the exact path would admit
+    ///   16-bit or f32 storage. Retained groups and other compositing keep
+    ///   the general compositor.
+    /// - A page whose only mark is one opaque DeviceGray or DeviceRGB image,
+    ///   upright or turned by a quarter, keeps a baseline JPEG in its
+    ///   component planes and one-bit samples packed, and is converted and
+    ///   filtered row by row straight into the output, within one level of
+    ///   the exact result. This applies where a page is compiled and
+    ///   rendered in one call ([`render_page`], [`render_tile`] and their
+    ///   [`RenderContext`] versions). Other images are sampled exactly.
+    /// - Embedded TrueType programs are decoded only as far as drawing reads
+    ///   them, so damage in later tables is neither examined nor reported.
+    ///
+    /// It does not meet the one-level contract.
+    Competitive,
+}
+
 /// Options for rendering a page.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RenderOptions {
@@ -50,6 +95,8 @@ pub struct RenderOptions {
     pub background: Rgba8,
     /// Whether to simulate overprinting (8.6.7; 11.7.4).
     pub overprint: OverprintPreview,
+    /// The accuracy contract pixels are rendered to (ADR 0004).
+    pub accuracy: Accuracy,
 }
 
 impl Default for RenderOptions {
@@ -58,6 +105,7 @@ impl Default for RenderOptions {
             scale: 1.0,
             background: Rgba8::WHITE,
             overprint: OverprintPreview::Auto,
+            accuracy: Accuracy::Exact,
         }
     }
 }
@@ -140,7 +188,13 @@ fn pixels(extent: f64) -> Result<u32> {
 /// error for budget violations, and syntax errors for malformed content.
 /// No partial page is ever returned.
 pub fn render_page(document: &Document, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
-    compile_page(document, page)?.render(options)
+    let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
+    direct_image::render(
+        |layout| interpreter::compile_cached_with(document, page, None, &fonts, (layout, None, options.accuracy == Accuracy::Competitive)),
+        options,
+        None,
+        (None, compositor::Lent::default()),
+    )
 }
 
 /// Renders a whole page using explicitly supplied external font resources.
@@ -153,7 +207,15 @@ pub fn render_page_with(
     options: &RenderOptions,
     provider: &dyn Provider,
 ) -> Result<Pixmap> {
-    compile_page_with(document, page, provider)?.render(options)
+    let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
+    direct_image::render(
+        |layout| {
+            interpreter::compile_cached_with(document, page, Some(provider), &fonts, (layout, None, options.accuracy == Accuracy::Competitive))
+        },
+        options,
+        None,
+        (None, compositor::Lent::default()),
+    )
 }
 
 /// Renders one tile of a page. Tiles of one page with the same options
@@ -170,7 +232,13 @@ pub fn render_tile(
     options: &RenderOptions,
     tile: Tile,
 ) -> Result<Pixmap> {
-    compile_page(document, page)?.render_tile(options, tile)
+    let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
+    direct_image::render(
+        |layout| interpreter::compile_cached_with(document, page, None, &fonts, (layout, None, options.accuracy == Accuracy::Competitive)),
+        options,
+        Some(tile),
+        (None, compositor::Lent::default()),
+    )
 }
 
 /// Renders a tile using explicitly supplied external font resources.
@@ -184,7 +252,15 @@ pub fn render_tile_with(
     tile: Tile,
     provider: &dyn Provider,
 ) -> Result<Pixmap> {
-    compile_page_with(document, page, provider)?.render_tile(options, tile)
+    let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
+    direct_image::render(
+        |layout| {
+            interpreter::compile_cached_with(document, page, Some(provider), &fonts, (layout, None, options.accuracy == Accuracy::Competitive))
+        },
+        options,
+        Some(tile),
+        (None, compositor::Lent::default()),
+    )
 }
 
 #[cfg(test)]

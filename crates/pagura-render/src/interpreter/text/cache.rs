@@ -12,6 +12,9 @@ pub(super) struct CachedFont {
     pub(super) font: Arc<PdfFont>,
     object: Option<pagura_core::ObjectId>,
     outlines: std::sync::Mutex<Outlines>,
+    /// Whether the program was read only as far as drawing needs it
+    /// ([`PdfFont::load_for_rendering`]); only such compilations reuse it.
+    drawing: bool,
 }
 
 #[derive(Debug, Default)]
@@ -21,7 +24,11 @@ struct Outlines {
 }
 
 impl CachedFont {
-    fn new(font: Arc<PdfFont>, object: Option<pagura_core::ObjectId>, admitted: bool) -> Self {
+    fn new(
+        font: Arc<PdfFont>,
+        object: Option<pagura_core::ObjectId>,
+        (admitted, drawing): (bool, bool),
+    ) -> Self {
         Self {
             font,
             object,
@@ -29,6 +36,7 @@ impl CachedFont {
                 admitted,
                 ..Default::default()
             }),
+            drawing,
         }
     }
 
@@ -118,27 +126,36 @@ impl FontCache {
         }
     }
 
+    /// The shared font for `dictionary`; one read only for drawing serves
+    /// only `drawing` compilations.
     fn get(
         &self,
         key: Option<pagura_core::ObjectId>,
         dictionary: &Dictionary,
+        drawing: bool,
     ) -> Option<Arc<CachedFont>> {
-        self.fonts.get(key, dictionary)
+        self.fonts
+            .get(key, dictionary)
+            .filter(|font| drawing || !font.drawing)
     }
 
     fn remember(
         &mut self,
         key: Option<pagura_core::ObjectId>,
         dictionary: &Dictionary,
-        font: Arc<PdfFont>,
+        (font, drawing): (Arc<PdfFont>, bool),
     ) -> Arc<CachedFont> {
         // Loading happens outside the lock; publish each dictionary only once.
-        if let Some(existing) = self.get(key, dictionary) {
-            return existing;
+        // A complete program loaded after one read for drawing stays private.
+        if let Some(existing) = self.fonts.get(key, dictionary) {
+            if drawing || !existing.drawing {
+                return existing;
+            }
+            return Arc::new(CachedFont::new(font, key, (false, drawing)));
         }
         let bytes = font_bytes(&font, key, dictionary);
         if bytes > self.maximum || self.entries == 0 {
-            return Arc::new(CachedFont::new(font, key, false));
+            return Arc::new(CachedFont::new(font, key, (false, drawing)));
         }
         if !self.fits(bytes) || self.fonts.len() >= 256 {
             for font in self.fonts.values() {
@@ -151,7 +168,7 @@ impl FontCache {
             self.font_bytes = 0;
             self.outlines = 0;
         }
-        let font = Arc::new(CachedFont::new(font, key, true));
+        let font = Arc::new(CachedFont::new(font, key, (true, drawing)));
         self.bytes += bytes;
         self.font_bytes += bytes;
         self.fonts.insert(key, dictionary, Arc::clone(&font));
@@ -288,7 +305,7 @@ impl Compiler<'_> {
                 fonts
                     .lock()
                     .unwrap_or_else(std::sync::PoisonError::into_inner)
-                    .get(key, dictionary)
+                    .get(key, dictionary, self.drawing)
             })
         };
         let shared_hit = shared.is_some();
@@ -334,7 +351,7 @@ impl Compiler<'_> {
             dictionary,
             self.compilation.provider,
             self.compilation.fonts,
-            self.position,
+            (self.position, self.drawing),
         )?;
         self.paint_charge(font_bytes(&font.font, key, dictionary), 1)?;
         Ok(font)
@@ -446,7 +463,7 @@ pub(crate) fn pdf_font(
         dictionary,
         provider,
         fonts,
-        pagura_core::Position::Unknown,
+        (pagura_core::Position::Unknown, false),
     )?;
     Ok(Arc::clone(&entry.font))
 }
@@ -457,18 +474,20 @@ fn cached_font(
     dictionary: &Dictionary,
     provider: Option<&dyn pagura_text::Provider>,
     fonts: Option<&std::sync::Mutex<FontCache>>,
-    position: pagura_core::Position,
+    (position, rendering): (pagura_core::Position, bool),
 ) -> Result<Arc<CachedFont>> {
     if let Some(entry) = fonts.and_then(|cache| {
         cache
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .get(key, dictionary)
+            .get(key, dictionary, rendering)
     }) {
         return Ok(entry);
     }
     // Parsing and provider calls happen outside the shared cache lock.
-    let loaded = flags::load(document, dictionary, provider, position);
+    // A competitive compilation reads a TrueType program only as far as
+    // drawing needs ([`PdfFont::load_for_rendering`]).
+    let loaded = flags::load(document, dictionary, provider, position, rendering);
     let font = Arc::new(loaded.map_err(|mut error| {
         if matches!(
             error.position,
@@ -488,8 +507,8 @@ fn cached_font(
         Some(cache) => cache
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .remember(key, dictionary, font),
-        None => Arc::new(CachedFont::new(font, key, false)),
+            .remember(key, dictionary, (font, rendering)),
+        None => Arc::new(CachedFont::new(font, key, (false, rendering))),
     })
 }
 
@@ -559,7 +578,7 @@ mod tests {
             ..Default::default()
         });
         assert!(Arc::ptr_eq(
-            &disabled.remember(id, &dictionary, Arc::clone(&font)).font,
+            &disabled.remember(id, &dictionary, (Arc::clone(&font), false)).font,
             &font
         ));
         assert_eq!(disabled.bytes, 0);
@@ -568,10 +587,10 @@ mod tests {
             document_bytes: font_bytes(&font, id, &dictionary) + 1024,
             ..Default::default()
         });
-        let first = fonts.remember(id, &dictionary, Arc::clone(&font));
+        let first = fonts.remember(id, &dictionary, (Arc::clone(&font), false));
         let bytes = fonts.bytes;
         assert_eq!(bytes, font_bytes(&font, id, &dictionary));
-        let same = fonts.remember(id, &dictionary, Arc::clone(&font));
+        let same = fonts.remember(id, &dictionary, (Arc::clone(&font), false));
         assert!(Arc::ptr_eq(&first, &same));
         assert_eq!(fonts.bytes, bytes);
         let mut path = pagura_raster::PathBuilder::new();
@@ -586,11 +605,28 @@ mod tests {
         fonts.outline(&first, 19, Arc::clone(&path));
         assert_eq!(fonts.bytes, bytes);
         fonts.maximum = bytes;
-        fonts.remember(Some(pagura_core::ObjectId::new(6, 0)), &dictionary, font);
-        assert!(fonts.get(id, &dictionary).is_none());
+        fonts.remember(Some(pagura_core::ObjectId::new(6, 0)), &dictionary, (font, false));
+        assert!(fonts.get(id, &dictionary, false).is_none());
         assert_eq!(fonts.outlines, 0);
         assert!(first.outline(19).is_none());
         assert!(fonts.bytes <= fonts.maximum);
+    }
+
+    #[test]
+    fn fonts_read_for_drawing_serve_only_drawing_compilations() {
+        let (dictionary, font) = font().unwrap();
+        let id = Some(pagura_core::ObjectId::new(5, 0));
+        let mut cache = FontCache::new(pagura_core::Limits::default());
+        let drawing = cache.remember(id, &dictionary, (Arc::clone(&font), true));
+        assert!(cache.get(id, &dictionary, false).is_none());
+        assert!(Arc::ptr_eq(&cache.get(id, &dictionary, true).unwrap(), &drawing));
+        let whole = cache.remember(id, &dictionary, (Arc::clone(&font), false));
+        assert!(!whole.drawing && !Arc::ptr_eq(&whole, &drawing));
+        assert!(cache.get(id, &dictionary, false).is_none());
+        let mut complete = FontCache::new(pagura_core::Limits::default());
+        let whole = complete.remember(id, &dictionary, (Arc::clone(&font), false));
+        assert!(Arc::ptr_eq(&complete.get(id, &dictionary, true).unwrap(), &whole));
+        assert!(Arc::ptr_eq(&complete.remember(id, &dictionary, (font, true)), &whole));
     }
 
     #[test]
@@ -599,13 +635,13 @@ mod tests {
         let mut cache = FontCache::new(pagura_core::Limits::default());
         let id = Some(pagura_core::ObjectId::new(5, 0));
         for (key, width) in [(id, 1.0), (None, 2.0)] {
-            let font = cache.remember(key, &dictionary, Arc::clone(&font));
+            let font = cache.remember(key, &dictionary, (Arc::clone(&font), false));
             let mut path = pagura_raster::PathBuilder::new();
             path.rect(0.0, 0.0, width, 1.0);
             cache.outline(&font, 1, Arc::new(path.finish()));
         }
-        let first = cache.get(id, &dictionary).unwrap().outline(1).unwrap();
-        let second = cache.get(None, &dictionary).unwrap().outline(1).unwrap();
+        let first = cache.get(id, &dictionary, false).unwrap().outline(1).unwrap();
+        let second = cache.get(None, &dictionary, false).unwrap().outline(1).unwrap();
         assert_ne!(first, second);
         assert_eq!(cache.outlines, 2);
     }
@@ -618,13 +654,10 @@ mod tests {
             document_bytes: font_bytes(&font, id, &dictionary),
             ..Default::default()
         });
-        let old = cache.remember(id, &dictionary, Arc::clone(&font));
-        cache.remember(
-            Some(pagura_core::ObjectId::new(6, 0)),
-            &dictionary,
-            Arc::clone(&font),
-        );
-        let replacement = cache.remember(id, &dictionary, font);
+        let old = cache.remember(id, &dictionary, (Arc::clone(&font), false));
+        cache.remember(Some(pagura_core::ObjectId::new(6, 0)),
+            &dictionary, (Arc::clone(&font), false));
+        let replacement = cache.remember(id, &dictionary, (font, false));
         let bytes = cache.bytes;
         let mut path = pagura_raster::PathBuilder::new();
         path.rect(0.0, 0.0, 2.0, 2.0);
@@ -654,13 +687,10 @@ mod tests {
         assert!(large.retained_bytes() > small.retained_bytes());
         let id = Some(pagura_core::ObjectId::new(5, 0));
         let mut measured = FontCache::new(pagura_core::Limits::default());
-        measured.remember(id, &dictionary, Arc::clone(&small));
+        measured.remember(id, &dictionary, (Arc::clone(&small), false));
         let small_charge = measured.bytes;
-        measured.remember(
-            Some(pagura_core::ObjectId::new(6, 0)),
-            &expanded,
-            Arc::clone(&large),
-        );
+        measured.remember(Some(pagura_core::ObjectId::new(6, 0)),
+            &expanded, (Arc::clone(&large), false));
         let large_charge = measured.bytes - small_charge;
         assert_eq!(
             large_charge - small_charge,
@@ -670,13 +700,13 @@ mod tests {
             document_bytes: small_charge,
             ..Default::default()
         });
-        cache.remember(id, &dictionary, Arc::clone(&small));
+        cache.remember(id, &dictionary, (Arc::clone(&small), false));
         assert_eq!(cache.bytes, small_charge);
-        cache.remember(Some(pagura_core::ObjectId::new(6, 0)), &expanded, large);
+        cache.remember(Some(pagura_core::ObjectId::new(6, 0)), &expanded, (large, false));
         assert_eq!(cache.fonts.len(), 1);
         assert_eq!(cache.bytes, small_charge);
         let mut direct = FontCache::new(pagura_core::Limits::default());
-        direct.remember(None, &dictionary, Arc::clone(&small));
+        direct.remember(None, &dictionary, (Arc::clone(&small), false));
         assert_eq!(
             direct.bytes - small_charge,
             dictionary.retained_bytes() - size_of::<pagura_core::ObjectId>()
@@ -700,7 +730,7 @@ mod tests {
         let metadata = font_bytes(&simple, id, dictionary) - simple.retained_bytes();
         let expected = font.retained_bytes() + metadata;
         let mut cache = FontCache::new(pagura_core::Limits::default());
-        cache.remember(id, dictionary, font);
+        cache.remember(id, dictionary, (font, false));
         assert_eq!(cache.bytes, expected);
     }
     #[test]

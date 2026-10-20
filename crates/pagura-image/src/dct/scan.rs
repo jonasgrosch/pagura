@@ -125,7 +125,7 @@ impl Decoder {
         let scan = Scan::parse(payload, frame)?;
         let interleaved = scan.selected.len() > 1;
         let (cols, rows) = scan.geometry(frame)?;
-        let mut bits = Bits::new(data, offset);
+        let mut bits = entropy_bits(frame, data, offset, limits, self.work);
         let mut arithmetic = frame
             .arithmetic
             .then(|| {
@@ -143,6 +143,7 @@ impl Decoder {
         // the coefficients that block wrote.
         let mut sequential = [0; 64];
         for mcu in 0..cols * rows {
+            let (row, column) = (mcu / cols, mcu % cols);
             if mcu > 0 && self.restart != 0 && mcu % self.restart == 0 {
                 if eob != 0 {
                     return Err(bits.error("JPEG EOB run crosses restart"));
@@ -166,16 +167,19 @@ impl Decoder {
                 let (horizontal, vertical) = if interleaved { (c.h, c.v) } else { (1, 1) };
                 for y in 0..vertical {
                     for x in 0..horizontal {
-                        self.work = self
-                            .work
-                            .checked_add(64)
-                            .filter(|&w| w <= limits.operations)
-                            .ok_or(Error::limit("JPEG scan work budget exceeded"))?;
-                        let index = if interleaved {
-                            (mcu / cols * c.v + y) * c.stride + mcu % cols * c.h + x
+                        self.work = block_work(self.work, limits)?;
+                        let (block_row, block_column) = if interleaved {
+                            (row * c.v + y, column * c.h + x)
                         } else {
-                            mcu / cols * c.stride + mcu % cols
+                            (row, column)
                         };
+                        let index = block_row * c.stride + block_column;
+                        if let Storage::Native(plane) = &mut c.storage {
+                            let tables = (&self.huffman, dc, ac);
+                            let block = ((block_row, block_column), &mut predictors[i]);
+                            native(plane, c.quant.as_ref(), tables, block, &mut bits)?;
+                            continue;
+                        }
                         let block = match &mut c.storage {
                             Storage::Coefficients(blocks) => blocks
                                 .get_mut(index)
@@ -242,9 +246,63 @@ impl Decoder {
                 .ok_or(Error::limit("JPEG arithmetic work budget exceeded"))?;
             return Ok(offset);
         }
+        self.work = self
+            .work
+            .checked_add(bits.stream_work())
+            .filter(|&w| w <= limits.operations)
+            .ok_or(Error::limit("JPEG entropy work exceeded"))?;
         bits.align(diagnostics, &mut self.padding_reported)?;
         scan_end(data, bits.offset(), &mut self.work, limits, diagnostics)
     }
+}
+
+/// Charges one data unit's 64 coefficients against the work budget.
+fn block_work(work: usize, limits: &Limits) -> Result<usize> {
+    work.checked_add(64)
+        .filter(|&w| w <= limits.operations)
+        .ok_or(Error::limit("JPEG scan work budget exceeded"))
+}
+
+/// An entropy reader for a scan. Native planes copy each segment without
+/// its stuffing, within the storage and work left by the frame.
+fn entropy_bits<'a>(
+    frame: &super::Frame,
+    data: &'a [u8],
+    offset: usize,
+    limits: &Limits,
+    work: usize,
+) -> Bits<'a> {
+    let mut bits = Bits::new(data, offset);
+    if frame
+        .components
+        .iter()
+        .any(|c| matches!(c.storage, Storage::Native(_)))
+    {
+        let held: usize = frame.components.iter().map(|c| c.storage.bytes()).sum();
+        bits.limit_stream(
+            limits.decoded_bytes.saturating_sub(held),
+            limits.operations.saturating_sub(work),
+        );
+    }
+    bits
+}
+
+/// Decodes the block at (row, column) of a component held in a native plane.
+fn native(
+    plane: &mut super::deferred::Plane,
+    quant: Option<&[u16; 64]>,
+    (tables, dc, ac): (&[Option<Huffman>; 8], usize, usize),
+    (block, predictor): ((usize, usize), &mut i32),
+    bits: &mut Bits<'_>,
+) -> Result<()> {
+    let (Some(dc), Some(ac)) = (
+        tables.get(dc).and_then(Option::as_ref),
+        tables.get(ac).and_then(Option::as_ref),
+    ) else {
+        return Err(bits.error("missing JPEG Huffman table"));
+    };
+    let quant = quant.ok_or_else(|| bits.error("missing JPEG quantizer"))?;
+    plane.decode(block, dc, ac, bits, predictor, quant)
 }
 
 /// Reconstructs a completed sequential block into its component's samples.
@@ -259,7 +317,7 @@ fn store(
     match &mut component.storage {
         Storage::Bytes(plane) => reconstruct(idct, quant, block, plane, stride, index),
         Storage::Words(plane) => reconstruct(idct, quant, block, plane, stride, index),
-        Storage::Coefficients(_) => None,
+        Storage::Coefficients(_) | Storage::Native(_) => None,
     }
 }
 

@@ -18,6 +18,14 @@ pub struct ClipRegion {
     pub(super) origin: (u32, u32),
     pub(super) shapes: Vec<Shape>,
     pub(super) limits: Limits,
+    /// The product of the paths' own approximate coverages over the
+    /// viewport, when [`crate::Rasterizer::prepare_clip`] prepared it,
+    /// leaving out axis-aligned rectangles.
+    pub(super) product: Option<Arc<[u8]>>,
+    /// The intersection of the prepared region's axis-aligned rectangles
+    /// that do not contain the viewport, as the bits of
+    /// `[left, top, right, bottom]`.
+    pub(super) rectangle: Option<[u64; 4]>,
 }
 
 /// Summarizes instead of dumping geometry.
@@ -28,6 +36,8 @@ impl std::fmt::Debug for ClipRegion {
             .field("height", &self.height)
             .field("origin", &self.origin)
             .field("paths", &self.shapes.len())
+            .field("product", &self.product.is_some())
+            .field("rectangle", &self.rectangle())
             .finish_non_exhaustive()
     }
 }
@@ -82,6 +92,8 @@ impl ClipRegion {
             origin,
             shapes,
             limits,
+            product: None,
+            rectangle: None,
         };
         region.pixels()?;
         Ok(region)
@@ -101,6 +113,27 @@ impl ClipRegion {
             .ok()
             .filter(|&count| count <= self.limits.pixels)
             .ok_or(Error::limit("mask pixel budget exceeded"))
+    }
+
+    /// The product of the paths' own approximate coverages over the
+    /// viewport, row by row, when [`crate::Rasterizer::prepare_clip`]
+    /// prepared it.
+    pub fn product(&self) -> Option<&[u8]> {
+        self.product.as_deref()
+    }
+
+    /// The intersection of the prepared region's axis-aligned rectangles,
+    /// as `[left, top, right, bottom]` in device space: a coverage factor
+    /// that separates into a column and a row factor.
+    pub fn rectangle(&self) -> Option<[f64; 4]> {
+        self.rectangle.map(|bits| bits.map(f64::from_bits))
+    }
+
+    /// Whether every path contains the whole viewport, so that the region
+    /// changes no pixel within it.
+    pub fn unrestricted(&self) -> bool {
+        let (origin, size) = (self.origin, (self.width, self.height));
+        self.shapes.iter().all(|shape| shape.covers(origin, size))
     }
 
     /// Global device origin of the viewport.
@@ -149,6 +182,8 @@ impl ClipRegion {
             .try_reserve_exact(count)
             .map_err(|_| Error::limit("mask geometry allocation failed"))?;
         self.shapes.extend(needed().cloned());
+        self.product = None;
+        self.rectangle = None;
         Ok(())
     }
 

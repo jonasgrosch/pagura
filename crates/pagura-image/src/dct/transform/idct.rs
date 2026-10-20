@@ -108,7 +108,7 @@ impl Idct {
         let mut ambiguous = false;
         for row in &values {
             for &value in row {
-                ambiguous |= (value - value.round()).abs() >= threshold;
+                ambiguous |= rounding_distance(value) >= threshold;
             }
         }
         (!ambiguous).then_some(values)
@@ -180,9 +180,77 @@ impl Idct {
     }
 }
 
+/// `(value - value.round()).abs()`, the distance to the nearest integer.
+fn rounding_distance(value: f32) -> f32 {
+    if super::NO_ROUNDING_INSTRUCTION {
+        distance_by_truncation(value)
+    } else {
+        (value - value.round()).abs()
+    }
+}
+
+/// [`rounding_distance`] from the truncation: the remainder, and its
+/// complement to one from one half, are exact by Sterbenz's lemma, as is the
+/// subtraction they replace. From 2^23 every finite value is integral, and NaN and
+/// infinities give NaN.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    reason = "truncated below 2^23, where it is exact"
+)]
+fn distance_by_truncation(value: f32) -> f32 {
+    if value.abs() < 8_388_608.0 {
+        let fraction = (value - value as i32 as f32).abs();
+        // Below one half the complement rounds to at least one half.
+        fraction.min(1.0 - fraction)
+    } else if value.is_finite() {
+        0.0
+    } else {
+        f32::NAN
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Idct;
+
+    #[test]
+    fn truncation_forms_match_the_rounding_functions() {
+        let mut values = vec![
+            f32::NAN,
+            f32::INFINITY,
+            f32::NEG_INFINITY,
+            f32::MAX,
+            f32::MIN,
+            -0.0,
+            f32::MIN_POSITIVE,
+            0.499_999_97,
+            -0.499_999_97,
+            8_388_607.5,
+            8_388_608.0,
+        ];
+        let mut value = -40_000.0_f32;
+        while value <= 40_000.0 {
+            values.extend([value, value.next_up(), value.next_down()]);
+            value += 0.25;
+        }
+        values.extend((0..=u32::MAX).step_by(4099).map(f32::from_bits));
+        for value in values {
+            let expected = (value - value.round()).abs();
+            let actual = super::distance_by_truncation(value);
+            assert!(
+                actual.to_bits() == expected.to_bits() || actual.is_nan() && expected.is_nan(),
+                "{value}"
+            );
+            let wide = f64::from(value) * 1.000_000_1;
+            for value in [f64::from(value), wide] {
+                let expected = value.round().clamp(0.0, 255.0);
+                let expected = if expected.is_nan() { 0.0 } else { expected };
+                let actual = f64::from(super::super::sample_by_truncation(value));
+                assert_eq!(actual, expected, "{value}");
+            }
+        }
+    }
 
     #[test]
     fn single_axes_keep_every_reference_product_and_rounding_tie() {
