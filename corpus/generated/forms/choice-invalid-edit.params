@@ -1,4 +1,4 @@
 mode=choice-text
-error=invalid-argument
+error=syntax
 appearance=
 changed=true

@@ -6,7 +6,9 @@ use super::{
     layout::{self, TextLayout},
 };
 use pagura_core::{Error, Rect, Result};
-use pagura_document::forms::{FieldKind, FieldValue, FilledField, FilledValue, FormFiller};
+use pagura_document::forms::{
+    ChoiceStyle, FieldFlags, FieldKind, FieldValue, FilledField, FilledValue, FormFiller,
+};
 
 pub(super) fn write(
     out: &mut Program,
@@ -19,8 +21,14 @@ pub(super) fn write(
     let field = &filler.form().fields[index];
     match &field.kind {
         FieldKind::Text { .. } => text(out, filler, index, area, font, da),
-        FieldKind::Choice { combo: true, .. } => combo(out, filler, index, area, font, da),
-        FieldKind::Choice { combo: false, .. } => choice::list(
+        FieldKind::Choice {
+            style: ChoiceStyle::Combo { .. },
+            ..
+        } => combo(out, filler, index, area, font, da),
+        FieldKind::Choice {
+            style: ChoiceStyle::List,
+            ..
+        } => choice::list(
             out,
             filler,
             index,
@@ -30,7 +38,7 @@ pub(super) fn write(
             &choice::values(filler, field, index),
         ),
         _ => Err(Error::unsupported(
-            pagura_document::forms::features::FIELD_TYPE,
+            pagura_document::features::FIELD_TYPE,
             "field has no variable text appearance",
         )),
     }
@@ -57,7 +65,7 @@ fn text(
     };
     if *rich_text {
         return Err(Error::unsupported(
-            pagura_document::forms::features::RICH_TEXT,
+            pagura_document::features::RICH_TEXT,
             "rich text appearance generation is unavailable",
         ));
     }
@@ -73,7 +81,7 @@ fn text(
         && (max_length.is_none_or(|n| n == 0)
             || *multiline
             || *password
-            || field.flags.contains(21))
+            || field.flags.contains(FieldFlags::FILE_SELECT))
     {
         return Err(Error::syntax("invalid Comb flags or MaxLen"));
     }
@@ -83,7 +91,7 @@ fn text(
         comb: if *comb { *max_length } else { None },
         password: *password,
         quadding: field.justification,
-        no_scroll: field.flags.contains(24),
+        no_scroll: field.flags.contains(FieldFlags::DO_NOT_SCROLL),
     };
     out.text("BT\n")?;
     layout::write(out, font, da, area, &layout, filler.document().limits())?;
@@ -98,12 +106,10 @@ fn combo(
     da: &DefaultAppearance,
 ) -> Result<()> {
     let field = &filler.form().fields[index];
-    let FieldKind::Choice {
-        editable, options, ..
-    } = &field.kind
-    else {
+    let FieldKind::Choice { style, options, .. } = &field.kind else {
         return Err(Error::syntax("field is not a choice"));
     };
+    let editable = matches!(style, ChoiceStyle::Combo { editable: true });
     let values = choice::values(filler, field, index);
     let value = values.first().map_or("", |s| *s);
     if values.len() > 1 || value.contains(['\r', '\n']) {

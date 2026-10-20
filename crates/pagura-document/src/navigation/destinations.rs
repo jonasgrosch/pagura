@@ -1,14 +1,13 @@
 //! Explicit and named destinations (12.3.2, Table 149; Annex J.3.3–J.3.4).
-use super::{
-    actions,
-    context::{Context, Source, identity, number},
-};
+use super::actions;
 use crate::Document;
-use pagura_core::{Dictionary, Error, ErrorKind, Name, Rect, Result, Value};
+use crate::view::{Context, Source, identity, number};
+use pagura_core::{Dictionary, Error, Name, Rect, Result, Value};
 use std::collections::BTreeSet;
 
 /// How the host should fit or position a destination page. Null coordinates
-/// remain None; XYZ zoom zero is also None (Table 149).
+/// remain None; XYZ zoom zero is also None (Table 149, which defines exactly
+/// these eight views).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum DestinationView {
     /// Retain any unspecified coordinate or magnification.
@@ -35,15 +34,26 @@ pub enum DestinationView {
     /// Fit content height, optionally positioning the left edge.
     FitBv(Option<f64>),
 }
+
 /// An explicit destination in this document.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub struct Destination {
     /// Zero-based page index in this document.
     pub page: usize,
     /// View instruction, interpreted by the host.
     pub view: DestinationView,
 }
-/// A named destination key, preserving its original PDF kind.
+
+impl Destination {
+    /// A destination showing zero-based `page` with `view`.
+    pub const fn new(page: usize, view: DestinationView) -> Self {
+        Self { page, view }
+    }
+}
+
+/// A named destination key, preserving its original PDF kind: a name or a
+/// byte string, the only two 12.3.2.3 allows.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DestinationName<'a> {
     /// Legacy catalog Dests key, or a name reference.
@@ -51,6 +61,7 @@ pub enum DestinationName<'a> {
     /// Name-tree key, or a byte-string reference.
     String(&'a [u8]),
 }
+
 impl<'a> DestinationName<'a> {
     /// Canonical decoded bytes used for key comparison.
     pub fn as_bytes(self) -> &'a [u8] {
@@ -60,15 +71,19 @@ impl<'a> DestinationName<'a> {
         }
     }
 }
+
 /// A named destination and its resolved local target.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[non_exhaustive]
 pub struct NamedDestination<'a> {
     /// Original key kind and bytes.
     pub name: DestinationName<'a>,
     /// Fully resolved page and view.
     pub destination: Destination,
 }
-/// A remote destination is data; its page is never resolved locally.
+
+/// A remote destination is data; its page is never resolved locally. It is
+/// a page number or a name, as 12.6.4.3 requires.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum RemoteDestination<'a> {
     /// Zero-based remote page number and view.
@@ -81,14 +96,17 @@ pub enum RemoteDestination<'a> {
     /// Name to be resolved in the remote document by the host.
     Named(DestinationName<'a>),
 }
+
 /// An inert outline or annotation target. Activating it is the host's decision.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum Target<'a> {
     /// A local page/view jump.
     Destination(Destination),
     /// An inert action sequence.
     Actions(actions::ActionSequence<'a>),
 }
+
 fn key(value: &Value) -> Option<DestinationName<'_>> {
     match value {
         Value::Name(n) => Some(DestinationName::Name(n)),
@@ -96,6 +114,7 @@ fn key(value: &Value) -> Option<DestinationName<'_>> {
         _ => None,
     }
 }
+
 fn optional(value: &Value, source: Source) -> Result<Option<f64>> {
     if value.is_null() {
         Ok(None)
@@ -103,20 +122,27 @@ fn optional(value: &Value, source: Source) -> Result<Option<f64>> {
         number(value, source).map(Some)
     }
 }
-fn view<'a>(ctx: &mut Context<'a>, values: &'a [Value], source: Source) -> Result<DestinationView> {
+
+fn view<'a>(
+    context: &mut Context<'a>,
+    values: &'a [Value],
+    source: Source,
+) -> Result<DestinationView> {
     if values.is_empty() || values.len() > 5 {
         return Err(source.error(Error::syntax("incorrect destination operand count")));
     }
-    ctx.allocate::<&Value>(values.len(), source)?;
+    context.allocate::<&Value>(values.len(), source)?;
     let values = values
         .iter()
-        .map(|v| ctx.resolve(v, source).map(|(v, _)| v))
+        .map(|v| context.resolve(v, source).map(|(v, _)| v))
         .collect::<Result<Vec<_>>>()?;
-    let name = values
-        .first()
-        .and_then(|v| v.as_name())
-        .ok_or_else(|| source.error(Error::syntax("destination requires a view name")))?;
-    Ok(match (name.as_bytes(), &values[1..]) {
+    let Some((name, operands)) = values
+        .split_first()
+        .and_then(|(name, operands)| Some((name.as_name()?, operands)))
+    else {
+        return Err(source.error(Error::syntax("destination requires a view name")));
+    };
+    Ok(match (name.as_bytes(), operands) {
         (b"XYZ", [left, top, zoom]) => {
             let zoom = optional(zoom, source)?.filter(|v| *v != 0.0);
             if zoom.is_some_and(|v| v < 0.0) {
@@ -150,41 +176,48 @@ fn view<'a>(ctx: &mut Context<'a>, values: &'a [Value], source: Source) -> Resul
         }
     })
 }
-pub(super) fn local(doc: &Document, value: &Value) -> Result<Destination> {
-    resolve(&mut Context::new(doc), value, Source::default())
+
+pub(super) fn local(document: &Document, value: &Value) -> Result<Destination> {
+    resolve(&mut Context::new(document), value, Source::default())
 }
+
 pub(super) fn resolve<'a>(
-    ctx: &mut Context<'a>,
+    context: &mut Context<'a>,
     mut value: &'a Value,
     mut source: Source,
 ) -> Result<Destination> {
     let mut visited = BTreeSet::new();
-    for depth in 0..=ctx.doc.limits().depth {
-        ctx.step(depth, source)?;
-        (value, source) = ctx.resolve(value, source)?;
-        ctx.allocate::<usize>(8, source)?;
+    for depth in 0..=context.document.limits().depth {
+        context.step(depth, source)?;
+        (value, source) = context.resolve(value, source)?;
+        context.index_entry(source)?;
         if !visited.insert(identity(value)) {
             return Err(source.error(Error::cycle("cyclic named destination")));
         }
         match value {
-            Value::Dictionary(d) => {
-                value = d.get(b"D").ok_or_else(|| {
+            Value::Dictionary(dictionary) => {
+                value = dictionary.get(b"D").ok_or_else(|| {
                     source.error(Error::syntax("destination dictionary requires D"))
                 })?;
             }
             Value::Array(values) => {
-                let page_count = ctx.doc.page_count()?;
-                let first = values
-                    .first()
+                let page_count = context.document.page_count()?;
+                let (first, operands) = values
+                    .split_first()
                     .ok_or_else(|| source.error(Error::syntax("destination requires a page")))?;
                 let page = if let Some(page) = first.as_reference() {
-                    ctx.page_index(page, source)?
+                    context.page_index(page, source)?
                 } else if let Some(page) = first
                     .as_integer()
                     .and_then(|n| usize::try_from(n).ok())
                     .filter(|n| *n < page_count)
                 {
-                    ctx.repair(crate::tags::DESTINATION_PAGE_NUMBER,"local destination page number interpreted as zero-based index (12.3.2.2, Table 149)",source)?;
+                    context.repair(
+                        crate::repairs::DESTINATION_PAGE_NUMBER,
+                        "local destination page number interpreted as zero-based index \
+                         (12.3.2.2, Table 149)",
+                        source,
+                    )?;
                     page
                 } else {
                     return Err(
@@ -193,139 +226,141 @@ pub(super) fn resolve<'a>(
                 };
                 return Ok(Destination {
                     page,
-                    view: view(ctx, &values[1..], source)?,
+                    view: view(context, operands, source)?,
                 });
             }
             _ => {
                 let name = key(value)
                     .ok_or_else(|| source.error(Error::syntax("invalid destination object")))?;
-                (value, source) = find(ctx, name)?.ok_or_else(|| {
-                    source.error(Error::new(
-                        ErrorKind::MissingObject,
-                        "named destination is absent",
-                    ))
+                (value, source) = find(context, name)?.ok_or_else(|| {
+                    source.error(Error::missing_object("named destination is absent"))
                 })?;
             }
         }
     }
     Err(source.error(Error::limit("destination resolution depth exceeded")))
 }
+
 fn find<'a>(
-    ctx: &mut Context<'a>,
+    context: &mut Context<'a>,
     name: DestinationName<'a>,
 ) -> Result<Option<(&'a Value, Source)>> {
-    let (catalog, catalog_source) = ctx.catalog()?;
+    let (catalog, catalog_source) = context.catalog()?;
     // A name uses the legacy dictionary first; a string uses the name tree
     // first. The other representation is a compatibility fallback by bytes.
-    let legacy = |ctx: &mut Context<'a>| -> Result<Option<(&'a Value, Source)>> {
-        let Some(value) = ctx.present(catalog, b"Dests", catalog_source)? else {
+    let legacy = |context: &mut Context<'a>| -> Result<Option<(&'a Value, Source)>> {
+        let Some(value) = context.present(catalog, b"Dests", catalog_source)? else {
             return Ok(None);
         };
-        let (dictionary, source) = ctx.dictionary(value, catalog_source)?;
-        Ok(ctx
+        let (dictionary, source) = context.dictionary(value, catalog_source)?;
+        Ok(context
             .present(dictionary, name.as_bytes(), source)?
             .map(|v| (v, source)))
     };
-    let tree = |ctx: &mut Context<'a>| -> Result<Option<(&'a Value, Source)>> {
-        let Some(names) = ctx.present(catalog, b"Names", catalog_source)? else {
+    let tree = |context: &mut Context<'a>| -> Result<Option<(&'a Value, Source)>> {
+        let Some(names) = context.present(catalog, b"Names", catalog_source)? else {
             return Ok(None);
         };
-        let (names, source) = ctx.dictionary(names, catalog_source)?;
-        ctx.present(names, b"Dests", source)?
+        let (names, source) = context.dictionary(names, catalog_source)?;
+        context
+            .present(names, b"Dests", source)?
             .map(|root| {
-                ctx.doc
+                context
+                    .document
                     .name_tree(root)
                     .with_source(source)
-                    .get_with(ctx, name.as_bytes())
+                    .get_with(context, name.as_bytes())
             })
             .transpose()
             .map(Option::flatten)
     };
     match name {
-        DestinationName::Name(_) => match legacy(ctx)? {
+        DestinationName::Name(_) => match legacy(context)? {
             Some(v) => Ok(Some(v)),
-            None => tree(ctx),
+            None => tree(context),
         },
-        DestinationName::String(_) => match tree(ctx)? {
+        DestinationName::String(_) => match tree(context)? {
             Some(v) => Ok(Some(v)),
-            None => legacy(ctx),
+            None => legacy(context),
         },
     }
 }
+
 pub(super) fn remote<'a>(
-    ctx: &mut Context<'a>,
+    context: &mut Context<'a>,
     value: &'a Value,
     source: Source,
 ) -> Result<RemoteDestination<'a>> {
-    let (value, source) = ctx.resolve(value, source)?;
+    let (value, source) = context.resolve(value, source)?;
     if let Some(name) = key(value) {
         return Ok(RemoteDestination::Named(name));
     }
     let values = value.as_array().ok_or_else(|| {
         source.error(Error::syntax("remote destination must be an array or name"))
     })?;
-    let page = values
-        .first()
-        .and_then(Value::as_integer)
-        .and_then(|n| usize::try_from(n).ok())
-        .ok_or_else(|| {
-            source.error(Error::syntax("remote destination page must be nonnegative"))
-        })?;
+    let Some((page, operands)) = values
+        .split_first()
+        .and_then(|(page, operands)| Some((usize::try_from(page.as_integer()?).ok()?, operands)))
+    else {
+        return Err(source.error(Error::syntax("remote destination page must be nonnegative")));
+    };
     Ok(RemoteDestination::Explicit {
         page,
-        view: view(ctx, &values[1..], source)?,
+        view: view(context, operands, source)?,
     })
 }
+
 pub(super) fn target<'a>(
-    ctx: &mut Context<'a>,
+    context: &mut Context<'a>,
     dictionary: &'a Dictionary,
     source: Source,
 ) -> Result<Option<Target<'a>>> {
-    let action = ctx.present(dictionary, b"A", source)?;
-    let dest = ctx.present(dictionary, b"Dest", source)?;
+    let action = context.present(dictionary, b"A", source)?;
+    let dest = context.present(dictionary, b"Dest", source)?;
     if action.is_some() && dest.is_some() {
-        ctx.repair(
-            crate::tags::TARGET_CONFLICT,
+        context.repair(
+            crate::repairs::TARGET_CONFLICT,
             "A and Dest coexist; action takes precedence (12.3.3, 12.5.6.5)",
             source,
         )?;
     }
     if let Some(action) = action {
-        return actions::read_with(ctx, action, source).map(|v| Some(Target::Actions(v)));
+        return actions::read_with(context, action, source).map(|v| Some(Target::Actions(v)));
     }
-    dest.map(|dest| resolve(ctx, dest, source).map(Target::Destination))
+    dest.map(|dest| resolve(context, dest, source).map(Target::Destination))
         .transpose()
 }
-pub(super) fn named(doc: &Document) -> Result<Vec<NamedDestination<'_>>> {
-    let mut ctx = Context::new(doc);
-    let (catalog, source) = ctx.catalog()?;
+
+pub(super) fn named(document: &Document) -> Result<Vec<NamedDestination<'_>>> {
+    let mut context = Context::new(document);
+    let (catalog, source) = context.catalog()?;
     let mut entries = Vec::new();
-    if let Some(value) = ctx.present(catalog, b"Dests", source)? {
-        let (dictionary, source) = ctx.dictionary(value, source)?;
+    if let Some(value) = context.present(catalog, b"Dests", source)? {
+        let (dictionary, source) = context.dictionary(value, source)?;
         for (key, _) in dictionary {
-            let Some(value) = ctx.present(dictionary, key.as_bytes(), source)? else {
+            let Some(value) = context.present(dictionary, key.as_bytes(), source)? else {
                 continue;
             };
-            ctx.step(0, source)?;
-            ctx.allocate::<NamedDestination<'_>>(1, source)?;
+            context.step(0, source)?;
+            context.allocate::<NamedDestination<'_>>(1, source)?;
             entries.push(NamedDestination {
                 name: DestinationName::Name(key),
-                destination: resolve(&mut ctx, value, source)?,
+                destination: resolve(&mut context, value, source)?,
             });
         }
     }
-    if let Some(names) = ctx.present(catalog, b"Names", source)? {
-        let (names, source) = ctx.dictionary(names, source)?;
-        if let Some(root) = ctx.present(names, b"Dests", source)? {
-            for entry in doc
+    if let Some(names) = context.present(catalog, b"Names", source)? {
+        let (names, source) = context.dictionary(names, source)?;
+        if let Some(root) = context.present(names, b"Dests", source)? {
+            for entry in document
                 .name_tree(root)
                 .with_source(source)
-                .entries_with(&mut ctx)?
+                .entries_with(&mut context)?
             {
-                ctx.allocate::<NamedDestination<'_>>(1, source)?;
+                context.allocate::<NamedDestination<'_>>(1, source)?;
                 entries.push(NamedDestination {
                     name: DestinationName::String(entry.key),
-                    destination: resolve(&mut ctx, entry.value, entry.source)?,
+                    destination: resolve(&mut context, entry.value, entry.source)?,
                 });
             }
         }

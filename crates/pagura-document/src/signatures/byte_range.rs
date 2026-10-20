@@ -1,7 +1,7 @@
 //! Source-bound byte ranges (12.8.1, Table 255; 12.8.3.3.1).
 use crate::{
     ObjectSource,
-    navigation::context::{Context, Source},
+    view::{Context, Source},
 };
 use pagura_core::{Dictionary, Result, Value};
 use std::ops::Range;
@@ -78,7 +78,7 @@ pub(super) fn check<'a>(
     if start != 0 {
         return Ok(Err(ByteRangeError::DoesNotStartAtZero));
     }
-    let bytes = ctx.doc.original_bytes();
+    let bytes = ctx.document.original_bytes();
     let Some(end) = next.checked_add(tail).filter(|&end| end <= bytes.len()) else {
         return Ok(Err(ByteRangeError::OutsideFile));
     };
@@ -88,7 +88,11 @@ pub(super) fn check<'a>(
     if length > next {
         return Ok(Err(ByteRangeError::OverlappingRanges));
     }
-    let Some(object) = source.object.map(|id| ctx.doc.object(id)).transpose()? else {
+    let Some(object) = source
+        .object
+        .map(|id| ctx.document.object(id))
+        .transpose()?
+    else {
         return Ok(Err(ByteRangeError::SourceUnavailable));
     };
     let ObjectSource::File(extent) = object.source() else {

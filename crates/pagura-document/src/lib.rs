@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![warn(unreachable_pub)]
 //! Immutable PDF documents: cross-reference data, lazily parsed and cached
 //! indirect objects, decoded streams and the typed page tree.
 //!
@@ -8,29 +9,24 @@
 //! malformed input follow ADR 0003 and are reported by
 //! [`Document::diagnostics`].
 
+mod access;
 mod catalog;
-mod contents;
 mod diagnostics;
+pub mod features;
 pub mod forms;
 mod history;
 mod load;
 mod memory;
 pub mod navigation;
 mod object;
-mod object_stream;
-mod page_geometry;
 mod pages;
-mod rebuild;
+pub mod repairs;
 mod revision_bounds;
 mod security;
-mod security_dictionary;
-mod security_padding;
-mod security_repair;
 pub mod signatures;
 mod stream;
-pub mod tags;
+mod view;
 mod xref;
-mod xref_stream;
 
 pub use object::{IndirectObject, ObjectSource};
 pub use pages::{Page, Rotation};
@@ -76,7 +72,7 @@ pub struct Document {
     slots: BTreeMap<ObjectId, Slot>,
     pages: OnceLock<Result<Box<[Page]>>>,
     revisions: Vec<Revision>,
-    object_streams: BTreeMap<u32, OnceLock<Result<object_stream::Contents>>>,
+    object_streams: BTreeMap<u32, OnceLock<Result<object::stream::Contents>>>,
     security: Option<security::Security>,
     diagnostics: Mutex<diagnostics::Log>,
     retained: Arc<memory::Budget>,
@@ -120,7 +116,7 @@ impl Document {
             Err(error)
                 if primary && options.recovery == Recovery::Repair && xref::structural(&error) =>
             {
-                let table = rebuild::read(&bytes, limits, &mut diagnostics, error.position)?;
+                let table = xref::rebuild::read(&bytes, limits, &mut diagnostics, error.position)?;
                 Self::from_table(bytes, options, table, diagnostics.take())
             }
             Err(error) => Err(error),
@@ -201,6 +197,20 @@ impl Document {
                 .unwrap_or_else(PoisonError::into_inner)
                 .push(diagnostic);
         }
+    }
+
+    /// Applies a repair under this document's recovery mode (ADR 0003): in
+    /// repair mode `diagnostic` is reported as for [`Self::report`]; in strict
+    /// mode it is the error, and the caller must not apply the repair.
+    ///
+    /// # Errors
+    ///
+    /// Under [`Recovery::Strict`], the error of `diagnostic`'s repair.
+    pub fn repair(&self, diagnostic: Diagnostic) -> Result<()> {
+        let mut diagnostics = Diagnostics::new(self.recovery());
+        diagnostics.repair(diagnostic)?;
+        self.report(diagnostics.take());
+        Ok(())
     }
 
     /// Loads and caches an indirect object.
@@ -369,12 +379,9 @@ impl Document {
     /// from loading the stream objects. Repaired direct streams use their
     /// containing object's identity and retain individual file source ranges.
     pub fn content_streams(&self, page: &Page) -> Result<Vec<&IndirectObject>> {
-        contents::read(self, page)
+        pages::contents::read(self, page)
     }
 }
 
 #[cfg(test)]
 mod tests;
-
-#[cfg(test)]
-mod security_tests;

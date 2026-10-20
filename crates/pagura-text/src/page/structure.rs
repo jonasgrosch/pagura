@@ -140,13 +140,7 @@ fn located(document: &Document, fallback: ObjectId, error: Error) -> Error {
     let object = error.object.unwrap_or(fallback);
     let position = document
         .object(object)
-        .map_or(Position::Unknown, |o| match o.source() {
-            pagura_document::ObjectSource::File(range) => Position::File(range.start),
-            pagura_document::ObjectSource::Compressed { stream, .. } => Position::Stream {
-                object: ObjectId::new(*stream, 0),
-                offset: 0,
-            },
-        });
+        .map_or(Position::Unknown, |o| o.source().position());
     error.in_object(object).at(position)
 }
 

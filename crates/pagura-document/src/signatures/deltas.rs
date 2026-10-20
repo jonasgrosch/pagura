@@ -2,7 +2,7 @@
 use super::roles::Roles;
 use crate::{
     Document,
-    navigation::context::{Context, Source},
+    view::{Context, Source},
 };
 use pagura_core::{ObjectId, Result};
 use std::collections::BTreeSet;

@@ -239,7 +239,7 @@ def cases():
     yield vector('forms-invalid-action-target',changed,error='syntax')
 
     changed=base();changed[11]['V']=b'\xfe\xff\xd8\x00'
-    yield vector('forms-text-invalid',changed,repair='navigation.text',expected=expectation(base()).replace('|value|','|�|'))
+    yield vector('forms-text-invalid',changed,repair='string.invalid-text',expected=expectation(base()).replace('|value|','|�|'))
     changed=base();changed[10]['Fields']=[ref(11),ref(12)];changed[12]=deepcopy(changed[11])
     expected=expectation(changed);changed[12]['V']=b'value'
     yield vector('forms-duplicate-text-encodings',changed,expected=expected)

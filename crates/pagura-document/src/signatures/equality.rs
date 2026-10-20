@@ -1,7 +1,7 @@
 //! Semantic object comparison without decoding or normalizing stream bytes.
 use crate::{
     Document, IndirectObject,
-    navigation::context::{Context, Source},
+    view::{Context, Source},
 };
 use pagura_core::{Dictionary, Result, Value};
 // Xref streams contain both trailer semantics and encoding/index bookkeeping.

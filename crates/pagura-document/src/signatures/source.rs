@@ -1,5 +1,5 @@
 //! Bind a signature dictionary to its original Contents token (12.8.3.3.1).
-use crate::navigation::context::{Context, Source};
+use crate::view::{Context, Source};
 use pagura_core::{
     Dictionary, Error, Name, Result, Value,
     syntax::{Origin, Parser},
@@ -13,8 +13,8 @@ pub(super) fn contents_span(
     extent: Range<usize>,
     source: Source,
 ) -> Result<Option<Range<usize>>> {
-    let bytes = &ctx.doc.original_bytes()[..extent.end];
-    let mut parser = Parser::with_offset(bytes, extent.start, Origin::File, ctx.doc.limits())?;
+    let bytes = &ctx.document.original_bytes()[..extent.end];
+    let mut parser = Parser::with_offset(bytes, extent.start, Origin::File, ctx.document.limits())?;
     parser.unsigned()?;
     parser.unsigned()?;
     if !parser.keyword(b"obj") {

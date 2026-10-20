@@ -5,7 +5,8 @@
 //! raw-DEFLATE prefix or a guessed string plaintext. Only one physical stream
 //! is probed, and probe storage obeys the decoded/retained byte limits.
 
-use crate::{Document, Location, object, object_stream};
+use crate::object::{self, stream as object_stream};
+use crate::{Document, Location};
 use pagura_codec::{Filter, FilterChain};
 use pagura_core::{Diagnostic, Diagnostics, Error, ErrorKind, ObjectId, Recovery, Result};
 use pagura_crypto::standard::{CryptMethod, FileKey};
@@ -21,7 +22,7 @@ pub(super) fn select(
     key: Option<&FileKey>,
     short: bool,
     methods: (CryptMethod, CryptMethod),
-    policy: &mut crate::security_dictionary::Policy,
+    policy: &mut crate::security::policy::Policy,
 ) -> Result<Derivation> {
     if short
         && methods == (CryptMethod::Rc4, CryptMethod::Rc4)
@@ -29,7 +30,7 @@ pub(super) fn select(
         && let Some(witness) = detect(document, key)?
     {
         let mut diagnostic = Diagnostic::new(
-            crate::tags::KEY_PADDING,
+            crate::repairs::KEY_PADDING,
             "authenticated short RC4 file key zero-padded for xref-validated object decryption",
         )
         .in_object(witness);

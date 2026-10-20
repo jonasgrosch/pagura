@@ -7,35 +7,36 @@
 //! `Limits::document_bytes` for estimated temporary/result storage. Results
 //! are caller-owned and uncached; source objects use the usual retained budget.
 pub(crate) mod actions;
-pub(crate) mod context;
 mod destinations;
 mod labels;
 mod links;
 mod outlines;
-pub(crate) mod text;
 mod trees;
 
 pub use actions::{Action, ActionKind, ActionSequence, NamedAction, Script};
 pub use destinations::{
     Destination, DestinationName, DestinationView, NamedDestination, RemoteDestination, Target,
 };
+
 pub use labels::{LabelStyle, PageLabelRange, PageLabels};
 pub use links::{BorderStyle, HighlightMode, Link, LinkBorder};
 pub use outlines::OutlineItem;
 pub use trees::{NameTree, NumberTree, Tree, TreeEntries, TreeKey};
 
 use crate::{Document, Page};
-use pagura_core::{Error, ErrorKind, Result, Value};
+use pagura_core::{Error, Result, Value};
 
 impl Document {
     /// A borrowed name-tree handle (7.9.6), including non-navigation trees.
     pub fn name_tree<'a>(&'a self, root: &'a Value) -> NameTree<'a> {
         Tree::new(self, root)
     }
+
     /// A borrowed number-tree handle (7.9.7).
     pub fn number_tree<'a>(&'a self, root: &'a Value) -> NumberTree<'a> {
         Tree::new(self, root)
     }
+
     /// Resolves an explicit or named local destination (12.3.2).
     ///
     /// # Errors
@@ -43,6 +44,7 @@ impl Document {
     pub fn destination(&self, value: &Value) -> Result<Destination> {
         destinations::local(self, value)
     }
+
     /// Lists both catalog destination collections, preserving their key kinds.
     ///
     /// # Errors
@@ -50,6 +52,7 @@ impl Document {
     pub fn named_destinations(&self) -> Result<Vec<NamedDestination<'_>>> {
         destinations::named(self)
     }
+
     /// Outline items in preorder; `parent` indexes this flat list (12.3.3).
     ///
     /// # Errors
@@ -58,6 +61,7 @@ impl Document {
     pub fn outlines(&self) -> Result<Vec<OutlineItem<'_>>> {
         outlines::read(self)
     }
+
     /// Parses an inert action and its Next tree in preorder (12.6).
     ///
     /// # Errors
@@ -65,6 +69,7 @@ impl Document {
     pub fn actions<'a>(&'a self, value: &'a Value) -> Result<ActionSequence<'a>> {
         actions::read(self, value)
     }
+
     /// Label ranges from the catalog number tree (12.4.2, Table 161).
     ///
     /// # Errors
@@ -72,6 +77,7 @@ impl Document {
     pub fn page_label_ranges(&self) -> Result<Vec<PageLabelRange>> {
         labels::ranges(self)
     }
+
     /// Parses label ranges once for indexed lookup or linear page-order
     /// iteration (12.4.2). Prefer this view when displaying many labels.
     ///
@@ -80,6 +86,7 @@ impl Document {
     pub fn page_labels(&self) -> Result<PageLabels> {
         labels::read(self)
     }
+
     /// The display label of a zero-based page; absent PageLabels uses decimal.
     ///
     /// # Errors
@@ -87,14 +94,12 @@ impl Document {
     /// interpreting labels and enforcing string/result budgets.
     pub fn page_label(&self, index: usize) -> Result<String> {
         if index >= self.page_count()? {
-            return Err(Error::new(
-                ErrorKind::InvalidArgument,
-                "page label index outside document",
-            ));
+            return Err(Error::invalid_argument("page label index outside document"));
         }
         self.page_labels()?.label(index)
     }
 }
+
 impl Page {
     /// This page's Link annotations as inert targets (12.5.6.5, Table 176).
     /// `document` must be the document from which this page was obtained.
@@ -104,6 +109,7 @@ impl Page {
     pub fn links<'a>(&'a self, document: &'a Document) -> Result<Vec<Link<'a>>> {
         links::read(document, self)
     }
+
     /// This page's display label (12.4.2).
     ///
     /// # Errors
@@ -112,5 +118,6 @@ impl Page {
         document.page_label(self.index())
     }
 }
+
 #[cfg(test)]
 mod tests;

@@ -9,7 +9,6 @@
 //! the document's retained-cache budget (ADR 0012). No partial result is returned
 //! on failure. Names are display/lookup data, never unique object identities.
 mod attributes;
-pub mod features;
 mod fill;
 mod model;
 mod names;
@@ -18,13 +17,15 @@ mod values;
 mod widgets;
 
 use crate::Document;
+
 pub use fill::{
     ButtonValue, ChoiceSelection, ChoiceValue, FillValue, FilledField, FilledValue, FormFiller,
     WidgetState,
 };
+
 pub use model::{
-    AcroForm, AdditionalAction, ButtonKind, ChoiceOption, Field, FieldFlags, FieldKind, FieldValue,
-    Justification, Widget,
+    AcroForm, AdditionalAction, ButtonKind, ChoiceOption, ChoiceStyle, Field, FieldFlags,
+    FieldKind, FieldValue, Justification, Widget,
 };
 use pagura_core::Result;
 
@@ -35,8 +36,9 @@ impl Document {
     /// # Errors
     /// As [`Self::acro_form`]; changes have their own bounded storage.
     pub fn form_filler(&self) -> Result<Option<FormFiller<'_>>> {
-        self.acro_form()
-            .map(|form| form.map(|form| FormFiller::new(self, form)))
+        self.acro_form()?
+            .map(|form| FormFiller::new(self, form))
+            .transpose()
     }
 
     /// Reads the AcroForm and its field/widget tree (12.7.3–12.7.5).

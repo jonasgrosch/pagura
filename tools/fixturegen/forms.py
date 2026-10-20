@@ -126,7 +126,7 @@ def cases():
     for flag in [0,1<<12,1<<13,1<<20]:
         o=base(flags=(1<<24)|flag)
         if flag:o[11]['MaxLen']=4
-        yield vector(f'text-invalid-comb-{flag}',o,error='invalid-argument')
+        yield vector(f'text-invalid-comb-{flag}',o,error='syntax')
     o=base(flags=1<<25)
     yield vector('text-rich',o,error='unsupported:form.rich-text')
     o=base();o[10]['XFA']=b'<template/>'
@@ -158,7 +158,7 @@ def cases():
     o[11]['Opt']=[['a','AA'],['a','BB']]
     yield vector('choice-ambiguous-export',o,mode='choice-export',value='a',error='invalid-argument',requirement='forms-fill-choice')
     o[11]['Ff']=1<<18
-    yield vector('choice-invalid-edit',o,mode='choice-text',value='AA',error='invalid-argument',requirement='forms-fill-choice')
+    yield vector('choice-invalid-edit',o,mode='choice-text',value='AA',error='syntax',requirement='forms-fill-choice')
     for radio in (False,True):
         o=base('Btn',(1<<15) if radio else 0,widgets=2)
         for i in range(2):o[20+i]['AP']={'N':{'Off':ref(81),'Yes':ref(80)}}
@@ -212,7 +212,7 @@ def cases():
     for i in range(2):o[20+i]['AP']={'N':{'Off':ref(81),str(i):ref(80)}}
     yield vector('radio-duplicate-exports',o,mode='button-export',value='shared',error='invalid-argument',requirement='forms-fill-button')
     o=base('Btn');o[11]['AP']={'N':{'Off':ref(81)}}
-    yield vector('checkbox-existing-no-on-state',o,mode='widget',value='0',error='invalid-argument',requirement='forms-fill-button')
+    yield vector('checkbox-existing-no-on-state',o,mode='widget',value='0',error='syntax',requirement='forms-fill-button')
     o=base('Btn');o[11]['AP']={'N':{'Yes':ref(80)}}
     yield vector('checkbox-undefined-off-state',o,mode='off',value='',expected='button|Off|0:Off',appearance='hidden',requirement='forms-fill-button')
 

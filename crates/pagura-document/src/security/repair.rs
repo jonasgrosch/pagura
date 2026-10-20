@@ -3,18 +3,15 @@
 //! The source object and core parser determine token boundaries. Only fixed-size
 //! binary security fields can bypass EOL normalization, after a length mismatch.
 
-use crate::{Document, ObjectSource, tags};
+use crate::{Document, ObjectSource, repairs};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Diagnostic, Diagnostics, Error, ObjectId, Position, Result};
 use pagura_crypto::standard::{self, FileKey, SecurityParams};
 
-pub(crate) fn position(document: &Document, id: Option<ObjectId>) -> Position {
-    id.and_then(|id| document.object(id).ok())
-        .and_then(|object| match object.source() {
-            ObjectSource::File(range) => Some(Position::File(range.start)),
-            ObjectSource::Compressed { .. } => None,
-        })
-        .unwrap_or(Position::Unknown)
+pub(crate) fn position(document: &Document, id: Option<ObjectId>) -> Result<Position> {
+    id.map_or(Ok(Position::Unknown), |id| {
+        Ok(document.object(id)?.source().position())
+    })
 }
 
 pub(crate) fn hashes(
@@ -33,10 +30,10 @@ pub(crate) fn hashes(
             .any(|hash| zero_padded(hash, expected))
     {
         let mut diagnostic = Diagnostic::new(
-            tags::HASH_PADDING,
+            repairs::HASH_PADDING,
             "zero padding after fixed-length security password hashes discarded",
         )
-        .at(position(document, id));
+        .at(position(document, id)?);
         if let Some(id) = id {
             diagnostic = diagnostic.in_object(id);
         }
@@ -88,10 +85,10 @@ pub(crate) fn authenticate(
         return Err(original);
     };
     let mut diagnostic = Diagnostic::new(
-        tags::KEY_LENGTH_MISSING,
+        repairs::KEY_LENGTH_MISSING,
         "missing legacy Length recovered from a unique authenticated key size",
     )
-    .at(position(document, id));
+    .at(position(document, id)?);
     if let Some(id) = id {
         diagnostic = diagnostic.in_object(id);
     }
@@ -176,7 +173,7 @@ fn literal_hashes(
     if let Some((_, position)) = replacements.iter().flatten().next() {
         diagnostics.repair(
             Diagnostic::new(
-                tags::LITERAL_HASH,
+                repairs::LITERAL_HASH,
                 "binary literal password hashes recovered without EOL normalization",
             )
             .at(*position)

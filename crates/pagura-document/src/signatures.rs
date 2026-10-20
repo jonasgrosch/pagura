@@ -35,7 +35,10 @@ mod transforms;
 
 use crate::Document;
 pub use byte_range::{ByteRange, ByteRangeError};
-pub use changes::*;
+pub use changes::{
+    ChangeDecision, ChangeKind, ChangeTarget, ModificationAnalysis, ModificationOutcome,
+    ModificationRule, ObjectChange, ObjectRole, PermittedModifications, RevisionChanges,
+};
 pub use model::{
     AlgorithmStatus, FieldLock, FieldSelection, HistoricalSignature, Integrity, MdpPermission,
     RevisionCoverage, RevocationStatus, Signature, SignatureField, SignatureReference,
@@ -59,7 +62,7 @@ impl Document {
     /// Form repairs follow the form reader's policy;
     /// signature source syntax is checked strictly and never repaired.
     pub fn signatures(&self) -> Result<Signatures<'_>> {
-        let mut ctx = crate::navigation::context::Context::new(self);
+        let mut ctx = crate::view::Context::new(self);
         let mut result = read::read(self, &ctx)?;
         let facts = history::discover(self, &mut ctx, &mut result);
         if facts.is_err() {

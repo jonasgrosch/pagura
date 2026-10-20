@@ -4,8 +4,8 @@
 //! Heuristics follow the ADR 0003 repair catalogue and the damage classes seen
 //! in the real-world corpus.
 
-use crate::object::header;
-use crate::tags;
+use crate::object::recovery::{self, header};
+use crate::repairs;
 use crate::xref::{Location, XrefEntry, XrefTable};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{
@@ -27,7 +27,7 @@ pub(crate) fn read(
 ) -> Result<XrefTable> {
     diagnostics.repair(
         Diagnostic::new(
-            tags::XREF_REBUILT,
+            repairs::XREF_REBUILT,
             "damaged cross-reference data reconstructed from indirect object definitions",
         )
         .at(position),
@@ -130,7 +130,7 @@ fn object(
             }
         }
     }
-    crate::object::end(parser, limits, id, diagnostics)?;
+    recovery::end(parser, limits, id, diagnostics)?;
     if value
         .as_dictionary()
         .is_some_and(|dictionary| dictionary.is_name(b"Type", b"ObjStm"))
@@ -177,11 +177,11 @@ fn skip_direct(
         }
     }
     let (marker, _) =
-        crate::object::terminator_in(parser.data(), limits, id, start, parser.data().len(), true)?;
+        recovery::terminator_in(parser.data(), limits, id, start, parser.data().len(), true)?;
     if let Some(end) = declared {
         diagnostics.repair(
             Diagnostic::new(
-                tags::LENGTH_CORRECTED,
+                repairs::LENGTH_CORRECTED,
                 "direct stream Length corrected to a validated terminator",
             )
             .at(Position::File(end))
@@ -205,7 +205,7 @@ fn skip_stream(
     let before = parser.offset();
     let mut exact = Parser::with_offset(parser.data(), before, Origin::File, limits)?;
     let mut attempt = Diagnostics::new(diagnostics.mode());
-    match crate::xref_stream::direct_stream(&mut exact, dictionary, limits, &mut attempt) {
+    match crate::xref::stream::direct_stream(&mut exact, dictionary, limits, &mut attempt) {
         Ok(_) => {
             diagnostics.absorb(attempt.take())?;
             parser.seek(exact.offset())?;
@@ -247,7 +247,7 @@ fn skip_stream(
                     {
                         continue;
                     }
-                    diagnostics.repair(Diagnostic::new(tags::STREAM_BOUNDARY, "stream resynchronized at endstream/endobj without a preceding EOL during xref reconstruction").at(Position::File(at)))?;
+                    diagnostics.repair(Diagnostic::new(repairs::STREAM_BOUNDARY, "stream resynchronized at endstream/endobj without a preceding EOL during xref reconstruction").at(Position::File(at)))?;
                 }
                 parser.seek(after)?;
                 return Ok(true);
@@ -297,7 +297,7 @@ pub(crate) fn load_streams(
             let dictionary = object
                 .dictionary()
                 .ok_or_else(|| Error::syntax("object stream must be a dictionary").in_object(id))?;
-            crate::object_stream::headers(
+            crate::object::stream::headers(
                 document.stream_data(object)?.into_owned(),
                 dictionary,
                 Limits {
@@ -414,7 +414,7 @@ pub(crate) fn catalog(document: &mut crate::Document) -> Result<()> {
     let mut diagnostics = Diagnostics::new(document.recovery());
     diagnostics.repair(
         Diagnostic::new(
-            tags::TRAILER_RECONSTRUCTED,
+            repairs::TRAILER_RECONSTRUCTED,
             "unusable trailer Root reconstructed from the last Catalog",
         )
         .in_object(id),

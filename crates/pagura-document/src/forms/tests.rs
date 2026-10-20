@@ -1,20 +1,11 @@
 use super::*;
-use crate::{Document, OpenOptions};
+use crate::Document;
 use pagura_core::{ErrorKind, Limits, Position, Recovery, Result};
 use pagura_testkit::{fixture, fixture_path};
 use std::{collections::BTreeMap, fmt::Write};
 
-fn open(name: &str, recovery: Recovery, limits: Limits) -> Document {
-    Document::open(
-        fixture("document", &format!("{name}.pdf")),
-        &OpenOptions {
-            limits,
-            recovery,
-            ..OpenOptions::default()
-        },
-    )
-    .unwrap()
-}
+use crate::tests::document as open;
+
 fn value(value: Option<&FieldValue<'_>>) -> String {
     match value {
         None => "_".into(),
@@ -25,6 +16,7 @@ fn value(value: Option<&FieldValue<'_>>) -> String {
         Some(FieldValue::Other(_)) => "other".into(),
     }
 }
+
 fn kind(kind: &FieldKind<'_>) -> String {
     match kind {
         FieldKind::Group => "Group".into(),
@@ -45,12 +37,13 @@ fn kind(kind: &FieldKind<'_>) -> String {
             rich_value.is_some()
         ),
         FieldKind::Choice {
-            combo,
-            editable,
+            style,
             multi_select,
             options,
         } => format!(
-            "Ch:{combo}:{editable}:{multi_select}:{}",
+            "Ch:{}:{}:{multi_select}:{}",
+            matches!(style, ChoiceStyle::Combo { .. }),
+            matches!(style, ChoiceStyle::Combo { editable: true }),
             options
                 .iter()
                 .map(|o| format!("{}>{}", o.export, o.display))
@@ -61,6 +54,7 @@ fn kind(kind: &FieldKind<'_>) -> String {
         FieldKind::Other(n) => format!("Other:{}", String::from_utf8_lossy(n.as_bytes())),
     }
 }
+
 fn actions(sequence: Option<&crate::navigation::ActionSequence<'_>>) -> String {
     sequence.map_or_else(
         || "_".into(),
@@ -82,6 +76,7 @@ fn actions(sequence: Option<&crate::navigation::ActionSequence<'_>>) -> String {
         },
     )
 }
+
 fn additional(entries: &[AdditionalAction<'_>]) -> String {
     if entries.is_empty() {
         return "_".into();
@@ -98,18 +93,21 @@ fn additional(entries: &[AdditionalAction<'_>]) -> String {
         .collect::<Vec<_>>()
         .join(",")
 }
+
 fn appearance(value: Option<&[u8]>) -> String {
     value.map_or_else(|| "_".into(), |v| String::from_utf8(v.to_vec()).unwrap())
 }
+
 fn justification(q: Justification) -> usize {
     match q {
         Justification::Left => 0,
-        Justification::Centre => 1,
+        Justification::Center => 1,
         Justification::Right => 2,
     }
 }
-fn snapshot(doc: &Document) -> Result<String> {
-    let Some(form) = doc.acro_form()? else {
+
+fn snapshot(document: &Document) -> Result<String> {
+    let Some(form) = document.acro_form()? else {
         return Ok("absent\n".into());
     };
     let mut out = String::new();
@@ -133,7 +131,7 @@ fn snapshot(doc: &Document) -> Result<String> {
             f.qualified_name,
             f.partial_name.as_deref().unwrap_or("_"),
             kind(&f.kind),
-            f.flags.0,
+            f.flags.bits(),
             value(f.value.as_ref()),
             value(f.default_value.as_ref()),
             appearance(f.default_appearance),
@@ -175,6 +173,7 @@ fn snapshot(doc: &Document) -> Result<String> {
     }
     Ok(out)
 }
+
 #[test]
 fn independent_form_models_and_reported_repairs() {
     let mut count = 0;
@@ -226,7 +225,7 @@ fn independent_form_models_and_reported_repairs() {
                 repaired
                     .diagnostics()
                     .iter()
-                    .any(|d| d.tag() == params["repair"]),
+                    .any(|dictionary| dictionary.tag() == params["repair"]),
                 "{name}"
             );
         }
@@ -236,6 +235,7 @@ fn independent_form_models_and_reported_repairs() {
     }
     assert!(count >= 20);
 }
+
 #[test]
 fn form_budgets_and_absence() {
     for limits in [
@@ -244,7 +244,7 @@ fn form_budgets_and_absence() {
             ..Limits::default()
         },
         Limits {
-            value_nodes: 120,
+            traversal_work: 120,
             ..Limits::default()
         },
         Limits {
@@ -252,39 +252,57 @@ fn form_budgets_and_absence() {
             ..Limits::default()
         },
     ] {
-        let doc = open("forms-deep", Recovery::Repair, limits);
-        let error = doc.acro_form().unwrap_err();
+        let document = open("forms-deep", Recovery::Repair, limits);
+        let error = document.acro_form().unwrap_err();
         assert_eq!(error.kind, ErrorKind::Limit, "{error}");
         assert!(error.object.is_some());
     }
-    let doc = open(
+    let document = open(
         "navigation-destinations",
         Recovery::Strict,
         Limits::default(),
     );
-    assert!(doc.acro_form().unwrap().is_none());
+    assert!(document.acro_form().unwrap().is_none());
 }
+
 #[test]
 fn resources_are_borrowed_and_cache_admission_is_not_repeated() {
-    let doc = open(
+    let document = open(
         "forms-types-inheritance",
         Recovery::Strict,
         Limits::default(),
     );
-    let first = doc.acro_form().unwrap().unwrap();
-    let bytes = doc.retained.used();
-    let second = doc.acro_form().unwrap().unwrap();
+    let first = document.acro_form().unwrap().unwrap();
+    let bytes = document.retained.used();
+    let second = document.acro_form().unwrap().unwrap();
     assert!(std::ptr::eq(
         first.default_resources.unwrap(),
         second.default_resources.unwrap()
     ));
-    assert_eq!(doc.retained.used(), bytes);
+    assert_eq!(document.retained.used(), bytes);
     assert!(first.fields[0].flags.read_only());
     assert!(!first.fields[0].flags.required());
     assert!(!first.fields[0].flags.no_export());
-    assert!(!FieldFlags(u32::MAX).contains(0));
-    assert!(!FieldFlags(u32::MAX).contains(33));
-    assert!(FieldFlags(u32::MAX).contains(32));
+    // One-based bit positions of Tables 227, 229, 231 and 233.
+    for (flag, position) in [
+        (FieldFlags::READ_ONLY, 1),
+        (FieldFlags::NO_EXPORT, 3),
+        (FieldFlags::MULTILINE, 13),
+        (FieldFlags::NO_TOGGLE_TO_OFF, 15),
+        (FieldFlags::PUSHBUTTON, 17),
+        (FieldFlags::COMBO, 18),
+        (FieldFlags::FILE_SELECT, 21),
+        (FieldFlags::DO_NOT_SPELL_CHECK, 23),
+        (FieldFlags::COMB, 25),
+        (FieldFlags::RADIOS_IN_UNISON, 26),
+        (FieldFlags::COMMIT_ON_SEL_CHANGE, 27),
+    ] {
+        assert_eq!(flag.bits(), 1 << (position - 1));
+        assert!(FieldFlags::from_bits(u32::MAX).contains(flag));
+        assert!(!FieldFlags::from_bits(0).contains(flag));
+    }
+    assert_eq!(FieldFlags::RICH_TEXT, FieldFlags::RADIOS_IN_UNISON);
+    assert_eq!(FieldFlags::from_bits(u32::MAX).bits(), u32::MAX);
     let radio: Vec<_> = first
         .widgets
         .iter()
@@ -304,19 +322,26 @@ fn resources_are_borrowed_and_cache_admission_is_not_repeated() {
 
 #[test]
 fn duplicate_comparison_shares_the_traversal_budget() {
-    let doc = open(
+    let document = open(
         "forms-duplicate-equivalent",
         Recovery::Strict,
         Limits {
-            value_nodes: 32,
+            traversal_work: 32,
             ..Limits::default()
         },
     );
     let a = pagura_core::Value::Array(vec![pagura_core::Value::Integer(1); 64]);
     let b = a.clone();
-    let mut ctx = crate::navigation::context::Context::new(&doc);
-    let source = ctx.source(pagura_core::ObjectId::new(11, 0)).unwrap();
-    let error = names::equivalent(&mut ctx, Some(&a), Some(&b), source, false).unwrap_err();
+    let mut context = crate::view::Context::new(&document);
+    let source = context.source(pagura_core::ObjectId::new(11, 0)).unwrap();
+    let error = names::equivalent(
+        &mut context,
+        Some(&a),
+        Some(&b),
+        source,
+        names::Strings::Bytes,
+    )
+    .unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
     assert_eq!(error.object, source.object);
 }
