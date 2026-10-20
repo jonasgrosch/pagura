@@ -3,6 +3,9 @@
 //! Each outline is flattened once per linear map. Its edges are clipped to
 //! rows once per vertical phase, and those fragments are reused across
 //! horizontal phases, with area division done when a fragment is prepared.
+//! Fragments are dealt from the rows in turn, four to a vector of lanes, so
+//! that their areas form side by side and their additions never wait on one
+//! another; each cell still receives its additions in clipping order.
 //! Origins snap to a 1/128-pixel lattice horizontally and to the
 //! resolution's lattice vertically; integer translation is applied when the
 //! mask is painted. A mask is a pure function of its key, so retention and
@@ -105,10 +108,10 @@ impl GlyphCache {
         } else {
             let geometry_key = Key::new(outline, resolution, transform, 0.0, 0.0);
             let rows = if let Some(prepared) = self.geometries.get(&geometry_key) {
-                Rows::new(prepared, py, limits)?
+                Rows::new(prepared, py, limits, &mut scratch.clipping)?
             } else {
                 let prepared = Prepared::new(outline, transform, resolution, limits)?;
-                let rows = Rows::new(&prepared, py, limits)?;
+                let rows = Rows::new(&prepared, py, limits, &mut scratch.clipping)?;
                 if self.reserve(outline, prepared.bytes, limits.document_bytes) {
                     self.geometries.insert(geometry_key, prepared);
                 }
@@ -325,7 +328,7 @@ impl Prepared {
 }
 
 /// One edge clipped to one row, with its area scale.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct Fragment {
     /// The index of the row's first cell in the accumulator.
     start: u32,
@@ -335,11 +338,72 @@ struct Fragment {
     height: f32,
 }
 
+impl Fragment {
+    /// A fragment that adds +0.0 to the three cells from `start`.
+    const EMPTY: Self = Self {
+        start: 0,
+        left: 0.0,
+        right: 0.0,
+        scale: 0.0,
+        height: 0.0,
+    };
+}
+
+/// Four row fragments side by side, whose areas form in vector lanes.
+#[derive(Debug, Clone, Copy)]
+struct Quad {
+    start: [u32; 4],
+    left: [f32; 4],
+    right: [f32; 4],
+    scale: [f32; 4],
+    height: [f32; 4],
+}
+
+impl From<[Fragment; 4]> for Quad {
+    fn from(lanes: [Fragment; 4]) -> Self {
+        Self {
+            start: lanes.map(|f| f.start),
+            left: lanes.map(|f| f.left),
+            right: lanes.map(|f| f.right),
+            scale: lanes.map(|f| f.scale),
+            height: lanes.map(|f| f.height),
+        }
+    }
+}
+
+impl Quad {
+    fn set(&mut self, lane: usize, f: Fragment) {
+        self.start[lane] = f.start;
+        self.left[lane] = f.left;
+        self.right[lane] = f.right;
+        self.scale[lane] = f.scale;
+        self.height[lane] = f.height;
+    }
+}
+
+/// Reusable storage for clipping a glyph's edges to rows.
+#[derive(Debug, Default)]
+struct Clipping {
+    /// Each row's first fragment, and then the total.
+    starts: Vec<usize>,
+    /// While clipping, each row's next fragment; then the rows that have
+    /// fragments left to deal.
+    rows: Vec<usize>,
+    /// The fragments, row by row.
+    fragments: Vec<Fragment>,
+}
+
 /// The row fragments of a prepared glyph at one vertical phase.
 #[derive(Debug)]
 struct Rows {
     _outline: Arc<Path>,
-    fragments: Vec<Fragment>,
+    /// The fragments dealt from the rows in turn, so that neighbours lie in
+    /// different rows and never add to one cell; each row keeps the order
+    /// of its fragments, and so each cell the order of its additions. Empty
+    /// fragments on the spare cells complete the last quad.
+    quads: Vec<Quad>,
+    /// The fragments before that padding.
+    count: usize,
     /// An upper bound on the cells the fragments visit at any phase.
     work: usize,
     x: i32,
@@ -352,42 +416,89 @@ struct Rows {
 impl Rows {
     #[expect(
         clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "normalized finite geometry and checked raster extents bound row indices"
+        reason = "row starts are checked to fit 32 bits"
     )]
-    fn new(glyph: &Prepared, py: f64, limits: Limits) -> Result<Self> {
-        let mut fragments = Vec::new();
-        let maximum = (limits.decoded_bytes / 2 / size_of::<Fragment>()).min(limits.raster_work);
-        // One reservation for every row an edge crosses, within the budget.
-        let rows = |a: f32, b: f32| {
-            let (low, high) = (a.min(b), a.max(b));
-            ceil_index(high)
-                .min(glyph.height)
-                .saturating_sub(low as usize)
+    fn new(glyph: &Prepared, py: f64, limits: Limits, clipping: &mut Clipping) -> Result<Self> {
+        let Clipping {
+            starts,
+            rows,
+            fragments,
+        } = clipping;
+        let stride = glyph.width + 1;
+        // Every row start, and the spare cells past the last row, fit 32
+        // bits.
+        let spare = glyph
+            .height
+            .checked_mul(stride)
+            .filter(|cells| u32::try_from(cells + SPARE).is_ok())
+            .ok_or(Error::limit("glyph extent budget exceeded"))?;
+        // A fragment is held in the clipping storage and in its quad.
+        let held = size_of::<Fragment>() + size_of::<Quad>() / 4;
+        let maximum = (limits.decoded_bytes / 2 / held).min(limits.raster_work);
+        // Each row's fragment count, one past its index, then their sums.
+        starts.clear();
+        try_reserve(starts, glyph.height + 1)?;
+        starts.resize(glyph.height + 1, 0);
+        for &edge in &glyph.edges {
+            if let Some((.., crossed)) = span(edge, py, glyph.height) {
+                for row in crossed {
+                    starts[row + 1] += 1;
+                }
+            }
+        }
+        let mut total = 0_usize;
+        for start in starts.iter_mut() {
+            total += *start;
+            *start = total;
+        }
+        if total > maximum {
+            return Err(Error::limit("glyph row fragment budget exceeded"));
+        }
+        if fragments.capacity() > maximum {
+            *fragments = Vec::new();
+        }
+        fragments.clear();
+        try_reserve(fragments, total)?;
+        fragments.resize(total, Fragment::EMPTY);
+        rows.clear();
+        try_reserve(rows, glyph.height)?;
+        rows.extend_from_slice(&starts[..glyph.height]);
+        let work = clip(glyph, py, |row, fragment| {
+            let slot = &mut rows[row];
+            fragments[*slot] = fragment;
+            *slot += 1;
+        })?;
+        // Deal the rows' fragments in turns: turn `depth` takes the next
+        // fragment of each row that has one.
+        rows.clear();
+        rows.extend((0..glyph.height).filter(|&row| starts[row] < starts[row + 1]));
+        let padding = Fragment {
+            start: spare as u32,
+            ..Fragment::EMPTY
         };
-        let expected = glyph.edges.iter().fold(0_usize, |n, &[_, ay, _, by]| {
-            let (ay, by) = (ay + py as f32, by + py as f32);
-            n.saturating_add(if ay == by { 0 } else { rows(ay, by) })
-        });
-        fragments
-            .try_reserve_exact(expected.min(maximum))
-            .map_err(|_| Error::limit("glyph row allocation failed"))?;
-        // Within the budget, the reservation holds every fragment and every
-        // row start fits 32 bits, so the per-fragment checks cannot fire.
-        let work = if expected <= maximum
-            && u32::try_from(glyph.height.saturating_mul(glyph.width + 1)).is_ok()
-        {
-            clip::<false>(glyph, py, maximum, &mut fragments)?
-        } else {
-            clip::<true>(glyph, py, maximum, &mut fragments)?
-        };
+        let mut quads = Vec::new();
+        try_reserve(&mut quads, total.div_ceil(4))?;
+        quads.resize(total.div_ceil(4), Quad::from([padding; 4]));
+        let (mut depth, mut dealt) = (0, 0);
+        while !rows.is_empty() {
+            rows.retain(|&row| {
+                let index = starts[row] + depth;
+                quads[dealt / 4].set(dealt % 4, fragments[index]);
+                dealt += 1;
+                index + 1 < starts[row + 1]
+            });
+            depth += 1;
+        }
+        // Each padding fragment visits three cells.
+        let work = work.saturating_add(3 * (total.next_multiple_of(4) - total));
         let bytes = entry_bytes(
             &glyph.outline,
-            fragments.capacity().saturating_mul(size_of::<Fragment>()),
+            quads.capacity().saturating_mul(size_of::<Quad>()),
         );
         Ok(Self {
             _outline: Arc::clone(&glyph.outline),
-            fragments,
+            quads,
+            count: total,
             work,
             x: glyph.x,
             y: glyph.y,
@@ -417,26 +528,22 @@ impl Rows {
         }
         accumulator.reset(self.width, self.height, limits)?;
         let px = px as f32;
-        // A fragment visits at most ceil(right - left) + 2 cells at any
+        // A fragment visits at most ceil(right - left) + 3 cells at any
         // phase, so within the bound no fragment can exceed the work budget.
         if self.work <= accumulator.maximum {
-            for f in &self.fragments {
-                accumulator.add(
-                    f.start as usize,
-                    f.left + px,
-                    f.right + px,
-                    f.height,
-                    f.scale,
-                );
+            let width = i32::try_from(self.width).unwrap_or(i32::MAX);
+            for quad in &self.quads {
+                accumulator.quad(quad, px, width);
             }
         } else {
-            for f in &self.fragments {
+            let lanes = self.quads.iter().flat_map(|q| (0..4).map(move |i| (q, i)));
+            for (q, i) in lanes.take(self.count) {
                 accumulator.segment(
-                    f.start as usize,
-                    f.left + px,
-                    f.right + px,
-                    f.height,
-                    f.scale,
+                    q.start[i] as usize,
+                    q.left[i] + px,
+                    q.right[i] + px,
+                    q.height[i],
+                    q.scale[i],
                 )?;
             }
         }
@@ -450,36 +557,59 @@ impl Rows {
     }
 }
 
-/// Clips `glyph`'s edges at vertical phase `py` to rows, appending their
-/// fragments, and returns the cells the fragments visit at most. With
-/// `CHECKED`, each fragment is checked against the budget, the reserved
-/// capacity and 32-bit row starts.
+/// Reserves room for `count` more values of `values`, as the glyph row
+/// budget allows.
+fn try_reserve<T>(values: &mut Vec<T>, count: usize) -> Result<()> {
+    values
+        .try_reserve_exact(count)
+        .map_err(|_| Error::limit("glyph row allocation failed"))
+}
+
+/// An edge's ends at vertical phase `py`, upward, its winding sign and the
+/// rows it crosses, unless it is horizontal.
 #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     reason = "normalized finite geometry and checked raster extents bound row indices"
 )]
-fn clip<const CHECKED: bool>(
-    glyph: &Prepared,
+fn span(
+    [mut ax, ay, mut bx, by]: [f32; 4],
     py: f64,
-    maximum: usize,
-    fragments: &mut Vec<Fragment>,
-) -> Result<usize> {
+    height: usize,
+) -> Option<([f32; 4], f32, std::ops::Range<usize>)> {
+    let (mut ay, mut by) = (ay + py as f32, by + py as f32);
+    let sign = if ay < by {
+        1.0
+    } else {
+        std::mem::swap(&mut ax, &mut bx);
+        std::mem::swap(&mut ay, &mut by);
+        -1.0
+    };
+    (ay != by).then(|| {
+        (
+            [ax, ay, bx, by],
+            sign,
+            ay as usize..ceil_index(by).min(height),
+        )
+    })
+}
+
+/// Clips `glyph`'s edges at vertical phase `py` to rows, passing each
+/// fragment and its row to `store` edge by edge, as [`span`] counts them,
+/// and returns the cells the fragments visit at most.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    reason = "row starts are checked to fit 32 bits"
+)]
+fn clip(glyph: &Prepared, py: f64, mut store: impl FnMut(usize, Fragment)) -> Result<usize> {
     let mut work = 0_usize;
-    for &[mut ax, ay, mut bx, by] in &glyph.edges {
-        let (mut ay, mut by) = (ay + py as f32, by + py as f32);
-        let sign = if ay < by {
-            1.0
-        } else {
-            std::mem::swap(&mut ax, &mut bx);
-            std::mem::swap(&mut ay, &mut by);
-            -1.0
-        };
-        if ay == by {
+    let stride = glyph.width + 1;
+    for &edge in &glyph.edges {
+        let Some(([ax, ay, bx, by], sign, rows)) = span(edge, py, glyph.height) else {
             continue;
-        }
+        };
         let slope = (bx - ax) / (by - ay);
-        let rows = ay as usize..ceil_index(by).min(glyph.height);
         // Finite endpoints within the glyph's extent give finite row
         // ends for a finite slope; an infinite one makes the first
         // fragment's end NaN or infinite.
@@ -491,17 +621,6 @@ fn clip<const CHECKED: bool>(
             let high = by.min(row as f32 + 1.0);
             let x0 = ax + slope * (low - ay);
             let x1 = ax + slope * (high - ay);
-            if CHECKED {
-                if fragments.len() >= maximum {
-                    return Err(Error::limit("glyph row fragment budget exceeded"));
-                }
-                if fragments.len() == fragments.capacity() {
-                    let extra = fragments.len().max(16).min(maximum - fragments.len());
-                    fragments
-                        .try_reserve_exact(extra)
-                        .map_err(|_| Error::limit("glyph row allocation failed"))?;
-                }
-            }
             let left = x0.min(x1);
             let right = x0.max(x1);
             let height = (high - low) * sign;
@@ -511,29 +630,31 @@ fn clip<const CHECKED: bool>(
                 height / (right - left)
             };
             work = work.saturating_add(ceil_index(right - left) + 3);
-            let start = row * (glyph.width + 1);
-            let start = if CHECKED {
-                u32::try_from(start).map_err(|_| Error::limit("glyph extent budget exceeded"))?
-            } else {
-                start as u32
-            };
-            fragments.push(Fragment {
-                start,
-                left,
-                right,
-                scale,
-                height,
-            });
+            store(
+                row,
+                Fragment {
+                    start: (row * stride) as u32,
+                    left,
+                    right,
+                    scale,
+                    height,
+                },
+            );
         }
     }
     Ok(work)
 }
 
-/// Signed-area cells in f32, one sentinel per row; reusable working storage
-/// for one mask at a time.
+/// Spare cells past a mask's last row: the cells of padding fragments, and
+/// the third cell of a one-cell fragment in the last row's last column.
+const SPARE: usize = 3;
+
+/// Signed-area cells in f32, one sentinel per row and [`SPARE`] cells after
+/// the last; reusable working storage for one mask at a time.
 #[derive(Debug, Default)]
 pub(crate) struct Accumulator {
     area: Vec<f32>,
+    clipping: Clipping,
     width: usize,
     height: usize,
     work: usize,
@@ -553,6 +674,7 @@ impl Accumulator {
             .ok_or(Error::limit("glyph coverage extent budget exceeded"))?;
         let cells = count
             .checked_add(height)
+            .and_then(|cells| cells.checked_add(SPARE))
             .ok_or(Error::limit("glyph coverage allocation budget exceeded"))?;
         let mask = width
             .checked_next_multiple_of(4)
@@ -607,6 +729,79 @@ impl Accumulator {
         }
         self.add(start, left, right, height, scale);
         Ok(())
+    }
+
+    /// Adds the signed areas of `quad`'s fragments at horizontal phase `px`,
+    /// in lane order and without charging work; `width` is the mask's width,
+    /// or `i32::MAX` when that is larger.
+    ///
+    /// The common fragments are formed in all four lanes at once and added
+    /// without branches:
+    /// - one within a cell adds [`Self::add`]'s two terms to that cell and
+    ///   the next, and +0.0 to the cell after; adding +0.0 changes at most
+    ///   the sign of a zero sum, and so no level;
+    /// - one that crosses one cell boundary adds [`Self::add`]'s three
+    ///   terms. Over its ranges (`next - left` in (0, 1], `next + 1 - left`
+    ///   in [1, 2], `next + 1 - right` in [0, 1], `next - right` below zero)
+    ///   each ramp area takes one branch of [`primitive`], the last +0.0, so
+    ///   the terms here are its operations one for one.
+    ///
+    /// Any other fragment takes [`Self::add`] in its turn.
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "lanes outside the checked ranges take `add`"
+    )]
+    #[inline(always)]
+    fn quad(&mut self, quad: &Quad, px: f32, width: i32) {
+        const LANES: [usize; 4] = [0, 1, 2, 3];
+        // All ones where `condition` holds, so that lanes select by bits.
+        let all = |condition: bool| 0_u32.wrapping_sub(u32::from(condition));
+        let select =
+            |mask: u32, a: f32, b: f32| f32::from_bits(a.to_bits() & mask | b.to_bits() & !mask);
+        let (height, scale) = (quad.height, quad.scale);
+        let left = quad.left.map(|v| v + px);
+        let right = quad.right.map(|v| v + px);
+        // Truncation is the floor where it is used: the left end is not
+        // negative.
+        let cell = left.map(|v| v as i32);
+        let next = cell.map(|c| c as f32 + 1.0);
+        let one =
+            LANES.map(|i| all(left[i] >= 0.0) & all(cell[i] < width) & all(right[i] <= next[i]));
+        let two = LANES.map(|i| {
+            all(left[i] >= 0.0)
+                & all(cell[i] < width - 1)
+                & all(right[i] > next[i])
+                & all(right[i] <= next[i] + 1.0)
+                & all(scale[i] != 0.0)
+        });
+        #[expect(clippy::manual_midpoint, reason = "as in `add`")]
+        let value = LANES.map(|i| (next[i] - (left[i] + right[i]) * 0.5) * height[i]);
+        let near = LANES.map(|i| next[i] - left[i]);
+        let first = LANES.map(|i| near[i] * near[i] * 0.5 * scale[i]);
+        let far = LANES.map(|i| (next[i] + 1.0) - left[i]);
+        let end = LANES.map(|i| (next[i] + 1.0) - right[i]);
+        let second = LANES.map(|i| ((0.5 + (far[i] - 1.0)) - end[i] * end[i] * 0.5) * scale[i]);
+        let a = LANES.map(|i| select(one[i], value[i], first[i]));
+        let b = LANES.map(|i| select(one[i], height[i] - value[i], second[i] - first[i]));
+        let c = LANES.map(|i| select(one[i], 0.0, height[i] - second[i]));
+        let at = LANES.map(|i| quad.start[i].wrapping_add(cell[i].cast_unsigned()) as usize);
+        let formed = LANES.map(|i| one[i] | two[i]);
+        for i in LANES {
+            if formed != [!0; 4] && formed[i] == 0 {
+                self.add(
+                    quad.start[i] as usize,
+                    left[i],
+                    right[i],
+                    height[i],
+                    scale[i],
+                );
+                continue;
+            }
+            let cells = &mut self.area[at[i]..at[i] + 3];
+            cells[0] += a[i];
+            cells[1] += b[i];
+            cells[2] += c[i];
+        }
     }
 
     /// Adds one fragment's signed area to the row whose first cell is
@@ -674,7 +869,8 @@ impl Accumulator {
         data.resize(row * self.height, 0);
         // Each row's prefix sums stay serial, in the same order. Four rows
         // run side by side so that their additions overlap.
-        let mut cells = self.area.chunks_exact(4 * stride);
+        let area = &self.area[..self.height * stride];
+        let mut cells = area.chunks_exact(4 * stride);
         let mut outputs = data.chunks_exact_mut(4 * row);
         for (cells, output) in cells.by_ref().zip(outputs.by_ref()) {
             let [d0, d1, d2, d3] = [0, 1, 2, 3].map(|i| &cells[i * stride..i * stride + width]);
@@ -694,7 +890,7 @@ impl Accumulator {
                 o3[column] = level(value[3]);
             }
         }
-        let rows = self.area[self.area.len() - cells.remainder().len()..].chunks_exact(stride);
+        let rows = cells.remainder().chunks_exact(stride);
         for (cells, output) in rows.zip(outputs.into_remainder().chunks_exact_mut(row)) {
             let mut value = 0.0_f32;
             for (out, &delta) in output[..width].iter_mut().zip(cells) {
@@ -745,7 +941,7 @@ fn primitive(value: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pagura_raster::PathBuilder;
+    use pagura_raster::{PathBuilder, Point};
 
     fn accumulator(width: usize, height: usize) -> Accumulator {
         let mut raster = Accumulator::default();
@@ -820,7 +1016,7 @@ mod tests {
         let mut raster = accumulator(32, 16);
         raster.area.fill(1.0);
         let limits = Limits {
-            decoded_bytes: 32,
+            decoded_bytes: 44,
             ..Limits::default()
         };
         raster.reset(2, 2, limits).unwrap();
@@ -830,7 +1026,7 @@ mod tests {
         raster.reset(2, 2, limits).unwrap();
         assert_eq!((raster.work, raster.finish(2)), (0, vec![0; 4]));
         let smaller = Limits {
-            decoded_bytes: 27,
+            decoded_bytes: 43,
             ..limits
         };
         assert!(raster.reset(2, 2, smaller).is_err());
@@ -850,7 +1046,13 @@ mod tests {
         let mut scratch = Accumulator::default();
         let mut mask = Coverage::default();
         for py in [0_u16, 1, 16, 127] {
-            let rows = Rows::new(&glyph, f64::from(py) / 128.0, Limits::default()).unwrap();
+            let rows = Rows::new(
+                &glyph,
+                f64::from(py) / 128.0,
+                Limits::default(),
+                &mut Clipping::default(),
+            )
+            .unwrap();
             for px in [0_u16, 1, 16, 127] {
                 rows.mask(
                     f64::from(px) / 128.0,
@@ -880,6 +1082,71 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "phases are multiples of 1/128"
+    )]
+    fn dealt_quads_match_fragments_added_in_clip_order() {
+        // Curves and slants give one-cell, two-cell and longer fragments;
+        // a rectangle at fractional offsets ends fragments on cell
+        // boundaries at some phases.
+        let p = Point::new;
+        let mut path = PathBuilder::new();
+        path.move_to(p(0.1, 0.0));
+        path.cubic_to(p(3.9, 0.2), p(4.3, 5.1), p(0.7, 6.3))
+            .unwrap();
+        path.line_to(p(2.2, 3.1)).unwrap();
+        path.close();
+        path.move_to(p(5.0, 0.4));
+        path.line_to(p(9.75, 1.0)).unwrap();
+        path.line_to(p(5.5, 1.3)).unwrap();
+        path.close();
+        path.rect(6.25, 2.5, 2.0, 3.0);
+        let path = Arc::new(path.finish());
+        let limits = Limits::default();
+        let (mut scratch, mut clipping) = (Accumulator::default(), Clipping::default());
+        let (mut mask, mut checked) = (Coverage::default(), Coverage::default());
+        let mut tested = 0;
+        for (scale, shear) in [(0.37, 0.0), (1.0, 0.21), (2.6, -0.4), (7.1, 0.05)] {
+            let transform = Transform::new(scale, 0.0, shear * scale, scale, 0.0, 0.0);
+            for resolution in [Resolution::Low, Resolution::High, Resolution::Fine] {
+                let glyph = Prepared::new(&path, transform, resolution, limits).unwrap();
+                for py in [0_u16, 1, 37, 64, 127] {
+                    let py = f64::from(py) / 128.0;
+                    let rows = Rows::new(&glyph, py, limits, &mut clipping).unwrap();
+                    let mut ordered = Vec::new();
+                    clip(&glyph, py, |_, f| ordered.push(f)).unwrap();
+                    assert_eq!(ordered.len(), rows.count);
+                    for px in [0_u16, 1, 16, 63, 64, 100, 127] {
+                        let px = f64::from(px) / 128.0;
+                        let mut reference = accumulator(glyph.width, glyph.height);
+                        for f in &ordered {
+                            let (left, right) = (f.left + px as f32, f.right + px as f32);
+                            reference.add(f.start as usize, left, right, f.height, f.scale);
+                        }
+                        let expected = reference.finish(glyph.width.next_multiple_of(4));
+                        rows.mask(px, limits, &mut scratch, &mut mask).unwrap();
+                        assert_eq!(mask.data, expected, "{scale} {resolution:?} {py} {px}");
+                        // Beyond the work bound, which exceeds the work done
+                        // by a cell per fragment, fragments are added one by
+                        // one.
+                        let tight = Limits {
+                            raster_work: rows.work - 1,
+                            ..limits
+                        };
+                        if glyph.width * glyph.height <= tight.raster_work {
+                            rows.mask(px, tight, &mut scratch, &mut checked).unwrap();
+                            assert_eq!(checked.data, expected);
+                            tested += 1;
+                        }
+                    }
+                }
+            }
+        }
+        assert!(tested > 100, "{tested}");
     }
 
     #[test]
