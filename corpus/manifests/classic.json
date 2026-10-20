@@ -315,7 +315,8 @@
       "oracle_sha256": "c7fcccb35e4e35be1787d09b6c60705c7d316d5466b1dc41842cec6cc9aea4ff",
       "dpi": 72,
       "width": 64,
-      "height": 64
+      "height": 64,
+      "competitive_tolerance": 1
     },
     {
       "id": "classic/colorspace-unsupported",

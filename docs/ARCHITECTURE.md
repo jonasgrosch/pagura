@@ -75,6 +75,8 @@ in their source spaces; rasterization is PDF-agnostic exact-area coverage;
 composition targets premultiplied RGBA8 tiles. Glyphs are rasterized at their
 exact device positions without a coverage cache (ADR 0013). A deterministic CPU
 renderer is the diagnostic reference, not an infallible oracle.
+`RenderOptions::accuracy` can instead select the competitive path, an
+approximation per primitive held to the competitive accuracy gate of ADR 0004.
 
 ## Reading (M6)
 
