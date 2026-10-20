@@ -46,6 +46,20 @@ no-op returns the original bytes exactly. The engine performs no filesystem IO;
 hosts choose their own atomic file replacement/download behavior. Historical
 values remain in the file: incremental editing is not redaction.
 
-Full rewrite, object deletion, undo/redo, encryption-on-write and viewer editing
-controls remain outside these foundations. See [ADR 0031](adr/0031-editing-foundations.md)
+Full rewrite, object deletion, undo/redo and encryption-on-write remain outside
+these foundations. See [ADR 0031](adr/0031-editing-foundations.md)
 for ownership, budgets, pending dependency review and validation evidence.
+
+## Try in the browser
+
+Serve the viewer with `python3 tools/serve_web.py` after obtaining a WASI host
+built with `--features bundled-data` (the editing CI publishes this artifact).
+Open `http://localhost:8000/?edit=1&demo=form` for the sample, or select your own
+fillable PDF with Strict validation enabled. Edit fields in the side panel,
+choose **Apply changes**, inspect the updated page, then **Download PDF**.
+Reopen the downloaded PDF to check persistence. The original file is untouched;
+no PDF is uploaded. Text and choice appearances are regenerated; checkbox and
+radio buttons use their existing appearance states. The browser retains drafts
+until applied or reset; opening another file discards them. Editing on the page,
+undo/redo, password/rich-text fields and signature editing are not supported.
+Signed, encrypted and repair-mode saves retain the library's refusal policy.

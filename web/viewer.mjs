@@ -35,7 +35,7 @@ function downloadPdf() {
   const url = URL.createObjectURL(new Blob([source.bytes], { type: 'application/pdf' }));
   const link = document.createElement('a'); link.href = url;
   link.download = ($('filename').textContent.replace(/\.pdf$/i, '') || 'document') + '-filled.pdf';
-  link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+  document.body.append(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 async function adoptSaved(bytes, epoch) {
   if (epoch !== documentEpoch) return false;
@@ -414,6 +414,10 @@ let startupEpoch = documentEpoch;
 try {
   client = createClient(); await client.hello(); status.textContent = 'Ready — open a PDF';
   const values = new URL(window.location.href).searchParams.getAll('file');
+  if (!values.length && new URL(window.location.href).searchParams.get('demo') === 'form') {
+    const { formDocument } = await import('./form_document.mjs');
+    await openFile(new File([formDocument()], 'sample-form.pdf', { type: 'application/pdf' }));
+  }
   if (values.length) {
     if (values.length !== 1) throw new Error('Startup file must be specified once');
     const epoch = documentEpoch; startupEpoch = epoch; status.textContent = 'Loading fixture…';

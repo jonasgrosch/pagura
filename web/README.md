@@ -52,7 +52,7 @@ exceeding a budget displays an error rather than silently truncating a document.
 
 ## Session and caching
 
-The browser negotiates protocol v1.4 for typed diagnostics; existing protocol v1 clients remain
+The browser negotiates protocol v1.5 for form editing and typed diagnostics; existing protocol v1 clients remain
 supported. See crates/pagura-host/PROTOCOL.md for the byte layouts. A viewport
 change invalidates queued old-generation tiles before transmission. The host
 also skips a stale generation before compilation or painting. The current
@@ -324,3 +324,10 @@ kind-15 accounting for the selected page. This measures DOM construction only,
 excluding extraction, attachment/layout, Canvas/GPU work and module startup.
 No document is uploaded. The DOM harness does not establish real-browser selection, assistive-technology
 or timing behavior.
+
+## Form editing
+
+Use `/?edit=1&demo=form` for the built-in sample. Build the host with bundled-data
+for standard-font appearances. With Strict validation enabled, open a fillable
+PDF, choose Edit form, change fields, Apply changes, then Download PDF.
+See [editing guide](../docs/EDITING.md) for save restrictions and CI artifacts.

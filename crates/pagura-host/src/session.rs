@@ -289,19 +289,7 @@ impl Session {
                 recovery,
                 password,
             } => self.open(bytes, recovery, password),
-            Request::PageInfo { document, page } => {
-                let page = self
-                    .document(document)?
-                    .page(index(page)?)
-                    .map_err(|error| error.at(Position::Buffer(9)))?;
-                let crop = page.crop_box();
-                Ok(Response::PageInfo {
-                    crop: [crop.x0(), crop.y0(), crop.x1(), crop.y1()],
-                    rotation: page.rotation().degrees(),
-                    user_unit: page.user_unit(),
-                    size: pagura::device_size(page, &RenderOptions::default())?,
-                })
-            }
+            Request::PageInfo { document, page } => self.page_info(document, page),
             Request::RenderTile {
                 document,
                 page,
@@ -326,6 +314,20 @@ impl Session {
             }
             Request::Close(handle) => self.close(handle),
         }
+    }
+
+    fn page_info(&self, document: u32, page: u32) -> Result<Response> {
+        let page = self
+            .document(document)?
+            .page(index(page)?)
+            .map_err(|error| error.at(Position::Buffer(9)))?;
+        let crop = page.crop_box();
+        Ok(Response::PageInfo {
+            crop: [crop.x0(), crop.y0(), crop.x1(), crop.y1()],
+            rotation: page.rotation().degrees(),
+            user_unit: page.user_unit(),
+            size: pagura::device_size(page, &RenderOptions::default())?,
+        })
     }
 
     fn close(&mut self, handle: u32) -> Result<Response> {

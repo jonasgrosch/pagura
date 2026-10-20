@@ -74,7 +74,9 @@ export class FormEditor {
       const adopted = await this.adopt(bytes, state.epoch);
       if (!adopted || token !== this.token) return;
       this.busy = false; this.list.inert = false;
-      await this.open(); this.message.textContent = 'Changes applied. The updated PDF is ready to download.';
+      const loading = this.open(), refreshed = this.token;
+      await loading;
+      if (refreshed === this.token) this.message.textContent = 'Changes applied. The updated PDF is ready to download.';
     } catch (error) { if (token === this.token) this.message.textContent = String(error); }
     finally { if (token === this.token) { this.busy = false; this.list.inert = false; this.controls(); } }
   }

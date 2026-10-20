@@ -109,7 +109,10 @@ No local builds, tests, corpus scans, profiling or benchmarks while the
 performance lanes use this machine. Short source/format/diff checks only.
 Hosted CI must use explicit hosted labels; no self-hosted runner dispatch.
 Full rewrite, redaction, encryption-on-write, signed-permission enforcement,
-undo/redo, file IO, CLI and viewer editing controls are subsequent work.
+undo/redo, file IO and CLI editing are subsequent work. Protocol 1.5 adds bounded
+field enumeration and stateless form-save requests. The browser owns its draft
+and reopens successfully saved bytes as a new immutable document before preview
+and download; the host does not retain mutable editing sessions.
 
 ## Independent-reader baseline
 
