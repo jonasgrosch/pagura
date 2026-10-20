@@ -9,7 +9,7 @@ use pagura::{
 };
 use pagura_testkit::fixture;
 
-fn open(bytes: Vec<u8>) -> Document {
+fn open(bytes: Vec<u8>) -> pagura::Result<Document> {
     Document::open(
         bytes,
         &OpenOptions {
@@ -17,7 +17,6 @@ fn open(bytes: Vec<u8>) -> Document {
             ..Default::default()
         },
     )
-    .unwrap()
 }
 
 // Source syntax is independent of pagura-write. A nonzero generation, custom
@@ -57,23 +56,23 @@ fn raw_pdf(objects: &[(u32, u16, &str)], trailer: &str) -> Vec<u8> {
     bytes
 }
 
-fn exported(name: &str, bytes: &[u8], original: &[u8]) {
+fn exported(name: &str, bytes: &[u8], original: &[u8]) -> std::io::Result<()> {
     if let Some(directory) = std::env::var_os("PAGURA_EDIT_OUTPUT") {
         let directory = std::path::PathBuf::from(directory);
-        std::fs::create_dir_all(directory.join("originals")).unwrap();
+        std::fs::create_dir_all(directory.join("originals"))?;
         std::fs::write(
             directory.join("originals").join(format!("{name}.pdf")),
             original,
-        )
-        .unwrap();
-        std::fs::write(directory.join(format!("{name}.pdf")), bytes).unwrap();
+        )?;
+        std::fs::write(directory.join(format!("{name}.pdf")), bytes)?;
     }
+    Ok(())
 }
 
 #[test]
 fn original_prefix_generations_trailer_and_repeated_revisions_survive() {
     let original = source();
-    let document = open(original.clone());
+    let document = open(original.clone()).unwrap();
     let mut transaction = Transaction::new(&document);
     transaction
         .edit_dictionary(ObjectId::new(3, 7), |dictionary| {
@@ -89,7 +88,7 @@ fn original_prefix_generations_trailer_and_repeated_revisions_survive() {
     assert_eq!(saved, transaction.commit(&SaveOptions::default()).unwrap());
     assert!(saved.starts_with(&original));
     assert_eq!(document.revisions().len(), 1);
-    let reopened = open(saved.clone());
+    let reopened = open(saved.clone()).unwrap();
     assert_eq!(reopened.revisions().len(), 2);
     assert_eq!(
         reopened.trailer().get(b"Private"),
@@ -132,14 +131,14 @@ fn original_prefix_generations_trailer_and_repeated_revisions_survive() {
     );
     let twice = second.commit(&SaveOptions::default()).unwrap();
     assert!(twice.starts_with(&saved));
-    assert_eq!(open(twice.clone()).revisions().len(), 3);
-    exported("incremental", &twice, &original);
+    assert_eq!(open(twice.clone()).unwrap().revisions().len(), 3);
+    exported("incremental", &twice, &original).unwrap();
 }
 
 #[test]
 fn rollback_failed_sets_and_dangling_references_are_atomic() {
     let original = source();
-    let document = open(original.clone());
+    let document = open(original.clone()).unwrap();
     let mut transaction = Transaction::new(&document);
     assert_eq!(
         transaction.commit(&SaveOptions::default()).unwrap(),
@@ -194,7 +193,7 @@ fn stream_and_hybrid_sources_keep_untouched_compressed_objects() {
         "hybrid-precedence",
     ] {
         let original = fixture("document", &format!("{name}.pdf"));
-        let document = open(original.clone());
+        let document = open(original.clone()).unwrap();
         let root = document
             .trailer()
             .get(b"Root")
@@ -210,7 +209,7 @@ fn stream_and_hybrid_sources_keep_untouched_compressed_objects() {
             .unwrap();
         let saved = transaction.commit(&SaveOptions::default()).unwrap();
         assert!(saved.starts_with(&original));
-        let reopened = open(saved.clone());
+        let reopened = open(saved.clone()).unwrap();
         assert_eq!(
             reopened.catalog().unwrap().get(b"Lang"),
             Some(&Value::String(b"en-US".to_vec()))
@@ -225,7 +224,7 @@ fn stream_and_hybrid_sources_keep_untouched_compressed_objects() {
             reopened.revisions()[0].kind(),
             pagura_document::RevisionKind::Stream
         );
-        exported(name, &saved, &original);
+        exported(name, &saved, &original).unwrap();
     }
 }
 
@@ -329,7 +328,7 @@ fn output_and_revision_limits_do_not_publish_partial_saves() {
 
 #[test]
 fn informational_diagnostics_do_not_change_save_permission() {
-    let document = open(source());
+    let document = open(source()).unwrap();
     document.report([pagura::Diagnostic::information(
         "font.substituted",
         "test information",
@@ -337,13 +336,13 @@ fn informational_diagnostics_do_not_change_save_permission() {
     let mut transaction = Transaction::new(&document);
     transaction.add(Value::Integer(42).into()).unwrap();
     let saved = transaction.commit(&SaveOptions::default()).unwrap();
-    assert_eq!(open(saved).revisions().len(), 2);
+    assert_eq!(open(saved).unwrap().revisions().len(), 2);
 }
 
 #[test]
 fn signatures_require_explicit_policy_and_original_signed_bytes_survive() {
     let original = fixture("cms-signatures", "rsa-sha256-ski.pdf");
-    let document = open(original.clone());
+    let document = open(original.clone()).unwrap();
     let mut transaction = Transaction::new(&document);
     transaction.add(Value::Integer(123).into()).unwrap();
     assert_eq!(
@@ -359,7 +358,7 @@ fn signatures_require_explicit_policy_and_original_signed_bytes_survive() {
         })
         .unwrap();
     assert!(saved.starts_with(&original));
-    let reopened = open(saved);
+    let reopened = open(saved).unwrap();
     let signatures = pagura::signatures(&reopened).unwrap();
     assert_eq!(
         signatures
@@ -372,30 +371,28 @@ fn signatures_require_explicit_policy_and_original_signed_bytes_survive() {
     assert!(signatures.fields.iter().filter_map(|field| field.signature.as_ref()).all(|signature| signature.results.integrity == pagura::signatures::Integrity::Verified));
 }
 
-fn assert_form_roundtrip(name: &str, input: FillValue<'_>) -> (Vec<u8>, Document) {
+fn assert_form_roundtrip(
+    name: &str,
+    input: FillValue<'_>,
+) -> Result<(Vec<u8>, Document), Box<dyn std::error::Error>> {
     let original = fixture("forms", &format!("{name}.pdf"));
-    let document = open(original.clone());
-    let mut filler = document.form_filler().unwrap().unwrap();
-    filler.set(0, input).unwrap();
-    let before = pagura::compile_filled_page(&filler, document.page(0).unwrap())
-        .unwrap()
-        .render(&RenderOptions::default())
-        .unwrap()
+    let document = open(original.clone())?;
+    let mut filler = document
+        .form_filler()?
+        .ok_or(Error::invalid_argument("missing test form"))?;
+    filler.set(0, input)?;
+    let before = pagura::compile_filled_page(&filler, document.page(0)?)?
+        .render(&RenderOptions::default())?
         .to_rgb_over(Rgba8::WHITE);
-    let saved = save_filled_form(&filler, &SaveOptions::default()).unwrap();
+    let saved = save_filled_form(&filler, &SaveOptions::default())?;
     assert!(saved.starts_with(&original));
     assert!(filler.get(0).is_some());
-    let reopened = open(saved.clone());
-    let after = pagura::render_page(
-        &reopened,
-        reopened.page(0).unwrap(),
-        &RenderOptions::default(),
-    )
-    .unwrap()
-    .to_rgb_over(Rgba8::WHITE);
+    let reopened = open(saved.clone())?;
+    let after = pagura::render_page(&reopened, reopened.page(0)?, &RenderOptions::default())?
+        .to_rgb_over(Rgba8::WHITE);
     assert_eq!(before, after, "{name}: persisted appearance differs");
-    exported(name, &saved, &original);
-    (saved, reopened)
+    exported(name, &saved, &original)?;
+    Ok((saved, reopened))
 }
 
 #[test]
@@ -405,7 +402,7 @@ fn text_merged_widgets_existing_appearances_and_need_appearances_roundtrip() {
         "render-text-update",
         "render-text-need-appearances",
     ] {
-        let (_, document) = assert_form_roundtrip(name, FillValue::Text("ABC"));
+        let (_, document) = assert_form_roundtrip(name, FillValue::Text("ABC")).unwrap();
         let form = document.acro_form().unwrap().unwrap();
         assert!(!form.need_appearances);
         assert!(matches!(&form.fields[0].value, Some(FieldValue::Text(value)) if value == "ABC"));
@@ -417,7 +414,8 @@ fn choices_use_display_values_and_sorted_indices() {
     let (_, document) = assert_form_roundtrip(
         "render-choice-list-multi",
         FillValue::Choice(ChoiceSelection::Indices(&[2, 0])),
-    );
+    )
+    .unwrap();
     let form = document.acro_form().unwrap().unwrap();
     let field = &form.fields[0];
     assert_eq!(
@@ -436,7 +434,8 @@ fn checkbox_and_radio_states_and_appearances_survive() {
                 index: 0,
                 state: None,
             }),
-        );
+        )
+        .unwrap();
         let form = document.acro_form().unwrap().unwrap();
         assert!(
             form.widgets[0]
@@ -448,7 +447,7 @@ fn checkbox_and_radio_states_and_appearances_survive() {
 
 #[test]
 fn password_and_missing_button_state_appearances_fail_atomically() {
-    let document = open(fixture("forms", "text-password.pdf"));
+    let document = open(fixture("forms", "text-password.pdf")).unwrap();
     let mut filler = document.form_filler().unwrap().unwrap();
     filler.set(0, FillValue::Text("secret")).unwrap();
     assert_eq!(
@@ -458,7 +457,7 @@ fn password_and_missing_button_state_appearances_fail_atomically() {
         ErrorKind::Unsupported(features::PASSWORD)
     );
     assert!(filler.get(0).is_some());
-    let document = open(fixture("forms", "render-checkbox-generated.pdf"));
+    let document = open(fixture("forms", "render-checkbox-generated.pdf")).unwrap();
     let mut filler = document.form_filler().unwrap().unwrap();
     filler
         .set(
@@ -494,10 +493,10 @@ fn unicode_inherited_values_save_without_mutating_the_parent() {
         ],
         "/Size 7 /Root 1 0 R",
     );
-    let document = open(original);
+    let document = open(original).unwrap();
     let mut filler = document.form_filler().unwrap().unwrap();
     filler.set(1, FillValue::Text("Ω😀")).unwrap();
-    let reopened = open(save_filled_form(&filler, &SaveOptions::default()).unwrap());
+    let reopened = open(save_filled_form(&filler, &SaveOptions::default()).unwrap()).unwrap();
     let form = reopened.acro_form().unwrap().unwrap();
     assert!(matches!(&form.fields[1].value, Some(FieldValue::Text(text)) if text == "Ω😀"));
     assert_eq!(
@@ -541,7 +540,7 @@ fn nested_direct_fields_never_replace_the_enclosing_form() {
 
 #[test]
 fn normal_appearance_replacement_preserves_rollover_and_down() {
-    let document = open(fixture("forms", "render-text-update.pdf"));
+    let document = open(fixture("forms", "render-text-update.pdf")).unwrap();
     let mut setup = Transaction::new(&document);
     setup
         .edit_dictionary(ObjectId::new(11, 0), |dictionary| {
@@ -557,10 +556,10 @@ fn normal_appearance_replacement_preserves_rollover_and_down() {
             Ok(())
         })
         .unwrap();
-    let document = open(setup.commit(&SaveOptions::default()).unwrap());
+    let document = open(setup.commit(&SaveOptions::default()).unwrap()).unwrap();
     let mut filler = document.form_filler().unwrap().unwrap();
     filler.set(0, FillValue::Text("ABC")).unwrap();
-    let reopened = open(save_filled_form(&filler, &SaveOptions::default()).unwrap());
+    let reopened = open(save_filled_form(&filler, &SaveOptions::default()).unwrap()).unwrap();
     let form = reopened.acro_form().unwrap().unwrap();
     let appearances = form.widgets[0]
         .dictionary
@@ -587,11 +586,11 @@ fn allocation_respects_declared_unused_numbers_and_failed_adds_are_atomic() {
     let original = String::from_utf8(source())
         .unwrap()
         .replace("/Size 5", "/Size 100");
-    let document = open(original.into_bytes());
+    let document = open(original.into_bytes()).unwrap();
     let mut transaction = Transaction::new(&document);
     assert!(transaction.add(Value::Real(f64::INFINITY).into()).is_err());
     let id = transaction.add(Value::Integer(42).into()).unwrap();
     assert_eq!(id, ObjectId::new(100, 0));
-    let reopened = open(transaction.commit(&SaveOptions::default()).unwrap());
+    let reopened = open(transaction.commit(&SaveOptions::default()).unwrap()).unwrap();
     assert_eq!(reopened.trailer().get(b"Size"), Some(&Value::Integer(101)));
 }
