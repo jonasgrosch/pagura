@@ -465,12 +465,14 @@ impl Compiler<'_> {
 }
 
 /// The fewest JPEG cells per eight-sample block axis, of 1, 2, 3, 4 and 6,
-/// that leave at least two cells per device pixel; else all eight. `ratio`
-/// is the image's samples per device pixel along its less minified axis.
+/// that leave at least three cells per device pixel; else all eight. With
+/// two, the row-fragment sampler's midpoints fell below the best competitor
+/// on a 72 dpi image page. `ratio` is the image's samples per device pixel
+/// along its less minified axis.
 fn drawn_cells(ratio: f64) -> u8 {
     [1, 2, 3, 4, 6]
         .into_iter()
-        .find(|&cells| ratio * f64::from(cells) >= 16.0)
+        .find(|&cells| ratio * f64::from(cells) >= 24.0)
         .unwrap_or(8)
 }
 
@@ -551,19 +553,21 @@ fn decode_ranges(decoded: &DecodedImage, space: Option<&Space>) -> Result<Vec<(f
 #[cfg(test)]
 mod tests {
     #[test]
-    fn drawn_cells_keep_at_least_two_cells_per_device_pixel() {
+    fn drawn_cells_keep_at_least_three_cells_per_device_pixel() {
         for (ratio, cells) in [
             (f64::NAN, 8),
             (0.5, 8),
-            (1.0, 8),
             (2.6, 8),
-            (8.0 / 3.0, 6),
-            (3.9, 6),
-            (4.0, 4),
-            (5.4, 3),
-            (8.0, 2),
-            (15.9, 2),
-            (16.0, 1),
+            (3.9, 8),
+            (4.0, 6),
+            (5.9, 6),
+            (6.0, 4),
+            (7.9, 4),
+            (8.0, 3),
+            (11.9, 3),
+            (12.0, 2),
+            (23.9, 2),
+            (24.0, 1),
             (f64::INFINITY, 1),
         ] {
             assert_eq!(super::drawn_cells(ratio), cells, "{ratio}");

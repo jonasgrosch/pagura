@@ -78,7 +78,7 @@ pub enum Accuracy {
     /// page is compiled and rendered in one call, an eight-bit DeviceGray or
     /// DeviceRGB DCTDecode image XObject without masks or Decode array keeps
     /// 1, 2, 3, 4 or 6 cells per eight-sample block axis: the fewest that
-    /// leave at least two cells per device pixel. Cells are block area
+    /// leave at least three cells per device pixel. Cells are block area
     /// means (`pagura_image::dct::decode_cells`). It does not meet the
     /// one-level contract.
     RowFragments,
