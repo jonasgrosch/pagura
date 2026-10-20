@@ -119,6 +119,7 @@ pub(super) fn paint(
             decode: None,
             mask: pagura_image::MaskKind::None,
             interpolate: image.decoded.interpolate,
+            reduction: None,
         },
         space: image.space.clone(),
         mask: None,

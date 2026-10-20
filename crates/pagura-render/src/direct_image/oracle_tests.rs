@@ -196,6 +196,7 @@ fn image(planar: bool) -> Image {
             decode: None,
             mask: MaskKind::None,
             interpolate: false,
+            reduction: None,
         },
         space: Some(Space::Rgb),
         mask: None,

@@ -95,6 +95,23 @@ pub enum SampleLayout {
     /// [`Samples::Packed`](crate::Samples::Packed); other images are
     /// interleaved.
     Deferred,
+    /// Interleaved samples, with an eight-bit DCTDecode image reconstructed
+    /// at this many cells per eight-sample block axis (1, 2, 3, 4 or 6; see
+    /// [`dct::decode_cells`](crate::dct::decode_cells)) and its
+    /// [`Reduction`](crate::Reduction) recorded: an approximate path for
+    /// images drawn smaller than their samples (ADR 0004). Other images,
+    /// and eight cells, are interleaved exactly.
+    Cells(u8),
+}
+
+impl SampleLayout {
+    /// JPEG samples kept per eight-sample block axis in this layout.
+    pub(crate) fn cells(self) -> u8 {
+        match self {
+            Self::Cells(cells) => cells,
+            Self::Interleaved | Self::Deferred => 8,
+        }
+    }
 }
 
 /// Heap bytes retained by `samples`, including padded component planes,
