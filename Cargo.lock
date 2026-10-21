@@ -55,6 +55,7 @@ version = "0.1.0"
 dependencies = [
  "pagura-core",
  "pagura-crypto",
+ "pagura-document",
  "pagura-testkit",
 ]
 
@@ -177,6 +178,7 @@ version = "0.1.0"
 dependencies = [
  "pagura-color",
  "pagura-core",
+ "pagura-document",
  "pagura-image",
  "pagura-interpret",
  "pagura-raster",

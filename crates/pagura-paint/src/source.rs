@@ -2,17 +2,22 @@
 //! per paint and render, each filling spans of working colours or reporting
 //! a constant. Colour conversion runs through prepared converters and
 //! functions are total, so filling a span cannot fail.
+//!
+//! Transfer functions (10.5) are not part of prepared paint: as before, the
+//! executor selects, per output pixel, the transfer of the last opaque
+//! elementary mark that fully covers it (11.7.5.2) and applies it to the
+//! final colour, so sources always carry untransferred colours.
 
-use pagura_color::{Painted, Target};
-use pagura_core::{Error, Limits, Meter, Result, Store};
-use pagura_interpret::{Composite, Paint};
+use pagura_color::{Converter, Painted, Target};
+use pagura_core::{Limits, Meter, Result, Store};
+use pagura_interpret::{Color, Composite, Paint};
 use pagura_raster::Transform;
 
 mod image;
 mod shading;
 
 pub use image::ImageSampler;
-pub use shading::ShadingSource;
+pub use shading::{BBoxUse, ShadingSource};
 
 /// Working colours of one span: `channels` values per pixel in the target's
 /// order (additive channels as intensity, subtractive as `1 − tint`) and
@@ -68,18 +73,94 @@ impl Source {
     /// are prepared by the executor) and charges `function_work` for every
     /// evaluation filling `pixels` device pixels will need.
     ///
+    /// A solid colour is converted here, once. A shading pattern
+    /// ([`Paint::Shading`]) is prepared with [`ShadingSource::pattern`]
+    /// under its matrix composed with `context.transform`, and becomes a
+    /// solid when it paints one opaque colour everywhere.
+    ///
+    /// The channels a source paints follow the mark's overprint state: every
+    /// channel without overprinting; with it, the channels the colour
+    /// specifies, without the zero components of a DeviceCMYK solid under
+    /// `OPM 1` (8.6.7, 11.7.4.3).
+    ///
     /// # Errors
     ///
-    /// Returns `Unsupported` for colour the conversion cannot perform and a
-    /// `Limit` error when the reservation exceeds `functions`.
+    /// Returns `InvalidArgument` for a tiling pattern or a solid in a
+    /// Pattern space, `Unsupported` for colour the conversion cannot perform
+    /// or a singular shading transform, and a `Limit` error when the
+    /// reservation exceeds `functions`.
     pub fn prepare(
         paint: &Paint,
         context: &PaintContext<'_>,
         pixels: usize,
         functions: &mut Meter,
     ) -> Result<Self> {
-        let _ = (paint, context, pixels, functions);
-        Err(Error::invalid_argument("prepared paint is not implemented"))
+        match paint {
+            Paint::Solid(color) => Self::solid(color, context, functions),
+            Paint::Shading(pattern) => {
+                let source = ShadingSource::pattern(
+                    &pattern.shading,
+                    pattern.matrix.then(context.transform),
+                    context,
+                    pixels,
+                    functions,
+                )?;
+                Ok(Self::collapse(source))
+            }
+            Paint::Tiling(_) => Err(pagura_core::Error::invalid_argument(
+                "tiling patterns are prepared by the executor",
+            )),
+        }
+    }
+
+    /// Prepares the shading of an `sh` mark under `shading_to_device`, as
+    /// [`ShadingSource::prepare`] does, collapsing it to a solid when it
+    /// paints one opaque colour everywhere.
+    ///
+    /// # Errors
+    ///
+    /// As [`ShadingSource::prepare`].
+    pub fn shading(
+        shading: &pagura_interpret::Shading,
+        shading_to_device: Transform,
+        context: &PaintContext<'_>,
+        pixels: usize,
+        functions: &mut Meter,
+    ) -> Result<Self> {
+        let source = ShadingSource::prepare(shading, shading_to_device, context, pixels, functions)?;
+        Ok(Self::collapse(source))
+    }
+
+    /// A solid colour, converted once.
+    fn solid(color: &Color, context: &PaintContext<'_>, functions: &mut Meter) -> Result<Self> {
+        let converter = Converter::new(&color.space, context.target, &context.composite.conversion)?;
+        functions.charge(converter.cost())?;
+        let mut converted = vec![0.0; context.target.channels()];
+        let specified = converter.convert(&color.components, &mut converted);
+        let overprint = context.composite.overprint;
+        let painted = if !color.space.paints() {
+            Painted(0)
+        } else if !overprint.enabled {
+            Painted::all(context.target.channels())
+        } else if overprint.nonzero {
+            converter.nonzero(&color.components)
+        } else {
+            specified
+        };
+        Ok(Self::Solid {
+            color: converted.into(),
+            painted,
+        })
+    }
+
+    fn collapse(source: ShadingSource) -> Self {
+        match source.constant() {
+            Some(color) => Self::Solid {
+                color: color.into(),
+                painted: source.painted(),
+            },
+            None => Self::Shading(source),
+        }
     }
 
     /// The constant colour, when every pixel has the same one.
