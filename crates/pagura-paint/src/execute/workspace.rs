@@ -254,9 +254,11 @@ impl Workspace {
             values.resize(count, 0.0);
             Ok(values)
         };
-        let mut colors = SpanColors::default();
-        colors.colors = reserve(sizes.width.saturating_mul(sizes.channels))?;
-        colors.alpha = reserve(sizes.width)?;
+        let colors = SpanColors {
+            colors: reserve(sizes.width.saturating_mul(sizes.channels))?,
+            alpha: reserve(sizes.width)?,
+            ..SpanColors::default()
+        };
         let mut selection = Vec::new();
         if sizes.selections {
             selection = reserve(pixels)?;

@@ -187,10 +187,10 @@ fn the_f64_kernel_is_the_earlier_paint_bit_for_bit() {
                             preserve: preserve & layout.mask(),
                         };
                         composite(&mut new, &sources, &start, &mode_spec);
-                        for i in 0..n {
+                        for (i, (new, old)) in new.iter().zip(old.color).take(n).enumerate() {
                             assert_eq!(
-                                new[i].to_bits(),
-                                old.color[i].to_bits(),
+                                new.to_bits(),
+                                old.to_bits(),
                                 "{mode:?} {process:?} knockout {knockout} channel {i}"
                             );
                         }
@@ -315,6 +315,11 @@ fn reference(start: f64, stores: &[(f64, f64)]) -> f64 {
 }
 
 #[test]
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "test values scaled into their ranges"
+)]
 fn n16_stays_within_one_level_for_any_number_of_opaque_stores() {
     let mut random = Lcg(23);
     let mut worst: f64 = 0.0;
@@ -322,7 +327,7 @@ fn n16_stays_within_one_level_for_any_number_of_opaque_stores() {
         let background = (random.unit() * 255.0).round();
         let mut words = [[(background as u16) * 257; 4]];
         let mut stores = Vec::new();
-        for _ in 0..(1 + (random.unit() * 400.0) as usize) {
+        for _ in 0..=((random.unit() * 400.0) as usize) {
             let color = random.unit();
             let coverage = (1.0 + random.unit() * 254.0).round() as u8;
             let source = [word(color), word(color), word(color), u16::MAX];
@@ -341,6 +346,10 @@ fn n16_stays_within_one_level_for_any_number_of_opaque_stores() {
 }
 
 #[test]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "test levels within f32 range"
+)]
 fn f32_stays_within_one_level_inside_its_count_bound() {
     let mut random = Lcg(31);
     let mut worst: f64 = 0.0;
@@ -364,6 +373,11 @@ fn f32_stays_within_one_level_inside_its_count_bound() {
 }
 
 #[test]
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "test values scaled into their ranges"
+)]
 fn u8_rounds_each_store_once() {
     let mut random = Lcg(37);
     for _ in 0..1000 {

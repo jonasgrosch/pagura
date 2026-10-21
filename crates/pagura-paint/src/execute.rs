@@ -209,23 +209,22 @@ impl<'a> Executor<'a> {
         let paint_shape = (constant.is_none() && !paint.shape_is_alpha())
             .then(|| ws.texel_shape.get(..len))
             .flatten();
-        let (colors, paint_alpha, painted) = match constant {
-            Some(color) => (Colors::Constant(color), None, paint.painted()),
-            None => {
-                let alpha = if ws.colors.alpha.is_empty() {
-                    None
-                } else if let Some(alpha) = ws.colors.alpha.get(..len) {
-                    Some(alpha)
-                } else {
-                    debug_assert!(false, "a paint source filled a short alpha span");
-                    return;
-                };
-                let colors = Colors::Strided {
-                    values: &ws.colors.colors,
-                    stride: ws.colors.channels,
-                };
-                (colors, alpha, ws.colors.painted)
-            }
+        let (colors, paint_alpha, painted) = if let Some(color) = constant {
+            (Colors::Constant(color), None, paint.painted())
+        } else {
+            let alpha = if ws.colors.alpha.is_empty() {
+                None
+            } else if let Some(alpha) = ws.colors.alpha.get(..len) {
+                Some(alpha)
+            } else {
+                debug_assert!(false, "a paint source filled a short alpha span");
+                return;
+            };
+            let colors = Colors::Strided {
+                values: &ws.colors.colors,
+                stride: ws.colors.channels,
+            };
+            (colors, alpha, ws.colors.painted)
         };
         if !colors.holds(len, frame.layout.channels()) {
             debug_assert!(false, "a paint source filled a malformed span");
@@ -254,7 +253,7 @@ impl<'a> Executor<'a> {
         };
         let kind = Store::Mark(n16_words(paint, compositing, cover));
         store(
-            Target {
+            &mut Target {
                 page: &mut ws.page,
                 wide: &mut ws.wide,
                 levels: &mut ws.levels,
@@ -460,7 +459,7 @@ pub(crate) enum Store<'a> {
 
 /// Stores one span of sources into `frame`'s buffer.
 pub(crate) fn store(
-    target: Target<'_>,
+    target: &mut Target<'_>,
     frame: Frame,
     (x, y): (u32, u32),
     (sources, mode): (&Sources<'_>, &Mode),
@@ -476,10 +475,10 @@ pub(crate) fn store(
             return;
         };
         let read = Read {
-            page: target.page,
-            wide: target.wide,
-            levels: target.levels,
-            bytes: target.bytes,
+            page: &*target.page,
+            wide: &*target.wide,
+            levels: &*target.levels,
+            bytes: &*target.bytes,
         };
         frame.initial.row(read, (x, y), frame.layout, initial);
     }

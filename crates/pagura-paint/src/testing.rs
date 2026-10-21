@@ -519,7 +519,7 @@ pub(crate) fn index(n: usize) -> u32 {
 /// value, and returns the largest difference in levels.
 pub(crate) fn assert_within_one_level(bytes: &[u8], exact: &pagura_reference::Rendering) -> f64 {
     let mut worst: f64 = 0.0;
-    for (i, (pixel, value)) in bytes.chunks_exact(4).zip(exact.values()).enumerate() {
+    for (i, (pixel, value)) in bytes.as_chunks::<4>().0.iter().zip(exact.values()).enumerate() {
         for (channel, (&byte, &v)) in pixel.iter().zip(value).enumerate() {
             let difference = (f64::from(byte) - v * 255.0).abs();
             worst = worst.max(difference);
@@ -531,25 +531,6 @@ pub(crate) fn assert_within_one_level(bytes: &[u8], exact: &pagura_reference::Re
         }
     }
     worst
-}
-
-/// Asserts that `bytes` equal the reference's correctly rounded output
-/// except where the exact value is within `tie` levels of a half level.
-pub(crate) fn assert_rounded(bytes: &[u8], exact: &pagura_reference::Rendering) {
-    let rounded = exact.to_rgba8();
-    for (i, ((&byte, &expected), v)) in bytes
-        .iter()
-        .zip(&rounded)
-        .zip(exact.values().iter().flatten())
-        .enumerate()
-    {
-        let level = v * 255.0;
-        let near_tie = (level - level.floor() - 0.5).abs() < 1e-6;
-        assert!(
-            byte == expected || near_tie,
-            "channel {i}: {byte} against correctly rounded {expected} ({level})"
-        );
-    }
 }
 
 /// Renders the whole page and checks it against the reference: within one

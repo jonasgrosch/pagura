@@ -68,7 +68,7 @@ pub(crate) fn dynamic_n16(pixels: &mut [[u16; 4]], colors: &Colors<'_>, alpha: &
         )]
         let word = value.clamp(0.0, 65535.0).round() as u16;
         word
-    }, |word| f64::from(word));
+    }, f64::from);
 }
 
 /// A dynamic store into F32 levels: `(1 − a)·x + a·t` for the target
@@ -232,7 +232,7 @@ mod tests {
         let mut pixels = [[65535_u16; 4]; 3];
         store_n16(&mut pixels, [0, 0, 0, 65535], Some(&[0, 128, 255]));
         assert_eq!(pixels[0], [65535; 4]);
-        let mixed = ((65535 * 127 + 127) / 255) as u16;
+        let mixed = u16::try_from((65535 * 127 + 127) / 255).unwrap();
         assert_eq!(pixels[1], [mixed, mixed, mixed, 65535]);
         assert_eq!(pixels[2], [0, 0, 0, 65535]);
     }

@@ -74,6 +74,10 @@ pub(crate) struct Parts {
 
 /// Where content is planned.
 #[derive(Debug, Clone)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent properties of the content's place in the scene"
+)]
 pub(crate) struct Scope {
     /// The group plan that receives items.
     pub(crate) group: u32,
@@ -374,32 +378,52 @@ impl<'s, B: Backend> Planner<'s, B> {
             budget,
         )?;
         self.children(&inner(child, layout), &group.children, budget)?;
-        let bounds = intersect(self.content(child), culling);
+        let result = GroupResult {
+            group: child,
+            state: &state,
+            culling,
+            serial,
+            position,
+            mask,
+        };
+        self.group_result(scope, &result, budget)
+    }
+
+    /// Composites a planned group's result into `scope`'s group.
+    fn group_result(&mut self, scope: &Scope, result: &GroupResult<'_>, budget: &mut Budget) -> Result<()> {
+        let child = result.group;
+        let bounds = intersect(self.content(child), result.culling);
         if bounds.is_empty() {
             return Ok(());
         }
-        if let Some(plan) = self.parts.groups.get_mut(index(child)) {
-            plan.bounds = bounds;
-        }
+        let layout = match self.parts.groups.get_mut(index(child)) {
+            Some(plan) => {
+                plan.bounds = bounds;
+                plan.layout
+            }
+            None => return Ok(()),
+        };
+        let state = result.state;
         let conversion = if layout.process == scope.layout.process {
             None
         } else {
-            Some(self.conversion(layout.process, scope.layout.process, &state.conversion, bounds, budget)?)
+            let to = scope.layout.process;
+            Some(self.conversion(layout.process, to, &state.conversion, bounds, budget)?)
         };
         let compositing = Compositing {
             alpha: state.alpha,
             blend: state.blend,
             alpha_is_shape: state.alpha_is_shape,
-            mask,
+            mask: result.mask,
             overprint: 0,
         };
-        self.use_mask(mask, bounds, budget)?;
+        self.use_mask(result.mask, bounds, budget)?;
         budget.work.charge_product(area(bounds), 3)?;
         let item = Item {
             bounds,
             bands: self.bands(bounds),
-            serial,
-            position,
+            serial: result.serial,
+            position: result.position,
             work: 0,
             kind: ItemKind::Group(crate::plan::GroupUse {
                 group: child,
@@ -498,16 +522,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             process: group.attributes.space.unwrap_or(scope.layout.process),
             spots: 0,
         };
-        let backdrop = match &mask.backdrop {
-            Some(components) => {
-                if components.len() != layout.process.components() {
-                    return Err(Error::syntax("soft-mask backdrop has the wrong component count"));
-                }
-                process::native(layout.process, components)
-            }
-            None => process::black(layout.process),
-        };
-        let transfer = mask.transfer.as_ref().map(|f| curve(f)).transpose()?;
+        let (backdrop, transfer) = mask_parameters(mask, layout.process)?;
         let isolated = group.attributes.isolated;
         let start = if mask.kind == MaskKind::Luminosity && !isolated {
             Start::Opaque(backdrop)
@@ -711,12 +726,41 @@ impl<'s, B: Backend> Planner<'s, B> {
     }
 }
 
+/// A planned group whose result is composited into its parent.
+struct GroupResult<'a> {
+    group: u32,
+    state: &'a pagura_interpret::Composite,
+    culling: DeviceRect,
+    serial: u32,
+    position: Position,
+    mask: Option<u32>,
+}
+
 impl Scope {
     /// The bits of the transform, as a key.
     pub(crate) fn transform_bits(&self) -> [u64; 6] {
         let t = self.transform;
         [t.a, t.b, t.c, t.d, t.e, t.f].map(f64::to_bits)
     }
+}
+
+/// A soft mask's `BC` and `TR`.
+type MaskParameters = ([f64; 4], Option<Arc<dyn Curve>>);
+
+/// A soft mask's `BC` in its group's blending space, additively, and its
+/// `TR`.
+fn mask_parameters(mask: &pagura_interpret::SoftMask, process: Process) -> Result<MaskParameters> {
+    let backdrop = match &mask.backdrop {
+        Some(components) => {
+            if components.len() != process.components() {
+                return Err(Error::syntax("soft-mask backdrop has the wrong component count"));
+            }
+            process::native(process, components)
+        }
+        None => process::black(process),
+    };
+    let transfer = mask.transfer.as_ref().map(curve).transpose()?;
+    Ok((backdrop, transfer))
 }
 
 /// A one-input function as a curve; the first output is used.

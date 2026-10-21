@@ -122,22 +122,23 @@ fn pixels<'c, B: Blend, const KNOCKOUT: bool>(
     run: Run<'_, '_>,
     colors: impl Iterator<Item = &'c [f64]>,
 ) {
-    let layout = run.mode.layout;
+    let Run {
+        pixels,
+        sources,
+        initial,
+        mode,
+    } = run;
+    let layout = mode.layout;
     let stride = layout.stride();
     let counts = Counts {
         process: layout.process.components(),
         channels: layout.channels(),
-        preserve: run.mode.preserve,
+        preserve: mode.preserve,
     };
-    let sources = run
-        .sources
-        .alpha
-        .iter()
-        .zip(run.sources.shape)
-        .zip(colors);
-    let targets = run.pixels.chunks_exact_mut(stride);
+    let sources = sources.alpha.iter().zip(sources.shape).zip(colors);
+    let targets = pixels.chunks_exact_mut(stride);
     if KNOCKOUT {
-        let initial = run.initial.chunks_exact(stride);
+        let initial = initial.chunks_exact(stride);
         for ((target, ((&alpha, &shape), color)), initial) in targets.zip(sources).zip(initial) {
             paint::<B, true>(target, color, [alpha, shape], initial, counts);
         }

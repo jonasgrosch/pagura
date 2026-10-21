@@ -165,6 +165,10 @@ impl Context {
 
 /// A buffer described by its stores.
 #[derive(Debug, Clone)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent facts of a buffer's content"
+)]
 struct Buffer {
     layout: Layout,
     page: bool,

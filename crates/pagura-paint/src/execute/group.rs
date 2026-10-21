@@ -102,7 +102,7 @@ impl Executor<'_> {
                 let Some(out) = ws.levels.get_mut(offset..offset + pixels) else {
                     return;
                 };
-                let value = narrow_start(initial, |v| level(v));
+                let value = narrow_start(initial, level);
                 out.fill(value);
             }
             Buffer::Bytes(offset) => {
@@ -175,7 +175,7 @@ impl Executor<'_> {
             shape: &ws.shape[..len],
         };
         store(
-            Target {
+            &mut Target {
                 page: &mut ws.page,
                 wide: &mut ws.wide,
                 levels: &mut ws.levels,

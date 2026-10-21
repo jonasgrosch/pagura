@@ -106,7 +106,7 @@ fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<
     let area = planner.area;
     let rows = rows(area.region.height());
     let transfers = planner.storage.transfers;
-    let spots = spot_plans(&planner.definitions)?;
+    let spots = spot_plans(&planner.definitions);
     let background = premultiplied(planner.request.background)?;
     let Planner {
         mut backend,
@@ -298,11 +298,12 @@ fn premultiplied(background: Rgba8) -> Result<[u8; 4]> {
     Ok(bytes)
 }
 
-/// Spot channels grouped by their first painting definition: the
-/// definition and its `(component, spot channel)` pairs (ADR 0004 §7).
-fn spot_plans(
-    definitions: &[(pagura_core::Name, Arc<ColorSpace>)],
-) -> Result<Vec<(Arc<ColorSpace>, Vec<(usize, usize)>)>> {
+/// A colorant definition and the `(component, spot channel)` pairs it
+/// supplies.
+type Definition = (Arc<ColorSpace>, Vec<(usize, usize)>);
+
+/// Spot channels grouped by their first painting definition (ADR 0004 §7).
+fn spot_plans(definitions: &[(pagura_core::Name, Arc<ColorSpace>)]) -> Vec<Definition> {
     let mut used = vec![false; definitions.len()];
     let mut plans = Vec::new();
     for (spot, (_, space)) in definitions.iter().enumerate() {
@@ -332,7 +333,7 @@ fn spot_plans(
         }
         plans.push((Arc::clone(space), inputs));
     }
-    Ok(plans)
+    plans
 }
 
 /// Whether two colorant spaces share their tint transform.
