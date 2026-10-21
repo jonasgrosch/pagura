@@ -168,11 +168,21 @@ impl Plan {
     }
 
     pub(super) fn convert(&self, components: &[f64], output: &mut [f64]) {
+        let split = self.process.min(output.len());
+        if self.lookup.is_none()
+            && let Kind::Chain(chain) = &self.kind
+            && chain.steps.is_empty()
+        {
+            // The common case: no buffer of intermediate components.
+            let (process, spots) = output.split_at_mut(split);
+            chain.finish(components.get(..MAX_COMPONENTS).unwrap_or(components), process);
+            spots.fill(1.0);
+            return;
+        }
         let mut values = Values::new(components);
         if let Some(lookup) = &self.lookup {
             lookup.apply(&mut values);
         }
-        let split = self.process.min(output.len());
         let (process, spots) = output.split_at_mut(split);
         match &self.kind {
             Kind::Tints(map) => {
@@ -184,7 +194,7 @@ impl Plan {
                 }
             }
             Kind::All => {
-                let value = values.all();
+                let value = all(values.slice());
                 process.fill(value);
                 spots.fill(if self.separated { value } else { 1.0 });
             }
@@ -379,18 +389,22 @@ impl Chain {
         for step in &self.steps {
             step.apply(&mut values);
         }
+        self.finish(values.slice(), output);
+    }
+
+    /// The terminal conversion of the chain's last components.
+    fn finish(&self, values: &[f64], output: &mut [f64]) {
         match &self.terminal {
             Terminal::Native { complement } => {
-                let slice = values.slice();
                 for (i, out) in output.iter_mut().enumerate() {
-                    *out = slice.get(i).map_or(0.0, |&v| {
+                    *out = values.get(i).map_or(0.0, |&v| {
                         let v = v.clamp(0.0, 1.0);
                         if *complement { 1.0 - v } else { v }
                     });
                 }
             }
-            Terminal::All => output.fill(values.all()),
-            Terminal::Rgb { source, encode } => encode.apply(source.rgb(&values), output),
+            Terminal::All => output.fill(all(values)),
+            Terminal::Rgb { source, encode } => encode.apply(source.rgb(values), output),
         }
     }
 }
@@ -497,8 +511,7 @@ fn clip_icc(components: &[f64], range: &[[f64; 2]; 4]) -> [f64; 4] {
 
 impl Source {
     /// Encoded sRGB of `values`.
-    fn rgb(&self, values: &Values) -> [f64; 3] {
-        let slice = values.slice();
+    fn rgb(&self, slice: &[f64]) -> [f64; 3] {
         let n = |i: usize| slice.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0);
         match self {
             Self::Gray => [n(0); 3],
@@ -581,8 +594,9 @@ impl Values {
         self.values.get(..self.len).unwrap_or(&[])
     }
 
-    /// `1 − tint` of Separation `All`; a missing tint is full.
-    fn all(&self) -> f64 {
-        1.0 - self.slice().first().copied().unwrap_or(1.0).clamp(0.0, 1.0)
-    }
+}
+
+/// `1 − tint` of Separation `All`; a missing tint is full.
+fn all(values: &[f64]) -> f64 {
+    1.0 - values.first().copied().unwrap_or(1.0).clamp(0.0, 1.0)
 }

@@ -293,3 +293,81 @@ fn function_work_is_reserved_per_sample() {
     let error = prepare().reserve(1000, &mut tight).unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
 }
+
+/// Times the span fill of a 512² page of an axial shading along the page
+/// width (the stress set's `const`/`vary` inputs at 72 dpi), aligned and
+/// rotated, with the shared evaluation and without it. Run in release
+/// under the bench lock:
+/// `cargo test --release -p pagura-paint axial_span_timing -- --ignored --nocapture`.
+#[test]
+#[ignore = "timing, run explicitly in release"]
+fn axial_span_timing() {
+    let target = Target::new(Process::Rgb);
+    let (composite, store, limits) = (Composite::default(), Store::new(1 << 20), Limits::default());
+    let context = context(&target, &composite, &store, &limits);
+    let flip = Transform::new(1.0, 0.0, 0.0, -1.0, 0.0, 512.0);
+    let (sin, cos) = 0.3_f64.sin_cos();
+    let rotated = Transform::new(cos, sin, -sin, cos, 40.0, 0.0).then(flip);
+    for (name, c1) in [("const", [0.0, 0.0, 0.0]), ("vary", [1.0, 0.0, 0.0])] {
+        let function = Arc::new(
+            Function::exponential(ExponentialFunction {
+                domain: [0.0, 1.0],
+                range: None,
+                c0: vec![0.0; 3],
+                c1: c1.to_vec(),
+                exponent: 1.0,
+            })
+            .unwrap(),
+        );
+        let parsed = Parsed {
+            name: String::new(),
+            space: Arc::new(ColorSpace::DeviceRgb),
+            function: Some(ShadingFunction::Single(function)),
+            kind: ShadingKind::Axial {
+                start: Point::new(0.0, 0.0),
+                end: Point::new(512.0, 0.0),
+                domain: [0.0, 1.0],
+                extend: [true, true],
+            },
+            bbox: None,
+            antialias: false,
+            background: None,
+            old_mesh: Vec::new(),
+        };
+        for (variant, transform, shared) in [
+            ("aligned", flip, true),
+            ("aligned, no sharing", flip, false),
+            ("rotated", rotated, true),
+        ] {
+            let mut times = Vec::new();
+            let mut out = SpanColors::default();
+            let mut checksum = 0.0;
+            for _ in 0..15 {
+                let start = std::time::Instant::now();
+                let mut source =
+                    ShadingSource::new(&parts(&parsed, false), transform, &context, Use::Operator).unwrap();
+                if !shared {
+                    source.aligned = None;
+                    source.constant = None;
+                }
+                let constant = source.constant().is_some();
+                for y in 0..512 {
+                    if constant {
+                        // A collapsed shading is a solid: the executor fills
+                        // it without calling the source per span.
+                        break;
+                    }
+                    source.span(0, y, 512, &mut out);
+                    checksum += out.colors[y as usize % 512];
+                }
+                times.push(start.elapsed().as_secs_f64() * 1e3);
+            }
+            times.sort_by(f64::total_cmp);
+            eprintln!(
+                "{name} {variant}: median {:.3} ms, min {:.3} ms per 512² page ({checksum:.1})",
+                times[times.len() / 2],
+                times[0]
+            );
+        }
+    }
+}

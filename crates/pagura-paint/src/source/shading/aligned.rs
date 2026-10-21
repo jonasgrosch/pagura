@@ -127,7 +127,7 @@ impl Aligned {
         let SpanColors { colors, alpha, .. } = out;
         let split = channels.min(colors.len());
         let (first, rest) = colors.split_at_mut(split);
-        let value = source.pixel(axial, (span.x, span.y), None, first);
+        let value = source.pixel(axial, (span.x, span.y), None, (first, &mut [0.0; MAX_COMPONENTS]));
         for chunk in rest.chunks_exact_mut(channels) {
             chunk.copy_from_slice(first);
         }
@@ -152,7 +152,7 @@ impl Aligned {
                 Class::Before => &self.before,
                 Class::After => &self.after,
                 Class::Other => {
-                    *alpha = source.pixel(axial, (x, span.y), None, color);
+                    *alpha = source.pixel(axial, (x, span.y), None, (color, &mut [0.0; MAX_COMPONENTS]));
                     continue;
                 }
             };
@@ -223,7 +223,7 @@ impl Table {
                 (p.x - axial.start.x) * axial.delta.x != 0.0
             });
             if *valid {
-                *alpha = source.pixel(axial, (x, 0), None, color);
+                *alpha = source.pixel(axial, (x, 0), None, (color, &mut [0.0; MAX_COMPONENTS]));
             }
         }
         Some(Self {
@@ -251,7 +251,7 @@ impl ShadingSource {
         let Some(x) = input else {
             return 0.0;
         };
-        self.pixel(&Fixed(x), (0, 0), None, color)
+        self.pixel(&Fixed(x), (0, 0), None, (color, &mut [0.0; MAX_COMPONENTS]))
     }
 
     /// Whether device coordinates below 2³² map to parameters far from
