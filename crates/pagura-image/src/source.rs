@@ -80,6 +80,7 @@ pub struct ImageSource {
     header: Arc<Header>,
     data: Arc<[u8]>,
     drawn: bool,
+    recovery: Recovery,
 }
 
 /// How many samples a decode should produce.
@@ -181,6 +182,16 @@ pub struct Decoded {
     pub diagnostics: Vec<Diagnostic>,
 }
 
+impl From<DecodedImage> for Decoded {
+    /// A decode that made no repairs.
+    fn from(image: DecodedImage) -> Self {
+        Self {
+            image,
+            diagnostics: Vec::new(),
+        }
+    }
+}
+
 impl ImageSource {
     /// Reads and validates an image XObject (8.9.5) without decoding its
     /// samples, with the errors and repairs of [`crate::decode_xobject`]
@@ -213,6 +224,7 @@ impl ImageSource {
             header: Arc::new(header),
             data: data.into(),
             drawn,
+            recovery: document.recovery(),
         })
     }
 
@@ -241,12 +253,19 @@ impl ImageSource {
             header: Arc::new(header),
             data: data.into(),
             drawn: false,
+            recovery: document.recovery(),
         })
     }
 
     /// The identity.
     pub fn id(&self) -> ImageId {
         self.id
+    }
+
+    /// The recovery mode of the document the source was read from, which
+    /// its decodes honour.
+    pub fn recovery(&self) -> Recovery {
+        self.recovery
     }
 
     /// Width in samples (`Width`).
