@@ -15,7 +15,7 @@ use pagura_interpret::{
     BlendMode, Composite, FillNode, GlyphSource, GlyphsNode, ImageMask, ImageNode, MarkInfo, Paint,
     PaintId, Pen, ShadingNode, ShadingPaint, StrokeNode, TilingPaint,
 };
-use pagura_raster::{FillRegion, FillRule, LineJoin, Path, Point, ShapeOptions, Transform};
+use pagura_raster::{FillRegion, FillRule, Path, Point, ShapeOptions, Transform};
 use std::sync::Arc;
 
 /// Bytes charged per prepared paint, besides what its source retains.
@@ -84,15 +84,7 @@ impl<B: Backend> Planner<'_, B> {
             .pens
             .get(node.pen.index())
             .ok_or(Error::invalid_argument("scene pen out of range"))?;
-        let stroke = &pen.stroke;
-        let join = if stroke.join == LineJoin::Miter {
-            stroke.miter_limit.max(1.0)
-        } else {
-            1.0
-        };
-        let reach = stroke.width.max(0.0) / 2.0
-            * join.max(std::f64::consts::SQRT_2)
-            * bounds::scale(pen.transform.then(scope.transform));
+        let reach = bounds::stroke_reach(pen, scope.transform);
         let hull =
             bounds::path(&node.path, scope.transform).map(|h| bounds::expand(h, reach + 2.0));
         let spec = Spec {

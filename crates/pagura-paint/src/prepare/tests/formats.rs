@@ -50,11 +50,35 @@ fn opaque_pages_store_n16_and_translucent_ones_f32() {
     b.rect(PAGE, [2.0, 1.0, 5.0, 4.0], red, mark(half));
     assert_eq!(exact(&b), [Format::F32]);
     check(&b);
+    // Dynamic stores that share no pixel: N16 admits one at each pixel.
+    let mut b = Build::new(8.0, 4.0);
+    let red = b.rgb([1.0, 0.0, 0.0]);
+    let half = b.state(|s| s.alpha = 0.5);
+    b.rect(PAGE, [0.5, 0.5, 7.5, 3.5], red, mark(StateId(0)));
+    b.rect(PAGE, [0.0, 0.0, 2.5, 4.0], red, mark(half));
+    b.rect(PAGE, [5.0, 0.0, 8.0, 4.0], red, mark(half));
+    assert_eq!(exact(&b), [Format::N16]);
+    check(&b);
+    // Bounds within a pixel of each other may share it.
+    b.rect(PAGE, [3.25, 1.0, 4.5, 2.0], red, mark(half));
+    assert_eq!(exact(&b), [Format::F32]);
+    // A translucent group's result is one dynamic store over its content.
+    let mut b = Build::new(8.0, 4.0);
+    let red = b.rgb([1.0, 0.0, 0.0]);
+    let half = b.state(|s| s.alpha = 0.5);
+    b.rect(PAGE, [0.5, 0.5, 7.5, 3.5], red, mark(StateId(0)));
+    let group = b.transparency(PAGE, GroupAttributes::default(), mark(half));
+    b.rect(group, [0.0, 0.0, 2.5, 4.0], red, mark(StateId(0)));
+    b.rect(PAGE, [5.0, 0.0, 8.0, 4.0], red, mark(half));
+    assert_eq!(exact(&b)[0], Format::N16);
+    check(&b);
+    b.rect(group, [5.5, 1.0, 6.5, 2.0], red, mark(StateId(0)));
+    assert_eq!(exact(&b)[0], Format::F32);
     let bytes = FastParams {
         byte_storage: true,
         ..FastParams::EXACT
     };
-    assert_eq!(formats(&b, bytes), [Format::U8]);
+    assert_eq!(formats(&b, bytes), [Format::U8, Format::U8]);
 }
 
 #[test]

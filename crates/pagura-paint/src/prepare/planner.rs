@@ -138,6 +138,9 @@ impl<'s, B: Backend> Planner<'s, B> {
                 simulate: separations.simulate,
                 bytes: request.fast.byte_storage,
                 depth: limits.depth,
+                transform: request.transform,
+                pixels: request.page,
+                user_unit: scene.page.user_unit,
             },
         )?;
         let spots: Arc<[Name]> = separations
@@ -800,7 +803,7 @@ pub(crate) fn curve(function: &Arc<pagura_color::Function>) -> Result<Arc<dyn Cu
 
 /// The device transform of a fixed view (12.5.3): `NoRotate` undoes the
 /// page's rotation and `NoZoom` its scale, about the anchor.
-fn view_transform(
+pub(crate) fn view_transform(
     device: Transform,
     view: pagura_interpret::ViewFit,
     user_unit: f64,
