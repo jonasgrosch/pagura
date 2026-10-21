@@ -686,12 +686,7 @@ mod tests {
         for (limits, both) in [(Limits::default(), true), (tight, false)] {
             let list = DisplayList {
                 commands: Vec::new(),
-                crop: Rect {
-                    x0: 0.0,
-                    y0: 0.0,
-                    x1: 4.0,
-                    y1: 4.0,
-                },
+                crop: Rect::from_corners(0.0, 0.0, 4.0, 4.0).unwrap(),
                 rotation: Rotation::None,
                 user_unit: 1.0,
                 limits,
@@ -771,12 +766,7 @@ mod tests {
                     transfer: None,
                     position: Position::Unknown,
                 })],
-                crop: Rect {
-                    x0: 0.0,
-                    y0: 0.0,
-                    x1: 4.0,
-                    y1: 4.0,
-                },
+                crop: Rect::from_corners(0.0, 0.0, 4.0, 4.0).unwrap(),
                 rotation: Rotation::None,
                 user_unit: 1.0,
                 limits: Limits::default(),
@@ -883,12 +873,7 @@ mod stencil_tests {
                     transfer: None,
                     position: Position::Unknown,
                 })],
-                crop: Rect {
-                    x0: 0.0,
-                    y0: 0.0,
-                    x1: 4.0,
-                    y1: 4.0,
-                },
+                crop: Rect::from_corners(0.0, 0.0, 4.0, 4.0).unwrap(),
                 rotation: Rotation::None,
                 user_unit: 1.0,
                 limits: Limits::default(),
