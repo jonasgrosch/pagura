@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "status": "frozen-before-profile",
+  "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+  "source_sha256": "f51c3453ce388b1d6670ae2c507cb87469bd2b7aeb74746a74001dd7b91225d4",
+  "product_baseline_commit": "c70b467882faafc9baede8c06c7011ac2be1ae21",
+  "reference_measurement_commit": "7cea2a8c4c38ecbc6f975c938f37dc8bcd6910fa",
+  "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/many-marks-profile/pagura",
+  "input": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/many-marks-profile/input.pdf",
+  "oracle": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/many-marks-profile/oracle.ppm",
+  "conversion_report": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/analytic19-conversion/conversion-001.json",
+  "audit": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/analytic19-conversion/audit-001.json",
+  "summary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/analytic19-conversion.json",
+  "command": [
+    "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/many-marks-profile/pagura",
+    "microbench",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/many-marks-profile/input.pdf",
+    "render-cold",
+    "1000",
+    "72"
+  ],
+  "configuration": {
+    "accuracy": "exact/default",
+    "background": "white/default",
+    "page": 0,
+    "dpi": 72,
+    "iterations": 1000,
+    "attachment_delay_seconds": 0.1,
+    "sample_seconds": 5,
+    "sample_interval_ms": 1,
+    "owned_children_deadline_seconds": 120,
+    "maximum_launches": 1,
+    "verify_each_profiled_output": false
+  },
+  "files": {
+    "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/many-marks-profile/profile.py": "2f77802758cbdd6537c20630d72749d29af88fdc44525c609d2988f6b9697ae5",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/many-marks-profile/README.md": "20907b8b96c879811a6fa9f753d943d5ba372ab3be122916491ba3d25dee69b7",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/many-marks-profile/pagura": "4c1a5c3f2fc91348bf90278df82ad688b72cebefc11cd1ff419853478af2b09e",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/many-marks-profile/input.pdf": "be3e7f89248060bd7ed07c885dd4aafd453db0ce99dfaf0881b9f20a93fb50c9",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/many-marks-profile/oracle.ppm": "78250fff9aafca7d0babfdcd43fd5b389e55d55facd4d4d54316f28e270baf82",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/analytic19-conversion/conversion-001.json": "6be8bd8ac928c113d62870bf255185415b91276c2e30a0f3638ff73c0952eae9",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/analytic19-conversion/audit-001.json": "562257fb3c9c9e61a2fb69d8d2ed4a04faf0ac601ab86e02841ac80a15826166",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/analytic19-conversion.json": "4d40837fa381cb38639f4b52e38e72a47dbb9ec50b9c4b268e2eeacb1eeb5d4b",
+    "/usr/bin/sample": "0959bc5da2a44c7d35df917a00020ab8167f0c6a98d456b0647533aa24c3456a",
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14": "d8f1d508de5acfd500f20d1949528375ff4a1f470efb267f00d1770941cdeee3",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/analytic19-conversion/idle_then.py": "bedfb4f54e1764360f2b90c56e093e96182fba15b6da4ffe9ab7d4400aad4d30",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/analytic19-conversion/load_observer.py": "5879b8ac1dc71d93c15767d4482f8cccc6f1b1ac3cc5526421f44a22e7b76c0d"
+  },
+  "limitations": [
+    "One explanatory profile only, no comparative speed or admission claim.",
+    "Uses unchanged source and binary with42 independently correct outputs from prior campaign; microbench itself does not verify its outputs.",
+    "Sampling includes repeated open/compile/render/drop and excludes initial file read from microbench timer.",
+    "Cold means fresh document per iteration, not cold filesystem or process startup.",
+    "Known-process observer is cooperative detection, not proof of zero background activity."
+  ]
+}
