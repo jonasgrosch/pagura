@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "experiment": "f32-painted-interval-continuation",
+  "status": "reviewed-user-authorized-continuation",
+  "decision": "retain-every-completed-pair-and-resume-unfinished-fixed-schedule",
+  "reason": "The user explicitly requested preserving completed pairs because the detected job did not consume compute, then requested finishing this run and pausing. The original guard measures process presence, not CPU use: neither contamination nor zero impact is inferred. Retain the complete contiguous prefix without inspecting timing outcomes and execute only the unchanged fixed schedule suffix. Preserve original failed receipt and guard, with explicit cohort and checkpoint-method differences. No pilot pooling, source changes, new thresholds, promotion or subsequent optimization.",
+  "process_presence_is_not_cpu_measurement": true,
+  "original_config": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/confirmation-001-config.json",
+    "sha256": "e4a58fa24784e7774b3a1abc068e2aaf41f4461ad6d2f896b804f24e81cd94a2"
+  },
+  "original": {
+    "receipt": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/confirmation-001-receipt.json",
+      "sha256": "0bcc43477ac0e19816f1eecfb104f64c7cf60c8b8e7e611346ed2b2ed5a71c99"
+    },
+    "guard": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/confirmation-001-observer/guard.json",
+      "sha256": "8fe9a92bac9d39e2ba3c578c8f4f588f6eb05e023b07a0afcbb7ff3aaef8a047"
+    },
+    "report": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/confirmation-001/report.json",
+      "sha256": "1f992ea0ba50b74bcace7147fc1f7563e2fc04fef48faa24908e1d46f59eabdf"
+    },
+    "intent": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/confirmation-001-launch.json",
+      "sha256": "f75379b6d1ccb9196bc3314a5838161b14a4be9d94d8d507fd11d9502ecefa72"
+    },
+    "start": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/confirmation-001-driver-start.json",
+      "sha256": "67fa31b36c00a294b16be5097e0c3ef5adde3704347530a09efc3c99e55f1cb4"
+    }
+  }
+}

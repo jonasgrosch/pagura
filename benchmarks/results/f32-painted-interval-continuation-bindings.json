@@ -1,0 +1,311 @@
+{
+  "schema": 1,
+  "experiment": "f32-painted-interval-continuation",
+  "stage": "native-admission",
+  "plan": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/f32-painted-interval-continuation-plan.json",
+    "sha256": "b331063dfc3c043b992687b5e0fa108b4443f6e8661c4db60b832dd27aa79eaf"
+  },
+  "identities": {
+    "baseline": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-f32-interval-base/pagura",
+      "commit": "f9738174757252567730ff62b5d36620c01d1e6c",
+      "source_sha256": "53062678753e6012a291b95dbf07cb8b069e7134ab836d587919975d1ed057c7",
+      "binary": "/private/tmp/f32-interval-native-baseline-001/release/examples/scene_index_profile",
+      "binary_sha256": "4d2c7d3d9b56f73339da54844fc821b21ab9f253a9f234266b3196cf77a1f49e"
+    },
+    "candidate": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura",
+      "commit": "f9738174757252567730ff62b5d36620c01d1e6c",
+      "source_sha256": "4d6f7ab3f68500009aa938b1e3680d8c26a6fc052f706dd3a4ce5ad697b94a8e",
+      "binary": "/private/tmp/f32-interval-native-candidate-001/release/examples/scene_index_profile",
+      "binary_sha256": "5ea1a8b08200bdc4645e2b4e7dd1555f6d2581680849aec6c1099c0de443add1"
+    }
+  },
+  "native_builds": {
+    "baseline": {
+      "receipt": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/native-baseline-build-003-receipt.json",
+      "receipt_sha256": "42aed51245c55790d4b63863f160ebb0f8e1971cdecc6679485876570f7313f1",
+      "context": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/native-baseline-build-003-context.json",
+        "sha256": "3f6eea8db9f2200cb945d61ee43541dfbddc0b9c7e388240d068a8aa8f149b16"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/native-baseline-build-003-observer/guard.json",
+        "sha256": "2a642baca89eea2a85f55451f216f264d31be1f2bf93d0db484f017407800818"
+      }
+    },
+    "candidate": {
+      "receipt": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/native-candidate-build-001-receipt.json",
+      "receipt_sha256": "5531a281a283e5f32f678682f6de793c6288db552f1ab44a1c52e034ed1e2bf4",
+      "context": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/native-candidate-build-001-context.json",
+        "sha256": "e3fe7c225f779b9e20315c8f7510ca5e391b9d7564de894f6b37a0ec9540ba94"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/native-candidate-build-001-observer/guard.json",
+        "sha256": "b8aaed8299acff08acb20ca8329185d472b5dac86565d9f705d8eca0f7558a0d"
+      }
+    }
+  },
+  "runner_sources": {
+    "baseline": {
+      "commit": "f9738174757252567730ff62b5d36620c01d1e6c",
+      "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+    },
+    "candidate": {
+      "commit": "f9738174757252567730ff62b5d36620c01d1e6c",
+      "sha256": "12f0d3dbf3ab8f7ac28fcc1e4b3ad143793aadf434c8de0765abcaf42a3f66be"
+    }
+  },
+  "candidate_runner_source_sha256": "12f0d3dbf3ab8f7ac28fcc1e4b3ad143793aadf434c8de0765abcaf42a3f66be",
+  "python": {
+    "path": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "sha256": "c86f5b1bece373ce5b670f9816630d7002c9e64525f4930fb035ecc8b7bd9345"
+  },
+  "python_executable": {
+    "path": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+    "sha256": "d8f1d508de5acfd500f20d1949528375ff4a1f470efb267f00d1770941cdeee3"
+  },
+  "guard": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/sources/analytic19-conversion/load_observer.py",
+    "sha256": "5879b8ac1dc71d93c15767d4482f8cccc6f1b1ac3cc5526421f44a22e7b76c0d"
+  },
+  "bound_files_sha256": {
+    ".cargo/config.toml": "b5d1e3e2e68286c97fc37c1f1b1380cb18355bd3f87a8bf8be9e9c026a6d4a6d",
+    "benchmarks/agreement.py": "ce2e21bbfc12f89dcdbf72a79dedc6a29a2a87662839518e6c31de5584bce8b9",
+    "benchmarks/audit_f32_painted_interval_wasi.py": "d76425f11d6d204b300a9817a4100cd00fbfa5800f89609f966b2208b098fb2d",
+    "benchmarks/clip_viewport.py": "a2da9c089d13e98b98fb9a20545ab98a3ed42657c05730e7fd39fa3fb5eed434",
+    "benchmarks/clip_viewport_fixtures.py": "1f003e4f71dd493d6e8ff34eef6f25a1fd3d9587d6412e7ea183102f9a4dfed2",
+    "benchmarks/color_reuse.py": "5d1f0bebc7ca74c8348e6f8ddc0906e58705dd9267398686f2e9341250d82401",
+    "benchmarks/color_reuse_fixtures.py": "84ed3379405deb95be8b5ce73e5da39fd8581ebe8448bf67da49cc06563e4121",
+    "benchmarks/evaluate_color_reuse.py": "edd24441d0251216aa536615d0b7636703b40a31dad0031b8216e66d0ff26bc8",
+    "benchmarks/evaluate_f32_painted_interval.py": "79aba7b3b1ecafefc625f3d69e3c026e4bdd5479e5fe7c767f8f974dfa2b9d82",
+    "benchmarks/evaluate_glyph_memo.py": "67bba943e9e39b1d57d9dc7d0b870b1fc958157119119023fb9a23120d6f0ca7",
+    "benchmarks/evaluate_n16_output.py": "cd71c7124e89cb6751bc2bf23cd655b187b88552f1dd6beb4b51fcefa4ae8692",
+    "benchmarks/evaluate_n16_output_guarded.py": "4bd0794a57553b54b1386947703b0785d1b9c255eb65b7614cfd80e9bac81965",
+    "benchmarks/evaluate_n16_output_u16.py": "4ee3f7b91395a04b70efd742d01723d67991e39f52630e2c9f9e58adf9dbe4b5",
+    "benchmarks/evaluate_n16_painted_interval.py": "08d74e45378a2e2b7fb6cadbd26936c451f24ffe5f2b551cea6023ad738e6af1",
+    "benchmarks/evaluate_n16_painted_interval_recovery.py": "89dd7bef261246c0be329740f1748abff36ae8b5e05a2d0b29eb160141adb1bd",
+    "benchmarks/evaluate_n16_painted_interval_wasi.py": "7f4879e0dedb158d0c17d025501f31f343df3527c0ad923b207c87f2c52b45db",
+    "benchmarks/evaluate_opaque_composition.py": "4611eb9296eb6f22fe77bb25a3bced3a24e0cff60b4a98bfd3c6f1eff61a754a",
+    "benchmarks/evaluate_rectangle_reserve.py": "09f7c4d3459415e44c3d95c8583cf4b5591404b34a0a90ef72942cc91bf14bf5",
+    "benchmarks/f32_interval_admission.py": "858944a04ab2f5d9b75066442473495830161b49942cd0e76c01ab8bd04cf629",
+    "benchmarks/f32_painted_interval.py": "1380fe4c05a31e8c905a7c71170a2536598f3800f6df2630b19bd615c8def13c",
+    "benchmarks/f32_painted_interval_fixtures.py": "3595b3b6e4b1d8ae7e38240d7d0143e7ead95d7f70be77c33252d2da5bfd6a63",
+    "benchmarks/f32_painted_interval_wasi.py": "44998f9c4c93bec9f9618af251e20b532cb6d2dde576b2f140cf423a74cd65a5",
+    "benchmarks/glyph_memo.py": "5e0d66cd4d403868917a12bebaca18595536984a65be076a90594b8f699592ce",
+    "benchmarks/glyph_memo_fixtures.py": "9b866f12c61dbb7ddf2cc7e227559813b89f16a91370fdced96a7f46426e55a1",
+    "benchmarks/launch_f32_painted_interval.py": "3d4676686cd21a878afab6c6c01ac19048c52ff5c3404a388fbd90b6f8cf3bcc",
+    "benchmarks/launch_n16_painted_interval.py": "6e08c6c506a3764769d97efebc0efdbd81d005a0ccaed830a913bae96f3f9e6d",
+    "benchmarks/linux_process.py": "9b7c53fb428a635a60a89bef22ecc6d3165f29c95613dd67dcdd45afb93ff96e",
+    "benchmarks/machine_record.py": "ceb9aa34cdc5d8afe1c758258cf968a2f21128ab3a1daa491fb7c6e9dadd0e59",
+    "benchmarks/n16_output.py": "d4ff736e8cb0dedeab7fda9ebb678bb4ce7796f66b7321cbfd520731bdc89c83",
+    "benchmarks/n16_output_guarded.py": "2121864dd28369cdec17d1e324ebc090a5a494331d669e56b5852f87cded66fc",
+    "benchmarks/n16_output_u16.py": "9391855af5e63bdf02e0027ce3702ccc6a19486bb2acbd8e12e2100b87c4e086",
+    "benchmarks/n16_painted_interval.py": "671bacd18fdefc77c636a018e6c0c48fae67a4cabf2c0c37a2e37a3429af8585",
+    "benchmarks/n16_painted_interval_fixtures.py": "12cf800e3f59d486e29b86d13e8d1f7fd3acd1a44422bfcc35d805291b65091e",
+    "benchmarks/n16_painted_interval_recovery.py": "4ae6e837ddd5928d5d1949cc1e698a7dd1ffda55a1a920727e1b7173c084db12",
+    "benchmarks/n16_painted_interval_wasi.py": "8c93f09af05643746ce965810c04bdc0dc0b165be74fb2f5e116e9f2f459bd21",
+    "benchmarks/opaque_composition.py": "a9a27a3adbfe4e3b5da1a73c305cc7078fd3047860351d2448f336cbd179ea45",
+    "benchmarks/opaque_host_probe.mjs": "5bfbde3017407f429dc9f6b968992ef320f6e47d14fee8948407326a7df311ee",
+    "benchmarks/opaque_precision_fixtures.py": "84e50b24f54de9982985be6c2ea4147911999375461bb966b2845983055775df",
+    "benchmarks/opaque_precision_probe.py": "962b71aa080bf1d58f96a9c2524abf88a577abd5a790166338fcaddacaa0e5d4",
+    "benchmarks/paired_render.py": "feb245618601265124f11cb2af090ea24fc6a7bff03f8a729ee2708714ae98eb",
+    "benchmarks/preflight_color_reuse.py": "5674141c3856f8d0205ababbfb609ce5d841c26e345ebbe7ad0d95972bc484fc",
+    "benchmarks/preflight_rectangle_reserve.py": "b42cdb5f8af56f8bdeb826ad672c31ceb634badf5dfcfe2c6c819b72ca665462",
+    "benchmarks/prepare_n16_painted_interval_recovery.py": "fa7a5e73362a483ec464aa03a88dd7226ff0b77051a6a1ada8215f2f317748d9",
+    "benchmarks/process_measurement.py": "ff76a69790228ed02d8cc3d311352f6a08fb6c4fffe7b5561674c2fcd187479a",
+    "benchmarks/rectangle_reserve.py": "aab555d6d7b1bbf0e17f3d4fc0b828ecd5eb86e9b1994009c15e4fcb3bb5cbba",
+    "benchmarks/render_profile.py": "628b47758955268ec7bcae51d40748da8a62cb7b1bdc570ad0cbd2868051b854",
+    "benchmarks/results/f32-painted-interval-plan.json": "7bda45e6c4ee5bc914db51be2bc1ce706cbcc7af4aee1f830e9384a49fdf77c3",
+    "benchmarks/results/sources/analytic19-conversion/load_observer.py": "5879b8ac1dc71d93c15767d4482f8cccc6f1b1ac3cc5526421f44a22e7b76c0d",
+    "benchmarks/results/sources/f32-native-preflight/admit.py": "d901dddcdd38b32092f3f362d55840338e166915dbbb39cceeaa94725db56a1b",
+    "benchmarks/results/sources/f32-native-preflight/capture_native_build.py": "2be01880e6ebfe91215c6dfb2752568cbe1a5a78c2c62c00fbb672e6330853c7",
+    "benchmarks/results/sources/f32-native-preflight/freeze.py": "a3c0e761a9699b116a7755694b257a3b4057c7abe709f11bc94bc115465b8572",
+    "benchmarks/results/sources/f32-native-preflight/run.py": "f1432d90365372bdac7d1437f09b9536af560238d4074637fb16821470881b31",
+    "benchmarks/results/sources/f32-painted-interval-validation/prepare.py": "bf0cd785ec31249097246d0c0fd8d7d647876dea4a188a5b7d517a67394a591c",
+    "benchmarks/results/sources/f32-painted-interval-validation/run_v3.py": "0abf1e49ae966e734731b5ae1fab2fe1e2284a2d24174f4e097965b4c7847b5a",
+    "benchmarks/results/sources/f32-painted-interval-validation/run_wasi_diagnostic.mjs": "3e6b8fbc6056f53c06d8e26099979d337c1f4a1a6d1c849ab248517a50b0071a",
+    "benchmarks/results/sources/f32-post-interval-profile/profile.py": "57563ee8951517dea175760037ae34c62a2aa8794d8d85b89f8f31a5b359d229",
+    "benchmarks/results/sources/f32-preservation/audit.py": "9bfb5e13cfdcd2b318a7d0d700d47692bb4922a1153bee3afff56ba3c75a3c93",
+    "benchmarks/results/sources/f32-preservation/build.py": "dd4178250cdc55ef170a9bd053ba3e552815a0c2bf6691f8663da85a39ee02d4",
+    "benchmarks/results/sources/f32-preservation/check.py": "833371c866e13360cee62adb73d49f0fa1373074ebbd8faccd9bd8a108525f13",
+    "benchmarks/results/sources/f32-preservation/cost.py": "4c06a26c7c3f408e9410aea34ef2abf42135906251a700bab56517d78a488108",
+    "benchmarks/results/sources/f32-preservation/run_wasi_tests.mjs": "90ea58f9f4bcdb298cf323f90f4af869ca84b6c809b08d23329a8e8865a19c72",
+    "benchmarks/results/sources/f32-preservation/summarize.py": "b976380e7f2d72eadacd16de97f7298929d50f70d3edfc2fe2936446ab21a772",
+    "benchmarks/results/sources/f32-quality-assembly/assemble.py": "772ea4504da499b249f4bbd08b81c7fe7aa6980265aac3591400d7011dec2f72",
+    "benchmarks/results/sources/f32-route-probe/prepare.py": "7b54e5afd651200972992e49b96b2ac709ed3a762044a0f34857584682c68830",
+    "benchmarks/results/sources/f32-route-probe/run.py": "b1f7217caea85679ecdfd7598d6c3eb07d51cfc3e9717e91525d393dd8c1403e",
+    "benchmarks/results/sources/f32-wasi-launch-preparation/prepare.py": "3ad2d27dfcb153c5436155742896d42f9da94526f198e3db24c669ddfee35444",
+    "benchmarks/results/sources/f32-wasi-validation/capture_build.py": "53d73656f66586a7e6bafbd7821d2603a9820a82123cc3b60141681d58c8b94e",
+    "benchmarks/round5.py": "e6645a63ce7b37137a236941d77ce12c5f882a5ca24b1dee966061850ea929b7",
+    "benchmarks/round5_compare.py": "293308d069c74b69a88ff3a076bc85181771bb3f40ca72058bdc06d6de502301",
+    "benchmarks/run_profile_wasi.mjs": "69eeca885ea9cdbd5c1daaeb2b8b1be6faf6f56969b31d75445eb777ea5bb34c",
+    "benchmarks/scene_index.py": "fbc260aa9607efb2c60dec4f8fa44445137def56b57881350f475c531c7a0f6a",
+    "benchmarks/test_audit_f32_painted_interval_wasi.py": "213100490ed055acd3bdd7f721d5645feb3da14c770c8015bebca00c30437e74",
+    "benchmarks/test_color_reuse.py": "a2b74484305b3eaf4f4bf7f642dcff9223bce6c6b9b36cd52ab1c9ebdf30a872",
+    "benchmarks/test_f32_painted_interval_wasi.py": "ea27e8adaa94732c80393c6aff354b300dbcfc166d03e9b7ab9982b8607cdc61",
+    "benchmarks/test_n16_painted_interval.py": "9550c9cd764642e31521b9a0f758855f0a5205924463aca40f2eab7092dfd6aa",
+    "benchmarks/test_preflight_color_reuse.py": "e28849c32cf75dc95dc52a658468a66184104b95e818f8464c42599e0714987f",
+    "benchmarks/test_process_measurement.py": "6736da63f8af462ac538629843023cd82f1e878795b632ca8c6bc6aa40026200",
+    "benchmarks/test_rectangle_reserve_harness.py": "0f3a31b3c14e1d35400326620548b36045e16c5c2c4c6cfe722e4ef5d62f77c2",
+    "benchmarks/test_round5.py": "71aafa8c6801c3443756ddba0c38bd62caaec8206570aa55ce384b5b6073a61e",
+    "benchmarks/test_round5_compare.py": "5bc189163f27871a74309503895d2cba2c5f82041bb9178d4b0d1b26839db6af",
+    "crates/pagura-render/examples/scene_index_profile.rs": "8e89a087d351e7b89289e0897cafeb75422d4c151280734fde8c958a841279f2",
+    "rust-toolchain.toml": "07647b6d1df86ed3a940cea32eb5c93a80d4d5e71926f849f500f15c2c2e3d5c",
+    "tools/benchkit/__init__.py": "ca67b6512bf927b7a13218c5e9098badb4f7a5c2e3e051559a67171b64d260ef",
+    "tools/benchkit/artifact_gate.py": "7dfa361e9cc6b6deaaba472aa020e24e003f8619113e9f7350cd91ed1a9f71a3",
+    "tools/benchkit/artifacts.py": "27f9806bfb8e198ff68be39d780672f1c5bb5e0deb24a691e9690185ab6f831f",
+    "tools/benchkit/config.py": "7d759441e610ce1f8f9824f08d5164a83c13d8b7eb1fbcafc02a1175ccdf8ebc",
+    "tools/benchkit/conversion.py": "a6632b3f05fdfb1c62b3a31ca164c6257b7201158585a814e13437786d52c523",
+    "tools/benchkit/corpus.py": "196b31dfcc72edeef5ec6f86cefdcc07dedf64e756a3d428c951804603b0b524",
+    "tools/benchkit/documents.py": "8f37c46d58d264a9ecaa5dfa813b04d38aa10e21d2b32c46a676a139d65000bf",
+    "tools/benchkit/engines.py": "af1a5d296037bc04af8a8b1f3780534ec3b7c7da7771dd09b4c4d9f6f5ad7e59",
+    "tools/benchkit/gate.py": "baba3aaa32e90e19f4611db3fff423bcceec3632ae2ca590a78493a590b78fb4",
+    "tools/benchkit/images.py": "1978e8021ca1cf9ab07794306ea4aadb52cbee54d2ecd2c0dbca16fc2b1ef842",
+    "tools/benchkit/legacy.py": "6e5c4a62586715d5afcce9e351c1a47e530a003ae135512459dfbfb6913e13db",
+    "tools/benchkit/measurement.py": "15635857438cd4cb75308d84621ce7a2a808ded187813570ebec18dd8e3368f9",
+    "tools/benchkit/oracles.py": "fc578193666de673e02168b0c0a2d13bcfd8ac31558569805842ff58a2f04a3d",
+    "tools/benchkit/process_group.py": "e0cfac85a0520087d9afc48701d55965422f852853648dc2a075d88f1ae7a148",
+    "tools/benchkit/reference_cases.py": "f5c01fed71d1298a8389fbc249f675428fb117b911692b7caa6a3b9b9515e927",
+    "tools/benchkit/reports.py": "92c7271518daab382aa0e149bb5854a4fcac6fc6bc102c36b2947a82295b809c",
+    "tools/benchkit/runner_evidence.py": "26bb44d1076ab93966258d0ac09d4e02c6966ea0710f2aefdf2b88bf7be94d15",
+    "tools/benchkit/statistics.py": "18b14a7dc3e079a9f3452c6a31887f7dbd49e8d4e8fcfeb5257406e60045ebff",
+    "tools/benchkit/timings.py": "b31341061aeef2fbc39023f468f50e3a7190f00d7a38c00c0c558843246f47e9",
+    "tools/check.py": "1b2b933e11fe05bd4a38ca9c58851f343c857db6c205d8be3d5c6e7e2c90a9fd",
+    "tools/fixturegen/__init__.py": "06b824d1276832a8e563a33357fc1649b53e1b6b45ba2d3238bd3a089001fb93",
+    "tools/fixturegen/classic.py": "6947b4955be09865f0ff5c3ff704d6aa23f648b19c3ae429f9bb5e4642fadae8",
+    "tools/fixturegen/cms_signatures.py": "8fc1c18f0f003ddc2d523b2982ad2902949005db552efca64f0c40dcc2a3abca",
+    "tools/fixturegen/codec.py": "e88060827a8c1e4ba3f7fd3d5a6bb95a39cbfe7e1b33f9b8d688a6703f9eceb5",
+    "tools/fixturegen/competitive.py": "c2c7401363029fc5fe8017eedffc1ec94464ad141ff240283c4a76656d52e200",
+    "tools/fixturegen/content.py": "313f622b99ed331e8688b1ef9ef1353b393811ad8397f0b43b8ba64b8b280d6a",
+    "tools/fixturegen/crypto.py": "eb9d9e2ca890259047820b38c7e8e9fb7a3870b931005e94b8c5fd276910a974",
+    "tools/fixturegen/document.py": "e9adef09a268fa38d2e8d58c219a09c20d0e799738effe3aacc1057b5ab59027",
+    "tools/fixturegen/document_forms.py": "5bc3d8aae7232004f0a9efbb2585fb3182204441bbf4cc2b2427b47890cf7b11",
+    "tools/fixturegen/ecdsa_oracle.py": "74d3089ffefc2fe9582ebc506b1232877a85d46046d7793c2b1fb7a39369ca1d",
+    "tools/fixturegen/ecdsa_vectors.py": "0dc0604c19bf77e660039d6532a276720c7cbebe0cb2719cbb632fd1320cf321",
+    "tools/fixturegen/font.py": "39bf4056e475d2b8042129c7c443cf60779df9def94895cb82ef6b254332c4f1",
+    "tools/fixturegen/forms.py": "68cc8c4eb70fb40fcbaa355af0d137f4d8569d61bd795e889542ff0d1ec458e0",
+    "tools/fixturegen/forms_render.py": "88e5d75a63182598a34eaee2784b19b1228667ef1a38daa8a37fd29773d81b4b",
+    "tools/fixturegen/image.py": "29cc75b6a49cf04aa329cd94c8e188a242350bc4b633683a58dfd032da7240f6",
+    "tools/fixturegen/jbig2.py": "b742c16ce6f2e4d163e34869a76c385e093f523551917147017511312f161cb2",
+    "tools/fixturegen/jpeg.py": "fc6a04bfdaddd31368967f3b2d2f382d0b21e2aeb7789561886e5db928161944",
+    "tools/fixturegen/jpx.py": "6088b09cb81b3b263f96fdde131e9ea27daaf046f61c4ffc35a64125187bb04c",
+    "tools/fixturegen/model.py": "16b0fa768f064c60e5e586b416fd41154891d4bfb866daf9c2724e72ea3db273",
+    "tools/fixturegen/overprint.py": "c648facf0c405820d0c69fdb2c6710cb3a640b8739911403de27699de5301eb7",
+    "tools/fixturegen/paint.py": "2fe1b8630c83134e4b5c28d4a4c3b63f5d673d1bf8d8418e2453fb11d2d6f01e",
+    "tools/fixturegen/paint_cff.py": "91bbe144a6a20139f47305e8998b2619d6375e6b83c5c00039f3e5c61acc26cb",
+    "tools/fixturegen/pdf.py": "6d1546f6a56fedd06bb4bfe247f6b5fa747e092b6ac471f9134dcef72820f810",
+    "tools/fixturegen/pki/crls.py": "f26f5e76af99545f3688280567918d6ad516274a12bd3f1844303b38f298a7c1",
+    "tools/fixturegen/pki/fixtures.py": "a9a17efc0d49275e6a042d0d7e980ecb46ae978adeba7f57513e0f72ee93c8cc",
+    "tools/fixturegen/pki/graphs.py": "549fbd9ba925d54e874e9282c1b3e33413ffb53761b2477bd730a1ffa29fd9dd",
+    "tools/fixturegen/pki/path_inputs.py": "697bbd65e7ae5ad8d0102cc39cbbe986506d970814b4bb967b9d90845b0c19f6",
+    "tools/fixturegen/pki/path_security.py": "e0d163d71fade792c485d7d6b04f21c8b2256e933d7c885822fc6f44a1d71c39",
+    "tools/fixturegen/pki/paths.py": "44178d88710b8f23737838bbb0db2edffbe9da9370b860f46b0275b0298a60d3",
+    "tools/fixturegen/pki/pkits.py": "5a2fab150291931b89729e997d129bc980f9b6008e42dc15a4e95663e23f0965",
+    "tools/fixturegen/pki/revocation.py": "0fced620cb555fe9d918e054457de0be8d733825b77cf550f9a695f4b5d83e06",
+    "tools/fixturegen/pki/vectors.py": "b425eff67c03900ab71bf435b1eb5f9a554ac541e417b2ff6150d490ba98b500",
+    "tools/fixturegen/raster.py": "cf2b92c735c3f58e3405f5d847b0e2bec2bf1a13fabe02e5083087cbc8c4dd30",
+    "tools/fixturegen/recovery.py": "22ce9abc3857fea1c6d471cb25a54638c90651434a0f4a02d6d5e1a1e59e314f",
+    "tools/fixturegen/rsa_oracle.py": "49cc8c52fc2625f036d92cf48ffcc9383575b37516ce8ac90ca493b39c530853",
+    "tools/fixturegen/signature_changes.py": "dc20e9ff02166622808e27fed33c00e4e10b697f42f788b0059ddeb238887b56",
+    "tools/fixturegen/signature_policy.py": "18e8b20bf08d623b5bcbbdbcb93b22a8a14c13266c791b79d0df1fbb05b95f99",
+    "tools/fixturegen/signatures.py": "26f293b771a548625ef3ba8aec836626b6b1c5d634d9736746112651fe017946",
+    "tools/fixturegen/text.py": "f9391fb2184f6151e24eb393a699f0c95d706274ed8f62be948be49cf5eaef7e",
+    "tools/fixturegen/transparency.py": "21cb27be3949bc1acb2c5cfffa146e606fc4e11fd0b766330e8536f3ba6f62a3",
+    "tools/fixturegen/unicode32.py": "52993713b4af569739083d78a25386bfcdd10cb6fd2caf2070753cd3d6c6d4db",
+    "tools/fixturegen/zero_area.py": "e9988b814b594ce059ed845e48fb966d4a54a8ff06d447778c12be7924bc865e",
+    "tools/runner.py": "92bf6ec2203f9404a78942ae5303bab1310793ca98ed6dad7278a57eeed83df1",
+    "benchmarks/prepare_f32_painted_interval_continuation.py": "50fcf60f86bb6a29465402473e16bd514511f20f88716a93779be2848491f288",
+    "docs/plans/f32-painted-interval-continuation.md": "2b25a6d984dbbc3f41629480edbbb30cb906275df883d6b96ed7195e3421b7d8",
+    "benchmarks/f32_painted_interval_continuation.py": "b056b56c5fcd1dadf7af8d8018f975b9f7bec6d4f18ce34fc7b1ed0fad731557",
+    "benchmarks/results/f32-painted-interval-continuation-plan.json": "b331063dfc3c043b992687b5e0fa108b4443f6e8661c4db60b832dd27aa79eaf"
+  },
+  "preflight_bindings": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/f32-painted-interval-preflight-bindings.json",
+    "sha256": "845b8cadcc189a1df73eaeef38c11cd00a7832ba9d6d54c1900ccf9b7c878985"
+  },
+  "native_preflight": {
+    "receipt": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/native-preflight-001-receipt.json",
+      "sha256": "398eb59351f2fcba018768cf0f1382705dd9a3c1bc7d050eb37b4ac5b0ef05da"
+    },
+    "artifact": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/native-preflight-001/report.json",
+      "sha256": "c244dca3561cca266e9d5a0895c9ef91a64a998c387a46a2d008f95aff702d6b"
+    },
+    "guard": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/native-preflight-001-observer/guard.json",
+      "sha256": "4d0e28ee6a07b36d986a8dda3213840aee889aa28a51f951a20f30acd48ea1bd"
+    }
+  },
+  "quality": {
+    "receipt": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/quality-001-receipt.json",
+      "sha256": "ff2c3a7736fc5d9fbdbb3ba77c905a5e7e2ad6b0527ac8adb0abb7fceab34f36"
+    },
+    "artifact": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/quality-001.json",
+      "sha256": "5609e42aa545a2717aba8843eb0159a83e9698dd6c3ae7b1de749637119ebc63"
+    },
+    "guard": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/quality-001-observer/guard.json",
+      "sha256": "8596bc0409f51229a0a45e73fc27d271ee9e69a12ccc59c6b3debb8d82005360"
+    }
+  },
+  "wasi": {
+    "simd": {
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/wasi-simd-001-receipt.json",
+        "sha256": "4ef084935ec3ceec2752a0be886193198d61cbc4224e04c2ef4b442e164fa530"
+      },
+      "artifact": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/wasi-simd-001/report.json",
+        "sha256": "49a8dbd9f87e4caa1b094609420efeeb8c957adc56c2715c523dd8284f88ebdb"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/wasi-simd-001-observer/guard.json",
+        "sha256": "5bb9742adfe8ff269a913b0f8b78cfa20d4dd9850ea70bb8092939ca851509c1"
+      },
+      "audit": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/wasi-simd-001-audit.json",
+        "sha256": "05dafd64d8f83a5d54b22bbcc8f31100bfecf07b44ce9ff039208080fd77ea90"
+      }
+    },
+    "scalar": {
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/wasi-scalar-001-receipt.json",
+        "sha256": "1120e01d30ad241d1090d99fa0af0e109763c52a6b08f1d42e2a09caf0b8d571"
+      },
+      "artifact": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/wasi-scalar-001/report.json",
+        "sha256": "2d382346caa9d9d585fc1ef4604fb6da251b19343bb1206227e959c6a2ba05b1"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/wasi-scalar-001-observer/guard.json",
+        "sha256": "cbcd6e4714f24f16d3c27012eee1e2b3bde8f09c2a7a8058106c4ec081e3d489"
+      },
+      "audit": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/wasi-scalar-001-audit.json",
+        "sha256": "b111f16dbc5ff16f8f8097446f0f54d95b756ec74a84125beada75bc779a5283"
+      }
+    }
+  },
+  "wasi_review": {
+    "status": "reviewed-for-native-experiment",
+    "reason": "Both independent WASI audits passed exact analytic RGBA and same-mode equality for all336 SIMD and24 scalar outputs, with successful equal-feature builds, unchanged source and no detected contention. SIMD twelve-pair summaries are descriptive: sparse targets improved, while opaque Competitive and Exact pattern median point estimates rose. No calibrated latency, RSS or portable promotion is inferred. Native56-cell fixed pilot and confirmation remain required."
+  },
+  "admission_request": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/admission-request-001.json",
+    "sha256": "93687b503debc46372173bdd9c3557f43ccfc8fafc1001bea23ba0208d2bcf88"
+  },
+  "amendment": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/f32-painted-interval-continuation-amendment.json",
+    "sha256": "2fdc44f1f81473f9b806d085fd90a33ed717bc672a2d061155620b725a1d2f3d"
+  },
+  "original_config": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/confirmation-001-config.json",
+    "sha256": "e4a58fa24784e7774b3a1abc068e2aaf41f4461ad6d2f896b804f24e81cd94a2"
+  }
+}

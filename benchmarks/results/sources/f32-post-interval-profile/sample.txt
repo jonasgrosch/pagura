@@ -1,0 +1,237 @@
+Analysis of sampling render_profile (pid 7536) every 1 millisecond
+Process:         render_profile [7536]
+Path:            /private/tmp/*/render_profile
+Load Address:    0x100afc000
+Identifier:      render_profile
+Version:         ???
+Code Type:       ARM64
+Parent Process:  Python [7528]
+Target Type:     live task
+
+Date/Time:       2026-10-21 18:28:00.166 +0200
+Launch Time:     2026-10-21 18:28:00.010 +0200
+OS Version:      macOS 15.6.1 (24G90)
+Report Version:  7
+Analysis Tool:   /usr/bin/sample
+
+Physical footprint:         31.7M
+Physical footprint (peak):  31.7M
+Idle exit:                  untracked
+----
+
+Call graph:
+    4174 Thread_42465891   DispatchQueue_1: com.apple.main-thread  (serial)
+      4174 start  (in dyld) + 6076  [0x18245ab98]
+        4174 main  (in render_profile) + 52  [0x100d0624c]
+          4174 _RNvNtCsdnanKjkF2cC_3std2rt19lang_start_internal  (in render_profile) + 916  [0x100d23a6c]
+            4174 _RNCINvNtCsdnanKjkF2cC_3std2rt10lang_startINtNtCs3bJEMBXHbwl_4core6result6ResultuINtNtCs8Hh7wWMBHrQ_5alloc5boxed3BoxDNtNtBI_5error5ErrorEL_EEE0CskEBVikgbFsk_14render_profile  (in render_profile) + 24  [0x100d03a48]
+              4174 _RINvNtNtCsdnanKjkF2cC_3std3sys9backtrace28___rust_begin_short_backtraceFEINtNtCs3bJEMBXHbwl_4core6result6ResultuINtNtCs8Hh7wWMBHrQ_5alloc5boxed3BoxDNtNtB1e_5error5ErrorEL_EEB19_ECskEBVikgbFsk_14render_profile  (in render_profile) + 12  [0x100d03a28]
+                3022 _RNvCskEBVikgbFsk_14render_profile4main  (in render_profile) + 2476,2484,...  [0x100d04508,0x100d04510,...]
+                1062 _RNvCskEBVikgbFsk_14render_profile4main  (in render_profile) + 2304  [0x100d0445c]
+                + 1062 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render7displayNtB5_11DisplayList6render  (in render_profile) + 540  [0x100c94854]
+                +   1062 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render7displayNtB5_11DisplayList16render_tile_with  (in render_profile) + 656  [0x100c945a8]
+                +     577 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in render_profile) + 12776  [0x100cb7728]
+                +     ! 572 _RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output  (in render_profile) + 468,356,...  [0x100c82014,0x100c81fa4,...]
+                +     ! 5 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in render_profile) + 12716,12704,...  [0x100cb76ec,0x100cb76e0,...]
+                +     275 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in render_profile) + 7220  [0x100cb6174]
+                +     ! 274 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context8commands  (in render_profile) + 1084  [0x100c91934]
+                +     ! : 107 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 10768  [0x100c8e6d0]
+                +     ! : | 102 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context10paint_path  (in render_profile) + 300  [0x100c875b0]
+                +     ! : | + 42 _RINvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB6_7Context11narrow_pathINtNtNtNtCs3bJEMBXHbwl_4core4iter8adapters7flatten7FlatMapINtNtB1i_9enumerate9EnumerateINtNtNtB1m_5slice4iter11ChunksExacthEEINtNtB1i_3map3MapNtNtNtCsfTZxTf8D02z_13pagura_raster6raster5spans4RunsNCNCNvB3x_4rows00ENCB4q_0EEB8_  (in render_profile) + 780  [0x100c36724]
+                +     ! : | + ! 42 _RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer4path  (in render_profile) + 632,552,...  [0x100c814b8,0x100c81468,...]
+                +     ! : | + 32 _RINvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB6_7Context11narrow_pathINtNtNtNtCs3bJEMBXHbwl_4core4iter8adapters7flatten7FlatMapINtNtB1i_9enumerate9EnumerateINtNtNtB1m_5slice4iter11ChunksExacthEEINtNtB1i_3map3MapNtNtNtCsfTZxTf8D02z_13pagura_raster6raster5spans4RunsNCNCNvB3x_4rows00ENCB4q_0EEB8_  (in render_profile) + 664  [0x100c366b0]
+                +     ! : | + ! 32 _RNvXs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5spansNtB4_4RunsNtNtNtNtCs3bJEMBXHbwl_4core4iter6traits8iterator8Iterator4next  (in render_profile) + 116,1012,...  [0x100c30e54,0x100c311d4,...]
+                +     ! : | + 18 _RINvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB6_7Context11narrow_pathINtNtNtNtCs3bJEMBXHbwl_4core4iter8adapters7flatten7FlatMapINtNtB1i_9enumerate9EnumerateINtNtNtB1m_5slice4iter11ChunksExacthEEINtNtB1i_3map3MapNtNtNtCsfTZxTf8D02z_13pagura_raster6raster5spans4RunsNCNCNvB3x_4rows00ENCB4q_0EEB8_  (in render_profile) + 76,40,...  [0x100c36464,0x100c36440,...]
+                +     ! : | + 9 _RINvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB6_7Context11narrow_pathINtNtNtNtCs3bJEMBXHbwl_4core4iter8adapters7flatten7FlatMapINtNtB1i_9enumerate9EnumerateINtNtNtB1m_5slice4iter11ChunksExacthEEINtNtB1i_3map3MapNtNtNtCsfTZxTf8D02z_13pagura_raster6raster5spans4RunsNCNCNvB3x_4rows00ENCB4q_0EEB8_  (in render_profile) + 108  [0x100c36484]
+                +     ! : | + ! 7 _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context6source  (in render_profile) + 1064  [0x100c967d0]
+                +     ! : | + ! : 4 _RNvMs0_NtCs6mGY1dcbO7G_13pagura_render12transparencyNtB5_5Model6source  (in render_profile) + 1112  [0x100c7cc64]
+                +     ! : | + ! : | 4 _RNvMs0_NtCs6mGY1dcbO7G_13pagura_render12transparencyNtB5_5Model10encode_rgb  (in render_profile) + 28,104,...  [0x100c7c2f0,0x100c7c33c,...]
+                +     ! : | + ! : 3 _RNvMs0_NtCs6mGY1dcbO7G_13pagura_render12transparencyNtB5_5Model6source  (in render_profile) + 1024  [0x100c7cc0c]
+                +     ! : | + ! :   2 _RNvMs0_NtCs6mGY1dcbO7G_13pagura_render12transparencyNtB5_5Model6source  (in render_profile) + 1024  [0x100c7cc0c]
+                +     ! : | + ! :   + 2 _RNvMs0_NtCs6mGY1dcbO7G_13pagura_render5colorNtB5_5Space19convert_with_intent  (in render_profile) + 52,200  [0x100c7d67c,0x100c7d710]
+                +     ! : | + ! :   1 _RNvMs0_NtCs6mGY1dcbO7G_13pagura_render5colorNtB5_5Space19convert_with_intent  (in render_profile) + 4008  [0x100c7e5f0]
+                +     ! : | + ! 1 _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context14sampled_source  (in render_profile) + 628  [0x100c96374]
+                +     ! : | + ! 1 _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context6source  (in render_profile) + 1328  [0x100c968d8]
+                +     ! : | + 1 _RINvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB6_7Context11narrow_pathINtNtNtNtCs3bJEMBXHbwl_4core4iter8adapters7flatten7FlatMapINtNtB1i_9enumerate9EnumerateINtNtNtB1m_5slice4iter11ChunksExacthEEINtNtB1i_3map3MapNtNtNtCsfTZxTf8D02z_13pagura_raster6raster5spans4RunsNCNCNvB3x_4rows00ENCB4q_0EEB8_  (in render_profile) + 580  [0x100c3665c]
+                +     ! : | +   1 _RNvXs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5spansNtB4_4RunsNtNtNtNtCs3bJEMBXHbwl_4core4iter6traits8iterator8Iterator4next  (in render_profile) + 112  [0x100c30e50]
+                +     ! : | 2 _RINvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB6_7Context11narrow_pathINtNtNtNtCs3bJEMBXHbwl_4core4iter8adapters7flatten7FlatMapINtNtB1i_9enumerate9EnumerateINtNtNtB1m_5slice4iter11ChunksExacthEEINtNtB1i_3map3MapNtNtNtCsfTZxTf8D02z_13pagura_raster6raster5spans4RunsNCNCNvB3x_4rows00ENCB4q_0EEB8_  (in render_profile) + 252  [0x100c36514]
+                +     ! : | 2 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context10paint_path  (in render_profile) + 4936  [0x100c887cc]
+                +     ! : | 1 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 10768  [0x100c8e6d0]
+                +     ! : |   1 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context10paint_path  (in render_profile) + 252  [0x100c87580]
+                +     ! : 97 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 9720  [0x100c8e2b8]
+                +     ! : | 47 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB4_10Rasterizer13clipped_glyph  (in render_profile) + 1160  [0x100c18288]
+                +     ! : | + 41 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB4_10Rasterizer9integrate  (in render_profile) + 328  [0x100c1a1b4]
+                +     ! : | + ! 21 _RNvNtCsfTZxTf8D02z_13pagura_raster8coverage8coverage  (in render_profile) + 3264  [0x100c2a5ac]
+                +     ! : | + ! : 14 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster8coverage9rectangleNtB4_9Rectangle5write  (in render_profile) + 752  [0x100c1b684]
+                +     ! : | + ! : | 9 _platform_memset  (in libsystem_platform.dylib) + 200,12,...  [0x1828350b8,0x182834ffc,...]
+                +     ! : | + ! : | 5 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster8coverage9rectangleNtB4_9Rectangle5write  (in render_profile) + 848,680,...  [0x100c1b6e4,0x100c1b63c,...]
+                +     ! : | + ! : 4 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster8coverage9rectangleNtB4_9Rectangle5write  (in render_profile) + 88  [0x100c1b3ec]
+                +     ! : | + ! : | 3 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster8coverage9rectangleNtB4_9Rectangle5write  (in render_profile) + 684,280  [0x100c1b640,0x100c1b4ac]
+                +     ! : | + ! : | 1 _platform_memset  (in libsystem_platform.dylib) + 180  [0x1828350a4]
+                +     ! : | + ! : 2 _RNvNtCsfTZxTf8D02z_13pagura_raster8coverage8coverage  (in render_profile) + 6136,6160  [0x100c2b0e4,0x100c2b0fc]
+                +     ! : | + ! : 1 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster8coverage9rectangleNtB4_9Rectangle5write  (in render_profile) + 236  [0x100c1b480]
+                +     ! : | + ! 15 _RNvNtCsfTZxTf8D02z_13pagura_raster8coverage8coverage  (in render_profile) + 3108  [0x100c2a510]
+                +     ! : | + ! : 13 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster8coverage9rectangleNtB4_9Rectangle12intersection  (in render_profile) + 164  [0x100c1b1f0]
+                +     ! : | + ! : | 6 _RNvMNtNtCsfTZxTf8D02z_13pagura_raster8coverage9rectangleNtB4_5Shape13quadrilateral  (in render_profile) + 392  [0x100c0e258]
+                +     ! : | + ! : | + 6 _RINvXs_NtNtNtCs3bJEMBXHbwl_4core4iter8adapters5chainINtB5_5ChainINtNtNtBb_5array4iter8IntoIterNtNtCsfTZxTf8D02z_13pagura_raster8geometry5PointKj4_EB10_ENtNtNtB9_6traits8iterator8Iterator8try_folduNCINvNvB2q_3any5checkB1u_NCNvMNtNtB1y_8coverage9rectangleNtB3E_5Shape13quadrilaterals0_0E0INtNtNtBb_3ops12control_flow11ControlFlowuEEB1y_  (in render_profile) + 60,68,...  [0x100c0620c,0x100c06214,...]
+                +     ! : | + ! : | 6 _RNvMNtNtCsfTZxTf8D02z_13pagura_raster8coverage9rectangleNtB4_5Shape13quadrilateral  (in render_profile) + 36,60,...  [0x100c0e0f4,0x100c0e10c,...]
+                +     ! : | + ! : | 1 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster8coverage9rectangleNtB4_9Rectangle12intersection  (in render_profile) + 436  [0x100c1b300]
+                +     ! : | + ! : 1 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster8coverage9rectangleNtB4_9Rectangle12intersection  (in render_profile) + 560  [0x100c1b37c]
+                +     ! : | + ! : 1 _RNvNtCsfTZxTf8D02z_13pagura_raster8coverage8coverage  (in render_profile) + 3108  [0x100c2a510]
+                +     ! : | + ! :   1 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster8coverage9rectangleNtB4_9Rectangle12intersection  (in render_profile) + 96  [0x100c1b1ac]
+                +     ! : | + ! 2 _RNvNtNtCsfTZxTf8D02z_13pagura_raster8coverage9admission15stroke_boundary  (in render_profile) + 96  [0x100c2f5c0]
+                +     ! : | + ! 1 _RNvNtCsfTZxTf8D02z_13pagura_raster8coverage8coverage  (in render_profile) + 2600  [0x100c2a314]
+                +     ! : | + ! : 1 _RNvNtNtCsfTZxTf8D02z_13pagura_raster8coverage9admission15stroke_boundary  (in render_profile) + 16  [0x100c2f570]
+                +     ! : | + ! 1 _RNvNtCsfTZxTf8D02z_13pagura_raster8coverage8coverage  (in render_profile) + 2640  [0x100c2a33c]
+                +     ! : | + ! : 1 _RNvNtNtCsfTZxTf8D02z_13pagura_raster8coverage9quadratic6anchor  (in render_profile) + 4  [0x100c2f87c]
+                +     ! : | + ! 1 _RNvNtCsfTZxTf8D02z_13pagura_raster8coverage8coverage  (in render_profile) + 6188  [0x100c2b118]
+                +     ! : | + 6 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB4_10Rasterizer9integrate  (in render_profile) + 388,784,...  [0x100c1a1f0,0x100c1a37c,...]
+                +     ! : | 27 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB4_10Rasterizer13clipped_glyph  (in render_profile) + 1008  [0x100c181f0]
+                +     ! : | + 21 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB4_10Rasterizer7sources  (in render_profile) + 1364  [0x100c19ecc]
+                +     ! : | + ! 15 _RNCNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB6_10Rasterizer7sourcess_0Ba_  (in render_profile) + 1016  [0x100c06d3c]
+                +     ! : | + ! : 13 _RNvMNtCsfTZxTf8D02z_13pagura_raster8coverageNtB2_5Shape6covers  (in render_profile) + 48  [0x100c085a8]
+                +     ! : | + ! : | 6 _RNvMNtNtCsfTZxTf8D02z_13pagura_raster8coverage9rectangleNtB4_5Shape13quadrilateral  (in render_profile) + 392  [0x100c0e258]
+                +     ! : | + ! : | + 6 _RINvXs_NtNtNtCs3bJEMBXHbwl_4core4iter8adapters5chainINtB5_5ChainINtNtNtBb_5array4iter8IntoIterNtNtCsfTZxTf8D02z_13pagura_raster8geometry5PointKj4_EB10_ENtNtNtB9_6traits8iterator8Iterator8try_folduNCINvNvB2q_3any5checkB1u_NCNvMNtNtB1y_8coverage9rectangleNtB3E_5Shape13quadrilaterals0_0E0INtNtNtBb_3ops12control_flow11ControlFlowuEEB1y_  (in render_profile) + 240,8,...  [0x100c062c0,0x100c061d8,...]
+                +     ! : | + ! : | 4 _RNvMNtNtCsfTZxTf8D02z_13pagura_raster8coverage9rectangleNtB4_5Shape13quadrilateral  (in render_profile) + 276  [0x100c0e1e4]
+                +     ! : | + ! : | + 4 _RINvMsm_NtCs3bJEMBXHbwl_4core5arrayANtNtCsfTZxTf8D02z_13pagura_raster8geometry5Pointj4_7try_mapINtNtNtB8_3ops9try_trait17NeverShortCircuitBy_ENCINvMB1y_B1v_10wrap_mut_1By_NCNvMNtNtBC_8coverage9rectangleNtB2Q_5Shape13quadrilaterals_0E0EBC_  (in render_profile) + 0,36,...  [0x100bee5e8,0x100bee60c,...]
+                +     ! : | + ! : | 3 _RNvMNtNtCsfTZxTf8D02z_13pagura_raster8coverage9rectangleNtB4_5Shape13quadrilateral  (in render_profile) + 24,284,...  [0x100c0e0e8,0x100c0e1ec,...]
+                +     ! : | + ! : 2 _RNvMNtCsfTZxTf8D02z_13pagura_raster8coverageNtB2_5Shape6covers  (in render_profile) + 52,208  [0x100c085ac,0x100c08648]
+                +     ! : | + ! 6 _RNCNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB6_10Rasterizer7sourcess_0Ba_  (in render_profile) + 984,996,...  [0x100c06d1c,0x100c06d28,...]
+                +     ! : | + 6 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB4_10Rasterizer7sources  (in render_profile) + 1292,76,...  [0x100c19e84,0x100c199c4,...]
+                +     ! : | 7 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB4_10Rasterizer13clipped_glyph  (in render_profile) + 380  [0x100c17f7c]
+                +     ! : | + 4 _RINvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB5_10Rasterizer8completeINtNtCs3bJEMBXHbwl_4core6option6OptionNtB7_4MaskEEB9_  (in render_profile) + 188,228  [0x100bee158,0x100bee180]
+                +     ! : | + 2 _platform_memmove  (in libsystem_platform.dylib) + 36,180  [0x1828352e4,0x182835374]
+                +     ! : | + 1 DYLD-STUB$$memcpy  (in render_profile) + 4  [0x100d39b68]
+                +     ! : | 6 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB4_10Rasterizer13clipped_glyph  (in render_profile) + 24,80,...  [0x100c17e18,0x100c17e50,...]
+                +     ! : | 5 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 9720,9788,...  [0x100c8e2b8,0x100c8e2fc,...]
+                +     ! : | 4 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB4_10Rasterizer13clipped_glyph  (in render_profile) + 808  [0x100c18128]
+                +     ! : | + 4 _RNvNtCsfTZxTf8D02z_13pagura_raster6bounds11hull_region  (in render_profile) + 16,20,...  [0x100c20728,0x100c2072c,...]
+                +     ! : | 1 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB4_10Rasterizer13clipped_glyph  (in render_profile) + 1236  [0x100c182d4]
+                +     ! : |   1 _platform_memmove  (in libsystem_platform.dylib) + 180  [0x182835374]
+                +     ! : 15 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 5304  [0x100c8d178]
+                +     ! : | 8 _RNvMs_NtCs6mGY1dcbO7G_13pagura_render7displayNtB4_11GlyphSource13relative_hull  (in render_profile) + 168,252,...  [0x100ca71d8,0x100ca722c,...]
+                +     ! : | 7 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 5304,5360,...  [0x100c8d178,0x100c8d1b0,...]
+                +     ! : 14 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 5532  [0x100c8d25c]
+                +     ! : | 10 _RNvNtNtCs6mGY1dcbO7G_13pagura_render10compositor7regions11hull_region  (in render_profile) + 76,92,...  [0x100cc7bc0,0x100cc7bd0,...]
+                +     ! : | 4 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 5612,5644,...  [0x100c8d2ac,0x100c8d2cc,...]
+                +     ! : 9 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 10280  [0x100c8e4e8]
+                +     ! : | 7 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 10348,10420,...  [0x100c8e52c,0x100c8e574,...]
+                +     ! : | 2 _platform_memmove  (in libsystem_platform.dylib) + 144,180  [0x182835350,0x182835374]
+                +     ! : 5 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 980  [0x100c8c094]
+                +     ! : | 3 _RNvMNtCs6mGY1dcbO7G_13pagura_render7displayNtB2_8GlyphRun11device_hull  (in render_profile) + 408  [0x100c59e80]
+                +     ! : | + 3 _RNvMs_NtCs6mGY1dcbO7G_13pagura_render7displayNtB4_11GlyphSource13relative_hull  (in render_profile) + 72,88,...  [0x100ca7178,0x100ca7188,...]
+                +     ! : | 2 _RNvMNtCs6mGY1dcbO7G_13pagura_render7displayNtB2_8GlyphRun11device_hull  (in render_profile) + 408,576  [0x100c59e80,0x100c59f28]
+                +     ! : 4 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 7056  [0x100c8d850]
+                +     ! : | 4 _RNvMNtCs6mGY1dcbO7G_13pagura_render7displayNtB2_8GlyphRun8geometry  (in render_profile) + 112  [0x100c59fd8]
+                +     ! : |   2 _RNvMs_NtCsfTZxTf8D02z_13pagura_raster5glyphNtB4_13GlyphGeometry3new  (in render_profile) + 300  [0x100c16b04]
+                +     ! : |   + 1 _RNvNtCsfTZxTf8D02z_13pagura_raster7flatten7flatten  (in render_profile) + 68  [0x100c259e0]
+                +     ! : |   + ! 1 _RNvNtCsfTZxTf8D02z_13pagura_raster7flatten25flatten_into_at_tolerance  (in render_profile) + 3352  [0x100c2565c]
+                +     ! : |   + !   1 _RNvMs4_NtCs8Hh7wWMBHrQ_5alloc7raw_vecINtB5_6RawVecAxj2_E8grow_oneCsfTZxTf8D02z_13pagura_raster  (in render_profile) + 60  [0x100d30dac]
+                +     ! : |   + !     1 _RNvMs5_NtCs8Hh7wWMBHrQ_5alloc7raw_vecNtB5_11RawVecInner11finish_growCsfTZxTf8D02z_13pagura_raster  (in render_profile) + 168  [0x100d313fc]
+                +     ! : |   + 1 _RNvNtCsfTZxTf8D02z_13pagura_raster7flatten7flatten  (in render_profile) + 0  [0x100c2599c]
+                +     ! : |   2 _RNvMs_NtCsfTZxTf8D02z_13pagura_raster5glyphNtB4_13GlyphGeometry3new  (in render_profile) + 1664  [0x100c17058]
+                +     ! : |     1 _RNvNtCsfTZxTf8D02z_13pagura_raster5glyph11signed_area  (in render_profile) + 816  [0x100c1c6f0]
+                +     ! : |     ! 1 _RNvNtCsfTZxTf8D02z_13pagura_raster5glyph11signed_area  (in render_profile) + 1012  [0x100c1c7b4]
+                +     ! : |     1 _RNvNtCsfTZxTf8D02z_13pagura_raster5glyph11signed_area  (in render_profile) + 5108  [0x100c1d7b4]
+                +     ! : |       1 free_tiny  (in libsystem_malloc.dylib) + 460  [0x1825ff99c]
+                +     ! : |         1 tiny_free_no_lock  (in libsystem_malloc.dylib) + 416  [0x1825ffcbc]
+                +     ! : |           1 tiny_free_list_add_ptr  (in libsystem_malloc.dylib) + 128  [0x1826003bc]
+                +     ! : 4 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 9992  [0x100c8e3c8]
+                +     ! : | 2 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context4clip  (in render_profile) + 228,384  [0x100c8b270,0x100c8b30c]
+                +     ! : | 1 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context4clip  (in render_profile) + 832  [0x100c8b4cc]
+                +     ! : | + 1 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster6regionNtB4_10ClipRegion9from_path  (in render_profile) + 384  [0x100c1aac0]
+                +     ! : | +   1 szone_malloc_should_clear  (in libsystem_malloc.dylib) + 84  [0x1825fbbe8]
+                +     ! : | +     1 tiny_malloc_should_clear  (in libsystem_malloc.dylib) + 1296  [0x1825fd1c4]
+                +     ! : | +       1 mvm_allocate_pages_plat  (in libsystem_malloc.dylib) + 320  [0x182616a7c]
+                +     ! : | +         1 mach_vm_map  (in libsystem_kernel.dylib) + 128  [0x1827b99d0]
+                +     ! : | +           1 _kernelrpc_mach_vm_map_trap  (in libsystem_kernel.dylib) + 8  [0x1827b9acc]
+                +     ! : | 1 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context4clip  (in render_profile) + 1916  [0x100c8b908]
+                +     ! : |   1 _RNvMs4_NtCs8Hh7wWMBHrQ_5alloc7raw_vecINtB5_6RawVecNtNtNtCs6mGY1dcbO7G_13pagura_render10compositor7reduced4SpanE8grow_oneBS_  (in render_profile) + 60  [0x100d34ca0]
+                +     ! : |     1 _RNvMs5_NtCs8Hh7wWMBHrQ_5alloc7raw_vecNtB5_11RawVecInner11finish_growCs6mGY1dcbO7G_13pagura_render  (in render_profile) + 256  [0x100d34fc0]
+                +     ! : |       1 szone_malloc_should_clear  (in libsystem_malloc.dylib) + 84  [0x1825fbbe8]
+                +     ! : |         1 tiny_malloc_should_clear  (in libsystem_malloc.dylib) + 108  [0x1825fcd20]
+                +     ! : 4 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 10808  [0x100c8e6f8]
+                +     ! : | 2 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context11trim_raster  (in render_profile) + 32  [0x100c89714]
+                +     ! : | 2 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 4876,4944  [0x100c8cfcc,0x100c8d010]
+                +     ! : 3 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 512  [0x100c8bec0]
+                +     ! : | 3 _RNvNtNtCs6mGY1dcbO7G_13pagura_render10compositor7regions11hull_region  (in render_profile) + 212,0  [0x100cc7c48,0x100cc7b74]
+                +     ! : 3 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context8commands  (in render_profile) + 1024,504  [0x100c918f8,0x100c916f0]
+                +     ! : 2 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 10780  [0x100c8e6dc]
+                +     ! : | 2 _RINvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB5_10Rasterizer7recycleNtB7_4MaskECs6mGY1dcbO7G_13pagura_render  (in render_profile) + 64,120  [0x100c38548,0x100c38580]
+                +     ! : 1 ???  (in <unknown binary>)  [0x101407550]
+                +     ! : | 1 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 6448  [0x100c8d5f0]
+                +     ! : 1 ???  (in <unknown binary>)  [0x129608d80]
+                +     ! : | 1 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 6448  [0x100c8d5f0]
+                +     ! : 1 ???  (in <unknown binary>)  [0x149605a00]
+                +     ! : | 1 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 6460  [0x100c8d5fc]
+                +     ! : 1 ???  (in <unknown binary>)  [0x159609150]
+                +     ! : | 1 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 9284  [0x100c8e104]
+                +     ! : 1 _RINvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB5_10Rasterizer7recycleNtB7_4MaskECs6mGY1dcbO7G_13pagura_render  (in render_profile) + 440  [0x100c386c0]
+                +     ! : 1 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 6080  [0x100c8d480]
+                +     ! : 1 _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB4_10Rasterizer13clipped_glyph  (in render_profile) + 400  [0x100c17f90]
+                +     ! 1 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in render_profile) + 8508  [0x100cb667c]
+                +     179 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in render_profile) + 6968  [0x100cb6078]
+                +     ! 178 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context12page_surface  (in render_profile) + 1356,1376,...  [0x100c8a020,0x100c8a034,...]
+                +     ! 1 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context12page_surface  (in render_profile) + 900  [0x100c89e58]
+                +     !   1 _RNvMs5_NtCs8Hh7wWMBHrQ_5alloc7raw_vecNtB5_11RawVecInner11finish_growCs6mGY1dcbO7G_13pagura_render  (in render_profile) + 256  [0x100d34fc0]
+                +     !     1 szone_malloc_should_clear  (in libsystem_malloc.dylib) + 168  [0x1825fbc3c]
+                +     !       1 medium_malloc_should_clear  (in libsystem_malloc.dylib) + 140  [0x182601a78]
+                +     25 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in render_profile) + 5852  [0x100cb5c1c]
+                +     ! 25 _RNvMs_NtCsfTZxTf8D02z_13pagura_raster6pixmapNtB4_6Pixmap12with_storage  (in render_profile) + 60  [0x100c170fc]
+                +     !   25 _RNvMs_NtCsfTZxTf8D02z_13pagura_raster6pixmapNtB4_6Pixmap6filled  (in render_profile) + 800  [0x100c177c4]
+                +     !     25 _RNvMs_NtCsfTZxTf8D02z_13pagura_raster6pixmapNtB4_6Pixmap6filled  (in render_profile) + 344  [0x100c175fc]
+                +     !       25 _platform_memset  (in libsystem_platform.dylib) + 72  [0x182835038]
+                +     4 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in render_profile) + 14636  [0x100cb7e6c]
+                +     ! 4 _RINvNtCs3bJEMBXHbwl_4core3ptr9drop_glueNtNtCs6mGY1dcbO7G_13pagura_render10compositor7ContextEBF_  (in render_profile) + 64  [0x100c3e1e4]
+                +     !   4 _RINvNtCs3bJEMBXHbwl_4core3ptr9drop_glueNtNtCs6mGY1dcbO7G_13pagura_render7display10GlyphCacheEBF_  (in render_profile) + 200  [0x100c3f240]
+                +     !     2 _RNvMsn_NtCs8Hh7wWMBHrQ_5alloc4syncINtB5_3ArcNtNtCsfTZxTf8D02z_13pagura_raster5glyph13GlyphGeometryE9drop_slowBK_  (in render_profile) + 64  [0x100c1b8a4]
+                +     !     : 1 free_tiny  (in libsystem_malloc.dylib) + 460  [0x1825ff99c]
+                +     !     : | 1 tiny_free_no_lock  (in libsystem_malloc.dylib) + 416  [0x1825ffcbc]
+                +     !     : |   1 tiny_free_list_add_ptr  (in libsystem_malloc.dylib) + 100  [0x1826003a0]
+                +     !     : 1 free_tiny  (in libsystem_malloc.dylib) + 100  [0x1825ff834]
+                +     !     1 _RNvMsn_NtCs8Hh7wWMBHrQ_5alloc4syncINtB5_3ArcNtNtCsfTZxTf8D02z_13pagura_raster5glyph13GlyphGeometryE9drop_slowBK_  (in render_profile) + 84  [0x100c1b8b8]
+                +     !     : 1 free_tiny  (in libsystem_malloc.dylib) + 460  [0x1825ff99c]
+                +     !     :   1 tiny_free_no_lock  (in libsystem_malloc.dylib) + 140  [0x1825ffba8]
+                +     !     :     1 get_tiny_previous_free_msize  (in libsystem_malloc.dylib) + 92  [0x18260bd78]
+                +     !     1 _RNvMsn_NtCs8Hh7wWMBHrQ_5alloc4syncINtB5_3ArcNtNtCsfTZxTf8D02z_13pagura_raster5glyph13GlyphGeometryE9drop_slowBK_  (in render_profile) + 48  [0x100c1b894]
+                +     1 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in render_profile) + 6776  [0x100cb5fb8]
+                +     ! 1 _RNvMsn_NtCs8Hh7wWMBHrQ_5alloc4syncINtB5_3ArcNtNtNtCsfTZxTf8D02z_13pagura_raster6raster6region10ClipRegionE9drop_slowCs6mGY1dcbO7G_13pagura_render  (in render_profile) + 24  [0x100cb35a4]
+                +     !   1 free_tiny  (in libsystem_malloc.dylib) + 320  [0x1825ff910]
+                +     1 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in render_profile) + 13280  [0x100cb7920]
+                +       1 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in render_profile) + 6508  [0x100cb5eac]
+                90 _RNvCskEBVikgbFsk_14render_profile4main  (in render_profile) + 2584  [0x100d04574]
+                  90 _RNvNtNtCsdnanKjkF2cC_3std2io5stdio6__print  (in render_profile) + 100  [0x100d24b64]
+                    90 _RNvXse_NtNtCsdnanKjkF2cC_3std2io5stdioRNtB5_6StdoutNtNtNtCs3bJEMBXHbwl_4core2io5write5Write9write_fmt  (in render_profile) + 68  [0x100d2b504]
+                      90 _RNvNtCs3bJEMBXHbwl_4core3fmt5write  (in render_profile) + 144  [0x100b00d08]
+                        90 _RNvXNvNtNtCs3bJEMBXHbwl_4core2io5write17default_write_fmtINtB2_7AdapterNtNtNtCsdnanKjkF2cC_3std2io5stdio10StdoutLockENtNtB8_3fmt5Write9write_strB1d_  (in render_profile) + 24  [0x100d29e0c]
+                          90 _RNvXsh_NtNtCsdnanKjkF2cC_3std2io5stdioNtB5_10StdoutLockNtNtNtCs3bJEMBXHbwl_4core2io5write5Write9write_all  (in render_profile) + 136  [0x100d2b660]
+                            90 _RNvMs_NtNtNtCs8Hh7wWMBHrQ_5alloc2io8buffered9bufwriterINtB4_9BufWriterNtNtNtCsdnanKjkF2cC_3std2io5stdio9StdoutRawE9flush_bufB1c_  (in render_profile) + 140  [0x100d1caa0]
+                              90 write  (in libsystem_kernel.dylib) + 8  [0x1827bd6f4]
+
+Total number in stack (recursive counted multiple, when >=5):
+        10       _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile) + 0  [0x100c8bcc0]
+
+Sort by top of stack, same collapsed (when >= 5):
+        _RNvCskEBVikgbFsk_14render_profile4main  (in render_profile)        3022
+        _RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output  (in render_profile)        572
+        _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context12page_surface  (in render_profile)        178
+        write  (in libsystem_kernel.dylib)        90
+        _RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer4path  (in render_profile)        42
+        _platform_memset  (in libsystem_platform.dylib)        35
+        _RNvXs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5spansNtB4_4RunsNtNtNtNtCs3bJEMBXHbwl_4core4iter6traits8iterator8Iterator4next  (in render_profile)        33
+        _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context6glyphs  (in render_profile)        30
+        _RINvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB6_7Context11narrow_pathINtNtNtNtCs3bJEMBXHbwl_4core4iter8adapters7flatten7FlatMapINtNtB1i_9enumerate9EnumerateINtNtNtB1m_5slice4iter11ChunksExacthEEINtNtB1i_3map3MapNtNtNtCsfTZxTf8D02z_13pagura_raster6raster5spans4RunsNCNCNvB3x_4rows00ENCB4q_0EEB8_  (in render_profile)        20
+        _RNvNtNtCs6mGY1dcbO7G_13pagura_render10compositor7regions11hull_region  (in render_profile)        13
+        _RINvXs_NtNtNtCs3bJEMBXHbwl_4core4iter8adapters5chainINtB5_5ChainINtNtNtBb_5array4iter8IntoIterNtNtCsfTZxTf8D02z_13pagura_raster8geometry5PointKj4_EB10_ENtNtNtB9_6traits8iterator8Iterator8try_folduNCINvNvB2q_3any5checkB1u_NCNvMNtNtB1y_8coverage9rectangleNtB3E_5Shape13quadrilaterals0_0E0INtNtNtBb_3ops12control_flow11ControlFlowuEEB1y_  (in render_profile)        12
+        _RNvMs_NtCs6mGY1dcbO7G_13pagura_render7displayNtB4_11GlyphSource13relative_hull  (in render_profile)        11
+        _RNvMNtNtCsfTZxTf8D02z_13pagura_raster8coverage9rectangleNtB4_5Shape13quadrilateral  (in render_profile)        9
+        _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster8coverage9rectangleNtB4_9Rectangle5write  (in render_profile)        9
+        _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB4_10Rasterizer13clipped_glyph  (in render_profile)        7
+        _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in render_profile)        7
+        _RNCNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB6_10Rasterizer7sourcess_0Ba_  (in render_profile)        6
+        _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB4_10Rasterizer7sources  (in render_profile)        6
+        _RNvMs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5reuseNtB4_10Rasterizer9integrate  (in render_profile)        6
+        _platform_memmove  (in libsystem_platform.dylib)        5
+
+Binary images description not available
+

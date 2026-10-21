@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "decision": "retain-experimentally",
+  "release_admission": false,
+  "goal_status_after_wrap": "paused-at-user-request",
+  "measured_parent": "f9738174757252567730ff62b5d36620c01d1e6c",
+  "product_source_sha256": "4d6f7ab3f68500009aa938b1e3680d8c26a6fc052f706dd3a4ce5ad697b94a8e",
+  "published_result": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/f32-painted-interval-continuation-experiment.json",
+    "sha256": "42d8c231f421139b0b8d4135832fa2577f708aa29aeed88fb010f87c68b18bc8"
+  },
+  "publication_receipt": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval-continuation/publication-001-receipt.json",
+    "sha256": "c10c88a4c6ea0568896e044993957c90036fa46027c726285fb2397e43d1a159"
+  },
+  "publication_guard": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval-continuation/publication-001-observer/guard.json",
+    "sha256": "ee3b511aed2450c617422a9cdb0ac23738e8c4b253b50eb034db75061d9559fa"
+  },
+  "audit_receipt": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval-continuation/confirmation-001-audit-receipt.json",
+    "sha256": "640768edba26a7d5fa9feaf63013c8595626747adbd8835492318a7887e6d58f"
+  },
+  "audit": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval-continuation/confirmation-001-analysis.json",
+    "sha256": "559a2d1528efc05f8c8501a390715d8495734f8902871dce3998cb878231f783"
+  },
+  "decision_record": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval-continuation/retention-decision.json",
+    "sha256": "7464f38d7fdfd331393f62eb867b2ed01d1342d313f847ef895ac68f8e5d1c47"
+  },
+  "raw_evidence_retention": "Original and continuation directories remain intact under benchmarks/results/local; ignored raw artifacts are retained locally, not embedded in this commit."
+}

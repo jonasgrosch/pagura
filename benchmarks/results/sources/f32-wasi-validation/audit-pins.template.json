@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "experiment": "f32-painted-interval-wasi-diagnostic",
+  "runtime_profile": null,
+  "producer_argv": null,
+  "python": {"path": null, "sha256": null},
+  "node": {"path": null, "sha256": null},
+  "driver": {"path": null, "sha256": null},
+  "wrapper": {"path": null, "sha256": null},
+  "capture": {"path": null, "sha256": null},
+  "observer": {"path": null, "sha256": null},
+  "runtime_files_sha256": {},
+  "native_bindings": {"path": null, "sha256": null},
+  "frozen_plan": {"path": null, "sha256": null},
+  "build_bindings": {"path": null, "sha256": null},
+  "inputs_sha256": {"opaque64": null, "sparse64": null, "image-only": null, "f32-shading-dense": null, "f32-pattern-dense": null, "default-knockout64": null},
+  "instructions": "Freeze before each run. Both profiles use stage=preflight-inputs. All paths absolute and all digests independent. producer_argv is exact requested ABS_PYTHON -B ABS_DRIVER plus15unique option/value pairs including the new output. The runner assigns PAGURA_RUN_ID and PAGURA_RUN_RECEIPT through its environment at launch; no run ID appears in producer argv. python and observer must equal native preflight binding descriptors. runtime_files_sha256 includes canonical requested Python launcher, framework/app handoff executable and sys.executable, all prelaunch pinned. inputs_sha256 pins six PDFs from frozen fixture preparation/native preflight; auditor independently regenerates PPM/RGBA pixels. Final receipt/guard SHA are separate audit CLI pins after completion, never live snapshots. The final outer receipt must bind report.json, plan.json and guard.json. Build capture uses the same requested Python and pinned capture path with -B; its final receipt must pin context and module. Distinct target directories per arm AND feature."
+}

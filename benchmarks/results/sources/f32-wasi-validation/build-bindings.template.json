@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "target": "wasm32-wasip1",
+  "profile": "release",
+  "target_feature": null,
+  "rustflags": null,
+  "cargo_encoded_rustflags": null,
+  "baseline": {"source_root": null, "source": null, "path": null, "sha256": null, "receipt": null, "receipt_sha256": null, "context": {"path": null, "sha256": null}},
+  "candidate": {"source_root": null, "source": null, "path": null, "sha256": null, "receipt": null, "receipt_sha256": null, "context": {"path": null, "sha256": null}},
+  "instructions": "Create and independently pin separate completed SIMD and scalar files. Set target_feature to +simd128 or -simd128 and rustflags to exactly -C target-feature=+simd128 or -C target-feature=-simd128. Unset CARGO_ENCODED_RUSTFLAGS. Each source is the complete runner source_before/source_after object, not paired_render source_identity. Original absolute module path and SHA and actual command/environment context must be artifacts of the successful final build receipt. Context schema: schema1, root, command (exact explicit /usr/bin/env override + absolute Cargo command from README), CARGO_TARGET_DIR (absolute canonical), CARGO_BUILD_JOBS='1', RUSTFLAGS (exact flag), CARGO_ENCODED_RUSTFLAGS=null. Receipt argv must end with this exact command and cwd must equal root. Coordinator still reviews the pinned command capture helper, toolchain and fresh Cargo artifact selection. Use distinct target directories per arm AND feature; never share a Cargo target directory across these worktrees."
+}

@@ -1,0 +1,438 @@
+{
+  "schema": 1,
+  "experiment": "f32-painted-interval-continuation",
+  "status": "frozen-before-continuation",
+  "case_count": 20,
+  "cell_count": 56,
+  "target_count": 2,
+  "protected_count": 54,
+  "cells": [
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "target"
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "target"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "dense64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "dense64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "one-source64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "one-source64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "overcapacity128",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "overcapacity128",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "nested64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "nested64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "default-knockout64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "default-knockout64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2-knockout",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2-knockout",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2-late64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2-late64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "clip-churn",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "clip-churn",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "image-only",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "image-only",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-clip",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-clip",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-tiny",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-tiny",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-fill",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-fill",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-empty",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-empty",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-distant",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-distant",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-tiny",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-tiny",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "f32-shading-dense",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "f32-shading-dense",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "f32-pattern-dense",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "f32-pattern-dense",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    }
+  ],
+  "cell_materialization": "Before freeze, enumerate f32_painted_interval.CELLS in declared order into objects {case,mode,operation,role}; only sparse64/full is target. The driver requires exact list equality and fixed counts.",
+  "identities_to_freeze": {
+    "baseline": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-f32-interval-base/pagura",
+      "commit": "f9738174757252567730ff62b5d36620c01d1e6c",
+      "source_sha256": "53062678753e6012a291b95dbf07cb8b069e7134ab836d587919975d1ed057c7",
+      "binary": "/private/tmp/f32-interval-native-baseline-001/release/examples/scene_index_profile",
+      "binary_sha256": "4d2c7d3d9b56f73339da54844fc821b21ab9f253a9f234266b3196cf77a1f49e"
+    },
+    "candidate": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura",
+      "commit": "f9738174757252567730ff62b5d36620c01d1e6c",
+      "source_sha256": "4d6f7ab3f68500009aa938b1e3680d8c26a6fc052f706dd3a4ce5ad697b94a8e",
+      "binary": "/private/tmp/f32-interval-native-candidate-001/release/examples/scene_index_profile",
+      "binary_sha256": "5ea1a8b08200bdc4645e2b4e7dd1555f6d2581680849aec6c1099c0de443add1"
+    }
+  },
+  "phases": {
+    "pilot": {
+      "pairs": 5,
+      "warmups": 5,
+      "seed": 20261109
+    },
+    "confirmation": {
+      "pairs": 200,
+      "warmups": 5,
+      "seed": 20261110
+    }
+  },
+  "maximum_launched_pilots": 1,
+  "maximum_launched_confirmations": 1,
+  "expected_verified_outputs": {
+    "native_preflight": 112,
+    "pilot": 1120,
+    "confirmation": 22960
+  },
+  "analysis": {
+    "method": "paired-percentile-bootstrap",
+    "resamples": 5000,
+    "confidence": 0.95,
+    "seed": 42017
+  },
+  "thresholds": {
+    "target_median_upper": 0.95,
+    "target_p95_upper": 1.0,
+    "protected_median_upper": 1.02,
+    "protected_p95_upper": 1.02,
+    "peak_rss_ratio_max": 1.0
+  },
+  "quality": {
+    "independent_rgb8_tolerance": 0,
+    "require_opaque_alpha": true,
+    "require_same_mode_baseline_rgba_bytes": true,
+    "require_all_warmup_outputs": true,
+    "new_oracles": {
+      "f32-shading-dense": "512x512 constant-black axial shading at alpha1/4 over opaque white; RGB191, alpha255 everywhere",
+      "f32-pattern-dense": "Same constant function through PatternType2 full-page fill; RGB191, alpha255 everywhere"
+    }
+  },
+  "prerequisite_binding_protocol": {
+    "plan": "Freeze this plan's identities, cells, phases, thresholds and policy once before native/WASI preflights; never revise its bytes after those start.",
+    "inputs": "Immutable preflight-inputs binding contains the plan pin, source/binary/build identities, runtime and helper closure; native112, SIMD336 and scalar24 all bind this same file.",
+    "admission": "A separate native-admission binding copies that entire frozen core and pins completed quality, native preflight and both independently audited WASI records plus explicit descriptive-diagnostic review.",
+    "phases": "Pilot and confirmation configs pin the same final admission binding; confirmation adds only completed pilot audit and explicit coordinator decision. No automatic retry or changed gates."
+  },
+  "environment": {
+    "native_threads": 1,
+    "known_job_poll_seconds": 5,
+    "quiet_preflight_scans": 3,
+    "maximum_launched_seconds": 5400,
+    "automatic_postlaunch_retry": false,
+    "monitoring": "Cooperative runner plus strict known-job observer, one owned compute process tree at a time. Retain every refusal/interruption/failure; postlaunch contamination makes the attempt unavailable."
+  },
+  "limits": {
+    "per_output_bytes": 67108864,
+    "retained_artifact_bytes": 536870912
+  },
+  "decision": {
+    "admit": "All56 latency/RSS cells and all mandatory correctness,error,resource,layout,provenance,portability and repository-validation gates; release/competitor admission remains separate.",
+    "preserve_partial": "At least one original target confirmation median upper<=0.95 and every mandatory correctness/resource/layout/provenance/portability gate complete. Record target p95, protected and RSS misses. Protected median or p95 lower>1.02 requires revision or explicit reasoned experimental restriction. Retention is a coordinator decision, never an evaluator side effect.",
+    "reject_or_revise": "Any independent accuracy,resource accounting,source error,tile-contract or layout failure blocks active retention. Reject/revise completed confirmation without required target median gain. Upper-bound miss alone is not proven regression. Keep all evidence.",
+    "sampling": "No historical/pilot reuse, postlaunch tuning, automatic retry, replacement of failing cells or resampling until pass."
+  },
+  "scope": "Post-stop method amendment retaining the original complete prefix and finishing the same schedule; not an uninterrupted or fresh confirmation.",
+  "freeze_note": "Coordinator must fill actual identities/cells, bind exact file bytes and launch chain, and set status=frozen-before-pilot BEFORE preflight. Completed result pins belong only to later immutable bindings/configs. This template alone authorizes no run.",
+  "amendment": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/f32-painted-interval-continuation-amendment.json",
+    "sha256": "2fdc44f1f81473f9b806d085fd90a33ed717bc672a2d061155620b725a1d2f3d"
+  },
+  "maximum_new_segments": 1,
+  "automatic_retry": false
+}

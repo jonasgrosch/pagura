@@ -61,6 +61,7 @@ impl Context {
         let sampling_bytes = sampler.bytes() + mask_sampler.as_ref().map_or(0, Prepared::bytes);
         self.trim_raster(sampling_bytes);
         self.allocated += sampling_bytes;
+        target.prepare_dynamic();
         for (row, column, coverage) in clip.spans() {
             if interiors && coverage.first() == Some(&255) {
                 continue;
@@ -101,7 +102,7 @@ impl Context {
                     .unwrap_or(1.0);
                 self.image_transfer(command, (x, y), source)?;
                 if let Some(buffer) = target.narrow_mut() {
-                    buffer.paint(index, source.apply(&command.composite, mask))?;
+                    buffer.paint_dynamic(index, source.apply(&command.composite, mask))?;
                     continue;
                 }
                 target

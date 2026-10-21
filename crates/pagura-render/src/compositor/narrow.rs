@@ -7,16 +7,32 @@ use pagura_core::{Error, Result};
 
 pub(super) enum Buffer {
     U8(Bytes),
-    N16(Words),
-    F32(Vec<[f32; 4]>),
+    N16(Storage<u16>),
+    F32(Storage<f32>),
 }
 
 /// Pixels outside `painted` still hold the constructor's background.
 /// Zero-coverage and same-colour stores may widen this conservative interval;
 /// no store shrinks it or changes the dense output contract.
-pub(super) struct Words {
-    pixels: Vec<[u16; 4]>,
+pub(super) struct Storage<T> {
+    pixels: Vec<[T; 4]>,
     painted: std::ops::Range<usize>,
+}
+
+impl<T> Storage<T> {
+    /// Validates a span before recording the stores it may receive.
+    fn span(&mut self, offset: usize, count: usize) -> Result<&mut [[T; 4]]> {
+        let end = offset + count;
+        let row = self
+            .pixels
+            .get_mut(offset..end)
+            .ok_or(Error::invalid_argument("mask outside colour buffer"))?;
+        if offset < end {
+            self.painted.start = self.painted.start.min(offset);
+            self.painted.end = self.painted.end.max(end);
+        }
+        Ok(row)
+    }
 }
 
 /// A solid source prepared once for a run of fragment masks. Borrowing the
@@ -28,12 +44,12 @@ pub(super) enum MaskSink<'a> {
         alpha: u8,
     },
     N16 {
-        words: &'a mut Words,
+        words: &'a mut Storage<u16>,
         size: (usize, usize),
         color: [u16; 4],
     },
     F32 {
-        pixels: &'a mut [[f32; 4]],
+        floats: &'a mut Storage<f32>,
         size: (usize, usize),
         color: [f32; 4],
         scale: f32,
@@ -57,7 +73,7 @@ impl MaskSink<'_> {
             } => bytes.mask(mask, surface, (*color, *alpha), clip, scratch),
             Self::N16 { words, size, color } => {
                 let width = size.0;
-                let Words { pixels, painted } = &mut **words;
+                let Storage { pixels, painted } = &mut **words;
                 mask_rows(
                     pixels,
                     *size,
@@ -78,25 +94,32 @@ impl MaskSink<'_> {
                 )
             }
             Self::F32 {
-                pixels,
+                floats,
                 size,
                 color,
                 scale,
-            } => mask_rows(
-                pixels,
-                *size,
-                mask,
-                surface,
-                clip,
-                scratch,
-                |_, row, coverage| {
-                    if uniform(coverage) == Some(255) && 255.0 * *scale == 1.0 {
-                        row.fill(*color);
-                    } else {
-                        float_row(row, coverage, *color, *scale);
-                    }
-                },
-            ),
+            } => {
+                let width = size.0;
+                let Storage { pixels, painted } = &mut **floats;
+                mask_rows(
+                    pixels,
+                    *size,
+                    mask,
+                    surface,
+                    clip,
+                    scratch,
+                    |(row, column), target, coverage| {
+                        let offset = row * width + column;
+                        painted.start = painted.start.min(offset);
+                        painted.end = painted.end.max(offset + target.len());
+                        if uniform(coverage) == Some(255) && 255.0 * *scale == 1.0 {
+                            target.fill(*color);
+                        } else {
+                            float_row(target, coverage, *color, *scale);
+                        }
+                    },
+                )
+            }
         }
     }
 }
@@ -430,14 +453,17 @@ impl Buffer {
                     color: [word(color[0]), word(color[1]), word(color[2]), 65535],
                 })
             }
-            Self::F32(pixels) => {
-                if size.0 == 0 || size.1 == 0 || size.0.checked_mul(size.1) != Some(pixels.len()) {
+            Self::F32(floats) => {
+                if size.0 == 0
+                    || size.1 == 0
+                    || size.0.checked_mul(size.1) != Some(floats.pixels.len())
+                {
                     return Err(Error::invalid_argument(
                         "fragment surface differs from F32 buffer",
                     ));
                 }
                 Ok(MaskSink::F32 {
-                    pixels,
+                    floats,
                     size,
                     color: [level(color[0]), level(color[1]), level(color[2]), 255.0],
                     scale: scalar(alpha / 255.0),
@@ -457,11 +483,14 @@ impl Buffer {
         }
         match format {
             Format::U8 => Ok(Self::U8(Bytes::new((count, 1), background, Vec::new())?)),
-            Format::N16 => Ok(Self::N16(Words {
+            Format::N16 => Ok(Self::N16(Storage {
                 pixels: filled(count, background.map(|v| u16::from(v) * 257))?,
                 painted: count..0,
             })),
-            Format::F32 => Ok(Self::F32(filled(count, background.map(f32::from))?)),
+            Format::F32 => Ok(Self::F32(Storage {
+                pixels: filled(count, background.map(f32::from))?,
+                painted: count..0,
+            })),
             Format::F64 => Err(Error::invalid_argument("wide format in narrow buffer")),
         }
     }
@@ -470,7 +499,7 @@ impl Buffer {
             // As charged by `Bytes::charge`, from the lengths it allocated.
             Self::U8(v) => v.pixels.len() + size_of_val(v.painted.as_slice()),
             Self::N16(v) => v.pixels.len() * 8,
-            Self::F32(v) => v.len() * 16,
+            Self::F32(v) => v.pixels.len() * 16,
         }
     }
     /// Whether painting an opaque `color` at `alpha` anywhere in the current
@@ -524,27 +553,17 @@ impl Buffer {
             }
             Self::N16(words) => {
                 let color = [word(color[0]), word(color[1]), word(color[2]), 65535];
-                let end = offset + coverage.len();
-                let row = words
-                    .pixels
-                    .get_mut(offset..end)
-                    .ok_or(Error::invalid_argument("mask outside colour buffer"))?;
-                if offset < end {
-                    words.painted.start = words.painted.start.min(offset);
-                    words.painted.end = words.painted.end.max(end);
-                }
+                let row = words.span(offset, coverage.len())?;
                 if full {
                     row.fill(color);
                     return Ok(());
                 }
                 words_row(row, coverage, color);
             }
-            Self::F32(pixels) => {
+            Self::F32(floats) => {
                 let color = [level(color[0]), level(color[1]), level(color[2]), 255.0];
                 let k = scalar(alpha / 255.0);
-                let row = pixels
-                    .get_mut(offset..offset + coverage.len())
-                    .ok_or(Error::invalid_argument("mask outside colour buffer"))?;
+                let row = floats.span(offset, coverage.len())?;
                 // `lerp` stores the target itself at a unit weight.
                 if full && 255.0 * k == 1.0 {
                     row.fill(color);
@@ -555,17 +574,29 @@ impl Buffer {
         }
         Ok(())
     }
-    pub(super) fn paint(&mut self, index: usize, source: Source) -> Result<()> {
+    /// Dynamic sources may store anywhere. Mark once before their sampling
+    /// loop, keeping interval bookkeeping out of each pixel store.
+    pub(super) fn prepare_dynamic(&mut self) {
+        if let Self::F32(floats) = self {
+            floats.painted = 0..floats.pixels.len();
+        }
+    }
+
+    /// A pixel of a dynamic operation prepared by [`Self::prepare_dynamic`].
+    pub(super) fn paint_dynamic(&mut self, index: usize, source: Source) -> Result<()> {
         if let Self::U8(bytes) = self {
             let (color, alpha) = byte_source(source.color, source.alpha);
             return bytes.pixel(index, color, alpha);
         }
-        let Self::F32(pixels) = self else {
+        let Self::F32(floats) = self else {
             return Err(Error::invalid_argument("dynamic source in N16 buffer"));
         };
+        let Storage { pixels, painted } = floats;
+        let count = pixels.len();
         let pixel = pixels
             .get_mut(index)
             .ok_or(Error::invalid_argument("source outside colour buffer"))?;
+        debug_assert_eq!(*painted, 0..count);
         let color = [
             level(source.color[0]),
             level(source.color[1]),
@@ -580,7 +611,8 @@ impl Buffer {
     pub(super) fn painted_range(&self) -> Option<std::ops::Range<usize>> {
         match self {
             Self::N16(words) => Some(words.painted.clone()),
-            _ => None,
+            Self::F32(floats) => Some(floats.painted.clone()),
+            Self::U8(_) => None,
         }
     }
 
@@ -601,12 +633,12 @@ impl Buffer {
                     *out = word_byte(word);
                 }
             }
-            Self::F32(pixels) => {
+            Self::F32(floats) => {
                 for (out, pixel) in target
                     .as_chunks_mut::<4>()
                     .0
                     .iter_mut()
-                    .zip(&pixels[offset..])
+                    .zip(&floats.pixels[offset..])
                 {
                     *out = pixel.map(byte);
                 }
@@ -1095,7 +1127,8 @@ mod tests {
         assert_eq!(n.bytes(), 24);
         let mut f = Buffer::new(Format::F32, 3, [255; 4]).unwrap();
         assert_eq!(f.bytes(), 48);
-        f.paint(0, Source::new([0.0; 4], 0.5, 1.0)).unwrap();
+        f.prepare_dynamic();
+        f.paint_dynamic(0, Source::new([0.0; 4], 0.5, 1.0)).unwrap();
         let mut out = [0; 4];
         f.output(0, &mut out);
         assert_eq!(out, [128, 128, 128, 255]);

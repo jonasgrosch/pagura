@@ -9,10 +9,10 @@ use std::sync::Arc;
 const SIDE: u32 = 769;
 const BACKGROUND: Rgba8 = Rgba8::opaque(17, 85, 170);
 
-fn document() -> Document {
-    // Page 0 has opaque black integer rectangles; page 1 is empty. Literal
+fn document(alpha: &str) -> Document {
+    // Page 0 has black integer rectangles; page 1 is empty. Literal
     // PDF coordinates are independent of the top-down occupancy oracle below.
-    let content = "0 g 254 509 6 6 re f 510 255 4 4 re f \
+    let content = "/Paint gs 0 g 254 509 6 6 re f 510 255 4 4 re f \
                    0 768 1 1 re f 0 512 1 1 re f \
                    255 257 1 1 re f 768 0 1 1 re f";
     let objects = [
@@ -20,7 +20,7 @@ fn document() -> Document {
         "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>".to_owned(),
         format!(
             "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {SIDE} {SIDE}] \
-             /Resources << >> /Contents 5 0 R >>"
+             /Resources << /ExtGState << /Paint << /ca {alpha} >> >> >> /Contents 5 0 R >>"
         ),
         format!(
             "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {SIDE} {SIDE}] \
@@ -64,7 +64,7 @@ fn document() -> Document {
     .unwrap()
 }
 
-fn expected(tile: Tile, painted: bool, background: Rgba8) -> Vec<u8> {
+fn expected(tile: Tile, painted: bool, background: Rgba8, foreground: [u8; 4]) -> Vec<u8> {
     let mut pixels = Vec::new();
     for y in tile.y..tile.y + tile.height {
         for x in tile.x..tile.x + tile.width {
@@ -76,7 +76,7 @@ fn expected(tile: Tile, painted: bool, background: Rgba8) -> Vec<u8> {
                     || ((510..514).contains(&x) && (510..514).contains(&y))
                     || [(0, 0), (0, 256), (255, 511), (768, 768)].contains(&(x, y)));
             let pixel = if black {
-                [0, 0, 0, 255]
+                foreground
             } else {
                 [background.r, background.g, background.b, background.a]
             };
@@ -86,11 +86,17 @@ fn expected(tile: Tile, painted: bool, background: Rgba8) -> Vec<u8> {
     pixels
 }
 
-fn assert_pixels(image: &Pixmap, tile: Tile, painted: bool, background: Rgba8) {
+fn assert_pixels(
+    image: &Pixmap,
+    tile: Tile,
+    painted: bool,
+    background: Rgba8,
+    foreground: [u8; 4],
+) {
     assert_eq!((image.width(), image.height()), (tile.width, tile.height));
     pagura_testkit::assert_bytes_eq(
         image.data(),
-        &expected(tile, painted, background),
+        &expected(tile, painted, background, foreground),
         "independent integer-rectangle RGBA",
     );
 }
@@ -105,8 +111,15 @@ fn whole() -> Tile {
 }
 
 #[test]
-fn opaque_integer_rectangles_match_irregular_and_offset_tiles_in_both_modes() {
-    let document = document();
+fn integer_rectangles_match_irregular_and_offset_tiles_in_both_modes() {
+    // Black at alpha 1/2 leaves [17,85,170]/2, rounded once to [9,43,85].
+    for (alpha, foreground) in [("1", [0, 0, 0, 255]), (".5", [9, 43, 85, 255])] {
+        check_tiles(alpha, foreground);
+    }
+}
+
+fn check_tiles(alpha: &str, foreground: [u8; 4]) {
+    let document = document(alpha);
     let list = compile_page(&document, document.page(0).unwrap()).unwrap();
     for accuracy in [Accuracy::Exact, Accuracy::Competitive] {
         let options = RenderOptions {
@@ -116,7 +129,7 @@ fn opaque_integer_rectangles_match_irregular_and_offset_tiles_in_both_modes() {
             ..RenderOptions::default()
         };
         let full = list.render(&options).unwrap();
-        assert_pixels(&full, whole(), true, BACKGROUND);
+        assert_pixels(&full, whole(), true, BACKGROUND, foreground);
         // One complete partition has widths AND heights 1, 255, 256, 257.
         // Full rendering crosses both x/y=256 and 512; the final one-pixel
         // chunk at 768 and empty chunks also have independent expectations.
@@ -131,7 +144,7 @@ fn opaque_integer_rectangles_match_irregular_and_offset_tiles_in_both_modes() {
                     height: ys[1] - ys[0],
                 };
                 let part = list.render_tile(&options, tile).unwrap();
-                assert_pixels(&part, tile, true, BACKGROUND);
+                assert_pixels(&part, tile, true, BACKGROUND, foreground);
                 for row in 0..tile.height {
                     let source = (row * tile.width * 4) as usize;
                     let target = (((tile.y + row) * SIDE + tile.x) * 4) as usize;
@@ -143,7 +156,7 @@ fn opaque_integer_rectangles_match_irregular_and_offset_tiles_in_both_modes() {
         }
         pagura_testkit::assert_bytes_eq(
             &assembled,
-            &expected(whole(), true, BACKGROUND),
+            &expected(whole(), true, BACKGROUND, foreground),
             "partition",
         );
         pagura_testkit::assert_bytes_eq(&assembled, full.data(), "full versus partition");
@@ -164,7 +177,7 @@ fn opaque_integer_rectangles_match_irregular_and_offset_tiles_in_both_modes() {
                 height,
             };
             let part = list.render_tile(&options, tile).unwrap();
-            assert_pixels(&part, tile, true, BACKGROUND);
+            assert_pixels(&part, tile, true, BACKGROUND, foreground);
         }
     }
     assert_eq!(document.diagnostics(), [] as [pagura_core::Diagnostic; 0]);
@@ -172,8 +185,14 @@ fn opaque_integer_rectangles_match_irregular_and_offset_tiles_in_both_modes() {
 
 #[test]
 fn context_painted_then_blank_output_refills_recycled_storage_in_both_modes() {
+    for (alpha, foreground) in [("1", [0, 0, 0, 255]), (".5", [9, 43, 85, 255])] {
+        check_recycled_output(alpha, foreground);
+    }
+}
+
+fn check_recycled_output(alpha: &str, foreground: [u8; 4]) {
     for accuracy in [Accuracy::Exact, Accuracy::Competitive] {
-        let context = RenderContext::new(Arc::new(document()));
+        let context = RenderContext::new(Arc::new(document(alpha)));
         let options = RenderOptions {
             accuracy,
             scale: 1.0,
@@ -183,7 +202,7 @@ fn context_painted_then_blank_output_refills_recycled_storage_in_both_modes() {
         let painted = context
             .render_page(context.document().page(0).unwrap(), &options)
             .unwrap();
-        assert_pixels(&painted, whole(), true, BACKGROUND);
+        assert_pixels(&painted, whole(), true, BACKGROUND, foreground);
         let address = painted.data().as_ptr();
         context.recycle(painted);
         // A different opaque backdrop catches both stale marks and an
@@ -195,7 +214,7 @@ fn context_painted_then_blank_output_refills_recycled_storage_in_both_modes() {
         let blank = context
             .render_page(context.document().page(1).unwrap(), &blank_options)
             .unwrap();
-        assert_pixels(&blank, whole(), false, blank_options.background);
+        assert_pixels(&blank, whole(), false, blank_options.background, foreground);
         // Only Competitive borrows the public context's spare surface today.
         // Prove that path really reused storage rather than merely comparing
         // two fresh allocations. Exact still receives the same pixel checks.
@@ -206,7 +225,7 @@ fn context_painted_then_blank_output_refills_recycled_storage_in_both_modes() {
         let repainted = context
             .render_page(context.document().page(0).unwrap(), &options)
             .unwrap();
-        assert_pixels(&repainted, whole(), true, BACKGROUND);
+        assert_pixels(&repainted, whole(), true, BACKGROUND, foreground);
         if accuracy == Accuracy::Competitive {
             assert_eq!(repainted.data().as_ptr(), address);
         }

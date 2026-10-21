@@ -1,0 +1,246 @@
+
+/private/tmp/n16-interval-native-candidate-001/release/examples/render_profile:	file format mach-o arm64
+
+Disassembly of section __TEXT,__text:
+
+0000000100185e40 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output>:
+100185e40:     	stp	x29, x30, [sp, #-0x10]!
+100185e44:     	mov	x29, sp
+100185e48:     	ldr	x8, [x0]
+100185e4c:     	mov	x9, #-0x7fffffffffffffff ; =-9223372036854775807
+100185e50:     	add	x9, x8, x9
+100185e54:     	ands	x8, x9, x8, asr #63
+100185e58:     	b.eq	0x100185e9c <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x5c>
+100185e5c:     	cmp	x8, #0x1
+100185e60:     	b.ne	0x100185ef0 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0xb0>
+100185e64:     	ldr	x8, [x0, #0x18]
+100185e68:     	subs	x9, x8, x1
+100185e6c:     	b.lo	0x1001861ac <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x36c>
+100185e70:     	and	x8, x3, #0x7ffffffffffffffc
+100185e74:     	lsl	x9, x9, #2
+100185e78:     	cmp	x9, x8
+100185e7c:     	csel	x8, x9, x8, lo
+100185e80:     	cbz	x8, 0x1001861a4 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x364>
+100185e84:     	ldr	x9, [x0, #0x10]
+100185e88:     	lsl	x10, x1, #3
+100185e8c:     	cmp	x8, #0x8
+100185e90:     	b.hs	0x100185f20 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0xe0>
+100185e94:     	mov	x11, #0x0               ; =0
+100185e98:     	b	0x10018616c <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x32c>
+100185e9c:     	ldp	x9, x8, [x0, #0x30]
+100185ea0:     	umulh	x10, x8, x9
+100185ea4:     	cmp	xzr, x10
+100185ea8:     	b.ne	0x1001861dc <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x39c>
+100185eac:     	mul	x8, x8, x9
+100185eb0:     	adds	x8, x8, x1
+100185eb4:     	b.hs	0x1001861e8 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x3a8>
+100185eb8:     	lsr	x9, x8, #62
+100185ebc:     	cbnz	x9, 0x1001861f4 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x3b4>
+100185ec0:     	lsl	x8, x8, #2
+100185ec4:     	ldp	x10, x9, [x0, #0x8]
+100185ec8:     	cmp	x9, x8
+100185ecc:     	csel	x11, x9, x8, lo
+100185ed0:     	sub	x8, x9, x11
+100185ed4:     	cmp	x8, x3
+100185ed8:     	csel	x8, x8, x3, lo
+100185edc:     	add	x1, x10, x11
+100185ee0:     	mov	x0, x2
+100185ee4:     	mov	x2, x8
+100185ee8:     	ldp	x29, x30, [sp], #0x10
+100185eec:     	b	0x10023db64 <dyld_stub_binder+0x10023db64>
+100185ef0:     	ldr	x8, [x0, #0x18]
+100185ef4:     	subs	x9, x8, x1
+100185ef8:     	b.lo	0x1001861c4 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x384>
+100185efc:     	lsr	x8, x3, #2
+100185f00:     	cmp	x9, x8
+100185f04:     	csel	x8, x9, x8, lo
+100185f08:     	cbz	x8, 0x1001861a4 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x364>
+100185f0c:     	ldr	x9, [x0, #0x10]
+100185f10:     	cmp	x8, #0x4
+100185f14:     	b.hs	0x100185f30 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0xf0>
+100185f18:     	mov	x10, #0x0               ; =0
+100185f1c:     	b	0x100186028 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x1e8>
+100185f20:     	cmp	x8, #0x40
+100185f24:     	b.hs	0x100186080 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x240>
+100185f28:     	mov	x11, #0x0               ; =0
+100185f2c:     	b	0x10018612c <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x2ec>
+100185f30:     	add	x11, x9, x1, lsl #4
+100185f34:     	and	x10, x8, #0x1ffffffffffffffc
+100185f38:     	mov	w12, #0x437f0000        ; =1132396544
+100185f3c:     	dup.4s	v0, w12
+100185f40:     	movi.2d	v1, #0x0000ff000000ff
+100185f44:     	mov	x12, x2
+100185f48:     	and	x13, x8, #0x1ffffffffffffffc
+100185f4c:     	ldp	q2, q3, [x11]
+100185f50:     	ldp	q4, q5, [x11, #0x20]
+100185f54:     	frinta.4s	v5, v5
+100185f58:     	frinta.4s	v4, v4
+100185f5c:     	frinta.4s	v3, v3
+100185f60:     	frinta.4s	v2, v2
+100185f64:     	zip1.4s	v6, v2, v3
+100185f68:     	zip1.4s	v7, v4, v5
+100185f6c:     	ext.16b	v16, v4, v7, #0x8
+100185f70:     	mov.d	v6[1], v16[1]
+100185f74:     	fcmlt.4s	v16, v6, #0.0
+100185f78:     	bic.16b	v6, v6, v16
+100185f7c:     	trn2.4s	v16, v2, v3
+100185f80:     	fcmgt.4s	v17, v6, v0
+100185f84:     	mov.d	v16[1], v7[1]
+100185f88:     	fcmlt.4s	v7, v16, #0.0
+100185f8c:     	bic.16b	v7, v16, v7
+100185f90:     	fcmgt.4s	v16, v7, v0
+100185f94:     	bit.16b	v6, v0, v17
+100185f98:     	bit.16b	v7, v0, v16
+100185f9c:     	trn1.4s	v16, v4, v5
+100185fa0:     	zip2.4s	v17, v2, v3
+100185fa4:     	mov.d	v17[1], v16[1]
+100185fa8:     	fcvtzu.4s	v7, v7
+100185fac:     	fcmlt.4s	v16, v17, #0.0
+100185fb0:     	bic.16b	v16, v17, v16
+100185fb4:     	fcmgt.4s	v17, v16, v0
+100185fb8:     	bit.16b	v16, v0, v17
+100185fbc:     	fcvtzu.4s	v16, v16
+100185fc0:     	umin.4s	v7, v7, v1
+100185fc4:     	zip2.4s	v4, v4, v5
+100185fc8:     	uzp2.4s	v3, v2, v3
+100185fcc:     	uzp2.4s	v2, v3, v2
+100185fd0:     	mov.d	v2[1], v4[1]
+100185fd4:     	umin.4s	v3, v16, v1
+100185fd8:     	fcmlt.4s	v4, v2, #0.0
+100185fdc:     	bic.16b	v2, v2, v4
+100185fe0:     	fcmgt.4s	v4, v2, v0
+100185fe4:     	bit.16b	v2, v0, v4
+100185fe8:     	fcvtzu.4s	v2, v2
+100185fec:     	fcvtzu.4s	v4, v6
+100185ff0:     	umin.4s	v2, v2, v1
+100185ff4:     	shl.4s	v2, v2, #0x18
+100185ff8:     	shl.4s	v3, v3, #0x10
+100185ffc:     	shl.4s	v5, v7, #0x8
+100186000:     	orr.16b	v3, v3, v5
+100186004:     	umin.4s	v4, v4, v1
+100186008:     	orr.16b	v2, v2, v3
+10018600c:     	orr.16b	v2, v2, v4
+100186010:     	str	q2, [x12], #0x10
+100186014:     	add	x11, x11, #0x40
+100186018:     	subs	x13, x13, #0x4
+10018601c:     	b.ne	0x100185f4c <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x10c>
+100186020:     	cmp	x8, x10
+100186024:     	b.eq	0x1001861a4 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x364>
+100186028:     	lsl	x11, x10, #4
+10018602c:     	add	x11, x11, x1, lsl #4
+100186030:     	add	x9, x9, x11
+100186034:     	add	x11, x2, x10, lsl #2
+100186038:     	sub	x8, x8, x10
+10018603c:     	mov	w10, #0x437f0000        ; =1132396544
+100186040:     	dup.4s	v0, w10
+100186044:     	movi.2d	v1, #0x0000ff000000ff
+100186048:     	ldr	q2, [x9], #0x10
+10018604c:     	frinta.4s	v2, v2
+100186050:     	fcmlt.4s	v3, v2, #0.0
+100186054:     	bic.16b	v2, v2, v3
+100186058:     	fcmgt.4s	v3, v2, v0
+10018605c:     	bit.16b	v2, v0, v3
+100186060:     	fcvtzu.4s	v2, v2
+100186064:     	umin.4s	v2, v2, v1
+100186068:     	xtn.4h	v2, v2
+10018606c:     	uzp1.8b	v2, v2, v0
+100186070:     	st1.s	{ v2 }[0], [x11], #4
+100186074:     	subs	x8, x8, #0x1
+100186078:     	b.ne	0x100186048 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x208>
+10018607c:     	b	0x1001861a4 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x364>
+100186080:     	and	x12, x8, #0x38
+100186084:     	and	x11, x8, #0x7fffffffffffffc0
+100186088:     	add	x13, x2, #0x20
+10018608c:     	add	x14, x9, x1, lsl #3
+100186090:     	add	x14, x14, #0x40
+100186094:     	movi.8h	v0, #0x80
+100186098:     	and	x15, x8, #0x7fffffffffffffc0
+10018609c:     	ldp	q2, q1, [x14, #-0x40]
+1001860a0:     	ldp	q4, q3, [x14, #-0x20]
+1001860a4:     	ldp	q6, q5, [x14]
+1001860a8:     	ldp	q16, q7, [x14, #0x20]
+1001860ac:     	uqadd.8h	v2, v2, v0
+1001860b0:     	uqadd.8h	v1, v1, v0
+1001860b4:     	uqadd.8h	v4, v4, v0
+1001860b8:     	uqadd.8h	v3, v3, v0
+1001860bc:     	uqadd.8h	v6, v6, v0
+1001860c0:     	uqadd.8h	v5, v5, v0
+1001860c4:     	uqadd.8h	v16, v16, v0
+1001860c8:     	uqadd.8h	v7, v7, v0
+1001860cc:     	ushr.8h	v17, v1, #0x8
+1001860d0:     	ushr.8h	v18, v2, #0x8
+1001860d4:     	ushr.8h	v19, v3, #0x8
+1001860d8:     	ushr.8h	v20, v4, #0x8
+1001860dc:     	ushr.8h	v21, v5, #0x8
+1001860e0:     	ushr.8h	v22, v6, #0x8
+1001860e4:     	ushr.8h	v23, v7, #0x8
+1001860e8:     	ushr.8h	v24, v16, #0x8
+1001860ec:     	subhn.8b	v2, v2, v18
+1001860f0:     	subhn2.16b	v2, v1, v17
+1001860f4:     	subhn.8b	v1, v4, v20
+1001860f8:     	subhn2.16b	v1, v3, v19
+1001860fc:     	subhn.8b	v3, v6, v22
+100186100:     	subhn2.16b	v3, v5, v21
+100186104:     	subhn.8b	v4, v16, v24
+100186108:     	stp	q2, q1, [x13, #-0x20]
+10018610c:     	subhn2.16b	v4, v7, v23
+100186110:     	stp	q3, q4, [x13], #0x40
+100186114:     	add	x14, x14, #0x80
+100186118:     	subs	x15, x15, #0x40
+10018611c:     	b.ne	0x10018609c <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x25c>
+100186120:     	cmp	x8, x11
+100186124:     	b.eq	0x1001861a4 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x364>
+100186128:     	cbz	x12, 0x10018616c <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x32c>
+10018612c:     	mov	x14, x11
+100186130:     	and	x11, x8, #0x7ffffffffffffff8
+100186134:     	sub	x12, x14, x11
+100186138:     	add	x13, x10, x14, lsl #1
+10018613c:     	add	x13, x9, x13
+100186140:     	add	x14, x2, x14
+100186144:     	movi.8h	v0, #0x80
+100186148:     	ldr	q1, [x13], #0x10
+10018614c:     	uqadd.8h	v1, v1, v0
+100186150:     	ushr.8h	v2, v1, #0x8
+100186154:     	subhn.8b	v1, v1, v2
+100186158:     	str	d1, [x14], #0x8
+10018615c:     	adds	x12, x12, #0x8
+100186160:     	b.ne	0x100186148 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x308>
+100186164:     	cmp	x8, x11
+100186168:     	b.eq	0x1001861a4 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x364>
+10018616c:     	add	x10, x10, x11, lsl #1
+100186170:     	add	x9, x9, x10
+100186174:     	add	x10, x2, x11
+100186178:     	sub	x8, x8, x11
+10018617c:     	mov	w11, #0xffff            ; =65535
+100186180:     	ldrh	w12, [x9], #0x2
+100186184:     	add	w12, w12, #0x80
+100186188:     	cmp	w12, w11
+10018618c:     	csel	w12, w12, w11, lo
+100186190:     	sub	w12, w12, w12, lsr #8
+100186194:     	lsr	w12, w12, #8
+100186198:     	strb	w12, [x10], #0x1
+10018619c:     	subs	x8, x8, #0x1
+1001861a0:     	b.ne	0x100186180 <__RNvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB5_6Buffer6output+0x340>
+1001861a4:     	ldp	x29, x30, [sp], #0x10
+1001861a8:     	ret
+1001861ac:     	adrp	x3, 0x1002d7000 <_anon.b9b5fcc38379150b1d910da6d6f752e6.361+0x2180>
+1001861b0:     	add	x3, x3, #0x488
+1001861b4:     	mov	x0, x1
+1001861b8:     	mov	x1, x8
+1001861bc:     	mov	x2, x8
+1001861c0:     	bl	0x100232acc <__RNvNtNtCs3bJEMBXHbwl_4core5slice5index16slice_index_fail>
+1001861c4:     	adrp	x3, 0x1002d7000 <_anon.b9b5fcc38379150b1d910da6d6f752e6.361+0x2180>
+1001861c8:     	add	x3, x3, #0x4a0
+1001861cc:     	mov	x0, x1
+1001861d0:     	mov	x1, x8
+1001861d4:     	mov	x2, x8
+1001861d8:     	bl	0x100232acc <__RNvNtNtCs3bJEMBXHbwl_4core5slice5index16slice_index_fail>
+1001861dc:     	adrp	x0, 0x1002d7000 <_anon.b9b5fcc38379150b1d910da6d6f752e6.361+0x2180>
+1001861e0:     	add	x0, x0, #0x458
+1001861e4:     	bl	0x100232bf4 <__RNvNtNtCs3bJEMBXHbwl_4core9panicking11panic_const24panic_const_mul_overflow>
+1001861e8:     	adrp	x0, 0x1002d7000 <_anon.b9b5fcc38379150b1d910da6d6f752e6.361+0x2180>
+1001861ec:     	add	x0, x0, #0x470
+1001861f0:     	bl	0x100232bbc <__RNvNtNtCs3bJEMBXHbwl_4core9panicking11panic_const24panic_const_add_overflow>
+1001861f4:     	adrp	x0, 0x1002d7000 <_anon.b9b5fcc38379150b1d910da6d6f752e6.361+0x2180>
+1001861f8:     	add	x0, x0, #0x470
+1001861fc:     	bl	0x100232bf4 <__RNvNtNtCs3bJEMBXHbwl_4core9panicking11panic_const24panic_const_mul_overflow>

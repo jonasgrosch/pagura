@@ -6,6 +6,8 @@
 
 mod colorants;
 pub(crate) use colorants::Separations;
+#[cfg(test)]
+mod dynamic_interval_tests;
 mod image_interiors;
 mod images;
 mod index;
@@ -927,6 +929,7 @@ impl Context {
             .map(|m| self.soft_mask(m, target.tile, model, depth + 1))
             .transpose()?;
         let (ox, oy) = mask.origin();
+        target.prepare_dynamic();
         for (row, col, coverage) in mask.spans() {
             let y = oy + u32::try_from(row).map_err(|_| Error::limit("mask row exceeds u32"))?;
             let x = ox + u32::try_from(col).map_err(|_| Error::limit("mask column exceeds u32"))?;
@@ -977,7 +980,7 @@ impl Context {
                 self.transfer_mark(p.transfer.as_ref(), &p.composite, (x, y), source, true)?;
                 let source = source.apply(&p.composite, mask_value);
                 if let Some(buffer) = target.narrow_mut() {
-                    buffer.paint(index, source)?;
+                    buffer.paint_dynamic(index, source)?;
                     continue;
                 }
                 let pixel = target
@@ -1292,6 +1295,7 @@ impl Context {
             .map(|mask| self.soft_mask(mask, target.tile, model, depth + 1))
             .transpose()?;
         let origin = clip.origin();
+        target.prepare_dynamic();
         for (row, column, coverage) in clip.spans() {
             let y = origin.1
                 + u32::try_from(row).map_err(|_| Error::limit("shading row exceeds u32"))?;
@@ -1321,7 +1325,7 @@ impl Context {
                     true,
                 )?;
                 if let Some(buffer) = target.narrow_mut() {
-                    buffer.paint(index, source.apply(&command.composite, mask))?;
+                    buffer.paint_dynamic(index, source.apply(&command.composite, mask))?;
                     continue;
                 }
                 target

@@ -32,7 +32,7 @@ impl Context {
             // Admission keeps spot passes and transfer feeds on f64 storage.
             let width = width as usize;
             if let Some(painted) = buffer.painted_range() {
-                // N16 admission requires an opaque page background. The output
+                // Narrow admission requires an opaque page background. The output
                 // already holds that background outside this chunk's stores.
                 for row in 0..height as usize {
                     let base = row * width;
@@ -237,7 +237,20 @@ mod tests {
     }
 
     #[test]
-    fn n16_page_output_preserves_holes_in_a_multirow_painted_interval() {
+    fn narrow_page_output_preserves_holes_in_a_multirow_painted_interval() {
+        for (format, alpha, pixels) in [
+            (plan::Format::N16, 1.0, [[8, 42, 85, 255], [0, 0, 0, 255]]),
+            (
+                plan::Format::F32,
+                0.5,
+                [[13, 64, 127, 255], [9, 43, 85, 255]],
+            ),
+        ] {
+            check_interval_holes(format, alpha, pixels);
+        }
+    }
+
+    fn check_interval_holes(format: plan::Format, alpha: f64, pixels: [[u8; 4]; 2]) {
         let background = Rgba8 {
             r: 17,
             g: 85,
@@ -254,14 +267,21 @@ mod tests {
         let mut context = context(background);
         let mut output = Pixmap::new(12, 7, background, 84).unwrap();
         let before = (context.work, context.allocated);
-        let mut buffer = Buffer::new(plan::Format::N16, 30, rgba).unwrap();
+        let mut buffer = Buffer::new(format, 30, rgba).unwrap();
         // In one 6-by-5 chunk, the interval starts at column 2 of row 0
         // and ends after column 1 of row 4. Three complete intervening
         // rows and the other pixels in both endpoint rows remain background.
-        buffer.path(2, &[128], [0.0; 4], 1.0).unwrap();
-        buffer.path(25, &[255], [0.0; 4], 1.0).unwrap();
+        buffer.path(2, &[128], [0.0; 4], alpha).unwrap();
+        buffer.path(25, &[255], [0.0; 4], alpha).unwrap();
         assert_eq!(buffer.painted_range(), Some(2..26));
-        assert_eq!(buffer.bytes(), 240);
+        assert_eq!(
+            buffer.bytes(),
+            if format == plan::Format::N16 {
+                240
+            } else {
+                480
+            }
+        );
         let page = Surface::with_buffer(
             Tile {
                 x: 253,
@@ -276,10 +296,10 @@ mod tests {
             .unwrap();
         let mut expected = rgba.repeat(84);
         // Device (255,8) maps to output row 1, column 5. Black at
-        // coverage 128 leaves round([17,85,170] *127/255).
-        expected[17 * 4..18 * 4].copy_from_slice(&[8, 42, 85, 255]);
+        // coverage 128 leaves round(background * (1-alpha*128/255)).
+        expected[17 * 4..18 * 4].copy_from_slice(&pixels[0]);
         // Device (254,12) maps to output row 5, column 4.
-        expected[64 * 4..65 * 4].copy_from_slice(&[0, 0, 0, 255]);
+        expected[64 * 4..65 * 4].copy_from_slice(&pixels[1]);
         assert_eq!(output.data(), expected);
         assert_eq!((context.work, context.allocated), before);
     }

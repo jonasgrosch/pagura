@@ -1,0 +1,269 @@
+--- a/crates/pagura-render/src/compositor.rs
++++ b/crates/pagura-render/src/compositor.rs
+@@ -26,6 +26,8 @@
+ #[cfg(test)]
+ mod sources_tests;
+ mod surface;
++#[cfg(test)]
++mod temporary_f32_routes;
+ #[cfg(test)]
+ mod translucency_tests;
+ use surface::Surface;
+--- a/crates/pagura-render/src/compositor/narrow.rs
++++ b/crates/pagura-render/src/compositor/narrow.rs
+@@ -65,6 +65,8 @@
+         clip: MaskClip<'_>,
+         scratch: &mut Vec<u8>,
+     ) -> Result<()> {
++        #[cfg(test)]
++        super::temporary_f32_routes::record(super::temporary_f32_routes::Event::Mask);
+         match self {
+             Self::U8 {
+                 bytes,
+@@ -544,6 +546,8 @@
+         color: [f64; 4],
+         alpha: f64,
+     ) -> Result<()> {
++        #[cfg(test)]
++        super::temporary_f32_routes::record(super::temporary_f32_routes::Event::Path);
+         let full = coverage.first() == Some(&255);
+         debug_assert!(!full || coverage.iter().all(|&c| c == 255));
+         match self {
+@@ -584,6 +588,8 @@
+ 
+     /// A pixel of a dynamic operation prepared by [`Self::prepare_dynamic`].
+     pub(super) fn paint_dynamic(&mut self, index: usize, source: Source) -> Result<()> {
++        #[cfg(test)]
++        super::temporary_f32_routes::record(super::temporary_f32_routes::Event::Dynamic);
+         if let Self::U8(bytes) = self {
+             let (color, alpha) = byte_source(source.color, source.alpha);
+             return bytes.pixel(index, color, alpha);
+@@ -617,6 +623,8 @@
+     }
+ 
+     pub(super) fn output(&self, offset: usize, target: &mut [u8]) {
++        #[cfg(test)]
++        super::temporary_f32_routes::record(super::temporary_f32_routes::Event::Output(target.len() / 4));
+         match self {
+             Self::U8(bytes) => {
+                 let start = (bytes.first * bytes.width + offset) * 4;
+--- /dev/null
++++ b/crates/pagura-render/src/compositor/temporary_f32_routes.rs
+@@ -0,0 +1,217 @@
++//! Temporary first-chunk route evidence on the externally pinned benchmark PDFs.
++//! Never benchmark this test binary or retain these hooks in product source.
++use super::*;
++use crate::Accuracy;
++use pagura_document::{Document, OpenOptions};
++use pagura_raster::Rgba8;
++use std::cell::Cell;
++
++#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
++struct Counts {
++    paths: usize,
++    masks: usize,
++    dynamic: usize,
++    output_calls: usize,
++    output_pixels: usize,
++}
++
++std::thread_local! {
++    static COUNTS: Cell<Option<Counts>> = const { Cell::new(None) };
++}
++
++pub(super) enum Event {
++    Path,
++    Mask,
++    Dynamic,
++    Output(usize),
++}
++
++// Counts API entries, not nonzero coverage or individual memory stores.
++pub(super) fn record(event: Event) {
++    COUNTS.with(|slot| {
++        if let Some(mut value) = slot.get() {
++            match event {
++                Event::Path => value.paths += 1,
++                Event::Mask => value.masks += 1,
++                Event::Dynamic => value.dynamic += 1,
++                Event::Output(pixels) => {
++                    value.output_calls += 1;
++                    value.output_pixels += pixels;
++                }
++            }
++            slot.set(Some(value));
++        }
++    });
++}
++
++struct Trace;
++impl Trace {
++    fn start() -> Self {
++        COUNTS.with(|slot| assert!(slot.replace(Some(Counts::default())).is_none()));
++        Self
++    }
++    fn finish(self) -> Counts {
++        COUNTS.with(|slot| slot.get().unwrap())
++    }
++}
++impl Drop for Trace {
++    fn drop(&mut self) {
++        COUNTS.with(|slot| slot.set(None));
++    }
++}
++
++#[test]
++fn temporary_f32_benchmark_routes() {
++    let directory = std::path::PathBuf::from(
++        std::env::var_os("PAGURA_F32_ROUTE_INPUTS")
++            .or_else(|| option_env!("PAGURA_F32_ROUTE_INPUTS").map(std::ffi::OsString::from))
++            .expect("externally pinned input directory required"),
++    );
++    assert!(directory.is_absolute());
++    for name in [
++        "sparse64", "image-only", "f32-shading-dense", "f32-pattern-dense", "opaque64", "default-knockout64",
++    ] {
++        let bytes = std::fs::read(directory.join(format!("{name}.pdf"))).unwrap();
++        assert!(!bytes.is_empty() && bytes.len() <= 2 * 1024 * 1024);
++        let length = bytes.len();
++        // Exactly the timed profile's default Repair opening and full compilation.
++        let document = Document::open(bytes, &OpenOptions::default()).unwrap();
++        let list = crate::compile_page(&document, document.page(0).unwrap()).unwrap();
++        for accuracy in [Accuracy::Exact, Accuracy::Competitive] {
++            check_chunk(name, length, &list, accuracy);
++        }
++    }
++}
++
++fn check_chunk(name: &str, input_bytes: usize, list: &DisplayList, accuracy: Accuracy) {
++    let options = RenderOptions { accuracy, ..RenderOptions::from_dpi(72.0) };
++    let competitive = accuracy == Accuracy::Competitive;
++    let glyphs = matches!(name, "sparse64" | "opaque64");
++    let knockout = name == "default-knockout64";
++    let wide = knockout || (name == "f32-pattern-dense" && !competitive);
++    let expected_format = if wide {
++        plan::Format::F64
++    } else if name == "opaque64" {
++        plan::Format::N16
++    } else {
++        plan::Format::F32
++    };
++    let dimension = if glyphs || knockout { 2048 } else { 512 };
++    assert_eq!(list.device_size(&options).unwrap(), (dimension, dimension));
++    assert!(!list.group.knockout);
++    assert!(list.group.model.is_none_or(|model| model == Model::Rgb));
++    if glyphs {
++        assert_eq!(list.commands.len(), 64);
++        assert!(list.commands.iter().all(|command| matches!(command, Command::Glyphs(_))));
++    } else if knockout {
++        assert_eq!(list.commands.len(), 64);
++        assert!(list.commands.iter().all(|command| matches!(command, Command::Group(_))));
++    } else {
++        assert_eq!(list.commands.len(), 1);
++        assert!(match (&list.commands[0], name) {
++            (Command::Image(_), "image-only") | (Command::Shading(_), "f32-shading-dense") => true,
++            (Command::Path(path), "f32-pattern-dense") => pattern_source(path).is_some(),
++            _ => false,
++        });
++    }
++
++    // Match render_competitive's actual cache/resolution setup, not merely its rasterizer.
++    let fragments = competitive.then(|| {
++        let mut cache = crate::fragments::GlyphCache::new(crate::fragments::CACHE_BYTES);
++        cache.make_room(list.glyph_placements(), list.limits.document_bytes);
++        Fragments {
++            cache,
++            accumulator: crate::fragments::Accumulator::default(),
++            resolution: crate::fragments::Resolution::new(&options),
++            row: Vec::new(),
++        }
++    });
++    let separations = list.preview_separations(&options).unwrap();
++    assert!(!separations.enabled);
++    let plan = if competitive {
++        plan::page_with_shading_patterns(list, &separations)
++    } else {
++        plan::page(list, &separations)
++    }.unwrap();
++    assert_eq!(plan.format, expected_format);
++    let side = if name == "image-only" { 128 } else { 256 };
++    assert_eq!(plan.side, side);
++    let mut context = Context::new(list, &options, &plan, separations).unwrap();
++    if list.plain_opaque() && !context.separations.enabled {
++        context.validate_plain_sources(&list.commands, 0).unwrap();
++    }
++    if competitive {
++        context.raster = Policy::COMPETITIVE.rasterizer().unwrap();
++        assert_eq!(Policy::COMPETITIVE.rows.min(side), side);
++    }
++    context.fragments = fragments;
++    context.scene.enable(dimension > side);
++    let chunk = Tile { x: 0, y: 0, width: side, height: side };
++    let count = usize::try_from(u64::from(side) * u64::from(side)).unwrap();
++    let mut output = Pixmap::new(side, side, Rgba8::WHITE, list.limits.pixels).unwrap();
++    if let [Command::Image(image)] = list.commands.as_slice() {
++        // Full-page opaque-image bypass is rejected by this fixture's alpha1/4.
++        assert!(!context.paint_opaque_image(image, Model::Rgb, &mut output, (chunk, chunk), [255; 4]).unwrap());
++    }
++    context.clip.clear();
++    context.discard_mask();
++    context.begin_transfers(chunk).unwrap();
++    let mut surface = context.page_surface(chunk, plan.format, [255; 4], false).unwrap();
++    let trace = Trace::start();
++    context.commands(&list.commands, &mut surface, Backdrop::Transparent, Model::Rgb, list.group.knockout, 0).unwrap();
++    let range = surface.narrow().and_then(narrow::Buffer::painted_range);
++    let expected_range = if wide {
++        None
++    } else if glyphs {
++        Some(59904..(if competitive { 61696 } else { 61440 }))
++    } else {
++        Some(0..count)
++    };
++    assert_eq!(range, expected_range, "{name} {accuracy:?}");
++    if wide {
++        assert!(surface.narrow().is_none());
++        assert_eq!(surface.pixels().len(), count);
++    }
++    let counters = (context.work, context.allocated, context.function_work);
++    context.write_output(&surface, &[], Model::Rgb, &mut output, chunk).unwrap();
++    assert_eq!((context.work, context.allocated, context.function_work), counters);
++    let counts = trace.finish();
++
++    if wide {
++        assert_eq!(counts, Counts::default(), "wide controls must enter no narrow writer/output");
++    } else if glyphs {
++        assert_eq!(counts.dynamic, 0);
++        if competitive {
++            assert!(counts.masks > 0);
++            assert_eq!(counts.paths, 0);
++            assert!(context.fragments.as_ref().unwrap().cache.retained_bytes() > 0);
++        } else {
++            assert!(counts.paths > 0);
++            assert_eq!(counts.masks, 0);
++            assert!(context.fragments.is_none());
++            assert!(context.glyphs.retained_bytes() > 0);
++        }
++        assert_eq!(counts.output_calls, if competitive { 7 } else { 6 });
++        assert_eq!(counts.output_pixels, if competitive { 1792 } else { 1536 });
++    } else {
++        assert_eq!((counts.paths, counts.masks), (0, 0));
++        assert_eq!(counts.dynamic, count);
++        assert_eq!(counts.output_calls, usize::try_from(side).unwrap());
++        assert_eq!(counts.output_pixels, count);
++    }
++    // Independent first-chunk oracle: PDF rows1808..1814 become device234..240.
++    // Glyph widths4 and advances4 cover the complete first256 columns.
++    let stripe = glyphs || knockout;
++    for (index, pixel) in output.data().as_chunks::<4>().0.iter().enumerate() {
++        let y = index / usize::try_from(side).unwrap();
++        let gray = if !stripe || (234..240).contains(&y) {
++            if name == "opaque64" { 0 } else { 191 }
++        } else { 255 };
++        assert_eq!(*pixel, [gray, gray, gray, 255], "{name} {accuracy:?} pixel{index}");
++    }
++    eprintln!(
++        "PAGURA_F32_ROUTE_V1 case={name} mode={accuracy:?} input_bytes={input_bytes} page={dimension} side={side} format={:?} interval={range:?} paths={} masks={} dynamic={} narrow_output_calls={} narrow_output_pixels={} work={} allocated={} function_work={}",
++        plan.format, counts.paths, counts.masks, counts.dynamic, counts.output_calls,
++        counts.output_pixels, counters.0, counters.1, counters.2,
++    );
++}

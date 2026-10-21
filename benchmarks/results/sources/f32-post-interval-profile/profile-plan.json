@@ -1,0 +1,72 @@
+{
+  "schema": 1,
+  "status": "frozen-before-profile",
+  "purpose": "Locate remaining sparse64 Exact F32 render-stack costs after retained N16 painted-interval optimization. One current product only; no speed, memory, admission or competitor claim.",
+  "admission": false,
+  "root": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura",
+  "source": {
+    "commit": "f9738174757252567730ff62b5d36620c01d1e6c",
+    "runner_sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973",
+    "product_sha256": "53062678753e6012a291b95dbf07cb8b069e7134ab836d587919975d1ed057c7"
+  },
+  "configuration": {
+    "case": "sparse64",
+    "accuracy": "exact",
+    "page": 0,
+    "dpi": 72,
+    "reported_renders": 1000,
+    "existing_unreported_warmup": 1,
+    "attach_delay_seconds": 0.1,
+    "sample_seconds": 5,
+    "sample_interval_ms": 1,
+    "owned_children_deadline_seconds": 120,
+    "maximum_launches": 1,
+    "write_each_output": false
+  },
+  "binary": {
+    "path": "/private/tmp/n16-interval-native-candidate-001/release/examples/render_profile",
+    "sha256": "86b1c3f1b95c51d3b302d6f890bd3de75875b885963cf87d427da285640b857b"
+  },
+  "build_receipt": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-post-interval-profile/build-001-receipt.json",
+    "sha256": "db547bfc4278fb9a6a091603545a224a9ed913281d2773a1926421d067bdd07f"
+  },
+  "retention_summary": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/n16-painted-interval-experiment.json",
+    "sha256": "781010e525114cc2de9ad806d3f1d193029bca7a87f32f3dde73a1cdf84cdcec"
+  },
+  "reference_report": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval-recovery/confirmation-001/report.json",
+    "sha256": "4926f2de34fa2f10141200b4a17853e1f9484afd16b6ddd4ce6426ee2b2a594e"
+  },
+  "input": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval-recovery/confirmation-001/inputs/sparse64.pdf",
+    "sha256": "651dec61feaac1a698b8c56f77acfef60fff9a8eacfb8f26613012be66014d0f"
+  },
+  "oracle": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval-recovery/confirmation-001/oracles/sparse64.ppm",
+    "sha256": "bb13bb16328bf14071f7b668a24d3f10b336a97446023dcf65c4286cd73e1461"
+  },
+  "checksum": {
+    "raw_rgba_sha256": "4c7abbe75b5dbad1651d4eb4086cc80a161db2bb694f0e0ae5feaec7f3e05656",
+    "fnv1a64": "e5f3db0fd7222325"
+  },
+  "sampler": {
+    "path": "/usr/bin/sample",
+    "sha256": "0959bc5da2a44c7d35df917a00020ab8167f0c6a98d456b0647533aa24c3456a"
+  },
+  "driver_sha256": "57563ee8951517dea175760037ae34c62a2aa8794d8d85b89f8f31a5b359d229",
+  "example_sha256": "a698372b098162d57ff9772db99bbab58a9bcabd4664e2542dec0f31c917f339",
+  "limitations": [
+    "One current product only; no comparison or quantitative speed estimate is permitted.",
+    "The existing example opens with default Repair options, fully compiles once and uses default Exact rendering. It does not explicitly select storage or emit document diagnostics.",
+    "F32 is the expected route for this frozen quarter-alpha fixture from prior route validation; this uninstrumented profile does not independently measure storage admission.",
+    "The fixed long-lived process differs from short-lived paired confirmation samples.",
+    "Whole-process sampling includes startup/open/compile, rendering, full-image FNV, printing and teardown; full-image checksum work is outside printed render timers but inside sampled stacks.",
+    "The one unreported warmup also computes its checksum. Sampling begins after a fixed 0.1-second delay, not a render-stage barrier.",
+    "Checksums derive from one independently byte-verified retained reference output; FNV equality is diagnostic, not a per-render cryptographic pixel proof.",
+    "Requested five-second capture uses -mayDie; retain actual lifetime, raw header and lifecycle flags rather than asserting a complete five-second capture.",
+    "Inlining and sampling granularity limit attribution; absent named frames do not prove absent work.",
+    "No automatic retry, changed render count after stack inspection, new timing gate or admission claim."
+  ]
+}

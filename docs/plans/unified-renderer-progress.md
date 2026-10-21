@@ -342,3 +342,16 @@ Retain this accuracy improvement separately from performance claims. The next
 small performance slice reserves the five rectangle segments once, then measures
 its incremental effect. Color reuse, prepared spans and untouched-output skipping
 remain separate candidates; historical percentages must not be added together.
+
+
+## F32 output interval and requested pause
+
+The F32 interval continuation and independent audit completed with every original
+complete pair preserved. Both sparse target latency gates pass: median time falls
+50.0% Exact and 55.1% Competitive versus the retained N16 interval. Protected
+latency passes 17/54 and sampled RSS passes 30/56, with supported control
+regressions and Exact target RSS growth. Retain experimentally, without promotion.
+
+[The pause status](unified-renderer-status.md) records the full result, method
+amendment, validation, unresolved goal gaps and restart point. Work is paused
+after this commit at the user's request; no next optimization has started.

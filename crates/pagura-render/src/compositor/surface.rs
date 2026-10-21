@@ -43,6 +43,13 @@ impl Surface {
     pub(super) fn narrow(&self) -> Option<&narrow::Buffer> {
         self.narrow.as_ref()
     }
+    /// Prepares narrow output tracking without invalidating a wide solid span.
+    /// No pixels are stored until the dynamic operation reaches its loop.
+    pub(super) fn prepare_dynamic(&mut self) {
+        if let Some(buffer) = self.narrow.as_mut() {
+            buffer.prepare_dynamic();
+        }
+    }
     /// Every store into bounded storage also ends the solid interval.
     pub(super) fn narrow_mut(&mut self) -> Option<&mut narrow::Buffer> {
         self.solid = None;
@@ -165,6 +172,10 @@ mod tests {
         for (start, count) in [(2, 2), (4, 4), (1, 2), (2, 5)] {
             assert!(surface.fill_solid(start, count, color).unwrap());
         }
+        surface.prepare_dynamic();
+        assert!(surface.solid.is_some_and(|span| {
+            span.start == 1 && span.end == 8 && span.color == color.map(f64::to_bits)
+        }));
         assert_eq!(surface.pixel(0, 0).alpha, 0.0);
         for x in 1..8 {
             let pixel = surface.pixel(x, 0);

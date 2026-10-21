@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "experiment": "f32-painted-interval-continuation",
+  "run": "confirmation-001",
+  "decision": null,
+  "reason": null,
+  "restriction": null,
+  "confirmation_config": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval-continuation/confirmation-config.json",
+    "sha256": null
+  },
+  "audit": {
+    "artifact": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval-continuation/confirmation-001-analysis.json",
+      "sha256": null
+    },
+    "receipt": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval-continuation/confirmation-001-audit-receipt.json",
+      "sha256": null
+    },
+    "guard": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval-continuation/confirmation-001-audit-observer/guard.json",
+      "sha256": null
+    }
+  }
+}

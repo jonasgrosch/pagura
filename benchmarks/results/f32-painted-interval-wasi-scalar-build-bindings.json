@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "target": "wasm32-wasip1",
+  "profile": "release",
+  "target_feature": "-simd128",
+  "rustflags": "-C target-feature=-simd128",
+  "cargo_encoded_rustflags": null,
+  "baseline": {
+    "path": "/private/tmp/f32-interval-wasi-scalar-baseline-001/wasm32-wasip1/release/examples/scene_index_profile.wasm",
+    "sha256": "ec13416dc83d358afd6c66a04f2e05c2acac6c2b488c78bd9589ecf0e8b3933e",
+    "source_root": "/Users/jonasgrosch/.codex/worktrees/renderer-f32-interval-base/pagura",
+    "source": {
+      "commit": "f9738174757252567730ff62b5d36620c01d1e6c",
+      "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+    },
+    "receipt": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/wasi-scalar-baseline-build-001-receipt.json",
+    "receipt_sha256": "3298871de82aaea740df0415832dde5d9081fec219dd51f6fbaf6d439cdf051b",
+    "context": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/wasi-scalar-baseline-build-001-context.json",
+      "sha256": "bee0527ec46a9c1150925b0883f495be6bbc080a4a45e58a973fd6b32a70842a"
+    },
+    "guard": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/wasi-scalar-baseline-build-001-observer/guard.json",
+      "sha256": "83a8c849e58882a20ce96dfec6089021fe6961fe97acd887a41743cdb19abd5a"
+    }
+  },
+  "candidate": {
+    "path": "/private/tmp/f32-interval-wasi-scalar-candidate-001/wasm32-wasip1/release/examples/scene_index_profile.wasm",
+    "sha256": "c02827b1f5457a07c5abb741788aea0ac7c7fa0dea7fa075b2e648afb0711843",
+    "source_root": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura",
+    "source": {
+      "commit": "f9738174757252567730ff62b5d36620c01d1e6c",
+      "sha256": "12f0d3dbf3ab8f7ac28fcc1e4b3ad143793aadf434c8de0765abcaf42a3f66be"
+    },
+    "receipt": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/wasi-scalar-candidate-build-001-receipt.json",
+    "receipt_sha256": "95e117efd528c541373ae35c1e1aa25f914a7ad08ad407b6ae26d2a05665f325",
+    "context": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/wasi-scalar-candidate-build-001-context.json",
+      "sha256": "5ba3f68c88a75ec5d17c3480a3b74973cb5ba6fc8328e6fb7ab21fe78848a889"
+    },
+    "guard": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/f32-painted-interval/wasi-scalar-candidate-build-001-observer/guard.json",
+      "sha256": "30932472c14da17fe7cc0d0c75844126998940f1e25174b5a83db70ff19f7a10"
+    }
+  }
+}
