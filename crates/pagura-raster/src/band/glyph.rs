@@ -149,6 +149,14 @@ impl GlyphEdges {
     pub fn retained_bytes(&self) -> usize {
         self.retained
     }
+
+    /// The binned preparation, if the edges were prepared for bins.
+    pub(crate) fn prepared(&self) -> Option<&binned::Prepared> {
+        match &self.kind {
+            Kind::Binned(prepared) => Some(prepared),
+            Kind::Exact(_) => None,
+        }
+    }
 }
 
 /// Places `edges` at `origin`.

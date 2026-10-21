@@ -108,7 +108,7 @@ impl BandRasterizer {
                             placement,
                             shape,
                             rows,
-                            out,
+                            (out, self.cells.row_buffer()),
                         ));
                     }
                 }

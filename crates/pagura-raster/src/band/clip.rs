@@ -83,6 +83,32 @@ impl Rows {
         }
     }
 
+    /// Scales `values`, row `y` from column `x0`, by the clip's coverage.
+    pub(crate) fn scale(&self, y: u32, x0: usize, values: &mut [u8]) {
+        let segments = self.row(y);
+        let mut s = 0;
+        for (x, v) in (x0..).zip(values.iter_mut()) {
+            while segments.get(s).is_some_and(|seg| (seg.x1 as usize) <= x) {
+                s += 1;
+            }
+            let factor = match segments.get(s) {
+                Some(seg) if (seg.x0 as usize) <= x => {
+                    if seg.cell == INSIDE {
+                        u8::MAX
+                    } else {
+                        self.cell(seg.cell).map_or(0, |(c, _, _)| c.value)
+                    }
+                }
+                _ => 0,
+            };
+            if factor != u8::MAX {
+                #[expect(clippy::cast_possible_truncation, reason = "a rounded byte product")]
+                let scaled = ((u16::from(*v) * u16::from(factor) + 127) / 255) as u8;
+                *v = scaled;
+            }
+        }
+    }
+
     pub(crate) fn cell(&self, index: u32) -> Option<(&Cell, &[LocalEdge], &[FillRule])> {
         let cell = self.cells.get(index as usize)?;
         Some((

@@ -2,6 +2,7 @@
 //! exact backends it replaces.
 
 mod approximate;
+mod binned;
 mod clips;
 mod fills;
 mod strokes;

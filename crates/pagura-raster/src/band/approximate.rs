@@ -225,7 +225,7 @@ fn product(a: u8, b: u8) -> u8 {
 /// its paths, then its rectangle's column and row factors.
 pub(crate) struct Multiplied<'a> {
     out: Out<'a>,
-    clip: Option<(&'a Product, Option<Bounds>)>,
+    clip: Option<&'a ClipShape>,
     y: u32,
     row: &'a mut Vec<u8>,
     work: usize,
@@ -233,10 +233,7 @@ pub(crate) struct Multiplied<'a> {
 
 impl<'a> Multiplied<'a> {
     pub(crate) fn new(out: &'a mut BandCoverage, shape: &'a Shape, y: u32, row: &'a mut Vec<u8>) -> Self {
-        let clip = shape
-            .multiplied
-            .as_ref()
-            .map(|clip| (clip.product().unwrap_or(&EMPTY), clip.rect()));
+        let clip = shape.multiplied.as_ref();
         Self {
             out: Out {
                 out,
@@ -251,18 +248,6 @@ impl<'a> Multiplied<'a> {
     }
 }
 
-static EMPTY: Product = Product {
-    bounds: DeviceRect {
-        x0: 0,
-        y0: 0,
-        x1: 0,
-        y1: 0,
-    },
-    values: Vec::new(),
-    work: 0,
-    retained: 0,
-};
-
 impl Multiplied<'_> {
     pub(crate) fn work(&self) -> usize {
         self.work
@@ -271,7 +256,7 @@ impl Multiplied<'_> {
 
 impl Sink for Multiplied<'_> {
     fn run(&mut self, x0: usize, x1: usize, value: u8) {
-        let Some((product, rect)) = self.clip else {
+        let Some(clip) = self.clip else {
             self.out.run(x0, x1, value);
             return;
         };
@@ -283,12 +268,16 @@ impl Sink for Multiplied<'_> {
         self.work += b - a;
         self.row.clear();
         self.row.extend(std::iter::repeat_n(value, b - a));
-        if let Some(factors) = product.row(self.y, a, b) {
-            for (v, &f) in self.row.iter_mut().zip(factors) {
-                *v = product_or(*v, f);
+        if let Some(product) = clip.product() {
+            if let Some(factors) = product.row(self.y, a, b) {
+                for (v, &f) in self.row.iter_mut().zip(factors) {
+                    *v = product_or(*v, f);
+                }
             }
+        } else if let Some(rows) = clip.rows() {
+            rows.scale(self.y, a, self.row);
         }
-        if let Some(rect) = rect {
+        if let Some(rect) = clip.rect() {
             scale_edges(rect, (a, self.y), self.row);
         }
         for (x, &v) in (a..).zip(self.row.iter()) {
