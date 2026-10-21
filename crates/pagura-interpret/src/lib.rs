@@ -8,7 +8,17 @@
 //! it does not need. Two devices live here: [`SceneRecorder`], which records
 //! a device-independent [`Scene`] for rendering, and [`TextDevice`], which
 //! collects positioned glyphs for `pagura-extract` without decoding images,
-//! parsing shadings or converting colours.
+//! parsing shadings or converting colours. [`dump`] prints a scene for
+//! snapshots and debugging.
+//!
+//! Content is read by `pagura-content`; colour spaces and functions are
+//! resolved into `pagura-color` values, images into undecoded
+//! `pagura-image` sources, fonts through `pagura-text`, and appearances of
+//! annotations without one and of filled forms come from
+//! `pagura-appearance`. Malformed input is repaired and reported exactly as
+//! the [`repairs`] tags say, or rejected under strict recovery; capabilities
+//! that are not implemented are `Unsupported` errors with a [`features`]
+//! tag.
 
 mod device;
 mod dump;
@@ -83,7 +93,10 @@ impl<'a> Interpreter<'a> {
         self
     }
 
-    /// Caches font programs and other reusable values in `store`.
+    /// Caches font programs, glyph outlines and ICC profiles in `store`, by
+    /// object identity, so that later pages and interpretations reuse
+    /// them. The keys name objects of this document, so a store serves one
+    /// document.
     #[must_use]
     pub fn with_store(mut self, store: &'a Store) -> Self {
         self.store = Some(store);
