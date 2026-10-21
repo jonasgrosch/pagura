@@ -1,6 +1,6 @@
 //! One traversal for name and number trees (7.9.6–7.9.7, Tables 36–37).
-use super::context::{Context, Source, identity};
-use crate::{Document, tags};
+use crate::view::{Context, Source, identity};
+use crate::{Document, repairs};
 use pagura_core::{Error, ErrorKind, Result, Value};
 use std::{collections::BTreeSet, fmt::Debug, marker::PhantomData};
 
@@ -9,6 +9,7 @@ mod sealed {
     impl Sealed for &[u8] {}
     impl Sealed for i64 {}
 }
+
 /// The two PDF tree key kinds. Sealed to byte strings and integers.
 pub trait TreeKey<'a>: sealed::Sealed + Ord + Copy + Debug {
     /// Borrowed lookup-key type, independent of the tree lifetime.
@@ -20,26 +21,31 @@ pub trait TreeKey<'a>: sealed::Sealed + Ord + Copy + Debug {
     /// Reads a direct key of the corresponding PDF type.
     fn from_value(value: &'a Value) -> Option<Self>;
 }
+
 impl<'a> TreeKey<'a> for &'a [u8] {
     type Query = [u8];
     fn compare(self, query: &[u8]) -> std::cmp::Ordering {
         self.cmp(query)
     }
+
     const ENTRY: &'static [u8] = b"Names";
     fn from_value(value: &'a Value) -> Option<Self> {
         value.as_string()
     }
 }
+
 impl TreeKey<'_> for i64 {
     type Query = i64;
     fn compare(self, query: &i64) -> std::cmp::Ordering {
         self.cmp(query)
     }
+
     const ENTRY: &'static [u8] = b"Nums";
     fn from_value(value: &Value) -> Option<Self> {
         value.as_integer()
     }
 }
+
 /// A string-keyed name tree; comparisons use decoded bytes, not text collation.
 pub type NameTree<'a> = Tree<'a, &'a [u8]>;
 /// An integer-keyed number tree.
@@ -47,24 +53,27 @@ pub type NumberTree<'a> = Tree<'a, i64>;
 /// A lazy handle to a PDF name or number tree. No objects load on construction.
 #[derive(Debug, Clone, Copy)]
 pub struct Tree<'a, K> {
-    doc: &'a Document,
+    document: &'a Document,
     root: &'a Value,
     source: Source,
     kind: PhantomData<K>,
 }
+
 impl<'a, K: TreeKey<'a>> Tree<'a, K> {
-    pub(super) fn new(doc: &'a Document, root: &'a Value) -> Self {
+    pub(super) fn new(document: &'a Document, root: &'a Value) -> Self {
         Self {
-            doc,
+            document,
             root,
             source: Source::default(),
             kind: PhantomData,
         }
     }
+
     pub(super) fn with_source(mut self, source: Source) -> Self {
         self.source = source;
         self
     }
+
     /// Looks up a key using child Limits to guide descent. Only visited nodes
     /// are validated on a hit. On a miss, a bounded full validation recovers
     /// keys hidden by damaged Limits, rather than returning a false absence.
@@ -73,9 +82,10 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
     /// Returns positioned structural/reference/budget errors; safe tree repairs
     /// reject strictly with the corresponding `tree.*` repair tag.
     pub fn get(&self, key: &K::Query) -> Result<Option<&'a Value>> {
-        self.get_with(&mut Context::new(self.doc), key)
+        self.get_with(&mut Context::new(self.document), key)
             .map(|v| v.map(|(v, _)| v))
     }
+
     /// Validates the complete tree, then iterates in key order. Duplicate keys
     /// keep their first physical occurrence, with a reported `tree.order` repair.
     /// Values remain borrowed and unresolved.
@@ -84,17 +94,20 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
     /// As [`Self::get`]. No partial collection is returned on a budget failure.
     pub fn entries(&self) -> Result<TreeEntries<'a, K>> {
         Ok(TreeEntries {
-            inner: self.entries_with(&mut Context::new(self.doc))?.into_iter(),
+            inner: self
+                .entries_with(&mut Context::new(self.document))?
+                .into_iter(),
         })
     }
+
     fn bounds(
-        ctx: &mut Context<'a>,
+        context: &mut Context<'a>,
         value: &'a Value,
         source: Source,
         root: bool,
     ) -> Result<Option<(K, K)>> {
-        let (dictionary, source) = ctx.dictionary(value, source)?;
-        let (limits, present) = match ctx.entry(dictionary, b"Limits", source) {
+        let (dictionary, source) = context.dictionary(value, source)?;
+        let (limits, present) = match context.entry(dictionary, b"Limits", source) {
             Ok(value) => (value, value.is_some()),
             Err(error) if matches!(error.kind, ErrorKind::MissingObject | ErrorKind::Cycle) => {
                 (None, true)
@@ -102,22 +115,23 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
             Err(error) => return Err(error),
         };
         let bounds = match limits.and_then(Value::as_array) {
-            Some([low, high]) => Self::bound_key(ctx, low, source)?
-                .zip(Self::bound_key(ctx, high, source)?)
+            Some([low, high]) => Self::bound_key(context, low, source)?
+                .zip(Self::bound_key(context, high, source)?)
                 .filter(|(low, high)| low <= high),
             _ => None,
         };
         if (root && present) || (!root && bounds.is_none()) {
-            ctx.repair(
-                tags::TREE_LIMITS,
+            context.repair(
+                repairs::TREE_LIMITS,
                 "tree Limits absent or malformed; actual keys used (7.9.6–7.9.7)",
                 source,
             )?;
         }
         Ok(bounds)
     }
-    fn bound_key(ctx: &mut Context<'a>, value: &'a Value, source: Source) -> Result<Option<K>> {
-        match ctx.resolve(value, source) {
+
+    fn bound_key(context: &mut Context<'a>, value: &'a Value, source: Source) -> Result<Option<K>> {
+        match context.resolve(value, source) {
             Ok((value, _)) => Ok(K::from_value(value)),
             Err(error) if matches!(error.kind, ErrorKind::MissingObject | ErrorKind::Cycle) => {
                 Ok(None)
@@ -125,16 +139,17 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
             Err(error) => Err(error),
         }
     }
+
     fn node(
-        ctx: &mut Context<'a>,
+        context: &mut Context<'a>,
         value: &'a Value,
         source: Source,
         root: bool,
     ) -> Result<Option<(&'a Value, Source)>> {
-        match ctx.resolve(value, source) {
+        match context.resolve(value, source) {
             Ok((value, _)) if !root && value.is_null() => {
-                ctx.repair(
-                    tags::TREE_STRUCTURE,
+                context.repair(
+                    repairs::TREE_STRUCTURE,
                     "null tree child omitted (7.9.6–7.9.7)",
                     source,
                 )?;
@@ -145,52 +160,53 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                 if !root && matches!(error.kind, ErrorKind::MissingObject | ErrorKind::Cycle) =>
             {
                 let tag = if error.kind == ErrorKind::Cycle {
-                    tags::TREE_CYCLE
+                    repairs::TREE_CYCLE
                 } else {
-                    tags::TREE_STRUCTURE
+                    repairs::TREE_STRUCTURE
                 };
-                ctx.repair(tag, "unresolvable tree child omitted (7.9.6–7.9.7)", source)?;
+                context.repair(tag, "unresolvable tree child omitted (7.9.6–7.9.7)", source)?;
                 Ok(None)
             }
             Err(error) => Err(error),
         }
     }
+
     pub(super) fn get_with(
         &self,
-        ctx: &mut Context<'a>,
+        context: &mut Context<'a>,
         key: &K::Query,
     ) -> Result<Option<(&'a Value, Source)>> {
         let mut stack = vec![(self.root, self.source, 0)];
         let mut visited = BTreeSet::new();
         while let Some((value, source, depth)) = stack.pop() {
-            ctx.step(depth, source)?;
-            let Some((value, source)) = Self::node(ctx, value, source, depth == 0)? else {
+            context.step(depth, source)?;
+            let Some((value, source)) = Self::node(context, value, source, depth == 0)? else {
                 continue;
             };
-            ctx.allocate::<usize>(8, source)?;
+            context.index_entry(source)?;
             if !visited.insert(identity(value)) {
-                ctx.repair(
-                    tags::TREE_CYCLE,
+                context.repair(
+                    repairs::TREE_CYCLE,
                     "repeated tree node omitted (7.9.6–7.9.7)",
                     source,
                 )?;
                 continue;
             }
-            let (dictionary, source) = ctx.dictionary(value, source)?;
-            let bounds = Self::bounds(ctx, value, source, depth == 0)?;
-            let pairs = ctx.entry(dictionary, K::ENTRY, source)?;
-            let kids = ctx.entry(dictionary, b"Kids", source)?;
+            let (dictionary, source) = context.dictionary(value, source)?;
+            let bounds = Self::bounds(context, value, source, depth == 0)?;
+            let pairs = context.entry(dictionary, K::ENTRY, source)?;
+            let kids = context.entry(dictionary, b"Kids", source)?;
             match (pairs, kids) {
                 (Some(pairs), None) => {
-                    let entries = Self::pairs(ctx, pairs, source)?;
+                    let entries = Self::pairs(context, pairs, source)?;
                     let actual = entries
                         .iter()
                         .map(|e| e.key)
                         .min()
                         .zip(entries.iter().map(|e| e.key).max());
                     if bounds.is_some() && bounds != actual {
-                        ctx.repair(
-                            tags::TREE_LIMITS,
+                        context.repair(
+                            repairs::TREE_LIMITS,
                             "tree Limits disagree with leaf keys; actual keys used (7.9.6–7.9.7)",
                             source,
                         )?;
@@ -208,38 +224,38 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                         .ok_or_else(|| source.error(Error::syntax("tree Kids must be an array")))?;
                     for child in kids.iter().rev() {
                         if !matches!(child, Value::Reference(_)) {
-                            ctx.repair(
-                                tags::TREE_STRUCTURE,
+                            context.repair(
+                                repairs::TREE_STRUCTURE,
                                 "direct tree child dictionary accepted (7.9.6–7.9.7)",
                                 source,
                             )?;
                         }
                         let Some((child_value, child_source)) =
-                            Self::node(ctx, child, source, false)?
+                            Self::node(context, child, source, false)?
                         else {
                             continue;
                         };
                         if visited.contains(&identity(child_value)) {
-                            ctx.repair(
-                                tags::TREE_CYCLE,
+                            context.repair(
+                                repairs::TREE_CYCLE,
                                 "repeated tree node omitted (7.9.6–7.9.7)",
                                 child_source,
                             )?;
                             continue;
                         }
-                        let bounds = Self::bounds(ctx, child_value, child_source, false)?;
+                        let bounds = Self::bounds(context, child_value, child_source, false)?;
                         if bounds.is_none_or(|(low, high)| {
                             low.compare(key) != std::cmp::Ordering::Greater
                                 && high.compare(key) != std::cmp::Ordering::Less
                         }) {
-                            ctx.allocate::<(&Value, Source, usize)>(1, source)?;
+                            context.allocate::<(&Value, Source, usize)>(1, source)?;
                             stack.push((child, source, depth + 1));
                         }
                     }
                 }
                 (Some(_), Some(_)) => {
                     return Ok(self
-                        .entries_with(ctx)?
+                        .entries_with(context)?
                         .into_iter()
                         .find(|e| e.key.compare(key) == std::cmp::Ordering::Equal)
                         .map(|e| (e.value, e.source)));
@@ -252,25 +268,30 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
             }
         }
         Ok(self
-            .entries_with(ctx)?
+            .entries_with(context)?
             .into_iter()
             .find(|e| e.key.compare(key) == std::cmp::Ordering::Equal)
             .map(|e| (e.value, e.source)))
     }
-    fn pairs(ctx: &mut Context<'a>, value: &'a Value, source: Source) -> Result<Vec<Entry<'a, K>>> {
+
+    fn pairs(
+        context: &mut Context<'a>,
+        value: &'a Value,
+        source: Source,
+    ) -> Result<Vec<Entry<'a, K>>> {
         let values = value
             .as_array()
             .ok_or_else(|| source.error(Error::syntax("tree entries must be an array")))?;
         if values.len() % 2 != 0 {
             return Err(source.error(Error::syntax("tree has an unmatched key")));
         }
-        ctx.allocate::<Entry<'a, K>>(values.len() / 2, source)?;
+        context.allocate::<Entry<'a, K>>(values.len() / 2, source)?;
         let entries: Vec<_> = values
             .as_chunks::<2>()
             .0
             .iter()
             .map(|pair| {
-                let (key, _) = ctx.resolve(&pair[0], source)?;
+                let (key, _) = context.resolve(&pair[0], source)?;
                 K::from_value(key)
                     .map(|key| Entry {
                         key,
@@ -281,15 +302,16 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
             })
             .collect::<Result<_>>()?;
         if entries.windows(2).any(|v| v[0].key >= v[1].key) {
-            ctx.repair(
-                tags::TREE_ORDER,
+            context.repair(
+                repairs::TREE_ORDER,
                 "tree keys reordered; first duplicate retained (7.9.6–7.9.7)",
                 source,
             )?;
         }
         Ok(entries)
     }
-    pub(super) fn entries_with(&self, ctx: &mut Context<'a>) -> Result<Vec<Entry<'a, K>>> {
+
+    pub(super) fn entries_with(&self, context: &mut Context<'a>) -> Result<Vec<Entry<'a, K>>> {
         let mut stack = vec![Frame::Enter(self.root, self.source, 0)];
         let mut ranges: Vec<Option<(K, K)>> = Vec::new();
         let mut visited = BTreeSet::new();
@@ -300,7 +322,12 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                 Frame::Exit(bounds, source) => {
                     let actual = ranges.pop().flatten();
                     if bounds.is_some() && bounds != actual {
-                        ctx.repair(tags::TREE_LIMITS,"tree Limits disagree with descendant keys; actual keys used (7.9.6–7.9.7)",source)?;
+                        context.repair(
+                            repairs::TREE_LIMITS,
+                            "tree Limits disagree with descendant keys; actual keys used \
+                             (7.9.6–7.9.7)",
+                            source,
+                        )?;
                     }
                     if let (Some(parent), Some(actual)) = (ranges.last_mut(), actual) {
                         merge(parent, actual);
@@ -309,14 +336,14 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                 }
                 Frame::Enter(value, source, depth) => (value, source, depth),
             };
-            ctx.step(depth, source)?;
-            let Some((value, source)) = Self::node(ctx, value, source, depth == 0)? else {
+            context.step(depth, source)?;
+            let Some((value, source)) = Self::node(context, value, source, depth == 0)? else {
                 continue;
             };
-            ctx.allocate::<usize>(8, source)?;
+            context.index_entry(source)?;
             if !visited.insert(identity(value)) {
-                ctx.repair(
-                    tags::TREE_CYCLE,
+                context.repair(
+                    repairs::TREE_CYCLE,
                     "repeated tree node omitted (7.9.6–7.9.7)",
                     source,
                 )?;
@@ -325,17 +352,17 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
             if depth == 0 {
                 tree_source = source;
             }
-            let (dictionary, source) = ctx.dictionary(value, source)?;
-            let bounds = Self::bounds(ctx, value, source, depth == 0)?;
-            ctx.allocate::<Frame<'a, K>>(1, source)?;
-            ctx.allocate::<Option<(K, K)>>(1, source)?;
+            let (dictionary, source) = context.dictionary(value, source)?;
+            let bounds = Self::bounds(context, value, source, depth == 0)?;
+            context.allocate::<Frame<'a, K>>(1, source)?;
+            context.allocate::<Option<(K, K)>>(1, source)?;
             stack.push(Frame::Exit(bounds, source));
             ranges.push(None);
-            let pairs = ctx.entry(dictionary, K::ENTRY, source)?;
-            let kids = ctx.entry(dictionary, b"Kids", source)?;
+            let pairs = context.entry(dictionary, K::ENTRY, source)?;
+            let kids = context.entry(dictionary, b"Kids", source)?;
             if pairs.is_some() && kids.is_some() {
-                ctx.repair(
-                    tags::TREE_STRUCTURE,
+                context.repair(
+                    repairs::TREE_STRUCTURE,
                     "mixed tree node read as local entries then children (7.9.6–7.9.7)",
                     source,
                 )?;
@@ -344,10 +371,10 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                 return Err(source.error(Error::syntax("tree node requires Kids or entries")));
             }
             if let Some(pairs) = pairs {
-                let pairs = Self::pairs(ctx, pairs, source)?;
+                let pairs = Self::pairs(context, pairs, source)?;
                 if let Some(range) = ranges.last_mut() {
                     for entry in &pairs {
-                        ctx.step(depth, source)?;
+                        context.step(depth, source)?;
                         merge(range, (entry.key, entry.key));
                     }
                 }
@@ -357,11 +384,11 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
                 let kids = kids
                     .as_array()
                     .ok_or_else(|| source.error(Error::syntax("tree Kids must be an array")))?;
-                ctx.allocate::<Frame<'a, K>>(kids.len(), source)?;
+                context.allocate::<Frame<'a, K>>(kids.len(), source)?;
                 for child in kids.iter().rev() {
                     if !matches!(child, Value::Reference(_)) {
-                        ctx.repair(
-                            tags::TREE_STRUCTURE,
+                        context.repair(
+                            repairs::TREE_STRUCTURE,
                             "direct tree child dictionary accepted (7.9.6–7.9.7)",
                             source,
                         )?;
@@ -371,22 +398,24 @@ impl<'a, K: TreeKey<'a>> Tree<'a, K> {
             }
         }
         if entries.windows(2).any(|v| v[0].key >= v[1].key) {
-            ctx.repair(
-                tags::TREE_ORDER,
+            context.repair(
+                repairs::TREE_ORDER,
                 "tree keys reordered; first duplicate retained (7.9.6–7.9.7)",
                 tree_source,
             )?;
-            ctx.allocate::<Entry<'a, K>>(entries.len(), tree_source)?;
+            context.allocate::<Entry<'a, K>>(entries.len(), tree_source)?;
             entries.sort_by_key(|entry| entry.key);
             entries.dedup_by_key(|entry| entry.key);
         }
         Ok(entries)
     }
 }
+
 enum Frame<'a, K> {
     Enter(&'a Value, Source, usize),
     Exit(Option<(K, K)>, Source),
 }
+
 fn merge<K: Ord + Copy>(range: &mut Option<(K, K)>, (low, high): (K, K)) {
     *range = Some(match *range {
         Some((a, b)) => (a.min(low), b.max(high)),
@@ -400,19 +429,23 @@ pub(super) struct Entry<'a, K> {
     pub value: &'a Value,
     pub source: Source,
 }
+
 /// Validated entries in ascending key order, borrowing their source values.
 #[derive(Debug, Clone)]
 pub struct TreeEntries<'a, K> {
     inner: std::vec::IntoIter<Entry<'a, K>>,
 }
+
 impl<'a, K> Iterator for TreeEntries<'a, K> {
     type Item = (K, &'a Value);
     fn next(&mut self) -> Option<Self::Item> {
         self.inner.next().map(|e| (e.key, e.value))
     }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.inner.size_hint()
     }
 }
+
 impl<K> ExactSizeIterator for TreeEntries<'_, K> {}
 impl<K> std::iter::FusedIterator for TreeEntries<'_, K> {}

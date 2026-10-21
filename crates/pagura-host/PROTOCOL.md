@@ -364,3 +364,67 @@ and invalid page indexes return operational InvalidArgument at payload offsets
 their structured category/context. A response-budget failure returns Limit
 without partial geometry. Request truncation or trailing bytes remain terminal
 protocol errors. The request is synchronous and never interrupts running work.
+
+## Form editing (v1.5)
+
+`hello(65541)` preserves older operations and adds requests 18 and 19. Older
+sessions reject these requests with operational InvalidArgument. Document
+handles remain immutable; saving returns complete PDF bytes for a separate open.
+
+| Kind | Request payload | Success kind | Success payload |
+|---|---|---|---|
+| 18 form_fields | `u32 document` | 146 | `u32 count; field[count]` |
+| 19 save_form | `u32 document; blob changes` | 147 | `blob complete_pdf` |
+
+A blob is a u32 byte count followed by that many bytes; text is a UTF-8 blob.
+Each field is `u32 index; u8 kind,flags; text name,value; u32 options; option[]`.
+Kinds are text=0, choice=1, button=2, unsupported=3. Flag bits are read-only=0,
+multi-select=1, multiline=2, editable-combo=3. Unsupported field values are blank.
+An option is `u32 key; text label; u8 selected; blob state`. Choice keys index
+options and have empty states; button keys index widgets globally and carry raw
+PDF name bytes for the on state. Selected is exactly 0 or 1. Responses are
+bounded to 1024 fields, 4096 total options and min(document_bytes,32 MiB).
+
+Changes begin with a u32 count (at most 1024), then strictly increasing unique
+`u32 field_index; u8 kind; payload` records. Kind 0 text and kind 4 editable
+choice have a text payload; kind 1 has `u32 count; u32 option_indices[count]`
+(at most 4096); kind 2 switches a button off with no payload; kind 3 selects
+`u32 widget_index; blob raw_state_name`. The whole batch is bounded to
+min(document_bytes,32 MiB). Invalid types, values, indexes, names or trailing
+batch bytes fail atomically with an operational error. Source bytes and handles
+remain usable. The ordinary framing and document budgets also apply.
+
+Saving uses the default library policy: strict source, no encrypted input,
+reject signatures or uncertain signature history, and explicit unsupported
+errors for unavailable appearance generation. No script/action is executed.
+
+## Inline widget geometry (v1.6)
+
+`hello(65542)` adds request 20: `u32 document,page`. Response 148 contains
+`u32 count` and records `u32 widget_index,field_index; u8 flags; f64 x0,y0,x1,y1`.
+Rectangles are normalized default user-space rectangles. Flags encode radio
+(bit 0), NoToggleToOff (1), RadiosInUnison (2), and list-box choice (3).
+At most 4096 widgets and 1024 fields are accepted. Membership comes from the
+page's Annots array; the optional P backlink never assigns a widget to a page.
+Hidden/NoView, ToggleNoView, NoZoom/NoRotate, optional-content and rotated-MK
+widgets are excluded until the browser implements their view policies. Direct
+widget identities and read-only/unsupported field controls are not editable.
+Earlier versions receive operational InvalidArgument; other layouts are unchanged.
+
+Exact duplicate widget dictionaries may map to their unique canonical form-tree
+widget even when Annots uses another object number. Ambiguous candidates are an
+operational error; differing dictionaries are not aliases. Changed browser saves
+append a reference-reconciliation revision before the normal strict form save.
+No-op saves retain original bytes. Comparisons are capped at 64 MiB of estimated
+dictionary bytes and page Annots arrays at 4096 entries.
+
+## Native editor presentation (v1.7)
+
+`hello(65543)` adds request 21: `u32 document,page`. Response 149 is `u32 count`
+followed by records: `u32 widgetIndex`, UTF-8 font name, three little-endian f64
+values (font size, left inset, baseline measured down from widget top), and u8
+quadding (0 left, 1 center, 2 right). Glyph positions come from isolated stored
+appearance interpretation, including its matrix and fitting; DA supplies a
+fallback for empty/unavailable text. The source handle's rendering policy also
+applies here. Source decoding is capped at 32 MiB per request; at most 4096
+widgets are described. Versions 1.0–1.6 retain their existing layouts.

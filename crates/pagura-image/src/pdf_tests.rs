@@ -333,8 +333,11 @@ fn jpeg_reports_are_bounded_per_decode_and_do_not_authorize_strict_repairs() {
     // Multiple repaired boundaries in each progressive JPEG produce one
     // record; a second decode still obtains its own permission and evidence.
     assert_eq!(diagnostics.as_slice().len(), 2);
+    // Earlier evidence cannot enter a strict sink, so it can never authorize
+    // a strict repair.
     let mut strict = pagura_core::Diagnostics::new(Recovery::Strict);
-    strict.extend(diagnostics.take());
+    assert!(strict.absorb(diagnostics.take()).is_err());
+    assert!(strict.is_empty());
     let error =
         crate::dct::decode_with_diagnostics(&stream.data, None, &Limits::default(), &mut strict)
             .unwrap_err();

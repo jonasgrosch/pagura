@@ -1,7 +1,7 @@
 //! Semantic object comparison without decoding or normalizing stream bytes.
 use crate::{
     Document, IndirectObject,
-    navigation::context::{Context, Source},
+    view::{Context, Source},
 };
 use pagura_core::{Dictionary, Result, Value};
 // Xref streams contain both trailer semantics and encoding/index bookkeeping.
@@ -74,7 +74,7 @@ fn dictionary_at(
     ignored: &[&[u8]],
     depth: usize,
 ) -> Result<bool> {
-    for (key, value) in a.iter() {
+    for (key, value) in a {
         if ignored.contains(&key.as_bytes()) {
             continue;
         }

@@ -142,5 +142,6 @@ name = "pagura-write"
 version = "0.1.0"
 dependencies = [
  "pagura-core",
+ "pagura-crypto",
  "pagura-testkit",
 ]

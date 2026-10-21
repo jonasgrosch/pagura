@@ -1,9 +1,7 @@
 //! Lazy object loading, dependency budgets and reference resolution (7.3.10).
 
-use crate::{
-    Document, IndirectObject, Location, OpenOptions, Slot, object, object_stream, rebuild,
-    security, xref,
-};
+use crate::xref::rebuild;
+use crate::{Document, IndirectObject, Location, OpenOptions, Slot, object, security, xref};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Error, ObjectId, Result, Value};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -123,7 +121,7 @@ impl Document {
         let result = match slot.location {
             Location::Offset(offset) => object::parse_at(self, id, offset, path),
             Location::Compressed { stream, index } => {
-                object_stream::parse(self, id, stream, index, path)
+                object::stream::parse(self, id, stream, index, path)
             }
             Location::Free => Err(Error::missing_object("object is free").in_object(id)),
         };
@@ -146,25 +144,27 @@ impl Document {
         &'a self,
         value: &'a Value,
         path: &mut Vec<ObjectId>,
-    ) -> Result<&'a Value> {
+    ) -> Result<(&'a Value, Option<ObjectId>)> {
         static NULL: Value = Value::Null;
         let mut current = value;
+        let mut origin = None;
         for _ in 0..=self.limits().depth {
             let Value::Reference(id) = current else {
-                return Ok(current);
+                return Ok((current, origin));
             };
             if !self.slots.contains_key(id) {
-                return Ok(&NULL);
+                return Ok((&NULL, origin));
             }
             current = self.object_inner(*id, path)?.value();
+            origin = Some(*id);
         }
-        Err(Error::limit("reference chain too long"))
+        Err(Error::limit("reference chain too long").in_object_opt(origin))
     }
 
     /// Resolves `value` and the elements and entries one level below it,
     /// for small parameter structures such as `/DecodeParms`.
     pub(crate) fn resolve_deep(&self, value: &Value, path: &mut Vec<ObjectId>) -> Result<Value> {
-        Ok(match self.resolve_inner(value, path)? {
+        Ok(match self.resolve_inner(value, path)?.0 {
             Value::Array(values) => Value::Array(
                 values
                     .iter()
@@ -180,11 +180,13 @@ impl Document {
         value: &Value,
         path: &mut Vec<ObjectId>,
     ) -> Result<Value> {
-        Ok(match self.resolve_inner(value, path)? {
+        Ok(match self.resolve_inner(value, path)?.0 {
             Value::Dictionary(dictionary) => Value::Dictionary(
                 dictionary
                     .iter()
-                    .map(|(key, value)| Ok((key.clone(), self.resolve_inner(value, path)?.clone())))
+                    .map(|(key, value)| {
+                        Ok((key.clone(), self.resolve_inner(value, path)?.0.clone()))
+                    })
                     .collect::<Result<_>>()?,
             ),
             other => other.clone(),
@@ -195,7 +197,7 @@ impl Document {
     /// limits and recovery mode.
     pub(crate) fn file_parser(&self, offset: usize) -> Result<Parser<'_>> {
         Ok(
-            Parser::at(&self.bytes, offset, Origin::File, self.limits())?
+            Parser::with_offset(&self.bytes, offset, Origin::File, self.limits())?
                 .with_recovery(self.recovery()),
         )
     }

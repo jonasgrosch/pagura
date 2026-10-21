@@ -193,6 +193,9 @@ impl Session {
                             | protocol::VERSION_1_2
                             | protocol::VERSION_1_3
                             | protocol::VERSION_1_4
+                            | protocol::VERSION_1_5
+                            | protocol::VERSION_1_6
+                            | protocol::VERSION_1_7
                     ) =>
             {
                 self.version = Some(*version);
@@ -216,6 +219,10 @@ impl Session {
     fn execute(&mut self, request: Request<'_>) -> Result<Response> {
         match request {
             Request::Hello(version) => Ok(Response::Hello(version)),
+            Request::FormFields(_)
+            | Request::SaveForm { .. }
+            | Request::FormWidgets { .. }
+            | Request::FormStyles { .. } => self.editing(request),
             Request::Reading(request) => self.reading(request).map(Response::Reading),
             Request::Stats => {
                 self.require_extensions()?;
@@ -280,19 +287,7 @@ impl Session {
                 recovery,
                 password,
             } => self.open(bytes, recovery, password),
-            Request::PageInfo { document, page } => {
-                let page = self
-                    .document(document)?
-                    .page(index(page)?)
-                    .map_err(|error| error.at(Position::Buffer(9)))?;
-                let crop = page.crop_box();
-                Ok(Response::PageInfo {
-                    crop: [crop.x0, crop.y0, crop.x1, crop.y1],
-                    rotation: page.rotation().degrees(),
-                    user_unit: page.user_unit(),
-                    size: pagura::device_size(page, &RenderOptions::default())?,
-                })
-            }
+            Request::PageInfo { document, page } => self.page_info(document, page),
             Request::RenderTile {
                 document,
                 page,
@@ -303,7 +298,15 @@ impl Session {
                 Ok(Response::Diagnostics(self.document(handle)?.diagnostics()))
             }
             Request::DiagnosticDetails(handle) => {
-                if self.version != Some(protocol::VERSION_1_4) {
+                if !matches!(
+                    self.version,
+                    Some(
+                        protocol::VERSION_1_4
+                            | protocol::VERSION_1_5
+                            | protocol::VERSION_1_6
+                            | protocol::VERSION_1_7
+                    )
+                ) {
                     return Err(Error::invalid_argument(
                         "typed diagnostics require protocol 1.4",
                     ));
@@ -314,6 +317,48 @@ impl Session {
             }
             Request::Close(handle) => self.close(handle),
         }
+    }
+
+    fn editing(&self, request: Request<'_>) -> Result<Response> {
+        self.require_editing()?;
+        match request {
+            Request::FormFields(handle) => {
+                crate::editing::fields(self.document(handle)?).map(Response::FormFields)
+            }
+            Request::SaveForm { document, changes } => {
+                crate::editing::save(self.document(document)?, changes).map(Response::SavedForm)
+            }
+            Request::FormStyles { document, page }
+                if self.version == Some(protocol::VERSION_1_7) =>
+            {
+                crate::editing::styles(self.document(document)?, page).map(Response::FormStyles)
+            }
+            Request::FormWidgets { document, page }
+                if matches!(
+                    self.version,
+                    Some(protocol::VERSION_1_6 | protocol::VERSION_1_7)
+                ) =>
+            {
+                crate::editing::widgets(self.document(document)?, page).map(Response::FormWidgets)
+            }
+            _ => Err(Error::invalid_argument(
+                "inline form editing requires protocol 1.6",
+            )),
+        }
+    }
+
+    fn page_info(&self, document: u32, page: u32) -> Result<Response> {
+        let page = self
+            .document(document)?
+            .page(index(page)?)
+            .map_err(|error| error.at(Position::Buffer(9)))?;
+        let crop = page.crop_box();
+        Ok(Response::PageInfo {
+            crop: [crop.x0(), crop.y0(), crop.x1(), crop.y1()],
+            rotation: page.rotation().degrees(),
+            user_unit: page.user_unit(),
+            size: pagura::device_size(page, &RenderOptions::default())?,
+        })
     }
 
     fn close(&mut self, handle: u32) -> Result<Response> {
@@ -465,7 +510,13 @@ impl Session {
         if matches!(request, Request::Bounds(..))
             && !matches!(
                 self.version,
-                Some(protocol::VERSION_1_3 | protocol::VERSION_1_4)
+                Some(
+                    protocol::VERSION_1_3
+                        | protocol::VERSION_1_4
+                        | protocol::VERSION_1_5
+                        | protocol::VERSION_1_6
+                        | protocol::VERSION_1_7
+                )
             )
         {
             return Err(Error::invalid_argument(
@@ -474,7 +525,14 @@ impl Session {
         }
         if !matches!(
             self.version,
-            Some(protocol::VERSION_1_2 | protocol::VERSION_1_3 | protocol::VERSION_1_4)
+            Some(
+                protocol::VERSION_1_2
+                    | protocol::VERSION_1_3
+                    | protocol::VERSION_1_4
+                    | protocol::VERSION_1_5
+                    | protocol::VERSION_1_6
+                    | protocol::VERSION_1_7
+            )
         ) {
             return Err(Error::invalid_argument(
                 "reading request requires protocol 1.2",
@@ -502,7 +560,7 @@ impl Session {
                 let mut out = Writer::new(cap);
                 out.u8(u8::from(bounds.is_some()))?;
                 if let Some(bounds) = bounds {
-                    for value in [bounds.x0, bounds.y0, bounds.x1, bounds.y1] {
+                    for value in [bounds.x0(), bounds.y0(), bounds.x1(), bounds.y1()] {
                         out.f64(value)?;
                     }
                 }
@@ -593,6 +651,19 @@ impl Session {
             .map(Response::Skipped)
     }
 
+    fn require_editing(&self) -> Result<()> {
+        if matches!(
+            self.version,
+            Some(protocol::VERSION_1_5 | protocol::VERSION_1_6 | protocol::VERSION_1_7)
+        ) {
+            Ok(())
+        } else {
+            Err(Error::invalid_argument(
+                "form editing requires protocol 1.5",
+            ))
+        }
+    }
+
     fn require_extensions(&self) -> Result<()> {
         if matches!(
             self.version,
@@ -601,6 +672,9 @@ impl Session {
                     | protocol::VERSION_1_2
                     | protocol::VERSION_1_3
                     | protocol::VERSION_1_4
+                    | protocol::VERSION_1_5
+                    | protocol::VERSION_1_6
+                    | protocol::VERSION_1_7
             )
         ) {
             Ok(())

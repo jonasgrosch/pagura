@@ -1,6 +1,6 @@
 # ADR 0003: Malformed input is repaired only when reported
 
-Status: accepted, 2026-10-17. Amended 2026-10-18 (diagnostic kinds).
+Status: accepted, 2026-10-17. Amended 2026-10-18 (diagnostic kinds) and by ADR 0017 (tag modules).
 
 ## Context
 
@@ -23,8 +23,10 @@ explicit, bounded and visible to the caller.
   `DiagnosticKind::Information(&'static str)`, a fixed message, a `Position`
   and the object. Both kinds have stable `area.item` tags; `tag()` returns
   either tag and `repair()` returns only a repair tag. Published tag text
-  does not change. Strict rejects repairs only; information is permitted in
-  both modes and never makes a document a repaired document.
+  does not change, and each crate defines its repair tags in a `repairs`
+  module (amended by ADR 0017; previously `tags`). Strict rejects repairs
+  only; information is permitted in both modes and never makes a document a
+  repaired document.
 - `font.substituted` and `font.cid-glyph-missing` describe permitted provider
   behaviour (ADR 0009), not malformed input. They are information. Every
   other existing diagnostic remains a repair.

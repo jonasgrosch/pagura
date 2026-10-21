@@ -105,7 +105,7 @@ impl Compiler<'_> {
             .ok_or(Error::syntax("ExtGState name expected"))?;
         let value = resource(self.document, resources, b"ExtGState", name.as_bytes())?;
         let dictionary = self.document.resolve_dictionary(value)?;
-        for (key, value) in dictionary.iter() {
+        for (key, value) in dictionary {
             if !defined_entry(key.as_bytes()) {
                 continue;
             }

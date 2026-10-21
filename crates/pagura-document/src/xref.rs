@@ -1,6 +1,9 @@
 //! File structure and cross-reference data (ISO 32000-2 clauses 7.5.2–7.5.8).
 
-use crate::tags;
+pub(crate) mod rebuild;
+pub(crate) mod stream;
+
+use crate::repairs;
 use pagura_core::syntax::{Origin, Parser, is_whitespace};
 use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Limits, Position, Result};
 use std::collections::{BTreeMap, BTreeSet};
@@ -62,9 +65,18 @@ pub struct Revision {
     pub(crate) kind: RevisionKind,
     pub(crate) trailer: Dictionary,
     pub(crate) entries: std::sync::Arc<BTreeMap<u32, XrefEntry>>,
+    // Physical entries charged before hybrid/linearized sections are combined.
+    parsed_entries: usize,
 }
 
 impl Revision {
+    /// Number of cross-reference entries recorded in this revision,
+    /// including free and overridden hybrid/linearized entries. Matches the
+    /// reader's object budget so a subsequent update remains reopenable (7.5.6).
+    pub fn entry_count(&self) -> usize {
+        self.parsed_entries
+    }
+
     /// Byte offset of the revision's primary cross-reference structure.
     pub fn offset(&self) -> usize {
         self.offset
@@ -89,11 +101,11 @@ pub(crate) fn read(
     let mut attempt = Diagnostics::new(diagnostics.mode());
     match primary(bytes, header, limits, &mut attempt) {
         Ok(table) => {
-            diagnostics.extend(attempt.take());
+            diagnostics.absorb(attempt.take())?;
             Ok(table)
         }
         Err(error) if diagnostics.mode() == pagura_core::Recovery::Repair && structural(&error) => {
-            crate::rebuild::read(bytes, limits, diagnostics, error.position)
+            rebuild::read(bytes, limits, diagnostics, error.position)
         }
         Err(error) => Err(error),
     }
@@ -144,6 +156,7 @@ fn primary(
         if table.revisions.len() >= limits.revisions {
             return Err(Error::limit("revision budget exceeded").at(Position::File(offset)));
         }
+        let available = remaining;
         let (mut entries, trailer, mut kind) = section(
             bytes,
             offset,
@@ -167,7 +180,7 @@ fn primary(
                 )
                 .at(Position::File(hybrid)));
             }
-            let (supplement, _) = crate::xref_stream::read(
+            let (supplement, _) = stream::read(
                 bytes,
                 hybrid,
                 Limits {
@@ -182,7 +195,7 @@ fn primary(
             kind = RevisionKind::Hybrid;
         }
         let entries = merge_entries(&mut table, entries, &trailer, offset, shift)?;
-        for (key, value) in trailer.iter() {
+        for (key, value) in &trailer {
             if !table.trailer.contains_key(key.as_bytes()) {
                 table.trailer.insert(key.clone(), value.clone());
             }
@@ -194,6 +207,7 @@ fn primary(
             kind,
             trailer,
             entries: std::sync::Arc::new(entries),
+            parsed_entries: available.saturating_sub(remaining),
         });
         let Some(prev) = prev else {
             break;
@@ -251,6 +265,9 @@ fn join_linearized_base(
         std::sync::Arc::make_mut(&mut entries)
             .append(std::sync::Arc::make_mut(&mut first_page.entries));
         first_page.entries = entries;
+        first_page.parsed_entries = first_page
+            .parsed_entries
+            .saturating_add(main.parsed_entries);
         for (key, value) in main.trailer {
             if !first_page.trailer.contains_key(key.as_bytes()) {
                 first_page.trailer.insert(key, value);
@@ -271,7 +288,7 @@ fn validate_identities(bytes: &[u8], table: &XrefTable, limits: Limits) -> Resul
             // This eager check uses a fixed-size lookahead. Longer headers
             // remain lazy, avoiding repeated scans of hostile overlapping tokens.
             let header = |offset: usize| {
-                crate::object::header(
+                crate::object::recovery::header(
                     &bytes[..offset.saturating_add(1024).min(bytes.len())],
                     offset,
                     limits,
@@ -291,7 +308,7 @@ fn validate_identities(bytes: &[u8], table: &XrefTable, limits: Limits) -> Resul
                     Error::syntax("cross-reference offset has no matching object header")
                         .at(Position::File(at))
                         .in_object(id);
-                error.repair = Some(tags::XREF_REBUILT);
+                error.repair = Some(repairs::XREF_REBUILT);
                 return Err(error);
             }
         }
@@ -342,7 +359,7 @@ fn section(
     diagnostics: &mut Diagnostics,
 ) -> Result<(BTreeMap<u32, XrefEntry>, Dictionary, RevisionKind)> {
     let mut parser =
-        Parser::at(bytes, offset, Origin::File, limits)?.with_recovery(diagnostics.mode());
+        Parser::with_offset(bytes, offset, Origin::File, limits)?.with_recovery(diagnostics.mode());
     let result = if parser.keyword(b"xref") {
         let entries = classic_section(bytes, &mut parser, limits)?;
         let trailer = parser
@@ -350,10 +367,10 @@ fn section(
             .as_dictionary()
             .cloned()
             .ok_or(Error::syntax("trailer must be a dictionary").at(parser.position()))?;
-        diagnostics.extend(parser.take_diagnostics());
+        diagnostics.absorb(parser.take_diagnostics())?;
         (entries, trailer, RevisionKind::Table)
     } else {
-        let (entries, trailer) = crate::xref_stream::read(bytes, offset, limits, diagnostics)?;
+        let (entries, trailer) = stream::read(bytes, offset, limits, diagnostics)?;
         (entries, trailer, RevisionKind::Stream)
     };
     Ok(result)
@@ -367,7 +384,7 @@ fn charge(remaining: &mut usize, count: usize) -> Result<()> {
 }
 
 fn is_section(bytes: &[u8], offset: usize, limits: Limits) -> bool {
-    let Ok(mut parser) = Parser::at(bytes, offset, Origin::File, limits) else {
+    let Ok(mut parser) = Parser::with_offset(bytes, offset, Origin::File, limits) else {
         return false;
     };
     parser.keyword(b"xref")
@@ -406,7 +423,7 @@ fn check_header(bytes: &[u8], diagnostics: &mut Diagnostics) -> Result<usize> {
     if offset != 0 {
         diagnostics.repair(
             Diagnostic::new(
-                tags::HEADER_OFFSET,
+                repairs::HEADER_OFFSET,
                 "PDF header follows leading junk; offsets adjusted when necessary",
             )
             .at(Position::File(offset)),
@@ -425,7 +442,7 @@ fn check_header(bytes: &[u8], diagnostics: &mut Diagnostics) -> Result<usize> {
         }
         diagnostics.repair(
             Diagnostic::new(
-                tags::HEADER_FORMAT,
+                repairs::HEADER_FORMAT,
                 "extra bytes in the PDF header line; version retained",
             )
             .at(Position::File(offset + 8)),
@@ -448,7 +465,7 @@ fn find_startxref(
     else {
         return Ok(None);
     };
-    let mut tail = Parser::at(bytes, marker + 9, Origin::File, limits)?;
+    let mut tail = Parser::with_offset(bytes, marker + 9, Origin::File, limits)?;
     let offset = usize::try_from(tail.unsigned()?)
         .ok()
         .filter(|&offset| offset < bytes.len())
@@ -461,7 +478,7 @@ fn find_startxref(
     if !after_eof.iter().all(|&b| is_whitespace(b)) {
         diagnostics.repair(
             Diagnostic::new(
-                tags::TRAILING_BYTES,
+                repairs::TRAILING_BYTES,
                 "data follows the final %%EOF; ignored",
             )
             .at(Position::File(bytes.len() - after_eof.len())),

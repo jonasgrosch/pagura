@@ -390,7 +390,7 @@ fn exhausted_change_work_preserves_structural_results() {
     ));
     drop(good);
     // Source inspection is small; walking all revision roles exceeds this cap.
-    doc.options.limits.value_nodes = 300;
+    doc.options.limits.traversal_work = 300;
     let limited = doc.signatures().unwrap();
     assert!(limited.history_complete);
     let signature = limited.fields[0].signature.as_ref().unwrap();
@@ -417,7 +417,7 @@ fn change_candidates_include_only_xref_deltas_and_stream_dependencies() {
         ("object-stream-redefined", vec![7, 40, 52]),
     ] {
         let doc = open(name);
-        let mut ctx = crate::navigation::context::Context::new(&doc);
+        let mut ctx = crate::view::Context::new(&doc);
         let mut signatures = read::read(&doc, &ctx).unwrap();
         let facts = history::discover(&doc, &mut ctx, &mut signatures).unwrap();
         let old_doc = doc.revision_with_context(1, &mut ctx).unwrap();
@@ -457,7 +457,7 @@ fn large_revision_roles_are_shared_and_all_signatures_survive_limits() {
             } else { ModificationOutcome::Allowed }));
     }
     drop(good);
-    doc.options.limits.value_nodes = 150_000;
+    doc.options.limits.traversal_work = 150_000;
     let limited = doc.signatures().unwrap();
     assert!(limited.history_complete);
     assert_eq!(
@@ -529,12 +529,9 @@ fn a_large_form_fill_is_allowed_with_default_limits() {
 #[test]
 fn snapshot_work_limits_do_not_poison_a_later_analysis() {
     let doc = open("form-fill-p2");
-    let mut spent = crate::navigation::context::Context::new(&doc);
+    let mut spent = crate::view::Context::new(&doc);
     spent
-        .allocate::<u8>(
-            doc.limits().document_bytes,
-            crate::navigation::context::Source::default(),
-        )
+        .allocate::<u8>(doc.limits().document_bytes, crate::view::Source::default())
         .unwrap();
     assert_eq!(
         doc.revision_with_context(1, &mut spent).unwrap_err().kind,

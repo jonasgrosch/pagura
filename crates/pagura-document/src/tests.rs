@@ -1,3 +1,27 @@
+//! Crate-level tests and the one fixture opener the modules share.
+
+use crate::{Document, OpenOptions};
+use pagura_core::{Limits, Recovery};
+
+/// Opens fixture `area/name.pdf`, panicking with its name if it fails.
+pub(crate) fn open(area: &str, name: &str, recovery: Recovery, limits: Limits) -> Document {
+    pagura_testkit::open_fixture(area, &format!("{name}.pdf"), |bytes| {
+        Document::open(
+            bytes,
+            &OpenOptions {
+                limits,
+                recovery,
+                ..OpenOptions::default()
+            },
+        )
+    })
+}
+
+/// [`open`] for the `document` fixture area.
+pub(crate) fn document(name: &str, recovery: Recovery, limits: Limits) -> Document {
+    open("document", name, recovery, limits)
+}
+
 #[cfg(test)]
 mod shareability {
     use crate::Document;
@@ -111,11 +135,28 @@ mod structure_tests {
                 .is_none()
         );
         let catalog = document.object(ObjectId::new(1, 0)).unwrap();
+        // The first object's value starts right after the header (7.5.7).
+        let first = document
+            .object(ObjectId::new(5, 0))
+            .unwrap()
+            .dictionary()
+            .unwrap()
+            .get(b"First")
+            .and_then(Value::as_integer)
+            .unwrap();
         assert_eq!(
             catalog.source(),
             &ObjectSource::Compressed {
                 stream: 5,
-                index: 0
+                index: 0,
+                offset: usize::try_from(first).unwrap()
+            }
+        );
+        assert_eq!(
+            catalog.source().position(),
+            pagura_core::Position::Stream {
+                object: ObjectId::new(5, 0),
+                offset: usize::try_from(first).unwrap()
             }
         );
         let cached = document
@@ -464,21 +505,21 @@ mod reconstruction {
 }
 
 mod field_recovery {
-    use crate::{Document, OpenOptions, tags};
+    use crate::{Document, OpenOptions, repairs};
     use pagura_core::{ErrorKind, ObjectId, Recovery};
     use pagura_testkit::fixture;
 
     #[test]
     fn minimized_repair_pairs_keep_source_bytes_and_exact_stream_plaintext() {
         for (name, tag) in [
-            ("header-text", tags::HEADER_FORMAT),
-            ("header-space", tags::HEADER_FORMAT),
-            ("header-tab", tags::HEADER_FORMAT),
-            ("catalog-type-missing", tags::CATALOG_TYPE),
-            ("stream-bare-cr", tags::STREAM_EOL),
-            ("permissions-unsigned", tags::PERMISSIONS_UNSIGNED),
-            ("hash-literal-eol", tags::LITERAL_HASH),
-            ("hash-zero-padding", tags::HASH_PADDING),
+            ("header-text", repairs::HEADER_FORMAT),
+            ("header-space", repairs::HEADER_FORMAT),
+            ("header-tab", repairs::HEADER_FORMAT),
+            ("catalog-type-missing", repairs::CATALOG_TYPE),
+            ("stream-bare-cr", repairs::STREAM_EOL),
+            ("permissions-unsigned", repairs::PERMISSIONS_UNSIGNED),
+            ("hash-literal-eol", repairs::LITERAL_HASH),
+            ("hash-zero-padding", repairs::HASH_PADDING),
         ] {
             let bytes = fixture("document", &format!("{name}.pdf"));
             let strict = Document::open(
@@ -531,7 +572,7 @@ mod field_recovery {
                 .iter()
                 .filter_map(pagura_core::Diagnostic::repair)
                 .collect::<Vec<_>>(),
-            [tags::HEADER_OFFSET, tags::HEADER_FORMAT]
+            [repairs::HEADER_OFFSET, repairs::HEADER_FORMAT]
         );
     }
 
@@ -558,7 +599,7 @@ mod field_recovery {
                 document
                     .diagnostics()
                     .iter()
-                    .any(|item| item.repair() == Some(tags::XREF_REBUILT))
+                    .any(|item| item.repair() == Some(repairs::XREF_REBUILT))
             );
         }
     }

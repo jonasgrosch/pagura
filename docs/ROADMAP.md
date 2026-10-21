@@ -19,6 +19,12 @@ tools/check.py` passes, and `docs/STATUS.md` records the evidence.
 
 ## Current focus
 
+- **M7 foundations, alongside performance work:** caller-owned transactions,
+  append-only save and filled-form persistence (ADR 0031). Work and review use
+  an isolated branch; tests run on hosted runners. Full rewrite, sanitizing
+  redaction, encryption-on-write and general page-content editing remain later M7 work.
+  Inline form controls support filling, preview and PDF download.
+
 - **Specification verification:** every requirement registry is being checked
   against the primary standards (ISO 32000-2 and the format standards in the
   private reference cache); discrepancies become fixtures with independent

@@ -134,7 +134,7 @@ impl Views<'_> {
             return;
         };
         if let Some(names) = self.dictionary(catalog, b"Names") {
-            for (category, root) in names.iter() {
+            for (category, root) in names {
                 let tree = self.document.name_tree(root);
                 let Some(entries) = super::checked(tree.entries()) else {
                     continue;
@@ -298,6 +298,7 @@ impl Views<'_> {
             None => {}
             Some(Target::Destination(destination)) => self.destination(destination),
             Some(Target::Actions(sequence)) => self.action_list(&sequence.actions),
+            Some(other) => unreachable!("target kind without an oracle: {other:?}"),
         }
     }
 
@@ -350,6 +351,7 @@ impl Views<'_> {
                         assert_eq!(name, Some(other.as_bytes()), "named action");
                         None
                     }
+                    other => unreachable!("named action without an oracle: {other:?}"),
                 };
                 if standard.is_some() {
                     assert_eq!(name, standard, "named action");
@@ -387,6 +389,7 @@ impl Views<'_> {
                 );
                 name.as_bytes()
             }
+            other => unreachable!("action kind without an oracle: {other:?}"),
         };
         assert_eq!(subtype, Some(expected), "action of kind {:?}", action.kind);
     }
@@ -455,7 +458,7 @@ fn assert_link(document: &Document, link: &Link<'_>) {
     for quad in &link.quad_points {
         for xy in quad.as_chunks::<2>().0 {
             assert!(
-                (r.x0..=r.x1).contains(&xy[0]) && (r.y0..=r.y1).contains(&xy[1]),
+                (r.x0()..=r.x1()).contains(&xy[0]) && (r.y0()..=r.y1()).contains(&xy[1]),
                 "quad point {xy:?} outside {r:?}"
             );
         }
@@ -487,9 +490,9 @@ fn assert_link(document: &Document, link: &Link<'_>) {
 }
 
 fn normalized(rect: Rect) -> bool {
-    [rect.x0, rect.y0, rect.x1, rect.y1]
+    [rect.x0(), rect.y0(), rect.x1(), rect.y1()]
         .iter()
         .all(|v| v.is_finite())
-        && rect.x0 <= rect.x1
-        && rect.y0 <= rect.y1
+        && rect.x0() <= rect.x1()
+        && rect.y0() <= rect.y1()
 }

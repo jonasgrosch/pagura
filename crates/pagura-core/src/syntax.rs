@@ -6,35 +6,19 @@
 mod direct;
 
 use direct::Context;
+
+/// The direct-stream recovery state threaded through one parse, if enabled.
+type Streams<'a, 'b, 'h> = Option<Context<'a, 'b, 'h>>;
 pub use direct::{DirectStream, DirectStreamHandler, PathComponent};
 
-use crate::{
-    Diagnostic, Diagnostics, Dictionary, Error, Limits, Name, ObjectId, Position, Recovery, Repair,
-    Result, Value,
+use crate::repairs::{
+    DICTIONARY_CLOSER, DICTIONARY_OPENER, DIRECT_STREAM, DUPLICATE_KEY, KEY_SOLIDUS,
+    LEADING_ZERO_REFERENCE, NAME_ESCAPE, ZERO_REFERENCE,
 };
-
-/// Repair applied when a dictionary repeats a key (clause 7.3.7 forbids it):
-/// the last value wins. Readers disagree here, so the repair is always reported.
-pub const DUPLICATE_KEY: Repair = Repair::new("syntax.duplicate-key");
-
-/// A dictionary key with a missing solidus (7.3.7), accepted only when the
-/// entire regular token begins with an ASCII letter. Reserved values are excluded.
-pub const KEY_SOLIDUS: Repair = Repair::new("syntax.key-solidus");
-/// A hash not followed by two hex digits is retained literally (7.3.5).
-pub const NAME_ESCAPE: Repair = Repair::new("syntax.name-escape");
-/// An undefined object-zero reference is read as null (7.3.10).
-pub const ZERO_REFERENCE: Repair = Repair::new("syntax.reference-zero");
-/// A lone closing parenthesis immediately before a dictionary closer (7.3.7).
-pub const DICTIONARY_CLOSER: Repair = Repair::new("syntax.dictionary-closer");
-
-/// A duplicated opening dictionary delimiter before its first key (7.3.7).
-pub const DICTIONARY_OPENER: Repair = Repair::new("syntax.dictionary-opener");
-
-/// A stream illegally used as a direct dictionary/array value (7.3.8.1).
-pub const DIRECT_STREAM: Repair = Repair::new("syntax.direct-stream");
-
-/// Leading zeros in reference identifiers (7.3.10, EC3 issue 379).
-pub const LEADING_ZERO_REFERENCE: Repair = Repair::new("syntax.reference-leading-zero");
+use crate::{
+    Diagnostic, Diagnostics, Dictionary, Error, Limits, Name, ObjectId, Position, Recovery, Result,
+    Value,
+};
 
 /// PDF white-space characters (clause 7.2.3, Table 1).
 pub const fn is_whitespace(byte: u8) -> bool {
@@ -52,7 +36,9 @@ pub const fn is_regular(byte: u8) -> bool {
     !is_whitespace(byte) && !is_delimiter(byte)
 }
 
-const fn hex_digit(byte: u8) -> Option<u8> {
+/// The value of an ASCII hexadecimal digit (clauses 7.3.4.3 and 7.3.5),
+/// either case.
+pub const fn hex_digit(byte: u8) -> Option<u8> {
     match byte {
         b'0'..=b'9' => Some(byte - b'0'),
         b'a'..=b'f' => Some(byte - b'a' + 10),
@@ -62,7 +48,11 @@ const fn hex_digit(byte: u8) -> Option<u8> {
 }
 
 /// What the parsed bytes are, so offsets become meaningful [`Position`]s.
+///
+/// New origins may be added along with new [`Position`] kinds, so matches
+/// outside this crate need a wildcard arm.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum Origin {
     /// The complete original file.
     File,
@@ -89,9 +79,30 @@ pub struct Parser<'a> {
     data: &'a [u8],
     position: usize,
     origin: Origin,
-    limits: Limits,
+    limits: Budgets,
     nodes: usize,
     diagnostics: Diagnostics,
+}
+
+/// The [`Limits`] fields the parser reads. A parser is created per object,
+/// so it copies these rather than the whole set.
+#[derive(Debug, Clone, Copy)]
+struct Budgets {
+    depth: usize,
+    value_nodes: usize,
+    string_bytes: usize,
+    document_bytes: usize,
+}
+
+impl From<Limits> for Budgets {
+    fn from(limits: Limits) -> Self {
+        Self {
+            depth: limits.depth,
+            value_nodes: limits.value_nodes,
+            string_bytes: limits.string_bytes,
+            document_bytes: limits.document_bytes,
+        }
+    }
 }
 
 impl<'a> Parser<'a> {
@@ -101,20 +112,25 @@ impl<'a> Parser<'a> {
             data,
             position: 0,
             origin,
-            limits,
+            limits: Budgets::from(limits),
             nodes: 0,
             diagnostics: Diagnostics::new(Recovery::Strict),
         }
     }
 
-    /// Creates a strict parser at `position`.
+    /// Creates a strict parser at `offset`.
     ///
     /// # Errors
     ///
-    /// Returns a syntax error if `position` is beyond the end of `data`.
-    pub fn at(data: &'a [u8], position: usize, origin: Origin, limits: Limits) -> Result<Self> {
+    /// Returns a syntax error if `offset` is beyond the end of `data`.
+    pub fn with_offset(
+        data: &'a [u8],
+        offset: usize,
+        origin: Origin,
+        limits: Limits,
+    ) -> Result<Self> {
         let mut parser = Self::new(data, origin, limits);
-        parser.seek(position)?;
+        parser.seek(offset)?;
         Ok(parser)
     }
 
@@ -168,6 +184,20 @@ impl<'a> Parser<'a> {
 
     fn current(&self) -> Option<u8> {
         self.data.get(self.position).copied()
+    }
+
+    /// The unparsed input.
+    fn rest(&self) -> &'a [u8] {
+        self.data.get(self.position..).unwrap_or_default()
+    }
+
+    /// Counts one value against the per-object [`Limits::value_nodes`].
+    fn count_node(&mut self) -> Result<()> {
+        if self.nodes >= self.limits.value_nodes {
+            return Err(self.limit("object value budget exceeded"));
+        }
+        self.nodes += 1;
+        Ok(())
     }
 
     fn next_byte(&mut self) -> Result<u8> {
@@ -225,7 +255,7 @@ impl<'a> Parser<'a> {
     /// Consumes `word` if it is the next complete token.
     pub fn keyword(&mut self, word: &[u8]) -> bool {
         self.skip_whitespace();
-        let rest = &self.data[self.position..];
+        let rest = self.rest();
         let complete = rest.get(word.len()).is_none_or(|&b| !is_regular(b));
         if rest.starts_with(word) && complete {
             self.position += word.len();
@@ -280,13 +310,7 @@ impl<'a> Parser<'a> {
         handler: &mut DirectStreamHandler<'a, '_>,
     ) -> Result<(Value, Vec<DirectStream>)> {
         self.nodes = 0;
-        let mut context = Some(Context {
-            handler,
-            path: Vec::new(),
-            found: Vec::new(),
-            count: 0,
-            bytes: 0,
-        });
+        let mut context = Some(Context::new(handler, self.limits.document_bytes));
         let value = self.value(0, &mut context)?;
         Ok((
             value,
@@ -294,14 +318,11 @@ impl<'a> Parser<'a> {
         ))
     }
 
-    fn value(&mut self, depth: usize, streams: &mut Option<Context<'a, '_>>) -> Result<Value> {
+    fn value(&mut self, depth: usize, streams: &mut Streams<'a, '_, '_>) -> Result<Value> {
         if depth > self.limits.depth {
             return Err(self.limit("object nesting depth exceeded"));
         }
-        if self.nodes >= self.limits.value_nodes {
-            return Err(self.limit("object value budget exceeded"));
-        }
-        self.nodes += 1;
+        self.count_node()?;
         match self.peek() {
             Some(b'/') => self.name().map(Value::Name),
             Some(b'(') => self.literal_string().map(Value::String),
@@ -327,9 +348,15 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Parses a name at the current position (clause 7.3.5).
+    /// Parses a name at its solidus (clause 7.3.5).
     fn name(&mut self) -> Result<Name> {
         self.position += 1;
+        self.name_body()
+    }
+
+    /// Parses the regular characters of a name after its solidus, decoding
+    /// `#xx` escapes (clause 7.3.5). A name without escapes is copied once.
+    fn name_body(&mut self) -> Result<Name> {
         let start = self.position;
         while self.current().is_some_and(|b| is_regular(b) && b != b'#') {
             self.position += 1;
@@ -344,11 +371,10 @@ impl<'a> Parser<'a> {
         while self.current().is_some_and(is_regular) {
             let mut byte = self.next_byte()?;
             if byte == b'#' {
-                let pair = self
+                if let Some(&[high, low]) = self
                     .data
-                    .get(self.position..self.position.saturating_add(2));
-                if let Some((high, low)) =
-                    pair.and_then(|pair| Some((hex_digit(pair[0])?, hex_digit(pair[1])?)))
+                    .get(self.position..self.position.saturating_add(2))
+                    && let (Some(high), Some(low)) = (hex_digit(high), hex_digit(low))
                 {
                     self.position += 2;
                     byte = (high << 4) | low;
@@ -466,7 +492,7 @@ impl<'a> Parser<'a> {
         Ok(bytes)
     }
 
-    fn array(&mut self, depth: usize, streams: &mut Option<Context<'a, '_>>) -> Result<Vec<Value>> {
+    fn array(&mut self, depth: usize, streams: &mut Streams<'a, '_, '_>) -> Result<Vec<Value>> {
         self.position += 1;
         let mut values = Vec::new();
         loop {
@@ -487,79 +513,29 @@ impl<'a> Parser<'a> {
     fn dictionary(
         &mut self,
         depth: usize,
-        streams: &mut Option<Context<'a, '_>>,
+        streams: &mut Streams<'a, '_, '_>,
     ) -> Result<Dictionary> {
         self.position += 2;
+        self.duplicated_opener()?;
         let mut dictionary = Dictionary::new();
         let before_streams = streams.as_ref().map_or(0, |context| context.count);
         let mut repeated_key = false;
-        self.skip_whitespace();
-        if self.data[self.position..].starts_with(b"<<") {
-            let at = self.position();
-            self.position += 2;
-            self.skip_whitespace();
-            if self.current() != Some(b'/') {
-                return Err(self.error("dictionary key must be a name"));
-            }
-            self.diagnostics.repair(
-                Diagnostic::new(
-                    DICTIONARY_OPENER,
-                    "duplicated dictionary opener before the first key ignored",
-                )
-                .at(at),
-            )?;
-        }
-
         loop {
             self.skip_whitespace();
-            if self.data[self.position..].starts_with(b">>") {
-                self.position += 2;
-                return self.complete_dictionary(
-                    dictionary,
-                    streams.as_ref(),
-                    before_streams,
-                    repeated_key,
-                );
+            if self.dictionary_closer()? {
+                if repeated_key
+                    && streams
+                        .as_ref()
+                        .is_some_and(|context| context.count != before_streams)
+                {
+                    return Err(self.error(
+                        "direct streams cannot be recovered across duplicate dictionary keys",
+                    ));
+                }
+                return Ok(dictionary);
             }
             let key_position = self.position();
-            if self.current() == Some(b')') {
-                let saved = self.position;
-                self.position += 1;
-                self.skip_whitespace();
-                if self.data[self.position..].starts_with(b">>") {
-                    self.diagnostics.repair(
-                        Diagnostic::new(
-                            DICTIONARY_CLOSER,
-                            "stray parenthesis before dictionary closer ignored",
-                        )
-                        .at(key_position),
-                    )?;
-                    self.position += 2;
-                    return self.complete_dictionary(
-                        dictionary,
-                        streams.as_ref(),
-                        before_streams,
-                        repeated_key,
-                    );
-                }
-                self.position = saved;
-            }
-            let bare = self.current() != Some(b'/');
-            if bare {
-                self.bare_key(key_position)?;
-            }
-            if self.nodes >= self.limits.value_nodes {
-                return Err(self.limit("object value budget exceeded"));
-            }
-            self.nodes += 1;
-            let key = if bare {
-                // Reuse name decoding, including escaped characters and bounds.
-                // The dictionary opener guarantees a preceding byte exists.
-                self.position -= 1;
-                self.name()?
-            } else {
-                self.name()?
-            };
+            let key = self.key(key_position)?;
             if let Some(context) = streams {
                 context.path.push(PathComponent::Key(key.clone()));
             }
@@ -577,10 +553,71 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Skips a second `<<` before the first key, a repaired deviation.
+    fn duplicated_opener(&mut self) -> Result<()> {
+        self.skip_whitespace();
+        if !self.rest().starts_with(b"<<") {
+            return Ok(());
+        }
+        let at = self.position();
+        self.position += 2;
+        self.skip_whitespace();
+        if self.current() != Some(b'/') {
+            return Err(self.error("dictionary key must be a name"));
+        }
+        self.diagnostics.repair(
+            Diagnostic::new(
+                DICTIONARY_OPENER,
+                "duplicated dictionary opener before the first key ignored",
+            )
+            .at(at),
+        )
+    }
+
+    /// Consumes `>>`, or a stray `)` and then `>>` as a repaired deviation.
+    /// Returns whether the dictionary ended.
+    fn dictionary_closer(&mut self) -> Result<bool> {
+        if self.rest().starts_with(b">>") {
+            self.position += 2;
+            return Ok(true);
+        }
+        if self.current() == Some(b')') {
+            let saved = self.position;
+            let at = self.position();
+            self.position += 1;
+            self.skip_whitespace();
+            if self.rest().starts_with(b">>") {
+                self.diagnostics.repair(
+                    Diagnostic::new(
+                        DICTIONARY_CLOSER,
+                        "stray parenthesis before dictionary closer ignored",
+                    )
+                    .at(at),
+                )?;
+                self.position += 2;
+                return Ok(true);
+            }
+            self.position = saved;
+        }
+        Ok(false)
+    }
+
+    /// Parses a dictionary key: a name, or a repaired bare keyword.
+    fn key(&mut self, key_position: Position) -> Result<Name> {
+        let bare = self.current() != Some(b'/');
+        if bare {
+            self.bare_key(key_position)?;
+        }
+        self.count_node()?;
+        if bare { self.name_body() } else { self.name() }
+    }
+
+    /// Admits a key without its solidus (repair `syntax.key-solidus`) when
+    /// the regular token starts with a letter and is not a reserved keyword.
     fn bare_key(&mut self, key_position: Position) -> Result<()> {
-        let tail = &self.data[self.position..];
+        let tail = self.rest();
         let length = tail.iter().take_while(|&&byte| is_regular(byte)).count();
-        let token = &tail[..length];
+        let token = tail.get(..length).unwrap_or_default();
         if !token.first().is_some_and(u8::is_ascii_alphabetic)
             || matches!(
                 token,
@@ -591,33 +628,13 @@ impl<'a> Parser<'a> {
         }
         self.diagnostics.repair(
             Diagnostic::new(KEY_SOLIDUS, "dictionary key has no leading solidus").at(key_position),
-        )?;
-        Ok(())
-    }
-
-    fn complete_dictionary(
-        &self,
-        dictionary: Dictionary,
-        streams: Option<&Context<'a, '_>>,
-        before: usize,
-        repeated_key: bool,
-    ) -> Result<Dictionary> {
-        if repeated_key
-            && streams
-                .as_ref()
-                .is_some_and(|context| context.count != before)
-        {
-            return Err(
-                self.error("direct streams cannot be recovered across duplicate dictionary keys")
-            );
-        }
-        Ok(dictionary)
+        )
     }
 
     fn dictionary_value(
         &mut self,
         depth: usize,
-        streams: &mut Option<Context<'a, '_>>,
+        streams: &mut Streams<'a, '_, '_>,
     ) -> Result<Value> {
         let start = self.offset();
         let dictionary = self.dictionary(depth, streams)?;
@@ -637,39 +654,18 @@ impl<'a> Parser<'a> {
             context.count += 1;
             let data = (context.handler)(self, &dictionary)?;
             let marker = self
-                .offset()
-                .checked_sub(9)
-                .filter(|&marker| self.data.get(marker..self.offset()) == Some(b"endstream"))
+                .data
+                .get(..self.position)
+                .and_then(|consumed| consumed.strip_suffix(b"endstream"))
+                .map(<[u8]>::len)
                 .ok_or_else(|| self.error("direct stream handler did not consume endstream"))?;
             if let Some(data) = data {
                 if data.start > data.end || data.end > marker || data.start < start {
                     return Err(self.error("invalid direct stream source range"));
                 }
-                let capacity = if context.found.len() == context.found.capacity() {
-                    context.found.capacity().saturating_mul(2).max(1)
-                } else {
-                    context.found.capacity()
-                };
-                let growth = capacity
-                    .saturating_sub(context.found.capacity())
-                    .saturating_mul(size_of::<DirectStream>());
-                let bytes = context.path.iter().fold(growth, |sum, part| {
-                    sum.saturating_add(part.retained_bytes())
-                });
-                context.bytes = context
-                    .bytes
-                    .checked_add(bytes)
-                    .filter(|&bytes| bytes <= self.limits.document_bytes)
-                    .ok_or_else(|| self.limit("direct stream metadata budget exceeded"))?;
                 context
-                    .found
-                    .try_reserve_exact(capacity.saturating_sub(context.found.len()))
-                    .map_err(|_| self.limit("direct stream metadata allocation failed"))?;
-                context.found.push(DirectStream {
-                    path: context.path.clone(),
-                    source: start..self.offset(),
-                    data,
-                });
+                    .record(start..self.offset(), data)
+                    .map_err(|error| error.at(self.position()))?;
             }
         }
         Ok(Value::Dictionary(dictionary))
@@ -791,260 +787,4 @@ fn short_real(mantissa: i64, decimals: usize) -> f64 {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{Origin, Parser};
-    use crate::{ErrorKind, Limits, Position, Recovery, Value};
-
-    fn parse(data: &[u8]) -> crate::Result<Value> {
-        Parser::new(data, Origin::Buffer, Limits::default()).parse()
-    }
-
-    #[test]
-    fn value_budget_applies_per_object_not_per_parser() {
-        let limits = Limits {
-            value_nodes: 2,
-            ..Limits::default()
-        };
-        let mut parser = Parser::new(b"1 2 3 4 5", Origin::Buffer, limits);
-        for expected in 1..=5 {
-            assert_eq!(parser.parse().unwrap(), Value::Integer(expected));
-        }
-    }
-
-    /// The text conversion the short path replaces, for comparison.
-    fn text_value(token: &str) -> Value {
-        if token.contains('.') {
-            Value::Real(token.parse().unwrap())
-        } else {
-            Value::Integer(token.parse().unwrap())
-        }
-    }
-
-    #[test]
-    fn short_numbers_match_text_conversion_bit_for_bit() {
-        let mut seed = 0x2545_f491_4f6c_dd1d_u64;
-        let mut tokens = vec![
-            "0".to_owned(),
-            "-0".into(),
-            "+0".into(),
-            "-0.0".into(),
-            "+.000".into(),
-            "-.5".into(),
-            "3.".into(),
-            "007".into(),
-            "0.1".into(),
-            "0.3".into(),
-            "999999999999999".into(),
-            "99999999999999.9".into(),
-            ".99999999999999".into(),
-            "9007199254740993".into(),
-            "0.00000000000001".into(),
-        ];
-        for length in 1..=17 {
-            for _ in 0..400 {
-                let mut token = String::new();
-                for _ in 0..length {
-                    seed ^= seed << 13;
-                    seed ^= seed >> 7;
-                    seed ^= seed << 17;
-                    token.push(char::from(b'0' + u8::try_from(seed % 10).unwrap()));
-                }
-                let point = usize::try_from(seed >> 32).unwrap() % (length + 2);
-                if point <= length {
-                    token.insert(point, '.');
-                }
-                let sign = ["", "-", "+"][usize::try_from(seed >> 40).unwrap() % 3];
-                tokens.push(format!("{sign}{token}"));
-            }
-        }
-        for token in tokens {
-            let actual = parse(token.as_bytes()).unwrap();
-            let expected = text_value(&token);
-            match (&actual, &expected) {
-                (Value::Real(a), Value::Real(b)) => assert_eq!(a.to_bits(), b.to_bits(), "{token}"),
-                _ => assert_eq!(actual, expected, "{token}"),
-            }
-        }
-    }
-
-    #[test]
-    fn name_prefixes_keep_decoded_limits_and_escape_positions() {
-        let limits = Limits {
-            string_bytes: 3,
-            ..Limits::default()
-        };
-        for input in [b"/abc".as_slice(), b"/ab#63"] {
-            let mut parser = Parser::new(input, Origin::Buffer, limits);
-            assert_eq!(
-                parser.parse().unwrap(),
-                Value::Name(crate::Name::new(b"abc"))
-            );
-        }
-        for input in [b"/abcd".as_slice(), b"/ab#63d"] {
-            let mut parser = Parser::new(input, Origin::Buffer, limits);
-            let error = parser.parse().unwrap_err();
-            assert_eq!(error.kind, ErrorKind::Limit);
-            assert_eq!(error.position, Position::Buffer(input.len()));
-        }
-        let mut parser = Parser::new(b"/ab#q", Origin::Buffer, limits);
-        let error = parser.parse().unwrap_err();
-        assert_eq!(error.repair, Some(super::NAME_ESCAPE));
-        assert_eq!(error.position, Position::Buffer(3));
-        let mut parser = Parser::new(b"/ab#00", Origin::Buffer, limits);
-        let error = parser.parse().unwrap_err();
-        assert_eq!(error.message, "name contains a null byte");
-        assert_eq!(error.position, Position::Buffer(6));
-    }
-
-    #[test]
-    fn reference_lookahead_restores_every_unsuccessful_candidate() {
-        for input in [
-            b"1 /A".as_slice(),
-            b"1 +0 R",
-            b"1 65536 R",
-            b"1 2x R",
-            b"1 0 Rigid",
-            b"1 % comment\n2 3",
-        ] {
-            let mut parser = Parser::new(input, Origin::Buffer, Limits::default());
-            assert_eq!(parser.parse().unwrap(), Value::Integer(1));
-            assert_eq!(parser.offset(), 1);
-        }
-        let mut parser = Parser::new(b"1 % comment\n65535 R", Origin::Buffer, Limits::default());
-        assert_eq!(
-            parser.parse().unwrap(),
-            Value::Reference(crate::ObjectId::new(1, 65535))
-        );
-    }
-
-    #[test]
-    fn deep_literal_string_nesting_is_valid() {
-        let data = [b"(".repeat(200), b")".repeat(200)].concat();
-        let expected = [b"(".repeat(199), b")".repeat(199)].concat();
-        assert_eq!(parse(&data).unwrap(), Value::String(expected));
-    }
-
-    #[test]
-    fn duplicate_keys_are_errors_or_reported_repairs() {
-        let data = b"<< /A 1 /A 2 >>";
-        let error = parse(data).unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Syntax);
-        assert_eq!(error.position, Position::Buffer(8));
-        let mut parser =
-            Parser::new(data, Origin::Buffer, Limits::default()).with_recovery(Recovery::Repair);
-        let Value::Dictionary(dictionary) = parser.parse().unwrap() else {
-            panic!("expected dictionary");
-        };
-        assert_eq!(dictionary.get(b"A"), Some(&Value::Integer(2)));
-        assert_eq!(parser.take_diagnostics().len(), 1);
-    }
-
-    #[test]
-    fn stream_origin_reports_stream_positions() {
-        let object = crate::ObjectId::new(4, 0);
-        let error = Parser::new(b"  )", Origin::Stream(object), Limits::default())
-            .parse()
-            .unwrap_err();
-        assert_eq!(error.position, Position::Stream { object, offset: 2 });
-    }
-}
-
-#[cfg(test)]
-mod recovery_tests {
-    use super::{
-        DICTIONARY_CLOSER, DICTIONARY_OPENER, KEY_SOLIDUS, NAME_ESCAPE, Origin, Parser,
-        ZERO_REFERENCE,
-    };
-    use crate::{Limits, Recovery, Value};
-
-    #[test]
-    fn lexical_repairs_are_positioned_and_strict_errors_keep_their_tags() {
-        for (bytes, tag) in [
-            (b"<< Bare 1 >>".as_slice(), KEY_SOLIDUS),
-            (b"/Name#Q", NAME_ESCAPE),
-            (b"0 0 R", ZERO_REFERENCE),
-            (b"<< /A 1 ) >>", DICTIONARY_CLOSER),
-            (b"<< << /A 1 >>", DICTIONARY_OPENER),
-        ] {
-            let mut strict = Parser::new(bytes, Origin::File, Limits::default());
-            assert_eq!(strict.parse().unwrap_err().repair, Some(tag));
-            let mut repair =
-                Parser::new(bytes, Origin::File, Limits::default()).with_recovery(Recovery::Repair);
-            repair.parse().unwrap();
-            assert_eq!(repair.take_diagnostics()[0].repair(), Some(tag));
-        }
-        let mut parser = Parser::new(b"/A# /B#2 /C#23 0 0 R", Origin::File, Limits::default())
-            .with_recovery(Recovery::Repair);
-        for expected in [b"A#".as_slice(), b"B#2", b"C#"] {
-            assert_eq!(
-                parser.parse().unwrap().as_name().unwrap().as_bytes(),
-                expected
-            );
-        }
-        assert_eq!(parser.parse().unwrap(), Value::Null);
-        for bytes in [
-            b"<< 3 4 >>".as_slice(),
-            b"<< true 4 >>",
-            b"<< stream 4 >>",
-            b"<< /A 1 ) /B 2 >>",
-        ] {
-            assert!(
-                Parser::new(bytes, Origin::File, Limits::default())
-                    .with_recovery(Recovery::Repair)
-                    .parse()
-                    .is_err()
-            );
-        }
-    }
-}
-
-#[cfg(test)]
-mod identifier_tests {
-    use super::{LEADING_ZERO_REFERENCE, Origin, Parser};
-    use crate::{Limits, ObjectId, Position, Recovery, Value};
-
-    #[test]
-    fn identifier_zeroes_are_reported_only_after_a_complete_reference() {
-        for bytes in [b"01 0 R".as_slice(), b"1 00 R", b"01 00 R"] {
-            let error = Parser::new(bytes, Origin::File, Limits::default())
-                .parse()
-                .unwrap_err();
-            assert_eq!(error.repair, Some(LEADING_ZERO_REFERENCE));
-            assert_eq!(error.position, Position::File(0));
-            let mut parser =
-                Parser::new(bytes, Origin::File, Limits::default()).with_recovery(Recovery::Repair);
-            assert_eq!(
-                parser.parse().unwrap(),
-                Value::Reference(ObjectId::new(1, 0))
-            );
-            assert_eq!(parser.take_diagnostics().len(), 1);
-        }
-        let mut parser = Parser::new(b"[01 00 1 0]", Origin::Buffer, Limits::default());
-        assert_eq!(
-            parser.parse().unwrap(),
-            Value::Array(vec![
-                Value::Integer(1),
-                Value::Integer(0),
-                Value::Integer(1),
-                Value::Integer(0)
-            ])
-        );
-        assert_eq!(parser.take_diagnostics(), []);
-    }
-
-    #[test]
-    fn braces_are_regular_characters_in_ordinary_pdf_names() {
-        let mut parser = Parser::new(b"[/A{B /C}D /E#7bF]", Origin::Buffer, Limits::default());
-        assert_eq!(
-            parser.parse().unwrap(),
-            Value::Array(vec![
-                Value::name(b"A{B"),
-                Value::name(b"C}D"),
-                Value::name(b"E{F")
-            ])
-        );
-        assert_eq!(parser.take_diagnostics(), []);
-        assert!(!super::is_delimiter(b'{'));
-        assert!(!super::is_delimiter(b'}'));
-    }
-}
+mod tests;

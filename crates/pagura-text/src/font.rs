@@ -257,7 +257,7 @@ fn type3(document: &Document, font: &Dictionary) -> Result<PdfFont> {
     }
     let procs = document.resolve_dictionary(required(document, font, b"CharProcs")?)?;
     let mut procedures = BTreeMap::new();
-    for (name, value) in procs.iter() {
+    for (name, value) in procs {
         let id = value
             .as_reference()
             .ok_or_else(|| Error::syntax("CharProcs entry must be a stream reference"))?;

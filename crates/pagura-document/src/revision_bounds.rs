@@ -1,5 +1,5 @@
 //! Strict Prev-chain revision terminators (7.5.6).
-use crate::navigation::context::{Context, Source};
+use crate::view::{Context, Source};
 use pagura_core::{
     Error, Result, Value,
     syntax::{Origin, Parser, is_whitespace},
@@ -15,9 +15,10 @@ pub(crate) fn boundary(
     end: usize,
     source: Source,
 ) -> Result<(Boundary, usize)> {
-    let bytes = ctx.doc.original_bytes();
+    let bytes = ctx.document.original_bytes();
     let offset = revision.end_section;
-    let mut parser = Parser::at(&bytes[..end], offset, Origin::File, ctx.doc.limits())?;
+    let mut parser =
+        Parser::with_offset(&bytes[..end], offset, Origin::File, ctx.document.limits())?;
     if parser.keyword(b"xref") {
         while !parser.keyword(b"trailer") {
             ctx.step(0, source)?;
@@ -25,7 +26,7 @@ pub(crate) fn boundary(
             let count = usize::try_from(parser.unsigned()?).map_err(|_| {
                 source.error(Error::limit("signature xref count exceeds address space"))
             })?;
-            if count > ctx.doc.limits().objects {
+            if count > ctx.document.limits().objects {
                 return Err(source.error(Error::limit("signature xref entry budget exceeded")));
             }
             for _ in 0..count {
@@ -58,7 +59,7 @@ pub(crate) fn boundary(
             .get(b"Length")
             .and_then(Value::as_integer)
             .and_then(|n| usize::try_from(n).ok())
-            .filter(|&n| n <= ctx.doc.limits().stream_bytes)
+            .filter(|&n| n <= ctx.document.limits().stream_bytes)
             .ok_or_else(|| {
                 source.error(Error::syntax(
                     "signature xref stream needs direct bounded Length",

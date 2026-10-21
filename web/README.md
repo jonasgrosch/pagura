@@ -13,16 +13,34 @@ CDN or build step for the HTML/CSS/JavaScript. Do not open index.html as a file
 URL: the server provides the required COOP/COEP headers.
 
 Select a PDF or drop it onto the viewer. Pages scroll continuously. Metadata
-and pixels load as pages approach the visible region; offscreen canvases and
-page elements are discarded. Previous/next and numbered navigation scroll to a
+and pixels load as pages approach the visible region. Offscreen page DOM is
+removed; recently used raster tiles remain in a bounded cache. Previous/next and numbered navigation scroll to a
 page without changing documents. Unimplemented content produces a tagged error
 on the affected page and clears partial pixels for that page. Other pages can
 still render. Strict validation rejects repairs and names the refused repair;
-normal viewing lists applied repairs and informational diagnostics separately
-below the document. Information, such as permitted font substitution, is
+normal viewing lists applied repairs and informational diagnostics under
+More actions → Document diagnostics. Information, such as permitted font substitution, is
 available in both recovery modes.
 
 ## Controls
+
+- A compact toolbar keeps page navigation, zoom, Rotate view, Find and Save visible.
+  More actions contains form interaction, copy-page text, discard, and diagnostics.
+- Text selection retains native range/copy behavior, with a single SVG fill over
+  selected glyph quads to avoid dark overlaps from per-character highlights.
+- The collapsible sidebar switches between thumbnails and the document outline.
+  Thumbnail rows are virtualized and keyboard navigable; up to 32 thumbnails
+  are retained (under 24 MiB including separate base/draft RGBA canvases). One thumbnail request runs
+  at a time, after visible-page work, and stale document results are discarded.
+  Thumbnails retain twice CSS density, downsampled from complete page tiles when
+  available. Otherwise idle 256px chunks build a temporary higher-resolution
+  raster (at most 5.68 MiB), released on completion or interruption. Visible pages composite the same cached
+  form artwork used on the page after a short input coalescing delay, without
+  saving or rendering another document. Offscreen draft previews are marked
+  until their page is viewed; saving refreshes the document-wide baseline.
+- Rotate view turns the current page left in 90-degree steps, including text,
+  links and form hit targets. This is a viewing preference, **not a saved edit**.
+  It survives form saves but resets when another document is opened.
 
 - Zoom: fit width, fit page, percentage presets, or Ctrl/Command-wheel. Two-finger
   touch pinch also changes document zoom. Fit presets use the selected page's
@@ -47,12 +65,35 @@ The layout uses page geometry from ISO 32000-2 7.7.3.3 (Table 31) and 8.3.2.3.
 Compact prefix sums retain discovered heights without creating a DOM element
 for every page. Detailed metadata is capped at 256 pages, visible page elements
 at 32, and canvases at 128 tiles. Tiles are 256 device pixels, painted at
-zoom × devicePixelRatio. Layout extents are limited to 10 million CSS pixels;
+zoom × renderDensity(zoom, devicePixelRatio). Reduced pages target two raster
+pixels per page point, with additional density capped at four pixels per CSS
+pixel; native HiDPI is never reduced. Page tiles, button artwork and draft
+appearances share that density, avoiding heavy device-snapped borders at low
+zoom. Layout extents are limited to 10 million CSS pixels;
 exceeding a budget displays an error rather than silently truncating a document.
 
 ## Session and caching
 
-The browser negotiates protocol v1.4 for typed diagnostics; existing protocol v1 clients remain
+Full-size raster canvases share a 64 MiB RGBA backing-store budget (and 512-entry
+cap), including attached visible tiles. Visible keys are pinned; least recently
+used unpinned tiles are evicted and their backing dimensions cleared. Cache keys
+include page, exact raster scale and tile geometry. CSS view rotation reuses the
+same pixels. Save/adoption, open, host recovery and page shutdown clear the cache;
+zoom/DPR changes use distinct scale keys. This accounts for retained raster
+pixels, not total browser RSS, GPU copies or the engine's own caches.
+
+After 500 ms without interaction, up to 16 tiles in a half-viewport strip
+(maximum 512 CSS px) are considered ahead of scrolling, on either axis. Only one
+speculative request runs at a time, after the foreground queue drains. Direction,
+zoom, navigation and input changes cancel the plan; stale results are discarded.
+Preloading pauses while form metadata is unknown or form filling is active on a
+form document, and while input, saving or draft previews are active. The current
+host cannot interrupt a tile already executing; pausing avoids new speculative
+work, and generation checks prevent stale queued requests from being sent.
+Thumbnails have lower priority than visible tiles and eligible preloading.
+On-demand diagnostics show retained bytes, cache reuse and completed preloads.
+
+The browser negotiates protocol v1.7 for form editing and typed diagnostics; existing protocol v1 clients remain
 supported. See crates/pagura-host/PROTOCOL.md for the byte layouts. A viewport
 change invalidates queued old-generation tiles before transmission. The host
 also skips a stale generation before compilation or painting. The current
@@ -324,3 +365,30 @@ kind-15 accounting for the selected page. This measures DOM construction only,
 excluding extraction, attachment/layout, Canvas/GPU work and module startup.
 No document is uploaded. The DOM harness does not establish real-browser selection, assistive-technology
 or timing behavior.
+
+## Form editing
+
+Open `/?demo=form` for a sample. Use the host built with bundled-data for standard
+fonts. Fillable fields are interactive directly on the page. Click to type,
+select choices, or toggle checkboxes/radio buttons, then choose **Save PDF**.
+Drafts survive zoom and scrolling; **Discard changes** restores saved values.
+**Fill forms** hides or shows controls. Normal rendering uses reported repairs;
+**Strict rendering** is an opt-in diagnostic mode. Metadata and writes use a
+separate strict snapshot, preserving the library's save restrictions.
+See [editing guide](../docs/EDITING.md) for current field/appearance limitations.
+
+## GitHub Pages
+
+The [hosted preview](https://jonasgrosch.github.io/pagura/) publishes from main
+through `.github/workflows/pages.yml`. `tools/package_pages.py` copies only the
+viewer assets, the bundled-data WASM binary, and license notices; it does not
+publish source documents, corpus fixtures or local files.
+
+On hosts without response-header configuration, `start.mjs` registers the
+viewer-scoped `isolation_worker.mjs` and reloads once before loading documents.
+The worker adds COOP/COEP/CORP and a local-only content security policy to
+same-origin GET responses in that directory. It uses no persistent cache,
+intercepts no uploads or cross-origin requests, and stores no PDF contents.
+Local servers already providing isolation skip registration. HTTPS and service
+workers are required on static hosts; unsupported browsers show an error rather
+than repeatedly reloading. Pages is static hosting, not a document backend.

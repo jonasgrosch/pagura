@@ -1,6 +1,6 @@
 //! Typed inert modification parameters (12.8.2; Tables 236, 256–259).
 use super::{FieldLock, FieldSelection, MdpPermission, SignatureReference, Transform};
-use crate::navigation::context::{Context, Source};
+use crate::view::{Context, Source};
 use pagura_core::{Dictionary, Error, Name, Result, Value};
 
 pub(super) fn name<'a>(d: &'a Dictionary, key: &[u8], source: Source) -> Result<Option<&'a Name>> {

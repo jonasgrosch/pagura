@@ -1,3 +1,4 @@
+import { paintSelection } from './selection_layer.mjs';
 import { textLayer, selectedText } from './text_layer.mjs';
 import { pageQuad, placeQuad } from './page_geometry.mjs';
 import { targetLabel, activateTarget } from './link_actions.mjs';
@@ -11,15 +12,24 @@ export class ReadingView {
     this.matches = []; this.current = -1; this.searchId = 0; this.searchNote = '';
     this.tree = new OutlineTree(this.$('outline-tree'), (target) => this.activate(target));
     this.$('find-open').addEventListener('click', () => this.showSearch());
-    this.$('find-close').addEventListener('click', () => { this.$('find-panel').hidden = true; this.cancelSearch(); this.$('find-open').focus(); });
+    this.$('find-close').addEventListener('click', () => { this.$('find-panel').hidden = true; this.$('find-open').setAttribute('aria-expanded', 'false'); this.cancelSearch(); this.$('find-open').focus(); });
     for (const id of ['find-query', 'find-case', 'find-word']) this.$(id).addEventListener(id === 'find-query' ? 'input' : 'change', () => { void this.search(); });
     this.$('find-next').addEventListener('click', () => { void this.move(1); }); this.$('find-previous').addEventListener('click', () => { void this.move(-1); });
     this.$('find-query').addEventListener('keydown', (event) => {
       if (event.key === 'Enter') { event.preventDefault(); void this.move(event.shiftKey ? -1 : 1); }
+    });
+    this.$('find-panel').addEventListener('keydown', (event) => {
       if (event.key === 'Escape') { event.preventDefault(); this.$('find-close').click(); }
     });
     this.$('copy-page').addEventListener('click', () => { void this.copyPage(); });
     window.addEventListener('keydown', (event) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') { event.preventDefault(); this.showSearch(); } });
+    document.addEventListener('selectionchange', () => {
+      if (this.selectionScheduled) return;
+      this.selectionScheduled = true;
+      requestAnimationFrame(() => { this.selectionScheduled = false;
+        paintSelection(window.getSelection(), [...this.pages.entries()].sort(([a], [b]) => a - b).map(([, record]) => record.textLayer).filter(Boolean));
+      });
+    });
     document.addEventListener('copy', (event) => {
       const text = selectedText(window.getSelection());
       if (text !== null && event.clipboardData) { event.preventDefault(); event.clipboardData.setData('text/plain', text); }
@@ -75,7 +85,7 @@ export class ReadingView {
         const quads = data.characters.reduce((n, c) => n + c.quadCount, 0);
         if (total > 100000 || quads > 100000) throw new Error('Visible text exceeds the DOM geometry budget');
         const layer = textLayer(data, info, zoom);
-        record.text = { text: data.text }; record.characterCount = data.characters.length;
+        record.textLayer = layer; record.text = { text: data.text }; record.characterCount = data.characters.length;
         element.append(layer); this.$('copy-page').disabled = false;
       } else this.$('reading-status').textContent = `Page ${index + 1} text: ${results[0].reason}`;
       if (results[1].status === 'fulfilled') {
@@ -112,8 +122,12 @@ export class ReadingView {
     return activateTarget(target, { destination: this.destination, report: this.report, notice: this.notice,
       named: (name) => { const s = this.state(); return this.navigate(({ NextPage: s.page + 1, PrevPage: s.page - 1, FirstPage: 0, LastPage: s.count - 1 })[name]); } });
   }
-  showSearch() { this.$('find-panel').hidden = false; this.$('find-query').focus(); }
-  count(suffix) { if (suffix !== undefined) this.searchNote = suffix; this.$('find-count').textContent = `${this.matches.length ? this.current + 1 : 0} / ${this.matches.length}${this.searchNote}`; }
+  showSearch() { this.$('find-panel').hidden = false; this.$('find-open').setAttribute('aria-expanded', 'true'); this.$('find-query').focus(); }
+  count(suffix) {
+    if (suffix !== undefined) this.searchNote = suffix;
+    this.$('find-count').textContent = `${this.matches.length ? this.current + 1 : 0} / ${this.matches.length}${this.searchNote}`;
+    this.$('find-previous').disabled = this.$('find-next').disabled = !this.matches.length;
+  }
   async search() {
     this.cancelSearch(); const id = this.searchId, s = this.state(), query = this.$('find-query').value;
     if (!query || s.handle === null) return;
@@ -160,7 +174,7 @@ export class ReadingView {
     if (record && match.quads.length) {
       const points = pageQuad(record.info, this.state().zoom, match.quads[0]);
       this.pendingScroll = null;
-      this.state().scrollMatch(match.page, Math.min(...points.map((p) => p[1])));
+      this.state().scrollMatch(match.page, Math.min(...points.map((p) => p[1])), points);
     }
   }
 

@@ -12,7 +12,7 @@ fn destination(out: &mut Writer, dest: Destination) -> Result<()> {
         DestinationView::Fit => (1, [None; 4]),
         DestinationView::FitH(top) => (2, [top, None, None, None]),
         DestinationView::FitV(left) => (3, [left, None, None, None]),
-        DestinationView::FitR(r) => (4, [Some(r.x0), Some(r.y0), Some(r.x1), Some(r.y1)]),
+        DestinationView::FitR(r) => (4, [Some(r.x0()), Some(r.y0()), Some(r.x1()), Some(r.y1())]),
         DestinationView::FitB => (5, [None; 4]),
         DestinationView::FitBh(top) => (6, [top, None, None, None]),
         DestinationView::FitBv(left) => (7, [left, None, None, None]),
@@ -32,7 +32,6 @@ fn utf8(bytes: &[u8]) -> Result<&str> {
 }
 fn target(out: &mut Writer, target: Option<&Target<'_>>) -> Result<()> {
     match target {
-        None => out.count(0),
         Some(Target::Destination(dest)) => {
             out.count(1)?;
             out.count(0)?;
@@ -65,6 +64,7 @@ fn target(out: &mut Writer, target: Option<&Target<'_>>) -> Result<()> {
                             NamedAction::FirstPage => out.text("FirstPage")?,
                             NamedAction::LastPage => out.text("LastPage")?,
                             NamedAction::Other(name) => out.text(&name.to_string())?,
+                            _ => out.text(&name_entry(action.dictionary, b"N"))?,
                         }
                     }
                     ActionKind::GoToR { .. } => out.u8(4)?,
@@ -74,11 +74,24 @@ fn target(out: &mut Writer, target: Option<&Target<'_>>) -> Result<()> {
                         out.u8(7)?;
                         out.text(&name.to_string())?;
                     }
+                    _ => {
+                        out.u8(7)?;
+                        out.text(&name_entry(action.dictionary, b"S"))?;
+                    }
                 }
             }
             Ok(())
         }
+        // No target, or a kind this protocol version cannot express, reads as none.
+        _ => out.count(0),
     }
+}
+/// A direct name entry as text, for action kinds without their own encoding.
+fn name_entry(dictionary: &pagura::Dictionary, key: &[u8]) -> String {
+    dictionary
+        .get_name(key)
+        .map(ToString::to_string)
+        .unwrap_or_default()
 }
 pub(crate) fn links(doc: &Document, page: u32, cap: usize) -> Result<Response> {
     let page = doc.page(
@@ -92,7 +105,16 @@ pub(crate) fn links(doc: &Document, page: u32, cap: usize) -> Result<Response> {
         if link.quad_points.is_empty() {
             let r = link.rectangle;
             out.count(1)?;
-            out.quad(&[r.x0, r.y0, r.x1, r.y0, r.x1, r.y1, r.x0, r.y1])?;
+            out.quad(&[
+                r.x0(),
+                r.y0(),
+                r.x1(),
+                r.y0(),
+                r.x1(),
+                r.y1(),
+                r.x0(),
+                r.y1(),
+            ])?;
         } else {
             out.count(link.quad_points.len())?;
             for quad in &link.quad_points {
@@ -161,7 +183,7 @@ mod tests {
         ];
         for (view, fit, mask, coordinates) in cases {
             let mut writer = Writer::new(1024);
-            destination(&mut writer, Destination { page: 5, view }).unwrap();
+            destination(&mut writer, Destination::new(5, view)).unwrap();
             let mut expected = vec![5, 0, 0, 0, fit, mask];
             for value in coordinates {
                 expected.extend(f64::to_le_bytes(value));

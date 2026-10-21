@@ -57,9 +57,12 @@ fn builder() -> pagura::Result<Builder> {
         ),
     ];
     for (number, value) in objects {
-        builder.insert(ObjectId::new(number, 0), NewObject::value(value.into()))?;
+        builder.insert(ObjectId::new(number, 0), NewObject::Value(value.into()))?;
     }
-    let content = NewObject::stream(Dictionary::new(), b"1 0 0 rg 8 8 48 32 re f\n".to_vec());
+    let content = NewObject::Stream {
+        dictionary: Dictionary::new(),
+        data: b"1 0 0 rg 8 8 48 32 re f\n".to_vec(),
+    };
     builder.insert(ObjectId::new(7, 0), content)?;
     Ok(builder)
 }
@@ -97,11 +100,11 @@ fn dictionary_entries_keep_insertion_order() {
 fn duplicate_ids_and_dangling_references_fail() {
     let mut builder = builder().unwrap();
     let error = builder
-        .insert(ROOT, NewObject::value(Value::Null))
+        .insert(ROOT, NewObject::Value(Value::Null))
         .unwrap_err();
     assert_eq!(error.kind, ErrorKind::InvalidArgument);
     builder
-        .insert(ObjectId::new(9, 0), NewObject::value(reference(99)))
+        .insert(ObjectId::new(9, 0), NewObject::Value(reference(99)))
         .unwrap();
     assert_eq!(
         builder.finish(ROOT).unwrap_err().kind,
@@ -113,7 +116,7 @@ fn duplicate_ids_and_dangling_references_fail() {
 fn invalid_numeric_values_fail_before_success() {
     let mut builder = builder().unwrap();
     builder
-        .insert(ObjectId::new(9, 0), NewObject::value(Value::Real(f64::NAN)))
+        .insert(ObjectId::new(9, 0), NewObject::Value(Value::Real(f64::NAN)))
         .unwrap();
     assert_eq!(
         builder.finish(ROOT).unwrap_err().kind,
@@ -131,7 +134,7 @@ fn oversized_value_graph_is_rejected_before_serialization() {
     builder
         .insert(
             ROOT,
-            NewObject::value(Value::Array(vec![Value::Null; 1001])),
+            NewObject::Value(Value::Array(vec![Value::Null; 1001])),
         )
         .unwrap();
     assert_eq!(
@@ -145,7 +148,7 @@ fn inserting_many_objects_is_linear() {
     let mut builder = Builder::default();
     for number in 1..=200_000 {
         builder
-            .insert(ObjectId::new(number, 0), NewObject::value(Value::Null))
+            .insert(ObjectId::new(number, 0), NewObject::Value(Value::Null))
             .unwrap();
     }
 }

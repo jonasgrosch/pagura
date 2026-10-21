@@ -11,6 +11,7 @@ pagura-text      ──► pagura-font, pagura-document, pagura-raster
 pagura-image     ──► pagura-document, pagura-codec
 pagura-font      ──► pagura-raster
 pagura-document  ──► pagura-codec, pagura-crypto
+pagura-write     ──► pagura-crypto (SHA-256 for revision identifiers)
 every crate      ──► pagura-core
 ```
 
@@ -18,10 +19,10 @@ Dependencies point downward only and are fixed in the crate manifests.
 
 | Crate | Responsibility | Knows nothing about |
 |---|---|---|
-| `pagura-core` | `Value`, `Name`, `Dictionary`, `ObjectId`, `Rect`; bounded `syntax::Parser`; `Error`/`ErrorKind`/`Feature`/`Position`; `Diagnostic`/`DiagnosticKind`/`Repair`/`Recovery`; `Limits` | files, revisions, rendering |
+| `pagura-core` | `Value`, `Name`, `Dictionary`, `ObjectId`, `Rect`; bounded `syntax::Parser`; `Error`/`ErrorKind`/`Feature`/`Position`; `Diagnostic`/`DiagnosticKind`/`Repair`/`Recovery`; `Limits`; the primitives every parser shares (ADR 0017): `Meter`, `bytes::{Cursor, BitCursor}`, `text_string` | files, revisions, rendering |
 | `pagura-codec` | stream filters and predictors with streaming output caps | documents, references |
 | `pagura-crypto` | MD5, SHA-2, RC4, AES; the standard security handler from plain parameters | the object model beyond `ObjectId` |
-| `pagura-document` | immutable source bytes, cross-reference data and revisions, lazily parsed and cached objects, decoded streams, typed page tree, recovery | content streams, pixels |
+| `pagura-document` | immutable source bytes, cross-reference data and revisions, lazily parsed and cached objects, decoded streams, typed page tree, recovery; navigation (12.3–12.6), interactive-form views and in-memory filling (12.7) and signature structure (12.8) as inert views | content streams, pixels, executing actions, cryptographic verification |
 | `pagura-raster` | geometry, paths, flattening, exact-area fill, stroking, masks, `Pixmap` | PDF |
 | `pagura-font` | font programs (TrueType/OpenType, CFF/CFF2, Type 1) as outlines, advances, encodings and cmaps | PDF dictionaries |
 | `pagura-text` | PDF font dictionaries, encodings, widths, CMaps and ToUnicode; shown strings to positioned glyphs | content streams, pixels |
@@ -30,7 +31,7 @@ Dependencies point downward only and are fixed in the crate manifests.
 | `pagura-write` | deterministic serialization | parsing |
 | `pagura` | the public facade and the `pagura` CLI | — |
 | `pagura-host` | the stdio session protocol, native and `wasm32-wasip1` | — |
-| `pagura-testkit` | test-only fixture access and assertions (std only) | product code |
+| `pagura-testkit` | test-only fixture access, manifest reading, byte assertions and host protocol frames (std only) | product code |
 
 Add a crate only for a substantial, independently testable responsibility
 with a clear dependency direction. Colour management (ICC) is the next
@@ -43,7 +44,9 @@ candidate; until then it lives in `pagura-render`.
    reference to an undefined object resolves to null (clause 7.3.10).
 3. Every traversal has an explicit budget; every decoder enforces an output
    cap while decoding; the storage a document retains in its caches has an
-   aggregate budget (`Limits::document_bytes`, ADR 0012).
+   aggregate budget (`Limits::document_bytes`, ADR 0012). Each `Limits`
+   field bounds exactly one documented quantity and is charged through
+   `pagura_core::Meter` (ADR 0016).
 4. A rendering error cannot become a successful partial page.
 5. Unsupported behaviour is an `Unsupported(Feature)` error with a stable tag;
    diagnostics distinguish repairs from information; only repairs carry `Repair`
@@ -94,11 +97,15 @@ See ADR 0014.
 
 ## Editing (M7)
 
-Editing uses immutable snapshots and transactions with copy-on-write resources,
-explicit undo/redo, and dependent cache invalidation. Incremental save, full
-save, signature-aware save and sanitizing redaction have separate contracts. A
-rendered scene is never the sole editing representation. Forms and tags must
-survive edits. A repaired document is saved only by full rewrite.
+`pagura::editing::Transaction` owns a bounded overlay over an immutable
+`Document`. Staging and rollback never invalidate source caches; commit returns
+new bytes to reopen as another snapshot. `pagura-write` owns shared syntax
+validation and classic/xref-stream append serialization. The facade owns source
+policy, generation-aware references and filling orchestration, reusing the
+existing appearance generator (ADR 0031). Full rewrite, undo/redo, signature
+permission enforcement and sanitizing redaction have separate future contracts.
+A rendered scene is never the sole editing representation. Modified incremental
+saves require strict input; repair-mode inputs require a future full rewrite.
 
 ## Performance policy
 

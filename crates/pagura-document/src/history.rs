@@ -1,16 +1,14 @@
 //! Lazy strict revision snapshots sharing source storage and cache accounting.
+use crate::features::{HISTORICAL_ENCRYPTION, HISTORICAL_SOURCE};
 use crate::{
     Document, IndirectObject, OpenOptions,
-    navigation::context::{Context, Source},
+    view::{Context, Source},
 };
-use pagura_core::{Error, ErrorKind, Feature, ObjectId, Position, Recovery, Result};
+use pagura_core::{Error, ErrorKind, ObjectId, Position, Recovery, Result};
 use std::{
     ops::Deref,
     sync::{Arc, Mutex, OnceLock, PoisonError},
 };
-
-const HISTORICAL_SOURCE: Feature = Feature::new("document.historical-source");
-const HISTORICAL_ENCRYPTION: Feature = Feature::new("document.historical-encryption");
 
 #[derive(Debug, Default)]
 pub(crate) struct Cache {
@@ -199,7 +197,7 @@ impl Document {
             }
             table.entries.insert(number, entry);
         }
-        for (key, value) in revision.trailer.iter() {
+        for (key, value) in &revision.trailer {
             ctx.step(0, source)?;
             ctx.allocate::<u8>(
                 value.retained_bytes().saturating_add(key.as_bytes().len()),

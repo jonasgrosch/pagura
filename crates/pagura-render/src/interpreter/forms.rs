@@ -179,7 +179,7 @@ impl Compiler<'_> {
         }
         child.initial_ctm = child.state.ctm;
         let mut clip = PathBuilder::new();
-        clip.rect(bbox.x0, bbox.y0, bbox.width(), bbox.height());
+        clip.rect(bbox.x0(), bbox.y0(), bbox.width(), bbox.height());
         child.add_clip(
             Arc::new(clip.finish().transformed(child.state.ctm)),
             FillRule::NonZero,

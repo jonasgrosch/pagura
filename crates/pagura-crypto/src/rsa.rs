@@ -7,6 +7,7 @@
 //! [`HashAlgorithm::check_strength`] (ADR 0015). No private-key operation exists.
 //! Malformed inputs are errors; a signature mismatch is [`Verification::Invalid`].
 
+use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Limits, Position, Result};
 
 use crate::bigint::{MAX_MODULUS_BITS, Modulus, bit_length};
@@ -129,9 +130,9 @@ impl Default for RsaLimits {
 impl From<&Limits> for RsaLimits {
     fn from(limits: &Limits) -> Self {
         Self {
-            modulus_bits: limits.rsa_modulus_bits,
-            exponent_bits: limits.rsa_exponent_bits,
-            work: limits.rsa_work,
+            modulus_bits: u32_to_usize(limits.signatures.rsa_modulus_bits),
+            exponent_bits: u32_to_usize(limits.signatures.rsa_exponent_bits),
+            work: u32_to_usize(limits.signatures.rsa_work),
         }
     }
 }

@@ -3580,7 +3580,7 @@
         },
         ".params": {
           "path": "corpus/generated/document/navigation-outlines-text.params",
-          "sha256": "efd69450ab2e76fbb170a356b3e8f1b5738b9cc239fecef88a60ceda058762a1"
+          "sha256": "c25630c4b728215625e558138112bc599112a615aa85409f859782fe5b6ac8a5"
         },
         ".pdf": {
           "path": "corpus/generated/document/navigation-outlines-text.pdf",
@@ -4681,7 +4681,7 @@
         },
         ".params": {
           "path": "corpus/generated/document/forms-text-invalid.params",
-          "sha256": "d29cf0219341b78d78463d8995ccd73d3b44689d8bcc83dba183328fe6522485"
+          "sha256": "11372831f40f1171e899a8e748bdee4a9f500204ebf9755b6ab18eb70019af9f"
         },
         ".pdf": {
           "path": "corpus/generated/document/forms-text-invalid.pdf",

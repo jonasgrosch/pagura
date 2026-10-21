@@ -45,6 +45,7 @@ pub enum FieldSelection<'a> {
 }
 /// Signature field lock dictionary (Table 236); analysis freezes signed locks.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct FieldLock<'a> {
     /// Unmodified source dictionary.
     pub dictionary: &'a Dictionary,
@@ -68,6 +69,7 @@ pub enum Transform<'a> {
 }
 /// One Reference array entry (Table 256).
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct SignatureReference<'a> {
     /// Unmodified source dictionary, retaining Data, DigestMethod and extensions.
     pub dictionary: &'a Dictionary,
@@ -171,6 +173,7 @@ pub enum AlgorithmStatus {
 }
 /// The independent result aspects of ADR 0015 decision 2.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct SignatureResults<'a> {
     /// Signed-byte integrity.
     pub integrity: Integrity,
@@ -196,6 +199,7 @@ pub struct SignatureResults<'a> {
 }
 /// A signature dictionary (Table 255), with unauthenticated metadata.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct Signature<'a> {
     /// Original dictionary, including all unrecognized entries.
     pub dictionary: &'a Dictionary,
@@ -243,6 +247,7 @@ impl<'a> Signature<'a> {
 }
 /// One signature field, including unsigned fields (12.7.5.5).
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct SignatureField<'a> {
     /// Field identity, independent of its display name.
     pub object: Option<ObjectId>,
@@ -261,6 +266,7 @@ pub struct SignatureField<'a> {
 }
 /// The signature fields and optional catalog usage-rights signature.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct Signatures<'a> {
     /// Terminal signature fields in form preorder, including empty fields.
     pub fields: Vec<SignatureField<'a>>,
@@ -282,6 +288,7 @@ pub struct Signatures<'a> {
 }
 /// A signature hidden by a later field removal or replacement.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub struct HistoricalSignature<'a> {
     /// Revision in which this historical source view was found, newest first.
     pub revision: usize,

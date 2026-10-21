@@ -1,3 +1,4 @@
+import { registerSelectionGeometry } from './selection_layer.mjs';
 import { pageQuad, quadBounds } from './page_geometry.mjs';
 const encoder = new TextEncoder(), decoder = new TextDecoder('utf-8', { fatal: true });
 export const MAX_TEXT_CHARACTERS = 50000;
@@ -8,13 +9,15 @@ export function textLayer(data, info, zoom, doc = document) {
   const layer = doc.createElement('div'); layer.className = 'text-layer'; layer.setAttribute('role', 'document'); layer.setAttribute('aria-label', 'Selectable page text');
   const bytes = encoder.encode(data.text); let previous = [0, 0];
   const context = doc.createElement('canvas').getContext('2d'); context.font = '1px monospace';
-  const widths = new Map();
+  const widths = new Map(), selection = [];
   for (const character of data.characters) {
     const span = doc.createElement('span'); span.textContent = decoder.decode(bytes.subarray(character.start, character.end));
     const width = widths.get(span.textContent) ?? context.measureText(span.textContent).width;
     if (widths.size < 4096) widths.set(span.textContent, width);
     span.style.letterSpacing = `${1 - width}px`;
     span.setAttribute('data-start', String(character.start)); span.setAttribute('data-end', String(character.end));
+    const quads = data.quads.slice(character.quadStart, character.quadStart + character.quadCount).map(quad => pageQuad(info, zoom, quad));
+    selection.push({ span, quads });
     if (character.quadCount) {
       let points = pageQuad(info, zoom, data.quads[character.quadStart]);
       if (character.quadCount > 1) {
@@ -33,6 +36,7 @@ export function textLayer(data, info, zoom, doc = document) {
     } else Object.assign(span.style, { transform: `translate(${previous[0]}px,${previous[1]}px)` });
     layer.append(span);
   }
+  registerSelectionGeometry(layer, selection);
   return layer;
 }
 /** Extract only text nodes from a native range: CSS line wrapping never inserts

@@ -66,6 +66,43 @@ pub fn text_page(
     compile_page_with_text(document, page, provider).map(|(_, text)| text)
 }
 
+/// Extracts the actual glyph positions of one stored annotation appearance.
+/// Coordinates include appearance fitting and remain in default page user space.
+/// Page content and other annotations are not interpreted.
+///
+/// # Errors
+/// As appearance rendering and bounded text extraction.
+pub fn appearance_text(
+    document: &pagura_document::Document,
+    page: &pagura_document::Page,
+    appearance: ObjectId,
+    rect: Rect,
+    provider: Option<&dyn pagura_text::Provider>,
+) -> Result<PositionedText> {
+    let output = Rc::new(RefCell::new(Output::default()));
+    let mut compiler = Compiler::new(document, page)?;
+    compiler.compilation = Rc::new(super::super::Compilation {
+        colors: crate::icc::Cache::default(),
+        provider,
+        fonts: None,
+        filler: None,
+    });
+    compiler.extraction = Some(Extraction {
+        output: Rc::clone(&output),
+        path: Arc::from([]),
+        spans: Vec::new(),
+        container: appearance,
+    });
+    compiler.paint_appearance(
+        crate::interpreter::forms::FormBody::Stored(document.object(appearance)?),
+        rect,
+        page.resources(),
+        true,
+    )?;
+    let text = std::mem::take(&mut output.borrow_mut().text);
+    Ok(text)
+}
+
 pub(crate) fn compile_with_text(
     document: &pagura_document::Document,
     page: &pagura_document::Page,
@@ -259,13 +296,13 @@ impl Compiler<'_> {
         let advance_end = trm.apply(advance);
         let (bbox, cell_transform) = if let GlyphShape::Type3 { matrix, .. } = &glyph.shape {
             (
-                info.bbox.unwrap_or(cell(0.0, 0.0, 1000.0, 1000.0)),
+                info.bbox.map_or(cell(0.0, 0.0, 1000.0, 1000.0), Cell::from),
                 matrix.then(transform),
             )
         } else {
             let (bottom, top) = info
                 .bbox
-                .map_or((0.0, 1.0), |b| (b.y0 / 1000.0, b.y1 / 1000.0));
+                .map_or((0.0, 1.0), |b| (b.y0() / 1000.0, b.y1() / 1000.0));
             let bbox = vertical.map_or(cell(0.0, bottom, glyph.advance, top), |v| {
                 cell(0.0, 0.0, glyph.advance, -v.advance)
             });
@@ -533,8 +570,25 @@ fn marked_id(
     }
 }
 
-fn cell(x0: f64, y0: f64, x1: f64, y1: f64) -> Rect {
-    Rect { x0, y0, x1, y1 }
+/// A glyph cell in text space. Unlike a [`Rect`], its corners keep the
+/// direction of the advance, so the selection quad follows the writing
+/// direction (a negative advance gives a reversed cell).
+#[derive(Clone, Copy)]
+struct Cell {
+    x0: f64,
+    y0: f64,
+    x1: f64,
+    y1: f64,
+}
+
+fn cell(x0: f64, y0: f64, x1: f64, y1: f64) -> Cell {
+    Cell { x0, y0, x1, y1 }
+}
+
+impl From<Rect> for Cell {
+    fn from(rect: Rect) -> Self {
+        cell(rect.x0(), rect.y0(), rect.x1(), rect.y1())
+    }
 }
 
 #[cfg(test)]

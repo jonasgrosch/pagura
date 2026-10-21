@@ -125,14 +125,42 @@ fn default_appearance_errors_are_positioned_and_bounded() {
 #[test]
 fn text_update_preserves_nested_marked_content_and_appends_when_absent() {
     let original = b"q\n/Other BMC /Tx BMC q /Nested BMC (EMC) Tj EMC Q EMC EMC\nQ\n";
-    let actual = update::replace(original, b"/Tx BMC (NEW) Tj EMC\n", Limits::default()).unwrap();
+    let actual = update::replace_with_policy(
+        original,
+        b"/Tx BMC (NEW) Tj EMC\n",
+        Limits::default(),
+        UpdatePolicy::Specification,
+    )
+    .unwrap();
     assert_eq!(actual, b"q\n/Other BMC /Tx BMC (NEW) Tj EMC\n EMC\nQ\n");
     assert_eq!(
-        update::replace(b"0 g", b"/Tx BMC EMC\n", Limits::default()).unwrap(),
+        update::replace_with_policy(
+            b"0 g",
+            b"/Tx BMC EMC\n",
+            Limits::default(),
+            UpdatePolicy::Specification
+        )
+        .unwrap(),
         b"0 g\n/Tx BMC EMC\n"
     );
-    assert!(update::replace(b"/Tx BMC", b"", Limits::default()).is_err());
-    assert!(update::replace(b"/Tx BMC EMC /Tx BMC EMC", b"", Limits::default()).is_err());
+    assert!(
+        update::replace_with_policy(
+            b"/Tx BMC",
+            b"",
+            Limits::default(),
+            UpdatePolicy::Specification
+        )
+        .is_err()
+    );
+    assert!(
+        update::replace_with_policy(
+            b"/Tx BMC EMC /Tx BMC EMC",
+            b"",
+            Limits::default(),
+            UpdatePolicy::Specification
+        )
+        .is_err()
+    );
 }
 #[test]
 fn prepared_resources_keep_existing_font_collisions() {
@@ -230,10 +258,64 @@ fn text_updates_reject_sections_crossing_text_or_graphics_scopes() {
         b"q /Tx BMC Q EMC",
         b"/Tx BMC q EMC Q",
     ] {
-        let error = update::replace(content, b"/Tx BMC EMC", Limits::default()).unwrap_err();
+        let error = update::replace_with_policy(
+            content,
+            b"/Tx BMC EMC",
+            Limits::default(),
+            UpdatePolicy::Specification,
+        )
+        .unwrap_err();
         assert_eq!(
             error.kind,
             ErrorKind::Unsupported(features::APPEARANCE_UPDATE)
         );
     }
+}
+
+#[test]
+fn compatibility_replaces_unmarked_text_without_touching_vector_artwork() {
+    let old = b"q 0.7 G 1 1 30 20 re S BT /F1 10 Tf [(old) 20 (value)] TJ ET Q";
+    let text = b"/Tx BMC BT /F1 10 Tf (new) Tj ET EMC";
+    let actual =
+        update::replace_with_policy(old, text, Limits::default(), UpdatePolicy::PreserveExisting)
+            .unwrap();
+    assert_eq!(
+        actual,
+        b"q\nq 0.7 G 1 1 30 20 re S BT /F1 10 Tf  ET Q\nQ\n/Tx BMC BT /F1 10 Tf (new) Tj ET EMC"
+    );
+    for content in [
+        b"BT 4 Tr (clip) Tj ET".as_slice(),
+        b"/Other Do",
+        b"BT (unfinished) Tj",
+    ] {
+        assert!(
+            update::replace_with_policy(
+                content,
+                text,
+                Limits::default(),
+                UpdatePolicy::PreserveExisting
+            )
+            .is_err()
+        );
+    }
+}
+
+#[test]
+fn compatibility_standard_font_fallback_is_narrow_and_preserves_resources() {
+    let document = Document::open(
+        fixture("forms", "text-quadding-0.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    let mut resources = Dictionary::new();
+    assert!(compatibility::supply_font(&document, &mut resources, b"CustomFont").is_err());
+    assert!(resources.is_empty());
+    compatibility::supply_font(&document, &mut resources, b"Helvetica").unwrap();
+    let before = resources.clone();
+    compatibility::supply_font(&document, &mut resources, b"Helvetica").unwrap();
+    assert_eq!(resources, before);
+    let fonts = resources.get(b"Font").unwrap().as_dictionary().unwrap();
+    let font = fonts.get(b"Helvetica").unwrap().as_dictionary().unwrap();
+    assert!(font.is_name(b"BaseFont", b"Helvetica"));
+    assert!(font.is_name(b"Encoding", b"WinAnsiEncoding"));
 }

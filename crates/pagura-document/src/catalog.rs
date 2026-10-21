@@ -1,7 +1,7 @@
 //! Catalog identification and reported Type inference (7.7.2).
 
-use crate::{Document, ObjectSource, tags};
-use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Position, Result, Value};
+use crate::{Document, repairs};
+use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, Result, Value};
 
 /// Types of other standard dictionaries. A Root carrying one of them is a
 /// different object, never a catalog with a damaged Type.
@@ -50,12 +50,12 @@ pub(crate) fn validate(document: &Document) -> Result<()> {
     }
     let mut diagnostic = if dictionary.contains_key(b"Type") {
         Diagnostic::new(
-            tags::CATALOG_TYPE_INVALID,
+            repairs::CATALOG_TYPE_INVALID,
             "catalog Type is unknown; validated Pages reference identifies the catalog",
         )
     } else {
         Diagnostic::new(
-            tags::CATALOG_TYPE,
+            repairs::CATALOG_TYPE,
             "catalog Type is missing; validated Pages reference identifies the catalog",
         )
     };
@@ -65,9 +65,7 @@ pub(crate) fn validate(document: &Document) -> Result<()> {
         .and_then(Value::as_reference)
     {
         diagnostic = diagnostic.in_object(id);
-        if let ObjectSource::File(range) = document.object(id)?.source() {
-            diagnostic = diagnostic.at(Position::File(range.start));
-        }
+        diagnostic = diagnostic.at(document.object(id)?.source().position());
     }
     let mut diagnostics = Diagnostics::new(document.recovery());
     diagnostics.repair(diagnostic)?;
@@ -77,15 +75,15 @@ pub(crate) fn validate(document: &Document) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Document, OpenOptions, tags};
+    use crate::{Document, OpenOptions, repairs};
     use pagura_core::{ObjectId, Recovery};
     use pagura_testkit::fixture;
 
     #[test]
     fn inferred_types_are_reported_and_source_dictionaries_are_preserved() {
         for (name, tag) in [
-            ("catalog-type-invalid", tags::CATALOG_TYPE_INVALID),
-            ("pages-type-missing", tags::CATALOG_TYPE),
+            ("catalog-type-invalid", repairs::CATALOG_TYPE_INVALID),
+            ("pages-type-missing", repairs::CATALOG_TYPE),
         ] {
             let bytes = fixture("document", &format!("{name}.pdf"));
             let strict = Document::open(
@@ -115,7 +113,7 @@ mod tests {
                     document
                         .diagnostics()
                         .iter()
-                        .filter(|item| item.repair() == Some(tags::PAGE_TYPE))
+                        .filter(|item| item.repair() == Some(repairs::PAGE_TYPE))
                         .count(),
                     2
                 );

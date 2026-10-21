@@ -22,10 +22,29 @@ primary standards.
 | Rendering | Display list; sweep rasterizer with exact-area antialiasing; strokes with caps, joins, dashes and stroke adjustment; geometric clipping; Device, Default, Indexed, ICC (matrix/TRC and LUT profiles), CalGray, CalRGB, Lab, Separation and DeviceN colour; PDF functions with linear and cubic sampled interpolation and transfer functions; form XObjects; text in every render mode, Type 3 glyphs and bundled substitutes; images with masks, soft masks, Decode, Interpolate and separable minification; tiling patterns and mesh shadings; transparency groups, soft masks and blend modes; CMYK and spot overprint display simulation; optional content with View usage; annotation appearances; crop, rotation, UserUnit; tiles; reported recovery of common content faults | Non-RGB group colour spaces (`transparency.group-colorspace`); fractional, pattern and per-colourant transfer regions (`transparency.transfer`); nonempty widgets and rotated widget borders without explicit appearances; known defect: the 8-bit path for all-opaque pages can exceed ADR 0004's one-level bound at partially covered pixels, because it quantizes source colours and rounds twice per mark (up to about 1.5 levels per partial store, accumulating) |
 | Reading | Positioned text extraction from the content interpreter, with words, lines, reading order, ActualText/Alt/ReversedChars (14.9.4) and search with highlight quads (`pagura text`, `pagura find`); a separate logical view for tagged pages (14.7–14.8: structure order, role maps, artifacts, structure ActualText/Alt, linked to the page's glyphs) that never changes page search or selection; viewer search, selection, copy, links and outlines (protocol 1.4); navigation: name and number trees, every destination type, named destinations, outlines, link annotations, inert actions (never followed or executed) and page labels; a form field model (AcroForm 12.7: field tree, types, inherited values, widgets, inert field actions; XFA detected, not interpreted); in-memory filling of text, check box, radio and choice fields, with their widget appearances prepared as data (12.7.4.3: DA and DR, auto-size, quadding, comb, multiline, MK borders and backgrounds) | The logical view in the viewer's accessibility tree; structure namespaces (`text.structure-namespace`); bidirectional text; rendering and saving filled forms; XFA (`form.xfa`), rich text (`form.rich-text`) and other field types (`form.field-type`); appearances with oblique text matrices or negative font sizes (`form.text-matrix`), other DA operators (`form.default-appearance`), fonts without a reversible simple encoding (`form.font-encoding`), rounded, beveled or inset borders (`form.border-style`), rotated widgets (`form.widget-rotation`) and AP updates with inline images, several Tx sections or crossed scopes (`form.appearance-update`); accessibility; signature validation (ADR 0015) (M6) |
 | Signatures | Read-only fields, source-bound ByteRange and revision coverage; `pagura::signatures` verifies CMS integrity for adbe.pkcs7.detached, ETSI.CAdES.detached and ETSI.RFC3161: SHA-1 (reported weak), SHA-224/256/384/512, RSA v1.5/PSS and ECDSA P-256/P-384/P-521, signed attributes, signer-certificate identifiers, ESS v1/v2 binding, CMSAlgorithmProtection and timestamp imprints/token signatures; isolated signature errors and malformed certificate schemas; Perms/DocMDP certification link | Host trust anchors/path validation, revocation, modification classification, TSA authorization and clock trust, complete PAdES attribute/policy validation; normalized issuer-name matching; unreadable form values can still prevent discovery (ADR 0015) |
-| Writing | Deterministic new documents, insertion-ordered dictionaries, budgets | Incremental saves, signatures, redaction (M7) |
+| Writing | Deterministic new documents; immutable editing transactions; append-only classic/xref-stream revisions; saved text/choice fields and existing checkbox/radio states with appearances; inline browser form controls and PDF download (ADR 0031) | Full rewrite, object deletion, encryption-on-write, redaction, undo/redo and general page-content editing; signed-change permission enforcement; generated button states and nested direct fields |
 | WebAssembly | `pagura-host` WASI command (protocol v1, `crates/pagura-host/PROTOCOL.md`); dependency-free browser shim and viewer; native/WASI byte parity; protocol 1.1 viewport generations; bounded LRU of compiled pages; continuous scrolling, zoom and a password prompt; verified in a real browser (cross-origin isolated, exact pixels at DPR 2, multi-page navigation, explicit unsupported banner) | Threads; interrupting a running tile; browser checks of the new gestures |
 | Safety | Workspace-only product dependencies; every product target forbids unsafe; clippy pedantic, `missing_docs`, no `unwrap`/`expect`/`panic`; eleven cargo-fuzz targets with a bounded smoke run (`tools/fuzz_smoke.py`) and every finding replayed on stable Rust | Process sandbox, long fuzz campaigns |
 | Benchmarks | Stage-timed conversion track (open/render/emit, document mode), regression track, raw-format normalization, competitors out of tree (PDFium, MuPDF, pdf.js, hayro, CoreGraphics, Poppler) | Controlled runners; release gate |
+
+## Editing foundations (M7)
+
+[ADR 0031](adr/0031-editing-foundations.md) records the reviewed pending writer
+and typed-document dependencies. This branch implements library APIs described
+in [Editing](EDITING.md); it does not complete M7. Modified saves require strict,
+unencrypted input. Signed input needs an explicit original-byte preservation
+policy, which makes no signature-validity or permitted-change claim.
+
+`pagura/tests/editing.rs` exercises independent source syntax, prefix/trailer and
+generation preservation, rollback, repeated saves, bounds, signature integrity,
+and form save/reopen pixel equivalence. Hosted CI performs the full product
+contract; `editing-interoperability` also checks saved outputs with qpdf and
+compares Poppler page counts against their original inputs. Poppler 24.02.0
+rejects the original `document/hybrid-precedence` fixture and its saved version;
+qpdf 11.9.0 accepts both. This is recorded as a baseline incompatibility, not a
+successful Poppler reopen. The PR check results record validation for each exact
+branch head.
+No local builds, benchmarks or test suites run in this lane.
 
 ## Accuracy policy
 
@@ -191,7 +210,7 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   `tree.order`, `tree.cycle` and `tree.structure` read malformed name and
   number trees in their best-defined order; `outline.links`, `outline.cycle`,
   `outline.count` and `outline.type` rebuild a consistent outline tree;
-  `destination.page-number`, `navigation.text`, `navigation.target-conflict`,
+  `destination.page-number`, `string.invalid-text`, `navigation.target-conflict`,
   `link.quad-points` and `action.cycle` cover the remaining navigation faults.
 - `font.cff-dict-operands`, `font.cff-dict-operator` (CFF section 4 and
   Appendix H): unused hint arrays with no operands are dropped, and reserved

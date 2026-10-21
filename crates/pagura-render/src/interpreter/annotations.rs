@@ -123,7 +123,7 @@ impl Compiler<'_> {
         }
         let commands = self.list.commands.split_off(start);
         let mut bounds = pagura_raster::PathBuilder::new();
-        bounds.rect(rect.x0, rect.y0, rect.width(), rect.height());
+        bounds.rect(rect.x0(), rect.y0(), rect.width(), rect.height());
         self.list
             .commands
             .push(crate::display::Command::Group(crate::transparency::Group {
@@ -132,7 +132,7 @@ impl Compiler<'_> {
                 commands,
                 attributes: crate::transparency::Attributes {
                     view: Some(crate::transparency::ViewFit {
-                        anchor: Point::new(rect.x0, rect.y1),
+                        anchor: Point::new(rect.x0(), rect.y1()),
                         no_zoom: flags & 8 != 0,
                         no_rotate: flags & 16 != 0,
                     }),
@@ -156,33 +156,37 @@ impl Compiler<'_> {
             },
             Appearance::Hidden => return Ok(()),
         };
-        self.paint_appearance(body, rect, resources)
+        self.paint_appearance(body, rect, resources, false)
             .map_err(|e| match body.id() {
                 Some(id) => e.in_object(id),
                 None => e,
             })
     }
 
-    fn paint_appearance(
+    pub(in crate::interpreter) fn paint_appearance(
         &mut self,
         body: FormBody<'_>,
         rect: Rect,
         resources: &Dictionary,
+        extract_text: bool,
     ) -> Result<()> {
         let form = body.dictionary()?;
         let (bbox, transform) = self.form_geometry(form)?;
         let Some(placement) = placement(bbox, transform, rect)? else {
-            let mut diagnostic = pagura_core::Diagnostic::new(
-                super::tags::APPEARANCE_EMPTY,
-                "zero-sized appearance or annotation rectangle; appearance skipped",
-            )
-            .at(self.position);
-            if let Some(id) = body.id() {
-                diagnostic = diagnostic.in_object(id).at(pagura_core::Position::Stream {
+            // An indirect appearance names its own stream; an inline one only
+            // the annotation's position.
+            let position = body
+                .id()
+                .map_or(self.position, |id| pagura_core::Position::Stream {
                     object: id,
                     offset: 0,
                 });
-            }
+            let diagnostic = pagura_core::Diagnostic::new(
+                super::tags::APPEARANCE_EMPTY,
+                "zero-sized appearance or annotation rectangle; appearance skipped",
+            )
+            .in_object_opt(body.id())
+            .at(position);
             return super::repair(self.document, diagnostic);
         };
         // Annotation appearances start independently of the page's final state.
@@ -195,12 +199,18 @@ impl Compiler<'_> {
             },
         );
         let start = self.list.commands.len();
-        let extraction = self.extraction.take();
+        let extraction = if extract_text {
+            None
+        } else {
+            self.extraction.take()
+        };
         let result = self.form_body(body, resources);
-        self.extraction = extraction;
+        if !extract_text {
+            self.extraction = extraction;
+        }
         if result.is_ok() && !form.contains_key(b"Group") {
             let mut bounds = pagura_raster::PathBuilder::new();
-            bounds.rect(rect.x0, rect.y0, rect.width(), rect.height());
+            bounds.rect(rect.x0(), rect.y0(), rect.width(), rect.height());
             let commands = self.list.commands.split_off(start);
             self.list
                 .commands
@@ -303,10 +313,10 @@ pub(super) fn rectangle(
 /// Fit the upright envelope of all four transformed corners (12.5.5).
 pub(super) fn placement(b: Rect, m: Transform, r: Rect) -> Result<Option<Transform>> {
     let points = [
-        Point::new(b.x0, b.y0),
-        Point::new(b.x1, b.y0),
-        Point::new(b.x0, b.y1),
-        Point::new(b.x1, b.y1),
+        Point::new(b.x0(), b.y0()),
+        Point::new(b.x1(), b.y0()),
+        Point::new(b.x0(), b.y1()),
+        Point::new(b.x1(), b.y1()),
     ]
     .map(|p| p * m);
     let x0 = points.iter().map(|p| p.x).fold(f64::INFINITY, f64::min);
@@ -324,7 +334,7 @@ pub(super) fn placement(b: Rect, m: Transform, r: Rect) -> Result<Option<Transfo
     }
     let sx = r.width() / (x1 - x0);
     let sy = r.height() / (y1 - y0);
-    let a = Transform::new(sx, 0.0, 0.0, sy, r.x0 - sx * x0, r.y0 - sy * y0);
+    let a = Transform::new(sx, 0.0, 0.0, sy, r.x0() - sx * x0, r.y0() - sy * y0);
     if !a.is_finite() {
         return Err(Error::limit("appearance fitting exceeds numeric range"));
     }
@@ -436,18 +446,8 @@ mod tests {
 
     #[test]
     fn fitting_uses_the_transformed_envelope_and_preserves_other_errors() {
-        let zero_width = Rect {
-            x0: 0.0,
-            y0: 0.0,
-            x1: 0.0,
-            y1: 4.0,
-        };
-        let target = Rect {
-            x0: 2.0,
-            y0: 2.0,
-            x1: 10.0,
-            y1: 14.0,
-        };
+        let zero_width = Rect::from_corners(0.0, 0.0, 0.0, 4.0).unwrap();
+        let target = Rect::from_corners(2.0, 2.0, 10.0, 14.0).unwrap();
         assert!(
             placement(zero_width, Transform::IDENTITY, target)
                 .unwrap()
@@ -463,29 +463,14 @@ mod tests {
             .unwrap()
             .is_some()
         );
-        let bbox = Rect {
-            x0: 0.0,
-            y0: 0.0,
-            x1: 2.0,
-            y1: 4.0,
-        };
+        let bbox = Rect::from_corners(0.0, 0.0, 2.0, 4.0).unwrap();
         let error =
             placement(bbox, Transform::new(0.0, 0.0, 0.0, 1.0, 0.0, 0.0), target).unwrap_err();
         assert_eq!(error.kind, ErrorKind::Syntax);
         let error = placement(
-            Rect {
-                x0: 0.0,
-                y0: 0.0,
-                x1: 0.5,
-                y1: 0.5,
-            },
+            Rect::from_corners(0.0, 0.0, 0.5, 0.5).unwrap(),
             Transform::IDENTITY,
-            Rect {
-                x0: 0.0,
-                y0: 0.0,
-                x1: f64::MAX,
-                y1: f64::MAX,
-            },
+            Rect::from_corners(0.0, 0.0, f64::MAX, f64::MAX).unwrap(),
         )
         .unwrap_err();
         assert_eq!(error.kind, ErrorKind::Limit);
