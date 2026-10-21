@@ -3,9 +3,9 @@ use super::{FontKind, Mapping, Ownership, PdfFont, Source};
 use crate::{
     GlyphShape,
     cid::{Cid, CidToGidMap},
-    cmap::Code,
+    cmap::{CMap, Code},
 };
-use pagura_core::Name;
+use pagura_core::{Meter, Name, Result};
 use pagura_font::{FontProgram, GlyphId};
 use std::sync::Arc;
 
@@ -75,9 +75,33 @@ impl PdfFont {
         }
     }
 
-    // 9.7.6.3 specifically requires CID 0 when a CIDToGIDMap stream
-    // has no entry, before considering ordinary CMap notdef substitution.
-    pub(crate) fn lacks_gid_entry(&self, cid: Cid) -> bool {
+    /// The CID a code selects (9.7.6.3), given the CID its CMap maps it to.
+    pub(super) fn select_cid(
+        &self,
+        map: &CMap,
+        code: Code,
+        mapped: Option<Cid>,
+        work: &mut Meter,
+    ) -> Result<Cid> {
+        let notdef = match mapped {
+            // A CIDToGIDMap stream without an entry for the CID selects CID 0,
+            // before ordinary notdef substitution is considered.
+            Some(cid) if self.lacks_gid_entry(cid) => return Ok(Cid::NOTDEF),
+            // A mapped CID the font can draw is used as it is.
+            Some(cid) if self.has_cid(cid) => return Ok(cid),
+            // An undefined code or a CID without a glyph uses the code's notdef
+            // mapping.
+            _ => map.notdef(code, work)?,
+        };
+        // A notdef CID without a glyph selects CID 0.
+        Ok(if self.has_cid(notdef) {
+            notdef
+        } else {
+            Cid::NOTDEF
+        })
+    }
+
+    fn lacks_gid_entry(&self, cid: Cid) -> bool {
         match &self.source {
             Source::Program {
                 cid_map: Some(map), ..
@@ -86,7 +110,7 @@ impl PdfFont {
         }
     }
 
-    pub(crate) fn has_cid(&self, cid: Cid) -> bool {
+    fn has_cid(&self, cid: Cid) -> bool {
         match &self.source {
             Source::Program {
                 program, cid_map, ..
