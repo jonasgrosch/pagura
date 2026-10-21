@@ -138,6 +138,8 @@ async function main() {
   const serverChecks = spawnSync('python3', [join(root, 'web/test_server.py')], { encoding: 'utf8', timeout: 30000 });
   assert.ifError(serverChecks.error); assert.equal(serverChecks.status, 0, serverChecks.stderr);
   const manifest = JSON.parse(await readFile(join(root, 'corpus/manifests/classic.json'), 'utf8'));
+  const recovery = JSON.parse(await readFile(join(root, 'corpus/manifests/recovery.json'), 'utf8'));
+  manifest.cases.push(...recovery.cases.filter((entry) => entry.id.startsWith('recovery/type3-empty-bounds-')));
   const scratch = await mkdtemp(join(tmpdir(), 'pagura-host-'));
   const files = [];
   const wasiRun = async (input, name) => {
@@ -199,6 +201,10 @@ async function main() {
       const diagnostics = await client.diagnostics(opened.document);
       assert.deepEqual(diagnostics, frames[4].value);
       assert.deepEqual(diagnostics.map((item) => item.tag), entry.repairs);
+      if (entry.id.startsWith('recovery/type3-empty-bounds-')) {
+        assert.equal((await client.pageText(opened.document, 0)).text, 'AAB');
+        assert.deepEqual(await client.diagnostics(opened.document), diagnostics);
+      }
       // Partial device rectangles exercise the tile offset and edge dimensions.
       for (const partial of [
         { x: 0, y: 0, width: Math.min(31, entry.width), height: entry.height },

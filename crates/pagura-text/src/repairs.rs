@@ -20,6 +20,9 @@ pub const CMAP_CODESPACE: Repair = Repair::new("font.cmap-codespace");
 /// Invalid optional FontWeight is ignored when selecting a substitute
 /// (9.8.1, Table 120); normal weight and the independent ForceBold flag apply.
 pub const DESCRIPTOR_WEIGHT: Repair = Repair::new("font.descriptor-weight");
+/// Reversed d1 bounds are ignored only for procedures with no drawing commands
+/// (9.6.4, Table 111); the declared horizontal advance is retained.
+pub const TYPE3_EMPTY_BOUNDS: Repair = Repair::new("font.type3-empty-bounds");
 
 /// Unusable marked-content property lists or ActualText, Alt or E values
 /// are ignored (14.6.2; 14.9.3–14.9.5).

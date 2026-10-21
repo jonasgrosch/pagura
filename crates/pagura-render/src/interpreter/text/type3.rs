@@ -1,6 +1,6 @@
 //! Type 3 procedure isolation, metrics and colour restrictions (9.6.4).
 use super::{Compiler, Dictionary, Error, PdfFont, Result, Transform, Value, number};
-use pagura_core::ObjectId;
+use pagura_core::{ObjectId, Position};
 
 #[derive(Debug, Clone)]
 pub(in crate::interpreter) struct Procedure {
@@ -8,6 +8,7 @@ pub(in crate::interpreter) struct Procedure {
     pub(in crate::interpreter) uncolored: bool,
     inherited_uncolored: bool,
     expected: (f64, f64),
+    reversed_bounds: Option<Position>,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Phase {
@@ -72,7 +73,7 @@ impl Compiler<'_> {
                 )
                 .at(self.position)
                 .in_object(match self.position {
-                    pagura_core::Position::Stream { object, .. } => object,
+                    Position::Stream { object, .. } => object,
                     _ => return Err(Error::syntax("Type3 metrics have no stream context")),
                 }),
             )?;
@@ -80,7 +81,9 @@ impl Compiler<'_> {
         if word == b"d1"
             && (number(values, 2)? > number(values, 4)? || number(values, 3)? > number(values, 5)?)
         {
-            return Err(Error::syntax("invalid Type3 glyph bounding box"));
+            // Some writers emit reversed d1 bounds for empty glyphs. Defer
+            // recovery until the entire procedure has proved it paints nothing.
+            procedure.reversed_bounds = Some(self.position);
         }
         procedure.phase = Phase::Ready;
         procedure.uncolored = procedure.inherited_uncolored || word == b"d1";
@@ -113,6 +116,7 @@ impl Compiler<'_> {
             uncolored: inherited_uncolored,
             inherited_uncolored,
             expected,
+            reversed_bounds: None,
         });
         let object = self.document.object(id)?;
         let page_resources = self.state.text.cache.borrow().page_resources.clone();
@@ -133,6 +137,28 @@ impl Compiler<'_> {
         }
         self.operations = child.operations;
         self.marks = child.marks;
+        if let Some(position) = child
+            .state
+            .text
+            .procedure
+            .as_ref()
+            .and_then(|p| p.reversed_bounds)
+        {
+            if !child.list.commands.is_empty() {
+                return Err(Error::syntax("invalid Type3 glyph bounding box")
+                    .at(position)
+                    .in_object(id));
+            }
+            super::super::repair(
+                self.document,
+                pagura_core::Diagnostic::new(
+                    pagura_text::repairs::TYPE3_EMPTY_BOUNDS,
+                    "reversed d1 bounds ignored for an empty Type3 glyph; Widths retained",
+                )
+                .at(position)
+                .in_object(id),
+            )?;
+        }
         if child.list.commands.is_empty() {
             return Ok(());
         }
