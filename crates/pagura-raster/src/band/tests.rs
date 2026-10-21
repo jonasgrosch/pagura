@@ -168,7 +168,8 @@ pub(super) fn invariant_with(
             y1: r.y0 + r.height() / 2 + 1,
         },
     ];
-    for height in [1, 3, 16, 32, 256] {
+    let mut charges: Vec<(DeviceRect, usize, usize)> = Vec::new();
+    for height in [1, 3, 5, 16, 32, 256] {
         for region in regions {
             if region.is_empty() {
                 continue;
@@ -188,6 +189,15 @@ pub(super) fn invariant_with(
                 (vec![0; (region.width() * region.height()) as usize], 0)
             };
             let _ = work;
+            // Charges depend on the region, never on the band height.
+            let charge = (
+                shape.as_ref().map_or(0, Shape::work),
+                clip_shape.as_ref().map_or(0, ClipShape::work),
+            );
+            match charges.iter().find(|c| c.0 == region) {
+                Some(&(_, w, c)) => assert_eq!((w, c), charge, "charges at band height {height}"),
+                None => charges.push((region, charge.0, charge.1)),
+            }
             match &reference {
                 None => {
                     assert_eq!(region, r);

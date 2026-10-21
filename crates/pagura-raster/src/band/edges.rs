@@ -5,7 +5,7 @@
 //! region only select which edges and rows are visited, never which
 //! arithmetic produces a cell, so coverage is independent of both.
 
-use super::{Area, DeviceRect};
+use super::DeviceRect;
 use crate::flatten::{CurveStack, Polyline, bounded, flatten_into};
 use crate::{Path, Point, Transform};
 use pagura_core::{Error, Limits, Result};
@@ -515,77 +515,77 @@ pub(crate) fn rows(lo: f64, hi: f64, region: DeviceRect) -> Option<(u32, u32)> {
     Some((first.max(top) as u32, last.min(bottom) as u32))
 }
 
-/// The edges and curves of one shape listed per band of the region.
+/// The edges and curves of one shape listed per row they have area in,
+/// each row in the shapes' own order: a row visits only the edges that
+/// cross it, whatever the band height.
 #[derive(Debug, Default)]
-pub(crate) struct BandIndex {
+pub(crate) struct RowList {
     first: u32,
     offsets: Vec<u32>,
     items: Vec<u32>,
 }
 
-impl BandIndex {
-    /// Lists every item `i` with rows `ranges(i)` in each band of `area`
-    /// it meets.
+impl RowList {
+    /// Lists every item `i` in each row of `ranges(i)` (inclusive) within
+    /// rows `first..end`.
     pub(crate) fn new(
-        area: &Area,
+        (first, end): (u32, u32),
         count: usize,
         ranges: impl Fn(usize) -> Option<(u32, u32)>,
     ) -> Result<Self> {
-        let bands = area.bands();
-        let height = area.band_height.max(1);
-        let span = (bands.end - bands.start) as usize;
-        let mut index = Self {
-            first: bands.start,
+        let span = end.saturating_sub(first) as usize;
+        let mut list = Self {
+            first,
             ..Self::default()
         };
         if u32::try_from(count).is_err() {
-            return Err(Error::limit("band index exceeds u32"));
+            return Err(Error::limit("row list exceeds u32"));
         }
-        index
-            .offsets
-            .try_reserve_exact(span + 1)
-            .map_err(|_| Error::limit("band index allocation failed"))?;
-        index.offsets.resize(span + 1, 0);
-        let local = |row: u32| ((row / height).saturating_sub(bands.start)) as usize;
+        let allocation = |_| Error::limit("row list allocation failed");
+        list.offsets.try_reserve_exact(span + 1).map_err(allocation)?;
+        list.offsets.resize(span + 1, 0);
+        let clamp = |i: usize| {
+            let (a, b) = ranges(i)?;
+            let (a, b) = (a.max(first), b.min(end.checked_sub(1)?));
+            (a <= b).then(|| ((a - first) as usize, (b - first) as usize))
+        };
         let mut total = 0_u32;
         for i in 0..count {
-            if let Some((first, last)) = ranges(i) {
-                let (a, b) = (local(first), local(last).min(span - 1));
-                for band in a..=b {
-                    index.offsets[band + 1] += 1;
+            if let Some((a, b)) = clamp(i) {
+                for row in a..=b {
+                    list.offsets[row + 1] += 1;
                 }
                 total = total
                     .checked_add((b - a) as u32 + 1)
-                    .ok_or(Error::limit("band index exceeds u32"))?;
+                    .ok_or(Error::limit("row list exceeds u32"))?;
             }
         }
-        for band in 0..span {
-            index.offsets[band + 1] += index.offsets[band];
+        for row in 0..span {
+            list.offsets[row + 1] += list.offsets[row];
         }
-        index
-            .items
-            .try_reserve_exact(total as usize)
-            .map_err(|_| Error::limit("band index allocation failed"))?;
-        index.items.resize(total as usize, 0);
-        // Fill each band from its start, which leaves every start at the
-        // next band's; shifting restores them.
+        list.items.try_reserve_exact(total as usize).map_err(allocation)?;
+        list.items.resize(total as usize, 0);
+        // Fill each row from its start, which leaves every start at the
+        // next row's; shifting restores them.
         for i in 0..count {
-            if let Some((first, last)) = ranges(i) {
-                for band in local(first)..=local(last).min(span - 1) {
-                    let slot = &mut index.offsets[band];
-                    index.items[*slot as usize] = i as u32;
+            if let Some((a, b)) = clamp(i) {
+                for row in a..=b {
+                    let slot = &mut list.offsets[row];
+                    list.items[*slot as usize] = i as u32;
                     *slot += 1;
                 }
             }
         }
-        index.offsets.copy_within(0..span, 1);
-        index.offsets[0] = 0;
-        Ok(index)
+        if span > 0 {
+            list.offsets.copy_within(0..span, 1);
+            list.offsets[0] = 0;
+        }
+        Ok(list)
     }
 
-    /// The items listed for `band`.
-    pub(crate) fn band(&self, band: u32) -> &[u32] {
-        let Some(local) = band.checked_sub(self.first) else {
+    /// The items listed for row `y`.
+    pub(crate) fn row(&self, y: u32) -> &[u32] {
+        let Some(local) = y.checked_sub(self.first) else {
             return &[];
         };
         let local = local as usize;
@@ -595,17 +595,9 @@ impl BandIndex {
         }
     }
 
-    /// Item visits over all bands, each counted once per row of its band.
-    pub(crate) fn visits(&self, area: &Area) -> usize {
-        self.offsets
-            .windows(2)
-            .enumerate()
-            .map(|(local, pair)| {
-                let band = self.first.saturating_add(local as u32);
-                let rows = area.band_rows(band);
-                ((pair[1] - pair[0]) as usize).saturating_mul((rows.end - rows.start) as usize)
-            })
-            .fold(0, usize::saturating_add)
+    /// Row visits over all rows.
+    pub(crate) fn len(&self) -> usize {
+        self.items.len()
     }
 
     pub(crate) fn retained_bytes(&self) -> usize {

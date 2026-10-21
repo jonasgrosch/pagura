@@ -12,7 +12,7 @@
 
 use super::DeviceRect;
 use super::clip::{ClipShape, fill_polygon};
-use super::edges::{self, BandIndex, Bounds, Line, Polygon, rows};
+use super::edges::{self, Bounds, Line, Polygon, RowList, rows};
 use super::raster::Out;
 use super::row::Sink;
 use super::shape::{Body, Shape};
@@ -27,7 +27,7 @@ pub(crate) const TOLERANCE: f64 = 1.0 / 64.0;
 #[derive(Debug)]
 pub(crate) struct Cells {
     lines: Vec<Line>,
-    index: BandIndex,
+    index: RowList,
     scan: (usize, usize),
 }
 
@@ -146,11 +146,11 @@ impl Scratch {
         (band, rows): (u32, std::ops::Range<u32>),
         out: &mut BandCoverage,
     ) -> usize {
-        let items = cells.index.band(band);
+        let _ = band;
         let mut work = 0;
         for y in rows {
             let top = f64::from(y);
-            for &item in items {
+            for &item in cells.index.row(y) {
                 if let Some(&line) = cells.lines.get(item as usize) {
                     work += self.edge(line, top) + 1;
                 }
@@ -653,12 +653,8 @@ fn cells(polygon: &Polygon, rule: FillRule, options: &Prep<'_>) -> Result<Option
             }
         }
     }
-    let own = Area {
-        region: bounds_px,
-        band_height: area.band_height,
-    };
     let right = f64::from(region.x1);
-    let index = BandIndex::new(&own, lines.len(), |i| {
+    let index = RowList::new((bounds_px.y0, bounds_px.y1), lines.len(), |i| {
         let l = lines.get(i)?;
         if l.a.x.min(l.b.x) >= right {
             return None;
@@ -667,7 +663,7 @@ fn cells(polygon: &Polygon, rule: FillRule, options: &Prep<'_>) -> Result<Option
     })?;
     let width = super::row::width(region.x1)?;
     let scan = super::clip::columns(bounds[0].x, bounds[1].x, width);
-    let mut work = index.visits(&own);
+    let mut work = index.len();
     for l in &lines {
         if let Some(r) = rows(l.a.y.min(l.b.y), l.a.y.max(l.b.y), bounds_px) {
             work = work.saturating_add(edges::line_work(*l, r, width).saturating_mul(2));

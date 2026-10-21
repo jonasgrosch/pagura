@@ -136,11 +136,12 @@ impl BandRasterizer {
         (band, rows): (u32, std::ops::Range<u32>),
         out: &mut BandCoverage,
     ) {
-        let items = edges.index.band(band);
+        let _ = band;
         let count = edges.lines.len();
         for y in rows {
             let top = f64::from(y);
             let mut cells = 0;
+            let items = edges.index.row(y);
             for &item in items {
                 let item = item as usize;
                 cells += match edges.lines.get(item) {

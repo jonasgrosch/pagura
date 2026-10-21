@@ -7,7 +7,7 @@ use super::binned::Placement;
 use super::certify::certified;
 use super::clip::{ClipShape, INSIDE, Rows, columns, fill_polygon};
 use super::curve::{self, Quadratic};
-use super::edges::{self, BandIndex, Bounds, Chained, Line, Polygon, line_work, rows};
+use super::edges::{self, Bounds, Chained, Line, Polygon, RowList, line_work, rows};
 use super::rect::rectangle;
 use super::scan::{RowIndex, Scanner, Stored, Walk, gap_winding, inside};
 use super::row::fold;
@@ -54,7 +54,7 @@ pub(crate) enum Body {
 pub(crate) struct EdgeBody {
     pub(crate) lines: Vec<Line>,
     pub(crate) curves: Vec<Quadratic>,
-    pub(crate) index: BandIndex,
+    pub(crate) index: RowList,
     pub(crate) scan: (usize, usize),
 }
 
@@ -452,15 +452,11 @@ impl Shape {
             extent(a.y.min(b.y), a.y.max(b.y))
         };
         let count = lines.len() + curves.len();
-        let own = Area {
-            region: bounds,
-            band_height: area.band_height,
-        };
-        let index = BandIndex::new(&own, count, |i| match lines.get(i) {
+        let index = RowList::new((bounds.y0, bounds.y1), count, |i| match lines.get(i) {
             Some(l) => line_rows(l),
             None => curves.get(i - lines.len()).and_then(curve_rows),
         })?;
-        let mut work = index.visits(&own);
+        let mut work = index.len();
         let mut cells = 0_usize;
         for l in &lines {
             if let Some(r) = line_rows(l) {
