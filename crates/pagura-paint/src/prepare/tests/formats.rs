@@ -1,0 +1,179 @@
+//! Storage formats per buffer (ADR 0004 §5–§6), from whole content.
+
+use crate::format::Format;
+use crate::request::FastParams;
+use crate::testing::{Build, check, mark, rect_path};
+use pagura_color::Process;
+use pagura_core::Limits;
+use pagura_interpret::{
+    BlendMode, GlyphSource, GlyphsNode, GroupAttributes, GroupId, MaskKind, Node, OutlineKey,
+    Placement, StateId,
+};
+use pagura_raster::{Point, Transform};
+
+const PAGE: GroupId = GroupId(0);
+
+/// The formats of the page and every buffer that has items, in plan order.
+fn formats(b: &Build, fast: FastParams) -> Vec<Format> {
+    let mut request = b.request(b.page(), 32);
+    request.fast = fast;
+    let prepared = b
+        .prepare(&request, &Limits::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    prepared
+        .plan()
+        .groups
+        .iter()
+        .enumerate()
+        .filter(|(i, g)| *i == 0 || !g.items.is_empty())
+        .map(|(_, g)| g.format)
+        .collect()
+}
+
+fn exact(b: &Build) -> Vec<Format> {
+    formats(b, FastParams::EXACT)
+}
+
+#[test]
+fn opaque_pages_store_n16_and_translucent_ones_f32() {
+    let mut b = Build::new(6.0, 4.0);
+    let red = b.rgb([1.0, 0.0, 0.0]);
+    b.rect(PAGE, [0.5, 0.5, 4.25, 3.5], red, mark(StateId(0)));
+    b.rect(PAGE, [1.5, 0.25, 6.0, 2.75], red, mark(StateId(0)));
+    assert_eq!(exact(&b), [Format::N16]);
+    check(&b);
+    // One translucent store fits N16's room; two do not.
+    let half = b.state(|s| s.alpha = 0.5);
+    b.rect(PAGE, [0.0, 0.0, 3.0, 3.0], red, mark(half));
+    assert_eq!(exact(&b), [Format::N16]);
+    check(&b);
+    b.rect(PAGE, [2.0, 1.0, 5.0, 4.0], red, mark(half));
+    assert_eq!(exact(&b), [Format::F32]);
+    check(&b);
+    let bytes = FastParams {
+        byte_storage: true,
+        ..FastParams::EXACT
+    };
+    assert_eq!(formats(&b, bytes), [Format::U8]);
+}
+
+#[test]
+fn other_blend_modes_and_spaces_stay_f64() {
+    let mut b = Build::new(4.0, 4.0);
+    let red = b.rgb([1.0, 0.0, 0.0]);
+    let multiply = b.state(|s| s.blend = BlendMode::Multiply);
+    b.rect(PAGE, [0.5, 0.5, 3.0, 3.0], red, mark(multiply));
+    assert_eq!(exact(&b), [Format::F64]);
+    let mut b = Build::new(4.0, 4.0);
+    b.scene.groups[0].attributes.space = Some(Process::Gray);
+    assert_eq!(exact(&b), [Format::F64]);
+}
+
+#[test]
+fn translucent_groups_and_masks_store_f32_in_narrow_parents() {
+    let mut b = Build::new(8.0, 6.0);
+    let red = b.rgb([1.0, 0.0, 0.0]);
+    let half = b.state(|s| s.alpha = 0.5);
+    b.rect(PAGE, [0.0, 0.0, 8.0, 6.0], red, mark(StateId(0)));
+    let group = b.transparency(
+        PAGE,
+        GroupAttributes {
+            isolated: true,
+            ..GroupAttributes::default()
+        },
+        mark(half),
+    );
+    b.rect(group, [0.5, 0.5, 6.0, 4.0], red, mark(half));
+    b.rect(group, [2.5, 1.5, 7.0, 5.0], red, mark(half));
+    // The group reaches the page as its one dynamic store.
+    assert_eq!(exact(&b), [Format::N16, Format::F32]);
+    check(&b);
+    let (mask, mask_group) = b.mask(MaskKind::Luminosity, GroupAttributes::default(), None);
+    b.rect(mask_group, [1.0, 1.0, 7.0, 5.0], red, mark(half));
+    let masked = b.state(|s| s.soft_mask = Some(mask));
+    b.rect(PAGE, [0.25, 0.25, 7.75, 5.75], red, mark(masked));
+    assert_eq!(exact(&b), [Format::F32, Format::F32, Format::F32]);
+    check(&b);
+}
+
+#[test]
+fn knockout_and_backdrop_reading_groups_stay_f64() {
+    let mut b = Build::new(6.0, 4.0);
+    let red = b.rgb([1.0, 0.0, 0.0]);
+    let half = b.state(|s| s.alpha = 0.5);
+    let knockout = b.transparency(
+        PAGE,
+        GroupAttributes {
+            isolated: true,
+            knockout: true,
+            space: None,
+        },
+        mark(StateId(0)),
+    );
+    b.rect(knockout, [0.5, 0.5, 4.0, 3.0], red, mark(half));
+    b.rect(knockout, [1.5, 1.0, 5.5, 3.5], red, mark(half));
+    // An F64 child injects little: the page stays N16.
+    assert_eq!(exact(&b), [Format::N16, Format::F64]);
+    check(&b);
+    // A non-isolated group of other blend modes reads its parent.
+    let multiply = b.state(|s| s.blend = BlendMode::Multiply);
+    let reader = b.transparency(PAGE, GroupAttributes::default(), mark(half));
+    b.rect(reader, [0.0, 0.0, 3.0, 4.0], red, mark(multiply));
+    assert_eq!(exact(&b), [Format::F64, Format::F64, Format::F64]);
+    check(&b);
+}
+
+#[test]
+fn plain_groups_composite_as_their_members() {
+    let mut b = Build::new(6.0, 4.0);
+    let red = b.rgb([1.0, 0.0, 0.0]);
+    let multiply = b.state(|s| s.blend = BlendMode::Multiply);
+    let group = b.transparency(PAGE, GroupAttributes::default(), mark(StateId(0)));
+    b.rect(group, [0.5, 0.5, 4.0, 3.0], red, mark(StateId(0)));
+    b.rect(group, [1.5, 1.0, 5.5, 3.5], red, mark(multiply));
+    // The non-isolated plain group is flattened into the page.
+    assert_eq!(exact(&b), [Format::F64]);
+    let prepared = b
+        .prepare(&b.request(b.page(), 32), &Limits::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(prepared.plan().groups[0].items.len(), 2);
+    check(&b);
+}
+
+#[test]
+fn the_f32_count_bound_sends_long_faint_stacks_to_f64() {
+    let mut b = Build::new(4.0, 4.0);
+    let red = b.rgb([1.0, 0.0, 0.0]);
+    let faint = b.state(|s| s.alpha = 3.0 / 134_217_728.0);
+    let source = GlyphSource {
+        outline: rect_path([0.0, 0.0, 1.0, 1.0]),
+        key: OutlineKey {
+            font: pagura_interpret::FontKey(1),
+            glyph: 1,
+        },
+        linear: Transform::IDENTITY,
+    };
+    let placements = |count: u32| {
+        (0..count)
+            .map(|i| Placement {
+                source: 0,
+                origin: Point::new(f64::from(i % 3), f64::from(i % 2)),
+            })
+            .collect::<Vec<_>>()
+    };
+    let glyphs = |count: u32| {
+        Node::Glyphs(GlyphsNode {
+            sources: vec![source.clone()],
+            placements: placements(count),
+            positions: Vec::new(),
+            paint: red,
+            mark: mark(faint),
+        })
+    };
+    b.node(PAGE, glyphs(1_000));
+    assert_eq!(exact(&b), [Format::F32]);
+    b.scene.nodes.clear();
+    b.scene.groups[0].children.clear();
+    b.node(PAGE, glyphs(70_000));
+    assert_eq!(exact(&b), [Format::F64]);
+}

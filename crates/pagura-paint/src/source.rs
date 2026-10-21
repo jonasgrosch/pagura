@@ -16,7 +16,7 @@ use pagura_raster::Transform;
 mod image;
 mod shading;
 
-pub use image::ImageSampler;
+pub use image::{ImageBudgets, ImageSampler};
 pub use shading::{BBoxUse, ShadingSource};
 
 /// Working colours of one span: `channels` values per pixel in the target's
