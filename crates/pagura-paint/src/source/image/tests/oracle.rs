@@ -2,7 +2,7 @@
 //! `compositor/sampled.rs`, `compositor/reduced.rs` and the texel code of
 //! `compositor/images.rs` in their original structure, without budgets.
 
-use super::{Case, Device, MaskUse};
+use super::{Case, MaskUse, base, converter};
 use crate::source::image::texels::Convert;
 use pagura_color::ColorSpace;
 use pagura_image::{DecodedImage, ImageKind, MaskKind};
@@ -365,7 +365,7 @@ fn mask_alpha(image: &DecodedImage, decode: [f64; 2], pixel: usize) -> f64 {
 
 pub(super) struct Oracle<'a> {
     case: &'a Case,
-    convert: Device,
+    convert: Option<Box<dyn Convert>>,
     image: Prepared<Texel>,
     mask: Option<Prepared<f64>>,
 }
@@ -373,14 +373,12 @@ pub(super) struct Oracle<'a> {
 impl<'a> Oracle<'a> {
     pub(super) fn new(case: &'a Case, unit_to_device: Transform, target: usize) -> Self {
         let inverse = unit_to_device.inverse().unwrap();
-        let source = match &case.space {
-            Some(ColorSpace::Indexed(indexed)) => indexed.base.components(),
-            Some(space) => space.components(),
-            None => 0,
-        };
         Self {
             case,
-            convert: Device { source, target },
+            convert: case
+                .space
+                .as_ref()
+                .map(|space| converter(base(space), target).0),
             image: sampler_for(&case.image, inverse).prepare(0, 256),
             mask: case
                 .mask
@@ -390,7 +388,7 @@ impl<'a> Oracle<'a> {
     }
 
     /// `image_texel`, or a stencil's `mask_texel` coloured.
-    fn texel(case: &Case, convert: Device, pixel: usize) -> Texel {
+    fn texel(case: &Case, convert: Option<&dyn Convert>, pixel: usize) -> Texel {
         let image = &case.image;
         if case.space.is_none() {
             let alpha = mask_alpha(image, [0.0, 1.0], pixel);
@@ -461,7 +459,9 @@ impl<'a> Oracle<'a> {
             }
         }
         let mut color = [0.0; 4];
-        convert.convert(&values[..count], &mut color[..convert.target]);
+        if let Some(convert) = convert {
+            convert.convert(&values[..count], &mut color[..convert.channels()]);
+        }
         Texel {
             color: color.map(|v| v * alpha),
             alpha,
@@ -471,7 +471,7 @@ impl<'a> Oracle<'a> {
 
     /// One pixel as the old route composites it, before coverage.
     pub(super) fn pixel(&mut self, x: u32, y: u32) -> Texel {
-        let (case, convert) = (self.case, self.convert);
+        let (case, convert) = (self.case, self.convert.as_deref());
         let mut value = self
             .image
             .sample(x, y, |pixel| Self::texel(case, convert, pixel));

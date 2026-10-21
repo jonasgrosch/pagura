@@ -555,7 +555,9 @@ impl Prepared {
         let (paint, conversions, painted) = match convert {
             Some((convert, rgb)) => {
                 let colors = colors(description, &decoded.image, mask.as_ref(), convert)?;
-                let painted = initial_painted(description, &colors);
+                // Sampled images select channels independently of their
+                // values (11.7.4.3).
+                let painted = colors.convert.painted();
                 let (strategy, conversions) = Strategy::new(&decoded.image, &colors, rgb);
                 (
                     Paint::Colors(Box::new((colors, strategy))),
@@ -684,16 +686,3 @@ fn colors(
     })
 }
 
-/// The channels a colour image paints: its space's selection does not
-/// depend on the sample values (11.7.4.3).
-fn initial_painted(description: &Description<'_>, colors: &Colors) -> Painted {
-    let Some(space) = description.space else {
-        return Painted(0);
-    };
-    let initial = match space {
-        ColorSpace::Indexed(indexed) => indexed.base.initial(),
-        space => space.initial(),
-    };
-    let mut output = vec![0.0; colors.convert.channels()];
-    colors.convert.convert(&initial, &mut output)
-}

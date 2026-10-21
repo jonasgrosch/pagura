@@ -25,6 +25,8 @@ pub(super) trait Convert: Send + Sync + std::fmt::Debug {
     fn channels(&self) -> usize;
     /// Converts `components` into `output`, returning the channels painted.
     fn convert(&self, components: &[f64], output: &mut [f64]) -> Painted;
+    /// The channels every colour paints; they do not depend on the values.
+    fn painted(&self) -> Painted;
     /// The `function_work` units one conversion costs at most.
     fn cost(&self) -> usize;
 }
@@ -36,6 +38,10 @@ impl Convert for Converter {
 
     fn convert(&self, components: &[f64], output: &mut [f64]) -> Painted {
         Converter::convert(self, components, output)
+    }
+
+    fn painted(&self) -> Painted {
+        Converter::painted(self)
     }
 
     fn cost(&self) -> usize {

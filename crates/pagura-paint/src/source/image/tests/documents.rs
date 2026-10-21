@@ -1,8 +1,7 @@
 //! Images read from documents: requests for exact means decode and sample
 //! as full decoding does, and the large JPEG benchmark page's timing.
 
-use super::{Device, SpanColors};
-use crate::source::image::texels::Convert;
+use super::{SpanColors, converter};
 use crate::source::image::{Description, ImageSampler, MaskDescription, Prepared};
 use pagura_color::ColorSpace;
 use pagura_core::{ObjectId, Value};
@@ -54,15 +53,12 @@ fn device_sampler(decoded: Arc<Decoded>, unit_to_device: Transform) -> ImageSamp
         mask: MaskDescription::None,
         alpha_is_shape: false,
     };
-    let convert: Box<dyn Convert> = Box::new(Device {
-        source: components,
-        target: 3,
-    });
+    let convert = converter(&space, 3);
     let (prepared, _) = Prepared::new(
         &description,
         (decoded, None),
         unit_to_device.inverse().unwrap(),
-        Some((convert, components == 3)),
+        Some(convert),
     )
     .unwrap();
     ImageSampler {

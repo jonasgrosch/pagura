@@ -12,7 +12,7 @@ use super::geometry::Geometry;
 use super::texels::{Convert, Opacity};
 use super::{Description, ImageSampler, MaskDescription, Prepared};
 use crate::SpanColors;
-use pagura_color::{ColorSpace, Indexed, Painted};
+use pagura_color::{ColorSpace, Conversion, Converter, Indexed, Painted, Process, Target};
 use pagura_image::{Decoded, DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples};
 use pagura_raster::Transform;
 use std::sync::Arc;
@@ -20,36 +20,25 @@ use std::sync::Arc;
 mod documents;
 mod oracle;
 
-/// Device colour conversion as the old route performs it for DeviceGray and
-/// DeviceRGB sources into a Gray or RGB blending space: clipping, gray
-/// replicated into RGB and RGB to gray by NTSC weights.
-#[derive(Debug, Clone, Copy)]
-pub(super) struct Device {
-    pub(super) source: usize,
-    pub(super) target: usize,
+/// A prepared conversion of `base` into a composite target of `channels`
+/// process channels (1 Gray, 3 RGB, 4 CMYK), and whether it is per channel.
+pub(super) fn converter(base: &ColorSpace, channels: usize) -> (Box<dyn Convert>, bool) {
+    let process = match channels {
+        1 => Process::Gray,
+        3 => Process::Rgb,
+        _ => Process::Cmyk,
+    };
+    let target = Target::new(process);
+    let converter = Converter::new(base, &target, &Conversion::default()).unwrap();
+    let rgb = matches!(base, ColorSpace::DeviceRgb) && process == Process::Rgb;
+    (Box::new(converter), rgb)
 }
 
-impl Convert for Device {
-    fn channels(&self) -> usize {
-        self.target
-    }
-
-    fn convert(&self, components: &[f64], output: &mut [f64]) -> Painted {
-        let clip = |i: usize| components.get(i).copied().unwrap_or(0.0).clamp(0.0, 1.0);
-        match (self.source, self.target) {
-            (1, _) => output.fill(clip(0)),
-            (_, 1) => output[0] = 0.3 * clip(0) + 0.59 * clip(1) + 0.11 * clip(2),
-            _ => {
-                for (i, out) in output.iter_mut().enumerate() {
-                    *out = clip(i);
-                }
-            }
-        }
-        Painted((1 << self.target) - 1)
-    }
-
-    fn cost(&self) -> usize {
-        0
+/// The space an image's samples convert from: an Indexed space's base.
+pub(super) fn base(space: &ColorSpace) -> &ColorSpace {
+    match space {
+        ColorSpace::Indexed(indexed) => &indexed.base,
+        space => space,
     }
 }
 
@@ -135,11 +124,6 @@ fn case(image: DecodedImage) -> Case {
 /// channels.
 fn sampler(case: &Case, unit_to_device: Transform, target: usize) -> ImageSampler {
     let inverse = unit_to_device.inverse().unwrap();
-    let base = match &case.space {
-        Some(ColorSpace::Indexed(indexed)) => indexed.base.components(),
-        Some(space) => space.components(),
-        None => 0,
-    };
     let mask = case.mask.as_ref().map(|(mask, decode, kind)| {
         let description = match kind {
             MaskUse::Stencil => MaskDescription::Stencil,
@@ -157,13 +141,10 @@ fn sampler(case: &Case, unit_to_device: Transform, target: usize) -> ImageSample
         mask: mask.as_ref().map_or(MaskDescription::None, |(_, d)| *d),
         alpha_is_shape: case.alpha_is_shape,
     };
-    let convert = case.space.as_ref().map(|_| {
-        let convert: Box<dyn Convert> = Box::new(Device {
-            source: base,
-            target,
-        });
-        (convert, base == 3 && target == 3)
-    });
+    let convert = case
+        .space
+        .as_ref()
+        .map(|space| converter(base(space), target));
     let (prepared, _) = Prepared::new(
         &description,
         (
@@ -477,4 +458,32 @@ fn degenerate_placements_paint_nothing_and_overflow_is_refused() {
 fn prepared_samplers_are_shared_between_threads() {
     fn shared<T: Send + Sync>() {}
     shared::<ImageSampler>();
+}
+
+#[test]
+fn device_and_cie_spaces_into_every_process_target() {
+    let cmyk = Case {
+        space: Some(ColorSpace::DeviceCmyk),
+        ..case(image((7, 6), 4, 8, bytes(7 * 6 * 4, 8, 53)))
+    };
+    let mut cmyk = cmyk;
+    cmyk.decode = vec![[0.0, 1.0]; 4];
+    let lab = pagura_color::cie::Calibrated::lab(
+        [0.9505, 1.0, 1.089],
+        [0.0; 3],
+        [-100.0, 100.0, -80.0, 90.0],
+    )
+    .unwrap();
+    let mut lab = Case {
+        space: Some(ColorSpace::Calibrated(Arc::new(lab))),
+        ..case(image((6, 7), 3, 8, bytes(6 * 7 * 3, 8, 59)))
+    };
+    lab.decode = vec![[0.0, 100.0], [-100.0, 100.0], [-80.0, 90.0]];
+    let rgb = case(image((8, 5), 3, 8, bytes(8 * 5 * 3, 8, 61)));
+    let gray = case(image((5, 8), 1, 8, bytes(40, 8, 67)));
+    for target in [1, 3, 4] {
+        for case in [&cmyk, &lab, &rgb, &gray] {
+            agree(case, target);
+        }
+    }
 }
