@@ -64,7 +64,10 @@ mod jpx_channels;
 mod jpx_image;
 mod mask;
 mod parameters;
+mod source;
 mod stream;
+
+pub use source::{DecodeRequest, Decoded, ImageId, ImageSource, Reduce, SampleRect};
 
 /// How an image's samples are interpreted.
 #[derive(Debug, Clone, PartialEq)]

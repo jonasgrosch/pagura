@@ -8,6 +8,7 @@
 //! spaces or content streams.
 
 mod adjust;
+mod band;
 mod bounds;
 mod coverage;
 mod empty_fill;
@@ -21,6 +22,10 @@ mod quantize;
 mod raster;
 mod stroke;
 
+pub use band::{
+    Adjustment, Area, BandCoverage, BandRasterizer, ClipShape, CoverageRow, DeviceRect,
+    GlyphEdges, GlyphOrigins, MarkCoverage, Precision, Shape, ShapeOptions, Span,
+};
 pub use geometry::{Point, Transform};
 pub use glyph::{GlyphContour, GlyphGeometry};
 pub use paint::{Paint, Rgba8};

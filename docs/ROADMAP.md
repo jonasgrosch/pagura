@@ -29,11 +29,12 @@ tools/check.py` passes, and `docs/STATUS.md` records the evidence.
   against the primary standards (ISO 32000-2 and the format standards in the
   private reference cache); discrepancies become fixtures with independent
   expectations. A registry whose `scope` does not state this is unverified.
-- **Rendering speed without spending accuracy:** one compositor with f32
-  page and group buffers under ADR 0004's accuracy contract (every pixel
-  within one level of its exact result), opaque text-object groups elided,
-  device geometry prepared once. Speed comes from the rasterizer and the
-  compositor, not from glyph-position snapping (ADR 0013).
+- **One interpreter, one renderer (ADR 0034):** devices behind one
+  interpreter, a recorded scene per page, preparation that validates and
+  reserves in source order, a band executor with per-buffer storage formats,
+  and four named fast parameters in place of the Competitive routes. Then
+  speed against the fastest competitor per category on that architecture,
+  without spending accuracy (ADR 0004, ADR 0013).
 - **M3/M5 gaps on real files:** vertical writing with substituted CJK fonts,
   Type 1 programs that need PostScript, non-RGB transparency group colour
   spaces, overprint, and transfer functions under transparency.
@@ -55,8 +56,29 @@ tools/check.py` passes, and `docs/STATUS.md` records the evidence.
   runner for that size.
 - Long coverage-guided fuzz campaigns (the `fuzz/` targets) on dedicated hardware.
 - PNG output (Flate compressor, PNG encoder) for the conversion use case.
-- Multithreaded tile rendering (native threads, `wasm32-wasip1-threads`).
-- Linearization and incremental loading for large files.
+- **Loading:** a `ByteSource` whose reads may return `Unavailable` naming
+  every missing range; page prefetch that walks a page's resource graph in
+  one round; tail-first opening of non-linearized files and linearization
+  hints; objects as shared handles the `Store` can evict; revisions as a
+  parent plus an overlay (an ADR 0012 amendment).
+- **Host and viewer:** protocol v2 replacing versions 1.0–1.7; rendering in
+  band steps, cancellable between bands; a JSPI transport so cross-origin
+  isolation becomes optional, with the Atomics path as fallback (an ADR 0005
+  amendment); low-resolution previews and stale tiles while zooming; a worker
+  pool fed with serialized prepared scenes; ARIA from the logical structure
+  view; a size budget for the core module.
+- **More devices** on the interpreter's `Device` trait: SVG output, PDF
+  re-emission through the operator layer, hit testing.
+- **Concurrency:** native band threads (`std::thread::scope`) and WebAssembly
+  threads under cross-origin isolation, on `PreparedScene` bands.
+- **Editing additions to M7:** sessions on snapshots with undo and redo;
+  semantic operations with XFDF; content filters on `pagura-content`;
+  redaction with a residual scan; one DocMDP/FieldMDP change classifier;
+  two-phase external signing (signature creation needs its own decision; ADR
+  0015 is verification only); a native AcroForm AF function library, with no
+  JavaScript engine.
+- **Crate splits:** `pagura-interactive` (fields, navigation, actions) and
+  `pagura-sign`.
 
 Deferred capabilities remain release blockers wherever the performance or
 feature contract requires them. Exclusions are explicit product decisions,

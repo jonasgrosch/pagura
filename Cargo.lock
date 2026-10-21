@@ -21,6 +21,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "pagura-appearance"
+version = "0.1.0"
+dependencies = [
+ "pagura-core",
+ "pagura-document",
+ "pagura-font",
+ "pagura-testkit",
+ "pagura-text",
+]
+
+[[package]]
 name = "pagura-cli"
 version = "0.1.0"
 dependencies = [
@@ -42,6 +53,14 @@ version = "0.1.0"
 dependencies = [
  "pagura-core",
  "pagura-crypto",
+ "pagura-testkit",
+]
+
+[[package]]
+name = "pagura-content"
+version = "0.1.0"
+dependencies = [
+ "pagura-core",
  "pagura-testkit",
 ]
 
@@ -134,6 +153,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "pagura-interpret"
+version = "0.1.0"
+dependencies = [
+ "pagura-appearance",
+ "pagura-color",
+ "pagura-content",
+ "pagura-core",
+ "pagura-document",
+ "pagura-extract",
+ "pagura-font",
+ "pagura-image",
+ "pagura-raster",
+ "pagura-testkit",
+ "pagura-text",
+]
+
+[[package]]
+name = "pagura-paint"
+version = "0.1.0"
+dependencies = [
+ "pagura-color",
+ "pagura-core",
+ "pagura-image",
+ "pagura-interpret",
+ "pagura-raster",
+ "pagura-testkit",
+]
+
+[[package]]
 name = "pagura-pki"
 version = "0.1.0"
 dependencies = [
@@ -145,6 +193,17 @@ name = "pagura-raster"
 version = "0.1.0"
 dependencies = [
  "pagura-core",
+ "pagura-testkit",
+]
+
+[[package]]
+name = "pagura-reference"
+version = "0.1.0"
+dependencies = [
+ "pagura-color",
+ "pagura-core",
+ "pagura-interpret",
+ "pagura-raster",
  "pagura-testkit",
 ]
 

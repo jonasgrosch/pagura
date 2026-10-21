@@ -11,7 +11,8 @@
 //! - [`text_string`], the PDF text-string and PDFDocEncoding codec;
 //! - [`Diagnostics::repair_once`], [`Error::within`] and [`ResultExt`] for
 //!   reporting with context;
-//! - [`convert`], lossless integer widening.
+//! - [`convert`], lossless integer widening;
+//! - [`Store`], the one budgeted cache of reusable rendering values.
 //!
 //! This crate has no knowledge of files, revisions or rendering. It is the
 //! vocabulary the other crates speak.
@@ -27,6 +28,7 @@ mod name;
 mod rect;
 pub mod repairs;
 mod retained;
+mod store;
 pub mod syntax;
 pub mod text_string;
 mod value;
@@ -39,4 +41,5 @@ pub use meter::Meter;
 pub use name::Name;
 pub use rect::Rect;
 pub use retained::INDEX_ENTRY_OVERHEAD;
+pub use store::{Built, Store, StoreKey};
 pub use value::{ObjectId, Value};
