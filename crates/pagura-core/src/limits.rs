@@ -18,7 +18,7 @@
 /// | Streams | `stream_bytes`, `decoded_bytes` |
 /// | Image codecs | `decode_work`, `decode_bytes` |
 /// | Fonts and CMaps | `font_work`, `font_entries` |
-/// | Content and rendering | `operations`, `display_commands`, `path_segments`, `raster_work`, `mask_sources`, `pixels`, `render_bytes` |
+/// | Content and rendering | `operations`, `display_commands`, `path_segments`, `raster_work`, `mask_sources`, `pixels`, `render_bytes`, `render_work` |
 /// | Page text | `text_items`, `text_work` |
 /// | Functions | `function_work` |
 /// | Signatures | `signatures`: [`SignatureLimits`] for ASN.1, certification paths and RSA |
@@ -79,6 +79,11 @@ pub struct Limits {
     /// compilation and rendering: decoded content, images, colour
     /// transforms, fonts and compositing surfaces together.
     pub render_bytes: usize,
+    /// Maximum work units of one render after preparation (ADR 0034): the
+    /// rasterization work of every prepared mark plus one unit per pixel
+    /// each mark composites, summed over the marks that meet the region.
+    /// Reserved during preparation, so execution cannot exceed it.
+    pub render_work: usize,
     /// Maximum work units for decoding one image (DCT, JPEG 2000, JBIG2,
     /// CCITT) or colour profile: roughly one unit per entropy-coded symbol,
     /// transformed coefficient or decoded sample, so the budget scales with
@@ -204,6 +209,7 @@ impl Default for Limits {
             mask_sources: 256,
             display_commands: 10_000_000,
             render_bytes: 512 * MIB,
+            render_work: 2_000_000_000,
             // 32 units per pixel at the pixel cap: a progressive or 4:4:4
             // JPEG of that size decodes, unlike under the 50M-token
             // `operations` budget that capped codecs before (ADR 0016).
@@ -246,6 +252,7 @@ mod tests {
             mask_sources,
             display_commands,
             render_bytes,
+            render_work,
             decode_work,
             decode_bytes,
             font_work,
@@ -274,6 +281,7 @@ mod tests {
             mask_sources,
             display_commands,
             render_bytes,
+            render_work,
             decode_work,
             decode_bytes,
             font_work,
