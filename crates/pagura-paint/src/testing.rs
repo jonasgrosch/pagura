@@ -211,6 +211,15 @@ pub(crate) fn native(color: &Color, target: &Target) -> Result<Source> {
     })
 }
 
+/// A producer of exact rectangle coverage for `shapes` and `clips`.
+pub(crate) fn rect_producer(area: Area, shapes: Vec<Box4>, clips: Vec<Box4>) -> Box<dyn Producer> {
+    Box::new(RectCoverage {
+        area,
+        shapes,
+        clips,
+    })
+}
+
 /// Exact coverage of rectangles, quantized once.
 #[derive(Debug)]
 struct RectCoverage {

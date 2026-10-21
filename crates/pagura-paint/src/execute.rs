@@ -26,6 +26,9 @@ use pagura_core::convert::u32_to_usize;
 use pagura_raster::{DeviceRect, Pixmap, Span};
 use std::ops::Range;
 
+#[cfg(test)]
+mod tests;
+
 /// One band's execution.
 pub(crate) struct Executor<'a> {
     plan: &'a Plan,

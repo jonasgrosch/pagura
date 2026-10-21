@@ -306,3 +306,74 @@ fn normal_stores_stay_within_2_to_the_minus_40_levels_of_exact_arithmetic() {
         }
     }
 }
+
+/// The exact level after Normal stores of `(opacity, target level)`.
+fn reference(start: f64, stores: &[(f64, f64)]) -> f64 {
+    stores
+        .iter()
+        .fold(start, |x, &(a, t)| (1.0 - a) * x + a * t)
+}
+
+#[test]
+fn n16_stays_within_one_level_for_any_number_of_opaque_stores() {
+    let mut random = Lcg(23);
+    let mut worst: f64 = 0.0;
+    for _ in 0..300 {
+        let background = (random.unit() * 255.0).round();
+        let mut words = [[(background as u16) * 257; 4]];
+        let mut stores = Vec::new();
+        for _ in 0..(1 + (random.unit() * 400.0) as usize) {
+            let color = random.unit();
+            let coverage = (1.0 + random.unit() * 254.0).round() as u8;
+            let source = [word(color), word(color), word(color), u16::MAX];
+            store_n16(&mut words, source, Some(&[coverage]));
+            stores.push((f64::from(coverage) / 255.0, color * 255.0));
+        }
+        // One dynamic store fits the room N16 leaves.
+        let (color, alpha) = (random.unit(), random.unit());
+        dynamic_n16(&mut words, &Colors::Constant(&[color, color, color]), &[alpha]);
+        stores.push((alpha, color * 255.0));
+        let exact = reference(background, &stores);
+        let byte = f64::from((u32::from(words[0][0]) + 128) / 257);
+        worst = worst.max((byte - exact).abs());
+    }
+    assert!(worst < 0.997, "{worst}");
+}
+
+#[test]
+fn f32_stays_within_one_level_inside_its_count_bound() {
+    let mut random = Lcg(31);
+    let mut worst: f64 = 0.0;
+    for _ in 0..100 {
+        let background = (random.unit() * 255.0).round();
+        let mut levels = [[background as f32; 4]];
+        let mut stores = Vec::new();
+        // 30,000 stores of opacity at least 1/255 · 1/8: the bound's
+        // min(N, 1/θ + K) is 2040, far inside 2^-17 · 2040 < 1/2.
+        for _ in 0..30_000 {
+            let color = random.unit();
+            let alpha = (1.0 + (random.unit() * 254.0).floor()) / 255.0 * (0.125 + 0.875 * random.unit());
+            store_f32(&mut levels, &Colors::Constant(&[color, color, color]), &[alpha]);
+            stores.push((alpha, color * 255.0));
+        }
+        let exact = reference(background, &stores);
+        let byte = f64::from(levels[0][0].round());
+        worst = worst.max((byte - exact).abs());
+    }
+    assert!(worst < 1.0, "{worst}");
+}
+
+#[test]
+fn u8_rounds_each_store_once() {
+    let mut random = Lcg(37);
+    for _ in 0..1000 {
+        let background = (random.unit() * 255.0).round() as u8;
+        let mut bytes = [[background; 4]];
+        let (color, alpha) = (random.unit(), random.unit());
+        store_u8(&mut bytes, &Colors::Constant(&[color, color, color]), &[alpha]);
+        let a = f64::from(pagura_raster::quantize_unit(alpha)) / 255.0;
+        let c = f64::from(pagura_raster::quantize_unit(color));
+        let exact = (1.0 - a) * f64::from(background) + a * c;
+        assert!((f64::from(bytes[0][0]) - exact).abs() <= 0.5 + 1e-9);
+    }
+}

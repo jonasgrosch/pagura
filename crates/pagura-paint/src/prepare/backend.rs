@@ -264,8 +264,11 @@ impl Backend for Raster<'_> {
             outline: source.key,
             linear: linear.map(f64::to_bits),
         };
-        let (edges, fresh) = if let Some(edges) = self.edges.get(&key) {
-            (Arc::clone(edges), false)
+        // Edges are a value of the store: they cost the render nothing,
+        // found or built (ADR 0016), and are kept for the render's other
+        // placements.
+        let edges = if let Some(edges) = self.edges.get(&key) {
+            Arc::clone(edges)
         } else {
             let limits = self.limits;
             let edges = self.store.get_or_build(key, || {
@@ -277,16 +280,10 @@ impl Backend for Raster<'_> {
                 })
             })?;
             self.edges.insert(key, Arc::clone(&edges));
-            (edges, true)
+            edges
         };
         let shape = Shape::glyph(&edges, origin, self.origins, options)?;
-        let mut prepared = self.shape(shape)?;
-        if let Some(prepared) = &mut prepared
-            && fresh
-        {
-            prepared.bytes = prepared.bytes.saturating_add(edges.retained_bytes());
-        }
-        Ok(prepared)
+        self.shape(shape)
     }
 
     fn clip(

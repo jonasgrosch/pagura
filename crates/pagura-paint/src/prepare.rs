@@ -12,7 +12,7 @@ mod backend;
 pub(crate) mod bounds;
 mod finish;
 mod overprint;
-mod planner;
+pub(crate) mod planner;
 mod storage;
 
 pub(crate) use backend::{Backend, PaintRequest, Prepared, Producer, Raster};

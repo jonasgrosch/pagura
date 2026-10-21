@@ -14,7 +14,7 @@ use pagura_color::ColorSpace;
 use pagura_core::{Error, Position, Result};
 use pagura_interpret::{
     BlendMode, Composite, FillNode, GlyphSource, GlyphsNode, ImageMask, ImageNode, MarkInfo, Paint,
-    PaintId, Pen, ShadingNode, StrokeNode,
+    PaintId, Pen, ShadingNode, StrokeNode, TilingPaint,
 };
 use pagura_raster::{FillRule, LineJoin, Path, Point, ShapeOptions, Transform};
 use std::sync::Arc;
@@ -120,15 +120,14 @@ impl<B: Backend> Planner<'_, B> {
             };
             let l = source.linear;
             let linear = Transform::new(l.a, l.b, l.c, l.d, 0.0, 0.0).then(device);
-            let relative = match hulls.get(source_index).copied().flatten() {
-                Some(hull) => hull,
-                None => {
-                    let hull = bounds::path(&source.outline, linear);
-                    if let Some(slot) = hulls.get_mut(source_index) {
-                        *slot = Some(hull);
-                    }
-                    hull
+            let relative = if let Some(hull) = hulls.get(source_index).copied().flatten() {
+                hull
+            } else {
+                let hull = bounds::path(&source.outline, linear);
+                if let Some(slot) = hulls.get_mut(source_index) {
+                    *slot = Some(hull);
                 }
+                hull
             };
             let origin = t.apply(placement.origin);
             let hull = relative.map(|[x0, y0, x1, y1]| {
@@ -166,17 +165,14 @@ impl<B: Backend> Planner<'_, B> {
         budget: &mut Budget,
     ) -> Result<()> {
         let to_device = node.transform.then(scope.transform);
-        let (hull, geometry) = match node.shading.bbox {
-            Some(rect) => {
-                let path = Path::rect(rect);
-                let hull = bounds::path(&path, to_device).map(|h| bounds::expand(h, 1.0));
-                (hull, Geometry::Area(Some((path, to_device))))
-            }
-            None => {
-                let r = self.area.region;
-                let whole = [f64::from(r.x0), f64::from(r.y0), f64::from(r.x1), f64::from(r.y1)];
-                (Some(whole), Geometry::Area(None))
-            }
+        let (hull, geometry) = if let Some(rect) = node.shading.bbox {
+            let path = Path::rect(rect);
+            let hull = bounds::path(&path, to_device).map(|h| bounds::expand(h, 1.0));
+            (hull, Geometry::Area(Some((path, to_device))))
+        } else {
+            let r = self.area.region;
+            let whole = [f64::from(r.x0), f64::from(r.y0), f64::from(r.x1), f64::from(r.y1)];
+            (Some(whole), Geometry::Area(None))
         };
         let spec = Spec {
             info: &node.mark,
@@ -202,10 +198,9 @@ impl<B: Backend> Planner<'_, B> {
                 .get(spec.info.state.index())
                 .ok_or(Error::invalid_argument("scene state out of range"))?,
         );
-        let region = self.area.region;
         let clip_bounds = self.clip_bounds(scope, spec.info.clip)?;
         let culling = intersect(
-            intersect(bounds::device(spec.hull, region), clip_bounds),
+            intersect(bounds::device(spec.hull, self.area.region), clip_bounds),
             scope.bounds,
         );
         if culling.is_empty() {
@@ -224,8 +219,7 @@ impl<B: Backend> Planner<'_, B> {
             Some(Paint::Tiling(tiling)) if scope.paint.is_none() => Some(tiling.clone()),
             _ => None,
         };
-        if self.storage.transfers
-            && (tiling.is_some() || (self.simulate && state.overprint.enabled))
+        if self.storage.transfers && (tiling.is_some() || (self.simulate && state.overprint.enabled))
         {
             return Err(Error::unsupported(
                 crate::features::TRANSPARENCY_TRANSFER,
@@ -236,30 +230,10 @@ impl<B: Backend> Planner<'_, B> {
             .soft_mask
             .map(|id| self.mask_use(scope, id, budget))
             .transpose()?;
-        let (clip, clip_rect) = match self.clip(scope, spec.info.clip, budget)? {
-            Clipping::Empty => return Ok(()),
-            Clipping::All => (None, region),
-            Clipping::Shape(prepared) => (Some(prepared.key), prepared.bounds),
-        };
-        let shape = match self.shape(scope, &spec.geometry)? {
-            Shape::Nothing => return Ok(()),
-            Shape::Everything => None,
-            Shape::Prepared(prepared) => Some(prepared),
-        };
-        let bounds = intersect(
-            intersect(shape.map_or(region, |s| s.bounds), clip_rect),
-            intersect(scope.bounds, culling),
-        );
-        if bounds.is_empty() {
+        let Some(covered) = self.coverage(scope, spec, culling, budget)? else {
             return Ok(());
-        }
-        let work = shape.map_or(0, |s| s.work);
-        budget.bytes.charge(shape.map_or(0, |s| s.bytes))?;
-        self.use_mask(mask, bounds, budget)?;
-        let cover = Cover {
-            shape: shape.map(|s| s.key),
-            clip,
         };
+        self.use_mask(mask, covered.bounds, budget)?;
         let compositing = Compositing {
             alpha: state.alpha,
             blend: state.blend,
@@ -272,41 +246,104 @@ impl<B: Backend> Planner<'_, B> {
             },
             zeros: zeros(paint.as_deref(), spec.colour, &state, scope, self.simulate, self.scene),
         };
-        let serial = self.serial;
-        if let Some(tiling) = tiling {
-            let Some((group, content)) = self.pattern(scope, &tiling, bounds, budget)? else {
-                return Ok(());
-            };
-            budget.work.charge(work)?;
-            budget.work.charge_product(area(content), 3)?;
-            let item = Item {
-                bounds: content,
-                bands: self.bands(content),
-                serial,
-                position: spec.position,
-                work,
-                kind: ItemKind::Group(GroupUse {
-                    group,
-                    cover: Some(cover),
-                    compositing,
-                    conversion: None,
-                }),
-            };
-            return self.push(scope.group, item, budget);
+        match tiling {
+            Some(tiling) => self.pattern_item(scope, spec, (&tiling, covered, compositing), budget),
+            None => self.mark_item(scope, spec, (&state, covered, compositing), budget),
         }
-        let paint_index = self.prepare_paint(scope, spec.colour, (&state, spec.info.state.0), area(bounds), budget)?;
-        let (records, select) = self.selection(scope, spec.colour, (&state, spec.info.state.0), budget)?;
-        budget.work.charge(work)?;
-        budget.work.charge(area(bounds))?;
-        let item = Item {
+    }
+
+    /// The clip and shape of a mark that meets the region, and the pixels
+    /// they cover; `None` when they cover none.
+    fn coverage(
+        &mut self,
+        scope: &Scope,
+        spec: &Spec<'_>,
+        culling: pagura_raster::DeviceRect,
+        budget: &mut Budget,
+    ) -> Result<Option<Covered>> {
+        let region = self.area.region;
+        let (clip, clip_rect) = match self.clip(scope, spec.info.clip, budget)? {
+            Clipping::Empty => return Ok(None),
+            Clipping::All => (None, region),
+            Clipping::Shape(prepared) => (Some(prepared.key), prepared.bounds),
+        };
+        let shape = match self.shape(scope, &spec.geometry)? {
+            Shape::Nothing => return Ok(None),
+            Shape::Everything => None,
+            Shape::Prepared(prepared) => Some(prepared),
+        };
+        let bounds = intersect(
+            intersect(shape.map_or(region, |s| s.bounds), clip_rect),
+            intersect(scope.bounds, culling),
+        );
+        if bounds.is_empty() {
+            return Ok(None);
+        }
+        budget.bytes.charge(shape.map_or(0, |s| s.bytes))?;
+        Ok(Some(Covered {
+            cover: Cover {
+                shape: shape.map(|s| s.key),
+                clip,
+            },
             bounds,
-            bands: self.bands(bounds),
+            work: shape.map_or(0, |s| s.work),
+        }))
+    }
+
+    /// A mark painted with a tiling pattern: the pattern's instances as a
+    /// group composited through the mark's coverage.
+    fn pattern_item(
+        &mut self,
+        scope: &Scope,
+        spec: &Spec<'_>,
+        (tiling, covered, compositing): (&TilingPaint, Covered, Compositing),
+        budget: &mut Budget,
+    ) -> Result<()> {
+        let serial = self.serial;
+        let Some((group, content)) = self.pattern(scope, tiling, covered.bounds, budget)? else {
+            return Ok(());
+        };
+        budget.work.charge(covered.work)?;
+        budget.work.charge_product(area(content), 3)?;
+        let item = Item {
+            bounds: content,
+            bands: self.bands(content),
             serial,
             position: spec.position,
-            work,
+            work: covered.work,
+            kind: ItemKind::Group(GroupUse {
+                group,
+                cover: Some(covered.cover),
+                compositing,
+                conversion: None,
+            }),
+        };
+        self.push(scope.group, item, budget)
+    }
+
+    /// A mark with its prepared paint.
+    fn mark_item(
+        &mut self,
+        scope: &Scope,
+        spec: &Spec<'_>,
+        (state, covered, compositing): (&Arc<Composite>, Covered, Compositing),
+        budget: &mut Budget,
+    ) -> Result<()> {
+        let serial = self.serial;
+        let state_id = spec.info.state.0;
+        let paint = self.prepare_paint(scope, spec.colour, (state, state_id), area(covered.bounds), budget)?;
+        let (records, select) = self.selection(scope, spec.colour, (state, state_id), budget)?;
+        budget.work.charge(covered.work)?;
+        budget.work.charge(area(covered.bounds))?;
+        let item = Item {
+            bounds: covered.bounds,
+            bands: self.bands(covered.bounds),
+            serial,
+            position: spec.position,
+            work: covered.work,
             kind: ItemKind::Mark(Mark {
-                cover,
-                paint: paint_index,
+                cover: covered.cover,
+                paint,
                 compositing,
                 select,
                 records,
@@ -512,6 +549,14 @@ impl<B: Backend> Planner<'_, B> {
         };
         Ok((true, select))
     }
+}
+
+/// What a mark covers.
+#[derive(Debug, Clone, Copy)]
+struct Covered {
+    cover: Cover,
+    bounds: pagura_raster::DeviceRect,
+    work: usize,
 }
 
 /// A mark's shape.
