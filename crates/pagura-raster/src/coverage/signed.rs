@@ -10,7 +10,8 @@
 
 use super::quadratic::rectangular_clips;
 use super::rectangle::Rectangle;
-use super::{Geometry, Shape, bytes, charge, quantize};
+use super::{Geometry, Shape, bytes, charge};
+use crate::quantize_unit;
 use crate::{GlyphGeometry, Point};
 use pagura_core::{Error, Limits, Result};
 
@@ -292,7 +293,7 @@ fn emit(sums: &mut [f64], left: i64, output: &mut [u8]) {
             && column >= skip
             && let Some(cell) = output.get_mut(column - skip + shift)
         {
-            *cell = quantize(area.abs());
+            *cell = quantize_unit(area.abs());
         }
     }
 }

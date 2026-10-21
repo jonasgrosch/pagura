@@ -4,6 +4,7 @@ mod region;
 mod reuse;
 mod runs;
 pub(crate) mod spans;
+use crate::quantize::multiply;
 use crate::{Paint, Path, Pixmap, Transform};
 use pagura_core::{Error, Limits, Result};
 pub use region::ClipRegion;
@@ -495,8 +496,4 @@ pub(super) fn composite(
         }
     }
     Ok(())
-}
-
-fn multiply(a: u8, b: u8) -> u8 {
-    u8::try_from((u16::from(a) * u16::from(b) + 127) / 255).unwrap_or(255)
 }

@@ -16,6 +16,7 @@ mod glyph;
 mod paint;
 mod path;
 mod pixmap;
+mod quantize;
 mod raster;
 mod stroke;
 
@@ -24,6 +25,7 @@ pub use glyph::{GlyphContour, GlyphGeometry};
 pub use paint::{Paint, Rgba8};
 pub use path::{FillRegion, NoCurrentPoint, Path, PathBuilder, Segment};
 pub use pixmap::Pixmap;
+pub use quantize::quantize_unit;
 pub use raster::{
     ClipRegion, Coverage, FillRule, LineCap, LineJoin, Mask, Rasterizer, Rectangle, Stroke,
     adjusted_stroke_outline, empty_fill_outline, fill_path, fill_path_at, stroke_outline,

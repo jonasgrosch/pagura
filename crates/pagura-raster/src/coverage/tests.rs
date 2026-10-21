@@ -21,7 +21,7 @@ fn compare_dense(row: &mut Row) -> Vec<u8> {
         .zip(&row.covers)
         .map(|(&area, &delta)| {
             cover += delta;
-            quantize(area + cover)
+            quantize_unit(area + cover)
         })
         .collect();
     let mut actual = vec![0; expected.len()];

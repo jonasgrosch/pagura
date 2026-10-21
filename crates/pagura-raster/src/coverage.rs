@@ -8,7 +8,7 @@
 //! preserving winding and bounding work by the surface.
 
 use crate::flatten::{CurveStack, Polyline, bounded, flatten_into};
-use crate::{FillRule, Path, Point, Transform};
+use crate::{FillRule, Path, Point, Transform, quantize_unit};
 use pagura_core::{Error, Limits, Result};
 use std::sync::Arc;
 
@@ -186,11 +186,11 @@ impl Row {
         // Untouched entries are +0.0. Visiting written deltas in increasing x
         // preserves the dense scan's addition order; omitted +0.0 additions
         // cannot change coverage. Area is zero between touched cells, so every
-        // pixel in a gap has quantize(cover). Output was cleared once per mask.
+        // pixel in a gap has quantize_unit(cover). Output was cleared once per mask.
         for x in take_cells(&mut self.touched) {
             fill_run(&mut output[left..x], cover);
             cover += std::mem::take(&mut self.covers[x]);
-            output[x] = quantize(std::mem::take(&mut self.areas[x]) + cover);
+            output[x] = quantize_unit(std::mem::take(&mut self.areas[x]) + cover);
             left = x + 1;
         }
         fill_run(&mut output[left..], cover);
@@ -217,7 +217,7 @@ fn take_cells(words: &mut [u64]) -> impl Iterator<Item = usize> + '_ {
 }
 fn fill_run(output: &mut [u8], cover: f64) {
     if !output.is_empty() {
-        let value = quantize(cover);
+        let value = quantize_unit(cover);
         if value != 0 {
             output.fill(value);
         }
@@ -1151,19 +1151,6 @@ fn ramp(a: f64, b: f64) -> f64 {
 )]
 fn index(value: f64, max: usize) -> usize {
     value.clamp(0.0, max as f64) as usize
-}
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "coverage is clamped and rounded to 0..=255"
-)]
-// A 1e-9 quantization-unit guard makes analytic half ties stable against
-// cancellation in translated geometry (less than 4e-12 pixel area). The
-// independent decimal-transform stroke oracle pins the half-up convention.
-fn quantize(area: f64) -> u8 {
-    (area.clamp(0.0, 1.0) * 255.0 + 0.5 + 1e-9)
-        .floor()
-        .min(255.0) as u8
 }
 fn sort_work(count: usize) -> Result<usize> {
     count
