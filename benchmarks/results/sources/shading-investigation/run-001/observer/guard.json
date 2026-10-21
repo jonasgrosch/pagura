@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "started_utc": "2026-10-21T19:06:20.637944+00:00",
+  "command": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "/private/tmp/pagura-shading-investigation-20261021/profile.py"
+  ],
+  "window_seconds": 5400,
+  "poll_seconds": 5,
+  "status": "child-failed",
+  "events": [
+    {
+      "stage": "preflight",
+      "captured_utc": "2026-10-21T19:06:20.638227+00:00",
+      "snapshot": "snapshot-0001.txt",
+      "matches": []
+    },
+    {
+      "stage": "postflight",
+      "captured_utc": "2026-10-21T19:06:21.001095+00:00",
+      "snapshot": "snapshot-0003.txt",
+      "matches": []
+    }
+  ],
+  "observation_only": false,
+  "limitation": "known-process detection; short jobs between scans may be missed",
+  "scans": 3,
+  "child_pid": 69511,
+  "launched_utc": "2026-10-21T19:06:20.765715+00:00",
+  "child_exit_code": 1,
+  "finished_utc": "2026-10-21T19:06:21.153093+00:00",
+  "elapsed_seconds": 0.5151628330349922,
+  "exit_code": 1
+}

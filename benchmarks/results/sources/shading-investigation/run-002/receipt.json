@@ -1,0 +1,57 @@
+{
+  "argv": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/sources/analytic19-conversion/load_observer.py",
+    "--evidence-dir",
+    "/private/tmp/pagura-shading-investigation-20261021-run2/observer",
+    "--",
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "/private/tmp/pagura-shading-investigation-20261021-run2/profile.py"
+  ],
+  "artifact_errors": {},
+  "artifacts": {
+    "/private/tmp/pagura-shading-investigation-20261021-run2/metadata.json": "8a65697c6e5b896276200a2ae4f461cb621a96e650176ac4d5bf62d66d9550b2"
+  },
+  "cancellation_signal": null,
+  "child_pid": 69539,
+  "coordination": {
+    "acquired_at": "2026-10-21T19:06:32.871065+00:00",
+    "lock_directory": "/tmp/pagura-bench.lockdir",
+    "lock_file": "/tmp/pagura-bench.lock",
+    "scope": "cooperative"
+  },
+  "cwd": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura",
+  "duration_ns": 50389965459,
+  "ended_at": "2026-10-21T19:07:23.407887+00:00",
+  "environment_overrides": {
+    "PAGURA_RUN_ID": "64cb3bb7-6dd6-4ec7-84c2-2e5712272eb6",
+    "PAGURA_RUN_RECEIPT": "/private/tmp/pagura-shading-investigation-20261021-run2/receipt.json"
+  },
+  "errors": [],
+  "exit_code": 0,
+  "finalized_at": "2026-10-21T19:07:23.589994+00:00",
+  "kind": "profile",
+  "owner": "renderer-n16-interval",
+  "run_id": "64cb3bb7-6dd6-4ec7-84c2-2e5712272eb6",
+  "runner": {
+    "hostname": "Jonass-MacBook-Pro-4.local",
+    "machine": "arm64",
+    "pid": 69528,
+    "system": "Darwin"
+  },
+  "schema": 1,
+  "source_after": {
+    "commit": "02d1083711085cecb5c09fecc10d7adf0239d3bc",
+    "sha256": "12f0d3dbf3ab8f7ac28fcc1e4b3ad143793aadf434c8de0765abcaf42a3f66be"
+  },
+  "source_before": {
+    "commit": "02d1083711085cecb5c09fecc10d7adf0239d3bc",
+    "sha256": "12f0d3dbf3ab8f7ac28fcc1e4b3ad143793aadf434c8de0765abcaf42a3f66be"
+  },
+  "source_root": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura",
+  "source_unchanged": true,
+  "started_at": "2026-10-21T19:06:33.017611+00:00",
+  "status": "completed",
+  "task": "shading-profile-002",
+  "wrapper_exit_code": 0
+}

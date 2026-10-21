@@ -1,0 +1,41 @@
+{
+  "command": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/tools/runner.py",
+    "--owner",
+    "renderer-n16-interval",
+    "--task",
+    "shading-profile-001",
+    "--kind",
+    "profile",
+    "--cwd",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura",
+    "--receipt",
+    "/private/tmp/pagura-shading-investigation-20261021/receipt.json",
+    "--artifact",
+    "/private/tmp/pagura-shading-investigation-20261021/metadata.json",
+    "--",
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/sources/analytic19-conversion/load_observer.py",
+    "--evidence-dir",
+    "/private/tmp/pagura-shading-investigation-20261021/observer",
+    "--",
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "/private/tmp/pagura-shading-investigation-20261021/profile.py"
+  ],
+  "status": "launching",
+  "scans": [
+    {
+      "at": "2026-10-21T19:06:10.101371+00:00",
+      "busy": []
+    },
+    {
+      "at": "2026-10-21T19:06:15.248651+00:00",
+      "busy": []
+    },
+    {
+      "at": "2026-10-21T19:06:20.405063+00:00",
+      "busy": []
+    }
+  ]
+}

@@ -1,0 +1,199 @@
+Analysis of sampling pagura (pid 69572) every 1 millisecond
+Process:         pagura [69572]
+Path:            /private/tmp/*/pagura
+Load Address:    0x100d14000
+Identifier:      pagura
+Version:         0
+Code Type:       ARM64
+Platform:        macOS
+Parent Process:  Python [69541]
+Target Type:     live task
+
+Date/Time:       2026-10-21 21:06:49.616 +0200
+Launch Time:     2026-10-21 21:06:49.468 +0200
+OS Version:      macOS 15.6.1 (24G90)
+Report Version:  7
+Analysis Tool:   /usr/bin/sample
+
+Physical footprint:         3585K
+Physical footprint (peak):  11.6M
+Idle exit:                  untracked
+----
+
+Call graph:
+    2548 Thread_43461581   DispatchQueue_1: com.apple.main-thread  (serial)
+      2548 start  (in dyld) + 6076  [0x18245ab98]
+        2548 main  (in pagura) + 52  [0x100d33024]
+          2548 _RNvNtCsdnanKjkF2cC_3std2rt19lang_start_internal  (in pagura) + 916  [0x100f8e414]
+            2548 _RNCINvNtCsdnanKjkF2cC_3std2rt10lang_startNtNtB6_7process8ExitCodeE0CsdE50Qze1zGA_6pagura  (in pagura) + 16  [0x100d28398]
+              2548 _RINvNtNtCsdnanKjkF2cC_3std3sys9backtrace28___rust_begin_short_backtraceFENtNtB6_7process8ExitCodeB19_ECsdE50Qze1zGA_6pagura  (in pagura) + 12  [0x100d281d4]
+                2548 _RNvCsdE50Qze1zGA_6pagura4main  (in pagura) + 5292  [0x100d2cb50]
+                  2546 _RNvCsdE50Qze1zGA_6pagura10microbench  (in pagura) + 912  [0x100d28ba4]
+                  + 2545 _RNvMs_NtCs6mGY1dcbO7G_13pagura_render7contextNtB4_13RenderContext11render_page  (in pagura) + 1340  [0x100eeaaa0]
+                  + ! 2545 _RNvNtCs6mGY1dcbO7G_13pagura_render12direct_image6finish  (in pagura) + 36  [0x100f00820]
+                  + !   2545 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render7displayNtB5_11DisplayList16render_tile_with  (in pagura) + 656  [0x100ed4ba0]
+                  + !     2260 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in pagura) + 7176  [0x100efbc88]
+                  + !     : 2260 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context8commands  (in pagura) + 1816  [0x100ed2208]
+                  + !     :   2260 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context7path_in  (in pagura) + 3252  [0x100ecffa0]
+                  + !     :     1980 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context10paint_path  (in pagura) + 3852  [0x100ec8950]
+                  + !     :     | 526 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context14shading_sample  (in pagura) + 3488  [0x100ecb6a4]
+                  + !     :     | + 473 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context14shading_sample  (in pagura) + 3300,3528,...  [0x100ecb5e8,0x100ecb6cc,...]
+                  + !     :     | + 53 _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context14sampled_source  (in pagura) + 32,84,...  [0x100ed79a0,0x100ed79d4,...]
+                  + !     :     | 433 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context14shading_sample  (in pagura) + 2740  [0x100ecb3b8]
+                  + !     :     | + 223 _RNvMNtCs6mGY1dcbO7G_13pagura_render9functionsNtB2_8Function13evaluate_into  (in pagura) + 772,808,...  [0x100e9d83c,0x100e9d860,...]
+                  + !     :     | + 141 _RNvMNtCs6mGY1dcbO7G_13pagura_render9functionsNtB2_8Function13evaluate_into  (in pagura) + 172  [0x100e9d5e4]
+                  + !     :     | + ! 130 pow  (in libsystem_m.dylib) + 348,304,...  [0x1909b50dc,0x1909b50b0,...]
+                  + !     :     | + ! 11 DYLD-STUB$$pow  (in pagura) + 4  [0x100fa5b78]
+                  + !     :     | + 34 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context14shading_sample  (in pagura) + 2740,2824,...  [0x100ecb3b8,0x100ecb40c,...]
+                  + !     :     | + 25 _RNvMs_NtCs6mGY1dcbO7G_13pagura_render7shadingNtB4_9Functions8evaluate  (in pagura) + 44,68,...  [0x100eecf58,0x100eecf70,...]
+                  + !     :     | + 10 _RNvMNtCs6mGY1dcbO7G_13pagura_render9functionsNtB2_8Function13evaluate_into  (in pagura) + 164  [0x100e9d5dc]
+                  + !     :     | +   10 _RNvMNtCs3bJEMBXHbwl_4core3f64d5clamp  (in pagura) + 0,8  [0x100e97bac,0x100e97bb4]
+                  + !     :     | 383 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context14shading_sample  (in pagura) + 2948  [0x100ecb488]
+                  + !     :     | + 156 _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context6source  (in pagura) + 1064  [0x100ed8050]
+                  + !     :     | + ! 95 _RNvMs0_NtCs6mGY1dcbO7G_13pagura_render12transparencyNtB5_5Model6source  (in pagura) + 68  [0x100ebd2d0]
+                  + !     :     | + ! : 95 _RNvMs0_NtCs6mGY1dcbO7G_13pagura_render12transparencyNtB5_5Model6native  (in pagura) + 28,300,...  [0x100ebcf70,0x100ebd080,...]
+                  + !     :     | + ! 48 _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context6source  (in pagura) + 1064  [0x100ed8050]
+                  + !     :     | + ! : 48 _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context6source  (in pagura) + 1164,1140,...  [0x100ed80b4,0x100ed809c,...]
+                  + !     :     | + ! 13 _RNvMs0_NtCs6mGY1dcbO7G_13pagura_render12transparencyNtB5_5Model6native  (in pagura) + 812  [0x100ebd280]
+                  + !     :     | + 99 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context14shading_sample  (in pagura) + 3076,3436,...  [0x100ecb508,0x100ecb670,...]
+                  + !     :     | + 40 _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context6source  (in pagura) + 348  [0x100ed7d84]
+                  + !     :     | + ! 23 _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context14sampled_source  (in pagura) + 32,84,...  [0x100ed79a0,0x100ed79d4,...]
+                  + !     :     | + ! 11 _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context6source  (in pagura) + 348  [0x100ed7d84]
+                  + !     :     | + ! : 11 _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context6source  (in pagura) + 356,380  [0x100ed7d8c,0x100ed7da4]
+                  + !     :     | + ! 6 _RNvMs0_NtCs6mGY1dcbO7G_13pagura_render12transparencyNtB5_5Model6source  (in pagura) + 68  [0x100ebd2d0]
+                  + !     :     | + !   6 _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context6source  (in pagura) + 1064  [0x100ed8050]
+                  + !     :     | + !     6 _RNvMs0_NtCs6mGY1dcbO7G_13pagura_render12transparencyNtB5_5Model6source  (in pagura) + 20  [0x100ebd2a0]
+                  + !     :     | + 35 _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context6source  (in pagura) + 1328,8,...  [0x100ed8158,0x100ed7c30,...]
+                  + !     :     | + 26 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context14shading_sample  (in pagura) + 2948  [0x100ecb488]
+                  + !     :     | + ! 26 _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context6source  (in pagura) + 72,40  [0x100ed7c70,0x100ed7c50]
+                  + !     :     | + 19 _RNvMs0_NtCs6mGY1dcbO7G_13pagura_render12transparencyNtB5_5Model6source  (in pagura) + 200,188  [0x100ebd354,0x100ebd348]
+                  + !     :     | + 8 _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context14sampled_source  (in pagura) + 628  [0x100ed7bf4]
+                  + !     :     | 256 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context14shading_sample  (in pagura) + 3344,3320,...  [0x100ecb614,0x100ecb5fc,...]
+                  + !     :     | 248 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context10paint_path  (in pagura) + 3852  [0x100ec8950]
+                  + !     :     | + 248 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context14shading_sample  (in pagura) + 744,656,...  [0x100ecabec,0x100ecab94,...]
+                  + !     :     | 110 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context10paint_path  (in pagura) + 3880,3912,...  [0x100ec896c,0x100ec898c,...]
+                  + !     :     | 13 _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context14sampled_source  (in pagura) + 628  [0x100ed7bf4]
+                  + !     :     | 11 _RNvMNtCs6mGY1dcbO7G_13pagura_render9functionsNtB2_8Function13evaluate_into  (in pagura) + 568  [0x100e9d770]
+                  + !     :     187 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context10paint_path  (in pagura) + 4288  [0x100ec8b04]
+                  + !     :     | 122 _RNvMNtCs6mGY1dcbO7G_13pagura_render10compositorNtB2_5Pixel5paint  (in pagura) + 364,92,...  [0x100e97f84,0x100e97e74,...]
+                  + !     :     | 65 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context10paint_path  (in pagura) + 3576,3464,...  [0x100ec883c,0x100ec87cc,...]
+                  + !     :     72 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context10paint_path  (in pagura) + 3988  [0x100ec89d8]
+                  + !     :     | 56 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context10paint_path  (in pagura) + 4056,4116,...  [0x100ec8a1c,0x100ec8a58,...]
+                  + !     :     | 16 _RNvMs_NtNtCs6mGY1dcbO7G_13pagura_render10compositor8transferNtB6_7Context13transfer_mark  (in pagura) + 0,424  [0x100eee8fc,0x100eeeaa4]
+                  + !     :     19 _RNvMNtCs6mGY1dcbO7G_13pagura_render10compositorNtB2_5Pixel5paint  (in pagura) + 572  [0x100e98054]
+                  + !     :     2 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context10paint_path  (in pagura) + 2768  [0x100ec8514]
+                  + !     :       1 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context10paint_path  (in pagura) + 3584  [0x100ec8844]
+                  + !     :       1 _RNvXs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5spansNtB4_4RunsNtNtNtNtCs3bJEMBXHbwl_4core4iter6traits8iterator8Iterator4next  (in pagura) + 512  [0x100e69ce0]
+                  + !     178 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in pagura) + 13348  [0x100efd4a4]
+                  + !     : 164 _RNvNtNtCs6mGY1dcbO7G_13pagura_render10compositor6output16composite_output  (in pagura) + 0,500,...  [0x100f0e438,0x100f0e62c,...]
+                  + !     : 14 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in pagura) + 13204,13224,...  [0x100efd414,0x100efd428,...]
+                  + !     75 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in pagura) + 6908  [0x100efbb7c]
+                  + !     : 75 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context12page_surface  (in pagura) + 56  [0x100eca0e8]
+                  + !     :   74 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context7surface  (in pagura) + 992  [0x100ed1a20]
+                  + !     :   | 74 __bzero  (in libsystem_platform.dylib) + 64,68  [0x182834fd0,0x182834fd4]
+                  + !     :   1 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context7surface  (in pagura) + 916  [0x100ed19d4]
+                  + !     :     1 _RNvMs5_NtCs8Hh7wWMBHrQ_5alloc7raw_vecNtB5_11RawVecInner11finish_growCs6mGY1dcbO7G_13pagura_render  (in pagura) + 256  [0x100fa0500]
+                  + !     :       1 szone_malloc_should_clear  (in libsystem_malloc.dylib) + 168  [0x1825fbc3c]
+                  + !     :         1 medium_malloc_should_clear  (in libsystem_malloc.dylib) + 1280  [0x182601eec]
+                  + !     :           1 mvm_allocate_pages_plat  (in libsystem_malloc.dylib) + 320  [0x182616a7c]
+                  + !     :             1 mach_vm_map  (in libsystem_kernel.dylib) + 128  [0x1827b99d0]
+                  + !     :               1 _kernelrpc_mach_vm_map_trap  (in libsystem_kernel.dylib) + 8  [0x1827b9acc]
+                  + !     29 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in pagura) + 13768  [0x100efd648]
+                  + !     : 29 free_medium  (in libsystem_malloc.dylib) + 536  [0x1826026d0]
+                  + !     :   29 mvm_madvise_free_plat  (in libsystem_malloc.dylib) + 108  [0x182616f48]
+                  + !     :     29 <deduplicated_symbol>  (in libsystem_malloc.dylib) + 16  [0x182616ec0]
+                  + !     :       29 madvise  (in libsystem_kernel.dylib) + 8  [0x1827bc870]
+                  + !     2 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in pagura) + 14588  [0x100efd97c]
+                  + !     : 2 _RINvNtCs3bJEMBXHbwl_4core3ptr9drop_glueNtNtCs6mGY1dcbO7G_13pagura_render10compositor7ContextEBF_  (in pagura) + 116  [0x100e78228]
+                  + !     :   2 _RINvNtCs3bJEMBXHbwl_4core3ptr9drop_glueNtNtNtCsfTZxTf8D02z_13pagura_raster6raster5reuse10RasterizerECs6mGY1dcbO7G_13pagura_render  (in pagura) + 912  [0x100e7bf0c]
+                  + !     :     2 free_medium  (in libsystem_malloc.dylib) + 2292  [0x182602dac]
+                  + !     :       2 mvm_madvise_free_plat  (in libsystem_malloc.dylib) + 108  [0x182616f48]
+                  + !     :         2 <deduplicated_symbol>  (in libsystem_malloc.dylib) + 16  [0x182616ec0]
+                  + !     :           2 madvise  (in libsystem_kernel.dylib) + 8  [0x1827bc870]
+                  + !     1 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in pagura) + 5756  [0x100efb6fc]
+                  + !       1 _RNvMs_NtCsfTZxTf8D02z_13pagura_raster6pixmapNtB4_6Pixmap12with_storage  (in pagura) + 60  [0x100e4fdec]
+                  + !         1 _RNvMs_NtCsfTZxTf8D02z_13pagura_raster6pixmapNtB4_6Pixmap6filled  (in pagura) + 800  [0x100e504b4]
+                  + !           1 _RNvMs_NtCsfTZxTf8D02z_13pagura_raster6pixmapNtB4_6Pixmap6filled  (in pagura) + 344  [0x100e502ec]
+                  + !             1 _platform_memset  (in libsystem_platform.dylib) + 72  [0x182835038]
+                  + 1 _RNvMs_NtCs6mGY1dcbO7G_13pagura_render7contextNtB4_13RenderContext11render_page  (in pagura) + 1128  [0x100eea9cc]
+                  +   1 _RNvNtCs6mGY1dcbO7G_13pagura_render11interpreter19compile_cached_with  (in pagura) + 428  [0x100eff3a0]
+                  +     1 _RNvMs_NtCs6mGY1dcbO7G_13pagura_render11interpreterNtB4_8Compiler4page  (in pagura) + 1408  [0x100ee2878]
+                  +       1 _RNvMs_NtCs6mGY1dcbO7G_13pagura_render11interpreterNtB4_8Compiler8sequence  (in pagura) + 676  [0x100ee720c]
+                  +         1 _RNvMs_NtCs6mGY1dcbO7G_13pagura_render11interpreterNtB4_8Compiler14sequence_bytes  (in pagura) + 3832  [0x100edffb8]
+                  +           1 _RNvMs_NtCs6mGY1dcbO7G_13pagura_render11interpreterNtB4_8Compiler7execute  (in pagura) + 1604  [0x100ee3084]
+                  +             1 _RNvMs1_NtNtNtCs6mGY1dcbO7G_13pagura_render11interpreter4text5cacheNtB9_8Compiler12paint_gstate  (in pagura) + 1364  [0x100ed87cc]
+                  +               1 _RNvMNtNtCs6mGY1dcbO7G_13pagura_render11interpreter5stateNtB4_8Compiler9extgstate  (in pagura) + 920  [0x100ea9180]
+                  2 _RNvCsdE50Qze1zGA_6pagura10microbench  (in pagura) + 1080  [0x100d28c4c]
+                    2 free_medium  (in libsystem_malloc.dylib) + 2292  [0x182602dac]
+                      2 mvm_madvise_free_plat  (in libsystem_malloc.dylib) + 108  [0x182616f48]
+                        2 <deduplicated_symbol>  (in libsystem_malloc.dylib) + 16  [0x182616ec0]
+                          2 madvise  (in libsystem_kernel.dylib) + 8  [0x1827bc870]
+
+Total number in stack (recursive counted multiple, when >=5):
+        5       _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context14shading_sample  (in pagura) + 0  [0x100eca904]
+
+Sort by top of stack, same collapsed (when >= 5):
+        _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context14shading_sample  (in pagura)        1110
+        _RNvMNtCs6mGY1dcbO7G_13pagura_render9functionsNtB2_8Function13evaluate_into  (in pagura)        234
+        _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context10paint_path  (in pagura)        232
+        _RNvNtNtCs6mGY1dcbO7G_13pagura_render10compositor6output16composite_output  (in pagura)        164
+        _RNvMNtCs6mGY1dcbO7G_13pagura_render10compositorNtB2_5Pixel5paint  (in pagura)        141
+        pow  (in libsystem_m.dylib)        130
+        _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context6source  (in pagura)        120
+        _RNvMs0_NtCs6mGY1dcbO7G_13pagura_render12transparencyNtB5_5Model6native  (in pagura)        108
+        _RNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor9colorantsNtB7_7Context14sampled_source  (in pagura)        97
+        __bzero  (in libsystem_platform.dylib)        74
+        madvise  (in libsystem_kernel.dylib)        33
+        _RNvMs0_NtCs6mGY1dcbO7G_13pagura_render12transparencyNtB5_5Model6source  (in pagura)        25
+        _RNvMs_NtCs6mGY1dcbO7G_13pagura_render7shadingNtB4_9Functions8evaluate  (in pagura)        25
+        _RNvMs_NtNtCs6mGY1dcbO7G_13pagura_render10compositor8transferNtB6_7Context13transfer_mark  (in pagura)        16
+        _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in pagura)        14
+        DYLD-STUB$$pow  (in pagura)        11
+        _RNvMNtCs3bJEMBXHbwl_4core3f64d5clamp  (in pagura)        10
+
+Binary Images:
+       0x100d14000 -        0x101a48c07 +pagura (0) <42821925-41A2-3E0F-A588-F9C4F3ECA3A3> /tmp/*/pagura
+       0x182400000 -        0x182453893  libobjc.A.dylib (940.4) <8CA52E4D-F699-3D14-8061-EEA9D4366538> /usr/lib/libobjc.A.dylib
+       0x182454000 -        0x1824ef577  dyld (1.0.0 - 1286.10) <3247E185-CED2-36FF-9E29-47A77C23E004> /usr/lib/dyld
+       0x1824f0000 -        0x1824f3168  libsystem_blocks.dylib (96) <BA8F0C40-B12D-3D8B-8396-FC3F8A733C27> /usr/lib/system/libsystem_blocks.dylib
+       0x1824f4000 -        0x18253e8ff  libxpc.dylib (2894.140.12) <1B8951EB-68DB-37BA-9581-240B796AA872> /usr/lib/system/libxpc.dylib
+       0x18253f000 -        0x18255a7ff  libsystem_trace.dylib (1643.120.5) <AC8466B8-AF1D-3895-876B-228151F0DF1D> /usr/lib/system/libsystem_trace.dylib
+       0x18255b000 -        0x1825f93b7  libcorecrypto.dylib (1736.140.2) <7254F3F1-A46F-30B6-934A-511B730A8FC7> /usr/lib/system/libcorecrypto.dylib
+       0x1825fa000 -        0x18264106f  libsystem_malloc.dylib (715.140.5) <85947F4E-385D-3B6D-9BF5-844EFE876D53> /usr/lib/system/libsystem_malloc.dylib
+       0x182642000 -        0x18268875f  libdispatch.dylib (1521.140.2) <24CE0D89-4114-30C2-A81A-3DB1F5931CFF> /usr/lib/system/libdispatch.dylib
+       0x182689000 -        0x18268bd1b  libsystem_featureflags.dylib (97) <856DB4EF-8C67-3842-970C-6FA814B07749> /usr/lib/system/libsystem_featureflags.dylib
+       0x18268c000 -        0x18270d243  libsystem_c.dylib (1698.140.3) <DFEA8794-80CE-37C3-8F6A-108AA1D0B1B0> /usr/lib/system/libsystem_c.dylib
+       0x18270e000 -        0x18279aff7  libc++.1.dylib (1900.181) <643ED232-CE19-3F63-8015-0AEE768C002F> /usr/lib/libc++.1.dylib
+       0x18279b000 -        0x1827b8fff  libc++abi.dylib (1900.181) <776A4AFB-71EE-32AB-B2EE-E6FF80818654> /usr/lib/libc++abi.dylib
+       0x1827b9000 -        0x1827f4653  libsystem_kernel.dylib (11417.140.69) <6E4A96AD-04B8-3E8A-B91D-087E62306246> /usr/lib/system/libsystem_kernel.dylib
+       0x1827f5000 -        0x182801a47  libsystem_pthread.dylib (536) <D6494BA9-171E-39FC-B1AA-28ECF87975D1> /usr/lib/system/libsystem_pthread.dylib
+       0x182802000 -        0x182831ba3  libdyld.dylib (1286.10) <01BCB3F7-AB89-30BD-87EE-91B291EADAE8> /usr/lib/system/libdyld.dylib
+       0x182832000 -        0x182839e0b  libsystem_platform.dylib (349.140.6) <FD19A599-8750-31F9-924F-C2810C938371> /usr/lib/system/libsystem_platform.dylib
+       0x18283a000 -        0x1828696f7  libsystem_info.dylib (597) <9720B57E-A0DF-3BDD-8149-0801054B5D00> /usr/lib/system/libsystem_info.dylib
+       0x186300000 -        0x18630a387  libsystem_darwin.dylib (1698.140.3) <8E58BBDB-E560-3AB4-8A1D-849AB83CBFC5> /usr/lib/system/libsystem_darwin.dylib
+       0x186762000 -        0x186773feb  libsystem_notify.dylib (342) <6A411086-A1A2-349F-B9CA-348F9DCBB415> /usr/lib/system/libsystem_notify.dylib
+       0x188765000 -        0x18877fe8f  libsystem_networkextension.dylib (2063.140.6) <8183B684-71EB-3FB1-8378-EB830CADAE7D> /usr/lib/system/libsystem_networkextension.dylib
+       0x1887fc000 -        0x188813fdb  libsystem_asl.dylib (402) <FE29D1E8-D286-33F9-81CB-822E632D1571> /usr/lib/system/libsystem_asl.dylib
+       0x18a359000 -        0x18a3613a7  libsystem_symptoms.dylib (2022.140.4) <AABA26A2-74BC-3219-BAA3-ACC8D81D8589> /usr/lib/system/libsystem_symptoms.dylib
+       0x18dba6000 -        0x18dbd638f  libsystem_containermanager.dylib (689.100.6) <24EE4AC1-5C9F-3EE0-8B4E-9D060EBCBD41> /usr/lib/system/libsystem_containermanager.dylib
+       0x18ee0b000 -        0x18ee0f5df  libsystem_configuration.dylib (1351.140.5) <B1ADB810-702B-3646-8B66-EB2C288FE51A> /usr/lib/system/libsystem_configuration.dylib
+       0x18ee10000 -        0x18ee1647f  libsystem_sandbox.dylib (2401.140.15) <B86C6D35-683E-3156-BAB2-A422F5AFF2BD> /usr/lib/system/libsystem_sandbox.dylib
+       0x18fe1b000 -        0x18fe1dfe3  libquarantine.dylib (181.120.2) <8CE8DAD0-52D6-3F46-98EF-161E1397FB48> /usr/lib/system/libquarantine.dylib
+       0x190531000 -        0x190538033  libsystem_coreservices.dylib (178.6.1) <A4E84D5A-8D0E-3692-B888-89B9EEF8753D> /usr/lib/system/libsystem_coreservices.dylib
+       0x1909b0000 -        0x1909ed2b7  libsystem_m.dylib (3291.100.4) <0D060230-BD2F-3C8E-ACB9-8A79F5CD8EDE> /usr/lib/system/libsystem_m.dylib
+       0x1909ef000 -        0x1909f24e7  libmacho.dylib (1024.3) <87AB4EEF-3A18-3399-A767-C6BF4ECEDCEB> /usr/lib/system/libmacho.dylib
+       0x190a0c000 -        0x190a195ef  libcommonCrypto.dylib (600035) <E6BC26C2-DED7-3C04-A670-AEDB150BDB1F> /usr/lib/system/libcommonCrypto.dylib
+       0x190a1a000 -        0x190a23ad7  libunwind.dylib (1900.125) <F753CC2B-775B-3567-B0C6-D2989CA9EBF4> /usr/lib/system/libunwind.dylib
+       0x190a2c000 -        0x190a3669f  libcopyfile.dylib (224) <213FA18D-6145-3615-8DB5-906B6863EAB9> /usr/lib/system/libcopyfile.dylib
+       0x190a37000 -        0x190a3a98f  libcompiler_rt.dylib (103.3) <F0F65700-8E9D-35F3-AC32-952D363190BC> /usr/lib/system/libcompiler_rt.dylib
+       0x190a3b000 -        0x190a3fa1b  libsystem_collections.dylib (1698.140.3) <B77BE835-646C-3F05-BDBD-7703DE140F6A> /usr/lib/system/libsystem_collections.dylib
+       0x190a40000 -        0x190a432c7  libsystem_secinit.dylib (153.140.2) <D15B45AD-1345-34BF-B8E3-05336C4046A0> /usr/lib/system/libsystem_secinit.dylib
+       0x190a44000 -        0x190a46b6f  libremovefile.dylib (81) <9BCF9A24-BECB-3DED-A78E-3A3ECD1B1757> /usr/lib/system/libremovefile.dylib
+       0x190a47000 -        0x190a47f27  libkeymgr.dylib (31) <B20C6921-D5BE-3BB5-B68C-32D90D629E39> /usr/lib/system/libkeymgr.dylib
+       0x190a48000 -        0x190a50d57  libsystem_dnssd.dylib (2600.140.3) <61F023F3-E2C5-3F19-BA1B-B02D7564ACC4> /usr/lib/system/libsystem_dnssd.dylib
+       0x190a51000 -        0x190a560b3  libcache.dylib (95) <2B900F8F-9EDE-3208-AB17-BD1385B5546A> /usr/lib/system/libcache.dylib
+       0x190a57000 -        0x190a58ca3  libSystem.B.dylib (1351) <072C7C60-2B6C-3E07-AA56-FD1750EADC2F> /usr/lib/libSystem.B.dylib
+       0x269f38000 -        0x269f3f109  libRosetta.dylib (349) <4EE80AAC-8204-3BD0-AB75-EDD23DE67E2F> /usr/lib/libRosetta.dylib
+       0x26b363000 -        0x26b366deb  libsystem_darwindirectory.dylib (122) <277D32FB-F49A-3949-97A4-B190A3DF89E8> /usr/lib/system/libsystem_darwindirectory.dylib
+       0x26b367000 -        0x26b36e523  libsystem_eligibility.dylib (181.140.5) <27E48AAA-644F-394A-9F62-49CEFB813716> /usr/lib/system/libsystem_eligibility.dylib
+       0x26b36f000 -        0x26b3746c5  libsystem_sanitizers.dylib (19) <FB86D2F7-4501-38E4-9D9A-83F960D7D7BA> /usr/lib/system/libsystem_sanitizers.dylib

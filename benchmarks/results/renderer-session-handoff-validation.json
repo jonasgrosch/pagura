@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "status": "publication-validated",
+  "scope": "documentation and historical evidence publication; no renderer changes or new speed claim",
+  "product_commit": "402e3afe3a08bd178d427ba965883535e75a9dd5",
+  "combined_pre_handoff_commit": "02d1083711085cecb5c09fecc10d7adf0239d3bc",
+  "archive_validation": {
+    "worktrees": 13,
+    "included_payloads_verified": 85573,
+    "excluded_private_records": 601,
+    "compressed_archive_bytes": 311826015,
+    "method": "independent streaming SHA-256 verification of every included payload, inventories, sizes, paths, control heads and archive checksums"
+  },
+  "source_checks": {
+    "relative_links_checked": 54,
+    "json_parse": true,
+    "python_ast_parse": true,
+    "credential_pattern_scan": true,
+    "git_diff_check": "Passed on staged publication, including new files. Hash-bound system profiler output keeps original whitespace under narrow attributes.",
+    "repository_policy": {
+      "command": [
+        "python",
+        "tools/policy.py"
+      ],
+      "exit_code": 0,
+      "result": "15 workspace-only packages, unsafe forbidden, 4558 fixture cases verified"
+    }
+  },
+  "review": {
+    "cross_region_failure_contract": "added to M0 and scheduling design",
+    "profile_counterfactual": "qualified as indication, not a measured lower bound",
+    "wasm_and_current_main_architecture_ranking": "explicit unmeasured inference"
+  },
+  "full_product_check": "Not repeated: product source unchanged; historical validated product identities remain in linked reports.",
+  "files_sha256": {
+    "docs/adr/0033-prepared-renderer-and-session-handoff.md": "e78e033631d424895f132d2802d7e3c8afeb96661a79013bdb4908046e03bf26",
+    "docs/ARCHITECTURE.md": "dfdd3942aff8c664b10f0dbf04d0b741a23bc75075402e5202e6da0eea8b3567",
+    "docs/plans/renderer-standing-goal.md": "626ddbd8a65e3f4d7df780e57b8d4012210df68edb0b484b59e9d76b841545ee",
+    "docs/plans/unified-renderer-status.md": "337b6209e09d2e6717affb27c06882f09cac16c21df3504c24d15bca6b74e343",
+    "benchmarks/results/renderer-session-archive.json": "df69ee2c68345b4bf5ecb77a7e12bcddcaddd467b155548bced226b100aead54",
+    "benchmarks/results/shading-architecture-investigation.md": "90e79dd4fa6df2ecd7d39ccf765733dd1957942c5f408671e9780d45814a252a",
+    "benchmarks/results/sources/renderer-session-handoff/preserve.py": "43f845d85c873568e59f89c3f87ef20fa0dcd23bb768e724a8f6d54756fbb611",
+    "benchmarks/results/sources/renderer-session-handoff/verify.py": "e57a8b25d89c0139e40f66dc922f1b79ed60b3b7b645ba0e8dcffd9624df946f",
+    "benchmarks/results/sources/renderer-session-handoff/export-receipt.json": "543d748a3f49c9dfb2bf657a80b6a041d5bbd4521bc37b22594bc942e8841df4",
+    "benchmarks/results/sources/renderer-session-handoff/export-guard.json": "7e4e8196644b0908f11bb10ec97f75479cffd03416bf459b87c30afa92bacc64",
+    ".gitattributes": "a45413911bfb070d3dc7cdf2c1bf16c5df82e6df6b104a3cad16cf9204b8cabf"
+  }
+}

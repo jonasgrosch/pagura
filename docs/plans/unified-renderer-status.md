@@ -1,5 +1,11 @@
 # Unified renderer: paused status
 
+Latest handoff: [ADR 0033](../adr/0033-prepared-renderer-and-session-handoff.md)
+records the proposed prepared-renderer redesign, current-main migration,
+publication inventory and new-session instructions. The historical checkpoint
+below remains evidence for its pinned revisions; it is not the new execution
+queue. Optimization remains paused pending a new implementation request.
+
 2026-10-21. Optimization remains paused. The user subsequently authorized a
 comparison of the fixed combined stack with Hayro, including accuracy and
 memory, with no optimization. That comparison is complete and independently

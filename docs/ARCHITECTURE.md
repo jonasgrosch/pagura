@@ -70,6 +70,10 @@ intersecting the crop box with the media box, and validating `/Rotate` and
 
 ## Rendering
 
+[ADR 0033](adr/0033-prepared-renderer-and-session-handoff.md) records the latest
+proposed execution architecture and session handoff. It supersedes the earlier
+branch proposal's implementation priorities; the replacement is not implemented.
+
 See ADR 0004. Interpretation produces a display list in PDF terms with colours
 in their source spaces; rasterization is PDF-agnostic exact-area coverage;
 composition targets premultiplied RGBA8 tiles. Glyphs are rasterized at their

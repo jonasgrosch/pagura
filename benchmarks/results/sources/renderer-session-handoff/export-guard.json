@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "started_utc": "2026-10-21T19:48:34.227617+00:00",
+  "command": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "-c",
+    "import runpy,sys\nsys.argv=['preserve.py','--worktrees','/Users/jonasgrosch/.codex/worktrees','--output',\"/private/tmp/pagura-renderer-session-archive-20261021-v2\"]\nrunpy.run_path(\"/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/sources/renderer-session-handoff/preserve.py\",run_name='__main__')\nsys.argv=['verify.py',\"/private/tmp/pagura-renderer-session-archive-20261021-v2\"]\nrunpy.run_path(\"/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/sources/renderer-session-handoff/verify.py\",run_name='__main__')"
+  ],
+  "window_seconds": 5400,
+  "poll_seconds": 5,
+  "status": "completed",
+  "events": [
+    {
+      "stage": "preflight",
+      "captured_utc": "2026-10-21T19:48:34.227909+00:00",
+      "snapshot": "snapshot-0001.txt",
+      "matches": []
+    },
+    {
+      "stage": "postflight",
+      "captured_utc": "2026-10-21T19:49:44.344527+00:00",
+      "snapshot": "snapshot-0016.txt",
+      "matches": []
+    }
+  ],
+  "observation_only": false,
+  "limitation": "known-process detection; short jobs between scans may be missed",
+  "scans": 16,
+  "child_pid": 77254,
+  "launched_utc": "2026-10-21T19:48:34.361967+00:00",
+  "child_exit_code": 0,
+  "finished_utc": "2026-10-21T19:49:44.463446+00:00",
+  "elapsed_seconds": 70.2353443329921,
+  "exit_code": 0
+}

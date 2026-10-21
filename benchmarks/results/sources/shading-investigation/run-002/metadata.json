@@ -1,0 +1,201 @@
+{
+  "kind": "diagnostic warm-context sampling, no comparative timing claim",
+  "binary_sha256": "e8013da445f4a2d5e45d3629a95403e11feb1ddb4428b2ced7954864b934b057",
+  "profiles": [
+    {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura",
+      "mode": "exact",
+      "case": {
+        "id": "interval/f32-shading-dense",
+        "cohort": "interval20",
+        "pdf": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/inputs/37.pdf",
+          "sha256": "087e74db73a8d184d9b3ddc06f920f70945018b0be58e862f5b53d2a3900c57a"
+        },
+        "oracle": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/inputs/37.ppm",
+          "sha256": "fb24f455ed61008b05a5326ed1274b7dfff1b29d6b2856f5de7a0093d39fe80a"
+        },
+        "width": 512,
+        "height": 512
+      },
+      "children": [
+        {
+          "role": "renderer",
+          "pid": 69543,
+          "argv": [
+            "/private/tmp/current-stack-hayro-pagura-402e3afe/release/pagura",
+            "microbench",
+            "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/inputs/37.pdf",
+            "render-warm",
+            "700",
+            "72",
+            "--accuracy",
+            "exact"
+          ],
+          "exit_code": 0
+        },
+        {
+          "role": "sampler",
+          "pid": 69544,
+          "argv": [
+            "/usr/bin/sample",
+            "69543",
+            "3",
+            "1",
+            "-mayDie",
+            "-file",
+            "/private/tmp/pagura-shading-investigation-20261021-run2/interval-f32-shading-dense-exact/sample.txt"
+          ],
+          "exit_code": 0
+        },
+        {
+          "role": "vmmap",
+          "pid": 69547,
+          "argv": [
+            "/usr/bin/vmmap",
+            "-summary",
+            "69543"
+          ],
+          "exit_code": 0
+        }
+      ],
+      "sampler_wait_elapsed_ns": 3228357375,
+      "renderer_alive_when_sampler_returned": true,
+      "cleanup_errors": [],
+      "timed_out": false,
+      "cancellation_signal": null,
+      "status": "completed"
+    },
+    {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura",
+      "mode": "exact",
+      "case": {
+        "id": "interval/f32-pattern-dense",
+        "cohort": "interval20",
+        "pdf": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/inputs/38.pdf",
+          "sha256": "0f9db53865e0093c8087c799b6e8b70fd6606bbb04bd458d25d3cc6be8c351da"
+        },
+        "oracle": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/inputs/38.ppm",
+          "sha256": "fb24f455ed61008b05a5326ed1274b7dfff1b29d6b2856f5de7a0093d39fe80a"
+        },
+        "width": 512,
+        "height": 512
+      },
+      "children": [
+        {
+          "role": "renderer",
+          "pid": 69572,
+          "argv": [
+            "/private/tmp/current-stack-hayro-pagura-402e3afe/release/pagura",
+            "microbench",
+            "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/inputs/38.pdf",
+            "render-warm",
+            "700",
+            "72",
+            "--accuracy",
+            "exact"
+          ],
+          "exit_code": 0
+        },
+        {
+          "role": "sampler",
+          "pid": 69573,
+          "argv": [
+            "/usr/bin/sample",
+            "69572",
+            "3",
+            "1",
+            "-mayDie",
+            "-file",
+            "/private/tmp/pagura-shading-investigation-20261021-run2/interval-f32-pattern-dense-exact/sample.txt"
+          ],
+          "exit_code": 0
+        },
+        {
+          "role": "vmmap",
+          "pid": 69574,
+          "argv": [
+            "/usr/bin/vmmap",
+            "-summary",
+            "69572"
+          ],
+          "exit_code": 0
+        }
+      ],
+      "sampler_wait_elapsed_ns": 3125760583,
+      "renderer_alive_when_sampler_returned": true,
+      "cleanup_errors": [],
+      "timed_out": false,
+      "cancellation_signal": null,
+      "status": "completed"
+    },
+    {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura",
+      "mode": "competitive",
+      "case": {
+        "id": "interval/f32-pattern-dense",
+        "cohort": "interval20",
+        "pdf": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/inputs/38.pdf",
+          "sha256": "0f9db53865e0093c8087c799b6e8b70fd6606bbb04bd458d25d3cc6be8c351da"
+        },
+        "oracle": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/inputs/38.ppm",
+          "sha256": "fb24f455ed61008b05a5326ed1274b7dfff1b29d6b2856f5de7a0093d39fe80a"
+        },
+        "width": 512,
+        "height": 512
+      },
+      "children": [
+        {
+          "role": "renderer",
+          "pid": 69585,
+          "argv": [
+            "/private/tmp/current-stack-hayro-pagura-402e3afe/release/pagura",
+            "microbench",
+            "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/inputs/38.pdf",
+            "render-warm",
+            "700",
+            "72",
+            "--accuracy",
+            "competitive"
+          ],
+          "exit_code": 0
+        },
+        {
+          "role": "sampler",
+          "pid": 69586,
+          "argv": [
+            "/usr/bin/sample",
+            "69585",
+            "3",
+            "1",
+            "-mayDie",
+            "-file",
+            "/private/tmp/pagura-shading-investigation-20261021-run2/interval-f32-pattern-dense-competitive/sample.txt"
+          ],
+          "exit_code": 0
+        },
+        {
+          "role": "vmmap",
+          "pid": 69590,
+          "argv": [
+            "/usr/bin/vmmap",
+            "-summary",
+            "69585"
+          ],
+          "exit_code": 0
+        }
+      ],
+      "sampler_wait_elapsed_ns": 3129502750,
+      "renderer_alive_when_sampler_returned": true,
+      "cleanup_errors": [],
+      "timed_out": false,
+      "cancellation_signal": null,
+      "status": "completed"
+    }
+  ]
+}

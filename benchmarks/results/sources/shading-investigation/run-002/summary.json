@@ -1,0 +1,87 @@
+{
+  "method": "Three serial warm-context diagnostic profiles; 700 renders each; 3 seconds sampling at 1 ms; vmmap after sampling. Percentages are exclusive top-of-stack samples, subject to inlining and sampling noise. Not fresh-process competitor timings. Entries under five samples omitted by sample.",
+  "profiles": [
+    {
+      "name": "interval-f32-pattern-dense-competitive",
+      "total_samples": 2538,
+      "exclusive_samples": {
+        "sampler self": 999,
+        "function including pow": 485,
+        "other": 281,
+        "color/source": 602,
+        "blend": 126,
+        "output": 31
+      },
+      "exclusive_pct": {
+        "sampler self": 39.362,
+        "function including pow": 19.11,
+        "other": 11.072,
+        "color/source": 23.719,
+        "blend": 4.965,
+        "output": 1.221
+      }
+    },
+    {
+      "name": "interval-f32-pattern-dense-exact",
+      "total_samples": 2548,
+      "exclusive_samples": {
+        "sampler self": 1110,
+        "function including pow": 400,
+        "other": 272,
+        "output": 164,
+        "blend": 141,
+        "color/source": 350,
+        "zeroing or advising memory": 107
+      },
+      "exclusive_pct": {
+        "sampler self": 43.564,
+        "function including pow": 15.699,
+        "other": 10.675,
+        "output": 6.436,
+        "blend": 5.534,
+        "color/source": 13.736,
+        "zeroing or advising memory": 4.199
+      }
+    },
+    {
+      "name": "interval-f32-shading-dense-exact",
+      "total_samples": 2568,
+      "exclusive_samples": {
+        "sampler self": 949,
+        "function including pow": 493,
+        "other": 325,
+        "color/source": 631,
+        "blend": 134,
+        "output": 26
+      },
+      "exclusive_pct": {
+        "sampler self": 36.955,
+        "function including pow": 19.198,
+        "other": 12.656,
+        "color/source": 24.572,
+        "blend": 5.218,
+        "output": 1.012
+      }
+    }
+  ],
+  "artifact_sha256": {
+    "profile.py": "6bf71fd91ef19bf81b3d234883754f410d6f89f68110e688f837822bc334f851",
+    "metadata.json": "8a65697c6e5b896276200a2ae4f461cb621a96e650176ac4d5bf62d66d9550b2",
+    "receipt.json": "61ec0807c4b0b20f0f3033e52bbc7518463f9ca21563048335b8a842078b93cd",
+    "observer/snapshot-0001.txt": "f889a104c683e636f1f735a6e4a5f4db478da16c2496386f69d807cab493c32d",
+    "observer/guard.json": "e47bb8983d2788496e5331cd53a981be01184c3fd942faf3698aeea6bc665560",
+    "observer/snapshot-0012.txt": "d21a26423059346b80243a3586dcb458ddaddc48e1941cc4d99c174a67c38492",
+    "interval-f32-pattern-dense-competitive/sample-command.txt": "ec6080cd89695ccccd60427a40e648f6d6287245ab2d5942e79f6c5c08ebdb58",
+    "interval-f32-pattern-dense-competitive/renderer-stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "interval-f32-pattern-dense-competitive/renders.txt": "0d0cb6ae15666ffaeddbd8c24773952994f44949b0da6c094286291a5975ec1f",
+    "interval-f32-pattern-dense-competitive/sample.txt": "22c487b229f03dd5bafc8223de6f460b6f3aec4f82be6701eb7590bf904f27c1",
+    "interval-f32-pattern-dense-exact/sample-command.txt": "c6897c57ce2f503a419fc2b308031c09611d69def5dfe8d9129f51b9afe4ee74",
+    "interval-f32-pattern-dense-exact/renderer-stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "interval-f32-pattern-dense-exact/renders.txt": "107758abb90373d5df645c1fca7988cc80504280a0d75ad99c1d87f62da24c10",
+    "interval-f32-pattern-dense-exact/sample.txt": "b6173ba144ce3672736ad250138e4162d0b1779598edc5c544e21f3499b70d13",
+    "interval-f32-shading-dense-exact/sample-command.txt": "9f747bc6868a194b694d8b4d29d61e84dea4244d182c684e6df92c23fa380f34",
+    "interval-f32-shading-dense-exact/renderer-stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "interval-f32-shading-dense-exact/renders.txt": "ac4a3dbf5c6def1da9f4cf3bfd2da974d686992fe7eba74f2334b87d43681404",
+    "interval-f32-shading-dense-exact/sample.txt": "9a4351a4d04e88bedcebe6b7bd97ab4d028a03857581e9ea8156d9be670b2fc8"
+  }
+}

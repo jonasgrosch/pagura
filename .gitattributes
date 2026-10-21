@@ -6,3 +6,6 @@
 data/** -text
 # Form values keep their exact line endings (fixtures.py records their hashes).
 corpus/generated/forms/*.value -text
+# Historical profiler output is hash-bound; preserve system-produced spacing.
+benchmarks/results/sources/shading-investigation/** -text
+benchmarks/results/sources/shading-investigation/run-002/*/sample-command.txt -diff

@@ -1,0 +1,59 @@
+{
+  "argv": [
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/sources/analytic19-conversion/load_observer.py",
+    "--evidence-dir",
+    "/private/tmp/pagura-renderer-session-publication-20261021/export-verify-002-observer",
+    "--",
+    "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python",
+    "-c",
+    "import runpy,sys\nsys.argv=['preserve.py','--worktrees','/Users/jonasgrosch/.codex/worktrees','--output',\"/private/tmp/pagura-renderer-session-archive-20261021-v2\"]\nrunpy.run_path(\"/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/sources/renderer-session-handoff/preserve.py\",run_name='__main__')\nsys.argv=['verify.py',\"/private/tmp/pagura-renderer-session-archive-20261021-v2\"]\nrunpy.run_path(\"/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/sources/renderer-session-handoff/verify.py\",run_name='__main__')"
+  ],
+  "artifact_errors": {},
+  "artifacts": {
+    "/private/tmp/pagura-renderer-session-archive-20261021-v2/SHA256SUMS": "48c4aa37cfa35cdc2fb6097664f982c91ed66b31fc802412e7acb388d8eb6cde",
+    "/private/tmp/pagura-renderer-session-archive-20261021-v2/archive-summary.json": "c7e57bc9ac326ae3f011238c2b28739340a365c74bd97a4f01ff5565fc8fa700"
+  },
+  "cancellation_signal": null,
+  "child_pid": 77252,
+  "coordination": {
+    "acquired_at": "2026-10-21T19:48:34.061813+00:00",
+    "lock_directory": "/tmp/pagura-bench.lockdir",
+    "lock_file": "/tmp/pagura-bench.lock",
+    "scope": "cooperative"
+  },
+  "cwd": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura",
+  "duration_ns": 70298487666,
+  "ended_at": "2026-10-21T19:49:44.489929+00:00",
+  "environment_overrides": {
+    "PAGURA_RUN_ID": "7630d513-246e-4f20-ad85-a4043b24a871",
+    "PAGURA_RUN_RECEIPT": "/private/tmp/pagura-renderer-session-publication-20261021/export-verify-002-receipt.json"
+  },
+  "errors": [],
+  "exit_code": 0,
+  "finalized_at": "2026-10-21T19:49:44.597246+00:00",
+  "kind": "other",
+  "owner": "renderer-n16-interval",
+  "run_id": "7630d513-246e-4f20-ad85-a4043b24a871",
+  "runner": {
+    "hostname": "Jonass-MacBook-Pro-4.local",
+    "machine": "arm64",
+    "pid": 77241,
+    "system": "Darwin"
+  },
+  "schema": 1,
+  "source_after": {
+    "commit": "02d1083711085cecb5c09fecc10d7adf0239d3bc",
+    "sha256": "12f0d3dbf3ab8f7ac28fcc1e4b3ad143793aadf434c8de0765abcaf42a3f66be"
+  },
+  "source_before": {
+    "commit": "02d1083711085cecb5c09fecc10d7adf0239d3bc",
+    "sha256": "12f0d3dbf3ab8f7ac28fcc1e4b3ad143793aadf434c8de0765abcaf42a3f66be"
+  },
+  "source_root": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura",
+  "source_unchanged": true,
+  "started_at": "2026-10-21T19:48:34.190946+00:00",
+  "status": "completed",
+  "task": "session-evidence-export-and-verify-002",
+  "wrapper_exit_code": 0
+}
