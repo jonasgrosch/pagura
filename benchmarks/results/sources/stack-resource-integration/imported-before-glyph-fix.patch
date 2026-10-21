@@ -1,0 +1,990 @@
+diff --git a/crates/pagura-image/src/dct/transform/cells.rs b/crates/pagura-image/src/dct/transform/cells.rs
+index 923dc7e5..7a8e1732 100644
+--- a/crates/pagura-image/src/dct/transform/cells.rs
++++ b/crates/pagura-image/src/dct/transform/cells.rs
+@@ -139,8 +139,7 @@ impl Cells {
+     /// the natural positions in `set` hold nonzero coefficients; they are
+     /// visited in row-major order, as a dense pass that skips zeros would.
+     /// Each row's horizontal means are summed before they enter the
+-    /// vertical ones. Cells past the count have zero weights and are not
+-    /// stored.
++    /// vertical ones.
+     fn means<const N: usize>(&self, natural: &[f32; 64], set: u64) -> [[u8; N]; N] {
+         let mut vertical = [[0.0f32; N]; N];
+         for (v, (row, basis)) in natural
+diff --git a/crates/pagura-raster/src/stroke.rs b/crates/pagura-raster/src/stroke.rs
+index 1e46ae2f..7fdb218a 100644
+--- a/crates/pagura-raster/src/stroke.rs
++++ b/crates/pagura-raster/src/stroke.rs
+@@ -331,15 +331,7 @@ pub(crate) fn draw(
+     limits: &Limits,
+ ) -> Result<()> {
+     let closed = run.closed;
+-    let mut points = Vec::new();
+-    for &point in &run.points {
+-        if points.last() != Some(&point) {
+-            points.push(point);
+-        }
+-    }
+-    if closed && points.len() > 1 && points.first() == points.last() {
+-        points.pop();
+-    }
++    let points = tiling::centreline(run);
+     if points.len() < 2 {
+         if let Some(&point) = points.first() {
+             cap(
+diff --git a/crates/pagura-raster/src/stroke/tiling.rs b/crates/pagura-raster/src/stroke/tiling.rs
+index 56873cdc..a3608acd 100644
+--- a/crates/pagura-raster/src/stroke/tiling.rs
++++ b/crates/pagura-raster/src/stroke/tiling.rs
+@@ -17,12 +17,15 @@ use crate::{LineCap, LineJoin, PathBuilder, Point, Stroke};
+ use pagura_core::{Error, Limits, Result};
+ 
+ /// The inner side of one turn: the miter point's offset from the joint, the
+-/// side it lies on, and how far it reaches along each segment.
++/// side it lies on, how far it reaches along each segment, and how far the
++/// segment before reaches along the segment after (and back): the pen radius
++/// times the sine of the turn.
+ #[derive(Clone, Copy)]
+ struct Turn {
+     offset: Point,
+     left: bool,
+     reach: f64,
++    span: f64,
+ }
+ 
+ /// Appends the pieces of `run` to `out`. Returns `false`, leaving `out`
+@@ -59,7 +62,7 @@ pub(super) fn append(
+     if !advances(&segments, joints.closed) {
+         return Ok(false);
+     }
+-    let Some(turns) = turns(&segments, joints, radius)? else {
++    let Some(turns) = turns(&segments, joints, radius, stroke.cap)? else {
+         return Ok(false);
+     };
+     if out
+@@ -147,7 +150,7 @@ pub(super) fn apart<'a>(
+ 
+ /// The run's points without repeats, a closed run's closing point removed,
+ /// as [`super::draw`] strokes them.
+-fn centreline(run: &Run) -> Vec<Point> {
++pub(super) fn centreline(run: &Run) -> Vec<Point> {
+     let mut points: Vec<Point> = Vec::with_capacity(run.points.len());
+     for &point in &run.points {
+         if points.last() != Some(&point) {
+@@ -259,10 +262,13 @@ fn advances(segments: &[(Point, f64)], closed: bool) -> bool {
+ 
+ /// The turn at each point, or `None` when a reversal, or a turn whose inner
+ /// miter point does not lie within both of its segments, could overlap pieces.
++/// Beside a butt end nothing covers what the neighbouring segment's
++/// quadrilateral reaches past it, so the end segment must hold that too.
+ fn turns(
+     segments: &[(Point, f64)],
+     joints: Joints,
+     radius: f64,
++    cap: LineCap,
+ ) -> Result<Option<Vec<Option<Turn>>>> {
+     let count = if joints.closed {
+         joints.segments
+@@ -288,33 +294,44 @@ fn turns(
+             }
+             return Ok(None);
+         }
+-        // The inner miter point, as `join` forms the outer one.
+-        let denominator = 1.0 + dot;
++        // The tangent of half the turn, in the form that stays accurate near
++        // a reversal, and the inner miter point it places on the inner offset
++        // of the segment after; `join` forms the outer one.
++        let half = if dot >= 0.0 {
++            turn.abs() / (1.0 + dot)
++        } else {
++            (1.0 - dot) / turn.abs()
++        };
+         let left = turn > 0.0;
+         let side = if left { radius } else { -radius };
+-        let offset = Point::new(
+-            (-a.y * side - b.y * side) / denominator,
+-            (a.x * side + b.x * side) / denominator,
+-        );
+-        let reach = (radius * turn / denominator).abs();
+-        if !(denominator > 0.0 && offset.x.is_finite() && offset.y.is_finite() && reach.is_finite())
+-        {
++        let reach = radius * half;
++        let offset = Point::new(-b.y * side + b.x * reach, b.x * side + b.y * reach);
++        if !(offset.x.is_finite() && offset.y.is_finite() && reach.is_finite()) {
+             return Ok(None);
+         }
+         turns.push(Some(Turn {
+             offset,
+             left,
+             reach,
++            span: radius * turn.abs(),
+         }));
+     }
+     // Each side of a segment must hold the inner reach of both its joints.
++    let last = joints.segments - 1;
+     for (i, &(_, length)) in segments.iter().enumerate() {
++        let butt = cap == LineCap::Butt && !joints.closed && (i == 0 || i == last);
+         for left in [false, true] {
+             let need: f64 = [turns[i], turns[joints.after(i)]]
+                 .into_iter()
+                 .flatten()
+                 .filter(|turn| turn.left == left)
+-                .map(|turn| turn.reach)
++                .map(|turn| {
++                    if butt {
++                        turn.reach.max(turn.span)
++                    } else {
++                        turn.reach
++                    }
++                })
+                 .sum();
+             if need > length {
+                 return Ok(None);
+@@ -415,7 +432,7 @@ mod tests {
+     use pagura_core::Limits;
+     use std::sync::Arc;
+ 
+-    const SIZE: u32 = 24;
++    const SIZE: u32 = 48;
+ 
+     fn polyline(points: &[(f64, f64)], closed: bool) -> Path {
+         let mut path = PathBuilder::new();
+@@ -646,4 +663,121 @@ mod tests {
+             assert!(largest_difference(&cells(tiles, pen, true), &union) <= 1);
+         }
+     }
++
++    /// Whether the stroke keeps its components, or its pieces' signed cells
++    /// stay within one level of the components' exact union.
++    fn pieces_match_the_union(path: &Path, stroke: &Stroke) -> Option<u8> {
++        let limits = Limits::default();
++        let (components, pen) =
++            crate::stroke_outline(path, Transform::IDENTITY, stroke, &limits).unwrap();
++        let (tiles, _) =
++            crate::tiled_stroke_outline(path, Transform::IDENTITY, stroke, &limits).unwrap();
++        tiles
++            .boundary
++            .is_some()
++            .then(|| largest_difference(&cells(tiles, pen, true), &exact(&components, pen)))
++    }
++
++    #[test]
++    fn inexact_reversals_keep_the_components() {
++        let stroke = Stroke {
++            width: 3.0,
++            cap: LineCap::Round,
++            ..Stroke::default()
++        };
++        // Out along a diagonal and back along it: rounding leaves the return
++        // direction a hair off the reverse, so the turn is not exactly flat.
++        for step in 1..64 {
++            let t = f64::from(step) / 64.0;
++            let (dx, dy) = (0.1 + 0.83 * t, 1.0 - 0.71 * t);
++            let far = (6.0 + 30.0 * dx, 6.0 + 30.0 * dy);
++            let back = (6.0 + 9.0 * dx * 1.1, 6.0 + 9.0 * dy * 1.1);
++            let path = polyline(&[(6.0, 6.0), far, back], false);
++            if let Some(difference) = pieces_match_the_union(&path, &stroke) {
++                assert!(difference <= 1, "{step}: {difference}");
++            }
++        }
++    }
++
++    #[test]
++    fn butt_ends_hold_the_neighbouring_quadrilateral() {
++        // A wide pen turning 60 degrees onto a last segment shorter than the
++        // reach of the segment before.
++        let angle = std::f64::consts::FRAC_PI_3;
++        let path = polyline(
++            &[
++                (6.0, 20.0),
++                (26.0, 20.0),
++                (26.0 + 5.0 * angle.cos(), 20.0 + 5.0 * angle.sin()),
++            ],
++            false,
++        );
++        let stroke = Stroke {
++            width: 16.0,
++            cap: LineCap::Butt,
++            join: LineJoin::Round,
++            ..Stroke::default()
++        };
++        if let Some(difference) = pieces_match_the_union(&path, &stroke) {
++            assert!(difference <= 1, "{difference}");
++        }
++    }
++
++    #[test]
++    fn seeded_strokes_take_pieces_only_within_one_level_of_the_union() {
++        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
++        let mut bits = || {
++            state ^= state << 13;
++            state ^= state >> 7;
++            state ^= state << 17;
++            state
++        };
++        #[expect(
++            clippy::cast_precision_loss,
++            reason = "53 random bits map to a uniform fraction"
++        )]
++        let mut next = || (bits() >> 11) as f64 / (1u64 << 53) as f64;
++        let mut taken = 0;
++        for case in 0..1000 {
++            let count = 2 + usize::from(next() < 0.5) + usize::from(next() < 0.5) * 2;
++            let mut points: Vec<(f64, f64)> = (0..count)
++                .map(|_| (4.0 + 40.0 * next(), 4.0 + 40.0 * next()))
++                .collect();
++            if case % 4 == 0 {
++                // Back along the last segment, short of where it started.
++                let [.., (x0, y0), (x1, y1)] = points[..] else {
++                    unreachable!()
++                };
++                let t = 0.2 + 0.7 * next();
++                points.push((x1 + (x0 - x1) * t, y1 + (y0 - y1) * t));
++            }
++            let width = 0.3 + 16.0 * next();
++            if case % 4 == 2 {
++                // A turn of under a right angle onto a last segment about
++                // as long as the pen radius.
++                let [.., (x0, y0), (x1, y1)] = points[..] else {
++                    unreachable!()
++                };
++                let turn = (0.3 + 1.2 * next()) * if next() < 0.5 { 1.0 } else { -1.0 };
++                let heading = (y1 - y0).atan2(x1 - x0) + turn;
++                let length = width * (0.3 + 0.4 * next());
++                points.push((x1 + length * heading.cos(), y1 + length * heading.sin()));
++            }
++            let path = polyline(&points, case % 5 == 1);
++            let stroke = Stroke {
++                width,
++                cap: [LineCap::Butt, LineCap::Round, LineCap::ProjectingSquare][case % 3],
++                join: [LineJoin::Miter, LineJoin::Round, LineJoin::Bevel][(case / 3) % 3],
++                ..Stroke::default()
++            };
++            if let Some(difference) = pieces_match_the_union(&path, &stroke) {
++                assert!(
++                    difference <= 1,
++                    "{case} {points:?} {stroke:?}: {difference}"
++                );
++                taken += 1;
++            }
++        }
++        assert!(taken > 200, "{taken}");
++    }
+ }
+diff --git a/crates/pagura-render/src/compositor.rs b/crates/pagura-render/src/compositor.rs
+index 91751e9e..d12468f5 100644
+--- a/crates/pagura-render/src/compositor.rs
++++ b/crates/pagura-render/src/compositor.rs
+@@ -383,12 +383,16 @@ impl Context {
+         if format == plan::Format::F64 {
+             return self.surface(tile, Backdrop::Transparent);
+         }
+-        let count = tile.width as usize * tile.height as usize;
++        let count = usize::try_from(u64::from(tile.width) * u64::from(tile.height))
++            .ok()
++            .filter(|&v| v <= self.limits.pixels)
++            .ok_or(Error::limit("page pixel budget exceeded"))?;
+         let bytes = match format {
+-            plan::Format::U8 => narrow::Bytes::charge(tile.width as usize, tile.height as usize),
+-            plan::Format::N16 => count * 8,
+-            _ => count * 16,
+-        };
++            plan::Format::U8 => narrow::Bytes::charge(count, tile.height as usize),
++            plan::Format::N16 => count.checked_mul(8),
++            _ => count.checked_mul(16),
++        }
++        .ok_or(Error::limit("colour buffer byte size overflow"))?;
+         self.trim_raster(bytes);
+         self.allocated = self
+             .allocated
+diff --git a/crates/pagura-render/src/compositor/lowp.rs b/crates/pagura-render/src/compositor/lowp.rs
+index 93d3bdc3..47bedda0 100644
+--- a/crates/pagura-render/src/compositor/lowp.rs
++++ b/crates/pagura-render/src/compositor/lowp.rs
+@@ -210,18 +210,31 @@ pub(super) fn multiply(target: &mut [u8], factors: &[u8]) {
+ #[cfg(test)]
+ mod tests {
+     use super::*;
++    /// A different byte in each channel, each channel taking every value
++    /// as `value` does, so that a channel mixed in another's place shows.
++    fn channels(value: u8) -> [u8; 4] {
++        [0x00, 0x55, 0xaa, 0xff].map(|key| value ^ key)
++    }
++
+     #[test]
+     fn portable_lanes_round_every_byte_mixture_once() {
+         for alpha in 0..=255u8 {
+             for source in 0..=255u8 {
+-                let mut pixels: Vec<_> = (0..=255u8).map(|v| [v; 4]).collect();
+-                row(&mut pixels, &[alpha; 256], &Source::new([source; 4], 255));
+-                for (background, result) in pixels.iter().enumerate() {
+-                    let expected = (u32::from(source) * u32::from(alpha)
+-                        + u32::try_from(background).unwrap() * (255 - u32::from(alpha))
+-                        + 127)
+-                        / 255;
+-                    assert_eq!(result, &[u8::try_from(expected).unwrap(); 4]);
++                let mut pixels: Vec<_> = (0..=255u8).map(channels).collect();
++                row(
++                    &mut pixels,
++                    &[alpha; 256],
++                    &Source::new(channels(source), 255),
++                );
++                for (background, result) in (0..=255u8).zip(&pixels) {
++                    let (source, background) = (channels(source), channels(background));
++                    let expected = [0, 1, 2, 3].map(|k| {
++                        let mixed = u32::from(source[k]) * u32::from(alpha)
++                            + u32::from(background[k]) * (255 - u32::from(alpha))
++                            + 127;
++                        u8::try_from(mixed / 255).unwrap()
++                    });
++                    assert_eq!(result, &expected);
+                 }
+             }
+         }
+@@ -233,7 +246,7 @@ mod tests {
+             for length in 0..11 {
+                 let byte = |i: usize, step: usize| u8::try_from(i * step % 256).unwrap();
+                 let coverage: Vec<u8> = (0..length).map(|i| byte(i, 37)).collect();
+-                let lanes: Vec<_> = (0..length).map(|i| [byte(i, 23); 4]).collect();
++                let lanes: Vec<_> = (0..length).map(|i| channels(byte(i, 23))).collect();
+                 for color in [[200, 10, 90, 255], [0, 0, 0, 255]] {
+                     let mut lanes = lanes.clone();
+                     let mut single = lanes.clone();
+diff --git a/crates/pagura-render/src/compositor/narrow.rs b/crates/pagura-render/src/compositor/narrow.rs
+index 127299c4..5a8fa28c 100644
+--- a/crates/pagura-render/src/compositor/narrow.rs
++++ b/crates/pagura-render/src/compositor/narrow.rs
+@@ -66,10 +66,12 @@ pub(super) struct Bytes {
+ }
+ 
+ impl Bytes {
+-    /// The bytes a `width` by `height` surface holds: its pixels and the
+-    /// painted extent of each row.
+-    pub(super) fn charge(width: usize, height: usize) -> usize {
+-        width * height * 4 + height * size_of::<[u32; 2]>()
++    /// The bytes a surface of `count` pixels in `height` rows holds: its
++    /// pixels and the painted extent of each row.
++    pub(super) fn charge(count: usize, height: usize) -> Option<usize> {
++        count
++            .checked_mul(4)?
++            .checked_add(height.checked_mul(size_of::<[u32; 2]>())?)
+     }
+ 
+     /// A `width` by `height` surface of `background`, in `storage` when its
+@@ -81,12 +83,14 @@ impl Bytes {
+     ) -> Result<Self> {
+         let mut bytes = Self::banded((width, height), background, storage)?;
+         bytes.fill_to(height);
++        bytes.rows = height;
+         Ok(bytes)
+     }
+ 
+     /// [`Self::new`] for a surface addressed in bands from the top: each
+     /// row takes its background when a window first reaches it, so that
+-    /// the band's stores find it in cache.
++    /// the band's stores find it in cache. No row is addressed before the
++    /// first window.
+     pub(super) fn banded(
+         (width, height): (usize, usize),
+         background: [u8; 4],
+@@ -111,7 +115,7 @@ impl Bytes {
+             background,
+             painted,
+             first: 0,
+-            rows: height,
++            rows: 0,
+         })
+     }
+ 
+@@ -399,7 +403,8 @@ impl Buffer {
+     }
+     pub(super) fn bytes(&self) -> usize {
+         match self {
+-            Self::U8(v) => Bytes::charge(v.width, v.painted.len()),
++            // As charged by `Bytes::charge`, from the lengths it allocated.
++            Self::U8(v) => v.pixels.len() + size_of_val(v.painted.as_slice()),
+             Self::N16(v) => v.len() * 8,
+             Self::F32(v) => v.len() * 16,
+         }
+@@ -835,6 +840,14 @@ mod tests {
+         assert!(pixels[..24].iter().all(|&v| v == 255));
+     }
+ 
++    #[test]
++    fn banded_surfaces_refuse_stores_before_a_window() {
++        let mut bytes = Bytes::banded((2, 2), [255; 4], Vec::new()).unwrap();
++        assert!(bytes.blend(0, &[255], [0, 0, 0, 255], 255).is_err());
++        bytes.window(0, 1).unwrap();
++        assert!(bytes.blend(0, &[255], [0, 0, 0, 255], 255).is_ok());
++    }
++
+     #[test]
+     fn banded_rows_take_their_background_when_first_addressed() {
+         let background = [250, 240, 230, 255];
+diff --git a/crates/pagura-render/src/context.rs b/crates/pagura-render/src/context.rs
+index 2c6d8cd1..84f142e7 100644
+--- a/crates/pagura-render/src/context.rs
++++ b/crates/pagura-render/src/context.rs
+@@ -57,13 +57,17 @@ impl RenderContext {
+     }
+ 
+     /// Returns a rendered surface's storage to the context, which keeps the
+-    /// largest it has been given and stores its next competitive rendering
+-    /// ([`crate::Accuracy::Competitive`]) there, when it is large enough,
+-    /// instead of allocating new memory. Pixels are the same either way.
++    /// largest it has been given within
++    /// [`pagura_core::Limits::decoded_bytes`] and stores its next competitive
++    /// rendering ([`crate::Accuracy::Competitive`]) there, when it is large
++    /// enough, instead of allocating new memory. Pixels are the same either
++    /// way.
+     pub fn recycle(&self, pixmap: Pixmap) {
+         if let Ok(mut spare) = self.spare.try_lock() {
+             let storage = pixmap.into_storage();
+-            if storage.capacity() > spare.capacity() {
++            if storage.capacity() > spare.capacity()
++                && storage.capacity() <= self.document.limits().decoded_bytes
++            {
+                 *spare = storage;
+             }
+         }
+@@ -77,10 +81,11 @@ impl RenderContext {
+     /// Estimated font-input, dictionary, outline and bookkeeping bytes
+     /// retained, bounded by [`pagura_core::Limits::document_bytes`], plus
+     /// image planes kept for reuse, bounded by
+-    /// [`pagura_core::Limits::decoded_bytes`], and glyph masks retained for
++    /// [`pagura_core::Limits::decoded_bytes`], glyph masks retained for
+     /// [`crate::Accuracy::Competitive`], at most 16 MiB within the document
+-    /// limit. Parsed font internals retain their own limits; this is not
+-    /// allocator or peak-memory telemetry.
++    /// limit, and the surface storage kept by [`Self::recycle`]. Parsed font
++    /// internals retain their own limits; this is not allocator or
++    /// peak-memory telemetry.
+     pub fn retained_bytes(&self) -> usize {
+         let fonts = self
+             .fonts
+@@ -92,9 +97,15 @@ impl RenderContext {
+             .lock()
+             .unwrap_or_else(std::sync::PoisonError::into_inner)
+             .retained_bytes();
++        let spare = self
++            .spare
++            .lock()
++            .unwrap_or_else(std::sync::PoisonError::into_inner)
++            .capacity();
+         fonts
+             .saturating_add(glyphs)
+             .saturating_add(self.buffers.retained_bytes())
++            .saturating_add(spare)
+     }
+ 
+     /// Compiles a page, reusing this document's fonts and glyph outlines.
+diff --git a/crates/pagura-render/src/display.rs b/crates/pagura-render/src/display.rs
+index 6358798e..ea36d5a1 100644
+--- a/crates/pagura-render/src/display.rs
++++ b/crates/pagura-render/src/display.rs
+@@ -597,8 +597,10 @@ impl DisplayList {
+         }
+         if options.accuracy == crate::Accuracy::Competitive {
+             match crate::compositor::render_competitive(self, options, tile, lent) {
+-                // The competitive path's own working budgets must not make a
+-                // page fail that the exact path renders within its limits.
++                // A limit on the competitive path must not make a page fail
++                // that the exact path renders within its limits. Any limit
++                // error falls back, so a rendering costs at most one
++                // competitive attempt plus the exact rendering.
+                 Err(error) if error.kind == pagura_core::ErrorKind::Limit => {}
+                 result => return result,
+             }
+diff --git a/crates/pagura-render/src/fragments/glyphs.rs b/crates/pagura-render/src/fragments/glyphs.rs
+index 78fb3dc4..57460349 100644
+--- a/crates/pagura-render/src/fragments/glyphs.rs
++++ b/crates/pagura-render/src/fragments/glyphs.rs
+@@ -5,7 +5,9 @@
+ //! horizontal phases, with area division done when a fragment is prepared.
+ //! Fragments are dealt from the rows in turn, four to a vector of lanes, so
+ //! that their areas form side by side and their additions never wait on one
+-//! another; each cell still receives its additions in clipping order.
++//! another. Each cell still receives its additions in clipping order, but
++//! for the +0.0 that a one-cell fragment adds two cells on, which can lie in
++//! the next row and changes no level.
+ //! Origins snap to a 1/128-pixel lattice horizontally and to the
+ //! resolution's lattice vertically; integer translation is applied when the
+ //! mask is painted. A mask is a pure function of its key, so retention and
+@@ -398,8 +400,9 @@ struct Rows {
+     _outline: Arc<Path>,
+     /// The fragments dealt from the rows in turn, so that neighbours lie in
+     /// different rows and never add to one cell; each row keeps the order
+-    /// of its fragments, and so each cell the order of its additions. Empty
+-    /// fragments on the spare cells complete the last quad.
++    /// of its fragments, and so each cell the order of its additions but
++    /// for zero terms (see [`Accumulator::quad`]). Empty fragments on the
++    /// spare cells complete the last quad.
+     quads: Vec<Quad>,
+     /// The fragments before that padding.
+     count: usize,
+@@ -431,30 +434,46 @@ impl Rows {
+             .checked_mul(stride)
+             .filter(|cells| u32::try_from(cells + SPARE).is_ok())
+             .ok_or(Error::limit("glyph extent budget exceeded"))?;
+-        // A fragment is held in the clipping storage and in its quad.
++        // Half the allocation budget holds the two row tables and every
++        // fragment, once in the clipping storage and once in its quad.
++        // Capacity retained from a larger glyph is released when that budget
++        // no longer covers it.
++        let budget = limits.decoded_bytes / 2;
++        if starts.capacity().saturating_add(rows.capacity()) > budget / size_of::<usize>() {
++            (*starts, *rows) = (Vec::new(), Vec::new());
++        }
++        let exceeded = || Error::limit("glyph row fragment budget exceeded");
++        let tables = (glyph.height + 1)
++            .checked_mul(2 * size_of::<usize>())
++            .filter(|&bytes| bytes <= budget)
++            .ok_or_else(exceeded)?;
+         let held = size_of::<Fragment>() + size_of::<Quad>() / 4;
+-        let maximum = (limits.decoded_bytes / 2 / held).min(limits.raster_work);
++        let maximum = ((budget - tables) / held).min(limits.raster_work);
++        if fragments.capacity() > maximum {
++            *fragments = Vec::new();
++        }
+         // Each row's fragment count, one past its index, then their sums.
++        // The budget is checked before an edge's rows are counted, so that
++        // counting costs no more than clipping within the budget.
+         starts.clear();
+         try_reserve(starts, glyph.height + 1)?;
+         starts.resize(glyph.height + 1, 0);
++        let mut total = 0_usize;
+         for &edge in &glyph.edges {
+             if let Some((.., crossed)) = span(edge, py, glyph.height) {
++                total = total.saturating_add(crossed.len());
++                if total > maximum {
++                    return Err(exceeded());
++                }
+                 for row in crossed {
+                     starts[row + 1] += 1;
+                 }
+             }
+         }
+-        let mut total = 0_usize;
++        let mut sum = 0;
+         for start in starts.iter_mut() {
+-            total += *start;
+-            *start = total;
+-        }
+-        if total > maximum {
+-            return Err(Error::limit("glyph row fragment budget exceeded"));
+-        }
+-        if fragments.capacity() > maximum {
+-            *fragments = Vec::new();
++            sum += *start;
++            *start = sum;
+         }
+         fragments.clear();
+         try_reserve(fragments, total)?;
+@@ -785,6 +804,9 @@ impl Accumulator {
+         let c = LANES.map(|i| select(one[i], 0.0, height[i] - second[i]));
+         let at = LANES.map(|i| quad.start[i].wrapping_add(cell[i].cast_unsigned()) as usize);
+         let formed = LANES.map(|i| one[i] | two[i]);
++        // The common quad, whose four fragments are all formed, is tested
++        // once for all its lanes, so that its additions take no branch per
++        // lane.
+         for i in LANES {
+             if formed != [!0; 4] && formed[i] == 0 {
+                 self.add(
+@@ -1148,6 +1170,36 @@ mod tests {
+         assert!(tested > 100, "{tested}");
+     }
+ 
++    #[test]
++    fn row_budgets_stop_tall_glyphs_before_their_rows_are_counted() {
++        let mut path = PathBuilder::new();
++        path.rect(0.0, 0.0, 1.0, 1.0);
++        let path = Arc::new(path.finish());
++        // A bar one pixel wide and 400,000 rows tall: both its sides cross
++        // every row.
++        let tall = Transform::new(1.0, 0.0, 0.0, 400_000.0, 0.0, 0.0);
++        let glyph = Prepared::new(&path, tall, Resolution::Low, Limits::default()).unwrap();
++        let tables = (glyph.height + 1) * 2 * size_of::<usize>();
++        let mut clipping = Clipping::default();
++        // The row tables fit and a few fragments do; one side's rows do not.
++        let fragments = Limits {
++            decoded_bytes: 2 * (tables + 4096),
++            ..Limits::default()
++        };
++        let error = Rows::new(&glyph, 0.0, fragments, &mut clipping).unwrap_err();
++        assert_eq!(error.message, "glyph row fragment budget exceeded");
++        assert!(clipping.fragments.capacity() <= 4096);
++        // The row tables alone exceed the budget: nothing is allocated, and
++        // the table kept from the glyph before, beyond it too, is released.
++        let rows = Limits {
++            decoded_bytes: tables / 2,
++            ..Limits::default()
++        };
++        let error = Rows::new(&glyph, 0.0, rows, &mut clipping).unwrap_err();
++        assert_eq!(error.message, "glyph row fragment budget exceeded");
++        assert_eq!(clipping.starts.capacity() + clipping.rows.capacity(), 0);
++    }
++
+     #[test]
+     fn last_bit_and_half_coverage_have_independent_rectangle_areas() {
+         let mut raster = accumulator(64, 3);
+diff --git a/crates/pagura-render/src/lib.rs b/crates/pagura-render/src/lib.rs
+index 8ee9e73a..0b22e483 100644
+--- a/crates/pagura-render/src/lib.rs
++++ b/crates/pagura-render/src/lib.rs
+@@ -52,7 +52,10 @@ pub mod form_appearance;
+ #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+ #[non_exhaustive]
+ pub enum Accuracy {
+-    /// Every pixel within one level of its exact result.
++    /// Within one level of the stage-specific references in ADR 0004.
++    /// Composition is evaluated on already quantized coverage bytes; this
++    /// does not establish a one-level bound against unquantized coverages or
++    /// a filtered continuous scene.
+     #[default]
+     Exact,
+     /// One faster approximation per primitive, chosen against the competitive
+@@ -66,8 +69,11 @@ pub enum Accuracy {
+     /// - Other fills and strokes accumulate signed areas in cells after
+     ///   flattening curves to 1/64-pixel chords. Compound paths without a
+     ///   retained stroke boundary keep geometric integration of their union.
+-    /// - Clipping paths that a mark does not lie inside multiply into it as
+-    ///   their own cell coverage, integrated once per band.
++    /// - A clipping path that contains a mark is dropped for it, and a
++    ///   quadrilateral mark within quadrilateral clips is integrated with them
++    ///   geometrically. A rectangular clip multiplies into a mark as a column
++    ///   factor times a row factor; any other clipping path as its own cell
++    ///   coverage, integrated once per band.
+     /// - Admitted opaque Normal composition uses the same 16-bit storage and
+     ///   bounded chunks as Exact, on this policy's coverage bytes. Where Exact
+     ///   admits f32 storage, composition instead rounds once into byte storage
+@@ -79,11 +85,17 @@ pub enum Accuracy {
+     ///   filtered row by row straight into the output, within one level of
+     ///   the exact result. This applies where a page is compiled and
+     ///   rendered in one call ([`render_page`], [`render_tile`] and their
+-    ///   [`RenderContext`] versions). Other images are sampled exactly.
++    ///   [`RenderContext`] versions).
++    /// - Minified opaque DeviceGray or DeviceRGB JPEG images drawn from page
++    ///   content are reconstructed with 1, 2, 3, 4 or 6 cells per block
++    ///   axis, at least two and a half per device pixel. Remaining images
++    ///   are sampled exactly.
+     /// - Embedded TrueType programs are decoded only as far as drawing reads
+     ///   them, so damage in later tables is neither examined nor reported.
+     ///
+-    /// It does not meet the one-level contract.
++    /// A page that exceeds a limit on this path is rendered exactly instead,
++    /// so a rendering costs at most one competitive attempt plus the exact
++    /// rendering. It does not meet the one-level contract.
+     Competitive,
+ }
+ 
+@@ -198,21 +210,7 @@ fn pixels(extent: f64) -> Result<u32> {
+ /// error for budget violations, and syntax errors for malformed content.
+ /// No partial page is ever returned.
+ pub fn render_page(document: &Document, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
+-    let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
+-    direct_image::render(
+-        |layout| {
+-            interpreter::compile_cached_with(
+-                document,
+-                page,
+-                None,
+-                &fonts,
+-                (layout, None, options.drawn_scale(page)),
+-            )
+-        },
+-        options,
+-        None,
+-        (None, compositor::Lent::default()),
+-    )
++    render_compiled(document, page, options, None, None)
+ }
+ 
+ /// Renders a whole page using explicitly supplied external font resources.
+@@ -225,21 +223,7 @@ pub fn render_page_with(
+     options: &RenderOptions,
+     provider: &dyn Provider,
+ ) -> Result<Pixmap> {
+-    let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
+-    direct_image::render(
+-        |layout| {
+-            interpreter::compile_cached_with(
+-                document,
+-                page,
+-                Some(provider),
+-                &fonts,
+-                (layout, None, options.drawn_scale(page)),
+-            )
+-        },
+-        options,
+-        None,
+-        (None, compositor::Lent::default()),
+-    )
++    render_compiled(document, page, options, Some(provider), None)
+ }
+ 
+ /// Renders one tile of a page. Tiles of one page with the same options
+@@ -256,21 +240,7 @@ pub fn render_tile(
+     options: &RenderOptions,
+     tile: Tile,
+ ) -> Result<Pixmap> {
+-    let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
+-    direct_image::render(
+-        |layout| {
+-            interpreter::compile_cached_with(
+-                document,
+-                page,
+-                None,
+-                &fonts,
+-                (layout, None, options.drawn_scale(page)),
+-            )
+-        },
+-        options,
+-        Some(tile),
+-        (None, compositor::Lent::default()),
+-    )
++    render_compiled(document, page, options, None, Some(tile))
+ }
+ 
+ /// Renders a tile using explicitly supplied external font resources.
+@@ -283,6 +253,18 @@ pub fn render_tile_with(
+     options: &RenderOptions,
+     tile: Tile,
+     provider: &dyn Provider,
++) -> Result<Pixmap> {
++    render_compiled(document, page, options, Some(provider), Some(tile))
++}
++
++/// Compiles `page` for one rendering and renders it whole or as `tile`, with
++/// a font cache of its own.
++fn render_compiled(
++    document: &Document,
++    page: &Page,
++    options: &RenderOptions,
++    provider: Option<&dyn Provider>,
++    tile: Option<Tile>,
+ ) -> Result<Pixmap> {
+     let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
+     direct_image::render(
+@@ -290,13 +272,13 @@ pub fn render_tile_with(
+             interpreter::compile_cached_with(
+                 document,
+                 page,
+-                Some(provider),
++                provider,
+                 &fonts,
+                 (layout, None, options.drawn_scale(page)),
+             )
+         },
+         options,
+-        Some(tile),
++        tile,
+         (None, compositor::Lent::default()),
+     )
+ }
+diff --git a/crates/pagura-render/src/tests.rs b/crates/pagura-render/src/tests.rs
+index 436ba264..f2084702 100644
+--- a/crates/pagura-render/src/tests.rs
++++ b/crates/pagura-render/src/tests.rs
+@@ -1245,3 +1245,59 @@ fn recycled_surface_storage_renders_the_same_pixels() {
+         context.recycle(reused);
+     }
+ }
++
++#[test]
++fn recycled_storage_is_counted_and_bounded_by_the_decoded_budget() {
++    let limits = pagura_core::Limits {
++        decoded_bytes: 1 << 20,
++        ..pagura_core::Limits::default()
++    };
++    let document = Document::open(
++        pagura_testkit::fixture("content", "compound-path.pdf"),
++        &OpenOptions {
++            limits,
++            ..OpenOptions::default()
++        },
++    )
++    .unwrap();
++    let context = crate::RenderContext::new(std::sync::Arc::new(document));
++    let storage = |bytes: usize| {
++        crate::Pixmap::with_storage(1, 1, Rgba8::BLACK, limits, vec![0; bytes]).unwrap()
++    };
++    let before = context.retained_bytes();
++    context.recycle(storage(4096));
++    assert!(context.retained_bytes() >= before + 4096);
++    context.recycle(storage(2 << 20));
++    assert!(context.retained_bytes() < before + (1 << 20));
++}
++
++#[test]
++fn competitive_page_surfaces_check_the_pixel_budget_first() {
++    // Translucent paint selects byte bands; opaque paint uses shared N16
++    // chunks and reaches the output Pixmap's separate pixel-budget check.
++    let document = open("alpha");
++    let mut list = compile_page(&document, document.page(0).unwrap()).unwrap();
++    list.limits.pixels = 16;
++    let options = RenderOptions {
++        accuracy: crate::Accuracy::Competitive,
++        ..RenderOptions::default()
++    };
++    let (width, height) = list.device_size(&options).unwrap();
++    let tile = Tile {
++        x: 0,
++        y: 0,
++        width,
++        height,
++    };
++    let error = crate::compositor::render_competitive(
++        &list,
++        &options,
++        tile,
++        crate::compositor::Lent::default(),
++    )
++    .unwrap_err();
++    assert_eq!(
++        (error.kind, error.message),
++        (ErrorKind::Limit, "page pixel budget exceeded")
++    );
++}
+diff --git a/docs/adr/0004-rendering-pipeline.md b/docs/adr/0004-rendering-pipeline.md
+index 855f48a8..9ada7ff0 100644
+--- a/docs/adr/0004-rendering-pipeline.md
++++ b/docs/adr/0004-rendering-pipeline.md
+@@ -529,11 +529,11 @@ takes, per primitive, the faster approximation that keeps the gate:
+   image without `Mask`, `SMask` or `Decode`, drawn from page content and not
+   as the page's sole mark, is reconstructed near its drawn size: with 1, 2,
+   3, 4 or 6 cells per eight-sample block axis, the fewest that leave two and
+-  a half cells per device pixel along its less minified axis. A cell is the mean of
+-  its block's unclamped T.81 A.3.3 samples from an integrated cosine basis,
+-  rounded once; with six cells, a block that may leave the sample range
+-  takes the means of its exact samples. The samplers then take the cells,
+-  the image's unit square spanning its declared extent in them.
++  a half cells per device pixel along its less minified axis. A cell is the
++  mean of its block's unclamped T.81 A.3.3 samples from an integrated cosine
++  basis, rounded once; with six cells, a block that may leave the sample
++  range takes the means of its exact samples. The samplers then take the
++  cells, the image's unit square spanning its declared extent in them.
+ - **Fonts.** Embedded TrueType programs are decoded only as far as drawing
+   reads them; damage in later tables is neither examined nor reported.
+ 
+diff --git a/fuzz/src/content.rs b/fuzz/src/content.rs
+index 89a95ce5..1ed87102 100644
+--- a/fuzz/src/content.rs
++++ b/fuzz/src/content.rs
+@@ -1,6 +1,7 @@
+ //! `content`: a content stream compiles into a display list or fails with a
+ //! structured error (clause 7.8.2, Annex A; ADR 0004), and the list renders
+-//! so that a tile equals the same pixels of the whole page.
++//! under both accuracy paths so that a tile equals the same pixels of the
++//! whole page.
+ //!
+ //! The input is the content stream of a fixed 32 × 32 page whose resources
+ //! name one of each kind: `/GS` and `/GS1` graphics states; `/C`
+@@ -11,7 +12,7 @@
+ //! `/Members`.
+ 
+ use super::wrapper::Pdf;
+-use pagura::{Document, OpenOptions, RenderOptions, Tile};
++use pagura::{Accuracy, Document, OpenOptions, RenderOptions, Tile};
+ 
+ /// Objects 5 onwards, after the catalog (1), page tree (2), page (3) and
+ /// content stream (4).
+@@ -33,7 +34,8 @@ const TILE: Tile = Tile {
+     height: 13,
+ };
+ 
+-/// Compiles the page and renders it whole and as one tile.
++/// Compiles the page and renders it whole and as one tile, exactly and
++/// competitively.
+ ///
+ /// # Panics
+ ///
+@@ -50,17 +52,26 @@ pub fn run(data: &[u8]) {
+         return;
+     };
+     if let Some(list) = super::checked(pagura::compile_page(&document, page)) {
+-        let render = RenderOptions::default();
+-        let whole = super::checked(list.render(&render));
+-        let tile = super::checked(list.render_tile(&render, TILE));
+-        if let (Some(whole), Some(tile)) = (whole, tile) {
+-            assert_eq!((whole.width(), whole.height()), (32, 32), "page size");
+-            assert_eq!((tile.width(), tile.height()), (TILE.width, TILE.height));
+-            let row = usize::try_from(TILE.width * 4).unwrap_or(usize::MAX);
+-            let x = usize::try_from(TILE.x * 4).unwrap_or(usize::MAX);
+-            for y in 0..TILE.height {
+-                let expected = whole.row(TILE.y + y).and_then(|r| r.get(x..x + row));
+-                assert_eq!(tile.row(y), expected, "tile row {y} differs from the page");
++        for accuracy in [Accuracy::Exact, Accuracy::Competitive] {
++            let render = RenderOptions {
++                accuracy,
++                ..RenderOptions::default()
++            };
++            let whole = super::checked(list.render(&render));
++            let tile = super::checked(list.render_tile(&render, TILE));
++            if let (Some(whole), Some(tile)) = (whole, tile) {
++                assert_eq!((whole.width(), whole.height()), (32, 32), "page size");
++                assert_eq!((tile.width(), tile.height()), (TILE.width, TILE.height));
++                let row = usize::try_from(TILE.width * 4).unwrap_or(usize::MAX);
++                let x = usize::try_from(TILE.x * 4).unwrap_or(usize::MAX);
++                for y in 0..TILE.height {
++                    let expected = whole.row(TILE.y + y).and_then(|r| r.get(x..x + row));
++                    assert_eq!(
++                        tile.row(y),
++                        expected,
++                        "{accuracy:?} tile row {y} differs from the page"
++                    );
++                }
+             }
+         }
+     }
+diff --git a/fuzz/src/render.rs b/fuzz/src/render.rs
+index 8e1993b7..2b3d276f 100644
+--- a/fuzz/src/render.rs
++++ b/fuzz/src/render.rs
+@@ -1,10 +1,11 @@
+-//! `render`: rendering a page either returns a complete surface of the
+-//! advertised size or a structured error; never a panic or a surface of the
+-//! wrong size (ADR 0004).
++//! `render`: rendering a page under either accuracy path returns a complete
++//! surface of the advertised size or a structured error; never a panic or a
++//! surface of the wrong size (ADR 0004).
+ 
+-use pagura::{Document, OpenOptions, RenderOptions};
++use pagura::{Accuracy, Document, OpenOptions, RenderOptions};
+ 
+-/// Opens the input and renders its first page at 18 dpi.
++/// Opens the input and renders its first page at 18 dpi, exactly and
++/// competitively.
+ ///
+ /// # Panics
+ ///
+@@ -20,15 +21,20 @@ pub fn run(data: &[u8]) {
+     let Some(page) = super::checked(document.page(0)) else {
+         return;
+     };
+-    let render = RenderOptions::from_dpi(18.0);
+-    let size = super::checked(pagura::device_size(page, &render));
+-    let pixmap = super::checked(pagura::render_page(&document, page, &render));
+-    if let (Some(size), Some(pixmap)) = (size, pixmap) {
+-        assert_eq!(
+-            (pixmap.width(), pixmap.height()),
+-            size,
+-            "surface size differs from device_size"
+-        );
++    for accuracy in [Accuracy::Exact, Accuracy::Competitive] {
++        let render = RenderOptions {
++            accuracy,
++            ..RenderOptions::from_dpi(18.0)
++        };
++        let size = super::checked(pagura::device_size(page, &render));
++        let pixmap = super::checked(pagura::render_page(&document, page, &render));
++        if let (Some(size), Some(pixmap)) = (size, pixmap) {
++            assert_eq!(
++                (pixmap.width(), pixmap.height()),
++                size,
++                "{accuracy:?} surface size differs from device_size"
++            );
++        }
+     }
+     super::assert_diagnostics(&document.diagnostics(), options.recovery);
+ }

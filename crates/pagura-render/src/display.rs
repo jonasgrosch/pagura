@@ -597,8 +597,9 @@ impl DisplayList {
         }
         if options.accuracy == crate::Accuracy::Competitive {
             match crate::compositor::render_competitive(self, options, tile, lent) {
-                // The competitive path's own working budgets must not make a
-                // page fail that the exact path renders within its limits.
+                // Retry this compiled list once with exact compositing on
+                // a competitive compositor limit. Its existing image samples
+                // and font-validation policy remain; the retry can fail too.
                 Err(error) if error.kind == pagura_core::ErrorKind::Limit => {}
                 result => return result,
             }

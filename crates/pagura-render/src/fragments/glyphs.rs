@@ -5,7 +5,9 @@
 //! horizontal phases, with area division done when a fragment is prepared.
 //! Fragments are dealt from the rows in turn, four to a vector of lanes, so
 //! that their areas form side by side and their additions never wait on one
-//! another; each cell still receives its additions in clipping order.
+//! another. Each cell still receives its additions in clipping order, but
+//! for the +0.0 that a one-cell fragment adds two cells on, which can lie in
+//! the next row and changes no level.
 //! Origins snap to a 1/128-pixel lattice horizontally and to the
 //! resolution's lattice vertically; integer translation is applied when the
 //! mask is painted. A mask is a pure function of its key, so retention and
@@ -392,14 +394,56 @@ struct Clipping {
     fragments: Vec<Fragment>,
 }
 
+impl Clipping {
+    /// The retained capacities, enlarged where needed, and the padded quads.
+    fn row_bytes(&self, height: usize, count: usize) -> usize {
+        row_bytes(
+            self.starts
+                .capacity()
+                .max(height + 1)
+                .saturating_add(self.rows.capacity().max(height)),
+            self.fragments.capacity().max(count),
+            count.div_ceil(4),
+        )
+    }
+    /// Reserve the row buffers and quads after their logical payload fits.
+    /// Keep scratch capacity whenever the complete payload remains in budget.
+    fn reserve_rows(&mut self, height: usize, count: usize, budget: usize) -> Result<Vec<Quad>> {
+        if self.row_bytes(height, count) > budget && self.fragments.capacity() > count {
+            self.fragments = Vec::new();
+        }
+        if self.row_bytes(height, count) > budget && self.rows.capacity() > height {
+            self.rows = Vec::new();
+        }
+        if self.row_bytes(height, count) > budget && self.starts.capacity() > height + 1 {
+            self.starts = Vec::new();
+        }
+        let mut held = self.row_bytes(height, count);
+        let mut quads = Vec::new();
+        try_reserve(&mut self.starts, height + 1, &mut held, budget)?;
+        try_reserve(&mut self.rows, height, &mut held, budget)?;
+        try_reserve(&mut self.fragments, count, &mut held, budget)?;
+        try_reserve(&mut quads, count.div_ceil(4), &mut held, budget)?;
+        Ok(quads)
+    }
+}
+
+fn row_bytes(tables: usize, fragments: usize, quads: usize) -> usize {
+    tables
+        .saturating_mul(size_of::<usize>())
+        .saturating_add(fragments.saturating_mul(size_of::<Fragment>()))
+        .saturating_add(quads.saturating_mul(size_of::<Quad>()))
+}
+
 /// The row fragments of a prepared glyph at one vertical phase.
 #[derive(Debug)]
 struct Rows {
     _outline: Arc<Path>,
     /// The fragments dealt from the rows in turn, so that neighbours lie in
     /// different rows and never add to one cell; each row keeps the order
-    /// of its fragments, and so each cell the order of its additions. Empty
-    /// fragments on the spare cells complete the last quad.
+    /// of its fragments, and so each cell the order of its additions but
+    /// for zero terms (see [`Accumulator::quad`]). Empty fragments on the
+    /// spare cells complete the last quad.
     quads: Vec<Quad>,
     /// The fragments before that padding.
     count: usize,
@@ -418,25 +462,48 @@ impl Rows {
         reason = "row starts are checked to fit 32 bits"
     )]
     fn new(glyph: &Prepared, py: f64, limits: Limits, clipping: &mut Clipping) -> Result<Self> {
-        let Clipping {
-            starts,
-            rows,
-            fragments,
-        } = clipping;
         let stride = glyph.width + 1;
         // Every row start, and the spare cells past the last row, fit 32
         // bits.
         let spare = glyph
             .height
             .checked_mul(stride)
-            .filter(|cells| u32::try_from(cells + SPARE).is_ok())
+            .filter(|cells| {
+                cells
+                    .checked_add(SPARE)
+                    .is_some_and(|padded| u32::try_from(padded).is_ok())
+            })
             .ok_or(Error::limit("glyph extent budget exceeded"))?;
-        // A fragment is held in the clipping storage and in its quad.
-        let held = size_of::<Fragment>() + size_of::<Quad>() / 4;
-        let maximum = (limits.decoded_bytes / 2 / held).min(limits.raster_work);
+        // Half the allocation budget holds the vector payloads of the two
+        // row tables, clipped fragments and padded quads. Count span lengths
+        // before visiting their rows or allocating storage for this glyph.
+        let budget = limits.decoded_bytes / 2;
+        let exceeded = || Error::limit("glyph row fragment budget exceeded");
+        let tables = glyph.height.saturating_mul(2).saturating_add(1);
+        if row_bytes(tables, 0, 0) > budget {
+            *clipping = Clipping::default();
+            return Err(exceeded());
+        }
+        let mut total = 0_usize;
+        for &edge in &glyph.edges {
+            if let Some((.., crossed)) = span(edge, py, glyph.height) {
+                total = total.saturating_add(crossed.len());
+                if total > limits.raster_work
+                    || row_bytes(tables, total, total.div_ceil(4)) > budget
+                {
+                    *clipping = Clipping::default();
+                    return Err(exceeded());
+                }
+            }
+        }
+        let mut quads = clipping.reserve_rows(glyph.height, total, budget)?;
+        let Clipping {
+            starts,
+            rows,
+            fragments,
+        } = clipping;
         // Each row's fragment count, one past its index, then their sums.
-        starts.clear();
-        try_reserve(starts, glyph.height + 1)?;
+        // The bounded span count and all capacity checks precede this walk.
         starts.resize(glyph.height + 1, 0);
         for &edge in &glyph.edges {
             if let Some((.., crossed)) = span(edge, py, glyph.height) {
@@ -445,22 +512,12 @@ impl Rows {
                 }
             }
         }
-        let mut total = 0_usize;
+        let mut sum = 0;
         for start in starts.iter_mut() {
-            total += *start;
-            *start = total;
+            sum += *start;
+            *start = sum;
         }
-        if total > maximum {
-            return Err(Error::limit("glyph row fragment budget exceeded"));
-        }
-        if fragments.capacity() > maximum {
-            *fragments = Vec::new();
-        }
-        fragments.clear();
-        try_reserve(fragments, total)?;
         fragments.resize(total, Fragment::EMPTY);
-        rows.clear();
-        try_reserve(rows, glyph.height)?;
         rows.extend_from_slice(&starts[..glyph.height]);
         let work = clip(glyph, py, |row, fragment| {
             let slot = &mut rows[row];
@@ -475,8 +532,6 @@ impl Rows {
             start: spare as u32,
             ..Fragment::EMPTY
         };
-        let mut quads = Vec::new();
-        try_reserve(&mut quads, total.div_ceil(4))?;
         quads.resize(total.div_ceil(4), Quad::from([padding; 4]));
         let (mut depth, mut dealt) = (0, 0);
         while !rows.is_empty() {
@@ -556,12 +611,29 @@ impl Rows {
     }
 }
 
-/// Reserves room for `count` more values of `values`, as the glyph row
-/// budget allows.
-fn try_reserve<T>(values: &mut Vec<T>, count: usize) -> Result<()> {
+/// Clears a row buffer and reserves its required length. `held` includes
+/// every buffer's retained or required capacity, including pending quads.
+/// An allocator may grant more than requested; reject that excess before
+/// filling any rows and release the buffer that exceeded the allowance.
+fn try_reserve<T>(
+    values: &mut Vec<T>,
+    count: usize,
+    held: &mut usize,
+    budget: usize,
+) -> Result<()> {
+    let planned = values.capacity().max(count).saturating_mul(size_of::<T>());
+    values.clear();
     values
         .try_reserve_exact(count)
-        .map_err(|_| Error::limit("glyph row allocation failed"))
+        .map_err(|_| Error::limit("glyph row allocation failed"))?;
+    let actual = values.capacity().saturating_mul(size_of::<T>());
+    let reserved = (*held - planned).saturating_add(actual);
+    if reserved > budget {
+        *values = Vec::new();
+        return Err(Error::limit("glyph row fragment budget exceeded"));
+    }
+    *held = reserved;
+    Ok(())
 }
 
 /// An edge's ends at vertical phase `py`, upward, its winding sign and the
@@ -785,6 +857,9 @@ impl Accumulator {
         let c = LANES.map(|i| select(one[i], 0.0, height[i] - second[i]));
         let at = LANES.map(|i| quad.start[i].wrapping_add(cell[i].cast_unsigned()) as usize);
         let formed = LANES.map(|i| one[i] | two[i]);
+        // The common quad, whose four fragments are all formed, is tested
+        // once for all its lanes, so that its additions take no branch per
+        // lane.
         for i in LANES {
             if formed != [!0; 4] && formed[i] == 0 {
                 self.add(
@@ -1146,6 +1221,151 @@ mod tests {
             }
         }
         assert!(tested > 100, "{tested}");
+    }
+
+    #[test]
+    fn row_spare_cells_reject_the_u32_extent_boundary() {
+        let glyph = Prepared {
+            outline: Arc::new(PathBuilder::new().finish()),
+            edges: Vec::new(),
+            x: 0,
+            y: 0,
+            width: 0,
+            height: usize::try_from(u32::MAX).unwrap() - SPARE + 1,
+            bytes: 0,
+        };
+        let error =
+            Rows::new(&glyph, 0.0, Limits::default(), &mut Clipping::default()).unwrap_err();
+        assert_eq!(error.message, "glyph extent budget exceeded");
+    }
+
+    #[test]
+    fn warm_row_tables_and_padded_fragments_share_one_budget() {
+        let limits = Limits::default();
+        let mut tall = PathBuilder::new();
+        tall.rect(0.0, 0.0, 1.0, 64.0);
+        let tall = Prepared::new(
+            &Arc::new(tall.finish()),
+            Transform::IDENTITY,
+            Resolution::Low,
+            limits,
+        )
+        .unwrap();
+        let mut clipping = Clipping::default();
+        drop(Rows::new(&tall, 0.0, limits, &mut clipping).unwrap());
+        let retained_tables =
+            (clipping.starts.capacity() + clipping.rows.capacity()) * size_of::<usize>();
+
+        // Three separated unit squares have six nonhorizontal edge
+        // fragments: the last quad needs two transparent padding lanes.
+        let mut short = PathBuilder::new();
+        for x in [0.0, 2.0, 4.0] {
+            short.rect(x, 0.0, 1.0, 1.0);
+        }
+        let short = Prepared::new(
+            &Arc::new(short.finish()),
+            Transform::IDENTITY,
+            Resolution::Low,
+            limits,
+        )
+        .unwrap();
+        // The old tables alone fit, and the short glyph fits with compact
+        // tables. Keeping both old tables alongside its fragments does not.
+        // Derive the allowance from observed capacity, not exact allocation.
+        let budget = retained_tables + size_of::<Quad>();
+        let limited = Limits {
+            decoded_bytes: 2 * budget,
+            ..limits
+        };
+        let rows = Rows::new(&short, 0.0, limited, &mut clipping).unwrap();
+        assert_eq!(rows.count, 6);
+        let held = (clipping.starts.capacity() + clipping.rows.capacity()) * size_of::<usize>()
+            + clipping.fragments.capacity() * size_of::<Fragment>()
+            + rows.quads.capacity() * size_of::<Quad>();
+        assert!(held <= budget, "retained payload {held} exceeds {budget}");
+        let mut mask = Coverage::default();
+        rows.mask(0.0, limited, &mut Accumulator::default(), &mut mask)
+            .unwrap();
+        assert_eq!(mask.width, 8);
+        assert_eq!(
+            mask.data,
+            [255, 0, 255, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        );
+    }
+
+    #[test]
+    fn partial_quad_padding_is_admitted_before_counting_rows() {
+        let mut path = PathBuilder::new();
+        path.rect(0.0, 0.0, 1.0, 1.0);
+        let glyph = Prepared::new(
+            &Arc::new(path.finish()),
+            Transform::IDENTITY,
+            Resolution::Low,
+            Limits::default(),
+        )
+        .unwrap();
+        // Two vertical edge fragments still occupy one entire quad. This
+        // allowance is one byte below even the minimum vector payload.
+        let required = (2 * glyph.height + 1) * size_of::<usize>()
+            + 2 * size_of::<Fragment>()
+            + size_of::<Quad>();
+        let mut clipping = Clipping::default();
+        drop(Rows::new(&glyph, 0.0, Limits::default(), &mut clipping).unwrap());
+        assert!(clipping.starts.capacity() > 0 && clipping.fragments.capacity() > 0);
+        let limits = Limits {
+            decoded_bytes: 2 * (required - 1),
+            ..Limits::default()
+        };
+        let error = Rows::new(&glyph, 0.0, limits, &mut clipping).unwrap_err();
+        assert_eq!(error.message, "glyph row fragment budget exceeded");
+        assert_eq!(
+            clipping.starts.capacity() + clipping.rows.capacity() + clipping.fragments.capacity(),
+            0
+        );
+
+        // With a normal allowance the same geometry paints the independent
+        // unit-square mask, including a transparent padded column and row.
+        let rows = Rows::new(&glyph, 0.0, Limits::default(), &mut clipping).unwrap();
+        assert_eq!(rows.count, 2);
+        let mut mask = Coverage::default();
+        rows.mask(
+            0.0,
+            Limits::default(),
+            &mut Accumulator::default(),
+            &mut mask,
+        )
+        .unwrap();
+        assert_eq!(mask.data, [255, 0, 0, 0, 0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn row_budgets_stop_tall_glyphs_before_their_rows_are_counted() {
+        let mut path = PathBuilder::new();
+        path.rect(0.0, 0.0, 1.0, 1.0);
+        let path = Arc::new(path.finish());
+        // A bar one pixel wide and 400,000 rows tall: both its sides cross
+        // every row.
+        let tall = Transform::new(1.0, 0.0, 0.0, 400_000.0, 0.0, 0.0);
+        let glyph = Prepared::new(&path, tall, Resolution::Low, Limits::default()).unwrap();
+        let tables = (glyph.height + 1) * 2 * size_of::<usize>();
+        let mut clipping = Clipping::default();
+        // The row tables fit and a few fragments do; one side's rows do not.
+        let fragments = Limits {
+            decoded_bytes: 2 * (tables + 4096),
+            ..Limits::default()
+        };
+        let error = Rows::new(&glyph, 0.0, fragments, &mut clipping).unwrap_err();
+        assert_eq!(error.message, "glyph row fragment budget exceeded");
+        assert!(clipping.fragments.capacity() <= 4096);
+        // The row tables alone exceed this smaller budget. The failed
+        // request leaves the already-empty row storage unallocated.
+        let rows = Limits {
+            decoded_bytes: tables / 2,
+            ..Limits::default()
+        };
+        let error = Rows::new(&glyph, 0.0, rows, &mut clipping).unwrap_err();
+        assert_eq!(error.message, "glyph row fragment budget exceeded");
+        assert_eq!(clipping.starts.capacity() + clipping.rows.capacity(), 0);
     }
 
     #[test]

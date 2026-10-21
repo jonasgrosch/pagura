@@ -1,6 +1,7 @@
 //! `content`: a content stream compiles into a display list or fails with a
 //! structured error (clause 7.8.2, Annex A; ADR 0004), and the list renders
-//! so that a tile equals the same pixels of the whole page.
+//! under both accuracy paths so that a tile equals the same pixels of the
+//! whole page.
 //!
 //! The input is the content stream of a fixed 32 × 32 page whose resources
 //! name one of each kind: `/GS` and `/GS1` graphics states; `/C`
@@ -11,7 +12,7 @@
 //! `/Members`.
 
 use super::wrapper::Pdf;
-use pagura::{Document, OpenOptions, RenderOptions, Tile};
+use pagura::{Accuracy, Document, OpenOptions, RenderOptions, Tile};
 
 /// Objects 5 onwards, after the catalog (1), page tree (2), page (3) and
 /// content stream (4).
@@ -33,7 +34,8 @@ const TILE: Tile = Tile {
     height: 13,
 };
 
-/// Compiles the page and renders it whole and as one tile.
+/// Compiles the page and renders it whole and as one tile, exactly and
+/// competitively.
 ///
 /// # Panics
 ///
@@ -50,17 +52,26 @@ pub fn run(data: &[u8]) {
         return;
     };
     if let Some(list) = super::checked(pagura::compile_page(&document, page)) {
-        let render = RenderOptions::default();
-        let whole = super::checked(list.render(&render));
-        let tile = super::checked(list.render_tile(&render, TILE));
-        if let (Some(whole), Some(tile)) = (whole, tile) {
-            assert_eq!((whole.width(), whole.height()), (32, 32), "page size");
-            assert_eq!((tile.width(), tile.height()), (TILE.width, TILE.height));
-            let row = usize::try_from(TILE.width * 4).unwrap_or(usize::MAX);
-            let x = usize::try_from(TILE.x * 4).unwrap_or(usize::MAX);
-            for y in 0..TILE.height {
-                let expected = whole.row(TILE.y + y).and_then(|r| r.get(x..x + row));
-                assert_eq!(tile.row(y), expected, "tile row {y} differs from the page");
+        for accuracy in [Accuracy::Exact, Accuracy::Competitive] {
+            let render = RenderOptions {
+                accuracy,
+                ..RenderOptions::default()
+            };
+            let whole = super::checked(list.render(&render));
+            let tile = super::checked(list.render_tile(&render, TILE));
+            if let (Some(whole), Some(tile)) = (whole, tile) {
+                assert_eq!((whole.width(), whole.height()), (32, 32), "page size");
+                assert_eq!((tile.width(), tile.height()), (TILE.width, TILE.height));
+                let row = usize::try_from(TILE.width * 4).unwrap_or(usize::MAX);
+                let x = usize::try_from(TILE.x * 4).unwrap_or(usize::MAX);
+                for y in 0..TILE.height {
+                    let expected = whole.row(TILE.y + y).and_then(|r| r.get(x..x + row));
+                    assert_eq!(
+                        tile.row(y),
+                        expected,
+                        "{accuracy:?} tile row {y} differs from the page"
+                    );
+                }
             }
         }
     }

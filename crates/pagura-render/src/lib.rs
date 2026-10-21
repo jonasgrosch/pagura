@@ -52,7 +52,10 @@ pub mod form_appearance;
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum Accuracy {
-    /// Every pixel within one level of its exact result.
+    /// Within one level of the stage-specific references in ADR 0004.
+    /// Composition is evaluated on already quantized coverage bytes; this
+    /// does not establish a one-level bound against unquantized coverages or
+    /// a filtered continuous scene.
     #[default]
     Exact,
     /// One faster approximation per primitive, chosen against the competitive
@@ -66,8 +69,11 @@ pub enum Accuracy {
     /// - Other fills and strokes accumulate signed areas in cells after
     ///   flattening curves to 1/64-pixel chords. Compound paths without a
     ///   retained stroke boundary keep geometric integration of their union.
-    /// - Clipping paths that a mark does not lie inside multiply into it as
-    ///   their own cell coverage, integrated once per band.
+    /// - A clipping path that contains a mark is dropped for it, and a
+    ///   quadrilateral mark within quadrilateral clips is integrated with them
+    ///   geometrically. A rectangular clip multiplies into a mark as a column
+    ///   factor times a row factor; any other clipping path as its own cell
+    ///   coverage, integrated once per band.
     /// - Admitted opaque Normal composition uses the same 16-bit storage and
     ///   bounded chunks as Exact, on this policy's coverage bytes. Where Exact
     ///   admits f32 storage, composition instead rounds once into byte storage
@@ -79,11 +85,19 @@ pub enum Accuracy {
     ///   filtered row by row straight into the output, within one level of
     ///   the exact result. This applies where a page is compiled and
     ///   rendered in one call ([`render_page`], [`render_tile`] and their
-    ///   [`RenderContext`] versions). Other images are sampled exactly.
+    ///   [`RenderContext`] versions).
+    /// - Minified opaque DeviceGray or DeviceRGB JPEG images drawn from page
+    ///   content are reconstructed with 1, 2, 3, 4 or 6 cells per block
+    ///   axis, at least two and a half per device pixel. Remaining images
+    ///   are sampled exactly.
     /// - Embedded TrueType programs are decoded only as far as drawing reads
     ///   them, so damage in later tables is neither examined nor reported.
     ///
-    /// It does not meet the one-level contract.
+    /// A limit error from competitive compositing triggers one retry of the
+    /// same display list with exact compositing. The retry retains the
+    /// compilation's image samples and font-validation policy; it may still
+    /// fail. Compilation and direct-image attempts can add work before this
+    /// retry. This policy does not meet the one-level contract.
     Competitive,
 }
 
@@ -198,21 +212,7 @@ fn pixels(extent: f64) -> Result<u32> {
 /// error for budget violations, and syntax errors for malformed content.
 /// No partial page is ever returned.
 pub fn render_page(document: &Document, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
-    let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
-    direct_image::render(
-        |layout| {
-            interpreter::compile_cached_with(
-                document,
-                page,
-                None,
-                &fonts,
-                (layout, None, options.drawn_scale(page)),
-            )
-        },
-        options,
-        None,
-        (None, compositor::Lent::default()),
-    )
+    render_compiled(document, page, options, None, None)
 }
 
 /// Renders a whole page using explicitly supplied external font resources.
@@ -225,21 +225,7 @@ pub fn render_page_with(
     options: &RenderOptions,
     provider: &dyn Provider,
 ) -> Result<Pixmap> {
-    let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
-    direct_image::render(
-        |layout| {
-            interpreter::compile_cached_with(
-                document,
-                page,
-                Some(provider),
-                &fonts,
-                (layout, None, options.drawn_scale(page)),
-            )
-        },
-        options,
-        None,
-        (None, compositor::Lent::default()),
-    )
+    render_compiled(document, page, options, Some(provider), None)
 }
 
 /// Renders one tile of a page. Tiles of one page with the same options
@@ -256,21 +242,7 @@ pub fn render_tile(
     options: &RenderOptions,
     tile: Tile,
 ) -> Result<Pixmap> {
-    let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
-    direct_image::render(
-        |layout| {
-            interpreter::compile_cached_with(
-                document,
-                page,
-                None,
-                &fonts,
-                (layout, None, options.drawn_scale(page)),
-            )
-        },
-        options,
-        Some(tile),
-        (None, compositor::Lent::default()),
-    )
+    render_compiled(document, page, options, None, Some(tile))
 }
 
 /// Renders a tile using explicitly supplied external font resources.
@@ -284,19 +256,31 @@ pub fn render_tile_with(
     tile: Tile,
     provider: &dyn Provider,
 ) -> Result<Pixmap> {
+    render_compiled(document, page, options, Some(provider), Some(tile))
+}
+
+/// Compiles `page` for one rendering and renders it whole or as `tile`, with
+/// a font cache of its own.
+fn render_compiled(
+    document: &Document,
+    page: &Page,
+    options: &RenderOptions,
+    provider: Option<&dyn Provider>,
+    tile: Option<Tile>,
+) -> Result<Pixmap> {
     let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
     direct_image::render(
         |layout| {
             interpreter::compile_cached_with(
                 document,
                 page,
-                Some(provider),
+                provider,
                 &fonts,
                 (layout, None, options.drawn_scale(page)),
             )
         },
         options,
-        Some(tile),
+        tile,
         (None, compositor::Lent::default()),
     )
 }

@@ -1,0 +1,104 @@
+--- a/crates/pagura-render/src/fragments/glyphs.rs
++++ b/crates/pagura-render/src/fragments/glyphs.rs
+@@ -1206,6 +1206,101 @@
+     }
+ 
+     #[test]
++    fn row_spare_cells_reject_the_u32_extent_boundary() {
++        let glyph = Prepared {
++            outline: Arc::new(PathBuilder::new().finish()),
++            edges: Vec::new(),
++            x: 0,
++            y: 0,
++            width: 0,
++            height: usize::try_from(u32::MAX).unwrap() - SPARE + 1,
++            bytes: 0,
++        };
++        let error = Rows::new(&glyph, 0.0, Limits::default(), &mut Clipping::default()).unwrap_err();
++        assert_eq!(error.message, "glyph extent budget exceeded");
++    }
++
++    #[test]
++    fn warm_row_tables_and_padded_fragments_share_one_budget() {
++        let limits = Limits::default();
++        let mut tall = PathBuilder::new();
++        tall.rect(0.0, 0.0, 1.0, 64.0);
++        let tall = Prepared::new(
++            &Arc::new(tall.finish()),
++            Transform::IDENTITY,
++            Resolution::Low,
++            limits,
++        )
++        .unwrap();
++        let mut clipping = Clipping::default();
++        drop(Rows::new(&tall, 0.0, limits, &mut clipping).unwrap());
++        let retained_tables = (clipping.starts.capacity() + clipping.rows.capacity())
++            * size_of::<usize>();
++
++        // Three separated unit squares have six nonhorizontal edge
++        // fragments: the last quad needs two transparent padding lanes.
++        let mut short = PathBuilder::new();
++        for x in [0.0, 2.0, 4.0] {
++            short.rect(x, 0.0, 1.0, 1.0);
++        }
++        let short = Prepared::new(
++            &Arc::new(short.finish()),
++            Transform::IDENTITY,
++            Resolution::Low,
++            limits,
++        )
++        .unwrap();
++        // The old tables alone fit, and the short glyph fits with compact
++        // tables. Keeping both old tables alongside its fragments does not.
++        // Derive the allowance from observed capacity, not exact allocation.
++        let budget = retained_tables + size_of::<Quad>();
++        let limited = Limits { decoded_bytes: 2 * budget, ..limits };
++        let rows = Rows::new(&short, 0.0, limited, &mut clipping).unwrap();
++        assert_eq!(rows.count, 6);
++        let held = (clipping.starts.capacity() + clipping.rows.capacity())
++            * size_of::<usize>()
++            + clipping.fragments.capacity() * size_of::<Fragment>()
++            + rows.quads.capacity() * size_of::<Quad>();
++        assert!(held <= budget, "retained payload {held} exceeds {budget}");
++        let mut mask = Coverage::default();
++        rows.mask(0.0, limited, &mut Accumulator::default(), &mut mask).unwrap();
++        assert_eq!(mask.width, 8);
++        assert_eq!(mask.data, [255, 0, 255, 0, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
++    }
++
++    #[test]
++    fn partial_quad_padding_is_admitted_before_counting_rows() {
++        let mut path = PathBuilder::new();
++        path.rect(0.0, 0.0, 1.0, 1.0);
++        let glyph = Prepared::new(
++            &Arc::new(path.finish()),
++            Transform::IDENTITY,
++            Resolution::Low,
++            Limits::default(),
++        )
++        .unwrap();
++        // Two vertical edge fragments still occupy one entire quad. This
++        // allowance is one byte below even the minimum vector payload.
++        let required = (2 * glyph.height + 1) * size_of::<usize>()
++            + 2 * size_of::<Fragment>() + size_of::<Quad>();
++        let mut clipping = Clipping::default();
++        drop(Rows::new(&glyph, 0.0, Limits::default(), &mut clipping).unwrap());
++        assert!(clipping.starts.capacity() > 0 && clipping.fragments.capacity() > 0);
++        let limits = Limits { decoded_bytes: 2 * (required - 1), ..Limits::default() };
++        let error = Rows::new(&glyph, 0.0, limits, &mut clipping).unwrap_err();
++        assert_eq!(error.message, "glyph row fragment budget exceeded");
++        assert_eq!(clipping.starts.capacity() + clipping.rows.capacity() + clipping.fragments.capacity(), 0);
++
++        // With a normal allowance the same geometry paints the independent
++        // unit-square mask, including a transparent padded column and row.
++        let rows = Rows::new(&glyph, 0.0, Limits::default(), &mut clipping).unwrap();
++        assert_eq!(rows.count, 2);
++        let mut mask = Coverage::default();
++        rows.mask(0.0, Limits::default(), &mut Accumulator::default(), &mut mask).unwrap();
++        assert_eq!(mask.data, [255, 0, 0, 0, 0, 0, 0, 0]);
++    }
++
++    #[test]
+     fn row_budgets_stop_tall_glyphs_before_their_rows_are_counted() {
+         let mut path = PathBuilder::new();
+         path.rect(0.0, 0.0, 1.0, 1.0);

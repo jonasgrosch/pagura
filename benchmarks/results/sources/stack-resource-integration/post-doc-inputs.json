@@ -1,0 +1,17 @@
+{
+  "crates/pagura-image/src/dct/transform/cells.rs": "d4bbfea296642949d670040d32fb98811ae6c78f2ad26cb21820d5b46641b356",
+  "crates/pagura-raster/src/stroke.rs": "001271404aab05be5598032d49e8d338e526a5ac7266a460720caf67e0ad0115",
+  "crates/pagura-raster/src/stroke/tiling.rs": "35dd97ed16bef81621c78b57fbc8502aab4c31a4f46e5f45519f54a2d8b78583",
+  "crates/pagura-render/src/compositor.rs": "b9ad6968e3c6165ba5e5f05ec0ef73c9c89e23935a3ab7d7d5fa7b2187aeded5",
+  "crates/pagura-render/src/compositor/lowp.rs": "7f5a40ce9b5efb99d9d898d69c4bc1a2c5599afa0cf9dc828544c4ca309e2fe6",
+  "crates/pagura-render/src/compositor/narrow.rs": "d210b8802bb6921b32b9b5876f3e6beff7b11f6520b1166bd7f9bcf2b149b2b3",
+  "crates/pagura-render/src/context.rs": "c1e8496dec28955aa531ffa4d874624587cddb157aa925481b24832167dde09f",
+  "crates/pagura-render/src/display.rs": "507ca8739fc2f9cfe8ed9169549f67bacb1b82b5df6a8d499781b179c2d8fc43",
+  "crates/pagura-render/src/fragments/glyphs.rs": "0608bf0e559bb1ee2a62ee053ce5e0ec20adfa5726b20923913afab5a87869fa",
+  "crates/pagura-render/src/lib.rs": "8c4bb13d80074d8add3b9bb9d48834899fcfe3265774e02858739ed017b8f14f",
+  "crates/pagura-render/src/tests.rs": "2244d4da71c9f51df6f920bf319ea854ca04a7ec7eea66cebd26404a56b9e8bb",
+  "docs/adr/0004-rendering-pipeline.md": "dddcb81d05e03298da3fafab3afb71d6dbdfdd9db641fb229146a8be626c46d2",
+  "fuzz/src/content.rs": "83ee4001f6ce4d69c500667891fccc88a08634ac5c895c840dfe2779d9a3a99f",
+  "fuzz/src/render.rs": "f60091a4710da2dcb4d14b350f90b366b648ade8f308ef0f889863a71ea2f064",
+  "crates/pagura-render/src/direct_image.rs": "3bc96c35f61897b4fd0e695456668e4f12da6379f5bb78e8eb0468691072a81b"
+}

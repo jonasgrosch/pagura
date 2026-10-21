@@ -67,7 +67,7 @@ pub(crate) fn render(
                 return Ok(pixmap);
             }
         }
-        // A list without deferred samples is the exact list.
+        // A list without deferred samples can use the general compositor directly.
         if !deferred(&list.commands) {
             return finish(&list, options, tile, lent);
         }

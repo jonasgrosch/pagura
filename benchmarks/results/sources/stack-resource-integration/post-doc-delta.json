@@ -1,0 +1,22 @@
+{
+  "crates/pagura-render/src/lib.rs": {
+    "before_sha256": "10616a50ed4e4cc303a6886b953a4d6419090ba7f0f89c3b728a4873b0eba52a",
+    "after_sha256": "8c4bb13d80074d8add3b9bb9d48834899fcfe3265774e02858739ed017b8f14f",
+    "only_line_comments_changed": true
+  },
+  "crates/pagura-render/src/display.rs": {
+    "before_sha256": "e0fb9a571e0d69aa92c5f29f851af070ffe8d29de2b8ecb60eb449a364568ca5",
+    "after_sha256": "507ca8739fc2f9cfe8ed9169549f67bacb1b82b5df6a8d499781b179c2d8fc43",
+    "only_line_comments_changed": true
+  },
+  "crates/pagura-render/src/direct_image.rs": {
+    "before_sha256": "aaba742c8a63d854b37d9f36ef163b8662dc7b633a2f9c0023d332222f1724cc",
+    "after_sha256": "3bc96c35f61897b4fd0e695456668e4f12da6379f5bb78e8eb0468691072a81b",
+    "only_line_comments_changed": true
+  },
+  "crates/pagura-render/src/fragments/glyphs.rs": {
+    "before_sha256": "b19d33c15a531d4b8e02bdf68bf5cd9c3ab5b67a4d5e98b27d603f364a2f81a4",
+    "after_sha256": "0608bf0e559bb1ee2a62ee053ce5e0ec20adfa5726b20923913afab5a87869fa",
+    "only_line_comments_changed": true
+  }
+}

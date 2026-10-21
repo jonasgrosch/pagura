@@ -1,0 +1,1 @@
+Canceled before completion: independent review found retained glyph table capacity and quad padding not covered by the new half-budget claim. No performance result; incomplete check is not a pass.

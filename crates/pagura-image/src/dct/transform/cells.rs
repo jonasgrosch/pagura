@@ -139,8 +139,7 @@ impl Cells {
     /// the natural positions in `set` hold nonzero coefficients; they are
     /// visited in row-major order, as a dense pass that skips zeros would.
     /// Each row's horizontal means are summed before they enter the
-    /// vertical ones. Cells past the count have zero weights and are not
-    /// stored.
+    /// vertical ones.
     fn means<const N: usize>(&self, natural: &[f32; 64], set: u64) -> [[u8; N]; N] {
         let mut vertical = [[0.0f32; N]; N];
         for (v, (row, basis)) in natural

@@ -57,13 +57,17 @@ impl RenderContext {
     }
 
     /// Returns a rendered surface's storage to the context, which keeps the
-    /// largest it has been given and stores its next competitive rendering
-    /// ([`crate::Accuracy::Competitive`]) there, when it is large enough,
-    /// instead of allocating new memory. Pixels are the same either way.
+    /// largest it has been given within
+    /// [`pagura_core::Limits::decoded_bytes`] and stores its next competitive
+    /// rendering ([`crate::Accuracy::Competitive`]) there, when it is large
+    /// enough, instead of allocating new memory. Pixels are the same either
+    /// way.
     pub fn recycle(&self, pixmap: Pixmap) {
         if let Ok(mut spare) = self.spare.try_lock() {
             let storage = pixmap.into_storage();
-            if storage.capacity() > spare.capacity() {
+            if storage.capacity() > spare.capacity()
+                && storage.capacity() <= self.document.limits().decoded_bytes
+            {
                 *spare = storage;
             }
         }
@@ -77,10 +81,11 @@ impl RenderContext {
     /// Estimated font-input, dictionary, outline and bookkeeping bytes
     /// retained, bounded by [`pagura_core::Limits::document_bytes`], plus
     /// image planes kept for reuse, bounded by
-    /// [`pagura_core::Limits::decoded_bytes`], and glyph masks retained for
+    /// [`pagura_core::Limits::decoded_bytes`], glyph masks retained for
     /// [`crate::Accuracy::Competitive`], at most 16 MiB within the document
-    /// limit. Parsed font internals retain their own limits; this is not
-    /// allocator or peak-memory telemetry.
+    /// limit, and the surface storage kept by [`Self::recycle`]. Parsed font
+    /// internals retain their own limits; this is not allocator or
+    /// peak-memory telemetry.
     pub fn retained_bytes(&self) -> usize {
         let fonts = self
             .fonts
@@ -92,9 +97,15 @@ impl RenderContext {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .retained_bytes();
+        let spare = self
+            .spare
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .capacity();
         fonts
             .saturating_add(glyphs)
             .saturating_add(self.buffers.retained_bytes())
+            .saturating_add(spare)
     }
 
     /// Compiles a page, reusing this document's fonts and glyph outlines.
