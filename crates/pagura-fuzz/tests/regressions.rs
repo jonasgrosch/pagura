@@ -3,7 +3,7 @@
 //!
 //! `fuzz/regressions/<target>/<name>` holds inputs that once made a fuzz
 //! target fail, minimized, each with a one-line note in `<name>.txt`. They
-//! run through the drivers the libFuzzer targets use (`fuzz/src/`), so each
+//! run through the drivers the libFuzzer targets use (this crate), so each
 //! input must again reach the end: every API returns a value that keeps its
 //! documented contract or a structured error, and nothing panics.
 //! [`KNOWN_FAILURES`] lists the stored inputs whose fix has not landed yet;
@@ -11,8 +11,7 @@
 //! drivers also run on the generated fixtures their seeds come from, which
 //! they must pass: a driver that fails on valid input hides its findings.
 
-#[path = "../../../fuzz/src/lib.rs"]
-mod harness;
+use pagura_fuzz as harness;
 
 use pagura::{Document, OpenOptions};
 use std::path::PathBuf;

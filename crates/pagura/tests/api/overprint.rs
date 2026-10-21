@@ -1,4 +1,3 @@
-#![forbid(unsafe_code)]
 //! Preview policies share compiled content and independent analytic oracles.
 
 use pagura::{Document, OpenOptions, OverprintPreview, RenderOptions, Rgba8, Tile};

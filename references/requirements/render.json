@@ -16,7 +16,7 @@
       ],
       "status": "vector pipeline with independent device-colour and state oracles",
       "tests": [
-        "pagura/tests/render.rs"
+        "pagura/tests/api/render.rs"
       ],
       "gaps": "calibrated group blending, subtractive overprint and transfer-region selection",
       "rule": "Page coordinates, initial state, rectangle construction, painting and device colours follow Tables 51, 52, 58 and 59."

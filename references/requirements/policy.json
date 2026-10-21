@@ -9,7 +9,7 @@
       "clauses": [],
       "status": "implemented for declared unsupported fixture set",
       "tests": [
-        "pagura/tests/render.rs",
+        "pagura/tests/api/render.rs",
         "tools/conformance.py"
       ],
       "gaps": "exhaustive feature coverage"

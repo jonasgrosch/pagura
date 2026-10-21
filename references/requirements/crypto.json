@@ -1128,7 +1128,7 @@
     {
       "id": "legacy-text-encoding",
       "paths": [
-        "crates/pagura/src/main.rs",
+        "crates/pagura-cli/src/password.rs",
         "crates/pagura-document/src/security.rs"
       ],
       "locator": "7.6.4.3.2(a); 7.6.4.4.1; Table D.3 row U+20AC",

@@ -108,7 +108,7 @@ def run_conversion(args):
         from .documents import document_jobs
         document_jobs(cases, {"pagura": None})
     path = local_report_path(args.output, args.command + ".json")
-    subprocess.run(["cargo", "build", "--release", "--locked", "--offline", "-p", "pagura"], cwd=ROOT, check=True)
+    subprocess.run(["cargo", "build", "--release", "--locked", "--offline", "--bin", "pagura"], cwd=ROOT, check=True)
 
     def execute(bases, revision=None):
         identities = {name: identify(name, base) for name, base in bases.items()}

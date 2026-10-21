@@ -25,7 +25,7 @@ def run(args):
     bases = engines()
     if set(requested) - bases.keys():
         raise ValueError("unknown engine")
-    subprocess.run(["cargo", "build", "--release", "--locked", "--offline", "-p", "pagura"], cwd=ROOT, check=True)
+    subprocess.run(["cargo", "build", "--release", "--locked", "--offline", "--bin", "pagura"], cwd=ROOT, check=True)
     identities = {name: identify(name, bases[name]) for name in requested}
     cases = render_cases()
     for case in cases:

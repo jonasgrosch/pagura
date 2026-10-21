@@ -29,7 +29,7 @@
       "status": "every target runs under reduced Limits with a 10 s time limit and a 2 GiB memory limit per input",
       "tests": [
         "tools/fuzz_smoke.py",
-        "fuzz/src/lib.rs limits"
+        "crates/pagura-fuzz/src/lib.rs limits"
       ],
       "gaps": "Limits bound work per operation, not process memory; libFuzzer's limits are the only process-level bound."
     },
@@ -39,11 +39,11 @@
       "clauses": [],
       "status": "decoded samples match image sizes and bit depths, filter output caps hold, glyph codes cover decoded strings, tiles equal the whole page (ADR 0004), and host responses follow PROTOCOL.md",
       "tests": [
-        "fuzz/src/image.rs",
-        "fuzz/src/filters.rs",
-        "fuzz/src/text.rs",
-        "fuzz/src/content.rs",
-        "fuzz/src/host.rs"
+        "crates/pagura-fuzz/src/image.rs",
+        "crates/pagura-fuzz/src/filters.rs",
+        "crates/pagura-fuzz/src/text.rs",
+        "crates/pagura-fuzz/src/content.rs",
+        "crates/pagura-fuzz/src/host.rs"
       ],
       "gaps": "No differential comparison with other engines."
     },
@@ -53,7 +53,7 @@
       "clauses": [],
       "status": "every minimized finding in fuzz/regressions/ is replayed on stable Rust through the fuzz drivers; unfixed findings are listed explicitly and fail once fixed",
       "tests": [
-        "pagura/tests/fuzz_regressions.rs"
+        "crates/pagura-fuzz/tests/regressions.rs"
       ],
       "gaps": ""
     },

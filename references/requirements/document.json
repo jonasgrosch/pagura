@@ -11,7 +11,7 @@
       ],
       "status": "partial",
       "tests": [
-        "pagura/tests/document.rs"
+        "pagura/tests/api/document.rs"
       ],
       "gaps": "broad real-document validation"
     },

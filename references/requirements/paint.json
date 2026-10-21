@@ -472,14 +472,14 @@
       ],
       "status": "implemented subset",
       "tests": [
-        "pagura provider::facade_feature_selects_provider_and_reuses_document_resources",
-        "pagura provider::provider_and_explicit_entry_points_agree_and_load_once",
-        "pagura provider::context_rejects_foreign_pages",
+        "pagura api::provider::facade_feature_selects_provider_and_reuses_document_resources",
+        "pagura api::provider::provider_and_explicit_entry_points_agree_and_load_once",
+        "pagura api::provider::context_rejects_foreign_pages",
         "paint/text-font-shared-pages",
-        "pagura provider::fonts_and_outlines_are_shared_across_document_pages",
+        "pagura api::provider::fonts_and_outlines_are_shared_across_document_pages",
         "pagura-render interpreter::text::cache::tests::retained_cache_admission_eviction_and_duplicate_publication_are_bounded",
         "paint/text-late-font-repair",
-        "pagura cli::scan_retries_a_late_repair_without_losing_earlier_pages",
+        "pagura-cli cli::scan_retries_a_late_repair_without_losing_earlier_pages",
         "pagura-render interpreter::text::cache::tests::admission_follows_the_loaded_fonts_owned_estimate",
         "pagura-render interpreter::text::cache::tests::each_dictionary_owns_its_glyph_outlines",
         "pagura-render interpreter::text::cache::tests::evicted_records_cannot_populate_replacements",
@@ -634,7 +634,7 @@
       "status": "implemented subset",
       "tests": [
         "paint/bundled-cjk-substitute",
-        "pagura provider::cjk_substitute_matches_independent_otf_oracle"
+        "pagura api::provider::cjk_substitute_matches_independent_otf_oracle"
       ],
       "gaps": "Horizontal only, behind cjk-fonts; glyphs and curves independently decoded from the pinned regional OTF.",
       "review": [
@@ -659,7 +659,7 @@
       "tests": [
         "paint/bundled-diagnostic-kinds",
         "tools/host_test.mjs testDiagnosticKinds",
-        "pagura CLI scan_separates_information_from_repairs"
+        "pagura-cli cli::scan_separates_information_from_repairs"
       ],
       "gaps": "Diagnostic classification follows ADR 0003/0009; the polygon oracle follows the locked substitute and explicit PDF metrics."
     }

@@ -36,7 +36,7 @@ fn close(actual: f64, expected: &Value) {
     assert!((actual - number).abs() < 1e-9, "{actual} != {number}");
 }
 fn cases() -> Vec<String> {
-    include_str!("../../../corpus/manifests/text.json")
+    include_str!("../../../../corpus/manifests/text.json")
         .split("\"id\": \"text/")
         .skip(1)
         .filter_map(|s| s.split('"').next())
@@ -132,35 +132,6 @@ fn positioned_semantics_layout_and_search_match_independent_generator() {
             "{name}: rendering changed"
         );
     }
-}
-
-#[test]
-fn cli_copy_and_find_use_zero_based_pages_and_default_user_space() {
-    let path = fixture_path("text", "extract-tj.pdf");
-    let output = std::process::Command::new(env!("CARGO_BIN_EXE_pagura"))
-        .arg("text")
-        .arg(&path)
-        .arg("0")
-        .output()
-        .unwrap();
-    assert!(
-        output.status.success(),
-        "{}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert_eq!(output.stdout, b"ABCD EF\n");
-    let output = std::process::Command::new(env!("CARGO_BIN_EXE_pagura"))
-        .arg("find")
-        .arg(path)
-        .arg("abcd ef")
-        .output()
-        .unwrap();
-    assert!(output.status.success());
-    let output = String::from_utf8(output.stdout).unwrap();
-    assert!(
-        output.starts_with("{\"page\":0,\"start\":0,\"end\":7,\"quads\":[[[10,60]"),
-        "{output}"
-    );
 }
 
 fn check_glyphs(name: &str, text: &pagura_text::TextPage) {

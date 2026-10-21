@@ -35,7 +35,7 @@ in [Editing](EDITING.md); it does not complete M7. Modified saves require strict
 unencrypted input. Signed input needs an explicit original-byte preservation
 policy, which makes no signature-validity or permitted-change claim.
 
-`pagura/tests/editing.rs` exercises independent source syntax, prefix/trailer and
+`pagura/tests/api/editing.rs` exercises independent source syntax, prefix/trailer and
 generation preservation, rollback, repeated saves, bounds, signature integrity,
 and form save/reopen pixel equivalence. Hosted CI performs the full product
 contract; `editing-interoperability` also checks saved outputs with qpdf and

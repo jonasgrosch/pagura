@@ -1,9 +1,7 @@
 #![forbid(unsafe_code)]
 //! The command-line tool, run as a subprocess.
 
-mod support;
-
-use pagura_testkit::{assert_bytes_eq, fixture, fixture_path};
+use pagura_testkit::{Manifest, assert_bytes_eq, fixture, fixture_path};
 use std::path::PathBuf;
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -26,6 +24,24 @@ impl Drop for Scratch {
     fn drop(&mut self) {
         let _ = std::fs::remove_dir_all(&self.0);
     }
+}
+
+/// The first classic case expected to be unsupported, as (fixture path,
+/// feature tag).
+#[expect(
+    clippy::expect_used,
+    reason = "generated unsupported cases name their fixture and feature"
+)]
+fn unsupported_case() -> (PathBuf, String) {
+    let manifest = Manifest::load("classic");
+    let case = manifest
+        .cases()
+        .find(|case| case.string("expected") == Some("unsupported"))
+        .expect("the classic manifest has an unsupported case");
+    let feature = case
+        .string("feature")
+        .expect("unsupported cases name a feature");
+    (case.path().expect("a fixture path"), feature.to_owned())
 }
 
 fn pagura() -> Command {
@@ -95,7 +111,7 @@ fn does_not_overwrite_files_or_emit_partial_unsupported_images() {
         .unwrap();
     assert!(!result.status.success());
     assert_eq!(std::fs::read(existing).unwrap(), b"preserve me");
-    let (unsupported, feature) = support::unsupported_cases().remove(0);
+    let (unsupported, feature) = unsupported_case();
     let missing = scratch.0.join("unsupported.ppm");
     let result = pagura()
         .arg("render")
@@ -278,5 +294,29 @@ fn overprint_option_selects_the_preview_and_validates_its_value() {
         String::from_utf8(scan.stdout)
             .unwrap()
             .contains("\"failures\":[]")
+    );
+}
+
+#[test]
+fn cli_copy_and_find_use_zero_based_pages_and_default_user_space() {
+    let path = fixture_path("text", "extract-tj.pdf");
+    let output = pagura().arg("text").arg(&path).arg("0").output().unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(output.stdout, b"ABCD EF\n");
+    let output = pagura()
+        .arg("find")
+        .arg(path)
+        .arg("abcd ef")
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let output = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        output.starts_with("{\"page\":0,\"start\":0,\"end\":7,\"quads\":[[[10,60]"),
+        "{output}"
     );
 }

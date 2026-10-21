@@ -1,4 +1,3 @@
-#![forbid(unsafe_code)]
 //! Independent PDF/CMS signatures authored by the standard-library generator.
 use pagura::signatures::{
     Integrity, PermittedModifications, RevocationStatus, SignerTrust, ValidationTime,

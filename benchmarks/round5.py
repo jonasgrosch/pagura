@@ -67,7 +67,7 @@ def build_x86_v3(output, toolchain, host, env):
                        RUSTFLAGS=track["rustflags"])
     variant_env.pop("CARGO_ENCODED_RUSTFLAGS", None)
     checked(toolchain + ["cargo", "build", "--release", "--locked", "--offline", "--target", host,
-                         "-p", "pagura", "--features", "bundled-data"], output / "build.log", env=variant_env)
+                         "--bin", "pagura", "--features", "bundled-data"], output / "build.log", env=variant_env)
     executable = "pagura.exe" if "windows" in host else "pagura"
     binary = output / "build-x86-64-v3" / host / "release" / executable
     return {**track, "status": "available", "binary": str(binary)}
@@ -122,7 +122,7 @@ def build(output, wasmtime, *, include_wasm=True, x86_v3=False):
     features = target_features(toolchain, host, env)
     log = output / "build.log"
     checked(toolchain + ["cargo", "build", "--release", "--locked", "--offline", "--target", host,
-             "-p", "pagura", "-p", "pagura-host", "--features", "pagura-host/bundled-data"], log, env=env)
+             "--bin", "pagura", "--bin", "pagura-host", "--features", "pagura-host/bundled-data"], log, env=env)
     wasi_env = dict(env, CARGO_ENCODED_RUSTFLAGS="-C\x1ftarget-feature=+simd128")
     if include_wasm:
         checked(toolchain + ["cargo", "build", "--release", "--locked", "--offline", "-p", "pagura-host",

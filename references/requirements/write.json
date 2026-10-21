@@ -25,7 +25,7 @@
       ],
       "status": "partial",
       "tests": [
-        "pagura/tests/write.rs",
+        "pagura/tests/api/write.rs",
         "pagura-write/tests/builder.rs: names, generations, sparse xref limits, free chain, stream dictionaries and the writer budgets",
         "pagura-write/tests/round_trip.rs: written values parse back unchanged, at and beyond each limit",
         "pagura-write unit tests (src/writer.rs): exact serialized bytes, hex strings, stream length and the output budget"
@@ -42,7 +42,7 @@
       ],
       "status": "partial",
       "tests": [
-        "pagura/tests/editing.rs: prefix, revisions, trailer IDs, generations, object allocation, stream/hybrid sources, resource bounds, signatures",
+        "pagura/tests/api/editing.rs: prefix, revisions, trailer IDs, generations, object allocation, stream/hybrid sources, resource bounds, signatures",
         "tools/editing_readers.py: qpdf structural checks and Poppler original/saved comparison"
       ],
       "gaps": "Full rewrite, freed objects, encryption-on-write, signed-change permission enforcement. Poppler rejects the original and saved hybrid-precedence fixture; qpdf accepts both."
@@ -57,7 +57,7 @@
       ],
       "status": "partial",
       "tests": [
-        "pagura/tests/editing.rs: text, choice, checkbox/radio appearance round trips, Unicode/inheritance and atomic refusal"
+        "pagura/tests/api/editing.rs: text, choice, checkbox/radio appearance round trips, Unicode/inheritance and atomic refusal"
       ],
       "gaps": "Buttons needing generated state appearances, nested direct fields/widgets, XFA and rich text. Changed password fields are refused; no password value/appearance is emitted."
     }
