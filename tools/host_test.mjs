@@ -535,7 +535,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
       if (entry.id === 'classic/many-rectangles') {
         const retained = [...canvases()];
         const viewport = elements.get('viewport'); viewport.scrollTop = 400; viewport.dispatch('scroll');
-        await waitFor(() => canvases().length === 3 && canvases().every((canvas) => parseFloat(canvas.style.top) === 384) && ready());
+        await waitFor(() => canvases().length === 6 && canvases().every((canvas) => [256, 384].includes(parseFloat(canvas.style.top))) && ready());
         viewport.scrollTop = 0; viewport.dispatch('scroll'); await waitFor(() => canvases().length === 9 && ready());
         assert.ok(retained.every(canvas => canvases().includes(canvas)), 'scrolling back reuses the same full-resolution canvases');
       }
