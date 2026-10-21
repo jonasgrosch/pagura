@@ -32,9 +32,13 @@ available in both recovery modes.
   Thumbnail rows are virtualized and keyboard navigable; up to 32 thumbnails
   are retained (under 24 MiB including separate base/draft RGBA canvases). One thumbnail request runs
   at a time, after visible-page work, and stale document results are discarded.
-  Thumbnails retain twice CSS density, downsampled from complete page tiles when
-  available. Otherwise idle 256px chunks build a temporary higher-resolution
-  raster (at most 5.68 MiB), released on completion or interruption. Visible pages composite the same cached
+  Thumbnails retain twice CSS density. Complete page tiles are stitched at their
+  original integer coordinates before a single downsample, avoiding seams from
+  separately filtering fractional tile edges. Temporary RGBA scratch storage is
+  capped at 8 MiB and 4096px per axis; copying yields every four tiles so input
+  can interrupt it. Larger or incomplete cached pages use idle 256px chunks to
+  build a temporary higher-resolution raster (at most 5.68 MiB). Scratch storage
+  is released on completion, interruption or failure. Visible pages composite the same cached
   form artwork used on the page after a short input coalescing delay, without
   saving or rendering another document. Offscreen draft previews are marked
   until their page is viewed; saving refreshes the document-wide baseline.
@@ -168,6 +172,16 @@ reuse/eviction, continuous lazy layout, navigation, fit presets, gestures,
 password retry/cancel, diagnostics and explicit failures. In-memory HTTP tests
 check isolation headers, MIME types and path containment without a socket bind.
 The DOM harness does not establish real-browser layout or touch behavior.
+
+The hosted `thumbnail-pixels` job runs `python3 tools/thumbnail_pixels.py` with
+Chrome in a temporary headless profile. It compares every thumbnail RGBA pixel
+with a single-image downsample of independently drawn artwork, including dark
+backgrounds, text and strokes across tile edges, transparency, partial tiles and
+portrait/landscape sizes. A negative control must detect seams in the original
+per-tile scaling path. It also checks bounded fallback chunks, foreground
+interruption, cache eviction and scratch cleanup. JSON results and before/after
+PNG evidence are uploaded as the `thumbnail-pixels` artifact. No product build
+or additional Python/browser-driver dependencies are needed.
 
 Build release binaries for each revision and run the same workload against each:
 
