@@ -475,6 +475,24 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
   const view = (index) => elements.get('page-surface').children.find((element) => element.getAttribute('data-page') === String(index));
   const content = index => view(index)?.children.find(node => node.className === 'page-content');
   const canvases = (index = 0) => content(index)?.children.filter((element) => element.tagName === 'CANVAS') ?? [];
+  // Compare coverage at the independent oracle's CSS resolution. The viewer's
+  // backing store is deliberately denser; these fixtures are opaque rectangles
+  // (including half-pixel edges), so box averaging preserves exact area coverage.
+  const cssPixels = canvas => {
+    const width = Number.parseFloat(canvas.style.width), height = Number.parseFloat(canvas.style.height);
+    const density = canvas.width / width;
+    assert.ok(Number.isInteger(density) && density >= 1);
+    assert.equal(canvas.height, height * density);
+    const rgba = new Uint8Array(width * height * 4);
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) for (let c = 0; c < 4; c++) {
+      let sum = 0;
+      for (let dy = 0; dy < density; dy++) for (let dx = 0; dx < density; dx++) {
+        sum += canvas.image.data[((y * density + dy) * canvas.width + x * density + dx) * 4 + c];
+      }
+      rgba[(y * width + x) * 4 + c] = Math.round(sum / (density * density));
+    }
+    return { rgba, width, height };
+  };
   try {
     await import(`../web/viewer.mjs?test=${diagnosticKinds ? 'diagnostic-kinds' : startup?.name ?? 'continuous'}`);
     if (startup) {
@@ -486,7 +504,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
         await waitFor(ready); assert.equal(elements.get('filename').textContent, 'two-pages.pdf');
         assert.equal(elements.get('count').textContent, 'of 2');
         const first = manifest.cases.find((entry) => entry.id === 'classic/two-pages');
-        checkPixels({ rgba: canvases()[0].image.data }, ppmPixels(await readFile(join(root, first.oracle)), 64, 64));
+        checkPixels(cssPixels(canvases()[0]), ppmPixels(await readFile(join(root, first.oracle)), 64, 64));
         assert.equal(view(0).getAttribute('role'), 'region');
       }
       return;
@@ -507,9 +525,9 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
       const rgb = ppmPixels(await readFile(join(root, entry.oracle)), entry.width, entry.height);
       assert.ok(canvases().length > 0);
       for (const canvas of canvases()) {
-        const x = parseFloat(canvas.style.left), y = parseFloat(canvas.style.top), rgba = canvas.image.data;
-        for (let row = 0; row < canvas.height; row++) for (let column = 0; column < canvas.width; column++) {
-          const pixel = (row * canvas.width + column) * 4, oracle = ((y + row) * entry.width + x + column) * 3;
+        const x = parseFloat(canvas.style.left), y = parseFloat(canvas.style.top), { rgba, width, height } = cssPixels(canvas);
+        for (let row = 0; row < height; row++) for (let column = 0; column < width; column++) {
+          const pixel = (row * width + column) * 4, oracle = ((y + row) * entry.width + x + column) * 3;
           const differs = [0, 1, 2].some((channel) => Math.abs(rgba[pixel + channel] - rgb[oracle + channel]) > (entry.tolerance ?? 0));
           if (differs || rgba[pixel + 3] !== 255) assert.fail(`Viewer canvas mismatch: ${entry.id}, (${x + column}, ${y + row})`);
         }
@@ -517,8 +535,8 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
       if (entry.id === 'classic/many-rectangles') {
         const retained = [...canvases()];
         const viewport = elements.get('viewport'); viewport.scrollTop = 400; viewport.dispatch('scroll');
-        await waitFor(() => canvases().length === 2 && canvases().every((canvas) => parseFloat(canvas.style.top) === 256) && ready());
-        viewport.scrollTop = 0; viewport.dispatch('scroll'); await waitFor(() => canvases().length === 4 && ready());
+        await waitFor(() => canvases().length === 3 && canvases().every((canvas) => parseFloat(canvas.style.top) === 384) && ready());
+        viewport.scrollTop = 0; viewport.dispatch('scroll'); await waitFor(() => canvases().length === 9 && ready());
         assert.ok(retained.every(canvas => canvases().includes(canvas)), 'scrolling back reuses the same full-resolution canvases');
       }
     }
@@ -529,7 +547,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     elements.get('viewport').scrollTop = 112; elements.get('viewport').dispatch('scroll');
     await waitFor(() => ready() && canvases(1).length > 0);
     assert.ok(view(0) === undefined, 'Offscreen page element must be evicted');
-    checkPixels({ rgba: canvases(1)[0].image.data }, secondPageRgb({ x: 0, y: 0, width: 64, height: 64 }));
+    checkPixels(cssPixels(canvases(1)[0]), secondPageRgb({ x: 0, y: 0, width: 64, height: 64 }));
     elements.get('viewport').clientHeight = 300; elements.get('viewport').scrollTop = 0;
     elements.get('viewport').dispatch('scroll'); await waitFor(() => ready() && canvases(0).length > 0);
     // Both pages coexist when visible, with independently checked content.
@@ -539,7 +557,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     const checkPage = (index) => {
       assert.equal(elements.get('page').value, String(index + 1)); assert.equal(elements.get('count').textContent, 'of 2');
       assert.equal(elements.get('previous').disabled, index === 0); assert.equal(elements.get('next').disabled, index === 1);
-      checkPixels({ rgba: canvases(index)[0].image.data }, index === 0 ? firstPage : secondPageRgb({ x: 0, y: 0, width: 64, height: 64 }));
+      checkPixels(cssPixels(canvases(index)[0]), index === 0 ? firstPage : secondPageRgb({ x: 0, y: 0, width: 64, height: 64 }));
     };
     const settledPage = (index) => ready() && elements.get('page').value === String(index + 1) && canvases(index).length > 0;
     // With both pages fully visible, equal coverage retains the last destination.
@@ -566,7 +584,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
       assert.match(elements.get('error').textContent, /page 2, 200%/);
       const expected = [];
       for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) expected.push(...(x >= 64 && y < 64 ? [0, 0, 255] : [255, 255, 255]));
-      checkPixels({ rgba: canvases(1)[0].image.data }, expected);
+      checkPixels(cssPixels(canvases(1)[0]), expected);
       fakeWindow.paguraDebug.fail(reason);
       await waitFor(() => elements.get('error').textContent.includes('Automatic recovery stopped'));
       assert.equal(canvases(1).length, 0);
@@ -577,9 +595,9 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     elements.get('zoom').value = '2'; elements.get('zoom').dispatch('change');
     elements.get('zoom').value = '1'; elements.get('zoom').dispatch('change');
     await waitFor(ready); assert.equal(view(0).style.width, '64px');
-    fakeWindow.devicePixelRatio = 2; fakeWindow.dispatch('resize'); await waitFor(() => ready() && canvases()[0]?.width === 128);
+    fakeWindow.devicePixelRatio = 3; fakeWindow.dispatch('resize'); await waitFor(() => ready() && canvases()[0]?.width === 192);
     assert.equal(view(0).style.width, '64px');
-    fakeWindow.devicePixelRatio = 1; fakeWindow.dispatch('resize'); await waitFor(() => ready() && canvases()[0]?.width === 64);
+    fakeWindow.devicePixelRatio = 1; fakeWindow.dispatch('resize'); await waitFor(() => ready() && canvases()[0]?.width === 128);
     elements.get('zoom').value = 'fit-width'; elements.get('zoom').dispatch('change'); await waitFor(ready);
     assert.equal(view(0).style.width, '252px');
     elements.get('viewport').clientHeight = 200;
@@ -619,11 +637,11 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     await waitFor(() => elements.get('password-dialog').open && elements.get('password-feedback').textContent.includes('Incorrect'));
     elements.get('password').value = encrypted.password; elements.get('password-form').dispatch('submit');
     await waitFor(ready); assert.equal(elements.get('password').value, ''); assert.equal(elements.get('password-dialog').open, false);
-    checkPixels({ rgba: canvases()[0].image.data }, ppmPixels(await readFile(join(root, encrypted.oracle)), encrypted.width, encrypted.height));
+    checkPixels(cssPixels(canvases()[0]), ppmPixels(await readFile(join(root, encrypted.oracle)), encrypted.width, encrypted.height));
     fakeWindow.paguraDebug.fail('trap');
     await waitFor(() => ready() && elements.get('error').textContent.includes('document reopened'));
     assert.equal(elements.get('password-dialog').open, false);
-    checkPixels({ rgba: canvases()[0].image.data }, ppmPixels(await readFile(join(root, encrypted.oracle)), encrypted.width, encrypted.height));
+    checkPixels(cssPixels(canvases()[0]), ppmPixels(await readFile(join(root, encrypted.oracle)), encrypted.width, encrypted.height));
     await pick(encrypted); await waitFor(() => elements.get('password-dialog').open); elements.get('password-cancel').dispatch('click');
     await waitFor(() => elements.get('status').textContent === 'Opening cancelled'); assert.equal(canvases().length, 0);
     await pick({ id: 'extract-simple', path: 'corpus/generated/text/extract-simple.pdf' }); await waitFor(ready);
