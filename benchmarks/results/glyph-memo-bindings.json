@@ -1,0 +1,38 @@
+{
+  "schema": 1,
+  "identities": {
+    "baseline": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/glyph-memo-control/pagura",
+      "commit": "776fd4b9ed6f2a6805d0932cabdd96f1e73ab5a4",
+      "source_sha256": "735cef328e06f63dd4e3c0e5f452d949874275f221640a6aac1c31e7471dee33",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/glyph-memo/baseline",
+      "binary_sha256": "195ecb49b88f988dc2f4ae9580e5d9df60c4843ac85654575bf13e10dd4e898a"
+    },
+    "candidate": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+      "commit": "776fd4b9ed6f2a6805d0932cabdd96f1e73ab5a4",
+      "source_sha256": "6f89444e8688e0174abcaf427195a35e8ad2cc17e82d163146f716f49cd27c29",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/glyph-memo/candidate",
+      "binary_sha256": "bcf7603da254a9561d2b31015bb42f09bd77a2bc7fe0107b2092d348aa25b0c6"
+    }
+  },
+  "bound_files_sha256": {
+    "benchmarks/glyph_memo.py": "5e0d66cd4d403868917a12bebaca18595536984a65be076a90594b8f699592ce",
+    "benchmarks/glyph_memo_fixtures.py": "9b866f12c61dbb7ddf2cc7e227559813b89f16a91370fdced96a7f46426e55a1",
+    "benchmarks/scene_index.py": "fbc260aa9607efb2c60dec4f8fa44445137def56b57881350f475c531c7a0f6a",
+    "benchmarks/clip_viewport_fixtures.py": "1f003e4f71dd493d6e8ff34eef6f25a1fd3d9587d6412e7ea183102f9a4dfed2",
+    "benchmarks/paired_render.py": "c7a074f3f6d63ac2df4fcd7f87f332d4848f8f10e3d7c54ec72b822717e16b27",
+    "benchmarks/evaluate_glyph_memo.py": "67bba943e9e39b1d57d9dc7d0b870b1fc958157119119023fb9a23120d6f0ca7",
+    "crates/pagura-render/examples/scene_index_profile.rs": "8e89a087d351e7b89289e0897cafeb75422d4c151280734fde8c958a841279f2",
+    "benchmarks/results/glyph-memo-plan.json": "0818ffbe5ace5afb2f26031b5bbfb9f378e07ed64209854d74332844af8d25dc",
+    "benchmarks/results/local/glyph-memo/load_observer.py": "d13e0911ef05eab394a45a7e3cb999be2b6764250bfb265b19164cc4fd822f7c",
+    "benchmarks/results/local/glyph-memo/idle_then.py": "bedfb4f54e1764360f2b90c56e093e96182fba15b6da4ffe9ab7d4400aad4d30",
+    "benchmarks/results/local/glyph-memo/control-reuse-verification.json": "f3d24fd51b544ef708629182a3153d599d46058e063acf0c6bf779903051f366",
+    "benchmarks/results/local/glyph-memo/control-build-inputs.json": "582415d664a4243efc47585e68adc972b91b5e4cc410402793a8ecb2370c7cb4"
+  },
+  "candidate_runner_source_sha256": "d15e6e0705b84b3dbec0f30ed26074e0e92025ef3cf1834dac7d1aa15a7b59eb",
+  "control_binary": "Reused prior stack+clip candidate binary after verifying all 497 retained Cargo/crates build input hashes against control776fd4b9.",
+  "candidate_build_receipt": "local/glyph-memo/build-001-receipt.json",
+  "candidate_build_receipt_sha256": "5f5fb316eaa2462784fff8b503164cc5b90db7b2979e5410aa04d381fe0f974d",
+  "structure_probe": "Temporary test asserted actual compiled root runs, source counts, groups and late ordinals; removed before the release build. Retained separately in local/glyph-memo/structure-diagnostic.rs."
+}

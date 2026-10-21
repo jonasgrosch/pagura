@@ -673,6 +673,7 @@ mod tests {
             raster: pagura_raster::Rasterizer::default(),
             bounds: super::super::regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
             glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
+            scene: super::super::index::SceneIndex::new(false),
             fragments: None,
             spare: Vec::new(),
             palettes: super::super::image_interiors::Palettes::default(),

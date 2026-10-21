@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "change": "Clippy fixed-array iteration cleanup in cfg(test)-only index_tests.rs; runtime product code and measured binaries unchanged.",
+  "changed_file": "crates/pagura-render/src/compositor/index_tests.rs",
+  "measured_file_sha256": "5b9135d2441006138e94af3e343d2cee4f8ff7b54070a6df5cf64f789d400014",
+  "validated_file_sha256": "fc6a7c0e39663f7d53d37d8c3e3ee7a9bc5802777ad642f176ac0fc0d36d8292",
+  "measured_benchmark_source_reconstructed_sha256": "6f89444e8688e0174abcaf427195a35e8ad2cc17e82d163146f716f49cd27c29",
+  "current_benchmark_source_sha256": "f087987a0ab2dde87d2a6ffe432295e0f4dabdb0def1b1deef173263a90e8f6a",
+  "measured_runner_source_reconstructed_sha256": "d15e6e0705b84b3dbec0f30ed26074e0e92025ef3cf1834dac7d1aa15a7b59eb",
+  "current_runner_source_sha256": "0106c6da903589edfc3cba638702176d252cab80bef1582954895dfe8a894b12",
+  "diff": "--- measured/crates/pagura-render/src/compositor/index_tests.rs\n+++ validated/crates/pagura-render/src/compositor/index_tests.rs\n@@ -404,8 +404,10 @@\n         assert_eq!(\n             expected\n                 .bytes\n-                .chunks_exact(4)\n-                .any(|pixel| pixel != [77, 153, 230, 255]),\n+                .as_chunks::<4>()\n+                .0\n+                .iter()\n+                .any(|pixel| *pixel != [77, 153, 230, 255]),\n             has_paint,\n         );\n         assert_eq!(\n"
+}

@@ -196,5 +196,48 @@ source SHA-256
 `511edc3ebc862398defd7c795f2fffbb2d71094ebf2b21b722aa2fcb1da016b2`;
 the experiment record binds the log and receipt hashes.
 This candidate remains in the experimental branch, without performance promotion.
-The next glyph-memo port is preserved as an unapplied patch and has no new-stack
-performance or validation claim yet.
+That baseline is now the control for the incremental memo experiment below.
+
+## Bounded root glyph-hull memo on the retained stack
+
+The user activated the [standing renderer goal](renderer-standing-goal.md) on
+2026-10-21. It continues through independent accuracy and fair competitor
+performance/memory evidence; useful partial results do not complete it.
+
+The [memo experiment](../../benchmarks/results/glyph-memo-experiment.md) adds
+only lazy reuse of existing finite root glyph-run hulls to `776fd4b9`. It keeps
+the first 64 root-command ordinals, multiple-source admission, canonical device
+transform, repeated internal-region requirement, existing charges and fallback.
+It does not select commands or complete the general shared scene index.
+The native memo occupies 2,064 bytes in each Context even when disabled;
+this is separate from process RSS and decoded storage.
+
+Thirteen focused tests passed, including actual Competitive fragment paths,
+warm caches, off-tile regions, exact work boundaries and positioned errors.
+The fixed 34-cell confirmation verified all 13,940 independent output checks.
+The Exact and Competitive designated target median ratios are 0.8233 and 0.9096;
+both target median, p95 and peak-RSS gates pass. Seven of 32 protected latency
+cells and 19 of 34 peak-RSS cells pass their full bounds. Image-only Exact tail
+and tiny Competitive cold-median lower bounds exceed the protected threshold;
+these are recorded regression evidence, not dismissed as inconclusive noise.
+Two-source controls do not establish a gain. Retain experimentally without
+admission, and investigate the disabled paths in a separately frozen revision.
+
+Full integrated validation passed in 772.15 seconds, including 196 Python tests,
+native/WASM and host checks, and all 1,237 generated-PDF conformance cases.
+The completed receipt records unchanged source
+`0106c6da903589edfc3cba638702176d252cab80bef1582954895dfe8a894b12`;
+148 observer scans found no competing jobs. The local full-check log hash is
+`e4daefd3e8e9cfedb73e61387ba6d572457fc16dd2b61777cc87dc2e50b9aa5b`,
+and receipt hash is
+`9d31fd7a37eaac1d820bd0cfff0132fc051ba8b56c24d86d6a49eef3264607e5`.
+Two earlier attempts exposed only a test iteration lint and its follow-up
+dereference error; those logs are retained.
+The test cleanup does not alter the measured product. The original measured
+source hashes are reconstructed from its retained test preimage and the current
+source closure, with both measured binary hashes unchanged.
+
+Static review also confirms the separate
+[plain opaque composition accuracy gap](opaque-composition-accuracy.md).
+Independent direct-root regression drafts remain unapplied; the memo's output
+equivalence does not fix or bless that known defect.

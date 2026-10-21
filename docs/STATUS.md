@@ -3,9 +3,10 @@
 Pagura is in **milestones M3–M5** (`docs/ROADMAP.md`). It opens real-world
 files reliably and paints vector graphics, text and images; colour and
 transparency are partly done, and the remaining gaps fail explicitly with
-stable tags. Exploratory timings put rendering at roughly 6–12× slower than
-PDFium, MuPDF and CoreGraphics on the benchmark pages and about level with
-pdf.js. That is not an ADR 0002 measurement. No claim of conformance or
+stable tags. Historical exploratory timings put rendering at roughly 6–12×
+slower than PDFium, MuPDF and CoreGraphics on the benchmark pages and about
+level with pdf.js. They do not compare the current experimental stack, and
+are not an ADR 0002 measurement. No claim of conformance or
 speed superiority is made. Requirement registries
 whose `scope` does not say so have not yet been verified against the
 primary standards.
@@ -51,13 +52,31 @@ performance admission or a global accuracy claim. The complete integrated
 single-job check passed, including 196 Python tests, native/WASM and host checks,
 and all 1,237 generated-PDF conformance cases.
 
-`RenderOptions::accuracy` selects `Accuracy::Exact`, the default, which keeps
-every pixel within one level of its exact result, or `Accuracy::Competitive`,
+The [standing renderer goal](plans/renderer-standing-goal.md) continues this
+work through the existing independent accuracy and competitor release gates.
+The [glyph-hull memo experiment](../benchmarks/results/glyph-memo-experiment.md)
+adds bounded root hull reuse to `776fd4b9`, preserving the clip optimization.
+Its fixed 34-cell confirmation verified 13,940 outputs. The designated sparse
+many-source targets have 17.7% lower Exact and 9.0% lower Competitive medians;
+both target latency and peak-RSS gates pass. Protected regressions remain,
+including image-only Exact tails and tiny Competitive cold latency, and only
+19 of 34 peak-RSS gates pass. Two-source controls do not establish a speedup.
+The memo is retained experimentally with a fixed 2,064-byte Context cost;
+there is no performance admission. Full integrated validation passed after a
+test-only Clippy cleanup, including all 196 Python tests, native/WASM and host
+checks, and 1,237 generated-PDF conformance cases.
+
+`RenderOptions::accuracy` selects `Accuracy::Exact`, the default, whose contract
+is to keep every pixel within one level of its exact result, or `Accuracy::Competitive`,
 an approximate path measured against ADR 0004's competitive accuracy gate:
 row-fragment glyph masks, signed-cell fills, clip products, one-round byte
 composition, fused decoding of sole JPEG pages and drawn-size reconstruction
 of other minified JPEG images. The CLI exposes
-`--accuracy exact|competitive`; the host protocol and viewer render exactly.
+`--accuracy exact|competitive`; the host protocol and viewer select Exact.
+The known all-opaque partial-coverage defect above remains an exception to the
+Exact contract. Its [follow-up plan](plans/opaque-composition-accuracy.md) adds
+direct-root independent regressions; passing general-compositor tests does not
+establish correctness of the opaque shortcut.
 
 ## Overprint display policy
 
