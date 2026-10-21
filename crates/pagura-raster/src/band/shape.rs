@@ -11,7 +11,7 @@ use super::edges::{self, BandIndex, Bounds, Chained, Line, Polygon, line_work, r
 use super::rect::rectangle;
 use super::scan::{RowIndex, Scanner, Stored, Walk, gap_winding, inside};
 use super::row::fold;
-use super::{Adjustment, Area, DeviceRect, Precision, ShapeOptions};
+use super::{Adjustment, Area, DeviceRect, Precision, Prep, ShapeOptions};
 use crate::{FillRule, Path, Stroke, Transform, features};
 use pagura_core::{Error, Meter, Result};
 
@@ -70,8 +70,8 @@ pub(crate) enum Winding {
 }
 
 impl Shape {
-    /// A fill of `path` (user space) under `transform` with `rule`; `None`
-    /// when it covers no pixel of the area.
+    /// A fill of `path` (user space) under `transform` with `rule`, outside
+    /// any clip; `None` when it covers no pixel of the area.
     ///
     /// # Errors
     ///
@@ -83,6 +83,32 @@ impl Shape {
         rule: FillRule,
         options: &ShapeOptions<'_>,
     ) -> Result<Option<Self>> {
+        Self::fill_with_clip(path, transform, rule, None, options)
+    }
+
+    /// A fill painted in the clip state `clip`: its edges are clipped to the
+    /// clip's rectangle and the pixels where its boundary meets the clip's
+    /// are integrated with the clip's geometry. Rasterize it with that clip.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::fill`].
+    pub fn fill_with_clip(
+        path: &Path,
+        transform: Transform,
+        rule: FillRule,
+        clip: Option<&ClipShape>,
+        options: &ShapeOptions<'_>,
+    ) -> Result<Option<Self>> {
+        Self::fill_in(path, transform, rule, &Prep::new(options, clip))
+    }
+
+    pub(crate) fn fill_in(
+        path: &Path,
+        transform: Transform,
+        rule: FillRule,
+        options: &Prep<'_>,
+    ) -> Result<Option<Self>> {
         if options.precision == Precision::Approximate {
             return super::approximate::fill(path, transform, rule, options);
         }
@@ -93,7 +119,8 @@ impl Shape {
     /// A stroke of `path` (user space) with `stroke` whose line width and
     /// dashes are measured in pen space; `pen` maps pen space to user space
     /// (the CTM when the stroke was painted), and `transform` user space to
-    /// device space. `None` when it covers no pixel of the area.
+    /// device space. Outside any clip; `None` when it covers no pixel of the
+    /// area.
     ///
     /// # Errors
     ///
@@ -105,6 +132,32 @@ impl Shape {
         transform: Transform,
         adjustment: Adjustment,
         options: &ShapeOptions<'_>,
+    ) -> Result<Option<Self>> {
+        Self::stroke_in(path, stroke, (pen, transform), adjustment, &Prep::new(options, None))
+    }
+
+    /// A stroke painted in the clip state `clip`, as [`Self::fill_with_clip`].
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::stroke`].
+    pub fn stroke_with_clip(
+        path: &Path,
+        stroke: &Stroke,
+        (pen, transform): (Transform, Transform),
+        adjustment: Adjustment,
+        clip: Option<&ClipShape>,
+        options: &ShapeOptions<'_>,
+    ) -> Result<Option<Self>> {
+        Self::stroke_in(path, stroke, (pen, transform), adjustment, &Prep::new(options, clip))
+    }
+
+    pub(crate) fn stroke_in(
+        path: &Path,
+        stroke: &Stroke,
+        (pen, transform): (Transform, Transform),
+        adjustment: Adjustment,
+        options: &Prep<'_>,
     ) -> Result<Option<Self>> {
         let limits = options.limits;
         if path.segments().len() > limits.path_segments {
@@ -135,10 +188,12 @@ impl Shape {
         Self::polygon(polygon, FillRule::NonZero, winding, options)
     }
 
-    /// One glyph placement: `edges` translated to the device-space `origin`;
-    /// `None` when it covers no pixel of the area. `origins` asks for origin
-    /// bins, which need edges from [`GlyphEdges::binned`](super::GlyphEdges::binned);
-    /// other edges place exactly.
+    /// One glyph placement outside any clip: `edges` translated to the
+    /// device-space `origin`; `None` when it covers no pixel of the area.
+    /// `origins` asks for origin bins, which need edges from
+    /// [`GlyphEdges::binned`](super::GlyphEdges::binned); edges from
+    /// [`GlyphEdges::new`](super::GlyphEdges::new) always place exactly, and
+    /// binned edges always in bins.
     ///
     /// # Errors
     ///
@@ -148,6 +203,33 @@ impl Shape {
         origin: crate::Point,
         origins: super::GlyphOrigins,
         options: &ShapeOptions<'_>,
+    ) -> Result<Option<Self>> {
+        Self::glyph_with_clip(edges, origin, origins, None, options)
+    }
+
+    /// A glyph placement in the clip state `clip`, as
+    /// [`Self::fill_with_clip`]. Binned placements multiply the clip's
+    /// coverage in.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::fill`].
+    pub fn glyph_with_clip(
+        edges: &std::sync::Arc<super::GlyphEdges>,
+        origin: crate::Point,
+        origins: super::GlyphOrigins,
+        clip: Option<&ClipShape>,
+        options: &ShapeOptions<'_>,
+    ) -> Result<Option<Self>> {
+        super::glyph::place(edges, origin, origins, &Prep::new(options, clip))
+    }
+
+    #[cfg(test)]
+    pub(crate) fn glyph_in(
+        edges: &std::sync::Arc<super::GlyphEdges>,
+        origin: crate::Point,
+        origins: super::GlyphOrigins,
+        options: &Prep<'_>,
     ) -> Result<Option<Self>> {
         super::glyph::place(edges, origin, origins, options)
     }
@@ -195,7 +277,7 @@ impl Shape {
         polygon: Polygon,
         rule: FillRule,
         winding: Winding,
-        options: &ShapeOptions<'_>,
+        options: &Prep<'_>,
     ) -> Result<Option<Self>> {
         let Some(frame) = Frame::new(options) else {
             return Ok(None);
@@ -258,7 +340,7 @@ impl Shape {
     pub(crate) fn pieces(
         lines: Vec<Line>,
         curves: Vec<Quadratic>,
-        options: &ShapeOptions<'_>,
+        options: &Prep<'_>,
     ) -> Result<Option<Self>> {
         let Some(frame) = Frame::new(options) else {
             return Ok(None);
@@ -313,7 +395,7 @@ impl Shape {
         .map(Some)
     }
 
-    fn rect(rect: Bounds, frame: &Frame<'_>, options: &ShapeOptions<'_>) -> Option<Self> {
+    fn rect(rect: Bounds, frame: &Frame<'_>, options: &Prep<'_>) -> Option<Self> {
         let region = options.area.region;
         let mut rect = rect.intersect(Bounds {
             left: f64::from(region.x0),
@@ -350,7 +432,7 @@ impl Shape {
         rule: FillRule,
         (bounds, scan, stored): (DeviceRect, (usize, usize), Stored),
         frame: &Frame<'_>,
-        options: &ShapeOptions<'_>,
+        options: &Prep<'_>,
     ) -> Result<Self> {
         let area = options.area;
         let region = area.region;
@@ -430,7 +512,7 @@ impl Shape {
         body: Body,
         bounds: DeviceRect,
         (rule, work, retained): (FillRule, usize, usize),
-        options: &ShapeOptions<'_>,
+        options: &Prep<'_>,
     ) -> Self {
         Self {
             area: options.area,
@@ -472,7 +554,7 @@ pub(crate) struct Frame<'a> {
 
 impl<'a> Frame<'a> {
     /// `None` when the clip keeps nothing of the region.
-    pub(crate) fn new(options: &ShapeOptions<'a>) -> Option<Self> {
+    pub(crate) fn new(options: &Prep<'a>) -> Option<Self> {
         let region = options.area.region;
         let clip = options.clip;
         let limit = clip.map_or(region, |c| c.bounds().intersect(&region));
@@ -560,7 +642,7 @@ fn analyse(
     certain: bool,
     frame: &Frame<'_>,
     (bounds, scan): (DeviceRect, (usize, usize)),
-    options: &ShapeOptions<'_>,
+    options: &Prep<'_>,
 ) -> Result<Stored> {
     let mut meter = Meter::new(options.limits.raster_work, RASTER_WORK);
     let mut scanner = Scanner::new(scan, &mut meter)?;

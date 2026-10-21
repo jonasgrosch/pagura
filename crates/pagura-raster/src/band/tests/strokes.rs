@@ -23,7 +23,7 @@ fn check(
     tally: &mut Tally,
 ) {
     let prepare =
-        |options: &ShapeOptions<'_>| Shape::stroke(path, stroke, pen, transform, adjustment, options).unwrap();
+        |options: &Prep<'_>| Shape::stroke_in(path, stroke, (pen, transform), adjustment, options).unwrap();
     let new = if partitions {
         invariant(area, &prepare, None)
     } else {
@@ -142,7 +142,7 @@ fn singular_pens_are_unsupported() {
         Transform::scale(0.0, 1.0),
         Transform::IDENTITY,
         Adjustment::None,
-        &options(area, &limits, None),
+        &public(area, &limits, Precision::Exact),
     )
     .unwrap_err();
     assert_eq!(

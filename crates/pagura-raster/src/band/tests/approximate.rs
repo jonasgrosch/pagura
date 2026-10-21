@@ -48,19 +48,19 @@ fn old(area: &Area, path: &Path, transform: Transform, rule: FillRule, clips: &[
     out
 }
 
-fn approximate<'a>(area: Area, limits: &'a Limits, clip: Option<&'a ClipShape>) -> ShapeOptions<'a> {
-    ShapeOptions {
+fn approximate<'a>(area: Area, limits: &'a Limits, clip: Option<&'a ClipShape>) -> Prep<'a> {
+    Prep {
         precision: Precision::Approximate,
         ..options(area, limits, clip)
     }
 }
 
 /// The new approximate coverage, checked for invariance.
-fn new(area: &Area, prepare: &dyn Fn(&ShapeOptions<'_>) -> Option<Shape>, clips: &[(&Path, FillRule)]) -> Vec<u8> {
+fn new(area: &Area, prepare: &dyn Fn(&Prep<'_>) -> Option<Shape>, clips: &[(&Path, FillRule)]) -> Vec<u8> {
     let clip = |o: &ShapeOptions<'_>| ClipShape::new(clips, Transform::IDENTITY, o).unwrap();
     invariant_with(
         area,
-        &|o| prepare(&ShapeOptions { precision: Precision::Approximate, ..*o }),
+        &|o| prepare(&Prep { precision: Precision::Approximate, ..*o }),
         (!clips.is_empty()).then_some(&clip as &dyn Fn(&ShapeOptions<'_>) -> ClipShape),
         Precision::Approximate,
     )
@@ -94,7 +94,7 @@ fn fills_strokes_and_glyph_polygons_match_the_old_cells() {
             path.classify_fill(FillRule::EvenOdd, &Limits::default(), &mut work).unwrap();
         }
         for rule in [FillRule::NonZero, FillRule::EvenOdd] {
-            let new = new(&area, &|o| Shape::fill(&path, Transform::IDENTITY, rule, o).unwrap(), &[]);
+            let new = new(&area, &|o| Shape::fill_in(&path, Transform::IDENTITY, rule, o).unwrap(), &[]);
             let old = old(&area, &path, Transform::IDENTITY, rule, &[]);
             let (count, largest) = compare(&new, &old);
             assert!(largest <= 1, "case {case} {rule:?}: {count} by {largest}");
@@ -116,7 +116,7 @@ fn fills_strokes_and_glyph_polygons_match_the_old_cells() {
         };
         let new = new(
             &area,
-            &|o| Shape::stroke(&path, &stroke, Transform::IDENTITY, Transform::IDENTITY, Adjustment::None, o).unwrap(),
+            &|o| Shape::stroke_in(&path, &stroke, (Transform::IDENTITY, Transform::IDENTITY), Adjustment::None, o).unwrap(),
             &[],
         );
         let (outline, t) = crate::tiled_stroke_outline(&path, Transform::IDENTITY, &stroke, &Limits::default()).unwrap();
@@ -164,7 +164,7 @@ fn clips_multiply_or_integrate_as_the_old_product() {
             (&rect, vec![(&clip_tri, FillRule::NonZero)]),
         ];
         for (kind, (mark, clips)) in cases.iter().enumerate() {
-            let new = new(&area, &|o| Shape::fill(mark, Transform::IDENTITY, FillRule::NonZero, o).unwrap(), clips);
+            let new = new(&area, &|o| Shape::fill_in(mark, Transform::IDENTITY, FillRule::NonZero, o).unwrap(), clips);
             let old = old(&area, mark, Transform::IDENTITY, FillRule::NonZero, clips);
             let (count, largest) = compare(&new, &old);
             assert!(largest <= 1, "case {case} kind {kind}: {count} by {largest}");
@@ -184,7 +184,7 @@ fn approximate_rows_fold_without_resolving_overlaps() {
     path.rect(1.0, 1.0, 4.0, 4.0);
     path.rect(3.0, 3.0, 4.0, 4.0);
     let path = path.finish();
-    let shape = Shape::fill(&path, Transform::IDENTITY, FillRule::EvenOdd, &approximate(area, &limits, None))
+    let shape = Shape::fill_in(&path, Transform::IDENTITY, FillRule::EvenOdd, &approximate(area, &limits, None))
         .unwrap()
         .unwrap();
     let (coverage, work) = raster(&area, Some(&shape), None);

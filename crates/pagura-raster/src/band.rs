@@ -178,10 +178,27 @@ pub struct ShapeOptions<'a> {
     pub precision: Precision,
     /// Per-fill budgets (`path_segments`, `raster_work`, `mask_sources`).
     pub limits: &'a Limits,
-    /// The clip state the mark is painted in. A shape is prepared against
-    /// its clip and keeps it: rectangular clipping paths clip its edges, and
-    /// the pixels where its boundary and the clip's meet are resolved here.
-    pub clip: Option<&'a ClipShape>,
+}
+
+/// What preparing one shape needs: the render's options and the clip state
+/// the mark is painted in.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Prep<'a> {
+    pub(crate) area: Area,
+    pub(crate) precision: Precision,
+    pub(crate) limits: &'a Limits,
+    pub(crate) clip: Option<&'a ClipShape>,
+}
+
+impl<'a> Prep<'a> {
+    pub(crate) fn new(options: &ShapeOptions<'a>, clip: Option<&'a ClipShape>) -> Self {
+        Self {
+            area: options.area,
+            precision: options.precision,
+            limits: options.limits,
+            clip,
+        }
+    }
 }
 
 /// What a mark covers: its shape, the whole area for a shading without a
@@ -190,8 +207,9 @@ pub struct ShapeOptions<'a> {
 pub struct MarkCoverage<'a> {
     /// The mark's own shape; `None` covers the whole area.
     pub shape: Option<&'a Shape>,
-    /// The clip state. A shape uses the clip it was prepared against, which
-    /// must be this one; `None` keeps everything.
+    /// The clip state. A shape uses the clip it was prepared against
+    /// (`Shape::*_with_clip`), which must be this one; `None` keeps
+    /// everything.
     pub clip: Option<&'a ClipShape>,
 }
 

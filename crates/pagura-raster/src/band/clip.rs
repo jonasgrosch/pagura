@@ -12,7 +12,7 @@ use super::edges::{self, Bounds, Chained, Polygon};
 use super::rect::rectangle;
 use super::resolve::{LocalEdge, Resolver};
 use super::scan::{RowIndex, Scanner, Walk, gap_winding, inside};
-use super::{DeviceRect, Precision, ShapeOptions};
+use super::{DeviceRect, Precision, Prep, ShapeOptions};
 use crate::{FillRule, Path, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
 use std::sync::Arc;
@@ -197,6 +197,7 @@ impl ClipShape {
         transform: Transform,
         options: &ShapeOptions<'_>,
     ) -> Result<Self> {
+        let options = &Prep::new(options, None);
         let limits = options.limits;
         if paths.len() > limits.mask_sources {
             return Err(Error::limit("mask source budget exceeded"));
@@ -313,7 +314,7 @@ fn classify(
     groups: &[Group],
     rect: Option<Bounds>,
     bounds: DeviceRect,
-    options: &ShapeOptions<'_>,
+    options: &Prep<'_>,
 ) -> Result<Rows> {
     let limits = options.limits;
     let mut meter = Meter::new(limits.raster_work, CLIP_WORK);

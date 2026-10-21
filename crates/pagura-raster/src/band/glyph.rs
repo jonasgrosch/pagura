@@ -13,7 +13,7 @@ use super::certify::certified;
 use super::curve::{self, Piece};
 use super::edges::{Line, Polygon};
 use super::shape::{Shape, Winding};
-use super::{GlyphOrigins, Precision, ShapeOptions};
+use super::{GlyphOrigins, Precision, Prep};
 use crate::flatten::{CurveStack, Polyline, TOLERANCE, bounded, flatten_into};
 use crate::{FillRule, Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Result};
@@ -164,7 +164,7 @@ pub(crate) fn place(
     edges: &Arc<GlyphEdges>,
     origin: Point,
     origins: GlyphOrigins,
-    options: &ShapeOptions<'_>,
+    options: &Prep<'_>,
 ) -> Result<Option<Shape>> {
     bounded(origin)?;
     let exact = match &edges.kind {

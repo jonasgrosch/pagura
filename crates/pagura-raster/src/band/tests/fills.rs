@@ -13,7 +13,7 @@ pub(in super::super) fn check_fill(
 ) -> (usize, u8) {
     let new = invariant(
         area,
-        &|options| Shape::fill(path, transform, rule, options).unwrap(),
+        &|options| Shape::fill_in(path, transform, rule, options).unwrap(),
         None,
     );
     let old = old_fill(area, path, transform, rule);

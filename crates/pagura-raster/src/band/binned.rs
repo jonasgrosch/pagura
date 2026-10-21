@@ -15,7 +15,7 @@
 
 use super::row::Sink;
 use super::shape::{Body, Shape};
-use super::{BandCoverage, DeviceRect, GlyphEdges, ShapeOptions, edges};
+use super::{BandCoverage, DeviceRect, GlyphEdges, Prep, edges};
 use crate::{FillRule, Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
 use std::sync::Arc;
@@ -402,7 +402,7 @@ pub(crate) fn place(
     edges: &Arc<GlyphEdges>,
     prepared: &Prepared,
     origin: Point,
-    options: &ShapeOptions<'_>,
+    options: &Prep<'_>,
 ) -> Result<Option<Shape>> {
     if prepared.width == 0 {
         return Ok(None);

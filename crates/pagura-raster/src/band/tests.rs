@@ -105,12 +105,21 @@ pub(super) fn old_fill(area: &Area, path: &Path, transform: Transform, rule: Fil
     .to_vec()
 }
 
-pub(super) fn options<'a>(area: Area, limits: &'a Limits, clip: Option<&'a ClipShape>) -> ShapeOptions<'a> {
-    ShapeOptions {
+pub(super) fn options<'a>(area: Area, limits: &'a Limits, clip: Option<&'a ClipShape>) -> Prep<'a> {
+    Prep {
         area,
         precision: Precision::Exact,
         limits,
         clip,
+    }
+}
+
+/// The public options of `area`.
+pub(super) fn public(area: Area, limits: &Limits, precision: Precision) -> ShapeOptions<'_> {
+    ShapeOptions {
+        area,
+        precision,
+        limits,
     }
 }
 
@@ -128,7 +137,7 @@ pub(super) fn compare(a: &[u8], b: &[u8]) -> (usize, u8) {
 /// bound, and returns the coverage.
 pub(super) fn invariant(
     area: &Area,
-    prepare: &dyn Fn(&ShapeOptions<'_>) -> Option<Shape>,
+    prepare: &dyn Fn(&Prep<'_>) -> Option<Shape>,
     clip: Option<&dyn Fn(&ShapeOptions<'_>) -> ClipShape>,
 ) -> Vec<u8> {
     invariant_with(area, prepare, clip, Precision::Exact)
@@ -137,7 +146,7 @@ pub(super) fn invariant(
 /// [`invariant`] with clips prepared at `precision`.
 pub(super) fn invariant_with(
     area: &Area,
-    prepare: &dyn Fn(&ShapeOptions<'_>) -> Option<Shape>,
+    prepare: &dyn Fn(&Prep<'_>) -> Option<Shape>,
     clip: Option<&dyn Fn(&ShapeOptions<'_>) -> ClipShape>,
     precision: Precision,
 ) -> Vec<u8> {
@@ -168,12 +177,7 @@ pub(super) fn invariant_with(
                 region,
                 band_height: height,
             };
-            let clip_shape = clip.map(|c| {
-                c(&ShapeOptions {
-                    precision,
-                    ..options(sub, &limits, None)
-                })
-            });
+            let clip_shape = clip.map(|c| c(&public(sub, &limits, precision)));
             let opts = options(sub, &limits, clip_shape.as_ref());
             let shape = prepare(&opts);
             let (coverage, work) = if let Some(shape) = &shape {

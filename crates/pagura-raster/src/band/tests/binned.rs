@@ -37,7 +37,7 @@ fn binned_placements_are_invariant_and_reuse_identical_masks() {
         let edges = Arc::new(GlyphEdges::binned(&outline, linear, scale, &limits).unwrap());
         for origin in [Point::new(20.3, 30.7), Point::new(20.30001, 30.70002), Point::new(41.9, 17.05)] {
             let prepare =
-                |options: &ShapeOptions<'_>| Shape::glyph(&edges, origin, GlyphOrigins::Binned, options).unwrap();
+                |options: &Prep<'_>| Shape::glyph_in(&edges, origin, GlyphOrigins::Binned, options).unwrap();
             let first = invariant(&area, &prepare, None);
             assert!(first.iter().any(|&v| v == 255) && first.iter().any(|&v| v > 0 && v < 255));
             // One rasterizer placing the glyph twice reuses its mask.
@@ -76,7 +76,7 @@ fn binned_placements_multiply_their_clips() {
     let origin = Point::new(30.4, 24.6);
     let unclipped = invariant(
         &area,
-        &|o| Shape::glyph(&edges, origin, GlyphOrigins::Binned, o).unwrap(),
+        &|o| Shape::glyph_in(&edges, origin, GlyphOrigins::Binned, o).unwrap(),
         None,
     );
     let mut rect = PathBuilder::new();
@@ -88,15 +88,12 @@ fn binned_placements_multiply_their_clips() {
             let clip = |o: &ShapeOptions<'_>| ClipShape::new(&clips, Transform::IDENTITY, o).unwrap();
             let clipped = invariant_with(
                 &area,
-                &|o| Shape::glyph(&edges, origin, GlyphOrigins::Binned, o).unwrap(),
+                &|o| Shape::glyph_in(&edges, origin, GlyphOrigins::Binned, o).unwrap(),
                 Some(&clip),
                 precision,
             );
             let clip_alone = {
-                let c = clip(&ShapeOptions {
-                    precision,
-                    ..options(area, &limits, None)
-                });
+                let c = clip(&public(area, &limits, precision));
                 raster(&area, None, Some(&c)).0
             };
             for ((&g, &c), &v) in unclipped.iter().zip(&clip_alone).zip(&clipped) {

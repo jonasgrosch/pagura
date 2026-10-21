@@ -59,12 +59,12 @@ fn check(area: &Area, mark: Option<(&Path, FillRule)>, clips: Paths<'_>) -> (usi
     let new = match mark {
         Some((path, rule)) => invariant(
             area,
-            &|options| Shape::fill(path, Transform::IDENTITY, rule, options).unwrap(),
+            &|options| Shape::fill_in(path, Transform::IDENTITY, rule, options).unwrap(),
             Some(&clip),
         ),
         None => {
             let limits = Limits::default();
-            let clip_shape = clip(&options(*area, &limits, None));
+            let clip_shape = clip(&public(*area, &limits, Precision::Exact));
             let (coverage, work) = raster(area, None, Some(&clip_shape));
             assert!(work <= clip_shape.work());
             coverage
@@ -162,9 +162,9 @@ fn containing_and_disjoint_clips() {
     away.rect(12.0, 12.0, 3.0, 3.0);
     let away = away.finish();
     let limits = Limits::default();
-    let clip = ClipShape::new(&[(&away, FillRule::NonZero)], Transform::IDENTITY, &options(area, &limits, None))
+    let clip = ClipShape::new(&[(&away, FillRule::NonZero)], Transform::IDENTITY, &public(area, &limits, Precision::Exact))
         .unwrap();
-    let shape = Shape::fill(
+    let shape = Shape::fill_in(
         &mark,
         Transform::IDENTITY,
         FillRule::NonZero,

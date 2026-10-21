@@ -118,12 +118,11 @@ fn old(area: &Area, geometry: &Arc<GlyphGeometry>, origin: Point, clip: Option<&
     out
 }
 
-fn options<'a>(limits: &'a Limits, clip: Option<&'a ClipShape>) -> ShapeOptions<'a> {
+fn options(limits: &Limits) -> ShapeOptions<'_> {
     ShapeOptions {
         area: AREA,
         precision: Precision::Exact,
         limits,
-        clip,
     }
 }
 
@@ -263,11 +262,13 @@ fn glyphs_of_fixture_and_bundled_fonts_match_the_old_backends() {
                 let edges = Arc::new(GlyphEdges::new(&outline, linear, &limits).unwrap());
                 for (c, clip_path) in clips.iter().enumerate() {
                     let clip = clip_path.map(|p| {
-                        ClipShape::new(&[(p, FillRule::NonZero)], Transform::IDENTITY, &options(&limits, None))
+                        ClipShape::new(&[(p, FillRule::NonZero)], Transform::IDENTITY, &options(&limits))
                             .unwrap()
                     });
-                    let opts = options(&limits, clip.as_ref());
-                    let shape = Shape::glyph(&edges, origin, GlyphOrigins::Exact, &opts).unwrap();
+                    let opts = options(&limits);
+                    let shape =
+                        Shape::glyph_with_clip(&edges, origin, GlyphOrigins::Exact, clip.as_ref(), &opts)
+                            .unwrap();
                     let new = match &shape {
                         Some(shape) => {
                             let (coverage, work) = raster(&AREA, Some(shape), clip.as_ref());

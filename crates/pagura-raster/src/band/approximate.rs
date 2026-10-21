@@ -16,7 +16,7 @@ use super::edges::{self, BandIndex, Bounds, Line, Polygon, rows};
 use super::raster::Out;
 use super::row::Sink;
 use super::shape::{Body, Shape};
-use super::{Area, BandCoverage, Precision, ShapeOptions};
+use super::{Area, BandCoverage, Precision, Prep};
 use crate::{FillRule, Path, Point, Segment, Transform};
 use pagura_core::{Error, Meter, Result};
 
@@ -327,7 +327,7 @@ impl Product {
     pub(crate) fn new(
         paths: &[(&Path, FillRule)],
         transform: Transform,
-        options: &ShapeOptions<'_>,
+        options: &Prep<'_>,
         bounds: DeviceRect,
     ) -> Result<Self> {
         let count = (bounds.width() as usize).saturating_mul(bounds.height() as usize);
@@ -348,13 +348,13 @@ impl Product {
             if super::rect::rectangle(&polygon).is_some() {
                 continue;
             }
-            let unclipped = ShapeOptions {
+            let unclipped = Prep {
                 area,
                 precision: Precision::Approximate,
                 limits: options.limits,
                 clip: None,
             };
-            let Some(shape) = Shape::fill(path, transform, rule, &unclipped)? else {
+            let Some(shape) = Shape::fill_in(path, transform, rule, &unclipped)? else {
                 values.fill(0);
                 continue;
             };
@@ -457,7 +457,7 @@ pub(crate) fn fill(
     path: &Path,
     transform: Transform,
     rule: FillRule,
-    options: &ShapeOptions<'_>,
+    options: &Prep<'_>,
 ) -> Result<Option<Shape>> {
     let limits = options.limits;
     if path.segments().len() > limits.path_segments {
@@ -500,7 +500,7 @@ pub(crate) fn stroke(
     outline: &Path,
     transform: Transform,
     pieces: bool,
-    options: &ShapeOptions<'_>,
+    options: &Prep<'_>,
 ) -> Result<Option<Shape>> {
     let limits = options.limits;
     let source = if pieces {
@@ -544,7 +544,7 @@ pub(crate) fn stroke(
 }
 
 /// A placed glyph polygon under the approximate rules.
-pub(crate) fn glyph(polygon: Polygon, options: &ShapeOptions<'_>) -> Result<Option<Shape>> {
+pub(crate) fn glyph(polygon: Polygon, options: &Prep<'_>) -> Result<Option<Shape>> {
     let quad = polygon_quadrilateral(&polygon);
     let hull = if polygon.points_cells {
         None
@@ -573,14 +573,14 @@ struct Source<'a> {
     cells: Option<Polygon>,
     hull: Option<[Point; 2]>,
     quad: Option<[Point; 4]>,
-    exact: &'a dyn Fn(&ShapeOptions<'_>) -> Result<Option<Shape>>,
+    exact: &'a dyn Fn(&Prep<'_>) -> Result<Option<Shape>>,
 }
 
 /// Chooses how a mark meets its clip: dropped where every path of it holds
 /// the mark, integrated geometrically for a quadrilateral within
 /// quadrilaterals, and multiplied otherwise.
-fn place(source: Source<'_>, rule: FillRule, options: &ShapeOptions<'_>) -> Result<Option<Shape>> {
-    let unclipped = ShapeOptions {
+fn place(source: Source<'_>, rule: FillRule, options: &Prep<'_>) -> Result<Option<Shape>> {
+    let unclipped = Prep {
         precision: Precision::Exact,
         clip: None,
         ..*options
@@ -599,7 +599,7 @@ fn place(source: Source<'_>, rule: FillRule, options: &ShapeOptions<'_>) -> Resu
         return mark(&source, rule, &unclipped);
     }
     if source.quad.is_some() && needed.iter().all(|p| p.quad.is_some()) {
-        let exact = ShapeOptions {
+        let exact = Prep {
             precision: Precision::Exact,
             ..*options
         };
@@ -619,7 +619,7 @@ fn place(source: Source<'_>, rule: FillRule, options: &ShapeOptions<'_>) -> Resu
 }
 
 /// The mark alone: approximate cells where it takes them, exact otherwise.
-fn mark(source: &Source<'_>, rule: FillRule, options: &ShapeOptions<'_>) -> Result<Option<Shape>> {
+fn mark(source: &Source<'_>, rule: FillRule, options: &Prep<'_>) -> Result<Option<Shape>> {
     match &source.cells {
         Some(polygon) => cells(polygon, rule, options),
         None => (source.exact)(options),
@@ -627,7 +627,7 @@ fn mark(source: &Source<'_>, rule: FillRule, options: &ShapeOptions<'_>) -> Resu
 }
 
 /// A shape of approximate cells of `polygon`.
-fn cells(polygon: &Polygon, rule: FillRule, options: &ShapeOptions<'_>) -> Result<Option<Shape>> {
+fn cells(polygon: &Polygon, rule: FillRule, options: &Prep<'_>) -> Result<Option<Shape>> {
     let area = options.area;
     let region = area.region;
     let Some(bounds) = polygon.bounds() else {
