@@ -4,10 +4,11 @@
 //! Each driver feeds one input through public APIs and checks what every
 //! input must keep: no panic, either a structured error or a result that
 //! honours its documented contract, and work bounded by [`limits`]. The
-//! libFuzzer entry points in `fuzz_targets/` are one line each; the stable
-//! replay test `crates/pagura/tests/fuzz_regressions.rs` runs the stored
-//! findings in `fuzz/regressions/` through this same code, so a stored input
-//! means the same thing in both places.
+//! libFuzzer entry points in `fuzz/fuzz_targets/` are one line each; the
+//! stable replay test `tests/regressions.rs` runs the stored findings in
+//! `fuzz/regressions/` through this same code, so a stored input means the
+//! same thing in both places. This crate is test tooling and never a
+//! dependency of a product crate.
 //!
 //! Inputs with several parts split them at [`wrapper::SEPARATOR`]; a leading
 //! selector byte picks the format, decoder or recovery mode where a target

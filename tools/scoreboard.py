@@ -166,7 +166,7 @@ def main() -> int:
     parser.add_argument("--no-build", action="store_true")
     arguments = parser.parse_args()
     if not arguments.no_build:
-        subprocess.run(["cargo", "build", "--locked", "--offline", "--release", "-q", "-p", "pagura"], cwd=ROOT, check=True)
+        subprocess.run(["cargo", "build", "--locked", "--offline", "--release", "-q", "--bin", "pagura"], cwd=ROOT, check=True)
     paths = sorted(p for p in arguments.corpus.rglob("*") if p.is_file() and p.suffix.lower() == ".pdf")
     if not paths:
         print(f"no PDF files below {arguments.corpus}", file=sys.stderr)

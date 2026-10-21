@@ -73,7 +73,7 @@ def identify(name, command):
                 "command": command, "artifacts": artifacts}
     except (OSError, ValueError, subprocess.TimeoutExpired) as error:
         return {"status": "unavailable", "reason": str(error), "command": command,
-                "hint": ("build Pagura offline with cargo build --release --locked --offline -p pagura" if name == "pagura"
+                "hint": ("build Pagura offline with cargo build --release --locked --offline --bin pagura" if name == "pagura"
                          else "supply pdftoppm via PAGURA_POPPLER or PATH" if name == "poppler"
                          else "explicit network setup required: tools/competitors.py setup; cache: " + str(CACHE))}
 
@@ -113,7 +113,7 @@ def revision_engine(revision, repository=ROOT):
         subprocess.run(["git", "worktree", "add", "--detach", str(worktree), commit], cwd=repository, check=True)
         try:
             channel = tomllib.loads((ROOT / "rust-toolchain.toml").read_text())["toolchain"]["channel"]
-            subprocess.run(["cargo", "+" + channel, "build", "--release", "--locked", "--offline", "-p", "pagura", "--target-dir", str(target)],
+            subprocess.run(["cargo", "+" + channel, "build", "--release", "--locked", "--offline", "--bin", "pagura", "--target-dir", str(target)],
                            cwd=worktree, check=True)
             binary = target / "release" / ("pagura.exe" if os.name == "nt" else "pagura")
             yield [str(binary)], commit

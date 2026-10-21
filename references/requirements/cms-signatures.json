@@ -16,7 +16,7 @@
       ],
       "status": "partial",
       "tests": [
-        "pagura signature_integrity",
+        "crates/pagura/tests/api/signatures.rs",
         "corpus/manifests/cms-signatures.json"
       ],
       "description": "Stream original signed ranges; select the signer certificate by issuer/serial or SKI; verify the content digest and DER attribute signature with RSA v1.5, PSS or ECDSA. Isolate signature errors and malformed certificate schemas. Report BER set ordering and weak SHA-1 separately.",
@@ -32,7 +32,7 @@
       ],
       "status": "partial",
       "tests": [
-        "pagura signature_integrity",
+        "crates/pagura/tests/api/signatures.rs",
         "corpus/manifests/cms-signatures.json"
       ],
       "description": "Detached id-data and ESS signing-certificate v1/v2 signer binding (RFC 5035 sections 3-5); frame the CMS prefix and accept only zero PDF Contents padding. Link catalog Perms/DocMDP to its certification signature.",
@@ -46,7 +46,7 @@
       ],
       "status": "partial",
       "tests": [
-        "pagura signature_integrity",
+        "crates/pagura/tests/api/signatures.rs",
         "corpus/manifests/cms-signatures.json"
       ],
       "description": "ETSI.RFC3161 document timestamp verifies both the TSTInfo messageImprint over signed PDF ranges and the token CMS digest and signature. The token requires an ESS v1 or v2 signer-certificate binding (RFC 5816 section 2.2.1).",
@@ -60,7 +60,7 @@
       ],
       "status": "implemented",
       "tests": [
-        "pagura signature_integrity",
+        "crates/pagura/tests/api/signatures.rs",
         "corpus/manifests/cms-signatures.json"
       ],
       "description": "When CMSAlgorithmProtection is signed, bind its digest and signature identifiers and parameters to SignerInfo. A mismatch is SignatureInvalid; malformed, repeated and MAC-only attributes are rejected. Accept permitted absent/NULL algorithm parameters as equivalent.",

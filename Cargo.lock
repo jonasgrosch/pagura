@@ -6,20 +6,28 @@ version = 4
 name = "pagura"
 version = "0.1.0"
 dependencies = [
- "pagura-codec",
  "pagura-core",
  "pagura-crypto",
  "pagura-data",
  "pagura-document",
- "pagura-font",
- "pagura-host",
- "pagura-image",
  "pagura-pki",
  "pagura-raster",
  "pagura-render",
  "pagura-testkit",
  "pagura-text",
  "pagura-write",
+]
+
+[[package]]
+name = "pagura-cli"
+version = "0.1.0"
+dependencies = [
+ "pagura",
+ "pagura-core",
+ "pagura-crypto",
+ "pagura-data",
+ "pagura-document",
+ "pagura-testkit",
 ]
 
 [[package]]
@@ -73,6 +81,20 @@ dependencies = [
  "pagura-core",
  "pagura-raster",
  "pagura-testkit",
+]
+
+[[package]]
+name = "pagura-fuzz"
+version = "0.1.0"
+dependencies = [
+ "pagura",
+ "pagura-codec",
+ "pagura-core",
+ "pagura-font",
+ "pagura-host",
+ "pagura-image",
+ "pagura-testkit",
+ "pagura-text",
 ]
 
 [[package]]

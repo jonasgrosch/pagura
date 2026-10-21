@@ -113,8 +113,8 @@
       ],
       "tests": [
         "pagura-core unit tests",
-        "crates/pagura/tests/syntax.rs",
-        "crates/pagura/tests/document.rs"
+        "crates/pagura-core/tests/syntax.rs",
+        "crates/pagura/tests/api/document.rs"
       ],
       "gaps": "EC3 #379 identifier restrictions and contextual brace handling remain implementation discrepancies. Null semantics, complete stream framing, cross-reference tables and trailers require consumer-level review."
     },

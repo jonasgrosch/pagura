@@ -24,8 +24,8 @@ The first visit may reload once to enable the WASM worker.
 ```sh
 python3 tools/check.py
 mkdir -p work
-cargo run --release -p pagura -- inspect corpus/generated/classic/rectangle.pdf
-cargo run --release -p pagura -- render corpus/generated/classic/rectangle.pdf work/rectangle.ppm
+cargo run --release -p pagura-cli -- inspect corpus/generated/classic/rectangle.pdf
+cargo run --release -p pagura-cli -- render corpus/generated/classic/rectangle.pdf work/rectangle.ppm
 cargo wasm   # pagura-host for wasm32-wasip1
 python3 tools/bench.py run --engines pagura,poppler --suite smoke
 python3 tools/bench.py gate benchmarks/results/local/latest.json

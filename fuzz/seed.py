@@ -2,11 +2,11 @@
 
 Seeds come from the generated fixtures and vectors in corpus/generated/,
 found through corpus/manifests/, in the input layouts the drivers in
-fuzz/src/ document; from two review cases whose stream /Length refers to its
-own object or to another stream's; from a few content streams that show text
-on the fixed page of the content and extraction targets; and, when present,
-from the pinned out-of-tree corpora. Files are only read and copied, never
-executed.
+crates/pagura-fuzz/src/ document; from two review cases whose stream
+/Length refers to its own object or to another stream's; from a few content
+streams that show text on the fixed page of the content and extraction
+targets; and, when present, from the pinned out-of-tree corpora. Files are
+only read and copied, never executed.
 """
 import argparse
 import hashlib
@@ -25,19 +25,19 @@ from fixturegen.pdf import document  # noqa: E402  (standard library only)
 CORPUS = Path(__file__).resolve().parent / "corpus"
 MAX_SEED = 256 * 1024
 PER_SOURCE = 300
-# Must match fuzz/src/wrapper.rs.
+# Must match crates/pagura-fuzz/src/wrapper.rs.
 SEPARATOR = b"\n%%%%\n"
 FIRST_OBJECT = 3
 MAX_OBJECTS = 32
 HOST_TILE = bytes([1, 0, 15, 0, 0, 8, 8])  # protocol 1.1, repair, page 0, scale 1, 8 x 8 at the origin
-# Must match fuzz/src/host.rs: flag bit 3 adds the protocol 1.2 reading
+# Must match crates/pagura-fuzz/src/host.rs: flag bit 3 adds the protocol 1.2 reading
 # requests, bit 4 sends them in a v1 or v1.1 session instead.
 HOST_READING = 8
 HOST_OLDER = 16
-# Content streams on the fixed page of fuzz/src/content.rs, whose Type 3 font
+# Content streams on the fixed page of crates/pagura-fuzz/src/content.rs, whose Type 3 font
 # /F shows code 97 as `a`: words and lines, a TJ gap, replacement text, an
 # Alt word break, a hyphen at a line break, reversed and hidden text. The
-# last line, a comment, is a search query (fuzz/src/extraction.rs).
+# last line, a comment, is a search query (crates/pagura-fuzz/src/extraction.rs).
 EXTRACTION_SEEDS = [
     b"BT /F 6 Tf 2 24 Td (aa aaa) Tj 0 -8 Td [(a) -400 (aa)] TJ ET\n%A A",
     b"BT /F 6 Tf 2 24 Td /Span << /ActualText <FEFF0053007400720061007300DF0065> >> BDC (aaa) Tj EMC "

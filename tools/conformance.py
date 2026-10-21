@@ -143,7 +143,7 @@ def main() -> int:
     parser.add_argument("--no-build", action="store_true")
     arguments = parser.parse_args()
     if not arguments.no_build:
-        subprocess.run(["cargo", "build", "--locked", "--offline", "--release", "-q", "-p", "pagura"], cwd=ROOT, check=True)
+        subprocess.run(["cargo", "build", "--locked", "--offline", "--release", "-q", "--bin", "pagura"], cwd=ROOT, check=True)
     cases = [case for path in sorted(MANIFESTS.glob("*.json")) for case in json.loads(path.read_text())["cases"]
              if case["kind"] == "pdf"]
 

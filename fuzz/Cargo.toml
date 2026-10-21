@@ -2,10 +2,10 @@
 # its own workspace, like the benchmark adapters, and must never become a
 # product dependency. libFuzzer is C++ and its entry points need `no_mangle`,
 # so the one-line binaries in fuzz_targets/ cannot forbid unsafe code; the
-# drivers in src/ do, and the product crates under test keep
+# drivers in crates/pagura-fuzz do, and the product crates under test keep
 # `forbid(unsafe_code)`. Run with the nightly toolchain: see fuzz/README.md.
 [package]
-name = "pagura-fuzz"
+name = "pagura-fuzz-targets"
 version = "0.0.0"
 edition = "2024"
 publish = false
@@ -16,21 +16,9 @@ cargo-fuzz = true
 [workspace]
 members = ["."]
 
-[lib]
-path = "src/lib.rs"
-test = false
-doc = false
-bench = false
-
 [dependencies]
 libfuzzer-sys = "=0.4.13"
-pagura = { path = "../crates/pagura" }
-pagura-codec = { path = "../crates/pagura-codec" }
-pagura-core = { path = "../crates/pagura-core" }
-pagura-font = { path = "../crates/pagura-font" }
-pagura-host = { path = "../crates/pagura-host" }
-pagura-image = { path = "../crates/pagura-image" }
-pagura-text = { path = "../crates/pagura-text" }
+pagura-fuzz = { path = "../crates/pagura-fuzz" }
 
 [[bin]]
 name = "syntax"

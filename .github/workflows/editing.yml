@@ -4,7 +4,7 @@ on:
     paths:
       - 'crates/pagura/src/editing/**'
       - 'crates/pagura/src/editing.rs'
-      - 'crates/pagura/tests/editing.rs'
+      - 'crates/pagura/tests/api/editing.rs'
       - 'crates/pagura-write/**'
       - 'crates/pagura-document/**'
       - 'crates/pagura-host/**'
@@ -65,7 +65,7 @@ jobs:
         run: |
           cargo clippy --locked --offline -p pagura-write -p pagura -p pagura-host -p pagura-render --all-targets -- -D warnings
           cargo test --locked --offline -p pagura-write
-          cargo test --locked --offline -p pagura --test editing
+          cargo test --locked --offline -p pagura --test api editing::
           cargo test --locked --offline -p pagura-render form_appearance
           cargo test --locked --offline -p pagura-host
       - name: Check saved files and compare independent-reader baselines

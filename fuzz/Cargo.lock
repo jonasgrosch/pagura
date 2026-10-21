@@ -128,9 +128,8 @@ dependencies = [
 
 [[package]]
 name = "pagura-fuzz"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
- "libfuzzer-sys",
  "pagura",
  "pagura-codec",
  "pagura-core",
@@ -138,6 +137,14 @@ dependencies = [
  "pagura-host",
  "pagura-image",
  "pagura-text",
+]
+
+[[package]]
+name = "pagura-fuzz-targets"
+version = "0.0.0"
+dependencies = [
+ "libfuzzer-sys",
+ "pagura-fuzz",
 ]
 
 [[package]]

@@ -40,7 +40,8 @@ dependency. `python3 tools/fuzz_smoke.py` runs every target (syntax, filters,
 document, render, font, image, text, content, host, navigation, extraction)
 for a short bounded time on nightly Rust. Every input fuzzing finds is
 minimized into `fuzz/regressions/` and replayed on stable Rust by
-`crates/pagura/tests/fuzz_regressions.rs`, which `tools/check.py` runs. Its
+`crates/pagura-fuzz/tests/regressions.rs`, through the same drivers
+(`crates/pagura-fuzz`), which `tools/check.py` runs. Its
 known-failures list is the only exception, and it fails once an entry is
 fixed, so fixed entries are removed.
 

@@ -1,10 +1,27 @@
 #![forbid(unsafe_code)]
 //! Cross-process transport checks (host-native-pipes).
 
-#[path = "../../pagura/tests/support/mod.rs"]
-mod support;
 use std::io::Write;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
+
+/// The first classic case expected to be unsupported, as (fixture path,
+/// feature tag).
+#[expect(
+    clippy::expect_used,
+    reason = "generated unsupported cases name their fixture and feature"
+)]
+fn unsupported_case() -> (PathBuf, String) {
+    let manifest = pagura_testkit::Manifest::load("classic");
+    let case = manifest
+        .cases()
+        .find(|case| case.string("expected") == Some("unsupported"))
+        .expect("the classic manifest has an unsupported case");
+    let feature = case
+        .string("feature")
+        .expect("unsupported cases name a feature");
+    (case.path().expect("a fixture path"), feature.to_owned())
+}
 
 #[test]
 fn binary_flushes_live_responses_and_reports_structured_unsupported() {
@@ -23,7 +40,7 @@ fn binary_flushes_live_responses_and_reports_structured_unsupported() {
     let mut hello = [0; 13];
     std::io::Read::read_exact(&mut output, &mut hello).unwrap();
     assert_eq!(hello, [9, 0, 0, 0, 129, 1, 0, 0, 0, 1, 0, 0, 0]);
-    let (path, feature) = support::unsupported_cases().remove(0);
+    let (path, feature) = unsupported_case();
     let pdf = std::fs::read(path).unwrap();
     let mut open = u32::try_from(pdf.len() + 14)
         .unwrap()

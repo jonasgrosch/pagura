@@ -1,0 +1,28 @@
+[package]
+name = "pagura-fuzz"
+description = "Fuzz drivers shared by the libFuzzer targets and the stable replay test"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+
+# Test tooling, like pagura-testkit: never a dependency of a product crate.
+# The libFuzzer binaries live in the separate `fuzz/` workspace and call
+# these drivers; `tests/regressions.rs` replays the stored findings on
+# stable Rust through the same code.
+[dependencies]
+pagura = { workspace = true, features = ["bundled-data"] }
+pagura-codec.workspace = true
+pagura-core.workspace = true
+pagura-font.workspace = true
+pagura-host.workspace = true
+pagura-image.workspace = true
+pagura-text.workspace = true
+
+[dev-dependencies]
+pagura-testkit.workspace = true

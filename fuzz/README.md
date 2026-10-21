@@ -5,8 +5,9 @@ Coverage-guided fuzzing of the product crates with
 tooling in its own Cargo workspace and never a product dependency. libFuzzer
 is C++ and its entry points need `no_mangle`, so the one-line binaries in
 `fuzz_targets/` cannot forbid unsafe code. Everything they run lives in the
-drivers in `src/`, which do forbid it, and which the stable replay test
-`crates/pagura/tests/fuzz_regressions.rs` compiles as well: a stored input
+drivers of the `pagura-fuzz` crate (`crates/pagura-fuzz/src/`), which do
+forbid it, and which its stable replay test
+`crates/pagura-fuzz/tests/regressions.rs` runs as well: a stored input
 exercises the same code under `cargo test` as under libFuzzer.
 
 Every driver checks the same properties: nothing panics; every error is a
@@ -36,8 +37,8 @@ wrapper targets (`text`, `image` modes 4–7) turn the parts into objects 3,
 as in the generated fixtures. A part `<< entries >> stream`, followed by a
 line break and the data, becomes a stream whose `/Length` the wrapper sets;
 any other part is used as an object body verbatim. The selector bytes are
-documented in `src/image.rs`, `src/text.rs` and `src/host.rs`, the search
-query of `extraction` in `src/extraction.rs`.
+documented in `crates/pagura-fuzz/src/image.rs`, `text.rs` and `host.rs`,
+the search query of `extraction` in `extraction.rs`.
 
 ## Routine run
 
@@ -95,7 +96,7 @@ cd fuzz && cargo +nightly fuzz tmin -O -a <target> artifacts/<target>/<crash-fil
 
 The minimized input goes to `regressions/<target>/<short-name>`, with a
 one-line note on the defect in `regressions/<target>/<short-name>.txt`.
-`cargo test -p pagura --test fuzz_regressions` (part of `tools/check.py`)
+`cargo test -p pagura-fuzz --test regressions` (part of `tools/check.py`)
 replays every stored input on stable Rust and requires it to finish without
 a failure. An input whose fix has not landed yet goes on the short
 `KNOWN_FAILURES` list in that test, naming the defect; once it passes, the

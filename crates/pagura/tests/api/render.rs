@@ -37,7 +37,7 @@ const RENDER_CASES: [&str; 17] = [
     "two-pages",
 ];
 
-mod support;
+use crate::support;
 
 #[test]
 fn exact_pixels_match_independent_oracles() {
