@@ -77,6 +77,11 @@ The known all-opaque partial-coverage defect above remains an exception to the
 Exact contract. Its [follow-up plan](plans/opaque-composition-accuracy.md) adds
 direct-root independent regressions; passing general-compositor tests does not
 establish correctness of the opaque shortcut.
+The [direct-root baseline](../benchmarks/results/opaque-precision-baseline.md)
+now confirms Exact output 217 against an admissible 218–219 interval, and
+output 127 against 5–6 after 1,000 faint black marks. Competitive passes the
+first case but also returns 127 on the long stack. These are independent
+one-level target checks, not new Competitive tolerances or a repaired contract.
 
 ## Overprint display policy
 

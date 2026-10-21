@@ -1,0 +1,274 @@
+{
+  "schema": 1,
+  "admission": false,
+  "purpose": "Post-run integrity audit and validation of harness hardening; not a new speed or memory experiment.",
+  "measured_binary_identity": {
+    "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+    "commit": "776fd4b9ed6f2a6805d0932cabdd96f1e73ab5a4",
+    "source_sha256": "6f89444e8688e0174abcaf427195a35e8ad2cc17e82d163146f716f49cd27c29",
+    "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/glyph-memo/candidate",
+    "binary_sha256": "bcf7603da254a9561d2b31015bb42f09bd77a2bc7fe0107b2092d348aa25b0c6"
+  },
+  "pins_sha256": {
+    "benchmarks/results/glyph-memo-bindings.json": "aa1d2b2cc6fb3d8bb00ba57de4da61c11848c3c553da1d947fb88d1f0e269837",
+    "benchmarks/results/local/glyph-memo/build-001-receipt.json": "5f5fb316eaa2462784fff8b503164cc5b90db7b2979e5410aa04d381fe0f974d",
+    "crates/pagura-render/examples/scene_index_profile.rs": "8e89a087d351e7b89289e0897cafeb75422d4c151280734fde8c958a841279f2",
+    "benchmarks/results/local/glyph-memo/confirmation-001/report.json": "0e26445deb7cecefc589cac8ac5c15b198816063be0b6672f7ffcd21ceaca6d1",
+    "benchmarks/results/glyph-memo-post-measurement-bindings.json": "4995787ebc70f3707f20d4137fa7e59f978fc18b28b8c20fe4050ca80730ef93",
+    "benchmarks/results/opaque-precision-baseline.json": "2692ad2429827884bb8070765612c0c9432addc8f5ce53acafaa41406b9a5acb",
+    "benchmarks/results/local/opaque-precision/probe-001/plan.json": "75a324ce23f1ff495bf0afc89a181083e351117c0264c182a3523a237d0c1bf4",
+    "benchmarks/results/local/opaque-precision/probe-001/report.json": "33b89e3e3351b03aa5c089d3a1ad34c233fe8ade50a8fac1f894f3cbffb5e5fb",
+    "benchmarks/results/local/opaque-precision/probe-001-receipt.json": "3f633ab36dc560cd015fd97441237c40d91875d8334573355419caf4994f2942",
+    "benchmarks/results/local/opaque-precision/probe-001-observer/guard.json": "b25c16b78c89131216f9e8f6cdc095176d72e041c16e6477115b399825fde122",
+    "benchmarks/results/local/opaque-precision/probe-002/plan.json": "bb8d410ae0b4f6d916eedebf5ad698683c5abea29d9ae7f9f7a34de3d4ed43d8",
+    "benchmarks/results/local/opaque-precision/probe-002/report.json": "bbe2b91a2133db5caad86fc7580a1c2f6d5bb23248d022462bba44ecfbca8ee5",
+    "benchmarks/results/local/opaque-precision/probe-002-receipt.json": "2d6a0949730a903a6629c9b7895e36c45925692fdcad01fa7cde026a00272cc1",
+    "benchmarks/results/local/opaque-precision/probe-002-observer/guard.json": "ed6e740ba3e29949a61d428562a4e666ffd4eba4fa785256555d943990b8bcaa"
+  },
+  "observations": [
+    {
+      "attempt": "001",
+      "report_sha256": "33b89e3e3351b03aa5c089d3a1ad34c233fe8ade50a8fac1f894f3cbffb5e5fb",
+      "receipt_sha256": "3f633ab36dc560cd015fd97441237c40d91875d8334573355419caf4994f2942",
+      "plan_sha256": "75a324ce23f1ff495bf0afc89a181083e351117c0264c182a3523a237d0c1bf4",
+      "guard_sha256": "b25c16b78c89131216f9e8f6cdc095176d72e041c16e6477115b399825fde122",
+      "scans": 3,
+      "known_contention_observed": false,
+      "rows": [
+        {
+          "case": "root-two-partial",
+          "mode": "exact",
+          "operation": "full",
+          "rgba": [
+            217,
+            217,
+            217,
+            255
+          ],
+          "within_contract": false,
+          "output_sha256": "82328df56b85c06777c7a339028d3c928756328c99a52292f1358b2577e16d93"
+        },
+        {
+          "case": "root-two-partial",
+          "mode": "exact",
+          "operation": "tile",
+          "rgba": [
+            217,
+            217,
+            217,
+            255
+          ],
+          "within_contract": false,
+          "output_sha256": "82328df56b85c06777c7a339028d3c928756328c99a52292f1358b2577e16d93"
+        },
+        {
+          "case": "root-two-partial",
+          "mode": "competitive",
+          "operation": "full",
+          "rgba": [
+            219,
+            219,
+            219,
+            255
+          ],
+          "within_contract": true,
+          "output_sha256": "a2e7c045f58544dd0293a02eb118fa9cf71453820b9148444c3e902f5cb2453c"
+        },
+        {
+          "case": "root-two-partial",
+          "mode": "competitive",
+          "operation": "tile",
+          "rgba": [
+            219,
+            219,
+            219,
+            255
+          ],
+          "within_contract": true,
+          "output_sha256": "a2e7c045f58544dd0293a02eb118fa9cf71453820b9148444c3e902f5cb2453c"
+        },
+        {
+          "case": "root-slivers-1000",
+          "mode": "exact",
+          "operation": "full",
+          "rgba": [
+            127,
+            127,
+            127,
+            255
+          ],
+          "within_contract": false,
+          "output_sha256": "c9fa2529b192a81c5a44352ada5eaf136d6ea62c9b8dff629cc4463c223b996f"
+        },
+        {
+          "case": "root-slivers-1000",
+          "mode": "exact",
+          "operation": "tile",
+          "rgba": [
+            127,
+            127,
+            127,
+            255
+          ],
+          "within_contract": false,
+          "output_sha256": "c9fa2529b192a81c5a44352ada5eaf136d6ea62c9b8dff629cc4463c223b996f"
+        },
+        {
+          "case": "root-slivers-1000",
+          "mode": "competitive",
+          "operation": "full",
+          "rgba": [
+            127,
+            127,
+            127,
+            255
+          ],
+          "within_contract": false,
+          "output_sha256": "c9fa2529b192a81c5a44352ada5eaf136d6ea62c9b8dff629cc4463c223b996f"
+        },
+        {
+          "case": "root-slivers-1000",
+          "mode": "competitive",
+          "operation": "tile",
+          "rgba": [
+            127,
+            127,
+            127,
+            255
+          ],
+          "within_contract": false,
+          "output_sha256": "c9fa2529b192a81c5a44352ada5eaf136d6ea62c9b8dff629cc4463c223b996f"
+        }
+      ]
+    },
+    {
+      "attempt": "002",
+      "report_sha256": "bbe2b91a2133db5caad86fc7580a1c2f6d5bb23248d022462bba44ecfbca8ee5",
+      "receipt_sha256": "2d6a0949730a903a6629c9b7895e36c45925692fdcad01fa7cde026a00272cc1",
+      "plan_sha256": "bb8d410ae0b4f6d916eedebf5ad698683c5abea29d9ae7f9f7a34de3d4ed43d8",
+      "guard_sha256": "ed6e740ba3e29949a61d428562a4e666ffd4eba4fa785256555d943990b8bcaa",
+      "scans": 3,
+      "known_contention_observed": false,
+      "rows": [
+        {
+          "case": "root-two-partial",
+          "mode": "exact",
+          "operation": "full",
+          "rgba": [
+            217,
+            217,
+            217,
+            255
+          ],
+          "within_contract": false,
+          "output_sha256": "82328df56b85c06777c7a339028d3c928756328c99a52292f1358b2577e16d93"
+        },
+        {
+          "case": "root-two-partial",
+          "mode": "exact",
+          "operation": "tile",
+          "rgba": [
+            217,
+            217,
+            217,
+            255
+          ],
+          "within_contract": false,
+          "output_sha256": "82328df56b85c06777c7a339028d3c928756328c99a52292f1358b2577e16d93"
+        },
+        {
+          "case": "root-two-partial",
+          "mode": "competitive",
+          "operation": "full",
+          "rgba": [
+            219,
+            219,
+            219,
+            255
+          ],
+          "within_contract": true,
+          "output_sha256": "a2e7c045f58544dd0293a02eb118fa9cf71453820b9148444c3e902f5cb2453c"
+        },
+        {
+          "case": "root-two-partial",
+          "mode": "competitive",
+          "operation": "tile",
+          "rgba": [
+            219,
+            219,
+            219,
+            255
+          ],
+          "within_contract": true,
+          "output_sha256": "a2e7c045f58544dd0293a02eb118fa9cf71453820b9148444c3e902f5cb2453c"
+        },
+        {
+          "case": "root-slivers-1000",
+          "mode": "exact",
+          "operation": "full",
+          "rgba": [
+            127,
+            127,
+            127,
+            255
+          ],
+          "within_contract": false,
+          "output_sha256": "c9fa2529b192a81c5a44352ada5eaf136d6ea62c9b8dff629cc4463c223b996f"
+        },
+        {
+          "case": "root-slivers-1000",
+          "mode": "exact",
+          "operation": "tile",
+          "rgba": [
+            127,
+            127,
+            127,
+            255
+          ],
+          "within_contract": false,
+          "output_sha256": "c9fa2529b192a81c5a44352ada5eaf136d6ea62c9b8dff629cc4463c223b996f"
+        },
+        {
+          "case": "root-slivers-1000",
+          "mode": "competitive",
+          "operation": "full",
+          "rgba": [
+            127,
+            127,
+            127,
+            255
+          ],
+          "within_contract": false,
+          "output_sha256": "c9fa2529b192a81c5a44352ada5eaf136d6ea62c9b8dff629cc4463c223b996f"
+        },
+        {
+          "case": "root-slivers-1000",
+          "mode": "competitive",
+          "operation": "tile",
+          "rgba": [
+            127,
+            127,
+            127,
+            255
+          ],
+          "within_contract": false,
+          "output_sha256": "c9fa2529b192a81c5a44352ada5eaf136d6ea62c9b8dff629cc4463c223b996f"
+        }
+      ]
+    }
+  ],
+  "harness_hardening": {
+    "reason": "Review found missing explicit final PDF/PPM equality checks and a second read for verified-output hashing. First retained artifacts independently passed these checks; no corruption was observed.",
+    "original_source_archive": "benchmarks/results/local/opaque-precision/probe-001-harness.py",
+    "original_source_sha256": "027d4995e1c765b2653af8c85dcb40221ed61ba1237efce8887017b0414bd753",
+    "current_source_sha256": "962b71aa080bf1d58f96a9c2524abf88a577abd5a790166338fcaddacaa0e5d4",
+    "diff": "--- probe-001/opaque_precision_probe.py\n+++ probe-002/opaque_precision_probe.py\n@@ -76,13 +76,18 @@\n                     header, rgba = raw.split(b\"\\n\", 1)\n                     if header != b\"RGBA8 1 1 premultiplied\" or len(rgba) != 4:\n                         raise ValueError(\"unexpected output extent/format\")\n-                    row.update(rgba=list(rgba), output_sha256=sha(target),\n+                    row.update(rgba=list(rgba), output_sha256=hashlib.sha256(raw).hexdigest(),\n                                within_contract=all(v in bounds[\"admissible\"] for v in rgba[:3]) and rgba[3] == bounds[\"alpha\"])\n                     rendered.append(raw)\n                 if rendered[0] != rendered[1]:\n                     raise ValueError(\"full/tile entry points differ\")\n         if sha(binary) != plan[\"binary_sha256\"] or any(sha(p) != h for p, h in plan[\"source_hashes\"].items()):\n             raise ValueError(\"binary or harness changed during probe\")\n+        for name, bounds in cases.items():\n+            if sha(output / (name + \".pdf\")) != bounds[\"input_sha256\"] or sha(output / (name + \".ppm\")) != bounds[\"oracle_sha256\"]:\n+                raise ValueError(\"fixture changed during probe\")\n+        if any(sha(row[\"command\"][4]) != row[\"output_sha256\"] for row in rows):\n+            raise ValueError(\"verified output changed during probe\")\n         report.update(status=\"completed-diagnostic\", all_within_contract=all(row[\"within_contract\"] for row in rows),\n                       full_tile_equal=True)\n     except BaseException as error:\n",
+    "validation": "Attempt 002 executed the hardened helper once; its eight RGBA outputs and contract outcomes equal attempt 001. Both attempts are retained."
+  },
+  "limitations": [
+    "Cooperative locks and sampled process checks do not prove global exclusivity.",
+    "Build/source correspondence retains the trusted coordinator record boundary.",
+    "No product change or accuracy correction was made; a successful diagnostic exit is not an accuracy pass.",
+    "Default-open driver does not report repairs, dispatch, or source diagnostics."
+  ]
+}

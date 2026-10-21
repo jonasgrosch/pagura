@@ -1,0 +1,408 @@
+{
+  "schema": 1,
+  "kind": "independent-accuracy-diagnostic",
+  "admission": false,
+  "requirements": [
+    "content-compositor-precision"
+  ],
+  "plan": {
+    "schema": 1,
+    "kind": "independent-accuracy-diagnostic",
+    "admission": false,
+    "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/glyph-memo/candidate",
+    "binary_sha256": "bcf7603da254a9561d2b31015bb42f09bd77a2bc7fe0107b2092d348aa25b0c6",
+    "source_hashes": {
+      "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/opaque_precision_probe.py": "027d4995e1c765b2653af8c85dcb40221ed61ba1237efce8887017b0414bd753",
+      "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/opaque_precision_fixtures.py": "84e50b24f54de9982985be6c2ea4147911999375461bb966b2845983055775df",
+      "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/tools/fixturegen/pdf.py": "6d1546f6a56fedd06bb4bfe247f6b5fa747e092b6ac471f9134dcef72820f810"
+    },
+    "cases": {
+      "root-two-partial": {
+        "input_sha256": "5e82c29ff182df45ba2b01d936455eaa6cbd71f12e80ff5093a8a27c93e8c774",
+        "oracle_sha256": "81de944dab7d2e3d7e09080eed7315e7b00111db916b5caa6fafae168d948488",
+        "marks": 3,
+        "coverage": 10,
+        "width_decimal": "0.039215686275",
+        "exact_numerator": "44617",
+        "exact_denominator": "204",
+        "rounded": 219,
+        "admissible": [
+          218,
+          219
+        ],
+        "alpha": 255
+      },
+      "root-slivers-1000": {
+        "input_sha256": "ed506f49359cfea44263df312c4b4496b3f54155ee0c4a064a5095179dd8ce8c",
+        "oracle_sha256": "e4d80c7ae369ded6d8bf147c17152bc1c298db100f7d11bdfdc2a7e98ef3f2f1",
+        "marks": 1001,
+        "coverage": 1,
+        "width_decimal": "0.003921568627",
+        "exact_numerator": "68189360879416941905841525513032822768791650948962996985234093696914728328369308239621273362277419809145090928051584543580988169850157275450394848248880329666238273989806964408762778951145073609801592966630926627580579992225052998740440741039378714999181016641659124950753175307195239467302018226123162196923644791419133734508000231469918064751530089270932284612817378336544980637124567264775763934402846623385265236760073590422410683468394709165850173250566165610116978910621260950837980291256974956723854716585167779748252328796526452101100082896254419590826887025391225814978888612529571563353149182414690818292327337368987442677250427937960282651941016641673913505241434153633014118566950033968502961992527967038561859507888313412948245989799032446447363281133188964097898274489443726828621602862979064599415556472418730268356802512361186892848771538954148178418148941731093248570863295359601639389560807955932159019017368459679270686649089826890261276091399402673139794666656306184853096653939296816672502640686527745601728074478124311995897548061909924905679638120947068948385438243595754495822116701472812550242151539296044409646841789013345216618674785103326321984686274141689804602054792207154546761107109787388967275400628542667495068946917667348167745591876284002521838481665673860825696712906962431047091898100900514731326537305386081785669271634236747241903274311128461031894718240524576969024816371969984102738652186696769148261684497776349434194241595047206727686956224329442055391524250027103213304636199675968603722293987287826767031883662878757827394739631174207394748479319227648088693665239927861532674626578989839886391007678441667784531313739767007425206759185927796330660914616014894754861799393294406425660167839910526766445928560037035470041920624359308049723372504342788698048555683752679783749543391132555649032023389498328772616242803387046484927897919927138182786408907800749777833108419631278305334818364800119943665553746327346137498350322278109279939270650236951377363283155128429174698154050678283630326089495070142646427662673016344032008008386634318017207089810611404668365005909141959797549046098530106201578804585262268650420443336985511851150932852677827217567967940261720498384761441107529015653242048332657671481720443552926604536551422375575566389593716495462285062492952763844427324484288856331168320455445872272266252643110609242571086949513532704781217485029376",
+        "exact_denominator": "13603174009663949729887061592661179070486200636859586744956584877526942707866003141342970567383081768380352610312517072199710483226780299453892402647259614438944409825429844370633479079803300402725989199522788589223311197992931856209082345894713754743994807408515658525899941505828130531618175231230474589030330351657092981241611732786673764923482816728234359053073150963347950649354715444030662265373969440690442430490926099969836927944572449834447374715413383778254724678284170712732488103929951409142725588519889898513268453535755690341982342370761000525014191504229594728863327356966922247769630173960576414319710169586864935832039638590313616528818701850192806880603846072889964786493462496242044216662518853115588879338687512829516538469978933636609464330037936752856422637470893488878997969819648358722996054044356976752689331609856378800992081830393676244585299477775282166967528807091997752043222158053672495411437840183005106304573761846019944890199625564957599125625213703680977221642952248975355145915203984413797588061778880875907727975420117276559874772852617054229968599310236544530989555262820802785988197551383553208723592252738960320313252933317968616390832383631652895930339299292926673648139595720089756980198770373701390293034988707979779194390996754301927054014707369717795832945366970496918723918479759553990979539825779812690487520821141840085154746196387703664684054260998135373828363706046994348407808256247550355921282316614946703802774105105102680422850389578796118314261938304292511982089203750806065725228503518320802312581205347353017195022897721723473128742179044070026973473234896925140806083196394313216612254193797552250035056306110281709430220336932430160101033102610020062353636145125609143529755225231544761774309636856554599275906611854334796195297461096327211289836912405426063275256721841068738364578779701185359919103673497248760564747354598029721587201031321978226032651750880371867889830866759613336144742323752341872853202126228766870731423961077867910668659867649502806025555976197585958529536709214440100731483755144579671505975667074936810607889388705628323882862552969329723460586141823097709102372855676296938098970879319050987448519128217575877757789586530583139792690289838042536270489941838624858634750033455255365662723184576660137726176600567073631197512375725836115701970417796884207509280133512306144304994902360927966356030083261430263519287109375",
+        "rounded": 5,
+        "admissible": [
+          5,
+          6
+        ],
+        "alpha": 255
+      }
+    },
+    "modes": [
+      "exact",
+      "competitive"
+    ],
+    "operations": [
+      "full",
+      "tile"
+    ],
+    "limitations": [
+      "Driver source/build correspondence requires the separately bound build evidence.",
+      "The one-pixel tile checks the API entry point, not multi-tile seams.",
+      "Driver uses default open options and does not emit diagnostics or a dispatch trace.",
+      "Exact one-level bounds are applied to both modes here without inventing a Competitive allowance.",
+      "Timings are retained as driver output only; no performance comparison is made."
+    ]
+  },
+  "report": {
+    "schema": 1,
+    "admission": false,
+    "plan_sha256": "75a324ce23f1ff495bf0afc89a181083e351117c0264c182a3523a237d0c1bf4",
+    "status": "completed-diagnostic",
+    "rows": [
+      {
+        "case": "root-two-partial",
+        "mode": "exact",
+        "operation": "full",
+        "command": [
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/glyph-memo/candidate",
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001/root-two-partial.pdf",
+          "exact",
+          "full",
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001/root-two-partial-exact-full.rgba",
+          "72"
+        ],
+        "exit_code": 0,
+        "rgba": [
+          217,
+          217,
+          217,
+          255
+        ],
+        "output_sha256": "82328df56b85c06777c7a339028d3c928756328c99a52292f1358b2577e16d93",
+        "within_contract": false
+      },
+      {
+        "case": "root-two-partial",
+        "mode": "exact",
+        "operation": "tile",
+        "command": [
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/glyph-memo/candidate",
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001/root-two-partial.pdf",
+          "exact",
+          "tile",
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001/root-two-partial-exact-tile.rgba",
+          "72"
+        ],
+        "exit_code": 0,
+        "rgba": [
+          217,
+          217,
+          217,
+          255
+        ],
+        "output_sha256": "82328df56b85c06777c7a339028d3c928756328c99a52292f1358b2577e16d93",
+        "within_contract": false
+      },
+      {
+        "case": "root-two-partial",
+        "mode": "competitive",
+        "operation": "full",
+        "command": [
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/glyph-memo/candidate",
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001/root-two-partial.pdf",
+          "competitive",
+          "full",
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001/root-two-partial-competitive-full.rgba",
+          "72"
+        ],
+        "exit_code": 0,
+        "rgba": [
+          219,
+          219,
+          219,
+          255
+        ],
+        "output_sha256": "a2e7c045f58544dd0293a02eb118fa9cf71453820b9148444c3e902f5cb2453c",
+        "within_contract": true
+      },
+      {
+        "case": "root-two-partial",
+        "mode": "competitive",
+        "operation": "tile",
+        "command": [
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/glyph-memo/candidate",
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001/root-two-partial.pdf",
+          "competitive",
+          "tile",
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001/root-two-partial-competitive-tile.rgba",
+          "72"
+        ],
+        "exit_code": 0,
+        "rgba": [
+          219,
+          219,
+          219,
+          255
+        ],
+        "output_sha256": "a2e7c045f58544dd0293a02eb118fa9cf71453820b9148444c3e902f5cb2453c",
+        "within_contract": true
+      },
+      {
+        "case": "root-slivers-1000",
+        "mode": "exact",
+        "operation": "full",
+        "command": [
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/glyph-memo/candidate",
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001/root-slivers-1000.pdf",
+          "exact",
+          "full",
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001/root-slivers-1000-exact-full.rgba",
+          "72"
+        ],
+        "exit_code": 0,
+        "rgba": [
+          127,
+          127,
+          127,
+          255
+        ],
+        "output_sha256": "c9fa2529b192a81c5a44352ada5eaf136d6ea62c9b8dff629cc4463c223b996f",
+        "within_contract": false
+      },
+      {
+        "case": "root-slivers-1000",
+        "mode": "exact",
+        "operation": "tile",
+        "command": [
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/glyph-memo/candidate",
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001/root-slivers-1000.pdf",
+          "exact",
+          "tile",
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001/root-slivers-1000-exact-tile.rgba",
+          "72"
+        ],
+        "exit_code": 0,
+        "rgba": [
+          127,
+          127,
+          127,
+          255
+        ],
+        "output_sha256": "c9fa2529b192a81c5a44352ada5eaf136d6ea62c9b8dff629cc4463c223b996f",
+        "within_contract": false
+      },
+      {
+        "case": "root-slivers-1000",
+        "mode": "competitive",
+        "operation": "full",
+        "command": [
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/glyph-memo/candidate",
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001/root-slivers-1000.pdf",
+          "competitive",
+          "full",
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001/root-slivers-1000-competitive-full.rgba",
+          "72"
+        ],
+        "exit_code": 0,
+        "rgba": [
+          127,
+          127,
+          127,
+          255
+        ],
+        "output_sha256": "c9fa2529b192a81c5a44352ada5eaf136d6ea62c9b8dff629cc4463c223b996f",
+        "within_contract": false
+      },
+      {
+        "case": "root-slivers-1000",
+        "mode": "competitive",
+        "operation": "tile",
+        "command": [
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/glyph-memo/candidate",
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001/root-slivers-1000.pdf",
+          "competitive",
+          "tile",
+          "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001/root-slivers-1000-competitive-tile.rgba",
+          "72"
+        ],
+        "exit_code": 0,
+        "rgba": [
+          127,
+          127,
+          127,
+          255
+        ],
+        "output_sha256": "c9fa2529b192a81c5a44352ada5eaf136d6ea62c9b8dff629cc4463c223b996f",
+        "within_contract": false
+      }
+    ],
+    "all_within_contract": false,
+    "full_tile_equal": true,
+    "artifacts_sha256": {
+      "plan.json": "75a324ce23f1ff495bf0afc89a181083e351117c0264c182a3523a237d0c1bf4",
+      "root-slivers-1000-competitive-full.rgba": "c9fa2529b192a81c5a44352ada5eaf136d6ea62c9b8dff629cc4463c223b996f",
+      "root-slivers-1000-competitive-full.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "root-slivers-1000-competitive-full.stdout": "40dd8597f83a7a98f6cfc4e69a7230b5cec77b9f7ef76e1c6f7b24ca1d0261bb",
+      "root-slivers-1000-competitive-tile.rgba": "c9fa2529b192a81c5a44352ada5eaf136d6ea62c9b8dff629cc4463c223b996f",
+      "root-slivers-1000-competitive-tile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "root-slivers-1000-competitive-tile.stdout": "6487b1c1db953c0927710ec821708369fa3cedcfa762cd4a4c632d76bc78ba3b",
+      "root-slivers-1000-exact-full.rgba": "c9fa2529b192a81c5a44352ada5eaf136d6ea62c9b8dff629cc4463c223b996f",
+      "root-slivers-1000-exact-full.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "root-slivers-1000-exact-full.stdout": "b972211d44c90921d9567e0c36965b200eebce8c4f403b1322b7ccc9a107743c",
+      "root-slivers-1000-exact-tile.rgba": "c9fa2529b192a81c5a44352ada5eaf136d6ea62c9b8dff629cc4463c223b996f",
+      "root-slivers-1000-exact-tile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "root-slivers-1000-exact-tile.stdout": "1be4f08dc0a10093e75b15c0d938a2a18d245d2c0d55fd17c3c796ca41ce382b",
+      "root-slivers-1000.pdf": "ed506f49359cfea44263df312c4b4496b3f54155ee0c4a064a5095179dd8ce8c",
+      "root-slivers-1000.ppm": "e4d80c7ae369ded6d8bf147c17152bc1c298db100f7d11bdfdc2a7e98ef3f2f1",
+      "root-two-partial-competitive-full.rgba": "a2e7c045f58544dd0293a02eb118fa9cf71453820b9148444c3e902f5cb2453c",
+      "root-two-partial-competitive-full.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "root-two-partial-competitive-full.stdout": "811a917150792920191ec10a1445614cfa13de0c75bb23919f3c36af5e31997a",
+      "root-two-partial-competitive-tile.rgba": "a2e7c045f58544dd0293a02eb118fa9cf71453820b9148444c3e902f5cb2453c",
+      "root-two-partial-competitive-tile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "root-two-partial-competitive-tile.stdout": "7ee3e004f5d3037db753cabac1083f07714ee7a71cd4b894a4d4832d2eb5797d",
+      "root-two-partial-exact-full.rgba": "82328df56b85c06777c7a339028d3c928756328c99a52292f1358b2577e16d93",
+      "root-two-partial-exact-full.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "root-two-partial-exact-full.stdout": "0e7dfe1b0b6b966fbf87109aaac96bf632e58ebdc21fa4f9c56f631581bf29df",
+      "root-two-partial-exact-tile.rgba": "82328df56b85c06777c7a339028d3c928756328c99a52292f1358b2577e16d93",
+      "root-two-partial-exact-tile.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "root-two-partial-exact-tile.stdout": "6754b29ef105b1aed13a506c25fa85a6104eacdb624b4ee9a3d27ef16e5bdf5e",
+      "root-two-partial.pdf": "5e82c29ff182df45ba2b01d936455eaa6cbd71f12e80ff5093a8a27c93e8c774",
+      "root-two-partial.ppm": "81de944dab7d2e3d7e09080eed7315e7b00111db916b5caa6fafae168d948488"
+    }
+  },
+  "receipt": {
+    "argv": [
+      "python3",
+      "benchmarks/results/local/glyph-memo/idle_then.py",
+      "benchmarks/results/local/opaque-precision/probe-001-idle.json",
+      "python3",
+      "benchmarks/results/local/glyph-memo/load_observer.py",
+      "--evidence-dir",
+      "benchmarks/results/local/opaque-precision/probe-001-observer",
+      "--",
+      "python3",
+      "benchmarks/opaque_precision_probe.py",
+      "--binary",
+      "benchmarks/results/local/glyph-memo/candidate",
+      "--output",
+      "benchmarks/results/local/opaque-precision/probe-001"
+    ],
+    "artifact_errors": {},
+    "artifacts": {
+      "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001-observer/guard.json": "b25c16b78c89131216f9e8f6cdc095176d72e041c16e6477115b399825fde122",
+      "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001/report.json": "33b89e3e3351b03aa5c089d3a1ad34c233fe8ade50a8fac1f894f3cbffb5e5fb"
+    },
+    "cancellation_signal": null,
+    "child_pid": 63772,
+    "coordination": {
+      "acquired_at": "2026-10-21T02:34:38.782359+00:00",
+      "lock_directory": "/tmp/pagura-bench.lockdir",
+      "lock_file": "/tmp/pagura-bench.lock",
+      "scope": "cooperative"
+    },
+    "cwd": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+    "duration_ns": 11179638291,
+    "ended_at": "2026-10-21T02:34:50.117550+00:00",
+    "environment_overrides": {
+      "PAGURA_RUN_ID": "f33b8424-20ba-460d-8036-6cf408e2d941",
+      "PAGURA_RUN_RECEIPT": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-precision/probe-001-receipt.json"
+    },
+    "errors": [],
+    "exit_code": 0,
+    "finalized_at": "2026-10-21T02:34:50.252037+00:00",
+    "kind": "profile",
+    "owner": "renderer-stacked-gains",
+    "run_id": "f33b8424-20ba-460d-8036-6cf408e2d941",
+    "runner": {
+      "hostname": "Jonass-MacBook-Pro-4.local",
+      "machine": "arm64",
+      "pid": 63761,
+      "system": "Darwin"
+    },
+    "schema": 1,
+    "source_after": {
+      "commit": "d16c07f8ea7ae6cc5e680cd8b669640be19e5f12",
+      "sha256": "0106c6da903589edfc3cba638702176d252cab80bef1582954895dfe8a894b12"
+    },
+    "source_before": {
+      "commit": "d16c07f8ea7ae6cc5e680cd8b669640be19e5f12",
+      "sha256": "0106c6da903589edfc3cba638702176d252cab80bef1582954895dfe8a894b12"
+    },
+    "source_root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+    "source_unchanged": true,
+    "started_at": "2026-10-21T02:34:38.937928+00:00",
+    "status": "completed",
+    "task": "opaque-precision-probe-001",
+    "wrapper_exit_code": 0
+  },
+  "observer": {
+    "schema": 1,
+    "started_utc": "2026-10-21T02:34:49.534814+00:00",
+    "command": [
+      "python3",
+      "benchmarks/opaque_precision_probe.py",
+      "--binary",
+      "benchmarks/results/local/glyph-memo/candidate",
+      "--output",
+      "benchmarks/results/local/opaque-precision/probe-001"
+    ],
+    "window_seconds": 5400,
+    "poll_seconds": 5,
+    "status": "completed-observation-only",
+    "events": [
+      {
+        "stage": "preflight",
+        "captured_utc": "2026-10-21T02:34:49.535020+00:00",
+        "snapshot": "snapshot-0001.txt",
+        "matches": []
+      },
+      {
+        "stage": "postflight",
+        "captured_utc": "2026-10-21T02:34:49.938650+00:00",
+        "snapshot": "snapshot-0003.txt",
+        "matches": []
+      }
+    ],
+    "observation_only": true,
+    "limitation": "known-process detection; short jobs between scans may be missed",
+    "scans": 3,
+    "child_pid": 63800,
+    "launched_utc": "2026-10-21T02:34:49.680486+00:00",
+    "child_exit_code": 0,
+    "finished_utc": "2026-10-21T02:34:50.095047+00:00",
+    "elapsed_seconds": 0.5602479580556974,
+    "exit_code": 0
+  },
+  "bindings": {
+    "original_confirmation_sha256": "0e26445deb7cecefc589cac8ac5c15b198816063be0b6672f7ffcd21ceaca6d1",
+    "measured_binary_sha256": "bcf7603da254a9561d2b31015bb42f09bd77a2bc7fe0107b2092d348aa25b0c6",
+    "product_commit": "d16c07f8ea7ae6cc5e680cd8b669640be19e5f12",
+    "product_correspondence": "Reuses the immutable glyph-memo confirmation candidate. The committed product differs from the measured source only by the cfg(test) cleanup bound in glyph-memo-post-measurement-bindings.json. No product code was changed for this diagnostic; current runner source identity includes diagnostic scripts.",
+    "post_measurement_bindings_sha256": "4995787ebc70f3707f20d4137fa7e59f978fc18b28b8c20fe4050ca80730ef93",
+    "probe_receipt_sha256": "3f633ab36dc560cd015fd97441237c40d91875d8334573355419caf4994f2942",
+    "probe_report_sha256": "33b89e3e3351b03aa5c089d3a1ad34c233fe8ade50a8fac1f894f3cbffb5e5fb",
+    "probe_guard_sha256": "b25c16b78c89131216f9e8f6cdc095176d72e041c16e6477115b399825fde122"
+  },
+  "interpretation": {
+    "exact_failures": [
+      "root-two-partial",
+      "root-slivers-1000"
+    ],
+    "competitive_failures_against_one_level_target": [
+      "root-slivers-1000"
+    ],
+    "not_a_new_competitive_gate": "These one-level target failures remain visible without modifying the existing Competitive tolerance policy or conformance manifests.",
+    "route": "Static source inference from direct opaque path content and the bound driver default options. No runtime dispatch trace or diagnostic stream was emitted."
+  }
+}
