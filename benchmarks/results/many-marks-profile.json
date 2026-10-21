@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "status": "completed-diagnostic-not-speed-evidence",
+  "source": {
+    "commit": "62efb7ca6a301d85d3439668746982eebc3350e6",
+    "sha256": "f51c3453ce388b1d6670ae2c507cb87469bd2b7aeb74746a74001dd7b91225d4"
+  },
+  "plan_sha256": "196ebe03184e7b641f4debeb417db9e3402fe3ce09128c717e52c4a3bd79d670",
+  "runner_receipt": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/many-marks-profile/runner-001.json",
+  "runner_receipt_sha256": "50d2adde0124ffea910421ce2f73c26907bc1af1924a1a857227c1fc0fdd146d",
+  "record_sha256": "ae729acd79b6955ff1574d38c454bda6321765caef26294fa4e3cf41abdbdc97",
+  "sample_sha256": "b5cb668f90e3b0fa6da32c6e384eabc43a6f0118ad29490dcc72828ba7b22ffe",
+  "observer_scans": 6,
+  "observed_contention": false,
+  "samples": {
+    "render_page_branch": 3649,
+    "compile_page": 1856,
+    "render_display_list": 1325,
+    "destroy_display_list": 468,
+    "color_set_inclusive": 89,
+    "color_set_free": 46,
+    "color_set_allocation": 21,
+    "hull_cache_reserve_rehash": 131,
+    "hull_cache_insert": 37,
+    "hull_cache_lookup_hash": 22,
+    "hull_computation_sibling": 25
+  },
+  "method": "Manual call-tree inspection with independent agent review. Top-level three categories are disjoint and sum to3649. Subtree numbers are nested; do not sum them into the top-level partition.",
+  "limits": [
+    "Sampling and instrumented elapsed time are not speed evidence. The repeated microbench black-boxes outputs; it does not independently verify each render. Same binary/input/settings have 42 independently audited RGB outputs from the frozen campaign. Requested 5-second capture is not a full-duration guarantee.",
+    "Release inlining and merged allocator symbols limit attribution; empty_fill::Edge beneath RawVec growth does not establish empty-fill work.",
+    "The5-second profile is of one synthetic repeated-cold workload and does not rank optimizations for every workload.",
+    "Color reuse addresses only replacement allocation/free in Color::set; retained color clones/path storage and other preparation work remain."
+  ],
+  "next_steps": [
+    "Measure Color::set storage reuse independently.",
+    "Evaluate batching rectangle segment allocation while preserving failure/current-point/work semantics.",
+    "Investigate hull-cache overhead without changing cache contents, identity safety or work charges."
+  ]
+}
