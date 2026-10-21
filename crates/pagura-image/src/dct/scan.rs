@@ -208,7 +208,8 @@ impl Decoder {
                             )?
                         };
                         if let Some(idct) = &idct {
-                            store(c, idct, cells.as_ref(), (&sequential, nonzero), index)
+                            let coefficients = Sparse::with(&sequential, nonzero);
+                            store(c, idct, cells.as_ref(), coefficients, index)
                                 .ok_or_else(|| bits.error("JPEG block outside component"))?;
                             sequential = [0; 64];
                         }
@@ -321,19 +322,14 @@ fn native(
     plane.decode(block, dc, ac, bits, predictor, quant)
 }
 
-/// Reconstructs a completed sequential block into its component's samples,
-/// given the positions of its nonzero coefficients when they are known.
+/// Reconstructs a completed sequential block into its component's samples.
 fn store(
     component: &mut super::frame::Component,
     idct: &Idct,
     cells: Option<&Cells>,
-    (block, nonzero): (&[i32; 64], Option<u64>),
+    block: Sparse<'_>,
     index: usize,
 ) -> Option<()> {
-    let block = nonzero.map_or_else(
-        || Sparse::new(block),
-        |nonzero| Sparse::known(block, nonzero),
-    );
     let quant = component.quant.as_ref()?;
     let stride = component.stride;
     match &mut component.storage {

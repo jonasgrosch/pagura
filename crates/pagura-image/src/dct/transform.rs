@@ -34,9 +34,13 @@ impl<'a> Sparse<'a> {
         Self { values, nonzero }
     }
 
-    /// A block whose nonzero coefficients are at the positions `nonzero`;
-    /// all others are zero.
-    pub(in crate::dct) fn known(values: &'a [i32; 64], nonzero: u64) -> Self {
+    /// A block whose nonzero coefficients are at the positions `nonzero`,
+    /// or found from the values when they are not given; all others are
+    /// zero.
+    pub(in crate::dct) fn with(values: &'a [i32; 64], nonzero: Option<u64>) -> Self {
+        let Some(nonzero) = nonzero else {
+            return Self::new(values);
+        };
         debug_assert_eq!(Self::new(values).nonzero, nonzero);
         Self { values, nonzero }
     }
