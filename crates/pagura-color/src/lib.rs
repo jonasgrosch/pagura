@@ -17,7 +17,7 @@ mod icc;
 mod space;
 
 pub use components::Components;
-pub use convert::{Conversion, Converter, MAX_CHANNELS, Painted, Process, Target};
+pub use convert::{Colorants, Conversion, Converter, MAX_CHANNELS, Painted, Process, Target};
 pub use function::{
     CalculatorFunction, ExponentialFunction, Function, SampledFunction, StitchingFunction,
 };
