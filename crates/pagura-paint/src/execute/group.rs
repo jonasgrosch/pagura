@@ -250,8 +250,20 @@ fn sources(
         return 0;
     };
     let from = child.layout;
-    let n = from.channels();
     let stride = from.stride();
+    // The initial backdrop of a wide buffer's run, read once.
+    if let Buffer::Wide(offset) = child.buffer {
+        let (below, _) = ws.wide.split_at(offset);
+        let read = Read {
+            page: &ws.page,
+            wide: below,
+            levels: &ws.levels,
+            bytes: &ws.bytes,
+        };
+        if let Some(initial) = ws.initial.get_mut(..len * stride) {
+            child.initial.row(read, (x, y), from, initial);
+        }
+    }
     let separation = conversion.map(|c| Separation {
         black: c.black.as_deref(),
         removal: c.removal.as_deref(),
@@ -259,53 +271,8 @@ fn sources(
     let mut work = 0;
     let mut straight = [0.0; CHANNELS];
     for k in 0..len {
-        let factor = match cover {
-            Cover::Full(_) => None,
-            Cover::Partial(_) => Some(f64::from(cover.at(k)) / 255.0),
-        };
-        let index = first + k;
-        let (group, shape) = match child.buffer {
-            Buffer::Wide(offset) => {
-                let (below, above) = ws.wide.split_at(offset);
-                let Some(pixel) = above.get(index * stride..(index + 1) * stride) else {
-                    return work;
-                };
-                let mut base = [0.0; CHANNELS + 3];
-                let read = Read {
-                    page: &ws.page,
-                    wide: below,
-                    levels: &ws.levels,
-                    bytes: &ws.bytes,
-                };
-                let column = x + u32::try_from(k).unwrap_or(u32::MAX);
-                child
-                    .initial
-                    .row(read, (column, y), from, &mut base[..stride]);
-                let group = pixel[n + 1];
-                for (i, value) in straight.iter_mut().enumerate().take(n) {
-                    *value = if group > 0.0 {
-                        ((pixel[i] - (1.0 - group) * base[i]) / group).clamp(0.0, 1.0)
-                    } else {
-                        0.0
-                    };
-                }
-                (group, pixel[n + 2])
-            }
-            Buffer::Levels(offset) => {
-                let pixel = ws
-                    .levels
-                    .get(offset + index)
-                    .map_or([0.0; 4], |p| p.map(f64::from));
-                narrow_straight(pixel.map(|v| v / 255.0), &mut straight)
-            }
-            Buffer::Bytes(offset) => {
-                let pixel = ws
-                    .bytes
-                    .get(offset + index)
-                    .map_or([0.0; 4], |p| p.map(f64::from));
-                narrow_straight(pixel.map(|v| v / 255.0), &mut straight)
-            }
-            Buffer::Page => return work,
+        let Some((group, shape)) = removed(ws, child, first + k, k, &mut straight) else {
+            return work;
         };
         let (Some(target), Some(alpha), Some(shape_out)) = (
             ws.source
@@ -317,37 +284,88 @@ fn sources(
         };
         match (conversion, &separation) {
             (Some(c), Some(separation)) => {
-                let process = c.from.components();
-                let rgb = process::rgb(c.from, &straight[..process]);
-                process::encode_rgb(c.to, rgb, separation, target);
-                let spots = from.spots.min(to.spots);
-                for (slot, &value) in target
-                    .iter_mut()
-                    .skip(c.to.components())
-                    .zip(&straight[process..process + spots])
-                {
-                    *slot = value;
-                }
+                convert(c, (from, to), separation, &straight, target);
                 work += separation.cost();
             }
             _ => {
-                for (slot, &value) in target.iter_mut().zip(&straight[..n]) {
+                for (slot, &value) in target.iter_mut().zip(&straight[..from.channels()]) {
                     *slot = value;
                 }
             }
         }
-        match factor {
-            None => {
-                *alpha = group;
-                *shape_out = shape;
-            }
-            Some(factor) => {
-                *alpha = group * factor;
-                *shape_out = shape * factor;
-            }
+        // A pattern's instances composite through the painted mark's
+        // coverage: Source::new(colour, group × c, shape × c).
+        if let Cover::Partial(_) = cover {
+            let factor = f64::from(cover.at(k)) / 255.0;
+            *alpha = group * factor;
+            *shape_out = shape * factor;
+        } else {
+            *alpha = group;
+            *shape_out = shape;
         }
     }
     work
+}
+
+/// The straight colour of pixel `index` of a group result with its initial
+/// backdrop removed (11.4.4), whose backdrop is pixel `k` of the
+/// workspace's initial run; returns its group alpha and shape.
+fn removed(
+    ws: &Workspace,
+    child: Frame,
+    index: usize,
+    k: usize,
+    straight: &mut [f64; CHANNELS],
+) -> Option<(f64, f64)> {
+    let n = child.layout.channels();
+    let stride = child.layout.stride();
+    match child.buffer {
+        Buffer::Wide(offset) => {
+            let begin = offset + index * stride;
+            let pixel = ws.wide.get(begin..begin + stride)?;
+            let base = ws.initial.get(k * stride..(k + 1) * stride)?;
+            let group = pixel[n + 1];
+            for (i, value) in straight.iter_mut().enumerate().take(n) {
+                *value = if group > 0.0 {
+                    ((pixel[i] - (1.0 - group) * base[i]) / group).clamp(0.0, 1.0)
+                } else {
+                    0.0
+                };
+            }
+            Some((group, pixel[n + 2]))
+        }
+        Buffer::Levels(offset) => {
+            let pixel = ws.levels.get(offset + index)?.map(f64::from);
+            Some(narrow_straight(pixel.map(|v| v / 255.0), straight))
+        }
+        Buffer::Bytes(offset) => {
+            let pixel = ws.bytes.get(offset + index)?.map(f64::from);
+            Some(narrow_straight(pixel.map(|v| v / 255.0), straight))
+        }
+        Buffer::Page => None,
+    }
+}
+
+/// A group colour converted into its parent's blending space (11.7.2): the
+/// process components through RGB, spot channels as they are.
+fn convert(
+    conversion: &Conversion,
+    (from, to): (Layout, Layout),
+    separation: &Separation<'_>,
+    straight: &[f64; CHANNELS],
+    target: &mut [f64],
+) {
+    let process = conversion.from.components();
+    let rgb = process::rgb(conversion.from, &straight[..process]);
+    process::encode_rgb(conversion.to, rgb, separation, target);
+    let spots = from.spots.min(to.spots);
+    for (slot, &value) in target
+        .iter_mut()
+        .skip(conversion.to.components())
+        .zip(&straight[process..process + spots])
+    {
+        *slot = value;
+    }
 }
 
 /// The straight RGB of a narrow premultiplied pixel, and its alpha as both
