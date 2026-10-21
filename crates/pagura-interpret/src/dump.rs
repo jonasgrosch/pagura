@@ -197,7 +197,8 @@ fn describe_group(g: &Group) -> String {
     };
     let a = &g.attributes;
     format!(
-        "{role} isolated {} knockout {} space {:?} bbox {} view {} {}",
+        "{role} {:?} isolated {} knockout {} space {:?} bbox {} view {} {}",
+        g.cause,
         a.isolated,
         a.knockout,
         a.space,

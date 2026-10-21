@@ -4,7 +4,7 @@
 
 use super::{Machine, Scope};
 use crate::device::{Device, FillMark, GroupInfo, MarkState, StrokeMark};
-use crate::model::{Composite, GroupAttributes, Paint, ViewFit};
+use crate::model::{Composite, GroupAttributes, GroupCause, Paint, ViewFit};
 use pagura_core::{Position, Result};
 use pagura_raster::{FillRule, Path};
 use std::sync::Arc;
@@ -14,6 +14,7 @@ use std::sync::Arc;
 /// device.
 #[derive(Debug, Clone)]
 pub(crate) struct Lazy {
+    cause: GroupCause,
     attributes: GroupAttributes,
     clip: Option<Arc<crate::model::Clip>>,
     position: Position,
@@ -55,6 +56,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let opaque = Arc::clone(&self.session.opaque);
         for lazy in self.lazy.iter_mut().filter(|lazy| !lazy.opened) {
             self.device.begin_group(&GroupInfo {
+                cause: lazy.cause,
                 attributes: lazy.attributes,
                 bbox: None,
                 view: None,
@@ -71,8 +73,9 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     }
 
     /// Starts an implicit group with `attributes`, opaque and Normal.
-    pub(crate) fn push_lazy(&mut self, attributes: GroupAttributes, scope: &Scope) {
+    pub(crate) fn push_lazy(&mut self, cause: GroupCause, attributes: GroupAttributes, scope: &Scope) {
         self.lazy.push(Lazy {
+            cause,
             attributes,
             clip: scope.state.clip.clone(),
             position: self.position,
@@ -104,6 +107,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     pub(crate) fn begin_group(&mut self, group: &GroupStart<'_>, scope: &Scope) -> Result<()> {
         self.open_lazy()?;
         self.device.begin_group(&GroupInfo {
+            cause: group.cause,
             attributes: group.attributes,
             bbox: group.bbox,
             view: group.view,
@@ -193,6 +197,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
 /// A group to begin.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct GroupStart<'a> {
+    pub(crate) cause: GroupCause,
     pub(crate) attributes: GroupAttributes,
     pub(crate) bbox: Option<&'a Arc<Path>>,
     pub(crate) view: Option<ViewFit>,

@@ -30,7 +30,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     pub(super) fn select_pattern(
         &mut self,
         base: Option<&Arc<ColorSpace>>,
-        operands: &ColorOperands,
+        operands: &ColorOperands<'_>,
         resources: &Dictionary,
         scope: &mut Scope,
     ) -> Result<Arc<Paint>> {
@@ -49,7 +49,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                     "uncoloured pattern requires underlying space",
                 ))?;
                 let without_name = ColorOperands {
-                    components: operands.components.clone(),
+                    components: std::borrow::Cow::Borrowed(&*operands.components),
                     pattern: None,
                 };
                 Some(super::color::set(space, &without_name)?)
@@ -177,7 +177,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     /// restriction holds in nested forms too.
     pub(super) fn stencil_ignores(
         &self,
-        op: &Op,
+        op: &Op<'_>,
         resources: &Dictionary,
         scope: &Scope,
     ) -> Result<bool> {

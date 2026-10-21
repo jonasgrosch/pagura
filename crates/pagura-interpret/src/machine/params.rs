@@ -12,7 +12,7 @@ use pagura_raster::{LineCap, LineJoin};
 /// # Errors
 ///
 /// `Syntax` for an operation that sets no parameter.
-pub(super) fn apply(op: &Op, state: &mut Graphics) -> Result<()> {
+pub(super) fn apply(op: &Op<'_>, state: &mut Graphics) -> Result<()> {
     match op {
         Op::LineWidth(width) => state.stroke.width = width.max(0.0),
         Op::LineCap(cap) => {

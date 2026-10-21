@@ -2,7 +2,7 @@
 //! groups, masks, patterns and text into any [`Device`].
 
 use crate::model::{
-    Clip, Composite, GroupAttributes, Image, MaskId, MaskKind, Paint, PatternId, Pen, Shading,
+    Clip, Composite, GroupAttributes, GroupCause, Image, MaskId, MaskKind, Paint, PatternId, Pen, Shading,
     TilingColors, ViewFit,
 };
 use pagura_color::{Components, Function};
@@ -244,6 +244,8 @@ pub struct ShadingMark<'a> {
 /// A transparency group (11.6.6) or an annotation's fixed view.
 #[derive(Debug, Clone, Copy)]
 pub struct GroupInfo<'a> {
+    /// Why it exists.
+    pub cause: GroupCause,
     /// Its attributes.
     pub attributes: GroupAttributes,
     /// Its bounding box in default user space (`BBox` under the form matrix

@@ -3,7 +3,7 @@
 
 use super::SceneRecorder;
 use crate::device::{Glyph, GlyphRun, OutlineKey};
-use crate::model::{Composite, FillStroke, GroupAttributes};
+use crate::model::{Composite, FillStroke, GroupAttributes, GroupCause};
 use crate::scene::{
     GlyphSource, GlyphsNode, Group, GroupRole, MarkInfo, Node, NodeId, PaintId, Placement,
 };
@@ -209,6 +209,7 @@ impl SceneRecorder {
         self.open(
             Group {
                 role: GroupRole::Transparency,
+                cause: GroupCause::FillStroke,
                 attributes: GroupAttributes {
                     knockout: states.knockout,
                     ..GroupAttributes::default()

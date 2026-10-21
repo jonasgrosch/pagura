@@ -13,7 +13,7 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
     /// `BMC` and `BDC`.
     pub(super) fn begin_marked(
         &mut self,
-        op: Op,
+        op: Op<'_>,
         resources: &Dictionary,
         scope: &mut Scope,
     ) -> Result<()> {

@@ -5,7 +5,7 @@ use super::{Machine, Scope};
 use crate::device::Device;
 use crate::fonts::LoadedFont;
 use crate::machine::Text;
-use crate::model::GroupAttributes;
+use crate::model::{GroupAttributes, GroupCause};
 use crate::repairs;
 use pagura_content::Op;
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Result};
@@ -39,7 +39,7 @@ impl Scope {
     /// Applies the rules of glyph procedures to `op`: they start with `d0`
     /// or `d1`, and after `d1` colour operators are ignored (Table 111),
     /// also in nested forms. Returns whether `op` is ignored.
-    pub(crate) fn glyph_restriction(&self, op: &Op) -> Result<bool> {
+    pub(crate) fn glyph_restriction(&self, op: &Op<'_>) -> Result<bool> {
         let Some(procedure) = &self.procedure else {
             return Ok(false);
         };
@@ -71,7 +71,7 @@ impl Scope {
 
 impl<D: Device + ?Sized> Machine<'_, '_, D> {
     /// `d0` and `d1`.
-    pub(super) fn glyph_metrics(&mut self, op: &Op, scope: &mut Scope) -> Result<()> {
+    pub(super) fn glyph_metrics(&mut self, op: &Op<'_>, scope: &mut Scope) -> Result<()> {
         let position = self.position;
         let (width, bounds) = match *op {
             Op::GlyphWidth(width) => (width, None),
@@ -151,7 +151,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             .or(page_resources)
             .unwrap_or(resources);
         let content = self.stream_content(object)?;
-        self.push_lazy(GroupAttributes::default(), scope);
+        self.push_lazy(GroupCause::Type3Glyph, GroupAttributes::default(), scope);
         let result = self.run(&content, resources, &mut child);
         let opened = self.pop_lazy();
         result?;

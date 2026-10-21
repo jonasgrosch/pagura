@@ -7,7 +7,7 @@ use crate::device::Device;
 use crate::features;
 use crate::model::BlendMode;
 use crate::resources::function;
-use pagura_content::{Dash, Op, Operator};
+use pagura_content::{Dash, Op};
 use pagura_core::{Dictionary, Error, Name, Result, Value};
 use pagura_document::Document;
 
@@ -125,20 +125,21 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             }
             _ => {
                 let value = document.resolve(value)?;
-                let operator = match key {
-                    b"LW" => Some(Operator::LineWidth),
-                    b"LC" => Some(Operator::LineCap),
-                    b"LJ" => Some(Operator::LineJoin),
-                    b"ML" => Some(Operator::MiterLimit),
-                    b"RI" => Some(Operator::RenderingIntent),
-                    b"FL" => Some(Operator::Flatness),
-                    _ => None,
+                // The entries of the operators that set the same parameters,
+                // with their operand checks.
+                let wrong = || Error::syntax("wrong operand type");
+                let number = || value.as_number().ok_or_else(wrong);
+                let integer = || value.as_integer().ok_or_else(wrong);
+                let op = match key {
+                    b"LW" => Op::LineWidth(number()?),
+                    b"LC" => Op::LineCap(integer()?),
+                    b"LJ" => Op::LineJoin(integer()?),
+                    b"ML" => Op::MiterLimit(number()?),
+                    b"RI" => Op::RenderingIntent(value.as_name().cloned().ok_or_else(wrong)?),
+                    b"FL" => Op::Flatness(number()?),
+                    _ => return parameter(document, key, value, scope),
                 };
-                if let Some(operator) = operator {
-                    let op = Op::parse(operator, vec![value.clone()])?;
-                    return params::apply(&op, &mut scope.state);
-                }
-                return parameter(document, key, value, scope);
+                return params::apply(&op, &mut scope.state);
             }
         }
         scope.state.composite_changed();

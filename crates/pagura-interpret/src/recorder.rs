@@ -7,7 +7,7 @@ use crate::device::{
     Device, FillMark, GlyphRun, GroupInfo, ImageMark, MarkState, Needs, PageInfo, ShadingMark,
     SoftMaskInfo, StrokeMark, TilingInfo,
 };
-use crate::model::{GroupAttributes, MaskId, Paint, PatternId};
+use crate::model::{GroupAttributes, GroupCause, MaskId, Paint, PatternId};
 use crate::scene::{
     FillNode, Group, GroupId, GroupRole, ImageNode, MarkInfo, Node, NodeId, PageSpace, PaintId,
     Scene, ShadingNode, SoftMask, StrokeNode, Tiling,
@@ -244,6 +244,7 @@ impl Device for SceneRecorder {
         self.root = self.open(
             Group {
                 role: GroupRole::Page,
+                cause: GroupCause::Document,
                 attributes: page.group.unwrap_or_default(),
                 bbox: None,
                 view: None,
@@ -335,6 +336,7 @@ impl Device for SceneRecorder {
         self.open(
             Group {
                 role: GroupRole::Transparency,
+                cause: group.cause,
                 attributes: group.attributes,
                 bbox: group.bbox.cloned(),
                 view: group.view,
@@ -358,6 +360,7 @@ impl Device for SceneRecorder {
         let group = self.open(
             Group {
                 role: GroupRole::SoftMask { kind: mask.kind },
+                cause: GroupCause::Document,
                 attributes: mask.group,
                 bbox: mask.bbox.cloned(),
                 view: None,
@@ -389,6 +392,7 @@ impl Device for SceneRecorder {
         let cell = self.open(
             Group {
                 role: GroupRole::Tiling,
+                cause: GroupCause::Document,
                 attributes: GroupAttributes::default(),
                 bbox: Some(Arc::new(Path::rect(tiling.bbox))),
                 view: None,

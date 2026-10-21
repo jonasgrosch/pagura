@@ -3,7 +3,7 @@
 use super::emit::GroupStart;
 use super::{Machine, Scope, nested};
 use crate::device::Device;
-use crate::model::{Clip, FillStroke, GroupAttributes};
+use crate::model::{Clip, FillStroke, GroupAttributes, GroupCause};
 use crate::repairs;
 use pagura_content::{Op, Painting, Rule};
 use pagura_core::{Error, Result};
@@ -37,7 +37,7 @@ pub(super) fn clip_operator(rule: Rule, scope: &mut Scope) -> Result<()> {
 
 impl<D: Device + ?Sized> Machine<'_, '_, D> {
     /// A path construction operator; construction after `W` is a repair.
-    pub(super) fn construct(&mut self, op: &Op, scope: &mut Scope) -> Result<()> {
+    pub(super) fn construct(&mut self, op: &Op<'_>, scope: &mut Scope) -> Result<()> {
         if scope.pending_clip.is_some() {
             self.repair(
                 repairs::CLIP_ORDER,
@@ -87,6 +87,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 let stroke = scope.state.stroke_composite();
                 let states = FillStroke::new(&fill, &stroke, &self.session.opaque);
                 let start = GroupStart {
+                    cause: GroupCause::FillStroke,
                     attributes: GroupAttributes {
                         knockout: states.knockout,
                         ..GroupAttributes::default()
@@ -113,7 +114,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     }
 }
 
-fn construct(op: &Op, scope: &mut Scope) -> Result<()> {
+fn construct(op: &Op<'_>, scope: &mut Scope) -> Result<()> {
     let ctm = scope.state.ctm;
     let p = |x: f64, y: f64| Point::new(x, y) * ctm;
     let path = &mut scope.path;

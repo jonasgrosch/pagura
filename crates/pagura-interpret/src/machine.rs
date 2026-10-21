@@ -24,7 +24,7 @@ use crate::repairs;
 use crate::resources::colorspace::Colors;
 use crate::resources::optional::Visibility;
 use emit::Lazy;
-use pagura_content::{Content, Op, Reader};
+use pagura_content::{Content, Op, Operation, Reader};
 use pagura_core::{Diagnostic, Dictionary, Error, Limits, Meter, ObjectId, Position, Result, Store};
 use pagura_document::{Document, Page};
 use pagura_raster::{FillRule, PathBuilder, Transform};
@@ -299,10 +299,15 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
         self.session.serial += 1;
         scope.initial = Some((Arc::new(scope.state.clone()), self.session.serial));
         let mut reader = Reader::new(content, &self.session.limits);
-        while let Some(operation) = reader.next(&mut self.session.tokens)? {
-            self.position = content.position(operation.offset);
-            self.operation(operation.op, &mut reader, resources, scope)
-                .map_err(|error| content.locate(error, operation.offset))?;
+        while let Some(Operation { op, offset }) = reader.next(&mut self.session.tokens)? {
+            self.position = content.position(offset);
+            let result = match op {
+                Op::InlineImage(dictionary) => {
+                    self.inline_operation(dictionary, &mut reader, resources, scope)
+                }
+                op => self.operation(op, resources, scope),
+            };
+            result.map_err(|error| content.locate(error, offset))?;
         }
         if !reader.is_balanced()
             || !scope.marked.is_empty()
@@ -338,33 +343,44 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
 
     /// Executes one operation, applying the restrictions of Type 3 glyph
     /// procedures and uncoloured tiling cells first.
-    fn operation(
-        &mut self,
-        op: Op,
-        reader: &mut Reader<'_>,
-        resources: &Dictionary,
-        scope: &mut Scope,
-    ) -> Result<()> {
-        if scope.glyph_restriction(&op)? || self.stencil_ignores(&op, resources, scope)? {
-            if let Op::InlineImage(dictionary) = &op {
-                self.skip_inline_image(dictionary, reader, resources)?;
-            }
+    fn operation(&mut self, op: Op<'_>, resources: &Dictionary, scope: &mut Scope) -> Result<()> {
+        if self.ignores(&op, resources, scope)? {
             return Ok(());
         }
-        let result = self.execute(op, reader, resources, scope);
+        let result = self.execute(op, resources, scope);
         if scope.path.len() > self.session.limits.path_segments {
             return Err(Error::limit("path segment budget exceeded"));
         }
         result
     }
 
-    fn execute(
+    /// Draws or skips an inline image, whose data follows in `reader`.
+    fn inline_operation(
         &mut self,
-        op: Op,
+        dictionary: Dictionary,
         reader: &mut Reader<'_>,
         resources: &Dictionary,
         scope: &mut Scope,
     ) -> Result<()> {
+        let op = Op::InlineImage(dictionary);
+        let ignored = self.ignores(&op, resources, scope)?;
+        if let Op::InlineImage(dictionary) = &op {
+            if ignored {
+                self.skip_inline_image(dictionary, reader, resources)?;
+            } else {
+                self.inline_image(dictionary, reader, resources, scope)?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Whether the glyph procedure or uncoloured tiling cell `scope` runs
+    /// ignores `op`.
+    fn ignores(&self, op: &Op<'_>, resources: &Dictionary, scope: &Scope) -> Result<bool> {
+        Ok(scope.glyph_restriction(op)? || self.stencil_ignores(op, resources, scope)?)
+    }
+
+    fn execute(&mut self, op: Op<'_>, resources: &Dictionary, scope: &mut Scope) -> Result<()> {
         match op {
             Op::Save => scope.save(&self.session.limits),
             Op::Restore => self.restore(scope),
@@ -415,7 +431,6 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
             | Op::MarkedPointProperties { .. }
             | Op::BeginCompatibility
             | Op::EndCompatibility => Ok(()),
-            Op::InlineImage(dictionary) => self.inline_image(&dictionary, reader, resources, scope),
             text => self.text_operator(text, resources, scope),
         }
     }

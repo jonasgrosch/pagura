@@ -186,8 +186,12 @@ impl<'a> Fonts<'a> {
         }
     }
 
-    /// The outline of `glyph` in `program`, read once per font and glyph.
-    /// Repairs are reported at `position` in the font's object.
+    /// The outline of `glyph` in `program`, read once per [`OutlineKey`]
+    /// (font key, glyph) and shared through the store for indirect fonts.
+    /// This is the only place an interpretation reads glyph outlines, at the
+    /// glyph's first use in source order, so a font that decodes its glyphs
+    /// lazily reports them here without other changes. Repairs are reported
+    /// at `position` in the font's object.
     ///
     /// # Errors
     ///

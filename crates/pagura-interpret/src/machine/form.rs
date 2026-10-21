@@ -6,6 +6,7 @@ use super::path::add_clip;
 use super::{Machine, Scope, Text, matrix};
 use crate::device::{Device, Marked};
 use crate::features;
+use crate::model::GroupCause;
 use crate::resources::group;
 use pagura_content::Content;
 use pagura_core::{Dictionary, Error, ObjectId, Rect, Result, Value};
@@ -174,6 +175,7 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
             if grouped {
                 self.begin_group(
                     &GroupStart {
+                        cause: GroupCause::Document,
                         attributes,
                         bbox: bounds.as_ref(),
                         view: None,

@@ -8,7 +8,7 @@ use super::form::{FormBody, geometry};
 use super::state::Graphics;
 use super::{Machine, Scope, Text};
 use crate::device::{Device, Marked};
-use crate::model::{GroupAttributes, ViewFit};
+use crate::model::{GroupAttributes, GroupCause, ViewFit};
 use crate::repairs;
 use pagura_appearance::{Appearance, AppearanceStream, FilledWidgets, FontSource};
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Rect, Result, Value};
@@ -200,6 +200,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let scope = Scope::new(Graphics::default(), Text::Paint);
         self.begin_group(
             &GroupStart {
+                cause: GroupCause::Annotation,
                 attributes: GroupAttributes::default(),
                 bbox: Some(&bounds),
                 view: Some(ViewFit {
@@ -256,6 +257,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             let opaque = Arc::clone(&self.session.opaque);
             self.begin_group(
                 &GroupStart {
+                    cause: GroupCause::Annotation,
                     attributes: GroupAttributes::default(),
                     bbox: Some(&bounds),
                     view: None,

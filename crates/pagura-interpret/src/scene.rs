@@ -5,7 +5,7 @@
 
 use crate::device::{OutlineKey, PageInfo};
 use crate::model::{
-    Composite, GroupAttributes, Image, MaskKind, Paint, Pen, Shading, TilingColors, ViewFit,
+    Composite, GroupAttributes, GroupCause, Image, MaskKind, Paint, Pen, Shading, TilingColors, ViewFit,
 };
 use pagura_color::{Components, Function};
 use pagura_core::{Error, Position, Rect, Result};
@@ -269,6 +269,8 @@ pub enum GroupRole {
 pub struct Group {
     /// What it is.
     pub role: GroupRole,
+    /// Why it exists.
+    pub cause: GroupCause,
     /// Its attributes.
     pub attributes: GroupAttributes,
     /// Its bounding box in default user space (pattern space for a cell):

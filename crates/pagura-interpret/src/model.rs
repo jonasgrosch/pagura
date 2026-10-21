@@ -440,6 +440,43 @@ pub struct GroupAttributes {
     pub space: Option<Process>,
 }
 
+/// Why a group exists. The document declares some; the interpreter adds
+/// the others for one compositing rule each, never isolated and with a plain
+/// state (opaque, Normal, no soft mask) except where noted, and without a
+/// clip of their own: their marks carry their clips. Such a group whose
+/// members all composite opaquely with Normal blending paints as its
+/// members painted in its place (11.4.6: an opaque Normal member knocks out
+/// exactly as it composites source-over).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum GroupCause {
+    /// Declared by the document: the page group, a form's `Group`, a soft
+    /// mask's group or a tiling cell.
+    #[default]
+    Document,
+    /// An annotation appearance without a group of its own, drawn inside
+    /// one (12.5.5), or the fixed view of an annotation (12.5.3), which
+    /// keeps its [`ViewFit`].
+    Annotation,
+    /// The glyphs of one text object under text knockout (`TK`, 9.3.8): a
+    /// knockout group.
+    TextKnockout,
+    /// A fill and stroke painted by one operator (`B`, `b`, text rendering
+    /// modes 2 and 6) as one object (11.7.4.4): a knockout group, or, when
+    /// both overprint with equal alpha, a group carrying their shared
+    /// alpha, blend mode and soft mask.
+    FillStroke,
+    /// The marks of one Type 3 glyph procedure.
+    Type3Glyph,
+}
+
+impl GroupCause {
+    /// Whether the interpreter added the group for a compositing rule
+    /// rather than the document declaring it.
+    pub fn is_implicit(self) -> bool {
+        self != Self::Document
+    }
+}
+
 /// A fixed view of an annotation (12.5.3, `NoZoom` and `NoRotate`): the
 /// group keeps its size or orientation around `anchor` on the device.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]

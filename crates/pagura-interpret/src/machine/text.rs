@@ -8,7 +8,7 @@ mod type3;
 use super::path::add_clip;
 use super::{Machine, Scope, matrix};
 use crate::device::Device;
-use crate::model::GroupAttributes;
+use crate::model::{GroupAttributes, GroupCause};
 use crate::repairs;
 use pagura_content::{Op, TextItem};
 use pagura_core::{Dictionary, Error, Result, Value};
@@ -34,7 +34,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     /// The text operators.
     pub(super) fn text_operator(
         &mut self,
-        op: Op,
+        op: Op<'_>,
         resources: &Dictionary,
         scope: &mut Scope,
     ) -> Result<()> {
@@ -83,7 +83,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 for item in items {
                     match item {
                         TextItem::Adjust(amount) => text_adjust(scope, amount)?,
-                        TextItem::Show(bytes) => self.show(&bytes, resources, scope)?,
+                        TextItem::Show(bytes) => self.show(bytes, resources, scope)?,
                     }
                 }
             }
@@ -159,6 +159,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let knockout = scope.state.text.knockout && self.needs().paint;
         if knockout {
             self.push_lazy(
+                GroupCause::TextKnockout,
                 GroupAttributes {
                     knockout: true,
                     ..GroupAttributes::default()

@@ -18,7 +18,7 @@ pub(super) enum Target {
 }
 
 impl<D: Device + ?Sized> Machine<'_, '_, D> {
-    pub(super) fn color(&mut self, op: Op, resources: &Dictionary, scope: &mut Scope) -> Result<()> {
+    pub(super) fn color(&mut self, op: Op<'_>, resources: &Dictionary, scope: &mut Scope) -> Result<()> {
         if !self.needs().paint {
             return Ok(());
         }
@@ -75,7 +75,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
 
     /// Table 73: `SC` and `sc` do not select Separation, DeviceN or ICCBased
     /// colours; operands that fit are a reported repair.
-    fn simple_operator(&self, space: &ColorSpace, operands: &ColorOperands) -> Result<()> {
+    fn simple_operator(&self, space: &ColorSpace, operands: &ColorOperands<'_>) -> Result<()> {
         if matches!(
             space,
             ColorSpace::Separation(_) | ColorSpace::DeviceN(_) | ColorSpace::Icc(_)
@@ -100,7 +100,7 @@ fn current(scope: &Scope, target: Target) -> Result<Arc<ColorSpace>> {
 }
 
 /// A colour in a non-pattern `space` from numeric operands.
-pub(super) fn set(space: &Arc<ColorSpace>, operands: &ColorOperands) -> Result<Ink> {
+pub(super) fn set(space: &Arc<ColorSpace>, operands: &ColorOperands<'_>) -> Result<Ink> {
     if matches!(space.as_ref(), ColorSpace::Pattern(_)) {
         return Err(Error::syntax("pattern requires SCN or scn"));
     }

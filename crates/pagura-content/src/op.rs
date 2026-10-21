@@ -7,6 +7,8 @@ use operands::{
     array, dash, integer, marked, name, name_number, none, numbers, spaced_string, string,
 };
 use pagura_core::{Dictionary, Error, Name, Result, Value};
+use std::borrow::Cow;
+use std::ops::Range;
 
 /// A fill or clipping rule (8.5.3.3).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -97,11 +99,14 @@ impl Dash {
     /// Returns `Syntax` for an entry that is not a nonnegative number and for
     /// a nonempty array of zeros.
     pub fn new(array: &[Value], phase: f64) -> Result<Self> {
-        let lengths = array
-            .iter()
+        Self::from_entries(array.iter().map(Value::as_number), phase)
+    }
+
+    /// As [`Self::new`], with each entry's number or `None`.
+    fn from_entries(entries: impl Iterator<Item = Option<f64>>, phase: f64) -> Result<Self> {
+        let lengths = entries
             .map(|n| {
-                n.as_number()
-                    .filter(|&n| n >= 0.0)
+                n.filter(|&n| n >= 0.0)
                     .ok_or(Error::syntax("invalid dash length"))
             })
             .collect::<Result<Vec<_>>>()?;
@@ -112,25 +117,101 @@ impl Dash {
     }
 }
 
+/// The array of `TJ` (9.4.3): strings to show and position adjustments,
+/// borrowed from the [`Reader`](crate::Reader).
+#[derive(Clone, Copy, PartialEq)]
+pub struct TextArray<'a> {
+    bytes: &'a [u8],
+    items: &'a [Item],
+}
+
+impl<'a> TextArray<'a> {
+    /// The elements in order.
+    pub fn iter(&self) -> TextItems<'a> {
+        TextItems {
+            bytes: self.bytes,
+            items: self.items.iter(),
+        }
+    }
+
+    /// The number of elements.
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
+
+    /// Whether the array is empty.
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+}
+
+impl<'a> IntoIterator for TextArray<'a> {
+    type Item = TextItem<'a>;
+    type IntoIter = TextItems<'a>;
+
+    fn into_iter(self) -> TextItems<'a> {
+        self.iter()
+    }
+}
+
+impl<'a> IntoIterator for &TextArray<'a> {
+    type Item = TextItem<'a>;
+    type IntoIter = TextItems<'a>;
+
+    fn into_iter(self) -> TextItems<'a> {
+        self.iter()
+    }
+}
+
+/// The elements of a [`TextArray`].
+#[derive(Debug, Clone)]
+pub struct TextItems<'a> {
+    bytes: &'a [u8],
+    items: std::slice::Iter<'a, Item>,
+}
+
+impl<'a> Iterator for TextItems<'a> {
+    type Item = TextItem<'a>;
+
+    fn next(&mut self) -> Option<TextItem<'a>> {
+        Some(match self.items.next()? {
+            Item::Show(span) => TextItem::Show(self.bytes.get(span.clone()).unwrap_or_default()),
+            Item::Number(n) => TextItem::Adjust(*n),
+        })
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.items.size_hint()
+    }
+}
+
+impl ExactSizeIterator for TextItems<'_> {}
+
+impl std::fmt::Debug for TextArray<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list().entries(self.iter()).finish()
+    }
+}
+
 /// One element of a `TJ` array (9.4.3).
-#[derive(Debug, Clone, PartialEq)]
-pub enum TextItem {
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum TextItem<'a> {
     /// A string to show.
-    Show(Vec<u8>),
+    Show(&'a [u8]),
     /// A position adjustment in thousandths of text space units.
     Adjust(f64),
 }
 
 /// The operands of `SC`, `sc`, `SCN` and `scn` (8.6.8, Table 73).
 #[derive(Debug, Clone, PartialEq)]
-pub struct ColorOperands {
+pub struct ColorOperands<'a> {
     /// The numeric components.
-    pub components: Vec<f64>,
+    pub components: Cow<'a, [f64]>,
     /// The pattern name that ends `SCN` and `scn` operands, if any.
     pub pattern: Option<Name>,
 }
 
-impl ColorOperands {
+impl ColorOperands<'_> {
     /// The number of operands, the pattern name included.
     pub fn len(&self) -> usize {
         self.components.len() + usize::from(self.pattern.is_some())
@@ -152,12 +233,100 @@ pub enum Properties {
     Inline(Dictionary),
 }
 
+/// One operand on the reader's stack and the offset of its token.
+#[derive(Debug, Clone)]
+pub(crate) struct Slot {
+    pub(crate) offset: usize,
+    pub(crate) operand: Operand,
+}
+
+/// An operand: numbers and names by value, strings and arrays of numbers
+/// and strings in the reader's [`Buffers`], anything else as the object
+/// parser read it.
+#[derive(Debug, Clone)]
+pub(crate) enum Operand {
+    Integer(i64),
+    Real(f64),
+    Name(Name),
+    /// Bytes of [`Buffers::bytes`].
+    String(Range<usize>),
+    /// Elements of [`Buffers::items`].
+    Array(Range<usize>),
+    Value(Value),
+}
+
+impl Operand {
+    /// The value of an integer or finite real, as [`Value::as_number`].
+    fn number(&self) -> Option<f64> {
+        match self {
+            Self::Integer(n) => Some(*n as f64),
+            Self::Real(n) if n.is_finite() => Some(*n),
+            Self::Value(value) => value.as_number(),
+            _ => None,
+        }
+    }
+
+    /// The value of an integer, as [`Value::as_integer`].
+    fn integer(&self) -> Option<i64> {
+        match self {
+            Self::Integer(n) => Some(*n),
+            Self::Value(value) => value.as_integer(),
+            _ => None,
+        }
+    }
+
+    /// The elements of an array the object parser read.
+    fn values(&self) -> &[Value] {
+        match self {
+            Self::Value(Value::Array(values)) => values,
+            _ => &[],
+        }
+    }
+
+    /// Moves a name out, leaving `null`.
+    fn take_name(&mut self) -> Option<Name> {
+        match std::mem::replace(self, Self::Value(Value::Null)) {
+            Self::Name(name) => Some(name),
+            _ => None,
+        }
+    }
+}
+
+/// An element of an array read in place: a string of [`Buffers::bytes`]
+/// or a number.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum Item {
+    Show(Range<usize>),
+    Number(f64),
+}
+
+/// Storage the reader reuses for the operands of each operation.
+#[derive(Debug, Default)]
+pub(crate) struct Buffers {
+    /// Decoded string bytes.
+    pub(crate) bytes: Vec<u8>,
+    /// Elements of arrays.
+    pub(crate) items: Vec<Item>,
+    /// Colour components.
+    numbers: Vec<f64>,
+}
+
+impl Buffers {
+    pub(crate) fn clear(&mut self) {
+        self.bytes.clear();
+        self.items.clear();
+        self.numbers.clear();
+    }
+}
+
+
 /// One content operation with its operands parsed and validated as Annex A
-/// requires. Inline images are [`Op::InlineImage`], whose data the reader
-/// yields separately.
+/// requires. Strings, `TJ` arrays and colour components borrow from the
+/// [`Reader`](crate::Reader) that read them. Inline images are
+/// [`Op::InlineImage`], whose data the reader yields separately.
 #[derive(Debug, Clone, PartialEq)]
 #[non_exhaustive]
-pub enum Op {
+pub enum Op<'a> {
     /// `q`.
     Save,
     /// `Q`.
@@ -230,11 +399,11 @@ pub enum Op {
     /// `T*`.
     NextLine,
     /// `Tj`.
-    ShowText(Vec<u8>),
+    ShowText(Cow<'a, [u8]>),
     /// `TJ`.
-    ShowTextAdjusted(Vec<TextItem>),
+    ShowTextAdjusted(TextArray<'a>),
     /// `'`.
-    NextLineShowText(Vec<u8>),
+    NextLineShowText(Cow<'a, [u8]>),
     /// `"`.
     NextLineShowTextSpaced {
         /// Word spacing.
@@ -242,7 +411,7 @@ pub enum Op {
         /// Character spacing.
         character: f64,
         /// The string.
-        text: Vec<u8>,
+        text: Cow<'a, [u8]>,
     },
     /// `d0` with `wx wy`.
     GlyphWidth([f64; 2]),
@@ -253,13 +422,13 @@ pub enum Op {
     /// `cs`.
     FillColorSpace(Name),
     /// `SC`.
-    StrokeColor(ColorOperands),
+    StrokeColor(ColorOperands<'a>),
     /// `sc`.
-    FillColor(ColorOperands),
+    FillColor(ColorOperands<'a>),
     /// `SCN`.
-    StrokeColorN(ColorOperands),
+    StrokeColorN(ColorOperands<'a>),
     /// `scn`.
-    FillColorN(ColorOperands),
+    FillColorN(ColorOperands<'a>),
     /// `G`.
     StrokeGray(f64),
     /// `g`.
@@ -306,22 +475,15 @@ pub enum Op {
     InlineImage(Dictionary),
 }
 
-impl Op {
-    /// Validates `operands` for `operator` and builds the operation.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Syntax` for a wrong operand count or type, a malformed dash
-    /// array or `TJ` element, and for `BI`, `ID` and `EI`, which only the
-    /// [`Reader`](crate::Reader) frames.
-    pub fn parse(operator: Operator, mut operands: Vec<Value>) -> Result<Self> {
-        Self::take(operator, &mut operands)
-    }
-
-    /// As [`Self::parse`], taking the operands out of `operands`, whose
-    /// allocation the caller keeps; it is left empty or with operands the
-    /// operation does not use.
-    pub(crate) fn take(operator: Operator, operands: &mut Vec<Value>) -> Result<Self> {
+impl<'a> Op<'a> {
+    /// Validates the operands of `operator` on the reader's stack and builds
+    /// the operation, taking names and dictionaries out of `operands` and
+    /// borrowing strings, arrays and colour components from `buffers`.
+    pub(crate) fn build(
+        operator: Operator,
+        operands: &mut [Slot],
+        buffers: &'a mut Buffers,
+    ) -> Result<Self> {
         use Operator as O;
         Ok(match operator {
             O::Save => none(operands, Self::Save)?,
@@ -331,7 +493,7 @@ impl Op {
             O::LineCap => Self::LineCap(integer(operands)?),
             O::LineJoin => Self::LineJoin(integer(operands)?),
             O::MiterLimit => Self::MiterLimit(single(operands)?),
-            O::Dash => Self::Dash(dash(operands)?),
+            O::Dash => Self::Dash(dash(operands, buffers)?),
             O::RenderingIntent => Self::RenderingIntent(name(operands)?),
             O::Flatness => Self::Flatness(single(operands)?),
             O::ExtGState => Self::ExtGState(name(operands)?),
@@ -346,10 +508,10 @@ impl Op {
             O::ClipEvenOdd => none(operands, Self::Clip(Rule::EvenOdd))?,
             O::StrokeColorSpace => Self::StrokeColorSpace(name(operands)?),
             O::FillColorSpace => Self::FillColorSpace(name(operands)?),
-            O::StrokeColor => Self::StrokeColor(color(operands, Pattern::Forbidden)?),
-            O::FillColor => Self::FillColor(color(operands, Pattern::Forbidden)?),
-            O::StrokeColorN => Self::StrokeColorN(color(operands, Pattern::Allowed)?),
-            O::FillColorN => Self::FillColorN(color(operands, Pattern::Allowed)?),
+            O::StrokeColor => Self::StrokeColor(color(operands, buffers, Pattern::Forbidden)?),
+            O::FillColor => Self::FillColor(color(operands, buffers, Pattern::Forbidden)?),
+            O::StrokeColorN => Self::StrokeColorN(color(operands, buffers, Pattern::Allowed)?),
+            O::FillColorN => Self::FillColorN(color(operands, buffers, Pattern::Allowed)?),
             O::StrokeGray => Self::StrokeGray(single(operands)?),
             O::FillGray => Self::FillGray(single(operands)?),
             O::StrokeRgb => Self::StrokeRgb(numbers(operands)?),
@@ -378,14 +540,14 @@ impl Op {
             operator => {
                 return match Self::paint(operator, operands)? {
                     Some(op) => Ok(op),
-                    None => Self::text(operator, operands),
+                    None => Self::text(operator, operands, buffers),
                 };
             }
         })
     }
 
     /// The path-painting operators.
-    fn paint(operator: Operator, operands: &[Value]) -> Result<Option<Self>> {
+    fn paint(operator: Operator, operands: &[Slot]) -> Result<Option<Self>> {
         use Operator as O;
         let painting = match operator {
             O::Stroke => Painting::Stroke,
@@ -404,8 +566,12 @@ impl Op {
     }
 
     /// The text and Type 3 glyph operators.
-    fn text(operator: Operator, operands: &mut Vec<Value>) -> Result<Self> {
+    fn text(operator: Operator, operands: &mut [Slot], buffers: &'a mut Buffers) -> Result<Self> {
         use Operator as O;
+        if operator == O::ShowTextAdjusted {
+            return text_array(operands, buffers).map(Self::ShowTextAdjusted);
+        }
+        let buffers: &'a Buffers = buffers;
         Ok(match operator {
             O::BeginText => none(operands, Self::BeginText)?,
             O::EndText => none(operands, Self::EndText)?,
@@ -423,17 +589,16 @@ impl Op {
             O::MoveTextLeading => Self::MoveTextLeading(numbers(operands)?),
             O::TextMatrix => Self::TextMatrix(numbers(operands)?),
             O::NextLine => none(operands, Self::NextLine)?,
-            O::ShowText => Self::ShowText(string(operands)?),
-            O::NextLineShowText => Self::NextLineShowText(string(operands)?),
+            O::ShowText => Self::ShowText(Cow::Borrowed(string(operands, buffers)?)),
+            O::NextLineShowText => Self::NextLineShowText(Cow::Borrowed(string(operands, buffers)?)),
             O::NextLineShowTextSpaced => {
-                let (word, character, text) = spaced_string(operands)?;
+                let (word, character, text) = spaced_string(operands, buffers)?;
                 Self::NextLineShowTextSpaced {
                     word,
                     character,
-                    text,
+                    text: Cow::Borrowed(text),
                 }
             }
-            O::ShowTextAdjusted => Self::ShowTextAdjusted(text_items(array(operands)?)?),
             O::GlyphWidth => Self::GlyphWidth(numbers(operands)?),
             O::GlyphWidthBounds => Self::GlyphWidthBounds(numbers(operands)?),
             _ => return Err(Error::syntax("unknown content operator")),
@@ -530,7 +695,7 @@ fn painting_operator(painting: Painting) -> Operator {
     }
 }
 
-fn text_operator(op: &Op) -> Operator {
+fn text_operator(op: &Op<'_>) -> Operator {
     use Operator as O;
     match op {
         Op::BeginText => O::BeginText,
@@ -556,7 +721,7 @@ fn text_operator(op: &Op) -> Operator {
 }
 
 /// One numeric operand.
-fn single(operands: &[Value]) -> Result<f64> {
+fn single(operands: &[Slot]) -> Result<f64> {
     numbers::<1>(operands).map(|[n]| n)
 }
 
@@ -567,37 +732,62 @@ enum Pattern {
     Forbidden,
 }
 
-fn color(operands: &mut Vec<Value>, pattern: Pattern) -> Result<ColorOperands> {
+fn color<'a>(
+    operands: &mut [Slot],
+    buffers: &'a mut Buffers,
+    pattern: Pattern,
+) -> Result<ColorOperands<'a>> {
     let count = operands.len();
-    let mut components = Vec::with_capacity(count);
     let mut name = None;
-    for (index, value) in operands.drain(..).enumerate() {
-        match value {
-            Value::Name(n) if pattern == Pattern::Allowed && index + 1 == count => name = Some(n),
-            value => components.push(
-                value
-                    .as_number()
+    for (index, slot) in operands.iter_mut().enumerate() {
+        match &mut slot.operand {
+            operand @ Operand::Name(_) if pattern == Pattern::Allowed && index + 1 == count => {
+                name = operand.take_name();
+            }
+            operand => buffers.numbers.push(
+                operand
+                    .number()
                     .ok_or(Error::syntax("wrong colour operand type"))?,
             ),
         }
     }
+    let buffers: &'a Buffers = buffers;
     Ok(ColorOperands {
-        components,
+        components: Cow::Borrowed(&buffers.numbers),
         pattern: name,
     })
 }
 
-fn text_items(values: Vec<Value>) -> Result<Vec<TextItem>> {
-    values
-        .into_iter()
-        .map(|value| match value {
-            Value::String(bytes) => Ok(TextItem::Show(bytes)),
-            value => value
-                .as_number()
-                .map(TextItem::Adjust)
-                .ok_or(Error::syntax("TJ array requires numbers or strings")),
-        })
-        .collect()
+/// The `TJ` array: one read in place, or one the object parser read,
+/// whose strings and numbers are copied into `buffers`.
+fn text_array<'a>(operands: &[Slot], buffers: &'a mut Buffers) -> Result<TextArray<'a>> {
+    let span = match array(operands)? {
+        Operand::Array(span) => span.clone(),
+        operand => {
+            let start = buffers.items.len();
+            for value in operand.values() {
+                let item = match value {
+                    Value::String(bytes) => {
+                        let from = buffers.bytes.len();
+                        buffers.bytes.extend_from_slice(bytes);
+                        Item::Show(from..buffers.bytes.len())
+                    }
+                    value => Item::Number(
+                        value
+                            .as_number()
+                            .ok_or(Error::syntax("TJ array requires numbers or strings"))?,
+                    ),
+                };
+                buffers.items.push(item);
+            }
+            start..buffers.items.len()
+        }
+    };
+    let buffers: &'a Buffers = buffers;
+    Ok(TextArray {
+        bytes: &buffers.bytes,
+        items: buffers.items.get(span).unwrap_or_default(),
+    })
 }
 
 #[cfg(test)]

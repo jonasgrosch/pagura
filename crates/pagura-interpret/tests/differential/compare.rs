@@ -176,6 +176,10 @@ pub fn page(name: &str, bytes: &[u8], index: usize, recovery: Recovery, outcome:
         (Err(old), Err(new)) => {
             if identity(old) == identity(new) {
                 outcome.matched += 1;
+            } else if image_data_first(&new_doc, old, new) {
+                outcome.intended.push(format!(
+                    "{label}: scene error {new} where the old compiler first decoded the image's data: {old}"
+                ));
             } else {
                 outcome
                     .mismatches
@@ -232,6 +236,30 @@ fn paint_work(bytes: &[u8], index: usize, recovery: Recovery, old: &Error) -> bo
     Interpreter::new(&document)
         .run(page, &mut device)
         .is_err_and(|error| identity(&error) == identity(old))
+}
+
+/// Whether the old compiler failed decoding the data of an image while the
+/// new interpretation fails at a `Do`, reading an image's description (its
+/// colour space or masks): the old compiler decoded an image's data before
+/// reading its colour space, and the interpreter leaves the data to
+/// painting.
+fn image_data_first(document: &Document, old: &Error, new: &Error) -> bool {
+    let image = old.object.is_some_and(|id| {
+        document
+            .object(id)
+            .ok()
+            .and_then(|o| o.dictionary())
+            .is_some_and(|dictionary| dictionary.is_name(b"Subtype", b"Image"))
+    });
+    let pagura_core::Position::Stream { object, offset } = new.position else {
+        return false;
+    };
+    let at_do = document
+        .object(object)
+        .ok()
+        .and_then(|o| document.stream_data(o).ok())
+        .is_some_and(|data| data.get(offset..).is_some_and(|rest| rest.starts_with(b"Do")));
+    image && at_do
 }
 
 /// Whether the old diagnostics are the new ones plus repairs of decoding

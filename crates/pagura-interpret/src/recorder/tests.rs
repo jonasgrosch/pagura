@@ -166,7 +166,10 @@ fn stroked_glyphs_become_strokes_and_filled_and_stroked_glyphs_groups() {
     );
     assert_eq!(stroke.path.segments()[1], pagura_raster::Segment::LineTo(pagura_raster::Point::new(10.0, 0.0)));
     let Node::Group(group) = scene.nodes[1] else { panic!() };
-    assert!(scene.group(group).unwrap().attributes.knockout);
+    let group = scene.group(group).unwrap();
+    assert!(group.attributes.knockout);
+    assert_eq!(group.cause, GroupCause::FillStroke);
+    assert!(group.cause.is_implicit());
 }
 
 #[test]
