@@ -6,6 +6,7 @@ use pagura_core::{Error, Limits, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Format {
+    U8,
     N16,
     F32,
     F64,
@@ -37,6 +38,21 @@ pub(super) fn page(
     list: &crate::display::DisplayList,
     separations: &super::Separations,
 ) -> Result<Plan> {
+    page_policy(list, separations, false)
+}
+
+pub(super) fn byte_page(
+    list: &crate::display::DisplayList,
+    separations: &super::Separations,
+) -> Result<Plan> {
+    page_policy(list, separations, true)
+}
+
+fn page_policy(
+    list: &crate::display::DisplayList,
+    separations: &super::Separations,
+    byte_patterns: bool,
+) -> Result<Plan> {
     let root_reason = if separations.enabled {
         Some(Reason::Device)
     } else if list.group.knockout {
@@ -56,6 +72,7 @@ pub(super) fn page(
         });
     }
     let mut count = Count {
+        byte_patterns,
         stores: 0,
         dynamic: 0,
         theta: 1.0,
@@ -99,6 +116,7 @@ pub(super) fn page(
 }
 
 struct Count {
+    byte_patterns: bool,
     stores: usize,
     dynamic: usize,
     theta: f64,
@@ -107,6 +125,12 @@ struct Count {
     work: usize,
 }
 impl Count {
+    fn admits_color(&self, color: &Color) -> bool {
+        matches!(color, Color::Solid { .. })
+            || (self.byte_patterns
+                && matches!(color,
+            Color::Pattern { selected: Some(pattern), .. } if matches!(pattern.kind, crate::pattern::Kind::Shading(_))))
+    }
     fn commands(&mut self, commands: &[Command], limits: Limits, depth: usize) -> Result<()> {
         if depth >= limits.depth {
             return Err(Error::limit("compositing depth exceeded"));
@@ -135,22 +159,28 @@ impl Count {
                     continue;
                 }
                 Command::Glyphs(run) => {
-                    if !matches!(run.paint.color, Color::Solid { .. }) {
+                    if !self.admits_color(&run.paint.color) {
                         self.reason.get_or_insert(Reason::Pattern);
                     }
                     (
                         &run.paint.composite,
-                        true,
+                        matches!(run.paint.color, Color::Solid { .. }),
                         1.0 / 255.0,
                         run.paint.transfer.is_some(),
                         run.glyphs.len(),
                     )
                 }
                 Command::Path(p) => {
-                    if !matches!(p.color, Color::Solid { .. }) {
+                    if !self.admits_color(&p.color) {
                         self.reason.get_or_insert(Reason::Pattern);
                     }
-                    (&p.composite, true, 1.0 / 255.0, p.transfer.is_some(), 1)
+                    (
+                        &p.composite,
+                        matches!(p.color, Color::Solid { .. }),
+                        1.0 / 255.0,
+                        p.transfer.is_some(),
+                        1,
+                    )
                 }
                 Command::Image(i) => (&i.composite, false, 0.0, i.transfer.is_some(), 1),
                 Command::Shading(s) => (
@@ -297,6 +327,7 @@ mod tests {
             Arc::new(outline.finish()),
             pagura_raster::Transform::IDENTITY,
             Position::Unknown,
+            &mut crate::display::GlyphHulls::default(),
         )
         .unwrap();
         run.glyphs.resize(1000, run.glyphs[0]);
@@ -324,6 +355,7 @@ mod tests {
                     Arc::clone(&outline),
                     pagura_raster::Transform::IDENTITY,
                     Position::Unknown,
+                    &mut crate::display::GlyphHulls::default(),
                 )
                 .unwrap();
             }
@@ -416,6 +448,79 @@ mod tests {
                 );
             }
             assert_eq!(image.data()[3], 255);
+        }
+    }
+}
+
+#[cfg(test)]
+mod byte_pattern_tests {
+    use super::*;
+    use crate::RenderOptions;
+    use crate::compositor::Policy;
+    use pagura_document::{Document, OpenOptions};
+    use pagura_raster::Rgba8;
+
+    #[test]
+    fn byte_shading_patterns_match_independent_pixels_and_keep_blend_exclusions() {
+        for name in [
+            "pattern-shading",
+            "pattern-anchored",
+            "pattern-stroke",
+            "pattern-background",
+        ] {
+            let document = Document::open(
+                pagura_testkit::fixture("content", &format!("{name}.pdf")),
+                &OpenOptions::default(),
+            )
+            .unwrap();
+            let mut list = crate::compile_page(&document, document.page(0).unwrap()).unwrap();
+            let separations = super::super::Separations::default();
+            assert_eq!(page(&list, &separations).unwrap().format, Format::F64);
+            assert_eq!(byte_page(&list, &separations).unwrap().format, Format::F32);
+            for rows in [3, 16_384] {
+                let options = RenderOptions::default();
+                let (width, height) = list.device_size(&options).unwrap();
+                let output = super::super::render_policy(
+                    &list,
+                    &options,
+                    crate::Tile {
+                        x: 0,
+                        y: 0,
+                        width,
+                        height,
+                    },
+                    Some((
+                        Policy {
+                            rows,
+                            curve_tolerance: None,
+                            byte_composition: true,
+                            clip_product: false,
+                            geometric_compounds: false,
+                        },
+                        &mut None,
+                        Vec::new(),
+                    )),
+                )
+                .unwrap();
+                let actual = pagura_testkit::ppm(
+                    output.width(),
+                    output.height(),
+                    &output.to_rgb_over(Rgba8::WHITE),
+                );
+                let expected = pagura_testkit::fixture("content", &format!("{name}.ppm"));
+                assert_eq!(actual.len(), expected.len());
+                assert!(
+                    actual
+                        .iter()
+                        .zip(expected.iter())
+                        .all(|(a, b)| a.abs_diff(*b) <= 1),
+                    "{name}"
+                );
+            }
+            if let Some(Command::Path(path)) = list.commands.first_mut() {
+                path.composite.blend = crate::blend::BlendMode::Multiply;
+                assert_eq!(byte_page(&list, &separations).unwrap().format, Format::F64);
+            }
         }
     }
 }

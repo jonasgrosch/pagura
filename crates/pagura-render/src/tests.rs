@@ -346,6 +346,44 @@ fn all_supported_fixtures_assemble_as_single_pixel_tiles() {
 }
 
 #[test]
+fn competitive_fixtures_assemble_as_single_pixel_tiles() {
+    for &name in RENDER {
+        let document = open(name);
+        let list = compile_page(&document, document.page(0).unwrap()).unwrap();
+        for background in [Rgba8::WHITE, Rgba8::new(17, 35, 61, 96)] {
+            let options = RenderOptions {
+                scale: 1.25,
+                background,
+                accuracy: crate::Accuracy::Competitive,
+                ..RenderOptions::default()
+            };
+            let full = list.render(&options).unwrap();
+            for y in 0..full.height() {
+                for x in 0..full.width() {
+                    let tile = list
+                        .render_tile(
+                            &options,
+                            Tile {
+                                x,
+                                y,
+                                width: 1,
+                                height: 1,
+                            },
+                        )
+                        .unwrap();
+                    let start = usize::try_from(x).unwrap() * 4;
+                    assert_eq!(
+                        tile.data(),
+                        &full.row(y).unwrap()[start..start + 4],
+                        "{name} ({x}, {y})"
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn unsupported_colour_reports_its_stream_and_object() {
     let document = open("cie-blackpoint");
     let error = compile_page(&document, document.page(0).unwrap()).unwrap_err();
@@ -1046,4 +1084,218 @@ fn image_reduction_half_levels_choose_a_nearest_level() {
             }
         }
     }
+}
+
+/// A one-page PDF drawing `jpeg` (`width` by `height` DeviceRGB samples) by
+/// the content `placement`, on a `side` by `side` point page.
+/// A page of `side` points that runs `marks`, then draws a DCTDecode image of
+/// `width` by `height` samples at `placement`.
+fn jpeg_page(
+    jpeg: &[u8],
+    (width, height): (u32, u32),
+    side: u32,
+    (marks, placement): (&str, &str),
+) -> Vec<u8> {
+    let content = format!("{marks} q {placement} cm /Im Do Q");
+    let mut objects: Vec<Vec<u8>> = vec![
+        b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_vec(),
+        format!(
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {side} {side}] \
+             /Resources << /XObject << /Im 4 0 R >> >> /Contents 5 0 R >>"
+        )
+        .into_bytes(),
+    ];
+    let mut image = format!(
+        "<< /Type /XObject /Subtype /Image /Width {width} /Height {height} \
+         /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length {} >>\nstream\n",
+        jpeg.len()
+    )
+    .into_bytes();
+    image.extend_from_slice(jpeg);
+    image.extend_from_slice(b"\nendstream");
+    objects.push(image);
+    objects.push(
+        format!(
+            "<< /Length {} >>\nstream\n{content}\nendstream",
+            content.len()
+        )
+        .into_bytes(),
+    );
+    let mut pdf = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (index, object) in objects.iter().enumerate() {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(format!("{} 0 obj\n", index + 1).as_bytes());
+        pdf.extend_from_slice(object);
+        pdf.extend_from_slice(b"\nendobj\n");
+    }
+    let xref = pdf.len();
+    pdf.extend_from_slice(
+        format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).as_bytes(),
+    );
+    for offset in offsets {
+        pdf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n",
+            objects.len() + 1
+        )
+        .as_bytes(),
+    );
+    pdf
+}
+
+#[test]
+fn drawn_size_jpeg_cells_are_approximate_and_assemble_from_tiles() {
+    use crate::Accuracy;
+    let jpeg = pagura_testkit::fixture("image", "jpeg-interleaved-420.in");
+    // A mark before the image keeps it from the direct path, which decodes
+    // exactly. 17 samples over 4.25 device pixels keep six cells per block
+    // axis, over 8.5 pixels all eight; a quarter turn and a flip change
+    // nothing.
+    for (placement, reduced) in [
+        ("4.25 0 0 4.25 0.5 0.25", true),
+        ("0 4.25 -4.25 0 5 0.5", true),
+        ("8.5 0 0 -8.5 0.25 9", false),
+    ] {
+        let bytes = || jpeg_page(&jpeg, (17, 17), 10, ("0 0 1 rg 9 9 1 1 re f", placement));
+        let document = Document::open(bytes(), &OpenOptions::default()).unwrap();
+        let page = document.page(0).unwrap();
+        let exact = RenderOptions::default();
+        let competitive = RenderOptions {
+            accuracy: Accuracy::Competitive,
+            ..RenderOptions::default()
+        };
+        let difference = |a: &pagura_raster::Pixmap, b: &pagura_raster::Pixmap| {
+            a.data()
+                .iter()
+                .zip(b.data())
+                .map(|(&a, &b)| a.abs_diff(b))
+                .max()
+                .unwrap()
+        };
+        // A separately compiled list keeps every sample.
+        let unreduced = compile_page(&document, page)
+            .unwrap()
+            .render(&competitive)
+            .unwrap();
+        let reference = crate::render_page(&document, page, &exact).unwrap();
+        let approximate = crate::render_page(&document, page, &competitive).unwrap();
+        let cells = difference(&approximate, &unreduced);
+        assert_eq!(cells > 0, reduced, "{placement}: {cells}");
+        let worst = difference(&approximate, &reference);
+        assert!(worst <= 24, "{placement}: {worst}");
+        let context = crate::RenderContext::new(std::sync::Arc::new(
+            Document::open(bytes(), &OpenOptions::default()).unwrap(),
+        ));
+        let shared = context.document().page(0).unwrap();
+        assert_eq!(
+            context.render_page(shared, &competitive).unwrap().data(),
+            approximate.data()
+        );
+        assert_eq!(
+            context.render_page(shared, &exact).unwrap().data(),
+            reference.data()
+        );
+        for y in 0..approximate.height() {
+            for x in 0..approximate.width() {
+                let tile = Tile {
+                    x,
+                    y,
+                    width: 1,
+                    height: 1,
+                };
+                let pixel = crate::render_tile(&document, page, &competitive, tile).unwrap();
+                let i = usize::try_from((y * approximate.width() + x) * 4).unwrap();
+                assert_eq!(
+                    pixel.data(),
+                    &approximate.data()[i..i + 4],
+                    "{placement} ({x},{y})"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn recycled_surface_storage_renders_the_same_pixels() {
+    use crate::Accuracy;
+    let jpeg = pagura_testkit::fixture("image", "jpeg-interleaved-420.in");
+    let bytes = jpeg_page(&jpeg, (17, 17), 10, ("", "4.25 0 0 4.25 0.5 0.25"));
+    let context = crate::RenderContext::new(std::sync::Arc::new(
+        Document::open(bytes, &OpenOptions::default()).unwrap(),
+    ));
+    let page = context.document().page(0).unwrap();
+    for dpi in [72.0, 150.0, 30.0] {
+        let options = RenderOptions {
+            accuracy: Accuracy::Competitive,
+            background: Rgba8::opaque(250, 240, 230),
+            ..RenderOptions::from_dpi(dpi)
+        };
+        let fresh = context.render_page(page, &options).unwrap();
+        let mut dirty = fresh.clone().into_storage();
+        dirty.fill(7);
+        let limits = pagura_core::Limits::default();
+        let dirty = crate::Pixmap::with_storage(1, 1, Rgba8::BLACK, limits, dirty).unwrap();
+        context.recycle(dirty);
+        let reused = context.render_page(page, &options).unwrap();
+        assert_eq!(reused.data(), fresh.data(), "{dpi}");
+        context.recycle(reused);
+    }
+}
+
+#[test]
+fn recycled_storage_is_counted_and_bounded_by_the_decoded_budget() {
+    let limits = pagura_core::Limits {
+        decoded_bytes: 1 << 20,
+        ..pagura_core::Limits::default()
+    };
+    let document = Document::open(
+        pagura_testkit::fixture("content", "compound-path.pdf"),
+        &OpenOptions {
+            limits,
+            ..OpenOptions::default()
+        },
+    )
+    .unwrap();
+    let context = crate::RenderContext::new(std::sync::Arc::new(document));
+    let storage = |bytes: usize| {
+        crate::Pixmap::with_storage(1, 1, Rgba8::BLACK, limits, vec![0; bytes]).unwrap()
+    };
+    let before = context.retained_bytes();
+    context.recycle(storage(4096));
+    assert!(context.retained_bytes() >= before + 4096);
+    context.recycle(storage(2 << 20));
+    assert!(context.retained_bytes() < before + (1 << 20));
+}
+
+#[test]
+fn competitive_page_surfaces_check_the_pixel_budget_first() {
+    let document = open("compound-path");
+    let mut list = compile_page(&document, document.page(0).unwrap()).unwrap();
+    list.limits.pixels = 16;
+    let options = RenderOptions {
+        accuracy: crate::Accuracy::Competitive,
+        ..RenderOptions::default()
+    };
+    let (width, height) = list.device_size(&options).unwrap();
+    let tile = Tile {
+        x: 0,
+        y: 0,
+        width,
+        height,
+    };
+    let error = crate::compositor::render_competitive(
+        &list,
+        &options,
+        tile,
+        crate::compositor::Lent::default(),
+    )
+    .unwrap_err();
+    assert_eq!(
+        (error.kind, error.message),
+        (ErrorKind::Limit, "page pixel budget exceeded")
+    );
 }

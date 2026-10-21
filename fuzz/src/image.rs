@@ -22,7 +22,7 @@
 use super::wrapper::{self, FIRST_OBJECT, Pdf};
 use pagura::{Document, ObjectId, OpenOptions, Recovery};
 use pagura_core::{Diagnostics, Limits};
-use pagura_image::{DecodedImage, Samples, ccitt, dct, jbig2, jpx};
+use pagura_image::{DecodedImage, Samples, ccitt, dct, deferred::SampleLayout, jbig2, jpx};
 
 /// Named colour spaces the inline image dictionary can select (8.9.7).
 const RESOURCES: &[u8] = b"<< /ColorSpace << /G2 /DeviceGray /RGB2 /DeviceRGB \
@@ -170,12 +170,89 @@ fn xobject(data: &[u8], root: u32, recovery: Recovery) {
     let Some(document) = open(pdf, recovery) else {
         return;
     };
-    if let Some(object) = super::checked(document.object(ObjectId::new(FIRST_OBJECT + root, 0)))
-        && let Some(image) = super::checked(pagura_image::decode_xobject(&document, object))
-    {
-        assert_decoded(&image);
+    if let Some(object) = super::checked(document.object(ObjectId::new(FIRST_OBJECT + root, 0))) {
+        let image = super::checked(pagura_image::decode_xobject(&document, object));
+        if let Some(image) = &image {
+            assert_decoded(image);
+        }
+        let deferred = super::checked(pagura_image::decode_xobject_with(
+            &document,
+            object,
+            SampleLayout::Deferred,
+            None,
+        ));
+        // A deferred decode that fails is repeated exactly, so it never loses
+        // an image (it may keep one whose interleaved samples exceed a limit).
+        assert!(
+            image.is_none() || deferred.is_some(),
+            "deferred decoding loses an image"
+        );
+        let cells = [1, 2, 3, 4, 6][root as usize % 5];
+        let reduced = super::checked(pagura_image::decode_xobject_with(
+            &document,
+            object,
+            SampleLayout::Cells(cells),
+            None,
+        ));
+        // Drawn-size cells consume and validate every coefficient, and only
+        // shrink storage.
+        assert!(
+            image.is_none() || reduced.is_some(),
+            "drawn-size decoding loses an image"
+        );
+        if let (Some(image), Some(reduced)) = (&image, &reduced) {
+            assert_reduced(image, reduced);
+        }
+        if let (Some(image), Some(deferred)) = (image, deferred) {
+            assert_deferred(&image, &deferred);
+        }
     }
     super::assert_diagnostics(&document.diagnostics(), recovery);
+}
+
+/// A reduced image keeps its declared extent and every other property.
+fn assert_reduced(image: &DecodedImage, reduced: &DecodedImage) {
+    assert_decoded(reduced);
+    let Some(reduction) = reduced.reduction else {
+        assert_eq!(image, reduced, "an unreduced image changes");
+        return;
+    };
+    assert_eq!(
+        (reduction.width, reduction.height),
+        (image.width, image.height),
+        "a reduction loses the declared size"
+    );
+    assert_eq!(
+        (reduced.width, reduced.height),
+        (
+            dct::scaled_length(image.width, reduction.cells),
+            dct::scaled_length(image.height, reduction.cells)
+        ),
+        "reduced cells disagree with the declared size"
+    );
+    assert_eq!(
+        (reduced.components, &reduced.kind, &reduced.mask),
+        (image.components, &image.kind, &image.mask),
+        "a reduction changes the image's interpretation"
+    );
+}
+
+/// Deferred samples are the exact samples in another layout.
+fn assert_deferred(image: &DecodedImage, deferred: &DecodedImage) {
+    assert_decoded(deferred);
+    assert_eq!(
+        (image.width, image.height, image.components),
+        (deferred.width, deferred.height, deferred.components),
+        "deferred decoding changes the image geometry"
+    );
+    for index in 0..image.samples.len() {
+        let exact = image.samples.get(index);
+        let value = deferred.samples.get(index);
+        assert!(
+            exact.is_some() && exact == value,
+            "deferred sample {index} is {value:?}, exact {exact:?}"
+        );
+    }
 }
 
 fn inline(data: &[u8], recovery: Recovery) {
@@ -239,6 +316,8 @@ fn assert_decoded(image: &DecodedImage) {
             (9..=16).contains(&bits),
             "16-bit storage for {bits}-bit samples"
         ),
+        Samples::Planar(_) => assert_eq!(bits, 8, "planar samples are bytes"),
+        Samples::Packed(_) => assert_eq!(bits, 1, "packed samples are bits"),
         // Mixed JPX precisions: each colour component's values fit its own depth.
         Samples::Mixed { values, bits } => {
             assert!(

@@ -12,6 +12,11 @@ pub struct RenderContext {
     document: Arc<Document>,
     provider: Option<Arc<dyn Provider>>,
     pub(crate) fonts: Arc<Mutex<interpreter::text::cache::FontCache>>,
+    /// Planes of the last directly painted image, reused by the next.
+    buffers: Arc<pagura_image::deferred::SampleBuffers>,
+    glyphs: Arc<Mutex<crate::fragments::GlyphCache>>,
+    /// A rendered surface's storage returned by [`Self::recycle`].
+    spare: Arc<Mutex<Vec<u8>>>,
 }
 
 impl std::fmt::Debug for RenderContext {
@@ -43,6 +48,28 @@ impl RenderContext {
             document,
             provider,
             fonts,
+            buffers: Arc::default(),
+            glyphs: Arc::new(Mutex::new(crate::fragments::GlyphCache::new(
+                crate::fragments::CACHE_BYTES,
+            ))),
+            spare: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+
+    /// Returns a rendered surface's storage to the context, which keeps the
+    /// largest it has been given within
+    /// [`pagura_core::Limits::decoded_bytes`] and stores its next competitive
+    /// rendering ([`crate::Accuracy::Competitive`]) there, when it is large
+    /// enough, instead of allocating new memory. Pixels are the same either
+    /// way.
+    pub fn recycle(&self, pixmap: Pixmap) {
+        if let Ok(mut spare) = self.spare.try_lock() {
+            let storage = pixmap.into_storage();
+            if storage.capacity() > spare.capacity()
+                && storage.capacity() <= self.document.limits().decoded_bytes
+            {
+                *spare = storage;
+            }
         }
     }
 
@@ -52,13 +79,33 @@ impl RenderContext {
     }
 
     /// Estimated font-input, dictionary, outline and bookkeeping bytes
-    /// retained, bounded by [`pagura_core::Limits::document_bytes`]. Parsed font internals
-    /// retain their own limits; this is not allocator or peak-memory telemetry.
+    /// retained, bounded by [`pagura_core::Limits::document_bytes`], plus
+    /// image planes kept for reuse, bounded by
+    /// [`pagura_core::Limits::decoded_bytes`], glyph masks retained for
+    /// [`crate::Accuracy::Competitive`], at most 16 MiB within the document
+    /// limit, and the surface storage kept by [`Self::recycle`]. Parsed font
+    /// internals retain their own limits; this is not allocator or
+    /// peak-memory telemetry.
     pub fn retained_bytes(&self) -> usize {
-        self.fonts
+        let fonts = self
+            .fonts
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .bytes
+            .bytes;
+        let glyphs = self
+            .glyphs
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .retained_bytes();
+        let spare = self
+            .spare
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .capacity();
+        fonts
+            .saturating_add(glyphs)
+            .saturating_add(self.buffers.retained_bytes())
+            .saturating_add(spare)
     }
 
     /// Compiles a page, reusing this document's fonts and glyph outlines.
@@ -125,7 +172,13 @@ impl RenderContext {
     /// # Errors
     /// As [`Self::compile_page`] and [`DisplayList::render`].
     pub fn render_page(&self, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
-        self.compile_page(page)?.render(options)
+        self.check_owned(page)?;
+        crate::direct_image::render(
+            |layout| self.compile_with(page, (layout, options.drawn_scale(page))),
+            options,
+            None,
+            (Some(&self.buffers), self.lent()),
+        )
     }
 
     /// Compiles and renders a tile with shared resources.
@@ -133,6 +186,33 @@ impl RenderContext {
     /// # Errors
     /// As [`Self::compile_page`] and [`DisplayList::render_tile`].
     pub fn render_tile(&self, page: &Page, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
-        self.compile_page(page)?.render_tile(options, tile)
+        self.check_owned(page)?;
+        crate::direct_image::render(
+            |layout| self.compile_with(page, (layout, options.drawn_scale(page))),
+            options,
+            Some(tile),
+            (Some(&self.buffers), self.lent()),
+        )
+    }
+
+    fn compile_with(
+        &self,
+        page: &Page,
+        (layout, drawn): (pagura_image::deferred::SampleLayout, Option<f64>),
+    ) -> Result<DisplayList> {
+        interpreter::compile_cached_with(
+            &self.document,
+            page,
+            self.provider.as_deref(),
+            &self.fonts,
+            (layout, Some(&self.buffers), drawn),
+        )
+    }
+
+    fn lent(&self) -> crate::compositor::Lent<'_> {
+        crate::compositor::Lent {
+            glyphs: Some(&self.glyphs),
+            spare: Some(&self.spare),
+        }
     }
 }

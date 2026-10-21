@@ -30,7 +30,7 @@ mod xref;
 
 pub use object::{IndirectObject, ObjectSource};
 pub use pages::{Page, Rotation};
-pub use pagura_codec::ImageCodec;
+pub use pagura_codec::{ImageCodec, Prefix};
 pub use stream::ImageStream;
 pub use xref::{Location, Revision, RevisionKind, XrefEntry};
 
@@ -297,7 +297,46 @@ impl Document {
     /// [`Limits::decoded_bytes`], syntax errors for corrupt data, and `Password`
     /// for embedded encrypted data awaiting EFOpen authorization (7.6.6).
     pub fn stream_data<'a>(&'a self, object: &IndirectObject) -> Result<Cow<'a, [u8]>> {
-        stream::decoded(self, object)
+        stream::decoded(self, object, 0)
+    }
+
+    /// As [`Document::stream_data`], allocating for an expected decoded
+    /// length of `size` bytes at once; the result and errors are the same.
+    ///
+    /// # Errors
+    ///
+    /// As [`Document::stream_data`].
+    pub fn stream_data_sized<'a>(
+        &'a self,
+        object: &IndirectObject,
+        size: usize,
+    ) -> Result<Cow<'a, [u8]>> {
+        stream::decoded(self, object, size)
+    }
+
+    /// The leading decoded bytes of a stream whose only filter is
+    /// `FlateDecode` without parameters, decoded until `enough` accepts them
+    /// ([`pagura_codec::FilterChain::decode_prefix`]). `None` when the
+    /// stream is anything else or the prefix is not available; callers then
+    /// use [`Document::stream_data`]. No diagnostics are reported: the bytes
+    /// are those a whole decode starts with, and its later checks are not
+    /// made.
+    ///
+    /// # Errors
+    ///
+    /// As [`Document::stream_data`] for preparing the stream (decryption,
+    /// external streams and filter entries).
+    ///
+    /// `size` is the whole stream's expected decoded length, an allocation
+    /// hint only.
+    pub fn stream_data_prefix(
+        &self,
+        object: &IndirectObject,
+        size: usize,
+        enough: &mut dyn FnMut(&[u8]) -> Prefix,
+    ) -> Result<Option<Vec<u8>>> {
+        let (data, chain) = self.prepare_stream(object, &mut Vec::new())?;
+        Ok(chain.decode_prefix(&data, (self.limits().decoded_bytes, size), enough))
     }
 
     /// The data of an image stream with every filter except a trailing image
@@ -335,7 +374,23 @@ impl Document {
         object: &IndirectObject,
         parameters: Option<&Value>,
     ) -> Result<ImageStream<'a>> {
-        stream::image(self, object, parameters)
+        stream::image(self, object, parameters, 0)
+    }
+
+    /// As [`Document::image_stream_with_parameters`], allocating for an
+    /// expected length of `size` bytes after the non-image filters at once;
+    /// the result and errors are the same.
+    ///
+    /// # Errors
+    ///
+    /// As [`Document::image_stream_with_parameters`].
+    pub fn image_stream_sized<'a>(
+        &'a self,
+        object: &IndirectObject,
+        parameters: Option<&Value>,
+        size: usize,
+    ) -> Result<ImageStream<'a>> {
+        stream::image(self, object, parameters, size)
     }
 
     /// All pages in document order. The page tree is walked once and cached.

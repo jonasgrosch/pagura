@@ -6,7 +6,9 @@
 
 mod colorants;
 pub(crate) use colorants::Separations;
+mod image_interiors;
 mod images;
+mod lowp;
 mod narrow;
 mod opaque_image;
 mod output;
@@ -28,7 +30,7 @@ use crate::{RenderOptions, Tile};
 use pagura_core::{Error, Limits, Result};
 use pagura_raster::{
     ClipRegion, Coverage, FillRule, Mask, Path, PathBuilder, Pixmap, Point, Transform,
-    adjusted_stroke_outline, stroke_outline,
+    adjusted_stroke_outline, stroke_outline, tiled_stroke_outline,
 };
 use std::sync::Arc;
 
@@ -195,6 +197,9 @@ type Fill<T> = fn(
     Limits,
 ) -> Result<Option<T>>;
 
+/// Clip regions kept for the marks of one band.
+const CLIP_REGIONS: usize = 4;
+
 struct Context {
     overprint: crate::overprint::Policy,
     elide_opaque_groups: bool,
@@ -204,6 +209,12 @@ struct Context {
     mask_colors: bool,
     bounds: regions::Prepared,
     glyphs: crate::display::GlyphCache,
+    /// Row-fragment glyph masks of the competitive policy.
+    fragments: Option<Fragments>,
+    /// Storage lent for the next byte page surface.
+    spare: Vec<u8>,
+    /// Expanded images of byte-page interiors kept for the page by source.
+    palettes: image_interiors::Palettes,
     raster: pagura_raster::Rasterizer,
     limits: Limits,
     device: Transform,
@@ -212,7 +223,9 @@ struct Context {
     crop: Path,
     allocated: usize,
     work: usize,
-    clip: Option<(usize, Tile, Arc<ClipRegion>)>,
+    /// Recently prepared clip regions by clip identity and tile, the most
+    /// recent first; marks of a band often alternate between a few clips.
+    clip: Vec<(usize, Tile, Arc<ClipRegion>)>,
     mask: Option<CachedMask>,
     function_work: usize,
     soft_source: bool,
@@ -258,6 +271,9 @@ impl Context {
                 list.device_transform(options),
                 list.limits.decoded_bytes,
             ),
+            fragments: None,
+            spare: Vec::new(),
+            palettes: image_interiors::Palettes::default(),
             glyphs: crate::display::GlyphCache::new(list.limits.decoded_bytes),
             limits: list.limits,
             device: list.device_transform(options),
@@ -266,7 +282,7 @@ impl Context {
             crop: crop.finish(),
             allocated,
             work: plan.work,
-            clip: None,
+            clip: Vec::new(),
             mask: None,
             function_work: 0,
             soft_source: false,
@@ -293,6 +309,9 @@ impl Context {
         Ok(())
     }
     fn trim_raster(&mut self, bytes: usize) {
+        if self.allocated.saturating_add(bytes) > self.limits.decoded_bytes {
+            self.clear_palettes();
+        }
         if self
             .allocated
             .saturating_add(bytes)
@@ -351,12 +370,21 @@ impl Context {
         tile: Tile,
         format: plan::Format,
         background: [u8; 4],
+        banded: bool,
     ) -> Result<Surface> {
         if format == plan::Format::F64 {
             return self.surface(tile, Backdrop::Transparent);
         }
-        let count = tile.width as usize * tile.height as usize;
-        let bytes = count * if format == plan::Format::N16 { 8 } else { 16 };
+        let count = usize::try_from(u64::from(tile.width) * u64::from(tile.height))
+            .ok()
+            .filter(|&v| v <= self.limits.pixels)
+            .ok_or(Error::limit("page pixel budget exceeded"))?;
+        let bytes = match format {
+            plan::Format::U8 => narrow::Bytes::charge(count, tile.height as usize),
+            plan::Format::N16 => count.checked_mul(8),
+            _ => count.checked_mul(16),
+        }
+        .ok_or(Error::limit("colour buffer byte size overflow"))?;
         self.trim_raster(bytes);
         self.allocated = self
             .allocated
@@ -364,21 +392,33 @@ impl Context {
             .filter(|&n| n <= self.limits.decoded_bytes)
             .ok_or(Error::limit("colour buffer memory exceeded"))?;
         self.charge(count)?;
-        Ok(Surface::with_buffer(
-            tile,
-            narrow::Buffer::new(format, count, background)?,
-        ))
+        let buffer = if format == plan::Format::U8 {
+            let size = (tile.width as usize, tile.height as usize);
+            let storage = std::mem::take(&mut self.spare);
+            narrow::Buffer::U8(if banded {
+                narrow::Bytes::banded(size, background, storage)?
+            } else {
+                narrow::Bytes::new(size, background, storage)?
+            })
+        } else {
+            narrow::Buffer::new(format, count, background)?
+        };
+        Ok(Surface::with_buffer(tile, buffer))
     }
     // Clipping paths stay geometry: each mark integrates them with its own
     // outline, so a clip costs no coverage of its own (8.5.4).
     fn clip(&mut self, clip: Option<&Arc<Clip>>, tile: Tile) -> Result<Arc<ClipRegion>> {
         let tile = self.viewport.unwrap_or(tile);
         let id = clip.map_or(0, |c| Arc::as_ptr(c) as usize);
-        if let Some((key, cached, region)) = &self.clip
-            && *key == id
-            && *cached == tile
+        if let Some(index) = self
+            .clip
+            .iter()
+            .position(|(key, cached, _)| *key == id && *cached == tile)
         {
-            return Ok(Arc::clone(region));
+            let entry = self.clip.remove(index);
+            let region = Arc::clone(&entry.2);
+            self.clip.insert(0, entry);
+            return Ok(region);
         }
         let mut viewport = PathBuilder::new();
         viewport.rect(
@@ -420,8 +460,12 @@ impl Context {
             )?;
             region.intersect(&next)?;
         }
+        // Under the clip-product policy the region's own coverage is
+        // integrated once here and multiplied into each mark.
+        self.raster.prepare_clip(&mut region)?;
         let region = Arc::new(region);
-        self.clip = Some((id, tile, Arc::clone(&region)));
+        self.clip.truncate(CLIP_REGIONS - 1);
+        self.clip.insert(0, (id, tile, Arc::clone(&region)));
         Ok(region)
     }
     fn commands(
@@ -510,6 +554,19 @@ impl Context {
             self.work += run.glyphs.len();
             return Ok(());
         }
+        if let Some(mut fragments) = self.fragments.take() {
+            let result = if fragment_paint(&run.paint)
+                && matches!(target.narrow(), Some(narrow::Buffer::U8(_)))
+            {
+                Some(self.fragment_glyphs(run, tile, target, &mut fragments))
+            } else {
+                None
+            };
+            self.fragments = Some(fragments);
+            if let Some(result) = result {
+                return result;
+            }
+        }
         let mut clip = None;
         let mut positions = run.positions.iter().peekable();
         let mut position = run.paint.position;
@@ -577,6 +634,106 @@ impl Context {
         }
         Ok(())
     }
+    /// Paints a run of solid glyphs into byte storage from row-fragment
+    /// masks, scaled by the clip's prepared product. Work is charged for each
+    /// glyph's bounds and every level of its mask, as for a dense mask.
+    fn fragment_glyphs(
+        &mut self,
+        run: &crate::display::GlyphRun,
+        tile: Tile,
+        target: &mut Surface,
+        fragments: &mut Fragments,
+    ) -> Result<()> {
+        let color = self
+            .color(&run.paint.color, Model::Rgb, &run.paint.composite, true)?
+            .color;
+        let (color, alpha) = narrow::byte_source(color, run.paint.composite.alpha);
+        let region = self.clip(run.paint.clip.as_ref(), tile)?;
+        let viewport = region_rectangle(region.origin(), (region.width(), region.height()));
+        let clip = narrow::MaskClip {
+            product: region.product().map(|product| (product, viewport)),
+            rectangle: region.rectangle(),
+        };
+        if clip.product.is_none() && clip.rectangle.is_none() && !region.unrestricted() {
+            return Err(Error::invalid_argument("clip has no prepared product"));
+        }
+        let surface = target.tile;
+        let bounds = region_rectangle((surface.x, surface.y), (surface.width, surface.height));
+        let bounds = [
+            bounds[0].max(viewport[0]),
+            bounds[1].max(viewport[1]),
+            bounds[2].min(viewport[2]),
+            bounds[3].min(viewport[3]),
+        ];
+        let Some(narrow::Buffer::U8(bytes)) = target.narrow_mut() else {
+            return Err(Error::invalid_argument("missing byte buffer"));
+        };
+        let mut positions = run.positions.iter().peekable();
+        let mut position = run.paint.position;
+        // Each source's device hull relative to its origin, computed once.
+        let mut hulls = vec![None; run.sources.len()];
+        let (left, top) = (f64::from(tile.x) - 1.0, f64::from(tile.y) - 1.0);
+        let (right, bottom) = (
+            f64::from(tile.x + tile.width) + 1.0,
+            f64::from(tile.y + tile.height) + 1.0,
+        );
+        for (index, &placement) in run.glyphs.iter().enumerate() {
+            while let Some(&(_, p)) = positions.next_if(|(i, _)| *i <= index) {
+                position = p;
+            }
+            let result = (|| {
+                let source = run.source(placement)?;
+                let relative = *hulls
+                    .get_mut(placement.source as usize)
+                    .ok_or(Error::invalid_argument("invalid glyph source"))?
+                    .get_or_insert_with(|| source.relative_hull(self.device));
+                // Masks are clipped to the surface exactly; the hull only
+                // skips glyphs that lie wholly outside it.
+                let origin = placement.origin * self.device;
+                self.charge(1)?;
+                if origin.x.is_nan() || origin.y.is_nan() {
+                    return Err(Error::limit("glyph bounds overflow"));
+                }
+                if !(relative[1].x + origin.x >= left
+                    && relative[0].x + origin.x < right
+                    && relative[1].y + origin.y >= top
+                    && relative[0].y + origin.y < bottom)
+                {
+                    return Ok(());
+                }
+                let transform = Transform {
+                    e: placement.origin.x,
+                    f: placement.origin.y,
+                    ..source.linear
+                }
+                .then(self.device);
+                let (mask, (dx, dy)) = fragments.cache.coverage(
+                    &source.outline,
+                    (transform, fragments.resolution),
+                    self.limits,
+                    &mut fragments.accumulator,
+                )?;
+                self.work = self
+                    .work
+                    .checked_add(mask.data.len())
+                    .filter(|&v| v <= self.limits.raster_work)
+                    .ok_or(Error::limit("compositing work budget exceeded"))?;
+                let origin = (
+                    i64::from(mask.x) + i64::from(dx),
+                    i64::from(mask.y) + i64::from(dy),
+                );
+                bytes.mask(
+                    (mask.data, mask.width, origin),
+                    ((i64::from(surface.x), i64::from(surface.y)), bounds),
+                    (color, alpha),
+                    clip,
+                    &mut fragments.row,
+                )
+            })();
+            result.map_err(|e| crate::display::contextual(e, position))?;
+        }
+        Ok(())
+    }
     fn path(
         &mut self,
         p: &PathCommand,
@@ -620,12 +777,14 @@ impl Context {
                     p,
                     (mask.origin(), mask.coverage().len()),
                     mask.spans(),
+                    Some((mask.width() as usize, mask.coverage())),
                     target,
                 ),
                 Coverage::Rectangle(rectangle) => self.narrow_path(
                     p,
                     (rectangle.origin(), rectangle.area()),
                     rectangle.spans(),
+                    None,
                     target,
                 ),
             };
@@ -646,6 +805,7 @@ impl Context {
         p: &PathCommand,
         (origin, area): ((u32, u32), usize),
         spans: impl Iterator<Item = (usize, usize, &'a [u8])>,
+        dense: Option<(usize, &[u8])>,
         target: &mut Surface,
     ) -> Result<()> {
         let color = self.color(&p.color, Model::Rgb, &p.composite, true)?.color;
@@ -654,9 +814,17 @@ impl Context {
         let buffer = target
             .narrow_mut()
             .ok_or(Error::invalid_argument("missing colour buffer"))?;
+        if buffer.unchanged_by(color, p.composite.alpha) {
+            return Ok(());
+        }
         let stride = tile.width as usize;
         let (x, y) = origin;
         let offset = (y - tile.y) as usize * stride + (x - tile.x) as usize;
+        if let Some((width, coverage)) = dense
+            && buffer.small_mask((offset, stride, width), coverage, color, p.composite.alpha)?
+        {
+            return Ok(());
+        }
         for (row, column, coverage) in spans {
             buffer.path(
                 offset + row * stride + column,
@@ -676,9 +844,10 @@ impl Context {
         knockout: bool,
         depth: usize,
     ) -> Result<()> {
-        if target.narrow().is_some() {
+        if target.narrow().is_some() && matches!(p.color, crate::color::Color::Solid { .. }) {
             let area = mask.coverage().len();
-            return self.narrow_path(p, (mask.origin(), area), mask.spans(), target);
+            let dense = (mask.width() as usize, mask.coverage());
+            return self.narrow_path(p, (mask.origin(), area), mask.spans(), Some(dense), target);
         }
         if let crate::color::Color::Pattern {
             selected: Some(pattern),
@@ -787,6 +956,10 @@ impl Context {
                 };
                 self.transfer_mark(p.transfer.as_ref(), &p.composite, (x, y), source, true)?;
                 let source = source.apply(&p.composite, mask_value);
+                if let Some(buffer) = target.narrow_mut() {
+                    buffer.paint(index, source)?;
+                    continue;
+                }
                 let pixel = target
                     .pixels_mut()
                     .get_mut(index)
@@ -840,8 +1013,11 @@ impl Context {
             ),
             Mark::Stroke(stroke, ctm, adjust) => {
                 let path = p.path.transformed(inverse);
+                // Signed cells integrate strokes from pieces that do not overlap.
                 let outline = if *adjust {
                     adjusted_stroke_outline
+                } else if self.raster.approximates() {
+                    tiled_stroke_outline
                 } else {
                     stroke_outline
                 };
@@ -889,7 +1065,7 @@ impl Context {
         depth: usize,
     ) -> Result<()> {
         let viewport = self.viewport.replace(tile);
-        self.clip = None;
+        self.clip.clear();
         let result = self.commands(
             &group.commands,
             parent,
@@ -899,7 +1075,7 @@ impl Context {
             depth + 1,
         );
         self.viewport = viewport;
-        self.clip = None;
+        self.clip.clear();
         result
     }
     fn opaque_group(
@@ -1266,7 +1442,7 @@ impl Context {
             // Mask G has its own BBox; the page crop is applied to the painted
             // object later, not to the mask source (11.6.5.1).
             let previous = std::mem::replace(&mut self.soft_source, true);
-            self.clip = None;
+            self.clip.clear();
             let suspended = self.transfers.as_ref().is_some_and(|r| r.suspended);
             if let Some(regions) = &mut self.transfers {
                 regions.suspended = true;
@@ -1287,7 +1463,7 @@ impl Context {
             }
             self.spot_batch = spot_batch;
             self.mask_colors = mask_colors;
-            self.clip = None;
+            self.clip.clear();
             result?;
         }
         self.discard_mask();
@@ -1346,57 +1522,273 @@ impl Context {
     }
 }
 
+/// The band schedule and approximations of [`crate::Accuracy::Competitive`].
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct Policy {
+    /// Rows per full-width band of narrow storage, between 1 and 16384.
+    /// Retained groups keep square chunks of at most `plan.side` rows.
+    pub(crate) rows: u32,
+    /// Signed-cell polygons at this device tolerance; `None` keeps exact coverage.
+    pub(crate) curve_tolerance: Option<f64>,
+    /// One-round byte Normal composition in place of admitted N16/F32 storage.
+    pub(crate) byte_composition: bool,
+    /// Multiply independently sampled clip coverages (requires signed cells).
+    pub(crate) clip_product: bool,
+    /// Keep geometric integration of compound paths without a stroke boundary.
+    pub(crate) geometric_compounds: bool,
+}
+
+impl Policy {
+    /// [`crate::Accuracy::Competitive`].
+    pub(crate) const COMPETITIVE: Self = Self {
+        rows: 256,
+        curve_tolerance: Some(1.0 / 64.0),
+        byte_composition: true,
+        clip_product: true,
+        geometric_compounds: true,
+    };
+
+    fn rasterizer(self) -> Result<pagura_raster::Rasterizer> {
+        let raster = match (self.curve_tolerance, self.clip_product) {
+            (Some(tolerance), true) => {
+                pagura_raster::Rasterizer::with_approximate_clip_product(tolerance)
+            }
+            (Some(tolerance), false) => {
+                pagura_raster::Rasterizer::with_approximate_cells(tolerance)
+            }
+            (None, false) => Ok(pagura_raster::Rasterizer::default()),
+            (None, true) => Err(Error::invalid_argument(
+                "clip product requires approximate cells",
+            )),
+        }?;
+        Ok(if self.geometric_compounds {
+            raster.with_geometric_compounds()
+        } else {
+            raster
+        })
+    }
+}
+
+/// Storage a rendering context lends to competitive renders: its retained
+/// glyph masks and a surface's storage returned by `RenderContext::recycle`.
+/// A contended or absent lender only costs time: masks are a pure function
+/// of their key, and every surface is filled before use.
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct Lent<'a> {
+    pub(crate) glyphs: Option<&'a std::sync::Mutex<crate::fragments::GlyphCache>>,
+    pub(crate) spare: Option<&'a std::sync::Mutex<Vec<u8>>>,
+}
+
+/// Row-fragment glyph masks and their working storage for one render.
+struct Fragments {
+    cache: crate::fragments::GlyphCache,
+    accumulator: crate::fragments::Accumulator,
+    resolution: crate::fragments::Resolution,
+    /// One row of a mask scaled by its clip.
+    row: Vec<u8>,
+}
+
+pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
+    render_policy(list, options, tile, None)
+}
+
+/// Renders `tile` under [`Policy::COMPETITIVE`], with storage from `lent`.
+pub(crate) fn render_competitive(
+    list: &DisplayList,
+    options: &RenderOptions,
+    tile: Tile,
+    lent: Lent<'_>,
+) -> Result<Pixmap> {
+    let mut shared = lent.glyphs.and_then(|cache| cache.try_lock().ok());
+    let mut cache = shared.as_deref_mut().map_or_else(
+        || crate::fragments::GlyphCache::new(crate::fragments::CACHE_BYTES),
+        std::mem::take,
+    );
+    cache.make_room(list.glyph_placements(), list.limits.document_bytes);
+    let spare = lent
+        .spare
+        .and_then(|spare| spare.try_lock().ok())
+        .map(|mut spare| std::mem::take(&mut *spare))
+        .unwrap_or_default();
+    let mut fragments = Some(Fragments {
+        cache,
+        accumulator: crate::fragments::Accumulator::default(),
+        resolution: crate::fragments::Resolution::new(options),
+        row: Vec::new(),
+    });
+    let result = render_policy(
+        list,
+        options,
+        tile,
+        Some((Policy::COMPETITIVE, &mut fragments, spare)),
+    );
+    if let (Some(shared), Some(fragments)) = (shared.as_deref_mut(), fragments) {
+        *shared = fragments.cache;
+    }
+    result
+}
+
 // Keep the large general compositor out of the opaque page dispatch.
 #[inline(never)]
-pub(crate) fn render(list: &DisplayList, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
-    let separations = list.preview_separations(options)?;
-    let plan = plan::page(list, &separations)?;
-    let mut context = Context::new(list, options, &plan, separations)?;
-    let model = list.group.model.unwrap_or(if context.separations.enabled {
-        Model::Cmyk
-    } else {
-        Model::Rgb
-    });
-    let mut output =
-        Pixmap::new_with_limits(tile.width, tile.height, options.background, list.limits)?;
-    // Keep the high-precision page backdrop bounded too. Global device
-    // coordinates preserve exact tile parity; one work budget spans all chunks.
-    let mut y = tile.y;
-    while y < tile.y + tile.height {
-        let height = (tile.y + tile.height - y).min(plan.side);
-        let mut x = tile.x;
-        while x < tile.x + tile.width {
-            let width = (tile.x + tile.width - x).min(plan.side);
-            let region = Tile {
-                x,
-                y,
-                width,
-                height,
-            };
-            context.render_chunk(
-                list,
-                model,
-                &mut output,
-                tile,
-                region,
-                (
-                    plan.format,
-                    [
-                        options.background.r,
-                        options.background.g,
-                        options.background.b,
-                        options.background.a,
-                    ],
-                ),
-            )?;
-            x += width;
-        }
-        y += height;
+fn render_policy(
+    list: &DisplayList,
+    options: &RenderOptions,
+    tile: Tile,
+    competitive: Option<(Policy, &mut Option<Fragments>, Vec<u8>)>,
+) -> Result<Pixmap> {
+    let (bands, fragments, spare) = match competitive {
+        Some((policy, fragments, spare)) => (Some(policy), Some(fragments), spare),
+        None => (None, None, Vec::new()),
+    };
+    if let Some(bands) = bands
+        && !(1..=16_384).contains(&bands.rows)
+    {
+        return Err(Error::invalid_argument("band height outside 1..=16384"));
     }
-    Ok(output)
+    let separations = list.preview_separations(options)?;
+    let mut plan = if bands.is_some_and(|b| b.byte_composition) {
+        plan::byte_page(list, &separations)?
+    } else {
+        plan::page(list, &separations)?
+    };
+    if bands.is_some_and(|b| b.byte_composition) && plan.format != plan::Format::F64 {
+        plan.format = plan::Format::U8;
+    }
+    let mut context = Context::new(list, options, &plan, separations)?;
+    if let Some(bands) = bands {
+        context.raster = bands.rasterizer()?;
+        context.spare = spare;
+    }
+    // Solid glyphs in byte storage take masks from row fragments when given.
+    let mut fragments = fragments.filter(|_| bands.is_some());
+    if let Some(slot) = fragments.as_deref_mut() {
+        context.fragments = slot.take();
+    }
+    let result = context.render_bands(list, options, tile, (plan, bands));
+    if let Some(slot) = fragments {
+        *slot = context.fragments.take();
+    }
+    result
 }
 
 impl Context {
+    fn render_bands(
+        &mut self,
+        list: &DisplayList,
+        options: &RenderOptions,
+        tile: Tile,
+        (plan, bands): (plan::Plan, Option<Policy>),
+    ) -> Result<Pixmap> {
+        let context = self;
+        let model = list.group.model.unwrap_or(if context.separations.enabled {
+            Model::Cmyk
+        } else {
+            Model::Rgb
+        });
+        // Wide retained groups have a much larger live working set. Keep their
+        // existing square chunks; narrow pages can retain full-width byte bands.
+        let band_width = if bands.is_some() && plan.format != plan::Format::F64 {
+            tile.width
+        } else {
+            plan.side
+        };
+        let band_height = bands.map_or(plan.side, |b| {
+            if plan.format == plan::Format::F64 {
+                b.rows.min(plan.side)
+            } else {
+                b.rows
+            }
+        });
+        if plan.format == plan::Format::U8
+            && band_width >= tile.width
+            && options.background.a == 255
+            && !matches!(list.commands.as_slice(), [Command::Image(_)])
+        {
+            return context.byte_page(list, model, tile, band_height, options.background);
+        }
+        let mut output = Pixmap::with_storage(
+            tile.width,
+            tile.height,
+            options.background,
+            list.limits,
+            std::mem::take(&mut context.spare),
+        )?;
+        let mut y = tile.y;
+        while y < tile.y + tile.height {
+            let height = (tile.y + tile.height - y).min(band_height);
+            let mut x = tile.x;
+            while x < tile.x + tile.width {
+                let width = (tile.x + tile.width - x).min(band_width);
+                let region = Tile {
+                    x,
+                    y,
+                    width,
+                    height,
+                };
+                context.render_chunk(
+                    list,
+                    model,
+                    &mut output,
+                    tile,
+                    region,
+                    (
+                        plan.format,
+                        [
+                            options.background.r,
+                            options.background.g,
+                            options.background.b,
+                            options.background.a,
+                        ],
+                    ),
+                )?;
+                x += width;
+            }
+            y += height;
+        }
+        Ok(output)
+    }
+}
+
+impl Context {
+    /// Renders an opaque byte page in full-width bands of `rows` rows. The
+    /// page's storage is filled once; each band's marks are painted in place
+    /// through a window of its rows, so bands need no storage or copy of
+    /// their own.
+    fn byte_page(
+        &mut self,
+        list: &DisplayList,
+        model: Model,
+        tile: Tile,
+        rows: u32,
+        background: pagura_raster::Rgba8,
+    ) -> Result<Pixmap> {
+        self.begin_transfers(tile)?;
+        let background = [background.r, background.g, background.b, 255];
+        let mut page = self.page_surface(tile, plan::Format::U8, background, true)?;
+        let mut y = tile.y;
+        while y < tile.y + tile.height {
+            let height = (tile.y + tile.height - y).min(rows);
+            let band = Tile {
+                x: tile.x,
+                y,
+                width: tile.width,
+                height,
+            };
+            page.window(band)?;
+            self.clip.clear();
+            self.discard_mask();
+            self.commands(
+                &list.commands,
+                &mut page,
+                Backdrop::Transparent,
+                model,
+                list.group.knockout,
+                0,
+            )?;
+            y += height;
+        }
+        Pixmap::from_premultiplied(tile.width, tile.height, page.into_rgba()?, list.limits)
+    }
     fn render_chunk(
         &mut self,
         list: &DisplayList,
@@ -1412,10 +1804,10 @@ impl Context {
         {
             return Ok(());
         }
-        self.clip = None;
+        self.clip.clear();
         self.discard_mask();
         self.begin_transfers(region)?;
-        let mut page = self.page_surface(region, format, background)?;
+        let mut page = self.page_surface(region, format, background, false)?;
         self.commands(
             &list.commands,
             &mut page,
@@ -1432,7 +1824,7 @@ impl Context {
         let mut spots = Vec::with_capacity(self.separations.batches());
         for batch in 0..self.separations.batches() {
             self.spot_batch = Some(batch);
-            self.clip = None;
+            self.clip.clear();
             let mut surface = self.surface(region, Backdrop::Transparent)?;
             self.commands(
                 &list.commands,
@@ -1560,6 +1952,18 @@ fn pattern_source(p: &PathCommand) -> Option<crate::display::ShadingCommand> {
     } else {
         None
     }
+}
+
+/// Whether a glyph run in byte storage takes row-fragment masks: a solid
+/// colour, as byte storage paints any other mark through its coverage.
+fn fragment_paint(p: &PathCommand) -> bool {
+    matches!(p.color, crate::color::Color::Solid { .. })
+}
+
+/// The device rectangle `[x0, y0, x1, y1]` of a viewport.
+fn region_rectangle(origin: (u32, u32), (width, height): (u32, u32)) -> [i64; 4] {
+    let (x, y) = (i64::from(origin.0), i64::from(origin.1));
+    [x, y, x + i64::from(width), y + i64::from(height)]
 }
 
 fn path_active(p: &PathCommand) -> bool {
@@ -1910,6 +2314,9 @@ mod tests {
             mask_colors: false,
             raster: pagura_raster::Rasterizer::default(),
             bounds: regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
+            fragments: None,
+            spare: Vec::new(),
+            palettes: image_interiors::Palettes::default(),
             glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
             limits,
             device: Transform::IDENTITY,
@@ -1918,7 +2325,7 @@ mod tests {
             crop: (*path).clone(),
             allocated: 0,
             work: 0,
-            clip: None,
+            clip: Vec::new(),
             mask: None,
             function_work: 0,
             soft_source: false,
@@ -1982,6 +2389,9 @@ mod tests {
             spot_batch: None,
             mask_colors: false,
             bounds: regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
+            fragments: None,
+            spare: Vec::new(),
+            palettes: image_interiors::Palettes::default(),
             glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
             raster: pagura_raster::Rasterizer::default(),
             limits,
@@ -1991,7 +2401,7 @@ mod tests {
             crop: crop.finish(),
             allocated: 0,
             work: 0,
-            clip: None,
+            clip: Vec::new(),
             mask: None,
             function_work: 0,
             soft_source: false,
@@ -2023,6 +2433,7 @@ mod tests {
                 Arc::new(path.finish()),
                 Transform::translate(x, 0.25),
                 pagura_core::Position::Unknown,
+                &mut crate::display::GlyphHulls::default(),
             )
             .unwrap();
         }

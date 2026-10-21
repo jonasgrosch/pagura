@@ -10,6 +10,7 @@ use pagura_core::{Error, Limits, Result};
 use std::sync::Arc;
 
 mod convex;
+mod tiling;
 
 /// A dash retains its tangent even when its length is zero (8.5.3.2).
 pub(crate) struct Run {
@@ -48,6 +49,28 @@ pub(crate) fn outline(
     stroke: &Stroke,
     limits: &Limits,
 ) -> Result<(Path, Transform)> {
+    outline_with(path, transform, stroke, limits, false)
+}
+
+/// [`outline`] whose boundary, when every run admits one, is made of pieces
+/// that meet without overlapping ([`tiling`]): signed-area coverage of it
+/// needs no union integration.
+pub(crate) fn tiled_outline(
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+) -> Result<(Path, Transform)> {
+    outline_with(path, transform, stroke, limits, true)
+}
+
+fn outline_with(
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+    tiled: bool,
+) -> Result<(Path, Transform)> {
     validate(stroke, limits)?;
     if path.segments().len() > limits.path_segments {
         return Err(Error::limit("path segment budget exceeded"));
@@ -79,17 +102,13 @@ pub(crate) fn outline(
         && stroke.join == LineJoin::Miter
         && ((transform.a == transform.d && transform.b == -transform.c)
             || (transform.a == -transform.d && transform.b == transform.c));
-    let mut components = PathBuilder::new();
-    // Begins at the first proven boundary as a copy of the components so far;
-    // each later run adds its boundary or its components.
-    let mut boundaries: Option<PathBuilder> = None;
+    let mut runs = Vec::new();
     let mut cleanup_work = 0;
     for contour in contours {
         if !contour.strokeable(stroke.cap) {
             continue;
         }
-        let runs = dash(contour.points, contour.closed, stroke, limits)?;
-        for run in runs {
+        for run in dash(contour.points, contour.closed, stroke, limits)? {
             let mut run = if hairline {
                 run.transformed(transform)
             } else {
@@ -112,14 +131,44 @@ pub(crate) fn outline(
             } else {
                 None
             };
-            if let Some(contours) = boundary {
-                let out = boundaries.get_or_insert_with(|| components.clone());
-                convex::append(out, contours, limits)?;
-            } else if let Some(out) = &mut boundaries {
-                draw(out, &run, radius, tolerance, stroke, limits)?;
-            }
-            draw(&mut components, &run, radius, tolerance, stroke, limits)?;
+            runs.push((run, boundary));
         }
+    }
+    // Pieces replace the components when every run admits them; they cover
+    // the same set, so they serve as the outline and as its boundary.
+    if tiled {
+        let mut tiles = PathBuilder::new();
+        let mut complete = tiling::apart(runs.iter().map(|(run, _)| run), radius, stroke)?;
+        for (run, boundary) in &runs {
+            if !complete {
+                break;
+            }
+            complete = match boundary {
+                Some(contours) => {
+                    convex::append(&mut tiles, contours.clone(), limits)?;
+                    true
+                }
+                None => tiling::append(&mut tiles, run, radius, tolerance, stroke, limits)?,
+            };
+        }
+        if complete {
+            let mut outline = tiles.finish();
+            outline.boundary = Some(Arc::new(outline.clone()));
+            return Ok((outline, pen_transform));
+        }
+    }
+    let mut components = PathBuilder::new();
+    // Begins at the first proven boundary as a copy of the components so far;
+    // each later run adds its boundary or its components.
+    let mut boundaries: Option<PathBuilder> = None;
+    for (run, boundary) in runs {
+        if let Some(contours) = boundary {
+            let out = boundaries.get_or_insert_with(|| components.clone());
+            convex::append(out, contours, limits)?;
+        } else if let Some(out) = &mut boundaries {
+            draw(out, &run, radius, tolerance, stroke, limits)?;
+        }
+        draw(&mut components, &run, radius, tolerance, stroke, limits)?;
     }
     let mut outline = components.finish();
     outline.boundary = boundaries.map(|mut boundaries| Arc::new(boundaries.finish()));
@@ -282,15 +331,7 @@ pub(crate) fn draw(
     limits: &Limits,
 ) -> Result<()> {
     let closed = run.closed;
-    let mut points = Vec::new();
-    for &point in &run.points {
-        if points.last() != Some(&point) {
-            points.push(point);
-        }
-    }
-    if closed && points.len() > 1 && points.first() == points.last() {
-        points.pop();
-    }
+    let points = tiling::centreline(run);
     if points.len() < 2 {
         if let Some(&point) = points.first() {
             cap(

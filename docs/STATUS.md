@@ -46,6 +46,16 @@ successful Poppler reopen. The PR check results record validation for each exact
 branch head.
 No local builds, benchmarks or test suites run in this lane.
 
+## Accuracy policy
+
+`RenderOptions::accuracy` selects `Accuracy::Exact`, the default, which keeps
+every pixel within one level of its exact result, or `Accuracy::Competitive`,
+an approximate path measured against ADR 0004's competitive accuracy gate:
+row-fragment glyph masks, signed-cell fills, clip products, one-round byte
+composition, fused decoding of sole JPEG pages and drawn-size reconstruction
+of other minified JPEG images. The CLI exposes `--accuracy exact|competitive`;
+the host protocol and viewer render exactly.
+
 ## Overprint display policy
 
 `RenderOptions::overprint` selects `OverprintPreview::{Auto, Always, Never}`;

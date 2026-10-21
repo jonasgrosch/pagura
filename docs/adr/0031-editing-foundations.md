@@ -19,7 +19,10 @@ The editing lane starts at main `752b52e7`. Reviewed prerequisite snapshots:
 
 This is a source review of editing dependencies, not approval of the entire
 document stack or a claim that their checks have passed on this combined head.
-No existing PR is merged remotely by this lane. Shared core/testkit changes
+The initial implementation kept prerequisite PRs separate. On 2026-10-21 the
+user authorized landing the prerequisite stack and editing work on main. The
+landing PR retains the original core/testkit/writer/document commits and merges
+current main before validating the combined result. Shared prerequisite changes
 remain visible dependency commits, not new editing implementation.
 
 Review findings affecting the design:

@@ -331,6 +331,22 @@ pub fn stroke_outline(
     crate::stroke::outline(path, transform, stroke, limits)
 }
 
+/// [`stroke_outline`] whose retained boundary, when every run admits one, is
+/// made of pieces that meet without overlapping, so that signed-area coverage
+/// (see [`Rasterizer::with_approximate_cells`]) integrates the stroke without
+/// a union. The filled set is the same.
+///
+/// # Errors
+/// As [`stroke_outline`].
+pub fn tiled_stroke_outline(
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+) -> Result<(Path, Transform)> {
+    crate::stroke::tiled_outline(path, transform, stroke, limits)
+}
+
 /// Constructs a device-space outline for an empty polygon filling region
 /// with nonempty extent (ISO 32000-2, 10.7.4). Its boundary uses the solid
 /// one-device-pixel hairline policy of 8.4.3.2, independently of stroke state.

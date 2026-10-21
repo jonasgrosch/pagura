@@ -11,6 +11,14 @@ pub(crate) fn region(
     origin: (u32, u32),
     limits: &Limits,
 ) -> Result<Option<(u32, u32, u32, u32)>> {
+    hull_region(control_hull(path, transform, limits)?, size, origin)
+}
+
+pub(crate) fn control_hull(
+    path: &Path,
+    transform: Transform,
+    limits: &Limits,
+) -> Result<[Point; 2]> {
     if !transform.is_finite() {
         return Err(Error::invalid_argument("path transform is not finite"));
     }
@@ -43,7 +51,7 @@ pub(crate) fn region(
             Segment::Close => {}
         }
     }
-    hull_region([min, max], size, origin)
+    Ok([min, max])
 }
 
 pub(crate) fn hull_region(

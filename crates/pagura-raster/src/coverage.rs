@@ -14,10 +14,11 @@ use std::sync::Arc;
 
 mod accumulation;
 mod admission;
+mod approximate;
 pub(crate) mod quadratic;
 mod rectangle;
 mod signed;
-use rectangle::Rectangle;
+pub(crate) use rectangle::Rectangle;
 pub(crate) use rectangle::Rows;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -32,7 +33,7 @@ pub(crate) struct Shape {
     pub(crate) rule: FillRule,
 }
 impl Shape {
-    fn segments(&self) -> usize {
+    pub(crate) fn segments(&self) -> usize {
         match &self.geometry {
             Geometry::Path(path) => path.segments().len(),
             Geometry::Glyph(glyph) => glyph.vertices(),
@@ -272,6 +273,9 @@ fn bytes<T>(values: &Vec<T>) -> usize {
 #[derive(Debug, Default)]
 pub(crate) struct Scratch {
     exact: Exact,
+    pub(crate) approximate: Option<f64>,
+    pub(crate) geometric_compounds: bool,
+    cells: approximate::Cells,
     accumulation: Vec<accumulation::Accumulator>,
     curves: Vec<quadratic::Sweep>,
     signed: signed::Signed,
@@ -304,6 +308,7 @@ impl Scratch {
 
     pub(crate) fn retained_bytes(&self) -> usize {
         self.exact_bytes
+            .saturating_add(self.cells.retained_bytes())
             .saturating_add(self.accumulation_bytes)
             .saturating_add(self.curve_bytes)
             .saturating_add(self.signed_bytes)
@@ -311,6 +316,90 @@ impl Scratch {
 }
 
 pub(crate) fn coverage(
+    width: u32,
+    height: u32,
+    shapes: &[Shape],
+    out: &mut [u8],
+    origin: (u32, u32),
+    limits: &Limits,
+    scratch: &mut Scratch,
+) -> Result<()> {
+    let (adjusted, compound) = compound_admission(shapes, limits, scratch.geometric_compounds)?;
+    let limits = adjusted.as_ref().unwrap_or(limits);
+    if let Some(tolerance) = scratch.approximate
+        && !compound
+        && let [shape] = shapes
+        && shape.rectangle().is_none()
+    {
+        if shape.segments() > limits.path_segments || limits.mask_sources == 0 {
+            return Err(Error::limit("approximate source budget exceeded"));
+        }
+        // A retained boundary is already a geometric stroke-union proof. The
+        // exact backend's component-frame admission only chooses its rounding
+        // path; signed cells do not need to repeat that traversal.
+        let boundary;
+        let source = if let Geometry::Path(path) = &shape.geometry
+            && let Some(path) = &path.boundary
+            && shape.rule == FillRule::NonZero
+        {
+            boundary = Shape {
+                geometry: Geometry::Path(Arc::clone(path)),
+                ..shape.clone()
+            };
+            &boundary
+        } else {
+            shape
+        };
+        if scratch
+            .cells
+            .render(source, out, origin, (width, height), limits, tolerance)?
+        {
+            return Ok(());
+        }
+    }
+    coverage_geometric(width, height, shapes, out, origin, limits, scratch)
+}
+
+fn compound_admission(
+    shapes: &[Shape],
+    limits: &Limits,
+    enabled: bool,
+) -> Result<(Option<Limits>, bool)> {
+    if enabled
+        && let [
+            Shape {
+                geometry: Geometry::Path(path),
+                rule,
+                ..
+            },
+        ] = shapes
+        && path.boundary.is_none()
+        && path.fill_region(*rule).is_none()
+    {
+        if path.segments().len() > limits.path_segments {
+            return Err(Error::limit("path segment budget exceeded"));
+        }
+        let adjusted = Limits {
+            raster_work: limits
+                .raster_work
+                .checked_sub(path.segments().len())
+                .ok_or(Error::limit("compound admission work exceeded"))?,
+            ..*limits
+        };
+        let compound = path
+            .segments()
+            .iter()
+            .filter(|s| matches!(s, crate::Segment::MoveTo(_)))
+            .take(2)
+            .count()
+            == 2;
+        Ok((Some(adjusted), compound))
+    } else {
+        Ok((None, false))
+    }
+}
+
+fn coverage_geometric(
     width: u32,
     height: u32,
     shapes: &[Shape],

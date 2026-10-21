@@ -35,6 +35,9 @@ impl Context {
         else {
             return Ok(());
         };
+        if self.constant_stencil((command, &clip), target, initial, model, knockout, depth)? {
+            return Ok(());
+        }
         let soft = command
             .composite
             .mask
@@ -50,14 +53,18 @@ impl Context {
         if clip.spans().next().is_none() {
             return Ok(());
         }
+        // Byte pages take fully covered interiors from the integer sampler.
+        let interiors = self.image_interiors(command, target, model, &clip)?;
         let mut texels = Texels::new(image, model);
-        let available = self.limits.decoded_bytes.saturating_sub(self.allocated);
         let (mut sampler, mut mask_sampler) =
-            prepare(image, inverse, origin.0, clip.width(), available)?;
+            self.image_samplers(image, inverse, origin.0, clip.width())?;
         let sampling_bytes = sampler.bytes() + mask_sampler.as_ref().map_or(0, Prepared::bytes);
         self.trim_raster(sampling_bytes);
         self.allocated += sampling_bytes;
         for (row, column, coverage) in clip.spans() {
+            if interiors && coverage.first() == Some(&255) {
+                continue;
+            }
             let y =
                 origin.1 + u32::try_from(row).map_err(|_| Error::limit("image row exceeds u32"))?;
             for (offset, &coverage) in coverage.iter().enumerate() {
@@ -112,6 +119,68 @@ impl Context {
         }
         self.allocated -= sampling_bytes;
         Ok(())
+    }
+    /// Prepares the image and mask samplers, releasing cached palettes
+    /// when the budget does not cover both.
+    fn image_samplers(
+        &mut self,
+        image: &Image,
+        inverse: Transform,
+        origin: u32,
+        width: u32,
+    ) -> Result<(Prepared, Option<Prepared<f64>>)> {
+        let available = self.limits.decoded_bytes.saturating_sub(self.allocated);
+        match prepare(image, inverse, origin, width, available) {
+            Err(error)
+                if error.kind == pagura_core::ErrorKind::Limit && !self.palettes.is_empty() =>
+            {
+                self.clear_palettes();
+                let available = self.limits.decoded_bytes.saturating_sub(self.allocated);
+                prepare(image, inverse, origin, width, available)
+            }
+            result => result,
+        }
+    }
+    /// Paints a one-sample stencil mask, which paints its colour over its
+    /// whole unit square or nothing, as a fill of that square: on byte
+    /// storage, where both store the same coverage bytes.
+    fn constant_stencil(
+        &mut self,
+        (command, clip): (&ImageCommand, &pagura_raster::Mask),
+        target: &mut Surface,
+        initial: Backdrop<'_>,
+        model: Model,
+        knockout: bool,
+        depth: usize,
+    ) -> Result<bool> {
+        let image = &command.image;
+        if !matches!(target.narrow(), Some(super::narrow::Buffer::U8(_)))
+            || image.decoded.width != 1
+            || image.decoded.height != 1
+            || !matches!(image.decoded.kind, ImageKind::Stencil { .. })
+            || !matches!(image.decoded.mask, MaskKind::None)
+            || image.mask.is_some()
+            || command.composite.mask.is_some()
+            || !matches!(command.stencil, crate::color::Color::Solid { .. })
+        {
+            return Ok(false);
+        }
+        if mask_texel(image, 0)?.alpha == 0.0 {
+            // An unpainted sample still validates the stencil's colour.
+            self.stencil_color(command, model)?;
+            return Ok(true);
+        }
+        let paint = crate::display::PathCommand {
+            path: std::sync::Arc::default(),
+            mark: crate::display::Mark::Fill(FillRule::NonZero),
+            clip: None,
+            color: command.stencil.clone(),
+            position: command.position,
+            transfer: command.transfer.clone(),
+            composite: command.composite.clone(),
+        };
+        self.paint_path((&paint, clip), target, initial, model, knockout, depth)?;
+        Ok(true)
     }
     fn image_source(
         &mut self,
@@ -241,19 +310,15 @@ fn prepare(
     Ok((sampler, mask))
 }
 
+/// The sampler of `image`, whose unit square spans its extent in stored
+/// samples, placed by `inverse`.
 pub(super) fn sampler_for(image: &Image, inverse: Transform) -> Sampler {
+    let (width, height) = image.decoded.extent();
     Sampler {
         width: image.decoded.width,
         height: image.decoded.height,
         interpolate: image.decoded.interpolate,
-        inverse: inverse.then(Transform::new(
-            f64::from(image.decoded.width),
-            0.0,
-            0.0,
-            -f64::from(image.decoded.height),
-            0.0,
-            f64::from(image.decoded.height),
-        )),
+        inverse: inverse.then(Transform::new(width, 0.0, 0.0, -height, 0.0, height)),
     }
 }
 fn mask_texel(image: &Image, pixel: usize) -> Result<Texel> {
@@ -608,6 +673,9 @@ mod tests {
             raster: pagura_raster::Rasterizer::default(),
             bounds: super::super::regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
             glyphs: crate::display::GlyphCache::new(limits.decoded_bytes),
+            fragments: None,
+            spare: Vec::new(),
+            palettes: super::super::image_interiors::Palettes::default(),
             limits,
             device: Transform::IDENTITY,
             page_device: Transform::IDENTITY,
@@ -615,7 +683,7 @@ mod tests {
             crop: PathBuilder::new().finish(),
             allocated: 0,
             work: 0,
-            clip: None,
+            clip: Vec::new(),
             mask: None,
             function_work: 0,
             soft_source: false,
@@ -657,6 +725,7 @@ mod tests {
                 decode: None,
                 mask: MaskKind::None,
                 interpolate: false,
+                reduction: None,
             },
             space: Some(if components == 1 {
                 crate::color::Space::Gray
@@ -951,6 +1020,7 @@ mod tests {
                 decode: None,
                 mask: MaskKind::None,
                 interpolate: false,
+                reduction: None,
             },
             space: Some(crate::color::Space::Gray),
             mask: None,

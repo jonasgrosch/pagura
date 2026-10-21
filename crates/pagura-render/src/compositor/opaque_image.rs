@@ -35,6 +35,30 @@ impl Context {
         (tile, region): (Tile, Tile),
         background: [u8; 4],
     ) -> Result<bool> {
+        self.paint_levels_of(command, model, output, (tile, region), (background, false))
+    }
+
+    /// As [`Self::paint_opaque_image`] for the colour samples alone of an
+    /// image with a soft mask, whose mask is then sampled as an image of its
+    /// own ([`crate::Accuracy::Competitive`]'s byte-page interiors).
+    pub(super) fn paint_image_colour(
+        &mut self,
+        command: &ImageCommand,
+        model: Model,
+        output: &mut Pixmap,
+        region: Tile,
+    ) -> Result<bool> {
+        self.paint_levels_of(command, model, output, (region, region), ([255; 4], true))
+    }
+
+    fn paint_levels_of(
+        &mut self,
+        command: &ImageCommand,
+        model: Model,
+        output: &mut Pixmap,
+        (tile, region): (Tile, Tile),
+        (background, colour_only): ([u8; 4], bool),
+    ) -> Result<bool> {
         if model != Model::Rgb
             || self.separations.enabled
             || self.limits.depth == 0
@@ -52,8 +76,8 @@ impl Context {
             background,
         };
         match command.image.decoded.components {
-            1 => self.paint_levels::<1>(command, target),
-            3 => self.paint_levels::<3>(command, target),
+            1 => self.paint_levels::<1>(command, target, colour_only),
+            3 => self.paint_levels::<3>(command, target, colour_only),
             _ => Ok(false),
         }
     }
@@ -62,8 +86,9 @@ impl Context {
         &mut self,
         command: &ImageCommand,
         mut target: Target<'_>,
+        colour_only: bool,
     ) -> Result<bool> {
-        let Some(levels) = Levels::<N>::new(&command.image) else {
+        let Some(levels) = Levels::<N>::new(&command.image, colour_only) else {
             return Ok(false);
         };
         let transform = command.transform.then(self.device);
@@ -517,7 +542,9 @@ struct Levels<'a, const N: usize> {
     table: [[u8; 256]; N],
 }
 impl<'a, const N: usize> Levels<'a, N> {
-    fn new(image: &'a Image) -> Option<Self> {
+    /// Levels of `image`'s samples; with `colour_only`, an image with a soft
+    /// mask too, whose mask the caller applies.
+    fn new(image: &'a Image, colour_only: bool) -> Option<Self> {
         let bits = image.decoded.bits_per_component;
         let space = match N {
             1 => {
@@ -529,8 +556,9 @@ impl<'a, const N: usize> Levels<'a, N> {
         };
         if !space
             || usize::from(image.decoded.components) != N
-            || !matches!(image.decoded.mask, MaskKind::None)
-            || image.mask.is_some()
+            || !(matches!(image.decoded.mask, MaskKind::None)
+                || colour_only && matches!(image.decoded.mask, MaskKind::Soft(_)))
+            || image.mask.is_some() && !colour_only
             || image.matte.is_some()
             || image.decode.len() != N
         {
@@ -879,6 +907,7 @@ mod tests {
                 decode: None,
                 mask: MaskKind::None,
                 interpolate: self.interpolate,
+                reduction: None,
             };
             let image = Image {
                 decoded,

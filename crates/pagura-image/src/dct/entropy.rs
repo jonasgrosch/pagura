@@ -6,6 +6,9 @@
 //! marker or the end of the data (T.81 B.1.1.5, F.1.2.3). Errors and repairs
 //! report the byte positions of a decoder that loads each byte only when it
 //! needs one of its bits.
+mod fused;
+mod sequential;
+
 use pagura_core::{Diagnostic, Diagnostics, Error, Position, Result};
 
 /// Code bits resolved by one table lookup. Longer codes, and codes near a
@@ -15,8 +18,10 @@ const LOOKAHEAD: u32 = 9;
 /// The longest Huffman code (T.81 C.2).
 const LONGEST: u32 = 16;
 
-/// A decoded Huffman code that is not yet consumed.
+/// A decoded Huffman code that is not yet consumed. Eight-byte alignment
+/// lets a lookup index scale by a shift.
 #[derive(Clone, Copy, Default)]
+#[repr(align(8))]
 pub(super) struct Code {
     /// A DC magnitude size, or an AC run and size (T.81 F.1.2.1, F.1.2.2).
     pub(super) symbol: u8,
@@ -25,6 +30,9 @@ pub(super) struct Code {
     /// Code plus magnitude bits when the magnitude was decoded with the code
     /// (T.81 F.2.2.1); otherwise zero.
     fused: u8,
+    /// Code plus magnitude bits in a lookup entry, whether or not the
+    /// magnitude fits in the lookup; zero in an entry whose code is longer.
+    total: u8,
     /// That magnitude's value, sign-extended (Table F.2).
     value: i16,
 }
@@ -32,6 +40,9 @@ pub(super) struct Code {
 pub(super) struct Huffman {
     /// Indexed by the next [`LOOKAHEAD`] bits.
     lookup: Box<[Code; 1 << LOOKAHEAD]>,
+    /// Twelve-bit prefixes with fused magnitudes for native planes; empty
+    /// unless requested.
+    wide: Vec<u32>,
     first: [u32; 16],
     count: [u8; 16],
     offset: [usize; 16],
@@ -79,29 +90,37 @@ impl Huffman {
                 Ok(code)
             };
         }
-        let window = bits.peek(LONGEST);
-        for length in LOOKAHEAD + 1..=LONGEST {
-            if length > bits.count {
-                return Err(bits.exhausted());
-            }
-            let i = length as usize - 1;
-            if let Some(relative) = u32::try_from(window >> (LONGEST - length))
-                .ok()
-                .and_then(|code| code.checked_sub(self.first[i]))
-                .filter(|&v| v < u32::from(self.count[i]))
-            {
-                return Ok(Code {
-                    symbol: self.symbols[self.offset[i] + relative as usize],
-                    length: u8::try_from(length).unwrap_or(0),
-                    ..Code::default()
-                });
-            }
+        if let Some((symbol, length)) = self.long(bits.peek(LONGEST), bits.count) {
+            return Ok(Code {
+                symbol,
+                length: u8::try_from(length).unwrap_or(0),
+                ..Code::default()
+            });
+        }
+        if bits.count < LONGEST {
+            return Err(bits.exhausted());
         }
         // The bit-serial decode of T.81 F.2.2.3 has read all sixteen bits
         // when it rejects the code.
         let mut past = bits.clone();
         past.consume(LONGEST);
         Err(past.error("invalid JPEG Huffman code"))
+    }
+
+    /// The symbol and length of the code longer than the lookup that starts
+    /// the sixteen bits `window`, among codes of at most `loaded` bits.
+    fn long(&self, window: usize, loaded: u32) -> Option<(u8, u32)> {
+        for length in LOOKAHEAD + 1..=LONGEST.min(loaded) {
+            let i = length as usize - 1;
+            if let Some(relative) = u32::try_from(window >> (LONGEST - length))
+                .ok()
+                .and_then(|code| code.checked_sub(self.first[i]))
+                .filter(|&v| v < u32::from(self.count[i]))
+            {
+                return Some((self.symbols[self.offset[i] + relative as usize], length));
+            }
+        }
+        None
     }
 }
 
@@ -115,7 +134,11 @@ fn extend(raw: u32, size: u8) -> i32 {
     }
 }
 
-pub(super) fn tables(mut payload: &[u8], tables: &mut [Option<Huffman>; 8]) -> Result<()> {
+pub(super) fn tables(
+    mut payload: &[u8],
+    tables: &mut [Option<Huffman>; 8],
+    wide: bool,
+) -> Result<()> {
     while let Some((&info, rest)) = payload.split_first() {
         if info >> 4 > 1 || info & 15 > 3 {
             return Err(Error::syntax("invalid JPEG Huffman table selector"));
@@ -161,8 +184,14 @@ pub(super) fn tables(mut payload: &[u8], tables: &mut [Option<Huffman>; 8]) -> R
             }
             code *= 2;
         }
+        let prefixes = if wide {
+            fused::wide_table(&first, &count_by_length, &offsets, symbols, ac).to_vec()
+        } else {
+            Vec::new()
+        };
         tables[usize::from(info >> 4) * 4 + usize::from(info & 15)] = Some(Huffman {
             lookup,
+            wide: prefixes,
             first,
             count: count_by_length,
             offset: offsets,
@@ -186,6 +215,7 @@ fn enter(lookup: &mut [Code; 1 << LOOKAHEAD], code: u32, length: u8, symbol: u8,
         *slot = Code {
             symbol,
             length,
+            total: length.saturating_add(size),
             ..Code::default()
         };
         if fits {
@@ -209,6 +239,8 @@ pub(super) struct Bits<'a> {
     window: u64,
     /// How many bits of `window` are loaded; always below 64.
     count: u32,
+    /// The unstuffed segment used by native-plane decoding.
+    stream: fused::Stream,
 }
 impl<'a> Bits<'a> {
     pub(super) fn new(data: &'a [u8], offset: usize) -> Self {
@@ -218,7 +250,19 @@ impl<'a> Bits<'a> {
             next: offset,
             window: 0,
             count: 0,
+            stream: fused::Stream::default(),
         }
+    }
+
+    /// Bounds the unstuffed segment copies of native-plane decoding by
+    /// `storage` bytes and `work` operations.
+    pub(super) fn limit_stream(&mut self, storage: usize, work: usize) {
+        self.stream = fused::Stream::new(storage, work);
+    }
+
+    /// Operations charged by native-plane decoding in this scan.
+    pub(super) fn stream_work(&self) -> usize {
+        self.stream.work()
     }
 
     /// Just past the last byte with a consumed bit: loaded whole bytes are
@@ -233,7 +277,7 @@ impl<'a> Bits<'a> {
     }
 
     pub(super) fn error(&self, message: &'static str) -> Error {
-        Error::syntax(message).at(Position::Buffer(self.offset()))
+        Error::syntax(message).at(Position::Buffer(fused::position(self)))
     }
 
     /// Bits are needed past the last loadable byte: every loaded bit has
@@ -248,47 +292,30 @@ impl<'a> Bits<'a> {
         Error::syntax(message).at(Position::Buffer(self.next))
     }
 
-    /// Unless 32 bits are buffered, loads bytes until at least 56 are, or up
-    /// to a marker or the end of the data.
+    fn cursor(&self) -> Cursor {
+        Cursor {
+            next: self.next,
+            window: self.window,
+            count: self.count,
+        }
+    }
+
+    fn resume(&mut self, cursor: Cursor) {
+        self.next = cursor.next;
+        self.window = cursor.window;
+        self.count = cursor.count;
+    }
+
+    /// As [`Cursor::fill`].
     #[expect(
         clippy::inline_always,
         reason = "every coefficient takes this path; it shares the block loop's registers"
     )]
     #[inline(always)]
     fn fill(&mut self) {
-        if self.count >= 32 {
-            return;
-        }
-        if let Some(word) = self
-            .data
-            .get(self.next..)
-            .and_then(|tail| tail.first_chunk::<8>())
-            .filter(|word| !has_marker_byte(**word))
-        {
-            self.window |= u64::from_be_bytes(*word) >> self.count;
-            // Whole bytes only.
-            let bytes = (63 - self.count) / 8;
-            self.next += bytes as usize;
-            self.count += 8 * bytes;
-            return;
-        }
-        self.fill_bytes();
-    }
-
-    fn fill_bytes(&mut self) {
-        while self.count < 56
-            && let Some(&byte) = self.data.get(self.next)
-        {
-            if byte == 255 {
-                if self.data.get(self.next + 1) != Some(&0) {
-                    return;
-                }
-                self.next += 1;
-            }
-            self.next += 1;
-            self.window |= u64::from(byte) << (56 - self.count);
-            self.count += 8;
-        }
+        let mut cursor = self.cursor();
+        cursor.fill(self.data);
+        self.resume(cursor);
     }
 
     /// The next `width` (1 to 16) bits, zero past the loaded ones.
@@ -358,6 +385,7 @@ impl<'a> Bits<'a> {
         diagnostics: &mut Diagnostics,
         reported: &mut bool,
     ) -> Result<()> {
+        fused::sync(self);
         let left = self.count % 8;
         if left > 0 && self.window >> (64 - left) != (1 << left) - 1 && !*reported {
             diagnostics.repair(
@@ -388,7 +416,99 @@ impl<'a> Bits<'a> {
         if marker != 0xd0 + sequence {
             return Err(self.error("wrong JPEG restart marker"));
         }
+        fused::restart(self);
         Ok(())
+    }
+
+    /// Joins a zero DC difference with the following end of block.
+    pub(super) fn native_shortcut(&mut self, dc: &Huffman, ac: &Huffman) -> Result<[u32; 4096]> {
+        if dc.wide.len() != 4096 || ac.wide.len() != 4096 {
+            return Err(self.error("missing JPEG Huffman prefixes"));
+        }
+        fused::shortcut(dc, ac, self)
+    }
+
+    /// Consumes a zero DC difference and end of block, if they come next.
+    #[expect(
+        clippy::inline_always,
+        reason = "the background block test runs once per block"
+    )]
+    #[inline(always)]
+    pub(super) fn native_zero(&mut self, shortcut: &[u32]) -> Result<bool> {
+        fused::native_zero(self, shortcut)
+    }
+
+    /// Decodes one baseline block into dequantized natural-order
+    /// coefficients; returns whether any AC is nonzero and the L1 norm.
+    pub(super) fn native_coefficients(
+        &mut self,
+        dc: &Huffman,
+        ac: &Huffman,
+        predictor: &mut i32,
+        output: &mut [i32; 64],
+        quant: &[u16; 64],
+        shortcut: &[u32],
+    ) -> Result<(bool, u64)> {
+        fused::native(dc, ac, self, predictor, output, quant, shortcut)
+    }
+
+    /// Charges reference refinement work against this scan's stream budget.
+    pub(super) fn charge_refinement(&mut self, work: usize) -> Result<()> {
+        fused::charge(self, work)
+    }
+}
+
+/// The load position and window of [`Bits`], held apart from it so that a
+/// block loop keeps them in registers.
+#[derive(Clone, Copy)]
+struct Cursor {
+    next: usize,
+    window: u64,
+    count: u32,
+}
+
+impl Cursor {
+    /// Unless 32 bits are buffered, loads bytes until at least 56 are, or up
+    /// to a marker or the end of the data.
+    #[expect(
+        clippy::inline_always,
+        reason = "every coefficient takes this path; it shares the block loop's registers"
+    )]
+    #[inline(always)]
+    fn fill(&mut self, data: &[u8]) {
+        if self.count >= 32 {
+            return;
+        }
+        if let Some(word) = data
+            .get(self.next..)
+            .and_then(|tail| tail.first_chunk::<8>())
+            .filter(|word| !has_marker_byte(**word))
+        {
+            self.window |= u64::from_be_bytes(*word) >> self.count;
+            // Whole bytes only.
+            let bytes = (63 - self.count) / 8;
+            self.next += bytes as usize;
+            self.count += 8 * bytes;
+            return;
+        }
+        *self = self.fill_bytes(data);
+    }
+
+    fn fill_bytes(mut self, data: &[u8]) -> Self {
+        while self.count < 56
+            && let Some(&byte) = data.get(self.next)
+        {
+            if byte == 255 {
+                if data.get(self.next + 1) != Some(&0) {
+                    break;
+                }
+                self.next += 1;
+            }
+            self.next += 1;
+            self.window |= u64::from(byte) << (56 - self.count);
+            self.count += 8;
+        }
+        self
     }
 }
 
@@ -411,7 +531,7 @@ mod tests {
             payload[usize::from(length)] = 1;
             payload.push(122);
             let mut books = std::array::from_fn(|_| None);
-            tables(&payload, &mut books).unwrap();
+            tables(&payload, &mut books, false).unwrap();
             let book = books[0].as_ref().unwrap();
             for leading in 0..8usize {
                 let size = (leading + usize::from(length)).div_ceil(8);
@@ -519,7 +639,7 @@ mod tests {
             payload.extend_from_slice(&[1; 16]);
             payload.extend_from_slice(symbols);
             let mut books = std::array::from_fn(|_| None);
-            tables(&payload, &mut books).unwrap();
+            tables(&payload, &mut books, false).unwrap();
             let book = books[usize::from(class >> 4) * 4].as_ref().unwrap();
             for window in 0..=u16::MAX {
                 let mut data = Vec::new();

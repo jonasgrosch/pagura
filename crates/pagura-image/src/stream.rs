@@ -25,8 +25,9 @@ fn read_inner<'a>(
     let dictionary = image
         .dictionary()
         .ok_or(Error::syntax("image has no dictionary"))?;
+    let size = expected_size(document, dictionary);
     let Some(params) = dictionary.get(b"DecodeParms") else {
-        return document.image_stream(image);
+        return document.image_stream_sized(image, None, size);
     };
     let params = document.resolve(params)?;
     let filter = dictionary
@@ -36,10 +37,10 @@ fn read_inner<'a>(
     let names = match filter {
         Some(value @ Value::Name(_)) => std::slice::from_ref(value),
         Some(Value::Array(names)) => names,
-        _ => return document.image_stream(image),
+        _ => return document.image_stream_sized(image, dictionary.get(b"DecodeParms"), size),
     };
     let Some(params) = repaired_params(document, names, params)? else {
-        return document.image_stream(image);
+        return document.image_stream_sized(image, dictionary.get(b"DecodeParms"), size);
     };
     diagnostics.repair(
         Diagnostic::new(
@@ -51,7 +52,40 @@ fn read_inner<'a>(
             offset: 0,
         }),
     )?;
-    document.image_stream_with_parameters(image, Some(&params))
+    document.image_stream_sized(image, Some(&params), size)
+}
+
+/// The sample bytes an image of a device colour space declares, as an
+/// allocation hint for its decoded stream; 0 when they are not evident.
+fn expected_size(document: &Document, dictionary: &pagura_core::Dictionary) -> usize {
+    let value = |key: &[u8]| dictionary.get(key).and_then(|v| document.resolve(v).ok());
+    let integer = |key: &[u8]| {
+        value(key)
+            .and_then(Value::as_integer)
+            .and_then(|n| usize::try_from(n).ok())
+    };
+    let (Some(width), Some(height)) = (integer(b"Width"), integer(b"Height")) else {
+        return 0;
+    };
+    let (components, bits) = if value(b"ImageMask").and_then(Value::as_bool) == Some(true) {
+        (1, 1)
+    } else {
+        let components = match value(b"ColorSpace")
+            .and_then(Value::as_name)
+            .map(pagura_core::Name::as_bytes)
+        {
+            Some(b"DeviceGray" | b"G") => 1,
+            Some(b"DeviceRGB" | b"RGB") => 3,
+            Some(b"DeviceCMYK" | b"CMYK") => 4,
+            _ => return 0,
+        };
+        (components, integer(b"BitsPerComponent").unwrap_or(8))
+    };
+    width
+        .saturating_mul(components)
+        .saturating_mul(bits)
+        .div_ceil(8)
+        .saturating_mul(height)
 }
 
 /// Preserve array alignment and all dictionaries. A string spelling `null`
