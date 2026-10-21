@@ -103,7 +103,10 @@ export async function run() {
         if (kind === 'solid') {
           const bytes = pixels(actual);
           for (let i = 0; i < bytes.length; i += 4) check(bytes[i] === 25 && bytes[i + 1] === 45 && bytes[i + 2] === 80 && bytes[i + 3] === 255, 'solid background has a seam');
-          // Negative control: the old fractional per-tile scaling must fail.
+        }
+        if (kind === 'strokes') {
+          // Uniform fills can hide the old bug in some Canvas backends. Fine
+          // artwork across fractional tile edges must expose separate filtering.
           const legacy = canvas(actual.width, actual.height), context = legacy.getContext('2d');
           context.imageSmoothingEnabled = true; context.imageSmoothingQuality = 'high';
           for (const [key, tile] of raster.tiles) {
