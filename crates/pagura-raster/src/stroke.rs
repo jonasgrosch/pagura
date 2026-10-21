@@ -331,15 +331,7 @@ pub(crate) fn draw(
     limits: &Limits,
 ) -> Result<()> {
     let closed = run.closed;
-    let mut points = Vec::new();
-    for &point in &run.points {
-        if points.last() != Some(&point) {
-            points.push(point);
-        }
-    }
-    if closed && points.len() > 1 && points.first() == points.last() {
-        points.pop();
-    }
+    let points = tiling::centreline(run);
     if points.len() < 2 {
         if let Some(&point) = points.first() {
             cap(
