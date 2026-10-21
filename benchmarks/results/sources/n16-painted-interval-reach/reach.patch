@@ -1,0 +1,143 @@
+--- a/crates/pagura-render/src/compositor.rs
++++ b/crates/pagura-render/src/compositor.rs
+@@ -1674,6 +1674,12 @@
+     if options.background.a != 255 {
+         plan.format = plan::Format::F64;
+     }
++    eprintln!(
++        "PAGURA_N16_REACH_V1 plan mode={:?} competitive={} format={:?} side={} tile={},{},{},{} background={},{},{},{}",
++        options.accuracy, bands.is_some(), plan.format, plan.side,
++        tile.x, tile.y, tile.width, tile.height,
++        options.background.r, options.background.g, options.background.b, options.background.a,
++    );
+     // Preserve the planner's admitted composition precision in both modes.
+     // Competitive still selects its coverage and shading-pattern policies.
+     // Legacy U8 kernels remain, but normal planning no longer selects them.
+@@ -1827,16 +1833,22 @@
+         region: Tile,
+         (format, background): (plan::Format, [u8; 4]),
+     ) -> Result<()> {
++        eprintln!(
++            "PAGURA_N16_REACH_V1 chunk tile={},{},{},{} format={format:?}",
++            region.x, region.y, region.width, region.height,
++        );
+         if let [Command::Image(image)] = list.commands.as_slice()
+             && !list.group.knockout
+             && self.paint_opaque_image(image, model, output, (tile, region), background)?
+         {
++            eprintln!("PAGURA_N16_REACH_V1 bypass route=opaque-image");
+             return Ok(());
+         }
+         self.clip.clear();
+         self.discard_mask();
+         self.begin_transfers(region)?;
+         let mut page = self.page_surface(region, format, background, false)?;
++        eprintln!("PAGURA_N16_REACH_V1 surface format={format:?} bytes={}", page.bytes());
+         self.commands(
+             &list.commands,
+             &mut page,
+--- a/crates/pagura-render/src/compositor/narrow.rs
++++ b/crates/pagura-render/src/compositor/narrow.rs
+@@ -69,6 +69,10 @@
+                         let offset = row * width + column;
+                         painted.start = painted.start.min(offset);
+                         painted.end = painted.end.max(offset + target.len());
++                        eprintln!(
++                            "PAGURA_N16_REACH_V1 writer route=fragment offset={offset} count={}",
++                            target.len(),
++                        );
+                         if uniform(coverage) == Some(255) {
+                             target.fill(*color);
+                         } else {
+@@ -532,6 +536,10 @@
+                 if offset < end {
+                     words.painted.start = words.painted.start.min(offset);
+                     words.painted.end = words.painted.end.max(end);
++                    eprintln!(
++                        "PAGURA_N16_REACH_V1 writer route=path offset={offset} count={}",
++                        coverage.len(),
++                    );
+                 }
+                 if full {
+                     row.fill(color);
+--- a/crates/pagura-render/src/compositor/output.rs
++++ b/crates/pagura-render/src/compositor/output.rs
+@@ -32,6 +32,8 @@
+             // Admission keeps spot passes and transfer feeds on f64 storage.
+             let width = width as usize;
+             if let Some(painted) = buffer.painted_range() {
++                let mut converted = 0;
++                let mut calls = 0;
+                 // N16 admission requires an opaque page background. The output
+                 // already holds that background outside this chunk's stores.
+                 for row in 0..height as usize {
+@@ -43,7 +45,13 @@
+                     }
+                     let start = origin + row * stride + (lo - base);
+                     buffer.output(lo, &mut output.data_mut()[start * 4..(start + hi - lo) * 4]);
++                    converted += hi - lo;
++                    calls += 1;
+                 }
++                eprintln!(
++                    "PAGURA_N16_REACH_V1 output storage=N16 start={} end={} pixels={converted} calls={calls} total={}",
++                    painted.start, painted.end, width * height as usize,
++                );
+                 return Ok(());
+             }
+             for row in 0..height as usize {
+@@ -53,6 +61,11 @@
+                     &mut output.data_mut()[start * 4..(start + width) * 4],
+                 );
+             }
++            eprintln!(
++                "PAGURA_N16_REACH_V1 output storage={} dense_pixels={}",
++                if matches!(buffer, super::narrow::Buffer::F32(_)) { "F32" } else { "U8" },
++                width * height as usize,
++            );
+             return Ok(());
+         }
+         for (row, pixels) in page
+@@ -111,6 +124,10 @@
+                 composite_output(target, color, alpha);
+             }
+         }
++        eprintln!(
++            "PAGURA_N16_REACH_V1 output storage=F64 visited_pixels={}",
++            u64::from(width) * u64::from(height),
++        );
+         Ok(())
+     }
+ }
+--- a/crates/pagura-render/examples/scene_index_profile.rs
++++ b/crates/pagura-render/examples/scene_index_profile.rs
+@@ -66,9 +66,9 @@
+ 
+ fn main() -> Result<(), Box<dyn std::error::Error>> {
+     let arguments: Vec<_> = std::env::args().collect();
+-    if arguments.len() != 6 {
++    if arguments.len() != 6 && arguments.len() != 7 {
+         return Err(
+-            "usage: scene_index_profile INPUT exact|competitive cold|full|tile|tiled OUTPUT DPI"
++            "usage: scene_index_profile INPUT exact|competitive cold|full|tile|tiled OUTPUT DPI [R,G,B,A]"
+                 .into(),
+         );
+     }
+@@ -85,10 +85,17 @@
+     if !dpi.is_finite() || dpi <= 0.0 {
+         return Err("invalid DPI".into());
+     }
+-    let options = RenderOptions {
++    let mut options = RenderOptions {
+         accuracy,
+         ..RenderOptions::from_dpi(dpi)
+     };
++    if let Some(background) = arguments.get(6) {
++        let components = background.split(',').map(str::parse::<u8>).collect::<Result<Vec<_>, _>>()?;
++        let [r, g, b, a] = components.as_slice() else {
++            return Err("background requires four comma-separated byte values".into());
++        };
++        options.background = pagura_raster::Rgba8 { r: *r, g: *g, b: *b, a: *a };
++    }
+     let bytes = std::fs::read(&arguments[1])?;
+     // Storage reads and output emission are excluded; this is not cold I/O.
+     let started = Instant::now();

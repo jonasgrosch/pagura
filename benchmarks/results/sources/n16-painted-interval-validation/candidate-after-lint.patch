@@ -1,0 +1,753 @@
+diff --git a/crates/pagura-render/src/compositor/narrow.rs b/crates/pagura-render/src/compositor/narrow.rs
+index 6a823c4c..e126ca93 100644
+--- a/crates/pagura-render/src/compositor/narrow.rs
++++ b/crates/pagura-render/src/compositor/narrow.rs
+@@ -7,10 +7,18 @@ use pagura_core::{Error, Result};
+ 
+ pub(super) enum Buffer {
+     U8(Bytes),
+-    N16(Vec<[u16; 4]>),
++    N16(Words),
+     F32(Vec<[f32; 4]>),
+ }
+ 
++/// Pixels outside `painted` still hold the constructor's background.
++/// Zero-coverage and same-colour stores may widen this conservative interval;
++/// no store shrinks it or changes the dense output contract.
++pub(super) struct Words {
++    pixels: Vec<[u16; 4]>,
++    painted: std::ops::Range<usize>,
++}
++
+ /// A solid source prepared once for a run of fragment masks. Borrowing the
+ /// existing buffer preserves its admission and avoids another allocation.
+ pub(super) enum MaskSink<'a> {
+@@ -20,7 +28,7 @@ pub(super) enum MaskSink<'a> {
+         alpha: u8,
+     },
+     N16 {
+-        pixels: &'a mut [[u16; 4]],
++        words: &'a mut Words,
+         size: (usize, usize),
+         color: [u16; 4],
+     },
+@@ -47,25 +55,28 @@ impl MaskSink<'_> {
+                 color,
+                 alpha,
+             } => bytes.mask(mask, surface, (*color, *alpha), clip, scratch),
+-            Self::N16 {
+-                pixels,
+-                size,
+-                color,
+-            } => mask_rows(
+-                pixels,
+-                *size,
+-                mask,
+-                surface,
+-                clip,
+-                scratch,
+-                |row, coverage| {
+-                    if uniform(coverage) == Some(255) {
+-                        row.fill(*color);
+-                    } else {
+-                        words_row(row, coverage, *color);
+-                    }
+-                },
+-            ),
++            Self::N16 { words, size, color } => {
++                let width = size.0;
++                let Words { pixels, painted } = &mut **words;
++                mask_rows(
++                    pixels,
++                    *size,
++                    mask,
++                    surface,
++                    clip,
++                    scratch,
++                    |(row, column), target, coverage| {
++                        let offset = row * width + column;
++                        painted.start = painted.start.min(offset);
++                        painted.end = painted.end.max(offset + target.len());
++                        if uniform(coverage) == Some(255) {
++                            target.fill(*color);
++                        } else {
++                            words_row(target, coverage, *color);
++                        }
++                    },
++                )
++            }
+             Self::F32 {
+                 pixels,
+                 size,
+@@ -78,7 +89,7 @@ impl MaskSink<'_> {
+                 surface,
+                 clip,
+                 scratch,
+-                |row, coverage| {
++                |_, row, coverage| {
+                     if uniform(coverage) == Some(255) && 255.0 * *scale == 1.0 {
+                         row.fill(*color);
+                     } else {
+@@ -399,19 +410,22 @@ impl Buffer {
+                     alpha,
+                 })
+             }
+-            Self::N16(pixels) => {
++            Self::N16(words) => {
+                 if alpha != 1.0 {
+                     return Err(Error::invalid_argument(
+                         "nonopaque fragment source in N16 buffer",
+                     ));
+                 }
+-                if size.0 == 0 || size.1 == 0 || size.0.checked_mul(size.1) != Some(pixels.len()) {
++                if size.0 == 0
++                    || size.1 == 0
++                    || size.0.checked_mul(size.1) != Some(words.pixels.len())
++                {
+                     return Err(Error::invalid_argument(
+                         "fragment surface differs from N16 buffer",
+                     ));
+                 }
+                 Ok(MaskSink::N16 {
+-                    pixels,
++                    words,
+                     size,
+                     color: [word(color[0]), word(color[1]), word(color[2]), 65535],
+                 })
+@@ -443,10 +457,10 @@ impl Buffer {
+         }
+         match format {
+             Format::U8 => Ok(Self::U8(Bytes::new((count, 1), background, Vec::new())?)),
+-            Format::N16 => Ok(Self::N16(filled(
+-                count,
+-                background.map(|v| u16::from(v) * 257),
+-            )?)),
++            Format::N16 => Ok(Self::N16(Words {
++                pixels: filled(count, background.map(|v| u16::from(v) * 257))?,
++                painted: count..0,
++            })),
+             Format::F32 => Ok(Self::F32(filled(count, background.map(f32::from))?)),
+             Format::F64 => Err(Error::invalid_argument("wide format in narrow buffer")),
+         }
+@@ -455,7 +469,7 @@ impl Buffer {
+         match self {
+             // As charged by `Bytes::charge`, from the lengths it allocated.
+             Self::U8(v) => v.pixels.len() + size_of_val(v.painted.as_slice()),
+-            Self::N16(v) => v.len() * 8,
++            Self::N16(v) => v.pixels.len() * 8,
+             Self::F32(v) => v.len() * 16,
+         }
+     }
+@@ -508,11 +522,17 @@ impl Buffer {
+                 let (color, alpha) = byte_source(color, alpha);
+                 bytes.blend(offset, coverage, color, alpha)?;
+             }
+-            Self::N16(pixels) => {
++            Self::N16(words) => {
+                 let color = [word(color[0]), word(color[1]), word(color[2]), 65535];
+-                let row = pixels
+-                    .get_mut(offset..offset + coverage.len())
++                let end = offset + coverage.len();
++                let row = words
++                    .pixels
++                    .get_mut(offset..end)
+                     .ok_or(Error::invalid_argument("mask outside colour buffer"))?;
++                if offset < end {
++                    words.painted.start = words.painted.start.min(offset);
++                    words.painted.end = words.painted.end.max(end);
++                }
+                 if full {
+                     row.fill(color);
+                     return Ok(());
+@@ -555,6 +575,15 @@ impl Buffer {
+         lerp(pixel, color, scalar(source.alpha));
+         Ok(())
+     }
++    /// Only page output onto the same opaque background may omit pixels
++    /// outside this range. Dense output below makes no such assumption.
++    pub(super) fn painted_range(&self) -> Option<std::ops::Range<usize>> {
++        match self {
++            Self::N16(words) => Some(words.painted.clone()),
++            _ => None,
++        }
++    }
++
+     pub(super) fn output(&self, offset: usize, target: &mut [u8]) {
+         match self {
+             Self::U8(bytes) => {
+@@ -563,11 +592,11 @@ impl Buffer {
+                 let count = target.len().min(source.len());
+                 target[..count].copy_from_slice(&source[..count]);
+             }
+-            Self::N16(pixels) => {
++            Self::N16(words) => {
+                 let complete = target.len() / 4 * 4;
+                 for (out, &word) in target[..complete]
+                     .iter_mut()
+-                    .zip(pixels[offset..].as_flattened())
++                    .zip(words.pixels[offset..].as_flattened())
+                 {
+                     *out = word_byte(word);
+                 }
+@@ -693,7 +722,7 @@ fn mask_rows<T>(
+     (surface, bounds): ((i64, i64), [i64; 4]),
+     clip: MaskClip<'_>,
+     scratch: &mut Vec<u8>,
+-    mut paint: impl FnMut(&mut [[T; 4]], &[u8]),
++    mut paint: impl FnMut((usize, usize), &mut [[T; 4]], &[u8]),
+ ) -> Result<()> {
+     let Some([x0, y0, x1, y1]) = mask_area((mask, stride, origin), bounds, clip) else {
+         return Ok(());
+@@ -707,11 +736,11 @@ fn mask_rows<T>(
+     {
+         return Err(outside());
+     }
+-    for (y, target) in (y0..y1).zip(pixels.chunks_exact_mut(width).skip(row)) {
++    for (row, (y, target)) in (row..).zip((y0..y1).zip(pixels.chunks_exact_mut(width).skip(row))) {
+         let start = (y - origin.1) as usize * stride + (x0 - origin.0) as usize;
+         let coverage = mask.get(start..start + count).ok_or_else(outside)?;
+         let coverage = clipped_row(coverage, (x0, y), clip, scratch)?;
+-        paint(&mut target[column..column + count], coverage);
++        paint((row, column), &mut target[column..column + count], coverage);
+     }
+     Ok(())
+ }
+diff --git a/crates/pagura-render/src/compositor/narrow_tests.rs b/crates/pagura-render/src/compositor/narrow_tests.rs
+index 9df6c081..4a153bba 100644
+--- a/crates/pagura-render/src/compositor/narrow_tests.rs
++++ b/crates/pagura-render/src/compositor/narrow_tests.rs
+@@ -8,11 +8,15 @@ fn word_output_matches_rational_rounding_for_every_word() {
+     }
+     // Distinct channels, a nonzero source offset, complete-pixel truncation,
+     // and a destination longer than the remaining source.
+-    let buffer = Buffer::N16(vec![
+-        [0, 128, 129, 65535],
+-        [256, 257, 32767, 32768],
+-        [65407, 65408, 65534, 65535],
+-    ]);
++    let buffer = Buffer::N16(Words {
++        pixels: vec![
++            [0, 128, 129, 65535],
++            [256, 257, 32767, 32768],
++            [65407, 65408, 65534, 65535],
++        ],
++        // General dense output must ignore this empty page-output interval.
++        painted: 0..0,
++    });
+     for count in 0..=12 {
+         let mut target = vec![77; count];
+         buffer.output(1, &mut target);
+@@ -29,6 +33,99 @@ fn output(buffer: &Buffer, count: usize) -> Vec<u8> {
+     bytes
+ }
+ 
++#[test]
++fn n16_painted_interval_tracks_validated_spans_conservatively() {
++    let mut buffer = Buffer::new(Format::N16, 8, [255; 4]).unwrap();
++    assert!(buffer.painted_range().unwrap().is_empty());
++    assert_eq!(buffer.bytes(), 64);
++    buffer.path(8, &[], [0.0; 4], 1.0).unwrap();
++    assert!(buffer.painted_range().unwrap().is_empty());
++    let error = buffer.path(9, &[], [0.0; 4], 1.0).unwrap_err();
++    assert_eq!(error.message, "mask outside colour buffer");
++    assert!(buffer.painted_range().unwrap().is_empty());
++
++    // No coverage scan decides whether the conservative interval widens.
++    buffer.path(2, &[0, 1], [0.0; 4], 1.0).unwrap();
++    assert_eq!(buffer.painted_range(), Some(2..4));
++    buffer.path(7, &[255], [0.0; 4], 1.0).unwrap();
++    assert_eq!(buffer.painted_range(), Some(2..8));
++    buffer.path(0, &[255], [1.0; 4], 1.0).unwrap();
++    assert_eq!(buffer.painted_range(), Some(0..8));
++    let error = buffer.path(7, &[255; 2], [1.0; 4], 1.0).unwrap_err();
++    assert_eq!(error.message, "mask outside colour buffer");
++    assert_eq!(buffer.painted_range(), Some(0..8));
++    let expected: Vec<u8> = [255, 255, 255, 254, 255, 255, 255, 0]
++        .into_iter()
++        .flat_map(|gray| [gray, gray, gray, 255])
++        .collect();
++    assert_eq!(output(&buffer, 8), expected);
++    assert_eq!(buffer.bytes(), 64);
++}
++
++#[test]
++fn n16_fragment_interval_keeps_prior_rows_when_a_later_clip_row_fails() {
++    let mut buffer = Buffer::new(Format::N16, 12, [255; 4]).unwrap();
++    let error = buffer
++        .mask_sink((4, 3), [0.0; 4], 1.0)
++        .unwrap()
++        .mask(
++            (&[255; 4], 2, (-2, 7)),
++            ((-3, 6), [-3, 6, 1, 9]),
++            MaskClip {
++                // The first product row is valid; the second is missing.
++                product: Some((&[255, 128], [-2, 7, 0, 9])),
++                rectangle: None,
++            },
++            &mut Vec::new(),
++        )
++        .unwrap_err();
++    assert_eq!(error.message, "mask exceeds clip");
++    assert_eq!(buffer.painted_range(), Some(5..7));
++    let mut expected = vec![255; 48];
++    expected[5 * 4..6 * 4].copy_from_slice(&[0, 0, 0, 255]);
++    expected[6 * 4..7 * 4].copy_from_slice(&[127, 127, 127, 255]);
++    assert_eq!(output(&buffer, 12), expected);
++    assert_eq!(buffer.bytes(), 96);
++
++    let mut empty = Buffer::new(Format::N16, 4, [255; 4]).unwrap();
++    empty
++        .mask_sink((4, 1), [0.0; 4], 1.0)
++        .unwrap()
++        .mask(
++            (&[255; 4], 4, (10, 0)),
++            ((0, 0), [0, 0, 4, 1]),
++            MaskClip::default(),
++            &mut Vec::new(),
++        )
++        .unwrap();
++    assert!(empty.painted_range().unwrap().is_empty());
++    assert_eq!(output(&empty, 4), [255; 16]);
++}
++
++#[test]
++fn n16_distant_fragment_rows_keep_the_holes_and_full_interval() {
++    let background = [17, 85, 170, 255];
++    let mut buffer = Buffer::new(Format::N16, 12, background).unwrap();
++    for origin in [(10, -3), (13, -1)] {
++        buffer
++            .mask_sink((4, 3), [0.0; 4], 1.0)
++            .unwrap()
++            .mask(
++                (&[255], 1, origin),
++                ((10, -3), [10, -3, 14, 0]),
++                MaskClip::default(),
++                &mut Vec::new(),
++            )
++            .unwrap();
++    }
++    assert_eq!(buffer.painted_range(), Some(0..12));
++    let mut expected = background.repeat(12);
++    expected[..4].copy_from_slice(&[0, 0, 0, 255]);
++    expected[44..].copy_from_slice(&[0, 0, 0, 255]);
++    assert_eq!(output(&buffer, 12), expected);
++    assert_eq!(buffer.bytes(), 96);
++}
++
+ #[test]
+ fn mixed_fragment_rows_preserve_each_coverage_and_device_origin() {
+     let mut buffer = Buffer::new(Format::N16, 8, [255; 4]).unwrap();
+@@ -77,6 +174,11 @@ fn fragment_sinks_apply_product_then_fractional_clip() {
+                 127, 127, 127, 255, 127, 127, 127, 255, 255, 255, 255, 255, 127, 127, 127, 255
+             ]
+         );
++        if format == Format::N16 {
++            assert_eq!(buffer.painted_range(), Some(0..4));
++        } else {
++            assert!(buffer.painted_range().is_none());
++        }
+     }
+ }
+ 
+diff --git a/crates/pagura-render/src/compositor/output.rs b/crates/pagura-render/src/compositor/output.rs
+index 1d297a11..f7acaa24 100644
+--- a/crates/pagura-render/src/compositor/output.rs
++++ b/crates/pagura-render/src/compositor/output.rs
+@@ -31,6 +31,21 @@ impl Context {
+         if let Some(buffer) = page.narrow() {
+             // Admission keeps spot passes and transfer feeds on f64 storage.
+             let width = width as usize;
++            if let Some(painted) = buffer.painted_range() {
++                // N16 admission requires an opaque page background. The output
++                // already holds that background outside this chunk's stores.
++                for row in 0..height as usize {
++                    let base = row * width;
++                    let lo = base.max(painted.start);
++                    let hi = (base + width).min(painted.end);
++                    if lo >= hi {
++                        continue;
++                    }
++                    let start = origin + row * stride + (lo - base);
++                    buffer.output(lo, &mut output.data_mut()[start * 4..(start + hi - lo) * 4]);
++                }
++                return Ok(());
++            }
+             for row in 0..height as usize {
+                 let start = origin + row * stride;
+                 buffer.output(
+@@ -135,7 +150,139 @@ fn composite_output(target: &mut [u8; 4], color: [f64; 3], alpha: f64) {
+ 
+ #[cfg(test)]
+ mod tests {
++    use super::super::{Separations, narrow::Buffer, plan};
+     use super::*;
++    use crate::RenderOptions;
++    use crate::display::DisplayList;
++    use crate::transparency::Attributes;
++    use pagura_core::{Limits, Rect};
++    use pagura_raster::Rgba8;
++    use std::sync::{Arc, OnceLock};
++
++    fn context(background: Rgba8) -> Context {
++        let list = DisplayList {
++            commands: Vec::new(),
++            crop: Rect::from_corners(0.0, 0.0, 512.0, 32.0).unwrap(),
++            rotation: pagura_document::Rotation::None,
++            user_unit: 1.0,
++            limits: Limits::default(),
++            group: Attributes::default(),
++            print_intent: false,
++            separations: OnceLock::new(),
++        };
++        let options = RenderOptions {
++            background,
++            ..RenderOptions::default()
++        };
++        let separations = Arc::new(Separations::default());
++        let plan = plan::page(&list, &separations).unwrap();
++        Context::new(&list, &options, &plan, separations).unwrap()
++    }
++
++    #[test]
++    fn narrow_page_output_preserves_colored_background_across_chunk_edges() {
++        let background = Rgba8 {
++            r: 17,
++            g: 85,
++            b: 170,
++            a: 255,
++        };
++        let rgba = [17, 85, 170, 255];
++        let tile = Tile {
++            x: 250,
++            y: 7,
++            width: 12,
++            height: 4,
++        };
++        for format in [plan::Format::N16, plan::Format::U8, plan::Format::F32] {
++            for painted in [false, true] {
++                let mut context = context(background);
++                let mut output = Pixmap::new(12, 4, background, 48).unwrap();
++                let before = (context.work, context.allocated);
++                for (x, coverage, offset) in [(250, 128, 11), (256, 255, 6)] {
++                    let mut buffer = Buffer::new(format, 24, rgba).unwrap();
++                    let bytes = match format {
++                        plan::Format::U8 => 104,
++                        plan::Format::N16 => 192,
++                        _ => 384,
++                    };
++                    assert_eq!(buffer.bytes(), bytes);
++                    if painted {
++                        buffer.path(offset, &[coverage], [0.0; 4], 1.0).unwrap();
++                    }
++                    let page = Surface::with_buffer(
++                        Tile {
++                            x,
++                            y: 7,
++                            width: 6,
++                            height: 4,
++                        },
++                        buffer,
++                    );
++                    context
++                        .write_output(&page, &[], Model::Rgb, &mut output, tile)
++                        .unwrap();
++                }
++                let mut expected = rgba.repeat(48);
++                if painted {
++                    // Half-covered black: round([17,85,170] *127/255).
++                    // The adjacent fully covered pixel is opaque black.
++                    expected[17 * 4..18 * 4].copy_from_slice(&[8, 42, 85, 255]);
++                    expected[18 * 4..19 * 4].copy_from_slice(&[0, 0, 0, 255]);
++                }
++                assert_eq!(output.data(), expected, "{format:?} painted={painted}");
++                assert_eq!((context.work, context.allocated), before);
++            }
++        }
++    }
++
++    #[test]
++    fn n16_page_output_preserves_holes_in_a_multirow_painted_interval() {
++        let background = Rgba8 {
++            r: 17,
++            g: 85,
++            b: 170,
++            a: 255,
++        };
++        let rgba = [17, 85, 170, 255];
++        let tile = Tile {
++            x: 250,
++            y: 7,
++            width: 12,
++            height: 7,
++        };
++        let mut context = context(background);
++        let mut output = Pixmap::new(12, 7, background, 84).unwrap();
++        let before = (context.work, context.allocated);
++        let mut buffer = Buffer::new(plan::Format::N16, 30, rgba).unwrap();
++        // In one 6-by-5 chunk, the interval starts at column 2 of row 0
++        // and ends after column 1 of row 4. Three complete intervening
++        // rows and the other pixels in both endpoint rows remain background.
++        buffer.path(2, &[128], [0.0; 4], 1.0).unwrap();
++        buffer.path(25, &[255], [0.0; 4], 1.0).unwrap();
++        assert_eq!(buffer.painted_range(), Some(2..26));
++        assert_eq!(buffer.bytes(), 240);
++        let page = Surface::with_buffer(
++            Tile {
++                x: 253,
++                y: 8,
++                width: 6,
++                height: 5,
++            },
++            buffer,
++        );
++        context
++            .write_output(&page, &[], Model::Rgb, &mut output, tile)
++            .unwrap();
++        let mut expected = rgba.repeat(84);
++        // Device (255,8) maps to output row 1, column 5. Black at
++        // coverage 128 leaves round([17,85,170] *127/255).
++        expected[17 * 4..18 * 4].copy_from_slice(&[8, 42, 85, 255]);
++        // Device (254,12) maps to output row 5, column 4.
++        expected[64 * 4..65 * 4].copy_from_slice(&[0, 0, 0, 255]);
++        assert_eq!(output.data(), expected);
++        assert_eq!((context.work, context.allocated), before);
++    }
+ 
+     #[test]
+     fn output_preserves_opaque_clamping_and_rational_source_over() {
+diff --git a/crates/pagura-render/src/tests.rs b/crates/pagura-render/src/tests.rs
+index e0d85ac2..ba7f6f81 100644
+--- a/crates/pagura-render/src/tests.rs
++++ b/crates/pagura-render/src/tests.rs
+@@ -1,5 +1,7 @@
+ //! Integration evidence for the vector pipeline.
+ 
++mod painted_interval;
++
+ use crate::{RenderOptions, Tile, compile_page};
+ use pagura_core::{ErrorKind, Position, Recovery};
+ use pagura_document::{Document, OpenOptions};
+diff --git a/crates/pagura-render/src/tests/painted_interval.rs b/crates/pagura-render/src/tests/painted_interval.rs
+new file mode 100644
+index 00000000..686942f1
+--- /dev/null
++++ b/crates/pagura-render/src/tests/painted_interval.rs
+@@ -0,0 +1,218 @@
++//! Independent integer-edge page, tile and recycled-output expectations.
++
++use crate::{Accuracy, Pixmap, RenderContext, RenderOptions, Tile, compile_page};
++use pagura_core::Recovery;
++use pagura_document::{Document, OpenOptions};
++use pagura_raster::Rgba8;
++use std::sync::Arc;
++
++const SIDE: u32 = 769;
++const BACKGROUND: Rgba8 = Rgba8::opaque(17, 85, 170);
++
++fn document() -> Document {
++    // Page 0 has opaque black integer rectangles; page 1 is empty. Literal
++    // PDF coordinates are independent of the top-down occupancy oracle below.
++    let content = "0 g 254 509 6 6 re f 510 255 4 4 re f \
++                   0 768 1 1 re f 0 512 1 1 re f \
++                   255 257 1 1 re f 768 0 1 1 re f";
++    let objects = [
++        "<< /Type /Catalog /Pages 2 0 R >>".to_owned(),
++        "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>".to_owned(),
++        format!(
++            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {SIDE} {SIDE}] \
++             /Resources << >> /Contents 5 0 R >>"
++        ),
++        format!(
++            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {SIDE} {SIDE}] \
++             /Resources << >> /Contents 6 0 R >>"
++        ),
++        format!(
++            "<< /Length {} >>\nstream\n{content}\nendstream",
++            content.len()
++        ),
++        "<< /Length 0 >>\nstream\n\nendstream".to_owned(),
++    ];
++    // Classic-xref construction follows tests::jpeg_page; no renderer output
++    // or existing baseline pixels are used to construct expected bytes.
++    let mut pdf = b"%PDF-1.7\n".to_vec();
++    let mut offsets = Vec::new();
++    for (index, object) in objects.iter().enumerate() {
++        offsets.push(pdf.len());
++        pdf.extend_from_slice(format!("{} 0 obj\n{object}\nendobj\n", index + 1).as_bytes());
++    }
++    let xref = pdf.len();
++    pdf.extend_from_slice(
++        format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).as_bytes(),
++    );
++    for offset in offsets {
++        pdf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
++    }
++    pdf.extend_from_slice(
++        format!(
++            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n",
++            objects.len() + 1
++        )
++        .as_bytes(),
++    );
++    Document::open(
++        pdf,
++        &OpenOptions {
++            recovery: Recovery::Strict,
++            ..OpenOptions::default()
++        },
++    )
++    .unwrap()
++}
++
++fn expected(tile: Tile, painted: bool, background: Rgba8) -> Vec<u8> {
++    let mut pixels = Vec::new();
++    for y in tile.y..tile.y + tile.height {
++        for x in tile.x..tile.x + tile.width {
++            // At scale 1, PDF [x,y,w,h] occupies device rows
++            // SIDE-y-h .. SIDE-y. All edges here are integral, hence no
++            // coverage rounding or engine-specific tolerance is involved.
++            let black = painted
++                && (((254..260).contains(&x) && (254..260).contains(&y))
++                    || ((510..514).contains(&x) && (510..514).contains(&y))
++                    || [(0, 0), (0, 256), (255, 511), (768, 768)].contains(&(x, y)));
++            let pixel = if black {
++                [0, 0, 0, 255]
++            } else {
++                [background.r, background.g, background.b, background.a]
++            };
++            pixels.extend_from_slice(&pixel);
++        }
++    }
++    pixels
++}
++
++fn assert_pixels(image: &Pixmap, tile: Tile, painted: bool, background: Rgba8) {
++    assert_eq!((image.width(), image.height()), (tile.width, tile.height));
++    pagura_testkit::assert_bytes_eq(
++        image.data(),
++        &expected(tile, painted, background),
++        "independent integer-rectangle RGBA",
++    );
++}
++
++fn whole() -> Tile {
++    Tile {
++        x: 0,
++        y: 0,
++        width: SIDE,
++        height: SIDE,
++    }
++}
++
++#[test]
++fn opaque_integer_rectangles_match_irregular_and_offset_tiles_in_both_modes() {
++    let document = document();
++    let list = compile_page(&document, document.page(0).unwrap()).unwrap();
++    for accuracy in [Accuracy::Exact, Accuracy::Competitive] {
++        let options = RenderOptions {
++            accuracy,
++            scale: 1.0,
++            background: BACKGROUND,
++            ..RenderOptions::default()
++        };
++        let full = list.render(&options).unwrap();
++        assert_pixels(&full, whole(), true, BACKGROUND);
++        // One complete partition has widths AND heights 1, 255, 256, 257.
++        // Full rendering crosses both x/y=256 and 512; the final one-pixel
++        // chunk at 768 and empty chunks also have independent expectations.
++        let edges = [0, 1, 256, 512, SIDE];
++        let mut assembled = vec![231; (SIDE * SIDE * 4) as usize];
++        for ys in edges.windows(2) {
++            for xs in edges.windows(2) {
++                let tile = Tile {
++                    x: xs[0],
++                    y: ys[0],
++                    width: xs[1] - xs[0],
++                    height: ys[1] - ys[0],
++                };
++                let part = list.render_tile(&options, tile).unwrap();
++                assert_pixels(&part, tile, true, BACKGROUND);
++                for row in 0..tile.height {
++                    let source = (row * tile.width * 4) as usize;
++                    let target = (((tile.y + row) * SIDE + tile.x) * 4) as usize;
++                    let count = (tile.width * 4) as usize;
++                    assembled[target..target + count]
++                        .copy_from_slice(&part.data()[source..source + count]);
++                }
++            }
++        }
++        pagura_testkit::assert_bytes_eq(
++            &assembled,
++            &expected(whole(), true, BACKGROUND),
++            "partition",
++        );
++        pagura_testkit::assert_bytes_eq(&assembled, full.data(), "full versus partition");
++
++        for (x, y, width, height) in [
++            (253, 253, 7, 7),
++            (255, 255, 257, 257),
++            (256, 256, 257, 257),
++            (509, 509, 7, 7),
++            (0, 256, 256, 256),
++            (600, 600, 64, 64),
++            (768, 768, 1, 1),
++        ] {
++            let tile = Tile {
++                x,
++                y,
++                width,
++                height,
++            };
++            let part = list.render_tile(&options, tile).unwrap();
++            assert_pixels(&part, tile, true, BACKGROUND);
++        }
++    }
++    assert_eq!(document.diagnostics(), [] as [pagura_core::Diagnostic; 0]);
++}
++
++#[test]
++fn context_painted_then_blank_output_refills_recycled_storage_in_both_modes() {
++    for accuracy in [Accuracy::Exact, Accuracy::Competitive] {
++        let context = RenderContext::new(Arc::new(document()));
++        let options = RenderOptions {
++            accuracy,
++            scale: 1.0,
++            background: BACKGROUND,
++            ..RenderOptions::default()
++        };
++        let painted = context
++            .render_page(context.document().page(0).unwrap(), &options)
++            .unwrap();
++        assert_pixels(&painted, whole(), true, BACKGROUND);
++        let address = painted.data().as_ptr();
++        context.recycle(painted);
++        // A different opaque backdrop catches both stale marks and an
++        // incorrectly retained initialization colour in skipped pixels.
++        let blank_options = RenderOptions {
++            background: Rgba8::opaque(211, 37, 93),
++            ..options
++        };
++        let blank = context
++            .render_page(context.document().page(1).unwrap(), &blank_options)
++            .unwrap();
++        assert_pixels(&blank, whole(), false, blank_options.background);
++        // Only Competitive borrows the public context's spare surface today.
++        // Prove that path really reused storage rather than merely comparing
++        // two fresh allocations. Exact still receives the same pixel checks.
++        if accuracy == Accuracy::Competitive {
++            assert_eq!(blank.data().as_ptr(), address);
++        }
++        context.recycle(blank);
++        let repainted = context
++            .render_page(context.document().page(0).unwrap(), &options)
++            .unwrap();
++        assert_pixels(&repainted, whole(), true, BACKGROUND);
++        if accuracy == Accuracy::Competitive {
++            assert_eq!(repainted.data().as_ptr(), address);
++        }
++        assert_eq!(
++            context.document().diagnostics(),
++            [] as [pagura_core::Diagnostic; 0]
++        );
++    }
++}

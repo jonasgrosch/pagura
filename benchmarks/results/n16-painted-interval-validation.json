@@ -130,7 +130,8 @@
     "run_v2.py": "275b62adfc41e5e5a7f6884c666689be19908a798d38f93ca5756f3c0d1192f7",
     "run_v3.py": "2e9532b58afa774cf3c1600991dd7ca0a8b574d0ebf866511abe1146a575dac3",
     "run_wasi_diagnostic.mjs": "3e6b8fbc6056f53c06d8e26099979d337c1f4a1a6d1c849ab248517a50b0071a",
-    "select_artifact.py": "69dae692a57e682b647f19d42338c6bd4489a1ab8fdb7cdfd9a5304920064cd4"
+    "select_artifact.py": "69dae692a57e682b647f19d42338c6bd4489a1ab8fdb7cdfd9a5304920064cd4",
+    "prepare_v1.py": "d2dd8e3edb547b188a3c19d03947aa5e7f791013b4f326266a95e9570f6f73de"
   },
   "candidate_native": {
     "status": "passed",
@@ -175,5 +176,327 @@
         "sha256": "c62f8b3e4fc136343cf7cc8cbd238daec3a4a1e21a985b57a95af8652a168fe7"
       }
     }
+  },
+  "later_attempts": [
+    {
+      "attempt": "full-check-002",
+      "status": "failed",
+      "exit_code": 1,
+      "wrapper_exit_code": 1,
+      "guard_status": "child-failed",
+      "source_unchanged": true,
+      "source_before": {
+        "commit": "818f96f3f1b830882a3be29aa6ebdbf728f17565",
+        "sha256": "b3b71d2b899199077ecea44a8e0ab934023acae19ab1da52bb14c877232646ab"
+      },
+      "source_after": {
+        "commit": "818f96f3f1b830882a3be29aa6ebdbf728f17565",
+        "sha256": "b3b71d2b899199077ecea44a8e0ab934023acae19ab1da52bb14c877232646ab"
+      },
+      "errors": [],
+      "artifact_errors": {},
+      "records": {
+        "receipt": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/full-check-002-receipt.json",
+          "sha256": "3ed381e861853202d9be43aaa94618bd7377f0a2cda6325409b6286d87e3222f"
+        },
+        "guard": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/full-check-002-observer/guard.json",
+          "sha256": "47cebadcee1fa36611e3b86aefd323f75f66d4a5d23da3524ff11a47d021d54f"
+        },
+        "report": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-002.json",
+          "sha256": "19db806967140cc30d2fb7cde9f6c36429773570c6d1805c3ed8d81dd65d55a7"
+        },
+        "log": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-002.log",
+          "sha256": "fc3868e7a436e23330361cf392bff9ed38d9862d6ab070baac499f330a22b57d"
+        }
+      }
+    },
+    {
+      "attempt": "full-check-003",
+      "status": "failed",
+      "exit_code": 143,
+      "wrapper_exit_code": 143,
+      "guard_status": "invalid-external-contention",
+      "source_unchanged": true,
+      "source_before": {
+        "commit": "818f96f3f1b830882a3be29aa6ebdbf728f17565",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "source_after": {
+        "commit": "818f96f3f1b830882a3be29aa6ebdbf728f17565",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "errors": [],
+      "artifact_errors": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-003.log": "[Errno 2] No such file or directory: '/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-003.log'"
+      },
+      "records": {
+        "receipt": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/full-check-003-receipt.json",
+          "sha256": "b5800a6547b3f3dca59bbf022ff05c9882ec1755afba911d876ea8dab3e849f3"
+        },
+        "guard": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/full-check-003-observer/guard.json",
+          "sha256": "25710fa5813bfd19aeac25e3fa9b34798576e05f1044d451a4fe03ef670277d3"
+        },
+        "report": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-003.json",
+          "sha256": "f0259605545ee1de4cb55eca07240a6e7de26afb632ea6d139d4d3f6deba71cd"
+        },
+        "log": null
+      }
+    },
+    {
+      "attempt": "full-check-004",
+      "status": "failed",
+      "exit_code": 143,
+      "wrapper_exit_code": 143,
+      "guard_status": "invalid-external-contention",
+      "source_unchanged": true,
+      "source_before": {
+        "commit": "818f96f3f1b830882a3be29aa6ebdbf728f17565",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "source_after": {
+        "commit": "818f96f3f1b830882a3be29aa6ebdbf728f17565",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "errors": [],
+      "artifact_errors": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-004.log": "[Errno 2] No such file or directory: '/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-004.log'"
+      },
+      "records": {
+        "receipt": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/full-check-004-receipt.json",
+          "sha256": "2faedd7ca0b6c502aefd96ef5c50f0559e2975db04c2da65606eee5ed619669d"
+        },
+        "guard": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/full-check-004-observer/guard.json",
+          "sha256": "8c3263398bf1484d461c16759680d2282a476ab2b01fd8b54982fb44b7d55eb4"
+        },
+        "report": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-004.json",
+          "sha256": "c0e7104d131537ce48bc044cbc7b24c2d3c7e112dbd0df53f2fe07ea75891e24"
+        },
+        "log": null
+      }
+    },
+    {
+      "attempt": "full-check-005",
+      "status": "failed",
+      "exit_code": 75,
+      "wrapper_exit_code": 75,
+      "guard_status": "refused-external-contention",
+      "source_unchanged": true,
+      "source_before": {
+        "commit": "818f96f3f1b830882a3be29aa6ebdbf728f17565",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "source_after": {
+        "commit": "818f96f3f1b830882a3be29aa6ebdbf728f17565",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "errors": [],
+      "artifact_errors": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-005.json": "[Errno 2] No such file or directory: '/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-005.json'",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-005.log": "[Errno 2] No such file or directory: '/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-005.log'"
+      },
+      "records": {
+        "receipt": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/full-check-005-receipt.json",
+          "sha256": "44382bf5ec02157e1c2733fc59ae86d0ba3c7efc92ed72d892894c913a81ae9c"
+        },
+        "guard": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/full-check-005-observer/guard.json",
+          "sha256": "bb01ff644db85e57e6360fc035bbd9be0d9c0132f4f906d29777da642d4920e9"
+        },
+        "report": null,
+        "log": null
+      }
+    },
+    {
+      "attempt": "full-check-006",
+      "status": "failed",
+      "exit_code": 143,
+      "wrapper_exit_code": 143,
+      "guard_status": "invalid-external-contention",
+      "source_unchanged": true,
+      "source_before": {
+        "commit": "818f96f3f1b830882a3be29aa6ebdbf728f17565",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "source_after": {
+        "commit": "818f96f3f1b830882a3be29aa6ebdbf728f17565",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "errors": [],
+      "artifact_errors": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-006.log": "[Errno 2] No such file or directory: '/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-006.log'"
+      },
+      "records": {
+        "receipt": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/full-check-006-receipt.json",
+          "sha256": "9351ccd0d5b801b924807c8de64a444a9f916f9992b61206e443484106411319"
+        },
+        "guard": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/full-check-006-observer/guard.json",
+          "sha256": "f428c93a2bcfca47f48d3687713fb6328f2907767c83ed8a83081e1ab3d44e81"
+        },
+        "report": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-006.json",
+          "sha256": "03a8ccd663fd7e2ea27ad06b5c471cffdc8aaa3b822ce793bd0f21c300ca3d3a"
+        },
+        "log": null
+      }
+    },
+    {
+      "attempt": "focused-clippy-001",
+      "status": "failed",
+      "exit_code": 143,
+      "wrapper_exit_code": 143,
+      "guard_status": "invalid-external-contention",
+      "source_unchanged": true,
+      "source_before": {
+        "commit": "818f96f3f1b830882a3be29aa6ebdbf728f17565",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "source_after": {
+        "commit": "818f96f3f1b830882a3be29aa6ebdbf728f17565",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "errors": [],
+      "artifact_errors": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-focused-clippy-001.log": "[Errno 2] No such file or directory: '/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-focused-clippy-001.log'"
+      },
+      "records": {
+        "receipt": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/focused-clippy-001-receipt.json",
+          "sha256": "32cc3d7927e80b7e3e3aa993d182af0dc44031682cabf80ff2afe6df5672e9bf"
+        },
+        "guard": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/focused-clippy-001-observer/guard.json",
+          "sha256": "ea9fe50d5a0de06a9bb1b6d00ff34ae1edfeaf514520fb1009385392d3810cc5"
+        },
+        "report": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-focused-clippy-001.json",
+          "sha256": "fa8eb89f3d60cc599ccb3886f33fcded27ed127f94f3bf950ee50399bb1c9d47"
+        },
+        "log": null
+      }
+    },
+    {
+      "attempt": "focused-clippy-002",
+      "status": "completed",
+      "exit_code": 0,
+      "wrapper_exit_code": 0,
+      "guard_status": "completed",
+      "source_unchanged": true,
+      "source_before": {
+        "commit": "818f96f3f1b830882a3be29aa6ebdbf728f17565",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "source_after": {
+        "commit": "818f96f3f1b830882a3be29aa6ebdbf728f17565",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "errors": [],
+      "artifact_errors": {},
+      "records": {
+        "receipt": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/focused-clippy-002-receipt.json",
+          "sha256": "16c1c9eba41685101ca90ec4b18c3ea9427873325fcbe2ba31bd02653ffedfe8"
+        },
+        "guard": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/focused-clippy-002-observer/guard.json",
+          "sha256": "cd3c1b08c34128e0712ffbab2b80131f60c97d1970cba155875003529fa089d6"
+        },
+        "report": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-focused-clippy-002.json",
+          "sha256": "42b8441e1186f4312fa9a5ee6525f16130189bf540791a9c4fc34da886ad05c9"
+        },
+        "log": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-focused-clippy-002.log",
+          "sha256": "01d786f03280775e08f7622b8b4f77246a00dff2cc366cdc05247857a891037b"
+        }
+      }
+    },
+    {
+      "attempt": "reach-unit-001",
+      "status": "failed",
+      "exit_code": 75,
+      "wrapper_exit_code": 75,
+      "guard_status": "refused-external-contention",
+      "source_unchanged": true,
+      "source_before": {
+        "commit": "818f96f3f1b830882a3be29aa6ebdbf728f17565",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "source_after": {
+        "commit": "818f96f3f1b830882a3be29aa6ebdbf728f17565",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "errors": [],
+      "artifact_errors": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-reach-unit-001.json": "[Errno 2] No such file or directory: '/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-reach-unit-001.json'",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-reach-unit-001.log": "[Errno 2] No such file or directory: '/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-reach-unit-001.log'"
+      },
+      "records": {
+        "receipt": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/reach-unit-001-receipt.json",
+          "sha256": "5c69b629e60da4fd238eccbd89b53a8b69f9773708211b3063edb43375b71d65"
+        },
+        "guard": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/reach-unit-001-observer/guard.json",
+          "sha256": "7dd36d7d5fbf10b1603899f791af5c271ae96e491468ec4c05a5fe378e52ac18"
+        },
+        "report": null,
+        "log": null
+      }
+    }
+  ],
+  "current_candidate": {
+    "root": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura",
+    "commit": "818f96f3f1b830882a3be29aa6ebdbf728f17565",
+    "source_sha256": "53062678753e6012a291b95dbf07cb8b069e7134ab836d587919975d1ed057c7"
+  },
+  "changes_since_candidate_native": {
+    "scope": "Two assertions in tests/painted_interval.rs now use typed empty Diagnostic arrays for the deny-warnings lint. Production code is unchanged.",
+    "current_renderer_clippy": "passed with clean guard; focused-clippy-002",
+    "current_full_repository_check": "not completed; full-check-002 stopped at those lint findings; 003/004/006 were interrupted and 005 refused because of external compute"
+  },
+  "limits_current": [
+    "No N16 performance samples, RSS or candidate layout observations.",
+    "The earlier 236-test native pass predates the lint-only assertion change; no current-source full check is claimed.",
+    "Reach instrumentation is archived but not applied; its first parser-test attempt was refused before child launch.",
+    "Canceled validation wrappers may not return a combined log; missing artifacts are retained as unavailable, not passed."
+  ],
+  "reach_sources": {
+    "run.py": "b81d7ff5bb85377c16588c9b800025120322fabcc0d698c9ac30cc4146815316",
+    "test_run.py": "d7fab71fbd1912ca8477f7fd9a2b37c85996598cfccfd1199f098352ac16e77e",
+    "COORDINATOR.md": "894e55b837a4991dc4c9248e93a2ecc1f2146bf571761ee2ebd4c03430db27c8",
+    "reach.patch": "7750b0e6470d5f799678137e0032386f5e064977547cc6086d096a50c53f31be",
+    "README.md": "ac641ad784a7e0e770ee09c538d37c73d82b2c4cfd5cfe4707c0988b7ffd26d1"
+  },
+  "idle_waits": [
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/idle-wait-002.json",
+      "sha256": "7105e4d4530e37b015920421e4255195b33518c4e296d168aea1615081377a1c"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/idle-wait-003.json",
+      "sha256": "0cec9d6096c077596450c9a8403964ae83c7381759452d990cfef9baf558134c"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/idle-wait-004.json",
+      "sha256": "2624cb4b002d6d11ed11e9d778c63f0ffd35b93572424ae0ef4ebb779fb769c9"
+    }
+  ],
+  "current_candidate_patch": {
+    "path": "benchmarks/results/sources/n16-painted-interval-validation/candidate-after-lint.patch",
+    "sha256": "0e673550276d88522979b233f5953b295f815f52b4ca1445d2b40c4febaecbaf",
+    "status": "unadmitted experiment; current clippy passed, complete validation and timing pending"
   }
 }

@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "experiment": "n16-painted-interval",
+  "status": "pending",
+  "admission": false,
+  "source": null,
+  "gates": {
+    "PI-Q1": "pending",
+    "PI-Q2": "pending",
+    "PI-Q3": "pending",
+    "PI-Q4": "pending",
+    "PI-Q5": "pending",
+    "PI-M1": "pending",
+    "PI-REACH": "pending"
+  },
+  "layouts": [],
+  "evidence": [],
+  "attempts": [],
+  "limitations": [
+    "Unfilled source-only template; no validation result is asserted.",
+    "The final summary job aggregates separately pinned checks; it does not execute or independently rederive every test assertion.",
+    "Native route observations cover the fixed 18 full requests, not all 52 benchmark cells or WASI reach.",
+    "Layout observations do not establish per-process RSS, peak stack usage, speed, release admission or superiority."
+  ]
+}

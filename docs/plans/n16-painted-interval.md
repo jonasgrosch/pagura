@@ -12,13 +12,19 @@ The start/current comparison is now completed and committed as `fc41ce6e` in
 large Competitive text regressions and roughly doubled latency for the opaque
 text full-page fixture. This candidate remains a bounded attempt to recover
 N16 output costs, not a presumed solution for the separate F32 text regressions.
-Fourteen harness tests and all 236 native candidate renderer tests pass.
+Fourteen harness tests and all 236 native candidate renderer tests passed before
+a subsequent lint-only change to two test assertions. The current renderer
+Clippy check passes with warnings denied and a clean contention guard.
 Portable and complete-repository validation remain
 [incomplete](../../benchmarks/results/sources/n16-painted-interval-validation/README.md):
 diagnostic parser/artifact selection failures were retained and corrected, then
 external compute interrupted the isolated attempts. All temporary probes are
-removed. The full repository check was separately interrupted by external
-compute. No incremental speed or candidate memory-layout claim is available.
+removed. The full repository check found those two assertion lints; later
+attempts were interrupted or refused because of external compute. No complete
+current-source repository check, incremental speed or candidate memory-layout
+claim is available. The reviewed native route/reach probe is retained under
+`benchmarks/results/sources/n16-painted-interval-reach`; it has not run or been
+applied to the renderer. Its first parser-test launch was refused before execution.
 
 This is not a frozen launch plan. Freeze the concrete baseline commit, source
 and binary pins, expanded cell list, seeds and every helper before the pilot. The baseline
@@ -118,11 +124,12 @@ experiment's admission criteria.
 Before a pilot, require the following named gate groups in both modes where
 the public interface exposes modes:
 
-Supplied but unexecuted: the current patch contains private writer, dense-output,
+The current patch contains private writer, dense-output,
 colored-background, same-chunk multirow-hole, public irregular/offset-tile and
 painted-to-blank context reuse tests. Follow the current
 `/private/tmp/pagura-n16-interval-current/VALIDATION-CHECKLIST.md`; the draft is
-not validation evidence until the coordinator applies and runs it. Actual N16
+not validation evidence by itself. The earlier native renderer run covers these
+tests; portable execution remains outstanding. Actual N16
 admission/output reach, current budget/error comparisons, native/WASI layouts
 and the complete validation gates remain outstanding.
 
