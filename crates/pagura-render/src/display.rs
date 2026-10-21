@@ -4,10 +4,7 @@ use crate::color::Color;
 use crate::{RenderOptions, Tile};
 use pagura_core::{Error, Limits, Rect, Result};
 use pagura_document::{Page, Rotation};
-use pagura_raster::{
-    ClipRegion, FillRule, Paint, Path, PathBuilder, Pixmap, Rasterizer, Stroke, Transform,
-    adjusted_stroke_outline, stroke_outline,
-};
+use pagura_raster::{FillRule, Path, Pixmap, Rasterizer, Stroke, Transform};
 use std::sync::{Arc, OnceLock};
 
 #[derive(Debug, Clone)]
@@ -301,46 +298,6 @@ impl GlyphRun {
             [l.a, l.b, l.c, l.d],
             limits,
         )?))
-    }
-    fn rasterize(
-        &self,
-        target: &mut Pixmap,
-        device: Transform,
-        clip: &ClipRegion,
-        raster: &mut Rasterizer,
-        cache: &mut GlyphCache,
-        limits: Limits,
-    ) -> Result<()> {
-        let paint = Paint::Solid(self.paint.color.to_rgba(
-            self.paint.transfer.as_ref(),
-            self.paint.composite.conversion.intent,
-        )?);
-        for (index, &placement) in self.glyphs.iter().enumerate() {
-            let geometry = cache
-                .geometry(self, placement, device, &limits, raster)
-                .map_err(|error| contextual(error, self.position(index)))?;
-            if cache
-                .retained_bytes()
-                .saturating_add(geometry.retained_bytes())
-                .saturating_add(raster.retained_bytes())
-                > limits.decoded_bytes
-            {
-                cache.clear();
-                raster.clear();
-            }
-            raster
-                .fill_glyph(target, geometry, placement.origin * device, &paint, clip)
-                .map_err(|e| contextual(e, self.position(index)))?;
-            if cache
-                .retained_bytes()
-                .saturating_add(raster.retained_bytes())
-                > limits.decoded_bytes
-            {
-                cache.clear();
-                raster.clear();
-            }
-        }
-        Ok(())
     }
 }
 impl GlyphSource {
@@ -646,103 +603,18 @@ impl DisplayList {
                 result => return result,
             }
         }
-        if self.preview_separations(options)?.enabled
-            || self.group.knockout
-            || self
-                .group
-                .model
-                .is_some_and(|m| m != crate::transparency::Model::Rgb)
-            || !opaque_commands(&self.commands)
-        {
-            return crate::compositor::render(self, options, tile);
-        }
-        self.render_opaque(options, tile)
+        crate::compositor::render(self, options, tile)
     }
 
-    fn render_opaque(&self, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
-        let device = self.device_transform(options);
-        let mut target =
-            Pixmap::new_with_limits(tile.width, tile.height, options.background, self.limits)?;
-        // The crop is a geometric clip, including fractional final rows/columns.
-        let mut crop = PathBuilder::new();
-        crop.rect(
-            self.crop.x0,
-            self.crop.y0,
-            self.crop.width(),
-            self.crop.height(),
-        );
-        let crop = ClipRegion::from_path(
-            tile.width,
-            tile.height,
-            &crop.finish(),
-            device,
-            FillRule::NonZero,
-            self.limits,
-            (tile.x, tile.y),
-        )?;
-        let mut raster = Rasterizer::default();
-        let mut glyph_cache = GlyphCache::new(self.limits.decoded_bytes);
-        let mut last_clip = None;
-        let mut clip_region = crop.clone();
-        let mut stack = vec![self.commands.iter()];
-        while let Some(iter) = stack.last_mut() {
-            let Some(command) = iter.next() else {
-                stack.pop();
-                continue;
-            };
-            let original = command;
-            let command = match command {
-                Command::Path(command) => command,
-                Command::Glyphs(run) => &run.paint,
-                Command::Group(group) => {
-                    if stack.len() >= self.limits.depth {
-                        return Err(Error::limit("group nesting exceeded"));
-                    }
-                    stack.push(group.commands.iter());
-                    continue;
-                }
-                Command::Shading(_) | Command::Image(_) => {
-                    return Err(Error::invalid_argument("shading in opaque renderer"));
-                }
-            };
-            let identity = command.clip.as_ref().map(Arc::as_ptr);
-            if identity != last_clip {
-                clip_region = crop.clone();
-                let mut clip = command.clip.as_deref();
-                let mut chain = Vec::new();
-                while let Some(node) = clip {
-                    chain.push(node);
-                    clip = node.parent.as_deref();
-                }
-                for node in chain.into_iter().rev() {
-                    let next = ClipRegion::from_path(
-                        tile.width,
-                        tile.height,
-                        &node.path,
-                        device,
-                        node.rule,
-                        self.limits,
-                        (tile.x, tile.y),
-                    )?;
-                    clip_region.intersect(&next)?;
-                }
-                last_clip = identity;
-            }
-            let result = if let Command::Glyphs(run) = original {
-                run.rasterize(
-                    &mut target,
-                    device,
-                    &clip_region,
-                    &mut raster,
-                    &mut glyph_cache,
-                    self.limits,
-                )
-            } else {
-                command.rasterize(&mut target, device, &clip_region, &mut raster, self.limits)
-            };
-            result.map_err(|e| contextual(e, command.position))?;
-        }
-        Ok(target)
+    /// Scenes whose former byte traversal evaluated solid sources before
+    /// culling. Keep that validation when selecting the shared compositor.
+    pub(crate) fn plain_opaque(&self) -> bool {
+        !self.group.knockout
+            && self
+                .group
+                .model
+                .is_none_or(|m| m == crate::transparency::Model::Rgb)
+            && opaque_commands(&self.commands)
     }
 
     pub(crate) fn device_transform(&self, options: &RenderOptions) -> Transform {
@@ -780,49 +652,6 @@ fn count_marks(commands: &[Command]) -> usize {
             Command::Glyphs(run) => run.glyphs.len(),
         })
         .sum()
-}
-
-impl PathCommand {
-    fn rasterize(
-        &self,
-        target: &mut Pixmap,
-        device: Transform,
-        clip: &ClipRegion,
-        raster: &mut Rasterizer,
-        limits: Limits,
-    ) -> Result<()> {
-        let paint = Paint::Solid(
-            self.color
-                .to_rgba(self.transfer.as_ref(), self.composite.conversion.intent)?,
-        );
-        match &self.mark {
-            Mark::Fill(rule) => {
-                raster.fill_path(target, Arc::clone(&self.path), device, *rule, &paint, clip)?;
-            }
-            Mark::Stroke(stroke, ctm, adjust) => {
-                let inverse = ctm.inverse().ok_or(Error::unsupported(
-                    crate::features::SINGULAR_STROKE,
-                    "singular stroke transform is not implemented",
-                ))?;
-                let path = self.path.transformed(inverse);
-                let outline = if *adjust {
-                    adjusted_stroke_outline
-                } else {
-                    stroke_outline
-                };
-                let (path, transform) = outline(&path, ctm.then(device), stroke, &limits)?;
-                raster.fill_path(
-                    target,
-                    Arc::new(path),
-                    transform,
-                    FillRule::NonZero,
-                    &paint,
-                    clip,
-                )?;
-            }
-        }
-        Ok(())
-    }
 }
 
 /// Opaque Normal non-knockout RGB groups are source-over associative
@@ -871,7 +700,7 @@ impl Command {
 mod tests {
     use super::*;
     use pagura_core::Position;
-    use pagura_raster::Point;
+    use pagura_raster::{PathBuilder, Point};
 
     fn paint(alpha: f64) -> PathCommand {
         PathCommand {
@@ -935,6 +764,169 @@ mod tests {
             separations: OnceLock::new(),
         }
     }
+    #[test]
+    fn direct_root_precision_matches_independent_normal_recurrences() {
+        // These bounds are against unrounded same-coverage-byte answers:
+        // 44617/204 and 255*(254/255)^1000. A rounded PPM with tolerance one
+        // alone would also admit 220 or 4, which are too far from those answers.
+        for (name, marks, oracle, minimum, maximum) in [
+            ("root-two-partial", 3, 219_u8, 218_u8, 219_u8),
+            ("root-slivers-1000", 1001, 5, 5, 6),
+        ] {
+            let stem = format!("precision-{name}");
+            let document = pagura_document::Document::open(
+                pagura_testkit::fixture("content", &format!("{stem}.pdf")),
+                &pagura_document::OpenOptions {
+                    recovery: pagura_core::Recovery::Strict,
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            let list = crate::compile_page(&document, document.page(0).unwrap()).unwrap();
+            // These are direct opaque root marks, without a knockout Form
+            // that would independently force the general composition route.
+            assert_eq!(list.commands.len(), marks, "{name}");
+            assert!(list.commands.iter().all(|c| matches!(c, Command::Path(_))));
+            assert!(opaque_commands(&list.commands), "{name}");
+            assert!(!list.group.knockout);
+            assert!(
+                list.group
+                    .model
+                    .is_none_or(|m| m == crate::transparency::Model::Rgb)
+            );
+            let expected = pagura_testkit::fixture("content", &format!("{stem}.ppm"));
+            assert_eq!(expected, pagura_testkit::ppm(1, 1, &[oracle; 3]));
+            for accuracy in [crate::Accuracy::Exact, crate::Accuracy::Competitive] {
+                let options = RenderOptions {
+                    accuracy,
+                    scale: 1.0,
+                    background: pagura_raster::Rgba8::WHITE,
+                    ..Default::default()
+                };
+                assert!(!list.preview_separations(&options).unwrap().enabled);
+                assert_eq!(list.device_size(&options).unwrap(), (1, 1));
+                let image = list.render(&options).unwrap();
+                let tile = list
+                    .render_tile(
+                        &options,
+                        Tile {
+                            x: 0,
+                            y: 0,
+                            width: 1,
+                            height: 1,
+                        },
+                    )
+                    .unwrap();
+                assert_eq!(image.data(), tile.data(), "{name}: {accuracy:?} full/tile");
+                assert_eq!(image.data().len(), 4);
+                assert_eq!(image.data()[3], 255, "{name}: {accuracy:?} opaque alpha");
+                for &level in &image.data()[..3] {
+                    assert!(
+                        (minimum..=maximum).contains(&level),
+                        "{name}: {accuracy:?} {level} is outside {minimum}..={maximum}"
+                    );
+                }
+            }
+            assert!(document.diagnostics().is_empty(), "{name}");
+        }
+    }
+
+    #[test]
+    fn opaque_colour_errors_survive_region_rejection_in_both_modes() {
+        use pagura_core::{ErrorKind, ObjectId};
+
+        for (kind, prefix) in [("icc", "/C cs .5 .5 .5 scn "), ("type4", "/C cs .5 scn ")] {
+            for (placement, rectangle, nested) in [
+                ("visible", "0 0 8 8", false),
+                ("off-page", "16 16 4 4", false),
+                ("tile-miss", "4 0 4 4", false),
+                ("nested-off-page", "16 16 4 4", true),
+                ("nested-tile-miss", "4 0 4 4", true),
+            ] {
+                let name = format!("opaque-error-{kind}-{placement}");
+                let document = pagura_document::Document::open(
+                    pagura_testkit::fixture("content", &format!("{name}.pdf")),
+                    &pagura_document::OpenOptions {
+                        recovery: pagura_core::Recovery::Strict,
+                        ..Default::default()
+                    },
+                )
+                .unwrap();
+                // Both sources parse successfully; the error is deferred to
+                // colour conversion. Nested cases must retain both groups.
+                let list = crate::compile_page(&document, document.page(0).unwrap()).unwrap();
+                assert!(opaque_commands(&list.commands), "{name}");
+                let mut commands = &list.commands;
+                for _ in 0..if nested { 2 } else { 0 } {
+                    let [Command::Group(group)] = commands.as_slice() else {
+                        panic!("{name}: expected a retained ordinary group");
+                    };
+                    assert!(!group.attributes.knockout, "{name}");
+                    commands = &group.commands;
+                }
+                let [Command::Path(paint)] = commands.as_slice() else {
+                    panic!("{name}: expected one solid-colour path");
+                };
+                let paint_position = Position::Stream {
+                    object: ObjectId::new(if nested { 7 } else { 4 }, 0),
+                    offset: format!("{prefix}{rectangle} re f").len() - 1,
+                };
+                assert_eq!(paint.position, paint_position, "{name}");
+                // ICC identifies the profile object and the paint operator.
+                // Type4 retains the more precise function-stream `div` token.
+                let expected_position = if kind == "icc" {
+                    paint_position
+                } else {
+                    Position::Stream {
+                        object: ObjectId::new(5, 0),
+                        offset: 4,
+                    }
+                };
+                let mut first_error = None;
+                for accuracy in [crate::Accuracy::Exact, crate::Accuracy::Competitive] {
+                    let options = RenderOptions {
+                        accuracy,
+                        scale: 1.0,
+                        ..Default::default()
+                    };
+                    let full = list.render(&options).unwrap_err();
+                    // This valid top-left device tile misses every non-visible
+                    // fixture. A disjoint paint is not an invalid tile request.
+                    let tile = list
+                        .render_tile(
+                            &options,
+                            Tile {
+                                x: 0,
+                                y: 0,
+                                width: 1,
+                                height: 1,
+                            },
+                        )
+                        .unwrap_err();
+                    assert_eq!(full, tile, "{name}: {accuracy:?} full/tile error");
+                    if kind == "icc" {
+                        assert!(full.is_unsupported(), "{name}: {full}");
+                        assert_eq!(
+                            full.feature().map(pagura_core::Feature::as_str),
+                            Some("colorspace.ICCBased")
+                        );
+                    } else {
+                        assert_eq!(full.kind, ErrorKind::Syntax, "{name}: {full}");
+                        assert_eq!(full.feature(), None, "{name}");
+                    }
+                    assert_eq!(full.object, Some(ObjectId::new(5, 0)), "{name}");
+                    assert_eq!(full.position, expected_position, "{name}");
+                    if let Some(expected) = &first_error {
+                        assert_eq!(&full, expected, "{name}: mode error parity");
+                    } else {
+                        first_error = Some(full);
+                    }
+                }
+                assert!(document.diagnostics().is_empty(), "{name}");
+            }
+        }
+    }
+
     #[test]
     fn device_bounds_preserve_small_extents_at_large_user_origins() {
         let mut path = PathBuilder::new();

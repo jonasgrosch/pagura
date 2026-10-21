@@ -25,6 +25,26 @@
       "tolerance": 1
     },
     {
+      "id": "content/precision-root-two-partial",
+      "kind": "pdf",
+      "description": "Independent exact Normal-composition stack: root-two-partial",
+      "expected": "render",
+      "requirements": [
+        "content-compositor-precision"
+      ],
+      "path": "corpus/generated/content/precision-root-two-partial.pdf",
+      "sha256": "5e82c29ff182df45ba2b01d936455eaa6cbd71f12e80ff5093a8a27c93e8c774",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/precision-root-two-partial.ppm",
+      "oracle_sha256": "81de944dab7d2e3d7e09080eed7315e7b00111db916b5caa6fafae168d948488",
+      "dpi": 72,
+      "width": 1,
+      "height": 1,
+      "tolerance": 1
+    },
+    {
       "id": "content/precision-byte-threshold",
       "kind": "pdf",
       "description": "Independent exact Normal-composition stack: byte-threshold",
@@ -62,8 +82,7 @@
       "dpi": 72,
       "width": 1,
       "height": 1,
-      "tolerance": 1,
-      "competitive_tolerance": 33
+      "tolerance": 1
     },
     {
       "id": "content/precision-slivers-255",
@@ -83,8 +102,7 @@
       "dpi": 72,
       "width": 1,
       "height": 1,
-      "tolerance": 1,
-      "competitive_tolerance": 33
+      "tolerance": 1
     },
     {
       "id": "content/precision-slivers-1000",
@@ -104,8 +122,7 @@
       "dpi": 72,
       "width": 1,
       "height": 1,
-      "tolerance": 1,
-      "competitive_tolerance": 122
+      "tolerance": 1
     },
     {
       "id": "content/precision-slivers-270000",
@@ -125,8 +142,27 @@
       "dpi": 72,
       "width": 1,
       "height": 1,
-      "tolerance": 1,
-      "competitive_tolerance": 127
+      "tolerance": 1
+    },
+    {
+      "id": "content/precision-root-slivers-1000",
+      "kind": "pdf",
+      "description": "Independent exact Normal-composition stack: root-slivers-1000",
+      "expected": "render",
+      "requirements": [
+        "content-compositor-precision"
+      ],
+      "path": "corpus/generated/content/precision-root-slivers-1000.pdf",
+      "sha256": "f2aec50f0537d090b821e145c7b958c90d17946002884848fe9d9bd897ccd943",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/content/precision-root-slivers-1000.ppm",
+      "oracle_sha256": "e4d80c7ae369ded6d8bf147c17152bc1c298db100f7d11bdfdc2a7e98ef3f2f1",
+      "dpi": 72,
+      "width": 1,
+      "height": 1,
+      "tolerance": 1
     },
     {
       "id": "content/precision-translucent-stagnation",
@@ -188,6 +224,156 @@
       "width": 1,
       "height": 1,
       "tolerance": 1
+    },
+    {
+      "id": "content/opaque-error-icc-visible",
+      "kind": "pdf",
+      "description": "Deferred solid-colour failure preserves source context despite visible",
+      "expected": "unsupported",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/opaque-error-icc-visible.pdf",
+      "sha256": "2e40d23e8456236097f2c501acb341435ee161b63328c40cada2e7630536bed3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "colorspace.ICCBased"
+    },
+    {
+      "id": "content/opaque-error-icc-off-page",
+      "kind": "pdf",
+      "description": "Deferred solid-colour failure preserves source context despite off-page",
+      "expected": "unsupported",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/opaque-error-icc-off-page.pdf",
+      "sha256": "870f2e0729584b29aceee8b0c06967f98fb36636490ce25d715f0ff27a3944f7",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "colorspace.ICCBased"
+    },
+    {
+      "id": "content/opaque-error-icc-tile-miss",
+      "kind": "pdf",
+      "description": "Deferred solid-colour failure preserves source context despite tile-miss",
+      "expected": "unsupported",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/opaque-error-icc-tile-miss.pdf",
+      "sha256": "b6f4f2d4a9ce3c646dde4645010052b411ed26457e9cf4f1de65f5ad3cdb8bce",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "colorspace.ICCBased"
+    },
+    {
+      "id": "content/opaque-error-icc-nested-off-page",
+      "kind": "pdf",
+      "description": "Deferred solid-colour failure preserves source context despite nested-off-page",
+      "expected": "unsupported",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/opaque-error-icc-nested-off-page.pdf",
+      "sha256": "9c83311f92129561be841a4dd091fe9ce6c19cc16fa26270acf046cc8c8d0246",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "colorspace.ICCBased"
+    },
+    {
+      "id": "content/opaque-error-icc-nested-tile-miss",
+      "kind": "pdf",
+      "description": "Deferred solid-colour failure preserves source context despite nested-tile-miss",
+      "expected": "unsupported",
+      "requirements": [
+        "content-icc-lut"
+      ],
+      "path": "corpus/generated/content/opaque-error-icc-nested-tile-miss.pdf",
+      "sha256": "0ecf38297ce00f122f5234e508d028f918c48c358898f63ffdc952b8c6e64931",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "feature": "colorspace.ICCBased"
+    },
+    {
+      "id": "content/opaque-error-type4-visible",
+      "kind": "pdf",
+      "description": "Deferred solid-colour failure preserves source context despite visible",
+      "expected": "open",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/opaque-error-type4-visible.pdf",
+      "sha256": "de632c7c4f38aab21f90828a1c24118085666ba0e5a1fe70baa17de669f63819",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/opaque-error-type4-off-page",
+      "kind": "pdf",
+      "description": "Deferred solid-colour failure preserves source context despite off-page",
+      "expected": "open",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/opaque-error-type4-off-page.pdf",
+      "sha256": "08c2994d4e8d418b19956c176dda76909c831a88f76f96be7dd4ba69e8ae5df5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/opaque-error-type4-tile-miss",
+      "kind": "pdf",
+      "description": "Deferred solid-colour failure preserves source context despite tile-miss",
+      "expected": "open",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/opaque-error-type4-tile-miss.pdf",
+      "sha256": "a294a918342947781d7fcdd241f72305cd36bd70c4613caf03a09344497e91d9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/opaque-error-type4-nested-off-page",
+      "kind": "pdf",
+      "description": "Deferred solid-colour failure preserves source context despite nested-off-page",
+      "expected": "open",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/opaque-error-type4-nested-off-page.pdf",
+      "sha256": "28ccbcc91c2ab2b4804da84bde1fc4b1735ef89e4ae89490914531efd059c297",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
+    },
+    {
+      "id": "content/opaque-error-type4-nested-tile-miss",
+      "kind": "pdf",
+      "description": "Deferred solid-colour failure preserves source context despite nested-tile-miss",
+      "expected": "open",
+      "requirements": [
+        "content-functions"
+      ],
+      "path": "corpus/generated/content/opaque-error-type4-nested-tile-miss.pdf",
+      "sha256": "b95b2808ca2e7061bdf5d87b9295d1fd5c9e5d30a3d1fec6ee3e9cdd08bb7bc9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "Syntax"
     },
     {
       "id": "content/bounds-image",

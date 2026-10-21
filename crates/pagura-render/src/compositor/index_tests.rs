@@ -370,7 +370,7 @@ fn errors_after_a_cached_run_keep_the_same_source_order() {
 
 #[test]
 fn warmed_competitive_fragments_preserve_pixels_and_every_work_boundary() {
-    // U8 storage alone does not select fragments: use the Competitive raster
+    // Narrow storage alone does not select fragments: use the Competitive raster
     // policy and the same fragment cache/resolution setup as render_competitive.
     fn prepared(list: &DisplayList, enabled: bool) -> Context {
         let options = RenderOptions {
@@ -390,60 +390,53 @@ fn warmed_competitive_fragments_preserve_pixels_and_every_work_boundary() {
         context
     }
 
-    let list = list(vec![Command::Glyphs(Box::new(run(
-        Point::new(0.25, 0.5),
-        2,
-    )))]);
-    let visible = tile(0, 0, 8, 4);
-    let outside = tile(6, 6, 2, 2);
-    let mut cached = prepared(&list, true);
-    let mut uncached = prepared(&list, false);
-    for (region, has_paint) in [(visible, true), (outside, false), (visible, true)] {
-        let expected = paint(&mut uncached, &list, region, plan::Format::U8);
-        assert!(expected.result.is_ok(), "{expected:?}");
-        assert_eq!(
-            expected
-                .bytes
-                .as_chunks::<4>()
-                .0
-                .iter()
-                .any(|pixel| *pixel != [77, 153, 230, 255]),
-            has_paint,
-        );
-        assert_eq!(
-            paint(&mut cached, &list, region, plan::Format::U8),
-            expected
-        );
-    }
-
-    // Warm both the masks and the memo before varying the remaining budget.
-    // Compare the complete result, positioned error, consumed work and partial
-    // output; a warmed hull must not buy additional semantic work allowance.
-    for region in [visible, outside] {
-        let mut probe = prepared(&list, false);
-        paint(&mut probe, &list, visible, plan::Format::U8)
-            .result
-            .unwrap();
-        let before = probe.work;
-        paint(&mut probe, &list, region, plan::Format::U8)
-            .result
-            .unwrap();
-        let cost = probe.work - before;
-        for remaining in 0..=cost + 1 {
-            let mut outcomes = Vec::new();
-            for enabled in [false, true] {
-                let mut context = prepared(&list, enabled);
-                paint(&mut context, &list, visible, plan::Format::U8)
-                    .result
-                    .unwrap();
-                context.limits.raster_work = context.work + remaining;
-                outcomes.push(paint(&mut context, &list, region, plan::Format::U8));
-            }
+    for format in [plan::Format::U8, plan::Format::N16] {
+        let list = list(vec![Command::Glyphs(Box::new(run(
+            Point::new(0.25, 0.5),
+            2,
+        )))]);
+        let visible = tile(0, 0, 8, 4);
+        let outside = tile(6, 6, 2, 2);
+        let mut cached = prepared(&list, true);
+        let mut uncached = prepared(&list, false);
+        for (region, has_paint) in [(visible, true), (outside, false), (visible, true)] {
+            let expected = paint(&mut uncached, &list, region, format);
+            assert!(expected.result.is_ok(), "{expected:?}");
             assert_eq!(
-                outcomes[0], outcomes[1],
-                "region={region:?}, remaining={remaining}"
+                expected
+                    .bytes
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .any(|pixel| *pixel != [77, 153, 230, 255]),
+                has_paint,
             );
-            assert_eq!(outcomes[0].result.is_ok(), remaining >= cost);
+            assert_eq!(paint(&mut cached, &list, region, format), expected);
+        }
+
+        // Warm both the masks and the memo before varying the remaining budget.
+        // Compare the complete result, positioned error, consumed work and partial
+        // output; a warmed hull must not buy additional semantic work allowance.
+        for region in [visible, outside] {
+            let mut probe = prepared(&list, false);
+            paint(&mut probe, &list, visible, format).result.unwrap();
+            let before = probe.work;
+            paint(&mut probe, &list, region, format).result.unwrap();
+            let cost = probe.work - before;
+            for remaining in 0..=cost + 1 {
+                let mut outcomes = Vec::new();
+                for enabled in [false, true] {
+                    let mut context = prepared(&list, enabled);
+                    paint(&mut context, &list, visible, format).result.unwrap();
+                    context.limits.raster_work = context.work + remaining;
+                    outcomes.push(paint(&mut context, &list, region, format));
+                }
+                assert_eq!(
+                    outcomes[0], outcomes[1],
+                    "region={region:?}, remaining={remaining}"
+                );
+                assert_eq!(outcomes[0].result.is_ok(), remaining >= cost);
+            }
         }
     }
 }

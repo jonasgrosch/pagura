@@ -134,6 +134,7 @@ def recovery_cases():
 
 def cases():
     yield from precision_cases()
+    yield from opaque_colour_error_cases()
     yield from image_shading_bounds_cases()
     yield knockout_rounding_case()
     yield from content_bounds_cases()
@@ -1583,6 +1584,57 @@ def image_shading_bounds_cases():
                extra={'content_bounds': [2, 1, 6, 5]})
 
 
+def opaque_colour_error_cases():
+    """Deferred source failures must not disappear behind region rejection.
+
+    ICC AToB0 containing mBA is an unsupported forward transform. The Type4
+    program is valid calculator syntax whose division by zero fails only when
+    the tint is evaluated. Object 5 owns either source; nested paint is in
+    stream 7 behind two ordinary RGB non-knockout transparency groups.
+    """
+    tags = icc_tags()
+    tags[b'A2B0'] = b'mBA ' + icc_mab(only_b=True)[4:]
+    profiles = [
+        ('icc', b'[/ICCBased 5 0 R]', b'/C cs .5 .5 .5 scn ',
+         stream(icc_pack(tags), b'/N 3 /Alternate /DeviceRGB'),
+         UNSUPPORTED, 'content-icc-lut', 'colorspace.ICCBased'),
+        ('type4', b'[/Separation /Spot /DeviceGray 5 0 R]', b'/C cs .5 scn ',
+         stream(b'{ 0 div }', b'/FunctionType 4 /Domain [0 1] /Range [0 1]'),
+         OPEN, 'content-functions', None),
+    ]
+    for kind, space, prefix, source, expected, requirement, feature in profiles:
+        for placement, rectangle, bounds, nested in [
+            ('visible', b'0 0 8 8', b'[0 0 8 8]', False),
+            ('off-page', b'16 16 4 4', b'[16 16 20 20]', False),
+            ('tile-miss', b'4 0 4 4', b'[4 0 8 4]', False),
+            ('nested-off-page', b'16 16 4 4', b'[16 16 20 20]', True),
+            ('nested-tile-miss', b'4 0 4 4', b'[4 0 8 4]', True),
+        ]:
+            body = prefix + rectangle + b' re f'
+            colours = b'<< /ColorSpace << /C ' + space + b' >> >>'
+            resources = b'<< /XObject << /Outer 6 0 R >> >>' if nested else colours
+            objects = [
+                b'<< /Type /Catalog /Pages 2 0 R >>',
+                b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+                b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 8 8] /Resources '
+                + resources + b' /Contents 4 0 R >>',
+                stream(b'/Outer Do' if nested else body),
+                source,
+            ]
+            if nested:
+                form = (b'/Type /XObject /Subtype /Form /BBox ' + bounds
+                        + b' /Group << /S /Transparency /I true /K false /CS /DeviceRGB >> ')
+                objects.extend([
+                    stream(b'/Inner Do', form + b'/Resources << /XObject << /Inner 7 0 R >> >>'),
+                    stream(body, form + b'/Resources ' + colours),
+                ])
+            extra = {'render_error': 'Syntax'} if kind == 'type4' else {}
+            yield Case('opaque-error-' + kind + '-' + placement, document(objects),
+                       expected, (requirement,),
+                       'Deferred solid-colour failure preserves source context despite ' + placement,
+                       feature=feature, extra=extra)
+
+
 def precision_cases():
     """Exact Normal recurrences on coverage bytes (ISO 32000-2, 11.3.3).
 
@@ -1616,12 +1668,20 @@ def precision_cases():
             return stream(zlib.compress(data), b'/Filter /FlateDecode ' + dictionary)
         return stream(data, dictionary)
 
-    def case(name, background, body, exact, alpha=F(1)):
+    def case(name, background, body, exact, alpha=F(1), *, direct_root=False):
         rounded = int(exact + Decimal('.5')) if isinstance(exact, Decimal) else int(exact + F(1, 2))
         background = (number(background) + ' g 0 0 1 1 re f\n').encode()
-        if alpha == 1:
-            # Retain the current opaque-path boundary while independently
-            # exercising the opaque-knockout/Normal identity in the general path.
+        if direct_root:
+            assert alpha == 1
+            pdf = document([
+                b'<< /Type /Catalog /Pages 2 0 R >>',
+                b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+                b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 1 1] /Resources << >> /Contents 4 0 R >>',
+                encoded(background + body),
+            ])
+        elif alpha == 1:
+            # Keep the wrapped controls alongside the direct-root siblings,
+            # exercising the opaque-knockout/Normal identity independently.
             pdf = document([
                 b'<< /Type /Catalog /Pages 2 0 R >>',
                 b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
@@ -1645,6 +1705,11 @@ def precision_cases():
     a = F(10, 255)
     exact = 255 * (source + (bg - source) * (1 - a) ** 2)
     yield case('two-partial', bg, uniform(source, 10, 2), exact)
+    # A direct-root sibling has the same independent coverage-byte model,
+    # without the knockout Form that deliberately selects general composition.
+    assert exact == F(44617, 204)
+    yield case('root-two-partial', bg, uniform(source, 10, 2), exact,
+               direct_root=True)
 
     exact = F(255)
     body = b''
@@ -1657,6 +1722,13 @@ def precision_cases():
     for count in [254, 255, 1000, 270000]:
         yield case('slivers-' + str(count), F(1), uniform(F(0), 1, count),
                    closed(F(1), F(0), 1, F(1), count))
+
+    # Use an exact rational for this finite stack, independent of Pagura and
+    # of the Decimal approximation used by the larger existing general cases.
+    exact = F(255) * F(254, 255) ** 1000
+    assert F(5) < exact < F(11, 2)
+    yield case('root-slivers-1000', F(1), uniform(F(0), 1, 1000), exact,
+               direct_root=True)
 
     source = F('10.6') / 255
     yield case('translucent-stagnation', F(1), uniform(source, 1, 20000),

@@ -572,11 +572,76 @@ checks:
 |---|---:|---|
 | classic/alpha-unsupported, content/alpha, paint/image-direct-rgb-fractional, paint/text-knockout-false, zero_area/half-alpha | 1 | one byte rounding per store |
 | content/alpha-accumulation | 66 | byte rounding accumulated per mark |
-| content/precision-slivers-254, content/precision-slivers-255 | 33 | byte rounding accumulated per mark |
-| content/precision-slivers-1000 | 122 | byte rounding accumulated per mark |
-| content/precision-slivers-270000, content/precision-translucent-stagnation | 127 | byte rounding accumulated per mark |
+| content/precision-translucent-stagnation | 127 | byte rounding accumulated per mark |
 | paint/bundled-symbol | 25 | glyph origins snapped to the lattice |
 | paint/bundled-symbol-differences | 27 | glyph origins snapped to the lattice |
 | paint/bundled-zapfdingbats | 14 | glyph origins snapped to the lattice |
 | paint/bundled-zapfdingbats-differences | 19 | glyph origins snapped to the lattice |
 | zero_area/zero-width-shading-bbox | 64 | the empty BBox's boundary outline as a clip in cells |
+
+## Amendment: shared opaque composition (2026-10-21)
+
+Status: independent composition correction, source/resource regression tests,
+full repository validation and default Exact native/WASI probe passed for the
+bound candidate. The [incremental speed/RSS pilot](../../benchmarks/results/opaque-composition-experiment.md)
+failed the frozen gates. Retain only as experimental accuracy work; revise the
+material costs before a fresh confirmation. No release admission is implied.
+
+The independent direct-root baseline returns 217 where the one-level interval
+is 218–219, and 127 where it is 5–6 after 1,000 partial opaque stores. The
+per-mark byte route cannot meet the existing composition contract. Reuse the
+general compositor instead of adding another precision implementation to the
+legacy traversal. This supersedes the earlier decision to leave the opaque
+renderer unchanged: Exact has one shared composition route, with the existing
+N16/F32/F64 admission and bounded chunks. No fallback returns to opaque byte
+accumulation after a precision or resource failure.
+
+Competitive retains N16 for the planner's admitted opaque Normal scenes. It
+continues to use its own coverage producers, including glyph fragments, but
+the opaque sink shares N16 source encoding and rounded integer blending.
+Arbitrary fragment rows handle full, zero and partial coverage individually;
+they do not rely on the homogeneous spans produced by the Exact mask iterator.
+N16 uses bounded square chunks, not full-width byte bands. F32 plans still use
+Competitive's existing U8 policy; F64 exclusions remain unchanged. This fixes
+composition error on the declared coverage bytes, not every geometric
+approximation or translucent Competitive stack. The four opaque-sliver
+Competitive allowances (33–127 levels) are removed; those controls must meet
+the ordinary one-level independent oracle tolerance.
+
+Preserve required source errors before culling the scenes formerly evaluated
+by the opaque traversal. A bounded source-order pass visits their nested
+groups, evaluates painting solid colors in the former RGB conversion context,
+and checks path stroke inverses and finite pen-space points before culling.
+The segment scan is charged and does not allocate an outline. Non-painting
+colors skip conversion; glyph
+paint metadata does not create a stroke. Errors keep feature, object and
+source context. The pass shares raster and function-work counters with
+execution; it deliberately repeats conversion for visible marks until a
+bounded prepared-scene record can reuse it. There is no unbounded color cache.
+This pass does not claim complete eager validation of every general scene.
+
+Transfers follow the existing general device-transfer semantics and stay F64.
+Do not apply them to source colors during validation. Fractional nondefault
+transfer regions may now return the documented Unsupported error; unused
+off-region transfer functions need not execute. This migration must be tested
+explicitly, along with source errors that must remain observable off-region.
+
+The migrated route charges general planning, validation, raster work and
+actual transient storage to the existing limits. It may reject budgets at
+which the legacy route succeeded. No limits are increased, and no new retry
+resets a counter. The existing Competitive-to-Exact Limit fallback remains a
+bounded policy fallback into the same compositor; it never reaches the removed
+byte route. Final output remains pixel-bounded; the added scratch is not an
+invented decoded-byte cap on final output. Error selection among multiple
+failures may change when validation precedes geometry. Acceptance requires
+explicit tests of these contracts rather than claims of identical ordering or
+completion thresholds.
+
+Keep strict rational intervals, source half-levels, actual fragment execution,
+mixed rows/clips, source diagnostics, function/raster/storage bounds,
+multi-tile assembly and native/WASM parity. Measure ordinary opaque paths/text,
+disabled controls and the retained clip/memo targets against the same stack.
+Accuracy-changing outputs are evaluated independently; incorrect baseline
+output is not equivalent work for a speed claim. Report the accuracy gain and
+any time/memory cost separately, retaining useful experimental gains without
+claiming that the entire matrix has passed.

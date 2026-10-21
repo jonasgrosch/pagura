@@ -1,0 +1,351 @@
+{
+  "schema": 1,
+  "experiment": "shared-opaque-composition",
+  "status": "frozen-before-pilot",
+  "baseline": "0560506ca7c0529f3a3058a8244e0f04d044ef24 including retained glyph memo and clip cleanup",
+  "candidate_delta": "Use shared admitted N16 opaque composition in both modes, preserve Competitive fragment coverage, and remove legacy opaque byte traversal.",
+  "modes": [
+    "exact",
+    "competitive"
+  ],
+  "cells": [
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "dense64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "dense64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "target"
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "target"
+    },
+    {
+      "case": "one-source64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "one-source64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "overcapacity128",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "overcapacity128",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "nested64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "nested64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "default-knockout64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "default-knockout64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2-knockout",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2-knockout",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2-late64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2-late64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "clip-churn",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "clip-churn",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "image-only",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "image-only",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-clip",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-clip",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-tiny",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-tiny",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-fill",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-fill",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    }
+  ],
+  "phases": {
+    "pilot": {
+      "pairs": 5,
+      "warmups": 5,
+      "seed": 20261026
+    },
+    "confirmation": {
+      "pairs": 200,
+      "warmups": 5,
+      "seed": 20261027
+    }
+  },
+  "maximum_launched_confirmations": 1,
+  "analysis": {
+    "method": "paired-percentile-bootstrap",
+    "resamples": 5000,
+    "confidence": 0.95,
+    "seed": 42017
+  },
+  "thresholds": {
+    "target_median_upper": 0.95,
+    "target_p95_upper": 1.0,
+    "protected_median_upper": 1.02,
+    "protected_p95_upper": 1.02,
+    "peak_rss_ratio_max": 1.0
+  },
+  "quality": {
+    "independent_rgb8_tolerance": 0,
+    "require_opaque_alpha": true,
+    "require_same_mode_baseline_rgba_bytes": true,
+    "require_all_warmup_outputs": true,
+    "accuracy_changing_cases": "Direct-root two-partial and 1000-sliver rational intervals checked separately in both modes, full and tile; no baseline byte-equivalence demand for corrected pixels."
+  },
+  "memory": {
+    "storage": "N16 chunks bound to existing plan.side; 8 bytes per pixel; no full-width N16 band allocation",
+    "peak_rss": "Fresh per-sample process RSS; report absolute values and ratios, including preexisting memo storage."
+  },
+  "environment": {
+    "native_threads": 1,
+    "known_job_poll_seconds": 5,
+    "quiet_preflight_scans": 3,
+    "maximum_launched_seconds": 5400,
+    "automatic_postlaunch_retry": false,
+    "monitoring": "Wait for observed quiet before launch. After launch retain the fixed run and record foreign jobs; any observed contention blocks admission, as in the preceding run-now protocol. No owned compute overlaps."
+  },
+  "limits": {
+    "per_output_bytes": 67108864,
+    "retained_artifact_bytes": 536870912,
+    "scope": "Payload budget covers retained PDF/oracle/output blobs only; report checkpoints and runner/observer evidence are additional storage."
+  },
+  "decision": {
+    "admit": "All numerical and independent quality gates plus complete repository validation; required release-runner/matrix evidence remains separate.",
+    "preserve_partial": "Preserve a validated accuracy correction with all measured costs reported even if a speed gate misses. A performance-only partial win requires at least one designated opaque64/full target median upper <=0.95. Supported material regressions require revision or an explicit experimental restriction; no release/dominance admission by partial results.",
+    "reject_or_revise": "Any independent accuracy, resource accounting, source error or tile-contract regression blocks retaining active code. An upper confidence-bound miss alone is not a proven regression. Keep original patch and all evidence if revised or shelved.",
+    "sampling": "No historical or pilot sample reuse, no tuning against confirmation and no retry until a pass appears."
+  },
+  "limitations": [
+    "Synthetic mechanisms and opaque reach controls, not representative PDF corpus or competitor comparison.",
+    "N16 improves only admitted opaque Normal composition; F32-admitted Competitive U8 remains approximate and F64 exclusions remain.",
+    "200 pairs do not guarantee calibrated p95 precision or simultaneous coverage.",
+    "No cumulative percentages inferred from earlier experiments."
+  ]
+}

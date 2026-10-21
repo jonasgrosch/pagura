@@ -3447,7 +3447,7 @@
               "tools/fixturegen/raster.py": "cf2b92c735c3f58e3405f5d847b0e2bec2bf1a13fabe02e5083087cbc8c4dd30",
               "tools/fixturegen/jpx.py": "6088b09cb81b3b263f96fdde131e9ea27daaf046f61c4ffc35a64125187bb04c",
               "tools/fixturegen/jbig2.py": "b742c16ce6f2e4d163e34869a76c385e093f523551917147017511312f161cb2",
-              "tools/fixturegen/competitive.py": "29d9892c47b4eb4edb339dede55881282ad6f2a010b05b0927820b4e2ccfdeed",
+              "tools/fixturegen/competitive.py": "c2c7401363029fc5fe8017eedffc1ec94464ad141ff240283c4a76656d52e200",
               "tools/benchkit/__init__.py": "ca67b6512bf927b7a13218c5e9098badb4f7a5c2e3e051559a67171b64d260ef",
               "tools/benchkit/reference_cases.py": "f5c01fed71d1298a8389fbc249f675428fb117b911692b7caa6a3b9b9515e927",
               "tools/benchkit/oracles.py": "fc578193666de673e02168b0c0a2d13bcfd8ac31558569805842ff58a2f04a3d",
@@ -3456,7 +3456,7 @@
             },
             "max_channel_error": 0
           },
-          "sha256": "f79a0be90e39afbd44040d45ddb4893732bdcffae414e8c8e52ad92eea382b49"
+          "sha256": "27c79ef05c528e2bc41a776d8af6801a06e8e37efe92f106bac0919077156ff7"
         },
         "competitive": {
           "metadata": {
@@ -3499,7 +3499,7 @@
               "tools/fixturegen/raster.py": "cf2b92c735c3f58e3405f5d847b0e2bec2bf1a13fabe02e5083087cbc8c4dd30",
               "tools/fixturegen/jpx.py": "6088b09cb81b3b263f96fdde131e9ea27daaf046f61c4ffc35a64125187bb04c",
               "tools/fixturegen/jbig2.py": "b742c16ce6f2e4d163e34869a76c385e093f523551917147017511312f161cb2",
-              "tools/fixturegen/competitive.py": "29d9892c47b4eb4edb339dede55881282ad6f2a010b05b0927820b4e2ccfdeed",
+              "tools/fixturegen/competitive.py": "c2c7401363029fc5fe8017eedffc1ec94464ad141ff240283c4a76656d52e200",
               "tools/benchkit/__init__.py": "ca67b6512bf927b7a13218c5e9098badb4f7a5c2e3e051559a67171b64d260ef",
               "tools/benchkit/reference_cases.py": "f5c01fed71d1298a8389fbc249f675428fb117b911692b7caa6a3b9b9515e927",
               "tools/benchkit/oracles.py": "fc578193666de673e02168b0c0a2d13bcfd8ac31558569805842ff58a2f04a3d",
@@ -3508,7 +3508,7 @@
             },
             "max_channel_error": 0
           },
-          "sha256": "241d1f40e7adaa7a9a7606805a8ab3ad8dcdb5f51d991ebebc07ab2faedf0e6d"
+          "sha256": "65431dd90fc3ff5dc5398f8bbb36f5150718d6ebe2fffc130cc4beda77d2d47b"
         }
       }
     },
@@ -3574,7 +3574,7 @@
               "tools/fixturegen/raster.py": "cf2b92c735c3f58e3405f5d847b0e2bec2bf1a13fabe02e5083087cbc8c4dd30",
               "tools/fixturegen/jpx.py": "6088b09cb81b3b263f96fdde131e9ea27daaf046f61c4ffc35a64125187bb04c",
               "tools/fixturegen/jbig2.py": "b742c16ce6f2e4d163e34869a76c385e093f523551917147017511312f161cb2",
-              "tools/fixturegen/competitive.py": "29d9892c47b4eb4edb339dede55881282ad6f2a010b05b0927820b4e2ccfdeed",
+              "tools/fixturegen/competitive.py": "c2c7401363029fc5fe8017eedffc1ec94464ad141ff240283c4a76656d52e200",
               "tools/benchkit/__init__.py": "ca67b6512bf927b7a13218c5e9098badb4f7a5c2e3e051559a67171b64d260ef",
               "tools/benchkit/reference_cases.py": "f5c01fed71d1298a8389fbc249f675428fb117b911692b7caa6a3b9b9515e927",
               "tools/benchkit/oracles.py": "fc578193666de673e02168b0c0a2d13bcfd8ac31558569805842ff58a2f04a3d",
@@ -3583,7 +3583,7 @@
             },
             "max_channel_error": 0
           },
-          "sha256": "37db103133c6c83bfd38268ab61edff0ee8d4a106607d1ebf6ec2b6ff846252c"
+          "sha256": "19485ddda9020cca45daef9b98679910ba56501086ee6800cb083c92b35eb924"
         },
         "competitive": {
           "metadata": {
@@ -3626,7 +3626,7 @@
               "tools/fixturegen/raster.py": "cf2b92c735c3f58e3405f5d847b0e2bec2bf1a13fabe02e5083087cbc8c4dd30",
               "tools/fixturegen/jpx.py": "6088b09cb81b3b263f96fdde131e9ea27daaf046f61c4ffc35a64125187bb04c",
               "tools/fixturegen/jbig2.py": "b742c16ce6f2e4d163e34869a76c385e093f523551917147017511312f161cb2",
-              "tools/fixturegen/competitive.py": "29d9892c47b4eb4edb339dede55881282ad6f2a010b05b0927820b4e2ccfdeed",
+              "tools/fixturegen/competitive.py": "c2c7401363029fc5fe8017eedffc1ec94464ad141ff240283c4a76656d52e200",
               "tools/benchkit/__init__.py": "ca67b6512bf927b7a13218c5e9098badb4f7a5c2e3e051559a67171b64d260ef",
               "tools/benchkit/reference_cases.py": "f5c01fed71d1298a8389fbc249f675428fb117b911692b7caa6a3b9b9515e927",
               "tools/benchkit/oracles.py": "fc578193666de673e02168b0c0a2d13bcfd8ac31558569805842ff58a2f04a3d",
@@ -3635,7 +3635,7 @@
             },
             "max_channel_error": 0
           },
-          "sha256": "825125d96b7dfc8b3484a87318485a0b18604d82740b713981bded8053ba6202"
+          "sha256": "70a351683ebfa7b06a9dd32b5aaadf1b15d901e308386661cadd27f384e05857"
         }
       }
     },
@@ -3702,7 +3702,7 @@
               "tools/fixturegen/raster.py": "cf2b92c735c3f58e3405f5d847b0e2bec2bf1a13fabe02e5083087cbc8c4dd30",
               "tools/fixturegen/jpx.py": "6088b09cb81b3b263f96fdde131e9ea27daaf046f61c4ffc35a64125187bb04c",
               "tools/fixturegen/jbig2.py": "b742c16ce6f2e4d163e34869a76c385e093f523551917147017511312f161cb2",
-              "tools/fixturegen/competitive.py": "29d9892c47b4eb4edb339dede55881282ad6f2a010b05b0927820b4e2ccfdeed",
+              "tools/fixturegen/competitive.py": "c2c7401363029fc5fe8017eedffc1ec94464ad141ff240283c4a76656d52e200",
               "tools/benchkit/__init__.py": "ca67b6512bf927b7a13218c5e9098badb4f7a5c2e3e051559a67171b64d260ef",
               "tools/benchkit/reference_cases.py": "f5c01fed71d1298a8389fbc249f675428fb117b911692b7caa6a3b9b9515e927",
               "tools/benchkit/oracles.py": "fc578193666de673e02168b0c0a2d13bcfd8ac31558569805842ff58a2f04a3d",
@@ -3711,7 +3711,7 @@
             },
             "max_channel_error": 0
           },
-          "sha256": "095b8a60741f7c7210e9a7fbb2d9f956c636b8877dec5d1657a0d7c8a52e9e8b"
+          "sha256": "1c24a671d364c69ed79f0c6b9c1b9712d907d6648d6bf4df0d3c6f2639f4b755"
         },
         "competitive": {
           "metadata": {
@@ -3754,7 +3754,7 @@
               "tools/fixturegen/raster.py": "cf2b92c735c3f58e3405f5d847b0e2bec2bf1a13fabe02e5083087cbc8c4dd30",
               "tools/fixturegen/jpx.py": "6088b09cb81b3b263f96fdde131e9ea27daaf046f61c4ffc35a64125187bb04c",
               "tools/fixturegen/jbig2.py": "b742c16ce6f2e4d163e34869a76c385e093f523551917147017511312f161cb2",
-              "tools/fixturegen/competitive.py": "29d9892c47b4eb4edb339dede55881282ad6f2a010b05b0927820b4e2ccfdeed",
+              "tools/fixturegen/competitive.py": "c2c7401363029fc5fe8017eedffc1ec94464ad141ff240283c4a76656d52e200",
               "tools/benchkit/__init__.py": "ca67b6512bf927b7a13218c5e9098badb4f7a5c2e3e051559a67171b64d260ef",
               "tools/benchkit/reference_cases.py": "f5c01fed71d1298a8389fbc249f675428fb117b911692b7caa6a3b9b9515e927",
               "tools/benchkit/oracles.py": "fc578193666de673e02168b0c0a2d13bcfd8ac31558569805842ff58a2f04a3d",
@@ -3763,7 +3763,7 @@
             },
             "max_channel_error": 1
           },
-          "sha256": "9ef9479d01a05ea0145d1bac93e9dd52f2ea77485aae64b838ac27ad5a91e61c"
+          "sha256": "e8941b7103db40ccb685d0e98b891d9d31eb84e64c2ac5d88abb085ee4359f53"
         }
       }
     },
@@ -3829,7 +3829,7 @@
               "tools/fixturegen/raster.py": "cf2b92c735c3f58e3405f5d847b0e2bec2bf1a13fabe02e5083087cbc8c4dd30",
               "tools/fixturegen/jpx.py": "6088b09cb81b3b263f96fdde131e9ea27daaf046f61c4ffc35a64125187bb04c",
               "tools/fixturegen/jbig2.py": "b742c16ce6f2e4d163e34869a76c385e093f523551917147017511312f161cb2",
-              "tools/fixturegen/competitive.py": "29d9892c47b4eb4edb339dede55881282ad6f2a010b05b0927820b4e2ccfdeed",
+              "tools/fixturegen/competitive.py": "c2c7401363029fc5fe8017eedffc1ec94464ad141ff240283c4a76656d52e200",
               "tools/benchkit/__init__.py": "ca67b6512bf927b7a13218c5e9098badb4f7a5c2e3e051559a67171b64d260ef",
               "tools/benchkit/reference_cases.py": "f5c01fed71d1298a8389fbc249f675428fb117b911692b7caa6a3b9b9515e927",
               "tools/benchkit/oracles.py": "fc578193666de673e02168b0c0a2d13bcfd8ac31558569805842ff58a2f04a3d",
@@ -3838,7 +3838,7 @@
             },
             "max_channel_error": 0
           },
-          "sha256": "9f5ca878b41ec143207599247b1186ff9ffc98017d550c4a0d951874ed801fed"
+          "sha256": "91422c45f5b635aae78600e8888b672ca79fa6467bba7c4451db00a13248c883"
         },
         "competitive": {
           "metadata": {
@@ -3881,7 +3881,7 @@
               "tools/fixturegen/raster.py": "cf2b92c735c3f58e3405f5d847b0e2bec2bf1a13fabe02e5083087cbc8c4dd30",
               "tools/fixturegen/jpx.py": "6088b09cb81b3b263f96fdde131e9ea27daaf046f61c4ffc35a64125187bb04c",
               "tools/fixturegen/jbig2.py": "b742c16ce6f2e4d163e34869a76c385e093f523551917147017511312f161cb2",
-              "tools/fixturegen/competitive.py": "29d9892c47b4eb4edb339dede55881282ad6f2a010b05b0927820b4e2ccfdeed",
+              "tools/fixturegen/competitive.py": "c2c7401363029fc5fe8017eedffc1ec94464ad141ff240283c4a76656d52e200",
               "tools/benchkit/__init__.py": "ca67b6512bf927b7a13218c5e9098badb4f7a5c2e3e051559a67171b64d260ef",
               "tools/benchkit/reference_cases.py": "f5c01fed71d1298a8389fbc249f675428fb117b911692b7caa6a3b9b9515e927",
               "tools/benchkit/oracles.py": "fc578193666de673e02168b0c0a2d13bcfd8ac31558569805842ff58a2f04a3d",
@@ -3890,7 +3890,7 @@
             },
             "max_channel_error": 0
           },
-          "sha256": "7d445d83608d1b400b7ca5c58def640caad5cf22183f896bd0e05ff3595b0c0a"
+          "sha256": "f9fb3db05307b40120033270cc01a28bb809efe02d6d4765ac91dba4a6ddf141"
         }
       }
     }

@@ -20,6 +20,9 @@ mod plan;
 mod reduced;
 mod regions;
 mod sampled;
+mod sources;
+#[cfg(test)]
+mod sources_tests;
 mod surface;
 use surface::Surface;
 mod transfer;
@@ -562,8 +565,10 @@ impl Context {
         }
         if let Some(mut fragments) = self.fragments.take() {
             let result = if fragment_paint(&run.paint)
-                && matches!(target.narrow(), Some(narrow::Buffer::U8(_)))
-            {
+                && matches!(
+                    target.narrow(),
+                    Some(narrow::Buffer::U8(_) | narrow::Buffer::N16(_))
+                ) {
                 Some(self.fragment_glyphs(run, tile, target, &mut fragments))
             } else {
                 None
@@ -640,7 +645,7 @@ impl Context {
         }
         Ok(())
     }
-    /// Paints a run of solid glyphs into byte storage from row-fragment
+    /// Paints a run of solid glyphs into narrow storage from row-fragment
     /// masks, scaled by the clip's prepared product. Work is charged for each
     /// glyph's bounds and every level of its mask, as for a dense mask.
     fn fragment_glyphs(
@@ -653,7 +658,6 @@ impl Context {
         let color = self
             .color(&run.paint.color, Model::Rgb, &run.paint.composite, true)?
             .color;
-        let (color, alpha) = narrow::byte_source(color, run.paint.composite.alpha);
         let region = self.clip(run.paint.clip.as_ref(), tile)?;
         let viewport = region_rectangle(region.origin(), (region.width(), region.height()));
         let clip = narrow::MaskClip {
@@ -671,9 +675,14 @@ impl Context {
             bounds[2].min(viewport[2]),
             bounds[3].min(viewport[3]),
         ];
-        let Some(narrow::Buffer::U8(bytes)) = target.narrow_mut() else {
-            return Err(Error::invalid_argument("missing byte buffer"));
-        };
+        let mut sink = target
+            .narrow_mut()
+            .ok_or(Error::invalid_argument("missing narrow buffer"))?
+            .mask_sink(
+                (surface.width as usize, surface.height as usize),
+                color,
+                run.paint.composite.alpha,
+            )?;
         let mut positions = run.positions.iter().peekable();
         let mut position = run.paint.position;
         // Each source's device hull relative to its origin, computed once.
@@ -728,10 +737,9 @@ impl Context {
                     i64::from(mask.x) + i64::from(dx),
                     i64::from(mask.y) + i64::from(dy),
                 );
-                bytes.mask(
+                sink.mask(
                     (mask.data, mask.width, origin),
                     ((i64::from(surface.x), i64::from(surface.y)), bounds),
-                    (color, alpha),
                     clip,
                     &mut fragments.row,
                 )
@@ -1632,7 +1640,7 @@ pub(crate) fn render_competitive(
     result
 }
 
-// Keep the large general compositor out of the opaque page dispatch.
+// Keep the shared compositor out of the small public dispatch frame.
 #[inline(never)]
 fn render_policy(
     list: &DisplayList,
@@ -1655,15 +1663,18 @@ fn render_policy(
     } else {
         plan::page(list, &separations)?
     };
-    if bands.is_some_and(|b| b.byte_composition) && plan.format != plan::Format::F64 {
+    if bands.is_some_and(|b| b.byte_composition) && plan.format == plan::Format::F32 {
         plan.format = plan::Format::U8;
     }
     let mut context = Context::new(list, options, &plan, separations)?;
+    if list.plain_opaque() && !context.separations.enabled {
+        context.validate_plain_sources(&list.commands, 0)?;
+    }
     if let Some(bands) = bands {
         context.raster = bands.rasterizer()?;
         context.spare = spare;
     }
-    // Solid glyphs in byte storage take masks from row fragments when given.
+    // Solid glyphs in admitted narrow storage retain their row-fragment masks.
     let mut fragments = fragments.filter(|_| bands.is_some());
     if let Some(slot) = fragments.as_deref_mut() {
         context.fragments = slot.take();
@@ -1689,18 +1700,18 @@ impl Context {
         } else {
             Model::Rgb
         });
-        // Wide retained groups have a much larger live working set. Keep their
-        // existing square chunks; narrow pages can retain full-width byte bands.
-        let band_width = if bands.is_some() && plan.format != plan::Format::F64 {
+        // Only byte storage retains full-width bands. N16 and wider storage
+        // keep bounded square chunks, independent of page width.
+        let band_width = if bands.is_some() && plan.format == plan::Format::U8 {
             tile.width
         } else {
             plan.side
         };
         let band_height = bands.map_or(plan.side, |b| {
-            if plan.format == plan::Format::F64 {
-                b.rows.min(plan.side)
-            } else {
+            if plan.format == plan::Format::U8 {
                 b.rows
+            } else {
+                b.rows.min(plan.side)
             }
         });
         context

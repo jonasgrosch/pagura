@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "identities": {
+    "baseline": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/opaque-precision-control/pagura",
+      "commit": "0560506ca7c0529f3a3058a8244e0f04d044ef24",
+      "source_sha256": "f087987a0ab2dde87d2a6ffe432295e0f4dabdb0def1b1deef173263a90e8f6a",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-correction/baseline",
+      "binary_sha256": "9257d268ab05bc0e0b2ba6b5b3a24281eefec89f058c8122ef926db9ffb86163"
+    },
+    "candidate": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+      "commit": "0560506ca7c0529f3a3058a8244e0f04d044ef24",
+      "source_sha256": "f72405c46866fb785d8fd050a931353f1438257b073561343a503583882423d2",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-correction/candidate",
+      "binary_sha256": "bc32a8dbf58491718a47eea53bbb1bd9ef4f058ad906b5028e07b6da4f398354"
+    }
+  },
+  "bound_files_sha256": {
+    "benchmarks/opaque_composition.py": "a9a27a3adbfe4e3b5da1a73c305cc7078fd3047860351d2448f336cbd179ea45",
+    "benchmarks/evaluate_opaque_composition.py": "4611eb9296eb6f22fe77bb25a3bced3a24e0cff60b4a98bfd3c6f1eff61a754a",
+    "benchmarks/paired_render.py": "c7a074f3f6d63ac2df4fcd7f87f332d4848f8f10e3d7c54ec72b822717e16b27",
+    "benchmarks/glyph_memo.py": "5e0d66cd4d403868917a12bebaca18595536984a65be076a90594b8f699592ce",
+    "benchmarks/glyph_memo_fixtures.py": "9b866f12c61dbb7ddf2cc7e227559813b89f16a91370fdced96a7f46426e55a1",
+    "benchmarks/scene_index.py": "fbc260aa9607efb2c60dec4f8fa44445137def56b57881350f475c531c7a0f6a",
+    "benchmarks/clip_viewport_fixtures.py": "1f003e4f71dd493d6e8ff34eef6f25a1fd3d9587d6412e7ea183102f9a4dfed2",
+    "crates/pagura-render/examples/scene_index_profile.rs": "8e89a087d351e7b89289e0897cafeb75422d4c151280734fde8c958a841279f2",
+    "benchmarks/results/opaque-composition-plan.json": "de0edb42fad216f37aac858d682dc8723e24d126f8ee7ad9635a83e4a1d420d3",
+    "benchmarks/results/local/glyph-memo/load_observer.py": "d13e0911ef05eab394a45a7e3cb999be2b6764250bfb265b19164cc4fd822f7c",
+    "benchmarks/results/local/glyph-memo/idle_then.py": "bedfb4f54e1764360f2b90c56e093e96182fba15b6da4ffe9ab7d4400aad4d30",
+    "tools/fixturegen/pdf.py": "6d1546f6a56fedd06bb4bfe247f6b5fa747e092b6ac471f9134dcef72820f810",
+    "benchmarks/opaque_precision_probe.py": "962b71aa080bf1d58f96a9c2524abf88a577abd5a790166338fcaddacaa0e5d4",
+    "benchmarks/opaque_precision_fixtures.py": "84e50b24f54de9982985be6c2ea4147911999375461bb966b2845983055775df",
+    "benchmarks/opaque_host_probe.mjs": "5bfbde3017407f429dc9f6b968992ef320f6e47d14fee8948407326a7df311ee"
+  },
+  "candidate_runner_source_sha256": "ae8f6c41e4c1c86e1e79c0d4c52a8151ceaf984880452da3adf743b9ff2fe4cc",
+  "candidate_build_receipt": "local/opaque-correction/full-check-001-receipt.json",
+  "candidate_build_receipt_sha256": "516435efc68e6f469702e17eff809e9c232d65bea12dcdf38ac3b2b9940c9c83",
+  "baseline_build": {
+    "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-correction/baseline",
+    "binary_sha256": "9257d268ab05bc0e0b2ba6b5b3a24281eefec89f058c8122ef926db9ffb86163",
+    "source": {
+      "commit": "0560506ca7c0529f3a3058a8244e0f04d044ef24",
+      "sha256": "0106c6da903589edfc3cba638702176d252cab80bef1582954895dfe8a894b12"
+    },
+    "build_receipt": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/opaque-correction/control-build-002-receipt.json",
+    "build_receipt_sha256": "d2b2be1cd9d1692a03204f02d1f624075471448e981b6b736473544442805e13",
+    "note": "Build 001 compiled the control but called the active checkout runner with --cwd, so it bound the wrong source root. Build 002 uses the control runner, verifies Cargo is current and binds the artifact to the correct unchanged control source. Both logs/receipts retained; 002 is authoritative."
+  },
+  "validation": "208 focused renderer tests plus the full serial repository check; review receipt/log and conformance outcomes separately."
+}

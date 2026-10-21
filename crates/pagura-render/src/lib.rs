@@ -68,10 +68,11 @@ pub enum Accuracy {
     ///   retained stroke boundary keep geometric integration of their union.
     /// - Clipping paths that a mark does not lie inside multiply into it as
     ///   their own cell coverage, integrated once per band.
-    /// - Normal composition of an opaque page rounds once into byte storage
-    ///   in full-width bands of 256 rows wherever the exact path would admit
-    ///   16-bit or f32 storage. Retained groups and other compositing keep
-    ///   the general compositor.
+    /// - Admitted opaque Normal composition uses the same 16-bit storage and
+    ///   bounded chunks as Exact, on this policy's coverage bytes. Where Exact
+    ///   admits f32 storage, composition instead rounds once into byte storage
+    ///   in full-width bands of 256 rows. Retained groups and other exclusions
+    ///   keep the general f64 storage.
     /// - A page whose only mark is one opaque DeviceGray or DeviceRGB image,
     ///   upright or turned by a quarter, keeps a baseline JPEG in its
     ///   component planes and one-bit samples packed, and is converted and

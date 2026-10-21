@@ -11,6 +11,45 @@ pub(super) enum Buffer {
     F32(Vec<[f32; 4]>),
 }
 
+/// A solid source prepared once for a run of fragment masks. Borrowing the
+/// existing buffer preserves its admission and avoids another allocation.
+pub(super) enum MaskSink<'a> {
+    U8 {
+        bytes: &'a mut Bytes,
+        color: [u8; 4],
+        alpha: u8,
+    },
+    N16 {
+        pixels: &'a mut [[u16; 4]],
+        size: (usize, usize),
+        color: [u16; 4],
+    },
+}
+
+impl MaskSink<'_> {
+    /// Stores a fragment mask using the unchanged clipped coverage bytes.
+    pub(super) fn mask(
+        &mut self,
+        mask: (&[u8], usize, (i64, i64)),
+        surface: ((i64, i64), [i64; 4]),
+        clip: MaskClip<'_>,
+        scratch: &mut Vec<u8>,
+    ) -> Result<()> {
+        match self {
+            Self::U8 {
+                bytes,
+                color,
+                alpha,
+            } => bytes.mask(mask, surface, (*color, *alpha), clip, scratch),
+            Self::N16 {
+                pixels,
+                size,
+                color,
+            } => mask_words(pixels, *size, mask, surface, *color, clip, scratch),
+        }
+    }
+}
+
 /// Premultiplied RGBA bytes in rows of `width` pixels, rounding once per
 /// store. Each row records the columns that stores have reached; every other
 /// pixel of the row still holds the background.
@@ -194,7 +233,6 @@ impl Bytes {
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
-        clippy::cast_possible_wrap,
         reason = "mask extents are budgeted; rectangles are intersected with the surface \
                   before indexing"
     )]
@@ -206,37 +244,9 @@ impl Bytes {
         clip: MaskClip<'_>,
         scratch: &mut Vec<u8>,
     ) -> Result<()> {
-        if stride == 0 {
+        let Some([x0, y0, x1, y1]) = mask_area((mask, stride, origin), bounds, clip) else {
             return Ok(());
-        }
-        let rows = (mask.len() / stride) as i64;
-        let mut area = [
-            origin.0.max(bounds[0]),
-            origin.1.max(bounds[1]),
-            (origin.0 + stride as i64).min(bounds[2]),
-            (origin.1 + rows).min(bounds[3]),
-        ];
-        if let Some((_, rectangle)) = clip.product {
-            area = [
-                area[0].max(rectangle[0]),
-                area[1].max(rectangle[1]),
-                area[2].min(rectangle[2]),
-                area[3].min(rectangle[3]),
-            ];
-        }
-        if let Some([left, top, right, bottom]) = clip.rectangle {
-            let pixel = |value: f64, round: fn(f64) -> f64| round(value.clamp(-1e9, 1e9)) as i64;
-            area = [
-                area[0].max(pixel(left, f64::floor)),
-                area[1].max(pixel(top, f64::floor)),
-                area[2].min(pixel(right, f64::ceil)),
-                area[3].min(pixel(bottom, f64::ceil)),
-            ];
-        }
-        let [x0, y0, x1, y1] = area;
-        if x0 >= x1 || y0 >= y1 {
-            return Ok(());
-        }
+        };
         let (count, height) = ((x1 - x0) as usize, (y1 - y0) as usize);
         let outside = || Error::invalid_argument("mask outside colour buffer");
         let row = usize::try_from(y0 - surface.1).map_err(|_| outside())?;
@@ -271,28 +281,7 @@ impl Bytes {
         for ((y, pixels), painted) in (y0..y1).zip(rows.skip(first)).zip(painted) {
             let start = (y - origin.1) as usize * stride + (x0 - origin.0) as usize;
             let row = &mask[start..start + count];
-            let mut scaled = false;
-            if let Some((product, [cx0, cy0, cx1, _])) = clip.product {
-                let at = (y - cy0) as usize * (cx1 - cx0) as usize + (x0 - cx0) as usize;
-                let factors = product
-                    .get(at..at + count)
-                    .ok_or(Error::invalid_argument("mask exceeds clip"))?;
-                scratch.clear();
-                scratch.extend_from_slice(row);
-                super::lowp::multiply(scratch, factors);
-                scaled = true;
-            }
-            if let Some(rectangle) = clip.rectangle
-                && !inside(rectangle, (x0, y, count))
-            {
-                if !scaled {
-                    scratch.clear();
-                    scratch.extend_from_slice(row);
-                    scaled = true;
-                }
-                scale_edges(rectangle, (x0, y), scratch);
-            }
-            let coverage = if scaled { scratch.as_slice() } else { row };
+            let coverage = clipped_row(row, (x0, y), clip, scratch)?;
             *painted = [painted[0].min(extent[0]), painted[1].max(extent[1])];
             super::lowp::row(&mut pixels[column..column + count], coverage, &source);
         }
@@ -349,6 +338,46 @@ fn uniform(coverage: &[u8]) -> Option<u8> {
 }
 
 impl Buffer {
+    /// Prepares one solid source for fragment masks. N16 admits only opaque
+    /// sources; its planner has already excluded transfers and other feeds.
+    pub(super) fn mask_sink(
+        &mut self,
+        size: (usize, usize),
+        color: [f64; 4],
+        alpha: f64,
+    ) -> Result<MaskSink<'_>> {
+        match self {
+            Self::U8(bytes) => {
+                let (color, alpha) = byte_source(color, alpha);
+                Ok(MaskSink::U8 {
+                    bytes,
+                    color,
+                    alpha,
+                })
+            }
+            Self::N16(pixels) => {
+                if alpha != 1.0 {
+                    return Err(Error::invalid_argument(
+                        "nonopaque fragment source in N16 buffer",
+                    ));
+                }
+                if size.0 == 0 || size.1 == 0 || size.0.checked_mul(size.1) != Some(pixels.len()) {
+                    return Err(Error::invalid_argument(
+                        "fragment surface differs from N16 buffer",
+                    ));
+                }
+                Ok(MaskSink::N16 {
+                    pixels,
+                    size,
+                    color: [word(color[0]), word(color[1]), word(color[2]), 65535],
+                })
+            }
+            Self::F32(_) => Err(Error::invalid_argument(
+                "fragment masks require U8 or N16 storage",
+            )),
+        }
+    }
+
     pub(super) fn new(format: Format, count: usize, background: [u8; 4]) -> Result<Self> {
         fn filled<T: Clone>(count: usize, value: T) -> Result<Vec<T>> {
             let mut pixels = Vec::new();
@@ -433,17 +462,7 @@ impl Buffer {
                     row.fill(color);
                     return Ok(());
                 }
-                for (pixel, &c) in row.iter_mut().zip(coverage) {
-                    match c {
-                        0 => {}
-                        255 => *pixel = color,
-                        c => {
-                            for (out, source) in pixel.iter_mut().zip(color) {
-                                *out = mix(source, *out, c);
-                            }
-                        }
-                    }
-                }
+                words_row(row, coverage, color);
             }
             Self::F32(pixels) => {
                 let color = [level(color[0]), level(color[1]), level(color[2]), 255.0];
@@ -518,7 +537,7 @@ impl Buffer {
         }
     }
 }
-/// The clip of a mask in byte storage: a product over a device rectangle,
+/// The clip of a fragment mask: a product over a device rectangle,
 /// and an axis-aligned rectangle whose coverage separates into a column and
 /// a row factor.
 #[derive(Debug, Clone, Copy, Default)]
@@ -526,6 +545,144 @@ pub(super) struct MaskClip<'a> {
     pub(super) product: Option<(&'a [u8], [i64; 4])>,
     pub(super) rectangle: Option<[f64; 4]>,
 }
+
+/// Intersects the same mask, viewport, product and fractional rectangle for
+/// both storage kernels. Fragment extents have already passed their budgets.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    reason = "mask extents are budgeted and rectangle coordinates are clamped"
+)]
+fn mask_area(
+    (mask, stride, origin): (&[u8], usize, (i64, i64)),
+    bounds: [i64; 4],
+    clip: MaskClip<'_>,
+) -> Option<[i64; 4]> {
+    if stride == 0 {
+        return None;
+    }
+    let rows = (mask.len() / stride) as i64;
+    let mut area = [
+        origin.0.max(bounds[0]),
+        origin.1.max(bounds[1]),
+        (origin.0 + stride as i64).min(bounds[2]),
+        (origin.1 + rows).min(bounds[3]),
+    ];
+    if let Some((_, rectangle)) = clip.product {
+        area = [
+            area[0].max(rectangle[0]),
+            area[1].max(rectangle[1]),
+            area[2].min(rectangle[2]),
+            area[3].min(rectangle[3]),
+        ];
+    }
+    if let Some([left, top, right, bottom]) = clip.rectangle {
+        let pixel = |value: f64, round: fn(f64) -> f64| round(value.clamp(-1e9, 1e9)) as i64;
+        area = [
+            area[0].max(pixel(left, f64::floor)),
+            area[1].max(pixel(top, f64::floor)),
+            area[2].min(pixel(right, f64::ceil)),
+            area[3].min(pixel(bottom, f64::ceil)),
+        ];
+    }
+    (area[0] < area[2] && area[1] < area[3]).then_some(area)
+}
+
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "the row lies within the budgeted product rectangle"
+)]
+fn clipped_row<'a>(
+    row: &'a [u8],
+    (x0, y): (i64, i64),
+    clip: MaskClip<'_>,
+    scratch: &'a mut Vec<u8>,
+) -> Result<&'a [u8]> {
+    let count = row.len();
+    let mut scaled = false;
+    if let Some((product, [cx0, cy0, cx1, _])) = clip.product {
+        let at = (y - cy0) as usize * (cx1 - cx0) as usize + (x0 - cx0) as usize;
+        let factors = product
+            .get(at..at + count)
+            .ok_or(Error::invalid_argument("mask exceeds clip"))?;
+        scratch.clear();
+        scratch.extend_from_slice(row);
+        super::lowp::multiply(scratch, factors);
+        scaled = true;
+    }
+    if let Some(rectangle) = clip.rectangle
+        && !inside(rectangle, (x0, y, count))
+    {
+        if !scaled {
+            scratch.clear();
+            scratch.extend_from_slice(row);
+            scaled = true;
+        }
+        scale_edges(rectangle, (x0, y), scratch);
+    }
+    Ok(if scaled { scratch.as_slice() } else { row })
+}
+
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "mask extents are budgeted and checked against the admitted surface"
+)]
+fn mask_words(
+    pixels: &mut [[u16; 4]],
+    (width, rows): (usize, usize),
+    (mask, stride, origin): (&[u8], usize, (i64, i64)),
+    (surface, bounds): ((i64, i64), [i64; 4]),
+    color: [u16; 4],
+    clip: MaskClip<'_>,
+    scratch: &mut Vec<u8>,
+) -> Result<()> {
+    let Some([x0, y0, x1, y1]) = mask_area((mask, stride, origin), bounds, clip) else {
+        return Ok(());
+    };
+    let (count, height) = ((x1 - x0) as usize, (y1 - y0) as usize);
+    let outside = || Error::invalid_argument("mask outside colour buffer");
+    let row = usize::try_from(y0 - surface.1).map_err(|_| outside())?;
+    let column = usize::try_from(x0 - surface.0).map_err(|_| outside())?;
+    if row.checked_add(height).is_none_or(|end| end > rows)
+        || column.checked_add(count).is_none_or(|end| end > width)
+    {
+        return Err(outside());
+    }
+    for (y, target) in (y0..y1).zip(pixels.chunks_exact_mut(width).skip(row)) {
+        let start = (y - origin.1) as usize * stride + (x0 - origin.0) as usize;
+        let coverage = mask.get(start..start + count).ok_or_else(outside)?;
+        let coverage = clipped_row(coverage, (x0, y), clip, scratch)?;
+        let target = &mut target[column..column + count];
+        if uniform(coverage) == Some(255) {
+            target.fill(color);
+        } else {
+            words_row(target, coverage, color);
+        }
+    }
+    Ok(())
+}
+
+/// Arbitrary fragment rows may begin with full coverage and later contain
+/// fractional or zero coverage; unlike Mask::spans, they are not full runs.
+fn words_row(row: &mut [[u16; 4]], coverage: &[u8], color: [u16; 4]) {
+    for (pixel, &c) in row.iter_mut().zip(coverage) {
+        match c {
+            0 => {}
+            255 => *pixel = color,
+            c => {
+                for (out, source) in pixel.iter_mut().zip(color) {
+                    *out = mix(source, *out, c);
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+#[path = "narrow_tests.rs"]
+mod mask_tests;
 
 /// The share of the pixel from `start` that lies in `[low, high)`.
 #[expect(clippy::cast_precision_loss, reason = "device coordinates are bounded")]

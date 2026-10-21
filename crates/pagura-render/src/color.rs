@@ -3,7 +3,6 @@
 use crate::features;
 use crate::icc::ColorContext;
 use pagura_core::{Dictionary, Error, Feature, Result, Value};
-use pagura_raster::Rgba8;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -165,30 +164,6 @@ impl Color {
         }
         *selected = Some(Arc::new(pattern));
         Ok(())
-    }
-    pub(crate) fn to_rgba(
-        &self,
-        transfer: Option<&crate::functions::Transfer>,
-        intent: crate::icc::Intent,
-    ) -> Result<Rgba8> {
-        let Self::Solid { space, components } = self else {
-            return Err(Error::invalid_argument("pattern is not a uniform colour"));
-        };
-        if !space.paints() {
-            return Ok(Rgba8::TRANSPARENT);
-        }
-        let mut rgb = space.convert_with_intent(components, intent)?;
-        if let Some(transfer) = transfer {
-            for (channel, function) in rgb.iter_mut().zip(transfer.iter()) {
-                *channel = function
-                    .evaluate(&[channel.clamp(0.0, 1.0)])?
-                    .first()
-                    .copied()
-                    .ok_or(Error::syntax("transfer function has no output"))?;
-            }
-        }
-        let [r, g, b] = rgb.map(channel);
-        Ok(Rgba8::opaque(r, g, b))
     }
 }
 
@@ -791,18 +766,6 @@ fn unsupported(name: &[u8]) -> Option<Feature> {
         b"Pattern" => features::PATTERN_COLORSPACE,
         _ => return None,
     })
-}
-
-/// Quantizes a colour component in `0..=1` to an 8-bit channel, rounding to
-/// nearest; out-of-range components are clamped first (clause 8.6.4.1).
-pub(crate) fn channel(value: f64) -> u8 {
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "clamped to 0..=255 before conversion"
-    )]
-    let channel = (value.clamp(0.0, 1.0) * 255.0).round() as u8;
-    channel
 }
 
 fn indexed_space(

@@ -19,10 +19,6 @@ BOUNDS = {
     # Byte storage accumulates one rounding per mark over stacks of partial
     # marks on one pixel.
     "content/alpha-accumulation": 66,
-    "content/precision-slivers-254": 33,
-    "content/precision-slivers-255": 33,
-    "content/precision-slivers-1000": 122,
-    "content/precision-slivers-270000": 127,
     "content/precision-translucent-stagnation": 127,
     # Small symbol glyphs from row fragments at snapped origins.
     "paint/bundled-symbol": 25,
