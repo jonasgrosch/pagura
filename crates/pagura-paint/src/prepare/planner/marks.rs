@@ -408,6 +408,16 @@ impl<B: Backend> Planner<'_, B> {
             budget,
         )?;
         let (records, select) = self.selection(scope, spec.colour, (state, state_id), budget)?;
+        let words = self
+            .parts
+            .paints
+            .get(index(paint))
+            .and_then(|paint| paint.constant())
+            .filter(|color| color.len() >= 3 && compositing.is_opaque())
+            .map(|c| {
+                let word = crate::kernel::word;
+                [word(c[0]), word(c[1]), word(c[2]), u16::MAX]
+            });
         budget.work.charge(covered.work)?;
         budget.work.charge(area(covered.bounds))?;
         let item = Item {
@@ -423,6 +433,7 @@ impl<B: Backend> Planner<'_, B> {
                 select,
                 records,
                 boundary: covered.boundary,
+                words,
             }),
         };
         self.push(scope.group, item, budget)

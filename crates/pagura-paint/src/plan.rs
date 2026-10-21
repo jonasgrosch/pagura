@@ -155,6 +155,9 @@ pub(crate) struct Mark {
     /// The shape whose coverage a shading pattern mixes its `Background`
     /// by ([`crate::source::BBoxUse::Boundary`]).
     pub(crate) boundary: Option<u32>,
+    /// The N16 words of an opaque constant colour that only coverage
+    /// reduces, encoded once (ADR 0004 §5).
+    pub(crate) words: Option<[u16; 4]>,
 }
 
 /// A group's result composited into its parent.

@@ -55,12 +55,20 @@ pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, target: 
             continue;
         };
         let out = out.as_chunks_mut::<4>().0;
-        let first = band_row * width;
+        // Columns no store reached still hold the background.
+        let (lo, hi) = ws
+            .extents
+            .get(band_row)
+            .map_or((0, 0), |(lo, hi)| (lo.min(count), hi.min(count)));
+        let (head, rest) = out.split_at_mut(lo);
+        let (out, tail) = rest.split_at_mut(hi - lo);
+        head.fill(output.background);
+        tail.fill(output.background);
+        let first = band_row * width + lo;
         match &ws.page {
             PageBuffer::N16(words) => {
                 for (out, word) in out.iter_mut().zip(words.iter().skip(first)) {
-                    *out =
-                        word.map(|v| u8::try_from((u32::from(v) + 128) / 257).unwrap_or(u8::MAX));
+                    *out = word.map(nearest_byte);
                 }
             }
             PageBuffer::F32(levels) => {
@@ -86,6 +94,15 @@ pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, target: 
         }
         ws.usage.work = ws.usage.work.saturating_add(count);
     }
+}
+
+/// The nearest byte of an N16 word: `(w + 128) / 257`, never a tie.
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "(65535 + 128) / 257 is 255"
+)]
+fn nearest_byte(word: u16) -> u8 {
+    ((u32::from(word) + 128) / 257) as u8
 }
 
 #[expect(

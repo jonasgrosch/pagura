@@ -212,6 +212,7 @@ impl Fixture {
             select,
             records: true,
             boundary: None,
+            words: None,
         });
         self.push(group, Self::bounds(rect), kind);
     }

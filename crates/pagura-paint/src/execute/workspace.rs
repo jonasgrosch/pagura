@@ -43,26 +43,41 @@ impl PageBuffer {
         })
     }
 
-    /// Starts a band of `count` pixels: transparent, or for narrow storage
-    /// the premultiplied background.
-    pub(crate) fn reset(&mut self, count: usize, background: [u8; 4], layout: Layout) {
+    /// Starts a band of `count` pixels in rows of `width`: transparent, or
+    /// for narrow storage the premultiplied background. Only the columns
+    /// the previous band painted are restored; the rest still hold it.
+    pub(crate) fn reset(
+        &mut self,
+        extents: &mut Extents,
+        (count, width): (usize, usize),
+        background: [u8; 4],
+        layout: Layout,
+    ) {
+        let words = background.map(|b| u16::from(b) * 257);
+        let levels = background.map(f32::from);
+        let stride = layout.stride();
+        for (row, extent) in extents.rows.iter_mut().enumerate() {
+            let [lo, hi] = *extent;
+            *extent = EMPTY;
+            if lo >= hi {
+                continue;
+            }
+            let (lo, hi) = (
+                row * width + u32_to_usize(lo),
+                row * width + u32_to_usize(hi),
+            );
+            match self {
+                Self::F64(values) => fill(values, lo * stride..hi * stride, 0.0),
+                Self::N16(pixels) => fill(pixels, lo..hi, words),
+                Self::F32(pixels) => fill(pixels, lo..hi, levels),
+                Self::U8(pixels) => fill(pixels, lo..hi, background),
+            }
+        }
         match self {
-            Self::F64(values) => {
-                values.clear();
-                values.resize(count * layout.stride(), 0.0);
-            }
-            Self::N16(words) => {
-                words.clear();
-                words.resize(count, background.map(|b| u16::from(b) * 257));
-            }
-            Self::F32(levels) => {
-                levels.clear();
-                levels.resize(count, background.map(f32::from));
-            }
-            Self::U8(bytes) => {
-                bytes.clear();
-                bytes.resize(count, background);
-            }
+            Self::F64(values) => grow(values, count * stride, 0.0),
+            Self::N16(pixels) => grow(pixels, count, words),
+            Self::F32(pixels) => grow(pixels, count, levels),
+            Self::U8(pixels) => grow(pixels, count, background),
         }
     }
 
@@ -74,6 +89,52 @@ impl PageBuffer {
             Self::F32(levels) => levels.capacity() * size_of::<[f32; 4]>(),
             Self::U8(bytes) => bytes.capacity() * size_of::<[u8; 4]>(),
         }
+    }
+}
+
+fn fill<T: Copy>(values: &mut [T], range: std::ops::Range<usize>, value: T) {
+    if let Some(values) = values.get_mut(range) {
+        values.fill(value);
+    }
+}
+
+/// Extends `values` to `len` with `value`; preparation reserved the room.
+fn grow<T: Copy>(values: &mut Vec<T>, len: usize, value: T) {
+    if values.len() < len {
+        values.resize(len, value);
+    }
+}
+
+/// An empty extent.
+const EMPTY: [u32; 2] = [u32::MAX, 0];
+
+/// The columns of each row of the page's band that stores reached: the
+/// rest still holds the background, so neither restoring nor output reads
+/// it (write-once output for untouched pixels).
+#[derive(Debug, Default)]
+pub(crate) struct Extents {
+    rows: Vec<[u32; 2]>,
+}
+
+impl Extents {
+    fn new(rows: usize) -> Result<Self> {
+        let mut values = reserve(rows)?;
+        values.resize(rows, EMPTY);
+        Ok(Self { rows: values })
+    }
+
+    /// Records a store at columns `start .. end` of `row`, relative to the
+    /// region.
+    pub(crate) fn mark(&mut self, row: usize, start: u32, end: u32) {
+        if let Some(extent) = self.rows.get_mut(row) {
+            *extent = [extent[0].min(start), extent[1].max(end)];
+        }
+    }
+
+    /// The painted columns of `row`, if any.
+    pub(crate) fn get(&self, row: usize) -> Option<(usize, usize)> {
+        let [lo, hi] = *self.rows.get(row)?;
+        (lo < hi).then(|| (u32_to_usize(lo), u32_to_usize(hi)))
     }
 }
 
@@ -103,6 +164,8 @@ pub(crate) struct Usage {
 pub(crate) struct Workspace {
     /// The page's band buffer.
     pub(crate) page: PageBuffer,
+    /// The columns of the page's band that stores reached.
+    pub(crate) extents: Extents,
     /// F64 group buffers alive at once.
     pub(crate) wide: Vec<f64>,
     /// F32 group buffers alive at once.
@@ -175,7 +238,8 @@ impl Sizes {
             .saturating_mul(size_of::<u8>() + 12)
             .saturating_add(self.rows * 12)
             .saturating_mul(4)
-            .saturating_add(self.width);
+            .saturating_add(self.width)
+            .saturating_add(self.rows * size_of::<[u32; 2]>());
         let active: usize = plan
             .groups
             .iter()
@@ -265,6 +329,7 @@ impl Workspace {
         }
         Ok(Self {
             page: PageBuffer::new(format, pixels, layout)?,
+            extents: Extents::new(sizes.rows)?,
             wide,
             levels,
             bytes,
@@ -310,6 +375,7 @@ impl Workspace {
             + self.bytes.capacity() * size_of::<[u8; 4]>()
             + self.page.bytes()
             + self.selection.capacity() * 2
+            + self.extents.rows.capacity() * size_of::<[u32; 2]>()
             + self.boundary.1.capacity()
             + self.active.iter().map(Active::bytes).sum::<usize>()
             + self.active.capacity() * size_of::<Active>()
@@ -354,13 +420,14 @@ mod tests {
             spots: 0,
         };
         let mut page = PageBuffer::new(Format::N16, 2, layout).unwrap();
-        page.reset(2, [10, 20, 30, 40], layout);
+        let mut extents = Extents::new(1).unwrap();
+        page.reset(&mut extents, (2, 2), [10, 20, 30, 40], layout);
         let PageBuffer::N16(words) = &page else {
             unreachable!()
         };
         assert_eq!(words[1], [2570, 5140, 7710, 10280]);
         let mut wide = PageBuffer::new(Format::F64, 2, layout).unwrap();
-        wide.reset(2, [10, 20, 30, 40], layout);
+        wide.reset(&mut extents, (2, 2), [10, 20, 30, 40], layout);
         let PageBuffer::F64(values) = &wide else {
             unreachable!()
         };

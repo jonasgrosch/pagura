@@ -16,10 +16,9 @@ pub(crate) use frame::{Backdrop, Buffer, Frame, Read, Tops};
 pub(crate) use mask::transfer as mask_transfer;
 pub(crate) use schedule::Active;
 pub(crate) use transfer::validate;
-pub(crate) use workspace::{MaskCache, PageBuffer, Sizes, Usage, Workspace};
+pub(crate) use workspace::{Extents, MaskCache, PageBuffer, Sizes, Usage, Workspace};
 
 use crate::kernel::{self, Colors, Mode, Sources};
-use crate::paint::PaintSpans;
 use crate::plan::{Compositing, Item, ItemKind, Mark, Plan, area};
 use crate::prepare::Producer;
 use pagura_core::convert::u32_to_usize;
@@ -74,9 +73,13 @@ impl<'a> Executor<'a> {
             x1: region.x1,
             y1: self.rows.end,
         };
-        self.ws
-            .page
-            .reset(area(rect), plan.output.background, plan.output.layout);
+        let ws = &mut *self.ws;
+        ws.page.reset(
+            &mut ws.extents,
+            (area(rect), u32_to_usize(rect.width())),
+            plan.output.background,
+            plan.output.layout,
+        );
         self.ws.selection.fill(0);
         let Some(page) = plan.groups.first() else {
             return;
@@ -160,6 +163,14 @@ impl<'a> Executor<'a> {
         let mut coverage = std::mem::take(&mut self.ws.coverage);
         self.producer
             .rasterize(mark.cover.shape, mark.cover.clip, self.band, &mut coverage);
+        if let (Some(words), Buffer::Page, PageBuffer::N16(_)) =
+            (mark.words, frame.buffer, &self.ws.page)
+            && !mark.records
+        {
+            self.opaque_n16(&coverage, frame, words);
+            self.ws.coverage = coverage;
+            return;
+        }
         for row in coverage.rows() {
             if row.y < frame.rect.y0 || row.y >= frame.rect.y1 {
                 continue;
@@ -171,6 +182,41 @@ impl<'a> Executor<'a> {
             }
         }
         self.ws.coverage = coverage;
+    }
+
+    /// Opaque constant colour into the N16 page: one rounding per store
+    /// straight from coverage, nothing else to evaluate.
+    fn opaque_n16(
+        &mut self,
+        coverage: &pagura_raster::BandCoverage,
+        frame: Frame,
+        words: [u16; 4],
+    ) {
+        let ws = &mut *self.ws;
+        let PageBuffer::N16(page) = &mut ws.page else {
+            return;
+        };
+        for row in coverage.rows() {
+            if row.y < frame.rect.y0 || row.y >= frame.rect.y1 {
+                continue;
+            }
+            for span in row.spans() {
+                let Some((x, cover)) = clamp(span, frame.rect) else {
+                    continue;
+                };
+                let (Some(start), len) = (frame.index(x, row.y), cover.len()) else {
+                    continue;
+                };
+                if let Some(pixels) = page.get_mut(start..start + len) {
+                    kernel::store_n16(pixels, words, cover.coverage());
+                }
+                let column = x - frame.rect.x0;
+                let end = column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
+                ws.extents
+                    .mark(u32_to_usize(row.y - frame.rect.y0), column, end);
+                ws.usage.work = ws.usage.work.saturating_add(len);
+            }
+        }
     }
 
     fn mark_span(&mut self, mark: &Mark, frame: Frame, (x, y): (u32, u32), cover: Cover<'_>) {
@@ -253,10 +299,11 @@ impl<'a> Executor<'a> {
             alpha: &ws.alpha[..len],
             shape: &ws.shape[..len],
         };
-        let kind = Store::Mark(n16_words(paint, compositing, cover));
+        let kind = Store::Mark(mark.words.map(|words| (words, cover.coverage())));
         store(
             &mut Target {
                 page: &mut ws.page,
+                extents: &mut ws.extents,
                 wide: &mut ws.wide,
                 levels: &mut ws.levels,
                 bytes: &mut ws.bytes,
@@ -294,25 +341,6 @@ fn densify(coverage: &pagura_raster::BandCoverage, (x, y): (u32, u32), out: &mut
             }
         }
     }
-}
-
-/// The source words and coverage of an opaque constant store into N16.
-fn n16_words<'c>(
-    paint: &dyn PaintSpans,
-    compositing: &Compositing,
-    cover: Cover<'c>,
-) -> Option<([u16; 4], Option<&'c [u8]>)> {
-    let color = paint.constant()?;
-    if !compositing.is_opaque() || color.len() < 3 {
-        return None;
-    }
-    let words = [
-        kernel::word(color[0]),
-        kernel::word(color[1]),
-        kernel::word(color[2]),
-        u16::MAX,
-    ];
-    Some((words, cover.coverage()))
 }
 
 /// The pixels of a span within a frame.
@@ -443,6 +471,7 @@ pub(crate) fn apply(
 /// The buffers a store may write.
 pub(crate) struct Target<'a> {
     pub(crate) page: &'a mut PageBuffer,
+    pub(crate) extents: &'a mut Extents,
     pub(crate) wide: &'a mut [f64],
     pub(crate) levels: &'a mut [[f32; 4]],
     pub(crate) bytes: &'a mut [[u8; 4]],
@@ -507,36 +536,55 @@ pub(crate) fn store(
                 kernel::store_u8(pixels, colors, sources.alpha);
             }
         }
-        Buffer::Page => match target.page {
-            PageBuffer::F64(values) => {
-                let begin = start * stride;
-                if let Some(pixels) = values.get_mut(begin..begin + len * stride) {
-                    kernel::composite(pixels, sources, initial, mode);
-                }
+        Buffer::Page => {
+            let row = u32_to_usize(y - frame.rect.y0);
+            let start_column = x - frame.rect.x0;
+            let end_column = start_column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
+            target.extents.mark(row, start_column, end_column);
+            page(target.page, (start, stride), (sources, mode), initial, kind);
+        }
+    }
+}
+
+/// Stores one span into the page buffer from pixel `start`.
+fn page(
+    page: &mut PageBuffer,
+    (start, stride): (usize, usize),
+    (sources, mode): (&Sources<'_>, &Mode),
+    initial: &[f64],
+    kind: Store<'_>,
+) {
+    let len = sources.alpha.len();
+    let colors = &sources.colors;
+    match page {
+        PageBuffer::F64(values) => {
+            let begin = start * stride;
+            if let Some(pixels) = values.get_mut(begin..begin + len * stride) {
+                kernel::composite(pixels, sources, initial, mode);
             }
-            PageBuffer::N16(words) => {
-                if let Some(pixels) = words.get_mut(start..start + len) {
-                    match kind {
-                        Store::Mark(Some((source, coverage))) => {
-                            kernel::store_n16(pixels, source, coverage);
-                        }
-                        Store::Mark(None) | Store::Result => {
-                            kernel::dynamic_n16(pixels, colors, sources.alpha);
-                        }
+        }
+        PageBuffer::N16(words) => {
+            if let Some(pixels) = words.get_mut(start..start + len) {
+                match kind {
+                    Store::Mark(Some((source, coverage))) => {
+                        kernel::store_n16(pixels, source, coverage);
+                    }
+                    Store::Mark(None) | Store::Result => {
+                        kernel::dynamic_n16(pixels, colors, sources.alpha);
                     }
                 }
             }
-            PageBuffer::F32(values) => {
-                if let Some(pixels) = values.get_mut(start..start + len) {
-                    levels(pixels, colors, sources.alpha, kind);
-                }
+        }
+        PageBuffer::F32(values) => {
+            if let Some(pixels) = values.get_mut(start..start + len) {
+                levels(pixels, colors, sources.alpha, kind);
             }
-            PageBuffer::U8(bytes) => {
-                if let Some(pixels) = bytes.get_mut(start..start + len) {
-                    kernel::store_u8(pixels, colors, sources.alpha);
-                }
+        }
+        PageBuffer::U8(bytes) => {
+            if let Some(pixels) = bytes.get_mut(start..start + len) {
+                kernel::store_u8(pixels, colors, sources.alpha);
             }
-        },
+        }
     }
 }
 

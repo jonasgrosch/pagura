@@ -9,32 +9,35 @@ use super::Colors;
 
 /// Stores an opaque colour, already encoded as N16 `words`, at `coverage`
 /// (`None` covers every pixel): `floor((c·s + (255 − c)·u + 127) / 255)`
-/// with one integer rounding per store.
+/// with one integer rounding per store. The formula leaves a pixel as it is
+/// at coverage 0 and stores the source at 255, so the loop has no branches
+/// and vectorizes on u32 lanes.
 pub(crate) fn store_n16(pixels: &mut [[u16; 4]], words: [u16; 4], coverage: Option<&[u8]>) {
     let Some(coverage) = coverage else {
         pixels.fill(words);
         return;
     };
+    let source = words.map(u32::from);
     for (pixel, &c) in pixels.iter_mut().zip(coverage) {
-        match c {
-            0 => {}
-            255 => *pixel = words,
-            c => {
-                for (out, &source) in pixel.iter_mut().zip(&words) {
-                    *out = mix(source, *out, c);
-                }
-            }
+        let c = u32::from(c);
+        let rest = 255_u32.wrapping_sub(c);
+        for (out, &s) in pixel.iter_mut().zip(&source) {
+            *out = mix(s, u32::from(*out), (c, rest));
         }
     }
 }
 
+/// One N16 store; the sum is at most 65535 · 255 + 127, far inside u32.
 #[expect(
     clippy::cast_possible_truncation,
     reason = "a convex combination of two words stays within 0..65535"
 )]
-fn mix(source: u16, backdrop: u16, coverage: u8) -> u16 {
-    let c = u32::from(coverage);
-    ((u32::from(source) * c + u32::from(backdrop) * (255 - c) + 127) / 255) as u16
+fn mix(source: u32, backdrop: u32, (c, rest): (u32, u32)) -> u16 {
+    (source
+        .wrapping_mul(c)
+        .wrapping_add(backdrop.wrapping_mul(rest))
+        .wrapping_add(127)
+        / 255) as u16
 }
 
 /// The N16 word of a unit value: `257 × L` for its level `L = 255·v`,

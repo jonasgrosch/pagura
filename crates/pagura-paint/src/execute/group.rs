@@ -189,6 +189,7 @@ impl Executor<'_> {
         store(
             &mut Target {
                 page: &mut ws.page,
+                extents: &mut ws.extents,
                 wide: &mut ws.wide,
                 levels: &mut ws.levels,
                 bytes: &mut ws.bytes,
