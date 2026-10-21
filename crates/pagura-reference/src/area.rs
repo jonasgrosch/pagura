@@ -313,6 +313,10 @@ impl<'a> Row<'a> {
     /// Adds every slab's trapezoids to `row`, the areas of the row's pixels.
     fn integrate(&self, row: &mut [f64]) {
         let cuts = self.cuts();
+        let mut order: Vec<&Piece> = self.pieces.iter().collect();
+        order.sort_by(|a, b| a.top.y.total_cmp(&b.top.y));
+        let mut pending = order.into_iter().peekable();
+        let mut live: Vec<&Piece> = Vec::new();
         let mut windings = vec![0_i64; self.regions.len()];
         let mut active = Vec::new();
         for pair in cuts.windows(2) {
@@ -320,18 +324,19 @@ impl<'a> Row<'a> {
             if y0 >= y1 {
                 continue;
             }
+            // Every piece end is a cut, so a piece that has started and not
+            // ended spans the whole slab.
+            while let Some(piece) = pending.next_if(|p| p.top.y <= y0) {
+                live.push(piece);
+            }
+            live.retain(|p| p.bottom.y >= y1);
             active.clear();
-            active.extend(
-                self.pieces
-                    .iter()
-                    .filter(|p| p.top.y <= y0 && p.bottom.y >= y1)
-                    .map(|p| Crossing {
-                        top: p.x(y0),
-                        bottom: p.x(y1),
-                        winding: p.winding,
-                        region: p.region,
-                    }),
-            );
+            active.extend(live.iter().map(|p| Crossing {
+                top: p.x(y0),
+                bottom: p.x(y1),
+                winding: p.winding,
+                region: p.region,
+            }));
             active.sort_by(|a, b| (a.top + a.bottom).total_cmp(&(b.top + b.bottom)));
             windings.fill(0);
             let mut inside = 0;

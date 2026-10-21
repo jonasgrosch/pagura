@@ -3,15 +3,17 @@
 //! Curves are halved (de Casteljau, in the path's own space) until both inner
 //! control points lie within the tolerance of the chord in device space; by
 //! the convex-hull property the curve then lies within the tolerance of its
-//! chord. Paths use the documented 1/256-pixel tolerance. Glyph curves that
-//! are exact quadratics are compared with the true curve, so they are
-//! flattened sixteen times finer, which keeps their area within a small
-//! fraction of a level of the curve's.
+//! chord. Paths and glyph outlines with general cubics use the documented
+//! 1/256-pixel tolerance (ADR 0004 §2, §4). A glyph outline whose curves are
+//! all exact quadratics is referenced against its true curve, so it is
+//! flattened to 1/16384 pixel, which keeps every pixel's area within 1/10000
+//! of a pixel (0.03 levels) of the curve's.
 //!
-//! The contour policy is the renderer's (ADR 0004): every contour is closed;
-//! a contour whose points all coincide in the source space covers the device
-//! pixel under its first point; a final open contour of one point is
-//! dropped.
+//! The contour policy is the renderer's (ADR 0004 §4): every contour is
+//! closed; a contour whose points all coincide covers the device pixel under
+//! its first point; a final open contour of one point is dropped. Path
+//! points are compared in the path's own space, glyph points after the
+//! glyph's linear map, so a singular map can make a genuine point.
 
 use crate::area::Region;
 use pagura_core::{Error, Limits, Result};
@@ -21,7 +23,7 @@ use pagura_raster::{FillRule, Path, Point, Segment, Transform};
 pub(crate) const TOLERANCE: f64 = 1.0 / 256.0;
 
 /// The tolerance of glyph curves that are exact quadratics.
-pub(crate) const QUADRATIC_TOLERANCE: f64 = 1.0 / 4096.0;
+pub(crate) const QUADRATIC_TOLERANCE: f64 = 1.0 / 16384.0;
 
 /// Third differences up to this many device pixels per coordinate make a
 /// cubic an exact quadratic (degree elevation with rounding).
@@ -39,13 +41,26 @@ struct Contour {
     degenerate: bool,
 }
 
-/// Which tolerance a curve gets.
+/// How curves are flattened and points classified.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Curves {
-    /// [`TOLERANCE`] for every curve.
+    /// A path: curves within [`TOLERANCE`], points compared in its space.
     Path,
-    /// [`QUADRATIC_TOLERANCE`] for exact quadratics, [`TOLERANCE`] otherwise.
+    /// A glyph outline whose curves are all exact quadratics: curves within
+    /// [`QUADRATIC_TOLERANCE`], points compared after the linear map.
+    Quadratic,
+    /// Any other glyph outline: curves within [`TOLERANCE`], points
+    /// compared after the linear map.
     Glyph,
+}
+
+impl Curves {
+    fn tolerance(self) -> f64 {
+        match self {
+            Self::Quadratic => QUADRATIC_TOLERANCE,
+            Self::Path | Self::Glyph => TOLERANCE,
+        }
+    }
 }
 
 /// The region of `path` under `transform` and `rule`.
@@ -83,11 +98,35 @@ pub(crate) fn glyph_region(
         f: 0.0,
         ..linear
     };
-    let contours = contours(outline, linear, Curves::Glyph, limits)?;
+    let curves = if quadratic_outline(outline, linear) {
+        Curves::Quadratic
+    } else {
+        Curves::Glyph
+    };
+    let contours = contours(outline, linear, curves, limits)?;
     Ok(region(&contours, FillRule::NonZero, |p| {
         let q = p * linear;
         Point::new(q.x + origin.x, q.y + origin.y)
     }))
+}
+
+/// Whether every curve of `outline` is an exact quadratic under `linear`.
+fn quadratic_outline(outline: &Path, linear: Transform) -> bool {
+    let mut position = Point::default();
+    let mut start = Point::default();
+    let mut quadratic = true;
+    for segment in outline.segments() {
+        match *segment {
+            Segment::MoveTo(p) => (start, position) = (p, p),
+            Segment::LineTo(p) => position = p,
+            Segment::CubicTo { c1, c2, end } => {
+                quadratic &= is_quadratic(&[position, c1, c2, end].map(|p| p * linear));
+                position = end;
+            }
+            Segment::Close => position = start,
+        }
+    }
+    quadratic
 }
 
 /// Device edges of `contours` under the contour policy.
@@ -129,6 +168,10 @@ fn contours(
     if !device.is_finite() {
         return Err(Error::invalid_argument("path transform is not finite"));
     }
+    let same = |a: Point, b: Point| match curves {
+        Curves::Path => a == b,
+        Curves::Quadratic | Curves::Glyph => a * device == b * device,
+    };
     let mut contours: Vec<Contour> = Vec::new();
     let mut count = 0_usize;
     let mut start = Point::default();
@@ -172,14 +215,14 @@ fn contours(
             }
             Segment::LineTo(point) => {
                 if let Some(contour) = contours.last_mut() {
-                    contour.degenerate &= contour.points.first().is_none_or(|&p| p == point);
+                    contour.degenerate &= contour.points.first().is_none_or(|&p| same(p, point));
                     push(contour, point)?;
                 }
                 position = point;
             }
             Segment::CubicTo { c1, c2, end } => {
                 if let Some(contour) = contours.last_mut() {
-                    contour.degenerate &= [c1, c2, end].iter().all(|&p| p == position);
+                    contour.degenerate &= [c1, c2, end].iter().all(|&p| same(p, position));
                     let mut points = Vec::new();
                     flatten_curve([position, c1, c2, end], device, curves, &mut points);
                     for point in points {
@@ -202,11 +245,7 @@ fn contours(
 
 /// Appends the end points of the pieces of a cubic, after its start.
 fn flatten_curve(points: [Point; 4], device: Transform, curves: Curves, out: &mut Vec<Point>) {
-    let mapped = points.map(|p| p * device);
-    let tolerance = match curves {
-        Curves::Glyph if quadratic(&mapped) => QUADRATIC_TOLERANCE,
-        Curves::Glyph | Curves::Path => TOLERANCE,
-    };
+    let tolerance = curves.tolerance();
     let mut pending = vec![(points, 0)];
     while let Some((piece, depth)) = pending.pop() {
         let [a, b, c, d] = piece.map(|p| p * device);
@@ -221,7 +260,7 @@ fn flatten_curve(points: [Point; 4], device: Transform, curves: Curves, out: &mu
 }
 
 /// Whether a device-space cubic is an exact quadratic.
-fn quadratic(p: &[Point; 4]) -> bool {
+fn is_quadratic(p: &[Point; 4]) -> bool {
     let x = -p[0].x + 3.0 * p[1].x - 3.0 * p[2].x + p[3].x;
     let y = -p[0].y + 3.0 * p[1].y - 3.0 * p[2].y + p[3].y;
     x.abs() <= QUADRATIC && y.abs() <= QUADRATIC
@@ -387,7 +426,8 @@ mod tests {
         let path = path.finish();
         let limits = Limits::default();
         let coarse = contours(&path, Transform::IDENTITY, Curves::Path, &limits).unwrap();
-        let fine = contours(&path, Transform::IDENTITY, Curves::Glyph, &limits).unwrap();
+        let fine = contours(&path, Transform::IDENTITY, Curves::Quadratic, &limits).unwrap();
+        assert!(quadratic_outline(&path, Transform::IDENTITY));
         assert!(fine[0].points.len() > 3 * coarse[0].points.len());
         // The parabola's segment area is 2/3 of base times height: 2/3·8·4.
         let region =
@@ -397,6 +437,11 @@ mod tests {
             .flat_map(|y| (0..8).map(move |x| (x, y)))
             .map(|(x, y)| areas.get(x, y))
             .sum();
-        assert!((total - 64.0 / 3.0).abs() < 1e-3, "{total}");
+        // Chords lose at most 2/3 of the tolerance times the arc length
+        // (about 12.6 pixels) in total.
+        assert!(
+            (total - 64.0 / 3.0).abs() < 2.0 / 3.0 * QUADRATIC_TOLERANCE * 13.0,
+            "{total}"
+        );
     }
 }

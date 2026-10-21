@@ -445,3 +445,27 @@ fn malformed_scenes_are_errors_not_panics() {
         .is_err()
     );
 }
+
+#[test]
+fn overprint_simulation_needs_overprinting_marks() {
+    let simulation = |overprint: bool, nonzero: bool, simulate: bool| {
+        let mut b = Build::new(1.0, 1.0);
+        let cyan = b.paint(Paint::Solid(Color {
+            space: Arc::new(ColorSpace::DeviceCmyk),
+            components: Components::from_slice(&[1.0, 0.0, 0.0, 0.0]),
+        }));
+        let state = b.state(|s| {
+            s.overprint.enabled = overprint;
+            s.overprint.nonzero = nonzero;
+        });
+        b.rect(GroupId(0), [0.0, 0.0, 1.0, 1.0], cyan, state);
+        crate::overprint::Simulation::discover(&b.scene, simulate, 64)
+            .unwrap()
+            .enabled
+    };
+    // OPM 1 with zero DeviceCMYK components needs a CMYK device.
+    assert!(simulation(true, true, true));
+    assert!(!simulation(true, false, true));
+    assert!(!simulation(false, true, true));
+    assert!(!simulation(true, true, false));
+}

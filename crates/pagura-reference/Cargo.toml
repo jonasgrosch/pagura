@@ -19,6 +19,9 @@ pagura-interpret.workspace = true
 pagura-raster.workspace = true
 
 [dev-dependencies]
+pagura-codec.workspace = true
+pagura-data.workspace = true
 pagura-document.workspace = true
 pagura-paint.workspace = true
 pagura-testkit.workspace = true
+pagura-text.workspace = true

@@ -277,13 +277,7 @@ impl Renderer<'_> {
     ) -> Result<Sources<'static>> {
         let image = node.image.as_ref();
         let decoded = self.decoded(image)?;
-        let dims = (decoded.width, decoded.height);
-        let magnify = if image.interpolate {
-            Magnify::Bilinear
-        } else {
-            Magnify::Nearest
-        };
-        let sampler = Sampler::new(dims, magnify, to_device)
+        let sampler = Sampler::new((decoded.width, decoded.height), magnify(image), to_device)
             .ok_or(Error::invalid_argument("singular image"))?;
         let target = context.target;
         let channels = target.channels();
@@ -294,13 +288,9 @@ impl Renderer<'_> {
                 ));
             };
             let solid = self.solid(color, state, target)?;
-            let values = Values::build(dims, 1, MAX_IMAGE_VALUES, |i, out| {
-                out[0] = opacity(image, &decoded, i)?;
-                Ok(())
-            })?;
             return Ok(Sources::Image(ImageSamples {
                 sampler,
-                values,
+                values: opacities(image, &decoded)?,
                 stencil: Some(solid.color),
                 mask: None,
                 channels,
@@ -314,19 +304,18 @@ impl Renderer<'_> {
         let convert = self.colors.prepare(space, target, &conversion)?;
         let mut probe = [0.0; MAX];
         let painted: Painted = convert.convert(&space.initial(), &mut probe[..channels]);
-        let mask_image = match &image.mask {
+        let mask = match &image.mask {
             ImageMask::Stencil(mask) | ImageMask::Soft { mask, .. } => {
-                Some(Rc::clone(&self.decoded(mask)?))
+                Some((mask, self.decoded(mask)?))
             }
             _ => None,
         };
-        let matte = match (&image.mask, &mask_image) {
+        let matte = match (&image.mask, &mask) {
             (
                 ImageMask::Soft {
-                    mask,
-                    matte: Some(matte),
+                    matte: Some(matte), ..
                 },
-                Some(decoded),
+                Some((mask, decoded)),
             ) => Some((&matte[..], mask.as_ref(), decoded.as_ref())),
             _ => None,
         };
@@ -338,37 +327,25 @@ impl Renderer<'_> {
             channels,
             alpha_is_shape: state.alpha_is_shape,
         };
+        let dims = (decoded.width, decoded.height);
         let values = Values::build(dims, channels + 2, MAX_IMAGE_VALUES, |i, out| {
             samples.value(i, out)
         })?;
-        let mask = match (&image.mask, &mask_image) {
-            (ImageMask::Stencil(mask) | ImageMask::Soft { mask, .. }, Some(decoded)) => {
-                let mask_magnify = if mask.interpolate {
-                    Magnify::Bilinear
-                } else {
-                    Magnify::Nearest
-                };
-                let sampler =
-                    Sampler::new((decoded.width, decoded.height), mask_magnify, to_device)
-                        .ok_or(Error::invalid_argument("singular image mask"))?;
-                let values = Values::build(
-                    (decoded.width, decoded.height),
-                    1,
-                    MAX_IMAGE_VALUES,
-                    |i, out| {
-                        out[0] = opacity(mask, decoded, i)?;
-                        Ok(())
-                    },
-                )?;
-                Some(MaskSamples {
-                    sampler,
-                    values,
+        let mask = mask
+            .map(|(mask, decoded)| -> Result<MaskSamples> {
+                Ok(MaskSamples {
+                    sampler: Sampler::new(
+                        (decoded.width, decoded.height),
+                        magnify(mask),
+                        to_device,
+                    )
+                    .ok_or(Error::invalid_argument("singular image mask"))?,
+                    values: opacities(mask, &decoded)?,
                     scales_shape: matches!(image.mask, ImageMask::Stencil(_))
                         || state.alpha_is_shape,
                 })
-            }
-            _ => None,
-        };
+            })
+            .transpose()?;
         Ok(Sources::Image(ImageSamples {
             sampler,
             values,
@@ -378,6 +355,31 @@ impl Renderer<'_> {
             preserve: self.preserve(state, painted, target, None),
         }))
     }
+}
+
+/// How an image is sampled where it is magnified.
+fn magnify(image: &pagura_interpret::Image) -> Magnify {
+    if image.interpolate {
+        Magnify::Bilinear
+    } else {
+        Magnify::Nearest
+    }
+}
+
+/// The opacity of every sample of a stencil or soft-mask image.
+fn opacities(
+    image: &pagura_interpret::Image,
+    decoded: &pagura_image::DecodedImage,
+) -> Result<Values> {
+    Values::build(
+        (decoded.width, decoded.height),
+        1,
+        MAX_IMAGE_VALUES,
+        |i, out| {
+            out[0] = opacity(image, decoded, i)?;
+            Ok(())
+        },
+    )
 }
 
 #[cfg(test)]

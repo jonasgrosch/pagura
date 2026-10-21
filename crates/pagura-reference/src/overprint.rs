@@ -104,7 +104,7 @@ impl Discovery {
                     }
                 }
                 Node::Shading(s) => {
-                    self.space(&s.shading.space, &state(scene, s.mark.state), false)
+                    self.space(&s.shading.space, &state(scene, s.mark.state), false);
                 }
                 Node::Group(g) => {
                     if let Some(group) = scene.group(*g)
