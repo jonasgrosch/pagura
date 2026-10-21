@@ -30,11 +30,15 @@ fn pdfs(directory: &Path, out: &mut Vec<PathBuf>) {
 
 fn report(outcome: &Outcome, what: &str) {
     eprintln!(
-        "{what}: {} matched, {} pending, {} mismatched",
+        "{what}: {} matched, {} pending, {} intended, {} mismatched",
         outcome.matched,
         outcome.pending.len(),
+        outcome.intended.len(),
         outcome.mismatches.len()
     );
+    for line in &outcome.intended {
+        eprintln!("  intended {line}");
+    }
     for line in outcome.pending.iter().take(20) {
         eprintln!("  pending {line}");
     }

@@ -19,8 +19,16 @@ pub struct Outcome {
     /// Comparisons the new side could not make yet: a function, colour
     /// conversion or image source of another package is still a stub.
     pub pending: Vec<String>,
+    /// Differences the new design makes on purpose: Type 4 programs that
+    /// cannot be validated statically are rejected when read.
+    pub intended: Vec<String>,
     /// Scenes and text that matched.
     pub matched: usize,
+}
+
+/// Whether the new side's failure is an intended difference.
+fn intended(new: &Error) -> bool {
+    new.feature() == Some(pagura_color::features::CALCULATOR)
 }
 
 /// Whether `error` is the stub error of a package that has not landed.
@@ -130,6 +138,10 @@ pub fn page(name: &str, bytes: &[u8], index: usize, recovery: Recovery, outcome:
     let scene = match (&old, &new) {
         (_, Err(error)) if pending(error) => {
             outcome.pending.push(format!("{label}: scene: {error}"));
+            Scene::Pending
+        }
+        (_, Err(error)) if intended(error) => {
+            outcome.intended.push(format!("{label}: scene: {error}"));
             Scene::Pending
         }
         (Ok(list), Ok(scene)) => {
