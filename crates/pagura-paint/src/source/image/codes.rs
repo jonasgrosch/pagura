@@ -44,6 +44,9 @@ pub(super) struct Lanes {
     ends: Vec<(f64, f64)>,
     /// The largest code.
     maximum: u8,
+    /// The value at code zero and the change per code shared by every lane
+    /// of opaque lanes that follow their own component.
+    direct: Option<(f64, f64)>,
     /// Colour channels: all lanes when opaque, all but alpha and shape
     /// otherwise.
     channels: usize,
@@ -101,12 +104,16 @@ impl Lanes {
             affine.push((zero, slope));
             ends.push((zero, top));
         }
+        let own = component.iter().enumerate().all(|(lane, &c)| lane == c);
+        let shared = affine.windows(2).all(|pair| pair[0] == pair[1]);
+        let direct = (opaque && own && shared).then(|| affine.first().copied()).flatten();
         Some(Self {
             component: component.to_vec(),
             table,
             affine,
             ends,
             maximum,
+            direct,
             channels,
             opaque,
         })
@@ -131,6 +138,13 @@ impl Lanes {
         out: &mut SpanColors,
         shape: Option<&mut Vec<f64>>,
     ) {
+        if let Some((zero, slope)) = self.direct.filter(|_| n == self.table.len()) {
+            out.colors.clear();
+            out.colors
+                .extend(averages.iter().map(|&average| zero + average * slope));
+            opaque_shape(averages.len() / n, shape);
+            return;
+        }
         let fast = self.opaque
             && match (n, self.table.len()) {
                 (1, 1) => self.affine_opaque::<1, 1>(averages, &mut out.colors),
@@ -175,16 +189,15 @@ impl Lanes {
         };
         let zero: [f64; L] = std::array::from_fn(|l| self.affine[l].0);
         let slope: [f64; L] = std::array::from_fn(|l| self.affine[l].1);
+        let averages = averages.as_chunks::<N>().0;
         colors.clear();
-        colors.reserve(averages.len() / N * L);
-        for average in averages.as_chunks::<N>().0 {
-            let mut values = [0.0; L];
+        colors.resize(averages.len() * L, 0.0);
+        for (values, average) in colors.as_chunks_mut::<L>().0.iter_mut().zip(averages) {
             for (((value, &component), &zero), &slope) in
                 values.iter_mut().zip(&component).zip(&zero).zip(&slope)
             {
                 *value = zero + average[component] * slope;
             }
-            colors.extend_from_slice(&values);
         }
         true
     }
@@ -200,14 +213,13 @@ impl Lanes {
             return false;
         };
         let tables: [&[f64; 256]; L] = std::array::from_fn(|l| &self.table[l]);
+        let codes = codes.as_chunks::<N>().0;
         colors.clear();
-        colors.reserve(codes.len() / N * L);
-        for sample in codes.as_chunks::<N>().0 {
-            let mut values = [0.0; L];
+        colors.resize(codes.len() * L, 0.0);
+        for (values, sample) in colors.as_chunks_mut::<L>().0.iter_mut().zip(codes) {
             for ((value, &component), table) in values.iter_mut().zip(&component).zip(&tables) {
                 *value = table[usize::from(sample[component])];
             }
-            colors.extend_from_slice(&values);
         }
         true
     }
@@ -261,6 +273,14 @@ impl Lanes {
         out: &mut SpanColors,
         shape: Option<&mut Vec<f64>>,
     ) {
+        if let Some((zero, slope)) = self.direct.filter(|_| n == self.table.len()) {
+            // Every code becomes its colour value alike.
+            out.colors.clear();
+            out.colors
+                .extend(codes.iter().map(|&code| zero + f64::from(code) * slope));
+            opaque_shape(codes.len() / n, shape);
+            return;
+        }
         let fast = self.opaque
             && match (n, self.table.len()) {
                 (1, 1) => self.table_opaque::<1, 1>(codes, &mut out.colors),
@@ -360,8 +380,9 @@ enum Taps {
 /// The per-column part of the placement, for the columns of the region.
 #[derive(Debug)]
 enum Plan {
-    /// Per device column, the sample along the source axis it steps.
-    Nearest(Vec<u32>),
+    /// Per device column, the sample along the source axis it steps, and
+    /// whether they are consecutive.
+    Nearest(Vec<u32>, bool),
     /// Per device column, its footprint along that axis.
     Area(Vec<Footprint>),
 }
@@ -494,13 +515,10 @@ impl<'a> Grid<'a> {
                 bytes.get(start..start + (x1 - x0) * n).unwrap_or(&[])
             }
             Self::Packed(packed) => cache.get((y, (x0, x1)), x1 - x0, |out| {
-                let Some(row) = packed.row(y) else {
-                    return false;
-                };
-                for (x, out) in (x0..x1).zip(out.iter_mut()) {
-                    *out = bit(row, x);
-                }
-                true
+                packed.row(y).is_some_and(|row| {
+                    unpack(row, (x0, x1), out);
+                    true
+                })
             }),
             Self::Planar(planar) => cache.get((y, (x0, x1)), (x1 - x0) * 3, |out| {
                 planar.rgb_range(y, x0, x1, out)
@@ -509,9 +527,34 @@ impl<'a> Grid<'a> {
     }
 }
 
+/// Whether `indices` step by one sample.
+fn consecutive(indices: &[u32]) -> bool {
+    indices
+        .windows(2)
+        .all(|pair| pair[0].checked_add(1) == Some(pair[1]))
+}
+
 /// A sample coordinate as an index.
 fn index(value: u32) -> usize {
     usize::try_from(value).unwrap_or(usize::MAX)
+}
+
+/// Samples `x0..x1` of a packed row as one code per byte in `out`.
+fn unpack(row: &[u8], (x0, x1): (usize, usize), out: &mut [u8]) {
+    let head = x0.next_multiple_of(8).min(x1);
+    let whole = (x1 - head) / 8;
+    let (start, middle) = out.split_at_mut(head - x0);
+    for (x, out) in (x0..).zip(start) {
+        *out = bit(row, x);
+    }
+    let (middle, tail) = middle.split_at_mut(whole * 8);
+    let bytes = row.get(head / 8..).unwrap_or(&[]);
+    for (out, &byte) in middle.as_chunks_mut::<8>().0.iter_mut().zip(bytes) {
+        *out = [7, 6, 5, 4, 3, 2, 1, 0].map(|shift| (byte >> shift) & 1);
+    }
+    for (x, out) in (head + whole * 8..).zip(tail) {
+        *out = bit(row, x);
+    }
 }
 
 /// Sample `x` of a packed row.
@@ -557,7 +600,7 @@ fn row_footprint(geometry: &Geometry, taps: Taps, y: u32) -> Footprint {
 
 fn footprint(taps: Taps, pixel: u32, (scale, offset, maximum): (f64, f64, u32)) -> Footprint {
     match taps {
-        Taps::Area => Footprint::new(pixel, scale, offset, maximum),
+        Taps::Area => Footprint::new(pixel, scale, offset, maximum).trimmed(),
         Taps::Bilinear => Footprint::bilinear(pixel, scale, offset, maximum),
     }
 }
@@ -619,7 +662,8 @@ impl Codes {
                     .try_reserve_exact(count)
                     .map_err(|_| Error::limit("image plan allocation failed"))?;
                 indices.extend((x0..x1).map(|x| geometry.nearest_cell(x, 0).0));
-                Plan::Nearest(indices)
+                let consecutive = consecutive(&indices);
+                Plan::Nearest(indices, consecutive)
             }
             Kind::Area => {
                 let mut feet = Vec::new();
@@ -644,7 +688,7 @@ impl Codes {
     /// Bytes the plan and lanes hold.
     pub(super) fn bytes(&self) -> usize {
         let plan = match &self.plan {
-            Plan::Nearest(indices) => indices.capacity() * size_of::<u32>(),
+            Plan::Nearest(indices, _) => indices.capacity() * size_of::<u32>(),
             Plan::Area(feet) => feet.capacity() * size_of::<Footprint>(),
         };
         plan + self.lanes.table.len() * size_of::<[f64; 256]>()
@@ -722,7 +766,7 @@ impl Codes {
         let start = index(x.checked_sub(self.x0)?);
         let end = start.checked_add(len)?;
         let available = match &self.plan {
-            Plan::Nearest(indices) => indices.len(),
+            Plan::Nearest(indices, _) => indices.len(),
             Plan::Area(feet) => feet.len(),
         };
         (end <= available).then_some(start..end)
@@ -742,13 +786,15 @@ impl Codes {
             rows,
             ..
         } = scratch;
-        let indices: &[u32] =
-            if let (Plan::Nearest(planned), Some(range)) = (&self.plan, self.planned(x, len)) {
-                &planned[range]
+        let (indices, consecutive): (&[u32], bool) =
+            if let (Plan::Nearest(planned, consecutive), Some(range)) =
+                (&self.plan, self.planned(x, len))
+            {
+                (&planned[range], *consecutive)
             } else {
                 indices.clear();
                 indices.extend((x..).take(len).map(|x| self.geometry.nearest_cell(x, 0).0));
-                indices
+                (indices.as_slice(), consecutive(indices))
             };
         codes.clear();
         let row = self.geometry.nearest_cell(0, y).1;
@@ -758,15 +804,21 @@ impl Codes {
         if first > end {
             return;
         }
-        let first = index(first);
-        let source = grid.row(index(row), ((first, index(end) + 1), N), None, rows);
-        for &column in indices {
-            let start = (index(column) - first) * N;
-            let sample: [u8; N] = source
-                .get(start..start + N)
-                .and_then(|sample| sample.try_into().ok())
-                .unwrap_or([0; N]);
-            codes.extend_from_slice(&sample);
+        let (first, end) = (index(first), index(end) + 1);
+        let source = grid.row(index(row), ((first, end), N), None, rows);
+        codes.resize(indices.len() * N, 0);
+        if consecutive {
+            // One sample per pixel in order: the row itself.
+            if let Some(source) = source.get(..codes.len()) {
+                codes.copy_from_slice(source);
+            }
+            return;
+        }
+        let samples = source.as_chunks::<N>().0;
+        for (out, &column) in codes.as_chunks_mut::<N>().0.iter_mut().zip(indices) {
+            if let Some(sample) = samples.get(index(column) - first) {
+                *out = *sample;
+            }
         }
     }
 

@@ -134,6 +134,33 @@ impl Footprint {
         }
     }
 
+    /// The footprint without end samples that carry less than 2^-40 of its
+    /// weight: they move the average by less than 2^-40 of the colour
+    /// range, far below the quantizer's tie guard, where floating-point
+    /// error in the transform otherwise makes a footprint of two samples
+    /// touch four.
+    #[must_use]
+    pub(super) fn trimmed(mut self) -> Self {
+        const NEGLIGIBLE: f64 = 1.0 / 1_099_511_627_776.0;
+        if self.end - self.first > 1 && self.first_weight * self.normalization < NEGLIGIBLE {
+            self.first += 1;
+            self.first_weight = if self.end - self.first == 1 {
+                self.last_weight
+            } else {
+                1.0
+            };
+        }
+        if self.end - self.first > 1 && self.last_weight * self.normalization < NEGLIGIBLE {
+            self.end -= 1;
+            self.last_weight = if self.end - self.first == 1 {
+                self.first_weight
+            } else {
+                1.0
+            };
+        }
+        self
+    }
+
     fn weight(self, cell: u32) -> f64 {
         if cell == self.first {
             self.first_weight
