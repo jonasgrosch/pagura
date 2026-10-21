@@ -1,8 +1,18 @@
-//! Preview policies share compiled content and independent analytic oracles.
+//! Preview policies share one recorded scene and independent analytic
+//! oracles.
 
 use crate::support::{assert_tile_matches, open, ppm};
-use pagura::{OverprintPreview, RenderOptions, Rgba8, Tile};
+use pagura::{OverprintPreview, RenderContext, RenderOptions, Rgba8, Tile};
 use pagura_testkit::{assert_bytes_eq, fixture};
+use std::sync::Arc;
+
+/// A context for an overprint fixture and its first page's scene.
+fn recorded(name: &str) -> pagura::Result<(RenderContext, Arc<pagura::Scene>)> {
+    let document = open(fixture("overprint", &format!("{name}.pdf")))?;
+    let context = pagura::render_context(Arc::new(document));
+    let scene = context.scene(context.document().page(0)?)?;
+    Ok((context, scene))
+}
 
 #[test]
 fn preview_modes_select_print_intent_without_changing_compilation() {
@@ -24,9 +34,8 @@ fn preview_modes_select_print_intent_without_changing_compilation() {
         ("malformed-intent", false),
         ("malformed-info", false),
     ] {
-        let document = open(fixture("overprint", &format!("preview-{name}.pdf"))).unwrap();
-        let list = pagura::compile_page(&document, document.page(0).unwrap()).unwrap();
-        // Revisit modes after the simulated plan has been cached.
+        let (context, scene) = recorded(&format!("preview-{name}")).unwrap();
+        // Revisit modes after a simulated rendering.
         for mode in [
             OverprintPreview::Always,
             OverprintPreview::Never,
@@ -45,7 +54,7 @@ fn preview_modes_select_print_intent_without_changing_compilation() {
                 "no-intent"
             };
             let expected = fixture("overprint", &format!("preview-{oracle}.ppm"));
-            let full = list.render(&options).unwrap();
+            let full = context.render_scene(&scene, &options, None).unwrap();
             assert_bytes_eq(&ppm(&full), &expected, &format!("{name} {mode:?}"));
             let tile = Tile {
                 x: 3,
@@ -53,25 +62,24 @@ fn preview_modes_select_print_intent_without_changing_compilation() {
                 width: 2,
                 height: 3,
             };
-            assert_tile_matches(&full, &list.render_tile(&options, tile).unwrap(), tile);
+            let part = context.render_scene(&scene, &options, Some(tile)).unwrap();
+            assert_tile_matches(&full, &part, tile);
         }
     }
 }
 
 #[test]
-fn never_bypasses_simulated_plate_limits_even_after_a_cached_failure() {
-    let document = open(fixture("overprint", "spot-budget.pdf")).unwrap();
-    let list = pagura::compile_page(&document, document.page(0).unwrap()).unwrap();
-    assert_eq!(
-        list.render(&RenderOptions::default()).unwrap_err().kind,
-        pagura::ErrorKind::Limit
-    );
-    let image = list
-        .render(&RenderOptions {
-            overprint: OverprintPreview::Never,
-            ..RenderOptions::default()
-        })
-        .unwrap();
+fn never_bypasses_simulated_plate_limits_even_after_a_failure() {
+    let (context, scene) = recorded("spot-budget").unwrap();
+    let error = context
+        .render_scene(&scene, &RenderOptions::default(), None)
+        .unwrap_err();
+    assert_eq!(error.kind, pagura::ErrorKind::Limit);
+    let never = RenderOptions {
+        overprint: OverprintPreview::Never,
+        ..RenderOptions::default()
+    };
+    let image = context.render_scene(&scene, &never, None).unwrap();
     assert_bytes_eq(
         &ppm(&image),
         &fixture("overprint", "spot-budget-no-intent.ppm"),
@@ -85,8 +93,7 @@ fn preview_policy_controls_cmyk_luminosity_masks_without_page_separations() {
         ("preview-cmyk-mask", true),
         ("preview-cmyk-mask-no-intent", false),
     ] {
-        let document = open(fixture("overprint", &format!("{name}.pdf"))).unwrap();
-        let list = pagura::compile_page(&document, document.page(0).unwrap()).unwrap();
+        let (context, scene) = recorded(name).unwrap();
         for mode in [
             OverprintPreview::Never,
             OverprintPreview::Auto,
@@ -99,11 +106,12 @@ fn preview_policy_controls_cmyk_luminosity_masks_without_page_separations() {
             } else {
                 "preview-cmyk-mask-no-intent"
             };
-            let actual = list
-                .render(&RenderOptions {
-                    overprint: mode,
-                    ..RenderOptions::default()
-                })
+            let options = RenderOptions {
+                overprint: mode,
+                ..RenderOptions::default()
+            };
+            let actual = context
+                .render_scene(&scene, &options, None)
                 .unwrap()
                 .to_rgb_over(Rgba8::WHITE);
             let expected = fixture("overprint", &format!("{oracle}.ppm"));

@@ -348,6 +348,24 @@ fn help_succeeds_and_usage_errors_exit_with_status_two() {
     assert_eq!(missing.status.code(), Some(1));
 }
 
+/// The benchmark harness checks a competitive build with its flags before
+/// `--version`.
+#[test]
+fn version_accepts_rendering_options_before_it() {
+    for args in [
+        &["--version"][..],
+        &["--accuracy", "competitive", "--version"],
+        &["--fast", "glyph-bins,byte-storage", "--version"],
+    ] {
+        let output = pagura().args(args).output().unwrap();
+        assert_eq!(output.status.code(), Some(0), "{args:?}");
+        let text = String::from_utf8(output.stdout).unwrap();
+        assert!(text.starts_with("pagura "), "{args:?}: {text}");
+    }
+    let strict = pagura().args(["--strict", "--version"]).output().unwrap();
+    assert_eq!(strict.status.code(), Some(2));
+}
+
 #[test]
 fn scan_labels_unreadable_input_as_io() {
     let output = pagura()

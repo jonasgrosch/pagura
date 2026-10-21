@@ -11,7 +11,9 @@ use std::sync::Arc;
 use std::time::Instant;
 
 /// Times `count` repetitions of `operation` on `source`, opened with its
-/// password and recovery mode, and prints one JSON line.
+/// password and recovery mode, and prints one JSON line. `render-cold` opens,
+/// records and renders page 0 every time; `render-warm` renders it from one
+/// context, which records the page once and keeps its scene.
 pub(crate) fn run(
     source: &Source,
     operation: Bench,

@@ -3,7 +3,7 @@
 //! A [`Provider`] supplies standard-font metrics and substitute programs,
 //! predefined CMaps and CID-to-Unicode tables. The default `bundled-data`
 //! feature links [`Bundled`], which [`default_provider`] returns; the
-//! facade's free functions ([`crate::compile_page`], [`crate::text_page`],
+//! facade's free functions ([`crate::record_page`], [`crate::text_page`],
 //! [`crate::prepare_form`] …) and [`crate::render_context`] use it.
 //!
 //! To supply other data, implement [`Provider`] and pass it to

@@ -170,9 +170,10 @@ build: with `--engines` it requires `pagura` and is timed alongside it, and with
 `--reference` it is re-timed against stored competitor medians but never counts
 as the best competitor.
 
-The optional `round5.py --pagura-competitive` row times the portable binary's
-competitive accuracy path (`--accuracy competitive`, `RenderOptions::accuracy`;
-ADR 0004's competitive accuracy gate) under the name `pagura-competitive`.
+The optional `round5.py --pagura-competitive` row times the portable binary
+with every fast parameter on (`--accuracy competitive`, `FastParams::COMPETITIVE`
+in `RenderOptions::fast`; ADR 0004's competitive accuracy gate) under the name
+`pagura-competitive`.
 Exact `pagura` remains the headline and paired reference. The row's pixels
 differ from exact Pagura by design, so it takes no part in runtime parity; its
 agreement records against `pagura` measure its accuracy. Like the x86-64-v3
