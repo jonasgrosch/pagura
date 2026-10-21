@@ -1179,7 +1179,7 @@ def navigation_cases():
     objects[11]=dict(Limits=[b'a',b'a'],Names=[b'a',[ref(3),name('Fit')]])
     yield navigation_vector('navigation-tree-dangling-child',objects,'trees','a|0|Fit\n',repair='tree.structure',query='a',page=0)
     objects[10]['Kids']=[ref(11)]
-    objects[11]['Limits']=ref(99)
+    objects[11]['Limits']=ref(99)  # pyright: ignore[reportArgumentType]
     yield navigation_vector('navigation-tree-dangling-limits',objects,'trees','a|0|Fit\n',repair='tree.limits',query='a',page=0)
 
     objects=navigation_base();objects[99]=None

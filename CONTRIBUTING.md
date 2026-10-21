@@ -34,6 +34,8 @@ behaviour.
 - Interpreting a PDF never touches the network or filesystem and never runs
   scripts. Input documents are untrusted data.
 - Use the stable toolchain pinned in `rust-toolchain.toml`; keep it current.
+  Likewise the Python in `.python-version` and the tools in `uv.lock`, which
+  are development-only and never product dependencies (ADR 0018).
 
 ## The standard
 
@@ -77,6 +79,27 @@ in product code, no `#[allow]`) enforces part of it; review enforces the rest.
   and preallocate only with checked, budgeted sizes.
 - Tests follow the placement rules under [Conventions](#conventions);
   shared test helpers live in `pagura-testkit`.
+
+## Python tooling
+
+The checks, fixture generators and benchmark harness are Python, at least
+3.11; `.python-version` pins the exact interpreter and `uv.lock` pins every
+tool by hash (ADR 0018). Install [uv](https://docs.astral.sh/uv/), run
+`uv sync` once, and `uv run tools/check.py` then uses exactly the
+interpreter, ruff and pyright that CI uses. Run them alone with
+`uv run ruff check` and `uv run basedpyright`.
+
+- Ruff checks for defects, not style, and `ruff format` is not used: keep the
+  style of the surrounding file, including the fixture generators' compact
+  one-line style.
+- Pyright type-checks in standard mode and infers types in unannotated code.
+  Annotate a parameter or return type where it cannot infer intent, for
+  example a float parameter whose default is `1`.
+- A `# pyright: ignore[rule]` names its rule and is only for deliberately
+  malformed fixture data or flow the checker cannot follow.
+- Fixture generators stay standard-library only. The benchmark engines are
+  the `bench` dependency group, installed only by `tools/competitors.py setup`
+  outside the repository.
 
 ## Tags, fixtures and requirements
 
@@ -183,7 +206,7 @@ crate.
 1. Start from an independent reproducer with an expected result derived from
    the standard, linked to a requirement ID.
 2. Make the smallest coherent change.
-3. Run `python3 tools/check.py`; it must pass.
+3. Run `uv run tools/check.py`; it must pass.
 4. Record remaining limitations in `docs/STATUS.md` instead of turning
    unsupported cases into expected successes.
 

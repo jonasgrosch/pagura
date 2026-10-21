@@ -579,7 +579,7 @@ def bundled_cases():
     # Read the advance from AFM, then quantize it to the TrueType unit grid.
     # The embedded hmtx and PDF DW agree exactly (9.2.4).
     afm = root/'data/afm/Helvetica.afm'
-    width = next(int(re.search(r'WX\s+(\d+)',line).group(1)) for line in afm.read_text().splitlines() if '; N H ;' in line)
+    width = next(int(re.search(r'WX\s+(\d+)',line).group(1)) for line in afm.read_text().splitlines() if '; N H ;' in line)  # pyright: ignore[reportOptionalMemberAccess]
     advance = round(F(width*upem,1000))
     pdf_width = F(advance*1000,upem)
     metrics = struct.pack('>HhHh',advance,0,advance,0)+bytes(6)

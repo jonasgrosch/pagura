@@ -71,6 +71,13 @@ def read(case: dict, suffix: str) -> bytes | None:
     return (ROOT / entry["path"]).read_bytes() if entry else None
 
 
+def require(case: dict, suffix: str) -> bytes:
+    data = read(case, suffix)
+    if data is None:
+        raise SystemExit(f"{case['id']}: generated case lacks {suffix}")
+    return data
+
+
 def params(case: dict) -> dict[str, str]:
     text = (read(case, ".params") or b"").decode()
     return dict(line.split("=", 1) for line in text.splitlines() if "=" in line)
@@ -298,11 +305,11 @@ def text_seeds() -> None:
         if parts:
             add_structured("text", b"\x01", joined(read(case, ".input") or b"\x00\x41\x42 ", *parts))
     for case in cases("font"):
-        for _, parts, string in embedded_fonts(read(case, ".font"), case["format"]):
+        for _, parts, string in embedded_fonts(require(case, ".font"), case["format"]):
             add_structured("text", b"\x01", joined(string, FILLER_PAGE, *parts))
     # The CMap and ToUnicode vectors, used by an embedded TrueType font that
     # follows the fixture's own objects.
-    truetype = next(read(case, ".font") for case in cases("font") if case["id"] == "font/truetype-cmap4")
+    truetype = next(require(case, ".font") for case in cases("font") if case["id"] == "font/truetype-cmap4")
     for case in cases("text"):
         pdf = read(case, ".pdf")
         parts = pdf and wrapper_parts(pdf)
@@ -385,11 +392,11 @@ def main() -> int:
             add("content", stream_data)
             add("extraction", stream_data)
     for case in cases("codec"):
-        data = read(case, ".in")
+        data = require(case, ".in")
         for selector in range(8):
             add("filters", bytes([selector]) + data)
     for case in cases("font"):
-        data = read(case, ".font")
+        data = require(case, ".font")
         for selector in range(4):
             add("font", bytes([selector]) + data)
     image_seeds()

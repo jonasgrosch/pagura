@@ -12,7 +12,7 @@ from .content import (
     blend_colour, ICC_D50, ICC_RGB_MATRIX, icc_fixed, icc_legacy, icc_pack, icc_profile, icc_tags,
 )
 from .model import Case, RENDER, UNSUPPORTED
-from .pdf import document, opaque_rectangles, single_page, stream
+from .pdf import document, opaque_rectangles, stream
 
 AREA = "transparency"
 MODES = (

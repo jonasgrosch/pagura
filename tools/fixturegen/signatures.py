@@ -264,7 +264,7 @@ def cases():
     # expose the missing confirmation instead of asserting a negative match.
     marker = pdf.data.rindex(b'startxref\n') + len(b'startxref\n')
     old = str(pdf.previous).encode()
-    replacement = str(pdf.previous + 1).encode()
+    replacement = str(pdf.previous + 1).encode()  # pyright: ignore[reportOptionalOperand]
     assert len(old) == len(replacement)
     pdf.data[marker:marker + len(old)] = replacement
     ranges = patch(pdf, positions[5], body, span)

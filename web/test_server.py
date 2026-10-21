@@ -5,10 +5,12 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("pagura_serve_web", ROOT / "tools/serve_web.py")
-SERVER = importlib.util.module_from_spec(SPEC)
+assert SPEC is not None and SPEC.loader is not None
+SERVER: Any = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(SERVER)
 
 

@@ -8,6 +8,7 @@ Neither model imports or executes the product.
 """
 import math
 import struct
+from typing import Any
 
 # T.81 Table D.3: Qe, next LPS, next MPS, switch MPS.
 STATES = [
@@ -465,6 +466,7 @@ def jpeg(*, arithmetic=True, precision=8, progressive=False, restart=0, tables=F
     data += segment(0xdb, b'\x10' + struct.pack('>64H', *([quantizer]*64)))
     data += segment(process, bytes([precision])+struct.pack('>HHB',height,width,n)
                     + b''.join(bytes([ci+1,0x11,0]) for ci in range(n)))
+    ac_symbols, ac_codes = b'', {}  # Huffman tables, set below when not arithmetic
     if arithmetic and dac:
         data += segment(0xcc, b''.join(bytes([ci, l+16*u, 0x10+ci, k])
                                        for ci, (l,u,k) in enumerate(conditioning)))
@@ -494,7 +496,7 @@ def jpeg(*, arithmetic=True, precision=8, progressive=False, restart=0, tables=F
             sequence = 0
             for first in range(0, count, restart or count):
                 last = min(count, first+(restart or count))
-                coder = Encoder() if arithmetic else Wire()
+                coder: Any = Encoder() if arithmetic else Wire()
                 prior = [(0,0)]*n
                 for bi in range(first,last):
                     for ci in group:

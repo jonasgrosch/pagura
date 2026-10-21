@@ -87,13 +87,13 @@ def decision(pdf, change, before, after, changed_values):
         elif unresolved:
             rule = 'Unclassified'
     if operation == 'sign' and change.target == '4':
-        flags = lambda state: int(re.search(rb'/SigFlags (\d+)', state['4'])[1])
+        flags = lambda state: int(re.search(rb'/SigFlags (\d+)', state['4'])[1])  # pyright: ignore[reportOptionalSubscript]
         prior, next_value = flags(before), flags(after)
         if prior & ~next_value or (prior ^ next_value) & ~3:
             permitted, rule = False, 'DocumentStructure'
     if operation == 'identifier':
         # 14.4: the permanent identifier stays fixed; only the second changes.
-        first = lambda state: re.search(rb'/ID \[([^ ]+)', state.get('trailer', b''))[1]
+        first = lambda state: re.search(rb'/ID \[([^ ]+)', state.get('trailer', b''))[1]  # pyright: ignore[reportOptionalSubscript]
         permitted = first(before) == first(after)
         if not permitted:
             rule = 'DocumentStructure'

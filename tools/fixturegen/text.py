@@ -561,7 +561,7 @@ def truetype_fallback_cases():
     The records deliberately disagree. Expected glyphs follow the ISO route
     or the stated final-paragraph policy, never a product executable.
     """
-    def vector(name, records, glyph, *, raw=False, code=65, text="A", **options):
+    def vector(name, records, glyph, *, raw=False, code=65, text: str | None = "A", **options):
         program = text_truetype(records, names=(b"X", b"Y", b"Z", b"Q"))
         return binding_vector(name, program, bytes([code]),
             [(code, 1, .6, False, None if raw else text, glyph, None, None, None)],
@@ -976,7 +976,7 @@ def bundled_cases():
         outlines = item["outline"]
         charset = bundled_cff_charset(data/outlines) if outlines.endswith(".cff") else None
         rows = [(code,widths.get(encoding.get(code),0)/1000,
-                 sample_unicode.get(encoding.get(code)),
+                 sample_unicode.get(encoding.get(code)),  # pyright: ignore[reportArgumentType]
                  (charset.get(encoding.get(code),0) if charset is not None else
                   bundled_tt_glyph(data/outlines,ord(sample_unicode[encoding[code]]))
                   if outlines and encoding.get(code) in sample_unicode else 0))
@@ -1140,7 +1140,7 @@ def style_substitution_cases(data, lock):
         widths = (731,187,923) if explicit else [entries[c][1] for c in range(65,68)]
         rows = [(code,width/1000,scalar,charset[entries[code][0]])
                 for code,width,scalar in zip(range(65,68),widths,scalars)]
-        positions = [0]
+        positions: list[float] = [0]
         for _,width,_,_ in rows[:-1]: positions.append(positions[-1]+width)
         descriptors = ([b"<< /Flags 6 0 R >>",b"4"] if indirect else [b"<< /Flags 4 >>"]) if explicit else []
         yield Vector(name,{".pdf":pdf(font,descriptors),".input":b"ABC",".out":expected(rows),
@@ -1370,8 +1370,8 @@ def extraction_cases():
         a, b, c, d, e, f = m
         return a*x+c*y+e, b*x+d*y+f
 
-    def records(text, x, y, *, size=10, horizontal=1, character=0, word=0,
-                rise=0, matrix=(1,0,0,1,0,0), advance=.5, height=1,
+    def records(text, x, y, *, size=10, horizontal: float = 1, character=0, word=0,
+                rise=0, matrix=(1,0,0,1,0,0), advance=.5, height: float = 1,
                 mode=0, hidden=False, path="", vertical=False, origin=(.25,.8),
                 font_matrix=None, unicode_values=None):
         rows=[]
@@ -1413,7 +1413,7 @@ def extraction_cases():
             # Rebuild objects to let the PDF writer recompute every xref offset.
             pdf_data=document([b"<< /Type /Catalog /Pages 2 0 R "+catalog+b" >>",
                 b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-                b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 240 240] /Resources "+res+b" /Contents 4 0 R >>",
+                b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 240 240] /Resources "+res+b" /Contents 4 0 R >>",  # pyright: ignore[reportOperatorIssue]
                 stream(content),*(objects if objs is None else objs)])
         words=[];lines=[];offset=0
         for line in text.split('\n'):
@@ -1505,7 +1505,7 @@ def structure_cases():
         return scalar(item)
 
     def case(name, elements, runs, *, roles=None, actual=None, alt=None,
-             malformed=None, split=False, object_form=False, hidden=False, explicit17=False, object_annotation=False, object_image=False, nulls=False, empty_root=False, marked=b"", invalid_mcid=None, untagged=False, annotation_flags=0, annotation_subtype="Link", property_list=None):
+             malformed=None, split=False, object_form=False, hidden=False, explicit17=False, object_annotation=False, object_image=False, nulls: bool | str = False, empty_root=False, marked=b"", invalid_mcid=None, untagged=False, annotation_flags=0, annotation_subtype="Link", property_list=None):
         roles, actual, alt = roles or {}, actual or {}, alt or {}
         excluded = hidden or bool(annotation_flags & (2|32)) or (bool(annotation_flags & 1) and annotation_subtype == "Custom")
         ids = {key: 12+i for i,(key,_,_) in enumerate(elements)}

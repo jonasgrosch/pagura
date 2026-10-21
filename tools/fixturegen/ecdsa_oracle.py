@@ -126,7 +126,7 @@ def vectors():
             digest = (bytes(80) if case == 0 else bytes([255])*80 if case == 1 else
                       hashlib.shake_256(rng.randbytes(32)).digest([20, 28, 32, 48, 64, 66, 80][case % 7]))
             e = int.from_bytes(digest, 'big') >> max(0, 8*len(digest)-n.bit_length())
-            r = multiply(k, (gx, gy), p)[0] % n
+            r = multiply(k, (gx, gy), p)[0] % n  # pyright: ignore[reportOptionalSubscript]
             s = (e + r*d) * pow(k, -1, n) % n
             assert verify(name, digest, point, r, s)
             key = point_bytes(name, point, case % 2 == 0)
@@ -135,7 +135,7 @@ def vectors():
             changed_r = (r % (n-1)) + 1
             assert not verify(name, digest, point, changed_r, s)
             emit('python-affine', f'{case}-changed-r', name, digest, key, signature(changed_r, s), False)
-            bad_point = (point[0], (point[1]+1) % p)
+            bad_point = (point[0], (point[1]+1) % p)  # pyright: ignore[reportOptionalSubscript]
             assert not verify(name, digest, bad_point, r, s)
             bad_key = point_bytes(name, bad_point)
             emit('python-affine', f'{case}-off-curve', name, digest, bad_key, signature(r, s), False)

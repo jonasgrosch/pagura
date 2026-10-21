@@ -1,16 +1,26 @@
 """Offline product checks, identical locally and in CI after toolchain installation."""
+import sys
+
+# Before anything else: the tools need tomllib (3.11); .python-version pins the exact version.
+if sys.version_info < (3, 11):
+    sys.exit(f"tools/check.py needs Python 3.11 or newer, not {sys.version.split()[0]}; "
+             "run it with `uv run tools/check.py` to use the version pinned in .python-version")
+
 import os
 import subprocess
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CARGO = ["cargo"]
 OFFLINE = ["--locked", "--offline"]
+# Python lint tools pinned in uv.lock (ADR 0018); `uv sync` installs them once.
+UV_LINT = ["uv", "run", *OFFLINE, "--only-group", "lint"]
 COMMANDS = [
     ([sys.executable, "tools/policy.py"], {}),
     ([sys.executable, "tools/fixtures.py", "--check"], {}),
     ([sys.executable, "tools/bundled_data.py", "verify"], {}),
+    (UV_LINT + ["ruff", "check"], {}),
+    (UV_LINT + ["basedpyright"], {}),
     (CARGO + ["fmt", "--all", "--", "--check"], {}),
     (CARGO + ["clippy", *OFFLINE, "--workspace", "--all-targets", "--", "-D", "warnings"], {}),
     (CARGO + ["test", *OFFLINE, "--workspace", "--all-targets"], {}),
