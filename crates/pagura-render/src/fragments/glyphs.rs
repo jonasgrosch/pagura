@@ -5,7 +5,9 @@
 //! horizontal phases, with area division done when a fragment is prepared.
 //! Fragments are dealt from the rows in turn, four to a vector of lanes, so
 //! that their areas form side by side and their additions never wait on one
-//! another; each cell still receives its additions in clipping order.
+//! another. Each cell still receives its additions in clipping order, but
+//! for the +0.0 that a one-cell fragment adds two cells on, which can lie in
+//! the next row and changes no level.
 //! Origins snap to a 1/128-pixel lattice horizontally and to the
 //! resolution's lattice vertically; integer translation is applied when the
 //! mask is painted. A mask is a pure function of its key, so retention and
@@ -398,8 +400,9 @@ struct Rows {
     _outline: Arc<Path>,
     /// The fragments dealt from the rows in turn, so that neighbours lie in
     /// different rows and never add to one cell; each row keeps the order
-    /// of its fragments, and so each cell the order of its additions. Empty
-    /// fragments on the spare cells complete the last quad.
+    /// of its fragments, and so each cell the order of its additions but
+    /// for zero terms (see [`Accumulator::quad`]). Empty fragments on the
+    /// spare cells complete the last quad.
     quads: Vec<Quad>,
     /// The fragments before that padding.
     count: usize,
@@ -431,30 +434,46 @@ impl Rows {
             .checked_mul(stride)
             .filter(|cells| u32::try_from(cells + SPARE).is_ok())
             .ok_or(Error::limit("glyph extent budget exceeded"))?;
-        // A fragment is held in the clipping storage and in its quad.
+        // Half the allocation budget holds the two row tables and every
+        // fragment, once in the clipping storage and once in its quad.
+        // Capacity retained from a larger glyph is released when that budget
+        // no longer covers it.
+        let budget = limits.decoded_bytes / 2;
+        if starts.capacity().saturating_add(rows.capacity()) > budget / size_of::<usize>() {
+            (*starts, *rows) = (Vec::new(), Vec::new());
+        }
+        let exceeded = || Error::limit("glyph row fragment budget exceeded");
+        let tables = (glyph.height + 1)
+            .checked_mul(2 * size_of::<usize>())
+            .filter(|&bytes| bytes <= budget)
+            .ok_or_else(exceeded)?;
         let held = size_of::<Fragment>() + size_of::<Quad>() / 4;
-        let maximum = (limits.decoded_bytes / 2 / held).min(limits.raster_work);
+        let maximum = ((budget - tables) / held).min(limits.raster_work);
+        if fragments.capacity() > maximum {
+            *fragments = Vec::new();
+        }
         // Each row's fragment count, one past its index, then their sums.
+        // The budget is checked before an edge's rows are counted, so that
+        // counting costs no more than clipping within the budget.
         starts.clear();
         try_reserve(starts, glyph.height + 1)?;
         starts.resize(glyph.height + 1, 0);
+        let mut total = 0_usize;
         for &edge in &glyph.edges {
             if let Some((.., crossed)) = span(edge, py, glyph.height) {
+                total = total.saturating_add(crossed.len());
+                if total > maximum {
+                    return Err(exceeded());
+                }
                 for row in crossed {
                     starts[row + 1] += 1;
                 }
             }
         }
-        let mut total = 0_usize;
+        let mut sum = 0;
         for start in starts.iter_mut() {
-            total += *start;
-            *start = total;
-        }
-        if total > maximum {
-            return Err(Error::limit("glyph row fragment budget exceeded"));
-        }
-        if fragments.capacity() > maximum {
-            *fragments = Vec::new();
+            sum += *start;
+            *start = sum;
         }
         fragments.clear();
         try_reserve(fragments, total)?;
@@ -785,6 +804,9 @@ impl Accumulator {
         let c = LANES.map(|i| select(one[i], 0.0, height[i] - second[i]));
         let at = LANES.map(|i| quad.start[i].wrapping_add(cell[i].cast_unsigned()) as usize);
         let formed = LANES.map(|i| one[i] | two[i]);
+        // The common quad, whose four fragments are all formed, is tested
+        // once for all its lanes, so that its additions take no branch per
+        // lane.
         for i in LANES {
             if formed != [!0; 4] && formed[i] == 0 {
                 self.add(
@@ -1146,6 +1168,36 @@ mod tests {
             }
         }
         assert!(tested > 100, "{tested}");
+    }
+
+    #[test]
+    fn row_budgets_stop_tall_glyphs_before_their_rows_are_counted() {
+        let mut path = PathBuilder::new();
+        path.rect(0.0, 0.0, 1.0, 1.0);
+        let path = Arc::new(path.finish());
+        // A bar one pixel wide and 400,000 rows tall: both its sides cross
+        // every row.
+        let tall = Transform::new(1.0, 0.0, 0.0, 400_000.0, 0.0, 0.0);
+        let glyph = Prepared::new(&path, tall, Resolution::Low, Limits::default()).unwrap();
+        let tables = (glyph.height + 1) * 2 * size_of::<usize>();
+        let mut clipping = Clipping::default();
+        // The row tables fit and a few fragments do; one side's rows do not.
+        let fragments = Limits {
+            decoded_bytes: 2 * (tables + 4096),
+            ..Limits::default()
+        };
+        let error = Rows::new(&glyph, 0.0, fragments, &mut clipping).unwrap_err();
+        assert_eq!(error.message, "glyph row fragment budget exceeded");
+        assert!(clipping.fragments.capacity() <= 4096);
+        // The row tables alone exceed the budget: nothing is allocated, and
+        // the table kept from the glyph before, beyond it too, is released.
+        let rows = Limits {
+            decoded_bytes: tables / 2,
+            ..Limits::default()
+        };
+        let error = Rows::new(&glyph, 0.0, rows, &mut clipping).unwrap_err();
+        assert_eq!(error.message, "glyph row fragment budget exceeded");
+        assert_eq!(clipping.starts.capacity() + clipping.rows.capacity(), 0);
     }
 
     #[test]
