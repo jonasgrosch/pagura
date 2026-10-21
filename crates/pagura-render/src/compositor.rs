@@ -369,12 +369,16 @@ impl Context {
         if format == plan::Format::F64 {
             return self.surface(tile, Backdrop::Transparent);
         }
-        let count = tile.width as usize * tile.height as usize;
+        let count = usize::try_from(u64::from(tile.width) * u64::from(tile.height))
+            .ok()
+            .filter(|&v| v <= self.limits.pixels)
+            .ok_or(Error::limit("page pixel budget exceeded"))?;
         let bytes = match format {
-            plan::Format::U8 => narrow::Bytes::charge(tile.width as usize, tile.height as usize),
-            plan::Format::N16 => count * 8,
-            _ => count * 16,
-        };
+            plan::Format::U8 => narrow::Bytes::charge(count, tile.height as usize),
+            plan::Format::N16 => count.checked_mul(8),
+            _ => count.checked_mul(16),
+        }
+        .ok_or(Error::limit("colour buffer byte size overflow"))?;
         self.trim_raster(bytes);
         self.allocated = self
             .allocated

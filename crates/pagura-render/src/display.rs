@@ -635,8 +635,10 @@ impl DisplayList {
         }
         if options.accuracy == crate::Accuracy::Competitive {
             match crate::compositor::render_competitive(self, options, tile, lent) {
-                // The competitive path's own working budgets must not make a
-                // page fail that the exact path renders within its limits.
+                // A limit on the competitive path must not make a page fail
+                // that the exact path renders within its limits. Any limit
+                // error falls back, so a rendering costs at most one
+                // competitive attempt plus the exact rendering.
                 Err(error) if error.kind == pagura_core::ErrorKind::Limit => {}
                 result => return result,
             }

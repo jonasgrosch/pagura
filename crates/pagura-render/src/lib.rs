@@ -66,8 +66,11 @@ pub enum Accuracy {
     /// - Other fills and strokes accumulate signed areas in cells after
     ///   flattening curves to 1/64-pixel chords. Compound paths without a
     ///   retained stroke boundary keep geometric integration of their union.
-    /// - Clipping paths that a mark does not lie inside multiply into it as
-    ///   their own cell coverage, integrated once per band.
+    /// - A clipping path that contains a mark is dropped for it, and a
+    ///   quadrilateral mark within quadrilateral clips is integrated with them
+    ///   geometrically. A rectangular clip multiplies into a mark as a column
+    ///   factor times a row factor; any other clipping path as its own cell
+    ///   coverage, integrated once per band.
     /// - Normal composition of an opaque page rounds once into byte storage
     ///   in full-width bands of 256 rows wherever the exact path would admit
     ///   16-bit or f32 storage. Retained groups and other compositing keep
@@ -82,7 +85,9 @@ pub enum Accuracy {
     /// - Embedded TrueType programs are decoded only as far as drawing reads
     ///   them, so damage in later tables is neither examined nor reported.
     ///
-    /// It does not meet the one-level contract.
+    /// A page that exceeds a limit on this path is rendered exactly instead,
+    /// so a rendering costs at most one competitive attempt plus the exact
+    /// rendering. It does not meet the one-level contract.
     Competitive,
 }
 
@@ -188,21 +193,7 @@ fn pixels(extent: f64) -> Result<u32> {
 /// error for budget violations, and syntax errors for malformed content.
 /// No partial page is ever returned.
 pub fn render_page(document: &Document, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
-    let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
-    direct_image::render(
-        |layout| {
-            interpreter::compile_cached_with(
-                document,
-                page,
-                None,
-                &fonts,
-                (layout, None, options.accuracy == Accuracy::Competitive),
-            )
-        },
-        options,
-        None,
-        (None, compositor::Lent::default()),
-    )
+    render_compiled(document, page, options, None, None)
 }
 
 /// Renders a whole page using explicitly supplied external font resources.
@@ -215,21 +206,7 @@ pub fn render_page_with(
     options: &RenderOptions,
     provider: &dyn Provider,
 ) -> Result<Pixmap> {
-    let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
-    direct_image::render(
-        |layout| {
-            interpreter::compile_cached_with(
-                document,
-                page,
-                Some(provider),
-                &fonts,
-                (layout, None, options.accuracy == Accuracy::Competitive),
-            )
-        },
-        options,
-        None,
-        (None, compositor::Lent::default()),
-    )
+    render_compiled(document, page, options, Some(provider), None)
 }
 
 /// Renders one tile of a page. Tiles of one page with the same options
@@ -246,21 +223,7 @@ pub fn render_tile(
     options: &RenderOptions,
     tile: Tile,
 ) -> Result<Pixmap> {
-    let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
-    direct_image::render(
-        |layout| {
-            interpreter::compile_cached_with(
-                document,
-                page,
-                None,
-                &fonts,
-                (layout, None, options.accuracy == Accuracy::Competitive),
-            )
-        },
-        options,
-        Some(tile),
-        (None, compositor::Lent::default()),
-    )
+    render_compiled(document, page, options, None, Some(tile))
 }
 
 /// Renders a tile using explicitly supplied external font resources.
@@ -274,19 +237,31 @@ pub fn render_tile_with(
     tile: Tile,
     provider: &dyn Provider,
 ) -> Result<Pixmap> {
+    render_compiled(document, page, options, Some(provider), Some(tile))
+}
+
+/// Compiles `page` for one rendering and renders it whole or as `tile`, with
+/// a font cache of its own.
+fn render_compiled(
+    document: &Document,
+    page: &Page,
+    options: &RenderOptions,
+    provider: Option<&dyn Provider>,
+    tile: Option<Tile>,
+) -> Result<Pixmap> {
     let fonts = std::sync::Mutex::new(interpreter::text::cache::FontCache::new(document.limits()));
     direct_image::render(
         |layout| {
             interpreter::compile_cached_with(
                 document,
                 page,
-                Some(provider),
+                provider,
                 &fonts,
                 (layout, None, options.accuracy == Accuracy::Competitive),
             )
         },
         options,
-        Some(tile),
+        tile,
         (None, compositor::Lent::default()),
     )
 }
