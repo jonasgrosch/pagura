@@ -1,0 +1,131 @@
+{
+  "schema": 1,
+  "experiment": "rectangle-reserve",
+  "identities": {
+    "baseline": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/rectangle-reserve-control/pagura",
+      "commit": "52d8e7f41e2bfc4d38bff394adcb2f4a1783a8c2",
+      "source_sha256": "46c70d4775cddf59556837e95b6c293a4dc78834191c9d120fdf6c86824d8247",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/build-001/baseline",
+      "binary_sha256": "9b6075dcc401eaa1612e58cc14de36d21d537ed7e296319848edd527b41d476d"
+    },
+    "candidate": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+      "commit": "2331c658686e4f361c30a98505a9fd37c75bbf63",
+      "source_sha256": "43989f751aed209a03c9de5a45410d06e41dd649c2396b17367ea3caace4bf3a",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/build-001/candidate",
+      "binary_sha256": "6631a8afc17ae19c58ab42acb0547dc384133d39dccfbab5fc076d5594cab5cb"
+    }
+  },
+  "candidate_runner_source_sha256": "bd1889e0e067aa98191dd025fde1a29010f3ec2d917d1e3611c99d7e4910b376",
+  "bound_files_sha256": {
+    ".cargo/config.toml": "b5d1e3e2e68286c97fc37c1f1b1380cb18355bd3f87a8bf8be9e9c026a6d4a6d",
+    "benchmarks/color_reuse.py": "5d1f0bebc7ca74c8348e6f8ddc0906e58705dd9267398686f2e9341250d82401",
+    "benchmarks/color_reuse_fixtures.py": "84ed3379405deb95be8b5ce73e5da39fd8581ebe8448bf67da49cc06563e4121",
+    "benchmarks/evaluate_n16_output.py": "cd71c7124e89cb6751bc2bf23cd655b187b88552f1dd6beb4b51fcefa4ae8692",
+    "benchmarks/evaluate_rectangle_reserve.py": "09f7c4d3459415e44c3d95c8583cf4b5591404b34a0a90ef72942cc91bf14bf5",
+    "benchmarks/paired_render.py": "feb245618601265124f11cb2af090ea24fc6a7bff03f8a729ee2708714ae98eb",
+    "benchmarks/preflight_color_reuse.py": "5674141c3856f8d0205ababbfb609ce5d841c26e345ebbe7ad0d95972bc484fc",
+    "benchmarks/preflight_rectangle_reserve.py": "b42cdb5f8af56f8bdeb826ad672c31ceb634badf5dfcfe2c6c819b72ca665462",
+    "benchmarks/rectangle_reserve.py": "aab555d6d7b1bbf0e17f3d4fc0b828ecd5eb86e9b1994009c15e4fcb3bb5cbba",
+    "benchmarks/results/rectangle-reserve-plan.json": "ee6b977a9f6a40cfe88ff5a77945b09f32b9036d812bb8c4549680d1f5eb1519",
+    "benchmarks/results/sources/analytic19-conversion/idle_then.py": "bedfb4f54e1764360f2b90c56e093e96182fba15b6da4ffe9ab7d4400aad4d30",
+    "benchmarks/results/sources/analytic19-conversion/load_observer.py": "5879b8ac1dc71d93c15767d4482f8cccc6f1b1ac3cc5526421f44a22e7b76c0d",
+    "benchmarks/results/sources/analytic19-conversion/manifest.json": "278c79b1ccb29a2a5631050c7cd34f6e915312c9d98f59e0a600e2c94e3acac3",
+    "benchmarks/results/sources/analytic19-conversion/references.json": "924e20d6495990e8206c837d420c0172d5404ea1b3ede56417a9d59bb84bbcaf",
+    "benchmarks/results/sources/rectangle-reserve/build.py": "d7dd622c2765cf1f8e6c0bebda449a05e51e9fa492afb3640997429f93511b2a",
+    "benchmarks/results/sources/rectangle-reserve/candidate.patch": "340bdae6bbfe1f4bf6fba020d91736534113a66ac6ac8a44b50487110ceac9d8",
+    "benchmarks/results/sources/rectangle-reserve/check.py": "118617af1c6f6da5985c81fb0a93088ffa45b13bcfe953b16e2fa26722f5940b",
+    "benchmarks/results/sources/rectangle-reserve/wasi_tests.py": "e3304fa036da9b8f7a9e0dc91a0ec1ae9ed2e0eba3d81ffaae9b76f6479e7ed7",
+    "benchmarks/test_preflight_color_reuse.py": "e28849c32cf75dc95dc52a658468a66184104b95e818f8464c42599e0714987f",
+    "benchmarks/test_rectangle_reserve_harness.py": "0f3a31b3c14e1d35400326620548b36045e16c5c2c4c6cfe722e4ef5d62f77c2",
+    "crates/pagura-render/examples/scene_index_profile.rs": "8e89a087d351e7b89289e0897cafeb75422d4c151280734fde8c958a841279f2",
+    "rust-toolchain.toml": "07647b6d1df86ed3a940cea32eb5c93a80d4d5e71926f849f500f15c2c2e3d5c",
+    "tools/benchkit/measurement.py": "15635857438cd4cb75308d84621ce7a2a808ded187813570ebec18dd8e3368f9",
+    "tools/benchkit/statistics.py": "18b14a7dc3e079a9f3452c6a31887f7dbd49e8d4e8fcfeb5257406e60045ebff",
+    "tools/runner.py": "92bf6ec2203f9404a78942ae5303bab1310793ca98ed6dad7278a57eeed83df1"
+  },
+  "build_report": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/build-001/report.json",
+    "sha256": "9fd1ed1ee148762546073bf423b083b02565dfd9de8e98d870709be333eb1a89"
+  },
+  "completed_evidence": [
+    {
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/focused-001-receipt.json",
+        "sha256": "ade87e3dfd67d464cd8e33e244682c7cc402f7976e62d595c284aa0bdad9b523"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/focused-001-observer/guard.json",
+        "sha256": "0c3f8406e6727f8cefb2ebe1297b7810380e9363587262eb81a59de6542f1381"
+      },
+      "artifacts": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/focused-001-observer/guard.json": "0c3f8406e6727f8cefb2ebe1297b7810380e9363587262eb81a59de6542f1381",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/focused-001.json": "58431a8bd1818562d1af90de556a17444d376b295393feffecc6a029be4cda92",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/focused-001.log": "69630da53ee0dec2768536f6bad79cb465feeea96ebdc1840c71c1b6db586595"
+      }
+    },
+    {
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/wasi-build-001-receipt.json",
+        "sha256": "7a4c61f70084bba5039868280c2e1eeef934715e87ef0fa927bf07ae9eaa4d5e"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/wasi-build-001-observer/guard.json",
+        "sha256": "af837eecb70e3877537dbba9ba68f3e4c415110af2acb893e5cbadb1a7cd47cb"
+      },
+      "artifacts": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/wasi-build-001-observer/guard.json": "af837eecb70e3877537dbba9ba68f3e4c415110af2acb893e5cbadb1a7cd47cb",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/wasi-build-001.json": "770bc98b563b5cde2333537c43acf8af47df96c042273a3bd8ac15f5c5204160",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/wasi-build-001.log": "232aa52d1dde0d7ba10db0a7452026a973a52700e2a6a27cea5a96bd8997767d"
+      }
+    },
+    {
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/wasi-tests-001-receipt.json",
+        "sha256": "e335f33b26623754017125976cc6e6f5051b2fd9e110aa19dac694adb1e7ba66"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/wasi-tests-001-observer/guard.json",
+        "sha256": "62facb9fe122ba6aabd698bfbe6c4ad193fbf9462220c9e7a44a16db52a59d5c"
+      },
+      "artifacts": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/wasi-modules.json": "11c6fce93042858e8b10209975c8aa2733da19f3779b8193d1c6fb157cae1039",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/wasi-tests-001-observer/guard.json": "62facb9fe122ba6aabd698bfbe6c4ad193fbf9462220c9e7a44a16db52a59d5c",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/wasi-tests-001.json": "7a38280f8dda95b8bda0956f13912b916b82df1fe6e1f7006bf2950d6173f3ce",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/wasi-tests-001.log": "a05c294fbba7280977bd3707d4a319b2be3a5235bc187005d603d512d781f71d",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/f32-preservation/run_wasi_tests.mjs": "90ea58f9f4bcdb298cf323f90f4af869ca84b6c809b08d23329a8e8865a19c72",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/rectangle-reserve/wasi_tests.py": "e3304fa036da9b8f7a9e0dc91a0ec1ae9ed2e0eba3d81ffaae9b76f6479e7ed7"
+      }
+    },
+    {
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/harness-001-receipt.json",
+        "sha256": "387846b012b208474050e9dfd3ca3da8f7030338b9b4f7c01c8672353299e85e"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/harness-001-observer/guard.json",
+        "sha256": "f34a7c77cfd81431ae5d53d001f7ab4794ad90010238ed5c213e62776f53c61b"
+      },
+      "artifacts": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/harness-001-observer/guard.json": "f34a7c77cfd81431ae5d53d001f7ab4794ad90010238ed5c213e62776f53c61b",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/harness-001.json": "14c277d7c61faa7e418fe90142fce5bfabcea74871c17c56e15b1438c877f31b",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/harness-001.log": "8f20238767c401734c2a5814618491e78ff445facd7922105c9f34a1a13303de"
+      }
+    },
+    {
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/build-001-receipt.json",
+        "sha256": "e44c61bd8b5885a899dfc58b2e11c4dc6e17a99e461e2217885c034dda494b17"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/build-001-observer/guard.json",
+        "sha256": "9db9ab017d6101fcad5c85e87e9bbcc164959b39a612d85541379d13a627ec90"
+      },
+      "artifacts": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/build-001-observer/guard.json": "9db9ab017d6101fcad5c85e87e9bbcc164959b39a612d85541379d13a627ec90",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/rectangle-reserve/build-001/report.json": "9fd1ed1ee148762546073bf423b083b02565dfd9de8e98d870709be333eb1a89"
+      }
+    }
+  ]
+}

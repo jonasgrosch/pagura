@@ -120,6 +120,19 @@ peak variability but changes no gate. The independently audited six-cell WASI
 screen passes its regression triage and equal linear-memory checks; it makes
 no portable speed claim. Broad admission and the standing goal remain open.
 
+The [rectangle reservation trial](../benchmarks/results/rectangle-reserve-experiment.md)
+verified 15,580 confirmation outputs and lowered the many-operands median by
+9.9% Exact and 7.3% Competitive. Its complete target latency gates pass 0/4,
+protected latency 8/34 and RSS 26/38. The full repository check passed, but a
+pinned-toolchain probe then confirmed 25% larger retained segment allocations
+for specific compound paths. The candidate is parked under its frozen resource
+rejection rule, with its complete patch, six tests and measured gains preserved.
+A separate 5,656-output same-binary RSS diagnostic changes no failed gate and
+has an explicitly retrospective Python app-executable pin. The active product
+returns to the prior F32 baseline fingerprint. Both measured arms also retain
+an image-sampler reorder differing from main's `c19c5374` correction; that
+reconciliation takes priority before the next performance measurement.
+
 ## Overprint display policy
 
 `RenderOptions::overprint` selects `OverprintPreview::{Auto, Always, Never}`;

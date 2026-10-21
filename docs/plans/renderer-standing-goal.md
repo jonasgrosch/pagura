@@ -7,12 +7,20 @@ completion criteria and next steps reviewable. It is not a new release policy.
 
 Current checkpoint: the [analytic19 competitor pilot](../../benchmarks/results/analytic19-conversion.md)
 still needs a median 33.49% time reduction to reach the Hayro target on its 13
-qualifying cases. The [F32 correction](../../benchmarks/results/f32-preservation-cost.md)
-closes an independently reproduced Competitive precision defect with validated
-native/WASI behavior and a fixed 38-cell cost diagnostic. It is retained as an
-accuracy improvement, with no new speed admission. Next, measure five-segment
-rectangle reservation on this stack; keep the archived color-reuse candidate
-and broader scene-preparation work separate. The full goal remains open.
+qualifying cases; this is historical campaign evidence, not a current-stack
+forecast. The [F32 correction](../../benchmarks/results/f32-preservation-cost.md)
+is retained as a validated accuracy improvement. The
+[rectangle reservation experiment](../../benchmarks/results/rectangle-reserve-experiment.md)
+measured 9.9% Exact and 7.3% Competitive primary median gains, but is parked
+with its complete patch: compound paths can retain 25% more segment capacity,
+violating the frozen resource-regression rule. All failed gates remain visible.
+
+Next, reconcile current main before any new performance trial: the branch
+retains an image-sampler reorder that main corrected in `c19c5374`, and lacks a
+JPEG debug invariant. Preserve the intentional precision/resource fixes and
+historical measurement identities. Then investigate a bounded fresh-builder
+reservation, the archived color-reuse candidate and shared scene preparation
+as separate measured changes. The full goal remains open.
 
 ## Completion evidence
 
