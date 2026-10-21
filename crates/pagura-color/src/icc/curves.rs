@@ -1,6 +1,6 @@
 //! Forward curves: ICC.1:2010 10.5 and 10.16.
 
-use super::{At, Budget, format::zeros, sample_index, unsupported, usize_f64};
+use super::{Arithmetic, At, Budget, format::zeros, sample_index, unsupported, usize_f64};
 use pagura_core::bytes::Cursor;
 use pagura_core::{Error, Result};
 
@@ -144,7 +144,9 @@ impl Curve {
             _ => Err(unsupported("unsupported ICC curve tag type")),
         }
     }
-    pub(super) fn evaluate(&self, x: f64) -> Result<f64> {
+    /// The curve at `x`, clipped to `0..=1`. Undefined arithmetic (NaN or
+    /// negative infinity) gives 0 and is recorded in `arithmetic`.
+    pub(super) fn evaluate(&self, x: f64, arithmetic: &mut Arithmetic) -> f64 {
         let value = match self {
             Self::Identity => x,
             Self::Gamma(g) => x.powf(*g),
@@ -157,11 +159,12 @@ impl Curve {
             Self::Parametric(curve) => curve.evaluate(x),
         };
         // Positive overflow has a defined clipped value (10.16). NaN and
-        // negative infinity still indicate genuinely undefined arithmetic.
+        // negative infinity indicate genuinely undefined arithmetic.
         if value.is_nan() || value == f64::NEG_INFINITY {
-            return Err(Error::syntax("undefined ICC curve arithmetic"));
+            arithmetic.undefined = true;
+            return 0.0;
         }
-        Ok(value.clamp(0.0, 1.0))
+        value.clamp(0.0, 1.0)
     }
 }
 

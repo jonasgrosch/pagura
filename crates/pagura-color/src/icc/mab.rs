@@ -1,6 +1,6 @@
 //! Forward multi-stage transforms (ICC.1:2010 10.10, Tables 42–43).
 
-use super::{At, Budget, clut::Clut, curves::Curve, format::zeros};
+use super::{Arithmetic, At, Budget, clut::Clut, curves::Curve, format::zeros};
 use pagura_core::bytes::Cursor;
 use pagura_core::{Error, Result};
 
@@ -89,12 +89,12 @@ impl Mab {
             b,
         })
     }
-    pub(super) fn evaluate(&self, mut values: [f64; 4]) -> Result<[f64; 3]> {
-        apply(&self.a, &mut values)?;
+    pub(super) fn evaluate(&self, mut values: [f64; 4], arithmetic: &mut Arithmetic) -> [f64; 3] {
+        apply(&self.a, &mut values, arithmetic);
         if let Some(clut) = &self.clut {
             values = clut.evaluate(values);
         }
-        apply(&self.m, &mut values)?;
+        apply(&self.m, &mut values, arithmetic);
         if let Some(matrix) = self.matrix {
             let next = matrix.map(|row| {
                 (row[0] * values[0] + row[1] * values[1] + row[2] * values[2] + row[3])
@@ -102,8 +102,8 @@ impl Mab {
             });
             values[..3].copy_from_slice(&next);
         }
-        apply(&self.b, &mut values)?;
-        Ok([values[0], values[1], values[2]])
+        apply(&self.b, &mut values, arithmetic);
+        [values[0], values[1], values[2]]
     }
     pub(super) fn retained_bytes(&self) -> usize {
         self.a.iter().chain(&self.m).chain(&self.b).fold(
@@ -115,11 +115,10 @@ impl Mab {
         )
     }
 }
-fn apply(curves: &[Curve], values: &mut [f64; 4]) -> Result<()> {
+fn apply(curves: &[Curve], values: &mut [f64; 4], arithmetic: &mut Arithmetic) {
     for (value, curve) in values.iter_mut().zip(curves) {
-        *value = curve.evaluate(value.clamp(0.0, 1.0))?;
+        *value = curve.evaluate(value.clamp(0.0, 1.0), arithmetic);
     }
-    Ok(())
 }
 fn curves(data: &Cursor<'_>, count: usize, budget: &mut Budget) -> Result<Vec<Curve>> {
     let length = data.data().len();

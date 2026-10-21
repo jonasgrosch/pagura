@@ -15,7 +15,9 @@ workspace = true
 pagura-core.workspace = true
 pagura-document.workspace = true
 pagura-text.workspace = true
-pagura-font.workspace = true
 
 [dev-dependencies]
+pagura-data.workspace = true
+pagura-render.workspace = true
 pagura-testkit.workspace = true
+pagura-write.workspace = true

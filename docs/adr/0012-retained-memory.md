@@ -1,6 +1,7 @@
 # ADR 0012: Bound retained document caches and diagnostics
 
-Status: accepted, 2026-10-17.
+Status: accepted, 2026-10-17. Amended 2026-10-21 (one store for render-side
+values, ADR 0034).
 
 ## Context
 
@@ -93,3 +94,57 @@ cached values are not evicted to make an earlier failure succeed. Heap estimates
 and budget defaults may change deliberately with the representation. Tests
 exercise aggregate failures, shared resources, concurrent cache publication,
 rollback, diagnostic truncation and cyclic/deep stream Length dependencies.
+
+## Amendment, 2026-10-21: one store for render-side values (ADR 0034)
+
+Rendering kept its reusable values in separate caches with separate bounds:
+fonts and glyph outlines in the `RenderContext` under `document_bytes`, the
+planes of the last painted image under `decoded_bytes`, Competitive glyph
+masks (16 MiB within `document_bytes`), a recycled surface, per-render clip
+and path-hull caches and an unbounded glyph-hull map, while the host cached
+compiled pages on its own. Several bounds borrowed fields of other meanings
+(ADR 0016), nothing bounded their sum, and direct rendering decoded the same
+images again on every call.
+
+1. **`pagura_core::Store` owns every reusable render-side value** under one
+   byte capacity: recorded scenes (by page and optional-content
+   configuration), decoded images (by source, reduction and region), colour
+   transforms, font programs, glyph edge setups (by outline and linear
+   device map), and prepared functions and shadings. It replaces the caches
+   above. A prepared-scene key waits until a viewer benchmark shows reuse.
+2. **`get_or_build(key, build)`** returns the shared value stored for a key,
+   or runs `build` outside the store's lock. The builder reports the bytes
+   the value retains (`Built`), estimated in the spirit of
+   `retained_bytes()` above. The value is retained if it fits, after
+   evicting the least recently used values that only the store still holds;
+   a value that anyone else holds is never evicted and stays counted. A value
+   that does not fit is returned without being retained, and a failed build
+   stores nothing. Two threads may build one key at once; the first to
+   finish is kept.
+3. **Keys are identities, never addresses.** A key names object numbers,
+   inline-image positions and every parameter the value depends on
+   (reduction, region, the bits of a linear map), never a pointer, which can
+   be reused once its value is dropped. Each key type names its value type,
+   so keys of different types never collide.
+4. **The `RenderContext` owns the store and its capacity.** The capacity is
+   set when the context is created, and every render of the context's
+   document shares the store; dropping the context releases it. The capacity
+   is not a `Limits` field, because it bounds what persists across renders,
+   not one operation (ADR 0016, decision 6).
+5. **No render's charges or errors depend on the store's state.** A build
+   charges the per-value budgets of its own work (`decode_work`,
+   `decode_bytes`, `font_work` and the others), so a value that a build
+   cannot afford is never retained, and a hit returns what a miss would
+   build. Whatever a value costs a render's own budgets, it costs whether it
+   was found or built, and values taken from the store are not charged to
+   `render_bytes` (ADR 0016, amendment of 2026-10-21). Every render that
+   shares a store uses the document's `Limits`.
+6. **Document-side caches are unchanged in this pass.** Objects, object
+   streams and pages stay under `document_bytes` and are never evicted.
+   Objects as shared handles that the store can evict are on the roadmap.
+
+One number now bounds what rendering retains between renders, and a viewer
+can size it per document. Like `document_bytes`, the capacity is an
+accounting model, not a peak-memory guarantee: a value too large to retain
+lives only as long as the render that built it holds it, bounded by the
+budgets that limited its build.

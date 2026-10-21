@@ -11,12 +11,23 @@
 //! 0004) is the default; [`FastParams`] switches the four named fast
 //! parameters inside the same kernels.
 
+mod blend;
+mod execute;
+pub mod features;
 mod format;
+mod kernel;
+mod paint;
+mod plan;
 mod prepare;
+mod process;
 mod request;
 mod source;
+#[cfg(test)]
+mod testing;
 
 pub use format::Format;
-pub use prepare::{Completion, PreparedScene, prepare};
+pub use prepare::{Charges, Completion, PreparedScene, prepare};
 pub use request::{FastParams, OverprintMode, RenderRequest};
-pub use source::{ImageSampler, PaintContext, ShadingSource, Source, SpanColors};
+pub use source::{
+    BBoxUse, ImageBudgets, ImageSampler, PaintContext, ShadingSource, Source, SpanColors,
+};

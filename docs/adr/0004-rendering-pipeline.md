@@ -1,356 +1,371 @@
-# ADR 0004: Rendering pipeline — display list, exact-area rasterizer, tiles
+# ADR 0004: Rendering pipeline and accuracy contract
 
-Status: accepted, 2026-10-17.
+Status: accepted, 2026-10-17. Rewritten 2026-10-21 for ADR 0034: this text
+replaces the original decision and its amendments of 2026-10-18 to
+2026-10-21 (canonical glyph polygons, overprint preview, certified
+accumulation, bounded storage, direct glyph curves, direct opaque images, the
+competitive gate, signed-area glyph coverage and the competitive path). The
+history of this file keeps them and their evidence.
 
 ## Decision
 
-Rendering has three stages with one-directional dependencies:
+### 1. Pipeline
 
-1. **Interpretation** (`pagura-render`): content streams are read as one token
-   sequence across all `/Contents` streams (clause 7.8.2), carrying operand
-   and graphics state across stream boundaries. The interpreter produces a
-   **display list in PDF terms**: fills and strokes of paths in user space
-   with their CTM, fill rule, stroke parameters, clip stack and colour *in
-   its source colour space*. Device colour conversion happens at paint time.
-   Every operator in ISO 32000-2 Annex A is recognized; unimplemented ones fail
-   with `Unsupported(operator.<name>)`, unknown ones are syntax errors except
-   inside `BX`/`EX`.
-2. **Rasterization** (`pagura-raster`): PDF-agnostic. Paths are flattened to
-   lines with a device-space tolerance, then filled by **exact-area coverage
-   accumulation** (signed area per pixel cell, accumulated along scanlines),
-   for nonzero and even-odd rules. Strokes are converted to fill outlines in
-   user space and then transformed, so non-uniform CTMs distort the pen as PDF
-   requires; zero-width lines render one device pixel wide. The paths of the
-   clip stack stay geometry: each mark integrates them together with its own
-   outline, and a clip region's own coverage is integrated only for a shading
-   without a bounding box (amended 2026-10-20).
-3. **Composition** into a premultiplied RGBA8 `Pixmap`, source-over, onto
-   the requested background.
+ADR 0034 sets the architecture: one interpreter records a scene per page, and
+one renderer prepares it for a request and executes it in bands. This record
+fixes what the stages compute and how exact the result is.
 
-The public API is `render_page` and `render_tile(document, page, options,
-tile)`. A tile is a device-pixel rectangle; the device transform includes the
-tile offset, so tiles of one page assemble exactly into the full page. Tiles
-are the unit of caching, progressive display and future parallelism
-(`std::thread::scope` natively, `wasm32-wasip1-threads` in the browser).
+- **Interpretation** reads content streams as one token sequence across all
+  `/Contents` streams (7.8.2), carrying operand and graphics state across
+  stream boundaries. Every operator of Annex A is recognized; an
+  unimplemented one fails with `Unsupported(operator.<name>)`, an unknown one
+  is a syntax error except inside `BX`/`EX`. The scene is in PDF terms: paths
+  in user space with their transform, fill rule, stroke parameters and clip
+  state, and colours in their source colour space, converted at paint time
+  by prepared converters (ADR 0028).
+- **Rasterization** (`pagura-raster`) knows no PDF. Paths are flattened by
+  the shared flattener, which stays within 1/256 device pixel of the curve,
+  and filled by exact-area coverage under the nonzero and even-odd rules.
+  Strokes are outlined in user space and then transformed, so a non-uniform
+  transform distorts the pen as PDF requires; a zero-width line is one
+  device pixel wide. Clips stay geometry: a clipped mark covers the exact
+  area of mark and clip together, computed jointly only where both are
+  partial in a pixel. `sh` paints its clip region, within the shading's
+  `BBox` if it has one.
+- **Composition** follows clause 11 on premultiplied values, onto the
+  requested background premultiplied once. Each output pixel is quantized
+  once with `pagura_raster::quantize_unit` (ADR 0022).
+- **Regions.** A request names a rectangle of the page's device pixels.
+  Bands lie on the global device grid, so the regions of a page assemble into
+  the whole page byte for byte, and no result depends on band height, region
+  partition or platform: native, WASI with SIMD128 and scalar WASI give the
+  same bytes. Exact kernels store no colour in 8 bits before the output and
+  use no fused multiply-add and no relaxed SIMD.
 
-## Colour
-
-DeviceGray, DeviceRGB and DeviceCMYK use the conversions of clause 10.4
-until ICC-based colour management exists. A page using `ICCBased`,
-`Separation`, `DeviceN`, `Lab`, `Indexed` or default colour spaces fails with
-the corresponding `colorspace.*` tag until implemented.
-
-## Accuracy and oracles
+### 2. The accuracy contract
 
 Every rendered pixel has an exact answer, and one contract covers every
-stage (amended 2026-10-18): each pixel is within one level of 255 of its
-exact result.
+stage: with every fast parameter off (section 9), each channel of each output
+pixel is within one level (of 255) of its exact result.
 
-- **Rasterization:** the exact covered area of each pixel (the path clipped
-  to the pixel square), with curves within a documented flattening
-  tolerance.
-- **Image sampling:** the exact-area average of the source samples under the
-  image transform, or the nearest sample where 8.9.5.3 asks for no
-  interpolation.
+- **Coverage:** the exact area of the pixel square covered by the mark and
+  its clip. Curves enter as the shared flattener's polygon, except exactly
+  quadratic glyph outlines, which enter as their true curve (section 4).
+- **Image sampling:** for a minified image, the exact-area average of the
+  source samples under the pixel's preimage; for a magnified one, the nearest
+  sample or, with `/Interpolate`, bilinear interpolation of associated colour
+  and alpha between sample centres (8.9.5.3, ADR 0010). Decoders return
+  byte-exact samples, and the exact average is over those samples. A JPEG
+  block's DC term is the mean of its unrounded inverse transform, not of its
+  rounded, clamped and colour-converted samples (on a large real image they
+  differ in about a quarter of block components, by up to 33 levels where
+  blocks clamp), so block means from DC terms are an output-changing
+  optimization under section 3: admissible only for blocks certified not to
+  clamp in any stage, with the bound shown against this oracle.
 - **Composition through non-amplifying operations:** the imaging model of
-  clause 11 applied in exact arithmetic to the same coverage bytes, for any
-  number of overlapping marks. The non-amplifying operations are Normal
-  compositing, alpha, shape and soft-mask application, and the separable
-  blend modes Multiply, Screen, Darken, Lighten, Difference and Exclusion.
-  Their results never change faster than their inputs, so rounding errors
-  only add up. Per-mark 8-bit accumulation does not hold this bound.
-- **Composition through amplifying operations** (amended 2026-10-18): some
-  operations can change faster than their inputs, so no finite precision
-  bounds them against exact arithmetic for every input. These are
-  ColorDodge, ColorBurn, Overlay, HardLight, SoftLight, the non-separable
-  blend modes (11.3.5), steep transfer functions, and knockout's division by
-  shape. Every buffer that feeds one is evaluated in f64 from its first
-  store, and the contract is one level of that documented f64 evaluation.
-  The renderer's classification of each operation, with its amplification
-  bound, is the reference for which side an operation is on.
+  clause 11 in exact arithmetic on the same coverage bytes and sources, for
+  any number of overlapping marks. These operations are Normal compositing,
+  alpha, shape and soft-mask application, and the separable blend modes
+  Multiply, Screen, Darken, Lighten, Difference and Exclusion. Their results
+  never change faster than their inputs, so rounding errors only add up.
+- **Composition through amplifying operations:** ColorDodge, ColorBurn,
+  Overlay, HardLight, SoftLight, the non-separable blend modes (11.3.5),
+  steep transfer functions (10.5) and knockout's division by shape can change
+  faster than their inputs, so no finite precision bounds them against exact
+  arithmetic for every input. Every buffer that feeds one is evaluated in
+  f64 from its first store, and the contract is one level of that documented
+  f64 evaluation. Feeding is transitive: a group or soft mask whose result
+  enters such a buffer feeds the operation too. The renderer's
+  classification of each operation, with its amplification bound, decides
+  the side (`BlendMode::amplifies` for blend modes).
+- **Sources** enter composition as f64 values from prepared converters,
+  functions and samplers. The storage bounds of sections 5 and 6 include
+  encoding them and reserve a margin for their f64 evaluation.
 
-Pixel-aligned opaque cases stay exact, and exact rounding ties are not part
-of the contract.
+Pixel-aligned opaque cases stay exact. Exact rounding ties are not part of
+the contract, and exact rounding of arbitrary translucent stacks is not
+promised.
 
-**Known defect** (recorded 2026-10-18, corrected the same day). Pages whose
-content is all opaque Normal fills take an 8-bit path that stores every mark
-immediately. Its kernel works on a source colour already quantized to 8 bits,
-and rounds the source and backdrop contributions separately before adding
-them. So a partially covering mark can add up to about one and a half levels of
-error, and the error carries into later marks. A fully covering mark leaves at
-most the half level of its own colour's quantization.
+**Oracles.** Fixture oracles compute the exact result independently, in
+rational arithmetic, or by high-precision quadrature for true curves; a
+fixture may carry a tolerance of 1 against its oracle. `pagura-reference`
+(test only, ADR 0034) is the slow, obviously correct f64 raster and
+compositor for differential tests. Earlier renderer output is a differential
+reference, never an oracle.
 
-Two partially covering marks after a full one can already give 217 where the
-exact result is 219. A thousand slivers on one pixel give 127 instead of 5.
-The first recorded version of this note claimed half a level per mark; that
-bound was wrong.
+### 3. Output-changing optimizations
 
-The fix under study first rounds once per store from the unquantized source
-colour, then bounds and removes what remains, so that the 8-bit path is
-retired only once its replacement is cheap. Fixture oracles compute the exact result independently in
-Python, and a fixture may carry a tolerance of 1 against it.
+A faster computation that changes output qualifies under the contract only
+with:
 
-## Consequences
+1. an independent oracle for every affected case, never the code under test;
+2. every changed pixel against the previous output reported with its oracle
+   value;
+3. the one-level bound holding on every conformance fixture, on every
+   benchmark page at 72, 150 and 300 dpi and on the stress set;
+4. the exact-rounding match rate, the share of changed pixels equal to the
+   correctly rounded exact value, reported before and after.
 
-The 8-bit surface is not the final imaging model: transparency groups, soft
-masks and blend modes need group surfaces with higher precision. That change
-is local to composition and does not affect the display list or rasterizer
-interfaces. GPU backends are out of scope until the CPU reference is complete.
+Where new and previous output differ by more than one level, both are
+compared with the oracle; the change is accepted only if the new result meets
+the contract and is closer to the oracle at every such pixel. A result beyond
+one level of its oracle is a correctness change and needs its own decision. A
+mechanism admitted under this rule records its bound here.
 
-## Amendment: canonical glyph polygons (2026-10-18)
+### 4. Coverage and glyphs
 
-Filled outline text in modes 0 and 4 retains its font outline, linear
-glyph-to-device map L and exact device origin t. Construct its relative
-polygon with the shared flattener at the unchanged 1/256-device-pixel
-tolerance, using L for the device-space error bound. Map emitted outline
-vertices by L, then add t. Instance translation never participates in
-subdivision, and neither geometry nor placement is snapped to a grid. This
-decision does not prescribe the subdivision algorithm. Allocation and culling
-bounds combine relative geometry with device-mapped origins; they must not
-erase glyph extents by adding user origins before scaling.
+The exact coverage producers are the band rasterizer's certified integer
+accumulation, its exact local resolver for cells that fail certification, the
+closed form for rectangles and the analytic integration of glyph quadratics.
+For the same flattened geometry they yield the same coverage bytes (ADR
+0034). A producer that covers a stroke by pieces meeting without overlapping
+(section 9) replaces the union's resolution on the exact path only after
+section 3 establishes it.
 
-Preserve closure and geometric-point classification from the L-mapped source
-endpoints and controls before approximation or translation. Coincident
-approximating vertices do not turn a nonpoint curve into a point. A singular L
-can produce a genuine point, which encloses its translated floor cell under
-8.5.3.3.1. Retain the existing omission rule for a final open one-point
-contour. Raster entry points and retained masks consume this metadata
-directly.
+**Certified accumulation** snaps flattened device geometry to a
+page-anchored grid of spacing u = 2^-20 pixels, with ties to even and
+consistently rounded shared crossings. A cell's count n conservatively counts
+the original flattened segments meeting it. A segment whose snapped image has
+zero length, or turns horizontal while its original did not, stays as a
+zero-cover, zero-area ghost that counts toward n and leaves its cells
+uncertified; a snapped contour that degenerates leaves every cell of its
+original bounding box uncertified. Cells are certified by one-chain,
+closed-cell boundary-walk, constant-fill or group-intersection certificates;
+cells with ghosts or n > 512 resolve the unsnapped geometry. For n <= 512,
+snapping and crossing err by at most (2.5n + 7)u, so with byte quantization a
+cell stays below 0.813 levels from the exact area. Subpaths degenerate before
+snapping keep the floor-cell policy. Certification depends only on the
+geometry, never on regions, bands or omitted redundant clips.
 
-Each glyph remains a separate nonzero fill, geometrically clipped and
-composited in content order, including overlap and knockout (9.3.6, 9.3.8,
-11.4.6). Runs share preparation without unioning coverage. Eligible glyph
-rectangles use the closed-form rectangle mechanism; other contours use the
-shared exact-area sweep and span interfaces. Strokes and accumulated text
-clipping retain their existing path rules.
+**Glyph placement** is exact (ADR 0013). Filled outline text (render modes 0
+and 4) keeps its font outline, its linear glyph-to-device map L and its exact
+device origin t. The relative polygon is built by the shared flattener at the
+1/256-pixel tolerance, measured through L; its vertices are mapped by L and
+then translated by t. Translation never takes part in subdivision and nothing
+is snapped to a grid, so a glyph's edge setup depends only on the outline and
+L and serves every placement (the `Store`, ADR 0012). Closure and point
+classification come from the L-mapped endpoints and controls before
+approximation and translation: coincident approximating vertices do not turn
+a curve into a point, while a singular L can produce a genuine point, which
+encloses its translated floor cell (8.5.3.3.1). A final open one-point
+contour is omitted. Each glyph is a separate nonzero fill composited in
+content order, including overlap and knockout (9.3.6, 9.3.8, 11.4.6). Glyphs
+of a run share preparation and accumulate into one band row only where no
+pixel receives coverage from two of them, never as a union. Strokes and text
+clipping follow the path rules.
 
-A bounded per-render cache may retain canonical geometry by retained outline
-identity and actual device linear-map bits. It is separate from
-path-flattening retention and never stores glyph coverage. Charge capacity and
-index estimates, release optional retention before rejecting required
-transient storage, and preserve semantic work charges and error positions
-across hits, misses and eviction (ADR 0012, ADR 0013).
+**Glyph reference.** An exactly quadratic outline is referenced against its
+true curve at its exact device position (8.5.2.2, 9.3.6): TrueType
+quadratics, and cubics whose third difference -P0 + 3P1 - 3P2 + P3 is at
+most 2^-24 device pixels per coordinate, as degree elevation leaves it after
+rounding. Their midpoint quadratics move the curve by less than 2^-27
+pixels, so by less than 2^-26 of a pixel's area per monotone piece crossing
+it, and the rasterizer integrates monotone quadratic pieces analytically in
+f64. A general cubic's midpoint quadratic is no area certificate:
+displacements below 1/1024 pixel on several edges sharing a pixel exceed one
+level. Cubic outlines therefore keep their placed canonical polygon, with its
+point rule, as the reference. The flattening tolerance alone does not bound
+area against the true curve, so independent high-precision quadrature of the
+outline checks curve results, and for those glyphs the polygon is a
+differential reference only. Which reference a glyph has depends only on its
+outline, L and its clip state, never on regions, bands or cache state.
 
-The raster oracle is the placed canonical polygon with its preserved point
-rule, except for glyphs admitted to the curve sweep: their reference is the
-true curve (amendment of 2026-10-19). The polygon departs from that curve by
-up to its flattening tolerance, so a correctly rounded curve result can differ
-from it by more than one level; for those glyphs it is a differential
-reference, not the oracle. ADR 0004's composition contract remains unchanged.
-No fixture tolerance is raised by this amendment. The translated-tiny-outline
-correction from RGB 0 to the oracle's 255 is an explicit correctness
-correction.
+### 5. Storage formats
 
-## Amendment: overprint preview (2026-10-18)
+Each buffer (the page, a group, a soft mask) gets its format before its first
+store, from its group's whole content and never from the requested region
+(11.3.3, 11.4.4, 11.4.6). Geometry, coverage, colour conversion and image
+reconstruction keep their own precision. Buffers are band-local, so a wider
+format costs bandwidth, not page-sized memory.
 
-Overprint preview is controlled by `OverprintPreview`. Auto is the default:
-simulate only when PDF/X print intent is declared by an OutputIntents
-dictionary with `S /GTS_PDFX`, or a `GTS_PDFXVersion` string in Info. Catalog
-and page output intents are recognized, including indirect entries. This
-detects declarations, not PDF/X conformance; malformed advisory metadata is
-treated as absent. Always simulates wherever overprinting affects the result.
-Never ignores overprint and paints ordinary composite content, including
-within groups and soft masks.
+- **F64** for every buffer that feeds an amplifying operation; every buffer
+  that receives a store with a blend mode other than Normal or with a
+  transfer function, and every soft mask with a transfer function; buffers
+  with spot channels and every buffer under overprint simulation; buffers
+  whose blending space is not RGB; knockout groups, except those whose
+  members' opacity equals their shape (opaque members), which composite as
+  source-over; non-isolated groups whose content is not all Normal, and the
+  buffers that provide their backdrop; tiling-pattern cells; every child of
+  an F64 buffer; and every buffer that no narrow bound admits.
+- **N16** for the page buffer when its bound in section 6 holds, otherwise
+  **F32** for a page, group or soft-mask buffer when its bound holds.
+- **U8** only under the `byte_storage` fast parameter.
 
-When page simulation is needed, a CMYK default process device is used while
-explicit group blending spaces are retained. Named plates are preserved
-through groups; soft masks use alternates. At output, each name's first
-painted alternate definition is used and CMYK ink equivalents are added with
-saturation before RGB conversion. At most 32 spot plates are supported, with
-`Limit` above that. This is a display approximation: physical ink interaction
-and destination ICC output transforms are not modelled.
+A tiling pattern's cell colours and alpha enter the marks painted with it as
+a per-pixel source, whose f64 evaluation error includes the cell buffer's
+bound (section 6).
 
-An ICC-based transparency group composites in its N-component device base
+N16 stores four u16 words at 257 words per level, 8 bytes per pixel. An
+opaque source level L = 255 clamp(S) is encoded by rounding 257 L, taking the
+adjacent word where needed to keep round(L) at the final byte boundary; the
+encoding errs by at most σ16 = 1 + 2^-36 words. A store of coverage byte c
+writes floor((c s + (255 - c) u + 127) / 255) for source and backdrop words s
+and u: one integer rounding of at most 127/255 words. The initial value
+(background levels b as 257 b, transparent as zero) is exact for an opaque
+background and within half a word otherwise. The output is the nearest byte
+of u/257, which is never a tie, so it adds at most 128/257 levels.
+
+F32 stores four f32 channels of levels on 0..255, 16 bytes per pixel.
+Inexact source levels are encoded with round-to-odd, which keeps their side
+of a following nearest-byte boundary; exact levels stay exact. Full-opacity
+stores overwrite; other stores evaluate x += a (t - x) with separate
+roundings. Let ρ = 2^-17 levels, one rounding below 256, and
+π = 2^-16 + 255 · 6 · 2^-24 levels, the source encoding and six roundings
+relative to the opacity.
+
+The source encodings and full-opacity overwrites keep nearest output at half
+levels, which final rounding alone would not. Store counts treat each glyph
+instance as a store, not each glyph run, and N bounds the stores at any pixel
+of the buffer; a count over the buffer's whole content is such a bound.
+
+### 6. Bounds of narrow storage
+
+**Store lemma.** Take one channel of one pixel of a buffer, in levels. A store
+of opacity a in (0, 1] and target t changes the reference value y to
+(1 - a) y + a t and the stored value x to (1 - a) x + a t + ζ; a store of
+opacity zero does nothing. The store is *contracting* when a ≥ θ and
+|ζ| ≤ a σ + ρ, and *dynamic* otherwise, with |ζ| ≤ a σ + ρ_k + η_k for its own
+rounding ρ_k and an injected error η_k. If x starts within σ of y, then after
+N stores, K of them dynamic,
+
+    |x - y| ≤ σ + min(Σ ρ_k, ρ/θ + Σ_dyn ρ_k) + Σ_dyn η_k.
+
+*Proof.* The error e = x - y becomes (1 - a) e + ζ. Each side of the minimum,
+with Σ_dyn η_k added, is an invariant, and both hold at the start. For the
+first, (1 - a)(σ + R) + a σ ≤ σ + R, so a store adds at most ρ_k + η_k. For
+the second, if |e| ≤ σ + ρ/θ + D, a contracting store leaves
+(1 - a)(σ + ρ/θ + D) + a σ + ρ ≤ σ + ρ/θ + D, because a ρ/θ ≥ ρ, and a
+dynamic store adds at most ρ_k + η_k to D. ∎
+
+**N16.** Contracting stores take opaque sources (σ = σ16 for a solid colour,
+plus the f64 evaluation error of a source evaluated per pixel), opacity c/255
+for a coverage byte c ≥ 1 (θ = 1/255) and ρ = 127/255 words, so ρ/θ = 127
+words. With the output's 128/257 levels, a pixel stays within one level while
+
+    σ + 127 + Σ_dyn (ρ_k + η_k) ≤ 129 words.
+
+Opaque solid colours alone give at most (256 + 2^-36)/257 < 0.99612 levels,
+independently of overlap count, and leave 1 - 2^-36 words for dynamic stores.
+A dynamic N16 store is evaluated in f64 and rounded once to the nearest word,
+ρ_k = 1/2 word, with its f64 error counted in η_k. So an N16 buffer admits at
+most one dynamic store at any pixel, with η_k ≤ 1/2 - 2^-36 words.
+
+**F32.** Every store has σ = π and ρ_k = ρ, and θ conservatively lower-bounds
+the positive opacity of the contracting stores. The buffer is admitted when
+
+    π + ρ min(N, 1/θ + K) + Σ_dyn η_k ≤ 1/2 - 2^-12 levels;
+
+the 2^-12 margin covers f64 source evaluation, and the final nearest byte
+adds at most half a level. A stack of 270,000 stores of opacity 3/2^27
+therefore stays F64.
+
+**Children.** A child buffer B, a group or a soft mask, reaches its parent as
+one dynamic store at each pixel it touches, evaluated in f64 from B's stored
+values and rounded once to the parent's format. A narrow child is an isolated
+group, a non-isolated group of Normal content (source-over is associative, so
+it composites as an isolated one) or a soft mask, in an RGB blending space,
+without knockout other than the opaque-member identity, composited with
+Normal into a narrow parent. Every other child is F64, since no inequality
+bounds what narrow children inject into an F64 parent. Let B's colour and
+alpha channels be within E_c(B) and E_α(B) levels of their reference, and m be
+the composite's opacity factor (constant alpha, coverage and soft-mask
+value). The composite x' = (1 - m α/255) x + m c then injects
+
+    η ≤ m (E_c(B) + (256/255) E_α(B)) + 2^-40 levels,
+
+because stored values stay within 256 levels and the composite's f64
+evaluation errs by at most 2^-40 levels. A store whose opacity includes a
+soft-mask value within E(M) levels of its reference injects (256/255) E(M)
+more. A luminosity mask's value is within the largest bound of its colour
+channels, since the luminosity weights sum to one, and an alpha mask's within
+its alpha bound, each plus the f64 evaluation of its luminosity and transfer
+function.
+
+A child's own bound E(B) is:
+
+- zero for an F64 buffer that feeds an amplifying operation, whose
+  documented f64 evaluation is the reference;
+- for any other F64 buffer, N_B · 2^-40 levels for its N_B stores at a
+  pixel, plus its sources' f64 evaluation error and its children's
+  injections (the lemma's first form with σ = 0): every f64 kernel of a
+  non-amplifying operation departs from its exact evaluation by at most
+  2^-40 levels per store (a few roundings on magnitudes below 2^9 levels)
+  and passes earlier errors on with a factor of at most one, which its tests
+  check against rational arithmetic;
+- for an F32 buffer, the left side of its admission inequality, its own
+  children included, plus its sources' f64 evaluation error, which is at
+  most the 2^-12 margin.
+
+Admission therefore computes bounds from the innermost buffer outwards,
+counting each child's composite as a dynamic store of its parent; a buffer
+whose parent ends up F64 is then F64 too, which only lowers its bound.
+
+N16 children are never admitted. An N16 buffer's own bound is about half a
+level per channel, so its composite can inject m (0.498 + 0.496) levels, more
+than an N16 parent's room for any useful m and more than an F32 parent's once
+m exceeds about one half; such children are not worth a rule. Group and
+soft-mask buffers are therefore F32 or F64, and only the page buffer may be
+N16.
+
+**Not proven.** These stay F64 until a bound is recorded here: a second
+dynamic store at an N16 pixel, because two nearest-word roundings exceed its
+room; N16 children; narrow children of F64 parents; blend modes other than
+Normal and transfer functions in a buffer, whose results depend on the
+backdrop in a way the lemma does not model; non-isolated groups whose content
+is not all Normal, because removing the backdrop divides by the group's
+alpha; knockout groups other than the opaque-member identity; non-RGB
+blending spaces, spot channels and overprint simulation, whose conversions
+and spot accumulation the lemma does not cover; and promotion of byte-stored
+chunks to N16 (ADR 0034), which needs a bound for a start already rounded to
+bytes and work aligned to a global chunk grid.
+
+A change to admission or kernel arithmetic keeps independent rational
+fixtures, half-level source tests, glyph-instance counts, tests of every F64
+case above, nested-buffer fixtures at the edges of these inequalities,
+actual-byte budget tests, region and band-height assembly, changed-channel
+exact oracles, native and WebAssembly parity, and paired timing and memory
+measurements.
+
+### 7. Overprint preview
+
+`OverprintPreview` controls simulation (8.6.7, 11.7.4). Auto, the default,
+simulates only when a PDF/X print intent is declared: an OutputIntents
+dictionary with `S /GTS_PDFX` in the catalog or a page, including indirect
+entries, or a `GTS_PDFXVersion` string in Info. This detects declarations,
+not conformance; malformed advisory metadata counts as absent. Always
+simulates wherever overprinting affects the result. Never ignores overprint
+and paints ordinary composite content, also within groups and soft masks.
+
+Simulation uses a CMYK default process device and keeps explicit group
+blending spaces. Spot colourants are extra channels of the buffers, preserved
+through groups; soft masks use the alternates. At output each name's first
+painted alternate definition is used, and CMYK ink equivalents are added
+with saturation before RGB conversion. At most 32 spot plates are supported,
+with `Limit` above that. This is a display approximation: physical ink
+interaction and destination ICC output transforms are not modelled. An
+ICC-based transparency group composites in its N-component device base
 without inverse ICC transforms; its sources keep their forward transforms.
 
-## Amendment: certified accumulation (2026-10-18)
-
-Rasterization may select certified integer accumulation or the unsnapped strip
-sweep. Admission and the sweep's shape-anchored integer frame must be
-deterministic and independent of tile boundaries and redundant rectangle-clip
-omission. Both backends feed the common coverage-span compositor path. Revisit
-the admission rule once single-outline strokes land.
-
-Accumulation snaps flattened device geometry to a page-anchored grid of
-spacing u = 2^-20 pixels, with ties-to-even and consistently rounded shared
-crossings. The count n conservatively counts original flattened segments
-meeting the cell, including ghosts, not merely surviving snapped pieces.
-
-A segment whose snapped image has zero length, or becomes horizontal while its
-original was nonhorizontal, remains as a zero-cover, zero-area ghost. Ghosts
-count toward n and make affected cells uncertified. A snapped contour that
-degenerates makes every cell touched by its closed original bounding box
-uncertified. Ghost cells and cells with n > 512 use unsnapped original
-geometry.
-
-Eligible cells may use one-chain, closed-cell boundary-walk, constant-fill and
-group-intersection certificates. Failed certificates use the local resolver;
-snapped resolution requires passing the ghost and density guards. For
-n <= 512, snapping and crossing error is at most (2.5n + 7)u; including byte
-quantization, error remains below 0.813 levels. Curve flattening retains its
-separate tolerance. Originally degenerate subpaths retain the existing
-floor-cell policy before snapping. Tiles must assemble byte-identically.
-
-## Amendment: bounded storage for general composition (2026-10-19)
-
-Status: accepted, 2026-10-19.
-
-The existing opaque renderer and its eligibility test remain unchanged.
-Preserve the sole opaque RGB page-image copy ahead of general composition;
-when it declines, use the selected general buffer and its actual-byte
-admission. Its documented per-mark 8-bit accumulation defect is a separate
-decision. These rules apply only where the general compositor runs (ISO
-32000-2, 11.3.3, 11.4.4 and 11.4.6).
-
-Choose the format before the buffer's first store, independently of the
-requested device tile. Keep geometry, coverage construction, source colour
-conversion, image reconstruction and prepared sampling in their existing
-precision. Admit narrow storage only for RGB Normal source-over with
-associative groups, including the existing opaque-member knockout identity. A
-retained group, root knockout, non-RGB group, soft mask, pattern, transfer
-feed, other blend mode or failed numerical bound conservatively fixes the
-entire general page on f64. Active CMYK simulation devices and every spot pass
-also remain f64, including RGB groups within them. Amplifying feeds use f64
-from their first store. Independent narrow child buffers, promotion and buffer
-pools remain deferred.
-
-N16 stores four u16 words at 257 words per output level, using 8 bytes per
-pixel. Background bytes embed as b*257. Encode a source level L=255*clamp(S)
-by rounding 257*L; choose the adjacent word when necessary to preserve
-round(L) at the final byte boundary. Source error is bounded by 1+2^-36 words.
-For coverage byte c and source/backdrop words s,u, store
-floor((c*s+(255-c)*u+127)/255), with one integer rounding. Division error is
-at most 127/255 words and positive opacity is at least 1/255. Intermediate
-error is consequently at most (128+2^-36)/257 levels, independently of overlap
-count. Final nearest output floor((u+128)/257) adds at most half a level:
-total error remains below 0.998055 levels.
-
-F32 stores four level lanes on 0..255, using 16 bytes per pixel. Encode
-inexact source levels with round-to-odd, preserving their side of a following
-nearest-byte boundary; exact source levels remain exact. Source rounding costs
-at most 2^-16 levels. Full-opacity stores overwrite; other stores evaluate x
-+= a*(t-x) with separate roundings. Let rho=2^-17, pi=2^-16+255*6*2^-24, N
-bound stores at any pixel, K count stores with varying opacity, and theta
-conservatively lower-bound positive opacity of the other stores. Admit only
-when pi+rho*min(N,1/theta+K) <= 1/2-2^-12. The reserved margin covers retained
-f64 source-evaluation roundoff. Final nearest-byte rounding adds at most half
-a level. The 270,000-store opacity-3/2^27 counterexample therefore remains
-f64. Exact rounding of arbitrary translucent stacks is not promised.
-
-Count individual glyph instances, rather than glyph runs, when bounding
-stores. Preserve glyph order, canonical geometry, sparse coverage spans,
-clamped rows, prepared texels and mask lookup tables. Charge planning, raster
-work and actual allocated storage to existing limits. Use chunks up to 256
-pixels per side, or 128 for a single-image f32 scene. Narrow storage belongs
-to the page surface; wide group surfaces retain their existing representation.
-Keep the existing CMYK preservation metadata, spot replay, transfer regions
-and transfer_run ordering. F64 Pixel::paint and Surface arithmetic remain
-unchanged. At final output, opaque RGB pixels without pending transfer or spot
-processing may quantize premultiplied colour directly, skipping unit-alpha
-division and background blending without changing bytes.
-
-All-f64 composition remains the simpler alternative but forgoes measured
-allocation and bandwidth savings. Final nearest rounding alone does not
-prevent double rounding at source boundaries; the source encodings and
-full-opacity overwrite retain nearest output for nearly all measured changed
-channels. Keep independent rational fixtures, half-level source tests,
-glyph-instance bounds, device/transfer exclusions, actual-byte budget tests,
-tile assembly, changed-channel exact oracles, native/WASM parity and paired
-per-cell timing/RSS measurements whenever admission or kernel arithmetic
-changes. New optimizations must retain these bounds; CMYK and spot narrowing
-require a separate proof.
-
-## Amendment: direct glyph curves (2026-10-19)
-
-Status: accepted, 2026-10-19.
-
-For admitted glyphs, the coverage reference is the original outline's true
-curve at its exact device position, rather than the polygon produced by
-flattening it (8.5.2.2, 9.3.6; ADR 0013). All other glyphs keep the placed
-canonical polygon as their reference and oracle (amendment of 2026-10-18).
-The geometric flattening tolerance alone does not establish a one-level area
-bound against the true curve, so independent high-precision quadrature of the
-true outline must check admitted pixel areas. When a new result differs from
-the polygon renderer by more than one level, compare both with that oracle;
-accept an accuracy improvement only if the new result satisfies the one-level
-contract and is closer to the oracle at every such pixel. The old renderer is
-a differential reference, not the accuracy oracle.
-
-Admitted glyphs are covered by analytically integrating monotone quadratic
-pieces in f64. Only exactly quadratic outlines qualify: TrueType quadratics,
-or cubics whose third difference -P0 + 3P1 - 3P2 + P3 is at most 2^-24 device
-pixels per coordinate, as degree elevation leaves it after rounding. Their
-midpoint quadratics move the curve by less than 2^-27 pixels, so 32 monotone
-pieces change no pixel by more than 2^-21 of its area. A general cubic's
-midpoint quadratic is not an area certificate: displacements below 1/1024
-pixel on several edges sharing a pixel exceed one level. Cubic outlines
-therefore keep certified polygons.
-
-Canonical pieces are cached by outline and linear device map beside the
-fallback glyph polygon. Coverage is evaluated afresh at each exact placement.
-Admission uses the complete glyph and retained clip stack, independently of
-tiles and cache hits: at most 32 source segments and monotone pieces, more
-than four polygon vertices per piece, a curved piece, only quadratic curves,
-no point contour, glyph paint and rectangular clips only. Other fills,
-strokes, cubic or complex glyphs and nonrectangular clips keep the existing
-rasterization path. The curve sweep is separate from the line sweep, so fills
-without curves run the line sweep unchanged.
-
-## Amendment: direct opaque images (2026-10-19)
-
-Status: accepted, 2026-10-19.
-
-A page whose only mark is one opaque DeviceGray or DeviceRGB image, with an
-RGB page model, no separations, clip, transfer, mask, matte, overprint or
-non-Normal composite, may be painted straight into the 8-bit output instead
-of through a page buffer (11.3.3). Its Decode ranges must be [0 1] or [1 0],
-so every sample code has an integer level: 255 / (2^bits - 1) times the code,
-or 255 minus that (8.9.5.2). The background must be opaque.
-
-The reference is unchanged: the image sampling reference above, with the
-general compositor's footprints, then Normal composition of the pixel's
-coverage byte over the background in exact arithmetic. Minified placements
-that are upright or quarter turns take integer sums of interior codes and
-f64 products for the two end cells of each footprint, then scale the mean
-code to a level and mix a partial pixel with the background in f64, rounding
-once. Magnification takes the nearest sample, or bilinear weights with
-/Interpolate, from the same pixel centres as the sampler. Like the general
-compositor's f64 evaluation, only the f64 geometry, end weights, row accumulation and normalization depart
-from exact arithmetic, by far less than a level: a byte can differ from the
-reference rounding only when the exact value lies that close to a half
-level, and stays within one level. Decoders keep their byte-exact samples.
-Other placements, images and pages use the general compositor.
-
-Fixtures and unit tests compare against independent rational oracles,
-including two-to-one half-level ties, quarter turns, inverted one- and
-two-bit samples, partial coverage and bilinear magnification. Changed pixels
-against the general compositor must be reported with their oracle values.
-
-## Amendment: competitive accuracy gate (accepted, 2026-10-20)
-
-Status: accepted, 2026-10-20.
+### 8. The competitive gate
 
 The one-level contract stays the reference and the default. An approximate
-path, one that can leave a pixel more than one level from its exact result,
-may become the default only when it meets the absolute goals below on the
-40-page benchmark set at 72, 150 and 300 dpi. The goals are fixed numbers.
-They were derived on 2026-10-19 from the best competitor in each cell, not
-from any single engine, measured on main 99bfb290 against the then-latest
-releases (hayro 0.8.0, PDFium 156.0.8076 via pypdfium2 5.14.0, MuPDF 1.28.5 via
-PyMuPDF 2.0, pdf.js 6.4.299, Poppler, Quartz on macOS 15.8), and do not move
-when competitors change.
+configuration, one that can leave a pixel more than one level from its exact
+result, may become the default only when it meets the absolute goals below on
+the 40-page benchmark set at 72, 150 and 300 dpi. The goals are fixed
+numbers. They were derived on 2026-10-19 from the best competitor in each
+cell, not from any single engine, measured on main 99bfb290 against the
+then-latest releases (hayro 0.8.0, PDFium 156.0.8076 via pypdfium2 5.14.0,
+MuPDF 1.28.5 via PyMuPDF 2.0, pdf.js 6.4.299, Poppler, Quartz on macOS 15.8),
+and do not move when competitors change.
 
-**Accuracy goals.** Measured against Pagura's exact rendering of the same
-page, pixel-weighted per category and DPI. Each value is at least 10% better
-than the best competitor's value for that measure, rounded to a round number
-on the ambitious side:
-- MAE: mean absolute RGB error;
-- within ±1: share of pixels whose largest channel error is at most one;
-- P99.9: 99.9th percentile of the largest channel error.
-
-No page may be less accurate than the best competitor on that page. The
-maximum error is not gated, because every engine reaches 231–255 on some
-pages.
+**Accuracy goals**, measured against Pagura's exact rendering of the same
+page, pixel-weighted per category and DPI: MAE, the mean absolute RGB error;
+within ±1, the share of pixels whose largest channel error is at most one;
+P99.9, the 99.9th percentile of the largest channel error. Each value is the
+competitors' best figure for that measure, improved by at least 10% and
+rounded towards the more ambitious side. No page may be less accurate than
+the best competitor on that page. The maximum error is not gated, because
+every engine reaches 231–255 on some pages.
 
 | Category | DPI | MAE ≤ | Within ±1 ≥ | P99.9 ≤ |
 |---|---:|---:|---:|---:|
@@ -359,23 +374,20 @@ pages.
 | Mixed | 72 / 150 / 300 | 1.5 / 0.75 / 0.25 | 92 / 94 / 98% | 110 / 90 / 40 |
 | Images | 72 / 150 / 300 | 3.0 / 0.75 / 0.4 | 85 / 94 / 98.5% | 80 / 60 / 90 |
 
-Each value is the competitors' best figure for that measure, improved by at
-least 10% and then rounded towards the more ambitious side.
-
-The best competitor differs by cell. It is hayro for most text and vector
-cells, MuPDF for vector at 72 dpi, and pdf.js for images at 72 and 150 dpi,
-mixed at 150 dpi and some percentiles. The engines considered were PDFium,
-MuPDF, hayro, pdf.js, Poppler and Quartz.
+The best competitor differs by cell among PDFium, MuPDF, hayro, pdf.js,
+Poppler and Quartz: hayro for most text and vector cells, MuPDF for vector at
+72 dpi, and pdf.js for images at 72 and 150 dpi, mixed at 150 dpi and some
+percentiles.
 
 **Speed goals.** For each category and DPI, the geometric mean over the
 category's documents of Pagura's engine time (open plus every page render)
 must be at most the value below, in milliseconds, on each benchmark runner.
-Each value is 0.9 times the fastest competitor on that runner, rounded down
-in 0.5 ms steps below 10 ms, 1 ms steps up to 30 ms and 5 ms steps above. The
-fastest competitor differs by runner. On M4 it is hayro in every cell. On x86
-it is PDFium for text at 72 and 150 dpi and for all vector, MuPDF for images
-at 72 dpi, and hayro otherwise. On Graviton it is PDFium for text, vector and
-mixed, MuPDF for images at 72 dpi, and hayro for images at 150 and 300 dpi.
+Each value is 0.9 times the fastest competitor on that runner, rounded down in
+0.5 ms steps below 10 ms, 1 ms steps up to 30 ms and 5 ms steps above. On M4
+the fastest competitor is hayro in every cell. On x86 it is PDFium for text
+at 72 and 150 dpi and for all vector, MuPDF for images at 72 dpi, and hayro
+otherwise. On Graviton it is PDFium for text, vector and mixed, MuPDF for
+images at 72 dpi, and hayro for images at 150 and 300 dpi.
 
 | Category | M4 (ms ≤) | x86 (ms ≤) | Graviton (ms ≤) |
 |---|---|---|---|
@@ -388,197 +400,117 @@ The values are for 72 / 150 / 300 dpi, from the 2026-10-19 runs on main
 99bfb290.
 
 **Ratchet.** Both margins tighten over time from 10% towards the original
-20%. Each tightening adds a new dated table to this section. A path that
-falls behind a tightened table returns to the exact default.
+20%. Each tightening adds a new dated table to this section, and a
+configuration that falls behind a tightened table stops being a default.
 
-**Unchanged.** Rendering stays deterministic and byte-identical across
-platforms and tile layouts. Work and storage stay bounded and charged to
-`Limits`. No `unsafe` code or dependency exceptions are introduced (ADR 0008).
-Conformance fixtures keep their independent oracles. Where an approved
-approximate path changes a fixture, the fixture records that path's measured
-bound, listed with this amendment. Every approximate path is named, can be
-switched to the exact path through `RenderOptions`, and its per-category
-accuracy table is kept with the change that introduces it.
+**Unchanged by any configuration.** Rendering stays deterministic and
+byte-identical across platforms, regions and band heights; work and storage
+stay reserved against `Limits` (ADR 0016); no `unsafe` code or dependency
+exception is introduced (ADR 0008); conformance fixtures keep their
+independent oracles. Every approximation is a named fast parameter (section
+9), and its per-category accuracy table is kept here with the change that
+introduces it.
 
-## Amendment: signed-area glyph coverage (2026-10-19)
+### 9. Fast parameters
 
-Status: accepted, 2026-10-20.
+`RenderOptions::fast` is a `FastParams` of four switches, each a kernel or
+producer variant inside the one pipeline (ADR 0034). `FastParams::EXACT`, all
+off, is the default and is held to the contract above;
+`FastParams::COMPETITIVE`, all on, is the configuration the gate measures.
+Each parameter can be switched alone and is tested alone and in combination;
+none routes a page to other code, and fonts load the same way under every
+set. Preparation reserves what the selected kernels use, so a parameter can
+change whether a render reaches a limit; a failed render is not retried
+exactly.
 
-A glyph whose canonical polygon has a certified winding may be covered by
-signed-area accumulation in f64, in place of certified integer accumulation
-and the strip sweep. Its reference and oracle stay the placed canonical
-polygon (amendment of 2026-10-18). Glyphs admitted to the curve sweep keep it
-and its true-curve reference. Rectangles keep closed-form coverage. Point
-contours, uncertified glyphs and glyphs under nonrectangular clips keep the
-existing paths. Selection depends only on the canonical geometry and the
-retained clip stack.
+- **`glyph_origin_bins`:** glyph coverage is reused per origin bin. Bins lie
+  on the global device grid (ADR 0013): 1/128 pixel horizontally and,
+  vertically, 1/128 pixel below 108 dpi, 1/16 pixel from 108 dpi and 1/64
+  pixel from 216 dpi. Curves become 0.15-pixel chords below 108 dpi and two
+  area-balanced chords per 1/4-pixel piece from 108 dpi. Coverage is a pure
+  function of outline, linear map and bin, so reuse never depends on
+  regions, bands or cache state.
+- **`approximate_coverage`:** fills and strokes accumulate signed areas in
+  f32 cells after flattening curves to 1/64-pixel chords, instead of
+  certified accumulation. Cells are indexed in global device columns, so any
+  partition assembles into the page. Rectangles, degenerate contours and
+  compound paths, other than a stroke's pieces, keep the exact producers. A
+  stroke becomes pieces that meet without overlapping: each segment's
+  quadrilateral ends at the inner miter point on the inner side of a turn and
+  at its normal on the outer side, the outer wedge takes the join, and a
+  round cap is the half disc beyond its endpoint. A stroke keeps overlapping
+  components when a run reverses, turns tighter than the pen around a short
+  segment, has an open centreline whose directions span a half turn or a
+  closed one that is not convex, or when the bounding boxes of its runs' pens
+  meet. A clip whose path contains a mark's control hull is dropped for that
+  mark, and a quadrilateral mark within quadrilateral clips is integrated
+  with them geometrically. Otherwise the clip's coverage, a column factor
+  times a row factor for a rectangle and its own cells once per band for any
+  other region, is multiplied into the mark, which approximates the
+  intersection where both boundaries cross one pixel.
+- **`byte_storage`:** a buffer that exact rendering stores in N16 or F32 is
+  U8, rounding each store once; the error accumulates per mark.
+- **`reduced_image_decode`:** an opaque DeviceGray or DeviceRGB DCTDecode
+  image without `Mask`, `SMask` or `Decode` is reconstructed near its drawn
+  size, with 1, 2, 3, 4 or 6 cells per eight-sample block axis, the fewest
+  that leave two and a half cells per device pixel along its less minified
+  axis. A cell is the mean of its block's unclamped T.81 A.3.3 samples from an
+  integrated cosine basis, rounded once; with six cells, a block that may
+  leave the sample range takes the means of its exact samples. The samplers
+  take the cells, the image's unit square spanning its declared extent in
+  them. JPEG 2000 images decode at a reduced resolution level near their
+  drawn size; the selection rule is recorded here with its accuracy table.
 
-**Certificate.** It is computed once per canonical geometry and cached with
-it. Each contour splits into strictly y-monotone chains; horizontal edges
-enclose no area. Between consecutive chain-end heights, the chains crossing the
-slab must alternate in direction from the left, starting with one sign s
-common to the glyph. Chains adjacent at the slab's middle must not meet
-inside the slab, since the first meeting in a slab is between such neighbours
-(Shamos and Hoey). Neighbours are compared at every vertex height of either
-one, or skipped when their x ranges within the slab are separated. An
-interpolated comparison must exceed 2^-45 M, where M >= 1 bounds the
-coordinates; that is more than 2^8 times its rounding error. Only identical
-vertices may touch, and only at slab ends. The winding is then 0 or s almost
-everywhere, so each cell's |signed area| is its nonzero area. Any doubt fails
-the certificate. The sweep stops and leaves the glyph uncertified once the
-chains crossing its slabs, counted per slab, plus its segment steps exceed
-32E + 1024 for E edges, so its work stays linear in E even for geometries
-the cache does not keep.
-
-**Kernel.** With t the exact device origin and f = t - floor(t), a vertex
-x maps to X = (x + f_x) - c, where c = floor(x_min + f_x); y maps likewise.
-Rounding is monotone, so every placed vertex stays within the frame. Edges
-are clipped to integer rows. Each row piece adds the exact trapezoid areas of
-the cells it crosses as prefix differences. One prefix sum per row, from the
-glyph's first column, gives each cell's signed area, and |area| is quantized
-once with the existing quantizer. A cell depends only on the geometry, t and
-the cell. Tiles, chunks and integer clip rectangles therefore cut the result
-exactly. Cells cut by a fractional rectangle-clip edge take the polygon path's
-geometric clip. Every other cell keeps the kernel's value, whichever tile or
-redundant-rectangle omission produced it. Rows are processed in bands of at
-most 2^16 accumulators. Work charges count vertex visits, row-piece columns
-and band cells, independently of the geometry cache.
-
-**Error bound.** Let u = 2^-53, E the polygon's vertex count, C its chain
-count, B >= 1 its largest relative coordinate, W = floor(width) + 4 and
-H = floor(height) + 2. To first order in u:
-
-- Placing a vertex errs by at most u(B + W + 1) in x and u(B + H + 1) in y. A
-  row crossing interpolates within 6uW more, and a single-column piece's
-  midpoint within u(W + 1).
-- Moving a piece's ends by dx and dy changes its contribution to any prefix
-  by at most |d| dx + 2 dy, where d is its signed height and |d| <= 1. A row
-  has at most E pieces.
-- The computed terms of one piece err by at most 32u|d| in total. Each chain
-  crosses a row band once, so the |d| of one row sum to at most C.
-- A row's prefix sums add at most E W terms of total magnitude at most C, so
-  summation errs by at most E C W u.
-
-So a cell's area errs by at most u(E(3B + 8W + 2H + 4) + 32C + E C W).
-Admission requires twice this to be at most 2^-20 pixel area, and W <= 2^16.
-Each byte is then within 0.5 + 255 * 2^-20 + 10^-9 < 0.50025 levels of the
-exact area of the placed polygon. Underflow adds at most 2^-1074 per
-operation. On the 40 benchmark pages the bound admits every certified glyph.
-
-Fixtures and unit tests compare against independent per-cell polygon
-clipping. Changed cells against the previous backends must be reported with
-their oracle values; on the 40 benchmark pages at 72, 150 and 300 dpi, every
-non-tie change moved a cell to the correctly rounded exact area.
-
-## Amendment: the competitive path (2026-10-20)
-
-Status: accepted, 2026-10-21.
-
-`RenderOptions::accuracy` selects the path: `Accuracy::Exact`, the default,
-keeps the one-level contract; `Accuracy::Competitive` (CLI `--accuracy
-competitive`) is the approximate path measured against the gate above. It
-takes, per primitive, the faster approximation that keeps the gate:
-
-- **Glyphs** of a solid colour in byte storage are masks from row fragments.
-  An outline is flattened once per linear map, its edges are clipped to rows
-  once per vertical origin, and those fragments are reused across horizontal
-  origins. Origins snap to 1/128 pixel horizontally and, vertically, to
-  1/128 pixel below 108 dpi, 1/16 pixel from 108 dpi and 1/64 pixel from
-  216 dpi. Curves become 0.15-pixel chords below 108 dpi and two
-  area-balanced chords per 1/4-pixel piece from 108 dpi. Masks are a pure
-  function of their key and are retained per rendering context, at most
-  16 MiB within `Limits::document_bytes` (ADR 0012).
-- **Other fills and strokes** accumulate signed areas in f32 cells after
-  flattening curves to 1/64-pixel chords. Cells are indexed in global device
-  columns, so any tile partition assembles into the page. Rectangles,
-  degenerate contours and compound paths without a retained stroke boundary
-  keep geometric integration.
-- **Strokes** become pieces that meet without overlapping, retained as the
-  stroke boundary: each segment's quadrilateral ends at the inner miter
-  point on the inner side of a turn and at its normal on the outer side, the
-  outer wedge takes the join, and a round cap is the half disc beyond its
-  endpoint. The pieces cover the components' set once, so signed cells
-  integrate them without a union. A stroke keeps its overlapping components,
-  and so geometric integration, when a run reverses, turns tighter than the
-  pen around a short segment, has an open centreline whose directions span a
-  half turn or a closed one that is not convex, or when the bounding boxes
-  of its runs' pens meet.
-- **Clips.** A clip path that contains a mark's global control hull is
-  dropped for that mark. A quadrilateral mark within quadrilateral clips is
-  integrated with them geometrically. A rectangular clip region's coverage
-  is a column factor times a row factor; any other clip region's own cell
-  coverage is integrated once per band. Either is multiplied into each mark,
-  which approximates the intersection where both boundaries cross one pixel.
-- **Composition.** Where the exact path would admit 16-bit or f32 storage,
-  Normal composition of an opaque page rounds each store once into one byte
-  page, painted in full-width bands of 256 rows. Retained groups, blend
-  modes, soft masks and other compositing keep the general compositor.
-- **Images.** A page whose only mark is one opaque DeviceGray or DeviceRGB
-  image, upright or turned by a quarter, is decoded, converted and filtered
-  in one pass straight into the output, within one level of the exact
-  result. On byte pages, the fully covered interior of an opaque image, or
-  one with a soft mask, takes the exact integer area sampler of the direct
-  opaque images amendment, for its colour and for its mask's levels, rounded
-  to bytes and composed once; a matte is first removed from each sample, as
-  the image sampling reference does. A one-sample stencil mask is painted as
-  a fill of its unit square. Boundary pixels and every other image keep the
-  image sampling reference. An opaque DeviceGray or DeviceRGB DCTDecode
-  image without `Mask`, `SMask` or `Decode`, drawn from page content and not
-  as the page's sole mark, is reconstructed near its drawn size: with 1, 2,
-  3, 4 or 6 cells per eight-sample block axis, the fewest that leave two and
-  a half cells per device pixel along its less minified axis. A cell is the
-  mean of its block's unclamped T.81 A.3.3 samples from an integrated cosine
-  basis, rounded once; with six cells, a block that may leave the sample
-  range takes the means of its exact samples. The samplers then take the
-  cells, the image's unit square spanning its declared extent in them.
-- **Fonts.** Embedded TrueType programs are decoded only as far as drawing
-  reads them; damage in later tables is neither examined nor reported.
-
-Rendering stays deterministic and byte-identical between native and
-WebAssembly builds (with and without SIMD128) and across tile layouts. Work
-and storage are charged to `Limits`. A page that exceeds a limit on this path
-renders exactly instead, so a rendering costs at most one competitive attempt
-plus the exact rendering.
-
-**Accuracy** against the exact path on main 752b52e7, pixel-weighted per
-category and DPI over the gate's pages (the predeclared 20-page subset at
-300 dpi). MAE is over RGB; within ±1, P99.9 and the maximum are over each
-pixel's largest channel error.
-
-| Category | DPI | MAE (goal) | Within ±1 (goal) | P99.9 (goal) | Max |
-|---|---:|---|---|---|---:|
-| Text | 72 | 0.408 (≤ 1.0) | 94.09% (≥ 93%) | 19 (≤ 60) | 255 |
-| Text | 150 | 0.116 (≤ 0.5) | 97.37% (≥ 96%) | 7 (≤ 40) | 255 |
-| Text | 300 | 0.040 (≤ 0.3) | 99.08% (≥ 98%) | 5 (≤ 30) | 255 |
-| Vector | 72 | 0.032 (≤ 0.6) | 99.59% (≥ 95%) | 9 (≤ 50) | 213 |
-| Vector | 150 | 0.009 (≤ 0.15) | 99.84% (≥ 99.2%) | 3 (≤ 30) | 255 |
-| Vector | 300 | 0.006 (≤ 0.05) | 99.89% (≥ 99.6%) | 2 (≤ 20) | 255 |
-| Mixed | 72 | 0.140 (≤ 1.5) | 97.99% (≥ 92%) | 15 (≤ 110) | 255 |
-| Mixed | 150 | 0.051 (≤ 0.75) | 98.85% (≥ 94%) | 6 (≤ 90) | 255 |
-| Mixed | 300 | 0.016 (≤ 0.25) | 99.65% (≥ 98%) | 3 (≤ 40) | 255 |
-| Images | 72 | 0.004 (≤ 3.0) | 100.00% (≥ 85%) | 1 (≤ 80) | 1 |
-| Images | 150 | 0.011 (≤ 0.75) | 100.00% (≥ 94%) | 1 (≤ 60) | 1 |
-| Images | 300 | 0.000 (≤ 0.4) | 100.00% (≥ 98.5%) | 0 (≤ 90) | 1 |
-
-No page is worse than the best of PDFium, MuPDF, hayro, pdf.js, Poppler and
-Quartz on that page in MAE, within ±1 or P99.9, at any of the three
-resolutions, over all 40 pages (39 at 300 dpi: one page has no competitor
-image there).
+The route stack these parameters replace met every accuracy goal on main
+752b52e7 (table in this file's history). The combination's own table is
+recorded here before it can become a default.
 
 **Fixtures.** Every render fixture stays within its exact tolerance under
-this path, except these, whose measured bounds the manifests record as
-`competitive_tolerance` (`tools/fixturegen/competitive.py`) and conformance
-checks:
+each parameter alone and under the combination, except these under the
+parameter named. The manifests record the bounds as `competitive_tolerance`
+(`tools/fixturegen/competitive.py`), which the conformance check applies under
+`FastParams::COMPETITIVE`; each parameter alone stays within the same bound.
 
-| Fixture | Bound | Cause |
+| Fixture | Bound | Parameter: cause |
 |---|---:|---|
-| classic/alpha-unsupported, content/alpha, paint/image-direct-rgb-fractional, paint/text-knockout-false, zero_area/half-alpha | 1 | one byte rounding per store |
-| content/alpha-accumulation | 66 | byte rounding accumulated per mark |
-| content/precision-slivers-254, content/precision-slivers-255 | 33 | byte rounding accumulated per mark |
-| content/precision-slivers-1000 | 122 | byte rounding accumulated per mark |
-| content/precision-slivers-270000, content/precision-translucent-stagnation | 127 | byte rounding accumulated per mark |
-| paint/bundled-symbol | 25 | glyph origins snapped to the lattice |
-| paint/bundled-symbol-differences | 27 | glyph origins snapped to the lattice |
-| paint/bundled-zapfdingbats | 14 | glyph origins snapped to the lattice |
-| paint/bundled-zapfdingbats-differences | 19 | glyph origins snapped to the lattice |
-| zero_area/zero-width-shading-bbox | 64 | the empty BBox's boundary outline as a clip in cells |
+| classic/alpha-unsupported, content/alpha, paint/image-direct-rgb-fractional, paint/text-knockout-false, zero_area/half-alpha | 1 | `byte_storage`: one byte rounding per store |
+| content/alpha-accumulation | 66 | `byte_storage`: byte rounding accumulated per mark |
+| content/precision-slivers-254, content/precision-slivers-255 | 33 | `byte_storage`: byte rounding accumulated per mark |
+| content/precision-slivers-1000 | 122 | `byte_storage`: byte rounding accumulated per mark |
+| content/precision-slivers-270000, content/precision-translucent-stagnation | 127 | `byte_storage`: byte rounding accumulated per mark |
+| paint/bundled-symbol | 25 | `glyph_origin_bins`: origins binned |
+| paint/bundled-symbol-differences | 27 | `glyph_origin_bins`: origins binned |
+| paint/bundled-zapfdingbats | 14 | `glyph_origin_bins`: origins binned |
+| paint/bundled-zapfdingbats-differences | 19 | `glyph_origin_bins`: origins binned |
+| zero_area/zero-width-shading-bbox | 64 | `approximate_coverage`: the empty `BBox`'s boundary outline as a clip in cells |
+
+A bound changes only with the evidence of section 3 recorded here.
+
+## Consequences
+
+- One pipeline replaces the six execution routes, the page-wide storage plan,
+  the 8-bit opaque route and the Competitive exact re-render (ADR 0034). The
+  8-bit route's known defect, which quantized source colours and rounded
+  twice per partial store (up to about 1.5 levels each, accumulating), goes
+  with it: opaque pages store in N16 band buffers within the bound of
+  section 6.
+- Formats are chosen per buffer, so a soft mask, a pattern or a blend inside
+  a group no longer puts a whole page on F64, and translucent groups and
+  soft masks can run in F32 under their parents' bounds.
+- Producers that ADR 0034 retires (the strip sweep, signed-area glyph cells,
+  the fragment rasterizer, the direct image routes) take their admission
+  rules and bounds with them. A producer that returns re-establishes its
+  bound under section 3.
+- GPU backends stay out of scope until the CPU reference is complete.
+
+## Alternatives considered
+
+- **All-F64 composition:** simplest, but forgoes the measured allocation and
+  bandwidth savings of narrow formats.
+- **Formats per page:** what main did; one mask in a corner put every pixel
+  on 56-byte f64 values (ADR 0034).
+- **N16 child buffers:** an N16 buffer leaves no room for a child that
+  already carries half a level (section 6).
+- **Byte storage promoted to N16 per 16×16 chunk:** deferred to the
+  performance phase as an experiment with the proof obligations of section
+  6.
