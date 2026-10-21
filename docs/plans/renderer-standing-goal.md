@@ -31,6 +31,12 @@ completion criteria and next steps reviewable. It is not a new release policy.
    Preserve its measured gains and investigate the disabled-path regressions
    with a separately frozen revision. Lazy initialization is an unmeasured
    candidate; it does not remove maximum inline storage or establish causality.
+   [Retained stage analysis](../../benchmarks/results/glyph-memo-stage-analysis.md)
+   locates most of the tiny-page cold excess before rendering. The completed
+   [image profiles](../../benchmarks/results/glyph-memo-disabled-profile.md)
+   show sampling/painting as the dominant work and do not identify memo
+   initialization as the cause. Keep lazy initialization unapplied until an
+   isolated experiment justifies its complexity; protected failures stay open.
 2. Use measured reach and cost to select the next small improvement. Preserve
    useful partial wins on the experimental branch; distinguish incomplete
    admission from evidence of regression. Never add historical percentages.

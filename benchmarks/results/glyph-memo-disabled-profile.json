@@ -1,0 +1,729 @@
+{
+  "status": "read-only-retained-artifact-audit",
+  "source_root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+  "reviewed_head": "d16c07f8ea7ae6cc5e680cd8b669640be19e5f12",
+  "plan_sha256": "3171c77754fddb6e4c84ffb9beda69e1ec858f125e2bc54697119aca1178c9d1",
+  "checks_passed": 45,
+  "checks_total": 45,
+  "checks": [
+    {
+      "check": "driver file",
+      "actual": "834d1e019ab6d70b79b84ac11caace6ccb209120f2ce3fb0c687e2d2f2d94107",
+      "expected": "834d1e019ab6d70b79b84ac11caace6ccb209120f2ce3fb0c687e2d2f2d94107",
+      "matches": true
+    },
+    {
+      "check": "current example file",
+      "actual": "a698372b098162d57ff9772db99bbab58a9bcabd4664e2542dec0f31c917f339",
+      "expected": "a698372b098162d57ff9772db99bbab58a9bcabd4664e2542dec0f31c917f339",
+      "matches": true
+    },
+    {
+      "check": "baseline example file",
+      "actual": "a698372b098162d57ff9772db99bbab58a9bcabd4664e2542dec0f31c917f339",
+      "expected": "a698372b098162d57ff9772db99bbab58a9bcabd4664e2542dec0f31c917f339",
+      "matches": true
+    },
+    {
+      "check": "source PDF",
+      "actual": "35660a1a6fdcb224d18f28c46e1b24596d584ecfd5d6058c4e73d4d5887e6a7e",
+      "expected": "35660a1a6fdcb224d18f28c46e1b24596d584ecfd5d6058c4e73d4d5887e6a7e",
+      "matches": true
+    },
+    {
+      "check": "retained independent oracle",
+      "actual": "fb24f455ed61008b05a5326ed1274b7dfff1b29d6b2856f5de7a0093d39fe80a",
+      "expected": "fb24f455ed61008b05a5326ed1274b7dfff1b29d6b2856f5de7a0093d39fe80a",
+      "matches": true
+    },
+    {
+      "check": "baseline record plan",
+      "actual": "3171c77754fddb6e4c84ffb9beda69e1ec858f125e2bc54697119aca1178c9d1",
+      "expected": "3171c77754fddb6e4c84ffb9beda69e1ec858f125e2bc54697119aca1178c9d1",
+      "matches": true
+    },
+    {
+      "check": "baseline record binary binding",
+      "actual": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/disabled-regressions/baseline-profile",
+        "sha256": "4164cc79cbbf6a919243b71f292d45fd1637d4eec2359620fead6053752c138b",
+        "source": {
+          "root": "/Users/jonasgrosch/.codex/worktrees/glyph-memo-control/pagura",
+          "commit": "776fd4b9ed6f2a6805d0932cabdd96f1e73ab5a4",
+          "source_sha256": "735cef328e06f63dd4e3c0e5f452d949874275f221640a6aac1c31e7471dee33"
+        },
+        "build_receipt_source": {
+          "commit": "776fd4b9ed6f2a6805d0932cabdd96f1e73ab5a4",
+          "sha256": "511edc3ebc862398defd7c795f2fffbb2d71094ebf2b21b722aa2fcb1da016b2"
+        },
+        "build_receipt_sha256": "d4fef9dce221c742b2287fc579cc0b39bc42cdd126150b0117f7a348c291ce87"
+      },
+      "expected": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/disabled-regressions/baseline-profile",
+        "sha256": "4164cc79cbbf6a919243b71f292d45fd1637d4eec2359620fead6053752c138b",
+        "source": {
+          "root": "/Users/jonasgrosch/.codex/worktrees/glyph-memo-control/pagura",
+          "commit": "776fd4b9ed6f2a6805d0932cabdd96f1e73ab5a4",
+          "source_sha256": "735cef328e06f63dd4e3c0e5f452d949874275f221640a6aac1c31e7471dee33"
+        },
+        "build_receipt_source": {
+          "commit": "776fd4b9ed6f2a6805d0932cabdd96f1e73ab5a4",
+          "sha256": "511edc3ebc862398defd7c795f2fffbb2d71094ebf2b21b722aa2fcb1da016b2"
+        },
+        "build_receipt_sha256": "d4fef9dce221c742b2287fc579cc0b39bc42cdd126150b0117f7a348c291ce87"
+      },
+      "matches": true
+    },
+    {
+      "check": "baseline actual binary file",
+      "actual": "4164cc79cbbf6a919243b71f292d45fd1637d4eec2359620fead6053752c138b",
+      "expected": "4164cc79cbbf6a919243b71f292d45fd1637d4eec2359620fead6053752c138b",
+      "matches": true
+    },
+    {
+      "check": "baseline artifact sample-command.txt",
+      "actual": "915a59ac400cb9c3bbdcde1b682941c458733c83c13dec6a9a77a3c5227673aa",
+      "expected": "915a59ac400cb9c3bbdcde1b682941c458733c83c13dec6a9a77a3c5227673aa",
+      "matches": true
+    },
+    {
+      "check": "baseline artifact renderer-stderr.txt",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "check": "baseline artifact renders.txt",
+      "actual": "5a887fc68b31e85210da9984aaaa4fa137fc50ca79bf796a86298925fb7192f5",
+      "expected": "5a887fc68b31e85210da9984aaaa4fa137fc50ca79bf796a86298925fb7192f5",
+      "matches": true
+    },
+    {
+      "check": "baseline artifact sample.txt",
+      "actual": "2b2d0f3afd379e2cc4fa5290df3ebbbcc9741a8e1ca1ca45abe0f662d3d30cd8",
+      "expected": "2b2d0f3afd379e2cc4fa5290df3ebbbcc9741a8e1ca1ca45abe0f662d3d30cd8",
+      "matches": true
+    },
+    {
+      "check": "baseline receipt artifact guard.json",
+      "actual": "7f616dbbd5fecd2e8b2e8b8773406f0cc7c8ffc03a9f829b0f8391e4e5d822f2",
+      "expected": "7f616dbbd5fecd2e8b2e8b8773406f0cc7c8ffc03a9f829b0f8391e4e5d822f2",
+      "matches": true
+    },
+    {
+      "check": "baseline receipt artifact record.json",
+      "actual": "69fa89e520711c16ae937b226da283592de36efbd905cb36d8171117ff1f5f35",
+      "expected": "69fa89e520711c16ae937b226da283592de36efbd905cb36d8171117ff1f5f35",
+      "matches": true
+    },
+    {
+      "check": "baseline build receipt",
+      "actual": "d4fef9dce221c742b2287fc579cc0b39bc42cdd126150b0117f7a348c291ce87",
+      "expected": "d4fef9dce221c742b2287fc579cc0b39bc42cdd126150b0117f7a348c291ce87",
+      "matches": true
+    },
+    {
+      "check": "baseline build source",
+      "actual": {
+        "commit": "776fd4b9ed6f2a6805d0932cabdd96f1e73ab5a4",
+        "sha256": "511edc3ebc862398defd7c795f2fffbb2d71094ebf2b21b722aa2fcb1da016b2"
+      },
+      "expected": {
+        "commit": "776fd4b9ed6f2a6805d0932cabdd96f1e73ab5a4",
+        "sha256": "511edc3ebc862398defd7c795f2fffbb2d71094ebf2b21b722aa2fcb1da016b2"
+      },
+      "matches": true
+    },
+    {
+      "check": "baseline build completed",
+      "actual": [
+        "completed",
+        true,
+        0,
+        0,
+        []
+      ],
+      "expected": [
+        "completed",
+        true,
+        0,
+        0,
+        []
+      ],
+      "matches": true
+    },
+    {
+      "check": "baseline profile completed",
+      "actual": [
+        "completed-diagnostic",
+        0,
+        0
+      ],
+      "expected": [
+        "completed-diagnostic",
+        0,
+        0
+      ],
+      "matches": true
+    },
+    {
+      "check": "baseline receipt completed",
+      "actual": [
+        "completed",
+        true,
+        0,
+        0,
+        [],
+        {}
+      ],
+      "expected": [
+        "completed",
+        true,
+        0,
+        0,
+        [],
+        {}
+      ],
+      "matches": true
+    },
+    {
+      "check": "baseline guard completed",
+      "actual": [
+        "completed-observation-only",
+        0,
+        0
+      ],
+      "expected": [
+        "completed-observation-only",
+        0,
+        0
+      ],
+      "matches": true
+    },
+    {
+      "check": "baseline observed contention",
+      "actual": [],
+      "expected": [],
+      "matches": true
+    },
+    {
+      "check": "baseline recorded render count",
+      "actual": 3000,
+      "expected": 3000,
+      "matches": true
+    },
+    {
+      "check": "baseline recorded checksum count",
+      "actual": 3000,
+      "expected": 3000,
+      "matches": true
+    },
+    {
+      "check": "baseline sequential output indices",
+      "actual": {
+        "count": 3000,
+        "first": 1,
+        "last": 3000
+      },
+      "expected": {
+        "count": 3000,
+        "first": 1,
+        "last": 3000
+      },
+      "matches": true
+    },
+    {
+      "check": "baseline all reported checksums match",
+      "actual": true,
+      "expected": true,
+      "matches": true
+    },
+    {
+      "check": "current record plan",
+      "actual": "3171c77754fddb6e4c84ffb9beda69e1ec858f125e2bc54697119aca1178c9d1",
+      "expected": "3171c77754fddb6e4c84ffb9beda69e1ec858f125e2bc54697119aca1178c9d1",
+      "matches": true
+    },
+    {
+      "check": "current record binary binding",
+      "actual": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/disabled-regressions/current-profile",
+        "sha256": "ac1cbb9def1c5e5d80228a5bfb8431de077a5e320494103bc4971fade9606ddd",
+        "source": {
+          "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+          "commit": "d16c07f8ea7ae6cc5e680cd8b669640be19e5f12",
+          "source_sha256": "f087987a0ab2dde87d2a6ffe432295e0f4dabdb0def1b1deef173263a90e8f6a"
+        },
+        "build_receipt_source": {
+          "commit": "d16c07f8ea7ae6cc5e680cd8b669640be19e5f12",
+          "sha256": "0106c6da903589edfc3cba638702176d252cab80bef1582954895dfe8a894b12"
+        },
+        "build_receipt_sha256": "ef5d40bf9dbfee901aa723a523a7817bc788cdd5bc0f775f590ca507e8986a1b"
+      },
+      "expected": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/disabled-regressions/current-profile",
+        "sha256": "ac1cbb9def1c5e5d80228a5bfb8431de077a5e320494103bc4971fade9606ddd",
+        "source": {
+          "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+          "commit": "d16c07f8ea7ae6cc5e680cd8b669640be19e5f12",
+          "source_sha256": "f087987a0ab2dde87d2a6ffe432295e0f4dabdb0def1b1deef173263a90e8f6a"
+        },
+        "build_receipt_source": {
+          "commit": "d16c07f8ea7ae6cc5e680cd8b669640be19e5f12",
+          "sha256": "0106c6da903589edfc3cba638702176d252cab80bef1582954895dfe8a894b12"
+        },
+        "build_receipt_sha256": "ef5d40bf9dbfee901aa723a523a7817bc788cdd5bc0f775f590ca507e8986a1b"
+      },
+      "matches": true
+    },
+    {
+      "check": "current actual binary file",
+      "actual": "ac1cbb9def1c5e5d80228a5bfb8431de077a5e320494103bc4971fade9606ddd",
+      "expected": "ac1cbb9def1c5e5d80228a5bfb8431de077a5e320494103bc4971fade9606ddd",
+      "matches": true
+    },
+    {
+      "check": "current artifact sample-command.txt",
+      "actual": "bc68abf4f3b8a253e3d86338585036dd5932a12908c3344c73451c349fa8b296",
+      "expected": "bc68abf4f3b8a253e3d86338585036dd5932a12908c3344c73451c349fa8b296",
+      "matches": true
+    },
+    {
+      "check": "current artifact renderer-stderr.txt",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matches": true
+    },
+    {
+      "check": "current artifact renders.txt",
+      "actual": "01e50c104ac9f59f57442eff8a8ef96a40e022f688ac391035113d407882f349",
+      "expected": "01e50c104ac9f59f57442eff8a8ef96a40e022f688ac391035113d407882f349",
+      "matches": true
+    },
+    {
+      "check": "current artifact sample.txt",
+      "actual": "d01f964ad30a1f75b71e9b08b918bdeff710470c1455f2cce68e8834c8c83dc0",
+      "expected": "d01f964ad30a1f75b71e9b08b918bdeff710470c1455f2cce68e8834c8c83dc0",
+      "matches": true
+    },
+    {
+      "check": "current receipt artifact guard.json",
+      "actual": "4c4a5b767fea2090f85acefc1e1d2651ec3621ce158b8ffd17cd14d09edb3f63",
+      "expected": "4c4a5b767fea2090f85acefc1e1d2651ec3621ce158b8ffd17cd14d09edb3f63",
+      "matches": true
+    },
+    {
+      "check": "current receipt artifact record.json",
+      "actual": "ead3420a2eee6834c0bd4012331656aac2bba1fce53e7c67b1ab31d0a00f535a",
+      "expected": "ead3420a2eee6834c0bd4012331656aac2bba1fce53e7c67b1ab31d0a00f535a",
+      "matches": true
+    },
+    {
+      "check": "current build receipt",
+      "actual": "ef5d40bf9dbfee901aa723a523a7817bc788cdd5bc0f775f590ca507e8986a1b",
+      "expected": "ef5d40bf9dbfee901aa723a523a7817bc788cdd5bc0f775f590ca507e8986a1b",
+      "matches": true
+    },
+    {
+      "check": "current build source",
+      "actual": {
+        "commit": "d16c07f8ea7ae6cc5e680cd8b669640be19e5f12",
+        "sha256": "0106c6da903589edfc3cba638702176d252cab80bef1582954895dfe8a894b12"
+      },
+      "expected": {
+        "commit": "d16c07f8ea7ae6cc5e680cd8b669640be19e5f12",
+        "sha256": "0106c6da903589edfc3cba638702176d252cab80bef1582954895dfe8a894b12"
+      },
+      "matches": true
+    },
+    {
+      "check": "current build completed",
+      "actual": [
+        "completed",
+        true,
+        0,
+        0,
+        []
+      ],
+      "expected": [
+        "completed",
+        true,
+        0,
+        0,
+        []
+      ],
+      "matches": true
+    },
+    {
+      "check": "current profile completed",
+      "actual": [
+        "completed-diagnostic",
+        0,
+        0
+      ],
+      "expected": [
+        "completed-diagnostic",
+        0,
+        0
+      ],
+      "matches": true
+    },
+    {
+      "check": "current receipt completed",
+      "actual": [
+        "completed",
+        true,
+        0,
+        0,
+        [],
+        {}
+      ],
+      "expected": [
+        "completed",
+        true,
+        0,
+        0,
+        [],
+        {}
+      ],
+      "matches": true
+    },
+    {
+      "check": "current guard completed",
+      "actual": [
+        "completed-observation-only",
+        0,
+        0
+      ],
+      "expected": [
+        "completed-observation-only",
+        0,
+        0
+      ],
+      "matches": true
+    },
+    {
+      "check": "current observed contention",
+      "actual": [],
+      "expected": [],
+      "matches": true
+    },
+    {
+      "check": "current recorded render count",
+      "actual": 3000,
+      "expected": 3000,
+      "matches": true
+    },
+    {
+      "check": "current recorded checksum count",
+      "actual": 3000,
+      "expected": 3000,
+      "matches": true
+    },
+    {
+      "check": "current sequential output indices",
+      "actual": {
+        "count": 3000,
+        "first": 1,
+        "last": 3000
+      },
+      "expected": {
+        "count": 3000,
+        "first": 1,
+        "last": 3000
+      },
+      "matches": true
+    },
+    {
+      "check": "current all reported checksums match",
+      "actual": true,
+      "expected": true,
+      "matches": true
+    }
+  ],
+  "profiles": {
+    "baseline": {
+      "directory": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/disabled-regressions/baseline-profile-002",
+      "plan_sha256": "3171c77754fddb6e4c84ffb9beda69e1ec858f125e2bc54697119aca1178c9d1",
+      "record_sha256": "69fa89e520711c16ae937b226da283592de36efbd905cb36d8171117ff1f5f35",
+      "receipt_sha256": "bd75cdd94db7818c8f29782010cdcd22429839b2dbf1df7b71c4f5f0e11aece9",
+      "guard_sha256": "7f616dbbd5fecd2e8b2e8b8773406f0cc7c8ffc03a9f829b0f8391e4e5d822f2",
+      "sample_sha256": "2b2d0f3afd379e2cc4fa5290df3ebbbcc9741a8e1ca1ca45abe0f662d3d30cd8",
+      "total_main_thread_samples": 3870,
+      "thread_root_counts": [
+        3870
+      ],
+      "render_inclusive": [
+        {
+          "line": 30,
+          "samples": 3032,
+          "text": "+         ! 3032 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render7displayNtB5_11DisplayList6render  (in baseline-profile) + 540  [0x104434390]"
+        }
+      ],
+      "commands_inclusive": [
+        {
+          "line": 33,
+          "samples": 2847,
+          "text": "+         !     : 2847 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context8commands  (in baseline-profile) + 2060  [0x10442f3ec]"
+        }
+      ],
+      "render_policy_nodes": [
+        {
+          "line": 32,
+          "samples": 2979,
+          "text": "+         !     2979 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in baseline-profile) + 6672  [0x104455650]"
+        },
+        {
+          "line": 135,
+          "samples": 132,
+          "text": "+         !     : 132 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in baseline-profile) + 8936,8880,...  [0x104455f28,0x104455ef0,...]"
+        },
+        {
+          "line": 136,
+          "samples": 45,
+          "text": "+         !     45 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in baseline-profile) + 6424  [0x104455558]"
+        },
+        {
+          "line": 138,
+          "samples": 7,
+          "text": "+         !     7 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in baseline-profile) + 5436  [0x10445517c]"
+        },
+        {
+          "line": 143,
+          "samples": 1,
+          "text": "+         !     1 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in baseline-profile) + 6244  [0x1044554a4]"
+        }
+      ],
+      "flat_self_samples": [
+        {
+          "symbol": "_RNvCskEBVikgbFsk_14render_profile4main",
+          "self_samples": 834
+        },
+        {
+          "symbol": "_RNvMs_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB4_6Buffer5paint",
+          "self_samples": 736
+        },
+        {
+          "symbol": "_RNCNvMNtNtCs6mGY1dcbO7G_13pagura_render10compositor6imagesNtB6_7Context5images1_0B8_",
+          "self_samples": 658
+        },
+        {
+          "symbol": "_RNvMNtNtCs6mGY1dcbO7G_13pagura_render10compositor6imagesNtB4_7Context5image",
+          "self_samples": 629
+        },
+        {
+          "symbol": "_RINvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor7reducedNtB6_8Prepared6sampleNCNvMNtB8_6imagesNtB8_7Context5images1_0EBa_",
+          "self_samples": 439
+        },
+        {
+          "symbol": "_RNvMs_NtNtCs6mGY1dcbO7G_13pagura_render10compositor8transferNtB6_7Context13transfer_mark",
+          "self_samples": 177
+        },
+        {
+          "symbol": "_RNvMNtNtCs6mGY1dcbO7G_13pagura_render10compositor7surfaceNtB2_7Surface5index",
+          "self_samples": 159
+        },
+        {
+          "symbol": "_RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy",
+          "self_samples": 132
+        },
+        {
+          "symbol": "_RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context12page_surface",
+          "self_samples": 45
+        },
+        {
+          "symbol": "_RNvMs_NtNtCs6mGY1dcbO7G_13pagura_render10compositor8transferNtB6_7Context14image_transfer",
+          "self_samples": 9
+        },
+        {
+          "symbol": "_platform_memset",
+          "self_samples": 9
+        },
+        {
+          "symbol": "_platform_memmove",
+          "self_samples": 8
+        },
+        {
+          "symbol": "_RNvXs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5spansNtB4_4RunsNtNtNtNtCs3bJEMBXHbwl_4core4iter6traits8iterator8Iterator4next",
+          "self_samples": 7
+        },
+        {
+          "symbol": "_RNvXsi_NtNtNtCs3bJEMBXHbwl_4core4iter8adapters7flattenINtB5_13FlattenCompatINtNtB7_3map3MapINtNtB7_9enumerate9EnumerateINtNtNtBb_5slice4iter11ChunksExacthEENCNvNtNtCsfTZxTf8D02z_13pagura_raster6raster5spans4rows0EIB1c_NtB2y_4RunsNCNCB2w_00EENtNtNtB9_6traits8iterator8Iterator4nextCs6mGY1dcbO7G_13pagura_render",
+          "self_samples": 6
+        },
+        {
+          "symbol": "tiny_malloc_from_free_list",
+          "self_samples": 5
+        }
+      ],
+      "memset_calltree": [
+        {
+          "line": 80,
+          "samples": 2,
+          "text": "+         !     : | +   !       2 _platform_memset  (in libsystem_platform.dylib) + 140  [0x18283507c]"
+        },
+        {
+          "line": 142,
+          "samples": 7,
+          "text": "+         !     :       7 _platform_memset  (in libsystem_platform.dylib) + 72  [0x182835038]"
+        }
+      ],
+      "guard_scans": 6,
+      "checksums_recorded": 3000
+    },
+    "current": {
+      "directory": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/disabled-regressions/current-profile-001",
+      "plan_sha256": "3171c77754fddb6e4c84ffb9beda69e1ec858f125e2bc54697119aca1178c9d1",
+      "record_sha256": "ead3420a2eee6834c0bd4012331656aac2bba1fce53e7c67b1ab31d0a00f535a",
+      "receipt_sha256": "34e785e82ccf430ddf14e72eadd2a07684ccc5880fc25ccd07ef6132a548d063",
+      "guard_sha256": "4c4a5b767fea2090f85acefc1e1d2651ec3621ce158b8ffd17cd14d09edb3f63",
+      "sample_sha256": "d01f964ad30a1f75b71e9b08b918bdeff710470c1455f2cce68e8834c8c83dc0",
+      "total_main_thread_samples": 3867,
+      "thread_root_counts": [
+        37,
+        3830
+      ],
+      "render_inclusive": [
+        {
+          "line": 73,
+          "samples": 3026,
+          "text": "!         : 3026 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render7displayNtB5_11DisplayList6render  (in current-profile) + 540  [0x100c1c548]"
+        }
+      ],
+      "commands_inclusive": [
+        {
+          "line": 76,
+          "samples": 2819,
+          "text": "!         :     | 2819 _RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context8commands  (in current-profile) + 2208  [0x100c17558]"
+        }
+      ],
+      "render_policy_nodes": [
+        {
+          "line": 75,
+          "samples": 2979,
+          "text": "!         :     2979 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in current-profile) + 7164  [0x100c3da3c]"
+        },
+        {
+          "line": 152,
+          "samples": 160,
+          "text": "!         :     | 160 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in current-profile) + 9392,9336,...  [0x100c3e2f0,0x100c3e2b8,...]"
+        },
+        {
+          "line": 153,
+          "samples": 35,
+          "text": "!         :     35 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in current-profile) + 6904  [0x100c3d938]"
+        },
+        {
+          "line": 155,
+          "samples": 11,
+          "text": "!         :     11 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in current-profile) + 5616  [0x100c3d430]"
+        },
+        {
+          "line": 160,
+          "samples": 1,
+          "text": "!         :     1 _RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy  (in current-profile) + 6704  [0x100c3d870]"
+        }
+      ],
+      "flat_self_samples": [
+        {
+          "symbol": "_RNvCskEBVikgbFsk_14render_profile4main",
+          "self_samples": 793
+        },
+        {
+          "symbol": "_RNvMs_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6narrowNtB4_6Buffer5paint",
+          "self_samples": 688
+        },
+        {
+          "symbol": "_RNvMNtNtCs6mGY1dcbO7G_13pagura_render10compositor6imagesNtB4_7Context5image",
+          "self_samples": 638
+        },
+        {
+          "symbol": "_RNCNvMNtNtCs6mGY1dcbO7G_13pagura_render10compositor6imagesNtB6_7Context5images1_0B8_",
+          "self_samples": 627
+        },
+        {
+          "symbol": "_RINvMs0_NtNtCs6mGY1dcbO7G_13pagura_render10compositor7reducedNtB6_8Prepared6sampleNCNvMNtB8_6imagesNtB8_7Context5images1_0EBa_",
+          "self_samples": 495
+        },
+        {
+          "symbol": "_RNvMNtNtCs6mGY1dcbO7G_13pagura_render10compositor7surfaceNtB2_7Surface5index",
+          "self_samples": 175
+        },
+        {
+          "symbol": "_RNvNtCs6mGY1dcbO7G_13pagura_render10compositor13render_policy",
+          "self_samples": 160
+        },
+        {
+          "symbol": "_RNvMs_NtNtCs6mGY1dcbO7G_13pagura_render10compositor8transferNtB6_7Context13transfer_mark",
+          "self_samples": 144
+        },
+        {
+          "symbol": "_RNvMs1_NtCs6mGY1dcbO7G_13pagura_render10compositorNtB5_7Context12page_surface",
+          "self_samples": 35
+        },
+        {
+          "symbol": "_dyld_start",
+          "self_samples": 30
+        },
+        {
+          "symbol": "_platform_memset",
+          "self_samples": 18
+        },
+        {
+          "symbol": "_RNvMs_NtNtCs6mGY1dcbO7G_13pagura_render10compositor8transferNtB6_7Context14image_transfer",
+          "self_samples": 14
+        },
+        {
+          "symbol": "write",
+          "self_samples": 9
+        },
+        {
+          "symbol": "_RINvMsm_NtCs3bJEMBXHbwl_4core5arrayARTddEj3_7try_mapINtNtNtB8_3ops9try_trait17NeverShortCircuitAdj100_ENCINvMBR_BO_10wrap_mut_1By_NCNvMs1_NtNtCs6mGY1dcbO7G_13pagura_render10compositor6imagesNtB2c_6Texels3news0_0E0EB2g_",
+          "self_samples": 8
+        },
+        {
+          "symbol": "_platform_memmove",
+          "self_samples": 6
+        },
+        {
+          "symbol": "mach_msg2_trap",
+          "self_samples": 6
+        },
+        {
+          "symbol": "_RNvXs_NtNtCsfTZxTf8D02z_13pagura_raster6raster5spansNtB4_4RunsNtNtNtNtCs3bJEMBXHbwl_4core4iter6traits8iterator8Iterator4next",
+          "self_samples": 5
+        }
+      ],
+      "memset_calltree": [
+        {
+          "line": 110,
+          "samples": 4,
+          "text": "!         :     | + ! :   | + ! 4 _platform_memset  (in libsystem_platform.dylib) + 160,120  [0x182835090,0x182835068]"
+        },
+        {
+          "line": 114,
+          "samples": 1,
+          "text": "!         :     | + ! :   | +   1 _platform_memset  (in libsystem_platform.dylib) + 140  [0x18283507c]"
+        },
+        {
+          "line": 120,
+          "samples": 1,
+          "text": "!         :     | + ! :     1 _platform_memset  (in libsystem_platform.dylib) + 140  [0x18283507c]"
+        },
+        {
+          "line": 159,
+          "samples": 11,
+          "text": "!         :     |       11 _platform_memset  (in libsystem_platform.dylib) + 72  [0x182835038]"
+        },
+        {
+          "line": 211,
+          "samples": 1,
+          "text": "1 _platform_memset  (in libsystem_platform.dylib) + 160  [0x182835090]"
+        }
+      ],
+      "guard_scans": 6,
+      "checksums_recorded": 3000
+    }
+  },
+  "trust_boundary": "Receipt hashes freshly recorded by reviewer, not independently externally authenticated. Build receipt binds source but not a binary artifact; source-to-binary correspondence remains trusted coordinator build/copy provenance. No executable or generator was run."
+}
