@@ -1,6 +1,7 @@
 //! Differential and invariance tests of the band rasterizer against the
 //! exact backends it replaces.
 
+mod approximate;
 mod clips;
 mod fills;
 mod strokes;
@@ -129,6 +130,16 @@ pub(super) fn invariant(
     prepare: &dyn Fn(&ShapeOptions<'_>) -> Option<Shape>,
     clip: Option<&dyn Fn(&ShapeOptions<'_>) -> ClipShape>,
 ) -> Vec<u8> {
+    invariant_with(area, prepare, clip, Precision::Exact)
+}
+
+/// [`invariant`] with clips prepared at `precision`.
+pub(super) fn invariant_with(
+    area: &Area,
+    prepare: &dyn Fn(&ShapeOptions<'_>) -> Option<Shape>,
+    clip: Option<&dyn Fn(&ShapeOptions<'_>) -> ClipShape>,
+    precision: Precision,
+) -> Vec<u8> {
     let limits = Limits::default();
     let mut reference: Option<Vec<u8>> = None;
     let r = area.region;
@@ -156,7 +167,12 @@ pub(super) fn invariant(
                 region,
                 band_height: height,
             };
-            let clip_shape = clip.map(|c| c(&options(sub, &limits, None)));
+            let clip_shape = clip.map(|c| {
+                c(&ShapeOptions {
+                    precision,
+                    ..options(sub, &limits, None)
+                })
+            });
             let opts = options(sub, &limits, clip_shape.as_ref());
             let shape = prepare(&opts);
             let (coverage, work) = if let Some(shape) = &shape {

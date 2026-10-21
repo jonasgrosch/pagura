@@ -31,6 +31,8 @@ pub struct Shape {
     pub(crate) body: Body,
     pub(crate) clip: Option<ClipShape>,
     pub(crate) stored: Stored,
+    /// A clip multiplied into the coverage (approximate precision).
+    pub(crate) multiplied: Option<ClipShape>,
 }
 
 /// How a shape's rows are produced.
@@ -338,6 +340,7 @@ impl Shape {
             body: Body::Rect(rect),
             clip: frame.clip.cloned(),
             stored: Stored::default(),
+            multiplied: None,
         })
     }
 
@@ -418,6 +421,7 @@ impl Shape {
             body: Body::Edges(body),
             clip: frame.clip.cloned(),
             stored,
+            multiplied: None,
         })
     }
 
@@ -437,7 +441,13 @@ impl Shape {
             body,
             clip: options.clip.cloned(),
             stored: Stored::default(),
+            multiplied: None,
         }
+    }
+
+    /// Adds `units` to the work bound.
+    pub(crate) fn add_work(&mut self, units: usize) {
+        self.work = self.work.saturating_add(units);
     }
 }
 

@@ -1,6 +1,6 @@
 //! The band rasterizer: one dense cell row, reused for every mark and band.
 
-use super::approximate;
+use super::approximate::{self, Multiplied};
 use super::binned;
 use super::clip::{INSIDE, Rows, Segment};
 use super::edges::Bounds;
@@ -78,7 +78,7 @@ impl BandRasterizer {
             (None, Some(clip)) => self.clip(clip, rows, out),
             (Some(shape), clip) => {
                 debug_assert!(
-                    match (&shape.clip, clip) {
+                    match (shape.clip.as_ref().or(shape.multiplied.as_ref()), clip) {
                         (Some(a), Some(b)) => a.same(b),
                         (None, None) => true,
                         _ => false,
@@ -99,7 +99,7 @@ impl BandRasterizer {
                         self.work = self.work.saturating_add(self.cells.rasterize(
                             cells,
                             shape,
-                            rows,
+                            (band, rows),
                             out,
                         ));
                     }
@@ -120,9 +120,12 @@ impl BandRasterizer {
     fn rect(&mut self, r: Bounds, shape: &Shape, rows: std::ops::Range<u32>, out: &mut BandCoverage) {
         for y in rows {
             out.push_row(y);
-            let mut sink = sink(out, shape, y);
+            let mut sink = sink(out, shape, y, self.cells.row_buffer());
             let runs = rect::emit_row(r, y, &mut sink);
-            self.work = self.work.saturating_add(runs + 2);
+            self.work = self
+                .work
+                .saturating_add(runs + 2)
+                .saturating_add(sink.extra());
         }
     }
 
@@ -149,7 +152,7 @@ impl BandRasterizer {
                 };
             }
             out.push_row(y);
-            let mut sink = sink(out, shape, y);
+            let mut sink = sink(out, shape, y, self.cells.row_buffer());
             let touched = self.row.emit(edges.scan, shape.rule, &mut sink);
             let words = (edges.scan.1.saturating_sub(edges.scan.0)) / 64 + 2;
             self.work = self
@@ -172,6 +175,11 @@ impl BandRasterizer {
                 x0: bounds.x0 as usize,
                 x1: bounds.x1 as usize,
             };
+            if let Some(product) = clip.product() {
+                let runs = product.emit_row(y, clip.rect(), (bounds.x0 as usize, bounds.x1 as usize), &mut sink);
+                self.work = self.work.saturating_add(runs + 2);
+                continue;
+            }
             match clip.rows() {
                 Some(rows) => {
                     let segments = rows.row(y);
@@ -233,10 +241,19 @@ impl Sink for Out<'_> {
 }
 
 /// The sink of one row of `shape`: its cells resolved at preparation and
-/// its clip's rows, where it has them, over the output.
-pub(crate) fn sink<'a>(out: &'a mut BandCoverage, shape: &'a Shape, y: u32) -> Overlay<'a> {
+/// its clip's rows, where it has them, over the output, or its multiplied
+/// clip.
+pub(crate) fn sink<'a>(
+    out: &'a mut BandCoverage,
+    shape: &'a Shape,
+    y: u32,
+    buffer: &'a mut Vec<u8>,
+) -> RowSink<'a> {
+    if shape.multiplied.is_some() {
+        return RowSink::Multiplied(Multiplied::new(out, shape, y, buffer));
+    }
     let rows = shape.clip.as_ref().and_then(ClipShape::rows);
-    Overlay {
+    RowSink::Overlay(Overlay {
         out: Out {
             out,
             x0: shape.bounds.x0 as usize,
@@ -247,6 +264,31 @@ pub(crate) fn sink<'a>(out: &'a mut BandCoverage, shape: &'a Shape, y: u32) -> O
         clip: rows.map(|rows| (rows, rows.row(y))),
         segment: 0,
         extra: 0,
+    })
+}
+
+/// A shape row's sink.
+pub(crate) enum RowSink<'a> {
+    Overlay(Overlay<'a>),
+    Multiplied(Multiplied<'a>),
+}
+
+impl RowSink<'_> {
+    pub(crate) fn extra(&self) -> usize {
+        match self {
+            Self::Overlay(o) => o.extra(),
+            Self::Multiplied(m) => m.work(),
+        }
+    }
+}
+
+impl Sink for RowSink<'_> {
+    #[inline]
+    fn run(&mut self, x0: usize, x1: usize, value: u8) {
+        match self {
+            Self::Overlay(o) => o.run(x0, x1, value),
+            Self::Multiplied(m) => m.run(x0, x1, value),
+        }
     }
 }
 

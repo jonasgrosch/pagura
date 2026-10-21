@@ -6,7 +6,7 @@
 //! coverage and its cell-local edges, so that a mark crossing it is
 //! integrated together with the clip's geometry rather than multiplied.
 
-use super::approximate::Product;
+use super::approximate::{ClipPath, Product};
 use super::certify::certified;
 use super::edges::{self, Bounds, Chained, Polygon};
 use super::rect::rectangle;
@@ -35,6 +35,7 @@ struct Inner {
     rect: Option<Bounds>,
     rows: Option<Rows>,
     product: Option<Product>,
+    paths: Vec<ClipPath>,
     work: usize,
     retained: usize,
 }
@@ -177,7 +178,12 @@ impl ClipShape {
         let region = options.area.region;
         let mut rect: Option<Bounds> = None;
         let mut groups = Vec::new();
+        let mut kinds = Vec::new();
+        kinds
+            .try_reserve(paths.len())
+            .map_err(|_| Error::limit("clip allocation failed"))?;
         for &(path, rule) in paths {
+            kinds.push(ClipPath::new(path, transform));
             let (polygon, rule) = fill_polygon(path, transform, rule, None, limits)?;
             if let Some(r) = rectangle(&polygon) {
                 rect = Some(rect.map_or(r, |b| b.intersect(r)));
@@ -204,12 +210,13 @@ impl ClipShape {
             rect,
             rows: None,
             product: None,
+            paths: kinds,
             work: 0,
             retained: size_of::<Inner>(),
         };
         if !groups.is_empty() && !bounds.is_empty() {
             if options.precision == Precision::Approximate {
-                let product = Product::new(paths, transform, rect, options, bounds)?;
+                let product = Product::new(paths, transform, options, bounds)?;
                 inner.retained = inner.retained.saturating_add(product.retained_bytes());
                 inner.work = product.work();
                 inner.product = Some(product);
@@ -255,6 +262,10 @@ impl ClipShape {
 
     pub(crate) fn product(&self) -> Option<&Product> {
         self.inner.product.as_ref()
+    }
+
+    pub(crate) fn paths(&self) -> &[ClipPath] {
+        &self.inner.paths
     }
 
     pub(crate) fn same(&self, other: &Self) -> bool {
