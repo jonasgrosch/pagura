@@ -209,6 +209,9 @@ fn budgets_fail_in_source_order_and_bound_what_rendering_uses() {
             limits
         };
         assert!(b.prepare(&b.request(page, 32), &limits(total)).is_ok());
+        if total == 0 {
+            continue;
+        }
         for height in HEIGHTS {
             let error = b
                 .prepare(&b.request(page, height), &limits(total - 1))

@@ -152,6 +152,9 @@ pub(crate) struct Mark {
     pub(crate) select: u16,
     /// Whether it records a transfer selection at all: page content only.
     pub(crate) records: bool,
+    /// The shape whose coverage a shading pattern mixes its `Background`
+    /// by ([`crate::source::BBoxUse::Boundary`]).
+    pub(crate) boundary: Option<u32>,
 }
 
 /// A group's result composited into its parent.
@@ -181,11 +184,10 @@ pub(crate) struct Compositing {
     /// Index into [`Plan::masks`].
     pub(crate) mask: Option<u32>,
     /// Channels that keep the backdrop where the paint does not paint them:
-    /// every channel for a simulated overprinting mark, none otherwise.
+    /// every channel for a simulated overprinting mark, none otherwise. The
+    /// paint's channels follow its overprint state, zero DeviceCMYK
+    /// components under `OPM 1` excluded (8.6.7).
     pub(crate) overprint: u64,
-    /// Channels that keep the backdrop whatever the paint: zero DeviceCMYK
-    /// components under `OPM 1`.
-    pub(crate) zeros: u64,
 }
 
 impl Compositing {
@@ -196,7 +198,6 @@ impl Compositing {
             && self.blend == BlendMode::Normal
             && self.mask.is_none()
             && self.overprint == 0
-            && self.zeros == 0
     }
 }
 

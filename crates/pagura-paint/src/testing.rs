@@ -7,7 +7,7 @@ use crate::paint::{Convert, PaintSpans};
 use crate::prepare::{Backend, PaintRequest, Prepared, PreparedScene, Producer, prepare_with};
 use crate::request::RenderRequest;
 use crate::source::Source;
-use pagura_color::{ColorSpace, Components, Conversion, Painted, Process, Target};
+use pagura_color::{ColorSpace, Components, Conversion, Target};
 use pagura_core::{Error, Limits, Meter, Position, Rect, Result, Store};
 use pagura_interpret::{
     ClipId, ClipNode, Color, Composite, FillNode, GlyphSource, Group, GroupAttributes, GroupId,
@@ -142,21 +142,28 @@ impl Backend for Rects {
         request: &PaintRequest<'_>,
         functions: &mut Meter,
     ) -> Result<Box<dyn PaintSpans>> {
-        let Paint::Solid(color) = paint else {
-            return Err(Error::syntax("the test backend paints solid colours only"));
-        };
-        functions.charge(1)?;
-        Ok(Box::new(native(color, request.context.target)?))
+        Ok(Box::new(Source::prepare(
+            paint,
+            &request.context,
+            request.pixels,
+            functions,
+        )?))
     }
 
     fn shading(
         &mut self,
-        _shading: &Shading,
-        _to_device: Transform,
-        _request: &PaintRequest<'_>,
-        _functions: &mut Meter,
+        shading: &Shading,
+        to_device: Transform,
+        request: &PaintRequest<'_>,
+        functions: &mut Meter,
     ) -> Result<Box<dyn PaintSpans>> {
-        Err(Error::syntax("the test backend has no shadings"))
+        Ok(Box::new(Source::shading(
+            shading,
+            to_device,
+            &request.context,
+            request.pixels,
+            functions,
+        )?))
     }
 
     fn image(
@@ -172,11 +179,11 @@ impl Backend for Rects {
 
     fn converter(
         &mut self,
-        _space: &ColorSpace,
-        _target: &Target,
-        _conversion: &Conversion,
+        space: &ColorSpace,
+        target: &Target,
+        conversion: &Conversion,
     ) -> Result<Box<dyn Convert>> {
-        Err(Error::syntax("the test backend has no converters"))
+        Ok(Box::new(pagura_color::Converter::new(space, target, conversion)?))
     }
 
     fn finish(self, area: Area, _bytes: &mut Meter) -> Result<Box<dyn Producer>> {
@@ -186,29 +193,6 @@ impl Backend for Rects {
             clips: self.clips,
         }))
     }
-}
-
-/// A device colour in a target of its own family (10.4 defines the
-/// identity), as the reference converts it: spot channels unpainted.
-pub(crate) fn native(color: &Color, target: &Target) -> Result<Source> {
-    let process = match *color.space {
-        ColorSpace::DeviceGray => Process::Gray,
-        ColorSpace::DeviceRgb => Process::Rgb,
-        ColorSpace::DeviceCmyk => Process::Cmyk,
-        _ => return Err(Error::syntax("the test backend converts device colours only")),
-    };
-    if process != target.process {
-        return Err(Error::syntax("the test backend converts within a family only"));
-    }
-    let mut values = vec![1.0; target.channels()];
-    for (value, &c) in values.iter_mut().zip(color.components.iter()) {
-        let c = c.clamp(0.0, 1.0);
-        *value = if process == Process::Cmyk { 1.0 - c } else { c };
-    }
-    Ok(Source::Solid {
-        color: values.into_boxed_slice(),
-        painted: Painted((1 << process.components()) - 1),
-    })
 }
 
 /// A producer of exact rectangle coverage for `shapes` and `clips`.

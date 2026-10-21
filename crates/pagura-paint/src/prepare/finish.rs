@@ -120,10 +120,7 @@ fn complete<B: Backend>(
     let stack = needs(&parts, rows);
     let mut output_spots = Vec::new();
     for (space, inputs) in spots {
-        let target = Target {
-            process: Process::Cmyk,
-            spots: Arc::from([]),
-        };
+        let target = Target::new(Process::Cmyk);
         let convert = backend.converter(&space, &target, &Conversion::default())?;
         output_spots.push(SpotPlan {
             convert,

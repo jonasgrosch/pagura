@@ -17,15 +17,15 @@ struct Old {
     shape: f64,
 }
 
-struct Apply(BlendMode, [f64; 4], [f64; 4], usize);
+struct Apply([f64; 4], [f64; 4], usize);
 
 impl BlendVisitor for Apply {
     type Output = [f64; 4];
     fn visit<B: Blend>(self) -> [f64; 4] {
         if B::SEPARABLE {
-            [0, 1, 2, 3].map(|i| B::component(self.1[i], self.2[i]))
+            [0, 1, 2, 3].map(|i| B::component(self.0[i], self.1[i]))
         } else {
-            B::process(&self.1, &self.2, self.3)
+            B::process(&self.0, &self.1, self.2)
         }
     }
 }
@@ -77,7 +77,7 @@ impl Old {
             });
             (
                 color,
-                crate::blend::with_blend(mode, Apply(mode, base.straight(), color, components)),
+                with_blend(mode, Apply(base.straight(), color, components)),
             )
         };
         let value = [0, 1, 2, 3].map(|i| {
@@ -238,7 +238,7 @@ fn spot_channels_take_normal_for_difference_exclusion_and_nonseparable_modes() {
         let expected = if normal_spot {
             0.25
         } else {
-            crate::blend::with_blend(mode, Apply(mode, [0.5; 4], [0.25; 4], 1))[0]
+            with_blend(mode, Apply([0.5; 4], [0.25; 4], 1))[0]
         };
         assert_eq!(pixel[3], expected, "{mode:?}");
     }

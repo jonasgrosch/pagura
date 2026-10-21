@@ -4,19 +4,18 @@
 //! so its errors come in source order. A glyph placement is a mark of its
 //! own.
 
-use super::clips::Clipping;
+use super::clips::{Clipping, Extra};
 use super::{Planner, Scope};
 use crate::paint::PaintSpans;
 use crate::plan::{Compositing, Cover, GroupUse, Item, ItemKind, Mark, area, intersect};
 use crate::prepare::{Backend, Budget, PaintRequest, Prepared, bounds, index};
-use crate::source::{PaintContext, Source};
-use pagura_color::ColorSpace;
+use crate::source::{BBoxUse, PaintContext, Source};
 use pagura_core::{Error, Position, Result};
 use pagura_interpret::{
     BlendMode, Composite, FillNode, GlyphSource, GlyphsNode, ImageMask, ImageNode, MarkInfo, Paint,
-    PaintId, Pen, ShadingNode, StrokeNode, TilingPaint,
+    PaintId, Pen, ShadingNode, ShadingPaint, StrokeNode, TilingPaint,
 };
-use pagura_raster::{FillRule, LineJoin, Path, Point, ShapeOptions, Transform};
+use pagura_raster::{FillRegion, FillRule, LineJoin, Path, Point, ShapeOptions, Transform};
 use std::sync::Arc;
 
 /// Bytes charged per prepared paint, besides what its source retains.
@@ -198,14 +197,6 @@ impl<B: Backend> Planner<'_, B> {
                 .get(spec.info.state.index())
                 .ok_or(Error::invalid_argument("scene state out of range"))?,
         );
-        let clip_bounds = self.clip_bounds(scope, spec.info.clip)?;
-        let culling = intersect(
-            intersect(bounds::device(spec.hull, self.area.region), clip_bounds),
-            scope.bounds,
-        );
-        if culling.is_empty() {
-            return Ok(());
-        }
         let paint = match spec.colour {
             Colour::Paint(id) => Some(Arc::clone(
                 scene
@@ -215,10 +206,32 @@ impl<B: Backend> Planner<'_, B> {
             )),
             Colour::Shading(_) | Colour::Image(_) => None,
         };
+        if !paints(paint.as_deref(), spec.colour, scope, scene) {
+            return Ok(());
+        }
         let tiling = match paint.as_deref() {
             Some(Paint::Tiling(tiling)) if scope.paint.is_none() => Some(tiling.clone()),
             _ => None,
         };
+        let pattern_box = match (paint.as_deref(), spec.colour) {
+            (Some(Paint::Shading(pattern)), Colour::Paint(id)) if scope.paint.is_none() => {
+                pattern_bbox(pattern, scope.transform)
+                    .map(|(usage, extra)| (usage, Extra { paint: id.0, ..extra }))
+            }
+            _ => None,
+        };
+        let extra = pattern_box
+            .as_ref()
+            .filter(|(usage, _)| *usage == BBoxUse::Clip)
+            .map(|(_, extra)| extra);
+        let clip_bounds = self.clip_bounds(scope, spec.info.clip, extra)?;
+        let culling = intersect(
+            intersect(bounds::device(spec.hull, self.area.region), clip_bounds),
+            scope.bounds,
+        );
+        if culling.is_empty() {
+            return Ok(());
+        }
         if self.storage.transfers && (tiling.is_some() || (self.simulate && state.overprint.enabled))
         {
             return Err(Error::unsupported(
@@ -230,9 +243,12 @@ impl<B: Backend> Planner<'_, B> {
             .soft_mask
             .map(|id| self.mask_use(scope, id, budget))
             .transpose()?;
-        let Some(covered) = self.coverage(scope, spec, culling, budget)? else {
+        let Some(mut covered) = self.coverage(scope, spec, (culling, extra), budget)? else {
             return Ok(());
         };
+        if let Some((BBoxUse::Boundary, boundary)) = &pattern_box {
+            self.boundary(&mut covered, boundary, budget)?;
+        }
         self.use_mask(mask, covered.bounds, budget)?;
         let compositing = Compositing {
             alpha: state.alpha,
@@ -244,7 +260,6 @@ impl<B: Backend> Planner<'_, B> {
             } else {
                 0
             },
-            zeros: zeros(paint.as_deref(), spec.colour, &state, scope, self.simulate, self.scene),
         };
         match tiling {
             Some(tiling) => self.pattern_item(scope, spec, (&tiling, covered, compositing), budget),
@@ -258,11 +273,11 @@ impl<B: Backend> Planner<'_, B> {
         &mut self,
         scope: &Scope,
         spec: &Spec<'_>,
-        culling: pagura_raster::DeviceRect,
+        (culling, extra): (pagura_raster::DeviceRect, Option<&Extra>),
         budget: &mut Budget,
     ) -> Result<Option<Covered>> {
         let region = self.area.region;
-        let (clip, clip_rect) = match self.clip(scope, spec.info.clip, budget)? {
+        let (clip, clip_rect) = match self.clip(scope, (spec.info.clip, extra), budget)? {
             Clipping::Empty => return Ok(None),
             Clipping::All => (None, region),
             Clipping::Shape(prepared) => (Some(prepared.key), prepared.bounds),
@@ -287,7 +302,30 @@ impl<B: Backend> Planner<'_, B> {
             },
             bounds,
             work: shape.map_or(0, |s| s.work),
+            boundary: None,
         }))
+    }
+
+    /// The outline coverage a shading pattern with a `Background` and a
+    /// degenerate `BBox` mixes its colours by (8.7.4.4).
+    fn boundary(&mut self, covered: &mut Covered, boundary: &Extra, budget: &mut Budget) -> Result<()> {
+        let options = ShapeOptions {
+            area: self.area,
+            precision: self.precision,
+            limits: self.limits,
+        };
+        let prepared = self.backend.fill(
+            &boundary.path,
+            boundary.transform,
+            FillRule::NonZero,
+            &options,
+        )?;
+        if let Some(prepared) = prepared {
+            budget.bytes.charge(prepared.bytes)?;
+            covered.work = covered.work.saturating_add(prepared.work);
+            covered.boundary = Some(prepared.key);
+        }
+        Ok(())
     }
 
     /// A mark painted with a tiling pattern: the pattern's instances as a
@@ -347,6 +385,7 @@ impl<B: Backend> Planner<'_, B> {
                 compositing,
                 select,
                 records,
+                boundary: covered.boundary,
             }),
         };
         self.push(scope.group, item, budget)
@@ -394,7 +433,7 @@ impl<B: Backend> Planner<'_, B> {
         pixels: usize,
         budget: &mut Budget,
     ) -> Result<u32> {
-        let target = self.target(scope.layout);
+        let target = self.target(scope);
         let context = PaintContext {
             transform: scope.transform,
             target: &target,
@@ -422,7 +461,7 @@ impl<B: Backend> Planner<'_, B> {
                     return Ok(cached);
                 }
                 let prepared = self.backend.paint(&paint, &request, &mut budget.functions)?;
-                let index = self.add_paint(prepared, scope, budget)?;
+                let index = self.add_paint(prepared, scope, pixels, budget)?;
                 if matches!(*paint, Paint::Solid(_)) {
                     self.solids().insert(key, index);
                 }
@@ -448,7 +487,7 @@ impl<B: Backend> Planner<'_, B> {
                 )?
             }
         };
-        self.add_paint(prepared, scope, budget)
+        self.add_paint(prepared, scope, pixels, budget)
     }
 
     /// The colour of a stencil mask (8.9.6.2): its fill paint, or the colour
@@ -480,10 +519,21 @@ impl<B: Backend> Planner<'_, B> {
         self.backend.paint(&paint, request, &mut budget.functions)
     }
 
-    fn add_paint(&mut self, paint: Box<dyn PaintSpans>, scope: &Scope, budget: &mut Budget) -> Result<u32> {
-        budget
-            .bytes
-            .charge(PAINT_BYTES.saturating_add(scope.layout.channels() * size_of::<f64>()))?;
+    /// Keeps a prepared paint, reserving its bytes and its geometry work
+    /// over `pixels` (mesh shadings).
+    fn add_paint(
+        &mut self,
+        paint: Box<dyn PaintSpans>,
+        scope: &Scope,
+        pixels: usize,
+        budget: &mut Budget,
+    ) -> Result<u32> {
+        budget.bytes.charge(
+            PAINT_BYTES
+                .saturating_add(scope.layout.channels() * size_of::<f64>())
+                .saturating_add(paint.bytes()),
+        )?;
+        budget.work.charge_product(pixels, paint.work_per_pixel())?;
         let index = u32::try_from(self.parts.paints.len())
             .map_err(|_| Error::limit("paint count exceeds u32"))?;
         self.parts.paints.push(paint);
@@ -494,13 +544,13 @@ impl<B: Backend> Planner<'_, B> {
     pub(crate) fn solid_paint(
         &mut self,
         paint: &Paint,
-        (state, layout): (&Arc<Composite>, crate::plan::Layout),
-        (transform, pixels): (Transform, usize),
+        (state, scope): (&Arc<Composite>, &Scope),
+        pixels: usize,
         budget: &mut Budget,
     ) -> Result<u32> {
-        let target = self.target(layout);
+        let target = self.target(scope);
         let context = PaintContext {
-            transform,
+            transform: scope.transform,
             target: &target,
             composite: state,
             store: self.store,
@@ -509,18 +559,7 @@ impl<B: Backend> Planner<'_, B> {
         };
         let request = PaintRequest { context, pixels };
         let prepared = self.backend.paint(paint, &request, &mut budget.functions)?;
-        let scope_layout = Scope {
-            group: 0,
-            transform,
-            crop: false,
-            bounds: self.area.region,
-            layout,
-            plain: false,
-            records: false,
-            paint: None,
-            depth: 0,
-        };
-        self.add_paint(prepared, &scope_layout, budget)
+        self.add_paint(prepared, scope, pixels, budget)
     }
 
     /// Whether the mark records a transfer selection and which (11.7.5.2):
@@ -557,6 +596,59 @@ struct Covered {
     cover: Cover,
     bounds: pagura_raster::DeviceRect,
     work: usize,
+    /// A shading pattern's outline shape, for its `Background`.
+    boundary: Option<u32>,
+}
+
+/// How a shading pattern's `BBox` applies, decided as its source decides
+/// it: no `BBox` limits nothing; without a `Background` the mark is clipped
+/// to the box; with one, a degenerate box mixes colours by its outline's
+/// coverage and any other box is tested per sample by the source.
+fn pattern_bbox(pattern: &ShadingPaint, transform: Transform) -> Option<(BBoxUse, Extra)> {
+    let bbox = pattern.shading.bbox?;
+    let path = Path::rect(bbox);
+    let degenerate = path
+        .fill_region(FillRule::NonZero)
+        .is_some_and(|region| region != FillRegion::Ordinary);
+    let usage = if pattern.shading.background.is_none() {
+        BBoxUse::Clip
+    } else if degenerate {
+        BBoxUse::Boundary
+    } else {
+        return None;
+    };
+    Some((
+        usage,
+        Extra {
+            paint: 0,
+            path: Arc::new(path),
+            transform: pattern.matrix.then(transform),
+        },
+    ))
+}
+
+/// Whether a mark's colour space can change any colorant (Separation
+/// `None` cannot, 8.6.6.4).
+fn paints(paint: Option<&Paint>, colour: Colour<'_>, scope: &Scope, scene: &pagura_interpret::Scene) -> bool {
+    let of = |paint: &Paint| match paint {
+        Paint::Solid(color) => color.space.paints(),
+        Paint::Shading(pattern) => pattern.shading.space.paints(),
+        Paint::Tiling(_) => true,
+    };
+    let stencil = |node: &ImageNode| {
+        node.stencil
+            .and_then(|id| scene.paints.get(id.index()))
+            .is_none_or(|paint| of(paint))
+    };
+    match (colour, &scope.paint) {
+        (Colour::Image(node), _) if node.image.space.is_some() => {
+            node.image.space.as_ref().is_none_or(|space| space.paints())
+        }
+        (Colour::Paint(_) | Colour::Image(_), Some((_, paint))) => of(paint),
+        (Colour::Paint(_), None) => paint.is_none_or(of),
+        (Colour::Image(node), None) => stencil(node),
+        (Colour::Shading(node), _) => node.shading.space.paints(),
+    }
 }
 
 /// A mark's shape.
@@ -567,44 +659,4 @@ enum Shape {
     Everything,
     /// A prepared shape.
     Prepared(Prepared),
-}
-
-/// The channels a direct DeviceCMYK colour leaves to its backdrop under
-/// `OPM 1` (8.6.7): its zero components, when overprinting is simulated.
-fn zeros(
-    paint: Option<&Paint>,
-    colour: Colour<'_>,
-    state: &Composite,
-    scope: &Scope,
-    simulate: bool,
-    scene: &pagura_interpret::Scene,
-) -> u64 {
-    if !(simulate
-        && state.overprint.enabled
-        && state.overprint.nonzero
-        && scope.layout.process == pagura_color::Process::Cmyk)
-    {
-        return 0;
-    }
-    let paint = match (paint, colour) {
-        (Some(paint), _) => Some(paint),
-        (None, Colour::Image(node)) if node.image.space.is_none() => node
-            .stencil
-            .and_then(|id| scene.paints.get(id.index()))
-            .map(|paint| &**paint),
-        _ => None,
-    };
-    let Some(Paint::Solid(color)) = paint else {
-        return 0;
-    };
-    if !matches!(*color.space, ColorSpace::DeviceCmyk) {
-        return 0;
-    }
-    color
-        .components
-        .iter()
-        .take(4)
-        .enumerate()
-        .filter(|(_, v)| v.clamp(0.0, 1.0) == 0.0)
-        .fold(0, |bits, (i, _)| bits | (1 << i))
 }

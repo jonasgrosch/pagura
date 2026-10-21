@@ -19,6 +19,24 @@ pub(crate) trait PaintSpans: Send + Sync + fmt::Debug {
     /// Fills `out` with the straight colours and alpha of device pixels
     /// `x .. x + len` of row `y`. A pixel's alpha is also its shape.
     fn span(&self, x: u32, y: u32, len: usize, out: &mut SpanColors);
+
+    /// As [`Self::span`] for a shading pattern whose degenerate `BBox`
+    /// outline covers `boundary` of each pixel
+    /// ([`BBoxUse::Boundary`](crate::source::BBoxUse::Boundary)).
+    fn span_with_boundary(&self, x: u32, y: u32, boundary: &[u8], out: &mut SpanColors) {
+        self.span(x, y, boundary.len(), out);
+    }
+
+    /// Render work units one pixel costs besides compositing (mesh
+    /// geometry tests).
+    fn work_per_pixel(&self) -> usize {
+        0
+    }
+
+    /// Bytes the paint holds besides its own value.
+    fn bytes(&self) -> usize {
+        0
+    }
 }
 
 impl PaintSpans for Source {
@@ -35,6 +53,28 @@ impl PaintSpans for Source {
 
     fn span(&self, x: u32, y: u32, len: usize, out: &mut SpanColors) {
         Source::span(self, x, y, len, out);
+    }
+
+    fn span_with_boundary(&self, x: u32, y: u32, boundary: &[u8], out: &mut SpanColors) {
+        match self {
+            Self::Shading(shading) => shading.span_with_boundary(x, y, boundary, out),
+            Self::Solid { .. } | Self::Image(_) => self.span(x, y, boundary.len(), out),
+        }
+    }
+
+    fn work_per_pixel(&self) -> usize {
+        match self {
+            Self::Shading(shading) => shading.geometry_work(),
+            Self::Solid { .. } | Self::Image(_) => 0,
+        }
+    }
+
+    fn bytes(&self) -> usize {
+        match self {
+            Self::Solid { color, .. } => size_of_val::<[f64]>(color),
+            Self::Shading(shading) => shading.bytes(),
+            Self::Image(_) => 0,
+        }
     }
 }
 
@@ -62,6 +102,14 @@ impl PaintSpans for StencilPaint {
         let alpha = std::mem::take(&mut out.alpha);
         self.color.span(x, y, len, out);
         out.alpha = alpha;
+    }
+
+    fn work_per_pixel(&self) -> usize {
+        self.color.work_per_pixel()
+    }
+
+    fn bytes(&self) -> usize {
+        self.color.bytes()
     }
 }
 

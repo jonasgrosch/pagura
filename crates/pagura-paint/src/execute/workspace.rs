@@ -113,6 +113,9 @@ pub(crate) struct Workspace {
     pub(crate) masks: Vec<MaskCache>,
     /// One mark's coverage.
     pub(crate) coverage: BandCoverage,
+    /// The coverage of a shading pattern's `BBox` outline, and one span of
+    /// it as bytes.
+    pub(crate) boundary: (BandCoverage, Vec<u8>),
     /// One span of paint.
     pub(crate) colors: SpanColors,
     /// Source alpha of a span.
@@ -165,11 +168,12 @@ impl Sizes {
             .saturating_mul(self.channels.saturating_mul(3).saturating_add(4))
             .saturating_add(self.width.saturating_mul(self.stride));
         // Growth by doubling may leave up to twice the spans and cells a band
-        // of one-pixel spans needs.
+        // of one-pixel spans needs; a mark and a pattern outline.
         let coverage = pixels
             .saturating_mul(size_of::<u8>() + 12)
             .saturating_add(self.rows * 12)
-            .saturating_mul(2);
+            .saturating_mul(4)
+            .saturating_add(self.width);
         let active: usize = plan
             .groups
             .iter()
@@ -263,6 +267,11 @@ impl Workspace {
             bytes,
             masks,
             coverage: warm_coverage(sizes),
+            boundary: (warm_coverage(sizes), {
+                let mut dense = reserve(sizes.width)?;
+                dense.resize(sizes.width, 0);
+                dense
+            }),
             colors,
             alpha: scratch(sizes.width)?,
             shape: scratch(sizes.width)?,
@@ -296,6 +305,7 @@ impl Workspace {
             + self.bytes.capacity() * size_of::<[u8; 4]>()
             + self.page.bytes()
             + self.selection.capacity() * 2
+            + self.boundary.1.capacity()
             + self.active.iter().map(Active::bytes).sum::<usize>()
             + self.active.capacity() * size_of::<Active>()
             + self.masks.capacity() * size_of::<MaskCache>()

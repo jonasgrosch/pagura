@@ -88,6 +88,9 @@ pub(crate) struct Scope {
     pub(crate) plain: bool,
     /// Page content, which records transfer selections.
     pub(crate) records: bool,
+    /// Colours keep spot colorants as channels (overprint simulation);
+    /// soft masks use the alternates.
+    pub(crate) separated: bool,
     /// The paint of an uncoloured tiling pattern's cell content: its index
     /// and the paint, for stencil masks that need their own.
     pub(crate) paint: Option<(u32, Arc<Paint>)>,
@@ -199,6 +202,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             }),
             plain: true,
             records: self.storage.transfers,
+            separated: self.simulate,
             paint: None,
             depth: 0,
         };
@@ -206,15 +210,18 @@ impl<'s, B: Backend> Planner<'s, B> {
         self.children(&scope, &root.children, budget)
     }
 
-    /// The target of a buffer of `layout`.
-    pub(crate) fn target(&self, layout: Layout) -> Target {
-        Target {
-            process: layout.process,
-            spots: if layout.spots > 0 {
+    /// The target of colours painted in `scope`: separated under overprint
+    /// simulation, composite otherwise and in soft masks.
+    pub(crate) fn target(&self, scope: &Scope) -> Target {
+        if scope.separated {
+            let spots = if scope.layout.spots > 0 {
                 Arc::clone(&self.spots)
             } else {
                 Arc::from([])
-            },
+            };
+            Target::separated(scope.layout.process, spots)
+        } else {
+            Target::new(scope.layout.process)
         }
     }
 
@@ -312,7 +319,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             .map_or(Some([f64::MIN, f64::MIN, f64::MAX, f64::MAX]), |b| {
                 bounds::path(b, transform)
             });
-        let clip = self.clip_bounds(scope, group.mark.clip)?;
+        let clip = self.clip_bounds(scope, group.mark.clip, None)?;
         let culling = intersect(
             intersect(bounds::device(hull, self.area.region), clip),
             scope.bounds,
@@ -331,6 +338,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             layout,
             plain: scope.plain && plain,
             records: scope.records,
+            separated: scope.separated,
             paint: scope.paint.clone(),
             depth: scope.depth + 1,
         };
@@ -381,7 +389,6 @@ impl<'s, B: Backend> Planner<'s, B> {
             alpha_is_shape: state.alpha_is_shape,
             mask,
             overprint: 0,
-            zeros: 0,
         };
         self.use_mask(mask, bounds, budget)?;
         budget.work.charge_product(area(bounds), 3)?;
@@ -531,6 +538,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             layout,
             plain: false,
             records: false,
+            separated: false,
             paint: None,
             depth: scope.depth + 1,
         };
@@ -604,12 +612,7 @@ impl<'s, B: Backend> Planner<'s, B> {
                     .ok_or(Error::syntax("uncoloured pattern without a colour"))?;
                 let state = Arc::new(pagura_interpret::Composite::default());
                 let paint = Arc::new(Paint::Solid(color));
-                let index = self.solid_paint(
-                    &paint,
-                    (&state, scope.layout),
-                    (scope.transform, area(bounds)),
-                    budget,
-                )?;
+                let index = self.solid_paint(&paint, (&state, scope), area(bounds), budget)?;
                 Some((index, paint))
             }
         };
@@ -648,6 +651,7 @@ impl<'s, B: Backend> Planner<'s, B> {
                     layout: scope.layout,
                     plain: false,
                     records: false,
+                    separated: scope.separated,
                     paint: override_paint.clone().or_else(|| scope.paint.clone()),
                     depth: scope.depth + 1,
                 };

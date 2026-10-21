@@ -115,7 +115,6 @@ fn opaque() -> Compositing {
         alpha_is_shape: false,
         mask: None,
         overprint: 0,
-        zeros: 0,
     }
 }
 
@@ -205,6 +204,7 @@ impl Fixture {
             compositing,
             select,
             records: true,
+            boundary: None,
         });
         self.push(group, Self::bounds(rect), kind);
     }

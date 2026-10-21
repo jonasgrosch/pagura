@@ -153,6 +153,10 @@ impl<'a> Executor<'a> {
             self.ensure_mask(mask, tops);
         }
         self.count_shape(item);
+        if let Some(boundary) = mark.boundary {
+            self.producer
+                .rasterize(Some(boundary), None, self.band, &mut self.ws.boundary.0);
+        }
         let mut coverage = std::mem::take(&mut self.ws.coverage);
         self.producer.rasterize(
             mark.cover.shape,
@@ -189,7 +193,17 @@ impl<'a> Executor<'a> {
         };
         let constant = paint.constant();
         if constant.is_none() {
-            paint.span(x, y, len, &mut ws.colors);
+            match mark.boundary {
+                Some(_) => {
+                    let (boundary, dense) = &mut ws.boundary;
+                    let Some(dense) = dense.get_mut(..len) else {
+                        return;
+                    };
+                    densify(boundary, (x, y), dense);
+                    paint.span_with_boundary(x, y, dense, &mut ws.colors);
+                }
+                None => paint.span(x, y, len, &mut ws.colors),
+            }
         }
         let (colors, paint_alpha, painted) = match constant {
             Some(color) => (Colors::Constant(color), None, paint.painted()),
@@ -222,8 +236,7 @@ impl<'a> Executor<'a> {
             output::record(plan, &mut ws.selection, (x, y, first_row), cover, mark.select);
         }
         ws.usage.work = ws.usage.work.saturating_add(len);
-        let preserve =
-            ((compositing.overprint & !painted.0) | compositing.zeros) & frame.layout.mask();
+        let preserve = compositing.overprint & !painted.0 & frame.layout.mask();
         let mode = Mode {
             layout: frame.layout,
             blend: compositing.blend,
@@ -249,6 +262,32 @@ impl<'a> Executor<'a> {
             (&sources, &mode),
             kind,
         );
+    }
+}
+
+/// The coverage of `coverage` at the pixels from `(x, y)`, one byte each.
+fn densify(coverage: &pagura_raster::BandCoverage, (x, y): (u32, u32), out: &mut [u8]) {
+    out.fill(0);
+    let end = x.saturating_add(u32::try_from(out.len()).unwrap_or(u32::MAX));
+    for row in coverage.rows().filter(|row| row.y == y) {
+        for span in row.spans() {
+            let (start, len) = match span {
+                Span::Full { x, len } => (x, len),
+                Span::Partial { x, coverage } => (x, u32::try_from(coverage.len()).unwrap_or(0)),
+            };
+            for column in start.max(x)..start.saturating_add(len).min(end) {
+                let value = match span {
+                    Span::Full { .. } => 255,
+                    Span::Partial { coverage, .. } => coverage
+                        .get(u32_to_usize(column - start))
+                        .copied()
+                        .unwrap_or(0),
+                };
+                if let Some(slot) = out.get_mut(u32_to_usize(column - x)) {
+                    *slot = value;
+                }
+            }
+        }
     }
 }
 
