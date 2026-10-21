@@ -71,7 +71,7 @@ pub(crate) fn run(
     for index in 0..limit {
         let render = |context: &RenderContext| {
             let page = context.document().page(index)?;
-            let scene = context.scene(page)?;
+            let scene = context.record(page)?;
             context.render_scene(&scene, options, None)
         };
         let mut rendered = render(&context);
@@ -98,8 +98,14 @@ pub(crate) fn run(
     write_report(out, &report, context.document())
 }
 
+/// A context for one pass over the pages, sharing `provider` across
+/// reopenings.
 fn shared_context(document: Document, provider: Option<&Arc<dyn Provider>>) -> RenderContext {
-    pagura::render_context_with_provider(Arc::new(document), provider.cloned())
+    RenderContext::with_store_capacity(
+        Arc::new(document),
+        provider.cloned(),
+        crate::commands::ONE_PASS_STORE_BYTES,
+    )
 }
 
 fn write_report(out: &mut impl Write, report: &Report, document: &Document) -> io::Result<()> {
