@@ -470,9 +470,9 @@ clipping. Changed cells against the previous backends must be reported with
 their oracle values; on the 40 benchmark pages at 72, 150 and 300 dpi, every
 non-tie change moved a cell to the correctly rounded exact area.
 
-## Amendment: the competitive path (proposed, 2026-10-20)
+## Amendment: the competitive path (2026-10-20)
 
-Status: proposed, 2026-10-20.
+Status: accepted, 2026-10-21.
 
 `RenderOptions::accuracy` selects the path: `Accuracy::Exact`, the default,
 keeps the one-level contract; `Accuracy::Competitive` (CLI `--accuracy
@@ -495,9 +495,10 @@ takes, per primitive, the faster approximation that keeps the gate:
   keep geometric integration.
 - **Clips.** A clip path that contains a mark's global control hull is
   dropped for that mark. A quadrilateral mark within quadrilateral clips is
-  integrated with them geometrically. Any other clip region's own cell
-  coverage is integrated once per band and multiplied into each mark, which
-  approximates the intersection where both boundaries cross one pixel.
+  integrated with them geometrically. A rectangular clip region's coverage
+  is a column factor times a row factor; any other clip region's own cell
+  coverage is integrated once per band. Either is multiplied into each mark,
+  which approximates the intersection where both boundaries cross one pixel.
 - **Composition.** Where the exact path would admit 16-bit or f32 storage,
   Normal composition of an opaque page rounds each store once into one byte
   page, painted in full-width bands of 256 rows. Retained groups, blend
@@ -517,8 +518,9 @@ takes, per primitive, the faster approximation that keeps the gate:
 
 Rendering stays deterministic and byte-identical between native and
 WebAssembly builds (with and without SIMD128) and across tile layouts. Work
-and storage are charged to `Limits`; a page that exceeds this path's own
-working budgets renders exactly.
+and storage are charged to `Limits`. A page that exceeds a limit on this path
+renders exactly instead, so a rendering costs at most one competitive attempt
+plus the exact rendering.
 
 **Accuracy** against the exact path on main 752b52e7, pixel-weighted per
 category and DPI over the gate's pages (the predeclared 20-page subset at
