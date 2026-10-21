@@ -4,6 +4,11 @@ Status: assessment, 2026-10-21. Documentation only. It changes no renderer or
 product code, grants no performance admission, changes no accuracy contract
 and claims no competitive superiority for any proposed architecture.
 
+The [consolidated architecture direction](architecture-direction.md) merges
+this assessment with the engine-wide architecture review of the same day. Its
+sequence replaces §11 here, widens E1 to a band cell rasterizer, adds a stroke
+experiment (E1b) and records chunk precision promotion as a storage candidate.
+
 ADR 0033 ("Prepared rendering execution and complete session handoff") was
 written on the preserved branch `codex/renderer-n16-interval`. It proposes a
 prepared-paint, ordered-regional-executor redesign on current main with
