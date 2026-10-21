@@ -3,7 +3,7 @@ export class OutlineTree {
   constructor(root, activate) { this.root = root; this.activate = activate; this.items = []; this.open = new Set(); this.focus = 0; }
   set(items) {
     if (items.length > 20000) throw new Error('Outline exceeds the 20000-item DOM budget');
-    this.items = items; this.open = new Set(items.flatMap((item, i) => item.open ? [i] : [])); this.focus = 0;
+    this.items = items; this.open = new Set(items.flatMap((item, i) => item.open ? [i] : [])); this.focus = 0; this.selected = -1;
     // Compute parent/subtree boundaries once; expanding never walks ancestors.
     const stack = [];
     this.parent = []; this.ends = items.map(() => items.length);
@@ -24,13 +24,14 @@ export class OutlineTree {
       node.setAttribute('aria-posinset', String(this.positions[i])); node.setAttribute('aria-setsize', String(this.sizes[i]));
       node.textContent = item.title;
       node.setAttribute('tabindex', i === this.focus ? '0' : '-1');
+      node.setAttribute('aria-selected', String(i === this.selected));
       if (branch) node.setAttribute('aria-expanded', String(this.open.has(i)));
-      Object.assign(node.style, { paddingLeft: `${item.depth + 0.5}rem`, fontWeight: item.style & 2 ? 'bold' : 'normal', fontStyle: item.style & 1 ? 'italic' : 'normal', color: `rgb(${item.color.map((v) => Math.round(v * 255)).join(',')})` });
+      Object.assign(node.style, { paddingLeft: `${item.depth * 14 + 24}px`, fontWeight: item.style & 2 ? 'bold' : 'normal', fontStyle: item.style & 1 ? 'italic' : 'normal', color: `rgb(${item.color.map((v) => Math.round(v * 255)).join(',')})` });
       if (branch) {
-        const toggle = document.createElement('span'); toggle.textContent = this.open.has(index) ? '▾ ' : '▸ '; toggle.style.float = 'left'; toggle.setAttribute('aria-hidden', 'true');
+        const toggle = document.createElement('span'); toggle.textContent = this.open.has(index) ? '▾' : '▸'; toggle.className = 'outline-toggle'; toggle.setAttribute('aria-hidden', 'true');
         toggle.addEventListener('click', (event) => { event.stopPropagation?.(); this.focus = index; this.open.has(index) ? this.open.delete(index) : this.open.add(index); this.render(true); }); node.append(toggle);
       }
-      node.addEventListener('click', () => { this.focus = index; this.render(true); this.activate(item.target); });
+      node.addEventListener('click', () => { this.focus = this.selected = index; this.render(true); this.activate(item.target); });
       node.addEventListener('keydown', (event) => this.key(event, index, branch));
       this.root.append(node); this.nodes.set(i, node); this.visible.push(i);
       i = branch && !this.open.has(i) ? this.ends[i] : i + 1;
@@ -46,7 +47,7 @@ export class OutlineTree {
     else if (event.key === 'End') next = this.visible.at(-1);
     else if (event.key === 'ArrowRight' && branch) { if (this.open.has(index)) next = index + 1; else this.open.add(index); }
     else if (event.key === 'ArrowLeft') { if (branch && this.open.has(index)) this.open.delete(index); else next = this.parent[index] < 0 ? index : this.parent[index]; }
-    else if (event.key === 'Enter') { event.preventDefault(); this.activate(this.items[index].target); return; }
+    else if (event.key === 'Enter') { event.preventDefault(); this.selected = index; this.render(true); this.activate(this.items[index].target); return; }
     else if (event.key === ' ' && branch) { this.open.has(index) ? this.open.delete(index) : this.open.add(index); }
     else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey) {
       const now = performance.now(); this.prefix = now - (this.typedAt ?? 0) < 700 ? (this.prefix ?? '') + event.key.toLowerCase() : event.key.toLowerCase(); this.typedAt = now;

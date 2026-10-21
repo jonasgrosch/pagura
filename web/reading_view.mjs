@@ -17,6 +17,8 @@ export class ReadingView {
     this.$('find-next').addEventListener('click', () => { void this.move(1); }); this.$('find-previous').addEventListener('click', () => { void this.move(-1); });
     this.$('find-query').addEventListener('keydown', (event) => {
       if (event.key === 'Enter') { event.preventDefault(); void this.move(event.shiftKey ? -1 : 1); }
+    });
+    this.$('find-panel').addEventListener('keydown', (event) => {
       if (event.key === 'Escape') { event.preventDefault(); this.$('find-close').click(); }
     });
     this.$('copy-page').addEventListener('click', () => { void this.copyPage(); });
@@ -121,7 +123,11 @@ export class ReadingView {
       named: (name) => { const s = this.state(); return this.navigate(({ NextPage: s.page + 1, PrevPage: s.page - 1, FirstPage: 0, LastPage: s.count - 1 })[name]); } });
   }
   showSearch() { this.$('find-panel').hidden = false; this.$('find-open').setAttribute('aria-expanded', 'true'); this.$('find-query').focus(); }
-  count(suffix) { if (suffix !== undefined) this.searchNote = suffix; this.$('find-count').textContent = `${this.matches.length ? this.current + 1 : 0} / ${this.matches.length}${this.searchNote}`; }
+  count(suffix) {
+    if (suffix !== undefined) this.searchNote = suffix;
+    this.$('find-count').textContent = `${this.matches.length ? this.current + 1 : 0} / ${this.matches.length}${this.searchNote}`;
+    this.$('find-previous').disabled = this.$('find-next').disabled = !this.matches.length;
+  }
   async search() {
     this.cancelSearch(); const id = this.searchId, s = this.state(), query = this.$('find-query').value;
     if (!query || s.handle === null) return;

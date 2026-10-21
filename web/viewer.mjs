@@ -15,6 +15,11 @@ import { requestPassword, cancelPassword } from './password.mjs';
 const $ = (id) => document.getElementById(id);
 const viewport = $('viewport'), surface = $('page-surface'), status = $('status'), errorBox = $('error');
 const pageInput = $('page'), zoomInput = $('zoom');
+// Start with the page unobscured on compact screens; the sidebar remains available.
+if (window.matchMedia?.('(max-width: 640px)').matches) {
+  $('document-sidebar').hidden = true;
+  $('sidebar-toggle').setAttribute('aria-expanded', 'false');
+}
 const MAX_TILES = 128, MAX_PAGES = 32, MAX_EXTENT = 10000000;
 let client, handle = null, layout = new PageLayout(0), page = 0, zoom = 1;
 let documentEpoch = 0, generation = 0, drawing = false, scheduled = false, dirty = false;
@@ -345,7 +350,7 @@ async function draw() {
       }
     }
   } catch (error) { if (epoch === documentEpoch && token === generation) report(error); }
-  finally { drawing = false; if (dirty) schedule(); else { planAhead(); thumbnails.schedule(); } }
+  finally { drawing = false; if (dirty) schedule(); else scheduleQuietWork(); }
 }
 function fit(mode, info) {
   info = displayInfo(info);
@@ -507,9 +512,12 @@ window.addEventListener('keydown', (event) => {
   }
 });
 let quietTimer;
+function scheduleQuietWork() {
+  clearTimeout(quietTimer);
+  quietTimer = setTimeout(() => { planAhead(); thumbnails.schedule(); }, Math.max(0, 550 - (performance.now() - lastInteraction)));
+}
 function noteInteraction() {
-  lastInteraction = performance.now(); preloader.cancel(); clearTimeout(quietTimer);
-  quietTimer = setTimeout(() => { planAhead(); thumbnails.schedule(); }, 550);
+  lastInteraction = performance.now(); preloader.cancel(); scheduleQuietWork();
 }
 for (const type of ['input', 'keydown', 'focusin']) document.addEventListener(type, noteInteraction, true);
 document.addEventListener('pointerdown', () => { pointerDown = true; noteInteraction(); }, true);
