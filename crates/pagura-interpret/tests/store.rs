@@ -33,7 +33,7 @@ fn fonts_and_outlines_are_shared_through_the_store() {
     let second = interpreter.scene(page).unwrap();
     assert_eq!(store.retained_bytes(), retained);
     let keys = font_keys(&first);
-    assert!(!keys.is_empty());
+    assert_ne!(keys, Vec::<u64>::new());
     assert_eq!(keys, font_keys(&second));
     let plain = Interpreter::new(&document).scene(page).unwrap();
     assert_eq!(keys, font_keys(&plain));
