@@ -111,12 +111,14 @@ impl ColorSpace {
     }
 
     /// Whether a mark in this space can change any colorant: false for a
-    /// Separation `None` and a DeviceN whose colorants are all `None`.
+    /// Separation `None` and a DeviceN whose colorants are all `None`, and
+    /// for an Indexed or unsupported ICCBased space based on one.
     pub fn paints(&self) -> bool {
         match self {
             Self::Separation(space) => space.colorant != Colorant::None,
             Self::DeviceN(space) => space.colorants.iter().any(|c| *c != Colorant::None),
             Self::Indexed(space) => space.base.paints(),
+            Self::Icc(space) if space.profile.is_none() => space.alternate.paints(),
             _ => true,
         }
     }

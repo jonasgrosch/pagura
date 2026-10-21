@@ -50,9 +50,10 @@ pub fn render(scene: &Scene, request: &Request, limits: &Limits) -> Result<Rende
         } else {
             Process::Rgb
         });
-    let target = Target {
-        process,
-        spots: Arc::clone(&renderer.simulation.spots),
+    let target = if renderer.simulation.enabled {
+        Target::separated(process, Arc::clone(&renderer.simulation.spots))
+    } else {
+        Target::new(process)
     };
     let mut page = Buffer::new(
         request.region,
