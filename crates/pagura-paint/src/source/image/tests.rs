@@ -17,6 +17,7 @@ use pagura_image::{Decoded, DecodedImage, ImageAlpha, ImageKind, MaskKind, Sampl
 use pagura_raster::Transform;
 use std::sync::Arc;
 
+mod documents;
 mod oracle;
 
 /// Device colour conversion as the old route performs it for DeviceGray and

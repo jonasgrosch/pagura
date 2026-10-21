@@ -346,9 +346,9 @@ impl Prepared {
     fn texels(&self, span: (u32, u32, usize), lanes: usize, out: &mut [f64]) {
         let image = &self.image.image;
         match &self.paint {
-            Paint::Stencil { table, .. } => self.table(span, (table, lanes), out),
+            Paint::Stencil { table, .. } => self.table(span, (table, lanes, false), out),
             Paint::Colors(paint) => match &paint.1 {
-                Strategy::Table(table) => self.table(span, (table, lanes), out),
+                Strategy::Table(table, opaque) => self.table(span, (table, lanes, *opaque), out),
                 Strategy::Rgb(tables) => {
                     let Samples::Bytes(bytes) = &image.samples else {
                         return;
@@ -377,13 +377,19 @@ impl Prepared {
         }
     }
 
-    fn table(&self, span: (u32, u32, usize), (table, lanes): (&[f64], usize), out: &mut [f64]) {
+    fn table(
+        &self,
+        span: (u32, u32, usize),
+        (table, lanes, opaque): (&[f64], usize, bool),
+        out: &mut [f64],
+    ) {
         match &self.image.image.samples {
             Samples::Bytes(bytes) => {
                 let texels = TableTexels {
                     codes: ByteCodes(bytes),
                     table,
                     lanes,
+                    opaque,
                 };
                 self.geometry.fill(span, &texels, out);
             }
@@ -392,6 +398,7 @@ impl Prepared {
                     codes: PackedCodes(packed),
                     table,
                     lanes,
+                    opaque,
                 };
                 self.geometry.fill(span, &texels, out);
             }

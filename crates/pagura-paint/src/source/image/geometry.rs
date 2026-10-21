@@ -15,10 +15,18 @@ use pagura_raster::{Point, Transform};
 /// The most values one texel holds: colour channels, alpha and shape.
 pub(super) const MAX_LANES: usize = pagura_color::MAX_CHANNELS + 2;
 
-/// A source of texels, each `lanes` values that sum with weights.
+/// A source of texels, each `lanes` values that sum with weights: colour
+/// channels, alpha and shape.
 pub(super) trait Texels {
     /// Values per texel.
     fn lanes(&self) -> usize;
+
+    /// Whether every texel's alpha and shape are 1. Then [`Self::get`] and
+    /// [`Self::add`] handle the colour lanes alone, and the geometry sums
+    /// alpha and shape from the weights, which gives the same values.
+    fn opaque(&self) -> bool {
+        false
+    }
 
     /// Writes the texel of sample `index` (row-major, clamped by the
     /// geometry to the image) into `out`.
@@ -26,6 +34,12 @@ pub(super) trait Texels {
 
     /// Adds `weight` times the texel of sample `index` to `sum`.
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]);
+
+    /// Adds the texel of sample `index` to `sum`, as [`Self::add`] with a
+    /// weight of exactly 1 does.
+    fn add_unit(&self, index: usize, sum: &mut [f64]) {
+        self.add(index, 1.0, sum);
+    }
 }
 
 /// How device pixels map to source samples.
@@ -177,11 +191,14 @@ impl Geometry {
         out: &mut [f64],
     ) {
         let lanes = texels.lanes();
+        let opaque = texels.opaque();
         let pixels = out.chunks_exact_mut(lanes).take(len);
         match self.mode {
             Mode::Nearest => {
                 for (value, px) in pixels.zip(x..) {
-                    texels.get(self.nearest(px, y), value);
+                    let (color, rest) = value.split_at_mut(lanes - usize::from(opaque) * 2);
+                    texels.get(self.nearest(px, y), color);
+                    rest.fill(1.0);
                 }
             }
             Mode::Bilinear => {
@@ -202,8 +219,10 @@ impl Geometry {
                     (t.d, t.f, self.height)
                 };
                 let rows = Span::new(y, scale, offset, bound);
+                let mut line = [0.0; MAX_LANES];
+                let line = &mut line[..lanes];
                 for (value, px) in pixels.zip(x..) {
-                    self.reduce(px, rows, swapped, texels, value);
+                    self.reduce((px, rows, swapped), texels, value, line);
                 }
             }
         }
@@ -225,14 +244,18 @@ impl Geometry {
         let (left, top) = (x.floor(), y.floor());
         let (fx, fy) = (x - left, y - top);
         out.fill(0.0);
+        let (color, rest) = split(out, texels.opaque());
+        let mut alpha = 0.0;
         for (x, y, w) in [
             (left, top, (1.0 - fx) * (1.0 - fy)),
             (left + 1.0, top, fx * (1.0 - fy)),
             (left, top + 1.0, (1.0 - fx) * fy),
             (left + 1.0, top + 1.0, fx * fy),
         ] {
-            texels.add(self.index(x, y), w, out);
+            texels.add(self.index(x, y), w, color);
+            alpha += w;
         }
+        rest.fill(alpha);
     }
 
     fn area(&self, x: u32, y: u32, texels: &impl Texels, out: &mut [f64]) {
@@ -257,16 +280,19 @@ impl Geometry {
         let x1 = coordinate(high.x.ceil(), self.width);
         let y1 = coordinate(high.y.ceil(), self.height);
         out.fill(0.0);
+        let (color, rest) = split(out, texels.opaque());
         let mut weight = 0.0;
         for row in y0..y1 {
             for col in x0..x1 {
                 let area = intersection(&polygon, f64::from(col), f64::from(row));
                 if area > 0.0 {
-                    texels.add(self.index(f64::from(col), f64::from(row)), area, out);
+                    texels.add(self.index(f64::from(col), f64::from(row)), area, color);
                     weight += area;
                 }
             }
         }
+        // An opaque texel's alpha sums exactly as the weights do.
+        rest.fill(weight);
         if weight > 0.0 {
             let scale = 1.0 / weight;
             for value in out.iter_mut() {
@@ -278,7 +304,13 @@ impl Geometry {
     /// The separable area average: each source line under the pixel's
     /// column footprint, normalized, then the lines weighted by the row
     /// footprint, in the order the lines are reached.
-    fn reduce(&self, x: u32, rows: Span, swapped: bool, texels: &impl Texels, out: &mut [f64]) {
+    fn reduce(
+        &self,
+        (x, rows, swapped): (u32, Span, bool),
+        texels: &impl Texels,
+        out: &mut [f64],
+        line: &mut [f64],
+    ) {
         let t = self.inverse;
         let (scale, offset, maximum) = if swapped {
             (t.b, t.f, self.height)
@@ -287,28 +319,52 @@ impl Geometry {
         };
         let columns = Span::new(x, scale, offset, maximum);
         let descending = (if swapped { t.c } else { t.d }) < 0.0;
-        let lanes = out.len();
-        let mut line = [0.0; MAX_LANES];
-        let line = &mut line[..lanes];
+        let opaque = texels.opaque();
         let width = u64::from(self.width);
-        out.fill(0.0);
-        for step in rows.first..rows.end {
-            let row = if descending {
-                rows.end - 1 - (step - rows.first)
-            } else {
-                step
-            };
-            line.fill(0.0);
+        // The source step between cells of a line, and from line to line.
+        let (step, stride) = if swapped { (width, 1) } else { (1, width) };
+        let first = u64::from(columns.first) * step;
+        // An opaque line's alpha: its cells' weights, as its texels sum them.
+        let mut line_alpha = 0.0;
+        if opaque {
             for cell in columns.first..columns.end {
-                let (col, row) = if swapped { (row, cell) } else { (cell, row) };
-                let index = sample_index(u64::from(row) * width + u64::from(col));
-                texels.add(index, columns.weight(cell), line);
-            }
-            let weight = rows.weight(row);
-            for (sum, value) in out.iter_mut().zip(line.iter()) {
-                *sum += value * columns.normalization * weight;
+                line_alpha += columns.weight(cell);
             }
         }
+        out.fill(0.0);
+        let (color, rest) = split(out, opaque);
+        let line = &mut line[..color.len()];
+        let mut alpha = 0.0;
+        let cells = columns.end.saturating_sub(columns.first);
+        for offset in rows.first..rows.end {
+            let row = if descending {
+                rows.end - 1 - (offset - rows.first)
+            } else {
+                offset
+            };
+            line.fill(0.0);
+            // Cells lie within the image, so their indices cannot overflow.
+            let base = u64::from(row).wrapping_mul(stride).wrapping_add(first);
+            let index =
+                |cell: u32| sample_index(base.wrapping_add(u64::from(cell).wrapping_mul(step)));
+            // The first and last cells are weighted; the cells between are
+            // whole, and a whole texel adds as itself.
+            if cells > 0 {
+                texels.add(index(0), columns.first_weight, line);
+            }
+            for cell in 1..cells.saturating_sub(1) {
+                texels.add_unit(index(cell), line);
+            }
+            if cells > 1 {
+                texels.add(index(cells - 1), columns.last_weight, line);
+            }
+            let weight = rows.weight(row);
+            for (sum, value) in color.iter_mut().zip(line.iter()) {
+                *sum += value * columns.normalization * weight;
+            }
+            alpha += line_alpha * columns.normalization * weight;
+        }
+        rest.fill(alpha);
         for value in out.iter_mut() {
             *value *= rows.normalization;
         }
@@ -319,6 +375,13 @@ impl Geometry {
         let y = coordinate(y, self.height.saturating_sub(1));
         sample_index(u64::from(y) * u64::from(self.width) + u64::from(x))
     }
+}
+
+/// The colour lanes of a texel sum and, for opaque texels, the alpha and
+/// shape lanes the geometry fills.
+fn split(out: &mut [f64], opaque: bool) -> (&mut [f64], &mut [f64]) {
+    let colour = out.len() - if opaque { 2 } else { 0 };
+    out.split_at_mut(colour)
 }
 
 /// A row-major sample index; decoded images are addressable, so it fits.

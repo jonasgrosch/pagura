@@ -291,8 +291,9 @@ pub(super) fn maximum(bits: u8) -> f64 {
 /// How a prepared image's texels are produced.
 #[derive(Debug)]
 pub(super) enum Strategy {
-    /// A table per code of a one-component image of at most eight bits.
-    Table(Vec<f64>),
+    /// A table per code of a one-component image of at most eight bits,
+    /// and whether every entry is opaque.
+    Table(Vec<f64>, bool),
     /// DeviceRGB 8-bit samples into an RGB blending space: one table per
     /// channel.
     Rgb(Box<[[f64; 256]; 3]>),
@@ -331,7 +332,8 @@ impl Strategy {
             for (code, texel) in (0..codes).zip(table.chunks_exact_mut(lanes)) {
                 colors.code_texel(code, texel);
             }
-            return (Self::Table(table), usize::from(codes));
+            let opaque = opaque_table(&table, lanes);
+            return (Self::Table(table, opaque), usize::from(codes));
         }
         if rgb
             && components == 3
@@ -399,6 +401,8 @@ pub(super) struct TableTexels<'a, C> {
     pub(super) codes: C,
     pub(super) table: &'a [f64],
     pub(super) lanes: usize,
+    /// Whether every entry's alpha and shape are 1.
+    pub(super) opaque: bool,
 }
 
 impl<C: Codes> TableTexels<'_, C> {
@@ -413,8 +417,14 @@ impl<C: Codes> Texels for TableTexels<'_, C> {
         self.lanes
     }
 
+    fn opaque(&self) -> bool {
+        self.opaque
+    }
+
     fn get(&self, index: usize, out: &mut [f64]) {
-        out.copy_from_slice(self.texel(index));
+        for (out, value) in out.iter_mut().zip(self.texel(index)) {
+            *out = *value;
+        }
     }
 
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
@@ -422,6 +432,21 @@ impl<C: Codes> Texels for TableTexels<'_, C> {
             *sum += value * weight;
         }
     }
+
+    fn add_unit(&self, index: usize, sum: &mut [f64]) {
+        for (sum, value) in sum.iter_mut().zip(self.texel(index)) {
+            *sum += value;
+        }
+    }
+}
+
+/// Whether every texel of `table`, `lanes` values each, has alpha and
+/// shape 1.
+pub(super) fn opaque_table(table: &[f64], lanes: usize) -> bool {
+    lanes >= 2
+        && table
+            .chunks_exact(lanes)
+            .all(|texel| texel[lanes - 2..] == [1.0, 1.0])
 }
 
 /// Opaque DeviceRGB texels from per-channel tables.
@@ -431,14 +456,12 @@ pub(super) struct RgbTexels<'a> {
 }
 
 impl RgbTexels<'_> {
-    fn texel(&self, index: usize) -> [f64; 5] {
+    fn texel(&self, index: usize) -> [f64; 3] {
         let [red, green, blue] = self.pixels.get(index).copied().unwrap_or_default();
         [
             self.tables[0][usize::from(red)],
             self.tables[1][usize::from(green)],
             self.tables[2][usize::from(blue)],
-            1.0,
-            1.0,
         ]
     }
 }
@@ -448,13 +471,25 @@ impl Texels for RgbTexels<'_> {
         5
     }
 
+    fn opaque(&self) -> bool {
+        true
+    }
+
     fn get(&self, index: usize, out: &mut [f64]) {
-        out.copy_from_slice(&self.texel(index));
+        for (out, value) in out.iter_mut().zip(self.texel(index)) {
+            *out = value;
+        }
     }
 
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
         for (sum, value) in sum.iter_mut().zip(self.texel(index)) {
             *sum += value * weight;
+        }
+    }
+
+    fn add_unit(&self, index: usize, sum: &mut [f64]) {
+        for (sum, value) in sum.iter_mut().zip(self.texel(index)) {
+            *sum += value;
         }
     }
 }
@@ -466,6 +501,8 @@ pub(super) struct SampleTexels<'a> {
     /// The soft mask whose opacity removes the Matte.
     pub(super) matte: Option<(&'a DecodedImage, &'a Opacity)>,
     pub(super) cache: Option<RefCell<MutexGuard<'a, Cache>>>,
+    /// One texel's values while it is weighted.
+    scratch: RefCell<[f64; MAX_LANES]>,
 }
 
 impl<'a> SampleTexels<'a> {
@@ -481,6 +518,7 @@ impl<'a> SampleTexels<'a> {
             matte,
             cache: cache
                 .map(|cache| RefCell::new(cache.lock().unwrap_or_else(PoisonError::into_inner))),
+            scratch: RefCell::new([0.0; MAX_LANES]),
         }
     }
 
@@ -535,8 +573,8 @@ impl Texels for SampleTexels<'_> {
     }
 
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
-        let mut texel = [0.0; MAX_LANES];
-        let texel = &mut texel[..sum.len()];
+        let mut scratch = self.scratch.borrow_mut();
+        let texel = &mut scratch[..sum.len()];
         self.texel(index, texel);
         for (sum, value) in sum.iter_mut().zip(texel.iter()) {
             *sum += value * weight;

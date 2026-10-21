@@ -44,14 +44,20 @@ pub(crate) fn decode(
             )?;
         }
         Codec::Dct(params) => {
+            // A baseline YCbCr frame decodes faster into its native planes;
+            // their rows convert to exactly the interleaved samples.
+            let planes = layout == SampleLayout::Interleaved && bits == 8;
             dispatch::decode_dct(
                 data,
                 params.as_ref(),
                 (&mut image, bits),
-                (deferred, cells, None),
+                (deferred || planes, cells, None),
                 limits,
                 diagnostics,
             )?;
+            if planes {
+                interleave(&mut image.samples, limits)?;
+            }
         }
         Codec::Ccitt(params) => {
             image.samples = fax_image::decode(
@@ -69,6 +75,34 @@ pub(crate) fn decode(
         Codec::Jpx(jpx) => jpx.decode(data, &mut image, limits, diagnostics)?,
     }
     finish(header, image)
+}
+
+/// Converts a JPEG's native planes into interleaved RGB samples, row by
+/// row with Table 13 as the interleaved decoder converts them.
+fn interleave(samples: &mut Samples, limits: &Limits) -> Result<()> {
+    let Samples::Planar(planar) = samples else {
+        return Ok(());
+    };
+    let row = planar
+        .width()
+        .checked_mul(3)
+        .ok_or(Error::limit("image row overflow"))?;
+    let length = row
+        .checked_mul(planar.height())
+        .filter(|&length| length <= limits.decoded_bytes)
+        .ok_or(Error::limit("image sample budget exceeded"))?;
+    let mut bytes = Vec::new();
+    bytes
+        .try_reserve_exact(length)
+        .map_err(|_| Error::limit("image sample allocation failed"))?;
+    bytes.resize(length, 0);
+    for (y, out) in bytes.chunks_exact_mut(row).enumerate() {
+        if !planar.rgb(y, out) {
+            return Err(Error::syntax("JPEG planes do not cover the image"));
+        }
+    }
+    *samples = Samples::Bytes(bytes);
+    Ok(())
 }
 
 /// The entries `finish` adds to a decoded image, already validated by the
