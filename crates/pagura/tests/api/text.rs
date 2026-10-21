@@ -1,13 +1,16 @@
-#![forbid(unsafe_code)]
 #![expect(
     clippy::unwrap_used,
     clippy::panic,
     reason = "independent fixture assertions fail loudly on malformed expected data"
 )]
 //! Independent extraction layout, position and search vectors.
+
+use pagura::text::{LayoutOptions, SearchOptions, TextMatch, TextPage, WritingMode};
 use pagura::{Document, OpenOptions, RenderOptions, Value};
+// The expected vectors are written in PDF object syntax; the parser only
+// reads the oracle and is not under test.
 use pagura_core::syntax::{Origin, Parser};
-use pagura_testkit::{fixture, fixture_path};
+use pagura_testkit::{Manifest, fixture, fixture_path};
 
 fn array(value: &Value) -> &[Value] {
     value.as_array().unwrap()
@@ -36,12 +39,10 @@ fn close(actual: f64, expected: &Value) {
     assert!((actual - number).abs() < 1e-9, "{actual} != {number}");
 }
 fn cases() -> Vec<String> {
-    include_str!("../../../../corpus/manifests/text.json")
-        .split("\"id\": \"text/")
-        .skip(1)
-        .filter_map(|s| s.split('"').next())
-        .filter(|s| s.starts_with("extract-"))
-        .map(str::to_owned)
+    Manifest::load("text")
+        .cases()
+        .map(|case| case.name().to_owned())
+        .filter(|name| name.starts_with("extract-"))
         .collect()
 }
 
@@ -56,7 +57,7 @@ fn positioned_semantics_layout_and_search_match_independent_generator() {
         )
         .unwrap();
         let page = document.page(0).unwrap();
-        let (list, text) = pagura::compile_page_with_text(&document, page, None)
+        let (list, text) = pagura::compile_page_with_text(&document, page)
             .unwrap_or_else(|e| panic!("{name}: {e}"));
         assert_eq!(
             text.text().as_bytes(),
@@ -92,7 +93,7 @@ fn positioned_semantics_layout_and_search_match_independent_generator() {
         let queries = expected(&name, "queries");
         for row in array(&queries) {
             let row = array(row);
-            let options = pagura_text::SearchOptions {
+            let options = SearchOptions {
                 case_insensitive: boolean(&row[1]),
                 whole_words: boolean(&row[2]),
                 join_hyphenated: boolean(&row[3]),
@@ -112,7 +113,7 @@ fn positioned_semantics_layout_and_search_match_independent_generator() {
         let hidden = fixture_path("text", &format!("{name}.hidden-text"));
         if hidden.exists() {
             assert_eq!(
-                text.with_layout(pagura_text::LayoutOptions {
+                text.with_layout(LayoutOptions {
                     include_hidden: true,
                     ..Default::default()
                 })
@@ -124,7 +125,7 @@ fn positioned_semantics_layout_and_search_match_independent_generator() {
         }
         // Both paths must produce the exact same pixels; extraction has no
         // effect on clipping, Type 3 execution or optional-content painting.
-        let normal = pagura_render::compile_page(&document, page).unwrap();
+        let normal = pagura::compile_page(&document, page).unwrap();
         let options = RenderOptions::default();
         assert_eq!(
             list.render(&options).unwrap().data(),
@@ -134,7 +135,7 @@ fn positioned_semantics_layout_and_search_match_independent_generator() {
     }
 }
 
-fn check_glyphs(name: &str, text: &pagura_text::TextPage) {
+fn check_glyphs(name: &str, text: &TextPage) {
     let rows = expected(name, "glyphs");
     assert_eq!(text.glyphs().len(), array(&rows).len(), "{name}");
     for (glyph, row) in text.glyphs().iter().zip(array(&rows)) {
@@ -154,7 +155,7 @@ fn check_glyphs(name: &str, text: &pagura_text::TextPage) {
         }
         close(glyph.size, &row[9]);
         assert_eq!(
-            glyph.writing_mode == pagura_text::WritingMode::Vertical,
+            glyph.writing_mode == WritingMode::Vertical,
             boolean(&row[10])
         );
         assert_eq!(glyph.render_mode, u8::try_from(integer(&row[11])).unwrap());
@@ -183,7 +184,7 @@ fn check_glyphs(name: &str, text: &pagura_text::TextPage) {
     }
 }
 
-fn check_highlights(name: &str, matches: &[pagura_text::TextMatch], expected_indices: &[Value]) {
+fn check_highlights(name: &str, matches: &[TextMatch], expected_indices: &[Value]) {
     let glyphs = expected(name, "glyphs");
     assert_eq!(matches.len(), expected_indices.len());
     for (found, indices) in matches.iter().zip(expected_indices) {
@@ -198,7 +199,7 @@ fn check_highlights(name: &str, matches: &[pagura_text::TextMatch], expected_ind
     }
 }
 
-fn check_metadata(name: &str, text: &pagura_text::TextPage) {
+fn check_metadata(name: &str, text: &TextPage) {
     if !text.glyphs().is_empty() {
         assert_eq!(text.fonts().len(), 1);
         assert_eq!(text.fonts()[0].object, Some(pagura::ObjectId::new(5, 0)));

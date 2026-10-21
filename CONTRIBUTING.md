@@ -192,8 +192,9 @@ crate.
     ISO 32000-2. Other standards are always prefixed: `T.88 7.4.14`,
     `T.800 C.3`, `RFC 1951 3.2.5`, `T.88 Table 29`.
 13. **CI.** `tools/check.py` runs clippy and the tests with
-    `--no-default-features` and `--all-features` for `pagura`, `pagura-data`
-    and `pagura-host`, and verifies every generated table.
+    `--no-default-features` and `--all-features` for `pagura`, `pagura-cli`,
+    `pagura-data` and `pagura-host` (on Linux), and verifies every generated
+    table.
 14. **Generated tables.** Generators live in `tools/gen/`, every generated
     file starts with a provenance header naming its generator and inputs,
     and `tools/check.py` verifies that it is current.

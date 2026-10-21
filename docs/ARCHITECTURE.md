@@ -3,9 +3,9 @@
 ## Crates and dependency direction
 
 ```
-pagura-cli       ──► pagura, pagura-core, pagura-crypto, pagura-data, pagura-document (the `pagura` command-line tool)
+pagura-cli       ──► pagura (the `pagura` command-line tool; the facade only)
 pagura-host      ──► pagura
-pagura           ──► pagura-render, pagura-write, pagura-document, pagura-raster, pagura-pki (CMS signature verification), pagura-data (optional bundled fonts and CMaps), pagura-crypto (Unicode data notice)
+pagura           ──► pagura-render, pagura-write, pagura-document, pagura-text and pagura-font (text model, provider types), pagura-raster, pagura-pki (CMS signature verification), pagura-data (optional bundled fonts and CMaps), pagura-crypto (Unicode data notice)
 pagura-render    ──► pagura-text, pagura-font (glyph outline diagnostics), pagura-image, pagura-document, pagura-raster, pagura-crypto (MD5 for ICC profile IDs)
 pagura-data      ──► pagura-text (its Provider), pagura-font
 pagura-text      ──► pagura-font, pagura-document, pagura-raster
@@ -30,8 +30,8 @@ Dependencies point downward only and are fixed in the crate manifests.
 | `pagura-image` | image XObjects and inline images; JPEG, CCITT, JBIG2 and JPEG 2000 decoding to samples | painting, colour conversion |
 | `pagura-render` | content interpretation into a display list in PDF terms; page-to-device transform; tiles; painting through `pagura-raster` | file structure |
 | `pagura-write` | deterministic serialization | parsing |
-| `pagura` | the public facade | — |
-| `pagura-cli` | the `pagura` command-line tool (ADR 0030) | — |
+| `pagura` | the public facade: every public type, and the free functions with the feature-selected font data | — |
+| `pagura-cli` | the `pagura` command-line tool, built on the facade alone (ADR 0030) | engine crates |
 | `pagura-host` | the stdio session protocol, native and `wasm32-wasip1` | — |
 | `pagura-testkit` | test-only fixture access, manifest reading, byte assertions and host protocol frames (std only) | product code |
 | `pagura-fuzz` | test-only fuzz drivers, shared by the libFuzzer targets in `fuzz/` and the stable replay of `fuzz/regressions/` (ADR 0030) | product code |

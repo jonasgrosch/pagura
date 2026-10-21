@@ -1,4 +1,4 @@
-//! PDF CMS integrity verification (ISO 32000-2 §12.8.3; ADR 0015).
+//! PDF CMS integrity verification (12.8.3; ADR 0015).
 //!
 //! [`crate::signatures()`] checks every CMS signer: all must verify. Embedded
 //! certificates supply public keys, never trust anchors. Certificate paths,
@@ -19,10 +19,12 @@ pub mod features {
     use pagura_core::Feature;
     /// A digest, signature or public-key algorithm outside the implemented set.
     pub const ALGORITHM: Feature = Feature::new("signature.algorithm");
+    /// Every tag of this module.
+    pub const ALL: &[Feature] = &[ALGORITHM];
 }
 
 use crate::Document;
-use pagura_core::{Diagnostics, Error, ErrorKind, Limits, Result};
+use pagura_core::{Diagnostics, Error, ErrorKind, Limits, Meter, Result};
 use pagura_crypto::{HashAlgorithm, Verification};
 pub use pagura_document::signatures::*;
 use pagura_pki::cms::{CertificateChoice, ID_DATA, SignedData, SignerIdentifier, SignerInfo};
@@ -36,27 +38,32 @@ struct CheckState {
     certificate_errors: Vec<Error>,
 }
 
+/// The most CMS signers checked in one call.
+const MAX_SIGNERS: usize = 64;
+/// The most embedded certificates read in one call.
+const MAX_CERTIFICATES: usize = 256;
+
+/// The work of one call, shared by its signatures and charged before each
+/// step.
 struct Budget {
-    signers: usize,
-    certificates: usize,
-    parsed_bytes: usize,
-    hash_bytes: usize,
+    signers: Meter,
+    certificates: Meter,
+    /// CMS bytes parsed, within the document's storage budget.
+    parsed_bytes: Meter,
+    /// Bytes hashed: every signer may hash at most the whole file.
+    hash_bytes: Meter,
 }
+
 impl Budget {
     fn new(limits: &Limits) -> Self {
+        let message = "signature verification budget exceeded";
         Self {
-            signers: limits.value_nodes.min(64),
-            certificates: limits.value_nodes.min(256),
-            parsed_bytes: limits.document_bytes,
-            hash_bytes: limits.file_bytes.saturating_mul(64),
+            signers: Meter::new(MAX_SIGNERS, message),
+            certificates: Meter::new(MAX_CERTIFICATES, message),
+            parsed_bytes: Meter::new(limits.document_bytes, message),
+            hash_bytes: Meter::new(limits.file_bytes.saturating_mul(MAX_SIGNERS), message),
         }
     }
-}
-fn charge(remaining: &mut usize, used: usize) -> Result<()> {
-    *remaining = remaining
-        .checked_sub(used)
-        .ok_or_else(|| Error::limit("signature verification budget exceeded"))?;
-    Ok(())
 }
 
 pub(crate) fn verify(document: &Document) -> Result<Signatures<'_>> {
@@ -156,7 +163,7 @@ fn check(
     diagnostics: &mut Diagnostics,
     state: &mut CheckState,
 ) -> Result<Integrity> {
-    charge(&mut budget.parsed_bytes, signature.contents.len())?;
+    budget.parsed_bytes.charge(signature.contents.len())?;
     let (tree, used) = der::Document::parse_ber_prefix(signature.contents, limits, diagnostics)?;
     if signature.contents[used..].iter().any(|&b| b != 0) {
         return Err(tree.root().error("nonzero PDF Contents padding"));
@@ -174,8 +181,8 @@ fn check(
             .element
             .error("CAdES and document timestamps require exactly one signer"));
     }
-    charge(&mut budget.signers, data.signers.len())?;
-    charge(&mut budget.certificates, data.certificates.len())?;
+    budget.signers.charge(data.signers.len())?;
+    budget.certificates.charge(data.certificates.len())?;
     state
         .certificate_errors
         .extend(data.certificates.iter().filter_map(|choice| {
@@ -372,7 +379,7 @@ fn digest_parts<'a>(
     budget: &mut Budget,
 ) -> Result<Vec<u8>> {
     for part in parts.clone() {
-        charge(&mut budget.hash_bytes, part.len())?;
+        budget.hash_bytes.charge(part.len())?;
     }
     Ok(algorithm.digest_parts(parts))
 }

@@ -1,21 +1,10 @@
-#![forbid(unsafe_code)]
 //! Document structure through the public API.
 
-use pagura::{Document, OpenOptions, Recovery};
+use crate::support::{open, open_strict};
+use pagura::form_appearance::Appearance;
+use pagura::forms::FillValue;
+use pagura::{Document, ErrorKind, ObjectId, OpenOptions, Position, Rect};
 use pagura_testkit::fixture;
-
-fn open(bytes: impl Into<std::sync::Arc<[u8]>>) -> pagura::Result<Document> {
-    Document::open(bytes, &OpenOptions::default())
-}
-
-fn open_strict(bytes: impl Into<std::sync::Arc<[u8]>>) -> pagura::Result<Document> {
-    let options = OpenOptions {
-        recovery: Recovery::Strict,
-        ..OpenOptions::default()
-    };
-    Document::open(bytes, &options)
-}
-use pagura::{ErrorKind, ObjectId, Position, Rect};
 
 #[test]
 fn independent_fixture_has_valid_object_and_page_graph() {
@@ -161,7 +150,6 @@ fn arbitrary_byte_changes_do_not_panic() {
 
 #[test]
 fn form_preparation_hides_a_signature_without_appearance() {
-    use pagura::{form_appearance::Appearance, forms::FillValue};
     let document = open_strict(fixture("forms", "text-beside-signature.pdf")).unwrap();
     let mut filler = document.form_filler().unwrap().unwrap();
     let unchanged = pagura::prepare_form(&filler).unwrap();

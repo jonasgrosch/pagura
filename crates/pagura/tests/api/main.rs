@@ -4,6 +4,7 @@
 
 mod document;
 mod editing;
+mod facade;
 mod overprint;
 mod provider;
 mod render;

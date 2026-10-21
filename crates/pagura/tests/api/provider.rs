@@ -1,6 +1,7 @@
-#![forbid(unsafe_code)]
 //! Explicit resource provision, facade defaults and document cache lifetime.
-use pagura::{Document, ErrorKind, OpenOptions, RenderContext};
+
+use crate::support::ppm;
+use pagura::{Document, ErrorKind, OpenOptions, Recovery, RenderContext, RenderOptions};
 use pagura_testkit::fixture;
 use std::sync::Arc;
 
@@ -31,7 +32,9 @@ fn explicit_absence_of_font_data_stays_unsupported() {
             &OpenOptions::default(),
         )
         .unwrap();
-        let error = pagura_render::compile_page(&source, source.page(0).unwrap()).unwrap_err();
+        let context = pagura::render_context_with_provider(Arc::new(source), None);
+        let page = context.document().page(0).unwrap();
+        let error = context.compile_page(page).unwrap_err();
         assert!(
             matches!(error.kind, ErrorKind::Unsupported(_)),
             "{name}: {error}"
@@ -71,14 +74,10 @@ fn facade_feature_selects_provider_and_reuses_document_resources() {
             assert!(bytes > 0);
             let again = context.compile_page(page).unwrap();
             assert_eq!(context.retained_bytes(), bytes);
-            let options = pagura::RenderOptions::default();
+            let options = RenderOptions::default();
             let image = list.render(&options).unwrap();
             assert_eq!(image.data(), again.render(&options).unwrap().data());
-            let actual = pagura_testkit::ppm(
-                image.width(),
-                image.height(),
-                &image.to_rgb_over(pagura::Rgba8::WHITE),
-            );
+            let actual = ppm(&image);
             let expected = fixture("paint", &format!("{name}.rgb"));
             assert_eq!(actual.len(), expected.len());
             assert!(
@@ -95,14 +94,7 @@ fn facade_feature_selects_provider_and_reuses_document_resources() {
                 height: 41,
             };
             let part = pagura::render_tile(document, page, &options, tile).unwrap();
-            for y in 0..tile.height {
-                let start = usize::try_from(tile.x).unwrap() * 4;
-                assert_eq!(
-                    part.row(y).unwrap(),
-                    &image.row(tile.y + y).unwrap()
-                        [start..start + usize::try_from(tile.width).unwrap() * 4]
-                );
-            }
+            crate::support::assert_tile_matches(&image, &part, tile);
             assert_eq!(
                 document.diagnostics().len(),
                 usize::from(*name != "bundled-cjk-cmap")
@@ -127,13 +119,14 @@ fn context_rejects_foreign_pages() {
     );
 }
 
+/// A provider written against the facade alone, sharing bundled data.
 #[cfg(feature = "bundled-data")]
 #[test]
-fn provider_and_explicit_entry_points_agree_and_load_once() {
-    use pagura_text::{CidToUnicode, PredefinedCMap, Provider, StandardFont};
+fn custom_provider_matches_the_facade_default_and_loads_once() {
+    use pagura::provider::{Bundled, CidToUnicode, PredefinedCMap, Provider, StandardFont};
     use std::sync::atomic::{AtomicUsize, Ordering};
     struct Count {
-        data: pagura_data::Bundled,
+        data: Bundled,
         calls: AtomicUsize,
     }
     impl Provider for Count {
@@ -153,7 +146,7 @@ fn provider_and_explicit_entry_points_agree_and_load_once() {
         }
     }
     let provider = Arc::new(Count {
-        data: pagura_data::Bundled::default(),
+        data: Bundled::default(),
         calls: AtomicUsize::new(0),
     });
     let source = Document::open(
@@ -161,30 +154,25 @@ fn provider_and_explicit_entry_points_agree_and_load_once() {
         &OpenOptions::default(),
     )
     .unwrap();
-    let context = RenderContext::with_provider(Arc::new(source), provider.clone());
+    let context = pagura::render_context_with_provider(Arc::new(source), Some(provider.clone()));
     let document = context.document();
     let page = document.page(0).unwrap();
     for _ in 0..3 {
         context.compile_page(page).unwrap();
     }
     assert_eq!(provider.calls.load(Ordering::Relaxed), 1);
-    let options = pagura::RenderOptions::default();
+    let options = RenderOptions::default();
     let expected = context.render_page(page, &options).unwrap();
-    let explicit =
-        pagura_render::render_page_with(document, page, &options, provider.as_ref()).unwrap();
-    assert_eq!(explicit.data(), expected.data());
+    let default = pagura::render_page(document, page, &options).unwrap();
+    assert_eq!(default.data(), expected.data());
     let tile = pagura::Tile {
         x: 0,
         y: 0,
         width: 64,
         height: 64,
     };
-    assert_eq!(
-        pagura_render::render_tile_with(document, page, &options, tile, provider.as_ref())
-            .unwrap()
-            .data(),
-        expected.data()
-    );
+    let part = pagura::render_tile(document, page, &options, tile).unwrap();
+    crate::support::assert_tile_matches(&expected, &part, tile);
 }
 
 #[test]
@@ -204,8 +192,8 @@ fn fonts_and_outlines_are_shared_across_document_pages() {
             assert_eq!(bytes, previous);
         }
         retained = Some(bytes);
-        let options = pagura::RenderOptions::default();
-        let direct = pagura_render::compile_page(document, page)
+        let options = RenderOptions::default();
+        let direct = pagura::compile_page(document, page)
             .unwrap()
             .render(&options)
             .unwrap();
@@ -222,18 +210,11 @@ fn unusable_glyphs_report_repairs_without_losing_advances() {
     )
     .unwrap();
     let page = document.page(0).unwrap().clone();
-    let options = pagura::RenderOptions::default();
+    let options = RenderOptions::default();
     let context = pagura::render_context(Arc::new(document));
     let image = context.render_page(&page, &options).unwrap();
     let expected = fixture("paint", "text-unusable-glyph-advance.rgb");
-    assert_eq!(
-        pagura_testkit::ppm(
-            image.width(),
-            image.height(),
-            &image.to_rgb_over(pagura::Rgba8::WHITE)
-        ),
-        expected
-    );
+    assert_eq!(ppm(&image), expected);
     let diagnostics = context.document().diagnostics();
     assert_eq!(diagnostics.len(), 1);
     assert_eq!(diagnostics[0].tag(), "font.glyph-data");
@@ -245,7 +226,7 @@ fn unusable_glyphs_report_repairs_without_losing_advances() {
     let strict = Document::open(
         fixture("paint", "text-unusable-glyph-advance.pdf"),
         &OpenOptions {
-            recovery: pagura::Recovery::Strict,
+            recovery: Recovery::Strict,
             ..Default::default()
         },
     )
@@ -260,28 +241,24 @@ fn cjk_substitute_matches_independent_otf_oracle() {
     let document = Document::open(
         fixture("paint", "bundled-cjk-substitute.pdf"),
         &OpenOptions {
-            recovery: pagura::Recovery::Strict,
+            recovery: Recovery::Strict,
             ..Default::default()
         },
     )
     .unwrap();
     let context = pagura::render_context(Arc::new(document));
     let page = context.document().page(0).unwrap();
-    let options = pagura::RenderOptions::default();
+    let options = RenderOptions::default();
     let image = context.render_page(page, &options).unwrap();
     let expected = fixture("paint", "bundled-cjk-substitute.rgb");
-    let actual = pagura_testkit::ppm(
-        image.width(),
-        image.height(),
-        &image.to_rgb_over(pagura::Rgba8::WHITE),
-    );
+    let actual = ppm(&image);
     assert_eq!(actual.len(), expected.len());
     assert!(actual.iter().zip(expected).all(|(a, b)| a.abs_diff(b) <= 1));
     let diagnostics = context.document().diagnostics();
     assert_eq!(
         diagnostics
             .iter()
-            .map(pagura_core::Diagnostic::tag)
+            .map(pagura::Diagnostic::tag)
             .collect::<Vec<_>>(),
         ["font.cid-glyph-missing", "font.substituted"]
     );
@@ -292,14 +269,7 @@ fn cjk_substitute_matches_independent_otf_oracle() {
         height: 41,
     };
     let part = context.render_tile(page, &options, tile).unwrap();
-    for y in 0..tile.height {
-        let start = usize::try_from(tile.x).unwrap() * 4;
-        assert_eq!(
-            part.row(y).unwrap(),
-            &image.row(tile.y + y).unwrap()
-                [start..start + usize::try_from(tile.width).unwrap() * 4]
-        );
-    }
+    crate::support::assert_tile_matches(&image, &part, tile);
 }
 
 #[test]

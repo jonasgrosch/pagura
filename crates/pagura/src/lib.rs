@@ -1,29 +1,78 @@
 #![forbid(unsafe_code)]
+#![warn(unreachable_pub)]
 //! Pagura: an independent PDF engine in safe Rust.
 //!
-//! Positioned text extraction and search go through [`text_page`], or
-//! [`RenderContext::text_page`] to share fonts across pages. Extraction has its
-//! own output and leaves the rendering display list unchanged.
+//! This facade is the public API of the workspace crates. Its imports are
+//! enough to use every item it exposes:
 //!
-//! This facade re-exports the stable entry points of the workspace crates.
-//! See `docs/STATUS.md` for what is implemented; unimplemented
-//! capabilities are reported as [`ErrorKind::Unsupported`] errors carrying
-//! a [`Feature`] tag, never as silently incomplete output.
+//! - the root holds documents, pages, the object model, rendering and
+//!   writing, the free functions, and the types their signatures name;
+//! - [`text`] holds the extracted-text model, [`provider`] the font and CMap
+//!   resources, and [`forms`], [`form_appearance`], [`navigation`] and
+//!   [`signatures`](mod@signatures) their domains.
+//!
+//! The free functions ([`compile_page`], [`compile_page_with_text`],
+//! [`text_page`], [`render_page`], [`render_tile`], [`prepare_form`]) use the
+//! feature-selected [`provider::default_provider`]. To compile or render many
+//! pages, keep a [`render_context`]; to use other font data, build one with
+//! [`render_context_with_provider`]. Positioned text extraction has its own
+//! output and leaves the rendering display list unchanged.
+//!
+//! [`Document`] and [`RenderContext`] are `Send + Sync`: share one through an
+//! `Arc` across threads. See `docs/STATUS.md` for what is implemented;
+//! unimplemented capabilities are reported as [`ErrorKind::Unsupported`]
+//! errors carrying a [`Feature`] tag, never as silently incomplete output.
 //!
 //! ```
-//! use pagura::{Document, OpenOptions, RenderOptions};
+//! use pagura::{Builder, Dictionary, Document, Name, NewObject, ObjectId, OpenOptions, Value};
 //!
 //! # fn main() -> pagura::Result<()> {
-//! let bytes = std::fs::read(concat!(env!("CARGO_MANIFEST_DIR"), "/../../corpus/generated/classic/rectangle.pdf"))
-//!     .expect("fixture exists");
-//! let document = Document::open(bytes, &OpenOptions::default())?;
-//! let page = document.page(0)?;
-//! let pixmap = pagura::render_page(&document, page, &RenderOptions::default())?;
+//! // Write a one-page document that fills a square, then read it back.
+//! let id = |number| ObjectId::new(number, 0);
+//! let dictionary = |entries: &[(&[u8], Value)]| -> Value {
+//!     let entries = entries.iter().map(|(key, value)| (Name::new(key), value.clone()));
+//!     Value::Dictionary(entries.collect())
+//! };
+//! let mut builder = Builder::default();
+//! let catalog = dictionary(&[(b"Type", Value::name(b"Catalog")), (b"Pages", Value::Reference(id(2)))]);
+//! builder.insert(id(1), NewObject::Value(catalog))?;
+//! let kids = Value::Array(vec![Value::Reference(id(3))]);
+//! let pages = dictionary(&[(b"Type", Value::name(b"Pages")), (b"Kids", kids), (b"Count", Value::Integer(1))]);
+//! builder.insert(id(2), NewObject::Value(pages))?;
+//! let page = dictionary(&[
+//!     (b"Type", Value::name(b"Page")),
+//!     (b"Parent", Value::Reference(id(2))),
+//!     (b"MediaBox", Value::Array([0, 0, 64, 64].map(Value::Integer).to_vec())),
+//!     (b"Contents", Value::Reference(id(4))),
+//! ]);
+//! builder.insert(id(3), NewObject::Value(page))?;
+//! let content = b"0 0 1 rg 16 16 32 32 re f".to_vec();
+//! builder.insert(id(4), NewObject::Stream { dictionary: Dictionary::new(), data: content })?;
+//!
+//! let document = Document::open(builder.finish(id(1))?, &OpenOptions::default())?;
+//! let options = pagura::RenderOptions::default();
+//! let pixmap = pagura::render_page(&document, document.page(0)?, &options)?;
 //! assert_eq!((pixmap.width(), pixmap.height()), (64, 64));
 //! # Ok(())
 //! # }
 //! ```
 
+pub mod provider;
+
+/// Positioned text, its reading-order layout, structure and search
+/// (ADR 0014), as returned by [`text_page`] and
+/// [`RenderContext::text_page`].
+pub mod text {
+    pub use pagura_text::{
+        Character, FontKind, LayoutOptions, LogicalText, MarkedContent, MarkedSpan,
+        PositionedGlyph, PositionedText, Quad, SearchOptions, StructureElement, StructureNamespace,
+        TextFont, TextLine, TextMatch, TextObject, TextPage, TextWord, WritingMode,
+    };
+}
+
+/// Lossless integer widening (`u32` to `usize`, `usize` to `u64`) on the
+/// 32- and 64-bit targets Pagura supports, for callers of the facade alone.
+pub use pagura_core::convert;
 pub use pagura_core::{
     Diagnostic, DiagnosticKind, Dictionary, Error, ErrorKind, Feature, Limits, Name, ObjectId,
     Position, Recovery, Rect, Repair, Result, SignatureLimits, Value,
@@ -35,30 +84,55 @@ pub use pagura_document::forms;
 pub use pagura_document::navigation;
 pub mod editing;
 pub mod signatures;
-pub use pagura_document::{Document, IndirectObject, OpenOptions, Page, Rotation};
-pub use pagura_raster::{Pixmap, Rgba8};
-/// Form appearance programs and resources kept as data (12.7.4.3).
+pub use pagura_document::{
+    Document, ImageCodec, ImageStream, IndirectObject, ObjectSource, OpenOptions, Page, Rotation,
+};
+pub use pagura_raster::{Pixmap, Point, Rgba8};
+/// Form appearance programs and resources kept as data (12.7.4.3). Its
+/// functions take an explicit provider; [`prepare_form`] uses the
+/// feature-selected one.
 pub use pagura_render::form_appearance;
 pub use pagura_render::{
-    Accuracy, DisplayList, OverprintPreview, Provider, RenderContext, RenderOptions, SearchOptions,
-    TextMatch, TextPage, Tile, compile_page_with, compile_page_with_text, device_size,
-    render_page_with, render_tile_with,
+    Accuracy, DisplayList, OverprintPreview, RenderContext, RenderOptions, Tile, device_size,
 };
 pub use pagura_write::{Builder, NewObject};
+pub use text::{SearchOptions, TextMatch, TextPage};
 
+use provider::{Provider, default_provider};
 use std::sync::Arc;
 
-/// Creates document-bound rendering resources using the feature-selected data.
-/// Keep this context when compiling or rendering many pages. The opt-in
-/// `cjk-fonts` feature adds horizontal collection-specific substitutes.
+/// Creates document-bound rendering resources with the feature-selected
+/// [`provider::default_provider`]. Keep this context when compiling or
+/// rendering many pages. The opt-in `cjk-fonts` feature adds horizontal
+/// collection-specific substitutes.
+///
+/// ```
+/// # fn example(document: pagura::Document) -> pagura::Result<()> {
+/// let context = pagura::render_context(std::sync::Arc::new(document));
+/// let options = pagura::RenderOptions::from_dpi(144.0);
+/// for page in context.document().pages()? {
+///     let pixmap = context.render_page(page, &options)?;
+///     println!("{} x {}", pixmap.width(), pixmap.height());
+/// }
+/// # Ok(())
+/// # }
+/// ```
 pub fn render_context(document: Arc<Document>) -> RenderContext {
-    #[cfg(feature = "bundled-data")]
-    {
-        let provider = Arc::new(pagura_data::Bundled::new(document.limits()));
-        RenderContext::with_provider(document, provider)
+    let provider = default_provider(document.limits());
+    render_context_with_provider(document, provider)
+}
+
+/// Creates document-bound rendering resources with `provider`, or with only
+/// the resources embedded in the PDF for `None`. Share one provider across
+/// contexts to parse each resource once.
+pub fn render_context_with_provider(
+    document: Arc<Document>,
+    provider: Option<Arc<dyn Provider>>,
+) -> RenderContext {
+    match provider {
+        Some(provider) => RenderContext::with_provider(document, provider),
+        None => RenderContext::new(document),
     }
-    #[cfg(not(feature = "bundled-data"))]
-    RenderContext::new(document)
 }
 
 /// Compiles one page. For many pages, keep a [`render_context`]. The default
@@ -68,16 +142,12 @@ pub fn render_context(document: Arc<Document>) -> RenderContext {
 /// [`compile_filled_page`] with an empty filler to honor NeedAppearances.
 ///
 /// # Errors
-/// As [`pagura_render::compile_page`] and the feature-selected provider.
+/// As [`RenderContext::compile_page`].
 pub fn compile_page(document: &Document, page: &Page) -> Result<DisplayList> {
-    #[cfg(feature = "bundled-data")]
-    return compile_page_with(
-        document,
-        page,
-        &pagura_data::Bundled::new(document.limits()),
-    );
-    #[cfg(not(feature = "bundled-data"))]
-    pagura_render::compile_page(document, page)
+    match default_provider(document.limits()) {
+        Some(provider) => pagura_render::compile_page_with(document, page, provider.as_ref()),
+        None => pagura_render::compile_page(document, page),
+    }
 }
 
 /// Compiles a page using in-memory filled values (12.7.4.3).
@@ -87,14 +157,19 @@ pub fn compile_page(document: &Document, page: &Page) -> Result<DisplayList> {
 /// # Errors
 /// As [`pagura_render::compile_filled_page`].
 pub fn compile_filled_page(filler: &forms::FormFiller<'_>, page: &Page) -> Result<DisplayList> {
-    #[cfg(feature = "bundled-data")]
-    return pagura_render::compile_filled_page(
-        filler,
-        page,
-        Some(&pagura_data::Bundled::new(filler.document().limits())),
-    );
-    #[cfg(not(feature = "bundled-data"))]
-    pagura_render::compile_filled_page(filler, page, None)
+    let provider = default_provider(filler.document().limits());
+    pagura_render::compile_filled_page(filler, page, provider.as_deref())
+}
+
+/// Compiles one page and extracts its positioned text in the same pass, with
+/// the feature-selected font data, as [`compile_page`] and [`text_page`] do.
+/// For many pages, keep a [`render_context`].
+///
+/// # Errors
+/// As [`RenderContext::compile_page_with_text`].
+pub fn compile_page_with_text(document: &Document, page: &Page) -> Result<(DisplayList, TextPage)> {
+    let provider = default_provider(document.limits());
+    pagura_render::compile_page_with_text(document, page, provider.as_deref())
 }
 
 /// Extracts actual positioned text from a stored widget appearance.
@@ -124,17 +199,22 @@ pub fn appearance_text(
 /// For many pages, keep a [`render_context`] and use
 /// [`RenderContext::text_page`].
 ///
+/// ```
+/// # fn example(document: &pagura::Document) -> pagura::Result<()> {
+/// let text = pagura::text_page(document, document.page(0)?)?;
+/// println!("{}", text.text());
+/// for found in text.find("invoice", pagura::SearchOptions::default())? {
+///     println!("{:?} at {:?}", found.range, found.quads);
+/// }
+/// # Ok(())
+/// # }
+/// ```
+///
 /// # Errors
-/// As [`compile_page`] and [`compile_page_with_text`].
+/// As [`RenderContext::text_page`].
 pub fn text_page(document: &Document, page: &Page) -> Result<TextPage> {
-    #[cfg(feature = "bundled-data")]
-    return pagura_render::text_page(
-        document,
-        page,
-        Some(&pagura_data::Bundled::new(document.limits())),
-    );
-    #[cfg(not(feature = "bundled-data"))]
-    pagura_render::text_page(document, page, None)
+    let provider = default_provider(document.limits());
+    pagura_render::text_page(document, page, provider.as_deref())
 }
 
 /// Renders one page. For many pages, keep a [`render_context`].
@@ -167,23 +247,24 @@ pub fn render_tile(
 pub fn prepare_form(
     filler: &forms::FormFiller<'_>,
 ) -> Result<Vec<form_appearance::WidgetAppearance>> {
-    #[cfg(feature = "bundled-data")]
-    return form_appearance::prepare(
-        filler,
-        Some(&pagura_data::Bundled::new(filler.document().limits())),
-    );
-    #[cfg(not(feature = "bundled-data"))]
-    form_appearance::prepare(filler, None)
+    let provider = default_provider(filler.document().limits());
+    form_appearance::prepare(filler, provider.as_deref())
 }
 
-/// Licence notices for font and CMap data, including opt-in CJK outlines,
-/// linked by this facade's features. Distributors must
-/// reproduce these notices; the CLI exposes them through `pagura licenses`.
-pub fn data_notices() -> impl Iterator<Item = (&'static str, &'static str)> {
+/// Licence notices of the data this build links, as `(subject, text)`:
+/// the Unicode data behind password preparation (always) and the font and
+/// CMap data of the `bundled-data` and `cjk-fonts` features. Distributors
+/// must reproduce every notice; the CLI prints them with `pagura licenses`.
+///
+/// ```
+/// assert!(pagura::notices().any(|(subject, _)| subject.starts_with("Unicode")));
+/// ```
+pub fn notices() -> impl Iterator<Item = (&'static str, &'static str)> {
+    let unicode = std::iter::once(("Unicode 3.2.0", pagura_crypto::unicode_notice()));
     #[cfg(feature = "bundled-data")]
-    return pagura_data::notices();
+    return unicode.chain(pagura_data::notices());
     #[cfg(not(feature = "bundled-data"))]
-    std::iter::empty()
+    unicode
 }
 
 /// Inspects signature fields, byte ranges and revision coverage (12.7.5.5, 12.8).
