@@ -30,7 +30,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     pub(super) fn select_pattern(
         &mut self,
         base: Option<&Arc<ColorSpace>>,
-        operands: ColorOperands,
+        operands: &ColorOperands,
         resources: &Dictionary,
         scope: &mut Scope,
     ) -> Result<Arc<Paint>> {

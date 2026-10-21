@@ -78,6 +78,22 @@ fn generated_fixtures_match_the_old_interpreter() {
 }
 
 #[test]
+fn filled_forms_match_the_old_interpreter() {
+    let mut files = Vec::new();
+    pdfs(&pagura_testkit::workspace_root().join("corpus/generated/forms"), &mut files);
+    let mut outcome = Outcome::default();
+    for path in files {
+        let name = path.display().to_string();
+        let bytes = std::fs::read(&path).unwrap();
+        for index in 0..page_count(&bytes).min(PAGES) {
+            compare::filled_page(&name, &bytes, index, &mut outcome);
+        }
+    }
+    report(&outcome, "filled forms");
+    assert!(outcome.mismatches.is_empty(), "{} mismatches", outcome.mismatches.len());
+}
+
+#[test]
 fn benchmark_pages_match_the_old_interpreter() {
     let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
     let corpora = home.join(".cache/pagura-corpora");
@@ -89,8 +105,8 @@ fn benchmark_pages_match_the_old_interpreter() {
     let pages = pagura_testkit::Json::parse(&text).unwrap();
     let mut outcome = Outcome::default();
     for entry in pages.as_array().unwrap() {
-        let file = entry.get("file").and_then(|v| v.as_str()).unwrap();
-        let index = usize::try_from(entry.get("page").and_then(|v| v.as_u64()).unwrap()).unwrap();
+        let file = entry.get("file").and_then(pagura_testkit::Json::as_str).unwrap();
+        let index = usize::try_from(entry.get("page").and_then(pagura_testkit::Json::as_u64).unwrap()).unwrap();
         let Ok(bytes) = std::fs::read(corpora.join(file)) else {
             continue;
         };

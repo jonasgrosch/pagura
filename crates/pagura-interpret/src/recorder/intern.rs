@@ -1,9 +1,11 @@
-//! Interning of the shared values marks carry, by `Arc` identity: each
-//! value the interpreter shares becomes one table entry. The tables hold
-//! the `Arc`s, so an identity is never reused while it is interned.
+//! Interning of the shared values marks carry: by `Arc` identity first,
+//! then composite states and solid colours by value, so equal values the
+//! interpreter built separately share one table entry. The interner holds
+//! every `Arc` it has seen, so an identity is never reused while interned.
 
-use crate::model::{Clip, Composite, Paint, Pen};
+use crate::model::{BlendMode, Clip, Composite, MaskId, Overprint, Paint, Pen};
 use crate::scene::{ClipId, ClipNode, PaintId, PenId, StateId};
+use pagura_color::Intent;
 use pagura_core::{Error, Meter, Result};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -17,10 +19,52 @@ pub(super) struct Interner {
     clip_arcs: Vec<Arc<Clip>>,
     states: Vec<Arc<Composite>>,
     state_ids: HashMap<usize, StateId>,
+    state_values: HashMap<StateKey, StateId>,
     paints: Vec<Arc<Paint>>,
     paint_ids: HashMap<usize, PaintId>,
+    paint_values: HashMap<(usize, Vec<u64>), PaintId>,
+    /// States and paints interned as aliases of equal values, kept alive so
+    /// their addresses stay theirs.
+    state_aliases: Vec<Arc<Composite>>,
+    paint_aliases: Vec<Arc<Paint>>,
     pens: Vec<Arc<Pen>>,
     pen_ids: HashMap<usize, PenId>,
+}
+
+/// A composite state by value; functions by identity.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct StateKey {
+    alpha: u64,
+    blend: BlendMode,
+    soft_mask: Option<MaskId>,
+    alpha_is_shape: bool,
+    overprint: Overprint,
+    transfer: usize,
+    intent: u8,
+    black_generation: usize,
+    undercolor_removal: usize,
+}
+
+impl StateKey {
+    fn of(state: &Composite) -> Self {
+        let function = |f: Option<&Arc<pagura_color::Function>>| f.map_or(0, address);
+        Self {
+            alpha: state.alpha.to_bits(),
+            blend: state.blend,
+            soft_mask: state.soft_mask,
+            alpha_is_shape: state.alpha_is_shape,
+            overprint: state.overprint,
+            transfer: state.transfer.as_ref().map_or(0, address),
+            intent: match state.conversion.intent {
+                Intent::Perceptual => 0,
+                Intent::Relative => 1,
+                Intent::Saturation => 2,
+                Intent::Absolute => 3,
+            },
+            black_generation: function(state.conversion.black_generation.as_ref()),
+            undercolor_removal: function(state.conversion.undercolor_removal.as_ref()),
+        }
+    }
 }
 
 /// The tables of a finished recording.
@@ -48,10 +92,17 @@ impl Interner {
         if let Some(&id) = self.state_ids.get(&address(state)) {
             return Ok(id);
         }
+        let key = StateKey::of(state);
+        if let Some(&id) = self.state_values.get(&key) {
+            self.state_aliases.push(Arc::clone(state));
+            self.state_ids.insert(address(state), id);
+            return Ok(id);
+        }
         bytes.charge_items::<Composite>(1)?;
         let id = StateId(index(self.states.len())?);
         self.states.push(Arc::clone(state));
         self.state_ids.insert(address(state), id);
+        self.state_values.insert(key, id);
         Ok(id)
     }
 
@@ -59,10 +110,25 @@ impl Interner {
         if let Some(&id) = self.paint_ids.get(&address(paint)) {
             return Ok(id);
         }
+        let key = match paint.as_ref() {
+            Paint::Solid(color) => Some((
+                address(&color.space),
+                color.components.iter().map(|c| c.to_bits()).collect::<Vec<_>>(),
+            )),
+            Paint::Shading(_) | Paint::Tiling(_) => None,
+        };
+        if let Some(&id) = key.as_ref().and_then(|key| self.paint_values.get(key)) {
+            self.paint_aliases.push(Arc::clone(paint));
+            self.paint_ids.insert(address(paint), id);
+            return Ok(id);
+        }
         bytes.charge_items::<Paint>(1)?;
         let id = PaintId(index(self.paints.len())?);
         self.paints.push(Arc::clone(paint));
         self.paint_ids.insert(address(paint), id);
+        if let Some(key) = key {
+            self.paint_values.insert(key, id);
+        }
         Ok(id)
     }
 

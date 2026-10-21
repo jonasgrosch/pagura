@@ -1,0 +1,9 @@
+page crop [0.0 0.0 240.0 240.0] rotate 0 unit 1.0 print-intent false
+group #0 page isolated false knockout false space None bbox - view - state #0 clip - at Unknown
+  group #1 transparency isolated false knockout true space None bbox - view - state #0 clip - at Stream { object: ObjectId { number: 4, generation: 0 }, offset: 0 }
+    group #2 transparency isolated false knockout false space None bbox - view - state #0 clip - at Stream { object: ObjectId { number: 4, generation: 0 }, offset: 26 }
+      fill nonzero paint #0 state #0 clip - at Stream { object: ObjectId { number: 6, generation: 0 }, offset: 25 } [M 10.0 20.0 L 20.0 20.0 L 20.0 50.0 L 10.0 50.0 Z]
+    group #3 transparency isolated false knockout false space None bbox - view - state #0 clip - at Stream { object: ObjectId { number: 4, generation: 0 }, offset: 26 }
+      fill nonzero paint #0 state #0 clip - at Stream { object: ObjectId { number: 6, generation: 0 }, offset: 25 } [M 20.0 20.0 L 30.0 20.0 L 30.0 50.0 L 20.0 50.0 Z]
+paint #0 solid DeviceGray [0.0]
+state #0 alpha 1.0 blend Normal mask - ais false overprint false nonzero false transfer no intent Relative bg no ucr no

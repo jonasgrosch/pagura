@@ -50,7 +50,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             Op::StrokeColorN(operands) | Op::FillColorN(operands) => {
                 let space = current(scope, target)?;
                 if let ColorSpace::Pattern(base) = space.as_ref() {
-                    let paint = self.select_pattern(base.as_ref(), operands, resources, scope)?;
+                    let paint = self.select_pattern(base.as_ref(), &operands, resources, scope)?;
                     Ink { space, paint }
                 } else {
                     set(&space, &operands)?

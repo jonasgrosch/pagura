@@ -1,0 +1,14 @@
+page crop [0.0 0.0 32.0 32.0] rotate 0 unit 1.0 print-intent false
+group #0 page isolated false knockout false space None bbox - view - state #0 clip - at Unknown
+  group #2 transparency isolated false knockout true space None bbox - view - state #0 clip - at Stream { object: ObjectId { number: 4, generation: 0 }, offset: 9 }
+    glyphs paint #0 state #2 clip - at Stream { object: ObjectId { number: 4, generation: 0 }, offset: 38 } sources 1 placements 1
+      source font 327680 glyph 1 linear [0.02 0.0 0.0 0.02 0.0 0.0] segments 5
+      place 0 at 4.0 4.0 Stream { object: ObjectId { number: 4, generation: 0 }, offset: 38 }
+mask #0 Alpha backdrop - transfer no at Stream { object: ObjectId { number: 4, generation: 0 }, offset: 24 }
+  group #1 soft-mask Alpha isolated true knockout false space Some(Rgb) bbox [M 0.0 0.0 L 32.0 0.0 L 32.0 32.0 L 0.0 32.0 Z] view - state #0 clip - at Unknown
+    fill nonzero paint #0 state #1 clip #0 at Stream { object: ObjectId { number: 8, generation: 0 }, offset: 22 } [M 0.0 0.0 L 32.0 0.0 L 32.0 32.0 L 0.0 32.0 Z]
+paint #0 solid DeviceRGB [1.0 0.0 0.0]
+state #0 alpha 1.0 blend Normal mask - ais false overprint false nonzero false transfer no intent Relative bg no ucr no
+state #1 alpha 0.5 blend Normal mask - ais false overprint false nonzero false transfer no intent Relative bg no ucr no
+state #2 alpha 1.0 blend Normal mask #0 ais false overprint false nonzero false transfer no intent Relative bg no ucr no
+clip #0 parent - nonzero [M 0.0 0.0 L 32.0 0.0 L 32.0 32.0 L 0.0 32.0 Z]

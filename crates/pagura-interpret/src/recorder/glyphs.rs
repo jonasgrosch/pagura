@@ -70,14 +70,13 @@ impl SceneRecorder {
             glyph.outline_key,
             [linear.a, linear.b, linear.c, linear.d].map(f64::to_bits),
         );
-        let hull = match self.glyphs.hulls.get(&key) {
-            Some(hull) => *hull,
-            None => {
-                let hull = hull(outline, linear)?;
-                self.bytes.charge_items::<(SourceKey, [Point; 2])>(1)?;
-                self.glyphs.hulls.insert(key, hull);
-                hull
-            }
+        let hull = if let Some(hull) = self.glyphs.hulls.get(&key) {
+            *hull
+        } else {
+            let hull = hull(outline, linear)?;
+            self.bytes.charge_items::<(SourceKey, [Point; 2])>(1)?;
+            self.glyphs.hulls.insert(key, hull);
+            hull
         };
         let origin = Point::new(glyph.transform.e, glyph.transform.f);
         let low = Point::new(hull[0].x + origin.x, hull[0].y + origin.y);
@@ -193,17 +192,16 @@ impl SceneRecorder {
             Arc::as_ptr(fill_state.composite).addr(),
             Arc::as_ptr(stroke_state.composite).addr(),
         );
-        let states = match self.glyphs.derived.get(&key) {
-            Some(states) => states.clone(),
-            None => {
-                let opaque = Arc::new(Composite::default());
-                let states = FillStroke::new(fill_state.composite, stroke_state.composite, &opaque);
-                // Keep the pair's states interned so the addresses stay theirs.
-                self.interner.state(fill_state.composite, &mut self.bytes)?;
-                self.interner.state(stroke_state.composite, &mut self.bytes)?;
-                self.glyphs.derived.insert(key, states.clone());
-                states
-            }
+        let states = if let Some(states) = self.glyphs.derived.get(&key) {
+            states.clone()
+        } else {
+            let opaque = Arc::new(Composite::default());
+            let states = FillStroke::new(fill_state.composite, stroke_state.composite, &opaque);
+            // Keep the pair's states interned so the addresses stay theirs.
+            self.interner.state(fill_state.composite, &mut self.bytes)?;
+            self.interner.state(stroke_state.composite, &mut self.bytes)?;
+            self.glyphs.derived.insert(key, states.clone());
+            states
         };
         let path = Arc::new(user_path(outline, glyph.transform)?);
         let mut group_state = fill_state;

@@ -161,8 +161,8 @@ impl Reader<'_> {
                 let range = range.ok_or(Error::syntax("sampled function requires Range"))?;
                 sampled(document, value, dictionary, domain.clone(), range)?
             }
-            2 => exponential(document, dictionary, outputs, domain.clone(), range)?,
-            3 => self.stitching(dictionary, outputs, domain.clone(), range)?,
+            2 => exponential(document, dictionary, outputs, &domain, range)?,
+            3 => self.stitching(dictionary, outputs, &domain, range)?,
             4 => calculator(document, value, domain.clone(), range)?,
             _ => return Err(Error::syntax("invalid FunctionType")),
         };
@@ -176,11 +176,11 @@ impl Reader<'_> {
         &mut self,
         dictionary: &Dictionary,
         outputs: usize,
-        domain: Vec<[f64; 2]>,
+        domain: &[[f64; 2]],
         range: Option<Vec<[f64; 2]>>,
     ) -> Result<Function> {
         let document = self.document;
-        let &[[min, max]] = domain.as_slice() else {
+        let &[[min, max]] = domain else {
             return Err(Error::syntax("stitching function requires one input"));
         };
         let values = entry(document, dictionary, b"Functions")?
@@ -311,10 +311,10 @@ fn exponential(
     document: &Document,
     dictionary: &Dictionary,
     outputs: usize,
-    domain: Vec<[f64; 2]>,
+    domain: &[[f64; 2]],
     range: Option<Vec<[f64; 2]>>,
 ) -> Result<Function> {
-    let &[[min, max]] = domain.as_slice() else {
+    let &[[min, max]] = domain else {
         return Err(Error::syntax("exponential function requires one input"));
     };
     let c0 = numbers(document, dictionary, b"C0", Some(&[0.0]))?;

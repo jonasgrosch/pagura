@@ -233,14 +233,12 @@ pub(crate) fn path_bytes(path: &Path) -> usize {
 /// indirect font, else a hash of the direct dictionary with the high bit
 /// set, so the two never meet.
 fn font_key(id: Option<ObjectId>, dictionary: &Dictionary) -> FontKey {
-    match id {
-        Some(id) => FontKey((u64::from(id.number) << 16) | u64::from(id.generation)),
-        None => {
-            let mut hasher = DefaultHasher::new();
-            hash_dictionary(dictionary, &mut hasher);
-            FontKey((1 << 63) | (hasher.finish() >> 1))
-        }
+    if let Some(id) = id {
+        return FontKey((u64::from(id.number) << 16) | u64::from(id.generation));
     }
+    let mut hasher = DefaultHasher::new();
+    hash_dictionary(dictionary, &mut hasher);
+    FontKey((1 << 63) | (hasher.finish() >> 1))
 }
 
 fn hash_dictionary(dictionary: &Dictionary, hasher: &mut DefaultHasher) {
@@ -267,7 +265,7 @@ fn hash_value(value: &Value, hasher: &mut DefaultHasher) {
         }
         Value::Dictionary(dictionary) => hash_dictionary(dictionary, hasher),
         Value::Reference(id) => id.hash(hasher),
-        _ => {}
+        Value::Null => {}
     }
 }
 

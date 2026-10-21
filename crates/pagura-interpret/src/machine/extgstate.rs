@@ -22,7 +22,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let document = self.document();
         let value = resource(document, resources, b"ExtGState", name.as_bytes())?;
         let dictionary = document.resolve_dictionary(value)?;
-        let uncolored = self.uncolored_glyph(scope);
+        let uncolored = scope.uncolored_glyph();
         if let Some(font) = dictionary.get(b"Font") {
             let array = document
                 .resolve(font)?

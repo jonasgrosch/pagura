@@ -25,7 +25,7 @@ impl StoreKey for ProfileKey {
 #[derive(Debug)]
 pub(crate) struct Profiles<'a> {
     store: Option<&'a Store>,
-    profiles: BTreeMap<ObjectId, (usize, Option<Arc<Profile>>)>,
+    entries: BTreeMap<ObjectId, (usize, Option<Arc<Profile>>)>,
     bytes: usize,
     document: &'a Document,
 }
@@ -34,7 +34,7 @@ impl<'a> Profiles<'a> {
     pub(crate) fn new(document: &'a Document, store: Option<&'a Store>) -> Self {
         Self {
             store,
-            profiles: BTreeMap::new(),
+            entries: BTreeMap::new(),
             bytes: 0,
             document,
         }
@@ -42,7 +42,7 @@ impl<'a> Profiles<'a> {
 
     /// The profile of stream `id` read for `components` components.
     fn get(&mut self, id: ObjectId, components: usize) -> Result<Option<Arc<Profile>>> {
-        if let Some((count, profile)) = self.profiles.get(&id) {
+        if let Some((count, profile)) = self.entries.get(&id) {
             if *count != components {
                 return Err(
                     Error::syntax("ICC component count differs from cached profile").in_object(id),
@@ -78,10 +78,10 @@ impl<'a> Profiles<'a> {
             .checked_add(charge)
             .filter(|&n| n <= limits.render_bytes)
             .ok_or(Error::limit("ICC cache byte budget exceeded"))?;
-        if self.profiles.len() >= limits.value_nodes {
+        if self.entries.len() >= limits.value_nodes {
             return Err(Error::limit("ICC cache entry budget exceeded"));
         }
-        self.profiles.insert(id, (components, profile.clone()));
+        self.entries.insert(id, (components, profile.clone()));
         self.bytes = total;
         Ok(profile)
     }

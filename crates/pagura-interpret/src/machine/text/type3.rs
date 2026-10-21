@@ -30,17 +30,17 @@ enum Phase {
     Ready,
 }
 
-impl<D: Device + ?Sized> Machine<'_, '_, D> {
-    /// Whether `scope` is an uncoloured glyph procedure (`d1`).
-    pub(crate) fn uncolored_glyph(&self, scope: &Scope) -> bool {
-        scope.procedure.as_ref().is_some_and(|p| p.uncolored)
+impl Scope {
+    /// Whether the scope is an uncoloured glyph procedure (`d1`).
+    pub(crate) fn uncolored_glyph(&self) -> bool {
+        self.procedure.as_ref().is_some_and(|p| p.uncolored)
     }
 
     /// Applies the rules of glyph procedures to `op`: they start with `d0`
     /// or `d1`, and after `d1` colour operators are ignored (Table 111),
     /// also in nested forms. Returns whether `op` is ignored.
-    pub(crate) fn glyph_restriction(&self, op: &Op, scope: &Scope) -> Result<bool> {
-        let Some(procedure) = &scope.procedure else {
+    pub(crate) fn glyph_restriction(&self, op: &Op) -> Result<bool> {
+        let Some(procedure) = &self.procedure else {
             return Ok(false);
         };
         if procedure.phase == Phase::AwaitMetrics
@@ -67,7 +67,9 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                     | Op::Shading(_)
             ))
     }
+}
 
+impl<D: Device + ?Sized> Machine<'_, '_, D> {
     /// `d0` and `d1`.
     pub(super) fn glyph_metrics(&mut self, op: &Op, scope: &mut Scope) -> Result<()> {
         let position = self.position;
@@ -133,7 +135,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         child.forms.push(id);
         child.state.set_ctm(transform);
         child.initial_ctm = transform;
-        let inherited_uncolored = self.uncolored_glyph(scope);
+        let inherited_uncolored = scope.uncolored_glyph();
         child.procedure = Some(Procedure {
             phase: Phase::AwaitMetrics,
             uncolored: inherited_uncolored,

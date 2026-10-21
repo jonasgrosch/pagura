@@ -108,13 +108,15 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
     /// `MCID`, `ActualText` and `Alt` (14.7.5.2, 14.9.3–14.9.4); `E` is
     /// checked but not kept.
     fn marked_text(&self, dictionary: Option<&Dictionary>) -> Result<MarkedText> {
-        let mut text = MarkedText::default();
-        text.actual_text = self.property(dictionary, b"ActualText")?;
-        text.alt = self.property(dictionary, b"Alt")?;
+        let actual_text = self.property(dictionary, b"ActualText")?;
+        let alt = self.property(dictionary, b"Alt")?;
         // Expansion text is speech metadata, not replacement text.
         self.property(dictionary, b"E")?;
-        text.mcid = self.marked_id(dictionary)?;
-        Ok(text)
+        Ok(MarkedText {
+            mcid: self.marked_id(dictionary)?,
+            actual_text,
+            alt,
+        })
     }
 
     fn property(&self, dictionary: Option<&Dictionary>, name: &[u8]) -> Result<Option<String>> {

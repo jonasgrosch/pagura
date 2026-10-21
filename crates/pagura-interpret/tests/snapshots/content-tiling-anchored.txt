@@ -1,0 +1,10 @@
+page crop [0.0 0.0 8.0 8.0] rotate 0 unit 1.0 print-intent false
+group #0 page isolated false knockout false space None bbox - view - state #0 clip - at Unknown
+  fill nonzero paint #1 state #0 clip - at Stream { object: ObjectId { number: 4, generation: 0 }, offset: 39 } [M 2.0 0.0 L 6.0 0.0 L 6.0 8.0 L 2.0 8.0 Z]
+tiling #0 Colored bbox [0.0 0.0 2.0 2.0] step [2.0 2.0] matrix [1.0 0.0 0.0 1.0 0.0 0.0]
+  group #1 tiling isolated false knockout false space None bbox [M 0.0 0.0 L 2.0 0.0 L 2.0 2.0 L 0.0 2.0 Z] view - state #0 clip - at Unknown
+    fill nonzero paint #0 state #0 clip #0 at Stream { object: ObjectId { number: 5, generation: 0 }, offset: 20 } [M 0.0 0.0 L 1.0 0.0 L 1.0 1.0 L 0.0 1.0 Z]
+paint #0 solid DeviceRGB [1.0 0.0 0.0]
+paint #1 tiling #0 color -
+state #0 alpha 1.0 blend Normal mask - ais false overprint false nonzero false transfer no intent Relative bg no ucr no
+clip #0 parent - nonzero [M 0.0 0.0 L 2.0 0.0 L 2.0 2.0 L 0.0 2.0 Z]

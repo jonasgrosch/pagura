@@ -82,6 +82,10 @@ struct Built {
 
 /// The graphics state that `q` saves and `Q` restores.
 #[derive(Debug, Clone)]
+#[expect(
+    clippy::struct_excessive_bools,
+    reason = "independent flags of Tables 51 and 52"
+)]
 pub(crate) struct Graphics {
     pub(crate) ctm: Transform,
     pub(crate) fill: Option<Ink>,

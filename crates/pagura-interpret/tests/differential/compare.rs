@@ -1,5 +1,10 @@
 //! One page interpreted by the old renderer's compiler and by the new
 //! interpreter, and the differences between them.
+#![expect(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    reason = "test helpers fail loudly"
+)]
 
 use pagura_core::{Diagnostic, Error, ErrorKind, Recovery};
 use pagura_document::{Document, OpenOptions};
@@ -261,5 +266,55 @@ fn text(label: &str, bytes: &[u8], index: usize, recovery: Recovery, scene: Scen
                 .mismatches
                 .push(format!("{label}: text fails with {new} where old succeeds"));
         }
+    }
+}
+
+/// Compares page `index` of `bytes` drawn with an untouched form session,
+/// which honours `NeedAppearances` (12.7.4.3).
+pub fn filled_page(name: &str, bytes: &[u8], index: usize, outcome: &mut Outcome) {
+    let label = format!("{name} p{index} filled");
+    let (Some(old_doc), Some(new_doc)) = (
+        open(bytes, Recovery::Repair),
+        open(bytes, Recovery::Repair),
+    ) else {
+        return;
+    };
+    let (Ok(Some(old_filler)), Ok(Some(new_filler))) = (old_doc.form_filler(), new_doc.form_filler())
+    else {
+        return;
+    };
+    let (Ok(old_page), Ok(new_page)) = (old_doc.page(index), new_doc.page(index)) else {
+        return;
+    };
+    let old = pagura_render::compile_filled_page(&old_filler, old_page, None);
+    let new = Interpreter::new(&new_doc)
+        .with_filler(&new_filler)
+        .scene(new_page);
+    match (&old, &new) {
+        (_, Err(error)) if pending(error) => {
+            outcome.pending.push(format!("{label}: {error}"));
+        }
+        (Ok(list), Ok(scene)) => {
+            let (marks, glyphs) = counts(scene);
+            if (marks, glyphs) == (list.len(), old_glyphs(list))
+                && old_doc.diagnostics() == new_doc.diagnostics()
+            {
+                outcome.matched += 1;
+            } else {
+                outcome.mismatches.push(format!(
+                    "{label}: marks/glyphs {:?} vs old {:?}; diagnostics {:?} vs old {:?}",
+                    (marks, glyphs),
+                    (list.len(), old_glyphs(list)),
+                    tags(&new_doc.diagnostics()),
+                    tags(&old_doc.diagnostics())
+                ));
+            }
+        }
+        (Err(old), Err(new)) if identity(old) == identity(new) => outcome.matched += 1,
+        _ => outcome.mismatches.push(format!(
+            "{label}: {:?} vs old {:?}",
+            new.as_ref().map(|_| ()),
+            old.as_ref().map(|_| ())
+        )),
     }
 }

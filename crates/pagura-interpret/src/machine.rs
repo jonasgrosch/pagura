@@ -332,7 +332,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
         resources: &Dictionary,
         scope: &mut Scope,
     ) -> Result<()> {
-        if self.glyph_restriction(&op, scope)? || self.stencil_ignores(&op, resources, scope)? {
+        if scope.glyph_restriction(&op)? || self.stencil_ignores(&op, resources, scope)? {
             if let Op::InlineImage(dictionary) = &op {
                 self.skip_inline_image(dictionary, reader, resources)?;
             }
@@ -402,7 +402,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
             | Op::MarkedPointProperties { .. }
             | Op::BeginCompatibility
             | Op::EndCompatibility => Ok(()),
-            Op::InlineImage(dictionary) => self.inline_image(dictionary, reader, resources, scope),
+            Op::InlineImage(dictionary) => self.inline_image(&dictionary, reader, resources, scope),
             text => self.text_operator(text, resources, scope),
         }
     }

@@ -52,7 +52,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             .transpose()?
             .and_then(Value::as_bool)
             .unwrap_or(false);
-        if self.uncolored_glyph(scope) && !stencil {
+        if scope.uncolored_glyph() && !stencil {
             return Ok(());
         }
         let visible = dictionary
@@ -111,7 +111,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
 
     /// Emits an image or stencil mask mark.
     fn image_mark(&mut self, image: &Arc<Image>, scope: &mut Scope) -> Result<()> {
-        if self.uncolored_glyph(scope) && image.space.is_some() {
+        if scope.uncolored_glyph() && image.space.is_some() {
             return Ok(());
         }
         let Some(emission) = self.admit(scope)? else {
@@ -153,15 +153,15 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     /// `BI … ID … EI` (8.9.7).
     pub(super) fn inline_image(
         &mut self,
-        dictionary: Dictionary,
+        dictionary: &Dictionary,
         reader: &mut Reader<'_>,
         resources: &Dictionary,
         scope: &mut Scope,
     ) -> Result<()> {
         let framing = if self.needs().paint {
-            self.inline_framing(&dictionary, resources)?
+            self.inline_framing(dictionary, resources)?
         } else {
-            light_framing(self.document(), &dictionary, resources)?
+            light_framing(self.document(), dictionary, resources)?
         };
         let data = reader.inline_image_data(|data| pagura_image::inline_data_length(&framing, data))?;
         let stencil = dictionary
@@ -169,7 +169,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             .or_else(|| dictionary.get(b"IM"))
             .and_then(Value::as_bool)
             .unwrap_or(false);
-        if (self.uncolored_glyph(scope) && !stencil) || !self.needs().images {
+        if (scope.uncolored_glyph() && !stencil) || !self.needs().images {
             return Ok(());
         }
         let (stream, offset) = match self.position {
@@ -180,12 +180,12 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let source = ImageSource::from_inline(
             self.document(),
             resources,
-            &dictionary,
+            dictionary,
             data,
             ImageId::Inline { stream, offset },
         )
         .map_err(|error| error.at(Position::Buffer(0)))?;
-        let image = self.describe(source, &dictionary, resources, &mut Vec::new())?;
+        let image = self.describe(source, dictionary, resources, &mut Vec::new())?;
         self.image_mark(&image, scope)
     }
 

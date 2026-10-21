@@ -59,11 +59,13 @@ pub(crate) fn sampled(parameters: SampledFunction, limits: &Limits) -> Result<Fu
     Err(Error::invalid_argument("sampled functions are not implemented"))
 }
 
+#[expect(clippy::needless_pass_by_value, reason = "the colour crate's constructor consumes it")]
 pub(crate) fn exponential(parameters: ExponentialFunction) -> Result<Function> {
     let _ = parameters;
     Err(Error::invalid_argument("exponential functions are not implemented"))
 }
 
+#[expect(clippy::needless_pass_by_value, reason = "the colour crate's constructor consumes it")]
 pub(crate) fn stitching(parameters: StitchingFunction) -> Result<Function> {
     let _ = parameters;
     Err(Error::invalid_argument("stitching functions are not implemented"))
