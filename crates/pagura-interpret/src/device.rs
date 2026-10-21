@@ -13,8 +13,12 @@ use std::sync::Arc;
 
 /// What a device consumes, declared before interpretation starts. The
 /// interpreter does no work a device does not need.
+///
+/// A plain record of independent flags: devices build theirs from a
+/// constant with functional record update, such as
+/// `Needs { structure: true, ..Needs::SCENE }`, so it is not
+/// `#[non_exhaustive]`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-#[non_exhaustive]
 #[expect(
     clippy::struct_excessive_bools,
     reason = "independent capabilities a device declares"
@@ -27,7 +31,8 @@ pub struct Needs {
     /// Image marks are emitted with their sources. Without it, images are
     /// not read beyond what text extraction's object occurrences need.
     pub images: bool,
-    /// Glyph runs carry outlines (font programs are loaded).
+    /// Glyph runs carry outlines (font programs are loaded), and Type 3
+    /// glyph procedures are interpreted.
     pub outlines: bool,
     /// Glyph runs carry Unicode text and extraction metrics.
     pub text: bool,
@@ -37,6 +42,24 @@ pub struct Needs {
 }
 
 impl Needs {
+    /// Nothing: the content is only checked.
+    pub const NONE: Self = Self {
+        paint: false,
+        images: false,
+        outlines: false,
+        text: false,
+        structure: false,
+    };
+
+    /// Everything.
+    pub const ALL: Self = Self {
+        paint: true,
+        images: true,
+        outlines: true,
+        text: true,
+        structure: true,
+    };
+
     /// What recording a scene for rendering needs.
     pub const SCENE: Self = Self {
         paint: true,

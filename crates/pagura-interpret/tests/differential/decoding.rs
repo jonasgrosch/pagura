@@ -13,13 +13,23 @@ use pagura_interpret::{
 pub struct Decoding<'d> {
     recorder: SceneRecorder,
     document: &'d Document,
+    needs: Needs,
 }
 
 impl<'d> Decoding<'d> {
+    /// Records a scene.
     pub fn new(document: &'d Document) -> Self {
+        Self::with_needs(document, Needs::SCENE)
+    }
+
+    /// As [`Self::new`], declaring `needs`: with [`Needs::ALL`] the
+    /// interpretation does all the work the old compiler did while
+    /// extracting text.
+    pub fn with_needs(document: &'d Document, needs: Needs) -> Self {
         Self {
             recorder: SceneRecorder::new(document.limits()),
             document,
+            needs,
         }
     }
 
@@ -40,7 +50,7 @@ impl<'d> Decoding<'d> {
 
 impl Device for Decoding<'_> {
     fn needs(&self) -> Needs {
-        self.recorder.needs()
+        self.needs
     }
     fn begin_page(&mut self, page: &PageInfo) -> Result<()> {
         self.recorder.begin_page(page)
@@ -61,6 +71,7 @@ impl Device for Decoding<'_> {
         self.decode(mark.image)?;
         self.recorder.image(mark)
     }
+
     fn shading(&mut self, mark: &ShadingMark<'_>) -> Result<()> {
         self.recorder.shading(mark)
     }

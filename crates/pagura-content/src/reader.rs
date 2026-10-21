@@ -32,6 +32,8 @@ pub struct Reader<'c> {
     operands: Vec<Value>,
     compatibility: usize,
     depth: usize,
+    /// `value_nodes`: with none, every operand is the parser's error.
+    value_nodes: usize,
     /// The offsets of `BI` and of the data of an inline image whose header
     /// was yielded and whose data has not been read yet.
     inline: Option<(usize, usize)>,
@@ -47,6 +49,7 @@ impl<'c> Reader<'c> {
             operands: Vec::new(),
             compatibility: 0,
             depth: limits.depth,
+            value_nodes: limits.value_nodes,
             inline: None,
         }
     }
@@ -95,6 +98,18 @@ impl<'c> Reader<'c> {
         tokens
             .charge(1)
             .map_err(|_| Error::limit("content token budget exceeded"))?;
+        if matches!(byte, b'+' | b'-' | b'.' | b'0'..=b'9') && self.value_nodes > 0 {
+            let short = self
+                .parser
+                .data()
+                .get(offset..)
+                .and_then(crate::number::short);
+            if let Some((value, length)) = short {
+                self.parser.seek(offset + length)?;
+                self.operand(value)?;
+                return Ok(None);
+            }
+        }
         if matches!(
             byte,
             b'/' | b'(' | b'[' | b'<' | b'+' | b'-' | b'.' | b'0'..=b'9'

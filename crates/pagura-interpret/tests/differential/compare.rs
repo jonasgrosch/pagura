@@ -26,9 +26,12 @@ pub struct Outcome {
     pub matched: usize,
 }
 
-/// Whether the new side's failure is an intended difference.
+/// Whether the new side's failure is an intended difference: pagura-color
+/// validates Type 4 programs statically and rejects programs whose stack
+/// or operand types depend on their data.
 fn intended(new: &Error) -> bool {
     new.feature() == Some(pagura_color::features::CALCULATOR)
+        || (new.kind == ErrorKind::Syntax && new.message.starts_with("calculator"))
 }
 
 /// Whether `error` is the stub error of a package that has not landed.
@@ -154,6 +157,12 @@ pub fn page(name: &str, bytes: &[u8], index: usize, recovery: Recovery, outcome:
             let expected = (list.len(), old_glyphs(list));
             if (marks, glyphs) == expected && old_diagnostics == new_diagnostics {
                 outcome.matched += 1;
+            } else if (marks, glyphs) == expected
+                && hidden_image_decodes(&new_doc, &old_diagnostics, &new_diagnostics)
+            {
+                outcome.intended.push(format!(
+                    "{label}: the old compiler also decoded images hidden by optional content"
+                ));
             } else {
                 outcome.mismatches.push(format!(
                     "{label}: scene marks/glyphs {:?} vs old {expected:?}; diagnostics {:?} vs old {:?}",
@@ -207,6 +216,38 @@ fn without_estimates(text: &str) -> String {
     }
     out.push_str(rest);
     out
+}
+
+/// Whether the old text failure `old` comes from work the text device does
+/// not need: interpreting with every need (images decoded, as the old
+/// compiler did) fails the same way.
+fn paint_work(bytes: &[u8], index: usize, recovery: Recovery, old: &Error) -> bool {
+    let Some(document) = open(bytes, recovery) else {
+        return false;
+    };
+    let Ok(page) = document.page(index) else {
+        return false;
+    };
+    let mut device = crate::decoding::Decoding::with_needs(&document, pagura_interpret::Needs::ALL);
+    Interpreter::new(&document)
+        .run(page, &mut device)
+        .is_err_and(|error| identity(&error) == identity(old))
+}
+
+/// Whether the old diagnostics are the new ones plus repairs of decoding
+/// image XObjects that the new interpretation never painted (the old
+/// compiler decoded images hidden by optional content too).
+fn hidden_image_decodes(document: &Document, old: &[Diagnostic], new: &[Diagnostic]) -> bool {
+    new.iter().all(|d| old.contains(d))
+        && old.iter().filter(|d| !new.contains(d)).all(|d| {
+            d.object.is_some_and(|id| {
+                document
+                    .object(id)
+                    .ok()
+                    .and_then(|o| o.dictionary())
+                    .is_some_and(|dictionary| dictionary.is_name(b"Subtype", b"Image"))
+            })
+        })
 }
 
 /// Diagnostics in a fixed order: the document lists them in discovery
@@ -275,7 +316,7 @@ fn text(label: &str, bytes: &[u8], index: usize, recovery: Recovery, scene: Scen
         (Err(old), Err(new)) => {
             if identity(old) == identity(new) {
                 outcome.matched += 1;
-            } else if scene == Scene::FailedAlike {
+            } else if scene == Scene::FailedAlike || paint_work(bytes, index, recovery, old) {
                 // The old text failed in painting work the text device
                 // skips, and the new one fails later in the content.
                 outcome
@@ -287,6 +328,7 @@ fn text(label: &str, bytes: &[u8], index: usize, recovery: Recovery, scene: Scen
                     .push(format!("{label}: text error {new} vs old {old}"));
             }
         }
+        (Err(old), Ok(_)) if paint_work(bytes, index, recovery, old) => outcome.matched += 1,
         (Err(old), Ok(_)) => match scene {
             Scene::FailedAlike => outcome.matched += 1,
             Scene::Pending => outcome.pending.push(format!("{label}: text: old fails with {old}")),
