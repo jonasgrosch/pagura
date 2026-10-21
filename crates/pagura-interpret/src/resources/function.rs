@@ -5,13 +5,12 @@
 
 use super::numbers::{entry, list};
 use crate::model::Transfer;
-use build::{CalculatorFunction, ExponentialFunction, SampledFunction, StitchingFunction};
-use pagura_color::Function;
+use pagura_color::{
+    CalculatorFunction, ExponentialFunction, Function, SampledFunction, StitchingFunction,
+};
 use pagura_core::{Dictionary, Error, ObjectId, Position, Result, Value};
 use pagura_document::Document;
 use std::sync::Arc;
-
-pub(crate) mod build;
 
 /// A function and the domain it was read with, for coverage checks.
 #[derive(Debug, Clone)]
@@ -218,7 +217,7 @@ impl Reader<'_> {
             self.ancestors.pop();
             functions.push(function?.function);
         }
-        build::stitching(StitchingFunction {
+        Function::stitching(StitchingFunction {
             domain: [min, max],
             range,
             functions,
@@ -292,7 +291,7 @@ fn sampled(
     if encode.len() != domain.len() || decode.len() != range.len() {
         return Err(Error::syntax("wrong sampled encode or decode dimension"));
     }
-    build::sampled(
+    Function::sampled(
         SampledFunction {
             domain,
             range,
@@ -330,7 +329,7 @@ fn exponential(
     if c0.len() != outputs || c1.len() != outputs {
         return Err(Error::syntax("wrong exponential function output dimension"));
     }
-    build::exponential(ExponentialFunction {
+    Function::exponential(ExponentialFunction {
         domain: [min, max],
         range,
         c0,
@@ -354,7 +353,7 @@ fn calculator(
         return Err(Error::syntax("calculator function must be a stream"));
     }
     let program: Arc<[u8]> = document.stream_data(object)?.as_ref().into();
-    build::calculator(
+    Function::calculator(
         CalculatorFunction {
             domain,
             range,

@@ -8,7 +8,10 @@ mod icc;
 use super::function;
 use super::numbers::{array, entry};
 use crate::repairs;
-use pagura_color::{ColorSpace, Colorant, DeviceN, Function, Indexed, Separation, cie::Calibrated};
+use pagura_color::{
+    ColorSpace, Colorant, DeviceN, ExponentialFunction, Function, Indexed, Separation,
+    cie::Calibrated,
+};
 use pagura_core::{Diagnostic, Dictionary, Error, Name, Result, Store, Value};
 use pagura_document::Document;
 use std::sync::Arc;
@@ -358,7 +361,7 @@ impl<'a> Colors<'a> {
         if let Some(function) = &self.complement {
             return Ok(Arc::clone(function));
         }
-        let function = Arc::new(function::build::exponential(function::build::ExponentialFunction {
+        let function = Arc::new(Function::exponential(ExponentialFunction {
             domain: [0.0, 1.0],
             range: None,
             c0: vec![1.0],
