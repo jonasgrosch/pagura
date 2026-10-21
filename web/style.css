@@ -77,11 +77,13 @@ nav { gap: 7px; flex-shrink: 0; }
 #empty-state svg { width: 50px; height: 50px; stroke-width: .8; }
 #empty-state h1 { font-size: 18px; font-weight: 500; margin: 22px 0 0; }
 #empty-state p { font-size: 13px; }
-#find-panel { display: flex; gap: 10px 12px; align-items: center; flex-wrap: wrap; padding: 10px 16px; background: #f4f4f5; border-bottom: 1px solid #d0d0d3; font-size: 12px; }
-#find-panel label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+#find-panel { display: flex; gap: 10px 12px; align-items: center; flex-wrap: wrap; padding: 10px 16px; background: #f4f4f5; border-bottom: 1px solid #d0d0d3; font-size: 12px; line-height: 18px; }
+#find-panel label, #find-panel button, #find-count { display: inline-flex; align-items: center; min-height: 30px; }
+#find-panel label { gap: 6px; white-space: nowrap; }
+#find-panel button { appearance: none; -webkit-appearance: none; height: 30px; padding-block: 0; }
 #find-panel .find-field { gap: 10px; min-width: 0; }
 #find-panel input[type=checkbox] { margin: 0; }
-#find-query { appearance: none; -webkit-appearance: none; width: 160px; min-width: 0; border: 1px solid #c4c5c7; border-radius: 5px; padding: 5px 8px; background: #fff; box-shadow: none; }
+#find-query { appearance: none; -webkit-appearance: none; width: 160px; min-width: 0; height: 30px; border: 1px solid #c4c5c7; border-radius: 5px; padding: 5px 8px; background: #fff; box-shadow: none; }
 #find-query:focus { outline: 2px solid var(--focus); outline-offset: 2px; }
 #find-count { margin-left: auto; color: #727276; }
 @media (max-width: 560px) { #find-panel .find-field { flex-basis: 100%; } #find-query { flex: 1; } }
