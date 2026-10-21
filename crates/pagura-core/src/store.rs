@@ -24,7 +24,8 @@ pub trait StoreKey: Hash + Eq + Send + Sync + 'static {
 pub struct Built<V> {
     /// The value.
     pub value: V,
-    /// Bytes the value retains, including its own allocations.
+    /// Bytes the value retains, including its own allocations: an estimate
+    /// in the manner of `retained_bytes`, not allocator telemetry.
     pub bytes: usize,
 }
 
@@ -35,6 +36,12 @@ pub struct Built<V> {
 /// recently used values that only it still holds; a value someone else holds
 /// is never evicted while held, so its bytes stay counted. A value that still
 /// does not fit is returned without being retained.
+///
+/// A rendering context owns one store and sets its capacity, which is not a
+/// [`Limits`](crate::Limits) field because it bounds what persists across
+/// renders (ADR 0012). A build charges the budgets of its own work; what a
+/// value costs a render must not depend on whether it was found or built
+/// (ADR 0016).
 ///
 /// The store is `Send + Sync`. Building happens outside its lock, so two
 /// threads may build the same key at once; the first to finish is kept.
