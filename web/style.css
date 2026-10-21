@@ -77,9 +77,14 @@ nav { gap: 7px; flex-shrink: 0; }
 #empty-state svg { width: 50px; height: 50px; stroke-width: .8; }
 #empty-state h1 { font-size: 18px; font-weight: 500; margin: 22px 0 0; }
 #empty-state p { font-size: 13px; }
-#find-panel { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 7px 16px; background: #f4f4f5; border-bottom: 1px solid #d0d0d3; font-size: 12px; }
-#find-query { border: 1px solid #c4c5c7; border-radius: 5px; padding: 4px 8px; }
+#find-panel { display: flex; gap: 10px 12px; align-items: center; flex-wrap: wrap; padding: 10px 16px; background: #f4f4f5; border-bottom: 1px solid #d0d0d3; font-size: 12px; }
+#find-panel label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+#find-panel .find-field { gap: 10px; min-width: 0; }
+#find-panel input[type=checkbox] { margin: 0; }
+#find-query { appearance: none; -webkit-appearance: none; width: 160px; min-width: 0; border: 1px solid #c4c5c7; border-radius: 5px; padding: 5px 8px; background: #fff; box-shadow: none; }
+#find-query:focus { outline: 2px solid var(--focus); outline-offset: 2px; }
 #find-count { margin-left: auto; color: #727276; }
+@media (max-width: 560px) { #find-panel .find-field { flex-basis: 100%; } #find-query { flex: 1; } }
 dialog { max-width: min(90vw, 36rem); max-height: 80vh; border: 1px solid #c8c9ce; border-radius: 12px; padding: 22px; box-shadow: 0 16px 50px #0004; }
 dialog::backdrop { background: #0004; }
 dialog h2 { font-size: 17px; margin: 0; }
