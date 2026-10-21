@@ -29,7 +29,7 @@ def main():
     completed, reports = threading.Event(), []
 
     class Handler(SimpleHTTPRequestHandler):
-        def log_message(self, *_args):
+        def log_message(self, format: str, *_args: object) -> None:
             pass
 
         def do_POST(self):
