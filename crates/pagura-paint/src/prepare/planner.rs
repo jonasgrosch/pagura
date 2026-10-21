@@ -455,7 +455,8 @@ impl<'s, B: Backend> Planner<'s, B> {
             .get(index(mask))
             .and_then(|m| m.transfer.as_ref())
             .map_or(0, |f| f.cost());
-        budget.work.charge(area(bounds))?;
+        // The mask's buffer starts and becomes values over these pixels.
+        budget.work.charge_product(area(bounds), 2)?;
         budget.functions.charge_product(area(bounds), cost)
     }
 

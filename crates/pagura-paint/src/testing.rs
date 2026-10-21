@@ -276,9 +276,14 @@ impl Producer for RectCoverage {
     }
 }
 
-/// Builds scenes in device space (an identity request transform).
+/// Builds scenes in device space (an identity request transform unless
+/// `scale` is set).
 pub(crate) struct Build {
     pub(crate) scene: Scene,
+    /// Device pixels per unit.
+    pub(crate) scale: f64,
+    /// The background.
+    pub(crate) background: Rgba8,
 }
 
 /// Mark state without clip.
@@ -328,7 +333,14 @@ impl Build {
                 pens: Vec::new(),
                 bytes: 0,
             },
+            scale: 1.0,
+            background: Rgba8::WHITE,
         }
+    }
+
+    /// The request transform.
+    pub(crate) fn transform(&self) -> Transform {
+        Transform::scale(self.scale, self.scale)
     }
 
     /// A composite state.
@@ -436,7 +448,7 @@ impl Build {
 
     /// The page in device pixels.
     pub(crate) fn page(&self) -> DeviceRect {
-        let (width, height) = self.scene.page.device_size(1.0).unwrap_or((1, 1));
+        let (width, height) = self.scene.page.device_size(self.scale).unwrap_or((1, 1));
         DeviceRect {
             x0: 0,
             y0: 0,
@@ -447,8 +459,9 @@ impl Build {
 
     /// A request for `region` with `band_height`.
     pub(crate) fn request(&self, region: DeviceRect, band_height: u32) -> RenderRequest {
-        let mut request = RenderRequest::new(Transform::IDENTITY, self.page(), region);
+        let mut request = RenderRequest::new(self.transform(), self.page(), region);
         request.band_height = band_height;
+        request.background = self.background;
         request
     }
 
@@ -458,13 +471,26 @@ impl Build {
         prepare_with(&self.scene, request, (&store, limits), Rects::default())
     }
 
-    /// Renders `request` into region-sized premultiplied RGBA8.
+    /// Renders `request` into region-sized premultiplied RGBA8, checking
+    /// that preparation reserved at least what rendering used.
     pub(crate) fn render(&self, request: &RenderRequest) -> Result<Vec<u8>> {
+        Ok(self.render_charged(request)?.0)
+    }
+
+    /// [`Self::render`] with the reserved charges.
+    pub(crate) fn render_charged(&self, request: &RenderRequest) -> Result<(Vec<u8>, crate::Charges)> {
         let mut prepared = self.prepare(request, &Limits::default())?;
         let region = request.region;
         let mut target = Pixmap::new(region.width(), region.height(), Rgba8::TRANSPARENT, usize::MAX)?;
         prepared.render(&mut target);
-        Ok(target.data().to_vec())
+        let (used, reserved) = (prepared.usage(), prepared.charges());
+        assert!(
+            used.render_bytes() <= reserved.render_bytes()
+                && used.render_work() <= reserved.render_work()
+                && used.function_work() <= reserved.function_work(),
+            "used {used:?} beyond reserved {reserved:?}"
+        );
+        Ok((target.data().to_vec(), reserved))
     }
 
     /// Renders the whole page.
@@ -473,10 +499,10 @@ impl Build {
             .unwrap_or_else(|e| panic!("render failed: {e}"))
     }
 
-    /// The reference's exact rendering of the whole page on `background`.
-    pub(crate) fn reference(&self, background: Rgba8) -> pagura_reference::Rendering {
-        let mut request = pagura_reference::Request::new(Transform::IDENTITY, self.page());
-        request.background = background;
+    /// The reference's exact rendering of the whole page.
+    pub(crate) fn reference(&self) -> pagura_reference::Rendering {
+        let mut request = pagura_reference::Request::new(self.transform(), self.page());
+        request.background = self.background;
         pagura_reference::render(&self.scene, &request, &Limits::default())
             .unwrap_or_else(|e| panic!("reference failed: {e}"))
     }
@@ -524,7 +550,10 @@ pub(crate) fn assert_rounded(bytes: &[u8], exact: &pagura_reference::Rendering) 
     }
 }
 
-/// An exact unit-coverage rectangle for convenience.
-pub(crate) fn unit() -> Box4 {
-    [0.0, 0.0, 1.0, 1.0]
+/// Renders the whole page and checks it against the reference: within one
+/// level everywhere. Returns the bytes.
+pub(crate) fn check(b: &Build) -> Vec<u8> {
+    let bytes = b.render_page();
+    assert_within_one_level(&bytes, &b.reference());
+    bytes
 }
