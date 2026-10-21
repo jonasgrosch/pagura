@@ -233,6 +233,10 @@ mod tests {
         type Value = String;
     }
 
+    #[expect(
+        clippy::unnecessary_wraps,
+        reason = "matches the signature get_or_build expects of a build closure"
+    )]
     fn built(bytes: usize) -> Result<Built<Vec<u8>>> {
         Ok(Built {
             value: vec![0; bytes],
