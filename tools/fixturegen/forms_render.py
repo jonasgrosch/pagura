@@ -19,7 +19,7 @@ SELECT = (F(3,5), F(3,4), F(9,10))
 IDENTITY = (1,0,0,1,0,0)
 
 
-def glyphs(text='AB', x=2, y=7, size=10, color=BLACK, outline=(F(1,2),F(7,10))):
+def glyphs(text='AB', x: F | int = 2, y: F | int = 7, size=10, color=BLACK, outline=(F(1,2),F(7,10))):
     return [((F(x)+i*F(3,5)*size,F(y),outline[0]*size,outline[1]*size), color)
             for i,c in enumerate(text) if c != ' ']
 

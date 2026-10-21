@@ -21,6 +21,9 @@ python3 tools/competitors.py setup
 All competitor installations live outside the repository and active linked worktree:
 `$PAGURA_COMPETITORS_DIR`, default `~/.cache/pagura-competitors`. Repository
 ancestors, descendants and symlink aliases into the repository are rejected.
+The Python engines are the `bench` dependency group in `pyproject.toml`; setup
+runs `uv sync --locked --only-group bench` into `venv/` there, so `uv.lock` pins
+every transitive wheel by hash and `.python-version` pins the interpreter.
 The hayro adapter and checked-in lock are copied there; its isolated `CARGO_HOME`
 and target directory are also there. It uses the workspace's pinned toolchain.
 Node resolves packages from this same external cache. Dependency locks remain in
@@ -187,14 +190,15 @@ cannot be ruled out from that API alone: every CPU/wall flag remains visible.
 
 ### One unattended round-5 entry point
 
-Prepare a macOS or Linux runner (aarch64 or x86_64) with Python 3.11+, the
+Prepare a macOS or Linux runner (aarch64 or x86_64) with uv 0.13.1+ (it
+provides the Python pinned in `.python-version`), the
 repository's pinned Rust 1.99.1 toolchain including `wasm32-wasip1`, Node 26.8.1,
 and the operating system's Poppler. The actual Poppler version and executable
 hash are recorded per runner in `engines.json`; no Poppler version is enforced.
 macOS additionally needs Xcode command-line tools (Swift/CoreGraphics).
 Install competitors **outside the repository** with the explicitly networked
 `python3 tools/competitors.py setup`
-before running. The checked-in Python/Node/Cargo locks pin pypdfium2 5.14.0
+before running. The checked-in Python (`uv.lock`), Node and Cargo locks pin pypdfium2 5.14.0
 (PDFium 156), PyMuPDF 2.0 (MuPDF 1.28.5), Pillow 13.0.0, pdf.js 6.4.299, Canvas 1.0.11 and
 hayro 0.8.0. Supply Wasmtime 49.0.3 separately, verifying its downloaded archive
 against the release's published SHA-256. No setup/download occurs during a run.

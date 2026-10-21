@@ -170,7 +170,7 @@ def modern_hash(revision, password, salt, user=b""):
     return k[:32]
 
 
-def parameters(revision, user, owner, metadata=True, length=None, permissions=PERMISSIONS):
+def parameters(revision, user, owner, metadata=True, length=None, permissions=PERMISSIONS) -> tuple[dict, bytes]:
     length = length or (5 if revision == 2 else 32 if revision >= 5 else 16)
     p = dict(version={2: 1, 3: 2, 4: 4, 5: 5, 6: 5}[revision], revision=revision,
              key_length=length, permissions=permissions, encrypt_metadata=metadata, document_id=ID)

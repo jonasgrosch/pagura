@@ -5,9 +5,11 @@ generation; analytic raster expectations; cross-engine rendering; save/reopen;
 profile validation; deterministic mutation tests; adversarial resource tests;
 and performance evidence. No single renderer or validator is a complete oracle.
 
-`python3 tools/check.py` runs formatting, architecture/safety policy checks,
-Clippy, Rust tests, Python harness tests, fixture regeneration checks, and
-CLI integration tests. It needs no network and cannot refresh golden outputs.
+`uv run tools/check.py` runs formatting, architecture/safety policy checks,
+Python lint and type checks (ruff, pyright), Clippy, Rust tests, Python
+harness tests, fixture regeneration checks, and CLI integration tests on the
+Python pinned in `.python-version`. Once `uv sync` has installed the locked
+Python tools, it needs no network, and it cannot refresh golden outputs.
 
 Synthetic PDFs are generated independently in Python (`tools/fixturegen/<area>.py`,
 standard library only, never importing Pagura) with known structure and geometry.

@@ -124,7 +124,7 @@ def fractional_oracle() -> bytes:
     from fractions import Fraction
     size, low, high = 64, Fraction(1, 2), Fraction(41, 2)
 
-    def overlap(start: int) -> Fraction:
+    def overlap(start: int) -> Fraction | int:
         return max(Fraction(0), min(high, start + 1) - max(low, start))
 
     rows = []

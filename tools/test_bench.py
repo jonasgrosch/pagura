@@ -10,7 +10,7 @@ from unittest.mock import patch
 from pathlib import Path
 
 from benchkit.config import read_json, POLICY_PATH, sha
-from benchkit.statistics import evaluate_cell, ratio_bounds, comparison_statistics
+from benchkit.statistics import evaluate_cell, ratio_bounds
 from benchkit.images import ppm, normalize, pixel_difference
 from benchkit.timings import parse_stages, parse_document_stages
 from benchkit.gate import gate
@@ -381,7 +381,9 @@ class FormatAndStageTests(unittest.TestCase):
     def test_stage_records_fail_closed(self):
         record = {"schema": 1, "open_ns": 10, "pages": [{"page": 2, "render_ns": 20, "emit_ns": 30}], "total_ns": 60}
         text = json.dumps(record)
-        self.assertEqual(parse_stages("warning\n" + text, 2, 100)["engine_ns"], 30)
+        stages = parse_stages("warning\n" + text, 2, 100)
+        assert stages is not None
+        self.assertEqual(stages["engine_ns"], 30)
         self.assertIsNone(parse_stages("warning", 2, 100))
         for field, value in (("open_ns", -1), ("open_ns", True), ("open_ns", 1.5), ("open_ns", float("nan")),
                              ("total_ns", 59), ("total_ns", 101), ("schema", 2), ("schema", True), ("pages", [])):
@@ -410,6 +412,21 @@ class IsolationTests(unittest.TestCase):
             with patch.dict(os.environ, {"PAGURA_COMPETITORS_DIR": str(external)}):
                 self.assertEqual(competitors.competitor_cache(worker), external.resolve())
 
+    def test_python_engine_identity_ignores_lint_tool_locks(self):
+        lock = (engine_tools.ROOT / "uv.lock").read_text()
+        bench = engine_tools.locked_group(engine_tools.ROOT / "uv.lock")
+        names = {p["name"] for p in json.loads(bench)}
+        # The engines and everything they pull in, but none of the lint tools.
+        self.assertLessEqual({"pillow", "pymupdf", "pypdfium2"}, names)
+        self.assertFalse(names & {"basedpyright", "nodejs-wheel-binaries", "ruff"})
+        with tempfile.TemporaryDirectory() as folder:
+            changed = Path(folder) / "uv.lock"
+            changed.write_text(lock.replace('name = "ruff"\nversion = "', 'name = "ruff"\nversion = "9'))
+            self.assertNotEqual(changed.read_text(), lock)
+            self.assertEqual(engine_tools.locked_group(changed), bench)
+            changed.write_text(lock.replace('name = "pymupdf"\nversion = "', 'name = "pymupdf"\nversion = "9'))
+            self.assertNotEqual(engine_tools.locked_group(changed), bench)
+
     def test_missing_engine_doctor_has_actionable_hint(self):
         result = engine_tools.identify("pdfium", ["/definitely/missing/python"])
         self.assertEqual(result["status"], "unavailable")
@@ -418,8 +435,12 @@ class IsolationTests(unittest.TestCase):
 
     def test_installer_is_out_of_tree_and_uses_pinned_toolchain(self):
         with tempfile.TemporaryDirectory() as folder:
-            with patch.object(competitors, "CACHE", Path(folder)), patch.object(competitors, "run") as run, patch("builtins.print"):
+            with patch.object(competitors, "CACHE", Path(folder)), patch.object(competitors, "run") as run, \
+                    patch.object(competitors.shutil, "which", return_value="uv"), patch("builtins.print"):
                 competitors.setup()
+            sync = next(call for call in run.call_args_list if call.args[0][0] == "uv")
+            self.assertEqual(sync.args[0], ["uv", "sync", "--locked", "--only-group", "bench"])
+            self.assertEqual(sync.kwargs["env"]["UV_PROJECT_ENVIRONMENT"], str(Path(folder) / "venv"))
             cargo = next(call for call in run.call_args_list if call.args[0][0] == "cargo")
             self.assertNotIn("+1.97.0", cargo.args[0])
             self.assertEqual(cargo.kwargs["env"]["CARGO_HOME"], str(Path(folder) / "cargo-home"))
@@ -662,7 +683,9 @@ class DocumentTests(unittest.TestCase):
         record = {'schema': 1, 'open_ns': 10,
                   'pages': [{'page': 0, 'render_ns': 20, 'emit_ns': 30}, {'page': 1, 'render_ns': 40, 'emit_ns': 50}],
                   'total_ns': 150}
-        self.assertEqual(parse_document_stages(json.dumps(record), [0, 1], 200)['engine_ns'], 70)
+        stages = parse_document_stages(json.dumps(record), [0, 1], 200)
+        assert stages is not None
+        self.assertEqual(stages['engine_ns'], 70)
         for selected in ([1, 0], [0], [0, 0], []):
             with self.assertRaises(ValueError):
                 parse_document_stages(json.dumps(record), selected, 200)

@@ -5,6 +5,7 @@ Colours and opaque pixel geometry are exact; fractional rectangles use products
 of pixel overlaps and rounded source-over composition, tolerance one level.
 """
 from fractions import Fraction as F
+from typing import Any
 from .model import Case, RENDER, UNSUPPORTED, OPEN
 from .pdf import single_page, document, stream, opaque_rectangles
 
@@ -245,7 +246,7 @@ def cases():
     yield from usage_cases()
 
 
-def cie_rgb(family, values, white=(.96422, 1, .82521), gamma=1, ranges=(-100,100,-100,100), matrix=(1,0,0,0,1,0,0,0,1)):
+def cie_rgb(family, values, white=(.96422, 1, .82521), gamma: float = 1, ranges=(-100,100,-100,100), matrix=(1,0,0,0,1,0,0,0,1)):
     """Independent XYZ -> Bradford-adapted sRGB oracle; inverse matrices are solved.
 
     sRGB primaries and D65 determine the XYZ matrix. Gaussian elimination derives
@@ -848,7 +849,6 @@ def standard_semantics_cases():
 def remaining_vector_cases():
     """Independent geometric and compositing expectations from the cited clauses."""
     from .raster import clipped_area
-    import math
     def image(sample, width=8, height=8, dpi=72):
         scale=dpi/72
         return f'P6\n{width} {height}\n255\n'.encode()+bytes(
@@ -1314,7 +1314,7 @@ def icc_legacy(count=4, kind=b'mft2', pcs=b'Lab ', constant=None, nonlinear=Fals
     return data,reference
 
 
-def icc_mab(count=3, pcs=b'XYZ ', only_b=False, stages='full', precision=2, reference=False, parametric=False):
+def icc_mab(count=3, pcs=b'XYZ ', only_b=False, stages='full', precision=2, reference=False, parametric=False) -> Any:
     """ICC.1:2010 10.10: all four legal stage combinations, no missing A curves."""
     import struct
     identity=icc_curve('identity',());gamma=icc_curve(0,(2,)) if parametric else icc_curve('gamma',(2,))
@@ -1328,6 +1328,7 @@ def icc_mab(count=3, pcs=b'XYZ ', only_b=False, stages='full', precision=2, refe
     if has_matrix:
         add(1,b''.join(struct.pack('>i',icc_fixed(v)) for v in (1,.125,0,0,.75,.125,.125,0,1,.03125,0,-.03125)))
         add(2,curves([identity,gamma,identity]))
+    clut=None
     if has_clut:
         grids=[2,3,4,2][:count]
         data,clut=icc_grid(grids,precision,lambda v:(.2+.3*v[0],.45+.1*v[1]*v[2],.45+.1*(v[3] if count==4 else v[0]*v[2])))
@@ -1336,7 +1337,7 @@ def icc_mab(count=3, pcs=b'XYZ ', only_b=False, stages='full', precision=2, refe
     data=b'mAB '+bytes(4)+bytes([count,3,0,0])+struct.pack('>5I',*offsets)+payload
     def evaluate(values):
         v=list(values)
-        if has_clut:v=clut([x*x if i==0 else x for i,x in enumerate(v)])
+        if clut is not None:v=clut([x*x if i==0 else x for i,x in enumerate(v)])
         if has_matrix:
             x,y,z=v;x,y,z=x,y*y,z
             v=[min(1,max(0,x+.125*y+.03125)),min(1,max(0,.75*y+.125*z)),min(1,max(0,.125*x+z-.03125))]

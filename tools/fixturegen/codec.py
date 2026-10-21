@@ -627,6 +627,7 @@ def decode_png(encoded):
     """Independent PNG 5/9/11.2 decoder for encoder tests; never invokes Pagura."""
     assert encoded[:8] == b"\x89PNG\r\n\x1a\n"
     pos, chunks, compressed = 8, [], bytearray()
+    width = height = channels = 0
     while pos < len(encoded):
         size = int.from_bytes(encoded[pos:pos+4], "big")
         assert size <= 0x7fffffff and pos + 12 + size <= len(encoded)

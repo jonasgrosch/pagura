@@ -91,6 +91,7 @@ def measure(command, output, expected, policy, *, page=None, stages_required=Fal
     if result["exit_code"] != 0 or result["status"] == "timeout":
         return result
     elapsed = result["elapsed_ns"]
+    actual = None
     try:
         if output.stat().st_size > policy["maximum_output_bytes"]:
             raise ValueError("oversize output")

@@ -40,7 +40,7 @@ class ArithmeticEncoder:
         self.output = [0]  # Carry propagation sentinel, not part of the stream.
         self.reset()
         if state is not None:
-            self.state, self.mps = list(state), list(mps)
+            self.state, self.mps = list(state), list(mps)  # pyright: ignore[reportArgumentType]
 
     def reset(self):
         self.state = [0] * 19
@@ -697,7 +697,7 @@ def coefficient_stream(bands, width, height, *, lossy=False, exponents=None, mod
     levels = int(len(bands) == 4)
     exponents = exponents or [8]+[9,9,10]*levels
     base = codestream([[128]*(width*height)],width,height,levels=levels,lossy=lossy,modes=modes)
-    qstart, tile = base.index(b"\xff\x5c"), base.index(b"\xff\x90")
+    qstart = base.index(b"\xff\x5c")
     quant = (b"\x42"+b"".join(struct.pack(">H",e << 11) for e in exponents) if lossy
              else b"\x40"+bytes(e << 3 for e in exponents))
     result = base[:qstart]+marker(0x5c,quant)
@@ -881,7 +881,7 @@ def cases():
     yield vector("optional-sop",bytes(optional_sop),[gray],8,8,("jpx-marker-syntax",))
     # B.2/G.4: combine standalone component packets on different grids.
     steps,ref_origin,extent = [(1,1),(2,3),(3,2)],(3,5),(11,12)
-    source_planes, streams, placements = [],[],[]
+    streams, placements = [],[]
     for c,(dx,dy) in enumerate(steps):
         cx0,cy0 = (ref_origin[0]+dx-1)//dx,(ref_origin[1]+dy-1)//dy
         cx1,cy1 = (extent[0]+dx-1)//dx,(extent[1]+dy-1)//dy

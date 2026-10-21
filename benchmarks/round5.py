@@ -513,7 +513,8 @@ def main(argv=None):
         expected_wasmtime = os.environ.get("PAGURA_WASMTIME_SHA256")
         if expected_wasmtime and sha(Path(wasmtime).read_bytes()) != expected_wasmtime:
             raise ValueError("Wasmtime executable SHA-256 mismatch")
-    import PIL  # installed only in the isolated benchmark environment
+    # Installed only in the isolated benchmark environment.
+    import PIL  # pyright: ignore[reportMissingImports]
     output.mkdir(parents=True, exist_ok=False)
     atomic_json(output / "status.json", {"status": "running", "smoke": args.smoke, "release_eligible": False})
     report = None
@@ -563,12 +564,14 @@ def main(argv=None):
         for name, runtime in (("v8-wasi", node), ("wasmtime", wasmtime)):
             if name not in needed:
                 continue
+            assert runtime is not None, f"{name} is needed but was not located"
             paths = [Path(shutil.which(runtime) or runtime), artifacts / "convert.wasm", artifacts / "convert.cwasm",
                      ROOT / "benchmarks/adapters/wasm_convert.rs", ROOT / "benchmarks/adapters/wasi.mjs"]
             identities[name] = {"status": "available", "version": subprocess.check_output([runtime, "--version"], text=True).strip(),
                                 "artifacts": {str(path): sha(path.read_bytes()) for path in paths}}
         atomic_json(output / "engines.json", identities)
         if controls:
+            assert reference is not None, "controls come from the reference run"
             compare.check_control_identity(identities["hayro"], reference["report"]["engine_identities"]["hayro"])
         if "quartz" in bases:
             checked([sys.executable, ROOT / "benchmarks/adapters/quartz_geometry_test.py", bases["quartz"][0]], output / "preflight.log")
@@ -658,6 +661,7 @@ def main(argv=None):
         report["gate"] = {"pass": False, "reasons": ["exploratory real pages without independent oracles; insufficient release samples; release matrix incomplete"]}
         atomic_json(output / "conversion.json", report)
         atomic_json(output / "cpu-summary.json", cpu_summary(output))
+        measured, drift = {}, {}  # set when retiming
         if retiming:
             measured = compare.medians(output, args.samples)
             drift = compare.control_drift(controls, measured, reference["medians"]) if reference else compare.control_drift([], {}, {})

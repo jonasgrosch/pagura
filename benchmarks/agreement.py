@@ -3,7 +3,7 @@
 
 def pixel_difference(first, second):
     # The caller has already validated dimensions/payload budgets with normalize.
-    from PIL import Image, ImageChops
+    from PIL import Image, ImageChops  # pyright: ignore[reportMissingImports]
     if first[:2] != second[:2]:
         return {"status": "dimension-mismatch", "first_dimensions": first[:2], "second_dimensions": second[:2]}
     histogram = ImageChops.difference(Image.frombytes("RGB", first[:2], first[2]),

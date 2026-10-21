@@ -40,7 +40,7 @@ class Der:
         return int.from_bytes(self.content, 'big')
 
 
-def cert(data):
+def cert(data) -> dict:
     tbs, algorithm, signature = list(Der(data).children())
     fields = list(tbs.children())
     k = 1 if fields[0].tag == 0xa0 else 0

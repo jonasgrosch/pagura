@@ -228,6 +228,13 @@ def fetch() -> None:
         print(f"{ident}: {len(data)} bytes")
 
 
+def extract(tar: tarfile.TarFile, member: str | tarfile.TarInfo) -> bytes:
+    file = tar.extractfile(member)
+    if file is None:
+        raise SystemExit(f"{member}: not a regular file in the pinned archive")
+    return file.read()
+
+
 def selection() -> dict[str, bytes]:
     """Every output file of data/, by path relative to it."""
     out: dict[str, bytes] = {}
@@ -237,8 +244,7 @@ def selection() -> dict[str, bytes]:
             out[f"afm/{member}"] = afm.read(member)
     with tarfile.open(fileobj=io.BytesIO(archive("croscorefonts")), mode="r:bz2") as fonts:
         for outline in sorted(o for o in STANDARD_14.values() if o.endswith(".ttf")):
-            member = fonts.extractfile(f"croscorefonts-1.31.0/{outline}")
-            out[f"fonts/{outline}"] = member.read()
+            out[f"fonts/{outline}"] = extract(fonts, f"croscorefonts-1.31.0/{outline}")
     out["fonts/LICENSE-APACHE"] = (ROOT / "LICENSE-APACHE").read_bytes()
     out["fonts/NOTICE"] = (
         "Arimo, Tinos and Cousine (croscorefonts 1.31.0)\n"
@@ -268,10 +274,10 @@ def selection() -> dict[str, bytes]:
         if missing:
             raise SystemExit(f"predefined CMaps missing from the source: {missing}")
         for name, (collection, member) in sorted(located.items()):
-            out[f"cmaps/{collection}/{name}"] = cmaps.extractfile(member).read()
-        out["cmaps/LICENSE.md"] = cmaps.extractfile(members[prefix + "LICENSE.md"]).read()
+            out[f"cmaps/{collection}/{name}"] = extract(cmaps, member)
+        out["cmaps/LICENSE.md"] = extract(cmaps, members[prefix + "LICENSE.md"])
         for ordering, (collection, column) in UNICODE.items():
-            text = cmaps.extractfile(members[f"{prefix}{collection}/cid2code.txt"]).read().decode("utf-8")
+            text = extract(cmaps, members[f"{prefix}{collection}/cid2code.txt"]).decode("utf-8")
             out[f"cmaps/{collection}/cid2unicode.txt"] = project(text, collection, column).encode()
     out.update(unicode_selection())
     return out

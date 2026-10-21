@@ -3,6 +3,7 @@
 /work/
 __pycache__/
 *.pyc
+/.venv/
 .DS_Store
 /benchmarks/results/local/
 /references/private/

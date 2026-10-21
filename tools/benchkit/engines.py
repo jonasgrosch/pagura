@@ -1,4 +1,5 @@
 """External engine commands, identities and isolated historical builds."""
+import json
 import os
 import shutil
 import subprocess
@@ -24,6 +25,30 @@ def engines():
     }
 
 
+def locked_group(lock, group="bench"):
+    """uv.lock entries one dependency group resolves to, transitively, in canonical JSON.
+
+    Engine identity hashes only these, so bumping a lint tool leaves it unchanged.
+    """
+    data = tomllib.loads(Path(lock).read_text())
+    packages = {}
+    for package in data["package"]:
+        packages.setdefault(package["name"], []).append(package)
+    root = next(p for p in data["package"] if p.get("source", {}).get("virtual") == ".")
+    pending = list(root.get("dev-dependencies", {}).get(group, []))
+    selected = {}
+    while pending:
+        entry = pending.pop()
+        for package in packages[entry["name"]]:
+            key = (package["name"], package.get("version"))
+            if key not in selected:
+                selected[key] = package
+                pending.extend(package.get("dependencies", []))
+            for extra in entry.get("extra", []):
+                pending.extend(package.get("optional-dependencies", {}).get(extra, []))
+    return json.dumps([selected[key] for key in sorted(selected)], sort_keys=True).encode()
+
+
 def identify(name, command):
     try:
         result = subprocess.run(command + (["-v"] if name == "poppler" else ["--version"]),
@@ -32,7 +57,6 @@ def identify(name, command):
             raise ValueError((result.stdout + result.stderr)[-2000:])
         files = [Path(p) for p in command if Path(p).is_file()]
         if name in ("pdfium", "mupdf"):
-            files.append(ROOT / "benchmarks/requirements.txt")
             for pattern in ("*.so", "*.dylib", "*.pyd"):
                 files.extend((CACHE / "venv").rglob(pattern))
         if name == "pdfjs":
@@ -42,8 +66,11 @@ def identify(name, command):
                 files.extend((CACHE / "node/node_modules").rglob(pattern))
         if name == "hayro":
             files.append(ADAPTERS / "hayro/Cargo.lock")
+        artifacts = {str(p): sha(p.read_bytes()) for p in sorted(set(files))}
+        if name in ("pdfium", "mupdf"):
+            artifacts[str(ROOT / "uv.lock") + "#bench"] = sha(locked_group(ROOT / "uv.lock"))
         return {"status": "available", "version": (result.stdout + result.stderr).strip(),
-                "command": command, "artifacts": {str(p): sha(p.read_bytes()) for p in sorted(set(files))}}
+                "command": command, "artifacts": artifacts}
     except (OSError, ValueError, subprocess.TimeoutExpired) as error:
         return {"status": "unavailable", "reason": str(error), "command": command,
                 "hint": ("build Pagura offline with cargo build --release --locked --offline -p pagura" if name == "pagura"

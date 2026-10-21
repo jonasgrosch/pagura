@@ -5,7 +5,6 @@ import tomllib
 import platform
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,10 +37,12 @@ def run(args, cwd=ROOT, env=None):
 
 def setup():
     CACHE.mkdir(parents=True, exist_ok=True)
-    venv = CACHE / "venv"
-    python = venv / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
-    run([sys.executable, "-m", "venv", venv])
-    run([python, "-m", "pip", "install", "-r", ROOT / "benchmarks/requirements.txt"])
+    # uv.lock pins every transitive wheel by hash and .python-version the interpreter.
+    uv = shutil.which("uv")
+    if uv is None:
+        raise RuntimeError("uv is required: https://docs.astral.sh/uv/getting-started/installation/")
+    run([uv, "sync", "--locked", "--only-group", "bench"],
+        env={**os.environ, "UV_PROJECT_ENVIRONMENT": str(CACHE / "venv")})
     node = CACHE / "node"
     node.mkdir(exist_ok=True)
     lock = ROOT / "benchmarks/node-package-lock.json"
