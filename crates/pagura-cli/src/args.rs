@@ -1,7 +1,7 @@
 //! Command-line parsing: the arguments become a typed [`Command`], or a
 //! [`UsageError`] that exits with status 2 before any input is read.
 
-use pagura::{Accuracy, OverprintPreview, Recovery, RenderOptions};
+use pagura::{FastParams, OverprintPreview, Recovery, RenderOptions};
 use std::ffi::{OsStr, OsString};
 use std::fmt;
 use std::ops::RangeInclusive;
@@ -13,17 +13,19 @@ pub(crate) const USAGE: &str = "\
 usage: pagura inspect [--strict] [--password TEXT] INPUT
        pagura text [--strict] [--password TEXT] INPUT [PAGE]
        pagura find [--strict] [--password TEXT] INPUT QUERY
-       pagura render [--strict] [--password TEXT] [--overprint MODE] [--accuracy MODE]
-              [--timings] INPUT OUTPUT.ppm [DPI [PAGE]]
-       pagura convert [--strict] [--password TEXT] [--overprint MODE] [--accuracy MODE]
-              [--timings] INPUT OUTPUT_DIR [DPI [FIRST LAST]]
-       pagura scan [--password TEXT] [--overprint MODE] [--accuracy MODE]
+       pagura render [--strict] [--password TEXT] [--overprint MODE]
+              [--accuracy MODE | --fast LIST] [--timings]
+              INPUT OUTPUT.ppm [DPI [PAGE]]
+       pagura convert [--strict] [--password TEXT] [--overprint MODE]
+              [--accuracy MODE | --fast LIST] [--timings]
+              INPUT OUTPUT_DIR [DPI [FIRST LAST]]
+       pagura scan [--password TEXT] [--overprint MODE] [--accuracy MODE | --fast LIST]
               [--max-pages N] INPUT [DPI]
        pagura roundtrip [--password TEXT] INPUT OUTPUT
        pagura microbench [--strict] [--password TEXT] [--overprint MODE]
-              [--accuracy MODE] INPUT OPERATION COUNT [DPI]
+              [--accuracy MODE | --fast LIST] INPUT OPERATION COUNT [DPI]
        pagura licenses
-       pagura --version
+       pagura [--overprint MODE] [--accuracy MODE | --fast LIST] --version
        pagura --help";
 
 /// The rest of the help text, printed by `--help` after [`USAGE`].
@@ -40,8 +42,9 @@ commands:
               opens strictly first and repairs only when that fails
   roundtrip   open strictly and save the original bytes unchanged
   microbench  time COUNT (1 to 100000) repetitions of OPERATION: open-pages,
-              render-cold or render-warm; Pagura-only profiling, never a
-              cross-engine comparison
+              render-cold (open, record and render page 0) or render-warm
+              (render page 0 from one context, which keeps its recorded
+              scene); Pagura-only profiling, never a cross-engine comparison
   licenses    print the notices of the data linked into this build
 
 PAGE, FIRST and LAST count from 0; convert names its images from 1
@@ -55,8 +58,11 @@ options:
                    the document declares a PDF/X print intent, always, or
                    never
   --accuracy MODE  exact (the default): every pixel within one level of its
-                   exact result; competitive: the approximate path of
-                   RenderOptions::accuracy
+                   exact result; competitive: every fast parameter on
+  --fast LIST      the fast parameters to switch on, comma separated:
+                   glyph-bins, approximate-coverage, byte-storage and
+                   reduced-image-decode, or none; an alternative to
+                   --accuracy. None of them keeps the one-level contract
   --timings        print JSON stage timings to stdout: open (read and parse
                    the file, build the page list), render (rasterize into
                    memory) and emit (encode and write the image); the
@@ -65,8 +71,10 @@ options:
   --version        print the version
   --help, -h       print this help
 
-An option that a command does not take is a usage error. Exit status: 0 on
-success, 1 when the command fails, 2 for a usage error.
+An option that a command does not take is a usage error; --version accepts
+the rendering options --overprint, --accuracy and --fast and ignores them, so
+a harness can put them before every invocation. Exit status: 0 on success, 1
+when the command fails, 2 for a usage error.
 ";
 
 /// Microbenchmark iterations accepted, inclusive.
@@ -190,17 +198,19 @@ enum Flag {
     Password,
     Overprint,
     Accuracy,
+    Fast,
     MaxPages,
     Version,
 }
 
 impl Flag {
-    const ALL: [Self; 7] = [
+    const ALL: [Self; 8] = [
         Self::Strict,
         Self::Timings,
         Self::Password,
         Self::Overprint,
         Self::Accuracy,
+        Self::Fast,
         Self::MaxPages,
         Self::Version,
     ];
@@ -212,6 +222,7 @@ impl Flag {
             Self::Password => "--password",
             Self::Overprint => "--overprint",
             Self::Accuracy => "--accuracy",
+            Self::Fast => "--fast",
             Self::MaxPages => "--max-pages",
             Self::Version => "--version",
         }
@@ -224,7 +235,7 @@ struct Options {
     given: Vec<Flag>,
     password: Vec<u8>,
     overprint: OverprintPreview,
-    accuracy: Accuracy,
+    fast: FastParams,
     max_pages: Option<usize>,
 }
 
@@ -259,14 +270,23 @@ impl Options {
                 };
             }
             Flag::Accuracy => {
-                self.accuracy = match value()?.to_str() {
-                    Some("exact") => Accuracy::Exact,
-                    Some("competitive") => Accuracy::Competitive,
+                self.fast = match value()?.to_str() {
+                    Some("exact") => FastParams::EXACT,
+                    Some("competitive") => FastParams::COMPETITIVE,
                     _ => return Err(usage("--accuracy must be exact or competitive")),
                 };
             }
+            Flag::Fast => self.fast = fast(&value()?)?,
             Flag::MaxPages => self.max_pages = Some(number(&value()?, "--max-pages")?),
             Flag::Strict | Flag::Timings | Flag::Version => {}
+        }
+        let alternative = match flag {
+            Flag::Accuracy => Some(Flag::Fast),
+            Flag::Fast => Some(Flag::Accuracy),
+            _ => None,
+        };
+        if alternative.is_some_and(|other| self.has(other)) {
+            return Err(usage("--accuracy and --fast are alternatives"));
         }
         self.given.push(flag);
         Ok(())
@@ -302,11 +322,11 @@ impl Options {
     }
 
     /// Rendering at the optional DPI argument with the overprint policy and
-    /// accuracy.
+    /// fast parameters.
     fn render(&self, dpi: Option<&OsString>) -> Result<RenderOptions, UsageError> {
         Ok(RenderOptions {
             overprint: self.overprint,
-            accuracy: self.accuracy,
+            fast: self.fast,
             ..RenderOptions::from_dpi(self::dpi(dpi)?)
         })
     }
@@ -343,7 +363,10 @@ pub(crate) fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command,
     }
     let Some((name, operands)) = positional.split_first() else {
         if options.has(Flag::Version) {
-            options.allow("--version", &[Flag::Version])?;
+            // Rendering options are accepted and ignored, so a harness can
+            // put them before every invocation, its version check included.
+            let allowed = [Flag::Version, Flag::Overprint, Flag::Accuracy, Flag::Fast];
+            options.allow("--version", &allowed)?;
             return Ok(Command::Version);
         }
         return Err(usage("missing command"));
@@ -356,7 +379,7 @@ pub(crate) fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command,
 
 /// The command `name` with its `operands`, if it takes the given options.
 fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Command, UsageError> {
-    use Flag::{Accuracy, MaxPages, Overprint, Password, Strict, Timings as TimingsFlag};
+    use Flag::{Accuracy, Fast, MaxPages, Overprint, Password, Strict, Timings as TimingsFlag};
     let command = match (name, operands) {
         ("licenses", []) => {
             options.allow(name, &[])?;
@@ -381,7 +404,10 @@ fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Comma
             }
         }
         ("render", [input, output, rest @ ..]) if rest.len() <= 2 => {
-            options.allow(name, &[Strict, Password, Overprint, Accuracy, TimingsFlag])?;
+            options.allow(
+                name,
+                &[Strict, Password, Overprint, Accuracy, Fast, TimingsFlag],
+            )?;
             let page = rest.get(1).map_or(Ok(0), |page| number(page, "PAGE"))?;
             Command::Convert(Conversion {
                 source: options.chosen_source(input),
@@ -392,7 +418,10 @@ fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Comma
             })
         }
         ("convert", [input, output, rest @ ..]) if matches!(rest.len(), 0 | 1 | 3) => {
-            options.allow(name, &[Strict, Password, Overprint, Accuracy, TimingsFlag])?;
+            options.allow(
+                name,
+                &[Strict, Password, Overprint, Accuracy, Fast, TimingsFlag],
+            )?;
             let pages = match rest {
                 [_, first, last] => Some(number(first, "FIRST")?..=number(last, "LAST")?),
                 _ => None,
@@ -406,7 +435,7 @@ fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Comma
             })
         }
         ("scan", [input, rest @ ..]) if rest.len() <= 1 => {
-            options.allow(name, &[Password, Overprint, Accuracy, MaxPages])?;
+            options.allow(name, &[Password, Overprint, Accuracy, Fast, MaxPages])?;
             Command::Scan {
                 source: options.source(input, Recovery::Strict),
                 render: options.render(rest.first())?,
@@ -421,7 +450,7 @@ fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Comma
             }
         }
         ("microbench", [input, operation, count, rest @ ..]) if rest.len() <= 1 => {
-            options.allow(name, &[Strict, Password, Overprint, Accuracy])?;
+            options.allow(name, &[Strict, Password, Overprint, Accuracy, Fast])?;
             let operation = Bench::ALL
                 .into_iter()
                 .find(|bench| operation.to_str() == Some(bench.name()))
@@ -461,6 +490,29 @@ fn number<T: FromStr>(value: &OsStr, what: &str) -> Result<T, UsageError> {
             value.to_string_lossy()
         ))
     })
+}
+
+/// The fast parameters of a `--fast` list: comma-separated names, or
+/// `none` alone.
+fn fast(value: &OsStr) -> Result<FastParams, UsageError> {
+    const NAMES: &str =
+        "--fast takes glyph-bins, approximate-coverage, byte-storage, reduced-image-decode or none";
+    let list = text(value, "--fast")?;
+    if list == "none" {
+        return Ok(FastParams::EXACT);
+    }
+    let mut fast = FastParams::EXACT;
+    for name in list.split(',') {
+        let switch = match name {
+            "glyph-bins" => &mut fast.glyph_origin_bins,
+            "approximate-coverage" => &mut fast.approximate_coverage,
+            "byte-storage" => &mut fast.byte_storage,
+            "reduced-image-decode" => &mut fast.reduced_image_decode,
+            _ => return Err(usage(NAMES)),
+        };
+        *switch = true;
+    }
+    Ok(fast)
 }
 
 /// The optional DPI argument: a positive finite number, 72 when absent.
