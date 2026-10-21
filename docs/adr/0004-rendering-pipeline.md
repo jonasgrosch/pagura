@@ -516,11 +516,11 @@ takes, per primitive, the faster approximation that keeps the gate:
   image without `Mask`, `SMask` or `Decode`, drawn from page content and not
   as the page's sole mark, is reconstructed near its drawn size: with 1, 2,
   3, 4 or 6 cells per eight-sample block axis, the fewest that leave two and
-  a half cells per device pixel along its less minified axis. A cell is the mean of
-  its block's unclamped T.81 A.3.3 samples from an integrated cosine basis,
-  rounded once; with six cells, a block that may leave the sample range
-  takes the means of its exact samples. The samplers then take the cells,
-  the image's unit square spanning its declared extent in them.
+  a half cells per device pixel along its less minified axis. A cell is the
+  mean of its block's unclamped T.81 A.3.3 samples from an integrated cosine
+  basis, rounded once; with six cells, a block that may leave the sample
+  range takes the means of its exact samples. The samplers then take the
+  cells, the image's unit square spanning its declared extent in them.
 - **Fonts.** Embedded TrueType programs are decoded only as far as drawing
   reads them; damage in later tables is neither examined nor reported.
 
