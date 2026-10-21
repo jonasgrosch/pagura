@@ -47,7 +47,7 @@ impl<'a> FormBody<'a> {
 /// A form prepared for interpretation: its scope, content and resources.
 pub(crate) struct PreparedForm<'a> {
     pub(crate) scope: Scope,
-    pub(crate) content: Content<'a>,
+    pub(crate) content: Arc<Content<'a>>,
     pub(crate) resources: &'a Dictionary,
     pub(crate) dictionary: &'a Dictionary,
     /// The clip of the form's bounding box in default user space.
@@ -268,11 +268,8 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
             .transpose()?
             .unwrap_or(resources);
         let content = match body {
-            FormBody::Stored(object) => Content::from_streams(
-                [(object.id(), document.stream_data(object)?)],
-                &self.session.limits,
-            )?,
-            FormBody::Generated { bytes, .. } => Content::from_bytes(Cow::Borrowed(bytes)),
+            FormBody::Stored(object) => self.stream_content(object)?,
+            FormBody::Generated { bytes, .. } => Arc::new(Content::from_bytes(Cow::Borrowed(bytes))),
         };
         Ok(Some(PreparedForm {
             scope: child,

@@ -7,7 +7,7 @@ use crate::fonts::LoadedFont;
 use crate::machine::Text;
 use crate::model::GroupAttributes;
 use crate::repairs;
-use pagura_content::{Content, Op};
+use pagura_content::Op;
 use pagura_core::{Diagnostic, Dictionary, Error, ObjectId, Position, Result};
 use pagura_raster::Transform;
 
@@ -150,10 +150,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             .type3_resources()
             .or(page_resources)
             .unwrap_or(resources);
-        let content = Content::from_streams(
-            [(id, document.stream_data(object)?)],
-            &self.session.limits,
-        )?;
+        let content = self.stream_content(object)?;
         self.push_lazy(GroupAttributes::default(), scope);
         let result = self.run(&content, resources, &mut child);
         let opened = self.pop_lazy();

@@ -48,6 +48,11 @@ pub(crate) struct Session<'a> {
     pub(crate) page_resources: Option<&'a Dictionary>,
     /// Glyph-name Unicode work of text extraction (`text_work`).
     pub(crate) name_work: usize,
+    /// Decoded content of forms, tiling cells and glyph procedures, which
+    /// run again at every use, and the bytes it holds.
+    pub(crate) contents: crate::hash::FastMap<ObjectId, Arc<Content<'static>>>,
+    pub(crate) content_bytes: usize,
+    pub(crate) store: Option<&'a Store>,
     /// Buffers of the string being shown: decoded and placed glyphs.
     pub(crate) decoded: Vec<pagura_text::Glyph>,
     pub(crate) placed: Vec<crate::device::Glyph>,
@@ -198,6 +203,9 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
                 name_work: 0,
                 decoded: Vec::new(),
                 placed: Vec::new(),
+                contents: crate::hash::FastMap::default(),
+                content_bytes: 0,
+                store: inputs.store,
                 opaque: Arc::new(Composite::default()),
                 masks: 0,
                 patterns: HashMap::new(),
@@ -437,6 +445,43 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
         self.document().repair(diagnostic)
     }
 
+    /// The decoded content of the stream `object`, read once per
+    /// interpretation (and per store) for content that runs repeatedly.
+    ///
+    /// # Errors
+    ///
+    /// The errors of decoding the stream and the content budget.
+    pub(crate) fn stream_content(
+        &mut self,
+        object: &pagura_document::IndirectObject,
+    ) -> Result<Arc<Content<'static>>> {
+        let id = object.id();
+        if let Some(content) = self.session.contents.get(&id) {
+            return Ok(Arc::clone(content));
+        }
+        let document = self.document();
+        let limits = self.session.limits;
+        let build = || -> Result<pagura_core::Built<Content<'static>>> {
+            let content = Content::from_streams([(id, document.stream_data(object)?)], &limits)?;
+            Ok(pagura_core::Built {
+                bytes: content.bytes().len().saturating_add(size_of::<Content<'static>>()),
+                value: content,
+            })
+        };
+        let content = match self.session.store {
+            Some(store) => store.get_or_build(StreamContent(id), build)?,
+            None => Arc::new(build()?.value),
+        };
+        // Kept while the interpretation's content stays within an eighth of
+        // `render_bytes`; beyond that each use decodes again.
+        let bytes = content.bytes().len();
+        if self.session.content_bytes.saturating_add(bytes) <= limits.render_bytes / 8 {
+            self.session.content_bytes += bytes;
+            self.session.contents.insert(id, Arc::clone(&content));
+        }
+        Ok(content)
+    }
+
     /// The next soft mask number.
     pub(crate) fn next_mask(&mut self) -> Result<MaskId> {
         let id = MaskId(self.session.masks);
@@ -457,6 +502,14 @@ impl Scope {
         self.saved.push(self.state.clone());
         Ok(())
     }
+}
+
+/// The store key of a stream's decoded content.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct StreamContent(ObjectId);
+
+impl pagura_core::StoreKey for StreamContent {
+    type Value = Content<'static>;
 }
 
 /// A matrix operand `[a b c d e f]`.

@@ -11,7 +11,7 @@ use crate::model::{Paint, PatternId, ShadingPaint, TilingColors, TilingPaint};
 use crate::repairs;
 use crate::resources::pattern::{self, Kind, Tiling};
 use pagura_color::ColorSpace;
-use pagura_content::{ColorOperands, Content, Op};
+use pagura_content::{ColorOperands, Op};
 use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
 use pagura_raster::{FillRule, Path, Transform};
 use std::sync::Arc;
@@ -154,10 +154,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         }
         let bounds = Arc::new(Path::rect(tiling.bbox));
         add_clip(&mut cell, bounds, FillRule::NonZero, self.session.limits.depth)?;
-        let content = Content::from_streams(
-            [(tiling.id, document.stream_data(object)?)],
-            &self.session.limits,
-        )?;
+        let content = self.stream_content(object)?;
         let outer = self.begin_definition();
         let result = (|| {
             self.device.begin_tiling(&TilingInfo {
