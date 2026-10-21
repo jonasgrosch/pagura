@@ -38,9 +38,8 @@ pub fn run(data: &[u8]) {
         let Some(page) = super::checked(document.page(0)) else {
             continue;
         };
-        // The page's only fonts are Type 3 fonts, which need no provider, so
-        // the facade's bundled data and none select the same glyphs.
-        let compiled = pagura::compile_page_with_text(&document, page, None);
+        // All three entry points use the facade's feature-selected provider.
+        let compiled = pagura::compile_page_with_text(&document, page);
         let plain = pagura::compile_page(&document, page);
         let text = pagura::text_page(&document, page);
         match &compiled {

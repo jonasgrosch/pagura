@@ -15,6 +15,16 @@ CARGO = ["cargo"]
 OFFLINE = ["--locked", "--offline"]
 # Python lint tools pinned in uv.lock (ADR 0018); `uv sync` installs them once.
 UV_LINT = ["uv", "run", *OFFLINE, "--only-group", "lint"]
+# CONTRIBUTING convention 13: crates whose features change what compiles are
+# also linted and tested with none and with all of their features, since the
+# workspace runs unify the defaults back on. Features select code, not
+# platform behaviour, so only Linux runs them; each set rebuilds the graph.
+FEATURE_MATRIX = [
+    (CARGO + [step, *OFFLINE, "-p", crate, features, "--all-targets", *tail], {})
+    for crate in ("pagura", "pagura-cli", "pagura-data")
+    for features in ("--no-default-features", "--all-features")
+    for step, tail in (("clippy", ["--", "-D", "warnings"]), ("test", []))
+] if sys.platform.startswith("linux") else []
 COMMANDS = [
     ([sys.executable, "tools/policy.py"], {}),
     ([sys.executable, "tools/fixtures.py", "--check"], {}),
@@ -26,6 +36,7 @@ COMMANDS = [
     (CARGO + ["test", *OFFLINE, "--workspace", "--all-targets"], {}),
     (CARGO + ["test", *OFFLINE, "--workspace", "--doc"], {}),
     (CARGO + ["doc", *OFFLINE, "--workspace", "--no-deps"], {"RUSTDOCFLAGS": "-D warnings"}),
+    *FEATURE_MATRIX,
     (CARGO + ["build", *OFFLINE, "--release", "-p", "pagura-host", "--target", "wasm32-wasip1"], {}),
     # Matching opt-in font builds exercise informational diagnostics without
     # changing the default WASI host's data footprint.

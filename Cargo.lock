@@ -10,6 +10,7 @@ dependencies = [
  "pagura-crypto",
  "pagura-data",
  "pagura-document",
+ "pagura-font",
  "pagura-pki",
  "pagura-raster",
  "pagura-render",
@@ -23,10 +24,6 @@ name = "pagura-cli"
 version = "0.1.0"
 dependencies = [
  "pagura",
- "pagura-core",
- "pagura-crypto",
- "pagura-data",
- "pagura-document",
  "pagura-testkit",
 ]
 

@@ -1,58 +1,44 @@
-#![forbid(unsafe_code)]
 //! Rendering against independent analytic oracles.
 
-use pagura::{Document, OpenOptions, Pixmap, Rgba8};
-use pagura_testkit::fixture;
+use crate::support::{self, open, ppm};
+use pagura::{Document, ErrorKind, OpenOptions, RenderOptions, Tile};
+use pagura_testkit::{Json, Manifest, assert_bytes_eq, fixture};
 
-fn open(bytes: impl Into<std::sync::Arc<[u8]>>) -> pagura::Result<Document> {
-    Document::open(bytes, &OpenOptions::default())
-}
-
-fn ppm(pixmap: &Pixmap) -> Vec<u8> {
-    pagura_testkit::ppm(
-        pixmap.width(),
-        pixmap.height(),
-        &pixmap.to_rgb_over(Rgba8::WHITE),
-    )
-}
-use pagura::{ErrorKind, RenderOptions, Tile};
-
-const RENDER_CASES: [&str; 17] = [
-    "blank",
-    "colorspace-unsupported",
-    "alpha-unsupported",
-    "rectangle",
-    "graphics-state",
-    "negative-rectangle",
-    "inherited-box",
-    "clipped-to-page",
-    "many-rectangles",
-    "content-array-split",
-    "many-operands",
-    "normalized-media-box",
-    "undefined-reference-is-null",
-    "trailing-bytes",
-    "rotate-90-blank",
-    "opaque-page-group-blank",
-    "two-pages",
-];
-
-use crate::support;
-
+/// Every classic case with an image oracle renders to it, exactly or within
+/// the tolerance its manifest entry records (ADR 0004).
 #[test]
-fn exact_pixels_match_independent_oracles() {
-    for name in RENDER_CASES {
+fn pixels_match_independent_oracles_within_their_recorded_tolerance() {
+    let manifest = Manifest::load("classic");
+    let cases: Vec<_> = manifest
+        .cases()
+        .filter(|case| case.string("expected") == Some("render"))
+        .collect();
+    assert!(cases.len() >= 18, "classic render cases missing");
+    for case in cases {
+        let name = case.name();
         let document = open(fixture("classic", &format!("{name}.pdf"))).unwrap();
+        let dpi = case.get("dpi").and_then(Json::as_f64).unwrap();
         let pixmap = pagura::render_page(
             &document,
             document.page(0).unwrap(),
-            &RenderOptions::default(),
+            &RenderOptions::from_dpi(dpi),
         )
         .unwrap_or_else(|error| panic!("{name}: {error}"));
-        assert!(
-            ppm(&pixmap) == fixture("classic", &format!("{name}.ppm")),
-            "{name}"
-        );
+        let actual = ppm(&pixmap);
+        let expected = fixture("classic", &format!("{name}.ppm"));
+        match case.get("tolerance").and_then(Json::as_u64).unwrap_or(0) {
+            0 => assert_bytes_eq(&actual, &expected, name),
+            tolerance => {
+                assert_eq!(actual.len(), expected.len(), "{name}");
+                let worst = actual
+                    .iter()
+                    .zip(&expected)
+                    .map(|(a, e)| u64::from(a.abs_diff(*e)))
+                    .max()
+                    .unwrap();
+                assert!(worst <= tolerance, "{name}: differs by {worst} levels");
+            }
+        }
     }
 }
 
@@ -76,27 +62,6 @@ fn unsupported_features_are_tagged_errors_not_partial_images() {
 }
 
 #[test]
-fn fractional_edges_match_exact_coverage_within_one_level() {
-    let document = open(fixture("classic", "fractional-rectangle.pdf")).unwrap();
-    let pixmap = pagura::render_page(
-        &document,
-        document.page(0).unwrap(),
-        &RenderOptions::default(),
-    )
-    .unwrap();
-    let actual = ppm(&pixmap);
-    let expected = fixture("classic", "fractional-rectangle.ppm");
-    assert_eq!(actual.len(), expected.len());
-    let worst = actual
-        .iter()
-        .zip(&expected)
-        .map(|(a, e)| a.abs_diff(*e))
-        .max()
-        .unwrap();
-    assert!(worst <= 1, "coverage differs by {worst} levels");
-}
-
-#[test]
 fn tiles_assemble_into_the_full_page() {
     let document = open(fixture("classic", "many-rectangles.pdf")).unwrap();
     let page = document.page(0).unwrap();
@@ -109,11 +74,7 @@ fn tiles_assemble_into_the_full_page() {
         height: 64,
     };
     let part = pagura::render_tile(&document, page, &options, tile).unwrap();
-    for row in 0..tile.height {
-        let start = usize::try_from(tile.x).unwrap() * 4;
-        let expected = &full.row(tile.y + row).unwrap()[start..start + 128 * 4];
-        assert_eq!(part.row(row).unwrap(), expected, "row {row}");
-    }
+    support::assert_tile_matches(&full, &part, tile);
     let outside = Tile {
         x: 500,
         y: 0,

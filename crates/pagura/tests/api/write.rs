@@ -1,21 +1,8 @@
-#![forbid(unsafe_code)]
 //! Deterministic writing, verified by reopening and rendering.
 
-use pagura::{Document, OpenOptions, Pixmap, Rgba8};
-use pagura_testkit::{assert_bytes_eq, fixture};
-
-fn open(bytes: impl Into<std::sync::Arc<[u8]>>) -> pagura::Result<Document> {
-    Document::open(bytes, &OpenOptions::default())
-}
-
-fn ppm(pixmap: &Pixmap) -> Vec<u8> {
-    pagura_testkit::ppm(
-        pixmap.width(),
-        pixmap.height(),
-        &pixmap.to_rgb_over(Rgba8::WHITE),
-    )
-}
+use crate::support::{open, ppm};
 use pagura::{Builder, Dictionary, ErrorKind, Name, NewObject, ObjectId, RenderOptions, Value};
+use pagura_testkit::{assert_bytes_eq, fixture};
 
 fn dictionary(entries: &[(&[u8], Value)]) -> Dictionary {
     entries
@@ -131,16 +118,15 @@ fn oversized_value_graph_is_rejected_before_serialization() {
         ..pagura::Limits::default()
     };
     let mut builder = Builder::new(limits);
+    // A valid catalog, so that only the value budget can refuse it.
+    let catalog = dictionary(&[
+        (b"Type", Value::name(b"Catalog")),
+        (b"Big", Value::Array(vec![Value::Null; 1001])),
+    ]);
     builder
-        .insert(
-            ROOT,
-            NewObject::Value(Value::Array(vec![Value::Null; 1001])),
-        )
+        .insert(ROOT, NewObject::Value(catalog.into()))
         .unwrap();
-    assert_eq!(
-        builder.finish(ROOT).unwrap_err().kind,
-        ErrorKind::InvalidArgument
-    );
+    assert_eq!(builder.finish(ROOT).unwrap_err().kind, ErrorKind::Limit);
 }
 
 #[test]

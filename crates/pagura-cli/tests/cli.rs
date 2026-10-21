@@ -186,14 +186,14 @@ fn licenses_reproduces_every_linked_data_notice() {
     let output = pagura().arg("licenses").output().unwrap();
     assert!(output.status.success());
     let text = String::from_utf8(output.stdout).unwrap();
-    let mut count = 0;
-    assert!(text.contains(pagura_crypto::unicode_notice()));
-    for (subject, notice) in pagura::data_notices() {
+    for (subject, notice) in pagura::notices() {
         assert!(text.contains(subject));
         assert!(text.contains(notice));
-        count += 1;
     }
-    assert_eq!(text.contains("No bundled data is linked."), count == 0);
+    assert_eq!(
+        text.contains("No bundled data is linked."),
+        !pagura::provider::BUNDLED
+    );
 }
 
 #[test]
@@ -318,5 +318,47 @@ fn cli_copy_and_find_use_zero_based_pages_and_default_user_space() {
     assert!(
         output.starts_with("{\"page\":0,\"start\":0,\"end\":7,\"quads\":[[[10,60]"),
         "{output}"
+    );
+}
+
+#[test]
+fn help_succeeds_and_usage_errors_exit_with_status_two() {
+    let help = pagura().arg("--help").output().unwrap();
+    assert_eq!(help.status.code(), Some(0));
+    let text = String::from_utf8(help.stdout).unwrap();
+    assert!(text.starts_with("usage: pagura inspect"), "{text}");
+    let pdf = fixture_path("classic", "rectangle.pdf");
+    for args in [
+        &["inspect", "--timings"][..],
+        &["scan", "--strict"],
+        &["render", "--bogus"],
+        &["render"],
+    ] {
+        let output = pagura().args(args).arg(&pdf).output().unwrap();
+        assert_eq!(output.status.code(), Some(2), "{args:?}");
+        assert!(output.stdout.is_empty(), "{args:?}");
+        let stderr = String::from_utf8(output.stderr).unwrap();
+        assert!(stderr.contains("\nusage: pagura"), "{stderr}");
+    }
+    let missing = pagura()
+        .arg("inspect")
+        .arg(fixture_path("classic", "no-such-file.pdf"))
+        .output()
+        .unwrap();
+    assert_eq!(missing.status.code(), Some(1));
+}
+
+#[test]
+fn scan_labels_unreadable_input_as_io() {
+    let output = pagura()
+        .arg("scan")
+        .arg(fixture_path("classic", "no-such-file.pdf"))
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let text = String::from_utf8(output.stdout).unwrap();
+    assert!(
+        text.starts_with("{\"schema\":1,\"strict\":false,\"open\":{\"kind\":\"io\""),
+        "{text}"
     );
 }

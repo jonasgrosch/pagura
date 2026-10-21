@@ -473,7 +473,7 @@
       "status": "implemented subset",
       "tests": [
         "pagura api::provider::facade_feature_selects_provider_and_reuses_document_resources",
-        "pagura api::provider::provider_and_explicit_entry_points_agree_and_load_once",
+        "pagura api::provider::custom_provider_matches_the_facade_default_and_loads_once",
         "pagura api::provider::context_rejects_foreign_pages",
         "paint/text-font-shared-pages",
         "pagura api::provider::fonts_and_outlines_are_shared_across_document_pages",

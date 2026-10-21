@@ -1,6 +1,6 @@
 [package]
 name = "pagura"
-description = "Public facade and command-line tool"
+description = "Public facade of the Pagura PDF engine"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,13 +12,15 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
-pagura-data = { workspace = true, optional = true }
-pagura-crypto.workspace = true
-pagura-pki.workspace = true
 pagura-core.workspace = true
+pagura-crypto.workspace = true
+pagura-data = { workspace = true, optional = true }
 pagura-document.workspace = true
+pagura-font.workspace = true
+pagura-pki.workspace = true
 pagura-raster.workspace = true
 pagura-render.workspace = true
+pagura-text.workspace = true
 pagura-write.workspace = true
 
 [features]
@@ -29,4 +31,3 @@ cjk-fonts = ["bundled-data", "pagura-data/cjk-fonts"]
 
 [dev-dependencies]
 pagura-testkit.workspace = true
-pagura-text.workspace = true

@@ -17,16 +17,13 @@ name = "pagura"
 path = "src/main.rs"
 doc = false
 
+# The facade alone: everything the tool does is public API (ADR 0030).
 [dependencies]
 pagura.workspace = true
-pagura-core.workspace = true
-pagura-crypto.workspace = true
-pagura-data = { workspace = true, optional = true }
-pagura-document.workspace = true
 
 [features]
 default = ["bundled-data"]
-bundled-data = ["dep:pagura-data", "pagura/bundled-data"]
+bundled-data = ["pagura/bundled-data"]
 cjk-fonts = ["bundled-data", "pagura/cjk-fonts"]
 
 [dev-dependencies]

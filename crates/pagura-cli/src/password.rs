@@ -3,8 +3,7 @@
 //! ISO 32000-2 7.6.4.3.2 Algorithm 2(a), 7.6.4.3.3, and Annex D.3.
 //! The byte-oriented Document API and host protocol remain unchanged.
 
-use pagura::OpenOptions;
-use pagura_document::Document;
+use pagura::{Document, OpenOptions};
 use std::sync::Arc;
 
 fn legacy(document: &Document) -> bool {
@@ -14,11 +13,11 @@ fn legacy(document: &Document) -> bool {
         .and_then(|value| document.resolve(value).ok())
         .and_then(|value| value.as_dictionary())
         .and_then(|dictionary| dictionary.get(b"R"))
-        .and_then(pagura_core::Value::as_integer)
+        .and_then(pagura::Value::as_integer)
         .is_some_and(|revision| (2..=4).contains(&revision))
 }
 
-pub(super) fn open(bytes: Arc<[u8]>, options: &OpenOptions) -> pagura_core::Result<Document> {
+pub(super) fn open(bytes: Arc<[u8]>, options: &OpenOptions) -> pagura::Result<Document> {
     let encoded = std::str::from_utf8(&options.password).ok().and_then(encode);
     let Some(encoded) = encoded.filter(|encoded| *encoded != options.password) else {
         let document = Document::open(bytes, options)?;
@@ -29,8 +28,8 @@ pub(super) fn open(bytes: Arc<[u8]>, options: &OpenOptions) -> pagura_core::Resu
                 .is_none()
             && legacy(&document)
         {
-            return Err(pagura_core::Error::unsupported(
-                pagura_core::Feature::new("security.password-encoding"),
+            return Err(pagura::Error::unsupported(
+                pagura::Feature::new("security.password-encoding"),
                 "Unicode password is not representable in PDFDocEncoding",
             ));
         }
@@ -49,11 +48,10 @@ pub(super) fn open(bytes: Arc<[u8]>, options: &OpenOptions) -> pagura_core::Resu
     };
     match Document::open(bytes, options) {
         Ok(document) if !legacy(&document) => Ok(document),
-        Ok(_) => Err(first_error.unwrap_or_else(|| {
-            pagura_core::Error::password("legacy password must use PDFDocEncoding")
-        })),
+        Ok(_) => Err(first_error
+            .unwrap_or_else(|| pagura::Error::password("legacy password must use PDFDocEncoding"))),
         Err(error) => Err(first_error
-            .filter(|first| first.repair.is_some() || first.kind == pagura_core::ErrorKind::Limit)
+            .filter(|first| first.repair.is_some() || first.kind == pagura::ErrorKind::Limit)
             .unwrap_or(error)),
     }
 }
@@ -90,7 +88,7 @@ fn encode(text: &str) -> Option<Vec<u8>> {
 mod tests {
     use super::{encode, open};
     use pagura::OpenOptions;
-    use pagura_core::{ErrorKind, ObjectId};
+    use pagura::{ErrorKind, ObjectId};
     use pagura_testkit::fixture;
 
     #[test]
