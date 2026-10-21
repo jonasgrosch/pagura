@@ -67,7 +67,9 @@ mod parameters;
 mod source;
 mod stream;
 
-pub use source::{DecodeRequest, Decoded, ImageId, ImageSource, Reduce, SampleRect};
+pub use source::{
+    DecodeRequest, Decoded, ImageId, ImageSource, Layout, Reduce, SampleRect, SourceMask,
+};
 
 /// How an image's samples are interpreted.
 #[derive(Debug, Clone, PartialEq)]

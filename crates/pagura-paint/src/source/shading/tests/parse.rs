@@ -35,7 +35,10 @@ pub(super) struct Parsed {
 
 /// A mesh primitive in the previous layout: points `p_ij` at `4·j + i`.
 #[derive(Debug, Clone)]
-#[expect(clippy::large_enum_variant, reason = "the previous layout, kept as it was")]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "the previous layout, kept as it was"
+)]
 pub(super) enum OldPrimitive {
     Triangle([(Point, [f64; 32]); 3]),
     Patch {
@@ -143,13 +146,20 @@ impl Reader<'_> {
 
     fn shading(&self, value: &Value, name: &str) -> Option<Parsed> {
         let d = self.dictionary_of(value)?;
-        let kind = d.get(b"ShadingType").and_then(|v| self.resolve(v).as_integer())?;
+        let kind = d
+            .get(b"ShadingType")
+            .and_then(|v| self.resolve(v).as_integer())?;
         let space = Arc::new(self.space(d.get(b"ColorSpace")?, 0)?);
         let components = space.components();
         let bbox = match d.get(b"BBox") {
             Some(v) => {
                 let n = self.numbers(v)?;
-                Some(Rect::from_corners(*n.first()?, *n.get(1)?, *n.get(2)?, *n.get(3)?)?)
+                Some(Rect::from_corners(
+                    *n.first()?,
+                    *n.get(1)?,
+                    *n.get(2)?,
+                    *n.get(3)?,
+                )?)
             }
             None => None,
         };
@@ -166,7 +176,11 @@ impl Reader<'_> {
         };
         let mut old_mesh = Vec::new();
         let (kind, function) = if kind >= 4 {
-            let inputs = if d.contains_key(b"Function") { 1 } else { components };
+            let inputs = if d.contains_key(b"Function") {
+                1
+            } else {
+                components
+            };
             let decoder = self.mesh_decoder(d, value, kind, inputs)?;
             old_mesh = decoder.0;
             let function = match d.get(b"Function") {
@@ -177,7 +191,10 @@ impl Reader<'_> {
         } else {
             let geometry = self.geometry(d, kind)?;
             let inputs = if kind == 1 { 2 } else { 1 };
-            (geometry, Some(self.shading_function(d.get(b"Function")?, inputs, components)?))
+            (
+                geometry,
+                Some(self.shading_function(d.get(b"Function")?, inputs, components)?),
+            )
         };
         Some(Parsed {
             name: name.to_owned(),
@@ -193,21 +210,30 @@ impl Reader<'_> {
 
     fn geometry(&self, d: &Dictionary, kind: i64) -> Option<ShadingKind> {
         if kind == 1 {
-            let domain = d.get(b"Domain").map_or(Some(vec![0.0, 1.0, 0.0, 1.0]), |v| self.numbers(v))?;
+            let domain = d
+                .get(b"Domain")
+                .map_or(Some(vec![0.0, 1.0, 0.0, 1.0]), |v| self.numbers(v))?;
             let m = d
                 .get(b"Matrix")
-                .map_or(Some(vec![1.0, 0.0, 0.0, 1.0, 0.0, 0.0]), |v| self.numbers(v))?;
+                .map_or(Some(vec![1.0, 0.0, 0.0, 1.0, 0.0, 0.0]), |v| {
+                    self.numbers(v)
+                })?;
             return Some(ShadingKind::Function {
                 domain: domain.try_into().ok()?,
                 matrix: Transform::new(m[0], m[1], m[2], m[3], m[4], m[5]),
             });
         }
-        let domain = d.get(b"Domain").map_or(Some(vec![0.0, 1.0]), |v| self.numbers(v))?;
+        let domain = d
+            .get(b"Domain")
+            .map_or(Some(vec![0.0, 1.0]), |v| self.numbers(v))?;
         let domain: [f64; 2] = domain.try_into().ok()?;
         let extend = match d.get(b"Extend") {
             Some(v) => {
                 let a = self.resolve(v).as_array()?;
-                [self.resolve(a.first()?).as_bool()?, self.resolve(a.get(1)?).as_bool()?]
+                [
+                    self.resolve(a.first()?).as_bool()?,
+                    self.resolve(a.get(1)?).as_bool()?,
+                ]
             }
             None => [false; 2],
         };
@@ -234,16 +260,31 @@ impl Reader<'_> {
         }
     }
 
-    fn shading_function(&self, value: &Value, inputs: usize, outputs: usize) -> Option<ShadingFunction> {
+    fn shading_function(
+        &self,
+        value: &Value,
+        inputs: usize,
+        outputs: usize,
+    ) -> Option<ShadingFunction> {
         if let Some(values) = self.resolve(value).as_array() {
-            let functions: Option<Vec<Arc<Function>>> =
-                values.iter().map(|v| self.function(v, inputs, 1, 0)).collect();
+            let functions: Option<Vec<Arc<Function>>> = values
+                .iter()
+                .map(|v| self.function(v, inputs, 1, 0))
+                .collect();
             return Some(ShadingFunction::PerComponent(functions?.into()));
         }
-        Some(ShadingFunction::Single(self.function(value, inputs, outputs, 0)?))
+        Some(ShadingFunction::Single(
+            self.function(value, inputs, outputs, 0)?,
+        ))
     }
 
-    fn function(&self, value: &Value, inputs: usize, outputs: usize, depth: usize) -> Option<Arc<Function>> {
+    fn function(
+        &self,
+        value: &Value,
+        inputs: usize,
+        outputs: usize,
+        depth: usize,
+    ) -> Option<Arc<Function>> {
         if depth > 8 {
             return None;
         }
@@ -256,17 +297,24 @@ impl Reader<'_> {
             Some(r) => Some(self.pairs(r)?),
             None => None,
         };
-        let kind = d.get(b"FunctionType").and_then(|v| self.resolve(v).as_integer())?;
+        let kind = d
+            .get(b"FunctionType")
+            .and_then(|v| self.resolve(v).as_integer())?;
         let limits = Limits::default();
         let function = match kind {
             0 => {
-                let size = self.numbers(d.get(b"Size")?)?.iter().map(|&v| v as u32).collect();
+                let size = self
+                    .numbers(d.get(b"Size")?)?
+                    .iter()
+                    .map(|&v| v as u32)
+                    .collect();
                 Function::sampled(
                     SampledFunction {
                         domain,
                         range: range?,
                         size,
-                        bits_per_sample: d.get(b"BitsPerSample").and_then(|v| self.number(v))? as u8,
+                        bits_per_sample: d.get(b"BitsPerSample").and_then(|v| self.number(v))?
+                            as u8,
                         order: d.get(b"Order").and_then(|v| self.number(v)).unwrap_or(1.0) as u8,
                         encode: d.get(b"Encode").and_then(|v| self.pairs(v)),
                         decode: d.get(b"Decode").and_then(|v| self.pairs(v)),
@@ -335,7 +383,9 @@ impl Reader<'_> {
             b"DeviceGray" => ColorSpace::DeviceGray,
             b"DeviceRGB" => ColorSpace::DeviceRgb,
             b"DeviceCMYK" => ColorSpace::DeviceCmyk,
-            b"CalGray" | b"CalRGB" | b"Lab" => ColorSpace::Calibrated(Arc::new(self.calibrated(family, arg(1)?)?)),
+            b"CalGray" | b"CalRGB" | b"Lab" => {
+                ColorSpace::Calibrated(Arc::new(self.calibrated(family, arg(1)?)?))
+            }
             b"ICCBased" => {
                 let id = arg(1)?.as_reference()?;
                 let object = self.document.object(id).ok()?;
@@ -415,15 +465,25 @@ impl Reader<'_> {
         let white: [f64; 3] = get(b"WhitePoint", None)?.try_into().ok()?;
         let black: [f64; 3] = get(b"BlackPoint", Some(vec![0.0; 3]))?.try_into().ok()?;
         match family {
-            b"CalGray" => Calibrated::gray(white, black, d.get(b"Gamma").and_then(|v| self.number(v)).unwrap_or(1.0)).ok(),
+            b"CalGray" => Calibrated::gray(
+                white,
+                black,
+                d.get(b"Gamma").and_then(|v| self.number(v)).unwrap_or(1.0),
+            )
+            .ok(),
             b"CalRGB" => {
                 let gamma: [f64; 3] = get(b"Gamma", Some(vec![1.0; 3]))?.try_into().ok()?;
-                let m = get(b"Matrix", Some(vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]))?;
+                let m = get(
+                    b"Matrix",
+                    Some(vec![1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]),
+                )?;
                 let matrix = [[m[0], m[3], m[6]], [m[1], m[4], m[7]], [m[2], m[5], m[8]]];
                 Calibrated::rgb(white, black, gamma, matrix).ok()
             }
             _ => {
-                let range: [f64; 4] = get(b"Range", Some(vec![-100.0, 100.0, -100.0, 100.0]))?.try_into().ok()?;
+                let range: [f64; 4] = get(b"Range", Some(vec![-100.0, 100.0, -100.0, 100.0]))?
+                    .try_into()
+                    .ok()?;
                 Calibrated::lab(white, black, range).ok()
             }
         }
@@ -438,7 +498,11 @@ impl Reader<'_> {
         inputs: usize,
     ) -> Option<(Vec<OldPrimitive>, ShadingKind)> {
         let data = self.stream(value)?;
-        let integer = |key: &[u8]| d.get(key).and_then(|v| self.resolve(v).as_integer()).map(|v| v as usize);
+        let integer = |key: &[u8]| {
+            d.get(key)
+                .and_then(|v| self.resolve(v).as_integer())
+                .map(|v| v as usize)
+        };
         let decode = self.pairs(d.get(b"Decode")?)?;
         if decode.len() != 2 + inputs {
             return None;
@@ -448,13 +512,21 @@ impl Reader<'_> {
             bit: 0,
             coordinate: integer(b"BitsPerCoordinate")?,
             component: integer(b"BitsPerComponent")?,
-            flag: if kind == 5 { 0 } else { integer(b"BitsPerFlag")? },
+            flag: if kind == 5 {
+                0
+            } else {
+                integer(b"BitsPerFlag")?
+            },
             inputs,
             decode,
         };
         if !matches!(decoder.coordinate, 1 | 2 | 4 | 8 | 12 | 16 | 24 | 32)
             || !matches!(decoder.component, 1 | 2 | 4 | 8 | 12 | 16)
-            || !(if kind == 5 { decoder.flag == 0 } else { matches!(decoder.flag, 2 | 4 | 8) })
+            || !(if kind == 5 {
+                decoder.flag == 0
+            } else {
+                matches!(decoder.flag, 2 | 4 | 8)
+            })
         {
             return None;
         }
@@ -474,7 +546,9 @@ impl Reader<'_> {
             let triangles: Vec<[MeshVertex; 3]> = primitives
                 .iter()
                 .filter_map(|p| match p {
-                    OldPrimitive::Triangle(v) => Some([vertex(&v[0]), vertex(&v[1]), vertex(&v[2])]),
+                    OldPrimitive::Triangle(v) => {
+                        Some([vertex(&v[0]), vertex(&v[1]), vertex(&v[2])])
+                    }
                     OldPrimitive::Patch { .. } => None,
                 })
                 .collect();
@@ -536,7 +610,10 @@ impl Decoder<'_> {
     }
 
     fn bits(&mut self, n: usize) -> Option<u32> {
-        let end = self.bit.checked_add(n).filter(|n| n.div_ceil(8) <= self.data.len())?;
+        let end = self
+            .bit
+            .checked_add(n)
+            .filter(|n| n.div_ceil(8) <= self.data.len())?;
         let mut value = 0;
         while self.bit < end {
             value = (value << 1) | u32::from((self.data[self.bit / 8] >> (7 - self.bit % 8)) & 1);
@@ -552,12 +629,19 @@ impl Decoder<'_> {
     fn value(&mut self, bits: usize, index: usize) -> Option<f64> {
         let raw = self.bits(bits)?;
         let [lo, hi] = self.decode[index];
-        let max = if bits == 32 { u32::MAX } else { (1u32 << bits) - 1 };
+        let max = if bits == 32 {
+            u32::MAX
+        } else {
+            (1u32 << bits) - 1
+        };
         Some(lo + (hi - lo) * f64::from(raw) / f64::from(max))
     }
 
     fn point(&mut self) -> Option<Point> {
-        Some(Point::new(self.value(self.coordinate, 0)?, self.value(self.coordinate, 1)?))
+        Some(Point::new(
+            self.value(self.coordinate, 0)?,
+            self.value(self.coordinate, 1)?,
+        ))
     }
 
     fn color(&mut self) -> Option<[f64; 32]> {
@@ -614,8 +698,16 @@ impl Decoder<'_> {
             if current.len() == row {
                 if !previous.is_empty() {
                     for i in 0..row - 1 {
-                        out.push(OldPrimitive::Triangle([previous[i], previous[i + 1], current[i]]));
-                        out.push(OldPrimitive::Triangle([previous[i + 1], current[i], current[i + 1]]));
+                        out.push(OldPrimitive::Triangle([
+                            previous[i],
+                            previous[i + 1],
+                            current[i],
+                        ]));
+                        out.push(OldPrimitive::Triangle([
+                            previous[i + 1],
+                            current[i],
+                            current[i + 1],
+                        ]));
                     }
                 }
                 std::mem::swap(&mut current, &mut previous);
@@ -640,7 +732,11 @@ impl Decoder<'_> {
                 colors[0] = old[flag];
                 colors[1] = old[(flag + 1) % 4];
             }
-            for p in raw.iter_mut().take(if coons { 12 } else { 16 }).skip(if flag == 0 { 0 } else { 4 }) {
+            for p in raw
+                .iter_mut()
+                .take(if coons { 12 } else { 16 })
+                .skip(if flag == 0 { 0 } else { 4 })
+            {
                 *p = self.point()?;
             }
             for c in colors.iter_mut().skip(if flag == 0 { 0 } else { 2 }) {
@@ -653,13 +749,19 @@ impl Decoder<'_> {
                 points[index] = raw[i];
             }
             if coons {
-                let mix = |a: Point, b: Point, t: f64| Point::new(a.x * (1.0 - t) + b.x * t, a.y * (1.0 - t) + b.y * t);
+                let mix = |a: Point, b: Point, t: f64| {
+                    Point::new(a.x * (1.0 - t) + b.x * t, a.y * (1.0 - t) + b.y * t)
+                };
                 for (i, j) in [(1_usize, 1_usize), (1, 2), (2, 1), (2, 2)] {
                     let u = i as f64 / 3.0;
                     let v = j as f64 / 3.0;
                     let sc = mix(points[i], points[12 + i], v);
                     let sd = mix(points[4 * j], points[4 * j + 3], u);
-                    let sb = mix(mix(points[0], points[3], u), mix(points[12], points[15], u), v);
+                    let sb = mix(
+                        mix(points[0], points[3], u),
+                        mix(points[12], points[15], u),
+                        v,
+                    );
                     points[j * 4 + i] = Point::new(sc.x + sd.x - sb.x, sc.y + sd.y - sb.y);
                 }
             }

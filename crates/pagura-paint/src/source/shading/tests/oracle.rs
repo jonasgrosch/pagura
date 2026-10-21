@@ -29,7 +29,8 @@ pub(super) struct Oracle<'a> {
 impl Oracle<'_> {
     fn convert(&self, values: &[f64]) -> Vec<f64> {
         let mut out = vec![0.0; self.converter.target().channels()];
-        self.converter.convert(&values[..self.parsed.space.components()], &mut out);
+        self.converter
+            .convert(&values[..self.parsed.space.components()], &mut out);
         out
     }
 
@@ -51,7 +52,10 @@ impl Oracle<'_> {
                 ) * self.inverse;
                 let inside = self.certified
                     || self.parsed.bbox.is_none_or(|b| {
-                        point.x >= b.x0() && point.x <= b.x1() && point.y >= b.y0() && point.y <= b.y1()
+                        point.x >= b.x0()
+                            && point.x <= b.x1()
+                            && point.y >= b.y0()
+                            && point.y <= b.y1()
                     });
                 let hit = (!self.pattern || inside) && self.sample(point, &mut values)?;
                 if !hit {
@@ -81,7 +85,10 @@ impl Oracle<'_> {
             return Ok(None);
         }
         let shape = f64::from(covered) / (divisor * divisor);
-        Ok(Some((color.iter().map(|v| v / f64::from(covered)).collect(), shape)))
+        Ok(Some((
+            color.iter().map(|v| v / f64::from(covered)).collect(),
+            shape,
+        )))
     }
 
     /// `Shading::sample`.
@@ -89,7 +96,10 @@ impl Oracle<'_> {
         let n = self.parsed.space.components();
         let (input, count) = match &self.parsed.kind {
             ShadingKind::Triangles(_) | ShadingKind::Patches(_) => {
-                let Some(values) = self.index.sample(point, &self.parsed.old_mesh, self.mesh_inputs())? else {
+                let Some(values) =
+                    self.index
+                        .sample(point, &self.parsed.old_mesh, self.mesh_inputs())?
+                else {
                     return Ok(false);
                 };
                 let count = self.mesh_inputs();
@@ -105,13 +115,19 @@ impl Oracle<'_> {
                 input[1] = p.y;
                 (input, 2)
             }
-            ShadingKind::Axial { start, end, domain, extend } => {
+            ShadingKind::Axial {
+                start,
+                end,
+                domain,
+                extend,
+            } => {
                 let delta = Point::new(end.x - start.x, end.y - start.y);
                 let denominator = delta.x * delta.x + delta.y * delta.y;
                 if denominator == 0.0 {
                     return Ok(false);
                 }
-                let t = ((point.x - start.x) * delta.x + (point.y - start.y) * delta.y) / denominator;
+                let t =
+                    ((point.x - start.x) * delta.x + (point.y - start.y) * delta.y) / denominator;
                 let Some(t) = parameter(t, *extend) else {
                     return Ok(false);
                 };
@@ -119,7 +135,14 @@ impl Oracle<'_> {
                 input[0] = domain[0] + t * (domain[1] - domain[0]);
                 (input, 1)
             }
-            ShadingKind::Radial { start, start_radius, end, end_radius, domain, extend } => {
+            ShadingKind::Radial {
+                start,
+                start_radius,
+                end,
+                end_radius,
+                domain,
+                extend,
+            } => {
                 let delta = Point::new(end.x - start.x, end.y - start.y);
                 let radius = *start_radius;
                 let change = end_radius - start_radius;
@@ -177,7 +200,11 @@ fn roots(a: f64, b: f64, c: f64) -> [f64; 2] {
         return [f64::NAN; 2];
     }
     let q = -0.5 * (b + discriminant.sqrt().copysign(b));
-    if q == 0.0 { [-b / (2.0 * a); 2] } else { [q / a, c / q] }
+    if q == 0.0 {
+        [-b / (2.0 * a); 2]
+    } else {
+        [q / a, c / q]
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -263,7 +290,8 @@ impl Index {
                 if x { b.lo.x + b.hi.x } else { b.lo.y + b.hi.y }
             };
             let middle = (end - start) / 2;
-            self.order[start..end].select_nth_unstable_by(middle, |a, b| center(*a).total_cmp(&center(*b)));
+            self.order[start..end]
+                .select_nth_unstable_by(middle, |a, b| center(*a).total_cmp(&center(*b)));
             let a = self.build(p, start, start + middle);
             let b = self.build(p, start + middle, end);
             self.nodes[id].kind = Kind::Branch(a, b);
@@ -271,7 +299,12 @@ impl Index {
         id
     }
 
-    fn sample(&self, point: Point, primitives: &[OldPrimitive], n: usize) -> Result<Option<[f64; 32]>, &'static str> {
+    fn sample(
+        &self,
+        point: Point,
+        primitives: &[OldPrimitive],
+        n: usize,
+    ) -> Result<Option<[f64; 32]>, &'static str> {
         let mut hit: Option<(usize, [f64; 32])> = None;
         if !self.nodes.is_empty() {
             self.walk(0, point, primitives, n, &mut hit)?;
@@ -299,7 +332,9 @@ impl Index {
                     }
                     let value = match &primitives[i] {
                         OldPrimitive::Triangle(v) => triangle(v, p, n),
-                        OldPrimitive::Patch { points, colors } => patch_sample(points, colors, p, n)?,
+                        OldPrimitive::Patch { points, colors } => {
+                            patch_sample(points, colors, p, n)?
+                        }
                     };
                     if let Some(value) = value {
                         *hit = Some((i, value));
@@ -316,7 +351,8 @@ impl Index {
 }
 
 fn triangle(v: &[(Point, [f64; 32]); 3], p: Point, n: usize) -> Option<[f64; 32]> {
-    let cross = |a: Point, b: Point, c: Point| (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+    let cross =
+        |a: Point, b: Point, c: Point| (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
     let area = cross(v[0].0, v[1].0, v[2].0);
     if area == 0.0 {
         return None;
@@ -334,11 +370,20 @@ fn triangle(v: &[(Point, [f64; 32]); 3], p: Point, n: usize) -> Option<[f64; 32]
     Some(out)
 }
 
-fn patch_sample(points: &[Point; 16], colors: &[[f64; 32]; 4], p: Point, n: usize) -> Result<Option<[f64; 32]>, &'static str> {
+fn patch_sample(
+    points: &[Point; 16],
+    colors: &[[f64; 32]; 4],
+    p: Point,
+    n: usize,
+) -> Result<Option<[f64; 32]>, &'static str> {
     if !Bounds::points(*points).contains(p) {
         return Ok(None);
     }
-    let mut best = if injective(points) { inverse(points, p) } else { None };
+    let mut best = if injective(points) {
+        inverse(points, p)
+    } else {
+        None
+    };
     if best.is_none() {
         search(*points, [0.0, 0.0, 1.0, 1.0], p, &mut best, 0)?;
     }
@@ -353,15 +398,25 @@ fn patch_sample(points: &[Point; 16], colors: &[[f64; 32]; 4], p: Point, n: usiz
     Ok(Some(out))
 }
 
-fn search(points: [Point; 16], r: [f64; 4], p: Point, best: &mut Option<(f64, f64)>, depth: usize) -> Result<(), &'static str> {
-    if best.is_some_and(|(u, v)| v > r[3] || (v == r[3] && u >= r[2])) || !Bounds::points(points).contains(p) {
+fn search(
+    points: [Point; 16],
+    r: [f64; 4],
+    p: Point,
+    best: &mut Option<(f64, f64)>,
+    depth: usize,
+) -> Result<(), &'static str> {
+    if best.is_some_and(|(u, v)| v > r[3] || (v == r[3] && u >= r[2]))
+        || !Bounds::points(points).contains(p)
+    {
         return Ok(());
     }
     if (injective(&points) || depth >= 24)
         && let Some((u, v)) = inverse(&points, p)
     {
         let candidate = (r[0] + u * (r[2] - r[0]), r[1] + v * (r[3] - r[1]));
-        if best.is_none_or(|(u, v)| candidate.1 > v + 1e-9 || ((candidate.1 - v).abs() <= 1e-9 && candidate.0 > u)) {
+        if best.is_none_or(|(u, v)| {
+            candidate.1 > v + 1e-9 || ((candidate.1 - v).abs() <= 1e-9 && candidate.0 > u)
+        }) {
             *best = Some(candidate);
         }
         return Ok(());
@@ -392,7 +447,12 @@ fn basis(t: f64) -> ([f64; 4], [f64; 4]) {
     let s = 1.0 - t;
     (
         [s * s * s, 3.0 * t * s * s, 3.0 * t * t * s, t * t * t],
-        [-3.0 * s * s, 3.0 * s * s - 6.0 * t * s, 6.0 * t * s - 3.0 * t * t, 3.0 * t * t],
+        [
+            -3.0 * s * s,
+            3.0 * s * s - 6.0 * t * s,
+            6.0 * t * s - 3.0 * t * t,
+            3.0 * t * t,
+        ],
     )
 }
 
@@ -443,11 +503,17 @@ fn injective(points: &[Point; 16]) -> bool {
 }
 
 fn inverse(points: &[Point; 16], p: Point) -> Option<(f64, f64)> {
-    let absolute = points.iter().map(|p| p.x.abs().max(p.y.abs())).fold(0.0, f64::max);
+    let absolute = points
+        .iter()
+        .map(|p| p.x.abs().max(p.y.abs()))
+        .fold(0.0, f64::max);
     let origin = points[0];
     let points = points.map(|q| Point::new(q.x - origin.x, q.y - origin.y));
     let p = Point::new(p.x - origin.x, p.y - origin.y);
-    let scale = points.iter().map(|q| q.x.abs().max(q.y.abs())).fold(0.0, f64::max);
+    let scale = points
+        .iter()
+        .map(|q| q.x.abs().max(q.y.abs()))
+        .fold(0.0, f64::max);
     let (mut u, mut v) = (0.5, 0.5);
     for _ in 0..24 {
         let (q, a, b) = evaluate(&points, u, v);

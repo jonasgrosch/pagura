@@ -195,6 +195,46 @@ pub(crate) fn decode_pdf(
     result
 }
 
+/// The channels a decode of `data` with `options` would return, with
+/// their precisions, placement, opacity and colour but no samples: the
+/// container's header boxes and the codestream's main header are read and
+/// validated as [`decode_pdf`] reads them, and nothing is reconstructed.
+/// Repairs are checked against `mode` but not reported; the decode reports
+/// them.
+pub(crate) fn describe_pdf(
+    data: &[u8],
+    limits: &Limits,
+    options: &Options,
+    mode: pagura_core::Recovery,
+    indexed: bool,
+) -> Result<Decoded> {
+    if data.len() > limits.stream_bytes {
+        return Err(Error::limit("JPEG 2000 input budget exceeded").at(Position::Buffer(0)));
+    }
+    let mut budget = io::Budget::new(limits);
+    budget.diagnostics = pagura_core::Diagnostics::new(mode);
+    describe_bounded(data, &mut budget, options, indexed)
+        .map_err(|error| error.at(Position::Buffer(0)))
+}
+
+fn describe_bounded(
+    data: &[u8],
+    budget: &mut io::Budget<'_>,
+    options: &Options,
+    indexed: bool,
+) -> Result<Decoded> {
+    if data.starts_with(&[255, 79]) {
+        return codestream::describe(data, 0, budget);
+    }
+    let (stream, base, mut header) = boxes::parse(data, budget, options)?;
+    if indexed {
+        header.use_pdf_palette()?;
+    }
+    let mut decoded = codestream::describe(stream, base, budget)?;
+    header.apply(&mut decoded, budget)?;
+    Ok(decoded)
+}
+
 fn decode_bounded(
     data: &[u8],
     budget: &mut io::Budget<'_>,

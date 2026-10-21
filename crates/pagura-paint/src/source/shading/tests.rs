@@ -37,12 +37,17 @@ fn corpus() -> Vec<Parsed> {
         if !bytes.windows(12).any(|w| w == b"/ShadingType") {
             continue;
         }
-        let Ok(document) = pagura_document::Document::open(bytes, &pagura_document::OpenOptions::default())
+        let Ok(document) =
+            pagura_document::Document::open(bytes, &pagura_document::OpenOptions::default())
         else {
             continue;
         };
         for mut parsed in parse::shadings(&document) {
-            parsed.name = format!("{} {}", path.file_name().unwrap().to_string_lossy(), parsed.name);
+            parsed.name = format!(
+                "{} {}",
+                path.file_name().unwrap().to_string_lossy(),
+                parsed.name
+            );
             shadings.push(parsed);
         }
     }
@@ -57,13 +62,24 @@ fn frame(parsed: &Parsed) -> [f64; 4] {
     }
     match &parsed.kind {
         ShadingKind::Axial { start, end, .. } => points.extend([*start, *end]),
-        ShadingKind::Radial { start, start_radius, end, end_radius, .. } => {
+        ShadingKind::Radial {
+            start,
+            start_radius,
+            end,
+            end_radius,
+            ..
+        } => {
             for (c, r) in [(start, start_radius), (end, end_radius)] {
                 points.extend([Point::new(c.x - r, c.y - r), Point::new(c.x + r, c.y + r)]);
             }
         }
         ShadingKind::Function { domain, matrix } => {
-            for (x, y) in [(domain[0], domain[2]), (domain[1], domain[3]), (domain[0], domain[3]), (domain[1], domain[2])] {
+            for (x, y) in [
+                (domain[0], domain[2]),
+                (domain[1], domain[3]),
+                (domain[0], domain[3]),
+                (domain[1], domain[2]),
+            ] {
                 points.push(Point::new(x, y) * *matrix);
             }
         }
@@ -76,8 +92,16 @@ fn frame(parsed: &Parsed) -> [f64; 4] {
             }
         }
     }
-    let lo = points.iter().fold(Point::new(f64::INFINITY, f64::INFINITY), |a, p| Point::new(a.x.min(p.x), a.y.min(p.y)));
-    let hi = points.iter().fold(Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY), |a, p| Point::new(a.x.max(p.x), a.y.max(p.y)));
+    let lo = points
+        .iter()
+        .fold(Point::new(f64::INFINITY, f64::INFINITY), |a, p| {
+            Point::new(a.x.min(p.x), a.y.min(p.y))
+        });
+    let hi = points
+        .iter()
+        .fold(Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY), |a, p| {
+            Point::new(a.x.max(p.x), a.y.max(p.y))
+        });
     let (w, h) = ((hi.x - lo.x).max(1.0), (hi.y - lo.y).max(1.0));
     [lo.x - 0.3 * w, lo.y - 0.3 * h, w * 1.6, h * 1.6]
 }
@@ -126,6 +150,12 @@ fn compare(parsed: &Parsed, target: &Target, counts: &mut Counts) {
         store: &store,
         limits: &limits,
         reduced_image_decode: false,
+        region: pagura_raster::DeviceRect {
+            x0: 0,
+            y0: 0,
+            x1: u32::MAX,
+            y1: u32::MAX,
+        },
     };
     let Ok(converter) = Converter::new(&parsed.space, target, &composite.conversion) else {
         return;
@@ -143,24 +173,36 @@ fn compare(parsed: &Parsed, target: &Target, counts: &mut Counts) {
                     inverse: transform.inverse().unwrap(),
                     rate: if antialias { 2 } else { 1 },
                     pattern: usage == Use::Pattern,
-                    certified: source.pattern.as_ref().is_some_and(|p| p.bbox.is_none()) && parsed.bbox.is_some(),
+                    certified: source.pattern.as_ref().is_some_and(|p| p.bbox.is_none())
+                        && parsed.bbox.is_some(),
                     index: oracle::Index::new(&parsed.old_mesh),
                 };
                 let boundary = source.bbox_use() == BBoxUse::Boundary;
-                let context = format!("{} {usage:?} aa {antialias} {transform:?} {target:?}", parsed.name);
+                let context = format!(
+                    "{} {usage:?} aa {antialias} {transform:?} {target:?}",
+                    parsed.name
+                );
                 compare_grid(&source, &old, boundary, &context, counts);
             }
         }
     }
 }
 
-fn compare_grid(source: &ShadingSource, old: &oracle::Oracle<'_>, boundary: bool, context: &str, counts: &mut Counts) {
+fn compare_grid(
+    source: &ShadingSource,
+    old: &oracle::Oracle<'_>,
+    boundary: bool,
+    context: &str,
+    counts: &mut Counts,
+) {
     let mut out = SpanColors::default();
     let channels = source.channels;
     for y in 0..SIZE {
         // Two spans per row, so that spans start mid-row too.
         for (x0, x1) in [(0, SIZE / 3), (SIZE / 3, SIZE)] {
-            let coverage: Vec<u8> = (x0..x1).map(|x| ((x * 37 + y * 101) % 256).to_le_bytes()[0]).collect();
+            let coverage: Vec<u8> = (x0..x1)
+                .map(|x| ((x * 37 + y * 101) % 256).to_le_bytes()[0])
+                .collect();
             if boundary {
                 source.span_with_boundary(x0, y, &coverage, &mut out);
             } else {
@@ -179,9 +221,17 @@ fn compare_grid(source: &ShadingSource, old: &oracle::Oracle<'_>, boundary: bool
                     }
                     Ok(Some((expected, shape))) => {
                         counts.pixels += 1;
-                        assert_eq!(alpha.to_bits(), shape.to_bits(), "{context} at {x},{y}: alpha");
+                        assert_eq!(
+                            alpha.to_bits(),
+                            shape.to_bits(),
+                            "{context} at {x},{y}: alpha"
+                        );
                         let bits = |v: &[f64]| v.iter().map(|v| v.to_bits()).collect::<Vec<_>>();
-                        assert_eq!(bits(color), bits(&expected), "{context} at {x},{y}: {color:?} != {expected:?}");
+                        assert_eq!(
+                            bits(color),
+                            bits(&expected),
+                            "{context} at {x},{y}: {color:?} != {expected:?}"
+                        );
                     }
                 }
             }
@@ -199,7 +249,10 @@ fn corpus_shadings_match_the_previous_sampling() {
         shadings: 0,
     };
     let rgb = Target::new(Process::Rgb);
-    let cmyk = Target::separated(Process::Cmyk, Arc::from([Name::new(b"Spot"), Name::new(b"PANTONE 300")]));
+    let cmyk = Target::separated(
+        Process::Cmyk,
+        Arc::from([Name::new(b"Spot"), Name::new(b"PANTONE 300")]),
+    );
     for parsed in &shadings {
         compare(parsed, &rgb, &mut counts);
         compare(parsed, &cmyk, &mut counts);

@@ -93,7 +93,10 @@ impl Mesh {
     }
 
     pub(super) fn patches(patches: &[Patch], values: usize) -> Result<Self> {
-        let patches: Vec<patch::Patch> = patches.iter().map(|p| patch::Patch::new(p, values)).collect();
+        let patches: Vec<patch::Patch> = patches
+            .iter()
+            .map(|p| patch::Patch::new(p, values))
+            .collect();
         let bounds: Vec<Bounds> = patches.iter().map(patch::Patch::bounds).collect();
         Ok(Self {
             values,
@@ -209,7 +212,11 @@ impl Grid {
         let (columns, rows) = (side(bounds.len()), side(bounds.len()));
         let extent = |lo: f64, hi: f64, cells: usize| {
             let size = hi - lo;
-            if size > 0.0 && size.is_finite() { cells as f64 / size } else { 0.0 }
+            if size > 0.0 && size.is_finite() {
+                cells as f64 / size
+            } else {
+                0.0
+            }
         };
         let mut grid = Self {
             origin: all.lo,
