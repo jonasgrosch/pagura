@@ -381,6 +381,119 @@ impl BandCoverage {
         self.spans.clear();
         self.cells.clear();
     }
+
+    /// Starts row `y`; rows are pushed top to bottom and spans go to the
+    /// last row started. A row left without spans is dropped.
+    pub fn push_row(&mut self, y: u32) {
+        if self.rows.last().is_some_and(|row| row.start == row.end) {
+            self.rows.pop();
+        }
+        let start = u32::try_from(self.spans.len()).unwrap_or(u32::MAX);
+        self.rows.push(RowSpans {
+            y,
+            start,
+            end: start,
+        });
+    }
+
+    /// Appends a fully covered span to the current row; spans are pushed
+    /// left to right without overlap. Ignored before the first row.
+    pub fn push_full(&mut self, x: u32, len: u32) {
+        if len == 0 {
+            return;
+        }
+        self.push(RawSpan {
+            x,
+            len,
+            cells: u32::MAX,
+        });
+    }
+
+    /// Appends a partially covered span to the current row. Ignored before
+    /// the first row.
+    pub fn push_partial(&mut self, x: u32, coverage: &[u8]) {
+        let (Ok(len), Ok(cells)) = (
+            u32::try_from(coverage.len()),
+            u32::try_from(self.cells.len()),
+        ) else {
+            return;
+        };
+        if len == 0 || cells == u32::MAX {
+            return;
+        }
+        self.cells.extend_from_slice(coverage);
+        self.push(RawSpan { x, len, cells });
+    }
+
+    fn push(&mut self, span: RawSpan) {
+        let Some(row) = self.rows.last_mut() else {
+            return;
+        };
+        self.spans.push(span);
+        row.end = u32::try_from(self.spans.len()).unwrap_or(u32::MAX);
+    }
+
+    /// Drops a trailing row without spans; call after the last row.
+    pub fn finish(&mut self) {
+        if self.rows.last().is_some_and(|row| row.start == row.end) {
+            self.rows.pop();
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rows_keep_their_spans_in_order() {
+        let mut band = BandCoverage::default();
+        band.push_row(3);
+        band.push_partial(1, &[10, 20]);
+        band.push_full(3, 4);
+        band.push_row(4);
+        band.push_row(5);
+        band.push_full(0, 2);
+        band.finish();
+        let rows: Vec<_> = band
+            .rows()
+            .map(|row| (row.y, row.spans().collect::<Vec<_>>()))
+            .collect();
+        assert_eq!(
+            rows,
+            [
+                (
+                    3,
+                    vec![
+                        Span::Partial {
+                            x: 1,
+                            coverage: &[10, 20]
+                        },
+                        Span::Full { x: 3, len: 4 }
+                    ]
+                ),
+                (5, vec![Span::Full { x: 0, len: 2 }]),
+            ]
+        );
+        band.clear();
+        assert!(band.is_empty());
+    }
+
+    #[test]
+    fn bands_follow_the_global_grid() {
+        let area = Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 10,
+                x1: 5,
+                y1: 70,
+            },
+            band_height: 32,
+        };
+        assert_eq!(area.bands(), 0..3);
+        assert_eq!(area.band_rows(0), 10..32);
+        assert_eq!(area.band_rows(2), 64..70);
+    }
 }
 
 /// The band rasterizer: dense band-width cell rows with a touched-cell

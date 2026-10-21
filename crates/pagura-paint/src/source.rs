@@ -8,6 +8,12 @@ use pagura_core::{Error, Limits, Meter, Result, Store};
 use pagura_interpret::{Composite, Paint};
 use pagura_raster::Transform;
 
+mod image;
+mod shading;
+
+pub use image::ImageSampler;
+pub use shading::ShadingSource;
+
 /// Working colours of one span: `channels` values per pixel in the target's
 /// order (additive channels as intensity, subtractive as `1 − tint`) and
 /// one alpha per pixel.
@@ -51,6 +57,10 @@ pub enum Source {
         /// The channels it paints.
         painted: Painted,
     },
+    /// A shading.
+    Shading(ShadingSource),
+    /// An image's colours and alpha.
+    Image(ImageSampler),
 }
 
 impl Source {
@@ -76,6 +86,7 @@ impl Source {
     pub fn constant(&self) -> Option<&[f64]> {
         match self {
             Self::Solid { color, .. } => Some(color),
+            Self::Shading(_) | Self::Image(_) => None,
         }
     }
 
@@ -83,7 +94,6 @@ impl Source {
     /// `y` (sampled at pixel centres, or over the pixel area where the
     /// contract asks for an average).
     pub fn span(&self, x: u32, y: u32, len: usize, out: &mut SpanColors) {
-        let _ = (x, y);
         match self {
             Self::Solid { color, painted } => {
                 out.channels = color.len();
@@ -94,6 +104,8 @@ impl Source {
                 out.alpha.clear();
                 out.painted = *painted;
             }
+            Self::Shading(shading) => shading.span(x, y, len, out),
+            Self::Image(image) => image.span(x, y, len, out),
         }
     }
 }

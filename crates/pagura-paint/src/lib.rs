@@ -19,4 +19,4 @@ mod source;
 pub use format::Format;
 pub use prepare::{Completion, PreparedScene, prepare};
 pub use request::{FastParams, OverprintMode, RenderRequest};
-pub use source::{PaintContext, Source, SpanColors};
+pub use source::{ImageSampler, PaintContext, ShadingSource, Source, SpanColors};
