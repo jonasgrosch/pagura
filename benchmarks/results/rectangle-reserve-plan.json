@@ -1,0 +1,374 @@
+{
+  "schema": 1,
+  "experiment": "rectangle-reserve",
+  "status": "frozen-before-pilot",
+  "baseline_commit": "52d8e7f41e2bfc4d38bff394adcb2f4a1783a8c2",
+  "candidate_delta": "Reserve the complete upcoming rectangle path append once while preserving geometry, validation, limit accounting and failure state; the exact final production diff must be pinned before launch.",
+  "modes": [
+    "exact",
+    "competitive"
+  ],
+  "cells": [
+    {
+      "case": "classic/blank",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/blank",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/rectangle",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/rectangle",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/graphics-state",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/graphics-state",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/negative-rectangle",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/negative-rectangle",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/inherited-box",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/inherited-box",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/clipped-to-page",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/clipped-to-page",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/many-rectangles",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "target"
+    },
+    {
+      "case": "classic/many-rectangles",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "target"
+    },
+    {
+      "case": "classic/content-array-split",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/content-array-split",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/many-operands",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "target"
+    },
+    {
+      "case": "classic/many-operands",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "target"
+    },
+    {
+      "case": "paint/text-heavy-page",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/text-heavy-page",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/text-mode-4",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/text-mode-4",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/type3-d0-colour",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/type3-d0-colour",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/text-knockout-true",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/text-knockout-true",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/text-knockout-false",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/text-knockout-false",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-soft-mask",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-soft-mask",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-direct-binary-halves",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-direct-binary-halves",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-direct-gray-quarter-turn",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-direct-gray-quarter-turn",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-direct-rgb-fractional",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-direct-rgb-fractional",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-direct-bilinear",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-direct-bilinear",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    }
+  ],
+  "phases": {
+    "pilot": {
+      "pairs": 5,
+      "warmups": 5,
+      "seed": 20261111
+    },
+    "confirmation": {
+      "pairs": 200,
+      "warmups": 5,
+      "seed": 20261112
+    }
+  },
+  "expected_outputs": {
+    "preflight": 76,
+    "pilot": 760,
+    "confirmation": 15580
+  },
+  "maximum_launched_confirmations": 1,
+  "analysis": {
+    "method": "paired-percentile-bootstrap",
+    "resamples": 5000,
+    "confidence": 0.95,
+    "seed": 42017
+  },
+  "latency_metric": "metric_ns == total_ns: in-memory Document::open + compile_page + render; excludes file reads, output emission, process startup and destruction",
+  "thresholds": {
+    "target_median_upper": 0.95,
+    "target_p95_upper": 1.0,
+    "protected_median_upper": 1.02,
+    "protected_p95_upper": 1.02,
+    "peak_rss_ratio_max": 1.0
+  },
+  "quality": {
+    "independent_rgb8_tolerance": 0,
+    "require_opaque_alpha": true,
+    "require_same_mode_baseline_rgba_bytes": true,
+    "require_all_warmup_outputs": true,
+    "preflight": "Attempt all76 side/cell outputs with the reused all-cell preflight; every arm must independently match zero-tolerance RGB and opaque alpha and all38 same-mode pairs must match byte-for-byte. Aggregate numeric/render failures; cancellation/provenance/cleanup/budget failures remain fatal. No carried baseline mismatch or tolerance relaxation."
+  },
+  "fixtures": {
+    "manifest_path": "benchmarks/results/sources/analytic19-conversion/manifest.json",
+    "manifest_sha256": "278c79b1ccb29a2a5631050c7cd34f6e915312c9d98f59e0a600e2c94e3acac3",
+    "references_path": "benchmarks/results/sources/analytic19-conversion/references.json",
+    "references_sha256": "924e20d6495990e8206c837d420c0172d5404ea1b3ede56417a9d59bb84bbcaf",
+    "scope": "Frozen independent analytic19 references; image sampling policies are explicit fixture models, not arbitrary PDF or continuous-scene correctness."
+  },
+  "environment": {
+    "native_threads": 1,
+    "guard_mode": "strict",
+    "known_job_poll_seconds": 5,
+    "quiet_preflight_scans": 3,
+    "maximum_launched_seconds": 5400,
+    "automatic_postlaunch_retry": false,
+    "scope": "Known-process polling; no OS-level exclusivity and no cold-filesystem claim"
+  },
+  "limits": {
+    "per_output_bytes": 67108864,
+    "retained_artifact_bytes": 536870912,
+    "scope": "Retained PDFs/oracles/output blobs only; checkpoints and coordination evidence additional"
+  },
+  "decision": {
+    "pilot": "Exploratory only; never accepts. Proceed to one fixed fresh confirmation only after independent accuracy and complete pilot review.",
+    "all_gates": "All4 target latency gates (median upper<=0.95,p95 upper<=1), all34 protected median/p95 uppers<=1.02, all38 observed max-RSS ratios<=1, every quality/resource/error/state requirement, and completed required validation. This remains separate from the full release matrix.",
+    "partial": "Only after completed fresh confirmation: at least1 primary-mode median upper<1; no cell median orp95 lower>1.02; any observed peak-RSS ratio>1.05 blocks retention pending evidence-based investigation. Coordinator explicitly decides after all validation and disclosures. Secondary benefit alone does not qualify. All upper-bound misses,RSS misses and supported regressions remain visible. No automatic retention or full-admission claim.",
+    "reject": "Independent RGB/alpha/pair-byte, error, resource or state regression blocks retention. Provenance failure, postlaunch contamination, cancellation or incomplete matrix gives no admission and no automatic replacement trial. Any cell latency lower>1.02 blocks partial retention; a mere upper-bound miss is not proof of regression.",
+    "sampling": "No historical/pilot/invalid samples in confirmation, interim analysis, parameter tuning, optional stopping or automatic retry."
+  },
+  "limitations": [
+    "19 bounded analytic pages do not establish performance on the full corpus.",
+    "Both modes use the same full-validation compile_page API; this is not the CLI render_context direct-image path.",
+    "200 pairs do not guarantee p95 precision, temporal independence or simultaneous familywise coverage.",
+    "Allcells cold-operation only; stage metrics are descriptive and cannot replace the frozen total metric.",
+    "No speedup or memory reduction is established by source inspection.",
+    "The committed precision-fix baseline replaces the older knowingly failing Competitive baseline; all76 strict checks must still be freshly verified.",
+    "RSS confidence estimates describe the process distribution and do not remove startup/allocator noise or establish a bound on maximum memory.",
+    "Secondary targets share the original target thresholds but are reported separately from the two primary targets.",
+    "Partial retention is an explicitly scoped engineering decision; no percentage of worldwide competitiveness is inferred from passed cells."
+  ],
+  "target_priority": {
+    "classic/many-operands": "primary",
+    "classic/many-rectangles": "secondary"
+  },
+  "target_counts": {
+    "primary": 2,
+    "secondary": 2,
+    "protected": 34
+  },
+  "partial_retention": {
+    "primary_median_upper_strictly_below": 1.0,
+    "any_latency_lower_material_regression_above": 1.02,
+    "observed_peak_rss_investigation_above": 1.05,
+    "automatic_retention": false
+  },
+  "rss_intervals": {
+    "metric": "per-process peak_rss_bytes",
+    "statistics": [
+      "median",
+      "p95"
+    ],
+    "method": "same paired percentile bootstrap,5000 resamples and separate one-sided95% endpoints, seed42017",
+    "admission_role": "Descriptive additional distribution evidence; unchanged observed maximum candidate/baseline<=1 remains the memory gate. No CI on future maximum is asserted."
+  },
+  "required_before_launch": [
+    "Archive exact final production patch and pristine baseline identity; same release configuration/example on both sides.",
+    "Archive final source-stable build/validation receipts and logs, exact binaries,toolchain/config/environment hashes.",
+    "Freeze plan,driver,shared runner/auditor,preflight wrapper/helper,fixture module,manifest/references,example,observer and helper source fingerprints before preflight.",
+    "Require audited passed-all-76 preflight and exact source/binary identity equality to the pending trial; externally pin final preflight report/receipt/guard/audit before each timed launch.",
+    "Pilot never accepts. Review it before authorizing the sole fixed fresh200pair confirmation; no source/parameter changes or interim analysis after launch.",
+    "Strict observed contention guard inside existing exclusive runner; final outer receipt binds report+guard. No foreign job is killed, no automatic postlaunch retry."
+  ],
+  "launch_contract": {
+    "python": [
+      "python3",
+      "-B"
+    ],
+    "observer": "benchmarks/results/sources/analytic19-conversion/load_observer.py",
+    "driver": "benchmarks/rectangle_reserve.py",
+    "driver_argument_order": [
+      "--baseline",
+      "--candidate",
+      "--baseline-source",
+      "--candidate-source",
+      "--output",
+      "--phase"
+    ],
+    "path_policy": "Binary,source,output and observer evidence-directory arguments are absolute; scripts use the recorded repo-relative paths. This exact command chain is checked by the new audit wrapper."
+  },
+  "candidate_patch": {
+    "path": "benchmarks/results/sources/rectangle-reserve/candidate.patch",
+    "sha256": "340bdae6bbfe1f4bf6fba020d91736534113a66ac6ac8a44b50487110ceac9d8",
+    "format": "Zero-context unified diff; apply with git apply --unidiff-zero. Frozen before native build and all timing."
+  },
+  "source_review": "Literal five-segment reserve after first finite-point check; remaining validation, partial path state and work checks unchanged. Vec geometric capacity growth and allocation timing may differ before a later error. Public Rust reserve method retains documented standard capacity-overflow panic; PDF calls only request literal5."
+}

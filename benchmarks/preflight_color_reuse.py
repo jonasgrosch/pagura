@@ -15,7 +15,8 @@ from benchkit.images import normalize
 from benchkit.measurement import run_process
 
 
-def main():
+def main(*, experiment_module=experiment, experiment_name="color-reuse", entrypoint=None):
+    selected = experiment_module
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bindings", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
@@ -27,10 +28,10 @@ def main():
     identities = bindings["identities"]
     if set(identities) != {"baseline", "candidate"} or Path(identities["candidate"]["root"]).resolve() != ROOT:
         raise ValueError("wrong preflight source identities")
-    experiment.require_baseline(identities["baseline"]["root"])
+    selected.require_baseline(identities["baseline"]["root"])
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
-    report = {"schema": 1, "experiment": "color-reuse", "purpose": "all-cell independent quality preflight",
+    report = {"schema": 1, "experiment": experiment_name, "purpose": "all-cell independent quality preflight",
               "status": "incomplete", "admission": False, "expected_outputs": 76, "samples": [],
               "identities": identities, "bindings_sha256": hashlib.sha256(raw_bindings).hexdigest(),
               "run_id": os.environ["PAGURA_RUN_ID"], "receipt": os.environ["PAGURA_RUN_RECEIPT"],
@@ -52,8 +53,10 @@ def main():
         report["stored_bytes"] = stored
         (output / "report.json").write_text(json.dumps(report, indent=2) + "\n")
 
-    paths = (Path(__file__).resolve(), Path(experiment.__file__).resolve(), Path(fixtures.__file__).resolve(),
+    paths = (Path(__file__).resolve(), Path(selected.__file__).resolve(), Path(fixtures.__file__).resolve(),
              ROOT / "benchmarks/paired_render.py", fixtures.MANIFEST, fixtures.REFERENCES)
+    if entrypoint is not None:
+        paths += (Path(entrypoint).resolve(), Path(experiment.__file__).resolve())
     frozen_harness = harness_identity(paths)
     report["harness_sha256"] = frozen_harness
     if any(bindings.get("bound_files_sha256", {}).get(name) != digest
@@ -74,13 +77,13 @@ def main():
         check_sources()
         retain("bindings.json", raw_bindings)
         inputs, oracles = {}, {}
-        for name in experiment.CASES:
-            pdf, oracle = experiment.fixture(name)
+        for name in selected.CASES:
+            pdf, oracle = selected.fixture(name)
             retain("inputs/" + name + ".pdf", pdf)
             retain("oracles/" + name + ".ppm", oracle)
             inputs[name], oracles[name] = pdf, expected_image(oracle, "cold")
         policy = {"timeout_seconds": 120, "maximum_output_bytes": MAX_BYTES, "measure_rss": False}
-        for name, mode, operation in experiment.CELLS:
+        for name, mode, operation in selected.CELLS:
             pair = {}
             for side in ("baseline", "candidate"):
                 identity, expected = identities[side], oracles[name]

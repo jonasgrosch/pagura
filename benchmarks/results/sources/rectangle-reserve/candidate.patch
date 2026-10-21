@@ -1,0 +1,249 @@
+diff --git a/crates/pagura-raster/src/path.rs b/crates/pagura-raster/src/path.rs
+index caa91732..271864fc 100644
+--- a/crates/pagura-raster/src/path.rs
++++ b/crates/pagura-raster/src/path.rs
+@@ -131,0 +132,9 @@ impl PathBuilder {
++    /// Reserves space for at least `additional` more construction segments.
++    /// This changes neither the path nor its current and subpath-start points.
++    ///
++    /// # Panics
++    /// Panics if the requested capacity exceeds the vector's maximum size.
++    pub fn reserve(&mut self, additional: usize) {
++        self.segments.reserve(additional);
++    }
++
+@@ -168,0 +178 @@ impl PathBuilder {
++        self.reserve(5);
+@@ -189,0 +200,4 @@ impl PathBuilder {
++
++#[cfg(test)]
++#[path = "path_reserve_tests.rs"]
++mod reserve_tests;
+diff --git a/crates/pagura-render/src/interpreter/path.rs b/crates/pagura-render/src/interpreter/path.rs
+index 20c9af36..7385cf10 100644
+--- a/crates/pagura-render/src/interpreter/path.rs
++++ b/crates/pagura-render/src/interpreter/path.rs
+@@ -64,0 +65 @@ impl Compiler<'_> {
++                        self.path.reserve(5);
+@@ -205,0 +207,4 @@ impl Compiler<'_> {
++#[cfg(test)]
++#[path = "path_reserve_tests.rs"]
++mod reserve_tests;
++
+diff --git a/crates/pagura-raster/src/path_reserve_tests.rs b/crates/pagura-raster/src/path_reserve_tests.rs
+new file mode 100644
+index 00000000..c40f538a
+--- /dev/null
++++ b/crates/pagura-raster/src/path_reserve_tests.rs
+@@ -0,0 +1,62 @@
++//! Capacity preparation must not change construction state or path geometry.
++use super::*;
++
++#[test]
++fn reserve_preserves_an_open_subpath_and_its_closing_point() {
++    let mut path = PathBuilder::new();
++    path.move_to(Point::new(2.0, 3.0));
++    path.line_to(Point::new(4.0, 5.0)).unwrap();
++    path.reserve(5);
++    let pointer = path.segments.as_ptr();
++    assert_eq!(path.len(), 2);
++    assert_eq!(path.current_point(), Some(Point::new(4.0, 5.0)));
++    path.cubic_to(
++        Point::new(6.0, 7.0),
++        Point::new(8.0, 9.0),
++        Point::new(10.0, 11.0),
++    )
++    .unwrap();
++    path.close();
++    assert_eq!(path.current_point(), Some(Point::new(2.0, 3.0)));
++    assert_eq!(path.segments.as_ptr(), pointer);
++    assert_eq!(
++        path.finish().segments(),
++        &[
++            Segment::MoveTo(Point::new(2.0, 3.0)),
++            Segment::LineTo(Point::new(4.0, 5.0)),
++            Segment::CubicTo(
++                Point::new(6.0, 7.0),
++                Point::new(8.0, 9.0),
++                Point::new(10.0, 11.0),
++            ),
++            Segment::Close,
++        ],
++    );
++    assert!(path.is_empty());
++    assert_eq!(path.current_point(), None);
++    assert!(path.line_to(Point::new(1.0, 1.0)).is_none());
++}
++
++#[test]
++fn rectangle_preserves_negative_and_degenerate_geometry_after_a_prefix() {
++    let mut path = PathBuilder::new();
++    path.move_to(Point::new(20.0, 30.0));
++    path.rect(4.0, 5.0, -2.0, 0.0);
++    assert_eq!(path.current_point(), Some(Point::new(4.0, 5.0)));
++    path.line_to(Point::new(7.0, 8.0)).unwrap();
++    path.close();
++    assert_eq!(path.current_point(), Some(Point::new(4.0, 5.0)));
++    assert_eq!(
++        path.finish().segments(),
++        &[
++            Segment::MoveTo(Point::new(20.0, 30.0)),
++            Segment::MoveTo(Point::new(4.0, 5.0)),
++            Segment::LineTo(Point::new(2.0, 5.0)),
++            Segment::LineTo(Point::new(2.0, 5.0)),
++            Segment::LineTo(Point::new(4.0, 5.0)),
++            Segment::Close,
++            Segment::LineTo(Point::new(7.0, 8.0)),
++            Segment::Close,
++        ],
++    );
++}
+diff --git a/crates/pagura-render/src/interpreter/path_reserve_tests.rs b/crates/pagura-render/src/interpreter/path_reserve_tests.rs
+new file mode 100644
+index 00000000..ec889977
+--- /dev/null
++++ b/crates/pagura-render/src/interpreter/path_reserve_tests.rs
+@@ -0,0 +1,143 @@
++//! Rectangle reservation retains point-by-point failures and resource checks.
++use super::*;
++use pagura_core::{Dictionary, ErrorKind, ObjectId, Position};
++use pagura_document::{Document, OpenOptions};
++use pagura_raster::{Segment, Transform};
++
++fn document(options: &OpenOptions) -> Document {
++    Document::open(pagura_testkit::fixture("classic", "blank.pdf"), options).unwrap()
++}
++
++#[test]
++fn transformed_negative_rectangle_keeps_current_point_for_line_close_and_curve() {
++    let document = document(&OpenOptions::default());
++    let mut compiler = Compiler::new(&document, document.page(0).unwrap()).unwrap();
++    compiler.state.ctm = Transform::new(0.0, 2.0, -3.0, 0.0, 7.0, -5.0);
++    compiler
++        .construct(b"re", &[1, 2, -3, 4].map(Value::Integer))
++        .unwrap();
++    assert_eq!(compiler.path.current_point(), Some(Point::new(1.0, -3.0)));
++    compiler
++        .construct(b"l", &[2, 3].map(Value::Integer))
++        .unwrap();
++    compiler.construct(b"h", &[]).unwrap();
++    assert_eq!(compiler.path.current_point(), Some(Point::new(1.0, -3.0)));
++    compiler
++        .construct(b"c", &[1, 0, 2, 0, 2, 1].map(Value::Integer))
++        .unwrap();
++    compiler.construct(b"h", &[]).unwrap();
++    assert_eq!(compiler.path.current_point(), Some(Point::new(1.0, -3.0)));
++    assert_eq!(
++        compiler.path.finish().segments(),
++        &[
++            Segment::MoveTo(Point::new(1.0, -3.0)),
++            Segment::LineTo(Point::new(1.0, -9.0)),
++            Segment::LineTo(Point::new(-11.0, -9.0)),
++            Segment::LineTo(Point::new(-11.0, -3.0)),
++            Segment::Close,
++            Segment::LineTo(Point::new(-2.0, -1.0)),
++            Segment::Close,
++            Segment::CubicTo(
++                Point::new(7.0, -3.0),
++                Point::new(7.0, -1.0),
++                Point::new(4.0, -1.0),
++            ),
++            Segment::Close,
++        ],
++    );
++}
++
++#[test]
++fn degenerate_rectangle_retains_all_five_segments() {
++    let document = document(&OpenOptions::default());
++    let mut compiler = Compiler::new(&document, document.page(0).unwrap()).unwrap();
++    compiler
++        .construct(b"re", &[2, 3, 0, -4].map(Value::Integer))
++        .unwrap();
++    assert_eq!(compiler.path.current_point(), Some(Point::new(2.0, 3.0)));
++    assert_eq!(
++        compiler.path.finish().segments(),
++        &[
++            Segment::MoveTo(Point::new(2.0, 3.0)),
++            Segment::LineTo(Point::new(2.0, 3.0)),
++            Segment::LineTo(Point::new(2.0, -1.0)),
++            Segment::LineTo(Point::new(2.0, -1.0)),
++            Segment::Close,
++        ],
++    );
++}
++
++#[test]
++fn rectangle_overflow_preserves_each_previously_valid_point() {
++    let document = document(&OpenOptions::default());
++    for (transform, values, expected) in [
++        (Transform::scale(2.0, 1.0), [1e308, 0.0, 1.0, 1.0], vec![]),
++        (
++            Transform::scale(2.0, 1.0),
++            [0.0, 0.0, 1e308, 1.0],
++            vec![Segment::MoveTo(Point::new(0.0, 0.0))],
++        ),
++        (
++            Transform::scale(1.0, 2.0),
++            [0.0, 0.0, 1.0, 1e308],
++            vec![
++                Segment::MoveTo(Point::new(0.0, 0.0)),
++                Segment::LineTo(Point::new(1.0, 0.0)),
++            ],
++        ),
++    ] {
++        let mut compiler = Compiler::new(&document, document.page(0).unwrap()).unwrap();
++        compiler.path.move_to(Point::new(9.0, 10.0));
++        compiler.state.ctm = transform;
++        assert_eq!(
++            compiler
++                .construct(b"re", &values.map(Value::Real))
++                .unwrap_err(),
++            Error::syntax("path arithmetic overflow"),
++        );
++        let current = match expected.last() {
++            Some(Segment::MoveTo(point) | Segment::LineTo(point)) => *point,
++            None => Point::new(9.0, 10.0),
++            _ => unreachable!(),
++        };
++        assert_eq!(compiler.path.current_point(), Some(current));
++        let mut all = vec![Segment::MoveTo(Point::new(9.0, 10.0))];
++        all.extend(expected);
++        compiler.path.close();
++        all.push(Segment::Close);
++        let start = if all.len() == 2 {
++            Point::new(9.0, 10.0)
++        } else {
++            Point::new(0.0, 0.0)
++        };
++        assert_eq!(compiler.path.current_point(), Some(start));
++        assert_eq!(compiler.path.finish().segments(), all);
++    }
++}
++
++#[test]
++fn rectangle_segment_limit_and_error_context_are_unchanged() {
++    let object = ObjectId::new(17, 0);
++    for limit in [4, 5] {
++        let mut options = OpenOptions::default();
++        options.limits.path_segments = limit;
++        let document = document(&options);
++        let mut compiler = Compiler::new(&document, document.page(0).unwrap()).unwrap();
++        let result = compiler.sequence_bytes(b"1 2 3 4 re n", &[(0, object)], &Dictionary::new());
++        if limit == 4 {
++            let error = result.unwrap_err();
++            assert_eq!(error.kind, ErrorKind::Limit);
++            assert_eq!(error.message, "path segment budget exceeded");
++            assert_eq!(error.position, Position::Stream { object, offset: 8 });
++            assert_eq!(error.object, Some(object));
++            assert_eq!(compiler.path.len(), 5);
++            assert_eq!(compiler.operations, 5);
++        } else {
++            result.unwrap();
++            assert!(compiler.path.is_empty());
++            assert_eq!(compiler.operations, 6);
++        }
++        assert_eq!(compiler.fill_work.get(), 0);
++        assert_eq!(compiler.marks, 0);
++    }
++}

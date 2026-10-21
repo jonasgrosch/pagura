@@ -4,8 +4,9 @@ import hashlib
 import json
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import preflight_color_reuse as preflight
 
@@ -67,6 +68,40 @@ class ColorPreflightLifecycleTests(unittest.TestCase):
 
     def report(self):
         return json.loads((self.output / "report.json").read_text())
+
+    def test_alternate_experiment_retains_all_strict_outputs_and_its_order(self):
+        alternate = SimpleNamespace(
+            CASES=tuple(reversed(preflight.experiment.CASES)),
+            CELLS=tuple(reversed(preflight.experiment.CELLS)),
+            __file__=__file__, require_baseline=Mock(),
+            fixture=Mock(return_value=(b"%PDF-alternate\n", b"P6\n1 1\n255\n\xff\xff\xff")),
+        )
+
+        def renderer(command, _policy):
+            Path(command[4]).write_bytes(b"RGBA8 1 1 premultiplied\n\xff\xff\xff\xff")
+            return {"status": "failed", "exit_code": 0}, "renderer completed"
+
+        self.process.side_effect = renderer
+        self.assertEqual(preflight.main(experiment_module=alternate,
+            experiment_name="rectangle-reserve", entrypoint=__file__), 0)
+        alternate.require_baseline.assert_called_once()
+        self.assertEqual(alternate.fixture.call_count, 19)
+        self.assertEqual(self.process.call_count, 76)
+        report = self.report()
+        self.assertEqual(report["experiment"], "rectangle-reserve")
+        self.assertEqual(report["status"], "passed-all-76")
+        self.assertEqual(report["failures"], [])
+        self.assertEqual(report["paired_output_differences"], [])
+        expected = [(case, mode, operation, side)
+                    for case, mode, operation in alternate.CELLS
+                    for side in ("baseline", "candidate")]
+        self.assertEqual([tuple(sample[key] for key in ("case", "mode", "operation", "side"))
+                          for sample in report["samples"]], expected)
+        self.assertTrue(all(sample["oracle_equal"] and sample["opaque_alpha_equal"]
+                            for sample in report["samples"]))
+        paths = preflight.harness_identity.call_args.args[0]
+        self.assertIn(Path(preflight.experiment.__file__).resolve(), paths)
+        self.assertIn(Path(__file__).resolve(), paths)
 
     def test_escaped_process_oserror_stops_after_the_first_attempt(self):
         self.process.side_effect = OSError("cleanup evidence unavailable")

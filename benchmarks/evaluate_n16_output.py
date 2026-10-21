@@ -15,7 +15,7 @@ import random
 import statistics
 import sys
 
-from paired_render import ROOT, MAX_BYTES, expected_image
+from paired_render import ROOT, MAX_BYTES, expected_image, selected_targets
 from benchkit.artifacts import hash_regular_file, read_bounded_regular
 from benchkit.images import normalize
 from benchkit.statistics import quantile
@@ -53,7 +53,7 @@ def cell_map(cells, expected_count=46):
 
 
 def declared_cells(experiment, expected_case_count=16, expected_cell_count=46,
-                   target_case="opaque64", target_operation="full"):
+                   target_case="opaque64", target_operation="full", target_cases=None):
     """Counts come from the frozen caller, never from a candidate report."""
     require(type(expected_case_count) is int and expected_case_count > 0
             and type(expected_cell_count) is int and expected_cell_count > 0, "invalid expected counts")
@@ -61,7 +61,8 @@ def declared_cells(experiment, expected_case_count=16, expected_cell_count=46,
             f"expected {expected_case_count} unique cases")
     require(target_case in experiment.CASES and target_operation in ("cold", "full", "tile", "tiled"),
             "invalid target identity")
-    declared = {cell: "target" if cell[0] == target_case and cell[2] == target_operation else "protected"
+    targets = selected_targets(experiment.CASES, target_case, target_cases)
+    declared = {cell: "target" if cell[0] in targets and cell[2] == target_operation else "protected"
                 for cell in experiment.CELLS}
     require(len(declared) == len(experiment.CELLS) == expected_cell_count, "entrypoint cell drift")
     return declared
@@ -87,7 +88,8 @@ def validate_guard(guard, expected_guard_mode="observation-only"):
 
 def audit(*, experiment_module, experiment_name, stem, local_name, run,
           expected_harness_sources, audit_entrypoint, expected_case_count=16, expected_cell_count=46,
-          target_case="opaque64", target_operation="full", expected_guard_mode="observation-only"):
+          target_case="opaque64", target_operation="full", expected_guard_mode="observation-only",
+          target_cases=None):
     """Audit one fixed experiment configured by its checked-in caller.
 
     Source sets come from the caller, never from the report. Historical reports
@@ -165,7 +167,7 @@ def audit(*, experiment_module, experiment_name, stem, local_name, run,
     require({name: report[name] for name in phase} == phase, "sample count or seed drift")
     require(report["dpi"] == 72, "wrong DPI")
     declared = declared_cells(experiment, expected_case_count, expected_cell_count,
-                              target_case, target_operation)
+                              target_case, target_operation, target_cases)
     for cells in (plan["cells"], report["declared_cells"], report["cells"]):
         require(cell_map(cells, expected_cell_count) == declared, "cell identity or target/protected role drift")
     require(set(report["inputs"]) == set(experiment.CASES), "input case drift")

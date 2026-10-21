@@ -58,10 +58,20 @@ def expected_image(oracle, operation):
     return w, h, b"".join(pixels[row * width * 3:row * width * 3 + w * 3] for row in range(h))
 
 
+def selected_targets(cases, target_case, target_cases=None):
+    """An explicit frozen target tuple; None preserves the historical target."""
+    targets = (target_case,) if target_cases is None else target_cases
+    if (type(targets) is not tuple or not targets or len(set(targets)) != len(targets)
+            or target_case not in targets or any(name not in cases for name in targets)):
+        raise ValueError("invalid explicit target cases")
+    return targets
+
+
 def run_experiment(entrypoint, *, description, experiment, cases, cells, target_case,
                    fixture, target_scope, limitations, fixture_sources=(), phase_plan=None,
-                   target_operation="full"):
+                   target_operation="full", target_cases=None):
     """Run the fixed matrix once, retaining every warmup and measured output."""
+    targets = selected_targets(cases, target_case, target_cases)
     entrypoint = Path(entrypoint).resolve()
     harness_sources = (entrypoint, Path(__file__).resolve(), *map(Path, fixture_sources))
     parser = argparse.ArgumentParser(description=description)
@@ -124,7 +134,7 @@ def run_experiment(entrypoint, *, description, experiment, cases, cells, target_
                        "one_sided_confidence": .95, "seed": 42017,
                        "scope": "marginal estimates; temporal dependence and p95 precision need review"},
         "declared_cells": [{"case": name, "mode": mode, "operation": operation,
-                            "role": "target" if name == target_case and operation == target_operation else "protected"}
+                            "role": "target" if name in targets and operation == target_operation else "protected"}
                            for name, mode, operation in cells],
         "inputs": {}, "cells": []}
     stored = 0
@@ -161,7 +171,7 @@ def run_experiment(entrypoint, *, description, experiment, cases, cells, target_
         rng.shuffle(ordered_cells)
         for name, mode, operation in ordered_cells:
             cell = {"case": name, "mode": mode, "operation": operation,
-                    "role": "target" if name == target_case and operation == target_operation else "protected", "pairs": []}
+                    "role": "target" if name in targets and operation == target_operation else "protected", "pairs": []}
             report["cells"].append(cell)
             expected = expected_image(oracles[name], operation)
             for pair in range(-args.warmups, args.pairs):
