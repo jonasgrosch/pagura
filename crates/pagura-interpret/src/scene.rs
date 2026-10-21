@@ -271,7 +271,10 @@ pub struct Group {
     pub role: GroupRole,
     /// Its attributes.
     pub attributes: GroupAttributes,
-    /// Its bounding box in default user space (pattern space for a cell).
+    /// Its bounding box in default user space (pattern space for a cell):
+    /// a bound for allocating its buffer, never the only carrier of its
+    /// clip. A form's, cell's or soft mask's `BBox` clips its marks through
+    /// their clip chains, which include it.
     pub bbox: Option<Arc<Path>>,
     /// A fixed view, for annotations with `NoZoom` or `NoRotate`.
     pub view: Option<ViewFit>,

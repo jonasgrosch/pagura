@@ -101,8 +101,10 @@ pub struct Overprint {
 
 /// The compositing state of a mark or group (11.3, 11.6), interned: marks
 /// with the same state share one value.
+///
+/// A plain record built field by field (functional record update from
+/// [`Default`] included), so it is not `#[non_exhaustive]`.
 #[derive(Debug, Clone)]
-#[non_exhaustive]
 pub struct Composite {
     /// Constant alpha, `CA` for strokes and `ca` for other marks.
     pub alpha: f64,
@@ -142,6 +144,55 @@ impl Composite {
             && self.blend == BlendMode::Normal
             && self.soft_mask.is_none()
             && self.transfer.is_none()
+    }
+}
+
+/// The states of a fill and stroke painted by one operator (`B`, `b`, text
+/// rendering modes 2 and 6), which are one object for transparency
+/// (11.7.4.4): a knockout group, or, when both overprint with equal alpha,
+/// a non-knockout group that carries the shared alpha, blend mode and soft
+/// mask while its members paint opaquely.
+#[derive(Debug, Clone)]
+pub(crate) struct FillStroke {
+    /// The group's state.
+    pub(crate) group: Arc<Composite>,
+    /// Whether the group knocks out.
+    pub(crate) knockout: bool,
+    /// The fill's state.
+    pub(crate) fill: Arc<Composite>,
+    /// The stroke's state.
+    pub(crate) stroke: Arc<Composite>,
+}
+
+impl FillStroke {
+    /// The states for a fill in `fill` and a stroke in `stroke`; `opaque`
+    /// is the plain state of a knockout group.
+    pub(crate) fn new(fill: &Arc<Composite>, stroke: &Arc<Composite>, opaque: &Arc<Composite>) -> Self {
+        let overprint =
+            fill.overprint.enabled && stroke.overprint.enabled && fill.alpha == stroke.alpha;
+        if overprint {
+            let member = |composite: &Composite| {
+                Arc::new(Composite {
+                    alpha: 1.0,
+                    blend: BlendMode::Normal,
+                    soft_mask: None,
+                    ..composite.clone()
+                })
+            };
+            Self {
+                group: Arc::clone(fill),
+                knockout: false,
+                fill: member(fill),
+                stroke: member(stroke),
+            }
+        } else {
+            Self {
+                group: Arc::clone(opaque),
+                knockout: true,
+                fill: Arc::clone(fill),
+                stroke: Arc::clone(stroke),
+            }
+        }
     }
 }
 
@@ -239,8 +290,10 @@ pub struct Pen {
 }
 
 /// A shading after parsing and validation (8.7.4.5).
+///
+/// A plain record the interpreter fills field by field, so it is not
+/// `#[non_exhaustive]`.
 #[derive(Debug, Clone)]
-#[non_exhaustive]
 pub struct Shading {
     /// The shading's object, when it is indirect; identity for caches.
     pub object: Option<ObjectId>,
@@ -321,9 +374,11 @@ pub struct MeshVertex {
     pub color: Components,
 }
 
-/// A tensor-product patch (8.7.4.5.8): sixteen control points, row-major as
-/// Table 128 numbers them, and its corner colours in the order of the
-/// corners `p00`, `p03`, `p33`, `p30`.
+/// A tensor-product patch (8.7.4.5.8). `points[4 * i + j]` is the control
+/// point `p_ij` of 8.7.4.5.8, where `i` is the index along `u` and `j` the
+/// index along `v`; Coons patches (type 6) carry the four interior points
+/// the Coons surface implies. `colors` are the colours of the corners
+/// `p00`, `p03`, `p33` and `p30`, in that order.
 #[derive(Debug, Clone)]
 pub struct Patch {
     /// Control points.
@@ -333,8 +388,10 @@ pub struct Patch {
 }
 
 /// An image ready for painting: its undecoded source and how to interpret it.
+///
+/// A plain record the interpreter fills field by field, so it is not
+/// `#[non_exhaustive]`.
 #[derive(Debug, Clone)]
-#[non_exhaustive]
 pub struct Image {
     /// The samples, decoded on request.
     pub source: Arc<pagura_image::ImageSource>,

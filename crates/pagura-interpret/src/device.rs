@@ -128,6 +128,8 @@ pub struct FontInfo {
     pub base_name: Option<Name>,
     /// Vertical writing (`WMode 1`).
     pub vertical: bool,
+    /// `Subtype`.
+    pub kind: pagura_text::FontKind,
 }
 
 /// The identity of a font program within one document: never an address.
@@ -222,7 +224,8 @@ pub struct GroupInfo<'a> {
     /// Its attributes.
     pub attributes: GroupAttributes,
     /// Its bounding box in default user space (`BBox` under the form matrix
-    /// and CTM).
+    /// and CTM): a bound for its buffer only. The `BBox` clips the group's
+    /// marks through their clip chains, which include it.
     pub bbox: Option<&'a Arc<Path>>,
     /// A fixed view, for annotations with `NoZoom` or `NoRotate`.
     pub view: Option<ViewFit>,
@@ -240,7 +243,9 @@ pub struct SoftMaskInfo<'a> {
     pub kind: MaskKind,
     /// The mask group's attributes.
     pub group: GroupAttributes,
-    /// The mask group's bounding box in default user space.
+    /// The mask group's bounding box in default user space: a bound for
+    /// its buffer only; the `BBox` clips the group's marks through their
+    /// clip chains.
     pub bbox: Option<&'a Arc<Path>>,
     /// `BC`, in the group's blending space.
     pub backdrop: Option<&'a Components>,
@@ -268,6 +273,20 @@ pub struct TilingInfo {
     pub object: Option<ObjectId>,
 }
 
+/// The marked-content properties text extraction reads (14.6.2, 14.7.5.2,
+/// 14.9.3–14.9.4), parsed for devices that need text. Malformed values are
+/// reported repairs and read as absent.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct MarkedText {
+    /// `MCID`.
+    pub mcid: Option<i64>,
+    /// `ActualText`, decoded.
+    pub actual_text: Option<String>,
+    /// `Alt`, decoded.
+    pub alt: Option<String>,
+}
+
 /// Marked content, object occurrences and annotation boundaries, for
 /// devices that need structure.
 #[derive(Debug, Clone, Copy)]
@@ -277,16 +296,29 @@ pub enum Marked<'a> {
     Begin {
         /// The tag.
         tag: &'a Name,
-        /// The properties dictionary, resolved.
+        /// The properties dictionary, resolved; `None` for `BMC` and for
+        /// properties that could not be read.
         properties: Option<&'a pagura_core::Dictionary>,
-        /// Whether optional content hides the sequence.
+        /// Whether optional content hides the sequence, this one's
+        /// membership included.
         hidden: bool,
+        /// The properties text extraction reads, for devices that need text
+        /// and in content whose text belongs to the page (not annotation
+        /// appearances, patterns, soft masks or Type 3 glyphs).
+        text: Option<&'a MarkedText>,
     },
     /// `EMC`.
     End,
-    /// An XObject or annotation starts (for structure `OBJR`).
-    ObjectBegin(ObjectId),
-    /// It ends.
+    /// An XObject or annotation occurrence starts (for structure `OBJR`).
+    /// The text shown until the matching [`Marked::ObjectEnd`] belongs to
+    /// it; images and annotations end at once.
+    ObjectBegin {
+        /// The XObject or annotation.
+        object: ObjectId,
+        /// Whether optional content hides the occurrence.
+        hidden: bool,
+    },
+    /// The innermost object occurrence ends.
     ObjectEnd,
 }
 
@@ -420,6 +452,17 @@ pub trait Device {
     ///
     /// As [`Self::begin_page`].
     fn end_tiling(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    /// A font is selected (`Tf`, or `Font` in a graphics state parameter
+    /// dictionary), in selection order; only devices that need text
+    /// receive it.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::begin_page`].
+    fn select_font(&mut self, font: &FontInfo) -> Result<()> {
         Ok(())
     }
 
