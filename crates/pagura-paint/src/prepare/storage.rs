@@ -340,8 +340,9 @@ impl Survey<'_> {
         let target = &mut self.buffers[buffer];
         target.stores = target.stores.saturating_add(count);
         target.normal &= state.blend == BlendMode::Normal;
-        target.forced |=
-            state.blend != BlendMode::Normal || (state.transfer.is_some() && context.selects);
+        // A store with a transfer function is outside the narrow bounds
+        // wherever it is (ADR 0004 §5).
+        target.forced |= state.blend != BlendMode::Normal || state.transfer.is_some();
         let shaped = state.alpha_is_shape || (state.alpha == 1.0 && mask.is_none());
         target.opaque_members &= shaped && cell.is_none();
         if cell_reads {

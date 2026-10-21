@@ -241,6 +241,12 @@ fn budgets_fail_in_source_order_and_bound_what_rendering_uses() {
 }
 
 #[test]
+fn prepared_scenes_can_be_shared_between_threads() {
+    fn shared<T: Send + Sync>() {}
+    shared::<crate::PreparedScene>();
+}
+
+#[test]
 fn rendering_stops_between_bands() {
     let b = busy();
     let page = b.page();
