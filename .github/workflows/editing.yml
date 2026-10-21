@@ -14,6 +14,7 @@ on:
       - 'tools/form_*test.mjs'
       - 'tools/viewer_navigation_test.mjs'
       - 'tools/tile_cache_test.mjs'
+      - 'tools/thumbnail_pixels*'
       - 'crates/pagura-render/src/form_appearance/**'
       - 'crates/pagura-render/src/form_appearance.rs'
       - '.github/workflows/editing.yml'
@@ -25,6 +26,20 @@ concurrency:
   group: editing-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
+  thumbnail-pixels:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Compare real Chrome thumbnail pixels
+        run: python3 tools/thumbnail_pixels.py
+      - name: Publish pixel evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: thumbnail-pixels
+          path: target/thumbnail-pixels/
+          if-no-files-found: error
   reopen:
     runs-on: ubuntu-latest
     steps:
