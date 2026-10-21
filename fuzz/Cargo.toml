@@ -96,3 +96,31 @@ path = "fuzz_targets/extraction.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "write"
+path = "fuzz_targets/write.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "forms"
+path = "fuzz_targets/forms.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cmap"
+path = "fuzz_targets/cmap.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "security"
+path = "fuzz_targets/security.rs"
+test = false
+doc = false
+bench = false

@@ -365,6 +365,30 @@ def reading_seeds() -> None:
                 add("host", host_reading(flags, b"a", pdf))
 
 
+def facade_seeds() -> None:
+    """The write target's objects from fixtures, generated forms with each
+    fill selector, encrypted fixtures with their passwords, the bundled
+    CMaps (crates/pagura-fuzz/src/{write,forms,security,cmap}.rs), and the
+    signed fixtures for the document walk's signature checks."""
+    for pdf in manifest_pdfs(["classic", "document", "text"]):
+        parts = wrapper_parts(pdf)
+        if parts:
+            add_structured("write", b"", joined(*parts))
+    for pdf in manifest_pdfs(["forms"]):
+        for selector in range(4):
+            add("forms", bytes([selector]) + pdf)
+    for case in cases("crypto"):
+        pdf = read(case, ".pdf")
+        password = case.get("password")
+        if pdf is not None and isinstance(password, str):
+            add_structured("security", b"\x00", joined(password.encode(), pdf))
+    for pdf in manifest_pdfs(["signatures", "cms-signatures"]):
+        add("document", pdf)
+    for path in sorted((ROOT / "data/cmaps").glob("*/*")):
+        if path.suffix != ".txt":
+            add_structured("cmap", b"", joined(path.read_bytes(), b"", b"\x00\x41\x81\x40"))
+
+
 def main() -> int:
     global CORPUS
     parser = argparse.ArgumentParser(description=__doc__)
@@ -402,6 +426,7 @@ def main() -> int:
     image_seeds()
     text_seeds()
     reading_seeds()
+    facade_seeds()
     counts = {target.name: len(list(target.iterdir())) for target in sorted(CORPUS.iterdir())}
     print(json.dumps(counts))
     return 0

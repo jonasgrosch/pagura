@@ -37,8 +37,8 @@ The mutation smoke test is deterministic and reproducible; it is not a substitut
 for coverage-guided fuzzing. That lives in the separate `fuzz/` workspace, the
 only place `no_mangle` entry points exist, and never becomes a product
 dependency. `python3 tools/fuzz_smoke.py` runs every target (syntax, filters,
-document, render, font, image, text, content, host, navigation, extraction)
-for a short bounded time on nightly Rust. Every input fuzzing finds is
+document, render, font, image, text, content, host, navigation, extraction,
+write, forms, cmap, security) for a short bounded time on nightly Rust. Every input fuzzing finds is
 minimized into `fuzz/regressions/` and replayed on stable Rust by
 `crates/pagura-fuzz/tests/regressions.rs`, through the same drivers
 (`crates/pagura-fuzz`), which `tools/check.py` runs. Its

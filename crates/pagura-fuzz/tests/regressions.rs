@@ -13,7 +13,10 @@
 
 use pagura_fuzz as harness;
 
+use harness::host::{Flags, Input, Search};
+use harness::wrapper::SEPARATOR;
 use pagura::{Document, OpenOptions};
+use pagura_testkit::{Manifest, workspace_root};
 use std::path::PathBuf;
 use std::{fs, io, panic};
 
@@ -21,7 +24,7 @@ use std::{fs, io, panic};
 const KNOWN_FAILURES: &[(&str, &str)] = &[];
 
 fn regressions() -> PathBuf {
-    pagura_testkit::workspace_root().join("fuzz/regressions")
+    workspace_root().join("fuzz/regressions")
 }
 
 /// Every stored input as (`target/name`, bytes), in name order.
@@ -67,9 +70,7 @@ fn stored_inputs_have_a_target_and_a_note() {
 
 /// Generated PDFs of `area` whose names start with `prefix`, in name order.
 fn generated(area: &str, prefix: &str) -> io::Result<Vec<Vec<u8>>> {
-    let directory = pagura_testkit::workspace_root()
-        .join("corpus/generated")
-        .join(area);
+    let directory = workspace_root().join("corpus/generated").join(area);
     let mut paths = Vec::new();
     for entry in fs::read_dir(directory)? {
         let path = entry?.path();
@@ -95,14 +96,36 @@ fn reading_drivers_pass_on_generated_fixtures() {
     for pdf in &navigation {
         assert!(harness::run("navigation", pdf));
     }
-    // The host's reading requests (flag bit 3) in protocol 1.2 with
-    // generations, and in protocol 1 (bit 4): page 0, scale 1, an 8 x 8
-    // tile, a one-page search for `a` with at most four matches.
+    // The host's reading requests in every protocol version that has them,
+    // and refused in older ones: page 0, scale 1, an 8 x 8 tile, a one-page
+    // search for `a` with at most four matches.
+    let reading = Flags::READING | Flags::GENERATIONS;
+    let versions = [
+        reading,
+        Flags::READING | Flags::OLDER,
+        reading | Flags::TYPED_DIAGNOSTICS,
+        reading | Flags::TYPED_DIAGNOSTICS | Flags::UNNEGOTIATED_DIAGNOSTICS,
+        reading | Flags::UNNEGOTIATED_DIAGNOSTICS,
+        reading | Flags::VERSION_1_3,
+        reading | Flags::VERSION_1_3 | Flags::UNNEGOTIATED_DIAGNOSTICS,
+    ];
     for pdf in navigation.iter().chain(&text) {
-        for flags in [9, 24, 41, 105, 73, 137, 201] {
-            let mut input = vec![flags, 0, 15, 0, 0, 8, 8, 1, 0, 4, 0, 1, b'a'];
-            input.extend_from_slice(pdf);
-            assert!(harness::run("host", &input));
+        for flags in versions {
+            let input = Input {
+                flags,
+                page: 0,
+                scale: 15,
+                tile: [0, 0, 8, 8],
+                search: Some(Search {
+                    pages: 1,
+                    offset: 0,
+                    limit: 4,
+                    options: 0,
+                    query: b"a",
+                }),
+                pdf,
+            };
+            assert!(harness::run("host", &input.to_bytes()));
         }
     }
     // The text fixtures' page content on the extraction page, searched for `a`.
@@ -125,7 +148,10 @@ fn stored_inputs_replay_without_failures() {
     let mut fixed = Vec::new();
     for (id, data) in stored().unwrap() {
         let (target, _) = id.split_once('/').unwrap();
-        let passed = panic::catch_unwind(|| harness::run(target, &data)).is_ok();
+        let passed = matches!(
+            panic::catch_unwind(|| harness::run(target, &data)),
+            Ok(true)
+        );
         match (passed, KNOWN_FAILURES.iter().any(|(known, _)| *known == id)) {
             (false, false) => unexpected.push(id),
             (true, true) => fixed.push(id),
@@ -140,4 +166,91 @@ fn stored_inputs_replay_without_failures() {
         fixed.is_empty(),
         "fixed; remove from KNOWN_FAILURES: {fixed:?}"
     );
+}
+
+/// The document driver, which verifies signatures, on every signed fixture.
+#[test]
+fn document_driver_passes_on_signed_fixtures() {
+    let signed: Vec<_> = ["signatures", "cms-signatures"]
+        .into_iter()
+        .flat_map(|area| generated(area, "").unwrap())
+        .collect();
+    assert!(signed.len() >= 10, "signed fixtures missing");
+    for pdf in &signed {
+        assert!(harness::run("document", pdf));
+    }
+}
+
+/// The form driver on every generated form, with each kind of fill value
+/// in both recovery modes.
+#[test]
+fn forms_driver_passes_on_generated_forms() {
+    let forms = generated("forms", "").unwrap();
+    assert!(forms.len() >= 20, "form fixtures missing");
+    for pdf in &forms {
+        for selector in [0, 0x81, 2, 0x83] {
+            let mut input = vec![selector];
+            input.extend_from_slice(pdf);
+            assert!(harness::run("forms", &input));
+        }
+    }
+}
+
+/// The security driver on each security handler's fixture with a user
+/// password (every encrypted fixture is a seed; debug builds make the
+/// revision 6 key derivation too slow to replay them all here).
+#[test]
+fn security_driver_passes_on_encrypted_fixtures() {
+    let crypto = Manifest::load("crypto");
+    let mut encrypted = 0;
+    for case in crypto.cases() {
+        let (Some(password), Some(path)) = (case.string("password"), case.path()) else {
+            continue;
+        };
+        if !case.name().ends_with("-password-user") {
+            continue;
+        }
+        let mut input = vec![0];
+        input.extend_from_slice(password.as_bytes());
+        input.extend_from_slice(SEPARATOR);
+        input.extend_from_slice(&fs::read(path).unwrap());
+        assert!(harness::run("security", &input), "{}", case.id());
+        encrypted += 1;
+    }
+    assert!(encrypted >= 9, "encrypted fixtures missing");
+}
+
+/// The CMap driver on every bundled predefined CMap.
+#[test]
+fn cmap_driver_passes_on_bundled_cmaps() {
+    let mut cmaps = 0;
+    for collection in fs::read_dir(workspace_root().join("data/cmaps")).unwrap() {
+        let collection = collection.unwrap().path();
+        if !collection.is_dir() {
+            continue;
+        }
+        for file in fs::read_dir(collection).unwrap() {
+            let mut input = fs::read(file.unwrap().path()).unwrap();
+            input.extend_from_slice(SEPARATOR);
+            input.extend_from_slice(SEPARATOR);
+            input.extend_from_slice(b"\x00\x41\x81\x40\xff");
+            assert!(harness::run("cmap", &input));
+            cmaps += 1;
+        }
+    }
+    assert!(cmaps >= 50, "bundled CMaps missing");
+}
+
+/// The writer round trip on objects of every kind, including a stream and
+/// references between parts.
+#[test]
+fn write_driver_round_trips_every_value_kind() {
+    let parts: [&[u8]; 4] = [
+        b"<< /Type /Example /Numbers [0 -7 2.5 -0.125 123456.789] /Flags [true false null] \
+          /Strings [(text) <00ff10> (\\(nested\\))] /Name /A#20B#23 /Next 4 0 R >>",
+        b"<< /Filter /ASCIIHexDecode /Extra [3 0 R] >> stream\n48656c6c6f>",
+        b"[[[1] [2]] << /Inner << /Deep 5 0 R >> >> ()]",
+        b"42",
+    ];
+    assert!(harness::run("write", &parts.join(SEPARATOR)));
 }
