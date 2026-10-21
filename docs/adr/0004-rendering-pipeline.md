@@ -42,9 +42,13 @@ the corresponding `colorspace.*` tag until implemented.
 
 ## Accuracy and oracles
 
-Every rendered pixel has an exact answer, and one contract covers every
-stage (amended 2026-10-18): each pixel is within one level of 255 of its
-exact result.
+Exact uses the stage-specific reference models below (amended 2026-10-18).
+Its one-level bound is relative to the applicable model. In particular,
+composition uses already quantized coverage bytes; this does not establish an
+end-to-end one-level bound against unquantized coverage or a filtered continuous
+scene. Those are different references, as the
+[coverage-correlation research cases](../plans/correlated-coverage-research.md)
+illustrate. This clarification does not change a gate or reference model.
 
 - **Rasterization:** the exact covered area of each pixel (the path clipped
   to the pixel square), with curves within a documented flattening

@@ -1,0 +1,237 @@
+{
+  "schema": 1,
+  "status": "verified-evidence",
+  "verified_outputs": 12,
+  "current_model_checks_pass": true,
+  "prior_gates_changed": false,
+  "performance_admission": false,
+  "background_contention_observed": false,
+  "rows": [
+    {
+      "case": "single-tiny",
+      "mode": "exact",
+      "rgba": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "declared_model_pass": true,
+      "reference_decimal_display_only": {
+        "declaredcoveragebyte": "255",
+        "unquantizedpermark": "254.7509765625",
+        "finalsceneboxfilter": "254.7509765625"
+      }
+    },
+    {
+      "case": "single-tiny",
+      "mode": "competitive",
+      "rgba": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "declared_model_pass": true,
+      "reference_decimal_display_only": {
+        "declaredcoveragebyte": "255",
+        "unquantizedpermark": "254.7509765625",
+        "finalsceneboxfilter": "254.7509765625"
+      }
+    },
+    {
+      "case": "coincident-tiny",
+      "mode": "exact",
+      "rgba": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "declared_model_pass": true,
+      "reference_decimal_display_only": {
+        "declaredcoveragebyte": "255",
+        "unquantizedpermark": "93.763433549874156214391529478478",
+        "finalsceneboxfilter": "254.7509765625"
+      }
+    },
+    {
+      "case": "coincident-tiny",
+      "mode": "competitive",
+      "rgba": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "declared_model_pass": true,
+      "reference_decimal_display_only": {
+        "declaredcoveragebyte": "255",
+        "unquantizedpermark": "93.763433549874156214391529478478",
+        "finalsceneboxfilter": "254.7509765625"
+      }
+    },
+    {
+      "case": "disjoint-tiny",
+      "mode": "exact",
+      "rgba": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "declared_model_pass": true,
+      "reference_decimal_display_only": {
+        "declaredcoveragebyte": "255",
+        "unquantizedpermark": "93.763433549874156214391529478478",
+        "finalsceneboxfilter": "0"
+      }
+    },
+    {
+      "case": "disjoint-tiny",
+      "mode": "competitive",
+      "rgba": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "declared_model_pass": true,
+      "reference_decimal_display_only": {
+        "declaredcoveragebyte": "255",
+        "unquantizedpermark": "93.763433549874156214391529478478",
+        "finalsceneboxfilter": "0"
+      }
+    },
+    {
+      "case": "compound-tiny",
+      "mode": "exact",
+      "rgba": [
+        0,
+        0,
+        0,
+        255
+      ],
+      "declared_model_pass": true,
+      "reference_decimal_display_only": {
+        "declaredcoveragebyte": "0",
+        "unquantizedpermark": "0",
+        "finalsceneboxfilter": "0"
+      }
+    },
+    {
+      "case": "compound-tiny",
+      "mode": "competitive",
+      "rgba": [
+        0,
+        0,
+        0,
+        255
+      ],
+      "declared_model_pass": true,
+      "reference_decimal_display_only": {
+        "declaredcoveragebyte": "0",
+        "unquantizedpermark": "0",
+        "finalsceneboxfilter": "0"
+      }
+    },
+    {
+      "case": "full-pixel",
+      "mode": "exact",
+      "rgba": [
+        0,
+        0,
+        0,
+        255
+      ],
+      "declared_model_pass": true,
+      "reference_decimal_display_only": {
+        "declaredcoveragebyte": "0",
+        "unquantizedpermark": "0",
+        "finalsceneboxfilter": "0"
+      }
+    },
+    {
+      "case": "full-pixel",
+      "mode": "competitive",
+      "rgba": [
+        0,
+        0,
+        0,
+        255
+      ],
+      "declared_model_pass": true,
+      "reference_decimal_display_only": {
+        "declaredcoveragebyte": "0",
+        "unquantizedpermark": "0",
+        "finalsceneboxfilter": "0"
+      }
+    },
+    {
+      "case": "disjoint-halves",
+      "mode": "exact",
+      "rgba": [
+        63,
+        63,
+        63,
+        255
+      ],
+      "declared_model_pass": true,
+      "reference_decimal_display_only": {
+        "declaredcoveragebyte": "63.250980392156862745098039215686",
+        "unquantizedpermark": "63.75",
+        "finalsceneboxfilter": "0"
+      }
+    },
+    {
+      "case": "disjoint-halves",
+      "mode": "competitive",
+      "rgba": [
+        63,
+        63,
+        63,
+        255
+      ],
+      "declared_model_pass": true,
+      "reference_decimal_display_only": {
+        "declaredcoveragebyte": "63.250980392156862745098039215686",
+        "unquantizedpermark": "63.75",
+        "finalsceneboxfilter": "0"
+      }
+    }
+  ],
+  "evidence_sha256": {
+    "subbyte-001/report.json": "5403a83209ba894d8e32dcb740fe9141153a29d2e44d6dc8587d9b2fb4ef2ac1",
+    "subbyte-001-receipt.json": "f504d1a41ef1913234f4fe5688329aad97d071abad76f654f1f36a4524506c0a",
+    "subbyte-001-observer/guard.json": "70f2deab32e627a43a3c01ec531138d74cbd73c08fc257976ae570c057a446c0"
+  },
+  "plan_sha256": "cbca7fbe0abd89d746f480dba6362011e13e834ee5ae139963904f1176bfbf90",
+  "auditor_sha256": "1959d00869746cca605274399e5fdaaf6c6134332c7aed8db189e58aa4bb23a8",
+  "limitations": [
+    "Independent exact arithmetic and retained pixels; PDF construction trusts statically reviewed pinned source.",
+    "Predicted coverage bytes are not internal instrumentation; a mismatch would not localize geometry versus composition.",
+    "Research references are separate models, not a normative PDF verdict or a retroactive u16 admission gate."
+  ],
+  "source_identity": {
+    "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+    "commit": "f98ad8365b46d500cbb866b13fcea0b0cbb28f7f",
+    "source_sha256": "8b35ff8987f80bbfb67e29e9b6f33daa2ee5d6fed005e22412dbde20fbe73225",
+    "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/n16-output-u16/candidate",
+    "binary_sha256": "eea1389d53f105f0dbff3104da70a1268dc0ca06d585f63a4ff0ebc5eadae3a9"
+  },
+  "evidence_files_sha256": {
+    "local/n16-output-u16/subbyte-001-analysis.json": "6a6c0a02cda6affcde407ac2d3bbe974d0f426d4f67458e6444cb26e22929a55",
+    "local/n16-output-u16/subbyte-001-audit-receipt.json": "7b226c3c524df6d845fe0244c39897d2c22028f0ee1a3d34d83e8b0c52b18e61",
+    "local/n16-output-u16/subbyte-001-receipt.json": "f504d1a41ef1913234f4fe5688329aad97d071abad76f654f1f36a4524506c0a",
+    "local/n16-output-u16/subbyte-001-observer/guard.json": "70f2deab32e627a43a3c01ec531138d74cbd73c08fc257976ae570c057a446c0",
+    "local/n16-output-u16/subbyte-001/report.json": "5403a83209ba894d8e32dcb740fe9141153a29d2e44d6dc8587d9b2fb4ef2ac1",
+    "local/n16-output-u16/subbyte-001/plan.json": "cbca7fbe0abd89d746f480dba6362011e13e834ee5ae139963904f1176bfbf90",
+    "local/n16-output-u16/subbyte-audit-pins.json": "770e74faa43b243d16831f1a804c10c3425263ed1eb84e57a42b5b5f881250c9",
+    "local/n16-output-u16/subbyte-tests-001.log": "548aed05df731467c8949c84dabd127a5ec7291b942a6635139b6aa0e2c3c412",
+    "local/n16-output-u16/subbyte-src/subbyte_coverage.py": "586aaff85bcb0be8fa1a16d5afadf3d525f49382772818afc33c639750d08eb3",
+    "local/n16-output-u16/subbyte-src/test_subbyte_coverage.py": "7ee41054e50554d2b405db1622de313e6bc3a26733a1fde74c3849d12061033e",
+    "local/n16-output-u16/subbyte-src/README.md": "fbaccd5389595d7508447edc3a69df21d604b988b19edd90fb1371989a02f00d",
+    "local/n16-output-u16/audit_subbyte.py": "1959d00869746cca605274399e5fdaaf6c6134332c7aed8db189e58aa4bb23a8",
+    "local/n16-output-u16/run_subbyte.py": "eba9971b8b270125b127725f0ebc816b8150c4bac531d187bda413e48694f6a2"
+  }
+}

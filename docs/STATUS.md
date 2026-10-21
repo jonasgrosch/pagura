@@ -66,9 +66,13 @@ there is no performance admission. Full integrated validation passed after a
 test-only Clippy cleanup, including all 196 Python tests, native/WASM and host
 checks, and 1,237 generated-PDF conformance cases.
 
-`RenderOptions::accuracy` selects `Accuracy::Exact`, the default, whose contract
-is to keep every pixel within one level of its exact result, or `Accuracy::Competitive`,
-an approximate path measured against ADR 0004's competitive accuracy gate:
+`RenderOptions::accuracy` selects `Accuracy::Exact`, the default, whose one-level
+bound uses ADR 0004's stage-specific reference models, including already
+quantized coverage bytes for composition. It does not establish a one-level
+end-to-end bound against unquantized or filtered continuous geometry; the
+[reproduced coverage-correlation cases](plans/correlated-coverage-research.md)
+make that distinction explicit. `Accuracy::Competitive` selects an approximate
+path measured against ADR 0004's competitive accuracy gate:
 row-fragment glyph masks, signed-cell fills, clip products, one-round byte
 composition, fused decoding of sole JPEG pages and drawn-size reconstruction
 of other minified JPEG images. The CLI exposes
