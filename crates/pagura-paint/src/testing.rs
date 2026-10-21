@@ -263,11 +263,18 @@ impl Producer for RectCoverage {
             if vertical <= 0.0 {
                 continue;
             }
+            let first = crate::prepare::bounds::device(
+                Some([r[0], f64::from(y), r[2], f64::from(y) + 1.0]),
+                region,
+            );
+            if first.is_empty() {
+                continue;
+            }
             out.push_row(y);
             let mut full: Option<(u32, u32)> = None;
             let mut partial: Option<u32> = None;
-            for x in region.x0..=region.x1 {
-                let area = if x < region.x1 {
+            for x in first.x0..=first.x1 {
+                let area = if x < first.x1 {
                     overlap(x, r[0], r[2]) * vertical
                 } else {
                     0.0
