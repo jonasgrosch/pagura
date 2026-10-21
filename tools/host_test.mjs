@@ -464,7 +464,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
   const waitFor = async (predicate) => {
     const deadline = performance.now() + 10000;
     while (!predicate()) {
-      if (performance.now() >= deadline) assert.fail(`Viewer did not settle: ${elements.get('status').textContent}; ${elements.get('error').textContent}`);
+      if (performance.now() >= deadline) assert.fail(`Viewer did not settle: ${elements.get('status').textContent}; ${elements.get('error').textContent}; tiles=${JSON.stringify(canvases().map(canvas => [canvas.style.left, canvas.style.top, canvas.width, canvas.height]))}`);
       await new Promise((done) => setTimeout(done, 5));
     }
   };
@@ -538,7 +538,9 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
       if (entry.id === 'classic/many-rectangles') {
         const retained = [...canvases()];
         const viewport = elements.get('viewport'); viewport.scrollTop = 400; viewport.dispatch('scroll');
-        await waitFor(() => canvases().length === 6 && canvases().every((canvas) => [256, 384].includes(parseFloat(canvas.style.top))) && ready());
+        // The harness has no CSS page padding: y=400 intersects only the last
+        // 128px row of this 512px page, across three visible tile columns.
+        await waitFor(() => canvases().length === 3 && canvases().every((canvas) => parseFloat(canvas.style.top) === 384) && ready());
         viewport.scrollTop = 0; viewport.dispatch('scroll'); await waitFor(() => canvases().length === 9 && ready());
         assert.ok(retained.every(canvas => canvases().includes(canvas)), 'scrolling back reuses the same full-resolution canvases');
       }
