@@ -26,7 +26,7 @@
 
 pub use pagura_core::{
     Diagnostic, DiagnosticKind, Dictionary, Error, ErrorKind, Feature, Limits, Name, ObjectId,
-    Position, Recovery, Rect, Repair, Result, Value,
+    Position, Recovery, Rect, Repair, Result, SignatureLimits, Value,
 };
 /// Interactive form source views and in-memory filling (12.7). Actions are inert data.
 pub use pagura_document::forms;

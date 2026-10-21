@@ -6,10 +6,12 @@ use std::fmt;
 /// An indirect object identity: object number plus generation.
 ///
 /// Object number zero is reserved for the head of the free list and never
-/// identifies a real object.
+/// identifies a real object. The type does not enforce that, because
+/// cross-reference data legitimately names entry zero; code that resolves
+/// objects treats number zero as undefined (clause 7.3.10).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ObjectId {
-    /// Object number, at least 1 for real objects.
+    /// Object number; zero is the free-list head, never a real object.
     pub number: u32,
     /// Generation number.
     pub generation: u16,
@@ -31,6 +33,10 @@ impl fmt::Display for ObjectId {
 
 /// A direct PDF object. Streams are indirect objects and live in the
 /// document layer; their dictionary is a `Value::Dictionary`.
+///
+/// Unlike most public enums in Pagura this one is exhaustive: its variants
+/// are the closed set of basic object types of clause 7.3, so code may
+/// match every variant.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     /// The null object.
@@ -128,21 +134,6 @@ impl Value {
             _ => None,
         }
     }
-
-    /// A short, stable description of the variant for error messages.
-    pub fn kind_name(&self) -> &'static str {
-        match self {
-            Self::Null => "null",
-            Self::Boolean(_) => "boolean",
-            Self::Integer(_) => "integer",
-            Self::Real(_) => "real",
-            Self::Name(_) => "name",
-            Self::String(_) => "string",
-            Self::Array(_) => "array",
-            Self::Dictionary(_) => "dictionary",
-            Self::Reference(_) => "reference",
-        }
-    }
 }
 
 impl From<bool> for Value {
@@ -154,6 +145,14 @@ impl From<bool> for Value {
 impl From<i64> for Value {
     fn from(value: i64) -> Self {
         Self::Integer(value)
+    }
+}
+
+/// A real object. Non-finite values are representable but are not valid
+/// PDF: the parser never produces them and the writer rejects them.
+impl From<f64> for Value {
+    fn from(value: f64) -> Self {
+        Self::Real(value)
     }
 }
 

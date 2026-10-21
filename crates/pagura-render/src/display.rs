@@ -138,9 +138,51 @@ pub(crate) struct GlyphRun {
     pub(crate) sources: Vec<GlyphSource>,
     pub(crate) glyphs: Vec<Placement>,
     pub(crate) positions: Vec<(usize, pagura_core::Position)>,
-    pub(crate) bounds: Rect,
-    origins: Rect,
+    pub(crate) bounds: Envelope,
+    origins: Envelope,
     index: crate::hash::FastMap<GlyphKey, u32>,
+}
+
+/// A running envelope of glyph points in user space. Unlike a [`Rect`] it
+/// starts empty, inverted at infinity, and grows with each placement.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct Envelope {
+    x0: f64,
+    y0: f64,
+    x1: f64,
+    y1: f64,
+}
+
+impl Envelope {
+    const EMPTY: Self = Self {
+        x0: f64::INFINITY,
+        y0: f64::INFINITY,
+        x1: f64::NEG_INFINITY,
+        y1: f64::NEG_INFINITY,
+    };
+
+    fn include(&mut self, lo: pagura_raster::Point, hi: pagura_raster::Point) {
+        self.x0 = self.x0.min(lo.x);
+        self.y0 = self.y0.min(lo.y);
+        self.x1 = self.x1.max(hi.x);
+        self.y1 = self.y1.max(hi.y);
+    }
+
+    pub(crate) const fn x0(&self) -> f64 {
+        self.x0
+    }
+
+    pub(crate) const fn y0(&self) -> f64 {
+        self.y0
+    }
+
+    pub(crate) const fn x1(&self) -> f64 {
+        self.x1
+    }
+
+    pub(crate) const fn y1(&self) -> f64 {
+        self.y1
+    }
 }
 
 impl GlyphRun {
@@ -161,18 +203,8 @@ impl GlyphRun {
             sources: Vec::new(),
             glyphs: Vec::new(),
             positions: Vec::new(),
-            bounds: Rect {
-                x0: f64::INFINITY,
-                y0: f64::INFINITY,
-                x1: f64::NEG_INFINITY,
-                y1: f64::NEG_INFINITY,
-            },
-            origins: Rect {
-                x0: f64::INFINITY,
-                y0: f64::INFINITY,
-                x1: f64::NEG_INFINITY,
-                y1: f64::NEG_INFINITY,
-            },
+            bounds: Envelope::EMPTY,
+            origins: Envelope::EMPTY,
             index: crate::hash::FastMap::default(),
         }
     }
@@ -229,14 +261,8 @@ impl GlyphRun {
         if !lo.is_finite() || !hi.is_finite() {
             return Err(Error::syntax("path arithmetic overflow"));
         }
-        self.origins.x0 = self.origins.x0.min(placement.origin.x);
-        self.origins.y0 = self.origins.y0.min(placement.origin.y);
-        self.origins.x1 = self.origins.x1.max(placement.origin.x);
-        self.origins.y1 = self.origins.y1.max(placement.origin.y);
-        self.bounds.x0 = self.bounds.x0.min(lo.x);
-        self.bounds.y0 = self.bounds.y0.min(lo.y);
-        self.bounds.x1 = self.bounds.x1.max(hi.x);
-        self.bounds.y1 = self.bounds.y1.max(hi.y);
+        self.origins.include(placement.origin, placement.origin);
+        self.bounds.include(lo, hi);
         if self.positions.last().is_none_or(|(_, p)| *p != position) {
             self.positions
                 .try_reserve(1)
@@ -261,8 +287,8 @@ impl GlyphRun {
     pub(crate) fn device_hull(&self, device: Transform) -> [pagura_raster::Point; 2] {
         let origins = point_hull(
             corners([
-                pagura_raster::Point::new(self.origins.x0, self.origins.y0),
-                pagura_raster::Point::new(self.origins.x1, self.origins.y1),
+                pagura_raster::Point::new(self.origins.x0(), self.origins.y0()),
+                pagura_raster::Point::new(self.origins.x1(), self.origins.y1()),
             ])
             .map(|p| p * device),
         );
@@ -668,8 +694,8 @@ impl DisplayList {
         // The crop is a geometric clip, including fractional final rows/columns.
         let mut crop = PathBuilder::new();
         crop.rect(
-            self.crop.x0,
-            self.crop.y0,
+            self.crop.x0(),
+            self.crop.y0(),
             self.crop.width(),
             self.crop.height(),
         );
@@ -750,10 +776,10 @@ impl DisplayList {
     pub(crate) fn device_transform(&self, options: &RenderOptions) -> Transform {
         let r = self.crop;
         let rotation = match self.rotation {
-            Rotation::None => Transform::new(1.0, 0.0, 0.0, -1.0, -r.x0, r.y1),
-            Rotation::Clockwise90 => Transform::new(0.0, 1.0, 1.0, 0.0, -r.y0, -r.x0),
-            Rotation::Clockwise180 => Transform::new(-1.0, 0.0, 0.0, 1.0, r.x1, -r.y0),
-            Rotation::Clockwise270 => Transform::new(0.0, -1.0, -1.0, 0.0, r.y1, r.x1),
+            Rotation::None => Transform::new(1.0, 0.0, 0.0, -1.0, -r.x0(), r.y1()),
+            Rotation::Clockwise90 => Transform::new(0.0, 1.0, 1.0, 0.0, -r.y0(), -r.x0()),
+            Rotation::Clockwise180 => Transform::new(-1.0, 0.0, 0.0, 1.0, r.x1(), -r.y0()),
+            Rotation::Clockwise270 => Transform::new(0.0, -1.0, -1.0, 0.0, r.y1(), r.x1()),
         };
         rotation.then(Transform::scale(
             options.scale * self.user_unit,
@@ -923,12 +949,7 @@ mod tests {
         };
         DisplayList {
             commands,
-            crop: Rect {
-                x0: 0.0,
-                y0: 0.0,
-                x1: 2.0,
-                y1: 1.0,
-            },
+            crop: Rect::from_corners(0.0, 0.0, 2.0, 1.0).unwrap(),
             rotation: Rotation::None,
             user_unit: 1.0,
             limits: Limits::default(),
@@ -961,12 +982,7 @@ mod tests {
         let run_hull = run.device_hull(device);
         assert!(run_hull[0].x <= 0.0 && run_hull[1].x >= 4.0);
         let mut list = list(run, true);
-        list.crop = Rect {
-            x0: 5e11,
-            y0: 0.0,
-            x1: 5e11 + 0.001,
-            y1: 0.001,
-        };
+        list.crop = Rect::from_corners(5e11, 0.0, 5e11 + 0.001, 0.001).unwrap();
         let image = crate::compositor::render(
             &list,
             &RenderOptions::from_dpi(72e6),

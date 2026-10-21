@@ -302,7 +302,7 @@ pub(super) fn named(doc: &Document) -> Result<Vec<NamedDestination<'_>>> {
     let mut entries = Vec::new();
     if let Some(value) = ctx.present(catalog, b"Dests", source)? {
         let (dictionary, source) = ctx.dictionary(value, source)?;
-        for (key, _) in dictionary.iter() {
+        for (key, _) in dictionary {
             let Some(value) = ctx.present(dictionary, key.as_bytes(), source)? else {
                 continue;
             };

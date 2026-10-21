@@ -103,7 +103,7 @@ impl Shading {
             .transpose()?;
         let bbox_path = bbox.map(|b| {
             let mut path = pagura_raster::PathBuilder::new();
-            path.rect(b.x0, b.y0, b.width(), b.height());
+            path.rect(b.x0(), b.y0(), b.width(), b.height());
             path.finish()
         });
         let antialias = d

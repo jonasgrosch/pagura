@@ -6,7 +6,7 @@ use pagura_document::Document;
 
 pub(crate) fn expanded(dictionary: &Dictionary) -> Result<Dictionary> {
     let mut expanded = Dictionary::new();
-    for (key, value) in dictionary.iter() {
+    for (key, value) in dictionary {
         let key: &[u8] = match key.as_bytes() {
             b"BPC" | b"BitsPerComponent" => b"BitsPerComponent",
             b"CS" | b"ColorSpace" => b"ColorSpace",

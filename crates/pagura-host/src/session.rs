@@ -287,7 +287,7 @@ impl Session {
                     .map_err(|error| error.at(Position::Buffer(9)))?;
                 let crop = page.crop_box();
                 Ok(Response::PageInfo {
-                    crop: [crop.x0, crop.y0, crop.x1, crop.y1],
+                    crop: [crop.x0(), crop.y0(), crop.x1(), crop.y1()],
                     rotation: page.rotation().degrees(),
                     user_unit: page.user_unit(),
                     size: pagura::device_size(page, &RenderOptions::default())?,
@@ -502,7 +502,7 @@ impl Session {
                 let mut out = Writer::new(cap);
                 out.u8(u8::from(bounds.is_some()))?;
                 if let Some(bounds) = bounds {
-                    for value in [bounds.x0, bounds.y0, bounds.x1, bounds.y1] {
+                    for value in [bounds.x0(), bounds.y0(), bounds.x1(), bounds.y1()] {
                         out.f64(value)?;
                     }
                 }

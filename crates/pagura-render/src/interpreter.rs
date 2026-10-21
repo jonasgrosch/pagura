@@ -623,7 +623,7 @@ fn no_references(value: &Value) -> Result<()> {
             }
         }
         Value::Dictionary(values) => {
-            for (_, value) in values.iter() {
+            for (_, value) in values {
                 no_references(value)?;
             }
         }

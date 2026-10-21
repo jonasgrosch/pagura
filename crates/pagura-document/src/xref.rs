@@ -89,7 +89,7 @@ pub(crate) fn read(
     let mut attempt = Diagnostics::new(diagnostics.mode());
     match primary(bytes, header, limits, &mut attempt) {
         Ok(table) => {
-            diagnostics.extend(attempt.take());
+            diagnostics.absorb(attempt.take())?;
             Ok(table)
         }
         Err(error) if diagnostics.mode() == pagura_core::Recovery::Repair && structural(&error) => {
@@ -182,7 +182,7 @@ fn primary(
             kind = RevisionKind::Hybrid;
         }
         let entries = merge_entries(&mut table, entries, &trailer, offset, shift)?;
-        for (key, value) in trailer.iter() {
+        for (key, value) in &trailer {
             if !table.trailer.contains_key(key.as_bytes()) {
                 table.trailer.insert(key.clone(), value.clone());
             }
@@ -342,7 +342,7 @@ fn section(
     diagnostics: &mut Diagnostics,
 ) -> Result<(BTreeMap<u32, XrefEntry>, Dictionary, RevisionKind)> {
     let mut parser =
-        Parser::at(bytes, offset, Origin::File, limits)?.with_recovery(diagnostics.mode());
+        Parser::with_offset(bytes, offset, Origin::File, limits)?.with_recovery(diagnostics.mode());
     let result = if parser.keyword(b"xref") {
         let entries = classic_section(bytes, &mut parser, limits)?;
         let trailer = parser
@@ -350,7 +350,7 @@ fn section(
             .as_dictionary()
             .cloned()
             .ok_or(Error::syntax("trailer must be a dictionary").at(parser.position()))?;
-        diagnostics.extend(parser.take_diagnostics());
+        diagnostics.absorb(parser.take_diagnostics())?;
         (entries, trailer, RevisionKind::Table)
     } else {
         let (entries, trailer) = crate::xref_stream::read(bytes, offset, limits, diagnostics)?;
@@ -367,7 +367,7 @@ fn charge(remaining: &mut usize, count: usize) -> Result<()> {
 }
 
 fn is_section(bytes: &[u8], offset: usize, limits: Limits) -> bool {
-    let Ok(mut parser) = Parser::at(bytes, offset, Origin::File, limits) else {
+    let Ok(mut parser) = Parser::with_offset(bytes, offset, Origin::File, limits) else {
         return false;
     };
     parser.keyword(b"xref")
@@ -448,7 +448,7 @@ fn find_startxref(
     else {
         return Ok(None);
     };
-    let mut tail = Parser::at(bytes, marker + 9, Origin::File, limits)?;
+    let mut tail = Parser::with_offset(bytes, marker + 9, Origin::File, limits)?;
     let offset = usize::try_from(tail.unsigned()?)
         .ok()
         .filter(|&offset| offset < bytes.len())

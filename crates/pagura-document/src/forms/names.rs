@@ -39,7 +39,7 @@ pub(super) fn equivalent<'a>(
                     return Ok(false);
                 }
                 ctx.allocate::<(&Value, &Value, usize)>(a.len(), source)?;
-                for (key, a) in a.iter() {
+                for (key, a) in a {
                     let Some(b) = b.get(key.as_bytes()) else {
                         return Ok(false);
                     };

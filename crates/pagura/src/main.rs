@@ -309,7 +309,7 @@ fn information_tags(document: &Document) -> String {
         .iter()
         .filter_map(|item| match item.kind {
             pagura::DiagnosticKind::Information(tag) => Some(json_string(tag)),
-            pagura::DiagnosticKind::Repair(_) => None,
+            _ => None,
         })
         .collect::<Vec<_>>()
         .join(",")

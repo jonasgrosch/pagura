@@ -2,6 +2,11 @@
 
 use crate::{Dictionary, Value};
 
+/// Estimated bookkeeping bytes per entry of a tree index, in addition to its
+/// key and value: [`Dictionary`]'s key index and the document's slot and
+/// object-stream tables use the same model (ADR 0012).
+pub const INDEX_ENTRY_OVERHEAD: usize = 64;
+
 impl Value {
     /// Estimates retained bytes, including this value and owned vector capacities,
     /// strings, heap names and dictionary indexes. References are counted as

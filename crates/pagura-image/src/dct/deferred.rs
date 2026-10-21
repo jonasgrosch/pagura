@@ -62,7 +62,7 @@ pub(crate) fn decode_deferred(
     let Ok(Finished::Done(result)) = outcome else {
         return None;
     };
-    diagnostics.extend(scratch.take());
+    diagnostics.absorb(scratch.take()).ok()?;
     Some(result)
 }
 

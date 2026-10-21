@@ -245,8 +245,8 @@ impl Placement {
         let (width, height) = list.device_size(options)?;
         let (x0, x1) = ordered(transform.e, transform.e + transform.a + transform.c);
         let (y0, y1) = ordered(transform.f, transform.f + transform.d + transform.b);
-        let crop0 = device.apply(pagura_raster::Point::new(list.crop.x0, list.crop.y0));
-        let crop1 = device.apply(pagura_raster::Point::new(list.crop.x1, list.crop.y1));
+        let crop0 = device.apply(pagura_raster::Point::new(list.crop.x0(), list.crop.y0()));
+        let crop1 = device.apply(pagura_raster::Point::new(list.crop.x1(), list.crop.y1()));
         let (cx0, cx1) = ordered(crop0.x, crop1.x);
         let (cy0, cy1) = ordered(crop0.y, crop1.y);
         let (x0, x1, y0, y1) = (
