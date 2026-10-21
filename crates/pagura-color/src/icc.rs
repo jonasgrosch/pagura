@@ -176,8 +176,57 @@ impl Profile {
     ///
     /// # Errors
     /// Returns `Unsupported` when the selected transform is outside the
-    /// supported subset.
+    /// supported subset, and `Syntax` for undefined curve arithmetic.
     pub fn convert(&self, inputs: &[f64], intent: Intent) -> Result<[f64; 3]> {
+        let transform = self.forward(intent)?;
+        let mut arithmetic = Arithmetic::default();
+        let rgb = self.evaluate(transform, inputs, intent, &mut arithmetic);
+        if arithmetic.undefined {
+            return Err(Error::syntax("undefined ICC curve arithmetic"));
+        }
+        Ok(rgb)
+    }
+
+    /// Checks that `intent` selects a supported forward transform, so that
+    /// [`Self::convert_total`] converts as [`Self::convert`] does.
+    pub(crate) fn check(&self, intent: Intent) -> Result<()> {
+        self.forward(intent).map(|_| ())
+    }
+
+    /// Converts as [`Self::convert`] does, with undefined curve arithmetic
+    /// giving 0 instead of an error; black when the intent's transform is
+    /// unsupported, which [`Self::check`] rules out.
+    pub(crate) fn convert_total(&self, inputs: &[f64], intent: Intent) -> [f64; 3] {
+        self.forward(intent).map_or([0.0; 3], |transform| {
+            self.evaluate(transform, inputs, intent, &mut Arithmetic::default())
+        })
+    }
+
+    /// The forward transform `intent` selects (ICC 8.10.2): the designated
+    /// AToB, then AToB0, then the matrix/TRC model. Unsupported DToB
+    /// elements may be bypassed at step (a); BToA and the header's preferred
+    /// intent are ignored for PDF source spaces.
+    fn forward(&self, intent: Intent) -> Result<&Forward> {
+        let transform = self.transforms[intent.index()]
+            .as_deref()
+            .or(self.transforms[0].as_deref())
+            .or(self.model.as_ref())
+            .ok_or(Error::syntax(
+                "ICC profile has no applicable forward transform",
+            ))?;
+        if let Forward::Unsupported(error) = transform {
+            return Err(error.clone());
+        }
+        Ok(transform)
+    }
+
+    fn evaluate(
+        &self,
+        transform: &Forward,
+        inputs: &[f64],
+        intent: Intent,
+        arithmetic: &mut Arithmetic,
+    ) -> [f64; 3] {
         let mut values = [0.0; 4];
         for (i, (value, &input)) in values.iter_mut().zip(inputs).enumerate() {
             *value = if self.lab_input {
@@ -190,25 +239,21 @@ impl Profile {
                 input.clamp(0.0, 1.0)
             };
         }
-        // ICC 8.10.2: designated AToB, then AToB0, then matrix/TRCs.
-        // Unsupported DToB elements may be bypassed at step (a); BToA and
-        // the header's preferred intent are ignored for PDF source spaces.
-        let transform = self.transforms[intent.index()]
-            .as_deref()
-            .or(self.transforms[0].as_deref())
-            .or(self.model.as_ref())
-            .ok_or(Error::syntax(
-                "ICC profile has no applicable forward transform",
-            ))?;
-        let mut xyz = transform.evaluate(values)?;
+        let mut xyz = transform.evaluate(values, arithmetic);
         if intent == Intent::Absolute {
             // ICC 6.3.2: recover media-absolute colorimetry from relative PCS.
             for (i, value) in xyz.iter_mut().enumerate() {
                 *value *= self.white[i] / D50[i];
             }
         }
-        Ok(cie::xyz_to_srgb(cie::map(cie::D50_TO_D65, xyz)))
+        cie::xyz_to_srgb(cie::map(cie::D50_TO_D65, xyz))
     }
+}
+
+/// Undefined arithmetic seen while evaluating one transform.
+#[derive(Debug, Default)]
+struct Arithmetic {
+    undefined: bool,
 }
 impl Forward {
     fn parse(tag: &Cursor<'_>, inputs: usize, lab: bool, budget: &mut Budget) -> Result<Self> {
@@ -232,25 +277,25 @@ impl Forward {
             _ => Self::Unsupported(unsupported("unsupported ICC forward transform type")),
         })
     }
-    fn evaluate(&self, values: [f64; 4]) -> Result<[f64; 3]> {
+    fn evaluate(&self, values: [f64; 4], arithmetic: &mut Arithmetic) -> [f64; 3] {
         match self {
             Self::Gray { curve, pcs } => {
-                let value = curve.evaluate(values[0])?;
-                Ok(match pcs {
+                let value = curve.evaluate(values[0], arithmetic);
+                match pcs {
                     Pcs::Lab => cie::lab_to_xyz([value * 100.0, 0.0, 0.0], D50),
                     Pcs::Xyz => D50.map(|w| w * value),
-                })
+                }
             }
             Self::Matrix { matrix, curves } => {
                 let mut linear = [0.0; 3];
                 for (i, curve) in curves.iter().enumerate() {
-                    linear[i] = curve.evaluate(values[i])?;
+                    linear[i] = curve.evaluate(values[i], arithmetic);
                 }
-                Ok(cie::map(*matrix, linear))
+                cie::map(*matrix, linear)
             }
-            Self::Lut(lut, encoding) => Ok(encoding.decode(lut.evaluate(values))),
-            Self::Mab(mab, encoding) => Ok(encoding.decode(mab.evaluate(values)?)),
-            Self::Unsupported(error) => Err(error.clone()),
+            Self::Lut(lut, encoding) => encoding.decode(lut.evaluate(values)),
+            Self::Mab(mab, encoding) => encoding.decode(mab.evaluate(values, arithmetic)),
+            Self::Unsupported(_) => [0.0; 3],
         }
     }
     fn retained_bytes(&self) -> usize {
