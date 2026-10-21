@@ -98,11 +98,8 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let document = self.document();
         let object = document.object(id)?;
         let source = ImageSource::from_xobject(document, object).map_err(|e| e.in_object(id))?;
-        let dictionary = object
-            .dictionary()
-            .ok_or(Error::syntax("image dictionary missing"))?;
         let image = self
-            .describe(source, dictionary, resources, stack)
+            .describe(source, resources, stack)
             .map_err(|e| e.in_object(id))?;
         stack.pop();
         self.session.images.entries.insert(key, Arc::clone(&image));
@@ -185,7 +182,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             ImageId::Inline { stream, offset },
         )
         .map_err(|error| error.at(Position::Buffer(0)))?;
-        let image = self.describe(source, dictionary, resources, &mut Vec::new())?;
+        let image = self.describe(source, resources, &mut Vec::new())?;
         self.image_mark(&image, scope)
     }
 

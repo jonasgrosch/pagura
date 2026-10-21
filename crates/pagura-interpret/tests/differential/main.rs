@@ -5,6 +5,7 @@
 //! benchmark pages.
 
 mod compare;
+mod decoding;
 
 use compare::Outcome;
 use pagura_core::Recovery;
@@ -118,5 +119,34 @@ fn benchmark_pages_match_the_old_interpreter() {
         compare::page(file, &bytes, index, Recovery::Repair, &mut outcome);
     }
     report(&outcome, "benchmark pages");
+    assert!(outcome.mismatches.is_empty(), "{} mismatches", outcome.mismatches.len());
+}
+
+/// Real documents: every PDF under `PAGURA_DIFFERENTIAL_CORPUS`, at most
+/// `PAGURA_DIFFERENTIAL_LIMIT` of them (default 200), first pages only.
+#[test]
+#[ignore = "needs a corpus directory; run with --ignored"]
+fn corpus_pages_match_the_old_interpreter() {
+    let Some(directory) = std::env::var_os("PAGURA_DIFFERENTIAL_CORPUS") else {
+        eprintln!("PAGURA_DIFFERENTIAL_CORPUS unset; skipped");
+        return;
+    };
+    let limit = std::env::var("PAGURA_DIFFERENTIAL_LIMIT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(200);
+    let mut files = Vec::new();
+    pdfs(Path::new(&directory), &mut files);
+    let mut outcome = Outcome::default();
+    for path in files.into_iter().take(limit) {
+        let Ok(bytes) = std::fs::read(&path) else {
+            continue;
+        };
+        let name = path.display().to_string();
+        for index in 0..page_count(&bytes).min(2) {
+            compare::page(&name, &bytes, index, Recovery::Repair, &mut outcome);
+        }
+    }
+    report(&outcome, "corpus pages");
     assert!(outcome.mismatches.is_empty(), "{} mismatches", outcome.mismatches.len());
 }

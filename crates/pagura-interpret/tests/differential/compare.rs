@@ -132,9 +132,14 @@ pub fn page(name: &str, bytes: &[u8], index: usize, recovery: Recovery, outcome:
         return;
     };
     let old = pagura_render::compile_page(&old_doc, old_page);
-    let new = Interpreter::new(&new_doc).scene(new_page);
-    let old_diagnostics: Vec<Diagnostic> = old_doc.diagnostics();
-    let new_diagnostics = new_doc.diagnostics();
+    let new = {
+        let mut device = crate::decoding::Decoding::new(&new_doc);
+        Interpreter::new(&new_doc)
+            .run(new_page, &mut device)
+            .and_then(|()| device.finish())
+    };
+    let old_diagnostics = sorted(old_doc.diagnostics());
+    let new_diagnostics = sorted(new_doc.diagnostics());
     let scene = match (&old, &new) {
         (_, Err(error)) if pending(error) => {
             outcome.pending.push(format!("{label}: scene: {error}"));
@@ -204,6 +209,16 @@ fn without_estimates(text: &str) -> String {
     out
 }
 
+/// Diagnostics in a fixed order: the document lists them in discovery
+/// order, which follows when objects are first loaded, and the interpreter
+/// reads some objects (the Info dictionary for the print intent) earlier
+/// than the old compiler did.
+fn sorted(diagnostics: Vec<Diagnostic>) -> Vec<Diagnostic> {
+    let mut diagnostics = diagnostics;
+    diagnostics.sort_by_key(|d| format!("{d:?}"));
+    diagnostics
+}
+
 fn tags(diagnostics: &[Diagnostic]) -> Vec<String> {
     diagnostics
         .iter()
@@ -260,6 +275,12 @@ fn text(label: &str, bytes: &[u8], index: usize, recovery: Recovery, scene: Scen
         (Err(old), Err(new)) => {
             if identity(old) == identity(new) {
                 outcome.matched += 1;
+            } else if scene == Scene::FailedAlike {
+                // The old text failed in painting work the text device
+                // skips, and the new one fails later in the content.
+                outcome
+                    .intended
+                    .push(format!("{label}: text error {new} after old {old}"));
             } else {
                 outcome
                     .mismatches
@@ -299,9 +320,13 @@ pub fn filled_page(name: &str, bytes: &[u8], index: usize, outcome: &mut Outcome
         return;
     };
     let old = pagura_render::compile_filled_page(&old_filler, old_page, None);
-    let new = Interpreter::new(&new_doc)
-        .with_filler(&new_filler)
-        .scene(new_page);
+    let new = {
+        let mut device = crate::decoding::Decoding::new(&new_doc);
+        Interpreter::new(&new_doc)
+            .with_filler(&new_filler)
+            .run(new_page, &mut device)
+            .and_then(|()| device.finish())
+    };
     match (&old, &new) {
         (_, Err(error)) if pending(error) => {
             outcome.pending.push(format!("{label}: {error}"));
@@ -309,7 +334,7 @@ pub fn filled_page(name: &str, bytes: &[u8], index: usize, outcome: &mut Outcome
         (Ok(list), Ok(scene)) => {
             let (marks, glyphs) = counts(scene);
             if (marks, glyphs) == (list.len(), old_glyphs(list))
-                && old_doc.diagnostics() == new_doc.diagnostics()
+                && sorted(old_doc.diagnostics()) == sorted(new_doc.diagnostics())
             {
                 outcome.matched += 1;
             } else {

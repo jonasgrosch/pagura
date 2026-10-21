@@ -23,7 +23,8 @@ const MAX_FONTS: usize = 256;
 pub(crate) struct LoadedFont {
     pub(crate) font: Arc<PdfFont>,
     pub(crate) info: FontInfo,
-    /// `FontBBox`, which sizes text selection quads, when it can be read.
+    /// `FontBBox`, which sizes text selection quads, when it can be read;
+    /// read only for interpretations that extract text.
     pub(crate) bbox: Option<Rect>,
 }
 
@@ -58,6 +59,8 @@ pub(crate) struct Fonts<'a> {
     direct: Vec<(Dictionary, Arc<LoadedFont>)>,
     outlines: FastMap<OutlineKey, Arc<Path>>,
     bytes: Meter,
+    /// Whether text is extracted, which reads font boxes.
+    text: bool,
 }
 
 impl std::fmt::Debug for Fonts<'_> {
@@ -74,6 +77,7 @@ impl<'a> Fonts<'a> {
         document: &'a Document,
         provider: Option<&'a dyn Provider>,
         store: Option<&'a Store>,
+        text: bool,
     ) -> Self {
         Self {
             document,
@@ -86,6 +90,7 @@ impl<'a> Fonts<'a> {
                 document.limits().render_bytes,
                 "text and image retained byte budget exceeded",
             ),
+            text,
         }
     }
 
@@ -137,7 +142,11 @@ impl<'a> Fonts<'a> {
                 vertical: font.writing_mode() == WritingMode::Vertical,
                 kind: font.kind(),
             },
-            bbox: font_box(document, dictionary, font.kind()),
+            bbox: if self.text {
+                font_box(document, dictionary, font.kind())
+            } else {
+                None
+            },
             font,
         });
         match id {

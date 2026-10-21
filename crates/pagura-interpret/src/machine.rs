@@ -189,7 +189,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
                 filler: inputs.filler,
                 visibility: Visibility::new(document)?,
                 colors: Colors::new(document, inputs.store),
-                fonts: Fonts::new(document, inputs.provider, inputs.store),
+                fonts: Fonts::new(document, inputs.provider, inputs.store, needs.text),
                 tokens: Meter::new(limits.operations, "content operation budget exceeded"),
                 page_resources: inputs.page_resources,
                 name_work: 0,
