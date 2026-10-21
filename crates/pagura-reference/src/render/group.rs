@@ -49,6 +49,7 @@ impl Renderer<'_> {
         let target = Target {
             process,
             spots: Arc::clone(&context.target.spots),
+            colorants: context.target.colorants,
         };
         let initial = if attributes.isolated {
             Initial::Transparent
@@ -125,10 +126,7 @@ impl Renderer<'_> {
         let n = target.channels();
         let convert = (target.process != parent.process)
             .then(|| {
-                let process_only = Target {
-                    process: parent.process,
-                    spots: Arc::from([]),
-                };
+                let process_only = Target::new(parent.process);
                 self.colors
                     .prepare_process(target.process, &process_only, &state.conversion)
             })
@@ -180,10 +178,7 @@ impl Renderer<'_> {
             .group(mask.group)
             .ok_or(Error::invalid_argument("group id outside the scene"))?;
         let process = group.attributes.space.unwrap_or(parent);
-        let target = Target {
-            process,
-            spots: Arc::from([]),
-        };
+        let target = Target::new(process);
         let n = process.components();
         let mut backdrop = [0.0; 4];
         match &mask.backdrop {

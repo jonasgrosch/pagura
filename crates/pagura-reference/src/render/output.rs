@@ -12,7 +12,6 @@ use pagura_color::{Conversion, Process, Target};
 use pagura_core::Result;
 use pagura_raster::Rgba8;
 use std::rc::Rc;
-use std::sync::Arc;
 
 impl Renderer<'_> {
     /// The exact output of the page buffer.
@@ -48,10 +47,7 @@ impl Renderer<'_> {
     /// The conversions from the page's blending space to the display.
     fn display(&mut self, target: &Target) -> Result<Display> {
         let conversion = Conversion::default();
-        let device = |process| Target {
-            process,
-            spots: Arc::from([]),
-        };
+        let device = Target::new;
         let (rgb, cmyk) = (device(Process::Rgb), device(Process::Cmyk));
         let to_rgb = self
             .colors
