@@ -9,7 +9,7 @@ use super::clip::{ClipShape, INSIDE, Rows, columns, fill_polygon};
 use super::curve::{self, Quadratic};
 use super::edges::{self, BandIndex, Bounds, Chained, Line, Polygon, line_work, rows};
 use super::rect::rectangle;
-use super::scan::{RowIndex, Scanner, Stored, gap_winding, inside};
+use super::scan::{RowIndex, Scanner, Stored, Walk, gap_winding, inside};
 use super::row::fold;
 use super::{Adjustment, Area, DeviceRect, Precision, ShapeOptions};
 use crate::{FillRule, Path, Stroke, Transform, features};
@@ -175,6 +175,19 @@ impl Shape {
         self.retained
     }
 
+    /// The most coverage one band of this shape can hold: its rows within a
+    /// band, and every pixel of its width in them a partial cell and a span
+    /// of its own.
+    pub fn capacity(&self) -> super::Capacity {
+        let rows = self.area.band_height.min(self.bounds.height()) as usize;
+        let cells = rows.saturating_mul(self.bounds.width() as usize);
+        super::Capacity {
+            rows,
+            spans: cells,
+            cells,
+        }
+    }
+
     /// A shape of closed `polygon` with `rule`.
     pub(crate) fn polygon(
         polygon: Polygon,
@@ -195,6 +208,28 @@ impl Shape {
             Winding::Check(margin) => certified(&polygon, margin),
             Winding::Unknown => false,
         };
+        let width = super::row::width(options.area.region.x1)?;
+        if certain && frame.rows.is_none() {
+            // Nothing to analyse: the edges alone, clipped to the rectangle.
+            let lines = edges::lines(&polygon)?;
+            drop(polygon);
+            let lines = match frame.rect {
+                Some(r) => {
+                    let mut clipped = Vec::new();
+                    for line in lines {
+                        edges::clip_line(line, r, &mut clipped)?;
+                    }
+                    clipped
+                }
+                None => lines,
+            };
+            let Some(bounds) = frame.bounds(lines.iter().flat_map(|l| [l.a, l.b])) else {
+                return Ok(None);
+            };
+            let scan = scan_columns(lines.iter().flat_map(|l| [l.a.x, l.b.x]), width);
+            return Self::edges(lines, Vec::new(), rule, (bounds, scan, Stored::default()), &frame, options)
+                .map(Some);
+        }
         let mut chained = Vec::new();
         edges::chained(&polygon, 0, &mut 0, &mut chained)?;
         drop(polygon);
@@ -202,7 +237,6 @@ impl Shape {
         let Some(bounds) = frame.bounds(chained.iter().flat_map(|e| [e.line.a, e.line.b])) else {
             return Ok(None);
         };
-        let width = super::row::width(options.area.region.x1)?;
         let scan = super::clip::scan_range(&chained, width);
         let stored = if !certain || frame.crossed(bounds) {
             analyse(&chained, rule, certain, &frame, (bounds, scan), options)?
@@ -236,6 +270,8 @@ impl Shape {
                         line,
                         chain: 0,
                         group: 0,
+                        enclosed: false,
+                        place: edges::Place::default(),
                     };
                     let mut out = Vec::new();
                     edges::clip(edge, r, &mut out)?;
@@ -256,16 +292,13 @@ impl Shape {
             return Ok(None);
         };
         let width = super::row::width(options.area.region.x1)?;
-        let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
-        for p in lines
-            .iter()
-            .flat_map(|l| [l.a, l.b])
-            .chain(curves.iter().flat_map(|q| [q.points[0], q.points[2]]))
-        {
-            lo = lo.min(p.x);
-            hi = hi.max(p.x);
-        }
-        let scan = columns(lo, hi, width);
+        let scan = scan_columns(
+            lines
+                .iter()
+                .flat_map(|l| [l.a.x, l.b.x])
+                .chain(curves.iter().flat_map(|q| [q.points[0].x, q.points[2].x])),
+            width,
+        );
         let lines = lines.into_iter().filter(|l| !l.is_horizontal()).collect();
         Self::edges(
             lines,
@@ -334,11 +367,15 @@ impl Shape {
             extent(a.y.min(b.y), a.y.max(b.y))
         };
         let count = lines.len() + curves.len();
-        let index = BandIndex::new(&area, count, |i| match lines.get(i) {
+        let own = Area {
+            region: bounds,
+            band_height: area.band_height,
+        };
+        let index = BandIndex::new(&own, count, |i| match lines.get(i) {
             Some(l) => line_rows(l),
             None => curves.get(i - lines.len()).and_then(curve_rows),
         })?;
-        let mut work = index.visits(&area);
+        let mut work = index.visits(&own);
         let mut cells = 0_usize;
         for l in &lines {
             if let Some(r) = line_rows(l) {
@@ -402,6 +439,16 @@ impl Shape {
             stored: Stored::default(),
         }
     }
+}
+
+/// The columns cells of edges with these x can be touched in.
+fn scan_columns(xs: impl Iterator<Item = f64>, width: usize) -> (usize, usize) {
+    let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
+    for x in xs {
+        lo = lo.min(x);
+        hi = hi.max(x);
+    }
+    columns(lo, hi, width)
 }
 
 /// The region and clip a shape is prepared in.
@@ -506,8 +553,7 @@ fn analyse(
     options: &ShapeOptions<'_>,
 ) -> Result<Stored> {
     let mut meter = Meter::new(options.limits.raster_work, RASTER_WORK);
-    let width = super::row::width(options.area.region.x1)?;
-    let mut scanner = Scanner::new(width, &mut meter)?;
+    let mut scanner = Scanner::new(scan, &mut meter)?;
     let index = RowIndex::new(chained, (bounds.y0, bounds.y1 - 1), &mut meter)?;
     let mut stored = Stored::default();
     for y in bounds.y0..bounds.y1 {
@@ -667,7 +713,11 @@ fn listed(
             if context.certain || cell.certain {
                 return Ok(());
             }
-            scanner.resolve(cell, context.rule, meter)?
+            match scanner.walk(cell, context.rule, meter)? {
+                Walk::Fold => return Ok(()),
+                Walk::Value(value) => value,
+                Walk::Unknown => scanner.resolve(cell, context.rule, meter)?,
+            }
         }
         Some(boundary) => {
             let (_, edges, rules) = context

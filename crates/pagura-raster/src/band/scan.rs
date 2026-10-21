@@ -11,7 +11,7 @@
 //! which determines the corner's winding exactly (an integer, rounded from
 //! a sum whose error is far below one half).
 
-use super::edges::{Chained, Line, rows};
+use super::edges::{Chained, Line, Place, rows};
 use super::resolve::{LocalEdge, Resolver};
 use super::row::{Row, fold};
 use crate::{FillRule, Point};
@@ -34,6 +34,11 @@ pub(crate) struct RowPiece {
     forward: bool,
     chain: u32,
     group: u8,
+    enclosed: bool,
+    place: Place,
+    /// Whether `(xa, ya)` and `(xb, yb)` are the edge's own end points
+    /// rather than where the row cuts it.
+    vertices: [bool; 2],
 }
 
 impl RowPiece {
@@ -51,12 +56,16 @@ impl RowPiece {
                 forward: true,
                 chain: edge.chain,
                 group: edge.group,
+                enclosed: edge.enclosed,
+                place: edge.place,
+                vertices: [true, true],
             });
         }
         let down = a.y < b.y;
         let (upper, lower) = if down { (a, b) } else { (b, a) };
         let lo = upper.y.max(top);
         let hi = lower.y.min(top + 1.0);
+        let ends = [lo == upper.y, hi == lower.y];
         (lo < hi).then(|| Self {
             xa: edge.line.x(lo),
             ya: lo,
@@ -66,6 +75,9 @@ impl RowPiece {
             forward: down,
             chain: edge.chain,
             group: edge.group,
+            enclosed: edge.enclosed,
+            place: edge.place,
+            vertices: if down { ends } else { [ends[1], ends[0]] },
         })
     }
 
@@ -85,6 +97,44 @@ impl RowPiece {
 
     fn y_at(&self, x: f64) -> f64 {
         self.ya + (x - self.xa) / (self.xb - self.xa) * (self.yb - self.ya)
+    }
+
+    /// Whether one of the edge's own end points lies on a side of column
+    /// `c` within heights `span` of row `top`: a region may touch the side
+    /// there at a single point.
+    fn touches(&self, c: f64, (top, span): (f64, (f64, f64))) -> bool {
+        [(self.xa, self.ya), (self.xb, self.yb)]
+            .into_iter()
+            .zip(self.vertices)
+            .any(|((x, y), vertex)| {
+                vertex
+                    && x >= c
+                    && x <= c + 1.0
+                    && (x == c || x == c + 1.0 || y - top == span.0 || y - top == span.1)
+            })
+    }
+
+    /// The part of the piece within column `c`, in cell coordinates, unless
+    /// it lies on the column's left side.
+    fn part(&self, c: f64, top: f64) -> Option<[(f64, f64); 2]> {
+        if self.xa == self.xb && self.xa == c {
+            return None;
+        }
+        let clamp = |x: f64, y: f64| {
+            if x < c {
+                (c, self.y_at(c))
+            } else if x > c + 1.0 {
+                (c + 1.0, self.y_at(c + 1.0))
+            } else {
+                (x, y)
+            }
+        };
+        let (pa, pb) = if self.xa == self.xb {
+            ((self.xa, self.ya), (self.xb, self.yb))
+        } else {
+            (clamp(self.xa, self.ya), clamp(self.xb, self.yb))
+        };
+        Some([(pa.0 - c, pa.1 - top), (pb.0 - c, pb.1 - top)])
     }
 
     /// Adds this piece's edges within column `c` of row `top` to `out` as
@@ -146,6 +196,118 @@ impl RowPiece {
         }
         carried
     }
+}
+
+/// What a cell's perimeter tells about its windings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Walk {
+    /// The signed area folds to the coverage.
+    Fold,
+    /// The coverage, whatever the signed area.
+    Value(u8),
+    /// The resolver decides.
+    Unknown,
+}
+
+/// The windings met along a cell's sides: their least and greatest, and
+/// which parities (bit 0 even, bit 1 odd).
+#[derive(Debug, Clone, Copy)]
+struct Windings {
+    lo: i64,
+    hi: i64,
+    parities: u8,
+}
+
+impl Windings {
+    fn add(&mut self, w: i64) {
+        self.lo = self.lo.min(w);
+        self.hi = self.hi.max(w);
+        self.parities |= 1 << (w & 1);
+    }
+}
+
+/// The windings just inside the sides of a cell whose edges (cell
+/// coordinates, the left side's windings as edges at x = 0) do not cross,
+/// over heights `span`; `None` when the cell has no height.
+fn perimeter(edges: &[LocalEdge], (bottom, top): (f64, f64)) -> Option<Windings> {
+    if top <= bottom {
+        return None;
+    }
+    let mut windings = Windings {
+        lo: i64::MAX,
+        hi: i64::MIN,
+        parities: 0,
+    };
+    let mut heights: Vec<f64> = Vec::new();
+    heights.try_reserve(2 * edges.len() + 2).ok()?;
+    heights.extend([bottom, top]);
+    heights.extend(edges.iter().flat_map(|e| [e.y0, e.y1]).filter(|&y| y > bottom && y < top));
+    heights.sort_unstable_by(f64::total_cmp);
+    heights.dedup();
+    // The left and right sides, between consecutive end heights.
+    for pair in heights.windows(2) {
+        let (mut left, mut right) = (0, 0);
+        for e in edges.iter().filter(|e| e.y0 <= pair[0] && e.y1 >= pair[1]) {
+            right += i64::from(e.winding);
+            if e.x0 == 0.0 && e.x1 == 0.0 {
+                left += i64::from(e.winding);
+            }
+        }
+        windings.add(left);
+        windings.add(right);
+    }
+    // The top and bottom sides, left to right.
+    let mut ends: Vec<(f64, i64)> = Vec::new();
+    ends.try_reserve(edges.len()).ok()?;
+    for (side, at) in [(bottom, true), (top, false)] {
+        ends.clear();
+        for e in edges {
+            if at && e.y0 == side && e.y1 > side {
+                ends.push((e.x0, i64::from(e.winding)));
+            } else if !at && e.y1 == side && e.y0 < side {
+                ends.push((e.x1, i64::from(e.winding)));
+            }
+        }
+        ends.sort_unstable_by(|a, b| a.0.total_cmp(&b.0));
+        let mut w = 0;
+        for &(_, winding) in &ends {
+            w += winding;
+            windings.add(w);
+        }
+    }
+    (windings.lo <= windings.hi).then_some(windings)
+}
+
+/// Whether two segments in cell coordinates meet, other than at one shared
+/// end point of `adjacent` edges.
+fn meet([a, b]: [(f64, f64); 2], [c, d]: [(f64, f64); 2], adjacent: bool) -> bool {
+    let orient = |p: (f64, f64), q: (f64, f64), r: (f64, f64)| {
+        let v = (q.0 - p.0) * (r.1 - p.1) - (q.1 - p.1) * (r.0 - p.0);
+        if v > 0.0 {
+            1
+        } else if v < 0.0 {
+            -1
+        } else {
+            0
+        }
+    };
+    let within = |p: (f64, f64), q: (f64, f64), r: (f64, f64)| {
+        p.0.min(q.0) <= r.0 && r.0 <= p.0.max(q.0) && p.1.min(q.1) <= r.1 && r.1 <= p.1.max(q.1)
+    };
+    let (o1, o2, o3, o4) = (orient(a, b, c), orient(a, b, d), orient(c, d, a), orient(c, d, b));
+    if o1 * o2 < 0 && o3 * o4 < 0 {
+        return true;
+    }
+    let shared = [(a, c), (a, d), (b, c), (b, d)]
+        .iter()
+        .filter(|(p, q)| p == q)
+        .count();
+    let collinear = o1 == 0 && o2 == 0;
+    let touch = (o1 == 0 && within(a, b, c))
+        || (o2 == 0 && within(a, b, d))
+        || (o3 == 0 && within(c, d, a))
+        || (o4 == 0 && within(c, d, b));
+    touch && (!adjacent || shared != 1 || collinear)
 }
 
 /// Resolved cells per row, in row then column order.
@@ -240,10 +402,11 @@ impl Cell {
     }
 }
 
-/// Reusable analysis storage for rows of `width` cells.
+/// Reusable analysis storage for the cells of one column range.
 #[derive(Debug)]
 pub(crate) struct Scanner {
     row: Row,
+    base: usize,
     head: Vec<u32>,
     tag: Vec<u32>,
     nodes: Vec<(u32, u32)>,
@@ -259,9 +422,12 @@ pub(crate) struct Scanner {
 }
 
 impl Scanner {
-    pub(crate) fn new(width: usize, meter: &mut Meter) -> Result<Self> {
+    /// Storage for the cells of columns `from..to`.
+    pub(crate) fn new((from, to): (usize, usize), meter: &mut Meter) -> Result<Self> {
+        let width = to.saturating_sub(from);
         let mut scanner = Self {
-            row: Row::new(width, meter)?,
+            row: Row::from(from, width, meter)?,
+            base: from,
             head: Vec::new(),
             tag: Vec::new(),
             nodes: Vec::new(),
@@ -280,9 +446,6 @@ impl Scanner {
         Ok(scanner)
     }
 
-    pub(crate) fn width(&self) -> usize {
-        self.row.width()
-    }
 
     /// Loads row `y` from the edges `items` selects, accumulating their
     /// signed areas and listing their pieces per cell, then collects the
@@ -300,7 +463,8 @@ impl Scanner {
         let whole = span == (0.0, 1.0);
         self.pieces.clear();
         self.nodes.clear();
-        let width = i64::try_from(self.width()).unwrap_or(i64::MAX);
+        let base = i64::try_from(self.base).unwrap_or(i64::MAX);
+        let end = i64::try_from(self.row.end()).unwrap_or(i64::MAX);
         for &item in items {
             let Some(&edge) = edges.get(item as usize) else {
                 continue;
@@ -319,7 +483,7 @@ impl Scanner {
                 .map_err(|_| Error::limit("row piece allocation failed"))?;
             self.pieces.push(piece);
             let (first, last) = piece.columns();
-            let (first, last) = (first.max(0), last.min(width - 1));
+            let (first, last) = (first.max(base), last.min(end - 1));
             if first > last {
                 continue;
             }
@@ -329,7 +493,7 @@ impl Scanner {
                 .map_err(|_| Error::limit("cell list allocation failed"))?;
             for column in first..=last {
                 #[expect(clippy::cast_sign_loss, reason = "clamped to the row")]
-                let x = column as usize;
+                let x = (column - base) as usize;
                 let node = u32::try_from(self.nodes.len()).map_err(|_| Error::limit("cell lists exceed u32"))?;
                 self.nodes.push((id, self.head[x]));
                 if self.head[x] == NONE {
@@ -348,20 +512,21 @@ impl Scanner {
             }
         }
         self.cells.clear();
-        let (head, tag, cells) = (&self.head, &self.tag, &mut self.cells);
+        let (head, tag, cells, base) = (&self.head, &self.tag, &mut self.cells, self.base);
         let mut failed = false;
         self.row.drain(range, |x, area, cover| {
             if cells.try_reserve(1).is_err() {
                 failed = true;
                 return;
             }
-            let listed = head.get(x).is_some_and(|&h| h != NONE);
+            let i = x - base;
+            let listed = head.get(i).is_some_and(|&h| h != NONE);
             cells.push(Cell {
                 x: u32::try_from(x).unwrap_or(u32::MAX),
                 area,
                 cover,
                 listed,
-                certain: whole && tag.get(x).is_none_or(|&t| t != MULTIPLE),
+                certain: whole && tag.get(i).is_none_or(|&t| t != MULTIPLE),
             });
         });
         if failed {
@@ -374,10 +539,11 @@ impl Scanner {
     /// Clears the lists of the row loaded last.
     pub(crate) fn unload(&mut self) {
         for &x in &self.listed {
-            if let Some(h) = self.head.get_mut(x as usize) {
+            let i = (x as usize).wrapping_sub(self.base);
+            if let Some(h) = self.head.get_mut(i) {
                 *h = NONE;
             }
-            if let Some(t) = self.tag.get_mut(x as usize) {
+            if let Some(t) = self.tag.get_mut(i) {
                 *t = NONE;
             }
         }
@@ -396,7 +562,11 @@ impl Scanner {
         let c = f64::from(cell.x);
         let start = out.len();
         let mut carried = cell.cover;
-        let mut node = self.head.get(cell.x as usize).copied().unwrap_or(NONE);
+        let mut node = self
+            .head
+            .get((cell.x as usize).wrapping_sub(self.base))
+            .copied()
+            .unwrap_or(NONE);
         while node != NONE {
             let Some(&(piece, next)) = self.nodes.get(node as usize) else {
                 break;
@@ -451,6 +621,67 @@ impl Scanner {
             });
         }
         Ok(())
+    }
+
+    /// Certifies a cell that pieces of several chains cross without
+    /// meeting: every region then reaches the cell's sides, so the windings
+    /// along them are all the cell has. Two neighbouring values let the
+    /// signed area fold; one parity under the even-odd rule gives an empty or
+    /// full cell. Anything else, or pieces that meet, is left to the
+    /// resolver.
+    pub(crate) fn walk(&mut self, cell: &Cell, rule: FillRule, meter: &mut Meter) -> Result<Walk> {
+        let c = f64::from(cell.x);
+        let mut parts: Vec<([(f64, f64); 2], u32, Place)> = Vec::new();
+        let mut node = self
+            .head
+            .get((cell.x as usize).wrapping_sub(self.base))
+            .copied()
+            .unwrap_or(NONE);
+        while node != NONE {
+            let Some(&(piece, next)) = self.nodes.get(node as usize) else {
+                break;
+            };
+            if let Some(piece) = self.pieces.get(piece as usize) {
+                if piece.enclosed || piece.touches(c, (self.top, self.span)) {
+                    return Ok(Walk::Unknown);
+                }
+                if let Some(part) = piece.part(c, self.top) {
+                    parts
+                        .try_reserve(1)
+                        .map_err(|_| Error::limit("cell walk allocation failed"))?;
+                    parts.push((part, piece.chain, piece.place));
+                }
+            }
+            node = next;
+        }
+        meter.charge(parts.len().saturating_mul(parts.len()).saturating_add(8))?;
+        for (i, &(p, chain, place)) in parts.iter().enumerate() {
+            for &(q, other, other_place) in &parts[i + 1..] {
+                if chain != other && meet(p, q, place.adjacent(other_place)) {
+                    return Ok(Walk::Unknown);
+                }
+            }
+        }
+        let mut local = std::mem::take(&mut self.local);
+        local.clear();
+        let result = self
+            .local_edges(cell, 0, &mut local)
+            .map(|()| perimeter(&local, self.span));
+        self.local = local;
+        let Some(mut windings) = result? else {
+            return Ok(Walk::Unknown);
+        };
+        if self.span != (0.0, 1.0) {
+            // Outside the clip rectangle's span the cell is empty.
+            windings.add(0);
+        }
+        Ok(match rule {
+            _ if windings.hi - windings.lo <= 1 => Walk::Fold,
+            FillRule::NonZero if windings.lo > 0 || windings.hi < 0 => Walk::Fold,
+            FillRule::EvenOdd if windings.parities == 1 => Walk::Value(0),
+            FillRule::EvenOdd if windings.parities == 2 => Walk::Value(u8::MAX),
+            _ => Walk::Unknown,
+        })
     }
 
     /// The exact coverage of `cell` alone.
@@ -610,7 +841,7 @@ mod tests {
             &[(4.5, 1.0), (4.5, 0.5), (6.0, 0.5), (6.0, 1.0)],
         ]);
         let mut meter = Meter::new(usize::MAX, "budget");
-        let mut scanner = Scanner::new(8, &mut meter).unwrap();
+        let mut scanner = Scanner::new((0, 8), &mut meter).unwrap();
         let items: Vec<u32> = (0..edges.len() as u32).collect();
         scanner.load(&edges, (&items, 0, (0.0, 1.0)), (0, 8), &mut meter).unwrap();
         let cells = scanner.cells.clone();

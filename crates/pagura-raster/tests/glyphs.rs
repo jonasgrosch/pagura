@@ -67,7 +67,8 @@ const AREA: Area = Area {
 fn raster(area: &Area, shape: Option<&Shape>, clip: Option<&ClipShape>) -> (Vec<u8>, usize) {
     let mut bytes = Meter::new(usize::MAX, "bytes");
     let mut raster = BandRasterizer::new(*area, &mut bytes).unwrap();
-    let mut band = BandCoverage::with_capacity(area, &mut bytes).unwrap();
+    let mut band =
+        BandCoverage::with_capacity(pagura_raster::Capacity::band(area), &mut bytes).unwrap();
     let width = area.region.width() as usize;
     let mut out = vec![0; width * area.region.height() as usize];
     for b in area.bands() {

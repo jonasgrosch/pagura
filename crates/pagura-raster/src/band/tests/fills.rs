@@ -185,3 +185,35 @@ fn points_and_empty_regions_follow_the_point_and_hairline_rules() {
     assert!(largest <= 1, "{count} differ by up to {largest}");
 }
 
+
+#[test]
+fn degenerate_overlaps_on_pixel_boundaries_match_the_old_backends() {
+    // Vertices on pixel corners and edges, coincident and retraced edges,
+    // contours within one pixel and touching contours.
+    let area = area(0, 0, 12, 12, 4);
+    let mut rng = Lcg(2718);
+    let mut differences = 0;
+    for case in 0..400 {
+        let mut path = PathBuilder::new();
+        for _ in 0..1 + case % 4 {
+            let steps = [1, 2, 4][case % 3];
+            path.move_to(Point::new(rng.grid(0.0, 12.0, steps), rng.grid(0.0, 12.0, steps)));
+            for _ in 0..2 + case % 5 {
+                let reach = if case % 7 == 0 { 1.0 } else { 6.0 };
+                let p = Point::new(
+                    rng.grid(0.0, 12.0, steps).min(rng.grid(0.0, reach, steps) + 3.0),
+                    rng.grid(0.0, 12.0, steps),
+                );
+                path.line_to(p).unwrap();
+            }
+            path.close();
+        }
+        let path = path.finish();
+        for rule in [FillRule::NonZero, FillRule::EvenOdd] {
+            let (count, largest) = check_fill(&area, &path, Transform::IDENTITY, rule);
+            assert!(largest <= 1, "case {case} {rule:?}: {count} differ by up to {largest}: {:?}", path.segments());
+            differences += count;
+        }
+    }
+    eprintln!("degenerate overlaps: {differences} differing pixels");
+}

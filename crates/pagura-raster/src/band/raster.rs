@@ -23,8 +23,10 @@ pub struct BandRasterizer {
 
 impl BandRasterizer {
     /// Scratch storage for `area`, charged to `bytes` (`render_bytes`):
-    /// one row of cells up to the region's right edge, and the bounded
-    /// cache of binned glyph masks.
+    /// one row of cells up to the region's right edge and its bitmap, one
+    /// row of approximate cells, and the bounded cache of binned glyph
+    /// masks. The charge depends on the region's right edge only, never on
+    /// the band height or the region's rows.
     ///
     /// # Errors
     ///

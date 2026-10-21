@@ -43,7 +43,7 @@ mod scan;
 mod shape;
 
 pub use clip::ClipShape;
-pub use coverage::{BandCoverage, CoverageRow, Span};
+pub use coverage::{BandCoverage, Capacity, CoverageRow, Span};
 pub use glyph::GlyphEdges;
 pub use raster::BandRasterizer;
 pub use shape::Shape;

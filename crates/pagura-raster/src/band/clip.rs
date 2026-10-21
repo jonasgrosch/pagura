@@ -11,7 +11,7 @@ use super::certify::certified;
 use super::edges::{self, Bounds, Chained, Polygon};
 use super::rect::rectangle;
 use super::resolve::{LocalEdge, Resolver};
-use super::scan::{RowIndex, Scanner, gap_winding, inside};
+use super::scan::{RowIndex, Scanner, Walk, gap_winding, inside};
 use super::{DeviceRect, Precision, ShapeOptions};
 use crate::{FillRule, Path, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
@@ -281,7 +281,6 @@ fn classify(
     let limits = options.limits;
     let mut meter = Meter::new(limits.raster_work, CLIP_WORK);
     let width = super::row::width(bounds.x1)?.saturating_add(1);
-    let mut scanner = Scanner::new(width, &mut meter)?;
     let mut prepared = Vec::new();
     prepared
         .try_reserve(groups.len())
@@ -305,6 +304,9 @@ fn classify(
         let certain = certified(&group.polygon, 0.0);
         prepared.push((chained, index, range, certain, group.rule));
     }
+    let from = prepared.iter().map(|p| p.2.0).min().unwrap_or(0);
+    let to = prepared.iter().map(|p| p.2.1).max().unwrap_or(0);
+    let mut scanner = Scanner::new((from, to), &mut meter)?;
     let mut rows = Rows::default();
     let mut runs: Vec<Vec<(u32, u32, State)>> = Vec::new();
     runs.try_reserve(groups.len())
@@ -411,7 +413,15 @@ fn group_row(
                 let start = u32::try_from(local.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
                 scanner.local_edges(&cell, group, local)?;
                 let end = u32::try_from(local.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
-                let value = ((certain && span == (0.0, 1.0)) || cell.certain).then(|| cell.value(rule));
+                let value = if (certain && span == (0.0, 1.0)) || cell.certain {
+                    Some(cell.value(rule))
+                } else {
+                    match scanner.walk(&cell, rule, meter)? {
+                        Walk::Fold => Some(cell.value(rule)),
+                        Walk::Value(value) => Some(value),
+                        Walk::Unknown => None,
+                    }
+                };
                 State::Partial(value, (start, end))
             } else {
                 gap(scanner, cell.cover, local)?

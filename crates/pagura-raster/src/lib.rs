@@ -24,7 +24,7 @@ mod raster;
 mod stroke;
 
 pub use band::{
-    Adjustment, Area, BandCoverage, BandRasterizer, ClipShape, CoverageRow, DeviceRect,
+    Adjustment, Area, BandCoverage, BandRasterizer, Capacity, ClipShape, CoverageRow, DeviceRect,
     GlyphEdges, GlyphOrigins, MarkCoverage, Precision, Shape, ShapeOptions, Span,
 };
 pub use geometry::{Point, Transform};

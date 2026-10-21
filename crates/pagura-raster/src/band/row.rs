@@ -23,15 +23,26 @@ pub(crate) trait Sink {
 
 #[derive(Debug, Default)]
 pub(crate) struct Row {
+    /// The device column of the first cell; geometry left of it adds to the
+    /// first cell's cover.
+    base: i64,
     area: Vec<f64>,
     cover: Vec<f64>,
     touched: Vec<u64>,
 }
 
 impl Row {
-    /// A row of `width` cells, charged to `bytes`.
+    /// A row of `width` cells from column 0, charged to `bytes`.
     pub(crate) fn new(width: usize, bytes: &mut Meter) -> Result<Self> {
-        let mut row = Self::default();
+        Self::from(0, width, bytes)
+    }
+
+    /// A row of `width` cells from column `base`, charged to `bytes`.
+    pub(crate) fn from(base: usize, width: usize, bytes: &mut Meter) -> Result<Self> {
+        let mut row = Self {
+            base: i64::try_from(base).map_err(|_| Error::limit("row base exceeds i64"))?,
+            ..Self::default()
+        };
         let words = width.div_ceil(64) + 1;
         bytes.reserve(&mut row.area, width)?;
         bytes.reserve(&mut row.cover, width)?;
@@ -42,8 +53,9 @@ impl Row {
         Ok(row)
     }
 
-    pub(crate) fn width(&self) -> usize {
-        self.area.len()
+    /// One past the device column of the last cell.
+    pub(crate) fn end(&self) -> usize {
+        usize::try_from(self.base).unwrap_or(0) + self.area.len()
     }
 
     pub(crate) fn retained_bytes(&self) -> usize {
@@ -61,7 +73,7 @@ impl Row {
 
     #[inline]
     fn add_area(&mut self, column: i64, value: f64) {
-        if let Ok(x) = usize::try_from(column)
+        if let Ok(x) = usize::try_from(column.wrapping_sub(self.base))
             && let Some(cell) = self.area.get_mut(x)
         {
             *cell += value;
@@ -71,7 +83,7 @@ impl Row {
 
     #[inline]
     fn add_cover(&mut self, column: i64, value: f64) {
-        let x = usize::try_from(column.max(0)).unwrap_or(usize::MAX);
+        let x = usize::try_from(column.wrapping_sub(self.base).max(0)).unwrap_or(usize::MAX);
         if let Some(cell) = self.cover.get_mut(x) {
             *cell += value;
             self.mark(x);
@@ -123,9 +135,9 @@ impl Row {
         }
         let last = end as i64;
         let s = h / (r - l);
-        let width = i64::try_from(self.width()).unwrap_or(i64::MAX);
-        let from = first.max(0);
-        let to = last.min(width);
+        let width = i64::try_from(self.area.len()).unwrap_or(i64::MAX);
+        let from = first.max(self.base);
+        let to = last.min(self.base.saturating_add(width));
         for column in from..to {
             let c = column as f64;
             let x0 = l.max(c);
@@ -165,9 +177,9 @@ impl Row {
         let xb = curve.at(t1).x;
         let first = xa.min(xb).floor() as i64;
         let last = xa.max(xb).ceil() as i64;
-        let width = i64::try_from(self.width()).unwrap_or(i64::MAX);
-        let from = first.max(0);
-        let to = last.min(width);
+        let width = i64::try_from(self.area.len()).unwrap_or(i64::MAX);
+        let from = first.max(self.base);
+        let to = last.min(self.base.saturating_add(width));
         let height = hi - lo;
         for column in from..to {
             let left = curve.cell(t0, t1, column as f64);
@@ -195,7 +207,9 @@ impl Row {
         rule: FillRule,
         sink: &mut impl Sink,
     ) -> usize {
-        let to = to.min(self.width());
+        let base = usize::try_from(self.base).unwrap_or(0);
+        let to = to.min(self.end()).saturating_sub(base);
+        let from = from.saturating_sub(base);
         if from >= to {
             return 0;
         }
@@ -220,17 +234,17 @@ impl Row {
                     continue;
                 }
                 if position < x {
-                    sink.run(position, x, fold(cover, rule));
+                    sink.run(base + position, base + x, fold(cover, rule));
                 }
                 cover += std::mem::take(&mut self.cover[x]);
                 let value = std::mem::take(&mut self.area[x]) + cover;
-                sink.run(x, x + 1, fold(value, rule));
+                sink.run(base + x, base + x + 1, fold(value, rule));
                 position = x + 1;
                 count += 1;
             }
         }
         if position < to {
-            sink.run(position, to, fold(cover, rule));
+            sink.run(base + position, base + to, fold(cover, rule));
         }
         count
     }
@@ -239,7 +253,9 @@ impl Row {
     /// `visit` receives the column, its area and the cover up to and
     /// including it. Clears the touched cells of `from..to`.
     pub(crate) fn drain(&mut self, (from, to): (usize, usize), mut visit: impl FnMut(usize, f64, f64)) {
-        let to = to.min(self.width());
+        let base = usize::try_from(self.base).unwrap_or(0);
+        let to = to.min(self.end()).saturating_sub(base);
+        let from = from.saturating_sub(base);
         if from >= to {
             return;
         }
@@ -250,7 +266,7 @@ impl Row {
                 let x = word * 64 + bits.trailing_zeros() as usize;
                 bits &= bits - 1;
                 cover += std::mem::take(&mut self.cover[x]);
-                visit(x, std::mem::take(&mut self.area[x]), cover);
+                visit(base + x, std::mem::take(&mut self.area[x]), cover);
             }
         }
     }

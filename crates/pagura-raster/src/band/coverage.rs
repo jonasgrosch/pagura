@@ -3,6 +3,51 @@
 use super::Area;
 use pagura_core::{Meter, Result};
 
+/// How much one band's coverage can hold: rows, spans and partial cells.
+/// [`BandCoverage::with_capacity`] reserves it, so that filling the
+/// coverage never allocates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Capacity {
+    /// Rows.
+    pub rows: usize,
+    /// Spans over all rows.
+    pub spans: usize,
+    /// Partial cells over all rows.
+    pub cells: usize,
+}
+
+impl Capacity {
+    /// The most any mark can need in one band of `area`: every pixel of
+    /// the band's rows a partial cell and a span of its own.
+    pub fn band(area: &Area) -> Self {
+        let rows = area.band_height.min(area.region.height()) as usize;
+        let cells = rows.saturating_mul(area.region.width() as usize);
+        Self {
+            rows,
+            spans: cells,
+            cells,
+        }
+    }
+
+    /// The larger of two capacities, field by field.
+    #[must_use]
+    pub fn max(self, other: Self) -> Self {
+        Self {
+            rows: self.rows.max(other.rows),
+            spans: self.spans.max(other.spans),
+            cells: self.cells.max(other.cells),
+        }
+    }
+
+    /// The bytes [`BandCoverage::with_capacity`] reserves for it.
+    pub fn bytes(&self) -> usize {
+        self.rows
+            .saturating_mul(size_of::<RowSpans>())
+            .saturating_add(self.spans.saturating_mul(size_of::<RawSpan>()))
+            .saturating_add(self.cells)
+    }
+}
+
 /// One partial or full run of a coverage row.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Span<'a> {
@@ -81,21 +126,19 @@ impl<'a> CoverageRow<'a> {
 }
 
 impl BandCoverage {
-    /// Storage for the largest coverage one band of `area` can hold, charged
-    /// to `bytes`, so that filling it never allocates.
+    /// Storage for `capacity`, charged to `bytes`, so that filling it with
+    /// no more than that never allocates; see [`Capacity::band`] and
+    /// [`Shape::capacity`](super::Shape::capacity).
     ///
     /// # Errors
     ///
     /// Returns a `Limit` error when the storage exceeds `bytes` or cannot be
     /// allocated.
-    pub fn with_capacity(area: &Area, bytes: &mut Meter) -> Result<Self> {
-        let rows = area.band_height.min(area.region.height()) as usize;
-        let width = area.region.width() as usize;
-        let cells = rows.saturating_mul(width);
+    pub fn with_capacity(capacity: Capacity, bytes: &mut Meter) -> Result<Self> {
         let mut coverage = Self::default();
-        bytes.reserve(&mut coverage.rows, rows)?;
-        bytes.reserve(&mut coverage.spans, cells)?;
-        bytes.reserve(&mut coverage.cells, cells)?;
+        bytes.reserve(&mut coverage.rows, capacity.rows)?;
+        bytes.reserve(&mut coverage.spans, capacity.spans)?;
+        bytes.reserve(&mut coverage.cells, capacity.cells)?;
         Ok(coverage)
     }
 
@@ -186,7 +229,11 @@ impl BandCoverage {
         {
             span.len = span.len.wrapping_add(len);
             if !full {
-                self.cells.extend(std::iter::repeat_n(value, len as usize));
+                if len == 1 {
+                    self.cells.push(value);
+                } else {
+                    self.cells.extend(std::iter::repeat_n(value, len as usize));
+                }
             }
             return;
         }
@@ -270,10 +317,12 @@ mod tests {
             band_height: 4,
         };
         let mut bytes = Meter::new(1 << 20, "budget");
-        let band = BandCoverage::with_capacity(&area, &mut bytes).unwrap();
-        assert!(bytes.used() >= 40);
-        assert!(band.retained_bytes() >= 40);
+        let capacity = Capacity::band(&area);
+        assert_eq!(capacity.cells, 40);
+        let band = BandCoverage::with_capacity(capacity, &mut bytes).unwrap();
+        assert_eq!(bytes.used(), capacity.bytes());
+        assert!(band.retained_bytes() >= capacity.bytes());
         let mut tiny = Meter::new(8, "budget");
-        assert!(BandCoverage::with_capacity(&area, &mut tiny).is_err());
+        assert!(BandCoverage::with_capacity(capacity, &mut tiny).is_err());
     }
 }

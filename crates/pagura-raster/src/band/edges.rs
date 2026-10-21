@@ -201,6 +201,30 @@ pub(crate) struct Chained {
     pub(crate) line: Line,
     pub(crate) chain: u32,
     pub(crate) group: u8,
+    /// Whether the edge's contour fits in one pixel, where it can enclose
+    /// a region no side of the pixel meets.
+    pub(crate) enclosed: bool,
+    /// The edge's place: its contour, its index there, and the contour's
+    /// edge count; pieces of one edge share it.
+    pub(crate) place: Place,
+}
+
+/// Where an edge lies in its polygon.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct Place {
+    pub(crate) contour: u32,
+    pub(crate) index: u32,
+    pub(crate) count: u32,
+}
+
+impl Place {
+    /// Whether two edges are one or consecutive edges of one contour.
+    pub(crate) fn adjacent(self, other: Self) -> bool {
+        self.contour == other.contour
+            && (self.index == other.index
+                || (self.index + 1) % self.count.max(1) == other.index
+                || (other.index + 1) % other.count.max(1) == self.index)
+    }
 }
 
 /// The edges of `polygon` in contour order with their chains: maximal runs
@@ -214,7 +238,7 @@ pub(crate) fn chained(
 ) -> Result<()> {
     out.try_reserve(polygon.vertices())
         .map_err(|_| Error::limit("raster geometry allocation failed"))?;
-    for contour in polygon.contours() {
+    for (contour_number, contour) in polygon.contours().enumerate() {
         let n = contour.len();
         let direction = |i: usize| {
             let (a, b) = (contour[i].y, contour[(i + 1) % n].y);
@@ -227,7 +251,15 @@ pub(crate) fn chained(
             }
         };
         let base = out.len();
-        for i in 0..n {
+        let (mut lo, mut hi) = (contour[0], contour[0]);
+        for p in contour {
+            lo = Point::new(lo.x.min(p.x), lo.y.min(p.y));
+            hi = Point::new(hi.x.max(p.x), hi.y.max(p.y));
+        }
+        let enclosed = hi.x.ceil() - lo.x.floor() <= 1.0 && hi.y.ceil() - lo.y.floor() <= 1.0;
+        let count = u32::try_from(n).map_err(|_| Error::limit("contour exceeds u32"))?;
+        let contour_index = u32::try_from(contour_number).map_err(|_| Error::limit("contours exceed u32"))?;
+        for (i, index) in (0..n).zip(0_u32..) {
             out.push(Chained {
                 line: Line {
                     a: contour[i],
@@ -235,6 +267,12 @@ pub(crate) fn chained(
                 },
                 chain: 0,
                 group,
+                enclosed,
+                place: Place {
+                    contour: contour_index,
+                    index,
+                    count,
+                },
             });
         }
         let Some(last) = (0..n).rev().find(|&i| direction(i) != 0) else {
@@ -353,6 +391,43 @@ pub(crate) fn pixels([min, max]: [Point; 2], region: DeviceRect, floor_cells: bo
     }
 }
 
+/// Clips a straight edge to `bounds`, as [`clip`] does.
+pub(crate) fn clip_line(line: Line, bounds: Bounds, out: &mut Vec<Line>) -> Result<()> {
+    let mut pieces = Vec::new();
+    clip(
+        Chained {
+            line,
+            chain: 0,
+            group: 0,
+            enclosed: false,
+            place: Place::default(),
+        },
+        bounds,
+        &mut pieces,
+    )?;
+    out.try_reserve(pieces.len())
+        .map_err(|_| Error::limit("raster geometry allocation failed"))?;
+    out.extend(pieces.into_iter().map(|e| e.line));
+    Ok(())
+}
+
+/// The straight edges of `polygon` that bound area (not horizontal).
+pub(crate) fn lines(polygon: &Polygon) -> Result<Vec<Line>> {
+    let mut out = Vec::new();
+    out.try_reserve(polygon.vertices())
+        .map_err(|_| Error::limit("raster geometry allocation failed"))?;
+    for contour in polygon.contours() {
+        let n = contour.len();
+        for i in 0..n {
+            let (a, b) = (contour[i], contour[(i + 1) % n]);
+            if a.y != b.y {
+                out.push(Line { a, b });
+            }
+        }
+    }
+    Ok(out)
+}
+
 /// Clips a chained edge to `bounds`: parts above or below disappear and
 /// parts left or right of it become vertical edges on its sides, which keeps
 /// the winding inside and leaves none outside (8.5.4). Horizontal edges are
@@ -449,7 +524,8 @@ pub(crate) struct BandIndex {
 }
 
 impl BandIndex {
-    /// Lists every item `i` with rows `ranges(i)` in each band it meets.
+    /// Lists every item `i` with rows `ranges(i)` in each band of `area`
+    /// it meets.
     pub(crate) fn new(
         area: &Area,
         count: usize,
@@ -462,44 +538,48 @@ impl BandIndex {
             first: bands.start,
             ..Self::default()
         };
+        if u32::try_from(count).is_err() {
+            return Err(Error::limit("band index exceeds u32"));
+        }
         index
             .offsets
             .try_reserve_exact(span + 1)
             .map_err(|_| Error::limit("band index allocation failed"))?;
         index.offsets.resize(span + 1, 0);
         let local = |row: u32| ((row / height).saturating_sub(bands.start)) as usize;
-        let mut total = 0_usize;
+        let mut total = 0_u32;
         for i in 0..count {
             if let Some((first, last)) = ranges(i) {
-                for band in local(first)..=local(last) {
+                let (a, b) = (local(first), local(last).min(span - 1));
+                for band in a..=b {
                     index.offsets[band + 1] += 1;
                 }
-                total = total.saturating_add(local(last) - local(first) + 1);
+                total = total
+                    .checked_add((b - a) as u32 + 1)
+                    .ok_or(Error::limit("band index exceeds u32"))?;
             }
-        }
-        if u32::try_from(total).is_err() || u32::try_from(count).is_err() {
-            return Err(Error::limit("band index exceeds u32"));
         }
         for band in 0..span {
             index.offsets[band + 1] += index.offsets[band];
         }
         index
             .items
-            .try_reserve_exact(total)
+            .try_reserve_exact(total as usize)
             .map_err(|_| Error::limit("band index allocation failed"))?;
-        index.items.resize(total, 0);
-        let mut next: Vec<u32> = Vec::new();
-        next.try_reserve_exact(span)
-            .map_err(|_| Error::limit("band index allocation failed"))?;
-        next.extend_from_slice(&index.offsets[..span]);
+        index.items.resize(total as usize, 0);
+        // Fill each band from its start, which leaves every start at the
+        // next band's; shifting restores them.
         for i in 0..count {
             if let Some((first, last)) = ranges(i) {
-                for band in local(first)..=local(last) {
-                    index.items[next[band] as usize] = i as u32;
-                    next[band] += 1;
+                for band in local(first)..=local(last).min(span - 1) {
+                    let slot = &mut index.offsets[band];
+                    index.items[*slot as usize] = i as u32;
+                    *slot += 1;
                 }
             }
         }
+        index.offsets.copy_within(0..span, 1);
+        index.offsets[0] = 0;
         Ok(index)
     }
 
@@ -591,6 +671,8 @@ mod tests {
             },
             chain: 1,
             group: 0,
+            enclosed: false,
+            place: Place::default(),
         };
         let mut out = Vec::new();
         clip(edge, bounds, &mut out).unwrap();

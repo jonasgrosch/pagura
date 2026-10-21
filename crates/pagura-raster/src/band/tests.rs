@@ -47,7 +47,10 @@ pub(super) fn raster(
 ) -> (Vec<u8>, usize) {
     let mut bytes = Meter::new(usize::MAX, "bytes");
     let mut raster = BandRasterizer::new(*area, &mut bytes).unwrap();
-    let mut band = BandCoverage::with_capacity(area, &mut bytes).unwrap();
+    // Sized from the shape, filling the coverage never grows it.
+    let capacity = shape.map_or_else(|| Capacity::band(area), Shape::capacity);
+    let mut band = BandCoverage::with_capacity(capacity, &mut bytes).unwrap();
+    let reserved = band.retained_bytes();
     let width = area.region.width() as usize;
     let mut out = vec![0; width * area.region.height() as usize];
     let bands = match shape {
@@ -56,6 +59,7 @@ pub(super) fn raster(
     };
     for b in bands {
         raster.rasterize(MarkCoverage { shape, clip }, b, &mut band);
+        assert_eq!(band.retained_bytes(), reserved, "the coverage grew");
         let mut last_row = None;
         for row in band.rows() {
             assert!(last_row.is_none_or(|y| y < row.y), "rows in order");
@@ -192,4 +196,17 @@ pub(super) fn polygon(points: &[Point]) -> Path {
     }
     path.close();
     path.finish()
+}
+
+#[test]
+fn scratch_charges_depend_on_the_region_only() {
+    let charge = |band_height| {
+        let mut bytes = Meter::new(usize::MAX, "bytes");
+        BandRasterizer::new(area(3, 5, 640, 480, band_height), &mut bytes).unwrap();
+        bytes.used()
+    };
+    let first = charge(1);
+    for height in [5, 16, 32, 256, 480] {
+        assert_eq!(charge(height), first);
+    }
 }
