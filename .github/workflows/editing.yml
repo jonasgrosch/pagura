@@ -10,6 +10,7 @@ on:
       - 'crates/pagura-host/**'
       - 'web/**'
       - 'tools/editing_host_test.mjs'
+      - 'tools/host_test.mjs'
       - 'tools/form_*test.mjs'
       - 'tools/viewer_navigation_test.mjs'
       - 'tools/tile_cache_test.mjs'
@@ -53,14 +54,20 @@ jobs:
         env:
           PAGURA_EDIT_OUTPUT: ${{ runner.temp }}/pagura-editing
         run: python3 tools/editing_readers.py
-      - name: Build browser editing module
-        run: cargo build --locked --offline --release -p pagura-host --features bundled-data --target wasm32-wasip1
+      - name: Build browser and native hosts
+        run: |
+          cargo build --locked --offline -p pagura-host
+          cargo build --locked --offline --release -p pagura-host --target wasm32-wasip1
+          cargo build --locked --offline --release -p pagura-host --features bundled-data --target-dir target/host-bundled
+          cargo build --locked --offline --release -p pagura-host --features bundled-data --target wasm32-wasip1 --target-dir target/host-bundled
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 26.8.1
+      - name: Browser viewer and native/WASM parity
+        run: node tools/host_test.mjs
       - name: Browser editing bridge
         run: |
-          node tools/editing_host_test.mjs
+          node tools/editing_host_test.mjs target/host-bundled/wasm32-wasip1/release/pagura-host.wasm
           for file in target/form-compatibility-*.pdf; do
             qpdf --check "$file"
             pdftoppm -f 1 -singlefile -scale-to 600 "$file" "${file%.pdf}"
@@ -69,5 +76,5 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: editing-browser-wasm
-          path: target/wasm32-wasip1/release/pagura-host.wasm
+          path: target/host-bundled/wasm32-wasip1/release/pagura-host.wasm
           if-no-files-found: error
