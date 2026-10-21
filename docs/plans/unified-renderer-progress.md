@@ -171,41 +171,43 @@ cleanup so a failed cleanup/write cannot leave an earlier success receipt.
 
 ## S0a: lazy root bounds experiment (2026-10-21)
 
-The worktree now contains the first renderer optimization candidate: reuse of
+The first renderer optimization candidate introduced reuse of
 existing glyph-run device hulls across compositor bands/chunks in both policies.
-It retains the original command traversal, error ordering and work charges.
-Twelve focused tests and strict all-target Clippy passed. This is an experimental
-candidate; the complete repository check and performance admission are pending.
+It retained the original command traversal, error ordering and work charges.
+Twelve focused tests and strict all-target Clippy passed. This was an experimental
+candidate; at that stage the complete repository check and performance
+admission were pending.
 
 The 24-cell pilot retained and independently verified all 480 outputs, including
 warmups. Eligible full-render median ratios were approximately 0.817 in each
 mode. These small-sample results do not meet the whole P1 gate and do not show a
 general text or competitor speedup. Default knockout text is outside admission.
-The fixed index object occupies 2,064 bytes on the current native target.
+The fixed index object occupied 2,064 bytes on the measured native target.
 
 The planned 200-pair confirmation was stopped when another worktree started a
 full check inside the reserved compute window. Its entire partial run is invalid;
 its timings have not been analyzed or pooled. The foreign job began after the
 pilot had ended. The single replacement preflight then detected a new release
 build in `practical-gould` and refused to launch; it produced no samples. The
-performance gate remains inconclusive, with no automatic third confirmation.
+performance gate was then inconclusive, with no automatic third confirmation.
 The active contention guard passed controlled success, refusal, cancellation
 and deadline checks. It never signals another worktree's process. A subsequent
 full-check preflight refused a fresh `friendly-rosalind` release build, before
-launching any validation. The candidate remains uncommitted pending the required
-complete check.
+launching any validation. At that point the candidate remained uncommitted
+pending the required complete check.
 
 See the [experiment record](../../benchmarks/results/scene-index-experiment.md)
-for evidence paths, hashes, narrow scope and the still-open gates. No candidate
-commit or completed implementation acceptance is claimed here.
+for evidence paths, hashes, narrow scope and gate decisions. No candidate
+commit or completed implementation acceptance was claimed at that stage.
 
 The user later confirmed other compute was paused. A frozen, independently
 reviewed resumption waited through zero-child preflight refusals, then launched
 confirmation004 after three quiet snapshots. A new `practical-gould` release
 build began about one minute later; the active guard stopped our child and
 retained process evidence. The entire partial run is excluded without timing
-analysis. Full validation and committing remain pending; no automatic measured
-restart is planned. See the experiment record for exact timestamps and hashes.
+analysis. Full validation and committing were still pending; no automatic
+measured restart was planned. See the experiment record for exact timestamps
+and hashes.
 
 ### Completed S0a correctness validation
 
@@ -225,5 +227,63 @@ and unchanged source SHA-256
 The [experiment record](../../benchmarks/results/scene-index-experiment.md)
 binds the log and receipt hashes.
 
-This slice is retained as an experimental branch change. P1 remains unpassed;
-no production admission, general speedup or competitor superiority is claimed.
+This validated experiment was committed as `9ebac1cb`. P1 remained unpassed;
+no production admission, general speedup or competitor superiority was claimed.
+
+### S0a removal and next viewport experiment
+
+The user then requested speed and memory confirmation with an explicit
+keep-only-if-all-gates-pass condition. The
+[final confirmation plan](../../benchmarks/results/scene-index-final-confirmation-plan.json)
+froze confirmation005 before execution. Its final preflight at
+2026-10-20 23:31:15 UTC refused external compute contention. The coordination
+wrapper ran the guard, but the guard launched no benchmark child and produced
+zero measured samples. The [decision record](../../benchmarks/results/scene-index-decision.json)
+binds the guard and receipt hashes.
+
+Without valid complete confirmation, retention was not authorized under that
+condition. The memo and its fixed index storage have been removed, restoring
+the original direct hull calculation. This is performance non-admission, not a
+numerical speed or memory regression or a correctness finding. The pilot,
+excluded partial runs, successful full-check history, candidate identity and
+all frozen plan references remain preserved.
+
+The subsequent isolated candidate constructed the `Context::clip` viewport only
+for soft-mask sources. The release build and existing independent-pixel test
+passed, followed by 40 independently verified renders across 20 cells in both
+modes, with exact RGB, opaque alpha and same-mode byte equality. Static ARM64
+release disassembly showed ordinary clips branching around path-vector growth
+and an 80-byte smaller function stack reservation; these are not speed or RSS
+measurements.
+
+The bounded scheduling wait expired with foreign compute active, before any
+benchmark launch. The candidate was removed from the renderer and preserved as a
+[patch with frozen bindings and evidence](../../benchmarks/results/clip-viewport-experiment.md).
+No numeric regression or accepted performance improvement is claimed. The shared
+paired-run harness now binds its entry, helper and fixture modules explicitly and
+requires the candidate source to be the checkout providing its imported tools.
+
+
+After the user explicitly requested immediate performance testing, the coordinator
+stopped the owned correctness check and ran the unchanged clip experiment serially,
+recording background compute without aborting. The 400-output pilot and fresh
+200-pair-per-cell confirmation completed separately. All 8,200 confirmation
+outputs passed exact independent RGB, opaque alpha and same-mode byte parity.
+Target medians were 5.035 to 4.532 ms for Exact (-10.0%) and 8.700 to 8.231 ms for
+Competitive (-5.4%). The complete numeric gate failed: one of two target latency
+cells, three of eighteen protected latency cells, and twelve of twenty memory
+cells passed. Background contention also fails the environment gate. These are
+observations under load, not an accepted speedup or established causal regression.
+The candidate was removed again and the final restored-source check restarted.
+
+Following the user's question about discarding partial wins, the experiment is
+classified as promising but not yet admitted. The numerical results, failed gates,
+and product state are unchanged. The patch remains a candidate for incremental
+evaluation on the newer integration stack; a missing admission is not a finding
+that an idea should be retired. The [stacking review](../../benchmarks/results/performance-stacking-review.md)
+separates cache overlap, independent image/text work, branch ancestry, and the
+measurements needed to establish a combined gain.
+
+The final restored-source check002 passed with unchanged source identity in 985
+seconds: 182 Python tests, 1,237 conformance cases, strict Rust checks and native/
+WASM host parity. Its receipt and log hashes are bound in the clip experiment.

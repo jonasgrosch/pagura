@@ -149,8 +149,8 @@ pub(super) fn path_visible(
     )?
     .is_some())
 }
-pub(super) fn run_hull_visible(hull: [Point; 2], tile: Tile) -> bool {
-    hull_region(hull, tile, (1.0, 1.0)).is_some()
+pub(super) fn run_visible(run: &crate::display::GlyphRun, device: Transform, tile: Tile) -> bool {
+    hull_region(run.device_hull(device), tile, (1.0, 1.0)).is_some()
 }
 pub(super) fn glyph_visible(
     hull: [Point; 2],

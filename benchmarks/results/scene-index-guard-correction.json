@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "recorded_utc": "2026-10-20T23:29:08.562852+00:00",
+  "scope": "Guard only; before any measured child launches. Candidate, baseline, harness, sampling plan and thresholds unchanged.",
+  "reason": "Broad Node matching caught idle app tool kernels whose working directory was Pagura. Narrow to actual host-test script or pagura WASM module. Keep detection of observed directly launched tiles binary.",
+  "initial_guard_sha256": "37137d9549107454b350b114bc8fe43cd999e3085db71cebdc9c68eddc3b6db7",
+  "guard_sha256": "24c6215339240e73671d9bb036cd3cda4146e5a6d961e7e2d2c1b7fd555f54a3",
+  "matcher_checks_passed": 10
+}

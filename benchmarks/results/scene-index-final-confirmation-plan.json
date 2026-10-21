@@ -1,0 +1,202 @@
+{
+  "schema": 1,
+  "status": "frozen-before-user-requested-confirmation",
+  "experiment": "root-glyph-hull-cache",
+  "pilot_report_sha256": "9b506b9b704c9eb7da4b4e4d71d6b870a0fcb3deeed356a8efe0c2dfdc1261cd",
+  "identities": {
+    "baseline": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-baseline/pagura",
+      "commit": "676a872eb9f6c279cbf1e3929ace3a0c99db9fc3",
+      "source_sha256": "22f56e711c6cc2c11342bf43e446c23dc6cbb65fc9da7a4773f488cd88e7e1ad",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-baseline/pagura/target/release/examples/scene_index_profile",
+      "binary_sha256": "2596300f419a9b41735a640ee323ceba5e57efde3724f001398b23799d045a25"
+    },
+    "candidate": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/unified-renderer-plan/pagura",
+      "commit": "9ebac1cba77e77639146b4c86f7b1adfa6574b43",
+      "source_sha256": "f672c7fa1475cf650570df9f84d9e6b77215a11f0f0ab7544860aa964d1eaa4b",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/unified-renderer-plan/pagura/target/release/examples/scene_index_profile",
+      "binary_sha256": "ea46b9a664ce0618a0c20aaf6d873ce54111659e6894c427564aef3cf8cf0ebd"
+    }
+  },
+  "driver_sha256": "e650fb386915742423dcdbc87c26246b5088df2f1895bb0c309d544fa3002e0b",
+  "example_sha256": "8e89a087d351e7b89289e0897cafeb75422d4c151280734fde8c958a841279f2",
+  "declared_cells": [
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "target"
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "target"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "dense64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "dense64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "one-source64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "one-source64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "overcapacity128",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "overcapacity128",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "nested64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "nested64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "default-knockout64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "default-knockout64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    }
+  ],
+  "thresholds": {
+    "target_median_upper": 0.95,
+    "target_p95_upper": 1.0,
+    "protected_median_upper": 1.02,
+    "protected_p95_upper": 1.02,
+    "peak_rss_ratio_max": 1.0
+  },
+  "pairs_per_cell": 200,
+  "warmups_per_cell": 5,
+  "order_seed": 20261021,
+  "bootstrap": {
+    "method": "paired percentile bootstrap",
+    "resamples": 5000,
+    "one_sided_confidence": 0.95,
+    "seed": 42017,
+    "scope": "marginal estimates; temporal dependence and p95 precision need review"
+  },
+  "sampling_reason": "Pilot target medians were about18% lower but tail and protected intervals were wide.200fresh pairs provide about10 observations above empiricalp95; precision and independence are not assumed.",
+  "stopping": "Wait through zero-child preflight scheduling events. Once the measured child launches, run once; no interim timing analysis, tuning, pooled earlier data, deletion or automatic restart. A validity failure consumes this trial and gives no admission.",
+  "decision": "Keep the product optimization only if every frozen gate passes in a valid complete run. Otherwise remove it while retaining experiment evidence. Inconclusive does not prove regression but cannot authorize retention.",
+  "scope": "native one-thread retained full-validation API; hashed/warm filesystem; not host or WASM",
+  "target_scope": "explicit /TK false non-knockout text; 64 distinct glyph sources per direct root run",
+  "not_claimed": [
+    "competitor superiority",
+    "default-knockout text gains",
+    "general text speedup",
+    "world-leading speed or accuracy"
+  ],
+  "identifier": "confirmation-005",
+  "frozen_utc": "2026-10-20T23:25:43.778852+00:00",
+  "authorization": "Keep going. Run the speed and memory confirmation, keep the optimization only if it passes the gates, then tackle the next performance improvement.",
+  "guard_sha256": "37137d9549107454b350b114bc8fe43cd999e3085db71cebdc9c68eddc3b6db7"
+}

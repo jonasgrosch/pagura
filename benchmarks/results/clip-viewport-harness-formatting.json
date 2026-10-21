@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "change": "Remove one extra blank line at EOF after all measurements; no AST change.",
+  "measured_source_path": "local/clip-viewport/paired_render-measured.py",
+  "measured_sha256": "af2d7d1cb143e9745ee3edcba1356d08b03771eceb38573515e0270efeaa2ad2",
+  "final_path": "benchmarks/paired_render.py",
+  "final_sha256": "c7a074f3f6d63ac2df4fcd7f87f332d4848f8f10e3d7c54ec72b822717e16b27",
+  "ast_identical": true,
+  "frozen_bindings": "Unchanged historical identities refer to the retained measured bytes."
+}

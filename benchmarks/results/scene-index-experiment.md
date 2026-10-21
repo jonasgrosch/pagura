@@ -1,30 +1,34 @@
 # Lazy root glyph bounds experiment
 
-**Status: correctness validated; experimental, not performance-admitted.**
-The candidate is retained on `codex/unified-renderer-plan`. The complete
-repository check passed on 2026-10-21; valid performance confirmation remains
-pending. It is not an accepted speed optimization.
+**Status: memo removed without performance admission.**
+The candidate at `9ebac1cb` passed the complete repository check on 2026-10-21.
+Final confirmation005 refused external compute contention before launching a
+benchmark child and produced zero measured samples. The keep-only-if-all-gates-pass
+condition therefore required removal; no numerical speed or memory regression
+was established. The [decision record](scene-index-decision.json) binds the
+final refusal evidence. The original direct hull calculation is restored.
 The [machine-readable record](scene-index-experiment.json) preserves the pilot
 metrics, evidence hashes, invalid-run chronology and replacement protocol.
 
-## What changed
+## What was tested
 
-`compositor/index.rs` lazily reuses the existing glyph-run device hull across
-bands/chunks. It covers root command ordinals 0–63 with at least two glyph
-sources, repeated regional execution and finite canonical-device bounds. Both
-compositor policies call the same code. Painter order, all command visits,
-transfer validation, semantic work charges and error positions remain unchanged.
-`regions.rs` still owns visibility padding and pixel rounding.
+The historical `compositor/index.rs` lazily reused the existing glyph-run device
+hull across bands/chunks. It covered root command ordinals 0–63 with at least two
+glyph sources, repeated regional execution and finite canonical-device bounds.
+Both compositor policies called the same code. Painter order, all command
+visits, transfer validation, semantic work charges and error positions stayed
+unchanged. `regions.rs` remained the visibility-padding and pixel-rounding owner.
 
-This removes repeated source-hull calculations; it does **not** implement sparse
-command dispatch. Groups, including ordinary text knockout groups, are outside
-this first admission. Exact's separate opaque renderer also bypasses the memo.
-The index object occupies 2,064 bytes on the current native target, including
-when disabled. It allocates no heap storage. This is object size, not measured
-total stack growth, and is not a waiver of the peak-memory gate.
+This removed repeated source-hull calculations; it did **not** implement sparse
+command dispatch. Groups, including ordinary text knockout groups, were outside
+its eligibility. Exact's separate opaque renderer also bypassed the memo.
+The index object occupied 2,064 bytes on the measured native target, including
+when disabled, and allocated no heap storage. This was object size, not measured
+total stack growth, and did not waive the peak-memory gate. The object and reuse
+path are no longer present in the product.
 
-The simpler alternative is the original direct hull calculation. Extending the
-cache or adding a scheduler is unjustified until this candidate earns its cost.
+The simpler original direct hull calculation has been restored. No cache
+extension or scheduler is admitted by this experiment.
 
 ## Independent checks and measured scope
 
@@ -85,8 +89,8 @@ unchanged code, cells, references, thresholds and analysis, order seed 982451,
 and active exclusion monitoring. It requires an enforced compute window first.
 The replacement preflight at **2026-10-20 22:45:32.875 UTC** detected a new
 `practical-gould` release build and refused to launch. No confirmation-002
-samples exist. Performance admission therefore remains inconclusive; no third
-automatic attempt is authorized by this protocol. No partial data enters analysis.
+samples exist. Performance admission was therefore inconclusive at that stage;
+that protocol authorized no third automatic attempt. No partial data enters analysis.
 
 The local contention guard passed controlled checks for successful execution,
 preflight refusal, live cancellation and deadline expiry. Each cancellation
@@ -162,5 +166,30 @@ codes as zero and identical source identities before/after validation.
 - Receipt: `local/scene-index/full-check-002-receipt.json`, SHA-256
   `1ab4d04110f9430aa7e45abf09fc75f7428fd31bc782cf7c96c1dd0ef7d10f7a`.
 
-Correctness validation permits retaining this isolated branch experiment.
-It does not satisfy P1 or authorize merging it as an accepted speedup.
+The correctness-validated isolated experiment was committed as `9ebac1cb`.
+That validation did not satisfy P1 or admit an accepted speedup.
+
+## Final confirmation and removal (2026-10-21)
+
+The user explicitly requested confirmation and retention only if every gate
+passed. The [final frozen plan](scene-index-final-confirmation-plan.json)
+preserved the 24 cells, 200 fresh pairs, five warmups and thresholds, with order
+seed 20261021. After bounded scheduling, confirmation005's final preflight at
+**2026-10-20 23:31:15 UTC** refused external compute contention with exit 75.
+The coordination wrapper launched the guard; the guard launched **zero benchmark
+children**, so there are **zero measured samples** and no confirmation005 report.
+
+Under keep-only-if-all-gates-pass, absence of valid complete confirmation could
+not authorize retaining the memo. Its product code and fixed storage have been
+removed. This decision is performance non-admission, not a numerical speed or
+memory regression or a correctness finding. Earlier partial timing data remains
+excluded without analysis or pooling. The prior pilot and full-check history,
+frozen plans and candidate binary remain retained; paths and hashes are bound
+by the [decision record](scene-index-decision.json).
+
+The subsequent viewport-construction candidate moved clip viewport preparation
+into the soft-mask-source branch. It is preserved outside the renderer after
+a subsequent measured confirmation missed the complete gates under background load. See its
+[separate evidence record](clip-viewport-experiment.md) for the independent pixel
+preflight, source patch and static code-generation observations. Its evidence
+must be assessed independently of the removed memo.

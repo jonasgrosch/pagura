@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "user_instruction": "test the performance man",
+  "scope": "Run actual paired tests now, recording rather than aborting on background compute.",
+  "timing_claim": "Exploratory under observed load. An execution gate failure still prevents performance admission.",
+  "unchanged": [
+    "candidate bytes",
+    "baseline bytes",
+    "independent pixel oracle",
+    "cell matrix",
+    "pair counts",
+    "seeds",
+    "numeric speed and memory thresholds"
+  ],
+  "pilot": "local/clip-viewport/pilot-002",
+  "prior_pilot_launches": 0,
+  "observer_sha256": "6359baff8bde26b074d22081556ade42f52c880137d3b661c36d6d0e12006511",
+  "correctness_run_interrupted": "local/clip-viewport/final-check-001-receipt.json"
+}

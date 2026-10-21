@@ -39,14 +39,23 @@ conformance cases. Controlled-runner attestation and matrix aggregation
 remain release prerequisites. No renderer behavior or measured speed changes
 are claimed by these tooling slices.
 
-The renderer prototype adds lazy root glyph-run hull reuse, shared by both
-compositor modes. The complete single-job check passed on 2026-10-21, including
-12 new regression tests, 182 Python tests and 1,237 PDF conformance cases. It
-remains **experimental and not performance-admitted**: confirmation runs were
-canceled for external compute contention. It does not implement sparse dispatch
-or improve default-knockout text. The
+The lazy root glyph-run hull memo was **removed without performance admission**
+under the keep-only-if-all-gates-pass rule. The final confirmation005 preflight
+refused external compute contention before launching a benchmark child; it
+produced zero measured samples. This is missing valid confirmation, not a finding
+of numerical speed or memory regression. The candidate's prior complete check
+passed on 2026-10-21, including 12 new regression tests, 182 Python tests and
+1,237 PDF conformance cases. The
 [experiment record](../benchmarks/results/scene-index-experiment.md) preserves
-the pilot, invalid confirmation and fixed memory overhead.
+the pilot, correctness history and [removal decision](../benchmarks/results/scene-index-decision.json).
+The next candidate, conditional clip viewport construction, passed 40 independent
+preflight renders and the existing independent-pixel test. Its subsequent fixed
+confirmation verified all 8,200 outputs and measured lower target medians, but
+failed the complete speed/memory gates under observed background load. It is
+preserved as a [patch and experiment](../benchmarks/results/clip-viewport-experiment.md), with
+the renderer restored and no performance admission. This is a promising partial
+result, not a retired idea. A [stacking review](../benchmarks/results/performance-stacking-review.md)
+identifies the remaining clip-cache-miss work on the newer local integration stack.
 
 `RenderOptions::accuracy` selects `Accuracy::Exact`, the default, which keeps
 every pixel within one level of its exact result, or `Accuracy::Competitive`,

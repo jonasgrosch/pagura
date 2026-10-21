@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "candidate_commit": "9ebac1cba77e77639146b4c86f7b1adfa6574b43",
+  "decision": "remove-product-optimization",
+  "admission": false,
+  "reason": "The explicitly requested confirmation could not satisfy the execution gate: external Pagura compute remained active after bounded scheduling and final preflight. No speed/memory samples were launched. Under keep-only-if-all-gates-pass, missing valid confirmation does not authorize keeping the memo.",
+  "not_claimed": "No numeric speed or memory regression was established. Earlier partial timing data remains excluded and uninspected.",
+  "guard_status": "refused-external-contention",
+  "guard_path": "local/scene-index/confirmation-005-guard/guard.json",
+  "guard_sha256": "ce2183000d0cbee032be567e7717595b245b80b8a6b84eb7c321ffba42506eb5",
+  "receipt_path": "local/scene-index/confirmation-005-receipt.json",
+  "receipt_sha256": "d996c27ed9ad26f92cb0320e12f5a49563efd7b984f6f5a1fc8b23f3c28d3711",
+  "sampling_plan": "scene-index-final-confirmation-plan.json",
+  "correctness_evidence": "Prior complete check passed at the candidate source. This removal is performance non-admission, not a correctness finding.",
+  "next": "Restore original renderer behavior, preserve benchmark/evidence and history, then test viewport construction laziness independently.",
+  "preserved_candidate_binary": {
+    "path": "local/scene-index/candidate-9ebac1cb",
+    "sha256": "ea46b9a664ce0618a0c20aaf6d873ce54111659e6894c427564aef3cf8cf0ebd"
+  }
+}

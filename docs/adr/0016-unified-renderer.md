@@ -85,26 +85,39 @@ rule means broadcast/legacy execution, not empty coverage.
 
 ## Spatial scheduling without changing semantics
 
-The first renderer experiment, **S0a**, reuses existing glyph-run hulls lazily
-in `compositor/index.rs`. It retains full command traversal. Admission is limited
-to the first 64 root command ordinals, runs with at least two glyph sources,
-repeated bands/chunks, and finite ordered bounds under the canonical transform.
-Groups and other scopes continue through the existing path. The first hull is
-computed after the same semantic work charges; later visits reuse its bits.
-Visibility, padding and rounding remain in `regions.rs`.
+The first renderer experiment, **S0a**, tested lazy reuse of existing glyph-run
+hulls in `compositor/index.rs`, retaining full command traversal. Eligibility
+was limited to the first 64 root command ordinals, runs with at least two glyph
+sources, repeated bands/chunks, and finite ordered bounds under the canonical
+transform. Groups and other scopes used the existing path. The first hull was
+computed after the same semantic work charges; later visits reused its bits.
+Visibility, padding and rounding stayed in `regions.rs`.
 
-This experiment uses fixed stack storage rather than dynamically allocated
-metadata: the index object is 2,064 bytes on the current native target, even
-when disabled. That is not a measurement of total stack-frame growth. It is
-outside the decoded-heap/surface allowance, allocates no heap storage, performs
-no preparatory geometry pass, and does not change semantic budget admission.
-The fixed overhead and measured peak memory remain subject to P1. This is an
-explicit experiment detail, not a waiver of the live-memory rules below for
-future dynamic preparation. Sparse command dispatch remains S1.
+The historical candidate used a fixed 2,064-byte index object on the measured
+native target, including disabled instances. That was object size, not measured
+total stack-frame growth. It was outside the decoded-heap/surface allowance,
+allocated no heap storage, performed no preparatory geometry pass, and did not
+change semantic budget admission. The object and its reuse path have now been
+removed; this experiment does not waive the live-memory rules below for future
+dynamic preparation. Sparse command dispatch remains S1 and is not implemented
+by this experiment.
 
 The [experiment record](../../benchmarks/results/scene-index-experiment.md)
-records correctness checks and the still-incomplete performance decision.
-The candidate is not admitted as a speed optimization.
+preserves the pilot and successful correctness checks. Final confirmation005
+refused external contention before launching any benchmark child and produced
+zero measured samples. Under the keep-only-if-all-gates-pass rule, the memo was
+[removed without admission](../../benchmarks/results/scene-index-decision.json).
+No numerical speed or memory regression was established by that refusal.
+
+The next isolated candidate delayed clip viewport construction until the
+soft-mask-source branch needed it. It added no index or retained preparation.
+Independent pixel preflight passed. A subsequent 200-pair-per-cell run under
+observed background load verified 8,200 outputs but missed the complete numeric
+speed/memory gates and the execution gate. The renderer change was removed and the [patch and evidence](../../benchmarks/results/clip-viewport-experiment.md)
+were preserved without admission. This remains a promising partial result, not a
+retired idea; the [stacking review](../../benchmarks/results/performance-stacking-review.md)
+identifies its remaining work on the newer integration stack. A future evaluation must validate that candidate
+independently; the historical S0a checks do not validate it.
 
 1. The first implementation indexes only commands whose existing visit is
    demonstrably effect-free outside a conservative bound. Keep uncertain

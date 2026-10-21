@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "experiment": "lazy-viewport-path-construction",
+  "status": "proposed-unmeasured",
+  "baseline": "final implementation after current glyph-memo keep/remove decision",
+  "candidate_delta": "construct viewport Path only when Context::clip soft_source consumes it",
+  "example": "crates/pagura-render/examples/scene_index_profile.rs",
+  "harness_identity": "hash top-level driver, imported fixture module, shared runner modules and example explicitly",
+  "dpi": 72,
+  "modes": ["exact", "competitive"],
+  "cells_per_mode": [
+    {"case": "clip-churn", "operation": "full", "role": "target"},
+    {"case": "clip-churn", "operation": "cold", "role": "protected"},
+    {"case": "clip-churn", "operation": "tile", "role": "protected"},
+    {"case": "clip-churn", "operation": "tiled", "role": "protected"},
+    {"case": "clip-shared", "operation": "full", "role": "protected"},
+    {"case": "clip-dense", "operation": "full", "role": "protected"},
+    {"case": "clip-soft-source", "operation": "full", "role": "protected"},
+    {"case": "clip-opaque", "operation": "full", "role": "protected"},
+    {"case": "clip-tiny", "operation": "full", "role": "protected"},
+    {"case": "clip-tiny", "operation": "cold", "role": "protected"}
+  ],
+  "pilot": {"pairs": 5, "warmup_pairs": 5, "order_seed": 20261022, "can_admit": false},
+  "confirmation": {"pairs": 200, "warmup_pairs": 5, "order_seed": 20261023, "maximum_launched_runs": 1},
+  "analysis": {"method": "paired-percentile-bootstrap", "resamples": 5000, "confidence": 0.95, "seed": 42017},
+  "thresholds": {"target_median_upper": 0.95, "target_p95_upper": 1.0, "protected_median_upper": 1.02, "protected_p95_upper": 1.02, "peak_rss_ratio_max": 1.0},
+  "quality": {"independent_rgb8_tolerance": 0, "require_opaque_alpha": true, "require_same_mode_baseline_rgba_bytes": true, "require_all_warmup_outputs": true},
+  "environment": {"native_threads": 1, "maximum_launched_seconds": 2100, "known_job_poll_seconds": 5, "automatic_postlaunch_retry": false},
+  "limits": {"per_output_bytes": 67108864, "retained_artifact_bytes": 536870912},
+  "claim_limitations": ["compiler may already eliminate unused construction", "no allocation claim without separate evidence", "not cold filesystem IO", "not a competitor or WASM comparison", "not general PDF dominance"]
+}

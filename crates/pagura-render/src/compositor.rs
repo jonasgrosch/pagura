@@ -8,9 +8,6 @@ mod colorants;
 pub(crate) use colorants::Separations;
 mod image_interiors;
 mod images;
-mod index;
-#[cfg(test)]
-mod index_tests;
 mod lowp;
 mod narrow;
 mod opaque_image;
@@ -208,7 +205,6 @@ struct Context {
     spot_batch: Option<usize>,
     mask_colors: bool,
     bounds: regions::Prepared,
-    scene: index::SceneIndex,
     glyphs: crate::display::GlyphCache,
     /// Row-fragment glyph masks of the competitive policy.
     fragments: Option<Fragments>,
@@ -270,7 +266,6 @@ impl Context {
                 list.device_transform(options),
                 list.limits.decoded_bytes,
             ),
-            scene: index::SceneIndex::new(false),
             fragments: None,
             spare: Vec::new(),
             palette: None,
@@ -476,7 +471,7 @@ impl Context {
             Backdrop::Transparent
         };
         self.charge(commands.len())?;
-        for (ordinal, command) in commands.iter().enumerate() {
+        for command in commands {
             if self.transfers.as_ref().is_some_and(|r| !r.suspended) {
                 transfer::validate(command)?;
             }
@@ -499,7 +494,6 @@ impl Context {
                     model,
                     knockout,
                     depth,
-                    (depth == 0 && self.device == self.page_device).then_some(ordinal),
                 ),
                 Command::Path(path) => self.path(path, target, initial, model, knockout, depth),
                 Command::Image(image) => self.image(image, target, initial, model, knockout, depth),
@@ -524,16 +518,13 @@ impl Context {
         model: Model,
         knockout: bool,
         depth: usize,
-        root_ordinal: Option<usize>,
     ) -> Result<()> {
         if !run.paint.color.paints() || !path_active(&run.paint) {
             return Ok(());
         }
         self.charge(run.glyphs.len())?;
         self.charge(run.bounds_work()?)?;
-        // Lazy reuse preserves the validation and work charges above.
-        let hull = self.scene.hull(run, self.device, root_ordinal);
-        if !regions::run_hull_visible(hull, tile) {
+        if !regions::run_visible(run, self.device, tile) {
             // Preserve the per-instance bounds charges while avoiding their work.
             let remaining = self.limits.raster_work - self.work;
             if run.glyphs.len() > remaining {
@@ -1086,7 +1077,6 @@ impl Context {
                     parent_model,
                     false,
                     depth + 1,
-                    None,
                 )?;
                 continue;
             }
@@ -1682,9 +1672,6 @@ impl Context {
                 b.rows
             }
         });
-        context
-            .scene
-            .enable(tile.width > band_width || tile.height > band_height);
         if plan.format == plan::Format::U8
             && band_width >= tile.width
             && options.background.a == 255
@@ -2300,7 +2287,6 @@ mod tests {
             mask_colors: false,
             raster: pagura_raster::Rasterizer::default(),
             bounds: regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
-            scene: index::SceneIndex::new(false),
             fragments: None,
             spare: Vec::new(),
             palette: None,
@@ -2376,7 +2362,6 @@ mod tests {
             spot_batch: None,
             mask_colors: false,
             bounds: regions::Prepared::new(Transform::IDENTITY, limits.decoded_bytes),
-            scene: index::SceneIndex::new(false),
             fragments: None,
             spare: Vec::new(),
             palette: None,
@@ -2490,7 +2475,6 @@ mod tests {
                             Model::Rgb,
                             knockout,
                             0,
-                            None,
                         )
                         .unwrap();
                     for (a, b) in actual.pixels().iter().zip(reference.pixels()) {
@@ -2523,7 +2507,6 @@ mod tests {
                             Model::Rgb,
                             false,
                             0,
-                            None,
                         )
                         .map_err(|e| (e.kind, e.position, e.object)),
                 );

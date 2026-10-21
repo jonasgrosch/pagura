@@ -1,12 +1,17 @@
 # Unified renderer implementation plan
 
-Status: evidence foundations validated; first renderer prototype correctness-validated
-and awaiting performance admission, 2026-10-21. Original plan baseline:
+Status: evidence foundations validated; S0a memo removed without performance
+admission; viewport-construction experiment preserved as a patch, 2026-10-21.
+Original plan baseline:
 `359e19dda5b78a23675678b6a153da7ab7fdc2c5`.
 
 The [implementation log](unified-renderer-progress.md) records partial U1/U2
-delivery and the experimental bounds-reuse implementation. Formal performance
-admission remains pending. [ADR 0016](../adr/0016-unified-renderer.md) defines the
+delivery, the bounds-reuse experiment and its removal under the keep-only-if-pass
+rule. Final confirmation005 produced no measured samples because preflight
+refused external contention; this is not a numerical regression finding.
+The subsequent viewport-construction candidate is also outside the renderer,
+with its patch and independently verified fixtures preserved for later evaluation.
+[ADR 0016](../adr/0016-unified-renderer.md) defines the
 architecture; the [validation plan](unified-renderer-validation.md) defines
 binding evidence and proposed experiment thresholds. Existing accepted
 contracts continue to apply until a change is reviewed and validated.
@@ -85,7 +90,7 @@ until its required evidence exists.
 | **B0 / U1, U2** | Implement persistent warm/tile workload adapters and complete keyed platform/DPI/concurrency aggregation in `tools/benchkit/` with frozen policy/matrix identities. Keep `gate.py` fail-closed until all required operations and workloads are bound. | A0, T0, P0/P2 negative tests for missing/duplicate/wrong-setting cells, unsupported operations, stale artifacts, invalid leases, and aggregate-only wins. Persistent workloads and 144-DPI release cells must have real execution evidence; round5 150-DPI reports do not fill them. |
 | **B1 / B0 and owning product milestones** | Track and complete remaining release-matrix prerequisites: `open-cold`, `render-cold`, `text-search`, `save-noop`, `edit-save`, and unbound workload families. Product capability implementation remains with its existing milestone; this rendering plan does not claim to implement editing/search. | Full P2 requires real adapters, applicable independently verified outputs and evidence for every declared operation/workload. B0 aggregation alone cannot satisfy leadership evidence. Do not shrink the matrix to declare renderer work complete. |
 | **S0 / U0** | Add private `compositor/index.rs`, reusing `compositor/regions.rs` as the bounds authority. Stable ordinals reference existing nested command vectors. Initially select all commands; add test-only enumeration and byte/work estimates. | A1, A3, A4, T0; structural P1. No changed arithmetic, admission, public API, or eager resource validation. Reject duplicate bounds implementations or a generic DAG/framework. |
-| **S0a / S0, U1** | Experiment with lazy root glyph-run hull reuse in `compositor/index.rs`; retain all command visits and existing work charges. First 64 root ordinals, at least two sources, repeated regions, finite canonical bounds. Fixed 2,064-byte index object on the current native target, including disabled instances; no heap allocation. | A0–A5, T0 and unchanged P1. This is shared bounds reuse, not sparse dispatch. Reject correctness or budget drift; require useful gains and all protected/memory gates before admission. See the [experiment record](../../benchmarks/results/scene-index-experiment.md). |
+| **S0a / S0, U1** | Historical experiment, now removed: lazy root glyph-run hull reuse with all command visits and work charges retained. First 64 root ordinals, at least two sources, repeated regions, finite canonical bounds. The candidate had a fixed 2,064-byte index object on the measured native target, including disabled instances; no heap allocation. | A0–A5, T0 and unchanged P1. Correctness passed; valid performance confirmation was unavailable. Final confirmation005 preflight launched no benchmark child or samples, so keep-only-if-pass required removal, without a numerical regression finding. This was bounds reuse, not sparse dispatch. See the [experiment record](../../benchmarks/results/scene-index-experiment.md). |
 | **S1 / S0, U1** | Use root command incidence in `compositor.rs` band/chunk loops. Admit only proven effect-free omissions. Broadcast groups, unknown bounds and validation-sensitive commands. Bound index building; skip indexing small/dense scenes using structural cost estimates. | A0–A5, T0, P1. Byte-identical output and diagnostic/error ordering per existing mode. Include cold construction. Reject if gains vanish after indexing, tiny pages regress beyond the declared guard, or caches change limit outcomes. |
 | **C0 / U0, U1** | Add internal exact clip preparation in `pagura-raster/src/raster/prepared_clip.rs` with a render-side adapter. Reuse full/outside runs for ordinary polygon fills under one nonrectangular clip; shared boundary cells still use the existing joint resolver. | A0–A5, T0, P1. Independent rational intersection cases, both fill rules, coincident/complementary boundaries, degeneracies, global tiles, tiny budgets. Reject if reused clips are uncommon or preparation dominates end-to-end gains. |
 | **C1 / C0** | Reuse clip-side boundary fragments/winding within one render call and merge only doubly fractional cells, preserving existing geometric certificates, ghost/density evidence and fallback. Owners: `pagura-raster/src/raster/reuse.rs`, coverage accumulation modules, render clip adapter. Persistence across calls requires M0. | Same gates as C0, plus pathological intersection/work caps. No full/empty inference from rounded bytes, soft-mask substitution, new fill/curve policy, or silent replacement of Competitive clip products. Reject if metadata outweighs avoided work; delete superseded preparation only after evidence. |
@@ -98,6 +103,16 @@ until its required evidence exists.
 | **Q0 / S1, M0, U1** | Plan precision for one independently composited group/region class in `compositor/plan.rs`; keep existing wide paths for dependent/amplifying chains. Establish proof before first write, or bounded replay from original inputs. | A2/A3/A4, T0, P1. Whole downstream error bound, mask/group/transfer tests, tile/cache invariance. Reject late promotion of rounded values, unbounded replay, or precision chosen by requested tile size. |
 | **K0 / U0** | Measure ICC share, curve calls, sample cardinality, and preparation cost on an exclusive runner; retain evidence in benchmark artifacts. | Continue only if K1's plausible upper-bound saving can meet P1's useful-gain threshold on declared intended pages. Archive if ICC is not material; synthetic curve throughput alone is insufficient. |
 | **K1 / K0, U1** | Exact tables over admitted 1–8-bit separable Decode/input-curve domains in `icc.rs`, `icc/curves.rs`, a small `icc/input_table.rs`, `compositor/images.rs`. Keep matrix/mixed-channel/output arithmetic unchanged. | A2/A4, T0, P1 including cold table preparation. Reject applying finite-domain tables to arbitrary intermediate values, changed nonlinear ordering, or excessive storage. CLUT compilation and 16-bit tables are separate later decisions. |
+
+The subsequent isolated experiment constructed the `Context::clip` viewport only
+for soft-mask sources. Its independent pixel preflight passed. A later fixed confirmation under
+observed background load verified 8,200 outputs but failed the complete numeric
+and execution gates. The renderer change was removed;
+the [patch and evidence](../../benchmarks/results/clip-viewport-experiment.md) remain
+available as a promising partial result for [incremental evaluation on the newer
+stack](../../benchmarks/results/performance-stacking-review.md). It needs complete
+independent validation before admission; S0a's prior
+full check and pilot cannot admit a different candidate.
 
 Confirm tooling ownership against the integration head before implementation;
 the contract is stable if helper modules move. New product modules above are

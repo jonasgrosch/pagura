@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "experiment": "lazy-viewport-path-construction",
+  "status": "frozen-before-pilot",
+  "identities": {
+    "baseline": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-baseline/pagura",
+      "commit": "676a872eb9f6c279cbf1e3929ace3a0c99db9fc3",
+      "source_sha256": "22f56e711c6cc2c11342bf43e446c23dc6cbb65fc9da7a4773f488cd88e7e1ad",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-baseline/pagura/target/release/examples/scene_index_profile",
+      "binary_sha256": "2596300f419a9b41735a640ee323ceba5e57efde3724f001398b23799d045a25"
+    },
+    "candidate": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/unified-renderer-plan/pagura",
+      "commit": "9ebac1cba77e77639146b4c86f7b1adfa6574b43",
+      "source_sha256": "fc149ed0c795d1a6a9656badc380d1acaaf0cfa9b339fce837a0725891b52169",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/unified-renderer-plan/pagura/target/release/examples/scene_index_profile",
+      "binary_sha256": "bee7d36617641b5dc9b6008c1b1801e846a8df2c96cc095decd242c80345591b"
+    }
+  },
+  "bound_files_sha256": {
+    "benchmarks/clip_viewport.py": "a2da9c089d13e98b98fb9a20545ab98a3ed42657c05730e7fd39fa3fb5eed434",
+    "benchmarks/paired_render.py": "af2d7d1cb143e9745ee3edcba1356d08b03771eceb38573515e0270efeaa2ad2",
+    "benchmarks/clip_viewport_fixtures.py": "1f003e4f71dd493d6e8ff34eef6f25a1fd3d9587d6412e7ea183102f9a4dfed2",
+    "crates/pagura-render/examples/scene_index_profile.rs": "8e89a087d351e7b89289e0897cafeb75422d4c151280734fde8c958a841279f2",
+    "benchmarks/results/clip-viewport-plan.json": "e0ef7344f468184b462d2e28472b2dd4067e4f42dfa85c856015557512f30048",
+    "benchmarks/results/clip-viewport-plan.md": "45a7e577d365b166e852510a64b7aecc7a8154070608661aa2f571ce9026c626",
+    "benchmarks/results/clip-viewport-candidate.patch": "5952a0493f554ada315da1c8a1170dabd2a91571dd9e7e9c85f9170e7bbf9dab",
+    "benchmarks/results/local/clip-viewport/contention_guard.py": "aa094e945c4aa0efc67126d232efac55cb639209b7962fa303d47bd5234473cb",
+    "benchmarks/results/local/clip-viewport/schedule_pilot.py": "380e46fb89458505cd48c7660749931b991788a715ff19322312b7c9b321b4c6"
+  },
+  "baseline_correspondence": "Baseline renderer restored byte-for-byte before applying retained candidate patch. Identical public API example is present in both source trees. Existing release baseline binary and build receipt reused.",
+  "candidate_build_receipt": "local/clip-viewport/candidate-build-001.json",
+  "guard_additions": [
+    "clip_viewport.py driver",
+    "observed Pagura scratch warm/warm-* renderers"
+  ],
+  "scheduling": "At most 15 minutes awaiting 60 seconds without detected competing jobs; no measured launch retry. Known-process polling is not OS exclusivity.",
+  "preflight": {
+    "path": "local/clip-viewport/preflight-001/report.json",
+    "sha256": "4b6e88fab56838320e1dd3f032204b51eda936ee3077571e7e3bdd74a08a3602",
+    "verified_outputs": 40,
+    "status": "passed",
+    "timing_admission": false
+  }
+}

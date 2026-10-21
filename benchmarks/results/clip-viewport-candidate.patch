@@ -1,0 +1,29 @@
+diff --git a/crates/pagura-render/src/compositor.rs b/crates/pagura-render/src/compositor.rs
+index 3fe00a6a..ed1b8da9 100644
+--- a/crates/pagura-render/src/compositor.rs
++++ b/crates/pagura-render/src/compositor.rs
+@@ -404,15 +404,16 @@ impl Context {
+         {
+             return Ok(Arc::clone(region));
+         }
+-        let mut viewport = PathBuilder::new();
+-        viewport.rect(
+-            f64::from(tile.x),
+-            f64::from(tile.y),
+-            f64::from(tile.width),
+-            f64::from(tile.height),
+-        );
+-        let viewport = viewport.finish();
++        let viewport;
+         let (path, transform) = if self.soft_source {
++            let mut builder = PathBuilder::new();
++            builder.rect(
++                f64::from(tile.x),
++                f64::from(tile.y),
++                f64::from(tile.width),
++                f64::from(tile.height),
++            );
++            viewport = builder.finish();
+             (&viewport, Transform::IDENTITY)
+         } else {
+             (&self.crop, self.page_device)

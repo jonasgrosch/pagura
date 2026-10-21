@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "status": "experimental-not-admitted",
+  "status": "removed-not-admitted",
   "baseline_commit": "676a872eb9f6c279cbf1e3929ace3a0c99db9fc3",
   "pilot": {
     "path": "local/scene-index/pilot-001/report.json",
@@ -65,8 +65,11 @@
     "sparse_dispatch": false,
     "accuracy_policy_changed": false,
     "fixed_index_object_bytes_current_target": 2064,
-    "memory_note": "This is object size, not measured total stack growth; present even when disabled.",
-    "commit_status": "Validated experimental branch candidate; no production performance admission"
+    "memory_note": "Historical candidate object size, not measured total stack growth; present even when disabled. This object has now been removed from the product.",
+    "commit_status": "Correctness-validated experiment committed at 9ebac1cb, then removed under keep-only-if-all-gates-pass; no performance admission",
+    "commit": "9ebac1cba77e77639146b4c86f7b1adfa6574b43",
+    "product_present": false,
+    "decision_record": "scene-index-decision.json"
   },
   "pilot_cells": [
     {
@@ -486,5 +489,41 @@
     "external_started_utc": "2026-10-20T22:52:51+00:00",
     "statistics": "Entire partial run excluded; timings not inspected, analyzed or pooled. No automatic measured restart.",
     "full_validation": "Held while foreign compute continues; not run in this resumed window."
+  },
+  "final_confirmation": {
+    "identifier": "confirmation-005",
+    "frozen_plan": "scene-index-final-confirmation-plan.json",
+    "status": "refused-external-contention",
+    "started_utc": "2026-10-20T23:31:15.636032+00:00",
+    "finished_utc": "2026-10-20T23:31:15.850655+00:00",
+    "exit_code": 75,
+    "benchmark_child_launched": false,
+    "measured_samples": 0,
+    "report_created": false,
+    "guard_path": "local/scene-index/confirmation-005-guard/guard.json",
+    "guard_sha256": "ce2183000d0cbee032be567e7717595b245b80b8a6b84eb7c321ffba42506eb5",
+    "receipt_path": "local/scene-index/confirmation-005-receipt.json",
+    "receipt_sha256": "d996c27ed9ad26f92cb0320e12f5a49563efd7b984f6f5a1fc8b23f3c28d3711",
+    "interpretation": "The coordination wrapper launched the guard, but preflight refused external contention before any benchmark child. No speed or memory result exists for this attempt."
+  },
+  "decision": {
+    "record": "scene-index-decision.json",
+    "action": "remove-product-optimization",
+    "admission": false,
+    "reason": "The explicitly requested confirmation could not satisfy the execution gate: external Pagura compute remained active after bounded scheduling and final preflight. No speed/memory samples were launched. Under keep-only-if-all-gates-pass, missing valid confirmation does not authorize keeping the memo.",
+    "not_claimed": "No numeric speed or memory regression was established. Earlier partial timing data remains excluded and uninspected.",
+    "correctness_evidence": "Prior complete check passed at the candidate source. This removal is performance non-admission, not a correctness finding.",
+    "preserved_candidate_binary": {
+      "path": "local/scene-index/candidate-9ebac1cb",
+      "sha256": "ea46b9a664ce0618a0c20aaf6d873ce54111659e6894c427564aef3cf8cf0ebd"
+    }
+  },
+  "next_candidate": {
+    "change": "Construct the Context::clip viewport only for soft-mask sources.",
+    "status": "rejected-after-observed-confirmation",
+    "production_admission": false,
+    "evidence_scope": "Requires independent correctness and performance validation; the historical memo checks and pilot do not validate this different source change.",
+    "product_present": false,
+    "evidence_record": "clip-viewport-experiment.json"
   }
 }
