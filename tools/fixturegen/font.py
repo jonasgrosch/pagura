@@ -546,7 +546,7 @@ def metadata_font(charset_kind=0, encoding_kind=0, charset_format=0):
     if charset_kind <= 2 and charset_kind != 0:
         charset_data = b""
     elif charset_format == 0:
-        charset_data = b"\x00"+b"".join(u16(sid) for sid in sids[1:])
+        charset_data = b"\x00"+b"".join(u16(sid) for sid in sids[1:])  # pyright: ignore[reportOptionalSubscript]
     else:
         left = lambda n: bytes([n]) if charset_format == 1 else u16(n)
         charset_data = bytes([charset_format])+u16(229)+left(2)+u16(390)+left(1)
@@ -1063,7 +1063,7 @@ def metadata_recovery_cases():
         ("reserved-top", {"top":operands(11,22)+b"\x16", "private":width}),
         ("reserved-repeated", {"private":(operands(11)+b"\x0c\xff")*64+width}),
     ]:
-        yield recovery_vector("cff-"+name,reviewed_cff(rect,**options),expected,
+        yield recovery_vector("cff-"+name,reviewed_cff(rect,**options),expected,  # pyright: ignore[reportArgumentType]
                               "font.cff-dict-operator",fmt="cff",requirement="font-cff-dict-recovery")
     for name, options in [
         ("width-arity", {"private":operands(600,700)+b"\x14"}),
@@ -1073,7 +1073,7 @@ def metadata_recovery_cases():
         ("reserved-number-31", {"private":b"\x1f"+width}),
         ("reserved-number-255", {"private":b"\xff"+width}),
     ]:
-        yield vector("cff-dict-"+name,reviewed_cff(rect,**options),"parse-error\n",
+        yield vector("cff-dict-"+name,reviewed_cff(rect,**options),"parse-error\n",  # pyright: ignore[reportArgumentType]
                      "font-cff-dict-recovery","cff")
     for name, duplicate in [("name",b"A"),("notdef",b".notdef"),("empty",b"")]:
         result = expected.replace("count 2", "count 3" if duplicate==b"" else "count 2")

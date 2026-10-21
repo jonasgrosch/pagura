@@ -28,7 +28,10 @@ def main():
         after = run("pdfinfo", saved)
         if before.returncode == 0:
             assert after.returncode == 0, f"Poppler regression: {saved.name}"
-            pages = lambda result: re.search(r"^Pages:\s+(\d+)$", result.stdout, re.MULTILINE).group(1)
+            def pages(result):
+                found = re.search(r"^Pages:\s+(\d+)$", result.stdout, re.MULTILINE)
+                assert found, f"pdfinfo printed no page count for {saved.name}"
+                return found.group(1)
             assert pages(before) == pages(after), f"page count changed: {saved.name}"
             accepted.append(saved.name)
         elif after.returncode == 0:

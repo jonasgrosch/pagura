@@ -314,6 +314,8 @@ def integer(encoder, family, value):
     for category,(offset,size) in enumerate(((0,2),(4,4),(20,6),(84,8),(340,12),(4436,32))):
         if magnitude < offset+(1 << size):
             break
+    else:
+        raise ValueError("integer outside the T.88 A.2 range")
     suffix=magnitude-offset
     prefix="1"*category + ("0" if category < 5 else "")
     bits=str(sign)+prefix+f"{suffix:0{size}b}"
@@ -332,7 +334,7 @@ def identifier(encoder,count,value):
         history=history*2+bit
 
 
-def dictionary(glyphs,template,selection=None,imported=(),retain=False,reuse_contexts=None,return_contexts=False):
+def dictionary(glyphs,template,selection=None,imported=(),retain=False,reuse_contexts=None,return_contexts=False) -> tuple:
     encoder=ArithmeticEncoder()
     if reuse_contexts is not None: encoder.contexts.update(reuse_contexts)
     previous_height=0
@@ -825,7 +827,7 @@ def huffman_word(table, value):
     raise ValueError((table,value))
 
 
-def huffman_dictionary(glyphs, compressed=False, dh=4, dw=2, custom=False):
+def huffman_dictionary(glyphs, compressed: bool | str = False, dh=4, dw=2, custom=False):
     symbols=sorted(glyphs,key=lambda r:(len(r),len(r[0])))
     output=b""; pending=""; old_height=0
     for height in sorted(set(map(len,symbols))):

@@ -107,7 +107,7 @@ def sign_ec(data, name, curve):
     hashed = digest(name, data)
     e = int.from_bytes(hashed, 'big') >> max(0, len(hashed)*8-n.bit_length())
     nonce = 101
-    r = ec.multiply(nonce, (gx, gy), p)[0] % n
+    r = ec.multiply(nonce, (gx, gy), p)[0] % n  # pyright: ignore[reportOptionalSubscript]
     s = (e + r*private) * pow(nonce, -1, n) % n
     assert ec.verify(curve, hashed, point, r, s)
     return ec.signature(r, s)

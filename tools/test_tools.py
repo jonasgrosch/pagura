@@ -1,6 +1,5 @@
 """Unit tests for the corpus, scoreboard and conformance tooling."""
 import io
-import json
 import tempfile
 import unittest
 import zipfile
@@ -15,19 +14,25 @@ def ppm(width, height, pixels):
     return b"P6\n%d %d\n255\n" % (width, height) + bytes(pixels)
 
 
+def mismatch(*arguments):
+    problem = conformance.compare_images(*arguments)
+    assert problem is not None, "images unexpectedly agree"
+    return problem
+
+
 class ConformanceTests(unittest.TestCase):
     def test_images_compare_exactly_or_within_tolerance(self):
         base = ppm(1, 1, [10, 20, 30])
         self.assertIsNone(conformance.compare_images(base, base, 0))
         off_by_one = ppm(1, 1, [11, 20, 30])
-        self.assertIn("up to 1", conformance.compare_images(off_by_one, base, 0))
+        self.assertIn("up to 1", mismatch(off_by_one, base, 0))
         self.assertIsNone(conformance.compare_images(off_by_one, base, 1))
-        self.assertIn("header", conformance.compare_images(ppm(2, 1, [0] * 6), base, 9))
+        self.assertIn("header", mismatch(ppm(2, 1, [0] * 6), base, 9))
         # Pixel bytes that are whitespace values must not be mistaken for separators.
         whitespace = ppm(1, 1, [9, 10, 32])
         self.assertIsNone(conformance.compare_images(whitespace, whitespace, 0))
-        self.assertIn("up to 1", conformance.compare_images(ppm(1, 1, [9, 11, 32]), whitespace, 0))
-        self.assertIn("payload", conformance.compare_images(ppm(1, 1, [9, 10]), ppm(1, 1, [9, 10]), 0))
+        self.assertIn("up to 1", mismatch(ppm(1, 1, [9, 11, 32]), whitespace, 0))
+        self.assertIn("payload", mismatch(ppm(1, 1, [9, 10]), ppm(1, 1, [9, 10]), 0))
 
 
 class ScoreboardTests(unittest.TestCase):

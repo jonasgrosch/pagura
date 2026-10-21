@@ -25,7 +25,7 @@ def source_digest():
                      and "__pycache__" not in p.parts and "target" not in p.parts)
     paths.update(ROOT / p for p in ["Cargo.toml", "Cargo.lock", "rust-toolchain.toml",
                                    "benchmarks/policy.json", "benchmarks/release-matrix.json",
-                                   "benchmarks/requirements.txt",
+                                   ".python-version", "pyproject.toml", "uv.lock",
                                    "benchmarks/node-package.json", "benchmarks/node-package-lock.json"])
     paths.update(MANIFESTS.glob("*.json"))
     return sha(b"".join(str(p.relative_to(ROOT)).encode() + b"\0" + p.read_bytes() for p in sorted(paths) if p.exists()))

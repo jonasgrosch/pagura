@@ -1,0 +1,59 @@
+# Python tooling only: checks, fixture generators, the benchmark harness and
+# competitor adapters. Not a package and never a product dependency (ADR 0018).
+[project]
+name = "pagura-tooling"
+version = "0.0.0"
+description = "Development tooling for the Pagura PDF engine"
+# tomllib (tools, benchmarks); .python-version pins the exact interpreter.
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+# Static checks that tools/check.py runs; `uv sync` installs them.
+lint = [
+    "basedpyright==1.40.2",
+    "ruff==0.17.1",
+]
+# Competitor engines the benchmark harness drives. tools/competitors.py installs
+# them only into $PAGURA_COMPETITORS_DIR/venv, outside the repository (ADR 0006).
+bench = [
+    "pillow==13.0.0",
+    "pymupdf==2.0",
+    "pypdfium2==5.14.0",
+]
+
+[tool.uv]
+package = false
+required-version = ">=0.13.1"
+default-groups = ["lint"]
+
+[tool.ruff]
+extend-exclude = ["target"]
+
+[tool.ruff.lint]
+# Defects, not style: the fixture generators keep their compact one-line style,
+# so pycodestyle, import sorting and `ruff format` are not enforced (ADR 0018).
+select = ["F", "E9", "B", "PLE"]
+ignore = [
+    "B007",  # loop variables may be named for the data they skip
+    "B023",  # closures here run inside the iteration that defines them
+    "B905",  # zip(strict=...) is decided per call, not added everywhere
+]
+
+# basedpyright is pyright packaged with its Node runtime as locked wheels.
+[tool.pyright]
+include = ["tools", "benchmarks", "fuzz", "web"]
+typeCheckingMode = "standard"
+pythonVersion = "3.11"
+pythonPlatform = "All"
+# Each directory runs its scripts with itself first on sys.path; benchmarks,
+# fuzz and adapters add tools/. The repository root is not on sys.path, so its
+# references/ and corpus/ directories must not shadow tools/references.py.
+executionEnvironments = [
+    { root = "tools/fixturegen/pki" },
+    { root = "tools" },
+    { root = "benchmarks/adapters", extraPaths = ["tools"] },
+    { root = "benchmarks", extraPaths = ["tools"] },
+    { root = "fuzz", extraPaths = ["tools"] },
+    { root = "web" },
+]

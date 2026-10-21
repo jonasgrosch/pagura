@@ -1,5 +1,6 @@
 """Independent AcroForm structures and semantic expectations (ISO 32000-2, 12.7)."""
 from copy import deepcopy
+from typing import Any
 from .model import Vector
 
 
@@ -116,7 +117,7 @@ def expectation(objects):
 def vector(identifier, objects, *, repair='', error='', expected=None, requirements=('forms-model',)):
     from .document import Builder, navigation_value
     builder = Builder()
-    def appearances(value):
+    def appearances(value) -> Any:
         if isinstance(value,dict):
             return {k:(v.encode() if k=='DA' and isinstance(v,str) else appearances(v)) for k,v in value.items()}
         if isinstance(value,list):return [appearances(v) for v in value]

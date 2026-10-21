@@ -7,12 +7,20 @@ no PDF parser or engine is used. Placeholder signatures do not assert integrity.
 from .model import Vector
 from .signature_policy import edit, expectations
 import re
+from typing import Any
 from .signatures import Pdf as BasicPdf, signature, patch, structure
 
 AREA = 'signature-changes'
 
 
 class Pdf(BasicPdf):
+    data: bytearray
+    # Set by base() for the expectation oracle.
+    author_permission: Any
+    author_selection: Any
+    author_unknown_transform: bool
+    author_field_unknown: bool
+
     def __init__(self):
         super().__init__()
         self.author_states = []
@@ -30,7 +38,7 @@ class Pdf(BasicPdf):
             state['trailer'] = trailer
         self.author_states.append(state)
 
-    def append(self, objects, *, trailer=b'', **kwargs):
+    def append(self, objects, *, trailer=b'', **kwargs):  # pyright: ignore[reportIncompatibleMethodOverride]
         positions = super().append(objects, **kwargs)
         if trailer:
             at = self.data.rindex(b'>>\nstartxref')
@@ -117,7 +125,7 @@ def base(permission=2, action=None, names=(), *, widget=False, extra=b'', initia
     pdf.author_selection = (action.decode() if action else None, tuple(n.decode() for n in names))
     if b'/Lock 12 0 R' in objects[6]:
         lock = objects[12]
-        pdf.author_selection = (re.search(rb'/Action /(\w+)', lock)[1].decode(), tuple(n.decode() for n in re.findall(rb'\(([^()]*)\)', lock)))
+        pdf.author_selection = (re.search(rb'/Action /(\w+)', lock)[1].decode(), tuple(n.decode() for n in re.findall(rb'\(([^()]*)\)', lock)))  # pyright: ignore[reportOptionalSubscript]
     pdf.author_unknown_transform = b'/Unknown' in refs_extra or b'/UR ' in refs_extra
     pdf.author_field_unknown = bool(action) and field_data != b'1 0 R'
     return pdf, objects

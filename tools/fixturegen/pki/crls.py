@@ -25,7 +25,7 @@ def revoked(serial=3, reason=None, date=b'241201000000Z', extra=()):
     return seq(integer(serial), tlv(23, date), seq(*extensions) if extensions else b'')
 
 
-def crl(issuer=CA, entries=(), extensions=(), this=b'240101000000Z', next=b'300101000000Z', signature=b'crl'):
+def crl(issuer=CA, entries=(), extensions=(), this=b'240101000000Z', next: bytes | None = b'300101000000Z', signature=b'crl'):
     body = seq(integer(1), RSA_SHA256, issuer, tlv(23, this), tlv(23, next) if next else b'',
                seq(*entries) if entries else b'', explicit(0, seq(*extensions)) if extensions else b'')
     return seq(body, RSA_SHA256, bitstring(signature))

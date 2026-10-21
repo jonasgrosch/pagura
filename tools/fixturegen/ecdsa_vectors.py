@@ -42,7 +42,7 @@ def digest(algorithm, message):
             'SHA-512224': 'sha512_224', 'SHA-512256': 'sha512_256',
             'SHAKE-128': 'shake_128', 'SHAKE-256': 'shake_256'}[algorithm]
     h = hashlib.new(name, bytes.fromhex(message))
-    return h.digest(32 if name == 'shake_128' else 64) if name.startswith('shake') else h.digest()
+    return h.digest(32 if name == 'shake_128' else 64) if name.startswith('shake') else h.digest()  # pyright: ignore[reportCallIssue]
 
 
 def key_bytes(name, x, y):
@@ -100,6 +100,7 @@ def cavp():
                     case[k] = v
                     if k == 'Result':
                         index += 1
+                        assert group is not None, 'CAVP result before its [curve,hash] header'
                         if group[0] in NAMES:
                             name = NAMES[group[0]]
                             emit('CAVP-' + Path(filename).stem, index, name, digest(group[1], case['Msg']),

@@ -6,12 +6,12 @@ from time import perf_counter_ns
 
 engine = sys.argv[1]
 if engine == "pdfium":
-    import pypdfium2 as backend
+    import pypdfium2 as backend  # pyright: ignore[reportMissingImports]
     if sys.argv[2] == "--version":
         print(json.dumps({"wrapper": str(backend.PYPDFIUM_INFO), "engine": str(backend.PDFIUM_INFO)}))
         raise SystemExit
 elif engine == "mupdf":
-    import pymupdf as backend
+    import pymupdf as backend  # pyright: ignore[reportMissingImports]
     if sys.argv[2] == "--version":
         print(json.dumps({"wrapper": backend.VersionBind, "engine": backend.VersionFitz}))
         raise SystemExit

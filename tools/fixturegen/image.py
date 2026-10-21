@@ -562,7 +562,7 @@ def iso_review_cases():
         ("iso-jpeg-adobe-transform-ignored", dict(n=3, adobe=0, transform=99), "valid"),
         ("iso-jpeg-invalid-transform", dict(n=3, transform=99), "syntax"),
     ]:
-        encoded, expected = jpeg(**options)
+        encoded, expected = jpeg(**options)  # pyright: ignore[reportArgumentType]
         yield vector(name, "dct", encoded, expected, outcome=outcome, tolerance=1, transform=99)
     rows = [[int((x+y)%3 == 0) for x in range(13)] for y in range(6)]
     encoded, expected = ccitt(rows, k=3)
@@ -936,7 +936,7 @@ def dictionary_repair_cases():
             trailer=b'/Encrypt 4 0 R /ID ['+hex_string(ID)+b' '+hex_string(ID)+b']',
             requirement='image-decode-params', width=2, height=1, outcome=outcome,
             space='DeviceGray', reject_repair=0,
-            **({'repair': 'image.decode-params'} if outcome == 'repair' else {}))
+            **({'repair': 'image.decode-params'} if outcome == 'repair' else {}))  # pyright: ignore[reportArgumentType]
 
     # Correcting a literal string requires decrypting that string too. The
     # samples are chosen directly; encryption uses the independent PDF oracle.
