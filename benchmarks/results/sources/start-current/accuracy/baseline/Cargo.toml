@@ -1,0 +1,24 @@
+[package]
+name = "pagura-accuracy-probe"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.99"
+publish = false
+
+[workspace]
+resolver = "3"
+
+[[bin]]
+name = "accuracy_probe"
+path = "../accuracy_probe.rs"
+
+[dependencies]
+pagura-core = { path = "/Users/jonasgrosch/.codex/worktrees/renderer-baseline/pagura/crates/pagura-core" }
+pagura-document = { path = "/Users/jonasgrosch/.codex/worktrees/renderer-baseline/pagura/crates/pagura-document" }
+pagura-raster = { path = "/Users/jonasgrosch/.codex/worktrees/renderer-baseline/pagura/crates/pagura-raster" }
+pagura-render = { path = "/Users/jonasgrosch/.codex/worktrees/renderer-baseline/pagura/crates/pagura-render" }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+overflow-checks = true

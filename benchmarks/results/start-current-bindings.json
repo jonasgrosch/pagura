@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "experiment": "start-current",
+  "identities": {
+    "baseline": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-baseline/pagura",
+      "commit": "676a872eb9f6c279cbf1e3929ace3a0c99db9fc3",
+      "source_sha256": "22f56e711c6cc2c11342bf43e446c23dc6cbb65fc9da7a4773f488cd88e7e1ad",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/build-001/baseline",
+      "binary_sha256": "2596300f419a9b41735a640ee323ceba5e57efde3724f001398b23799d045a25"
+    },
+    "candidate": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+      "commit": "a9814ee476c1b17a27b1e9a904f1f4fac8d5cd9c",
+      "source_sha256": "b3a124d48e4761b66a717edb542ceebf56ffa91b0e3f702f997b005d1a30a2c7",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/build-001/candidate",
+      "binary_sha256": "8677b8655570a06ae41823fc846f41a736eefc4c6e79c7fa4b85960b739c0e2f"
+    }
+  },
+  "candidate_runner_source_sha256": "fa41575bf0f52414c558045152bb508cc2e8124d24aa71ca8fe1ef714ccc3df3",
+  "build_report": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/build-001/report.json",
+    "sha256": "d216ae9186f25dcff612009326774247c86b82e9e2d22eabed37055204f488b6"
+  },
+  "completed_evidence": [
+    {
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/build-001-receipt.json",
+        "sha256": "4d75c92fcabda1b9225eac442fb8b8c8724e1c97bbc1e34a0889448c678e177e"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/build-001-observer/guard.json",
+        "sha256": "c5338ac9e5e474d3def599e7f5a3d1fe6257b7df1280d122b3ed764570ee0568"
+      },
+      "artifacts": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/build-001-observer/guard.json": "c5338ac9e5e474d3def599e7f5a3d1fe6257b7df1280d122b3ed764570ee0568",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/build-001/baseline.log": "3c619027eef4d25f475b6f0947b9635510208da99c2b7c2868efa3adb3117c3b",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/build-001/candidate.log": "630747465ee8366bb221fb5d37960b948ffa9b76eca1fd708acb33f8f967c482",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/build-001/report.json": "d216ae9186f25dcff612009326774247c86b82e9e2d22eabed37055204f488b6"
+      }
+    }
+  ],
+  "inputs": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/frozen-inputs-001/inputs.json",
+    "sha256": "8149f728fefae16daf892839303a59908f27b9a2d00c7e636ab6c4da94670aa0"
+  },
+  "bound_files_sha256": {
+    "benchmarks/clip_viewport_fixtures.py": "1f003e4f71dd493d6e8ff34eef6f25a1fd3d9587d6412e7ea183102f9a4dfed2",
+    "benchmarks/color_reuse_fixtures.py": "84ed3379405deb95be8b5ce73e5da39fd8581ebe8448bf67da49cc06563e4121",
+    "benchmarks/glyph_memo.py": "5e0d66cd4d403868917a12bebaca18595536984a65be076a90594b8f699592ce",
+    "benchmarks/glyph_memo_fixtures.py": "9b866f12c61dbb7ddf2cc7e227559813b89f16a91370fdced96a7f46426e55a1",
+    "benchmarks/opaque_composition.py": "a9a27a3adbfe4e3b5da1a73c305cc7078fd3047860351d2448f336cbd179ea45",
+    "benchmarks/paired_render.py": "feb245618601265124f11cb2af090ea24fc6a7bff03f8a729ee2708714ae98eb",
+    "benchmarks/results/sources/analytic19-conversion/load_observer.py": "5879b8ac1dc71d93c15767d4482f8cccc6f1b1ac3cc5526421f44a22e7b76c0d",
+    "benchmarks/results/sources/analytic19-conversion/manifest.json": "278c79b1ccb29a2a5631050c7cd34f6e915312c9d98f59e0a600e2c94e3acac3",
+    "benchmarks/results/sources/analytic19-conversion/references.json": "924e20d6495990e8206c837d420c0172d5404ea1b3ede56417a9d59bb84bbcaf",
+    "benchmarks/results/sources/start-current/build.py": "fb6d32930c5646f2018131148b6b252e6570cc57a9faf0710e80da547a23c7f9",
+    "benchmarks/results/sources/start-current/collector/collect.py": "d2cd0062fe92c41f06febd097a1f625b0a6c571824ba0d9763896e9aaa73b215",
+    "benchmarks/results/sources/start-current/collector/freeze_inputs.py": "2fedaba5f7dee6d92a6cfe57694d1369c02b91ef5dbcb42372d8e4dc2a0e47a4",
+    "benchmarks/results/sources/start-current/collector/protocol.py": "03117d0c85743c3de168cf8f637951b5196b3cea360b2c5e8ec893dc24fa2ed2",
+    "benchmarks/results/sources/start-current/collector/test_protocol.py": "38aaa97b80f7e979fc5d7ccef29463f213b721d1affb25177d48b9628845c13e",
+    "benchmarks/results/sources/start-current/freeze_bindings.py": "f672d64b78a5f7b80b093e2e8c31024b5ca6fbb7ba6851bc78ecd1585f8c14de",
+    "benchmarks/scene_index.py": "fbc260aa9607efb2c60dec4f8fa44445137def56b57881350f475c531c7a0f6a",
+    "crates/pagura-render/examples/scene_index_profile.rs": "8e89a087d351e7b89289e0897cafeb75422d4c151280734fde8c958a841279f2",
+    "tools/benchkit/measurement.py": "15635857438cd4cb75308d84621ce7a2a808ded187813570ebec18dd8e3368f9",
+    "tools/benchkit/statistics.py": "18b14a7dc3e079a9f3452c6a31887f7dbd49e8d4e8fcfeb5257406e60045ebff",
+    "tools/runner.py": "92bf6ec2203f9404a78942ae5303bab1310793ca98ed6dad7278a57eeed83df1"
+  }
+}

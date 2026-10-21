@@ -69,6 +69,12 @@ measured changes. The full goal remains open.
    performance costs retained explicitly. Recover those costs through separate
    [measured slices](n16-next-slices.md), preserving the strict accuracy bounds
    and newly corrected nonopaque-background behavior.
+   The completed [direct cumulative comparison](../../benchmarks/results/start-current.md)
+   confirms substantial Exact text gains but also roughly doubled full rendering
+   of the opaque-text fixture and 3.9–5.1 times starting latency on several Competitive text
+   controls. Validate the already isolated N16 painted-interval slice, then
+   profile and recover these larger Competitive losses. Preserve the corrected
+   outputs; do not treat the old low-precision route as a general accuracy oracle.
 3. Extend shared scene/clip/image preparation where profiles justify it, while
    closing independent reference coverage and renderer memory-accounting gaps.
 4. Complete persistent/region benchmark adapters and matrix aggregation, then

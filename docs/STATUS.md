@@ -140,9 +140,17 @@ The full check passes with 229 renderer tests, 196 tooling tests and 1,249
 conformance cases. The five focused sampler tests pass on native and WASI
 SIMD/scalar; all 24 independent image outputs match their strict references
 and agree across those platforms. No new speed or memory result is inferred.
-The [start-to-current comparison](plans/start-to-current-measurement.md) is the
-next measurement, before another performance change. Existing incremental
-percentages do not establish a combined gain from the session's initial product.
+The [start-to-current comparison](../benchmarks/results/start-current.md) now
+independently verifies 34,440 outputs: all current cells pass, and 83/84 qualify
+for equivalent-output timing. Exact outlined and sparse full-page text medians
+fall 54.5% and 17.1%, but Competitive sparse/dense/nested full-page text takes
+3.9–5.1 times the starting latency, and the opaque-text full-page fixture takes
+about twice as long in both modes. Many peak-RSS observations also regress. Separate
+strict probes pass 54/54 current outputs versus 23 failures in the starting
+product's 54 selected outputs. This is a bounded accuracy improvement with
+mixed performance, not an overall speedup or release admission. The isolated,
+unvalidated painted-interval candidate is next; the larger Competitive text
+losses also require targeted profiling and recovery.
 
 ## Overprint display policy
 

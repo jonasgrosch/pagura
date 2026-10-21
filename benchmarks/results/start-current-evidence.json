@@ -1,0 +1,613 @@
+{
+  "schema": 1,
+  "status": "archived-verified-confirmation",
+  "admission": false,
+  "confirmation": "confirmation-003",
+  "audit_sha256": "cbffe989ac870d059a0e467ac90247edcec6827f022506bef13747b2ddbb0f31",
+  "excluded_attempts": [
+    "confirmation-001",
+    "confirmation-002"
+  ],
+  "statistics_recomputed_by_this_script": false,
+  "local_records": [
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/accuracy-001/report.json",
+      "sha256": "4fd2d8edc09344a1b46e52c3437f2c6e5daebdfe5936b9157c84e8a3b20a4d40",
+      "bytes": 256719
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/accuracy-001-audit-pins.json",
+      "sha256": "b531224a49df828efe3ff92c790a7c45903b280c6dbf2a037299a57812e6eaaf",
+      "bytes": 3969
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/accuracy-001-audit.json",
+      "sha256": "7a2fe42ecaa2290bae090af87ea238eee9911d5779085bc56b7a2cc6554cfde2",
+      "bytes": 3886
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/accuracy-001-observer/guard.json",
+      "sha256": "a7c3158454dff7e46afe78786d5657c0327e95b64a6bc27f03b44074310f1a72",
+      "bytes": 1418
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/accuracy-001-observer/snapshot-0001.txt",
+      "sha256": "baa8221cee86706094194bc7c9780593ae3a22e7247f7644c175557ffcdf0467",
+      "bytes": 227320
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/accuracy-001-observer/snapshot-0003.txt",
+      "sha256": "f66515767c7178762387f63377c9b14e85463dd8dd58c0a7824b7790d592f762",
+      "bytes": 224913
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/accuracy-001-receipt.json",
+      "sha256": "8353cae5ab6fcafc8c4b27c2806eea9bc19dfac912d7286a9b12ab5222fc7bd5",
+      "bytes": 2856
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/accuracy-bindings.json",
+      "sha256": "d2309e65d4b1cb84d647e2fb064aa32947d289ff392c95ec2278cb8c0c06d6d3",
+      "bytes": 4398
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/accuracy-build-001/report.json",
+      "sha256": "b8c6522fb21769715d037b4576d4e0c0992e176eda6a648d0bf889da97db5143",
+      "bytes": 9884
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/accuracy-build-001-observer/guard.json",
+      "sha256": "32bef8b99f104429a77814ef4188f56ba44744a4df7134d0014168064cc67b65",
+      "bytes": 928
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/accuracy-build-001-observer/snapshot-0001.txt",
+      "sha256": "e44bf7f2195cc1a3fa1ecf085235b9f00d301bd068f219469746b7b65f563695",
+      "bytes": 239084
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/accuracy-build-001-observer/snapshot-0023.txt",
+      "sha256": "ce96662ea96620e2f150078ff9a7807c03ddfc3136f90c81c3075c053821d637",
+      "bytes": 222069
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/accuracy-build-001-receipt.json",
+      "sha256": "fd260da548ff20ab6a0bcdb91e6a154713246b5fdf9056b88362a231193309ce",
+      "bytes": 2834
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/build-001/report.json",
+      "sha256": "d216ae9186f25dcff612009326774247c86b82e9e2d22eabed37055204f488b6",
+      "bytes": 7782
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/build-001-observer/guard.json",
+      "sha256": "c5338ac9e5e474d3def599e7f5a3d1fe6257b7df1280d122b3ed764570ee0568",
+      "bytes": 918
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/build-001-observer/snapshot-0001.txt",
+      "sha256": "f40c92c813a1481f06bba4c66b0fed8e8cfe1e4a729e516fe8484011fcec34a1",
+      "bytes": 227481
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/build-001-observer/snapshot-0003.txt",
+      "sha256": "c5cd9fb5e69742d7ddbdb61c0694114d9994ef914863b2975ccbe398298bc8ca",
+      "bytes": 227527
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/build-001-receipt.json",
+      "sha256": "4d75c92fcabda1b9225eac442fb8b8c8724e1c97bbc1e34a0889448c678e177e",
+      "bytes": 2748
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-001/events.jsonl",
+      "sha256": "0a08f94236207b5f295c499c5294f1892f7c7f7857bdae066e77af8e0e3f02b0",
+      "bytes": 1720457
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-001/plan.json",
+      "sha256": "f855799419783d1e378d4d1295b8b082181f02a4690f23c691f9b3398e598d13",
+      "bytes": 3806686
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-001/report.json",
+      "sha256": "dc35e4287972cfbfa155dfb0e4cc5e646af31cb080d1e4fdd335470aa54fac8f",
+      "bytes": 1627708
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-001-observer/guard.json",
+      "sha256": "022b8101e7e796e4d690d9afd9a413c7cefc524eb122f20287a9f73191106827",
+      "bytes": 6847
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-001-observer/snapshot-0001.txt",
+      "sha256": "36ac84d0d02a8a0f92979be3694f612e52c74f746552c9f7d3584a6873b339e7",
+      "bytes": 228367
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-001-observer/snapshot-0008.txt",
+      "sha256": "da79964b5343e859eb3a2406b60fdd23844aa4347b4a45ce9b118444defaebc2",
+      "bytes": 242482
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-001-receipt.json",
+      "sha256": "c58d44cf75ff4943f3f96ba629d47454ccd0fb573ba47e5f4cabae345536e74e",
+      "bytes": 3651
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-001-stop.json",
+      "sha256": "3bdab234b56a63a6afb20ff55ef9d4c5703a354eeb34f5b7212bcc514a4f6725",
+      "bytes": 2016
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-002/events.jsonl",
+      "sha256": "689c3da7037511de7b8a3cce3813c42325ec4f4dd0d45ed26fc2aff43bfcc473",
+      "bytes": 66208674
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-002/plan.json",
+      "sha256": "d7f0b9a5477be0a483b4585a057e5caf9f70426abb87893d8b433c08c4a17965",
+      "bytes": 3806686
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-002/report.json",
+      "sha256": "53d4b98759ce41d1c96cf371db7dc11775633861097a613d5efac3eee0a8e067",
+      "bytes": 62389620
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-002-observer/guard.json",
+      "sha256": "3cac4e352f2a5ba44974e286d4fb309ff9abf95b0975d26de2e389f69b0aaec7",
+      "bytes": 2202
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-002-observer/snapshot-0001.txt",
+      "sha256": "ad3e1bf8eb904fbe708d2b8ffebd37c25815114828da65d59d5af1e646ceeba0",
+      "bytes": 235286
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-002-observer/snapshot-0215.txt",
+      "sha256": "e450166c856534915779c87898729967d0033ebeaf1952a95cbf627a301fbdb9",
+      "bytes": 250660
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-002-receipt.json",
+      "sha256": "b02d69fb08364b3ff21ff7f7e05bafddeae5128f3cc2f5502d709fbe6310ceb2",
+      "bytes": 3651
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-002-stop.json",
+      "sha256": "c1587a286e0527bb2e45de3eeb9f6966a28b7b954fbb4e8c1024506d830e57c8",
+      "bytes": 2300
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-003/events.jsonl",
+      "sha256": "d5f628de48e583cfb187c41cbb3c9e0334d5bbe1d95305656acc6e3f344639a0",
+      "bytes": 82394690
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-003/plan.json",
+      "sha256": "f8dc5b4723823456b2ea83bc206fa011e500cb69d10c0f53f60059d8e92b7405",
+      "bytes": 3806686
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-003/report.json",
+      "sha256": "0ce1c09b327fa7c6005452dfdf1d79dd84ee85b797cb0c9fad017a01e6347170",
+      "bytes": 77623275
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-003-audit-observer/guard.json",
+      "sha256": "72f2759977dc4fdff5247391b8964d382fe2caa32fc7553b33e4c9f22da4ae92",
+      "bytes": 1352
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-003-audit-observer/snapshot-0001.txt",
+      "sha256": "75818822c0883255b54bb46b720061f2426d097888098d4a9e60e1666a0f23fd",
+      "bytes": 238837
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-003-audit-observer/snapshot-0051.txt",
+      "sha256": "a95a794667cc6ccb80460c34fc49baa405dfd200f0af09909d77fe9136d4bee8",
+      "bytes": 248936
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-003-audit-pins.json",
+      "sha256": "dbce2a8bcc2a2017be6d016e85e6320031dfd9449fee733a21624f921bd04800",
+      "bytes": 2904
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-003-audit-receipt.json",
+      "sha256": "e3b63fb8828580c395fe89b85d92560229bdcc7d8dfcbb4a215a99e9390ac379",
+      "bytes": 3439
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-003-audit.json",
+      "sha256": "cbffe989ac870d059a0e467ac90247edcec6827f022506bef13747b2ddbb0f31",
+      "bytes": 720961
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-003-observer/guard.json",
+      "sha256": "cd466893e96ecf597f02637898bbaa44b5ded01a725d70004c84fd8ef96b2ff4",
+      "bytes": 1776
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-003-observer/snapshot-0001.txt",
+      "sha256": "c183123af39e1c16fb35e7a5d357a193041180475672eb36086cb48697d42c81",
+      "bytes": 242973
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-003-observer/snapshot-0253.txt",
+      "sha256": "f9eb96c8b446a768ce9c4e530c5f2e75a95a93ed4c4ae7d8deb9a4652bc4fed8",
+      "bytes": 239483
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/confirmation-003-receipt.json",
+      "sha256": "9b3f86cda25f1e2dc7baa3c4c91b1d7522b5594e9fc065081b6cd903eccc1eb3",
+      "bytes": 3650
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/frozen-inputs-001/inputs.json",
+      "sha256": "8149f728fefae16daf892839303a59908f27b9a2d00c7e636ab6c4da94670aa0",
+      "bytes": 60618
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/idle-wait-001.json",
+      "sha256": "13f2cd32492b7d9a27276056b7d43fa0d4ea43442f857fd8d204297e1068e7c8",
+      "bytes": 348882
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/idle-wait-002.json",
+      "sha256": "8d2175f027d685496e21c25ff6766c1efaf1bea0fe62206249da36530e68702c",
+      "bytes": 90730
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/idle-wait-003.json",
+      "sha256": "d35ab7bda3d5564e2a56d9de54f25d701d86747c85d319417cd0d9a53b698a47",
+      "bytes": 430
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/preflight-001/events.jsonl",
+      "sha256": "74cab7975d6406056ede7ebee71d39fccdf07b06841f0831a807d59438d1138f",
+      "bytes": 398876
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/preflight-001/plan.json",
+      "sha256": "d61bd113361cdf4d0fb158e903f5c6450de9d2d82eb07eeaf81c8a67d5730bf0",
+      "bytes": 98743
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/preflight-001/report.json",
+      "sha256": "8270c3338b5c1e960d28111e99edae9e018b411006d18c30cc9e74b903ab3ed0",
+      "bytes": 380300
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/preflight-001-audit-pins.json",
+      "sha256": "57bf10b8bda01e05522bebcc0ecb553537c9a2a9259589f4e51a23e621c22ddd",
+      "bytes": 2633
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/preflight-001-audit.json",
+      "sha256": "c10a7ac44369739cf8e1c0ed704e8bb7142d15ea121861e58a80581b4d1b4113",
+      "bytes": 67453
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/preflight-001-observer/guard.json",
+      "sha256": "4e125e1e1bf1dba19b3db3b8b314c2aebfafecba6640b24f6a0c9b15e1785e75",
+      "bytes": 1509
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/preflight-001-observer/snapshot-0001.txt",
+      "sha256": "7af4d6d6a35cfeac9c9b31fceb5ad6b356e3ac49a65b8cc4d75bed5475394c10",
+      "bytes": 224932
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/preflight-001-observer/snapshot-0004.txt",
+      "sha256": "a0f2bfe6fdd5618bfaa8615b042d39640b2a3ca9d5c9d159a01f3cdbfa0abaaf",
+      "bytes": 226022
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/preflight-001-receipt.json",
+      "sha256": "b7371c8c651323d5e554bba7893761b063c3fa9e2593f79ff427d85c077ff507",
+      "bytes": 3363
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/preflight-pins.json",
+      "sha256": "09356b726c4d2fbf10d2f1e64ccb74d6445c96b9544e7369ca1b44f131acda87",
+      "bytes": 3162
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/quiet-001-observer/guard.json",
+      "sha256": "a7feaf8296219edaa4e3b42a09dc5b0c785171c6a08f2d35e55cb318583f8960",
+      "bytes": 8433
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/quiet-001-observer/snapshot-0001.txt",
+      "sha256": "6bde5125b41e68c6c623f024d1ebb4ef90cabc88291616ce59dfb3d630b1d4c9",
+      "bytes": 240092
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/quiet-001-receipt.json",
+      "sha256": "564e1905216840da2f88122370ec5fdc40bba14f4700d09ad15324a32ea52840",
+      "bytes": 2084
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/quiet-002-observer/guard.json",
+      "sha256": "b36d1796c23f1c8cffba815086c0e37a86eafc91a98d9ebb5f77d82b1dec747a",
+      "bytes": 4559
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/quiet-002-observer/snapshot-0001.txt",
+      "sha256": "ac142c2d2d96dbbcf18b5bdbcdbfd5fdedbbd24261cfde67f0c986e7bf0d3720",
+      "bytes": 234483
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/quiet-002-receipt.json",
+      "sha256": "1c86842252ce229f75ed4f06212f2366b6dff3c90e2debf1079a5fa5e2c78b2e",
+      "bytes": 2084
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/root-precision-001-baseline/plan.json",
+      "sha256": "397926197edcb85b9fdc8f952476ee7ee45db1d3942b19d0a47e195bcb8381fe",
+      "bytes": 7159
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/root-precision-001-baseline/report.json",
+      "sha256": "2bd4b7e244ab931b90af25d936b21542418f0fb9f291668821964b52784640b4",
+      "bytes": 10469
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/root-precision-001-baseline-observer/guard.json",
+      "sha256": "d6c3e8efa971ba7a508839f8130ebcc6ccccc49f4b735ea8f5e9e5c2f036ea83",
+      "bytes": 1076
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/root-precision-001-baseline-observer/snapshot-0001.txt",
+      "sha256": "db4982f8c08476da5bf35f7465e5ae89a10af9085c69b811d59df2fc71c3faa5",
+      "bytes": 235438
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/root-precision-001-baseline-observer/snapshot-0003.txt",
+      "sha256": "f161bb8ab6ec04d2db78f321d4a687270b25a0aa61d3f1bdc8a4b2aac82e1810",
+      "bytes": 235780
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/root-precision-001-baseline-receipt.json",
+      "sha256": "d7ef3b686e1bfc6726d520033fc7b28714d62c0d36bb11c73fd4fa791d2f56c4",
+      "bytes": 2806
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/root-precision-001-candidate/plan.json",
+      "sha256": "7fc8f1f0045cedb89d1aa1213dfc25f28e7ebe663b901738c5c71d052b7d310f",
+      "bytes": 7160
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/root-precision-001-candidate/report.json",
+      "sha256": "2e3879fa5cb62f79376daabb41c56a7404114d1fb9069ccced0f4251fa38b93b",
+      "bytes": 10462
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/root-precision-001-candidate-observer/guard.json",
+      "sha256": "c7e527febf10ef0841070348f0127a567ab891364d5f01c1b53564675927c488",
+      "bytes": 1078
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/root-precision-001-candidate-observer/snapshot-0001.txt",
+      "sha256": "2bf341449810d1695dcb3c5f87dee486eaf4d59a99fc9870ebbd16b53e8b26c7",
+      "bytes": 235791
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/root-precision-001-candidate-observer/snapshot-0003.txt",
+      "sha256": "d581bcd0f4a334a6ff31d1b093547bbde3e0158ab642bddf45e72beca6d24743",
+      "bytes": 235791
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/root-precision-001-candidate-receipt.json",
+      "sha256": "7685499a252e39248896cd15609a1b6f5d9a05f7f4e0d29ee2c8cedd06d3d528",
+      "bytes": 2814
+    }
+  ],
+  "archived_helper_sources": [
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/accuracy/README.md",
+      "sha256": "8005505892e742db0f1e7e17c431a9e3903bf82428239d3828f25017bb90439a",
+      "bytes": 8294
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/accuracy/accuracy_probe.rs",
+      "sha256": "02a05e452ad6a669a049af4252d0ded8b1b323ee8a65a0abc05182708c886161",
+      "bytes": 2575
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/accuracy/audit.py",
+      "sha256": "9bbe59f21d4365f6ac82c15d5aa3e86d8f462a9a239d4a7abe1a3df509dfae74",
+      "bytes": 19232
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/accuracy/baseline/Cargo.lock",
+      "sha256": "f30b21af39ba94a8c67d2a740e45228c363bd45a38d67182f6ed636e5ba6408b",
+      "bytes": 1265
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/accuracy/baseline/Cargo.toml",
+      "sha256": "5cac45f5ab3cb445aa6782246f3bb814d70921bea5ab58825852c9bcf031008f",
+      "bytes": 738
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/accuracy/candidate/Cargo.lock",
+      "sha256": "f30b21af39ba94a8c67d2a740e45228c363bd45a38d67182f6ed636e5ba6408b",
+      "bytes": 1265
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/accuracy/candidate/Cargo.toml",
+      "sha256": "8a0402e43735f10a7b4fa261b93c3d583e9b47b3a09ee5f99a4ea3032b0b243d",
+      "bytes": 758
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/accuracy/collect.py",
+      "sha256": "393046d401c15a759dda52a0d11f4f7d6916020e12bb720b5a8c824492b8d51b",
+      "bytes": 10628
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/accuracy/references.py",
+      "sha256": "dc07b9ad9c888ea628ec3599b6dc86cc67b491066e0df49a45c8a853122d4a27",
+      "bytes": 7080
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/accuracy/test_audit.py",
+      "sha256": "25995e020057a0516f69fe1a0026764d5467298b1cee9ef728ab8130664d91ee",
+      "bytes": 2502
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/archive_evidence.py",
+      "sha256": "5f47f0e264ced9ca7d38902a8ac5490d63c0f5f845ee47db86a6f6f3a6436758",
+      "bytes": 3453
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/auditor/README.md",
+      "sha256": "ceeda1a64d71da180adc2a7531167bc98bb5cc5eb62c41e5a0442c6c8db05769",
+      "bytes": 4622
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/auditor/audit.py",
+      "sha256": "e77146227f9956239febe5052f62d892f6fd518330396cca46cca1b279cf69f0",
+      "bytes": 50551
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/auditor/pins.example.json",
+      "sha256": "180b5a66f3b1199b1979fbf8d8003685aa06f6d00a67aa20cce3e0c3c00ead8f",
+      "bytes": 1232
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/auditor/test_audit.py",
+      "sha256": "1e20332b3c313668915e51372e6071865f676f51cdb5bdaedff8ab9413cba61b",
+      "bytes": 7417
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/build.py",
+      "sha256": "fb6d32930c5646f2018131148b6b252e6570cc57a9faf0710e80da547a23c7f9",
+      "bytes": 6155
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/build_accuracy.py",
+      "sha256": "e2a4a90118ce67e7a1d975fa3838e309f2832096c1a18a02416e1a080423bace",
+      "bytes": 5239
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/collector/README.md",
+      "sha256": "5fcad3ac032e4b8245b9180a6996088d172da481e2e2e1e6de2a762a966473d1",
+      "bytes": 9311
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/collector/collect.py",
+      "sha256": "d2cd0062fe92c41f06febd097a1f625b0a6c571824ba0d9763896e9aaa73b215",
+      "bytes": 26758
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/collector/freeze_inputs.py",
+      "sha256": "2fedaba5f7dee6d92a6cfe57694d1369c02b91ef5dbcb42372d8e4dc2a0e47a4",
+      "bytes": 2580
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/collector/protocol.py",
+      "sha256": "03117d0c85743c3de168cf8f637951b5196b3cea360b2c5e8ec893dc24fa2ed2",
+      "bytes": 4657
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/collector/test_protocol.py",
+      "sha256": "38aaa97b80f7e979fc5d7ccef29463f213b721d1affb25177d48b9628845c13e",
+      "bytes": 2971
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/format_report.py",
+      "sha256": "d39f18ce168d08eb1d2f39aef871f118d5d973cbe262d7a44776b111dad0a901",
+      "bytes": 5447
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/freeze_accuracy.py",
+      "sha256": "904a90d9db063d3dcdc4620158c537089431e900bdebf561403d4a1c8fa44695",
+      "bytes": 2641
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/freeze_bindings.py",
+      "sha256": "f672d64b78a5f7b80b093e2e8c31024b5ca6fbb7ba6851bc78ecd1585f8c14de",
+      "bytes": 3184
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/freeze_prerequisites.py",
+      "sha256": "07cc241b402da6cc96cd928427ebfbc873232ab92375bd9b220615321a987ff1",
+      "bytes": 2549
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/pin_accuracy_audit.py",
+      "sha256": "73fca54608a9f8ea5ad11a2cde8889d1e7576c0c95bd3ee26e3a43b98942932b",
+      "bytes": 1877
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/pin_audit.py",
+      "sha256": "9f54538d6ac351e6fa9fb675811866f30ea5a543804edaac78ec5966cde6da78",
+      "bytes": 2018
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/record_interruption.py",
+      "sha256": "82fedfe34e188cee6ee7ad0d62aa6e78d01f6a3e17b1f0e4b0d88d5c8ea75b36",
+      "bytes": 2348
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/record_measured_interruption.py",
+      "sha256": "08b7b2a75959980bf0add385bfb692129f82c354a6a1d612c27ad500c97de56c",
+      "bytes": 3028
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/start-current/wait_for_idle.py",
+      "sha256": "c6ac75bd14fa948b83a65c3f36ef17c2306bfc9aa71c6f611ccac1400e56c1a3",
+      "bytes": 2453
+    }
+  ],
+  "published_files": [
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/start-current-accuracy.json",
+      "sha256": "7a2fe42ecaa2290bae090af87ea238eee9911d5779085bc56b7a2cc6554cfde2",
+      "bytes": 3886
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/start-current-accuracy.md",
+      "sha256": "1abfff90e20a59af3365501eac10492803788c4a5ef20a27940ba44003b2061a",
+      "bytes": 5049
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/start-current-bindings.json",
+      "sha256": "8e59603cdd922d239acd1f23f2ad761e5400649687d110f4346b2725509af866",
+      "bytes": 5528
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/start-current-cells.md",
+      "sha256": "fa15e4b958ec5b8a1fb6365cd8f021029f7db807239c5f4fcf82fc0516090e63",
+      "bytes": 40102
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/start-current-preflight.json",
+      "sha256": "c10a7ac44369739cf8e1c0ed704e8bb7142d15ea121861e58a80581b4d1b4113",
+      "bytes": 67453
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/start-current.json",
+      "sha256": "cbffe989ac870d059a0e467ac90247edcec6827f022506bef13747b2ddbb0f31",
+      "bytes": 720961
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/start-current.md",
+      "sha256": "f91b70ff0bcd48244f2e212b62b100a5e71cc19785ed9bb436048541ebe747bc",
+      "bytes": 7875
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/docs/plans/start-to-current-measurement.md",
+      "sha256": "91d1fd15ec5385d3461b473d4f0ff8beb5c2e808972a0245062538a1f3b6ff6e",
+      "bytes": 11101
+    }
+  ],
+  "limits": [
+    "Raw outputs, logs and binaries remain local; final report/binding hashes bind them transitively.",
+    "This manifest records already-audited evidence; it does not replace the independent audit.",
+    "Interrupted attempts remain excluded; no samples or statistics are pooled."
+  ]
+}

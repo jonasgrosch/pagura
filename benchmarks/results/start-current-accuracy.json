@@ -1,0 +1,146 @@
+{
+  "admission": false,
+  "baseline_failed_probes": [
+    {
+      "case": "root-two-partial",
+      "mode": "exact",
+      "request": 0
+    },
+    {
+      "case": "root-two-partial",
+      "mode": "exact",
+      "request": 1
+    },
+    {
+      "case": "root-slivers-1000",
+      "mode": "exact",
+      "request": 2
+    },
+    {
+      "case": "root-slivers-1000",
+      "mode": "competitive",
+      "request": 2
+    },
+    {
+      "case": "root-slivers-1000",
+      "mode": "exact",
+      "request": 3
+    },
+    {
+      "case": "root-slivers-1000",
+      "mode": "competitive",
+      "request": 3
+    },
+    {
+      "case": "half-alpha-red-twice",
+      "mode": "competitive",
+      "request": 10
+    },
+    {
+      "case": "tiny-alpha-black-eight",
+      "mode": "competitive",
+      "request": 11
+    },
+    {
+      "case": "background-0-blank",
+      "mode": "competitive",
+      "request": 12
+    },
+    {
+      "case": "background-0-half-coverage",
+      "mode": "competitive",
+      "request": 13
+    },
+    {
+      "case": "background-0-half-opacity",
+      "mode": "exact",
+      "request": 14
+    },
+    {
+      "case": "background-0-half-opacity",
+      "mode": "competitive",
+      "request": 14
+    },
+    {
+      "case": "background-128-blank",
+      "mode": "competitive",
+      "request": 15
+    },
+    {
+      "case": "background-128-half-coverage",
+      "mode": "competitive",
+      "request": 16
+    },
+    {
+      "case": "background-128-half-opacity",
+      "mode": "exact",
+      "request": 17
+    },
+    {
+      "case": "background-128-half-opacity",
+      "mode": "competitive",
+      "request": 17
+    },
+    {
+      "case": "background-254-blank",
+      "mode": "competitive",
+      "request": 18
+    },
+    {
+      "case": "background-254-half-coverage",
+      "mode": "competitive",
+      "request": 19
+    },
+    {
+      "case": "background-254-half-opacity",
+      "mode": "exact",
+      "request": 20
+    },
+    {
+      "case": "background-254-half-opacity",
+      "mode": "competitive",
+      "request": 20
+    },
+    {
+      "case": "colored-seam",
+      "mode": "competitive",
+      "request": 24
+    },
+    {
+      "case": "colored-seam",
+      "mode": "competitive",
+      "request": 25
+    },
+    {
+      "case": "colored-seam",
+      "mode": "competitive",
+      "request": 26
+    }
+  ],
+  "candidate_quality_verified": true,
+  "identities": {
+    "baseline": {
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/accuracy-build-001/baseline",
+      "binary_sha256": "d2ff413d285c06c36a69af9642e6782b3b3f9caf46c798af6dbe09db0c2796af",
+      "commit": "676a872eb9f6c279cbf1e3929ace3a0c99db9fc3",
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-baseline/pagura",
+      "source_sha256": "22f56e711c6cc2c11342bf43e446c23dc6cbb65fc9da7a4773f488cd88e7e1ad"
+    },
+    "candidate": {
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/start-current/accuracy-build-001/candidate",
+      "binary_sha256": "ac33f6e35d19fbad717116a90a8c16886c6955cc4e6470296b99938f28c3948b",
+      "commit": "a9814ee476c1b17a27b1e9a904f1f4fac8d5cd9c",
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+      "source_sha256": "b3a124d48e4761b66a717edb542ceebf56ffa91b0e3f702f997b005d1a30a2c7"
+    }
+  },
+  "limitations": [
+    "Native retained-list only; declared scalar coverage is not continuous-scene perfection",
+    "Build evidence reviewed and externally pinned by coordinator; not recompiled by auditor",
+    "Requested launcher and observed Python app bytes match the pre-run binding; this is not full OS/runtime closure"
+  ],
+  "outputs_verified": 108,
+  "report_sha256": "4fd2d8edc09344a1b46e52c3437f2c6e5daebdfe5936b9157c84e8a3b20a4d40",
+  "schema": 1,
+  "status": "verified-accuracy-probes"
+}

@@ -1,0 +1,2642 @@
+{
+  "schema": 1,
+  "experiment": "start-current",
+  "status": "verified-preflight",
+  "admission": false,
+  "audit_source_sha256": "e77146227f9956239febe5052f62d892f6fd518330396cca46cca1b279cf69f0",
+  "pins_sha256": "57bf10b8bda01e05522bebcc0ecb553537c9a2a9259589f4e51a23e621c22ddd",
+  "candidate_preflight_correct": true,
+  "cells": [
+    {
+      "suite": "opaque",
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 0,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "full",
+      "cell_index": 1,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "tile",
+      "cell_index": 2,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "tiled",
+      "cell_index": 3,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 4,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "full",
+      "cell_index": 5,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "tile",
+      "cell_index": 6,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "tiled",
+      "cell_index": 7,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "dense64",
+      "mode": "exact",
+      "operation": "full",
+      "cell_index": 8,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "dense64",
+      "mode": "competitive",
+      "operation": "full",
+      "cell_index": 9,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "tiny",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 10,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "tiny",
+      "mode": "exact",
+      "operation": "full",
+      "cell_index": 11,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "tiny",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 12,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "tiny",
+      "mode": "competitive",
+      "operation": "full",
+      "cell_index": 13,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "full",
+      "cell_index": 14,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "full",
+      "cell_index": 15,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "one-source64",
+      "mode": "exact",
+      "operation": "full",
+      "cell_index": 16,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "one-source64",
+      "mode": "competitive",
+      "operation": "full",
+      "cell_index": 17,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "overcapacity128",
+      "mode": "exact",
+      "operation": "full",
+      "cell_index": 18,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "overcapacity128",
+      "mode": "competitive",
+      "operation": "full",
+      "cell_index": 19,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "nested64",
+      "mode": "exact",
+      "operation": "full",
+      "cell_index": 20,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "nested64",
+      "mode": "competitive",
+      "operation": "full",
+      "cell_index": 21,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "default-knockout64",
+      "mode": "exact",
+      "operation": "full",
+      "cell_index": 22,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "default-knockout64",
+      "mode": "competitive",
+      "operation": "full",
+      "cell_index": 23,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "outline2",
+      "mode": "exact",
+      "operation": "full",
+      "cell_index": 24,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "outline2",
+      "mode": "competitive",
+      "operation": "full",
+      "cell_index": 25,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "outline2-knockout",
+      "mode": "exact",
+      "operation": "full",
+      "cell_index": 26,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "outline2-knockout",
+      "mode": "competitive",
+      "operation": "full",
+      "cell_index": 27,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "outline2-late64",
+      "mode": "exact",
+      "operation": "full",
+      "cell_index": 28,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "outline2-late64",
+      "mode": "competitive",
+      "operation": "full",
+      "cell_index": 29,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "clip-churn",
+      "mode": "exact",
+      "operation": "full",
+      "cell_index": 30,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "clip-churn",
+      "mode": "competitive",
+      "operation": "full",
+      "cell_index": 31,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "image-only",
+      "mode": "exact",
+      "operation": "full",
+      "cell_index": 32,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "image-only",
+      "mode": "competitive",
+      "operation": "full",
+      "cell_index": 33,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 34,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "tile",
+      "cell_index": 35,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "tiled",
+      "cell_index": 36,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 37,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "tile",
+      "cell_index": 38,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "tiled",
+      "cell_index": 39,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "opaque-clip",
+      "mode": "exact",
+      "operation": "full",
+      "cell_index": 40,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "opaque-clip",
+      "mode": "competitive",
+      "operation": "full",
+      "cell_index": 41,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "opaque-tiny",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 42,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "opaque-tiny",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 43,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "opaque-fill",
+      "mode": "exact",
+      "operation": "full",
+      "cell_index": 44,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "opaque",
+      "case": "opaque-fill",
+      "mode": "competitive",
+      "operation": "full",
+      "cell_index": 45,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "render_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/blank",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 46,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/blank",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 47,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/rectangle",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 48,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/rectangle",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 49,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/graphics-state",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 50,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/graphics-state",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 51,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/negative-rectangle",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 52,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/negative-rectangle",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 53,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/inherited-box",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 54,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/inherited-box",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 55,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/clipped-to-page",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 56,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/clipped-to-page",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 57,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/many-rectangles",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 58,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/many-rectangles",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 59,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/content-array-split",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 60,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/content-array-split",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 61,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/many-operands",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 62,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "classic/many-operands",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 63,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/text-heavy-page",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 64,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/text-heavy-page",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 65,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/text-mode-4",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 66,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/text-mode-4",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 67,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/type3-d0-colour",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 68,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/type3-d0-colour",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 69,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/text-knockout-true",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 70,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/text-knockout-true",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 71,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/text-knockout-false",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 72,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/text-knockout-false",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 73,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "incorrect": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": false,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": false,
+      "timing_interpretation": "correction-cost only",
+      "raw_pair_equality_count": 0,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/image-soft-mask",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 74,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/image-soft-mask",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 75,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/image-direct-binary-halves",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 76,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/image-direct-binary-halves",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 77,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/image-direct-gray-quarter-turn",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 78,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/image-direct-gray-quarter-turn",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 79,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/image-direct-rgb-fractional",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 80,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/image-direct-rgb-fractional",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 81,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/image-direct-bilinear",
+      "mode": "exact",
+      "operation": "cold",
+      "cell_index": 82,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    },
+    {
+      "suite": "analytic19",
+      "case": "paint/image-direct-bilinear",
+      "mode": "competitive",
+      "operation": "cold",
+      "cell_index": 83,
+      "attempts": {
+        "baseline": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        },
+        "candidate": {
+          "attempts": 1,
+          "process_failures": 0,
+          "quality_statuses": {
+            "correct": 1
+          }
+        }
+      },
+      "quality_qualified": {
+        "baseline": true,
+        "candidate": true
+      },
+      "equivalent_output_timing_qualified": true,
+      "timing_interpretation": "equivalent-output comparison",
+      "raw_pair_equality_count": 1,
+      "selected_latency_field": "total_ns"
+    }
+  ],
+  "errors": [],
+  "report_sha256": "8270c3338b5c1e960d28111e99edae9e018b411006d18c30cc9e74b903ab3ed0",
+  "bindings_sha256": "8e59603cdd922d239acd1f23f2ad761e5400649687d110f4346b2725509af866",
+  "phase": "preflight",
+  "candidate_quality_verified": true,
+  "attempted_processes": 168,
+  "quality_qualified_cells": 83,
+  "statistics": {
+    "resamples": 5000,
+    "one_sided_confidence": 0.95,
+    "seed_per_cell": 20261114,
+    "bootstrap_metrics": [
+      "selected_latency",
+      "peak_rss_bytes"
+    ],
+    "max_rss_ci": null
+  },
+  "scope": "Native default-repair open/full compile; timed matrix emits no diagnostics; exact frozen RGB/dimensions/opaque alpha.",
+  "limitations": [
+    "No aggregate, release admission or world-engine comparison.",
+    "Wrong baseline pixels retain correction-cost timing, never equivalent-output speed claims.",
+    "Intervals are paired percentile bootstrap estimates; each endpoint has separate one-sided 0.95 confidence, not joint coverage.",
+    "No guarantee for arbitrary distributions, temporal dependence, tail precision or simultaneous 84-cell comparisons.",
+    "Maximum RSS is descriptive only; OS high-water bytes include process/runtime costs.",
+    "Guard detects known processes at intervals, not absolute host exclusivity.",
+    "Frozen opaque fixture recipes and external audit pins remain trusted coordinator inputs; no renderer parity oracle."
+  ]
+}

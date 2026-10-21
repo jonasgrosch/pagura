@@ -1,12 +1,22 @@
 # Direct session-start to reconciled-current comparison
 
-Status: execution plan; source, build and harness bindings pending. No samples
-have been collected for this comparison.
+Status: confirmation 003 and its independent audit completed on 2026-10-21.
+All 34,440 outputs were checked; the current product passes all 84 cells and 83
+cells qualify for equivalent-output timing. Both builds, the 168-output preflight
+and separate 108-output strict accuracy audit also completed. The
+[complete result](../../benchmarks/results/start-current.md) records substantial
+Exact gains alongside larger Competitive regressions and higher memory in many
+cells. It does not establish an overall speedup or release admission.
 
-No executable harness is added by this note. The coordinator must finish the
-main merge and validation, review the final plan, bind every input and build,
-and reserve serial compute before any measurement. The bounded rectangle draft
-and parked color/rectangle candidates must remain absent from both arms.
+Confirmations 001 and 002 were canceled by the contention guard when unrelated
+local Cargo work began. The first stopped during warmups; the second completed
+13,420 measured pairs before interruption. Both remain retained and excluded.
+Their timing statistics were never inspected or pooled into confirmation 003.
+
+The reviewed collector, independent auditor and build/pinning helpers are in
+`benchmarks/results/sources/start-current/`. The completed main merge and frozen
+source/binary/input bindings remain unchanged. The bounded rectangle draft and
+parked color/rectangle candidates are absent from both arms.
 
 ## Identity and question
 
@@ -17,7 +27,9 @@ and parked color/rectangle candidates must remain absent from both arms.
   manifests/lock and toolchain have no diff from the implementation baseline.
   The first scene experiment pins this commit in the other worktree's
   `benchmarks/results/scene-index-final-confirmation-plan.json:7–11`.
-- Candidate: exact committed reconciled source, hash still pending. Existing
+- Candidate: reconciled commit `a9814ee476c1b17a27b1e9a904f1f4fac8d5cd9c`,
+  source digest `b3a124d48e4761b66a717edb542ceebf56ffa91b0e3f702f997b005d1a30a2c7`.
+  The separately defined runner digest is recorded in the binding. Existing
   source identities and historical result files stay unchanged.
 - Question: what does the complete retained stack change in accuracy, latency
   and process RSS on these exact workloads? This is not a worldwide ranking,
@@ -40,18 +52,59 @@ binaries are intentional; the benchmark driver/example source must be identical.
 3. Namespace the two suites in case keys; retain **84 cells** without deduping
    apparently similar scenes or changing the matrices after seeing pixels.
 
-Use the same public retained-list API on both sides: strict/full compilation,
+Use the same public retained-list API on both sides: default repair policy and full compilation,
 page 0, 72 DPI, white background, requested Exact or Competitive. `cold` is internal
 open+compile+render; `full`, `tile` and `tiled` use their declared render interval.
-The filesystem is prehashed/warm. Record OS per-child peak RSS and stage fields;
+The timing driver does not emit repair diagnostics; strict opening is checked
+separately by the untimed accuracy adapter. The filesystem is prehashed/warm.
+Record OS per-child peak RSS and stage fields;
 do not compare Node/CLI startup, or call this cold-I/O evidence.
 
-Proposed fixed trial: five warmup pairs then 200 fresh measured pairs per cell,
+Frozen trial: five warmup pairs then 200 fresh measured pairs per cell,
 seed 20261114, randomized paired order declared before launch. This is 34,440
-sample outputs, plus 168 all-cell preflight outputs. Root may change this
-proposed budget before freezing; do not change it or retry after launch to seek
+sample outputs, plus 168 all-cell preflight outputs. Do not change the budget
+or retry after launch to seek
 better intervals. No historical samples, pilot pooling, optional stopping,
 cell removal, threshold changes or interim performance inspection.
+
+### External interruption recovery
+
+The observer canceled confirmation 001 after 361 warmup pair records when a
+foreign Cargo check began. The final outer receipt records exit 143 and unchanged
+sources. `local/start-current/confirmation-001-stop.json` binds the original
+report, journal, plan, guard and receipt. No speed statistics were computed.
+The user requested waiting for other jobs to finish. After known foreign work
+finishes and a quiet observation succeeds, a separate confirmation 002 may run
+the complete unchanged schedule. Nothing from 001 is resumed, pooled, substituted
+or used to choose sampling counts or statistical thresholds. This explicitly
+records recovery from external invalidation; it does not authorize repeating a
+completed performance trial for a better result.
+
+Confirmation 002 was independently canceled for a new local Cargo check after
+420 warmup pairs and 13,420 measured pairs completed, with one further pair
+record unfinished. Its terminal receipt records unchanged sources and exit 143.
+`local/start-current/confirmation-002-stop.json` pins the report, journal, plan,
+guard and receipt. These are retained observations, not qualified performance
+evidence; no statistics or confidence bounds were inspected. The foreign work
+was subsequently observed terminal. After another quiet check, confirmation 003
+uses the same complete 200 measured + 5 warmup schedule, 84 cells, seeds, binaries,
+inputs, statistics and gates. Nothing from either interrupted trial is resumed,
+pooled or used to select counts or thresholds. This additional recovery is based
+only on external invalidation; it does not permit repeating a completed trial
+because of its performance result.
+
+The first read-only idle observation (`local/start-current/idle-wait-001.json`)
+expired after 30 minutes because other check/build workflows kept running or
+starting. It held no shared lock and launched no benchmark. A second observation
+is recorded separately as `idle-wait-002.json` and completed with 45 quiet seconds
+before confirmation 002. `idle-wait-003.json` records the successful quiet
+observation before confirmation 003, which then completed the unchanged schedule.
+The next product patch and reconciled benchmark setup are
+[archived separately](../../benchmarks/results/sources/n16-output-interval-draft/README.md)
+and applied only in the isolated `codex/renderer-n16-interval` worktree at the
+same base. This worktree remains frozen. Source preparation there does not count
+as validation or performance evidence; execution and promotion follow this
+comparison and its audit.
 
 ## Independent quality qualification — baseline failures must remain visible
 

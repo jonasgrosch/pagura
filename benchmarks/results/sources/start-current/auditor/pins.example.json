@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "experiment": "start-current",
+  "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+  "phase": "preflight",
+  "bindings": {"path": "/ABSOLUTE/bindings.json", "sha256": "FROZEN_BINDINGS_SHA256"},
+  "report": {"path": "/ABSOLUTE/preflight-001/report.json", "sha256": "FINAL_REPORT_SHA256"},
+  "plan": {"path": "/ABSOLUTE/preflight-001/plan.json", "sha256": "PLAN_SHA256"},
+  "journal": {"path": "/ABSOLUTE/preflight-001/events.jsonl", "sha256": "FINAL_JOURNAL_SHA256"},
+  "receipt": {"path": "/ABSOLUTE/preflight-001-receipt.json", "sha256": "FINAL_RECEIPT_SHA256"},
+  "guard": {"path": "/ABSOLUTE/preflight-001-observer/guard.json", "sha256": "FINAL_GUARD_SHA256"},
+  "guard_script": {"path": "/ABSOLUTE/load_observer.py", "sha256": "FROZEN_GUARD_SOURCE_SHA256"},
+  "guard_snapshots": [
+    {"path": "/ABSOLUTE/preflight-001-observer/snapshot-0001.txt", "sha256": "PREFLIGHT_SNAPSHOT_SHA256"},
+    {"path": "/ABSOLUTE/preflight-001-observer/snapshot-0003.txt", "sha256": "ACTUAL_POSTFLIGHT_SNAPSHOT_SHA256"}
+  ],
+  "statistics": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/tools/benchkit/statistics.py",
+    "sha256": "FROZEN_STATISTICS_SHA256"
+  }
+}
