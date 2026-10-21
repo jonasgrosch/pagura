@@ -17,12 +17,15 @@ use crate::{LineCap, LineJoin, PathBuilder, Point, Stroke};
 use pagura_core::{Error, Limits, Result};
 
 /// The inner side of one turn: the miter point's offset from the joint, the
-/// side it lies on, and how far it reaches along each segment.
+/// side it lies on, how far it reaches along each segment, and how far the
+/// segment before reaches along the segment after (and back): the pen radius
+/// times the sine of the turn.
 #[derive(Clone, Copy)]
 struct Turn {
     offset: Point,
     left: bool,
     reach: f64,
+    span: f64,
 }
 
 /// Appends the pieces of `run` to `out`. Returns `false`, leaving `out`
@@ -59,7 +62,7 @@ pub(super) fn append(
     if !advances(&segments, joints.closed) {
         return Ok(false);
     }
-    let Some(turns) = turns(&segments, joints, radius)? else {
+    let Some(turns) = turns(&segments, joints, radius, stroke.cap)? else {
         return Ok(false);
     };
     if out
@@ -147,7 +150,7 @@ pub(super) fn apart<'a>(
 
 /// The run's points without repeats, a closed run's closing point removed,
 /// as [`super::draw`] strokes them.
-fn centreline(run: &Run) -> Vec<Point> {
+pub(super) fn centreline(run: &Run) -> Vec<Point> {
     let mut points: Vec<Point> = Vec::with_capacity(run.points.len());
     for &point in &run.points {
         if points.last() != Some(&point) {
@@ -259,10 +262,13 @@ fn advances(segments: &[(Point, f64)], closed: bool) -> bool {
 
 /// The turn at each point, or `None` when a reversal, or a turn whose inner
 /// miter point does not lie within both of its segments, could overlap pieces.
+/// Beside a butt end nothing covers what the neighbouring segment's
+/// quadrilateral reaches past it, so the end segment must hold that too.
 fn turns(
     segments: &[(Point, f64)],
     joints: Joints,
     radius: f64,
+    cap: LineCap,
 ) -> Result<Option<Vec<Option<Turn>>>> {
     let count = if joints.closed {
         joints.segments
@@ -288,33 +294,44 @@ fn turns(
             }
             return Ok(None);
         }
-        // The inner miter point, as `join` forms the outer one.
-        let denominator = 1.0 + dot;
+        // The tangent of half the turn, in the form that stays accurate near
+        // a reversal, and the inner miter point it places on the inner offset
+        // of the segment after; `join` forms the outer one.
+        let half = if dot >= 0.0 {
+            turn.abs() / (1.0 + dot)
+        } else {
+            (1.0 - dot) / turn.abs()
+        };
         let left = turn > 0.0;
         let side = if left { radius } else { -radius };
-        let offset = Point::new(
-            (-a.y * side - b.y * side) / denominator,
-            (a.x * side + b.x * side) / denominator,
-        );
-        let reach = (radius * turn / denominator).abs();
-        if !(denominator > 0.0 && offset.x.is_finite() && offset.y.is_finite() && reach.is_finite())
-        {
+        let reach = radius * half;
+        let offset = Point::new(-b.y * side + b.x * reach, b.x * side + b.y * reach);
+        if !(offset.x.is_finite() && offset.y.is_finite() && reach.is_finite()) {
             return Ok(None);
         }
         turns.push(Some(Turn {
             offset,
             left,
             reach,
+            span: radius * turn.abs(),
         }));
     }
     // Each side of a segment must hold the inner reach of both its joints.
+    let last = joints.segments - 1;
     for (i, &(_, length)) in segments.iter().enumerate() {
+        let butt = cap == LineCap::Butt && !joints.closed && (i == 0 || i == last);
         for left in [false, true] {
             let need: f64 = [turns[i], turns[joints.after(i)]]
                 .into_iter()
                 .flatten()
                 .filter(|turn| turn.left == left)
-                .map(|turn| turn.reach)
+                .map(|turn| {
+                    if butt {
+                        turn.reach.max(turn.span)
+                    } else {
+                        turn.reach
+                    }
+                })
                 .sum();
             if need > length {
                 return Ok(None);
@@ -415,7 +432,7 @@ mod tests {
     use pagura_core::Limits;
     use std::sync::Arc;
 
-    const SIZE: u32 = 24;
+    const SIZE: u32 = 48;
 
     fn polyline(points: &[(f64, f64)], closed: bool) -> Path {
         let mut path = PathBuilder::new();
@@ -645,5 +662,122 @@ mod tests {
             let union = exact(&components, pen);
             assert!(largest_difference(&cells(tiles, pen, true), &union) <= 1);
         }
+    }
+
+    /// Whether the stroke keeps its components, or its pieces' signed cells
+    /// stay within one level of the components' exact union.
+    fn pieces_match_the_union(path: &Path, stroke: &Stroke) -> Option<u8> {
+        let limits = Limits::default();
+        let (components, pen) =
+            crate::stroke_outline(path, Transform::IDENTITY, stroke, &limits).unwrap();
+        let (tiles, _) =
+            crate::tiled_stroke_outline(path, Transform::IDENTITY, stroke, &limits).unwrap();
+        tiles
+            .boundary
+            .is_some()
+            .then(|| largest_difference(&cells(tiles, pen, true), &exact(&components, pen)))
+    }
+
+    #[test]
+    fn inexact_reversals_keep_the_components() {
+        let stroke = Stroke {
+            width: 3.0,
+            cap: LineCap::Round,
+            ..Stroke::default()
+        };
+        // Out along a diagonal and back along it: rounding leaves the return
+        // direction a hair off the reverse, so the turn is not exactly flat.
+        for step in 1..64 {
+            let t = f64::from(step) / 64.0;
+            let (dx, dy) = (0.1 + 0.83 * t, 1.0 - 0.71 * t);
+            let far = (6.0 + 30.0 * dx, 6.0 + 30.0 * dy);
+            let back = (6.0 + 9.0 * dx * 1.1, 6.0 + 9.0 * dy * 1.1);
+            let path = polyline(&[(6.0, 6.0), far, back], false);
+            if let Some(difference) = pieces_match_the_union(&path, &stroke) {
+                assert!(difference <= 1, "{step}: {difference}");
+            }
+        }
+    }
+
+    #[test]
+    fn butt_ends_hold_the_neighbouring_quadrilateral() {
+        // A wide pen turning 60 degrees onto a last segment shorter than the
+        // reach of the segment before.
+        let angle = std::f64::consts::FRAC_PI_3;
+        let path = polyline(
+            &[
+                (6.0, 20.0),
+                (26.0, 20.0),
+                (26.0 + 5.0 * angle.cos(), 20.0 + 5.0 * angle.sin()),
+            ],
+            false,
+        );
+        let stroke = Stroke {
+            width: 16.0,
+            cap: LineCap::Butt,
+            join: LineJoin::Round,
+            ..Stroke::default()
+        };
+        if let Some(difference) = pieces_match_the_union(&path, &stroke) {
+            assert!(difference <= 1, "{difference}");
+        }
+    }
+
+    #[test]
+    fn seeded_strokes_take_pieces_only_within_one_level_of_the_union() {
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64;
+        let mut bits = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "53 random bits map to a uniform fraction"
+        )]
+        let mut next = || (bits() >> 11) as f64 / (1u64 << 53) as f64;
+        let mut taken = 0;
+        for case in 0..1000 {
+            let count = 2 + usize::from(next() < 0.5) + usize::from(next() < 0.5) * 2;
+            let mut points: Vec<(f64, f64)> = (0..count)
+                .map(|_| (4.0 + 40.0 * next(), 4.0 + 40.0 * next()))
+                .collect();
+            if case % 4 == 0 {
+                // Back along the last segment, short of where it started.
+                let [.., (x0, y0), (x1, y1)] = points[..] else {
+                    unreachable!()
+                };
+                let t = 0.2 + 0.7 * next();
+                points.push((x1 + (x0 - x1) * t, y1 + (y0 - y1) * t));
+            }
+            let width = 0.3 + 16.0 * next();
+            if case % 4 == 2 {
+                // A turn of under a right angle onto a last segment about
+                // as long as the pen radius.
+                let [.., (x0, y0), (x1, y1)] = points[..] else {
+                    unreachable!()
+                };
+                let turn = (0.3 + 1.2 * next()) * if next() < 0.5 { 1.0 } else { -1.0 };
+                let heading = (y1 - y0).atan2(x1 - x0) + turn;
+                let length = width * (0.3 + 0.4 * next());
+                points.push((x1 + length * heading.cos(), y1 + length * heading.sin()));
+            }
+            let path = polyline(&points, case % 5 == 1);
+            let stroke = Stroke {
+                width,
+                cap: [LineCap::Butt, LineCap::Round, LineCap::ProjectingSquare][case % 3],
+                join: [LineJoin::Miter, LineJoin::Round, LineJoin::Bevel][(case / 3) % 3],
+                ..Stroke::default()
+            };
+            if let Some(difference) = pieces_match_the_union(&path, &stroke) {
+                assert!(
+                    difference <= 1,
+                    "{case} {points:?} {stroke:?}: {difference}"
+                );
+                taken += 1;
+            }
+        }
+        assert!(taken > 200, "{taken}");
     }
 }
