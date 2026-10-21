@@ -22,9 +22,7 @@ use pagura_image::{MaskKind, Samples};
 use pagura_raster::{FillRule, Mask, PathBuilder, Pixmap};
 
 /// Longest run of byte codes whose integer sum fits in a `u32`.
-const RUN: usize = RUN_LINES as usize;
-/// [`RUN`] as a count of source lines.
-const RUN_LINES: u32 = u32::MAX / 255;
+const RUN: usize = (u32::MAX / 255) as usize;
 
 impl Context {
     // Keep image preparation separate from the general tile compositor.
@@ -217,7 +215,7 @@ impl Context {
     ) -> Result<()> {
         let mut values = filled(plan.columns.len(), [0.0; N])?;
         let mut sums = filled(plan.lines(), [0.0; N])?;
-        let mut codes = filled(if plan.swapped { 0 } else { plan.lines() }, [0; N])?;
+        let mut cached = None;
         let mut current = None;
         let origin = clip.origin();
         for (row, column, coverage) in clip.spans() {
@@ -230,7 +228,7 @@ impl Context {
                 if plan.swapped {
                     self.turned_row(levels, plan, span, &mut sums, &mut values)?;
                 } else {
-                    self.upright_row(levels, plan, span, (&mut sums, &mut codes), &mut values)?;
+                    self.upright_row(levels, plan, span, (&mut sums, &mut cached), &mut values)?;
                 }
                 current = Some(y);
             }
@@ -254,83 +252,38 @@ impl Context {
         Ok(())
     }
 
-    /// The footprint means of one device row of an upright placement. The
-    /// row's source lines are summed first, its end lines weighted around an
-    /// exact integer sum of the lines between them, and each column's
-    /// footprint then sums that line as [`line_sums`] sums a source line.
     fn upright_row<const N: usize>(
         &mut self,
         levels: &Levels<'_, N>,
         plan: &Area,
         span: Span,
-        (line, codes): (&mut [[f64; N]], &mut [[u32; N]]),
+        (sums, cached): (&mut [[f64; N]], &mut Option<u32>),
         values: &mut [[f64; N]],
     ) -> Result<()> {
-        let (first, end) = (plan.first as usize, plan.end as usize);
-        let cells = |row: u32| -> Result<&[[u8; N]]> {
-            levels
-                .row(row)?
-                .get(first..end)
-                .ok_or(Error::syntax("image footprint outside samples"))
-        };
-        self.charge(line.len().saturating_mul((span.end - span.first) as usize))?;
-        match span.end - span.first {
-            0 => line.fill([0.0; N]),
-            1 => {
-                for (out, sample) in line.iter_mut().zip(cells(span.first)?) {
-                    *out = sample.map(|v| span.first_weight * f64::from(v));
-                }
+        values.fill([0.0; N]);
+        for step in span.first..span.end {
+            // Visit last the boundary row that the next device row shares.
+            let row = if plan.descending {
+                span.end - 1 - (step - span.first)
+            } else {
+                step
+            };
+            if *cached != Some(row) {
+                self.charge(plan.samples)?;
+                line_sums(levels.row(row)?, &plan.columns, sums)?;
+                *cached = Some(row);
             }
-            _ => {
-                for (out, (top, bottom)) in line
-                    .iter_mut()
-                    .zip(cells(span.first)?.iter().zip(cells(span.end - 1)?))
-                {
-                    *out = std::array::from_fn(|c| {
-                        span.first_weight * f64::from(top[c])
-                            + span.last_weight * f64::from(bottom[c])
-                    });
-                }
-                let interior = span.first + 1..span.end - 1;
-                for start in interior.clone().step_by(RUN) {
-                    // A run's codes sum below 2^32, so wrapping additions are
-                    // exact and, free of overflow checks, vectorize.
-                    codes.fill([0; N]);
-                    for row in start..interior.end.min(start.saturating_add(RUN_LINES)) {
-                        let samples = cells(row)?.as_flattened();
-                        for (code, &value) in codes.as_flattened_mut().iter_mut().zip(samples) {
-                            *code = code.wrapping_add(u32::from(value));
-                        }
-                    }
-                    for (out, &code) in line.as_flattened_mut().iter_mut().zip(codes.as_flattened())
-                    {
-                        *out += f64::from(code);
-                    }
+            self.charge(values.len())?;
+            let weight = span.weight(row);
+            for (value, sum) in values.iter_mut().zip(sums.iter()) {
+                for (value, sum) in value.iter_mut().zip(sum) {
+                    *value += weight * sum;
                 }
             }
         }
-        self.charge(plan.samples)?;
         for (value, column) in values.iter_mut().zip(&plan.columns) {
-            let cells = line
-                .get(column.first as usize - first..column.end as usize - first)
-                .ok_or(Error::invalid_argument("image footprint outside line"))?;
-            let total = match cells {
-                [] => [0.0; N],
-                [only] => only.map(|v| column.first_weight * v),
-                [head, interior @ .., tail] => {
-                    let mut total = [0.0; N];
-                    for cell in interior {
-                        for (total, &v) in total.iter_mut().zip(cell) {
-                            *total += v;
-                        }
-                    }
-                    std::array::from_fn(|c| {
-                        column.first_weight * head[c] + total[c] + column.last_weight * tail[c]
-                    })
-                }
-            };
             let normalization = column.normalization * span.normalization;
-            *value = total.map(|v| v * normalization);
+            *value = value.map(|v| v * normalization);
         }
         Ok(())
     }
@@ -513,8 +466,9 @@ struct Area {
     columns: Vec<Span>,
     rows: Vec<Span>,
     swapped: bool,
-    /// Source cells under all column footprints: columns of an upright
-    /// placement, lines of a quarter turn.
+    /// Whether source rows run against device rows.
+    descending: bool,
+    /// Source lines under all columns of a quarter turn.
     first: u32,
     end: u32,
     /// Source cells under all column footprints.
@@ -552,30 +506,28 @@ impl Area {
             columns,
             rows,
             swapped,
+            descending: row_scale < 0.0,
             first,
             end,
             samples,
         })
     }
 
-    /// Sums kept per device row: one per source cell under the columns, in
-    /// the source line that an upright row accumulates or in the source
-    /// lines under the columns of a quarter turn.
+    /// Footprint sums kept per device row: one per column, or one per
+    /// source line under the columns of a quarter turn.
     fn lines(&self) -> usize {
-        (self.end - self.first) as usize
+        if self.swapped {
+            (self.end - self.first) as usize
+        } else {
+            self.columns.len()
+        }
     }
 
     fn bytes<const N: usize>(&self) -> usize {
-        let codes = if self.swapped {
-            0
-        } else {
-            self.lines().saturating_mul(size_of::<[u32; N]>())
-        };
         (self.columns.len() + self.rows.len())
             .saturating_mul(size_of::<Span>())
             .saturating_add(self.columns.len().saturating_mul(size_of::<[f64; N]>()))
             .saturating_add(self.lines().saturating_mul(size_of::<[f64; N]>()))
-            .saturating_add(codes)
     }
 }
 
@@ -1229,6 +1181,205 @@ mod tests {
                 );
             }
             assert_eq!(list.render(&options).unwrap(), direct);
+        }
+    }
+
+    fn direct_context(list: &DisplayList, accuracy: crate::Accuracy) -> super::Context {
+        let options = RenderOptions {
+            accuracy,
+            ..RenderOptions::default()
+        };
+        let separations = list.preview_separations(&options).unwrap();
+        let plan = super::super::plan::page(list, &separations).unwrap();
+        super::Context::new(list, &options, &plan, separations).unwrap()
+    }
+
+    fn direct_tile(
+        context: &mut super::Context,
+        command: &ImageCommand,
+        tile: Tile,
+    ) -> pagura_core::Result<(bool, pagura_raster::Pixmap)> {
+        // The caller already owns its output; test the sampler's allowance
+        // independently of allocating that output under the reduced limit.
+        let mut output = pagura_raster::Pixmap::new_with_limits(
+            tile.width,
+            tile.height,
+            pagura_raster::Rgba8::WHITE,
+            Limits::default(),
+        )?;
+        let painted = context.paint_opaque_image(
+            command,
+            super::Model::Rgb,
+            &mut output,
+            (tile, tile),
+            [255; 4],
+        )?;
+        Ok((painted, output))
+    }
+
+    fn assert_tile_oracle(case: &Case, tile: Tile, output: &pagura_raster::Pixmap) {
+        for y in 0..tile.height {
+            for x in 0..tile.width {
+                let index = usize::try_from(y * tile.width + x).unwrap() * 4;
+                let actual = &output.data()[index..index + 4];
+                for (channel, (expected, tie)) in case
+                    .oracle(i128::from(tile.x + x), i128::from(tile.y + y))
+                    .into_iter()
+                    .enumerate()
+                {
+                    let minimum = expected - i128::from(tie);
+                    assert!((minimum..=expected).contains(&i128::from(actual[channel])));
+                }
+                assert_eq!(actual[3], 255);
+            }
+        }
+    }
+
+    #[test]
+    fn upright_images_match_rational_oracles_across_irregular_tiles() {
+        // Exercise this sampler directly with both option sets. This does not
+        // assert that either public policy dispatches to it on every page.
+        for accuracy in [crate::Accuracy::Exact, crate::Accuracy::Competitive] {
+            let cases: Vec<_> = cases()
+                .into_iter()
+                .filter(|case| {
+                    case.components == 3
+                        && !case.interpolate
+                        && case.placement[1] == 0.0
+                        && case.placement[0].abs() == 4.0
+                })
+                .collect();
+            assert_eq!(cases.len(), 2);
+            for case in cases {
+                let list = case.list();
+                let [Command::Image(command)] = list.commands.as_slice() else {
+                    unreachable!();
+                };
+                let full = Tile {
+                    x: 0,
+                    y: 0,
+                    width: PAGE,
+                    height: PAGE,
+                };
+                let (painted, output) =
+                    direct_tile(&mut direct_context(&list, accuracy), command, full).unwrap();
+                assert!(painted);
+                assert_tile_oracle(&case, full, &output);
+                // Six disjoint tiles cover the page, with unequal rows and
+                // different x seams. Blank tiles may legitimately decline.
+                for (y, height, split) in [(0, 2, 3), (2, 3, 1), (5, 3, 6)] {
+                    for (x, width) in [(0, split), (split, PAGE - split)] {
+                        let tile = Tile {
+                            x,
+                            y,
+                            width,
+                            height,
+                        };
+                        let (_, part) =
+                            direct_tile(&mut direct_context(&list, accuracy), command, tile)
+                                .unwrap();
+                        assert_tile_oracle(&case, tile, &part);
+                        for row in 0..height {
+                            let source = usize::try_from((y + row) * PAGE + x).unwrap() * 4;
+                            let start = usize::try_from(row * width).unwrap() * 4;
+                            let count = usize::try_from(width).unwrap() * 4;
+                            assert_eq!(
+                                &part.data()[start..start + count],
+                                &output.data()[source..source + count],
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn shared_boundary_case() -> (Case, Tile) {
+        (
+            Case {
+                width: 6,
+                height: 4,
+                components: 3,
+                bits: 8,
+                codes: (0..72).collect(),
+                inverted: false,
+                interpolate: false,
+                placement: [1.0, 0.0, 0.0, -2.5, 2.0, 4.0],
+            },
+            Tile {
+                x: 2,
+                y: 2,
+                width: 1,
+                height: 2,
+            },
+        )
+    }
+
+    #[test]
+    fn upright_shared_boundary_obeys_the_work_limit_and_releases_scratch() {
+        let (case, tile) = shared_boundary_case();
+        let mut list = case.list();
+        let [Command::Image(command)] = list.commands.as_mut_slice() else {
+            unreachable!();
+        };
+        command.position = Position::Buffer(73);
+        let [Command::Image(command)] = list.commands.as_slice() else {
+            unreachable!();
+        };
+        // Two pixels cross source rows [0,3) and [2,4). Four distinct line
+        // calculations cost 4*6; five row accumulations cost 5*1. The fixed
+        // surface/mark/clip/sample charges are 3*2+1, giving 36 in total.
+        for accuracy in [crate::Accuracy::Exact, crate::Accuracy::Competitive] {
+            for allowance in [35, 36, 37] {
+                let mut context = direct_context(&list, accuracy);
+                let (work, allocated) = (context.work, context.allocated);
+                context.limits.raster_work = work + allowance;
+                let result = direct_tile(&mut context, command, tile);
+                assert_eq!(context.allocated, allocated);
+                if allowance == 35 {
+                    let error = result.unwrap_err();
+                    assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
+                    assert_eq!(error.position, Position::Buffer(73));
+                    assert_eq!(context.work, work + 35);
+                } else {
+                    let (painted, output) = result.unwrap();
+                    assert!(painted);
+                    assert_eq!(context.work, work + 36);
+                    assert_tile_oracle(&case, tile, &output);
+                    assert_eq!(output.data(), &[28, 29, 30, 255, 55, 56, 57, 255]);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn upright_scratch_allowance_declines_before_sampling() {
+        let (case, tile) = shared_boundary_case();
+        let list = case.list();
+        let [Command::Image(command)] = list.commands.as_slice() else {
+            unreachable!();
+        };
+        // One column footprint, two row footprints, and two RGB f64 column
+        // arrays. This is larger than the required two-pixel group surface,
+        // so the boundary below reaches scratch admission, not that guard.
+        let scratch = 3 * size_of::<super::Span>() + 2 * size_of::<[f64; 3]>();
+        assert!(scratch > 2 * size_of::<super::super::Pixel>());
+        for accuracy in [crate::Accuracy::Exact, crate::Accuracy::Competitive] {
+            for allowance in [scratch - 1, scratch, scratch + 1] {
+                let mut context = direct_context(&list, accuracy);
+                let (work, allocated) = (context.work, context.allocated);
+                context.limits.decoded_bytes = allocated + allowance;
+                let (painted, output) = direct_tile(&mut context, command, tile).unwrap();
+                assert_eq!(context.allocated, allocated);
+                assert_eq!(painted, allowance >= scratch);
+                if painted {
+                    assert_eq!(context.work, work + 36);
+                    assert_tile_oracle(&case, tile, &output);
+                } else {
+                    assert_eq!(context.work, work);
+                    assert!(output.data().iter().all(|&byte| byte == 255));
+                }
+            }
         }
     }
 }

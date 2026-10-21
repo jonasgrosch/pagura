@@ -474,9 +474,12 @@ clipping. Changed cells against the previous backends must be reported with
 their oracle values; on the 40 benchmark pages at 72, 150 and 300 dpi, every
 non-tie change moved a cell to the correctly rounded exact area.
 
-## Amendment: the competitive path (proposed, 2026-10-20)
+## Amendment: the competitive path (2026-10-20)
 
-Status: proposed, 2026-10-20.
+Status: accepted on main, 2026-10-21. This records the original Competitive
+policy. The later shared-composition, background and F32-preservation amendments
+below supersede its storage choices on this experimental branch; main's
+acceptance does not admit those experiments or their performance gates.
 
 `RenderOptions::accuracy` selects the path: `Accuracy::Exact`, the default,
 keeps the one-level contract; `Accuracy::Competitive` (CLI `--accuracy
@@ -509,9 +512,10 @@ takes, per primitive, the faster approximation that keeps the gate:
   of its runs' pens meet.
 - **Clips.** A clip path that contains a mark's global control hull is
   dropped for that mark. A quadrilateral mark within quadrilateral clips is
-  integrated with them geometrically. Any other clip region's own cell
-  coverage is integrated once per band and multiplied into each mark, which
-  approximates the intersection where both boundaries cross one pixel.
+  integrated with them geometrically. A rectangular clip region's coverage
+  is a column factor times a row factor; any other clip region's own cell
+  coverage is integrated once per band. Either is multiplied into each mark,
+  which approximates the intersection where both boundaries cross one pixel.
 - **Composition.** Where the exact path would admit 16-bit or f32 storage,
   Normal composition of an opaque page rounds each store once into one byte
   page, painted in full-width bands of 256 rows. Retained groups, blend
@@ -672,3 +676,25 @@ low resource limits may reject pages the incorrect narrow route accepted.
 No limits or counters are reset. Opaque-background admission is unchanged.
 A revised candidate needs fresh bindings and samples; the canceled run is
 not a confirmation and its records cannot be reused.
+
+## Amendment: admitted F32 composition and main reconciliation (2026-10-21)
+
+The validated [F32 correction](../../benchmarks/results/f32-preservation-cost.md)
+supersedes the earlier experimental statement that F32 plans use U8 in
+Competitive mode. Both modes retain the planner's F32 precision; Competitive
+fragment coverage feeds its F32 sink. The independent translucent-text case
+now yields 64 rather than 63. This is a scoped composition correction, not an
+end-to-end geometry or general translucent-scene guarantee.
+
+A Competitive compositor Limit retries the same compiled list once with exact
+compositing. Reduced image samples or drawing-only font validation may remain;
+the retry may fail and preprocessing can add attempts. This is not an Exact
+policy recompilation guarantee. Nonopaque backgrounds retain the F64 guard.
+
+Reconciliation with main restores its source-line image accumulation order
+from `c19c5374`; the earlier reorder changed historical Exact rounding ties.
+This is compatibility/resource reconciliation, not an independent accuracy or
+speed claim. Keep source-line footprint evaluation before vertical accumulation,
+its bounded scratch/work accounting, strict independent references and both
+mode/tile/platform checks. Historical measurements of the reordered stack keep
+their original source and binary identities.

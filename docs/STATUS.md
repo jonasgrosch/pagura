@@ -128,10 +128,21 @@ pinned-toolchain probe then confirmed 25% larger retained segment allocations
 for specific compound paths. The candidate is parked under its frozen resource
 rejection rule, with its complete patch, six tests and measured gains preserved.
 A separate 5,656-output same-binary RSS diagnostic changes no failed gate and
-has an explicitly retrospective Python app-executable pin. The active product
-returns to the prior F32 baseline fingerprint. Both measured arms also retain
-an image-sampler reorder differing from main's `c19c5374` correction; that
-reconciliation takes priority before the next performance measurement.
+has an explicitly retrospective Python app-executable pin. Parking returned
+the product to the prior F32 baseline fingerprint. Both measured arms retain
+an image-sampler reorder differing from main's `c19c5374` correction; their
+historical source and measurement identities are unchanged.
+
+The subsequent [main reconciliation](../benchmarks/results/main-reconciliation.md)
+merges `d81d0c82`, restores the sampler's source-line order and JPEG invariant,
+and preserves the experimental precision fixes and strict fixture bounds.
+The full check passes with 229 renderer tests, 196 tooling tests and 1,249
+conformance cases. The five focused sampler tests pass on native and WASI
+SIMD/scalar; all 24 independent image outputs match their strict references
+and agree across those platforms. No new speed or memory result is inferred.
+The [start-to-current comparison](plans/start-to-current-measurement.md) is the
+next measurement, before another performance change. Existing incremental
+percentages do not establish a combined gain from the session's initial product.
 
 ## Overprint display policy
 

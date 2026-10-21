@@ -15,12 +15,19 @@ measured 9.9% Exact and 7.3% Competitive primary median gains, but is parked
 with its complete patch: compound paths can retain 25% more segment capacity,
 violating the frozen resource-regression rule. All failed gates remain visible.
 
-Next, reconcile current main before any new performance trial: the branch
-retains an image-sampler reorder that main corrected in `c19c5374`, and lacks a
-JPEG debug invariant. Preserve the intentional precision/resource fixes and
-historical measurement identities. Then investigate a bounded fresh-builder
-reservation, the archived color-reuse candidate and shared scene preparation
-as separate measured changes. The full goal remains open.
+The [main reconciliation](../../benchmarks/results/main-reconciliation.md)
+merges `d81d0c82`, restores its sampler order and JPEG invariant, and preserves
+the intentional precision/resource fixes. Full repository validation, focused
+native/SIMD/scalar sampler tests and the 24-output image parity check pass.
+Historical measurements retain their original identities.
+
+Next, measure the complete retained stack directly against the session's
+starting product using the [start-to-current plan](start-to-current-measurement.md).
+There is no defensible combined speedup percentage yet. Bind the new source and
+builds, preserve accuracy-changing cells and report operation-specific latency
+and memory before another optimization. Then investigate bounded fresh-builder
+reservation, archived color reuse and shared scene preparation as separate
+measured changes. The full goal remains open.
 
 ## Completion evidence
 
