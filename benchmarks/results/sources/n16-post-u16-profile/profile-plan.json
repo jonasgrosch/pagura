@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "status": "frozen-before-profile",
+  "purpose": "Locate remaining whole-process/render stack costs in the retained u16 product. No baseline comparison, speed estimate or admission claim.",
+  "admission": false,
+  "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+  "source": {
+    "commit": "28c3234cb4aca675e711bda97bb8c486a7f38e9a",
+    "runner_sha256": "554df29cb441a4a32f773da36bb0f7f401c12fe77c3fa7e3c3c512160decbd14",
+    "product_sha256": "8b35ff8987f80bbfb67e29e9b6f33daa2ee5d6fed005e22412dbde20fbe73225"
+  },
+  "configuration": {
+    "case": "opaque64",
+    "accuracy": "exact",
+    "page": 0,
+    "dpi": 72,
+    "reported_renders": 1000,
+    "existing_unreported_warmup": 1,
+    "attach_delay_seconds": 0.1,
+    "sample_seconds": 5,
+    "sample_interval_ms": 1,
+    "owned_children_deadline_seconds": 120,
+    "maximum_launches": 1,
+    "write_each_output": false
+  },
+  "binary": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/n16-post-u16-profile/render_profile",
+    "sha256": "4aaf1e644221e1026f97eba454a144980f709f224cde2cd11ddbcd273e6a12ca"
+  },
+  "build_receipt": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/n16-post-u16-profile/build-001-receipt.json",
+    "sha256": "8591c6cda8888e854425cac7e8cbc25992c5e055d35733bb9f2e9926d11283c8"
+  },
+  "retention_summary": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/n16-output-u16-experiment.json",
+    "sha256": "b9044c2ab53eb7f08e4aa1fc26ffd7b2bea67046d5076c69ff09dbb1a0edd70f"
+  },
+  "reference_report": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/n16-output-u16/confirmation-001/report.json",
+    "sha256": "1ac1a8f843f7f722819248c7c9632e04629e15e7a2cd9fc46c3ed4bc52a26182"
+  },
+  "input": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/n16-output-u16/confirmation-001/inputs/opaque64.pdf",
+    "sha256": "71ce9f1d7bb5fe13c57c38f122e88703156d9bead39f556dcb35b2f8bfa4a4a0"
+  },
+  "oracle": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/n16-output-u16/confirmation-001/oracles/opaque64.ppm",
+    "sha256": "315a317aebdfa487a5d910ce974a7c94127be21f2f6119840499d95af5c6911d"
+  },
+  "checksum": {
+    "raw_rgba_sha256": "5e4d4d31c94efd440852aab3eca59e1e39c42819e61345765faec523804bec30",
+    "fnv1a64": "4f58e5eb7eb02325"
+  },
+  "sampler": {
+    "path": "/usr/bin/sample",
+    "sha256": "0959bc5da2a44c7d35df917a00020ab8167f0c6a98d456b0647533aa24c3456a"
+  },
+  "driver_sha256": "fba49f2ad465c037ecd18c65fad257494c458bc5702376632d0b41fbebab097d",
+  "example_sha256": "a698372b098162d57ff9772db99bbab58a9bcabd4664e2542dec0f31c917f339",
+  "limitations": [
+    "One retained current product only; there is no comparable baseline in this profile.",
+    "The long-lived process differs from short-lived paired confirmation samples.",
+    "Sampling covers whole-process work; RGBA FNV and printing are outside render timers but inside the sampled process.",
+    "The fixed attachment may include open/compile or may miss their completion; it is not a render-only sampling interval.",
+    "FNV checksums are derived from a previously independently byte-verified output; they do not replace pixel correctness checks.",
+    "Inlining and sample granularity limit attribution; absent named functions do not prove absent cost.",
+    "Requested sampling duration is not a guarantee of captured duration if the process exits early; retain raw sampler output and lifecycle flags.",
+    "No automatic retries, changing render count after inspecting stacks, or quantitative speedup claims."
+  ]
+}

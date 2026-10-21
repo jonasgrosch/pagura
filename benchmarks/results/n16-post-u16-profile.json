@@ -1,0 +1,108 @@
+{
+  "schema": 1,
+  "status": "completed-diagnostic",
+  "purpose": "Select the next separately measured candidate; not a speed or admission comparison.",
+  "source": {
+    "commit": "28c3234cb4aca675e711bda97bb8c486a7f38e9a",
+    "runner_sha256": "554df29cb441a4a32f773da36bb0f7f401c12fe77c3fa7e3c3c512160decbd14",
+    "product_sha256": "8b35ff8987f80bbfb67e29e9b6f33daa2ee5d6fed005e22412dbde20fbe73225"
+  },
+  "binary": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/n16-post-u16-profile/render_profile",
+    "sha256": "4aaf1e644221e1026f97eba454a144980f709f224cde2cd11ddbcd273e6a12ca"
+  },
+  "configuration": {
+    "case": "opaque64",
+    "accuracy": "exact",
+    "page": 0,
+    "dpi": 72,
+    "reported_renders": 1000,
+    "existing_unreported_warmup": 1,
+    "attach_delay_seconds": 0.1,
+    "sample_seconds": 5,
+    "sample_interval_ms": 1,
+    "owned_children_deadline_seconds": 120,
+    "maximum_launches": 1,
+    "write_each_output": false
+  },
+  "verified_reported_checksums": 1000,
+  "checksum_limitation": "FNV is a diagnostic checksum, not independent byte verification of each profiled output.",
+  "background_contention_observed": false,
+  "observer_scans": 7,
+  "renderer_alive_when_sampler_returned": true,
+  "sampler_wait_elapsed_ns": 5131522250,
+  "sample_counts": {
+    "display_list_render_subtree": 540,
+    "commands": 274,
+    "render_policy_self_in_output_loop": 171,
+    "page_surface": 70,
+    "output_pixmap_initialization": 22,
+    "context_drop": 3,
+    "main_self_outside_render": 3257,
+    "narrow_path_buffer_path_nested": 21
+  },
+  "address_mapping": {
+    "render_policy_link_address": "0x1001b9200",
+    "sampled_offsets_decimal": [
+      9408,
+      9404
+    ],
+    "sampled_offsets_hex": [
+      "0x24c0",
+      "0x24bc"
+    ],
+    "mapped_link_addresses": [
+      "0x1001bb6c0",
+      "0x1001bb6bc"
+    ],
+    "loop": "N16 flat output, with uqadd.8h, ushr.8h and subhn/subhn2 narrowing followed by vector stores.",
+    "caution": "Grouped sample lines show other offsets as ellipsis; listed dominant offsets are in the output loop. Counts locate work, not calibrated timing fractions."
+  },
+  "next_candidate": "Conservative N16 painted interval for page output only. Keep dense Buffer::output semantics and opaque-background admission.",
+  "deferred_candidate": "Prepare N16 source words once per path; only21 named Buffer::path samples appear in this Exact workload, not all necessarily source conversion.",
+  "limitations": [
+    "One retained current product only; there is no comparable baseline in this profile.",
+    "The long-lived process differs from short-lived paired confirmation samples.",
+    "Sampling covers whole-process work; RGBA FNV and printing are outside render timers but inside the sampled process.",
+    "The fixed attachment may include open/compile or may miss their completion; it is not a render-only sampling interval.",
+    "FNV checksums are derived from a previously independently byte-verified output; they do not replace pixel correctness checks.",
+    "Inlining and sample granularity limit attribution; absent named functions do not prove absent cost.",
+    "Requested sampling duration is not a guarantee of captured duration if the process exits early; retain raw sampler output and lifecycle flags.",
+    "No automatic retries, changing render count after inspecting stacks, or quantitative speedup claims."
+  ],
+  "evidence_sha256": {
+    "local/n16-post-u16-profile/profile-001/record.json": "aa1c0c7b5dde3a62354bd80c406b6342124b5d1ef59d8c65f240133f61ad20b0",
+    "local/n16-post-u16-profile/profile-001/sample.txt": "3da5223079e726e70f8537ee3973dbeb119b188aed0f2292fb694fca10121e5b",
+    "local/n16-post-u16-profile/profile-001/renders.txt": "8af1b2e8b872932812d22533b2bd037e33afbbfca2e83825c0a6456444e9e14e",
+    "local/n16-post-u16-profile/profile-001/renderer-stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "local/n16-post-u16-profile/profile-001/sample-command.txt": "cc76a6aa5ef12377df22d5156824a4862bc2a39cc66f78efdcf116e8e2ee340c",
+    "local/n16-post-u16-profile/profile-001-receipt.json": "285cf35e0e9295e214a86be5c9e2a889afc99d168e16772d291cca41ad4dcacd",
+    "local/n16-post-u16-profile/profile-001-observer/guard.json": "734719f693745c25dffc681cbbab93cd8d88d62b88718c1bb31785b969435cc9",
+    "local/n16-post-u16-profile/build-001-receipt.json": "8591c6cda8888e854425cac7e8cbc25992c5e055d35733bb9f2e9926d11283c8",
+    "local/n16-post-u16-profile/build-001-observer/guard.json": "9ba14c43a4195c3281af7fe6ede80b563412c95a3e5566ad7ae3f9a4c5337f1d",
+    "local/n16-post-u16-profile/build-001.log": "997b9f78fc253d235ff8d2313e63aca387d1c6a2598d025fd10958d9a10e4fbc",
+    "local/n16-post-u16-profile/build-001.json": "b1ee6c842b73f5a7a99ba0ec218813204a849c4506540a46645316ebe288e8be",
+    "local/n16-post-u16-profile/profile-plan.json": "01233817d287d5a5554a4183e7e5278d1bf4f7ff21e701ef1e8a4c1f04fce6ff",
+    "local/n16-post-u16-profile/profile-plan.sha256": "7805ac5bc1d9b37bffdd7031b51198048f0a3526ea372686b731853e30e074c2",
+    "local/n16-post-u16-profile/profile.py": "fba49f2ad465c037ecd18c65fad257494c458bc5702376632d0b41fbebab097d",
+    "local/n16-post-u16-profile/build.py": "b650169e77fe96c50c483efce8cef340c4f09cebc75c92d3efe00bd6f7218eae",
+    "local/n16-post-u16-profile/launch.py": "286012c1dc8188283c24d98c3e81655c4e7c1333b453c35b72ab63c5860a5271",
+    "local/n16-post-u16-profile/render-policy-disassembly.txt": "56a584bc2f12eec176fef956fd0c48cc629a175f7e2b2c43afc48edcee6677f0"
+  },
+  "static_reach": {
+    "fixture": "opaque64",
+    "chunk_shape": [
+      256,
+      256
+    ],
+    "one_strip_per_chunk": [
+      256,
+      6
+    ],
+    "chunks": 64,
+    "retained_output_pixels": 98304,
+    "total_output_pixels": 4194304,
+    "retained_fraction": 0.0234375,
+    "scope": "Analytical source prediction assuming the fixed integer rectangle mask extents; not observed timing or instrumentation. Initialization, traversal and rasterization remain."
+  }
+}

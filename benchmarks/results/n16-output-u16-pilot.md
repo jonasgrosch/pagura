@@ -18,7 +18,7 @@ opaque-tiny cold; the complete ledger preserves every cell and bound.
 
 ARM disassembly of the pinned binary uses 16-bit saturating vector addition,
 shifts and narrowing subtraction. That establishes the intended lowering,
-not a universal speed gain. Scalar WASM may pay for saturation, so a separate
+not a universal speed gain. WASM lowering may pay for saturation, so a separate
 fixed diagnostic must precede native confirmation. No samples will be pooled
 with the previous experiment or a later confirmation.
 

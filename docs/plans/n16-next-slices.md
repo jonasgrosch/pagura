@@ -33,8 +33,8 @@ source-level simplicity does not prove faster code. There is no storage or
 work-accounting change. Use the same 46 cells and gates against the committed
 guarded converter, with fresh fixed pilot and confirmation seeds. Reject if
 the target benefit does not reproduce or protected regressions outweigh it.
-Check scalar WASM separately: its arithmetic representation and saturation
-lowering can differ from native vector instructions. Native gains alone do not
+Check WASM separately: the configured SIMD target can lower arithmetic and
+saturation differently from native vector instructions. Native gains alone do not
 justify claiming a portable improvement.
 
 ## 2. Skip untouched N16 output
@@ -135,3 +135,18 @@ packing that synthesizes opaque alpha. It loses the current flat RGBA output
 conversion, so neither latency nor RSS improves by implication. Defer separate
 color planes and their allocation/accounting complexity until measurements
 justify them. None of these proposals raises memory limits.
+
+## Selection after the retained-u16 profile
+
+The [fresh profile](../../benchmarks/results/n16-post-u16-profile.md) on committed
+`28c3234c` supports untouched-output skipping next: 171 of 540 samples in the
+render subtree are in an aggregate whose dominant listed offsets map to the
+N16 vector output loop. The fixed opaque64 geometry analytically needs only
+6 of each chunk's 256 rows converted. This is potential work avoidance, not a
+speedup estimate. Buffer::path accounts for only 21 named samples, so prepared
+source spans remains a separate later candidate.
+
+Keep the painted interval bounded to two words per N16 buffer; measure native
+and WASM enclosing layouts before making a storage claim. Add the reviewed
+cross-row interval-with-holes case before applying the prototype. Neither
+geometry research nor the prepared-span prototype is part of this next slice.
