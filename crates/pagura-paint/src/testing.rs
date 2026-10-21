@@ -277,6 +277,8 @@ pub(crate) struct Build {
     pub(crate) scale: f64,
     /// The background.
     pub(crate) background: Rgba8,
+    /// Overprint simulation.
+    pub(crate) simulate: bool,
 }
 
 /// Mark state without clip.
@@ -328,6 +330,7 @@ impl Build {
             },
             scale: 1.0,
             background: Rgba8::WHITE,
+            simulate: false,
         }
     }
 
@@ -455,6 +458,9 @@ impl Build {
         let mut request = RenderRequest::new(self.transform(), self.page(), region);
         request.band_height = band_height;
         request.background = self.background;
+        if self.simulate {
+            request.overprint = crate::request::OverprintMode::Simulate;
+        }
         request
     }
 
@@ -496,6 +502,9 @@ impl Build {
     pub(crate) fn reference(&self) -> pagura_reference::Rendering {
         let mut request = pagura_reference::Request::new(self.transform(), self.page());
         request.background = self.background;
+        if self.simulate {
+            request.overprint = pagura_reference::Overprint::Simulate;
+        }
         pagura_reference::render(&self.scene, &request, &Limits::default())
             .unwrap_or_else(|e| panic!("reference failed: {e}"))
     }

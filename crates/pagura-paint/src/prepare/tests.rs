@@ -4,5 +4,6 @@
 
 mod composition;
 mod formats;
+mod functions;
 mod invariance;
 mod patterns;
