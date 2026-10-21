@@ -41,9 +41,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             .get(b"G")
             .and_then(Value::as_reference)
             .ok_or(Error::syntax("soft mask requires a group stream"))?;
-        self.mask_group(id, kind, d, resources, scope)
-            .map_err(|e| e.in_object(id))
-            .map(Some)
+        self.mask_group(id, kind, d, resources, scope).map(Some)
     }
 
     fn mask_group(
