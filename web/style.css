@@ -26,9 +26,11 @@ nav { gap: 7px; flex-shrink: 0; }
 #sidebar-toggle[aria-expanded=true]:active, #find-open[aria-expanded=true]:active { background: #bed1e7; }
 #file { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .toolbar:has(#file:focus-visible) label[for=file] { outline: 2px solid var(--focus); outline-offset: 2px; }
-.page-number { white-space: nowrap; font-size: 12px; color: #757579; }
-#page { width: 32px; text-align: center; padding: 3px 0; background: transparent; border: 1px solid transparent; border-radius: 4px; color: #303033; }
-#page:hover, #page:focus { border-color: #c4c5c7; background: #fff; }
+.page-navigation { gap: 6px; }
+.page-number { height: 30px; gap: 6px; white-space: nowrap; font-size: 12px; line-height: 18px; font-variant-numeric: tabular-nums; color: #757579; }
+#page { appearance: none; -webkit-appearance: none; width: 36px; height: 30px; text-align: center; padding: 5px 4px; background: transparent; border: 1px solid transparent; border-radius: 4px; color: #303033; box-shadow: none; }
+#count { display: inline-flex; align-items: center; height: 30px; }
+#page:hover:not(:disabled), #page:focus { border-color: #c4c5c7; background: #fff; }
 #zoom { width: 92px; font-size: 12px; }
 .save-button { display: flex; align-items: center; gap: 6px; background: #fff; border-color: #d0d0d3; box-shadow: 0 1px 1px #00000006; }
 .save-button svg { width: 17px; height: 17px; }
