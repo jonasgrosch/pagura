@@ -93,11 +93,11 @@ fn strict_rejects_reversed_empty_bounds_with_the_original_context() {
         assert!(
             matches!(error.position, Position::Stream { object, .. } if object == ObjectId::new(6, 0))
         );
-        assert!(document.diagnostics().is_empty());
+        assert_eq!(document.diagnostics(), Vec::<pagura_core::Diagnostic>::new());
     }
     let document = document("zero", Recovery::Strict);
     compile_page(&document, document.page(0).unwrap()).unwrap();
-    assert!(document.diagnostics().is_empty());
+    assert_eq!(document.diagnostics(), Vec::<pagura_core::Diagnostic>::new());
 }
 
 #[test]
