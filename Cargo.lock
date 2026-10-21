@@ -25,10 +25,12 @@ name = "pagura-appearance"
 version = "0.1.0"
 dependencies = [
  "pagura-core",
+ "pagura-data",
  "pagura-document",
- "pagura-font",
+ "pagura-render",
  "pagura-testkit",
  "pagura-text",
+ "pagura-write",
 ]
 
 [[package]]
