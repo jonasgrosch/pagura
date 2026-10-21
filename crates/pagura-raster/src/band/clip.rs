@@ -11,7 +11,7 @@ use super::certify::certified;
 use super::edges::{self, Bounds, Chained, Polygon};
 use super::rect::rectangle;
 use super::resolve::{LocalEdge, Resolver};
-use super::scan::{RowIndex, Scanner};
+use super::scan::{RowIndex, Scanner, gap_winding, inside};
 use super::{DeviceRect, Precision, ShapeOptions};
 use crate::{FillRule, Path, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
@@ -222,7 +222,7 @@ impl ClipShape {
             inner.retained = inner.retained.saturating_add(rows.retained_bytes());
             inner.rows = Some(rows);
         } else {
-            inner.work = bounds.height() as usize * 4;
+            inner.work = bounds.height() as usize * 8;
         }
         Ok(Self {
             inner: Arc::new(inner),
@@ -314,10 +314,11 @@ fn classify(
     let mut resolver = Resolver::default();
     for y in bounds.y0..bounds.y1 {
         local.clear();
+        let span = super::shape::span(rect, y);
         for (g, (chained, index, range, certain, rule)) in prepared.iter().enumerate() {
             let result = group_row(
                 &mut scanner,
-                (chained, index.row(y), y),
+                (chained, index.row(y), y, span),
                 (*range, bounds),
                 (*certain, *rule, u8::try_from(g).unwrap_or(u8::MAX)),
                 (&mut runs[g], &mut local),
@@ -329,7 +330,7 @@ fn classify(
                 return Err(error);
             }
         }
-        merge(&runs, &prepared, (y, bounds), &local, &mut resolver, &mut rows, &mut meter)?;
+        merge(&runs, &prepared, (y, bounds, span), &local, &mut resolver, &mut rows, &mut meter)?;
     }
     Ok(rows)
 }
@@ -364,17 +365,17 @@ pub(crate) fn columns(lo: f64, hi: f64, width: usize) -> (usize, usize) {
 /// Loads one group's row and appends its runs within `bounds` to `runs`.
 fn group_row(
     scanner: &mut Scanner,
-    (edges, items, y): (&[Chained], &[u32], u32),
+    (edges, items, y, span): (&[Chained], &[u32], u32, (f64, f64)),
     (range, bounds): ((usize, usize), DeviceRect),
     (certain, rule, group): (bool, FillRule, u8),
     (runs, local): (&mut Vec<(u32, u32, State)>, &mut Vec<LocalEdge>),
     meter: &mut Meter,
 ) -> Result<()> {
     runs.clear();
-    scanner.load(edges, items, y, range, meter)?;
+    scanner.load(edges, (items, y, span), range, meter)?;
     let (x0, x1) = (bounds.x0, bounds.x1);
     let mut position = x0;
-    let mut gap = State::Empty;
+    let mut cover = 0.0;
     let push = |runs: &mut Vec<(u32, u32, State)>, a: u32, b: u32, state: State| -> Result<()> {
         if a < b {
             runs.try_reserve(1)
@@ -383,30 +384,47 @@ fn group_row(
         }
         Ok(())
     };
-    let solid = |value: u8| if value >= 128 { State::Full } else { State::Empty };
+    // A run no piece crosses has one winding over the row's span.
+    let gap = |scanner: &Scanner, cover: f64, local: &mut Vec<LocalEdge>| -> Result<State> {
+        if !inside(gap_winding(cover, span), rule) {
+            return Ok(State::Empty);
+        }
+        if span == (0.0, 1.0) {
+            return Ok(State::Full);
+        }
+        let start = u32::try_from(local.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
+        scanner.gap_edges(cover, group, local)?;
+        let end = u32::try_from(local.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
+        Ok(State::Partial(Some(crate::quantize_unit(span.1 - span.0)), (start, end)))
+    };
     for index in 0..scanner.cells.len() {
         let cell = scanner.cells[index];
         if cell.x >= x1 {
             break;
         }
-        let after = solid(super::row::fold(cell.cover, rule));
         if cell.x >= x0 {
-            push(runs, position, cell.x, gap)?;
+            if cell.x > position {
+                let state = gap(scanner, cover, local)?;
+                push(runs, position, cell.x, state)?;
+            }
             let state = if cell.listed {
                 let start = u32::try_from(local.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
                 scanner.local_edges(&cell, group, local)?;
                 let end = u32::try_from(local.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
-                let value = (certain || cell.certain).then(|| cell.value(rule));
+                let value = ((certain && span == (0.0, 1.0)) || cell.certain).then(|| cell.value(rule));
                 State::Partial(value, (start, end))
             } else {
-                solid(cell.value(rule))
+                gap(scanner, cell.cover, local)?
             };
             push(runs, cell.x, cell.x + 1, state)?;
             position = cell.x + 1;
         }
-        gap = after;
+        cover = cell.cover;
     }
-    push(runs, position.max(x0), x1, gap)?;
+    if position < x1 {
+        let state = gap(scanner, cover, local)?;
+        push(runs, position.max(x0), x1, state)?;
+    }
     meter.charge(runs.len())?;
     Ok(())
 }
@@ -417,7 +435,7 @@ type Prepared = (Vec<Chained>, RowIndex, (usize, usize), bool, FillRule);
 fn merge(
     runs: &[Vec<(u32, u32, State)>],
     prepared: &[Prepared],
-    (y, bounds): (u32, DeviceRect),
+    (y, bounds, span): (u32, DeviceRect, (f64, f64)),
     local: &[LocalEdge],
     resolver: &mut Resolver,
     rows: &mut Rows,
@@ -483,6 +501,7 @@ fn merge(
             _ => resolver.coverage(
                 &rows.edges[edge_start as usize..edge_end as usize],
                 &rows.rules[rule_start as usize..rule_end as usize],
+                span,
                 meter,
             )?,
         };

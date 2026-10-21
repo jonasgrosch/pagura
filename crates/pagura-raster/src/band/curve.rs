@@ -321,6 +321,9 @@ impl Builder<'_> {
 /// above or below disappear and parts beside it become vertical edges on
 /// its sides.
 pub(crate) fn clip(piece: Quadratic, bounds: Bounds, lines: &mut Vec<Line>, out: &mut Vec<Quadratic>) -> Result<()> {
+    if bounds.is_empty() {
+        return Ok(());
+    }
     let reversed = piece.points[0].y > piece.points[2].y;
     let mut curve = piece;
     if reversed {

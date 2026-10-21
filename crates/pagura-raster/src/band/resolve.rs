@@ -64,8 +64,8 @@ impl Resolver {
             .saturating_add(self.windings.capacity().saturating_mul(size_of::<i64>()))
     }
 
-    /// The covered area of the cell, quantized, charging [`work`] to
-    /// `meter` first.
+    /// The covered area of the cell within heights `span`, quantized,
+    /// charging [`work`] to `meter` first.
     ///
     /// # Errors
     ///
@@ -74,23 +74,24 @@ impl Resolver {
         &mut self,
         edges: &[LocalEdge],
         rules: &[FillRule],
+        span: (f64, f64),
         meter: &mut Meter,
     ) -> Result<u8> {
         meter.charge(work(edges.len()))?;
-        let area = self.area(edges, rules)?;
+        let area = self.area(edges, rules, span)?;
         Ok(fold(area, FillRule::NonZero))
     }
 
-    fn area(&mut self, edges: &[LocalEdge], rules: &[FillRule]) -> Result<f64> {
+    fn area(&mut self, edges: &[LocalEdge], rules: &[FillRule], (bottom, top): (f64, f64)) -> Result<f64> {
         let allocation = |_| Error::limit("cell resolver allocation failed");
         self.heights.clear();
         self.heights
             .try_reserve(edges.len().saturating_mul(edges.len()).saturating_add(2 * edges.len() + 2))
             .map_err(allocation)?;
-        self.heights.extend([0.0, 1.0]);
+        self.heights.extend([bottom, top]);
         for e in edges {
             for y in [e.y0, e.y1] {
-                if y > 0.0 && y < 1.0 {
+                if y > bottom && y < top {
                     self.heights.push(y);
                 }
             }
@@ -106,7 +107,7 @@ impl Resolver {
                 let d1 = a.x(hi) - b.x(hi);
                 if (d0 < 0.0 && d1 > 0.0) || (d0 > 0.0 && d1 < 0.0) {
                     let y = lo + (hi - lo) * (d0 / (d0 - d1));
-                    if y > lo && y < hi {
+                    if y > lo && y < hi && y > bottom && y < top {
                         self.heights.push(y);
                     }
                 }
@@ -122,7 +123,7 @@ impl Resolver {
         let mut area = 0.0;
         for pair in self.heights.windows(2) {
             let (lo, hi) = (pair[0], pair[1]);
-            if hi <= lo {
+            if hi <= lo || lo < bottom || hi > top {
                 continue;
             }
             let mid = lo.midpoint(hi);
@@ -184,7 +185,7 @@ mod tests {
     }
 
     fn area(edges: &[LocalEdge], rules: &[FillRule]) -> f64 {
-        Resolver::default().area(edges, rules).unwrap()
+        Resolver::default().area(edges, rules, (0.0, 1.0)).unwrap()
     }
 
     #[test]
@@ -211,16 +212,20 @@ mod tests {
         ];
         let both = area(&edges, &[FillRule::NonZero, FillRule::NonZero]);
         assert!((both - 0.25).abs() < 1e-15);
+        let lower = Resolver::default()
+            .area(&edges, &[FillRule::NonZero], (0.25, 1.0))
+            .unwrap();
+        assert!((lower - 0.375).abs() < 1e-15);
         let mut meter = Meter::new(usize::MAX, "budget");
         let value = Resolver::default()
-            .coverage(&edges, &[FillRule::NonZero; 2], &mut meter)
+            .coverage(&edges, &[FillRule::NonZero; 2], (0.0, 1.0), &mut meter)
             .unwrap();
         assert_eq!(value, 64);
         assert!(meter.used() >= work(3));
         let mut tiny = Meter::new(1, "budget");
         assert!(
             Resolver::default()
-                .coverage(&edges, &[FillRule::NonZero; 2], &mut tiny)
+                .coverage(&edges, &[FillRule::NonZero; 2], (0.0, 1.0), &mut tiny)
                 .is_err()
         );
     }

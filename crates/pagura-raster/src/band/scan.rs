@@ -91,7 +91,7 @@ impl RowPiece {
     /// group `group`: its part inside the column, and its crossing of the
     /// column's left side as a change of the winding there. Returns the
     /// cover its part left of the column carries in.
-    fn local(&self, c: f64, top: f64, group: u8, out: &mut Vec<LocalEdge>) -> f64 {
+    fn local(&self, c: f64, (top, end): (f64, f64), group: u8, out: &mut Vec<LocalEdge>) -> f64 {
         let vertical = self.xa == self.xb;
         if vertical && self.xa == c {
             // On the left side: counted in the cover carried in.
@@ -121,12 +121,12 @@ impl RowPiece {
         if traversal != 0.0 {
             let delta = if traversal > 0.0 { -1 } else { 1 };
             for (x, y) in [pa, pb] {
-                if x == c && y < top + 1.0 {
+                if x == c && y - top < end {
                     out.push(LocalEdge {
                         x0: 0.0,
                         y0: y - top,
                         x1: 0.0,
-                        y1: 1.0,
+                        y1: end,
                         winding: delta,
                         group,
                     });
@@ -207,8 +207,31 @@ pub(crate) struct Cell {
     pub(crate) cover: f64,
     /// Pieces cross the cell (or lie on its left side).
     pub(crate) listed: bool,
-    /// The signed area folds to the coverage: no two chains meet here.
+    /// The signed area folds to the coverage: no two chains meet here and
+    /// the row is whole.
     pub(crate) certain: bool,
+}
+
+/// The constant winding of a cell no piece crosses, over the heights
+/// `span` of its row, from the cover carried into it.
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "a winding number bounded by the row's pieces"
+)]
+pub(crate) fn gap_winding(cover: f64, (bottom, top): (f64, f64)) -> i64 {
+    if top > bottom {
+        (cover / (top - bottom)).round() as i64
+    } else {
+        0
+    }
+}
+
+/// Whether `winding` is inside under `rule`.
+pub(crate) fn inside(winding: i64, rule: FillRule) -> bool {
+    match rule {
+        FillRule::NonZero => winding != 0,
+        FillRule::EvenOdd => winding % 2 != 0,
+    }
 }
 
 impl Cell {
@@ -230,6 +253,9 @@ pub(crate) struct Scanner {
     local: Vec<LocalEdge>,
     resolver: Resolver,
     top: f64,
+    /// The heights of the current row the geometry is clipped to, from
+    /// its top.
+    pub(crate) span: (f64, f64),
 }
 
 impl Scanner {
@@ -245,6 +271,7 @@ impl Scanner {
             local: Vec::new(),
             resolver: Resolver::default(),
             top: 0.0,
+            span: (0.0, 1.0),
         };
         meter.reserve(&mut scanner.head, width)?;
         meter.reserve(&mut scanner.tag, width)?;
@@ -259,17 +286,18 @@ impl Scanner {
 
     /// Loads row `y` from the edges `items` selects, accumulating their
     /// signed areas and listing their pieces per cell, then collects the
-    /// cells of columns `range` in [`Self::cells`]. `meter` is charged per
-    /// piece and cell.
+    /// cells of columns `range` in [`Self::cells`]. The edges are clipped to
+    /// heights `span` of the row. `meter` is charged per piece and cell.
     pub(crate) fn load(
         &mut self,
         edges: &[Chained],
-        items: &[u32],
-        y: u32,
+        (items, y, span): (&[u32], u32, (f64, f64)),
         range: (usize, usize),
         meter: &mut Meter,
     ) -> Result<()> {
         self.top = f64::from(y);
+        self.span = span;
+        let whole = span == (0.0, 1.0);
         self.pieces.clear();
         self.nodes.clear();
         let width = i64::try_from(self.width()).unwrap_or(i64::MAX);
@@ -333,7 +361,7 @@ impl Scanner {
                 area,
                 cover,
                 listed,
-                certain: tag.get(x).is_none_or(|&t| t != MULTIPLE),
+                certain: whole && tag.get(x).is_none_or(|&t| t != MULTIPLE),
             });
         });
         if failed {
@@ -376,33 +404,49 @@ impl Scanner {
             if let Some(piece) = self.pieces.get(piece as usize) {
                 out.try_reserve(3)
                     .map_err(|_| Error::limit("cell edge allocation failed"))?;
-                carried += piece.local(c, self.top, group, out);
+                carried += piece.local(c, (self.top, self.span.1), group, out);
             }
             node = next;
         }
-        // The winding just below the upper left corner: the carried cover
-        // less what the changes along the left side contribute.
+        // The winding at the top of the span on the left side: the carried
+        // cover less what the changes along that side contribute.
+        let (bottom, top) = self.span;
         let mut steps = 0.0;
         for e in &out[start..] {
-            if e.x0 == 0.0 && e.x1 == 0.0 && e.y1 == 1.0 {
-                steps += f64::from(e.winding) * (1.0 - e.y0);
+            if e.x0 == 0.0 && e.x1 == 0.0 && e.y1 == top {
+                steps += f64::from(e.winding) * (top - e.y0);
             }
         }
-        let corner = (carried - steps).round();
-        if corner != 0.0 {
-            #[expect(
-                clippy::cast_possible_truncation,
-                reason = "a winding number bounded by the row's pieces"
-            )]
-            let winding = corner as i32;
+        let corner = gap_winding(carried - steps, self.span);
+        if corner != 0 {
+            let winding = i32::try_from(corner).map_err(|_| Error::limit("cell winding exceeds i32"))?;
             out.try_reserve(1)
                 .map_err(|_| Error::limit("cell edge allocation failed"))?;
             out.push(LocalEdge {
                 x0: 0.0,
-                y0: 0.0,
+                y0: bottom,
                 x1: 0.0,
-                y1: 1.0,
+                y1: top,
                 winding,
+                group,
+            });
+        }
+        Ok(())
+    }
+
+    /// Appends to `out` the edges of a cell no piece crosses, into which
+    /// `cover` is carried, as group `group`.
+    pub(crate) fn gap_edges(&self, cover: f64, group: u8, out: &mut Vec<LocalEdge>) -> Result<()> {
+        let winding = gap_winding(cover, self.span);
+        if winding != 0 {
+            out.try_reserve(1)
+                .map_err(|_| Error::limit("cell edge allocation failed"))?;
+            out.push(LocalEdge {
+                x0: 0.0,
+                y0: self.span.0,
+                x1: 0.0,
+                y1: self.span.1,
+                winding: i32::try_from(winding).map_err(|_| Error::limit("cell winding exceeds i32"))?,
                 group,
             });
         }
@@ -413,18 +457,20 @@ impl Scanner {
     pub(crate) fn resolve(&mut self, cell: &Cell, rule: FillRule, meter: &mut Meter) -> Result<u8> {
         let mut local = std::mem::take(&mut self.local);
         local.clear();
+        let span = self.span;
         let result = self
             .local_edges(cell, 0, &mut local)
-            .and_then(|()| self.resolver.coverage(&local, &[rule], meter));
+            .and_then(|()| self.resolver.coverage(&local, &[rule], span, meter));
         self.local = local;
         result
     }
 
-    /// The exact coverage of `cell` within a clip cell whose own edges and
-    /// group rules are given.
+    /// The exact coverage of `cell` (or, without one, of a cell no piece
+    /// crosses into which `cover` is carried) within a clip cell whose own
+    /// edges and group rules are given.
     pub(crate) fn resolve_joint(
         &mut self,
-        cell: &Cell,
+        (cell, cover): (Option<&Cell>, f64),
         rule: FillRule,
         clip: (&[LocalEdge], &[FillRule]),
         meter: &mut Meter,
@@ -439,12 +485,15 @@ impl Scanner {
                 .try_reserve(edges.len())
                 .map_err(|_| Error::limit("cell edge allocation failed"))?;
             local.extend_from_slice(edges);
-            self.local_edges(cell, group, &mut local)?;
+            match cell {
+                Some(cell) => self.local_edges(cell, group, &mut local)?,
+                None => self.gap_edges(cover, group, &mut local)?,
+            }
             all.try_reserve(rules.len() + 1)
                 .map_err(|_| Error::limit("cell edge allocation failed"))?;
             all.extend_from_slice(rules);
             all.push(rule);
-            self.resolver.coverage(&local, &all, meter)
+            self.resolver.coverage(&local, &all, self.span, meter)
         })();
         self.local = local;
         result
@@ -563,7 +612,7 @@ mod tests {
         let mut meter = Meter::new(usize::MAX, "budget");
         let mut scanner = Scanner::new(8, &mut meter).unwrap();
         let items: Vec<u32> = (0..edges.len() as u32).collect();
-        scanner.load(&edges, &items, 0, (0, 8), &mut meter).unwrap();
+        scanner.load(&edges, (&items, 0, (0.0, 1.0)), (0, 8), &mut meter).unwrap();
         let cells = scanner.cells.clone();
         let mut values = Vec::new();
         for cell in &cells {

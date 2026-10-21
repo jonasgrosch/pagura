@@ -315,6 +315,9 @@ impl Bounds {
 
     /// The pixels the rectangle meets, within `region`.
     pub(crate) fn pixels(self, region: DeviceRect) -> DeviceRect {
+        if self.is_empty() {
+            return DeviceRect::default();
+        }
         pixels(
             [
                 Point::new(self.left, self.top),
@@ -355,6 +358,9 @@ pub(crate) fn pixels([min, max]: [Point; 2], region: DeviceRect, floor_cells: bo
 /// the winding inside and leaves none outside (8.5.4). Horizontal edges are
 /// kept within the bounds' height with their x clamped.
 pub(crate) fn clip(edge: Chained, bounds: Bounds, out: &mut Vec<Chained>) -> Result<()> {
+    if bounds.is_empty() {
+        return Ok(());
+    }
     let Line { a, b } = edge.line;
     let push = |out: &mut Vec<Chained>, a: Point, b: Point| -> Result<()> {
         out.try_reserve(1)

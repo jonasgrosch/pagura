@@ -9,7 +9,8 @@ use super::clip::{ClipShape, INSIDE, Rows, columns, fill_polygon};
 use super::curve::{self, Quadratic};
 use super::edges::{self, BandIndex, Bounds, Chained, Line, Polygon, line_work, rows};
 use super::rect::rectangle;
-use super::scan::{RowIndex, Scanner, Stored};
+use super::scan::{RowIndex, Scanner, Stored, gap_winding, inside};
+use super::row::fold;
 use super::{Adjustment, Area, DeviceRect, Precision, ShapeOptions};
 use crate::{FillRule, Path, Stroke, Transform, features};
 use pagura_core::{Error, Meter, Result};
@@ -482,9 +483,20 @@ impl<'a> Frame<'a> {
     }
 }
 
+/// The heights of row `y` within `rect`, from the row's top.
+pub(crate) fn span(rect: Option<Bounds>, y: u32) -> (f64, f64) {
+    rect.map_or((0.0, 1.0), |r| {
+        let top = f64::from(y);
+        let lo = (r.top - top).clamp(0.0, 1.0);
+        let hi = (r.bottom - top).clamp(0.0, 1.0);
+        (lo, hi.max(lo))
+    })
+}
+
 /// Resolves the cells of `chained` that its signed area does not
-/// determine: cells where two chains meet in an uncertified shape, and
-/// cells where it and a clip boundary meet.
+/// determine: cells where two chains meet in an uncertified shape, cells of
+/// rows the clip's rectangle cuts, and cells where it and a clip boundary
+/// meet.
 fn analyse(
     chained: &[Chained],
     rule: FillRule,
@@ -507,14 +519,17 @@ fn analyse(
         if certain && !joint {
             continue;
         }
-        let result = analyse_row(
-            &mut scanner,
-            (chained, index.row(y), y, scan),
-            (rule, certain, bounds),
-            (frame.rows, segments),
-            &mut stored,
-            &mut meter,
-        );
+        let context = Context {
+            rule,
+            certain,
+            bounds,
+            rows: frame.rows,
+            segments,
+            y,
+        };
+        let result = scanner
+            .load(chained, (index.row(y), y, span(frame.rect, y)), scan, &mut meter)
+            .and_then(|()| analyse_row(&mut scanner, &context, &mut stored, &mut meter));
         scanner.unload();
         if let Err(error) = result {
             scanner.recover();
@@ -524,53 +539,143 @@ fn analyse(
     Ok(stored)
 }
 
+/// What one row's analysis needs besides the scanner.
+struct Context<'a> {
+    rule: FillRule,
+    certain: bool,
+    bounds: DeviceRect,
+    rows: Option<&'a Rows>,
+    segments: Option<&'a [super::clip::Segment]>,
+    y: u32,
+}
+
+impl Context<'_> {
+    /// The clip's state at columns `x..end`: the run it is in (inside, a
+    /// boundary cell, or `None` outside) and where that run ends.
+    fn clip(&self, x: u32, end: u32, cursor: &mut usize) -> (Option<u32>, u32) {
+        let Some(segments) = self.segments else {
+            return (Some(INSIDE), end);
+        };
+        while segments.get(*cursor).is_some_and(|s| s.x1 <= x) {
+            *cursor += 1;
+        }
+        match segments.get(*cursor) {
+            None => (None, end),
+            Some(s) if s.x0 > x => (None, end.min(s.x0)),
+            Some(s) => (Some(s.cell), end.min(s.x1)),
+        }
+    }
+}
+
 fn analyse_row(
     scanner: &mut Scanner,
-    (chained, items, y, scan): (&[Chained], &[u32], u32, (usize, usize)),
-    (rule, certain, bounds): (FillRule, bool, DeviceRect),
-    (rows, segments): (Option<&Rows>, Option<&[super::clip::Segment]>),
+    context: &Context<'_>,
     stored: &mut Stored,
     meter: &mut Meter,
 ) -> Result<()> {
-    scanner.load(chained, items, y, scan, meter)?;
-    let mut segment = 0;
+    let bounds = context.bounds;
+    let mut cursor = 0;
+    let mut cover = 0.0;
+    let mut position = bounds.x0;
     for index in 0..scanner.cells.len() {
         let cell = scanner.cells[index];
-        if cell.x < bounds.x0 || cell.x >= bounds.x1 {
-            continue;
+        if cell.x >= bounds.x1 {
+            break;
         }
-        // The clip's run at this cell: inside, a boundary cell, or outside.
-        let state = match segments {
-            None => Some(INSIDE),
-            Some(segments) => {
-                while segments.get(segment).is_some_and(|s| s.x1 <= cell.x) {
-                    segment += 1;
-                }
-                segments
-                    .get(segment)
-                    .filter(|s| s.x0 <= cell.x)
-                    .map(|s| s.cell)
+        if cell.x > position {
+            gap(scanner, context, (position, cell.x, cover), &mut cursor, stored, meter)?;
+        }
+        if cell.x >= bounds.x0 {
+            if cell.listed {
+                listed(scanner, context, &cell, &mut cursor, stored, meter)?;
+            } else {
+                gap(scanner, context, (cell.x, cell.x + 1, cell.cover), &mut cursor, stored, meter)?;
             }
-        };
-        let value = match state {
-            None => continue,
-            Some(INSIDE) => {
-                if certain || !cell.listed || cell.certain {
-                    continue;
-                }
-                scanner.resolve(&cell, rule, meter)?
-            }
-            Some(boundary) => {
-                if !cell.listed {
-                    continue;
-                }
-                let (_, edges, rules) = rows
-                    .and_then(|r| r.cell(boundary))
-                    .ok_or(Error::invalid_argument("clip cell out of range"))?;
-                scanner.resolve_joint(&cell, rule, (edges, rules), meter)?
-            }
-        };
-        stored.push(y, cell.x, value)?;
+        }
+        cover = cell.cover;
+        position = position.max(cell.x + 1);
+    }
+    if position < bounds.x1 {
+        gap(scanner, context, (position, bounds.x1, cover), &mut cursor, stored, meter)?;
     }
     Ok(())
+}
+
+/// Cells `x0..x1` that no piece crosses, into which `cover` is carried:
+/// their winding is constant over the row's span.
+fn gap(
+    scanner: &mut Scanner,
+    context: &Context<'_>,
+    (x0, x1, cover): (u32, u32, f64),
+    cursor: &mut usize,
+    stored: &mut Stored,
+    meter: &mut Meter,
+) -> Result<()> {
+    let span = scanner.span;
+    let winding = gap_winding(cover, span);
+    let covered = inside(winding, context.rule);
+    let exact = if covered {
+        crate::quantize_unit(span.1 - span.0)
+    } else {
+        0
+    };
+    let folded = fold(cover, context.rule);
+    let partial = covered && span != (0.0, 1.0);
+    let mut x = x0;
+    while x < x1 {
+        let (state, end) = context.clip(x, x1, cursor);
+        meter.charge(1)?;
+        match state {
+            None => {}
+            Some(INSIDE) => {
+                if exact != folded {
+                    for column in x..end {
+                        stored.push(context.y, column, exact)?;
+                    }
+                }
+            }
+            Some(boundary) => {
+                if partial {
+                    let (_, edges, rules) = context
+                        .rows
+                        .and_then(|r| r.cell(boundary))
+                        .ok_or(Error::invalid_argument("clip cell out of range"))?;
+                    let value =
+                        scanner.resolve_joint((None, cover), context.rule, (edges, rules), meter)?;
+                    stored.push(context.y, x, value)?;
+                }
+            }
+        }
+        x = end.max(x + 1);
+    }
+    Ok(())
+}
+
+/// A cell that pieces cross.
+fn listed(
+    scanner: &mut Scanner,
+    context: &Context<'_>,
+    cell: &super::scan::Cell,
+    cursor: &mut usize,
+    stored: &mut Stored,
+    meter: &mut Meter,
+) -> Result<()> {
+    let (state, _) = context.clip(cell.x, cell.x + 1, cursor);
+    let value = match state {
+        None => return Ok(()),
+        Some(INSIDE) => {
+            if context.certain || cell.certain {
+                return Ok(());
+            }
+            scanner.resolve(cell, context.rule, meter)?
+        }
+        Some(boundary) => {
+            let (_, edges, rules) = context
+                .rows
+                .and_then(|r| r.cell(boundary))
+                .ok_or(Error::invalid_argument("clip cell out of range"))?;
+            scanner.resolve_joint((Some(cell), 0.0), context.rule, (edges, rules), meter)?
+        }
+    };
+    stored.push(context.y, cell.x, value)
 }
