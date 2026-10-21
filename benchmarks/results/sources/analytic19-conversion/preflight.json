@@ -1,0 +1,182 @@
+{
+  "schema": 1,
+  "status": "passed",
+  "auditor_tests": 14,
+  "cancellation_scenarios": [
+    "external-sigterm",
+    "deadline"
+  ],
+  "receipts": {
+    "auditor-tests-001": {
+      "path": "benchmarks/results/local/analytic19-conversion/auditor-tests-001-receipt.json",
+      "sha256": "c2aa2a6f837b5f8b22150f1801f7bf299307512b620b0fd972abf46358f12839",
+      "artifacts": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/analytic19-conversion/auditor-tests-001-observer/guard.json": "d6d94b7997646c7a138cdbee4656ba5c4995ba6ec413847708e33de568f200d5",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/analytic19-conversion/audit.py": "b135b3804ae49fb66c650f13c7d1aa883651a8f63d1ac0e44b4badcf485a32ff",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/analytic19-conversion/test_audit.py": "f47badee5da873a0830ed4973a197bb1351671b5b17af4f692af7e9e6b3bcb23"
+      }
+    },
+    "cancellation-001": {
+      "path": "benchmarks/results/local/analytic19-conversion/cancellation-001-receipt.json",
+      "sha256": "6f32ce91cda1d6f1707bf2b577fdb9e84e80313263c47c70dcaee576b95fc870",
+      "artifacts": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/analytic19-conversion/cancellation-001-observer/guard.json": "1a8212a66ff1a485e98ccb98f30bd02159fb822edd6711d9a05aed3fb0e76b87",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/analytic19-conversion/cancellation-001/report.json": "167050cf571b9122cb4184b347f34a1dfe60f69447090be95b8b864f2bd3e41e",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/analytic19-conversion/campaign.py": "3ed3253c1cb75b68ce8fef6ec340b522b6a299fe69f8b222cb0d3c724c23a9b1",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/analytic19-conversion/cancellation_probe.py": "bb989a9a0174e22b7c5be7d65bc4f68cff2220c71b5f23634769bfc8b7aa651a"
+      }
+    }
+  },
+  "cancellation_probe": {
+    "schema": 1,
+    "status": "passed",
+    "campaign_sha256": "3ed3253c1cb75b68ce8fef6ec340b522b6a299fe69f8b222cb0d3c724c23a9b1",
+    "campaign_source": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/analytic19-conversion/campaign.py",
+    "helpers_sha256": {
+      "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/tools/benchkit/process_group.py": "e0cfac85a0520087d9afc48701d55965422f852853648dc2a075d88f1ae7a148",
+      "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/tools/benchkit/measurement.py": "15635857438cd4cb75308d84621ce7a2a808ded187813570ebec18dd8e3368f9"
+    },
+    "sources_unchanged": true,
+    "cases": [
+      {
+        "mode": "external-sigterm",
+        "status": "passed",
+        "outer_exit_code": 1,
+        "campaign": {
+          "schema": 1,
+          "status": "command-incomplete",
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "-B",
+            "tools/bench.py",
+            "convert",
+            "--corpus",
+            "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/analytic19-conversion/cancellation-001/external-sigterm",
+            "--manifest",
+            "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/analytic19-conversion/cancellation-001/external-sigterm/benchmarks/results/sources/analytic19-conversion/manifest.json",
+            "--process-per-page",
+            "--pages",
+            "all",
+            "--dpis",
+            "72",
+            "--engines",
+            "pagura,pdfium,mupdf,pdfjs,hayro,quartz,poppler",
+            "--samples",
+            "5",
+            "--warmups",
+            "2",
+            "--seed",
+            "20261021",
+            "--output",
+            "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/analytic19-conversion/cancellation-001/external-sigterm/benchmarks/results/local/analytic19-conversion/conversion-001.json"
+          ],
+          "deadline_seconds": 1200,
+          "inputs_sha256": "7a9b8e0a6642e0ec30686041a594d20aabffb2aafb112029f921587ee922b3e2",
+          "product_baseline_commit": "mock-probe-only",
+          "scope": "one fixed diagnostic pilot; no retry or release admission",
+          "child_pid": 73025,
+          "cleanup_verified": true,
+          "drained_descendants": false,
+          "exit_code": 143,
+          "elapsed_seconds": 0.3426054579904303,
+          "cancelled_signal": 15,
+          "deadline_expired": false,
+          "inputs_unchanged": true,
+          "artifacts_sha256": {
+            "campaign-001.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        "pids": {
+          "conversion": 73025,
+          "renderer": 73026
+        },
+        "elapsed_seconds": 0.475207208073698,
+        "artifacts": {
+          "renderer.py": "d407e572246e4f5eab59c1cdd4dcaef1881042b2f8057d4159929ccc33f5f61f",
+          "conversion-cancelled.json": "af24a18165dd4b003c2b338bbb54128ae8bd923243cf5ba746a0f3d2cebcd612",
+          "conversion-stopped.txt": "1657dedeaf5a78a9e1280721fbb28bfc14d79c4a6b3956e2f45fc62b4d47a1e6",
+          "outer.log": "953b96255acecc83d22ba5e0fcc19f93230355a15daf5444fb8f48fdf63ea2e3",
+          "renderer-stopped.txt": "e629fa6598d732768f7c726b4b621285f9c3b85303900aa912017db7617d8bdb",
+          "renderer.pid": "5530fc2a69923400aea91be0e5a8f78b2c353f0d0906946e955b485bcffd98a7",
+          "shim.py": "549e2313b7f384f899eb469d93662093b33980739a3eaffac0a92556586b7831",
+          "renderer-ready.txt": "b24d6d33736ecd5604a4b17bc9c6481039fac362bb7df044ef1c10a2bfd21db6",
+          "conversion.pid": "e55e5f541034b2e3f1750d917fca2fcce5a71adcd2e60721377c79cc9a2b77d4",
+          "tools/bench.py": "12c9d0ed55c0fccaafeec2d1b399d90507d1f81f1053d84dbae6cf07d2f24a9b",
+          "benchmarks/results/sources/analytic19-conversion/inputs.json": "7a9b8e0a6642e0ec30686041a594d20aabffb2aafb112029f921587ee922b3e2",
+          "benchmarks/results/local/analytic19-conversion/campaign-001.json": "8a33f9e269c6ff03f43a737f1837ebc56f592809a14e32b670411db9754d5654",
+          "benchmarks/results/local/analytic19-conversion/campaign-001.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "mode": "deadline",
+        "status": "passed",
+        "outer_exit_code": 1,
+        "campaign": {
+          "schema": 1,
+          "status": "command-incomplete",
+          "command": [
+            "/opt/homebrew/opt/python@3.14/bin/python3.14",
+            "-B",
+            "tools/bench.py",
+            "convert",
+            "--corpus",
+            "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/analytic19-conversion/cancellation-001/deadline",
+            "--manifest",
+            "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/analytic19-conversion/cancellation-001/deadline/benchmarks/results/sources/analytic19-conversion/manifest.json",
+            "--process-per-page",
+            "--pages",
+            "all",
+            "--dpis",
+            "72",
+            "--engines",
+            "pagura,pdfium,mupdf,pdfjs,hayro,quartz,poppler",
+            "--samples",
+            "5",
+            "--warmups",
+            "2",
+            "--seed",
+            "20261021",
+            "--output",
+            "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/analytic19-conversion/cancellation-001/deadline/benchmarks/results/local/analytic19-conversion/conversion-001.json"
+          ],
+          "deadline_seconds": 1200,
+          "inputs_sha256": "7a9b8e0a6642e0ec30686041a594d20aabffb2aafb112029f921587ee922b3e2",
+          "product_baseline_commit": "mock-probe-only",
+          "scope": "one fixed diagnostic pilot; no retry or release admission",
+          "child_pid": 73031,
+          "cleanup_verified": true,
+          "drained_descendants": false,
+          "exit_code": 143,
+          "elapsed_seconds": 3.265884125023149,
+          "cancelled_signal": 15,
+          "deadline_expired": true,
+          "inputs_unchanged": true,
+          "artifacts_sha256": {
+            "campaign-001.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        },
+        "pids": {
+          "conversion": 73031,
+          "renderer": 73032
+        },
+        "elapsed_seconds": 3.3647808749228716,
+        "artifacts": {
+          "renderer.py": "d407e572246e4f5eab59c1cdd4dcaef1881042b2f8057d4159929ccc33f5f61f",
+          "conversion-cancelled.json": "af24a18165dd4b003c2b338bbb54128ae8bd923243cf5ba746a0f3d2cebcd612",
+          "conversion-stopped.txt": "1657dedeaf5a78a9e1280721fbb28bfc14d79c4a6b3956e2f45fc62b4d47a1e6",
+          "outer.log": "1d8f194207e83c750e6bff27cec96e15c780af20c8bfc164122d2b9dcbba3771",
+          "renderer-stopped.txt": "e629fa6598d732768f7c726b4b621285f9c3b85303900aa912017db7617d8bdb",
+          "renderer.pid": "656e75f01709516852cb93c3562b9af54b067e7f503f27519d8f8509c73fe065",
+          "shim.py": "549e2313b7f384f899eb469d93662093b33980739a3eaffac0a92556586b7831",
+          "renderer-ready.txt": "b24d6d33736ecd5604a4b17bc9c6481039fac362bb7df044ef1c10a2bfd21db6",
+          "conversion.pid": "45f1382f86604e6d00fed32f8cf966ccab00a6b5784e90cb015de3b11a912e95",
+          "tools/bench.py": "12c9d0ed55c0fccaafeec2d1b399d90507d1f81f1053d84dbae6cf07d2f24a9b",
+          "benchmarks/results/sources/analytic19-conversion/inputs.json": "7a9b8e0a6642e0ec30686041a594d20aabffb2aafb112029f921587ee922b3e2",
+          "benchmarks/results/local/analytic19-conversion/campaign-001.json": "bb2c9b00658e453090062e809e267bc11f1f17e474319559f4f9271e4d891a16",
+          "benchmarks/results/local/analytic19-conversion/campaign-001.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    ],
+    "scope": "exact campaign lifecycle; mocked pins/conversion; real nested run_process and ProcessGroup; timer1200 shortened to3s; no product rendering/build"
+  }
+}

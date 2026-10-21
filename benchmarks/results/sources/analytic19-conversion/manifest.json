@@ -1,0 +1,347 @@
+{
+  "schema": 1,
+  "documents": [
+    {
+      "id": "classic/blank",
+      "path": "corpus/generated/classic/blank.pdf",
+      "sha256": "0a008af87ef7ca5f9df0e8278cf30133b5ef91909a24be0eef8a95d32286c687",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/classic/blank.ppm",
+          "sha256": "d2f6d1ef302851a667adde508208fded2aea933d1c0b62941b9d0882a3461523",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "classic/rectangle",
+      "path": "corpus/generated/classic/rectangle.pdf",
+      "sha256": "e787ff94fad3d42695b926c8b55e341961ea2adc0cb16158804b549b4270a9fe",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/classic/rectangle.ppm",
+          "sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "classic/graphics-state",
+      "path": "corpus/generated/classic/graphics-state.pdf",
+      "sha256": "21eeb6fd3bfa442640352b9bfa0dc547d79d28876311993a8a69bdd03cb9a324",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/classic/graphics-state.ppm",
+          "sha256": "00da63bf806096faba1c5b6902c831fe9011e45f4ad552bc57bd17c8b560c413",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "classic/negative-rectangle",
+      "path": "corpus/generated/classic/negative-rectangle.pdf",
+      "sha256": "22cd608dd1b988b0744bb4ff7324bfa97e63ee7ac061c1892807a1e76246e9c5",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/classic/negative-rectangle.ppm",
+          "sha256": "ebc152fb9c7327655bdbd6770dc62177b4853c367ae593f27f72cef3860072a6",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "classic/inherited-box",
+      "path": "corpus/generated/classic/inherited-box.pdf",
+      "sha256": "bd1297c6aee47f340e3ffe7a534427c937d637f911280e7fda62f0b1e999dd77",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/classic/inherited-box.ppm",
+          "sha256": "bc6a15ffa35d847e82db3b36d3bae55f08bcacdef0b54b8075a557c9ce11b2e8",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "classic/clipped-to-page",
+      "path": "corpus/generated/classic/clipped-to-page.pdf",
+      "sha256": "921508e995790fd0d3da683347a89891e4a60fa79f3567780eaf0e7f6d1bc903",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/classic/clipped-to-page.ppm",
+          "sha256": "e613cab40bbb53cc57a29b4c277a8794a2da78ff3462a6d85dfb7b8aa4307948",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "classic/many-rectangles",
+      "path": "corpus/generated/classic/many-rectangles.pdf",
+      "sha256": "5f40846f800054ff5a7be73c69d76d8c8c085a27c8d81474989612cee11827ae",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/classic/many-rectangles.ppm",
+          "sha256": "502d3c2ab2ab57e4335f75ba7ef5b4597434e7e7f6af5d9138f15cdec78e2b83",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "classic/content-array-split",
+      "path": "corpus/generated/classic/content-array-split.pdf",
+      "sha256": "ac76f1c6162e06d751c413a1c50141096298c9f72b22eba3034c736bbd89d187",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/classic/content-array-split.ppm",
+          "sha256": "37d829bf7165342c0c266017928b84f9cb250e7be7c5270f0738436238028ef7",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "classic/many-operands",
+      "path": "corpus/generated/classic/many-operands.pdf",
+      "sha256": "be3e7f89248060bd7ed07c885dd4aafd453db0ce99dfaf0881b9f20a93fb50c9",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/classic/many-operands.ppm",
+          "sha256": "78250fff9aafca7d0babfdcd43fd5b389e55d55facd4d4d54316f28e270baf82",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "paint/text-heavy-page",
+      "path": "corpus/generated/paint/text-heavy-page.pdf",
+      "sha256": "6b6137735950cfee33a71fa3acc52363d30b73c41677df1276a346a5a5dfe03a",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/paint/text-heavy-page.ppm",
+          "sha256": "dd8bb4098a86791a5e8b51337c0acb388d0ca32f32190ae2fd14617fca37fda0",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "paint/text-mode-4",
+      "path": "corpus/generated/paint/text-mode-4.pdf",
+      "sha256": "9d7815f4c90b300a79279c2c4ee22cf2bfdb6dceb21019c67cb0302e02bacbc4",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/paint/text-mode-4.ppm",
+          "sha256": "2ace598c8e37c524d5ed957b3093979012a7def002b394deea998b0638a16e04",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "paint/type3-d0-colour",
+      "path": "corpus/generated/paint/type3-d0-colour.pdf",
+      "sha256": "0aa2fcdd2e97bfaadd474358789f621507dd93d5a622397e1b02562f9a56d019",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/paint/type3-d0-colour.ppm",
+          "sha256": "d7479d6f18554aef82d0b58c0ff507751b830f4f56dcd6242ea2b4000e185838",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "paint/text-knockout-true",
+      "path": "corpus/generated/paint/text-knockout-true.pdf",
+      "sha256": "c114b770781201663e042b51e0b24e2849d44a4ad6211d36e99c26f492e9a357",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/paint/text-knockout-true.ppm",
+          "sha256": "ccd53be48ed03cb0810bbb37b406ea9b8f941d18ee66f88ffb44f691347ea1d2",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "paint/text-knockout-false",
+      "path": "corpus/generated/paint/text-knockout-false.pdf",
+      "sha256": "8f033087bbd492c810d3ef133e26bff9d11aa69983c2b425c8fdde2a26ba1ce0",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/paint/text-knockout-false.ppm",
+          "sha256": "9f7d11103049f6bc653bb5c7894c15cc75b4a4dcff64e5145f35263b303b7de1",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "paint/image-soft-mask",
+      "path": "corpus/generated/paint/image-soft-mask.pdf",
+      "sha256": "20853a7814294a00024277869aa16496a94025e9606f1a2c44ca739f94c82a2a",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/paint/image-soft-mask.ppm",
+          "sha256": "3e30801e02ffe35ad1fbe5351746c4e3a74665967685a2b320f663f3bc2e3a5d",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "paint/image-direct-binary-halves",
+      "path": "corpus/generated/paint/image-direct-binary-halves.pdf",
+      "sha256": "ffa5a7a1cd785f2a8711fd2486a80aad7732777a0d9e7b67c2a498886d8e5979",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/paint/image-direct-binary-halves.ppm",
+          "sha256": "86a1a9952d99b60524772b81b4653de0ac89f4c97b2ae4b5dbda47f17bb01002",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "paint/image-direct-gray-quarter-turn",
+      "path": "corpus/generated/paint/image-direct-gray-quarter-turn.pdf",
+      "sha256": "8bc0e3dc1bdf54322d5d33eb8a7378e42291a403a66a0056a27e80ef38f5069a",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/paint/image-direct-gray-quarter-turn.ppm",
+          "sha256": "db19533fcfcf2beb3bf09b4756602de89d493a4807004cb62d4354464e7965fc",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "paint/image-direct-rgb-fractional",
+      "path": "corpus/generated/paint/image-direct-rgb-fractional.pdf",
+      "sha256": "a23f02bcd40ec50d5533217b276ab190ddfd9bb834c1c30202fabb5724085720",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/paint/image-direct-rgb-fractional.ppm",
+          "sha256": "6d185a2719c4a9508d5a5cd17f755443a91f08fd4c6526dda0dbf84f8b5eb881",
+          "tolerance": 0
+        }
+      ]
+    },
+    {
+      "id": "paint/image-direct-bilinear",
+      "path": "corpus/generated/paint/image-direct-bilinear.pdf",
+      "sha256": "155298fdf9bddf5b260763f2ceb8223eb88a63d6bf044ba21ddfbaab99278538",
+      "pages": 1,
+      "selected_pages": [
+        0
+      ],
+      "oracles": [
+        {
+          "page": 0,
+          "dpi": 72,
+          "path": "corpus/generated/paint/image-direct-bilinear.ppm",
+          "sha256": "568829b03884adf1438abe6354b5c4561b3999986db89ce4fc36dc35924fca1b",
+          "tolerance": 0
+        }
+      ]
+    }
+  ]
+}

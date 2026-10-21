@@ -1,0 +1,851 @@
+{
+  "schema": 1,
+  "kind": "external-independent-reference-descriptors",
+  "selector": {
+    "schema": 1,
+    "case_ids": [
+      "classic/blank",
+      "classic/rectangle",
+      "classic/graphics-state",
+      "classic/negative-rectangle",
+      "classic/inherited-box",
+      "classic/clipped-to-page",
+      "classic/many-rectangles",
+      "classic/content-array-split",
+      "classic/many-operands",
+      "paint/text-heavy-page",
+      "paint/text-mode-4",
+      "paint/type3-d0-colour",
+      "paint/text-knockout-true",
+      "paint/text-knockout-false",
+      "paint/image-soft-mask",
+      "paint/image-direct-binary-halves",
+      "paint/image-direct-gray-quarter-turn",
+      "paint/image-direct-rgb-fractional",
+      "paint/image-direct-bilinear"
+    ]
+  },
+  "cases": [
+    {
+      "id": "classic/blank",
+      "kind": "pdf",
+      "description": "empty content stream",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering"
+      ],
+      "path": "corpus/generated/classic/blank.pdf",
+      "sha256": "0a008af87ef7ca5f9df0e8278cf30133b5ef91909a24be0eef8a95d32286c687",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/blank.ppm",
+      "oracle_sha256": "d2f6d1ef302851a667adde508208fded2aea933d1c0b62941b9d0882a3461523",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/rectangle",
+      "kind": "pdf",
+      "description": "one opaque DeviceRGB rectangle",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering"
+      ],
+      "path": "corpus/generated/classic/rectangle.pdf",
+      "sha256": "e787ff94fad3d42695b926c8b55e341961ea2adc0cb16158804b549b4270a9fe",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/rectangle.ppm",
+      "oracle_sha256": "5cb1259d260f10568506015a769a8c87a01cbebc7a701f46a576ac3d318a9b81",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/graphics-state",
+      "kind": "pdf",
+      "description": "q/Q restores colour and translation",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering"
+      ],
+      "path": "corpus/generated/classic/graphics-state.pdf",
+      "sha256": "21eeb6fd3bfa442640352b9bfa0dc547d79d28876311993a8a69bdd03cb9a324",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/graphics-state.ppm",
+      "oracle_sha256": "00da63bf806096faba1c5b6902c831fe9011e45f4ad552bc57bd17c8b560c413",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/negative-rectangle",
+      "kind": "pdf",
+      "description": "re with negative width and height",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering"
+      ],
+      "path": "corpus/generated/classic/negative-rectangle.pdf",
+      "sha256": "22cd608dd1b988b0744bb4ff7324bfa97e63ee7ac061c1892807a1e76246e9c5",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/negative-rectangle.ppm",
+      "oracle_sha256": "ebc152fb9c7327655bdbd6770dc62177b4853c367ae593f27f72cef3860072a6",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/inherited-box",
+      "kind": "pdf",
+      "description": "MediaBox inherited from the Pages node",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering"
+      ],
+      "path": "corpus/generated/classic/inherited-box.pdf",
+      "sha256": "bd1297c6aee47f340e3ffe7a534427c937d637f911280e7fda62f0b1e999dd77",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/inherited-box.ppm",
+      "oracle_sha256": "bc6a15ffa35d847e82db3b36d3bae55f08bcacdef0b54b8075a557c9ce11b2e8",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/clipped-to-page",
+      "kind": "pdf",
+      "description": "geometry beyond the page is clipped",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering"
+      ],
+      "path": "corpus/generated/classic/clipped-to-page.pdf",
+      "sha256": "921508e995790fd0d3da683347a89891e4a60fa79f3567780eaf0e7f6d1bc903",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/clipped-to-page.ppm",
+      "oracle_sha256": "e613cab40bbb53cc57a29b4c277a8794a2da78ff3462a6d85dfb7b8aa4307948",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/many-rectangles",
+      "kind": "pdf",
+      "description": "1024 rectangles",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering"
+      ],
+      "path": "corpus/generated/classic/many-rectangles.pdf",
+      "sha256": "5f40846f800054ff5a7be73c69d76d8c8c085a27c8d81474989612cee11827ae",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/many-rectangles.ppm",
+      "oracle_sha256": "502d3c2ab2ab57e4335f75ba7ef5b4597434e7e7f6af5d9138f15cdec78e2b83",
+      "dpi": 72,
+      "width": 512,
+      "height": 512
+    },
+    {
+      "id": "classic/content-array-split",
+      "kind": "pdf",
+      "description": "Contents array split between tokens and inside an operation",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering",
+        "content-stream-array"
+      ],
+      "path": "corpus/generated/classic/content-array-split.pdf",
+      "sha256": "ac76f1c6162e06d751c413a1c50141096298c9f72b22eba3034c736bbd89d187",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/content-array-split.ppm",
+      "oracle_sha256": "37d829bf7165342c0c266017928b84f9cb250e7be7c5270f0738436238028ef7",
+      "dpi": 72,
+      "width": 64,
+      "height": 64
+    },
+    {
+      "id": "classic/many-operands",
+      "kind": "pdf",
+      "description": "114,688 numeric operands on one page; budgets are per object",
+      "expected": "render",
+      "requirements": [
+        "syntax-classic-xref",
+        "page-tree",
+        "opaque-rectangle-rendering",
+        "bounded-resource-use"
+      ],
+      "path": "corpus/generated/classic/many-operands.pdf",
+      "sha256": "be3e7f89248060bd7ed07c885dd4aafd453db0ce99dfaf0881b9f20a93fb50c9",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/classic/many-operands.ppm",
+      "oracle_sha256": "78250fff9aafca7d0babfdcd43fd5b389e55d55facd4d4d54316f28e270baf82",
+      "dpi": 72,
+      "width": 128,
+      "height": 128
+    },
+    {
+      "id": "paint/text-heavy-page",
+      "kind": "pdf",
+      "description": "text heavy page",
+      "expected": "render",
+      "requirements": [
+        "paint-text-outlines"
+      ],
+      "path": "corpus/generated/paint/text-heavy-page.pdf",
+      "sha256": "6b6137735950cfee33a71fa3acc52363d30b73c41677df1276a346a5a5dfe03a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-heavy-page.ppm",
+      "oracle_sha256": "dd8bb4098a86791a5e8b51337c0acb388d0ca32f32190ae2fd14617fca37fda0",
+      "dpi": 72,
+      "width": 256,
+      "height": 256,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-mode-4",
+      "kind": "pdf",
+      "description": "text mode 4",
+      "expected": "render",
+      "requirements": [
+        "paint-text-modes"
+      ],
+      "path": "corpus/generated/paint/text-mode-4.pdf",
+      "sha256": "9d7815f4c90b300a79279c2c4ee22cf2bfdb6dceb21019c67cb0302e02bacbc4",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-mode-4.ppm",
+      "oracle_sha256": "2ace598c8e37c524d5ed957b3093979012a7def002b394deea998b0638a16e04",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/type3-d0-colour",
+      "kind": "pdf",
+      "description": "type3 d0 colour",
+      "expected": "render",
+      "requirements": [
+        "paint-type3"
+      ],
+      "path": "corpus/generated/paint/type3-d0-colour.pdf",
+      "sha256": "0aa2fcdd2e97bfaadd474358789f621507dd93d5a622397e1b02562f9a56d019",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/type3-d0-colour.ppm",
+      "oracle_sha256": "d7479d6f18554aef82d0b58c0ff507751b830f4f56dcd6242ea2b4000e185838",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-knockout-true",
+      "kind": "pdf",
+      "description": "text knockout true",
+      "expected": "render",
+      "requirements": [
+        "paint-text-knockout"
+      ],
+      "path": "corpus/generated/paint/text-knockout-true.pdf",
+      "sha256": "c114b770781201663e042b51e0b24e2849d44a4ad6211d36e99c26f492e9a357",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-knockout-true.ppm",
+      "oracle_sha256": "ccd53be48ed03cb0810bbb37b406ea9b8f941d18ee66f88ffb44f691347ea1d2",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/text-knockout-false",
+      "kind": "pdf",
+      "description": "text knockout false",
+      "expected": "render",
+      "requirements": [
+        "paint-text-knockout"
+      ],
+      "path": "corpus/generated/paint/text-knockout-false.pdf",
+      "sha256": "8f033087bbd492c810d3ef133e26bff9d11aa69983c2b425c8fdde2a26ba1ce0",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/text-knockout-false.ppm",
+      "oracle_sha256": "9f7d11103049f6bc653bb5c7894c15cc75b4a4dcff64e5145f35263b303b7de1",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "competitive_tolerance": 1
+    },
+    {
+      "id": "paint/image-soft-mask",
+      "kind": "pdf",
+      "description": "image soft mask",
+      "expected": "render",
+      "requirements": [
+        "paint-image-soft-mask"
+      ],
+      "path": "corpus/generated/paint/image-soft-mask.pdf",
+      "sha256": "20853a7814294a00024277869aa16496a94025e9606f1a2c44ca739f94c82a2a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-soft-mask.ppm",
+      "oracle_sha256": "3e30801e02ffe35ad1fbe5351746c4e3a74665967685a2b320f663f3bc2e3a5d",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0
+    },
+    {
+      "id": "paint/image-direct-binary-halves",
+      "kind": "pdf",
+      "description": "image direct binary halves",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-direct-binary-halves.pdf",
+      "sha256": "ffa5a7a1cd785f2a8711fd2486a80aad7732777a0d9e7b67c2a498886d8e5979",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-direct-binary-halves.ppm",
+      "oracle_sha256": "86a1a9952d99b60524772b81b4653de0ac89f4c97b2ae4b5dbda47f17bb01002",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "reference_profile": "image-direct-v1",
+      "render_references": {
+        "exact": {
+          "metadata": {
+            "schema": 1,
+            "case_id": "paint/image-direct-binary-halves",
+            "settings": {
+              "source_pdf_sha256": "ffa5a7a1cd785f2a8711fd2486a80aad7732777a0d9e7b67c2a498886d8e5979",
+              "render_policy_sha256": "769c7c99d1f90aaacae2312c32f6cb8bb290dd5aa88d3414a9d1b9ee9e0bd77c",
+              "page": 0,
+              "dpi": 72,
+              "background": "white",
+              "output": "RGB8 PPM",
+              "box": "MediaBox=CropBox",
+              "annotations": true,
+              "accuracy": "exact",
+              "entrypoint": "render_page",
+              "validation": "full"
+            },
+            "dimensions": [
+              32,
+              32
+            ],
+            "reference": {
+              "model": "decoded-samples-rgb8",
+              "evidence_class": "exact_rational",
+              "rounding": "nearest-half-up",
+              "derivation": "docs/references/image-direct-derivation.md"
+            },
+            "oracle_sha256": "86a1a9952d99b60524772b81b4653de0ac89f4c97b2ae4b5dbda47f17bb01002",
+            "sources": {
+              "docs/references/image-direct-policy.md": "769c7c99d1f90aaacae2312c32f6cb8bb290dd5aa88d3414a9d1b9ee9e0bd77c",
+              "docs/references/image-direct-derivation.md": "f2f20987beed99f1d6d33d081c360fe601c365e7d050159dcff7f92a482900c2",
+              "tools/fixtures.py": "aea4943aaa9961f59aea4f12076c0ebf5a68fe0c7c570dd60aa937b2d951a635",
+              "tools/fixturegen/__init__.py": "06b824d1276832a8e563a33357fc1649b53e1b6b45ba2d3238bd3a089001fb93",
+              "tools/fixturegen/model.py": "16b0fa768f064c60e5e586b416fd41154891d4bfb866daf9c2724e72ea3db273",
+              "tools/fixturegen/paint.py": "2fe1b8630c83134e4b5c28d4a4c3b63f5d673d1bf8d8418e2453fb11d2d6f01e",
+              "tools/fixturegen/pdf.py": "6d1546f6a56fedd06bb4bfe247f6b5fa747e092b6ac471f9134dcef72820f810",
+              "tools/fixturegen/image.py": "29cc75b6a49cf04aa329cd94c8e188a242350bc4b633683a58dfd032da7240f6",
+              "tools/fixturegen/font.py": "39bf4056e475d2b8042129c7c443cf60779df9def94895cb82ef6b254332c4f1",
+              "tools/fixturegen/raster.py": "cf2b92c735c3f58e3405f5d847b0e2bec2bf1a13fabe02e5083087cbc8c4dd30",
+              "tools/fixturegen/jpx.py": "6088b09cb81b3b263f96fdde131e9ea27daaf046f61c4ffc35a64125187bb04c",
+              "tools/fixturegen/jbig2.py": "b742c16ce6f2e4d163e34869a76c385e093f523551917147017511312f161cb2",
+              "tools/fixturegen/competitive.py": "c2c7401363029fc5fe8017eedffc1ec94464ad141ff240283c4a76656d52e200",
+              "tools/benchkit/__init__.py": "ca67b6512bf927b7a13218c5e9098badb4f7a5c2e3e051559a67171b64d260ef",
+              "tools/benchkit/reference_cases.py": "f5c01fed71d1298a8389fbc249f675428fb117b911692b7caa6a3b9b9515e927",
+              "tools/benchkit/oracles.py": "fc578193666de673e02168b0c0a2d13bcfd8ac31558569805842ff58a2f04a3d",
+              "tools/benchkit/images.py": "1978e8021ca1cf9ab07794306ea4aadb52cbee54d2ecd2c0dbca16fc2b1ef842",
+              "corpus/generated/paint/image-direct-binary-halves.pdf": "ffa5a7a1cd785f2a8711fd2486a80aad7732777a0d9e7b67c2a498886d8e5979"
+            },
+            "max_channel_error": 0
+          },
+          "sha256": "27c79ef05c528e2bc41a776d8af6801a06e8e37efe92f106bac0919077156ff7"
+        },
+        "competitive": {
+          "metadata": {
+            "schema": 1,
+            "case_id": "paint/image-direct-binary-halves",
+            "settings": {
+              "source_pdf_sha256": "ffa5a7a1cd785f2a8711fd2486a80aad7732777a0d9e7b67c2a498886d8e5979",
+              "render_policy_sha256": "769c7c99d1f90aaacae2312c32f6cb8bb290dd5aa88d3414a9d1b9ee9e0bd77c",
+              "page": 0,
+              "dpi": 72,
+              "background": "white",
+              "output": "RGB8 PPM",
+              "box": "MediaBox=CropBox",
+              "annotations": true,
+              "accuracy": "competitive",
+              "entrypoint": "render_page",
+              "validation": "drawing-only"
+            },
+            "dimensions": [
+              32,
+              32
+            ],
+            "reference": {
+              "model": "decoded-samples-rgb8",
+              "evidence_class": "exact_rational",
+              "rounding": "nearest-half-up",
+              "derivation": "docs/references/image-direct-derivation.md"
+            },
+            "oracle_sha256": "86a1a9952d99b60524772b81b4653de0ac89f4c97b2ae4b5dbda47f17bb01002",
+            "sources": {
+              "docs/references/image-direct-policy.md": "769c7c99d1f90aaacae2312c32f6cb8bb290dd5aa88d3414a9d1b9ee9e0bd77c",
+              "docs/references/image-direct-derivation.md": "f2f20987beed99f1d6d33d081c360fe601c365e7d050159dcff7f92a482900c2",
+              "tools/fixtures.py": "aea4943aaa9961f59aea4f12076c0ebf5a68fe0c7c570dd60aa937b2d951a635",
+              "tools/fixturegen/__init__.py": "06b824d1276832a8e563a33357fc1649b53e1b6b45ba2d3238bd3a089001fb93",
+              "tools/fixturegen/model.py": "16b0fa768f064c60e5e586b416fd41154891d4bfb866daf9c2724e72ea3db273",
+              "tools/fixturegen/paint.py": "2fe1b8630c83134e4b5c28d4a4c3b63f5d673d1bf8d8418e2453fb11d2d6f01e",
+              "tools/fixturegen/pdf.py": "6d1546f6a56fedd06bb4bfe247f6b5fa747e092b6ac471f9134dcef72820f810",
+              "tools/fixturegen/image.py": "29cc75b6a49cf04aa329cd94c8e188a242350bc4b633683a58dfd032da7240f6",
+              "tools/fixturegen/font.py": "39bf4056e475d2b8042129c7c443cf60779df9def94895cb82ef6b254332c4f1",
+              "tools/fixturegen/raster.py": "cf2b92c735c3f58e3405f5d847b0e2bec2bf1a13fabe02e5083087cbc8c4dd30",
+              "tools/fixturegen/jpx.py": "6088b09cb81b3b263f96fdde131e9ea27daaf046f61c4ffc35a64125187bb04c",
+              "tools/fixturegen/jbig2.py": "b742c16ce6f2e4d163e34869a76c385e093f523551917147017511312f161cb2",
+              "tools/fixturegen/competitive.py": "c2c7401363029fc5fe8017eedffc1ec94464ad141ff240283c4a76656d52e200",
+              "tools/benchkit/__init__.py": "ca67b6512bf927b7a13218c5e9098badb4f7a5c2e3e051559a67171b64d260ef",
+              "tools/benchkit/reference_cases.py": "f5c01fed71d1298a8389fbc249f675428fb117b911692b7caa6a3b9b9515e927",
+              "tools/benchkit/oracles.py": "fc578193666de673e02168b0c0a2d13bcfd8ac31558569805842ff58a2f04a3d",
+              "tools/benchkit/images.py": "1978e8021ca1cf9ab07794306ea4aadb52cbee54d2ecd2c0dbca16fc2b1ef842",
+              "corpus/generated/paint/image-direct-binary-halves.pdf": "ffa5a7a1cd785f2a8711fd2486a80aad7732777a0d9e7b67c2a498886d8e5979"
+            },
+            "max_channel_error": 0
+          },
+          "sha256": "65431dd90fc3ff5dc5398f8bbb36f5150718d6ebe2fffc130cc4beda77d2d47b"
+        }
+      }
+    },
+    {
+      "id": "paint/image-direct-gray-quarter-turn",
+      "kind": "pdf",
+      "description": "image direct gray quarter turn",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-direct-gray-quarter-turn.pdf",
+      "sha256": "8bc0e3dc1bdf54322d5d33eb8a7378e42291a403a66a0056a27e80ef38f5069a",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-direct-gray-quarter-turn.ppm",
+      "oracle_sha256": "db19533fcfcf2beb3bf09b4756602de89d493a4807004cb62d4354464e7965fc",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "reference_profile": "image-direct-v1",
+      "render_references": {
+        "exact": {
+          "metadata": {
+            "schema": 1,
+            "case_id": "paint/image-direct-gray-quarter-turn",
+            "settings": {
+              "source_pdf_sha256": "8bc0e3dc1bdf54322d5d33eb8a7378e42291a403a66a0056a27e80ef38f5069a",
+              "render_policy_sha256": "769c7c99d1f90aaacae2312c32f6cb8bb290dd5aa88d3414a9d1b9ee9e0bd77c",
+              "page": 0,
+              "dpi": 72,
+              "background": "white",
+              "output": "RGB8 PPM",
+              "box": "MediaBox=CropBox",
+              "annotations": true,
+              "accuracy": "exact",
+              "entrypoint": "render_page",
+              "validation": "full"
+            },
+            "dimensions": [
+              32,
+              32
+            ],
+            "reference": {
+              "model": "decoded-samples-rgb8",
+              "evidence_class": "exact_rational",
+              "rounding": "nearest-half-up",
+              "derivation": "docs/references/image-direct-derivation.md"
+            },
+            "oracle_sha256": "db19533fcfcf2beb3bf09b4756602de89d493a4807004cb62d4354464e7965fc",
+            "sources": {
+              "docs/references/image-direct-policy.md": "769c7c99d1f90aaacae2312c32f6cb8bb290dd5aa88d3414a9d1b9ee9e0bd77c",
+              "docs/references/image-direct-derivation.md": "f2f20987beed99f1d6d33d081c360fe601c365e7d050159dcff7f92a482900c2",
+              "tools/fixtures.py": "aea4943aaa9961f59aea4f12076c0ebf5a68fe0c7c570dd60aa937b2d951a635",
+              "tools/fixturegen/__init__.py": "06b824d1276832a8e563a33357fc1649b53e1b6b45ba2d3238bd3a089001fb93",
+              "tools/fixturegen/model.py": "16b0fa768f064c60e5e586b416fd41154891d4bfb866daf9c2724e72ea3db273",
+              "tools/fixturegen/paint.py": "2fe1b8630c83134e4b5c28d4a4c3b63f5d673d1bf8d8418e2453fb11d2d6f01e",
+              "tools/fixturegen/pdf.py": "6d1546f6a56fedd06bb4bfe247f6b5fa747e092b6ac471f9134dcef72820f810",
+              "tools/fixturegen/image.py": "29cc75b6a49cf04aa329cd94c8e188a242350bc4b633683a58dfd032da7240f6",
+              "tools/fixturegen/font.py": "39bf4056e475d2b8042129c7c443cf60779df9def94895cb82ef6b254332c4f1",
+              "tools/fixturegen/raster.py": "cf2b92c735c3f58e3405f5d847b0e2bec2bf1a13fabe02e5083087cbc8c4dd30",
+              "tools/fixturegen/jpx.py": "6088b09cb81b3b263f96fdde131e9ea27daaf046f61c4ffc35a64125187bb04c",
+              "tools/fixturegen/jbig2.py": "b742c16ce6f2e4d163e34869a76c385e093f523551917147017511312f161cb2",
+              "tools/fixturegen/competitive.py": "c2c7401363029fc5fe8017eedffc1ec94464ad141ff240283c4a76656d52e200",
+              "tools/benchkit/__init__.py": "ca67b6512bf927b7a13218c5e9098badb4f7a5c2e3e051559a67171b64d260ef",
+              "tools/benchkit/reference_cases.py": "f5c01fed71d1298a8389fbc249f675428fb117b911692b7caa6a3b9b9515e927",
+              "tools/benchkit/oracles.py": "fc578193666de673e02168b0c0a2d13bcfd8ac31558569805842ff58a2f04a3d",
+              "tools/benchkit/images.py": "1978e8021ca1cf9ab07794306ea4aadb52cbee54d2ecd2c0dbca16fc2b1ef842",
+              "corpus/generated/paint/image-direct-gray-quarter-turn.pdf": "8bc0e3dc1bdf54322d5d33eb8a7378e42291a403a66a0056a27e80ef38f5069a"
+            },
+            "max_channel_error": 0
+          },
+          "sha256": "19485ddda9020cca45daef9b98679910ba56501086ee6800cb083c92b35eb924"
+        },
+        "competitive": {
+          "metadata": {
+            "schema": 1,
+            "case_id": "paint/image-direct-gray-quarter-turn",
+            "settings": {
+              "source_pdf_sha256": "8bc0e3dc1bdf54322d5d33eb8a7378e42291a403a66a0056a27e80ef38f5069a",
+              "render_policy_sha256": "769c7c99d1f90aaacae2312c32f6cb8bb290dd5aa88d3414a9d1b9ee9e0bd77c",
+              "page": 0,
+              "dpi": 72,
+              "background": "white",
+              "output": "RGB8 PPM",
+              "box": "MediaBox=CropBox",
+              "annotations": true,
+              "accuracy": "competitive",
+              "entrypoint": "render_page",
+              "validation": "drawing-only"
+            },
+            "dimensions": [
+              32,
+              32
+            ],
+            "reference": {
+              "model": "decoded-samples-rgb8",
+              "evidence_class": "exact_rational",
+              "rounding": "nearest-half-up",
+              "derivation": "docs/references/image-direct-derivation.md"
+            },
+            "oracle_sha256": "db19533fcfcf2beb3bf09b4756602de89d493a4807004cb62d4354464e7965fc",
+            "sources": {
+              "docs/references/image-direct-policy.md": "769c7c99d1f90aaacae2312c32f6cb8bb290dd5aa88d3414a9d1b9ee9e0bd77c",
+              "docs/references/image-direct-derivation.md": "f2f20987beed99f1d6d33d081c360fe601c365e7d050159dcff7f92a482900c2",
+              "tools/fixtures.py": "aea4943aaa9961f59aea4f12076c0ebf5a68fe0c7c570dd60aa937b2d951a635",
+              "tools/fixturegen/__init__.py": "06b824d1276832a8e563a33357fc1649b53e1b6b45ba2d3238bd3a089001fb93",
+              "tools/fixturegen/model.py": "16b0fa768f064c60e5e586b416fd41154891d4bfb866daf9c2724e72ea3db273",
+              "tools/fixturegen/paint.py": "2fe1b8630c83134e4b5c28d4a4c3b63f5d673d1bf8d8418e2453fb11d2d6f01e",
+              "tools/fixturegen/pdf.py": "6d1546f6a56fedd06bb4bfe247f6b5fa747e092b6ac471f9134dcef72820f810",
+              "tools/fixturegen/image.py": "29cc75b6a49cf04aa329cd94c8e188a242350bc4b633683a58dfd032da7240f6",
+              "tools/fixturegen/font.py": "39bf4056e475d2b8042129c7c443cf60779df9def94895cb82ef6b254332c4f1",
+              "tools/fixturegen/raster.py": "cf2b92c735c3f58e3405f5d847b0e2bec2bf1a13fabe02e5083087cbc8c4dd30",
+              "tools/fixturegen/jpx.py": "6088b09cb81b3b263f96fdde131e9ea27daaf046f61c4ffc35a64125187bb04c",
+              "tools/fixturegen/jbig2.py": "b742c16ce6f2e4d163e34869a76c385e093f523551917147017511312f161cb2",
+              "tools/fixturegen/competitive.py": "c2c7401363029fc5fe8017eedffc1ec94464ad141ff240283c4a76656d52e200",
+              "tools/benchkit/__init__.py": "ca67b6512bf927b7a13218c5e9098badb4f7a5c2e3e051559a67171b64d260ef",
+              "tools/benchkit/reference_cases.py": "f5c01fed71d1298a8389fbc249f675428fb117b911692b7caa6a3b9b9515e927",
+              "tools/benchkit/oracles.py": "fc578193666de673e02168b0c0a2d13bcfd8ac31558569805842ff58a2f04a3d",
+              "tools/benchkit/images.py": "1978e8021ca1cf9ab07794306ea4aadb52cbee54d2ecd2c0dbca16fc2b1ef842",
+              "corpus/generated/paint/image-direct-gray-quarter-turn.pdf": "8bc0e3dc1bdf54322d5d33eb8a7378e42291a403a66a0056a27e80ef38f5069a"
+            },
+            "max_channel_error": 0
+          },
+          "sha256": "70a351683ebfa7b06a9dd32b5aaadf1b15d901e308386661cadd27f384e05857"
+        }
+      }
+    },
+    {
+      "id": "paint/image-direct-rgb-fractional",
+      "kind": "pdf",
+      "description": "image direct rgb fractional",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-direct-rgb-fractional.pdf",
+      "sha256": "a23f02bcd40ec50d5533217b276ab190ddfd9bb834c1c30202fabb5724085720",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-direct-rgb-fractional.ppm",
+      "oracle_sha256": "6d185a2719c4a9508d5a5cd17f755443a91f08fd4c6526dda0dbf84f8b5eb881",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "reference_profile": "image-direct-v1",
+      "competitive_tolerance": 1,
+      "render_references": {
+        "exact": {
+          "metadata": {
+            "schema": 1,
+            "case_id": "paint/image-direct-rgb-fractional",
+            "settings": {
+              "source_pdf_sha256": "a23f02bcd40ec50d5533217b276ab190ddfd9bb834c1c30202fabb5724085720",
+              "render_policy_sha256": "769c7c99d1f90aaacae2312c32f6cb8bb290dd5aa88d3414a9d1b9ee9e0bd77c",
+              "page": 0,
+              "dpi": 72,
+              "background": "white",
+              "output": "RGB8 PPM",
+              "box": "MediaBox=CropBox",
+              "annotations": true,
+              "accuracy": "exact",
+              "entrypoint": "render_page",
+              "validation": "full"
+            },
+            "dimensions": [
+              32,
+              32
+            ],
+            "reference": {
+              "model": "decoded-samples-rgb8",
+              "evidence_class": "exact_rational",
+              "rounding": "nearest-half-up",
+              "derivation": "docs/references/image-direct-derivation.md"
+            },
+            "oracle_sha256": "6d185a2719c4a9508d5a5cd17f755443a91f08fd4c6526dda0dbf84f8b5eb881",
+            "sources": {
+              "docs/references/image-direct-policy.md": "769c7c99d1f90aaacae2312c32f6cb8bb290dd5aa88d3414a9d1b9ee9e0bd77c",
+              "docs/references/image-direct-derivation.md": "f2f20987beed99f1d6d33d081c360fe601c365e7d050159dcff7f92a482900c2",
+              "tools/fixtures.py": "aea4943aaa9961f59aea4f12076c0ebf5a68fe0c7c570dd60aa937b2d951a635",
+              "tools/fixturegen/__init__.py": "06b824d1276832a8e563a33357fc1649b53e1b6b45ba2d3238bd3a089001fb93",
+              "tools/fixturegen/model.py": "16b0fa768f064c60e5e586b416fd41154891d4bfb866daf9c2724e72ea3db273",
+              "tools/fixturegen/paint.py": "2fe1b8630c83134e4b5c28d4a4c3b63f5d673d1bf8d8418e2453fb11d2d6f01e",
+              "tools/fixturegen/pdf.py": "6d1546f6a56fedd06bb4bfe247f6b5fa747e092b6ac471f9134dcef72820f810",
+              "tools/fixturegen/image.py": "29cc75b6a49cf04aa329cd94c8e188a242350bc4b633683a58dfd032da7240f6",
+              "tools/fixturegen/font.py": "39bf4056e475d2b8042129c7c443cf60779df9def94895cb82ef6b254332c4f1",
+              "tools/fixturegen/raster.py": "cf2b92c735c3f58e3405f5d847b0e2bec2bf1a13fabe02e5083087cbc8c4dd30",
+              "tools/fixturegen/jpx.py": "6088b09cb81b3b263f96fdde131e9ea27daaf046f61c4ffc35a64125187bb04c",
+              "tools/fixturegen/jbig2.py": "b742c16ce6f2e4d163e34869a76c385e093f523551917147017511312f161cb2",
+              "tools/fixturegen/competitive.py": "c2c7401363029fc5fe8017eedffc1ec94464ad141ff240283c4a76656d52e200",
+              "tools/benchkit/__init__.py": "ca67b6512bf927b7a13218c5e9098badb4f7a5c2e3e051559a67171b64d260ef",
+              "tools/benchkit/reference_cases.py": "f5c01fed71d1298a8389fbc249f675428fb117b911692b7caa6a3b9b9515e927",
+              "tools/benchkit/oracles.py": "fc578193666de673e02168b0c0a2d13bcfd8ac31558569805842ff58a2f04a3d",
+              "tools/benchkit/images.py": "1978e8021ca1cf9ab07794306ea4aadb52cbee54d2ecd2c0dbca16fc2b1ef842",
+              "corpus/generated/paint/image-direct-rgb-fractional.pdf": "a23f02bcd40ec50d5533217b276ab190ddfd9bb834c1c30202fabb5724085720"
+            },
+            "max_channel_error": 0
+          },
+          "sha256": "1c24a671d364c69ed79f0c6b9c1b9712d907d6648d6bf4df0d3c6f2639f4b755"
+        },
+        "competitive": {
+          "metadata": {
+            "schema": 1,
+            "case_id": "paint/image-direct-rgb-fractional",
+            "settings": {
+              "source_pdf_sha256": "a23f02bcd40ec50d5533217b276ab190ddfd9bb834c1c30202fabb5724085720",
+              "render_policy_sha256": "769c7c99d1f90aaacae2312c32f6cb8bb290dd5aa88d3414a9d1b9ee9e0bd77c",
+              "page": 0,
+              "dpi": 72,
+              "background": "white",
+              "output": "RGB8 PPM",
+              "box": "MediaBox=CropBox",
+              "annotations": true,
+              "accuracy": "competitive",
+              "entrypoint": "render_page",
+              "validation": "drawing-only"
+            },
+            "dimensions": [
+              32,
+              32
+            ],
+            "reference": {
+              "model": "decoded-samples-rgb8",
+              "evidence_class": "exact_rational",
+              "rounding": "nearest-half-up",
+              "derivation": "docs/references/image-direct-derivation.md"
+            },
+            "oracle_sha256": "6d185a2719c4a9508d5a5cd17f755443a91f08fd4c6526dda0dbf84f8b5eb881",
+            "sources": {
+              "docs/references/image-direct-policy.md": "769c7c99d1f90aaacae2312c32f6cb8bb290dd5aa88d3414a9d1b9ee9e0bd77c",
+              "docs/references/image-direct-derivation.md": "f2f20987beed99f1d6d33d081c360fe601c365e7d050159dcff7f92a482900c2",
+              "tools/fixtures.py": "aea4943aaa9961f59aea4f12076c0ebf5a68fe0c7c570dd60aa937b2d951a635",
+              "tools/fixturegen/__init__.py": "06b824d1276832a8e563a33357fc1649b53e1b6b45ba2d3238bd3a089001fb93",
+              "tools/fixturegen/model.py": "16b0fa768f064c60e5e586b416fd41154891d4bfb866daf9c2724e72ea3db273",
+              "tools/fixturegen/paint.py": "2fe1b8630c83134e4b5c28d4a4c3b63f5d673d1bf8d8418e2453fb11d2d6f01e",
+              "tools/fixturegen/pdf.py": "6d1546f6a56fedd06bb4bfe247f6b5fa747e092b6ac471f9134dcef72820f810",
+              "tools/fixturegen/image.py": "29cc75b6a49cf04aa329cd94c8e188a242350bc4b633683a58dfd032da7240f6",
+              "tools/fixturegen/font.py": "39bf4056e475d2b8042129c7c443cf60779df9def94895cb82ef6b254332c4f1",
+              "tools/fixturegen/raster.py": "cf2b92c735c3f58e3405f5d847b0e2bec2bf1a13fabe02e5083087cbc8c4dd30",
+              "tools/fixturegen/jpx.py": "6088b09cb81b3b263f96fdde131e9ea27daaf046f61c4ffc35a64125187bb04c",
+              "tools/fixturegen/jbig2.py": "b742c16ce6f2e4d163e34869a76c385e093f523551917147017511312f161cb2",
+              "tools/fixturegen/competitive.py": "c2c7401363029fc5fe8017eedffc1ec94464ad141ff240283c4a76656d52e200",
+              "tools/benchkit/__init__.py": "ca67b6512bf927b7a13218c5e9098badb4f7a5c2e3e051559a67171b64d260ef",
+              "tools/benchkit/reference_cases.py": "f5c01fed71d1298a8389fbc249f675428fb117b911692b7caa6a3b9b9515e927",
+              "tools/benchkit/oracles.py": "fc578193666de673e02168b0c0a2d13bcfd8ac31558569805842ff58a2f04a3d",
+              "tools/benchkit/images.py": "1978e8021ca1cf9ab07794306ea4aadb52cbee54d2ecd2c0dbca16fc2b1ef842",
+              "corpus/generated/paint/image-direct-rgb-fractional.pdf": "a23f02bcd40ec50d5533217b276ab190ddfd9bb834c1c30202fabb5724085720"
+            },
+            "max_channel_error": 1
+          },
+          "sha256": "e8941b7103db40ccb685d0e98b891d9d31eb84e64c2ac5d88abb085ee4359f53"
+        }
+      }
+    },
+    {
+      "id": "paint/image-direct-bilinear",
+      "kind": "pdf",
+      "description": "image direct bilinear",
+      "expected": "render",
+      "requirements": [
+        "paint-image-resampling"
+      ],
+      "path": "corpus/generated/paint/image-direct-bilinear.pdf",
+      "sha256": "155298fdf9bddf5b260763f2ceb8223eb88a63d6bf044ba21ddfbaab99278538",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/paint/image-direct-bilinear.ppm",
+      "oracle_sha256": "568829b03884adf1438abe6354b5c4561b3999986db89ce4fc36dc35924fca1b",
+      "dpi": 72,
+      "width": 32,
+      "height": 32,
+      "tolerance": 0,
+      "reference_profile": "image-direct-v1",
+      "render_references": {
+        "exact": {
+          "metadata": {
+            "schema": 1,
+            "case_id": "paint/image-direct-bilinear",
+            "settings": {
+              "source_pdf_sha256": "155298fdf9bddf5b260763f2ceb8223eb88a63d6bf044ba21ddfbaab99278538",
+              "render_policy_sha256": "769c7c99d1f90aaacae2312c32f6cb8bb290dd5aa88d3414a9d1b9ee9e0bd77c",
+              "page": 0,
+              "dpi": 72,
+              "background": "white",
+              "output": "RGB8 PPM",
+              "box": "MediaBox=CropBox",
+              "annotations": true,
+              "accuracy": "exact",
+              "entrypoint": "render_page",
+              "validation": "full"
+            },
+            "dimensions": [
+              32,
+              32
+            ],
+            "reference": {
+              "model": "decoded-samples-rgb8",
+              "evidence_class": "exact_rational",
+              "rounding": "nearest-half-up",
+              "derivation": "docs/references/image-direct-derivation.md"
+            },
+            "oracle_sha256": "568829b03884adf1438abe6354b5c4561b3999986db89ce4fc36dc35924fca1b",
+            "sources": {
+              "docs/references/image-direct-policy.md": "769c7c99d1f90aaacae2312c32f6cb8bb290dd5aa88d3414a9d1b9ee9e0bd77c",
+              "docs/references/image-direct-derivation.md": "f2f20987beed99f1d6d33d081c360fe601c365e7d050159dcff7f92a482900c2",
+              "tools/fixtures.py": "aea4943aaa9961f59aea4f12076c0ebf5a68fe0c7c570dd60aa937b2d951a635",
+              "tools/fixturegen/__init__.py": "06b824d1276832a8e563a33357fc1649b53e1b6b45ba2d3238bd3a089001fb93",
+              "tools/fixturegen/model.py": "16b0fa768f064c60e5e586b416fd41154891d4bfb866daf9c2724e72ea3db273",
+              "tools/fixturegen/paint.py": "2fe1b8630c83134e4b5c28d4a4c3b63f5d673d1bf8d8418e2453fb11d2d6f01e",
+              "tools/fixturegen/pdf.py": "6d1546f6a56fedd06bb4bfe247f6b5fa747e092b6ac471f9134dcef72820f810",
+              "tools/fixturegen/image.py": "29cc75b6a49cf04aa329cd94c8e188a242350bc4b633683a58dfd032da7240f6",
+              "tools/fixturegen/font.py": "39bf4056e475d2b8042129c7c443cf60779df9def94895cb82ef6b254332c4f1",
+              "tools/fixturegen/raster.py": "cf2b92c735c3f58e3405f5d847b0e2bec2bf1a13fabe02e5083087cbc8c4dd30",
+              "tools/fixturegen/jpx.py": "6088b09cb81b3b263f96fdde131e9ea27daaf046f61c4ffc35a64125187bb04c",
+              "tools/fixturegen/jbig2.py": "b742c16ce6f2e4d163e34869a76c385e093f523551917147017511312f161cb2",
+              "tools/fixturegen/competitive.py": "c2c7401363029fc5fe8017eedffc1ec94464ad141ff240283c4a76656d52e200",
+              "tools/benchkit/__init__.py": "ca67b6512bf927b7a13218c5e9098badb4f7a5c2e3e051559a67171b64d260ef",
+              "tools/benchkit/reference_cases.py": "f5c01fed71d1298a8389fbc249f675428fb117b911692b7caa6a3b9b9515e927",
+              "tools/benchkit/oracles.py": "fc578193666de673e02168b0c0a2d13bcfd8ac31558569805842ff58a2f04a3d",
+              "tools/benchkit/images.py": "1978e8021ca1cf9ab07794306ea4aadb52cbee54d2ecd2c0dbca16fc2b1ef842",
+              "corpus/generated/paint/image-direct-bilinear.pdf": "155298fdf9bddf5b260763f2ceb8223eb88a63d6bf044ba21ddfbaab99278538"
+            },
+            "max_channel_error": 0
+          },
+          "sha256": "91422c45f5b635aae78600e8888b672ca79fa6467bba7c4451db00a13248c883"
+        },
+        "competitive": {
+          "metadata": {
+            "schema": 1,
+            "case_id": "paint/image-direct-bilinear",
+            "settings": {
+              "source_pdf_sha256": "155298fdf9bddf5b260763f2ceb8223eb88a63d6bf044ba21ddfbaab99278538",
+              "render_policy_sha256": "769c7c99d1f90aaacae2312c32f6cb8bb290dd5aa88d3414a9d1b9ee9e0bd77c",
+              "page": 0,
+              "dpi": 72,
+              "background": "white",
+              "output": "RGB8 PPM",
+              "box": "MediaBox=CropBox",
+              "annotations": true,
+              "accuracy": "competitive",
+              "entrypoint": "render_page",
+              "validation": "drawing-only"
+            },
+            "dimensions": [
+              32,
+              32
+            ],
+            "reference": {
+              "model": "decoded-samples-rgb8",
+              "evidence_class": "exact_rational",
+              "rounding": "nearest-half-up",
+              "derivation": "docs/references/image-direct-derivation.md"
+            },
+            "oracle_sha256": "568829b03884adf1438abe6354b5c4561b3999986db89ce4fc36dc35924fca1b",
+            "sources": {
+              "docs/references/image-direct-policy.md": "769c7c99d1f90aaacae2312c32f6cb8bb290dd5aa88d3414a9d1b9ee9e0bd77c",
+              "docs/references/image-direct-derivation.md": "f2f20987beed99f1d6d33d081c360fe601c365e7d050159dcff7f92a482900c2",
+              "tools/fixtures.py": "aea4943aaa9961f59aea4f12076c0ebf5a68fe0c7c570dd60aa937b2d951a635",
+              "tools/fixturegen/__init__.py": "06b824d1276832a8e563a33357fc1649b53e1b6b45ba2d3238bd3a089001fb93",
+              "tools/fixturegen/model.py": "16b0fa768f064c60e5e586b416fd41154891d4bfb866daf9c2724e72ea3db273",
+              "tools/fixturegen/paint.py": "2fe1b8630c83134e4b5c28d4a4c3b63f5d673d1bf8d8418e2453fb11d2d6f01e",
+              "tools/fixturegen/pdf.py": "6d1546f6a56fedd06bb4bfe247f6b5fa747e092b6ac471f9134dcef72820f810",
+              "tools/fixturegen/image.py": "29cc75b6a49cf04aa329cd94c8e188a242350bc4b633683a58dfd032da7240f6",
+              "tools/fixturegen/font.py": "39bf4056e475d2b8042129c7c443cf60779df9def94895cb82ef6b254332c4f1",
+              "tools/fixturegen/raster.py": "cf2b92c735c3f58e3405f5d847b0e2bec2bf1a13fabe02e5083087cbc8c4dd30",
+              "tools/fixturegen/jpx.py": "6088b09cb81b3b263f96fdde131e9ea27daaf046f61c4ffc35a64125187bb04c",
+              "tools/fixturegen/jbig2.py": "b742c16ce6f2e4d163e34869a76c385e093f523551917147017511312f161cb2",
+              "tools/fixturegen/competitive.py": "c2c7401363029fc5fe8017eedffc1ec94464ad141ff240283c4a76656d52e200",
+              "tools/benchkit/__init__.py": "ca67b6512bf927b7a13218c5e9098badb4f7a5c2e3e051559a67171b64d260ef",
+              "tools/benchkit/reference_cases.py": "f5c01fed71d1298a8389fbc249f675428fb117b911692b7caa6a3b9b9515e927",
+              "tools/benchkit/oracles.py": "fc578193666de673e02168b0c0a2d13bcfd8ac31558569805842ff58a2f04a3d",
+              "tools/benchkit/images.py": "1978e8021ca1cf9ab07794306ea4aadb52cbee54d2ecd2c0dbca16fc2b1ef842",
+              "corpus/generated/paint/image-direct-bilinear.pdf": "155298fdf9bddf5b260763f2ceb8223eb88a63d6bf044ba21ddfbaab99278538"
+            },
+            "max_channel_error": 0
+          },
+          "sha256": "f9fb3db05307b40120033270cc01a28bb809efe02d6d4765ac91dba4a6ddf141"
+        }
+      }
+    }
+  ]
+}
