@@ -6,7 +6,7 @@
 )]
 use pagura_core::{ErrorKind, ObjectId, Position, Recovery};
 use pagura_document::{Document, OpenOptions};
-use pagura_render::{Accuracy, RenderOptions, Tile, compile_page, compile_page_with_text};
+use pagura_legacy::{Accuracy, RenderOptions, Tile, compile_page, compile_page_with_text};
 use pagura_testkit::fixture;
 
 fn document(name: &str, recovery: Recovery) -> Document {

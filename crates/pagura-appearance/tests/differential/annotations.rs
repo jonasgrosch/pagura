@@ -9,7 +9,7 @@ use crate::support::{corpus, open_with};
 use pagura_appearance::{AppearanceStream, annotation_appearance};
 use pagura_core::{Dictionary, Error, Name, ObjectId, Recovery, Rect, Result, Value};
 use pagura_document::{Document, OpenOptions, Page, RevisionKind};
-use pagura_render::{RenderOptions, compile_page};
+use pagura_legacy::{RenderOptions, compile_page};
 use pagura_write::{NewObject, XrefFormat, write_incremental};
 use std::collections::BTreeMap;
 

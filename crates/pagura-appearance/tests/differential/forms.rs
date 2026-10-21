@@ -1,13 +1,13 @@
 //! Form appearances: [`pagura_appearance::prepare`] and
 //! [`pagura_appearance::prepare_widget_with_policy`] against
-//! `pagura_render::form_appearance`, byte for byte and error for error.
+//! `pagura_legacy::form_appearance`, byte for byte and error for error.
 
 use crate::support::{corpus, open, open_with};
 use pagura_appearance as new;
 use pagura_core::{Diagnostic, Dictionary, Error, Limits, Name, ObjectId, Recovery, Result};
 use pagura_document::OpenOptions;
 use pagura_document::forms::{ButtonValue, ChoiceSelection, FieldKind, FillValue, FormFiller};
-use pagura_render::form_appearance as old;
+use pagura_legacy::form_appearance as old;
 use pagura_text::Provider;
 use std::collections::BTreeMap;
 use std::path::Path;

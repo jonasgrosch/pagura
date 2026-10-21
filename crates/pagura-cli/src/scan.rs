@@ -21,9 +21,10 @@ struct Report {
 }
 
 /// Opens and renders every page, preserving the strict audit without a
-/// second compilation pass. A refused repair reopens the same immutable bytes
-/// in Repair mode and retries the current page. Earlier strict compilations
-/// needed no repair; non-repair errors do not make the strict audit fail.
+/// second pass. A refused repair, while recording or rendering, reopens the
+/// same immutable bytes in Repair mode and retries the current page.
+/// Earlier strict pages needed no repair; non-repair errors do not make the
+/// strict audit fail.
 ///
 /// # Errors
 /// Only failures to write the report; everything else is reported.
@@ -68,14 +69,13 @@ pub(crate) fn run(
         .unwrap_or(0)
         .min(max_pages.unwrap_or(usize::MAX));
     for index in 0..limit {
-        let compile = |context: &RenderContext| {
-            context
-                .document()
-                .page(index)
-                .and_then(|page| context.compile_page(page))
+        let render = |context: &RenderContext| {
+            let page = context.document().page(index)?;
+            let scene = context.scene(page)?;
+            context.render_scene(&scene, options, None)
         };
-        let mut list = compile(&context);
-        if strict && list.as_ref().is_err_and(|error| error.repair.is_some()) {
+        let mut rendered = render(&context);
+        if strict && rendered.as_ref().is_err_and(|error| error.repair.is_some()) {
             let diagnostics = context.document().diagnostics();
             let document = match source.open_bytes(Arc::clone(&bytes), Recovery::Repair) {
                 Ok(document) => document,
@@ -84,9 +84,9 @@ pub(crate) fn run(
             document.report(diagnostics);
             context = shared_context(document, provider.as_ref());
             strict = false;
-            list = compile(&context);
+            rendered = render(&context);
         }
-        match list.and_then(|list| list.render(options)) {
+        match rendered {
             Ok(pixmap) => {
                 black_box(pixmap);
                 report.rendered += 1;

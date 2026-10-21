@@ -159,7 +159,6 @@ fn convert(conversion: &Conversion, out: &mut impl Write) -> Result<(), Failure>
             Output::Directory(directory) => image_path(directory, page),
         };
         write_new(&path, &encode_ppm(&pixmap))?;
-        context.recycle(pixmap);
         stages.push(Stage {
             page,
             render,

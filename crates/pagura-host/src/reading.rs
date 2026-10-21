@@ -11,7 +11,7 @@ pub(crate) use text::{page_text, search};
 
 use crate::protocol::{Field, PageRef, RequestKind, ResponseKind, SearchFlags, SessionStats};
 use crate::wire::Writer;
-use pagura::{DisplayList, Error, Result, SearchOptions};
+use pagura::{Error, Rect, Result, SearchOptions};
 
 /// Most matches one search request returns.
 pub const MAX_SEARCH_MATCHES: u32 = 1024;
@@ -155,8 +155,7 @@ impl Response {
 }
 
 /// `u8 present | [f64 x0, y0, x1, y1]`.
-pub(crate) fn bounds(list: &DisplayList, cap: usize) -> Result<Response> {
-    let bounds = list.content_bounds()?;
+pub(crate) fn bounds(bounds: Option<Rect>, cap: usize) -> Result<Response> {
     let mut out = Writer::new(cap);
     out.flag(bounds.is_some())?;
     if let Some(bounds) = bounds {
