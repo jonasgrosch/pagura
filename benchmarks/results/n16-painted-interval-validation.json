@@ -98,9 +98,10 @@
     "sha256": "fc00a8677853ca33b0f028127aadf390f8a754fce316dda4a18e959fd1a493fb"
   },
   "limitations": [
-    "Only baseline has accepted native/WASI renderer test observations; candidate-shaped metadata in diagnostics002 selected the baseline binary and was rejected.",
-    "Temporary probes are removed; source fingerprints match pre-probe inputs after the expected-pixel test repair.",
-    "No incremental speed, RSS, candidate layout or complete-validation claim."
+    "Candidate passed 236 native renderer tests in its own fresh build directory; portable renderer/layout validation remains incomplete.",
+    "Candidate-shaped metadata in diagnostics002 selected the baseline binary and was rejected; those observations remain unqualified.",
+    "Temporary probes are removed. No incremental speed, RSS, candidate layout or complete-repository-validation claim.",
+    "The interrupted full check has no returned combined log; its receipt records that missing artifact."
   ],
   "harness_tests": {
     "passed": 14,
@@ -130,5 +131,49 @@
     "run_v3.py": "2e9532b58afa774cf3c1600991dd7ca0a8b574d0ebf866511abe1146a575dac3",
     "run_wasi_diagnostic.mjs": "3e6b8fbc6056f53c06d8e26099979d337c1f4a1a6d1c849ab248517a50b0071a",
     "select_artifact.py": "69dae692a57e682b647f19d42338c6bd4489a1ab8fdb7cdfd9a5304920064cd4"
+  },
+  "candidate_native": {
+    "status": "passed",
+    "tests": 236,
+    "temporary_probes_present": false,
+    "target_dir": "/private/tmp/n16-candidate-native-check-001",
+    "records": {
+      "log": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-candidate-native-001.log",
+        "sha256": "4ca10bb08aa6c1bb7a20e4346179244d47b03c74ea69664efda4938f4a4f80c8"
+      },
+      "report": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-candidate-native-001.json",
+        "sha256": "12adfb27e8c10dd4cf6fd1b11f616c12f5ba16cb307ff3f36e7243879ae86141"
+      },
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/candidate-native-001-receipt.json",
+        "sha256": "d960902b5b91a0b8490e614c8d5022d4ddfc3ade253b43463d0c5c463137b89b"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/candidate-native-001-observer/guard.json",
+        "sha256": "fdb27af4e7eda8485dc6e0d7d542db121c5d465af754dfc0442d87845e7333a3"
+      }
+    }
+  },
+  "full_repository_check": {
+    "status": "interrupted-external-contention",
+    "exit_code": 143,
+    "passed": false,
+    "combined_log_available": false,
+    "records": {
+      "report": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-001.json",
+        "sha256": "7eaee83bcf9f14f68085a7edd6c695198d7f3a634efd91f72f6d8d9abf008756"
+      },
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/full-check-001-receipt.json",
+        "sha256": "8384351ac924e2349f2204504b36339d0848d7e347db196e738bba63b5f8858a"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/full-check-001-observer/guard.json",
+        "sha256": "c62f8b3e4fc136343cf7cc8cbd238daec3a4a1e21a985b57a95af8652a168fe7"
+      }
+    }
   }
 }

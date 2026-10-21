@@ -1,9 +1,11 @@
 # Output-interval diagnostic checkpoint
 
-The candidate remains unvalidated. The 14 benchmark-harness unit tests passed,
-but there is no accepted candidate renderer test/layout result and no incremental
-performance sample. See `../../n16-painted-interval-validation.json` for terminal
-record hashes and the restored source identities.
+The candidate passed all 236 native renderer tests in a fresh, dedicated build
+directory after removal of temporary probes. All 14 benchmark-harness unit tests
+also passed. Portable layout/renderer checks and the full repository check remain
+incomplete; there is no incremental performance sample. See
+`../../n16-painted-interval-validation.json` for terminal record hashes and
+restored source identities.
 
 The initial candidate build found E0716 in the new public test's temporary
 expected-pixel array. A local array binding corrects that test; no production
@@ -15,6 +17,8 @@ behavior changed. The original failure is retained.
 | diagnostics-002 / run_v2.py | Baseline passed all 231 tests on native, WASI SIMD and scalar; candidate artifact was actually the baseline binary, caught by missing required candidate tests |
 | diagnostics-003 / run_v3.py | Fresh separate arm/platform directories; canceled when an external workspace check started |
 | diagnostics-004 / run_v3.py | Same isolated procedure; canceled when an external release build started |
+| candidate-native-001 | Actual uninstrumented candidate passed all 236 native tests, including both new public interval tests |
+| full-check-001 | External compute triggered cancellation; no completed repository check or returned combined log |
 
 Do not interpret the candidate observation in diagnostics-002 as candidate
 validation: Cargo reported its manifest path and a fresh artifact, but the
