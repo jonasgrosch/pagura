@@ -7,6 +7,17 @@ session-start/current comparison. Source preparation here does not alter either
 comparison arm. Build, test and benchmark work waits for available local compute;
 the frozen comparison and its audit take priority before this experiment.
 
+The start/current comparison is now completed and committed as `fc41ce6e` in
+`codex/renderer-stacked-gains`. It establishes selected Exact gains alongside
+large Competitive text regressions and roughly doubled latency for the opaque
+text full-page fixture. This candidate remains a bounded attempt to recover
+N16 output costs, not a presumed solution for the separate F32 text regressions.
+Fourteen harness tests pass. Renderer validation is
+[incomplete](../../benchmarks/results/sources/n16-painted-interval-validation/README.md):
+diagnostic parser/artifact selection failures were retained and corrected, then
+external compute interrupted the isolated attempts. All temporary probes are
+removed. No incremental speed or candidate memory-layout claim is available.
+
 This is not a frozen launch plan. Freeze the concrete baseline commit, source
 and binary pins, expanded cell list, seeds and every helper before the pilot. The baseline
 is the retained reconciled stack at `a9814ee476c1b17a27b1e9a904f1f4fac8d5cd9c`

@@ -1,0 +1,134 @@
+{
+  "schema": 1,
+  "removed": {
+    "baseline": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval-base/pagura",
+      "commit": "a9814ee476c1b17a27b1e9a904f1f4fac8d5cd9c",
+      "source_sha256": "b3a124d48e4761b66a717edb542ceebf56ffa91b0e3f702f997b005d1a30a2c7"
+    },
+    "candidate": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura",
+      "commit": "210287a77415e62050468a83aa5f23dae2813f6f",
+      "source_sha256": "f3bc6749d2d33c8b5248fd74489a679609ef8d538c9f612be41e0330bc6e37a6"
+    }
+  },
+  "attempts": {
+    "diagnostics-001": {
+      "report": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-001/report.json",
+        "sha256": "98daac7f01eeb07d15d6e05d0d3013c474a1f2c0bc54f65d70dbebe021f7b46c",
+        "status": "failed-or-incomplete"
+      },
+      "failure": "ValueError: malformed layout row",
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-001-receipt.json",
+        "sha256": "325b3d26d7e1fb4aa1ecf5c4c11280dc85867d500f5cd541ee4251a01666cdf0",
+        "status": "failed"
+      },
+      "source_unchanged": true,
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-001-observer/guard.json",
+        "sha256": "8ea3dda39400ede25d272ec87569970a356abc9e4542a115f4f903e6f1aee283",
+        "status": "child-failed"
+      }
+    },
+    "diagnostics-002": {
+      "report": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-002/report.json",
+        "sha256": "5a32f48c075e26f8aa46d0f3257ca59f2a8397b04b931633baed48318ae4f1b0",
+        "status": "failed-or-incomplete"
+      },
+      "failure": "ValueError: candidate interval tests did not run",
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-002-receipt.json",
+        "sha256": "d47c1d900c2725024023ff2ed9fc01210ed9309f65e9d4a52000a14843d93f61",
+        "status": "failed"
+      },
+      "source_unchanged": true,
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-002-observer/guard.json",
+        "sha256": "c463026de90bd77f6b76aa00a5fd3c2c689887b43a7d887a84d8ce0b0d091a7c",
+        "status": "child-failed"
+      }
+    },
+    "diagnostics-003": {
+      "report": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-003/report.json",
+        "sha256": "ff8a034840b1a2f5151b7448914e82373cebae89487167f7a1e9b10105e4cd65",
+        "status": "failed-or-incomplete"
+      },
+      "failure": "MeasurementCancelled: 143",
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-003-receipt.json",
+        "sha256": "f6c465f0b3b10c5a0529dd979dba2cbabfaf49cb35ac5c7357fee61c0fbc1b85",
+        "status": "failed"
+      },
+      "source_unchanged": true,
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-003-observer/guard.json",
+        "sha256": "02064925ba5e562ad0fac7411c9ae3b85aea8f2124cdc9facc95125ff8558297",
+        "status": "invalid-external-contention"
+      }
+    },
+    "diagnostics-004": {
+      "report": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-004/report.json",
+        "sha256": "fe48a7afbd04caf9bc7db2bf646711eba6b3896808ab8046f0d8d078ac96e1ff",
+        "status": "failed-or-incomplete"
+      },
+      "failure": "MeasurementCancelled: 143",
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-004-receipt.json",
+        "sha256": "fae4aba47fd9c92a0f58db9b1202542fe16dc066a2d34c350d9d1178e01fc3dd",
+        "status": "failed"
+      },
+      "source_unchanged": true,
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-004-observer/guard.json",
+        "sha256": "de9cc3e3b23fe05bd38975ee2ae2e46125afaed84fdb568bee198023a57fbcd4",
+        "status": "invalid-external-contention"
+      }
+    }
+  },
+  "status": "candidate-validation-incomplete",
+  "admission": false,
+  "performance_samples": 0,
+  "probe_removal": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/probe-removal-002.json",
+    "sha256": "fc00a8677853ca33b0f028127aadf390f8a754fce316dda4a18e959fd1a493fb"
+  },
+  "limitations": [
+    "Only baseline has accepted native/WASI renderer test observations; candidate-shaped metadata in diagnostics002 selected the baseline binary and was rejected.",
+    "Temporary probes are removed; source fingerprints match pre-probe inputs after the expected-pixel test repair.",
+    "No incremental speed, RSS, candidate layout or complete-validation claim."
+  ],
+  "harness_tests": {
+    "passed": 14,
+    "receipt": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/harness-unit-001-receipt.json",
+      "sha256": "8a5262adcf0e7b8de81427a4f23ab8c950648f0b410bc557a2dc34be5271a6f1"
+    }
+  },
+  "initial_compile": {
+    "status": "failed-test-lifetime-error-corrected",
+    "log": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-native-initial-001.log",
+      "sha256": "ffbd8cd661ee1d808e08e3a19c3d86dee8e2bff450e84b3d543c3c233d48d04f"
+    }
+  },
+  "shared_artifact_rejection": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-002-stop.json",
+    "sha256": "b9ca5c89ed81a67b0de3c598403929d888313611f32b726df910b1ae265c63c9"
+  },
+  "helper_sources": {
+    "LAYOUT-DRAFT.md": "9255317d9c7d803304a105be1cab911e35a60ac901179219423730790a259d27",
+    "layout-probe.patch": "96247380d1c6639833a33b4054d9c1236553bb71bc5fe350a4dedc82a9204039",
+    "pi-q4-README.md": "6e4125d295d8aa039a4d07883a87ba22fe2683e0caee351d0d9a90d291765387",
+    "pi-q4-diagnostic.patch": "9167826eb31d71bbada5d7f8dead8283b8f27c85e2e44306d80f4f83e8d2a635",
+    "run.py": "5c907e4e46e6db95b0ca5b9b4681f9ec4e27beb7a9782da0b68eaf1021266f71",
+    "run_v2.py": "275b62adfc41e5e5a7f6884c666689be19908a798d38f93ca5756f3c0d1192f7",
+    "run_v3.py": "2e9532b58afa774cf3c1600991dd7ca0a8b574d0ebf866511abe1146a575dac3",
+    "run_wasi_diagnostic.mjs": "3e6b8fbc6056f53c06d8e26099979d337c1f4a1a6d1c849ab248517a50b0071a",
+    "select_artifact.py": "69dae692a57e682b647f19d42338c6bd4489a1ab8fdb7cdfd9a5304920064cd4"
+  }
+}

@@ -1,0 +1,34 @@
+--- a/crates/pagura-render/src/compositor.rs
++++ b/crates/pagura-render/src/compositor.rs
+@@ -2002,6 +2002,31 @@ fn path_active(p: &PathCommand) -> bool {
+     )
+ }
+ 
++#[cfg(test)]
++#[test]
++fn temporary_n16_layout_probe() {
++    fn emit<T>(name: &str) {
++        println!(
++            "PAGURA_N16_LAYOUT_V1 arch={} os={} pointer_bits={} simd128={} type={} size={} align={}",
++            std::env::consts::ARCH,
++            std::env::consts::OS,
++            usize::BITS,
++            cfg!(target_feature = "simd128"),
++            name,
++            std::mem::size_of::<T>(),
++            std::mem::align_of::<T>(),
++        );
++    }
++    emit::<narrow::Buffer>("Buffer");
++    emit::<Option<narrow::Buffer>>("Option<Buffer>");
++    emit::<Surface>("Surface");
++    emit::<narrow::MaskSink<'static>>("MaskSink");
++    emit::<Context>("Context");
++    emit::<Vec<[u16; 4]>>("Vec<[u16;4]>");
++    emit::<std::ops::Range<usize>>("Range<usize>");
++    emit::<[u16; 4]>("[u16;4]");
++}
++
+ #[cfg(test)]
+ mod tests {
+     use super::*;

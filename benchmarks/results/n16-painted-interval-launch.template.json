@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "experiment": "n16-painted-interval",
+  "status": "template-not-frozen",
+  "phase": null,
+  "decision_reason": null,
+  "fallback_review_reason": null,
+  "plan": {"path": null, "sha256": null},
+  "bindings": {"path": null, "sha256": null},
+  "python": {"path": null, "sha256": null},
+  "guard": {"path": null, "sha256": null},
+  "node": {"path": null, "sha256": null},
+  "wasi_build_bindings": {"path": null, "sha256": null},
+  "prerequisites": {
+    "quality": {"receipt": {"path": null, "sha256": null}, "artifact": {"path": null, "sha256": null}},
+    "pilot": {"receipt": {"path": null, "sha256": null}, "artifact": {"path": null, "sha256": null}, "guard": {"path": null, "sha256": null}, "audit": {"path": null, "sha256": null}},
+    "wasi": {"receipt": {"path": null, "sha256": null}, "artifact": {"path": null, "sha256": null}, "guard": {"path": null, "sha256": null}, "audit": {"path": null, "sha256": null}}
+  },
+  "instructions": "Create a fresh phase config after prerequisites finish; freeze it with an independent command-line SHA and status frozen-before-launch. pilot needs quality; wasi additionally needs pilot; confirmation additionally needs independently audited WASI, no N16 suspension and explicit reason for any material fallback signal. artifact in pilot/wasi is the original measurement report. Prior successful receipts must bind that report and strict guard; audit is separately pinned after completion. Do not put phase-config hashes into the earlier plan/bindings or create circular hashes. No field implies a lease, host exclusivity, completed test or admission."
+}

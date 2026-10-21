@@ -1,0 +1,158 @@
+--- a/crates/pagura-render/src/compositor.rs
++++ b/crates/pagura-render/src/compositor.rs
+@@ -2005,6 +2005,49 @@
+ #[cfg(test)]
+ mod tests {
+     use super::*;
++
++    #[test]
++    fn temporary_n16_resource_boundary_probe() {
++        let tile = Tile { x: 0, y: 0, width: 3, height: 2 };
++        let background = pagura_raster::Rgba8::opaque(17, 85, 170);
++        for (label, pixels, decoded_bytes, raster_work, message, counters) in [
++            ("fit", 6, 55, 17, None, (17, 55, 13)),
++            ("pixel-below", 5, 55, 17, Some("page pixel budget exceeded"), (11, 7, 13)),
++            ("bytes-below", 6, 54, 17, Some("colour buffer memory exceeded"), (11, 7, 13)),
++            ("work-below", 6, 55, 16, Some("compositing work budget exceeded"), (11, 55, 13)),
++        ] {
++            let mut context = glyph_context(Limits {
++                pixels, decoded_bytes, raster_work, ..Limits::default()
++            });
++            // Synthetic prior ledger use; this is not allocator/RSS evidence.
++            context.work = 11;
++            context.allocated = 7;
++            context.function_work = 13;
++            let result = context.page_surface(tile, plan::Format::N16, [17, 85, 170, 255], false);
++            let observed = result.as_ref().map(|page| page.narrow().unwrap().bytes())
++                .map_err(Error::clone);
++            let expected = message.map_or(Ok(48), |message| Err(Error::limit(message)));
++            assert_eq!(observed, expected, "{label}");
++            assert_eq!((context.work, context.allocated, context.function_work), counters, "{label}");
++            println!("PAGURA_PI_Q4_V1 page={label} result={observed:?} counters={counters:?}");
++            if let Ok(mut page) = result {
++                let mut output = Pixmap::new(3, 2, background, 6).unwrap();
++                for painted in [false, true] {
++                    if painted {
++                        page.narrow_mut().unwrap().path(5, &[255], [0.0; 4], 1.0).unwrap();
++                    }
++                    context.write_output(&page, &[], Model::Rgb, &mut output, tile).unwrap();
++                    let mut expected = [17_u8, 85, 170, 255].repeat(6);
++                    if painted {
++                        expected[20..24].copy_from_slice(&[0, 0, 0, 255]);
++                    }
++                    assert_eq!(output.data(), expected);
++                    assert_eq!((context.work, context.allocated, context.function_work), counters);
++                    println!("PAGURA_PI_Q4_V1 output painted={painted} counters={counters:?} pixels={:?}", output.data());
++                }
++            }
++        }
++    }
+ 
+     fn overprint_list(bytes: &[u8]) -> DisplayList {
+         let document = pagura_document::Document::open(
+@@ -2638,6 +2681,7 @@
+             };
+             let mut pixels = vec![0; 480];
+             target.narrow().unwrap().output(0, &mut pixels);
++            println!("PAGURA_PI_Q4_V1 region closed={closed} initial_work={work} result={result:?} work={} allocated={} function_work={}", context.work, context.allocated, context.function_work);
+             (result.map_err(|e| e.to_string()), context.work, pixels)
+         };
+         let (result, work, expected) = paint_with(false, Limits::default(), 0);
+--- a/crates/pagura-render/src/display.rs
++++ b/crates/pagura-render/src/display.rs
+@@ -986,6 +986,7 @@
+                         )
+                         .unwrap_err();
+                     assert_eq!(full, tile, "{name}: {accuracy:?} full/tile error");
++                    println!("PAGURA_PI_Q4_V1 source fixture={name} mode={accuracy:?} error={full:?} diagnostics={:?}", document.diagnostics());
+                     if kind == "icc" {
+                         assert!(full.is_unsupported(), "{name}: {full}");
+                         assert_eq!(
+--- a/crates/pagura-render/src/compositor/sources_tests.rs
++++ b/crates/pagura-render/src/compositor/sources_tests.rs
+@@ -137,14 +137,17 @@
+     let mut target = surface();
+     context.validate_plain_sources(&list.commands, 0).unwrap();
+     assert_eq!(context.function_work, 1);
++    println!("PAGURA_PI_Q4_V1 function stage=validated work={} allocated={} function_work={}", context.work, context.allocated, context.function_work);
+     execute(&mut context, &list, &mut target).unwrap();
+     assert_eq!(context.function_work, 2);
++    println!("PAGURA_PI_Q4_V1 function stage=painted work={} allocated={} function_work={}", context.work, context.allocated, context.function_work);
+     assert_eq!(pixel(&target), [64, 64, 64, 255]);
+     let error = execute(&mut context, &list, &mut target).unwrap_err();
+     assert_eq!(error.kind, ErrorKind::Limit);
+     assert_eq!(error.position, position(10));
+     assert_eq!(context.function_work, 2);
+     assert_eq!(pixel(&target), [64, 64, 64, 255]);
++    println!("PAGURA_PI_Q4_V1 function stage=refused error={error:?} work={} allocated={} function_work={}", context.work, context.allocated, context.function_work);
+ }
+ 
+ #[test]
+@@ -156,12 +159,11 @@
+     context.validate_plain_sources(&list.commands, 0).unwrap();
+     assert_eq!(context.work, budget);
+     let mut target = surface();
+-    assert_eq!(
+-        execute(&mut context, &list, &mut target).unwrap_err().kind,
+-        ErrorKind::Limit
+-    );
++    let error = execute(&mut context, &list, &mut target).unwrap_err();
++    assert_eq!(error.kind, ErrorKind::Limit);
+     assert_eq!(context.work, budget);
+     assert_eq!(pixel(&target), [255; 4]);
++    println!("PAGURA_PI_Q4_V1 command error={error:?} work={} allocated={} function_work={}", context.work, context.allocated, context.function_work);
+ }
+ 
+ #[test]
+@@ -189,6 +191,7 @@
+             ErrorKind::Unsupported(crate::features::SINGULAR_STROKE)
+         );
+         assert_eq!(error.position, position(20));
++        println!("PAGURA_PI_Q4_V1 singular mode={accuracy:?} error={error:?}");
+         assert_eq!(glyphs.render(&options).unwrap().data(), [255; 4]);
+     }
+ }
+@@ -216,6 +219,7 @@
+             ErrorKind::Unsupported(crate::features::SINGULAR_STROKE)
+         );
+         assert_eq!(error.position, position(31));
++        println!("PAGURA_PI_Q4_V1 none-stroke mode={accuracy:?} error={error:?}");
+     }
+ }
+ 
+@@ -241,9 +245,11 @@
+         .unwrap_err();
+     assert_eq!(error.kind, ErrorKind::Limit);
+     assert_eq!(error.position, position(41));
++    println!("PAGURA_PI_Q4_V1 depth limit=2 error={error:?} work={} allocated={} function_work={}", too_shallow.work, too_shallow.allocated, too_shallow.function_work);
+     let mut admitted = context(&list);
+     admitted.limits.depth = 3;
+     admitted.validate_plain_sources(&list.commands, 0).unwrap();
++    println!("PAGURA_PI_Q4_V1 depth limit=3 result=ok work={} allocated={} function_work={}", admitted.work, admitted.allocated, admitted.function_work);
+ }
+ 
+ #[test]
+@@ -303,6 +309,7 @@
+         assert_eq!(error.kind, ErrorKind::InvalidArgument);
+         assert_eq!(error.message, "path geometry is not finite");
+         assert_eq!(error.position, position(60));
++        println!("PAGURA_PI_Q4_V1 inverse-overflow mode={accuracy:?} error={error:?}");
+     }
+ }
+ 
+@@ -358,4 +365,5 @@
+     assert_eq!(error.position, position(80));
+     assert_eq!(context.function_work, 1);
+     assert_eq!(pixel(&target), [64, 64, 64, 255]);
++    println!("PAGURA_PI_Q4_V1 f32-function mode=Competitive error={error:?} work={} allocated={} function_work={}", context.work, context.allocated, context.function_work);
+ }
+--- a/crates/pagura-render/src/compositor/translucency_tests.rs
++++ b/crates/pagura-render/src/compositor/translucency_tests.rs
+@@ -287,6 +287,7 @@
+             position
+         };
+         assert_eq!(error.position, expected_position);
++        println!("PAGURA_PI_Q4_V1 translucent-source fixture={name} mode=Competitive error={error:?} diagnostics={:?}", document.diagnostics());
+         let tile = Tile {
+             x: 3,
+             y: 3,
