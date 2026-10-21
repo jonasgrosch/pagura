@@ -249,12 +249,12 @@ fn apart(
         let d = right - left;
         let separated = if !(exact_left && exact_right) {
             d > margins.rounding
-        } else if margins.vertices > 0.0 {
-            d > margins.vertices
         } else if y == lo || y == hi {
-            d >= 0.0
+            // Identical vertices may touch at a slab's ends; distinct ones
+            // keep the margin.
+            d == 0.0 || d > margins.vertices.max(-0.0)
         } else {
-            d > 0.0
+            d > margins.vertices
         };
         if !separated {
             return false;

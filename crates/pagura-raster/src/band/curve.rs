@@ -170,8 +170,10 @@ impl Builder<'_> {
         Ok(())
     }
 
+    // Horizontal lines bound no area of a certified outline; like flat
+    // curves they are neither kept nor counted.
     fn line(&mut self, a: Point, b: Point) -> Result<()> {
-        if a != b {
+        if a.y != b.y {
             self.push(Piece::Line(Line { a, b }))?;
         }
         Ok(())
@@ -436,7 +438,8 @@ mod tests {
             .filter(|p| matches!(p, Piece::Curve(_)))
             .count();
         assert_eq!(curves, 2);
-        // The area under the arch: 2/3 × 4 × 2 = 16/3.
+        // The area under the arch, 2/3 × 4 × 2 = 16/3; its horizontal base
+        // adds nothing to the integral of x dy and is dropped.
         let area: f64 = pieces
             .iter()
             .map(|p| match *p {
