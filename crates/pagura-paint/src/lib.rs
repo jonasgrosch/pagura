@@ -28,4 +28,4 @@ mod testing;
 pub use format::Format;
 pub use prepare::{Charges, Completion, PreparedScene, prepare};
 pub use request::{FastParams, OverprintMode, RenderRequest};
-pub use source::{ImageSampler, PaintContext, ShadingSource, Source, SpanColors};
+pub use source::{BBoxUse, ImageSampler, PaintContext, ShadingSource, Source, SpanColors};

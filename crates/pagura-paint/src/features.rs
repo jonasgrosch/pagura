@@ -1,10 +1,13 @@
 //! Stable tags for rendering capabilities the renderer does not implement.
-//!
-//! The tags keep the names the earlier renderer reported for the same
-//! faults, so callers and fixtures see no change; they move here from
-//! `pagura-render` with the code that raises them.
+//! This crate owns the `shading.` area; the other tags keep the names the
+//! earlier renderer reported for the same faults, so callers and fixtures
+//! see no change, and move here from `pagura-render` with the code that
+//! raises them.
 
 use pagura_core::Feature;
+
+/// Shadings whose shading space or `Matrix` maps to device space singularly.
+pub const SHADING_TRANSFORM: Feature = Feature::new("shading.transform");
 
 /// Stroking under a singular CTM cannot recover the pen's user space.
 pub const SINGULAR_STROKE: Feature = Feature::new("graphics.singular-stroke");
@@ -23,6 +26,7 @@ pub const PATTERN_IMAGE_MASK: Feature = Feature::new("pattern.image-mask");
 
 /// Every tag above.
 pub const ALL: &[Feature] = &[
+    SHADING_TRANSFORM,
     SINGULAR_STROKE,
     TRANSPARENCY_TRANSFER,
     PATTERN_TILING,

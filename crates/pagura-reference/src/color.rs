@@ -31,7 +31,7 @@ pub(crate) enum Prepared {
         channels: usize,
     },
     /// Any other conversion.
-    Converter(Converter),
+    Converter(Box<Converter>),
 }
 
 impl Prepared {
@@ -146,7 +146,7 @@ impl Colors {
                 process: target.process,
                 channels: target.channels(),
             },
-            _ => Prepared::Converter(Converter::new(space, target, conversion)?),
+            _ => Prepared::Converter(Box::new(Converter::new(space, target, conversion)?)),
         });
         self.cache.insert(key, Rc::clone(&prepared));
         Ok(prepared)

@@ -1,6 +1,20 @@
 //! Prepared colour conversion into a blending space (10.4, 11.3.4,
 //! 11.7.4): built once per colour space, target and conversion, then applied
 //! without walking the space's structure again.
+//!
+//! A conversion follows the source space's chain to the target: an Indexed
+//! lookup, the range clipping of an ICCBased space without a usable profile,
+//! a Separation or DeviceN tint transform, and finally either the target's
+//! own device family (clipped, no colour transform) or encoded sRGB (device
+//! formulas, CIE colorimetry or an ICC profile) encoded into the target's
+//! family, with black generation and undercolour removal for CMYK (10.3.4).
+//!
+//! Under overprint simulation ([`Colorants::Separated`]) a Separation or
+//! DeviceN space whose colorants the target has paints those channels
+//! directly, `All` paints every channel, and [`Painted`] tells the channels
+//! a colour specifies (11.7.4.3).
+
+mod plan;
 
 use crate::function::Function;
 use crate::icc::Intent;
@@ -32,17 +46,56 @@ impl Process {
     }
 }
 
+/// How a target receives named colorants (8.6.7, 11.7.4).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum Colorants {
+    /// Composite colour: every space converts through its alternate and
+    /// every colour paints every channel.
+    #[default]
+    Composite,
+    /// Overprint simulation: a Separation or DeviceN space paints the
+    /// process channels its process colorant names select (in a CMYK target)
+    /// and the spot channels its spot names select, `All` paints every
+    /// channel, and [`Painted`] reports the channels a colour specifies. A
+    /// space naming a process colorant converts through its alternate in a
+    /// Gray or RGB target.
+    Separated,
+}
+
 /// Where converted colours go: a process space plus the spot colorants that
 /// overprint simulation keeps as channels of their own (11.7.4).
+///
+/// Build it with [`Target::new`] or [`Target::separated`].
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct Target {
     /// The process components.
     pub process: Process,
     /// Spot colorant channels after the process components, in order.
     pub spots: Arc<[Name]>,
+    /// How named colorants reach the channels.
+    pub colorants: Colorants,
 }
 
 impl Target {
+    /// A composite target of `process` components and no spot channels.
+    pub fn new(process: Process) -> Self {
+        Self {
+            process,
+            spots: Arc::new([]),
+            colorants: Colorants::Composite,
+        }
+    }
+
+    /// An overprint-simulating target with `spots` channels after the
+    /// process components.
+    pub fn separated(process: Process, spots: Arc<[Name]>) -> Self {
+        Self {
+            process,
+            spots,
+            colorants: Colorants::Separated,
+        }
+    }
+
     /// Process plus spot channels.
     pub fn channels(&self) -> usize {
         self.process.components() + self.spots.len()
@@ -66,6 +119,21 @@ pub struct Conversion {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct Painted(pub u64);
 
+impl Painted {
+    /// Every one of `channels` channels.
+    pub fn all(channels: usize) -> Self {
+        Self(match u32::try_from(channels) {
+            Ok(n) if n < u64::BITS => (1 << n) - 1,
+            _ => u64::MAX,
+        })
+    }
+
+    /// Whether channel `channel` is painted.
+    pub fn contains(self, channel: usize) -> bool {
+        u32::try_from(channel).is_ok_and(|c| c < u64::BITS && self.0 & (1 << c) != 0)
+    }
+}
+
 /// The most channels a [`Target`] may have: one bit each in [`Painted`].
 pub const MAX_CHANNELS: usize = 64;
 
@@ -73,6 +141,7 @@ pub const MAX_CHANNELS: usize = 64;
 #[derive(Debug, Clone)]
 pub struct Converter {
     target: Target,
+    plan: plan::Plan,
 }
 
 impl Converter {
@@ -80,17 +149,19 @@ impl Converter {
     ///
     /// # Errors
     ///
-    /// Returns `Unsupported` for a conversion the colour management cannot
-    /// perform and a `Limit` error for a target with more than
-    /// [`MAX_CHANNELS`] channels.
+    /// Returns `InvalidArgument` for a Pattern space (it has no
+    /// components), `Unsupported` for an ICC profile whose transform for the
+    /// intent is outside the supported subset, and a `Limit` error for a
+    /// target with more than [`MAX_CHANNELS`] channels or a space nested
+    /// more than 64 levels deep.
     pub fn new(space: &ColorSpace, target: &Target, conversion: &Conversion) -> Result<Self> {
-        let _ = (space, conversion);
         if target.channels() > MAX_CHANNELS {
             return Err(Error::limit("too many colour channels"));
         }
-        Err(Error::invalid_argument(
-            "prepared colour conversion is not implemented",
-        ))
+        Ok(Self {
+            target: target.clone(),
+            plan: plan::Plan::new(space, target, conversion)?,
+        })
     }
 
     /// The target.
@@ -98,18 +169,38 @@ impl Converter {
         &self.target
     }
 
-    /// The `function_work` units one conversion costs at most.
+    /// The `function_work` units one conversion costs at most: tint
+    /// transforms, and black generation and undercolour removal.
     pub fn cost(&self) -> usize {
-        0
+        self.plan.cost()
+    }
+
+    /// The channels every colour of the space paints, as
+    /// [`Self::convert`] returns them.
+    pub fn painted(&self) -> Painted {
+        self.plan.painted()
     }
 
     /// Converts `components` (clipped to the space's ranges) into
     /// `output`, which holds [`Target::channels`] values, and returns the
     /// channels the colour paints. Additive channels hold intensity and
-    /// subtractive ones `1 − tint`, as compositing stores them.
+    /// subtractive ones `1 − tint`, as compositing stores them; a channel
+    /// the colour leaves alone holds 1 (no colorant). A space that paints
+    /// nothing (Separation `None`) paints no channel.
     pub fn convert(&self, components: &[f64], output: &mut [f64]) -> Painted {
-        let _ = components;
-        output.fill(0.0);
-        Painted(0)
+        self.plan.convert(components, output);
+        self.plan.painted()
+    }
+
+    /// The channels a colour paints under overprint mode 1 (`OPM 1`,
+    /// 8.6.7): as [`Self::painted`], except that a DeviceCMYK colour in a
+    /// separated CMYK target (directly, through Indexed or through an
+    /// ICCBased space without a usable profile) leaves the process channels
+    /// of its zero components to the backdrop.
+    pub fn nonzero(&self, components: &[f64]) -> Painted {
+        self.plan.nonzero(components)
     }
 }
+
+#[cfg(test)]
+mod tests;
