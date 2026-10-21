@@ -348,7 +348,7 @@ impl Strategy {
             && colors.key.is_none()
             && colors.lookup.is_none()
             && lanes == 5
-            && matches!(image.samples, Samples::Bytes(_))
+            && matches!(image.samples, Samples::Bytes(_) | Samples::Planar(_))
         {
             let mut tables = Box::new([[0.0; 256]; 3]);
             let mut texel = [0.0; 5];
@@ -371,6 +371,22 @@ impl Strategy {
             );
         }
         (Self::General, 0)
+    }
+
+    /// Bytes the strategy's tables hold.
+    pub(super) fn bytes(&self) -> usize {
+        match self {
+            Self::Table(table, _) => size_of_val::<[f64]>(table),
+            Self::Rgb(_) => size_of::<[[f64; 256]; 3]>(),
+            Self::Cached(cache) => cache
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .values
+                .len()
+                .saturating_mul(size_of::<f64>())
+                .saturating_add(size_of::<Cache>()),
+            Self::General => 0,
+        }
     }
 
     /// Whether texels convert colours while painting.

@@ -66,6 +66,7 @@ mod mask;
 mod parameters;
 mod source;
 mod stream;
+mod transpose;
 
 pub use source::{
     DecodeRequest, Decoded, ImageId, ImageSource, Layout, Reduce, SampleRect, SourceMask,

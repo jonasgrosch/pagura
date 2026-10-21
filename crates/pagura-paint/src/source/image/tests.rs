@@ -10,7 +10,7 @@
 
 use super::geometry::Geometry;
 use super::texels::{Convert, Opacity};
-use super::{Description, ImageSampler, MaskDescription, Prepared};
+use super::{Description, ImageSampler, MaskDescription, Orientation, Prepared};
 use crate::SpanColors;
 use pagura_color::{ColorSpace, Conversion, Converter, Indexed, Painted, Process, Target};
 use pagura_image::{Decoded, DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples};
@@ -125,6 +125,7 @@ fn case(image: DecodedImage) -> Case {
 /// channels.
 fn sampler(case: &Case, unit_to_device: Transform, target: usize) -> ImageSampler {
     let inverse = unit_to_device.inverse().unwrap();
+    let window = window(unit_to_device);
     let mask = case.mask.as_ref().map(|(mask, decode, kind)| {
         let description = match kind {
             MaskUse::Stencil => MaskDescription::Stencil,
@@ -146,13 +147,20 @@ fn sampler(case: &Case, unit_to_device: Transform, target: usize) -> ImageSample
         .space
         .as_ref()
         .map(|space| converter(base(space), target));
+    // Quarter turns sample the image with rows and columns exchanged, as
+    // preparation decodes it.
+    let orientation = Orientation::of(unit_to_device, description.mask);
+    let image = match orientation {
+        Orientation::Rows => case.image.clone(),
+        Orientation::Transposed => case
+            .image
+            .transposed(&pagura_core::Limits::default())
+            .unwrap(),
+    };
     let (prepared, _) = Prepared::new(
         &description,
-        (
-            Arc::new(Decoded::from(case.image.clone())),
-            mask.map(|(m, _)| m),
-        ),
-        inverse,
+        (Arc::new(Decoded::from(image)), mask.map(|(m, _)| m)),
+        (inverse, (window.0, window.2), orientation),
         convert,
     )
     .unwrap();
@@ -177,6 +185,8 @@ fn placements(width: u32, height: u32) -> Vec<Transform> {
         Transform::new(-w / 3.0, 0.0, 0.0, h / 2.0, 0.5 + w / 3.0, 0.75),
         Transform::new(0.0, h / 2.5, w / 3.5, 0.0, 0.3, 0.6),
         Transform::new(0.0, -h / 4.0, -w / 2.0, 0.0, 1.5 + w / 2.0, 0.5 + h / 4.0),
+        Transform::new(0.0, 2.7 * h, 3.1 * w, 0.0, 0.2, 0.4),
+        Transform::new(0.0, -h * 0.9, w * 1.6, 0.0, 0.7, 0.3 + h * 0.9),
         Transform::new(w * 0.31, w * 0.17, -h * 0.13, h * 0.29, 4.5, 0.25),
         Transform::new(w * 1.9, w * 0.4, h * 0.6, -h * 1.7, 0.5, 2.0 * h),
         Transform::new(w / 7.3, 0.0, 0.0, h * 2.1, 0.25, 0.0),
@@ -202,8 +212,18 @@ fn window(unit_to_device: Transform) -> (u32, u32, u32, u32) {
     (0, 0, clamp(x1) + 2, clamp(y1) + 2)
 }
 
+/// Whether a sampled value agrees with the oracle's: bit for bit, or, where
+/// codes are averaged as integers, within the rounding of a few f64
+/// operations.
+fn close(actual: f64, expected: f64) -> bool {
+    actual.to_bits() == expected.to_bits()
+        || (actual - expected).abs() <= 1e-13 * expected.abs().max(1.0)
+}
+
 /// Compares the new sampler with the oracle on every pixel of the window,
-/// as whole rows and as single pixels.
+/// as whole rows and as single pixels. Nearest samples and the general
+/// paths agree bit for bit; averages of codes within [`close`]. An empty
+/// alpha span means every alpha is 1.
 fn agree(case: &Case, target: usize) {
     for unit_to_device in placements(case.image.width, case.image.height) {
         let sampler = sampler(case, unit_to_device, target);
@@ -216,42 +236,43 @@ fn agree(case: &Case, target: usize) {
             sampler.span_with_shape(x0, y, len, &mut row, &mut row_shape);
             let channels = row.channels;
             assert_eq!(row.colors.len(), len * channels);
+            assert!(row.alpha.is_empty() || row.alpha.len() == len);
             for (i, x) in (x0..x1).enumerate() {
                 let expected = oracle.pixel(x, y);
                 let colors = &row.colors[i * channels..(i + 1) * channels];
+                let alpha = row.alpha.get(i).copied().unwrap_or(1.0);
                 let context = || format!("{unit_to_device:?} pixel ({x}, {y})");
-                assert_eq!(
-                    colors.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
-                    expected.color[..channels]
-                        .iter()
-                        .map(|v| v.to_bits())
-                        .collect::<Vec<_>>(),
-                    "colour {}",
-                    context()
-                );
-                assert_eq!(
-                    row.alpha[i].to_bits(),
-                    expected.alpha.to_bits(),
-                    "alpha {}",
-                    context()
-                );
-                assert_eq!(
-                    row_shape[i].to_bits(),
-                    expected.shape.to_bits(),
-                    "shape {}",
-                    context()
-                );
-                if sampler.shape_is_alpha() {
-                    assert_eq!(
-                        row_shape[i].to_bits(),
-                        row.alpha[i].to_bits(),
-                        "{}",
+                for (&actual, &expected) in colors.iter().zip(&expected.color[..channels]) {
+                    assert!(
+                        close(actual, expected),
+                        "colour {actual} vs {expected} {}",
                         context()
                     );
                 }
+                assert!(
+                    close(alpha, expected.alpha),
+                    "alpha {alpha} vs {} {}",
+                    expected.alpha,
+                    context()
+                );
+                assert!(
+                    close(row_shape[i], expected.shape),
+                    "shape {} vs {} {}",
+                    row_shape[i],
+                    expected.shape,
+                    context()
+                );
+                if sampler.shape_is_alpha() {
+                    assert_eq!(row_shape[i].to_bits(), alpha.to_bits(), "{}", context());
+                }
                 sampler.span_with_shape(x, y, 1, &mut single, &mut single_shape);
                 assert_eq!(single.colors, colors, "partition {}", context());
-                assert_eq!(single.alpha, [row.alpha[i]], "partition {}", context());
+                assert_eq!(
+                    single.alpha.first().copied().unwrap_or(1.0).to_bits(),
+                    alpha.to_bits(),
+                    "partition {}",
+                    context()
+                );
             }
         }
     }

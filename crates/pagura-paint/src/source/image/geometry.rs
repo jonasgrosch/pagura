@@ -44,7 +44,7 @@ pub(super) trait Texels {
 
 /// How device pixels map to source samples.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Mode {
+pub(super) enum Mode {
     /// The sample under the pixel centre.
     Nearest,
     /// Bilinear weights of the four samples around the pixel centre.
@@ -68,24 +68,25 @@ pub(super) struct Geometry {
     /// its extent in stored samples.
     inverse: Transform,
     mode: Mode,
+    interpolate: bool,
 }
 
 /// The source cells under one device pixel along one axis: `first..end`,
 /// with fractional end weights, unit interior weights and the reciprocal
 /// extent.
-#[derive(Debug, Clone, Copy)]
-struct Span {
-    first: u32,
-    end: u32,
-    first_weight: f64,
-    last_weight: f64,
-    normalization: f64,
+#[derive(Debug, Clone, Copy, Default)]
+pub(super) struct Footprint {
+    pub(super) first: u32,
+    pub(super) end: u32,
+    pub(super) first_weight: f64,
+    pub(super) last_weight: f64,
+    pub(super) normalization: f64,
 }
 
-impl Span {
+impl Footprint {
     /// The cells under device pixel `pixel` along an axis that maps pixels
     /// by `scale` and `offset` onto `0..maximum` cells.
-    fn new(pixel: u32, scale: f64, offset: f64, maximum: u32) -> Self {
+    pub(super) fn new(pixel: u32, scale: f64, offset: f64, maximum: u32) -> Self {
         let a = f64::from(pixel) * scale + offset;
         let b = (f64::from(pixel) + 1.0) * scale + offset;
         let low = a.min(b).clamp(0.0, f64::from(maximum));
@@ -100,6 +101,36 @@ impl Span {
             first_weight: weight(first),
             last_weight: weight(end.saturating_sub(1)),
             normalization: if high > low { 1.0 / (high - low) } else { 0.0 },
+        }
+    }
+
+    /// The two cells around the centre of device pixel `pixel` along an
+    /// axis that maps pixel centres by `scale` and `offset` onto `0..maximum`
+    /// cells, with their bilinear weights, as [`Geometry::fill`] weights
+    /// them; the cells merge where the image edge clamps them.
+    pub(super) fn bilinear(pixel: u32, scale: f64, offset: f64, maximum: u32) -> Self {
+        let position = (f64::from(pixel) + 0.5) * scale + offset - 0.5;
+        let left = position.floor();
+        let fraction = position - left;
+        let last = maximum.saturating_sub(1);
+        let (first, second) = (coordinate(left, last), coordinate(left + 1.0, last));
+        let (first_weight, last_weight) = (1.0 - fraction, fraction);
+        if first == second {
+            let weight = first_weight + last_weight;
+            return Self {
+                first,
+                end: first + 1,
+                first_weight: weight,
+                last_weight: weight,
+                normalization: 1.0 / weight,
+            };
+        }
+        Self {
+            first,
+            end: first + 2,
+            first_weight,
+            last_weight,
+            normalization: 1.0 / (first_weight + last_weight),
         }
     }
 
@@ -142,24 +173,55 @@ impl Geometry {
         if !finite {
             return Err(Error::limit("image sampling transform overflow"));
         }
-        let t = inverse;
-        let minifying = t.a.hypot(t.b) > 1.0 + 1e-9 || t.c.hypot(t.d) > 1.0 + 1e-9;
-        let swapped = t.a == 0.0 && t.d == 0.0;
-        let mode = if minifying && ((t.b == 0.0 && t.c == 0.0) || swapped) {
-            Mode::Separable { swapped }
-        } else if minifying {
-            Mode::Area
-        } else if interpolate {
-            Mode::Bilinear
-        } else {
-            Mode::Nearest
-        };
         Ok(Self {
             width,
             height,
             inverse,
-            mode,
+            mode: mode(inverse, interpolate),
+            interpolate,
         })
+    }
+
+    /// The geometry of the same placement over the image with rows and
+    /// columns exchanged ([`pagura_image::DecodedImage::transposed`]): a
+    /// quarter turn becomes upright. Sample coordinates are exchanged
+    /// exactly, so every footprint and weight stays the same.
+    pub(super) fn transposed(&self) -> Self {
+        let inverse = self
+            .inverse
+            .then(Transform::new(0.0, 1.0, 1.0, 0.0, 0.0, 0.0));
+        Self {
+            width: self.height,
+            height: self.width,
+            inverse,
+            mode: mode(inverse, self.interpolate),
+            interpolate: self.interpolate,
+        }
+    }
+
+    /// How device pixels map to samples.
+    pub(super) fn mode(&self) -> Mode {
+        self.mode
+    }
+
+    /// Device pixels to sample space.
+    pub(super) fn inverse(&self) -> Transform {
+        self.inverse
+    }
+
+    /// Stored samples per row and rows.
+    pub(super) fn size(&self) -> (u32, u32) {
+        (self.width, self.height)
+    }
+
+    /// The column and row of the sample under the centre of device pixel
+    /// (`x`, `y`), as [`Self::fill`] finds it without interpolation.
+    pub(super) fn nearest_cell(&self, x: u32, y: u32) -> (u32, u32) {
+        let center = self.center(x, y);
+        (
+            coordinate(center.x.floor(), self.width.saturating_sub(1)),
+            coordinate(center.y.floor(), self.height.saturating_sub(1)),
+        )
     }
 
     /// An upper bound of the texels one device pixel reads.
@@ -218,7 +280,7 @@ impl Geometry {
                 } else {
                     (t.d, t.f, self.height)
                 };
-                let rows = Span::new(y, scale, offset, bound);
+                let rows = Footprint::new(y, scale, offset, bound);
                 let mut line = [0.0; MAX_LANES];
                 let line = &mut line[..lanes];
                 for (value, px) in pixels.zip(x..) {
@@ -306,7 +368,7 @@ impl Geometry {
     /// footprint, in the order the lines are reached.
     fn reduce(
         &self,
-        (x, rows, swapped): (u32, Span, bool),
+        (x, rows, swapped): (u32, Footprint, bool),
         texels: &impl Texels,
         out: &mut [f64],
         line: &mut [f64],
@@ -317,7 +379,7 @@ impl Geometry {
         } else {
             (t.a, t.e, self.width)
         };
-        let columns = Span::new(x, scale, offset, maximum);
+        let columns = Footprint::new(x, scale, offset, maximum);
         let descending = (if swapped { t.c } else { t.d }) < 0.0;
         let opaque = texels.opaque();
         let width = u64::from(self.width);
@@ -374,6 +436,21 @@ impl Geometry {
         let x = coordinate(x, self.width.saturating_sub(1));
         let y = coordinate(y, self.height.saturating_sub(1));
         sample_index(u64::from(y) * u64::from(self.width) + u64::from(x))
+    }
+}
+
+/// How a placement whose device pixels map by `t` to sample space samples.
+fn mode(t: Transform, interpolate: bool) -> Mode {
+    let minifying = t.a.hypot(t.b) > 1.0 + 1e-9 || t.c.hypot(t.d) > 1.0 + 1e-9;
+    let swapped = t.a == 0.0 && t.d == 0.0;
+    if minifying && ((t.b == 0.0 && t.c == 0.0) || swapped) {
+        Mode::Separable { swapped }
+    } else if minifying {
+        Mode::Area
+    } else if interpolate {
+        Mode::Bilinear
+    } else {
+        Mode::Nearest
     }
 }
 

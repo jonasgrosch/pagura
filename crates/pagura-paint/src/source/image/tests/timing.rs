@@ -21,7 +21,8 @@ use super::converter;
 use crate::SpanColors;
 use crate::source::PaintContext;
 use crate::source::image::{
-    Description, ImageSampler, MaskDescription, Prepared, decode as decode_image,
+    Description, ImageSampler, MaskDescription, Orientation, Prepared, decode as decode_image,
+    planes_suit,
 };
 use pagura_color::{ColorSpace, Process, Target};
 use pagura_core::syntax::{Origin, Parser};
@@ -30,6 +31,7 @@ use pagura_document::{Document, OpenOptions, Page, Rotation};
 use pagura_image::{Decoded, ImageKind, ImageSource};
 use pagura_interpret::Composite;
 use pagura_raster::{DeviceRect, Point, Transform};
+use std::fmt::Write as _;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Instant;
@@ -115,14 +117,14 @@ impl Walk<'_> {
             return;
         };
         let subtype = dictionary.get(b"Subtype").and_then(Value::as_name);
-        match subtype.map(|name| name.as_bytes()) {
+        match subtype.map(pagura_core::Name::as_bytes) {
             Some(b"Image") => self.draws.push(Draw { id, matrix: ctm }),
             Some(b"Form") if depth < 8 => {
                 let form = dictionary
                     .get(b"Matrix")
                     .and_then(|v| document.resolve(v).ok())
                     .and_then(Value::as_array)
-                    .and_then(|values| matrix(values))
+                    .and_then(matrix)
                     .unwrap_or(Transform::IDENTITY);
                 let own = dictionary
                     .get(b"Resources")
@@ -249,16 +251,36 @@ pub(super) fn decode_once(placed: &Placed, limits: &Limits, reduced: bool) -> Ar
         reduced_image_decode: reduced,
         region: placed.rect,
     };
-    decode_image(&placed.source, placed.unit_to_device, &context).unwrap()
+    let decode = decode_array(placed, usize::from(placed.source.components()));
+    let plain = matches!(placed.source.mask(), pagura_image::SourceMask::None)
+        && !placed.source.interpolate();
+    let planes = planes_suit(
+        (placed.space.as_ref(), &decode, plain),
+        placed.unit_to_device,
+        &context,
+    );
+    let orientation = Orientation::of(placed.unit_to_device, MaskDescription::None);
+    decode_image(
+        &placed.source,
+        placed.unit_to_device,
+        (planes, orientation),
+        &context,
+    )
+    .unwrap()
+}
+
+/// The decode array of `placed`, one interval per component.
+fn decode_array(placed: &Placed, components: usize) -> Vec<[f64; 2]> {
+    placed.source.decode_array().map_or_else(
+        || vec![[0.0, 1.0]; components],
+        |values| values.as_chunks::<2>().0.to_vec(),
+    )
 }
 
 /// The sampler of `placed` over `decoded`, into RGB.
 pub(super) fn sampler(placed: &Placed, decoded: Arc<Decoded>) -> ImageSampler {
     let components = usize::from(decoded.image.components);
-    let decode = placed.source.decode_array().map_or_else(
-        || vec![[0.0, 1.0]; components],
-        |values| values.as_chunks::<2>().0.to_vec(),
-    );
+    let decode = decode_array(placed, components);
     let description = Description {
         space: placed.space.as_ref(),
         decode: &decode,
@@ -270,7 +292,11 @@ pub(super) fn sampler(placed: &Placed, decoded: Arc<Decoded>) -> ImageSampler {
     let (prepared, _) = Prepared::new(
         &description,
         (decoded, None),
-        placed.unit_to_device.inverse().unwrap(),
+        (
+            placed.unit_to_device.inverse().unwrap(),
+            (placed.rect.x0, placed.rect.x1),
+            Orientation::of(placed.unit_to_device, MaskDescription::None),
+        ),
         convert,
     )
     .unwrap();
@@ -349,7 +375,7 @@ fn old_route(
         ..pagura_render::RenderOptions::default()
     };
     best(runs, || {
-        std::hint::black_box(context.render_page(&page, &options).unwrap());
+        std::hint::black_box(context.render_page(page, &options).unwrap());
     })
 }
 
@@ -397,11 +423,17 @@ fn image_page_timing() {
         let limits = document.limits();
         for &dpi in &dpis {
             let scale = dpi / 72.0;
-            let images = placed(&document, &page, scale);
+            let images = placed(&document, page, scale);
             let mut line = format!("{name} {dpi} ({} images)", images.len());
             let (mut old_exact, mut old_competitive) = (f64::NAN, f64::NAN);
             if routes.contains(&"old") {
-                old_exact = old_route(&document, index, scale, pagura_render::Accuracy::Exact, runs);
+                old_exact = old_route(
+                    &document,
+                    index,
+                    scale,
+                    pagura_render::Accuracy::Exact,
+                    runs,
+                );
                 old_competitive = old_route(
                     &document,
                     index,
@@ -409,7 +441,7 @@ fn image_page_timing() {
                     pagura_render::Accuracy::Competitive,
                     runs,
                 );
-                line += &format!(" | {old_exact:.2} | {old_competitive:.2}");
+                let _ = write!(line, " | {old_exact:.2} | {old_competitive:.2}");
             }
             for (route, reduced, old) in [
                 ("exact", false, old_exact),
@@ -418,7 +450,8 @@ fn image_page_timing() {
                 if routes.contains(&route) {
                     let (decoding, sampling) = new_route(&images, &limits, reduced, runs);
                     let total = decoding + sampling;
-                    line += &format!(
+                    let _ = write!(
+                        line,
                         " | {route} {decoding:.2} + {sampling:.2} = {total:.2} ({:.3})",
                         total / old
                     );
@@ -439,7 +472,7 @@ fn image_decode_timing() {
     for (name, document, index) in pages(IMAGE_PAGES) {
         let page = document.page(index).unwrap();
         let limits = document.limits();
-        for placed in placed(&document, &page, 1.0) {
+        for placed in placed(&document, page, 1.0) {
             let source = &placed.source;
             let mut line = format!("{name} {}x{}", source.width(), source.height());
             for (label, reduce, layout) in [
@@ -450,9 +483,11 @@ fn image_decode_timing() {
             ] {
                 let request = DecodeRequest::new(reduce, None, layout);
                 let time = best(runs, || {
-                    std::hint::black_box(source.decode(&request, &limits, source.recovery()).unwrap());
+                    std::hint::black_box(
+                        source.decode(&request, &limits, source.recovery()).unwrap(),
+                    );
                 });
-                line += &format!(" | {label} {time:.2}");
+                let _ = write!(line, " | {label} {time:.2}");
             }
             eprintln!("{line}");
         }

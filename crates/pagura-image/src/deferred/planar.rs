@@ -181,6 +181,61 @@ impl Planar {
         true
     }
 
+    /// Converts samples `x0..x1` of source row `y` to interleaved RGB as
+    /// [`Self::rgb`] does for the whole row. Returns false when the range
+    /// is empty or outside the row, or `out` does not hold it.
+    pub fn rgb_range(&self, y: usize, x0: usize, x1: usize, out: &mut [u8]) -> bool {
+        if x0 >= x1 || x1 > self.width || y >= self.height || out.len() != (x1 - x0) * 3 {
+            return false;
+        }
+        let Some(repeat) = self.chroma_repeat() else {
+            for (x, p) in (x0..).zip(out.as_chunks_mut::<3>().0) {
+                for (c, v) in p.iter_mut().enumerate() {
+                    *v = self
+                        .get((y * self.width + x) * 3 + c)
+                        .unwrap_or(0)
+                        .to_le_bytes()[0];
+                }
+            }
+            return true;
+        };
+        // Chroma runs start at multiples of `repeat`; convert from the run
+        // holding `x0` and drop its leading samples.
+        let lead = x0 % repeat;
+        let start = x0 - lead;
+        let (luma, cb, cr) = (self.row(0, y), self.row(1, y), self.row(2, y));
+        let (Some(luma), Some(cb), Some(cr)) = (
+            luma.get(start..x1),
+            cb.get(start / repeat..),
+            cr.get(start / repeat..),
+        ) else {
+            return false;
+        };
+        if lead == 0 {
+            return super::ycbcr(luma, cb, cr, repeat, out);
+        }
+        let mut first = [0u8; 12];
+        let head = (repeat).min(x1 - start);
+        let Some(first) = first.get_mut(..head * 3) else {
+            return false;
+        };
+        if !super::ycbcr(&luma[..head], cb, cr, repeat, first) {
+            return false;
+        }
+        let taken = (head - lead) * 3;
+        out[..taken].copy_from_slice(&first[lead * 3..]);
+        if start + head == x1 {
+            return true;
+        }
+        super::ycbcr(
+            &luma[head..],
+            &cb[head / repeat..],
+            &cr[head / repeat..],
+            repeat,
+            &mut out[taken..],
+        )
+    }
+
     /// Whether source rows `a` and `b` have equal components, so they
     /// convert and filter identically.
     #[must_use]
