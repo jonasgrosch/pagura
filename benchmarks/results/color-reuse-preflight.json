@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "status": "blocked-quality",
+  "admission": false,
+  "quality_outputs_rechecked": 76,
+  "independent_rgb_passes": 74,
+  "opaque_alpha_passes": 76,
+  "identical_before_after_pairs": 38,
+  "failures": [
+    {
+      "case": "paint/text-knockout-false",
+      "mode": "competitive",
+      "side": "baseline",
+      "max_channel_error": 1,
+      "different_channels": 192,
+      "different_values": [
+        [
+          63,
+          64
+        ]
+      ]
+    },
+    {
+      "case": "paint/text-knockout-false",
+      "mode": "competitive",
+      "side": "candidate",
+      "max_channel_error": 1,
+      "different_channels": 192,
+      "different_values": [
+        [
+          63,
+          64
+        ]
+      ]
+    }
+  ],
+  "timing_pilot_launched": false,
+  "confirmation_launched": false,
+  "latency_gain_established": false,
+  "memory_gain_established": false,
+  "known_foreign_jobs_observed": false,
+  "observer_scans": 3,
+  "identities": {
+    "baseline": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/n16-painted-control/pagura",
+      "commit": "c70b467882faafc9baede8c06c7011ac2be1ae21",
+      "source_sha256": "90dfc83961434f8820e818c92d06f7088562ee9d108ed530dc1ce8950e75c782",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/color-component-reuse/build-002/baseline",
+      "binary_sha256": "3eea2f579aef12030cf24790c94f6ec3a2cb4a3348e446e49ac129e589aa96c1"
+    },
+    "candidate": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+      "commit": "671f79542e3dcfe70135e124b406998a6804630f",
+      "source_sha256": "f75fcde1f1d25323d277fc728e915b597d9bdc6fd454eff2f183bba6c6527645",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/color-component-reuse/build-002/candidate",
+      "binary_sha256": "58232ba5e03e32858a64a4d2b93389951066a4c9e7e3028bd59a2b928a125ded"
+    }
+  },
+  "artifacts_sha256": {
+    "benchmarks/results/local/color-component-reuse/preflight-002/report.json": "76ab087b063172bd722103be12ed5d08baaea9c20512f649704eea6b3460e72a",
+    "benchmarks/results/local/color-component-reuse/preflight-002-receipt.json": "01f147cadb1d5bccadf46d446f56f13065d163cc74bafaf8a82f81e7fceaad5a",
+    "benchmarks/results/local/color-component-reuse/preflight-002-observer/guard.json": "5ea96515603fc27af2a1903d48222d859ae39bff323cbc4f31d498238bda5eea",
+    "benchmarks/results/color-reuse-bindings.json": "f0f4d0245205a1e10a39ba94f1b386b33f2a244364ec0b7131ecdef860481c21",
+    "benchmarks/results/color-reuse-plan.json": "756e17d87fbb48d095ca257b156aea46ef6569bd371f2ea4540ca35fe7b3f6e5"
+  },
+  "prior_attempt": "preflight-001 stopped before any renderer invocation because bindings were absent after a coordinator assertion failed. Its failed receipt is retained; no samples were reused.",
+  "decision": "Preserve the allocation candidate as a patch, without accepting an unmeasured speedup. Repair the preexisting Competitive composition loss separately; then rebase and freeze a fresh incremental experiment.",
+  "scope": "Independent analytic19 RGB8 references, opaque white, 72 DPI, retained compilation. This is not the CLI image entrypoint or full-corpus perfection."
+}

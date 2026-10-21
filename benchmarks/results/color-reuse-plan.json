@@ -1,0 +1,316 @@
+{
+  "schema": 1,
+  "experiment": "color-reuse",
+  "status": "frozen-before-pilot",
+  "baseline_commit": "c70b467882faafc9baede8c06c7011ac2be1ae21",
+  "candidate_delta": "Validate every Color::set operand before mutation, then reuse its existing component Vec; no layout, default-space resolution or work/resource policy changes.",
+  "modes": [
+    "exact",
+    "competitive"
+  ],
+  "cells": [
+    {
+      "case": "classic/blank",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/blank",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/rectangle",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/rectangle",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/graphics-state",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/graphics-state",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/negative-rectangle",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/negative-rectangle",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/inherited-box",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/inherited-box",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/clipped-to-page",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/clipped-to-page",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/many-rectangles",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/many-rectangles",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/content-array-split",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/content-array-split",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "classic/many-operands",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "target"
+    },
+    {
+      "case": "classic/many-operands",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "target"
+    },
+    {
+      "case": "paint/text-heavy-page",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/text-heavy-page",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/text-mode-4",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/text-mode-4",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/type3-d0-colour",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/type3-d0-colour",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/text-knockout-true",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/text-knockout-true",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/text-knockout-false",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/text-knockout-false",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-soft-mask",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-soft-mask",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-direct-binary-halves",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-direct-binary-halves",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-direct-gray-quarter-turn",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-direct-gray-quarter-turn",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-direct-rgb-fractional",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-direct-rgb-fractional",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-direct-bilinear",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "paint/image-direct-bilinear",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    }
+  ],
+  "phases": {
+    "pilot": {
+      "pairs": 5,
+      "warmups": 5,
+      "seed": 20261108
+    },
+    "confirmation": {
+      "pairs": 200,
+      "warmups": 5,
+      "seed": 20261109
+    }
+  },
+  "expected_outputs": {
+    "preflight": 76,
+    "pilot": 760,
+    "confirmation": 15580
+  },
+  "maximum_launched_confirmations": 1,
+  "analysis": {
+    "method": "paired-percentile-bootstrap",
+    "resamples": 5000,
+    "confidence": 0.95,
+    "seed": 42017
+  },
+  "latency_metric": "metric_ns == total_ns: in-memory Document::open + compile_page + render; excludes file reads, output emission, process startup and destruction",
+  "thresholds": {
+    "target_median_upper": 0.95,
+    "target_p95_upper": 1.0,
+    "protected_median_upper": 1.02,
+    "protected_p95_upper": 1.02,
+    "peak_rss_ratio_max": 1.0
+  },
+  "quality": {
+    "independent_rgb8_tolerance": 0,
+    "require_opaque_alpha": true,
+    "require_same_mode_baseline_rgba_bytes": true,
+    "require_all_warmup_outputs": true,
+    "preflight": "Attempt all76 case/mode/side outputs and aggregate every numeric/render mismatch before returning blocked-quality. Cancellation, invalid provenance/cleanup or evidence budget failure remains fatal/incomplete. No exclusions or new allowances."
+  },
+  "fixtures": {
+    "manifest_path": "benchmarks/results/sources/analytic19-conversion/manifest.json",
+    "manifest_sha256": "278c79b1ccb29a2a5631050c7cd34f6e915312c9d98f59e0a600e2c94e3acac3",
+    "references_path": "benchmarks/results/sources/analytic19-conversion/references.json",
+    "references_sha256": "924e20d6495990e8206c837d420c0172d5404ea1b3ede56417a9d59bb84bbcaf",
+    "scope": "Frozen independent analytic19 references; image sampling policies are explicit fixture models, not arbitrary PDF or continuous-scene correctness."
+  },
+  "environment": {
+    "native_threads": 1,
+    "guard_mode": "strict",
+    "known_job_poll_seconds": 5,
+    "quiet_preflight_scans": 3,
+    "maximum_launched_seconds": 5400,
+    "automatic_postlaunch_retry": false,
+    "scope": "Known-process polling; no OS-level exclusivity and no cold-filesystem claim"
+  },
+  "limits": {
+    "per_output_bytes": 67108864,
+    "retained_artifact_bytes": 536870912,
+    "scope": "Retained PDFs/oracles/output blobs only; checkpoints and coordination evidence additional"
+  },
+  "decision": {
+    "pilot": "Exploratory only; never accepts. Proceed to one fixed fresh confirmation only after independent accuracy and complete pilot review.",
+    "all_gates": "Both targets and every protected latency/RSS gate, all independent quality/resource/error gates and completed required validation. This still does not satisfy the separate full release matrix.",
+    "partial": "Coordinator may retain an independently correct experimental gain if at least one target median upper <=0.95, while disclosing every protected, tail and RSS miss and any supported regression. No automatic retention and no all-gates/release claim.",
+    "reject": "Independent pixel, error, resource or state regression blocks retaining active code. Contamination/incomplete evidence gives no admission. An upper-bound miss alone is not proof of regression.",
+    "sampling": "No historical/pilot/invalid samples in confirmation, interim analysis, parameter tuning, optional stopping or automatic retry."
+  },
+  "limitations": [
+    "19 bounded analytic pages do not establish performance on the full corpus.",
+    "Both modes use the same full-validation compile_page API; this is not the CLI render_context direct-image path.",
+    "200 pairs do not guarantee p95 precision, temporal independence or simultaneous familywise coverage.",
+    "Allcells cold-operation only; stage metrics are descriptive and cannot replace the frozen total metric.",
+    "No speedup or memory reduction is established by source inspection.",
+    "Existing Competitive allowances for image-direct-rgb-fractional and text-knockout-false are not adopted; strict preflight can reject an unchanged baseline."
+  ]
+}

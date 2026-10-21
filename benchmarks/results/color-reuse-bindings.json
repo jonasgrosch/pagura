@@ -1,0 +1,43 @@
+{
+  "schema": 1,
+  "identities": {
+    "baseline": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/n16-painted-control/pagura",
+      "commit": "c70b467882faafc9baede8c06c7011ac2be1ae21",
+      "source_sha256": "90dfc83961434f8820e818c92d06f7088562ee9d108ed530dc1ce8950e75c782",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/color-component-reuse/build-002/baseline",
+      "binary_sha256": "3eea2f579aef12030cf24790c94f6ec3a2cb4a3348e446e49ac129e589aa96c1"
+    },
+    "candidate": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+      "commit": "671f79542e3dcfe70135e124b406998a6804630f",
+      "source_sha256": "f75fcde1f1d25323d277fc728e915b597d9bdc6fd454eff2f183bba6c6527645",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/color-component-reuse/build-002/candidate",
+      "binary_sha256": "58232ba5e03e32858a64a4d2b93389951066a4c9e7e3028bd59a2b928a125ded"
+    }
+  },
+  "candidate_runner_source_sha256": "2693859b6310182284e738fcb6eca9205bb50f56d388f45495b69a620603caa4",
+  "bound_files_sha256": {
+    "benchmarks/color_reuse.py": "5d1f0bebc7ca74c8348e6f8ddc0906e58705dd9267398686f2e9341250d82401",
+    "benchmarks/color_reuse_fixtures.py": "84ed3379405deb95be8b5ce73e5da39fd8581ebe8448bf67da49cc06563e4121",
+    "benchmarks/paired_render.py": "813fea018eb74df02212f7b91bb6baee1a04b306220d361222c60d6074f4ccb6",
+    "benchmarks/preflight_color_reuse.py": "bee1ec846259a48d599ff250e79ebf9920f09bd9d9e5eb9e0bcb926500a92f6f",
+    "benchmarks/evaluate_color_reuse.py": "edd24441d0251216aa536615d0b7636703b40a31dad0031b8216e66d0ff26bc8",
+    "benchmarks/evaluate_n16_output.py": "352b544dd87d54d87aa064ff5e59ac2ce8600bf27d3a3c878e8e801e2d53be4d",
+    "benchmarks/results/sources/analytic19-conversion/manifest.json": "278c79b1ccb29a2a5631050c7cd34f6e915312c9d98f59e0a600e2c94e3acac3",
+    "benchmarks/results/sources/analytic19-conversion/references.json": "924e20d6495990e8206c837d420c0172d5404ea1b3ede56417a9d59bb84bbcaf",
+    "benchmarks/results/sources/analytic19-conversion/idle_then.py": "bedfb4f54e1764360f2b90c56e093e96182fba15b6da4ffe9ab7d4400aad4d30",
+    "benchmarks/results/sources/analytic19-conversion/load_observer.py": "5879b8ac1dc71d93c15767d4482f8cccc6f1b1ac3cc5526421f44a22e7b76c0d",
+    "benchmarks/results/sources/color-component-reuse/build.py": "90676ba341679ea98d473dcd203771b2f4659bd8287672a048d19802fb655acf",
+    "benchmarks/results/sources/color-component-reuse/build-v1.py": "f2e87536551cb96d1a336ad7e0423f15be6e4462c50bdf0d7b0fbf18570ad953",
+    "benchmarks/results/sources/color-component-reuse/check.py": "fb532fbbb2cdc43bb760dc22078dcd8b68c90709ac62597eb18b064994975381",
+    "crates/pagura-render/examples/scene_index_profile.rs": "8e89a087d351e7b89289e0897cafeb75422d4c151280734fde8c958a841279f2",
+    "benchmarks/results/color-reuse-plan.json": "756e17d87fbb48d095ca257b156aea46ef6569bd371f2ea4540ca35fe7b3f6e5",
+    ".cargo/config.toml": "b5d1e3e2e68286c97fc37c1f1b1380cb18355bd3f87a8bf8be9e9c026a6d4a6d"
+  },
+  "build_receipt": "benchmarks/results/local/color-component-reuse/build-002-receipt.json",
+  "build_receipt_sha256": "3aff135421107e6cc3b6be14330655e165ded68c8156ce7b04019cb088d3e5c5",
+  "build_report_sha256": "3840d923d1495dcb5578793c79e8821db67960bb5e77f39db58f6fb499d6b4c9",
+  "build_scope": "Both native executables selected by fresh Cargo compiler-artifact records, identical to original build-001 snapshots. CARGO_BUILD_TARGET unset in artifact confirmation. Coordinator source-to-binary binding.",
+  "validation": "Focused 10 color tests passed. Full-check-001 Clippy test assertion failure fixed; full check retry pending. All76 strict independent-pixel preflight precedes any timing."
+}

@@ -46,14 +46,48 @@ def key(cell):
     return cell["case"], cell["mode"], cell["operation"]
 
 
-def cell_map(cells):
+def cell_map(cells, expected_count=46):
     result = {key(cell): cell["role"] for cell in cells}
-    require(len(result) == len(cells) == 46, "expected 46 unique cells")
+    require(len(result) == len(cells) == expected_count, f"expected {expected_count} unique cells")
     return result
 
 
+def declared_cells(experiment, expected_case_count=16, expected_cell_count=46,
+                   target_case="opaque64", target_operation="full"):
+    """Counts come from the frozen caller, never from a candidate report."""
+    require(type(expected_case_count) is int and expected_case_count > 0
+            and type(expected_cell_count) is int and expected_cell_count > 0, "invalid expected counts")
+    require(len(experiment.CASES) == len(set(experiment.CASES)) == expected_case_count,
+            f"expected {expected_case_count} unique cases")
+    require(target_case in experiment.CASES and target_operation in ("cold", "full", "tile", "tiled"),
+            "invalid target identity")
+    declared = {cell: "target" if cell[0] == target_case and cell[2] == target_operation else "protected"
+                for cell in experiment.CELLS}
+    require(len(declared) == len(experiment.CELLS) == expected_cell_count, "entrypoint cell drift")
+    return declared
+
+
+def validate_guard(guard, expected_guard_mode="observation-only"):
+    """Opt into strict completed-run evidence without changing historical audits."""
+    require(expected_guard_mode in ("observation-only", "strict"), "invalid expected guard mode")
+    if expected_guard_mode == "observation-only":
+        require(guard["status"] == "completed-observation-only" and guard["exit_code"] == 0,
+                "observer did not complete")
+        return
+    require(guard["status"] == "completed" and guard.get("observation_only") is False
+            and type(guard.get("exit_code")) is int and guard["exit_code"] == 0
+            and type(guard.get("child_exit_code")) is int and guard["child_exit_code"] == 0
+            and guard.get("cancellation_requested_utc") is None,
+            "strict observer did not complete")
+    require(isinstance(guard.get("events"), list) and guard["events"]
+            and all(isinstance(event, dict) and event.get("matches") == [] for event in guard["events"])
+            and {"preflight", "postflight"} <= {event.get("stage") for event in guard["events"]},
+            "strict observer observed contention or lacks coverage")
+
+
 def audit(*, experiment_module, experiment_name, stem, local_name, run,
-          expected_harness_sources, audit_entrypoint):
+          expected_harness_sources, audit_entrypoint, expected_case_count=16, expected_cell_count=46,
+          target_case="opaque64", target_operation="full", expected_guard_mode="observation-only"):
     """Audit one fixed experiment configured by its checked-in caller.
 
     Source sets come from the caller, never from the report. Historical reports
@@ -94,8 +128,7 @@ def audit(*, experiment_module, experiment_name, stem, local_name, run,
     require(report["environment"]["run_id"] == receipt["run_id"], "run ID mismatch")
     require(Path(report["environment"]["run_receipt"]).resolve() == receipt_path.resolve(),
             "wrong report receipt pointer")
-    require(guard["status"] == "completed-observation-only" and guard["exit_code"] == 0,
-            "observer did not complete")
+    validate_guard(guard, expected_guard_mode)
     for path in (report_path, guard_path):
         require(receipt["artifacts"][str(path)] == hash_regular_file(path), "receipt artifact mismatch")
     require(report["identities"] == bindings["identities"], "engine identity mismatch")
@@ -131,12 +164,10 @@ def audit(*, experiment_module, experiment_name, stem, local_name, run,
     phase = experiment.PHASE_PLAN[phase_name]
     require({name: report[name] for name in phase} == phase, "sample count or seed drift")
     require(report["dpi"] == 72, "wrong DPI")
-    require(len(experiment.CASES) == len(set(experiment.CASES)) == 16, "expected 16 unique cases")
-    declared = {cell: "target" if cell[0] == "opaque64" and cell[2] == "full" else "protected"
-                for cell in experiment.CELLS}
-    require(len(declared) == len(experiment.CELLS) == 46, "entrypoint cell drift")
+    declared = declared_cells(experiment, expected_case_count, expected_cell_count,
+                              target_case, target_operation)
     for cells in (plan["cells"], report["declared_cells"], report["cells"]):
-        require(cell_map(cells) == declared, "cell identity or target/protected role drift")
+        require(cell_map(cells, expected_cell_count) == declared, "cell identity or target/protected role drift")
     require(set(report["inputs"]) == set(experiment.CASES), "input case drift")
     for name in experiment.CASES:
         pdf, oracle = experiment.fixture(name)

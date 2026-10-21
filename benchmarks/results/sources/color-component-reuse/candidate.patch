@@ -1,0 +1,296 @@
+diff --git a/crates/pagura-render/src/color.rs b/crates/pagura-render/src/color.rs
+index 89a3a836..1bebfaf8 100644
+--- a/crates/pagura-render/src/color.rs
++++ b/crates/pagura-render/src/color.rs
+@@ -106,13 +106,13 @@ impl Color {
+         if values.len() != space.components() {
+             return Err(Error::syntax("wrong colour component count"));
+         }
+-        *components = values
+-            .iter()
+-            .map(|v| {
+-                v.as_number()
+-                    .ok_or(Error::syntax("colour component must be a number"))
+-            })
+-            .collect::<Result<_>>()?;
++        // Validate before mutation: a late invalid value must preserve the
++        // previous colour. The immutable values are then all numeric.
++        if values.iter().any(|value| value.as_number().is_none()) {
++            return Err(Error::syntax("colour component must be a number"));
++        }
++        components.clear();
++        components.extend(values.iter().filter_map(Value::as_number));
+         Ok(())
+     }
+     pub(crate) fn select_pattern(
+@@ -823,3 +823,7 @@ fn indexed_space(
+         lookup: lookup.into(),
+     })
+ }
++
++#[cfg(test)]
++#[path = "color_set_tests.rs"]
++mod set_tests;
+diff --git a/crates/pagura-render/src/interpreter/state.rs b/crates/pagura-render/src/interpreter/state.rs
+index 5b629cf4..c25f611f 100644
+--- a/crates/pagura-render/src/interpreter/state.rs
++++ b/crates/pagura-render/src/interpreter/state.rs
+@@ -358,3 +358,7 @@ fn defined_entry(key: &[u8]) -> bool {
+             | b"HTO"
+     )
+ }
++
++#[cfg(test)]
++#[path = "state_color_tests.rs"]
++mod color_tests;
+diff --git a/crates/pagura-render/src/color_set_tests.rs b/crates/pagura-render/src/color_set_tests.rs
+new file mode 100644
+index 00000000..69eff11b
+--- /dev/null
++++ b/crates/pagura-render/src/color_set_tests.rs
+@@ -0,0 +1,106 @@
++//! Updating components must retain validation and state semantics.
++use super::*;
++
++fn components(color: &Color) -> &Vec<f64> {
++    let Color::Solid { components, .. } = color else {
++        panic!("expected a solid color");
++    };
++    components
++}
++
++#[test]
++fn set_reuses_storage_without_changing_default_values() {
++    for (space, defaults) in [
++        (Space::Gray, vec![0.0]),
++        (Space::Rgb, vec![0.0; 3]),
++        (Space::Cmyk, vec![0.0, 0.0, 0.0, 1.0]),
++        (
++            Space::Special {
++                inputs: 6,
++                all: false,
++            },
++            vec![1.0; 6],
++        ),
++    ] {
++        let mut color = Color::new(space);
++        assert_eq!(components(&color), &defaults);
++        let pointer = components(&color).as_ptr();
++        let capacity = components(&color).capacity();
++        let values = vec![Value::Real(0.25); defaults.len()];
++        color.set(&values).unwrap();
++        assert_eq!(components(&color), &vec![0.25; defaults.len()]);
++        assert_eq!(components(&color).as_ptr(), pointer);
++        assert_eq!(components(&color).capacity(), capacity);
++        color.set(&vec![Value::Integer(1); defaults.len()]).unwrap();
++        assert_eq!(components(&color), &vec![1.0; defaults.len()]);
++        assert_eq!(components(&color).as_ptr(), pointer);
++    }
++}
++
++#[test]
++fn invalid_late_values_preserve_all_components_and_storage() {
++    for invalid in [
++        Value::Null,
++        Value::Real(f64::NAN),
++        Value::Real(f64::INFINITY),
++    ] {
++        let mut color = Color::new(Space::Rgb);
++        color
++            .set(&[Value::Real(0.2), Value::Real(0.4), Value::Real(0.6)])
++            .unwrap();
++        let pointer = components(&color).as_ptr();
++        let capacity = components(&color).capacity();
++        assert_eq!(
++            color
++                .set(&[Value::Integer(1), Value::Integer(0), invalid])
++                .unwrap_err(),
++            Error::syntax("colour component must be a number"),
++        );
++        assert_eq!(components(&color), &[0.2, 0.4, 0.6]);
++        assert_eq!(components(&color).as_ptr(), pointer);
++        assert_eq!(components(&color).capacity(), capacity);
++    }
++}
++
++#[test]
++fn pattern_and_arity_errors_keep_their_precedence() {
++    let mut color = Color::new(Space::Cmyk);
++    assert_eq!(
++        color.set(&[Value::Null]).unwrap_err(),
++        Error::syntax("wrong colour component count")
++    );
++    assert_eq!(components(&color), &[0.0, 0.0, 0.0, 1.0]);
++    let mut pattern = Color::new(Space::Pattern(None));
++    assert_eq!(
++        pattern.set(&[Value::Null]).unwrap_err(),
++        Error::syntax("pattern requires SCN or scn")
++    );
++    assert!(matches!(
++        pattern,
++        Color::Pattern {
++            base: None,
++            selected: None
++        }
++    ));
++}
++
++#[test]
++fn numeric_values_remain_unclamped_and_clones_stay_independent() {
++    let mut color = Color::new(Space::Rgb);
++    let saved = color.clone();
++    color
++        .set(&[
++            Value::Real(-0.0),
++            Value::Real(-2.0),
++            Value::Integer(i64::MAX),
++        ])
++        .unwrap();
++    let actual = components(&color);
++    assert_eq!(actual[0].to_bits(), (-0.0_f64).to_bits());
++    assert_eq!(actual[1], -2.0);
++    assert_eq!(
++        actual[2].to_bits(),
++        Value::Integer(i64::MAX).as_number().unwrap().to_bits()
++    );
++    assert_eq!(components(&saved), &[0.0; 3]);
++}
+diff --git a/crates/pagura-render/src/interpreter/state_color_tests.rs b/crates/pagura-render/src/interpreter/state_color_tests.rs
+new file mode 100644
+index 00000000..27654619
+--- /dev/null
++++ b/crates/pagura-render/src/interpreter/state_color_tests.rs
+@@ -0,0 +1,133 @@
++//! Device shorthand must preserve default-space lookup and graphics state.
++use super::*;
++use crate::color::Space;
++use pagura_core::syntax::{Origin, Parser};
++use pagura_core::{Limits, ObjectId, Position};
++use pagura_document::{Document, OpenOptions};
++
++fn document() -> Document {
++    Document::open(
++        pagura_testkit::fixture("classic", "blank.pdf"),
++        &OpenOptions::default(),
++    )
++    .unwrap()
++}
++
++fn resources(bytes: &[u8]) -> Dictionary {
++    let value = Parser::new(bytes, Origin::Buffer, Limits::default())
++        .parse()
++        .unwrap();
++    let Value::Dictionary(dictionary) = value else {
++        panic!("expected resource dictionary");
++    };
++    dictionary
++}
++
++fn components(color: &Color) -> &[f64] {
++    let Color::Solid { components, .. } = color else {
++        panic!("expected solid color");
++    };
++    components
++}
++
++#[test]
++fn device_shorthand_resolves_default_rgb_and_restores_saved_colors() {
++    let document = document();
++    let mut compiler = Compiler::new(&document, document.page(0).unwrap()).unwrap();
++    let resources = resources(
++        b"<< /ColorSpace << /DefaultRGB [/CalRGB << /WhitePoint [1 1 1] /Gamma [2 2 2] >>] >> >>",
++    );
++    compiler
++        .sequence_bytes(
++            b"0.2 0.4 0.6 rg q 1 0 0 rg Q 0.1 0.3 0.5 RG",
++            &[],
++            &resources,
++        )
++        .unwrap();
++    assert!(matches!(
++        compiler.state.fill,
++        Color::Solid {
++            space: Space::Cie(_),
++            ..
++        }
++    ));
++    assert!(matches!(
++        compiler.state.stroke_color,
++        Color::Solid {
++            space: Space::Cie(_),
++            ..
++        }
++    ));
++    assert_eq!(components(&compiler.state.fill), &[0.2, 0.4, 0.6]);
++    assert_eq!(components(&compiler.state.stroke_color), &[0.1, 0.3, 0.5]);
++    assert_eq!(document.diagnostics(), [] as [pagura_core::Diagnostic; 0]);
++}
++
++#[test]
++fn invalid_default_space_is_reported_before_component_update() {
++    let document = document();
++    let mut compiler = Compiler::new(&document, document.page(0).unwrap()).unwrap();
++    compiler
++        .color(b"g", &[Value::Real(0.75)], &Dictionary::new())
++        .unwrap();
++    let resources = resources(b"<< /ColorSpace << /DefaultRGB /DeviceGray >> >>");
++    assert_eq!(
++        compiler
++            .color(
++                b"rg",
++                &[Value::Integer(1), Value::Integer(0), Value::Integer(0)],
++                &resources
++            )
++            .unwrap_err(),
++        Error::syntax("default colour space has wrong component count"),
++    );
++    assert!(matches!(
++        compiler.state.fill,
++        Color::Solid {
++            space: Space::Gray,
++            ..
++        }
++    ));
++    assert_eq!(components(&compiler.state.fill), &[0.75]);
++}
++
++#[test]
++fn shorthand_component_error_preserves_selected_default_and_source_context() {
++    let document = document();
++    let mut compiler = Compiler::new(&document, document.page(0).unwrap()).unwrap();
++    compiler
++        .color(b"g", &[Value::Real(0.75)], &Dictionary::new())
++        .unwrap();
++    // Directly exercise the existing color-selection order: a successful
++    // space selection precedes its component validation.
++    assert_eq!(
++        compiler
++            .color(
++                b"rg",
++                &[Value::Integer(1), Value::Null, Value::Integer(0)],
++                &Dictionary::new()
++            )
++            .unwrap_err(),
++        Error::syntax("colour component must be a number"),
++    );
++    assert!(matches!(
++        compiler.state.fill,
++        Color::Solid {
++            space: Space::Rgb,
++            ..
++        }
++    ));
++    assert_eq!(components(&compiler.state.fill), &[0.0; 3]);
++
++    // Numeric sc operands pass operator validation, but the wrong arity
++    // reaches Color::set through the real interpreter without losing origin.
++    let object = ObjectId::new(17, 0);
++    let error = compiler
++        .sequence_bytes(b"1 0 sc", &[(0, object)], &Dictionary::new())
++        .unwrap_err();
++    assert_eq!(error.kind, pagura_core::ErrorKind::Syntax);
++    assert_eq!(error.message, "wrong colour component count");
++    assert_eq!(error.position, Position::Stream { object, offset: 4 });
++    assert_eq!(error.object, Some(object));
++    assert_eq!(components(&compiler.state.fill), &[0.0; 3]);
++}

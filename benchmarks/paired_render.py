@@ -59,7 +59,8 @@ def expected_image(oracle, operation):
 
 
 def run_experiment(entrypoint, *, description, experiment, cases, cells, target_case,
-                   fixture, target_scope, limitations, fixture_sources=(), phase_plan=None):
+                   fixture, target_scope, limitations, fixture_sources=(), phase_plan=None,
+                   target_operation="full"):
     """Run the fixed matrix once, retaining every warmup and measured output."""
     entrypoint = Path(entrypoint).resolve()
     harness_sources = (entrypoint, Path(__file__).resolve(), *map(Path, fixture_sources))
@@ -123,7 +124,7 @@ def run_experiment(entrypoint, *, description, experiment, cases, cells, target_
                        "one_sided_confidence": .95, "seed": 42017,
                        "scope": "marginal estimates; temporal dependence and p95 precision need review"},
         "declared_cells": [{"case": name, "mode": mode, "operation": operation,
-                            "role": "target" if name == target_case and operation == "full" else "protected"}
+                            "role": "target" if name == target_case and operation == target_operation else "protected"}
                            for name, mode, operation in cells],
         "inputs": {}, "cells": []}
     stored = 0
@@ -160,7 +161,7 @@ def run_experiment(entrypoint, *, description, experiment, cases, cells, target_
         rng.shuffle(ordered_cells)
         for name, mode, operation in ordered_cells:
             cell = {"case": name, "mode": mode, "operation": operation,
-                    "role": "target" if name == target_case and operation == "full" else "protected", "pairs": []}
+                    "role": "target" if name == target_case and operation == target_operation else "protected", "pairs": []}
             report["cells"].append(cell)
             expected = expected_image(oracles[name], operation)
             for pair in range(-args.warmups, args.pairs):
