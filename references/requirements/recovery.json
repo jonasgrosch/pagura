@@ -152,9 +152,17 @@
       "status": "implemented",
       "tests": [
         "recovery/type3-vertical-metric",
-        "recovery/type3-width-advance"
+        "recovery/type3-width-advance",
+        "recovery/type3-empty-bounds-x",
+        "recovery/type3-empty-bounds-y",
+        "recovery/type3-empty-bounds-xy",
+        "recovery/type3-empty-bounds-zero",
+        "recovery/type3-empty-bounds-painted",
+        "recovery/type3-empty-bounds-nested",
+        "recovery/type3-empty-bounds-duplicate",
+        "recovery/type3-empty-bounds-malformed"
       ],
-      "rule": "Inconsistent d0/d1 horizontal or vertical metrics are reported while Widths retains the horizontal advance; strict mode rejects the mismatch."
+      "rule": "Inconsistent d0/d1 horizontal or vertical metrics are reported while Widths retains the horizontal advance; strict mode rejects the mismatch. As a compatibility repair, reversed d1 bounds are ignored only after the entire procedure compiles without drawing commands. Strict validation, painted glyphs, procedure syntax and work limits remain enforced."
     },
     {
       "id": "recovery-patterns",
