@@ -55,8 +55,13 @@ pixel is within one level (of 255) of its exact result.
   source samples under the pixel's preimage; for a magnified one, the nearest
   sample or, with `/Interpolate`, bilinear interpolation of associated colour
   and alpha between sample centres (8.9.5.3, ADR 0010). Decoders return
-  byte-exact samples, and a decode request for exact means (JPEG DC terms of
-  blocks that do not clamp) returns what full decoding and averaging would.
+  byte-exact samples, and the exact average is over those samples. A JPEG
+  block's DC term is the mean of its unrounded inverse transform, not of its
+  rounded, clamped and colour-converted samples (on a large real image they
+  differ in about a quarter of block components, by up to 33 levels where
+  blocks clamp), so block means from DC terms are an output-changing
+  optimization under section 3: admissible only for blocks certified not to
+  clamp in any stage, with the bound shown against this oracle.
 - **Composition through non-amplifying operations:** the imaging model of
   clause 11 in exact arithmetic on the same coverage bytes and sources, for
   any number of overlapping marks. These operations are Normal compositing,

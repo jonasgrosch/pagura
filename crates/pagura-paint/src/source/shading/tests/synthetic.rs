@@ -13,7 +13,9 @@ use super::oracle::{Index, Oracle};
 use super::parse::Parsed;
 use super::*;
 use crate::source::{PaintContext, Source};
-use pagura_color::{ColorSpace, Components, ExponentialFunction, Function, Process, SampledFunction, Target};
+use pagura_color::{
+    ColorSpace, Components, ExponentialFunction, Function, Process, SampledFunction, Target,
+};
 use pagura_core::{ErrorKind, Limits, Meter, Name, Store};
 use pagura_interpret::{Color, Composite, Overprint, Paint, ShadingFunction};
 use std::sync::Arc;
@@ -41,7 +43,9 @@ impl Rng {
 fn function(rng: &mut Rng, outputs: usize) -> Arc<Function> {
     if rng.below(3) == 0 {
         let size = 2 + rng.below(6) as u32;
-        let samples: Vec<u8> = (0..size as usize * outputs).map(|_| rng.next() as u8).collect();
+        let samples: Vec<u8> = (0..size as usize * outputs)
+            .map(|_| rng.next() as u8)
+            .collect();
         return Arc::new(
             Function::sampled(
                 SampledFunction {
@@ -63,7 +67,9 @@ fn function(rng: &mut Rng, outputs: usize) -> Arc<Function> {
     let c1 = if rng.below(4) == 0 {
         c0.clone()
     } else {
-        (0..outputs).map(|_| rng.below(1000) as f64 / 999.0).collect()
+        (0..outputs)
+            .map(|_| rng.below(1000) as f64 / 999.0)
+            .collect()
     };
     Arc::new(
         Function::exponential(ExponentialFunction {
@@ -85,7 +91,11 @@ fn shading(rng: &mut Rng) -> Parsed {
     ][rng.below(3) as usize]
         .clone();
     let extend = [rng.below(2) == 0, rng.below(2) == 0];
-    let domain = if rng.below(4) == 0 { [0.25, 0.75] } else { [0.0, 1.0] };
+    let domain = if rng.below(4) == 0 {
+        [0.25, 0.75]
+    } else {
+        [0.0, 1.0]
+    };
     let point = |rng: &mut Rng| Point::new(rng.quarter(0.0, 16.0), rng.quarter(0.0, 16.0));
     let kind = match rng.below(8) {
         0..=3 => {
@@ -96,7 +106,12 @@ fn shading(rng: &mut Rng) -> Parsed {
                 1 => Point::new(start.x, rng.quarter(0.0, 16.0)),
                 _ => point(rng),
             };
-            ShadingKind::Axial { start, end, domain, extend }
+            ShadingKind::Axial {
+                start,
+                end,
+                domain,
+                extend,
+            }
         }
         4..=6 => ShadingKind::Radial {
             start: point(rng),
@@ -145,7 +160,12 @@ fn transform(rng: &mut Rng) -> Transform {
     }
 }
 
-fn context<'a>(target: &'a Target, composite: &'a Composite, store: &'a Store, limits: &'a Limits) -> PaintContext<'a> {
+fn context<'a>(
+    target: &'a Target,
+    composite: &'a Composite,
+    store: &'a Store,
+    limits: &'a Limits,
+) -> PaintContext<'a> {
     PaintContext {
         transform: Transform::IDENTITY,
         target,
@@ -153,6 +173,12 @@ fn context<'a>(target: &'a Target, composite: &'a Composite, store: &'a Store, l
         store,
         limits,
         reduced_image_decode: false,
+        region: pagura_raster::DeviceRect {
+            x0: 0,
+            y0: 0,
+            x1: u32::MAX,
+            y1: u32::MAX,
+        },
     }
 }
 
@@ -163,7 +189,12 @@ fn random_shadings_match_the_previous_sampling() {
     let (composite, store, limits) = (Composite::default(), Store::new(1 << 20), Limits::default());
     let context = context(&target, &composite, &store, &limits);
     let mut aligned = 0;
-    let mut counts = Counts { pixels: 0, failed: 0, aligned: 0, shadings: 0 };
+    let mut counts = Counts {
+        pixels: 0,
+        failed: 0,
+        aligned: 0,
+        shadings: 0,
+    };
     for case in 0..400 {
         let parsed = shading(&mut rng);
         let transform = transform(&mut rng);
@@ -171,7 +202,8 @@ fn random_shadings_match_the_previous_sampling() {
         for antialias in [false, true] {
             for usage in [Use::Operator, Use::Pattern] {
                 let source =
-                    ShadingSource::new(&parts(&parsed, antialias), transform, &context, usage).unwrap();
+                    ShadingSource::new(&parts(&parsed, antialias), transform, &context, usage)
+                        .unwrap();
                 aligned += usize::from(source.aligned.is_some());
                 let old = Oracle {
                     parsed: &parsed,
@@ -182,12 +214,19 @@ fn random_shadings_match_the_previous_sampling() {
                     certified: false,
                     index: Index::new(&[]),
                 };
-                let context = format!("case {case}: {:?} under {transform:?} aa {antialias}", parsed.kind);
+                let context = format!(
+                    "case {case}: {:?} under {transform:?} aa {antialias}",
+                    parsed.kind
+                );
                 compare_grid(&source, &old, false, &context, &mut counts);
             }
         }
     }
-    assert!(aligned > 150 && counts.pixels > 1_000_000, "{aligned} {}", counts.pixels);
+    assert!(
+        aligned > 150 && counts.pixels > 1_000_000,
+        "{aligned} {}",
+        counts.pixels
+    );
 }
 
 #[test]
@@ -222,7 +261,13 @@ fn constant_shadings_collapse_to_the_previous_colour() {
             old_mesh: Vec::new(),
         };
         let transform = Transform::new(1.0, 0.0, 0.0, -1.0, 0.0, 512.0);
-        let source = ShadingSource::new(&parts(&parsed, antialias), transform, &context, Use::Operator).unwrap();
+        let source = ShadingSource::new(
+            &parts(&parsed, antialias),
+            transform,
+            &context,
+            Use::Operator,
+        )
+        .unwrap();
         let constant = source.constant().unwrap().to_vec();
         let converter = Converter::new(&parsed.space, &target, &composite.conversion).unwrap();
         let old = Oracle {
@@ -237,7 +282,10 @@ fn constant_shadings_collapse_to_the_previous_colour() {
         for (x, y) in [(0, 0), (100, 7), (511, 511), (4000, 3)] {
             let (expected, alpha) = old.pixel((x, y), None).unwrap().unwrap();
             assert_eq!(alpha, 1.0);
-            assert_eq!(constant.iter().map(|v| v.to_bits()).collect::<Vec<_>>(), expected.iter().map(|v| v.to_bits()).collect::<Vec<_>>());
+            assert_eq!(
+                constant.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                expected.iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+            );
         }
     }
 }
@@ -253,15 +301,37 @@ fn solid_paint_is_converted_once_with_its_overprint_channels() {
     let mut composite = Composite::default();
     let expected = [0.5, 1.0, 0.75, 1.0, 1.0];
     for (overprint, painted) in [
-        (Overprint { enabled: false, nonzero: false }, 0b11111),
-        (Overprint { enabled: true, nonzero: false }, 0b01111),
-        (Overprint { enabled: true, nonzero: true }, 0b00101),
+        (
+            Overprint {
+                enabled: false,
+                nonzero: false,
+            },
+            0b11111,
+        ),
+        (
+            Overprint {
+                enabled: true,
+                nonzero: false,
+            },
+            0b01111,
+        ),
+        (
+            Overprint {
+                enabled: true,
+                nonzero: true,
+            },
+            0b00101,
+        ),
     ] {
         composite.overprint = overprint;
         let context = context(&target, &composite, &store, &limits);
         let mut functions = Meter::new(10, "function work");
         let source = Source::prepare(&paint, &context, 100, &mut functions).unwrap();
-        let Source::Solid { color, painted: actual } = &source else {
+        let Source::Solid {
+            color,
+            painted: actual,
+        } = &source
+        else {
             panic!("not solid");
         };
         assert_eq!(&**color, &expected);
@@ -285,7 +355,8 @@ fn function_work_is_reserved_per_sample() {
         ShadingFunction::Single(f) => f.cost(),
         ShadingFunction::PerComponent(_) => unreachable!(),
     };
-    let prepare = || ShadingSource::new(&shading, Transform::IDENTITY, &context, Use::Operator).unwrap();
+    let prepare =
+        || ShadingSource::new(&shading, Transform::IDENTITY, &context, Use::Operator).unwrap();
     let mut meter = Meter::new(usize::MAX, "function work");
     prepare().reserve(1000, &mut meter).unwrap();
     assert_eq!(meter.used(), 1000 * 4 * cost);
@@ -345,7 +416,8 @@ fn axial_span_timing() {
             for _ in 0..15 {
                 let start = std::time::Instant::now();
                 let mut source =
-                    ShadingSource::new(&parts(&parsed, false), transform, &context, Use::Operator).unwrap();
+                    ShadingSource::new(&parts(&parsed, false), transform, &context, Use::Operator)
+                        .unwrap();
                 if !shared {
                     source.aligned = None;
                     source.constant = None;

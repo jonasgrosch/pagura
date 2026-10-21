@@ -26,7 +26,7 @@ pub(crate) fn decode(
 
 /// Samples of unfiltered image data. Whole bytes of exactly the declared
 /// extent are the samples themselves when the data is owned.
-fn unfiltered(
+pub(crate) fn unfiltered(
     data: std::borrow::Cow<'_, [u8]>,
     (width, height, components, bits): (u32, u32, u8, u8),
     limits: &pagura_core::Limits,
@@ -159,6 +159,22 @@ fn decode_jbig2(
     width: u32,
     height: u32,
 ) -> Result<Samples> {
+    let globals = jbig2_globals(document, dict, params)?;
+    jbig2_samples(
+        data,
+        globals.as_deref(),
+        (width, height),
+        &document.limits(),
+    )
+}
+
+/// The data of the `JBIG2Globals` stream of an image whose JBIG2 filter has
+/// `params` (7.4.7).
+pub(crate) fn jbig2_globals<'a>(
+    document: &'a Document,
+    dict: &Dictionary,
+    params: Option<&Dictionary>,
+) -> Result<Option<std::borrow::Cow<'a, [u8]>>> {
     // Preserve identity for stream-valued parameters using the original
     // dictionary; resolved filter parameters hold only object values.
     let original = dict
@@ -169,7 +185,7 @@ fn decode_jbig2(
         Some(Value::Array(values)) => values.last().map(|v| document.resolve(v)).transpose()?,
         value => value,
     };
-    let globals = original
+    original
         .and_then(Value::as_dictionary)
         .or(params)
         .and_then(|p| p.get(b"JBIG2Globals"))
@@ -179,8 +195,17 @@ fn decode_jbig2(
                 .ok_or(Error::syntax("JBIG2Globals must reference a stream"))?;
             document.stream_data(document.object(id)?)
         })
-        .transpose()?;
-    let decoded = jbig2::decode(data, globals.as_deref(), &document.limits())?;
+        .transpose()
+}
+
+/// The samples of a JBIG2 image of `width` × `height` with `globals`.
+pub(crate) fn jbig2_samples(
+    data: &[u8],
+    globals: Option<&[u8]>,
+    (width, height): (u32, u32),
+    limits: &pagura_core::Limits,
+) -> Result<Samples> {
+    let decoded = jbig2::decode(data, globals, limits)?;
     if decoded.width != width || decoded.height != height {
         return Err(Error::syntax(
             "JBIG2 dimensions disagree with image dictionary",
@@ -191,17 +216,17 @@ fn decode_jbig2(
     for byte in &mut inverted {
         *byte = !*byte;
     }
-    let count = p::budget(width, height, 1, 1, &document.limits())?;
+    let count = p::budget(width, height, 1, 1, limits)?;
     if count
         .checked_add(inverted.len())
-        .is_none_or(|v| v > document.limits().decoded_bytes)
+        .is_none_or(|v| v > limits.decoded_bytes)
     {
         return Err(Error::limit("JBIG2 adapter sample budget exceeded"));
     }
-    p::unpack(&inverted, width, height, 1, 1, &document.limits())
+    p::unpack(&inverted, width, height, 1, 1, limits)
 }
 
-fn color_transform(params: Option<&Dictionary>) -> Result<Option<i64>> {
+pub(crate) fn color_transform(params: Option<&Dictionary>) -> Result<Option<i64>> {
     params
         .and_then(|dict| dict.get(b"ColorTransform"))
         .map(|v| {
@@ -216,7 +241,7 @@ fn color_transform(params: Option<&Dictionary>) -> Result<Option<i64>> {
 ///
 /// An independently validated lossless image cannot be a JPEG with a damaged
 /// SOI: all Flate framing, checksums, row tags and sample counts must agree.
-fn decode_dct(
+pub(crate) fn decode_dct(
     data: &[u8],
     params: Option<&Dictionary>,
     (image, bits): (&mut DecodedImage, u8),

@@ -1,6 +1,6 @@
 //! PDF JPEG 2000 adaptation: ISO 32000-2 7.4.9 and Table 87.
 use crate::{DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples, features, jpx, parameters};
-use pagura_core::{Dictionary, Error, Limits, Result, Value};
+use pagura_core::{Dictionary, Error, Limits, Recovery, Result, Value};
 
 pub(crate) fn decode(
     data: &[u8],
@@ -9,34 +9,154 @@ pub(crate) fn decode(
     limits: &Limits,
     diagnostics: &mut pagura_core::Diagnostics,
 ) -> Result<()> {
-    let mode = parameters::integer(dictionary, b"SMaskInData", 0)?;
-    if !(0..=2).contains(&mode)
-        || (mode != 0 && dictionary.get(b"SMask").is_some_and(|v| !v.is_null()))
-    {
-        return Err(Error::syntax("invalid SMaskInData or simultaneous SMask"));
+    Jpx::read(data, dictionary, &image.kind)?.decode(data, image, limits, diagnostics)
+}
+
+/// How a PDF JPXDecode image is decoded: its `SMaskInData` mode and the
+/// container metadata it ignores (7.4.9, Table 87).
+#[derive(Debug, Clone)]
+pub(crate) struct Jpx {
+    pub(crate) mode: i64,
+    options: jpx::Options,
+    indexed: bool,
+}
+
+/// A JPXDecode image's colour channels as decoding will return them,
+/// without its samples.
+#[derive(Debug, Clone)]
+pub(crate) struct Description {
+    /// Precision of each colour channel, in interleave order.
+    pub(crate) bits: Vec<u8>,
+    /// The sample interpretation of an image without a dictionary colour
+    /// space, from the container.
+    pub(crate) kind: Option<ImageKind>,
+}
+
+impl Jpx {
+    /// Validates the dictionary entries and data framing that decoding
+    /// checks before it reads the container.
+    pub(crate) fn read(data: &[u8], dictionary: &Dictionary, kind: &ImageKind) -> Result<Self> {
+        let mode = parameters::integer(dictionary, b"SMaskInData", 0)?;
+        if !(0..=2).contains(&mode)
+            || (mode != 0 && dictionary.get(b"SMask").is_some_and(|v| !v.is_null()))
+        {
+            return Err(Error::syntax("invalid SMaskInData or simultaneous SMask"));
+        }
+        if data.starts_with(&[255, 79]) {
+            return Err(Error::syntax(
+                "PDF JPXDecode requires a full JPEG 2000 container",
+            ));
+        }
+        let options = jpx::Options {
+            ignore_color: !matches!(kind, ImageKind::Color { color_space: None }),
+            ignore_opacity: mode == 0,
+        };
+        let indexed = matches!(kind, ImageKind::Color { color_space: Some(Value::Array(space)) }
+            if space.first().and_then(Value::as_name).is_some_and(|name| name == b"Indexed"));
+        if indexed && mode != 0 {
+            return Err(Error::unsupported(
+                features::JPX_SAMPLE_LAYOUT,
+                "Indexed JPX opacity requires channel mapping",
+            ));
+        }
+        Ok(Self {
+            mode,
+            options,
+            indexed,
+        })
     }
-    if data.starts_with(&[255, 79]) {
-        return Err(Error::syntax(
-            "PDF JPXDecode requires a full JPEG 2000 container",
-        ));
+
+    pub(crate) fn decode(
+        &self,
+        data: &[u8],
+        image: &mut DecodedImage,
+        limits: &Limits,
+        diagnostics: &mut pagura_core::Diagnostics,
+    ) -> Result<()> {
+        let mut decoded = jpx::decode_pdf(data, limits, &self.options, diagnostics, self.indexed)?;
+        if self.mode == 0 {
+            super::jpx_channels::discard_opacity(data, &mut decoded, limits)?;
+        }
+        adapt(decoded, self.mode, image, limits)
     }
-    let options = jpx::Options {
-        ignore_color: !matches!(image.kind, ImageKind::Color { color_space: None }),
-        ignore_opacity: mode == 0,
-    };
-    let indexed = matches!(&image.kind, ImageKind::Color { color_space: Some(Value::Array(space)) }
-        if space.first().and_then(Value::as_name).is_some_and(|name| name == b"Indexed"));
-    if indexed && mode != 0 {
-        return Err(Error::unsupported(
-            features::JPX_SAMPLE_LAYOUT,
-            "Indexed JPX opacity requires channel mapping",
-        ));
+
+    /// The colour channels of `data` for an image of `width` × `height`
+    /// whose colour space has `components` (0 when the dictionary has
+    /// none), with the checks of decoding that need no samples.
+    pub(crate) fn describe(
+        &self,
+        data: &[u8],
+        (width, height, components): (u32, u32, u8),
+        limits: &Limits,
+        mode: Recovery,
+    ) -> Result<Description> {
+        let mut decoded = jpx::describe_pdf(data, limits, &self.options, mode, self.indexed)?;
+        if self.mode == 0 {
+            super::jpx_channels::discard_opacity(data, &mut decoded, limits)?;
+        }
+        let jpx::Decoded {
+            image: decoded,
+            reference_origin,
+            component_geometry,
+            ..
+        } = decoded;
+        if component_geometry.len() != decoded.components.len() {
+            return Err(Error::syntax("invalid JPX component geometry count"));
+        }
+        if decoded.width != width || decoded.height != height {
+            return Err(Error::syntax(
+                "JPX dimensions disagree with image dictionary",
+            ));
+        }
+        if decoded
+            .alpha
+            .is_some_and(|index| index >= decoded.components.len())
+        {
+            return Err(Error::syntax("invalid JPX alpha component index"));
+        }
+        if self.mode != 0 && decoded.alpha.is_none() {
+            return Err(Error::syntax("SMaskInData requires an opacity channel"));
+        }
+        let colours: Vec<_> = decoded
+            .components
+            .iter()
+            .zip(&component_geometry)
+            .enumerate()
+            .filter(|(index, _)| Some(*index) != decoded.alpha)
+            .map(|(_, pair)| pair)
+            .collect();
+        let first = colours
+            .first()
+            .ok_or(Error::syntax("JPX has no colour components"))?;
+        let count =
+            u8::try_from(colours.len()).map_err(|_| Error::limit("too many JPX components"))?;
+        if components != 0 && components != count {
+            return Err(Error::syntax(
+                "JPX component count disagrees with colour space",
+            ));
+        }
+        parameters::budget(width, height, 1, 1, limits)?;
+        for (index, (component, geometry)) in decoded
+            .components
+            .iter()
+            .zip(&component_geometry)
+            .enumerate()
+        {
+            if self.mode != 0 || Some(index) != decoded.alpha {
+                validate_placement(component, geometry, (width, height), reference_origin)?;
+            }
+        }
+        let mixed = colours.iter().any(|c| c.0.bits != first.0.bits);
+        let precision = if mixed { 16 } else { first.0.bits };
+        parameters::budget(width, height, count, precision, limits)?;
+        let kind = (components == 0)
+            .then(|| embedded_space(decoded.color, count))
+            .transpose()?;
+        Ok(Description {
+            bits: colours.iter().map(|c| c.0.bits).collect(),
+            kind,
+        })
     }
-    let mut decoded = jpx::decode_pdf(data, limits, &options, diagnostics, indexed)?;
-    if mode == 0 {
-        super::jpx_channels::discard_opacity(data, &mut decoded, limits)?;
-    }
-    adapt(decoded, mode, image, limits)
 }
 
 pub(crate) fn adapt(
@@ -159,6 +279,25 @@ fn validate_component(
     height: u32,
     reference_origin: [u32; 2],
 ) -> Result<()> {
+    validate_placement(c, geometry, (width, height), reference_origin)?;
+    if u64::try_from(c.samples.len()).ok() != Some(u64::from(c.width) * u64::from(c.height)) {
+        return Err(Error::syntax("invalid JPX sample count"));
+    }
+    let max = u16::MAX >> (16 - c.bits);
+    if c.samples.iter().any(|&v| v > max) {
+        return Err(Error::syntax("JPX sample exceeds precision"));
+    }
+    Ok(())
+}
+
+/// The precision and reference-grid placement checks of
+/// [`validate_component`], which need no samples.
+fn validate_placement(
+    c: &jpx::JpxComponent,
+    geometry: &jpx::ComponentGeometry,
+    (width, height): (u32, u32),
+    reference_origin: [u32; 2],
+) -> Result<()> {
     if !(1..=16).contains(&c.bits) {
         return Err(Error::unsupported(
             features::JPX_SAMPLE_LAYOUT,
@@ -177,13 +316,6 @@ fn validate_component(
         {
             return Err(Error::syntax("inconsistent JPX component placement"));
         }
-    }
-    if u64::try_from(c.samples.len()).ok() != Some(u64::from(c.width) * u64::from(c.height)) {
-        return Err(Error::syntax("invalid JPX sample count"));
-    }
-    let max = u16::MAX >> (16 - c.bits);
-    if c.samples.iter().any(|&v| v > max) {
-        return Err(Error::syntax("JPX sample exceeds precision"));
     }
     Ok(())
 }

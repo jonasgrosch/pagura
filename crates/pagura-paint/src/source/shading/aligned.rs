@@ -105,7 +105,13 @@ impl Aligned {
             .map_or(0, |t| (t.colors.len() + t.alpha.len()) * 8 + t.valid.len())
     }
 
-    pub(super) fn fill(&self, source: &ShadingSource, axial: &Axial, span: Span<'_>, out: &mut SpanColors) {
+    pub(super) fn fill(
+        &self,
+        source: &ShadingSource,
+        axial: &Axial,
+        span: Span<'_>,
+        out: &mut SpanColors,
+    ) {
         match self.direction {
             Direction::Rows => Self::fill_row(source, axial, span, out),
             Direction::Columns => self.fill_columns(source, axial, span, out),
@@ -127,7 +133,12 @@ impl Aligned {
         let SpanColors { colors, alpha, .. } = out;
         let split = channels.min(colors.len());
         let (first, rest) = colors.split_at_mut(split);
-        let value = source.pixel(axial, (span.x, span.y), None, (first, &mut [0.0; MAX_COMPONENTS]));
+        let value = source.pixel(
+            axial,
+            (span.x, span.y),
+            None,
+            (first, &mut [0.0; MAX_COMPONENTS]),
+        );
         for chunk in rest.chunks_exact_mut(channels) {
             chunk.copy_from_slice(first);
         }
@@ -135,16 +146,31 @@ impl Aligned {
     }
 
     /// Column table lookups, with the extended ends as constants.
-    fn fill_columns(&self, source: &ShadingSource, axial: &Axial, span: Span<'_>, out: &mut SpanColors) {
+    fn fill_columns(
+        &self,
+        source: &ShadingSource,
+        axial: &Axial,
+        span: Span<'_>,
+        out: &mut SpanColors,
+    ) {
         let channels = source.channels.max(1);
         let SpanColors { colors, alpha, .. } = out;
-        for (i, (color, alpha)) in colors.chunks_exact_mut(channels).zip(alpha.iter_mut()).enumerate() {
+        for (i, (color, alpha)) in colors
+            .chunks_exact_mut(channels)
+            .zip(alpha.iter_mut())
+            .enumerate()
+        {
             let x = span.x.saturating_add(u32::try_from(i).unwrap_or(u32::MAX));
             if let Some(table) = &self.table
                 && let Some(index) = x.checked_sub(table.first).map(|i| i as usize)
                 && table.valid.get(index) == Some(&true)
             {
-                color.copy_from_slice(table.colors.get(index * channels..(index + 1) * channels).unwrap_or_default());
+                color.copy_from_slice(
+                    table
+                        .colors
+                        .get(index * channels..(index + 1) * channels)
+                        .unwrap_or_default(),
+                );
                 *alpha = table.alpha.get(index).copied().unwrap_or(0.0);
                 continue;
             }
@@ -152,7 +178,12 @@ impl Aligned {
                 Class::Before => &self.before,
                 Class::After => &self.after,
                 Class::Other => {
-                    *alpha = source.pixel(axial, (x, span.y), None, (color, &mut [0.0; MAX_COMPONENTS]));
+                    *alpha = source.pixel(
+                        axial,
+                        (x, span.y),
+                        None,
+                        (color, &mut [0.0; MAX_COMPONENTS]),
+                    );
                     continue;
                 }
             };
