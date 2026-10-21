@@ -73,7 +73,7 @@ impl Compiler<'_> {
                 )
                 .at(self.position)
                 .in_object(match self.position {
-                    pagura_core::Position::Stream { object, .. } => object,
+                    Position::Stream { object, .. } => object,
                     _ => return Err(Error::syntax("Type3 metrics have no stream context")),
                 }),
             )?;
