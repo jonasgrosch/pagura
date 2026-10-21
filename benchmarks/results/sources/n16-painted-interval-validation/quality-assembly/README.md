@@ -42,7 +42,7 @@ from a previous candidate, a launch, or a green subprocess alone.
 
 ## A. Authoritative full check on restored production
 
-Use the final successful `main-reconciliation/check.py` report, raw log,
+Either use the final successful `main-reconciliation/check.py` report, raw log,
 receipt and guard for the exact candidate. Require `status=command-passed`,
 `source_unchanged=true`, equal report before/after strings equal to the runner's
 source SHA, correct driver hash, and actual `tools/check.py --jobs 1` command
@@ -56,6 +56,20 @@ The report process must have exit code 0 and not be timed out. The existing
 `run_process` success result can carry provisional `status=failed` with exit 0;
 do not reject that field alone or accept a nonzero exit because a summary says
 passed. Reject a truncated log. Retain the failed earlier check attempts.
+
+Alternatively, use the archived staged-check coordinator's completed aggregate
+and all of its frozen inputs and per-stage evidence. Require all 14 exact
+`tools/check.py.planned_commands(jobs=1)` command/environment pairs, completed
+serially in that order on the identical frozen source/HEAD, helpers, runtimes,
+fixtures and configuration. Every stage needs its own final successful runner
+receipt, clean strict guard, complete raw log and before/after source checks.
+Recheck the aggregate's evidence rather than trusting its status alone. Retain
+every attempt. External contention/cancellation may be retried; an unresolved
+semantic failure, timeout, source drift or evidence failure blocks that freeze.
+Missing/duplicate stages or a partial earlier whole-check run cannot satisfy
+this route. Describe the result as a complete staged check, with no claim that
+one uninterrupted `check.py` invocation passed. The authoritative scope and all
+accuracy/performance gates are unchanged.
 
 PI-Q5 additionally requires the current precision/native-WASI host evidence
 specified by the plan. `tools/host_test.mjs` includes classic/render/reading

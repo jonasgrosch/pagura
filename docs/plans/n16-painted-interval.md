@@ -178,6 +178,17 @@ and the complete validation gates remain outstanding.
    host probes with strict diagnostics and response/pixel parity. The default
    host interface establishes Exact parity only; Competitive is covered through
    the native and WASI example/test interfaces, not an invented host mode.
+   The complete check may run as separately guarded stages using the exact
+   ordered `tools/check.py.planned_commands(jobs=1)` commands and overrides.
+   Freeze source/HEAD, check/coordinator helpers, runtimes, fixtures and relevant
+   environment/configuration before the first stage; every stage must match
+   that freeze, complete successfully and retain its own report/log/receipt.
+   All 14 stages remain required. Preserve every interrupted attempt; only
+   external cancellation permits retry within the same freeze. An unresolved
+   assertion, timeout, source drift or evidence failure blocks acceptance.
+   Completed stages survive contention, but a partial or canceled whole-check
+   run cannot supply a stage pass. Report this as a complete staged check,
+   never as one uninterrupted invocation. This changes coordination only.
 
 Relevant existing anchors: compositor/plan.rs:51-115 and :276-321;
 compositor.rs:1645-1771 and :2572-2655; display.rs:584-617, :768-846,

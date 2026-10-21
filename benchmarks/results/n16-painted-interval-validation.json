@@ -455,6 +455,77 @@
         "report": null,
         "log": null
       }
+    },
+    {
+      "attempt": "reach-unit-002",
+      "status": "completed",
+      "exit_code": 0,
+      "wrapper_exit_code": 0,
+      "guard_status": "completed",
+      "source_unchanged": true,
+      "source_before": {
+        "commit": "3e00a089e7b2bae6aa335e3f7676eb8c651a6e4e",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "source_after": {
+        "commit": "3e00a089e7b2bae6aa335e3f7676eb8c651a6e4e",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "errors": [],
+      "artifact_errors": {},
+      "records": {
+        "receipt": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/reach-unit-002-receipt.json",
+          "sha256": "5e2b45b8b1f547dc1dbc661a3f0ba415818a81714bfe264f6d8c8c3f001c6f03"
+        },
+        "guard": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/reach-unit-002-observer/guard.json",
+          "sha256": "e1612e2079d19d44be988a1ffac6a01be5a88521a708febb4d8057a97f539b3d"
+        },
+        "report": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-reach-unit-002.json",
+          "sha256": "ba18a99c7c64cf29c9e40a9113b5dec34c5d4b4fe446a1f39cb9e3abe96b428d"
+        },
+        "log": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-reach-unit-002.log",
+          "sha256": "b1f7c52c8b3ed1328b1743f2a02a98546000c2bc50aced891cb968dcbc586eff"
+        }
+      }
+    },
+    {
+      "attempt": "full-check-007",
+      "status": "failed",
+      "exit_code": 143,
+      "wrapper_exit_code": 143,
+      "guard_status": "invalid-external-contention",
+      "source_unchanged": true,
+      "source_before": {
+        "commit": "3e00a089e7b2bae6aa335e3f7676eb8c651a6e4e",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "source_after": {
+        "commit": "3e00a089e7b2bae6aa335e3f7676eb8c651a6e4e",
+        "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+      },
+      "errors": [],
+      "artifact_errors": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-007.log": "[Errno 2] No such file or directory: '/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-007.log'"
+      },
+      "records": {
+        "receipt": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/full-check-007-receipt.json",
+          "sha256": "71a1becb570ce1117f450e84c8bc6ea0d99941162dfbe933c0d116dbbede31c9"
+        },
+        "guard": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/full-check-007-observer/guard.json",
+          "sha256": "dab22fe0550a9c49682f29c26ed93354e2663aceff883fbf1da1d1da6369d827"
+        },
+        "report": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-full-check-007.json",
+          "sha256": "ed658c348942ccbfc19ce73c384469a027475941c3ae2de21e70450ca2fd45f4"
+        },
+        "log": null
+      }
     }
   ],
   "current_candidate": {
@@ -470,7 +541,7 @@
   "limits_current": [
     "No N16 performance samples, RSS or candidate layout observations.",
     "The earlier 236-test native pass predates the lint-only assertion change; no current-source full check is claimed.",
-    "Reach instrumentation is archived but not applied; its first parser-test attempt was refused before child launch.",
+    "Reach instrumentation is archived but not applied; its four pure parser/oracle tests passed with a completed receipt and clean guard in reach-unit-002.",
     "Canceled validation wrappers may not return a combined log; missing artifacts are retained as unavailable, not passed."
   ],
   "reach_sources": {
@@ -498,5 +569,38 @@
     "path": "benchmarks/results/sources/n16-painted-interval-validation/candidate-after-lint.patch",
     "sha256": "0e673550276d88522979b233f5953b295f815f52b4ca1445d2b40c4febaecbaf",
     "status": "unadmitted experiment; current clippy passed, complete validation and timing pending"
+  },
+  "reach_parser_tests": {
+    "tests": 4,
+    "status": "passed",
+    "attempt": "reach-unit-002",
+    "scope": "Pure parser/oracle validation; no rendered outputs or actual route evidence."
+  },
+  "staged_coordinator": {
+    "status": "five-pure-protocol-tests-passed",
+    "records": {
+      "report": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-staged-unit-001.json",
+        "sha256": "5f3d8d9205ea6517ad6caa94831e4df2eebfaf7636a14e97ad02f6200cebc22a"
+      },
+      "log": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-staged-unit-001.log",
+        "sha256": "770cb8bf4effac06a4af52100873919f4a03b8c83c854e03d3ee143d6f7bd63a"
+      },
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/staged-unit-001-receipt.json",
+        "sha256": "132f16f2e50bebe2ad9dd52619b5deece480a86397775a65569f9b30b72bed8b"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/staged-unit-001-observer/guard.json",
+        "sha256": "6435c99e5c2b73fc61ec87530386cded907f3e246b0141067bd7aa9b15f32dac"
+      }
+    },
+    "scope": "Exact fourteen authoritative command stages; full validation pending. Tests do not establish live signal/process behavior.",
+    "sources": {
+      "staged_check.py": "d448f721bd920b1e9899957427360531a520ca58a899b69ce567f7a6d03e2023",
+      "README.md": "08862f45496b47171a58461d67b202d413401dbd35416b5e59c03a0bda438f1e",
+      "test_staged_check.py": "154dcbb74923b04357dd643b851f3b1f08801539c53f080a2753cbd42a6fd2c4"
+    }
   }
 }
