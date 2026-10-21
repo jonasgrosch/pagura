@@ -1,0 +1,458 @@
+{
+  "schema": 1,
+  "experiment": "n16-painted-interval",
+  "status": "template-not-frozen",
+  "baseline": "Reconciled against a9814ee476c1b17a27b1e9a904f1f4fac8d5cd9c. Coordinator freezes the actual retained stack immediately before this separate candidate; no parked color or rectangle proposal is presumed retained and no historical samples are reused.",
+  "candidate_delta": "One conservative flat N16 painted interval, widened by the existing validated path/fragment writers and intersected with rows only at Context::write_output. Keep dense Buffer::output, full initialization, source work, allocation admission and quantizer arithmetic unchanged.",
+  "case_count": 18,
+  "cell_count": 52,
+  "target_count": 2,
+  "protected_count": 50,
+  "extends": {
+    "plan": "benchmarks/results/n16-output-u16-plan.json",
+    "preserved_cells": 46,
+    "new_cases": ["opaque-empty", "opaque-distant"],
+    "new_operations_on_existing_cases": [{"case": "opaque-tiny", "operation": "full", "modes": ["exact", "competitive"]}],
+    "historical_samples_reused": false
+  },
+  "modes": [
+    "exact",
+    "competitive"
+  ],
+  "cells": [
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "dense64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "dense64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "target"
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "target"
+    },
+    {
+      "case": "one-source64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "one-source64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "overcapacity128",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "overcapacity128",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "nested64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "nested64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "default-knockout64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "default-knockout64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2-knockout",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2-knockout",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2-late64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2-late64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "clip-churn",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "clip-churn",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "image-only",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "image-only",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-clip",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-clip",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-tiny",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-tiny",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-fill",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-fill",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-empty",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-empty",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-distant",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-distant",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-tiny",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-tiny",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    }
+  ],
+  "phases": {
+    "pilot": {
+      "pairs": 5,
+      "warmups": 5,
+      "seed": 20261105
+    },
+    "confirmation": {
+      "pairs": 200,
+      "warmups": 5,
+      "seed": 20261106
+    }
+  },
+  "maximum_launched_confirmations": 1,
+  "expected_verified_outputs": {"pilot": 1040, "confirmation": 21320},
+  "analysis": {
+    "method": "paired-percentile-bootstrap",
+    "resamples": 5000,
+    "confidence": 0.95,
+    "seed": 42017
+  },
+  "thresholds": {
+    "target_median_upper": 0.95,
+    "target_p95_upper": 1.0,
+    "protected_median_upper": 1.02,
+    "protected_p95_upper": 1.02,
+    "peak_rss_ratio_max": 1.0
+  },
+  "quality": {
+    "independent_rgb8_tolerance": 0,
+    "require_opaque_alpha": true,
+    "require_same_mode_baseline_rgba_bytes": true,
+    "require_all_warmup_outputs": true,
+    "accuracy_changing_cases": "No intended pixel change. Exhaustive u16-domain equality, nonopaque-background full/offset tile regressions, strict rational precision, irregular/offset partitions, recycled storage and native/WASI parity remain required.",
+    "new_oracles": {
+      "opaque-empty": "512x512 empty content stream; all RGB channels 255 and alpha 255",
+      "opaque-distant": "512x512; black device pixels (0,0),(255,255),(256,0),(511,255),(0,256),(255,511),(256,256),(511,511); every other pixel white, alpha 255",
+      "opaque-tiny": "Reuse unchanged existing 64x64 PDF and oracle; integer black 8x8 rectangle at PDF (24,24)"
+    },
+    "sampling_scope": "Existing fractional cases retain their declared coverage-byte model, not a continuous final-scene or normative PDF antialiasing claim."
+  },
+  "memory": {
+    "storage": "N16 Words adds one Range<usize>; actual native and WASI size/alignment of Buffer, Option<Buffer>, Surface and MaskSink must not grow. No new heap allocation; N16 pixel payload remains count*8. No layout result is presumed.",
+    "peak_rss": "Fresh per-sample process RSS; report absolute maxima and distributions as well as ratios. Unchanged enclosing layout or A/A variability cannot erase a miss."
+  },
+  "environment": {
+    "native_threads": 1,
+    "known_job_poll_seconds": 5,
+    "quiet_preflight_scans": 3,
+    "maximum_launched_seconds": 5400,
+    "automatic_postlaunch_retry": false,
+    "monitoring": "Wait for observed quiet before launch. Retain the fixed run and observer evidence; postlaunch contention, interruption or missing evidence makes admission unavailable. No owned compute overlaps. A zero-child preflight refusal is not a statistical trial."
+  },
+  "limits": {
+    "per_output_bytes": 67108864,
+    "retained_artifact_bytes": 536870912,
+    "scope": "Payload budget covers retained PDF/oracle/output blobs only; report checkpoints and runner/observer evidence are additional storage."
+  },
+  "decision": {
+    "admit": "All 52 latency/RSS cells plus every mandatory quality, error, layout, resource, provenance, portability and repository-validation gate; release-runner/competitor-matrix evidence remains separate.",
+    "preserve_partial": "At least one original target confirmation median upper <=0.95 and every mandatory correctness/resource/layout/provenance/portability gate complete. Record target p95, protected and RSS misses. Protected median or p95 lower >1.02 requires revision or explicit reasoned experimental restriction. Retention is a coordinator decision, never an evaluator side effect.",
+    "reject_or_revise": "Any independent accuracy, resource accounting, source error, tile-contract or layout failure blocks retaining active code. Reject/revise a completed confirmation without the required target median gain. An upper confidence-bound miss alone is not a proven regression. Keep the patch and all old evidence.",
+    "sampling": "No historical or pilot sample reuse, no tuning against confirmation and no retry until a pass appears."
+  },
+  "limitations": [
+    "The unchanged timed profile uses default Repair opening and full compile_page; it does not emit diagnostics. Strict correctness probes remain separate.",
+    "Ordinary admitted translucent controls use F32 in both modes; nonopaque backgrounds and relevant groups remain F64. Actual N16/F32/F64 routes require untimed evidence, while U8 remains a legacy direct-test control.",
+    "All 46 earlier cells and roles retained; exactly six protected cells added, with fixed fresh pilot and confirmation seeds.",
+    "Incremental to the independently frozen preceding retained stack, not a net legacy-route or competitor comparison.",
+    "200 pairs do not guarantee calibrated p95 precision or simultaneous coverage.",
+    "No historical or pilot samples reused in confirmation.",
+    "Opaque-background timing matrix; both arms retain the independently tested nonopaque-background guard.",
+    "No enclosing layout growth does not establish unchanged measured peak RSS.",
+    "Actual N16 dispatch and observed interval reach need independent untimed structural evidence; fixture names alone prove neither."
+  ],
+  "builds_on": {
+    "experiment": "retained-n16-output-u16-plus-integrated-resource-fixes",
+    "commit": null,
+    "reuse_samples": false,
+    "retarget_or_relax_gates": false
+  },
+  "mandatory_gate_groups": [
+    "PI-Q1 interval invariants, both writers, dense arbitrary-destination output and quantizer identity",
+    "PI-Q2 cross-row holes, nonzero origins, irregular/offset public tiles and actual Competitive spare reuse",
+    "PI-Q3 colored nonopaque backgrounds, F64 guard and independent rational accuracy",
+    "PI-Q4 exact source/error context and work/allocation/pixel/depth boundary equivalence",
+    "PI-Q5 full authoritative serial check plus native/WASI precision and host checks",
+    "PI-M1 measured native and WASI enclosing size/alignment nongrowth",
+    "Untimed actual N16 admission and writer/output interval reach in both modes"
+  ],
+  "wasi_diagnostic": {
+    "status": "separate-preconfirmation-diagnostic-not-native-gate-statistics",
+    "cases_in_both_modes": ["opaque64", "opaque-fill", "opaque-empty", "opaque-distant", "opaque-tiny"],
+    "additional_cells": [
+      {"case": "image-only", "mode": "exact", "operation": "full"},
+      {"case": "default-knockout64", "mode": "exact", "operation": "full"}
+    ],
+    "operation": "full",
+    "cell_count": 12,
+    "pairs": 12,
+    "warmups": 2,
+    "seed": 20261107,
+    "measured_orders_per_cell": {"baseline_candidate": 6, "candidate_baseline": 6},
+    "expected_verified_outputs": 336,
+    "retry": false,
+    "triage": "Any independent pixel/alpha failure blocks retention. For the 10 N16 cells, median candidate/baseline render_ns >1.05 with >=10 of 12 paired ratios >1.02 suspends portable promotion/native confirmation pending revision or investigation. Material fallback signals require explicit review.",
+    "memory": "Retain exported linear-memory before/after separately from Node process RSS.",
+    "timing": "Fresh default-tiering Node instances; internal render excludes startup/explicit instantiation, but lazy compilation/tiering may remain. Never pool native/WASI ratios."
+  },
+  "identities_to_freeze": {
+    "baseline": {"commit": null, "root": null, "source_sha256": null, "binary": null, "binary_sha256": null, "build_receipt": null},
+    "candidate": {"root": null, "commit": null, "source_sha256": null, "binary": null, "binary_sha256": null, "build_receipt": null},
+    "profile_evidence": null,
+    "native_layout_evidence": null,
+    "wasi_layout_evidence": null,
+    "structural_dispatch_and_reach_evidence": null
+  },
+  "freeze_instructions": {
+    "status": "Coordinator must fill identities and bind all driver/helper/evaluator/fixture/plan/build/observer sources before timing; nulls are unresolved inputs, never evidence.",
+    "plan_destination": "benchmarks/results/n16-painted-interval-plan.json",
+    "bindings_destination": "benchmarks/results/n16-painted-interval-bindings.json",
+    "no_circular_hash": "Bindings pin the final plan; the plan does not contain the bindings-file hash."
+  }
+}

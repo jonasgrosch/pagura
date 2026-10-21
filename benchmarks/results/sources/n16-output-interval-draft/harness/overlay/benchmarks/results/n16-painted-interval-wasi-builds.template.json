@@ -1,0 +1,5 @@
+{
+  "baseline": {"source_root": null, "source": {"commit": null, "sha256": null}, "path": null, "sha256": null, "receipt": null, "receipt_sha256": null},
+  "candidate": {"source_root": null, "source": {"commit": null, "sha256": null}, "path": null, "sha256": null, "receipt": null, "receipt_sha256": null},
+  "instructions": "Absolute original module and receipt paths. source is the entire tools/runner source_before/source_after snapshot, not paired_render's different digest. Each successful receipt must bind its exact module path and SHA. Both Cargo suffixes must be cargo build --locked --offline --release -p pagura-render --example scene_index_profile --target wasm32-wasip1 -j 1. Preserve equal toolchain/profile/features and independently pin this completed build binding before WASI launch."
+}

@@ -1,0 +1,2052 @@
+--- /dev/null
++++ b/benchmarks/evaluate_n16_painted_interval.py
+@@ -0,0 +1,38 @@
++#!/usr/bin/env python3
++"""Audit 52 fixed painted-interval cells; retention remains a coordinator decision."""
++import sys
++
++import n16_painted_interval as experiment
++from evaluate_n16_output import ROOT, audit, load, require
++
++
++def main():
++    require(len(sys.argv) == 2 and sys.argv[1] in ("pilot-001", "confirmation-001"),
++            "usage: evaluate_n16_painted_interval.py pilot-001|confirmation-001")
++    results = ROOT / "benchmarks/results"
++    plan = load(results / "n16-painted-interval-plan.json")
++    bindings = load(results / "n16-painted-interval-bindings.json")
++    require(plan["status"] == "frozen-before-pilot", "painted-interval plan is not frozen")
++    expected = experiment.baseline_commit()
++    baseline = bindings["identities"]["baseline"]
++    require(baseline["commit"] == expected, "baseline identity differs from integrated commit")
++    for side, identity in bindings["identities"].items():
++        require(all(identity[key] == plan["identities_to_freeze"][side][key]
++                    for key in ("root", "commit", "source_sha256", "binary", "binary_sha256")),
++                "native binding differs from frozen plan: " + side)
++    experiment.require_baseline(baseline["root"])
++    audit(experiment_module=experiment, experiment_name="n16-painted-interval",
++          stem="n16-painted-interval", local_name="n16-painted-interval", run=sys.argv[1],
++          expected_case_count=18, expected_cell_count=52, expected_guard_mode="strict",
++          expected_harness_sources={
++              "benchmarks/n16_painted_interval.py", "benchmarks/n16_painted_interval_fixtures.py",
++              "benchmarks/n16_output_u16.py", "benchmarks/n16_output_guarded.py",
++              "benchmarks/n16_output.py", "benchmarks/opaque_composition.py",
++              "benchmarks/paired_render.py", "benchmarks/glyph_memo.py",
++              "benchmarks/glyph_memo_fixtures.py", "benchmarks/scene_index.py",
++              "benchmarks/clip_viewport_fixtures.py",
++          }, audit_entrypoint="benchmarks/evaluate_n16_painted_interval.py")
++
++
++if __name__ == "__main__":
++    main()
+--- /dev/null
++++ b/benchmarks/evaluate_n16_painted_interval_wasi.py
+@@ -0,0 +1,423 @@
++#!/usr/bin/env python3
++"""Independent retained-evidence audit; standard library only, no renderer imports.
++
++All --*-sha256 values are independent coordinator pins, not values copied from
++the report under audit. The completed outer receipt authenticates report bytes.
++Run only after every sample/observer/receipt has finished. Never renders anything.
++"""
++import argparse
++import hashlib
++import json
++import math
++import os
++import random
++import stat
++import statistics
++from pathlib import Path, PurePosixPath
++
++CELLS = (('opaque64', 'exact'), ('opaque64', 'competitive'),
++         ('opaque-fill', 'exact'), ('opaque-fill', 'competitive'),
++         ('opaque-empty', 'exact'), ('opaque-empty', 'competitive'),
++         ('opaque-distant', 'exact'), ('opaque-distant', 'competitive'),
++         ('opaque-tiny', 'exact'), ('opaque-tiny', 'competitive'),
++         ('image-only', 'exact'), ('default-knockout64', 'exact'))
++N16_CASES = ('opaque64', 'opaque-fill', 'opaque-empty', 'opaque-distant', 'opaque-tiny')
++SIDES = ('baseline', 'candidate')
++HARNESS = {'n16_painted_interval.py', 'n16_painted_interval_fixtures.py',
++           'n16_output_u16.py', 'n16_output_guarded.py', 'n16_output.py',
++           'opaque_composition.py', 'paired_render.py', 'glyph_memo.py',
++           'glyph_memo_fixtures.py', 'scene_index.py', 'clip_viewport_fixtures.py'}
++LIMIT = 64 * 1024 * 1024
++
++
++def require(condition, message):
++    if not condition:
++        raise ValueError(message)
++
++
++def sha(data):
++    return hashlib.sha256(data).hexdigest()
++
++
++def read(path, limit=LIMIT):
++    descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK | getattr(os, 'O_NOFOLLOW', 0))
++    with os.fdopen(descriptor, 'rb') as handle:
++        metadata = os.fstat(handle.fileno())
++        require(stat.S_ISREG(metadata.st_mode) and metadata.st_size <= limit, 'Not a bounded regular file: ' + str(path))
++        data = handle.read(limit + 1)
++        require(len(data) <= limit, 'File grew beyond bound: ' + str(path))
++        return data
++
++
++def file_hash(path, limit=1024 * 1024 * 1024):
++    descriptor = os.open(path, os.O_RDONLY | os.O_NONBLOCK | getattr(os, 'O_NOFOLLOW', 0))
++    with os.fdopen(descriptor, 'rb') as handle:
++        metadata = os.fstat(handle.fileno())
++        require(stat.S_ISREG(metadata.st_mode) and metadata.st_size <= limit, 'Unbounded identity file')
++        digest, size = hashlib.sha256(), 0
++        while chunk := handle.read(1024 * 1024):
++            size += len(chunk)
++            require(size <= limit, 'Identity file grew beyond bound')
++            digest.update(chunk)
++        return digest.hexdigest()
++
++
++def unique_pairs(pairs):
++    result = {}
++    for key, value in pairs:
++        require(key not in result, 'Duplicate JSON key: ' + key)
++        result[key] = value
++    return result
++
++
++def decode(data):
++    return json.loads(data, object_pairs_hook=unique_pairs,
++                      parse_constant=lambda value: (_ for _ in ()).throw(ValueError('Nonfinite JSON: ' + value)))
++
++
++def pinned(path, digest):
++    require(len(digest) == 64 and all(c in '0123456789abcdef' for c in digest), 'Invalid independent SHA-256')
++    data = read(path)
++    require(sha(data) == digest, 'Independent pin mismatch: ' + str(path))
++    return decode(data)
++
++
++def success(receipt):
++    require(receipt.get('status') == 'completed' and receipt.get('source_unchanged') is True
++            and receipt.get('source_before') == receipt.get('source_after')
++            and not receipt.get('errors') and not receipt.get('artifact_errors')
++            and receipt.get('cancellation_signal') is None
++            and all(type(receipt.get(key)) is int and receipt[key] == 0
++                    for key in ('exit_code', 'wrapper_exit_code')), 'Incomplete/failed runner receipt')
++
++
++def quantile(values):
++    ordered = sorted(values)
++    position = (len(ordered) - 1) * .95
++    lo, hi = math.floor(position), math.ceil(position)
++    return ordered[lo] + (ordered[hi] - ordered[lo]) * (position - lo)
++
++
++def expected_pixels(name):
++    """Independent integer geometry, not producer/renderer fixture code.
++
++    At 72 dpi, 64 nonoverlapping 256x6 glyph rectangles start at PDF y=16
++    in an 8x8 lattice with step256. Quarter-alpha black over white rounds
++    to191. The two 512-square fixtures are uniformly black or gray191.
++    This trusts the frozen generator's PDF construction, not arbitrary PDFs.
++    """
++    size = 64 if name == 'opaque-tiny' else 2048 if name in ('opaque64', 'default-knockout64') else 512
++    if name in ('opaque64', 'default-knockout64'):
++        rgb = bytearray(b'\xff' * (size * size * 3))
++        gray = 0 if name == 'opaque64' else 191
++        stripe = bytes([gray]) * (256 * 3)
++        for index in range(64):
++            x, y = index % 8 * 256, 16 + index // 8 * 256
++            for pdf_y in range(y, y + 6):
++                start = ((size - 1 - pdf_y) * size + x) * 3
++                rgb[start:start + len(stripe)] = stripe
++        rgb = bytes(rgb)
++    elif name in ('opaque-empty', 'opaque-distant', 'opaque-tiny'):
++        rgb = bytearray(b'\xff' * (size * size * 3))
++        # These top-down coordinates are independent of the PDF generator's
++        # bottom-up rectangles. Distant reaches both flat endpoints per chunk.
++        points = ((0, 0), (255, 255), (256, 0), (511, 255),
++                  (0, 256), (255, 511), (256, 256), (511, 511)) if name == 'opaque-distant' else ()
++        if name == 'opaque-tiny':
++            points = ((x, y) for y in range(32, 40) for x in range(24, 32))
++        for x, y in points:
++            offset = (y * size + x) * 3
++            rgb[offset:offset + 3] = b'\0\0\0'
++        rgb = bytes(rgb)
++    else:
++        require(name in ('opaque-fill', 'image-only'), 'Unknown oracle case')
++        rgb = bytes([0 if name == 'opaque-fill' else 191]) * (size * size * 3)
++    rgba = bytearray(b'\xff' * (size * size * 4))
++    for channel in range(3):
++        rgba[channel::4] = rgb[channel::3]
++    ppm = f'P6\n{size} {size}\n255\n'.encode() + rgb
++    raw = f'RGBA8 {size} {size} premultiplied\n'.encode() + bytes(rgba)
++    return size, rgb, ppm, raw
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    for name in ('directory', 'receipt', 'guard', 'build-bindings', 'launch-record', 'output'):
++        parser.add_argument('--' + name, required=True, type=Path)
++    for name in ('receipt', 'guard', 'build-bindings', 'native-bindings', 'frozen-plan', 'driver', 'wrapper', 'node',
++                 'launch-record', 'launch-config'):
++        parser.add_argument('--' + name + '-sha256', required=True)
++    args = parser.parse_args()
++    root, receipt_path, guard_path = args.directory.resolve(), args.receipt.resolve(), args.guard.resolve()
++    receipt = pinned(receipt_path, args.receipt_sha256)
++    guard = pinned(guard_path, args.guard_sha256)
++    builds = pinned(args.build_bindings.resolve(), args.build_bindings_sha256)
++    launch = pinned(args.launch_record.resolve(), args.launch_record_sha256)
++    config = pinned(Path(launch['config']['path']), args.launch_config_sha256)
++    success(receipt)
++    report_raw = read(root / 'report.json')
++    report_hash = sha(report_raw)
++    require(receipt['artifacts'].get(str(root / 'report.json')) == report_hash, 'Outer receipt does not pin report')
++    require(receipt['artifacts'].get(str(guard_path)) == args.guard_sha256, 'Outer receipt does not pin observer')
++    require(receipt['artifacts'].get(str(args.launch_record.resolve())) == args.launch_record_sha256,
++            'Outer receipt does not pin launch intent')
++    require(read(root / 'report.json.sha256').decode().strip() == report_hash, 'Report hash sidecar mismatch')
++    report = decode(report_raw)
++    require(report['schema'] == 1 and report['experiment'] == 'n16-painted-interval-wasi-diagnostic'
++            and report['status'] == 'completed' and report['admission'] is False
++            and report['verified_outputs'] == 336, 'Wrong/incomplete diagnostic')
++    require(report['run_id'] == receipt['run_id'] == report['coordination']['run_id']
++            and Path(report['coordination']['receipt']).resolve() == receipt_path, 'Run/receipt identity mismatch')
++    require(guard.get('status') == 'completed' and guard.get('observation_only') is False
++            and type(guard.get('child_exit_code')) is int and guard['child_exit_code'] == 0
++            and type(guard.get('exit_code')) is int and guard['exit_code'] == 0
++            and guard.get('cancellation_requested_utc') is None, 'Strict observer did not finish')
++    events = guard.get('events')
++    require(isinstance(events, list) and all(isinstance(e, dict) and e.get('matches') == [] for e in events)
++            and any(e.get('stage') == 'preflight' for e in events)
++            and any(e.get('stage') == 'postflight' for e in events), 'Missing/contaminated strict observer coverage')
++    contention = any(event.get('matches') for event in events)
++
++    artifacts, cache = report['artifacts'], {}
++    require(sum(item['bytes'] for item in artifacts.values()) == report['stored_bytes'] <= 512 * 1024 * 1024,
++            'Retention byte accounting mismatch')
++
++    def artifact(name):
++        pure = PurePosixPath(name)
++        require(not pure.is_absolute() and '..' not in pure.parts and str(pure) == name, 'Unsafe artifact path')
++        path = root / name
++        require(path.resolve().is_relative_to(root), 'Artifact escapes directory')
++        require(name in artifacts, 'Missing retained artifact: ' + name)
++        data = read(path)
++        require(len(data) == artifacts[name]['bytes'] and sha(data) == artifacts[name]['sha256'],
++                'Artifact bytes/hash mismatch: ' + name)
++        return data
++
++    # Read every retained artifact, including all warmup logs and unused bindings.
++    for name in artifacts:
++        data = artifact(name)
++        if name.startswith('blobs/'):
++            cache[name] = data
++    native_raw = artifact('bindings/native-bindings.json')
++    require(sha(native_raw) == args.native_bindings_sha256 == report['native_bindings']['sha256'],
++            'Native binding pin mismatch')
++    native = decode(native_raw)
++    require(launch['experiment'] == config['experiment'] == 'n16-painted-interval'
++            and launch['phase'] == config['phase'] == 'wasi'
++            and config['status'] == 'frozen-before-launch'
++            and launch['status'] == 'launch-intent-not-completion'
++            and launch['config']['sha256'] == args.launch_config_sha256
++            and launch['run_id'] == receipt['run_id']
++            and Path(launch['run_receipt']).resolve() == receipt_path,
++            'Launch config/phase/run binding mismatch')
++    require(config['bindings']['sha256'] == args.native_bindings_sha256
++            and config['plan']['sha256'] == args.frozen_plan_sha256
++            and config['wasi_build_bindings']['sha256'] == args.build_bindings_sha256
++            and config['node']['sha256'] == args.node_sha256
++            and launch['python'] == config['python'] and launch['guard'] == config['guard'],
++            'Launch inputs differ from independent pins')
++    candidate_root = Path(native['identities']['candidate']['root'])
++    python, guard_source = config['python']['path'], Path(config['guard']['path'])
++    require(file_hash(Path(python)) == config['python']['sha256']
++            and guard_source.is_relative_to(candidate_root)
++            and file_hash(guard_source) == config['guard']['sha256']
++            == native['bound_files_sha256'].get(guard_source.relative_to(candidate_root).as_posix()),
++            'Python/strict observer source is not frozen')
++    require(guard['command'] == launch['argv']
++            and receipt['argv'] == [python, str(guard_source), '--evidence-dir', str(guard_path.parent), '--', *launch['argv']]
++            and launch['argv'][:2] == [python, str(candidate_root / 'benchmarks/launch_n16_painted_interval.py')],
++            'Runner/observer did not watch this frozen launcher command')
++    expected_command = [python, str(candidate_root / 'benchmarks/n16_painted_interval_wasi.py'),
++                        '--bindings', config['bindings']['path'], '--bindings-sha256', args.native_bindings_sha256,
++                        '--plan', config['plan']['path'], '--plan-sha256', args.frozen_plan_sha256,
++                        '--build-bindings', config['wasi_build_bindings']['path'],
++                        '--build-bindings-sha256', args.build_bindings_sha256,
++                        '--node', config['node']['path'], '--output', str(root), '--run-id', receipt['run_id']]
++    for side in SIDES:
++        expected_command += ['--' + side + '-source', native['identities'][side]['root'],
++                             '--' + side + '-wasm', builds[side]['path'],
++                             '--' + side + '-build-receipt', builds[side]['receipt']]
++    require(report['argv'] == launch['command'] == expected_command,
++            'Launcher did not exec this exact diagnostic command')
++    require(file_hash(candidate_root / 'benchmarks/launch_n16_painted_interval.py')
++            == native['bound_files_sha256'].get('benchmarks/launch_n16_painted_interval.py'),
++            'Launcher source differs from frozen binding')
++    frozen_raw = artifact('bindings/plan.json')
++    require(sha(frozen_raw) == args.frozen_plan_sha256 == report['frozen_plan_sha256'], 'Frozen plan pin mismatch')
++    frozen = decode(frozen_raw)
++    require(frozen['experiment'] == 'n16-painted-interval' and frozen['status'] == 'frozen-before-pilot',
++            'Experiment plan not frozen')
++    require(native['bound_files_sha256'].get('benchmarks/results/n16-painted-interval-plan.json')
++            == args.frozen_plan_sha256
++            and native['bound_files_sha256'].get('benchmarks/evaluate_n16_painted_interval_wasi.py')
++            == file_hash(Path(__file__).resolve()), 'Frozen plan/auditor source binding mismatch')
++    require(sha(artifact('bindings/build-bindings.json')) == args.build_bindings_sha256
++            == report['build_bindings_sha256'], 'Retained build binding mismatch')
++    for label, digest in (('driver', args.driver_sha256), ('wrapper', args.wrapper_sha256)):
++        name = 'diagnostic.py' if label == 'driver' else 'run_profile_wasi.mjs'
++        require(sha(artifact('bindings/' + name)) == digest == report[label]['sha256'], 'Frozen diagnostic script mismatch')
++    require(report['node']['sha256'] == args.node_sha256
++            and file_hash(Path(report['node']['path'])) == args.node_sha256, 'Node executable pin mismatch')
++    require(receipt['source_root'] == report['identities']['candidate']['root']
++            and receipt['source_before'] == builds['candidate']['source'], 'Outer runner source mismatch')
++    cargo_argv = []
++    for side in SIDES:
++        identity, build = report['identities'][side], builds[side]
++        require(identity['root'] == build['source_root']
++                and all(identity[key] == native['identities'][side][key]
++                        == frozen['identities_to_freeze'][side][key]
++                        for key in ('root', 'commit', 'source_sha256'))
++                and build['source']['commit'] == identity['commit']
++                and build['source'] == native['runner_sources'][side], 'Source identity mismatch')
++        module_hash = sha(artifact(f'bindings/{side}.wasm'))
++        require(module_hash == build['sha256'] == identity['module_sha256'], 'WASM module pin mismatch')
++        build_raw = artifact(f'bindings/{side}-build-receipt.json')
++        require(sha(build_raw) == build['receipt_sha256'] == identity['build_receipt_sha256'], 'Build receipt pin mismatch')
++        build_receipt = decode(build_raw)
++        success(build_receipt)
++        require(build_receipt['source_root'] == build['source_root'] and build_receipt['source_before'] == build['source']
++                and build['path'] == identity['module_path']
++                and build['receipt'] == identity['build_receipt_path']
++                and build_receipt['artifacts'].get(build['path']) == module_hash, 'Build/source/module correspondence missing')
++        argv = build_receipt['argv']
++        require('cargo' in argv, 'No recorded Cargo build command')
++        cargo_argv.append(argv[argv.index('cargo'):])
++    require(cargo_argv[0] == cargo_argv[1] == ['cargo', 'build', '--locked', '--offline', '--release',
++            '-p', 'pagura-render', '--example', 'scene_index_profile', '--target', 'wasm32-wasip1', '-j', '1'],
++            'Build commands differ from the frozen default WASI profile')
++    require(set(report['harness_sha256']) == HARNESS, 'Missing/extra imported helper bindings')
++    for name, digest in report['harness_sha256'].items():
++        require(native['bound_files_sha256'].get('benchmarks/' + name) == digest, 'Imported helper binding mismatch')
++    require(report['example_sha256'] == native['bound_files_sha256']['crates/pagura-render/examples/scene_index_profile.rs'],
++            'Example binding mismatch')
++    for name, digest in (('n16_painted_interval_wasi.py', args.driver_sha256),
++                         ('run_profile_wasi.mjs', args.wrapper_sha256)):
++        require(native['bound_files_sha256'].get('benchmarks/' + name) == digest, 'WASI script omitted from frozen binding')
++
++    plan_raw = artifact('plan.json')
++    require(sha(plan_raw) == report['plan_sha256'], 'Plan pin mismatch')
++    plan = decode(plan_raw)
++    require(all(plan.get(key) == value for key, value in {'schema': 1, 'seed': 20261107, 'pairs': 12,
++            'warmups': 2, 'dpi': 72, 'outputs': 336, 'metric': 'render_ns'}.items()), 'Wrong fixed plan')
++    wasi = frozen['wasi_diagnostic']
++    require(all(wasi.get(key) == value for key, value in {'cell_count': 12, 'seed': 20261107, 'pairs': 12,
++            'warmups': 2, 'expected_verified_outputs': 336, 'operation': 'full', 'retry': False}.items())
++            and wasi['cases_in_both_modes'] == list(N16_CASES)
++            and wasi['additional_cells'] == [{'case': 'image-only', 'mode': 'exact', 'operation': 'full'},
++                                             {'case': 'default-knockout64', 'mode': 'exact', 'operation': 'full'}],
++            'Frozen WASI policy differs from fixed implementation')
++    require(plan['triage']['pixel_mismatch'] == 'block portable candidate'
++            and plan['triage']['n16_material_regression'] == {'median_ratio_gt': 1.05,
++                'paired_ratio_gt': 1.02, 'minimum_pairs_above': 10,
++                'action': 'suspend portable promotion; investigate or revise before native confirmation'}, 'Triage rule changed')
++    rng, expected_cells = random.Random(20261107), []
++    for name, mode in CELLS:
++        measured = [['baseline', 'candidate'] for _ in range(6)] + [['candidate', 'baseline'] for _ in range(6)]
++        rng.shuffle(measured)
++        warm = [['baseline', 'candidate'], ['candidate', 'baseline']]
++        rng.shuffle(warm)
++        expected_cells.append({'case': name, 'mode': mode, 'operation': 'full',
++                               'n16': name in N16_CASES, 'orders': warm + measured})
++    require(plan['cells'] == expected_cells and len(report['cells']) == 12, 'Cell order/pairing schedule changed')
++    expected = {name: expected_pixels(name) for name in dict.fromkeys(name for name, _ in CELLS)}
++    for name, (_, _, ppm, _) in expected.items():
++        require(artifact(f'oracles/{name}.ppm') == ppm, 'Independent analytic oracle mismatch: ' + name)
++        require(artifact(f'inputs/{name}.pdf').startswith(b'%PDF-'), 'Missing retained PDF')
++    results, checked = [], 0
++    for cell, specification in zip(report['cells'], expected_cells):
++        name, mode = specification['case'], specification['mode']
++        require(all(cell.get(key) == specification[key] for key in ('case', 'mode', 'operation', 'n16'))
++                and len(cell['pairs']) == 14, 'Cell identity/count mismatch')
++        size, rgb, _, expected_raw = expected[name]
++        for index, (pair, order) in enumerate(zip(cell['pairs'], specification['orders'])):
++            require(pair['pair'] == index - 2 and pair['order'] == order, 'Pair ID/order mismatch')
++            require(type(pair['started_monotonic_ns']) is int and type(pair['finished_monotonic_ns']) is int
++                    and pair['finished_monotonic_ns'] >= pair['started_monotonic_ns'], 'Invalid pair interval')
++            for side in order:
++                sample = pair[side]
++                relative = f'samples/{name}-{mode}-{index:02d}-{side}'
++                sample_dir = root / relative
++                command = [report['node']['path'], report['wrapper']['path'], str(root / f'bindings/{side}.wasm'),
++                           str(root / f'inputs/{name}.pdf'), mode, str(sample_dir / 'render.rgba'),
++                           str(sample_dir / 'wasi.stdout'), str(sample_dir / 'wasi.stderr'), str(sample_dir / 'wrapper.json')]
++                require(sample['command'] == command and sample['process']['exit_code'] == 0
++                        and sample['process']['status'] != 'timeout', 'Invocation command/result mismatch')
++                require(artifact(relative + '/node.log').decode() == sample['diagnostic'], 'Node log mismatch')
++                metadata = decode(artifact(relative + '/wrapper.json'))
++                require(metadata['status'] == 'completed' and metadata['exit_code'] == 0
++                        and metadata['module_sha256'] == builds[side]['sha256']
++                        and metadata['wrapper_sha256'] == args.wrapper_sha256
++                        and metadata['input_sha256'] == artifacts[f'inputs/{name}.pdf']['sha256']
++                        and metadata['runtime'] == report['node']['runtime']
++                        and metadata['runtime']['exec_argv'] == [] and metadata['runtime']['node_options'] == ''
++                        and Path(metadata['runtime']['executable']).resolve() == Path(report['node']['path']).resolve()
++                        and metadata['argv'] == command, 'WASI runtime/module/request binding mismatch')
++                require(metadata['wasi_args'] == ['scene_index_profile', f'/input/{name}.pdf', mode, 'full', '/output/render.rgba', '72']
++                        and metadata['wasi_env'] == {} and metadata['preopens'] == {'/input': str(root / 'inputs'), '/output': str(sample_dir)},
++                        'Actual WASI arguments/filesystem mapping mismatch')
++                memory = metadata['linear_memory']
++                before, after = memory['before_start_bytes'], memory['after_start_bytes']
++                require((before is None and after is None) or (type(before) is int and type(after) is int
++                        and 0 < before <= after and before % 65536 == after % 65536 == 0), 'Invalid linear memory')
++                require(sample['linear_memory'] == memory and artifact(relative + '/wasi.stderr') == b'', 'Memory/diagnostic mismatch')
++                stages = decode(artifact(relative + '/wasi.stdout'))
++                require(stages == sample['stages'] and all(type(stages.get(key)) is int and stages[key] > 0
++                        for key in ('open_ns', 'compile_ns', 'render_ns', 'total_ns', 'metric_ns'))
++                        and stages['schema'] == 1 and stages['operation'] == 'full' and stages['accuracy'] == mode
++                        and stages['dpi'] == 72 and stages['width'] == stages['height'] == size
++                        and stages['metric_ns'] == stages['render_ns']
++                        and stages['total_ns'] >= stages['open_ns'] + stages['compile_ns'] + stages['render_ns'], 'Stage identity/timing mismatch')
++                blob = sample['output_blob']
++                require(blob == 'blobs/' + sample['output_sha256'] + '.rgba' and cache.get(blob) == expected_raw
++                        and sample['output_sha256'] == sha(expected_raw) and sample['pixels_sha256'] == sha(rgb)
++                        and sample['width'] == sample['height'] == size and sample['oracle_equal'] is True, 'Independent raw RGBA oracle mismatch')
++                checked += 1
++            require(pair['baseline']['output_sha256'] == pair['candidate']['output_sha256'], 'Paired output mismatch')
++        pairs = cell['pairs'][2:]
++        values = {side: [pair[side]['stages']['render_ns'] for pair in pairs] for side in SIDES}
++        ratios = [pair['candidate']['stages']['render_ns'] / pair['baseline']['stages']['render_ns'] for pair in pairs]
++        median_ratio = statistics.median(values['candidate']) / statistics.median(values['baseline'])
++        count = sum(value > 1.02 for value in ratios)
++        result = {'median_ns': {side: statistics.median(values[side]) for side in SIDES},
++                  'p95_ns': {side: quantile(values[side]) for side in SIDES}, 'median_ratio': median_ratio,
++                  'p95_ratio': quantile(values['candidate']) / quantile(values['baseline']), 'paired_ratios': ratios,
++                  'paired_ratios_above_1_02': count,
++                  'material_regression_signal': specification['n16'] and median_ratio > 1.05 and count >= 10}
++        require(result == cell['diagnostic'], 'Diagnostic summaries/triage do not reproduce')
++        memory_end = {side: [pair[side]['linear_memory']['after_start_bytes'] for pair in pairs] for side in SIDES}
++        require(memory_end == cell['linear_memory_end_bytes'], 'Linear-memory summary mismatch')
++        results.append({'case': name, 'mode': mode, 'operation': 'full', **result, 'linear_memory_end_bytes': memory_end})
++    require(checked == 336, 'Incomplete raw sample evidence')
++    suspended = [f"{cell['case']}/{cell['mode']}/full" for cell in results if cell['material_regression_signal']]
++    fallback_review = [f"{cell['case']}/{cell['mode']}/full" for cell in results
++                       if cell['case'] not in N16_CASES and cell['median_ratio'] > 1.05
++                       and cell['paired_ratios_above_1_02'] >= 10]
++    expected_decision = ('suspended: material WASM regression signal; investigate before native confirmation' if suspended
++                         else 'no diagnostic suspension signal; no speed/admission claim')
++    require(report['suspension_cells'] == suspended and report['portable_promotion'] == expected_decision, 'Triage decision mismatch')
++    require(report['fallback_review_cells'] == fallback_review, 'Fallback review signal mismatch')
++    result = {'schema': 1, 'status': 'verified', 'experiment': report['experiment'], 'run_id': report['run_id'],
++              'admission': False, 'report_sha256': report_hash, 'receipt_sha256': args.receipt_sha256,
++              'guard_sha256': args.guard_sha256, 'plan_sha256': sha(plan_raw),
++              'frozen_plan_sha256': args.frozen_plan_sha256,
++              'launch_record_sha256': args.launch_record_sha256, 'launch_config_sha256': args.launch_config_sha256,
++              'build_bindings_sha256': args.build_bindings_sha256, 'native_bindings_sha256': args.native_bindings_sha256,
++              'auditor_sha256': file_hash(Path(__file__).resolve()), 'verified_outputs': checked,
++              'rehashed_artifacts': len(artifacts), 'independent_analytic_pixels': True,
++              'background_contention_observed': contention, 'suspension_cells': suspended,
++              'fallback_review_cells': fallback_review,
++              'decision': 'not cleared: observed contention' if contention else expected_decision,
++              'unavailable_claims': ['No statistical admission or calibrated confidence inference from12pairs.',
++                 'No Node startup, warmed-browser, total-memory or RSS comparison.',
++                 'Observer cannot prove absence of short/unrecognized background workloads.',
++                 'PDF construction and unrecorded compiler environment remain trusted coordinator/generator evidence.'],
++              'cells': results}
++    data = (json.dumps(result, indent=2) + '\n').encode()
++    with args.output.resolve().open('xb') as handle:
++        handle.write(data)
++    print(json.dumps({'status': result['status'], 'decision': result['decision'], 'verified_outputs': checked,
++                      'audit_sha256': sha(data), 'output': str(args.output.resolve())}))
++
++
++if __name__ == '__main__':
++    main()
+--- /dev/null
++++ b/benchmarks/launch_n16_painted_interval.py
+@@ -0,0 +1,211 @@
++#!/usr/bin/env python3
++"""Preflight one frozen phase, record intent, then exec under the existing runner.
++
++This does not acquire a lease, schedule work, monitor contention or impose a
++deadline. The coordinator wraps it in the pinned strict observer and runner.
++The independent launch-config SHA is supplied outside the config itself.
++"""
++import argparse
++import json
++import os
++from pathlib import Path
++import sys
++import time
++
++sys.dont_write_bytecode = True
++from evaluate_n16_painted_interval_wasi import decode, file_hash, pinned, read, require, success
++from evaluate_n16_output import THRESHOLDS, cell_map, declared_cells, validate_guard
++from paired_render import ROOT, source_identity
++import n16_painted_interval as experiment
++
++SIDES = ('baseline', 'candidate')
++GATES = ('PI-Q1', 'PI-Q2', 'PI-Q3', 'PI-Q4', 'PI-Q5', 'PI-M1', 'PI-REACH')
++
++
++def pin(item):
++    return pinned(Path(item['path']).resolve(), item['sha256'])
++
++
++def completed_evidence(item):
++    """A pinned completed receipt must bind this exact artifact and source."""
++    receipt, artifact = pin(item['receipt']), pin(item['artifact'])
++    success(receipt)
++    require(receipt['artifacts'].get(str(Path(item['artifact']['path']).resolve()))
++            == item['artifact']['sha256'], 'Receipt does not bind prerequisite artifact')
++    return receipt, artifact
++
++
++def prior_run(item, outputs, bindings_sha, plan_sha, wasi=False):
++    receipt, report = completed_evidence(item)
++    guard, audit = pin(item['guard']), pin(item['audit'])
++    validate_guard(guard, 'strict')
++    require(receipt['artifacts'].get(str(Path(item['guard']['path']).resolve())) == item['guard']['sha256'],
++            'Prerequisite observer is not bound by its measurement receipt')
++    require(audit['receipt_sha256'] == item['receipt']['sha256']
++            and audit['report_sha256'] == item['artifact']['sha256']
++            and audit['guard_sha256'] == item['guard']['sha256']
++            and audit['background_contention_observed'] is False, 'Prerequisite audit binding/contention mismatch')
++    if wasi:
++        require(report['status'] == 'completed' and audit['status'] == 'verified'
++                and audit['verified_outputs'] == outputs
++                and audit['native_bindings_sha256'] == bindings_sha
++                and audit['frozen_plan_sha256'] == plan_sha
++                and not audit['suspension_cells'], 'WASI diagnostic is incomplete or suspends promotion')
++    else:
++        require(report['status'] == 'complete-exploratory' and report['phase'] == 'pilot'
++                and audit['phase'] == 'pilot' and audit['independently_verified_outputs'] == outputs
++                and audit['bindings_sha256'] == bindings_sha and audit['plan_sha256'] == plan_sha,
++                'Pilot evidence is incomplete or belongs to another freeze')
++    return receipt, audit
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--config', required=True, type=Path)
++    parser.add_argument('--config-sha256', required=True)
++    parser.add_argument('--phase', required=True, choices=('pilot', 'wasi', 'confirmation'))
++    parser.add_argument('--dry-run', action='store_true', help='verify pins and print command; never launch or write')
++    args = parser.parse_args()
++    config = pinned(args.config.resolve(), args.config_sha256)
++    require(config['experiment'] == 'n16-painted-interval' and config['phase'] == args.phase,
++            'Wrong experiment or phase config')
++    require(config['status'] == 'frozen-before-launch', 'Launch config is not frozen')
++    require(isinstance(config['decision_reason'], str) and config['decision_reason'].strip(),
++            'Coordinator must record the reason for launching this fixed phase')
++    plan, bindings = pin(config['plan']), pin(config['bindings'])
++    require(plan == experiment.frozen_plan(), 'Launcher and driver frozen plans differ')
++    require(plan['case_count'] == 18 and plan['cell_count'] == 52
++            and plan['target_count'] == 2 and plan['protected_count'] == 50
++            and cell_map(plan['cells'], 52) == declared_cells(experiment, 18, 52)
++            and plan['phases'] == experiment.PHASE_PLAN
++            and plan['expected_verified_outputs'] == {'pilot': 1040, 'confirmation': 21320}
++            and plan['thresholds'] == THRESHOLDS
++            and plan['analysis'] == {'method': 'paired-percentile-bootstrap', 'resamples': 5000,
++                                     'confidence': .95, 'seed': 42017}, 'Frozen native matrix or gates differ')
++    require(config['plan']['path'] == str(ROOT / 'benchmarks/results/n16-painted-interval-plan.json')
++            and config['bindings']['path'] == str(ROOT / 'benchmarks/results/n16-painted-interval-bindings.json'),
++            'Use the experiment fixed plan and binding destinations')
++    require(bindings['candidate_runner_source_sha256'] == bindings['runner_sources']['candidate']['sha256'],
++            'Native and runner source digest bindings differ')
++    for relative, digest in bindings['bound_files_sha256'].items():
++        path = (ROOT / relative).resolve()
++        require(path.is_relative_to(ROOT) and file_hash(path) == digest, 'Frozen source changed: ' + relative)
++    required = {'benchmarks/' + name for name in (
++        'n16_painted_interval.py', 'n16_painted_interval_fixtures.py', 'paired_render.py',
++        'n16_output_u16.py', 'n16_output_guarded.py', 'n16_output.py', 'opaque_composition.py',
++        'glyph_memo.py', 'glyph_memo_fixtures.py', 'scene_index.py', 'clip_viewport_fixtures.py',
++        'evaluate_n16_output.py', 'evaluate_n16_painted_interval.py',
++        'n16_painted_interval_wasi.py', 'evaluate_n16_painted_interval_wasi.py',
++        'run_profile_wasi.mjs', 'launch_n16_painted_interval.py')}
++    required |= {'crates/pagura-render/examples/scene_index_profile.rs',
++                 'benchmarks/results/n16-painted-interval-plan.json'}
++    require(required <= bindings['bound_files_sha256'].keys(), 'Incomplete experiment source bindings')
++    python = Path(config['python']['path']).resolve()
++    require(python == Path(sys.executable).resolve() and file_hash(python) == config['python']['sha256'],
++            'Use the pinned Python executable')
++    guard_path = Path(config['guard']['path']).resolve()
++    require(guard_path.is_relative_to(ROOT) and file_hash(guard_path) == config['guard']['sha256']
++            and bindings['bound_files_sha256'].get(guard_path.relative_to(ROOT).as_posix()) == config['guard']['sha256'],
++            'Strict observer source is not frozen')
++    experiment.require_baseline(bindings['identities']['baseline']['root'])
++    native_commands = []
++    for side in SIDES:
++        identity = bindings['identities'][side]
++        require(all(identity[key] == plan['identities_to_freeze'][side][key]
++                    for key in ('root', 'commit', 'source_sha256', 'binary', 'binary_sha256')),
++                'Plan/native identity mismatch: ' + side)
++        require(source_identity(identity['root']) == {key: identity[key] for key in ('root', 'commit', 'source_sha256')},
++                'Current source differs from frozen identity: ' + side)
++        require(file_hash(Path(identity['binary'])) == identity['binary_sha256'], 'Native binary changed: ' + side)
++        build = bindings['native_builds'][side]
++        receipt = pinned(Path(build['receipt']), build['receipt_sha256'])
++        success(receipt)
++        require(receipt['source_root'] == identity['root']
++                and receipt['source_before'] == bindings['runner_sources'][side]
++                and receipt['source_before']['commit'] == identity['commit']
++                and receipt['artifacts'].get(identity['binary']) == identity['binary_sha256'],
++                'Native build/source/artifact binding missing: ' + side)
++        require('cargo' in receipt['argv'], 'No recorded native Cargo build command')
++        native_commands.append(receipt['argv'][receipt['argv'].index('cargo'):])
++    require(native_commands[0] == native_commands[1], 'Native Cargo profile/argument lists differ')
++    quality_receipt, quality = completed_evidence(config['prerequisites']['quality'])
++    require(quality_receipt['source_before'] == bindings['runner_sources']['candidate']
++            and quality_receipt['source_root'] == str(ROOT) and quality['status'] == 'passed'
++            and quality['experiment'] == 'n16-painted-interval'
++            and quality['source'] == bindings['runner_sources']['candidate']
++            and quality['gates'] == {name: 'passed' for name in GATES}, 'Mandatory quality evidence is incomplete')
++    layouts = quality['layouts']
++    require(len(layouts) == 8 and {(row['target'], row['type']) for row in layouts}
++            == {(target, name) for target in ('native', 'wasm32-wasip1')
++                for name in ('Buffer', 'Option<Buffer>', 'Surface', 'MaskSink')}, 'Missing measured enclosing layouts')
++    for row in layouts:
++        for field in ('size', 'alignment'):
++            require(type(row['baseline'][field]) is int and type(row['candidate'][field]) is int
++                    and 0 < row['candidate'][field] <= row['baseline'][field], 'Enclosing layout grew or is unavailable')
++    if args.phase in ('wasi', 'confirmation'):
++        prior_receipt, _ = prior_run(config['prerequisites']['pilot'], 1040,
++                                    config['bindings']['sha256'], config['plan']['sha256'])
++        require(prior_receipt['source_before'] == bindings['runner_sources']['candidate'], 'Pilot source differs')
++    if args.phase == 'confirmation':
++        prior_receipt, wasi = prior_run(config['prerequisites']['wasi'], 336,
++                                       config['bindings']['sha256'], config['plan']['sha256'], wasi=True)
++        require(prior_receipt['source_before'] == bindings['runner_sources']['candidate'], 'WASI source differs')
++        require(not wasi['fallback_review_cells'] or isinstance(config.get('fallback_review_reason'), str)
++                and config['fallback_review_reason'].strip(), 'Material fallback signal needs explicit coordinator review')
++    local = ROOT / 'benchmarks/results/local/n16-painted-interval'
++    run = 'wasi-001' if args.phase == 'wasi' else args.phase + '-001'
++    output, record = local / run, local / (run + '-launch.json')
++    require(not output.exists() and not record.exists(), 'This phase was already launched; no automatic retry')
++    if args.phase == 'wasi':
++        builds = pin(config['wasi_build_bindings'])
++        node = config['node']
++        require(file_hash(Path(node['path'])) == node['sha256'], 'Node runtime changed')
++        command = [str(python), str(ROOT / 'benchmarks/n16_painted_interval_wasi.py'),
++                   '--bindings', config['bindings']['path'], '--bindings-sha256', config['bindings']['sha256'],
++                   '--plan', config['plan']['path'], '--plan-sha256', config['plan']['sha256'],
++                   '--build-bindings', config['wasi_build_bindings']['path'],
++                   '--build-bindings-sha256', config['wasi_build_bindings']['sha256'],
++                   '--node', node['path'], '--output', str(output), '--run-id', os.environ.get('PAGURA_RUN_ID', '<runner-run-id>')]
++        for side in SIDES:
++            build = builds[side]
++            require(build['source'] == bindings['runner_sources'][side]
++                    and file_hash(Path(build['path'])) == build['sha256'], 'WASI source/module changed')
++            receipt = pinned(Path(build['receipt']), build['receipt_sha256'])
++            success(receipt)
++            require(receipt['source_root'] == build['source_root'] == bindings['identities'][side]['root']
++                    and receipt['source_before'] == build['source']
++                    and receipt['artifacts'].get(build['path']) == build['sha256'], 'WASI build/module binding missing')
++            argv = receipt['argv']
++            require('cargo' in argv and argv[argv.index('cargo'):] == [
++                    'cargo', 'build', '--locked', '--offline', '--release', '-p', 'pagura-render',
++                    '--example', 'scene_index_profile', '--target', 'wasm32-wasip1', '-j', '1'],
++                    'WASI build command differs from fixed profile')
++            command += ['--' + side + '-source', bindings['identities'][side]['root'],
++                        '--' + side + '-wasm', build['path'], '--' + side + '-build-receipt', build['receipt']]
++    else:
++        command = [str(python), str(ROOT / 'benchmarks/n16_painted_interval.py'), '--phase', args.phase, '--output', str(output)]
++        for side in SIDES:
++            identity = bindings['identities'][side]
++            command += ['--' + side, identity['binary'], '--' + side + '-source', identity['root']]
++    if args.dry_run:
++        print(json.dumps({'command': command, 'record': str(record), 'launches_nothing': True}, indent=2))
++        return
++    require(os.environ.get('PAGURA_RUN_ID') and os.environ.get('PAGURA_RUN_RECEIPT'), 'Run inside the coordinator runner')
++    live = decode(read(Path(os.environ['PAGURA_RUN_RECEIPT'])))
++    require(live['status'] == 'running' and live['run_id'] == os.environ['PAGURA_RUN_ID']
++            and live['source_before'] == bindings['runner_sources']['candidate'], 'Live runner source/run identity differs')
++    local.mkdir(parents=True, exist_ok=True)
++    with record.open('x') as handle:
++        json.dump({'schema': 1, 'experiment': 'n16-painted-interval', 'phase': args.phase,
++                   'status': 'launch-intent-not-completion', 'created_unix_ns': time.time_ns(),
++                   'config': {'path': str(args.config.resolve()), 'sha256': args.config_sha256},
++                   'argv': sys.orig_argv, 'command': command,
++                   'python': config['python'], 'guard': config['guard'],
++                   'run_id': live['run_id'], 'run_receipt': os.environ['PAGURA_RUN_RECEIPT'],
++                   'decision_reason': config['decision_reason'], 'admission': False}, handle, indent=2)
++        handle.write('\n')
++    os.execv(str(python), command)
++
++
++if __name__ == '__main__':
++    main()
+--- /dev/null
++++ b/benchmarks/n16_painted_interval.py
+@@ -0,0 +1,92 @@
++#!/usr/bin/env python3
++"""Bounded N16 painted-interval experiment on the reconciled retained stack."""
++import argparse
++import json
++from pathlib import Path
++import subprocess
++import sys
++
++from paired_render import ROOT, run_experiment, source_identity
++from benchkit.artifacts import hash_regular_file, read_bounded_regular
++import n16_output_u16 as previous
++import n16_painted_interval_fixtures as intervals
++
++CASES = (*previous.CASES, *intervals.CASES)
++CELLS = (*previous.CELLS,
++         *((name, mode, "full") for name in (*intervals.CASES, "opaque-tiny")
++           for mode in ("exact", "competitive")))
++PHASE_PLAN = {
++    "pilot": {"pairs": 5, "warmups": 5, "seed": 20261105},
++    "confirmation": {"pairs": 200, "warmups": 5, "seed": 20261106},
++}
++
++
++def fixture(name):
++    return intervals.fixture(name) if name in intervals.CASES else previous.fixture(name)
++
++
++def frozen_plan():
++    plan = json.loads(read_bounded_regular(ROOT / "benchmarks/results/n16-painted-interval-plan.json", 2**20))
++    if plan.get("experiment") != "n16-painted-interval" or plan.get("status") != "frozen-before-pilot":
++        raise ValueError("painted-interval plan is not frozen")
++    for side in ("baseline", "candidate"):
++        identity = plan["identities_to_freeze"][side]
++        for name, length in (("commit", 40), ("source_sha256", 64), ("binary_sha256", 64)):
++            value = identity.get(name)
++            if not isinstance(value, str) or len(value) != length or any(c not in "0123456789abcdef" for c in value):
++                raise ValueError("unresolved frozen identity: " + side + "/" + name)
++        if not all(isinstance(identity.get(name), str) and Path(identity[name]).is_absolute()
++                   for name in ("root", "binary")):
++            raise ValueError("unresolved frozen source/binary path: " + side)
++    return plan
++
++
++def baseline_commit():
++    return frozen_plan()["identities_to_freeze"]["baseline"]["commit"]
++
++
++def require_baseline(root):
++    """Require the coordinator's frozen baseline, after any retained preceding work."""
++    def git(*args):
++        return subprocess.run(["git", "-C", str(Path(root).resolve()), *args],
++                              check=True, capture_output=True, text=True, timeout=30).stdout
++    if git("rev-parse", "HEAD").strip() != baseline_commit():
++        raise ValueError("baseline must match the frozen incremental comparison commit")
++    if git("status", "--porcelain=v1", "--untracked-files=all"):
++        raise ValueError("baseline checkout must be pristine, including nonignored untracked files")
++
++
++if __name__ == "__main__":
++    if not any(arg in ("-h", "--help") for arg in sys.argv[1:]):
++        preflight = argparse.ArgumentParser(add_help=False)
++        for side in ("baseline", "candidate"):
++            preflight.add_argument("--" + side + "-source", required=True, type=Path)
++            preflight.add_argument("--" + side, required=True, type=Path)
++        args, _ = preflight.parse_known_args()
++        require_baseline(args.baseline_source)
++        plan = frozen_plan()
++        for side in ("baseline", "candidate"):
++            expected = plan["identities_to_freeze"][side]
++            actual = source_identity(getattr(args, side + "_source"))
++            binary = getattr(args, side).resolve()
++            if any(actual[key] != expected[key] for key in actual) or str(binary) != expected["binary"] \
++                    or hash_regular_file(binary) != expected["binary_sha256"]:
++                raise ValueError("source/binary differs from frozen plan: " + side)
++    guarded = previous.previous
++    n16 = guarded.previous
++    opaque = n16.opaque
++    run_experiment(__file__, description=__doc__, experiment="n16-painted-interval",
++        cases=CASES, cells=CELLS, target_case="opaque64", fixture=fixture,
++        fixture_sources=(intervals.__file__, previous.__file__, guarded.__file__, n16.__file__, opaque.__file__,
++                         opaque.memo.__file__, opaque.memo.legacy.__file__,
++                         opaque.memo.outlines.__file__, opaque.memo.clips.__file__),
++        phase_plan=PHASE_PLAN,
++        target_scope="Skip only N16 output conversion outside a conservative flat painted interval; both modes",
++        limitations=("All previous 46 cells and roles are retained; six protected full-render controls are added",
++                     "Profile uses default Repair open and full compile_page; diagnostics are not emitted",
++                     "Only empty and distant are new cases; opaque-tiny already exists with cold cells",
++                     "Full surface initialization, interval holes, source work and allocation admission remain",
++                     "Actual N16 route and interval reach require separate untimed structural evidence",
++                     "Native/WASI enclosing layout, accuracy and resource gates remain mandatory",
++                     "No historical, pilot or canceled samples are reused in confirmation",
++                     "No competitor, release or net-stack superiority claim follows from this matrix"))
+--- /dev/null
++++ b/benchmarks/n16_painted_interval_fixtures.py
+@@ -0,0 +1,33 @@
++"""Two integer-edge controls with independent literal device-space pixels."""
++from fixturegen.pdf import document, stream
++
++CASES = ("opaque-empty", "opaque-distant")
++SIDE = 512
++
++
++def fixture(name):
++    if name not in CASES:
++        raise ValueError("unknown painted-interval fixture")
++    commands = []
++    if name == "opaque-distant":
++        for cy in (0, 1):
++            for cx in (0, 1):
++                commands.extend((f"{256 * cx} {256 * cy + 255} 1 1 re f",
++                                 f"{256 * cx + 255} {256 * cy} 1 1 re f"))
++    content = ("0 g\n" + "\n".join(commands)).encode() if commands else b""
++    pdf = document([
++        b"<< /Type /Catalog /Pages 2 0 R >>",
++        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
++        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 512 512] /Resources << >> /Contents 4 0 R >>",
++        stream(content),
++    ])
++    # This oracle does not consume the emitted rectangle list or PDF bytes.
++    # Literal top-down positions include the PDF y inversion: first and last
++    # linear pixel of each of the four 256x256 device chunks.
++    pixels = bytearray(b"\xff" * (SIDE * SIDE * 3))
++    if name == "opaque-distant":
++        for x, y in ((0, 0), (255, 255), (256, 0), (511, 255),
++                     (0, 256), (255, 511), (256, 256), (511, 511)):
++            offset = 3 * (y * SIDE + x)
++            pixels[offset:offset + 3] = b"\0\0\0"
++    return pdf, b"P6\n512 512\n255\n" + bytes(pixels)
+--- /dev/null
++++ b/benchmarks/n16_painted_interval_wasi.py
+@@ -0,0 +1,435 @@
++#!/usr/bin/env python3
++"""Fixed twelve-cell painted-interval WASI triage; no speed admission.
++
++Run once under the coordinator's serial runner/observer after both WASM builds.
++Every invocation uses a fresh default-tiering Node process and WASM instance.
++Only the unchanged Rust example's render_ns is the diagnostic latency metric.
++"""
++import argparse
++import hashlib
++import json
++import os
++import platform
++import random
++import signal
++import statistics
++import subprocess
++import sys
++import time
++from pathlib import Path
++
++sys.dont_write_bytecode = True
++SEED, PAIRS, WARMUPS, DPI = 20261107, 12, 2, 72
++N16_CASES = ('opaque64', 'opaque-fill', 'opaque-empty', 'opaque-distant', 'opaque-tiny')
++CELLS = (('opaque64', 'exact'), ('opaque64', 'competitive'),
++         ('opaque-fill', 'exact'), ('opaque-fill', 'competitive'),
++         ('opaque-empty', 'exact'), ('opaque-empty', 'competitive'),
++         ('opaque-distant', 'exact'), ('opaque-distant', 'competitive'),
++         ('opaque-tiny', 'exact'), ('opaque-tiny', 'competitive'),
++         ('image-only', 'exact'), ('default-knockout64', 'exact'))
++HARNESS = ('n16_painted_interval.py', 'n16_painted_interval_fixtures.py',
++           'n16_output_u16.py', 'n16_output_guarded.py', 'n16_output.py',
++           'opaque_composition.py', 'paired_render.py', 'glyph_memo.py',
++           'glyph_memo_fixtures.py', 'scene_index.py', 'clip_viewport_fixtures.py')
++MAX_BYTES, MAX_RETAINED = 64 * 1024 * 1024, 512 * 1024 * 1024
++
++
++def finish_attempt(sample, paths, record_existing):
++    """Retain bounded files left by a failed/interrupted owned child too."""
++    errors = {}
++    for path in paths:
++        if path.exists():
++            try:
++                record_existing(path)
++            except (OSError, ValueError) as error:
++                errors[str(path)] = f'{type(error).__name__}: {error}'
++    if errors:
++        sample['artifact_errors'] = errors
++    sample['finished_monotonic_ns'] = time.monotonic_ns()
++    return errors
++
++
++def main():
++    parser = argparse.ArgumentParser(description=__doc__)
++    for name in ('baseline-source', 'candidate-source', 'baseline-wasm', 'candidate-wasm',
++                 'baseline-build-receipt', 'candidate-build-receipt', 'bindings',
++                 'build-bindings', 'plan', 'node', 'output'):
++        parser.add_argument('--' + name, type=Path, required=True)
++    for name in ('bindings', 'build-bindings', 'plan'):
++        parser.add_argument('--' + name + '-sha256', required=True)
++    parser.add_argument('--run-id', required=True)
++    args = parser.parse_args()
++    if not args.run_id or args.run_id != os.environ.get('PAGURA_RUN_ID') or not os.environ.get('PAGURA_RUN_RECEIPT'):
++        parser.error('Run through the coordinator with a matching run id and receipt')
++    if os.environ.get('NODE_OPTIONS') or os.environ.get('NODE_V8_COVERAGE'):
++        parser.error('NODE_OPTIONS and NODE_V8_COVERAGE must be unset')
++    roots = {side: getattr(args, side + '_source').resolve() for side in ('baseline', 'candidate')}
++    sys.path.insert(0, str(roots['candidate'] / 'benchmarks'))
++    import n16_painted_interval as experiment
++    from paired_render import ROOT, expected_image, source_identity
++    from benchkit.artifacts import hash_regular_file, read_bounded_regular
++    from benchkit.images import normalize
++    from benchkit.measurement import MeasurementCancelled, run_process
++    from benchkit.statistics import quantile
++    if ROOT.resolve() != roots['candidate'] or Path(experiment.__file__).resolve() != roots['candidate'] / 'benchmarks/n16_painted_interval.py':
++        raise ValueError('Fixture/helper imports must belong to the recorded candidate source')
++    output = args.output.resolve()
++    output.mkdir(parents=True, exist_ok=False)
++    wrapper = Path(__file__).resolve().with_name('run_profile_wasi.mjs')
++    driver = Path(__file__).resolve()
++    if driver != roots['candidate'] / 'benchmarks/n16_painted_interval_wasi.py':
++        raise ValueError('WASI driver must belong to the bound candidate checkout')
++    node = args.node.resolve(strict=True)
++    bindings_path = args.bindings.resolve()
++    sha = lambda data: hashlib.sha256(data).hexdigest()
++    report = {'schema': 1, 'experiment': 'n16-painted-interval-wasi-diagnostic',
++              'argv': sys.orig_argv,
++              'run_id': args.run_id, 'status': 'incomplete', 'admission': False,
++              'portable_promotion': 'not determined', 'started_at_unix_ns': time.time_ns(),
++              'scope': 'Fresh default-tiering Node/WASI instance; internal render_ns; hashed warm filesystem',
++              'limitations': [
++                  'The unchanged profile uses default Repair open and full compile_page; diagnostics are not emitted.',
++                  'Compile/instantiate and Node startup are excluded, but lazy compilation/tiering may occur inside the first render.',
++                  'Twelve pairs provide diagnostic triage, not calibrated inference or a WASM speed/admission claim.',
++                  'The native frozen gates remain unchanged and independently required.',
++                  'Linear-memory end size captures instance growth through the whole command; it is not total Node memory or peak RSS.',
++                  'Source-to-binary correspondence and equal compiler/profile/feature flags remain trusted coordinator build evidence.',
++                  'No automatic retry; incomplete or contaminated evidence cannot clear portable promotion.',
++              ],
++              'coordination': {'run_id': os.environ.get('PAGURA_RUN_ID'),
++                               'receipt': os.environ.get('PAGURA_RUN_RECEIPT')},
++              'environment': {'platform': platform.platform(), 'machine': platform.machine(),
++                              'python': sys.version, 'python_executable': str(Path(sys.executable).resolve())},
++              'artifacts': {}, 'cells': [], 'verified_outputs': 0}
++    stored = 0
++
++    def retain(relative, data):
++        nonlocal stored
++        path = output / relative
++        if path.exists():
++            if read_bounded_regular(path, MAX_BYTES) != data:
++                raise ValueError('Retained evidence changed: ' + relative)
++        else:
++            if stored + len(data) > MAX_RETAINED:
++                raise ValueError('Diagnostic evidence capacity exhausted')
++            path.parent.mkdir(parents=True, exist_ok=True)
++            with path.open('xb') as handle:
++                handle.write(data)
++            path.chmod(0o400)
++            stored += len(data)
++        report['artifacts'][relative] = {'sha256': sha(data), 'bytes': len(data)}
++        return path
++
++    def record_existing(path):
++        nonlocal stored
++        data = read_bounded_regular(path, MAX_BYTES)
++        relative = str(path.relative_to(output))
++        if relative not in report['artifacts']:
++            if stored + len(data) > MAX_RETAINED:
++                raise ValueError('Diagnostic evidence capacity exhausted')
++            stored += len(data)
++        report['artifacts'][relative] = {'sha256': sha(data), 'bytes': len(data)}
++        return data
++
++    def checkpoint():
++        report['stored_bytes'] = stored
++        pending = output / 'report.pending'
++        pending.write_text(json.dumps(report, indent=2) + '\n')
++        pending.replace(output / 'report.json')
++
++    previous_signals = {signum: signal.getsignal(signum) for signum in (signal.SIGINT, signal.SIGTERM)}
++    cancellation_signal = None
++
++    def cancel(signum, _frame):
++        nonlocal cancellation_signal
++        if cancellation_signal is None:
++            cancellation_signal = signum
++            raise MeasurementCancelled(signum)
++
++    try:
++        for signum in previous_signals:
++            signal.signal(signum, cancel)
++        checkpoint()
++        bindings_raw = read_bounded_regular(bindings_path, MAX_BYTES)
++        if sha(bindings_raw) != args.bindings_sha256:
++            raise ValueError('Native binding independent pin mismatch')
++        bindings = json.loads(bindings_raw)
++        retain('bindings/native-bindings.json', bindings_raw)
++        report['native_bindings'] = {'path': str(bindings_path), 'sha256': sha(bindings_raw)}
++        frozen_paths = {}
++        for label in ('build-bindings', 'plan'):
++            path = getattr(args, label.replace('-', '_')).resolve()
++            data = read_bounded_regular(path, MAX_BYTES)
++            if sha(data) != getattr(args, label.replace('-', '_') + '_sha256'):
++                raise ValueError('Independent pin mismatch: ' + label)
++            retain('bindings/' + label + '.json', data)
++            frozen_paths[path] = sha(data)
++        builds = json.loads(read_bounded_regular(args.build_bindings, MAX_BYTES))
++        frozen = json.loads(read_bounded_regular(args.plan, MAX_BYTES))
++        if frozen != experiment.frozen_plan():
++            raise ValueError('WASI and native frozen plans differ')
++        if bindings['bound_files_sha256'].get('benchmarks/results/n16-painted-interval-plan.json') != args.plan_sha256:
++            raise ValueError('Frozen plan is not bound by native identities')
++        report['frozen_plan_sha256'] = args.plan_sha256
++        report['build_bindings_sha256'] = args.build_bindings_sha256
++        identities = {side: source_identity(root) for side, root in roots.items()}
++        for side, identity in identities.items():
++            if any(identity[key] != bindings['identities'][side][key]
++                   for key in ('root', 'commit', 'source_sha256')):
++                raise ValueError('Source does not match frozen native binding: ' + side)
++            if any(identity[key] != frozen['identities_to_freeze'][side][key] for key in identity):
++                raise ValueError('Source does not match frozen experiment plan: ' + side)
++        dirty = subprocess.check_output(['git', '-C', str(roots['baseline']), 'status',
++                                         '--porcelain=v1', '--untracked-files=all'], text=True)
++        if dirty:
++            raise ValueError('Baseline is not pristine')
++        example = 'crates/pagura-render/examples/scene_index_profile.rs'
++        if hash_regular_file(roots['baseline'] / example) != hash_regular_file(roots['candidate'] / example):
++            raise ValueError('Profile example differs between builds')
++        harness = {name: hash_regular_file(roots['candidate'] / ('benchmarks/' + name)) for name in HARNESS}
++        for name, digest in harness.items():
++            if bindings['bound_files_sha256'].get('benchmarks/' + name) != digest:
++                raise ValueError('Fixture/shared harness differs from native binding: ' + name)
++        report['harness_sha256'] = harness
++        report['example_sha256'] = hash_regular_file(roots['candidate'] / example)
++        report['identities'] = identities
++        report['driver'] = {'path': str(driver), 'sha256': hash_regular_file(driver)}
++        report['wrapper'] = {'path': str(wrapper), 'sha256': hash_regular_file(wrapper)}
++        for path in (driver, wrapper):
++            relative = path.relative_to(roots['candidate']).as_posix()
++            if bindings['bound_files_sha256'].get(relative) != hash_regular_file(path):
++                raise ValueError('Unbound WASI driver/wrapper: ' + relative)
++        retain('bindings/diagnostic.py', read_bounded_regular(driver, MAX_BYTES))
++        retain('bindings/run_profile_wasi.mjs', read_bounded_regular(wrapper, MAX_BYTES))
++        report['node'] = {'path': str(node), 'sha256': hash_regular_file(node)}
++        report['environment']['python_sha256'] = hash_regular_file(Path(sys.executable).resolve())
++        modules = {}
++        for side in roots:
++            original = getattr(args, side + '_wasm').resolve()
++            module_bytes = read_bounded_regular(original, MAX_BYTES)
++            receipt_path = getattr(args, side + '_build_receipt').resolve()
++            receipt_bytes = read_bounded_regular(receipt_path, MAX_BYTES)
++            receipt = json.loads(receipt_bytes)
++            build = builds[side]
++            if (not isinstance(receipt, dict) or receipt.get('status') != 'completed'
++                    or type(receipt.get('exit_code')) is not int or receipt['exit_code'] != 0
++                    or type(receipt.get('wrapper_exit_code')) is not int or receipt['wrapper_exit_code'] != 0
++                    or receipt.get('source_root') != str(roots[side])
++                    or receipt.get('source_unchanged') is not True
++                    or receipt.get('source_before') != receipt.get('source_after')
++                    or receipt.get('source_before', {}).get('commit') != identities[side]['commit']
++                    or receipt.get('source_before') != bindings['runner_sources'][side]
++                    or receipt.get('source_before') != build['source']
++                    or build['source_root'] != str(roots[side])
++                    or build['path'] != str(original) or build['sha256'] != sha(module_bytes)
++                    or build['receipt'] != str(receipt_path) or build['receipt_sha256'] != sha(receipt_bytes)
++                    or receipt.get('cancellation_signal') is not None
++                    or receipt.get('errors') or receipt.get('artifact_errors')
++                    or receipt.get('artifacts', {}).get(str(original)) != sha(module_bytes)):
++                raise ValueError('Missing successful build/module binding: ' + side)
++            modules[side] = retain(f'bindings/{side}.wasm', module_bytes)
++            retain(f'bindings/{side}-build-receipt.json', receipt_bytes)
++            identities[side].update(module_path=str(original), module_sha256=sha(module_bytes),
++                                    build_receipt_path=str(receipt_path), build_receipt_sha256=sha(receipt_bytes))
++        rng = random.Random(SEED)
++        plan = {'schema': 1, 'seed': SEED, 'pairs': PAIRS, 'warmups': WARMUPS, 'dpi': DPI,
++                'outputs': len(CELLS) * (PAIRS + WARMUPS) * 2,
++                'metric': 'render_ns', 'cells': [],
++                'triage': {'pixel_mismatch': 'block portable candidate',
++                           'n16_material_regression': {'median_ratio_gt': 1.05,
++                               'paired_ratio_gt': 1.02, 'minimum_pairs_above': 10,
++                               'action': 'suspend portable promotion; investigate or revise before native confirmation'},
++                           'otherwise': 'No diagnostic suspension signal; no speed/admission claim'},
++                'statistics': 'Ratios of marginal medians and linearly interpolated empirical p95; raw paired ratios. No bootstrap or confidence claim.'}
++        for name, mode in CELLS:
++            orders = [['baseline', 'candidate'] for _ in range(6)] + [['candidate', 'baseline'] for _ in range(6)]
++            rng.shuffle(orders)
++            warmups = [['baseline', 'candidate'], ['candidate', 'baseline']]
++            rng.shuffle(warmups)
++            plan['cells'].append({'case': name, 'mode': mode, 'operation': 'full',
++                                  'n16': name in N16_CASES,
++                                  'orders': warmups + orders})
++        plan_path = retain('plan.json', (json.dumps(plan, indent=2) + '\n').encode())
++        report['plan_sha256'] = hash_regular_file(plan_path)
++        expected, inputs = {}, {}
++        for name in dict.fromkeys(name for name, _ in CELLS):
++            pdf, oracle = experiment.fixture(name)
++            inputs[name] = retain(f'inputs/{name}.pdf', pdf)
++            retain(f'oracles/{name}.ppm', oracle)
++            expected[name] = expected_image(oracle, 'full')
++        report['status'] = 'running'
++        checkpoint()
++        runtime = None
++        policy = {'timeout_seconds': 120, 'maximum_output_bytes': MAX_BYTES, 'measure_rss': False}
++        for cell_plan in plan['cells']:
++            name, mode = cell_plan['case'], cell_plan['mode']
++            cell = {key: value for key, value in cell_plan.items() if key != 'orders'}
++            cell['pairs'] = []
++            report['cells'].append(cell)
++            for index, order in enumerate(cell_plan['orders']):
++                pair = {'pair': index - WARMUPS, 'order': order,
++                        'started_monotonic_ns': time.monotonic_ns()}
++                cell['pairs'].append(pair)
++                for side in order:
++                    for path, digest in ((node, report['node']['sha256']),
++                                         (wrapper, report['wrapper']['sha256']),
++                                         (modules[side], identities[side]['module_sha256']),
++                                         (inputs[name], report['artifacts'][f'inputs/{name}.pdf']['sha256'])):
++                        if hash_regular_file(path) != digest:
++                            raise ValueError('Frozen invocation input changed: ' + str(path))
++                    sample_dir = output / 'samples' / f'{name}-{mode}-{index:02d}-{side}'
++                    sample_dir.mkdir(parents=True)
++                    raw_path = sample_dir / 'render.rgba'
++                    stdout_path, stderr_path = sample_dir / 'wasi.stdout', sample_dir / 'wasi.stderr'
++                    metadata_path = sample_dir / 'wrapper.json'
++                    command = [str(node), str(wrapper), str(modules[side]), str(inputs[name]), mode,
++                               str(raw_path), str(stdout_path), str(stderr_path), str(metadata_path)]
++                    sample = {'command': command, 'status': 'running',
++                              'started_monotonic_ns': time.monotonic_ns()}
++                    pair[side] = sample
++                    checkpoint()  # Attempt identity precedes invocation, including cancellation.
++                    try:
++                        process, diagnostic = run_process(command, policy)
++                        sample.update(process=process, diagnostic=diagnostic)
++                        retain(str((sample_dir / 'node.log').relative_to(output)), diagnostic.encode())
++                        for path in (stdout_path, stderr_path, metadata_path):
++                            if path.exists():
++                                record_existing(path)
++                        if process['exit_code'] != 0 or process['status'] == 'timeout':
++                            raise ValueError('WASI invocation failed; no retry')
++                        metadata = json.loads(record_existing(metadata_path))
++                        if (metadata.get('status') != 'completed' or metadata.get('exit_code') != 0
++                                or metadata.get('module_sha256') != identities[side]['module_sha256']
++                                or metadata.get('input_sha256') != report['artifacts'][f'inputs/{name}.pdf']['sha256']
++                                or metadata.get('wrapper_sha256') != report['wrapper']['sha256']
++                                or Path(metadata['runtime']['executable']).resolve() != node
++                                or metadata['runtime']['exec_argv'] != [] or metadata['runtime']['node_options']):
++                            raise ValueError('WASI invocation/runtime binding mismatch')
++                        if runtime is None:
++                            runtime = metadata['runtime']
++                            report['node']['runtime'] = runtime
++                        elif metadata['runtime'] != runtime:
++                            raise ValueError('Node runtime changed')
++                        memory = metadata['linear_memory']
++                        before, after = memory['before_start_bytes'], memory['after_start_bytes']
++                        if not ((before is None and after is None) or
++                                (type(before) is int and type(after) is int and 0 < before <= after
++                                 and before % 65536 == 0 and after % 65536 == 0)):
++                            raise ValueError('Invalid exported linear-memory sizes')
++                        if record_existing(stderr_path):
++                            raise ValueError('Unexpected WASI program diagnostics')
++                        stages = json.loads(record_existing(stdout_path))
++                        if (not isinstance(stages, dict) or any(type(stages.get(key)) is not int or stages[key] <= 0
++                                for key in ('open_ns', 'compile_ns', 'render_ns', 'total_ns', 'metric_ns'))
++                                or stages.get('schema') != 1 or stages.get('operation') != 'full'
++                                or stages.get('accuracy') != mode or stages.get('dpi') != DPI
++                                or (stages.get('width'), stages.get('height')) != expected[name][:2]
++                                or stages['metric_ns'] != stages['render_ns']
++                                or stages['total_ns'] < stages['open_ns'] + stages['compile_ns'] + stages['render_ns']):
++                            raise ValueError('Invalid profile stages or settings')
++                        sample.update(stages=stages, linear_memory=memory)
++                        raw = read_bounded_regular(raw_path, MAX_BYTES)
++                        blob = 'blobs/' + sha(raw) + '.rgba'
++                        retain(blob, raw)
++                        width, height, pixels = expected[name]
++                        header = f'RGBA8 {width} {height} premultiplied\n'.encode()
++                        try:
++                            actual = normalize(raw)
++                        except ValueError:
++                            report['portable_promotion'] = 'blocked: malformed independent pixel output'
++                            raise
++                        equal = (raw.startswith(header) and raw[len(header) + 3::4] == b'\xff' * (width * height)
++                                 and actual == expected[name])
++                        sample.update(output_blob=blob, output_sha256=sha(raw),
++                                      pixels_sha256=sha(actual[2]), oracle_equal=equal,
++                                      width=actual[0], height=actual[1])
++                        if not equal:
++                            report['portable_promotion'] = 'blocked: independent pixel mismatch'
++                            raise ValueError('Independent pixel mismatch')
++                        raw_path.unlink()
++                        report['verified_outputs'] += 1
++                        sample['status'] = 'completed'
++                    except BaseException as error:
++                        if isinstance(error, (KeyboardInterrupt, SystemExit)):
++                            cancellation_signal = getattr(error, 'signum', signal.SIGINT)
++                        sample['status'] = ('cancelled' if isinstance(error, (KeyboardInterrupt, SystemExit))
++                                            else 'invalid-or-incomplete')
++                        sample['error'] = {'type': type(error).__name__, 'message': str(error)}
++                        raise
++                    finally:
++                        errors = finish_attempt(sample, (stdout_path, stderr_path, metadata_path, raw_path), record_existing)
++                        checkpoint()
++                        if errors and sample['status'] == 'completed':
++                            sample['status'] = 'invalid-or-incomplete'
++                            raise ValueError('Attempt artifacts could not be retained')
++                if pair['baseline']['output_sha256'] != pair['candidate']['output_sha256']:
++                    report['portable_promotion'] = 'blocked: same-policy byte mismatch'
++                    raise ValueError('Same-policy byte mismatch')
++                pair['finished_monotonic_ns'] = time.monotonic_ns()
++                checkpoint()
++            print(f"completed {len(report['cells'])}/{len(CELLS)}: {name}/{mode}/full", flush=True)
++        for side, root in roots.items():
++            current = source_identity(root)
++            if any(current[key] != identities[side][key] for key in ('root', 'commit', 'source_sha256')):
++                raise ValueError('Source changed during diagnostic')
++            if hash_regular_file(Path(identities[side]['module_path'])) != identities[side]['module_sha256']:
++                raise ValueError('Original module changed during diagnostic')
++            if hash_regular_file(Path(identities[side]['build_receipt_path'])) != identities[side]['build_receipt_sha256']:
++                raise ValueError('Build receipt changed during diagnostic')
++        for name, digest in harness.items():
++            if hash_regular_file(roots['candidate'] / ('benchmarks/' + name)) != digest:
++                raise ValueError('Fixture/helper harness changed during diagnostic')
++        for path, digest in ((driver, report['driver']['sha256']), (wrapper, report['wrapper']['sha256']),
++                             (node, report['node']['sha256']), (bindings_path, report['native_bindings']['sha256']),
++                             *frozen_paths.items()):
++            if hash_regular_file(path) != digest:
++                raise ValueError('Driver/runtime/binding changed during diagnostic')
++        if report['verified_outputs'] != 336:
++            raise ValueError('Incomplete output evidence')
++        suspended, fallback_review = [], []
++        # No interim timing analysis. All empirical summaries follow all samples.
++        for cell in report['cells']:
++            pairs = [pair for pair in cell['pairs'] if pair['pair'] >= 0]
++            values = {side: [pair[side]['stages']['render_ns'] for pair in pairs] for side in roots}
++            ratios = [pair['candidate']['stages']['render_ns'] / pair['baseline']['stages']['render_ns'] for pair in pairs]
++            median_ratio = statistics.median(values['candidate']) / statistics.median(values['baseline'])
++            count_above = sum(ratio > 1.02 for ratio in ratios)
++            regression_signal = cell['n16'] and median_ratio > 1.05 and count_above >= 10
++            cell['diagnostic'] = {'median_ns': {side: statistics.median(v) for side, v in values.items()},
++                'p95_ns': {side: quantile(v, .95) for side, v in values.items()},
++                'median_ratio': median_ratio,
++                'p95_ratio': quantile(values['candidate'], .95) / quantile(values['baseline'], .95),
++                'paired_ratios': ratios, 'paired_ratios_above_1_02': count_above,
++                'material_regression_signal': regression_signal}
++            cell['linear_memory_end_bytes'] = {side: [pair[side]['linear_memory']['after_start_bytes'] for pair in pairs] for side in roots}
++            if regression_signal:
++                suspended.append(cell['case'] + '/' + cell['mode'] + '/full')
++            elif not cell['n16'] and median_ratio > 1.05 and count_above >= 10:
++                fallback_review.append(cell['case'] + '/' + cell['mode'] + '/full')
++        report['suspension_cells'] = suspended
++        report['fallback_review_cells'] = fallback_review
++        report['portable_promotion'] = ('suspended: material WASM regression signal; investigate before native confirmation'
++                                        if suspended else 'no diagnostic suspension signal; no speed/admission claim')
++        report['status'] = 'completed'
++    except BaseException as error:
++        if isinstance(error, (KeyboardInterrupt, SystemExit)):
++            cancellation_signal = getattr(error, 'signum', signal.SIGINT)
++        report['status'] = 'cancelled' if cancellation_signal is not None else 'invalid-or-incomplete'
++        report['cancellation_signal'] = cancellation_signal
++        report['error'] = {'type': type(error).__name__, 'message': str(error)}
++        if report['portable_promotion'] == 'not determined':
++            report['portable_promotion'] = 'not cleared: incomplete diagnostic'
++        raise
++    finally:
++        try:
++            report['completed_at_unix_ns'] = time.time_ns()
++            checkpoint()
++            digest = sha(read_bounded_regular(output / 'report.json', MAX_BYTES))
++            (output / 'report.json.sha256').write_text(digest + '\n')
++        finally:
++            for signum, handler in previous_signals.items():
++                signal.signal(signum, handler)
++
++
++if __name__ == '__main__':
++    main()
+--- /dev/null
++++ b/benchmarks/test_n16_painted_interval.py
+@@ -0,0 +1,211 @@
++"""Focused matrix and literal-oracle checks; no renderer or subprocess needed."""
++import json
++from pathlib import Path
++import tempfile
++from types import SimpleNamespace
++import unittest
++
++import n16_output_u16 as previous
++import n16_painted_interval as experiment
++from evaluate_n16_output import cell_map, declared_cells, validate_guard
++import n16_painted_interval_wasi as wasi
++from evaluate_n16_painted_interval_wasi import expected_pixels
++
++
++class FixedMatrix(unittest.TestCase):
++    def test_legacy_default_inventory_and_roles_stay_unchanged(self):
++        old = declared_cells(previous)
++        self.assertEqual((len(previous.CASES), len(old)), (16, 46))
++        self.assertEqual(sum(role == "target" for role in old.values()), 2)
++        self.assertEqual(experiment.CELLS[:46], previous.CELLS)
++        current = declared_cells(experiment, expected_case_count=18, expected_cell_count=52)
++        self.assertEqual({cell: current[cell] for cell in previous.CELLS}, old)
++
++    def test_new_matrix_is_exactly_six_protected_full_cells(self):
++        declared = declared_cells(experiment, expected_case_count=18, expected_cell_count=52)
++        self.assertEqual(set(experiment.CASES) - set(previous.CASES), {"opaque-empty", "opaque-distant"})
++        self.assertEqual(set(declared) - set(previous.CELLS), {
++            (name, mode, "full") for name in ("opaque-empty", "opaque-distant", "opaque-tiny")
++            for mode in ("exact", "competitive")})
++        self.assertEqual([cell for cell, role in declared.items() if role == "target"],
++                         [("opaque64", "exact", "full"), ("opaque64", "competitive", "full")])
++        self.assertEqual(sum(role == "protected" for role in declared.values()), 50)
++        self.assertEqual(experiment.PHASE_PLAN, {
++            "pilot": {"pairs": 5, "warmups": 5, "seed": 20261105},
++            "confirmation": {"pairs": 200, "warmups": 5, "seed": 20261106}})
++
++    def test_plan_template_matches_full_independent_inventory(self):
++        plan = json.loads((Path(__file__).parent / "results/n16-painted-interval-plan.template.json").read_text())
++        self.assertEqual(cell_map(plan["cells"], 52), declared_cells(experiment, 18, 52))
++        self.assertEqual(plan["phases"], experiment.PHASE_PLAN)
++        self.assertEqual(plan["expected_verified_outputs"], {"pilot": 1040, "confirmation": 21320})
++        self.assertEqual(plan["status"], "template-not-frozen")
++        self.assertIsNone(plan["identities_to_freeze"]["candidate"]["binary_sha256"])
++
++    def test_wrong_defaults_counts_and_duplicates_fail_closed(self):
++        with self.assertRaises(ValueError):
++            declared_cells(experiment)
++        with self.assertRaises(ValueError):
++            declared_cells(experiment, 18, 51)
++        with self.assertRaises(ValueError):
++            declared_cells(previous, True, 46)
++        changed = SimpleNamespace(CASES=experiment.CASES, CELLS=(*experiment.CELLS[:-1], experiment.CELLS[0]))
++        with self.assertRaises(ValueError):
++            declared_cells(changed, 18, 52)
++        rows = [{"case": name, "mode": mode, "operation": operation, "role": role}
++                for (name, mode, operation), role in declared_cells(experiment, 18, 52).items()]
++        with self.assertRaises(ValueError):
++            cell_map(rows)
++        with self.assertRaises(ValueError):
++            cell_map(rows[:-1], 52)
++        with self.assertRaises(ValueError):
++            cell_map([*rows[:-1], rows[0]], 52)
++
++    def test_explicit_cold_target_does_not_retarget_default_full_cells(self):
++        cold = SimpleNamespace(CASES=('many-operands', 'control'), CELLS=(
++            ('many-operands', 'exact', 'cold'), ('many-operands', 'competitive', 'cold'),
++            ('control', 'exact', 'cold'), ('control', 'competitive', 'cold')))
++        actual = declared_cells(cold, 2, 4, target_case='many-operands', target_operation='cold')
++        self.assertEqual([cell for cell, role in actual.items() if role == 'target'],
++                         [('many-operands', 'exact', 'cold'), ('many-operands', 'competitive', 'cold')])
++        self.assertEqual([cell for cell, role in declared_cells(previous).items() if role == 'target'],
++                         [('opaque64', 'exact', 'full'), ('opaque64', 'competitive', 'full')])
++
++    def test_wasi_has_ten_n16_cells_two_fallbacks_and_336_outputs(self):
++        self.assertEqual(wasi.CELLS, tuple((name, mode) for name in
++            ('opaque64', 'opaque-fill', 'opaque-empty', 'opaque-distant', 'opaque-tiny')
++            for mode in ('exact', 'competitive')) + (('image-only', 'exact'), ('default-knockout64', 'exact')))
++        self.assertEqual((wasi.PAIRS, wasi.WARMUPS, wasi.SEED, wasi.DPI), (12, 2, 20261107, 72))
++        self.assertEqual(len(wasi.CELLS) * (wasi.PAIRS + wasi.WARMUPS) * 2, 336)
++        plan = json.loads((Path(__file__).parent / 'results/n16-painted-interval-plan.template.json').read_text())
++        self.assertEqual(plan['wasi_diagnostic']['expected_verified_outputs'], 336)
++        self.assertIsNone(plan['identities_to_freeze']['baseline']['commit'])
++
++    def test_current_multiple_target_seam_keeps_default_callers_unchanged(self):
++        cases = ('primary', 'secondary', 'control')
++        alternate = SimpleNamespace(CASES=cases, CELLS=tuple(
++            (name, mode, 'cold') for name in cases for mode in ('exact', 'competitive')))
++        declared = declared_cells(alternate, 3, 6, target_case='primary',
++                                  target_operation='cold', target_cases=('primary', 'secondary'))
++        self.assertEqual({cell for cell, role in declared.items() if role == 'target'},
++                         {(name, mode, 'cold') for name in ('primary', 'secondary')
++                          for mode in ('exact', 'competitive')})
++        self.assertEqual({cell for cell, role in declared.items() if role == 'protected'},
++                         {('control', mode, 'cold') for mode in ('exact', 'competitive')})
++        self.assertEqual([cell for cell, role in declared_cells(previous).items() if role == 'target'],
++                         [('opaque64', 'exact', 'full'), ('opaque64', 'competitive', 'full')])
++        with self.assertRaises(ValueError):
++            declared_cells(alternate, 3, 6, target_case='primary', target_operation='cold',
++                           target_cases=('primary', 'primary'))
++
++
++class StrictObserver(unittest.TestCase):
++    def strict(self):
++        return {'status': 'completed', 'observation_only': False, 'exit_code': 0, 'child_exit_code': 0,
++                'events': [{'stage': 'preflight', 'matches': []}, {'stage': 'postflight', 'matches': []}]}
++
++    def test_strict_is_explicit_and_rejects_missing_contaminated_or_cancelled_coverage(self):
++        validate_guard(self.strict(), 'strict')
++        historical = {'status': 'completed-observation-only', 'exit_code': 0}
++        validate_guard(historical)
++        with self.assertRaises(ValueError):
++            validate_guard(historical, 'strict')
++        with self.assertRaises(ValueError):
++            validate_guard(self.strict())
++        for changes in ({'exit_code': False}, {'child_exit_code': 1}, {'observation_only': True},
++                        {'cancellation_requested_utc': '2026-01-01T00:00:00Z'},
++                        {'events': [{'stage': 'preflight', 'matches': []}]},
++                        {'events': [{'stage': 'preflight', 'matches': []},
++                                    {'stage': 'postflight', 'matches': [{'pid': 123}]}]}):
++            with self.subTest(changes=changes), self.assertRaises(ValueError):
++                validate_guard({**self.strict(), **changes}, 'strict')
++
++
++class LiteralOracles(unittest.TestCase):
++    def test_empty_has_no_paint_and_all_white_pixels(self):
++        pdf, oracle = experiment.fixture("opaque-empty")
++        self.assertIn(b"/MediaBox [0 0 512 512]", pdf)
++        self.assertNotIn(b"re f", pdf)
++        self.assertEqual(oracle, b"P6\n512 512\n255\n" + b"\xff" * (512 * 512 * 3))
++
++    def test_distant_marks_cover_first_and_last_linear_pixel_in_each_chunk(self):
++        pdf, oracle = experiment.fixture("opaque-distant")
++        header = b"P6\n512 512\n255\n"
++        self.assertTrue(oracle.startswith(header))
++        pixels = oracle[len(header):]
++        self.assertEqual(len(pixels), 512 * 512 * 3)
++        black = []
++        for offset in range(0, len(pixels), 3):
++            pixel = pixels[offset:offset + 3]
++            self.assertIn(pixel, (b"\0\0\0", b"\xff\xff\xff"))
++            if pixel == b"\0\0\0":
++                position = offset // 3
++                black.append((position % 512, position // 512))
++        self.assertEqual(len(black), 8)
++        for cy in (0, 1):
++            for cx in (0, 1):
++                local = [256 * (y - 256 * cy) + x - 256 * cx for x, y in black
++                         if x // 256 == cx and y // 256 == cy]
++                self.assertEqual(local, [0, 65535])
++        # Explicit PDF-space corners catch a missing top-down inversion even
++        # though renderer execution is a separate coordinator-owned gate.
++        self.assertIn(b"0 511 1 1 re f", pdf)
++        self.assertIn(b"511 0 1 1 re f", pdf)
++        self.assertEqual(pdf.count(b"1 1 re f"), 8)
++
++    def test_existing_tiny_pdf_and_oracle_are_byte_identical(self):
++        self.assertEqual(experiment.fixture("opaque-tiny"), previous.fixture("opaque-tiny"))
++
++    def test_wasi_auditor_independent_empty_distant_and_tiny_formulas_agree(self):
++        for name, size, black_count in (('opaque-empty', 512, 0), ('opaque-distant', 512, 8), ('opaque-tiny', 64, 64)):
++            with self.subTest(case=name):
++                actual_size, rgb, ppm, raw = expected_pixels(name)
++                self.assertEqual(actual_size, size)
++                self.assertEqual(ppm, experiment.fixture(name)[1])
++                self.assertEqual(rgb.count(0), black_count * 3)
++                header = f'RGBA8 {size} {size} premultiplied\n'.encode()
++                self.assertTrue(raw.startswith(header))
++                self.assertEqual(raw[len(header) + 3::4], b'\xff' * (size * size))
++        _, tiny, _, _ = expected_pixels('opaque-tiny')
++        self.assertEqual(tiny[(32 * 64 + 24) * 3:(32 * 64 + 25) * 3], b'\0\0\0')
++        self.assertEqual(tiny[(31 * 64 + 24) * 3:(31 * 64 + 25) * 3], b'\xff\xff\xff')
++
++
++class InterruptedArtifacts(unittest.TestCase):
++    def test_interrupted_attempt_keeps_every_available_file_without_inventing_result(self):
++        with tempfile.TemporaryDirectory() as directory:
++            root = Path(directory)
++            files = [root / name for name in ('stdout', 'stderr', 'metadata', 'raw')]
++            for index, file in enumerate(files):
++                file.write_bytes(bytes([index]))
++            retained = {}
++            def record(file):
++                retained[file.name] = file.read_bytes()
++            sample = {'status': 'cancelled', 'command': ['owned-node']}
++            self.assertEqual(wasi.finish_attempt(sample, files, record), {})
++            self.assertEqual(retained, {'stdout': b'\0', 'stderr': b'\1', 'metadata': b'\2', 'raw': b'\3'})
++            self.assertEqual(sample['status'], 'cancelled')
++            self.assertNotIn('process', sample)
++            self.assertNotIn('diagnostic', sample)
++            self.assertGreater(sample['finished_monotonic_ns'], 0)
++
++    def test_retention_failure_does_not_hide_other_available_files(self):
++        with tempfile.TemporaryDirectory() as directory:
++            root = Path(directory)
++            failed, good, absent = (root / name for name in ('failed', 'good', 'absent'))
++            failed.write_bytes(b'bad')
++            good.write_bytes(b'kept')
++            retained = {}
++            def record(file):
++                if file == failed:
++                    raise ValueError('fixed retention limit')
++                retained[file.name] = file.read_bytes()
++            sample = {'status': 'invalid-or-incomplete'}
++            errors = wasi.finish_attempt(sample, (failed, good, absent), record)
++            self.assertEqual(errors, {str(failed): 'ValueError: fixed retention limit'})
++            self.assertEqual(sample['artifact_errors'], errors)
++            self.assertEqual(retained, {'good': b'kept'})
++
++
++if __name__ == "__main__":
++    unittest.main()
+--- /dev/null
++++ b/benchmarks/run_profile_wasi.mjs
+@@ -0,0 +1,70 @@
++#!/usr/bin/env node
++/** One fresh Node/WASI invocation of the unchanged public-API profile example. */
++import assert from 'node:assert/strict';
++import { createHash } from 'node:crypto';
++import { open, readFile, writeFile } from 'node:fs/promises';
++import { basename, dirname, resolve } from 'node:path';
++import { fileURLToPath } from 'node:url';
++import { WASI } from 'node:wasi';
++
++assert.equal(process.argv.length, 9,
++  'node run_profile_wasi.mjs MODULE INPUT MODE OUTPUT WASI_STDOUT WASI_STDERR METADATA');
++assert.deepEqual(process.execArgv, [], 'Use default Node tiering and no extra Node flags');
++assert.ok(!process.env.NODE_OPTIONS && !process.env.NODE_V8_COVERAGE,
++  'NODE_OPTIONS and NODE_V8_COVERAGE must be unset');
++const [modulePath, input, mode, output, stdoutPath, stderrPath, metadataPath] =
++  process.argv.slice(2).map((value, index) => index === 2 ? value : resolve(value));
++assert.ok(['exact', 'competitive'].includes(mode));
++for (const path of [stdoutPath, stderrPath, metadataPath]) {
++  assert.equal(dirname(path), dirname(output), 'Sample artifacts must share one private directory');
++}
++const sha = (bytes) => createHash('sha256').update(bytes).digest('hex');
++const report = {
++  schema: 1, status: 'incomplete', runtime: {
++    executable: process.execPath, version: process.version, versions: process.versions,
++    exec_argv: process.execArgv, platform: process.platform, arch: process.arch,
++    node_options: process.env.NODE_OPTIONS ?? '',
++  },
++  argv: process.argv, wasi_args: ['scene_index_profile', `/input/${basename(input)}`,
++    mode, 'full', `/output/${basename(output)}`, '72'],
++  wasi_env: {}, preopens: { '/input': dirname(input), '/output': dirname(output) },
++  linear_memory: { before_start_bytes: null, after_start_bytes: null,
++    scope: 'Exported WASM linear memory; not Node process RSS or render-only allocation' },
++};
++let instance;
++const handles = [];
++const take = async (path, flags) => {
++  const handle = await open(path, flags); handles.push(handle); return handle;
++};
++try {
++  const bytes = await readFile(modulePath);
++  report.module_sha256 = sha(bytes);
++  report.input_sha256 = sha(await readFile(input));
++  report.wrapper_sha256 = sha(await readFile(fileURLToPath(import.meta.url)));
++  // Compile/instantiate are outside the Rust example's internal timers. Lazy
++  // function compilation and tiering during its first render may remain inside.
++  const module = await WebAssembly.compile(bytes);
++  const stdin = await take(resolve(dirname(output), 'empty.stdin'), 'wx+');
++  const stdout = await take(stdoutPath, 'wx');
++  const stderr = await take(stderrPath, 'wx');
++  const wasi = new WASI({ version: 'preview1', args: report.wasi_args,
++    env: {}, preopens: report.preopens, returnOnExit: true,
++    stdin: stdin.fd, stdout: stdout.fd, stderr: stderr.fd });
++  instance = await WebAssembly.instantiate(module, { wasi_snapshot_preview1: wasi.wasiImport });
++  if (instance.exports.memory instanceof WebAssembly.Memory) {
++    report.linear_memory.before_start_bytes = instance.exports.memory.buffer.byteLength;
++  }
++  report.exit_code = wasi.start(instance);
++  assert.equal(report.exit_code, 0, 'WASI program failed');
++  report.status = 'completed';
++} catch (error) {
++  report.status = 'failed';
++  report.error = { name: error.name, message: error.message, stack: error.stack };
++  process.exitCode = 1;
++} finally {
++  if (instance?.exports.memory instanceof WebAssembly.Memory) {
++    report.linear_memory.after_start_bytes = instance.exports.memory.buffer.byteLength;
++  }
++  for (const handle of handles.reverse()) await handle.close();
++  await writeFile(metadataPath, JSON.stringify(report, null, 2) + '\n', { flag: 'wx' });
++}
+--- /dev/null
++++ b/benchmarks/results/n16-painted-interval-bindings.template.json
+@@ -0,0 +1,20 @@
++{
++  "schema": 1,
++  "experiment": "n16-painted-interval",
++  "status": "template-not-frozen",
++  "identities": {
++    "baseline": {"root": null, "commit": null, "source_sha256": null, "binary": null, "binary_sha256": null},
++    "candidate": {"root": null, "commit": null, "source_sha256": null, "binary": null, "binary_sha256": null}
++  },
++  "runner_sources": {
++    "baseline": {"commit": null, "sha256": null},
++    "candidate": {"commit": null, "sha256": null}
++  },
++  "candidate_runner_source_sha256": null,
++  "native_builds": {
++    "baseline": {"receipt": null, "receipt_sha256": null},
++    "candidate": {"receipt": null, "receipt_sha256": null}
++  },
++  "bound_files_sha256": {},
++  "instructions": "Fill actual paired_render source identities, distinct tools/runner source snapshots, completed per-side native build receipts, and every imported fixture/helper/evaluator/launcher/example/final-plan/strict-observer file. The launcher enumerates the required harness set. Both plan identities must match these values. Bind the final plan, never this bindings file inside itself. Templates and nulls are not evidence."
++}
+--- /dev/null
++++ b/benchmarks/results/n16-painted-interval-launch.template.json
+@@ -0,0 +1,20 @@
++{
++  "schema": 1,
++  "experiment": "n16-painted-interval",
++  "status": "template-not-frozen",
++  "phase": null,
++  "decision_reason": null,
++  "fallback_review_reason": null,
++  "plan": {"path": null, "sha256": null},
++  "bindings": {"path": null, "sha256": null},
++  "python": {"path": null, "sha256": null},
++  "guard": {"path": null, "sha256": null},
++  "node": {"path": null, "sha256": null},
++  "wasi_build_bindings": {"path": null, "sha256": null},
++  "prerequisites": {
++    "quality": {"receipt": {"path": null, "sha256": null}, "artifact": {"path": null, "sha256": null}},
++    "pilot": {"receipt": {"path": null, "sha256": null}, "artifact": {"path": null, "sha256": null}, "guard": {"path": null, "sha256": null}, "audit": {"path": null, "sha256": null}},
++    "wasi": {"receipt": {"path": null, "sha256": null}, "artifact": {"path": null, "sha256": null}, "guard": {"path": null, "sha256": null}, "audit": {"path": null, "sha256": null}}
++  },
++  "instructions": "Create a fresh phase config after prerequisites finish; freeze it with an independent command-line SHA and status frozen-before-launch. pilot needs quality; wasi additionally needs pilot; confirmation additionally needs independently audited WASI, no N16 suspension and explicit reason for any material fallback signal. artifact in pilot/wasi is the original measurement report. Prior successful receipts must bind that report and strict guard; audit is separately pinned after completion. Do not put phase-config hashes into the earlier plan/bindings or create circular hashes. No field implies a lease, host exclusivity, completed test or admission."
++}
+--- /dev/null
++++ b/benchmarks/results/n16-painted-interval-plan.template.json
+@@ -0,0 +1,458 @@
++{
++  "schema": 1,
++  "experiment": "n16-painted-interval",
++  "status": "template-not-frozen",
++  "baseline": "Reconciled against a9814ee476c1b17a27b1e9a904f1f4fac8d5cd9c. Coordinator freezes the actual retained stack immediately before this separate candidate; no parked color or rectangle proposal is presumed retained and no historical samples are reused.",
++  "candidate_delta": "One conservative flat N16 painted interval, widened by the existing validated path/fragment writers and intersected with rows only at Context::write_output. Keep dense Buffer::output, full initialization, source work, allocation admission and quantizer arithmetic unchanged.",
++  "case_count": 18,
++  "cell_count": 52,
++  "target_count": 2,
++  "protected_count": 50,
++  "extends": {
++    "plan": "benchmarks/results/n16-output-u16-plan.json",
++    "preserved_cells": 46,
++    "new_cases": ["opaque-empty", "opaque-distant"],
++    "new_operations_on_existing_cases": [{"case": "opaque-tiny", "operation": "full", "modes": ["exact", "competitive"]}],
++    "historical_samples_reused": false
++  },
++  "modes": [
++    "exact",
++    "competitive"
++  ],
++  "cells": [
++    {
++      "case": "sparse64",
++      "mode": "exact",
++      "operation": "cold",
++      "role": "protected"
++    },
++    {
++      "case": "sparse64",
++      "mode": "exact",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "sparse64",
++      "mode": "exact",
++      "operation": "tile",
++      "role": "protected"
++    },
++    {
++      "case": "sparse64",
++      "mode": "exact",
++      "operation": "tiled",
++      "role": "protected"
++    },
++    {
++      "case": "sparse64",
++      "mode": "competitive",
++      "operation": "cold",
++      "role": "protected"
++    },
++    {
++      "case": "sparse64",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "sparse64",
++      "mode": "competitive",
++      "operation": "tile",
++      "role": "protected"
++    },
++    {
++      "case": "sparse64",
++      "mode": "competitive",
++      "operation": "tiled",
++      "role": "protected"
++    },
++    {
++      "case": "dense64",
++      "mode": "exact",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "dense64",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "tiny",
++      "mode": "exact",
++      "operation": "cold",
++      "role": "protected"
++    },
++    {
++      "case": "tiny",
++      "mode": "exact",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "tiny",
++      "mode": "competitive",
++      "operation": "cold",
++      "role": "protected"
++    },
++    {
++      "case": "tiny",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "opaque64",
++      "mode": "exact",
++      "operation": "full",
++      "role": "target"
++    },
++    {
++      "case": "opaque64",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "target"
++    },
++    {
++      "case": "one-source64",
++      "mode": "exact",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "one-source64",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "overcapacity128",
++      "mode": "exact",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "overcapacity128",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "nested64",
++      "mode": "exact",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "nested64",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "default-knockout64",
++      "mode": "exact",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "default-knockout64",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "outline2",
++      "mode": "exact",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "outline2",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "outline2-knockout",
++      "mode": "exact",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "outline2-knockout",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "outline2-late64",
++      "mode": "exact",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "outline2-late64",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "clip-churn",
++      "mode": "exact",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "clip-churn",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "image-only",
++      "mode": "exact",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "image-only",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "opaque64",
++      "mode": "exact",
++      "operation": "cold",
++      "role": "protected"
++    },
++    {
++      "case": "opaque64",
++      "mode": "exact",
++      "operation": "tile",
++      "role": "protected"
++    },
++    {
++      "case": "opaque64",
++      "mode": "exact",
++      "operation": "tiled",
++      "role": "protected"
++    },
++    {
++      "case": "opaque64",
++      "mode": "competitive",
++      "operation": "cold",
++      "role": "protected"
++    },
++    {
++      "case": "opaque64",
++      "mode": "competitive",
++      "operation": "tile",
++      "role": "protected"
++    },
++    {
++      "case": "opaque64",
++      "mode": "competitive",
++      "operation": "tiled",
++      "role": "protected"
++    },
++    {
++      "case": "opaque-clip",
++      "mode": "exact",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "opaque-clip",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "opaque-tiny",
++      "mode": "exact",
++      "operation": "cold",
++      "role": "protected"
++    },
++    {
++      "case": "opaque-tiny",
++      "mode": "competitive",
++      "operation": "cold",
++      "role": "protected"
++    },
++    {
++      "case": "opaque-fill",
++      "mode": "exact",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "opaque-fill",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "opaque-empty",
++      "mode": "exact",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "opaque-empty",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "opaque-distant",
++      "mode": "exact",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "opaque-distant",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "opaque-tiny",
++      "mode": "exact",
++      "operation": "full",
++      "role": "protected"
++    },
++    {
++      "case": "opaque-tiny",
++      "mode": "competitive",
++      "operation": "full",
++      "role": "protected"
++    }
++  ],
++  "phases": {
++    "pilot": {
++      "pairs": 5,
++      "warmups": 5,
++      "seed": 20261105
++    },
++    "confirmation": {
++      "pairs": 200,
++      "warmups": 5,
++      "seed": 20261106
++    }
++  },
++  "maximum_launched_confirmations": 1,
++  "expected_verified_outputs": {"pilot": 1040, "confirmation": 21320},
++  "analysis": {
++    "method": "paired-percentile-bootstrap",
++    "resamples": 5000,
++    "confidence": 0.95,
++    "seed": 42017
++  },
++  "thresholds": {
++    "target_median_upper": 0.95,
++    "target_p95_upper": 1.0,
++    "protected_median_upper": 1.02,
++    "protected_p95_upper": 1.02,
++    "peak_rss_ratio_max": 1.0
++  },
++  "quality": {
++    "independent_rgb8_tolerance": 0,
++    "require_opaque_alpha": true,
++    "require_same_mode_baseline_rgba_bytes": true,
++    "require_all_warmup_outputs": true,
++    "accuracy_changing_cases": "No intended pixel change. Exhaustive u16-domain equality, nonopaque-background full/offset tile regressions, strict rational precision, irregular/offset partitions, recycled storage and native/WASI parity remain required.",
++    "new_oracles": {
++      "opaque-empty": "512x512 empty content stream; all RGB channels 255 and alpha 255",
++      "opaque-distant": "512x512; black device pixels (0,0),(255,255),(256,0),(511,255),(0,256),(255,511),(256,256),(511,511); every other pixel white, alpha 255",
++      "opaque-tiny": "Reuse unchanged existing 64x64 PDF and oracle; integer black 8x8 rectangle at PDF (24,24)"
++    },
++    "sampling_scope": "Existing fractional cases retain their declared coverage-byte model, not a continuous final-scene or normative PDF antialiasing claim."
++  },
++  "memory": {
++    "storage": "N16 Words adds one Range<usize>; actual native and WASI size/alignment of Buffer, Option<Buffer>, Surface and MaskSink must not grow. No new heap allocation; N16 pixel payload remains count*8. No layout result is presumed.",
++    "peak_rss": "Fresh per-sample process RSS; report absolute maxima and distributions as well as ratios. Unchanged enclosing layout or A/A variability cannot erase a miss."
++  },
++  "environment": {
++    "native_threads": 1,
++    "known_job_poll_seconds": 5,
++    "quiet_preflight_scans": 3,
++    "maximum_launched_seconds": 5400,
++    "automatic_postlaunch_retry": false,
++    "monitoring": "Wait for observed quiet before launch. Retain the fixed run and observer evidence; postlaunch contention, interruption or missing evidence makes admission unavailable. No owned compute overlaps. A zero-child preflight refusal is not a statistical trial."
++  },
++  "limits": {
++    "per_output_bytes": 67108864,
++    "retained_artifact_bytes": 536870912,
++    "scope": "Payload budget covers retained PDF/oracle/output blobs only; report checkpoints and runner/observer evidence are additional storage."
++  },
++  "decision": {
++    "admit": "All 52 latency/RSS cells plus every mandatory quality, error, layout, resource, provenance, portability and repository-validation gate; release-runner/competitor-matrix evidence remains separate.",
++    "preserve_partial": "At least one original target confirmation median upper <=0.95 and every mandatory correctness/resource/layout/provenance/portability gate complete. Record target p95, protected and RSS misses. Protected median or p95 lower >1.02 requires revision or explicit reasoned experimental restriction. Retention is a coordinator decision, never an evaluator side effect.",
++    "reject_or_revise": "Any independent accuracy, resource accounting, source error, tile-contract or layout failure blocks retaining active code. Reject/revise a completed confirmation without the required target median gain. An upper confidence-bound miss alone is not a proven regression. Keep the patch and all old evidence.",
++    "sampling": "No historical or pilot sample reuse, no tuning against confirmation and no retry until a pass appears."
++  },
++  "limitations": [
++    "The unchanged timed profile uses default Repair opening and full compile_page; it does not emit diagnostics. Strict correctness probes remain separate.",
++    "Ordinary admitted translucent controls use F32 in both modes; nonopaque backgrounds and relevant groups remain F64. Actual N16/F32/F64 routes require untimed evidence, while U8 remains a legacy direct-test control.",
++    "All 46 earlier cells and roles retained; exactly six protected cells added, with fixed fresh pilot and confirmation seeds.",
++    "Incremental to the independently frozen preceding retained stack, not a net legacy-route or competitor comparison.",
++    "200 pairs do not guarantee calibrated p95 precision or simultaneous coverage.",
++    "No historical or pilot samples reused in confirmation.",
++    "Opaque-background timing matrix; both arms retain the independently tested nonopaque-background guard.",
++    "No enclosing layout growth does not establish unchanged measured peak RSS.",
++    "Actual N16 dispatch and observed interval reach need independent untimed structural evidence; fixture names alone prove neither."
++  ],
++  "builds_on": {
++    "experiment": "retained-n16-output-u16-plus-integrated-resource-fixes",
++    "commit": null,
++    "reuse_samples": false,
++    "retarget_or_relax_gates": false
++  },
++  "mandatory_gate_groups": [
++    "PI-Q1 interval invariants, both writers, dense arbitrary-destination output and quantizer identity",
++    "PI-Q2 cross-row holes, nonzero origins, irregular/offset public tiles and actual Competitive spare reuse",
++    "PI-Q3 colored nonopaque backgrounds, F64 guard and independent rational accuracy",
++    "PI-Q4 exact source/error context and work/allocation/pixel/depth boundary equivalence",
++    "PI-Q5 full authoritative serial check plus native/WASI precision and host checks",
++    "PI-M1 measured native and WASI enclosing size/alignment nongrowth",
++    "Untimed actual N16 admission and writer/output interval reach in both modes"
++  ],
++  "wasi_diagnostic": {
++    "status": "separate-preconfirmation-diagnostic-not-native-gate-statistics",
++    "cases_in_both_modes": ["opaque64", "opaque-fill", "opaque-empty", "opaque-distant", "opaque-tiny"],
++    "additional_cells": [
++      {"case": "image-only", "mode": "exact", "operation": "full"},
++      {"case": "default-knockout64", "mode": "exact", "operation": "full"}
++    ],
++    "operation": "full",
++    "cell_count": 12,
++    "pairs": 12,
++    "warmups": 2,
++    "seed": 20261107,
++    "measured_orders_per_cell": {"baseline_candidate": 6, "candidate_baseline": 6},
++    "expected_verified_outputs": 336,
++    "retry": false,
++    "triage": "Any independent pixel/alpha failure blocks retention. For the 10 N16 cells, median candidate/baseline render_ns >1.05 with >=10 of 12 paired ratios >1.02 suspends portable promotion/native confirmation pending revision or investigation. Material fallback signals require explicit review.",
++    "memory": "Retain exported linear-memory before/after separately from Node process RSS.",
++    "timing": "Fresh default-tiering Node instances; internal render excludes startup/explicit instantiation, but lazy compilation/tiering may remain. Never pool native/WASI ratios."
++  },
++  "identities_to_freeze": {
++    "baseline": {"commit": null, "root": null, "source_sha256": null, "binary": null, "binary_sha256": null, "build_receipt": null},
++    "candidate": {"root": null, "commit": null, "source_sha256": null, "binary": null, "binary_sha256": null, "build_receipt": null},
++    "profile_evidence": null,
++    "native_layout_evidence": null,
++    "wasi_layout_evidence": null,
++    "structural_dispatch_and_reach_evidence": null
++  },
++  "freeze_instructions": {
++    "status": "Coordinator must fill identities and bind all driver/helper/evaluator/fixture/plan/build/observer sources before timing; nulls are unresolved inputs, never evidence.",
++    "plan_destination": "benchmarks/results/n16-painted-interval-plan.json",
++    "bindings_destination": "benchmarks/results/n16-painted-interval-bindings.json",
++    "no_circular_hash": "Bindings pin the final plan; the plan does not contain the bindings-file hash."
++  }
++}
+--- /dev/null
++++ b/benchmarks/results/n16-painted-interval-wasi-builds.template.json
+@@ -0,0 +1,5 @@
++{
++  "baseline": {"source_root": null, "source": {"commit": null, "sha256": null}, "path": null, "sha256": null, "receipt": null, "receipt_sha256": null},
++  "candidate": {"source_root": null, "source": {"commit": null, "sha256": null}, "path": null, "sha256": null, "receipt": null, "receipt_sha256": null},
++  "instructions": "Absolute original module and receipt paths. source is the entire tools/runner source_before/source_after snapshot, not paired_render's different digest. Each successful receipt must bind its exact module path and SHA. Both Cargo suffixes must be cargo build --locked --offline --release -p pagura-render --example scene_index_profile --target wasm32-wasip1 -j 1. Preserve equal toolchain/profile/features and independently pin this completed build binding before WASI launch."
++}

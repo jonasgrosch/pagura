@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "experiment": "n16-painted-interval",
+  "status": "template-not-frozen",
+  "identities": {
+    "baseline": {"root": null, "commit": null, "source_sha256": null, "binary": null, "binary_sha256": null},
+    "candidate": {"root": null, "commit": null, "source_sha256": null, "binary": null, "binary_sha256": null}
+  },
+  "runner_sources": {
+    "baseline": {"commit": null, "sha256": null},
+    "candidate": {"commit": null, "sha256": null}
+  },
+  "candidate_runner_source_sha256": null,
+  "native_builds": {
+    "baseline": {"receipt": null, "receipt_sha256": null},
+    "candidate": {"receipt": null, "receipt_sha256": null}
+  },
+  "bound_files_sha256": {},
+  "instructions": "Fill actual paired_render source identities, distinct tools/runner source snapshots, completed per-side native build receipts, and every imported fixture/helper/evaluator/launcher/example/final-plan/strict-observer file. The launcher enumerates the required harness set. Both plan identities must match these values. Bind the final plan, never this bindings file inside itself. Templates and nulls are not evidence."
+}

@@ -1,0 +1,4 @@
+0cedf08abb7244336192948aff0999281b426ed063906ca51788c93c95b13144  /private/tmp/pagura-n16-interval-current/base/crates/pagura-render/src/compositor/narrow.rs
+fba787c42a4cf8b90fe4647caa943683474cd5cd4849d3eefaf89a5a9bc6b17a  /private/tmp/pagura-n16-interval-current/base/crates/pagura-render/src/compositor/narrow_tests.rs
+5aba62b6cd007927bb420f0eb6d26b16f567316b78d18cbb5d771db1aa75f961  /private/tmp/pagura-n16-interval-current/base/crates/pagura-render/src/compositor/output.rs
+4ff36b4e2b4c90cbe4a74073c14d56e7e0db05453a6a4a06f0487cc1c2b7f883  /private/tmp/pagura-n16-interval-current/base/crates/pagura-render/src/tests.rs
