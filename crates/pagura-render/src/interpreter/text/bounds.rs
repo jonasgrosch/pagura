@@ -27,7 +27,11 @@ pub(super) fn bounds(commands: &[Command]) -> Option<Arc<Path>> {
                         Segment::MoveTo(p) | Segment::LineTo(p) => {
                             include(p, pad, &mut low, &mut high);
                         }
-                        Segment::CubicTo(a, b, c) => {
+                        Segment::CubicTo {
+                            c1: a,
+                            c2: b,
+                            end: c,
+                        } => {
                             for p in [a, b, c] {
                                 include(p, pad, &mut low, &mut high);
                             }

@@ -272,7 +272,11 @@ impl Builder<'_> {
                     current = Some(p);
                     segments += 1;
                 }
-                Segment::CubicTo(b, c, d) => {
+                Segment::CubicTo {
+                    c1: b,
+                    c2: c,
+                    end: d,
+                } => {
                     let a = current.ok_or(Error::invalid_argument("curve has no current point"))?;
                     if closed {
                         start = Some(a);

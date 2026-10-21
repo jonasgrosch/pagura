@@ -303,7 +303,11 @@ fn point_contours_choose_the_floor_cell_after_placement() {
             crate::Segment::LineTo(p) => {
                 path.line_to(p).unwrap();
             }
-            crate::Segment::CubicTo(a, b, c) => {
+            crate::Segment::CubicTo {
+                c1: a,
+                c2: b,
+                end: c,
+            } => {
                 path.cubic_to(a, b, c).unwrap();
             }
             crate::Segment::Close => {

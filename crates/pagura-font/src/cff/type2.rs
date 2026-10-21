@@ -165,7 +165,11 @@ fn append(
                     .line_to(transform.apply(p))
                     .map_err(|_| bad(at, "invalid seac path"))?;
             }
-            Segment::CubicTo(a, b, c) => {
+            Segment::CubicTo {
+                c1: a,
+                c2: b,
+                end: c,
+            } => {
                 builder
                     .cubic_to(transform.apply(a), transform.apply(b), transform.apply(c))
                     .map_err(|_| bad(at, "invalid seac path"))?;

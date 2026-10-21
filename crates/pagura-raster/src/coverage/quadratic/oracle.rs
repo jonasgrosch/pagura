@@ -156,7 +156,11 @@ fn pieces(outline: &Path, transform: Transform) -> Vec<Piece> {
                 current = p;
                 line
             }
-            Segment::CubicTo(a, b, c) => {
+            Segment::CubicTo {
+                c1: a,
+                c2: b,
+                end: c,
+            } => {
                 let [a, b, c] = [a, b, c].map(|p| transform.apply(p));
                 let cubic = Curve::cubic([current, a, b, c]);
                 current = c;

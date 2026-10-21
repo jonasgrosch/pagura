@@ -179,7 +179,7 @@ fn curves(
         || !outline
             .segments()
             .iter()
-            .any(|s| matches!(s, Segment::CubicTo(..)))
+            .any(|s| matches!(s, Segment::CubicTo { .. }))
     {
         return Ok(None);
     }
@@ -235,7 +235,7 @@ fn classify(outline: &Path, transform: Transform, contours: &mut [GlyphContour])
     let mut occupied = false;
     let mut closed = false;
     for segment in outline.segments() {
-        if (closed && matches!(segment, Segment::LineTo(_) | Segment::CubicTo(..)))
+        if (closed && matches!(segment, Segment::LineTo(_) | Segment::CubicTo { .. }))
             || (occupied && matches!(segment, Segment::MoveTo(_)))
         {
             index += 1;
@@ -259,8 +259,8 @@ fn classify(outline: &Path, transform: Transform, contours: &mut [GlyphContour])
                 contour.degenerate &= same(point);
                 occupied = true;
             }
-            Segment::CubicTo(a, b, c) => {
-                contour.degenerate &= [a, b, c].into_iter().all(same);
+            Segment::CubicTo { c1, c2, end } => {
+                contour.degenerate &= [c1, c2, end].into_iter().all(same);
                 occupied = true;
             }
             Segment::Close => closed = true,

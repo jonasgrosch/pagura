@@ -364,7 +364,18 @@ fn compare_segment(a: Segment, b: Segment, name: &str) {
         (Segment::MoveTo(a), Segment::MoveTo(b)) | (Segment::LineTo(a), Segment::LineTo(b)) => {
             point(a, b);
         }
-        (Segment::CubicTo(a, b, c), Segment::CubicTo(d, e, f)) => {
+        (
+            Segment::CubicTo {
+                c1: a,
+                c2: b,
+                end: c,
+            },
+            Segment::CubicTo {
+                c1: d,
+                c2: e,
+                end: f,
+            },
+        ) => {
             point(a, d);
             point(b, e);
             point(c, f);
