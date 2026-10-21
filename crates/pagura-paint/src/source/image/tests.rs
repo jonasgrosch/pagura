@@ -19,6 +19,7 @@ use std::sync::Arc;
 
 mod documents;
 mod oracle;
+mod timing;
 
 /// A prepared conversion of `base` into a composite target of `channels`
 /// process channels (1 Gray, 3 RGB, 4 CMYK), and whether it is per channel.
