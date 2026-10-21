@@ -1,107 +1,113 @@
-# Close the plain opaque composition gap
+# Plain opaque composition: corrected accuracy, remaining performance costs
 
-Status: independent baseline reproduced on the glyph-memo stack, 2026-10-21.
-The [diagnostic evidence](../../benchmarks/results/opaque-precision-baseline.md)
-confirms both Exact failures below and the long-stack failure in Competitive
-against the one-level target. No correction or performance gain is claimed.
+Status, 2026-10-21: shared opaque composition landed in `4dfbaea9` on the
+experimental stack. It removes the legacy `DisplayList::render_opaque`
+traversal and routes eligible opaque marks through the existing bounded N16
+compositor in both modes. The independent failures below are corrected, but
+its original pilot measured substantial speed/RSS regressions. It remains an
+experimental accuracy improvement, without performance or release admission.
 
-Exact's eligible plain opaque pages still reach `DisplayList::render_opaque`.
-Its eligibility predicate proves source opacity, not full pixel coverage.
-`PathCommand::rasterize` converts source colours to RGBA8 before painting, and
-`pagura-raster/src/raster.rs::composite` rounds source and backdrop products
-separately. ADR 0004's general-composition amendment explicitly leaves this
-route unchanged. The current precision fixtures wrap opaque marks in a
-knockout Form, so their success does not close this gap.
+The following retained revision also excludes nonopaque backgrounds from
+narrow storage and simplifies exact N16 output conversion. Complete validation
+and the fresh incremental performance experiment have finished. Keep these
+stages and their source/binary bindings distinct.
 
-## Independent reproducers
+## Independent composition bounds
 
-Add plain-root siblings of `content/precision-two-partial` and
-`content/precision-slivers-1000`, linked to `content-compositor-precision`.
-Retain the existing fixtures and strict expectations. Confirm the compiled
-commands and selected route; matching pixels alone cannot establish coverage
-of the opaque shortcut.
+The [original reproducer](../../benchmarks/results/opaque-precision-baseline.md)
+and [landed correction evidence](../../benchmarks/results/opaque-composition-experiment.md)
+retain the baseline failures, corrected outputs and validation records.
 
-For a 1-by-1 page, opaque gray 0.85 followed by two gray 0.95 rectangles of
-coverage byte 10 gives the existing policy's exact composition in byte units:
+| Direct-root case | Unrounded answer in byte units | Allowed bytes | Earlier Exact / Competitive | Shared Exact / Competitive |
+| --- | --- | --- | --- | --- |
+| Gray 0.85, then two gray 0.95 marks at coverage byte 10 | `44617/204 = 218.710784...` | 218–219 | 217 / 219 | 219 / 219 |
+| 1,000 black marks at coverage byte 1 over white | `255*(254/255)^1000 = 5.012754...` | 5–6 | 127 / 127 | 5 / 5 |
 
-    255 * [0.95 + (0.85 - 0.95) * (245/255)^2]
-      = 44617/204 = 218.7107843137...
+These bounds are against unrounded source-over recurrences on independently
+specified coverage bytes. Tolerance one against rounded 219 would wrongly
+admit 220; tolerance one against rounded 5 would wrongly admit 4. Keep the
+strict intervals and existing general-compositor fixtures. Neither these
+one-pixel cases nor agreement with Exact proves continuous-shape coverage,
+complete PDF conformance, or a universal accuracy guarantee for Competitive.
 
-The current opaque kernel returns 217, matching the analytic prediction: its initial source is
-217, and each partial store is round(242*10/255) + round(217*245/255) = 217.
-This is now a recorded render. Under the one-level
-contract the admissible bytes are 218 and 219; tolerance 1 against rounded
-oracle 219 would incorrectly also admit 220.
+## Implemented and validated
 
-One thousand black marks of coverage byte 1 over white have exact result
-255*(254/255)^1000 = 5.012754... and admissible bytes 5 and 6. Byte storage can
-stagnate at 127 even with one combined rounding per store; both modes returned
-127 in the direct-root probe. Fixing the double
-round alone therefore cannot establish the contract. Keep unrounded analytic
-intervals in focused tests in addition to existing PPM expectations.
+- Shared traversal retains statically admitted N16 storage in both modes;
+  Competitive glyph fragments feed its narrow mask sink with mixed full,
+  partial and zero coverage. N16 chunks remain bounded at 256 by 256 pixels,
+  or 512 KiB of pixel scratch, in addition to output and other live storage.
+- Bounded source-order validation before culling preserves required unsupported
+  ICC/tint and stroke-geometry failures for plain opaque scenes. Its command,
+  function and geometry work shares the execution ledgers. Transfer-bearing
+  scenes use existing deferred device semantics and F64 exclusions. This is
+  not a promise of identical legacy first-error selection or resource use.
+- The current background regression independently checks straight colored
+  RGBA `(200,100,50,a)` at alpha 0, 128, 254 and 255, with an empty scene, a
+  half-pixel opaque black mark and a half-opacity full-pixel black mark, in both modes and full/tile entry points.
+  Before the guard, an empty transparent background incorrectly emitted
+  `(200,100,50,0)` instead of premultiplied `(0,0,0,0)`.
+  [Failing reproduction](../../benchmarks/results/local/n16-output/background-reproducer-001.log)
+  and [passing correction](../../benchmarks/results/local/n16-output/background-fixed-002.log)
+  remain separate evidence.
+- `render_policy` now selects F64 when background alpha is not 255, before
+  context creation and Competitive byte-format selection. The existing wide
+  output path composites onto premultiplied output. Opaque backgrounds retain
+  their prior precision plan. This conservative exclusion applies to N16,
+  F32 and U8; it does not claim those kernels now support arbitrary backdrops.
+- The latest [full-check receipt](../../benchmarks/results/local/n16-output-guarded/full-check-001-receipt.json)
+  completed with unchanged source and exit 0. Its
+  [log](../../benchmarks/results/local/n16-output-guarded/full-check-001.log)
+  records 210 renderer tests, 196 Python tests, native/WASI and host checks,
+  and all 1,249 conformance cases passing. The separate
+  [accuracy probe](../../benchmarks/results/local/n16-output-guarded/accuracy-001/report.json)
+  verifies eight independent full/tile outputs in both modes. The
+  [host probe](../../benchmarks/results/local/n16-output-guarded/host-001/report.json)
+  verifies default Exact values 219 and 5, raw native/Node-WASI parity, strict
+  open and empty diagnostics; the host protocol does not select Competitive.
 
-## Implementation and acceptance
+## Measured costs and current experiment
 
-1. Reproduce both direct-root cases on the committed stack, including opaque
-   alpha and full/tile equivalence. Record both modes separately. Do not invent
-   a Competitive allowance to hide a newly exposed failure.
-2. Evaluate reuse of existing bounded N16/general composition for Exact opaque
-   scenes lacking a full-coverage proof. Preserve a byte shortcut only where
-   its complete error bound holds. Avoid a second independent wide compositor.
-3. Check existing pixel-aligned cases, long overlaps, source quantization,
-   transfer and group exclusions, error positions, work limits and native/WASM
-   equivalence. Any changed resource behavior must be explicit, not silently
-   removed from the matrix.
-4. Freeze a separate incremental speed/RSS experiment on opaque paths and text,
-   including ordinary workloads and disabled controls. Keep the glyph memo
-   identical on both sides. Report the accuracy gain and any speed/memory cost
-   separately; do not pool samples with the memo or clip experiments.
+The original 46-cell correction pilot against `0560506c` measured opaque64/full
+median times of 1.827292 → 4.990542 ms in Exact (2.731×) and
+1.362333 → 4.091333 ms in Competitive (3.003×). Zero of two target latency
+gates, 5/44 protected latency gates and 11/46 peak-RSS gates passed. The
+[complete ledger](../../benchmarks/results/opaque-composition-experiment.json)
+remains unchanged. These are measured costs of the accuracy correction, not
+an accepted speed optimization. The glyph memo and clip cleanup are present
+in both arms; earlier gains cannot be added to these results.
 
-Reject a proposed fix if it only moves the failure to longer overlap stacks,
-uses baseline output as truth, weakens the independent contract, or requires
-unbounded storage/work. An accuracy correction may have a measured cost; it
-must not be presented as a performance gain. The standing goal requires both
-contracts to be met before broad superiority claims.
+Profiles identify N16 output conversion and surface preparation as candidates
+for reducing cost; they do not establish causal percentages or attainable
+speedups. The current exact flat quantizer replaces `(word+128)/257` with an
+algebraically identical shift/subtract expression and removes channel packing.
+Exhaustive u16 and offset/tail tests passed. It adds no storage. The separately
+frozen [guarded experiment](../../benchmarks/results/n16-output-guarded-experiment.md)
+verified 18,860 outputs and measured 12.5% lower Exact and 14.4% lower
+Competitive target medians. Both target latency gates pass, but only 15/44
+protected latency and 25/46 peak-RSS gates pass. Both target RSS gates fail,
+and default-knockout Exact has a supported tail regression. Retain this partial
+gain experimentally; full performance admission remains false. The original
+[plan](../../benchmarks/results/n16-output-guarded-plan.json) and
+[bindings](../../benchmarks/results/n16-output-guarded-bindings.json) are unchanged.
 
-## Preferred implementation seam after baseline reproduction
+The earlier quantizer confirmation was stopped for the independently found
+background defect, not to tune against timing results. Its ordinal is consumed;
+[the stop record](../../benchmarks/results/local/n16-output/confirmation-stop.json)
+and partial execution remain retained. Do not resume it, pool its samples,
+or treat it as a completed confirmation. The completed guarded experiment is a
+new correctness revision with fresh samples and unchanged acceptance gates.
 
-Reuse general composition and its bounded N16 page storage. Remove the legacy
-traversal only after shared source validation prevents culling from suppressing
-required errors. A source-order N16 sink in the old traversal is a compatibility
-alternative if supported completion blocks that migration; it reuses
-`Rasterizer::clipped_path`/`clipped_glyph` and the existing narrow kernel, but a
-single-pass full-tile buffer costs eight bytes per pixel plus final output.
-Keeping that second traversal indefinitely would obstruct the unified design.
+Remaining costs include repeated source validation/conversion, chunk replay,
+initialization and output traversal. The background correction uses existing
+F64 accounting (56 bytes per pixel on this target, versus N16's eight), so
+some low-memory cases may now return `Limit`; inaccurate narrow output is not
+a fallback. Its nonopaque-background speed/RSS needs an independent,
+equivalent-output matrix because the former background output is incorrect.
+Any scratch reuse or painted-extent metadata remains a future measured
+hypothesis, with bounded retained memory and explicit work/error behavior.
 
-Static review found a concrete migration risk: ICC forward transforms can
-parse successfully as unsupported and fail only when evaluated. The legacy
-opaque route evaluates source color before rasterization; general composition
-can cull an off-region path or entire group before conversion. Add direct-root,
-nested-group and off-tile siblings of the existing unsupported ICC fixtures,
-plus a parsed Type 4 tint function that fails when evaluated. Require the
-feature/object/source context rather than accepting a blank successful page.
-These off-region cases are proposed regressions, not yet executed evidence.
-
-The planner can host bounded validation, but its early precision-exclusion
-returns must not skip remaining required source checks. A validation-only
-prototype duplicates conversion work; measure and label that cost. Later
-prepared-color reuse must include model/intent/context identity and bounded
-storage in the shared scene index. The current 64 root hull slots are not an
-all-scene color cache. Nonlinear device transfers remain deferred device
-operations; do not bake them into resolved source colors.
-
-General routing changes planning and aggregate work charges, transient storage,
-and potentially first-error selection. Test and document these changes; do not
-raise limits, reset work counters on retry or fall back to inaccurate byte
-composition. Existing Exact chunks already cap N16 pixel scratch at 512 KiB;
-smaller regions trade scratch for replay work. Both existing output constructors
-use the pixel limit, so this is not a new decoded-byte cap on final output.
-
-For Competitive, retain an actual N16 plan instead of forcing it to U8, while
-preserving other storage exclusions. Keep fragment construction, cache lookup,
-clipping, placement order and work charges. Extend only the narrow mask sink
-to consume raw floating source colors with shared N16 arithmetic. Fragment
-rows may mix 255/partial/0 coverage; `Buffer::path` assumes homogeneous full
-spans and cannot accept those rows unchanged. Keep N16 chunks bounded and test
-mixed rows, fractional clips, nonzero origins, cold/warm caches and work-error
-boundaries before measuring the speed and memory cost.
+Keep accuracy-changing cases separate from baseline-byte-equivalent timings,
+preserve all frozen thresholds and protected cells, and report incremental
+results against the same stack. Even a quantizer win does not establish a net
+win over the legacy route. The [standing goal](renderer-standing-goal.md) and
+its independent accuracy, competitor and controlled-runner gates remain open.

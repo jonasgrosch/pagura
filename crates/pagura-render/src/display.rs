@@ -765,6 +765,87 @@ mod tests {
         }
     }
     #[test]
+    fn direct_root_backgrounds_remain_premultiplied_in_both_modes() {
+        // Straight (200,100,50) is premultiplied for output. The covered
+        // pixel receives an opaque black source at coverage 128/255;
+        // RGB becomes b*127/255, alpha 128 + a*127/255, rounded once.
+        for (alpha, blank, covered, translucent) in [
+            (0, [0, 0, 0, 0], [0, 0, 0, 128], [0, 0, 0, 128]),
+            (
+                128,
+                [100, 50, 25, 128],
+                [50, 25, 12, 192],
+                [50, 25, 13, 192],
+            ),
+            (
+                254,
+                [199, 100, 50, 254],
+                [99, 50, 25, 255],
+                [100, 50, 25, 255],
+            ),
+            (
+                255,
+                [200, 100, 50, 255],
+                [100, 50, 25, 255],
+                [100, 50, 25, 255],
+            ),
+        ] {
+            // Full coverage at opacity 0.5 also checks the scenes whose
+            // opaque-background plans select F32 (Competitive U8).
+            for (mark, first) in [
+                (None, blank),
+                (Some((1.0, 0.5)), covered),
+                (Some((0.5, 1.0)), translucent),
+            ] {
+                let mut list = list(run(1.0, &[], 1.0), false);
+                list.commands.clear();
+                if let Some((opacity, width)) = mark {
+                    let mut path = PathBuilder::new();
+                    path.rect(0.0, 0.0, width, 1.0);
+                    list.commands.push(Command::Path(PathCommand {
+                        path: Arc::new(path.finish()),
+                        ..paint(opacity)
+                    }));
+                }
+                let expected = [first, blank];
+                for accuracy in [crate::Accuracy::Exact, crate::Accuracy::Competitive] {
+                    let options = RenderOptions {
+                        accuracy,
+                        scale: 1.0,
+                        background: pagura_raster::Rgba8 {
+                            r: 200,
+                            g: 100,
+                            b: 50,
+                            a: alpha,
+                        },
+                        ..Default::default()
+                    };
+                    let image = list.render(&options).unwrap();
+                    assert_eq!(
+                        image.data(),
+                        expected.as_flattened(),
+                        "{accuracy:?}, alpha {alpha}, mark {mark:?}"
+                    );
+                    for x in 0..2 {
+                        let tile = list
+                            .render_tile(
+                                &options,
+                                Tile {
+                                    x,
+                                    y: 0,
+                                    width: 1,
+                                    height: 1,
+                                },
+                            )
+                            .unwrap();
+                        assert_eq!(tile.data(), &expected[x as usize]);
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn direct_root_precision_matches_independent_normal_recurrences() {
         // These bounds are against unrounded same-coverage-byte answers:
         // 44617/204 and 255*(254/255)^1000. A rounded PPM with tolerance one

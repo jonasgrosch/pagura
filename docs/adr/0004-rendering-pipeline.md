@@ -645,3 +645,26 @@ Accuracy-changing outputs are evaluated independently; incorrect baseline
 output is not equivalent work for a speed claim. Report the accuracy gain and
 any time/memory cost separately, retaining useful experimental gains without
 claiming that the entire matrix has passed.
+
+## Amendment: narrow output conversion and background admission (2026-10-21)
+
+N16 output channels may be converted in a flat loop with the exact identity
+`n = word + 128; (n - (n >> 8)) >> 8`, replacing `(word + 128) / 257`.
+For `n = 256q + r`, both produce `q` if `r >= q`, otherwise `q - 1`;
+`n <= 65663` bounds the result to a byte. Exhaustively check all u16 values,
+channel order, source offsets and incomplete destination pixels. Storage,
+compositing arithmetic, work counters and pixel output remain unchanged.
+
+The [first pilot](../../benchmarks/results/n16-output-pilot.md) found an
+incremental target gain, but its confirmation was stopped for a separately
+discovered accuracy failure: narrow initialization used straight background
+channels where premultiplied output was required. Empty colored backgrounds
+with alpha zero returned nonzero RGB. Keep that reproducer and strict expected
+pixels for alpha 0/128/254/255, partial opaque coverage, translucent paint,
+both modes and offset tiles. Nonopaque backgrounds now use F64 before context
+creation and Competitive byte selection, compositing onto the existing
+premultiplied output. Their 56-byte working pixels cost more than N16's eight;
+low resource limits may reject pages the incorrect narrow route accepted.
+No limits or counters are reset. Opaque-background admission is unchanged.
+A revised candidate needs fresh bindings and samples; the canceled run is
+not a confirmation and its records cannot be reused.

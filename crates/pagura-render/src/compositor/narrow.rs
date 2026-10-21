@@ -514,14 +514,12 @@ impl Buffer {
                 target[..count].copy_from_slice(&source[..count]);
             }
             Self::N16(pixels) => {
-                for (out, pixel) in target
-                    .as_chunks_mut::<4>()
-                    .0
+                let complete = target.len() / 4 * 4;
+                for (out, &word) in target[..complete]
                     .iter_mut()
-                    .zip(&pixels[offset..])
+                    .zip(pixels[offset..].as_flattened())
                 {
-                    *out =
-                        pixel.map(|v| u8::try_from((u32::from(v) + 128) / 257).unwrap_or(u8::MAX));
+                    *out = word_byte(word);
                 }
             }
             Self::F32(pixels) => {
@@ -537,6 +535,19 @@ impl Buffer {
         }
     }
 }
+
+/// Exactly `(word + 128) / 257`, without widening multiplication or division.
+/// For `n = 256*q + r`, both divisions yield `q` when `r >= q`, else `q - 1`.
+/// Here `n <= 65663`, so `q <= 256` and the result is always a byte.
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "the quotient is in 0..=255"
+)]
+fn word_byte(word: u16) -> u8 {
+    let n = u32::from(word) + 128;
+    ((n - (n >> 8)) >> 8) as u8
+}
+
 /// The clip of a fragment mask: a product over a device rectangle,
 /// and an axis-aligned rectangle whose coverage separates into a column and
 /// a row factor.

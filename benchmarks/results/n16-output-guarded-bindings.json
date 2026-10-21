@@ -1,0 +1,55 @@
+{
+  "schema": 1,
+  "identities": {
+    "baseline": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/opaque-output-control/pagura",
+      "commit": "4dfbaea97308ef9c82da9b8513e6158931fcb00a",
+      "source_sha256": "f72405c46866fb785d8fd050a931353f1438257b073561343a503583882423d2",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/n16-output-guarded/baseline",
+      "binary_sha256": "bc32a8dbf58491718a47eea53bbb1bd9ef4f058ad906b5028e07b6da4f398354"
+    },
+    "candidate": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+      "commit": "4097d66e41b874957bcdb56457d64ccdb5527829",
+      "source_sha256": "9f1a5d5716a7439bd3d5dd01ac89e9bcca432c7d1595c753aef93295da343c11",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/n16-output-guarded/candidate",
+      "binary_sha256": "8224748bbef58e5f0f9624794e11a7a4c7ee488335e6ab496e00e2035ee2cc43"
+    }
+  },
+  "bound_files_sha256": {
+    "benchmarks/n16_output_guarded.py": "2121864dd28369cdec17d1e324ebc090a5a494331d669e56b5852f87cded66fc",
+    "benchmarks/evaluate_n16_output_guarded.py": "4bd0794a57553b54b1386947703b0785d1b9c255eb65b7614cfd80e9bac81965",
+    "benchmarks/n16_output.py": "d4ff736e8cb0dedeab7fda9ebb678bb4ce7796f66b7321cbfd520731bdc89c83",
+    "benchmarks/evaluate_n16_output.py": "1a62cda65c9d811982fc896dceb8b233df4b47c49819c667370c57095a6f2017",
+    "benchmarks/opaque_composition.py": "a9a27a3adbfe4e3b5da1a73c305cc7078fd3047860351d2448f336cbd179ea45",
+    "benchmarks/paired_render.py": "c7a074f3f6d63ac2df4fcd7f87f332d4848f8f10e3d7c54ec72b822717e16b27",
+    "benchmarks/glyph_memo.py": "5e0d66cd4d403868917a12bebaca18595536984a65be076a90594b8f699592ce",
+    "benchmarks/glyph_memo_fixtures.py": "9b866f12c61dbb7ddf2cc7e227559813b89f16a91370fdced96a7f46426e55a1",
+    "benchmarks/scene_index.py": "fbc260aa9607efb2c60dec4f8fa44445137def56b57881350f475c531c7a0f6a",
+    "benchmarks/clip_viewport_fixtures.py": "1f003e4f71dd493d6e8ff34eef6f25a1fd3d9587d6412e7ea183102f9a4dfed2",
+    "crates/pagura-render/examples/scene_index_profile.rs": "8e89a087d351e7b89289e0897cafeb75422d4c151280734fde8c958a841279f2",
+    "benchmarks/results/n16-output-guarded-plan.json": "d4baddbdd5508d422600fa5c1e57a854e683f1f10b93436d2752c477bafc0269",
+    "benchmarks/results/local/glyph-memo/load_observer.py": "d13e0911ef05eab394a45a7e3cb999be2b6764250bfb265b19164cc4fd822f7c",
+    "benchmarks/results/local/glyph-memo/idle_then.py": "bedfb4f54e1764360f2b90c56e093e96182fba15b6da4ffe9ab7d4400aad4d30",
+    "tools/fixturegen/pdf.py": "6d1546f6a56fedd06bb4bfe247f6b5fa747e092b6ac471f9134dcef72820f810",
+    "benchmarks/opaque_precision_probe.py": "962b71aa080bf1d58f96a9c2524abf88a577abd5a790166338fcaddacaa0e5d4",
+    "benchmarks/opaque_precision_fixtures.py": "84e50b24f54de9982985be6c2ea4147911999375461bb966b2845983055775df"
+  },
+  "candidate_runner_source_sha256": "93412ffdc0b9c6d27577075f38cdd653f3b19a32d1affb0f07edbf11b88f520e",
+  "candidate_build_receipt": "local/n16-output-guarded/full-check-001-receipt.json",
+  "candidate_build_receipt_sha256": "4534774df26484fc437f1498f71fab8c1a9e0a12df81252589e684850ac99535",
+  "baseline_build": {
+    "binary_sha256": "bc32a8dbf58491718a47eea53bbb1bd9ef4f058ad906b5028e07b6da4f398354",
+    "receipt": "local/opaque-correction/full-check-001-receipt.json",
+    "receipt_sha256": "516435efc68e6f469702e17eff809e9c232d65bea12dcdf38ac3b2b9940c9c83",
+    "reuse": "Prior dirty candidate became committed4df without changing its measured product fingerprint. Reused exact previously built binary; not an independent rebuild.",
+    "source": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/opaque-output-control/pagura",
+      "commit": "4dfbaea97308ef9c82da9b8513e6158931fcb00a",
+      "source_sha256": "f72405c46866fb785d8fd050a931353f1438257b073561343a503583882423d2",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/n16-output-guarded/baseline",
+      "binary_sha256": "bc32a8dbf58491718a47eea53bbb1bd9ef4f058ad906b5028e07b6da4f398354"
+    }
+  },
+  "validation": "Exhaustive all-u16 conversion, background source-over regression in both modes/full/tiles, full serial repository check. Review pinned receipts/logs; independent host precision probe follows binary freeze."
+}

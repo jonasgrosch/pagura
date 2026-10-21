@@ -1,6 +1,28 @@
 //! Fragment masks are arbitrary rows, unlike homogeneous Exact spans.
 use super::*;
 
+#[test]
+fn word_output_matches_rational_rounding_for_every_word() {
+    for word in 0..=u16::MAX {
+        assert_eq!(u32::from(word_byte(word)), (u32::from(word) + 128) / 257);
+    }
+    // Distinct channels, a nonzero source offset, complete-pixel truncation,
+    // and a destination longer than the remaining source.
+    let buffer = Buffer::N16(vec![
+        [0, 128, 129, 65535],
+        [256, 257, 32767, 32768],
+        [65407, 65408, 65534, 65535],
+    ]);
+    for count in 0..=12 {
+        let mut target = vec![77; count];
+        buffer.output(1, &mut target);
+        let expected = [1, 1, 127, 128, 255, 255, 255, 255];
+        let written = (count / 4 * 4).min(expected.len());
+        assert_eq!(&target[..written], &expected[..written]);
+        assert!(target[written..].iter().all(|&v| v == 77));
+    }
+}
+
 fn output(buffer: &Buffer, count: usize) -> Vec<u8> {
     let mut bytes = vec![0; count * 4];
     buffer.output(0, &mut bytes);

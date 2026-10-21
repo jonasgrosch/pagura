@@ -239,5 +239,41 @@ source closure, with both measured binary hashes unchanged.
 
 Static review also confirms the separate
 [plain opaque composition accuracy gap](opaque-composition-accuracy.md).
-Independent direct-root regression drafts remain unapplied; the memo's output
-equivalence does not fix or bless that known defect.
+The memo's output equivalence did not fix or bless that defect; the subsequent
+independent reproducer and shared-composition correction are recorded below.
+
+## Shared opaque composition and exact output conversion
+
+The [independent direct-root cases](../../benchmarks/results/opaque-precision-baseline.md)
+reproduced the precision failures on the retained stack. Commit `4dfbaea9`
+removed the legacy opaque traversal in favor of the bounded shared compositor,
+preserving required off-region source errors and Competitive fragment masks.
+Both modes now return 219 and 5 within the independent rational intervals.
+The [46-cell pilot](../../benchmarks/results/opaque-composition-experiment.md)
+measured material costs: target median ratios 2.731 and 3.003 versus the legacy
+route. This remains an experimental accuracy correction, not a speed win.
+
+The following exact flat N16 output converter addresses a profiled cost without
+changing quantization or adding storage. An initial pilot found a useful gain,
+but its confirmation was canceled after an independent review reproduced wrong
+premultiplied pixels for nonopaque colored backgrounds. The canceled launch and
+all evidence remain preserved; its samples are excluded from the replacement
+experiment. The correction selects existing F64 storage for nonopaque
+backgrounds, retaining its higher memory charges and possible `Limit` results.
+The [background-guarded experiment](../../benchmarks/results/n16-output-guarded-plan.json)
+uses a new frozen source/binary pair and fresh samples with unchanged gates.
+The complete check passed: 210 renderer tests, 196 Python tests, native/WASM
+and host checks, and all 1,249 conformance cases. Independent precision probes
+also pass. Final performance evidence is recorded separately from those checks.
+
+The completed [confirmation and audit](../../benchmarks/results/n16-output-guarded-experiment.md)
+verify 18,860 outputs. Target medians fall 12.5% in Exact and 14.4% in
+Competitive; both target latency gates pass. Only 15/44 protected latency and
+25/46 peak-RSS gates pass. Target RSS increases and a supported default-knockout
+Exact tail regression keep this an experimental partial win. The run lasted
+1,839.25 seconds; 353 observer scans recorded no competing jobs. No samples
+from the canceled confirmation or the pilot enter the confirmation analysis.
+
+[Next slices](n16-next-slices.md) are an exact 16-bit converter, conservative
+untouched-output skipping and command-local paint resolution, followed by a
+direct net-stack comparison. They remain hypotheses until separately measured.

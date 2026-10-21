@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the fixed N16-output experiment; never grant release admission.
+"""Audit fixed N16-output experiments; never grant release admission.
 
 Rehash bound sources, receipts and every distinct output; regenerate independent
 oracles and verify every sample's identity. Point estimates are recomputed from
@@ -15,13 +15,11 @@ import random
 import statistics
 import sys
 
-import n16_output as experiment
 from paired_render import ROOT, MAX_BYTES, expected_image
 from benchkit.artifacts import hash_regular_file, read_bounded_regular
 from benchkit.images import normalize
 from benchkit.statistics import quantile
 
-EXPERIMENT = "n16-output"
 THRESHOLDS = {"target_median_upper": .95, "target_p95_upper": 1.0,
               "protected_median_upper": 1.02, "protected_p95_upper": 1.02,
               "peak_rss_ratio_max": 1.0}
@@ -54,22 +52,36 @@ def cell_map(cells):
     return result
 
 
-def main():
-    require(len(sys.argv) == 2 and sys.argv[1] in ("pilot-001", "confirmation-001"),
-            "usage: evaluate_n16_output.py pilot-001|confirmation-001")
-    run = sys.argv[1]
+def audit(*, experiment_module, experiment_name, stem, local_name, run,
+          expected_harness_sources, audit_entrypoint):
+    """Audit one fixed experiment configured by its checked-in caller.
+
+    Source sets come from the caller, never from the report. Historical reports
+    remain bound to their original evaluator version; this does not relax pins.
+    """
+    require(run in ("pilot-001", "confirmation-001"), "invalid audit run")
+    experiment = experiment_module
+    shared_evaluator = "benchmarks/evaluate_n16_output.py"
+    require(Path(__file__).resolve() == (ROOT / shared_evaluator).resolve(),
+            "shared evaluator is not running from the bound checkout")
+    require(Path(sys.argv[0]).resolve() == (ROOT / audit_entrypoint).resolve(),
+            "audit entrypoint differs from the bound caller")
+    driver = Path(experiment.__file__).resolve().relative_to(ROOT.resolve()).as_posix()
+    harness_names = set(expected_harness_sources)
+    require({driver, "benchmarks/paired_render.py"} <= harness_names,
+            "caller omitted the driver or shared harness")
     phase_name = run.split("-", 1)[0]
     results = ROOT / "benchmarks/results"
-    local = results / "local/n16-output"
+    local = results / "local" / local_name
     directory = local / run
     report_path = directory / "report.json"
     receipt_path = local / (run + "-receipt.json")
     guard_path = local / (run + "-observer/guard.json")
-    bindings_path = results / "n16-output-bindings.json"
-    plan_path = results / "n16-output-plan.json"
+    bindings_path = results / (stem + "-bindings.json")
+    plan_path = results / (stem + "-plan.json")
     report, receipt, guard = load(report_path), load(receipt_path), load(guard_path)
     bindings, plan = load(bindings_path), load(plan_path)
-    require(report["experiment"] == plan["experiment"] == EXPERIMENT, "wrong experiment")
+    require(report["experiment"] == plan["experiment"] == experiment_name, "wrong experiment")
     require(report["phase"] == phase_name, "run name and phase differ")
     require(report["status"] == "complete-exploratory", "incomplete report")
     require(receipt["status"] == "completed" and receipt["source_unchanged"], "invalid runner receipt")
@@ -92,25 +104,20 @@ def main():
         require(hash_regular_file(Path(identity["binary"])) == identity["binary_sha256"],
                 side + " binary changed")
     bound = bindings["bound_files_sha256"]
-    required_files = {"benchmarks/n16_output.py", "benchmarks/evaluate_n16_output.py",
-                      "benchmarks/opaque_composition.py",
-                      "benchmarks/paired_render.py", "benchmarks/glyph_memo.py",
-                      "benchmarks/glyph_memo_fixtures.py", "benchmarks/scene_index.py",
-                      "benchmarks/clip_viewport_fixtures.py",
-                      "crates/pagura-render/examples/scene_index_profile.rs",
-                      "benchmarks/results/n16-output-plan.json"}
+    required_files = harness_names | {
+        shared_evaluator, audit_entrypoint,
+        "crates/pagura-render/examples/scene_index_profile.rs",
+        "benchmarks/results/" + stem + "-plan.json",
+    }
     require(required_files <= set(bound), "missing harness or plan binding")
     for name, expected in bound.items():
         path = (ROOT / name).resolve()
         require(path.is_relative_to(ROOT.resolve()), "bound file escapes checkout")
         require(hash_regular_file(path) == expected, "bound file changed: " + name)
-    harness_names = required_files - {"benchmarks/evaluate_n16_output.py",
-                                     "crates/pagura-render/examples/scene_index_profile.rs",
-                                     "benchmarks/results/n16-output-plan.json"}
     require(set(report["harness_sources_sha256"]) == harness_names, "incomplete harness source set")
     for name, expected in report["harness_sources_sha256"].items():
         require(bound[name] == expected, "report harness binding mismatch")
-    require(report["driver_sha256"] == bound["benchmarks/n16_output.py"], "wrong driver")
+    require(report["driver_sha256"] == bound[driver], "wrong driver")
     require(report["example_sha256"] == bound["crates/pagura-render/examples/scene_index_profile.rs"],
             "wrong public API example")
     require(report["thresholds"] == plan["thresholds"] == THRESHOLDS, "threshold drift")
@@ -212,7 +219,7 @@ def main():
             row[side + "_median_ms"] = statistics.median(values[side]) / 1e6
         rows.append(row)
     contention = any(event["matches"] for event in guard["events"])
-    summary = {"schema": 1, "experiment": EXPERIMENT, "run": run, "phase": phase_name, "admission": False,
+    summary = {"schema": 1, "experiment": experiment_name, "run": run, "phase": phase_name, "admission": False,
                "background_contention_observed": contention, "observed_contention_blocks_admission": contention,
                "report_sha256": hash_regular_file(report_path), "receipt_sha256": hash_regular_file(receipt_path),
                "guard_sha256": hash_regular_file(guard_path), "plan_sha256": hash_regular_file(plan_path),
@@ -228,6 +235,21 @@ def main():
         if cell["role"] == "target" or cell["case"].startswith("opaque-"):
             print(cell["case"], cell["mode"], cell["operation"], "median ratio", round(cell["latency"]["median_ratio"], 4),
                   "p95 upper", round(cell["latency"]["p95_upper"], 4), "RSS ratio", round(cell["peak_rss_ratio"], 4))
+
+
+def main():
+    import n16_output as experiment
+
+    require(len(sys.argv) == 2 and sys.argv[1] in ("pilot-001", "confirmation-001"),
+            "usage: evaluate_n16_output.py pilot-001|confirmation-001")
+    audit(experiment_module=experiment, experiment_name="n16-output", stem="n16-output",
+          local_name="n16-output", run=sys.argv[1],
+          expected_harness_sources={
+              "benchmarks/n16_output.py", "benchmarks/opaque_composition.py",
+              "benchmarks/paired_render.py", "benchmarks/glyph_memo.py",
+              "benchmarks/glyph_memo_fixtures.py", "benchmarks/scene_index.py",
+              "benchmarks/clip_viewport_fixtures.py",
+          }, audit_entrypoint="benchmarks/evaluate_n16_output.py")
 
 
 if __name__ == "__main__":

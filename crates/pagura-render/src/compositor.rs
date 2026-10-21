@@ -1663,6 +1663,11 @@ fn render_policy(
     } else {
         plan::page(list, &separations)?
     };
+    // Narrow pages embed an opaque backdrop. Keep translucent backgrounds
+    // on the shared wide path, which composites onto premultiplied output.
+    if options.background.a != 255 {
+        plan.format = plan::Format::F64;
+    }
     if bands.is_some_and(|b| b.byte_composition) && plan.format == plan::Format::F32 {
         plan.format = plan::Format::U8;
     }

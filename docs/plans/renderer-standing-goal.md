@@ -40,9 +40,11 @@ completion criteria and next steps reviewable. It is not a new release policy.
 2. Use measured reach and cost to select the next small improvement. Preserve
    useful partial wins on the experimental branch; distinguish incomplete
    admission from evidence of regression. Never add historical percentages.
-   Reproduce and close the [plain opaque composition gap](opaque-composition-accuracy.md)
-   alongside the performance work; the existing general-compositor fixtures
-   do not cover that route.
+   The [plain opaque composition gap](opaque-composition-accuracy.md) is now
+   independently reproduced and corrected by shared composition, with measured
+   performance costs retained explicitly. Recover those costs through separate
+   [measured slices](n16-next-slices.md), preserving the strict accuracy bounds
+   and newly corrected nonopaque-background behavior.
 3. Extend shared scene/clip/image preparation where profiles justify it, while
    closing independent reference coverage and renderer memory-accounting gaps.
 4. Complete persistent/region benchmark adapters and matrix aggregation, then

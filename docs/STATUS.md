@@ -87,6 +87,24 @@ follows. The [original baseline](../benchmarks/results/opaque-precision-baseline
 and failed pilot remain available. The earlier glyph memo/clip gains remain in
 both comparison arms; gains from different workloads are not added together.
 
+The following [exact N16 conversion experiment](../benchmarks/results/n16-output-guarded-experiment.md)
+retains an incremental partial win against the shared-composition stack. Its
+fixed 46-cell, 200-pair confirmation passed 18,860 output checks and lowered
+opaque64/full medians by 12.5% in Exact and 14.4% in Competitive. Both target
+latency gates pass; only 15/44 protected latency and 25/46 peak-RSS gates pass.
+Target RSS rises 4.4% and 0.3%, and default-knockout Exact has a supported p95
+regression. No competing jobs were observed during measurement; this remains
+experimental, without release admission. The converter adds no storage and
+matches the original rational rounding for all 65,536 u16 inputs.
+
+A separately reproduced colored-background defect is also corrected: nonopaque
+backgrounds now use the existing F64 path and produce premultiplied output.
+This increases working-pixel storage from N16's eight to F64's 56 bytes and can
+reach existing limits sooner. The opaque-background speed/RSS matrix does not
+measure that cost. The complete integrated check passes, including 210 renderer
+tests, 196 Python tests, native/WASM and host checks, and all 1,249 conformance
+cases. The earlier canceled confirmation remains excluded from the fresh run.
+
 ## Overprint display policy
 
 `RenderOptions::overprint` selects `OverprintPreview::{Auto, Always, Never}`;
