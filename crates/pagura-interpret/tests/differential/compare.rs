@@ -318,3 +318,56 @@ pub fn filled_page(name: &str, bytes: &[u8], index: usize, outcome: &mut Outcome
         )),
     }
 }
+
+/// Compares the text of every stored normal appearance of page `index`'s
+/// annotations, extracted on its own.
+pub fn appearances(name: &str, bytes: &[u8], index: usize, outcome: &mut Outcome) {
+    let Some(document) = open(bytes, Recovery::Repair) else {
+        return;
+    };
+    let Ok(page) = document.page(index) else {
+        return;
+    };
+    let Some(annotations) = page
+        .dictionary()
+        .get(b"Annots")
+        .and_then(|v| document.resolve(v).ok())
+        .and_then(pagura_core::Value::as_array)
+    else {
+        return;
+    };
+    for annotation in annotations {
+        let Ok(d) = document.resolve_dictionary(annotation) else {
+            continue;
+        };
+        let Some(id) = d
+            .get(b"AP")
+            .and_then(|ap| document.resolve_dictionary(ap).ok())
+            .and_then(|ap| ap.get(b"N"))
+            .and_then(pagura_core::Value::as_reference)
+        else {
+            continue;
+        };
+        let Some(rect) = d
+            .get(b"Rect")
+            .and_then(|r| document.resolve(r).ok())
+            .and_then(pagura_core::Value::as_array)
+            .and_then(pagura_core::Rect::from_array)
+        else {
+            continue;
+        };
+        let label = format!("{name} p{index} appearance {id}");
+        let old = pagura_render::appearance_text(&document, page, id, rect, None);
+        let new = Interpreter::new(&document).appearance_text(page, id, rect);
+        match (old, new) {
+            (_, Err(error)) if pending(&error) => outcome.pending.push(format!("{label}: {error}")),
+            (Ok(old), Ok(new)) if format!("{old:?}") == format!("{new:?}") => outcome.matched += 1,
+            (Err(old), Err(new)) if identity(&old) == identity(&new) => outcome.matched += 1,
+            (old, new) => outcome.mismatches.push(format!(
+                "{label}: {:?} vs old {:?}",
+                new.map(|t| t.glyphs.len()),
+                old.map(|t| t.glyphs.len())
+            )),
+        }
+    }
+}

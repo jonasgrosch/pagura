@@ -40,61 +40,62 @@ pub(super) fn integer(operands: &[Value]) -> Result<i64> {
         .ok_or_else(wrong_type)
 }
 
-/// One name.
-pub(super) fn name(operands: Vec<Value>) -> Result<Name> {
-    count(&operands, 1)?;
-    match operands.into_iter().next() {
+/// One name, taken from `operands`.
+pub(super) fn name(operands: &mut Vec<Value>) -> Result<Name> {
+    count(operands, 1)?;
+    match operands.pop() {
         Some(Value::Name(name)) => Ok(name),
         _ => Err(wrong_type()),
     }
 }
 
-/// One string.
-pub(super) fn string(operands: Vec<Value>) -> Result<Vec<u8>> {
-    count(&operands, 1)?;
-    match operands.into_iter().next() {
+/// One string, taken from `operands`.
+pub(super) fn string(operands: &mut Vec<Value>) -> Result<Vec<u8>> {
+    count(operands, 1)?;
+    match operands.pop() {
         Some(Value::String(bytes)) => Ok(bytes),
         _ => Err(wrong_type()),
     }
 }
 
-/// One array.
-pub(super) fn array(operands: Vec<Value>) -> Result<Vec<Value>> {
-    count(&operands, 1)?;
-    match operands.into_iter().next() {
+/// One array, taken from `operands`.
+pub(super) fn array(operands: &mut Vec<Value>) -> Result<Vec<Value>> {
+    count(operands, 1)?;
+    match operands.pop() {
         Some(Value::Array(values)) => Ok(values),
         _ => Err(wrong_type()),
     }
 }
 
-/// A name and a number (`Tf`).
-pub(super) fn name_number(operands: Vec<Value>) -> Result<(Name, f64)> {
-    count(&operands, 2)?;
-    let mut operands = operands.into_iter();
-    match (operands.next(), operands.next().and_then(|v| v.as_number())) {
+/// A name and a number (`Tf`), taken from `operands`.
+pub(super) fn name_number(operands: &mut Vec<Value>) -> Result<(Name, f64)> {
+    count(operands, 2)?;
+    let size = operands.pop().and_then(|v| v.as_number());
+    match (operands.pop(), size) {
         (Some(Value::Name(name)), Some(size)) => Ok((name, size)),
         _ => Err(wrong_type()),
     }
 }
 
-/// A tag and a properties name or dictionary (`BDC`, `DP`).
-pub(super) fn marked(operands: Vec<Value>) -> Result<(Name, Properties)> {
-    count(&operands, 2)?;
-    let mut operands = operands.into_iter();
-    match (operands.next(), operands.next()) {
+/// A tag and a properties name or dictionary (`BDC`, `DP`), taken from
+/// `operands`.
+pub(super) fn marked(operands: &mut Vec<Value>) -> Result<(Name, Properties)> {
+    count(operands, 2)?;
+    let properties = operands.pop();
+    match (operands.pop(), properties) {
         (Some(Value::Name(tag)), Some(Value::Name(name))) => Ok((tag, Properties::Name(name))),
         (Some(Value::Name(tag)), Some(Value::Dictionary(d))) => Ok((tag, Properties::Inline(d))),
         _ => Err(wrong_type()),
     }
 }
 
-/// Two numbers and a string (`"`).
-pub(super) fn spaced_string(operands: Vec<Value>) -> Result<(f64, f64, Vec<u8>)> {
-    count(&operands, 3)?;
-    let mut operands = operands.into_iter();
-    let word = operands.next().and_then(|v| v.as_number());
-    let character = operands.next().and_then(|v| v.as_number());
-    match (word, character, operands.next()) {
+/// Two numbers and a string (`"`), taken from `operands`.
+pub(super) fn spaced_string(operands: &mut Vec<Value>) -> Result<(f64, f64, Vec<u8>)> {
+    count(operands, 3)?;
+    let text = operands.pop();
+    let character = operands.pop().and_then(|v| v.as_number());
+    let word = operands.pop().and_then(|v| v.as_number());
+    match (word, character, text) {
         (Some(word), Some(character), Some(Value::String(text))) => Ok((word, character, text)),
         _ => Err(wrong_type()),
     }

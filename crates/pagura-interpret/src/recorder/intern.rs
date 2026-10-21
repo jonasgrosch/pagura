@@ -7,28 +7,28 @@ use crate::model::{BlendMode, Clip, Composite, MaskId, Overprint, Paint, Pen};
 use crate::scene::{ClipId, ClipNode, PaintId, PenId, StateId};
 use pagura_color::Intent;
 use pagura_core::{Error, Meter, Result};
-use std::collections::HashMap;
+use crate::hash::FastMap;
 use std::sync::Arc;
 
 /// The interned tables of a recording.
 #[derive(Debug, Default)]
 pub(super) struct Interner {
     clips: Vec<ClipNode>,
-    clip_ids: HashMap<usize, ClipId>,
+    clip_ids: FastMap<usize, ClipId>,
     /// The interned clips, kept so their addresses stay theirs.
     clip_arcs: Vec<Arc<Clip>>,
     states: Vec<Arc<Composite>>,
-    state_ids: HashMap<usize, StateId>,
-    state_values: HashMap<StateKey, StateId>,
+    state_ids: FastMap<usize, StateId>,
+    state_values: FastMap<StateKey, StateId>,
     paints: Vec<Arc<Paint>>,
-    paint_ids: HashMap<usize, PaintId>,
-    paint_values: HashMap<(usize, Vec<u64>), PaintId>,
+    paint_ids: FastMap<usize, PaintId>,
+    paint_values: FastMap<(usize, Vec<u64>), PaintId>,
     /// States and paints interned as aliases of equal values, kept alive so
     /// their addresses stay theirs.
     state_aliases: Vec<Arc<Composite>>,
     paint_aliases: Vec<Arc<Paint>>,
     pens: Vec<Arc<Pen>>,
-    pen_ids: HashMap<usize, PenId>,
+    pen_ids: FastMap<usize, PenId>,
 }
 
 /// A composite state by value; functions by identity.

@@ -87,9 +87,10 @@ fn filled_forms_match_the_old_interpreter() {
         let bytes = std::fs::read(&path).unwrap();
         for index in 0..page_count(&bytes).min(PAGES) {
             compare::filled_page(&name, &bytes, index, &mut outcome);
+            compare::appearances(&name, &bytes, index, &mut outcome);
         }
     }
-    report(&outcome, "filled forms");
+    report(&outcome, "filled forms and appearance text");
     assert!(outcome.mismatches.is_empty(), "{} mismatches", outcome.mismatches.len());
 }
 

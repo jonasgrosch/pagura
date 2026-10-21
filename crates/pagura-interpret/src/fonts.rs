@@ -10,7 +10,8 @@ use pagura_core::{
 use pagura_document::Document;
 use pagura_raster::{Path, Segment};
 use pagura_text::{FontKind, PdfFont, Provider, WritingMode};
-use std::collections::{BTreeMap, HashMap};
+use crate::hash::FastMap;
+use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::Arc;
 
@@ -55,7 +56,7 @@ pub(crate) struct Fonts<'a> {
     store: Option<&'a Store>,
     indirect: BTreeMap<ObjectId, Arc<LoadedFont>>,
     direct: Vec<(Dictionary, Arc<LoadedFont>)>,
-    outlines: HashMap<OutlineKey, Arc<Path>>,
+    outlines: FastMap<OutlineKey, Arc<Path>>,
     bytes: Meter,
 }
 
@@ -80,7 +81,7 @@ impl<'a> Fonts<'a> {
             store,
             indirect: BTreeMap::new(),
             direct: Vec::new(),
-            outlines: HashMap::new(),
+            outlines: FastMap::default(),
             bytes: Meter::new(
                 document.limits().render_bytes,
                 "text and image retained byte budget exceeded",

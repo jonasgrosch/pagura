@@ -9,7 +9,7 @@ use crate::scene::{
 };
 use pagura_core::{Error, Result};
 use pagura_raster::{FillRule, Path, Point, Segment, Transform};
-use std::collections::HashMap;
+use crate::hash::FastMap;
 use std::sync::Arc;
 
 /// The placement and source tables one glyphs node keeps at most.
@@ -23,11 +23,11 @@ type SourceKey = (OutlineKey, [u64; 4]);
 #[derive(Debug, Default)]
 pub(super) struct Glyphs {
     /// The glyphs node later runs may extend, and its sources.
-    open: Option<(NodeId, HashMap<SourceKey, u32>)>,
+    open: Option<(NodeId, FastMap<SourceKey, u32>)>,
     /// The hulls of the sources met: the outline's under the linear map.
-    hulls: HashMap<SourceKey, [Point; 2]>,
+    hulls: FastMap<SourceKey, [Point; 2]>,
     /// The fill-and-stroke group states derived for state pairs.
-    derived: HashMap<(usize, usize), FillStroke>,
+    derived: FastMap<(usize, usize), FillStroke>,
 }
 
 impl SceneRecorder {
@@ -151,7 +151,7 @@ impl SceneRecorder {
             }),
             0,
         )?;
-        self.glyphs.open = Some((node, HashMap::new()));
+        self.glyphs.open = Some((node, FastMap::default()));
         Ok(node)
     }
 

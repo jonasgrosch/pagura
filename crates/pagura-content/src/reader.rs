@@ -131,7 +131,9 @@ impl<'c> Reader<'c> {
             }
             return Err(Error::syntax("unknown content operator"));
         };
-        let op = Op::parse(operator, std::mem::take(&mut self.operands))?;
+        let op = Op::take(operator, &mut self.operands);
+        self.operands.clear();
+        let op = op?;
         match op {
             Op::BeginCompatibility => {
                 self.compatibility = self

@@ -314,41 +314,48 @@ impl Op {
     /// Returns `Syntax` for a wrong operand count or type, a malformed dash
     /// array or `TJ` element, and for `BI`, `ID` and `EI`, which only the
     /// [`Reader`](crate::Reader) frames.
-    pub fn parse(operator: Operator, operands: Vec<Value>) -> Result<Self> {
+    pub fn parse(operator: Operator, mut operands: Vec<Value>) -> Result<Self> {
+        Self::take(operator, &mut operands)
+    }
+
+    /// As [`Self::parse`], taking the operands out of `operands`, whose
+    /// allocation the caller keeps; it is left empty or with operands the
+    /// operation does not use.
+    pub(crate) fn take(operator: Operator, operands: &mut Vec<Value>) -> Result<Self> {
         use Operator as O;
         Ok(match operator {
-            O::Save => none(&operands, Self::Save)?,
-            O::Restore => none(&operands, Self::Restore)?,
-            O::Concatenate => Self::Concatenate(numbers(&operands)?),
-            O::LineWidth => Self::LineWidth(single(&operands)?),
-            O::LineCap => Self::LineCap(integer(&operands)?),
-            O::LineJoin => Self::LineJoin(integer(&operands)?),
-            O::MiterLimit => Self::MiterLimit(single(&operands)?),
-            O::Dash => Self::Dash(dash(&operands)?),
+            O::Save => none(operands, Self::Save)?,
+            O::Restore => none(operands, Self::Restore)?,
+            O::Concatenate => Self::Concatenate(numbers(operands)?),
+            O::LineWidth => Self::LineWidth(single(operands)?),
+            O::LineCap => Self::LineCap(integer(operands)?),
+            O::LineJoin => Self::LineJoin(integer(operands)?),
+            O::MiterLimit => Self::MiterLimit(single(operands)?),
+            O::Dash => Self::Dash(dash(operands)?),
             O::RenderingIntent => Self::RenderingIntent(name(operands)?),
-            O::Flatness => Self::Flatness(single(&operands)?),
+            O::Flatness => Self::Flatness(single(operands)?),
             O::ExtGState => Self::ExtGState(name(operands)?),
-            O::MoveTo => Self::MoveTo(numbers(&operands)?),
-            O::LineTo => Self::LineTo(numbers(&operands)?),
-            O::CurveTo => Self::CurveTo(numbers(&operands)?),
-            O::CurveToInitial => Self::CurveToInitial(numbers(&operands)?),
-            O::CurveToFinal => Self::CurveToFinal(numbers(&operands)?),
-            O::ClosePath => none(&operands, Self::ClosePath)?,
-            O::Rectangle => Self::Rectangle(numbers(&operands)?),
-            O::Clip => none(&operands, Self::Clip(Rule::NonZero))?,
-            O::ClipEvenOdd => none(&operands, Self::Clip(Rule::EvenOdd))?,
+            O::MoveTo => Self::MoveTo(numbers(operands)?),
+            O::LineTo => Self::LineTo(numbers(operands)?),
+            O::CurveTo => Self::CurveTo(numbers(operands)?),
+            O::CurveToInitial => Self::CurveToInitial(numbers(operands)?),
+            O::CurveToFinal => Self::CurveToFinal(numbers(operands)?),
+            O::ClosePath => none(operands, Self::ClosePath)?,
+            O::Rectangle => Self::Rectangle(numbers(operands)?),
+            O::Clip => none(operands, Self::Clip(Rule::NonZero))?,
+            O::ClipEvenOdd => none(operands, Self::Clip(Rule::EvenOdd))?,
             O::StrokeColorSpace => Self::StrokeColorSpace(name(operands)?),
             O::FillColorSpace => Self::FillColorSpace(name(operands)?),
             O::StrokeColor => Self::StrokeColor(color(operands, Pattern::Forbidden)?),
             O::FillColor => Self::FillColor(color(operands, Pattern::Forbidden)?),
             O::StrokeColorN => Self::StrokeColorN(color(operands, Pattern::Allowed)?),
             O::FillColorN => Self::FillColorN(color(operands, Pattern::Allowed)?),
-            O::StrokeGray => Self::StrokeGray(single(&operands)?),
-            O::FillGray => Self::FillGray(single(&operands)?),
-            O::StrokeRgb => Self::StrokeRgb(numbers(&operands)?),
-            O::FillRgb => Self::FillRgb(numbers(&operands)?),
-            O::StrokeCmyk => Self::StrokeCmyk(numbers(&operands)?),
-            O::FillCmyk => Self::FillCmyk(numbers(&operands)?),
+            O::StrokeGray => Self::StrokeGray(single(operands)?),
+            O::FillGray => Self::FillGray(single(operands)?),
+            O::StrokeRgb => Self::StrokeRgb(numbers(operands)?),
+            O::FillRgb => Self::FillRgb(numbers(operands)?),
+            O::StrokeCmyk => Self::StrokeCmyk(numbers(operands)?),
+            O::FillCmyk => Self::FillCmyk(numbers(operands)?),
             O::Shading => Self::Shading(name(operands)?),
             O::XObject => Self::XObject(name(operands)?),
             O::BeginMarkedContent => Self::BeginMarkedContent(name(operands)?),
@@ -361,17 +368,18 @@ impl Op {
                 let (tag, properties) = marked(operands)?;
                 Self::MarkedPointProperties { tag, properties }
             }
-            O::EndMarkedContent => none(&operands, Self::EndMarkedContent)?,
-            O::BeginCompatibility => none(&operands, Self::BeginCompatibility)?,
-            O::EndCompatibility => none(&operands, Self::EndCompatibility)?,
+            O::EndMarkedContent => none(operands, Self::EndMarkedContent)?,
+            O::BeginCompatibility => none(operands, Self::BeginCompatibility)?,
+            O::EndCompatibility => none(operands, Self::EndCompatibility)?,
             O::BeginInlineImage | O::InlineImageData | O::EndInlineImage => {
-                none(&operands, ())?;
+                none(operands, ())?;
                 return Err(Error::syntax("inline image delimiter outside image"));
             }
             operator => {
-                return Self::paint(operator, &operands)
-                    .transpose()
-                    .unwrap_or_else(|| Self::text(operator, operands));
+                return match Self::paint(operator, operands)? {
+                    Some(op) => Ok(op),
+                    None => Self::text(operator, operands),
+                };
             }
         })
     }
@@ -396,25 +404,25 @@ impl Op {
     }
 
     /// The text and Type 3 glyph operators.
-    fn text(operator: Operator, operands: Vec<Value>) -> Result<Self> {
+    fn text(operator: Operator, operands: &mut Vec<Value>) -> Result<Self> {
         use Operator as O;
         Ok(match operator {
-            O::BeginText => none(&operands, Self::BeginText)?,
-            O::EndText => none(&operands, Self::EndText)?,
-            O::CharSpacing => Self::CharSpacing(single(&operands)?),
-            O::WordSpacing => Self::WordSpacing(single(&operands)?),
-            O::HorizontalScaling => Self::HorizontalScaling(single(&operands)?),
-            O::Leading => Self::Leading(single(&operands)?),
+            O::BeginText => none(operands, Self::BeginText)?,
+            O::EndText => none(operands, Self::EndText)?,
+            O::CharSpacing => Self::CharSpacing(single(operands)?),
+            O::WordSpacing => Self::WordSpacing(single(operands)?),
+            O::HorizontalScaling => Self::HorizontalScaling(single(operands)?),
+            O::Leading => Self::Leading(single(operands)?),
             O::Font => {
                 let (name, size) = name_number(operands)?;
                 Self::Font { name, size }
             }
-            O::RenderMode => Self::RenderMode(integer(&operands)?),
-            O::Rise => Self::Rise(single(&operands)?),
-            O::MoveText => Self::MoveText(numbers(&operands)?),
-            O::MoveTextLeading => Self::MoveTextLeading(numbers(&operands)?),
-            O::TextMatrix => Self::TextMatrix(numbers(&operands)?),
-            O::NextLine => none(&operands, Self::NextLine)?,
+            O::RenderMode => Self::RenderMode(integer(operands)?),
+            O::Rise => Self::Rise(single(operands)?),
+            O::MoveText => Self::MoveText(numbers(operands)?),
+            O::MoveTextLeading => Self::MoveTextLeading(numbers(operands)?),
+            O::TextMatrix => Self::TextMatrix(numbers(operands)?),
+            O::NextLine => none(operands, Self::NextLine)?,
             O::ShowText => Self::ShowText(string(operands)?),
             O::NextLineShowText => Self::NextLineShowText(string(operands)?),
             O::NextLineShowTextSpaced => {
@@ -426,8 +434,8 @@ impl Op {
                 }
             }
             O::ShowTextAdjusted => Self::ShowTextAdjusted(text_items(array(operands)?)?),
-            O::GlyphWidth => Self::GlyphWidth(numbers(&operands)?),
-            O::GlyphWidthBounds => Self::GlyphWidthBounds(numbers(&operands)?),
+            O::GlyphWidth => Self::GlyphWidth(numbers(operands)?),
+            O::GlyphWidthBounds => Self::GlyphWidthBounds(numbers(operands)?),
             _ => return Err(Error::syntax("unknown content operator")),
         })
     }
@@ -559,11 +567,11 @@ enum Pattern {
     Forbidden,
 }
 
-fn color(operands: Vec<Value>, pattern: Pattern) -> Result<ColorOperands> {
+fn color(operands: &mut Vec<Value>, pattern: Pattern) -> Result<ColorOperands> {
     let count = operands.len();
     let mut components = Vec::with_capacity(count);
     let mut name = None;
-    for (index, value) in operands.into_iter().enumerate() {
+    for (index, value) in operands.drain(..).enumerate() {
         match value {
             Value::Name(n) if pattern == Pattern::Allowed && index + 1 == count => name = Some(n),
             value => components.push(
