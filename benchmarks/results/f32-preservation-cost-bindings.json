@@ -1,0 +1,330 @@
+{
+  "schema": 1,
+  "plan": {
+    "schema": 1,
+    "cases": [
+      "classic/blank",
+      "classic/rectangle",
+      "classic/graphics-state",
+      "classic/negative-rectangle",
+      "classic/inherited-box",
+      "classic/clipped-to-page",
+      "classic/many-rectangles",
+      "classic/content-array-split",
+      "classic/many-operands",
+      "paint/text-heavy-page",
+      "paint/text-mode-4",
+      "paint/type3-d0-colour",
+      "paint/text-knockout-true",
+      "paint/text-knockout-false",
+      "paint/image-soft-mask",
+      "paint/image-direct-binary-halves",
+      "paint/image-direct-gray-quarter-turn",
+      "paint/image-direct-rgb-fractional",
+      "paint/image-direct-bilinear"
+    ],
+    "cells": [
+      [
+        "classic/blank",
+        "exact",
+        "cold"
+      ],
+      [
+        "classic/blank",
+        "competitive",
+        "cold"
+      ],
+      [
+        "classic/rectangle",
+        "exact",
+        "cold"
+      ],
+      [
+        "classic/rectangle",
+        "competitive",
+        "cold"
+      ],
+      [
+        "classic/graphics-state",
+        "exact",
+        "cold"
+      ],
+      [
+        "classic/graphics-state",
+        "competitive",
+        "cold"
+      ],
+      [
+        "classic/negative-rectangle",
+        "exact",
+        "cold"
+      ],
+      [
+        "classic/negative-rectangle",
+        "competitive",
+        "cold"
+      ],
+      [
+        "classic/inherited-box",
+        "exact",
+        "cold"
+      ],
+      [
+        "classic/inherited-box",
+        "competitive",
+        "cold"
+      ],
+      [
+        "classic/clipped-to-page",
+        "exact",
+        "cold"
+      ],
+      [
+        "classic/clipped-to-page",
+        "competitive",
+        "cold"
+      ],
+      [
+        "classic/many-rectangles",
+        "exact",
+        "cold"
+      ],
+      [
+        "classic/many-rectangles",
+        "competitive",
+        "cold"
+      ],
+      [
+        "classic/content-array-split",
+        "exact",
+        "cold"
+      ],
+      [
+        "classic/content-array-split",
+        "competitive",
+        "cold"
+      ],
+      [
+        "classic/many-operands",
+        "exact",
+        "cold"
+      ],
+      [
+        "classic/many-operands",
+        "competitive",
+        "cold"
+      ],
+      [
+        "paint/text-heavy-page",
+        "exact",
+        "cold"
+      ],
+      [
+        "paint/text-heavy-page",
+        "competitive",
+        "cold"
+      ],
+      [
+        "paint/text-mode-4",
+        "exact",
+        "cold"
+      ],
+      [
+        "paint/text-mode-4",
+        "competitive",
+        "cold"
+      ],
+      [
+        "paint/type3-d0-colour",
+        "exact",
+        "cold"
+      ],
+      [
+        "paint/type3-d0-colour",
+        "competitive",
+        "cold"
+      ],
+      [
+        "paint/text-knockout-true",
+        "exact",
+        "cold"
+      ],
+      [
+        "paint/text-knockout-true",
+        "competitive",
+        "cold"
+      ],
+      [
+        "paint/text-knockout-false",
+        "exact",
+        "cold"
+      ],
+      [
+        "paint/text-knockout-false",
+        "competitive",
+        "cold"
+      ],
+      [
+        "paint/image-soft-mask",
+        "exact",
+        "cold"
+      ],
+      [
+        "paint/image-soft-mask",
+        "competitive",
+        "cold"
+      ],
+      [
+        "paint/image-direct-binary-halves",
+        "exact",
+        "cold"
+      ],
+      [
+        "paint/image-direct-binary-halves",
+        "competitive",
+        "cold"
+      ],
+      [
+        "paint/image-direct-gray-quarter-turn",
+        "exact",
+        "cold"
+      ],
+      [
+        "paint/image-direct-gray-quarter-turn",
+        "competitive",
+        "cold"
+      ],
+      [
+        "paint/image-direct-rgb-fractional",
+        "exact",
+        "cold"
+      ],
+      [
+        "paint/image-direct-rgb-fractional",
+        "competitive",
+        "cold"
+      ],
+      [
+        "paint/image-direct-bilinear",
+        "exact",
+        "cold"
+      ],
+      [
+        "paint/image-direct-bilinear",
+        "competitive",
+        "cold"
+      ]
+    ],
+    "metric": "total_ns",
+    "seed": 20261110,
+    "warmup_pairs": 5,
+    "measured_pairs": 31,
+    "expected_preflight_outputs": 76,
+    "expected_cost_outputs": 2736,
+    "measured_order_per_cell": {
+      "baseline_first": 16,
+      "candidate_first": 15
+    },
+    "warmup_order_per_cell": {
+      "baseline_first": 3,
+      "candidate_first": 2
+    }
+  },
+  "identities": {
+    "baseline": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/n16-painted-control/pagura",
+      "commit": "c70b467882faafc9baede8c06c7011ac2be1ae21",
+      "source_sha256": "90dfc83961434f8820e818c92d06f7088562ee9d108ed530dc1ce8950e75c782",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/f32-preservation/build-001/baseline",
+      "binary_sha256": "3eea2f579aef12030cf24790c94f6ec3a2cb4a3348e446e49ac129e589aa96c1"
+    },
+    "candidate": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+      "commit": "e45a33084d3c6d77dbc0731fb31220323201d07f",
+      "source_sha256": "46c70d4775cddf59556837e95b6c293a4dc78834191c9d120fdf6c86824d8247",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/f32-preservation/build-001/candidate",
+      "binary_sha256": "dbd2c16c215ff6cca919b588b1a338fbc7759b0696dd6a7873ee044dec78cebd"
+    }
+  },
+  "harness_sha256": {
+    "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/f32-preservation/cost.py": "4c06a26c7c3f408e9410aea34ef2abf42135906251a700bab56517d78a488108",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/paired_render.py": "813fea018eb74df02212f7b91bb6baee1a04b306220d361222c60d6074f4ccb6",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/color_reuse_fixtures.py": "84ed3379405deb95be8b5ce73e5da39fd8581ebe8448bf67da49cc06563e4121",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/analytic19-conversion/manifest.json": "278c79b1ccb29a2a5631050c7cd34f6e915312c9d98f59e0a600e2c94e3acac3",
+    "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/analytic19-conversion/references.json": "924e20d6495990e8206c837d420c0172d5404ea1b3ede56417a9d59bb84bbcaf"
+  },
+  "evidence": [
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/f32-preservation/renderer-002-receipt.json",
+      "sha256": "b5ee7a453abcb8769b8d564c8b2295df0ffd18c31d7b02976883890b75b9ecce"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/f32-preservation/renderer-002-observer/guard.json",
+      "sha256": "909964218d9d0a1ecae663ad0e9af3f93b868f03ed26b04ce0febb4b4e9c9036"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/f32-preservation/renderer-002.json",
+      "sha256": "27eee7585d6038c640f9230cbd19cb1faf01b7f56de9b388423815674cef223d"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/f32-preservation/renderer-002.log",
+      "sha256": "f24c99b89706fd45e8f22d353e9638085ca7d50a8a1bd10cd5aee10eb151c98e"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/f32-preservation/full-check-001-receipt.json",
+      "sha256": "de8c7e2a57e6cd8542189dc4fe3f0bc100208c4f94e76249fd8ce03e54f95397"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/f32-preservation/full-check-001-observer/guard.json",
+      "sha256": "46de985782754bb8c2b132e8553e7c09621a0cd7b4dd167acb3cacf8452e4007"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/f32-preservation/full-check-001.json",
+      "sha256": "466282ed2407d6b1a899a945ee97bd58423da9baacc0d6de541526a9c7ca7749"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/f32-preservation/full-check-001.log",
+      "sha256": "6dba8b89f9f9253cb48aaa333b088cb4caa7eb9c6511f248d79ecbca5f86a379"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/f32-preservation/build-001-receipt.json",
+      "sha256": "c4f1aaf30ddfb2dd50ec3b4c370c13eec7f22d6ef2cd1df3502dacfabe2d93da"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/f32-preservation/build-001-observer/guard.json",
+      "sha256": "9c68974c8e6d4d7ebfe040a00282c307b1770cbbee622719480bd6551bc05679"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/f32-preservation/build-001/report.json",
+      "sha256": "1c33683eaa03a61c246d133c55a5d731b8da78558958848b006f0de6f1f16d67"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/.cargo/config.toml",
+      "sha256": "b5d1e3e2e68286c97fc37c1f1b1380cb18355bd3f87a8bf8be9e9c026a6d4a6d"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/n16-painted-control/pagura/.cargo/config.toml",
+      "sha256": "b5d1e3e2e68286c97fc37c1f1b1380cb18355bd3f87a8bf8be9e9c026a6d4a6d"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/f32-preservation-cost-plan.json",
+      "sha256": "057efcb6523c8847229e17c2471d2ca16da63090eef0b1a745510a0606193012"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/f32-preservation/build.py",
+      "sha256": "dd4178250cdc55ef170a9bd053ba3e552815a0c2bf6691f8663da85a39ee02d4"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/tools/runner.py",
+      "sha256": "92bf6ec2203f9404a78942ae5303bab1310793ca98ed6dad7278a57eeed83df1"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/analytic19-conversion/load_observer.py",
+      "sha256": "5879b8ac1dc71d93c15767d4482f8cccc6f1b1ac3cc5526421f44a22e7b76c0d"
+    },
+    {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/sources/analytic19-conversion/idle_then.py",
+      "sha256": "bedfb4f54e1764360f2b90c56e093e96182fba15b6da4ffe9ab7d4400aad4d30"
+    }
+  ]
+}

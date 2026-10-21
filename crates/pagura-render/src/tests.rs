@@ -1273,11 +1273,12 @@ fn recycled_storage_is_counted_and_bounded_by_the_decoded_budget() {
 
 #[test]
 fn competitive_page_surfaces_check_the_pixel_budget_first() {
-    // Translucent paint selects byte bands; opaque paint uses shared N16
-    // chunks and reaches the output Pixmap's separate pixel-budget check.
+    // Both modes use the shared output allocation for translucent paint.
+    // Even with no decoded-byte allowance, pixel admission must fail first.
     let document = open("alpha");
     let mut list = compile_page(&document, document.page(0).unwrap()).unwrap();
     list.limits.pixels = 16;
+    list.limits.decoded_bytes = 0;
     let options = RenderOptions {
         accuracy: crate::Accuracy::Competitive,
         ..RenderOptions::default()
@@ -1289,15 +1290,26 @@ fn competitive_page_surfaces_check_the_pixel_budget_first() {
         width,
         height,
     };
-    let error = crate::compositor::render_competitive(
+    let competitive = crate::compositor::render_competitive(
         &list,
         &options,
         tile,
         crate::compositor::Lent::default(),
     )
     .unwrap_err();
-    assert_eq!(
-        (error.kind, error.message),
-        (ErrorKind::Limit, "page pixel budget exceeded")
-    );
+    let exact = crate::compositor::render(
+        &list,
+        &RenderOptions {
+            accuracy: crate::Accuracy::Exact,
+            ..options
+        },
+        tile,
+    )
+    .unwrap_err();
+    for error in [competitive, exact] {
+        assert_eq!(
+            (error.kind, error.message),
+            (ErrorKind::Limit, "surface pixel budget exceeded")
+        );
+    }
 }

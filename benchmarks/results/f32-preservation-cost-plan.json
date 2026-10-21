@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "experiment": "f32-preservation-cost",
+  "status": "frozen-before-measurement",
+  "baseline_commit": "c70b467882faafc9baede8c06c7011ac2be1ae21",
+  "candidate": "Preserve admitted F32 composition and add F32 storage to the existing Competitive fragment-mask path; keep per-run source conversion and its work/error ordering. Exact admission and coverage remain unchanged.",
+  "cases": [
+    "classic/blank",
+    "classic/rectangle",
+    "classic/graphics-state",
+    "classic/negative-rectangle",
+    "classic/inherited-box",
+    "classic/clipped-to-page",
+    "classic/many-rectangles",
+    "classic/content-array-split",
+    "classic/many-operands",
+    "paint/text-heavy-page",
+    "paint/text-mode-4",
+    "paint/type3-d0-colour",
+    "paint/text-knockout-true",
+    "paint/text-knockout-false",
+    "paint/image-soft-mask",
+    "paint/image-direct-binary-halves",
+    "paint/image-direct-gray-quarter-turn",
+    "paint/image-direct-rgb-fractional",
+    "paint/image-direct-bilinear"
+  ],
+  "modes": [
+    "exact",
+    "competitive"
+  ],
+  "operations": [
+    "cold"
+  ],
+  "dpi": 72,
+  "cells": 38,
+  "preflight_outputs": 76,
+  "warmup_pairs_per_cell": 5,
+  "measured_pairs_per_cell": 31,
+  "cost_outputs": 2736,
+  "seed": 20261110,
+  "cost_trials": 1,
+  "automatic_postlaunch_retry": false,
+  "order": "Five randomized warmup pairs then31 measured pairs per cell, shuffled across cells. Within each cell, measured order is16 baseline/candidate and15 candidate/baseline, then shuffled.",
+  "metric": "total_ns from scene_index_profile: in-memory document open+compile_page+retained render, excluding file I/O, output emission, startup and destruction.",
+  "measurements": [
+    "per-cell median total_ns",
+    "descriptive median compile_ns and render_ns",
+    "median process elapsed_ns",
+    "median and maximum per-process peak_rss_bytes"
+  ],
+  "accuracy": {
+    "candidate": "All19 fixed independent RGB references in both modes, zero channel error, opaque alpha255 and correct dimensions on every output.",
+    "baseline": "Retain and report every mismatch; cost outputs must match that exact same-cell preflight output. Baseline is not assumed independently correct.",
+    "known_baseline_mismatches": [
+      {
+        "case": "paint/text-knockout-false",
+        "mode": "competitive",
+        "max_channel_error": 1,
+        "different_channels": 192,
+        "values": [
+          [
+            63,
+            64
+          ]
+        ]
+      }
+    ],
+    "references": {
+      "manifest_path": "benchmarks/results/sources/analytic19-conversion/manifest.json",
+      "manifest_sha256": "278c79b1ccb29a2a5631050c7cd34f6e915312c9d98f59e0a600e2c94e3acac3",
+      "references_path": "benchmarks/results/sources/analytic19-conversion/references.json",
+      "references_sha256": "924e20d6495990e8206c837d420c0172d5404ea1b3ede56417a9d59bb84bbcaf",
+      "scope": "Frozen independent analytic19 references; image sampling policies are explicit fixture models, not arbitrary PDF or continuous-scene correctness."
+    }
+  },
+  "decision": {
+    "invalid": "Cancellation, contention, changed source/artifacts, missing process/RSS/stage measurements or incomplete matrix do not support a completed cost diagnostic.",
+    "reject": "Any candidate independent-pixel failure or new source-error/budget bypass blocks retention. Do not relax existing conformance references or resource tests to make the candidate pass.",
+    "cost": "This is a descriptive accuracy-cost experiment, not a confidence-bound speed/memory gate. Preserve every cell and disclose costs. Larger regressions require investigation before retaining active code.",
+    "admission": false,
+    "next": "Full required validation and broader affected-scene/native/WASM measurements remain necessary. Rebase the preserved color allocation candidate only after the precision decision."
+  },
+  "limitations": [
+    "No shading performance or large dynamic-scene coverage.",
+    "Known baseline errors make those cell ratios accuracy costs, not equivalent-output speed superiority.",
+    "31 pairs do not establish tail behavior or confidence-bound admission.",
+    "No competitor, browser or WASM speed claim.",
+    "No full-corpus perfection or fully unified geometry/image/font policy claim."
+  ],
+  "coordination": {
+    "native_threads": 1,
+    "guard_mode": "strict",
+    "known_job_poll_seconds": 5,
+    "quiet_preflight_scans": 3,
+    "maximum_launched_seconds": 5400,
+    "automatic_postlaunch_retry": false,
+    "scope": "Known-process polling; no OS-level exclusivity and no cold-filesystem claim"
+  },
+  "bounds": {
+    "per_output_bytes": 67108864,
+    "retained_artifact_bytes": 536870912,
+    "scope": "Retained PDFs/oracles/output blobs only; checkpoints and coordination evidence additional"
+  }
+}

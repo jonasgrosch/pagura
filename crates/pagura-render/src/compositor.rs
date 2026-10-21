@@ -24,6 +24,8 @@ mod sources;
 #[cfg(test)]
 mod sources_tests;
 mod surface;
+#[cfg(test)]
+mod translucency_tests;
 use surface::Surface;
 mod transfer;
 mod view;
@@ -571,7 +573,7 @@ impl Context {
             let result = if fragment_paint(&run.paint)
                 && matches!(
                     target.narrow(),
-                    Some(narrow::Buffer::U8(_) | narrow::Buffer::N16(_))
+                    Some(narrow::Buffer::U8(_) | narrow::Buffer::N16(_) | narrow::Buffer::F32(_))
                 ) {
                 Some(self.fragment_glyphs(run, tile, target, &mut fragments))
             } else {
@@ -1541,13 +1543,13 @@ impl Context {
 /// The band schedule and approximations of [`crate::Accuracy::Competitive`].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct Policy {
-    /// Rows per full-width band of narrow storage, between 1 and 16384.
-    /// Retained groups keep square chunks of at most `plan.side` rows.
+    /// Rows per rendering region, between 1 and 16384.
+    /// N16/F32 and retained groups keep at most `plan.side` rows per chunk.
     pub(crate) rows: u32,
     /// Signed-cell polygons at this device tolerance; `None` keeps exact coverage.
     pub(crate) curve_tolerance: Option<f64>,
-    /// One-round byte Normal composition in place of admitted N16/F32 storage.
-    pub(crate) byte_composition: bool,
+    /// Permit the Competitive shading-pattern planning extension.
+    pub(crate) shading_patterns: bool,
     /// Multiply independently sampled clip coverages (requires signed cells).
     pub(crate) clip_product: bool,
     /// Keep geometric integration of compound paths without a stroke boundary.
@@ -1559,7 +1561,7 @@ impl Policy {
     pub(crate) const COMPETITIVE: Self = Self {
         rows: 256,
         curve_tolerance: Some(1.0 / 64.0),
-        byte_composition: true,
+        shading_patterns: true,
         clip_product: true,
         geometric_compounds: true,
     };
@@ -1662,8 +1664,8 @@ fn render_policy(
         return Err(Error::invalid_argument("band height outside 1..=16384"));
     }
     let separations = list.preview_separations(options)?;
-    let mut plan = if bands.is_some_and(|b| b.byte_composition) {
-        plan::byte_page(list, &separations)?
+    let mut plan = if bands.is_some_and(|b| b.shading_patterns) {
+        plan::page_with_shading_patterns(list, &separations)?
     } else {
         plan::page(list, &separations)?
     };
@@ -1672,9 +1674,9 @@ fn render_policy(
     if options.background.a != 255 {
         plan.format = plan::Format::F64;
     }
-    if bands.is_some_and(|b| b.byte_composition) && plan.format == plan::Format::F32 {
-        plan.format = plan::Format::U8;
-    }
+    // Preserve the planner's admitted composition precision in both modes.
+    // Competitive still selects its coverage and shading-pattern policies.
+    // Legacy U8 kernels remain, but normal planning no longer selects them.
     let mut context = Context::new(list, options, &plan, separations)?;
     if list.plain_opaque() && !context.separations.enabled {
         context.validate_plain_sources(&list.commands, 0)?;

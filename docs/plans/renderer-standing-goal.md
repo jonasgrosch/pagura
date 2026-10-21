@@ -5,6 +5,15 @@ renderer meets the existing independent accuracy and competitive performance
 goals. The active task goal tracks continuation; this file makes the engineering
 completion criteria and next steps reviewable. It is not a new release policy.
 
+Current checkpoint: the [analytic19 competitor pilot](../../benchmarks/results/analytic19-conversion.md)
+still needs a median 33.49% time reduction to reach the Hayro target on its 13
+qualifying cases. The [F32 correction](../../benchmarks/results/f32-preservation-cost.md)
+closes an independently reproduced Competitive precision defect with validated
+native/WASI behavior and a fixed 38-cell cost diagnostic. It is retained as an
+accuracy improvement, with no new speed admission. Next, measure five-segment
+rectangle reservation on this stack; keep the archived color-reuse candidate
+and broader scene-preparation work separate. The full goal remains open.
+
 ## Completion evidence
 
 - Complete the shared architecture and outstanding work packages in the

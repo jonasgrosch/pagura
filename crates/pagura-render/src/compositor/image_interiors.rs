@@ -701,7 +701,7 @@ mod tests {
             };
             let options = RenderOptions::default();
             let separations = list.preview_separations(&options).unwrap();
-            let plan = super::super::plan::byte_page(&list, &separations).unwrap();
+            let plan = super::super::plan::page_with_shading_patterns(&list, &separations).unwrap();
             let mut context = Context::new(&list, &options, &plan, separations).unwrap();
             let before = context.allocated;
             let commands = [image(), image()].map(|image| ImageCommand {
@@ -799,7 +799,7 @@ mod tests {
                     Policy {
                         rows: 2,
                         curve_tolerance: Some(1.0 / 64.0),
-                        byte_composition: true,
+                        shading_patterns: true,
                         clip_product: false,
                         geometric_compounds: false,
                     },
@@ -901,7 +901,7 @@ mod stencil_tests {
                 Some(Policy {
                     rows: 2,
                     curve_tolerance: Some(1.0 / 64.0),
-                    byte_composition: true,
+                    shading_patterns: true,
                     clip_product: false,
                     geometric_compounds: false,
                 }),

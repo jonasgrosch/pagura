@@ -305,3 +305,40 @@ the same retained samples successfully. No render or performance run was retried
 
 Fresh profiling of this retained product precedes the next structural slice.
 The prepared-span and untouched-output proposals remain unapplied hypotheses.
+
+## Current competitor gap and translucent composition
+
+The resource/stroke integration at `c70b4678` is the latest measured product
+baseline. The [analytic19 competitor pilot](../../benchmarks/results/analytic19-conversion.md)
+finds a median Pagura/Hayro ratio of 1.203 across 13 independently qualifying
+cases. Reaching the 0.80 target needs a median 33.49% time reduction; individual
+case needs range from 25.36% to 66.30%. This small native pilot is not the release
+matrix or a worldwide ranking. Memory and broader accuracy gates remain open.
+
+The [many-marks profile](../../benchmarks/results/many-marks-profile.md) directs
+the next work toward allocation and compilation costs. The
+[color-reuse preflight](../../benchmarks/results/color-reuse-preflight.md)
+preserved an allocation candidate without timing it: both arms reproduced an
+independent Competitive translucent-text error. Its patch remains archived and
+was absent from the following experiment.
+
+The [F32 correction and cost diagnostic](../../benchmarks/results/f32-preservation-cost.md)
+preserve planner-admitted composition precision in Competitive mode. An F32
+fragment-mask sink keeps glyph-cache reuse, pre-visibility source errors and
+once-per-run color conversion. The independent text answer is now 64 instead
+of 63. This does not unify the remaining geometry, image/font or shading policies.
+
+All 1,406 candidate outputs pass the frozen independent references. The fixed
+trial contains 76 preflight outputs and 2,736 warmup/measured outputs, with all
+38 cells retained. Median case time ratios are 0.9942 Exact and 0.9951 Competitive;
+these small variations do not establish a speed win or confidence-bound admission.
+The full single-job check passes, including 1,249 conformance cases. All 226
+native renderer tests, 104 WASI compositor tests and the WASI pixel-budget test
+pass. The independent auditor verifies raw outputs, measurements and final
+coordination bindings. Wide dynamic/shading performance and WASI speed remain
+unmeasured; F32 chunks can change traversal, memory and resource-limit outcomes.
+
+Retain this accuracy improvement separately from performance claims. The next
+small performance slice reserves the five rectangle segments once, then measures
+its incremental effect. Color reuse, prepared spans and untouched-output skipping
+remain separate candidates; historical percentages must not be added together.

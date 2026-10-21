@@ -41,7 +41,9 @@ pub(super) fn page(
     page_policy(list, separations, false)
 }
 
-pub(super) fn byte_page(
+/// Normal storage admission with the Competitive shading-pattern extension.
+/// Precision remains N16/F32/F64; this does not select byte storage.
+pub(super) fn page_with_shading_patterns(
     list: &crate::display::DisplayList,
     separations: &super::Separations,
 ) -> Result<Plan> {
@@ -51,7 +53,7 @@ pub(super) fn byte_page(
 fn page_policy(
     list: &crate::display::DisplayList,
     separations: &super::Separations,
-    byte_patterns: bool,
+    shading_patterns: bool,
 ) -> Result<Plan> {
     let root_reason = if separations.enabled {
         Some(Reason::Device)
@@ -72,7 +74,7 @@ fn page_policy(
         });
     }
     let mut count = Count {
-        byte_patterns,
+        shading_patterns,
         stores: 0,
         dynamic: 0,
         theta: 1.0,
@@ -116,7 +118,7 @@ fn page_policy(
 }
 
 struct Count {
-    byte_patterns: bool,
+    shading_patterns: bool,
     stores: usize,
     dynamic: usize,
     theta: f64,
@@ -127,7 +129,7 @@ struct Count {
 impl Count {
     fn admits_color(&self, color: &Color) -> bool {
         matches!(color, Color::Solid { .. })
-            || (self.byte_patterns
+            || (self.shading_patterns
                 && matches!(color,
             Color::Pattern { selected: Some(pattern), .. } if matches!(pattern.kind, crate::pattern::Kind::Shading(_))))
     }
@@ -458,7 +460,7 @@ mod tests {
 }
 
 #[cfg(test)]
-mod byte_pattern_tests {
+mod shading_pattern_tests {
     use super::*;
     use crate::RenderOptions;
     use crate::compositor::Policy;
@@ -466,7 +468,7 @@ mod byte_pattern_tests {
     use pagura_raster::Rgba8;
 
     #[test]
-    fn byte_shading_patterns_match_independent_pixels_and_keep_blend_exclusions() {
+    fn shading_patterns_match_independent_pixels_and_keep_blend_exclusions() {
         for name in [
             "pattern-shading",
             "pattern-anchored",
@@ -481,7 +483,12 @@ mod byte_pattern_tests {
             let mut list = crate::compile_page(&document, document.page(0).unwrap()).unwrap();
             let separations = super::super::Separations::default();
             assert_eq!(page(&list, &separations).unwrap().format, Format::F64);
-            assert_eq!(byte_page(&list, &separations).unwrap().format, Format::F32);
+            assert_eq!(
+                page_with_shading_patterns(&list, &separations)
+                    .unwrap()
+                    .format,
+                Format::F32
+            );
             for rows in [3, 16_384] {
                 let options = RenderOptions::default();
                 let (width, height) = list.device_size(&options).unwrap();
@@ -498,7 +505,7 @@ mod byte_pattern_tests {
                         Policy {
                             rows,
                             curve_tolerance: None,
-                            byte_composition: true,
+                            shading_patterns: true,
                             clip_product: false,
                             geometric_compounds: false,
                         },
@@ -524,7 +531,12 @@ mod byte_pattern_tests {
             }
             if let Some(Command::Path(path)) = list.commands.first_mut() {
                 path.composite.blend = crate::blend::BlendMode::Multiply;
-                assert_eq!(byte_page(&list, &separations).unwrap().format, Format::F64);
+                assert_eq!(
+                    page_with_shading_patterns(&list, &separations)
+                        .unwrap()
+                        .format,
+                    Format::F64
+                );
             }
         }
     }

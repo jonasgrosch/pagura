@@ -305,3 +305,57 @@ fn off_page_stroke_inverse_overflow_remains_an_error() {
         assert_eq!(error.position, position(60));
     }
 }
+
+#[test]
+fn f32_fragments_convert_a_tint_once_per_run_before_painting() {
+    let mut paint = path(0.0, 1.0, tint(function(0.0, 0.0, 1)), 80);
+    paint.composite.alpha = 0.5;
+    let outline = Arc::clone(&paint.path);
+    let mut run = GlyphRun::new(paint);
+    let mut hulls = GlyphHulls::default();
+    for _ in 0..2 {
+        run.push(
+            Arc::clone(&outline),
+            Transform::IDENTITY,
+            position(80),
+            &mut hulls,
+        )
+        .unwrap();
+    }
+    let list = list(vec![Command::Glyphs(Box::new(run))]);
+    let options = RenderOptions {
+        accuracy: crate::Accuracy::Competitive,
+        ..RenderOptions::default()
+    };
+    let separations = Arc::new(Separations::default());
+    let plan = plan::page_with_shading_patterns(&list, &separations).unwrap();
+    assert_eq!(plan.format, plan::Format::F32);
+    let mut context = Context::new(&list, &options, &plan, separations).unwrap();
+    context.raster = Policy::COMPETITIVE.rasterizer().unwrap();
+    let mut cache = crate::fragments::GlyphCache::new(crate::fragments::CACHE_BYTES);
+    cache.make_room(list.glyph_placements(), list.limits.document_bytes);
+    context.fragments = Some(Fragments {
+        cache,
+        accumulator: crate::fragments::Accumulator::default(),
+        resolution: crate::fragments::Resolution::new(&options),
+        row: Vec::new(),
+    });
+    let mut target = Surface::with_buffer(
+        Tile {
+            x: 0,
+            y: 0,
+            width: 1,
+            height: 1,
+        },
+        narrow::Buffer::new(plan::Format::F32, 1, [255; 4]).unwrap(),
+    );
+    execute(&mut context, &list, &mut target).unwrap();
+    assert_eq!(context.function_work, 1);
+    // Two coincident black marks at exact alpha1/2 give255/4=63.75.
+    assert_eq!(pixel(&target), [64, 64, 64, 255]);
+    let error = execute(&mut context, &list, &mut target).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Limit);
+    assert_eq!(error.position, position(80));
+    assert_eq!(context.function_work, 1);
+    assert_eq!(pixel(&target), [64, 64, 64, 255]);
+}

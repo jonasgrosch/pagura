@@ -1,7 +1,7 @@
 //! Normal premultiplied stores on the 0..255 level scale (11.3.3).
 //! N16's single integer rounding contracts error below 128/257 levels;
 //! F32 admission bounds accumulated rounding before this buffer is allocated.
-//! U8, under [`crate::Accuracy::Competitive`] only, rounds each store once.
+//! Legacy U8 storage rounds each store once; normal planning no longer selects it.
 use super::{Source, plan::Format};
 use pagura_core::{Error, Result};
 
@@ -24,6 +24,12 @@ pub(super) enum MaskSink<'a> {
         size: (usize, usize),
         color: [u16; 4],
     },
+    F32 {
+        pixels: &'a mut [[f32; 4]],
+        size: (usize, usize),
+        color: [f32; 4],
+        scale: f32,
+    },
 }
 
 impl MaskSink<'_> {
@@ -45,7 +51,41 @@ impl MaskSink<'_> {
                 pixels,
                 size,
                 color,
-            } => mask_words(pixels, *size, mask, surface, *color, clip, scratch),
+            } => mask_rows(
+                pixels,
+                *size,
+                mask,
+                surface,
+                clip,
+                scratch,
+                |row, coverage| {
+                    if uniform(coverage) == Some(255) {
+                        row.fill(*color);
+                    } else {
+                        words_row(row, coverage, *color);
+                    }
+                },
+            ),
+            Self::F32 {
+                pixels,
+                size,
+                color,
+                scale,
+            } => mask_rows(
+                pixels,
+                *size,
+                mask,
+                surface,
+                clip,
+                scratch,
+                |row, coverage| {
+                    if uniform(coverage) == Some(255) && 255.0 * *scale == 1.0 {
+                        row.fill(*color);
+                    } else {
+                        float_row(row, coverage, *color, *scale);
+                    }
+                },
+            ),
         }
     }
 }
@@ -376,9 +416,19 @@ impl Buffer {
                     color: [word(color[0]), word(color[1]), word(color[2]), 65535],
                 })
             }
-            Self::F32(_) => Err(Error::invalid_argument(
-                "fragment masks require U8 or N16 storage",
-            )),
+            Self::F32(pixels) => {
+                if size.0 == 0 || size.1 == 0 || size.0.checked_mul(size.1) != Some(pixels.len()) {
+                    return Err(Error::invalid_argument(
+                        "fragment surface differs from F32 buffer",
+                    ));
+                }
+                Ok(MaskSink::F32 {
+                    pixels,
+                    size,
+                    color: [level(color[0]), level(color[1]), level(color[2]), 255.0],
+                    scale: scalar(alpha / 255.0),
+                })
+            }
         }
     }
 
@@ -480,12 +530,7 @@ impl Buffer {
                     row.fill(color);
                     return Ok(());
                 }
-                for (pixel, &c) in row.iter_mut().zip(coverage) {
-                    let a = f32::from(c) * k;
-                    if c != 0 {
-                        lerp(pixel, color, a);
-                    }
-                }
+                float_row(row, coverage, color, k);
             }
         }
         Ok(())
@@ -559,7 +604,7 @@ pub(super) struct MaskClip<'a> {
 }
 
 /// Intersects the same mask, viewport, product and fractional rectangle for
-/// both storage kernels. Fragment extents have already passed their budgets.
+/// all storage kernels. Fragment extents have already passed their budgets.
 #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
@@ -641,14 +686,14 @@ fn clipped_row<'a>(
     clippy::cast_sign_loss,
     reason = "mask extents are budgeted and checked against the admitted surface"
 )]
-fn mask_words(
-    pixels: &mut [[u16; 4]],
+fn mask_rows<T>(
+    pixels: &mut [[T; 4]],
     (width, rows): (usize, usize),
     (mask, stride, origin): (&[u8], usize, (i64, i64)),
     (surface, bounds): ((i64, i64), [i64; 4]),
-    color: [u16; 4],
     clip: MaskClip<'_>,
     scratch: &mut Vec<u8>,
+    mut paint: impl FnMut(&mut [[T; 4]], &[u8]),
 ) -> Result<()> {
     let Some([x0, y0, x1, y1]) = mask_area((mask, stride, origin), bounds, clip) else {
         return Ok(());
@@ -666,12 +711,7 @@ fn mask_words(
         let start = (y - origin.1) as usize * stride + (x0 - origin.0) as usize;
         let coverage = mask.get(start..start + count).ok_or_else(outside)?;
         let coverage = clipped_row(coverage, (x0, y), clip, scratch)?;
-        let target = &mut target[column..column + count];
-        if uniform(coverage) == Some(255) {
-            target.fill(color);
-        } else {
-            words_row(target, coverage, color);
-        }
+        paint(&mut target[column..column + count], coverage);
     }
     Ok(())
 }
@@ -688,6 +728,18 @@ fn words_row(row: &mut [[u16; 4]], coverage: &[u8], color: [u16; 4]) {
                     *out = mix(source, *out, c);
                 }
             }
+        }
+    }
+}
+
+/// The same admitted F32 store for dense spans and arbitrary fragment rows.
+/// Coverage zero leaves the pixel untouched; alpha one keeps `lerp`'s exact
+/// source assignment. The source and opacity scale are prepared once.
+fn float_row(row: &mut [[f32; 4]], coverage: &[u8], color: [f32; 4], scale: f32) {
+    for (pixel, &c) in row.iter_mut().zip(coverage) {
+        let alpha = f32::from(c) * scale;
+        if c != 0 {
+            lerp(pixel, color, alpha);
         }
     }
 }

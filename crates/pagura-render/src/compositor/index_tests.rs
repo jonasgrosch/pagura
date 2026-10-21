@@ -390,11 +390,14 @@ fn warmed_competitive_fragments_preserve_pixels_and_every_work_boundary() {
         context
     }
 
-    for format in [plan::Format::U8, plan::Format::N16] {
-        let list = list(vec![Command::Glyphs(Box::new(run(
-            Point::new(0.25, 0.5),
-            2,
-        )))]);
+    for (format, alpha) in [
+        (plan::Format::U8, 1.0),
+        (plan::Format::N16, 1.0),
+        (plan::Format::F32, 0.5),
+    ] {
+        let mut glyphs = run(Point::new(0.25, 0.5), 2);
+        glyphs.paint.composite.alpha = alpha;
+        let list = list(vec![Command::Glyphs(Box::new(glyphs))]);
         let visible = tile(0, 0, 8, 4);
         let outside = tile(6, 6, 2, 2);
         let mut cached = prepared(&list, true);

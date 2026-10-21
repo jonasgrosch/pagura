@@ -60,8 +60,9 @@ pub enum Accuracy {
     Exact,
     /// One faster approximation per primitive, chosen against the competitive
     /// accuracy gate:
-    /// - Solid-colour glyphs are masks built from row fragments that are
-    ///   reused across horizontal origins. Origins snap to 1/128 pixel
+    /// - Solid-colour glyphs in admitted 16-bit or f32 storage use masks built
+    ///   from row fragments reused across horizontal origins. Origins snap to
+    ///   1/128 pixel
     ///   horizontally, and vertically to 1/128 pixel below 108 dpi, 1/16
     ///   pixel from 108 dpi and 1/64 pixel from 216 dpi; curves become
     ///   0.15-pixel chords below 108 dpi and area-balanced 1/4-pixel chords
@@ -74,11 +75,10 @@ pub enum Accuracy {
     ///   geometrically. A rectangular clip multiplies into a mark as a column
     ///   factor times a row factor; any other clipping path as its own cell
     ///   coverage, integrated once per band.
-    /// - Admitted opaque Normal composition uses the same 16-bit storage and
-    ///   bounded chunks as Exact, on this policy's coverage bytes. Where Exact
-    ///   admits f32 storage, composition instead rounds once into byte storage
-    ///   in full-width bands of 256 rows. Retained groups and other exclusions
-    ///   keep the general f64 storage.
+    /// - Normal composition preserves the planner's admitted 16-bit or f32
+    ///   storage in bounded chunks, on this policy's coverage bytes. Shading
+    ///   patterns can also use admitted f32 storage. Retained groups and other
+    ///   exclusions keep the general f64 storage.
     /// - A page whose only mark is one opaque DeviceGray or DeviceRGB image,
     ///   upright or turned by a quarter, keeps a baseline JPEG in its
     ///   component planes and one-bit samples packed, and is converted and

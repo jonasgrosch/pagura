@@ -792,7 +792,7 @@ mod tests {
             ),
         ] {
             // Full coverage at opacity 0.5 also checks the scenes whose
-            // opaque-background plans select F32 (Competitive U8).
+            // opaque-background plans select F32 in both modes.
             for (mark, first) in [
                 (None, blank),
                 (Some((1.0, 0.5)), covered),
