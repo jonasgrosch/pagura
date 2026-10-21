@@ -93,8 +93,11 @@ continues to follow the specification's Tx replacement/append behavior.
 Draft previews use disposable snapshots built from the last saved source, never
 from previous drafts. Debounced updates paint only changed widget regions using
 the same renderer as saved output, including original checkbox/radio artwork.
-Blurred fields have no synthetic border or fill. A focus ring and hover outline
-identify interactive controls. Failed previews retain drafts and report the
+Idle fields have no synthetic border or fill. Single-line fields use an inset
+underline for hover and focus; multiline and choice controls use an inset edge.
+Checkboxes and radio buttons retain an outer keyboard-focus cue around the PDF
+artwork. Cues keep a constant screen thickness across zoom without moving text.
+Failed previews retain drafts and report the
 failure; save remains an explicit action. Preview pixel and source budgets are
 bounded and superseded snapshots are closed.
 
