@@ -481,6 +481,8 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
   const cssPixels = canvas => {
     const width = Number.parseFloat(canvas.style.width), height = Number.parseFloat(canvas.style.height);
     const density = canvas.width / width;
+    assert.ok(Number.isInteger(width) && Number.isInteger(height) && width > 0 && height > 0);
+    assert.equal(canvas.image.data.length, canvas.width * canvas.height * 4);
     assert.ok(Number.isInteger(density) && density >= 1);
     assert.equal(canvas.height, height * density);
     const rgba = new Uint8Array(width * height * 4);
@@ -526,6 +528,7 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
       assert.ok(canvases().length > 0);
       for (const canvas of canvases()) {
         const x = parseFloat(canvas.style.left), y = parseFloat(canvas.style.top), { rgba, width, height } = cssPixels(canvas);
+        assert.ok(x >= 0 && y >= 0 && x + width <= entry.width && y + height <= entry.height);
         for (let row = 0; row < height; row++) for (let column = 0; column < width; column++) {
           const pixel = (row * width + column) * 4, oracle = ((y + row) * entry.width + x + column) * 3;
           const differs = [0, 1, 2].some((channel) => Math.abs(rgba[pixel + channel] - rgb[oracle + channel]) > (entry.tolerance ?? 0));

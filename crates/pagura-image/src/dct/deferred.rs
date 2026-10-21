@@ -62,7 +62,11 @@ pub(crate) fn decode_deferred(
     let Ok(Finished::Done(result)) = outcome else {
         return None;
     };
-    diagnostics.extend(scratch.take());
+    // The prerequisite core API validates the receiving recovery mode. If it
+    // declines diagnostics, use the ordinary decoder to report the failure.
+    if diagnostics.absorb(scratch.take()).is_err() {
+        return None;
+    }
     Some(result)
 }
 
