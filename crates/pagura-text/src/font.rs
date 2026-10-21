@@ -1,7 +1,7 @@
 //! Loaded PDF fonts (9.6–9.7): the public font type and string decoding.
 use crate::{
     CidToUnicode, Glyph, GlyphText, Provider,
-    cid::{self, CidToGidMap},
+    cid::CidToGidMap,
     cmap::{self, CMap},
     encoding::SimpleMapping,
     features, memory, metrics,
@@ -333,17 +333,16 @@ impl PdfFont {
                 )
             }
             Mapping::Composite { map, .. } => {
-                let (code, valid) = map.next(input, work)?;
-                let mut cid = if valid { map.cid(code, work)? } else { None };
-                let unicode = cid.and_then(|cid| self.cid_unicode.as_ref()?.text(cid));
-                if cid.is_some_and(|cid| self.lacks_gid_entry(cid)) {
-                    cid = Some(cid::Cid::NOTDEF);
-                } else if cid.is_none_or(|cid| !self.has_cid(cid)) {
-                    cid = Some(map.notdef(code, work)?);
-                }
-                let cid = cid
-                    .filter(|cid| self.has_cid(*cid))
-                    .unwrap_or(cid::Cid::NOTDEF);
+                let (code, in_codespace) = map.next(input, work)?;
+                let mapped = if in_codespace {
+                    map.cid(code, work)?
+                } else {
+                    None
+                };
+                // Collection Unicode belongs to the CID the code maps to, not
+                // to a notdef substitute (9.10.2).
+                let unicode = mapped.and_then(|cid| self.cid_unicode.as_ref()?.text(cid));
+                let cid = self.select_cid(map, code, mapped, work)?;
                 (code, u32::from(cid), None, unicode)
             }
         };
