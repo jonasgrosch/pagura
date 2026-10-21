@@ -14,8 +14,11 @@ workspace = true
 [dependencies]
 pagura-color.workspace = true
 pagura-core.workspace = true
+pagura-image.workspace = true
 pagura-interpret.workspace = true
 pagura-raster.workspace = true
 
 [dev-dependencies]
+pagura-document.workspace = true
+pagura-paint.workspace = true
 pagura-testkit.workspace = true

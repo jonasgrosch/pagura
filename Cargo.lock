@@ -202,7 +202,10 @@ version = "0.1.0"
 dependencies = [
  "pagura-color",
  "pagura-core",
+ "pagura-document",
+ "pagura-image",
  "pagura-interpret",
+ "pagura-paint",
  "pagura-raster",
  "pagura-testkit",
 ]
