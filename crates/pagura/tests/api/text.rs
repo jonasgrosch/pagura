@@ -57,8 +57,7 @@ fn positioned_semantics_layout_and_search_match_independent_generator() {
         )
         .unwrap();
         let page = document.page(0).unwrap();
-        let (list, text) = pagura::compile_page_with_text(&document, page)
-            .unwrap_or_else(|e| panic!("{name}: {e}"));
+        let text = pagura::text_page(&document, page).unwrap_or_else(|e| panic!("{name}: {e}"));
         assert_eq!(
             text.text().as_bytes(),
             fixture("text", &format!("{name}.text")),
@@ -123,13 +122,25 @@ fn positioned_semantics_layout_and_search_match_independent_generator() {
                 std::fs::read(hidden).unwrap()
             );
         }
-        // Both paths must produce the exact same pixels; extraction has no
-        // effect on clipping, Type 3 execution or optional-content painting.
-        let normal = pagura::compile_page(&document, page).unwrap();
+        // Extraction through a context leaves its rendering unchanged:
+        // clipping, Type 3 execution and optional-content painting are the
+        // same whether the page's text was extracted first or not.
         let options = RenderOptions::default();
+        let context = pagura::render_context(std::sync::Arc::new(
+            Document::open(
+                fixture("text", &format!("{name}.pdf")),
+                &OpenOptions::default(),
+            )
+            .unwrap(),
+        ));
+        let page = context.document().page(0).unwrap();
+        let extracted = context.text_page(page).unwrap();
+        assert_eq!(extracted.text(), text.text(), "{name}: context text");
         assert_eq!(
-            list.render(&options).unwrap().data(),
-            normal.render(&options).unwrap().data(),
+            context.render_page(page, &options).unwrap().data(),
+            pagura::render_page(&document, document.page(0).unwrap(), &options)
+                .unwrap()
+                .data(),
             "{name}: rendering changed"
         );
     }
