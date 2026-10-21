@@ -12,6 +12,7 @@ mod band;
 mod bounds;
 mod coverage;
 mod empty_fill;
+pub mod features;
 mod flatten;
 mod geometry;
 mod glyph;

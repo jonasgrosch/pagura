@@ -51,7 +51,7 @@ pub(crate) fn outline(
     stroke: &Stroke,
     limits: &Limits,
 ) -> Result<(Path, Transform)> {
-    outline_with(path, transform, stroke, limits, false)
+    outline_with(path, transform, stroke, limits, false).map(|(path, transform, _)| (path, transform))
 }
 
 /// [`outline`] whose boundary, when every run admits one, is made of pieces
@@ -63,6 +63,17 @@ pub(crate) fn tiled_outline(
     stroke: &Stroke,
     limits: &Limits,
 ) -> Result<(Path, Transform)> {
+    outline_with(path, transform, stroke, limits, true).map(|(path, transform, _)| (path, transform))
+}
+
+/// [`tiled_outline`], and whether every run admitted pieces: then no two
+/// pieces overlap, and the outline is its own boundary.
+pub(crate) fn pieces(
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+) -> Result<(Path, Transform, bool)> {
     outline_with(path, transform, stroke, limits, true)
 }
 
@@ -72,7 +83,7 @@ fn outline_with(
     stroke: &Stroke,
     limits: &Limits,
     tiled: bool,
-) -> Result<(Path, Transform)> {
+) -> Result<(Path, Transform, bool)> {
     validate(stroke, limits)?;
     // Dash distances belong to user space even for a device-width hairline
     // (8.4.3.6). Flatten with a device-space error bound, split there, and only
@@ -150,7 +161,7 @@ fn outline_with(
         if complete {
             let mut outline = tiles.finish();
             outline.boundary = Some(Arc::new(outline.clone()));
-            return Ok((outline, pen_transform));
+            return Ok((outline, pen_transform, true));
         }
     }
     let mut components = PathBuilder::new();
@@ -168,7 +179,7 @@ fn outline_with(
     }
     let mut outline = components.finish();
     outline.boundary = boundaries.map(|mut boundaries| Arc::new(boundaries.finish()));
-    Ok((outline, pen_transform))
+    Ok((outline, pen_transform, false))
 }
 
 pub(crate) fn validate(stroke: &Stroke, limits: &Limits) -> Result<()> {
