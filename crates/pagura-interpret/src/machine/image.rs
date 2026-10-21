@@ -4,7 +4,7 @@
 mod describe;
 
 use super::{Machine, Scope, Text};
-use crate::device::{Device, ImageMark, Marked, MarkState};
+use crate::device::{Device, ImageMark, MarkState, Marked};
 use crate::model::Image;
 use pagura_content::Reader;
 use pagura_core::{Dictionary, Error, Name, ObjectId, Position, Result, Value};
@@ -160,7 +160,8 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         } else {
             light_framing(self.document(), dictionary, resources)?
         };
-        let data = reader.inline_image_data(|data| pagura_image::inline_data_length(&framing, data))?;
+        let data =
+            reader.inline_image_data(|data| pagura_image::inline_data_length(&framing, data))?;
         let stencil = dictionary
             .get(b"ImageMask")
             .or_else(|| dictionary.get(b"IM"))
@@ -202,7 +203,11 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     /// The dictionary inline image framing needs: a named colour space is
     /// replaced by its definition, and an ICCBased one by the device space
     /// of its component count.
-    fn inline_framing(&mut self, dictionary: &Dictionary, resources: &Dictionary) -> Result<Dictionary> {
+    fn inline_framing(
+        &mut self,
+        dictionary: &Dictionary,
+        resources: &Dictionary,
+    ) -> Result<Dictionary> {
         let document = self.document();
         let mut framing = dictionary.clone();
         let Some(name) = named_space(dictionary) else {

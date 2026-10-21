@@ -39,7 +39,11 @@ impl<'d> Decoding<'d> {
 
     fn decode(&self, image: &Image) -> Result<()> {
         let source = &image.source;
-        let decoded = source.decode(&DecodeRequest::FULL, &self.document.limits(), source.recovery())?;
+        let decoded = source.decode(
+            &DecodeRequest::FULL,
+            &self.document.limits(),
+            source.recovery(),
+        )?;
         self.document.report(decoded.diagnostics);
         match &image.mask {
             ImageMask::Soft { mask, .. } | ImageMask::Stencil(mask) => self.decode(mask),

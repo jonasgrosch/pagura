@@ -103,8 +103,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let serial = scope.initial.as_ref().map_or(0, |(_, serial)| *serial);
         let key = TilingKey {
             object: tiling.id,
-            matrix: [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f]
-                .map(f64::to_bits),
+            matrix: [matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f].map(f64::to_bits),
             serial,
         };
         if uncolored.is_none()
@@ -153,7 +152,12 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             cell.state.stroke_ink = Some(ink.clone());
         }
         let bounds = Arc::new(Path::rect(tiling.bbox));
-        add_clip(&mut cell, bounds, FillRule::NonZero, self.session.limits.depth)?;
+        add_clip(
+            &mut cell,
+            bounds,
+            FillRule::NonZero,
+            self.session.limits.depth,
+        )?;
         let content = self.stream_content(object)?;
         let outer = self.begin_definition();
         let result = (|| {
@@ -201,7 +205,8 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             | Op::Shading(_) => true,
             Op::XObject(name) => {
                 let document = self.document();
-                let value = super::form::resource(document, resources, b"XObject", name.as_bytes())?;
+                let value =
+                    super::form::resource(document, resources, b"XObject", name.as_bytes())?;
                 let d = document.resolve_dictionary(value)?;
                 d.is_name(b"Subtype", b"Image")
                     && d.get(b"ImageMask")

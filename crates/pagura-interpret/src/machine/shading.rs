@@ -39,7 +39,11 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     }
 
     /// Reads a shading whose colour space names refer to `resources`.
-    pub(super) fn read_shading(&mut self, value: &Value, resources: &Dictionary) -> Result<Arc<Shading>> {
+    pub(super) fn read_shading(
+        &mut self,
+        value: &Value,
+        resources: &Dictionary,
+    ) -> Result<Arc<Shading>> {
         shading::read(&mut self.session.colors, resources, value).map(Arc::new)
     }
 }

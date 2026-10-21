@@ -11,7 +11,12 @@ use pagura_text::GlyphShape;
 
 impl<D: Device + ?Sized> Machine<'_, '_, D> {
     /// Shows one string operand.
-    pub(super) fn show(&mut self, bytes: &[u8], resources: &Dictionary, scope: &mut Scope) -> Result<()> {
+    pub(super) fn show(
+        &mut self,
+        bytes: &[u8],
+        resources: &Dictionary,
+        scope: &mut Scope,
+    ) -> Result<()> {
         text_object(scope)?;
         let font = scope
             .state
@@ -25,7 +30,14 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         // a Type 3 glyph inside this one takes fresh ones.
         let mut decoded = std::mem::take(&mut self.session.decoded);
         let mut glyphs = std::mem::take(&mut self.session.placed);
-        let result = self.show_glyphs(&font, bytes, text, (&mut decoded, &mut glyphs), resources, scope);
+        let result = self.show_glyphs(
+            &font,
+            bytes,
+            text,
+            (&mut decoded, &mut glyphs),
+            resources,
+            scope,
+        );
         decoded.clear();
         glyphs.clear();
         self.session.decoded = decoded;
@@ -95,12 +107,15 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         )?;
         let mode = params.mode;
         let spacing = params.character + if glyph.word_space { params.word } else { 0.0 };
-        let (dx, dy) = glyph.vertical.map_or(
-            ((glyph.advance * size + spacing) * horizontal, 0.0),
-            |v| (0.0, v.advance * size + spacing),
-        );
+        let (dx, dy) = glyph
+            .vertical
+            .map_or(((glyph.advance * size + spacing) * horizontal, 0.0), |v| {
+                (0.0, v.advance * size + spacing)
+            });
         let positioned = if text {
-            Some(Box::new(self.positioned(font, &glyph, matrix, transform, scope)?))
+            Some(Box::new(
+                self.positioned(font, &glyph, matrix, transform, scope)?,
+            ))
         } else {
             None
         };

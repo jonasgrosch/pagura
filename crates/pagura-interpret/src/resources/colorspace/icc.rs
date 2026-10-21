@@ -65,7 +65,10 @@ impl<'a> Profiles<'a> {
             })
         };
         let profile = match self.store {
-            Some(store) => store.get_or_build(ProfileKey(id, components), parse)?.0.clone(),
+            Some(store) => store
+                .get_or_build(ProfileKey(id, components), parse)?
+                .0
+                .clone(),
             None => parse()?.value.0,
         };
         let charge = profile

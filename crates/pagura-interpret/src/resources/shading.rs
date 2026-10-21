@@ -23,7 +23,11 @@ use std::sync::Arc;
 /// `Syntax` for malformed shadings, `Unsupported` for singular function
 /// matrices, `Limit` for budgets, and the errors of colour spaces and
 /// functions.
-pub(crate) fn read(colors: &mut Colors<'_>, resources: &Dictionary, value: &Value) -> Result<Shading> {
+pub(crate) fn read(
+    colors: &mut Colors<'_>,
+    resources: &Dictionary,
+    value: &Value,
+) -> Result<Shading> {
     let document = colors.document();
     let d = document.resolve_dictionary(value)?;
     let kind = entry(document, d, b"ShadingType")?
@@ -54,8 +58,7 @@ pub(crate) fn read(colors: &mut Colors<'_>, resources: &Dictionary, value: &Valu
         .get(b"BBox")
         .map(|v| {
             let n = array::<4>(document, v, GEOMETRY)?;
-            Rect::from_corners(n[0], n[1], n[2], n[3])
-                .ok_or(Error::syntax("invalid shading BBox"))
+            Rect::from_corners(n[0], n[1], n[2], n[3]).ok_or(Error::syntax("invalid shading BBox"))
         })
         .transpose()?;
     let antialias = d
@@ -109,7 +112,9 @@ fn background(document: &Document, value: &Value, components: usize) -> Result<C
             .as_number()
             .ok_or(Error::syntax("shading Background must be numeric"))?;
     }
-    Ok(Components::from_slice(out.get(..components).unwrap_or_default()))
+    Ok(Components::from_slice(
+        out.get(..components).unwrap_or_default(),
+    ))
 }
 
 /// The geometry of an analytic shading and its function domain.

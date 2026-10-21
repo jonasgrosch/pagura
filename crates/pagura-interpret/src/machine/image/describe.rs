@@ -131,7 +131,9 @@ fn decode(source: &ImageSource, space: Option<&ColorSpace>) -> Result<Vec<[f64; 
                         _ => [r[2], r[3]],
                     })
                 }
-                Some(ColorSpace::Icc(icc)) => icc.range.get(component).copied().unwrap_or([0.0, 1.0]),
+                Some(ColorSpace::Icc(icc)) => {
+                    icc.range.get(component).copied().unwrap_or([0.0, 1.0])
+                }
                 _ => [0.0, 1.0],
             }
         };

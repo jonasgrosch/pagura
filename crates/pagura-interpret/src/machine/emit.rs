@@ -73,7 +73,12 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     }
 
     /// Starts an implicit group with `attributes`, opaque and Normal.
-    pub(crate) fn push_lazy(&mut self, cause: GroupCause, attributes: GroupAttributes, scope: &Scope) {
+    pub(crate) fn push_lazy(
+        &mut self,
+        cause: GroupCause,
+        attributes: GroupAttributes,
+        scope: &Scope,
+    ) {
         self.lazy.push(Lazy {
             cause,
             attributes,

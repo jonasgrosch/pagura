@@ -5,7 +5,8 @@
 
 use crate::device::{OutlineKey, PageInfo};
 use crate::model::{
-    Composite, GroupAttributes, GroupCause, Image, MaskKind, Paint, Pen, Shading, TilingColors, ViewFit,
+    Composite, GroupAttributes, GroupCause, Image, MaskKind, Paint, Pen, Shading, TilingColors,
+    ViewFit,
 };
 use pagura_color::{Components, Function};
 use pagura_core::{Error, Position, Rect, Result};

@@ -28,7 +28,10 @@ fn operations_carry_their_operator_offsets() {
     assert_eq!(ops[1].1, 14);
     assert_eq!(ops[1].2, "Concatenate([1.0, 0.0, 0.0, 1.0, 5.0, 5.0])");
     assert_eq!(ops[2].2, "Font { name: /F1, size: 12.0 }");
-    assert_eq!(ops[3].2, "ShowTextAdjusted([Show([97]), Adjust(-20.0), Show([98])])");
+    assert_eq!(
+        ops[3].2,
+        "ShowTextAdjusted([Show([97]), Adjust(-20.0), Show([98])])"
+    );
     assert_eq!(ops[4].0, Operator::Restore);
 }
 
@@ -83,7 +86,10 @@ fn every_token_is_charged() {
     let mut tokens = Meter::new(5, "test");
     reader.next(&mut tokens).unwrap();
     let error = reader.next(&mut tokens).unwrap_err();
-    assert_eq!((error.kind, error.position), (ErrorKind::Limit, Position::Buffer(10)));
+    assert_eq!(
+        (error.kind, error.position),
+        (ErrorKind::Limit, Position::Buffer(10))
+    );
 }
 
 #[test]
@@ -180,7 +186,10 @@ fn parser_tokens(
         let offset = parser.offset();
         let mut step = || -> Result<()> {
             tokens.charge(1)?;
-            let operand = if matches!(byte, b'/' | b'(' | b'[' | b'<' | b'+' | b'-' | b'.' | b'0'..=b'9') {
+            let operand = if matches!(
+                byte,
+                b'/' | b'(' | b'[' | b'<' | b'+' | b'-' | b'.' | b'0'..=b'9'
+            ) {
                 Some(parser.parse()?)
             } else {
                 match parser.word()? {

@@ -15,7 +15,10 @@ fn resources(spaces: &[(&[u8], Value)]) -> Dictionary {
         spaces_dictionary.insert(Name::new(name), value.clone());
     }
     let mut resources = Dictionary::new();
-    resources.insert(Name::new(b"ColorSpace"), Value::Dictionary(spaces_dictionary));
+    resources.insert(
+        Name::new(b"ColorSpace"),
+        Value::Dictionary(spaces_dictionary),
+    );
     resources
 }
 
@@ -28,15 +31,25 @@ fn device_names_resolve_to_shared_spaces_unless_a_default_replaces_them() {
     assert!(Arc::ptr_eq(&gray, &colors.device_gray()));
     let defaults = resources(&[(b"DefaultGray", Value::name(b"DeviceRGB"))]);
     let error = colors.named(&defaults, b"DeviceGray").unwrap_err();
-    assert_eq!(error.message, "default colour space has wrong component count");
-    let lab = Value::Array(vec![Value::name(b"Lab"), Value::Dictionary({
-        let mut d = Dictionary::new();
-        d.insert(
-            Name::new(b"WhitePoint"),
-            Value::Array(vec![Value::Real(0.95), Value::Integer(1), Value::Real(1.09)]),
-        );
-        d
-    })]);
+    assert_eq!(
+        error.message,
+        "default colour space has wrong component count"
+    );
+    let lab = Value::Array(vec![
+        Value::name(b"Lab"),
+        Value::Dictionary({
+            let mut d = Dictionary::new();
+            d.insert(
+                Name::new(b"WhitePoint"),
+                Value::Array(vec![
+                    Value::Real(0.95),
+                    Value::Integer(1),
+                    Value::Real(1.09),
+                ]),
+            );
+            d
+        }),
+    ]);
     let defaults = resources(&[(b"DefaultRGB", lab)]);
     let error = colors.named(&defaults, b"DeviceRGB").unwrap_err();
     assert_eq!(error.message, "invalid default colour space family");
@@ -76,7 +89,10 @@ fn unknown_families_are_unsupported_and_devicen_names_are_checked() {
     let mut colors = Colors::new(&document, None);
     let unknown = Value::Array(vec![Value::name(b"Spectral"), Value::Integer(3)]);
     let error = colors.resolve(&Dictionary::new(), &unknown).unwrap_err();
-    assert_eq!(error.feature(), Some(pagura_color::features::UNKNOWN_FAMILY));
+    assert_eq!(
+        error.feature(),
+        Some(pagura_color::features::UNKNOWN_FAMILY)
+    );
     let all = Value::Array(vec![
         Value::name(b"DeviceN"),
         Value::Array(vec![Value::name(b"All")]),

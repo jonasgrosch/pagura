@@ -25,7 +25,9 @@ use crate::resources::colorspace::Colors;
 use crate::resources::optional::Visibility;
 use emit::Lazy;
 use pagura_content::{Content, Op, Operation, Reader};
-use pagura_core::{Diagnostic, Dictionary, Error, Limits, Meter, ObjectId, Position, Result, Store};
+use pagura_core::{
+    Diagnostic, Dictionary, Error, Limits, Meter, ObjectId, Position, Result, Store,
+};
 use pagura_document::{Document, Page};
 use pagura_raster::{FillRule, PathBuilder, Transform};
 use state::Graphics;
@@ -479,7 +481,10 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
         let build = || -> Result<pagura_core::Built<Content<'static>>> {
             let content = Content::from_streams([(id, document.stream_data(object)?)], &limits)?;
             Ok(pagura_core::Built {
-                bytes: content.bytes().len().saturating_add(size_of::<Content<'static>>()),
+                bytes: content
+                    .bytes()
+                    .len()
+                    .saturating_add(size_of::<Content<'static>>()),
                 value: content,
             })
         };

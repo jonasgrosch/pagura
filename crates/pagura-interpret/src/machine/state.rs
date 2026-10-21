@@ -188,7 +188,9 @@ impl Graphics {
     fn composite(&self, alpha: f64, overprint: bool) -> Composite {
         let mut conversion = Conversion::default();
         conversion.intent = self.intent;
-        conversion.black_generation.clone_from(&self.black_generation);
+        conversion
+            .black_generation
+            .clone_from(&self.black_generation);
         conversion
             .undercolor_removal
             .clone_from(&self.undercolor_removal);

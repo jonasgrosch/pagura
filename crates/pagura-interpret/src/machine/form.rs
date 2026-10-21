@@ -271,7 +271,9 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
             .unwrap_or(resources);
         let content = match body {
             FormBody::Stored(object) => self.stream_content(object)?,
-            FormBody::Generated { bytes, .. } => Arc::new(Content::from_bytes(Cow::Borrowed(bytes))),
+            FormBody::Generated { bytes, .. } => {
+                Arc::new(Content::from_bytes(Cow::Borrowed(bytes)))
+            }
         };
         Ok(Some(PreparedForm {
             scope: child,

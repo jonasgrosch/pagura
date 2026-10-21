@@ -45,7 +45,12 @@ pub(super) fn read(
     let function = function
         .map(|function| {
             let [low, high] = decoder.decode.get(2).copied().unwrap_or([0.0, 1.0]);
-            functions(document, function, &[[low.min(high), low.max(high)]], components)
+            functions(
+                document,
+                function,
+                &[[low.min(high), low.max(high)]],
+                components,
+            )
         })
         .transpose()?;
     Ok((geometry, function))
@@ -214,8 +219,7 @@ fn patches(d: &mut Decoder<'_>, budget: &mut Budget, coons: bool) -> Result<Vec<
             &mut out,
             Patch {
                 points,
-                colors: colors
-                    .map(|c| Components::from_slice(c.get(..inputs).unwrap_or_default())),
+                colors: colors.map(|c| Components::from_slice(c.get(..inputs).unwrap_or_default())),
             },
         )?;
     }
@@ -384,9 +388,9 @@ fn integer(document: &Document, d: &Dictionary, key: &[u8]) -> Result<usize> {
 /// The bytes a mesh retains, for the scene's accounting.
 pub(crate) fn retained_bytes(kind: &ShadingKind) -> usize {
     match kind {
-        ShadingKind::Triangles(triangles) => triangles
-            .len()
-            .saturating_mul(size_of::<[MeshVertex; 3]>()),
+        ShadingKind::Triangles(triangles) => {
+            triangles.len().saturating_mul(size_of::<[MeshVertex; 3]>())
+        }
         ShadingKind::Patches(patches) => patches.len().saturating_mul(size_of::<Patch>()),
         _ => 0,
     }

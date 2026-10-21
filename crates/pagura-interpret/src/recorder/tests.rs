@@ -114,10 +114,16 @@ fn consecutive_runs_of_one_paint_and_state_share_a_glyphs_node() {
     let first = [glyph(&outline, 0), glyph(&outline, 2)];
     let second = [glyph(&outline, 4)];
     let fill = TextRenderingMode::Fill;
-    recorder.glyphs(&run(&font, &first, fill, &black, &pen, &composite)).unwrap();
+    recorder
+        .glyphs(&run(&font, &first, fill, &black, &pen, &composite))
+        .unwrap();
     // An equal paint built separately extends the node.
-    recorder.glyphs(&run(&font, &second, fill, &gray, &pen, &composite)).unwrap();
-    recorder.glyphs(&run(&font, &second, fill, &black, &pen, &half)).unwrap();
+    recorder
+        .glyphs(&run(&font, &second, fill, &gray, &pen, &composite))
+        .unwrap();
+    recorder
+        .glyphs(&run(&font, &second, fill, &black, &pen, &half))
+        .unwrap();
     recorder.end_page().unwrap();
     let scene = recorder.finish().unwrap();
     assert_eq!(scene.nodes.len(), 2);
@@ -139,10 +145,24 @@ fn stroked_glyphs_become_strokes_and_filled_and_stroked_glyphs_groups() {
     let composite = Arc::new(Composite::default());
     let glyphs = [glyph(&outline, 0)];
     recorder
-        .glyphs(&run(&font, &glyphs, TextRenderingMode::Stroke, &black, &pen, &composite))
+        .glyphs(&run(
+            &font,
+            &glyphs,
+            TextRenderingMode::Stroke,
+            &black,
+            &pen,
+            &composite,
+        ))
         .unwrap();
     recorder
-        .glyphs(&run(&font, &glyphs, TextRenderingMode::FillStroke, &black, &pen, &composite))
+        .glyphs(&run(
+            &font,
+            &glyphs,
+            TextRenderingMode::FillStroke,
+            &black,
+            &pen,
+            &composite,
+        ))
         .unwrap();
     recorder.end_page().unwrap();
     let scene = recorder.finish().unwrap();
@@ -162,10 +182,17 @@ fn stroked_glyphs_become_strokes_and_filled_and_stroked_glyphs_groups() {
     };
     assert_eq!(
         stroke.path.segments().first(),
-        Some(&pagura_raster::Segment::MoveTo(pagura_raster::Point::new(0.0, 0.0)))
+        Some(&pagura_raster::Segment::MoveTo(pagura_raster::Point::new(
+            0.0, 0.0
+        )))
     );
-    assert_eq!(stroke.path.segments()[1], pagura_raster::Segment::LineTo(pagura_raster::Point::new(10.0, 0.0)));
-    let Node::Group(group) = scene.nodes[1] else { panic!() };
+    assert_eq!(
+        stroke.path.segments()[1],
+        pagura_raster::Segment::LineTo(pagura_raster::Point::new(10.0, 0.0))
+    );
+    let Node::Group(group) = scene.nodes[1] else {
+        panic!()
+    };
     let group = scene.group(group).unwrap();
     assert!(group.attributes.knockout);
     assert_eq!(group.cause, GroupCause::FillStroke);

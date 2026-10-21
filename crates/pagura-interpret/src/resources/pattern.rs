@@ -118,8 +118,8 @@ fn tiling<'a>(document: &'a Document, value: &Value, d: &'a Dictionary) -> Resul
             .ok_or(Error::syntax("pattern requires BBox"))?,
         GEOMETRY,
     )?;
-    let bbox = Rect::from_corners(b[0], b[1], b[2], b[3])
-        .ok_or(Error::syntax("invalid pattern BBox"))?;
+    let bbox =
+        Rect::from_corners(b[0], b[1], b[2], b[3]).ok_or(Error::syntax("invalid pattern BBox"))?;
     let mut step = [0.0; 2];
     for (out, key) in step.iter_mut().zip([b"XStep", b"YStep"]) {
         *out = entry(document, d, key)?

@@ -39,7 +39,14 @@ pub fn pending(error: &Error) -> bool {
     error.kind == ErrorKind::InvalidArgument && error.message.contains("not implemented")
 }
 
-fn identity(error: &Error) -> (ErrorKind, Option<pagura_core::Repair>, Option<pagura_core::ObjectId>, pagura_core::Position) {
+fn identity(
+    error: &Error,
+) -> (
+    ErrorKind,
+    Option<pagura_core::Repair>,
+    Option<pagura_core::ObjectId>,
+    pagura_core::Position,
+) {
     (error.kind, error.repair, error.object, error.position)
 }
 
@@ -188,15 +195,15 @@ pub fn page(name: &str, bytes: &[u8], index: usize, recovery: Recovery, outcome:
             Scene::FailedAlike
         }
         (Err(old), Ok(_)) => {
-            outcome
-                .mismatches
-                .push(format!("{label}: scene succeeds where old fails with {old}"));
+            outcome.mismatches.push(format!(
+                "{label}: scene succeeds where old fails with {old}"
+            ));
             Scene::Other
         }
         (Ok(_), Err(new)) => {
-            outcome
-                .mismatches
-                .push(format!("{label}: scene fails with {new} where old succeeds"));
+            outcome.mismatches.push(format!(
+                "{label}: scene fails with {new} where old succeeds"
+            ));
             Scene::Other
         }
     };
@@ -258,7 +265,10 @@ fn image_data_first(document: &Document, old: &Error, new: &Error) -> bool {
         .object(object)
         .ok()
         .and_then(|o| document.stream_data(o).ok())
-        .is_some_and(|data| data.get(offset..).is_some_and(|rest| rest.starts_with(b"Do")));
+        .is_some_and(|data| {
+            data.get(offset..)
+                .is_some_and(|rest| rest.starts_with(b"Do"))
+        });
     image && at_do
 }
 
@@ -309,7 +319,14 @@ enum Scene {
 /// Compares the page's text. Text the new interpreter extracts where the
 /// old one failed is expected when the old failure came from painting work,
 /// which the text device skips: when both scenes failed alike.
-fn text(label: &str, bytes: &[u8], index: usize, recovery: Recovery, scene: Scene, outcome: &mut Outcome) {
+fn text(
+    label: &str,
+    bytes: &[u8],
+    index: usize,
+    recovery: Recovery,
+    scene: Scene,
+    outcome: &mut Outcome,
+) {
     let (Some(old_doc), Some(new_doc)) = (open(bytes, recovery), open(bytes, recovery)) else {
         return;
     };
@@ -326,15 +343,26 @@ fn text(label: &str, bytes: &[u8], index: usize, recovery: Recovery, scene: Scen
             outcome.pending.push(format!("{label}: text: {error}"));
         }
         (Ok(old), Ok(new)) => {
-            let (old, new) = (without_estimates(&format!("{old:?}")), without_estimates(&format!("{new:?}")));
+            let (old, new) = (
+                without_estimates(&format!("{old:?}")),
+                without_estimates(&format!("{new:?}")),
+            );
             if old == new {
                 outcome.matched += 1;
             } else {
                 if let Some(directory) = std::env::var_os("PAGURA_DIFFERENTIAL_DUMP") {
                     let stem = label.replace(['/', ' '], "_");
                     let directory = std::path::PathBuf::from(directory);
-                    std::fs::write(directory.join(format!("{stem}.old")), old.replace(", ", ",\n")).unwrap();
-                    std::fs::write(directory.join(format!("{stem}.new")), new.replace(", ", ",\n")).unwrap();
+                    std::fs::write(
+                        directory.join(format!("{stem}.old")),
+                        old.replace(", ", ",\n"),
+                    )
+                    .unwrap();
+                    std::fs::write(
+                        directory.join(format!("{stem}.new")),
+                        new.replace(", ", ",\n"),
+                    )
+                    .unwrap();
                 }
                 outcome
                     .mismatches
@@ -359,7 +387,9 @@ fn text(label: &str, bytes: &[u8], index: usize, recovery: Recovery, scene: Scen
         (Err(old), Ok(_)) if paint_work(bytes, index, recovery, old) => outcome.matched += 1,
         (Err(old), Ok(_)) => match scene {
             Scene::FailedAlike => outcome.matched += 1,
-            Scene::Pending => outcome.pending.push(format!("{label}: text: old fails with {old}")),
+            Scene::Pending => outcome
+                .pending
+                .push(format!("{label}: text: old fails with {old}")),
             Scene::Other => outcome.mismatches.push(format!(
                 "{label}: text succeeds where old fails with {old}, not from painting"
             )),
@@ -376,13 +406,13 @@ fn text(label: &str, bytes: &[u8], index: usize, recovery: Recovery, scene: Scen
 /// which honours `NeedAppearances` (12.7.4.3).
 pub fn filled_page(name: &str, bytes: &[u8], index: usize, outcome: &mut Outcome) {
     let label = format!("{name} p{index} filled");
-    let (Some(old_doc), Some(new_doc)) = (
-        open(bytes, Recovery::Repair),
-        open(bytes, Recovery::Repair),
-    ) else {
+    let (Some(old_doc), Some(new_doc)) =
+        (open(bytes, Recovery::Repair), open(bytes, Recovery::Repair))
+    else {
         return;
     };
-    let (Ok(Some(old_filler)), Ok(Some(new_filler))) = (old_doc.form_filler(), new_doc.form_filler())
+    let (Ok(Some(old_filler)), Ok(Some(new_filler))) =
+        (old_doc.form_filler(), new_doc.form_filler())
     else {
         return;
     };

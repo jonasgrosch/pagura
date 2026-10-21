@@ -7,7 +7,9 @@ fn with_op<T>(content: &[u8], check: impl FnOnce(&Op<'_>) -> T) -> Result<T> {
     let content = Content::from_bytes(content);
     let mut reader = Reader::new(&content, &Limits::default());
     let mut tokens = Meter::new(1_000, "test budget exceeded");
-    let operation = reader.next(&mut tokens)?.ok_or(Error::syntax("no operation"))?;
+    let operation = reader
+        .next(&mut tokens)?
+        .ok_or(Error::syntax("no operation"))?;
     Ok(check(&operation.op))
 }
 
@@ -16,7 +18,9 @@ fn first_operator(content: &[u8]) -> Result<Operator> {
     let content = Content::from_bytes(content);
     let mut reader = Reader::new(&content, &Limits::default());
     let mut tokens = Meter::new(1_000, "test budget exceeded");
-    let operation = reader.next(&mut tokens)?.ok_or(Error::syntax("no operation"))?;
+    let operation = reader
+        .next(&mut tokens)?
+        .ok_or(Error::syntax("no operation"))?;
     Ok(operation.op.operator())
 }
 
@@ -112,7 +116,10 @@ fn dash_arrays_and_text_arrays_are_validated() {
         "[Show([65]), Adjust(-120.0), Show([66, 67]), Adjust(0.5)]"
     );
     assert_eq!(error(b"[/x] TJ"), "TJ array requires numbers or strings");
-    assert_eq!(error(b"[(a) [1]] TJ"), "TJ array requires numbers or strings");
+    assert_eq!(
+        error(b"[(a) [1]] TJ"),
+        "TJ array requires numbers or strings"
+    );
 }
 
 #[test]

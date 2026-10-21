@@ -58,7 +58,10 @@ fn page_count(bytes: &[u8]) -> usize {
 #[test]
 fn generated_fixtures_match_the_old_interpreter() {
     let mut files = Vec::new();
-    pdfs(&pagura_testkit::workspace_root().join("corpus/generated"), &mut files);
+    pdfs(
+        &pagura_testkit::workspace_root().join("corpus/generated"),
+        &mut files,
+    );
     assert!(files.len() > 1000, "{} fixtures", files.len());
     let filter = std::env::var("PAGURA_DIFFERENTIAL_FILTER").unwrap_or_default();
     let mut outcome = Outcome::default();
@@ -79,13 +82,20 @@ fn generated_fixtures_match_the_old_interpreter() {
         }
     }
     report(&outcome, "generated fixtures");
-    assert!(outcome.mismatches.is_empty(), "{} mismatches", outcome.mismatches.len());
+    assert!(
+        outcome.mismatches.is_empty(),
+        "{} mismatches",
+        outcome.mismatches.len()
+    );
 }
 
 #[test]
 fn filled_forms_match_the_old_interpreter() {
     let mut files = Vec::new();
-    pdfs(&pagura_testkit::workspace_root().join("corpus/generated/forms"), &mut files);
+    pdfs(
+        &pagura_testkit::workspace_root().join("corpus/generated/forms"),
+        &mut files,
+    );
     let mut outcome = Outcome::default();
     for path in files {
         let name = path.display().to_string();
@@ -96,12 +106,18 @@ fn filled_forms_match_the_old_interpreter() {
         }
     }
     report(&outcome, "filled forms and appearance text");
-    assert!(outcome.mismatches.is_empty(), "{} mismatches", outcome.mismatches.len());
+    assert!(
+        outcome.mismatches.is_empty(),
+        "{} mismatches",
+        outcome.mismatches.len()
+    );
 }
 
 #[test]
 fn benchmark_pages_match_the_old_interpreter() {
-    let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
+    let home = std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_default();
     let corpora = home.join(".cache/pagura-corpora");
     let list = home.join(".cache/pagura-coordination/fleet/bench-pages.json");
     let (true, Ok(text)) = (corpora.is_dir(), std::fs::read_to_string(&list)) else {
@@ -111,15 +127,28 @@ fn benchmark_pages_match_the_old_interpreter() {
     let pages = pagura_testkit::Json::parse(&text).unwrap();
     let mut outcome = Outcome::default();
     for entry in pages.as_array().unwrap() {
-        let file = entry.get("file").and_then(pagura_testkit::Json::as_str).unwrap();
-        let index = usize::try_from(entry.get("page").and_then(pagura_testkit::Json::as_u64).unwrap()).unwrap();
+        let file = entry
+            .get("file")
+            .and_then(pagura_testkit::Json::as_str)
+            .unwrap();
+        let index = usize::try_from(
+            entry
+                .get("page")
+                .and_then(pagura_testkit::Json::as_u64)
+                .unwrap(),
+        )
+        .unwrap();
         let Ok(bytes) = std::fs::read(corpora.join(file)) else {
             continue;
         };
         compare::page(file, &bytes, index, Recovery::Repair, &mut outcome);
     }
     report(&outcome, "benchmark pages");
-    assert!(outcome.mismatches.is_empty(), "{} mismatches", outcome.mismatches.len());
+    assert!(
+        outcome.mismatches.is_empty(),
+        "{} mismatches",
+        outcome.mismatches.len()
+    );
 }
 
 /// Real documents: every PDF under `PAGURA_DIFFERENTIAL_CORPUS`, at most
@@ -148,5 +177,9 @@ fn corpus_pages_match_the_old_interpreter() {
         }
     }
     report(&outcome, "corpus pages");
-    assert!(outcome.mismatches.is_empty(), "{} mismatches", outcome.mismatches.len());
+    assert!(
+        outcome.mismatches.is_empty(),
+        "{} mismatches",
+        outcome.mismatches.len()
+    );
 }

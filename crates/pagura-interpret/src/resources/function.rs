@@ -361,7 +361,12 @@ fn calculator(
         },
         &document.limits(),
     )
-    .map_err(|error| error.within(Position::Stream { object: id, offset: 0 }))
+    .map_err(|error| {
+        error.within(Position::Stream {
+            object: id,
+            offset: 0,
+        })
+    })
 }
 
 /// A list of numbers, or `default` when the key is absent.

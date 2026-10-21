@@ -319,7 +319,6 @@ impl Buffers {
     }
 }
 
-
 /// One content operation with its operands parsed and validated as Annex A
 /// requires. Strings, `TJ` arrays and colour components borrow from the
 /// [`Reader`](crate::Reader) that read them. Inline images are
@@ -590,7 +589,9 @@ impl<'a> Op<'a> {
             O::TextMatrix => Self::TextMatrix(numbers(operands)?),
             O::NextLine => none(operands, Self::NextLine)?,
             O::ShowText => Self::ShowText(Cow::Borrowed(string(operands, buffers)?)),
-            O::NextLineShowText => Self::NextLineShowText(Cow::Borrowed(string(operands, buffers)?)),
+            O::NextLineShowText => {
+                Self::NextLineShowText(Cow::Borrowed(string(operands, buffers)?))
+            }
             O::NextLineShowTextSpaced => {
                 let (word, character, text) = spaced_string(operands, buffers)?;
                 Self::NextLineShowTextSpaced {

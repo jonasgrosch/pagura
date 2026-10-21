@@ -167,7 +167,11 @@ pub(crate) struct FillStroke {
 impl FillStroke {
     /// The states for a fill in `fill` and a stroke in `stroke`; `opaque`
     /// is the plain state of a knockout group.
-    pub(crate) fn new(fill: &Arc<Composite>, stroke: &Arc<Composite>, opaque: &Arc<Composite>) -> Self {
+    pub(crate) fn new(
+        fill: &Arc<Composite>,
+        stroke: &Arc<Composite>,
+        opaque: &Arc<Composite>,
+    ) -> Self {
         let overprint =
             fill.overprint.enabled && stroke.overprint.enabled && fill.alpha == stroke.alpha;
         if overprint {

@@ -71,7 +71,8 @@ pub fn dump(scene: &Scene) -> String {
         let _ = writeln!(
             out,
             "clip #{index} parent {} {} {}",
-            clip.parent.map_or_else(|| "-".to_owned(), |p| format!("#{}", p.0)),
+            clip.parent
+                .map_or_else(|| "-".to_owned(), |p| format!("#{}", p.0)),
             rule(clip.rule),
             path(&clip.path)
         );
@@ -218,7 +219,8 @@ fn mark(mark: &MarkInfo) -> String {
     format!(
         "state #{} clip {} at {:?}",
         mark.state.0,
-        mark.clip.map_or_else(|| "-".to_owned(), |c| format!("#{}", c.0)),
+        mark.clip
+            .map_or_else(|| "-".to_owned(), |c| format!("#{}", c.0)),
         mark.position
     )
 }
@@ -257,7 +259,11 @@ fn describe_state(state: &Composite) -> String {
         state.alpha_is_shape,
         state.overprint.enabled,
         state.overprint.nonzero,
-        if state.transfer.is_some() { "yes" } else { "no" },
+        if state.transfer.is_some() {
+            "yes"
+        } else {
+            "no"
+        },
         state.conversion.intent,
         if state.conversion.black_generation.is_some() {
             "yes"
@@ -306,7 +312,8 @@ fn describe_space(space: &ColorSpace) -> String {
         ),
         ColorSpace::Pattern(base) => format!(
             "Pattern({})",
-            base.as_deref().map_or_else(|| "-".to_owned(), describe_space)
+            base.as_deref()
+                .map_or_else(|| "-".to_owned(), describe_space)
         ),
     }
 }
@@ -315,16 +322,16 @@ fn describe_mask(mask: &ImageMask) -> String {
     match mask {
         ImageMask::None => "-".to_owned(),
         ImageMask::ColorKey(keys) => format!("color-key {keys:?}"),
-        ImageMask::Stencil(image) => format!(
-            "stencil {}x{}",
-            image.source.width(),
-            image.source.height()
-        ),
+        ImageMask::Stencil(image) => {
+            format!("stencil {}x{}", image.source.width(), image.source.height())
+        }
         ImageMask::Soft { mask, matte } => format!(
             "soft {}x{} matte {}",
             mask.source.width(),
             mask.source.height(),
-            matte.as_ref().map_or_else(|| "-".to_owned(), |m| numbers(m))
+            matte
+                .as_ref()
+                .map_or_else(|| "-".to_owned(), |m| numbers(m))
         ),
         ImageMask::Embedded => "embedded".to_owned(),
     }
@@ -333,7 +340,11 @@ fn describe_mask(mask: &ImageMask) -> String {
 fn describe_shading(shading: &Shading) -> String {
     let kind = match &shading.kind {
         ShadingKind::Function { domain, matrix } => {
-            format!("function domain {} matrix {}", numbers(domain), transform(*matrix))
+            format!(
+                "function domain {} matrix {}",
+                numbers(domain),
+                transform(*matrix)
+            )
         }
         ShadingKind::Axial {
             start,
@@ -369,7 +380,9 @@ fn describe_shading(shading: &Shading) -> String {
     let function = match &shading.function {
         None => "-".to_owned(),
         Some(ShadingFunction::Single(_)) => "single".to_owned(),
-        Some(ShadingFunction::PerComponent(functions)) => format!("per-component {}", functions.len()),
+        Some(ShadingFunction::PerComponent(functions)) => {
+            format!("per-component {}", functions.len())
+        }
     };
     format!(
         "{kind} space {} function {function} background {} bbox {} antialias {}",

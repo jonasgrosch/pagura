@@ -133,7 +133,8 @@ impl SceneRecorder {
         self.bytes.charge_items::<Node>(1)?;
         self.bytes.charge_items::<NodeId>(1)?;
         let id = NodeId(
-            u32::try_from(self.nodes.len()).map_err(|_| Error::limit("scene node count exceeded"))?,
+            u32::try_from(self.nodes.len())
+                .map_err(|_| Error::limit("scene node count exceeded"))?,
         );
         self.nodes
             .try_reserve(1)
@@ -238,9 +239,10 @@ impl Device for SceneRecorder {
             return Err(Error::invalid_argument("the recorder holds a page"));
         }
         self.page = Some((PageSpace::of(page), page.print_intent));
-        let state = self
-            .interner
-            .state(&Arc::new(crate::model::Composite::default()), &mut self.bytes)?;
+        let state = self.interner.state(
+            &Arc::new(crate::model::Composite::default()),
+            &mut self.bytes,
+        )?;
         self.root = self.open(
             Group {
                 role: GroupRole::Page,
@@ -298,7 +300,10 @@ impl Device for SceneRecorder {
         if mark.state.hidden {
             return Ok(());
         }
-        let stencil = mark.stencil.map(|paint| self.paint(Some(paint))).transpose()?;
+        let stencil = mark
+            .stencil
+            .map(|paint| self.paint(Some(paint)))
+            .transpose()?;
         let info = self.mark(&mark.state)?;
         self.bytes.charge(mark.image.source.retained_bytes())?;
         self.push(
@@ -319,7 +324,9 @@ impl Device for SceneRecorder {
         }
         let info = self.mark(&mark.state)?;
         self.bytes
-            .charge(crate::resources::shading::retained_bytes(&mark.shading.kind))?;
+            .charge(crate::resources::shading::retained_bytes(
+                &mark.shading.kind,
+            ))?;
         self.push(
             Node::Shading(ShadingNode {
                 shading: Arc::clone(mark.shading),
@@ -354,7 +361,9 @@ impl Device for SceneRecorder {
 
     fn begin_soft_mask(&mut self, mask: &SoftMaskInfo<'_>) -> Result<()> {
         if mask.id != MaskId(u32::try_from(self.masks.len()).unwrap_or(u32::MAX)) {
-            return Err(Error::invalid_argument("soft masks out of definition order"));
+            return Err(Error::invalid_argument(
+                "soft masks out of definition order",
+            ));
         }
         let mark = self.page_mark()?;
         let group = self.open(
@@ -386,7 +395,9 @@ impl Device for SceneRecorder {
 
     fn begin_tiling(&mut self, tiling: &TilingInfo) -> Result<()> {
         if tiling.id != PatternId(u32::try_from(self.tilings.len()).unwrap_or(u32::MAX)) {
-            return Err(Error::invalid_argument("tiling patterns out of definition order"));
+            return Err(Error::invalid_argument(
+                "tiling patterns out of definition order",
+            ));
         }
         let mark = self.page_mark()?;
         let cell = self.open(

@@ -3,11 +3,11 @@
 //! interpreter built separately share one table entry. The interner holds
 //! every `Arc` it has seen, so an identity is never reused while interned.
 
+use crate::hash::FastMap;
 use crate::model::{BlendMode, Clip, Composite, MaskId, Overprint, Paint, Pen};
 use crate::scene::{ClipId, ClipNode, PaintId, PenId, StateId};
 use pagura_color::Intent;
 use pagura_core::{Error, Meter, Result};
-use crate::hash::FastMap;
 use std::sync::Arc;
 
 /// The interned tables of a recording.
@@ -113,7 +113,11 @@ impl Interner {
         let key = match paint.as_ref() {
             Paint::Solid(color) => Some((
                 address(&color.space),
-                color.components.iter().map(|c| c.to_bits()).collect::<Vec<_>>(),
+                color
+                    .components
+                    .iter()
+                    .map(|c| c.to_bits())
+                    .collect::<Vec<_>>(),
             )),
             Paint::Shading(_) | Paint::Tiling(_) => None,
         };

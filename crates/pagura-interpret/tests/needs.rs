@@ -18,7 +18,9 @@ fn pdf(objects: &[String]) -> Vec<u8> {
         out.extend_from_slice(format!("{} 0 obj\n{object}\nendobj\n", index + 1).as_bytes());
     }
     let xref = out.len();
-    out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).as_bytes());
+    out.extend_from_slice(
+        format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).as_bytes(),
+    );
     for offset in offsets {
         out.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
     }
@@ -33,7 +35,10 @@ fn pdf(objects: &[String]) -> Vec<u8> {
 }
 
 fn stream(dictionary: &str, data: &str) -> String {
-    format!("<< {dictionary} /Length {} >>\nstream\n{data}\nendstream", data.len())
+    format!(
+        "<< {dictionary} /Length {} >>\nstream\n{data}\nendstream",
+        data.len()
+    )
 }
 
 /// A page showing "A" in a Type 3 font, then a broken image and a broken
@@ -154,6 +159,8 @@ fn a_scene_recording_builds_no_extraction_records() {
     assert!(device.glyphs > 0);
     assert_eq!(device.text, 0);
     let mut recorder = SceneRecorder::new(document.limits());
-    Interpreter::new(&document).run(page, &mut recorder).unwrap();
+    Interpreter::new(&document)
+        .run(page, &mut recorder)
+        .unwrap();
     assert!(recorder.finish().unwrap().marks() > 0);
 }

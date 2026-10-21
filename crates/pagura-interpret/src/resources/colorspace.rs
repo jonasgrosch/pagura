@@ -93,7 +93,11 @@ impl<'a> Colors<'a> {
     /// `Syntax` for malformed spaces and undefined resources, `Unsupported`
     /// for unknown families, `Limit` for budgets, and the errors of ICC
     /// profiles and tint transforms.
-    pub(crate) fn resolve(&mut self, resources: &Dictionary, value: &Value) -> Result<Arc<ColorSpace>> {
+    pub(crate) fn resolve(
+        &mut self,
+        resources: &Dictionary,
+        value: &Value,
+    ) -> Result<Arc<ColorSpace>> {
         self.space(resources, value, 0, Defaults::Apply)
     }
 
@@ -381,7 +385,10 @@ impl<'a> Colors<'a> {
     ) -> Result<Arc<ColorSpace>> {
         let document = self.document;
         let base = self.space(resources, base, depth + 1, defaults)?;
-        if matches!(base.as_ref(), ColorSpace::Indexed(_) | ColorSpace::Pattern(_)) {
+        if matches!(
+            base.as_ref(),
+            ColorSpace::Indexed(_) | ColorSpace::Pattern(_)
+        ) {
             return Err(Error::syntax("Indexed base cannot be Indexed"));
         }
         let high = document
@@ -425,7 +432,12 @@ impl<'a> Colors<'a> {
         }))))
     }
 
-    fn icc(&mut self, resources: &Dictionary, profile: &Value, depth: usize) -> Result<Arc<ColorSpace>> {
+    fn icc(
+        &mut self,
+        resources: &Dictionary,
+        profile: &Value,
+        depth: usize,
+    ) -> Result<Arc<ColorSpace>> {
         let read = icc::read(self.document, &mut self.profiles, profile)?;
         let default = match read.components {
             1 => self.device_gray(),
@@ -451,12 +463,14 @@ impl<'a> Colors<'a> {
             }
         }
         icc::check_range(read.profile.as_deref(), &read.range, read.components)?;
-        Ok(Arc::new(ColorSpace::Icc(Arc::new(pagura_color::IccSpace {
-            profile: read.profile,
-            alternate: alternate.unwrap_or(default),
-            components: read.components,
-            range: read.range,
-        }))))
+        Ok(Arc::new(ColorSpace::Icc(Arc::new(
+            pagura_color::IccSpace {
+                profile: read.profile,
+                alternate: alternate.unwrap_or(default),
+                components: read.components,
+                range: read.range,
+            },
+        ))))
     }
 }
 

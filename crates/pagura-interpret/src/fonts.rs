@@ -3,6 +3,7 @@
 //! object identity.
 
 use crate::device::{FontInfo, FontKey, OutlineKey};
+use crate::hash::FastMap;
 use pagura_core::{
     Built, Diagnostics, Dictionary, Error, Meter, ObjectId, Position, Rect, Result, Store,
     StoreKey, Value,
@@ -10,7 +11,6 @@ use pagura_core::{
 use pagura_document::Document;
 use pagura_raster::{Path, Segment};
 use pagura_text::{FontKind, PdfFont, Provider, WritingMode};
-use crate::hash::FastMap;
 use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::Arc;

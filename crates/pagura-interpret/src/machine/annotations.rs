@@ -177,7 +177,8 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             return Ok(());
         };
         if self.needs().structure && self.needs().text {
-            self.device.marked(&Marked::ObjectBegin { object, hidden })?;
+            self.device
+                .marked(&Marked::ObjectBegin { object, hidden })?;
             self.device.marked(&Marked::ObjectEnd)?;
         }
         Ok(())
@@ -232,9 +233,10 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let Some(placement) = placement(bbox, matrix, rect)? else {
             // An indirect appearance names its own stream; an inline one
             // only the annotation's position.
-            let position = body
-                .id()
-                .map_or(self.position, |object| Position::Stream { object, offset: 0 });
+            let position = body.id().map_or(self.position, |object| Position::Stream {
+                object,
+                offset: 0,
+            });
             return document.repair(
                 Diagnostic::new(
                     repairs::APPEARANCE_EMPTY,
@@ -278,7 +280,12 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
 struct SessionFonts<'s, 'a>(&'s crate::fonts::Fonts<'a>);
 
 impl FontSource for SessionFonts<'_, '_> {
-    fn font(&self, _: &Document, id: Option<ObjectId>, dictionary: &Dictionary) -> Result<Arc<PdfFont>> {
+    fn font(
+        &self,
+        _: &Document,
+        id: Option<ObjectId>,
+        dictionary: &Dictionary,
+    ) -> Result<Arc<PdfFont>> {
         self.0.load(id, dictionary, Position::Unknown)
     }
 

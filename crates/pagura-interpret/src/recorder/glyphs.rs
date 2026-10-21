@@ -3,13 +3,13 @@
 
 use super::SceneRecorder;
 use crate::device::{Glyph, GlyphRun, OutlineKey};
+use crate::hash::FastMap;
 use crate::model::{Composite, FillStroke, GroupAttributes, GroupCause};
 use crate::scene::{
     GlyphSource, GlyphsNode, Group, GroupRole, MarkInfo, Node, NodeId, PaintId, Placement,
 };
 use pagura_core::{Error, Result};
 use pagura_raster::{FillRule, Path, Point, Segment, Transform};
-use crate::hash::FastMap;
 use std::sync::Arc;
 
 /// The placement and source tables one glyphs node keeps at most.
@@ -182,10 +182,17 @@ impl SceneRecorder {
 
     /// A glyph filled and stroked: a group of a fill and a stroke of its
     /// outline, as `B` paints a path (11.7.4.4).
-    fn fill_stroke_glyph(&mut self, run: &GlyphRun<'_>, glyph: &Glyph, outline: &Path) -> Result<()> {
+    fn fill_stroke_glyph(
+        &mut self,
+        run: &GlyphRun<'_>,
+        glyph: &Glyph,
+        outline: &Path,
+    ) -> Result<()> {
         let (Some(fill_state), Some(stroke_state)) = (run.paint.fill_state, run.paint.stroke_state)
         else {
-            return Err(Error::invalid_argument("filled and stroked glyphs without states"));
+            return Err(Error::invalid_argument(
+                "filled and stroked glyphs without states",
+            ));
         };
         let key = (
             Arc::as_ptr(fill_state.composite).addr(),
@@ -198,7 +205,8 @@ impl SceneRecorder {
             let states = FillStroke::new(fill_state.composite, stroke_state.composite, &opaque);
             // Keep the pair's states interned so the addresses stay theirs.
             self.interner.state(fill_state.composite, &mut self.bytes)?;
-            self.interner.state(stroke_state.composite, &mut self.bytes)?;
+            self.interner
+                .state(stroke_state.composite, &mut self.bytes)?;
             self.glyphs.derived.insert(key, states.clone());
             states
         };

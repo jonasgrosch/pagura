@@ -48,7 +48,8 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             Op::Leading(value) => text.leading = value,
             Op::Rise(value) => text.rise = value,
             Op::Font { name, size } => {
-                let value = super::form::resource(self.document(), resources, b"Font", name.as_bytes())?;
+                let value =
+                    super::form::resource(self.document(), resources, b"Font", name.as_bytes())?;
                 self.select_font(value, size, scope)?;
             }
             Op::RenderMode(mode) => {
@@ -130,7 +131,12 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     }
 
     /// Selects a font, by `Tf` or a graphics state's `Font` entry.
-    pub(crate) fn select_font(&mut self, value: &Value, size: f64, scope: &mut Scope) -> Result<()> {
+    pub(crate) fn select_font(
+        &mut self,
+        value: &Value,
+        size: f64,
+        scope: &mut Scope,
+    ) -> Result<()> {
         let font = self.session.fonts.select(value, self.position)?;
         if self.needs().text && scope.role == super::Text::Page {
             self.device.select_font(&font.info)?;

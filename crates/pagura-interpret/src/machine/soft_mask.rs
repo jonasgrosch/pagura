@@ -63,8 +63,9 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         else {
             return Err(not_group());
         };
-        let attributes = group::attributes(&mut self.session.colors, form.dictionary, form.resources)?
-            .ok_or_else(not_group)?;
+        let attributes =
+            group::attributes(&mut self.session.colors, form.dictionary, form.resources)?
+                .ok_or_else(not_group)?;
         if kind == MaskKind::Luminosity && attributes.space.is_none() {
             return Err(
                 Error::syntax("luminosity mask requires a group colour space").in_object(id),

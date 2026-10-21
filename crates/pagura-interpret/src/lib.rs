@@ -40,9 +40,9 @@ pub use device::{
 };
 pub use dump::dump;
 pub use model::{
-    BlendMode, Clip, Color, Composite, GroupAttributes, GroupCause, Image, ImageMask, MaskId, MaskKind,
-    MeshVertex, Overprint, Paint, Patch, PatternId, Pen, Shading, ShadingFunction, ShadingKind,
-    ShadingPaint, TilingColors, TilingPaint, Transfer, ViewFit,
+    BlendMode, Clip, Color, Composite, GroupAttributes, GroupCause, Image, ImageMask, MaskId,
+    MaskKind, MeshVertex, Overprint, Paint, Patch, PatternId, Pen, Shading, ShadingFunction,
+    ShadingKind, ShadingPaint, TilingColors, TilingPaint, Transfer, ViewFit,
 };
 pub use recorder::SceneRecorder;
 pub use scene::{

@@ -7,7 +7,9 @@ use super::form::resource;
 use super::{Machine, Scope, Text};
 use crate::device::{Device, Marked, MarkedText};
 use pagura_content::{Op, Properties};
-use pagura_core::{Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, Position, Recovery, Result, Value};
+use pagura_core::{
+    Diagnostic, Diagnostics, Dictionary, Error, ErrorKind, Position, Recovery, Result, Value,
+};
 
 impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
     /// `BMC` and `BDC`.
@@ -168,7 +170,8 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
             return Err(error);
         }
         let mut diagnostic =
-            Diagnostic::new(pagura_extract::repairs::MARKED_PROPERTY, error.message).at(self.position);
+            Diagnostic::new(pagura_extract::repairs::MARKED_PROPERTY, error.message)
+                .at(self.position);
         if let Position::Stream { object, .. } = self.position {
             diagnostic = diagnostic.in_object(object);
         }

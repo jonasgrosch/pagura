@@ -342,8 +342,11 @@ impl Visibility {
             return Ok(self.applicable.contains(&id).then_some(state));
         }
         document.repair(
-            pagura_core::Diagnostic::new(repairs::OPTIONAL_GROUP, "undefined optional content group")
-                .in_object(id),
+            pagura_core::Diagnostic::new(
+                repairs::OPTIONAL_GROUP,
+                "undefined optional content group",
+            )
+            .in_object(id),
         )?;
         Ok(view_intent(document, dictionary)?.then_some(true))
     }

@@ -18,7 +18,12 @@ pub(super) enum Target {
 }
 
 impl<D: Device + ?Sized> Machine<'_, '_, D> {
-    pub(super) fn color(&mut self, op: Op<'_>, resources: &Dictionary, scope: &mut Scope) -> Result<()> {
+    pub(super) fn color(
+        &mut self,
+        op: Op<'_>,
+        resources: &Dictionary,
+        scope: &mut Scope,
+    ) -> Result<()> {
         if !self.needs().paint {
             return Ok(());
         }
@@ -38,7 +43,9 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             Op::StrokeGray(gray) | Op::FillGray(gray) => {
                 self.device_color(resources, b"DeviceGray", &[gray])?
             }
-            Op::StrokeRgb(rgb) | Op::FillRgb(rgb) => self.device_color(resources, b"DeviceRGB", &rgb)?,
+            Op::StrokeRgb(rgb) | Op::FillRgb(rgb) => {
+                self.device_color(resources, b"DeviceRGB", &rgb)?
+            }
             Op::StrokeCmyk(cmyk) | Op::FillCmyk(cmyk) => {
                 self.device_color(resources, b"DeviceCMYK", &cmyk)?
             }
@@ -110,5 +117,8 @@ pub(super) fn set(space: &Arc<ColorSpace>, operands: &ColorOperands<'_>) -> Resu
     if operands.pattern.is_some() {
         return Err(Error::syntax("colour component must be a number"));
     }
-    Ok(Ink::solid(space, Components::from_slice(&operands.components)))
+    Ok(Ink::solid(
+        space,
+        Components::from_slice(&operands.components),
+    ))
 }

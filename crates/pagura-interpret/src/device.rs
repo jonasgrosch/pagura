@@ -2,8 +2,8 @@
 //! groups, masks, patterns and text into any [`Device`].
 
 use crate::model::{
-    Clip, Composite, GroupAttributes, GroupCause, Image, MaskId, MaskKind, Paint, PatternId, Pen, Shading,
-    TilingColors, ViewFit,
+    Clip, Composite, GroupAttributes, GroupCause, Image, MaskId, MaskKind, Paint, PatternId, Pen,
+    Shading, TilingColors, ViewFit,
 };
 use pagura_color::{Components, Function};
 use pagura_core::{Name, ObjectId, Position, Rect, Result};

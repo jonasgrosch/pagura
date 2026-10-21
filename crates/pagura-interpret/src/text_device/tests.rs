@@ -117,7 +117,11 @@ fn glyphs_record_fonts_strings_marked_content_and_objects() {
     assert!(text.glyphs[0].marked_content.is_empty());
     assert_eq!(text.objects.len(), 1);
     assert_eq!(
-        (text.objects[0].object, text.objects[0].glyphs.clone(), text.objects[0].hidden),
+        (
+            text.objects[0].object,
+            text.objects[0].glyphs.clone(),
+            text.objects[0].hidden
+        ),
         (form, 1..3, true)
     );
 }

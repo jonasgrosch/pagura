@@ -56,7 +56,11 @@ pub(crate) fn attributes(
 /// themselves, and ICCBased spaces without a Lab-input profile in their
 /// component count's family (there are no inverse ICC transforms). An
 /// ICCBased space whose profile is not supported uses its alternate.
-fn blending_space(colors: &mut Colors<'_>, resources: &Dictionary, value: &Value) -> Result<Process> {
+fn blending_space(
+    colors: &mut Colors<'_>,
+    resources: &Dictionary,
+    value: &Value,
+) -> Result<Process> {
     let space = colors.resolve(resources, value)?;
     let space = match space.as_ref() {
         ColorSpace::Icc(icc) if icc.profile.is_none() => icc.alternate.as_ref(),
