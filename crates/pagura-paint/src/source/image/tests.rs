@@ -472,3 +472,9 @@ fn degenerate_placements_paint_nothing_and_overflow_is_refused() {
     assert_eq!((empty.colors.len(), empty.alpha), (12, vec![0.0; 4]));
     let _ = gray;
 }
+
+#[test]
+fn prepared_samplers_are_shared_between_threads() {
+    fn shared<T: Send + Sync>() {}
+    shared::<ImageSampler>();
+}
