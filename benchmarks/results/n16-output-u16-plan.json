@@ -1,0 +1,360 @@
+{
+  "schema": 1,
+  "experiment": "n16-output-u16",
+  "status": "frozen-before-pilot",
+  "baseline": "f98ad836: guarded flat u32 N16 converter, glyph memo, clip cleanup and shared opaque composition",
+  "candidate_delta": "Use saturating u16 addition in the identical shift/subtract quantizer, avoiding widening. No buffer, admission, resource charge or source-conversion change.",
+  "modes": [
+    "exact",
+    "competitive"
+  ],
+  "cells": [
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "exact",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "sparse64",
+      "mode": "competitive",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "dense64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "dense64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "tiny",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "target"
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "target"
+    },
+    {
+      "case": "one-source64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "one-source64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "overcapacity128",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "overcapacity128",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "nested64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "nested64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "default-knockout64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "default-knockout64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2-knockout",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2-knockout",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2-late64",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "outline2-late64",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "clip-churn",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "clip-churn",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "image-only",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "image-only",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "exact",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "tile",
+      "role": "protected"
+    },
+    {
+      "case": "opaque64",
+      "mode": "competitive",
+      "operation": "tiled",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-clip",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-clip",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-tiny",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-tiny",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-fill",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected"
+    },
+    {
+      "case": "opaque-fill",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected"
+    }
+  ],
+  "phases": {
+    "pilot": {
+      "pairs": 5,
+      "warmups": 5,
+      "seed": 20261101
+    },
+    "confirmation": {
+      "pairs": 200,
+      "warmups": 5,
+      "seed": 20261102
+    }
+  },
+  "maximum_launched_confirmations": 1,
+  "analysis": {
+    "method": "paired-percentile-bootstrap",
+    "resamples": 5000,
+    "confidence": 0.95,
+    "seed": 42017
+  },
+  "thresholds": {
+    "target_median_upper": 0.95,
+    "target_p95_upper": 1.0,
+    "protected_median_upper": 1.02,
+    "protected_p95_upper": 1.02,
+    "peak_rss_ratio_max": 1.0
+  },
+  "quality": {
+    "independent_rgb8_tolerance": 0,
+    "require_opaque_alpha": true,
+    "require_same_mode_baseline_rgba_bytes": true,
+    "require_all_warmup_outputs": true,
+    "accuracy_changing_cases": "No intended pixel change. Exhaustive u16-domain equality, existing nonopaque-background full/offset tile regressions, strict rational precision and native/WASI host parity remain required."
+  },
+  "memory": {
+    "storage": "No new buffer or state. Both arms retain N16 opaque-background and F64 nonopaque-background storage. Peak RSS still independently gates every cell.",
+    "peak_rss": "Fresh per-sample process RSS; report absolute values and ratios, including preexisting memo storage."
+  },
+  "environment": {
+    "native_threads": 1,
+    "known_job_poll_seconds": 5,
+    "quiet_preflight_scans": 3,
+    "maximum_launched_seconds": 5400,
+    "automatic_postlaunch_retry": false,
+    "monitoring": "Wait for observed quiet before launch. After launch retain the fixed run and record foreign jobs; any observed contention blocks admission, as in the preceding run-now protocol. No owned compute overlaps."
+  },
+  "limits": {
+    "per_output_bytes": 67108864,
+    "retained_artifact_bytes": 536870912,
+    "scope": "Payload budget covers retained PDF/oracle/output blobs only; report checkpoints and runner/observer evidence are additional storage."
+  },
+  "decision": {
+    "admit": "All numerical and independent quality gates plus complete repository validation; required release-runner/matrix evidence remains separate.",
+    "preserve_partial": "Preserve an independently correct partial speed gain if at least one designated target median upper <=0.95; report every protected and RSS miss. Supported material regressions require revision or explicit experimental restriction. No release/dominance admission.",
+    "reject_or_revise": "Any independent accuracy, resource accounting, source error or tile-contract regression blocks retaining active code. An upper confidence-bound miss alone is not a proven regression. Keep original patch and all evidence if revised or shelved.",
+    "sampling": "No historical or pilot sample reuse, no tuning against confirmation and no retry until a pass appears."
+  },
+  "limitations": [
+    "All 46 cells retained with fixed pilot and confirmation seeds.",
+    "Incremental to the guarded shared-composition stack, not a net legacy-route or competitor comparison.",
+    "200 pairs do not guarantee calibrated p95 precision or simultaneous coverage.",
+    "No historical or pilot samples reused in confirmation.",
+    "Opaque-background timing matrix; both arms retain the independently tested nonopaque-background guard.",
+    "No new explicit storage does not establish unchanged measured peak RSS."
+  ],
+  "baseline_commit": "f98ad8365b46d500cbb866b13fcea0b0cbb28f7f",
+  "builds_on": {
+    "experiment": "n16-output-guarded",
+    "commit": "f98ad8365b46d500cbb866b13fcea0b0cbb28f7f",
+    "reuse_samples": false,
+    "retarget_or_relax_gates": false
+  }
+}

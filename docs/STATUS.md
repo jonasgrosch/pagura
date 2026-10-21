@@ -105,6 +105,17 @@ measure that cost. The complete integrated check passes, including 210 renderer
 tests, 196 Python tests, native/WASM and host checks, and all 1,249 conformance
 cases. The earlier canceled confirmation remains excluded from the fresh run.
 
+The [16-bit-lane follow-up](../benchmarks/results/n16-output-u16-experiment.md)
+retains another measured partial win against `f98ad836`: opaque64/full medians
+fall 10.8% in Exact and 12.6% in Competitive, with both target latency and RSS
+gates passing. All 18,860 outputs and the complete repository check pass. Only
+12/44 protected latency and 25/46 RSS gates pass; the largest RSS increase is
+35.2%. No protected lower latency bound exceeds 1.02 in this run, which does not
+establish non-regression. A separate 84-output same-binary RSS diagnostic shows
+peak variability but changes no gate. The independently audited six-cell WASI
+screen passes its regression triage and equal linear-memory checks; it makes
+no portable speed claim. Broad admission and the standing goal remain open.
+
 ## Overprint display policy
 
 `RenderOptions::overprint` selects `OverprintPreview::{Auto, Always, Never}`;

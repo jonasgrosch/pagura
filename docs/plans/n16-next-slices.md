@@ -1,11 +1,22 @@
 # Next measured slices on the shared compositor
 
-These are candidates, not implemented or measured gains. Complete and commit
-the frozen guarded N16 conversion experiment before changing its product
-sources. Keep the glyph memo and earlier clip work in both comparison arms.
+These are separately measured candidates. The guarded N16 conversion is
+committed at `f98ad836`; its [u16 follow-up](../../benchmarks/results/n16-output-u16-experiment.md)
+is now independently validated and retained experimentally. Both designated
+targets pass latency/RSS, while 32 protected latency and 21 RSS gates still miss.
+Keep the glyph memo and earlier clip work in both comparison arms.
 The standing accuracy, resource and competitor goals remain unchanged.
 Re-profile the retained candidate before selecting the later structural slice;
 an earlier hot spot may shrink after an intervening optimization.
+
+The guarded conversion confirmation also leaves a protected F64 tail regression
+and substantial RSS variation to investigate. The Darwin collector already
+uses `/usr/bin/time -l` per-child OS high-water RSS in bytes; it is neither a
+periodic RSS sampler nor cumulative `getrusage` accounting. The completed bounded,
+same-binary A/A diagnostic records process/order variability on the two
+affected F64 controls and an N16 control. Preserve raw OS diagnostics and every
+observation. It must not replace the completed failed gates, subtract a noise
+allowance or establish a cause from a small quiet run.
 
 ## 1. Keep the exact converter in 16-bit lanes
 
@@ -13,7 +24,7 @@ Replace the current widened `n = u32::from(word) + 128` with
 `n = word.saturating_add(128)`, retaining `(n - (n >> 8)) >> 8`.
 For words through 65,407 the arithmetic is unchanged. Above that boundary,
 the original rounded division and the saturated expression both return 255.
-The subtraction cannot underflow. The existing exhaustive u16 and destination
+The subtraction cannot underflow. The existing exhaustive u16 and nonzero source
 offset/tail tests must pass, followed by native/WASM validation.
 
 The hypothesis is that narrower arithmetic reduces vector widening and
@@ -22,6 +33,9 @@ source-level simplicity does not prove faster code. There is no storage or
 work-accounting change. Use the same 46 cells and gates against the committed
 guarded converter, with fresh fixed pilot and confirmation seeds. Reject if
 the target benefit does not reproduce or protected regressions outweigh it.
+Check scalar WASM separately: its arithmetic representation and saturation
+lowering can differ from native vector instructions. Native gains alone do not
+justify claiming a portable improvement.
 
 ## 2. Skip untouched N16 output
 
@@ -47,7 +61,24 @@ Reject if bookkeeping costs defeat sparse gains, layout grows materially,
 or soundness requires broader tracking machinery. Allocation, initialization
 and scratch reuse are separate experiments.
 
-## 3. Resolve immutable glyph paint once per command
+## 3. Prepare N16 source words once per path invocation
+
+`narrow_path` resolves the floating source once, but `Buffer::path` converts
+its three color channels to N16 words again for every coverage span. A borrowed
+prepared span writer can perform that exact conversion once per invocation.
+Competitive glyph fragments already prepare their source in `MaskSink`; keep
+them as a control. This is smaller than caching resolved color functions.
+
+Keep source evaluation at its present point, area charges, span order, bounds
+checks, the U8 small-mask route and existing mixing arithmetic. Add no heap or
+retained cache. Check half-level source rounding, full/partial/mixed spans,
+fractional clips, nonzero tile origins and exact work/error boundaries against
+independent expectations. Freeze many-span Exact glyph and ordinary-path
+targets, with single-span, Competitive fragments, wide composition and tiny
+cold controls. Profile the current converter first; reject bookkeeping or
+dispatch complexity without a reproduced native benefit and WASM protection.
+
+## 4. Resolve immutable glyph paint once per command
 
 Preflight currently resolves required sources before culling, then execution
 can resolve the same Exact glyph paint once per visible glyph. Competitive
@@ -87,3 +118,20 @@ cases from independently adjudicated accuracy corrections. The opaque legacy
 route's incorrect partial-coverage output cannot serve as a correctness gate;
 its timing can still expose the cost paid to fix that output. Only a direct
 same-workload experiment can establish how the retained gains stack together.
+
+## Later memory candidate: remove redundant opaque alpha
+
+Production N16 starts with alpha 65,535 and its admitted opaque sources keep
+that value exactly under every coverage blend. Alpha therefore carries no
+new information there. The private buffer constructor and direct tests still
+permit arbitrary alpha, so first enforce or explicitly scope the invariant;
+do not silently change generic buffer semantics.
+
+A separate experiment can keep four-channel storage while omitting redundant
+alpha arithmetic. Three-channel arithmetic may vectorize worse. Only after
+that should an RGB `[u16; 3]` layout be considered: it reduces N16 pixel payload
+by 25%, but needs corresponding allocation charges, writer types and output
+packing that synthesizes opaque alpha. It loses the current flat RGBA output
+conversion, so neither latency nor RSS improves by implication. Defer separate
+color planes and their allocation/accounting complexity until measurements
+justify them. None of these proposals raises memory limits.

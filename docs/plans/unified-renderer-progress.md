@@ -277,3 +277,31 @@ from the canceled confirmation or the pilot enter the confirmation analysis.
 [Next slices](n16-next-slices.md) are an exact 16-bit converter, conservative
 untouched-output skipping and command-local paint resolution, followed by a
 direct net-stack comparison. They remain hypotheses until separately measured.
+
+## Exact output conversion in 16-bit lanes
+
+The [u16 follow-up](../../benchmarks/results/n16-output-u16-experiment.md) replaces
+widened addition with saturating u16 addition in the same exact converter. It
+adds no storage and removes the obsolete lint exception. Exhaustive 65,536-word
+equivalence, source-offset/tail checks, both-mode background/precision cases,
+and native/WASI host parity pass. Full validation passes 876 Rust tests,
+196 Python tests and 1,249 conformance cases.
+
+The fixed 46-cell confirmation verified all 18,860 outputs with 200 fresh pairs
+and five warmups per cell. Exact opaque64/full falls from 4.258334 to 3.797875 ms
+(10.8%); Competitive falls from 3.566167 to 3.115730 ms (12.6%). Both target
+latency and peak-RSS gates pass. Twelve of 44 protected latency cells and 25 of
+46 RSS cells pass. No protected median/p95 lower bound exceeds 1.02, but missing
+upper bounds and substantial RSS increases remain open. The explicit decision
+is experimental retention, without full admission.
+
+The run lasted 2,001.45 seconds including quiet preflight; 384 observer scans
+recorded no known competing jobs. The separate WASI screen checked 168 outputs
+and equal linear-memory sizes with no material-regression triage signal.
+The same-binary RSS diagnostic checked 84 outputs and found differing maxima
+even with equal medians; no threshold or earlier failure is changed. Its first
+audit stopped on a platform-string mismatch, then the corrected auditor checked
+the same retained samples successfully. No render or performance run was retried.
+
+Fresh profiling of this retained product precedes the next structural slice.
+The prepared-span and untouched-output proposals remain unapplied hypotheses.

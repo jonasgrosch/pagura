@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "identities": {
+    "baseline": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/n16-conversion-control/pagura",
+      "commit": "f98ad8365b46d500cbb866b13fcea0b0cbb28f7f",
+      "source_sha256": "9f1a5d5716a7439bd3d5dd01ac89e9bcca432c7d1595c753aef93295da343c11",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/n16-output-u16/baseline",
+      "binary_sha256": "8224748bbef58e5f0f9624794e11a7a4c7ee488335e6ab496e00e2035ee2cc43"
+    },
+    "candidate": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+      "commit": "f98ad8365b46d500cbb866b13fcea0b0cbb28f7f",
+      "source_sha256": "8b35ff8987f80bbfb67e29e9b6f33daa2ee5d6fed005e22412dbde20fbe73225",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/n16-output-u16/candidate",
+      "binary_sha256": "eea1389d53f105f0dbff3104da70a1268dc0ca06d585f63a4ff0ebc5eadae3a9"
+    }
+  },
+  "bound_files_sha256": {
+    "benchmarks/n16_output_u16.py": "9391855af5e63bdf02e0027ce3702ccc6a19486bb2acbd8e12e2100b87c4e086",
+    "benchmarks/evaluate_n16_output_u16.py": "4ee3f7b91395a04b70efd742d01723d67991e39f52630e2c9f9e58adf9dbe4b5",
+    "benchmarks/n16_output_guarded.py": "2121864dd28369cdec17d1e324ebc090a5a494331d669e56b5852f87cded66fc",
+    "benchmarks/evaluate_n16_output_guarded.py": "4bd0794a57553b54b1386947703b0785d1b9c255eb65b7614cfd80e9bac81965",
+    "benchmarks/n16_output.py": "d4ff736e8cb0dedeab7fda9ebb678bb4ce7796f66b7321cbfd520731bdc89c83",
+    "benchmarks/evaluate_n16_output.py": "1a62cda65c9d811982fc896dceb8b233df4b47c49819c667370c57095a6f2017",
+    "benchmarks/opaque_composition.py": "a9a27a3adbfe4e3b5da1a73c305cc7078fd3047860351d2448f336cbd179ea45",
+    "benchmarks/paired_render.py": "c7a074f3f6d63ac2df4fcd7f87f332d4848f8f10e3d7c54ec72b822717e16b27",
+    "benchmarks/glyph_memo.py": "5e0d66cd4d403868917a12bebaca18595536984a65be076a90594b8f699592ce",
+    "benchmarks/glyph_memo_fixtures.py": "9b866f12c61dbb7ddf2cc7e227559813b89f16a91370fdced96a7f46426e55a1",
+    "benchmarks/scene_index.py": "fbc260aa9607efb2c60dec4f8fa44445137def56b57881350f475c531c7a0f6a",
+    "benchmarks/clip_viewport_fixtures.py": "1f003e4f71dd493d6e8ff34eef6f25a1fd3d9587d6412e7ea183102f9a4dfed2",
+    "crates/pagura-render/examples/scene_index_profile.rs": "8e89a087d351e7b89289e0897cafeb75422d4c151280734fde8c958a841279f2",
+    "benchmarks/results/n16-output-u16-plan.json": "28365e87ab7c511924e1b9548d540a767ddc52293f28647ea234cf6190096bed",
+    "benchmarks/results/local/glyph-memo/load_observer.py": "d13e0911ef05eab394a45a7e3cb999be2b6764250bfb265b19164cc4fd822f7c",
+    "benchmarks/results/local/glyph-memo/idle_then.py": "bedfb4f54e1764360f2b90c56e093e96182fba15b6da4ffe9ab7d4400aad4d30",
+    "tools/fixturegen/pdf.py": "6d1546f6a56fedd06bb4bfe247f6b5fa747e092b6ac471f9134dcef72820f810",
+    "benchmarks/opaque_precision_probe.py": "962b71aa080bf1d58f96a9c2524abf88a577abd5a790166338fcaddacaa0e5d4",
+    "benchmarks/opaque_precision_fixtures.py": "84e50b24f54de9982985be6c2ea4147911999375461bb966b2845983055775df",
+    "benchmarks/opaque_host_probe.mjs": "5bfbde3017407f429dc9f6b968992ef320f6e47d14fee8948407326a7df311ee",
+    "benchmarks/results/local/n16-output-u16/check_and_build.py": "110e37da7dd3e457883f7a2e63f18d3e4ac3ab49d74f0ef6244ea783afd9d3a9",
+    "benchmarks/results/local/n16-output-u16/accuracy.py": "a54d673d7eb0e48816127c203cf767c9cdbef57fe86ae9968b7a7b3dee0898c3",
+    "benchmarks/results/local/n16-output-u16/freeze.py": "a597f742b603e0d5de52964060111ee2e685bfe02e4f53eca10eebe72a014527"
+  },
+  "candidate_runner_source_sha256": "554df29cb441a4a32f773da36bb0f7f401c12fe77c3fa7e3c3c512160decbd14",
+  "candidate_build_receipt": "local/n16-output-u16/build-002-receipt.json",
+  "candidate_build_receipt_sha256": "e2f0c99aab91f249b8c4f3c668c067efe17850df88632f1549c679edbe6e3546",
+  "baseline_build": {
+    "binary_sha256": "8224748bbef58e5f0f9624794e11a7a4c7ee488335e6ab496e00e2035ee2cc43",
+    "receipt": "local/n16-output-guarded/full-check-001-receipt.json",
+    "receipt_sha256": "4534774df26484fc437f1498f71fab8c1a9e0a12df81252589e684850ac99535",
+    "reuse": "Prior guarded candidate became committedf98ad836 without changing its measured product fingerprint. Reused exact previously built binary; not an independent rebuild.",
+    "source": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/n16-conversion-control/pagura",
+      "commit": "f98ad8365b46d500cbb866b13fcea0b0cbb28f7f",
+      "source_sha256": "9f1a5d5716a7439bd3d5dd01ac89e9bcca432c7d1595c753aef93295da343c11",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/n16-output-u16/baseline",
+      "binary_sha256": "8224748bbef58e5f0f9624794e11a7a4c7ee488335e6ab496e00e2035ee2cc43"
+    }
+  },
+  "validation": "Exhaustive all-u16 conversion, background source-over regression in both modes/full/tiles, focused native regression tests, renderer clippy and native/WASM host builds. Independent precision/parity follows freeze; complete repository check is required before retention."
+}

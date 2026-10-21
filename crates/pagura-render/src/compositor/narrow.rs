@@ -536,15 +536,11 @@ impl Buffer {
     }
 }
 
-/// Exactly `(word + 128) / 257`, without widening multiplication or division.
-/// For `n = 256*q + r`, both divisions yield `q` when `r >= q`, else `q - 1`.
-/// Here `n <= 65663`, so `q <= 256` and the result is always a byte.
-#[expect(
-    clippy::cast_possible_truncation,
-    reason = "the quotient is in 0..=255"
-)]
+/// Exactly `(word + 128) / 257`, using only 16-bit arithmetic.
+/// Below saturation, `n = 256*q + r` gives `q` when `r >= q`, else `q - 1`.
+/// Above it, both the original quotient and the saturated expression are 255.
 fn word_byte(word: u16) -> u8 {
-    let n = u32::from(word) + 128;
+    let n = word.saturating_add(128);
     ((n - (n >> 8)) >> 8) as u8
 }
 
