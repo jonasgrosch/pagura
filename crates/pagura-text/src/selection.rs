@@ -2,6 +2,7 @@
 use crate::tables;
 use pagura_core::Name;
 use pagura_font::{CmapSubtable, FontProgram, GlyphId};
+use std::sync::LazyLock;
 
 /// How a TrueType font's codes reach its cmap (9.6.5.4).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -13,6 +14,10 @@ pub(crate) enum Route {
     /// Unicode in (3,1) or Mac Roman in (1,0), then the post table.
     Named,
 }
+
+/// The high bytes under which a (3,0) symbol subtable may place a single-byte
+/// code: none, or U+F000, U+F100 or U+F200 (9.6.5.4).
+const SYMBOL_PAGES: [u32; 4] = [0, 0xf000, 0xf100, 0xf200];
 
 pub(crate) fn truetype(
     program: &FontProgram,
@@ -69,7 +74,7 @@ fn scalar(text: Option<&str>) -> Option<u32> {
 }
 
 fn symbol(program: &FontProgram, code: u32) -> Option<GlyphId> {
-    [0, 0xf000, 0xf100, 0xf200]
+    SYMBOL_PAGES
         .into_iter()
         .find_map(|high| mapped(program, CmapSubtable::WindowsSymbol, code + high))
 }
@@ -85,7 +90,7 @@ fn raw_unicode(program: &FontProgram, code: u32) -> Option<GlyphId> {
     ]
     .into_iter()
     .find_map(|table| {
-        [0, 0xf000, 0xf100, 0xf200]
+        SYMBOL_PAGES
             .into_iter()
             .find_map(|high| mapped(program, table, code + high))
     })
@@ -97,32 +102,57 @@ fn mapped(program: &FontProgram, subtable: CmapSubtable, code: u32) -> Option<Gl
         .filter(|glyph| glyph.0 != 0)
 }
 
+/// The Mac OS character code of a glyph name (Table 113), by binary search.
 fn mac_os_code(name: &[u8]) -> Option<u32> {
     // Table 113 adds these entries and replaces MacRoman's currency at 219.
-    const ADDITIONS: &[(&[u8], u32)] = &[
-        (b"notequal", 173),
-        (b"infinity", 176),
-        (b"lessequal", 178),
-        (b"greaterequal", 179),
-        (b"partialdiff", 182),
-        (b"summation", 183),
-        (b"product", 184),
-        (b"pi", 185),
-        (b"integral", 186),
-        (b"Omega", 189),
-        (b"radical", 195),
-        (b"approxequal", 197),
-        (b"Delta", 198),
-        (b"lozenge", 215),
-        (b"Euro", 219),
-        (b"apple", 240),
+    const ADDITIONS: [(&str, u8); 16] = [
+        ("notequal", 173),
+        ("infinity", 176),
+        ("lessequal", 178),
+        ("greaterequal", 179),
+        ("partialdiff", 182),
+        ("summation", 183),
+        ("product", 184),
+        ("pi", 185),
+        ("integral", 186),
+        ("Omega", 189),
+        ("radical", 195),
+        ("approxequal", 197),
+        ("Delta", 198),
+        ("lozenge", 215),
+        ("Euro", 219),
+        ("apple", 240),
     ];
-    ADDITIONS
-        .iter()
-        .find_map(|(glyph, code)| (*glyph == name).then_some(*code))
-        .or_else(|| {
-            tables::MAC_ROMAN.iter().find_map(|(code, glyph)| {
-                (*code != 219 && glyph.as_bytes() == name).then_some(u32::from(*code))
-            })
-        })
+    static CODES: LazyLock<Vec<(&'static [u8], u8)>> = LazyLock::new(|| {
+        let mut codes: Vec<(&[u8], u8)> = ADDITIONS
+            .iter()
+            .map(|(name, code)| (name.as_bytes(), *code))
+            .collect();
+        // The first assignment of a name wins, as in a scan of the table.
+        for &(code, name) in tables::MAC_ROMAN {
+            if code != 219 && !codes.iter().any(|(known, _)| *known == name.as_bytes()) {
+                codes.push((name.as_bytes(), code));
+            }
+        }
+        codes.sort_unstable();
+        codes
+    });
+    let index = CODES
+        .binary_search_by(|(glyph, _)| (*glyph).cmp(name))
+        .ok()?;
+    Some(u32::from(CODES[index].1))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mac_os_codes_include_table_113_additions() {
+        assert_eq!(mac_os_code(b"A"), Some(65));
+        assert_eq!(mac_os_code(b"Euro"), Some(219));
+        assert_eq!(mac_os_code(b"currency"), None);
+        assert_eq!(mac_os_code(b"apple"), Some(240));
+        assert_eq!(mac_os_code(b"unknown"), None);
+    }
 }
