@@ -30,6 +30,9 @@ fn scenes_are_recorded_once_and_shared_through_the_store() {
     let again = context.scene(page).unwrap();
     assert!(Arc::ptr_eq(&first, &again));
     assert_eq!(context.retained_bytes(), retained);
+    let unstored = context.record(page).unwrap();
+    assert_eq!(unstored.marks(), first.marks());
+    assert_eq!(context.retained_bytes(), retained, "record keeps no scene");
     let uncached = RenderContext::with_store_capacity(document, None, 0);
     let page = uncached.document().page(0).unwrap();
     let a = uncached.scene(page).unwrap();

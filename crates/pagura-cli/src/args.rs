@@ -41,10 +41,14 @@ commands:
               one JSON line describing what opened, rendered and failed; it
               opens strictly first and repairs only when that fails
   roundtrip   open strictly and save the original bytes unchanged
-  microbench  time COUNT (1 to 100000) repetitions of OPERATION: open-pages,
-              render-cold (open, record and render page 0) or render-warm
-              (render page 0 from one context, which keeps its recorded
-              scene); Pagura-only profiling, never a cross-engine comparison
+  microbench  time COUNT (1 to 100000) repetitions of OPERATION on page 0 of
+              a document opened once: open-pages opens it again;
+              render-cold records and renders with a new context, so no
+              font, image or scene is reused; record-warm records with one
+              context, which reuses fonts, glyphs and images but keeps no
+              scene; render-warm renders from one context, which records the
+              page once and keeps its scene. Pagura-only profiling, never a
+              cross-engine comparison
   licenses    print the notices of the data linked into this build
 
 PAGE, FIRST and LAST count from 0; convert names its images from 1
@@ -155,20 +159,28 @@ pub(crate) enum Timings {
 pub(crate) enum Bench {
     /// Open the document and build its page list.
     OpenPages,
-    /// Open, compile and render the first page.
+    /// Record and render the first page with a new render context.
     RenderCold,
-    /// Render the first page from one shared render context.
+    /// Record the first page with one render context, keeping no scene.
+    RecordWarm,
+    /// Render the first page from one render context, which keeps its scene.
     RenderWarm,
 }
 
 impl Bench {
-    const ALL: [Self; 3] = [Self::OpenPages, Self::RenderCold, Self::RenderWarm];
+    const ALL: [Self; 4] = [
+        Self::OpenPages,
+        Self::RenderCold,
+        Self::RecordWarm,
+        Self::RenderWarm,
+    ];
 
     /// The operation's command-line and JSON name.
     pub(crate) const fn name(self) -> &'static str {
         match self {
             Self::OpenPages => "open-pages",
             Self::RenderCold => "render-cold",
+            Self::RecordWarm => "record-warm",
             Self::RenderWarm => "render-warm",
         }
     }
@@ -454,7 +466,9 @@ fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Comma
             let operation = Bench::ALL
                 .into_iter()
                 .find(|bench| operation.to_str() == Some(bench.name()))
-                .ok_or_else(|| usage("OPERATION must be open-pages, render-cold or render-warm"))?;
+                .ok_or_else(|| {
+                    usage("OPERATION must be open-pages, render-cold, record-warm or render-warm")
+                })?;
             let count: u32 = number(count, "COUNT")?;
             if !BENCH_COUNTS.contains(&count) {
                 return Err(usage("COUNT must be 1 to 100000"));

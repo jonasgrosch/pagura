@@ -136,6 +136,18 @@ impl RenderContext {
         })
     }
 
+    /// Records `page` without keeping the scene, for a single pass over
+    /// pages: fonts, glyphs and images still come from the store, but the
+    /// scene is the caller's alone.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::scene`].
+    pub fn record(&self, page: &Page) -> Result<Scene> {
+        self.check_owned(page)?;
+        self.renderer().record(page)
+    }
+
     /// Records `page` with the in-memory form values of `filler`, generating
     /// appearances where they are needed (12.7.4.3). Filled scenes change with
     /// every edit, so they are not stored.

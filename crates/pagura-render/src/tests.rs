@@ -186,6 +186,7 @@ fn pages_of_another_document_are_rejected() {
     let options = RenderOptions::default();
     for result in [
         context.scene(page).map(drop),
+        context.record(page).map(drop),
         context.render_page(page, &options).map(drop),
         context.text_page(page).map(drop),
         context.content_bounds(page).map(drop),
