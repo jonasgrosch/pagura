@@ -244,6 +244,11 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
 - `font.type3-width` (9.6.4, Table 111): `Widths` controls the advance when a
   CharProc's `d0`/`d1` width disagrees or declares a nonzero vertical advance;
   glyph geometry is retained.
+- `font.type3-empty-bounds` (9.6.4, Table 111): reversed `d1` bounds are
+  ignored only after the entire Type 3 procedure compiles without drawing
+  commands. `Widths`, text extraction and following page content are retained.
+  Strict mode rejects this repair; reversed bounds on painted glyphs and
+  other procedure errors remain failures in both modes.
 - `content.pattern-underlying` (8.7.3.2, Table 73): coloured patterns keep their
   intrinsic colours and accept a lone pattern name even when a base space is
   declared. Extra numeric underlying-colour operands are reported and discarded.

@@ -279,3 +279,39 @@ def cases():
     yield from transfer_cases()
     yield from codec_cases()
     yield render('unclosed-graphics',b'q 1 0 0 rg 1 1 4 4 re f',rectangles=[((1,1,4,4),(255,0,0))],repairs=('content.graphics-unclosed',))
+    yield from type3_empty_bounds_cases()
+
+
+def type3_empty_bounds_cases():
+    """An empty glyph still advances; a following painted glyph pins placement."""
+    font = (b'<< /Type /Font /Subtype /Type3 /FontBBox [0 0 400 600] '
+            b'/FontMatrix [.001 0 0 .001 0 0] /FirstChar 65 /LastChar 66 '
+            b'/Widths [400 400] /Encoding << /Differences [65 /A /B] >> '
+            b'/CharProcs << /A 6 0 R /B 7 0 R >> '
+            b'/Resources << /XObject << /X 8 0 R >> >> >>')
+    painted = stream(b'400 0 0 0 400 600 d1 0 0 400 600 re f')
+    nested = stream(b'0 0 400 600 re f', b'/Subtype /Form /BBox [0 0 400 600] /Resources << >>')
+    content = b'BT /F 10 Tf 2 2 Td (AAB) Tj ET 1 0 0 rg 1 12 3 2 re f'
+    resources = b'<< /Font << /F 5 0 R >> >>'
+    for name, bounds, tail in [
+        ('x', b'420 140 30 220', b''),
+        ('y', b'30 220 420 140', b''),
+        ('xy', b'420 220 30 140', b' q 0 0 100 100 re n Q'),
+        ('zero', b'0 0 0 0', b''),
+    ]:
+        yield render('type3-empty-bounds-' + name, content,
+                     [font, stream(b'400 0 ' + bounds + b' d1' + tail), painted, nested],
+                     resources, [((10,2,4,6),BLACK), ((1,12,3,2),(255,0,0))],
+                     requirement='recovery-type3',
+                     repairs=() if name == 'zero' else ('font.type3-empty-bounds',))
+    for name, tail in [
+        ('painted', b'0 0 400 600 re f'),
+        ('nested', b'/X Do'),
+        ('duplicate', b'400 0 d0'),
+        ('malformed', b'0 0 m 1 l'),
+    ]:
+        yield Case('type3-empty-bounds-' + name,
+                   page(content, [font, stream(b'400 0 30 220 420 140 d1 ' + tail), painted, nested], resources),
+                   OPEN, ('recovery-type3',),
+                   'Reversed bounds do not hide painting or later procedure errors',
+                   extra={'render_error': 'syntax'})

@@ -1289,6 +1289,152 @@
       "width": 16,
       "height": 16,
       "tolerance": 0
+    },
+    {
+      "id": "recovery/type3-empty-bounds-x",
+      "kind": "pdf",
+      "description": "type3 empty bounds x",
+      "expected": "render",
+      "requirements": [
+        "recovery-type3"
+      ],
+      "path": "corpus/generated/recovery/type3-empty-bounds-x.pdf",
+      "sha256": "342efe7f2d2470457ae3ef55bd2cb4a8d438c3c6b4498448cdb99f612e716cf2",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.type3-empty-bounds"
+      ],
+      "oracle": "corpus/generated/recovery/type3-empty-bounds-x.ppm",
+      "oracle_sha256": "5f3a891ee258c7e78fa927b9ba1c2615db0b25aaa20de6ec1628a2f297317f2d",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type3-empty-bounds-y",
+      "kind": "pdf",
+      "description": "type3 empty bounds y",
+      "expected": "render",
+      "requirements": [
+        "recovery-type3"
+      ],
+      "path": "corpus/generated/recovery/type3-empty-bounds-y.pdf",
+      "sha256": "cbba114f62802dd3e60b95b0ebd9c9c47a5e088d21cadd7d86271ce03afe66fc",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.type3-empty-bounds"
+      ],
+      "oracle": "corpus/generated/recovery/type3-empty-bounds-y.ppm",
+      "oracle_sha256": "5f3a891ee258c7e78fa927b9ba1c2615db0b25aaa20de6ec1628a2f297317f2d",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type3-empty-bounds-xy",
+      "kind": "pdf",
+      "description": "type3 empty bounds xy",
+      "expected": "render",
+      "requirements": [
+        "recovery-type3"
+      ],
+      "path": "corpus/generated/recovery/type3-empty-bounds-xy.pdf",
+      "sha256": "4df52fb1e31cc0585314964e5bf8d4c1e9a74ce7476621287fc6a410c2bc2740",
+      "pages": 1,
+      "strict_valid": false,
+      "repairs": [
+        "font.type3-empty-bounds"
+      ],
+      "oracle": "corpus/generated/recovery/type3-empty-bounds-xy.ppm",
+      "oracle_sha256": "5f3a891ee258c7e78fa927b9ba1c2615db0b25aaa20de6ec1628a2f297317f2d",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type3-empty-bounds-zero",
+      "kind": "pdf",
+      "description": "type3 empty bounds zero",
+      "expected": "render",
+      "requirements": [
+        "recovery-type3"
+      ],
+      "path": "corpus/generated/recovery/type3-empty-bounds-zero.pdf",
+      "sha256": "ae9126d193b929571b023de4f2957f9a5805536701cca217af7bb1d0322421a3",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "oracle": "corpus/generated/recovery/type3-empty-bounds-zero.ppm",
+      "oracle_sha256": "5f3a891ee258c7e78fa927b9ba1c2615db0b25aaa20de6ec1628a2f297317f2d",
+      "dpi": 72,
+      "width": 16,
+      "height": 16,
+      "tolerance": 0
+    },
+    {
+      "id": "recovery/type3-empty-bounds-painted",
+      "kind": "pdf",
+      "description": "Reversed bounds do not hide painting or later procedure errors",
+      "expected": "open",
+      "requirements": [
+        "recovery-type3"
+      ],
+      "path": "corpus/generated/recovery/type3-empty-bounds-painted.pdf",
+      "sha256": "a5a8ffe6f53f5338bc18dfac866e1241a85385dc910661a1dcc981f479bbd3ac",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/type3-empty-bounds-nested",
+      "kind": "pdf",
+      "description": "Reversed bounds do not hide painting or later procedure errors",
+      "expected": "open",
+      "requirements": [
+        "recovery-type3"
+      ],
+      "path": "corpus/generated/recovery/type3-empty-bounds-nested.pdf",
+      "sha256": "2d2d9f6b77e6e7678267877436493c2c114dd287b9219ec7de7d681855934bcc",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/type3-empty-bounds-duplicate",
+      "kind": "pdf",
+      "description": "Reversed bounds do not hide painting or later procedure errors",
+      "expected": "open",
+      "requirements": [
+        "recovery-type3"
+      ],
+      "path": "corpus/generated/recovery/type3-empty-bounds-duplicate.pdf",
+      "sha256": "33b47377185349392c3699467301bcd8eb5c24a39052dc8f9fc3f72b698bec42",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
+    },
+    {
+      "id": "recovery/type3-empty-bounds-malformed",
+      "kind": "pdf",
+      "description": "Reversed bounds do not hide painting or later procedure errors",
+      "expected": "open",
+      "requirements": [
+        "recovery-type3"
+      ],
+      "path": "corpus/generated/recovery/type3-empty-bounds-malformed.pdf",
+      "sha256": "fa349496e0e41c34998135b306a56a03633349ceca0462f1d6eb08378022de45",
+      "pages": 1,
+      "strict_valid": true,
+      "repairs": [],
+      "render_error": "syntax"
     }
   ]
 }
