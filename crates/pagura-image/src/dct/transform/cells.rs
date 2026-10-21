@@ -132,7 +132,6 @@ impl Cells {
     /// Separable cell means of the unclamped samples, rounded once. Only
     /// the natural positions in `set` hold nonzero coefficients; they are
     /// visited in row-major order, as a dense pass that skips zeros would.
-    /// Cells past the count have zero weights and are not stored.
     fn means<const N: usize>(&self, natural: &[f32; 64], mut set: u64) -> [[u8; N]; N] {
         let mut horizontal = [[0.0f32; N]; 8];
         let mut rows = 0_u8;
@@ -163,9 +162,7 @@ impl Cells {
     }
 }
 
-/// `N` by `N` cells in the corner of a six by six block. Each cell's mean
-/// sums the same terms in the same order whatever `N` is, so a smaller `N`
-/// computes the same first cells.
+/// N by N cells in the corner of a six by six block.
 fn widen<const N: usize>(cells: [[u8; N]; N]) -> [[u8; 6]; 6] {
     let mut block = [[0u8; 6]; 6];
     for (out, row) in block.iter_mut().zip(cells) {
