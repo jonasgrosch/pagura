@@ -622,9 +622,14 @@ async function testViewer(TestWorker, root, manifest, startup = null, diagnostic
     elements.get('viewport').dispatch('touchend');
     fakeWindow.dispatch('keydown', { key: '0' }); await waitFor(ready);
     assert.equal(view(0).style.width, '64px'); elements.get('viewport').clientHeight = 300;
-    await pick(manifest.cases.find((entry) => entry.expected === 'unsupported'));
+    // This pattern is unsupported only when its device lattice collapses at
+    // scale 1. At 25% zoom the bounded 4x backing density requests that scale;
+    // the normal 2x raster correctly makes this particular pattern renderable.
+    elements.get('zoom').value = '0.25';
+    await pick(manifest.cases.find((entry) => entry.id === 'classic/pattern-unsupported'));
     await waitFor(() => !elements.get('error').hidden);
     assert.match(elements.get('error').textContent, /Unsupported \[[^\]]+\]/); assert.equal(canvases().length, 0);
+    elements.get('zoom').value = '1';
     fakeWindow.dispatch('drop', { dataTransfer: { files: [new File([await readFile(join(root, rectangle.path))], 'dropped.pdf')] } });
     await waitFor(ready); assert.equal(elements.get('filename').textContent, 'dropped.pdf');
     elements.get('page').value = '2'; elements.get('page').dispatch('change'); assert.equal(elements.get('page').value, '1');
