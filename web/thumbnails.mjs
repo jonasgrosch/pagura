@@ -1,6 +1,7 @@
 import { rotatedSize, rotationTransform } from './view_rotation.mjs';
+import { thumbnailRaster } from './thumbnail_raster.mjs';
 
-const ROW = 202, CACHE_SIZE = 32, DENSITY = 2;
+const ROW = 202, CACHE_SIZE = 32;
 /** Virtualized sidebar: bounded pixels/DOM, one idle request at a time, no form controls. */
 export class Thumbnails {
   constructor({ state, navigate, panel, list }) {
@@ -110,13 +111,11 @@ export class Thumbnails {
       if (this.stopped || state.epoch !== this.state().epoch || !this.state().visible) return;
       let width = (info.crop[2] - info.crop[0]) * info.userUnit, height = (info.crop[3] - info.crop[1]) * info.userUnit;
       if (info.rotation % 180) [width, height] = [height, width];
-      const scale = Math.min(140 * DENSITY / width, 166 * DENSITY / height);
-      // Yield if foreground rendering started while metadata was loading.
-      if (!this.state().idle) return;
-      const image = await state.client.renderTile(state.handle, index, scale, { x: 0, y: 0, width: Math.max(1, Math.ceil(width * scale - 1e-9)), height: Math.max(1, Math.ceil(height * scale - 1e-9)) });
-      if (this.stopped || state.epoch !== this.state().epoch) return;
-      const canvas = document.createElement('canvas'); canvas.width = image.width; canvas.height = image.height; canvas.setAttribute('aria-hidden', 'true');
-      canvas.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(image.rgba), image.width, image.height), 0, 0);
+      const canvas = await thumbnailRaster({ doc: document, width, height, raster: this.state().raster?.(index),
+        current: () => !this.stopped && state.epoch === this.state().epoch && this.state().visible && this.state().idle,
+        render: (scale, tile) => state.client.renderTile(state.handle, index, scale, tile) });
+      if (!canvas) return;
+      if (this.stopped || state.epoch !== this.state().epoch) { this.release({ canvas }); return; }
       this.cache.set(index, { canvas, width, height });
     } catch { if (!this.stopped && state.epoch === this.state().epoch) this.cache.set(index, { error: true }); }
     finally {

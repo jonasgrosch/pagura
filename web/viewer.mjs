@@ -1,3 +1,4 @@
+import { renderDensity } from './render_density.mjs';
 import { TileCache, TilePreloader, formsAllowPreload } from './tile_cache.mjs';
 import { tilesInRegion, aheadRegion } from './tile_region.mjs';
 import { Thumbnails } from './thumbnails.mjs';
@@ -57,7 +58,12 @@ const thumbnails = new Thumbnails({
     idle: !drawing && !dirty && !editor.busy && !editor.preview?.running && !editor.preview?.timer
       && interactionQuiet() && !preloader.running && !(preloader.allowed() && preloader.jobs.length), visible: !$('document-sidebar').hidden && !$('thumbnails-panel').hidden,
     label: index => reader.label(index), rotation: index => rotations.get(index) ?? 0,
-    forms: index => editor.pages.get(index), dirtyForms: editor.changes.size > 0 }),
+    forms: index => editor.pages.get(index), dirtyForms: editor.changes.size > 0,
+    raster: index => {
+      const info = infos.get(index), view = views.get(index), scale = zoom * renderDensity(zoom, window.devicePixelRatio);
+      return info?.width && view && !view.failed ? { tiles: view.tiles,
+        width: Math.max(1, Math.ceil(info.width * scale - 1e-9)), height: Math.max(1, Math.ceil(info.height * scale - 1e-9)) } : null;
+    } }),
   navigate, panel: $('thumbnails-panel'), list: $('thumbnail-list'),
 });
 function displaySize(info, index = page) { return rotatedSize(info.width, info.height, rotations.get(index) ?? 0); }
@@ -218,7 +224,7 @@ function visiblePages() {
   return Array.from({ length: last - first + 1 }, (_, offset) => first + offset);
 }
 function tileRequests(index, info) {
-  return tilesInRegion(info, zoom, window.devicePixelRatio, rotations.get(index) ?? 0,
+  return tilesInRegion(info, zoom, renderDensity(zoom, window.devicePixelRatio), rotations.get(index) ?? 0,
     views.get(index).element.getBoundingClientRect(), viewport.getBoundingClientRect(), MAX_TILES);
 }
 function removeView(index, view) {
@@ -244,7 +250,7 @@ function planAhead() {
   const last = layout.pageAt(viewport.scrollTop + region.bottom - viewport.getBoundingClientRect().top - 24, zoom);
   const pages = Array.from({ length: Math.min(3, last - first + 1) }, (_, i) => direction.sign > 0 ? first + i : last - i);
   const jobs = pages.map(index => ({ index, info: infos.get(index)?.width ? infos.get(index) : null, region, surfaceBounds,
-    epoch: documentEpoch, token: generation, client, handle, zoom, ratio: window.devicePixelRatio, rotation: rotations.get(index) ?? 0,
+    epoch: documentEpoch, token: generation, client, handle, zoom, ratio: renderDensity(zoom, window.devicePixelRatio), rotation: rotations.get(index) ?? 0,
     top: layout.top(index, zoom), direction: { ...direction } }));
   preloader.plan(Array.from({ length: 16 }, (_, i) => jobs[i % jobs.length]));
 }
@@ -310,7 +316,7 @@ async function draw() {
       const tiles = tileRequests(index, info); total += tiles.length; requested.set(index, tiles);
     }
     if (total > MAX_TILES) throw new Error('Visible pages exceed the tile budget; increase zoom');
-    tileCache.pin([...requested].flatMap(([index, tiles]) => tiles.map(tile => TileCache.key(index, zoom * window.devicePixelRatio, tile))));
+    tileCache.pin([...requested].flatMap(([index, tiles]) => tiles.map(tile => TileCache.key(index, zoom * renderDensity(zoom, window.devicePixelRatio), tile))));
     for (const index of visiblePages()) {
       if (epoch !== documentEpoch || token !== generation) return;
       const info = infos.get(index), view = pageView(index);
@@ -322,16 +328,16 @@ async function draw() {
         for (const tile of requests) {
           if (epoch !== documentEpoch || token !== generation) return;
           const key = `${tile.x},${tile.y}`; if (view.tiles.has(key)) continue;
-          const cacheKey = TileCache.key(index, zoom * window.devicePixelRatio, tile);
+          const cacheKey = TileCache.key(index, zoom * renderDensity(zoom, window.devicePixelRatio), tile);
           let canvas = tileCache.get(cacheKey);
           if (!canvas) {
             status.textContent = 'Rendering visible tiles…';
-            const image = await client.renderGenerationTile(documentHandle, index, zoom * window.devicePixelRatio, tile, token);
+            const image = await client.renderGenerationTile(documentHandle, index, zoom * renderDensity(zoom, window.devicePixelRatio), tile, token);
             if (epoch !== documentEpoch || token !== generation || image.cancelled) return;
             canvas = tileCanvas(image);
             if (!tileCache.put(cacheKey, canvas)) { canvas.width = 0; canvas.height = 0; throw new Error('Visible tiles exceed the raster cache budget'); }
           }
-          const ratio = window.devicePixelRatio;
+          const ratio = renderDensity(zoom, window.devicePixelRatio);
           Object.assign(canvas.style, { left: `${tile.x / ratio}px`, top: `${tile.y / ratio}px`, width: `${canvas.width / ratio}px`, height: `${canvas.height / ratio}px` });
           view.tiles.set(key, canvas); view.content.append(canvas);
         }
@@ -460,7 +466,8 @@ for (const id of ['thumbnails-tab', 'outline-tab']) $(id).addEventListener('keyd
 });
 $('reading-dismiss').addEventListener('click', () => { $('reading-status').textContent = ''; });
 $('diagnostics-open').addEventListener('click', () => $('diagnostics-dialog').showModal());
-$('diagnostics-close').addEventListener('click', () => { $('diagnostics-dialog').close(); $('more-menu').querySelector('summary').focus(); });
+$('diagnostics-close').addEventListener('click', () => $('diagnostics-dialog').close());
+$('diagnostics-dialog').addEventListener('close', () => $('more-menu').querySelector('summary').focus());
 $('more-menu').addEventListener('toggle', () => { $('more-menu').querySelector('summary').setAttribute('aria-expanded', String($('more-menu').open)); });
 $('more-menu').addEventListener('click', event => { if (event.target.closest('button')) $('more-menu').open = false; });
 document.addEventListener('click', event => { if (!event.target.closest('#more-menu')) $('more-menu').open = false; });

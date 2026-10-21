@@ -1,10 +1,11 @@
+import { renderDensity } from './render_density.mjs';
 import { pagePoint, quadBounds } from './page_geometry.mjs';
 
 /** Prewarm source artwork once per visible page/zoom; a click only flips canvases. */
 export class ButtonArtwork {
   constructor(editor) { this.editor = editor; }
   async page(index, record, info, zoom) {
-    const ratio = globalThis.devicePixelRatio || 1, key = `${zoom}:${ratio}`;
+    const ratio = renderDensity(zoom), key = `${zoom}:${ratio}`;
     if (record.buttonKey === key) return;
     record.buttonKey = key;
     for (const canvas of record.buttonCanvases ?? []) canvas.remove();

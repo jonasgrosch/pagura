@@ -112,8 +112,11 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 [role=treeitem]:active { background: var(--pressed); }
 [role=treeitem][aria-selected=true] { background: var(--selected); }
 [role=treeitem][aria-selected=true]:hover { background: var(--selected-hover); }
+[role=treeitem][aria-selected=true]:active { background: var(--selected-pressed); }
 [role=treeitem]:focus-visible { outline-offset: -2px; }
-.outline-toggle { position: absolute; width: 16px; top: 6px; margin-left: -18px; text-align: center; color: var(--muted); }
+.outline-toggle { position: absolute; width: 16px; height: 20px; top: 6px; color: var(--muted); }
+.outline-toggle::before { content: ''; position: absolute; left: 4px; top: 6px; width: 6px; height: 6px; border-right: 1.5px solid; border-bottom: 1.5px solid; transform: rotate(-45deg); }
+[role=treeitem][aria-expanded=true] > .outline-toggle::before { transform: rotate(45deg); top: 5px; }
 
 /* Dialogs and notices use the same spacing and control states as the toolbar. */
 dialog { width: min(calc(100vw - 32px), 460px); max-width: none; max-height: calc(100dvh - 32px); border: 1px solid var(--line); border-radius: 12px; padding: 20px; background: #fafafa; color: var(--ink); box-shadow: 0 16px 50px #0003; overflow: auto; }

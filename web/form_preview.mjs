@@ -1,3 +1,4 @@
+import { renderDensity } from './render_density.mjs';
 import { pagePoint, quadBounds } from './page_geometry.mjs';
 
 /** A disposable draft snapshot supplies the same artwork as the downloaded PDF.
@@ -42,7 +43,7 @@ export class FormPreview {
   async page(index, record, info, zoom) {
     const snapshot = this.snapshot;
     if (!snapshot) return;
-    const ratio = globalThis.devicePixelRatio || 1;
+    const ratio = renderDensity(zoom);
     const key = `${snapshot.version}:${zoom}:${ratio}`;
     if (record.previewKey === key) return;
     this.clearPage(record); record.previewKey = key;

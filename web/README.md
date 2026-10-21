@@ -32,7 +32,9 @@ available in both recovery modes.
   Thumbnail rows are virtualized and keyboard navigable; up to 32 thumbnails
   are retained (under 24 MiB including separate base/draft RGBA canvases). One thumbnail request runs
   at a time, after visible-page work, and stale document results are discarded.
-  Thumbnails render at twice CSS density. Visible pages composite the same cached
+  Thumbnails retain twice CSS density, downsampled from complete page tiles when
+  available. Otherwise idle 256px chunks build a temporary higher-resolution
+  raster (at most 5.68 MiB), released on completion or interruption. Visible pages composite the same cached
   form artwork used on the page after a short input coalescing delay, without
   saving or rendering another document. Offscreen draft previews are marked
   until their page is viewed; saving refreshes the document-wide baseline.
@@ -63,7 +65,11 @@ The layout uses page geometry from ISO 32000-2 7.7.3.3 (Table 31) and 8.3.2.3.
 Compact prefix sums retain discovered heights without creating a DOM element
 for every page. Detailed metadata is capped at 256 pages, visible page elements
 at 32, and canvases at 128 tiles. Tiles are 256 device pixels, painted at
-zoom × devicePixelRatio. Layout extents are limited to 10 million CSS pixels;
+zoom × renderDensity(zoom, devicePixelRatio). Reduced pages target two raster
+pixels per page point, with additional density capped at four pixels per CSS
+pixel; native HiDPI is never reduced. Page tiles, button artwork and draft
+appearances share that density, avoiding heavy device-snapped borders at low
+zoom. Layout extents are limited to 10 million CSS pixels;
 exceeding a budget displays an error rather than silently truncating a document.
 
 ## Session and caching

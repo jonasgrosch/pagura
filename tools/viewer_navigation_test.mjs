@@ -1,7 +1,9 @@
+import { renderDensity } from '../web/render_density.mjs';
 import { selectionPath, paintSelection, registerSelectionGeometry } from '../web/selection_layer.mjs';
 import assert from 'node:assert/strict';
 import { rotatedSize, rotatePoint, unrotatePoint, rasterBounds } from '../web/view_rotation.mjs';
 import { Thumbnails } from '../web/thumbnails.mjs';
+import { thumbnailRaster } from '../web/thumbnail_raster.mjs';
 
 // Non-square pages and partial viewports catch the missing/incorrect rotated tiles.
 for (const rotation of [0, 90, 180, 270]) {
@@ -31,6 +33,7 @@ globalThis.document = { createElement: () => new Element() }; globalThis.ImageDa
 let renders = 0, metadata = 0, pending;
 const state = { epoch: 1, count: 2000, page: 0, visible: true, handle: 1, idle: false, label: index => String(index + 1), rotation: () => 0,
   client: { pageInfo: async () => { metadata++; return { crop: [0,0,600,800], userUnit: 1, rotation: 0 }; }, renderTile: async (_, __, ___, tile) => {
+    assert.ok(tile.width <= 256 && tile.height <= 256, 'background requests stay small enough to yield between tiles');
     renders++; if (pending) await pending.promise;
     return { ...tile, rgba: new Uint8Array(tile.width * tile.height * 4) };
   } } };
@@ -41,20 +44,20 @@ try {
   thumbnails.refresh();
   assert.ok(list.children.length <= 6, 'thousands of pages must not create thousands of DOM rows');
   await thumbnails.renderNext(); assert.equal(metadata, 0, 'foreground rendering blocks thumbnail work');
-  state.idle = true; await thumbnails.renderNext(); assert.equal(renders, 1);
-  await thumbnails.renderNext(); assert.equal(renders, 2); assert.equal(thumbnails.cache.size, 2);
+  state.idle = true; await thumbnails.renderNext(); assert.equal(renders, 24);
+  await thumbnails.renderNext(); assert.equal(renders, 48); assert.equal(thumbnails.cache.size, 2);
   const firstThumbnail = thumbnails.cache.get(0);
   assert.equal(firstThumbnail.canvas.height, 332, 'thumbnails render at two physical pixels per CSS pixel');
   const patch = new Element(); Object.assign(patch.style, { left:'10px', top:'20px', width:'30px', height:'40px' });
   const record = { info:{width:600,height:800}, zoom:1, layer:new Element(), buttonCanvases:[patch], previewCanvases:[] };
   state.forms = index => index === 0 ? record : undefined; state.dirtyForms = true;
   thumbnails.revision++; thumbnails.paint(0, thumbnails.rows.get(0));
-  assert.equal(renders, 2, 'draft compositing reuses field pixels without a host render or save');
+  assert.equal(renders, 48, 'draft compositing reuses field pixels without a host render or save');
   const composed = thumbnailDraws.at(-1);
   assert.equal(composed[0], patch); assert.ok(Math.abs(composed[1] - 4.15) < 1e-6); assert.ok(Math.abs(composed[2] - 8.3) < 1e-6);
   state.forms = () => undefined; state.dirtyForms = false; thumbnails.revision++; thumbnails.paint(0, thumbnails.rows.get(0));
   assert.equal(firstThumbnail.composite, null, 'discard/reset removes stale form artwork');
-  state.visible = false; await thumbnails.renderNext(); assert.equal(renders, 2, 'hidden sidebar does no work');
+  state.visible = false; await thumbnails.renderNext(); assert.equal(renders, 48, 'hidden sidebar does no work');
   state.visible = true; let release;
   pending = { promise: new Promise(resolve => { release = resolve; }) };
   const job = thumbnails.renderNext(); await Promise.resolve(); await Promise.resolve();
@@ -71,6 +74,26 @@ try {
   thumbnails.rows.clear(); list.replaceChildren(); thumbnails.refresh(); // cached failures survive virtualization safely
   thumbnails.destroy();
   assert.equal(thumbnails.cache.size, 0);
+
+  const rasterTiles = new Map();
+  for (let y = 0; y < 800; y += 256) for (let x = 0; x < 600; x += 256) {
+    const canvas = new Element(); canvas.width = Math.min(256, 600 - x); canvas.height = Math.min(256, 800 - y);
+    rasterTiles.set(`${x},${y}`, canvas);
+  }
+  const rasterArgs = { doc: globalThis.document, width: 600, height: 800,
+    raster: { width: 600, height: 800, tiles: rasterTiles }, current: () => true,
+    render: () => assert.fail('complete foreground tiles require no new host rendering') };
+  const reused = await thumbnailRaster(rasterArgs);
+  assert.equal(reused.width, 249); assert.equal(reused.height, 332);
+  assert.equal(rasterTiles.get('0,0').width, 256, 'thumbnail creation does not release or resize foreground pixels');
+  rasterTiles.delete('256,256');
+  const scratch = []; let idle = true, chunks = 0;
+  const aborted = await thumbnailRaster({ ...rasterArgs,
+    doc: { createElement: () => { const canvas = new Element(); scratch.push(canvas); return canvas; } },
+    current: () => idle, render: async (_, tile) => { chunks++; idle = false; return { ...tile, rgba: new Uint8Array(tile.width * tile.height * 4) }; } });
+  assert.equal(aborted, null, 'incomplete coverage never produces a partial thumbnail');
+  assert.equal(chunks, 1, 'form interaction stops further background chunks');
+  assert.ok(scratch.every(canvas => canvas.width === 0 && canvas.height === 0), 'aborted scratch pixels are released');
 } finally { thumbnails.destroy(); Object.assign(globalThis, original); }
 console.log('Viewer rotation, thumbnail priority, virtualization, epoch and cache bounds passed');
 
@@ -94,3 +117,12 @@ paintSelection(selection, [layer], selectionDoc);
 assert.equal((parent.children[1].firstChild.attributes.d.match(/M/g) ?? []).length, 1, 'end at a span boundary excludes that character');
 selection.isCollapsed = true; paintSelection(selection, [layer], selectionDoc); assert.equal(parent.children.length, 1);
 console.log('Selection winding, boundary and overlay lifecycle passed');
+
+// Reduced pages and form artwork share density, preserving HiDPI while bounding
+// extra raster work. Full-size cache keys use the resulting scale, not CSS zoom.
+assert.equal(renderDensity(0.25, 1), 4);
+assert.equal(renderDensity(0.5, 1), 4);
+assert.equal(renderDensity(1, 1), 2);
+assert.equal(renderDensity(2, 1), 1);
+assert.equal(renderDensity(1, 3), 3);
+assert.equal(renderDensity(0.1, 5), 5);

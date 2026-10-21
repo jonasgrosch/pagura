@@ -28,7 +28,7 @@ export class OutlineTree {
       if (branch) node.setAttribute('aria-expanded', String(this.open.has(i)));
       Object.assign(node.style, { paddingLeft: `${item.depth * 14 + 24}px`, fontWeight: item.style & 2 ? 'bold' : 'normal', fontStyle: item.style & 1 ? 'italic' : 'normal', color: `rgb(${item.color.map((v) => Math.round(v * 255)).join(',')})` });
       if (branch) {
-        const toggle = document.createElement('span'); toggle.textContent = this.open.has(index) ? '▾' : '▸'; toggle.className = 'outline-toggle'; toggle.setAttribute('aria-hidden', 'true');
+        const toggle = document.createElement('span'); toggle.className = 'outline-toggle'; toggle.style.left = `${item.depth * 14 + 6}px`; toggle.setAttribute('aria-hidden', 'true');
         toggle.addEventListener('click', (event) => { event.stopPropagation?.(); this.focus = index; this.open.has(index) ? this.open.delete(index) : this.open.add(index); this.render(true); }); node.append(toggle);
       }
       node.addEventListener('click', () => { this.focus = this.selected = index; this.render(true); this.activate(item.target); });
@@ -40,6 +40,7 @@ export class OutlineTree {
   }
   key(event, index, branch) {
     event.stopPropagation?.();
+    this.focus = index;
     const at = this.visible.indexOf(index); let next = index;
     if (event.key === 'ArrowDown') next = this.visible[Math.min(this.visible.length - 1, at + 1)];
     else if (event.key === 'ArrowUp') next = this.visible[Math.max(0, at - 1)];

@@ -31,6 +31,11 @@ export async function testFormPreview() {
     await preview.page(0, record, info, 2); assert.equal(rendered.length, 1, 'unchanged draft does not rerender');
     await preview.page(0, record, info, 1); assert.equal(rendered.length, 2, 'zoom regenerates aligned pixels');
     assert.equal(canvases[0].removed, true);
+    await preview.page(0, record, info, 0.5);
+    assert.deepEqual(rendered.at(-1), { handle: 42, index: 0, scale: 2, tile: { x: 40, y: 20, width: 40, height: 40 } });
+    assert.equal(canvases.at(-1).style.left, '10px');
+    assert.equal(canvases.at(-1).style.top, '5px');
+    assert.equal(canvases.at(-1).style.width, '10px', 'supersampled draft stays aligned to the reduced rotated widget');
   } finally { globalThis.ImageData = priorImageData; }
   preview.clear(); assert.deepEqual(closed, [42]); assert.equal(flags.get('form-previewed'), false);
   assert.equal(saved[1].handle, 9, 'every preview starts from the saved source, not a previous draft');
