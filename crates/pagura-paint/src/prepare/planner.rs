@@ -1,0 +1,889 @@
+//! The walk of preparation: the scene tree in source order, groups and
+//! their buffers, soft masks at their first use and tiling patterns by
+//! instance. Marks are prepared in `marks`, clip states in `clips`.
+
+mod clips;
+mod marks;
+
+use super::storage::{self, Inputs, Storage};
+use super::{Backend, Budget, bounds, index, overprint};
+use crate::execute::Tops;
+use crate::format::Format;
+use crate::paint::{Curve, PaintSpans};
+use crate::plan::{
+    Compositing, Conversion, GroupPlan, Item, ItemKind, Layout, MaskPlan, Start, area, intersect,
+    union,
+};
+use crate::process;
+use crate::request::RenderRequest;
+use pagura_color::{Process, Target};
+use pagura_core::{Error, Limits, Name, Position, Result, Store};
+use pagura_interpret::{
+    GroupId, GroupRole, MaskId, MaskKind, Node, NodeId, Paint, Scene, TilingColors, TilingPaint,
+};
+use pagura_raster::{Area, DeviceRect, Path, Precision, Transform};
+use std::collections::HashMap;
+use std::sync::Arc;
+
+/// Bytes charged per item: the item and its places in its group's lists.
+const ITEM_BYTES: usize = size_of::<Item>() + 2 * size_of::<u32>();
+
+/// The state of the walk.
+pub(crate) struct Planner<'s, B: Backend> {
+    pub(crate) scene: &'s Scene,
+    pub(crate) request: &'s RenderRequest,
+    pub(crate) store: &'s Store,
+    pub(crate) limits: &'s Limits,
+    pub(crate) backend: B,
+    pub(crate) area: Area,
+    pub(crate) precision: Precision,
+    pub(crate) storage: Storage,
+    pub(crate) simulate: bool,
+    /// Spot colorants of the page target.
+    pub(crate) spots: Arc<[Name]>,
+    /// Spot colorants with their first definition.
+    pub(crate) definitions: Vec<(Name, Arc<pagura_color::ColorSpace>)>,
+    pub(crate) parts: Parts,
+    /// The page crop in default user space.
+    pub(crate) crop: Arc<Path>,
+    clips: HashMap<clips::Key, clips::State>,
+    solids: HashMap<(u32, u32, Layout), u32>,
+    masks: HashMap<(MaskId, [u64; 6], Process), u32>,
+    open: Vec<(MaskId, [u64; 6], Process)>,
+    /// Union of the bounds that use each mask plan.
+    pub(crate) users: Vec<DeviceRect>,
+    transfers: HashMap<u32, u16>,
+    /// The serial of the mark being prepared.
+    pub(crate) serial: u32,
+    /// Where the walk failed.
+    pub(crate) failed: Option<(u32, Position)>,
+}
+
+/// What the walk builds.
+#[derive(Debug, Default)]
+pub(crate) struct Parts {
+    pub(crate) groups: Vec<GroupPlan>,
+    pub(crate) items: Vec<Item>,
+    pub(crate) masks: Vec<MaskPlan>,
+    pub(crate) paints: Vec<Box<dyn PaintSpans>>,
+    pub(crate) conversions: Vec<Conversion>,
+    pub(crate) transfers: Vec<[Option<Arc<dyn Curve>>; 3]>,
+}
+
+/// Where content is planned.
+#[derive(Debug, Clone)]
+pub(crate) struct Scope {
+    /// The group plan that receives items.
+    pub(crate) group: u32,
+    /// Content space to device pixels.
+    pub(crate) transform: Transform,
+    /// Whether the page crop is the outermost clip: page content only.
+    pub(crate) crop: bool,
+    /// Pixels items may touch.
+    pub(crate) bounds: DeviceRect,
+    /// The receiving buffer's channels.
+    pub(crate) layout: Layout,
+    /// Every enclosing group composites plainly, so marks may select
+    /// transfer functions (11.7.5.2).
+    pub(crate) plain: bool,
+    /// Page content, which records transfer selections.
+    pub(crate) records: bool,
+    /// The paint of an uncoloured tiling pattern's cell content: its index
+    /// and the paint, for stencil masks that need their own.
+    pub(crate) paint: Option<(u32, Arc<Paint>)>,
+    /// Nesting.
+    pub(crate) depth: usize,
+}
+
+impl<'s, B: Backend> Planner<'s, B> {
+    /// Decides the page's separations and storage and readies the walk.
+    ///
+    /// # Errors
+    ///
+    /// The errors of the whole-content survey, which do not depend on the
+    /// region.
+    pub(crate) fn new(
+        scene: &'s Scene,
+        request: &'s RenderRequest,
+        (store, limits): (&'s Store, &'s Limits),
+        area: Area,
+        backend: B,
+    ) -> Result<Self> {
+        let separations = overprint::discover(scene, request.overprint, limits.depth)?;
+        let root = scene
+            .group(scene.root)
+            .ok_or(Error::invalid_argument("scene group out of range"))?;
+        let default = if separations.simulate {
+            Process::Cmyk
+        } else {
+            Process::Rgb
+        };
+        let page = Layout {
+            process: root.attributes.space.unwrap_or(default),
+            spots: separations.spots.len(),
+        };
+        let storage = storage::survey(
+            scene,
+            Inputs {
+                page,
+                simulate: separations.simulate,
+                bytes: request.fast.byte_storage,
+                depth: limits.depth,
+            },
+        )?;
+        let spots: Arc<[Name]> = separations
+            .spots
+            .iter()
+            .map(|(name, _)| name.clone())
+            .collect();
+        let precision = if request.fast.approximate_coverage {
+            Precision::Approximate
+        } else {
+            Precision::Exact
+        };
+        let mut parts = Parts::default();
+        parts.groups.push(GroupPlan {
+            bounds: area.region,
+            items: Vec::new(),
+            order: Vec::new(),
+            layout: page,
+            format: storage.page,
+            knockout: storage.page_knockout,
+            start: Start::Transparent,
+        });
+        Ok(Self {
+            scene,
+            request,
+            store,
+            limits,
+            backend,
+            area,
+            precision,
+            storage,
+            simulate: separations.simulate,
+            spots,
+            definitions: separations.spots,
+            parts,
+            crop: Arc::new(crop(scene)),
+            clips: HashMap::new(),
+            solids: HashMap::new(),
+            masks: HashMap::new(),
+            open: Vec::new(),
+            users: Vec::new(),
+            transfers: HashMap::new(),
+            serial: 0,
+            failed: None,
+        })
+    }
+
+    /// Prepares the page's content.
+    ///
+    /// # Errors
+    ///
+    /// The first error in source order among the marks that meet the
+    /// region; its serial and position are left in `failed`.
+    pub(crate) fn page(&mut self, budget: &mut Budget) -> Result<()> {
+        let scene = self.scene;
+        let root = scene
+            .group(scene.root)
+            .ok_or(Error::invalid_argument("scene group out of range"))?;
+        let page = self.parts.groups.first().map(|g| g.layout);
+        let scope = Scope {
+            group: 0,
+            transform: self.request.transform,
+            crop: true,
+            bounds: self.area.region,
+            layout: page.unwrap_or(Layout {
+                process: Process::Rgb,
+                spots: 0,
+            }),
+            plain: true,
+            records: self.storage.transfers,
+            paint: None,
+            depth: 0,
+        };
+        budget.bytes.charge(size_of::<GroupPlan>())?;
+        self.children(&scope, &root.children, budget)
+    }
+
+    /// The target of a buffer of `layout`.
+    pub(crate) fn target(&self, layout: Layout) -> Target {
+        Target {
+            process: layout.process,
+            spots: if layout.spots > 0 {
+                Arc::clone(&self.spots)
+            } else {
+                Arc::from([])
+            },
+        }
+    }
+
+    fn children(&mut self, scope: &Scope, children: &[NodeId], budget: &mut Budget) -> Result<()> {
+        if scope.depth >= self.limits.depth {
+            return Err(Error::limit("compositing depth exceeded"));
+        }
+        let scene = self.scene;
+        for &id in children {
+            let node = scene
+                .node(id)
+                .ok_or(Error::invalid_argument("scene node out of range"))?;
+            match node {
+                Node::Fill(fill) => self.fill(scope, fill, budget)?,
+                Node::Stroke(stroke) => self.stroke(scope, stroke, budget)?,
+                Node::Glyphs(glyphs) => self.glyphs(scope, glyphs, budget)?,
+                Node::Image(image) => self.image(scope, image, budget)?,
+                Node::Shading(shading) => self.shading(scope, shading, budget)?,
+                Node::Group(group) => self.group(scope, *group, budget)?,
+            }
+        }
+        Ok(())
+    }
+
+    /// Adds `item` to `group`.
+    pub(crate) fn push(&mut self, group: u32, item: Item, budget: &mut Budget) -> Result<()> {
+        if self.parts.items.len() >= self.limits.display_commands {
+            return Err(Error::limit("painted mark budget exceeded"));
+        }
+        budget.bytes.charge(ITEM_BYTES)?;
+        let id = u32::try_from(self.parts.items.len())
+            .map_err(|_| Error::limit("painted mark budget exceeded"))?;
+        self.parts.items.push(item);
+        if let Some(group) = self.parts.groups.get_mut(index(group)) {
+            group.items.push(id);
+        }
+        Ok(())
+    }
+
+    /// The first and last band of `bounds`.
+    pub(crate) fn bands(&self, bounds: DeviceRect) -> [u32; 2] {
+        let height = self.area.band_height.max(1);
+        [bounds.y0 / height, bounds.y1.saturating_sub(1) / height]
+    }
+
+    /// The union of the bounds of `group`'s items.
+    fn content(&self, group: u32) -> DeviceRect {
+        self.parts
+            .groups
+            .get(index(group))
+            .map_or_else(DeviceRect::default, |g| {
+                g.items
+                    .iter()
+                    .filter_map(|&id| self.parts.items.get(index(id)))
+                    .fold(DeviceRect::default(), |acc, item| union(acc, item.bounds))
+            })
+    }
+
+    fn new_group(&mut self, plan: GroupPlan, budget: &mut Budget) -> Result<u32> {
+        budget.bytes.charge(size_of::<GroupPlan>())?;
+        let id = u32::try_from(self.parts.groups.len())
+            .map_err(|_| Error::limit("group count exceeds u32"))?;
+        self.parts.groups.push(plan);
+        Ok(id)
+    }
+
+    /// A transparency group (11.4): its members composite into the parent
+    /// directly where the survey flattened it, or into a buffer of its own.
+    fn group(&mut self, scope: &Scope, id: GroupId, budget: &mut Budget) -> Result<()> {
+        let scene = self.scene;
+        let group = scene
+            .group(id)
+            .ok_or(Error::invalid_argument("scene group out of range"))?;
+        if group.role != GroupRole::Transparency {
+            return Ok(());
+        }
+        let decision = *self
+            .storage
+            .groups
+            .get(&(id, scope.layout.process))
+            .ok_or(Error::invalid_argument("scene group visited twice"))?;
+        let state = Arc::clone(
+            scene
+                .states
+                .get(group.mark.state.index())
+                .ok_or(Error::invalid_argument("scene state out of range"))?,
+        );
+        let transform = match group.view {
+            Some(view) => view_transform(scope.transform, view, scene.page.user_unit)?,
+            None => scope.transform,
+        };
+        let hull = group
+            .bbox
+            .as_ref()
+            .map_or(Some([f64::MIN, f64::MIN, f64::MAX, f64::MAX]), |b| {
+                bounds::path(b, transform)
+            });
+        let clip = self.clip_bounds(scope, group.mark.clip)?;
+        let culling = intersect(
+            intersect(bounds::device(hull, self.area.region), clip),
+            scope.bounds,
+        );
+        if culling.is_empty() {
+            return Ok(());
+        }
+        let plain = state.alpha == 1.0
+            && state.blend == pagura_interpret::BlendMode::Normal
+            && state.soft_mask.is_none();
+        let inner = |group: u32, layout: Layout| Scope {
+            group,
+            transform,
+            crop: scope.crop,
+            bounds: culling,
+            layout,
+            plain: scope.plain && plain,
+            records: scope.records,
+            paint: scope.paint.clone(),
+            depth: scope.depth + 1,
+        };
+        if decision.flatten {
+            return self.children(&inner(scope.group, scope.layout), &group.children, budget);
+        }
+        self.serial += 1;
+        let serial = self.serial;
+        let position = group.mark.position;
+        let mask = state
+            .soft_mask
+            .map(|mask| self.mask_use(scope, mask, budget))
+            .transpose()
+            .map_err(|e| self.fail(e, position))?;
+        let layout = storage::group_layout(group.attributes, scope.layout);
+        let child = self.new_group(
+            GroupPlan {
+                bounds: culling,
+                items: Vec::new(),
+                order: Vec::new(),
+                layout,
+                format: decision.format,
+                knockout: decision.knockout,
+                start: if decision.transparent {
+                    Start::Transparent
+                } else {
+                    Start::Backdrop
+                },
+            },
+            budget,
+        )?;
+        self.children(&inner(child, layout), &group.children, budget)?;
+        let bounds = intersect(self.content(child), culling);
+        if bounds.is_empty() {
+            return Ok(());
+        }
+        if let Some(plan) = self.parts.groups.get_mut(index(child)) {
+            plan.bounds = bounds;
+        }
+        let conversion = if layout.process == scope.layout.process {
+            None
+        } else {
+            Some(self.conversion(layout.process, scope.layout.process, &state.conversion, bounds, budget)?)
+        };
+        let compositing = Compositing {
+            alpha: state.alpha,
+            blend: state.blend,
+            alpha_is_shape: state.alpha_is_shape,
+            mask,
+            overprint: 0,
+            zeros: 0,
+        };
+        self.use_mask(mask, bounds, budget)?;
+        budget.work.charge_product(area(bounds), 3)?;
+        let item = Item {
+            bounds,
+            bands: self.bands(bounds),
+            serial,
+            position,
+            work: 0,
+            kind: ItemKind::Group(crate::plan::GroupUse {
+                group: child,
+                cover: None,
+                compositing,
+                conversion,
+            }),
+        };
+        self.push(scope.group, item, budget)
+    }
+
+    /// A conversion of group results from `from` to `to` with the group's
+    /// black generation and undercolour removal.
+    fn conversion(
+        &mut self,
+        from: Process,
+        to: Process,
+        conversion: &pagura_color::Conversion,
+        bounds: DeviceRect,
+        budget: &mut Budget,
+    ) -> Result<u32> {
+        let black = conversion
+            .black_generation
+            .as_ref()
+            .map(|f| curve(f))
+            .transpose()?;
+        let removal = conversion
+            .undercolor_removal
+            .as_ref()
+            .map(|f| curve(f))
+            .transpose()?;
+        let cost = black
+            .as_ref()
+            .map_or(0, |f| f.cost())
+            .saturating_add(removal.as_ref().map_or(0, |f| f.cost()));
+        if to == Process::Cmyk {
+            budget.functions.charge_product(area(bounds), cost)?;
+        }
+        budget.bytes.charge(size_of::<Conversion>())?;
+        let id = u32::try_from(self.parts.conversions.len())
+            .map_err(|_| Error::limit("conversion count exceeds u32"))?;
+        self.parts.conversions.push(Conversion {
+            from,
+            to,
+            black,
+            removal,
+        });
+        Ok(id)
+    }
+
+    /// Records that `bounds` uses mask `mask`, and reserves its values
+    /// there and its `TR` evaluations.
+    pub(crate) fn use_mask(&mut self, mask: Option<u32>, bounds: DeviceRect, budget: &mut Budget) -> Result<()> {
+        let Some(mask) = mask else {
+            return Ok(());
+        };
+        if let Some(users) = self.users.get_mut(index(mask)) {
+            *users = union(*users, bounds);
+        }
+        let cost = self
+            .parts
+            .masks
+            .get(index(mask))
+            .and_then(|m| m.transfer.as_ref())
+            .map_or(0, |f| f.cost());
+        budget.work.charge(area(bounds))?;
+        budget.functions.charge_product(area(bounds), cost)
+    }
+
+    /// The mask plan of soft mask `id` used in `scope`, prepared at its
+    /// first use with the scope's transform and blending space (11.6.5).
+    pub(crate) fn mask_use(&mut self, scope: &Scope, id: MaskId, budget: &mut Budget) -> Result<u32> {
+        let key = (id, scope.transform_bits(), scope.layout.process);
+        if let Some(&plan) = self.masks.get(&key) {
+            return Ok(plan);
+        }
+        if self.open.contains(&key) {
+            return Err(Error::syntax("soft mask content uses the soft mask"));
+        }
+        let scene = self.scene;
+        let mask = scene
+            .masks
+            .get(index(id.0))
+            .ok_or(Error::invalid_argument("scene mask out of range"))?;
+        let group = scene
+            .group(mask.group)
+            .ok_or(Error::invalid_argument("scene group out of range"))?;
+        let format = self
+            .storage
+            .masks
+            .get(&(id, scope.layout.process))
+            .copied()
+            .unwrap_or(Format::F64);
+        let layout = Layout {
+            process: group.attributes.space.unwrap_or(scope.layout.process),
+            spots: 0,
+        };
+        let backdrop = match &mask.backdrop {
+            Some(components) => {
+                if components.len() != layout.process.components() {
+                    return Err(Error::syntax("soft-mask backdrop has the wrong component count"));
+                }
+                process::native(layout.process, components)
+            }
+            None => process::black(layout.process),
+        };
+        let transfer = mask.transfer.as_ref().map(|f| curve(f)).transpose()?;
+        let isolated = group.attributes.isolated;
+        let start = if mask.kind == MaskKind::Luminosity && !isolated {
+            Start::Opaque(backdrop)
+        } else {
+            Start::Transparent
+        };
+        let hull = group
+            .bbox
+            .as_ref()
+            .map_or(Some([f64::MIN, f64::MIN, f64::MAX, f64::MAX]), |b| {
+                bounds::path(b, scope.transform)
+            });
+        let culling = bounds::device(hull, self.area.region);
+        let child = self.new_group(
+            GroupPlan {
+                bounds: culling,
+                items: Vec::new(),
+                order: Vec::new(),
+                layout,
+                format,
+                knockout: group.attributes.knockout,
+                start,
+            },
+            budget,
+        )?;
+        let inner = Scope {
+            group: child,
+            transform: scope.transform,
+            crop: false,
+            bounds: culling,
+            layout,
+            plain: false,
+            records: false,
+            paint: None,
+            depth: scope.depth + 1,
+        };
+        self.open.push(key);
+        let walked = self.children(&inner, &group.children, budget);
+        self.open.pop();
+        walked?;
+        let content = intersect(self.content(child), culling);
+        if let Some(plan) = self.parts.groups.get_mut(index(child)) {
+            plan.bounds = content;
+        }
+        let value = match mask.kind {
+            MaskKind::Alpha => 0.0,
+            MaskKind::Luminosity => process::luminosity(layout.process, &backdrop),
+        }
+        .clamp(0.0, 1.0);
+        let mut plan = MaskPlan {
+            group: child,
+            kind: mask.kind,
+            isolated,
+            backdrop,
+            transfer,
+            extent: content,
+            outside: 0.0,
+        };
+        plan.outside = crate::execute::mask_transfer(&plan, value);
+        budget.bytes.charge(size_of::<MaskPlan>())?;
+        let id = u32::try_from(self.parts.masks.len())
+            .map_err(|_| Error::limit("soft mask count exceeds u32"))?;
+        self.parts.masks.push(plan);
+        self.users.push(DeviceRect::default());
+        self.masks.insert(key, id);
+        Ok(id)
+    }
+
+    /// The instances of a tiling pattern meeting `bounds`, as one
+    /// non-isolated, non-knockout group composited through the painted
+    /// mark's coverage (8.7.3, 11.6.7); every instance has its own exact
+    /// geometry.
+    pub(crate) fn pattern(
+        &mut self,
+        scope: &Scope,
+        paint: &TilingPaint,
+        bounds: DeviceRect,
+        budget: &mut Budget,
+    ) -> Result<Option<(u32, DeviceRect)>> {
+        let scene = self.scene;
+        let tiling = scene
+            .tilings
+            .get(index(paint.pattern.0))
+            .ok_or(Error::invalid_argument("scene pattern out of range"))?;
+        let cell = scene
+            .group(tiling.cell)
+            .ok_or(Error::invalid_argument("scene group out of range"))?;
+        let transform = tiling.matrix.then(scope.transform);
+        let inverse = transform.inverse().ok_or(Error::unsupported(
+            crate::features::PATTERN_TILING,
+            "singular tiling transform",
+        ))?;
+        let (columns, rows) = instances(bounds, inverse, tiling)?;
+        let count = (columns.1 - columns.0 + 1).saturating_mul(rows.1 - rows.0 + 1);
+        if usize::try_from(count).map_or(true, |n| n > self.limits.display_commands) {
+            return Err(Error::limit("tiling instance budget exceeded"));
+        }
+        let override_paint = match tiling.colors {
+            TilingColors::Colored => None,
+            TilingColors::Uncolored => {
+                let color = paint
+                    .color
+                    .clone()
+                    .ok_or(Error::syntax("uncoloured pattern without a colour"))?;
+                let state = Arc::new(pagura_interpret::Composite::default());
+                let paint = Arc::new(Paint::Solid(color));
+                let index = self.solid_paint(
+                    &paint,
+                    (&state, scope.layout),
+                    (scope.transform, area(bounds)),
+                    budget,
+                )?;
+                Some((index, paint))
+            }
+        };
+        let transparent = self
+            .storage
+            .cells
+            .get(&(paint.pattern, scope.layout.process))
+            .copied()
+            .unwrap_or(false);
+        let group = self.new_group(
+            GroupPlan {
+                bounds,
+                items: Vec::new(),
+                order: Vec::new(),
+                layout: scope.layout,
+                format: Format::F64,
+                knockout: false,
+                start: if transparent {
+                    Start::Transparent
+                } else {
+                    Start::Backdrop
+                },
+            },
+            budget,
+        )?;
+        let [x_step, y_step] = tiling.step;
+        for j in rows.0..=rows.1 {
+            for i in columns.0..=columns.1 {
+                #[expect(clippy::cast_precision_loss, reason = "instance indices are below 2^53")]
+                let offset = Transform::translate(i as f64 * x_step, j as f64 * y_step);
+                let inner = Scope {
+                    group,
+                    transform: offset.then(transform),
+                    crop: false,
+                    bounds,
+                    layout: scope.layout,
+                    plain: false,
+                    records: false,
+                    paint: override_paint.clone().or_else(|| scope.paint.clone()),
+                    depth: scope.depth + 1,
+                };
+                self.children(&inner, &cell.children, budget)?;
+            }
+        }
+        let content = intersect(self.content(group), bounds);
+        if let Some(plan) = self.parts.groups.get_mut(index(group)) {
+            plan.bounds = content;
+        }
+        Ok((!content.is_empty()).then_some((group, content)))
+    }
+
+    /// Records a failure at the current mark.
+    pub(crate) fn fail(&mut self, error: Error, position: Position) -> Error {
+        if self.failed.is_none() {
+            self.failed = Some((self.serial, position));
+        }
+        error.at(position)
+    }
+
+    /// The selection index of a state's transfer functions.
+    pub(crate) fn transfer(&mut self, state: u32, transfer: &pagura_interpret::Transfer, budget: &mut Budget) -> Result<u16> {
+        if let Some(&index) = self.transfers.get(&state) {
+            return Ok(index);
+        }
+        let functions = match transfer {
+            pagura_interpret::Transfer::All(f) => {
+                let f = curve(f)?;
+                [Some(Arc::clone(&f)), Some(Arc::clone(&f)), Some(f)]
+            }
+            pagura_interpret::Transfer::PerComponent(functions) => {
+                let mut out: [Option<Arc<dyn Curve>>; 3] = [None, None, None];
+                for (slot, f) in out.iter_mut().zip(functions) {
+                    *slot = f.as_ref().map(|f| curve(f)).transpose()?;
+                }
+                out
+            }
+        };
+        budget.bytes.charge(size_of::<[Option<Arc<dyn Curve>>; 3]>())?;
+        self.parts.transfers.push(functions);
+        let index = u16::try_from(self.parts.transfers.len())
+            .map_err(|_| Error::limit("transfer function count exceeds u16"))?;
+        self.transfers.insert(state, index);
+        Ok(index)
+    }
+
+    pub(crate) fn solids(&mut self) -> &mut HashMap<(u32, u32, Layout), u32> {
+        &mut self.solids
+    }
+
+    pub(crate) fn clip_states(&mut self) -> &mut HashMap<clips::Key, clips::State> {
+        &mut self.clips
+    }
+}
+
+impl Scope {
+    /// The bits of the transform, as a key.
+    pub(crate) fn transform_bits(&self) -> [u64; 6] {
+        let t = self.transform;
+        [t.a, t.b, t.c, t.d, t.e, t.f].map(f64::to_bits)
+    }
+}
+
+/// A one-input function as a curve; the first output is used.
+pub(crate) fn curve(function: &Arc<pagura_color::Function>) -> Result<Arc<dyn Curve>> {
+    if function.inputs() != 1 || function.outputs() == 0 {
+        return Err(Error::syntax("transfer function must map one input"));
+    }
+    Ok(Arc::clone(function) as Arc<dyn Curve>)
+}
+
+/// The device transform of a fixed view (12.5.3): `NoRotate` undoes the
+/// page's rotation and `NoZoom` its scale, about the anchor.
+fn view_transform(
+    device: Transform,
+    view: pagura_interpret::ViewFit,
+    user_unit: f64,
+) -> Result<Transform> {
+    let anchor = device.apply(view.anchor);
+    let angle = if view.no_rotate {
+        -device.b.atan2(device.a)
+    } else {
+        0.0
+    };
+    let scale = if view.no_zoom {
+        user_unit / device.a.hypot(device.b)
+    } else {
+        1.0
+    };
+    let (sin, cos) = angle.sin_cos();
+    let transform = device
+        .then(Transform::translate(-anchor.x, -anchor.y))
+        .then(Transform::new(
+            scale * cos,
+            scale * sin,
+            -scale * sin,
+            scale * cos,
+            anchor.x,
+            anchor.y,
+        ));
+    if transform.is_finite() {
+        Ok(transform)
+    } else {
+        Err(Error::limit("annotation view transform overflow"))
+    }
+}
+
+/// The instance index ranges of a tiling pattern whose cells can meet
+/// `bounds`: cells of `BBox` at multiples of `XStep` and `YStep`.
+fn instances(
+    bounds: DeviceRect,
+    inverse: Transform,
+    tiling: &pagura_interpret::Tiling,
+) -> Result<((i64, i64), (i64, i64))> {
+    let corners = [
+        (bounds.x0, bounds.y0),
+        (bounds.x1, bounds.y0),
+        (bounds.x0, bounds.y1),
+        (bounds.x1, bounds.y1),
+    ]
+    .map(|(x, y)| inverse.apply(pagura_raster::Point::new(f64::from(x), f64::from(y))));
+    let mut hull = bounds::points(corners).unwrap_or([0.0; 4]);
+    let b = tiling.bbox;
+    if b.is_empty() {
+        // Cells whose one-pixel boundary reaches the bounds.
+        let px = inverse.a.abs() + inverse.c.abs();
+        let py = inverse.b.abs() + inverse.d.abs();
+        hull = [hull[0] - px, hull[1] - py, hull[2] + px, hull[3] + py];
+    }
+    let columns = range(hull[0], hull[2], (b.x0(), b.x1()), tiling.step[0])?;
+    let rows = range(hull[1], hull[3], (b.y0(), b.y1()), tiling.step[1])?;
+    Ok((columns, rows))
+}
+
+/// The integers `k` for which `[b0, b1] + k·step` meets `[lo, hi]`.
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "integral values range-checked within exact f64 integers"
+)]
+fn range(lo: f64, hi: f64, (b0, b1): (f64, f64), step: f64) -> Result<(i64, i64)> {
+    let a = (lo - b1) / step;
+    let b = (hi - b0) / step;
+    let start = a.min(b).ceil();
+    let end = a.max(b).floor();
+    if !start.is_finite() || !end.is_finite() || start.abs().max(end.abs()) > 4e15 {
+        return Err(Error::limit("tiling index exceeds numeric range"));
+    }
+    Ok((start as i64, (end as i64).max(start as i64 - 1)))
+}
+
+/// The page crop as a path, in default user space.
+pub(crate) fn crop(scene: &Scene) -> Path {
+    Path::rect(scene.page.crop)
+}
+
+/// The tops of the stacks needed to run `group`, from the innermost buffer
+/// out.
+pub(crate) fn needs(parts: &Parts, rows: usize) -> Tops {
+    let mut memo: Vec<Option<Tops>> = vec![None; parts.groups.len()];
+    need(parts, 0, rows, &mut memo, 0)
+}
+
+fn need(parts: &Parts, group: u32, rows: usize, memo: &mut Vec<Option<Tops>>, depth: usize) -> Tops {
+    if let Some(Some(done)) = memo.get(index(group)) {
+        return *done;
+    }
+    let Some(plan) = parts.groups.get(index(group)) else {
+        return Tops::default();
+    };
+    if depth > parts.groups.len() {
+        return Tops::default();
+    }
+    let mut most = Tops::default();
+    let mask_need = |mask: Option<u32>, memo: &mut Vec<Option<Tops>>| {
+        mask.and_then(|m| parts.masks.get(index(m)))
+            .map_or(Tops::default(), |m| need(parts, m.group, rows, memo, depth + 1))
+    };
+    for &id in &plan.items {
+        let Some(item) = parts.items.get(index(id)) else {
+            continue;
+        };
+        let inner = match &item.kind {
+            ItemKind::Mark(mark) => mask_need(mark.compositing.mask, memo),
+            ItemKind::Group(used) => {
+                let child = need(parts, used.group, rows, memo, depth + 1);
+                let own = own(parts, used.group, rows);
+                max(child, add(own, mask_need(used.compositing.mask, memo)))
+            }
+        };
+        most = max(most, inner);
+    }
+    let total = if group == 0 {
+        most
+    } else {
+        add(own(parts, group, rows), most)
+    };
+    if let Some(slot) = memo.get_mut(index(group)) {
+        *slot = Some(total);
+    }
+    total
+}
+
+fn own(parts: &Parts, group: u32, rows: usize) -> Tops {
+    let Some(plan) = parts.groups.get(index(group)) else {
+        return Tops::default();
+    };
+    let pixels = pagura_core::convert::u32_to_usize(plan.bounds.width())
+        .saturating_mul(pagura_core::convert::u32_to_usize(plan.bounds.height()).min(rows));
+    match plan.format {
+        Format::F64 => Tops {
+            wide: pixels.saturating_mul(plan.layout.stride()),
+            ..Tops::default()
+        },
+        Format::U8 => Tops {
+            bytes: pixels,
+            ..Tops::default()
+        },
+        Format::F32 | Format::N16 => Tops {
+            levels: pixels,
+            ..Tops::default()
+        },
+    }
+}
+
+fn add(a: Tops, b: Tops) -> Tops {
+    Tops {
+        wide: a.wide.saturating_add(b.wide),
+        levels: a.levels.saturating_add(b.levels),
+        bytes: a.bytes.saturating_add(b.bytes),
+    }
+}
+
+fn max(a: Tops, b: Tops) -> Tops {
+    Tops {
+        wide: a.wide.max(b.wide),
+        levels: a.levels.max(b.levels),
+        bytes: a.bytes.max(b.bytes),
+    }
+}

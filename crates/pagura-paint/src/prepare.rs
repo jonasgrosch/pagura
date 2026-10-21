@@ -1,17 +1,40 @@
 //! Preparation, the only fallible step of rendering, and execution.
+//!
+//! [`prepare`] walks the scene in source order: it culls marks by
+//! conservative device bounds against the region, validates them, reserves
+//! `render_bytes`, `render_work` and `function_work`, builds coverage
+//! sources and prepared paint, and bins items to bands. Storage formats come
+//! from a survey of the whole content beforehand, so they never depend on
+//! the region. The first error in source order among the marks that meet
+//! the region is the result; it does not depend on band height.
 
+mod backend;
+pub(crate) mod bounds;
+mod finish;
+mod overprint;
+mod planner;
+mod storage;
+
+pub(crate) use backend::{Backend, PaintRequest, Prepared, Producer, Raster};
+
+use crate::execute::{Executor, Workspace};
+use crate::plan::{MAX_BAND_HEIGHT, Plan};
 use crate::request::RenderRequest;
-use pagura_core::{Error, Limits, Result, Store};
+use pagura_core::{Error, Limits, Meter, Result, Store};
 use pagura_interpret::Scene;
-use pagura_raster::{DeviceRect, Pixmap};
+use pagura_raster::{Area, DeviceRect, GlyphOrigins, Pixmap};
 
 /// A scene prepared for one request: every mark that meets the region
 /// culled, validated, reserved and binned to bands, with its coverage
 /// source and prepared paint, and every buffer's storage format chosen.
+///
+/// Rendering it cannot fail; it can be rendered any number of times.
 #[derive(Debug)]
 pub struct PreparedScene {
-    region: DeviceRect,
-    band_height: u32,
+    plan: Plan,
+    producer: Box<dyn Producer>,
+    workspace: Workspace,
+    charges: Charges,
 }
 
 /// How far a render got.
@@ -27,36 +50,161 @@ pub enum Completion {
     },
 }
 
-/// Prepares `scene` for `request`, using `store` for decoded images, glyph
-/// edge setups, prepared functions and colour transforms.
+/// The budgets a preparation reserved (ADR 0016): upper bounds of what
+/// rendering it uses. For one region they do not depend on band height or
+/// on the state of the `Store`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
+pub struct Charges {
+    render_bytes: usize,
+    render_work: usize,
+    function_work: usize,
+}
+
+impl Charges {
+    /// Bytes reserved against `Limits::render_bytes`.
+    pub fn render_bytes(&self) -> usize {
+        self.render_bytes
+    }
+
+    /// Work units reserved against `Limits::render_work`.
+    pub fn render_work(&self) -> usize {
+        self.render_work
+    }
+
+    /// Function evaluation units reserved against `Limits::function_work`.
+    pub fn function_work(&self) -> usize {
+        self.function_work
+    }
+}
+
+/// The meters of one preparation.
+#[derive(Debug)]
+pub(crate) struct Budget {
+    /// `render_bytes`.
+    pub(crate) bytes: Meter,
+    /// `render_work`.
+    pub(crate) work: Meter,
+    /// `function_work`.
+    pub(crate) functions: Meter,
+}
+
+impl Budget {
+    fn new(limits: &Limits) -> Self {
+        Self {
+            bytes: Meter::new(limits.render_bytes, "render memory budget exceeded"),
+            work: Meter::new(limits.render_work, "render work budget exceeded"),
+            functions: Meter::new(limits.function_work, "function work budget exceeded"),
+        }
+    }
+
+    fn charges(&self) -> Charges {
+        Charges {
+            render_bytes: self.bytes.used(),
+            render_work: self.work.used(),
+            function_work: self.functions.used(),
+        }
+    }
+}
+
+/// Prepares `scene` for `request`, using `store` for glyph edge setups,
+/// decoded images, prepared functions and colour transforms.
 ///
 /// # Errors
 ///
-/// Returns the first error in source order among the marks that meet the
-/// region: `Syntax` and `Unsupported` for content that cannot be painted,
-/// and `Limit` errors for `render_bytes`, `function_work`, render work and
-/// the per-fill budgets. Errors do not depend on band height or on how a
-/// page is partitioned into regions.
+/// Returns `InvalidArgument` for an empty region, a region outside the page
+/// or a zero band height, and otherwise the first error in source order
+/// among the marks that meet the region: `Syntax` and `Unsupported` for
+/// content that cannot be painted, and `Limit` errors for `render_bytes`,
+/// `render_work`, `function_work` and the per-fill budgets. Errors do not
+/// depend on band height.
 pub fn prepare(
     scene: &Scene,
     request: &RenderRequest,
     store: &Store,
     limits: &Limits,
 ) -> Result<PreparedScene> {
-    let _ = (scene, store, limits);
-    if request.band_height == 0 || request.region.is_empty() {
+    let origins = if request.fast.glyph_origin_bins {
+        GlyphOrigins::Binned
+    } else {
+        GlyphOrigins::Exact
+    };
+    prepare_with(
+        scene,
+        request,
+        (store, limits),
+        Raster::new(store, limits, origins),
+    )
+}
+
+/// [`prepare`] with the geometry and paint of `backend`.
+pub(crate) fn prepare_with<B: Backend>(
+    scene: &Scene,
+    request: &RenderRequest,
+    (store, limits): (&Store, &Limits),
+    backend: B,
+) -> Result<PreparedScene> {
+    let area = area(request, limits)?;
+    let mut budget = Budget::new(limits);
+    let planner = planner::Planner::new(scene, request, (store, limits), area, backend)?;
+    let (plan, producer, workspace) = finish::finish(planner, &mut budget)?;
+    Ok(PreparedScene {
+        plan,
+        producer,
+        workspace,
+        charges: budget.charges(),
+    })
+}
+
+/// The region and band grid of `request`: bands of the requested height
+/// (at most [`MAX_BAND_HEIGHT`] rows) on the global grid, or one band over
+/// the whole region when it is no taller than a band (immediate mode).
+fn area(request: &RenderRequest, limits: &Limits) -> Result<Area> {
+    let region = request.region;
+    let page = request.page;
+    if request.band_height == 0 || region.is_empty() {
         return Err(Error::invalid_argument("empty region or band"));
     }
-    Err(Error::invalid_argument("preparation is not implemented"))
+    if region.x0 < page.x0 || region.y0 < page.y0 || region.x1 > page.x1 || region.y1 > page.y1 {
+        return Err(Error::invalid_argument("region outside the page"));
+    }
+    let pixels = u64::from(region.width()) * u64::from(region.height());
+    if usize::try_from(pixels).map_or(true, |pixels| pixels > limits.pixels) {
+        return Err(Error::limit("render pixel budget exceeded"));
+    }
+    let height = request.band_height.min(MAX_BAND_HEIGHT);
+    let band_height = if region.height() <= height {
+        region.y1
+    } else {
+        height
+    };
+    Ok(Area {
+        region,
+        band_height,
+    })
+}
+
+#[cfg(test)]
+mod tests;
+
+/// A `u32` table index as `usize`.
+pub(crate) fn index(value: u32) -> usize {
+    pagura_core::convert::u32_to_usize(value)
 }
 
 impl PreparedScene {
     /// The rendered region.
     pub fn region(&self) -> DeviceRect {
-        self.region
+        self.plan.area.region
     }
 
-    /// Renders every band into `target`, which covers the region.
+    /// The budgets preparation reserved.
+    pub fn charges(&self) -> Charges {
+        self.charges
+    }
+
+    /// Renders every band into `target`, whose pixel `(0, 0)` is the
+    /// region's first pixel and which covers the region.
     pub fn render(&mut self, target: &mut Pixmap) {
         let _ = self.render_until(target, |_| false);
     }
@@ -68,12 +216,38 @@ impl PreparedScene {
         target: &mut Pixmap,
         mut stop: impl FnMut(u32) -> bool,
     ) -> Completion {
-        let _ = (target, self.band_height);
-        if stop(self.region.y0) {
-            return Completion::Stopped {
-                row: self.region.y0,
-            };
+        self.workspace.restart();
+        for band in self.plan.area.bands() {
+            let row = self.plan.area.band_rows(band).start;
+            if stop(row) {
+                return Completion::Stopped { row };
+            }
+            Executor::band(
+                &self.plan,
+                &mut self.workspace,
+                self.producer.as_mut(),
+                band,
+                target,
+            );
         }
         Completion::Complete
+    }
+
+    /// The work and executor-side function evaluations of the last render,
+    /// and the bytes retained: what [`Self::charges`] bounds.
+    #[cfg(test)]
+    pub(crate) fn usage(&self) -> Charges {
+        let usage = self.workspace.usage;
+        Charges {
+            render_bytes: self.workspace.bytes() + finish::plan_bytes(&self.plan),
+            render_work: usage.work,
+            function_work: usage.functions,
+        }
+    }
+
+    /// The plan, for tests.
+    #[cfg(test)]
+    pub(crate) fn plan(&self) -> &Plan {
+        &self.plan
     }
 }
