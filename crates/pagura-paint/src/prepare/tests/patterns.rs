@@ -12,7 +12,11 @@ use pagura_raster::Transform;
 use std::sync::Arc;
 
 fn pattern(b: &mut Build, colors: TilingColors, matrix: Transform, step: [f64; 2]) -> GroupId {
-    let cell = b.group(GroupRole::Tiling, GroupAttributes::default(), mark(StateId(0)));
+    let cell = b.group(
+        GroupRole::Tiling,
+        GroupAttributes::default(),
+        mark(StateId(0)),
+    );
     b.scene.tilings.push(Tiling {
         cell,
         bbox: Rect::from_corners(0.0, 0.0, 2.0, 2.0).unwrap_or_else(|| unreachable!()),
@@ -51,7 +55,12 @@ fn coloured_tiles_repeat_their_cell() {
 #[test]
 fn uncoloured_tiles_take_the_use_colour() {
     let mut b = Build::new(8.0, 6.0);
-    let cell = pattern(&mut b, TilingColors::Uncolored, Transform::IDENTITY, [2.0, 2.0]);
+    let cell = pattern(
+        &mut b,
+        TilingColors::Uncolored,
+        Transform::IDENTITY,
+        [2.0, 2.0],
+    );
     let ignored = b.rgb([0.0, 1.0, 0.0]);
     b.rect(cell, [0.5, 0.5, 1.5, 1.75], ignored, mark(StateId(0)));
     let tiles = b.paint(Paint::Tiling(TilingPaint {

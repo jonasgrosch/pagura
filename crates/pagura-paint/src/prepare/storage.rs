@@ -104,10 +104,8 @@ pub(crate) fn survey(scene: &Scene, inputs: Inputs) -> Result<Storage> {
     let page_knockout = survey.buffers[page].knockout();
     let transfers = survey.transfers;
     let buffer = &mut survey.buffers[page];
-    buffer.forced |= inputs.simulate
-        || inputs.page.process != Process::Rgb
-        || page_knockout
-        || transfers;
+    buffer.forced |=
+        inputs.simulate || inputs.page.process != Process::Rgb || page_knockout || transfers;
     let mut resolved = vec![None; survey.buffers.len()];
     survey.resolve(page, &mut resolved, 0)?;
     survey.widen(page, &mut resolved);
@@ -342,8 +340,8 @@ impl Survey<'_> {
         let target = &mut self.buffers[buffer];
         target.stores = target.stores.saturating_add(count);
         target.normal &= state.blend == BlendMode::Normal;
-        target.forced |= state.blend != BlendMode::Normal
-            || (state.transfer.is_some() && context.selects);
+        target.forced |=
+            state.blend != BlendMode::Normal || (state.transfer.is_some() && context.selects);
         let shaped = state.alpha_is_shape || (state.alpha == 1.0 && mask.is_none());
         target.opaque_members &= shaped && cell.is_none();
         if cell_reads {
@@ -393,7 +391,8 @@ impl Survey<'_> {
         let child = self.buffer(layout, group.attributes.knockout);
         self.children(child, &group.children, context, depth + 1)?;
         let facts = self.buffers[child].clone();
-        let plain = state.alpha == 1.0 && state.blend == BlendMode::Normal && state.soft_mask.is_none();
+        let plain =
+            state.alpha == 1.0 && state.blend == BlendMode::Normal && state.soft_mask.is_none();
         let flatten = plain
             && !facts.knockout()
             && !self.buffers[parent].knockout_attribute
@@ -515,12 +514,9 @@ impl Survey<'_> {
         }
         let stores = buffer.stores as f64;
         let wide = (stores * F64_STORE + MARGIN + injected, Format::F64);
-        let n16 = buffer.page
-            && buffer.dynamic <= 1
-            && 257.0 * (buffer.eta + injected) <= N16_ROOM;
-        let f32_bound = PI
-            + RHO * stores.min(1.0 / buffer.theta + buffer.dynamic as f64)
-            + injected;
+        let n16 = buffer.page && buffer.dynamic <= 1 && 257.0 * (buffer.eta + injected) <= N16_ROOM;
+        let f32_bound =
+            PI + RHO * stores.min(1.0 / buffer.theta + buffer.dynamic as f64) + injected;
         let (bound, format) = if buffer.forced {
             wide
         } else if n16 {

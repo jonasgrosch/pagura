@@ -39,7 +39,10 @@ impl Old {
         }
     }
 
-    #[expect(clippy::too_many_arguments, reason = "the earlier signature, spelled out")]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "the earlier signature, spelled out"
+    )]
     fn paint(
         &mut self,
         color: [f64; 4],
@@ -336,7 +339,11 @@ fn n16_stays_within_one_level_for_any_number_of_opaque_stores() {
         }
         // One dynamic store fits the room N16 leaves.
         let (color, alpha) = (random.unit(), random.unit());
-        dynamic_n16(&mut words, &Colors::Constant(&[color, color, color]), &[alpha]);
+        dynamic_n16(
+            &mut words,
+            &Colors::Constant(&[color, color, color]),
+            &[alpha],
+        );
         stores.push((alpha, color * 255.0));
         let exact = reference(background, &stores);
         let byte = f64::from((u32::from(words[0][0]) + 128) / 257);
@@ -361,8 +368,13 @@ fn f32_stays_within_one_level_inside_its_count_bound() {
         // min(N, 1/θ + K) is 2040, far inside 2^-17 · 2040 < 1/2.
         for _ in 0..30_000 {
             let color = random.unit();
-            let alpha = (1.0 + (random.unit() * 254.0).floor()) / 255.0 * (0.125 + 0.875 * random.unit());
-            store_f32(&mut levels, &Colors::Constant(&[color, color, color]), &[alpha]);
+            let alpha =
+                (1.0 + (random.unit() * 254.0).floor()) / 255.0 * (0.125 + 0.875 * random.unit());
+            store_f32(
+                &mut levels,
+                &Colors::Constant(&[color, color, color]),
+                &[alpha],
+            );
             stores.push((alpha, color * 255.0));
         }
         let exact = reference(background, &stores);
@@ -384,7 +396,11 @@ fn u8_rounds_each_store_once() {
         let background = (random.unit() * 255.0).round() as u8;
         let mut bytes = [[background; 4]];
         let (color, alpha) = (random.unit(), random.unit());
-        store_u8(&mut bytes, &Colors::Constant(&[color, color, color]), &[alpha]);
+        store_u8(
+            &mut bytes,
+            &Colors::Constant(&[color, color, color]),
+            &[alpha],
+        );
         let a = f64::from(pagura_raster::quantize_unit(alpha)) / 255.0;
         let c = f64::from(pagura_raster::quantize_unit(color));
         let exact = (1.0 - a) * f64::from(background) + a * c;

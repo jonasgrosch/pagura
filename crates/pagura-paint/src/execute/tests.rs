@@ -8,7 +8,7 @@ use super::{Executor, Sizes, Tops, Workspace};
 use crate::format::Format;
 use crate::paint::{Convert, Curve, PaintSpans};
 use crate::plan::{
-    Compositing, Conversion, Cover, GroupPlan, GroupUse, Item, ItemKind, Layout, MaskPlan, Mark,
+    Compositing, Conversion, Cover, GroupPlan, GroupUse, Item, ItemKind, Layout, Mark, MaskPlan,
     Output, Plan, SpotPlan, Start,
 };
 use crate::prepare::Producer;
@@ -190,7 +190,14 @@ impl Fixture {
         self.groups[group as usize].items.push(id);
     }
 
-    fn mark(&mut self, group: u32, rect: Box4, paint: Box<dyn PaintSpans>, compositing: Compositing, select: u16) {
+    fn mark(
+        &mut self,
+        group: u32,
+        rect: Box4,
+        paint: Box<dyn PaintSpans>,
+        compositing: Compositing,
+        select: u16,
+    ) {
         let shape = u32::try_from(self.shapes.len()).unwrap();
         self.shapes.push(rect);
         let paint_index = u32::try_from(self.paints.len()).unwrap();
@@ -214,7 +221,13 @@ impl Fixture {
         u32::try_from(self.groups.len() - 1).unwrap()
     }
 
-    fn use_group(&mut self, parent: u32, group: u32, compositing: Compositing, conversion: Option<u32>) {
+    fn use_group(
+        &mut self,
+        parent: u32,
+        group: u32,
+        compositing: Compositing,
+        conversion: Option<u32>,
+    ) {
         let bounds = self.groups[group as usize].bounds;
         let kind = ItemKind::Group(GroupUse {
             group,
@@ -265,7 +278,8 @@ impl Fixture {
         };
         let mut workspace = Workspace::new(&plan, sizes).unwrap();
         let mut producer: Box<dyn Producer> = rect_producer(area, self.shapes, Vec::new());
-        let mut target = Pixmap::new(self.width, self.height, Rgba8::TRANSPARENT, usize::MAX).unwrap();
+        let mut target =
+            Pixmap::new(self.width, self.height, Rgba8::TRANSPARENT, usize::MAX).unwrap();
         workspace.restart();
         for band in area.bands() {
             Executor::band(&plan, &mut workspace, producer.as_mut(), band, &mut target);
@@ -314,9 +328,25 @@ fn varying_paint_with_alpha_composites_in_every_format() {
 #[test]
 fn the_last_opaque_mark_selects_its_transfer() {
     let mut f = Fixture::new(4, 2, RGB, Format::F64);
-    f.output.transfers = vec![[Some(Arc::new(Square) as Arc<dyn Curve>), None, Some(Arc::new(Square))]];
-    f.mark(0, [0.0, 0.0, 4.0, 2.0], solid(&[0.5, 0.6, 0.7], 0b111), opaque(), 1);
-    f.mark(0, [2.0, 0.0, 4.0, 2.0], solid(&[0.3, 0.4, 0.5], 0b111), opaque(), 0);
+    f.output.transfers = vec![[
+        Some(Arc::new(Square) as Arc<dyn Curve>),
+        None,
+        Some(Arc::new(Square)),
+    ]];
+    f.mark(
+        0,
+        [0.0, 0.0, 4.0, 2.0],
+        solid(&[0.5, 0.6, 0.7], 0b111),
+        opaque(),
+        1,
+    );
+    f.mark(
+        0,
+        [2.0, 0.0, 4.0, 2.0],
+        solid(&[0.3, 0.4, 0.5], 0b111),
+        opaque(),
+        0,
+    );
     let bytes = f.render(32);
     assert_close(&bytes, 4, (1, 1), [0.25, 0.6, 0.49, 1.0]);
     assert_close(&bytes, 4, (3, 0), [0.3, 0.4, 0.5, 1.0]);
@@ -335,16 +365,32 @@ fn spot_channels_overprint_and_preview_through_their_alternate() {
             components: 1,
             inputs: vec![(0, 0)],
         }];
-        f.mark(0, [0.0, 0.0, 2.0, 1.0], solid(&[1.0, 1.0, 1.0, 0.5, 1.0], 0b1111), opaque(), 0);
+        f.mark(
+            0,
+            [0.0, 0.0, 2.0, 1.0],
+            solid(&[1.0, 1.0, 1.0, 0.5, 1.0], 0b1111),
+            opaque(),
+            0,
+        );
         let spot = Compositing {
             overprint: if overprint { layout.mask() } else { 0 },
             ..opaque()
         };
-        f.mark(0, [0.0, 0.0, 2.0, 1.0], solid(&[1.0, 1.0, 1.0, 1.0, 0.4], 0b1_0000), spot, 0);
+        f.mark(
+            0,
+            [0.0, 0.0, 2.0, 1.0],
+            solid(&[1.0, 1.0, 1.0, 1.0, 0.4], 0b1_0000),
+            spot,
+            0,
+        );
         let bytes = f.render(32);
         // The spot's tint 0.6 adds the ink's CMYK with saturation.
         let equivalent = [1.0, 1.0 - 0.6 * 0.8, 1.0 - 0.6 * 0.3, 1.0];
-        let process = if overprint { [1.0, 1.0, 1.0, 0.5] } else { [1.0; 4] };
+        let process = if overprint {
+            [1.0, 1.0, 1.0, 0.5]
+        } else {
+            [1.0; 4]
+        };
         let mixed = [0, 1, 2, 3].map(|i| (process[i] + equivalent[i] - 1.0_f64).max(0.0));
         let rgb = [0, 1, 2].map(|i| (mixed[i] + mixed[3] - 1.0_f64).max(0.0));
         assert_close(&bytes, 2, (1, 0), [rgb[0], rgb[1], rgb[2], 1.0]);
@@ -367,7 +413,13 @@ fn soft_mask_transfer_functions_map_values() {
         alpha: 0.5,
         ..opaque()
     };
-    f.mark(group, [0.0, 0.0, 3.0, 2.0], solid(&[0.0, 0.0, 0.0], 0b111), half, 0);
+    f.mark(
+        group,
+        [0.0, 0.0, 3.0, 2.0],
+        solid(&[0.0, 0.0, 0.0], 0b111),
+        half,
+        0,
+    );
     f.masks.push(MaskPlan {
         group,
         kind: MaskKind::Alpha,
@@ -381,7 +433,13 @@ fn soft_mask_transfer_functions_map_values() {
         mask: Some(0),
         ..opaque()
     };
-    f.mark(0, [0.0, 0.0, 3.0, 2.0], solid(&[1.0, 0.0, 0.0], 0b111), masked, 0);
+    f.mark(
+        0,
+        [0.0, 0.0, 3.0, 2.0],
+        solid(&[1.0, 0.0, 0.0], 0b111),
+        masked,
+        0,
+    );
     let bytes = f.render(1);
     assert_close(&bytes, 3, (2, 1), [1.0, 0.75, 0.75, 1.0]);
 }
@@ -402,7 +460,13 @@ fn black_generation_converts_group_results_into_cmyk() {
         knockout: false,
         start: Start::Transparent,
     });
-    f.mark(group, [0.0, 0.0, 2.0, 2.0], solid(&[0.25, 0.5, 0.75], 0b111), opaque(), 0);
+    f.mark(
+        group,
+        [0.0, 0.0, 2.0, 2.0],
+        solid(&[0.25, 0.5, 0.75], 0b111),
+        opaque(),
+        0,
+    );
     f.conversions.push(Conversion {
         from: Process::Rgb,
         to: Process::Cmyk,
@@ -425,7 +489,13 @@ fn narrow_parents_take_group_results_as_one_rounded_store() {
         (Format::U8, Format::U8),
     ] {
         let mut f = Fixture::new(5, 3, RGB, page);
-        f.mark(0, [0.0, 0.0, 5.0, 3.0], solid(&[0.2, 0.7, 0.4], 0b111), opaque(), 0);
+        f.mark(
+            0,
+            [0.0, 0.0, 5.0, 3.0],
+            solid(&[0.2, 0.7, 0.4], 0b111),
+            opaque(),
+            0,
+        );
         let group = f.group(GroupPlan {
             bounds: page_rect(5, 3),
             items: Vec::new(),
@@ -439,9 +509,29 @@ fn narrow_parents_take_group_results_as_one_rounded_store() {
             alpha: 0.6,
             ..opaque()
         };
-        f.mark(group, [1.0, 0.0, 5.0, 3.0], solid(&[0.9, 0.1, 0.3], 0b111), translucent, 0);
-        f.mark(group, [0.0, 1.0, 3.0, 3.0], solid(&[0.1, 0.3, 0.9], 0b111), translucent, 0);
-        f.use_group(0, group, Compositing { alpha: 0.7, ..opaque() }, None);
+        f.mark(
+            group,
+            [1.0, 0.0, 5.0, 3.0],
+            solid(&[0.9, 0.1, 0.3], 0b111),
+            translucent,
+            0,
+        );
+        f.mark(
+            group,
+            [0.0, 1.0, 3.0, 3.0],
+            solid(&[0.1, 0.3, 0.9], 0b111),
+            translucent,
+            0,
+        );
+        f.use_group(
+            0,
+            group,
+            Compositing {
+                alpha: 0.7,
+                ..opaque()
+            },
+            None,
+        );
         let bytes = f.render(2);
         // At (2, 2) both members overlap: group colour by source-over.
         let (a, b) = ([0.9, 0.1, 0.3], [0.1, 0.3, 0.9]);

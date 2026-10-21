@@ -56,7 +56,12 @@ struct Spec<'a> {
 }
 
 impl<B: Backend> Planner<'_, B> {
-    pub(super) fn fill(&mut self, scope: &Scope, node: &FillNode, budget: &mut Budget) -> Result<()> {
+    pub(super) fn fill(
+        &mut self,
+        scope: &Scope,
+        node: &FillNode,
+        budget: &mut Budget,
+    ) -> Result<()> {
         let hull = bounds::path(&node.path, scope.transform).map(|h| bounds::expand(h, 1.0));
         let spec = Spec {
             info: &node.mark,
@@ -88,7 +93,8 @@ impl<B: Backend> Planner<'_, B> {
         let reach = stroke.width.max(0.0) / 2.0
             * join.max(std::f64::consts::SQRT_2)
             * bounds::scale(pen.transform.then(scope.transform));
-        let hull = bounds::path(&node.path, scope.transform).map(|h| bounds::expand(h, reach + 2.0));
+        let hull =
+            bounds::path(&node.path, scope.transform).map(|h| bounds::expand(h, reach + 2.0));
         let spec = Spec {
             info: &node.mark,
             position: node.mark.position,
@@ -130,7 +136,10 @@ impl<B: Backend> Planner<'_, B> {
             };
             let origin = t.apply(placement.origin);
             let hull = relative.map(|[x0, y0, x1, y1]| {
-                bounds::expand([x0 + origin.x, y0 + origin.y, x1 + origin.x, y1 + origin.y], 1.0)
+                bounds::expand(
+                    [x0 + origin.x, y0 + origin.y, x1 + origin.x, y1 + origin.y],
+                    1.0,
+                )
             });
             let spec = Spec {
                 info: &node.mark,
@@ -144,7 +153,12 @@ impl<B: Backend> Planner<'_, B> {
         Ok(())
     }
 
-    pub(super) fn image(&mut self, scope: &Scope, node: &ImageNode, budget: &mut Budget) -> Result<()> {
+    pub(super) fn image(
+        &mut self,
+        scope: &Scope,
+        node: &ImageNode,
+        budget: &mut Budget,
+    ) -> Result<()> {
         let to_device = node.transform.then(scope.transform);
         let hull = bounds::path(&bounds::unit_square(), to_device).map(|h| bounds::expand(h, 1.0));
         let spec = Spec {
@@ -170,7 +184,12 @@ impl<B: Backend> Planner<'_, B> {
             (hull, Geometry::Area(Some((path, to_device))))
         } else {
             let r = self.area.region;
-            let whole = [f64::from(r.x0), f64::from(r.y0), f64::from(r.x1), f64::from(r.y1)];
+            let whole = [
+                f64::from(r.x0),
+                f64::from(r.y0),
+                f64::from(r.x1),
+                f64::from(r.y1),
+            ];
             (Some(whole), Geometry::Area(None))
         };
         let spec = Spec {
@@ -198,12 +217,11 @@ impl<B: Backend> Planner<'_, B> {
                 .ok_or(Error::invalid_argument("scene state out of range"))?,
         );
         let paint = match spec.colour {
-            Colour::Paint(id) => Some(Arc::clone(
-                scene
-                    .paints
-                    .get(id.index())
-                    .ok_or(Error::invalid_argument("scene paint out of range"))?,
-            )),
+            Colour::Paint(id) => {
+                Some(Arc::clone(scene.paints.get(id.index()).ok_or(
+                    Error::invalid_argument("scene paint out of range"),
+                )?))
+            }
             Colour::Shading(_) | Colour::Image(_) => None,
         };
         if !paints(paint.as_deref(), spec.colour, scope, scene) {
@@ -215,8 +233,15 @@ impl<B: Backend> Planner<'_, B> {
         };
         let pattern_box = match (paint.as_deref(), spec.colour) {
             (Some(Paint::Shading(pattern)), Colour::Paint(id)) if scope.paint.is_none() => {
-                pattern_bbox(pattern, scope.transform)
-                    .map(|(usage, extra)| (usage, Extra { paint: id.0, ..extra }))
+                pattern_bbox(pattern, scope.transform).map(|(usage, extra)| {
+                    (
+                        usage,
+                        Extra {
+                            paint: id.0,
+                            ..extra
+                        },
+                    )
+                })
             }
             _ => None,
         };
@@ -232,7 +257,8 @@ impl<B: Backend> Planner<'_, B> {
         if culling.is_empty() {
             return Ok(());
         }
-        if self.storage.transfers && (tiling.is_some() || (self.simulate && state.overprint.enabled))
+        if self.storage.transfers
+            && (tiling.is_some() || (self.simulate && state.overprint.enabled))
         {
             return Err(Error::unsupported(
                 crate::features::TRANSPARENCY_TRANSFER,
@@ -308,7 +334,12 @@ impl<B: Backend> Planner<'_, B> {
 
     /// The outline coverage a shading pattern with a `Background` and a
     /// degenerate `BBox` mixes its colours by (8.7.4.4).
-    fn boundary(&mut self, covered: &mut Covered, boundary: &Extra, budget: &mut Budget) -> Result<()> {
+    fn boundary(
+        &mut self,
+        covered: &mut Covered,
+        boundary: &Extra,
+        budget: &mut Budget,
+    ) -> Result<()> {
         let options = ShapeOptions {
             area: self.area,
             precision: self.precision,
@@ -369,8 +400,13 @@ impl<B: Backend> Planner<'_, B> {
     ) -> Result<()> {
         let serial = self.serial;
         let state_id = spec.info.state.0;
-        let paint =
-            self.prepare_paint(scope, spec.colour, (state, state_id), covered.bounds, budget)?;
+        let paint = self.prepare_paint(
+            scope,
+            spec.colour,
+            (state, state_id),
+            covered.bounds,
+            budget,
+        )?;
         let (records, select) = self.selection(scope, spec.colour, (state, state_id), budget)?;
         budget.work.charge(covered.work)?;
         budget.work.charge(area(covered.bounds))?;
@@ -399,7 +435,9 @@ impl<B: Backend> Planner<'_, B> {
             limits: self.limits,
         };
         let prepared = match geometry {
-            Geometry::Fill(path, rule) => self.backend.fill(path, scope.transform, *rule, &options)?,
+            Geometry::Fill(path, rule) => {
+                self.backend.fill(path, scope.transform, *rule, &options)?
+            }
             Geometry::Stroke(path, pen) => {
                 let inverse = pen.transform.inverse().ok_or(Error::unsupported(
                     crate::features::SINGULAR_STROKE,
@@ -411,10 +449,12 @@ impl<B: Backend> Planner<'_, B> {
             Geometry::Glyph(source, linear, origin) => {
                 self.backend.glyph(source, *linear, *origin, &options)?
             }
-            Geometry::Unit(transform) => {
-                self.backend
-                    .fill(&bounds::unit_square(), *transform, FillRule::NonZero, &options)?
-            }
+            Geometry::Unit(transform) => self.backend.fill(
+                &bounds::unit_square(),
+                *transform,
+                FillRule::NonZero,
+                &options,
+            )?,
             Geometry::Area(Some((path, transform))) => {
                 self.backend
                     .fill(path, *transform, FillRule::NonZero, &options)?
@@ -463,7 +503,9 @@ impl<B: Backend> Planner<'_, B> {
                 {
                     return Ok(cached);
                 }
-                let prepared = self.backend.paint(&paint, &request, &mut budget.functions)?;
+                let prepared = self
+                    .backend
+                    .paint(&paint, &request, &mut budget.functions)?;
                 let index = self.add_paint(prepared, scope, pixels, budget)?;
                 if matches!(*paint, Paint::Solid(_)) {
                     self.solids().insert(key, index);
@@ -639,7 +681,12 @@ fn pattern_bbox(pattern: &ShadingPaint, transform: Transform) -> Option<(BBoxUse
 
 /// Whether a mark's colour space can change any colorant (Separation
 /// `None` cannot, 8.6.6.4).
-fn paints(paint: Option<&Paint>, colour: Colour<'_>, scope: &Scope, scene: &pagura_interpret::Scene) -> bool {
+fn paints(
+    paint: Option<&Paint>,
+    colour: Colour<'_>,
+    scope: &Scope,
+    scene: &pagura_interpret::Scene,
+) -> bool {
     let of = |paint: &Paint| match paint {
         Paint::Solid(color) => color.space.paints(),
         Paint::Shading(pattern) => pattern.shading.space.paints(),

@@ -25,7 +25,10 @@ pub(crate) fn path(path: &Path, transform: Transform) -> Option<Hull> {
             Segment::CubicTo { c1, c2, end } => (Some(c1), Some(c2), Some(end)),
             Segment::Close => (None, None, None),
         };
-        [a, b, c].into_iter().flatten().map(move |p| transform.apply(p))
+        [a, b, c]
+            .into_iter()
+            .flatten()
+            .map(move |p| transform.apply(p))
     }))
 }
 
@@ -101,7 +104,10 @@ mod tests {
             x1: 10,
             y1: 10,
         };
-        let hull = path(&unit_square(), Transform::new(2.5, 0.0, 0.0, 2.0, 1.25, 3.0));
+        let hull = path(
+            &unit_square(),
+            Transform::new(2.5, 0.0, 0.0, 2.0, 1.25, 3.0),
+        );
         assert_eq!(hull, Some([1.25, 3.0, 3.75, 5.0]));
         assert_eq!(
             device(hull, region),

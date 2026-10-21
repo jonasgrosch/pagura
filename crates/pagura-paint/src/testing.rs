@@ -45,7 +45,8 @@ fn rectangle(path: &Path, transform: Transform) -> Result<Option<Box4>> {
     let Some(hull) = crate::prepare::bounds::points(points.iter().copied()) else {
         return Ok(None);
     };
-    let corner = |p: &Point| (p.x == hull[0] || p.x == hull[2]) && (p.y == hull[1] || p.y == hull[3]);
+    let corner =
+        |p: &Point| (p.x == hull[0] || p.x == hull[2]) && (p.y == hull[1] || p.y == hull[3]);
     if !points.iter().all(corner) {
         return Err(Error::syntax("the test backend takes rectangles only"));
     }
@@ -121,10 +122,20 @@ impl Backend for Rects {
         transform: Transform,
         options: &ShapeOptions<'_>,
     ) -> Result<Prepared> {
-        let mut rect = [f64::NEG_INFINITY, f64::NEG_INFINITY, f64::INFINITY, f64::INFINITY];
+        let mut rect = [
+            f64::NEG_INFINITY,
+            f64::NEG_INFINITY,
+            f64::INFINITY,
+            f64::INFINITY,
+        ];
         for (path, _) in paths {
             let r = rectangle(path, transform)?.unwrap_or([0.0; 4]);
-            rect = [rect[0].max(r[0]), rect[1].max(r[1]), rect[2].min(r[2]), rect[3].min(r[3])];
+            rect = [
+                rect[0].max(r[0]),
+                rect[1].max(r[1]),
+                rect[2].min(r[2]),
+                rect[3].min(r[3]),
+            ];
         }
         let key = u32::try_from(self.clips.len()).unwrap_or(u32::MAX);
         self.clips.push(rect);
@@ -183,7 +194,9 @@ impl Backend for Rects {
         target: &Target,
         conversion: &Conversion,
     ) -> Result<Box<dyn Convert>> {
-        Ok(Box::new(pagura_color::Converter::new(space, target, conversion)?))
+        Ok(Box::new(pagura_color::Converter::new(
+            space, target, conversion,
+        )?))
     }
 
     fn finish(self, area: Area, _bytes: &mut Meter) -> Result<Box<dyn Producer>> {
@@ -218,7 +231,13 @@ fn overlap(pixel: u32, low: f64, high: f64) -> f64 {
 }
 
 impl Producer for RectCoverage {
-    fn rasterize(&mut self, shape: Option<u32>, clip: Option<u32>, band: u32, out: &mut BandCoverage) {
+    fn rasterize(
+        &mut self,
+        shape: Option<u32>,
+        clip: Option<u32>,
+        band: u32,
+        out: &mut BandCoverage,
+    ) {
         out.clear();
         let region = self.area.region;
         let whole = [
@@ -232,7 +251,12 @@ impl Producer for RectCoverage {
         };
         let s = get(&self.shapes, shape).unwrap_or(whole);
         let c = get(&self.clips, clip).unwrap_or(whole);
-        let r = [s[0].max(c[0]), s[1].max(c[1]), s[2].min(c[2]), s[3].min(c[3])];
+        let r = [
+            s[0].max(c[0]),
+            s[1].max(c[1]),
+            s[2].min(c[2]),
+            s[3].min(c[3]),
+        ];
         let mut cells = Vec::new();
         for y in self.area.band_rows(band) {
             let vertical = overlap(y, r[1], r[3]);
@@ -253,7 +277,9 @@ impl Producer for RectCoverage {
                 if !is_full && let Some((start, len)) = full.take() {
                     out.push_full(start, len);
                 }
-                if (is_full || byte == 0) && let Some(start) = partial.take() {
+                if (is_full || byte == 0)
+                    && let Some(start) = partial.take()
+                {
                     out.push_partial(start, &cells);
                     cells.clear();
                 }
@@ -377,7 +403,13 @@ impl Build {
     }
 
     /// A rectangle fill.
-    pub(crate) fn rect(&mut self, parent: GroupId, r: Box4, paint: PaintId, info: MarkInfo) -> NodeId {
+    pub(crate) fn rect(
+        &mut self,
+        parent: GroupId,
+        r: Box4,
+        paint: PaintId,
+        info: MarkInfo,
+    ) -> NodeId {
         self.node(
             parent,
             Node::Fill(FillNode {
@@ -390,7 +422,12 @@ impl Build {
     }
 
     /// A group of `role`, not yet painted anywhere.
-    pub(crate) fn group(&mut self, role: GroupRole, attributes: GroupAttributes, info: MarkInfo) -> GroupId {
+    pub(crate) fn group(
+        &mut self,
+        role: GroupRole,
+        attributes: GroupAttributes,
+        info: MarkInfo,
+    ) -> GroupId {
         self.scene.groups.push(Group {
             role,
             attributes,
@@ -465,7 +502,11 @@ impl Build {
     }
 
     /// Prepares `request` with the rectangle backend.
-    pub(crate) fn prepare(&self, request: &RenderRequest, limits: &Limits) -> Result<PreparedScene> {
+    pub(crate) fn prepare(
+        &self,
+        request: &RenderRequest,
+        limits: &Limits,
+    ) -> Result<PreparedScene> {
         let store = Store::new(1 << 20);
         prepare_with(&self.scene, request, (&store, limits), Rects::default())
     }
@@ -477,10 +518,18 @@ impl Build {
     }
 
     /// [`Self::render`] with the reserved charges.
-    pub(crate) fn render_charged(&self, request: &RenderRequest) -> Result<(Vec<u8>, crate::Charges)> {
+    pub(crate) fn render_charged(
+        &self,
+        request: &RenderRequest,
+    ) -> Result<(Vec<u8>, crate::Charges)> {
         let mut prepared = self.prepare(request, &Limits::default())?;
         let region = request.region;
-        let mut target = Pixmap::new(region.width(), region.height(), Rgba8::TRANSPARENT, usize::MAX)?;
+        let mut target = Pixmap::new(
+            region.width(),
+            region.height(),
+            Rgba8::TRANSPARENT,
+            usize::MAX,
+        )?;
         prepared.render(&mut target);
         let (used, reserved) = (prepared.usage(), prepared.charges());
         assert!(
@@ -519,7 +568,13 @@ pub(crate) fn index(n: usize) -> u32 {
 /// value, and returns the largest difference in levels.
 pub(crate) fn assert_within_one_level(bytes: &[u8], exact: &pagura_reference::Rendering) -> f64 {
     let mut worst: f64 = 0.0;
-    for (i, (pixel, value)) in bytes.as_chunks::<4>().0.iter().zip(exact.values()).enumerate() {
+    for (i, (pixel, value)) in bytes
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(exact.values())
+        .enumerate()
+    {
         for (channel, (&byte, &v)) in pixel.iter().zip(value).enumerate() {
             let difference = (f64::from(byte) - v * 255.0).abs();
             worst = worst.max(difference);

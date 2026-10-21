@@ -206,8 +206,7 @@ fn paint<B: Blend, const KNOCKOUT: bool>(
         } else {
             channel::<B::Spot>(color[i], keep, base_alpha, back, None)
         };
-        let value =
-            (1.0 - opacity) * b + opacity * ((1.0 - base_alpha) * c + base_alpha * blended);
+        let value = (1.0 - opacity) * b + opacity * ((1.0 - base_alpha) * c + base_alpha * blended);
         pixel[i] = if KNOCKOUT {
             (1.0 - shape) * pixel[i] + shape * value
         } else {

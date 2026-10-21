@@ -80,7 +80,13 @@ impl Executor<'_> {
     }
 
     /// Fills the pixels of `rect` in `buffer` with `initial`.
-    pub(super) fn start(&mut self, initial: Backdrop, buffer: Buffer, rect: DeviceRect, layout: Layout) {
+    pub(super) fn start(
+        &mut self,
+        initial: Backdrop,
+        buffer: Buffer,
+        rect: DeviceRect,
+        layout: Layout,
+    ) {
         let ws = &mut *self.ws;
         let pixels = area(rect);
         ws.usage.work = ws.usage.work.saturating_add(pixels);
@@ -117,7 +123,13 @@ impl Executor<'_> {
 
     /// Composites the pixels of the group result from `(x, y)` that have
     /// shape and coverage, run by run.
-    fn result(&mut self, used: &GroupUse, frames: (Frame, Frame), (x, y): (u32, u32), cover: Cover<'_>) {
+    fn result(
+        &mut self,
+        used: &GroupUse,
+        frames: (Frame, Frame),
+        (x, y): (u32, u32),
+        cover: Cover<'_>,
+    ) {
         let (child, _) = frames;
         let len = cover.len();
         let mut k = 0;
@@ -193,7 +205,12 @@ impl Executor<'_> {
 /// The RGBA a narrow buffer starts with.
 fn narrow_start<T: Copy + Default>(initial: Backdrop, encode: impl Fn(f64) -> T) -> [T; 4] {
     match initial {
-        Backdrop::Opaque(color) => [encode(color[0]), encode(color[1]), encode(color[2]), encode(1.0)],
+        Backdrop::Opaque(color) => [
+            encode(color[0]),
+            encode(color[1]),
+            encode(color[2]),
+            encode(1.0),
+        ],
         Backdrop::Transparent | Backdrop::Frame { .. } => [T::default(); 4],
     }
 }
@@ -275,17 +292,24 @@ fn sources(
                 (group, pixel[n + 2])
             }
             Buffer::Levels(offset) => {
-                let pixel = ws.levels.get(offset + index).map_or([0.0; 4], |p| p.map(f64::from));
+                let pixel = ws
+                    .levels
+                    .get(offset + index)
+                    .map_or([0.0; 4], |p| p.map(f64::from));
                 narrow_straight(pixel.map(|v| v / 255.0), &mut straight)
             }
             Buffer::Bytes(offset) => {
-                let pixel = ws.bytes.get(offset + index).map_or([0.0; 4], |p| p.map(f64::from));
+                let pixel = ws
+                    .bytes
+                    .get(offset + index)
+                    .map_or([0.0; 4], |p| p.map(f64::from));
                 narrow_straight(pixel.map(|v| v / 255.0), &mut straight)
             }
             Buffer::Page => return work,
         };
         let (Some(target), Some(alpha), Some(shape_out)) = (
-            ws.source.get_mut(k * to.channels()..(k + 1) * to.channels()),
+            ws.source
+                .get_mut(k * to.channels()..(k + 1) * to.channels()),
             ws.alpha.get_mut(k),
             ws.shape.get_mut(k),
         ) else {

@@ -175,7 +175,9 @@ impl Backdrop {
                     pixel.fill(0.0);
                     if let Some(index) = frame.index(column, y) {
                         let (colors, alpha) = read.pixel(buffer, index, source);
-                        for (value, &c) in pixel.iter_mut().zip(&colors).take(n.min(source.channels())) {
+                        for (value, &c) in
+                            pixel.iter_mut().zip(&colors).take(n.min(source.channels()))
+                        {
                             *value = c;
                         }
                         pixel[n] = alpha;
@@ -192,7 +194,12 @@ pub(crate) const CHANNELS: usize = 4 + crate::plan::MAX_SPOTS;
 impl Read<'_> {
     /// The premultiplied colour and alpha of pixel `index` of `buffer`, as
     /// unit values.
-    pub(crate) fn pixel(&self, buffer: Buffer, index: usize, layout: Layout) -> ([f64; CHANNELS], f64) {
+    pub(crate) fn pixel(
+        &self,
+        buffer: Buffer,
+        index: usize,
+        layout: Layout,
+    ) -> ([f64; CHANNELS], f64) {
         let mut colors = [0.0; CHANNELS];
         let n = layout.channels().min(CHANNELS);
         let stride = layout.stride();

@@ -247,7 +247,8 @@ fn order(parts: &mut Parts) {
                 .and_then(|&id| items.get(index(id)))
                 .map_or(u32::MAX, |item: &Item| item.bands[0])
         };
-        let mut order: Vec<u32> = (0..u32::try_from(group.items.len()).unwrap_or(u32::MAX)).collect();
+        let mut order: Vec<u32> =
+            (0..u32::try_from(group.items.len()).unwrap_or(u32::MAX)).collect();
         order.sort_by_key(first);
         group.order = order;
     }

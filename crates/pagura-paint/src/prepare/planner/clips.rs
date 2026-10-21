@@ -92,7 +92,11 @@ impl<B: Backend> Planner<'_, B> {
             current = node.parent;
         }
         if scope.crop {
-            chain.push((Arc::clone(&self.crop), FillRule::NonZero, self.request.transform));
+            chain.push((
+                Arc::clone(&self.crop),
+                FillRule::NonZero,
+                self.request.transform,
+            ));
         }
         chain.reverse();
         Ok(chain)
@@ -110,14 +114,19 @@ impl<B: Backend> Planner<'_, B> {
             return Ok(state.bounds);
         }
         let region = self.area.region;
-        let bounds = self
-            .chain(scope, clip, extra)?
-            .iter()
-            .fold(region, |acc, (path, _, transform)| {
-                intersect(acc, bounds::device(bounds::path(path, *transform), region))
-            });
-        self.clip_states()
-            .insert(key, State { bounds, built: None });
+        let bounds =
+            self.chain(scope, clip, extra)?
+                .iter()
+                .fold(region, |acc, (path, _, transform)| {
+                    intersect(acc, bounds::device(bounds::path(path, *transform), region))
+                });
+        self.clip_states().insert(
+            key,
+            State {
+                bounds,
+                built: None,
+            },
+        );
         Ok(bounds)
     }
 
@@ -165,8 +174,10 @@ impl<B: Backend> Planner<'_, B> {
             .iter()
             .all(|(_, _, transform)| *transform == scope.transform);
         let prepared = if uniform {
-            let paths: Vec<(&Path, FillRule)> =
-                chain.iter().map(|(path, rule, _)| (&**path, *rule)).collect();
+            let paths: Vec<(&Path, FillRule)> = chain
+                .iter()
+                .map(|(path, rule, _)| (&**path, *rule))
+                .collect();
             self.backend.clip(&paths, scope.transform, &options)?
         } else {
             // A fixed view moves its content but not the crop: clip in

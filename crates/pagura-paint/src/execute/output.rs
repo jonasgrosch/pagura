@@ -59,7 +59,8 @@ pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, target: 
         match &ws.page {
             PageBuffer::N16(words) => {
                 for (out, word) in out.iter_mut().zip(words.iter().skip(first)) {
-                    *out = word.map(|v| u8::try_from((u32::from(v) + 128) / 257).unwrap_or(u8::MAX));
+                    *out =
+                        word.map(|v| u8::try_from((u32::from(v) + 128) / 257).unwrap_or(u8::MAX));
                 }
             }
             PageBuffer::F32(levels) => {
@@ -76,7 +77,8 @@ pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, target: 
                 let stride = output.layout.stride();
                 let pixels = values.get(first * stride..).unwrap_or_default();
                 let selection = ws.selection.get(first..).unwrap_or_default();
-                for (k, (out, pixel)) in out.iter_mut().zip(pixels.chunks_exact(stride)).enumerate() {
+                for (k, (out, pixel)) in out.iter_mut().zip(pixels.chunks_exact(stride)).enumerate()
+                {
                     let select = selection.get(k).copied().unwrap_or(0);
                     *out = wide(output, pixel, select, &mut preview, &mut ws.usage);
                 }
@@ -96,7 +98,13 @@ fn byte(level: f32) -> u8 {
 }
 
 /// One f64 page pixel as premultiplied RGBA8 over the background.
-fn wide(output: &Output, pixel: &[f64], select: u16, preview: &mut Preview, usage: &mut Usage) -> [u8; 4] {
+fn wide(
+    output: &Output,
+    pixel: &[f64],
+    select: u16,
+    preview: &mut Preview,
+    usage: &mut Usage,
+) -> [u8; 4] {
     let layout = output.layout;
     let n = layout.channels();
     let alpha = pixel[n];
@@ -179,7 +187,11 @@ impl Preview {
 
 /// The CMYK equivalent of spot tints, each definition's alternate added with
 /// saturation.
-fn equivalent(output: &Output, tints: &[f64; crate::plan::MAX_SPOTS], usage: &mut Usage) -> [f64; 4] {
+fn equivalent(
+    output: &Output,
+    tints: &[f64; crate::plan::MAX_SPOTS],
+    usage: &mut Usage,
+) -> [f64; 4] {
     let mut result = [1.0; 4];
     for spot in &output.spots {
         let mut input = [0.0; pagura_color::MAX_COMPONENTS];
@@ -208,13 +220,19 @@ mod tests {
 
     #[test]
     fn over_matches_the_earlier_output_arithmetic() {
-        assert_eq!(over([17, 85, 170, 64], [0.5, 0.25, 1.0], 1.0), [128, 64, 255, 255]);
+        assert_eq!(
+            over([17, 85, 170, 64], [0.5, 0.25, 1.0], 1.0),
+            [128, 64, 255, 255]
+        );
         let pixel = over([0, 64, 128, 64], [0.5, 1.0, 1.0], 0.5);
-        assert_eq!(pixel, [
-            quantize_unit(0.25),
-            quantize_unit(0.5 + 64.0 / 255.0 * 0.5),
-            quantize_unit(0.5 + 128.0 / 255.0 * 0.5),
-            quantize_unit(0.5 + 64.0 / 255.0 * 0.5),
-        ]);
+        assert_eq!(
+            pixel,
+            [
+                quantize_unit(0.25),
+                quantize_unit(0.5 + 64.0 / 255.0 * 0.5),
+                quantize_unit(0.5 + 128.0 / 255.0 * 0.5),
+                quantize_unit(0.5 + 64.0 / 255.0 * 0.5),
+            ]
+        );
     }
 }

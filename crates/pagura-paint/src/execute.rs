@@ -158,12 +158,8 @@ impl<'a> Executor<'a> {
                 .rasterize(Some(boundary), None, self.band, &mut self.ws.boundary.0);
         }
         let mut coverage = std::mem::take(&mut self.ws.coverage);
-        self.producer.rasterize(
-            mark.cover.shape,
-            mark.cover.clip,
-            self.band,
-            &mut coverage,
-        );
+        self.producer
+            .rasterize(mark.cover.shape, mark.cover.clip, self.band, &mut coverage);
         for row in coverage.rows() {
             if row.y < frame.rect.y0 || row.y >= frame.rect.y1 {
                 continue;
@@ -236,7 +232,13 @@ impl<'a> Executor<'a> {
         opacity((paint_alpha, paint_shape), cover.coverage(), alpha, shape);
         apply(compositing, mask, alpha, shape);
         if mark.records && !ws.selection.is_empty() {
-            output::record(plan, &mut ws.selection, (x, y, first_row), cover, mark.select);
+            output::record(
+                plan,
+                &mut ws.selection,
+                (x, y, first_row),
+                cover,
+                mark.select,
+            );
         }
         ws.usage.work = ws.usage.work.saturating_add(len);
         let preserve = compositing.overprint & !painted.0 & frame.layout.mask();

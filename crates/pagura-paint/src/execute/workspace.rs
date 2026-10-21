@@ -181,11 +181,7 @@ impl Sizes {
             .iter()
             .map(|group| group.items.len())
             .fold(0, usize::saturating_add);
-        let f64s = plan
-            .stack
-            .wide
-            .saturating_add(masks)
-            .saturating_add(spans);
+        let f64s = plan.stack.wide.saturating_add(masks).saturating_add(spans);
         f64s.saturating_mul(size_of::<f64>())
             .saturating_add(plan.stack.levels.saturating_mul(size_of::<[f32; 4]>()))
             .saturating_add(plan.stack.bytes.saturating_mul(size_of::<[u8; 4]>()))
@@ -216,13 +212,16 @@ impl Workspace {
     /// [`Sizes::bytes`] before.
     pub(crate) fn new(plan: &Plan, sizes: Sizes) -> Result<Self> {
         let pixels = sizes.width.saturating_mul(sizes.rows);
-        let (format, layout) = plan
-            .groups
-            .first()
-            .map_or((Format::F64, Layout {
-                process: pagura_color::Process::Rgb,
-                spots: 0,
-            }), |page| (page.format, page.layout));
+        let (format, layout) = plan.groups.first().map_or(
+            (
+                Format::F64,
+                Layout {
+                    process: pagura_color::Process::Rgb,
+                    spots: 0,
+                },
+            ),
+            |page| (page.format, page.layout),
+        );
         let mut wide = reserve(plan.stack.wide)?;
         wide.resize(plan.stack.wide, 0.0);
         let mut levels = reserve(plan.stack.levels)?;

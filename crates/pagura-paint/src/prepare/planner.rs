@@ -390,7 +390,12 @@ impl<'s, B: Backend> Planner<'s, B> {
     }
 
     /// Composites a planned group's result into `scope`'s group.
-    fn group_result(&mut self, scope: &Scope, result: &GroupResult<'_>, budget: &mut Budget) -> Result<()> {
+    fn group_result(
+        &mut self,
+        scope: &Scope,
+        result: &GroupResult<'_>,
+        budget: &mut Budget,
+    ) -> Result<()> {
         let child = result.group;
         let bounds = intersect(self.content(child), result.culling);
         if bounds.is_empty() {
@@ -476,7 +481,12 @@ impl<'s, B: Backend> Planner<'s, B> {
 
     /// Records that `bounds` uses mask `mask`, and reserves its values
     /// there and its `TR` evaluations.
-    pub(crate) fn use_mask(&mut self, mask: Option<u32>, bounds: DeviceRect, budget: &mut Budget) -> Result<()> {
+    pub(crate) fn use_mask(
+        &mut self,
+        mask: Option<u32>,
+        bounds: DeviceRect,
+        budget: &mut Budget,
+    ) -> Result<()> {
         let Some(mask) = mask else {
             return Ok(());
         };
@@ -496,7 +506,12 @@ impl<'s, B: Backend> Planner<'s, B> {
 
     /// The mask plan of soft mask `id` used in `scope`, prepared at its
     /// first use with the scope's transform and blending space (11.6.5).
-    pub(crate) fn mask_use(&mut self, scope: &Scope, id: MaskId, budget: &mut Budget) -> Result<u32> {
+    pub(crate) fn mask_use(
+        &mut self,
+        scope: &Scope,
+        id: MaskId,
+        budget: &mut Budget,
+    ) -> Result<u32> {
         let key = (id, scope.transform_bits(), scope.layout.process);
         if let Some(&plan) = self.masks.get(&key) {
             return Ok(plan);
@@ -659,7 +674,10 @@ impl<'s, B: Backend> Planner<'s, B> {
         let [x_step, y_step] = tiling.step;
         for j in rows.0..=rows.1 {
             for i in columns.0..=columns.1 {
-                #[expect(clippy::cast_precision_loss, reason = "instance indices are below 2^53")]
+                #[expect(
+                    clippy::cast_precision_loss,
+                    reason = "instance indices are below 2^53"
+                )]
                 let offset = Transform::translate(i as f64 * x_step, j as f64 * y_step);
                 let inner = Scope {
                     group,
@@ -692,7 +710,12 @@ impl<'s, B: Backend> Planner<'s, B> {
     }
 
     /// The selection index of a state's transfer functions.
-    pub(crate) fn transfer(&mut self, state: u32, transfer: &pagura_interpret::Transfer, budget: &mut Budget) -> Result<u16> {
+    pub(crate) fn transfer(
+        &mut self,
+        state: u32,
+        transfer: &pagura_interpret::Transfer,
+        budget: &mut Budget,
+    ) -> Result<u16> {
         if let Some(&index) = self.transfers.get(&state) {
             return Ok(index);
         }
@@ -709,7 +732,9 @@ impl<'s, B: Backend> Planner<'s, B> {
                 out
             }
         };
-        budget.bytes.charge(size_of::<[Option<Arc<dyn Curve>>; 3]>())?;
+        budget
+            .bytes
+            .charge(size_of::<[Option<Arc<dyn Curve>>; 3]>())?;
         self.parts.transfers.push(functions);
         let index = u16::try_from(self.parts.transfers.len())
             .map_err(|_| Error::limit("transfer function count exceeds u16"))?;
@@ -753,7 +778,9 @@ fn mask_parameters(mask: &pagura_interpret::SoftMask, process: Process) -> Resul
     let backdrop = match &mask.backdrop {
         Some(components) => {
             if components.len() != process.components() {
-                return Err(Error::syntax("soft-mask backdrop has the wrong component count"));
+                return Err(Error::syntax(
+                    "soft-mask backdrop has the wrong component count",
+                ));
             }
             process::native(process, components)
         }
@@ -862,7 +889,13 @@ pub(crate) fn needs(parts: &Parts, rows: usize) -> Tops {
     need(parts, 0, rows, &mut memo, 0)
 }
 
-fn need(parts: &Parts, group: u32, rows: usize, memo: &mut Vec<Option<Tops>>, depth: usize) -> Tops {
+fn need(
+    parts: &Parts,
+    group: u32,
+    rows: usize,
+    memo: &mut Vec<Option<Tops>>,
+    depth: usize,
+) -> Tops {
     if let Some(Some(done)) = memo.get(index(group)) {
         return *done;
     }
@@ -875,7 +908,9 @@ fn need(parts: &Parts, group: u32, rows: usize, memo: &mut Vec<Option<Tops>>, de
     let mut most = Tops::default();
     let mask_need = |mask: Option<u32>, memo: &mut Vec<Option<Tops>>| {
         mask.and_then(|m| parts.masks.get(index(m)))
-            .map_or(Tops::default(), |m| need(parts, m.group, rows, memo, depth + 1))
+            .map_or(Tops::default(), |m| {
+                need(parts, m.group, rows, memo, depth + 1)
+            })
     };
     for &id in &plan.items {
         let Some(item) = parts.items.get(index(id)) else {

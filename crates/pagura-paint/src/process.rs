@@ -116,15 +116,31 @@ mod tests {
     #[test]
     fn conversions_follow_clause_10() {
         assert_eq!(rgb(Process::Gray, &[0.25]), [0.25; 3]);
-        assert_eq!(rgb(Process::Cmyk, &[1.0, 0.5, 0.25, 0.75]), [0.75, 0.25, 0.0]);
+        assert_eq!(
+            rgb(Process::Cmyk, &[1.0, 0.5, 0.25, 0.75]),
+            [0.75, 0.25, 0.0]
+        );
         assert_eq!(luminosity(Process::Rgb, &[1.0, 0.0, 0.0]), 0.3);
         let mut out = [0.0; 4];
-        encode_rgb(Process::Cmyk, [0.25, 0.5, 1.0], &Separation::default(), &mut out);
+        encode_rgb(
+            Process::Cmyk,
+            [0.25, 0.5, 1.0],
+            &Separation::default(),
+            &mut out,
+        );
         // Inks 0.75, 0.5, 0: the common amount 0 removes nothing.
         assert_eq!(out, [0.25, 0.5, 1.0, 1.0]);
-        encode_rgb(Process::Cmyk, [0.25, 0.5, 0.75], &Separation::default(), &mut out);
+        encode_rgb(
+            Process::Cmyk,
+            [0.25, 0.5, 0.75],
+            &Separation::default(),
+            &mut out,
+        );
         assert_eq!(out, [1.0 - 0.5, 1.0 - 0.25, 1.0, 1.0 - 0.25]);
-        assert_eq!(native(Process::Cmyk, &[0.0, 1.0, 2.0, -1.0]), [1.0, 0.0, 0.0, 1.0]);
+        assert_eq!(
+            native(Process::Cmyk, &[0.0, 1.0, 2.0, -1.0]),
+            [1.0, 0.0, 0.0, 1.0]
+        );
         assert_eq!(black(Process::Cmyk), [1.0, 1.0, 1.0, 0.0]);
     }
 }

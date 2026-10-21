@@ -135,8 +135,16 @@ fn opaque_knockout_members_composite_as_source_over() {
 fn soft_masks_by_alpha_and_luminosity() {
     for (kind, isolated, backdrop) in [
         (MaskKind::Alpha, true, None),
-        (MaskKind::Luminosity, false, Some([0.25, 0.5, 0.75].as_slice())),
-        (MaskKind::Luminosity, true, Some([0.25, 0.5, 0.75].as_slice())),
+        (
+            MaskKind::Luminosity,
+            false,
+            Some([0.25, 0.5, 0.75].as_slice()),
+        ),
+        (
+            MaskKind::Luminosity,
+            true,
+            Some([0.25, 0.5, 0.75].as_slice()),
+        ),
         (MaskKind::Luminosity, false, None),
     ] {
         let mut b = Build::new(8.0, 6.0);
@@ -209,7 +217,12 @@ fn assert_pixel(bytes: &[u8], width: usize, (x, y): (usize, usize), expected: [f
 #[test]
 fn group_blending_spaces_convert_their_results() {
     for (process, space, components, additive) in [
-        (Process::Gray, ColorSpace::DeviceGray, vec![0.35], vec![0.35]),
+        (
+            Process::Gray,
+            ColorSpace::DeviceGray,
+            vec![0.35],
+            vec![0.35],
+        ),
         (
             Process::Cmyk,
             ColorSpace::DeviceCmyk,
@@ -246,7 +259,12 @@ fn group_blending_spaces_convert_their_results() {
 #[test]
 fn page_groups_in_gray_and_cmyk_convert_at_output() {
     for (process, space, components, additive) in [
-        (Process::Gray, ColorSpace::DeviceGray, vec![0.35], vec![0.35]),
+        (
+            Process::Gray,
+            ColorSpace::DeviceGray,
+            vec![0.35],
+            vec![0.35],
+        ),
         (
             Process::Cmyk,
             ColorSpace::DeviceCmyk,
@@ -265,7 +283,12 @@ fn page_groups_in_gray_and_cmyk_convert_at_output() {
         assert_pixel(&bytes, 5, (1, 1), [rgb[0], rgb[1], rgb[2], 1.0]);
         assert_pixel(&bytes, 5, (2, 1), [rgb[0], rgb[1], rgb[2], 1.0]);
         let half_white = rgb.map(|c| 0.5 * c + 0.5);
-        assert_pixel(&bytes, 5, (4, 0), [half_white[0], half_white[1], half_white[2], 1.0]);
+        assert_pixel(
+            &bytes,
+            5,
+            (4, 0),
+            [half_white[0], half_white[1], half_white[2], 1.0],
+        );
         let quarter = rgb.map(|c| 0.25 * c + 0.75);
         assert_pixel(&bytes, 5, (4, 2), [quarter[0], quarter[1], quarter[2], 1.0]);
     }

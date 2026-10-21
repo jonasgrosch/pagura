@@ -142,10 +142,8 @@ impl Walk<'_> {
         }
         let enabled = state.overprint.enabled;
         self.overprint |= enabled;
-        self.nonzero |= matches!(space, ColorSpace::DeviceCmyk)
-            && enabled
-            && state.overprint.nonzero
-            && direct;
+        self.nonzero |=
+            matches!(space, ColorSpace::DeviceCmyk) && enabled && state.overprint.nonzero && direct;
         let colorants: &[Colorant] = match space {
             ColorSpace::Separation(separation) => std::slice::from_ref(&separation.colorant),
             ColorSpace::DeviceN(device) => &device.colorants,

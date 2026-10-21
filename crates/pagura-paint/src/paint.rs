@@ -47,7 +47,14 @@ pub(crate) trait PaintSpans: Send + Sync + fmt::Debug {
     }
 
     /// As [`Self::span`], also filling `shape`.
-    fn span_with_shape(&self, x: u32, y: u32, len: usize, out: &mut SpanColors, shape: &mut Vec<f64>) {
+    fn span_with_shape(
+        &self,
+        x: u32,
+        y: u32,
+        len: usize,
+        out: &mut SpanColors,
+        shape: &mut Vec<f64>,
+    ) {
         self.span(x, y, len, out);
         shape.clear();
         shape.extend_from_slice(&out.alpha);
@@ -104,7 +111,14 @@ impl PaintSpans for Source {
         }
     }
 
-    fn span_with_shape(&self, x: u32, y: u32, len: usize, out: &mut SpanColors, shape: &mut Vec<f64>) {
+    fn span_with_shape(
+        &self,
+        x: u32,
+        y: u32,
+        len: usize,
+        out: &mut SpanColors,
+        shape: &mut Vec<f64>,
+    ) {
         match self {
             Self::Image(image) => image.span_with_shape(x, y, len, out, shape),
             Self::Solid { .. } | Self::Shading(_) => {
@@ -161,7 +175,14 @@ impl PaintSpans for StencilPaint {
         self.mask.shape_is_alpha()
     }
 
-    fn span_with_shape(&self, x: u32, y: u32, len: usize, out: &mut SpanColors, shape: &mut Vec<f64>) {
+    fn span_with_shape(
+        &self,
+        x: u32,
+        y: u32,
+        len: usize,
+        out: &mut SpanColors,
+        shape: &mut Vec<f64>,
+    ) {
         self.mask.span_with_shape(x, y, len, out, shape);
         let alpha = std::mem::take(&mut out.alpha);
         self.color.span(x, y, len, out);

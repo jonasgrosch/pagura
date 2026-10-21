@@ -60,15 +60,22 @@ pub(crate) fn word(value: f64) -> u16 {
 /// A dynamic store into N16 words: `(1 − a)·x + a·t` for the target
 /// `t = 65535·c` evaluated in f64 and rounded once to the nearest word.
 pub(crate) fn dynamic_n16(pixels: &mut [[u16; 4]], colors: &Colors<'_>, alpha: &[f64]) {
-    dynamic(pixels, colors, alpha, 65535.0, |value| {
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "a value clamped to the word range"
-        )]
-        let word = value.clamp(0.0, 65535.0).round() as u16;
-        word
-    }, f64::from);
+    dynamic(
+        pixels,
+        colors,
+        alpha,
+        65535.0,
+        |value| {
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "a value clamped to the word range"
+            )]
+            let word = value.clamp(0.0, 65535.0).round() as u16;
+            word
+        },
+        f64::from,
+    );
 }
 
 /// A dynamic store into F32 levels: `(1 − a)·x + a·t` for the target

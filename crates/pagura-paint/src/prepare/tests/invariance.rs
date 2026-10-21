@@ -41,7 +41,12 @@ fn busy() -> Build {
             clip: (i % 3 == 0).then_some(clip),
             ..mark(states[(i % 4) as usize])
         };
-        b.rect(PAGE, [x, y, x + 6.5, y + 4.75], colors[(i % 4) as usize], info);
+        b.rect(
+            PAGE,
+            [x, y, x + 6.5, y + 4.75],
+            colors[(i % 4) as usize],
+            info,
+        );
     }
     let knockout = b.transparency(
         PAGE,
@@ -52,8 +57,18 @@ fn busy() -> Build {
         },
         mark(states[1]),
     );
-    b.rect(knockout, [10.5, 10.25, 20.0, 18.5], colors[0], mark(states[1]));
-    b.rect(knockout, [14.25, 12.5, 25.75, 21.0], colors[2], mark(states[2]));
+    b.rect(
+        knockout,
+        [10.5, 10.25, 20.0, 18.5],
+        colors[0],
+        mark(states[1]),
+    );
+    b.rect(
+        knockout,
+        [14.25, 12.5, 25.75, 21.0],
+        colors[2],
+        mark(states[2]),
+    );
     let (mask, group) = b.mask(MaskKind::Luminosity, GroupAttributes::default(), None);
     b.rect(group, [2.0, 15.5, 30.0, 28.0], colors[3], mark(states[1]));
     let masked = b.state(|s| s.soft_mask = Some(mask));
@@ -184,7 +199,10 @@ fn the_first_error_in_source_order_wins_whatever_the_bands() {
         .unwrap_err();
     assert_eq!(error.position, Position::Buffer(1));
     // And one that neither meets renders.
-    assert!(b.prepare(&b.request(region(10, 0, 20, 10), 5), &Limits::default()).is_ok());
+    assert!(
+        b.prepare(&b.request(region(10, 0, 20, 10), 5), &Limits::default())
+            .is_ok()
+    );
 }
 
 #[test]
@@ -238,7 +256,9 @@ fn rendering_stops_between_bands() {
     });
     assert_eq!(completion, Completion::Stopped { row: 16 });
     assert_eq!(bands, 3);
-    let whole = b.render(&b.request(page, 8)).unwrap_or_else(|e| panic!("{e}"));
+    let whole = b
+        .render(&b.request(page, 8))
+        .unwrap_or_else(|e| panic!("{e}"));
     let rows = 16 * page.width() as usize * 4;
     assert_eq!(&target.data()[..rows], &whole[..rows]);
     assert!(target.data()[rows..].iter().all(|&v| v == 0));
