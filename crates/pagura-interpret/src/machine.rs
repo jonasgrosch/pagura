@@ -48,6 +48,9 @@ pub(crate) struct Session<'a> {
     pub(crate) page_resources: Option<&'a Dictionary>,
     /// Glyph-name Unicode work of text extraction (`text_work`).
     pub(crate) name_work: usize,
+    /// Buffers of the string being shown: decoded and placed glyphs.
+    pub(crate) decoded: Vec<pagura_text::Glyph>,
+    pub(crate) placed: Vec<crate::device::Glyph>,
     /// The composite state of implicit groups: opaque and Normal.
     pub(crate) opaque: Arc<Composite>,
     /// The next soft mask's number.
@@ -193,6 +196,8 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
                 tokens: Meter::new(limits.operations, "content operation budget exceeded"),
                 page_resources: inputs.page_resources,
                 name_work: 0,
+                decoded: Vec::new(),
+                placed: Vec::new(),
                 opaque: Arc::new(Composite::default()),
                 masks: 0,
                 patterns: HashMap::new(),

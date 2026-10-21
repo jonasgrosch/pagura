@@ -22,8 +22,10 @@ type SourceKey = (OutlineKey, [u64; 4]);
 /// The glyph state of a recording.
 #[derive(Debug, Default)]
 pub(super) struct Glyphs {
-    /// The glyphs node later runs may extend, and its sources.
-    open: Option<(NodeId, FastMap<SourceKey, u32>)>,
+    /// The glyphs node later runs may extend.
+    open: Option<NodeId>,
+    /// The sources of the open node, by identity.
+    sources: FastMap<SourceKey, u32>,
     /// The hulls of the sources met: the outline's under the linear map.
     hulls: FastMap<SourceKey, [Point; 2]>,
     /// The fill-and-stroke group states derived for state pairs.
@@ -86,11 +88,7 @@ impl SceneRecorder {
         }
         self.marks.charge(1)?;
         self.bytes.charge_items::<Placement>(1)?;
-        let (_, sources) = self
-            .glyphs
-            .open
-            .as_mut()
-            .ok_or(Error::invalid_argument("no open glyphs node"))?;
+        let sources = &mut self.glyphs.sources;
         let Some(Node::Glyphs(glyphs)) = self.nodes.get_mut(node.index()) else {
             return Err(Error::invalid_argument("glyphs node expected"));
         };
@@ -131,7 +129,7 @@ impl SceneRecorder {
             .groups
             .get(group.index())
             .and_then(|g| g.children.last().copied());
-        if let Some((node, _)) = &self.glyphs.open
+        if let Some(node) = &self.glyphs.open
             && last == Some(*node)
             && let Some(Node::Glyphs(glyphs)) = self.nodes.get(node.index())
             && glyphs.paint == paint
@@ -151,7 +149,8 @@ impl SceneRecorder {
             }),
             0,
         )?;
-        self.glyphs.open = Some((node, FastMap::default()));
+        self.glyphs.open = Some(node);
+        self.glyphs.sources.clear();
         Ok(node)
     }
 

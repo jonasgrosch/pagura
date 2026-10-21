@@ -21,9 +21,29 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             .ok_or(Error::syntax("text showing requires a font"))?;
         let needs = self.needs();
         let text = needs.text && scope.role == Text::Page;
-        let mut decoded = Vec::new();
+        // The buffers of the previous string are reused; a string shown by
+        // a Type 3 glyph inside this one takes fresh ones.
+        let mut decoded = std::mem::take(&mut self.session.decoded);
+        let mut glyphs = std::mem::take(&mut self.session.placed);
+        let result = self.show_glyphs(&font, bytes, text, (&mut decoded, &mut glyphs), resources, scope);
+        decoded.clear();
+        glyphs.clear();
+        self.session.decoded = decoded;
+        self.session.placed = glyphs;
+        result
+    }
+
+    fn show_glyphs(
+        &mut self,
+        font: &crate::fonts::LoadedFont,
+        bytes: &[u8],
+        text: bool,
+        (decoded, glyphs): (&mut Vec<pagura_text::Glyph>, &mut Vec<Glyph>),
+        resources: &Dictionary,
+        scope: &mut Scope,
+    ) -> Result<()> {
         font.font
-            .decode_into(bytes, text, &mut decoded)
+            .decode_into(bytes, text, decoded)
             .map_err(|mut e| {
                 e.position = self.position;
                 e
@@ -32,11 +52,11 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             .tokens
             .charge(decoded.len())
             .map_err(|_| Error::limit("text glyph work exceeded"))?;
-        let mut glyphs = Vec::with_capacity(decoded.len());
-        for glyph in decoded {
-            glyphs.push(self.glyph(&font, glyph, text, resources, scope)?);
+        glyphs.reserve(decoded.len());
+        for glyph in decoded.drain(..) {
+            glyphs.push(self.glyph(font, glyph, text, resources, scope)?);
         }
-        self.emit_run(&font, &glyphs, text, scope)
+        self.emit_run(font, glyphs, text, scope)
     }
 
     /// Places one glyph: its record for text, its outline or procedure for
