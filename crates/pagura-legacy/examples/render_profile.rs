@@ -2,7 +2,7 @@
 //! Exploratory, single-process render timings; not a competitor benchmark.
 
 use pagura_document::{Document, OpenOptions};
-use pagura_render::{RenderOptions, compile_page};
+use pagura_legacy::{RenderOptions, compile_page};
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

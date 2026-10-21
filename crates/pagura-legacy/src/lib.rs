@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
-//! Page rendering: content-stream interpretation into pixels (ADR 0004).
+//! The previous renderer, kept only as a differential-test oracle for the
+//! crates of ADR 0034 until it is deleted. No product crate depends on it;
+//! tests name it as a dev-dependency.
 //!
 //! [`compile_page`] builds an immutable vector [`DisplayList`] with
 //! source-space colours, winding fills, strokes, clip stacks and form

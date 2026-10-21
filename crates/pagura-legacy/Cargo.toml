@@ -1,10 +1,10 @@
 [package]
-name = "pagura-render"
-description = "PDF content interpretation into a display list and pixels"
+name = "pagura-legacy"
+description = "The previous renderer, kept only as a differential-test oracle until it is deleted"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-publish.workspace = true
+publish = false
 license.workspace = true
 repository.workspace = true
 
