@@ -204,6 +204,7 @@ impl Backend for Rects {
             area,
             shapes: self.shapes,
             clips: self.clips,
+            cells: Vec::new(),
         }))
     }
 }
@@ -214,6 +215,7 @@ pub(crate) fn rect_producer(area: Area, shapes: Vec<Box4>, clips: Vec<Box4>) -> 
         area,
         shapes,
         clips,
+        cells: Vec::new(),
     })
 }
 
@@ -223,6 +225,7 @@ struct RectCoverage {
     area: Area,
     shapes: Vec<Box4>,
     clips: Vec<Box4>,
+    cells: Vec<u8>,
 }
 
 fn overlap(pixel: u32, low: f64, high: f64) -> f64 {
@@ -257,7 +260,8 @@ impl Producer for RectCoverage {
             s[2].min(c[2]),
             s[3].min(c[3]),
         ];
-        let mut cells = Vec::new();
+        let mut cells = std::mem::take(&mut self.cells);
+        cells.clear();
         for y in self.area.band_rows(band) {
             let vertical = overlap(y, r[1], r[3]);
             if vertical <= 0.0 {
@@ -299,6 +303,7 @@ impl Producer for RectCoverage {
             }
         }
         out.finish();
+        self.cells = cells;
     }
 }
 
