@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![warn(unreachable_pub)]
 //! Drivers of Pagura's coverage-guided fuzz targets.
 //!
 //! Each driver feeds one input through public APIs and checks what every
@@ -16,24 +17,28 @@
 
 use pagura_core::{Diagnostic, Error, Limits, Recovery, Result};
 
+pub mod cmap;
 pub mod content;
 pub mod document;
 pub mod extraction;
 pub mod filters;
 pub mod font;
+pub mod forms;
 pub mod host;
 pub mod image;
 pub mod navigation;
 pub mod render;
+pub mod security;
 pub mod syntax;
 pub mod text;
 pub mod wrapper;
+pub mod write;
 
 /// A driver: runs one input, panicking only when a property is violated.
 pub type Driver = fn(&[u8]);
 
 /// Every target, by the name `cargo fuzz` and `fuzz/regressions/` use.
-pub const TARGETS: [(&str, Driver); 11] = [
+pub const TARGETS: [(&str, Driver); 15] = [
     ("syntax", syntax::run),
     ("filters", filters::run),
     ("document", document::run),
@@ -45,6 +50,10 @@ pub const TARGETS: [(&str, Driver); 11] = [
     ("host", host::run),
     ("navigation", navigation::run),
     ("extraction", extraction::run),
+    ("write", write::run),
+    ("forms", forms::run),
+    ("cmap", cmap::run),
+    ("security", security::run),
 ];
 
 /// Runs the driver of `target` on `data`. Returns `false` for an unknown
@@ -145,40 +154,32 @@ fn is_tag(tag: &str) -> bool {
 }
 
 #[cfg(test)]
-mod diagnostic_tests {
-    use super::*;
-    use pagura_core::{Position, Repair};
+mod tests {
+    use super::assert_diagnostics;
+    use pagura::{Diagnostic, Position, Recovery};
+    use pagura_core::repairs as core;
+    use pagura_text::repairs as text;
 
+    /// Strict accepts information and rejects every repair, whatever the
+    /// tags (ADR 0003).
     #[test]
-    fn strict_accepts_information_and_rejects_repairs_independently_of_tags() {
-        let information = [
-            pagura_text::SUBSTITUTED,
-            pagura_text::CID_GLYPH_MISSING,
-            "test.information",
-        ]
-        .map(|tag| Diagnostic::information(tag, "provider information"));
+    fn strict_accepts_information_and_rejects_every_repair() {
+        let information = [pagura_text::SUBSTITUTED, pagura_text::CID_GLYPH_MISSING]
+            .map(|tag| Diagnostic::information(tag, "provider information"));
         assert_diagnostics(&information, Recovery::Strict);
-        for tag in [
-            "font.substituted",
-            "font.cid-glyph-missing",
-            "font.tounicode-invalid",
-            "font.tounicode-simple-codes",
-            "font.tounicode-utf16",
-            "font.tounicode-range",
-            "font.cmap-block-count",
-            "font.cmap-codespace",
-            "filter.checksum-mismatch",
-            "syntax.key-solidus",
-            "font.descriptor-weight",
-        ] {
+        let text = [
+            text::TOUNICODE_INVALID,
+            text::CMAP_CODESPACE,
+            text::DESCRIPTOR_WEIGHT,
+        ];
+        for &repair in core::ALL.iter().chain(&text) {
             let mut diagnostics = information.to_vec();
-            diagnostics
-                .push(Diagnostic::new(Repair::new(tag), "malformed input").at(Position::Buffer(7)));
+            diagnostics.push(Diagnostic::new(repair, "malformed input").at(Position::Buffer(7)));
             assert_diagnostics(&diagnostics, Recovery::Repair);
             assert!(
                 std::panic::catch_unwind(|| assert_diagnostics(&diagnostics, Recovery::Strict))
                     .is_err(),
-                "Strict accepted {tag}"
+                "Strict accepted {repair}"
             );
         }
     }

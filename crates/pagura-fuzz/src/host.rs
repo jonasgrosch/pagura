@@ -44,6 +44,115 @@ const INVALID_ARGUMENT: u8 = 7;
 /// The standard Named actions, sent by their exact names.
 const NAMED: [&str; 4] = ["NextPage", "PrevPage", "FirstPage", "LastPage"];
 
+/// The flags byte that starts an input, as named bits (see the module
+/// documentation).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Flags(u8);
+
+impl Flags {
+    /// Protocol 1.1 and its generation requests.
+    pub const GENERATIONS: Self = Self(1);
+    /// Strict recovery.
+    pub const STRICT: Self = Self(1 << 1);
+    /// Raw frames follow the PDF after the separator and are sent last.
+    pub const RAW_FRAMES: Self = Self(1 << 2);
+    /// Protocol 1.2 and its reading requests; the input carries a search.
+    pub const READING: Self = Self(1 << 3);
+    /// With [`Self::READING`], a v1 (or v1.1) handshake instead.
+    pub const OLDER: Self = Self(1 << 4);
+    /// Protocol 1.4 with typed diagnostics.
+    pub const TYPED_DIAGNOSTICS: Self = Self(1 << 5);
+    /// Typed diagnostics requested even with an older handshake.
+    pub const UNNEGOTIATED_DIAGNOSTICS: Self = Self(1 << 6);
+    /// Protocol 1.3 unless [`Self::TYPED_DIAGNOSTICS`] is set.
+    pub const VERSION_1_3: Self = Self(1 << 7);
+
+    /// Whether every bit of `other` is set.
+    pub const fn contains(self, other: Self) -> bool {
+        self.0 & other.0 == other.0
+    }
+
+    /// Whether any bit of `other` is set.
+    pub const fn intersects(self, other: Self) -> bool {
+        self.0 & other.0 != 0
+    }
+
+    /// The byte.
+    pub const fn bits(self) -> u8 {
+        self.0
+    }
+}
+
+impl std::ops::BitOr for Flags {
+    type Output = Self;
+
+    fn bitor(self, other: Self) -> Self {
+        Self(self.0 | other.0)
+    }
+}
+
+/// One input in this target's layout, built for tests and seeds.
+#[derive(Debug, Clone)]
+pub struct Input<'a> {
+    /// What the session negotiates and requests.
+    pub flags: Flags,
+    /// The zero-based page of the tile and of the search window.
+    pub page: u8,
+    /// The scale in sixteenths, minus one.
+    pub scale: u8,
+    /// The tile's x, y, width and height in pixels.
+    pub tile: [u8; 4],
+    /// The search, present exactly with [`Flags::READING`].
+    pub search: Option<Search<'a>>,
+    /// The PDF file the session opens.
+    pub pdf: &'a [u8],
+}
+
+/// The search window of an [`Input`].
+#[derive(Debug, Clone, Copy)]
+pub struct Search<'a> {
+    /// The window's length in pages.
+    pub pages: u8,
+    /// The first match reported.
+    pub offset: u8,
+    /// The most matches reported.
+    pub limit: u8,
+    /// The protocol's search option bits.
+    pub options: u8,
+    /// At most 255 bytes, which need not be UTF-8.
+    pub query: &'a [u8],
+}
+
+impl Input<'_> {
+    /// The input's bytes; a query longer than 255 bytes is cut.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let [x, y, width, height] = self.tile;
+        let mut bytes = vec![
+            self.flags.bits(),
+            self.page,
+            self.scale,
+            x,
+            y,
+            width,
+            height,
+        ];
+        if let Some(search) = &self.search {
+            let query = &search.query[..search.query.len().min(255)];
+            let length = u8::try_from(query.len()).unwrap_or(u8::MAX);
+            bytes.extend([
+                search.pages,
+                search.offset,
+                search.limit,
+                search.options,
+                length,
+            ]);
+            bytes.extend_from_slice(query);
+        }
+        bytes.extend_from_slice(self.pdf);
+        bytes
+    }
+}
+
 /// The parameters of the tile requests.
 #[derive(Debug, Clone, Copy)]
 struct TileRequest {
@@ -118,15 +227,17 @@ pub fn run(data: &[u8]) {
     else {
         return;
     };
-    let (search, rest) = if flags & 8 == 0 {
-        (None, rest)
-    } else {
+    let flags = Flags(flags);
+    let (search, rest) = if flags.contains(Flags::READING) {
         let Some((search, rest)) = SearchRequest::read(page, rest) else {
             return;
         };
         (Some(search), rest)
+    } else {
+        (None, rest)
     };
-    let (pdf, tail) = match (flags & 4 != 0, wrapper::find(rest, wrapper::SEPARATOR)) {
+    let raw_frames = flags.contains(Flags::RAW_FRAMES);
+    let (pdf, tail) = match (raw_frames, wrapper::find(rest, wrapper::SEPARATOR)) {
         (true, Some(at)) => {
             let (pdf, tail) = rest.split_at(at);
             (
@@ -141,13 +252,13 @@ pub fn run(data: &[u8]) {
         scale: (f64::from(scale) + 1.0) / 16.0,
         rect: [x, y, width, height].map(u32::from),
     };
-    let version = if flags & 32 != 0 {
+    let version = if flags.contains(Flags::TYPED_DIAGNOSTICS) {
         VERSION_1_4
-    } else if flags & 128 != 0 {
+    } else if flags.contains(Flags::VERSION_1_3) {
         VERSION_1_3
-    } else if search.is_some() && flags & 16 == 0 {
+    } else if search.is_some() && !flags.contains(Flags::OLDER) {
         VERSION_1_2
-    } else if flags & 1 != 0 {
+    } else if flags.contains(Flags::GENERATIONS) {
         VERSION_1_1
     } else {
         VERSION
@@ -219,20 +330,20 @@ pub fn run(data: &[u8]) {
 /// requests on the closed handle.
 fn requests(
     version: u32,
-    flags: u8,
+    flags: Flags,
     pdf: &[u8],
     tile: TileRequest,
     search: Option<&SearchRequest>,
 ) -> (Frames, Plan) {
     let mut frames = Frames::default();
     frames.push(1, &version.to_le_bytes());
-    let mut open = vec![u8::from(flags & 2 == 0)];
+    let mut open = vec![u8::from(!flags.contains(Flags::STRICT))];
     open.extend_from_slice(&0_u32.to_le_bytes());
     open.extend_from_slice(&u32::try_from(pdf.len()).unwrap_or(u32::MAX).to_le_bytes());
     open.extend_from_slice(pdf);
     let open = frames.push(2, &open);
     frames.push(3, &words(&[1, tile.page]));
-    let generations = (flags & 1 != 0).then(|| {
+    let generations = flags.contains(Flags::GENERATIONS).then(|| {
         frames.push(7, &words(&[1, 2]));
         let current = frames.push(8, &generation_tile(2, tile));
         let newer = frames.push(7, &words(&[1, 3]));
@@ -255,7 +366,8 @@ fn requests(
         closed_stats: 0,
         closed_text: 0,
     });
-    let diagnostics = frames.push(if flags & 0x60 != 0 { 17 } else { 5 }, &words(&[1]));
+    let typed = flags.intersects(Flags::TYPED_DIAGNOSTICS | Flags::UNNEGOTIATED_DIAGNOSTICS);
+    let diagnostics = frames.push(if typed { 17 } else { 5 }, &words(&[1]));
     let close = frames.push(6, &words(&[1]));
     if let Some(reading) = &mut reading {
         reading.closed_stats = frames.push(15, &[]);

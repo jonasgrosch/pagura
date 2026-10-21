@@ -21,7 +21,7 @@ listed per target below.
 |---|---|---|
 | `syntax` | bytes | object parsing in strict and repair mode |
 | `filters` | selector byte (filter, predictor), encoded data | decoders respect their output cap |
-| `document` | a PDF file | opening, lazy loading of up to 256 objects and their stream data, page enumeration and compilation of four pages, in both recovery modes |
+| `document` | a PDF file | opening, lazy loading of up to 256 objects and their stream data, `pagura::signatures` (every failure structured), page enumeration and compilation of four pages through one render context, each compiled again from its caches to a list of the same length, in both recovery modes |
 | `render` | a PDF file | the first page renders to exactly `device_size` |
 | `font` | selector byte (Type 1, TrueType, CFF, OpenType), program | `FontProgram::parse`, then outline and advance of every glyph, names, `cmap` and CID lookups |
 | `image` | selector byte, then codec data or wrapper parts | `dct`, `ccitt` (strict and reported row recovery), `jbig2::decode`, `jpx::decode`, `decode_xobject` and `decode_inline`; samples match the reported size and bit depth |
@@ -30,15 +30,22 @@ listed per target below.
 | `host` | flags, page, scale, tile, search window and query, PDF | hello, open, page_info, v1.1 generations with a current and a stale tile, render_tile, the v1.2 reading requests (page text, a search window and the complete search, page links, outlines, page labels, accounting before and after close), diagnostics and close through `pagura_host::Session`; one response per request in order, each with its documented payload layout, errors included; stale tiles skipped, the same tile identical through v1 and v1.1; matches inside the window and the page text, folding to the query, and a cursor that resumes with exactly the remaining matches; close releases the text cache; v1 and v1.1 sessions answer reading requests with an operational InvalidArgument error and keep serving |
 | `navigation` | a PDF file | outlines, named destinations and lookups of every listed name, name and number trees, the OpenAction, links of up to 16 pages and page labels, in both recovery modes; results within one traversal budget, destination pages inside the document, outline and action parents before their children, link quads inside the rectangle, one label per page, and actions read back from their own dictionaries, with a second read returning the same result |
 | `extraction` | a content stream, optionally ending in a `%` query line | `compile_page_with_text`, `compile_page` and `text_page` on the `content` page, in both recovery modes; text and display list from one compilation (the same marks and pixels as without extraction, the same text as `text_page`); characters partition the text, lines and words lie inside it, glyph quads are finite; `TextPage::find` of the query and of a slice of the text, with every option, returns ranges of the text that fold to the query |
+| `write` | wrapper parts | every object of the wrapped document goes through `pagura::Builder` with its raw stream data; the written file reopens strictly (or exceeds a budget), and every object reads back equal, reals up to their last bits and `/Length` aside |
+| `forms` | selector byte (fill values, strict bit), a PDF file | `acro_form` (parents precede children, widgets name existing fields), `form_filler` filling up to 16 fields with text, button and choice values, and `pagura::prepare_form`: one appearance per widget, in widget order |
+| `cmap` | wrapper-separated parts: a CMap program, the parent its `usecmap` names, codes | `pagura::provider::PredefinedCMap::parse`, then `decode_code` over the codes, each consuming one to four bytes |
+| `security` | selector byte (strict bit), password, separator, a PDF file | opening with the password through the standard security handler, then the `document` walk |
 
 Structured inputs split their parts at a line holding only `%%%%`. The
-wrapper targets (`text`, `image` modes 4–7) turn the parts into objects 3,
+wrapper targets (`text`, `image` modes 4–7, `write`) turn the parts into objects 3,
 4, … of a small, valid PDF after a fixed catalog (1) and empty page tree (2),
 as in the generated fixtures. A part `<< entries >> stream`, followed by a
 line break and the data, becomes a stream whose `/Length` the wrapper sets;
 any other part is used as an object body verbatim. The selector bytes are
-documented in `crates/pagura-fuzz/src/image.rs`, `text.rs` and `host.rs`,
-the search query of `extraction` in `extraction.rs`.
+documented in `crates/pagura-fuzz/src/image.rs`, `text.rs`, `host.rs`,
+`forms.rs` and `security.rs`, the search query of `extraction` in
+`extraction.rs`. The ICC profile parser is not a target of its own: the
+facade does not expose it, and `render` and `image` reach it through
+`ICCBased` colour spaces.
 
 ## Routine run
 

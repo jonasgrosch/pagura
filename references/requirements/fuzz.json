@@ -7,7 +7,7 @@
       "id": "fuzz-no-panic",
       "reference": "project-policy",
       "clauses": [],
-      "status": "nine cargo-fuzz targets; every input ends in a value or a structured error with well-formed tags; strict mode reports no repairs",
+      "status": "fifteen cargo-fuzz targets; every input ends in a value or a structured error with well-formed tags; strict mode reports no repairs",
       "tests": [
         "fuzz/fuzz_targets/syntax.rs",
         "fuzz/fuzz_targets/filters.rs",
@@ -18,6 +18,12 @@
         "fuzz/fuzz_targets/text.rs",
         "fuzz/fuzz_targets/content.rs",
         "fuzz/fuzz_targets/host.rs",
+        "fuzz/fuzz_targets/navigation.rs",
+        "fuzz/fuzz_targets/extraction.rs",
+        "fuzz/fuzz_targets/write.rs",
+        "fuzz/fuzz_targets/forms.rs",
+        "fuzz/fuzz_targets/cmap.rs",
+        "fuzz/fuzz_targets/security.rs",
         "tools/fuzz_smoke.py"
       ],
       "gaps": "Routine runs are 30 s per target; no sustained campaign on dedicated hardware, no coverage report per crate."
@@ -37,13 +43,16 @@
       "id": "fuzz-result-contracts",
       "reference": "project-policy",
       "clauses": [],
-      "status": "decoded samples match image sizes and bit depths, filter output caps hold, glyph codes cover decoded strings, tiles equal the whole page (ADR 0004), and host responses follow PROTOCOL.md",
+      "status": "decoded samples match image sizes and bit depths, filter output caps hold, glyph codes cover decoded strings, tiles equal the whole page (ADR 0004), host responses follow PROTOCOL.md, written objects read back equal, form fills prepare one appearance per widget, and CMap codes consume one to four bytes",
       "tests": [
         "crates/pagura-fuzz/src/image.rs",
         "crates/pagura-fuzz/src/filters.rs",
         "crates/pagura-fuzz/src/text.rs",
         "crates/pagura-fuzz/src/content.rs",
-        "crates/pagura-fuzz/src/host.rs"
+        "crates/pagura-fuzz/src/host.rs",
+        "crates/pagura-fuzz/src/write.rs",
+        "crates/pagura-fuzz/src/forms.rs",
+        "crates/pagura-fuzz/src/cmap.rs"
       ],
       "gaps": "No differential comparison with other engines."
     },
