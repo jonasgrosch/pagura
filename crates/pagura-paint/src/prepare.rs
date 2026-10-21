@@ -20,7 +20,7 @@ pub(crate) use backend::{Backend, PaintRequest, Prepared, Producer, Raster};
 use crate::execute::{Executor, Workspace};
 use crate::plan::{MAX_BAND_HEIGHT, Plan};
 use crate::request::RenderRequest;
-use pagura_core::{Error, Limits, Meter, Result, Store};
+use pagura_core::{Diagnostic, Error, Limits, Meter, Result, Store};
 use pagura_interpret::Scene;
 use pagura_raster::{Area, DeviceRect, GlyphOrigins, Pixmap};
 
@@ -34,6 +34,7 @@ pub struct PreparedScene {
     plan: Plan,
     producer: Box<dyn Producer>,
     workspace: Workspace,
+    repairs: Vec<Diagnostic>,
     charges: Charges,
 }
 
@@ -147,11 +148,12 @@ pub(crate) fn prepare_with<B: Backend>(
     let area = area(request, limits)?;
     let mut budget = Budget::new(limits);
     let planner = planner::Planner::new(scene, request, (store, limits), area, backend)?;
-    let (plan, producer, workspace) = finish::finish(planner, &mut budget)?;
+    let finished = finish::finish(planner, &mut budget)?;
     Ok(PreparedScene {
-        plan,
-        producer,
-        workspace,
+        plan: finished.plan,
+        producer: finished.producer,
+        workspace: finished.workspace,
+        repairs: finished.repairs,
         charges: budget.charges(),
     })
 }
@@ -201,6 +203,12 @@ impl PreparedScene {
     /// The budgets preparation reserved.
     pub fn charges(&self) -> Charges {
         self.charges
+    }
+
+    /// The repairs preparation made (image decoding), in source order, for
+    /// the caller to report through its `Diagnostics`.
+    pub fn repairs(&self) -> &[Diagnostic] {
+        &self.repairs
     }
 
     /// Renders every band into `target`, whose pixel `(0, 0)` is the

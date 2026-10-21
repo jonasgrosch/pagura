@@ -202,9 +202,13 @@ impl<'a> Executor<'a> {
                     densify(boundary, (x, y), dense);
                     paint.span_with_boundary(x, y, dense, &mut ws.colors);
                 }
-                None => paint.span(x, y, len, &mut ws.colors),
+                None if paint.shape_is_alpha() => paint.span(x, y, len, &mut ws.colors),
+                None => paint.span_with_shape(x, y, len, &mut ws.colors, &mut ws.texel_shape),
             }
         }
+        let paint_shape = (constant.is_none() && !paint.shape_is_alpha())
+            .then(|| ws.texel_shape.get(..len))
+            .flatten();
         let (colors, paint_alpha, painted) = match constant {
             Some(color) => (Colors::Constant(color), None, paint.painted()),
             None => {
@@ -230,7 +234,7 @@ impl<'a> Executor<'a> {
         let (Some(alpha), Some(shape)) = (ws.alpha.get_mut(..len), ws.shape.get_mut(..len)) else {
             return;
         };
-        opacity(paint_alpha, cover.coverage(), alpha, shape);
+        opacity((paint_alpha, paint_shape), cover.coverage(), alpha, shape);
         apply(compositing, mask, alpha, shape);
         if mark.records && !ws.selection.is_empty() {
             output::record(plan, &mut ws.selection, (x, y, first_row), cover, mark.select);
@@ -375,20 +379,23 @@ pub(crate) fn clamp(span: Span<'_>, rect: DeviceRect) -> Option<(u32, Cover<'_>)
     Some((start, cover))
 }
 
-/// Source alpha and shape of a mark's pixels: the paint's alpha (which is
-/// also its shape) times coverage, in the earlier compositor's order.
-fn opacity(paint: Option<&[f64]>, coverage: Option<&[u8]>, alpha: &mut [f64], shape: &mut [f64]) {
-    match paint {
-        Some(values) => {
-            for ((a, s), &value) in alpha.iter_mut().zip(shape.iter_mut()).zip(values) {
-                *a = value;
-                *s = value;
-            }
-        }
-        None => {
-            alpha.fill(1.0);
-            shape.fill(1.0);
-        }
+/// Source alpha and shape of a mark's pixels: the paint's alpha and shape
+/// (its alpha unless given) times coverage, in the earlier compositor's
+/// order.
+fn opacity(
+    (paint, paint_shape): (Option<&[f64]>, Option<&[f64]>),
+    coverage: Option<&[u8]>,
+    alpha: &mut [f64],
+    shape: &mut [f64],
+) {
+    if let Some(values) = paint {
+        alpha.copy_from_slice(values);
+    } else {
+        alpha.fill(1.0);
+    }
+    match paint_shape {
+        Some(values) => shape.copy_from_slice(values),
+        None => shape.copy_from_slice(alpha),
     }
     if let Some(coverage) = coverage {
         for ((a, s), &c) in alpha.iter_mut().zip(shape.iter_mut()).zip(coverage) {

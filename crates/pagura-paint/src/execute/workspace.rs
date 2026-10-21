@@ -122,6 +122,8 @@ pub(crate) struct Workspace {
     pub(crate) alpha: Vec<f64>,
     /// Source shape of a span.
     pub(crate) shape: Vec<f64>,
+    /// The paint's own shape of a span, where it is not its alpha.
+    pub(crate) texel_shape: Vec<f64>,
     /// Soft-mask values of a span.
     pub(crate) mask: Vec<f64>,
     /// Group-result colours of a span in the parent's channels.
@@ -165,7 +167,7 @@ impl Sizes {
             .fold(0, usize::saturating_add);
         let spans = self
             .width
-            .saturating_mul(self.channels.saturating_mul(3).saturating_add(4))
+            .saturating_mul(self.channels.saturating_mul(3).saturating_add(5))
             .saturating_add(self.width.saturating_mul(self.stride));
         // Growth by doubling may leave up to twice the spans and cells a band
         // of one-pixel spans needs; a mark and a pattern outline.
@@ -275,6 +277,7 @@ impl Workspace {
             colors,
             alpha: scratch(sizes.width)?,
             shape: scratch(sizes.width)?,
+            texel_shape: reserve(sizes.width)?,
             mask: scratch(sizes.width)?,
             source: scratch(sizes.width.saturating_mul(sizes.channels))?,
             initial: scratch(sizes.width.saturating_mul(sizes.stride))?,
@@ -297,6 +300,7 @@ impl Workspace {
             + self.colors.alpha.capacity()
             + self.alpha.capacity()
             + self.shape.capacity()
+            + self.texel_shape.capacity()
             + self.mask.capacity()
             + self.source.capacity()
             + self.initial.capacity();

@@ -6,6 +6,7 @@
 
 use crate::source::{ImageSampler, Source, SpanColors};
 use pagura_color::{Converter, Function, MAX_COMPONENTS, Painted};
+use pagura_core::Diagnostic;
 use std::fmt;
 
 /// Prepared paint as the executor reads it.
@@ -36,6 +37,25 @@ pub(crate) trait PaintSpans: Send + Sync + fmt::Debug {
     /// Bytes the paint holds besides its own value.
     fn bytes(&self) -> usize {
         0
+    }
+
+    /// Whether each pixel's shape is its alpha; otherwise
+    /// [`Self::span_with_shape`] gives the shape (images with a soft mask
+    /// or embedded opacity whose alpha is not shape).
+    fn shape_is_alpha(&self) -> bool {
+        true
+    }
+
+    /// As [`Self::span`], also filling `shape`.
+    fn span_with_shape(&self, x: u32, y: u32, len: usize, out: &mut SpanColors, shape: &mut Vec<f64>) {
+        self.span(x, y, len, out);
+        shape.clear();
+        shape.extend_from_slice(&out.alpha);
+    }
+
+    /// Repairs preparing the paint made, to report in source order.
+    fn repairs(&self) -> &[Diagnostic] {
+        &[]
     }
 }
 
@@ -76,6 +96,31 @@ impl PaintSpans for Source {
             Self::Image(_) => 0,
         }
     }
+
+    fn shape_is_alpha(&self) -> bool {
+        match self {
+            Self::Image(image) => image.shape_is_alpha(),
+            Self::Solid { .. } | Self::Shading(_) => true,
+        }
+    }
+
+    fn span_with_shape(&self, x: u32, y: u32, len: usize, out: &mut SpanColors, shape: &mut Vec<f64>) {
+        match self {
+            Self::Image(image) => image.span_with_shape(x, y, len, out, shape),
+            Self::Solid { .. } | Self::Shading(_) => {
+                self.span(x, y, len, out);
+                shape.clear();
+                shape.extend_from_slice(&out.alpha);
+            }
+        }
+    }
+
+    fn repairs(&self) -> &[Diagnostic] {
+        match self {
+            Self::Image(image) => image.repairs(),
+            Self::Solid { .. } | Self::Shading(_) => &[],
+        }
+    }
 }
 
 /// A stencil mask (8.9.6.2): alpha from the mask's samples, colour from the
@@ -110,6 +155,21 @@ impl PaintSpans for StencilPaint {
 
     fn bytes(&self) -> usize {
         self.color.bytes()
+    }
+
+    fn shape_is_alpha(&self) -> bool {
+        self.mask.shape_is_alpha()
+    }
+
+    fn span_with_shape(&self, x: u32, y: u32, len: usize, out: &mut SpanColors, shape: &mut Vec<f64>) {
+        self.mask.span_with_shape(x, y, len, out, shape);
+        let alpha = std::mem::take(&mut out.alpha);
+        self.color.span(x, y, len, out);
+        out.alpha = alpha;
+    }
+
+    fn repairs(&self) -> &[Diagnostic] {
+        self.mask.repairs()
     }
 }
 

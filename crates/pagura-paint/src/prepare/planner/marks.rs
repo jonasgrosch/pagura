@@ -369,7 +369,8 @@ impl<B: Backend> Planner<'_, B> {
     ) -> Result<()> {
         let serial = self.serial;
         let state_id = spec.info.state.0;
-        let paint = self.prepare_paint(scope, spec.colour, (state, state_id), area(covered.bounds), budget)?;
+        let paint =
+            self.prepare_paint(scope, spec.colour, (state, state_id), covered.bounds, budget)?;
         let (records, select) = self.selection(scope, spec.colour, (state, state_id), budget)?;
         budget.work.charge(covered.work)?;
         budget.work.charge(area(covered.bounds))?;
@@ -430,9 +431,10 @@ impl<B: Backend> Planner<'_, B> {
         scope: &Scope,
         colour: Colour<'_>,
         (state, state_id): (&Arc<Composite>, u32),
-        pixels: usize,
+        bounds: pagura_raster::DeviceRect,
         budget: &mut Budget,
     ) -> Result<u32> {
+        let pixels = area(bounds);
         let target = self.target(scope);
         let context = PaintContext {
             transform: scope.transform,
@@ -441,6 +443,7 @@ impl<B: Backend> Planner<'_, B> {
             store: self.store,
             limits: self.limits,
             reduced_image_decode: self.request.fast.reduced_image_decode,
+            region: bounds,
         };
         let request = PaintRequest { context, pixels };
         let prepared = match colour {
@@ -483,7 +486,7 @@ impl<B: Backend> Planner<'_, B> {
                     node.transform.then(scope.transform),
                     stencil,
                     &request,
-                    &mut budget.work,
+                    (&mut budget.work, &mut budget.functions),
                 )?
             }
         };
@@ -534,6 +537,11 @@ impl<B: Backend> Planner<'_, B> {
                 .saturating_add(paint.bytes()),
         )?;
         budget.work.charge_product(pixels, paint.work_per_pixel())?;
+        let repairs = paint.repairs();
+        budget
+            .bytes
+            .charge_product(repairs.len(), size_of::<pagura_core::Diagnostic>())?;
+        self.repairs.extend_from_slice(repairs);
         let index = u32::try_from(self.parts.paints.len())
             .map_err(|_| Error::limit("paint count exceeds u32"))?;
         self.parts.paints.push(paint);
@@ -545,9 +553,10 @@ impl<B: Backend> Planner<'_, B> {
         &mut self,
         paint: &Paint,
         (state, scope): (&Arc<Composite>, &Scope),
-        pixels: usize,
+        bounds: pagura_raster::DeviceRect,
         budget: &mut Budget,
     ) -> Result<u32> {
+        let pixels = area(bounds);
         let target = self.target(scope);
         let context = PaintContext {
             transform: scope.transform,
@@ -556,6 +565,7 @@ impl<B: Backend> Planner<'_, B> {
             store: self.store,
             limits: self.limits,
             reduced_image_decode: self.request.fast.reduced_image_decode,
+            region: bounds,
         };
         let request = PaintRequest { context, pixels };
         let prepared = self.backend.paint(paint, &request, &mut budget.functions)?;

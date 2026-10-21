@@ -172,7 +172,7 @@ impl Backend for Rects {
         _to_device: Transform,
         _stencil: Option<Box<dyn PaintSpans>>,
         _request: &PaintRequest<'_>,
-        _work: &mut Meter,
+        _budgets: (&mut Meter, &mut Meter),
     ) -> Result<Box<dyn PaintSpans>> {
         Err(Error::syntax("the test backend has no images"))
     }

@@ -22,7 +22,7 @@ use std::sync::Arc;
 pub(crate) fn finish<B: Backend>(
     mut planner: Planner<'_, B>,
     budget: &mut Budget,
-) -> Result<(Plan, Box<dyn Producer>, Workspace)> {
+) -> Result<Finished> {
     if let Err(error) = planner.page(budget) {
         return Err(first(planner, error));
     }
@@ -94,10 +94,15 @@ fn partial(area: pagura_raster::Area, parts: Parts) -> Plan {
     }
 }
 
-fn complete<B: Backend>(
-    planner: Planner<'_, B>,
-    budget: &mut Budget,
-) -> Result<(Plan, Box<dyn Producer>, Workspace)> {
+/// A completed preparation.
+pub(crate) struct Finished {
+    pub(crate) plan: Plan,
+    pub(crate) producer: Box<dyn Producer>,
+    pub(crate) workspace: Workspace,
+    pub(crate) repairs: Vec<pagura_core::Diagnostic>,
+}
+
+fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<Finished> {
     let area = planner.area;
     let rows = rows(area.region.height());
     let transfers = planner.storage.transfers;
@@ -107,6 +112,7 @@ fn complete<B: Backend>(
         mut backend,
         mut parts,
         users,
+        repairs,
         ..
     } = planner;
     for (mask, users) in parts.masks.iter_mut().zip(&users) {
@@ -191,7 +197,12 @@ fn complete<B: Backend>(
             return Err(transfer_error(&plan, serial));
         }
     }
-    Ok((plan, producer, workspace))
+    Ok(Finished {
+        plan,
+        producer,
+        workspace,
+        repairs,
+    })
 }
 
 /// The output's work and function evaluations: one unit per pixel, and per

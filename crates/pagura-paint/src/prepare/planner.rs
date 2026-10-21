@@ -57,6 +57,8 @@ pub(crate) struct Planner<'s, B: Backend> {
     pub(crate) serial: u32,
     /// Where the walk failed.
     pub(crate) failed: Option<(u32, Position)>,
+    /// Repairs made preparing paint, in source order.
+    pub(crate) repairs: Vec<pagura_core::Diagnostic>,
 }
 
 /// What the walk builds.
@@ -176,6 +178,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             transfers: HashMap::new(),
             serial: 0,
             failed: None,
+            repairs: Vec::new(),
         })
     }
 
@@ -612,7 +615,7 @@ impl<'s, B: Backend> Planner<'s, B> {
                     .ok_or(Error::syntax("uncoloured pattern without a colour"))?;
                 let state = Arc::new(pagura_interpret::Composite::default());
                 let paint = Arc::new(Paint::Solid(color));
-                let index = self.solid_paint(&paint, (&state, scope), area(bounds), budget)?;
+                let index = self.solid_paint(&paint, (&state, scope), bounds, budget)?;
                 Some((index, paint))
             }
         };

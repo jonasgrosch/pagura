@@ -4,7 +4,7 @@
 //! are tested with synthetic coverage and colours.
 
 use crate::paint::{Convert, PaintSpans, StencilPaint};
-use crate::source::{ImageSampler, PaintContext, ShadingSource, Source};
+use crate::source::{ImageBudgets, ImageSampler, PaintContext, Source};
 use pagura_color::{ColorSpace, Conversion, Converter, Target};
 use pagura_core::{Built, Limits, Meter, Result, Store, StoreKey};
 use pagura_interpret::{GlyphSource, Image, OutlineKey, Paint, Pen, Shading};
@@ -118,18 +118,19 @@ pub(crate) trait Backend {
         functions: &mut Meter,
     ) -> Result<Box<dyn PaintSpans>>;
 
-    /// An image, or a stencil mask coloured by `stencil`.
+    /// An image, or a stencil mask coloured by `stencil`, charging
+    /// sampling to `render_work` and conversions to `function_work`.
     ///
     /// # Errors
     ///
-    /// As `ImageSampler::prepare`.
+    /// As `ImageSampler::prepare_with`.
     fn image(
         &mut self,
         image: &Image,
         to_device: Transform,
         stencil: Option<Box<dyn PaintSpans>>,
         request: &PaintRequest<'_>,
-        work: &mut Meter,
+        budgets: (&mut Meter, &mut Meter),
     ) -> Result<Box<dyn PaintSpans>>;
 
     /// A conversion of `space` into `target`.
@@ -321,14 +322,13 @@ impl Backend for Raster<'_> {
         request: &PaintRequest<'_>,
         functions: &mut Meter,
     ) -> Result<Box<dyn PaintSpans>> {
-        let source = ShadingSource::prepare(
+        Ok(Box::new(Source::shading(
             shading,
             to_device,
             &request.context,
             request.pixels,
             functions,
-        )?;
-        Ok(Box::new(Source::Shading(source)))
+        )?))
     }
 
     fn image(
@@ -337,15 +337,27 @@ impl Backend for Raster<'_> {
         to_device: Transform,
         stencil: Option<Box<dyn PaintSpans>>,
         request: &PaintRequest<'_>,
-        work: &mut Meter,
+        (work, functions): (&mut Meter, &mut Meter),
     ) -> Result<Box<dyn PaintSpans>> {
-        let sampler =
-            ImageSampler::prepare(image, to_device, &request.context, request.pixels, work)?;
+        let sampler = ImageSampler::prepare_with(
+            image,
+            to_device,
+            &request.context,
+            request.pixels,
+            ImageBudgets { work, functions },
+        )?;
         Ok(match stencil {
-            Some(color) => Box::new(StencilPaint {
-                color,
-                mask: sampler,
-            }),
+            // A stencil mask of one colour carries it in its texels, as the
+            // exact route composites them.
+            Some(color) => match color.constant() {
+                Some(constant) => Box::new(Source::Image(
+                    sampler.with_stencil_color(constant, color.painted()),
+                )),
+                None => Box::new(StencilPaint {
+                    color,
+                    mask: sampler,
+                }),
+            },
             None => Box::new(Source::Image(sampler)),
         })
     }
