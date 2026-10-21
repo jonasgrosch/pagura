@@ -1,38 +1,37 @@
 # N16 painted interval: bounded incremental experiment
 
-Source implementation is applied on `codex/renderer-n16-interval`, based on
-`a9814ee4`, in a separate worktree. It is unvalidated and has no measured gain.
-The existing `codex/renderer-stacked-gains` worktree remains frozen for the
-session-start/current comparison. Source preparation here does not alter either
-comparison arm. Build, test and benchmark work waits for available local compute;
-the frozen comparison and its audit take priority before this experiment.
+The candidate is applied on `codex/renderer-n16-interval`, based on
+`a9814ee4`, in a separate worktree. The production/test patch remains uncommitted.
+The prior session-start/current comparison is preserved at `fc41ce6e` in
+`codex/renderer-stacked-gains`: selected Exact gains coexist with large
+Competitive text regressions and roughly doubled opaque-text full-page latency.
+This experiment targets N16 output costs; it does not address the separate F32
+text regressions.
 
-The start/current comparison is now completed and committed as `fc41ce6e` in
-`codex/renderer-stacked-gains`. It establishes selected Exact gains alongside
-large Competitive text regressions and roughly doubled latency for the opaque
-text full-page fixture. This candidate remains a bounded attempt to recover
-N16 output costs, not a presumed solution for the separate F32 text regressions.
-Fourteen harness tests and all 236 native candidate renderer tests passed before
-a subsequent lint-only change to two test assertions. The current renderer
-Clippy check passes with warnings denied and a clean contention guard.
-Portable and complete-repository validation remain
-[incomplete](../../benchmarks/results/sources/n16-painted-interval-validation/README.md):
-diagnostic parser/artifact selection failures were retained and corrected, then
-external compute interrupted the isolated attempts. All temporary probes are
-removed. The full repository check found those two assertion lints; later
-attempts were interrupted or refused because of external compute. No complete
-current-source repository check, incremental speed or candidate memory-layout
-claim is available. The reviewed native route/reach probe is retained under
-`benchmarks/results/sources/n16-painted-interval-reach`; it has not run or been
-applied to the renderer. Its first parser-test launch was refused before execution.
+At candidate HEAD `069d62d7`, all 14 exact authoritative check stages passed
+serially under separate clean guards on the same frozen source. This is a
+complete staged check, not one uninterrupted `check.py` invocation. The six-arm
+native/WASI SIMD/WASI scalar matrix passed all renderer tests, eight measured
+size/alignment comparisons and 47 error/resource rows per arm. The two direct
+precision host cases passed with identical native/WASI responses. Current
+uninstrumented native and WASI benchmark binaries have completed build records.
+Detailed evidence and all failed attempts are retained in
+[the validation checkpoint](../../benchmarks/results/sources/n16-painted-interval-validation/README.md).
+No speed or process-RSS result has been collected for this candidate.
 
-This is not a frozen launch plan. Freeze the concrete baseline commit, source
-and binary pins, expanded cell list, seeds and every helper before the pilot. The baseline
-is the retained reconciled stack at `a9814ee476c1b17a27b1e9a904f1f4fac8d5cd9c`
-when this source-only reconciliation was prepared. It includes the glyph memo,
-clip cleanup, shared opaque composition, retained u16 converter, nonopaque-
-background F64 guard and preserved F32 admission in both accuracy modes. Freeze
-the actual preceding commit again if another product change lands first.
+The first structural reach test (R1) failed its six-row prediction in Competitive:
+the submitted glyph mask has a seventh, transparent padding row. Independent
+pixels passed. R1 remains failed and its artifacts are immutable. The separately
+versioned R2 below will test source-derived submitted extents and three fresh
+height/placement/boundary cases before timing. No product code, timing cells,
+accuracy tolerance, speed threshold or memory threshold changes for R2.
+
+Freeze concrete source/binary/helper/evidence bindings before the pilot. The
+baseline remains the retained stack at
+`a9814ee476c1b17a27b1e9a904f1f4fac8d5cd9c`, including the glyph memo, clip
+cleanup, shared opaque composition, u16 converter, nonopaque-background F64
+guard and F32 admission in both modes. No main-branch change is mixed into this
+incremental experiment; later integration needs fresh validation.
 
 ## Decision and hypothesis
 
@@ -67,6 +66,26 @@ skip count or speed forecast. Output Pixmap initialization and N16 initializatio
 still touch the full surfaces; interval holes are still converted. An untimed
 structural test must verify actual N16 admission and actual writer/output reach
 in both modes before timing. Do not infer reach solely from a PDF filename.
+
+### Revised structural prediction R2, before its first execution
+
+R1 stopped the original pilot as required. Source review shows that phase-capacity
+padding and the aligned cached-mask stride are submitted even where coverage is
+zero. Exact uses nonzero spans. R2 therefore predicts opaque64 per-chunk Exact
+`59904..61440` (1,536 converted pixels, six calls), and Competitive
+`59904..61696` (1,792 pixels, seven calls). Instrumentation must show zero
+nonzero-coverage samples in the added row and 1,536 covered samples per chunk.
+Every other original request keeps its prediction.
+
+Add three independent glyph controls, in both modes, with literal device-space
+pixel references: height 2 at a shifted interior position, height 5 at the right
+page edge, and height 9 across both chunk seams. Their exact submitted ranges,
+coverage counts and row intersections are frozen in the R2 collector before any
+of these six renders. Together with the original 18 requests, all 24 must pass.
+Any unexplained extent, nonzero padding, route error or pixel mismatch blocks
+timing. This is a discovery-motivated structural revision, not a retroactive R1
+pass. The 52 timing cells, phase counts/seeds and all quantitative gates below
+remain unchanged.
 
 ## Fixed native matrix: 52 cells, 2 targets and 50 protected
 

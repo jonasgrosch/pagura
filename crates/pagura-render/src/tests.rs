@@ -1,5 +1,7 @@
 //! Integration evidence for the vector pipeline.
 
+mod painted_interval;
+
 use crate::{RenderOptions, Tile, compile_page};
 use pagura_core::{ErrorKind, Position, Recovery};
 use pagura_document::{Document, OpenOptions};

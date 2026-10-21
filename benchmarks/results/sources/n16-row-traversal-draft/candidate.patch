@@ -1,0 +1,19 @@
+diff --git a/crates/pagura-render/src/compositor/output.rs b/crates/pagura-render/src/compositor/output.rs
+--- a/crates/pagura-render/src/compositor/output.rs
++++ b/crates/pagura-render/src/compositor/output.rs
+@@ -32,9 +32,14 @@
+             // Admission keeps spot passes and transfer feeds on f64 storage.
+             let width = width as usize;
+             if let Some(painted) = buffer.painted_range() {
++                if width == 0 || painted.is_empty() {
++                    return Ok(());
++                }
++                let first = (painted.start / width).min(height as usize);
++                let end = ((painted.end - 1) / width + 1).min(height as usize);
+                 // N16 admission requires an opaque page background. The output
+                 // already holds that background outside this chunk's stores.
+-                for row in 0..height as usize {
++                for row in first..end {
+                     let base = row * width;
+                     let lo = base.max(painted.start);
+                     let hi = (base + width).min(painted.end);

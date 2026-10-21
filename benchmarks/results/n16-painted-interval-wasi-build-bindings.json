@@ -1,0 +1,40 @@
+{
+  "baseline": {
+    "path": "/private/tmp/n16-interval-wasi-baseline-001/wasm32-wasip1/release/examples/scene_index_profile.wasm",
+    "sha256": "19603bd7cb249d461719e3560e61ad974279651e5ac6f1b1bde04cade01cc188",
+    "source": {
+      "commit": "a9814ee476c1b17a27b1e9a904f1f4fac8d5cd9c",
+      "sha256": "fa41575bf0f52414c558045152bb508cc2e8124d24aa71ca8fe1ef714ccc3df3"
+    },
+    "source_root": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval-base/pagura",
+    "receipt": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/wasi-baseline-build-001-receipt.json",
+    "receipt_sha256": "c88bf9963d07dd5eeabfe0b265f2bc7177a7a37d3728e625a62d82f845f14900",
+    "guard": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/wasi-baseline-build-001-observer/guard.json",
+      "sha256": "3f7e0044bd12f82853069d3b145c7d2347b1eeac5aefeb70767d7c7b085eacc8"
+    },
+    "context": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/wasi-baseline-build-001-context.json",
+      "sha256": "c59eb1c6f91ee1dfac2f74b9975da6c6b2b136187952b78a7f46bfaa6d09c243"
+    }
+  },
+  "candidate": {
+    "path": "/private/tmp/n16-interval-wasi-candidate-001/wasm32-wasip1/release/examples/scene_index_profile.wasm",
+    "sha256": "f1d7546e34803b9dac018be8e8ec394947f95f64c5dae44927fd8617b98c83c3",
+    "source": {
+      "commit": "069d62d75c1a9a2756b2833169c4c314d1c14cab",
+      "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+    },
+    "source_root": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura",
+    "receipt": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/wasi-candidate-build-001-receipt.json",
+    "receipt_sha256": "4e9ada23082fb4414af1cf03284455aa903269e57fce3d9e6b56cc2918793d5a",
+    "guard": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/wasi-candidate-build-001-observer/guard.json",
+      "sha256": "9b50709f1f9a7cae892f3a9dd58abfb02cb21237062b5661e9459d56d991a7d0"
+    },
+    "context": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/wasi-candidate-build-001-context.json",
+      "sha256": "4a642e655eae04317587a26dee5ad02cbd245335a30b435d3ec719fdd8af10aa"
+    }
+  }
+}

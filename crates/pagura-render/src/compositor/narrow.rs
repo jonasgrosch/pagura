@@ -7,8 +7,16 @@ use pagura_core::{Error, Result};
 
 pub(super) enum Buffer {
     U8(Bytes),
-    N16(Vec<[u16; 4]>),
+    N16(Words),
     F32(Vec<[f32; 4]>),
+}
+
+/// Pixels outside `painted` still hold the constructor's background.
+/// Zero-coverage and same-colour stores may widen this conservative interval;
+/// no store shrinks it or changes the dense output contract.
+pub(super) struct Words {
+    pixels: Vec<[u16; 4]>,
+    painted: std::ops::Range<usize>,
 }
 
 /// A solid source prepared once for a run of fragment masks. Borrowing the
@@ -20,7 +28,7 @@ pub(super) enum MaskSink<'a> {
         alpha: u8,
     },
     N16 {
-        pixels: &'a mut [[u16; 4]],
+        words: &'a mut Words,
         size: (usize, usize),
         color: [u16; 4],
     },
@@ -47,25 +55,28 @@ impl MaskSink<'_> {
                 color,
                 alpha,
             } => bytes.mask(mask, surface, (*color, *alpha), clip, scratch),
-            Self::N16 {
-                pixels,
-                size,
-                color,
-            } => mask_rows(
-                pixels,
-                *size,
-                mask,
-                surface,
-                clip,
-                scratch,
-                |row, coverage| {
-                    if uniform(coverage) == Some(255) {
-                        row.fill(*color);
-                    } else {
-                        words_row(row, coverage, *color);
-                    }
-                },
-            ),
+            Self::N16 { words, size, color } => {
+                let width = size.0;
+                let Words { pixels, painted } = &mut **words;
+                mask_rows(
+                    pixels,
+                    *size,
+                    mask,
+                    surface,
+                    clip,
+                    scratch,
+                    |(row, column), target, coverage| {
+                        let offset = row * width + column;
+                        painted.start = painted.start.min(offset);
+                        painted.end = painted.end.max(offset + target.len());
+                        if uniform(coverage) == Some(255) {
+                            target.fill(*color);
+                        } else {
+                            words_row(target, coverage, *color);
+                        }
+                    },
+                )
+            }
             Self::F32 {
                 pixels,
                 size,
@@ -78,7 +89,7 @@ impl MaskSink<'_> {
                 surface,
                 clip,
                 scratch,
-                |row, coverage| {
+                |_, row, coverage| {
                     if uniform(coverage) == Some(255) && 255.0 * *scale == 1.0 {
                         row.fill(*color);
                     } else {
@@ -399,19 +410,22 @@ impl Buffer {
                     alpha,
                 })
             }
-            Self::N16(pixels) => {
+            Self::N16(words) => {
                 if alpha != 1.0 {
                     return Err(Error::invalid_argument(
                         "nonopaque fragment source in N16 buffer",
                     ));
                 }
-                if size.0 == 0 || size.1 == 0 || size.0.checked_mul(size.1) != Some(pixels.len()) {
+                if size.0 == 0
+                    || size.1 == 0
+                    || size.0.checked_mul(size.1) != Some(words.pixels.len())
+                {
                     return Err(Error::invalid_argument(
                         "fragment surface differs from N16 buffer",
                     ));
                 }
                 Ok(MaskSink::N16 {
-                    pixels,
+                    words,
                     size,
                     color: [word(color[0]), word(color[1]), word(color[2]), 65535],
                 })
@@ -443,10 +457,10 @@ impl Buffer {
         }
         match format {
             Format::U8 => Ok(Self::U8(Bytes::new((count, 1), background, Vec::new())?)),
-            Format::N16 => Ok(Self::N16(filled(
-                count,
-                background.map(|v| u16::from(v) * 257),
-            )?)),
+            Format::N16 => Ok(Self::N16(Words {
+                pixels: filled(count, background.map(|v| u16::from(v) * 257))?,
+                painted: count..0,
+            })),
             Format::F32 => Ok(Self::F32(filled(count, background.map(f32::from))?)),
             Format::F64 => Err(Error::invalid_argument("wide format in narrow buffer")),
         }
@@ -455,7 +469,7 @@ impl Buffer {
         match self {
             // As charged by `Bytes::charge`, from the lengths it allocated.
             Self::U8(v) => v.pixels.len() + size_of_val(v.painted.as_slice()),
-            Self::N16(v) => v.len() * 8,
+            Self::N16(v) => v.pixels.len() * 8,
             Self::F32(v) => v.len() * 16,
         }
     }
@@ -508,11 +522,17 @@ impl Buffer {
                 let (color, alpha) = byte_source(color, alpha);
                 bytes.blend(offset, coverage, color, alpha)?;
             }
-            Self::N16(pixels) => {
+            Self::N16(words) => {
                 let color = [word(color[0]), word(color[1]), word(color[2]), 65535];
-                let row = pixels
-                    .get_mut(offset..offset + coverage.len())
+                let end = offset + coverage.len();
+                let row = words
+                    .pixels
+                    .get_mut(offset..end)
                     .ok_or(Error::invalid_argument("mask outside colour buffer"))?;
+                if offset < end {
+                    words.painted.start = words.painted.start.min(offset);
+                    words.painted.end = words.painted.end.max(end);
+                }
                 if full {
                     row.fill(color);
                     return Ok(());
@@ -555,6 +575,15 @@ impl Buffer {
         lerp(pixel, color, scalar(source.alpha));
         Ok(())
     }
+    /// Only page output onto the same opaque background may omit pixels
+    /// outside this range. Dense output below makes no such assumption.
+    pub(super) fn painted_range(&self) -> Option<std::ops::Range<usize>> {
+        match self {
+            Self::N16(words) => Some(words.painted.clone()),
+            _ => None,
+        }
+    }
+
     pub(super) fn output(&self, offset: usize, target: &mut [u8]) {
         match self {
             Self::U8(bytes) => {
@@ -563,11 +592,11 @@ impl Buffer {
                 let count = target.len().min(source.len());
                 target[..count].copy_from_slice(&source[..count]);
             }
-            Self::N16(pixels) => {
+            Self::N16(words) => {
                 let complete = target.len() / 4 * 4;
                 for (out, &word) in target[..complete]
                     .iter_mut()
-                    .zip(pixels[offset..].as_flattened())
+                    .zip(words.pixels[offset..].as_flattened())
                 {
                     *out = word_byte(word);
                 }
@@ -693,7 +722,7 @@ fn mask_rows<T>(
     (surface, bounds): ((i64, i64), [i64; 4]),
     clip: MaskClip<'_>,
     scratch: &mut Vec<u8>,
-    mut paint: impl FnMut(&mut [[T; 4]], &[u8]),
+    mut paint: impl FnMut((usize, usize), &mut [[T; 4]], &[u8]),
 ) -> Result<()> {
     let Some([x0, y0, x1, y1]) = mask_area((mask, stride, origin), bounds, clip) else {
         return Ok(());
@@ -707,11 +736,11 @@ fn mask_rows<T>(
     {
         return Err(outside());
     }
-    for (y, target) in (y0..y1).zip(pixels.chunks_exact_mut(width).skip(row)) {
+    for (row, (y, target)) in (row..).zip((y0..y1).zip(pixels.chunks_exact_mut(width).skip(row))) {
         let start = (y - origin.1) as usize * stride + (x0 - origin.0) as usize;
         let coverage = mask.get(start..start + count).ok_or_else(outside)?;
         let coverage = clipped_row(coverage, (x0, y), clip, scratch)?;
-        paint(&mut target[column..column + count], coverage);
+        paint((row, column), &mut target[column..column + count], coverage);
     }
     Ok(())
 }

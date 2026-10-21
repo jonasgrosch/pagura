@@ -101,8 +101,12 @@ def main():
                  'benchmarks/results/n16-painted-interval-plan.json'}
     require(required <= bindings['bound_files_sha256'].keys(), 'Incomplete experiment source bindings')
     python = Path(config['python']['path']).resolve()
-    require(python == Path(sys.executable).resolve() and file_hash(python) == config['python']['sha256'],
-            'Use the pinned Python executable')
+    reported_python = Path(config['python_executable']['path']).resolve()
+    require(python == Path(sys.orig_argv[0]).resolve()
+            and file_hash(python) == config['python']['sha256']
+            and reported_python == Path(sys.executable).resolve()
+            and file_hash(reported_python) == config['python_executable']['sha256'],
+            'Use both pinned actual and reported Python executable paths')
     guard_path = Path(config['guard']['path']).resolve()
     require(guard_path.is_relative_to(ROOT) and file_hash(guard_path) == config['guard']['sha256']
             and bindings['bound_files_sha256'].get(guard_path.relative_to(ROOT).as_posix()) == config['guard']['sha256'],

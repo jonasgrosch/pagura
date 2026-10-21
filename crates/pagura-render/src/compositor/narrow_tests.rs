@@ -8,11 +8,15 @@ fn word_output_matches_rational_rounding_for_every_word() {
     }
     // Distinct channels, a nonzero source offset, complete-pixel truncation,
     // and a destination longer than the remaining source.
-    let buffer = Buffer::N16(vec![
-        [0, 128, 129, 65535],
-        [256, 257, 32767, 32768],
-        [65407, 65408, 65534, 65535],
-    ]);
+    let buffer = Buffer::N16(Words {
+        pixels: vec![
+            [0, 128, 129, 65535],
+            [256, 257, 32767, 32768],
+            [65407, 65408, 65534, 65535],
+        ],
+        // General dense output must ignore this empty page-output interval.
+        painted: 0..0,
+    });
     for count in 0..=12 {
         let mut target = vec![77; count];
         buffer.output(1, &mut target);
@@ -27,6 +31,99 @@ fn output(buffer: &Buffer, count: usize) -> Vec<u8> {
     let mut bytes = vec![0; count * 4];
     buffer.output(0, &mut bytes);
     bytes
+}
+
+#[test]
+fn n16_painted_interval_tracks_validated_spans_conservatively() {
+    let mut buffer = Buffer::new(Format::N16, 8, [255; 4]).unwrap();
+    assert!(buffer.painted_range().unwrap().is_empty());
+    assert_eq!(buffer.bytes(), 64);
+    buffer.path(8, &[], [0.0; 4], 1.0).unwrap();
+    assert!(buffer.painted_range().unwrap().is_empty());
+    let error = buffer.path(9, &[], [0.0; 4], 1.0).unwrap_err();
+    assert_eq!(error.message, "mask outside colour buffer");
+    assert!(buffer.painted_range().unwrap().is_empty());
+
+    // No coverage scan decides whether the conservative interval widens.
+    buffer.path(2, &[0, 1], [0.0; 4], 1.0).unwrap();
+    assert_eq!(buffer.painted_range(), Some(2..4));
+    buffer.path(7, &[255], [0.0; 4], 1.0).unwrap();
+    assert_eq!(buffer.painted_range(), Some(2..8));
+    buffer.path(0, &[255], [1.0; 4], 1.0).unwrap();
+    assert_eq!(buffer.painted_range(), Some(0..8));
+    let error = buffer.path(7, &[255; 2], [1.0; 4], 1.0).unwrap_err();
+    assert_eq!(error.message, "mask outside colour buffer");
+    assert_eq!(buffer.painted_range(), Some(0..8));
+    let expected: Vec<u8> = [255, 255, 255, 254, 255, 255, 255, 0]
+        .into_iter()
+        .flat_map(|gray| [gray, gray, gray, 255])
+        .collect();
+    assert_eq!(output(&buffer, 8), expected);
+    assert_eq!(buffer.bytes(), 64);
+}
+
+#[test]
+fn n16_fragment_interval_keeps_prior_rows_when_a_later_clip_row_fails() {
+    let mut buffer = Buffer::new(Format::N16, 12, [255; 4]).unwrap();
+    let error = buffer
+        .mask_sink((4, 3), [0.0; 4], 1.0)
+        .unwrap()
+        .mask(
+            (&[255; 4], 2, (-2, 7)),
+            ((-3, 6), [-3, 6, 1, 9]),
+            MaskClip {
+                // The first product row is valid; the second is missing.
+                product: Some((&[255, 128], [-2, 7, 0, 9])),
+                rectangle: None,
+            },
+            &mut Vec::new(),
+        )
+        .unwrap_err();
+    assert_eq!(error.message, "mask exceeds clip");
+    assert_eq!(buffer.painted_range(), Some(5..7));
+    let mut expected = vec![255; 48];
+    expected[5 * 4..6 * 4].copy_from_slice(&[0, 0, 0, 255]);
+    expected[6 * 4..7 * 4].copy_from_slice(&[127, 127, 127, 255]);
+    assert_eq!(output(&buffer, 12), expected);
+    assert_eq!(buffer.bytes(), 96);
+
+    let mut empty = Buffer::new(Format::N16, 4, [255; 4]).unwrap();
+    empty
+        .mask_sink((4, 1), [0.0; 4], 1.0)
+        .unwrap()
+        .mask(
+            (&[255; 4], 4, (10, 0)),
+            ((0, 0), [0, 0, 4, 1]),
+            MaskClip::default(),
+            &mut Vec::new(),
+        )
+        .unwrap();
+    assert!(empty.painted_range().unwrap().is_empty());
+    assert_eq!(output(&empty, 4), [255; 16]);
+}
+
+#[test]
+fn n16_distant_fragment_rows_keep_the_holes_and_full_interval() {
+    let background = [17, 85, 170, 255];
+    let mut buffer = Buffer::new(Format::N16, 12, background).unwrap();
+    for origin in [(10, -3), (13, -1)] {
+        buffer
+            .mask_sink((4, 3), [0.0; 4], 1.0)
+            .unwrap()
+            .mask(
+                (&[255], 1, origin),
+                ((10, -3), [10, -3, 14, 0]),
+                MaskClip::default(),
+                &mut Vec::new(),
+            )
+            .unwrap();
+    }
+    assert_eq!(buffer.painted_range(), Some(0..12));
+    let mut expected = background.repeat(12);
+    expected[..4].copy_from_slice(&[0, 0, 0, 255]);
+    expected[44..].copy_from_slice(&[0, 0, 0, 255]);
+    assert_eq!(output(&buffer, 12), expected);
+    assert_eq!(buffer.bytes(), 96);
 }
 
 #[test]
@@ -77,6 +174,11 @@ fn fragment_sinks_apply_product_then_fractional_clip() {
                 127, 127, 127, 255, 127, 127, 127, 255, 255, 255, 255, 255, 127, 127, 127, 255
             ]
         );
+        if format == Format::N16 {
+            assert_eq!(buffer.painted_range(), Some(0..4));
+        } else {
+            assert!(buffer.painted_range().is_none());
+        }
     }
 }
 

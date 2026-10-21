@@ -31,6 +31,21 @@ impl Context {
         if let Some(buffer) = page.narrow() {
             // Admission keeps spot passes and transfer feeds on f64 storage.
             let width = width as usize;
+            if let Some(painted) = buffer.painted_range() {
+                // N16 admission requires an opaque page background. The output
+                // already holds that background outside this chunk's stores.
+                for row in 0..height as usize {
+                    let base = row * width;
+                    let lo = base.max(painted.start);
+                    let hi = (base + width).min(painted.end);
+                    if lo >= hi {
+                        continue;
+                    }
+                    let start = origin + row * stride + (lo - base);
+                    buffer.output(lo, &mut output.data_mut()[start * 4..(start + hi - lo) * 4]);
+                }
+                return Ok(());
+            }
             for row in 0..height as usize {
                 let start = origin + row * stride;
                 buffer.output(
@@ -135,7 +150,139 @@ fn composite_output(target: &mut [u8; 4], color: [f64; 3], alpha: f64) {
 
 #[cfg(test)]
 mod tests {
+    use super::super::{Separations, narrow::Buffer, plan};
     use super::*;
+    use crate::RenderOptions;
+    use crate::display::DisplayList;
+    use crate::transparency::Attributes;
+    use pagura_core::{Limits, Rect};
+    use pagura_raster::Rgba8;
+    use std::sync::{Arc, OnceLock};
+
+    fn context(background: Rgba8) -> Context {
+        let list = DisplayList {
+            commands: Vec::new(),
+            crop: Rect::from_corners(0.0, 0.0, 512.0, 32.0).unwrap(),
+            rotation: pagura_document::Rotation::None,
+            user_unit: 1.0,
+            limits: Limits::default(),
+            group: Attributes::default(),
+            print_intent: false,
+            separations: OnceLock::new(),
+        };
+        let options = RenderOptions {
+            background,
+            ..RenderOptions::default()
+        };
+        let separations = Arc::new(Separations::default());
+        let plan = plan::page(&list, &separations).unwrap();
+        Context::new(&list, &options, &plan, separations).unwrap()
+    }
+
+    #[test]
+    fn narrow_page_output_preserves_colored_background_across_chunk_edges() {
+        let background = Rgba8 {
+            r: 17,
+            g: 85,
+            b: 170,
+            a: 255,
+        };
+        let rgba = [17, 85, 170, 255];
+        let tile = Tile {
+            x: 250,
+            y: 7,
+            width: 12,
+            height: 4,
+        };
+        for format in [plan::Format::N16, plan::Format::U8, plan::Format::F32] {
+            for painted in [false, true] {
+                let mut context = context(background);
+                let mut output = Pixmap::new(12, 4, background, 48).unwrap();
+                let before = (context.work, context.allocated);
+                for (x, coverage, offset) in [(250, 128, 11), (256, 255, 6)] {
+                    let mut buffer = Buffer::new(format, 24, rgba).unwrap();
+                    let bytes = match format {
+                        plan::Format::U8 => 104,
+                        plan::Format::N16 => 192,
+                        _ => 384,
+                    };
+                    assert_eq!(buffer.bytes(), bytes);
+                    if painted {
+                        buffer.path(offset, &[coverage], [0.0; 4], 1.0).unwrap();
+                    }
+                    let page = Surface::with_buffer(
+                        Tile {
+                            x,
+                            y: 7,
+                            width: 6,
+                            height: 4,
+                        },
+                        buffer,
+                    );
+                    context
+                        .write_output(&page, &[], Model::Rgb, &mut output, tile)
+                        .unwrap();
+                }
+                let mut expected = rgba.repeat(48);
+                if painted {
+                    // Half-covered black: round([17,85,170] *127/255).
+                    // The adjacent fully covered pixel is opaque black.
+                    expected[17 * 4..18 * 4].copy_from_slice(&[8, 42, 85, 255]);
+                    expected[18 * 4..19 * 4].copy_from_slice(&[0, 0, 0, 255]);
+                }
+                assert_eq!(output.data(), expected, "{format:?} painted={painted}");
+                assert_eq!((context.work, context.allocated), before);
+            }
+        }
+    }
+
+    #[test]
+    fn n16_page_output_preserves_holes_in_a_multirow_painted_interval() {
+        let background = Rgba8 {
+            r: 17,
+            g: 85,
+            b: 170,
+            a: 255,
+        };
+        let rgba = [17, 85, 170, 255];
+        let tile = Tile {
+            x: 250,
+            y: 7,
+            width: 12,
+            height: 7,
+        };
+        let mut context = context(background);
+        let mut output = Pixmap::new(12, 7, background, 84).unwrap();
+        let before = (context.work, context.allocated);
+        let mut buffer = Buffer::new(plan::Format::N16, 30, rgba).unwrap();
+        // In one 6-by-5 chunk, the interval starts at column 2 of row 0
+        // and ends after column 1 of row 4. Three complete intervening
+        // rows and the other pixels in both endpoint rows remain background.
+        buffer.path(2, &[128], [0.0; 4], 1.0).unwrap();
+        buffer.path(25, &[255], [0.0; 4], 1.0).unwrap();
+        assert_eq!(buffer.painted_range(), Some(2..26));
+        assert_eq!(buffer.bytes(), 240);
+        let page = Surface::with_buffer(
+            Tile {
+                x: 253,
+                y: 8,
+                width: 6,
+                height: 5,
+            },
+            buffer,
+        );
+        context
+            .write_output(&page, &[], Model::Rgb, &mut output, tile)
+            .unwrap();
+        let mut expected = rgba.repeat(84);
+        // Device (255,8) maps to output row 1, column 5. Black at
+        // coverage 128 leaves round([17,85,170] *127/255).
+        expected[17 * 4..18 * 4].copy_from_slice(&[8, 42, 85, 255]);
+        // Device (254,12) maps to output row 5, column 4.
+        expected[64 * 4..65 * 4].copy_from_slice(&[0, 0, 0, 255]);
+        assert_eq!(output.data(), expected);
+        assert_eq!((context.work, context.allocated), before);
+    }
 
     #[test]
     fn output_preserves_opaque_clamping_and_rational_source_over() {

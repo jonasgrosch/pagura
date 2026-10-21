@@ -88,9 +88,29 @@
         "sha256": "de9cc3e3b23fe05bd38975ee2ae2e46125afaed84fdb568bee198023a57fbcd4",
         "status": "invalid-external-contention"
       }
+    },
+    "diagnostics-005": {
+      "report": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-005/report.json",
+        "sha256": "316e6dff712bb876d3eb4d563a54082d3f18801acff070fe11d7e292a91c039b"
+      },
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-005-receipt.json",
+        "sha256": "721770c1777d20339c059f75d107c3e8e94ba43e3fd26bda6ee4419c754db53a"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-005-observer/guard.json",
+        "sha256": "f095f04381aaab57e212337ac9cb7a94f9c70fb694c786f2245461e85f7a31eb"
+      },
+      "failure": "External Cargo check caused cancellation during baseline native diagnostic test; no completed layout matrix or gate result.",
+      "source_unchanged": true,
+      "restoration": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostic-preparation-003/removed.json",
+        "sha256": "e59954eae2492835d870df03882a99c9fd3c17e5066ab1daac92f86421775b96"
+      }
     }
   },
-  "status": "candidate-validation-incomplete",
+  "status": "candidate-mandatory-validation-completed-awaiting-assembly-and-performance",
   "admission": false,
   "performance_samples": 0,
   "probe_removal": {
@@ -98,10 +118,11 @@
     "sha256": "fc00a8677853ca33b0f028127aadf390f8a754fce316dda4a18e959fd1a493fb"
   },
   "limitations": [
-    "Candidate passed 236 native renderer tests in its own fresh build directory; portable renderer/layout validation remains incomplete.",
-    "Candidate-shaped metadata in diagnostics002 selected the baseline binary and was rejected; those observations remain unqualified.",
-    "Temporary probes are removed. No incremental speed, RSS, candidate layout or complete-repository-validation claim.",
-    "The interrupted full check has no returned combined log; its receipt records that missing artifact."
+    "Complete authoritative check passed as 14 separately guarded exact stages on one source freeze, not as one uninterrupted invocation.",
+    "Six diagnostic arms pass renderer, same-platform resource/error transcript and enclosing layout comparisons. These establish no process RSS or speed claim.",
+    "Original R1 six-row Competitive hypothesis failed and remains retained; separately frozen R2 passed24 outputs with transparent padding observed.",
+    "All temporary probes are removed and product/test sources restored exactly. Native104-output preflight and all performance phases remain outstanding.",
+    "Native route reach covers24 full requests, not all52 benchmark cells or WASI route instrumentation."
   ],
   "harness_tests": {
     "passed": 14,
@@ -602,5 +623,484 @@
       "README.md": "08862f45496b47171a58461d67b202d413401dbd35416b5e59c03a0bda438f1e",
       "test_staged_check.py": "154dcbb74923b04357dd643b851f3b1f08801539c53f080a2753cbd42a6fd2c4"
     }
+  },
+  "authoritative_staged_check": {
+    "status": "verified-staged-check",
+    "stage_count": 14,
+    "source": {
+      "commit": "069d62d75c1a9a2756b2833169c4c314d1c14cab",
+      "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+    },
+    "scope": "Fourteen exact commands completed serially in separately guarded jobs on one frozen source; not one uninterrupted check.py invocation.",
+    "records": {
+      "plan": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/staged-check-001/plan.json",
+        "sha256": "027c6d7c15d82867ce92f7644dd4b8547424e58b983901890c62d43c16cfffd1"
+      },
+      "aggregate": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/staged-check-001/aggregate.json",
+        "sha256": "cf2dc70def23977d24d79313496181b302d83d701c272dd80323828aa11d9c16"
+      },
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/staged-check-001/aggregate-receipt.json",
+        "sha256": "91400d6e51716f34fed8369d727e751bac4f1b3395f5d572beb4a94cf958013f"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/staged-check-001/aggregate-observer/guard.json",
+        "sha256": "6f1357a65dbd9924fe4e8f51dbb913062b846a4c19a93cb702f5b55116902257"
+      }
+    },
+    "renderer_tests": 236,
+    "tooling_tests": 196,
+    "conformance": {
+      "passed": 1249,
+      "failed": 0
+    }
+  },
+  "precision_host": {
+    "status": "passed",
+    "scope": "Two independent rational direct-root cases; default Exact host native/WASI response parity. Both-mode renderer validation is separate.",
+    "builds": {
+      "native": {
+        "binary": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/target/debug/pagura-host",
+          "sha256": "060de63d8713b21195fceffff09dabf0378a73b396ce0f9f01f055de1a593706"
+        },
+        "receipt": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/precision-native-build-001-receipt.json",
+          "sha256": "c9a4c119f2c0836affb189ddbb95cb6fc69df3c98a7f4a8a2a0fa4c4078e960c"
+        },
+        "log": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-precision-native-build-001.log",
+          "sha256": "75bd735ecd4a4b5ed63e619e8cb911ad9664778e510b865ef4ee30c32ec6f6f8"
+        },
+        "report": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-precision-native-build-001.json",
+          "sha256": "3cd17d4fd6d685868e9a34adff825811d3f507bb930983708022ba6169aabbd2"
+        },
+        "guard": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/precision-native-build-001-observer/guard.json",
+          "sha256": "0dfa35bbd7e4188084c15b07dc9846291821aa6eb852fdcea89a539e7f23dae4"
+        },
+        "source": {
+          "commit": "069d62d75c1a9a2756b2833169c4c314d1c14cab",
+          "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+        }
+      },
+      "wasi": {
+        "binary": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/target/wasm32-wasip1/release/pagura-host.wasm",
+          "sha256": "6a4ed1543edd35d8176948d2020c5eba5c4264aff8fb30843d303f499d82eacd"
+        },
+        "receipt": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/precision-wasi-build-001-receipt.json",
+          "sha256": "c401c9da3d7f3fc1be36163eaed9e476c42967e953fc901f4ae7378c804e6765"
+        },
+        "log": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-precision-wasi-build-001.log",
+          "sha256": "88f96bf7297bdf6d44a954d9c5540a2e0f2fa4302b4493fb90aa6f5fc4d1ccfb"
+        },
+        "report": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/main-reconciliation/n16-precision-wasi-build-001.json",
+          "sha256": "ba04545397800f1deae845fe0328e7032f3ee2b3dd6739c2f865773d6e685eab"
+        },
+        "guard": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/precision-wasi-build-001-observer/guard.json",
+          "sha256": "1c608b7b1cf134c97f0666db0e3631637850f50ea8e306cd5553035a8a4c4f28"
+        },
+        "source": {
+          "commit": "069d62d75c1a9a2756b2833169c4c314d1c14cab",
+          "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+        }
+      }
+    },
+    "records": {
+      "report": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/precision-host-001/report.json",
+        "sha256": "ec09eb2fae1a38450317298840f265f644c91bdfa568a523f22611852b479b66"
+      },
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/precision-host-001-receipt.json",
+        "sha256": "aa33962c6bb41f2a0d3e8a5705030fd754704193d8d724a900f1baf8f67c5ea1"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/precision-host-001-observer/guard.json",
+        "sha256": "d4a7260276a27475f769ae367fbc6353eeac3d30339a1bff841e75890fe67fd7"
+      }
+    },
+    "rgba": [
+      [
+        219,
+        219,
+        219,
+        255
+      ],
+      [
+        5,
+        5,
+        5,
+        255
+      ]
+    ],
+    "node": {
+      "path": "/opt/homebrew/Cellar/node/26.8.1/bin/node",
+      "sha256": "f023ca4cc73074018b8085e846c8f46fc175f923d6349708e9af2e3cef76af59"
+    }
+  },
+  "native_preflight": {
+    "status": "prepared-not-executed",
+    "driver": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/sources/n16-native-preflight/run.py",
+      "sha256": "59841d79bfc28bc645fee3303590a152aa0beaf79d5fdd4d47b4375ae3a6434d"
+    },
+    "outputs_required": 104
+  },
+  "six_arm_validation": {
+    "status": "verified-tests-and-diagnostics",
+    "layout_gate_passed": true,
+    "records": {
+      "report": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-006/report.json",
+        "sha256": "c70f8088da718da733946ddf54e9acc8672d20ad3c6bd37a8a8d0d96636efeb0"
+      },
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-006-receipt.json",
+        "sha256": "3865fc4798b0894790dfe13153c7e6d15e48bcde37db937b0f9fb60b7647caf9"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostics-006-observer/guard.json",
+        "sha256": "f21bd9b9f503e8b01c0b70c2a5f845ebfb8da6730ea23fcc0bb8a43c1988474d"
+      },
+      "preparation": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostic-preparation-004/installed.json",
+        "sha256": "b28c237f65a67407236b5486b5cc5aa79207a34af602b72250cb822dd0d45145"
+      },
+      "restoration": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/diagnostic-preparation-004/removed.json",
+        "sha256": "87ce5fdbd4bdb8930a1c114267400bc5e9780e52b4b9945f39cbd95404d09365"
+      }
+    },
+    "tests": [
+      {
+        "arm": "baseline",
+        "platform": "native",
+        "tests_passed": 231
+      },
+      {
+        "arm": "baseline",
+        "platform": "wasi-simd",
+        "tests_passed": 231
+      },
+      {
+        "arm": "baseline",
+        "platform": "wasi-scalar",
+        "tests_passed": 231
+      },
+      {
+        "arm": "candidate",
+        "platform": "native",
+        "tests_passed": 238
+      },
+      {
+        "arm": "candidate",
+        "platform": "wasi-simd",
+        "tests_passed": 238
+      },
+      {
+        "arm": "candidate",
+        "platform": "wasi-scalar",
+        "tests_passed": 238
+      }
+    ],
+    "comparisons": [
+      {
+        "platform": "native",
+        "pi_q4_equal": true,
+        "layout_deltas": {
+          "Buffer": {
+            "size": 0,
+            "align": 0
+          },
+          "Option<Buffer>": {
+            "size": 0,
+            "align": 0
+          },
+          "Surface": {
+            "size": 0,
+            "align": 0
+          },
+          "MaskSink": {
+            "size": 0,
+            "align": 0
+          },
+          "Context": {
+            "size": 0,
+            "align": 0
+          },
+          "Vec<[u16;4]>": {
+            "size": 0,
+            "align": 0
+          },
+          "Range<usize>": {
+            "size": 0,
+            "align": 0
+          },
+          "[u16;4]": {
+            "size": 0,
+            "align": 0
+          }
+        },
+        "no_layout_growth": true
+      },
+      {
+        "platform": "wasi-simd",
+        "pi_q4_equal": true,
+        "layout_deltas": {
+          "Buffer": {
+            "size": 0,
+            "align": 0
+          },
+          "Option<Buffer>": {
+            "size": 0,
+            "align": 0
+          },
+          "Surface": {
+            "size": 0,
+            "align": 0
+          },
+          "MaskSink": {
+            "size": 0,
+            "align": 0
+          },
+          "Context": {
+            "size": 0,
+            "align": 0
+          },
+          "Vec<[u16;4]>": {
+            "size": 0,
+            "align": 0
+          },
+          "Range<usize>": {
+            "size": 0,
+            "align": 0
+          },
+          "[u16;4]": {
+            "size": 0,
+            "align": 0
+          }
+        },
+        "no_layout_growth": true
+      },
+      {
+        "platform": "wasi-scalar",
+        "pi_q4_equal": true,
+        "layout_deltas": {
+          "Buffer": {
+            "size": 0,
+            "align": 0
+          },
+          "Option<Buffer>": {
+            "size": 0,
+            "align": 0
+          },
+          "Surface": {
+            "size": 0,
+            "align": 0
+          },
+          "MaskSink": {
+            "size": 0,
+            "align": 0
+          },
+          "Context": {
+            "size": 0,
+            "align": 0
+          },
+          "Vec<[u16;4]>": {
+            "size": 0,
+            "align": 0
+          },
+          "Range<usize>": {
+            "size": 0,
+            "align": 0
+          },
+          "[u16;4]": {
+            "size": 0,
+            "align": 0
+          }
+        },
+        "no_layout_growth": true
+      }
+    ]
+  },
+  "route_reach": {
+    "status": "failed-fixed-reach-hypothesis",
+    "records": {
+      "report": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/reach-001/report.json",
+        "sha256": "d972a0ed4395232470c0421db3f11206e8851a683c13f75bdebd0cb72374f9ef"
+      },
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/reach-001-receipt.json",
+        "sha256": "2b00bde84837b4c99836aa136618a4128462255a8bb791448e86b46b19675e1f"
+      },
+      "guard": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/reach-001-observer/guard.json",
+        "sha256": "d47c9e4e87e8fc4a9414c60b4f1e7554cefd714bd932abe5b38fa0cbf75a24f4"
+      },
+      "restoration": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/reach-preparation-001/removed.json",
+        "sha256": "b09103f61d9be0441612507d0af67d30e6ac69dd6357e4bd9962a94f0f879e8b"
+      }
+    },
+    "observed": {
+      "opaque64-exact": {
+        "range": [
+          59904,
+          61440
+        ],
+        "converted_per_chunk": 1536,
+        "calls_per_chunk": 6,
+        "independent_rgba": true
+      },
+      "opaque64-competitive": {
+        "range": [
+          59904,
+          61696
+        ],
+        "converted_per_chunk": 1792,
+        "calls_per_chunk": 7,
+        "independent_rgba": true
+      }
+    },
+    "original_prediction_per_chunk": {
+      "range": [
+        59904,
+        61440
+      ],
+      "pixels": 1536,
+      "calls": 6
+    },
+    "acceptance": "blocked; source-derived investigation required before any revised plan, no speed sample"
+  },
+  "uninstrumented_benchmark_builds": {
+    "status": "completed-source-and-artifact-pins-verified",
+    "arms": [
+      {
+        "kind": "native",
+        "side": "baseline",
+        "source": {
+          "commit": "a9814ee476c1b17a27b1e9a904f1f4fac8d5cd9c",
+          "sha256": "fa41575bf0f52414c558045152bb508cc2e8124d24aa71ca8fe1ef714ccc3df3"
+        },
+        "binary": "/private/tmp/n16-interval-native-baseline-001/release/examples/scene_index_profile",
+        "binary_sha256": "d63aaa060f4972052a3b338191e359a768d82f8e1162f1c323f30394a2f7ab97",
+        "receipt": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/native-baseline-build-001-receipt.json",
+          "sha256": "f417cb68e4959444f95280252240cd337eafe350581234148674a54f6cd03a86"
+        },
+        "guard": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/native-baseline-build-001-observer/guard.json",
+          "sha256": "89ccb51e81885882a134770932e4866dbb84e28dca8ed77b182a4f38d0328688"
+        }
+      },
+      {
+        "kind": "native",
+        "side": "candidate",
+        "source": {
+          "commit": "069d62d75c1a9a2756b2833169c4c314d1c14cab",
+          "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+        },
+        "binary": "/private/tmp/n16-interval-native-candidate-001/release/examples/scene_index_profile",
+        "binary_sha256": "40da46dfa96b32d24c959943419f71786cf927c8d59def915954ec99a30cd3eb",
+        "receipt": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/native-candidate-build-001-receipt.json",
+          "sha256": "8ee7c45a8ea611bce4e2f29726af5ec6c9ad03b187a1203babf60b7f2f05d713"
+        },
+        "guard": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/native-candidate-build-001-observer/guard.json",
+          "sha256": "4b165102cd578ed88d86c900486fec952de35ccf80541eeaddb4e9093bdaaf1f"
+        }
+      },
+      {
+        "kind": "wasi",
+        "side": "baseline",
+        "source": {
+          "commit": "a9814ee476c1b17a27b1e9a904f1f4fac8d5cd9c",
+          "sha256": "fa41575bf0f52414c558045152bb508cc2e8124d24aa71ca8fe1ef714ccc3df3"
+        },
+        "binary": "/private/tmp/n16-interval-wasi-baseline-001/wasm32-wasip1/release/examples/scene_index_profile.wasm",
+        "binary_sha256": "19603bd7cb249d461719e3560e61ad974279651e5ac6f1b1bde04cade01cc188",
+        "receipt": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/wasi-baseline-build-001-receipt.json",
+          "sha256": "c88bf9963d07dd5eeabfe0b265f2bc7177a7a37d3728e625a62d82f845f14900"
+        },
+        "guard": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/wasi-baseline-build-001-observer/guard.json",
+          "sha256": "3f7e0044bd12f82853069d3b145c7d2347b1eeac5aefeb70767d7c7b085eacc8"
+        }
+      },
+      {
+        "kind": "wasi",
+        "side": "candidate",
+        "source": {
+          "commit": "069d62d75c1a9a2756b2833169c4c314d1c14cab",
+          "sha256": "6c21b433cb474a388a0c14af6b836f6d86eaa2493922b5c326b91115f580d973"
+        },
+        "binary": "/private/tmp/n16-interval-wasi-candidate-001/wasm32-wasip1/release/examples/scene_index_profile.wasm",
+        "binary_sha256": "f1d7546e34803b9dac018be8e8ec394947f95f64c5dae44927fd8617b98c83c3",
+        "receipt": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/wasi-candidate-build-001-receipt.json",
+          "sha256": "4e9ada23082fb4414af1cf03284455aa903269e57fce3d9e6b56cc2918793d5a"
+        },
+        "guard": {
+          "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/wasi-candidate-build-001-observer/guard.json",
+          "sha256": "9b50709f1f9a7cae892f3a9dd58abfb02cb21237062b5661e9459d56d991a7d0"
+        }
+      }
+    ],
+    "timing_samples": 0
+  },
+  "route_reach_r2": {
+    "status": "passed-post-discovery-revision",
+    "outputs": 24,
+    "report": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/reach-r2-001/report.json",
+      "sha256": "0461795d8bd1d2b2641d95cded7b1dc40e492bafd7b911a91c3efb7b9e6afbf3"
+    },
+    "receipt": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/reach-r2-001-receipt.json",
+      "sha256": "6f59cc42f054247f7c94b6516df437f6de901ec8989d08867cd7507ca870474c"
+    },
+    "guard": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/reach-r2-001-observer/guard.json",
+      "sha256": "cd83022230298e4ab59d25f8d1a5af2fca92eae7e6b17bb90363367a98d0a6a2"
+    },
+    "preparation": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/reach-r2-preparation-001/preparation.json",
+      "sha256": "4c563c124494245a89a739763f39502821b105a7aee2af0c2a26eb36122ff47e"
+    },
+    "restoration": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/reach-r2-preparation-001/removed.json",
+      "sha256": "fbe4bf1292d50e339483133a2cad9ff27369e1bf214a88bd3e112e167ac3c381"
+    },
+    "pure_tests": 9,
+    "unit_receipt": {
+      "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/n16-painted-interval/reach-r2-unit-001-receipt.json",
+      "sha256": "2fb38bd585f54568644d1649ad720783fd773037958fdc32bb30c52d20d646ad"
+    },
+    "r1": "retained failed; no relabeling",
+    "opaque64_per_chunk": {
+      "exact": {
+        "pixels": 1536,
+        "calls": 6
+      },
+      "competitive": {
+        "pixels": 1792,
+        "calls": 7,
+        "positive_samples": 1536,
+        "zero_halo_row": 240
+      }
+    },
+    "scope": "Native full requests only; no instrumented timing used; fixed timing cells/seeds/thresholds unchanged."
   }
 }

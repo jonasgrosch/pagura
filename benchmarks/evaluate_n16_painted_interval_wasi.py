@@ -219,6 +219,9 @@ def main():
     candidate_root = Path(native['identities']['candidate']['root'])
     python, guard_source = config['python']['path'], Path(config['guard']['path'])
     require(file_hash(Path(python)) == config['python']['sha256']
+            and report['environment']['python_executable'] == config['python_executable']['path']
+            and report['environment']['python_sha256'] == config['python_executable']['sha256']
+            and file_hash(Path(config['python_executable']['path'])) == config['python_executable']['sha256']
             and guard_source.is_relative_to(candidate_root)
             and file_hash(guard_source) == config['guard']['sha256']
             == native['bound_files_sha256'].get(guard_source.relative_to(candidate_root).as_posix()),

@@ -126,7 +126,7 @@ Source review must establish that temporary cfg(test) probes do not change the
 observed types or layout-affecting cfgs versus production. The tests/logs must
 cover the PI-Q1/Q2/Q3 named assertions below; a count alone proves no such scope.
 
-## C. Fixed native route/reach observation
+## C. Fixed native route/reach observation (R1 retained; R2 required)
 
 Require the coordinator reach report to have `schema=1`,
 `validation=n16-interval-route-reach`, `status=verified-route-reach`,
@@ -149,6 +149,23 @@ the renderer. Any additional zero halo or route/count discrepancy is a retained
 reach miss, not permission to adjust the fixed expected counts after observing
 them. Native full-route evidence does not establish all 52 cells or WASI reach.
 
+### R2 revision after the retained R1 failure
+
+The preceding 18-request rule describes R1, which failed the Competitive
+opaque64 interval prediction after its independent pixel check passed. Do not
+relabel that report or its counts. R2 is a new frozen structural test, justified
+by source review of phase-capacity padding and aligned cached-mask stride.
+
+Use the separately archived `n16-painted-interval-reach-r2` collector, patch,
+fixture helper, request plan and tests. Require exactly 24 outputs: the original
+18 plus three fresh single-glyph height/placement/clipping controls in both
+modes. Its versioned trace adds nonzero coverage counts without changing writer
+semantics or stored layouts. Require all exact per-chunk mode-specific ranges,
+zero-coverage halo checks, independent raw RGBA, source/build/command bindings
+and restoration. Preserve R1 as failed evidence. All accuracy, latency, RSS,
+52-cell, sample-count and seed requirements remain unchanged. R2 can satisfy
+PI-REACH only after those newly frozen predictions pass; it cannot repair R1.
+
 ## D. Restoration and gate mapping
 
 After EACH temporary overlay, pin an explicit restoration record: the exact
@@ -168,7 +185,7 @@ the required check under coordinator control before marking its gate passed.
 | PI-Q4 | All same-platform 47-row baseline/candidate error/resource transcripts plus required source/work/function/depth tests. |
 | PI-Q5 | Exact current production authoritative full check plus required precision/native-WASI host evidence and both-mode renderer tests. |
 | PI-M1 | Actual six-arm enclosing size/alignment observations, cfg-definition review and byte/heap/resource invariant review; no RSS or peak-stack claim. |
-| PI-REACH | All 18 fixed native requests and their raw route/count/pixel checks, followed by exact restoration. |
+| PI-REACH | All 24 fixed R2 native requests and their raw route/count/coverage/pixel checks, followed by exact restoration; retain R1 as failed. |
 
 ## E. Final assembly and pilot handoff
 

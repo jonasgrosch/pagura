@@ -1,0 +1,110 @@
+diff --git a/crates/pagura-render/src/compositor/narrow.rs b/crates/pagura-render/src/compositor/narrow.rs
+--- a/crates/pagura-render/src/compositor/narrow.rs
++++ b/crates/pagura-render/src/compositor/narrow.rs
+@@ -608,7 +608,7 @@
+                     .iter_mut()
+                     .zip(&pixels[offset..])
+                 {
+-                    *out = pixel.map(byte);
++                    *out = pixel.map(float_byte);
+                 }
+             }
+         }
+@@ -615,6 +615,17 @@
+     }
+ }
+ 
++/// Nearest-byte output with upward half ties and saturating special values.
++/// The predecessor of 0.5 avoids promoting an input just below a half level.
++#[expect(
++    clippy::cast_possible_truncation,
++    clippy::cast_sign_loss,
++    reason = "saturating float cast implements clamped byte output"
++)]
++fn float_byte(value: f32) -> u8 {
++    (value + f32::from_bits(0x3eff_ffff)) as u8
++}
++
+ /// Exactly `(word + 128) / 257`, using only 16-bit arithmetic.
+ /// Below saturation, `n = 256*q + r` gives `q` when `r >= q`, else `q - 1`.
+ /// Above it, both the original quotient and the saturated expression are 255.
+diff --git a/crates/pagura-render/src/compositor/narrow_tests.rs b/crates/pagura-render/src/compositor/narrow_tests.rs
+--- a/crates/pagura-render/src/compositor/narrow_tests.rs
++++ b/crates/pagura-render/src/compositor/narrow_tests.rs
+@@ -1,6 +1,76 @@
+ //! Fragment masks are arbitrary rows, unlike homogeneous Exact spans.
+ use super::*;
+ 
++#[test]
++fn f32_output_half_transitions_match_independent_integer_expectations() {
++    for n in 1..=u8::MAX {
++        // (2*n - 1)/2 is exactly representable. Its adjacent positive f32
++        // values lie strictly on opposite sides of that rational threshold.
++        let half = f32::from(n) - 0.5;
++        let previous = f32::from_bits(half.to_bits() - 1);
++        let next = f32::from_bits(half.to_bits() + 1);
++        let buffer = Buffer::F32(vec![[previous, half, next, f32::from(n)]]);
++        let mut actual = [77; 4];
++        buffer.output(0, &mut actual);
++        assert_eq!(actual, [n - 1, n, n, n], "transition {n}");
++    }
++}
++
++#[test]
++fn f32_output_integers_and_special_values_have_fixed_bytes() {
++    for n in 0..=u8::MAX {
++        let buffer = Buffer::F32(vec![[f32::from(n); 4]]);
++        let mut actual = [77; 4];
++        buffer.output(0, &mut actual);
++        assert_eq!(actual, [n; 4], "integer {n}");
++    }
++    // Literal IEEE-754 encodings: signed zero, smallest/largest subnormal,
++    // smallest normal, finite extremes, infinities and varied NaN payloads.
++    for (bits, expected) in [
++        (0x0000_0000, 0u8), (0x8000_0000, 0),
++        (0x0000_0001, 0), (0x8000_0001, 0),
++        (0x007f_ffff, 0), (0x807f_ffff, 0),
++        (0x0080_0000, 0), (0x8080_0000, 0),
++        (0xbf00_0000, 0), (0xc300_0000, 0),
++        (0x4380_0000, 255), (0x7f7f_ffff, 255), (0xff7f_ffff, 0),
++        (0x7f80_0000, 255), (0xff80_0000, 0),
++        (0x7fc0_0000, 0), (0xffc0_0000, 0),
++        (0x7fff_ffff, 0), (0xffff_ffff, 0),
++        (0x7f80_0001, 0), (0xff80_0001, 0),
++        (0x7fbf_ffff, 0), (0xffbf_ffff, 0),
++    ] {
++        let buffer = Buffer::F32(vec![[f32::from_bits(bits); 4]]);
++        let mut actual = [77; 4];
++        buffer.output(0, &mut actual);
++        assert_eq!(actual, [expected; 4], "bits {bits:08x}");
++    }
++}
++
++#[test]
++fn f32_output_preserves_offsets_complete_pixels_and_destination_tails() {
++    let buffer = Buffer::F32(vec![
++        [99.0; 4],
++        [f32::from_bits(0x3eff_ffff), 0.5, 1.5, 254.5],
++        [f32::NEG_INFINITY, f32::INFINITY, f32::from_bits(0x7f80_0001), 255.0],
++    ]);
++    // Expected bytes follow the listed rational values and saturating casts;
++    // neither this oracle nor the boundary tests call the old byte helper.
++    let expected = [0, 1, 2, 255, 0, 255, 0, 255];
++    for count in 0..=13 {
++        let mut actual = vec![77; count];
++        buffer.output(1, &mut actual);
++        let written = (count / 4 * 4).min(expected.len());
++        assert_eq!(&actual[..written], &expected[..written], "length {count}");
++        assert!(actual[written..].iter().all(|&value| value == 77));
++
++        // A valid offset exactly at the source end writes nothing, even into
++        // a destination with several complete pixels and a partial tail.
++        let mut untouched = vec![77; count];
++        buffer.output(3, &mut untouched);
++        assert_eq!(untouched, vec![77; count]);
++    }
++}
++
+ #[test]
+ fn word_output_matches_rational_rounding_for_every_word() {
+     for word in 0..=u16::MAX {
