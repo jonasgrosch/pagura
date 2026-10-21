@@ -110,8 +110,10 @@ impl Cursor {
 
     /// Consumes `width` loaded bits.
     fn consume(&mut self, width: u32) {
-        // Codes and magnitudes take at most 31 of the 32 or more bits loaded
-        // before each code, so neither the shift nor the count can wrap.
+        // At eight or twelve bit precision, a code and its magnitude take at
+        // most 31 of the 32 or more bits loaded before each code, so neither
+        // the shift nor the count can wrap.
+        debug_assert!(width <= self.count);
         self.window = self.window.wrapping_shl(width);
         self.count = self.count.wrapping_sub(width);
     }
