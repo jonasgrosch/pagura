@@ -234,6 +234,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "pagura-render"
+version = "0.1.0"
+dependencies = [
+ "pagura-color",
+ "pagura-core",
+ "pagura-document",
+ "pagura-extract",
+ "pagura-interpret",
+ "pagura-paint",
+ "pagura-raster",
+ "pagura-testkit",
+ "pagura-text",
+ "pagura-write",
+]
+
+[[package]]
 name = "pagura-testkit"
 version = "0.1.0"
 

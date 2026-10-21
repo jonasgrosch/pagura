@@ -1,8 +1,13 @@
 #![forbid(unsafe_code)]
 //! Exploratory, single-process render timings; not a competitor benchmark.
+//!
+//! `render_profile INPUT PAGE DPI COUNT [OUTPUT.rgba]` records the page once
+//! and prints one line per timed render: the sample, its seconds and a hash
+//! of the pixels.
 
 use pagura_document::{Document, OpenOptions};
-use pagura_legacy::{RenderOptions, compile_page};
+use pagura_render::{RenderContext, RenderOptions};
+use std::sync::Arc;
 use std::time::Instant;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -12,11 +17,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let dpi: f64 = args.get(3).ok_or("expected dpi")?.parse()?;
     let count: usize = args.get(4).ok_or("expected sample count")?.parse()?;
     let document = Document::open(std::fs::read(path)?, &OpenOptions::default())?;
-    let list = compile_page(&document, document.page(page)?)?;
+    let context = RenderContext::new(Arc::new(document));
+    let scene = context.scene(context.document().page(page)?)?;
     let options = RenderOptions::from_dpi(dpi);
     for sample in 0..=count {
         let start = Instant::now();
-        let image = list.render(&options)?;
+        let image = context.render_scene(&scene, &options, None)?;
         let elapsed = start.elapsed().as_secs_f64();
         // Hash and disk emission happen outside the measured render stage.
         let digest = image

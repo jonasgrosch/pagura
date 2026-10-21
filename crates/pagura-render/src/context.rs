@@ -1,0 +1,274 @@
+//! The rendering context of one document (ADR 0012, ADR 0034).
+
+use crate::options::{RenderOptions, Tile};
+use crate::renderer::Renderer;
+use pagura_core::{Built, Error, ObjectId, Rect, Result, Store, StoreKey};
+use pagura_document::forms::FormFiller;
+use pagura_document::{Document, Page};
+use pagura_extract::{PositionedText, TextPage};
+use pagura_interpret::Scene;
+use pagura_paint::Completion;
+use pagura_raster::Pixmap;
+use pagura_text::Provider;
+use std::sync::Arc;
+
+/// A document, its font provider and the [`Store`] that holds everything
+/// rendering its pages reuses: recorded scenes, decoded images, colour
+/// transforms, font programs and glyph edge setups, under one byte capacity.
+///
+/// Every page is recorded once into a [`Scene`] and rendered from it at any
+/// resolution, region or set of fast parameters. Dropping the context
+/// releases the store; the document's own object caches stay with the
+/// document (ADR 0012). The context is `Send + Sync`.
+pub struct RenderContext {
+    document: Arc<Document>,
+    provider: Option<Arc<dyn Provider>>,
+    store: Store,
+}
+
+impl std::fmt::Debug for RenderContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RenderContext")
+            .field("document", &self.document)
+            .field("provider", &self.provider.is_some())
+            .field("store", &self.store)
+            .finish()
+    }
+}
+
+/// A recorded scene in the store. A page object can occur more than once in
+/// the page tree with different inherited attributes, so the page is named
+/// by its object and its position.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct SceneKey {
+    page: ObjectId,
+    index: usize,
+    configuration: Configuration,
+}
+
+/// The optional-content configuration that decided visibility (8.11.4.3).
+/// Scenes are recorded with the document's default configuration, `D`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum Configuration {
+    Default,
+}
+
+impl StoreKey for SceneKey {
+    type Value = Scene;
+}
+
+impl RenderContext {
+    /// The store capacity of [`Self::new`] and [`Self::with_provider`]:
+    /// 64 MiB, what the viewer host retained between tiles before the store.
+    pub const DEFAULT_STORE_BYTES: usize = 64 * 1024 * 1024;
+
+    /// A context that uses only the resources embedded in the PDF, with the
+    /// default store capacity.
+    pub fn new(document: Arc<Document>) -> Self {
+        Self::with_store_capacity(document, None, Self::DEFAULT_STORE_BYTES)
+    }
+
+    /// A context with external font resources (ADR 0009) and the default
+    /// store capacity. Sharing one provider across contexts also shares its
+    /// parsing.
+    pub fn with_provider(document: Arc<Document>, provider: Arc<dyn Provider>) -> Self {
+        Self::with_store_capacity(document, Some(provider), Self::DEFAULT_STORE_BYTES)
+    }
+
+    /// A context whose store retains at most `capacity` bytes between
+    /// renders (ADR 0012). Zero retains nothing, so every render records and
+    /// decodes again.
+    pub fn with_store_capacity(
+        document: Arc<Document>,
+        provider: Option<Arc<dyn Provider>>,
+        capacity: usize,
+    ) -> Self {
+        Self {
+            document,
+            provider,
+            store: Store::new(capacity),
+        }
+    }
+
+    /// The document.
+    pub fn document(&self) -> &Document {
+        &self.document
+    }
+
+    /// Bytes the store retains: an accounting estimate of the values it
+    /// holds, at most its capacity (and values someone else still holds), not
+    /// allocator telemetry.
+    pub fn retained_bytes(&self) -> usize {
+        self.store.retained_bytes()
+    }
+
+    fn renderer(&self) -> Renderer<'_> {
+        Renderer {
+            document: &self.document,
+            provider: self.provider.as_deref(),
+            store: &self.store,
+        }
+    }
+
+    /// The recorded scene of `page`, from the store or recorded now and
+    /// stored. It uses stored appearances and ignores `NeedAppearances`;
+    /// [`Self::filled_scene`] honours it.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InvalidArgument` for a page of another document, and the
+    /// interpreter's errors: positioned `Syntax` errors, `Limit` errors and
+    /// stable `Unsupported` tags. A failed recording stores nothing.
+    pub fn scene(&self, page: &Page) -> Result<Arc<Scene>> {
+        self.check_owned(page)?;
+        let key = SceneKey {
+            page: page.id(),
+            index: page.index(),
+            configuration: Configuration::Default,
+        };
+        self.store.get_or_build(key, || {
+            let scene = self.renderer().record(page)?;
+            let bytes = scene.bytes;
+            Ok(Built {
+                value: scene,
+                bytes,
+            })
+        })
+    }
+
+    /// Records `page` with the in-memory form values of `filler`, generating
+    /// appearances where they are needed (12.7.4.3). Filled scenes change with
+    /// every edit, so they are not stored.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::scene`], and `InvalidArgument` when `filler` belongs to
+    /// another document.
+    pub fn filled_scene(&self, filler: &FormFiller<'_>, page: &Page) -> Result<Scene> {
+        self.check_owned(page)?;
+        self.renderer().record_filled(filler, page)
+    }
+
+    /// Renders the whole page.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::scene`] and [`Self::render_scene`]. No partial page is ever
+    /// returned.
+    pub fn render_page(&self, page: &Page, options: &RenderOptions) -> Result<Pixmap> {
+        self.render_scene(&*self.scene(page)?, options, None)
+    }
+
+    /// Renders one tile of the page. Tiles of one page with the same options
+    /// assemble byte for byte into [`Self::render_page`]'s result.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::render_page`], and `InvalidArgument` for a tile that is
+    /// empty or outside the page.
+    pub fn render_tile(&self, page: &Page, options: &RenderOptions, tile: Tile) -> Result<Pixmap> {
+        self.render_scene(&*self.scene(page)?, options, Some(tile))
+    }
+
+    /// Renders `tile` of a scene this context recorded, or its whole page
+    /// for `None`. Images and glyphs come from this context's store, which
+    /// names them by this document's objects, so the scene must come from
+    /// [`Self::scene`] or [`Self::filled_scene`] of this context.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InvalidArgument` for a non-positive or non-finite scale and a
+    /// tile that is empty or outside the page; otherwise the first error of
+    /// preparation in source order among the marks that meet the region:
+    /// `Syntax` and `Unsupported` for content that cannot be painted, `Limit`
+    /// for `pixels`, `render_bytes`, `render_work`, `function_work` and the
+    /// per-fill budgets, and a refused repair under strict recovery. Budgets
+    /// are per render, so a whole page can reach a limit its tiles do not.
+    pub fn render_scene(
+        &self,
+        scene: &Scene,
+        options: &RenderOptions,
+        tile: Option<Tile>,
+    ) -> Result<Pixmap> {
+        self.render_until(scene, options, tile, |_| false)
+            .map(|(pixmap, _)| pixmap)
+    }
+
+    /// Renders as [`Self::render_scene`] band by band, top to bottom, asking
+    /// `stop` with the first device row of each band before rendering it, so
+    /// that a viewer can abandon or interleave work. Everything that can fail
+    /// fails before the first band; stopping is not an error. After
+    /// [`Completion::Stopped`], the pixmap's rows above the reported device
+    /// row are rendered and the rest hold the background.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::render_scene`].
+    pub fn render_until(
+        &self,
+        scene: &Scene,
+        options: &RenderOptions,
+        tile: Option<Tile>,
+        stop: impl FnMut(u32) -> bool,
+    ) -> Result<(Pixmap, Completion)> {
+        self.renderer().render(scene, options, tile, stop)
+    }
+
+    /// The positioned text of `page` in reading order with its logical
+    /// structure (ADR 0014), through the text device: no image is decoded,
+    /// no shading parsed and no colour converted. Coordinates are default
+    /// user space, before rotation, `UserUnit` and scaling. Annotation
+    /// appearances, pattern cells, soft masks and Type 3 glyph procedures are
+    /// paint, not page text.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::scene`], plus `text_items` limits and the layout's errors.
+    pub fn text_page(&self, page: &Page) -> Result<TextPage> {
+        self.check_owned(page)?;
+        self.renderer().text_page(page)
+    }
+
+    /// The positioned text of the stored annotation appearance `appearance`
+    /// of `page`, fitted into `rect` (12.5.5), through the text device. The
+    /// page's content and other annotations are not interpreted.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::text_page`].
+    pub fn appearance_text(
+        &self,
+        page: &Page,
+        appearance: ObjectId,
+        rect: Rect,
+    ) -> Result<PositionedText> {
+        self.check_owned(page)?;
+        self.renderer().appearance_text(page, appearance, rect)
+    }
+
+    /// Conservative bounds of what `page` paints, in default user space and
+    /// clamped to the crop box (12.3.2.2), or `None` when it paints nothing.
+    /// Control hulls, stroke envelopes, clips and group bounding boxes can
+    /// include empty space; the bounds never exclude a painted pixel.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::scene`], and `Limit` when groups nest deeper than
+    /// `Limits::depth`.
+    pub fn content_bounds(&self, page: &Page) -> Result<Option<Rect>> {
+        let scene = self.scene(page)?;
+        crate::bounds::content_bounds(&scene, self.document.limits().depth)
+    }
+
+    /// Rejects a page that is not this document's page at its index: store
+    /// keys name this document's objects.
+    fn check_owned(&self, page: &Page) -> Result<()> {
+        let owned = self.document.page(page.index())?;
+        if owned != page {
+            return Err(Error::invalid_argument(
+                "page does not belong to the rendering context",
+            ));
+        }
+        Ok(())
+    }
+}

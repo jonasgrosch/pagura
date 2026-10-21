@@ -16,6 +16,7 @@ members = [
     "crates/pagura-appearance",
     "crates/pagura-interpret",
     "crates/pagura-paint",
+    "crates/pagura-render",
     "crates/pagura-legacy",
     "crates/pagura-reference",
     "crates/pagura-write",
@@ -55,7 +56,7 @@ pagura-paint = { path = "crates/pagura-paint" }
 pagura-pki = { path = "crates/pagura-pki" }
 pagura-raster = { path = "crates/pagura-raster" }
 pagura-reference = { path = "crates/pagura-reference" }
-pagura-render = { path = "crates/pagura-legacy", package = "pagura-legacy" }
+pagura-render = { path = "crates/pagura-render" }
 pagura-testkit = { path = "crates/pagura-testkit" }
 pagura-text = { path = "crates/pagura-text" }
 pagura-write = { path = "crates/pagura-write" }

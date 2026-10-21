@@ -20,7 +20,7 @@ pagura-extract.workspace = true
 pagura-font.workspace = true
 pagura-pki.workspace = true
 pagura-raster.workspace = true
-pagura-render.workspace = true
+pagura-render = { package = "pagura-legacy", path = "../pagura-legacy" }
 pagura-text.workspace = true
 pagura-write.workspace = true
 
