@@ -117,8 +117,13 @@ impl ShadingSource {
         pixels: usize,
         functions: &mut Meter,
     ) -> Result<Self> {
-        Self::new(&Parts::from(shading), shading_to_device, context, Use::Operator)?
-            .reserve(pixels, functions)
+        Self::new(
+            &Parts::from(shading),
+            shading_to_device,
+            context,
+            Use::Operator,
+        )?
+        .reserve(pixels, functions)
     }
 
     /// Prepares `shading` as a shading pattern's paint (8.7.4.4): samples
@@ -134,8 +139,13 @@ impl ShadingSource {
         pixels: usize,
         functions: &mut Meter,
     ) -> Result<Self> {
-        Self::new(&Parts::from(shading), shading_to_device, context, Use::Pattern)?
-            .reserve(pixels, functions)
+        Self::new(
+            &Parts::from(shading),
+            shading_to_device,
+            context,
+            Use::Pattern,
+        )?
+        .reserve(pixels, functions)
     }
 
     fn new(
@@ -317,7 +327,10 @@ impl ShadingSource {
             .enumerate()
         {
             let x = span.x.saturating_add(u32::try_from(i).unwrap_or(u32::MAX));
-            let boundary = span.boundary.and_then(|b| b.get(i)).map(|&c| f64::from(c) / 255.0);
+            let boundary = span
+                .boundary
+                .and_then(|b| b.get(i))
+                .map(|&c| f64::from(c) / 255.0);
             *alpha = self.pixel(sampler, (x, span.y), boundary, (color, &mut input));
         }
     }
@@ -434,7 +447,11 @@ impl ShadingSource {
     /// Pixel colours by hit count when the shading's colour is constant and
     /// no background mixes in.
     fn constant_colors(&self) -> Option<Box<[f64]>> {
-        if self.pattern.as_ref().is_some_and(|p| p.background.is_some()) {
+        if self
+            .pattern
+            .as_ref()
+            .is_some_and(|p| p.background.is_some())
+        {
             return None;
         }
         let color = self.colors.constant()?;

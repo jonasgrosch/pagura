@@ -40,7 +40,11 @@ struct Search {
 impl Patch {
     pub(super) fn new(patch: &pagura_interpret::Patch, values: usize) -> Self {
         let mut colors = vec![0.0; 4 * values];
-        for (corner, out) in patch.colors.iter().zip(colors.chunks_exact_mut(values.max(1))) {
+        for (corner, out) in patch
+            .colors
+            .iter()
+            .zip(colors.chunks_exact_mut(values.max(1)))
+        {
             for (out, &v) in out.iter_mut().zip(corner.iter()) {
                 *out = v;
             }

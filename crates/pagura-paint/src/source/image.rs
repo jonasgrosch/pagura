@@ -685,4 +685,3 @@ fn colors(
         convert,
     })
 }
-

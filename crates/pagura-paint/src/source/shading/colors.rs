@@ -33,16 +33,21 @@ impl Colors {
                 "shading component count exceeds implementation limit (Annex C)",
             ));
         }
-        let converter = Converter::new(shading.space, context.target, &context.composite.conversion)?;
+        let converter =
+            Converter::new(shading.space, context.target, &context.composite.conversion)?;
         let functions = match shading.function {
             None => Functions::Identity,
             Some(ShadingFunction::Single(f)) => Functions::Single(Arc::clone(f)),
-            Some(ShadingFunction::PerComponent(fs)) => Functions::PerComponent(fs.iter().cloned().collect()),
+            Some(ShadingFunction::PerComponent(fs)) => {
+                Functions::PerComponent(fs.iter().cloned().collect())
+            }
         };
         let function_cost = match &functions {
             Functions::Identity => 0,
             Functions::Single(f) => f.cost(),
-            Functions::PerComponent(fs) => fs.iter().fold(0_usize, |c, f| c.saturating_add(f.cost())),
+            Functions::PerComponent(fs) => {
+                fs.iter().fold(0_usize, |c, f| c.saturating_add(f.cost()))
+            }
         };
         Ok(Self {
             functions,
@@ -97,7 +102,10 @@ impl Colors {
     /// The colour of explicit components, such as a `Background`.
     pub(super) fn convert_components(&self, components: &[f64]) -> Box<[f64]> {
         let mut out = vec![0.0; self.channels];
-        self.converter.convert(components.get(..self.components).unwrap_or(components), &mut out);
+        self.converter.convert(
+            components.get(..self.components).unwrap_or(components),
+            &mut out,
+        );
         out.into()
     }
 
