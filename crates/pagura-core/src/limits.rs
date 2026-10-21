@@ -70,19 +70,21 @@ pub struct Limits {
     /// Maximum number of line segments in one flattened path.
     pub path_segments: usize,
     /// Maximum rasterization work units (edges × scanlines touched) per fill.
+    /// A render's cumulative work is `render_work`.
     pub raster_work: usize,
     /// Maximum number of paths intersected into one clip mask.
     pub mask_sources: usize,
     /// Maximum number of painted marks in one page's display list.
     pub display_commands: usize,
-    /// Maximum aggregate bytes held by the caches and surfaces of one page
-    /// compilation and rendering: decoded content, images, colour
-    /// transforms, fonts and compositing surfaces together.
+    /// Maximum bytes one render holds besides the values it takes from the
+    /// [`Store`](crate::Store): prepared marks, coverage sources and paint,
+    /// the band buffers of the page, groups and soft masks, coverage rows
+    /// and scratch. Reserved during preparation (ADR 0016, ADR 0034).
     pub render_bytes: usize,
-    /// Maximum work units of one render after preparation (ADR 0034): the
-    /// rasterization work of every prepared mark plus one unit per pixel
-    /// each mark composites, summed over the marks that meet the region.
-    /// Reserved during preparation, so execution cannot exceed it.
+    /// Maximum work units of one render (ADR 0016, ADR 0034): the
+    /// rasterization work of the marks that meet the region, plus one unit
+    /// per pixel each of them composites. Reserved during preparation, so
+    /// execution cannot exceed it.
     pub render_work: usize,
     /// Maximum work units for decoding one image (DCT, JPEG 2000, JBIG2,
     /// CCITT) or colour profile: roughly one unit per entropy-coded symbol,
@@ -106,10 +108,11 @@ pub struct Limits {
     /// Maximum work units for laying out, ordering, structuring and
     /// searching one page's text (ADR 0014).
     pub text_work: usize,
-    /// Maximum work units for evaluating functions (7.10) during one page's
-    /// compilation or rendering: one unit per Type 4 calculator operator
-    /// executed and per sample looked up or interpolated in a sampled,
-    /// exponential or stitching function.
+    /// Maximum work units for evaluating functions (7.10) during one render:
+    /// one unit per Type 4 calculator operator executed and per sample
+    /// looked up or interpolated in a sampled, exponential or stitching
+    /// function. Reserved during preparation through the prepared sources
+    /// that evaluate them.
     pub function_work: usize,
     /// Budgets of signature validation (ADR 0015).
     pub signatures: SignatureLimits,

@@ -1,6 +1,36 @@
 #![forbid(unsafe_code)]
 #![warn(unreachable_pub)]
 //! A slow, obviously correct reference renderer for differential tests
-//! (ADR 0034): exact covered areas by polygon clipping in f64, and the
-//! imaging model of clause 11 evaluated per pixel in f64, over a recorded
-//! `pagura_interpret::Scene`. Test only; never a product dependency.
+//! (ADR 0034). It renders a recorded `pagura_interpret::Scene` in f64 over
+//! the whole region with no bands, storage formats or speed tricks:
+//!
+//! - coverage is the exact area of each pixel's intersection with the mark
+//!   and every clipping path, by slab integration, quantized once per mark
+//!   as the renderer's coverage bytes are;
+//! - curves are flattened at the documented 1/256-pixel tolerance, glyph
+//!   quadratics sixteen times finer, against their true curves;
+//! - every mark composites pixel by pixel with the formulas of clause 11:
+//!   blend modes, constant alpha, alpha-is-shape, soft masks, isolated,
+//!   non-isolated and knockout groups, transfer functions, overprint with
+//!   spot channels, tiling instances by exact geometry;
+//! - colours, shadings and images go through `pagura-color`'s definitions
+//!   and the contract's sampling definitions (ADR 0004);
+//! - the output is composited onto the background and quantized once.
+//!
+//! Test only; never a product dependency.
+
+mod area;
+mod blend;
+mod buffer;
+mod color;
+mod flatten;
+mod image;
+mod overprint;
+mod pixel;
+mod render;
+mod request;
+mod shading;
+mod shapes;
+
+pub use render::render;
+pub use request::{Overprint, Rendering, Request};
