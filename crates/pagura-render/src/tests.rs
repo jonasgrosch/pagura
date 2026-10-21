@@ -1166,3 +1166,57 @@ fn recycled_surface_storage_renders_the_same_pixels() {
         context.recycle(reused);
     }
 }
+
+#[test]
+fn recycled_storage_is_counted_and_bounded_by_the_decoded_budget() {
+    let limits = pagura_core::Limits {
+        decoded_bytes: 1 << 20,
+        ..pagura_core::Limits::default()
+    };
+    let document = Document::open(
+        pagura_testkit::fixture("content", "compound-path.pdf"),
+        &OpenOptions {
+            limits,
+            ..OpenOptions::default()
+        },
+    )
+    .unwrap();
+    let context = crate::RenderContext::new(std::sync::Arc::new(document));
+    let storage = |bytes: usize| {
+        crate::Pixmap::with_storage(1, 1, Rgba8::BLACK, limits, vec![0; bytes]).unwrap()
+    };
+    let before = context.retained_bytes();
+    context.recycle(storage(4096));
+    assert!(context.retained_bytes() >= before + 4096);
+    context.recycle(storage(2 << 20));
+    assert!(context.retained_bytes() < before + (1 << 20));
+}
+
+#[test]
+fn competitive_page_surfaces_check_the_pixel_budget_first() {
+    let document = open("compound-path");
+    let mut list = compile_page(&document, document.page(0).unwrap()).unwrap();
+    list.limits.pixels = 16;
+    let options = RenderOptions {
+        accuracy: crate::Accuracy::Competitive,
+        ..RenderOptions::default()
+    };
+    let (width, height) = list.device_size(&options).unwrap();
+    let tile = Tile {
+        x: 0,
+        y: 0,
+        width,
+        height,
+    };
+    let error = crate::compositor::render_competitive(
+        &list,
+        &options,
+        tile,
+        crate::compositor::Lent::default(),
+    )
+    .unwrap_err();
+    assert_eq!(
+        (error.kind, error.message),
+        (ErrorKind::Limit, "page pixel budget exceeded")
+    );
+}

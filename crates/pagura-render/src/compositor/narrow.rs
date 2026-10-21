@@ -27,10 +27,12 @@ pub(super) struct Bytes {
 }
 
 impl Bytes {
-    /// The bytes a `width` by `height` surface holds: its pixels and the
-    /// painted extent of each row.
-    pub(super) fn charge(width: usize, height: usize) -> usize {
-        width * height * 4 + height * size_of::<[u32; 2]>()
+    /// The bytes a surface of `count` pixels in `height` rows holds: its
+    /// pixels and the painted extent of each row.
+    pub(super) fn charge(count: usize, height: usize) -> Option<usize> {
+        count
+            .checked_mul(4)?
+            .checked_add(height.checked_mul(size_of::<[u32; 2]>())?)
     }
 
     /// A `width` by `height` surface of `background`, in `storage` when its
@@ -310,7 +312,8 @@ impl Buffer {
     }
     pub(super) fn bytes(&self) -> usize {
         match self {
-            Self::U8(v) => Bytes::charge(v.width, v.painted.len()),
+            // As charged by `Bytes::charge`, from the lengths it allocated.
+            Self::U8(v) => v.pixels.len() + size_of_val(v.painted.as_slice()),
             Self::N16(v) => v.len() * 8,
             Self::F32(v) => v.len() * 16,
         }
