@@ -44,12 +44,14 @@ impl Bytes {
     ) -> Result<Self> {
         let mut bytes = Self::banded((width, height), background, storage)?;
         bytes.fill_to(height);
+        bytes.rows = height;
         Ok(bytes)
     }
 
     /// [`Self::new`] for a surface addressed in bands from the top: each
     /// row takes its background when a window first reaches it, so that
-    /// the band's stores find it in cache.
+    /// the band's stores find it in cache. No row is addressed before the
+    /// first window.
     pub(super) fn banded(
         (width, height): (usize, usize),
         background: [u8; 4],
@@ -74,7 +76,7 @@ impl Bytes {
             background,
             painted,
             first: 0,
-            rows: height,
+            rows: 0,
         })
     }
 
@@ -671,6 +673,14 @@ mod tests {
         let pixels = bytes.into_rgba();
         assert_eq!(&pixels[24..32], &[0, 0, 0, 255, 127, 127, 127, 255]);
         assert!(pixels[..24].iter().all(|&v| v == 255));
+    }
+
+    #[test]
+    fn banded_surfaces_refuse_stores_before_a_window() {
+        let mut bytes = Bytes::banded((2, 2), [255; 4], Vec::new()).unwrap();
+        assert!(bytes.blend(0, &[255], [0, 0, 0, 255], 255).is_err());
+        bytes.window(0, 1).unwrap();
+        assert!(bytes.blend(0, &[255], [0, 0, 0, 255], 255).is_ok());
     }
 
     #[test]

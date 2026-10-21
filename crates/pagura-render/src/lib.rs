@@ -81,7 +81,11 @@ pub enum Accuracy {
     ///   filtered row by row straight into the output, within one level of
     ///   the exact result. This applies where a page is compiled and
     ///   rendered in one call ([`render_page`], [`render_tile`] and their
-    ///   [`RenderContext`] versions). Other images are sampled exactly.
+    ///   [`RenderContext`] versions).
+    /// - Minified opaque DeviceGray or DeviceRGB JPEG images drawn from page
+    ///   content are reconstructed with 1, 2, 3, 4 or 6 cells per block
+    ///   axis, at least two and a half per device pixel. Remaining images
+    ///   are sampled exactly.
     /// - Embedded TrueType programs are decoded only as far as drawing reads
     ///   them, so damage in later tables is neither examined nor reported.
     ///

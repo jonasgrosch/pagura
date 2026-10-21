@@ -34,8 +34,8 @@ every pixel within one level of its exact result, or `Accuracy::Competitive`,
 an approximate path measured against ADR 0004's competitive accuracy gate:
 row-fragment glyph masks, signed-cell fills, clip products, one-round byte
 composition, fused decoding of sole JPEG pages and drawn-size reconstruction
-of other minified JPEG images. The CLI exposes
-`--accuracy exact|competitive`; the host protocol and viewer render exactly.
+of other minified JPEG images. The CLI exposes `--accuracy exact|competitive`;
+the host protocol and viewer render exactly.
 
 ## Overprint display policy
 
