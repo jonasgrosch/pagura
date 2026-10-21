@@ -428,3 +428,6 @@ impl SceneRecorder {
         &self.limits
     }
 }
+
+#[cfg(test)]
+mod tests;

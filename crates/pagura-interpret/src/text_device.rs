@@ -211,3 +211,6 @@ impl Device for TextDevice {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
