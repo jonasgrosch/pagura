@@ -30,6 +30,9 @@ pub struct Shape {
     pub(crate) rule: FillRule,
     pub(crate) body: Body,
     pub(crate) clip: Option<ClipShape>,
+    /// Whether the clip's rows apply to the shape's rows: not where the
+    /// clip keeps every pixel the shape can touch.
+    pub(crate) overlay: bool,
     pub(crate) stored: Stored,
     /// A clip multiplied into the coverage (approximate precision).
     pub(crate) multiplied: Option<ClipShape>,
@@ -279,9 +282,13 @@ impl Shape {
         winding: Winding,
         options: &Prep<'_>,
     ) -> Result<Option<Self>> {
-        let Some(frame) = Frame::new(options) else {
+        let Some(mut frame) = Frame::new(options) else {
             return Ok(None);
         };
+        let Some(hull) = polygon.bounds() else {
+            return Ok(None);
+        };
+        frame.fit(hull);
         if frame.rows.is_none()
             && let Some(rect) = rectangle(&polygon)
         {
@@ -300,6 +307,9 @@ impl Shape {
             let lines = match frame.rect {
                 Some(r) => {
                     let mut clipped = Vec::new();
+                    clipped
+                        .try_reserve(lines.len())
+                        .map_err(|_| Error::limit("raster geometry allocation failed"))?;
                     for line in lines {
                         edges::clip_line(line, r, &mut clipped)?;
                     }
@@ -335,31 +345,25 @@ impl Shape {
         Self::edges(lines, Vec::new(), rule, (bounds, scan, stored), &frame, options).map(Some)
     }
 
-    /// A shape of certified lines and monotone quadratics, whose clip has no
-    /// paths other than rectangles.
+    /// A shape of certified lines and monotone quadratics in `frame`, which
+    /// is fitted to them and has no clip rows left.
     pub(crate) fn pieces(
         lines: Vec<Line>,
         curves: Vec<Quadratic>,
+        frame: &Frame<'_>,
         options: &Prep<'_>,
     ) -> Result<Option<Self>> {
-        let Some(frame) = Frame::new(options) else {
-            return Ok(None);
-        };
+        debug_assert!(frame.rows.is_none(), "pieces meet no clip rows");
         let (lines, curves) = match frame.rect {
             Some(r) => {
                 let mut clipped = Vec::new();
                 let mut kept = Vec::new();
+                clipped
+                    .try_reserve(lines.len() + curves.len())
+                    .and_then(|()| kept.try_reserve(curves.len()))
+                    .map_err(|_| Error::limit("raster geometry allocation failed"))?;
                 for line in lines {
-                    let edge = Chained {
-                        line,
-                        chain: 0,
-                        group: 0,
-                        enclosed: false,
-                        place: edges::Place::default(),
-                    };
-                    let mut out = Vec::new();
-                    edges::clip(edge, r, &mut out)?;
-                    clipped.extend(out.into_iter().map(|e| e.line));
+                    edges::clip_line(line, r, &mut clipped)?;
                 }
                 for q in curves {
                     curve::clip(q, r, &mut clipped, &mut kept)?;
@@ -389,7 +393,7 @@ impl Shape {
             curves,
             FillRule::NonZero,
             (bounds, scan, Stored::default()),
-            &frame,
+            frame,
             options,
         )
         .map(Some)
@@ -421,6 +425,7 @@ impl Shape {
             rule: FillRule::NonZero,
             body: Body::Rect(rect),
             clip: frame.clip.cloned(),
+            overlay: false,
             stored: Stored::default(),
             multiplied: None,
         })
@@ -498,6 +503,7 @@ impl Shape {
             rule,
             body: Body::Edges(body),
             clip: frame.clip.cloned(),
+            overlay: frame.rows.is_some(),
             stored,
             multiplied: None,
         })
@@ -518,6 +524,7 @@ impl Shape {
             rule,
             body,
             clip: options.clip.cloned(),
+            overlay: true,
             stored: Stored::default(),
             multiplied: None,
         }
@@ -563,6 +570,33 @@ impl<'a> Frame<'a> {
             rows: clip.and_then(ClipShape::rows),
             limit,
         })
+    }
+
+    /// Drops what the clip cannot change for geometry within `hull`: a
+    /// rectangle containing it needs no edge clipping, and rows inside
+    /// across every pixel it can touch need no overlay or analysis. A mark
+    /// within the page crop thus meets no clip at all.
+    pub(crate) fn fit(&mut self, [lo, hi]: [crate::Point; 2]) {
+        let hull = Bounds {
+            left: lo.x,
+            top: lo.y,
+            right: hi.x,
+            bottom: hi.y,
+        };
+        if self.rect.is_some_and(|r| r.contains(hull)) {
+            self.rect = None;
+        }
+        if let Some(rows) = self.rows {
+            let bounds = edges::pixels([lo, hi], self.limit, false);
+            let inside = (bounds.y0..bounds.y1).all(|y| {
+                rows.row(y)
+                    .iter()
+                    .any(|s| s.cell == INSIDE && s.x0 <= bounds.x0 && s.x1 >= bounds.x1)
+            });
+            if inside {
+                self.rows = None;
+            }
+        }
     }
 
     /// The edges clipped to the clip's rectangle.

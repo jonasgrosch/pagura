@@ -393,21 +393,9 @@ pub(crate) fn pixels([min, max]: [Point; 2], region: DeviceRect, floor_cells: bo
 
 /// Clips a straight edge to `bounds`, as [`clip`] does.
 pub(crate) fn clip_line(line: Line, bounds: Bounds, out: &mut Vec<Line>) -> Result<()> {
-    let mut pieces = Vec::new();
-    clip(
-        Chained {
-            line,
-            chain: 0,
-            group: 0,
-            enclosed: false,
-            place: Place::default(),
-        },
-        bounds,
-        &mut pieces,
-    )?;
-    out.try_reserve(pieces.len())
+    out.try_reserve(3)
         .map_err(|_| Error::limit("raster geometry allocation failed"))?;
-    out.extend(pieces.into_iter().map(|e| e.line));
+    clip_pieces(line, bounds, |piece| out.push(piece));
     Ok(())
 }
 
@@ -433,32 +421,34 @@ pub(crate) fn lines(polygon: &Polygon) -> Result<Vec<Line>> {
 /// the winding inside and leaves none outside (8.5.4). Horizontal edges are
 /// kept within the bounds' height with their x clamped.
 pub(crate) fn clip(edge: Chained, bounds: Bounds, out: &mut Vec<Chained>) -> Result<()> {
+    out.try_reserve(3)
+        .map_err(|_| Error::limit("raster geometry allocation failed"))?;
+    clip_pieces(edge.line, bounds, |line| out.push(Chained { line, ..edge }));
+    Ok(())
+}
+
+/// The at most three pieces of `line` within `bounds`, in its direction.
+fn clip_pieces(line: Line, bounds: Bounds, mut emit: impl FnMut(Line)) {
     if bounds.is_empty() {
-        return Ok(());
+        return;
     }
-    let Line { a, b } = edge.line;
-    let push = |out: &mut Vec<Chained>, a: Point, b: Point| -> Result<()> {
-        out.try_reserve(1)
-            .map_err(|_| Error::limit("raster geometry allocation failed"))?;
-        out.push(Chained {
-            line: Line { a, b },
-            ..edge
-        });
-        Ok(())
-    };
+    let Line { a, b } = line;
     let x = |p: f64| p.clamp(bounds.left, bounds.right);
     if a.y == b.y {
         if a.y > bounds.top && a.y < bounds.bottom && x(a.x) != x(b.x) {
-            push(out, Point::new(x(a.x), a.y), Point::new(x(b.x), b.y))?;
+            emit(Line {
+                a: Point::new(x(a.x), a.y),
+                b: Point::new(x(b.x), b.y),
+            });
         }
-        return Ok(());
+        return;
     }
     let reversed = a.y > b.y;
     let (top, bottom) = if reversed { (b, a) } else { (a, b) };
     let lo = top.y.max(bounds.top);
     let hi = bottom.y.min(bounds.bottom);
     if lo >= hi {
-        return Ok(());
+        return;
     }
     let mut events = [lo, hi, 0.0, 0.0];
     let mut count = 2;
@@ -473,7 +463,6 @@ pub(crate) fn clip(edge: Chained, bounds: Bounds, out: &mut Vec<Chained>) -> Res
     }
     let events = &mut events[..count];
     events.sort_unstable_by(f64::total_cmp);
-    let line = edge.line;
     let mut pieces = [(Point::default(), Point::default()); 3];
     for (piece, pair) in pieces.iter_mut().zip(events.windows(2)) {
         *piece = (
@@ -484,14 +473,13 @@ pub(crate) fn clip(edge: Chained, bounds: Bounds, out: &mut Vec<Chained>) -> Res
     let pieces = &pieces[..count - 1];
     if reversed {
         for &(p, q) in pieces.iter().rev() {
-            push(out, q, p)?;
+            emit(Line { a: q, b: p });
         }
     } else {
         for &(p, q) in pieces {
-            push(out, p, q)?;
+            emit(Line { a: p, b: q });
         }
     }
-    Ok(())
 }
 
 /// The rows an edge with vertical extent `[lo, hi]` has area in, within the

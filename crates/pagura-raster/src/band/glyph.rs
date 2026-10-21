@@ -11,8 +11,8 @@
 use super::binned;
 use super::certify::certified;
 use super::curve::{self, Piece};
-use super::edges::{Line, Polygon};
-use super::shape::{Shape, Winding};
+use super::edges::Polygon;
+use super::shape::{Frame, Shape, Winding};
 use super::{GlyphOrigins, Precision, Prep};
 use crate::flatten::{CurveStack, Polyline, TOLERANCE, bounded, flatten_into};
 use crate::{FillRule, Path, Point, Segment, Transform};
@@ -174,27 +174,38 @@ pub(crate) fn place(
         }
         Kind::Exact(exact) => exact,
     };
-    let rectangular = options.clip.is_none_or(|clip| clip.rows().is_none());
     if options.precision == Precision::Exact
-        && rectangular
         && let Some(pieces) = &exact.curves
     {
-        let mut lines = Vec::new();
-        let mut curves = Vec::new();
-        lines
-            .try_reserve(pieces.len())
-            .and_then(|()| curves.try_reserve(pieces.len()))
-            .map_err(|_| Error::limit("glyph placement allocation failed"))?;
+        let Some(mut frame) = Frame::new(options) else {
+            return Ok(None);
+        };
+        // Monotone pieces lie within the boxes of their ends.
+        let mut lo = Point::new(f64::INFINITY, f64::INFINITY);
+        let mut hi = Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
         for piece in pieces {
-            match piece.translated(origin) {
-                Piece::Line(line) => lines.push(line),
-                Piece::Curve(q) => curves.push(q),
-            }
             for p in piece.translated(origin).ends() {
                 bounded(p)?;
+                lo = Point::new(lo.x.min(p.x), lo.y.min(p.y));
+                hi = Point::new(hi.x.max(p.x), hi.y.max(p.y));
             }
         }
-        return Shape::pieces(lines, curves, options);
+        frame.fit([lo, hi]);
+        if frame.rows.is_none() {
+            let mut lines = Vec::new();
+            let mut curves = Vec::new();
+            lines
+                .try_reserve(pieces.len())
+                .and_then(|()| curves.try_reserve(pieces.len()))
+                .map_err(|_| Error::limit("glyph placement allocation failed"))?;
+            for piece in pieces {
+                match piece.translated(origin) {
+                    Piece::Line(line) => lines.push(line),
+                    Piece::Curve(q) => curves.push(q),
+                }
+            }
+            return Shape::pieces(lines, curves, &frame, options);
+        }
     }
     let mut polygon = Polygon::default();
     polygon

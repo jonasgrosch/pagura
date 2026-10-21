@@ -253,7 +253,11 @@ pub(crate) fn sink<'a>(
     if shape.multiplied.is_some() {
         return RowSink::Multiplied(Multiplied::new(out, shape, y, buffer));
     }
-    let rows = shape.clip.as_ref().and_then(ClipShape::rows);
+    let rows = shape
+        .clip
+        .as_ref()
+        .filter(|_| shape.overlay)
+        .and_then(ClipShape::rows);
     RowSink::Overlay(Overlay {
         out: Out {
             out,
