@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "experiment": "current-stack-hayro",
+  "status": "frozen-before-measurement",
+  "primary_metric": "engine_ns",
+  "method": "paired percentile bootstrap",
+  "resamples": 5000,
+  "one_sided_confidence": 0.95,
+  "seed": 42017,
+  "source": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/tools/benchkit/statistics.py",
+    "sha256": "18b14a7dc3e079a9f3452c6a31887f7dbd49e8d4e8fcfeb5257406e60045ebff"
+  },
+  "ratio_direction": "pagura/hayro",
+  "targets": {
+    "median_upper": 0.8,
+    "p95_upper": 0.8,
+    "sampled_maximum_rss_ratio": 1.0
+  },
+  "apply_to": "All cells with complete positive primary timings; every sample included. Accuracy qualification requires every warmup and measured output correct from both engines. Report wrong-output cells descriptively and explicitly unqualified.",
+  "summary": "Show legacy19 and interval20 separately per mode. Unweighted median of case ratios is descriptive; no global ranking or release admission."
+}

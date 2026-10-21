@@ -355,3 +355,20 @@ regressions and Exact target RSS growth. Retain experimentally, without promotio
 [The pause status](unified-renderer-status.md) records the full result, method
 amendment, validation, unresolved goal gaps and restart point. Work is paused
 after this commit at the user's request; no next optimization has started.
+
+
+## Current combined stack compared with Hayro
+
+At the user's explicit request, the fixed retained product at `402e3afe` was
+compared with a fresh standalone Hayro 0.8.0 release build. No renderer code
+changed. All 78 cells and 16,380 attempts completed and passed the independent
+evidence audit. Exact matched 39/39 references, Competitive 38/39 and Hayro
+33/39. The prior panel's qualified median case time ratios are 1.1543 Exact
+and 1.1842 Competitive. On the added interval panel they are 2.0216 and 1.6447.
+Constant shading controls expose much larger 54-63x gaps, and memory remains
+open. There are no qualified 20% median-and-p95 bound passes.
+
+[The complete comparison](../../benchmarks/results/current-stack-hayro.md) keeps
+every cell, failed accuracy comparison, time distribution, RSS distribution and
+provenance binding. [The updated status](unified-renderer-status.md) records the
+current gap. No optimization followed this benchmark.

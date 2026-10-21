@@ -1,8 +1,9 @@
 # Unified renderer: paused status
 
-2026-10-21. Pause after the completed F32 confirmation, audit and local commit,
-as requested by the user. Do not start another optimization, benchmark, rebase
-or automatic continuation until the user resumes the work.
+2026-10-21. Optimization remains paused. The user subsequently authorized a
+comparison of the fixed combined stack with Hayro, including accuracy and
+memory, with no optimization. That comparison is complete and independently
+audited. Do not start further optimization or a rebase until requested.
 
 ## Latest retained improvement
 
@@ -94,22 +95,67 @@ The composition path is more shared, including high-precision composition and
 output handling. The modes still differ in geometry, image/font validation and
 shading policies. Full mode unification is unfinished.
 
-The last direct competitor pilot predates the latest slices. On 13 independently
-matching cases, Pagura/Hayro median case time ratio was 1.203. Reaching the
-declared 0.80 ratio implied about 33.5% less time at that older baseline, with
-individual needs of 25-66%. These are stale directional gaps, not current-stack
-measurements. There is no current worldwide speed or accuracy ranking and no
-credible completion percentage or delivery date.
+The completed [current-stack comparison](../../benchmarks/results/current-stack-hayro.md)
+measured the fixed product at `402e3afe` against a fresh standalone Hayro 0.8.0
+release build. It retained the prior 19-case panel and added all 20 interval
+fixtures, in both modes: 78 cells, 100 measured pairs plus five warmups, and
+16,380 output attempts. Both builds and every renderer execution ran serially
+under the owned runner and observer. The independent audit rechecked the exact
+schedule, input/output pixels, full diagnostic timing records and per-child RSS.
 
-[Prior competitor measurements](../../benchmarks/results/analytic19-conversion.md)
-and [implementation history](unified-renderer-progress.md).
+| Panel | Mode | Pagura/Hayro median case time ratio | Both match reference | Peak RSS no larger |
+| --- | --- | ---: | ---: | ---: |
+| Prior 19 cases | Exact | 1.1543 | 13 | 8/13 |
+| Prior 19 cases | Competitive | 1.1842 | 13 | 8/13 |
+| Added 20 cases | Exact | 2.0216 | 20 | 1/20 |
+| Added 20 cases | Competitive | 1.6447 | 20 | 1/20 |
+
+Ratios are Pagura/Hayro open-plus-render time, including page preparation;
+lower is faster. The case-ratio medians are unweighted, cover mutually correct
+cases only, and must not be treated as a representative-document global score.
+Every wrong-output cell remains in the full result with unqualified descriptive
+times. There is no 20% median-and-p95 bound pass in any qualified cell. Exact
+wins none of its 33 qualified median comparisons; Competitive wins one of 33.
+
+Exact matched all 39 reference images. Competitive matched 38: the fractional
+RGB image differed by one level in 64 channel values. Hayro matched 33.
+All 16,380 attempts executed without a process failure. These finite RGB-policy
+checks do not establish arbitrary-PDF correctness, a PDF-standard violation
+from every mismatch, or alpha superiority.
+
+The original panel's Exact median case ratio moves from the older pilot's
+1.203 to 1.1543. This is a fresh comparative result, not an isolated causal
+estimate of the stack's speedup: runs, binary builds and the adapter differ.
+The newer, larger sample is authoritative for this fixed current comparison.
+
+Material current gaps include:
+
+- Many operands: Exact 16.046 ms versus Hayro 6.804 ms (2.358x);
+  Competitive 19.547 versus 6.807 ms (2.872x).
+- Sparse target after the retained optimizations: Exact 4.280 versus 3.018 ms
+  (1.418x); Competitive 3.471 versus 2.928 ms (1.185x).
+- Constant dense shading and shading-pattern cases: approximately 54-63x
+  Hayro's engine time. The worst Exact pattern case is 21.750 versus 0.346 ms;
+  both outputs match the independent constant-color reference.
+- Exact's worst sampled peak-RSS ratio is 4.818x on that pattern case;
+  Competitive's worst is 4.039x. RSS includes the whole process and emission,
+  not renderer-only heap. Only 9 of 33 qualified cells per mode have maximum
+  RSS no larger than Hayro.
+
+The strong incremental self-comparison gains remain useful, but they have not
+produced dominant comparative speed or memory. The overall goal is still open.
+No renderer optimization was made during this comparison.
+
+[Current evidence bindings](../../benchmarks/results/current-stack-hayro-evidence.json),
+[prior comparison](../../benchmarks/results/analytic19-conversion.md), and
+[implementation history](unified-renderer-progress.md).
 
 ## Resume point
 
 1. Reconcile the retained stack with latest main, preserving the accuracy and
    resource corrections, then validate that integrated product.
-2. Measure the net session-start/final stack and refresh fair competitor
-   comparisons under identical workloads and independent references.
+2. Preserve the completed current-stack/Hayro comparison. A direct session-start
+   comparison, representative documents and wider platform coverage remain open.
 3. Resolve protected tail/cold regressions and RSS misses before admission.
 4. Profile the integrated product. The prepared page-surface reuse proposal
    remains an unimplemented hypothesis; preserve background, chunk, error and
@@ -117,4 +163,4 @@ and [implementation history](unified-renderer-progress.md).
 5. Continue the remaining shared rendering policies and expand independent
    accuracy evidence, representative documents and native/WASM/platform coverage.
 
-No further work is scheduled by this report.
+No further work is scheduled by this report. Optimization remains paused.

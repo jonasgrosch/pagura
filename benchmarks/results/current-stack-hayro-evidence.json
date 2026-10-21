@@ -1,0 +1,132 @@
+{
+  "schema": 1,
+  "experiment": "current-stack-hayro",
+  "status": "complete-and-audited",
+  "renderer_changed": false,
+  "product": {
+    "root": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura",
+    "commit": "402e3afe3a08bd178d427ba965883535e75a9dd5",
+    "source_sha256": "4d6f7ab3f68500009aa938b1e3680d8c26a6fc052f706dd3a4ce5ad697b94a8e"
+  },
+  "result": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/current-stack-hayro.json",
+    "sha256": "3b9ccebf18e0c00cfdadf5e940c4430463f969696e5c67a9f38a7bc7d861a3b4"
+  },
+  "markdown": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/current-stack-hayro.md",
+    "sha256": "c9b415986a029c8938bcce1877eb082f484ef6d028a9673a1363748db98f079d"
+  },
+  "config": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/config.json",
+    "sha256": "6a40985d4c86ac67147e362847277b76a546c6c89ab8cd0f93aa215825b00358"
+  },
+  "prepared": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/prepared.json",
+    "sha256": "8fda0878511e1a62523e142454e26fb520cfbeff4f1125a23e585e7744dd4f76"
+  },
+  "receipts": {
+    "prepare-001": {
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/prepare-001-receipt.json",
+        "sha256": "83b32bd49e1c29d33046a7181577730c6831981f2cc03edd4684f7aab350ce88"
+      },
+      "source": {
+        "commit": "402e3afe3a08bd178d427ba965883535e75a9dd5",
+        "sha256": "12f0d3dbf3ab8f7ac28fcc1e4b3ad143793aadf434c8de0765abcaf42a3f66be"
+      },
+      "artifacts": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/prepare-001-observer/guard.json": "1d7f0d57c200fc4748ca6affee7f5b3f95e05e42ba29dbdfcd34547da1315643",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/prepared.json": "8fda0878511e1a62523e142454e26fb520cfbeff4f1125a23e585e7744dd4f76"
+      }
+    },
+    "build-001": {
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/build-001-receipt.json",
+        "sha256": "556f6b1a5d70edf4c41b31932b849e5e14e9a7f147b6d06134543d11c2fee35c"
+      },
+      "source": {
+        "commit": "402e3afe3a08bd178d427ba965883535e75a9dd5",
+        "sha256": "12f0d3dbf3ab8f7ac28fcc1e4b3ad143793aadf434c8de0765abcaf42a3f66be"
+      },
+      "artifacts": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/build-001-observer/guard.json": "4a75a1113ddf656fe696e9befc37498b5de23b815dce667fa136c8c74b08b935",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/build-001-prelaunch-refused.log": "858ce77edfeaa418ba39e733e5227eb29827fe2a4ff8b407af657e3acc71d853",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/build-hayro.log": "6ac74f1ea252a1da1e4ac26fb8e895d3594327b03beae9ea7fff604d713e9225",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/build-pagura.log": "125e20cbe74183d6be104a939766852a0859823fad3b597cdcae4344e9ce5587",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/build.json": "b9b0bd06965f86c3c1ce27e316cabe5f2f91eb20603240f237c3ec81b6e7434e",
+        "/private/tmp/current-stack-hayro-pagura-402e3afe/release/pagura": "e8013da445f4a2d5e45d3629a95403e11feb1ddb4428b2ced7954864b934b057",
+        "/private/tmp/current-stack-hayro-target-402e3afe/release/pagura-hayro-competitor": "479a9afcdd62fd3b70dfebfc140ade495e279c6100a24588c7035b42272978e1"
+      }
+    },
+    "freeze-001": {
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/freeze-001-receipt.json",
+        "sha256": "9a02d0be3acec211d99a9d7cbeb58aee3a0b8dda63e1e5147bf44565b18ceeca"
+      },
+      "source": {
+        "commit": "402e3afe3a08bd178d427ba965883535e75a9dd5",
+        "sha256": "12f0d3dbf3ab8f7ac28fcc1e4b3ad143793aadf434c8de0765abcaf42a3f66be"
+      },
+      "artifacts": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/config.json": "6a40985d4c86ac67147e362847277b76a546c6c89ab8cd0f93aa215825b00358",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/freeze-001-observer/guard.json": "7a27a21b9276fe98b06192d3b895ace78fbd6c044642f3b918df86078f0569e4"
+      }
+    },
+    "run-001": {
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/run-001-receipt.json",
+        "sha256": "ab074a220b435b678c2fcec172a9bba2dce7d2944723eb112e6fe5757ff80c2e"
+      },
+      "source": {
+        "commit": "402e3afe3a08bd178d427ba965883535e75a9dd5",
+        "sha256": "12f0d3dbf3ab8f7ac28fcc1e4b3ad143793aadf434c8de0765abcaf42a3f66be"
+      },
+      "artifacts": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/config.json": "6a40985d4c86ac67147e362847277b76a546c6c89ab8cd0f93aa215825b00358",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/run-001-observer/guard.json": "dc6d2cfb1c21d905195b997b01496913cbef3f26664a6853e999c9322bf21308",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/run-001/journal.jsonl": "631d0bd0c4be92244f16442bc53d4e2b3c475fcaea08d7b5755db1349c352f96",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/run-001/report.json": "fc3e4c307df884795bece6e73845c2187ddb1133e8fe9b7157682572b7bd8a6a",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/sources/current-stack-hayro/analysis-plan.json": "a309af5e131f62c90f548bfce15803b2f33f2bfac71fc622982ab4bbc5cd2d71"
+      }
+    },
+    "audit-001": {
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/audit-001-receipt.json",
+        "sha256": "98e69e019f8081295943fa5130efa0d5280365be5a246d4175d1691399b8025e"
+      },
+      "source": {
+        "commit": "402e3afe3a08bd178d427ba965883535e75a9dd5",
+        "sha256": "12f0d3dbf3ab8f7ac28fcc1e4b3ad143793aadf434c8de0765abcaf42a3f66be"
+      },
+      "artifacts": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/audit-001-observer/guard.json": "07a1c4765ec67ed09fe201d0c5e0b5da9dc477459b4d6dbe7478e264a647afc1",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/run-001-analysis.json": "a79bd3cf277e00edc9ab0cec3d8fca0f05ddef9ad22b5e4878f11c6bdb3ce58c",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/sources/current-stack-hayro/audit.py": "91e4e0ed96c513932691434db43f42263e6f6cf87b71391e5e6c9df5a4c520b3"
+      }
+    },
+    "publish-001": {
+      "receipt": {
+        "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/publish-001-receipt.json",
+        "sha256": "ad942faff7cf8b93cd5842e748a41b8006c30cba25ec67a981d257b2aa9c0343"
+      },
+      "source": {
+        "commit": "402e3afe3a08bd178d427ba965883535e75a9dd5",
+        "sha256": "12f0d3dbf3ab8f7ac28fcc1e4b3ad143793aadf434c8de0765abcaf42a3f66be"
+      },
+      "artifacts": {
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/current-stack-hayro.json": "3b9ccebf18e0c00cfdadf5e940c4430463f969696e5c67a9f38a7bc7d861a3b4",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/current-stack-hayro.md": "c9b415986a029c8938bcce1877eb082f484ef6d028a9673a1363748db98f079d",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/publish-001-observer/guard.json": "c412a37ec1e7a6e3a3dd46c005fad10a658a4b7b1f72f9e3012da7b3c4e629d3",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/sources/current-stack-hayro/analysis-plan.json": "a309af5e131f62c90f548bfce15803b2f33f2bfac71fc622982ab4bbc5cd2d71",
+        "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/sources/current-stack-hayro/publish.py": "cbe6b13f5d987dbaf57e1f14cf0456e4d2282dedbe4396d0e8ef79c01d600c7a"
+      }
+    }
+  },
+  "raw_evidence": "All raw inputs, outputs, diagnostics and journals remain under benchmarks/results/local/current-stack-hayro; these ignored raw files are local, while source, summaries and hashes are committed.",
+  "prelaunch_refusal": {
+    "path": "/Users/jonasgrosch/.codex/worktrees/renderer-n16-interval/pagura/benchmarks/results/local/current-stack-hayro/build-001-prelaunch-refused.log",
+    "sha256": "858ce77edfeaa418ba39e733e5227eb29827fe2a4ff8b407af657e3acc71d853"
+  },
+  "prelaunch_refusal_scope": "env option ordering refused before any runner, build or measurement launched; the log was retained, then the invocation was corrected.",
+  "optimization_status": "paused; this task only compared the fixed retained stack with Hayro."
+}
