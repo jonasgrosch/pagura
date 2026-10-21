@@ -682,7 +682,20 @@ fn component_transform(
     Ok(false)
 }
 
+/// The image a codestream declares, with its components' precisions and
+/// placement but no samples: what [`decode`] returns before reconstruction,
+/// after the same main-header validation.
+pub(super) fn describe(data: &[u8], base: usize, budget: &mut Budget<'_>) -> Result<Decoded> {
+    let mut reader = Reader::new(data, base);
+    let size = read_header(&mut reader, budget)?.size;
+    allocate(&size, budget, false)
+}
+
 fn allocate_image(size: &Size, budget: &mut Budget<'_>) -> Result<Decoded> {
+    allocate(size, budget, true)
+}
+
+fn allocate(size: &Size, budget: &mut Budget<'_>, samples: bool) -> Result<Decoded> {
     budget.charge::<JpxComponent>(size.components.len())?;
     let mut components = Vec::with_capacity(size.components.len());
     for c in &size.components {
@@ -693,7 +706,11 @@ fn allocate_image(size: &Size, budget: &mut Budget<'_>) -> Result<Decoded> {
             signed: c.signed,
             width,
             height,
-            samples: budget.filled(area(width, height)?, 0)?,
+            samples: if samples {
+                budget.filled(area(width, height)?, 0)?
+            } else {
+                Vec::new()
+            },
         });
     }
     let mut geometry = budget.filled(
