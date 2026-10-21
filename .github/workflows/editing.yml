@@ -33,6 +33,7 @@ jobs:
           node-version: 26.8.1
       - name: Viewer navigation and thumbnail contracts
         run: |
+          node tools/isolation_test.mjs
           node tools/viewer_navigation_test.mjs
           node tools/tile_cache_test.mjs
       - name: Install pinned Rust

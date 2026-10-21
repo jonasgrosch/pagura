@@ -22,6 +22,7 @@ COMMANDS = [
     (CARGO + ["build", *OFFLINE, "--release", "-p", "pagura-host", "--features", "bundled-data", "--target-dir", "target/host-bundled"], {}),
     (CARGO + ["build", *OFFLINE, "--release", "-p", "pagura-host", "--features", "bundled-data", "--target", "wasm32-wasip1", "--target-dir", "target/host-bundled"], {}),
     # Native/WASI parity, the browser shim and the viewer harness (Node, no npm packages).
+    (["node", "tools/isolation_test.mjs"], {}),
     (["node", "tools/viewer_navigation_test.mjs"], {}),
     (["node", "tools/tile_cache_test.mjs"], {}),
     (["node", "tools/host_test.mjs"], {}),

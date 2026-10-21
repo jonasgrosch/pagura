@@ -376,3 +376,19 @@ Drafts survive zoom and scrolling; **Discard changes** restores saved values.
 **Strict rendering** is an opt-in diagnostic mode. Metadata and writes use a
 separate strict snapshot, preserving the library's save restrictions.
 See [editing guide](../docs/EDITING.md) for current field/appearance limitations.
+
+## GitHub Pages
+
+The [hosted preview](https://jonasgrosch.github.io/pagura/) publishes from main
+through `.github/workflows/pages.yml`. `tools/package_pages.py` copies only the
+viewer assets, the bundled-data WASM binary, and license notices; it does not
+publish source documents, corpus fixtures or local files.
+
+On hosts without response-header configuration, `start.mjs` registers the
+viewer-scoped `isolation_worker.mjs` and reloads once before loading documents.
+The worker adds COOP/COEP/CORP and a local-only content security policy to
+same-origin GET responses in that directory. It uses no persistent cache,
+intercepts no uploads or cross-origin requests, and stores no PDF contents.
+Local servers already providing isolation skip registration. HTTPS and service
+workers are required on static hosts; unsupported browsers show an error rather
+than repeatedly reloading. Pages is static hosting, not a document backend.

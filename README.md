@@ -9,6 +9,16 @@ Pagura does not fork, wrap, or depend on hayro, PDFium, MuPDF, or another PDF
 engine. Those are external competitors. Product crates currently use only the
 Rust standard library and enforce `#![forbid(unsafe_code)]`.
 
+## Browser preview
+
+[Open the browser viewer](https://jonasgrosch.github.io/pagura/) ·
+[Try the sample form](https://jonasgrosch.github.io/pagura/?demo=form)
+
+Open a local PDF to read, fill forms and download the edited copy. PDF contents
+and passwords stay in your browser. This is an early preview of the current
+`main` branch; browser support and PDF compatibility are still evolving.
+The first visit may reload once to enable the WASM worker.
+
 ## Start here
 
 ```sh
