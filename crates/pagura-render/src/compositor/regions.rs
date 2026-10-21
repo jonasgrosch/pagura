@@ -301,7 +301,11 @@ fn control_hull(path: &Path, device: Transform, work: &mut Work<'_>) -> Result<[
     for segment in path.segments() {
         match *segment {
             Segment::MoveTo(p) | Segment::LineTo(p) => record(p)?,
-            Segment::CubicTo(a, b, c) => {
+            Segment::CubicTo {
+                c1: a,
+                c2: b,
+                end: c,
+            } => {
                 record(a)?;
                 record(b)?;
                 record(c)?;
@@ -499,7 +503,11 @@ fn content_hull(path: &Arc<Path>, work: &mut Work<'_>) -> Result<Option<Rect>> {
                 point = true;
             }
             Segment::LineTo(p) => point &= start == Some(p),
-            Segment::CubicTo(a, b, c) => point &= [a, b, c].into_iter().all(|p| start == Some(p)),
+            Segment::CubicTo {
+                c1: a,
+                c2: b,
+                end: c,
+            } => point &= [a, b, c].into_iter().all(|p| start == Some(p)),
             Segment::Close => {
                 contains_point |= point;
             }

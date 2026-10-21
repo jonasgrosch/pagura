@@ -11,8 +11,15 @@ pub enum Segment {
     MoveTo(Point),
     /// A straight line from the current point.
     LineTo(Point),
-    /// A cubic Bézier curve: two control points, then the end point.
-    CubicTo(Point, Point, Point),
+    /// A cubic Bézier curve from the current point.
+    CubicTo {
+        /// The first control point.
+        c1: Point,
+        /// The second control point.
+        c2: Point,
+        /// The end point, which becomes the current point.
+        end: Point,
+    },
     /// Closes the current subpath with a line to its start.
     Close,
 }
@@ -88,7 +95,11 @@ impl Path {
             .map(|segment| match *segment {
                 Segment::MoveTo(p) => Segment::MoveTo(map(p)),
                 Segment::LineTo(p) => Segment::LineTo(map(p)),
-                Segment::CubicTo(a, b, p) => Segment::CubicTo(map(a), map(b), map(p)),
+                Segment::CubicTo { c1, c2, end } => Segment::CubicTo {
+                    c1: map(c1),
+                    c2: map(c2),
+                    end: map(end),
+                },
                 Segment::Close => Segment::Close,
             })
             .collect();
@@ -172,12 +183,12 @@ impl PathBuilder {
     /// As [`Self::line_to`].
     pub fn cubic_to(
         &mut self,
-        first: Point,
-        second: Point,
+        c1: Point,
+        c2: Point,
         end: Point,
     ) -> Result<&mut Self, NoCurrentPoint> {
         self.current.ok_or(NoCurrentPoint)?;
-        self.segments.push(Segment::CubicTo(first, second, end));
+        self.segments.push(Segment::CubicTo { c1, c2, end });
         self.current = Some(end);
         Ok(self)
     }
@@ -238,10 +249,13 @@ impl PathBuilder {
                     self.segments.push(Segment::LineTo(p));
                     self.current = Some(p);
                 }
-                Segment::CubicTo(a, b, end) => {
+                Segment::CubicTo { c1, c2, end } => {
                     let end = end * transform;
-                    self.segments
-                        .push(Segment::CubicTo(a * transform, b * transform, end));
+                    self.segments.push(Segment::CubicTo {
+                        c1: c1 * transform,
+                        c2: c2 * transform,
+                        end,
+                    });
                     self.current = Some(end);
                 }
                 Segment::Close => {

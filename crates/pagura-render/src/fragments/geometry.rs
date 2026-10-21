@@ -102,7 +102,11 @@ fn bounds(path: &Path, transform: Transform, limits: Limits) -> Result<(Point, P
     for segment in path.segments() {
         let points: &[Point] = match segment {
             Segment::MoveTo(p) | Segment::LineTo(p) => std::slice::from_ref(p),
-            Segment::CubicTo(a, b, c) => &[*a, *b, *c],
+            Segment::CubicTo {
+                c1: a,
+                c2: b,
+                end: c,
+            } => &[*a, *b, *c],
             Segment::Close => &[],
         };
         for &point in points {
@@ -150,7 +154,11 @@ fn flattened_edges(
                 edges.push((current, end));
                 current = end;
             }
-            Segment::CubicTo(a, b, c) => {
+            Segment::CubicTo {
+                c1: a,
+                c2: b,
+                end: c,
+            } => {
                 flatten(
                     [current, snap(a * local), snap(b * local), snap(c * local)],
                     flattening,

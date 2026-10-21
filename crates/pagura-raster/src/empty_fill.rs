@@ -328,7 +328,7 @@ fn linear_curves(path: &Path) -> Result<bool> {
                     start = current;
                 }
             }
-            Segment::CubicTo(a, b, end) => {
+            Segment::CubicTo { c1: a, c2: b, end } => {
                 for p in [a, b, end] {
                     bounded(p)?;
                 }

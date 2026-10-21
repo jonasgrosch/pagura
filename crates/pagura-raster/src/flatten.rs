@@ -85,7 +85,7 @@ pub(crate) fn flatten_into_at_tolerance(
     for segment in path.segments() {
         // A line or curve following Close reopens at the subpath start.
         // Preserve the closed contour separately, including its point buffer.
-        if current.closed && matches!(segment, Segment::LineTo(_) | Segment::CubicTo(..)) {
+        if current.closed && matches!(segment, Segment::LineTo(_) | Segment::CubicTo { .. }) {
             let start = current.points.first().copied();
             contour += 1;
             current = prepare(result, contour);
@@ -109,19 +109,19 @@ pub(crate) fn flatten_into_at_tolerance(
                 current.degenerate &= current.points.first().is_none_or(|p| *p == point);
                 append(&mut current.points, point, &mut count, limits)?;
             }
-            Segment::CubicTo(first, second, end) => {
+            Segment::CubicTo { c1, c2, end } => {
                 let start = current
                     .points
                     .last()
                     .copied()
                     .ok_or(Error::invalid_argument("curve has no current point"))?;
-                current.degenerate &= [first, second, end].iter().all(|p| *p == start);
-                for point in [first, second, end] {
+                current.degenerate &= [c1, c2, end].iter().all(|p| *p == start);
+                for point in [c1, c2, end] {
                     bounded(point)?;
                     bounded(point * transform)?;
                 }
                 curve_at_tolerance(
-                    [start, first, second, end],
+                    [start, c1, c2, end],
                     transform,
                     pending,
                     &mut current.points,
