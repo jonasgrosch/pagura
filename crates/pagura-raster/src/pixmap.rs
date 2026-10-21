@@ -1,6 +1,7 @@
 //! Owned pixel surfaces.
 
 use crate::Rgba8;
+use crate::quantize::multiply;
 use pagura_core::{Error, Limits, Result};
 
 /// A row-major, top-left-origin surface of premultiplied RGBA8 pixels.
@@ -211,11 +212,8 @@ impl Pixmap {
         pixels
             .iter()
             .flat_map(|pixel| {
-                let inverse = 255 - u16::from(pixel[3]);
-                [0, 1, 2].map(|i| {
-                    let value = u16::from(pixel[i]) + div255(u16::from(under[i]) * inverse);
-                    u8::try_from(value).unwrap_or(u8::MAX)
-                })
+                let inverse = 255 - pixel[3];
+                [0, 1, 2].map(|i| pixel[i].saturating_add(multiply(under[i], inverse)))
             })
             .collect()
     }
@@ -228,15 +226,8 @@ impl PartialEq for Pixmap {
 }
 impl Eq for Pixmap {}
 
-/// `round(value / 255)` for `value <= 255 * 255`.
-fn div255(value: u16) -> u16 {
-    let value = u32::from(value) + 128;
-    u16::try_from((value + (value >> 8)) >> 8).unwrap_or(u16::MAX)
-}
-
 fn premultiply(color: Rgba8) -> [u8; 4] {
-    let alpha = u16::from(color.a);
-    let scale = |channel: u8| u8::try_from(div255(u16::from(channel) * alpha)).unwrap_or(u8::MAX);
+    let scale = |channel| multiply(channel, color.a);
     [scale(color.r), scale(color.g), scale(color.b), color.a]
 }
 
@@ -253,7 +244,7 @@ fn unpremultiply(pixel: [u8; 4]) -> [u8; 4] {
 
 #[cfg(test)]
 mod tests {
-    use super::{Pixmap, div255};
+    use super::Pixmap;
     use crate::Rgba8;
 
     #[test]
@@ -307,14 +298,6 @@ mod tests {
             )
             .is_err()
         );
-    }
-
-    #[test]
-    fn div255_rounds_exactly() {
-        for value in 0..=(255_u16 * 255) {
-            let expected = (f64::from(value) / 255.0).round();
-            assert_eq!(f64::from(div255(value)), expected, "{value}");
-        }
     }
 
     #[test]

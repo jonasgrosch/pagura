@@ -1,8 +1,9 @@
 //! Closed-form rectangle coverage and fractional clipping bounds (8.5.3–8.5.4).
 
-use super::{Geometry, Row, Shape, index, quantize};
+use super::{Geometry, Row, Shape, index};
 use crate::Segment;
 use crate::flatten::bounded;
+use crate::quantize_unit;
 use crate::raster::spans::Runs;
 use pagura_core::{Error, Limits, Result};
 
@@ -223,12 +224,12 @@ struct Columns {
 impl Columns {
     // One row's samples from `start` to `end`; a single column takes `last`.
     fn write(self, run: &mut [u8], height: f64) {
-        run.fill(quantize(height));
+        run.fill(quantize_unit(height));
         if let Some(pixel) = run.first_mut() {
-            *pixel = quantize(self.first * height);
+            *pixel = quantize_unit(self.first * height);
         }
         if let Some(pixel) = run.last_mut() {
-            *pixel = quantize(self.last * height);
+            *pixel = quantize_unit(self.last * height);
         }
     }
 }
