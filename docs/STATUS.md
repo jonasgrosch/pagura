@@ -29,6 +29,28 @@ primary standards.
 
 ## Accuracy policy
 
+The [renderer-unification plan](plans/unified-renderer.md) is committed. Its
+[implementation log](plans/unified-renderer-progress.md) records the validated
+first slice: reference-byte verification, lower bootstrap bounds and bounded
+check concurrency. The second slice connects four reviewed image references,
+durable benchmark artifacts and cooperative runner receipts. Its complete
+single-job check passed on 2026-10-21, including 182 Python tests and 1,237 PDF
+conformance cases. Controlled-runner attestation and matrix aggregation
+remain release prerequisites. No renderer behavior or measured speed changes
+are claimed by these tooling slices.
+
+An isolated [cross-integration experiment](../benchmarks/results/stacked-clip-experiment.md)
+adds conditional clip viewport construction to the combined image/text/stroke
+stack at `202bda8d`. Its pilot passed 400 independent outputs. A confirmation
+exposed a benchmark process-lifecycle error; the repaired harness passed 44 focused
+tests. The fresh confirmation verified 8,200 outputs and measured 13.3% lower
+Exact and 8.5% lower Competitive target medians on the combined stack, without
+observed competing jobs. Tail bounds and some RSS cells still miss the frozen
+gates. This partial win remains in the experimental stack, without production
+performance admission or a global accuracy claim. The complete integrated
+single-job check passed, including 196 Python tests, native/WASM and host checks,
+and all 1,237 generated-PDF conformance cases.
+
 `RenderOptions::accuracy` selects `Accuracy::Exact`, the default, which keeps
 every pixel within one level of its exact result, or `Accuracy::Competitive`,
 an approximate path measured against ADR 0004's competitive accuracy gate:

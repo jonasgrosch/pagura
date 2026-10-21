@@ -416,15 +416,16 @@ impl Context {
             self.clip.insert(0, entry);
             return Ok(region);
         }
-        let mut viewport = PathBuilder::new();
-        viewport.rect(
-            f64::from(tile.x),
-            f64::from(tile.y),
-            f64::from(tile.width),
-            f64::from(tile.height),
-        );
-        let viewport = viewport.finish();
+        let viewport;
         let (path, transform) = if self.soft_source {
+            let mut builder = PathBuilder::new();
+            builder.rect(
+                f64::from(tile.x),
+                f64::from(tile.y),
+                f64::from(tile.width),
+                f64::from(tile.height),
+            );
+            viewport = builder.finish();
             (&viewport, Transform::IDENTITY)
         } else {
             (&self.crop, self.page_device)

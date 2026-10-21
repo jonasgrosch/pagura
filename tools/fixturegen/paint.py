@@ -294,9 +294,10 @@ def direct_image_cases():
     """Sole opaque images that the compositor paints straight into the page:
     one-bit and inverted two-bit quarter-turned two-to-one means, reflected
     RGB minification with fractional edges mixed by coverage, and bilinear
-    /Interpolate magnification by eight. Dyadic placements keep the product's
-    f64 sums exact, so half-level ties round up like the oracle; the
-    fractional case has none. Every oracle byte is matched exactly."""
+    /Interpolate magnification by eight. The rational oracle includes exact
+    half-level ties; the fractional case has none. These fixtures declare an
+    Exact bound of zero and the frozen Competitive bound in each manifest.
+    Product agreement must be checked against those independent expectations."""
     def make(name, width, height, components, bits, codes, placement, *, inverted=False, interpolate=False, ties_expected=False):
         a, b, c, d, e, f = placement
         # Device pixels to PDF user space: y is measured from the page bottom.
@@ -310,7 +311,8 @@ def direct_image_cases():
         oracle, ties = direct_image_oracle(width, height, components, bits, codes, placement, inverted=inverted, interpolate=interpolate)
         assert (ties > 0) == ties_expected, (name, ties)
         content = b"q " + b" ".join(str(v).encode() for v in matrix) + b" cm /I Do Q"
-        return case(name, content, [image], b"<< /XObject << /I 5 0 R >> >>", oracle=oracle, requirement="paint-image-resampling")
+        result = case(name, content, [image], b"<< /XObject << /I 5 0 R >> >>", oracle=oracle, requirement="paint-image-resampling")
+        return Case(**{**result.__dict__, "extra": {**result.extra, "reference_profile": "image-direct-v1"}})
     binary = [(x * 7 + y * 3 + x * y) % 5 % 2 for y in range(32) for x in range(32)]
     yield make("image-direct-binary-halves", 32, 32, 1, 1, binary, (16, 0, 0, -16, 8, 24), ties_expected=True)
     two = [(x * 5 + y * 3) % 4 for y in range(24) for x in range(20)]

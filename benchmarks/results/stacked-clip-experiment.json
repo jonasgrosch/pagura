@@ -1,0 +1,614 @@
+{
+  "schema": 1,
+  "experiment": "stacked-lazy-viewport-path-construction",
+  "status": "partial-median-win-retained-in-experimental-stack",
+  "admission": false,
+  "product_present": true,
+  "product_scope": "isolated experimental branch codex/renderer-stacked-gains; not remote main",
+  "integration_base": "202bda8d79481e467951b57ceb780a803dde4a37",
+  "historical_checkpoint": "db957c32",
+  "historical_worktree": "/Users/jonasgrosch/.codex/worktrees/unified-renderer-plan/pagura",
+  "product_delta": "Only ordinary-source cache misses skip unused viewport Path construction; existing four-entry clip cache remains unchanged.",
+  "plan": "stacked-clip-plan.json",
+  "bindings": "stacked-clip-bindings.json",
+  "pilot": "local/stacked-clip/pilot-001-analysis.json",
+  "confirmation": "local/stacked-clip/confirmation-002/report.json",
+  "validation": {
+    "status": "passed",
+    "runner_status": "completed",
+    "receipt": "local/stacked-clip/full-check-001-receipt.json",
+    "log": "local/stacked-clip/full-check-001.log",
+    "scope": "Complete combined stack plus evidence tooling, process-lifecycle repair and clip candidate; unapplied glyph memo is excluded.",
+    "command": [
+      "python3",
+      "tools/check.py",
+      "--jobs",
+      "1"
+    ],
+    "started_at": "2026-10-21T00:56:56.804102+00:00",
+    "ended_at": "2026-10-21T01:14:04.241586+00:00",
+    "duration_seconds": 1027.445592791,
+    "source_sha256": "511edc3ebc862398defd7c795f2fffbb2d71094ebf2b21b722aa2fcb1da016b2",
+    "source_unchanged": true,
+    "python_tests_passed": 196,
+    "conformance_cases_passed": 1237,
+    "conformance_cases_failed": 0,
+    "includes": [
+      "policy",
+      "generated fixtures",
+      "bundled data",
+      "formatting",
+      "Clippy",
+      "workspace and documentation tests",
+      "documentation build",
+      "native and WASM builds",
+      "host checks",
+      "Python tests",
+      "generated-PDF conformance"
+    ]
+  },
+  "not_claimed": [
+    "No combined speedup is inferred by multiplying earlier percentages.",
+    "Historical or current contended measurements cannot admit production performance.",
+    "Same-mode byte parity supplements independent oracles; Exact is not a universal ground-truth oracle.",
+    "The glyph memo is not included in this candidate."
+  ],
+  "next_candidate": {
+    "patch": "glyph-memo-stacked-candidate.patch",
+    "bindings": "glyph-memo-stacked-source-bindings.json",
+    "applied": false,
+    "validated": false,
+    "scope": "Original memo behavior and twelve tests ported to the combined stack; clip cleanup and newer caches preserved.",
+    "cost": "Historical object size 2064 bytes even when disabled; fresh measurement still required."
+  },
+  "artifacts_sha256": {
+    "local/stacked-clip/pilot-001/report.json": "b534691af7d70ca343f0f9ee7e595982ed8a9f415c643274b42f12c6374d8873",
+    "local/stacked-clip/pilot-001-analysis.json": "12d1a4019fe122f5bcef3531b94c87ed152230299772b4164987f7e1c56e7663",
+    "local/stacked-clip/pilot-001-receipt.json": "9923c44f5755c08a4be87fd6b5003e2e7da9e7b3d166549ed16921efc496236f",
+    "local/stacked-clip/pilot-001-observer/guard.json": "d15f220573cca61c6c10f162b954ffbd689c52316130d1192a5cdbfa91e323f9",
+    "local/stacked-clip/confirmation-001/report.json": "173b8b7c29005d62c620edb424cf73eda72e81870a7f11019e162fe61ad71f7d",
+    "local/stacked-clip/confirmation-001-receipt.json": "f394e20a6c672283012d6fe4817187431292801a31c701d70e9bedc54a6cdce3",
+    "local/stacked-clip/confirmation-001-observer/guard.json": "24a8bb972df0f282a29ada64ce6b00588cb1e6442c1080fcb385201c83fb2572",
+    "local/stacked-clip/confirmation-001.log": "c5c39e56ccbdb02412bb3d1ab4d70ed676f67d4d92d6d5b2c17e91c9a049fcd2",
+    "local/stacked-clip/confirmation-002/report.json": "bfc3c609f9faa9c857ae81b608d69c90b9ec55183496b4c0a39253a0d3770fc7",
+    "local/stacked-clip/confirmation-002-analysis.json": "8da9b0062c3ef96b69b47204e95054922106b9dadffb3127918c8075fa2f017f",
+    "local/stacked-clip/confirmation-002-receipt.json": "1f70266acc533f6d3ae53b39fc074d70448b373da5f0942e8432f875233d0f5e",
+    "local/stacked-clip/confirmation-002-observer/guard.json": "c52c4f91499dc04c72fa7c3b5e4c9f622ff9e581b6715074c72cdd34540fe6b5",
+    "local/stacked-clip/lifecycle-tests-001-receipt.json": "6022bfc839a841ed313b8e2592cec45cf0f4b39da3112169828cd720dea309b9",
+    "local/stacked-clip/lifecycle-tests-001.log": "abdccbfd6c6a7bbfbf08a42921096d7da12bd3b420cb9ec489d54dc91eb2b173",
+    "local/stacked-clip/baseline-product-input-verification.json": "5c8b9489a212bd183ca28474900672c7f1e79aa96da33ca2711960f7e1e83a72",
+    "local/stacked-clip/full-check-001-receipt.json": "73956644a814acf69f00ee6bb9b0135c9ce21c52fdb3e5ab09a75d114b21e9cc",
+    "local/stacked-clip/full-check-001.log": "3c3e9834231a988e2f23be75451dcdcf59773cf71ae8a69110083592be3b1999"
+  },
+  "repair": {
+    "protocol": "stacked-clip-repair-plan.json",
+    "bindings": "stacked-clip-repair-bindings.json",
+    "focused_tests_passed": 44,
+    "new_run": "local/stacked-clip/confirmation-002/report.json",
+    "product_binaries_unchanged": true,
+    "status": "focused-tests-passed-and-replacement-confirmation-completed"
+  },
+  "decision": "Retain the cross-integrated candidate for cumulative evaluation; no full performance admission and no retirement of the idea.",
+  "confirmation_summary": {
+    "schema": 1,
+    "run": "confirmation-002",
+    "phase": "confirmation",
+    "admission": false,
+    "background_contention_observed": false,
+    "report_sha256": "bfc3c609f9faa9c857ae81b608d69c90b9ec55183496b4c0a39253a0d3770fc7",
+    "independently_verified_outputs": 8200,
+    "distinct_output_blobs_rehashed": 5,
+    "numeric_gates_pass": false,
+    "target_latency_passes": 0,
+    "protected_latency_passes": 6,
+    "memory_passes": 11
+  },
+  "confirmation_cells": [
+    {
+      "case": "clip-churn",
+      "mode": "competitive",
+      "operation": "tile",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9203709423729165,
+        "p95_ratio": 0.9333972416446058,
+        "median_upper": 0.9271093253168434,
+        "p95_upper": 0.9747789995810199,
+        "median_lower": 0.9177370625721449,
+        "p95_lower": 0.9184286723276385
+      },
+      "peak_rss_ratio": 0.9968203497615262,
+      "median_pass": true,
+      "p95_pass": true,
+      "memory_pass": true,
+      "baseline_median_ms": 2.318042,
+      "candidate_median_ms": 2.1334585,
+      "peak_rss_mib": {
+        "baseline": 9.828125,
+        "candidate": 9.796875
+      }
+    },
+    {
+      "case": "clip-churn",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "target",
+      "latency": {
+        "median_ratio": 0.9148452020225731,
+        "p95_ratio": 0.9744241173839807,
+        "median_upper": 0.9309371953771866,
+        "p95_upper": 1.2721915386061295,
+        "median_lower": 0.9024758697930529,
+        "p95_lower": 0.875813655489926
+      },
+      "peak_rss_ratio": 1.0072358900144718,
+      "median_pass": true,
+      "p95_pass": false,
+      "memory_pass": false,
+      "baseline_median_ms": 8.626437,
+      "candidate_median_ms": 7.8918545,
+      "peak_rss_mib": {
+        "baseline": 10.796875,
+        "candidate": 10.875
+      }
+    },
+    {
+      "case": "clip-tiny",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 1.0086128552544613,
+        "p95_ratio": 0.9743025182487194,
+        "median_upper": 1.035885009628504,
+        "p95_upper": 1.2552486907908917,
+        "median_lower": 0.9848484848484849,
+        "p95_lower": 0.7658759493670886
+      },
+      "peak_rss_ratio": 0.9659090909090909,
+      "median_pass": false,
+      "p95_pass": false,
+      "memory_pass": true,
+      "baseline_median_ms": 0.024208,
+      "candidate_median_ms": 0.0244165,
+      "peak_rss_mib": {
+        "baseline": 2.75,
+        "candidate": 2.65625
+      }
+    },
+    {
+      "case": "clip-churn",
+      "mode": "competitive",
+      "operation": "tiled",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9310285754868364,
+        "p95_ratio": 0.9265910402438001,
+        "median_upper": 0.9345717056663826,
+        "p95_upper": 0.9529983562462955,
+        "median_lower": 0.9260208268205293,
+        "p95_lower": 0.8835730493649069
+      },
+      "peak_rss_ratio": 0.9438073394495413,
+      "median_pass": true,
+      "p95_pass": true,
+      "memory_pass": true,
+      "baseline_median_ms": 9.377688,
+      "candidate_median_ms": 8.7308955,
+      "peak_rss_mib": {
+        "baseline": 13.625,
+        "candidate": 12.859375
+      }
+    },
+    {
+      "case": "clip-dense",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9878626396359123,
+        "p95_ratio": 1.0174914455911896,
+        "median_upper": 1.0063919933277732,
+        "p95_upper": 1.0949387515000948,
+        "median_lower": 0.9774701957878547,
+        "p95_lower": 0.8329386902940344
+      },
+      "peak_rss_ratio": 0.9788135593220338,
+      "median_pass": true,
+      "p95_pass": false,
+      "memory_pass": true,
+      "baseline_median_ms": 0.1510625,
+      "candidate_median_ms": 0.149229,
+      "peak_rss_mib": {
+        "baseline": 3.6875,
+        "candidate": 3.609375
+      }
+    },
+    {
+      "case": "clip-shared",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9936680998764648,
+        "p95_ratio": 0.9913009604267189,
+        "median_upper": 0.9989718677943724,
+        "p95_upper": 1.1031337778461383,
+        "median_lower": 0.9866522409966597,
+        "p95_lower": 0.9230540929418627
+      },
+      "peak_rss_ratio": 1.0307101727447217,
+      "median_pass": true,
+      "p95_pass": false,
+      "memory_pass": false,
+      "baseline_median_ms": 2.5203335,
+      "candidate_median_ms": 2.504375,
+      "peak_rss_mib": {
+        "baseline": 8.140625,
+        "candidate": 8.390625
+      }
+    },
+    {
+      "case": "clip-churn",
+      "mode": "exact",
+      "operation": "tile",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.909943803067185,
+        "p95_ratio": 0.964477787324065,
+        "median_upper": 0.919091330298274,
+        "p95_upper": 1.0742385977599473,
+        "median_lower": 0.9012998610175295,
+        "p95_lower": 0.8670686070089075
+      },
+      "peak_rss_ratio": 1.005730659025788,
+      "median_pass": true,
+      "p95_pass": false,
+      "memory_pass": false,
+      "baseline_median_ms": 1.552042,
+      "candidate_median_ms": 1.412271,
+      "peak_rss_mib": {
+        "baseline": 10.90625,
+        "candidate": 10.96875
+      }
+    },
+    {
+      "case": "clip-shared",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 1.0024139909806227,
+        "p95_ratio": 0.982659768485879,
+        "median_upper": 1.0100189769963146,
+        "p95_upper": 1.1638045158259824,
+        "median_lower": 0.9910732770416083,
+        "p95_lower": 0.8654477424101611
+      },
+      "peak_rss_ratio": 0.9961783439490446,
+      "median_pass": true,
+      "p95_pass": false,
+      "memory_pass": true,
+      "baseline_median_ms": 2.183521,
+      "candidate_median_ms": 2.188792,
+      "peak_rss_mib": {
+        "baseline": 12.265625,
+        "candidate": 12.21875
+      }
+    },
+    {
+      "case": "clip-churn",
+      "mode": "exact",
+      "operation": "tiled",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.8695992873126223,
+        "p95_ratio": 0.8910315040740685,
+        "median_upper": 0.8903443000212855,
+        "p95_upper": 1.0795006138877548,
+        "median_lower": 0.8556864999520936,
+        "p95_lower": 0.7757690627788199
+      },
+      "peak_rss_ratio": 1.0135623869801085,
+      "median_pass": true,
+      "p95_pass": false,
+      "memory_pass": false,
+      "baseline_median_ms": 6.4381665,
+      "candidate_median_ms": 5.598625,
+      "peak_rss_mib": {
+        "baseline": 17.28125,
+        "candidate": 17.515625
+      }
+    },
+    {
+      "case": "clip-soft-source",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9779100776136187,
+        "p95_ratio": 1.0353890624165838,
+        "median_upper": 0.9980656474835294,
+        "p95_upper": 1.1544568484992215,
+        "median_lower": 0.9608473666556068,
+        "p95_lower": 0.9143766327211532
+      },
+      "peak_rss_ratio": 1.0011350737797957,
+      "median_pass": true,
+      "p95_pass": false,
+      "memory_pass": false,
+      "baseline_median_ms": 16.4516875,
+      "candidate_median_ms": 16.088271,
+      "peak_rss_mib": {
+        "baseline": 41.296875,
+        "candidate": 41.34375
+      }
+    },
+    {
+      "case": "clip-churn",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9214945661340932,
+        "p95_ratio": 0.7511877732294485,
+        "median_upper": 0.9325736627182948,
+        "p95_upper": 0.9156905605716769,
+        "median_lower": 0.8974602855751884,
+        "p95_lower": 0.6299891985436455
+      },
+      "peak_rss_ratio": 0.9958376690946931,
+      "median_pass": true,
+      "p95_pass": true,
+      "memory_pass": true,
+      "baseline_median_ms": 8.685437,
+      "candidate_median_ms": 8.003583,
+      "peak_rss_mib": {
+        "baseline": 15.015625,
+        "candidate": 14.953125
+      }
+    },
+    {
+      "case": "clip-opaque",
+      "mode": "competitive",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9110589558363842,
+        "p95_ratio": 0.7903605423360174,
+        "median_upper": 0.9312608215267268,
+        "p95_upper": 0.9624367717984426,
+        "median_lower": 0.9014218312222252,
+        "p95_lower": 0.67015002745721
+      },
+      "peak_rss_ratio": 0.9942857142857143,
+      "median_pass": true,
+      "p95_pass": true,
+      "memory_pass": true,
+      "baseline_median_ms": 9.3383545,
+      "candidate_median_ms": 8.5077915,
+      "peak_rss_mib": {
+        "baseline": 10.9375,
+        "candidate": 10.875
+      }
+    },
+    {
+      "case": "clip-churn",
+      "mode": "exact",
+      "operation": "full",
+      "role": "target",
+      "latency": {
+        "median_ratio": 0.8667888525328247,
+        "p95_ratio": 0.9470580116946163,
+        "median_upper": 0.8798520179227115,
+        "p95_upper": 1.0923679051543227,
+        "median_lower": 0.8511448670721072,
+        "p95_lower": 0.8075392858051481
+      },
+      "peak_rss_ratio": 0.9978700745473909,
+      "median_pass": true,
+      "p95_pass": false,
+      "memory_pass": true,
+      "baseline_median_ms": 5.3350415,
+      "candidate_median_ms": 4.6243545,
+      "peak_rss_mib": {
+        "baseline": 14.671875,
+        "candidate": 14.640625
+      }
+    },
+    {
+      "case": "clip-dense",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9934654671402154,
+        "p95_ratio": 0.9882879602175973,
+        "median_upper": 0.999003609856151,
+        "p95_upper": 1.0282521150387158,
+        "median_lower": 0.9844717423325067,
+        "p95_lower": 0.9323511344465902
+      },
+      "peak_rss_ratio": 1.041860465116279,
+      "median_pass": true,
+      "p95_pass": false,
+      "memory_pass": false,
+      "baseline_median_ms": 0.545104,
+      "candidate_median_ms": 0.541542,
+      "peak_rss_mib": {
+        "baseline": 6.71875,
+        "candidate": 7.0
+      }
+    },
+    {
+      "case": "clip-tiny",
+      "mode": "exact",
+      "operation": "cold",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9953493559900682,
+        "p95_ratio": 1.0416465646034276,
+        "median_upper": 1.0128773092480798,
+        "p95_upper": 1.1149419642126288,
+        "median_lower": 0.979114436687623,
+        "p95_lower": 0.9804919323420553
+      },
+      "peak_rss_ratio": 1.0232558139534884,
+      "median_pass": true,
+      "p95_pass": false,
+      "memory_pass": false,
+      "baseline_median_ms": 0.103104,
+      "candidate_median_ms": 0.1026245,
+      "peak_rss_mib": {
+        "baseline": 2.6875,
+        "candidate": 2.75
+      }
+    },
+    {
+      "case": "clip-opaque",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9981062188431226,
+        "p95_ratio": 1.0455587568558948,
+        "median_upper": 1.0065697820845891,
+        "p95_upper": 1.160370043021388,
+        "median_lower": 0.9924606840178001,
+        "p95_lower": 0.9649948122844336
+      },
+      "peak_rss_ratio": 0.9951612903225806,
+      "median_pass": true,
+      "p95_pass": false,
+      "memory_pass": true,
+      "baseline_median_ms": 2.2441875,
+      "candidate_median_ms": 2.2399375,
+      "peak_rss_mib": {
+        "baseline": 9.6875,
+        "candidate": 9.640625
+      }
+    },
+    {
+      "case": "clip-churn",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9530202803865523,
+        "p95_ratio": 0.9659392905790225,
+        "median_upper": 0.9560728920611604,
+        "p95_upper": 0.9919229897375548,
+        "median_lower": 0.9496490103925135,
+        "p95_lower": 0.923381533945266
+      },
+      "peak_rss_ratio": 1.0073746312684366,
+      "median_pass": true,
+      "p95_pass": true,
+      "memory_pass": false,
+      "baseline_median_ms": 11.4796875,
+      "candidate_median_ms": 10.940375,
+      "peak_rss_mib": {
+        "baseline": 10.59375,
+        "candidate": 10.671875
+      }
+    },
+    {
+      "case": "clip-soft-source",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9921518077250544,
+        "p95_ratio": 0.9469717935316179,
+        "median_upper": 1.010167460816062,
+        "p95_upper": 1.0465666450130735,
+        "median_lower": 0.9697042664497365,
+        "p95_lower": 0.8553540562392561
+      },
+      "peak_rss_ratio": 0.9061906570451956,
+      "median_pass": true,
+      "p95_pass": false,
+      "memory_pass": true,
+      "baseline_median_ms": 11.2313125,
+      "candidate_median_ms": 11.143167,
+      "peak_rss_mib": {
+        "baseline": 41.140625,
+        "candidate": 37.28125
+      }
+    },
+    {
+      "case": "clip-tiny",
+      "mode": "competitive",
+      "operation": "cold",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 0.9899423868312757,
+        "p95_ratio": 0.9631277463974086,
+        "median_upper": 1.0058149453097998,
+        "p95_upper": 1.0138248847926268,
+        "median_lower": 0.9761360540298266,
+        "p95_lower": 0.9269356597600873
+      },
+      "peak_rss_ratio": 0.9938271604938271,
+      "median_pass": true,
+      "p95_pass": true,
+      "memory_pass": true,
+      "baseline_median_ms": 0.091125,
+      "candidate_median_ms": 0.0902085,
+      "peak_rss_mib": {
+        "baseline": 2.53125,
+        "candidate": 2.515625
+      }
+    },
+    {
+      "case": "clip-tiny",
+      "mode": "exact",
+      "operation": "full",
+      "role": "protected",
+      "latency": {
+        "median_ratio": 1.013580561934734,
+        "p95_ratio": 0.9544629155481285,
+        "median_upper": 1.0303571428571427,
+        "p95_upper": 1.074131742435505,
+        "median_lower": 0.9918363434649813,
+        "p95_lower": 0.8453982181236696
+      },
+      "peak_rss_ratio": 1.0406976744186047,
+      "median_pass": false,
+      "p95_pass": false,
+      "memory_pass": false,
+      "baseline_median_ms": 0.035271,
+      "candidate_median_ms": 0.03575,
+      "peak_rss_mib": {
+        "baseline": 2.6875,
+        "candidate": 2.796875
+      }
+    }
+  ],
+  "execution_limit": "No prohibited jobs were observed in the replacement run. The cooperative monitor does not certify all background load, thermal/power state, or a controlled release runner.",
+  "failed_confirmation_001": {
+    "completed_cells": 11,
+    "total_cells": 20,
+    "timings_analyzed": false,
+    "timings_eligible_for_pooling": false,
+    "failure": "PermissionError EPERM from group_alive os.killpg(pid,0) after process.wait reaped the leader; cleanup forwarding repeated the error.",
+    "classification": "benchmark infrastructure failure, not renderer accuracy or performance rejection",
+    "candidate_preserved": true,
+    "report": "local/stacked-clip/confirmation-001/report.json"
+  },
+  "confirmation_outcome": {
+    "run": "confirmation-002",
+    "completed_cells": 20,
+    "total_cells": 20,
+    "timings_analyzed": true,
+    "independently_verified_outputs": 8200,
+    "partial_run_samples_reused": false,
+    "numeric_gate_pass": false,
+    "known_competing_jobs_observed": false
+  },
+  "latency_rejection_check": {
+    "margin": 1.02,
+    "cells_with_median_or_p95_lower_bound_above_margin": 0,
+    "interpretation": "No cell establishes a greater-than-2-percent latency regression by these marginal lower bounds. This is not proof of neutrality and does not override failed admission or RSS gates."
+  }
+}

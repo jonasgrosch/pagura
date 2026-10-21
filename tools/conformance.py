@@ -21,6 +21,11 @@ from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from benchkit.reference_cases import (
+    current_render_policy_sha256, invocation_settings, load_reference_sources,
+    requires_reference, sha, validate_case_reference, verify_case_reference,
+)
+
 ROOT = Path(__file__).resolve().parents[1]
 MANIFESTS = ROOT / "corpus/manifests"
 BINARY = ROOT / "target/release/pagura"
@@ -34,8 +39,8 @@ def password_args(case: dict) -> list[str]:
     return ["--password", case["password"]] if case.get("password") else []
 
 
-def scan(case: dict) -> dict:
-    result = pagura("scan", *password_args(case), str(ROOT / case["path"]))
+def scan(case: dict, input_path: Path | None = None) -> dict:
+    result = pagura("scan", *password_args(case), str(input_path if input_path is not None else ROOT / case["path"]))
     if result.returncode != 0:
         raise AssertionError(f"scan crashed with exit {result.returncode}: {result.stderr.decode(errors='replace')[-500:]}")
     return json.loads(result.stdout)
@@ -43,8 +48,24 @@ def scan(case: dict) -> dict:
 
 def check(case: dict) -> list[str]:
     """Problems with one case; empty when it meets its expectation."""
+    if not requires_reference(case):
+        return _check(case, ROOT / case["path"])
+    try:
+        # validate_case_reference checks both frozen mode records before any
+        # invocation. Deleting metadata from a known case cannot skip it.
+        metadata, _ = validate_case_reference(case, "exact")
+        sources = load_reference_sources(ROOT, metadata)
+        with tempfile.TemporaryDirectory() as directory:
+            snapshot = Path(directory) / "input.pdf"
+            snapshot.write_bytes(sources[f"corpus/generated/{case['id']}.pdf"])
+            return _check(case, snapshot, referenced=True)
+    except (ValueError, OSError) as error:
+        return [f"reference verification failed: {error}"]
+
+
+def _check(case: dict, input_path: Path, *, referenced: bool = False) -> list[str]:
     problems = []
-    report = scan(case)
+    report = scan(case, input_path)
     expected = case["expected"]
     if expected == "invalid":
         if report["open"] is None and report["pages"] is not None:
@@ -71,18 +92,32 @@ def check(case: dict) -> list[str]:
     elif expected == "render":
         if report["failures"]:
             problems.append(f"render failures {report['failures']}")
-        modes = ((), case.get("tolerance", 0)), (("--accuracy", "competitive"),
-                                                    case.get("competitive_tolerance", case.get("tolerance", 0)))
-        for flags, tolerance in modes:
+        modes = (("exact", (), case.get("tolerance", 0)),
+                 ("competitive", ("--accuracy", "competitive"),
+                  case.get("competitive_tolerance", case.get("tolerance", 0))))
+        for mode, flags, tolerance in modes:
             with tempfile.TemporaryDirectory() as directory:
                 output = Path(directory) / "page.ppm"
-                result = pagura("render", *flags, *password_args(case), str(ROOT / case["path"]), str(output),
-                                str(case.get("dpi", 72)))
+                dpi = case.get("dpi", 72)
+                if referenced:
+                    flags = ("--accuracy", mode, "--overprint", "auto")
+                    settings = invocation_settings(sha(input_path.read_bytes()),
+                        page=0, dpi=dpi, accuracy=mode, entrypoint="render_page",
+                        validation="full" if mode == "exact" else "drawing-only",
+                        render_policy_sha256=current_render_policy_sha256(ROOT))
+                result = pagura("render", *flags, *password_args(case), str(input_path), str(output),
+                                str(dpi), *(("0",) if referenced else ()))
                 label = " ".join(flags) or "exact"
                 if result.returncode != 0:
                     problems.append(f"{label} render failed: {result.stderr.decode(errors='replace').strip()}")
                 else:
-                    problem = compare_images(output.read_bytes(), (ROOT / case["oracle"]).read_bytes(), tolerance)
+                    if referenced:
+                        evidence = verify_case_reference(ROOT, case, mode, output.read_bytes(),
+                            settings=settings, source_bytes=input_path.read_bytes())
+                        problem = (None if evidence["status"] == "ok" else
+                                   f"independent reference mismatch: {evidence['oracle_difference']}")
+                    else:
+                        problem = compare_images(output.read_bytes(), (ROOT / case["oracle"]).read_bytes(), tolerance)
                     if problem:
                         problems.append(f"{label}: {problem}")
     elif expected == "open":

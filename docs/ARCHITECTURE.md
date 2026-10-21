@@ -78,6 +78,11 @@ renderer is the diagnostic reference, not an infallible oracle.
 `RenderOptions::accuracy` can instead select the competitive path, an
 approximation per primitive held to the competitive accuracy gate of ADR 0004.
 
+[ADR 0016](adr/0016-unified-renderer.md) proposes shared preparation and
+certified execution for both policies. Its [implementation plan](plans/unified-renderer.md)
+and [independent validation gates](plans/unified-renderer-validation.md) do not
+change current behavior or claim implemented performance gains.
+
 ## Reading (M6)
 
 See ADR 0014.

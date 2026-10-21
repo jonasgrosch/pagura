@@ -8,6 +8,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from competitors import CACHE
 from .config import ROOT, ADAPTERS, sha
+from .artifacts import hash_regular_file
 
 
 def engines():
@@ -26,11 +27,14 @@ def engines():
 
 def identify(name, command):
     try:
+        executable = shutil.which(command[0])
+        if executable is None:
+            raise ValueError("engine executable is unavailable")
         result = subprocess.run(command + (["-v"] if name == "poppler" else ["--version"]),
                                 capture_output=True, text=True, timeout=20, cwd=ROOT)
         if result.returncode:
             raise ValueError((result.stdout + result.stderr)[-2000:])
-        files = [Path(p) for p in command if Path(p).is_file()]
+        files = [Path(executable).resolve(), *(Path(p) for p in command if Path(p).is_file())]
         if name in ("pdfium", "mupdf"):
             files.append(ROOT / "benchmarks/requirements.txt")
             for pattern in ("*.so", "*.dylib", "*.pyd"):
@@ -43,7 +47,7 @@ def identify(name, command):
         if name == "hayro":
             files.append(ADAPTERS / "hayro/Cargo.lock")
         return {"status": "available", "version": (result.stdout + result.stderr).strip(),
-                "command": command, "artifacts": {str(p): sha(p.read_bytes()) for p in sorted(set(files))}}
+                "command": command, "artifacts": {str(p): hash_regular_file(p) for p in sorted(set(files))}}
     except (OSError, ValueError, subprocess.TimeoutExpired) as error:
         return {"status": "unavailable", "reason": str(error), "command": command,
                 "hint": ("build Pagura offline with cargo build --release --locked --offline -p pagura" if name == "pagura"

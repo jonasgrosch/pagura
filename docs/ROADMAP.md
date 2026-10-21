@@ -19,6 +19,12 @@ tools/check.py` passes, and `docs/STATUS.md` records the evidence.
 
 ## Current focus
 
+- **Renderer unification proposal:** [ADR 0016](adr/0016-unified-renderer.md)
+  and the [dependency-ordered implementation plan](plans/unified-renderer.md)
+  define shared exact geometry, sparse execution, independent accuracy gates,
+  and controlled benchmarking. Planning is complete only after review;
+  implementation and performance evidence remain separate work.
+
 - **Specification verification:** every requirement registry is being checked
   against the primary standards (ISO 32000-2 and the format standards in the
   private reference cache); discrepancies become fixtures with independent

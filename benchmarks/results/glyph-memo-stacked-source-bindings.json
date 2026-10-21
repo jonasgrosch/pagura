@@ -1,0 +1,31 @@
+{
+  "source_base_commit": "202bda8d79481e467951b57ceb780a803dde4a37",
+  "memo_source_commit": "9ebac1cba77e77639146b4c86f7b1adfa6574b43",
+  "copied_from": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+  "candidate_base": "202bda8d plus the existing conditional viewport construction; instrumentation/tooling not included in this patch",
+  "validation": "Source-only port; no builds, tests, formatting or benchmarks executed.",
+  "copied_source_sha256": {
+    "crates/pagura-render/src/compositor.rs": "03fc13ed0ea3c3838214d04875a368b49d88f6372edfa5bf3767e9016c146e7a",
+    "crates/pagura-render/src/compositor/images.rs": "f2886a1155875f8272326347dd939fc0d70ad61cb2f9a1603c056e95e9ddc0da",
+    "crates/pagura-render/src/compositor/regions.rs": "9b1fd1bc5be1093eb5ff0e3d088c0b02519abf925b4206f67156b3c8499382e6"
+  },
+  "old_memo_source_sha256": {
+    "crates/pagura-render/src/compositor/index.rs": "62acc79e39da961944337b207a9a80499d9e334da88ef2eaec713bd80c7372c9",
+    "crates/pagura-render/src/compositor/index_tests.rs": "960a22ab073396782c8cfecf168b90aad28ab898ef6f9c070fd35a9b2cb3e8d5"
+  },
+  "staged_result_sha256": {
+    "crates/pagura-render/src/compositor.rs": "8c417ad22ec16c65182737286280941f09a84f41aacea4626555bec2c8522803",
+    "crates/pagura-render/src/compositor/images.rs": "71ff84c62c5dc80327903b5c5d0a4df6ab6fbc0e92d6b017dfd70e7e7b9d92d5",
+    "crates/pagura-render/src/compositor/regions.rs": "53e9398db89e6d797e905f5645021d32fe9c6d368b007b8377a23805e8044551",
+    "crates/pagura-render/src/compositor/index.rs": "62acc79e39da961944337b207a9a80499d9e334da88ef2eaec713bd80c7372c9",
+    "crates/pagura-render/src/compositor/index_tests.rs": "b81f859f6c1bc5492d0cd6fbabd2162fbb4c1183b30566f594da00902a72be0b"
+  },
+  "historical_memo_object_bytes_native": 2064,
+  "test_adaptation": "Only context.clip = None -> context.clip.clear(); original five unit and seven integration regressions retained.",
+  "patch_sha256": "817c036d9751d292d84d02ae78d93a3c0454c24112b5936f86bffcc3531d4b38",
+  "copied_sources_unchanged_after_staging": {
+    "crates/pagura-render/src/compositor.rs": true,
+    "crates/pagura-render/src/compositor/images.rs": true,
+    "crates/pagura-render/src/compositor/regions.rs": true
+  }
+}

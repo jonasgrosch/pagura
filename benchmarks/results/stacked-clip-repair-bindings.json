@@ -1,0 +1,35 @@
+{
+  "schema": 1,
+  "identities": {
+    "baseline": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-base/pagura",
+      "commit": "202bda8d79481e467951b57ceb780a803dde4a37",
+      "source_sha256": "ed263155c4650f937b6ac464b387908e2ab2b9e094a21b7650735e96b2e4df58",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/stacked-clip/baseline",
+      "binary_sha256": "c8853233421c20baab7dbd4c0220194996318fc6c91d5e28aafc9bee7fb6f815"
+    },
+    "candidate": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+      "commit": "202bda8d79481e467951b57ceb780a803dde4a37",
+      "source_sha256": "735cef328e06f63dd4e3c0e5f452d949874275f221640a6aac1c31e7471dee33",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/stacked-clip/candidate",
+      "binary_sha256": "195ecb49b88f988dc2f4ae9580e5d9df60c4843ac85654575bf13e10dd4e898a"
+    }
+  },
+  "bound_files_sha256": {
+    "benchmarks/clip_viewport.py": "a2da9c089d13e98b98fb9a20545ab98a3ed42657c05730e7fd39fa3fb5eed434",
+    "benchmarks/clip_viewport_fixtures.py": "1f003e4f71dd493d6e8ff34eef6f25a1fd3d9587d6412e7ea183102f9a4dfed2",
+    "benchmarks/paired_render.py": "c7a074f3f6d63ac2df4fcd7f87f332d4848f8f10e3d7c54ec72b822717e16b27",
+    "crates/pagura-render/examples/scene_index_profile.rs": "8e89a087d351e7b89289e0897cafeb75422d4c151280734fde8c958a841279f2",
+    "benchmarks/results/stacked-clip-plan.json": "f2787824b0488e13b813bddfc4faefdc98212aff41bc100ef1cb396ca0df07fa",
+    "benchmarks/results/local/stacked-clip/load_observer.py": "6359baff8bde26b074d22081556ade42f52c880137d3b661c36d6d0e12006511",
+    "benchmarks/results/stacked-clip-repair-plan.json": "bb16d9bede3e4fac59643f729704e75f41b990feee22aa8d5801e84b3e9c8e8d",
+    "benchmarks/results/local/stacked-clip/product-build-inputs.json": "582415d664a4243efc47585e68adc972b91b5e4cc410402793a8ecb2370c7cb4",
+    "tools/benchkit/process_group.py": "e0cfac85a0520087d9afc48701d55965422f852853648dc2a075d88f1ae7a148",
+    "tools/benchkit/measurement.py": "15635857438cd4cb75308d84621ce7a2a808ded187813570ebec18dd8e3368f9",
+    "tools/runner.py": "92bf6ec2203f9404a78942ae5303bab1310793ca98ed6dad7278a57eeed83df1",
+    "tools/test_process_group.py": "018c14b4233524dd3aac95d97d2ec968095076b7960db511a6abc6acf09ca647",
+    "tools/test_runner.py": "bf11526c1000af586311e10bcea0cc0a311eaf6a1253a07cffc5c1263d7f825c"
+  },
+  "binary_reuse": "Only Python harness and tests changed after the retained builds. Cargo and crates build-input hashes were reverified before this run; both binaries remain byte-identical."
+}

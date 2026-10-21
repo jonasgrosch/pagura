@@ -16,7 +16,16 @@ from benchkit.timings import parse_stages, parse_document_stages
 from benchkit.gate import gate
 from benchkit import corpus, conversion, measurement, reports, documents
 from benchkit import engines as engine_tools
+from benchkit.artifacts import verify_artifact_binding
 import competitors
+
+
+def fake_identities(bases):
+    """Pin the tiny adapters and real Python executable without running them."""
+    return {name: {"status": "available", "version": "fake", "command": command,
+                   "artifacts": {str(Path(part).resolve()): sha(Path(part).read_bytes())
+                                 for part in command if Path(part).is_file()}}
+            for name, command in bases.items()}
 
 
 class ImageTests(unittest.TestCase):
@@ -79,7 +88,7 @@ class GateTests(unittest.TestCase):
         self.assertTrue(any("empty" in reason for reason in verdict["reasons"]))
         self.assertTrue(any("missing engine identity: pdfium" in reason for reason in verdict["reasons"]))
 
-    def test_stale_identity_and_incomparable_settings_fail(self):
+    def test_unbound_identity_and_incomparable_settings_fail(self):
         with tempfile.TemporaryDirectory() as folder:
             binary = Path(folder) / "example"
             binary.write_bytes(b"changed")
@@ -87,7 +96,7 @@ class GateTests(unittest.TestCase):
                       "engine_identities": {"pagura": {"status": "available", "version": "test",
                           "artifacts": {str(binary): sha(b"original")}}}}
             reasons = gate(report)["reasons"]
-            self.assertIn("stale engine artifact: pagura", reasons)
+            self.assertTrue(any("independently pinned runner" in reason for reason in reasons))
             self.assertIn("incomparable rendering settings", reasons)
 
     def test_bootstrap_is_reproducible_and_rejects_zero_samples(self):
@@ -222,7 +231,7 @@ class ConversionTests(unittest.TestCase):
     def test_multi_engine_report_keeps_unverified_agreement_out_of_gate(self):
         bases = {name: [sys.executable, str(self.fake), mode] for name, mode in
                  (("pagura", "ppm"), ("pdfium", "pam"), ("pdfjs", "rgba"))}
-        identities = {name: {"status": "available", "version": "fake"} for name in bases}
+        identities = fake_identities(bases)
         report = conversion.conversion_report([self.case, {**self.case, "page": 1, "dpi": 144}], bases,
                                          identities, self.policy, samples=2, warmups=1, seed=42017,
                                          input_digest=sha(b"manifest"), process_per_page=True)
@@ -233,6 +242,7 @@ class ConversionTests(unittest.TestCase):
             self.assertFalse(cell["acceptance"]["pass"])
             self.assertEqual(cell["statistics"]["engine_ns"]["median_ratio"], 1)
             self.assertFalse(cell["warmup_failures"])
+            self.assertEqual(len(cell["warmup_samples"]), 1)
             self.assertEqual([s["pair"] for s in cell["samples"]], [0, 1])
             for sample in cell["samples"]:
                 self.assertEqual(sample["agreement"]["max_channel_error"], 0)
@@ -246,7 +256,7 @@ class ConversionTests(unittest.TestCase):
         case = {**self.case, "oracle": str(oracle), "oracle_sha256": sha(oracle.read_bytes())}
         bases = {name: [sys.executable, str(self.fake), mode] for name, mode in
                  (("pagura", "ppm"), ("pdfium", "wrong"))}
-        report = conversion.conversion_report([case], bases, {name: {"status": "available"} for name in bases},
+        report = conversion.conversion_report([case], bases, fake_identities(bases),
                                          self.policy, samples=2, warmups=1, seed=1, input_digest=sha(b"manifest"), process_per_page=True)
         cell = report["cells"][0]
         self.assertEqual(len(cell["samples"]), 2)
@@ -254,7 +264,12 @@ class ConversionTests(unittest.TestCase):
         self.assertEqual(cell["samples"][0]["baseline"]["status"], "incorrect")
         self.assertEqual(cell["statistics"]["engine_ns"]["status"], "failed-output")
         self.assertFalse(cell["acceptance"]["pass"])
-        artifact = Path(cell["samples"][0]["baseline"]["artifact"])
+        result = cell["samples"][0]["baseline"]
+        binding = result["artifact_binding"]
+        verified = verify_artifact_binding(binding,
+            expected_context=report["execution_contexts"][binding["context_sha256"]],
+            claimed_measurement=result, artifact_root=report["artifact_run"]["root"], policy=self.policy)
+        artifact = Path(report["artifact_run"]["root"]) / verified["outputs"]["0"]["blob"]
         self.assertEqual(normalize(artifact.read_bytes()), (1, 1, b"abd"))
 
     def test_verified_conversion_with_fake_rss_can_pass_cell_but_never_release(self):
@@ -271,7 +286,7 @@ class ConversionTests(unittest.TestCase):
         # The relaxed threshold is test-local, making the identical-stage positive
         # control independent of noisy process startup. Checked-in policy is unchanged.
         with patch.object(measurement, "rss_wrapper", return_value=[sys.executable, str(wrapper)]), patch.object(measurement.platform, "system", return_value="Linux"):
-            report = conversion.conversion_report([case], bases, {name: {"status": "available"} for name in bases},
+            report = conversion.conversion_report([case], bases, fake_identities(bases),
                 policy, samples=2, warmups=1, seed=1, input_digest=sha(b"manifest"), process_per_page=True)
         cell = report["cells"][0]
         self.assertEqual(cell["verification"], "independent-oracle")
@@ -283,7 +298,8 @@ class ConversionTests(unittest.TestCase):
     def test_poppler_process_only_and_missing_engine_cells(self):
         bases = {"pagura": [sys.executable, str(self.fake), "ppm"],
                  "poppler": [sys.executable, str(self.fake), "poppler"], "pdfium": ["/missing"]}
-        identities = {name: {"status": "unavailable" if name == "pdfium" else "available"} for name in bases}
+        identities = {**fake_identities({name: base for name, base in bases.items() if name != "pdfium"}),
+                      "pdfium": {"status": "unavailable", "command": bases["pdfium"]}}
         report = conversion.conversion_report([self.case], bases, identities, self.policy,
             samples=2, warmups=0, seed=1, input_digest=sha(b"manifest"), process_per_page=True)
         cells = {cell["engine"]: cell for cell in report["cells"]}
@@ -557,7 +573,7 @@ class DocumentTests(unittest.TestCase):
     def run_report(self, mode='correct', cases=None, baseline='pdfium', warmups=0):
         bases = {'pagura': [sys.executable, str(self.fake), 'correct'],
                  baseline: [sys.executable, str(self.fake), mode]}
-        identities = {name: {'status': 'available'} for name in bases}
+        identities = fake_identities(bases)
         return conversion.conversion_report(self.cases if cases is None else cases, bases, identities,
             self.policy, samples=2, warmups=warmups, seed=42, input_digest=sha(b'manifest'))
 
@@ -572,6 +588,7 @@ class DocumentTests(unittest.TestCase):
         self.assertEqual(len(report['document_cells']), 1)
         self.assertEqual(len(report['cells']), 2)
         document = report['document_cells'][0]
+        self.assertEqual(len(document['warmup_samples']), 1)
         for sample in document['samples']:
             for key in ('pagura', 'baseline'):
                 result = sample[key]
@@ -597,9 +614,15 @@ class DocumentTests(unittest.TestCase):
             document = report['document_cells'][0]
             self.assertEqual(len(document['samples']), 2)
             self.assertEqual(len(document['warmup_failures']), 1)
-            self.assertEqual(document['samples'][0]['baseline']['status'], status, mode)
+            self.assertEqual(document['warmup_samples'][0]['baseline']['status'], status, mode)
             self.assertEqual(document['statistics']['engine_ns']['status'], 'failed-output')
-            self.assertEqual(report['cells'][0]['samples'][0]['baseline']['pixels_sha256'], sha(b'abc'))
+            self.assertEqual(report['cells'][0]['warmup_samples'][0]['baseline']['pixels_sha256'], sha(b'abc'))
+            if mode == 'missing-later':
+                self.assertEqual(report['artifact_run']['status'], 'incomplete')
+                self.assertTrue(all(sample[key]['status'] == 'invalid-evidence'
+                                    for sample in document['samples'] for key in ('pagura', 'baseline')))
+            else:
+                self.assertEqual(document['samples'][0]['baseline']['status'], status, mode)
             self.assertFalse(report['gate']['pass'])
 
     def test_later_timing_errors_never_become_successful_page_samples(self):

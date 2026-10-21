@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "status": "planned-before-fresh-timing",
+  "scope": "One manual replacement confirmation after repairing the observed process-group lifecycle error.",
+  "supersedes_incomplete_run": "local/stacked-clip/confirmation-001/report.json",
+  "excluded_run_sha256": "173b8b7c29005d62c620edb424cf73eda72e81870a7f11019e162fe61ad71f7d",
+  "reason": "The harness probed and signalled a numeric process group after reaping its ownership anchor; EPERM aborted the fixed run. No partial timing analysis was performed.",
+  "product_changes_permitted": false,
+  "required_before_launch": [
+    "Apply the same repaired harness to baseline and candidate checkouts.",
+    "Pass meaningful process-lifecycle regression tests.",
+    "Verify unchanged Cargo and crates build inputs against retained binaries.",
+    "Record fresh source, tool, binary and plan bindings."
+  ],
+  "sampling": "Same frozen 20 cells, 200 fresh measured pairs and five warmup pairs per cell; no pooled samples and no tuning against incomplete data.",
+  "thresholds": "Unchanged from stacked-clip-plan.json; the optional prioritization classification still cannot admit performance.",
+  "maximum_additional_launched_confirmations": 1,
+  "stop": "A second infrastructure failure ends this confirmation attempt with candidate preserved and no performance admission.",
+  "validation": "Full combined-candidate tools/check.py --jobs 1 after measurement, serially."
+}

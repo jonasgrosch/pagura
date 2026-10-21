@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "identities": {
+    "baseline": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-base/pagura",
+      "commit": "202bda8d79481e467951b57ceb780a803dde4a37",
+      "source_sha256": "acb45626547e708ec857896265801691ec167fea42fffd015f085845a5f03cbd",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/stacked-clip/baseline",
+      "binary_sha256": "c8853233421c20baab7dbd4c0220194996318fc6c91d5e28aafc9bee7fb6f815"
+    },
+    "candidate": {
+      "root": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura",
+      "commit": "202bda8d79481e467951b57ceb780a803dde4a37",
+      "source_sha256": "7735afe5766b9e1279c9addbc0a75526baa1a02896fad584f17336594a5b561e",
+      "binary": "/Users/jonasgrosch/.codex/worktrees/renderer-stacked-gains/pagura/benchmarks/results/local/stacked-clip/candidate",
+      "binary_sha256": "195ecb49b88f988dc2f4ae9580e5d9df60c4843ac85654575bf13e10dd4e898a"
+    }
+  },
+  "bound_files_sha256": {
+    "benchmarks/clip_viewport.py": "a2da9c089d13e98b98fb9a20545ab98a3ed42657c05730e7fd39fa3fb5eed434",
+    "benchmarks/clip_viewport_fixtures.py": "1f003e4f71dd493d6e8ff34eef6f25a1fd3d9587d6412e7ea183102f9a4dfed2",
+    "benchmarks/paired_render.py": "c7a074f3f6d63ac2df4fcd7f87f332d4848f8f10e3d7c54ec72b822717e16b27",
+    "crates/pagura-render/examples/scene_index_profile.rs": "8e89a087d351e7b89289e0897cafeb75422d4c151280734fde8c958a841279f2",
+    "benchmarks/results/stacked-clip-plan.json": "f2787824b0488e13b813bddfc4faefdc98212aff41bc100ef1cb396ca0df07fa",
+    "benchmarks/results/local/stacked-clip/load_observer.py": "6359baff8bde26b074d22081556ade42f52c880137d3b661c36d6d0e12006511"
+  }
+}
