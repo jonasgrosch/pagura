@@ -210,18 +210,31 @@ pub(super) fn multiply(target: &mut [u8], factors: &[u8]) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    /// A different byte in each channel, each channel taking every value
+    /// as `value` does, so that a channel mixed in another's place shows.
+    fn channels(value: u8) -> [u8; 4] {
+        [0x00, 0x55, 0xaa, 0xff].map(|key| value ^ key)
+    }
+
     #[test]
     fn portable_lanes_round_every_byte_mixture_once() {
         for alpha in 0..=255u8 {
             for source in 0..=255u8 {
-                let mut pixels: Vec<_> = (0..=255u8).map(|v| [v; 4]).collect();
-                row(&mut pixels, &[alpha; 256], &Source::new([source; 4], 255));
-                for (background, result) in pixels.iter().enumerate() {
-                    let expected = (u32::from(source) * u32::from(alpha)
-                        + u32::try_from(background).unwrap() * (255 - u32::from(alpha))
-                        + 127)
-                        / 255;
-                    assert_eq!(result, &[u8::try_from(expected).unwrap(); 4]);
+                let mut pixels: Vec<_> = (0..=255u8).map(channels).collect();
+                row(
+                    &mut pixels,
+                    &[alpha; 256],
+                    &Source::new(channels(source), 255),
+                );
+                for (background, result) in (0..=255u8).zip(&pixels) {
+                    let (source, background) = (channels(source), channels(background));
+                    let expected = [0, 1, 2, 3].map(|k| {
+                        let mixed = u32::from(source[k]) * u32::from(alpha)
+                            + u32::from(background[k]) * (255 - u32::from(alpha))
+                            + 127;
+                        u8::try_from(mixed / 255).unwrap()
+                    });
+                    assert_eq!(result, &expected);
                 }
             }
         }
@@ -233,7 +246,7 @@ mod tests {
             for length in 0..11 {
                 let byte = |i: usize, step: usize| u8::try_from(i * step % 256).unwrap();
                 let coverage: Vec<u8> = (0..length).map(|i| byte(i, 37)).collect();
-                let lanes: Vec<_> = (0..length).map(|i| [byte(i, 23); 4]).collect();
+                let lanes: Vec<_> = (0..length).map(|i| channels(byte(i, 23))).collect();
                 for color in [[200, 10, 90, 255], [0, 0, 0, 255]] {
                     let mut lanes = lanes.clone();
                     let mut single = lanes.clone();
