@@ -20,7 +20,7 @@ const MAX_PLACEMENTS: usize = 65_535;
 type SourceKey = (OutlineKey, [u64; 4]);
 
 /// Entries of the lookaside in front of the hull and source maps.
-const RECENT: usize = 64;
+const RECENT: usize = 256;
 
 /// A source met recently: its hull, and its index in the glyphs node
 /// `node`.
@@ -86,26 +86,7 @@ impl SceneRecorder {
         outline: &Arc<Path>,
         target: &mut Option<Target>,
     ) -> Result<()> {
-        let target = match *target {
-            // A full node gives way to a new one.
-            Some(current) if self.placements(current.node) < MAX_PLACEMENTS => current,
-            Some(current) => {
-                let node = self.glyphs_node(current.paint, current.mark)?;
-                *target.insert(Target { node, ..current })
-            }
-            None => {
-                let state = run
-                    .paint
-                    .fill_state
-                    .as_ref()
-                    .ok_or(Error::invalid_argument("filled glyphs without a state"))?;
-                let paint = self.paint(run.paint.fill)?;
-                let mark = self.mark(state)?;
-                let node = self.glyphs_node(paint, mark)?;
-                *target.insert(Target { paint, mark, node })
-            }
-        };
-        let node = target.node;
+        let node = self.target(run, target)?.node;
         let linear = Transform::new(
             glyph.transform.a,
             glyph.transform.b,
@@ -123,11 +104,11 @@ impl SceneRecorder {
             .glyphs
             .recent
             .get(slot)
-            .copied()
-            .flatten()
-            .filter(|recent| recent.key == key);
+            .and_then(Option::as_ref)
+            .filter(|recent| recent.key == key)
+            .map(|recent| (recent.hull, recent.node, recent.source));
         let hull = match recent {
-            Some(recent) => recent.hull,
+            Some((hull, ..)) => hull,
             None => self.hull(key, outline, linear)?,
         };
         let origin = Point::new(glyph.transform.e, glyph.transform.f);
@@ -143,7 +124,7 @@ impl SceneRecorder {
             return Err(Error::invalid_argument("glyphs node expected"));
         };
         let source = match recent {
-            Some(recent) if recent.node == node => recent.source,
+            Some((_, at, source)) if at == node => source,
             _ => {
                 if let Some(&source) = sources.get(&key) {
                     source
@@ -173,19 +154,44 @@ impl SceneRecorder {
             glyphs.positions.push((index, glyph.position));
         }
         glyphs.placements.push(Placement { source, origin });
-        let recent = &mut self.glyphs.recent;
-        if recent.is_empty() {
-            recent.resize(RECENT, None);
-        }
-        if let Some(entry) = recent.get_mut(slot) {
-            *entry = Some(Recent {
-                key,
-                hull,
-                node,
-                source,
-            });
+        if recent.is_none_or(|(_, at, _)| at != node) {
+            let table = &mut self.glyphs.recent;
+            if table.is_empty() {
+                table.resize(RECENT, None);
+            }
+            if let Some(entry) = table.get_mut(slot) {
+                *entry = Some(Recent {
+                    key,
+                    hull,
+                    node,
+                    source,
+                });
+            }
         }
         Ok(())
+    }
+
+    /// The paint, mark and glyphs node of the run's next filled glyph: the
+    /// run's first interns them, and a full node gives way to a new one.
+    fn target(&mut self, run: &GlyphRun<'_>, target: &mut Option<Target>) -> Result<Target> {
+        Ok(match *target {
+            Some(current) if self.placements(current.node) < MAX_PLACEMENTS => current,
+            Some(current) => {
+                let node = self.glyphs_node(current.paint, current.mark)?;
+                *target.insert(Target { node, ..current })
+            }
+            None => {
+                let state = run
+                    .paint
+                    .fill_state
+                    .as_ref()
+                    .ok_or(Error::invalid_argument("filled glyphs without a state"))?;
+                let paint = self.paint(run.paint.fill)?;
+                let mark = self.mark(state)?;
+                let node = self.glyphs_node(paint, mark)?;
+                *target.insert(Target { paint, mark, node })
+            }
+        })
     }
 
     /// The hull of the source `key`, computed once per recording.

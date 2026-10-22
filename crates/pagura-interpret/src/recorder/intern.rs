@@ -29,6 +29,12 @@ pub(super) struct Interner {
     paint_aliases: Vec<Arc<Paint>>,
     pens: Vec<Arc<Pen>>,
     pen_ids: FastMap<usize, PenId>,
+    /// The last states, paints and clips interned, by address: marks
+    /// mostly repeat their neighbours', so these are checked before the
+    /// maps.
+    recent_state: Option<(usize, StateId)>,
+    recent_paints: [Option<(usize, PaintId)>; 2],
+    recent_clip: Option<(usize, ClipId)>,
 }
 
 /// A composite state by value; functions by identity.
@@ -89,6 +95,18 @@ impl Interner {
     }
 
     pub(super) fn state(&mut self, state: &Arc<Composite>, bytes: &mut Meter) -> Result<StateId> {
+        let address = address(state);
+        if let Some((recent, id)) = self.recent_state
+            && recent == address
+        {
+            return Ok(id);
+        }
+        let id = self.state_by_value(state, bytes)?;
+        self.recent_state = Some((address, id));
+        Ok(id)
+    }
+
+    fn state_by_value(&mut self, state: &Arc<Composite>, bytes: &mut Meter) -> Result<StateId> {
         if let Some(&id) = self.state_ids.get(&address(state)) {
             return Ok(id);
         }
@@ -107,6 +125,21 @@ impl Interner {
     }
 
     pub(super) fn paint(&mut self, paint: &Arc<Paint>, bytes: &mut Meter) -> Result<PaintId> {
+        let address = address(paint);
+        if let Some(&(_, id)) = self
+            .recent_paints
+            .iter()
+            .flatten()
+            .find(|(recent, _)| *recent == address)
+        {
+            return Ok(id);
+        }
+        let id = self.paint_by_value(paint, bytes)?;
+        self.recent_paints = [Some((address, id)), self.recent_paints[0]];
+        Ok(id)
+    }
+
+    fn paint_by_value(&mut self, paint: &Arc<Paint>, bytes: &mut Meter) -> Result<PaintId> {
         if let Some(&id) = self.paint_ids.get(&address(paint)) {
             return Ok(id);
         }
@@ -150,6 +183,18 @@ impl Interner {
 
     /// Interns `clip` and the chain above it.
     pub(super) fn clip(&mut self, clip: &Arc<Clip>, bytes: &mut Meter) -> Result<ClipId> {
+        let address = address(clip);
+        if let Some((recent, id)) = self.recent_clip
+            && recent == address
+        {
+            return Ok(id);
+        }
+        let id = self.clip_chain(clip, bytes)?;
+        self.recent_clip = Some((address, id));
+        Ok(id)
+    }
+
+    fn clip_chain(&mut self, clip: &Arc<Clip>, bytes: &mut Meter) -> Result<ClipId> {
         if let Some(&id) = self.clip_ids.get(&address(clip)) {
             return Ok(id);
         }

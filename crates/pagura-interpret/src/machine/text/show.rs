@@ -3,11 +3,13 @@
 
 use super::{Machine, Scope, checked, text_object, text_translate};
 use crate::device::{Device, Glyph, GlyphPaint, GlyphRun, MarkState, OutlineKey};
+use crate::fonts::LoadedFont;
 use crate::machine::Text;
 use crate::machine::path::finite;
 use pagura_core::{Dictionary, Error, Result};
 use pagura_raster::{Path, PathBuilder, Segment, Transform};
 use pagura_text::GlyphShape;
+use std::sync::Arc;
 
 impl<D: Device + ?Sized> Machine<'_, '_, D> {
     /// Shows one string operand.
@@ -17,13 +19,31 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         resources: &Dictionary,
         scope: &mut Scope,
     ) -> Result<()> {
+        let mut font = None;
+        self.show_with(&mut font, bytes, resources, scope)
+    }
+
+    /// Shows one string operand in the current font, which `font` keeps
+    /// for the strings of one `TJ` array once the first is shown.
+    pub(super) fn show_with(
+        &mut self,
+        font: &mut Option<Arc<LoadedFont>>,
+        bytes: &[u8],
+        resources: &Dictionary,
+        scope: &mut Scope,
+    ) -> Result<()> {
         text_object(scope)?;
-        let font = scope
-            .state
-            .text
-            .font
-            .clone()
-            .ok_or(Error::syntax("text showing requires a font"))?;
+        let font = match font {
+            Some(font) => font,
+            None => font.insert(
+                scope
+                    .state
+                    .text
+                    .font
+                    .clone()
+                    .ok_or(Error::syntax("text showing requires a font"))?,
+            ),
+        };
         let needs = self.needs();
         let text = needs.text && scope.role == Text::Page;
         // The buffers of the previous string are reused; a string shown by
@@ -31,7 +51,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let mut decoded = std::mem::take(&mut self.session.decoded);
         let mut glyphs = std::mem::take(&mut self.session.placed);
         let result = self.show_glyphs(
-            &font,
+            font,
             bytes,
             text,
             (&mut decoded, &mut glyphs),
@@ -47,7 +67,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
 
     fn show_glyphs(
         &mut self,
-        font: &crate::fonts::LoadedFont,
+        font: &LoadedFont,
         bytes: &[u8],
         text: bool,
         (decoded, glyphs): (&mut Vec<pagura_text::Glyph>, &mut Vec<Glyph>),
@@ -77,7 +97,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     /// paint, its part of the text clip, and the advance (9.4.4).
     fn glyph(
         &mut self,
-        font: &crate::fonts::LoadedFont,
+        font: &LoadedFont,
         glyph: &pagura_text::Glyph,
         text: bool,
         run: &Run,
@@ -175,7 +195,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     /// always, and to others when the string paints a visible glyph.
     fn emit_run(
         &mut self,
-        font: &crate::fonts::LoadedFont,
+        font: &LoadedFont,
         glyphs: &[Glyph],
         text: bool,
         scope: &mut Scope,

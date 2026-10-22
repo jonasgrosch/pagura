@@ -24,6 +24,7 @@ use crate::repairs;
 use crate::resources::colorspace::Colors;
 use crate::resources::optional::Visibility;
 use emit::Lazy;
+use pagura_color::ColorSpace;
 use pagura_content::{Content, Op, Operation, Reader};
 use pagura_core::{
     Diagnostic, Dictionary, Error, Limits, Meter, ObjectId, Position, Result, Store,
@@ -57,6 +58,9 @@ pub(crate) struct Session<'a> {
     pub(crate) store: Option<&'a Store>,
     /// The solid paints of colours set so far.
     pub(crate) solids: state::SolidPaints,
+    /// The space each device family (`g`, `rg`, `k`) last resolved to, and
+    /// the serial of the content sequence it was resolved in.
+    pub(crate) device_spaces: [Option<(u64, Arc<ColorSpace>)>; 3],
     /// Buffers of the string being shown: decoded and placed glyphs.
     pub(crate) decoded: Vec<pagura_text::Glyph>,
     pub(crate) placed: Vec<crate::device::Glyph>,
@@ -206,6 +210,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
                 page_resources: inputs.page_resources,
                 name_work: 0,
                 solids: state::SolidPaints::default(),
+                device_spaces: [None, None, None],
                 decoded: Vec::new(),
                 placed: Vec::new(),
                 contents: crate::hash::FastMap::default(),
@@ -377,6 +382,9 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
     /// Whether the glyph procedure or uncoloured tiling cell `scope` runs
     /// ignores `op`.
     fn ignores(&self, op: &Op<'_>, resources: &Dictionary, scope: &Scope) -> Result<bool> {
+        if scope.procedure.is_none() && !scope.stencil {
+            return Ok(false);
+        }
         Ok(scope.glyph_restriction(op)? || self.stencil_ignores(op, resources, scope)?)
     }
 
