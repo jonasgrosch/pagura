@@ -4,7 +4,7 @@
 use crate::cie::Calibrated;
 use crate::function::Function;
 use crate::icc::Profile;
-use pagura_core::Name;
+use pagura_core::{Name, ObjectId};
 use std::sync::Arc;
 
 /// The most colour components any space has: DeviceN's 32 colorants
@@ -48,6 +48,9 @@ pub struct IccSpace {
     pub components: u8,
     /// The `Range` of each component.
     pub range: [[f64; 2]; 4],
+    /// The profile stream's object, which errors of the profile's
+    /// transforms are reported in (ADR 0028).
+    pub object: Option<ObjectId>,
 }
 
 /// An Indexed space.

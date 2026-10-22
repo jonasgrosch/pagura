@@ -137,7 +137,10 @@ impl Stack {
         }
         let mut other = self.clone();
         let first = self.run(then)?;
-        let second = otherwise.map(|nodes| other.run(nodes)).transpose()?.unwrap_or(0);
+        let second = otherwise
+            .map(|nodes| other.run(nodes))
+            .transpose()?
+            .unwrap_or(0);
         if self.kinds.len() != other.kinds.len() {
             return Err(Error::unsupported(
                 crate::features::CALCULATOR,
@@ -275,11 +278,13 @@ impl Stack {
         let b = self.pop()?;
         let a = self.pop()?;
         let kind = match (a, b) {
-            (Kind::Boolean(a), Kind::Boolean(b)) => Kind::Boolean(a.zip(b).map(|(a, b)| match operator {
-                Operator::And => a & b,
-                Operator::Or => a | b,
-                _ => a ^ b,
-            })),
+            (Kind::Boolean(a), Kind::Boolean(b)) => {
+                Kind::Boolean(a.zip(b).map(|(a, b)| match operator {
+                    Operator::And => a & b,
+                    Operator::Or => a | b,
+                    _ => a ^ b,
+                }))
+            }
             (Kind::Integer(_) | Kind::Number, Kind::Integer(_) | Kind::Number) => {
                 let value = a.integer()?.zip(b.integer()?);
                 Kind::Integer(value.map(|(a, b)| super::run::integer(operator, a, b)))

@@ -151,11 +151,11 @@ impl Store {
         }
         let hash = hash_key(&key);
         let mut inner = self.lock();
-        if inner
-            .entries
-            .get(&hash)
-            .is_some_and(|bucket| bucket.iter().any(|e| e.key.downcast_ref::<K>() == Some(&key)))
-        {
+        if inner.entries.get(&hash).is_some_and(|bucket| {
+            bucket
+                .iter()
+                .any(|e| e.key.downcast_ref::<K>() == Some(&key))
+        }) {
             return;
         }
         if inner.bytes.saturating_add(bytes) > self.capacity {

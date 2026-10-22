@@ -7,6 +7,7 @@
 //! transparent start, and whether the page selects transfer functions.
 
 use crate::format::Format;
+use crate::hash::{self, FastMap};
 use crate::plan::Layout;
 use crate::prepare::bounds;
 use crate::prepare::index;
@@ -18,7 +19,6 @@ use pagura_interpret::{
     PatternId, Scene,
 };
 use pagura_raster::{DeviceRect, Path, Transform};
-use crate::hash::{self, FastMap};
 
 /// `π` of the F32 bound: source encoding and six roundings relative to the
 /// opacity, in levels.

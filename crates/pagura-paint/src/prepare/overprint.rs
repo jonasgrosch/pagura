@@ -3,11 +3,11 @@
 //! become channels of every buffer, each with its first painting
 //! definition for the preview at output.
 
+use crate::hash::{self, FastSet};
 use crate::request::OverprintMode;
 use pagura_color::{ColorSpace, Colorant};
 use pagura_core::{Error, Name, Result};
 use pagura_interpret::{Composite, GroupId, GroupRole, Node, Paint, PatternId, Scene};
-use crate::hash::{self, FastSet};
 use std::sync::Arc;
 
 /// The separations of a page.

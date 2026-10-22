@@ -8,9 +8,7 @@ use super::clips::{Clipping, Extra};
 use super::runs::Placed;
 use super::{Planner, Scope};
 use crate::paint::PaintSpans;
-use crate::plan::{
-    Boundary, Compositing, Cover, GroupUse, Item, ItemKind, Mark, area, intersect,
-};
+use crate::plan::{Boundary, Compositing, Cover, GroupUse, Item, ItemKind, Mark, area, intersect};
 use crate::prepare::overprint::{Keeping, Place, direct_cmyk};
 use crate::prepare::{Backend, Budget, PaintRequest, Prepared, bounds, index};
 use crate::source::{BBoxUse, PaintContext, Source};

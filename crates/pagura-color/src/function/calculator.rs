@@ -178,7 +178,11 @@ impl<'a> Parser<'a> {
     /// Skips white space and comments.
     fn whitespace(&mut self) {
         loop {
-            while self.bytes.get(self.offset).is_some_and(|&b| is_whitespace(b)) {
+            while self
+                .bytes
+                .get(self.offset)
+                .is_some_and(|&b| is_whitespace(b))
+            {
                 self.offset += 1;
             }
             if self.bytes.get(self.offset) != Some(&b'%') {

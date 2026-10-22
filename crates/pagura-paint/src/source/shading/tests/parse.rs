@@ -413,6 +413,7 @@ impl Reader<'_> {
                     alternate: Arc::new(alternate),
                     components: n as u8,
                     range,
+                    object: None,
                 }))
             }
             b"Indexed" => {

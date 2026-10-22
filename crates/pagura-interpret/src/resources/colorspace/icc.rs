@@ -96,6 +96,7 @@ pub(super) struct Read<'a> {
     pub(super) components: u8,
     pub(super) range: [[f64; 2]; 4],
     pub(super) profile: Option<Arc<Profile>>,
+    pub(super) object: ObjectId,
 }
 
 /// Reads the profile stream `value` names.
@@ -130,6 +131,7 @@ pub(super) fn read<'a>(
         components,
         range,
         profile,
+        object: id,
     })
 }
 

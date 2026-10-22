@@ -1,6 +1,9 @@
 //! Differential tests of prepared conversion against the previous colour
 //! selection (`oracle`) over random colour spaces, targets and conversions.
-#![expect(clippy::cast_possible_truncation, reason = "small random counts and bytes")]
+#![expect(
+    clippy::cast_possible_truncation,
+    reason = "small random counts and bytes"
+)]
 
 mod oracle;
 
@@ -19,11 +22,17 @@ struct Pair {
     old: Space,
 }
 
-const NAMES: [&str; 8] = ["Cyan", "Magenta", "Yellow", "Black", "SpotA", "SpotB", "SpotC", "None"];
+const NAMES: [&str; 8] = [
+    "Cyan", "Magenta", "Yellow", "Black", "SpotA", "SpotB", "SpotC", "None",
+];
 
 fn profile(name: &str, components: usize) -> Arc<Profile> {
     let bytes = pagura_testkit::fixture("color", &format!("{name}.icc"));
-    Arc::new(Profile::parse(&bytes, components, &Limits::default()).unwrap().unwrap())
+    Arc::new(
+        Profile::parse(&bytes, components, &Limits::default())
+            .unwrap()
+            .unwrap(),
+    )
 }
 
 fn device(rng: &mut Rng) -> Pair {
@@ -44,16 +53,28 @@ fn device(rng: &mut Rng) -> Pair {
 }
 
 fn calibrated(rng: &mut Rng) -> Pair {
-    let white = [0.9505 + rng.range(-0.05, 0.05), 1.0, 1.089 + rng.range(-0.05, 0.05)];
+    let white = [
+        0.9505 + rng.range(-0.05, 0.05),
+        1.0,
+        1.089 + rng.range(-0.05, 0.05),
+    ];
     let space = match rng.below(3) {
         0 => Calibrated::gray(white, [0.0; 3], rng.range(0.5, 2.5)),
         1 => Calibrated::rgb(
             white,
             [0.0; 3],
             [rng.range(0.5, 2.5), 1.8, 2.2],
-            [[0.4124, 0.3576, 0.1805], [0.2126, 0.7152, 0.0722], [0.0193, 0.1192, 0.9505]],
+            [
+                [0.4124, 0.3576, 0.1805],
+                [0.2126, 0.7152, 0.0722],
+                [0.0193, 0.1192, 0.9505],
+            ],
         ),
-        _ => Calibrated::lab(white, [0.0; 3], [-100.0, 100.0, -rng.range(50.0, 120.0), 90.0]),
+        _ => Calibrated::lab(
+            white,
+            [0.0; 3],
+            [-100.0, 100.0, -rng.range(50.0, 120.0), 90.0],
+        ),
     };
     let space = Arc::new(space.unwrap());
     Pair {
@@ -108,6 +129,7 @@ fn icc(rng: &mut Rng) -> Pair {
                 alternate,
                 components: components as u8,
                 range,
+                object: None,
             })),
             old: Space::Icc {
                 base: Arc::new(base),
@@ -116,7 +138,11 @@ fn icc(rng: &mut Rng) -> Pair {
             },
         };
     }
-    let base = if rng.chance(70) { device(rng) } else { calibrated(rng) };
+    let base = if rng.chance(70) {
+        device(rng)
+    } else {
+        calibrated(rng)
+    };
     let components = base.new.components();
     Pair {
         new: ColorSpace::Icc(Arc::new(IccSpace {
@@ -124,6 +150,7 @@ fn icc(rng: &mut Rng) -> Pair {
             alternate: Arc::new(base.new),
             components: components as u8,
             range,
+            object: None,
         })),
         old: Space::Icc {
             base: Arc::new(base.old),
@@ -146,8 +173,20 @@ fn separation(rng: &mut Rng) -> Pair {
     let base = alternate(rng);
     let (function, oracle) = tint_function(rng, 1, base.new.components());
     let (colorant, old) = match rng.below(6) {
-        0 => (Colorant::All, Space::Special { inputs: 1, all: true }),
-        1 => (Colorant::None, Space::Special { inputs: 1, all: false }),
+        0 => (
+            Colorant::All,
+            Space::Special {
+                inputs: 1,
+                all: true,
+            },
+        ),
+        1 => (
+            Colorant::None,
+            Space::Special {
+                inputs: 1,
+                all: false,
+            },
+        ),
         _ => {
             let name = Name::new(NAMES[rng.below(7)].as_bytes());
             (
@@ -226,7 +265,9 @@ fn space(rng: &mut Rng) -> Pair {
     }
     let high = rng.below(12) as u8;
     let count = base.new.components();
-    let lookup: Arc<[u8]> = (0..(usize::from(high) + 1) * count).map(|_| rng.next() as u8).collect();
+    let lookup: Arc<[u8]> = (0..(usize::from(high) + 1) * count)
+        .map(|_| rng.next() as u8)
+        .collect();
     Pair {
         new: ColorSpace::Indexed(Arc::new(Indexed {
             base: Arc::new(base.new),
@@ -282,9 +323,15 @@ fn previous(
     let mut batches = vec![None];
     batches.extend((0..target.spots.len().div_ceil(4)).map(Some));
     for batch in batches {
-        let pass =
-            context_source(&pair.old, components, model, (&separations, state, batch), conversion, work)
-                .ok()?;
+        let pass = context_source(
+            &pair.old,
+            components,
+            model,
+            (&separations, state, batch),
+            conversion,
+            work,
+        )
+        .ok()?;
         let offset = batch.map_or(0, |b| n + 4 * b);
         let count = if batch.is_some() { 4 } else { n };
         for i in 0..count {
@@ -300,6 +347,7 @@ fn previous(
 }
 
 #[test]
+#[expect(clippy::too_many_lines, reason = "one table of every space, target and conversion parameter, checked together")]
 fn conversions_match_the_previous_selection_bit_for_bit() {
     let mut rng = Rng::new(0xc0_10_25);
     let (mut compared, mut rejected, mut selective, mut zeroed) = (0, 0, 0, 0);
@@ -318,8 +366,12 @@ fn conversions_match_the_previous_selection_bit_for_bit() {
         };
         let mut conversion = Conversion::default();
         let mut old_conversion = oracle::Conversion::default();
-        conversion.intent = [Intent::Perceptual, Intent::Relative, Intent::Saturation, Intent::Absolute]
-            [rng.below(4)];
+        conversion.intent = [
+            Intent::Perceptual,
+            Intent::Relative,
+            Intent::Saturation,
+            Intent::Absolute,
+        ][rng.below(4)];
         old_conversion.intent = conversion.intent;
         for (new, old) in [
             (&mut conversion.black_generation, &mut old_conversion.black),
@@ -339,7 +391,11 @@ fn conversions_match_the_previous_selection_bit_for_bit() {
                 // Only conversions that always failed before are rejected.
                 for _ in 0..8 {
                     let c = components(&mut rng, &pair.new);
-                    let state = State { overprint: true, nonzero: false, direct: false };
+                    let state = State {
+                        overprint: true,
+                        nonzero: false,
+                        direct: false,
+                    };
                     assert!(
                         previous(&pair, &c, (&target, state), &old_conversion, &mut 0).is_none(),
                         "{context}: {error}"
@@ -350,7 +406,11 @@ fn conversions_match_the_previous_selection_bit_for_bit() {
         };
         for _ in 0..16 {
             let c = components(&mut rng, &pair.new);
-            let state = State { overprint: true, nonzero: false, direct: false };
+            let state = State {
+                overprint: true,
+                nonzero: false,
+                direct: false,
+            };
             let mut work = 0;
             let Some((expected, painted)) =
                 previous(&pair, &c, (&target, state), &old_conversion, &mut work)
@@ -364,13 +424,29 @@ fn conversions_match_the_previous_selection_bit_for_bit() {
                 continue;
             }
             compared += 1;
-            assert_eq!(bits(&output), bits(&expected), "{context} at {c:?}: {output:?} != {expected:?}");
+            assert_eq!(
+                bits(&output),
+                bits(&expected),
+                "{context} at {c:?}: {output:?} != {expected:?}"
+            );
             assert_eq!(new_painted, Painted(painted), "{context} at {c:?}");
-            assert!(work <= converter.cost(), "{context}: work {work} > {}", converter.cost());
-            let state = State { overprint: true, nonzero: true, direct: true };
+            assert!(
+                work <= converter.cost(),
+                "{context}: work {work} > {}",
+                converter.cost()
+            );
+            let state = State {
+                overprint: true,
+                nonzero: true,
+                direct: true,
+            };
             let (_, nonzero) =
                 previous(&pair, &c, (&target, state), &old_conversion, &mut 0).unwrap();
-            assert_eq!(converter.nonzero(&c), Painted(nonzero), "{context} at {c:?}");
+            assert_eq!(
+                converter.nonzero(&c),
+                Painted(nonzero),
+                "{context} at {c:?}"
+            );
             selective += usize::from(
                 new_painted != Painted::all(target.channels())
                     && new_painted != Painted::all(target.process.components()),
@@ -388,9 +464,12 @@ fn conversions_match_the_previous_selection_bit_for_bit() {
 #[test]
 fn patterns_and_wide_targets_are_rejected() {
     let target = Target::new(Process::Rgb);
-    let error = Converter::new(&ColorSpace::Pattern(None), &target, &Conversion::default()).unwrap_err();
+    let error =
+        Converter::new(&ColorSpace::Pattern(None), &target, &Conversion::default()).unwrap_err();
     assert_eq!(error.kind, pagura_core::ErrorKind::InvalidArgument);
-    let spots: Vec<Name> = (0..62).map(|i| Name::new(format!("S{i}").as_bytes())).collect();
+    let spots: Vec<Name> = (0..62)
+        .map(|i| Name::new(format!("S{i}").as_bytes()))
+        .collect();
     let wide = Target::separated(Process::Cmyk, spots.into());
     let error = Converter::new(&ColorSpace::DeviceGray, &wide, &Conversion::default()).unwrap_err();
     assert_eq!(error.kind, pagura_core::ErrorKind::Limit);

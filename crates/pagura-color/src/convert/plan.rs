@@ -113,7 +113,11 @@ struct Values {
 }
 
 impl Plan {
-    pub(super) fn new(space: &ColorSpace, target: &Target, conversion: &Conversion) -> Result<Self> {
+    pub(super) fn new(
+        space: &ColorSpace,
+        target: &Target,
+        conversion: &Conversion,
+    ) -> Result<Self> {
         let (lookup, base) = match space {
             ColorSpace::Indexed(indexed) => (Some(Lookup::new(indexed)?), &*indexed.base),
             other => (None, other),
@@ -175,7 +179,10 @@ impl Plan {
         {
             // The common case: no buffer of intermediate components.
             let (process, spots) = output.split_at_mut(split);
-            chain.finish(components.get(..MAX_COMPONENTS).unwrap_or(components), process);
+            chain.finish(
+                components.get(..MAX_COMPONENTS).unwrap_or(components),
+                process,
+            );
             spots.fill(1.0);
             return;
         }
@@ -188,7 +195,9 @@ impl Plan {
             Kind::Tints(map) => {
                 output.fill(1.0);
                 for &(component, channel) in map {
-                    if let (Some(out), Some(&tint)) = (output.get_mut(channel), values.slice().get(component)) {
+                    if let (Some(out), Some(&tint)) =
+                        (output.get_mut(channel), values.slice().get(component))
+                    {
                         *out = 1.0 - tint.clamp(0.0, 1.0);
                     }
                 }
@@ -318,7 +327,9 @@ impl Chain {
                         space = &icc.alternate;
                         continue;
                     };
-                    profile.check(conversion.intent)?;
+                    profile
+                        .check(conversion.intent)
+                        .map_err(|error| error.in_object_opt(icc.object))?;
                     rgb(Source::Icc {
                         profile: Arc::clone(profile),
                         intent: conversion.intent,
@@ -593,7 +604,6 @@ impl Values {
     fn slice(&self) -> &[f64] {
         self.values.get(..self.len).unwrap_or(&[])
     }
-
 }
 
 /// `1 − tint` of Separation `All`; a missing tint is full.

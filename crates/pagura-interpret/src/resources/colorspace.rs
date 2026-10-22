@@ -469,6 +469,7 @@ impl<'a> Colors<'a> {
                 alternate: alternate.unwrap_or(default),
                 components: read.components,
                 range: read.range,
+                object: Some(read.object),
             },
         ))))
     }

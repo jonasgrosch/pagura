@@ -2,9 +2,7 @@
 #![expect(clippy::cast_possible_truncation, reason = "small random counts")]
 
 use super::{Pair, oracle::Oracle};
-use crate::function::{
-    ExponentialFunction, Function, SampledFunction, StitchingFunction,
-};
+use crate::function::{ExponentialFunction, Function, SampledFunction, StitchingFunction};
 use pagura_core::Limits;
 use std::sync::Arc;
 
@@ -81,7 +79,11 @@ pub(crate) fn exponential(rng: &mut Rng, outputs: usize) -> Pair {
     };
     let domain = if exponent.fract() != 0.0 || exponent < 0.0 {
         let [a, b] = rng.interval(0.0, 3.0);
-        if exponent < 0.0 { [a + 0.25, b + 0.25] } else { [a, b] }
+        if exponent < 0.0 {
+            [a + 0.25, b + 0.25]
+        } else {
+            [a, b]
+        }
     } else {
         rng.interval(-3.0, 3.0)
     };
@@ -146,9 +148,11 @@ pub(crate) fn sampled_with(rng: &mut Rng, inputs: usize, outputs: usize) -> Pair
             })
             .collect()
     });
-    let decode = rng
-        .chance(40)
-        .then(|| (0..outputs).map(|_| [rng.number(-1.0, 2.0), rng.number(-1.0, 2.0)]).collect());
+    let decode = rng.chance(40).then(|| {
+        (0..outputs)
+            .map(|_| [rng.number(-1.0, 2.0), rng.number(-1.0, 2.0)])
+            .collect()
+    });
     let count = outputs * size.iter().map(|&n| n as usize).product::<usize>();
     let bytes = (count * bits).div_ceil(8) + rng.below(3);
     let samples: Arc<[u8]> = (0..bytes).map(|_| rng.next() as u8).collect();
@@ -206,9 +210,11 @@ pub(crate) fn stitching(rng: &mut Rng, depth: usize) -> Pair {
     let encode: Vec<[f64; 2]> = (0..count)
         .map(|_| [rng.number(-0.5, 1.5), rng.number(-0.5, 1.5)])
         .collect();
-    let range = rng
-        .chance(40)
-        .then(|| (0..outputs).map(|_| rng.interval(-0.5, 1.5)).collect::<Vec<_>>());
+    let range = rng.chance(40).then(|| {
+        (0..outputs)
+            .map(|_| rng.interval(-0.5, 1.5))
+            .collect::<Vec<_>>()
+    });
     Pair {
         old: Oracle::stitching(domain, range.clone(), old, bounds.clone(), encode.clone()),
         new: Arc::new(

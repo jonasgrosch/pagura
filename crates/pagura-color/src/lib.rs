@@ -22,6 +22,4 @@ pub use function::{
     CalculatorFunction, ExponentialFunction, Function, SampledFunction, StitchingFunction,
 };
 pub use icc::{Intent, Profile};
-pub use space::{
-    ColorSpace, Colorant, DeviceN, IccSpace, Indexed, MAX_COMPONENTS, Separation,
-};
+pub use space::{ColorSpace, Colorant, DeviceN, IccSpace, Indexed, MAX_COMPONENTS, Separation};

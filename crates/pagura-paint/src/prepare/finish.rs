@@ -65,6 +65,7 @@ fn transfer_error(plan: &Plan, serial: u32) -> Error {
         "fractional transfer regions require correlated colour coverage",
     )
     .at(position)
+    .in_object_opt(position.object())
 }
 
 /// Rows of the band buffers for a region `height` rows tall.

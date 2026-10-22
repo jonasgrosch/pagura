@@ -3,6 +3,7 @@
 //! from `pagura-color`, behind one seam so that preparation and execution
 //! are tested with synthetic coverage and colours.
 
+use crate::hash::{self, FastMap};
 use crate::paint::{Convert, PaintSpans, StencilPaint};
 use crate::source::{ImageBudgets, ImageSampler, PaintContext, Source};
 use pagura_color::{ColorSpace, Conversion, Converter, Target};
@@ -12,7 +13,6 @@ use pagura_raster::{
     Area, BandCoverage, BandRasterizer, ClipShape, DeviceRect, FillRule, GlyphEdges, GlyphOrigins,
     MarkCoverage, Path, Point, Shape, ShapeOptions, Transform,
 };
-use crate::hash::{self, FastMap};
 use std::fmt;
 use std::sync::Arc;
 

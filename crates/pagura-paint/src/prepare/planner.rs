@@ -10,6 +10,7 @@ use super::storage::{self, Inputs, Storage};
 use super::{Backend, Budget, bounds, index, overprint};
 use crate::execute::Tops;
 use crate::format::Format;
+use crate::hash::{self, FastMap};
 use crate::paint::{Curve, PaintSpans};
 use crate::plan::{
     Compositing, Conversion, GroupPlan, Item, ItemKind, Layout, MaskPlan, Start, area, intersect,
@@ -24,7 +25,6 @@ use pagura_interpret::{
     TilingSpacing,
 };
 use pagura_raster::{Area, DeviceRect, Path, Precision, Transform};
-use crate::hash::{self, FastMap};
 use std::sync::Arc;
 
 /// A prepared solid paint's identity: paint, state, layout and how the
@@ -741,7 +741,7 @@ impl<'s, B: Backend> Planner<'s, B> {
         if self.failed.is_none() {
             self.failed = Some((self.serial, position));
         }
-        error.at(position)
+        error.at(position).in_object_opt(position.object())
     }
 
     /// The selection index of a state's transfer functions.

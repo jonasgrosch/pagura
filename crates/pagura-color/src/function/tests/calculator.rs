@@ -37,8 +37,11 @@ fn pair(parameters: &CalculatorFunction) -> Pair {
 }
 
 fn evaluate(program: &str, inputs: &[f64], outputs: usize) -> Vec<f64> {
-    let function = Function::calculator(parameters(program, inputs.len(), outputs), &Limits::default())
-        .unwrap_or_else(|e| panic!("{program}: {e}"));
+    let function = Function::calculator(
+        parameters(program, inputs.len(), outputs),
+        &Limits::default(),
+    )
+    .unwrap_or_else(|e| panic!("{program}: {e}"));
     let mut out = vec![0.0; outputs];
     function.evaluate(if inputs.is_empty() { &[0.0] } else { inputs }, &mut out);
     out
@@ -70,17 +73,33 @@ const PROGRAMS: &[(&str, usize, usize)] = &[
     ("{ 1 add ln exch 3 add log }", 2, 2),
     ("{ atan }", 2, 1),
     ("{ 2 copy atan 3 1 roll exp }", 2, 2),
-    ("{ 2 copy eq {1} {0} ifelse 3 1 roll ne {1} {0} ifelse }", 2, 2),
+    (
+        "{ 2 copy eq {1} {0} ifelse 3 1 roll ne {1} {0} ifelse }",
+        2,
+        2,
+    ),
     ("{ 2 copy ge 3 1 roll le and {1} {0} ifelse }", 2, 1),
     ("{ 2 copy gt 3 1 roll lt xor {1} {0} ifelse }", 2, 1),
     ("{ 10 mul cvi 3 and exch 10 mul cvi 5 or xor }", 2, 1),
     ("{ 100 mul cvi 7 mod 3 bitshift -1 bitshift }", 1, 1),
     ("{ 100 mul cvi 3 idiv neg abs }", 1, 1),
     ("{ 1 0.5 lt { 0.25 } { 0.75 } ifelse mul }", 1, 1),
-    ("{ dup 0.5 ge { dup 0.75 ge { pop 1 } { pop 0.5 } ifelse } { pop 0 } ifelse }", 1, 1),
-    ("{ 0 1 2 3 4 5 6 7 8 9 10 11 12 roll add add add add add add add add add add }", 0, 1),
+    (
+        "{ dup 0.5 ge { dup 0.75 ge { pop 1 } { pop 0.5 } ifelse } { pop 0 } ifelse }",
+        1,
+        1,
+    ),
+    (
+        "{ 0 1 2 3 4 5 6 7 8 9 10 11 12 roll add add add add add add add add add add }",
+        0,
+        1,
+    ),
     ("{ 3 copy 3 copy pop pop pop pop pop }", 3, 4),
-    ("{ 1 2 3 4 4 1 roll 4 -3 roll 4 0 roll 4 6 roll pop pop pop }", 0, 1),
+    (
+        "{ 1 2 3 4 4 1 roll 4 -3 roll 4 0 roll 4 6 roll pop pop pop }",
+        0,
+        1,
+    ),
     ("{ 0 index 1 index 2 index pop pop pop }", 2, 2),
     ("{ dup dup mul mul 2147483647 cvr mul cvi 2 idiv }", 1, 1),
     ("{ 65535 dup mul 65535 mul exch pop }", 1, 1),
@@ -160,7 +179,12 @@ fn arithmetic_faults_have_defined_results() {
         let function = Function::calculator(function, &Limits::default()).unwrap();
         let mut out = [f64::NAN];
         function.evaluate(&[0.0], &mut out);
-        assert_eq!(out[0].to_bits(), expected.to_bits(), "{program}: {}", out[0]);
+        assert_eq!(
+            out[0].to_bits(),
+            expected.to_bits(),
+            "{program}: {}",
+            out[0]
+        );
     }
 }
 
@@ -194,7 +218,11 @@ fn malformed_programs_fail_with_the_previous_error_kinds() {
         ("{ 2 index }", 1, "calculator index underflow"),
         ("{ 3 1 roll }", 1, "calculator roll underflow"),
         ("{ -1 1 roll }", 1, "negative calculator roll"),
-        ("{ true 1 and }", 0, "mismatched calculator logical operands"),
+        (
+            "{ true 1 and }",
+            0,
+            "mismatched calculator logical operands",
+        ),
         ("{ 1.5 not }", 0, "invalid calculator logical operand"),
         ("{ true 1 add }", 0, "calculator requires numeric operand"),
         ("{ 1.5 2 idiv }", 0, "calculator requires integer"),
@@ -205,7 +233,11 @@ fn malformed_programs_fail_with_the_previous_error_kinds() {
     ] {
         let parameters = parameters(program, inputs, 1);
         let error = Function::calculator(parameters.clone(), &limits).unwrap_err();
-        assert_eq!((error.kind, error.message), (ErrorKind::Syntax, message), "{program}");
+        assert_eq!(
+            (error.kind, error.message),
+            (ErrorKind::Syntax, message),
+            "{program}"
+        );
         assert!(matches!(error.position, Position::Buffer(_)), "{program}");
         let old = Oracle::calculator(&parameters, &limits).unwrap();
         let mut out = [0.0];
@@ -225,13 +257,21 @@ fn data_dependent_programs_are_not_validated() {
         "{ 0.5 gt { 1 2 } { 1 } ifelse pop }",
         "{ 0.5 gt { true } { 1 } ifelse pop 1 }",
     ] {
-        let error = Function::calculator(parameters(program, 1, 1), &Limits::default()).unwrap_err();
-        assert_eq!(error.feature(), Some(crate::features::CALCULATOR), "{program}");
+        let error =
+            Function::calculator(parameters(program, 1, 1), &Limits::default()).unwrap_err();
+        assert_eq!(
+            error.feature(),
+            Some(crate::features::CALCULATOR),
+            "{program}"
+        );
     }
     // A roll of operands of one kind is valid whatever its shift.
     assert!(
-        Function::calculator(parameters("{ 1 2 3 3 index 3 exch cvi roll add add add }", 1, 1), &Limits::default())
-            .is_ok()
+        Function::calculator(
+            parameters("{ 1 2 3 3 index 3 exch cvi roll add add add }", 1, 1),
+            &Limits::default()
+        )
+        .is_ok()
     );
 }
 
@@ -239,13 +279,17 @@ fn data_dependent_programs_are_not_validated() {
 fn limits_bound_nesting_size_and_stack_depth() {
     let deep = format!("{{ {} 1 {} }}", "true {".repeat(70), "} if".repeat(70));
     assert_eq!(
-        Function::calculator(parameters(&deep, 0, 1), &Limits::default()).unwrap_err().kind,
+        Function::calculator(parameters(&deep, 0, 1), &Limits::default())
+            .unwrap_err()
+            .kind,
         ErrorKind::Limit
     );
     // Annex C: at most 100 operands.
     let wide = format!("{{ {} {} }}", "1 ".repeat(101), "add ".repeat(100));
     assert_eq!(
-        Function::calculator(parameters(&wide, 0, 1), &Limits::default()).unwrap_err().kind,
+        Function::calculator(parameters(&wide, 0, 1), &Limits::default())
+            .unwrap_err()
+            .kind,
         ErrorKind::Limit
     );
     let fits = format!("{{ {} {} }}", "1 ".repeat(100), "add ".repeat(99));
@@ -255,26 +299,35 @@ fn limits_bound_nesting_size_and_stack_depth() {
         ..Limits::default()
     };
     assert_eq!(
-        Function::calculator(parameters("{ 1 2 add 3 add }", 0, 1), &limits).unwrap_err().kind,
+        Function::calculator(parameters("{ 1 2 add 3 add }", 0, 1), &limits)
+            .unwrap_err()
+            .kind,
         ErrorKind::Limit
     );
 }
 
 #[test]
 fn cost_bounds_the_previous_work_on_every_path() {
-    let function = Function::calculator(parameters("{ 1 2 add 3 mul }", 0, 1), &Limits::default())
-        .unwrap();
+    let function =
+        Function::calculator(parameters("{ 1 2 add 3 mul }", 0, 1), &Limits::default()).unwrap();
     // The dummy input's pop, five instructions and the call.
     assert_eq!(function.cost(), 7);
     // The longer branch, the conditional itself and the moved values.
     let function = Function::calculator(
-        parameters("{ 0.5 gt { 1 1 add } { 2 } ifelse dup dup 3 copy pop pop pop pop pop }", 1, 1),
+        parameters(
+            "{ 0.5 gt { 1 1 add } { 2 } ifelse dup dup 3 copy pop pop pop pop pop }",
+            1,
+            1,
+        ),
         &Limits::default(),
     )
     .unwrap();
     // 0.5, gt, the conditional and its longer branch, dup, dup, 3, copy and
     // the three values it moves, five pops, and the call itself.
-    assert_eq!(function.cost(), 1 + 1 + (1 + 3) + 1 + 1 + 1 + (1 + 3) + 5 + 1);
+    assert_eq!(
+        function.cost(),
+        1 + 1 + (1 + 3) + 1 + 1 + 1 + (1 + 3) + 5 + 1
+    );
 }
 
 /// A random program that keeps track of operand kinds well enough that
@@ -330,7 +383,10 @@ fn random_program(rng: &mut Rng, inputs: usize, outputs: usize) -> String {
             }
             5 if numbers >= 2 => {
                 push(&mut text, "cvi exch cvi");
-                push(&mut text, ["idiv", "mod", "and", "or", "xor", "bitshift"][rng.below(6)]);
+                push(
+                    &mut text,
+                    ["idiv", "mod", "and", "or", "xor", "bitshift"][rng.below(6)],
+                );
                 kinds.pop();
             }
             6 if kinds.last() == Some(&true) => {

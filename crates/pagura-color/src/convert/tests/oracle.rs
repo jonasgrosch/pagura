@@ -179,7 +179,12 @@ fn indexed<'a>(space: &'a Space, components: &[f64]) -> Result<Option<(&'a Space
     };
     Ok(Some((
         base,
-        indexed_components(base, *high, lookup, components.first().copied().unwrap_or(0.0))?,
+        indexed_components(
+            base,
+            *high,
+            lookup,
+            components.first().copied().unwrap_or(0.0),
+        )?,
     )))
 }
 
@@ -199,7 +204,12 @@ impl Model {
         }
     }
 
-    fn encode_rgb(self, rgb: [f64; 3], conversion: &Conversion, work: &mut usize) -> Result<[f64; 4]> {
+    fn encode_rgb(
+        self,
+        rgb: [f64; 3],
+        conversion: &Conversion,
+        work: &mut usize,
+    ) -> Result<[f64; 4]> {
         Ok(match self {
             Self::Rgb => [rgb[0], rgb[1], rgb[2], 0.0],
             Self::Gray => [lum(rgb), 0.0, 0.0, 0.0],
@@ -341,7 +351,14 @@ pub(crate) fn context_source(
     work: &mut usize,
 ) -> Result<Pass> {
     if let Some((base, decoded)) = indexed(space, components)? {
-        return context_source(base, &decoded, model, (separations, state, batch), conversion, work);
+        return context_source(
+            base,
+            &decoded,
+            model,
+            (separations, state, batch),
+            conversion,
+            work,
+        );
     }
     let spot = batch.is_some();
     let tint_index = |name: &Name| -> Option<usize> {

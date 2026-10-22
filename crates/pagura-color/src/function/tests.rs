@@ -37,7 +37,11 @@ pub(crate) fn compare(pair: &Pair, input: &[f64], context: &str) -> bool {
         old.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
         "{context} at {input:?}: {new:?} != {old:?}"
     );
-    assert!(work <= pair.new.cost(), "{context}: work {work} > cost {}", pair.new.cost());
+    assert!(
+        work <= pair.new.cost(),
+        "{context}: work {work} > cost {}",
+        pair.new.cost()
+    );
     let mut tint_work = 0;
     let tint = pair.old.evaluate_with_work(input, &mut tint_work).unwrap();
     assert_eq!(
@@ -136,6 +140,7 @@ fn faults_have_defined_results() {
 }
 
 #[test]
+#[expect(clippy::too_many_lines, reason = "one table of every constructor case, checked together")]
 fn constructors_keep_the_previous_validation() {
     let exponential = |domain, exponent, c1: Vec<f64>| {
         Function::exponential(ExponentialFunction {
@@ -155,7 +160,9 @@ fn constructors_keep_the_previous_validation() {
     assert!(exponential([-1.0, 1.0], 2.0, vec![1.0]).is_ok());
     assert!(exponential([1.0, 2.0], -0.5, vec![1.0]).is_ok());
     assert_eq!(
-        exponential([0.0, 1.0], 1.0, vec![1.0, 1.0]).unwrap_err().message,
+        exponential([0.0, 1.0], 1.0, vec![1.0, 1.0])
+            .unwrap_err()
+            .message,
         "wrong exponential function output dimension"
     );
     assert_eq!(
@@ -182,9 +189,18 @@ fn constructors_keep_the_previous_validation() {
         (vec![2], 8, 1, &[0][..], "truncated sampled function"),
         (vec![0], 8, 1, &[0, 0][..], "invalid sampled function size"),
         (vec![2], 7, 1, &[0, 0][..], "invalid function BitsPerSample"),
-        (vec![2], 8, 2, &[0, 0][..], "invalid sampled interpolation order"),
+        (
+            vec![2],
+            8,
+            2,
+            &[0, 0][..],
+            "invalid sampled interpolation order",
+        ),
     ] {
-        assert_eq!(sampled(size, bits, order, samples).unwrap_err().message, message);
+        assert_eq!(
+            sampled(size, bits, order, samples).unwrap_err().message,
+            message
+        );
     }
     let limited = Limits {
         decoded_bytes: 1,
@@ -217,11 +233,29 @@ fn constructors_keep_the_previous_validation() {
     };
     assert!(stitching(vec![0.5], vec![[0.0, 1.0]; 2], [0.0, 1.0]).is_ok());
     for (bounds, encode, domain, message) in [
-        (vec![], vec![[0.0, 1.0]; 2], [0.0, 1.0], "wrong stitching bounds or encode count"),
-        (vec![2.0], vec![[0.0, 1.0]; 2], [0.0, 1.0], "stitching bounds outside domain or unordered"),
-        (vec![0.5], vec![[0.0, 1.0]; 2], [0.5, 0.5], "stitching bounds outside domain or unordered"),
+        (
+            vec![],
+            vec![[0.0, 1.0]; 2],
+            [0.0, 1.0],
+            "wrong stitching bounds or encode count",
+        ),
+        (
+            vec![2.0],
+            vec![[0.0, 1.0]; 2],
+            [0.0, 1.0],
+            "stitching bounds outside domain or unordered",
+        ),
+        (
+            vec![0.5],
+            vec![[0.0, 1.0]; 2],
+            [0.5, 0.5],
+            "stitching bounds outside domain or unordered",
+        ),
     ] {
-        assert_eq!(stitching(bounds, encode, domain).unwrap_err().message, message);
+        assert_eq!(
+            stitching(bounds, encode, domain).unwrap_err().message,
+            message
+        );
     }
 }
 

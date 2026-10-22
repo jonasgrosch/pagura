@@ -75,7 +75,9 @@ impl Sampled {
         }
         let size: Box<[usize]> = size
             .iter()
-            .map(|&n| usize::try_from(n).map_err(|_| Error::limit("sampled function size exceeds usize")))
+            .map(|&n| {
+                usize::try_from(n).map_err(|_| Error::limit("sampled function size exceeds usize"))
+            })
             .collect::<Result<_>>()?;
         if size.len() != domain.len() {
             return Err(Error::syntax("wrong sampled function size dimension"));
@@ -233,7 +235,11 @@ impl Sampled {
             let mut remaining = corner;
             for (position, &size) in positions.iter().zip(&self.size) {
                 let len = position.len.max(1);
-                let (index, factor) = position.values.get(remaining % len).copied().unwrap_or((0, 0.0));
+                let (index, factor) = position
+                    .values
+                    .get(remaining % len)
+                    .copied()
+                    .unwrap_or((0, 0.0));
                 remaining /= len;
                 offset = offset.wrapping_add(index.wrapping_mul(stride));
                 stride = stride.wrapping_mul(size);

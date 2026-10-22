@@ -182,8 +182,7 @@ impl Function {
         let range = range.as_deref().map(intervals).transpose()?;
         let outputs = dimensions(1, c0.len())?;
         finite(c0.iter().chain(&c1).copied().chain([exponent]))?;
-        if (exponent.fract() != 0.0 && min < 0.0) || (exponent < 0.0 && min <= 0.0 && max >= 0.0)
-        {
+        if (exponent.fract() != 0.0 && min < 0.0) || (exponent < 0.0 && min <= 0.0 && max >= 0.0) {
             return Err(Error::syntax(
                 "exponential domain includes undefined inputs",
             ));
