@@ -160,7 +160,6 @@ impl<'s, B: Backend> Planner<'s, B> {
                 page,
                 simulate: separations.simulate,
                 policy: request.overprint == crate::request::OverprintMode::Simulate,
-                bytes: request.fast.byte_storage,
                 depth: limits.depth,
                 transform: request.transform,
                 pixels: request.page,
@@ -1041,10 +1040,6 @@ fn own(parts: &Parts, group: u32, rows: usize) -> Tops {
             wide: pixels.saturating_mul(plan.layout.stride()),
             ..Tops::default()
         },
-        Format::U8 => Tops {
-            bytes: pixels,
-            ..Tops::default()
-        },
         Format::F32 | Format::N16 => Tops {
             levels: pixels,
             ..Tops::default()
@@ -1056,7 +1051,6 @@ fn add(a: Tops, b: Tops) -> Tops {
     Tops {
         wide: a.wide.saturating_add(b.wide),
         levels: a.levels.saturating_add(b.levels),
-        bytes: a.bytes.saturating_add(b.bytes),
     }
 }
 
@@ -1064,6 +1058,5 @@ fn max(a: Tops, b: Tops) -> Tops {
     Tops {
         wide: a.wide.max(b.wide),
         levels: a.levels.max(b.levels),
-        bytes: a.bytes.max(b.bytes),
     }
 }

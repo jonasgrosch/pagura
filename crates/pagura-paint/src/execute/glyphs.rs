@@ -7,7 +7,7 @@
 //! order, plus zero-coverage stores at the gaps, which leave every format
 //! as it is. Results are byte-identical.
 
-use super::{Executor, Frame, Opaque, Tops, clamp};
+use super::{Executor, Frame, Tops, clamp};
 use crate::plan::{Glyph, Item, Mark, Run, intersect};
 use pagura_raster::BandCoverage;
 
@@ -69,11 +69,11 @@ impl Executor<'_> {
         &mut self,
         mark: &Mark,
         frame: Frame,
-        opaque: Option<Opaque>,
+        opaque: Option<[u16; 4]>,
         coverage: &BandCoverage,
     ) {
-        if let Some(opaque) = opaque {
-            self.opaque_store(coverage, frame, opaque);
+        if let Some(words) = opaque {
+            self.opaque_store(coverage, frame, words);
             return;
         }
         for row in coverage.rows() {

@@ -321,7 +321,7 @@ fn assert_close(bytes: &[u8], width: u32, (x, y): (u32, u32), expected: [f64; 4]
 
 #[test]
 fn varying_paint_with_alpha_composites_in_every_format() {
-    for format in [Format::F64, Format::F32, Format::N16, Format::U8] {
+    for format in [Format::F64, Format::F32, Format::N16] {
         for band_height in [1, 3, 8] {
             let mut f = Fixture::new(12, 6, RGB, format);
             let gradient = Gradient {
@@ -506,7 +506,6 @@ fn narrow_parents_take_group_results_as_one_rounded_store() {
     for (page, child) in [
         (Format::F32, Format::F32),
         (Format::N16, Format::F64),
-        (Format::U8, Format::U8),
     ] {
         let mut f = Fixture::new(5, 3, RGB, page);
         f.mark(
@@ -560,11 +559,10 @@ fn narrow_parents_take_group_results_as_one_rounded_store() {
         let m = 0.7;
         let back = [0.2, 0.7, 0.4];
         let out = [0, 1, 2].map(|i| (1.0 - m * group_alpha) * back[i] + m * premultiplied[i]);
-        let tolerance = if page == Format::U8 { 2.0 } else { 1.0 };
         let start = ((2 * 5 + 2) * 4) as usize;
         for (channel, (&byte, value)) in bytes[start..start + 3].iter().zip(out).enumerate() {
             assert!(
-                (f64::from(byte) - value * 255.0).abs() <= tolerance,
+                (f64::from(byte) - value * 255.0).abs() <= 1.0,
                 "{page:?} channel {channel}: {byte} against {}",
                 value * 255.0
             );
@@ -744,7 +742,7 @@ fn runs_store_as_one_item_per_placement_with_holes_in_coverage() {
         },
     ];
     let color = [0.8, 0.25, 0.1];
-    for format in [Format::F64, Format::F32, Format::N16, Format::U8] {
+    for format in [Format::F64, Format::F32, Format::N16] {
         for style in styles {
             if format != Format::F64 && style.blend != BlendMode::Normal {
                 continue;

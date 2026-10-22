@@ -15,8 +15,6 @@ pub(crate) enum Buffer {
     Wide(usize),
     /// F32 RGBA levels on the level stack, from this pixel.
     Levels(usize),
-    /// U8 RGBA bytes on the byte stack, from this pixel.
-    Bytes(usize),
 }
 
 /// The next free place of each stack.
@@ -26,8 +24,6 @@ pub(crate) struct Tops {
     pub(crate) wide: usize,
     /// F32 pixels.
     pub(crate) levels: usize,
-    /// U8 pixels.
-    pub(crate) bytes: usize,
 }
 
 impl Tops {
@@ -43,13 +39,6 @@ impl Tops {
                     ..self
                 },
             ),
-            Format::U8 => (
-                Buffer::Bytes(self.bytes),
-                Self {
-                    bytes: self.bytes + pixels,
-                    ..self
-                },
-            ),
             Format::F32 | Format::N16 => (
                 Buffer::Levels(self.levels),
                 Self {
@@ -62,7 +51,7 @@ impl Tops {
 
     /// Whether every stack holds these tops.
     pub(crate) fn within(self, limits: Self) -> bool {
-        self.wide <= limits.wide && self.levels <= limits.levels && self.bytes <= limits.bytes
+        self.wide <= limits.wide && self.levels <= limits.levels
     }
 }
 
@@ -137,8 +126,6 @@ pub(crate) struct Read<'a> {
     pub(crate) wide: &'a [f64],
     /// The level stack.
     pub(crate) levels: &'a [[f32; 4]],
-    /// The byte stack.
-    pub(crate) bytes: &'a [[u8; 4]],
 }
 
 impl Backdrop {
@@ -218,18 +205,12 @@ impl Read<'_> {
             (Buffer::Levels(offset), _) => self.levels.get(offset + index).map_or(0.0, |v| {
                 narrow(v.map(|l| f64::from(l) / 255.0), &mut colors)
             }),
-            (Buffer::Bytes(offset), _) => self.bytes.get(offset + index).map_or(0.0, |v| {
-                narrow(v.map(|b| f64::from(b) / 255.0), &mut colors)
-            }),
             (Buffer::Page, PageBuffer::F64(values)) => wide(values, index * stride, &mut colors),
             (Buffer::Page, PageBuffer::N16(words)) => words.get(index).map_or(0.0, |w| {
                 narrow(w.map(|v| f64::from(v) / 65535.0), &mut colors)
             }),
             (Buffer::Page, PageBuffer::F32(levels)) => levels.get(index).map_or(0.0, |v| {
                 narrow(v.map(|l| f64::from(l) / 255.0), &mut colors)
-            }),
-            (Buffer::Page, PageBuffer::U8(bytes)) => bytes.get(index).map_or(0.0, |v| {
-                narrow(v.map(|b| f64::from(b) / 255.0), &mut colors)
             }),
         };
         (colors, alpha)
