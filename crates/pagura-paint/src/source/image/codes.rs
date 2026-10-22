@@ -878,6 +878,8 @@ struct Scratch {
     levels32: Vec<[f32; 4]>,
     /// The codes of a bilinear span's first source row.
     top: Vec<u8>,
+    /// Runs of one class of a one-bit span's columns.
+    class_runs: Vec<ClassRun>,
 }
 
 /// Rows of codes converted from planar or packed samples, by row and range.
@@ -1404,8 +1406,18 @@ impl Codes {
             return true;
         }
         let whole = self.whole && across.whole();
-        let storage = (&mut scratch.rows, &mut scratch.codes);
-        bit_bytes(grid, (&across, feet, whole), maps, storage, out)
+        let storage = (
+            &mut scratch.rows,
+            &mut scratch.codes,
+            &mut scratch.class_runs,
+        );
+        bit_bytes(
+            grid,
+            (&across, feet, (whole, self.monotone)),
+            maps,
+            storage,
+            out,
+        )
     }
 
     /// The bytes of an averaged span of row `y` from column `x`: bilinear
@@ -2243,9 +2255,9 @@ const fn pair_counts() -> [u16; 256] {
 /// operation.
 fn bit_bytes(
     grid: &Grid<'_>,
-    (across, feet, whole): (&Footprint, &[Footprint], bool),
+    (across, feet, (whole, monotone)): (&Footprint, &[Footprint], (bool, bool)),
     maps: [Affine; 3],
-    (rows, classes): (&mut RowCache, &mut Vec<u8>),
+    (rows, classes, runs): (&mut RowCache, &mut Vec<u8>, &mut Vec<ClassRun>),
     out: &mut [[u8; 4]],
 ) -> bool {
     let Some((first, end)) = extent(feet) else {
@@ -2304,12 +2316,32 @@ fn bit_bytes(
         .max()
         .unwrap_or(0);
     classes.resize(classes.len() + widest.max(8), 0);
+    // Runs of one class at least as wide as the widest footprint.
+    runs.clear();
+    let columns = end - first;
+    let mut start = 0;
+    while start < columns {
+        let class = classes.get(start).copied().unwrap_or(0);
+        let length = classes
+            .get(start..columns)
+            .unwrap_or(&[])
+            .iter()
+            .take_while(|&&other| other == class)
+            .count()
+            .max(1);
+        if length >= widest.max(2) {
+            runs.push((start, start + length, class));
+        }
+        start += length;
+    }
     let span = BitSpan {
         classes,
         first,
         lines: &lines,
         scale: across.normalization,
         maps: (maps, shared),
+        runs,
+        monotone,
     };
     match widest {
         0..=4 => span.fill::<4>(feet, out),
@@ -2320,6 +2352,10 @@ fn bit_bytes(
     true
 }
 
+/// A run of a one-bit span's source columns of one class: its first and
+/// end column, relative to the span's first, and the class.
+type ClassRun = (usize, usize, u8);
+
 /// A device row of [`bit_bytes`]: each source column's class from `first`,
 /// padded past the end, the classes' lines, the row's normalization and
 /// the lanes' maps, and whether they share one.
@@ -2329,6 +2365,10 @@ struct BitSpan<'a> {
     lines: &'a [f64; 256],
     scale: f64,
     maps: ([Affine; 3], bool),
+    /// Runs of columns of one class.
+    runs: &'a [ClassRun],
+    /// Whether the footprints' first and last samples never decrease.
+    monotone: bool,
 }
 
 impl BitSpan<'_> {
@@ -2336,30 +2376,82 @@ impl BitSpan<'_> {
     /// `W` lines: the cells past its last weigh zero, which adds nothing,
     /// so the sum is `columns`' sum without a branch on the width.
     fn fill<const W: usize>(&self, feet: &[Footprint], out: &mut [[u8; 4]]) {
-        for (pixel, foot) in out.iter_mut().zip(feet) {
+        let mut run = 0;
+        let mut i = 0;
+        while let Some(foot) = feet.get(i).filter(|_| i < out.len()) {
+            i += 1;
             let cells = index(foot.end.saturating_sub(foot.first));
             let start = index(foot.first).wrapping_sub(self.first);
-            let Some(window) = self
+            if let Some(more) = self.uniform((start, cells), (feet, i, &mut run), out) {
+                i += more;
+                continue;
+            }
+            let bytes = match self
                 .classes
                 .get(start..start.wrapping_add(W))
                 .and_then(|window| window.first_chunk::<W>())
                 .filter(|_| cells > 0)
-            else {
-                *pixel = [0; 4];
-                continue;
+            {
+                Some(window) => {
+                    let mut sum = foot.first_weight * self.lines[usize::from(window[0])];
+                    for (j, &class) in window.iter().enumerate().skip(1) {
+                        let line = self.lines[usize::from(class)];
+                        let weight = match (j + 1).cmp(&cells) {
+                            std::cmp::Ordering::Less => 1.0,
+                            std::cmp::Ordering::Equal => foot.last_weight,
+                            std::cmp::Ordering::Greater => 0.0,
+                        };
+                        sum += weight * line;
+                    }
+                    self.bytes(sum * (foot.normalization * self.scale))
+                }
+                None => [0; 4],
             };
-            let mut sum = foot.first_weight * self.lines[usize::from(window[0])];
-            for (j, &class) in window.iter().enumerate().skip(1) {
-                let line = self.lines[usize::from(class)];
-                let weight = match (j + 1).cmp(&cells) {
-                    std::cmp::Ordering::Less => 1.0,
-                    std::cmp::Ordering::Equal => foot.last_weight,
-                    std::cmp::Ordering::Greater => 0.0,
-                };
-                sum += weight * line;
+            if let Some(pixel) = out.get_mut(i - 1) {
+                *pixel = bytes;
             }
-            *pixel = self.bytes(sum * (foot.normalization * self.scale));
         }
+    }
+
+    /// Where footprints never step back and the one of pixel `i - 1`
+    /// (`start`, `cells` columns) lies in a run of columns of one class,
+    /// fills it and the following pixels in that run with the bytes of the
+    /// class's line and returns how many followed; `None` otherwise, or
+    /// when the line's level is within [`UNIFORM_NEAR`] of a rounding
+    /// boundary. Such a footprint averages to the line times the row's
+    /// normalization, within the trimming of its weights.
+    fn uniform(
+        &self,
+        (start, cells): (usize, usize),
+        (feet, i, run): (&[Footprint], usize, &mut usize),
+        out: &mut [[u8; 4]],
+    ) -> Option<usize> {
+        if !self.monotone || cells == 0 {
+            return None;
+        }
+        while self.runs.get(*run).is_some_and(|&(_, end, _)| end <= start) {
+            *run += 1;
+        }
+        let &(from, to, class) = self.runs.get(*run)?;
+        if from > start || start + cells > to {
+            return None;
+        }
+        let average = self.lines[usize::from(class)] * self.scale;
+        let ([a, b, c], _) = self.maps;
+        let bytes = [
+            uniform_byte(a, average)?,
+            uniform_byte(b, average)?,
+            uniform_byte(c, average)?,
+            255,
+        ];
+        let rest = feet.get(i..).unwrap_or(&[]);
+        let more = rest.partition_point(|foot| {
+            foot.first < foot.end && index(foot.end).wrapping_sub(self.first) <= to
+        });
+        if let Some(pixels) = out.get_mut(i - 1..i + more) {
+            pixels.fill(bytes);
+        }
+        Some(more)
     }
 
     /// The pixels of `feet` of any width.
@@ -2396,6 +2488,30 @@ impl BitSpan<'_> {
             [a.byte(average), b.byte(average), c.byte(average), 255]
         }
     }
+}
+
+/// How near a level of a run of one class may come to a rounding boundary:
+/// the run's line times the row's normalization differs from a pixel's f64
+/// average there by the trimming of its weights, under 2^-40 of the value.
+const UNIFORM_NEAR: f64 = 1e-8;
+
+/// The byte of the colour `map` gives `average`, unless its level lies
+/// within [`UNIFORM_NEAR`] of a rounding boundary.
+fn uniform_byte(map: Affine, average: f64) -> Option<u8> {
+    let value = if map.unit.is_some() {
+        average * map.level
+    } else {
+        (map.zero + average * map.slope).clamp(0.0, 1.0) * 255.0
+    };
+    let level = value + 0.5 + TIE_GUARD;
+    let fraction = level - level.floor();
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "a level within 0..257 truncates to its floor"
+    )]
+    let byte = level.min(255.0) as u8;
+    (fraction > UNIFORM_NEAR && fraction < 1.0 - UNIFORM_NEAR && level >= 0.0).then_some(byte)
 }
 
 /// In `dirty`, per source column of `reduction` and one past, the count

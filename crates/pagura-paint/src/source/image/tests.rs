@@ -706,7 +706,12 @@ fn packed_image((width, height): (u32, u32), white: bool, seed: u32) -> DecodedI
     let mut rows = vec![0u8; stride * h];
     for (i, &v) in values.iter().enumerate() {
         let (y, x) = (i / w, i % w);
-        let one = if white { v % 7 != 0 } else { v % 2 == 1 };
+        // Mostly white: blocks of white between blocks of noise.
+        let one = if white {
+            (x / 9 + y / 7) % 3 != 0 || v % 2 == 1
+        } else {
+            v % 2 == 1
+        };
         rows[y * stride + x / 8] |= u8::from(one) << (7 - x % 8);
     }
     let packed = pagura_image::deferred::Packed::from_rows(w, h, rows).unwrap();
