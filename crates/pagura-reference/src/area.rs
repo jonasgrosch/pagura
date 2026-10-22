@@ -64,6 +64,27 @@ impl Region {
             FillRule::EvenOdd => winding % 2 != 0,
         }
     }
+
+    fn localized(&self, x: u32, y: u32) -> Result<Self> {
+        if let Some(curve) = &self.curve {
+            return curve.localized(x, y);
+        }
+        let mut local = Self::new(self.rule);
+        for &[a, b] in &self.edges {
+            let shifted = [a, b].map(|p| {
+                let (x, dx) = crate::flatten::subtract(p.x, f64::from(x));
+                let (y, dy) = crate::flatten::subtract(p.y, f64::from(y));
+                (Point::new(x, y), Point::new(dx.abs(), dy.abs()))
+            });
+            let [(a, da), (b, db)] = shifted;
+            let delta = Point::new(da.x.max(db.x), da.y.max(db.y));
+            if let Some(hull) = crate::flatten::Hull::line_error(a, b, delta) {
+                local.hulls.push(hull);
+            }
+            local.edges.push([a, b]);
+        }
+        Ok(local)
+    }
 }
 
 /// Areas whose coverage bytes are unambiguous under the true-curve error
@@ -71,51 +92,125 @@ impl Region {
 /// Refine only curves whose hulls touch an ambiguous pixel; this depends
 /// solely on original controls and the reference's own uncertainty.
 pub(crate) fn rounded_areas(regions: &[Region], window: DeviceRect) -> Result<Areas> {
+    let mut values = areas(regions, window);
     if regions.iter().all(|region| region.curve.is_none()) {
-        return Ok(areas(regions, window));
+        return Ok(values);
     }
-    let mut regions = regions.to_vec();
+    let rect = values.rect();
+    let clipping = canonical_bounds(regions);
+    let mut errors = vec![0.0; pixels(rect)];
+    for region in regions {
+        for hull in &region.hulls {
+            if region.curve.is_some()
+                && let Some(bounds) = clipping
+            {
+                if let Some(hull) = hull.restricted(bounds) {
+                    hull.accumulate(rect, &mut errors);
+                }
+            } else {
+                hull.accumulate(rect, &mut errors);
+            }
+        }
+    }
+    let width =
+        usize::try_from(rect.width()).map_err(|_| Error::limit("reference window too large"))?;
+    for (i, (&error, area)) in errors.iter().zip(&mut values.values).enumerate() {
+        if quantize_unit(*area - error) != quantize_unit(*area + error) {
+            let x = rect.x0
+                + u32::try_from(i % width)
+                    .map_err(|_| Error::limit("reference window too large"))?;
+            let y = rect.y0
+                + u32::try_from(i / width)
+                    .map_err(|_| Error::limit("reference window too large"))?;
+            *area = refined_pixel(regions, x, y)?;
+        }
+    }
+    Ok(values)
+}
+
+/// Subtract the integer pixel before mapping original controls. This
+/// removes absolute-coordinate cancellation without discarding the exact
+/// two-sum tails: they remain coordinate uncertainty in every hull. Clips
+/// use the same local frame with their endpoint subtraction error retained.
+fn refined_pixel(regions: &[Region], x: u32, y: u32) -> Result<f64> {
+    let mut regions = regions
+        .iter()
+        .map(|region| region.localized(x, y))
+        .collect::<Result<Vec<_>>>()?;
+    let pixel = DeviceRect {
+        x0: 0,
+        y0: 0,
+        x1: 1,
+        y1: 1,
+    };
+    let clipping = canonical_bounds(&regions);
     for _ in 0..12 {
-        let areas = areas(&regions, window);
-        let rect = areas.rect();
-        let mut refine = vec![false; regions.len()];
+        let area = areas(&regions, pixel).get(0, 0);
         let errors: Vec<_> = regions
             .iter()
             .map(|region| {
-                if region.hulls.is_empty() {
-                    return Vec::new();
-                }
-                let mut errors = vec![0.0; pixels(rect)];
-                for hull in &region.hulls {
-                    hull.accumulate(rect, &mut errors);
-                }
-                errors
+                region.hulls.iter().fold(0.0, |sum, hull| {
+                    let error = if region.curve.is_some()
+                        && let Some(bounds) = clipping
+                    {
+                        hull.restricted(bounds).map_or(0.0, |hull| hull.error(0, 0))
+                    } else {
+                        hull.error(0, 0)
+                    };
+                    (sum + error) * (1.0 + 4.0 * f64::EPSILON)
+                })
             })
             .collect();
-        for (i, &area) in areas.values.iter().enumerate() {
-            let error = errors.iter().fold(0.0, |sum, errors| {
-                (sum + errors.get(i).copied().unwrap_or(0.0)) * (1.0 + 4.0 * f64::EPSILON)
-            });
-            if quantize_unit(area - error) != quantize_unit(area + error) {
-                for (refine, errors) in refine.iter_mut().zip(&errors) {
-                    *refine |= errors.get(i).is_some_and(|&error| error != 0.0);
-                }
-            }
+        let error = errors
+            .iter()
+            .fold(0.0, |sum, error| (sum + error) * (1.0 + 4.0 * f64::EPSILON));
+        if quantize_unit(area - error) == quantize_unit(area + error) {
+            return Ok(area);
         }
-        if !refine.iter().any(|&needed| needed) {
-            return Ok(areas);
-        }
-        for (region, needed) in regions.iter_mut().zip(refine) {
-            if needed {
-                let curve = region
-                    .curve
-                    .as_ref()
-                    .ok_or(Error::limit("unresolved curve coverage interval"))?;
+        let mut refined = false;
+        for (region, error) in regions.iter_mut().zip(errors) {
+            if error != 0.0
+                && let Some(curve) = &region.curve
+            {
                 *region = curve.refine()?;
+                refined = true;
             }
+        }
+        if !refined {
+            break;
         }
     }
     Err(Error::limit("unresolved curve coverage interval"))
+}
+
+/// Outside any exact polygon clip's bounding box a curve cannot change
+/// the intersection. Localization error of that clip is charged separately.
+fn canonical_bounds(regions: &[Region]) -> Option<[f64; 4]> {
+    regions
+        .iter()
+        .filter(|region| region.curve.is_none())
+        .map(|region| {
+            region
+                .hulls
+                .iter()
+                .fold(region.bounds().unwrap_or([0.0; 4]), |bounds, hull| {
+                    let error = hull.bounds();
+                    [
+                        bounds[0].min(error[0]),
+                        bounds[1].min(error[1]),
+                        bounds[2].max(error[2]),
+                        bounds[3].max(error[3]),
+                    ]
+                })
+        })
+        .reduce(|a, b| {
+            [
+                a[0].max(b[0]),
+                a[1].max(b[1]),
+                a[2].min(b[2]),
+                a[3].min(b[3]),
+            ]
+        })
 }
 
 /// The covered area of each pixel of a rectangle, row by row.

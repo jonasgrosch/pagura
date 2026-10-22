@@ -33,13 +33,36 @@ pub(crate) const CURVE_AREA: f64 = 1.0 / 65536.0;
 /// Halvings after which a curve piece is taken as its chord.
 const MAX_DEPTH: u32 = 48;
 
+/// The area budget and a retained coordinate error from localization.
+#[derive(Debug, Clone, Copy)]
+struct Precision {
+    area: f64,
+    rounding: f64,
+}
+
+impl Precision {
+    const INITIAL: Self = Self {
+        area: CURVE_AREA,
+        rounding: 0.0,
+    };
+}
+
+/// Error-free subtraction: `high + tail` is the exact difference of the
+/// stored inputs (two-sum, without assuming Sterbenz applies).
+pub(crate) fn subtract(value: f64, integer: f64) -> (f64, f64) {
+    let high = value - integer;
+    let virtual_integer = high - value;
+    let tail = (value - (high - virtual_integer)) + (-integer - virtual_integer);
+    (high, tail)
+}
+
 /// A true curve can be rebuilt more finely from the original controls.
 #[derive(Debug, Clone)]
 pub(crate) struct CurveReference {
     outline: Arc<Path>,
     linear: Transform,
     origin: Point,
-    allowance: f64,
+    precision: Precision,
     limits: Limits,
 }
 
@@ -50,7 +73,27 @@ impl CurveReference {
             self.linear,
             self.origin,
             Reference::Curve,
-            self.allowance / 16.0,
+            Precision {
+                area: self.precision.area / 16.0,
+                ..self.precision
+            },
+            &self.limits,
+        )
+    }
+    pub(crate) fn localized(&self, x: u32, y: u32) -> Result<Region> {
+        let (x, dx) = subtract(self.origin.x, f64::from(x));
+        let (y, dy) = subtract(self.origin.y, f64::from(y));
+        let rounding =
+            (self.precision.rounding + dx.abs().max(dy.abs())) * (1.0 + 4.0 * f64::EPSILON);
+        glyph_region_at_area(
+            &self.outline,
+            self.linear,
+            Point::new(x, y),
+            Reference::Curve,
+            Precision {
+                rounding,
+                ..self.precision
+            },
             &self.limits,
         )
     }
@@ -65,7 +108,22 @@ pub(crate) struct Hull {
 }
 
 impl Hull {
-    #[cfg(test)]
+    pub(crate) fn bounds(&self) -> [f64; 4] {
+        self.bounds
+    }
+    pub(crate) fn restricted(&self, bounds: [f64; 4]) -> Option<Self> {
+        let bounds = [
+            self.bounds[0].max(bounds[0]),
+            self.bounds[1].max(bounds[1]),
+            self.bounds[2].min(bounds[2]),
+            self.bounds[3].min(bounds[3]),
+        ];
+        (bounds[0] < bounds[2] && bounds[1] < bounds[3]).then_some(Self {
+            bounds,
+            area: self.area,
+        })
+    }
+
     pub(crate) fn error(&self, x: u32, y: u32) -> f64 {
         let [x0, y0, x1, y1] = self.bounds;
         if x0 < f64::from(x) + 1.0
@@ -77,6 +135,25 @@ impl Hull {
         } else {
             0.0
         }
+    }
+
+    /// Endpoint rounding sweeps at most dx*variation_y+dy*variation_x in
+    /// a unit pixel. Each coordinate of a line has one monotone interval;
+    /// pure tangential rounding of an axis-aligned edge adds no area.
+    pub(crate) fn line_error(a: Point, b: Point, delta: Point) -> Option<Self> {
+        let error = delta.x.max(delta.y);
+        (error != 0.0).then(|| Self {
+            bounds: [
+                (a.x.min(b.x) - error).next_down(),
+                (a.y.min(b.y) - error).next_down(),
+                (a.x.max(b.x) + error).next_up(),
+                (a.y.max(b.y) + error).next_up(),
+            ],
+            area: 2.0
+                * (delta.x * ((b.y - a.y).abs() + 2.0 * delta.y).min(1.0)
+                    + delta.y * ((b.x - a.x).abs() + 2.0 * delta.x).min(1.0))
+                + 8.0 * error * error,
+        })
     }
 
     /// Adds this hull's bound only to pixels its rectangle can meet.
@@ -162,7 +239,14 @@ pub(crate) fn glyph_region(
     reference: Reference,
     limits: &Limits,
 ) -> Result<Region> {
-    glyph_region_at_area(outline, linear, origin, reference, CURVE_AREA, limits)
+    glyph_region_at_area(
+        outline,
+        linear,
+        origin,
+        reference,
+        Precision::INITIAL,
+        limits,
+    )
 }
 
 fn glyph_region_at_area(
@@ -170,7 +254,7 @@ fn glyph_region_at_area(
     linear: Transform,
     origin: Point,
     reference: Reference,
-    allowance: f64,
+    precision: Precision,
     limits: &Limits,
 ) -> Result<Region> {
     let linear = Transform {
@@ -194,7 +278,7 @@ fn glyph_region_at_area(
     } else {
         linear
     };
-    let (contours, hulls) = contours_with_area(outline, device, curves, allowance, limits)?;
+    let (contours, hulls) = contours_with_area(outline, device, curves, precision, limits)?;
     let mut region = region(&contours, FillRule::NonZero, |p| {
         let q = p * linear;
         Point::new(q.x + origin.x, q.y + origin.y)
@@ -205,7 +289,7 @@ fn glyph_region_at_area(
             outline: Arc::new(outline.clone()),
             linear,
             origin,
-            allowance,
+            precision,
             limits: *limits,
         });
     }
@@ -248,14 +332,15 @@ fn contours(
     curves: Curves,
     limits: &Limits,
 ) -> Result<Vec<Contour>> {
-    contours_with_area(path, device, curves, CURVE_AREA, limits).map(|(contours, _)| contours)
+    contours_with_area(path, device, curves, Precision::INITIAL, limits)
+        .map(|(contours, _)| contours)
 }
 
 fn contours_with_area(
     path: &Path,
     device: Transform,
     curves: Curves,
-    area: f64,
+    precision: Precision,
     limits: &Limits,
 ) -> Result<(Vec<Contour>, Vec<Hull>)> {
     if !device.is_finite() {
@@ -278,7 +363,10 @@ fn contours_with_area(
         .iter()
         .filter(|s| matches!(s, Segment::CubicTo { .. }))
         .count();
-    let allowance = area / f64::from(u32::try_from(curve_count.max(1)).unwrap_or(u32::MAX));
+    let allowance = Precision {
+        area: precision.area / f64::from(u32::try_from(curve_count.max(1)).unwrap_or(u32::MAX)),
+        ..precision
+    };
     let mut start = Point::default();
     let mut position = Point::default();
     let mut push = |contour: &mut Contour, point: Point| -> Result<()> {
@@ -361,7 +449,7 @@ fn flatten_curve(
     points: [Point; 4],
     device: Transform,
     curves: Curves,
-    allowance: f64,
+    precision: Precision,
     out: &mut Vec<Point>,
     hulls: &mut Vec<Hull>,
     limits: &Limits,
@@ -374,13 +462,14 @@ fn flatten_curve(
                 .max((p.x * device.b).abs() + (p.y * device.d).abs() + device.f.abs())
         })
         .fold(1.0_f64, f64::max);
-    let mut pending = vec![(points, 0, allowance)];
+    let mut pending = vec![(points, 0, precision.area)];
     while let Some((piece, depth, share)) = pending.pop() {
         let [a, b, c, d] = piece.map(|p| p * device);
         let hull = if curves == Curves::Curve {
             let triangle = |p: Point, q: Point| {
                 let (u, v) = (p - a, q - a);
-                let error = magnitude * f64::EPSILON * 32.0 * f64::from(depth + 4);
+                let error =
+                    magnitude * f64::EPSILON * 32.0 * f64::from(depth + 4) + precision.rounding;
                 let products = (u.x * v.y).abs() + (u.y * v.x).abs();
                 let determinant = (u.x * v.y - u.y * v.x).abs()
                     + 16.0 * f64::EPSILON * products
@@ -390,7 +479,8 @@ fn flatten_curve(
             };
             let area =
                 (triangle(b, c) + triangle(b, d) + triangle(c, d)) * (1.0 + 16.0 * f64::EPSILON);
-            let rounding = magnitude * f64::EPSILON * 32.0 * f64::from(depth + 4);
+            let rounding =
+                magnitude * f64::EPSILON * 32.0 * f64::from(depth + 4) + precision.rounding;
             let bounds = [
                 a.x.min(b.x).min(c.x).min(d.x) - rounding,
                 a.y.min(b.y).min(c.y).min(d.y) - rounding,
@@ -504,6 +594,105 @@ mod tests {
                 .sum();
             assert!(errors[0] >= sum);
             assert!(errors[0] <= CURVE_AREA);
+        }
+    }
+
+    #[test]
+    fn local_half_level_intervals_preserve_translation_tails() {
+        let (high, tail) = subtract(1.0 / 3.0, 17.0);
+        assert_ne!(tail, 0.0);
+        assert_eq!((high + 17.0) + tail, 1.0 / 3.0);
+
+        let mut path = PathBuilder::new();
+        let h = 3.0 * (47.5 + 0.000_022) / 255.0;
+        for _ in 0..32 {
+            path.move_to(Point::default());
+            path.cubic_to(
+                Point::new(1.0 / 3.0, 2.0 * h / 3.0),
+                Point::new(2.0 / 3.0, 2.0 * h / 3.0),
+                Point::new(1.0, 0.0),
+            )
+            .unwrap();
+            path.close();
+        }
+        let path = path.finish();
+        // Same-direction coincident contours still have this one arch's
+        // analytic area h/3. Refining at a large absolute origin must not
+        // confuse the rounding floor with a genuine half-level ambiguity.
+        for offset in [0, 10_000] {
+            let region = glyph_region(
+                &path,
+                Transform::IDENTITY,
+                Point::new(f64::from(offset), f64::from(offset)),
+                Reference::Curve,
+                &Limits::default(),
+            )
+            .unwrap();
+            let pixel = DeviceRect {
+                x0: offset,
+                y0: offset,
+                x1: offset + 1,
+                y1: offset + 1,
+            };
+            assert_eq!(crate::exact::coverage(&[region], pixel).unwrap(), [48]);
+        }
+    }
+
+    #[test]
+    fn translated_clips_exclude_hulls_outside_their_fractional_bounds() {
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(-1.0, 0.0));
+        path.cubic_to(
+            Point::new(0.0, 1.0),
+            Point::new(1.0, 1.0),
+            Point::new(2.0, 0.0),
+        )
+        .unwrap();
+        path.close();
+        let path = path.finish();
+        // Across this pixel the quadratic boundary is above1/2. A clip at
+        // height0.3 therefore covers exactly that stored height, even though
+        // the curve's hulls touch the same pixel beyond the clip. Their area
+        // uncertainty cannot affect this genuine coverage half-level.
+        for offset in [0, 10_000] {
+            let base = f64::from(offset);
+            let mark = glyph_region(
+                &path,
+                Transform::IDENTITY,
+                Point::new(base + 0.2, base),
+                Reference::Curve,
+                &Limits::default(),
+            )
+            .unwrap();
+            assert!(
+                mark.hulls
+                    .iter()
+                    .any(|hull| hull.error(offset, offset) > 0.0)
+            );
+            // A far endpoint makes subtraction retain a nonzero two-sum
+            // tail at the translated placement; it is tangential to its edge.
+            let left = if offset == 0 { -0.1 } else { 1.0 / 3.0 };
+            let top = base + 0.3;
+            let clip = Path::rect(
+                pagura_core::Rect::from_corners(left, base - 0.1, base + 1.1, top).unwrap(),
+            );
+            let clip = path_region(
+                &clip,
+                Transform::IDENTITY,
+                FillRule::NonZero,
+                &Limits::default(),
+            )
+            .unwrap();
+            let pixel = DeviceRect {
+                x0: offset,
+                y0: offset,
+                x1: offset + 1,
+                y1: offset + 1,
+            };
+            assert_eq!(
+                crate::exact::coverage(&[mark, clip], pixel).unwrap(),
+                [pagura_raster::quantize_unit(top - base)]
+            );
         }
     }
 
