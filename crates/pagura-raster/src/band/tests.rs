@@ -1,5 +1,11 @@
 //! Differential and invariance tests of the band rasterizer against the
 //! exact backends it replaces.
+#![expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::range_plus_one,
+    reason = "test geometry is small, nonnegative and counted from one"
+)]
 
 mod approximate;
 mod binned;
@@ -27,10 +33,6 @@ impl Lcg {
     pub(super) fn grid(&mut self, lo: f64, hi: f64, steps: u32) -> f64 {
         let span = ((hi - lo) * f64::from(steps)) as u32;
         lo + f64::from(self.next() % span.max(1)) / f64::from(steps)
-    }
-
-    pub(super) fn unit(&mut self) -> f64 {
-        f64::from(self.next()) / f64::from(1_u32 << 31)
     }
 }
 
@@ -65,7 +67,11 @@ pub(super) fn raster(
         let mut last_row = None;
         for row in band.rows() {
             assert!(last_row.is_none_or(|y| y < row.y), "rows in order");
-            assert!(area.band_rows(b).contains(&row.y), "row {} outside band {b}", row.y);
+            assert!(
+                area.band_rows(b).contains(&row.y),
+                "row {} outside band {b}",
+                row.y
+            );
             last_row = Some(row.y);
             let line = (row.y - area.region.y0) as usize * width;
             let mut last_end = 0;
@@ -77,7 +83,9 @@ pub(super) fn raster(
                         (x, coverage.to_vec())
                     }
                 };
-                assert!(x >= area.region.x0 && x as usize + values.len() <= area.region.x1 as usize);
+                assert!(
+                    x >= area.region.x0 && x as usize + values.len() <= area.region.x1 as usize
+                );
                 assert!(x >= last_end, "spans in order");
                 last_end = x + values.len() as u32;
                 let start = line + (x - area.region.x0) as usize;
@@ -183,7 +191,11 @@ pub(super) fn invariant_with(
             let shape = prepare(&opts);
             let (coverage, work) = if let Some(shape) = &shape {
                 let (c, w) = raster(&sub, Some(shape), clip_shape.as_ref());
-                assert!(w <= shape.work(), "work {w} beyond its bound {}", shape.work());
+                assert!(
+                    w <= shape.work(),
+                    "work {w} beyond its bound {}",
+                    shape.work()
+                );
                 (c, w)
             } else {
                 (vec![0; (region.width() * region.height()) as usize], 0)
@@ -206,8 +218,10 @@ pub(super) fn invariant_with(
                 Some(full) => {
                     let width = r.width() as usize;
                     for y in 0..region.height() as usize {
-                        let a = &coverage[y * region.width() as usize..(y + 1) * region.width() as usize];
-                        let start = (y + (region.y0 - r.y0) as usize) * width + (region.x0 - r.x0) as usize;
+                        let a = &coverage
+                            [y * region.width() as usize..(y + 1) * region.width() as usize];
+                        let start =
+                            (y + (region.y0 - r.y0) as usize) * width + (region.x0 - r.x0) as usize;
                         let b = &full[start..start + region.width() as usize];
                         assert_eq!(a, b, "band height {height}, region {region:?}, row {y}");
                     }

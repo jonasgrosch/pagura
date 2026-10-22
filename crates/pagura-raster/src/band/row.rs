@@ -98,11 +98,7 @@ impl Row {
         if a.y == b.y {
             return 0;
         }
-        let (upper, lower, d) = if a.y < b.y {
-            (a, b, 1.0)
-        } else {
-            (b, a, -1.0)
-        };
+        let (upper, lower, d) = if a.y < b.y { (a, b, 1.0) } else { (b, a, -1.0) };
         let lo = upper.y.max(top);
         let hi = lower.y.min(top + 1.0);
         if lo >= hi {
@@ -129,7 +125,9 @@ impl Row {
                 self.add_cover(first, h);
                 return 1;
             }
-            self.add_area(first, h * ((start + 1.0) - (xa + xb) * 0.5));
+            #[expect(clippy::manual_midpoint, reason = "bounded coordinates; one rounding")]
+            let middle = (xa + xb) * 0.5;
+            self.add_area(first, h * ((start + 1.0) - middle));
             self.add_cover(first + 1, h);
             return 2;
         }
@@ -252,7 +250,11 @@ impl Row {
     /// The prefix integral at every touched cell, in order, for analysis;
     /// `visit` receives the column, its area and the cover up to and
     /// including it. Clears the touched cells of `from..to`.
-    pub(crate) fn drain(&mut self, (from, to): (usize, usize), mut visit: impl FnMut(usize, f64, f64)) {
+    pub(crate) fn drain(
+        &mut self,
+        (from, to): (usize, usize),
+        mut visit: impl FnMut(usize, f64, f64),
+    ) {
         let base = usize::try_from(self.base).unwrap_or(0);
         let to = to.min(self.end()).saturating_sub(base);
         let from = from.saturating_sub(base);
@@ -338,13 +340,7 @@ mod tests {
         r.emit((0, 8), FillRule::NonZero, &mut out);
         assert_eq!(
             out.0,
-            [
-                (0, 1, 0),
-                (1, 2, 191),
-                (2, 5, 255),
-                (5, 6, 128),
-                (6, 8, 0)
-            ]
+            [(0, 1, 0), (1, 2, 191), (2, 5, 255), (5, 6, 128), (6, 8, 0)]
         );
         assert!(r.touched.iter().all(|&w| w == 0));
         assert!(r.area.iter().chain(&r.cover).all(|&v| v == 0.0));

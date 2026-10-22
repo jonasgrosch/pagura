@@ -61,7 +61,13 @@ impl GlyphEdges {
             return Err(Error::invalid_argument("glyph linear map is not finite"));
         }
         let mut contours: Vec<Polyline> = Vec::new();
-        let count = flatten_into(outline, transform, limits, &mut contours, &mut CurveStack::new())?;
+        let count = flatten_into(
+            outline,
+            transform,
+            limits,
+            &mut contours,
+            &mut CurveStack::new(),
+        )?;
         contours.truncate(count);
         classify(outline, transform, &mut contours)?;
         let mut polygon = Polygon::default();
@@ -114,7 +120,11 @@ impl GlyphEdges {
         let retained = size_of::<Self>()
             .saturating_add(polygon.points.capacity() * size_of::<Point>())
             .saturating_add(polygon.starts.capacity() * size_of::<usize>())
-            .saturating_add(curves.as_ref().map_or(0, |c| c.capacity() * size_of::<Piece>()));
+            .saturating_add(
+                curves
+                    .as_ref()
+                    .map_or(0, |c| c.capacity() * size_of::<Piece>()),
+            );
         if retained > limits.decoded_bytes {
             return Err(Error::limit("glyph geometry byte budget exceeded"));
         }
@@ -226,7 +236,7 @@ pub(crate) fn place(
         polygon.cell(p, options.limits)?;
     }
     if options.precision == Precision::Approximate {
-        return super::approximate::glyph(polygon, options);
+        return super::approximate::glyph(&polygon, options);
     }
     let winding = if exact.certified {
         Winding::Certified
@@ -278,4 +288,3 @@ fn classify(outline: &Path, transform: Transform, contours: &mut [Polyline]) -> 
     }
     Ok(())
 }
-

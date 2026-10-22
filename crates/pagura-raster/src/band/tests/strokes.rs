@@ -22,20 +22,23 @@ fn check(
     (adjustment, partitions): (Adjustment, bool),
     tally: &mut Tally,
 ) {
-    let prepare =
-        |options: &Prep<'_>| Shape::stroke_in(path, stroke, (pen, transform), adjustment, options).unwrap();
+    let prepare = |options: &Prep<'_>| {
+        Shape::stroke_in(path, stroke, (pen, transform), adjustment, options).unwrap()
+    };
     let new = if partitions {
         invariant(area, &prepare, None)
     } else {
         let limits = Limits::default();
-        prepare(&options(*area, &limits, None))
-            .map_or_else(|| vec![0; (area.region.width() * area.region.height()) as usize], |s| {
-                raster(area, Some(&s), None).0
-            })
+        prepare(&options(*area, &limits, None)).map_or_else(
+            || vec![0; (area.region.width() * area.region.height()) as usize],
+            |s| raster(area, Some(&s), None).0,
+        )
     };
     let user = path.transformed(pen.inverse().unwrap());
     let outline = match adjustment {
-        Adjustment::None => crate::stroke_outline(&user, pen.then(transform), stroke, &Limits::default()),
+        Adjustment::None => {
+            crate::stroke_outline(&user, pen.then(transform), stroke, &Limits::default())
+        }
         Adjustment::Adjusted => {
             crate::adjusted_stroke_outline(&user, pen.then(transform), stroke, &Limits::default())
         }
@@ -72,8 +75,12 @@ fn paths(rng: &mut Lcg) -> Vec<Path> {
     out.push(path.finish());
     let mut path = PathBuilder::new();
     path.move_to(Point::new(5.0, 25.0));
-    path.cubic_to(Point::new(12.0, 2.0), Point::new(30.0, 40.0), Point::new(36.0, 8.0))
-        .unwrap();
+    path.cubic_to(
+        Point::new(12.0, 2.0),
+        Point::new(30.0, 40.0),
+        Point::new(36.0, 8.0),
+    )
+    .unwrap();
     out.push(path.finish());
     let mut path = PathBuilder::new();
     path.move_to(Point::new(17.5, 17.5));
@@ -94,22 +101,54 @@ fn paths(rng: &mut Lcg) -> Vec<Path> {
         path.finish()
     };
     out.push(polyline(
-        &[(6.0, 6.0), (6.0, 20.0), (8.1, 24.2), (12.0, 25.3), (16.2, 24.1), (18.0, 20.0), (18.0, 6.5)],
+        &[
+            (6.0, 6.0),
+            (6.0, 20.0),
+            (8.1, 24.2),
+            (12.0, 25.3),
+            (16.2, 24.1),
+            (18.0, 20.0),
+            (18.0, 6.5),
+        ],
         false,
     ));
     out.push(polyline(
-        &[(24.0, 4.0), (38.0, 4.5), (38.0, 12.0), (30.2, 12.3), (30.0, 26.0), (24.3, 26.0)],
+        &[
+            (24.0, 4.0),
+            (38.0, 4.5),
+            (38.0, 12.0),
+            (30.2, 12.3),
+            (30.0, 26.0),
+            (24.3, 26.0),
+        ],
         true,
     ));
     let mut path = PathBuilder::new();
     path.move_to(Point::new(8.0, 30.0));
-    path.cubic_to(Point::new(40.0, 34.0), Point::new(36.0, 4.0), Point::new(20.0, 14.0))
-        .unwrap();
-    path.cubic_to(Point::new(10.0, 20.0), Point::new(16.0, 31.0), Point::new(26.5, 27.5))
-        .unwrap();
+    path.cubic_to(
+        Point::new(40.0, 34.0),
+        Point::new(36.0, 4.0),
+        Point::new(20.0, 14.0),
+    )
+    .unwrap();
+    path.cubic_to(
+        Point::new(10.0, 20.0),
+        Point::new(16.0, 31.0),
+        Point::new(26.5, 27.5),
+    )
+    .unwrap();
     out.push(path.finish());
     out.push(polyline(
-        &[(4.0, 8.0), (10.0, 16.0), (16.0, 8.5), (22.0, 16.5), (28.0, 9.0), (34.0, 17.0), (20.0, 30.0), (5.0, 24.0)],
+        &[
+            (4.0, 8.0),
+            (10.0, 16.0),
+            (16.0, 8.5),
+            (22.0, 16.5),
+            (28.0, 9.0),
+            (34.0, 17.0),
+            (20.0, 30.0),
+            (5.0, 24.0),
+        ],
         false,
     ));
     out
@@ -123,7 +162,10 @@ fn strokes_of_every_class_match_the_old_backends() {
     let transforms = [
         (Transform::IDENTITY, Transform::IDENTITY),
         (Transform::scale(0.5, 0.5), Transform::scale(2.0, 2.0)),
-        (Transform::new(1.0, 0.0, 0.3, 0.8, 0.0, 0.0), Transform::IDENTITY),
+        (
+            Transform::new(1.0, 0.0, 0.3, 0.8, 0.0, 0.0),
+            Transform::IDENTITY,
+        ),
     ];
     let mut tallies = std::collections::BTreeMap::new();
     for cap in [LineCap::Butt, LineCap::ProjectingSquare, LineCap::Round] {
@@ -147,7 +189,14 @@ fn strokes_of_every_class_match_the_old_backends() {
                                 );
                                 let tally: &mut Tally = tallies.entry(class).or_default();
                                 let partitions = t == 0 && width != 0.6;
-                                check(&area, path, &stroke, transform, (adjustment, partitions), tally);
+                                check(
+                                    &area,
+                                    path,
+                                    &stroke,
+                                    transform,
+                                    (adjustment, partitions),
+                                    tally,
+                                );
                             }
                         }
                     }
@@ -168,7 +217,11 @@ fn strokes_of_every_class_match_the_old_backends() {
 fn singular_pens_are_unsupported() {
     let limits = Limits::default();
     let area = area(0, 0, 8, 8, 4);
-    let path = polygon(&[Point::new(1.0, 1.0), Point::new(5.0, 5.0), Point::new(1.0, 5.0)]);
+    let path = polygon(&[
+        Point::new(1.0, 1.0),
+        Point::new(5.0, 5.0),
+        Point::new(1.0, 5.0),
+    ]);
     let error = Shape::stroke(
         &path,
         &Stroke::default(),

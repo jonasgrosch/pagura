@@ -190,14 +190,20 @@ impl Polygon {
         let allocation = |_| Error::limit("raster geometry allocation failed");
         let order = |p: Point, q: Point| p.x.total_cmp(&q.x).then(p.y.total_cmp(&q.y));
         let mut edges: Vec<(Point, Point)> = Vec::new();
-        edges.try_reserve_exact(self.points.len()).map_err(allocation)?;
+        edges
+            .try_reserve_exact(self.points.len())
+            .map_err(allocation)?;
         for contour in self.contours() {
             let n = contour.len();
             edges.extend((0..n).map(|i| (contour[i], contour[(i + 1) % n])));
         }
         // Each edge by its undirected key; opposite directions cancel.
         let key = |&(a, b): &(Point, Point)| {
-            if order(a, b).is_le() { (a, b, true) } else { (b, a, false) }
+            if order(a, b).is_le() {
+                (a, b, true)
+            } else {
+                (b, a, false)
+            }
         };
         edges.sort_unstable_by(|e, f| {
             let (e, f) = (key(e), key(f));
@@ -345,7 +351,8 @@ pub(crate) fn chained(
         }
         let enclosed = hi.x.ceil() - lo.x.floor() <= 1.0 && hi.y.ceil() - lo.y.floor() <= 1.0;
         let count = u32::try_from(n).map_err(|_| Error::limit("contour exceeds u32"))?;
-        let contour_index = u32::try_from(contour_number).map_err(|_| Error::limit("contours exceed u32"))?;
+        let contour_index =
+            u32::try_from(contour_number).map_err(|_| Error::limit("contours exceed u32"))?;
         for (i, index) in (0..n).zip(0_u32..) {
             out.push(Chained {
                 line: Line {
@@ -464,7 +471,13 @@ impl Bounds {
 )]
 pub(crate) fn pixels([min, max]: [Point; 2], region: DeviceRect, floor_cells: bool) -> DeviceRect {
     let clamp = |v: f64, lo: u32, hi: u32| v.clamp(f64::from(lo), f64::from(hi)) as u32;
-    let end = |v: f64| if floor_cells { v.floor() + 1.0 } else { v.ceil() };
+    let end = |v: f64| {
+        if floor_cells {
+            v.floor() + 1.0
+        } else {
+            v.ceil()
+        }
+    };
     let rect = DeviceRect {
         x0: clamp(min.x.floor(), region.x0, region.x1),
         y0: clamp(min.y.floor(), region.y0, region.y1),
@@ -617,7 +630,9 @@ impl RowList {
             return Err(Error::limit("row list exceeds u32"));
         }
         let allocation = |_| Error::limit("row list allocation failed");
-        list.offsets.try_reserve_exact(span + 1).map_err(allocation)?;
+        list.offsets
+            .try_reserve_exact(span + 1)
+            .map_err(allocation)?;
         list.offsets.resize(span + 1, 0);
         let clamp = |i: usize| {
             let (a, b) = ranges(i)?;
@@ -630,15 +645,18 @@ impl RowList {
                 for row in a..=b {
                     list.offsets[row + 1] += 1;
                 }
-                total = total
-                    .checked_add((b - a) as u32 + 1)
+                total = u32::try_from(b - a + 1)
+                    .ok()
+                    .and_then(|n| total.checked_add(n))
                     .ok_or(Error::limit("row list exceeds u32"))?;
             }
         }
         for row in 0..span {
             list.offsets[row + 1] += list.offsets[row];
         }
-        list.items.try_reserve_exact(total as usize).map_err(allocation)?;
+        list.items
+            .try_reserve_exact(total as usize)
+            .map_err(allocation)?;
         list.items.resize(total as usize, 0);
         // Fill each row from its start, which leaves every start at the
         // next row's; shifting restores them.
@@ -646,7 +664,8 @@ impl RowList {
             if let Some((a, b)) = clamp(i) {
                 for row in a..=b {
                     let slot = &mut list.offsets[row];
-                    list.items[*slot as usize] = i as u32;
+                    // Checked above: the item count fits u32.
+                    list.items[*slot as usize] = u32::try_from(i).unwrap_or(u32::MAX);
                     *slot += 1;
                 }
             }
@@ -692,7 +711,9 @@ pub(crate) fn line_work(line: Line, (first, last): (u32, u32), width: usize) -> 
         reason = "bounded nonnegative width"
     )]
     let columns = (dx.ceil() as usize).min(rows.saturating_mul(width));
-    rows.saturating_mul(4).saturating_add(columns).saturating_add(2)
+    rows.saturating_mul(4)
+        .saturating_add(columns)
+        .saturating_add(2)
 }
 
 #[cfg(test)]
@@ -794,9 +815,13 @@ mod tests {
         path.line_to(Point::new(2.0, 0.0)).unwrap();
         path.line_to(Point::new(2.0, 2.0)).unwrap();
         path.line_to(Point::new(0.0, 0.0)).unwrap();
-        let polygon =
-            Polygon::from_path(&path.finish(), Transform::IDENTITY, None, &Limits::default())
-                .unwrap();
+        let polygon = Polygon::from_path(
+            &path.finish(),
+            Transform::IDENTITY,
+            None,
+            &Limits::default(),
+        )
+        .unwrap();
         let contours: Vec<_> = polygon.contours().collect();
         assert_eq!(contours.len(), 2);
         assert_eq!(contours[0][0], Point::new(1.0, 2.0));

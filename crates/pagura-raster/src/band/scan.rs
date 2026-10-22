@@ -14,7 +14,7 @@
 use super::edges::{Chained, Line, Place, rows};
 use super::resolve::{LocalEdge, Resolver};
 use super::row::{Row, fold};
-use crate::{FillRule, Point};
+use crate::FillRule;
 use pagura_core::{Error, Meter, Result};
 
 const NONE: u32 = u32::MAX;
@@ -33,7 +33,6 @@ pub(crate) struct RowPiece {
     /// Whether the edge runs from `(xa, ya)` to `(xb, yb)`.
     forward: bool,
     chain: u32,
-    group: u8,
     enclosed: bool,
     place: Place,
     /// Whether `(xa, ya)` and `(xb, yb)` are the edge's own end points
@@ -55,7 +54,6 @@ impl RowPiece {
                 direction: 0.0,
                 forward: true,
                 chain: edge.chain,
-                group: edge.group,
                 enclosed: edge.enclosed,
                 place: edge.place,
                 vertices: [true, true],
@@ -74,7 +72,6 @@ impl RowPiece {
             direction: if down { 1.0 } else { -1.0 },
             forward: down,
             chain: edge.chain,
-            group: edge.group,
             enclosed: edge.enclosed,
             place: edge.place,
             vertices: if down { ends } else { [ends[1], ends[0]] },
@@ -164,10 +161,18 @@ impl RowPiece {
         let mut carried = 0.0;
         if self.direction != 0.0 && self.xa.min(self.xb) < c {
             let y = self.y_at(c);
-            let height = if self.xa < c { y - self.ya } else { self.yb - y };
+            let height = if self.xa < c {
+                y - self.ya
+            } else {
+                self.yb - y
+            };
             carried = self.direction * height;
         }
-        let traversal = if self.forward { pb.0 - pa.0 } else { pa.0 - pb.0 };
+        let traversal = if self.forward {
+            pb.0 - pa.0
+        } else {
+            pa.0 - pb.0
+        };
         if traversal != 0.0 {
             let delta = if traversal > 0.0 { -1 } else { 1 };
             for (x, y) in [pa, pb] {
@@ -241,7 +246,12 @@ fn perimeter(edges: &[LocalEdge], (bottom, top): (f64, f64)) -> Option<Windings>
     let mut heights: Vec<f64> = Vec::new();
     heights.try_reserve(2 * edges.len() + 2).ok()?;
     heights.extend([bottom, top]);
-    heights.extend(edges.iter().flat_map(|e| [e.y0, e.y1]).filter(|&y| y > bottom && y < top));
+    heights.extend(
+        edges
+            .iter()
+            .flat_map(|e| [e.y0, e.y1])
+            .filter(|&y| y > bottom && y < top),
+    );
     heights.sort_unstable_by(f64::total_cmp);
     heights.dedup();
     // The left and right sides, between consecutive end heights.
@@ -294,7 +304,12 @@ fn meet([a, b]: [(f64, f64); 2], [c, d]: [(f64, f64); 2], adjacent: bool) -> boo
     let within = |p: (f64, f64), q: (f64, f64), r: (f64, f64)| {
         p.0.min(q.0) <= r.0 && r.0 <= p.0.max(q.0) && p.1.min(q.1) <= r.1 && r.1 <= p.1.max(q.1)
     };
-    let (o1, o2, o3, o4) = (orient(a, b, c), orient(a, b, d), orient(c, d, a), orient(c, d, b));
+    let (o1, o2, o3, o4) = (
+        orient(a, b, c),
+        orient(a, b, d),
+        orient(c, d, a),
+        orient(c, d, b),
+    );
     if o1 * o2 < 0 && o3 * o4 < 0 {
         return true;
     }
@@ -330,10 +345,6 @@ impl Stored {
         }
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
-        self.cells.is_empty()
-    }
-
     pub(crate) fn len(&self) -> usize {
         self.cells.len()
     }
@@ -344,7 +355,8 @@ impl Stored {
             .and_then(|()| self.rows.try_reserve(1))
             .map_err(|_| Error::limit("resolved cell allocation failed"))?;
         self.cells.push((x, value));
-        let end = u32::try_from(self.cells.len()).map_err(|_| Error::limit("resolved cells exceed u32"))?;
+        let end = u32::try_from(self.cells.len())
+            .map_err(|_| Error::limit("resolved cells exceed u32"))?;
         match self.rows.last_mut() {
             Some(last) if last.0 == y => last.1 = end,
             _ => self.rows.push((y, end)),
@@ -402,6 +414,9 @@ impl Cell {
     }
 }
 
+/// A piece's part within a cell, its chain and its place.
+type Part = ([(f64, f64); 2], u32, Place);
+
 /// Reusable analysis storage for the cells of one column range.
 #[derive(Debug)]
 pub(crate) struct Scanner {
@@ -414,6 +429,8 @@ pub(crate) struct Scanner {
     listed: Vec<u32>,
     pub(crate) cells: Vec<Cell>,
     local: Vec<LocalEdge>,
+    /// The parts of a walked cell's pieces, with their chains and places.
+    parts: Vec<Part>,
     resolver: Resolver,
     top: f64,
     /// The heights of the current row the geometry is clipped to, from
@@ -435,6 +452,7 @@ impl Scanner {
             listed: Vec::new(),
             cells: Vec::new(),
             local: Vec::new(),
+            parts: Vec::new(),
             resolver: Resolver::default(),
             top: 0.0,
             span: (0.0, 1.0),
@@ -445,7 +463,6 @@ impl Scanner {
         scanner.tag.resize(width, NONE);
         Ok(scanner)
     }
-
 
     /// Loads row `y` from the edges `items` selects, accumulating their
     /// signed areas and listing their pieces per cell, then collects the
@@ -477,7 +494,8 @@ impl Scanner {
                 let cells = self.row.line(edge.line, self.top);
                 meter.charge(cells)?;
             }
-            let id = u32::try_from(self.pieces.len()).map_err(|_| Error::limit("row pieces exceed u32"))?;
+            let id = u32::try_from(self.pieces.len())
+                .map_err(|_| Error::limit("row pieces exceed u32"))?;
             self.pieces
                 .try_reserve(1)
                 .map_err(|_| Error::limit("row piece allocation failed"))?;
@@ -492,15 +510,23 @@ impl Scanner {
                 .try_reserve(usize::try_from(last - first + 1).unwrap_or(usize::MAX))
                 .map_err(|_| Error::limit("cell list allocation failed"))?;
             for column in first..=last {
-                #[expect(clippy::cast_sign_loss, reason = "clamped to the row")]
+                #[expect(
+                    clippy::cast_sign_loss,
+                    clippy::cast_possible_truncation,
+                    reason = "clamped to the row"
+                )]
                 let x = (column - base) as usize;
-                let node = u32::try_from(self.nodes.len()).map_err(|_| Error::limit("cell lists exceed u32"))?;
+                let node = u32::try_from(self.nodes.len())
+                    .map_err(|_| Error::limit("cell lists exceed u32"))?;
                 self.nodes.push((id, self.head[x]));
                 if self.head[x] == NONE {
                     self.listed
                         .try_reserve(1)
                         .map_err(|_| Error::limit("cell list allocation failed"))?;
-                    self.listed.push(column as u32);
+                    self.listed.push(
+                        u32::try_from(column)
+                            .map_err(|_| Error::limit("cell column exceeds u32"))?,
+                    );
                     self.row.add_cell(column, 0.0, 0.0);
                 }
                 self.head[x] = node;
@@ -558,7 +584,12 @@ impl Scanner {
 
     /// Appends to `out` the edges of `cell` as group `group`: the pieces
     /// within it and the winding along its left side.
-    pub(crate) fn local_edges(&self, cell: &Cell, group: u8, out: &mut Vec<LocalEdge>) -> Result<()> {
+    pub(crate) fn local_edges(
+        &self,
+        cell: &Cell,
+        group: u8,
+        out: &mut Vec<LocalEdge>,
+    ) -> Result<()> {
         let c = f64::from(cell.x);
         let start = out.len();
         let mut carried = cell.cover;
@@ -589,7 +620,8 @@ impl Scanner {
         }
         let corner = gap_winding(carried - steps, self.span);
         if corner != 0 {
-            let winding = i32::try_from(corner).map_err(|_| Error::limit("cell winding exceeds i32"))?;
+            let winding =
+                i32::try_from(corner).map_err(|_| Error::limit("cell winding exceeds i32"))?;
             out.try_reserve(1)
                 .map_err(|_| Error::limit("cell edge allocation failed"))?;
             out.push(LocalEdge {
@@ -616,7 +648,8 @@ impl Scanner {
                 y0: self.span.0,
                 x1: 0.0,
                 y1: self.span.1,
-                winding: i32::try_from(winding).map_err(|_| Error::limit("cell winding exceeds i32"))?,
+                winding: i32::try_from(winding)
+                    .map_err(|_| Error::limit("cell winding exceeds i32"))?,
                 group,
             });
         }
@@ -631,7 +664,21 @@ impl Scanner {
     /// resolver.
     pub(crate) fn walk(&mut self, cell: &Cell, rule: FillRule, meter: &mut Meter) -> Result<Walk> {
         let c = f64::from(cell.x);
-        let mut parts: Vec<([(f64, f64); 2], u32, Place)> = Vec::new();
+        let mut parts = std::mem::take(&mut self.parts);
+        parts.clear();
+        let result = self.walk_parts(cell, rule, c, &mut parts, meter);
+        self.parts = parts;
+        result
+    }
+
+    fn walk_parts(
+        &mut self,
+        cell: &Cell,
+        rule: FillRule,
+        c: f64,
+        parts: &mut Vec<Part>,
+        meter: &mut Meter,
+    ) -> Result<Walk> {
         let mut node = self
             .head
             .get((cell.x as usize).wrapping_sub(self.base))
@@ -707,7 +754,8 @@ impl Scanner {
         meter: &mut Meter,
     ) -> Result<u8> {
         let (edges, rules) = clip;
-        let group = u8::try_from(rules.len()).map_err(|_| Error::limit("clip group count exceeds u8"))?;
+        let group =
+            u8::try_from(rules.len()).map_err(|_| Error::limit("clip group count exceeds u8"))?;
         let mut local = std::mem::take(&mut self.local);
         local.clear();
         let mut all = Vec::new();
@@ -729,17 +777,6 @@ impl Scanner {
         self.local = local;
         result
     }
-
-    pub(crate) fn retained_bytes(&self) -> usize {
-        self.row
-            .retained_bytes()
-            .saturating_add((self.head.capacity() + self.tag.capacity() + self.listed.capacity()) * 4)
-            .saturating_add(self.nodes.capacity() * 8)
-            .saturating_add(self.pieces.capacity() * size_of::<RowPiece>())
-            .saturating_add(self.cells.capacity() * size_of::<Cell>())
-            .saturating_add(self.local.capacity() * size_of::<LocalEdge>())
-            .saturating_add(self.resolver.retained_bytes())
-    }
 }
 
 /// The edges of each row of `rows`, by index, as `(offsets, items)`: row
@@ -751,7 +788,11 @@ pub(crate) struct RowIndex {
 }
 
 impl RowIndex {
-    pub(crate) fn new(edges: &[Chained], (first, last): (u32, u32), meter: &mut Meter) -> Result<Self> {
+    pub(crate) fn new(
+        edges: &[Chained],
+        (first, last): (u32, u32),
+        meter: &mut Meter,
+    ) -> Result<Self> {
         let count = (last - first) as usize + 1;
         let region = super::DeviceRect {
             x0: 0,
@@ -792,7 +833,8 @@ impl RowIndex {
             if let Some((a, b)) = range(e) {
                 for row in a..=b {
                     let slot = &mut next[(row - first) as usize];
-                    index.items[*slot as usize] = i as u32;
+                    // Checked above: the edge count fits u32.
+                    index.items[*slot as usize] = u32::try_from(i).unwrap_or(u32::MAX);
                     *slot += 1;
                 }
             }
@@ -815,6 +857,7 @@ impl RowIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Point;
 
     fn chained(contours: &[&[(f64, f64)]]) -> Vec<Chained> {
         let mut polygon = super::super::edges::Polygon::default();
@@ -842,15 +885,19 @@ mod tests {
         ]);
         let mut meter = Meter::new(usize::MAX, "budget");
         let mut scanner = Scanner::new((0, 8), &mut meter).unwrap();
-        let items: Vec<u32> = (0..edges.len() as u32).collect();
-        scanner.load(&edges, (&items, 0, (0.0, 1.0)), (0, 8), &mut meter).unwrap();
+        let items: Vec<u32> = (0..u32::try_from(edges.len()).unwrap()).collect();
+        scanner
+            .load(&edges, (&items, 0, (0.0, 1.0)), (0, 8), &mut meter)
+            .unwrap();
         let cells = scanner.cells.clone();
         let mut values = Vec::new();
         for cell in &cells {
             let value = if cell.certain {
                 cell.value(FillRule::NonZero)
             } else {
-                scanner.resolve(cell, FillRule::NonZero, &mut meter).unwrap()
+                scanner
+                    .resolve(cell, FillRule::NonZero, &mut meter)
+                    .unwrap()
             };
             values.push((cell.x, value));
         }

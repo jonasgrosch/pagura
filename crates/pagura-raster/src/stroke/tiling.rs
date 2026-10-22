@@ -99,7 +99,8 @@ pub(super) fn append(
         piece(out, ends, direction, radius, limits)?;
     }
     for (j, joint) in turns.iter().enumerate() {
-        if let (Joint::Turn(_) | Joint::Overlap, Some((before, after))) = (joint, joints.around(j)) {
+        if let (Joint::Turn(_) | Joint::Overlap, Some((before, after))) = (joint, joints.around(j))
+        {
             let tangents = [segments[before].0, segments[after].0];
             join(out, points[j], tangents, radius, tolerance, stroke, limits)?;
         }
@@ -288,7 +289,12 @@ fn advances(segments: &[(Point, f64)], closed: bool) -> bool {
 /// both of its segments, else an overlap. Beside a butt end nothing covers
 /// what the neighbouring segment's quadrilateral reaches past it, so the end
 /// segment must hold that too.
-fn turns(segments: &[(Point, f64)], joints: Joints, radius: f64, cap: LineCap) -> Result<Vec<Joint>> {
+fn turns(
+    segments: &[(Point, f64)],
+    joints: Joints,
+    radius: f64,
+    cap: LineCap,
+) -> Result<Vec<Joint>> {
     let count = if joints.closed {
         joints.segments
     } else {
@@ -307,7 +313,11 @@ fn turns(segments: &[(Point, f64)], joints: Joints, radius: f64, cap: LineCap) -
         let turn = cross(a, b);
         let dot = a.x * b.x + a.y * b.y;
         if turn == 0.0 {
-            turns.push(if dot > 0.0 { Joint::Straight } else { Joint::Overlap });
+            turns.push(if dot > 0.0 {
+                Joint::Straight
+            } else {
+                Joint::Overlap
+            });
             continue;
         }
         // The tangent of half the turn, in the form that stays accurate near

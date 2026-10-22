@@ -164,7 +164,13 @@ impl Scratch {
     /// Folds the running sum of row `y`'s cells into coverage, clears them,
     /// and writes it scaled by the shape's multiplied clip. Returns the
     /// work spent.
-    fn emit(&mut self, (from, to): (usize, usize), shape: &Shape, y: u32, out: &mut BandCoverage) -> usize {
+    fn emit(
+        &mut self,
+        (from, to): (usize, usize),
+        shape: &Shape,
+        y: u32,
+        out: &mut BandCoverage,
+    ) -> usize {
         let to = to.min(self.values.len());
         let rule = shape.rule;
         let mut sink = Multiplied::new(out, shape, y, &mut self.product);
@@ -232,11 +238,16 @@ pub(crate) struct Multiplied<'a> {
 }
 
 impl<'a> Multiplied<'a> {
-    pub(crate) fn new(out: &'a mut BandCoverage, shape: &'a Shape, y: u32, row: &'a mut Vec<u8>) -> Self {
+    pub(crate) fn new(
+        out: &'a mut BandCoverage,
+        shape: &'a Shape,
+        y: u32,
+        row: &'a mut Vec<u8>,
+    ) -> Self {
         let clip = shape.multiplied.as_ref();
         Self {
             out: Out {
-                out,
+                coverage: out,
                 x0: shape.bounds.x0 as usize,
                 x1: shape.bounds.x1 as usize,
             },
@@ -287,7 +298,11 @@ impl Sink for Multiplied<'_> {
 }
 
 fn product_or(value: u8, factor: u8) -> u8 {
-    if factor == u8::MAX { value } else { product(value, factor) }
+    if factor == u8::MAX {
+        value
+    } else {
+        product(value, factor)
+    }
 }
 
 /// Scales a coverage row from device `(x0, y)` by `rect`'s coverage there:
@@ -298,7 +313,8 @@ fn product_or(value: u8, factor: u8) -> u8 {
     reason = "factors in [0, 1] scale to bytes; device columns fit f64"
 )]
 pub(crate) fn scale_edges(rect: Bounds, (x0, y): (usize, u32), row: &mut [u8]) {
-    let overlap = |start: f64, low: f64, high: f64| (high.min(start + 1.0) - low.max(start)).clamp(0.0, 1.0);
+    let overlap =
+        |start: f64, low: f64, high: f64| (high.min(start + 1.0) - low.max(start)).clamp(0.0, 1.0);
     let vertical = overlap(f64::from(y), rect.top, rect.bottom);
     for (column, value) in (x0..).zip(row.iter_mut()) {
         let horizontal = overlap(column as f64, rect.left, rect.right);
@@ -331,7 +347,10 @@ impl Product {
         bounds: DeviceRect,
     ) -> Result<Self> {
         let count = (bounds.width() as usize).saturating_mul(bounds.height() as usize);
-        let mut meter = Meter::new(options.limits.decoded_bytes, "clip product allocation failed");
+        let mut meter = Meter::new(
+            options.limits.decoded_bytes,
+            "clip product allocation failed",
+        );
         let mut values = Vec::new();
         meter.reserve(&mut values, count)?;
         values.resize(count, u8::MAX);
@@ -477,10 +496,15 @@ pub(crate) fn fill(
     let cells = if exact {
         None
     } else {
-        Some(Polygon::from_path(path, transform, Some(TOLERANCE), limits)?)
+        Some(Polygon::from_path(
+            path,
+            transform,
+            Some(TOLERANCE),
+            limits,
+        )?)
     };
     place(
-        Source {
+        &Source {
             cells,
             hull,
             quad,
@@ -521,10 +545,15 @@ pub(crate) fn stroke(
     let cells = if exact {
         None
     } else {
-        Some(Polygon::from_path(source.unwrap_or(outline), transform, Some(TOLERANCE), limits)?)
+        Some(Polygon::from_path(
+            source.unwrap_or(outline),
+            transform,
+            Some(TOLERANCE),
+            limits,
+        )?)
     };
     place(
-        Source {
+        &Source {
             cells,
             hull,
             quad,
@@ -544,8 +573,8 @@ pub(crate) fn stroke(
 }
 
 /// A placed glyph polygon under the approximate rules.
-pub(crate) fn glyph(polygon: Polygon, options: &Prep<'_>) -> Result<Option<Shape>> {
-    let quad = polygon_quadrilateral(&polygon);
+pub(crate) fn glyph(polygon: &Polygon, options: &Prep<'_>) -> Result<Option<Shape>> {
+    let quad = polygon_quadrilateral(polygon);
     let hull = if polygon.points_cells {
         None
     } else {
@@ -554,12 +583,17 @@ pub(crate) fn glyph(polygon: Polygon, options: &Prep<'_>) -> Result<Option<Shape
     let exact = polygon.points_cells || quad.is_some_and(|q| axis_aligned(q).is_some());
     let cells = (!exact).then(|| polygon.clone_shallow());
     place(
-        Source {
+        &Source {
             cells,
             hull,
             quad,
             exact: &|options| {
-                Shape::polygon(polygon.clone_shallow(), FillRule::NonZero, super::shape::Winding::Check(0.0), options)
+                Shape::polygon(
+                    polygon.clone_shallow(),
+                    FillRule::NonZero,
+                    super::shape::Winding::Check(0.0),
+                    options,
+                )
             },
         },
         FillRule::NonZero,
@@ -579,24 +613,25 @@ struct Source<'a> {
 /// Chooses how a mark meets its clip: dropped where every path of it holds
 /// the mark, integrated geometrically for a quadrilateral within
 /// quadrilaterals, and multiplied otherwise.
-fn place(source: Source<'_>, rule: FillRule, options: &Prep<'_>) -> Result<Option<Shape>> {
+fn place(source: &Source<'_>, rule: FillRule, options: &Prep<'_>) -> Result<Option<Shape>> {
     let unclipped = Prep {
         precision: Precision::Exact,
         clip: None,
         ..*options
     };
     let Some(clip) = options.clip else {
-        return mark(&source, rule, &unclipped);
+        return mark(source, rule, &unclipped);
     };
     let needed: Vec<&ClipPath> = clip
         .paths()
         .iter()
         .filter(|p| {
-            !(source.hull.is_some_and(|hull| p.contains_hull(hull)) || source.hull.is_some_and(|hull| p.covers(hull)))
+            !(source.hull.is_some_and(|hull| p.contains_hull(hull))
+                || source.hull.is_some_and(|hull| p.covers(hull)))
         })
         .collect();
     if needed.is_empty() {
-        return mark(&source, rule, &unclipped);
+        return mark(source, rule, &unclipped);
     }
     if source.quad.is_some() && needed.iter().all(|p| p.quad.is_some()) {
         let exact = Prep {
@@ -605,7 +640,7 @@ fn place(source: Source<'_>, rule: FillRule, options: &Prep<'_>) -> Result<Optio
         };
         return (source.exact)(&exact);
     }
-    let Some(mut shape) = mark(&source, rule, &unclipped)? else {
+    let Some(mut shape) = mark(source, rule, &unclipped)? else {
         return Ok(None);
     };
     let limit = clip.bounds();
@@ -698,7 +733,9 @@ pub(crate) fn quadrilateral(path: &Path, transform: Transform) -> Option<[Point;
     let [MoveTo(a), LineTo(b), LineTo(c), LineTo(d), tail @ ..] = path.segments() else {
         return None;
     };
-    if !matches!(tail, [] | [Close]) && !matches!(tail, [LineTo(end)] | [LineTo(end), Close] if end == a) {
+    if !matches!(tail, [] | [Close])
+        && !matches!(tail, [LineTo(end)] | [LineTo(end), Close] if end == a)
+    {
         return None;
     }
     if !transform.is_finite() {
@@ -754,8 +791,12 @@ impl ClipPath {
 
     /// Whether the path is a rectangle holding all of `hull`.
     fn covers(&self, [lo, hi]: [Point; 2]) -> bool {
-        self.rect
-            .is_some_and(|r| r.left <= lo.x.floor() && r.top <= lo.y.floor() && r.right >= hi.x.ceil() && r.bottom >= hi.y.ceil())
+        self.rect.is_some_and(|r| {
+            r.left <= lo.x.floor()
+                && r.top <= lo.y.floor()
+                && r.right >= hi.x.ceil()
+                && r.bottom >= hi.y.ceil()
+        })
     }
 
     /// Strict convex half-planes contain the entire hull. Outward-rounded
@@ -787,7 +828,10 @@ fn orientation(a: Point, b: Point, c: Point) -> Option<i8> {
         let values = [a[0] * b[0], a[0] * b[1], a[1] * b[0], a[1] * b[1]];
         [
             values.into_iter().fold(f64::INFINITY, f64::min).next_down(),
-            values.into_iter().fold(f64::NEG_INFINITY, f64::max).next_up(),
+            values
+                .into_iter()
+                .fold(f64::NEG_INFINITY, f64::max)
+                .next_up(),
         ]
     };
     let left = product(difference(b.x, a.x), difference(c.y, a.y));

@@ -1,3 +1,7 @@
+#![expect(
+    clippy::unwrap_used,
+    reason = "fixture setup and comparisons fail the test loudly"
+)]
 //! Glyph placements of the band rasterizer against the old exact glyph
 //! backends (`GlyphGeometry` placed by `Rasterizer::clipped_glyph`), for the
 //! outlines of the font fixtures and the bundled fonts.
@@ -5,9 +9,9 @@
 use pagura_core::{Limits, Meter};
 use pagura_font::{FontFormat, FontProgram, GlyphId};
 use pagura_raster::{
-    Area, BandCoverage, BandRasterizer, ClipRegion, ClipShape, DeviceRect, FillRule,
-    GlyphEdges, GlyphGeometry, GlyphOrigins, MarkCoverage, Path, PathBuilder, Point, Precision,
-    Rasterizer, Shape, ShapeOptions, Span, Transform,
+    Area, BandCoverage, BandRasterizer, ClipRegion, ClipShape, DeviceRect, FillRule, GlyphEdges,
+    GlyphGeometry, GlyphOrigins, MarkCoverage, Path, PathBuilder, Point, Precision, Rasterizer,
+    Shape, ShapeOptions, Span, Transform,
 };
 use std::sync::Arc;
 
@@ -21,7 +25,7 @@ fn fonts() -> Vec<(String, FontProgram)> {
     let limits = Limits::default();
     let fixtures = root().join("corpus/generated/font");
     let mut entries: Vec<_> = std::fs::read_dir(&fixtures)
-        .map(|d| d.filter_map(|e| e.ok()).map(|e| e.path()).collect())
+        .map(|d| d.filter_map(Result::ok).map(|e| e.path()).collect())
         .unwrap_or_default();
     entries.sort();
     for path in entries {
@@ -45,12 +49,22 @@ fn fonts() -> Vec<(String, FontProgram)> {
             out.push((stem.to_string(), font));
         }
     }
-    for name in ["Tinos-Regular.ttf", "Arimo-BoldItalic.ttf", "Cousine-Regular.ttf"] {
+    for name in [
+        "Tinos-Regular.ttf",
+        "Arimo-BoldItalic.ttf",
+        "Cousine-Regular.ttf",
+    ] {
         let data = std::fs::read(root().join("data/fonts").join(name)).unwrap();
-        out.push((name.to_string(), FontProgram::parse(data, FontFormat::TrueType, &limits).unwrap()));
+        out.push((
+            name.to_string(),
+            FontProgram::parse(data, FontFormat::TrueType, &limits).unwrap(),
+        ));
     }
     let data = std::fs::read(root().join("data/fonts/FoxitSymbol.cff")).unwrap();
-    out.push(("FoxitSymbol.cff".to_string(), FontProgram::parse(data, FontFormat::Cff, &limits).unwrap()));
+    out.push((
+        "FoxitSymbol.cff".to_string(),
+        FontProgram::parse(data, FontFormat::Cff, &limits).unwrap(),
+    ));
     out
 }
 
@@ -79,7 +93,8 @@ fn raster(area: &Area, shape: Option<&Shape>, clip: Option<&ClipShape>) -> (Vec<
                     Span::Full { x, len } => (x, vec![255; len as usize]),
                     Span::Partial { x, coverage } => (x, coverage.to_vec()),
                 };
-                let start = (row.y - area.region.y0) as usize * width + (x - area.region.x0) as usize;
+                let start =
+                    (row.y - area.region.y0) as usize * width + (x - area.region.x0) as usize;
                 out[start..start + values.len()].copy_from_slice(&values);
             }
         }
@@ -169,8 +184,14 @@ fn fine(outline: &Path, linear: [f64; 4], origin: Point) -> Vec<Vec<(f64, f64)>>
                 for i in 1..=4096 {
                     let t = f64::from(i) / 4096.0;
                     let u = 1.0 - t;
-                    let x = u * u * u * last.x + 3.0 * u * u * t * c1.x + 3.0 * u * t * t * c2.x + t * t * t * end.x;
-                    let y = u * u * u * last.y + 3.0 * u * u * t * c1.y + 3.0 * u * t * t * c2.y + t * t * t * end.y;
+                    let x = u * u * u * last.x
+                        + 3.0 * u * u * t * c1.x
+                        + 3.0 * u * t * t * c2.x
+                        + t * t * t * end.x;
+                    let y = u * u * u * last.y
+                        + 3.0 * u * u * t * c1.y
+                        + 3.0 * u * t * t * c2.y
+                        + t * t * t * end.y;
                     current.push(map(Point::new(x, y)));
                 }
                 last = end;
@@ -197,7 +218,13 @@ fn pixel_area(contours: &[Vec<(f64, f64)>], x: f64, y: f64) -> f64 {
             .collect();
         for (axis, low) in [(0, true), (0, false), (1, true), (1, false)] {
             let value = |p: (f64, f64)| if axis == 0 { p.0 } else { p.1 };
-            let inside = |p: (f64, f64)| if low { value(p) >= 0.0 } else { value(p) <= 1.0 };
+            let inside = |p: (f64, f64)| {
+                if low {
+                    value(p) >= 0.0
+                } else {
+                    value(p) <= 1.0
+                }
+            };
             let bound = if low { 0.0 } else { 1.0 };
             let mut out = Vec::with_capacity(poly.len());
             for i in 0..poly.len() {
@@ -226,6 +253,10 @@ fn pixel_area(contours: &[Vec<(f64, f64)>], x: f64, y: f64) -> f64 {
 }
 
 #[test]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one sweep over fonts, origins and clips with its tallies"
+)]
 fn glyphs_of_fixture_and_bundled_fonts_match_the_old_backends() {
     let limits = Limits::default();
     let fonts = fonts();
@@ -242,7 +273,16 @@ fn glyphs_of_fixture_and_bundled_fonts_match_the_old_backends() {
     let clips: [Option<&Path>; 3] = [None, Some(&rect), Some(&triangle)];
     let mut tallies: [Tally; 3] = Default::default();
     for (name, font) in &fonts {
-        let count = font.glyph_count().min(if name.ends_with(".ttf") { 160 } else { 40 });
+        let count = font.glyph_count().min(
+            if std::path::Path::new(name)
+                .extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("ttf"))
+            {
+                160
+            } else {
+                40
+            },
+        );
         let matrix = font.font_matrix();
         for g in 0..count {
             let Ok(outline) = font.outline(GlyphId(g)) else {
@@ -251,7 +291,10 @@ fn glyphs_of_fixture_and_bundled_fonts_match_the_old_backends() {
             if outline.is_empty() {
                 continue;
             }
-            for (k, (size, skew)) in [(11.0, 0.0), (37.0, 0.0), (23.0, 0.3)].into_iter().enumerate() {
+            for (k, (size, skew)) in [(11.0, 0.0), (37.0, 0.0), (23.0, 0.3)]
+                .into_iter()
+                .enumerate()
+            {
                 let linear = matrix.then(Transform::new(size, 0.0, skew * size, -size, 0.0, 0.0));
                 let linear = [linear.a, linear.b, linear.c, linear.d];
                 let origin = Point::new(
@@ -262,17 +305,30 @@ fn glyphs_of_fixture_and_bundled_fonts_match_the_old_backends() {
                 let edges = Arc::new(GlyphEdges::new(&outline, linear, &limits).unwrap());
                 for (c, clip_path) in clips.iter().enumerate() {
                     let clip = clip_path.map(|p| {
-                        ClipShape::new(&[(p, FillRule::NonZero)], Transform::IDENTITY, &options(&limits))
-                            .unwrap()
+                        ClipShape::new(
+                            &[(p, FillRule::NonZero)],
+                            Transform::IDENTITY,
+                            &options(&limits),
+                        )
+                        .unwrap()
                     });
                     let opts = options(&limits);
-                    let shape =
-                        Shape::glyph_with_clip(&edges, origin, GlyphOrigins::Exact, clip.as_ref(), &opts)
-                            .unwrap();
+                    let shape = Shape::glyph_with_clip(
+                        &edges,
+                        origin,
+                        GlyphOrigins::Exact,
+                        clip.as_ref(),
+                        &opts,
+                    )
+                    .unwrap();
                     let new = match &shape {
                         Some(shape) => {
                             let (coverage, work) = raster(&AREA, Some(shape), clip.as_ref());
-                            assert!(work <= shape.work(), "{name} {g}: work {work} > {}", shape.work());
+                            assert!(
+                                work <= shape.work(),
+                                "{name} {g}: work {work} > {}",
+                                shape.work()
+                            );
                             coverage
                         }
                         None => vec![0; 72 * 64],
@@ -287,8 +343,15 @@ fn glyphs_of_fixture_and_bundled_fonts_match_the_old_backends() {
                             tally.differing += 1;
                             tally.largest = tally.largest.max(a.abs_diff(*b));
                             if c == 0 {
-                                let contours = contours.get_or_insert_with(|| fine(&outline, linear, origin));
-                                let area = pixel_area(contours, (i % 72) as f64, (i / 72) as f64).abs();
+                                let contours =
+                                    contours.get_or_insert_with(|| fine(&outline, linear, origin));
+                                let area =
+                                    pixel_area(contours, (i % 72) as f64, (i / 72) as f64).abs();
+                                #[expect(
+                                    clippy::cast_possible_truncation,
+                                    clippy::cast_sign_loss,
+                                    reason = "clamped to [0, 255.5)"
+                                )]
                                 let level = (area.min(1.0) * 255.0 + 0.5) as u8;
                                 if *a == level {
                                     tally.new_rounds += 1;
@@ -309,4 +372,3 @@ fn glyphs_of_fixture_and_bundled_fonts_match_the_old_backends() {
         assert!(tally.largest <= 1, "{clip}: {tally:?}");
     }
 }
-

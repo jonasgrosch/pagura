@@ -36,11 +36,17 @@ fn random_self_intersecting_polygons_match_the_old_backends() {
         let path = polygon(&points);
         for rule in [FillRule::NonZero, FillRule::EvenOdd] {
             let (count, largest) = check_fill(&area, &path, Transform::IDENTITY, rule);
-            assert!(largest <= 1, "case {case} {rule:?}: {count} differ by up to {largest}");
+            assert!(
+                largest <= 1,
+                "case {case} {rule:?}: {count} differ by up to {largest}"
+            );
             differences += count;
         }
     }
-    eprintln!("dyadic polygons: {differences} differing pixels of {}", 600 * 64);
+    eprintln!(
+        "dyadic polygons: {differences} differing pixels of {}",
+        600 * 64
+    );
     assert_eq!(differences, 0);
 }
 
@@ -57,7 +63,10 @@ fn decimal_polygons_under_page_transforms_match_the_old_backends() {
         let path = polygon(&points);
         for rule in [FillRule::NonZero, FillRule::EvenOdd] {
             let (count, largest) = check_fill(&area, &path, transform, rule);
-            assert!(largest <= 1, "case {case} {rule:?}: {count} differ by up to {largest}");
+            assert!(
+                largest <= 1,
+                "case {case} {rule:?}: {count} differ by up to {largest}"
+            );
             differences += count;
             pixels += (area.region.width() * area.region.height()) as usize;
         }
@@ -74,9 +83,14 @@ fn curves_and_compound_paths_match_the_old_backends() {
     for case in 0..60 {
         let mut path = PathBuilder::new();
         for _ in 0..1 + case % 3 {
-            path.move_to(Point::new(rng.grid(0.0, 40.0, 100), rng.grid(0.0, 30.0, 100)));
+            path.move_to(Point::new(
+                rng.grid(0.0, 40.0, 100),
+                rng.grid(0.0, 30.0, 100),
+            ));
             for _ in 0..1 + case % 4 {
-                let p = |rng: &mut Lcg| Point::new(rng.grid(-2.0, 42.0, 100), rng.grid(-2.0, 32.0, 100));
+                let p = |rng: &mut Lcg| {
+                    Point::new(rng.grid(-2.0, 42.0, 100), rng.grid(-2.0, 32.0, 100))
+                };
                 let (a, b, c) = (p(&mut rng), p(&mut rng), p(&mut rng));
                 path.cubic_to(a, b, c).unwrap();
             }
@@ -85,7 +99,10 @@ fn curves_and_compound_paths_match_the_old_backends() {
         let path = path.finish();
         for rule in [FillRule::NonZero, FillRule::EvenOdd] {
             let (count, largest) = check_fill(&area, &path, Transform::IDENTITY, rule);
-            assert!(largest <= 1, "case {case} {rule:?}: {count} differ by up to {largest}");
+            assert!(
+                largest <= 1,
+                "case {case} {rule:?}: {count} differ by up to {largest}"
+            );
             differences += count;
             pixels += 1200;
         }
@@ -102,7 +119,12 @@ fn rectangles_match_the_closed_form_exactly() {
         let y = rng.grid(-3.0, 20.0, 10);
         let mut path = PathBuilder::new();
         path.rect(x, y, rng.grid(0.1, 12.0, 20), rng.grid(0.1, 12.0, 20));
-        let (count, _) = check_fill(&area, &path.finish(), Transform::IDENTITY, FillRule::NonZero);
+        let (count, _) = check_fill(
+            &area,
+            &path.finish(),
+            Transform::IDENTITY,
+            FillRule::NonZero,
+        );
         assert_eq!(count, 0);
     }
 }
@@ -112,8 +134,16 @@ fn tiny_huge_and_distant_geometry_match_the_old_backends() {
     let area = area(10, 20, 50, 60, 16);
     let cases: Vec<Vec<Point>> = vec![
         // Sub-pixel slivers and a tiny triangle.
-        vec![Point::new(12.1, 22.1), Point::new(12.15, 22.1), Point::new(12.12, 22.17)],
-        vec![Point::new(30.0, 25.0), Point::new(30.000_001, 45.0), Point::new(30.0, 45.0)],
+        vec![
+            Point::new(12.1, 22.1),
+            Point::new(12.15, 22.1),
+            Point::new(12.12, 22.17),
+        ],
+        vec![
+            Point::new(30.0, 25.0),
+            Point::new(30.000_001, 45.0),
+            Point::new(30.0, 45.0),
+        ],
         // A huge triangle crossing the whole area.
         vec![
             Point::new(-1e6, -1e6),
@@ -132,7 +162,10 @@ fn tiny_huge_and_distant_geometry_match_the_old_backends() {
         let path = polygon(&points);
         for rule in [FillRule::NonZero, FillRule::EvenOdd] {
             let (count, largest) = check_fill(&area, &path, Transform::IDENTITY, rule);
-            assert!(largest <= 1, "{points:?} {rule:?}: {count} differ by up to {largest}");
+            assert!(
+                largest <= 1,
+                "{points:?} {rule:?}: {count} differ by up to {largest}"
+            );
         }
     }
 }
@@ -170,7 +203,12 @@ fn points_and_empty_regions_follow_the_point_and_hairline_rules() {
     path.move_to(Point::new(3.5, 4.25));
     path.close();
     path.rect(8.0, 8.0, 2.0, 2.0);
-    let (count, _) = check_fill(&area, &path.finish(), Transform::IDENTITY, FillRule::NonZero);
+    let (count, _) = check_fill(
+        &area,
+        &path.finish(),
+        Transform::IDENTITY,
+        FillRule::NonZero,
+    );
     assert_eq!(count, 0);
     // A certified empty region paints its boundary as hairlines (10.7.4).
     let mut path = PathBuilder::new();
@@ -185,7 +223,6 @@ fn points_and_empty_regions_follow_the_point_and_hairline_rules() {
     assert!(largest <= 1, "{count} differ by up to {largest}");
 }
 
-
 #[test]
 fn degenerate_overlaps_on_pixel_boundaries_match_the_old_backends() {
     // Vertices on pixel corners and edges, coincident and retraced edges,
@@ -197,11 +234,15 @@ fn degenerate_overlaps_on_pixel_boundaries_match_the_old_backends() {
         let mut path = PathBuilder::new();
         for _ in 0..1 + case % 4 {
             let steps = [1, 2, 4][case % 3];
-            path.move_to(Point::new(rng.grid(0.0, 12.0, steps), rng.grid(0.0, 12.0, steps)));
+            path.move_to(Point::new(
+                rng.grid(0.0, 12.0, steps),
+                rng.grid(0.0, 12.0, steps),
+            ));
             for _ in 0..2 + case % 5 {
                 let reach = if case % 7 == 0 { 1.0 } else { 6.0 };
                 let p = Point::new(
-                    rng.grid(0.0, 12.0, steps).min(rng.grid(0.0, reach, steps) + 3.0),
+                    rng.grid(0.0, 12.0, steps)
+                        .min(rng.grid(0.0, reach, steps) + 3.0),
                     rng.grid(0.0, 12.0, steps),
                 );
                 path.line_to(p).unwrap();
@@ -211,7 +252,11 @@ fn degenerate_overlaps_on_pixel_boundaries_match_the_old_backends() {
         let path = path.finish();
         for rule in [FillRule::NonZero, FillRule::EvenOdd] {
             let (count, largest) = check_fill(&area, &path, Transform::IDENTITY, rule);
-            assert!(largest <= 1, "case {case} {rule:?}: {count} differ by up to {largest}: {:?}", path.segments());
+            assert!(
+                largest <= 1,
+                "case {case} {rule:?}: {count} differ by up to {largest}: {:?}",
+                path.segments()
+            );
             differences += count;
         }
     }

@@ -9,8 +9,8 @@ use super::clip::{ClipShape, INSIDE, Rows, columns, fill_polygon};
 use super::curve::{self, Quadratic};
 use super::edges::{self, Bounds, Chained, Line, Polygon, RowList, line_work, rows};
 use super::rect::rectangle;
-use super::scan::{RowIndex, Scanner, Stored, Walk, gap_winding, inside};
 use super::row::fold;
+use super::scan::{RowIndex, Scanner, Stored, Walk, gap_winding, inside};
 use super::{Adjustment, Area, DeviceRect, Precision, Prep, ShapeOptions};
 use crate::stroke::Tiling;
 use crate::{FillRule, Path, Stroke, Transform, features};
@@ -137,7 +137,13 @@ impl Shape {
         adjustment: Adjustment,
         options: &ShapeOptions<'_>,
     ) -> Result<Option<Self>> {
-        Self::stroke_in(path, stroke, (pen, transform), adjustment, &Prep::new(options, None))
+        Self::stroke_in(
+            path,
+            stroke,
+            (pen, transform),
+            adjustment,
+            &Prep::new(options, None),
+        )
     }
 
     /// A stroke painted in the clip state `clip`, as [`Self::fill_with_clip`].
@@ -153,7 +159,13 @@ impl Shape {
         clip: Option<&ClipShape>,
         options: &ShapeOptions<'_>,
     ) -> Result<Option<Self>> {
-        Self::stroke_in(path, stroke, (pen, transform), adjustment, &Prep::new(options, clip))
+        Self::stroke_in(
+            path,
+            stroke,
+            (pen, transform),
+            adjustment,
+            &Prep::new(options, clip),
+        )
     }
 
     pub(crate) fn stroke_in(
@@ -187,7 +199,12 @@ impl Shape {
             Adjustment::None => crate::stroke::pieces(&path, device, stroke, limits, accept)?,
         };
         if options.precision == Precision::Approximate {
-            return super::approximate::stroke(&outline, outline_transform, tiling == Tiling::Proven, options);
+            return super::approximate::stroke(
+                &outline,
+                outline_transform,
+                tiling == Tiling::Proven,
+                options,
+            );
         }
         let mut polygon = Polygon::from_path(&outline, outline_transform, None, limits)?;
         let winding = match tiling {
@@ -329,8 +346,15 @@ impl Shape {
                 return Ok(None);
             };
             let scan = scan_columns(lines.iter().flat_map(|l| [l.a.x, l.b.x]), width);
-            return Self::edges(lines, Vec::new(), rule, (bounds, scan, Stored::default()), &frame, options)
-                .map(Some);
+            return Self::edges(
+                lines,
+                Vec::new(),
+                rule,
+                (bounds, scan, Stored::default()),
+                &frame,
+                options,
+            )
+            .map(Some);
         }
         let mut chained = Vec::new();
         edges::chained(&polygon, 0, &mut 0, &mut chained)?;
@@ -350,7 +374,15 @@ impl Shape {
             .filter(|e| !e.line.is_horizontal())
             .map(|e| e.line)
             .collect();
-        Self::edges(lines, Vec::new(), rule, (bounds, scan, stored), &frame, options).map(Some)
+        Self::edges(
+            lines,
+            Vec::new(),
+            rule,
+            (bounds, scan, stored),
+            &frame,
+            options,
+        )
+        .map(Some)
     }
 
     /// A shape of certified lines and monotone quadratics in `frame`, which
@@ -643,9 +675,9 @@ impl<'a> Frame<'a> {
     fn crossed(&self, bounds: DeviceRect) -> bool {
         self.rows.is_some_and(|rows| {
             (bounds.y0..bounds.y1).any(|y| {
-                rows.row(y).iter().any(|s| {
-                    s.cell != INSIDE && s.x0 < bounds.x1 && s.x1 > bounds.x0
-                })
+                rows.row(y)
+                    .iter()
+                    .any(|s| s.cell != INSIDE && s.x0 < bounds.x1 && s.x1 > bounds.x0)
             })
         })
     }
@@ -704,7 +736,12 @@ fn analyse(
             y,
         };
         let result = scanner
-            .load(chained, (index.row(y), y, span(frame.rect, y)), scan, &mut meter)
+            .load(
+                chained,
+                (index.row(y), y, span(frame.rect, y)),
+                scan,
+                &mut meter,
+            )
             .and_then(|()| analyse_row(&mut scanner, &context, &mut stored, &mut meter));
         scanner.unload();
         if let Err(error) = result {
@@ -759,20 +796,41 @@ fn analyse_row(
             break;
         }
         if cell.x > position {
-            gap(scanner, context, (position, cell.x, cover), &mut cursor, stored, meter)?;
+            gap(
+                scanner,
+                context,
+                (position, cell.x, cover),
+                &mut cursor,
+                stored,
+                meter,
+            )?;
         }
         if cell.x >= bounds.x0 {
             if cell.listed {
                 listed(scanner, context, &cell, &mut cursor, stored, meter)?;
             } else {
-                gap(scanner, context, (cell.x, cell.x + 1, cell.cover), &mut cursor, stored, meter)?;
+                gap(
+                    scanner,
+                    context,
+                    (cell.x, cell.x + 1, cell.cover),
+                    &mut cursor,
+                    stored,
+                    meter,
+                )?;
             }
         }
         cover = cell.cover;
         position = position.max(cell.x + 1);
     }
     if position < bounds.x1 {
-        gap(scanner, context, (position, bounds.x1, cover), &mut cursor, stored, meter)?;
+        gap(
+            scanner,
+            context,
+            (position, bounds.x1, cover),
+            &mut cursor,
+            stored,
+            meter,
+        )?;
     }
     Ok(())
 }
@@ -802,7 +860,6 @@ fn gap(
         let (state, end) = context.clip(x, x1, cursor);
         meter.charge(1)?;
         match state {
-            None => {}
             Some(INSIDE) => {
                 if exact != folded {
                     for column in x..end {
@@ -810,17 +867,16 @@ fn gap(
                     }
                 }
             }
-            Some(boundary) => {
-                if partial {
-                    let (_, edges, rules) = context
-                        .rows
-                        .and_then(|r| r.cell(boundary))
-                        .ok_or(Error::invalid_argument("clip cell out of range"))?;
-                    let value =
-                        scanner.resolve_joint((None, cover), context.rule, (edges, rules), meter)?;
-                    stored.push(context.y, x, value)?;
-                }
+            Some(boundary) if partial => {
+                let (_, edges, rules) = context
+                    .rows
+                    .and_then(|r| r.cell(boundary))
+                    .ok_or(Error::invalid_argument("clip cell out of range"))?;
+                let value =
+                    scanner.resolve_joint((None, cover), context.rule, (edges, rules), meter)?;
+                stored.push(context.y, x, value)?;
             }
+            None | Some(_) => {}
         }
         x = end.max(x + 1);
     }

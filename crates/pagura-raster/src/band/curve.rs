@@ -143,8 +143,10 @@ pub(crate) fn pieces(
         limits,
     };
     builder.path(outline, linear)?;
-    Ok((!builder.rejected && builder.pieces.iter().any(|p| matches!(p, Piece::Curve(_))))
-        .then_some(builder.pieces))
+    Ok(
+        (!builder.rejected && builder.pieces.iter().any(|p| matches!(p, Piece::Curve(_))))
+            .then_some(builder.pieces),
+    )
 }
 
 struct Builder<'a> {
@@ -322,7 +324,12 @@ impl Builder<'_> {
 /// Clips monotone pieces to `bounds` as straight edges are clipped: parts
 /// above or below disappear and parts beside it become vertical edges on
 /// its sides.
-pub(crate) fn clip(piece: Quadratic, bounds: Bounds, lines: &mut Vec<Line>, out: &mut Vec<Quadratic>) -> Result<()> {
+pub(crate) fn clip(
+    piece: Quadratic,
+    bounds: Bounds,
+    lines: &mut Vec<Line>,
+    out: &mut Vec<Quadratic>,
+) -> Result<()> {
     if bounds.is_empty() {
         return Ok(());
     }
@@ -381,7 +388,11 @@ pub(crate) fn clip(piece: Quadratic, bounds: Bounds, lines: &mut Vec<Line>, out:
                 Point::new(x, part.points[0].y),
                 Point::new(x, part.points[2].y),
             );
-            lines.push(if reversed { Line { a: b, b: a } } else { Line { a, b } });
+            lines.push(if reversed {
+                Line { a: b, b: a }
+            } else {
+                Line { a, b }
+            });
         } else {
             if reversed {
                 part.points.reverse();

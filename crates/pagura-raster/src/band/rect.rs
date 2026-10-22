@@ -84,7 +84,7 @@ mod tests {
         assert_eq!(out.0, [(1, 2, 191), (2, 4, 255), (4, 5, 128)]);
         out.0.clear();
         emit_row(rect, 3, &mut out);
-        assert!(out.0.is_empty());
+        assert_eq!(out.0, [] as [(usize, usize, u8); 0]);
     }
 
     #[test]

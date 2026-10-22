@@ -154,7 +154,13 @@ fn sweep(points: &[Point], chains: &mut [Chain], margins: Margins, work: &mut Wo
         }
         for w in active.windows(2) {
             let separated = w[0].range[1] + margins.rounding < w[1].range[0]
-                || apart(points, (w[0].segment, w[1].segment), (lo, hi), margins, work);
+                || apart(
+                    points,
+                    (w[0].segment, w[1].segment),
+                    (lo, hi),
+                    margins,
+                    work,
+                );
             if !separated {
                 return None;
             }

@@ -5,6 +5,11 @@
 //! performance policy (`docs/ARCHITECTURE.md`).
 //!
 //! `cargo run --release -p pagura-raster --example band_profile`
+#![expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "page sizes and style indices are small nonnegative numbers"
+)]
 
 use pagura_core::{Limits, Meter};
 use pagura_raster::{
@@ -42,34 +47,57 @@ fn read(file: &str) -> Result<Vec<Mark>, Box<dyn Error>> {
     for line in std::fs::read_to_string(file)?.lines() {
         let mut words = line.split_whitespace();
         let kind = words.next().unwrap_or_default();
-        let mut number = |words: &mut std::str::SplitWhitespace<'_>| -> Result<f64, Box<dyn Error>> {
+        let number = |words: &mut std::str::SplitWhitespace<'_>| -> Result<f64, Box<dyn Error>> {
             Ok(words.next().ok_or("short line")?.parse::<f64>()?)
         };
         let (rule, stroke, pen) = if kind == "F" {
-            let rule = if words.next() == Some("E") { FillRule::EvenOdd } else { FillRule::NonZero };
+            let rule = if words.next() == Some("E") {
+                FillRule::EvenOdd
+            } else {
+                FillRule::NonZero
+            };
             (rule, None, Transform::IDENTITY)
         } else {
             let width = number(&mut words)?;
-            let cap = [LineCap::Butt, LineCap::Round, LineCap::ProjectingSquare][number(&mut words)? as usize % 3];
-            let join = [LineJoin::Miter, LineJoin::Round, LineJoin::Bevel][number(&mut words)? as usize % 3];
+            let cap = [LineCap::Butt, LineCap::Round, LineCap::ProjectingSquare]
+                [number(&mut words)? as usize % 3];
+            let join = [LineJoin::Miter, LineJoin::Round, LineJoin::Bevel]
+                [number(&mut words)? as usize % 3];
             let miter_limit = number(&mut words)?;
             let dashes = words.next().ok_or("short line")?;
             let dash_array = if dashes == "-" {
                 Vec::new()
             } else {
-                dashes.split(',').map(str::parse::<f64>).collect::<Result<_, _>>()?
+                dashes
+                    .split(',')
+                    .map(str::parse::<f64>)
+                    .collect::<Result<_, _>>()?
             };
             let dash_phase = number(&mut words)?;
-            let m: Vec<f64> = (0..6).map(|_| number(&mut words)).collect::<Result<_, _>>()?;
-            let stroke = Stroke { width, cap, join, miter_limit, dash_array, dash_phase };
-            (FillRule::NonZero, Some(stroke), Transform::new(m[0], m[1], m[2], m[3], m[4], m[5]))
+            let m: Vec<f64> = (0..6)
+                .map(|_| number(&mut words))
+                .collect::<Result<_, _>>()?;
+            let stroke = Stroke {
+                width,
+                cap,
+                join,
+                miter_limit,
+                dash_array,
+                dash_phase,
+            };
+            (
+                FillRule::NonZero,
+                Some(stroke),
+                Transform::new(m[0], m[1], m[2], m[3], m[4], m[5]),
+            )
         };
         let mut path = PathBuilder::new();
         while let Some(op) = words.next() {
-            let mut point = |words: &mut std::str::SplitWhitespace<'_>| -> Result<Point, Box<dyn Error>> {
-                let x = number(words)?;
-                Ok(Point::new(x, number(words)?))
-            };
+            let point =
+                |words: &mut std::str::SplitWhitespace<'_>| -> Result<Point, Box<dyn Error>> {
+                    let x = number(words)?;
+                    Ok(Point::new(x, number(words)?))
+                };
             match op {
                 "M" => {
                     path.move_to(point(&mut words)?);
@@ -102,8 +130,14 @@ fn strokes(count: usize) -> Result<Vec<Mark>, Box<dyn Error>> {
         let y = rng.unit() * 780.0;
         let mut path = PathBuilder::new();
         path.move_to(Point::new(x, y));
-        path.line_to(Point::new(x + rng.unit() * 20.0 - 10.0, y + rng.unit() * 20.0 - 10.0))?;
-        path.line_to(Point::new(x + rng.unit() * 20.0 - 10.0, y + rng.unit() * 20.0 - 10.0))?;
+        path.line_to(Point::new(
+            x + rng.unit() * 20.0 - 10.0,
+            y + rng.unit() * 20.0 - 10.0,
+        ))?;
+        path.line_to(Point::new(
+            x + rng.unit() * 20.0 - 10.0,
+            y + rng.unit() * 20.0 - 10.0,
+        ))?;
         let stroke = Stroke {
             width: 0.3 + rng.unit() * 1.5,
             cap: LineCap::Butt,
@@ -138,7 +172,9 @@ fn large_fills(count: usize) -> Result<Vec<Mark>, Box<dyn Error>> {
     for _ in 0..count {
         let (cx, cy) = (306.0 + rng.unit() * 40.0, 396.0 + rng.unit() * 40.0);
         let mut path = PathBuilder::new();
-        let point = |angle: f64, radius: f64| Point::new(cx + radius * angle.cos(), cy + radius * angle.sin());
+        let point = |angle: f64, radius: f64| {
+            Point::new(cx + radius * angle.cos(), cy + radius * angle.sin())
+        };
         path.move_to(point(0.0, 300.0));
         let n = 200;
         for k in 1..=n {
@@ -175,17 +211,25 @@ fn old(marks: &[Mark], scale: f64, area: &Area) -> Result<u64, Box<dyn Error>> {
             Mark::Fill(path, rule) => (path.clone(), device, *rule),
             Mark::Stroke(path, stroke, pen) => {
                 let user = path.transformed(pen.inverse().ok_or("singular pen")?);
-                let (outline, t) = pagura_raster::stroke_outline(&user, pen.then(device), stroke, &limits)?;
+                let (outline, t) =
+                    pagura_raster::stroke_outline(&user, pen.then(device), stroke, &limits)?;
                 (outline, t, FillRule::NonZero)
             }
         };
-        if let Some(coverage) = raster.clipped_coverage(&clip, Arc::new(path), transform, rule, limits)? {
+        if let Some(coverage) =
+            raster.clipped_coverage(&clip, Arc::new(path), transform, rule, limits)?
+        {
             match &coverage {
-                Coverage::Mask(mask) => sum += mask.coverage().iter().map(|&v| u64::from(v)).sum::<u64>(),
-                Coverage::Rectangle(rect) => {
-                    sum += rect.spans().flat_map(|(_, _, run)| run).map(|&v| u64::from(v)).sum::<u64>();
+                Coverage::Mask(mask) => {
+                    sum += mask.coverage().iter().map(|&v| u64::from(v)).sum::<u64>();
                 }
-                _ => {}
+                Coverage::Rectangle(rect) => {
+                    sum += rect
+                        .spans()
+                        .flat_map(|(_, _, run)| run)
+                        .map(|&v| u64::from(v))
+                        .sum::<u64>();
+                }
             }
             raster.recycle(coverage);
         }
@@ -208,14 +252,9 @@ fn new(marks: &[Mark], scale: f64, area: &Area) -> Result<u64, Box<dyn Error>> {
     for mark in marks {
         let shape = match mark {
             Mark::Fill(path, rule) => Shape::fill(path, device, *rule, &options)?,
-            Mark::Stroke(path, stroke, pen) => Shape::stroke(
-                path,
-                stroke,
-                *pen,
-                device,
-                Adjustment::None,
-                &options,
-            )?,
+            Mark::Stroke(path, stroke, pen) => {
+                Shape::stroke(path, stroke, *pen, device, Adjustment::None, &options)?
+            }
         };
         let Some(shape) = shape else { continue };
         for b in shape.bands(area) {
@@ -231,7 +270,9 @@ fn new(marks: &[Mark], scale: f64, area: &Area) -> Result<u64, Box<dyn Error>> {
                 for span in row.spans() {
                     sum += match span {
                         Span::Full { len, .. } => u64::from(len) * 255,
-                        Span::Partial { coverage, .. } => coverage.iter().map(|&v| u64::from(v)).sum(),
+                        Span::Partial { coverage, .. } => {
+                            coverage.iter().map(|&v| u64::from(v)).sum()
+                        }
                     };
                 }
             }
@@ -242,7 +283,12 @@ fn new(marks: &[Mark], scale: f64, area: &Area) -> Result<u64, Box<dyn Error>> {
 
 fn compare(marks: &[Mark], (width, height): (f64, f64)) -> Result<(), Box<dyn Error>> {
     let area = Area {
-        region: DeviceRect { x0: 0, y0: 0, x1: width as u32, y1: height as u32 },
+        region: DeviceRect {
+            x0: 0,
+            y0: 0,
+            x1: width as u32,
+            y1: height as u32,
+        },
         band_height: 16,
     };
     let mut worst = (0, 0, 0usize);
@@ -256,8 +302,12 @@ fn compare(marks: &[Mark], (width, height): (f64, f64)) -> Result<(), Box<dyn Er
             }
             if worst.2 < 5 {
                 match mark {
-                    Mark::Stroke(path, stroke, pen) => println!("{i}: {a} {b} {stroke:?} {pen:?} {:?}", path.segments()),
-                    Mark::Fill(path, rule) => println!("{i}: {a} {b} {rule:?} {:?}", path.segments()),
+                    Mark::Stroke(path, stroke, pen) => {
+                        println!("{i}: {a} {b} {stroke:?} {pen:?} {:?}", path.segments());
+                    }
+                    Mark::Fill(path, rule) => {
+                        println!("{i}: {a} {b} {rule:?} {:?}", path.segments());
+                    }
                 }
             }
         }
@@ -268,7 +318,12 @@ fn compare(marks: &[Mark], (width, height): (f64, f64)) -> Result<(), Box<dyn Er
 
 type Producer = fn(&[Mark], f64, &Area) -> Result<u64, Box<dyn Error>>;
 
-fn best(marks: &[Mark], scale: f64, area: &Area, run: Producer) -> Result<(Duration, u64), Box<dyn Error>> {
+fn best(
+    marks: &[Mark],
+    scale: f64,
+    area: &Area,
+    run: Producer,
+) -> Result<(Duration, u64), Box<dyn Error>> {
     let mut best = Duration::MAX;
     let mut sum = 0;
     for _ in 0..7 {
@@ -281,19 +336,43 @@ fn best(marks: &[Mark], scale: f64, area: &Area, run: Producer) -> Result<(Durat
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut workloads = vec![
-        ("10,000 two-segment strokes".to_string(), strokes(10_000)?, (612.0, 792.0)),
-        ("10,000 small fills".to_string(), small_fills(10_000)?, (612.0, 792.0)),
-        ("20 large curved fills".to_string(), large_fills(20)?, (612.0, 792.0)),
+        (
+            "10,000 two-segment strokes".to_string(),
+            strokes(10_000)?,
+            (612.0, 792.0),
+        ),
+        (
+            "10,000 small fills".to_string(),
+            small_fills(10_000)?,
+            (612.0, 792.0),
+        ),
+        (
+            "20 large curved fills".to_string(),
+            large_fills(20)?,
+            (612.0, 792.0),
+        ),
     ];
     // A page's marks as a file (see `read`) and its size in points.
     let mut args = std::env::args().skip(1);
     if let (Some(file), Some(width), Some(height)) = (args.next(), args.next(), args.next()) {
-        workloads = vec![(file.clone(), read(&file)?, (width.parse()?, height.parse()?))];
+        workloads = vec![(
+            file.clone(),
+            read(&file)?,
+            (width.parse()?, height.parse()?),
+        )];
     }
     if let Ok(index) = std::env::var("LOOP") {
         let index = index.parse::<usize>().unwrap_or(0).min(workloads.len() - 1);
         let (marks, (w, h)) = (&workloads[index].1, workloads[index].2);
-        let area = Area { region: DeviceRect { x0: 0, y0: 0, x1: w as u32, y1: h as u32 }, band_height: 16 };
+        let area = Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: w as u32,
+                y1: h as u32,
+            },
+            band_height: 16,
+        };
         let mut sum = 0;
         for _ in 0..100 {
             sum += new(marks, 1.0, &area)?;

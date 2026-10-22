@@ -108,7 +108,12 @@ impl Prepared {
         clippy::cast_sign_loss,
         reason = "validated geometry is normalized before f32 storage and extents are budgeted"
     )]
-    pub(crate) fn new(outline: &Path, linear: [f64; 4], scale: f64, limits: &Limits) -> Result<Self> {
+    pub(crate) fn new(
+        outline: &Path,
+        linear: [f64; 4],
+        scale: f64,
+        limits: &Limits,
+    ) -> Result<Self> {
         let [a, b, c, d] = linear;
         let transform = Transform::new(a, b, c, d, 0.0, 0.0);
         if !transform.is_finite() || !scale.is_finite() {
@@ -177,7 +182,8 @@ impl Prepared {
             edges.push(e);
         }
         // A phase in [0, 1) moves an edge's rows down by at most one.
-        let rows = u32::try_from(height).map_err(|_| Error::limit("glyph extent budget exceeded"))?;
+        let rows =
+            u32::try_from(height).map_err(|_| Error::limit("glyph extent budget exceeded"))?;
         let index = edges::RowList::new((0, rows), edges.len(), |i| {
             let [_, ay, _, by] = edges[i];
             (ay != by).then(|| (ay.min(by).floor() as u32, ay.max(by).ceil() as u32))
@@ -250,7 +256,7 @@ fn flattened_edges(
     let mut edges = Vec::new();
     let mut current = Point::default();
     let mut first = None;
-    let mut push = |edges: &mut Vec<(Point, Point)>, edge: (Point, Point)| -> Result<()> {
+    let push = |edges: &mut Vec<(Point, Point)>, edge: (Point, Point)| -> Result<()> {
         edges
             .try_reserve(1)
             .map_err(|_| Error::limit("glyph geometry allocation failed"))?;
@@ -273,7 +279,12 @@ fn flattened_edges(
             }
             Segment::CubicTo { c1, c2, end } => {
                 flatten(
-                    [current, snap(c1 * local), snap(c2 * local), snap(end * local)],
+                    [
+                        current,
+                        snap(c1 * local),
+                        snap(c2 * local),
+                        snap(end * local),
+                    ],
                     flattening,
                     0,
                     &mut edges,
@@ -435,7 +446,9 @@ pub(crate) fn place(
     let limit = options
         .clip
         .map_or(region, |clip| clip.bounds().intersect(&region));
-    let clamp = |v: i64, lo: u32, hi: u32| u32::try_from(v.clamp(i64::from(lo), i64::from(hi))).unwrap_or(lo);
+    let clamp = |v: i64, lo: u32, hi: u32| {
+        u32::try_from(v.clamp(i64::from(lo), i64::from(hi))).unwrap_or(lo)
+    };
     let width = i64::try_from(prepared.width).unwrap_or(i64::MAX);
     let height = i64::try_from(prepared.height).unwrap_or(i64::MAX);
     let bounds = DeviceRect {
@@ -469,7 +482,12 @@ pub(crate) fn place(
         return Err(Error::limit(super::shape::RASTER_WORK));
     }
     let retained = placement.mask.as_ref().map_or(0, Vec::capacity);
-    let mut shape = Shape::with_body(Body::Binned(placement), bounds, (FillRule::NonZero, work, retained), options);
+    let mut shape = Shape::with_body(
+        Body::Binned(placement),
+        bounds,
+        (FillRule::NonZero, work, retained),
+        options,
+    );
     if options.clip.is_some() {
         shape.multiplied = options.clip.cloned();
         shape.clip = None;
@@ -563,7 +581,13 @@ impl Accumulator {
         clippy::cast_sign_loss,
         reason = "coverage is clamped to [0, 255] before positive nearest rounding"
     )]
-    fn row(&mut self, glyph: &Prepared, (px, py): (f32, f32), row: usize, line: &mut [u8]) -> usize {
+    fn row(
+        &mut self,
+        glyph: &Prepared,
+        (px, py): (f32, f32),
+        row: usize,
+        line: &mut [u8],
+    ) -> usize {
         let width = glyph.width;
         self.area.clear();
         self.area.resize(width + 1, 0.0);
@@ -696,7 +720,12 @@ impl Cache {
             .saturating_mul(size_of::<Slot>())
             .saturating_add(self.store.capacity())
             .saturating_add(self.stamps.capacity().saturating_mul(size_of::<u64>()))
-            .saturating_add(self.accumulator.area.capacity().saturating_mul(size_of::<f32>()))
+            .saturating_add(
+                self.accumulator
+                    .area
+                    .capacity()
+                    .saturating_mul(size_of::<f32>()),
+            )
     }
 
     /// The slot holding `placement`'s mask, allocated on a miss.
@@ -707,7 +736,7 @@ impl Cache {
             ^ key.0.wrapping_mul(0xC2B2_AE3D_27D4_EB4F)
             ^ key.1.rotate_left(17);
         hash ^= hash >> 29;
-        let index = (hash as usize) % CACHE_SLOTS;
+        let index = usize::try_from(hash % CACHE_SLOTS as u64).unwrap_or(0);
         let slot = &self.slots[index];
         let hit = slot.generation >= self.oldest
             && slot.phases == key
@@ -803,13 +832,23 @@ mod tests {
     fn rectangle_masks_have_rational_areas_at_every_phase() {
         let mut path = PathBuilder::new();
         path.rect(0.0, 0.0, 1.0, 1.0);
-        let glyph = Prepared::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], 1.0, &Limits::default()).unwrap();
+        let glyph = Prepared::new(
+            &path.finish(),
+            [1.0, 0.0, 0.0, 1.0],
+            1.0,
+            &Limits::default(),
+        )
+        .unwrap();
         let mut accumulator = Accumulator::default();
         let mut mask = Vec::new();
         for py in [0_u16, 1, 16, 127] {
             for px in [0_u16, 1, 16, 127] {
                 accumulator
-                    .build(&glyph, (f32::from(px) / 128.0, f32::from(py) / 128.0), &mut mask)
+                    .build(
+                        &glyph,
+                        (f32::from(px) / 128.0, f32::from(py) / 128.0),
+                        &mut mask,
+                    )
                     .unwrap();
                 assert_eq!(glyph.width, 2);
                 for (index, a, b) in [

@@ -51,19 +51,14 @@ pub(crate) fn work(edges: usize) -> usize {
     // Pairwise crossings, then per slab (at most 2k + k²/2 of them) a
     // sort of k edges and one pass.
     let slabs = k.saturating_mul(k).saturating_add(2 * k);
-    k.saturating_mul(k)
-        .saturating_add(slabs.saturating_mul(k.saturating_mul(usize::BITS as usize - k.leading_zeros() as usize + 1)))
+    k.saturating_mul(k).saturating_add(
+        slabs.saturating_mul(
+            k.saturating_mul(usize::BITS as usize - k.leading_zeros() as usize + 1),
+        ),
+    )
 }
 
 impl Resolver {
-    pub(crate) fn retained_bytes(&self) -> usize {
-        self.heights
-            .capacity()
-            .saturating_mul(size_of::<f64>())
-            .saturating_add(self.order.capacity().saturating_mul(size_of::<(f64, u32)>()))
-            .saturating_add(self.windings.capacity().saturating_mul(size_of::<i64>()))
-    }
-
     /// The covered area of the cell within heights `span`, quantized,
     /// charging [`work`] to `meter` first.
     ///
@@ -82,11 +77,21 @@ impl Resolver {
         Ok(fold(area, FillRule::NonZero))
     }
 
-    fn area(&mut self, edges: &[LocalEdge], rules: &[FillRule], (bottom, top): (f64, f64)) -> Result<f64> {
+    fn area(
+        &mut self,
+        edges: &[LocalEdge],
+        rules: &[FillRule],
+        (bottom, top): (f64, f64),
+    ) -> Result<f64> {
         let allocation = |_| Error::limit("cell resolver allocation failed");
         self.heights.clear();
         self.heights
-            .try_reserve(edges.len().saturating_mul(edges.len()).saturating_add(2 * edges.len() + 2))
+            .try_reserve(
+                edges
+                    .len()
+                    .saturating_mul(edges.len())
+                    .saturating_add(2 * edges.len() + 2),
+            )
             .map_err(allocation)?;
         self.heights.extend([bottom, top]);
         for e in edges {

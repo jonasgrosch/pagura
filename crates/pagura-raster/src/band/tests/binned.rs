@@ -1,5 +1,5 @@
 //! Binned glyph placements: invariance, reuse and clips. Byte identity with
-//! the old row-fragment masks was checked against `pagura-render`'s
+//! the old row-fragment masks was checked against `pagura-legacy`'s
 //! fragment cache on the bundled fonts (the old cache is private there).
 
 use super::*;
@@ -12,14 +12,30 @@ fn outline() -> Path {
         let k = 0.552_284_749_8 * r;
         let s = if reverse { -1.0 } else { 1.0 };
         path.move_to(Point::new(r, 0.0));
-        path.cubic_to(Point::new(r, s * k), Point::new(k, s * r), Point::new(0.0, s * r))
-            .unwrap();
-        path.cubic_to(Point::new(-k, s * r), Point::new(-r, s * k), Point::new(-r, 0.0))
-            .unwrap();
-        path.cubic_to(Point::new(-r, -s * k), Point::new(-k, -s * r), Point::new(0.0, -s * r))
-            .unwrap();
-        path.cubic_to(Point::new(k, -s * r), Point::new(r, -s * k), Point::new(r, 0.0))
-            .unwrap();
+        path.cubic_to(
+            Point::new(r, s * k),
+            Point::new(k, s * r),
+            Point::new(0.0, s * r),
+        )
+        .unwrap();
+        path.cubic_to(
+            Point::new(-k, s * r),
+            Point::new(-r, s * k),
+            Point::new(-r, 0.0),
+        )
+        .unwrap();
+        path.cubic_to(
+            Point::new(-r, -s * k),
+            Point::new(-k, -s * r),
+            Point::new(0.0, -s * r),
+        )
+        .unwrap();
+        path.cubic_to(
+            Point::new(k, -s * r),
+            Point::new(r, -s * k),
+            Point::new(r, 0.0),
+        )
+        .unwrap();
         path.close();
     };
     circle(&mut path, 500.0, false);
@@ -35,11 +51,16 @@ fn binned_placements_are_invariant_and_reuse_identical_masks() {
     for (scale, size) in [(1.0, 0.012), (2.0, 0.01), (4.0, 0.006)] {
         let linear = [size * scale, 0.0, 0.0, -size * scale];
         let edges = Arc::new(GlyphEdges::binned(&outline, linear, scale, &limits).unwrap());
-        for origin in [Point::new(20.3, 30.7), Point::new(20.30001, 30.70002), Point::new(41.9, 17.05)] {
-            let prepare =
-                |options: &Prep<'_>| Shape::glyph_in(&edges, origin, GlyphOrigins::Binned, options).unwrap();
+        for origin in [
+            Point::new(20.3, 30.7),
+            Point::new(20.30001, 30.70002),
+            Point::new(41.9, 17.05),
+        ] {
+            let prepare = |options: &Prep<'_>| {
+                Shape::glyph_in(&edges, origin, GlyphOrigins::Binned, options).unwrap()
+            };
             let first = invariant(&area, &prepare, None);
-            assert!(first.iter().any(|&v| v == 255) && first.iter().any(|&v| v > 0 && v < 255));
+            assert!(first.contains(&255) && first.iter().any(|&v| v > 0 && v < 255));
             // One rasterizer placing the glyph twice reuses its mask.
             let shape = prepare(&options(area, &limits, None)).unwrap();
             let mut bytes = Meter::new(usize::MAX, "bytes");
@@ -57,7 +78,11 @@ fn binned_placements_are_invariant_and_reuse_identical_masks() {
                         b,
                         &mut band,
                     );
-                    rows.extend(band.rows().map(|r| (r.y, r.spans().map(|s| format!("{s:?}")).collect::<Vec<_>>())));
+                    rows.extend(
+                        band.rows().map(|r| {
+                            (r.y, r.spans().map(|s| format!("{s:?}")).collect::<Vec<_>>())
+                        }),
+                    );
                 }
                 runs.push(rows);
             }
@@ -72,7 +97,8 @@ fn binned_placements_multiply_their_clips() {
     let limits = Limits::default();
     let outline = outline();
     let area = area(0, 0, 64, 48, 8);
-    let edges = Arc::new(GlyphEdges::binned(&outline, [0.03, 0.0, 0.0, -0.03], 2.0, &limits).unwrap());
+    let edges =
+        Arc::new(GlyphEdges::binned(&outline, [0.03, 0.0, 0.0, -0.03], 2.0, &limits).unwrap());
     let origin = Point::new(30.4, 24.6);
     let unclipped = invariant(
         &area,
@@ -82,10 +108,18 @@ fn binned_placements_multiply_their_clips() {
     let mut rect = PathBuilder::new();
     rect.rect(20.5, 10.25, 12.0, 30.0);
     let rect = rect.finish();
-    let triangle = polygon(&[Point::new(5.0, 5.0), Point::new(60.0, 20.0), Point::new(25.0, 45.0)]);
+    let triangle = polygon(&[
+        Point::new(5.0, 5.0),
+        Point::new(60.0, 20.0),
+        Point::new(25.0, 45.0),
+    ]);
     for precision in [Precision::Exact, Precision::Approximate] {
-        for clips in [vec![(&rect, FillRule::NonZero)], vec![(&triangle, FillRule::NonZero)]] {
-            let clip = |o: &ShapeOptions<'_>| ClipShape::new(&clips, Transform::IDENTITY, o).unwrap();
+        for clips in [
+            vec![(&rect, FillRule::NonZero)],
+            vec![(&triangle, FillRule::NonZero)],
+        ] {
+            let clip =
+                |o: &ShapeOptions<'_>| ClipShape::new(&clips, Transform::IDENTITY, o).unwrap();
             let clipped = invariant_with(
                 &area,
                 &|o| Shape::glyph_in(&edges, origin, GlyphOrigins::Binned, o).unwrap(),

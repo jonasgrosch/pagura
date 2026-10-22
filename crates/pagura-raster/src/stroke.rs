@@ -65,7 +65,8 @@ pub(crate) fn outline(
     stroke: &Stroke,
     limits: &Limits,
 ) -> Result<(Path, Transform)> {
-    outline_with(path, transform, stroke, limits, Tiling::Components).map(|(path, transform, _)| (path, transform))
+    outline_with(path, transform, stroke, limits, Tiling::Components)
+        .map(|(path, transform, _)| (path, transform))
 }
 
 /// [`outline`] whose boundary, when every run admits one, is made of pieces
@@ -77,7 +78,8 @@ pub(crate) fn tiled_outline(
     stroke: &Stroke,
     limits: &Limits,
 ) -> Result<(Path, Transform)> {
-    outline_with(path, transform, stroke, limits, Tiling::Proven).map(|(path, transform, _)| (path, transform))
+    outline_with(path, transform, stroke, limits, Tiling::Proven)
+        .map(|(path, transform, _)| (path, transform))
 }
 
 /// The outline as pieces where every run admits them at least as well as

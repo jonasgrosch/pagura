@@ -117,7 +117,13 @@ impl BandRasterizer {
         out.finish();
     }
 
-    fn rect(&mut self, r: Bounds, shape: &Shape, rows: std::ops::Range<u32>, out: &mut BandCoverage) {
+    fn rect(
+        &mut self,
+        r: Bounds,
+        shape: &Shape,
+        rows: std::ops::Range<u32>,
+        out: &mut BandCoverage,
+    ) {
         for y in rows {
             out.push_row(y);
             let mut sink = sink(out, shape, y, self.cells.row_buffer());
@@ -172,56 +178,49 @@ impl BandRasterizer {
         for y in rows {
             out.push_row(y);
             let mut sink = Out {
-                out,
+                coverage: out,
                 x0: bounds.x0 as usize,
                 x1: bounds.x1 as usize,
             };
             if let Some(product) = clip.product() {
-                let runs = product.emit_row(y, clip.rect(), (bounds.x0 as usize, bounds.x1 as usize), &mut sink);
+                let runs = product.emit_row(
+                    y,
+                    clip.rect(),
+                    (bounds.x0 as usize, bounds.x1 as usize),
+                    &mut sink,
+                );
                 self.work = self.work.saturating_add(runs + 2);
                 continue;
             }
-            match clip.rows() {
-                Some(rows) => {
-                    let segments = rows.row(y);
-                    for s in segments {
-                        let value = if s.cell == INSIDE {
-                            u8::MAX
-                        } else {
-                            rows.cell(s.cell).map_or(0, |(c, _, _)| c.value)
-                        };
-                        sink.run(s.x0 as usize, s.x1 as usize, value);
-                    }
-                    self.work = self.work.saturating_add(segments.len() + 2);
+            if let Some(rows) = clip.rows() {
+                let segments = rows.row(y);
+                for s in segments {
+                    let value = if s.cell == INSIDE {
+                        u8::MAX
+                    } else {
+                        rows.cell(s.cell).map_or(0, |(c, _, _)| c.value)
+                    };
+                    sink.run(s.x0 as usize, s.x1 as usize, value);
                 }
-                None => {
-                    let rect = clip.rect().map_or(
-                        Bounds {
-                            left: f64::from(bounds.x0),
-                            top: f64::from(bounds.y0),
-                            right: f64::from(bounds.x1),
-                            bottom: f64::from(bounds.y1),
-                        },
-                        |r| {
-                            r.intersect(Bounds {
-                                left: f64::from(bounds.x0),
-                                top: f64::from(bounds.y0),
-                                right: f64::from(bounds.x1),
-                                bottom: f64::from(bounds.y1),
-                            })
-                        },
-                    );
-                    let runs = rect::emit_row(rect, y, &mut sink);
-                    self.work = self.work.saturating_add(runs + 2);
-                }
+                self.work = self.work.saturating_add(segments.len() + 2);
+                continue;
             }
+            let whole = Bounds {
+                left: f64::from(bounds.x0),
+                top: f64::from(bounds.y0),
+                right: f64::from(bounds.x1),
+                bottom: f64::from(bounds.y1),
+            };
+            let rect = clip.rect().map_or(whole, |r| r.intersect(whole));
+            let runs = rect::emit_row(rect, y, &mut sink);
+            self.work = self.work.saturating_add(runs + 2);
         }
     }
 }
 
 /// Writes runs to the current row of a coverage, within columns `x0..x1`.
 pub(crate) struct Out<'a> {
-    pub(crate) out: &'a mut BandCoverage,
+    pub(crate) coverage: &'a mut BandCoverage,
     pub(crate) x0: usize,
     pub(crate) x1: usize,
 }
@@ -236,7 +235,7 @@ impl Sink for Out<'_> {
                 clippy::cast_possible_truncation,
                 reason = "columns lie within the u32 region"
             )]
-            self.out.put_run(a as u32, (b - a) as u32, value);
+            self.coverage.put_run(a as u32, (b - a) as u32, value);
         }
     }
 }
@@ -260,7 +259,7 @@ pub(crate) fn sink<'a>(
         .and_then(ClipShape::rows);
     RowSink::Overlay(Overlay {
         out: Out {
-            out,
+            coverage: out,
             x0: shape.bounds.x0 as usize,
             x1: shape.bounds.x1 as usize,
         },

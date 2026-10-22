@@ -113,8 +113,10 @@ impl Rows {
         let cell = self.cells.get(index as usize)?;
         Some((
             cell,
-            self.edges.get(cell.edges.0 as usize..cell.edges.1 as usize)?,
-            self.rules.get(cell.rules.0 as usize..cell.rules.1 as usize)?,
+            self.edges
+                .get(cell.edges.0 as usize..cell.edges.1 as usize)?,
+            self.rules
+                .get(cell.rules.0 as usize..cell.rules.1 as usize)?,
         ))
     }
 
@@ -145,7 +147,8 @@ impl Rows {
         Self::reserve(&mut self.segments, 1)?;
         Self::reserve(&mut self.index, 1)?;
         self.segments.push(segment);
-        let end = u32::try_from(self.segments.len()).map_err(|_| Error::limit("clip rows exceed u32"))?;
+        let end =
+            u32::try_from(self.segments.len()).map_err(|_| Error::limit("clip rows exceed u32"))?;
         match self.index.last_mut() {
             Some(last) if last.0 == y => last.1 = end,
             _ => self.index.push((y, end)),
@@ -181,7 +184,10 @@ pub(crate) fn fill_polygon(
             FillRule::NonZero,
         ));
     }
-    Ok((Polygon::from_path(path, transform, tolerance, limits)?, rule))
+    Ok((
+        Polygon::from_path(path, transform, tolerance, limits)?,
+        rule,
+    ))
 }
 
 impl ClipShape {
@@ -370,7 +376,15 @@ fn classify(
                 return Err(error);
             }
         }
-        merge(&runs, &prepared, (y, bounds, span), &local, &mut resolver, &mut rows, &mut meter)?;
+        merge(
+            &runs,
+            &prepared,
+            (y, bounds, span),
+            &local,
+            &mut resolver,
+            &mut rows,
+            &mut meter,
+        )?;
     }
     Ok(rows)
 }
@@ -432,10 +446,14 @@ fn group_row(
         if span == (0.0, 1.0) {
             return Ok(State::Full);
         }
-        let start = u32::try_from(local.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
+        let start =
+            u32::try_from(local.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
         scanner.gap_edges(cover, group, local)?;
         let end = u32::try_from(local.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
-        Ok(State::Partial(Some(crate::quantize_unit(span.1 - span.0)), (start, end)))
+        Ok(State::Partial(
+            Some(crate::quantize_unit(span.1 - span.0)),
+            (start, end),
+        ))
     };
     for index in 0..scanner.cells.len() {
         let cell = scanner.cells[index];
@@ -448,9 +466,11 @@ fn group_row(
                 push(runs, position, cell.x, state)?;
             }
             let state = if cell.listed {
-                let start = u32::try_from(local.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
+                let start = u32::try_from(local.len())
+                    .map_err(|_| Error::limit("clip edges exceed u32"))?;
                 scanner.local_edges(&cell, group, local)?;
-                let end = u32::try_from(local.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
+                let end = u32::try_from(local.len())
+                    .map_err(|_| Error::limit("clip edges exceed u32"))?;
                 let value = if (certain && span == (0.0, 1.0)) || cell.certain {
                     Some(cell.value(rule))
                 } else {
@@ -528,8 +548,10 @@ fn merge(
             x = next;
             continue;
         }
-        let edge_start = u32::try_from(rows.edges.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
-        let rule_start = u32::try_from(rows.rules.len()).map_err(|_| Error::limit("clip rules exceed u32"))?;
+        let edge_start =
+            u32::try_from(rows.edges.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
+        let rule_start =
+            u32::try_from(rows.rules.len()).map_err(|_| Error::limit("clip rules exceed u32"))?;
         for (renumbered, &(g, _, (a, b))) in (0_u8..).zip(&partial) {
             let edges = local
                 .get(a as usize..b as usize)
@@ -542,8 +564,10 @@ fn merge(
             Rows::reserve(&mut rows.rules, 1)?;
             rows.rules.push(prepared[g].4);
         }
-        let edge_end = u32::try_from(rows.edges.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
-        let rule_end = u32::try_from(rows.rules.len()).map_err(|_| Error::limit("clip rules exceed u32"))?;
+        let edge_end =
+            u32::try_from(rows.edges.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
+        let rule_end =
+            u32::try_from(rows.rules.len()).map_err(|_| Error::limit("clip rules exceed u32"))?;
         let value = match partial.as_slice() {
             [(_, Some(value), _)] => *value,
             _ => resolver.coverage(
@@ -553,7 +577,8 @@ fn merge(
                 meter,
             )?,
         };
-        let cell = u32::try_from(rows.cells.len()).map_err(|_| Error::limit("clip cells exceed u32"))?;
+        let cell =
+            u32::try_from(rows.cells.len()).map_err(|_| Error::limit("clip cells exceed u32"))?;
         Rows::reserve(&mut rows.cells, 1)?;
         rows.cells.push(Cell {
             value,
