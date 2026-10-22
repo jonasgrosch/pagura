@@ -92,6 +92,14 @@ impl RowOut for SlotOut<'_> {
     fn put_run(&mut self, x: u32, len: u32, value: u8) {
         self.span(x, len as usize).0.fill(value);
     }
+
+    fn put_row(&mut self, x: u32, values: &[u8]) {
+        let (cells, skip) = self.span(x, values.len());
+        let n = cells.len();
+        if let Some(values) = values.get(skip..skip + n) {
+            cells.copy_from_slice(values);
+        }
+    }
 }
 
 impl BandRasterizer {
@@ -330,8 +338,13 @@ impl BandRasterizer {
         let fit = self.cells.rows_fit(width);
         let mut y = rows.start;
         while y < rows.end {
+            // Listed items come strip by strip; the others as many rows of
+            // the band at once as fit.
             let strip = y / STRIP;
-            let end = strip.saturating_add(1).saturating_mul(STRIP).min(rows.end);
+            let end = match items.strips {
+                Some(_) => strip.saturating_add(1).saturating_mul(STRIP).min(rows.end),
+                None => rows.end,
+            };
             let window = y..end.min(y.saturating_add(fit));
             y = window.end;
             if !self.cells.open(scan, window.clone()) {
@@ -350,11 +363,7 @@ impl BandRasterizer {
                     work += items.add(&mut self.cells, item as usize);
                 }
             } else {
-                let count = items.lines.len() + items.curves.len();
-                work += count;
-                for item in 0..count {
-                    work += items.add(&mut self.cells, item);
-                }
+                work += items.all(&mut self.cells);
             }
             if resolved {
                 self.cells.skip(0);
@@ -443,6 +452,31 @@ struct Items<'a> {
 }
 
 impl Items<'_> {
+    /// Adds every item to the open window, lines then curves. Returns the
+    /// work spent, one unit per item visited.
+    fn all(&self, cells: &mut Cells) -> usize {
+        let origin = self.origin.unwrap_or_default();
+        let mut work = self.lines.len() + self.curves.len();
+        for l in self.lines {
+            let line = Line {
+                a: Point::new(l.a.x + origin.x, l.a.y + origin.y),
+                b: Point::new(l.b.x + origin.x, l.b.y + origin.y),
+            };
+            if cells.reaches(line.a.x.min(line.b.x)) {
+                work += cells.line(line);
+            }
+        }
+        for q in self.curves {
+            let curve = Quadratic {
+                points: q.points.map(|p| Point::new(p.x + origin.x, p.y + origin.y)),
+            };
+            if cells.reaches(curve.points[0].x.min(curve.points[2].x)) {
+                work += cells.curve(curve);
+            }
+        }
+        work
+    }
+
     /// Adds item `item` to the open window: each point plus the origin, as
     /// translating the vertices first would give. Returns the work spent.
     #[inline]
@@ -499,6 +533,21 @@ impl Sink for Out<'_> {
                 reason = "columns lie within the u32 region"
             )]
             self.coverage.put_run(a as u32, (b - a) as u32, value);
+        }
+    }
+
+    #[inline]
+    fn cells(&mut self, x: usize, values: &[u8]) {
+        let a = x.max(self.x0);
+        let b = (x + values.len()).min(self.x1);
+        if a < b
+            && let Some(values) = values.get(a - x..b - x)
+        {
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "columns lie within the u32 region"
+            )]
+            self.coverage.put_row(a as u32, values);
         }
     }
 }
@@ -566,6 +615,14 @@ impl Sink for RowSink<'_> {
             Self::Masked(m) => m.run(x0, x1, value),
         }
     }
+
+    #[inline]
+    fn cells(&mut self, x: usize, values: &[u8]) {
+        match self {
+            Self::Plain(o) => o.cells(x, values),
+            Self::Masked(m) => m.cells(x, values),
+        }
+    }
 }
 
 /// Runs of a row kept only where a clip's runs lie: outside them the clip
@@ -598,6 +655,33 @@ impl Sink for Masked<'_> {
             let start = x.max(s.x0 as usize);
             let end = x1.min(s.x1 as usize);
             self.out.run(start, end, value);
+            x = end;
+        }
+    }
+
+    fn cells(&mut self, x0: usize, values: &[u8]) {
+        let x1 = x0 + values.len();
+        let mut x = x0;
+        while x < x1 {
+            while self
+                .segments
+                .get(self.next)
+                .is_some_and(|s| s.x1 as usize <= x)
+            {
+                self.next += 1;
+                self.extra += 1;
+            }
+            let Some(s) = self.segments.get(self.next) else {
+                return;
+            };
+            if s.x0 as usize >= x1 {
+                return;
+            }
+            let start = x.max(s.x0 as usize);
+            let end = x1.min(s.x1 as usize);
+            if let Some(kept) = values.get(start - x0..end - x0) {
+                self.out.cells(start, kept);
+            }
             x = end;
         }
     }

@@ -24,12 +24,18 @@ pub(crate) const STRIP: u32 = 16;
 /// width, or one row of the region.
 const WIDE: usize = 4096;
 
+/// The most rows of one window: a mark without strip lists (a glyph) takes
+/// up to this many rows of a band at once.
+pub(crate) const WINDOW: u32 = 32;
+
 /// Strip-sized cells, reused for every mark and band of a render.
 #[derive(Debug, Default)]
 pub(crate) struct Cells {
     area: Vec<f64>,
     cover: Vec<f64>,
     touched: Vec<u64>,
+    /// One row's folded touched cells, handed on together.
+    bytes: Vec<u8>,
     /// The window: device column of its first cell, its width, bitmap words
     /// per row, first device row and row count.
     base: i64,
@@ -37,9 +43,6 @@ pub(crate) struct Cells {
     words: usize,
     y0: u32,
     rows: usize,
-    /// The start of the current row's cells and bitmap words.
-    cell: usize,
-    word: usize,
     /// Window rows (bits from the first) that items skip.
     skip: u32,
 }
@@ -53,9 +56,11 @@ impl Cells {
         bytes.reserve(&mut storage.area, cells)?;
         bytes.reserve(&mut storage.cover, cells)?;
         bytes.reserve(&mut storage.touched, words)?;
+        bytes.reserve(&mut storage.bytes, width)?;
         storage.area.resize(cells, 0.0);
         storage.cover.resize(cells, 0.0);
         storage.touched.resize(words, 0);
+        storage.bytes.resize(width, 0);
         Ok(storage)
     }
 
@@ -64,7 +69,8 @@ impl Cells {
         let (cells, words) = Self::sizes(width)?;
         bytes.charge_items::<f64>(cells)?;
         bytes.charge_items::<f64>(cells)?;
-        bytes.charge_items::<u64>(words)
+        bytes.charge_items::<u64>(words)?;
+        bytes.charge_items::<u8>(width)
     }
 
     /// Cells and bitmap words for windows up to `width` wide: a strip of
@@ -81,28 +87,31 @@ impl Cells {
         Ok((cells, words))
     }
 
-    /// The rows of a window `width` wide the storage holds at once: whole
-    /// strips up to [`WIDE`] columns, fewer beyond, at least one.
+    /// The rows of a window `width` wide the storage holds at once, up to
+    /// [`WINDOW`]: whole strips up to [`WIDE`] columns, fewer beyond, at
+    /// least one.
     pub(crate) fn rows_fit(&self, width: usize) -> u32 {
         let words = width / 64 + 1;
         let fit = (self.area.len() / width.max(1)).min(self.touched.len() / words);
-        u32::try_from(fit).unwrap_or(STRIP).clamp(1, STRIP)
+        u32::try_from(fit).unwrap_or(WINDOW).clamp(1, WINDOW)
     }
 
     pub(crate) fn retained_bytes(&self) -> usize {
         (self.area.capacity() + self.cover.capacity())
             .saturating_mul(size_of::<f64>())
             .saturating_add(self.touched.capacity().saturating_mul(size_of::<u64>()))
+            .saturating_add(self.bytes.capacity())
     }
 
     /// Opens a window of columns `from..to` and device rows `rows`, at most
-    /// [`STRIP`] of them; `false` when it does not fit the storage, which
+    /// [`WINDOW`] of them; `false` when it does not fit the storage, which
     /// preparation rules out.
     pub(crate) fn open(&mut self, (from, to): (usize, usize), rows: std::ops::Range<u32>) -> bool {
         let width = to.saturating_sub(from);
         let words = width / 64 + 1;
         let count = rows.len();
-        if count > STRIP as usize
+        if count > WINDOW as usize
+            || width > self.bytes.len()
             || width.saturating_mul(count) > self.area.len()
             || words.saturating_mul(count) > self.touched.len()
         {
@@ -163,22 +172,32 @@ impl Cells {
         }
     }
 
-    /// Makes window row `r` the one [`Accumulate`] adds to.
+    /// The cells and bitmap words of window row `r`, as a view whose
+    /// slices the accumulation keeps in registers.
     #[inline]
-    fn select(&mut self, r: usize) {
-        self.cell = r.wrapping_mul(self.width);
-        self.word = r.wrapping_mul(self.words);
-    }
-
-    #[inline]
-    fn mark(&mut self, x: usize) {
-        if let Some(word) = self.touched.get_mut(self.word.wrapping_add(x / 64)) {
-            *word |= 1 << (x % 64);
+    fn row(&mut self, r: usize) -> Row<'_> {
+        let cells = r.wrapping_mul(self.width);
+        let words = r.wrapping_mul(self.words);
+        Row {
+            base: self.base,
+            area: self
+                .area
+                .get_mut(cells..cells.wrapping_add(self.width))
+                .unwrap_or_default(),
+            cover: self
+                .cover
+                .get_mut(cells..cells.wrapping_add(self.width))
+                .unwrap_or_default(),
+            touched: self
+                .touched
+                .get_mut(words..words.wrapping_add(self.words))
+                .unwrap_or_default(),
         }
     }
 
     /// Adds a straight edge to the rows it crosses. Returns the cells and
     /// rows visited.
+    #[inline]
     pub(crate) fn line(&mut self, line: Line) -> usize {
         let Line { a, b } = line;
         if a.y == b.y {
@@ -205,8 +224,7 @@ impl Cells {
             };
             let xb = line.x(hi);
             carried = Some((hi, xb));
-            self.select(r);
-            visited += 1 + self.piece(xa, xb, (hi - lo) * d);
+            visited += 1 + self.row(r).piece(xa, xb, (hi - lo) * d);
         }
         visited
     }
@@ -220,14 +238,14 @@ impl Cells {
                 continue;
             }
             let top = f64::from(self.y0) + f64::from(u32::try_from(r).unwrap_or(u32::MAX));
-            self.select(r);
-            visited += 1 + Accumulate::curve(self, curve, top);
+            visited += 1 + self.row(r).curve(curve, top);
         }
         visited
     }
 
-    /// Writes window row `r` to `sink` as runs, folded by `rule`, and clears
-    /// its cells. Returns the touched cells.
+    /// Writes window row `r` to `sink`, folded by `rule`, and clears its
+    /// cells: consecutive touched cells together, and each run between them
+    /// once with the cover carried into it. Returns the touched cells.
     pub(crate) fn emit(&mut self, r: usize, rule: FillRule, sink: &mut impl Sink) -> usize {
         let base = usize::try_from(self.base).unwrap_or(0);
         let cells = r.wrapping_mul(self.width);
@@ -235,6 +253,8 @@ impl Cells {
         let mut cover = 0.0;
         let mut position = 0;
         let mut touched = 0;
+        // Folded touched cells waiting from column `start`.
+        let (mut start, mut pending) = (0, 0);
         for (w, word) in (0_usize..).zip(words) {
             let Some(slot) = self.touched.get_mut(word) else {
                 break;
@@ -248,14 +268,27 @@ impl Cells {
                     continue;
                 };
                 if position < x {
+                    if let Some(values) = self.bytes.get(..pending) {
+                        sink.cells(base + start, values);
+                    }
+                    pending = 0;
                     sink.run(base + position, base + x, fold(cover, rule));
                 }
                 cover += std::mem::take(c);
                 let value = std::mem::take(a) + cover;
-                sink.cell(base + x, fold(value, rule));
+                if pending == 0 {
+                    start = x;
+                }
+                if let Some(slot) = self.bytes.get_mut(pending) {
+                    *slot = fold(value, rule);
+                    pending += 1;
+                }
                 position = x + 1;
                 touched += 1;
             }
+        }
+        if let Some(values) = self.bytes.get(..pending) {
+            sink.cells(base + start, values);
         }
         if position < self.width {
             sink.run(base + position, base + self.width, fold(cover, rule));
@@ -270,7 +303,24 @@ impl Cells {
     }
 }
 
-impl Accumulate for Cells {
+/// One row of a window's cells, for [`Accumulate`].
+struct Row<'a> {
+    base: i64,
+    area: &'a mut [f64],
+    cover: &'a mut [f64],
+    touched: &'a mut [u64],
+}
+
+impl Row<'_> {
+    #[inline]
+    fn mark(&mut self, x: usize) {
+        if let Some(word) = self.touched.get_mut(x / 64) {
+            *word |= 1 << (x % 64);
+        }
+    }
+}
+
+impl Accumulate for Row<'_> {
     #[inline]
     fn base(&self) -> i64 {
         self.base
@@ -278,14 +328,13 @@ impl Accumulate for Cells {
 
     #[inline]
     fn width(&self) -> usize {
-        self.width
+        self.area.len()
     }
 
     #[inline]
     fn area_at(&mut self, column: i64, value: f64) {
         if let Ok(x) = usize::try_from(column.wrapping_sub(self.base))
-            && x < self.width
-            && let Some(cell) = self.area.get_mut(self.cell.wrapping_add(x))
+            && let Some(cell) = self.area.get_mut(x)
         {
             *cell += value;
             self.mark(x);
@@ -295,9 +344,7 @@ impl Accumulate for Cells {
     #[inline]
     fn cover_at(&mut self, column: i64, value: f64) {
         let x = usize::try_from(column.wrapping_sub(self.base).max(0)).unwrap_or(usize::MAX);
-        if x < self.width
-            && let Some(cell) = self.cover.get_mut(self.cell.wrapping_add(x))
-        {
+        if let Some(cell) = self.cover.get_mut(x) {
             *cell += value;
             self.mark(x);
         }

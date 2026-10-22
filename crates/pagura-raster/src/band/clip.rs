@@ -420,8 +420,10 @@ impl Sink for Classify<'_> {
         self.push((x0, x1), value, value == u8::MAX);
     }
 
-    fn cell(&mut self, x: usize, value: u8) {
-        self.push((x, x + 1), value, false);
+    fn cells(&mut self, x: usize, values: &[u8]) {
+        for (k, &value) in values.iter().enumerate() {
+            self.push((x + k, x + k + 1), value, false);
+        }
     }
 }
 

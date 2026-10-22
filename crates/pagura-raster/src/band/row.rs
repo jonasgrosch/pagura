@@ -18,10 +18,12 @@ pub(crate) trait Sink {
     /// Pixels `x0..x1` have `value`.
     fn run(&mut self, x0: usize, x1: usize, value: u8);
 
-    /// Pixel `x`, which an edge crosses or touches, has `value`.
+    /// Pixels from `x`, which edges cross or touch, have `values`.
     #[inline]
-    fn cell(&mut self, x: usize, value: u8) {
-        self.run(x, x + 1, value);
+    fn cells(&mut self, x: usize, values: &[u8]) {
+        for (k, &value) in values.iter().enumerate() {
+            self.run(x + k, x + k + 1, value);
+        }
     }
 }
 
