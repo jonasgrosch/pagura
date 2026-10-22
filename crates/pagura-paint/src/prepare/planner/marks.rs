@@ -134,13 +134,15 @@ impl<B: Backend> Planner<'_, B> {
         // once.
         let mut sources: Vec<Option<([f64; 4], Option<bounds::Hull>)>> =
             vec![None; node.sources.len()];
+        let mut positions = Positions::new(node);
         for (i, placement) in node.placements.iter().enumerate() {
+            let position = positions.at(i);
             let source_index = index(placement.source);
             let Some(source) = node.sources.get(source_index) else {
                 self.serial += 1;
                 return Err(self.fail(
                     Error::invalid_argument("glyph source out of range"),
-                    node.position(i),
+                    position,
                 ));
             };
             let cached = sources.get(source_index).copied().flatten();
@@ -165,14 +167,13 @@ impl<B: Backend> Planner<'_, B> {
             let geometry = Geometry::Glyph(source, linear, origin, source_index);
             if let Some(memo) = self.memo.filter(|_| self.gathering == Some(scope.group)) {
                 self.serial += 1;
-                let position = node.position(i);
                 let placed = self.placement(scope, (&memo, hull, &geometry, position), budget);
                 placed.map_err(|error| self.fail(error, position))?;
                 continue;
             }
             let spec = Spec {
                 info: &node.mark,
-                position: node.position(i),
+                position,
                 hull,
                 geometry,
                 colour: Colour::Paint(node.paint),
@@ -908,4 +909,34 @@ enum Shape {
     Everything,
     /// A prepared shape.
     Prepared(Prepared),
+}
+
+/// The positions of a glyph node's placements in show order: its
+/// `(first, position)` pairs walked once, as [`GlyphsNode::position`] finds
+/// each.
+struct Positions<'a> {
+    node: &'a GlyphsNode,
+    next: usize,
+    current: Position,
+}
+
+impl<'a> Positions<'a> {
+    fn new(node: &'a GlyphsNode) -> Self {
+        Self {
+            node,
+            next: 0,
+            current: node.mark.position,
+        }
+    }
+
+    /// The position of placement `index`; indices come in increasing order.
+    fn at(&mut self, index: usize) -> Position {
+        while let Some(&(first, position)) = self.node.positions.get(self.next)
+            && pagura_core::convert::u32_to_usize(first) <= index
+        {
+            self.current = position;
+            self.next += 1;
+        }
+        self.current
+    }
 }
