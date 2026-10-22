@@ -312,11 +312,9 @@ impl Geometry {
                     self.bilinear(px, y, texels, value);
                 }
             }
-            Mode::Area | Mode::Separable => {
-                for (value, px) in pixels.zip(x..) {
-                    self.area(px, y, texels, value);
-                }
-            }
+            // Minified placements average through their separable or
+            // contour plans.
+            Mode::Area | Mode::Separable => {}
         }
     }
 
@@ -348,49 +346,6 @@ impl Geometry {
             alpha += w;
         }
         rest.fill(alpha);
-    }
-
-    fn area(&self, x: u32, y: u32, texels: &impl Texels, out: &mut [f64]) {
-        let (x, y) = (f64::from(x), f64::from(y));
-        let polygon = [
-            Point::new(x, y),
-            Point::new(x + 1.0, y),
-            Point::new(x + 1.0, y + 1.0),
-            Point::new(x, y + 1.0),
-        ]
-        .map(|p| p * self.inverse);
-        let (low, high) = polygon
-            .iter()
-            .fold((polygon[0], polygon[0]), |(low, high), p| {
-                (
-                    Point::new(low.x.min(p.x), low.y.min(p.y)),
-                    Point::new(high.x.max(p.x), high.y.max(p.y)),
-                )
-            });
-        let x0 = coordinate(low.x.floor(), self.width);
-        let y0 = coordinate(low.y.floor(), self.height);
-        let x1 = coordinate(high.x.ceil(), self.width);
-        let y1 = coordinate(high.y.ceil(), self.height);
-        out.fill(0.0);
-        let (color, rest) = split(out, texels.opaque());
-        let mut weight = 0.0;
-        for row in y0..y1 {
-            for col in x0..x1 {
-                let area = intersection(&polygon, f64::from(col), f64::from(row));
-                if area > 0.0 {
-                    texels.add(self.index(f64::from(col), f64::from(row)), area, color);
-                    weight += area;
-                }
-            }
-        }
-        // An opaque texel's alpha sums exactly as the weights do.
-        rest.fill(weight);
-        if weight > 0.0 {
-            let scale = 1.0 / weight;
-            for value in out.iter_mut() {
-                *value *= scale;
-            }
-        }
     }
 
     fn index(&self, x: f64, y: f64) -> usize {
@@ -449,49 +404,4 @@ pub(super) fn sample_index(index: u64) -> usize {
 )]
 fn coordinate(value: f64, maximum: u32) -> u32 {
     value.clamp(0.0, f64::from(maximum)) as u32
-}
-
-/// The area of `polygon` within the unit cell at (`x`, `y`).
-fn intersection(polygon: &[Point; 4], x: f64, y: f64) -> f64 {
-    let mut points = [Point::default(); 12];
-    points[..4].copy_from_slice(polygon);
-    let mut len = 4;
-    for (axis, bound, sign) in [
-        (0, x, 1.0),
-        (0, x + 1.0, -1.0),
-        (1, y, 1.0),
-        (1, y + 1.0, -1.0),
-    ] {
-        if len == 0 {
-            return 0.0;
-        }
-        let mut output = [Point::default(); 12];
-        let mut count = 0;
-        for i in 0..len {
-            let (a, b) = (points[i], points[(i + 1) % len]);
-            let coord = |p: Point| if axis == 0 { p.x } else { p.y };
-            let (da, db) = (sign * (coord(a) - bound), sign * (coord(b) - bound));
-            if da >= 0.0 {
-                output[count] = a;
-                count += 1;
-            }
-            if (da >= 0.0) != (db >= 0.0) {
-                let t = da / (da - db);
-                output[count] = Point::new(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y));
-                count += 1;
-            }
-        }
-        points = output;
-        len = count;
-    }
-    // Translate to the cell to avoid cancellation at large source coordinates.
-    (0..len)
-        .map(|i| {
-            let a = points[i];
-            let b = points[(i + 1) % len];
-            (a.x - x) * (b.y - y) - (a.y - y) * (b.x - x)
-        })
-        .sum::<f64>()
-        .abs()
-        * 0.5
 }

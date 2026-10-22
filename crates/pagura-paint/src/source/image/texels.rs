@@ -230,12 +230,6 @@ impl Colors {
     fn code_texel(&self, code: u16, out: &mut [f64]) {
         self.texel(&[code], Extra::default(), out);
     }
-
-    /// The texel of one sample's `codes` without embedded opacity or Matte.
-    #[cfg(test)]
-    pub(super) fn plain_texel(&self, codes: &[u16], out: &mut [f64]) {
-        self.texel(codes, Extra::default(), out);
-    }
 }
 
 /// Opacities of a soft or stencil mask's samples (8.9.6.2–8.9.6.3).
@@ -273,12 +267,6 @@ impl Opacity {
             opacity.table = Some((0..1u16 << bits).map(|code| opacity.of(code)).collect());
         }
         opacity
-    }
-
-    /// The opacity of one code, for tests.
-    #[cfg(test)]
-    pub(super) fn of_code(&self, code: u16) -> f64 {
-        self.of(code)
     }
 
     /// The opacity of one code.
@@ -320,21 +308,12 @@ pub(super) enum Strategy {
     /// DeviceRGB 8-bit samples into an RGB blending space: one table per
     /// channel.
     Rgb(Box<[[f64; 256]; 3]>),
-    /// Texels cached by their sample tuple.
-    Cached(Box<Mutex<Cache>>),
-    /// Eight-bit samples without their soft mask's Matte, by code and
-    /// opacity code.
-    Unmatte(Box<Mutex<Unmatted>>),
+    /// Texels converted once per distinct sample (its codes, with the soft
+    /// mask's opacity code where a Matte is removed and the embedded
+    /// opacity code), kept in a memo.
+    Memo(Box<Mutex<Memo>>),
     /// Every texel computed from its sample.
     General,
-}
-
-/// Texels of recently seen sample tuples, at most four codes of up to
-/// eight bits each.
-#[derive(Debug)]
-pub(super) struct Cache {
-    keys: [Option<u32>; 256],
-    values: Vec<f64>,
 }
 
 impl Strategy {
@@ -381,27 +360,13 @@ impl Strategy {
             }
             return (Self::Rgb(tables), 256);
         }
-        let channels = lanes - 2;
-        if colors.matte.is_some()
-            && colors.embedded.is_none()
-            && colors.key.is_none()
-            && colors.lookup.is_none()
-            && bits.len() == components
-            && bits.iter().all(|&b| b == 8)
-            && matches!(image.samples, Samples::Bytes(_))
-            && (components == 1 && channels <= 4 || components == 3 && rgb && channels == 3)
-        {
+        if let Some(key) = Key::new(image, colors) {
+            let samples = u64::from(image.width) * u64::from(image.height);
+            let entries = usize::try_from(samples).unwrap_or(usize::MAX).min(Memo::CAP);
+            let opaque = colors.key.is_none() && colors.embedded.is_none();
+            let held = if opaque { lanes - 2 } else { lanes };
             return (
-                Self::Unmatte(Box::new(Mutex::new(Unmatted::new(channels)))),
-                0,
-            );
-        }
-        if (1..=4).contains(&components) && narrow && !per_pixel {
-            return (
-                Self::Cached(Box::new(Mutex::new(Cache {
-                    keys: [None; 256],
-                    values: vec![0.0; 256 * lanes],
-                }))),
+                Self::Memo(Box::new(Mutex::new(Memo::new(key, held, entries)))),
                 0,
             );
         }
@@ -413,23 +378,14 @@ impl Strategy {
         match self {
             Self::Table(table, _) => size_of_val::<[f64]>(table),
             Self::Rgb(_) => size_of::<[[f64; 256]; 3]>(),
-            Self::Cached(cache) => cache
-                .lock()
-                .unwrap_or_else(PoisonError::into_inner)
-                .values
-                .len()
-                .saturating_mul(size_of::<f64>())
-                .saturating_add(size_of::<Cache>()),
-            // The most the table holds once every code meets every
-            // opacity code.
-            Self::Unmatte(memo) => memo.lock().unwrap_or_else(PoisonError::into_inner).bound(),
+            Self::Memo(memo) => memo.lock().unwrap_or_else(PoisonError::into_inner).bound(),
             Self::General => 0,
         }
     }
 
     /// Whether texels convert colours while painting.
     pub(super) fn converts_while_painting(&self) -> bool {
-        matches!(self, Self::Cached(_) | Self::Unmatte(_) | Self::General)
+        matches!(self, Self::Memo(_) | Self::General)
     }
 }
 
@@ -563,13 +519,12 @@ impl Texels for RgbTexels<'_> {
     }
 }
 
-/// Texels computed from their samples, optionally cached by sample tuple.
+/// Texels computed from their samples.
 pub(super) struct SampleTexels<'a> {
     pub(super) image: &'a DecodedImage,
     pub(super) colors: &'a Colors,
     /// The soft mask whose opacity removes the Matte.
     pub(super) matte: Option<(&'a DecodedImage, &'a Opacity)>,
-    pub(super) cache: Option<RefCell<MutexGuard<'a, Cache>>>,
     /// One texel's values while it is weighted.
     scratch: RefCell<[f64; MAX_LANES]>,
 }
@@ -579,14 +534,11 @@ impl<'a> SampleTexels<'a> {
         image: &'a DecodedImage,
         colors: &'a Colors,
         matte: Option<(&'a DecodedImage, &'a Opacity)>,
-        cache: Option<&'a Mutex<Cache>>,
     ) -> Self {
         Self {
             image,
             colors,
             matte,
-            cache: cache
-                .map(|cache| RefCell::new(cache.lock().unwrap_or_else(PoisonError::into_inner))),
             scratch: RefCell::new([0.0; MAX_LANES]),
         }
     }
@@ -599,30 +551,6 @@ impl<'a> SampleTexels<'a> {
             *code = self.image.samples.get(start + c).unwrap_or(0);
         }
         let codes = &codes[..n];
-        if let Some(cache) = &self.cache {
-            let mut cache = cache.borrow_mut();
-            let key = codes
-                .iter()
-                .fold(0u32, |key, &code| (key << 8) | u32::from(code));
-            let slot = if n == 1 {
-                usize::from(key.to_le_bytes()[0])
-            } else {
-                usize::from(key.wrapping_mul(0x9e37_79b1).to_be_bytes()[0])
-            };
-            let lanes = out.len();
-            let range = slot * lanes..(slot + 1) * lanes;
-            if cache.keys[slot] != Some(key) {
-                let Some(values) = cache.values.get_mut(range.clone()) else {
-                    return;
-                };
-                self.colors.texel(codes, Extra::default(), values);
-                cache.keys[slot] = Some(key);
-            }
-            if let Some(values) = cache.values.get(range) {
-                out.copy_from_slice(values);
-            }
-            return;
-        }
         let embedded = match &self.image.mask {
             MaskKind::Embedded(alpha) => alpha.samples.get(index),
             _ => None,
@@ -691,173 +619,331 @@ impl Texels for OpacityTexels<'_> {
     }
 }
 
-/// The texels of eight-bit samples without their soft mask's Matte
-/// (11.6.5.3), each computed once per code and opacity code: every channel
-/// of a one-component image's code, or one channel per code of a DeviceRGB
-/// image into an RGB blending space, whose channels convert independently
-/// (10.4.2). Their alpha and shape are 1.
-#[derive(Debug)]
-pub(super) struct Unmatted {
-    /// Values per code.
-    channels: usize,
-    /// Per opacity code, the values of the codes seen with it.
-    blocks: Vec<Option<Box<Block>>>,
+/// Texels with the opacity of a soft or stencil mask on their grid ahead of
+/// their values, so that one footprint averages both: `[opacity, values..]`.
+pub(super) struct Fused<'a, T> {
+    pub(super) texels: &'a T,
+    pub(super) mask: OpacityTexels<'a>,
+    /// The texels of a row, read before they are interleaved.
+    pub(super) values: RefCell<Vec<f64>>,
 }
 
-/// The values of the codes seen with one opacity code: `channels` per
-/// code, NaN until known.
-#[derive(Debug)]
-struct Block {
-    /// Which codes' values are known, a bit each, 64 codes a word.
-    known: [u64; 4],
-    /// `channels` values per code of each word's 64 codes, held once one of
-    /// them is known: an image whose codes cluster holds a few of them.
-    values: [Vec<f64>; 4],
-}
+impl<T: Texels> Texels for Fused<'_, T> {
+    fn lanes(&self) -> usize {
+        self.texels.lanes() + 1
+    }
 
-impl Unmatted {
-    fn new(channels: usize) -> Self {
-        Self {
-            channels,
-            blocks: std::iter::repeat_with(|| None).take(256).collect(),
+    fn opaque(&self) -> bool {
+        self.texels.opaque()
+    }
+
+    fn get(&self, index: usize, out: &mut [f64]) {
+        if let Some((opacity, values)) = out.split_first_mut() {
+            self.mask.get(index, std::slice::from_mut(opacity));
+            self.texels.get(index, values);
         }
     }
 
-    /// Bytes the table holds once every code has met every opacity code.
-    fn bound(&self) -> usize {
-        let block = size_of::<Block>().saturating_add(256 * self.channels * size_of::<f64>());
-        size_of::<Self>().saturating_add(256 * (size_of::<Option<Box<Block>>>() + block))
+    fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
+        if let Some((opacity, values)) = sum.split_first_mut() {
+            self.mask.add(index, weight, std::slice::from_mut(opacity));
+            self.texels.add(index, weight, values);
+        }
     }
 
-    /// The values of the codes seen with opacity code `mask`.
-    fn block(&mut self, mask: u8) -> Option<&mut Block> {
-        let block = self
-            .blocks
-            .get_mut(usize::from(mask))?
-            .get_or_insert_with(|| {
-                Box::new(Block {
-                    known: [0; 4],
-                    values: Default::default(),
-                })
-            });
-        Some(block)
-    }
-}
-
-impl Block {
-    /// The `channels` values of `code`, computed by `compute` into a texel
-    /// unless known.
-    #[inline]
-    fn values(&mut self, code: u8, channels: usize, compute: impl FnOnce(&mut [f64])) -> &[f64] {
-        let (word, bit) = (usize::from(code >> 6), 1u64 << (code & 63));
-        let (Some(known), Some(held)) = (self.known.get_mut(word), self.values.get_mut(word))
-        else {
-            return &[];
+    fn row(&self, row: (u32, u32), cells: (u32, u32), out: &mut [f64]) {
+        let count = usize::try_from(cells.1.saturating_sub(cells.0)).unwrap_or(0);
+        let Some(stride) = out.len().checked_div(count).filter(|&n| n > 1) else {
+            return;
         };
-        if held.is_empty() {
-            held.resize(64 * channels, 0.0);
+        let mut values = self.values.borrow_mut();
+        values.clear();
+        values.resize(count * (stride - 1), 0.0);
+        self.texels.row(row, cells, &mut values);
+        let mut opacities = [0.0; 256];
+        let mut start = 0;
+        while start < count {
+            let take = (count - start).min(opacities.len());
+            let first = cells.0.saturating_add(u32::try_from(start).unwrap_or(u32::MAX));
+            let end = first.saturating_add(u32::try_from(take).unwrap_or(u32::MAX));
+            self.mask.row(row, (first, end), &mut opacities[..take]);
+            for ((pixel, &opacity), value) in out[start * stride..]
+                .chunks_exact_mut(stride)
+                .zip(&opacities[..take])
+                .zip(values[start * (stride - 1)..].chunks_exact(stride - 1))
+            {
+                if let Some((first, rest)) = pixel.split_first_mut() {
+                    *first = opacity;
+                    copy_texel(rest, value);
+                }
+            }
+            start += take;
         }
-        let at = usize::from(code & 63) * channels;
-        let Some(values) = held.get_mut(at..at + channels) else {
-            return &[];
-        };
-        if *known & bit == 0 {
-            let mut texel = [0.0; MAX_LANES];
-            compute(&mut texel[..channels + 2]);
-            values.copy_from_slice(&texel[..channels]);
-            *known |= bit;
-        }
-        values
     }
 }
 
-/// Texels of eight-bit samples without the Matte, from [`Unmatted`].
-pub(super) struct UnmatteTexels<'a> {
-    samples: &'a [u8],
+/// The key of a sample of at most eight bits per code: its codes, then the
+/// soft mask's opacity code where a Matte is removed, then the embedded
+/// opacity code, eight bits each and at most six of them.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct Key {
     components: usize,
-    /// The soft mask's samples, on the image's grid.
-    mask: &'a [u8],
-    opacity: &'a Opacity,
-    colors: &'a Colors,
-    memo: RefCell<MutexGuard<'a, Unmatted>>,
+    matte: bool,
+    embedded: bool,
 }
 
-impl<'a> UnmatteTexels<'a> {
-    /// The texels of `image`, whose soft mask `mask` has its grid, or `None`
-    /// when either's samples are not bytes.
+impl Key {
+    /// The key of `image`'s samples painted with `colors`, when every code
+    /// it holds has at most eight bits and they fit 64 bits.
+    fn new(image: &DecodedImage, colors: &Colors) -> Option<Self> {
+        let components = usize::from(image.components);
+        let narrow = (0..components).all(|i| image.component_bits(i).is_some_and(|b| b <= 8));
+        let embedded = match &image.mask {
+            MaskKind::Embedded(alpha) => {
+                if alpha.bits_per_component > 8 || !matches!(alpha.samples, Samples::Bytes(_)) {
+                    return None;
+                }
+                true
+            }
+            _ => false,
+        };
+        let matte = colors.matte.is_some();
+        let bytes = components + usize::from(matte) + usize::from(embedded);
+        (narrow && bytes <= 6 && matches!(image.samples, Samples::Bytes(_))).then_some(Self {
+            components,
+            matte,
+            embedded,
+        })
+    }
+}
+
+/// Texels by sample key: open addressing into slots that hold a key and
+/// its `held` values together, so that a lookup reads one place. Keys have
+/// at most 48 bits, so each is held exactly as an f64. The memo holds at
+/// most [`Memo::CAP`] texels; a sample past them is converted without being
+/// kept. Every texel held is its key's, so what the memo holds never
+/// changes a value.
+#[derive(Debug)]
+pub(super) struct Memo {
+    key: Key,
+    held: usize,
+    /// The most texels the image's samples can make.
+    bound: usize,
+    /// Slots of `1 + held` values: the key (or [`FREE`]), then the texel.
+    slots: Vec<f64>,
+    len: usize,
+    /// A texel converted past the cap.
+    spare: Vec<f64>,
+}
+
+/// A free slot: no key is negative.
+const FREE: f64 = -1.0;
+
+impl Memo {
+    /// The most texels kept.
+    pub(super) const CAP: usize = 1 << 20;
+
+    fn new(key: Key, held: usize, bound: usize) -> Self {
+        Self {
+            key,
+            held,
+            bound,
+            slots: Vec::new(),
+            len: 0,
+            spare: Vec::new(),
+        }
+    }
+
+    /// The most bytes the memo holds: slots for its texels at most half
+    /// full, grown by doubling.
+    fn bound(&self) -> usize {
+        self.bound
+            .min(Self::CAP)
+            .saturating_mul(4)
+            .saturating_mul((1 + self.held) * size_of::<f64>())
+    }
+
+    /// The `held` values of the texel of `key`, converted by `convert` into
+    /// a texel of every lane unless held.
+    #[inline]
+    fn get(&mut self, key: u64, convert: impl FnOnce(&mut [f64])) -> &[f64] {
+        let stride = 1 + self.held;
+        if self.slots.is_empty() {
+            self.slots = vec![FREE; stride << 12];
+        }
+        #[expect(
+            clippy::cast_precision_loss,
+            reason = "keys have at most 48 bits, which f64 holds exactly"
+        )]
+        let wanted = key as f64;
+        let mut slot = self.slot(key, wanted);
+        if self.slots.get(slot * stride).copied() != Some(wanted) {
+            let mut texel = [0.0; MAX_LANES];
+            convert(&mut texel[..self.held + 2]);
+            if self.len >= Self::CAP {
+                self.spare.clear();
+                self.spare.extend_from_slice(&texel[..self.held]);
+                return &self.spare;
+            }
+            if (self.len + 1) * 2 > self.slots.len() / stride {
+                self.grow();
+                slot = self.slot(key, wanted);
+            }
+            let at = slot * stride;
+            if let Some(entry) = self.slots.get_mut(at..at + stride) {
+                entry[0] = wanted;
+                entry[1..].copy_from_slice(&texel[..self.held]);
+                self.len += 1;
+            }
+        }
+        let at = slot * stride + 1;
+        self.slots.get(at..at + self.held).unwrap_or(&[])
+    }
+
+    /// The slot of `key` (held as `wanted`), or the free slot it goes into.
+    #[inline]
+    fn slot(&self, key: u64, wanted: f64) -> usize {
+        let stride = 1 + self.held;
+        let mask = self.slots.len() / stride - 1;
+        let hash = key.wrapping_mul(0x9e37_79b9_7f4a_7c15) >> 29;
+        let mut slot = usize::try_from(hash).unwrap_or(0) & mask;
+        while self
+            .slots
+            .get(slot * stride)
+            .is_some_and(|&k| k != wanted && k != FREE)
+        {
+            slot = (slot + 1) & mask;
+        }
+        slot
+    }
+
+    fn grow(&mut self) {
+        let stride = 1 + self.held;
+        let size = self.slots.len() * 2;
+        let slots = std::mem::replace(&mut self.slots, vec![FREE; size]);
+        for entry in slots.chunks_exact(stride) {
+            if entry[0] >= 0.0 {
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "a held key, a non-negative integer below 2^48"
+                )]
+                let key = entry[0] as u64;
+                let at = self.slot(key, entry[0]) * stride;
+                if let Some(target) = self.slots.get_mut(at..at + stride) {
+                    target.copy_from_slice(entry);
+                }
+            }
+        }
+    }
+}
+
+/// Texels of eight-bit samples through their memo.
+pub(super) struct MemoTexels<'a> {
+    samples: &'a [u8],
+    colors: &'a Colors,
+    /// The soft mask's codes on the image's grid and their opacities, where
+    /// a Matte is removed.
+    matte: Option<(&'a [u8], &'a Opacity)>,
+    /// The embedded opacity codes.
+    embedded: Option<&'a [u8]>,
+    memo: RefCell<MutexGuard<'a, Memo>>,
+}
+
+impl<'a> MemoTexels<'a> {
+    /// The texels of `image` through `memo`, with the soft mask `mask` for
+    /// Matte removal; `None` where the samples are not bytes.
     pub(super) fn new(
         image: &'a DecodedImage,
         colors: &'a Colors,
-        (mask, opacity): (&'a DecodedImage, &'a Opacity),
-        memo: &'a Mutex<Unmatted>,
+        mask: Option<(&'a DecodedImage, &'a Opacity)>,
+        memo: &'a Mutex<Memo>,
     ) -> Option<Self> {
-        let (Samples::Bytes(samples), Samples::Bytes(codes)) = (&image.samples, &mask.samples)
-        else {
+        let Samples::Bytes(samples) = &image.samples else {
             return None;
         };
-        let pixels = u64::from(image.width) * u64::from(image.height);
-        (u64::try_from(codes.len()).ok() == Some(pixels)).then(|| Self {
+        let memo = memo.lock().unwrap_or_else(PoisonError::into_inner);
+        let matte = if memo.key.matte {
+            let (mask, opacity) = mask?;
+            let Samples::Bytes(codes) = &mask.samples else {
+                return None;
+            };
+            Some((codes.as_slice(), opacity))
+        } else {
+            None
+        };
+        let embedded = match (&image.mask, memo.key.embedded) {
+            (MaskKind::Embedded(alpha), true) => match &alpha.samples {
+                Samples::Bytes(codes) => Some(codes.as_slice()),
+                _ => return None,
+            },
+            _ => None,
+        };
+        Some(Self {
             samples,
-            components: usize::from(image.components),
-            mask: codes,
-            opacity,
             colors,
-            memo: RefCell::new(memo.lock().unwrap_or_else(PoisonError::into_inner)),
+            matte,
+            embedded,
+            memo: RefCell::new(memo),
         })
     }
 
-    /// Writes the colour of sample `index` into `out`.
+    /// The key of sample `index`.
     #[inline]
-    fn write(&self, memo: &mut Unmatted, index: usize, out: &mut [f64]) {
-        let mask = self.mask.get(index).copied().unwrap_or(0);
-        let channels = memo.channels;
-        if let Some(block) = memo.block(mask) {
-            self.unmatte((block, channels), (mask, index), out);
+    fn key(&self, index: usize, components: usize) -> u64 {
+        let start = index.saturating_mul(components);
+        let codes = self.samples.get(start..start + components).unwrap_or(&[]);
+        let mut key = codes.iter().fold(0u64, |key, &c| (key << 8) | u64::from(c));
+        if let Some((mask, _)) = self.matte {
+            key = (key << 8) | u64::from(mask.get(index).copied().unwrap_or(0));
+        }
+        if let Some(alpha) = self.embedded {
+            key = (key << 8) | u64::from(alpha.get(index).copied().unwrap_or(0));
+        }
+        key
+    }
+
+    /// The texel of sample `index`, written into `out` (its held values).
+    #[inline]
+    fn write(&self, memo: &mut Memo, index: usize, out: &mut [f64]) {
+        let components = memo.key.components;
+        let key = self.key(index, components);
+        let values = memo.get(key, |texel| self.convert(index, components, texel));
+        for (out, &value) in out.iter_mut().zip(values) {
+            *out = value;
         }
     }
 
-    /// Writes the colour of sample `index`, whose opacity code is `mask`,
-    /// into `out`, from `block`, the values of that opacity code.
-    #[inline]
-    fn unmatte(
-        &self,
-        (block, channels): (&mut Block, usize),
-        (mask, index): (u8, usize),
-        out: &mut [f64],
-    ) {
-        let compute = |code: u8, texel: &mut [f64]| {
-            let codes = [u16::from(code); 3];
-            let extra = Extra {
-                embedded: None,
-                mask: Some(self.opacity.code(u16::from(mask))),
-            };
-            self.colors
-                .texel(&codes[..self.components.min(3)], extra, texel);
-        };
-        if self.components == 1 {
-            let code = self.samples.get(index).copied().unwrap_or(0);
-            let values = block.values(code, channels, |texel| compute(code, texel));
-            for (out, &value) in out.iter_mut().zip(values) {
-                *out = value;
-            }
-        } else {
-            let start = index.saturating_mul(3);
-            let codes = self.samples.get(start..start + 3).unwrap_or(&[0; 3]);
-            for (channel, (out, &code)) in out.iter_mut().zip(codes).enumerate() {
-                let values = block.values(code, channels, |texel| compute(code, texel));
-                *out = values.get(channel).copied().unwrap_or(0.0);
-            }
+    /// Converts sample `index` into a texel of every lane.
+    fn convert(&self, index: usize, components: usize, texel: &mut [f64]) {
+        let start = index.saturating_mul(components);
+        let mut codes = [0u16; MAX_COMPONENTS];
+        for (code, &byte) in codes
+            .iter_mut()
+            .zip(self.samples.get(start..start + components).unwrap_or(&[]))
+        {
+            *code = u16::from(byte);
         }
+        let extra = Extra {
+            embedded: self
+                .embedded
+                .map(|alpha| u16::from(alpha.get(index).copied().unwrap_or(0))),
+            mask: self.matte.map(|(mask, opacity)| {
+                opacity.code(u16::from(mask.get(index).copied().unwrap_or(0)))
+            }),
+        };
+        self.colors
+            .texel(&codes[..components.min(MAX_COMPONENTS)], extra, texel);
     }
 }
 
-impl Texels for UnmatteTexels<'_> {
+impl Texels for MemoTexels<'_> {
     fn lanes(&self) -> usize {
         self.colors.lanes()
     }
 
     fn opaque(&self) -> bool {
-        true
+        self.memo.borrow().held + 2 == self.colors.lanes()
     }
 
     fn get(&self, index: usize, out: &mut [f64]) {
@@ -879,23 +965,41 @@ impl Texels for UnmatteTexels<'_> {
             return;
         };
         let mut memo = self.memo.borrow_mut();
-        let channels = memo.channels;
         let start = sample_index(u64::from(row) * u64::from(width) + u64::from(first));
-        let masks = self.mask.get(start..start + count).unwrap_or(&[]);
-        let mut pixels = out.chunks_exact_mut(stride);
-        // Runs of one opacity code share their block.
-        let mut cell = 0;
-        while let Some(&mask) = masks.get(cell) {
-            let run = masks.get(cell..).map_or(1, |rest| {
-                rest.iter().take_while(|&&code| code == mask).count()
-            });
-            let Some(block) = memo.block(mask) else {
-                return;
-            };
-            for (index, values) in (start + cell..start + cell + run).zip(pixels.by_ref()) {
-                self.unmatte((block, channels), (mask, index), values);
+        let components = memo.key.components;
+        let mut previous = None;
+        let mut last = [0.0; MAX_LANES];
+        for (index, values) in (start..start + count).zip(out.chunks_exact_mut(stride)) {
+            let key = self.key(index, components);
+            if previous != Some(key) {
+                let held = memo.get(key, |texel| self.convert(index, components, texel));
+                copy_texel(&mut last, held);
+                previous = Some(key);
             }
-            cell += run.max(1);
+            copy_texel(values, &last);
         }
+    }
+}
+
+/// Copies the first values of `from` into `to`, as many as both hold: a
+/// fixed-size move for the common counts, where a copy call per texel
+/// costs more than the copy.
+#[inline]
+pub(super) fn copy_texel(to: &mut [f64], from: &[f64]) {
+    #[inline]
+    fn fixed<const N: usize>(to: &mut [f64], from: &[f64]) {
+        if let (Some(to), Some(from)) = (to.first_chunk_mut::<N>(), from.first_chunk::<N>()) {
+            *to = *from;
+        }
+    }
+    match to.len().min(from.len()) {
+        0 => {}
+        1 => fixed::<1>(to, from),
+        2 => fixed::<2>(to, from),
+        3 => fixed::<3>(to, from),
+        4 => fixed::<4>(to, from),
+        5 => fixed::<5>(to, from),
+        6 => fixed::<6>(to, from),
+        n => to[..n].copy_from_slice(&from[..n]),
     }
 }

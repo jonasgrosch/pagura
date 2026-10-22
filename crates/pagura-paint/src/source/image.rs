@@ -10,15 +10,15 @@
 //! colour is unpremultiplied for the executor.
 
 mod codes;
+mod contour;
 mod geometry;
-#[cfg(test)]
-mod proto;
 mod separable;
 #[cfg(test)]
 mod tests;
 mod texels;
 
 use super::{PaintContext, SpanColors};
+use contour::Contour;
 use geometry::{Geometry, Mode, Texels};
 use pagura_color::{ColorSpace, Converter, Painted, Process};
 use pagura_core::{Built, Diagnostic, Error, Meter, Result, StoreKey};
@@ -31,8 +31,8 @@ use pagura_raster::Transform;
 use separable::{RowCache, Rows, Separable};
 use std::sync::Arc;
 use texels::{
-    ByteCodes, Colors, Convert, Lookup, Opacity, OpacityTexels, PackedCodes, RgbTexels,
-    SampleTexels, Strategy, TableTexels, UnmatteTexels,
+    ByteCodes, Colors, Convert, Fused, Lookup, MemoTexels, Opacity, OpacityTexels, PackedCodes,
+    RgbTexels, SampleTexels, Strategy, TableTexels,
 };
 
 /// An image prepared for one render: decoded (through the store) and ready
@@ -69,6 +69,8 @@ struct Prepared {
     /// Separable sampling of converted texels otherwise, where the
     /// placement is upright.
     separable: Option<Separable>,
+    /// Contour sampling where a turned placement minifies.
+    contour: Option<Contour>,
 }
 
 #[derive(Debug)]
@@ -90,6 +92,11 @@ struct MaskSampling {
     scales_shape: bool,
     /// Separable sampling of the opacities, where the placement is upright.
     separable: Option<Separable>,
+    /// Contour sampling where a turned placement minifies.
+    contour: Option<Contour>,
+    /// Whether the mask is on the image's grid, so that its opacity
+    /// averages over the image's footprints together with the texels.
+    fused: bool,
 }
 
 /// A decoded image in the store: the source and the request (layout and
@@ -414,6 +421,10 @@ impl ImageSampler {
             return;
         }
         let lanes = channels + 2;
+        let fused = prepared.mask.as_ref().is_some_and(|mask| mask.fused);
+        if fused {
+            return prepared.fused((x, y, len), lanes, out, shape);
+        }
         if let Some(mask) = &prepared.mask {
             out.alpha.resize(len, 0.0);
             let texels = OpacityTexels {
@@ -421,7 +432,7 @@ impl ImageSampler {
                 opacity: &mask.opacity,
             };
             sample(
-                (mask.separable.as_ref(), &mask.geometry),
+                (mask.separable.as_ref(), mask.contour.as_ref(), &mask.geometry),
                 (x, y, len),
                 &texels,
                 &mut out.alpha,
@@ -473,9 +484,76 @@ impl ImageSampler {
 
 impl Prepared {
     /// Writes the summed texels of the span's pixels, `texels.lanes()`
-    /// values each, into `out`.
+    /// values each, into `out`; with a mask on the image's grid, each
+    /// pixel's mask opacity ahead of them.
     fn sample(&self, span: (u32, u32, usize), texels: &impl Texels, out: &mut [f64]) {
-        sample((self.separable.as_ref(), &self.geometry), span, texels, out);
+        let plan = (
+            self.separable.as_ref(),
+            self.contour.as_ref(),
+            &self.geometry,
+        );
+        match self.mask.as_ref().filter(|mask| mask.fused) {
+            Some(mask) => {
+                let fused = Fused {
+                    texels,
+                    mask: OpacityTexels {
+                        mask: &mask.image.image,
+                        opacity: &mask.opacity,
+                    },
+                    values: std::cell::RefCell::new(Vec::new()),
+                };
+                sample(plan, span, &fused, out);
+            }
+            None => sample(plan, span, texels, out),
+        }
+    }
+
+    /// [`ImageSampler::fill`] of an image whose mask is on its grid: the
+    /// opacity of each pixel averaged with its texels.
+    fn fused(
+        &self,
+        (x, y, len): (u32, u32, usize),
+        lanes: usize,
+        out: &mut SpanColors,
+        shape: Option<&mut Vec<f64>>,
+    ) {
+        let channels = lanes - 2;
+        let stride = lanes + 1;
+        let scales_shape = self.mask.as_ref().is_some_and(|mask| mask.scales_shape);
+        out.colors.resize(len * stride, 0.0);
+        self.texels((x, y, len), lanes, &mut out.colors);
+        let mut shape = shape;
+        if let Some(shape) = shape.as_deref_mut() {
+            shape.clear();
+        }
+        for i in 0..len {
+            let base = i * stride;
+            let Some((&factor, values)) = out.colors[base..base + stride].split_first() else {
+                continue;
+            };
+            let mut color = [0.0; geometry::MAX_LANES];
+            let color = &mut color[..channels];
+            texels::copy_texel(color, values);
+            let (mut alpha, mut own) = (values[channels], values[channels + 1]);
+            for value in color.iter_mut() {
+                *value *= factor;
+            }
+            alpha *= factor;
+            if scales_shape {
+                own *= factor;
+            }
+            if alpha != 1.0 {
+                for value in color.iter_mut() {
+                    *value = if alpha > 0.0 { *value / alpha } else { 0.0 };
+                }
+            }
+            texels::copy_texel(&mut out.colors[i * channels..], color);
+            out.alpha.push(alpha);
+            if let Some(shape) = shape.as_deref_mut() {
+                shape.push(own);
+            }
+        }
+        out.colors.truncate(len * channels);
     }
 
     /// Writes the summed texels of the span's pixels, `lanes` values each.
@@ -495,20 +573,14 @@ impl Prepared {
                     } else {
                         // Planes sampled by a placement that average codes
                         // do not cover convert each sample.
-                        let texels = SampleTexels::new(image, &paint.0, None, None);
+                        let texels = SampleTexels::new(image, &paint.0, None);
                         self.sample(span, &texels, out);
                     }
                 }
-                Strategy::Cached(cache) => {
-                    let texels = SampleTexels::new(image, &paint.0, None, Some(cache));
-                    self.sample(span, &texels, out);
-                }
-                Strategy::Unmatte(memo) => {
+                Strategy::Memo(memo) => {
                     let colors = &paint.0;
-                    let texels = self.mask.as_ref().and_then(|mask| {
-                        UnmatteTexels::new(image, colors, (&mask.image.image, &mask.opacity), memo)
-                    });
-                    match texels {
+                    let mask = self.mask.as_ref().map(|m| (&m.image.image, &m.opacity));
+                    match MemoTexels::new(image, colors, mask, memo) {
                         Some(texels) => self.sample(span, &texels, out),
                         None => self.general(span, colors, out),
                     }
@@ -526,7 +598,7 @@ impl Prepared {
             .as_ref()
             .filter(|_| colors.matte.is_some())
             .map(|mask| (&mask.image.image, &mask.opacity));
-        let texels = SampleTexels::new(&self.image.image, colors, matte, None);
+        let texels = SampleTexels::new(&self.image.image, colors, matte);
         self.sample(span, &texels, out);
     }
 
@@ -575,19 +647,28 @@ fn texel_rows(geometry: &Geometry, columns: (u32, u32)) -> Result<Option<Separab
     Separable::new(geometry, columns)
 }
 
+/// The contour sampling of a turned placement that minifies, over device
+/// columns `columns`, of texels of at most `lanes` values.
+fn turned(geometry: &Geometry, columns: (u32, u32), lanes: usize) -> Option<Contour> {
+    (geometry.mode() == Mode::Area).then(|| Contour::new(geometry, columns, lanes))
+}
+
 /// Writes the summed texels of device pixels `x .. x + len` of row `y`,
 /// `texels.lanes()` values each, into `out`: separably where the placement
-/// is upright, pixel by pixel through `geometry` otherwise. The alpha and
-/// shape of opaque texels are 1 where a pixel's footprint meets the image
-/// and 0 elsewhere.
+/// is upright, by contours where a turned placement minifies, pixel by
+/// pixel through `geometry` otherwise. The alpha and shape of opaque
+/// texels are 1 where a pixel's footprint meets the image and 0 elsewhere.
 fn sample(
-    (separable, geometry): (Option<&Separable>, &Geometry),
+    (separable, contour, geometry): (Option<&Separable>, Option<&Contour>, &Geometry),
     (x, y, len): (u32, u32, usize),
     texels: &impl Texels,
     out: &mut [f64],
 ) {
     let Some(separable) = separable else {
-        geometry.fill((x, y, len), texels, out);
+        match contour {
+            Some(contour) => contour.fill((x, y, len), texels, out),
+            None => geometry.fill((x, y, len), texels, out),
+        }
         return;
     };
     let lanes = texels.lanes();
@@ -817,12 +898,16 @@ impl Prepared {
                     _ => ([0.0, 1.0], true),
                 };
                 let geometry = placement(&image.image, inverse, orientation)?;
+                let fused = (image.image.width, image.image.height)
+                    == (decoded.image.width, decoded.image.height);
                 Some(MaskSampling {
                     opacity: Opacity::new(&image.image, decode),
                     separable: texel_rows(&geometry, columns)?,
+                    contour: turned(&geometry, columns, 1),
                     geometry,
                     image,
                     scales_shape,
+                    fused,
                 })
             }
             _ => None,
@@ -855,6 +940,11 @@ impl Prepared {
             Some(_) => None,
             None => texel_rows(&geometry, columns)?,
         };
+        let lanes = match &paint {
+            Paint::Stencil { table, .. } => table.len() / 2,
+            Paint::Colors(paint) => paint.0.lanes(),
+        };
+        let contour = turned(&geometry, columns, lanes + 1);
         Ok((
             Self {
                 image: decoded,
@@ -865,6 +955,7 @@ impl Prepared {
                 shape_is_alpha,
                 codes,
                 separable,
+                contour,
             },
             conversions,
         ))
@@ -890,6 +981,11 @@ impl Prepared {
                 .as_ref()
                 .and_then(|mask| mask.separable.as_ref())
                 .map_or(0, Separable::bytes),
+            self.contour.as_ref().map_or(0, Contour::bytes),
+            self.mask
+                .as_ref()
+                .and_then(|mask| mask.contour.as_ref())
+                .map_or(0, Contour::bytes),
         ]
         .into_iter()
         .fold(size_of::<Self>(), usize::saturating_add)
@@ -940,7 +1036,7 @@ fn fast_lanes(paint: &Paint, image: &DecodedImage) -> Option<codes::Lanes> {
                 codes::Lanes::single(table, lanes, codes, *opaque)
             }
             Strategy::Rgb(tables) => codes::Lanes::rgb(tables),
-            Strategy::Cached(_) | Strategy::Unmatte(_) | Strategy::General => None,
+            Strategy::Memo(_) | Strategy::General => None,
         },
     }
 }

@@ -20,7 +20,6 @@ use std::sync::Arc;
 mod accuracy;
 mod documents;
 mod oracle;
-mod study;
 mod timing;
 
 /// A prepared conversion of `base` into a composite target of `channels`
@@ -227,11 +226,57 @@ fn close(actual: f64, expected: f64) -> bool {
         || (actual - expected).abs() <= 1e-13 * expected.abs().max(1.0)
 }
 
-/// Compares the new sampler with the oracle on every pixel of the window,
-/// as whole rows and as single pixels, within [`close`]: colours
-/// premultiplied, as they composite, since a footprint that trimming leaves
-/// empty has alpha 0 where the oracle's sliver has alpha near 1e-15. An
-/// empty alpha span means every alpha is 1.
+/// The part of device pixel (`x`, `y`) inside the unit square placed by
+/// `unit_to_device`: the coverage its values composite with.
+fn coverage(unit_to_device: Transform, (x, y): (u32, u32)) -> f64 {
+    let inverse = unit_to_device.inverse().unwrap();
+    let (x, y) = (f64::from(x), f64::from(y));
+    let mut polygon: Vec<pagura_raster::Point> =
+        [(x, y), (x + 1.0, y), (x + 1.0, y + 1.0), (x, y + 1.0)]
+            .iter()
+            .map(|&(x, y)| pagura_raster::Point::new(x, y) * inverse)
+            .collect();
+    for (vertical, bound, sign) in [
+        (true, 0.0, 1.0),
+        (true, 1.0, -1.0),
+        (false, 0.0, 1.0),
+        (false, 1.0, -1.0),
+    ] {
+        let side = |p: pagura_raster::Point| sign * (if vertical { p.x } else { p.y } - bound);
+        let mut next = Vec::new();
+        for (i, &a) in polygon.iter().enumerate() {
+            let b = polygon[(i + 1) % polygon.len()];
+            if side(a) >= 0.0 {
+                next.push(a);
+            }
+            if (side(a) >= 0.0) != (side(b) >= 0.0) {
+                let t = side(a) / (side(a) - side(b));
+                next.push(pagura_raster::Point::new(
+                    a.x + t * (b.x - a.x),
+                    a.y + t * (b.y - a.y),
+                ));
+            }
+        }
+        polygon = next;
+        if polygon.is_empty() {
+            return 0.0;
+        }
+    }
+    let twice: f64 = (0..polygon.len())
+        .map(|i| {
+            let (a, b) = (polygon[i], polygon[(i + 1) % polygon.len()]);
+            a.x * b.y - a.y * b.x
+        })
+        .sum();
+    (twice.abs() * 0.5 * unit_to_device.determinant().abs()).min(1.0)
+}
+
+/// Compares the new sampler with the oracle on every pixel of the window
+/// with a coverage byte, as whole rows and as single pixels, within
+/// [`close`]: colours premultiplied and times the pixel's coverage, as
+/// they composite, since a contour average of the image's sliver of a
+/// pixel carries its rounding divided by the sliver's area. An empty alpha
+/// span means every alpha is 1.
 fn agree(case: &Case, target: usize) {
     for unit_to_device in placements(case.image.width, case.image.height) {
         let sampler = sampler(case, unit_to_device, target);
@@ -246,25 +291,29 @@ fn agree(case: &Case, target: usize) {
             assert_eq!(row.colors.len(), len * channels);
             assert!(row.alpha.is_empty() || row.alpha.len() == len);
             for (i, x) in (x0..x1).enumerate() {
+                let weight = coverage(unit_to_device, (x, y));
+                if weight * 255.0 < 0.5 {
+                    continue;
+                }
                 let expected = oracle.pixel(x, y);
                 let colors = &row.colors[i * channels..(i + 1) * channels];
                 let alpha = row.alpha.get(i).copied().unwrap_or(1.0);
                 let context = || format!("{unit_to_device:?} pixel ({x}, {y})");
                 for (&actual, &color) in colors.iter().zip(&expected.color[..channels]) {
                     assert!(
-                        close(actual * alpha, color * expected.alpha),
+                        close(actual * alpha * weight, color * expected.alpha * weight),
                         "colour {actual} vs {color} {}",
                         context()
                     );
                 }
                 assert!(
-                    close(alpha, expected.alpha),
+                    close(alpha * weight, expected.alpha * weight),
                     "alpha {alpha} vs {} {}",
                     expected.alpha,
                     context()
                 );
                 assert!(
-                    close(row_shape[i], expected.shape),
+                    close(row_shape[i] * weight, expected.shape * weight),
                     "shape {} vs {} {}",
                     row_shape[i],
                     expected.shape,
@@ -585,6 +634,7 @@ fn partitions(x0: u32, len: usize, y: u32) -> Vec<(u32, usize)> {
 /// row, within [`close`] of summing each pixel's per-sample texels over its
 /// footprint, the image's and the mask's.
 #[test]
+#[expect(clippy::too_many_lines, reason = "one case table and its checks")]
 fn rows_and_tables_sum_as_samples_do() {
     let rgb = image((23, 17), 3, 8, bytes(23 * 17 * 3, 8, 71));
     let gray = image((23, 17), 1, 8, bytes(23 * 17, 8, 73));
@@ -644,22 +694,41 @@ fn rows_and_tables_sum_as_samples_do() {
                     .matte
                     .as_ref()
                     .map(|_| (&mask.image.image, &mask.opacity));
-                let texels = SampleTexels::new(&prepared.image.image, colors, matte, None);
+                let texels = SampleTexels::new(&prepared.image.image, colors, matte);
+                // A mask on the image's grid averages ahead of the texels.
+                let texels = super::texels::Fused {
+                    texels: &texels,
+                    mask: OpacityTexels {
+                        mask: &mask.image.image,
+                        opacity: &mask.opacity,
+                    },
+                    values: std::cell::RefCell::new(Vec::new()),
+                };
+                assert!(mask.fused);
+                let lanes = lanes + 1;
                 for y in y0..y1 {
                     let mut whole = (vec![0.0; len * lanes], vec![0.0; len]);
-                    prepared.texels((x0, y, len), lanes, &mut whole.0);
-                    let masks = (mask.separable.as_ref(), &mask.geometry);
+                    prepared.texels((x0, y, len), lanes - 1, &mut whole.0);
+                    let masks = (
+                        mask.separable.as_ref(),
+                        mask.contour.as_ref(),
+                        &mask.geometry,
+                    );
                     super::sample(masks, (x0, y, len), &opacity, &mut whole.1);
                     for (x, count) in partitions(x0, len, y) {
                         let span = (x, y, count);
                         let start = usize::try_from(x - x0).unwrap();
                         let context = format!("{unit_to_device:?} target {target} span {span:?}");
                         let mut rows = vec![0.0; count * lanes];
-                        prepared.texels(span, lanes, &mut rows);
+                        prepared.texels(span, lanes - 1, &mut rows);
                         let part = &whole.0[start * lanes..(start + count) * lanes];
                         assert_eq!(bits(&rows), bits(part), "{context}");
                         let mut samples = vec![0.0; count * lanes];
-                        prepared.geometry.fill(span, &texels, &mut samples);
+                        // A plan of its own: kept rows belong to one
+                        // source of texels.
+                        let own = super::texel_rows(&prepared.geometry, (x0, x1)).unwrap();
+                        let plan = (own.as_ref(), prepared.contour.as_ref(), &prepared.geometry);
+                        super::sample(plan, span, &texels, &mut samples);
                         for (&row, &sample) in rows.iter().zip(&samples) {
                             assert!(close(row, sample), "{row} vs {sample} {context}");
                         }
@@ -667,7 +736,9 @@ fn rows_and_tables_sum_as_samples_do() {
                         super::sample(masks, span, &opacity, &mut rows);
                         let part = &whole.1[start..start + count];
                         assert_eq!(bits(&rows), bits(part), "mask {context}");
-                        mask.geometry.fill(span, &opacity, &mut samples);
+                        let own = super::texel_rows(&mask.geometry, (x0, x1)).unwrap();
+                        let plan = (own.as_ref(), mask.contour.as_ref(), &mask.geometry);
+                        super::sample(plan, span, &opacity, &mut samples);
                         for (&row, &sample) in rows.iter().zip(&samples) {
                             assert!(close(row, sample), "mask {row} vs {sample} {context}");
                         }
