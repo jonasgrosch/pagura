@@ -39,9 +39,6 @@ V8_NOTE = ("V8 compiles the whole module at instantiation (`--no-wasm-lazy-compi
            "Compare V8 cells only within one setting.")
 CONTENT = ("text-heavy", "image-heavy", "vector-heavy", "mixed")
 X86_V3 = "pagura-x86-64-v3"
-# The competitive accuracy path (ADR 0004) of the same portable binary, as a row of its own.
-COMPETITIVE = "pagura-competitive"
-COMPETITIVE_FLAGS = ("--accuracy", "competitive")
 
 
 def target_features(toolchain, host, env, *flags):
@@ -278,12 +275,11 @@ def idle_record(machine, path, node, *, smoke):
 
 
 def timed_engines(selected, bases):
-    """The optional x86-64-v3 build and competitive path are Pagura rows, timed whenever portable Pagura is."""
-    rows = tuple(name for name in (X86_V3, COMPETITIVE) if name in bases)
-    if not rows or "pagura" not in selected:
+    """The optional x86-64-v3 build is a Pagura row, timed whenever portable Pagura is."""
+    if X86_V3 not in bases or "pagura" not in selected:
         return selected
     native = tuple(name for name in selected if name not in WASM)
-    return (*native, *rows, *selected[len(native):])
+    return (*native, X86_V3, *selected[len(native):])
 
 
 def measurement(report, jobs, bases, node, wasmtime, artifacts, policy, output, machine, args):
@@ -330,7 +326,7 @@ def measurement(report, jobs, bases, node, wasmtime, artifacts, policy, output, 
                     timeout = min(policy["timeout_seconds"], remaining_time(args))
                     destination = temporary / name
                     destination.mkdir()
-                    command = (document_command("pagura" if name in (X86_V3, COMPETITIVE) else name, bases[name], pages, destination) if name in bases else
+                    command = (document_command("pagura" if name == X86_V3 else name, bases[name], pages, destination) if name in bases else
                                wasm_command(name, node, wasmtime, artifacts, pages, destination))
                     decoded = {}
                     run = measure_document(command, destination, expected, {**policy, "timeout_seconds": timeout},
@@ -451,9 +447,6 @@ def parse_args(argv=None):
     parser.add_argument("--smoke", action="store_true", help="two pages, 72 dpi, three samples and one warmup")
     parser.add_argument("--pagura-x86-64-v3", action="store_true",
                         help="add a separate x86-64-v3 row when the host supports it; portable Pagura stays the reference")
-    parser.add_argument("--pagura-competitive", action="store_true",
-                        help="add a separate row for the competitive accuracy path (RenderOptions::accuracy) "
-                             "of the portable build; exact Pagura stays the reference")
     parser.add_argument("--dpi300-pages", type=int, choices=(20, 40), default=20)
     parser.add_argument("--seed", type=int, default=52018)
     parser.add_argument("--timebox-seconds", type=int, default=7200)
@@ -469,8 +462,6 @@ def parse_args(argv=None):
         parser.error("reference requires --control >= 1")
     if args.pagura_x86_64_v3 and args.engines is not None and "pagura" not in args.engines:
         parser.error("pagura-x86-64-v3 requires pagura in --engines as its parity reference")
-    if args.pagura_competitive and args.engines is not None and "pagura" not in args.engines:
-        parser.error("pagura-competitive requires pagura in --engines as its accuracy reference")
     if args.timebox_seconds <= 0:
         parser.error("timebox-seconds must be positive")
     return args
@@ -555,11 +546,6 @@ def main(argv=None):
                     raise ValueError("x86-64-v3 build failed its executable preflight")
             else:
                 identities[X86_V3] = track
-        if args.pagura_competitive and "pagura" in bases:
-            bases[COMPETITIVE] = [*bases["pagura"], *COMPETITIVE_FLAGS]
-            identities[COMPETITIVE] = identify("pagura", bases[COMPETITIVE])
-            if identities[COMPETITIVE]["status"] != "available":
-                raise ValueError("the competitive path failed its executable preflight")
         names = timed_engines(names, bases)
         for name, runtime in (("v8-wasi", node), ("wasmtime", wasmtime)):
             if name not in needed:

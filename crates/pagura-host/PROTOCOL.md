@@ -125,8 +125,7 @@ not a hard ceiling on allocator or process memory. Per-render Limits still
 apply, and a render costs the same budgets whether its values came from the
 store or were built for it.
 
-Tiles render with the session's fast parameters (SessionConfig::fast), exact
-by default: every pixel within one level of its exact result (ADR 0004).
+Tiles render every pixel within one level of its exact result (ADR 0004).
 
 ## Structured failures and diagnostics
 
