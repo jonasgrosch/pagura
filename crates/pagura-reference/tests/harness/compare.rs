@@ -176,6 +176,7 @@ mod tests {
             nodes: Vec::new(),
             groups: vec![Group {
                 role: GroupRole::Page,
+                cause: pagura_interpret::GroupCause::Document,
                 attributes: GroupAttributes::default(),
                 bbox: None,
                 view: None,

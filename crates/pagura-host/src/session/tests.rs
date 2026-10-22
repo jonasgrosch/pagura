@@ -306,11 +306,11 @@ fn two_pages_have_independent_geometry_and_second_page_pixels() {
 }
 
 #[test]
-fn generations_skip_before_compilation_and_cached_tiles_share_one_list() {
+fn generations_skip_before_recording_and_tiles_share_one_scene() {
     let mut session = ready(Version::V1_1);
     open_rectangle(&mut session);
     session.execute(request(&body(7, &words(&[1, 2])))).unwrap();
-    // Generation 1 is stale: no page lookup, scale check or compilation.
+    // Generation 1 is stale: no page lookup, scale check or recording.
     let stale = body(
         8,
         &generation_tile(1, f64::NAN, u32::MAX, [u32::MAX, 0, 1, 1]),
@@ -319,7 +319,7 @@ fn generations_skip_before_compilation_and_cached_tiles_share_one_list() {
         session.execute(request(&stale)).unwrap(),
         Response::Skipped(1)
     );
-    assert!(session.documents.cached_list(1, 0).is_none());
+    assert!(session.documents.stored_scene(1, 0).is_none());
     let current = body(8, &generation_tile(2, 1.0, 0, [0, 0, 32, 32]));
     assert!(matches!(
         session.execute(request(&current)).unwrap(),
@@ -333,14 +333,15 @@ fn generations_skip_before_compilation_and_cached_tiles_share_one_list() {
             .position,
         Position::Buffer(17)
     );
-    let first = session.documents.cached_list(1, 0).unwrap();
+    let first = session.documents.stored_scene(1, 0).unwrap();
     session.execute(request(&current)).unwrap();
     assert!(Arc::ptr_eq(
         &first,
-        &session.documents.cached_list(1, 0).unwrap()
+        &session.documents.stored_scene(1, 0).unwrap()
     ));
+    drop(first);
     session.execute(request(&body(6, &words(&[1])))).unwrap();
-    assert!(session.documents.cached_list(1, 0).is_none());
+    assert!(session.documents.stored_scene(1, 0).is_none());
     let mut original = ready(Version::V1);
     assert!(
         original
@@ -369,15 +370,18 @@ fn retention_and_supervisor_cancellation_release_on_close() {
         session.execute(request(&tile)).unwrap(),
         Response::GenerationTile { .. }
     ));
+    // The store keeps the page's scene and nothing else for this page.
+    let scene = session.documents.stored_scene(1, 0).unwrap();
     assert_eq!(
         session.stats(),
         SessionStats {
             source_bytes: u64::try_from(pdf.len()).unwrap(),
-            cache_bytes: 4608,
+            cache_bytes: u64::try_from(scene.bytes).unwrap(),
             documents: 1,
             lists: 1
         }
     );
+    drop(scene);
     session.execute(request(&body(6, &words(&[1])))).unwrap();
     assert_eq!(
         session.stats(),

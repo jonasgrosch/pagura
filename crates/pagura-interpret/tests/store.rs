@@ -1,0 +1,62 @@
+//! Fonts, outlines and ICC profiles cached in a `Store` by object identity:
+//! a second interpretation finds them, and font keys stay stable.
+
+use pagura_core::Store;
+use pagura_document::{Document, OpenOptions};
+use pagura_interpret::{Interpreter, Node, Scene};
+
+fn font_keys(scene: &Scene) -> Vec<u64> {
+    scene
+        .nodes
+        .iter()
+        .filter_map(|node| match node {
+            Node::Glyphs(glyphs) => Some(glyphs.sources.iter().map(|s| s.key.font.0)),
+            _ => None,
+        })
+        .flatten()
+        .collect()
+}
+
+#[test]
+fn fonts_and_outlines_are_shared_through_the_store() {
+    let document = Document::open(
+        pagura_testkit::fixture("paint", "text-mode-0.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    let page = document.page(0).unwrap();
+    let store = Store::new(64 << 20);
+    let interpreter = Interpreter::new(&document).with_store(&store);
+    let first = interpreter.scene(page).unwrap();
+    let retained = store.retained_bytes();
+    assert!(retained > 0);
+    let second = interpreter.scene(page).unwrap();
+    assert_eq!(store.retained_bytes(), retained);
+    let keys = font_keys(&first);
+    assert_ne!(keys, Vec::<u64>::new());
+    assert_eq!(keys, font_keys(&second));
+    let plain = Interpreter::new(&document).scene(page).unwrap();
+    assert_eq!(keys, font_keys(&plain));
+    assert_eq!(
+        pagura_interpret::dump(&first),
+        pagura_interpret::dump(&plain)
+    );
+}
+
+#[test]
+fn icc_profiles_are_shared_through_the_store() {
+    let document = Document::open(
+        pagura_testkit::fixture("content", "icc-3-sampled.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    let page = document.page(0).unwrap();
+    let store = Store::new(64 << 20);
+    let interpreter = Interpreter::new(&document).with_store(&store);
+    let result = interpreter.scene(page);
+    if let Err(error) = &result {
+        // Sampled functions of another package are still being built.
+        assert!(error.message.contains("not implemented"), "{error}");
+    }
+    assert!(store.retained_bytes() > 0);
+}

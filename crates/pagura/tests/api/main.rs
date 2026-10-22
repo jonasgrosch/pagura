@@ -10,5 +10,6 @@ mod provider;
 mod render;
 mod signatures;
 mod support;
+mod tags;
 mod text;
 mod write;

@@ -4,12 +4,32 @@ use crate::args::{Command, Conversion, HELP, Output, Source, Timings, USAGE};
 use crate::failure::Failure;
 use crate::input::write_new;
 use crate::{json, microbench, scan};
+use pagura::provider::default_provider;
 use pagura::text::SearchOptions;
-use pagura::{Document, Pixmap, Rgba8};
+use pagura::{Document, Pixmap, RenderContext, Rgba8};
 use std::io::Write;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+
+/// The store capacity of the commands that visit each page once (`text`,
+/// `find`, `render`, `convert` and `scan`).
+///
+/// They drop each page's scene after the page, so the store keeps only what
+/// later pages reuse: font programs, glyph edge setups, colour transforms and
+/// repeated images. 16 MiB holds the fonts of typical documents while
+/// bounding what the decoded images of earlier pages add to peak memory; the
+/// previous renderer kept fonts and one page surface between pages and no
+/// decoded image when rendering exactly. A font program larger than this is
+/// parsed again for every page instead of being kept.
+pub(crate) const ONE_PASS_STORE_BYTES: usize = 16 * 1024 * 1024;
+
+/// A context for one pass over the pages of `document`, with the
+/// feature-selected font data and [`ONE_PASS_STORE_BYTES`].
+pub(crate) fn one_pass_context(document: Document) -> RenderContext {
+    let provider = default_provider(document.limits());
+    RenderContext::with_store_capacity(Arc::new(document), provider, ONE_PASS_STORE_BYTES)
+}
 
 /// Runs `command`, writing its output to `out`.
 ///
@@ -83,7 +103,7 @@ fn pages(document: &Document, selected: Option<usize>) -> Result<std::ops::Range
 
 /// Prints the text of the selected pages, separated by form feeds.
 fn text(source: &Source, page: Option<usize>, out: &mut impl Write) -> Result<(), Failure> {
-    let context = pagura::render_context(Arc::new(source.open()?));
+    let context = one_pass_context(source.open()?);
     let document = context.document();
     for (ordinal, index) in pages(document, page)?.enumerate() {
         let text = context.text_page(document.page(index)?)?;
@@ -99,7 +119,7 @@ fn text(source: &Source, page: Option<usize>, out: &mut impl Write) -> Result<()
 /// Prints one JSON line per match, with its page, character range and
 /// quads in default user space.
 fn find(source: &Source, query: &str, out: &mut impl Write) -> Result<(), Failure> {
-    let context = pagura::render_context(Arc::new(source.open()?));
+    let context = one_pass_context(source.open()?);
     let document = context.document();
     for index in pages(document, None)? {
         let text = context.text_page(document.page(index)?)?;
@@ -134,7 +154,7 @@ struct Stage {
 /// whole range is validated against the page list before anything is written.
 fn convert(conversion: &Conversion, out: &mut impl Write) -> Result<(), Failure> {
     let started = Instant::now();
-    let context = pagura::render_context(Arc::new(conversion.source.open()?));
+    let context = one_pass_context(conversion.source.open()?);
     let document = context.document();
     let count = document.page_count()?;
     let indices = conversion
@@ -151,7 +171,11 @@ fn convert(conversion: &Conversion, out: &mut impl Write) -> Result<(), Failure>
     let mut stages = Vec::with_capacity(indices.clone().count());
     for page in indices {
         let render_started = Instant::now();
-        let pixmap = context.render_page(document.page(page)?, &options)?;
+        // Each page is visited once: its scene is dropped after rendering
+        // instead of being stored.
+        let scene = context.record(document.page(page)?)?;
+        let pixmap = context.render_scene(&scene, &options, None)?;
+        drop(scene);
         let render = render_started.elapsed();
         let emit_started = Instant::now();
         let path = match &conversion.output {
@@ -159,7 +183,6 @@ fn convert(conversion: &Conversion, out: &mut impl Write) -> Result<(), Failure>
             Output::Directory(directory) => image_path(directory, page),
         };
         write_new(&path, &encode_ppm(&pixmap))?;
-        context.recycle(pixmap);
         stages.push(Stage {
             page,
             render,
