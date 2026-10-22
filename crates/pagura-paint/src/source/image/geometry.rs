@@ -135,13 +135,21 @@ impl Footprint {
     }
 
     /// The footprint without end samples that carry less than 2^-40 of its
-    /// weight: they move the average by less than 2^-40 of the colour
-    /// range, far below the quantizer's tie guard, where floating-point
-    /// error in the transform otherwise makes a footprint of two samples
-    /// touch four.
+    /// weight, and with end weights that fall short of a whole sample by
+    /// less than that taken whole: each moves the average by less than
+    /// 2^-40 of the colour range, far below the quantizer's tie guard, where
+    /// floating-point error in the transform otherwise makes a footprint of
+    /// two whole samples touch four with fractional weights.
     #[must_use]
     pub(super) fn trimmed(mut self) -> Self {
         const NEGLIGIBLE: f64 = 1.0 / 1_099_511_627_776.0;
+        let whole = |weight: f64, normalization: f64| {
+            if (1.0 - weight).abs() * normalization < NEGLIGIBLE {
+                1.0
+            } else {
+                weight
+            }
+        };
         if self.end - self.first > 1 && self.first_weight * self.normalization < NEGLIGIBLE {
             self.first += 1;
             self.first_weight = if self.end - self.first == 1 {
@@ -158,7 +166,16 @@ impl Footprint {
                 1.0
             };
         }
+        if self.end - self.first > 1 {
+            self.first_weight = whole(self.first_weight, self.normalization);
+            self.last_weight = whole(self.last_weight, self.normalization);
+        }
         self
+    }
+
+    /// Whether every cell has weight one.
+    pub(super) fn whole(&self) -> bool {
+        self.first_weight == 1.0 && self.last_weight == 1.0
     }
 
     fn weight(self, cell: u32) -> f64 {

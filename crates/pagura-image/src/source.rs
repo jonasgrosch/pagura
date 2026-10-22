@@ -102,10 +102,11 @@ pub enum Reduce {
         y: u32,
     },
     /// Reconstruction near the drawn size: JPEG cells per eight-sample block
-    /// axis (1, 2, 3, 4 or 6), from [`ImageSource::drawn`]. Only under the
-    /// `reduced_image_decode` fast parameter; not within the one-level
-    /// contract. JPEG 2000 resolution levels are not supported by the
-    /// decoder, so JPEG 2000 images decode fully.
+    /// axis (1, 2, 3, 4 or 6), from [`ImageSource::drawn`], interleaved or,
+    /// in the [`Layout::Native`] layout, in component planes of cells. Only
+    /// under the `reduced_image_decode` fast parameter; not within the
+    /// one-level contract. JPEG 2000 resolution levels are not supported by
+    /// the decoder, so JPEG 2000 images decode fully.
     Drawn {
         /// Samples kept per eight-sample block axis.
         cells: u8,
@@ -162,6 +163,10 @@ pub struct DecodeRequest {
     pub reduce: Reduce,
     /// The samples painting reads; rows and blocks outside may be skipped
     /// and then hold unspecified values. `None` asks for the whole image.
+    /// The decoders currently decode every sample: errors and repairs must
+    /// not depend on the region, so the entropy-coded data, most of a
+    /// JPEG's decoding, is read in full either way, and a whole decode in
+    /// the store serves every region of a page.
     pub region: Option<SampleRect>,
     /// The sample layout.
     pub layout: Layout,

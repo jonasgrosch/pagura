@@ -47,6 +47,8 @@ pub(super) struct Lanes {
     /// The value at code zero and the change per code shared by every lane
     /// of opaque lanes that follow their own component.
     direct: Option<(f64, f64)>,
+    /// The same, shared by opaque lanes that all follow the one component.
+    replicated: Option<(f64, f64)>,
     /// Colour channels: all lanes when opaque, all but alpha and shape
     /// otherwise.
     channels: usize,
@@ -105,8 +107,12 @@ impl Lanes {
             ends.push((zero, top));
         }
         let own = component.iter().enumerate().all(|(lane, &c)| lane == c);
+        let single = component.iter().all(|&c| c == 0);
         let shared = affine.windows(2).all(|pair| pair[0] == pair[1]);
         let direct = (opaque && own && shared)
+            .then(|| affine.first().copied())
+            .flatten();
+        let replicated = (opaque && single && shared)
             .then(|| affine.first().copied())
             .flatten();
         Some(Self {
@@ -116,6 +122,7 @@ impl Lanes {
             ends,
             maximum,
             direct,
+            replicated,
             channels,
             opaque,
         })
@@ -400,6 +407,8 @@ pub(super) struct Codes {
     /// The first device column of `plan`.
     x0: u32,
     plan: Plan,
+    /// Whether every planned footprint weights its samples whole.
+    whole: bool,
     /// The blocks of planar samples that hold only background.
     clean: Option<Clean>,
     scratch: Mutex<Scratch>,
@@ -832,6 +841,12 @@ impl Codes {
             Samples::Planar(planar) => Some(Clean::new(planar)),
             _ => None,
         };
+        let whole = match &plan {
+            Plan::Area(feet) => feet
+                .iter()
+                .all(|foot| foot.first >= foot.end || foot.whole()),
+            Plan::Nearest(..) => false,
+        };
         Ok(Some(Self {
             lanes,
             kind,
@@ -840,6 +855,7 @@ impl Codes {
             components,
             x0,
             plan,
+            whole,
             clean,
             scratch: Mutex::new(Scratch::default()),
         }))
@@ -905,21 +921,33 @@ impl Codes {
                 // A lane that is not opaque averages each code beside its
                 // complement.
                 let n = if self.lanes.opaque { n } else { 2 };
-                // Lanes that are their components' codes mapped alike take
-                // their colours straight from the sums.
-                let direct = self.lanes.direct.filter(|_| n == self.lanes.table.len());
-                let (mut target, map) = match direct {
-                    Some(map) => (std::mem::take(&mut out.colors), map),
-                    None => (std::mem::take(&mut scratch.averages), (0.0, 1.0)),
+                // Lanes that are their components' codes mapped alike, or
+                // one component's code copied, take their colours straight
+                // from the sums.
+                let lanes = self.lanes.table.len();
+                let direct = match (self.lanes.direct, self.lanes.replicated) {
+                    (Some(map), _) if n == lanes => Some((map, 1)),
+                    (_, Some(map)) if n == 1 => Some((map, lanes)),
+                    _ => None,
                 };
+                let (mut target, (map, mut copies)) = match direct {
+                    Some(direct) => (std::mem::take(&mut out.colors), direct),
+                    None => (std::mem::take(&mut scratch.averages), ((0.0, 1.0), 1)),
+                };
+                if !matches!(copies, 1 | 3 | 4) {
+                    copies = 1;
+                }
                 target.clear();
-                target.resize(len * n, 0.0);
+                target.resize(len * n * copies, 0.0);
                 let into = (target.as_mut_slice(), map);
-                match n {
-                    1 => self.area::<1>(&grid, (x, y, len), scratch, into),
-                    2 => self.area::<2>(&grid, (x, y, len), scratch, into),
-                    3 => self.area::<3>(&grid, (x, y, len), scratch, into),
-                    _ => self.area::<4>(&grid, (x, y, len), scratch, into),
+                let span = (x, y, len);
+                match (n, copies) {
+                    (1, 3) => self.area::<1, 3>(&grid, span, scratch, into),
+                    (1, 4) => self.area::<1, 4>(&grid, span, scratch, into),
+                    (1, _) => self.area::<1, 1>(&grid, span, scratch, into),
+                    (2, _) => self.area::<2, 1>(&grid, span, scratch, into),
+                    (3, _) => self.area::<3, 1>(&grid, span, scratch, into),
+                    _ => self.area::<4, 1>(&grid, span, scratch, into),
                 }
                 let mut shape = shape;
                 if direct.is_some() {
@@ -998,8 +1026,9 @@ impl Codes {
     }
 
     /// The average codes of the span's separable footprints, `N` per pixel,
-    /// mapped by `zero + average × slope` into `averages`.
-    fn area<const N: usize>(
+    /// mapped by `zero + average × slope` into `averages`, each value `C`
+    /// times.
+    fn area<const N: usize, const C: usize>(
         &self,
         grid: &Grid<'_>,
         (x, y, len): (u32, u32, usize),
@@ -1015,9 +1044,9 @@ impl Codes {
             rows,
             ..
         } = scratch;
-        let feet: &[Footprint] =
+        let (feet, whole): (&[Footprint], bool) =
             if let (Plan::Area(planned), Some(range)) = (&self.plan, self.planned(x, len)) {
-                &planned[range]
+                (&planned[range], self.whole)
             } else {
                 feet.clear();
                 feet.extend(
@@ -1025,7 +1054,10 @@ impl Codes {
                         .take(len)
                         .map(|x| column_footprint(&self.geometry, self.taps, x)),
                 );
-                feet
+                let whole = feet
+                    .iter()
+                    .all(|foot| foot.first >= foot.end || foot.whole());
+                (feet, whole)
             };
         let across = row_footprint(&self.geometry, self.taps, y);
         let Some((first, end)) = extent(feet) else {
@@ -1036,15 +1068,36 @@ impl Codes {
         }
         let complement = self.lanes.complement();
         let length = (end - first) * N;
-        if lines.len() != length {
-            lines.clear();
-            lines.resize(length, 0.0);
-        }
         let rows_spanned = (index(across.first), index(across.end) - 1);
         runs.clear();
         match (grid, self.clean.as_ref()) {
             (Grid::Planar(..), Some(clean)) => clean.runs(rows_spanned, (first, end), runs),
             _ => runs.push((first, end, true)),
+        }
+        let map = (across.normalization, zero, slope);
+        if whole && across.whole() {
+            // Whole samples sum as integers throughout.
+            sum_rows::<N>(
+                (grid, complement, self.clean.as_ref()),
+                &across,
+                (first, end),
+                (sums, rows),
+                runs,
+            );
+            columns::<N, C, u32>((feet, first), sums, (averages, covered), map, |values, _| {
+                let mut sum = [0u32; N];
+                for cell in values.as_chunks::<N>().0 {
+                    for (sum, &value) in sum.iter_mut().zip(cell) {
+                        *sum = sum.wrapping_add(value);
+                    }
+                }
+                sum.map(f64::from)
+            });
+            return;
+        }
+        if lines.len() != length {
+            lines.clear();
+            lines.resize(length, 0.0);
         }
         if let Some(clean) = self.clean.as_ref() {
             let constant: [f64; N] = std::array::from_fn(|k| {
@@ -1068,27 +1121,9 @@ impl Codes {
                 runs,
             );
         }
-        let scale = across.normalization;
-        for ((foot, average), covered) in feet
-            .iter()
-            .zip(averages.as_chunks_mut::<N>().0)
-            .zip(covered.iter_mut())
-        {
-            if foot.first >= foot.end {
-                continue;
-            }
-            *covered = true;
-            let start = (index(foot.first) - first) * N;
-            let stop = (index(foot.end) - first) * N;
-            let Some(values) = lines.get(start..stop) else {
-                continue;
-            };
-            let sum = line_values::<N>(values, foot.first_weight, foot.last_weight);
-            let factor = foot.normalization * scale;
-            for (average, sum) in average.iter_mut().zip(sum) {
-                *average = zero + sum * factor * slope;
-            }
-        }
+        columns::<N, C, f64>((feet, first), lines, (averages, covered), map, |values, foot| {
+            line_values::<N>(values, foot.first_weight, foot.last_weight)
+        });
     }
 }
 
@@ -1151,6 +1186,92 @@ fn reduce_rows(
                     for (sum, &code) in sums.iter_mut().zip(codes) {
                         *sum = sum.wrapping_add(u32::from(code));
                     }
+                }
+            }
+        }
+    }
+}
+
+/// Writes each covered pixel's `N` averages, its footprint's sums of
+/// `values` (`N` per source column from `first`) as `sum` gives them, scaled
+/// by the footprint's and the row's normalization and mapped by
+/// `zero + average × slope`, `C` times each, and marks it covered.
+fn columns<const N: usize, const C: usize, T>(
+    (feet, first): (&[Footprint], usize),
+    values: &[T],
+    (averages, covered): (&mut [f64], &mut [bool]),
+    (scale, zero, slope): (f64, f64, f64),
+    sum: impl Fn(&[T], &Footprint) -> [f64; N],
+) {
+    for ((foot, average), covered) in feet
+        .iter()
+        .zip(averages.as_chunks_mut::<C>().0.as_chunks_mut::<N>().0)
+        .zip(covered.iter_mut())
+    {
+        if foot.first >= foot.end {
+            continue;
+        }
+        *covered = true;
+        let start = (index(foot.first) - first) * N;
+        let stop = (index(foot.end) - first) * N;
+        let Some(values) = values.get(start..stop) else {
+            continue;
+        };
+        let factor = foot.normalization * scale;
+        for (lanes, sum) in average.iter_mut().zip(sum(values, foot)) {
+            *lanes = [zero + sum * factor * slope; C];
+        }
+    }
+}
+
+/// The integer sums of the source rows of `rows` for every source column
+/// `first..end` into `sums`, `n` per column: background runs from their
+/// codes, the others from the rows.
+fn sum_rows<const N: usize>(
+    (grid, complement, clean): (&Grid<'_>, Option<u8>, Option<&Clean>),
+    rows: &Footprint,
+    (first, end): (usize, usize),
+    (sums, cache): (&mut Vec<u32>, &mut RowCache),
+    runs: &[(usize, usize, bool)],
+) {
+    let n = N;
+    let (top, bottom) = (index(rows.first), index(rows.end) - 1);
+    let length = (end - first) * n;
+    if sums.len() != length {
+        sums.clear();
+        sums.resize(length, 0);
+    }
+    let count = u32::try_from(bottom + 1 - top).unwrap_or(u32::MAX);
+    if let Some(clean) = clean {
+        let constant: [u32; N] = std::array::from_fn(|k| {
+            u32::from(clean.background.get(k).copied().unwrap_or(0)).wrapping_mul(count)
+        });
+        for &(start, stop, _) in runs.iter().filter(|run| !run.2) {
+            if let Some(sums) = sums.get_mut((start - first) * n..(stop - first) * n) {
+                for sum in sums.as_chunks_mut::<N>().0 {
+                    *sum = constant;
+                }
+            }
+        }
+    }
+    for y in top..=bottom {
+        let codes = grid.row(y, ((first, end), n), complement, cache);
+        if codes.len() != length {
+            sums.fill(0);
+            return;
+        }
+        for &(start, stop, _) in runs.iter().filter(|run| run.2) {
+            let range = (start - first) * n..(stop - first) * n;
+            let (Some(sums), Some(codes)) = (sums.get_mut(range.clone()), codes.get(range)) else {
+                continue;
+            };
+            if y == top {
+                for (sum, &code) in sums.iter_mut().zip(codes) {
+                    *sum = u32::from(code);
+                }
+            } else {
+                for (sum, &code) in sums.iter_mut().zip(codes) {
+                    *sum = sum.wrapping_add(u32::from(code));
                 }
             }
         }

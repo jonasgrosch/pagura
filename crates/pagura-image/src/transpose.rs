@@ -143,27 +143,27 @@ fn packed_transposed(packed: &Packed, limits: &Limits) -> Result<Packed> {
     let (width, height) = (packed.width(), packed.height());
     let stride = height.div_ceil(8);
     let mut out = storage::<u8>(stride.saturating_mul(width), limits)?;
+    let empty: &[u8] = &[];
     for block_row in 0..stride {
+        // The eight source rows of this block row; rows past the image
+        // read as zeros.
+        let rows: [&[u8]; 8] =
+            std::array::from_fn(|i| packed.row(block_row * 8 + i).unwrap_or(empty));
         for column in 0..packed.stride {
             let mut block = 0u64;
-            for i in 0..8 {
-                let y = block_row * 8 + i;
-                let byte = if y < height {
-                    packed
-                        .bytes
-                        .get(y * packed.stride + column)
-                        .copied()
-                        .unwrap_or(0)
-                } else {
-                    0
-                };
-                block |= u64::from(byte) << (56 - 8 * i);
+            for (i, row) in rows.iter().enumerate() {
+                block |= u64::from(row.get(column).copied().unwrap_or(0)) << (56 - 8 * i);
             }
-            let block = transpose_bits(block).to_be_bytes();
-            for (j, &byte) in block.iter().enumerate() {
-                let x = column * 8 + j;
-                if x < width {
-                    out[x * stride + block_row] = byte;
+            // Uniform blocks are their own transposes.
+            let bytes = if block == 0 || block == u64::MAX {
+                block.to_be_bytes()
+            } else {
+                transpose_bits(block).to_be_bytes()
+            };
+            let first = column * 8;
+            for (x, &byte) in (first..width).zip(&bytes) {
+                if let Some(out) = out.get_mut(x * stride + block_row) {
+                    *out = byte;
                 }
             }
         }
