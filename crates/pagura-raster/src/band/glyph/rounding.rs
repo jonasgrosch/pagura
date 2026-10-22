@@ -542,3 +542,88 @@ fn source_lines(
     }
     Ok(error)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Area, ClipShape, DeviceRect, PathBuilder, ShapeOptions};
+    use pagura_core::Limits;
+
+    #[test]
+    fn canonical_clip_interpolation_cancellation_stays_inside_the_interval() {
+        let limits = Limits::default();
+        let n = 2.0_f64.powi(39);
+        let u = 2.0_f64.powi(-13);
+        let mut clip = PathBuilder::new();
+        clip.move_to(Point::new(-n, -n));
+        clip.line_to(Point::new(n, n + u)).unwrap();
+        clip.line_to(Point::new(-n, n + 1.0)).unwrap();
+        clip.close();
+        let clip = clip.finish();
+        let area = Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 1,
+                y1: 1,
+            },
+            band_height: 1,
+        };
+        let clip = ClipShape::new(
+            &[(&clip, FillRule::NonZero)],
+            Transform::IDENTITY,
+            &ShapeOptions {
+                area,
+                limits: &limits,
+            },
+        )
+        .unwrap();
+        // This quadratic mark contains the whole unit pixel and has its
+        // curved boundary outside it. Only the canonical clip can change
+        // the pixel, so zero curve/localization error is not sufficient.
+        let mut mark = PathBuilder::new();
+        mark.move_to(Point::new(-2.0, -2.0));
+        mark.cubic_to(
+            Point::new(-2.0 / 3.0, -10.0 / 3.0),
+            Point::new(2.0 / 3.0, -10.0 / 3.0),
+            Point::new(2.0, -2.0),
+        )
+        .unwrap();
+        mark.line_to(Point::new(2.0, 2.0)).unwrap();
+        mark.line_to(Point::new(-2.0, 2.0)).unwrap();
+        mark.close();
+        let mark = mark.finish();
+        let source = Source {
+            outline: &mark,
+            linear: Transform::IDENTITY,
+            origin: Point::default(),
+            points: &[],
+        };
+        let options = Prep {
+            area,
+            limits: &limits,
+            clip: Some(&clip),
+        };
+        let mut work = Meter::new(limits.raster_work, RASTER_WORK);
+        let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+        let (actual, error) = interval(
+            source,
+            Pixel {
+                x: 0,
+                y: 0,
+                byte: 0,
+            },
+            (&options, 0),
+            (&mut work, &mut bytes),
+        )
+        .unwrap();
+        // The original stored line is x(y)=(y-u/2)/(1+u/(2N)). Integrate
+        // from its x=0 crossing u/2 to y=1, independently of Line::x.
+        let exact = (1.0 - u / 2.0).powi(2) / (2.0 * (1.0 + u / (2.0 * n)));
+        assert_eq!(quantize_unit(exact), 127);
+        assert!(
+            (actual - exact).abs() <= error + 1e-15,
+            "clip area{actual} ±{error} excludes analytic {exact}"
+        );
+    }
+}
