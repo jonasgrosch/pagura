@@ -269,7 +269,7 @@ impl<B: Backend> Planner<'_, B> {
             && (patterned || (policy && state.overprint.enabled))
         {
             return Err(Error::unsupported(
-                crate::features::TRANSPARENCY_TRANSFER,
+                pagura_interpret::features::TRANSPARENCY_TRANSFER,
                 "per-colourant and pattern transfer-region selection is not implemented",
             ));
         }
@@ -606,7 +606,7 @@ impl<B: Backend> Planner<'_, B> {
             }
             Geometry::Stroke(path, pen) => {
                 let inverse = pen.transform.inverse().ok_or(Error::unsupported(
-                    crate::features::SINGULAR_STROKE,
+                    pagura_interpret::features::SINGULAR_STROKE,
                     "singular stroke transform",
                 ))?;
                 self.backend
@@ -729,7 +729,7 @@ impl<B: Backend> Planner<'_, B> {
         };
         if is_pattern(&paint) {
             return Err(Error::unsupported(
-                crate::features::PATTERN_IMAGE_MASK,
+                pagura_interpret::features::PATTERN_IMAGE_MASK,
                 "pattern-coloured image stencils are not implemented",
             ));
         }

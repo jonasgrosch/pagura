@@ -1,5 +1,7 @@
-//! Differential and invariance tests of the band rasterizer against the
-//! exact backends it replaces.
+//! Invariance and consistency tests of the band rasterizer: the same bytes,
+//! work and charges at every band height and on sub-regions, and its fast
+//! routes against its general ones. Its exactness against the reference is
+//! tested in `tests/exact`.
 #![expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
@@ -15,7 +17,8 @@ mod glyphs;
 mod strokes;
 
 use super::*;
-use crate::{FillRule, Mask, Path, PathBuilder, Point, Transform};
+pub(super) use crate::testing::raster;
+use crate::{FillRule, Path, PathBuilder, Point, Transform};
 use pagura_core::{Limits, Meter};
 
 /// A deterministic generator for test geometry.
@@ -42,76 +45,6 @@ pub(super) fn area(x0: u32, y0: u32, x1: u32, y1: u32, band_height: u32) -> Area
         region: DeviceRect { x0, y0, x1, y1 },
         band_height,
     }
-}
-
-/// The coverage of `mark` over `area`, row-major over the region.
-pub(super) fn raster(
-    area: &Area,
-    shape: Option<&Shape>,
-    clip: Option<&ClipShape>,
-) -> (Vec<u8>, usize) {
-    let mut bytes = Meter::new(usize::MAX, "bytes");
-    let mut raster = BandRasterizer::new(*area, &mut bytes).unwrap();
-    // Sized from the shape, filling the coverage never grows it.
-    let capacity = shape.map_or_else(|| Capacity::band(area), Shape::capacity);
-    let mut band = BandCoverage::with_capacity(capacity, &mut bytes).unwrap();
-    let reserved = band.retained_bytes();
-    let width = area.region.width() as usize;
-    let mut out = vec![0; width * area.region.height() as usize];
-    let bands = match shape {
-        Some(s) => s.bands(area),
-        None => area.bands(),
-    };
-    for b in bands {
-        raster.rasterize(MarkCoverage { shape, clip }, b, &mut band);
-        assert_eq!(band.retained_bytes(), reserved, "the coverage grew");
-        let mut last_row = None;
-        for row in band.rows() {
-            assert!(last_row.is_none_or(|y| y < row.y), "rows in order");
-            assert!(
-                area.band_rows(b).contains(&row.y),
-                "row {} outside band {b}",
-                row.y
-            );
-            last_row = Some(row.y);
-            let line = (row.y - area.region.y0) as usize * width;
-            let mut last_end = 0;
-            for span in row.spans() {
-                let (x, values): (u32, Vec<u8>) = match span {
-                    Span::Full { x, len } => (x, vec![255; len as usize]),
-                    Span::Partial { x, coverage } => {
-                        assert!(coverage.iter().all(|&v| v > 0 && v < 255), "{coverage:?}");
-                        (x, coverage.to_vec())
-                    }
-                };
-                assert!(
-                    x >= area.region.x0 && x as usize + values.len() <= area.region.x1 as usize
-                );
-                assert!(x >= last_end, "spans in order");
-                last_end = x + values.len() as u32;
-                let start = line + (x - area.region.x0) as usize;
-                out[start..start + values.len()].copy_from_slice(&values);
-            }
-        }
-    }
-    (out, raster.work_done())
-}
-
-/// The old exact coverage of a fill over `area`.
-pub(super) fn old_fill(area: &Area, path: &Path, transform: Transform, rule: FillRule) -> Vec<u8> {
-    let r = area.region;
-    Mask::from_path_with_limits(
-        r.width(),
-        r.height(),
-        path,
-        transform,
-        rule,
-        Limits::default(),
-        (r.x0, r.y0),
-    )
-    .unwrap()
-    .coverage()
-    .to_vec()
 }
 
 pub(super) fn options<'a>(area: Area, limits: &'a Limits, clip: Option<&'a ClipShape>) -> Prep<'a> {

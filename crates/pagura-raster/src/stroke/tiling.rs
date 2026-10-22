@@ -460,12 +460,11 @@ fn end(
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        ClipRegion, FillRule, LineCap, LineJoin, Mask, Path, PathBuilder, Point, Rasterizer,
-        Stroke, Transform,
-    };
+    use crate::flatten::TOLERANCE;
+    use crate::stroke::{Tiling, pieces};
+    use crate::testing::{fill, stroke as band_stroke, window};
+    use crate::{FillRule, LineCap, LineJoin, Path, PathBuilder, Point, Stroke, Transform};
     use pagura_core::Limits;
-    use std::sync::Arc;
 
     const SIZE: u32 = 48;
 
@@ -498,46 +497,43 @@ mod tests {
     }
 
     fn exact(outline: &Path, pen: Transform) -> Vec<u8> {
-        Mask::from_path(SIZE, SIZE, outline, pen, FillRule::NonZero, 1 << 20)
-            .unwrap()
-            .coverage()
-            .to_vec()
+        let limits = Limits::default();
+        fill(
+            window(SIZE, SIZE),
+            (outline, pen, FillRule::NonZero),
+            &[],
+            &limits,
+        )
+        .unwrap()
     }
 
-    // Signed cells over the whole surface. Compound paths without a boundary
-    // keep geometric integration only under the competitive policy's
-    // `with_geometric_compounds`, which `compounds` selects.
-    fn cells(outline: Path, pen: Transform, compounds: bool) -> Vec<u8> {
+    /// The outline as pieces where every run is proven to tile, else as
+    /// components.
+    fn tiled(path: &Path, transform: Transform, stroke: &Stroke) -> (Path, Transform) {
         let limits = Limits::default();
-        let mut viewport = PathBuilder::new();
-        viewport.rect(0.0, 0.0, f64::from(SIZE), f64::from(SIZE));
-        let clip = ClipRegion::from_path(
-            SIZE,
-            SIZE,
-            &viewport.finish(),
-            Transform::IDENTITY,
-            FillRule::NonZero,
-            limits,
-            (0, 0),
+        let (outline, pen, _) = pieces(
+            path,
+            transform,
+            stroke,
+            &limits,
+            (Tiling::Proven, TOLERANCE),
         )
         .unwrap();
-        let mut raster = Rasterizer::with_approximate_cells(1.0 / 64.0).unwrap();
-        if compounds {
-            raster = raster.with_geometric_compounds();
-        }
-        let mut dense = vec![0; (SIZE * SIZE) as usize];
-        if let Some(mask) = raster
-            .clipped_path(&clip, Arc::new(outline), pen, FillRule::NonZero, limits)
-            .unwrap()
-        {
-            let (x0, y0) = mask.origin();
-            let width = mask.width() as usize;
-            for (row, line) in mask.coverage().chunks_exact(width).enumerate() {
-                let start = (y0 as usize + row) * SIZE as usize + x0 as usize;
-                dense[start..start + width].copy_from_slice(line);
-            }
-        }
-        dense
+        (outline, pen)
+    }
+
+    /// The band rasterizer's stroke, whose pieces, where proven to tile,
+    /// integrate as signed area without resolving overlaps.
+    fn cells(path: &Path, stroke: &Stroke) -> Vec<u8> {
+        let limits = Limits::default();
+        band_stroke(
+            window(SIZE, SIZE),
+            path,
+            stroke,
+            Transform::IDENTITY,
+            &limits,
+        )
+        .unwrap()
     }
 
     fn largest_difference(a: &[u8], b: &[u8]) -> u8 {
@@ -587,8 +583,7 @@ mod tests {
             for (path, stroke) in strokes() {
                 let (components, pen) =
                     crate::stroke_outline(&path, transform, &stroke, &limits).unwrap();
-                let (tiles, tiled_pen) =
-                    crate::tiled_stroke_outline(&path, transform, &stroke, &limits).unwrap();
+                let (tiles, tiled_pen) = tiled(&path, transform, &stroke);
                 assert_eq!(pen, tiled_pen);
                 assert!(tiles.boundary.is_some(), "{stroke:?}");
                 let difference = largest_difference(&exact(&tiles, pen), &exact(&components, pen));
@@ -600,23 +595,12 @@ mod tests {
     #[test]
     fn signed_cells_of_pieces_integrate_the_union() {
         let limits = Limits::default();
-        let mut overlapping = 0;
         for (path, stroke) in strokes() {
-            let transform = Transform::IDENTITY;
             let (components, pen) =
-                crate::stroke_outline(&path, transform, &stroke, &limits).unwrap();
-            let (tiles, _) =
-                crate::tiled_stroke_outline(&path, transform, &stroke, &limits).unwrap();
-            let union = exact(&components, pen);
-            let difference = largest_difference(&cells(tiles, pen, true), &union);
+                crate::stroke_outline(&path, Transform::IDENTITY, &stroke, &limits).unwrap();
+            let difference = largest_difference(&cells(&path, &stroke), &exact(&components, pen));
             assert!(difference <= 1, "{stroke:?}: {difference}");
-            // Accumulated without a union, the components count their
-            // overlaps twice.
-            if largest_difference(&cells(components, pen, false), &union) > 1 {
-                overlapping += 1;
-            }
         }
-        assert!(overlapping > 0);
     }
 
     /// Strokes whose pieces could overlap keep the component outline.
@@ -624,8 +608,7 @@ mod tests {
         let limits = Limits::default();
         let (components, _) =
             crate::stroke_outline(path, Transform::IDENTITY, stroke, &limits).unwrap();
-        let (outline, _) =
-            crate::tiled_stroke_outline(path, Transform::IDENTITY, stroke, &limits).unwrap();
+        let (outline, _) = tiled(path, Transform::IDENTITY, stroke);
         assert!(outline.boundary.is_none(), "{stroke:?}");
         assert_eq!(outline.segments(), components.segments());
     }
@@ -691,26 +674,24 @@ mod tests {
         for path in [separate.finish(), pentagon] {
             let (components, pen) =
                 crate::stroke_outline(&path, Transform::IDENTITY, &stroke, &limits).unwrap();
-            let (tiles, _) =
-                crate::tiled_stroke_outline(&path, Transform::IDENTITY, &stroke, &limits).unwrap();
+            let (tiles, _) = tiled(&path, Transform::IDENTITY, &stroke);
             assert!(tiles.boundary.is_some());
             let union = exact(&components, pen);
-            assert!(largest_difference(&cells(tiles, pen, true), &union) <= 1);
+            assert!(largest_difference(&cells(&path, &stroke), &union) <= 1);
         }
     }
 
-    /// Whether the stroke keeps its components, or its pieces' signed cells
-    /// stay within one level of the components' exact union.
+    /// Whether the stroke keeps its components, or the largest difference
+    /// of its pieces' signed cells from the components' exact union.
     fn pieces_match_the_union(path: &Path, stroke: &Stroke) -> Option<u8> {
         let limits = Limits::default();
         let (components, pen) =
             crate::stroke_outline(path, Transform::IDENTITY, stroke, &limits).unwrap();
-        let (tiles, _) =
-            crate::tiled_stroke_outline(path, Transform::IDENTITY, stroke, &limits).unwrap();
+        let (tiles, _) = tiled(path, Transform::IDENTITY, stroke);
         tiles
             .boundary
             .is_some()
-            .then(|| largest_difference(&cells(tiles, pen, true), &exact(&components, pen)))
+            .then(|| largest_difference(&cells(path, stroke), &exact(&components, pen)))
     }
 
     #[test]

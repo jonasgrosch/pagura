@@ -14,6 +14,13 @@
 //! - each fast parameter alone, reported against the reference, never
 //!   failing.
 //!
+//! These four tests render every case several times, so the default test
+//! run skips them; `tools/check.py` runs them in release on every platform:
+//!
+//! ```text
+//! cargo test --release -p pagura-reference --test harness -- --ignored
+//! ```
+//!
 //! A case whose recording or rendering meets a dependency's placeholder is
 //! reported as pending. Run with `-- --nocapture` for one line per case;
 //! `PAGURA_REFERENCE_REPORT=<dir>` writes a JSON summary per test there,
@@ -69,6 +76,7 @@ fn failed(rendered: Option<&Error>, reference: Option<&Error>) -> Status {
 }
 
 #[test]
+#[ignore = "renders every conformance case several times; tools/check.py runs it in release"]
 fn the_renderer_is_within_one_level_of_the_reference() {
     let provider = pagura_data::Bundled::default();
     let goldens = goldens::directory();
@@ -149,6 +157,7 @@ fn dump(
 }
 
 #[test]
+#[ignore = "renders every conformance case several times; tools/check.py runs it in release"]
 fn the_reference_meets_the_fixture_oracles() {
     let provider = pagura_data::Bundled::default();
     let mut report = Report::default();
@@ -205,6 +214,7 @@ fn the_reference_meets_the_fixture_oracles() {
 }
 
 #[test]
+#[ignore = "renders every conformance case several times; tools/check.py runs it in release"]
 fn results_do_not_depend_on_band_height_partition_or_cache() {
     let provider = pagura_data::Bundled::default();
     let full = std::env::var_os("PAGURA_REFERENCE_FULL").is_some();
@@ -429,6 +439,7 @@ fn beyond_oracle(rgba: &[u8], oracle: &[u8], tolerance: u8) -> Option<String> {
 }
 
 #[test]
+#[ignore = "renders every conformance case several times; tools/check.py runs it in release"]
 fn fast_parameters_alone_against_the_reference() {
     let provider = pagura_data::Bundled::default();
     let parameters = [

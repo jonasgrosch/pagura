@@ -6,9 +6,10 @@ profile validation; deterministic mutation tests; adversarial resource tests;
 and performance evidence. No single renderer or validator is a complete oracle.
 
 `uv run tools/check.py` runs formatting, architecture/safety policy checks,
-Python lint and type checks (ruff, pyright), Clippy, Rust tests, Python
-harness tests, fixture regeneration checks, and CLI integration tests on the
-Python pinned in `.python-version`. Once `uv sync` has installed the locked
+Python lint and type checks (ruff, pyright), Clippy, Rust tests, the
+renderer against the test-only reference renderer (`pagura-reference`'s
+harness, in release, ADR 0034), Python harness tests, fixture regeneration
+checks, and CLI integration tests on the Python pinned in `.python-version`. Once `uv sync` has installed the locked
 Python tools, it needs no network, and it cannot refresh golden outputs.
 
 Synthetic PDFs are generated independently in Python (`tools/fixturegen/<area>.py`,

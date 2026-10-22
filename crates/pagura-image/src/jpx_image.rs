@@ -2,16 +2,6 @@
 use crate::{DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples, features, jpx, parameters};
 use pagura_core::{Dictionary, Error, Limits, Recovery, Result, Value};
 
-pub(crate) fn decode(
-    data: &[u8],
-    dictionary: &Dictionary,
-    image: &mut DecodedImage,
-    limits: &Limits,
-    diagnostics: &mut pagura_core::Diagnostics,
-) -> Result<()> {
-    Jpx::read(data, dictionary, &image.kind)?.decode(data, image, limits, diagnostics)
-}
-
 /// How a PDF JPXDecode image is decoded: its `SMaskInData` mode and the
 /// container metadata it ignores (7.4.9, Table 87).
 #[derive(Debug, Clone)]

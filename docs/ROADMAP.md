@@ -19,22 +19,30 @@ tools/check.py` passes, and `docs/STATUS.md` records the evidence.
 
 ## Current focus
 
-- **M7 foundations, alongside performance work:** caller-owned transactions,
-  append-only save and filled-form persistence (ADR 0031). Work and review use
-  an isolated branch; tests run on hosted runners. Full rewrite, sanitizing
-  redaction, encryption-on-write and general page-content editing remain later M7 work.
+- **Performance on the one-pass architecture (ADR 0034):** one interpreter,
+  a recorded scene per page, preparation that validates and reserves in
+  source order, the band rasterizer and a band executor with per-buffer
+  storage formats are in place, held to ADR 0004's one-level contract by the
+  reference harness. The next goal is ADR 0004's absolute goal table for the
+  four fast parameters together, then exact rendering towards the same
+  table, then the 0.80 target of ADR 0002, judged on the scoreboard harness
+  in both policies. The levers in order of evidence: band cell coverage
+  (setup cost per mark, interior spans), non-overlapping stroke pieces,
+  prepared paint (span evaluators, column reuse), the executor on opaque
+  pages and band height, images decoded at size and region, interpretation
+  (numeric fast path, operator dispatch, scene reuse), glyph edge setup, and
+  occlusion culling. Byte storage promoted to N16 per 16×16 chunk is an
+  experiment that needs ADR 0004's proof first. WebAssembly SIMD and scalar
+  costs are measured for every kept lever.
+- **M7 foundations:** caller-owned transactions, append-only save and
+  filled-form persistence (ADR 0031). Work and review use an isolated branch;
+  tests run on hosted runners. Full rewrite, sanitizing redaction,
+  encryption-on-write and general page-content editing remain later M7 work.
   Inline form controls support filling, preview and PDF download.
-
 - **Specification verification:** every requirement registry is being checked
   against the primary standards (ISO 32000-2 and the format standards in the
   private reference cache); discrepancies become fixtures with independent
   expectations. A registry whose `scope` does not state this is unverified.
-- **One interpreter, one renderer (ADR 0034):** devices behind one
-  interpreter, a recorded scene per page, preparation that validates and
-  reserves in source order, a band executor with per-buffer storage formats,
-  and four named fast parameters in place of the Competitive routes. Then
-  speed against the fastest competitor per category on that architecture,
-  without spending accuracy (ADR 0004, ADR 0013).
 - **M3/M5 gaps on real files:** vertical writing with substituted CJK fonts,
   Type 1 programs that need PostScript, non-RGB transparency group colour
   spaces, overprint, and transfer functions under transparency.

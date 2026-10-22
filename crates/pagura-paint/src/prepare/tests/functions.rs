@@ -60,7 +60,7 @@ fn a_fractional_boundary_of_a_transfer_fails_preparation() {
             .unwrap_err();
         assert_eq!(
             error.kind,
-            ErrorKind::Unsupported(crate::features::TRANSPARENCY_TRANSFER)
+            ErrorKind::Unsupported(pagura_interpret::features::TRANSPARENCY_TRANSFER)
         );
         assert_eq!(error.position, Position::Buffer(9));
     }

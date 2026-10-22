@@ -1,6 +1,6 @@
 //! An image dictionary read and validated without decoding samples (8.9.5,
-//! 8.9.6, 8.9.7, Tables 87–92): the checks the decode entry points make
-//! before and after decoding that need no samples, in their order.
+//! 8.9.6, 8.9.7, Tables 87–92): the checks a decode makes before and after
+//! decoding that need no samples, in their order.
 
 use super::SourceMask;
 use crate::jpx_image::Jpx;
@@ -72,9 +72,9 @@ impl Header {
     }
 }
 
-/// Reads an image XObject's dictionary and data as `decode_xobject` does
-/// before decoding, returning the header and the data after decryption and
-/// the general-purpose filters.
+/// Reads an image XObject's dictionary and data before decoding, returning
+/// the header and the data after decryption and the general-purpose
+/// filters.
 pub(crate) fn xobject(
     document: &Document,
     image: &IndirectObject,
@@ -122,8 +122,7 @@ pub(crate) fn xobject(
     Ok((header, stream.data.into_owned()))
 }
 
-/// Reads an inline image's dictionary and data as `decode_inline` does
-/// before decoding.
+/// Reads an inline image's dictionary and data before decoding.
 pub(crate) fn inline(
     document: &Document,
     resources: &Dictionary,
@@ -402,8 +401,8 @@ fn intent(document: &Document, dict: &Dictionary) -> Result<Option<Value>> {
 
 /// Whether an image XObject may be reconstructed near its drawn size under
 /// the `reduced_image_decode` fast parameter: an opaque DeviceGray or
-/// DeviceRGB `DCTDecode` image without `Mask`, `SMask` or `Decode` (ADR 0004,
-/// competitive amendment).
+/// DeviceRGB `DCTDecode` image without `Mask`, `SMask` or `Decode` (ADR 0004
+/// §9).
 pub(crate) fn drawn(document: &Document, dictionary: &Dictionary) -> bool {
     let resolve = |key: &[u8]| {
         dictionary

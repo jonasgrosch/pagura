@@ -2,27 +2,17 @@
 
 use crate::flatten::{bounded, validate};
 use crate::{Path, Point, Segment, Transform};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Limits, Result};
 
-pub(crate) fn region(
-    path: &Path,
-    transform: Transform,
-    size: (u32, u32),
-    origin: (u32, u32),
-    limits: &Limits,
-) -> Result<Option<(u32, u32, u32, u32)>> {
-    hull_region(control_hull(path, transform, limits)?, size, origin)
-}
-
+/// The device-space corners `[min, max]` of the hull of `path`'s points
+/// and control points under `transform`; inverted (min above max) for a path
+/// without points.
 pub(crate) fn control_hull(
     path: &Path,
     transform: Transform,
     limits: &Limits,
 ) -> Result<[Point; 2]> {
     validate(path, transform, limits)?;
-    // Start with an empty hull. Seeding the maximum from the viewport origin
-    // would turn geometry entirely above/left of it into a spurious boundary
-    // cell after the floor-cell allowance below, forcing needless flattening.
     let mut min = Point::new(f64::INFINITY, f64::INFINITY);
     let mut max = Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
     let mut record = |point: Point| -> Result<()> {
@@ -47,97 +37,4 @@ pub(crate) fn control_hull(
         }
     }
     Ok([min, max])
-}
-
-pub(crate) fn hull_region(
-    [min, max]: [Point; 2],
-    size: (u32, u32),
-    origin: (u32, u32),
-) -> Result<Option<(u32, u32, u32, u32)>> {
-    let right = origin
-        .0
-        .checked_add(size.0)
-        .ok_or(Error::limit("tile extent overflows u32"))?;
-    let bottom = origin
-        .1
-        .checked_add(size.1)
-        .ok_or(Error::limit("tile extent overflows u32"))?;
-    if min.x > max.x || min.y > max.y {
-        return Ok(None);
-    }
-    bounded(min)?;
-    bounded(max)?;
-    let x0 = coordinate(min.x.floor(), origin.0, right);
-    let y0 = coordinate(min.y.floor(), origin.1, bottom);
-    // Include the floor cell even at an integral maximum: a true point subpath
-    // encloses a device pixel under 8.5.3.3.1. Ordinary bounds remain conservative.
-    let x1 = coordinate(max.x.floor() + 1.0, origin.0, right);
-    let y1 = coordinate(max.y.floor() + 1.0, origin.1, bottom);
-    Ok(if x0 < x1 && y0 < y1 {
-        Some((x0, y0, x1 - x0, y1 - y0))
-    } else {
-        None
-    })
-}
-
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "clamped to u32 tile boundaries before casting"
-)]
-fn coordinate(value: f64, min: u32, max: u32) -> u32 {
-    value.clamp(f64::from(min), f64::from(max)) as u32
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::PathBuilder;
-
-    #[test]
-    fn disjoint_hulls_are_culled_on_every_side() {
-        for (x, y) in [(84.0, 100.0), (100.0, 84.0), (120.0, 100.0), (100.0, 120.0)] {
-            let mut path = PathBuilder::new();
-            path.rect(x, y, 8.0, 8.0);
-            assert_eq!(
-                region(
-                    &path.finish(),
-                    Transform::IDENTITY,
-                    (16, 16),
-                    (100, 100),
-                    &Limits::default()
-                )
-                .unwrap(),
-                None,
-            );
-        }
-        assert_eq!(
-            region(
-                &PathBuilder::new().finish(),
-                Transform::IDENTITY,
-                (16, 16),
-                (100, 100),
-                &Limits::default()
-            )
-            .unwrap(),
-            None,
-        );
-    }
-
-    #[test]
-    fn boundary_point_retains_its_floor_cell() {
-        let mut path = PathBuilder::new();
-        path.move_to(Point::new(100.0, 100.0)).close();
-        assert_eq!(
-            region(
-                &path.finish(),
-                Transform::IDENTITY,
-                (16, 16),
-                (100, 100),
-                &Limits::default()
-            )
-            .unwrap(),
-            Some((100, 100, 1, 1)),
-        );
-    }
 }

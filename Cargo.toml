@@ -17,7 +17,6 @@ members = [
     "crates/pagura-interpret",
     "crates/pagura-paint",
     "crates/pagura-render",
-    "crates/pagura-legacy",
     "crates/pagura-reference",
     "crates/pagura-write",
     "crates/pagura-host",
@@ -51,7 +50,6 @@ pagura-font = { path = "crates/pagura-font" }
 pagura-host = { path = "crates/pagura-host" }
 pagura-image = { path = "crates/pagura-image" }
 pagura-interpret = { path = "crates/pagura-interpret" }
-pagura-legacy = { path = "crates/pagura-legacy" }
 pagura-paint = { path = "crates/pagura-paint" }
 pagura-pki = { path = "crates/pagura-pki" }
 pagura-raster = { path = "crates/pagura-raster" }

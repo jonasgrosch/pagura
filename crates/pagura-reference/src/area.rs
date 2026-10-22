@@ -15,7 +15,7 @@ use pagura_raster::{DeviceRect, FillRule, Point};
 /// A region: the directed edges of closed device-space contours, filled
 /// under a rule.
 #[derive(Debug, Clone)]
-pub(crate) struct Region {
+pub struct Region {
     edges: Vec<[Point; 2]>,
     rule: FillRule,
 }

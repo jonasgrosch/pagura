@@ -174,7 +174,7 @@ fn run(
     color_transform: Option<i64>,
     limits: &Limits,
     diagnostics: &mut Diagnostics,
-    (cells, native): (usize, Option<Native<'_>>),
+    (cells, native): (usize, Option<Native>),
 ) -> Result<Decoder> {
     if data.get(..2) != Some(&[255, 216]) {
         return Err(Error::syntax("missing JPEG SOI"));

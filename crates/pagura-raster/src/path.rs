@@ -1,6 +1,6 @@
 //! Path geometry: subpaths of lines and cubic Bézier curves.
 
-use crate::{FillRule, Point, Transform};
+use crate::{Point, Transform};
 use pagura_core::{Limits, Rect, Result};
 use std::{fmt, sync::Arc};
 
@@ -25,6 +25,17 @@ pub enum Segment {
     Close,
 }
 
+/// Which points a fill covers (8.5.3.3). Exhaustive: PDF defines exactly
+/// these two rules.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum FillRule {
+    /// Nonzero winding number rule.
+    #[default]
+    NonZero,
+    /// Even-odd rule.
+    EvenOdd,
+}
+
 /// Geometric filling-region certificate retained before scan conversion.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
@@ -44,8 +55,7 @@ pub struct Path {
     fill_certificates: [Option<FillRegion>; 2],
     // A stroke outline's proven equivalent without overlapping parts: the two
     // boundaries of a convex closed run, or pieces that meet without
-    // overlapping. The strip sweep uses it only where it admits it in these
-    // components' frame; signed cells integrate it in place of the outline.
+    // overlapping. Approximate cells integrate it in place of the outline.
     pub(crate) boundary: Option<Arc<Path>>,
 }
 

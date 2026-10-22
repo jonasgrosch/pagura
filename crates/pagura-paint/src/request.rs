@@ -17,10 +17,13 @@ use pagura_raster::{DeviceRect, Rgba8, Transform};
 pub struct FastParams {
     /// Glyph coverage reused per origin bin, with coarser glyph chords.
     pub glyph_origin_bins: bool,
-    /// f32 signed-area cells instead of certified accumulation, and clip
-    /// coverage multiplied into marks instead of joint geometry.
+    /// f32 signed-area cells whose winding is folded without certification
+    /// or resolution, and clip coverage multiplied into marks instead of
+    /// joint geometry.
     pub approximate_coverage: bool,
-    /// U8 storage instead of N16 and F32 for Normal source-over chains.
+    /// U8 storage for the page buffer of a page without group results,
+    /// tiling cells or soft masks, instead of N16 or F32; every other buffer
+    /// is F64.
     pub byte_storage: bool,
     /// Images decoded near their drawn size: JPEG cells and JPEG 2000
     /// resolution levels.

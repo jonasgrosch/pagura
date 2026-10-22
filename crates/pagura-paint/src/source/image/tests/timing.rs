@@ -1,5 +1,5 @@
 //! Timing of a page's images through decode requests and the sampler
-//! family, beside the old routes' whole-page renders. Run in release:
+//! family. Run in release:
 //!
 //! ```text
 //! cargo test --release -p pagura-paint --lib image_page_timing -- --ignored --nocapture
@@ -10,14 +10,13 @@
 //! benchmark pages); `PAGURA_IMAGE_DPI` the resolutions (default
 //! `72,150,300`); `PAGURA_IMAGE_RUNS` the samples of which the best is kept
 //! (default 7); `PAGURA_IMAGE_ROUTES` the routes (default
-//! `old,exact,reduced`); `PAGURA_IMAGE_STAGE` `decode` or `sample` times
+//! `exact,reduced`); `PAGURA_IMAGE_STAGE` `decode` or `sample` times
 //! that stage alone; `PAGURA_IMAGE_OUTPUT=f64` fills the reduced route's
 //! spans as f64 colours rather than as bytes.
 //!
-//! The new routes decode every image of the page with a fresh store, then
-//! prepare its sampler and fill every span of its device bounds within the
-//! page. The old routes render the whole page through `pagura-render`'s
-//! warm context, which compiles (and decodes) on every call.
+//! Each route decodes every image of the page with a fresh store, then
+//! prepares its sampler and fills every span of its device bounds within the
+//! page.
 
 use super::converter;
 use crate::SpanColors;
@@ -29,9 +28,9 @@ use crate::source::image::{
 use pagura_color::{ColorSpace, Process, Target};
 use pagura_core::syntax::{Origin, Parser};
 use pagura_core::{Dictionary, Limits, ObjectId, Store, Value};
-use pagura_document::{Document, OpenOptions, Page, Rotation};
+use pagura_document::{Document, OpenOptions, Page};
 use pagura_image::{Decoded, ImageKind, ImageSource};
-use pagura_interpret::Composite;
+use pagura_interpret::{Composite, PageSpace};
 use pagura_raster::{DeviceRect, Point, Transform};
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -149,20 +148,6 @@ fn matrix(operands: &[Value]) -> Option<Transform> {
     Some(Transform::new(n(a)?, n(b)?, n(c)?, n(d)?, n(e)?, n(f)?))
 }
 
-/// The page's user space to device pixels at `scale`, as the old renderer
-/// places it.
-fn device_transform(page: &Page, scale: f64) -> Transform {
-    let r = page.crop_box();
-    let rotation = match page.rotation() {
-        Rotation::None => Transform::new(1.0, 0.0, 0.0, -1.0, -r.x0(), r.y1()),
-        Rotation::Clockwise90 => Transform::new(0.0, 1.0, 1.0, 0.0, -r.y0(), -r.x0()),
-        Rotation::Clockwise180 => Transform::new(-1.0, 0.0, 0.0, 1.0, r.x1(), -r.y0()),
-        Rotation::Clockwise270 => Transform::new(0.0, -1.0, -1.0, 0.0, r.y1(), r.x1()),
-    };
-    let factor = scale * page.user_unit();
-    rotation.then(Transform::scale(factor, factor))
-}
-
 /// The device pixels of the unit square under `unit_to_device` within a
 /// `width` × `height` page.
 fn bounds(unit_to_device: Transform, (width, height): (u32, u32)) -> Option<DeviceRect> {
@@ -205,12 +190,13 @@ pub(super) fn placed(document: &Document, page: &Page, scale: f64) -> Vec<Placed
             walk.content(&data, page.resources(), Transform::IDENTITY, 0);
         }
     }
-    let device = device_transform(page, scale);
-    let options = pagura_legacy::RenderOptions {
-        scale,
-        ..pagura_legacy::RenderOptions::default()
+    let space = PageSpace {
+        crop: page.crop_box(),
+        rotation: page.rotation(),
+        user_unit: page.user_unit(),
     };
-    let Ok(size) = pagura_legacy::device_size(page, &options) else {
+    let device = space.device_transform(scale);
+    let Ok(size) = space.device_size(scale) else {
         return Vec::new();
     };
     walk.draws
@@ -382,26 +368,6 @@ fn new_route(images: &[Placed], limits: &Limits, reduced: bool, runs: usize) -> 
     (decoding, sampling)
 }
 
-/// The best time of the old renderer's whole page under `accuracy`.
-fn old_route(
-    document: &Arc<Document>,
-    index: usize,
-    scale: f64,
-    accuracy: pagura_legacy::Accuracy,
-    runs: usize,
-) -> f64 {
-    let context = pagura_legacy::RenderContext::new(Arc::clone(document));
-    let page = context.document().page(index).unwrap();
-    let options = pagura_legacy::RenderOptions {
-        scale,
-        accuracy,
-        ..pagura_legacy::RenderOptions::default()
-    };
-    best(runs, || {
-        std::hint::black_box(context.render_page(page, &options).unwrap());
-    })
-}
-
 pub(super) fn setting(name: &str, default: &str) -> String {
     std::env::var(name).unwrap_or_else(|_| default.to_owned())
 }
@@ -435,48 +401,25 @@ fn image_page_timing() {
         .filter_map(|v| v.trim().parse().ok())
         .collect();
     let runs = setting("PAGURA_IMAGE_RUNS", "7").parse().unwrap_or(7);
-    let routes = setting("PAGURA_IMAGE_ROUTES", "old,exact,reduced");
+    let routes = setting("PAGURA_IMAGE_ROUTES", "exact,reduced");
     let routes: Vec<&str> = routes.split(',').map(str::trim).collect();
     eprintln!(
-        "page dpi | old exact | old competitive | exact: decode + sample = total (÷ old exact) \
-         | reduced: decode + sample = total (÷ old competitive), milliseconds"
+        "page dpi | exact: decode + sample = total | reduced: decode + sample = total, \
+         milliseconds"
     );
     for (name, document, index) in pages(IMAGE_PAGES) {
         let page = document.page(index).unwrap();
         let limits = document.limits();
         for &dpi in &dpis {
-            let scale = dpi / 72.0;
-            let images = placed(&document, page, scale);
+            let images = placed(&document, page, dpi / 72.0);
             let mut line = format!("{name} {dpi} ({} images)", images.len());
-            let (mut old_exact, mut old_competitive) = (f64::NAN, f64::NAN);
-            if routes.contains(&"old") {
-                old_exact = old_route(
-                    &document,
-                    index,
-                    scale,
-                    pagura_legacy::Accuracy::Exact,
-                    runs,
-                );
-                old_competitive = old_route(
-                    &document,
-                    index,
-                    scale,
-                    pagura_legacy::Accuracy::Competitive,
-                    runs,
-                );
-                let _ = write!(line, " | {old_exact:.2} | {old_competitive:.2}");
-            }
-            for (route, reduced, old) in [
-                ("exact", false, old_exact),
-                ("reduced", true, old_competitive),
-            ] {
+            for (route, reduced) in [("exact", false), ("reduced", true)] {
                 if routes.contains(&route) {
                     let (decoding, sampling) = new_route(&images, &limits, reduced, runs);
                     let total = decoding + sampling;
                     let _ = write!(
                         line,
-                        " | {route} {decoding:.2} + {sampling:.2} = {total:.2} ({:.3})",
-                        total / old
+                        " | {route} {decoding:.2} + {sampling:.2} = {total:.2}"
                     );
                 }
             }

@@ -20,6 +20,5 @@ pagura-raster.workspace = true
 
 [dev-dependencies]
 pagura-document.workspace = true
-pagura-legacy.workspace = true
 pagura-reference.workspace = true
 pagura-testkit.workspace = true

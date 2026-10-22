@@ -47,6 +47,7 @@ pub use clip::ClipShape;
 pub use coverage::{BandCoverage, Capacity, CoverageRow, Span};
 pub use glyph::GlyphEdges;
 pub use raster::{BandRasterizer, RunGlyph};
+pub(crate) use shape::RASTER_WORK;
 pub use shape::Shape;
 
 use pagura_core::Limits;

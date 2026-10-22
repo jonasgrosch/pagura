@@ -1,6 +1,6 @@
-//! The old exact route's image sampling, ported from `pagura-render`'s
-//! `compositor/sampled.rs`, `compositor/reduced.rs` and the texel code of
-//! `compositor/images.rs` in their original structure, without budgets.
+//! The previous renderer's exact image sampling (its sampled, reduced and
+//! texel code), ported in its original structure without budgets: a
+//! straightforward, independent oracle for the sampler.
 
 use super::{Case, MaskUse, base, converter};
 use crate::source::image::texels::Convert;
@@ -479,7 +479,7 @@ impl<'a> Oracle<'a> {
         }
     }
 
-    /// One pixel as the old route composites it, before coverage.
+    /// One pixel as the previous renderer composited it, before coverage.
     pub(super) fn pixel(&mut self, x: u32, y: u32) -> Texel {
         let (case, convert) = (self.case, self.convert.as_deref());
         let mut value = self

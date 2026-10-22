@@ -11,8 +11,8 @@
 //! nearest sample, or bilinear interpolation of the samples around its
 //! centre when the image is magnified), evaluated in double-double
 //! arithmetic from the footprint's f64 bounds. Each colour channel is
-//! quantized as the output quantizer does, for the old route's sampler (the
-//! port in `oracle`), for the new sampler, and correctly rounded from the
+//! quantized as the output quantizer does, for the previous renderer's
+//! sampler (the port in `oracle`), for the new sampler, and correctly rounded from the
 //! oracle. The test reports the channels whose quantized value changed,
 //! every changed one's oracle value, the largest distance of a new value
 //! from its oracle in levels, and the exact-rounding match rates, and it
@@ -104,7 +104,7 @@ impl Wide {
 }
 
 /// The cells a device pixel's footprint covers along one axis, with their
-/// exact weights (as the old route computes the bounds).
+/// exact weights (as the previous renderer computed the bounds).
 fn axis(pixel: u32, scale: f64, offset: f64, maximum: u32) -> Vec<(u32, f64)> {
     let a = f64::from(pixel) * scale + offset;
     let b = (f64::from(pixel) + 1.0) * scale + offset;
@@ -299,7 +299,7 @@ fn rounded(value: Wide) -> u8 {
     byte
 }
 
-/// Compares the new sampler of `placed` with the old route's and the oracle
+/// Compares the sampler of `placed` with the previous renderer's and the oracle
 /// on every pixel of its device bounds, logging changed channels.
 fn compare(placed: &Placed, case: &Case, log: &mut String) -> Tally {
     let limits = pagura_core::Limits::default();
@@ -349,7 +349,7 @@ fn compare(placed: &Placed, case: &Case, log: &mut String) -> Tally {
     tally
 }
 
-/// The images of one page as cases for the old route, decoded interleaved
+/// The images of one page as cases for the port, decoded interleaved
 /// on their own grid.
 fn cases(placed: &[Placed]) -> Vec<Option<Case>> {
     let limits = pagura_core::Limits::default();
@@ -526,13 +526,12 @@ fn interior(unit_to_device: Transform, rect: pagura_raster::DeviceRect) -> (u32,
     )
 }
 
-/// Drawn-size decoding (`reduced_image_decode`) against the old
-/// competitive route on the benchmark pages: the new sampler's quantized
-/// colours over the reduced decode, the old route's page pixels, and both
-/// against the exact oracle, on the device pixels wholly inside each image.
+/// Drawn-size decoding (`reduced_image_decode`) on the benchmark pages: the
+/// sampler's quantized colours over the reduced decode against the exact
+/// oracle, on the device pixels wholly inside each image.
 #[test]
 #[ignore = "accuracy report; needs the benchmark corpus"]
-fn reduced_against_competitive() {
+fn reduced_against_oracle() {
     let dpis: Vec<f64> = setting("PAGURA_IMAGE_DPI", "72,150,300")
         .split(',')
         .filter_map(|v| v.trim().parse().ok())
@@ -543,21 +542,8 @@ fn reduced_against_competitive() {
             continue;
         };
         for &dpi in &dpis {
-            let context = pagura_legacy::RenderContext::new(Arc::clone(&document));
-            let options = pagura_legacy::RenderOptions {
-                scale: dpi / 72.0,
-                accuracy: pagura_legacy::Accuracy::Competitive,
-                ..pagura_legacy::RenderOptions::default()
-            };
-            let Ok(old) = context.render_page(page, &options) else {
-                continue;
-            };
             let images = placed(&document, page, dpi / 72.0);
-            let (mut against_old, mut new_oracle, mut old_oracle) = (
-                Differences::default(),
-                Differences::default(),
-                Differences::default(),
-            );
+            let mut against_oracle = Differences::default();
             for (placed, case) in images.iter().zip(cases(&images)) {
                 let (Some(case), Some(new)) = (
                     case,
@@ -569,12 +555,9 @@ fn reduced_against_competitive() {
                 let (x0, y0, x1, y1) = interior(placed.unit_to_device, placed.rect);
                 let len = usize::try_from(x1.saturating_sub(x0)).unwrap();
                 let mut out = SpanColors::default();
-                let width = usize::try_from(old.width()).unwrap();
                 for y in y0..y1 {
                     new.span(x0, y, len, &mut out);
                     for (i, x) in (x0..x1).enumerate() {
-                        let at =
-                            (usize::try_from(y).unwrap() * width + usize::try_from(x).unwrap()) * 4;
                         for channel in 0..out.channels.min(3) {
                             let k = if case.image.components == 1 {
                                 0
@@ -582,22 +565,16 @@ fn reduced_against_competitive() {
                                 channel
                             };
                             let fresh = quantize_unit(out.colors[i * out.channels + channel]);
-                            let before = old.data()[at + channel];
-                            against_old.add(fresh, before);
                             if let Some(oracle) = exact.pixel((x, y), k) {
-                                let oracle = rounded(oracle);
-                                new_oracle.add(fresh, oracle);
-                                old_oracle.add(before, oracle);
+                                against_oracle.add(fresh, rounded(oracle));
                             }
                         }
                     }
                 }
             }
             eprintln!(
-                "{name} {dpi} | {} | {} | {}",
-                against_old.report("new against old competitive"),
-                new_oracle.report("new against oracle"),
-                old_oracle.report("old competitive against oracle")
+                "{name} {dpi} | {}",
+                against_oracle.report("reduced against oracle")
             );
         }
     }

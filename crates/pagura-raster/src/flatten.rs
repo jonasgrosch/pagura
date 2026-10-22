@@ -22,7 +22,7 @@ pub(crate) type CurveStack = Vec<([Point; 4], usize)>;
 
 /// A flattened contour with source closure and geometric-point metadata.
 #[derive(Debug, PartialEq)]
-pub struct Polyline {
+pub(crate) struct Polyline {
     pub(crate) points: Vec<Point>,
     pub(crate) closed: bool,
     pub(crate) degenerate: bool,

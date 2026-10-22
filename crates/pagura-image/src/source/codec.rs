@@ -53,7 +53,6 @@ pub(crate) fn decode(
             let options = dispatch::DctOptions {
                 deferred: deferred || planes,
                 cells,
-                buffers: None,
                 // Interleaved samples come from planes in image rows.
                 transposed: transposed && !planes,
             };

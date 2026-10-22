@@ -1,79 +1,11 @@
-//! Approximate cells against the old approximate cells and clip product
-//! (the Competitive rasterizer).
+//! Approximate coverage (the `approximate_coverage` fast parameter, not
+//! within the one-level contract): the same bytes and charges at every band
+//! height and on sub-regions, simple polygons and strokes within a few
+//! levels of exact, overlaps folded without resolution, and nothing painted
+//! where the mark or a clipping path covers nothing.
 
 use super::*;
-use crate::{ClipRegion, Coverage, Rasterizer, Stroke};
-use std::sync::Arc;
-
-/// Rows of `(y, x, levels)` from a coverage's origin.
-type Spans = Vec<(usize, usize, Vec<u8>)>;
-
-/// The old Competitive coverage of a fill over `area`, within `clips`.
-fn old(
-    area: &Area,
-    path: &Path,
-    transform: Transform,
-    rule: FillRule,
-    clips: &[(&Path, FillRule)],
-) -> Vec<u8> {
-    let r = area.region;
-    let (w, h) = (r.width(), r.height());
-    let limits = Limits::default();
-    let mut whole = PathBuilder::new();
-    whole.rect(
-        f64::from(r.x0) - 1.0,
-        f64::from(r.y0) - 1.0,
-        f64::from(w) + 2.0,
-        f64::from(h) + 2.0,
-    );
-    let whole = whole.finish();
-    let mut region = ClipRegion::from_path(
-        w,
-        h,
-        &whole,
-        Transform::IDENTITY,
-        FillRule::NonZero,
-        limits,
-        (r.x0, r.y0),
-    )
-    .unwrap();
-    for &(p, rule) in clips {
-        region
-            .intersect(
-                &ClipRegion::from_path(w, h, p, Transform::IDENTITY, rule, limits, (r.x0, r.y0))
-                    .unwrap(),
-            )
-            .unwrap();
-    }
-    let mut raster = Rasterizer::with_approximate_clip_product(1.0 / 64.0)
-        .unwrap()
-        .with_geometric_compounds();
-    raster.prepare_clip(&mut region).unwrap();
-    let mut out = vec![0; (w * h) as usize];
-    if let Some(coverage) = raster
-        .clipped_coverage(&region, Arc::new(path.clone()), transform, rule, limits)
-        .unwrap()
-    {
-        let (spans, origin): (Spans, (u32, u32)) = match &coverage {
-            Coverage::Mask(mask) => (
-                mask.spans().map(|(y, x, v)| (y, x, v.to_vec())).collect(),
-                mask.origin(),
-            ),
-            Coverage::Rectangle(rect) => (
-                rect.spans().map(|(y, x, v)| (y, x, v.to_vec())).collect(),
-                rect.origin(),
-            ),
-        };
-        for (y, x, values) in spans {
-            let start = (origin.1 - r.y0) as usize * w as usize
-                + y * w as usize
-                + (origin.0 - r.x0) as usize
-                + x;
-            out[start..start + values.len()].copy_from_slice(&values);
-        }
-    }
-    out
-}
+use crate::Stroke;
 
 fn approximate<'a>(area: Area, limits: &'a Limits, clip: Option<&'a ClipShape>) -> Prep<'a> {
     Prep {
@@ -82,31 +14,44 @@ fn approximate<'a>(area: Area, limits: &'a Limits, clip: Option<&'a ClipShape>) 
     }
 }
 
-/// The new approximate coverage, checked for invariance.
-fn new(
+/// The coverage of the shape `prepare` gives at `precision` within `clips`,
+/// checked for invariance.
+fn coverage(
     area: &Area,
     prepare: &dyn Fn(&Prep<'_>) -> Option<Shape>,
     clips: &[(&Path, FillRule)],
+    precision: Precision,
 ) -> Vec<u8> {
     let clip = |o: &ShapeOptions<'_>| ClipShape::new(clips, Transform::IDENTITY, o).unwrap();
     invariant_with(
         area,
-        &|o| {
-            prepare(&Prep {
-                precision: Precision::Approximate,
-                ..*o
-            })
-        },
+        &|o| prepare(&Prep { precision, ..*o }),
         (!clips.is_empty()).then_some(&clip as &dyn Fn(&ShapeOptions<'_>) -> ClipShape),
-        Precision::Approximate,
+        precision,
     )
 }
 
+/// Approximate and exact coverage of the shape `prepare` gives.
+fn both(
+    area: &Area,
+    prepare: &dyn Fn(&Prep<'_>) -> Option<Shape>,
+    clips: &[(&Path, FillRule)],
+) -> (Vec<u8>, Vec<u8>) {
+    (
+        coverage(area, prepare, clips, Precision::Approximate),
+        coverage(area, prepare, clips, Precision::Exact),
+    )
+}
+
+/// Fills of any path and strokes are invariant; triangles take f32 cells
+/// within one level of exact, and strokes, whose round parts are flattened
+/// at the cells' tolerance and whose pieces not proven to tile take their
+/// union's boundary, within three.
 #[test]
-fn fills_strokes_and_glyph_polygons_match_the_old_cells() {
+fn fills_and_strokes_are_invariant_and_simple_shapes_near_exact() {
     let mut rng = Lcg(65);
     let area = area(0, 0, 40, 32, 16);
-    let (mut differing, mut exact, mut strokes, mut pixels) = (0, 0, 0, 0);
+    let (mut fills, mut triangles, mut strokes) = ((0, 0), (0, 0), (0, 0));
     for case in 0..80 {
         let mut path = PathBuilder::new();
         for _ in 0..1 + case % 2 {
@@ -134,33 +79,32 @@ fn fills_strokes_and_glyph_polygons_match_the_old_cells() {
                 .unwrap();
         }
         for rule in [FillRule::NonZero, FillRule::EvenOdd] {
-            let new = new(
+            let (approximate, exact) = both(
                 &area,
                 &|o| Shape::fill_in(&path, Transform::IDENTITY, rule, o).unwrap(),
                 &[],
             );
-            let old = old(&area, &path, Transform::IDENTITY, rule, &[]);
-            let (count, largest) = compare(&new, &old);
-            assert!(largest <= 1, "case {case} {rule:?}: {count} by {largest}");
-            // Unclassified compound paths keep exact coverage, whose ties
-            // the old snapped backend rounded down.
-            let compound = case % 2 == 1 && case % 4 != 1;
-            if compound {
-                exact += count;
-            } else {
-                differing += count;
-            }
-            pixels += new.len();
+            let (count, largest) = compare(&approximate, &exact);
+            fills = (fills.0 + count, fills.1.max(largest));
         }
-        // The same path stroked against the Competitive renderer's tiled
-        // pieces or components: round caps and joins are now flattened at
-        // the cells' tolerance and pieces not proven to tile take their
-        // union's boundary, within the fast parameter's three levels.
+        let triangle = polygon(&[
+            Point::new(rng.grid(0.0, 40.0, 10), rng.grid(0.0, 32.0, 10)),
+            Point::new(rng.grid(0.0, 40.0, 10), rng.grid(0.0, 32.0, 10)),
+            Point::new(rng.grid(0.0, 40.0, 10), rng.grid(0.0, 32.0, 10)),
+        ]);
+        let (approximate, exact) = both(
+            &area,
+            &|o| Shape::fill_in(&triangle, Transform::IDENTITY, FillRule::NonZero, o).unwrap(),
+            &[],
+        );
+        let (count, largest) = compare(&approximate, &exact);
+        assert!(largest <= 1, "triangle {case}: {count} by {largest}");
+        triangles = (triangles.0 + count, triangles.1.max(largest));
         let stroke = Stroke {
             width: 0.4 + f64::from(case % 5),
             ..Stroke::default()
         };
-        let new = new(
+        let (approximate, exact) = both(
             &area,
             &|o| {
                 Shape::stroke_in(
@@ -174,26 +118,34 @@ fn fills_strokes_and_glyph_polygons_match_the_old_cells() {
             },
             &[],
         );
-        let (outline, t) =
-            crate::tiled_stroke_outline(&path, Transform::IDENTITY, &stroke, &Limits::default())
-                .unwrap();
-        let old = old(&area, &outline, t, FillRule::NonZero, &[]);
-        let (count, largest) = compare(&new, &old);
+        let (count, largest) = compare(&approximate, &exact);
         assert!(largest <= 3, "stroke {case}: {count} by {largest}");
-        strokes += count;
-        pixels += new.len();
+        strokes = (strokes.0 + count, strokes.1.max(largest));
     }
     eprintln!(
-        "approximate fills: {differing} of {pixels} differ; exact compounds {exact}; strokes {strokes}"
+        "approximate against exact (pixels, largest): fills {fills:?}, triangles {triangles:?}, \
+         strokes {strokes:?}"
     );
-    assert_eq!(differing, 0);
 }
 
+/// Clips are multiplied in as their own coverage (or integrated, a
+/// quadrilateral around a quadrilateral), so a pixel is painted only where
+/// the mark and every clipping path cover some of it.
 #[test]
-fn clips_multiply_or_integrate_as_the_old_product() {
+fn clipped_marks_are_invariant_and_stay_within_every_clip() {
     let mut rng = Lcg(91);
+    let limits = Limits::default();
     let area = area(0, 0, 32, 28, 8);
     let (mut differing, mut pixels) = (0, 0);
+    let exact = |clips: &[(&Path, FillRule)]| {
+        let clip = ClipShape::new(
+            clips,
+            Transform::IDENTITY,
+            &public(area, &limits, Precision::Exact),
+        )
+        .unwrap();
+        raster(&area, None, Some(&clip)).0
+    };
     for case in 0..60 {
         let tri = |rng: &mut Lcg| {
             polygon(&[
@@ -231,22 +183,22 @@ fn clips_multiply_or_integrate_as_the_old_product() {
             (&rect, vec![(&clip_tri, FillRule::NonZero)]),
         ];
         for (kind, (mark, clips)) in cases.iter().enumerate() {
-            let new = new(
-                &area,
-                &|o| Shape::fill_in(mark, Transform::IDENTITY, FillRule::NonZero, o).unwrap(),
-                clips,
-            );
-            let old = old(&area, mark, Transform::IDENTITY, FillRule::NonZero, clips);
-            let (count, largest) = compare(&new, &old);
-            assert!(
-                largest <= 1,
-                "case {case} kind {kind}: {count} by {largest}"
-            );
-            differing += count;
-            pixels += new.len();
+            let fill = |o: &Prep<'_>| {
+                Shape::fill_in(mark, Transform::IDENTITY, FillRule::NonZero, o).unwrap()
+            };
+            let (clipped, joint) = both(&area, &fill, clips);
+            let (_, alone) = both(&area, &fill, &[]);
+            let each: Vec<Vec<u8>> = clips.iter().map(|&clip| exact(&[clip])).collect();
+            for (i, &value) in clipped.iter().enumerate() {
+                if alone[i] == 0 || each.iter().any(|c| c[i] == 0) {
+                    assert_eq!(value, 0, "case {case} kind {kind}: outside at {i}");
+                }
+            }
+            differing += compare(&clipped, &joint).0;
+            pixels += clipped.len();
         }
     }
-    eprintln!("approximate clipped marks: {differing} of {pixels} differ");
+    eprintln!("approximate clipped marks: {differing} of {pixels} pixels differ from exact");
 }
 
 #[test]

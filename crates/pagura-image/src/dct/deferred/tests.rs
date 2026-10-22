@@ -27,7 +27,6 @@ fn deferred(bytes: &[u8], transform: Option<i64>) -> Option<Deferred> {
         transform,
         &Limits::default(),
         super::Native {
-            buffers: None,
             cells: 8,
             transposed: false,
         },

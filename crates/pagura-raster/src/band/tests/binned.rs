@@ -1,6 +1,4 @@
-//! Binned glyph placements: invariance, reuse and clips. Byte identity with
-//! the old row-fragment masks was checked against `pagura-legacy`'s
-//! fragment cache on the bundled fonts (the old cache is private there).
+//! Binned glyph placements: invariance, reuse and clips.
 
 use super::*;
 use std::sync::Arc;

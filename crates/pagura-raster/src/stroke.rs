@@ -4,14 +4,109 @@
 //! Flattening is measured after the CTM; constructing the pen before the CTM
 //! preserves elliptical pens under nonuniform transforms.
 
-use crate::coverage::RASTER_WORK;
+use crate::band::RASTER_WORK;
 use crate::flatten::{TOLERANCE, bounded, flatten};
-use crate::{LineCap, LineJoin, Path, PathBuilder, Point, Stroke, Transform};
+use crate::{Path, PathBuilder, Point, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
 use std::sync::Arc;
 
 mod convex;
 mod tiling;
+
+/// Line cap style (8.4.3.3). Exhaustive: Table 53 closes the set.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum LineCap {
+    /// 0: square end at the endpoint.
+    #[default]
+    Butt,
+    /// 1: semicircular end.
+    Round,
+    /// 2: square end projecting half the line width.
+    ProjectingSquare,
+}
+
+/// Line join style (8.4.3.4). Exhaustive: Table 54 closes the set.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum LineJoin {
+    /// 0: mitered, subject to the miter limit.
+    #[default]
+    Miter,
+    /// 1: circular arc.
+    Round,
+    /// 2: bevelled.
+    Bevel,
+}
+
+/// Stroke parameters in the path's own (user) space; the stroker applies
+/// the transform, so non-uniform scaling distorts the pen as PDF requires.
+///
+/// A plain record built with functional record update from
+/// [`Stroke::default`], so it is not `#[non_exhaustive]`. Its fields are
+/// checked when a stroke is outlined, not when it is built.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Stroke {
+    /// Line width; 0 means the thinnest line the device can render.
+    pub width: f64,
+    /// Cap style.
+    pub cap: LineCap,
+    /// Join style.
+    pub join: LineJoin,
+    /// Miter limit, at least 1.
+    pub miter_limit: f64,
+    /// Dash lengths; empty means solid.
+    pub dash_array: Vec<f64>,
+    /// Dash phase.
+    pub dash_phase: f64,
+}
+
+impl Default for Stroke {
+    /// PDF's initial graphics state values (Table 51).
+    fn default() -> Self {
+        Self {
+            width: 1.0,
+            cap: LineCap::Butt,
+            join: LineJoin::Miter,
+            miter_limit: 10.0,
+            dash_array: Vec::new(),
+            dash_phase: 0.0,
+        }
+    }
+}
+
+/// Converts a user-space stroke to a fill outline and its device transform.
+///
+/// # Errors
+/// Returns invalid geometry or exhausted caller budgets.
+pub fn stroke_outline(
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+) -> Result<(Path, Transform)> {
+    outline(path, transform, stroke, limits)
+}
+
+/// Converts an automatically grid-fitted stroke to a fill outline (10.7.5).
+///
+/// # Errors
+/// As [`stroke_outline`]; fitted principal pen diameters must fit the numeric budget.
+pub fn adjusted_stroke_outline(
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+) -> Result<(Path, Transform)> {
+    crate::adjust::outline(path, transform, stroke, limits)
+}
+
+/// Adds `amount` to a stroker's work counter, which may not pass `maximum`.
+fn charge(work: &mut usize, amount: usize, maximum: usize) -> Result<()> {
+    *work = work
+        .checked_add(amount)
+        .filter(|&n| n <= maximum)
+        .ok_or(Error::limit(RASTER_WORK))?;
+    Ok(())
+}
 
 /// A dash retains its tangent even when its length is zero (8.5.3.2).
 pub(crate) struct Run {
@@ -75,19 +170,6 @@ pub(crate) fn outline(
     .map(|(path, transform, _)| (path, transform))
 }
 
-/// [`outline`] whose boundary, when every run admits one, is made of pieces
-/// that meet without overlapping ([`tiling`]): signed-area coverage of it
-/// needs no union integration.
-pub(crate) fn tiled_outline(
-    path: &Path,
-    transform: Transform,
-    stroke: &Stroke,
-    limits: &Limits,
-) -> Result<(Path, Transform)> {
-    outline_with(path, transform, stroke, limits, (Tiling::Proven, TOLERANCE))
-        .map(|(path, transform, _)| (path, transform))
-}
-
 /// The outline as pieces where every run admits them at least as well as
 /// `accept`, else as components, and how far its pieces tile; round caps
 /// and joins are flattened within the device tolerance `tolerance`.
@@ -147,23 +229,21 @@ fn outline_with(
             } else {
                 run
             };
-            let boundary = if boundaries_allowed
-                && run.closed
-                && run.points.len() >= convex::MIN_VERTICES
-            {
-                // Closed curves may explicitly repeat their starting vertex.
-                // Use the same point cleanup as the component stroker before
-                // proving strict convexity; duplicate endpoints are not a
-                // geometric turn.
-                crate::coverage::charge(&mut cleanup_work, run.points.len(), limits.raster_work)?;
-                run.points.dedup();
-                if run.points.first() == run.points.last() {
-                    run.points.pop();
-                }
-                convex::boundaries(&run.points, radius, tolerance, stroke.miter_limit, limits)?
-            } else {
-                None
-            };
+            let boundary =
+                if boundaries_allowed && run.closed && run.points.len() >= convex::MIN_VERTICES {
+                    // Closed curves may explicitly repeat their starting vertex.
+                    // Use the same point cleanup as the component stroker before
+                    // proving strict convexity; duplicate endpoints are not a
+                    // geometric turn.
+                    charge(&mut cleanup_work, run.points.len(), limits.raster_work)?;
+                    run.points.dedup();
+                    if run.points.first() == run.points.last() {
+                        run.points.pop();
+                    }
+                    convex::boundaries(&run.points, radius, tolerance, stroke.miter_limit, limits)?
+                } else {
+                    None
+                };
             runs.push((run, boundary));
         }
     }

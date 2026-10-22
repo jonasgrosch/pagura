@@ -99,11 +99,10 @@ impl Planar {
         self.geometry[c]
     }
 
-    /// Whether every component's sampling factors give exact repeats a
-    /// direct painter supports: full-resolution luma and equal chroma
-    /// subsampled by one, two or four horizontally.
-    #[must_use]
-    pub fn chroma_repeat(&self) -> Option<usize> {
+    /// The horizontal chroma repeat when every component's sampling factors
+    /// give exact repeats: full-resolution luma and equal chroma subsampled
+    /// by one, two or four horizontally.
+    fn chroma_repeat(&self) -> Option<usize> {
         let [luma, cb, cr] = self.geometry;
         if luma[..2] != self.maximum || cb[..2] != cr[..2] || cb[0] == 0 {
             return None;
@@ -252,28 +251,6 @@ impl Planar {
             &mut out[taken..],
         )
     }
-
-    /// Whether source rows `a` and `b` have equal components, so they
-    /// convert and filter identically.
-    #[must_use]
-    pub fn same_row(&self, a: usize, b: usize) -> bool {
-        (0..3).all(|c| self.row(c, a) == self.row(c, b))
-    }
-
-    /// Full-width luma of row `y` when both of its chroma rows are neutral.
-    #[must_use]
-    pub fn neutral(&self, y: usize) -> Option<&[u8]> {
-        if self.geometry[0][0] != self.maximum[0] {
-            return None;
-        }
-        let cb = self.row(1, y);
-        let cr = self.row(2, y);
-        if super::uniform(cb, 128) && super::uniform(cr, 128) {
-            Some(&self.row(0, y)[..self.width])
-        } else {
-            None
-        }
-    }
 }
 
 #[cfg(test)]
@@ -292,8 +269,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(p.dirty, [vec![0, 0, 0, 1], vec![0], vec![0]]);
-        assert!(p.same_row(0, 1));
-        assert!(!p.same_row(8, 9));
         assert_eq!(p.chroma_repeat(), Some(2));
         assert!(p.dirty(0, 1, 1) && !p.dirty(0, 1, 0));
         assert!(
