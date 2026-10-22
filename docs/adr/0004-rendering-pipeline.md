@@ -223,7 +223,17 @@ geometric-point rule. The independent test oracle keeps the stored cubic
 segments and integrates their covered lengths by adaptive Gauss-Legendre
 quadrature. The slow differential reference bounds its own original-curve
 polygon's total control-hull area by 1/65536 square pixel; it never adopts
-the renderer's certificate or a path-clip exception.
+the renderer's certificate or a path-clip exception. That initial area
+allowance alone cannot decide a coverage byte near a half-level. The
+reference therefore retains each accepted hull's outward bounds and area
+(including placed-coordinate mapping and translation rounding),
+sums the errors of hulls that touch each pixel, and quantizes both ends of
+the resulting area interval. When those bytes differ it refines the
+original controls with one sixteenth of the area allowance and repeats.
+Clipping cannot increase the interval's error. An unresolved interval,
+segment limit or subdivision limit is an error, never permission to select
+the byte that agrees with the renderer. A synthetic overlapping-quadratic
+case checks this distinction against an analytic area.
 
 ### 5. Storage formats
 

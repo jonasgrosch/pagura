@@ -7,7 +7,7 @@
 //! concerns the outline's area; empty fills and clips take its hairline
 //! outline (10.7.4). Nothing of its coverage code is used.
 
-use crate::area::{Region, areas, index, pixels};
+use crate::area::{Region, areas, index, pixels, rounded_areas};
 use crate::flatten::{glyph_region, path_region};
 use crate::request::Quantization;
 use pagura_core::{Error, Limits, Rect, Result};
@@ -136,8 +136,15 @@ pub(crate) struct Coverage {
 impl Coverage {
     /// The coverage of the intersection of `regions` (none covers every
     /// pixel) in `window`, quantized as `quantization` asks.
-    pub(crate) fn of(regions: &[Region], window: DeviceRect, quantization: Quantization) -> Self {
-        let areas = areas(regions, window);
+    pub(crate) fn of(
+        regions: &[Region],
+        window: DeviceRect,
+        quantization: Quantization,
+    ) -> Result<Self> {
+        let areas = match quantization {
+            Quantization::Bytes => rounded_areas(regions, window)?,
+            Quantization::Exact => areas(regions, window),
+        };
         let rect = areas.rect();
         let mut values = Vec::with_capacity(pixels(rect));
         for y in rect.y0..rect.y1 {
@@ -149,7 +156,7 @@ impl Coverage {
                 });
             }
         }
-        Self { rect, values }
+        Ok(Self { rect, values })
     }
 
     /// The pixels that can be covered.
@@ -206,7 +213,7 @@ mod tests {
         )
         .unwrap();
         let regions = [mark, clip];
-        let coverage = Coverage::of(&regions, window(4, 4), Quantization::Bytes);
+        let coverage = Coverage::of(&regions, window(4, 4), Quantization::Bytes).unwrap();
         let byte = |x, y| (coverage.get(x, y) * 255.0).round();
         // Pixel (0, 0): 1/2 × 3/4 of its area.
         assert_eq!(byte(0, 0), f64::from(quantize_unit(0.375)));
@@ -214,7 +221,7 @@ mod tests {
         assert_eq!(byte(0, 1), 128.0);
         assert_eq!(byte(2, 2), 255.0);
         assert_eq!(coverage.pixels().count(), 16);
-        let exact = Coverage::of(&regions, window(4, 4), Quantization::Exact);
+        let exact = Coverage::of(&regions, window(4, 4), Quantization::Exact).unwrap();
         assert_eq!(exact.get(0, 0), 0.375);
     }
 
@@ -239,7 +246,7 @@ mod tests {
             &Limits::default(),
         )
         .unwrap();
-        let coverage = Coverage::of(&[region], window(8, 4), Quantization::Bytes);
+        let coverage = Coverage::of(&[region], window(8, 4), Quantization::Bytes).unwrap();
         assert_eq!(
             coverage.rect(),
             DeviceRect {

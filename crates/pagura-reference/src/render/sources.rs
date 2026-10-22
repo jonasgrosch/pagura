@@ -260,7 +260,7 @@ impl Renderer<'_> {
                 &[crate::shapes::rect(bbox, to_device, self.limits)?],
                 self.window,
                 self.request.quantization,
-            )),
+            )?),
             _ => None,
         };
         Ok(Sources::Shading(ShadingSamples {

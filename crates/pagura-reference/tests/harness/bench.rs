@@ -124,6 +124,14 @@ pub fn run() -> bool {
     let mut results = results.into_inner().unwrap_or_default();
     results.sort_by_key(|(index, ..)| *index);
     write(&results);
+    let failed = results
+        .iter()
+        .filter(|(_, _, outcome)| outcome.error.is_some() || outcome.beyond_both != 0)
+        .count();
+    assert_eq!(
+        failed, 0,
+        "benchmark reference failures; see the per-page report for errors and pixels beyond one level"
+    );
     true
 }
 

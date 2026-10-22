@@ -6,7 +6,8 @@
 //! chord. Paths and glyph outlines referenced against their polygon use the
 //! documented 1/256-pixel tolerance (ADR 0004 §2, §4). A glyph outline
 //! referenced against its true curve is flattened with a whole-outline
-//! symmetric-difference area bound of 1/65536 pixel (under 0.004 levels).
+//! initial symmetric-difference area bound of 1/65536 pixel (under 0.004
+//! levels), refined when its error interval cannot decide a coverage byte.
 //! Each admitted chord and the curve lie in their common control hull;
 //! the sum of those hull areas bounds the entire outline's difference.
 //!
@@ -18,8 +19,10 @@
 
 use crate::area::Region;
 use crate::glyph::Reference;
+use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Limits, Result};
-use pagura_raster::{FillRule, Path, Point, Segment, Transform};
+use pagura_raster::{DeviceRect, FillRule, Path, Point, Segment, Transform};
+use std::sync::Arc;
 
 /// Distance of a flattened curve from its chord, in device pixels.
 pub(crate) const TOLERANCE: f64 = 1.0 / 256.0;
@@ -29,6 +32,73 @@ pub(crate) const CURVE_AREA: f64 = 1.0 / 65536.0;
 
 /// Halvings after which a curve piece is taken as its chord.
 const MAX_DEPTH: u32 = 48;
+
+/// A true curve can be rebuilt more finely from the original controls.
+#[derive(Debug, Clone)]
+pub(crate) struct CurveReference {
+    outline: Arc<Path>,
+    linear: Transform,
+    origin: Point,
+    allowance: f64,
+    limits: Limits,
+}
+
+impl CurveReference {
+    pub(crate) fn refine(&self) -> Result<Region> {
+        glyph_region_at_area(
+            &self.outline,
+            self.linear,
+            self.origin,
+            Reference::Curve,
+            self.allowance / 16.0,
+            &self.limits,
+        )
+    }
+}
+
+/// An accepted chord and its curve differ only inside their control hull.
+/// Its outward rectangle localizes the area uncertainty to touched pixels.
+#[derive(Debug, Clone)]
+pub(crate) struct Hull {
+    bounds: [f64; 4],
+    area: f64,
+}
+
+impl Hull {
+    #[cfg(test)]
+    pub(crate) fn error(&self, x: u32, y: u32) -> f64 {
+        let [x0, y0, x1, y1] = self.bounds;
+        if x0 < f64::from(x) + 1.0
+            && f64::from(x) < x1
+            && y0 < f64::from(y) + 1.0
+            && f64::from(y) < y1
+        {
+            self.area
+        } else {
+            0.0
+        }
+    }
+
+    /// Adds this hull's bound only to pixels its rectangle can meet.
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "finite bounds clamped into a u32 device rectangle"
+    )]
+    pub(crate) fn accumulate(&self, rect: DeviceRect, errors: &mut [f64]) {
+        let [x0, y0, x1, y1] = self.bounds;
+        let column = |x: f64| x.clamp(f64::from(rect.x0), f64::from(rect.x1)) as u32;
+        let row = |y: f64| y.clamp(f64::from(rect.y0), f64::from(rect.y1)) as u32;
+        let width = u32_to_usize(rect.width());
+        for y in row(y0.floor())..row(y1.ceil()) {
+            let start = u32_to_usize(y - rect.y0) * width;
+            for x in column(x0.floor())..column(x1.ceil()) {
+                let error = &mut errors[start + u32_to_usize(x - rect.x0)];
+                *error = (*error + self.area) * (1.0 + 4.0 * f64::EPSILON);
+            }
+        }
+    }
+}
 
 /// A flattened contour in the path's own space.
 #[derive(Debug, Clone, PartialEq)]
@@ -92,6 +162,17 @@ pub(crate) fn glyph_region(
     reference: Reference,
     limits: &Limits,
 ) -> Result<Region> {
+    glyph_region_at_area(outline, linear, origin, reference, CURVE_AREA, limits)
+}
+
+fn glyph_region_at_area(
+    outline: &Path,
+    linear: Transform,
+    origin: Point,
+    reference: Reference,
+    allowance: f64,
+    limits: &Limits,
+) -> Result<Region> {
     let linear = Transform {
         e: 0.0,
         f: 0.0,
@@ -101,11 +182,34 @@ pub(crate) fn glyph_region(
         Reference::Curve => Curves::Curve,
         Reference::Polygon => Curves::Glyph,
     };
-    let contours = contours(outline, linear, curves, limits)?;
-    Ok(region(&contours, FillRule::NonZero, |p| {
+    // True-curve intervals include addition of the placement origin:
+    // outward determinant/mapping error is evaluated in placed coordinates.
+    // Canonical polygon subdivision still depends only on the linear map.
+    let device = if reference == Reference::Curve {
+        Transform {
+            e: origin.x,
+            f: origin.y,
+            ..linear
+        }
+    } else {
+        linear
+    };
+    let (contours, hulls) = contours_with_area(outline, device, curves, allowance, limits)?;
+    let mut region = region(&contours, FillRule::NonZero, |p| {
         let q = p * linear;
         Point::new(q.x + origin.x, q.y + origin.y)
-    }))
+    });
+    if reference == Reference::Curve {
+        region.hulls = hulls;
+        region.curve = Some(CurveReference {
+            outline: Arc::new(outline.clone()),
+            linear,
+            origin,
+            allowance,
+            limits: *limits,
+        });
+    }
+    Ok(region)
 }
 
 /// Device edges of `contours` under the contour policy.
@@ -144,21 +248,37 @@ fn contours(
     curves: Curves,
     limits: &Limits,
 ) -> Result<Vec<Contour>> {
+    contours_with_area(path, device, curves, CURVE_AREA, limits).map(|(contours, _)| contours)
+}
+
+fn contours_with_area(
+    path: &Path,
+    device: Transform,
+    curves: Curves,
+    area: f64,
+    limits: &Limits,
+) -> Result<(Vec<Contour>, Vec<Hull>)> {
     if !device.is_finite() {
         return Err(Error::invalid_argument("path transform is not finite"));
     }
+    let linear = Transform {
+        e: 0.0,
+        f: 0.0,
+        ..device
+    };
     let same = |a: Point, b: Point| match curves {
         Curves::Path => a == b,
-        Curves::Curve | Curves::Glyph => a * device == b * device,
+        Curves::Curve | Curves::Glyph => a * linear == b * linear,
     };
     let mut contours: Vec<Contour> = Vec::new();
+    let mut hulls = Vec::new();
     let mut count = 0_usize;
     let curve_count = path
         .segments()
         .iter()
         .filter(|s| matches!(s, Segment::CubicTo { .. }))
         .count();
-    let allowance = CURVE_AREA / f64::from(u32::try_from(curve_count.max(1)).unwrap_or(u32::MAX));
+    let allowance = area / f64::from(u32::try_from(curve_count.max(1)).unwrap_or(u32::MAX));
     let mut start = Point::default();
     let mut position = Point::default();
     let mut push = |contour: &mut Contour, point: Point| -> Result<()> {
@@ -215,6 +335,7 @@ fn contours(
                         curves,
                         allowance,
                         &mut points,
+                        &mut hulls,
                         limits,
                     )?;
                     for point in points {
@@ -232,7 +353,7 @@ fn contours(
         }
     }
     contours.retain(|c| !c.points.is_empty());
-    Ok(contours)
+    Ok((contours, hulls))
 }
 
 /// Appends the end points of the pieces of a cubic, after its start.
@@ -242,6 +363,7 @@ fn flatten_curve(
     curves: Curves,
     allowance: f64,
     out: &mut Vec<Point>,
+    hulls: &mut Vec<Hull>,
     limits: &Limits,
 ) -> Result<()> {
     let tolerance = curves.tolerance();
@@ -255,7 +377,7 @@ fn flatten_curve(
     let mut pending = vec![(points, 0, allowance)];
     while let Some((piece, depth, share)) = pending.pop() {
         let [a, b, c, d] = piece.map(|p| p * device);
-        let acceptable = if curves == Curves::Curve {
+        let hull = if curves == Curves::Curve {
             let triangle = |p: Point, q: Point| {
                 let (u, v) = (p - a, q - a);
                 let error = magnitude * f64::EPSILON * 32.0 * f64::from(depth + 4);
@@ -266,16 +388,31 @@ fn flatten_curve(
                     + 8.0 * error * error;
                 determinant * (0.5 + 16.0 * f64::EPSILON) + f64::MIN_POSITIVE
             };
-            (triangle(b, c) + triangle(b, d) + triangle(c, d)) * (1.0 + 16.0 * f64::EPSILON)
-                <= share
+            let area =
+                (triangle(b, c) + triangle(b, d) + triangle(c, d)) * (1.0 + 16.0 * f64::EPSILON);
+            let rounding = magnitude * f64::EPSILON * 32.0 * f64::from(depth + 4);
+            let bounds = [
+                a.x.min(b.x).min(c.x).min(d.x) - rounding,
+                a.y.min(b.y).min(c.y).min(d.y) - rounding,
+                a.x.max(b.x).max(c.x).max(d.x) + rounding,
+                a.y.max(b.y).max(c.y).max(d.y) + rounding,
+            ];
+            Some(Hull { bounds, area })
         } else {
-            near(b, a, d, tolerance) && near(c, a, d, tolerance)
+            None
         };
+        let acceptable = hull.as_ref().map_or_else(
+            || near(b, a, d, tolerance) && near(c, a, d, tolerance),
+            |hull| hull.area <= share,
+        );
         if acceptable {
             if out.len() >= limits.path_segments {
                 return Err(Error::limit("flattened segment budget exceeded"));
             }
             out.push(piece[3]);
+            if let Some(hull) = hull {
+                hulls.push(hull);
+            }
             continue;
         }
         if depth >= MAX_DEPTH {
@@ -322,6 +459,51 @@ mod tests {
             y0: 0,
             x1: width,
             y1: height,
+        }
+    }
+
+    #[test]
+    fn placed_curve_hulls_bound_mapping_error_at_large_origins() {
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(0.0, 0.0));
+        path.cubic_to(
+            Point::new(1.0 / 3.0, 0.5),
+            Point::new(2.0 / 3.0, 0.5),
+            Point::new(1.0, 0.0),
+        )
+        .unwrap();
+        path.close();
+        let path = path.finish();
+        for offset in [0, 10_000] {
+            let region = glyph_region(
+                &path,
+                Transform::IDENTITY,
+                Point::new(f64::from(offset), f64::from(offset)),
+                Reference::Curve,
+                &Limits::default(),
+            )
+            .unwrap();
+            let pixel = DeviceRect {
+                x0: offset,
+                y0: offset,
+                x1: offset + 1,
+                y1: offset + 1,
+            };
+            let polygon = areas(std::slice::from_ref(&region), pixel).get(offset, offset);
+            let mut errors = [0.0];
+            for hull in &region.hulls {
+                hull.accumulate(pixel, &mut errors);
+            }
+            // This original cubic is degree-elevated from a quadratic of
+            // control height3/4, so its area is exactly1/4 before mapping.
+            assert!((polygon - 0.25).abs() <= errors[0]);
+            let sum: f64 = region
+                .hulls
+                .iter()
+                .map(|hull| hull.error(offset, offset))
+                .sum();
+            assert!(errors[0] >= sum);
+            assert!(errors[0] <= CURVE_AREA);
         }
     }
 
