@@ -24,6 +24,8 @@ pub struct Case {
     pub oracle: Option<std::path::PathBuf>,
     /// Allowed difference from the oracle per channel.
     pub tolerance: u8,
+    /// Allowed difference under any fast parameter (ADR 0004 §9).
+    pub fast_tolerance: u8,
 }
 
 /// Every render case of every manifest, in manifest order, restricted by
@@ -62,15 +64,20 @@ pub fn render_cases() -> Vec<Case> {
                     .to_vec(),
                 dpi: case.get("dpi").and_then(Json::as_f64).unwrap_or(72.0),
                 oracle: case.string("oracle").map(|p| workspace_root().join(p)),
-                tolerance: case
-                    .get("tolerance")
-                    .and_then(Json::as_u64)
-                    .and_then(|t| u8::try_from(t).ok())
-                    .unwrap_or(0),
+                tolerance: byte(case.get("tolerance")),
+                fast_tolerance: byte(case.get("competitive_tolerance").or(case.get("tolerance"))),
             });
         }
     }
     cases
+}
+
+/// A tolerance field; 0 when absent.
+fn byte(value: Option<&Json>) -> u8 {
+    value
+        .and_then(Json::as_u64)
+        .and_then(|t| u8::try_from(t).ok())
+        .unwrap_or(0)
 }
 
 /// A case's first page recorded as a scene, with its device geometry.
