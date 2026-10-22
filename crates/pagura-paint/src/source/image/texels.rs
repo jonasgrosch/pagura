@@ -332,9 +332,7 @@ impl Strategy {
         }
         if let Some(key) = Key::new(image, colors) {
             let samples = u64::from(image.width) * u64::from(image.height);
-            let entries = usize::try_from(samples)
-                .unwrap_or(usize::MAX)
-                .min(Memo::CAP);
+            let entries = usize::try_from(samples).unwrap_or(usize::MAX);
             let opaque = colors.key.is_none() && colors.embedded.is_none();
             let held = if opaque { lanes - 2 } else { lanes };
             return (
@@ -698,9 +696,10 @@ impl Key {
 /// Texels by sample key: open addressing into slots that hold a key and
 /// its `held` values together, so that a lookup reads one place. Keys have
 /// at most 48 bits, so each is held exactly as an f64. The memo holds at
-/// most [`Memo::CAP`] texels; a sample past them is converted without being
-/// kept. Every texel held is its key's, so what the memo holds never
-/// changes a value.
+/// most one texel per 16 samples of its image (at least 4096, at most
+/// [`Memo::CAP`]), so that what it reserves stays near the decoded samples'
+/// own size; a sample past them is converted without being kept. Every
+/// texel held is its key's, so what the memo holds never changes a value.
 #[derive(Debug)]
 pub(super) struct Memo {
     key: Key,
@@ -708,8 +707,8 @@ pub(super) struct Memo {
     /// hold.
     opaque: bool,
     held: usize,
-    /// The most texels the image's samples can make.
-    bound: usize,
+    /// The most texels kept.
+    limit: usize,
     /// Slots of `1 + held` values: the key (or [`FREE`]), then the texel.
     slots: Vec<f64>,
     len: usize,
@@ -724,12 +723,13 @@ impl Memo {
     /// The most texels kept.
     pub(super) const CAP: usize = 1 << 20;
 
-    fn new(key: Key, (held, opaque): (usize, bool), bound: usize) -> Self {
+    /// The memo of an image of `samples` samples.
+    fn new(key: Key, (held, opaque): (usize, bool), samples: usize) -> Self {
         Self {
             key,
             opaque,
             held,
-            bound,
+            limit: (samples / 16).clamp(4096, Self::CAP),
             slots: Vec::new(),
             len: 0,
             spare: Vec::new(),
@@ -745,9 +745,8 @@ impl Memo {
     /// The most bytes the memo holds: slots for its texels at most half
     /// full, grown by doubling.
     fn bound(&self) -> usize {
-        self.bound
-            .min(Self::CAP)
-            .saturating_mul(4)
+        (2 * self.limit)
+            .next_power_of_two()
             .saturating_mul((1 + self.held) * size_of::<f64>())
     }
 
@@ -768,7 +767,7 @@ impl Memo {
         if self.slots.get(slot * stride).copied() != Some(wanted) {
             let mut texel = [0.0; MAX_LANES];
             convert(&mut texel[..self.held + 2]);
-            if self.len >= Self::CAP {
+            if self.len >= self.limit {
                 self.spare.clear();
                 self.spare.extend_from_slice(&texel[..self.held]);
                 return &self.spare;
@@ -989,5 +988,36 @@ pub(super) fn copy_texel(to: &mut [f64], from: &[f64]) {
         5 => fixed::<5>(to, from),
         6 => fixed::<6>(to, from),
         n => to[..n].copy_from_slice(&from[..n]),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Key, Memo};
+
+    /// The memo reserves less than eight bytes a sample of its image, and
+    /// past its limit it converts every sample anew, alike.
+    #[test]
+    fn the_memo_stays_near_its_samples_and_converts_past_its_limit() {
+        let key = Key {
+            components: 3,
+            matte: false,
+            embedded: false,
+        };
+        assert!(Memo::new(key, (3, true), 1_000_000).bound() <= 8_000_000);
+        assert!(Memo::new(key, (4, true), 64).bound() <= (8 << 12) * 5 * 8);
+        let mut memo = Memo::new(key, (3, true), 0);
+        let texel = |key: u64| {
+            #[expect(clippy::cast_precision_loss, reason = "small test keys")]
+            let value = key as f64;
+            [value, value + 0.5, value * 2.0]
+        };
+        for round in 0..2 {
+            for k in 0..10_000u64 {
+                let held = memo.get(k, |out| out[..3].copy_from_slice(&texel(k)));
+                assert_eq!(held, texel(k), "key {k} round {round}");
+            }
+        }
+        assert_eq!(memo.len, memo.limit);
     }
 }
