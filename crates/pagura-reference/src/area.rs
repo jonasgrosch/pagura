@@ -10,7 +10,8 @@
 //! part of a pixel column between those two edges is a trapezoid, whose area
 //! is exact. Nothing is approximated beyond f64 rounding.
 
-use pagura_raster::{DeviceRect, FillRule, Point};
+use pagura_core::{Error, Result};
+use pagura_raster::{DeviceRect, FillRule, Point, quantize_unit};
 
 /// A region: the directed edges of closed device-space contours, filled
 /// under a rule.
@@ -18,6 +19,8 @@ use pagura_raster::{DeviceRect, FillRule, Point};
 pub struct Region {
     edges: Vec<[Point; 2]>,
     rule: FillRule,
+    pub(crate) hulls: Vec<crate::flatten::Hull>,
+    pub(crate) curve: Option<crate::flatten::CurveReference>,
 }
 
 impl Region {
@@ -26,6 +29,8 @@ impl Region {
         Self {
             edges: Vec::new(),
             rule,
+            hulls: Vec::new(),
+            curve: None,
         }
     }
 
@@ -59,6 +64,58 @@ impl Region {
             FillRule::EvenOdd => winding % 2 != 0,
         }
     }
+}
+
+/// Areas whose coverage bytes are unambiguous under the true-curve error
+/// intervals. Intersecting with clips cannot increase symmetric difference.
+/// Refine only curves whose hulls touch an ambiguous pixel; this depends
+/// solely on original controls and the reference's own uncertainty.
+pub(crate) fn rounded_areas(regions: &[Region], window: DeviceRect) -> Result<Areas> {
+    if regions.iter().all(|region| region.curve.is_none()) {
+        return Ok(areas(regions, window));
+    }
+    let mut regions = regions.to_vec();
+    for _ in 0..12 {
+        let areas = areas(&regions, window);
+        let rect = areas.rect();
+        let mut refine = vec![false; regions.len()];
+        let errors: Vec<_> = regions
+            .iter()
+            .map(|region| {
+                if region.hulls.is_empty() {
+                    return Vec::new();
+                }
+                let mut errors = vec![0.0; pixels(rect)];
+                for hull in &region.hulls {
+                    hull.accumulate(rect, &mut errors);
+                }
+                errors
+            })
+            .collect();
+        for (i, &area) in areas.values.iter().enumerate() {
+            let error = errors.iter().fold(0.0, |sum, errors| {
+                (sum + errors.get(i).copied().unwrap_or(0.0)) * (1.0 + 4.0 * f64::EPSILON)
+            });
+            if quantize_unit(area - error) != quantize_unit(area + error) {
+                for (refine, errors) in refine.iter_mut().zip(&errors) {
+                    *refine |= errors.get(i).is_some_and(|&error| error != 0.0);
+                }
+            }
+        }
+        if !refine.iter().any(|&needed| needed) {
+            return Ok(areas);
+        }
+        for (region, needed) in regions.iter_mut().zip(refine) {
+            if needed {
+                let curve = region
+                    .curve
+                    .as_ref()
+                    .ok_or(Error::limit("unresolved curve coverage interval"))?;
+                *region = curve.refine()?;
+            }
+        }
+    }
+    Err(Error::limit("unresolved curve coverage interval"))
 }
 
 /// The covered area of each pixel of a rectangle, row by row.

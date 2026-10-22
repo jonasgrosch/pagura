@@ -375,6 +375,80 @@ fn glyph_placements_are_separate_marks_at_exact_origins() {
 }
 
 #[test]
+fn overlapping_quadratics_refine_ambiguous_coverage_bytes() {
+    let mut b = Build::new(1.0, 1.0);
+    let black = b.rgb([0.0, 0.0, 0.0]);
+    let mut arch = pagura_raster::PathBuilder::new();
+    // The quadratic control is (1/2, h), so its area above its chord is
+    // h/3. A fixed fine polygon lies just below the half-level while the
+    // original curve lies above it. Overlap exposes that byte flip in the
+    // final composed value, even though each approximation is very fine.
+    let area = 62.5 / 255.0 + 1e-6;
+    let h = 3.0 * area;
+    arch.move_to(Point::new(0.0, 0.0));
+    arch.cubic_to(
+        Point::new(1.0 / 3.0, 2.0 * h / 3.0),
+        Point::new(2.0 / 3.0, 2.0 * h / 3.0),
+        Point::new(1.0, 0.0),
+    )
+    .unwrap();
+    arch.close();
+    let arch = arch.finish();
+    let pixel = DeviceRect {
+        x0: 0,
+        y0: 0,
+        x1: 1,
+        y1: 1,
+    };
+    let coarse = crate::exact::glyph(
+        &arch,
+        [1.0, 0.0, 0.0, 1.0],
+        Point::default(),
+        &Limits::default(),
+    )
+    .unwrap();
+    let coarse_area = crate::area::areas(std::slice::from_ref(&coarse), pixel).get(0, 0);
+    let error: f64 = coarse.hulls.iter().map(|hull| hull.error(0, 0)).sum();
+    assert!((coarse_area - area).abs() <= error);
+    assert_eq!(quantize_unit(coarse_area), 62);
+    assert_eq!(crate::exact::coverage(&[coarse], pixel).unwrap(), [63]);
+
+    let sources = [rect_path(0.0, 0.0, 6.0 / 255.0, 1.0), Arc::new(arch)]
+        .into_iter()
+        .enumerate()
+        .map(|(i, outline)| GlyphSource {
+            outline,
+            key: OutlineKey {
+                font: pagura_interpret::FontKey(1),
+                glyph: u32::try_from(i).unwrap(),
+            },
+            linear: Transform::IDENTITY,
+        })
+        .collect();
+    b.node(
+        GroupId(0),
+        Node::Glyphs(GlyphsNode {
+            sources,
+            placements: vec![
+                Placement {
+                    source: 0,
+                    origin: Point::default(),
+                },
+                Placement {
+                    source: 1,
+                    origin: Point::default(),
+                },
+            ],
+            positions: Vec::new(),
+            paint: black,
+            mark: mark(StateId(0)),
+        }),
+    );
+    let value = (1.0 - 6.0 / 255.0) * (1.0 - 63.0 / 255.0);
+    assert_pixel(&b.render(Rgba8::WHITE), (0, 0), [value, value, value, 1.0]);
+}
+
+#[test]
 fn tiling_instances_repeat_the_cell() {
     let mut b = Build::new(6.0, 1.0);
     let green = b.rgb([0.0, 1.0, 0.0]);
