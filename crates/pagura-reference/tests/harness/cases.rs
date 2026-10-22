@@ -112,15 +112,10 @@ impl Case {
             .with_provider(Some(provider))
             .scene(page)?;
         let scale = self.dpi / 72.0;
-        let (width, height) = scene.page.device_size(scale)?;
+        let device = pagura_paint::RenderRequest::page(&scene.page, scale)?;
         Ok(Recorded {
-            transform: scene.page.device_transform(scale),
-            page: DeviceRect {
-                x0: 0,
-                y0: 0,
-                x1: width,
-                y1: height,
-            },
+            transform: device.transform,
+            page: device.page,
             simulate: scene.print_intent,
             scene,
         })

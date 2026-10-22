@@ -6,7 +6,7 @@
 //! A page is interpreted once into a device-independent [`Scene`]
 //! (`pagura-interpret`), which a [`RenderContext`] keeps in its
 //! [`Store`]. Rendering a region of it at a resolution
-//! maps the page to device pixels ([`PageSpace::device_transform`](pagura_interpret::PageSpace::device_transform)),
+//! maps the page to device pixels ([`RenderRequest::page`](pagura_paint::RenderRequest::page)),
 //! prepares the scene for that region (`pagura_paint::prepare`, the only
 //! step that can fail: it validates every mark that meets the region and
 //! reserves every budget, in source order), allocates the region's
@@ -39,7 +39,7 @@ pub use pagura_text::Provider;
 use pagura_core::{ObjectId, Rect, Result, Store};
 use pagura_document::{Document, Page};
 use pagura_interpret::PageSpace;
-use pagura_paint::Scratch;
+use pagura_paint::{RenderRequest, Scratch};
 use renderer::Renderer;
 
 /// The size in device pixels of `page` rendered with `options`: its crop
@@ -55,7 +55,8 @@ pub fn device_size(page: &Page, options: &RenderOptions) -> Result<(u32, u32)> {
         rotation: page.rotation(),
         user_unit: page.user_unit(),
     };
-    space.device_size(options.scale)
+    let request = RenderRequest::page(&space, options.scale)?;
+    Ok((request.page.width(), request.page.height()))
 }
 
 /// Records `page` into a scene with stored appearances, using `provider` for

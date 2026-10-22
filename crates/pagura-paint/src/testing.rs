@@ -551,13 +551,15 @@ impl Build {
 
     /// The page in device pixels.
     pub(crate) fn page(&self) -> DeviceRect {
-        let (width, height) = self.scene.page.device_size(self.scale).unwrap_or((1, 1));
-        DeviceRect {
-            x0: 0,
-            y0: 0,
-            x1: width,
-            y1: height,
-        }
+        RenderRequest::page(&self.scene.page, self.scale).map_or(
+            DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 1,
+                y1: 1,
+            },
+            |request| request.page,
+        )
     }
 
     /// A request for `region` with `band_height`.

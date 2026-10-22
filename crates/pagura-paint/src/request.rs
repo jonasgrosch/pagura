@@ -1,5 +1,8 @@
 //! What a render asks for.
 
+use pagura_core::{Error, Result};
+use pagura_document::Rotation;
+use pagura_interpret::PageSpace;
 use pagura_raster::{DeviceRect, Rgba8, Transform};
 
 /// The four named fast parameters (ADR 0034). Each switches a kernel or
@@ -68,8 +71,7 @@ pub enum OverprintMode {
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
 pub struct RenderRequest {
-    /// Default user space to device pixels
-    /// (`PageSpace::device_transform`).
+    /// Default user space to device pixels ([`Self::page`]).
     pub transform: Transform,
     /// The page's device pixels: `0..width × 0..height`. Marks are clipped
     /// to it.
@@ -103,4 +105,60 @@ impl RenderRequest {
             band_height: Self::BAND_HEIGHT,
         }
     }
+
+    /// A request for the whole page of `space` at `scale` device pixels per
+    /// default unit (8.3.2): the crop box's corner goes to the origin, y
+    /// grows downwards, the page turns clockwise by `Rotate`, `UserUnit`
+    /// scales it, and its size is rounded up to whole pixels.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InvalidArgument` for a non-positive or non-finite scale and
+    /// a `Limit` error when the size does not fit `u32`.
+    pub fn page(space: &PageSpace, scale: f64) -> Result<Self> {
+        if !(scale.is_finite() && scale > 0.0) {
+            return Err(Error::invalid_argument("scale must be positive and finite"));
+        }
+        let r = space.crop;
+        let rotation = match space.rotation {
+            Rotation::None => Transform::new(1.0, 0.0, 0.0, -1.0, -r.x0(), r.y1()),
+            Rotation::Clockwise90 => Transform::new(0.0, 1.0, 1.0, 0.0, -r.y0(), -r.x0()),
+            Rotation::Clockwise180 => Transform::new(-1.0, 0.0, 0.0, 1.0, r.x1(), -r.y0()),
+            Rotation::Clockwise270 => Transform::new(0.0, -1.0, -1.0, 0.0, r.y1(), r.x1()),
+        };
+        let factor = scale * space.user_unit;
+        let (width, height) = match space.rotation {
+            Rotation::None | Rotation::Clockwise180 => (r.width(), r.height()),
+            Rotation::Clockwise90 | Rotation::Clockwise270 => (r.height(), r.width()),
+        };
+        let page = DeviceRect {
+            x0: 0,
+            y0: 0,
+            x1: pixels(width * factor)?,
+            y1: pixels(height * factor)?,
+        };
+        Ok(Self::new(
+            rotation.then(Transform::scale(factor, factor)),
+            page,
+            page,
+        ))
+    }
+}
+
+/// Rounds a device extent up to whole pixels, ignoring floating-point noise
+/// just above an integer.
+fn pixels(extent: f64) -> Result<u32> {
+    if !extent.is_finite() || extent <= 0.0 {
+        return Err(Error::limit("device extent is not finite and positive"));
+    }
+    let rounded = (extent - 1e-9).ceil().max(1.0);
+    if rounded > f64::from(u32::MAX) {
+        return Err(Error::limit("device size exceeds u32"));
+    }
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "range checked above; the value is a positive integer"
+    )]
+    Ok(rounded as u32)
 }

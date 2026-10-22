@@ -8,7 +8,7 @@ use pagura_document::{Document, Page};
 use pagura_extract::{LayoutOptions, PositionedText, TextPage};
 use pagura_interpret::{Interpreter, Scene};
 use pagura_paint::{Completion, PreparedScene, RenderRequest, Scratch};
-use pagura_raster::{DeviceRect, Pixmap, Rgba8};
+use pagura_raster::{Pixmap, Rgba8};
 use pagura_text::Provider;
 
 /// A document, its font provider and the store that holds what rendering
@@ -121,19 +121,10 @@ impl<'a> Renderer<'a> {
         (options, tile): (&RenderOptions, Option<Tile>),
         scratch: &mut Scratch,
     ) -> Result<PreparedScene> {
-        let size = scene.page.device_size(options.scale)?;
-        let page = DeviceRect {
-            x0: 0,
-            y0: 0,
-            x1: size.0,
-            y1: size.1,
-        };
-        let region = match tile {
-            Some(tile) => tile.region(size)?,
-            None => page,
-        };
-        let mut request =
-            RenderRequest::new(scene.page.device_transform(options.scale), page, region);
+        let mut request = RenderRequest::page(&scene.page, options.scale)?;
+        if let Some(tile) = tile {
+            request.region = tile.region((request.page.width(), request.page.height()))?;
+        }
         request.background = options.background;
         request.overprint = options.overprint.resolve(scene.print_intent);
         request.fast = options.fast;

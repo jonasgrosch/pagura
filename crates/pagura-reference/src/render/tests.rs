@@ -124,13 +124,9 @@ impl Build {
     }
 
     fn render(&self, background: Rgba8) -> Rendering {
-        let (width, height) = self.scene.page.device_size(1.0).unwrap();
-        let region = DeviceRect {
-            x0: 0,
-            y0: 0,
-            x1: width,
-            y1: height,
-        };
+        let region = pagura_paint::RenderRequest::page(&self.scene.page, 1.0)
+            .unwrap()
+            .page;
         let mut request = Request::new(Transform::IDENTITY, region);
         request.background = background;
         render(&self.scene, &request, &Limits::default()).unwrap()
