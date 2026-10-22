@@ -68,6 +68,17 @@ soft-mask interpretation or image decoding; without `outlines` no glyph
 outline is loaded; without `text` no Unicode mapping is built. The pixel path
 is monomorphized over the device; trait objects are for cold sinks only.
 
+Fonts load the same way for every device need, mode and region. A font's
+structure (header, table directory, and the tables that locate a glyph:
+`cmap`, `loca` and `hmtx`, the CFF indexes and charset) is validated when the
+font is first loaded; a glyph outline may be decoded and validated at its
+first use while content is interpreted, and is then cached per font and
+glyph. A malformed glyph that is drawn fails or is repaired exactly as an
+eager decode would report it, in source order; a glyph that is never drawn
+is never examined, so damage confined to unused glyphs is neither an error
+nor a diagnostic. Errors therefore depend only on the glyphs a page draws,
+never on mode, region or cache state.
+
 Devices in this pass: `SceneRecorder` (records a `Scene`) and `TextDevice`
 (feeds `pagura-extract`). SVG output, PDF re-emission and hit testing are
 roadmap devices the trait is designed to admit.

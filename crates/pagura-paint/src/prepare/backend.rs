@@ -81,6 +81,11 @@ pub(crate) trait Backend {
         options: &ShapeOptions<'_>,
     ) -> Result<Option<Prepared>>;
 
+    /// The clip state the next shapes are prepared in.
+    fn shapes_clip(&mut self, clip: Option<u32>) {
+        let _ = clip;
+    }
+
     /// A clip state: the intersection of `paths`, outermost first.
     ///
     /// # Errors
@@ -176,6 +181,7 @@ pub(crate) struct Raster<'a> {
     shapes: Vec<Shape>,
     clips: Vec<ClipShape>,
     edges: HashMap<EdgesKey, Arc<GlyphEdges>>,
+    current: Option<u32>,
 }
 
 impl<'a> Raster<'a> {
@@ -189,6 +195,7 @@ impl<'a> Raster<'a> {
             shapes: Vec::new(),
             clips: Vec::new(),
             edges: HashMap::new(),
+            current: None,
         }
     }
 
@@ -232,7 +239,8 @@ impl Backend for Raster<'_> {
         rule: FillRule,
         options: &ShapeOptions<'_>,
     ) -> Result<Option<Prepared>> {
-        let shape = Shape::fill(path, transform, rule, options)?;
+        let clip = self.current.and_then(|k| self.clips.get(k as usize));
+        let shape = Shape::fill_with_clip(path, transform, rule, clip, options)?;
         self.shape(shape)
     }
 
@@ -243,12 +251,13 @@ impl Backend for Raster<'_> {
         transform: Transform,
         options: &ShapeOptions<'_>,
     ) -> Result<Option<Prepared>> {
-        let shape = Shape::stroke(
+        let clip = self.current.and_then(|k| self.clips.get(k as usize));
+        let shape = Shape::stroke_with_clip(
             path,
             &pen.stroke,
-            inverse,
-            transform,
+            (inverse, transform),
             pen.adjustment,
+            clip,
             options,
         )?;
         self.shape(shape)
@@ -283,8 +292,13 @@ impl Backend for Raster<'_> {
             self.edges.insert(key, Arc::clone(&edges));
             edges
         };
-        let shape = Shape::glyph(&edges, origin, self.origins, options)?;
+        let clip = self.current.and_then(|k| self.clips.get(k as usize));
+        let shape = Shape::glyph_with_clip(&edges, origin, self.origins, clip, options)?;
         self.shape(shape)
+    }
+
+    fn shapes_clip(&mut self, clip: Option<u32>) {
+        self.current = clip;
     }
 
     fn clip(

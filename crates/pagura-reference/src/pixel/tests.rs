@@ -161,8 +161,10 @@ fn overprinted_channels_keep_the_backdrop() {
 
 #[test]
 fn constant_alpha_and_masks_scale_alpha_and_with_ais_shape() {
-    let mut state = Composite::default();
-    state.alpha = 0.5;
+    let mut state = Composite {
+        alpha: 0.5,
+        ..Composite::default()
+    };
     let mut s = source(&[1.0], 0.8, 0.8);
     s.apply(&state, 0.5);
     assert_eq!((s.alpha, s.shape), (0.2, 0.8));

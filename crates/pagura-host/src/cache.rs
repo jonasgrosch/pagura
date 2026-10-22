@@ -1,23 +1,18 @@
-//! Session-local LRUs for immutable compiled pages and extracted text
-//! (7.8.2, ADR 0014).
+//! The session-local LRU of extracted text (ADR 0014). Recorded scenes live
+//! in each document's render store instead (ADR 0012).
 //!
 //! An entry's estimated charge is a retention policy, not a process-memory
-//! ceiling: neither the renderer nor the text layer exposes retained heap
-//! bytes. A compiled page owns only its commands, never document data, so its
-//! charge scales with the list alone. The entry count independently limits
-//! the number of retained values. The fixed charges keep eviction identical
-//! on 32- and 64-bit targets.
+//! ceiling. The entry count independently limits the number of retained
+//! values.
 
-use pagura::{DisplayList, TextPage};
+use pagura::TextPage;
 use std::collections::VecDeque;
 use std::sync::Arc;
 
 /// Most values one cache retains, whatever their charges.
 pub(crate) const MAX_ENTRIES: usize = 8;
-/// Estimated bytes per display-list command, including its geometry.
-const COMMAND_CHARGE: usize = 4096;
 /// Estimated bytes for a value's inline header and its cache entry.
-pub(crate) const ENTRY_CHARGE: usize = 512;
+const ENTRY_CHARGE: usize = 512;
 
 /// A page of an open document.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -98,13 +93,6 @@ impl<T> PageCache<T> {
     }
 }
 
-/// A compiled list's charge, or `None` if it overflows (never retained).
-pub(crate) fn list_charge(list: &DisplayList) -> Option<usize> {
-    list.len()
-        .checked_mul(COMMAND_CHARGE)
-        .and_then(|bytes| bytes.checked_add(ENTRY_CHARGE))
-}
-
 /// An extracted page's charge: the engine's owned-capacity estimate plus the
 /// fixed entry allowance, which `TextPage` excludes.
 pub(crate) fn text_charge(page: &TextPage) -> usize {
@@ -114,8 +102,6 @@ pub(crate) fn text_charge(page: &TextPage) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pagura::{Document, OpenOptions, compile_page};
-    use pagura_testkit::open_fixture;
 
     fn key(document: u32, page: u32) -> PageKey {
         PageKey { document, page }
@@ -123,27 +109,23 @@ mod tests {
 
     #[test]
     fn hits_refresh_lru_eviction_and_close_release_charges() {
-        let document = open_fixture("classic", "rectangle.pdf", |bytes| {
-            Document::open(bytes, &OpenOptions::default())
-        });
-        let list = Arc::new(compile_page(&document, document.page(0).unwrap()).unwrap());
-        let charge = list_charge(&list).unwrap();
-        assert_eq!(charge, COMMAND_CHARGE + ENTRY_CHARGE);
+        let value = Arc::new("text");
+        let charge = 100;
         let mut cache = PageCache::new(charge * 2);
-        cache.insert(key(1, 0), Arc::clone(&list), charge);
-        cache.insert(key(1, 1), Arc::clone(&list), charge);
-        assert!(Arc::ptr_eq(&cache.get(key(1, 0)).unwrap(), &list));
-        cache.insert(key(2, 0), Arc::clone(&list), charge);
+        cache.insert(key(1, 0), Arc::clone(&value), charge);
+        cache.insert(key(1, 1), Arc::clone(&value), charge);
+        assert!(Arc::ptr_eq(&cache.get(key(1, 0)).unwrap(), &value));
+        cache.insert(key(2, 0), Arc::clone(&value), charge);
         assert!(cache.get(key(1, 1)).is_none());
         cache.close(1);
         assert_eq!(cache.accounting(), (charge, 1));
         cache.close(2);
         assert_eq!(cache.accounting(), (0, 0));
         let mut small = PageCache::new(charge - 1);
-        small.insert(key(1, 0), Arc::clone(&list), charge);
+        small.insert(key(1, 0), Arc::clone(&value), charge);
         assert_eq!(small.accounting(), (0, 0));
         let mut disabled = PageCache::new(0);
-        disabled.insert(key(1, 0), list, charge);
+        disabled.insert(key(1, 0), value, charge);
         assert_eq!(disabled.accounting(), (0, 0));
     }
 

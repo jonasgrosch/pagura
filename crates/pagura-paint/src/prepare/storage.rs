@@ -8,13 +8,15 @@
 
 use crate::format::Format;
 use crate::plan::Layout;
+use crate::prepare::bounds;
 use crate::prepare::index;
 use pagura_color::Process;
 use pagura_core::{Error, Result};
 use pagura_interpret::{
-    BlendMode, Composite, GroupAttributes, GroupId, GroupRole, MaskId, Node, Paint, PatternId,
-    Scene,
+    BlendMode, Composite, GroupAttributes, GroupId, GroupRole, ImageMask, MaskId, Node, Paint,
+    PatternId, Scene,
 };
+use pagura_raster::{DeviceRect, Path, Transform};
 use std::collections::HashMap;
 
 /// `π` of the F32 bound: source encoding and six roundings relative to the
@@ -75,6 +77,12 @@ pub(crate) struct Inputs {
     pub(crate) bytes: bool,
     /// The nesting budget.
     pub(crate) depth: usize,
+    /// Default user space to device pixels.
+    pub(crate) transform: Transform,
+    /// The page's device pixels.
+    pub(crate) pixels: DeviceRect,
+    /// `UserUnit`, for fixed views.
+    pub(crate) user_unit: f64,
 }
 
 /// Surveys `scene`.
@@ -100,7 +108,7 @@ pub(crate) fn survey(scene: &Scene, inputs: Inputs) -> Result<Storage> {
         .ok_or(Error::invalid_argument("scene group out of range"))?;
     let page = survey.buffer(inputs.page, root.attributes.knockout);
     survey.buffers[page].page = true;
-    survey.children(page, &root.children, Context::PAGE, 0)?;
+    survey.children(page, &root.children, Context::page(inputs.transform), 0)?;
     let page_knockout = survey.buffers[page].knockout();
     let transfers = survey.transfers;
     let buffer = &mut survey.buffers[page];
@@ -150,15 +158,93 @@ pub(crate) fn survey(scene: &Scene, inputs: Inputs) -> Result<Storage> {
 }
 
 /// Where content is.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 struct Context {
     /// Page content, whose marks select transfer functions.
     selects: bool,
+    /// Content space to device pixels.
+    transform: Transform,
 }
 
 impl Context {
-    const PAGE: Self = Self { selects: true };
-    const OTHER: Self = Self { selects: false };
+    fn page(transform: Transform) -> Self {
+        Self {
+            selects: true,
+            transform,
+        }
+    }
+
+    fn other(self) -> Self {
+        Self {
+            selects: false,
+            ..self
+        }
+    }
+}
+
+/// A dynamic store of a buffer (ADR 0004 §6): the pixels it can reach and
+/// what it injects.
+#[derive(Debug, Clone, Copy)]
+struct Dynamic {
+    /// Device pixels, conservatively.
+    rect: DeviceRect,
+    /// Its own error, in levels.
+    eta: f64,
+    /// The child whose result it composites.
+    child: Option<usize>,
+    /// The soft mask of its opacity.
+    mask: Option<usize>,
+}
+
+/// The most dynamic stores whose footprints N16 admission compares.
+const FOOTPRINTS: usize = 4096;
+
+/// Whether an N16 page admits `buffer`'s dynamic stores: at most one at
+/// any pixel, each injecting less than the room an N16 pixel leaves
+/// (ADR 0004 §6). Footprints are page-level device bounds, so the answer
+/// does not depend on the region. Children and masks are resolved first.
+fn n16_admits(buffer: &Buffer, resolved: &[Option<(Format, f64)>]) -> bool {
+    if buffer.dynamics.len() != buffer.dynamic || buffer.dynamic > FOOTPRINTS {
+        return false;
+    }
+    let bound = |node: usize| {
+        resolved
+            .get(node)
+            .copied()
+            .flatten()
+            .map_or(f64::INFINITY, |(_, bound)| bound)
+    };
+    let fits = buffer.dynamics.iter().all(|store| {
+        let child = store
+            .child
+            .map_or(0.0, |c| bound(c) * (1.0 + 256.0 / 255.0) + F64_STORE);
+        let mask = store.mask.map_or(0.0, |m| 256.0 / 255.0 * bound(m));
+        257.0 * (store.eta + child + mask) <= N16_ROOM
+    });
+    let mut rects: Vec<DeviceRect> = buffer
+        .dynamics
+        .iter()
+        .map(|store| store.rect)
+        .filter(|rect| !rect.is_empty())
+        .collect();
+    fits && disjoint(&mut rects)
+}
+
+/// Whether no two rectangles share a pixel.
+fn disjoint(rects: &mut [DeviceRect]) -> bool {
+    rects.sort_unstable_by_key(|r| r.x0);
+    let mut active: Vec<DeviceRect> = Vec::new();
+    for rect in rects.iter() {
+        active.retain(|other| other.x1 > rect.x0);
+        if active
+            .iter()
+            .any(|other| other.y0 < rect.y1 && rect.y0 < other.y1)
+        {
+            return false;
+        }
+        active.push(*rect);
+    }
+    true
 }
 
 /// A buffer described by its stores.
@@ -193,6 +279,13 @@ struct Buffer {
     children: Vec<(usize, usize)>,
     /// Masks of its stores, with their counts.
     masks: Vec<(usize, usize)>,
+    /// Its dynamic stores, by footprint.
+    dynamics: Vec<Dynamic>,
+    /// The device pixels its stores can reach.
+    extent: Option<bounds::Hull>,
+    /// Plain groups of opaque members that flatten into it if its knockout
+    /// turns out to be the opaque-member identity, with their buffers.
+    pending: Vec<((GroupId, Process), usize)>,
 }
 
 impl Buffer {
@@ -217,6 +310,8 @@ impl Buffer {
         self.eta += other.eta;
         self.children.extend_from_slice(&other.children);
         self.masks.extend_from_slice(&other.masks);
+        self.dynamics.extend_from_slice(&other.dynamics);
+        self.extent = unite(self.extent, other.extent);
     }
 }
 
@@ -263,6 +358,9 @@ impl Survey<'_> {
             eta: 0.0,
             children: Vec::new(),
             masks: Vec::new(),
+            dynamics: Vec::new(),
+            extent: None,
+            pending: Vec::new(),
         });
         self.buffers.len() - 1
     }
@@ -282,25 +380,78 @@ impl Survey<'_> {
             let node = scene
                 .node(id)
                 .ok_or(Error::invalid_argument("scene node out of range"))?;
-            let (mark, kind, count) = match node {
-                Node::Fill(fill) => (&fill.mark, self.paint(fill.paint)?, 1),
-                Node::Stroke(stroke) => (&stroke.mark, self.paint(stroke.paint)?, 1),
+            let (mark, kind, count, alpha_shape) = match node {
+                Node::Fill(fill) => (&fill.mark, self.paint(fill.paint)?, 1, true),
+                Node::Stroke(stroke) => (&stroke.mark, self.paint(stroke.paint)?, 1, true),
                 Node::Glyphs(glyphs) => (
                     &glyphs.mark,
                     self.paint(glyphs.paint)?,
                     glyphs.placements.len(),
+                    true,
                 ),
-                Node::Image(image) => (&image.mark, Kind::Varying, 1),
-                Node::Shading(shading) => (&shading.mark, Kind::Varying, 1),
+                // A soft mask or embedded opacity gives an image alpha that
+                // is not its shape unless AIS.
+                Node::Image(image) => (
+                    &image.mark,
+                    Kind::Varying,
+                    1,
+                    !matches!(
+                        image.image.mask,
+                        ImageMask::Soft { .. } | ImageMask::Embedded
+                    ),
+                ),
+                Node::Shading(shading) => (&shading.mark, Kind::Varying, 1, true),
                 Node::Group(group) => {
                     self.group(buffer, *group, context, depth)?;
                     continue;
                 }
             };
             let state = state(scene, mark.state)?;
-            self.mark(buffer, state, (kind, count), context, depth)?;
+            // Footprints matter for dynamic stores and for the extent of a
+            // group, whose result is a dynamic store of its parent.
+            let hulls = if dynamic(kind, state) || !self.buffers[buffer].page {
+                hulls(scene, node, context.transform)?
+            } else {
+                Vec::new()
+            };
+            let stores = Stores {
+                kind,
+                count,
+                hulls: &hulls,
+                alpha_shape,
+            };
+            self.mark(buffer, state, &stores, context, depth)?;
         }
+        self.settle(buffer);
         Ok(())
+    }
+
+    /// Flattens the pending groups of `buffer` once its content shows that
+    /// its knockout is the opaque-member identity, so that it composites as
+    /// source-over and they can composite straight into it.
+    fn settle(&mut self, buffer: usize) {
+        let pending = std::mem::take(&mut self.buffers[buffer].pending);
+        if self.buffers[buffer].knockout() {
+            return;
+        }
+        for (key, child) in pending {
+            let facts = self.buffers[child].clone();
+            let target = &mut self.buffers[buffer];
+            // Its result was one dynamic store.
+            target.stores = target.stores.saturating_sub(1);
+            target.dynamic = target.dynamic.saturating_sub(1);
+            target.dynamics.retain(|store| store.child != Some(child));
+            target.children.retain(|&(c, _)| c != child);
+            target.merge(&facts);
+            if let Some(entry) = self.groups.get_mut(&key) {
+                entry.flatten = true;
+            }
+        }
+    }
+
+    /// The device pixels of `hull` on the page.
+    fn pixels(&self, hull: Option<bounds::Hull>) -> DeviceRect {
+        bounds::device(hull, self.inputs.pixels)
     }
 
     fn paint(&self, id: pagura_interpret::PaintId) -> Result<Kind> {
@@ -320,19 +471,21 @@ impl Survey<'_> {
         &mut self,
         buffer: usize,
         state: &Composite,
-        (kind, count): (Kind, usize),
+        stores: &Stores<'_>,
         context: Context,
         depth: usize,
     ) -> Result<()> {
+        let (kind, count) = (stores.kind, stores.count);
         let layout = self.buffers[buffer].layout;
         let mask = state
             .soft_mask
-            .map(|id| self.mask(id, layout.process, depth))
+            .map(|id| self.mask(id, layout.process, (context, depth)))
             .transpose()?;
         let cell = match kind {
-            Kind::Pattern(pattern) => Some(self.cell(pattern, layout, depth)?),
+            Kind::Pattern(pattern) => Some(self.cell(pattern, layout, (context, depth))?),
             Kind::Constant | Kind::Varying => None,
         };
+        let rects: Vec<DeviceRect> = stores.hulls.iter().map(|&hull| self.pixels(hull)).collect();
         if state.transfer.is_some() && context.selects {
             self.transfers = true;
         }
@@ -343,8 +496,16 @@ impl Survey<'_> {
         // A store with a transfer function is outside the narrow bounds
         // wherever it is (ADR 0004 §5).
         target.forced |= state.blend != BlendMode::Normal || state.transfer.is_some();
-        let shaped = state.alpha_is_shape || (state.alpha == 1.0 && mask.is_none());
-        target.opaque_members &= shaped && cell.is_none();
+        for &hull in stores.hulls {
+            target.extent = unite(target.extent, hull);
+        }
+        // Opacity equals shape, and a knockout of such stores is source-over
+        // only when they blend Normal and keep no channel of the backdrop.
+        let shaped =
+            stores.alpha_shape && (state.alpha_is_shape || (state.alpha == 1.0 && mask.is_none()));
+        let keeps = self.inputs.simulate && state.overprint.enabled;
+        target.opaque_members &=
+            shaped && cell.is_none() && state.blend == BlendMode::Normal && !keeps;
         if cell_reads {
             // A cell whose content reads its backdrop reads this buffer.
             target.reads = true;
@@ -357,22 +518,28 @@ impl Survey<'_> {
             target.children.push((cell, count));
         }
         let constant = kind == Kind::Constant;
-        if constant && mask.is_none() {
-            if state.alpha > 0.0 {
-                target.theta = target
-                    .theta
-                    .min(state.alpha / 255.0 * (1.0 - 1.0 / 4_194_304.0));
-            }
-            if state.alpha != 1.0 {
-                target.dynamic = target.dynamic.saturating_add(count);
-                target.eta += F64_STORE * count as f64;
-            }
-        } else {
-            target.dynamic = target.dynamic.saturating_add(count);
-            if kind == Kind::Varying {
-                target.eta += MARGIN * count as f64;
+        if constant && mask.is_none() && state.alpha > 0.0 {
+            target.theta = target
+                .theta
+                .min(state.alpha / 255.0 * (1.0 - 1.0 / 4_194_304.0));
+        }
+        if dynamic(kind, state) {
+            // A varying source's f64 evaluation is within the margin; a
+            // translucent constant's store errs by one f64 evaluation.
+            let eta = if kind == Kind::Varying {
+                MARGIN
             } else {
-                target.eta += F64_STORE * count as f64;
+                F64_STORE
+            };
+            target.dynamic = target.dynamic.saturating_add(count);
+            target.eta += eta * count as f64;
+            if target.dynamics.len() <= FOOTPRINTS {
+                target.dynamics.extend(rects.iter().map(|&rect| Dynamic {
+                    rect,
+                    eta,
+                    child: cell,
+                    mask,
+                }));
             }
         }
         Ok(())
@@ -390,15 +557,31 @@ impl Survey<'_> {
         let parent_layout = self.buffers[parent].layout;
         let layout = group_layout(group.attributes, parent_layout);
         let child = self.buffer(layout, group.attributes.knockout);
-        self.children(child, &group.children, context, depth + 1)?;
+        let inner = match group.view {
+            Some(view) => Context {
+                transform: crate::prepare::planner::view_transform(
+                    context.transform,
+                    view,
+                    self.inputs.user_unit,
+                )?,
+                ..context
+            },
+            None => context,
+        };
+        self.children(child, &group.children, inner, depth + 1)?;
         let facts = self.buffers[child].clone();
         let plain =
             state.alpha == 1.0 && state.blend == BlendMode::Normal && state.soft_mask.is_none();
-        let flatten = plain
+        let fits = plain
             && !facts.knockout()
-            && !self.buffers[parent].knockout_attribute
             && layout == parent_layout
             && (!group.attributes.isolated || facts.normal_content());
+        let parent_knockout = self.buffers[parent].knockout_attribute;
+        let flatten = fits && !parent_knockout;
+        // In a knockout group, a plain group of opaque members is one opaque
+        // member: the implicit groups of text objects and of fill-and-stroke
+        // operators around Type 3 glyphs or fill-and-stroke text.
+        let pending = fits && parent_knockout && facts.opaque_members;
         let transparent = group.attributes.isolated || facts.normal_content();
         self.groups.insert(
             (id, parent_layout.process),
@@ -415,16 +598,27 @@ impl Survey<'_> {
         }
         let mask = state
             .soft_mask
-            .map(|mask| self.mask(mask, parent_layout.process, depth))
+            .map(|mask| self.mask(mask, parent_layout.process, (context, depth)))
             .transpose()?;
         let buffer = &mut self.buffers[child];
         buffer.forced |= state.blend.amplifies() || facts.knockout() || !transparent;
+        let rect = self.pixels(facts.extent);
         let target = &mut self.buffers[parent];
+        target.extent = unite(target.extent, facts.extent);
+        target.dynamics.push(Dynamic {
+            rect,
+            eta: 0.0,
+            child: Some(child),
+            mask,
+        });
         target.stores = target.stores.saturating_add(1);
         target.dynamic = target.dynamic.saturating_add(1);
         target.normal &= state.blend == BlendMode::Normal;
         target.forced |= state.blend != BlendMode::Normal;
-        target.opaque_members = false;
+        target.opaque_members &= pending;
+        if pending {
+            target.pending.push(((id, parent_layout.process), child));
+        }
         target.children.push((child, 1));
         if let Some(mask) = mask {
             target.masks.push((mask, 1));
@@ -436,7 +630,12 @@ impl Survey<'_> {
         Ok(())
     }
 
-    fn mask(&mut self, id: MaskId, process: Process, depth: usize) -> Result<usize> {
+    fn mask(
+        &mut self,
+        id: MaskId,
+        process: Process,
+        (context, depth): (Context, usize),
+    ) -> Result<usize> {
         let key = (id, process);
         if let Some(&buffer) = self.masks.get(&key) {
             return Ok(buffer);
@@ -458,7 +657,7 @@ impl Survey<'_> {
         };
         let buffer = self.buffer(layout, group.attributes.knockout);
         self.open.push(key);
-        let walked = self.children(buffer, &group.children, Context::OTHER, depth + 1);
+        let walked = self.children(buffer, &group.children, context.other(), depth + 1);
         self.open.pop();
         walked?;
         let facts = &mut self.buffers[buffer];
@@ -468,7 +667,12 @@ impl Survey<'_> {
         Ok(buffer)
     }
 
-    fn cell(&mut self, pattern: PatternId, layout: Layout, depth: usize) -> Result<usize> {
+    fn cell(
+        &mut self,
+        pattern: PatternId,
+        layout: Layout,
+        (context, depth): (Context, usize),
+    ) -> Result<usize> {
         if let Some(&buffer) = self.cells.get(&(pattern, layout.process)) {
             return Ok(buffer);
         }
@@ -484,7 +688,11 @@ impl Survey<'_> {
         // Registered before its content: a cell painting itself is caught by
         // the nesting budget, as its instances nest without end.
         self.cells.insert((pattern, layout.process), buffer);
-        self.children(buffer, &group.children, Context::OTHER, depth + 1)?;
+        let inner = Context {
+            selects: false,
+            transform: tiling.matrix.then(context.transform),
+        };
+        self.children(buffer, &group.children, inner, depth + 1)?;
         self.buffers[buffer].forced = true;
         Ok(buffer)
     }
@@ -515,7 +723,7 @@ impl Survey<'_> {
         }
         let stores = buffer.stores as f64;
         let wide = (stores * F64_STORE + MARGIN + injected, Format::F64);
-        let n16 = buffer.page && buffer.dynamic <= 1 && 257.0 * (buffer.eta + injected) <= N16_ROOM;
+        let n16 = buffer.page && n16_admits(buffer, resolved);
         let f32_bound =
             PI + RHO * stores.min(1.0 / buffer.theta + buffer.dynamic as f64) + injected;
         let (bound, format) = if buffer.forced {
@@ -585,4 +793,111 @@ fn state(scene: &Scene, id: pagura_interpret::StateId) -> Result<&Composite> {
         .get(id.index())
         .map(|state| &**state)
         .ok_or(Error::invalid_argument("scene state out of range"))
+}
+
+/// A device rectangle that covers every pixel.
+const WHOLE: bounds::Hull = [f64::MIN, f64::MIN, f64::MAX, f64::MAX];
+
+/// The smallest hull holding both.
+fn unite(a: Option<bounds::Hull>, b: Option<bounds::Hull>) -> Option<bounds::Hull> {
+    match (a, b) {
+        (Some(a), Some(b)) => Some([
+            a[0].min(b[0]),
+            a[1].min(b[1]),
+            a[2].max(b[2]),
+            a[3].max(b[3]),
+        ]),
+        (a, None) => a,
+        (None, b) => b,
+    }
+}
+
+/// The stores of one node.
+struct Stores<'h> {
+    kind: Kind,
+    /// Stores: one for most marks, one per placement for glyphs.
+    count: usize,
+    /// One device hull per store where footprints matter, else none.
+    hulls: &'h [Option<bounds::Hull>],
+    /// The source's alpha is its shape (not an image with a soft mask).
+    alpha_shape: bool,
+}
+
+/// Whether a store of `kind` under `state` is dynamic (ADR 0004 §6): all
+/// but opaque constant colours that only coverage reduces.
+fn dynamic(kind: Kind, state: &Composite) -> bool {
+    !(kind == Kind::Constant && state.soft_mask.is_none() && state.alpha == 1.0)
+}
+
+/// The device hulls of a node's stores.
+fn hulls(scene: &Scene, node: &Node, t: Transform) -> Result<Vec<Option<bounds::Hull>>> {
+    Ok(match node {
+        Node::Fill(fill) => vec![fill_hull(fill, t)],
+        Node::Stroke(stroke) => vec![stroke_hull(scene, stroke, t)?],
+        Node::Glyphs(glyphs) => glyph_hulls(glyphs, t),
+        Node::Image(image) => vec![bounds::path(
+            &bounds::unit_square(),
+            image.transform.then(t),
+        )],
+        Node::Shading(shading) => vec![shading.shading.bbox.map_or(Some(WHOLE), |b| {
+            bounds::path(&Path::rect(b), shading.transform.then(t))
+        })],
+        Node::Group(_) => Vec::new(),
+    })
+}
+
+/// A fill's device hull, a pixel wider for degenerate subpaths.
+fn fill_hull(fill: &pagura_interpret::FillNode, transform: Transform) -> Option<bounds::Hull> {
+    bounds::path(&fill.path, transform).map(|h| bounds::expand(h, 1.0))
+}
+
+/// A stroke's device hull: its path's, grown by the pen's reach.
+fn stroke_hull(
+    scene: &Scene,
+    stroke: &pagura_interpret::StrokeNode,
+    transform: Transform,
+) -> Result<Option<bounds::Hull>> {
+    let pen = scene
+        .pens
+        .get(stroke.pen.index())
+        .ok_or(Error::invalid_argument("scene pen out of range"))?;
+    Ok(bounds::path(&stroke.path, transform)
+        .map(|h| bounds::expand(h, bounds::stroke_reach(pen, transform) + 2.0)))
+}
+
+/// The device hull of every placement of a glyph run.
+fn glyph_hulls(
+    glyphs: &pagura_interpret::GlyphsNode,
+    transform: Transform,
+) -> Vec<Option<bounds::Hull>> {
+    let t = transform;
+    let device = Transform::new(t.a, t.b, t.c, t.d, 0.0, 0.0);
+    let relative: Vec<Option<bounds::Hull>> = glyphs
+        .sources
+        .iter()
+        .map(|source| {
+            let l = source.linear;
+            bounds::path(
+                &source.outline,
+                Transform::new(l.a, l.b, l.c, l.d, 0.0, 0.0).then(device),
+            )
+        })
+        .collect();
+    glyphs
+        .placements
+        .iter()
+        .map(|placement| {
+            let origin = t.apply(placement.origin);
+            relative
+                .get(index(placement.source))
+                .copied()
+                .flatten()
+                .map(|[x0, y0, x1, y1]| {
+                    bounds::expand(
+                        [x0 + origin.x, y0 + origin.y, x1 + origin.x, y1 + origin.y],
+                        1.0,
+                    )
+                })
+        })
+        .collect()
 }

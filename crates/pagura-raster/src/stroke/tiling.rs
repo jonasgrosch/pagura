@@ -7,10 +7,13 @@
 //! side, at the segment's own normal. The outer wedge between two normals
 //! takes the join, and a round cap is the half disc beyond its endpoint.
 //! Pieces that meet share their vertices bit for bit, so the nonzero filled
-//! set is the components' and every point is covered once. Runs that could
-//! bring the pen back over itself decline: a turn tighter than the pen around
-//! a short segment, an open centreline whose directions span a half turn, a
-//! closed one that is not convex, and runs whose pens may meet.
+//! set is the components' and every point is covered once. A reversal, or a
+//! turn tighter than the pen around a short segment, takes the components'
+//! form instead, which overlaps inside the turn; such runs, and runs that
+//! could bring the pen back over itself (an open centreline whose directions
+//! span a half turn, a closed one that is not convex, and runs whose pens
+//! may meet), are not proven to tile: their union is still the stroke, and
+//! the rasterizer certifies or resolves its windings.
 
 use super::{Run, cap, join, polygon};
 use crate::{LineCap, LineJoin, PathBuilder, Point, Stroke};
@@ -28,10 +31,31 @@ struct Turn {
     span: f64,
 }
 
-/// Appends the pieces of `run` to `out`. Returns `false`, leaving `out`
-/// incomplete, where pieces could overlap: at a reversal, at a turn tighter
-/// than the pen around a short segment, or where the centreline could return
-/// within the pen of itself.
+/// How the pieces of a run meet at one of its points.
+#[derive(Clone, Copy)]
+enum Joint {
+    /// An end, or no turn: the pieces end at the normal.
+    Straight,
+    /// A turn whose inner miter point lies within both segments.
+    Turn(Turn),
+    /// A reversal, or a turn tighter than the pen around a short segment:
+    /// the pieces end at their normals and overlap inside the turn, as the
+    /// components do.
+    Overlap,
+}
+
+impl Joint {
+    fn turn(self) -> Option<Turn> {
+        match self {
+            Self::Turn(turn) => Some(turn),
+            Self::Straight | Self::Overlap => None,
+        }
+    }
+}
+
+/// Appends the pieces of `run` to `out`, whose union is the components'.
+/// Returns whether no two pieces overlap: no joint overlaps and the
+/// centreline is proven not to return within the pen of itself.
 pub(super) fn append(
     out: &mut PathBuilder,
     run: &Run,
@@ -59,12 +83,9 @@ pub(super) fn append(
         },
     };
     let segments = segments(&points, joints)?;
-    if !advances(&segments, joints.closed) {
-        return Ok(false);
-    }
-    let Some(turns) = turns(&segments, joints, radius, stroke.cap)? else {
-        return Ok(false);
-    };
+    let turns = turns(&segments, joints, radius, stroke.cap)?;
+    let overlaps = turns.iter().any(|j| matches!(j, Joint::Overlap));
+    let proven = !overlaps && advances(&segments, joints.closed);
     if out
         .len()
         .checked_add(segments.len().saturating_mul(7))
@@ -77,8 +98,9 @@ pub(super) fn append(
         let ends = ((points[i], turns[i]), (points[k], turns[k]));
         piece(out, ends, direction, radius, limits)?;
     }
-    for (j, turn) in turns.iter().enumerate() {
-        if let (Some(_), Some((before, after))) = (turn, joints.around(j)) {
+    for (j, joint) in turns.iter().enumerate() {
+        if let (Joint::Turn(_) | Joint::Overlap, Some((before, after))) = (joint, joints.around(j))
+        {
             let tangents = [segments[before].0, segments[after].0];
             join(out, points[j], tangents, radius, tolerance, stroke, limits)?;
         }
@@ -87,10 +109,13 @@ pub(super) fn append(
         (run.closed, segments.as_slice(), segments.as_slice())
     {
         let back = Point::new(-start.x, -start.y);
+        // A half disc relies on the pieces beyond it ending where the
+        // components' would; beside overlaps the ends are the components'.
+        let end = if overlaps { cap } else { end };
         end(out, *first, back, radius, tolerance, stroke.cap, limits)?;
         end(out, *last, *finish, radius, tolerance, stroke.cap, limits)?;
     }
-    Ok(true)
+    Ok(proven)
 }
 
 /// Whether the pens of `runs` stay apart: the bounding boxes of their
@@ -260,16 +285,16 @@ fn advances(segments: &[(Point, f64)], closed: bool) -> bool {
     true
 }
 
-/// The turn at each point, or `None` when a reversal, or a turn whose inner
-/// miter point does not lie within both of its segments, could overlap pieces.
-/// Beside a butt end nothing covers what the neighbouring segment's
-/// quadrilateral reaches past it, so the end segment must hold that too.
+/// The joint at each point: a turn where its inner miter point lies within
+/// both of its segments, else an overlap. Beside a butt end nothing covers
+/// what the neighbouring segment's quadrilateral reaches past it, so the end
+/// segment must hold that too.
 fn turns(
     segments: &[(Point, f64)],
     joints: Joints,
     radius: f64,
     cap: LineCap,
-) -> Result<Option<Vec<Option<Turn>>>> {
+) -> Result<Vec<Joint>> {
     let count = if joints.closed {
         joints.segments
     } else {
@@ -281,18 +306,19 @@ fn turns(
         .map_err(|_| Error::limit("stroke piece allocation failed"))?;
     for j in 0..count {
         let Some((before, after)) = joints.around(j) else {
-            turns.push(None);
+            turns.push(Joint::Straight);
             continue;
         };
         let (a, b) = (segments[before].0, segments[after].0);
         let turn = cross(a, b);
         let dot = a.x * b.x + a.y * b.y;
         if turn == 0.0 {
-            if dot > 0.0 {
-                turns.push(None);
-                continue;
-            }
-            return Ok(None);
+            turns.push(if dot > 0.0 {
+                Joint::Straight
+            } else {
+                Joint::Overlap
+            });
+            continue;
         }
         // The tangent of half the turn, in the form that stays accurate near
         // a reversal, and the inner miter point it places on the inner offset
@@ -307,23 +333,27 @@ fn turns(
         let reach = radius * half;
         let offset = Point::new(-b.y * side + b.x * reach, b.x * side + b.y * reach);
         if !(offset.x.is_finite() && offset.y.is_finite() && reach.is_finite()) {
-            return Ok(None);
+            turns.push(Joint::Overlap);
+            continue;
         }
-        turns.push(Some(Turn {
+        turns.push(Joint::Turn(Turn {
             offset,
             left,
             reach,
             span: radius * turn.abs(),
         }));
     }
-    // Each side of a segment must hold the inner reach of both its joints.
+    // Each side of a segment must hold the inner reach of both its joints;
+    // where it cannot, both overlap instead, which only lowers what the
+    // segments beside them must hold.
     let last = joints.segments - 1;
     for (i, &(_, length)) in segments.iter().enumerate() {
         let butt = cap == LineCap::Butt && !joints.closed && (i == 0 || i == last);
+        let ends = [i, joints.after(i)];
         for left in [false, true] {
-            let need: f64 = [turns[i], turns[joints.after(i)]]
-                .into_iter()
-                .flatten()
+            let need: f64 = ends
+                .iter()
+                .filter_map(|&j| turns[j].turn())
                 .filter(|turn| turn.left == left)
                 .map(|turn| {
                     if butt {
@@ -334,25 +364,29 @@ fn turns(
                 })
                 .sum();
             if need > length {
-                return Ok(None);
+                for &j in &ends {
+                    if turns[j].turn().is_some_and(|turn| turn.left == left) {
+                        turns[j] = Joint::Overlap;
+                    }
+                }
             }
         }
     }
-    Ok(Some(turns))
+    Ok(turns)
 }
 
 /// One segment's piece between its joints: the inner miter point on a
 /// turn's inner side (through the joint itself), the normal elsewhere.
 fn piece(
     out: &mut PathBuilder,
-    ((p, start), (q, finish)): ((Point, Option<Turn>), (Point, Option<Turn>)),
+    ((p, start), (q, finish)): ((Point, Joint), (Point, Joint)),
     direction: Point,
     radius: f64,
     limits: &Limits,
 ) -> Result<()> {
     let normal = Point::new(-direction.y * radius, direction.x * radius);
-    let corner = |point: Point, turn: Option<Turn>, left: bool| match turn {
-        Some(turn) if turn.left == left => point + turn.offset,
+    let corner = |point: Point, joint: Joint, left: bool| match joint {
+        Joint::Turn(turn) if turn.left == left => point + turn.offset,
         _ if left => point + normal,
         _ => point - normal,
     };
@@ -362,13 +396,14 @@ fn piece(
         piece[n] = point;
         n += 1;
     };
+    // Through the joint itself, where the join's edges meet it.
     push(corner(p, start, false));
-    if start.is_some() {
+    if !matches!(start, Joint::Straight) {
         push(p);
     }
     push(corner(p, start, true));
     push(corner(q, finish, true));
-    if finish.is_some() {
+    if !matches!(finish, Joint::Straight) {
         push(q);
     }
     push(corner(q, finish, false));

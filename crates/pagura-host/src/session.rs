@@ -61,15 +61,17 @@ impl Session {
     }
 
     /// Attach a native supervisor flag. Generated tiles observe it before and
-    /// after compilation/painting; executing engine calls still run to completion.
+    /// after recording and between the bands of painting; recording a page
+    /// still runs to completion.
     #[must_use]
     pub fn with_cancellation(mut self, cancellation: crate::Cancellation) -> Self {
         self.cancellation = cancellation;
         self
     }
 
-    /// Snapshot source and compiled-page retention, excluding document internals,
-    /// temporary allocations, allocator overhead and transport buffers.
+    /// Snapshot source and render-store retention, excluding document
+    /// internals, temporary allocations, allocator overhead and transport
+    /// buffers.
     pub fn stats(&self) -> SessionStats {
         self.documents.stats()
     }
@@ -222,8 +224,7 @@ impl Session {
                 reading::stats(self.stats(), self.documents.text_accounting(), cap)
             }
             reading::Request::Bounds(page) => {
-                let list = self.documents.compiled(page, || true)?;
-                reading::bounds(&list, cap)
+                reading::bounds(self.documents.content_bounds(page)?, cap)
             }
         }
     }
