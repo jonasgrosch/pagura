@@ -347,7 +347,10 @@ fn previous(
 }
 
 #[test]
-#[expect(clippy::too_many_lines, reason = "one table of every space, target and conversion parameter, checked together")]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one table of every space, target and conversion parameter, checked together"
+)]
 fn conversions_match_the_previous_selection_bit_for_bit() {
     let mut rng = Rng::new(0xc0_10_25);
     let (mut compared, mut rejected, mut selective, mut zeroed) = (0, 0, 0, 0);

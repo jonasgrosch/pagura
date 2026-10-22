@@ -140,7 +140,10 @@ fn faults_have_defined_results() {
 }
 
 #[test]
-#[expect(clippy::too_many_lines, reason = "one table of every constructor case, checked together")]
+#[expect(
+    clippy::too_many_lines,
+    reason = "one table of every constructor case, checked together"
+)]
 fn constructors_keep_the_previous_validation() {
     let exponential = |domain, exponent, c1: Vec<f64>| {
         Function::exponential(ExponentialFunction {
