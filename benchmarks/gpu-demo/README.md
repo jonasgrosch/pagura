@@ -6,6 +6,9 @@ The CPU's exact coverage feeds an integer N16 GPU compositor. There is no
 general GPU rasterizer here. This experiment does not change the production
 renderer or the scope of ADR 0004.
 
+[`RESULTS.md`](RESULTS.md) records the measured CPU/GPU comparison and its
+limits; raw evidence remains local under `target/gpu-demo/`.
+
 ```sh
 cargo build --manifest-path benchmarks/gpu-demo/engine/Cargo.toml --locked \
   --release --target wasm32-wasip1 --target-dir target/gpu-demo
