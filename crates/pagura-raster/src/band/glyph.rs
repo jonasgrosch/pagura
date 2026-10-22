@@ -91,15 +91,19 @@ impl Relative {
         let mut lines: Vec<Line> = Vec::new();
         lines.try_reserve_exact(all.len()).map_err(allocation)?;
         lines.extend(all.iter().filter(|l| !l.is_horizontal()));
-        let span = |i: usize| -> (f64, f64) {
-            let (a, b) = match lines.get(i) {
-                Some(l) => (l.a.y, l.b.y),
-                None => {
-                    let q = curves[i - lines.len()];
-                    (q.points[0].y, q.points[2].y)
+        // A curve spans its ends, as monotone pieces do.
+        let chord = |i: usize| {
+            lines.get(i).copied().unwrap_or_else(|| {
+                let q = curves[i - lines.len()];
+                Line {
+                    a: q.points[0],
+                    b: q.points[2],
                 }
-            };
-            (a.min(b), a.max(b))
+            })
+        };
+        let span = |i: usize| {
+            let l = chord(i);
+            (l.a.y.min(l.b.y), l.a.y.max(l.b.y))
         };
         let count = lines.len() + curves.len();
         let (first, last) = (0..count).fold((f64::INFINITY, f64::NEG_INFINITY), |(f, l), i| {
@@ -113,26 +117,16 @@ impl Relative {
                 .map_err(|_| Error::limit("glyph extent budget exceeded"))?;
             (first as i64, rows)
         };
+        // Within `0..rows` by construction.
         let relative = |i: usize| {
             let (a, b) = span(i);
-            (
-                (a.floor() as i64 - first) as u32,
-                (b.ceil() as i64 - first) as u32,
-            )
+            let row = |v: f64| u32::try_from(v as i64 - first).unwrap_or(0);
+            (row(a.floor()), row(b.ceil()))
         };
         let index = RowList::new((0, rows), count, |i| Some(relative(i)))?;
         let mut work = index.len();
         for i in 0..count {
-            let line = match lines.get(i) {
-                Some(&l) => l,
-                None => {
-                    let q = curves[i - lines.len()];
-                    Line {
-                        a: q.points[0],
-                        b: q.points[2],
-                    }
-                }
-            };
+            let line = chord(i);
             work = work
                 .saturating_add(edges::line_work(line, relative(i), usize::MAX).saturating_mul(4));
         }

@@ -85,7 +85,7 @@ fn translated_placements_match_translated_vertices() {
                     });
                     let prep = options(area, &limits, clip.as_ref());
                     let fast = Shape::glyph_in(&edges, origin, GlyphOrigins::Exact, &prep).unwrap();
-                    let slow = super::super::glyph::place_general(&edges, origin, &prep);
+                    let slow = glyph::place_general(&edges, origin, &prep);
                     let (fast, slow) = (fast.unwrap(), slow.unwrap().unwrap());
                     if !clipped {
                         assert!(matches!(fast.body, Body::Glyph(_) | Body::Rect(_)));
