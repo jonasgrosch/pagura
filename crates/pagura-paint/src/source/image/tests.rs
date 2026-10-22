@@ -9,8 +9,8 @@
 //! bit for bit.
 
 use super::geometry::Geometry;
-use super::texels::{Convert, Opacity};
-use super::{Description, ImageSampler, MaskDescription, Orientation, Prepared};
+use super::texels::{Convert, Opacity, OpacityTexels, SampleTexels};
+use super::{Description, ImageSampler, MaskDescription, Orientation, Paint, Prepared};
 use crate::SpanColors;
 use pagura_color::{ColorSpace, Conversion, Converter, Indexed, Painted, Process, Target};
 use pagura_image::{Decoded, DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples};
@@ -507,6 +507,110 @@ fn device_and_cie_spaces_into_every_process_target() {
     for target in [1, 3, 4] {
         for case in [&cmyk, &lab, &rgb, &gray] {
             agree(case, target);
+        }
+    }
+}
+
+/// The bits of `values`.
+fn bits(values: &[f64]) -> Vec<u64> {
+    values.iter().map(|v| v.to_bits()).collect()
+}
+
+/// Spans of `len` pixels from `x0`: single pixels from the right or, on
+/// odd rows, from the left, then halves and the whole row, so that kept
+/// rows extend both ways and serve other ranges.
+fn partitions(x0: u32, len: usize, y: u32) -> Vec<(u32, usize)> {
+    let at = |i: usize| x0 + u32::try_from(i).unwrap();
+    let mut spans: Vec<_> = (0..len).map(|i| (at(i), 1)).collect();
+    if y.is_multiple_of(2) {
+        spans.reverse();
+    }
+    let half = len / 2;
+    spans.extend([(at(half), len - half), (x0, half), (x0, len)]);
+    spans
+}
+
+/// Source rows summed row by row, with texels from channel and Matte
+/// tables, give every pixel bit for bit what summing each pixel's
+/// per-sample texels gives, the image's and the mask's, for every partition
+/// of the device row.
+#[test]
+fn rows_and_tables_sum_as_samples_do() {
+    let rgb = image((23, 17), 3, 8, bytes(23 * 17 * 3, 8, 71));
+    let gray = image((23, 17), 1, 8, bytes(23 * 17, 8, 73));
+    // Mostly opaque, with transparent and partly covered samples.
+    let mask = image(
+        (23, 17),
+        1,
+        8,
+        Samples::Bytes(
+            codes(23 * 17, 8, 79)
+                .into_iter()
+                .map(|v| match v % 4 {
+                    0 => 0,
+                    1 => u8::try_from(v >> 8).unwrap(),
+                    _ => 255,
+                })
+                .collect(),
+        ),
+    );
+    let mut cases = Vec::new();
+    for source in [&rgb, &gray] {
+        for matte in [None, Some(vec![0.0; 3]), Some(vec![1.0, 0.25, 0.0])] {
+            for decode in [[0.0, 1.0], [0.25, 0.75]] {
+                let mut soft = case(source.clone());
+                let matte = matte
+                    .clone()
+                    .map(|m| m[..usize::from(source.components)].to_vec());
+                soft.mask = Some((mask.clone(), decode, MaskUse::Soft(matte)));
+                cases.push(soft);
+            }
+        }
+    }
+    let flipped =
+        |w: f64, h: f64| Transform::new(w / 2.78, 0.0, 0.0, -h / 2.78, 0.5, 1.0 + h / 2.78);
+    for case in &cases {
+        let (w, h) = (f64::from(case.image.width), f64::from(case.image.height));
+        let mut placements = placements(case.image.width, case.image.height);
+        placements.push(flipped(w, h));
+        placements.push(Transform::new(w / 1.34, 0.0, 0.0, h / 1.34, 0.3, 0.2));
+        for target in [1, 3, 4] {
+            for &unit_to_device in &placements {
+                let sampler = sampler(case, unit_to_device, target);
+                let prepared = sampler.prepared.as_deref().unwrap();
+                let Paint::Colors(paint) = &prepared.paint else {
+                    panic!("colour image");
+                };
+                let (colors, _) = paint.as_ref();
+                let mask = prepared.mask.as_ref().unwrap();
+                let lanes = colors.lanes();
+                let (x0, y0, x1, y1) = window(unit_to_device);
+                let len = usize::try_from(x1 - x0).unwrap();
+                for y in y0..y1 {
+                    for (x, len) in partitions(x0, len, y) {
+                        let span = (x, y, len);
+                        let mut rows = vec![0.0; len * lanes];
+                        prepared.texels(span, lanes, &mut rows);
+                        let matte = colors
+                            .matte
+                            .as_ref()
+                            .map(|_| (&mask.image.image, &mask.opacity));
+                        let texels = SampleTexels::new(&prepared.image.image, colors, matte, None);
+                        let mut samples = vec![0.0; len * lanes];
+                        prepared.geometry.fill(span, &texels, &mut samples);
+                        let context = format!("{unit_to_device:?} target {target} span {span:?}");
+                        assert_eq!(bits(&rows), bits(&samples), "{context}");
+                        let opacity = OpacityTexels {
+                            mask: &mask.image.image,
+                            opacity: &mask.opacity,
+                        };
+                        let (mut rows, mut samples) = (vec![0.0; len], vec![0.0; len]);
+                        mask.lines.fill(&mask.geometry, span, &opacity, &mut rows);
+                        mask.geometry.fill(span, &opacity, &mut samples);
+                        assert_eq!(bits(&rows), bits(&samples), "mask {context}");
+                    }
+                }
+            }
         }
     }
 }

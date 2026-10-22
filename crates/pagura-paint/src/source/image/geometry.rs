@@ -40,6 +40,31 @@ pub(super) trait Texels {
     fn add_unit(&self, index: usize, sum: &mut [f64]) {
         self.add(index, 1.0, sum);
     }
+
+    /// Writes the texels of samples `first..end` of row `row` of an image
+    /// `width` samples wide into `out`, as [`Self::get`] gives them, an
+    /// equal share of `out` each.
+    fn row(&self, row: (u32, u32), cells: (u32, u32), out: &mut [f64]) {
+        sample_row(self, row, cells, out);
+    }
+}
+
+/// Writes the texels of samples `first..end` of row `row` of an image
+/// `width` samples wide into `out`, one [`Texels::get`] each.
+pub(super) fn sample_row<T: Texels + ?Sized>(
+    texels: &T,
+    (row, width): (u32, u32),
+    (first, end): (u32, u32),
+    out: &mut [f64],
+) {
+    let count = usize::try_from(end.saturating_sub(first)).unwrap_or(0);
+    let Some(stride) = out.len().checked_div(count).filter(|&n| n > 0) else {
+        return;
+    };
+    let base = u64::from(row) * u64::from(width);
+    for (cell, values) in (first..end).zip(out.chunks_exact_mut(stride)) {
+        texels.get(sample_index(base + u64::from(cell)), values);
+    }
 }
 
 /// How device pixels map to source samples.
@@ -178,7 +203,8 @@ impl Footprint {
         self.first_weight == 1.0 && self.last_weight == 1.0
     }
 
-    fn weight(self, cell: u32) -> f64 {
+    /// The weight of `cell`, which lies in `first..end`.
+    pub(super) fn weight(self, cell: u32) -> f64 {
         if cell == self.first {
             self.first_weight
         } else if cell.wrapping_add(1) == self.end {
@@ -513,7 +539,7 @@ fn split(out: &mut [f64], opaque: bool) -> (&mut [f64], &mut [f64]) {
 }
 
 /// A row-major sample index; decoded images are addressable, so it fits.
-fn sample_index(index: u64) -> usize {
+pub(super) fn sample_index(index: u64) -> usize {
     usize::try_from(index).unwrap_or(usize::MAX)
 }
 

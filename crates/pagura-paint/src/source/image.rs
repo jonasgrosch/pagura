@@ -11,12 +11,14 @@
 
 mod codes;
 mod geometry;
+mod lines;
 #[cfg(test)]
 mod tests;
 mod texels;
 
 use super::{PaintContext, SpanColors};
 use geometry::Geometry;
+use lines::Lines;
 use pagura_color::{ColorSpace, Converter, Painted, Process};
 use pagura_core::{Built, Diagnostic, Error, Meter, Result, StoreKey};
 use pagura_image::{
@@ -28,7 +30,7 @@ use pagura_raster::Transform;
 use std::sync::Arc;
 use texels::{
     ByteCodes, Colors, Convert, Lookup, Opacity, OpacityTexels, PackedCodes, RgbTexels,
-    SampleTexels, Strategy, TableTexels,
+    SampleTexels, Strategy, TableTexels, UnmatteTexels,
 };
 
 /// An image prepared for one render: decoded (through the store) and ready
@@ -60,6 +62,8 @@ struct Prepared {
     shape_is_alpha: bool,
     /// Sampling by average codes, where the texels allow it.
     codes: Option<codes::Codes>,
+    /// Source rows converted for separable sampling otherwise.
+    lines: Lines,
 }
 
 #[derive(Debug)]
@@ -79,6 +83,8 @@ struct MaskSampling {
     /// Whether the mask's opacity also scales shape: an explicit stencil
     /// mask, or alpha is shape.
     scales_shape: bool,
+    /// Rows of opacities converted for separable sampling.
+    lines: Lines,
 }
 
 /// A decoded image in the store: the source and the request (reduction,
@@ -282,6 +288,8 @@ impl ImageSampler {
                 table.extend([alpha, alpha]);
             }
             debug_assert_eq!(table.len(), 2 * lanes);
+            // Rows kept from the colourless table are stale.
+            prepared.lines = Lines::default();
             if let Some(codes) = prepared.codes.as_mut() {
                 match codes::Lanes::single(table, lanes, 2, false) {
                     Some(fast) => codes.set_lanes(fast),
@@ -379,7 +387,8 @@ impl ImageSampler {
                 mask: &mask.image.image,
                 opacity: &mask.opacity,
             };
-            mask.geometry.fill((x, y, len), &texels, &mut out.alpha);
+            mask.lines
+                .fill(&mask.geometry, (x, y, len), &texels, &mut out.alpha);
         }
         out.colors.resize(len * lanes, 0.0);
         prepared.texels((x, y, len), lanes, &mut out.colors);
@@ -407,7 +416,11 @@ impl ImageSampler {
                     *value = if alpha > 0.0 { *value / alpha } else { 0.0 };
                 }
             }
-            out.colors.copy_within(base..base + channels, i * channels);
+            // Moved value by value: a few values each, where a copy call
+            // costs more than the move.
+            for (to, from) in (i * channels..).zip(base..base + channels) {
+                out.colors[to] = out.colors[from];
+            }
             if factors.is_some() {
                 out.alpha[i] = alpha;
             } else {
@@ -435,30 +448,43 @@ impl Prepared {
                             pixels: bytes.as_chunks::<3>().0,
                             tables,
                         };
-                        self.geometry.fill(span, &texels, out);
+                        self.lines.fill(&self.geometry, span, &texels, out);
                     } else {
                         // Planes sampled by a placement that average codes
                         // do not cover convert each sample.
                         let texels = SampleTexels::new(image, &paint.0, None, None);
-                        self.geometry.fill(span, &texels, out);
+                        self.lines.fill(&self.geometry, span, &texels, out);
                     }
                 }
                 Strategy::Cached(cache) => {
                     let texels = SampleTexels::new(image, &paint.0, None, Some(cache));
-                    self.geometry.fill(span, &texels, out);
+                    self.lines.fill(&self.geometry, span, &texels, out);
                 }
-                Strategy::General => {
+                Strategy::Unmatte(memo) => {
                     let colors = &paint.0;
-                    let matte = self
-                        .mask
-                        .as_ref()
-                        .filter(|_| colors.matte.is_some())
-                        .map(|mask| (&mask.image.image, &mask.opacity));
-                    let texels = SampleTexels::new(image, colors, matte, None);
-                    self.geometry.fill(span, &texels, out);
+                    let texels = self.mask.as_ref().and_then(|mask| {
+                        UnmatteTexels::new(image, colors, (&mask.image.image, &mask.opacity), memo)
+                    });
+                    match texels {
+                        Some(texels) => self.lines.fill(&self.geometry, span, &texels, out),
+                        None => self.general(span, colors, out),
+                    }
                 }
+                Strategy::General => self.general(span, &paint.0, out),
             },
         }
+    }
+
+    /// Every texel computed from its sample, the Matte removed at the soft
+    /// mask's opacity.
+    fn general(&self, span: (u32, u32, usize), colors: &Colors, out: &mut [f64]) {
+        let matte = self
+            .mask
+            .as_ref()
+            .filter(|_| colors.matte.is_some())
+            .map(|mask| (&mask.image.image, &mask.opacity));
+        let texels = SampleTexels::new(&self.image.image, colors, matte, None);
+        self.lines.fill(&self.geometry, span, &texels, out);
     }
 
     fn table(
@@ -475,7 +501,7 @@ impl Prepared {
                     lanes,
                     opaque,
                 };
-                self.geometry.fill(span, &texels, out);
+                self.lines.fill(&self.geometry, span, &texels, out);
             }
             Samples::Packed(packed) => {
                 let texels = TableTexels {
@@ -484,7 +510,7 @@ impl Prepared {
                     lanes,
                     opaque,
                 };
-                self.geometry.fill(span, &texels, out);
+                self.lines.fill(&self.geometry, span, &texels, out);
             }
             Samples::Words(_) | Samples::Mixed { .. } | Samples::Planar(_) => {}
         }
@@ -665,6 +691,7 @@ impl Prepared {
                     geometry: placement(&image.image, inverse, Orientation::Rows)?,
                     image,
                     scales_shape,
+                    lines: Lines::default(),
                 })
             }
             _ => None,
@@ -702,6 +729,7 @@ impl Prepared {
                 painted,
                 shape_is_alpha,
                 codes,
+                lines: Lines::default(),
             },
             conversions,
         ))
@@ -772,7 +800,7 @@ fn fast_lanes(paint: &Paint, image: &DecodedImage) -> Option<codes::Lanes> {
                 codes::Lanes::single(table, lanes, codes, *opaque)
             }
             Strategy::Rgb(tables) => codes::Lanes::rgb(tables),
-            Strategy::Cached(_) | Strategy::General => None,
+            Strategy::Cached(_) | Strategy::Unmatte(_) | Strategy::General => None,
         },
     }
 }
