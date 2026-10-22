@@ -263,22 +263,28 @@ pub(crate) fn word(value: f64) -> u16 {
 /// A dynamic store into N16 words: `(1 − a)·x + a·t` for the target
 /// `t = 65535·c` evaluated in f64 and rounded once to the nearest word.
 pub(crate) fn dynamic_n16(pixels: &mut [[u16; 4]], colors: &Colors<'_>, alpha: &[f64]) {
-    dynamic(
-        pixels,
-        colors,
-        alpha,
-        65535.0,
-        |value| {
-            #[expect(
-                clippy::cast_possible_truncation,
-                clippy::cast_sign_loss,
-                reason = "a value clamped to the word range"
-            )]
-            let word = value.clamp(0.0, 65535.0).round() as u16;
-            word
-        },
-        f64::from,
-    );
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "a value clamped to the word range"
+    )]
+    let round = |value: f64| value.clamp(0.0, 65535.0).round() as u16;
+    if let Colors::Strided { values, stride: 3 } = *colors
+        && alpha.iter().all(|&a| a == 1.0)
+    {
+        // At full opacity `(1 − a)·x + a·t` is `t`. `max` and `min` clamp
+        // as `clamp` does, with a NaN to zero, which is also its word.
+        #[expect(
+            clippy::manual_clamp,
+            reason = "unlike clamp, max and min vectorize, and NaN gives the same word"
+        )]
+        let word = |value: f64| round(value.max(0.0).min(1.0) * 65535.0);
+        for (pixel, color) in pixels.iter_mut().zip(values.as_chunks::<3>().0) {
+            *pixel = [word(color[0]), word(color[1]), word(color[2]), u16::MAX];
+        }
+        return;
+    }
+    dynamic(pixels, colors, alpha, 65535.0, round, f64::from);
 }
 
 /// A dynamic store into F32 levels: `(1 − a)·x + a·t` for the target
@@ -387,6 +393,18 @@ pub(crate) fn store_u8(pixels: &mut [[u8; 4]], colors: &Colors<'_>, alpha: &[f64
             let source = bytes(color);
             for (pixel, &a) in pixels.iter_mut().zip(alpha) {
                 over(pixel, source, a);
+            }
+        }
+        Colors::Strided { values, stride: 3 } if alpha.iter().all(|&a| a == 1.0) => {
+            // At full opacity a store takes the source's bytes.
+            let quantize = pagura_raster::quantize_unit;
+            for (pixel, color) in pixels.iter_mut().zip(values.as_chunks::<3>().0) {
+                *pixel = [
+                    quantize(color[0]),
+                    quantize(color[1]),
+                    quantize(color[2]),
+                    255,
+                ];
             }
         }
         Colors::Strided { values, stride } => {
@@ -534,6 +552,48 @@ mod tests {
             assert_eq!(f64::from(byte), exact.round(), "{value}");
             assert!((f64::from(word) - exact * 257.0).abs() <= 1.0 + 1e-9);
         }
+    }
+
+    #[test]
+    fn full_opacity_spans_store_as_any_span_does() {
+        let values = [
+            0.0,
+            1.0,
+            0.5,
+            -0.25,
+            1.5,
+            f64::NAN,
+            127.5 / 255.0,
+            0.2,
+            0.999_999,
+            1.0 / 131_070.0,
+            3.0 / 131_070.0,
+            1e-300,
+        ];
+        // Four values a pixel take the general loop.
+        let padded: Vec<f64> = values
+            .chunks(3)
+            .flat_map(|c| [c[0], c[1], c[2], 0.0])
+            .collect();
+        let alpha = [1.0; 4];
+        let (fast, general) = (
+            Colors::Strided {
+                values: &values,
+                stride: 3,
+            },
+            Colors::Strided {
+                values: &padded,
+                stride: 4,
+            },
+        );
+        let (mut a, mut b) = ([[7_u16; 4]; 4], [[7_u16; 4]; 4]);
+        dynamic_n16(&mut a, &fast, &alpha);
+        dynamic_n16(&mut b, &general, &alpha);
+        assert_eq!(a, b);
+        let (mut a, mut b) = ([[7_u8; 4]; 4], [[7_u8; 4]; 4]);
+        store_u8(&mut a, &fast, &alpha);
+        store_u8(&mut b, &general, &alpha);
+        assert_eq!(a, b);
     }
 
     #[test]
