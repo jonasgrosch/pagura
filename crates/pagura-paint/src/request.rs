@@ -1,7 +1,6 @@
 //! What a render asks for.
 
-use pagura_core::{Error, Result};
-use pagura_document::Rotation;
+use pagura_core::{Error, Result, Rotation};
 use pagura_interpret::PageSpace;
 use pagura_raster::{DeviceRect, Rgba8, Transform};
 
