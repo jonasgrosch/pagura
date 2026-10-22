@@ -67,7 +67,7 @@ pub(crate) struct Storage {
     pub(crate) transfers: bool,
     /// Some content outside soft masks, tiling cells included, has a
     /// transfer function: pattern-painted and simulated overprinting marks
-    /// outside soft masks are then unsupported, as before.
+    /// outside soft masks are then unsupported.
     pub(crate) transfer_gate: bool,
 }
 

@@ -152,8 +152,8 @@ fn pixels<'c, B: Blend, const KNOCKOUT: bool>(
     }
 }
 
-/// One source onto one pixel: `Pixel::paint` of the earlier compositor,
-/// operation for operation, so that results stay byte-identical.
+/// One source onto one pixel, in a fixed order of operations: reordering
+/// them changes output bytes.
 ///
 /// `base` is the pixel itself, or for knockout the group's initial backdrop.
 /// With opacity `q` (alpha, or alpha over shape for knockout), the colour is

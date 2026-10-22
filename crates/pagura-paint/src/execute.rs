@@ -521,8 +521,7 @@ pub(crate) fn clamp(span: Span<'_>, rect: DeviceRect) -> Option<(u32, Cover<'_>)
 }
 
 /// Source alpha and shape of a mark's pixels: the paint's alpha and shape
-/// (its alpha unless given) times coverage, in the earlier compositor's
-/// order.
+/// (its alpha unless given) times coverage, multiplied in that order.
 fn opacity(
     (paint, paint_shape): (Option<&[f64]>, Option<&[f64]>),
     coverage: Option<&[u8]>,
@@ -583,8 +582,8 @@ pub(crate) fn apply(
             }
         }
         None => {
-            // The earlier compositor multiplied by `constant × 1.0`, which is
-            // `constant` exactly.
+            // Without a soft mask the factor `constant × 1.0` is `constant`
+            // exactly.
             for (a, s) in alpha.iter_mut().zip(shape.iter_mut()) {
                 *a *= constant;
                 if shaped {

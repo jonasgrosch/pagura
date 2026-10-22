@@ -11,11 +11,10 @@ Rust standard library and enforce `#![forbid(unsafe_code)]`.
 
 Rendering is one interpreter recording each page into a scene and one
 renderer that prepares it for a region and executes it in bands
-([ADR 0034](docs/adr/0034-one-interpreter-one-renderer.md)). By default every
-pixel is within one level of its exact result
+([ADR 0034](docs/adr/0034-one-interpreter-one-renderer.md)). Every pixel is
+within one level of its exact result
 ([ADR 0004](docs/adr/0004-rendering-pipeline.md)), whatever the tiles, band
-height or platform; four named fast parameters trade that bound for speed
-(`--accuracy competitive` or `--fast` in the CLI).
+height or platform.
 
 ## Browser preview
 

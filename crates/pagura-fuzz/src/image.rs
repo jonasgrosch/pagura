@@ -12,8 +12,8 @@
 //! - 2: `jbig2::decode`; with bit 3 set, a little-endian `u16` length and
 //!   that many bytes of `/JBIG2Globals` precede the embedded stream.
 //! - 3: `jpx::decode`.
-//! - 4: `ImageSource::from_xobject` and its decodes (every sample, the
-//!   native layout and drawn-size cells): the rest is parts that become
+//! - 4: `ImageSource::from_xobject` and its decodes (interleaved and in the
+//!   native layout): the rest is parts that become
 //!   objects 3, 4, … of a fixed document; bits 3–4 choose the image object
 //!   (3 + bits) and bit 7 selects strict recovery.
 //! - 5: `ImageSource::from_inline` and its decode: an inline image

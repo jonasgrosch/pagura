@@ -91,7 +91,7 @@ impl<'a> Renderer<'a> {
         let Some(bytes) = surface_bytes(width, height, limits) else {
             // An empty surface or one over the pixel budget is refused as
             // allocation refuses it; one over only the byte budget, which an
-            // allocation taken over must keep to, is allocated as before.
+            // allocation taken over must keep to, is allocated by the pixmap.
             let mut pixmap = Pixmap::new(width, height, background, limits.pixels)?;
             let completion = rendering.render_until(&mut pixmap, stop);
             return Ok((pixmap, completion));

@@ -299,8 +299,8 @@ impl ImageSampler {
     }
 
     /// Gives a stencil mask its colour, `color` in working colours painting
-    /// `painted`, so that spans carry the colour the exact route composites:
-    /// each texel's colour is the colour times its alpha before averaging.
+    /// `painted`, so that spans carry the exactly composited colour: each
+    /// texel's colour is the colour times its alpha before averaging.
     /// Other images are unchanged.
     #[must_use]
     pub fn with_stencil_color(mut self, color: &[f64], painted: Painted) -> Self {

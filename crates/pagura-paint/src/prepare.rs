@@ -247,7 +247,7 @@ impl PreparedScene {
         })
     }
 
-    /// The storage of its shapes and glyph masks, for the next preparation.
+    /// The storage of its shapes, for the next preparation.
     pub(crate) fn into_storage(self) -> Storage {
         self.producer.into_storage()
     }

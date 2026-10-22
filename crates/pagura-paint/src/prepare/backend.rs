@@ -453,8 +453,8 @@ impl Backend for Raster<'_> {
             ImageBudgets { work, functions },
         )?;
         Ok(match stencil {
-            // A stencil mask of one colour carries it in its texels, as the
-            // exact route composites them.
+            // A stencil mask of one colour carries it in its texels, so that
+            // they composite exactly.
             Some(color) => match color.constant() {
                 Some(constant) => Box::new(Source::Image(
                     sampler.with_stencil_color(constant, color.painted()),
