@@ -97,11 +97,7 @@ fn same_bytes(name: &str, b: &Build, fast: FastParams, gathers: bool) {
         .prepare(&request, &Limits::default())
         .unwrap_or_else(|e| panic!("{name}: {e}"));
     assert!(
-        prepared
-            .plan()
-            .items
-            .iter()
-            .any(|item| matches!(&item.kind,
+        prepared.plan().items.iter().any(|item| matches!(&item.kind,
                 ItemKind::Run(run) if run.glyphs.iter().any(|g| g.alone) == gathers)),
         "{name}: no run item with placements alone: {gathers}"
     );
