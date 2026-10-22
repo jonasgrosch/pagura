@@ -15,16 +15,18 @@ mod workspace;
 
 pub(crate) use frame::{Backdrop, Buffer, Frame, Read, Tops};
 pub(crate) use mask::transfer as mask_transfer;
-pub(crate) use output::Destination;
 pub(crate) use schedule::Active;
 pub(crate) use transfer::validate;
 pub use workspace::Scratch;
-pub(crate) use workspace::{Extents, MaskCache, PageBuffer, Sizes, Usage, Workspace};
+pub(crate) use workspace::{
+    Extents, MaskCache, PageBuffer, Sizes, Usage, Workspace, coverage_capacity,
+};
 
 use crate::kernel::{self, Colors, Mode, Sources};
-use crate::paint::PaintSpans;
 use crate::plan::{Boundary, Compositing, Item, ItemKind, Mark, Plan, area};
-use crate::prepare::Producer;
+use crate::prepare::Completion;
+use crate::prepare::Shapes;
+use crate::source::{Pixels, Source, SpanColors};
 use pagura_color::Painted;
 use pagura_core::convert::u32_to_usize;
 use pagura_raster::{BandCoverage, BandRasterizer, DeviceRect, Span};
@@ -33,19 +35,49 @@ use std::ops::Range;
 #[cfg(test)]
 mod tests;
 
-/// What one band's execution works with: the plan, the workspace, and the
-/// coverage producer with the rasterizer it rasterizes in.
-pub(crate) type Executing<'a> = (
-    &'a Plan,
-    &'a mut Workspace,
-    (&'a dyn Producer, &'a mut BandRasterizer),
-);
+/// A prepared scene with scratch storage sized for it: what every band's
+/// execution works with. Rendering cannot fail.
+#[derive(Debug)]
+pub struct Rendering<'a> {
+    pub(crate) plan: &'a Plan,
+    pub(crate) shapes: &'a Shapes,
+    pub(crate) workspace: &'a mut Workspace,
+    pub(crate) rasterizer: &'a mut BandRasterizer,
+}
+
+impl Rendering<'_> {
+    /// Renders every band, appending each row of the region to `rows` as
+    /// premultiplied RGBA8, `4 × width` bytes, top to bottom. Room for the
+    /// rows should be reserved: appending beyond it allocates.
+    pub fn render(&mut self, rows: &mut Vec<u8>) {
+        let _ = self.render_until(rows, |_| false);
+    }
+
+    /// Renders bands as [`Self::render`] does, asking `stop` with the next
+    /// band's first row before each band.
+    pub fn render_until(
+        &mut self,
+        rows: &mut Vec<u8>,
+        mut stop: impl FnMut(u32) -> bool,
+    ) -> Completion {
+        let area = self.plan.area;
+        self.workspace.restart();
+        for band in area.bands() {
+            let row = area.band_rows(band).start;
+            if stop(row) {
+                return Completion::Stopped { row };
+            }
+            Executor::band(self, band, rows);
+        }
+        Completion::Complete
+    }
+}
 
 /// One band's execution.
 pub(crate) struct Executor<'a> {
     plan: &'a Plan,
     ws: &'a mut Workspace,
-    producer: &'a dyn Producer,
+    shapes: &'a Shapes,
     rasterizer: &'a mut BandRasterizer,
     band: u32,
     rows: Range<u32>,
@@ -53,12 +85,9 @@ pub(crate) struct Executor<'a> {
 }
 
 impl<'a> Executor<'a> {
-    /// Executes `band` of `plan` and writes its rows to `target`.
-    pub(crate) fn band(
-        (plan, ws, (producer, rasterizer)): Executing<'a>,
-        band: u32,
-        target: Destination<'_>,
-    ) {
+    /// Executes `band` of `rendering` and appends its rows to `out`.
+    fn band(rendering: &'a mut Rendering<'_>, band: u32, out: &mut Vec<u8>) {
+        let plan = rendering.plan;
         let rows = plan.area.band_rows(band);
         if rows.is_empty() {
             return;
@@ -66,15 +95,15 @@ impl<'a> Executor<'a> {
         let first = plan.area.bands().start;
         let mut executor = Executor {
             plan,
-            ws,
-            producer,
-            rasterizer,
+            ws: rendering.workspace,
+            shapes: rendering.shapes,
+            rasterizer: rendering.rasterizer,
             band,
             rows,
             first,
         };
         executor.page();
-        output::write(executor.plan, executor.ws, &executor.rows, target);
+        output::write(executor.plan, executor.ws, &executor.rows, out);
     }
 
     fn page(&mut self) {
@@ -134,28 +163,12 @@ impl<'a> Executor<'a> {
             else {
                 continue;
             };
-            if !self.visible(item, frame) {
-                continue;
-            }
             match &item.kind {
                 ItemKind::Mark(mark) => self.mark(item, mark, frame, tops),
                 ItemKind::Run(run) => self.glyph_run(item, run, frame, tops),
                 ItemKind::Group(used) => self.group(item, used, frame, tops),
             }
         }
-    }
-
-    /// The hook of exact occlusion (ADR 0034 §4): whether `item` can still
-    /// change `frame` in this band. A span fully covered by a later opaque
-    /// Normal mark of the same group, with no mask, transfer or other blend
-    /// between, may be skipped for earlier items; this pass skips nothing.
-    #[expect(
-        clippy::unused_self,
-        reason = "the occlusion state will live in the executor"
-    )]
-    fn visible(&self, item: &Item, frame: Frame) -> bool {
-        let _ = (item, frame);
-        true
     }
 
     /// Counts the rasterization work of `item` once per render.
@@ -172,41 +185,39 @@ impl<'a> Executor<'a> {
         self.count_shape(item);
         match mark.boundary {
             Boundary::Shape(boundary) => {
-                self.producer.rasterize(
-                    self.rasterizer,
-                    Some(boundary),
-                    None,
-                    self.band,
-                    &mut self.ws.boundary.0,
-                );
+                let outline = crate::plan::Cover {
+                    shape: Some(boundary),
+                    clip: None,
+                };
+                self.shapes
+                    .rasterize(self.rasterizer, outline, self.band, &mut self.ws.boundary.0);
             }
             Boundary::Empty => self.ws.boundary.0.clear(),
             Boundary::Absent => {}
         }
         let mut coverage = std::mem::take(&mut self.ws.coverage);
-        self.producer.rasterize(
-            self.rasterizer,
-            mark.cover.shape,
-            mark.cover.clip,
-            self.band,
-            &mut coverage,
-        );
-        if let Some(words) = self.opaque(mark, frame) {
-            self.opaque_store(&coverage, frame, words);
-            self.ws.coverage = coverage;
-            return;
-        }
-        for row in coverage.rows() {
-            if row.y < frame.rect.y0 || row.y >= frame.rect.y1 {
-                continue;
-            }
-            for span in row.spans() {
-                if let Some((x, cover)) = clamp(span, frame.rect) {
-                    self.mark_span(mark, frame, (x, row.y), cover);
-                }
-            }
-        }
+        self.shapes
+            .rasterize(self.rasterizer, mark.cover, self.band, &mut coverage);
+        let opaque = self.opaque(mark, frame);
+        self.store_coverage(mark, frame, opaque, &coverage);
         self.ws.coverage = coverage;
+    }
+
+    /// Stores every span of `coverage` within `frame`: straight from
+    /// coverage as `opaque` words where there are some.
+    fn store_coverage(
+        &mut self,
+        mark: &Mark,
+        frame: Frame,
+        opaque: Option<[u16; 4]>,
+        coverage: &BandCoverage,
+    ) {
+        match opaque {
+            Some(words) => self.opaque_store(coverage, frame, words),
+            None => each_span(coverage, frame.rect, |at, cover| {
+                self.mark_span(mark, frame, at, cover);
+            }),
+        }
     }
 
     /// The words `mark` stores straight from coverage into `frame`: an
@@ -223,7 +234,7 @@ impl<'a> Executor<'a> {
 
     /// Opaque constant colour `words` into the N16 page: one rounding per
     /// store straight from coverage, nothing else to evaluate.
-    pub(super) fn opaque_store(&mut self, coverage: &BandCoverage, frame: Frame, words: [u16; 4]) {
+    fn opaque_store(&mut self, coverage: &BandCoverage, frame: Frame, words: [u16; 4]) {
         let ws = &mut *self.ws;
         let PageBuffer::N16(page) = &mut ws.page else {
             return;
@@ -231,49 +242,34 @@ impl<'a> Executor<'a> {
         let rect = frame.rect;
         let width = u32_to_usize(rect.width());
         let mut stored = 0;
-        for row in coverage.rows() {
-            if row.y < rect.y0 || row.y >= rect.y1 {
-                continue;
+        each_span(coverage, rect, |(x, y), cover| {
+            let row = u32_to_usize(y - rect.y0);
+            let column = x - rect.x0;
+            let start = row * width + u32_to_usize(column);
+            let len = cover.len();
+            if let Some(pixels) = page.get_mut(start..start + len) {
+                kernel::store_n16(pixels, words, cover.coverage());
             }
-            let base = u32_to_usize(row.y - rect.y0) * width;
-            let Some(line) = page.get_mut(base..base + width) else {
-                continue;
-            };
-            let (mut lo, mut hi) = (u32::MAX, 0);
-            for span in row.spans() {
-                let Some((x, cover)) = clamp(span, rect) else {
-                    continue;
-                };
-                let column = x - rect.x0;
-                let start = u32_to_usize(column);
-                let len = cover.len();
-                if let Some(pixels) = line.get_mut(start..start + len) {
-                    kernel::store_n16(pixels, words, cover.coverage());
-                }
-                lo = lo.min(column);
-                hi = hi.max(column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX)));
-                stored += len;
-            }
-            if lo < hi {
-                ws.extents.mark(u32_to_usize(row.y - rect.y0), lo, hi);
-            }
-        }
+            let end = column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
+            ws.extents.mark(row, column, end);
+            stored += len;
+        });
         ws.usage.work = ws.usage.work.saturating_add(stored);
     }
 
     fn mark_span(&mut self, mark: &Mark, frame: Frame, (x, y): (u32, u32), cover: Cover<'_>) {
         let plan = self.plan;
-        let Some(paint) = plan.paints.get(u32_to_usize(mark.paint)).map(AsRef::as_ref) else {
+        let Some(paint) = plan.paints.get(u32_to_usize(mark.paint)) else {
             return;
         };
         let len = cover.len();
         let first_row = self.rows.start;
         let ws = &mut *self.ws;
         let compositing = &mark.compositing;
-        let constant = constant(paint);
+        let constant = paint.constant();
         if constant.is_none()
             && (paint_words(ws, (mark, paint), frame, (x, y), cover)
-                || !fill_colors(ws, (paint, mark.boundary), (x, y, len)))
+                || !fill_colors(ws, (paint, mark.boundary), (x, y), len))
         {
             return;
         }
@@ -284,34 +280,25 @@ impl<'a> Executor<'a> {
         let paint_shape = (constant.is_none() && !paint.shape_is_alpha())
             .then(|| ws.texel_shape.get(..len))
             .flatten();
-        let (colors, paint_alpha, painted) = if let Some((color, painted)) = constant {
-            (Colors::Constant(color), None, painted)
-        } else {
-            let alpha = if ws.colors.alpha.is_empty() {
-                None
-            } else if let Some(alpha) = ws.colors.alpha.get(..len) {
-                Some(alpha)
-            } else {
-                debug_assert!(false, "a paint source filled a short alpha span");
-                return;
-            };
-            let colors = Colors::Strided {
-                values: &ws.colors.colors,
-                stride: ws.colors.channels,
-            };
-            (colors, alpha, ws.colors.painted)
-        };
-        if !colors.holds(len, frame.layout.channels()) {
-            debug_assert!(false, "a paint source filled a malformed span");
-            return;
+        let span = match constant {
+            Some((color, painted)) => Some((Colors::Constant(color), None, painted)),
+            None => filled(&ws.colors, len),
         }
+        .filter(|(colors, ..)| colors.holds(len, frame.layout.channels()));
+        debug_assert!(
+            span.is_some(),
+            "paint fills whole spans of the buffer's channels"
+        );
+        let Some((colors, paint_alpha, painted)) = span else {
+            return;
+        };
         if mark.records && !ws.selection.is_empty() {
             output::record(
                 plan,
                 &mut ws.selection,
-                (x, y, first_row),
-                cover,
-                mark.select,
+                (x, y),
+                first_row,
+                (cover, mark.select),
             );
         }
         let preserve = compositing.overprint & !painted.0 & frame.layout.mask();
@@ -324,13 +311,12 @@ impl<'a> Executor<'a> {
             && compositing.blend == pagura_interpret::BlendMode::Normal
             && preserve == 0
             && let Colors::Strided { values, stride: 3 } = colors
-            && overwrite_colors(
-                (&mut ws.page, &mut ws.extents, &mut ws.usage),
-                frame,
-                (x, y, len),
-                values,
-            )
+            && overwrite((&mut ws.page, &mut ws.extents), frame, (x, y, len), |pixels| {
+                kernel::overwrite_n16(pixels, values.get(..len * 3).unwrap_or(&[]));
+                true
+            })
         {
+            ws.usage.work = ws.usage.work.saturating_add(len);
             return;
         }
         let (Some(alpha), Some(shape)) = (ws.alpha.get_mut(..len), ws.shape.get_mut(..len)) else {
@@ -367,71 +353,75 @@ impl<'a> Executor<'a> {
     }
 }
 
-/// Overwrites `len` pixels of `frame`'s narrow page from pixel (`x`, `y`)
-/// on with opaque colours, three `values` a pixel.
-fn overwrite_colors(
-    page: (&mut PageBuffer, &mut Extents, &mut Usage),
-    frame: Frame,
-    (x, y, len): (u32, u32, usize),
-    values: &[f64],
-) -> bool {
-    let values = values.get(..len * 3).unwrap_or(&[]);
-    overwrite(page, frame, (x, y, len), |pixels| {
-        kernel::overwrite_n16(pixels, values);
-        true
-    })
-}
-
-/// Lets an opaque paint over a whole span at full opacity, without a soft
-/// mask, write a narrow page's words itself; false where it does not.
-fn paint_words(
-    ws: &mut Workspace,
-    (mark, paint): (&Mark, &dyn PaintSpans),
-    frame: Frame,
-    (x, y): (u32, u32),
-    cover: Cover<'_>,
-) -> bool {
-    let compositing = &mark.compositing;
-    cover.coverage().is_none()
-        && !mark.records
-        && mark.boundary == Boundary::Absent
-        && compositing.alpha == 1.0
-        && compositing.mask.is_none()
-        && compositing.blend == pagura_interpret::BlendMode::Normal
-        && compositing.overprint == 0
-        && overwrite(
-            (&mut ws.page, &mut ws.extents, &mut ws.usage),
-            frame,
-            (x, y, cover.len()),
-            |pixels| paint.words(x, y, pixels),
-        )
-}
-
 /// Fills the workspace's span colours (and texel shapes where the paint's
 /// shape is not its alpha) with `paint`'s pixels `x .. x + len` of row `y`,
 /// under `boundary`; false where the boundary's coverage does not fit.
 fn fill_colors(
     ws: &mut Workspace,
-    (paint, boundary): (&dyn PaintSpans, Boundary),
-    (x, y, len): (u32, u32, usize),
+    (paint, boundary): (&Source, Boundary),
+    (x, y): (u32, u32),
+    len: usize,
 ) -> bool {
-    match boundary {
+    let outline = match boundary {
         Boundary::Shape(_) | Boundary::Empty => {
             let (boundary, dense) = &mut ws.boundary;
             let Some(dense) = dense.get_mut(..len) else {
                 return false;
             };
             densify(boundary, (x, y), dense);
-            paint.span_with_boundary(x, y, dense, &mut ws.colors);
+            Some(&*dense)
         }
-        Boundary::Absent if paint.shape_is_alpha() => {
-            paint.span(x, y, len, &mut ws.colors);
-        }
-        Boundary::Absent => {
-            paint.span_with_shape(x, y, len, &mut ws.colors, &mut ws.texel_shape);
-        }
-    }
+        Boundary::Absent => None,
+    };
+    let pixels = Pixels {
+        x,
+        y,
+        len,
+        boundary: outline,
+    };
+    paint.fill(pixels, &mut ws.colors, &mut ws.texel_shape);
     true
+}
+
+/// The colours, alpha and painted channels of the first `len` pixels a
+/// paint filled; `None` where it filled a shorter alpha span.
+fn filled(colors: &SpanColors, len: usize) -> Option<(Colors<'_>, Option<&[f64]>, Painted)> {
+    let alpha = match colors.alpha.as_slice() {
+        [] => None,
+        alpha => Some(alpha.get(..len)?),
+    };
+    let values = Colors::Strided {
+        values: &colors.colors,
+        stride: colors.channels,
+    };
+    Some((values, alpha, colors.painted))
+}
+
+/// Lets an opaque paint over a whole span at full opacity, without a soft
+/// mask, write a narrow page's words itself; false where it does not.
+fn paint_words(
+    ws: &mut Workspace,
+    (mark, paint): (&Mark, &Source),
+    frame: Frame,
+    (x, y): (u32, u32),
+    cover: Cover<'_>,
+) -> bool {
+    let compositing = &mark.compositing;
+    let len = cover.len();
+    let written = cover.coverage().is_none()
+        && !mark.records
+        && mark.boundary == Boundary::Absent
+        && compositing.alpha == 1.0
+        && compositing.mask.is_none()
+        && compositing.blend == pagura_interpret::BlendMode::Normal
+        && compositing.overprint == 0
+        && overwrite((&mut ws.page, &mut ws.extents), frame, (x, y, len), |pixels| {
+            paint.words(x, y, pixels)
+        });
+    if written {
+        ws.usage.work = ws.usage.work.saturating_add(len);
+    }
+    written
 }
 
 /// Overwrites `len` pixels of `frame`'s narrow page from pixel (`x`, `y`)
@@ -439,7 +429,7 @@ fn fill_colors(
 /// with nothing stored, where the frame is not a narrow page or `write`
 /// gives none.
 fn overwrite(
-    (page, extents, usage): (&mut PageBuffer, &mut Extents, &mut Usage),
+    (page, extents): (&mut PageBuffer, &mut Extents),
     frame: Frame,
     (x, y, len): (u32, u32, usize),
     write: impl FnOnce(&mut [[u16; 4]]) -> bool,
@@ -458,18 +448,8 @@ fn overwrite(
         let column = x - frame.rect.x0;
         let end = column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
         extents.mark(u32_to_usize(y - frame.rect.y0), column, end);
-        usage.work = usage.work.saturating_add(len);
     }
     stored.is_some()
-}
-
-/// The colour every pixel of `paint` has and the channels it paints, when
-/// it is constant or its spans are uniform.
-fn constant(paint: &dyn PaintSpans) -> Option<(&[f64], Painted)> {
-    paint
-        .constant()
-        .map(|color| (color, paint.painted()))
-        .or_else(|| paint.uniform())
 }
 
 /// The coverage of `coverage` at the pixels from `(x, y)`, one byte each.
@@ -537,6 +517,25 @@ impl<'a> Cover<'a> {
         match *self {
             Self::Full(_) => Self::Full(end.saturating_sub(start)),
             Self::Partial(coverage) => Self::Partial(coverage.get(start..end).unwrap_or_default()),
+        }
+    }
+}
+
+/// Calls `store` with every span of `coverage` within `rect` and its first
+/// pixel.
+fn each_span(
+    coverage: &BandCoverage,
+    rect: DeviceRect,
+    mut store: impl FnMut((u32, u32), Cover<'_>),
+) {
+    for row in coverage.rows() {
+        if row.y < rect.y0 || row.y >= rect.y1 {
+            continue;
+        }
+        for span in row.spans() {
+            if let Some((x, cover)) = clamp(span, rect) {
+                store((x, row.y), cover);
+            }
         }
     }
 }

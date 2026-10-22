@@ -14,7 +14,6 @@ mod execute;
 mod format;
 mod hash;
 mod kernel;
-mod paint;
 mod plan;
 mod prepare;
 mod process;
@@ -23,10 +22,7 @@ mod source;
 #[cfg(test)]
 mod testing;
 
-pub use execute::Scratch;
-pub use format::Format;
-pub use prepare::{Charges, Completion, PreparedScene, Rendering, prepare};
+pub use execute::{Rendering, Scratch};
+
+pub use prepare::{Charges, Completion, PreparedScene, prepare};
 pub use request::{OverprintMode, RenderRequest};
-pub use source::{
-    BBoxUse, ImageBudgets, ImageSampler, PaintContext, ShadingSource, Source, SpanColors,
-};

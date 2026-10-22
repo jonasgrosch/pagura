@@ -11,7 +11,7 @@
 use super::geometry::Geometry;
 use super::texels::{Opacity, OpacityTexels, SampleTexels};
 use super::{Description, ImageSampler, MaskDescription, Orientation, Paint, Prepared};
-use crate::SpanColors;
+use crate::source::SpanColors;
 use pagura_color::{ColorSpace, Conversion, Converter, Indexed, Painted, Process, Target};
 use pagura_image::{Decoded, DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples};
 use pagura_raster::Transform;

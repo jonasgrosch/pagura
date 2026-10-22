@@ -39,7 +39,7 @@ use texels::{
 /// to sample. A stencil mask samples alpha only; the executor colours it
 /// with its paint, or [`ImageSampler::with_stencil_color`] does.
 #[derive(Debug)]
-pub struct ImageSampler {
+pub(crate) struct ImageSampler {
     prepared: Option<Box<Prepared>>,
     channels: usize,
     /// The colour of every pixel, opaque, when all are alike.
@@ -48,11 +48,11 @@ pub struct ImageSampler {
 
 /// The budgets preparing an image charges.
 #[derive(Debug)]
-pub struct ImageBudgets<'a> {
+pub(crate) struct ImageBudgets<'a> {
     /// Render work: one unit per texel the filled pixels read.
-    pub work: &'a mut Meter,
+    pub(crate) work: &'a mut Meter,
     /// `function_work` of the colour conversions sampling makes.
-    pub functions: &'a mut Meter,
+    pub(crate) functions: &'a mut Meter,
 }
 
 #[derive(Debug)]
@@ -139,13 +139,14 @@ impl ImageSampler {
     /// Prepares `image` drawn under `unit_to_device` (the image's unit
     /// square to device pixels), decoding what the region needs, and
     /// charges `budgets.work` for the texels `pixels` filled device pixels
-    /// read and `budgets.functions` for the colour conversions.
+    /// read and `budgets.functions` for the colour conversions sampling
+    /// makes.
     ///
     /// # Errors
     ///
     /// Returns the decode's errors and a `Limit` error when decoding or
     /// sampling exceeds the budgets.
-    pub fn prepare_with(
+    pub(crate) fn prepare_with(
         image: &Image,
         unit_to_device: Transform,
         context: &PaintContext<'_>,
@@ -283,7 +284,7 @@ impl ImageSampler {
     /// texel's colour is the colour times its alpha before averaging.
     /// Other images are unchanged.
     #[must_use]
-    pub fn with_stencil_color(mut self, color: &[f64], painted: Painted) -> Self {
+    pub(crate) fn with_stencil_color(mut self, color: &[f64], painted: Painted) -> Self {
         let Some(prepared) = self.prepared.as_mut() else {
             self.channels = color.len();
             return self;
@@ -316,7 +317,7 @@ impl ImageSampler {
     /// Whether every pixel's shape equals its alpha. Otherwise (a soft mask
     /// or embedded opacity when alpha is not shape) the shape is the
     /// image's own, which [`Self::span_with_shape`] gives.
-    pub fn shape_is_alpha(&self) -> bool {
+    pub(crate) fn shape_is_alpha(&self) -> bool {
         self.prepared
             .as_ref()
             .is_none_or(|prepared| prepared.shape_is_alpha)
@@ -326,14 +327,14 @@ impl ImageSampler {
     /// image and its mask, texel tables and the footprint plan. They are
     /// the same whether the decoded image came from the store or was
     /// decoded for this render.
-    pub fn bytes(&self) -> usize {
+    pub(crate) fn bytes(&self) -> usize {
         self.prepared
             .as_ref()
             .map_or(0, |prepared| prepared.bytes())
     }
 
     /// The repairs decoding made, for the caller to report in source order.
-    pub fn repairs(&self) -> &[Diagnostic] {
+    pub(crate) fn repairs(&self) -> &[Diagnostic] {
         self.prepared
             .as_ref()
             .map_or(&[], |prepared| prepared.image.diagnostics.as_slice())
@@ -342,12 +343,12 @@ impl ImageSampler {
     /// Fills `out` with the colours and alpha of device pixels `x .. x +
     /// len` of row `y`: unpremultiplied working colours (none for an
     /// uncoloured stencil mask) and one alpha per pixel, before coverage.
-    pub fn span(&self, x: u32, y: u32, len: usize, out: &mut SpanColors) {
+    pub(crate) fn span(&self, x: u32, y: u32, len: usize, out: &mut SpanColors) {
         self.fill((x, y, len), out, None);
     }
 
     /// As [`Self::span`], also filling `shape` with each pixel's shape.
-    pub fn span_with_shape(
+    pub(crate) fn span_with_shape(
         &self,
         x: u32,
         y: u32,
@@ -363,7 +364,7 @@ impl ImageSampler {
     /// where every pixel of the span is opaque and its colour needs no
     /// other pass: an RGB image without a mask whose pixels take nearest
     /// samples. False, with `out` unspecified, otherwise.
-    pub fn words(&self, x: u32, y: u32, out: &mut [[u16; 4]]) -> bool {
+    pub(crate) fn words(&self, x: u32, y: u32, out: &mut [[u16; 4]]) -> bool {
         let Some(prepared) = &self.prepared else {
             return false;
         };

@@ -19,7 +19,7 @@ fn formats(b: &Build) -> Vec<Format> {
         .prepare(&request, &Limits::default())
         .unwrap_or_else(|e| panic!("{e}"));
     prepared
-        .plan()
+        .plan
         .groups
         .iter()
         .enumerate()
@@ -149,7 +149,7 @@ fn plain_groups_composite_as_their_members() {
     let prepared = b
         .prepare(&b.request(b.page(), 32), &Limits::default())
         .unwrap_or_else(|e| panic!("{e}"));
-    assert_eq!(prepared.plan().groups[0].items.len(), 2);
+    assert_eq!(prepared.plan.groups[0].items.len(), 2);
     check(&b);
 }
 
@@ -239,7 +239,7 @@ fn knockout_groups_of_opaque_members_fold_with_their_plain_groups() {
     let prepared = b
         .prepare(&b.request(b.page(), 32), &Limits::default())
         .unwrap_or_else(|e| panic!("{e}"));
-    assert_eq!(prepared.plan().groups.len(), 1);
+    assert_eq!(prepared.plan.groups.len(), 1);
     check(&b);
     // A translucent member makes the text object knock out: its groups are
     // members of their own.

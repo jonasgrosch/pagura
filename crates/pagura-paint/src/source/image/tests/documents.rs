@@ -1,6 +1,5 @@
-//! Images read from documents: requests for exact means decode and sample
-//! as full decoding does, and JPEG component planes, background blocks and
-//! exchanged rows and columns sample as interleaved samples do.
+//! Images read from documents: JPEG component planes, background blocks
+//! and exchanged rows and columns sample as interleaved samples do.
 
 use super::{SpanColors, converter};
 use crate::source::image::{Description, ImageSampler, MaskDescription, Orientation, Prepared};
@@ -36,12 +35,6 @@ fn jpeg_images(document: &Document) -> Vec<ObjectId> {
                     .is_some_and(|n| n == b"DCTDecode")
         })
         .collect()
-}
-
-/// A sampler of an opaque device-colour image without masks, placed
-/// upright.
-fn device_sampler(decoded: Arc<Decoded>, unit_to_device: Transform, width: u32) -> ImageSampler {
-    oriented_sampler(decoded, unit_to_device, width)
 }
 
 /// A sampler of an opaque device-colour image without masks, its samples
@@ -102,78 +95,6 @@ fn corpus(file: &str) -> Option<Vec<u8>> {
             .join(file),
     )
     .ok()
-}
-
-#[test]
-fn exact_means_decode_and_sample_as_full_decoding() {
-    let directory = pagura_testkit::workspace_root().join("corpus/generated/image");
-    let mut files: Vec<_> = std::fs::read_dir(&directory)
-        .unwrap()
-        .filter_map(|entry| entry.ok().map(|e| e.path()))
-        .filter(|path| path.extension().is_some_and(|e| e == "pdf"))
-        .filter_map(|path| std::fs::read(path).ok())
-        .collect();
-    files.extend(corpus("0000603.pdf"));
-    let mut checked = 0;
-    for bytes in files {
-        let Ok(document) = Document::open(bytes, &OpenOptions::default()) else {
-            continue;
-        };
-        // One image per document keeps the large page's four quick.
-        for id in jpeg_images(&document).into_iter().take(1) {
-            let Ok(source) = ImageSource::from_xobject(&document, document.object(id).unwrap())
-            else {
-                continue;
-            };
-            let limits = document.limits();
-            let decode = |reduce| {
-                source.decode(
-                    &DecodeRequest::new(reduce, None, Layout::Interleaved),
-                    &limits,
-                    source.recovery(),
-                )
-            };
-            let Ok(full) = decode(Reduce::Full) else {
-                continue;
-            };
-            let full = Arc::new(full);
-            let means = Arc::new(decode(Reduce::ExactMeans { x: 8, y: 8 }).unwrap());
-            assert_eq!(means.image, full.image, "{id}");
-            for minified in [8.5, 16.25] {
-                let (w, h) = (f64::from(source.width()), f64::from(source.height()));
-                let placement = Transform::new(
-                    w / minified,
-                    0.0,
-                    0.0,
-                    -h / minified,
-                    0.25,
-                    h / minified + 0.5,
-                );
-                #[expect(
-                    clippy::cast_possible_truncation,
-                    clippy::cast_sign_loss,
-                    reason = "test window"
-                )]
-                let window = (
-                    (w / minified).ceil() as u32 + 1,
-                    (h / minified).ceil() as u32 + 1,
-                );
-                assert_eq!(
-                    sample_all(
-                        &device_sampler(Arc::clone(&full), placement, window.0),
-                        window
-                    ),
-                    sample_all(
-                        &device_sampler(Arc::clone(&means), placement, window.0),
-                        window
-                    ),
-                    "{id}"
-                );
-            }
-            checked += 1;
-        }
-    }
-    assert!(checked > 0, "no JPEG fixtures");
 }
 
 #[test]

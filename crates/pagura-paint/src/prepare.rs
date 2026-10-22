@@ -8,21 +8,22 @@
 //! the region. The first error in source order among the marks that meet
 //! the region is the result; it does not depend on band height.
 
-mod backend;
 pub(crate) mod bounds;
 mod finish;
 mod overprint;
 pub(crate) mod planner;
+mod shapes;
+pub(crate) mod stacks;
 mod storage;
 
-pub(crate) use backend::{Backend, PaintRequest, Prepared, Producer, Raster, Storage};
+pub(crate) use shapes::{Prepared, ShapeBuilder, Shapes, Storage};
 
-use crate::execute::{Destination, Executing, Executor, Scratch, Workspace};
+use crate::execute::{Rendering, Scratch};
 use crate::plan::{MAX_BAND_HEIGHT, Plan};
 use crate::request::RenderRequest;
 use pagura_core::{Diagnostic, Error, Limits, Meter, Result, Store};
 use pagura_interpret::Scene;
-use pagura_raster::{Area, BandRasterizer, DeviceRect, Pixmap};
+use pagura_raster::{Area, DeviceRect};
 
 /// A scene prepared for one request: every mark that meets the region
 /// culled, validated, reserved and binned to bands, with its coverage
@@ -34,19 +35,9 @@ use pagura_raster::{Area, BandRasterizer, DeviceRect, Pixmap};
 #[derive(Debug)]
 pub struct PreparedScene {
     plan: Plan,
-    producer: Box<dyn Producer>,
+    shapes: Shapes,
     repairs: Vec<Diagnostic>,
     charges: Charges,
-}
-
-/// A prepared scene with scratch storage sized for it. Rendering cannot
-/// fail.
-#[derive(Debug)]
-pub struct Rendering<'a> {
-    plan: &'a Plan,
-    producer: &'a dyn Producer,
-    workspace: &'a mut Workspace,
-    rasterizer: &'a mut BandRasterizer,
 }
 
 /// How far a render got.
@@ -146,28 +137,14 @@ pub(crate) fn prepare_in(
     (store, limits): (&Store, &Limits),
     storage: Storage,
 ) -> Result<PreparedScene> {
-    prepare_with(
-        scene,
-        request,
-        (store, limits),
-        Raster::new(store, limits).with_storage(storage),
-    )
-}
-
-/// [`prepare`] with the geometry and paint of `backend`.
-pub(crate) fn prepare_with<B: Backend>(
-    scene: &Scene,
-    request: &RenderRequest,
-    (store, limits): (&Store, &Limits),
-    backend: B,
-) -> Result<PreparedScene> {
     let area = area(request, limits)?;
     let mut budget = Budget::new(limits);
-    let planner = planner::Planner::new(scene, request, (store, limits), area, backend)?;
+    let shapes = ShapeBuilder::new(store, limits, storage);
+    let planner = planner::Planner::new(scene, request, (store, limits), area, shapes)?;
     let finished = finish::finish(planner, &mut budget)?;
     Ok(PreparedScene {
         plan: finished.plan,
-        producer: finished.producer,
+        shapes: finished.shapes,
         repairs: finished.repairs,
         charges: budget.charges(),
     })
@@ -241,7 +218,7 @@ impl PreparedScene {
         let (workspace, rasterizer) = scratch.fit(&self.plan)?;
         Ok(Rendering {
             plan: &self.plan,
-            producer: self.producer.as_ref(),
+            shapes: &self.shapes,
             workspace,
             rasterizer,
         })
@@ -249,84 +226,6 @@ impl PreparedScene {
 
     /// The storage of its shapes, for the next preparation.
     pub(crate) fn into_storage(self) -> Storage {
-        self.producer.into_storage()
-    }
-
-    /// The plan, for tests.
-    #[cfg(test)]
-    pub(crate) fn plan(&self) -> &Plan {
-        &self.plan
-    }
-}
-
-impl Rendering<'_> {
-    /// Renders every band into `target`, whose pixel `(0, 0)` is the
-    /// region's first pixel and which covers the region.
-    pub fn render(&mut self, target: &mut Pixmap) {
-        let _ = self.render_until(target, |_| false);
-    }
-
-    /// Renders bands into `target` top to bottom, asking `stop` with the
-    /// next band's first row before each band.
-    pub fn render_until(
-        &mut self,
-        target: &mut Pixmap,
-        stop: impl FnMut(u32) -> bool,
-    ) -> Completion {
-        self.bands(stop, |executor, band| {
-            Executor::band(executor, band, Destination::Pixmap(target));
-        })
-    }
-
-    /// Renders bands top to bottom as [`Self::render_until`] does, appending
-    /// each rendered row of the region to `rows` as premultiplied RGBA8,
-    /// `4 × width` bytes, so that a surface need not be filled first. Room
-    /// for the rows should be reserved: appending beyond it allocates.
-    pub fn render_rows_until(
-        &mut self,
-        rows: &mut Vec<u8>,
-        stop: impl FnMut(u32) -> bool,
-    ) -> Completion {
-        self.bands(stop, |executor, band| {
-            Executor::band(executor, band, Destination::Rows(rows));
-        })
-    }
-
-    fn bands(
-        &mut self,
-        mut stop: impl FnMut(u32) -> bool,
-        mut band: impl FnMut(Executing<'_>, u32),
-    ) -> Completion {
-        let plan = self.plan;
-        self.workspace.restart();
-        for index in plan.area.bands() {
-            let row = plan.area.band_rows(index).start;
-            if stop(row) {
-                return Completion::Stopped { row };
-            }
-            band(
-                (
-                    plan,
-                    &mut *self.workspace,
-                    (self.producer, &mut *self.rasterizer),
-                ),
-                index,
-            );
-        }
-        Completion::Complete
-    }
-
-    /// The work and executor-side function evaluations of the last render,
-    /// and the bytes retained: what [`PreparedScene::charges`] bounds.
-    #[cfg(test)]
-    pub(crate) fn usage(&self) -> Charges {
-        let usage = self.workspace.usage;
-        Charges {
-            render_bytes: self.workspace.bytes()
-                + self.rasterizer.retained_bytes()
-                + finish::plan_bytes(self.plan),
-            render_work: usage.work,
-            function_work: usage.functions,
-        }
+        self.shapes.into_storage()
     }
 }

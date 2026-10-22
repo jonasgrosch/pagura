@@ -125,8 +125,10 @@ band row into outside, inside and boundary runs; exact joint geometry runs only
 where mark and clip are both partial.
 
 Prepared paint is a closed set chosen once per paint and render: solid,
-axial, radial, function-based, mesh, image sampler, tiling cell. It fills a
-span of working colours or reports a constant. Colour conversion is a
+shading (axial, radial, function-based, mesh) and image sampler; a shading
+that paints one opaque colour is a solid. It fills a span of working
+colours or reports a constant. A tiling pattern is a group of its instances
+composited through the painted mark's coverage. Colour conversion is a
 prepared converter; functions are total after preparation.
 
 ### 5. Precision and storage
@@ -163,10 +165,13 @@ can reach a limit that its tiles do not.
 
 `pagura_core::Store` owns every reusable byte of rendering under one budget:
 `get_or_build(key, build)` returns a shared value and evicts entries only the
-store still holds. Keys in this pass: recorded scene, decoded image (source,
-reduction, region), colour transform, font program, glyph edge setup,
-prepared function and shading. Keys use resource identity, never addresses.
-A prepared-scene key waits until a viewer benchmark shows reuse.
+store still holds. Keys in this pass: recorded scene, decoded content
+stream, decoded image (source and request), ICC profile, font program,
+glyph outline and glyph edge setup. Converters, prepared functions and
+shadings are prepared per render: on the shading-heaviest study page they
+took 0.2% of a warm render, less than a lookup would save. Keys use
+resource identity, never addresses. A prepared-scene key waits until a
+viewer benchmark shows reuse.
 
 ### 9. Determinism
 

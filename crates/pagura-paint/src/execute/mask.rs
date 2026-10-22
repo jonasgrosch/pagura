@@ -3,7 +3,7 @@
 //! values through `TR`; outside its group's content the mask has one value.
 
 use super::{Backdrop, Buffer, Executor, Frame, MaskCache, Read, Tops};
-use crate::plan::{Layout, MaskPlan, Plan, Start, area, intersect};
+use crate::plan::{Curve, Layout, MaskPlan, Plan, Start, area, intersect};
 use crate::process;
 use pagura_core::convert::u32_to_usize;
 use pagura_interpret::MaskKind;
@@ -36,11 +36,9 @@ impl Executor<'_> {
         let mut computed = DeviceRect::default();
         if let (false, Some(group)) = (rect.is_empty(), plan.groups.get(u32_to_usize(mask.group))) {
             let layout = group.layout;
-            let (buffer, above) = tops.place(group.format, rect, layout);
-            if !above.within(plan.stack) {
-                debug_assert!(false, "the stacks hold every mask group buffer");
+            let Some((buffer, above)) = tops.place((group.format, layout), rect, plan.stack) else {
                 return;
-            }
+            };
             let initial = match group.start {
                 Start::Opaque(color) => Backdrop::Opaque(color),
                 Start::Transparent | Start::Backdrop => Backdrop::Transparent,
@@ -62,7 +60,7 @@ impl Executor<'_> {
                 levels: &ws.levels,
             };
             if let Some(cache) = ws.masks.get_mut(index) {
-                let spent = values(mask, (read, buffer, layout), area(rect), cache);
+                let spent = values(mask, read, (buffer, layout), area(rect), cache);
                 ws.usage.functions = ws.usage.functions.saturating_add(spent);
                 ws.usage.work = ws.usage.work.saturating_add(area(rect));
                 computed = rect;
@@ -79,7 +77,8 @@ impl Executor<'_> {
 /// the function work spent. Equal values share one transfer evaluation.
 fn values(
     mask: &MaskPlan,
-    (read, buffer, layout): (Read<'_>, Buffer, Layout),
+    read: Read<'_>,
+    (buffer, layout): (Buffer, Layout),
     count: usize,
     cache: &mut MaskCache,
 ) -> usize {
@@ -109,7 +108,7 @@ fn values(
         .clamp(0.0, 1.0);
         if value.to_bits() != last.to_bits() {
             mapped = transfer(mask, value);
-            work += mask.transfer.as_ref().map_or(0, |f| f.cost());
+            work += mask.transfer.as_ref().map_or(0, Curve::cost);
             last = value;
         }
         *out = mapped;

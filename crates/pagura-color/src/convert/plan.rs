@@ -95,8 +95,9 @@ enum Source {
     },
 }
 
+/// The encoding of sRGB into a process space's channels.
 #[derive(Debug, Clone)]
-enum Encode {
+pub(super) enum Encode {
     Gray,
     Rgb,
     Cmyk {
@@ -285,14 +286,7 @@ impl Chain {
     /// Follows `space` to the terminal conversion into `process`.
     fn new(mut space: &ColorSpace, process: Process, conversion: &Conversion) -> Result<Self> {
         let mut steps = Vec::new();
-        let encode = || match process {
-            Process::Gray => Encode::Gray,
-            Process::Rgb => Encode::Rgb,
-            Process::Cmyk => Encode::Cmyk {
-                black: conversion.black_generation.clone(),
-                removal: conversion.undercolor_removal.clone(),
-            },
-        };
+        let encode = || Encode::new(process, conversion);
         let rgb = |source| Terminal::Rgb {
             source,
             encode: encode(),
@@ -383,14 +377,8 @@ impl Chain {
             Step::Lookup(_) | Step::Clip { .. } => cost,
         });
         let encode = match &self.terminal {
-            Terminal::Rgb {
-                encode: Encode::Cmyk { black, removal },
-                ..
-            } => [black, removal]
-                .into_iter()
-                .flatten()
-                .fold(0_usize, |cost, f| cost.saturating_add(f.cost())),
-            _ => 0,
+            Terminal::Rgb { encode, .. } => encode.cost(),
+            Terminal::Native { .. } | Terminal::All => 0,
         };
         tints.saturating_add(encode)
     }
@@ -551,8 +539,33 @@ impl Source {
 }
 
 impl Encode {
+    /// The encoding into `process`, with the black generation and
+    /// undercolour removal of `conversion` for CMYK.
+    pub(super) fn new(process: Process, conversion: &Conversion) -> Self {
+        match process {
+            Process::Gray => Self::Gray,
+            Process::Rgb => Self::Rgb,
+            Process::Cmyk => Self::Cmyk {
+                black: conversion.black_generation.clone(),
+                removal: conversion.undercolor_removal.clone(),
+            },
+        }
+    }
+
+    /// The `function_work` units one encoding costs: black generation and
+    /// undercolour removal.
+    pub(super) fn cost(&self) -> usize {
+        match self {
+            Self::Cmyk { black, removal } => [black, removal]
+                .into_iter()
+                .flatten()
+                .fold(0_usize, |cost, f| cost.saturating_add(f.cost())),
+            Self::Gray | Self::Rgb => 0,
+        }
+    }
+
     /// Writes encoded sRGB into the process channels (10.3).
-    fn apply(&self, rgb: [f64; 3], output: &mut [f64]) {
+    pub(super) fn apply(&self, rgb: [f64; 3], output: &mut [f64]) {
         let encoded = match self {
             Self::Rgb => [rgb[0], rgb[1], rgb[2], 0.0],
             Self::Gray => [luminosity(rgb), 0.0, 0.0, 0.0],
@@ -578,7 +591,7 @@ impl Encode {
 }
 
 /// The luminosity of an RGB colour (11.3.5.3).
-pub(crate) fn luminosity([r, g, b]: [f64; 3]) -> f64 {
+pub fn luminosity([r, g, b]: [f64; 3]) -> f64 {
     0.3 * r + 0.59 * g + 0.11 * b
 }
 
