@@ -713,17 +713,43 @@ impl Clean {
         let under = |(a, b): (usize, usize), factor: usize, maximum: usize| {
             (a * factor / maximum / side)..=(b * factor / maximum / side)
         };
+        // Per chroma component: each luma column's chroma columns, and per
+        // luma row the chroma columns any chroma row under it marks.
+        let chroma: [(Vec<std::ops::RangeInclusive<usize>>, usize); 2] = [1, 2].map(|c| {
+            let [h, _, chroma_pitch] = planar.geometry(c);
+            let ranges = (0..columns)
+                .map(|column| under((column * side, column * side + side - 1), h, max_h))
+                .collect();
+            (ranges, chroma_pitch / side)
+        });
+        let mut marked: Vec<bool> = Vec::new();
         for (row, line) in bits.chunks_exact_mut(words.max(1)).enumerate() {
             let samples = (row * side, row * side + side - 1);
             for column in 0..columns {
-                let across = (column * side, column * side + side - 1);
-                let chroma = (1..3).all(|c| {
-                    let [h, v, _] = planar.geometry(c);
-                    under(samples, v, max_v)
-                        .all(|y| under(across, h, max_h).all(|x| !planar.dirty(c, y, x)))
-                });
-                if chroma && !planar.dirty(0, row, column) {
+                if !planar.dirty(0, row, column) {
                     line[column / 64] |= 1 << (column % 64);
+                }
+            }
+            for (c, (ranges, chroma_columns)) in (1..3).zip(&chroma) {
+                let [_, v, _] = planar.geometry(c);
+                marked.clear();
+                marked.resize(*chroma_columns, false);
+                for y in under(samples, v, max_v) {
+                    for (x, mark) in marked.iter_mut().enumerate() {
+                        *mark |= planar.dirty(c, y, x);
+                    }
+                }
+                if !marked.contains(&true) {
+                    continue;
+                }
+                for (column, range) in ranges.iter().enumerate() {
+                    let last = (*range.end()).min(marked.len().saturating_sub(1));
+                    if marked
+                        .get(*range.start()..=last)
+                        .is_some_and(|marks| marks.contains(&true))
+                    {
+                        line[column / 64] &= !(1 << (column % 64));
+                    }
                 }
             }
         }
@@ -946,14 +972,27 @@ impl<'a> Grid<'a> {
                     if dirty {
                         planar.rgb_range(y, start, stop, out)
                     } else {
-                        for pixel in out.as_chunks_mut::<3>().0 {
-                            *pixel = clean.background;
-                        }
+                        fill_rgb(out, clean.background);
                         true
                     }
                 })
             }),
         }
+    }
+}
+
+/// Fills `out` with `rgb` repeated, sixteen samples at a copy.
+fn fill_rgb(out: &mut [u8], rgb: [u8; 3]) {
+    let mut pattern = [0u8; 48];
+    for chunk in pattern.as_chunks_mut::<3>().0 {
+        *chunk = rgb;
+    }
+    let (chunks, rest) = out.as_chunks_mut::<48>();
+    for chunk in chunks {
+        *chunk = pattern;
+    }
+    for (out, &value) in rest.iter_mut().zip(&pattern) {
+        *out = value;
     }
 }
 
@@ -2480,7 +2519,72 @@ fn reduce_constant(rows: &Footprint, code: u8) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::Affine;
+    use super::{Affine, Clean};
+    use pagura_image::deferred::Planar;
+
+    /// Background blocks are those whose luma block and every chroma block
+    /// under it hold the background, for every sampling of the chroma.
+    #[test]
+    fn background_blocks_have_clean_chroma_under_them() {
+        let mut state = 0x1234_5678u32;
+        let mut random = move || {
+            state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            state >> 16
+        };
+        let cases: [([usize; 2], (usize, usize)); 4] = [
+            ([2, 2], (37, 29)),
+            ([1, 1], (24, 16)),
+            ([2, 1], (40, 9)),
+            ([4, 1], (70, 15)),
+        ];
+        for ([h, v], (width, height)) in cases {
+            let maximum = [h, v];
+            let geometry = [
+                [h, v, (width.div_ceil(8 * h) * 8 * h).next_multiple_of(8)],
+                [1, 1, width.div_ceil(8 * h) * 8],
+                [1, 1, width.div_ceil(8 * h) * 8],
+            ];
+            let rows = [
+                height.div_ceil(8 * v) * 8 * v,
+                height.div_ceil(8 * v) * 8,
+                height.div_ceil(8 * v) * 8,
+            ];
+            let backgrounds = [255u8, 128, 128];
+            let planes: [Vec<u8>; 3] = std::array::from_fn(|c| {
+                let [_, _, pitch] = geometry[c];
+                let mut plane = vec![backgrounds[c]; pitch * rows[c]];
+                for block in 0..(pitch / 8) * (rows[c] / 8) {
+                    if random() % 5 == 0 {
+                        let (row, column) = (block / (pitch / 8), block % (pitch / 8));
+                        plane[(row * 8 + 3) * pitch + column * 8 + 2] = 7;
+                    }
+                }
+                plane
+            });
+            let planar = Planar::new((width, height), maximum, geometry, planes).unwrap();
+            let clean = Clean::new(&planar);
+            let side = 8;
+            let under = |(a, b): (usize, usize), factor: usize, maximum: usize| {
+                (a * factor / maximum / side)..=(b * factor / maximum / side)
+            };
+            for row in 0..height.div_ceil(side) {
+                for column in 0..geometry[0][2] / side {
+                    let samples = (row * side, row * side + side - 1);
+                    let across = (column * side, column * side + side - 1);
+                    let expected = !planar.dirty(0, row, column)
+                        && (1..3).all(|c| {
+                            let [h, v, _] = planar.geometry(c);
+                            under(samples, v, maximum[1]).all(|y| {
+                                under(across, h, maximum[0]).all(|x| !planar.dirty(c, y, x))
+                            })
+                        });
+                    let actual =
+                        clean.bits[row * clean.words + column / 64] >> (column % 64) & 1 == 1;
+                    assert_eq!(actual, expected, "{maximum:?} block {row} {column}");
+                }
+            }
+        }
+    }
 
     /// Bytes of mapped codes equal the rounding of the colour values, at
     /// exact half levels, next to them and at random averages, for unit
