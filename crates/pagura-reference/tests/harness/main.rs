@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! The renderer (`pagura-paint`) against the reference over every render
 //! case of the conformance fixtures (ADR 0004 §2–§3, ADR 0034):
 //!

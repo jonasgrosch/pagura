@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Times coverage generation of the band rasterizer against the old exact
 //! path (`stroke_outline` and `Rasterizer::clipped_coverage`) on many small
 //! strokes and fills and on large fills. Coverage only: nothing is

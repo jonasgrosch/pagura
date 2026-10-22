@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Fonts, outlines and ICC profiles cached in a `Store` by object identity:
 //! a second interpretation finds them, and font keys stay stable.
 

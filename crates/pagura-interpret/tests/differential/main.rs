@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! The new interpreter against the old renderer's compiler, as the
 //! behavioural reference: same success or failure (error kind, tag, object
 //! and position), same diagnostics, same marks and glyph placements, and

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Image sources decode exactly as the decode entry points do: for every
 //! image XObject and page-content inline image of the generated corpus and
 //! of the benchmark pages (when the corpus is present), reading a source and

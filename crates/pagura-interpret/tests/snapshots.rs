@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Scene dumps of representative fixtures: rectangles, a tiling cell, a
 //! soft mask inside a text object, glyphs filled and stroked, Type 3
 //! glyphs, a generated annotation appearance and a transparency group.

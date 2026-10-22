@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! The interpreter does no work a device does not need (ADR 0034): text
 //! extraction reads no image, shading or colour space, and a scene builds
 //! no extraction records.

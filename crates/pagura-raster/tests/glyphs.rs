@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 #![expect(
     clippy::unwrap_used,
     reason = "fixture setup and comparisons fail the test loudly"
