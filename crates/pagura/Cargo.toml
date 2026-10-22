@@ -12,12 +12,16 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+pagura-appearance.workspace = true
+pagura-color.workspace = true
 pagura-core.workspace = true
 pagura-crypto.workspace = true
 pagura-data = { workspace = true, optional = true }
 pagura-document.workspace = true
 pagura-extract.workspace = true
 pagura-font.workspace = true
+pagura-image.workspace = true
+pagura-paint.workspace = true
 pagura-pki.workspace = true
 pagura-raster.workspace = true
 pagura-render.workspace = true

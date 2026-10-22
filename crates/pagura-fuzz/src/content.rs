@@ -1,7 +1,7 @@
-//! `content`: a content stream compiles into a display list or fails with a
-//! structured error (clause 7.8.2, Annex A; ADR 0004), and the list renders
-//! under both accuracy paths so that a tile equals the same pixels of the
-//! whole page.
+//! `content`: a content stream records into a scene or fails with a
+//! structured error (clause 7.8.2, Annex A; ADR 0034), and the scene renders
+//! exactly and with every fast parameter so that a tile equals the same
+//! pixels of the whole page.
 //!
 //! The input is the content stream of a fixed 32 × 32 page whose resources
 //! name one of each kind: `/GS` and `/GS1` graphics states; `/C`
@@ -12,7 +12,8 @@
 //! `/Members`.
 
 use super::wrapper::Pdf;
-use pagura::{Accuracy, Document, OpenOptions, RenderOptions, Tile};
+use pagura::{Document, FastParams, OpenOptions, RenderOptions, Tile};
+use std::sync::Arc;
 
 /// Objects 5 onwards, after the catalog (1), page tree (2), page (3) and
 /// content stream (4).
@@ -34,7 +35,7 @@ const TILE: Tile = Tile {
     height: 13,
 };
 
-/// Compiles the page and renders it whole and as one tile, exactly and
+/// Records the page once and renders it whole and as one tile, exactly and
 /// competitively.
 ///
 /// # Panics
@@ -48,17 +49,19 @@ pub fn run(data: &[u8]) {
     let Some(document) = super::checked(Document::open(wrap(data), &options)) else {
         return;
     };
+    let context = pagura::render_context(Arc::new(document));
+    let document = context.document();
     let Some(page) = super::checked(document.page(0)) else {
         return;
     };
-    if let Some(list) = super::checked(pagura::compile_page(&document, page)) {
-        for accuracy in [Accuracy::Exact, Accuracy::Competitive] {
+    if let Some(scene) = super::checked(context.scene(page)) {
+        for fast in [FastParams::EXACT, FastParams::COMPETITIVE] {
             let render = RenderOptions {
-                accuracy,
+                fast,
                 ..RenderOptions::default()
             };
-            let whole = super::checked(list.render(&render));
-            let tile = super::checked(list.render_tile(&render, TILE));
+            let whole = super::checked(context.render_scene(&scene, &render, None));
+            let tile = super::checked(context.render_scene(&scene, &render, Some(TILE)));
             if let (Some(whole), Some(tile)) = (whole, tile) {
                 assert_eq!((whole.width(), whole.height()), (32, 32), "page size");
                 assert_eq!((tile.width(), tile.height()), (TILE.width, TILE.height));
@@ -69,7 +72,7 @@ pub fn run(data: &[u8]) {
                     assert_eq!(
                         tile.row(y),
                         expected,
-                        "{accuracy:?} tile row {y} differs from the page"
+                        "{fast:?} tile row {y} differs from the page"
                     );
                 }
             }

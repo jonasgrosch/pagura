@@ -103,24 +103,21 @@ default budgets come from protocol_constants.mjs, generated from the host's Rust
 tables by `cargo run -p pagura-host --features codegen --example protocol_constants`.
 A viewport
 change invalidates queued old-generation tiles before transmission. The host
-also skips a stale generation before compilation or painting. The current
+also skips a stale generation before recording or painting. The current
 synchronous tile cannot be interrupted; its result is discarded if obsolete.
 Opening another file replaces the instance and releases its caches.
 
-Compiled display lists are cached per document/page, independently of zoom or
-device pixels. The session keeps an LRU with a default 64 MiB accounting budget
-(SessionLimits::list_cache_bytes) and at most eight entries. Close releases
-all entries for that document. Lists exceeding the accounting budget render
-without retention. A zero budget disables retention.
+Each page is recorded once into a scene, independently of zoom or device
+pixels, and kept in its document's render store with the decoded images, fonts
+and glyph setups that later tiles reuse. Each store has a default capacity of
+64 MiB (SessionLimits::store_bytes) and evicts the least recently used values
+no render still uses; close releases it. A value larger than the capacity is
+used without being retained, and a zero capacity disables retention.
 
-Accounting charges 4096 bytes per painted mark, plus a fixed 512-byte header
-charge; the input file size does not affect compiled-list admission. These are estimates: DisplayList
-exposes no retained allocation size. The weight budget is not a hard process-memory ceiling;
-expanded paths/resources may differ from the estimate. Per-operation renderer
-limits remain in force. A renderer allocation-size API would allow accurate
-retention accounting. Keeping the cache in the session preserves separation
-between source documents and rendering state. Caching pixels instead would
-consume more memory and require additional keys for zoom and output settings.
+The retained bytes are the engine's own estimates of what each value holds,
+not allocator telemetry, and the capacity is not a hard process-memory
+ceiling. Per-render limits remain in force. Keeping scenes rather than pixels
+uses less memory and needs no keys for zoom and output settings.
 
 The project-written WASI shim exposes no preopened directories, sockets,
 environment or arguments. Only the dedicated execution thread blocks on
@@ -201,8 +198,8 @@ samples per runtime for 64 fixed tiles of many-rectangles.pdf, verifying every
 pixel against its independent PPM after timing. Native samples include process
 startup; WASI samples include _start/open and exclude module instantiation.
 Compare revisions within each runtime, not native and WASI timings to each
-other. The profile separately measures 64 compilations and 64 cached-list tile
-paints. These are exploratory diagnostics, not the sample count, confidence
+other. The profile separately measures 64 recordings and 64 tile paints from
+a stored scene. These are exploratory diagnostics, not the sample count, confidence
 intervals, memory measurements or controlled runner required by the release
 policy in benchmarks/policy.json. They make no cross-engine speed claim.
 
@@ -256,7 +253,7 @@ runtimes, including zoom results. Hash parity alone is not an external oracle.
 Each memory series starts in a fresh instance, then performs 50 open/render/close
 cycles: either the same many-rectangles input or an alternating mix of three
 classic inputs and the external document. Every cycle records live source bytes,
-compiled-list charges, document/list counts and linear-memory size, and asserts
+render-store bytes, document and scene counts and linear-memory size, and asserts
 zero host counters after close. `SessionClient.stats()` exposes protocol kind 9;
 `wasmBytes` exposes the last sideband memory sample. Counts exclude document
 internals and temporary/transport/JavaScript allocations. All raw cycle records,
@@ -303,7 +300,7 @@ UserUnit. FitB centres the bounds within document scroll limits; FitBH/FitBV fit
 honour the destination coordinate on the other. Empty pages use the crop box.
 Destination zoom outside 10%–800% is clamped into that range with a short
 informational notice; destination coordinates use the clamped zoom.
-Bounds and tiles share the host's compiled-page cache. The page field follows
+Bounds and tiles share the page's recorded scene. The page field follows
 the page with the greatest visible height, retaining the selected destination
 when visible heights tie; a strip of the previous page no longer wins.
 

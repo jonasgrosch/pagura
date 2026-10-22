@@ -15,8 +15,7 @@ on:
       - 'tools/viewer_navigation_test.mjs'
       - 'tools/tile_cache_test.mjs'
       - 'tools/thumbnail_pixels*'
-      - 'crates/pagura-render/src/form_appearance/**'
-      - 'crates/pagura-render/src/form_appearance.rs'
+      - 'crates/pagura-appearance/**'
       - '.github/workflows/editing.yml'
       - 'tools/editing_readers.py'
   workflow_dispatch:
@@ -63,10 +62,10 @@ jobs:
         env:
           PAGURA_EDIT_OUTPUT: ${{ runner.temp }}/pagura-editing
         run: |
-          cargo clippy --locked --offline -p pagura-write -p pagura -p pagura-host -p pagura-render --all-targets -- -D warnings
+          cargo clippy --locked --offline -p pagura-write -p pagura -p pagura-host -p pagura-appearance --all-targets -- -D warnings
           cargo test --locked --offline -p pagura-write
           cargo test --locked --offline -p pagura --test api editing::
-          cargo test --locked --offline -p pagura-render form_appearance
+          cargo test --locked --offline -p pagura-appearance
           cargo test --locked --offline -p pagura-host
       - name: Check saved files and compare independent-reader baselines
         env:

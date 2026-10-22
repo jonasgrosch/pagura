@@ -5,8 +5,11 @@
 ```
 pagura-cli       ──► pagura (the `pagura` command-line tool; the facade only)
 pagura-host      ──► pagura
-pagura           ──► pagura-render, pagura-write, pagura-document, pagura-extract (page text), pagura-text and pagura-font (font kinds, provider types), pagura-raster, pagura-pki (CMS signature verification), pagura-data (optional bundled fonts and CMaps), pagura-crypto (Unicode data notice)
-pagura-render    ──► pagura-extract, pagura-text, pagura-font (glyph outline diagnostics), pagura-image, pagura-document, pagura-raster, pagura-color
+pagura           ──► pagura-render, pagura-appearance (form appearances), pagura-write, pagura-document, pagura-extract (page text), pagura-text and pagura-font (font kinds, provider types), pagura-raster, pagura-paint, pagura-color and pagura-image (tags), pagura-pki (CMS signature verification), pagura-data (optional bundled fonts and CMaps), pagura-crypto (Unicode data notice)
+pagura-render    ──► pagura-paint, pagura-interpret, pagura-extract, pagura-text, pagura-document, pagura-raster
+pagura-paint     ──► pagura-interpret, pagura-color, pagura-image, pagura-raster
+pagura-interpret ──► pagura-content, pagura-appearance, pagura-color, pagura-image, pagura-raster, pagura-extract, pagura-text, pagura-font, pagura-document
+pagura-appearance ─► pagura-text, pagura-document
 pagura-extract   ──► pagura-text (font kinds, writing modes, glyph text), pagura-document, pagura-raster
 pagura-color     ──► pagura-crypto (MD5 for ICC profile IDs)
 pagura-data      ──► pagura-text (its Provider), pagura-font (ADR 0026)
@@ -19,6 +22,9 @@ every crate      ──► pagura-core
 ```
 
 Dependencies point downward only and are fixed in the crate manifests.
+`pagura-reference` (the slow, obviously correct renderer) and `pagura-legacy`
+(the previous renderer) are test-only oracles: only dev-dependencies name
+them.
 
 | Crate | Responsibility | Knows nothing about |
 |---|---|---|
@@ -32,8 +38,14 @@ Dependencies point downward only and are fixed in the crate manifests.
 | `pagura-text` | PDF font dictionaries, encodings, widths, CMaps and ToUnicode, descriptor flag normalization; shown strings to glyphs (ADR 0009, ADR 0025) | content streams, pixels, page layout |
 | `pagura-extract` | page text: layout policy, reading order, search and the logical structure view over the interpreter's positioned glyphs (ADR 0014, ADR 0025) | content streams, font programs, pixels |
 | `pagura-image` | image XObjects and inline images; JPEG, CCITT, JBIG2 and JPEG 2000 decoding to samples | painting, colour conversion |
-| `pagura-color` | ICC profile transforms and CIE colorimetry from bytes and numbers (ADR 0028) | PDF objects |
-| `pagura-render` | content interpretation into a display list in PDF terms; page-to-device transform; tiles; painting through `pagura-raster` | file structure |
+| `pagura-color` | colour spaces, prepared converters, ICC profile transforms and CIE colorimetry; PDF functions, prepared and total (ADR 0028, ADR 0034) | PDF objects |
+| `pagura-content` | content-stream tokenizer and typed operators (Annex A) with source positions | graphics state, resources |
+| `pagura-interpret` | the one interpreter: the graphics state machine over pages, forms, annotations and patterns into a `Device`, with `Needs` negotiation; the scene recorder and the text device (ADR 0034) | pixels, resolution, fast parameters |
+| `pagura-appearance` | form-field and annotation appearance generation, as appearance streams kept as data (12.5.5, 12.7.4.3) | interpretation, pixels |
+| `pagura-paint` | the renderer: preparation and reservation of a scene for one region, the band executor, prepared paint, span kernels and storage formats (ADR 0034) | PDF objects, documents |
+| `pagura-render` | the thin rendering layer: `RenderContext` with its `Store`, `RenderOptions` and `FastParams`, page recording, rendering by region and text extraction | interpretation and painting internals |
+| `pagura-reference` | test only: the slow, obviously correct f64 rasterizer and compositor for differential tests | product code |
+| `pagura-legacy` | test only: the previous renderer, a differential oracle until it is deleted | product code |
 | `pagura-write` | deterministic serialization | parsing |
 | `pagura` | the public facade: every public type, and the free functions with the feature-selected font data | — |
 | `pagura-cli` | the `pagura` command-line tool, built on the facade alone (ADR 0030) | engine crates |
@@ -81,21 +93,40 @@ intersecting the crop box with the media box, and validating `/Rotate` and
 
 ## Rendering
 
-See ADR 0004. Interpretation produces a display list in PDF terms with colours
-in their source spaces; rasterization is PDF-agnostic exact-area coverage;
-composition targets premultiplied RGBA8 tiles. Glyphs are rasterized at their
-exact device positions without a coverage cache (ADR 0013). A deterministic CPU
-renderer is the diagnostic reference, not an infallible oracle.
-`RenderOptions::accuracy` can instead select the competitive path, an
-approximation per primitive held to the competitive accuracy gate of ADR 0004.
+See ADR 0034 and ADR 0004. One interpreter (`pagura-interpret`) runs a page's
+content, forms and annotations into a `Device`, which declares its `Needs`
+first. The scene recorder records a device-independent `Scene`: marks in
+source order with interned paints, composite states and clips, colours in
+their source spaces and images as undecoded sources. A `RenderContext` keeps
+each page's scene in its `Store`, one byte capacity for everything rendering
+reuses: scenes, decoded images, colour transforms, font programs and glyph
+edge setups (ADR 0012).
+
+Rendering a region prepares the scene for it (`pagura_paint::prepare`, the
+only fallible step): in source order it culls marks by conservative device
+bounds, validates them, reserves every budget (ADR 0016), builds coverage
+sources and prepared paint, chooses each buffer's storage format from its
+group's whole content and bins marks to bands of the global device grid.
+The band executor then cannot fail; it can stop between bands for a viewer.
+Each output pixel is quantized once onto the background premultiplied once.
+Output does not depend on band height, tiles or platform.
+
+Exact rendering, every pixel within one level of its exact result, is the
+default. `RenderOptions::fast` switches the four named fast parameters
+(`FastParams`: glyph origin bins, approximate coverage, byte storage and
+reduced image decode) inside the same kernels; `FastParams::COMPETITIVE`
+switches all four and is held to the competitive gate of ADR 0004. Glyphs
+are rasterized at their exact device positions unless glyph origin bins are
+on (ADR 0013). The reference renderer (`pagura-reference`) is the
+diagnostic oracle, not an infallible one.
 
 ## Reading (M6)
 
 See ADR 0014.
-- **Text:** the content interpreter optionally records positioned glyphs as
-  output separate from the display list. `pagura-extract` lays them out into
-  words, lines and a reading order and searches them; replacement text
-  follows 14.9.4, and the rest is documented policy. Tagged pages also get
+- **Text:** the interpreter's text device collects positioned glyphs without
+  decoding images, parsing shadings or converting colours. `pagura-extract`
+  lays them out into words, lines and a reading order and searches them;
+  replacement text follows 14.9.4, and the rest is documented policy. Tagged pages also get
   a separate logical view in structure order (14.7–14.8) for assistive
   technology; search and selection never depend on it.
 - **Navigation:** `pagura_document::navigation` reads outlines, destinations,

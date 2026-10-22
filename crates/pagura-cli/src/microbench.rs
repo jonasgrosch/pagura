@@ -11,7 +11,13 @@ use std::sync::Arc;
 use std::time::Instant;
 
 /// Times `count` repetitions of `operation` on `source`, opened with its
-/// password and recovery mode, and prints one JSON line.
+/// password and recovery mode, and prints one JSON line. The document is
+/// opened once outside the timing, except that `open-pages` opens it again
+/// every time. `render-cold` records and renders page 0 with a new context
+/// every time, so nothing is reused; `record-warm` records it with one
+/// context, which reuses fonts, glyphs and images but keeps no scene;
+/// `render-warm` renders it from one context, which records the page once
+/// and keeps its scene.
 pub(crate) fn run(
     source: &Source,
     operation: Bench,
@@ -21,7 +27,9 @@ pub(crate) fn run(
 ) -> Result<(), Failure> {
     let bytes = source.load()?;
     let open = || source.open_bytes(Arc::clone(&bytes), source.recovery);
-    let warm = pagura::render_context(Arc::new(open()?));
+    let document = Arc::new(open()?);
+    let warm = pagura::render_context(Arc::clone(&document));
+    let page = document.page(0)?;
     let started = Instant::now();
     for _ in 0..count {
         match operation {
@@ -29,11 +37,14 @@ pub(crate) fn run(
                 black_box(open()?.page_count()?);
             }
             Bench::RenderCold => {
-                let document = open()?;
-                black_box(pagura::render_page(&document, document.page(0)?, options)?);
+                let cold = pagura::render_context(Arc::clone(&document));
+                black_box(cold.render_page(page, options)?);
+            }
+            Bench::RecordWarm => {
+                black_box(warm.record(page)?);
             }
             Bench::RenderWarm => {
-                black_box(warm.render_page(warm.document().page(0)?, options)?);
+                black_box(warm.render_page(page, options)?);
             }
         }
     }
