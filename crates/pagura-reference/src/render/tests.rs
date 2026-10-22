@@ -453,6 +453,83 @@ fn overlapping_quadratics_refine_ambiguous_coverage_bytes() {
 }
 
 #[test]
+fn repeated_uncertified_quadratics_keep_the_true_coverage_byte() {
+    let mut b = Build::new(1.0, 1.0);
+    let black = b.rgb([0.0, 0.0, 0.0]);
+    let mut path = pagura_raster::PathBuilder::new();
+    // Coincident contours have one arch's nonzero covered set, but cannot
+    // certify winding zero or one. Its true area h/3 is just above the
+    // first half-level, where an inscribed polygon can select byte zero.
+    let area = 0.500_001 / 255.0;
+    let h = 3.0 * area;
+    for _ in 0..32 {
+        path.move_to(Point::default());
+        path.cubic_to(
+            Point::new(1.0 / 3.0, 2.0 * h / 3.0),
+            Point::new(2.0 / 3.0, 2.0 * h / 3.0),
+            Point::new(1.0, 0.0),
+        )
+        .unwrap();
+        path.close();
+    }
+    let outline = Arc::new(path.finish());
+    let limits = Limits::default();
+    let geometry = pagura_raster::GlyphEdges::new(&outline, [1.0, 0.0, 0.0, 1.0], &limits).unwrap();
+    assert!(!geometry.curved());
+    b.node(
+        GroupId(0),
+        Node::Glyphs(GlyphsNode {
+            sources: vec![GlyphSource {
+                outline,
+                key: OutlineKey {
+                    font: pagura_interpret::FontKey(1),
+                    glyph: 1,
+                },
+                linear: Transform::IDENTITY,
+            }],
+            placements: vec![
+                Placement {
+                    source: 0,
+                    origin: Point::default(),
+                };
+                3
+            ],
+            positions: Vec::new(),
+            paint: black,
+            mark: mark(StateId(0)),
+        }),
+    );
+    let expected = (1.0 - level(area)).powi(3);
+    assert_pixel(
+        &b.render(Rgba8::WHITE),
+        (0, 0),
+        [expected, expected, expected, 1.0],
+    );
+    let pixel = DeviceRect {
+        x0: 0,
+        y0: 0,
+        x1: 1,
+        y1: 1,
+    };
+    let request = pagura_paint::RenderRequest::new(Transform::IDENTITY, pixel, pixel);
+    let store = pagura_core::Store::new(64 << 20);
+    let prepared = pagura_paint::prepare(&b.scene, &request, &store, &limits).unwrap();
+    let mut scratch = pagura_paint::Scratch::default();
+    let mut actual = Vec::new();
+    prepared
+        .with_scratch(&mut scratch)
+        .unwrap()
+        .render(&mut actual);
+    for &channel in &actual[..3] {
+        assert!(
+            (f64::from(channel) - 255.0 * expected).abs() <= 1.0,
+            "composed output {actual:?} against analytic {}",
+            255.0 * expected,
+        );
+    }
+}
+
+#[test]
 fn tiling_instances_repeat_the_cell() {
     let mut b = Build::new(6.0, 1.0);
     let green = b.rgb([0.0, 1.0, 0.0]);
