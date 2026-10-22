@@ -5,9 +5,9 @@
 //! Colour-space tags (`colorspace.`) belong to `pagura-color`, and those of
 //! appearance generation (`annotation.`, `appearance.`) to
 //! `pagura-appearance`. Interpretation raises most of these; the tags of
-//! capabilities that only painting can detect (singular strokes, mesh
-//! inversion, tiling placement, transfer and overprint compositing) are
-//! defined here too, so that each area has one owner.
+//! capabilities that only painting can detect (singular strokes, shading
+//! transforms, tiling placement, image masks with patterns and transfer
+//! compositing) are defined here too, so that each area has one owner.
 
 use pagura_core::Feature;
 
@@ -27,9 +27,6 @@ pub const XOBJECT_SUBTYPE: Feature = Feature::new("xobject.subtype");
 /// profiles and enumerated spaces other than sRGB and greyscale (8.9.5.3).
 pub const XOBJECT_JPX_COLOR: Feature = Feature::new("xobject.jpx-color");
 
-/// Image opacity carried in the image data (`SMaskInData`, 11.6.5.3).
-pub const TRANSPARENCY_SMASK_IN_DATA: Feature = Feature::new("transparency.SMaskInData");
-
 /// Blend modes outside Tables 134 and 135.
 pub const TRANSPARENCY_BM: Feature = Feature::new("transparency.BM");
 
@@ -41,12 +38,6 @@ pub const TRANSPARENCY_GROUP_COLORSPACE: Feature = Feature::new("transparency.gr
 
 /// Transfer-function region selection for transparent artwork.
 pub const TRANSPARENCY_TRANSFER: Feature = Feature::new("transparency.transfer");
-
-/// Process-colour overprint inside a subtractive blending space.
-pub const TRANSPARENCY_OVERPRINT: Feature = Feature::new("transparency.overprint");
-
-/// Patch mesh points whose inverse cannot be resolved numerically.
-pub const SHADING_MESH: Feature = Feature::new("shading.mesh");
 
 /// Singular shading coordinate systems.
 pub const SHADING_TRANSFORM: Feature = Feature::new("shading.transform");
@@ -67,13 +58,10 @@ pub const ALL: &[Feature] = &[
     OPTIONALCONTENT_USAGE,
     XOBJECT_SUBTYPE,
     XOBJECT_JPX_COLOR,
-    TRANSPARENCY_SMASK_IN_DATA,
     TRANSPARENCY_BM,
     TRANSPARENCY_GROUP,
     TRANSPARENCY_GROUP_COLORSPACE,
     TRANSPARENCY_TRANSFER,
-    TRANSPARENCY_OVERPRINT,
-    SHADING_MESH,
     SHADING_TRANSFORM,
     PATTERN_TILING,
     PATTERN_STATE,

@@ -1,5 +1,5 @@
 //! Baseline JPEG frames kept in their native component planes
-//! ([`SampleLayout::Deferred`](crate::deferred::SampleLayout::Deferred)).
+//! ([`Layout::Native`](crate::Layout::Native)).
 //!
 //! Blocks are decoded from a bounded unstuffed copy of each entropy segment
 //! straight into their component plane, without a coefficient image. Blocks
@@ -14,14 +14,12 @@ mod spatial;
 pub(super) use plane::Plane;
 
 use super::{DctImage, Decoder, frame::Frame, frame::Storage};
-use crate::deferred::{Planar, SampleBuffers};
+use crate::deferred::Planar;
 use pagura_core::{Diagnostics, Error, Limits, Result};
 
 /// How a frame decodes into native planes.
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Native<'a> {
-    /// Storage kept from earlier decodes.
-    pub(crate) buffers: Option<&'a SampleBuffers>,
+pub(crate) struct Native {
     /// Samples kept per block axis.
     pub(crate) cells: usize,
     /// Whether planes store rows and columns exchanged.
@@ -55,7 +53,7 @@ pub(crate) fn decode_deferred(
     data: &[u8],
     color_transform: Option<i64>,
     limits: &Limits,
-    native: Native<'_>,
+    native: Native,
     diagnostics: &mut Diagnostics,
 ) -> Option<Deferred> {
     if data.len() > limits.stream_bytes {
@@ -105,7 +103,7 @@ pub(super) fn prepare(
     frame: &mut Frame,
     (adobe, color_transform): (Option<u8>, Option<i64>),
     limits: &Limits,
-    native: Native<'_>,
+    native: Native,
 ) -> Result<()> {
     if !qualifies(frame, adobe, color_transform) {
         return Err(Error::unsupported(
@@ -133,7 +131,6 @@ pub(super) fn prepare(
                 transposed: native.transposed,
             },
             if index == 0 { 255 } else { 128 },
-            native.buffers,
         )?));
     }
     Ok(())

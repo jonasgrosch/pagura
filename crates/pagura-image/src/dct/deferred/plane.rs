@@ -53,11 +53,7 @@ fn filled<T: Clone>(length: usize, value: T, message: &'static str) -> Result<Ve
 }
 
 impl Plane {
-    pub(in crate::dct) fn new(
-        shape: Shape,
-        background: u8,
-        buffers: Option<&crate::deferred::SampleBuffers>,
-    ) -> Result<Self> {
+    pub(in crate::dct) fn new(shape: Shape, background: u8) -> Result<Self> {
         let side = shape.side;
         let blocks = shape
             .stride
@@ -72,12 +68,7 @@ impl Plane {
             .map_err(|_| Error::limit("JPEG native prefix allocation failed"))?;
         Ok(Self {
             shape,
-            samples: match buffers {
-                Some(buffers) => buffers
-                    .filled(length, background)
-                    .ok_or(Error::limit("JPEG native allocation failed"))?,
-                None => filled(length, background, "JPEG native allocation failed")?,
-            },
+            samples: filled(length, background, "JPEG native allocation failed")?,
             dirty: filled(blocks, 0, "JPEG block flag allocation failed")?,
             cells: (side < 8).then(|| Box::new(Cells::new(side))),
             side,
@@ -317,7 +308,7 @@ mod tests {
             side: 8,
             transposed: false,
         };
-        let mut plane = Plane::new(shape, 255, None).unwrap();
+        let mut plane = Plane::new(shape, 255).unwrap();
         let mut bits = Bits::new(&[], 0);
         bits.limit_stream(0, 100_000_000);
         let mut state = 0x75a3_194bu32;

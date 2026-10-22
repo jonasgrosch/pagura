@@ -210,8 +210,9 @@ impl DecodeRequest {
 pub struct Decoded {
     /// The image.
     pub image: DecodedImage,
-    /// Repairs made while decoding the data, positioned and attributed as
-    /// the decode entry points report them.
+    /// Repairs made while decoding the data, positioned in the image's
+    /// stream and attributed to its object (relative to the data for an
+    /// inline image).
     pub diagnostics: Vec<Diagnostic>,
 }
 
@@ -227,9 +228,9 @@ impl From<DecodedImage> for Decoded {
 
 impl ImageSource {
     /// Reads and validates an image XObject (8.9.5) without decoding its
-    /// samples, with the errors and repairs of [`crate::decode_xobject`]
-    /// up to its codec. Repairs of the dictionary and of the general-purpose
-    /// filters are reported to `document`.
+    /// samples: its dictionary, mask and data up to its codec. Repairs of
+    /// the dictionary and of the general-purpose filters are reported to
+    /// `document`.
     ///
     /// # Errors
     ///
@@ -262,9 +263,8 @@ impl ImageSource {
     }
 
     /// Reads and validates an inline image (8.9.7) given its dictionary
-    /// (abbreviated keys allowed), its data and its identity, with the
-    /// errors and repairs of [`crate::decode_inline`] up to its codec.
-    /// Positions stay relative to the data, for the caller to place.
+    /// (abbreviated keys allowed), its data and its identity, up to its
+    /// codec. Positions stay relative to the data, for the caller to place.
     ///
     /// # Errors
     ///

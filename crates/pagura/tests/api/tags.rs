@@ -5,7 +5,7 @@ use pagura::{form_appearance, tags};
 
 #[test]
 fn rendering_tags_are_unique_and_well_formed() {
-    let features = [tags::appearance::ALL, tags::color::ALL, tags::paint::ALL];
+    let features = [tags::appearance::ALL, tags::color::ALL, tags::content::ALL];
     let mut seen: Vec<&str> = form_appearance::information::ALL.to_vec();
     for tag in features.iter().flat_map(|all| all.iter()) {
         let tag = tag.as_str();
@@ -21,7 +21,7 @@ fn rendering_tags_are_unique_and_well_formed() {
         seen.push(tag);
     }
     assert!(
-        tags::paint::ALL
+        tags::content::ALL
             .iter()
             .any(|tag| tag.as_str() == "shading.transform")
     );

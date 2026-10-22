@@ -3,16 +3,6 @@ use crate::MaskKind;
 use pagura_core::{Dictionary, Error, Result, Value};
 use pagura_document::Document;
 
-pub(crate) fn read(
-    document: &Document,
-    dict: &Dictionary,
-    image: &crate::DecodedImage,
-) -> Result<MaskKind> {
-    read_for(document, dict, image.components, &|component| {
-        image.component_bits(component)
-    })
-}
-
 /// [`read`] for an image of `components` colour components whose
 /// precisions `bits` gives, before its samples are decoded.
 pub(crate) fn read_for(

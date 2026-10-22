@@ -120,8 +120,10 @@ pub mod tags {
     pub use pagura_color::features as color;
     /// `image.`, `jpeg.` and `ccitt.`: image samples and decoders.
     pub use pagura_image::features as image;
-    /// Painting: shadings, patterns, strokes and transfer functions.
-    pub use pagura_paint::features as paint;
+    /// `graphics.`, `extgstate.`, `optionalcontent.`, `pattern.`,
+    /// `shading.`, `transparency.` and `xobject.`: content interpretation
+    /// and painting.
+    pub use pagura_interpret::features as content;
 }
 
 use provider::{Provider, default_provider};

@@ -11,8 +11,8 @@
 //! nearest sample, or bilinear interpolation of the samples around its
 //! centre when the image is magnified), evaluated in double-double
 //! arithmetic from the footprint's f64 bounds. Each colour channel is
-//! quantized as the output quantizer does, for the old route's sampler (the
-//! port in `oracle`), for the new sampler, and correctly rounded from the
+//! quantized as the output quantizer does, for the previous renderer's
+//! sampler (the port in `oracle`), for the new sampler, and correctly rounded from the
 //! oracle. The test reports the channels whose quantized value changed,
 //! every changed one's oracle value, the largest distance of a new value
 //! from its oracle in levels, and the exact-rounding match rates, and it
@@ -104,7 +104,7 @@ impl Wide {
 }
 
 /// The cells a device pixel's footprint covers along one axis, with their
-/// exact weights (as the old route computes the bounds).
+/// exact weights (as the previous renderer computed the bounds).
 fn axis(pixel: u32, scale: f64, offset: f64, maximum: u32) -> Vec<(u32, f64)> {
     let a = f64::from(pixel) * scale + offset;
     let b = (f64::from(pixel) + 1.0) * scale + offset;
@@ -299,7 +299,7 @@ fn rounded(value: Wide) -> u8 {
     byte
 }
 
-/// Compares the new sampler of `placed` with the old route's and the oracle
+/// Compares the sampler of `placed` with the previous renderer's and the oracle
 /// on every pixel of its device bounds, logging changed channels.
 fn compare(placed: &Placed, case: &Case, log: &mut String) -> Tally {
     let limits = pagura_core::Limits::default();
@@ -349,7 +349,7 @@ fn compare(placed: &Placed, case: &Case, log: &mut String) -> Tally {
     tally
 }
 
-/// The images of one page as cases for the old route, decoded interleaved
+/// The images of one page as cases for the port, decoded interleaved
 /// on their own grid.
 fn cases(placed: &[Placed]) -> Vec<Option<Case>> {
     let limits = pagura_core::Limits::default();

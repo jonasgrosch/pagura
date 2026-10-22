@@ -672,7 +672,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             .ok_or(Error::invalid_argument("scene group out of range"))?;
         let transform = fit(tiling.matrix.then(scope.transform), tiling)?;
         let inverse = transform.inverse().ok_or(Error::unsupported(
-            crate::features::PATTERN_TILING,
+            pagura_interpret::features::PATTERN_TILING,
             "singular tiling transform",
         ))?;
         let (columns, rows) = instances(bounds, inverse, tiling)?;
@@ -932,7 +932,7 @@ fn fit(t: Transform, tiling: &pagura_interpret::Tiling) -> Result<Transform> {
     let fitted = Transform::new(a / x_step, b / x_step, c / y_step, d / y_step, t.e, t.f);
     if fitted.inverse().is_none() {
         return Err(Error::unsupported(
-            crate::features::PATTERN_TILING,
+            pagura_interpret::features::PATTERN_TILING,
             "device lattice collapses the pattern",
         ));
     }
@@ -948,7 +948,7 @@ fn fit(t: Transform, tiling: &pagura_interpret::Tiling) -> Result<Transform> {
             let (exact, moved) = (t.apply(p), fitted.apply(p));
             if (exact.x - moved.x).hypot(exact.y - moved.y) > 1.0 + 1e-12 {
                 return Err(Error::unsupported(
-                    crate::features::PATTERN_TILING,
+                    pagura_interpret::features::PATTERN_TILING,
                     "constant spacing requires excessive cell distortion",
                 ));
             }

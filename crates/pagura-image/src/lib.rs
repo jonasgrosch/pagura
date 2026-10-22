@@ -14,8 +14,7 @@ pub mod features;
 pub mod jbig2;
 pub mod jpx;
 
-use pagura_core::{Dictionary, Error, ObjectId, Result, Value};
-use pagura_document::{Document, IndirectObject};
+use pagura_core::{Dictionary, ObjectId, Result, Value};
 
 /// Stable reported repairs of malformed image dictionaries and data (ADR 0003).
 pub mod tags {
@@ -147,10 +146,10 @@ pub enum Samples {
         bits: Vec<u8>,
     },
     /// A baseline YCbCr JPEG in its component planes, from
-    /// [`deferred::SampleLayout::Deferred`]. Values are RGB bytes on demand.
+    /// [`Layout::Native`]. Values are RGB bytes on demand.
     Planar(Box<deferred::Planar>),
     /// One-bit, one-component samples in packed rows, from
-    /// [`deferred::SampleLayout::Deferred`].
+    /// [`Layout::Native`].
     Packed(deferred::Packed),
 }
 
@@ -270,117 +269,6 @@ impl DecodedImage {
             _ => Some(self.bits_per_component),
         }
     }
-}
-
-/// Decodes a base image XObject stream with `/Subtype /Image` (Table 87).
-/// Thumbnail dictionaries without that entry need a separate caller contract.
-///
-/// # Errors
-///
-/// Returns syntax errors for malformed image dictionaries or data,
-/// `Unsupported` for codecs or features not implemented, and limit errors
-/// when the image exceeds [`pagura_core::Limits`] (pixels, decoded bytes).
-pub fn decode_xobject(document: &Document, image: &IndirectObject) -> Result<DecodedImage> {
-    decode_xobject_with(document, image, deferred::SampleLayout::Interleaved, None)
-}
-
-/// Decodes a base image XObject as [`decode_xobject`], keeping samples in
-/// `layout` where it applies, in storage from `buffers` when given. Errors
-/// and diagnostics are those of [`decode_xobject`]: a deferred decode that
-/// fails is repeated in the interleaved layout.
-///
-/// # Errors
-///
-/// As [`decode_xobject`].
-pub fn decode_xobject_with(
-    document: &Document,
-    image: &IndirectObject,
-    layout: deferred::SampleLayout,
-    buffers: Option<&deferred::SampleBuffers>,
-) -> Result<DecodedImage> {
-    let mut diagnostics = pagura_core::Diagnostics::new(document.recovery());
-    let result = (|| {
-        let dictionary = image
-            .dictionary()
-            .ok_or(Error::syntax("image is not a dictionary"))?;
-        if dictionary
-            .get(b"Subtype")
-            .map(|v| document.resolve(v))
-            .transpose()?
-            .and_then(Value::as_name)
-            .is_none_or(|n| n != b"Image")
-        {
-            return Err(Error::syntax("image XObject requires Subtype Image"));
-        }
-        if let Some(kind) = dictionary
-            .get(b"Type")
-            .map(|v| document.resolve(v))
-            .transpose()?
-            && !kind.is_null()
-            && kind.as_name().is_none_or(|n| n != b"XObject")
-        {
-            diagnostics.repair(
-                pagura_core::Diagnostic::new(
-                    tags::XOBJECT_TYPE,
-                    "Subtype Image identifies XObject; invalid Type ignored (8.9.5 Table 87)",
-                )
-                .at(pagura_core::Position::Buffer(0)),
-            )?;
-        }
-        let dictionary = parameters::resolved_dictionary(document, dictionary, &mut diagnostics)?;
-        filter_rules::validate(document, &dictionary, false, &mut diagnostics)?;
-        let (width, height) = parameters::dimensions(&dictionary)?;
-        parameters::budget(width, height, 1, 1, &document.limits())?;
-        let stream = stream::read(document, image, &mut diagnostics)?;
-        dispatch::decode_with(
-            document,
-            &dictionary,
-            stream.data,
-            stream.codec.as_ref(),
-            (layout, buffers),
-            &mut diagnostics,
-        )
-    })();
-    document.report(diagnostics.take().into_iter().map(|mut diagnostic| {
-        diagnostic.position = image_position(diagnostic.position, image);
-        diagnostic.in_object(image.id())
-    }));
-    result.map_err(|error: Error| {
-        let position = image_position(error.position, image);
-        let mut error = error.in_object(image.id());
-        error.position = position;
-        error
-    })
-}
-
-fn image_position(
-    position: pagura_core::Position,
-    image: &IndirectObject,
-) -> pagura_core::Position {
-    match position {
-        pagura_core::Position::Buffer(offset) => pagura_core::Position::Stream {
-            object: image.id(),
-            offset,
-        },
-        pagura_core::Position::Unknown => image.source().position(),
-        position => position,
-    }
-}
-
-/// Decodes an inline image (`BI … ID … EI`, clause 8.9.7) given its
-/// dictionary (abbreviated keys allowed) and its data bytes.
-///
-/// # Errors
-///
-/// As [`decode_xobject`].
-pub fn decode_inline(
-    document: &Document,
-    resources: &Dictionary,
-    dictionary: &Dictionary,
-    data: &[u8],
-) -> Result<DecodedImage> {
-    inline::decode(document, resources, dictionary, data)
-        .map_err(|error| error.at(pagura_core::Position::Buffer(0)))
 }
 
 /// The length of an inline image's data starting right after `ID` and its

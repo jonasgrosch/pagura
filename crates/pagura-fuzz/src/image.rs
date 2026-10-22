@@ -12,17 +12,22 @@
 //! - 2: `jbig2::decode`; with bit 3 set, a little-endian `u16` length and
 //!   that many bytes of `/JBIG2Globals` precede the embedded stream.
 //! - 3: `jpx::decode`.
-//! - 4: `decode_xobject`: the rest is parts that become objects 3, 4, … of a
-//!   fixed document; bits 3–4 choose the image object (3 + bits) and bit 7
-//!   selects strict recovery.
-//! - 5: `decode_inline`: an inline image dictionary, then its data, then
-//!   optional objects 3, 4, … the dictionary may refer to.
+//! - 4: `ImageSource::from_xobject` and its decodes (every sample, the
+//!   native layout and drawn-size cells): the rest is parts that become
+//!   objects 3, 4, … of a fixed document; bits 3–4 choose the image object
+//!   (3 + bits) and bit 7 selects strict recovery.
+//! - 5: `ImageSource::from_inline` and its decode: an inline image
+//!   dictionary, then its data, then optional objects 3, 4, … the dictionary
+//!   may refer to.
 //! - 6, 7: as 4 and 5 with strict recovery.
 
 use super::wrapper::{self, FIRST_OBJECT, Pdf};
 use pagura::{Document, ObjectId, OpenOptions, Recovery};
 use pagura_core::{Diagnostics, Limits};
-use pagura_image::{DecodedImage, Samples, ccitt, dct, deferred::SampleLayout, jbig2, jpx};
+use pagura_image::{
+    DecodeRequest, DecodedImage, ImageId, ImageSource, Layout, Reduce, Samples, ccitt, dct, jbig2,
+    jpx,
+};
 
 /// Named colour spaces the inline image dictionary can select (8.9.7).
 const RESOURCES: &[u8] = b"<< /ColorSpace << /G2 /DeviceGray /RGB2 /DeviceRGB \
@@ -170,17 +175,16 @@ fn xobject(data: &[u8], root: u32, recovery: Recovery) {
     let Some(document) = open(pdf, recovery) else {
         return;
     };
-    if let Some(object) = super::checked(document.object(ObjectId::new(FIRST_OBJECT + root, 0))) {
-        let image = super::checked(pagura_image::decode_xobject(&document, object));
+    let source = super::checked(document.object(ObjectId::new(FIRST_OBJECT + root, 0)))
+        .and_then(|object| super::checked(ImageSource::from_xobject(&document, object)));
+    if let Some(source) = source {
+        let decode =
+            |reduce, layout| decode(&document, &source, DecodeRequest::new(reduce, None, layout));
+        let image = decode(Reduce::Full, Layout::Interleaved);
         if let Some(image) = &image {
             assert_decoded(image);
         }
-        let deferred = super::checked(pagura_image::decode_xobject_with(
-            &document,
-            object,
-            SampleLayout::Deferred,
-            None,
-        ));
+        let deferred = decode(Reduce::Full, Layout::Native);
         // A deferred decode that fails is repeated exactly, so it never loses
         // an image (it may keep one whose interleaved samples exceed a limit).
         assert!(
@@ -188,12 +192,7 @@ fn xobject(data: &[u8], root: u32, recovery: Recovery) {
             "deferred decoding loses an image"
         );
         let cells = [1, 2, 3, 4, 6][root as usize % 5];
-        let reduced = super::checked(pagura_image::decode_xobject_with(
-            &document,
-            object,
-            SampleLayout::Cells(cells),
-            None,
-        ));
+        let reduced = decode(Reduce::Drawn { cells }, Layout::Interleaved);
         // Drawn-size cells consume and validate every coefficient, and only
         // shrink storage.
         assert!(
@@ -277,16 +276,34 @@ fn inline(data: &[u8], recovery: Recovery) {
                 "inline image data runs past its content"
             );
         }
-        if let Some(image) = super::checked(pagura_image::decode_inline(
+        let id = ImageId::Inline {
+            stream: None,
+            offset: 0,
+        };
+        let source = super::checked(ImageSource::from_inline(
             &document,
             &resources,
             &dictionary,
             samples,
-        )) {
+            id,
+        ));
+        if let Some(image) = source.and_then(|s| decode(&document, &s, DecodeRequest::FULL)) {
             assert_decoded(&image);
         }
     }
     super::assert_diagnostics(&document.diagnostics(), recovery);
+}
+
+/// Decodes `request` of `source` as painting does, reporting the decode's
+/// repairs to `document`.
+fn decode(
+    document: &Document,
+    source: &ImageSource,
+    request: DecodeRequest,
+) -> Option<DecodedImage> {
+    let decoded = super::checked(source.decode(&request, &document.limits(), document.recovery()))?;
+    document.report(decoded.diagnostics);
+    Some(decoded.image)
 }
 
 fn open(pdf: Pdf, recovery: Recovery) -> Option<Document> {

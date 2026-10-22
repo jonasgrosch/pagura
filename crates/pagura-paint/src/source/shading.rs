@@ -24,12 +24,12 @@ mod mesh;
 mod tests;
 
 use super::{PaintContext, SpanColors};
-use crate::features;
 use colors::Colors;
 use geometry::{Axial, FunctionDomain, Radial};
 use mesh::Mesh;
 use pagura_color::{MAX_COMPONENTS, Painted};
 use pagura_core::{Error, Meter, Rect, Result};
+use pagura_interpret::features;
 use pagura_interpret::{Shading, ShadingFunction, ShadingKind};
 use pagura_raster::{FillRegion, FillRule, PathBuilder, Point, Transform};
 

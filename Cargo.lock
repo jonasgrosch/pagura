@@ -15,7 +15,7 @@ dependencies = [
  "pagura-extract",
  "pagura-font",
  "pagura-image",
- "pagura-paint",
+ "pagura-interpret",
  "pagura-pki",
  "pagura-raster",
  "pagura-render",

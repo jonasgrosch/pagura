@@ -61,7 +61,7 @@ fn transfer_error(plan: &Plan, serial: u32) -> Error {
         .map(|item| item.position)
         .unwrap_or_default();
     Error::unsupported(
-        crate::features::TRANSPARENCY_TRANSFER,
+        pagura_interpret::features::TRANSPARENCY_TRANSFER,
         "fractional transfer regions require correlated colour coverage",
     )
     .at(position)

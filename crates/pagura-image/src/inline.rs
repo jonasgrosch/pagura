@@ -1,8 +1,7 @@
 //! Inline image abbreviations and data boundaries (8.9.7, Tables 91–92).
-use crate::{DecodedImage, dispatch, parameters as p};
-use pagura_codec::{Filter, FilterChain, ImageCodec};
+use crate::parameters as p;
+use pagura_codec::{FilterChain, ImageCodec};
 use pagura_core::{Diagnostics, Dictionary, Error, Name, Result, Value, syntax::is_whitespace};
-use pagura_document::Document;
 
 pub(crate) fn expanded(dictionary: &Dictionary) -> Result<Dictionary> {
     let mut expanded = Dictionary::new();
@@ -45,68 +44,6 @@ fn expand_space(value: &Value) -> Value {
         Value::Array(values) => Value::Array(values.iter().map(expand_space).collect()),
         _ => value.clone(),
     }
-}
-
-pub(crate) fn decode(
-    document: &Document,
-    resources: &Dictionary,
-    dictionary: &Dictionary,
-    data: &[u8],
-) -> Result<DecodedImage> {
-    let mut diagnostics = Diagnostics::new(document.recovery());
-    let result = decode_inner(document, resources, dictionary, data, &mut diagnostics);
-    // The caller supplies the containing stream position; these positions are
-    // relative to the inline data, including dictionary faults at offset zero.
-    document.report(diagnostics.take());
-    result
-}
-
-fn decode_inner(
-    document: &Document,
-    resources: &Dictionary,
-    dictionary: &Dictionary,
-    data: &[u8],
-    diagnostics: &mut Diagnostics,
-) -> Result<DecodedImage> {
-    let mut dict = expanded(dictionary)?;
-    if p::stencil_space(document, &dict, diagnostics)? {
-        dict.remove(b"ColorSpace");
-    }
-    super::filter_rules::inline_space(dict.get(b"ColorSpace"))?;
-    super::filter_rules::validate(document, &dict, true, diagnostics)?;
-    if let Some(Value::Name(name)) = dict.get(b"ColorSpace")
-        && !matches!(
-            name.as_bytes(),
-            b"DeviceGray" | b"DeviceRGB" | b"DeviceCMYK"
-        )
-    {
-        let spaces = resources
-            .get(b"ColorSpace")
-            .ok_or(Error::syntax("missing inline colour resource"))?;
-        let space = document
-            .resolve_dictionary(spaces)?
-            .get(name.as_bytes())
-            .ok_or(Error::syntax("undefined inline colour space"))?;
-        dict.insert(Name::new(b"ColorSpace"), document.resolve(space)?.clone());
-    }
-    let (w, h) = p::dimensions(&dict)?;
-    p::budget(w, h, 1, 1, &document.limits())?;
-    let mut chain = FilterChain::from_entries(dict.get(b"Filter"), dict.get(b"DecodeParms"))?;
-    if chain.filters().iter().any(|f| {
-        matches!(
-            f,
-            Filter::Crypt(_)
-                | Filter::Image {
-                    codec: ImageCodec::Jbig2 | ImageCodec::Jpx,
-                    ..
-                }
-        )
-    }) {
-        return Err(Error::syntax("filter is forbidden in inline images"));
-    }
-    let codec = chain.split_image();
-    let decoded = chain.decode(data, document.limits().decoded_bytes, diagnostics)?;
-    dispatch::decode(document, &dict, decoded, codec.as_ref(), diagnostics)
 }
 
 pub(crate) fn data_length(dictionary: &Dictionary, content: &[u8]) -> Result<usize> {
@@ -246,7 +183,7 @@ fn valid_prefix(
                 return false;
             };
             // Framing follows the encoded fax rows, not the eventual image
-            // grid. decode_inline reports any Columns/Width repair later.
+            // grid. The decode reports any Columns/Width repair later.
             crate::ccitt::decode(&decoded, &params, &limits).is_ok_and(|bytes| {
                 bytes.len() as u64 == u64::from(params.columns).div_ceil(8) * u64::from(height)
             })
