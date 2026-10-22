@@ -1,23 +1,91 @@
 //! Glyph boundaries integrated against their true curve (8.5.2.2, 8.5.3.3).
 //!
-//! A glyph outline's curves become quadratics: a TrueType quadratic arrives
-//! as a degree-elevated cubic and is recovered exactly; any other cubic is
-//! split into equal parameter pieces whose midpoint quadratics lie within
-//! [`TOLERANCE`] of it. Each quadratic is split at both coordinate extrema,
-//! so a piece crosses every pixel boundary at most once, and the cells
-//! integrate x(t)y'(t) between those crossings in closed form ([`Mono`]),
-//! without a polygon.
+//! A TrueType quadratic arrives as a degree-elevated cubic. Its midpoint
+//! quadratic recovers it up to rounding; general cubic outlines keep their
+//! canonical polygon. Quadratics split at coordinate extrema and integrate
+//! x(t)y'(t) between pixel crossings in closed form ([`Mono`]).
 
 use super::edges::{Bounds, Line};
 use crate::flatten::bounded;
 use crate::{Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Result};
 
-/// The farthest a glyph's quadratic spline lies from its true curve, in
-/// device pixels: each cubic is split into equal parameter pieces until the
-/// midpoint quadratic of each is within it. A degree-elevated quadratic is
-/// one piece, its own quadratic up to rounding.
-pub(crate) const TOLERANCE: f64 = 1.0 / 1024.0;
+/// Maximum sum of absolute cubic third differences per coordinate in one
+/// quadratic outline. Bounding the sum, rather than each segment, bounds
+/// the entire outline's reduction error independently of its complexity.
+const REDUCIBLE: f64 = 1.0 / 16_777_216.0;
+
+/// Whether every curve is quadratic up to the outline's rounding allowance.
+/// This defines the reference family from mapped source controls. It is
+/// deliberately broader than analytic admission: cancellation at large
+/// coordinates can classify an outline here, but the separate rounding
+/// bound below must also hold before reducing it to quadratics.
+pub(crate) fn quadratic_outline(outline: &Path, linear: Transform) -> bool {
+    let (mut start, mut current) = (Point::default(), Point::default());
+    let mut difference = Point::default();
+    for segment in outline.segments() {
+        match *segment {
+            Segment::MoveTo(p) => {
+                current = p * linear;
+                start = current;
+            }
+            Segment::LineTo(p) => current = p * linear,
+            Segment::CubicTo { c1, c2, end } => {
+                let [b, c, d] = [c1, c2, end].map(|p| p * linear);
+                let third = Point::new(
+                    -current.x + 3.0 * b.x - 3.0 * c.x + d.x,
+                    -current.y + 3.0 * b.y - 3.0 * c.y + d.y,
+                );
+                difference.x += third.x.abs();
+                difference.y += third.y.abs();
+                current = d;
+            }
+            Segment::Close => current = start,
+        }
+    }
+    difference.x <= REDUCIBLE && difference.y <= REDUCIBLE
+}
+
+/// Bounds both the third difference's evaluation and the mapping and
+/// midpoint-control arithmetic. The absolute products retain their scale
+/// even when a large common offset or a cancelling map hides it in D.
+/// Sixty-four rounding units cover the two-term maps, the four-term third
+/// difference, and the midpoint quadratic's additions and multiplications.
+fn reducible_with_rounding(outline: &Path, linear: Transform) -> bool {
+    let (mut start, mut current) = (Point::default(), Point::default());
+    let mut error = [0.0_f64; 2];
+    for segment in outline.segments() {
+        match *segment {
+            Segment::MoveTo(p) => {
+                current = p;
+                start = p;
+            }
+            Segment::LineTo(p) => current = p,
+            Segment::CubicTo { c1, c2, end } => {
+                let source = [current, c1, c2, end];
+                let [a, b, c, d] = source.map(|p| p * linear);
+                let third = [
+                    -a.x + 3.0 * b.x - 3.0 * c.x + d.x,
+                    -a.y + 3.0 * b.y - 3.0 * c.y + d.y,
+                ];
+                let products = source.map(|p| {
+                    [
+                        (p.x * linear.a).abs() + (p.y * linear.c).abs(),
+                        (p.x * linear.b).abs() + (p.y * linear.d).abs(),
+                    ]
+                });
+                for axis in 0..2 {
+                    let magnitude = products.iter().map(|p| p[axis]).sum::<f64>() + 1.0;
+                    let allowance = third[axis].abs() + 64.0 * f64::EPSILON * magnitude;
+                    error[axis] = (error[axis] + allowance) * (1.0 + 4.0 * f64::EPSILON);
+                }
+                current = end;
+            }
+            Segment::Close => current = start,
+        }
+    }
+    error.into_iter().all(|bound| bound <= REDUCIBLE)
+}
 
 /// A quadratic Bézier piece.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -241,16 +309,21 @@ impl Spline {
     }
 }
 
-/// The spline of `outline` under the translation-free `linear` map: lines,
-/// and every cubic as quadratics within [`TOLERANCE`] of it, split into
-/// monotone pieces; `None` when a contour is a geometric point, which keeps
-/// the polygon's point rule (8.5.3.3.1).
+/// The monotone quadratic pieces of `outline` under `linear`; `None` for
+/// general cubics or geometric points, which keep the polygon's point rule
+/// (8.5.3.3.1).
 ///
 /// # Errors
 ///
 /// Returns a `Limit` error beyond `limits.path_segments` pieces and
 /// `InvalidArgument` for coordinates beyond the working range.
 pub(crate) fn spline(outline: &Path, linear: Transform, limits: &Limits) -> Result<Option<Spline>> {
+    if outline.segments().len() > limits.path_segments {
+        return Err(Error::limit("path segment budget exceeded"));
+    }
+    if !quadratic_outline(outline, linear) || !reducible_with_rounding(outline, linear) {
+        return Ok(None);
+    }
     let builder = Builder {
         spline: Spline::default(),
         limits,
@@ -292,45 +365,13 @@ impl Builder<'_> {
         Ok(())
     }
 
-    /// A cubic: the fewest equal parameter pieces whose midpoint quadratics
-    /// lie within [`TOLERANCE`]. Each piece's third difference is the
-    /// cubic's D times the piece's length cubed, and its midpoint quadratic
-    /// departs from it by at most |D| sqrt(3)/36.
+    /// The midpoint quadratic of a degree-elevated cubic. The whole
+    /// outline's third differences have already been bounded.
     fn cubic(&mut self, [a, b, c, d]: [Point; 4]) -> Result<()> {
-        let third = sub(sub(d, a), scale(sub(c, b), 3.0));
-        let bound = third.x.hypot(third.y) * (3.0_f64.sqrt() / 36.0);
-        let count = pieces(bound / TOLERANCE);
-        if count > self.limits.path_segments {
-            return Err(Error::limit("quadratic edge budget exceeded"));
-        }
-        let n = f64::from(u32::try_from(count).unwrap_or(u32::MAX));
-        let at = |t: f64| {
-            let (ab, bc, cd) = (lerp(a, b, t), lerp(b, c, t), lerp(c, d, t));
-            lerp(lerp(ab, bc, t), lerp(bc, cd, t), t)
-        };
-        let tangent = |t: f64| {
-            let (ab, bc, cd) = (sub(b, a), sub(c, b), sub(d, c));
-            scale(lerp(lerp(ab, bc, t), lerp(bc, cd, t), t), 3.0)
-        };
-        let mut start = a;
-        for i in 0..count {
-            let k = f64::from(u32::try_from(i).unwrap_or(u32::MAX));
-            let (t0, t1) = (k / n, (k + 1.0) / n);
-            let end = if i + 1 == count { d } else { at(t1) };
-            let h = t1 - t0;
-            // The piece as a cubic, from its end tangents.
-            let p1 = add(start, scale(tangent(t0), h / 3.0));
-            let p2 = sub(end, scale(tangent(t1), h / 3.0));
-            let control = add(
-                lerp(start, end, 0.5),
-                scale(add(sub(p1, start), sub(p2, end)), 0.75),
-            );
-            self.quadratic(Quadratic {
-                points: [start, control, end],
-            })?;
-            start = end;
-        }
-        Ok(())
+        let control = add(lerp(a, d, 0.5), scale(add(sub(b, a), sub(c, d)), 0.75));
+        self.quadratic(Quadratic {
+            points: [a, control, d],
+        })
     }
 
     /// A quadratic split at its x and y extrema into monotone pieces whose
@@ -485,29 +526,6 @@ impl Builder<'_> {
 /// taken as that end: the piece it would cut off has no extent.
 const EXTREMUM: f64 = 1e-9;
 
-/// The pieces of a cubic whose midpoint quadratic errs by `ratio` times
-/// the tolerance when whole: the least `n` with `ratio / n^3 <= 1`.
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "a positive count, saturated before conversion"
-)]
-fn pieces(ratio: f64) -> usize {
-    if ratio.is_nan() || ratio <= 1.0 {
-        return 1;
-    }
-    let n = ratio.cbrt().ceil().min(1e9) as usize;
-    // Rounding of the cube root: step to the least count that meets it.
-    let mut n = n.max(1);
-    while n > 1 && ratio <= ((n - 1) as f64).powi(3) {
-        n -= 1;
-    }
-    while ratio > (n as f64).powi(3) {
-        n += 1;
-    }
-    n
-}
-
 /// Clips monotone pieces to `bounds` as straight edges are clipped: parts
 /// above or below disappear and parts beside it become vertical edges on
 /// its sides.
@@ -653,56 +671,42 @@ mod tests {
     }
 
     #[test]
-    fn general_cubics_become_quadratics_within_the_tolerance() {
-        // A quarter circle of radius 100 as one cubic, closed through its
-        // centre: the area is pi/4 r^2 within the tolerance times its length.
-        let r = 100.0;
-        let k = 0.552_284_749_830_793_4 * r;
+    fn a_cancelled_third_difference_does_not_hide_mapping_roundoff() {
         let mut path = PathBuilder::new();
-        path.move_to(Point::new(r, 0.0));
-        path.cubic_to(Point::new(r, k), Point::new(k, r), Point::new(0.0, r))
-            .unwrap();
-        path.line_to(Point::new(0.0, 0.0)).unwrap();
+        path.move_to(Point::new(1e12, 1e12));
+        path.cubic_to(
+            Point::new(1e12 + 2.0, 1e12 + 4.0),
+            Point::new(1e12 + 4.0, 1e12 + 4.0),
+            Point::new(1e12 + 6.0, 1e12),
+        )
+        .unwrap();
         path.close();
-        let spline = spline(&path.finish(), Transform::IDENTITY, &Limits::default())
-            .unwrap()
-            .unwrap();
-        let quadratics = spline
-            .pieces
-            .iter()
-            .filter(|p| matches!(p, Piece::Curve(_)))
-            .count();
-        assert!((2..40).contains(&quadratics), "{quadratics}");
-        // The cubic's own area, x dy integrated numerically; the chord to
-        // the centre adds nothing (x = 0) and the last edge is horizontal.
-        let [a, b, c, d] = [(r, 0.0), (r, k), (k, r), (0.0, r)];
-        let at = |t: f64, i: usize| {
-            let u = 1.0 - t;
-            let p = |q: (f64, f64)| if i == 0 { q.0 } else { q.1 };
-            u * u * u * p(a) + 3.0 * u * u * t * p(b) + 3.0 * u * t * t * p(c) + t * t * t * p(d)
-        };
-        let steps = 20_000;
-        let mut cubic = 0.0;
-        for i in 0..steps {
-            let (t0, t1) = (
-                f64::from(i) / f64::from(steps),
-                f64::from(i + 1) / f64::from(steps),
-            );
-            let tm = t0.midpoint(t1);
-            cubic += at(tm, 0) * (at(t1, 1) - at(t0, 1));
-        }
-        let length = std::f64::consts::FRAC_PI_2 * r;
-        assert!((area(&spline).abs() - cubic.abs()).abs() < TOLERANCE * length);
+        let path = path.finish();
+        assert!(!reducible_with_rounding(&path, Transform::IDENTITY));
+        assert!(
+            spline(&path, Transform::IDENTITY, &Limits::default())
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[test]
-    fn piece_counts_meet_the_bound_with_the_fewest_pieces() {
-        assert_eq!(pieces(0.0), 1);
-        assert_eq!(pieces(1.0), 1);
-        assert_eq!(pieces(1.0001), 2);
-        assert_eq!(pieces(8.0), 2);
-        assert_eq!(pieces(8.0001), 3);
-        assert_eq!(pieces(f64::NAN), 1);
+    fn general_cubics_keep_the_canonical_polygon() {
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(100.0, 0.0));
+        path.cubic_to(
+            Point::new(100.0, 55.0),
+            Point::new(55.0, 100.0),
+            Point::new(0.0, 100.0),
+        )
+        .unwrap();
+        path.line_to(Point::new(0.0, 0.0)).unwrap();
+        path.close();
+        assert!(
+            spline(&path.finish(), Transform::IDENTITY, &Limits::default())
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[test]

@@ -5,9 +5,10 @@
 //! the convex-hull property the curve then lies within the tolerance of its
 //! chord. Paths and glyph outlines referenced against their polygon use the
 //! documented 1/256-pixel tolerance (ADR 0004 §2, §4). A glyph outline
-//! referenced against its true curve is flattened to 1/16384 pixel, which
-//! keeps every pixel's area within 1/10000 of a pixel (0.03 levels) of the
-//! curve's.
+//! referenced against its true curve is flattened with a whole-outline
+//! symmetric-difference area bound of 1/65536 pixel (under 0.004 levels).
+//! Each admitted chord and the curve lie in their common control hull;
+//! the sum of those hull areas bounds the entire outline's difference.
 //!
 //! The contour policy is the renderer's (ADR 0004 §4): every contour is
 //! closed; a contour whose points all coincide covers the device pixel under
@@ -23,8 +24,8 @@ use pagura_raster::{FillRule, Path, Point, Segment, Transform};
 /// Distance of a flattened curve from its chord, in device pixels.
 pub(crate) const TOLERANCE: f64 = 1.0 / 256.0;
 
-/// The tolerance of glyph curves referenced as true curves.
-pub(crate) const CURVE_TOLERANCE: f64 = 1.0 / 16384.0;
+/// Whole-outline area allowance for true-curve glyph references.
+pub(crate) const CURVE_AREA: f64 = 1.0 / 65536.0;
 
 /// Halvings after which a curve piece is taken as its chord.
 const MAX_DEPTH: u32 = 48;
@@ -43,8 +44,8 @@ struct Contour {
 enum Curves {
     /// A path: curves within [`TOLERANCE`], points compared in its space.
     Path,
-    /// A glyph outline referenced against its true curve: curves within
-    /// [`CURVE_TOLERANCE`], points compared after the linear map.
+    /// A glyph outline referenced against its true curve: bounded total
+    /// control-hull area, points compared after the linear map.
     Curve,
     /// Any other glyph outline: curves within [`TOLERANCE`], points
     /// compared after the linear map.
@@ -54,7 +55,7 @@ enum Curves {
 impl Curves {
     fn tolerance(self) -> f64 {
         match self {
-            Self::Curve => CURVE_TOLERANCE,
+            Self::Curve => 0.0,
             Self::Path | Self::Glyph => TOLERANCE,
         }
     }
@@ -107,33 +108,6 @@ pub(crate) fn glyph_region(
     }))
 }
 
-/// A glyph outline's polygon at the documented tolerance under the
-/// translation-free `linear`, contour by contour; `None` when a contour is
-/// a geometric point.
-///
-/// # Errors
-///
-/// As [`path_region`].
-pub(crate) fn glyph_polygon(
-    outline: &Path,
-    linear: Transform,
-    limits: &Limits,
-) -> Result<Option<Vec<Vec<Point>>>> {
-    let contours = contours(outline, linear, Curves::Glyph, limits)?;
-    if contours.iter().any(|c| c.degenerate) {
-        return Ok(None);
-    }
-    let count = contours.len();
-    Ok(Some(
-        contours
-            .iter()
-            .enumerate()
-            .filter(|(i, c)| !(i + 1 == count && !c.closed && c.points.len() == 1))
-            .map(|(_, c)| c.points.iter().map(|&p| p * linear).collect())
-            .collect(),
-    ))
-}
-
 /// Device edges of `contours` under the contour policy.
 fn region(contours: &[Contour], rule: FillRule, map: impl Fn(Point) -> Point) -> Region {
     let mut region = Region::new(rule);
@@ -179,6 +153,12 @@ fn contours(
     };
     let mut contours: Vec<Contour> = Vec::new();
     let mut count = 0_usize;
+    let curve_count = path
+        .segments()
+        .iter()
+        .filter(|s| matches!(s, Segment::CubicTo { .. }))
+        .count();
+    let allowance = CURVE_AREA / f64::from(u32::try_from(curve_count.max(1)).unwrap_or(u32::MAX));
     let mut start = Point::default();
     let mut position = Point::default();
     let mut push = |contour: &mut Contour, point: Point| -> Result<()> {
@@ -229,7 +209,14 @@ fn contours(
                 if let Some(contour) = contours.last_mut() {
                     contour.degenerate &= [c1, c2, end].iter().all(|&p| same(p, position));
                     let mut points = Vec::new();
-                    flatten_curve([position, c1, c2, end], device, curves, &mut points);
+                    flatten_curve(
+                        [position, c1, c2, end],
+                        device,
+                        curves,
+                        allowance,
+                        &mut points,
+                        limits,
+                    )?;
                     for point in points {
                         push(contour, point)?;
                     }
@@ -249,19 +236,56 @@ fn contours(
 }
 
 /// Appends the end points of the pieces of a cubic, after its start.
-fn flatten_curve(points: [Point; 4], device: Transform, curves: Curves, out: &mut Vec<Point>) {
+fn flatten_curve(
+    points: [Point; 4],
+    device: Transform,
+    curves: Curves,
+    allowance: f64,
+    out: &mut Vec<Point>,
+    limits: &Limits,
+) -> Result<()> {
     let tolerance = curves.tolerance();
-    let mut pending = vec![(points, 0)];
-    while let Some((piece, depth)) = pending.pop() {
+    let magnitude = points
+        .iter()
+        .map(|p| {
+            ((p.x * device.a).abs() + (p.y * device.c).abs() + device.e.abs())
+                .max((p.x * device.b).abs() + (p.y * device.d).abs() + device.f.abs())
+        })
+        .fold(1.0_f64, f64::max);
+    let mut pending = vec![(points, 0, allowance)];
+    while let Some((piece, depth, share)) = pending.pop() {
         let [a, b, c, d] = piece.map(|p| p * device);
-        if depth >= MAX_DEPTH || (near(b, a, d, tolerance) && near(c, a, d, tolerance)) {
+        let acceptable = if curves == Curves::Curve {
+            let triangle = |p: Point, q: Point| {
+                let (u, v) = (p - a, q - a);
+                let error = magnitude * f64::EPSILON * 32.0 * f64::from(depth + 4);
+                let products = (u.x * v.y).abs() + (u.y * v.x).abs();
+                let determinant = (u.x * v.y - u.y * v.x).abs()
+                    + 16.0 * f64::EPSILON * products
+                    + 2.0 * error * (u.x.abs() + u.y.abs() + v.x.abs() + v.y.abs())
+                    + 8.0 * error * error;
+                determinant * (0.5 + 16.0 * f64::EPSILON) + f64::MIN_POSITIVE
+            };
+            (triangle(b, c) + triangle(b, d) + triangle(c, d)) * (1.0 + 16.0 * f64::EPSILON)
+                <= share
+        } else {
+            near(b, a, d, tolerance) && near(c, a, d, tolerance)
+        };
+        if acceptable {
+            if out.len() >= limits.path_segments {
+                return Err(Error::limit("flattened segment budget exceeded"));
+            }
             out.push(piece[3]);
             continue;
         }
+        if depth >= MAX_DEPTH {
+            return Err(Error::limit("curve subdivision depth exceeded"));
+        }
         let (first, second) = halve(piece);
-        pending.push((second, depth + 1));
-        pending.push((first, depth + 1));
+        pending.push((second, depth + 1, share * 0.5));
+        pending.push((first, depth + 1, share * 0.5));
     }
+    Ok(())
 }
 
 /// The two halves of a cubic.
@@ -440,11 +464,7 @@ mod tests {
             .flat_map(|y| (0..8).map(move |x| (x, y)))
             .map(|(x, y)| areas.get(x, y))
             .sum();
-        // Chords lose at most 2/3 of the tolerance times the arc length
-        // (about 12.6 pixels) in total.
-        assert!(
-            (total - 64.0 / 3.0).abs() < 2.0 / 3.0 * CURVE_TOLERANCE * 13.0,
-            "{total}"
-        );
+        // The sum of control-hull areas bounds the whole outline.
+        assert!((total - 64.0 / 3.0).abs() < CURVE_AREA, "{total}");
     }
 }

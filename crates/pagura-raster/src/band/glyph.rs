@@ -3,18 +3,17 @@
 //!
 //! Only the linear map shapes the edges; each placement adds its device
 //! origin to every point without rounding either to a grid. An outline is
-//! kept as its true curve (exact quadratics, cubics as quadratics within
-//! 2^-10 pixel, `curve`) when those pieces are certified: winding 0 or one
-//! sign everywhere. Other outlines, and placements a clip path crosses,
-//! keep the polygon of the shared flattener, whose uncertain rows the exact
-//! row resolver settles.
+//! integrated as quadratics when its pieces certify winding zero or one
+//! sign everywhere. Uncertified quadratic outlines and placements crossed
+//! by a clip path use the same flattener with a whole-outline area bound;
+//! general cubics retain the canonical 1/256-pixel polygon.
 
 use super::Prep;
 use super::certify::{certified, spline_certified};
 use super::curve::{self, Mono, Piece, Quadratic, Spline};
 use super::edges::{self, Line, Polygon};
 use super::shape::{Frame, Shape, Winding};
-use crate::flatten::{CurveStack, Polyline, bounded, flatten_into};
+use crate::flatten::{CurveStack, Flatness, Polyline, bounded, flatten_with};
 use crate::{FillRule, Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Result};
 use std::sync::Arc;
@@ -140,6 +139,9 @@ impl GlyphEdges {
         if !transform.is_finite() {
             return Err(Error::invalid_argument("glyph linear map is not finite"));
         }
+        if outline.segments().len() > limits.path_segments {
+            return Err(Error::limit("path segment budget exceeded"));
+        }
         let hull = control_hull(outline, transform);
         // A singular map can make a genuine point of a curve; the polygon
         // keeps the point rule.
@@ -226,12 +228,25 @@ impl GlyphEdges {
 /// flattening tolerance, and its geometric points (8.5.3.3.1).
 fn polygon(outline: &Path, transform: Transform, limits: &Limits) -> Result<(Polygon, Vec<Point>)> {
     let mut contours: Vec<Polyline> = Vec::new();
-    let count = flatten_into(
+    let flatness = if curve::quadratic_outline(outline, transform) {
+        // The convex-hull areas sum to at most 1/4096 pixel over the entire
+        // outline: less than 0.063 levels in any pixel, also after clipping.
+        let curves = outline
+            .segments()
+            .iter()
+            .filter(|s| matches!(s, Segment::CubicTo { .. }))
+            .count();
+        Flatness::Area(1.0 / 4096.0 / f64::from(u32::try_from(curves.max(1)).unwrap_or(u32::MAX)))
+    } else {
+        Flatness::Distance
+    };
+    let count = flatten_with(
         outline,
         transform,
         limits,
         &mut contours,
         &mut CurveStack::new(),
+        flatness,
     )?;
     contours.truncate(count);
     classify(outline, transform, &mut contours)?;
