@@ -4,7 +4,7 @@
 
 use super::approximate::Cells;
 use super::binned::Placement;
-use super::certify::certified;
+use super::certify::{certified, uncertified};
 use super::clip::{ClipShape, INSIDE, Rows, columns, fill_polygon};
 use super::curve::{self, Quadratic};
 use super::edges::{self, Bounds, Chained, Line, Polygon, RowList, line_work, rows};
@@ -357,11 +357,14 @@ impl Shape {
         {
             return Ok(Self::rect(rect, &frame, options));
         }
-        let certain = match winding {
-            Winding::Certified => true,
-            Winding::Check(margin) => certified(&polygon, margin),
-            Winding::Unknown => false,
+        // The heights the winding certificate leaves in doubt: none when
+        // certified throughout, all when unknown.
+        let doubtful = match winding {
+            Winding::Certified => Some(Vec::new()),
+            Winding::Check(margin) => uncertified(&polygon, margin),
+            Winding::Unknown => None,
         };
+        let certain = doubtful.as_ref().is_some_and(Vec::is_empty);
         let width = super::row::width(options.area.region.x1)?;
         if certain && frame.rows.is_none() {
             // Nothing to analyse: the edges alone, clipped to the rectangle.
@@ -403,7 +406,21 @@ impl Shape {
         };
         let scan = super::clip::scan_range(&chained, width);
         let stored = if !certain || frame.crossed(bounds) {
-            analyse(&chained, rule, certain, &frame, (bounds, scan), options)?
+            // Rows that meet no doubtful slab keep their signed area.
+            let row_certain = |y: u32| {
+                doubtful.as_ref().is_some_and(|slabs| {
+                    let (top, bottom) = (f64::from(y), f64::from(y) + 1.0);
+                    !slabs.iter().any(|&[lo, hi]| lo < bottom && hi > top)
+                })
+            };
+            analyse(
+                &chained,
+                rule,
+                &row_certain,
+                &frame,
+                (bounds, scan),
+                options,
+            )?
         } else {
             Stored::default()
         };
@@ -882,7 +899,7 @@ pub(crate) fn span(rect: Option<Bounds>, y: u32) -> (f64, f64) {
 fn analyse(
     chained: &[Chained],
     rule: FillRule,
-    certain: bool,
+    certain: &dyn Fn(u32) -> bool,
     frame: &Frame<'_>,
     (bounds, scan): (DeviceRect, (usize, usize)),
     options: &Prep<'_>,
@@ -897,6 +914,7 @@ fn analyse(
             s.iter()
                 .any(|s| s.cell != INSIDE && s.x0 < bounds.x1 && s.x1 > bounds.x0)
         });
+        let certain = certain(y);
         if certain && !joint {
             continue;
         }
