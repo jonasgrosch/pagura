@@ -2,7 +2,7 @@
 //! band buffer, the stack of group buffers, soft-mask values, coverage and
 //! span scratch.
 
-use super::Active;
+use super::{Active, Tops};
 use crate::format::Format;
 use crate::plan::{Boundary, ItemKind, Layout, Plan};
 use crate::source::SpanColors;
@@ -247,8 +247,9 @@ pub(crate) struct Sizes {
 }
 
 impl Sizes {
-    /// The bytes [`Workspace::new`] allocates for `plan`, at most.
-    pub(crate) fn bytes(&self, plan: &Plan) -> usize {
+    /// The bytes [`Workspace::new`] allocates for `plan` at most, were its
+    /// group buffers `stack`.
+    pub(crate) fn bytes(&self, plan: &Plan, stack: Tops) -> usize {
         let pixels = self.width.saturating_mul(self.rows);
         let page = plan.groups.first().map_or(0, |page| {
             PageBuffer::pixel_bytes(page.format, page.layout).saturating_mul(pixels)
@@ -278,10 +279,10 @@ impl Sizes {
         let gathered = run_shapes(plan)
             .saturating_mul(size_of::<u32>())
             .saturating_add(self.width.saturating_mul(size_of::<[u8; 4]>()));
-        let f64s = plan.stack.wide.saturating_add(masks).saturating_add(spans);
+        let f64s = stack.wide.saturating_add(masks).saturating_add(spans);
         f64s.saturating_mul(size_of::<f64>())
-            .saturating_add(plan.stack.levels.saturating_mul(size_of::<[f32; 4]>()))
-            .saturating_add(plan.stack.bytes.saturating_mul(size_of::<[u8; 4]>()))
+            .saturating_add(stack.levels.saturating_mul(size_of::<[f32; 4]>()))
+            .saturating_add(stack.bytes.saturating_mul(size_of::<[u8; 4]>()))
             .saturating_add(page)
             .saturating_add(coverage)
             .saturating_add(gathered)

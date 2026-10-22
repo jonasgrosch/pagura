@@ -105,7 +105,11 @@ pub(crate) struct Finished {
 
 fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<Finished> {
     let area = planner.area;
+    // Buffers are charged for the tallest band any band height gives, so
+    // that charges never depend on it, and hold the tallest band of this
+    // one.
     let rows = rows(area.region.height());
+    let band_rows = index(area.band_height.min(area.region.height()));
     let transfers = planner.storage.transfers;
     let spots = spot_plans(&planner.definitions);
     let background = premultiplied(planner.request.background)?;
@@ -124,7 +128,8 @@ fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<
         }
     }
     order(&mut parts);
-    let stack = needs(&parts, rows);
+    let charged = needs(&parts, rows);
+    let stack = needs(&parts, band_rows);
     let mut output_spots = Vec::new();
     for (space, inputs) in spots {
         let target = Target::new(Process::Cmyk);
@@ -159,28 +164,16 @@ fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<
     };
     shrink(&mut plan);
     reserve_output(&plan, budget)?;
-    let sizes = Sizes {
-        width: index(area.region.width()),
-        rows,
-        channels: plan
-            .groups
-            .iter()
-            .map(|g| g.layout.channels())
-            .max()
-            .unwrap_or(3)
-            .max(4),
-        stride: plan
-            .groups
-            .iter()
-            .map(|g| g.layout.stride())
-            .max()
-            .unwrap_or(6)
-            .max(7),
-        selections: transfers,
-    };
-    budget.bytes.charge(sizes.bytes(&plan))?;
+    let sizes = sizes(&plan, rows, transfers);
+    budget.bytes.charge(sizes.bytes(&plan, charged))?;
     let mut producer = backend.finish(area, &mut budget.bytes)?;
-    let mut workspace = Workspace::new(&plan, sizes)?;
+    let mut workspace = Workspace::new(
+        &plan,
+        Sizes {
+            rows: band_rows,
+            ..sizes
+        },
+    )?;
     if transfers {
         let checked: usize = plan
             .items
@@ -204,6 +197,29 @@ fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<
         workspace,
         repairs,
     })
+}
+
+/// The sizes of the workspace of `plan` for bands of `rows` rows.
+fn sizes(plan: &Plan, rows: usize, selections: bool) -> Sizes {
+    Sizes {
+        width: index(plan.area.region.width()),
+        rows,
+        channels: plan
+            .groups
+            .iter()
+            .map(|g| g.layout.channels())
+            .max()
+            .unwrap_or(3)
+            .max(4),
+        stride: plan
+            .groups
+            .iter()
+            .map(|g| g.layout.stride())
+            .max()
+            .unwrap_or(6)
+            .max(7),
+        selections,
+    }
 }
 
 /// The output's work and function evaluations: one unit per pixel, and per
