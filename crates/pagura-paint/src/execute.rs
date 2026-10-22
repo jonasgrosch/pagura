@@ -269,7 +269,7 @@ impl<'a> Executor<'a> {
         let constant = paint.constant();
         if constant.is_none()
             && (paint_words(ws, (mark, paint), frame, (x, y), cover)
-                || !fill_colors(ws, (paint, mark.boundary), (x, y), len))
+                || !fill_colors(ws, (mark, paint), (x, y), len))
         {
             return;
         }
@@ -311,10 +311,15 @@ impl<'a> Executor<'a> {
             && compositing.blend == pagura_interpret::BlendMode::Normal
             && preserve == 0
             && let Colors::Strided { values, stride: 3 } = colors
-            && overwrite((&mut ws.page, &mut ws.extents), frame, (x, y, len), |pixels| {
-                kernel::overwrite_n16(pixels, values.get(..len * 3).unwrap_or(&[]));
-                true
-            })
+            && overwrite(
+                (&mut ws.page, &mut ws.extents),
+                frame,
+                Pixels::new(x, y, len),
+                |pixels| {
+                    kernel::overwrite_n16(pixels, values.get(..len * 3).unwrap_or(&[]));
+                    true
+                },
+            )
         {
             ws.usage.work = ws.usage.work.saturating_add(len);
             return;
@@ -358,11 +363,11 @@ impl<'a> Executor<'a> {
 /// under `boundary`; false where the boundary's coverage does not fit.
 fn fill_colors(
     ws: &mut Workspace,
-    (paint, boundary): (&Source, Boundary),
+    (mark, paint): (&Mark, &Source),
     (x, y): (u32, u32),
     len: usize,
 ) -> bool {
-    let outline = match boundary {
+    let outline = match mark.boundary {
         Boundary::Shape(_) | Boundary::Empty => {
             let (boundary, dense) = &mut ws.boundary;
             let Some(dense) = dense.get_mut(..len) else {
@@ -379,7 +384,10 @@ fn fill_colors(
         len,
         boundary: outline,
     };
-    paint.fill(pixels, &mut ws.colors, &mut ws.texel_shape);
+    let Some(scratch) = ws.paint_scratch.get_mut(u32_to_usize(mark.paint)) else {
+        return false;
+    };
+    paint.fill(pixels, scratch, &mut ws.colors, &mut ws.texel_shape);
     true
 }
 
@@ -408,6 +416,9 @@ fn paint_words(
 ) -> bool {
     let compositing = &mark.compositing;
     let len = cover.len();
+    let Some(scratch) = ws.paint_scratch.get_mut(u32_to_usize(mark.paint)) else {
+        return false;
+    };
     let written = cover.coverage().is_none()
         && !mark.records
         && mark.boundary == Boundary::Absent
@@ -415,9 +426,12 @@ fn paint_words(
         && compositing.mask.is_none()
         && compositing.blend == pagura_interpret::BlendMode::Normal
         && compositing.overprint == 0
-        && overwrite((&mut ws.page, &mut ws.extents), frame, (x, y, len), |pixels| {
-            paint.words(x, y, pixels)
-        });
+        && overwrite(
+            (&mut ws.page, &mut ws.extents),
+            frame,
+            Pixels::new(x, y, len),
+            |pixels| paint.words(Pixels::new(x, y, len), scratch, pixels),
+        );
     if written {
         ws.usage.work = ws.usage.work.saturating_add(len);
     }
@@ -431,9 +445,10 @@ fn paint_words(
 fn overwrite(
     (page, extents): (&mut PageBuffer, &mut Extents),
     frame: Frame,
-    (x, y, len): (u32, u32, usize),
+    pixels: Pixels<'_>,
     write: impl FnOnce(&mut [[u16; 4]]) -> bool,
 ) -> bool {
+    let Pixels { x, y, len, .. } = pixels;
     let Some(start) = frame.index(x, y).filter(|_| frame.buffer == Buffer::Page) else {
         return false;
     };

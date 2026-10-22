@@ -9,7 +9,7 @@ use crate::format::Format;
 use crate::plan::{Boundary, ItemKind, Layout, Plan};
 use crate::prepare::Storage;
 use crate::request::RenderRequest;
-use crate::source::SpanColors;
+use crate::source::{PaintScratch, SpanColors};
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Meter, Result};
 use pagura_core::{Limits, Store};
@@ -269,6 +269,8 @@ pub(crate) struct Workspace {
     pub(crate) boundary: (BandCoverage, Vec<u8>),
     /// One span of paint.
     pub(crate) colors: SpanColors,
+    /// Per-paint execution buffers with capacities fitted before rendering.
+    pub(crate) paint_scratch: Vec<PaintScratch>,
     /// Source alpha of a span.
     pub(crate) alpha: Vec<f64>,
     /// Source shape of a span.
@@ -349,6 +351,13 @@ impl Sizes {
             .saturating_add(active.saturating_mul(size_of::<u32>()))
             .saturating_add(plan.groups.len() * size_of::<Active>())
             .saturating_add(plan.masks.len() * size_of::<MaskCache>())
+            .saturating_add(plan.paints.len().saturating_mul(size_of::<PaintScratch>()))
+            .saturating_add(
+                plan.paints
+                    .iter()
+                    .map(crate::source::Source::scratch_bytes)
+                    .fold(0, usize::saturating_add),
+            )
     }
 }
 
@@ -403,7 +412,26 @@ impl Workspace {
         bytes: &mut Meter,
     ) -> Result<Self> {
         let pixels = sizes.width.saturating_mul(sizes.rows);
+        let (previous, old_paints) = match previous {
+            Some(mut previous) => {
+                let paints = std::mem::take(&mut previous.paint_scratch);
+                (Some(previous), paints)
+            }
+            None => (None, Vec::new()),
+        };
+        let mut old_paints = old_paints;
+        old_paints.truncate(plan.paints.len());
+        for (scratch, source) in old_paints.iter_mut().zip(&plan.paints) {
+            if !scratch.fits(source) {
+                *scratch = PaintScratch::default();
+            }
+        }
         let (page, coverage) = kept(previous, (sizes.rows, pixels));
+        let mut old_paints = old_paints.into_iter();
+        let mut paint_scratch = reserve(plan.paints.len(), bytes)?;
+        for source in &plan.paints {
+            paint_scratch.push(source.make_scratch(old_paints.next(), bytes)?);
+        }
         let (format, layout) = plan.groups.first().map_or(
             (
                 Format::F64,
@@ -465,6 +493,7 @@ impl Workspace {
             coverage: warm_coverage(sizes, coverage, bytes)?,
             boundary: (outline, dense),
             colors,
+            paint_scratch,
             alpha: zeroed(sizes.width, bytes)?,
             shape: zeroed(sizes.width, bytes)?,
             texel_shape: reserve(sizes.width, bytes)?,
@@ -505,6 +534,12 @@ impl Workspace {
             + self.active.iter().map(Active::bytes).sum::<usize>()
             + self.active.capacity() * size_of::<Active>()
             + self.masks.capacity() * size_of::<MaskCache>()
+            + self.paint_scratch.capacity() * size_of::<PaintScratch>()
+            + self
+                .paint_scratch
+                .iter()
+                .map(PaintScratch::bytes)
+                .sum::<usize>()
     }
 
     /// Clears the state of a previous render.
@@ -514,6 +549,9 @@ impl Workspace {
         }
         for mask in &mut self.masks {
             mask.band = None;
+        }
+        for scratch in &mut self.paint_scratch {
+            scratch.reset();
         }
         self.usage = Usage::default();
     }

@@ -16,7 +16,7 @@
 
 use super::geometry::{Geometry, MAX_LANES};
 use super::separable::{RowCache, Rows, Runs, Separable};
-use crate::source::SpanColors;
+use crate::source::{Pixels, SpanColors};
 use pagura_core::Result;
 use pagura_image::deferred::{Packed, Planar};
 use pagura_image::{DecodedImage, Samples};
@@ -466,6 +466,28 @@ impl Codes {
         }))
     }
 
+    /// The caller-owned storage needed by the code sampler.
+    pub(super) fn layout(&self) -> super::separable::Layout {
+        let values = if self.lanes.complement().is_some() {
+            2
+        } else {
+            self.components
+        };
+        self.separable
+            .layout(values, super::separable::Values::Codes)
+    }
+
+    /// The lone texel's colour, without constructing execution storage.
+    pub(super) fn constant(&self, image: &DecodedImage, out: &mut SpanColors) {
+        let mut codes = [0u8; 4];
+        for (i, code) in codes.iter_mut().enumerate().take(self.components) {
+            *code = u8::try_from(image.samples.get(i).unwrap_or(0)).unwrap_or(0);
+        }
+        out.channels = self.lanes.channels;
+        self.lanes
+            .write_codes(&codes[..self.components], self.components, out, None);
+    }
+
     /// Writes the N16 words of the opaque colours of device pixels
     /// `x .. x + len` of row `y` into `out`, as a store at full opacity
     /// writes them; false, with nothing written, unless the image's three
@@ -473,7 +495,8 @@ impl Codes {
     pub(super) fn words(
         &self,
         image: &DecodedImage,
-        (x, y): (u32, u32),
+        pixels: Pixels<'_>,
+        scratch: &mut super::separable::Scratch,
         out: &mut [[u16; 4]],
     ) -> bool {
         let Some(words) = self.words.as_deref() else {
@@ -492,7 +515,7 @@ impl Codes {
             return false;
         };
         let code = |sample: &[u8], k: usize| usize::from(sample.get(k).copied().unwrap_or(0));
-        self.separable.gather(&rows, (x, y, out.len()), |codes| {
+        self.separable.gather(&rows, pixels, scratch, |codes| {
             for (pixel, sample) in out.iter_mut().zip(codes.chunks_exact(n)) {
                 *pixel = [
                     words[0][code(sample, a)],
@@ -514,7 +537,11 @@ impl Codes {
     pub(super) fn set_lanes(&mut self, lanes: Lanes) {
         self.words = word_tables(&lanes, self.components, &self.separable);
         self.lanes = lanes;
-        self.separable.forget();
+    }
+
+    /// The placement for a stencil whose colour no longer follows codes.
+    pub(super) fn into_separable(self) -> Separable {
+        self.separable
     }
 
     /// Fills `out` with device pixels `x .. x + len` of row `y`: straight
@@ -522,10 +549,12 @@ impl Codes {
     pub(super) fn fill(
         &self,
         image: &DecodedImage,
-        (x, y, len): (u32, u32, usize),
+        pixels: Pixels<'_>,
+        scratch: &mut super::separable::Scratch,
         out: &mut SpanColors,
         shape: Option<&mut Vec<f64>>,
     ) {
+        let len = pixels.len;
         out.channels = self.lanes.channels;
         out.alpha.clear();
         let Some(grid) = Grid::new(image) else {
@@ -540,7 +569,7 @@ impl Codes {
         };
         let n = rows.width();
         if self.separable.nearest() {
-            self.separable.gather(&rows, (x, y, len), |codes| {
+            self.separable.gather(&rows, pixels, scratch, |codes| {
                 self.lanes.write_codes(codes, n, out, shape);
             });
             return;
@@ -578,7 +607,7 @@ impl Codes {
             let into = Some((colors.as_mut_slice(), lanes));
             let map = |average| map.apply(average);
             self.separable
-                .average(&rows, (x, y, len), into, (map, finish));
+                .average(&rows, pixels, scratch, into, (map, finish));
             out.colors = colors;
             return;
         }
@@ -589,7 +618,7 @@ impl Codes {
                 .uncover(covered, (&mut out.colors, &mut out.alpha), shape);
         };
         self.separable
-            .average(&rows, (x, y, len), None, (|average| average, finish));
+            .average(&rows, pixels, scratch, None, (|average| average, finish));
     }
 }
 

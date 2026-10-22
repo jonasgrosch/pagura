@@ -80,8 +80,13 @@ fn sample_all(sampler: &ImageSampler, (width, height): (u32, u32)) -> (Vec<f64>,
     let mut out = SpanColors::default();
     let (mut colors, mut alpha) = (Vec::new(), Vec::new());
     let len = usize::try_from(width).unwrap();
+    let mut storage = super::scratch(sampler);
     for y in 0..height {
-        sampler.span(0, y, len, &mut out);
+        sampler.span(
+            crate::source::Pixels::new(0, y, len),
+            &mut storage,
+            &mut out,
+        );
         colors.extend_from_slice(&out.colors);
         alpha.extend_from_slice(&out.alpha);
     }

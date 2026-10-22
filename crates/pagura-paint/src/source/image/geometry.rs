@@ -2,18 +2,19 @@
 //! sample of its centre, or with `Interpolate` the bilinear weights of the
 //! four samples around it, when the image is not minified; otherwise the
 //! exact area average of the source samples under the pixel's footprint.
-//! Upright placements sample separably ([`super::separable`]); any other
-//! pixel by itself here, its area average by polygon clipping.
+//! Area averages use the prepared separable or contour plan in
+//! [`super::sampling`]; nearest and bilinear pixels are evaluated here.
 //!
 //! Every weighted sum adds texels in a fixed order with the same f64
 //! operations for every partition of the device grid, so a pixel's value
 //! does not depend on which span asks for it.
 
+use crate::source::Pixels;
 use pagura_core::{Error, Result};
 use pagura_raster::{Point, Transform};
 
 /// The most values one texel holds: colour channels, alpha and shape.
-pub(super) const MAX_LANES: usize = pagura_color::MAX_CHANNELS + 2;
+pub(super) const MAX_LANES: usize = pagura_color::MAX_CHANNELS + 3;
 
 /// A source of texels, each `lanes` values that sum with weights: colour
 /// channels, alpha and shape.
@@ -70,9 +71,6 @@ pub(super) enum Mode {
     Bilinear,
     /// The exact area average over the pixel's quadrilateral footprint.
     Area,
-    /// The exact area average over separable footprints of an upright
-    /// placement.
-    Separable,
 }
 
 /// The placement of one image's samples on the device grid.
@@ -283,19 +281,15 @@ impl Geometry {
         match self.mode {
             Mode::Nearest => 1,
             Mode::Bilinear => 4,
-            Mode::Separable | Mode::Area => cells(t.a.abs() + t.c.abs(), self.width)
+            Mode::Area => cells(t.a.abs() + t.c.abs(), self.width)
                 .saturating_mul(cells(t.b.abs() + t.d.abs(), self.height)),
         }
     }
 
     /// Writes the values of device pixels `x .. x + len` of row `y`, each
     /// `texels.lanes()` values, into `out`.
-    pub(super) fn fill(
-        &self,
-        (x, y, len): (u32, u32, usize),
-        texels: &impl Texels,
-        out: &mut [f64],
-    ) {
+    pub(super) fn fill(&self, pixels: Pixels<'_>, texels: &impl Texels, out: &mut [f64]) {
+        let Pixels { x, y, len, .. } = pixels;
         let lanes = texels.lanes();
         let opaque = texels.opaque();
         let pixels = out.chunks_exact_mut(lanes).take(len);
@@ -314,7 +308,7 @@ impl Geometry {
             }
             // Minified placements average through their separable or
             // contour plans.
-            Mode::Area | Mode::Separable => {}
+            Mode::Area => {}
         }
     }
 
@@ -374,9 +368,7 @@ pub(super) fn reaches(inverse: Transform, extent: (f64, f64)) -> bool {
 /// How a placement whose device pixels map by `t` to sample space samples.
 fn mode(t: Transform, interpolate: bool) -> Mode {
     let minifying = t.a.hypot(t.b) > 1.0 + 1e-9 || t.c.hypot(t.d) > 1.0 + 1e-9;
-    if minifying && t.b == 0.0 && t.c == 0.0 {
-        Mode::Separable
-    } else if minifying {
+    if minifying {
         Mode::Area
     } else if interpolate {
         Mode::Bilinear

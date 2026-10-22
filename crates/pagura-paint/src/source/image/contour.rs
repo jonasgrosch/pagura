@@ -20,8 +20,10 @@
 //! would carry the contour's rounding.
 
 use super::geometry::{Geometry, Texels};
+use super::scratch::allocate;
+use crate::source::Pixels;
+use pagura_core::Result;
 use pagura_raster::{Point, Transform};
-use std::sync::{Mutex, TryLockError};
 
 /// The turned placement of one image: its inverse, size and scratch.
 #[derive(Debug)]
@@ -32,8 +34,7 @@ pub(super) struct Contour {
     /// The smallest part of a footprint averaged.
     sliver: f64,
     /// An upper bound of the bytes a strip of the region holds.
-    strip: usize,
-    scratch: Mutex<Scratch>,
+    layout: Layout,
 }
 
 /// One source row of a strip: its partial sums from `base` for columns
@@ -49,7 +50,7 @@ struct Row {
 
 /// Storage reused between spans.
 #[derive(Debug, Default)]
-struct Scratch {
+pub(super) struct Scratch {
     /// Source rows `top..top + rows.len()` of the strip.
     top: usize,
     rows: Vec<Row>,
@@ -61,12 +62,85 @@ struct Scratch {
     vertical: Vec<f64>,
     /// One read row of texels.
     texels: Vec<f64>,
+    /// One channel at a time for less common channel counts.
+    single: Vec<f64>,
+}
+
+/// Capacities fixed by the region, transform and maximum channel count.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct Layout {
+    rows: usize,
+    columns: usize,
+    pixels: usize,
+    values: usize,
+}
+
+impl Scratch {
+    /// Actual capacities of the strip's heap buffers.
+    pub(super) fn bytes(&self) -> usize {
+        self.rows.capacity() * size_of::<Row>()
+            + (self.upper.capacity() + self.lower.capacity()) * size_of::<Point>()
+            + (self.sums.capacity()
+                + self.vertical.capacity()
+                + self.texels.capacity()
+                + self.single.capacity())
+                * size_of::<f64>()
+    }
+}
+
+impl Layout {
+    /// Bytes of the strip's allocations.
+    pub(super) fn bytes(self) -> usize {
+        self.rows
+            .saturating_mul(size_of::<Row>())
+            .saturating_add(
+                self.pixels
+                    .saturating_add(1)
+                    .saturating_mul(2 * size_of::<Point>()),
+            )
+            .saturating_add(self.float_values().saturating_mul(size_of::<f64>()))
+    }
+
+    fn sum_values(self) -> usize {
+        self.rows
+            .saturating_mul(self.columns.saturating_mul(2).saturating_add(1))
+            .saturating_mul(self.values)
+    }
+
+    fn float_values(self) -> usize {
+        self.sum_values()
+            .saturating_add(
+                self.pixels
+                    .saturating_add(1)
+                    .saturating_mul(self.values + 1),
+            )
+            .saturating_add(self.columns.saturating_mul(self.values))
+            .saturating_add(self.pixels)
+    }
+
+    /// Allocates capacities charged by the source layout before execution.
+    pub(super) fn make(self) -> Result<Scratch> {
+        Ok(Scratch {
+            top: 0,
+            rows: allocate(self.rows)?,
+            sums: allocate(self.sum_values())?,
+            upper: allocate(self.pixels.saturating_add(1))?,
+            lower: allocate(self.pixels.saturating_add(1))?,
+            vertical: allocate(
+                self.pixels
+                    .saturating_add(1)
+                    .saturating_mul(self.values + 1),
+            )?,
+            texels: allocate(self.columns.saturating_mul(self.values))?,
+            single: allocate(self.pixels)?,
+        })
+    }
 }
 
 impl Contour {
     /// The contour sampling of `geometry`'s turned placement over device
     /// columns `columns`, of texels of at most `lanes` values.
-    pub(super) fn new(geometry: &Geometry, (x0, x1): (u32, u32), lanes: usize) -> Self {
+    pub(super) fn new(geometry: &Geometry, (x0, x1): (u32, u32)) -> Self {
         let t = geometry.inverse();
         let (width, height) = geometry.size();
         let span = f64::from(x1.saturating_sub(x0)) + 1.0;
@@ -79,26 +153,32 @@ impl Contour {
             (t.d.abs() + 2.0) * (t.a / t.b).abs()
         };
         let columns = (t.a.abs() * span + t.c.abs() + crossing + 3.0).min(f64::from(width) + 1.0);
-        let values = rows * columns * (2.0 * lanes as f64 + 1.0) + rows * 4.0;
         #[expect(
             clippy::cast_possible_truncation,
             clippy::cast_sign_loss,
-            reason = "a finite, non-negative count, saturating"
+            reason = "finite non-negative counts capped by decoded dimensions"
         )]
-        let strip = (values * 8.0 + span * 32.0) as usize;
+        let layout = Layout {
+            rows: rows.ceil() as usize,
+            columns: columns.ceil() as usize,
+            pixels: usize::try_from(x1.saturating_sub(x0)).unwrap_or(usize::MAX),
+            values: 0,
+        };
         Self {
             inverse: t,
             width,
             height,
             sliver: (t.a * t.d - t.b * t.c).abs() / 4096.0,
-            strip,
-            scratch: Mutex::new(Scratch::default()),
+            layout,
         }
     }
 
-    /// Bytes the plan holds, its strips' storage included.
-    pub(super) fn bytes(&self) -> usize {
-        size_of::<Self>().saturating_add(self.strip)
+    /// The mutable storage of the plan.
+    pub(super) fn layout(&self, values: usize) -> Layout {
+        Layout {
+            values: values.min(6),
+            ..self.layout
+        }
     }
 
     /// Writes the averages of device pixels `x .. x + len` of row `y`,
@@ -107,26 +187,20 @@ impl Contour {
     /// elsewhere.
     pub(super) fn fill(
         &self,
-        (x, y, len): (u32, u32, usize),
+        pixels: Pixels<'_>,
         texels: &impl Texels,
         out: &mut [f64],
+        scratch: &mut Scratch,
     ) {
-        let mut guard = match self.scratch.try_lock() {
-            Ok(guard) => Some(guard),
-            Err(TryLockError::Poisoned(poisoned)) => Some(poisoned.into_inner()),
-            Err(TryLockError::WouldBlock) => None,
-        };
-        let mut own = Scratch::default();
-        let scratch = guard.as_deref_mut().unwrap_or(&mut own);
         let lanes = texels.lanes();
         let n = lanes - if texels.opaque() { 2 } else { 0 };
         match n {
-            1 => self.span::<1>((x, y, len), texels, (lanes, out), scratch),
-            3 => self.span::<3>((x, y, len), texels, (lanes, out), scratch),
-            4 => self.span::<4>((x, y, len), texels, (lanes, out), scratch),
-            5 => self.span::<5>((x, y, len), texels, (lanes, out), scratch),
-            6 => self.span::<6>((x, y, len), texels, (lanes, out), scratch),
-            _ => self.wide((x, y, len), texels, (lanes, out), scratch),
+            1 => self.span::<1>(pixels, texels, (lanes, out), scratch),
+            3 => self.span::<3>(pixels, texels, (lanes, out), scratch),
+            4 => self.span::<4>(pixels, texels, (lanes, out), scratch),
+            5 => self.span::<5>(pixels, texels, (lanes, out), scratch),
+            6 => self.span::<6>(pixels, texels, (lanes, out), scratch),
+            _ => self.wide(pixels, texels, (lanes, out), scratch),
         }
     }
 
@@ -134,7 +208,7 @@ impl Contour {
     /// value of the texels at a time.
     fn wide(
         &self,
-        (x, y, len): (u32, u32, usize),
+        pixels: Pixels<'_>,
         texels: &impl Texels,
         (lanes, out): (usize, &mut [f64]),
         scratch: &mut Scratch,
@@ -144,10 +218,12 @@ impl Contour {
             index: 0,
             count: lanes - if texels.opaque() { 2 } else { 0 },
         };
-        let mut single = vec![0.0; len];
+        let len = pixels.len;
+        let mut single = std::mem::take(&mut scratch.single);
+        single.resize(len, 0.0);
         for lane in 0..one.count {
             let texels = Lane { index: lane, ..one };
-            self.span::<1>((x, y, len), &texels, (1, &mut single), scratch);
+            self.span::<1>(pixels, &texels, (1, &mut single), scratch);
             for (pixel, &value) in out.chunks_exact_mut(lanes).zip(&single) {
                 if let Some(slot) = pixel.get_mut(lane) {
                     *slot = value;
@@ -157,13 +233,14 @@ impl Contour {
         // The alpha and shape of opaque texels, as one lane gives them.
         if texels.opaque() {
             let covered = Ones;
-            self.span::<1>((x, y, len), &covered, (1, &mut single), scratch);
+            self.span::<1>(pixels, &covered, (1, &mut single), scratch);
             for (pixel, &value) in out.chunks_exact_mut(lanes).zip(&single) {
                 if let Some(rest) = pixel.get_mut(lanes - 2..) {
                     rest.fill(value);
                 }
             }
         }
+        scratch.single = single;
     }
 
     /// The averages of a span, `N` summed values per pixel written into the
@@ -171,11 +248,12 @@ impl Contour {
     /// of opaque texels) 1 or 0.
     fn span<const N: usize>(
         &self,
-        (x, y, len): (u32, u32, usize),
+        pixels: Pixels<'_>,
         texels: &impl Texels,
         (lanes, out): (usize, &mut [f64]),
         scratch: &mut Scratch,
     ) {
+        let Pixels { x, y, len, .. } = pixels;
         let t = self.inverse;
         let point = |u: u32, v: u32| Point::new(f64::from(u), f64::from(v)) * t;
         let next = y.saturating_add(1);

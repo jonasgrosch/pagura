@@ -300,8 +300,13 @@ fn sample_once(placed: &Placed, decoded: Arc<Decoded>) -> f64 {
     let len = usize::try_from(rect.x1 - rect.x0).unwrap();
     let mut checksum = 0.0;
     let mut out = SpanColors::default();
+    let mut storage = super::scratch(&sampler);
     for y in rect.y0..rect.y1 {
-        sampler.span(rect.x0, y, len, &mut out);
+        sampler.span(
+            crate::source::Pixels::new(rect.x0, y, len),
+            &mut storage,
+            &mut out,
+        );
         checksum += out.colors.iter().step_by(97).sum::<f64>();
     }
     checksum
@@ -488,7 +493,7 @@ fn image_page_details() {
                     placed.rect.y1 - placed.rect.y0,
                     placed.unit_to_device,
                     prepared.geometry.mode(),
-                    prepared.codes.is_some(),
+                    matches!(prepared.plan, super::super::Plan::Codes(_)),
                 );
             }
         }

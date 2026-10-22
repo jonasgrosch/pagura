@@ -7,15 +7,16 @@
 //! so they are exact by construction: a one-component image of at most
 //! eight bits gets a table per code, a DeviceRGB image into an RGB blending
 //! space one per channel (that conversion is the identity with clipping,
-//! 10.4.2), an eight-bit image with a Matte a table per code and opacity
-//! code filled as samples need it, images of up to four components of at
-//! most eight bits a cache by sample tuple.
+//! 10.4.2), and images of up to four components of at most eight bits a
+//! bounded memo by sample tuple, with opacity codes for embedded alpha
+//! and Matte removal.
 
 use super::geometry::{MAX_LANES, Texels, sample_index, sample_row};
+use super::scratch::allocate;
 use pagura_color::{ColorSpace, Converter};
+use pagura_core::Result;
 use pagura_image::{DecodedImage, ImageKind, MaskKind, Samples};
 use std::cell::RefCell;
-use std::sync::{Mutex, MutexGuard, PoisonError};
 
 /// The most components an image has (DeviceN's 32 colorants).
 const MAX_COMPONENTS: usize = pagura_color::MAX_COMPONENTS;
@@ -281,7 +282,7 @@ pub(super) enum Strategy {
     /// Texels converted once per distinct sample (its codes, with the soft
     /// mask's opacity code where a Matte is removed and the embedded
     /// opacity code), kept in a memo.
-    Memo(Box<Mutex<Memo>>),
+    Memo(MemoLayout),
     /// Every texel computed from its sample.
     General,
 }
@@ -289,7 +290,12 @@ pub(super) enum Strategy {
 impl Strategy {
     /// The strategy for `image` painted with `colors`, and the conversions
     /// preparing it costs.
-    pub(super) fn new(image: &DecodedImage, colors: &Colors, rgb: bool) -> (Self, usize) {
+    pub(super) fn new(
+        image: &DecodedImage,
+        colors: &Colors,
+        rgb: bool,
+        mask: Option<&DecodedImage>,
+    ) -> (Self, usize) {
         let components = usize::from(image.components);
         let bits: Vec<u8> = (0..components)
             .filter_map(|i| image.component_bits(i))
@@ -330,19 +336,12 @@ impl Strategy {
             }
             return (Self::Rgb(tables), 256);
         }
-        if let Some(key) = Key::new(image, colors) {
+        if let Some(key) = Key::new(image, colors, mask) {
             let samples = u64::from(image.width) * u64::from(image.height);
             let entries = usize::try_from(samples).unwrap_or(usize::MAX);
             let opaque = colors.key.is_none() && colors.embedded.is_none();
             let held = if opaque { lanes - 2 } else { lanes };
-            return (
-                Self::Memo(Box::new(Mutex::new(Memo::new(
-                    key,
-                    (held, opaque),
-                    entries,
-                )))),
-                0,
-            );
+            return (Self::Memo(MemoLayout::new(key, (held, opaque), entries)), 0);
         }
         (Self::General, 0)
     }
@@ -352,8 +351,7 @@ impl Strategy {
         match self {
             Self::Table(table, _) => size_of_val::<[f64]>(table),
             Self::Rgb(_) => size_of::<[[f64; 256]; 3]>(),
-            Self::Memo(memo) => memo.lock().unwrap_or_else(PoisonError::into_inner).bound(),
-            Self::General => 0,
+            Self::Memo(_) | Self::General => 0,
         }
     }
 
@@ -599,7 +597,7 @@ pub(super) struct Fused<'a, T> {
     pub(super) texels: &'a T,
     pub(super) mask: OpacityTexels<'a>,
     /// The texels of a row, read before they are interleaved.
-    pub(super) values: RefCell<Vec<f64>>,
+    pub(super) values: RefCell<&'a mut Vec<f64>>,
 }
 
 impl<T: Texels> Texels for Fused<'_, T> {
@@ -661,7 +659,7 @@ impl<T: Texels> Texels for Fused<'_, T> {
 /// The key of a sample of at most eight bits per code: its codes, then the
 /// soft mask's opacity code where a Matte is removed, then the embedded
 /// opacity code, eight bits each and at most six of them.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct Key {
     components: usize,
     matte: bool,
@@ -671,7 +669,7 @@ pub(super) struct Key {
 impl Key {
     /// The key of `image`'s samples painted with `colors`, when every code
     /// it holds has at most eight bits and they fit 64 bits.
-    fn new(image: &DecodedImage, colors: &Colors) -> Option<Self> {
+    fn new(image: &DecodedImage, colors: &Colors, mask: Option<&DecodedImage>) -> Option<Self> {
         let components = usize::from(image.components);
         let narrow = (0..components).all(|i| image.component_bits(i).is_some_and(|b| b <= 8));
         let embedded = match &image.mask {
@@ -684,6 +682,9 @@ impl Key {
             _ => false,
         };
         let matte = colors.matte.is_some();
+        if matte && !mask.is_some_and(|mask| matches!(mask.samples, Samples::Bytes(_))) {
+            return None;
+        }
         let bytes = components + usize::from(matte) + usize::from(embedded);
         (narrow && bytes <= 6 && matches!(image.samples, Samples::Bytes(_))).then_some(Self {
             components,
@@ -697,29 +698,30 @@ impl Key {
 /// its `held` values together, so that a lookup reads one place. Keys have
 /// at most 48 bits, so each is held exactly as an f64. The memo holds at
 /// most one texel per 16 samples of its image (at least 4096, at most
-/// [`Memo::CAP`]), so that what it reserves stays near the decoded samples'
+/// [`MemoLayout::CAP`]), so that what it reserves stays near the decoded samples'
 /// own size; a sample past them is converted without being kept. Every
 /// texel held is its key's, so what the memo holds never changes a value.
-#[derive(Debug)]
-pub(super) struct Memo {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct MemoLayout {
     key: Key,
-    /// Whether every texel has alpha and shape 1, which it then does not
-    /// hold.
     opaque: bool,
     held: usize,
-    /// The most texels kept.
     limit: usize,
-    /// Slots of `1 + held` values: the key (or [`FREE`]), then the texel.
+}
+
+/// Mutable memo values, allocated in the caller's render scratch.
+#[derive(Debug)]
+pub(super) struct Memo {
+    layout: MemoLayout,
     slots: Vec<f64>,
     len: usize,
-    /// A texel converted past the cap.
-    spare: Vec<f64>,
+    spare: [f64; MAX_LANES],
 }
 
 /// A free slot: no key is negative.
 const FREE: f64 = -1.0;
 
-impl Memo {
+impl MemoLayout {
     /// The most texels kept.
     pub(super) const CAP: usize = 1 << 20;
 
@@ -730,9 +732,6 @@ impl Memo {
             opaque,
             held,
             limit: (samples / 16).clamp(4096, Self::CAP),
-            slots: Vec::new(),
-            len: 0,
-            spare: Vec::new(),
         }
     }
 
@@ -742,55 +741,76 @@ impl Memo {
         self.opaque
     }
 
-    /// The most bytes the memo holds: slots for its texels at most half
-    /// full, grown by doubling.
-    fn bound(&self) -> usize {
+    /// Bytes of the fixed table, whose slots stay at most half full.
+    pub(super) fn bytes(self) -> usize {
+        size_of::<Memo>().saturating_add(self.values().saturating_mul(size_of::<f64>()))
+    }
+
+    fn values(self) -> usize {
         (2 * self.limit)
             .next_power_of_two()
-            .saturating_mul((1 + self.held) * size_of::<f64>())
+            .saturating_mul(1 + self.held)
+    }
+
+    /// Allocates the full fixed table after its bytes have been charged.
+    pub(super) fn make(self) -> Result<Memo> {
+        let mut slots = allocate(self.values())?;
+        slots.resize(self.values(), FREE);
+        Ok(Memo {
+            layout: self,
+            slots,
+            len: 0,
+            spare: [0.0; MAX_LANES],
+        })
+    }
+}
+
+impl Memo {
+    /// Actual retained capacities.
+    pub(super) fn bytes(&self) -> usize {
+        size_of::<Self>() + self.slots.capacity() * size_of::<f64>()
+    }
+
+    /// Invalidates conversions between renders without reallocating.
+    pub(super) fn reset(&mut self) {
+        self.slots.fill(FREE);
+        self.len = 0;
     }
 
     /// The `held` values of the texel of `key`, converted by `convert` into
     /// a texel of every lane unless held.
     #[inline]
     fn get(&mut self, key: u64, convert: impl FnOnce(&mut [f64])) -> &[f64] {
-        let stride = 1 + self.held;
-        if self.slots.is_empty() {
-            self.slots = vec![FREE; stride << 12];
-        }
+        let stride = 1 + self.layout.held;
         #[expect(
             clippy::cast_precision_loss,
             reason = "keys have at most 48 bits, which f64 holds exactly"
         )]
         let wanted = key as f64;
-        let mut slot = self.slot(key, wanted);
+        let slot = self.slot(key, wanted);
         if self.slots.get(slot * stride).copied() != Some(wanted) {
             let mut texel = [0.0; MAX_LANES];
-            convert(&mut texel[..self.held + 2]);
-            if self.len >= self.limit {
-                self.spare.clear();
-                self.spare.extend_from_slice(&texel[..self.held]);
-                return &self.spare;
-            }
-            if (self.len + 1) * 2 > self.slots.len() / stride {
-                self.grow();
-                slot = self.slot(key, wanted);
+            let count = self.layout.held + usize::from(self.layout.opaque) * 2;
+            convert(&mut texel[..count]);
+            if self.len >= self.layout.limit {
+                self.spare[..self.layout.held].copy_from_slice(&texel[..self.layout.held]);
+                return &self.spare[..self.layout.held];
             }
             let at = slot * stride;
             if let Some(entry) = self.slots.get_mut(at..at + stride) {
                 entry[0] = wanted;
-                entry[1..].copy_from_slice(&texel[..self.held]);
+                entry[1..].copy_from_slice(&texel[..self.layout.held]);
                 self.len += 1;
             }
         }
         let at = slot * stride + 1;
-        self.slots.get(at..at + self.held).unwrap_or(&[])
+        self.slots.get(at..at + self.layout.held).unwrap_or(&[])
     }
 
     /// The slot of `key` (held as `wanted`), or the free slot it goes into.
     #[inline]
     fn slot(&self, key: u64, wanted: f64) -> usize {
-        let stride = 1 + self.held;
+        let stride = 1 + self.layout.held;
         let mask = self.slots.len() / stride - 1;
         let hash = key.wrapping_mul(0x9e37_79b9_7f4a_7c15) >> 29;
         let mut slot = usize::try_from(hash).unwrap_or(0) & mask;
@@ -803,26 +823,6 @@ impl Memo {
         }
         slot
     }
-
-    fn grow(&mut self) {
-        let stride = 1 + self.held;
-        let size = self.slots.len() * 2;
-        let slots = std::mem::replace(&mut self.slots, vec![FREE; size]);
-        for entry in slots.chunks_exact(stride) {
-            if entry[0] >= 0.0 {
-                #[expect(
-                    clippy::cast_possible_truncation,
-                    clippy::cast_sign_loss,
-                    reason = "a held key, a non-negative integer below 2^48"
-                )]
-                let key = entry[0] as u64;
-                let at = self.slot(key, entry[0]) * stride;
-                if let Some(target) = self.slots.get_mut(at..at + stride) {
-                    target.copy_from_slice(entry);
-                }
-            }
-        }
-    }
 }
 
 /// Texels of eight-bit samples through their memo.
@@ -834,7 +834,7 @@ pub(super) struct MemoTexels<'a> {
     matte: Option<(&'a [u8], &'a Opacity)>,
     /// The embedded opacity codes.
     embedded: Option<&'a [u8]>,
-    memo: RefCell<MutexGuard<'a, Memo>>,
+    memo: RefCell<&'a mut Memo>,
 }
 
 impl<'a> MemoTexels<'a> {
@@ -844,13 +844,12 @@ impl<'a> MemoTexels<'a> {
         image: &'a DecodedImage,
         colors: &'a Colors,
         mask: Option<(&'a DecodedImage, &'a Opacity)>,
-        memo: &'a Mutex<Memo>,
+        memo: &'a mut Memo,
     ) -> Option<Self> {
         let Samples::Bytes(samples) = &image.samples else {
             return None;
         };
-        let memo = memo.lock().unwrap_or_else(PoisonError::into_inner);
-        let matte = if memo.key.matte {
+        let matte = if memo.layout.key.matte {
             let (mask, opacity) = mask?;
             let Samples::Bytes(codes) = &mask.samples else {
                 return None;
@@ -859,7 +858,7 @@ impl<'a> MemoTexels<'a> {
         } else {
             None
         };
-        let embedded = match (&image.mask, memo.key.embedded) {
+        let embedded = match (&image.mask, memo.layout.key.embedded) {
             (MaskKind::Embedded(alpha), true) => match &alpha.samples {
                 Samples::Bytes(codes) => Some(codes.as_slice()),
                 _ => return None,
@@ -893,7 +892,7 @@ impl<'a> MemoTexels<'a> {
     /// The texel of sample `index`, written into `out` (its held values).
     #[inline]
     fn write(&self, memo: &mut Memo, index: usize, out: &mut [f64]) {
-        let components = memo.key.components;
+        let components = memo.layout.key.components;
         let key = self.key(index, components);
         let values = memo.get(key, |texel| self.convert(index, components, texel));
         for (out, &value) in out.iter_mut().zip(values) {
@@ -930,7 +929,7 @@ impl Texels for MemoTexels<'_> {
     }
 
     fn opaque(&self) -> bool {
-        self.memo.borrow().opaque
+        self.memo.borrow().layout.opaque
     }
 
     fn get(&self, index: usize, out: &mut [f64]) {
@@ -953,7 +952,7 @@ impl Texels for MemoTexels<'_> {
         };
         let mut memo = self.memo.borrow_mut();
         let start = sample_index(u64::from(row) * u64::from(width) + u64::from(first));
-        let components = memo.key.components;
+        let components = memo.layout.key.components;
         let mut previous = None;
         let mut last = [0.0; MAX_LANES];
         for (index, values) in (start..start + count).zip(out.chunks_exact_mut(stride)) {
@@ -993,7 +992,7 @@ pub(super) fn copy_texel(to: &mut [f64], from: &[f64]) {
 
 #[cfg(test)]
 mod tests {
-    use super::{Key, Memo};
+    use super::{Key, MemoLayout};
 
     /// The memo reserves less than eight bytes a sample of its image, and
     /// past its limit it converts every sample anew, alike.
@@ -1004,9 +1003,9 @@ mod tests {
             matte: false,
             embedded: false,
         };
-        assert!(Memo::new(key, (3, true), 1_000_000).bound() <= 8_000_000);
-        assert!(Memo::new(key, (4, true), 64).bound() <= (8 << 12) * 5 * 8);
-        let mut memo = Memo::new(key, (3, true), 0);
+        assert!(MemoLayout::new(key, (3, true), 1_000_000).bytes() <= 8_000_000);
+        assert!(MemoLayout::new(key, (4, true), 64).bytes() <= (8 << 12) * 5 * 8);
+        let mut memo = MemoLayout::new(key, (3, true), 0).make().unwrap();
         let texel = |key: u64| {
             #[expect(clippy::cast_precision_loss, reason = "small test keys")]
             let value = key as f64;
@@ -1018,6 +1017,6 @@ mod tests {
                 assert_eq!(held, texel(k), "key {k} round {round}");
             }
         }
-        assert_eq!(memo.len, memo.limit);
+        assert_eq!(memo.len, memo.layout.limit);
     }
 }
