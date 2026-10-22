@@ -15,8 +15,8 @@ use pagura_interpret::{
     Pen, Scene, Shading, SoftMask, StateId,
 };
 use pagura_raster::{
-    Area, BandCoverage, DeviceRect, FillRule, Path, Pixmap, Point, Rgba8, Segment, ShapeOptions,
-    Transform, quantize_unit,
+    Area, BandCoverage, BandRasterizer, DeviceRect, FillRule, Path, Pixmap, Point, Rgba8, Segment,
+    ShapeOptions, Transform, quantize_unit,
 };
 use std::sync::Arc;
 
@@ -199,13 +199,12 @@ impl Backend for Rects {
         )?))
     }
 
-    fn finish(self, area: Area, _bytes: &mut Meter) -> Result<Box<dyn Producer>> {
-        Ok(Box::new(RectCoverage {
+    fn finish(self, area: Area) -> Box<dyn Producer> {
+        Box::new(RectCoverage {
             area,
             shapes: self.shapes,
             clips: self.clips,
-            cells: Vec::new(),
-        }))
+        })
     }
 }
 
@@ -215,7 +214,6 @@ pub(crate) fn rect_producer(area: Area, shapes: Vec<Box4>, clips: Vec<Box4>) -> 
         area,
         shapes,
         clips,
-        cells: Vec::new(),
     })
 }
 
@@ -225,7 +223,6 @@ struct RectCoverage {
     area: Area,
     shapes: Vec<Box4>,
     clips: Vec<Box4>,
-    cells: Vec<u8>,
 }
 
 fn overlap(pixel: u32, low: f64, high: f64) -> f64 {
@@ -235,7 +232,8 @@ fn overlap(pixel: u32, low: f64, high: f64) -> f64 {
 
 impl Producer for RectCoverage {
     fn rasterize(
-        &mut self,
+        &self,
+        _rasterizer: &mut BandRasterizer,
         shape: Option<u32>,
         clip: Option<u32>,
         band: u32,
@@ -260,8 +258,7 @@ impl Producer for RectCoverage {
             s[2].min(c[2]),
             s[3].min(c[3]),
         ];
-        let mut cells = std::mem::take(&mut self.cells);
-        cells.clear();
+        let mut cells = Vec::new();
         for y in self.area.band_rows(band) {
             let vertical = overlap(y, r[1], r[3]);
             if vertical <= 0.0 {
@@ -303,18 +300,18 @@ impl Producer for RectCoverage {
             }
         }
         out.finish();
-        self.cells = cells;
     }
 
     fn rasterize_run(
-        &mut self,
+        &self,
+        rasterizer: &mut BandRasterizer,
         shapes: &[u32],
         clip: Option<u32>,
         band: u32,
         out: &mut BandCoverage,
     ) -> usize {
         merge_run(shapes, out, |shape, one| {
-            self.rasterize(Some(shape), clip, band, one);
+            self.rasterize(rasterizer, Some(shape), clip, band, one);
         })
     }
 }
@@ -595,7 +592,7 @@ impl Build {
         &self,
         request: &RenderRequest,
     ) -> Result<(Vec<u8>, crate::Charges)> {
-        let mut prepared = self.prepare(request, &Limits::default())?;
+        let prepared = self.prepare(request, &Limits::default())?;
         let region = request.region;
         let mut target = Pixmap::new(
             region.width(),
@@ -603,8 +600,10 @@ impl Build {
             Rgba8::TRANSPARENT,
             usize::MAX,
         )?;
-        prepared.render(&mut target);
-        let (used, reserved) = (prepared.usage(), prepared.charges());
+        let mut scratch = crate::Scratch::default();
+        let mut rendering = prepared.with_scratch(&mut scratch)?;
+        rendering.render(&mut target);
+        let (used, reserved) = (rendering.usage(), prepared.charges());
         assert!(
             used.render_bytes() <= reserved.render_bytes()
                 && used.render_work() <= reserved.render_work()

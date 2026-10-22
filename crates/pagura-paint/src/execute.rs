@@ -18,6 +18,7 @@ pub(crate) use mask::transfer as mask_transfer;
 pub(crate) use output::Destination;
 pub(crate) use schedule::Active;
 pub(crate) use transfer::validate;
+pub use workspace::Scratch;
 pub(crate) use workspace::{Extents, MaskCache, PageBuffer, Sizes, Usage, Workspace};
 
 use crate::kernel::{self, Colors, Mode, Sources};
@@ -26,17 +27,26 @@ use crate::plan::{Boundary, Compositing, Item, ItemKind, Mark, Plan, area};
 use crate::prepare::Producer;
 use pagura_color::Painted;
 use pagura_core::convert::u32_to_usize;
-use pagura_raster::{DeviceRect, Span};
+use pagura_raster::{BandRasterizer, DeviceRect, Span};
 use std::ops::Range;
 
 #[cfg(test)]
 mod tests;
 
+/// What one band's execution works with: the plan, the workspace, and the
+/// coverage producer with the rasterizer it rasterizes in.
+pub(crate) type Executing<'a> = (
+    &'a Plan,
+    &'a mut Workspace,
+    (&'a dyn Producer, &'a mut BandRasterizer),
+);
+
 /// One band's execution.
 pub(crate) struct Executor<'a> {
     plan: &'a Plan,
     ws: &'a mut Workspace,
-    producer: &'a mut dyn Producer,
+    producer: &'a dyn Producer,
+    rasterizer: &'a mut BandRasterizer,
     band: u32,
     rows: Range<u32>,
     first: u32,
@@ -45,9 +55,7 @@ pub(crate) struct Executor<'a> {
 impl<'a> Executor<'a> {
     /// Executes `band` of `plan` and writes its rows to `target`.
     pub(crate) fn band(
-        plan: &'a Plan,
-        ws: &'a mut Workspace,
-        producer: &'a mut dyn Producer,
+        (plan, ws, (producer, rasterizer)): Executing<'a>,
         band: u32,
         target: Destination<'_>,
     ) {
@@ -60,6 +68,7 @@ impl<'a> Executor<'a> {
             plan,
             ws,
             producer,
+            rasterizer,
             band,
             rows,
             first,
@@ -163,15 +172,25 @@ impl<'a> Executor<'a> {
         self.count_shape(item);
         match mark.boundary {
             Boundary::Shape(boundary) => {
-                self.producer
-                    .rasterize(Some(boundary), None, self.band, &mut self.ws.boundary.0);
+                self.producer.rasterize(
+                    self.rasterizer,
+                    Some(boundary),
+                    None,
+                    self.band,
+                    &mut self.ws.boundary.0,
+                );
             }
             Boundary::Empty => self.ws.boundary.0.clear(),
             Boundary::Absent => {}
         }
         let mut coverage = std::mem::take(&mut self.ws.coverage);
-        self.producer
-            .rasterize(mark.cover.shape, mark.cover.clip, self.band, &mut coverage);
+        self.producer.rasterize(
+            self.rasterizer,
+            mark.cover.shape,
+            mark.cover.clip,
+            self.band,
+            &mut coverage,
+        );
         if let Some(opaque) = self.opaque(mark, frame) {
             self.opaque_store(&coverage, frame, opaque);
             self.ws.coverage = coverage;

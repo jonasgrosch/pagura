@@ -251,13 +251,17 @@ fn prepared_scenes_can_be_shared_between_threads() {
 fn rendering_stops_between_bands() {
     let b = busy();
     let page = b.page();
-    let mut prepared = b
+    let prepared = b
         .prepare(&b.request(page, 8), &Limits::default())
         .unwrap_or_else(|e| panic!("{e}"));
     let mut target = Pixmap::new(page.width(), page.height(), Rgba8::TRANSPARENT, usize::MAX)
         .unwrap_or_else(|e| panic!("{e}"));
+    let mut scratch = crate::Scratch::default();
+    let mut rendering = prepared
+        .with_scratch(&mut scratch)
+        .unwrap_or_else(|e| panic!("{e}"));
     let mut bands = 0;
-    let completion = prepared.render_until(&mut target, |row| {
+    let completion = rendering.render_until(&mut target, |row| {
         bands += 1;
         row >= 16
     });

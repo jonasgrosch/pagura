@@ -8,14 +8,14 @@
 use crate::plan::{ItemKind, Plan};
 use crate::prepare::Producer;
 use pagura_core::convert::u32_to_usize;
-use pagura_raster::{BandCoverage, Span};
+use pagura_raster::{BandCoverage, BandRasterizer, Span};
 
 /// The serial of the first mark in source order whose coverage meets an
 /// unsupported transfer boundary in the region, using `coverage` and
 /// `selection` (one band of the region) as storage.
 pub(crate) fn validate(
     plan: &Plan,
-    producer: &mut dyn Producer,
+    (producer, rasterizer): (&dyn Producer, &mut BandRasterizer),
     coverage: &mut BandCoverage,
     selection: &mut [u16],
 ) -> Option<u32> {
@@ -25,7 +25,8 @@ pub(crate) fn validate(
         selection.fill(0);
         let mut check = Check {
             plan,
-            producer: &mut *producer,
+            producer,
+            rasterizer: &mut *rasterizer,
             coverage: &mut *coverage,
             selection: &mut *selection,
             band,
@@ -40,7 +41,8 @@ pub(crate) fn validate(
 
 struct Check<'a> {
     plan: &'a Plan,
-    producer: &'a mut dyn Producer,
+    producer: &'a dyn Producer,
+    rasterizer: &'a mut BandRasterizer,
     coverage: &'a mut BandCoverage,
     selection: &'a mut [u16],
     band: u32,
@@ -78,8 +80,13 @@ impl Check<'_> {
         let region = self.plan.area.region;
         let width = u32_to_usize(region.width());
         let coverage = &mut *self.coverage;
-        self.producer
-            .rasterize(cover.shape, cover.clip, self.band, coverage);
+        self.producer.rasterize(
+            self.rasterizer,
+            cover.shape,
+            cover.clip,
+            self.band,
+            coverage,
+        );
         let mut failed = false;
         for row in coverage.rows() {
             if row.y < self.first_row || row.y >= self.rows_end {

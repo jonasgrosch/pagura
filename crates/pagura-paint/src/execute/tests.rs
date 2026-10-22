@@ -272,21 +272,19 @@ impl Fixture {
             conversions: parts.conversions,
             output: self.output,
             stack,
+            sizes: Sizes {
+                width: self.width as usize,
+                rows,
+                channels: 40,
+                stride: 43,
+                selections,
+            },
         };
-        let sizes = Sizes {
-            width: self.width as usize,
-            rows,
-            channels: 40,
-            stride: 43,
-            selections,
-        };
-        let mut workspace = Workspace::new(&plan, sizes).unwrap();
-        let mut producer: Box<dyn Producer> = match self.speckled {
-            Some(shapes) => Box::new(Speckles {
-                area,
-                shapes,
-                cells: Vec::new(),
-            }),
+        let mut workspace = Workspace::new(&plan, plan.sizes, None).unwrap();
+        let mut free = pagura_core::Meter::new(usize::MAX, "test rasterizer");
+        let mut rasterizer = pagura_raster::BandRasterizer::new(area, &mut free).unwrap();
+        let producer: Box<dyn Producer> = match self.speckled {
+            Some(shapes) => Box::new(Speckles { area, shapes }),
             None => rect_producer(area, self.shapes, Vec::new()),
         };
         let mut target =
@@ -294,14 +292,16 @@ impl Fixture {
         workspace.restart();
         for band in area.bands() {
             let target = Destination::Pixmap(&mut target);
-            Executor::band(&plan, &mut workspace, producer.as_mut(), band, target);
+            let executing = (&plan, &mut workspace, (producer.as_ref(), &mut rasterizer));
+            Executor::band(executing, band, target);
         }
         // Rows collected without a surface are the surface's rows.
         let mut rows = Vec::new();
         workspace.restart();
         for band in area.bands() {
             let target = Destination::Rows(&mut rows);
-            Executor::band(&plan, &mut workspace, producer.as_mut(), band, target);
+            let executing = (&plan, &mut workspace, (producer.as_ref(), &mut rasterizer));
+            Executor::band(executing, band, target);
         }
         assert_eq!(rows, target.data());
         rows
@@ -580,7 +580,6 @@ fn narrow_parents_take_group_results_as_one_rounded_store() {
 struct Speckles {
     area: Area,
     shapes: Vec<DeviceRect>,
-    cells: Vec<u8>,
 }
 
 fn speckle(shape: u32, x: u32, y: u32) -> u8 {
@@ -595,13 +594,15 @@ fn speckle(shape: u32, x: u32, y: u32) -> u8 {
 
 impl Producer for Speckles {
     fn rasterize(
-        &mut self,
+        &self,
+        _rasterizer: &mut pagura_raster::BandRasterizer,
         shape: Option<u32>,
         _clip: Option<u32>,
         band: u32,
         out: &mut BandCoverage,
     ) {
         out.clear();
+        let mut cells = Vec::new();
         let Some((key, bounds)) = shape.and_then(|s| Some((s, *self.shapes.get(s as usize)?)))
         else {
             out.finish();
@@ -613,7 +614,7 @@ impl Producer for Speckles {
             }
             out.push_row(y);
             let mut full: Option<(u32, u32)> = None;
-            self.cells.clear();
+            cells.clear();
             let mut start = 0;
             for x in bounds.x0..=bounds.x1 {
                 let c = if x < bounds.x1 { speckle(key, x, y) } else { 0 };
@@ -622,18 +623,18 @@ impl Producer for Speckles {
                 {
                     out.push_full(at, len);
                 }
-                let gap = c == 0 && self.cells.last() == Some(&0);
-                if (c == 255 || gap || x == bounds.x1) && !self.cells.is_empty() {
-                    out.push_partial(start, &self.cells);
-                    self.cells.clear();
+                let gap = c == 0 && cells.last() == Some(&0);
+                if (c == 255 || gap || x == bounds.x1) && !cells.is_empty() {
+                    out.push_partial(start, &cells);
+                    cells.clear();
                 }
                 if c == 255 {
                     full = Some(full.map_or((x, 1), |(at, len)| (at, len + 1)));
                 } else if !gap && x < bounds.x1 {
-                    if self.cells.is_empty() {
+                    if cells.is_empty() {
                         start = x;
                     }
-                    self.cells.push(c);
+                    cells.push(c);
                 }
             }
         }
@@ -641,14 +642,15 @@ impl Producer for Speckles {
     }
 
     fn rasterize_run(
-        &mut self,
+        &self,
+        rasterizer: &mut pagura_raster::BandRasterizer,
         shapes: &[u32],
         clip: Option<u32>,
         band: u32,
         out: &mut BandCoverage,
     ) -> usize {
         crate::testing::merge_run(shapes, out, |shape, one| {
-            self.rasterize(Some(shape), clip, band, one);
+            self.rasterize(rasterizer, Some(shape), clip, band, one);
         })
     }
 }

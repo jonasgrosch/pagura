@@ -187,6 +187,36 @@ impl BandRasterizer {
         })
     }
 
+    /// Charges `bytes` with the storage [`Self::new`] reserves for `area`,
+    /// without allocating it: preparation reserves a rasterizer that a
+    /// render makes or reuses.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::new`].
+    pub fn charge(area: Area, bytes: &mut Meter) -> Result<()> {
+        let width = super::row::width(area.region.x1)?;
+        let words = width.div_ceil(64) + 1;
+        // The row: area, cover and its bitmap.
+        bytes.charge_items::<f64>(width)?;
+        bytes.charge_items::<f64>(width)?;
+        bytes.charge_items::<u64>(words)?;
+        // The approximate row, its bitmap and product, and its grid.
+        bytes.charge_items::<f32>(width)?;
+        bytes.charge_items::<u64>(words)?;
+        bytes.charge_items::<u8>(width)?;
+        bytes.charge_items::<f32>(GRID_CELLS)?;
+        bytes.charge_items::<u8>(GRID_CELLS)?;
+        // The grid.
+        bytes.charge_items::<f64>(GRID_CELLS)?;
+        bytes.charge_items::<f64>(GRID_CELLS)?;
+        bytes.charge_items::<u8>(GRID_CELLS)?;
+        // The run.
+        bytes.charge_items::<Slot>(RUN_SHAPES)?;
+        bytes.charge_items::<u8>(RUN_CELLS)?;
+        bytes.charge_items::<u8>(width)
+    }
+
     /// The area.
     pub fn area(&self) -> Area {
         self.area

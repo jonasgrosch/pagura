@@ -7,8 +7,8 @@ use pagura_document::forms::FormFiller;
 use pagura_document::{Document, Page};
 use pagura_extract::{LayoutOptions, PositionedText, TextPage};
 use pagura_interpret::{Interpreter, Scene};
-use pagura_paint::{Completion, PreparedScene, RenderRequest};
-use pagura_raster::{DeviceRect, Pixmap};
+use pagura_paint::{Completion, PreparedScene, RenderRequest, Scratch};
+use pagura_raster::{DeviceRect, Pixmap, Rgba8};
 use pagura_text::Provider;
 
 /// A document, its font provider and the store that holds what rendering
@@ -61,16 +61,30 @@ impl<'a> Renderer<'a> {
         self.interpreter().appearance_text(page, appearance, rect)
     }
 
-    /// Renders `tile` of `scene`, or the whole page, asking `stop` with the
-    /// first device row of each band before rendering it.
+    /// Renders `tile` of `scene`, or the whole page, in `scratch`, asking
+    /// `stop` with the first device row of each band before rendering it.
     pub(crate) fn render(
         self,
         scene: &Scene,
-        options: &RenderOptions,
-        tile: Option<Tile>,
+        (options, tile): (&RenderOptions, Option<Tile>),
+        scratch: &mut Scratch,
         stop: impl FnMut(u32) -> bool,
     ) -> Result<(Pixmap, Completion)> {
-        let mut prepared = self.prepare(scene, options, tile)?;
+        let prepared = self.prepare(scene, (options, tile), scratch)?;
+        let rendered = self.draw(&prepared, options.background, scratch, stop);
+        scratch.recycle(prepared);
+        rendered
+    }
+
+    /// Renders `prepared` over `background` in `scratch`.
+    fn draw(
+        self,
+        prepared: &PreparedScene,
+        background: Rgba8,
+        scratch: &mut Scratch,
+        stop: impl FnMut(u32) -> bool,
+    ) -> Result<(Pixmap, Completion)> {
+        let mut rendering = prepared.with_scratch(scratch)?;
         let region = prepared.region();
         let (width, height) = (region.width(), region.height());
         let limits = self.document.limits();
@@ -78,8 +92,8 @@ impl<'a> Renderer<'a> {
             // An empty surface or one over the pixel budget is refused as
             // allocation refuses it; one over only the byte budget, which an
             // allocation taken over must keep to, is allocated as before.
-            let mut pixmap = Pixmap::new(width, height, options.background, limits.pixels)?;
-            let completion = prepared.render_until(&mut pixmap, stop);
+            let mut pixmap = Pixmap::new(width, height, background, limits.pixels)?;
+            let completion = rendering.render_until(&mut pixmap, stop);
             return Ok((pixmap, completion));
         };
         // Rendered rows are written whole, so the surface is collected band
@@ -88,24 +102,24 @@ impl<'a> Renderer<'a> {
         let mut data = Vec::new();
         data.try_reserve_exact(bytes)
             .map_err(|_| Error::limit("surface allocation failed"))?;
-        let completion = prepared.render_rows_until(&mut data, stop);
+        let completion = rendering.render_rows_until(&mut data, stop);
         let rendered = data.len().min(bytes);
         data.resize(bytes, 0);
-        let background = prepared.background();
         if let Some(rest) = data.get_mut(rendered..) {
-            rest.as_chunks_mut::<4>().0.fill(background);
+            rest.as_chunks_mut::<4>().0.fill(prepared.background());
         }
         let pixmap = Pixmap::from_premultiplied(width, height, data, limits)?;
         Ok((pixmap, completion))
     }
 
-    /// Prepares `scene` for one region and reports the repairs preparation
-    /// made to the document, where strict recovery refuses them.
+    /// Prepares `scene` for one region in the storage of `scratch` and
+    /// reports the repairs preparation made to the document, where strict
+    /// recovery refuses them.
     fn prepare(
         self,
         scene: &Scene,
-        options: &RenderOptions,
-        tile: Option<Tile>,
+        (options, tile): (&RenderOptions, Option<Tile>),
+        scratch: &mut Scratch,
     ) -> Result<PreparedScene> {
         let size = scene.page.device_size(options.scale)?;
         let page = DeviceRect {
@@ -123,7 +137,8 @@ impl<'a> Renderer<'a> {
         request.background = options.background;
         request.overprint = options.overprint.resolve(scene.print_intent);
         request.fast = options.fast;
-        let prepared = pagura_paint::prepare(scene, &request, self.store, &self.document.limits())?;
+        let limits = self.document.limits();
+        let prepared = scratch.prepare(scene, &request, (self.store, &limits))?;
         for repair in prepared.repairs() {
             self.document.repair(repair.clone())?;
         }

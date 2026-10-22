@@ -2,7 +2,7 @@
 
 use crate::cases::{Recorded, limits};
 use pagura_core::{Limits, Result, Store};
-use pagura_paint::{FastParams, OverprintMode, RenderRequest, prepare};
+use pagura_paint::{FastParams, OverprintMode, RenderRequest, Scratch, prepare};
 use pagura_raster::{DeviceRect, Pixmap, Rgba8};
 use pagura_reference::{Overprint, Rendering, Request};
 
@@ -83,14 +83,16 @@ impl Run {
     /// Returns the preparation's error.
     pub fn render_with(&self, recorded: &Recorded, store: &Store) -> Result<Vec<u8>> {
         let limits = limits();
-        let mut prepared = prepare(&recorded.scene, &self.request(recorded), store, &limits)?;
+        let prepared = prepare(&recorded.scene, &self.request(recorded), store, &limits)?;
         let mut target = Pixmap::new(
             self.region.width(),
             self.region.height(),
             Rgba8::WHITE,
             limits.pixels,
         )?;
-        prepared.render(&mut target);
+        prepared
+            .with_scratch(&mut Scratch::default())?
+            .render(&mut target);
         Ok(target.data().to_vec())
     }
 

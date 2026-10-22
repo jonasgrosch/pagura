@@ -1,14 +1,90 @@
-//! Every buffer execution writes, allocated once by preparation: the page's
-//! band buffer, the stack of group buffers, soft-mask values, coverage and
-//! span scratch.
+//! Every buffer execution writes: the page's band buffer, the stack of
+//! group buffers, soft-mask values, coverage, span scratch and the band
+//! rasterizer's rows, sized for one prepared scene and owned by the caller,
+//! who reuses them render after render.
 
 use super::{Active, Tops};
+use crate::PreparedScene;
 use crate::format::Format;
 use crate::plan::{Boundary, ItemKind, Layout, Plan};
+use crate::prepare::Storage;
+use crate::request::RenderRequest;
 use crate::source::SpanColors;
 use pagura_core::convert::u32_to_usize;
-use pagura_core::{Error, Result};
-use pagura_raster::{BandCoverage, DeviceRect};
+use pagura_core::{Error, Meter, Result};
+use pagura_core::{Limits, Store};
+use pagura_interpret::Scene;
+use pagura_raster::{BandCoverage, BandRasterizer, DeviceRect};
+
+/// The storage renders write: band buffers, coverage, span scratch and the
+/// band rasterizer's rows. A caller keeps one for each thread it renders on
+/// and lends it to every render, which takes the storage it finds sized
+/// alike for the scene and makes the rest; preparation has charged what a
+/// render of the scene needs. Between renders it holds what the last one
+/// used, [`Self::retained_bytes`], for the caller to keep or drop.
+#[derive(Debug, Default)]
+pub struct Scratch {
+    workspace: Option<Workspace>,
+    rasterizer: Option<BandRasterizer>,
+    /// The storage of the shapes and glyph masks of the scene taken back
+    /// last.
+    storage: Storage,
+}
+
+impl Scratch {
+    /// Prepares `scene` for `request` as [`crate::prepare`] does, in the
+    /// shape storage of the scene taken back last ([`Self::recycle`]).
+    ///
+    /// # Errors
+    ///
+    /// As [`crate::prepare`].
+    pub fn prepare(
+        &mut self,
+        scene: &Scene,
+        request: &RenderRequest,
+        (store, limits): (&Store, &Limits),
+    ) -> Result<PreparedScene> {
+        let storage = std::mem::take(&mut self.storage);
+        crate::prepare::prepare_in(scene, request, (store, limits), storage)
+    }
+
+    /// Takes back the storage of `scene`'s shapes and glyph masks, emptied,
+    /// for the next preparation.
+    pub fn recycle(&mut self, scene: PreparedScene) {
+        let (mut shapes, mut masks) = scene.into_storage();
+        shapes.clear();
+        masks.clear();
+        self.storage = (shapes, masks);
+    }
+
+    /// Bytes held between renders, glyph mask storage aside.
+    pub fn retained_bytes(&self) -> usize {
+        self.workspace.as_ref().map_or(0, Workspace::bytes)
+            + self
+                .rasterizer
+                .as_ref()
+                .map_or(0, BandRasterizer::retained_bytes)
+            + self.storage.0.capacity() * size_of::<pagura_raster::Shape>()
+    }
+
+    /// The workspace and rasterizer for `plan`.
+    pub(crate) fn fit(&mut self, plan: &Plan) -> Result<(&mut Workspace, &mut BandRasterizer)> {
+        let workspace = Workspace::new(plan, plan.sizes, self.workspace.take())?;
+        let rasterizer = match self.rasterizer.take() {
+            Some(rasterizer) if rasterizer.area() == plan.area => rasterizer,
+            other => {
+                // Its storage goes before the new one is made.
+                drop(other);
+                // Charged by preparation.
+                let mut free = Meter::new(usize::MAX, "band rasterizer");
+                BandRasterizer::new(plan.area, &mut free)?
+            }
+        };
+        let workspace = self.workspace.insert(workspace);
+        let rasterizer = self.rasterizer.insert(rasterizer);
+        Ok((workspace, rasterizer))
+    }
+}
 
 /// The page group's band buffer in its storage format.
 #[derive(Debug)]
@@ -34,8 +110,10 @@ impl PageBuffer {
         }
     }
 
-    fn new(format: Format, pixels: usize, layout: Layout) -> Result<Self> {
-        if let Some(mut page) = SPARE.with(|spare| spare.borrow_mut().page.take()) {
+    /// A buffer of `pixels` in `format`: `previous` when it was sized for
+    /// them.
+    fn new(format: Format, pixels: usize, layout: Layout, previous: Option<Self>) -> Result<Self> {
+        if let Some(mut page) = previous {
             let reused = match (&mut page, format) {
                 (Self::F64(values), Format::F64) => {
                     recycle(values, pixels.saturating_mul(layout.stride()))
@@ -95,7 +173,6 @@ impl PageBuffer {
         }
     }
 
-    #[cfg(test)]
     fn bytes(&self) -> usize {
         match self {
             Self::F64(values) => values.capacity() * size_of::<f64>(),
@@ -232,7 +309,7 @@ pub(crate) struct Workspace {
 }
 
 /// The sizes of a workspace, from which preparation charges it.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) struct Sizes {
     /// Region width.
     pub(crate) width: usize,
@@ -317,36 +394,6 @@ fn recycle<T>(values: &mut Vec<T>, count: usize) -> bool {
     values.capacity() == count
 }
 
-thread_local! {
-    /// The largest buffers of the workspace dropped last on this thread,
-    /// for the next one: rendering page after page reuses them instead of
-    /// returning megabytes to the system and asking for them again.
-    static SPARE: std::cell::RefCell<Spare> = std::cell::RefCell::new(Spare::default());
-}
-
-/// See [`SPARE`].
-#[derive(Default)]
-struct Spare {
-    page: Option<PageBuffer>,
-    /// A coverage buffer with the rows and cells it was sized for.
-    coverage: Option<((usize, usize), BandCoverage)>,
-}
-
-impl Drop for Workspace {
-    fn drop(&mut self) {
-        let page = std::mem::replace(&mut self.page, PageBuffer::U8(Vec::new()));
-        let coverage = std::mem::take(&mut self.coverage);
-        let capacity = self.capacity;
-        // A thread being torn down has no spare to keep.
-        let _ = SPARE.try_with(|spare| {
-            if let Ok(mut spare) = spare.try_borrow_mut() {
-                spare.page = Some(page);
-                spare.coverage = Some((capacity, coverage));
-            }
-        });
-    }
-}
-
 fn reserve<T>(count: usize) -> Result<Vec<T>> {
     let mut values = Vec::new();
     values
@@ -356,10 +403,12 @@ fn reserve<T>(count: usize) -> Result<Vec<T>> {
 }
 
 impl Workspace {
-    /// Allocates the storage `plan` executes in; preparation has charged
-    /// [`Sizes::bytes`] before.
-    pub(crate) fn new(plan: &Plan, sizes: Sizes) -> Result<Self> {
+    /// Allocates the storage `plan` executes in, taking the page buffer and
+    /// coverage of `previous` where they were sized alike; preparation has
+    /// charged [`Sizes::bytes`] before.
+    pub(crate) fn new(plan: &Plan, sizes: Sizes, previous: Option<Self>) -> Result<Self> {
         let pixels = sizes.width.saturating_mul(sizes.rows);
+        let (page, coverage) = kept(previous, (sizes.rows, pixels));
         let (format, layout) = plan.groups.first().map_or(
             (
                 Format::F64,
@@ -416,13 +465,13 @@ impl Workspace {
             matches!(&item.kind, ItemKind::Mark(mark) if matches!(mark.boundary, Boundary::Shape(_)))
         });
         Ok(Self {
-            page: PageBuffer::new(format, pixels, layout)?,
+            page: PageBuffer::new(format, pixels, layout, page)?,
             extents: Extents::new(sizes.rows)?,
             wide,
             levels,
             bytes,
             masks,
-            coverage: warm_coverage(sizes),
+            coverage: coverage.unwrap_or_else(|| warm_coverage(sizes)),
             // Only a shading pattern's outline needs a second coverage.
             boundary: (
                 if outlines {
@@ -458,7 +507,6 @@ impl Workspace {
     }
 
     /// Bytes retained.
-    #[cfg(test)]
     pub(crate) fn bytes(&self) -> usize {
         let f64s = self.wide.capacity()
             + self
@@ -500,31 +548,31 @@ impl Workspace {
     }
 }
 
+/// The page buffer of `previous` and its coverage, emptied, where it was
+/// sized for `capacity` rows and cells.
+fn kept(
+    previous: Option<Workspace>,
+    capacity: (usize, usize),
+) -> (Option<PageBuffer>, Option<BandCoverage>) {
+    previous.map_or((None, None), |previous| {
+        let mut coverage = previous.coverage;
+        coverage.clear();
+        let coverage = (previous.capacity == capacity).then_some(coverage);
+        (Some(previous.page), coverage)
+    })
+}
+
 /// A coverage buffer grown once to the largest band of one mark (a span
 /// per pixel), so that rasterization does not allocate.
 fn warm_coverage(sizes: Sizes) -> BandCoverage {
     let cells = sizes.width.saturating_mul(sizes.rows);
-    let spare = SPARE.with(|spare| {
-        let mut spare = spare.borrow_mut();
-        match spare.coverage.take() {
-            Some(((rows, size), coverage)) if rows == sizes.rows && size == cells => Some(coverage),
-            other => {
-                spare.coverage = other;
-                None
-            }
-        }
-    });
-    if let Some(mut coverage) = spare {
-        coverage.clear();
-        return coverage;
-    }
     let capacity = pagura_raster::Capacity {
         rows: sizes.rows,
         spans: cells,
         cells,
     };
     // Charged by preparation already.
-    let mut free = pagura_core::Meter::new(usize::MAX, "coverage bytes");
+    let mut free = Meter::new(usize::MAX, "coverage bytes");
     BandCoverage::with_capacity(capacity, &mut free).unwrap_or_default()
 }
 
@@ -538,14 +586,14 @@ mod tests {
             process: pagura_color::Process::Rgb,
             spots: 0,
         };
-        let mut page = PageBuffer::new(Format::N16, 2, layout).unwrap();
+        let mut page = PageBuffer::new(Format::N16, 2, layout, None).unwrap();
         let mut extents = Extents::new(1).unwrap();
         page.reset(&mut extents, (2, 2), [10, 20, 30, 40], layout);
         let PageBuffer::N16(words) = &page else {
             unreachable!()
         };
         assert_eq!(words[1], [2570, 5140, 7710, 10280]);
-        let mut wide = PageBuffer::new(Format::F64, 2, layout).unwrap();
+        let mut wide = PageBuffer::new(Format::F64, 2, layout, None).unwrap();
         wide.reset(&mut extents, (2, 2), [10, 20, 30, 40], layout);
         let PageBuffer::F64(values) = &wide else {
             unreachable!()

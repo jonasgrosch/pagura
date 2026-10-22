@@ -62,8 +62,13 @@ impl Executor<'_> {
             }
             Some(cover) => {
                 let mut coverage = std::mem::take(&mut self.ws.coverage);
-                self.producer
-                    .rasterize(cover.shape, cover.clip, self.band, &mut coverage);
+                self.producer.rasterize(
+                    self.rasterizer,
+                    cover.shape,
+                    cover.clip,
+                    self.band,
+                    &mut coverage,
+                );
                 for row in coverage.rows() {
                     if row.y < rect.y0 || row.y >= rect.y1 {
                         continue;

@@ -31,7 +31,6 @@ impl Active {
     }
 
     /// Bytes retained.
-    #[cfg(test)]
     pub(crate) fn bytes(&self) -> usize {
         self.list.capacity() * size_of::<u32>()
     }

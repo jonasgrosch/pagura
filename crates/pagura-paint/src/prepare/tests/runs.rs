@@ -6,7 +6,7 @@ use crate::plan::ItemKind;
 use crate::prepare::planner::runs::RUNS;
 use crate::request::{FastParams, RenderRequest};
 use crate::testing::{Build, check, index, mark, rect_path};
-use crate::{Charges, PreparedScene};
+use crate::{Charges, PreparedScene, Scratch};
 use pagura_core::{Limits, Position, Store};
 use pagura_interpret::{
     BlendMode, Composite, GlyphSource, GlyphsNode, GroupAttributes, GroupId, MarkInfo, MaskKind,
@@ -109,7 +109,17 @@ fn render(b: &Build, request: &RenderRequest, backend: Backend) -> (Vec<u8>, Cha
 
 /// [`render`] with the band rasterizer and `store`.
 fn render_in(b: &Build, request: &RenderRequest, store: &Store) -> (Vec<u8>, Charges) {
-    let mut prepared = crate::prepare(&b.scene, request, store, &Limits::default())
+    render_with(b, request, store, &mut Scratch::default())
+}
+
+/// [`render_in`] in `scratch`.
+fn render_with(
+    b: &Build,
+    request: &RenderRequest,
+    store: &Store,
+    scratch: &mut Scratch,
+) -> (Vec<u8>, Charges) {
+    let prepared = crate::prepare(&b.scene, request, store, &Limits::default())
         .unwrap_or_else(|e| panic!("{e}"));
     let region = request.region;
     let mut target = Pixmap::new(
@@ -119,8 +129,11 @@ fn render_in(b: &Build, request: &RenderRequest, store: &Store) -> (Vec<u8>, Cha
         usize::MAX,
     )
     .unwrap_or_else(|e| panic!("{e}"));
-    prepared.render(&mut target);
-    let (used, reserved) = (prepared.usage(), prepared.charges());
+    let mut rendering = prepared
+        .with_scratch(scratch)
+        .unwrap_or_else(|e| panic!("{e}"));
+    rendering.render(&mut target);
+    let (used, reserved) = (rendering.usage(), prepared.charges());
     assert!(
         used.render_bytes() <= reserved.render_bytes()
             && used.render_work() <= reserved.render_work()
@@ -404,10 +417,10 @@ fn kept_glyph_edges_change_nothing() {
     }
 }
 
-/// A rasterizer kept from an earlier render of the same area, whatever
-/// that render drew, renders as a new one and charges as much.
+/// Scratch kept from an earlier render of the same area, whatever that
+/// render drew, renders as new scratch.
 #[test]
-fn a_kept_rasterizer_renders_as_a_new_one() {
+fn kept_scratch_renders_as_new_scratch() {
     let (mut b, [_, ink]) = page();
     run(
         &mut b,
@@ -426,15 +439,10 @@ fn a_kept_rasterizer_renders_as_a_new_one() {
     for fast in [FastParams::EXACT, FastParams::COMPETITIVE] {
         let mut request = b.request(b.page(), 16);
         request.fast = fast;
-        // A new thread has no rasterizer kept.
-        let new = std::thread::scope(|scope| {
-            scope
-                .spawn(|| render(&b, &request, Backend::Raster))
-                .join()
-                .unwrap_or_else(|_| panic!("render panicked"))
-        });
-        render(&earlier, &request, Backend::Raster);
-        let kept = render(&b, &request, Backend::Raster);
+        let new = render_in(&b, &request, &Store::new(1 << 20));
+        let mut scratch = Scratch::default();
+        render_with(&earlier, &request, &Store::new(1 << 20), &mut scratch);
+        let kept = render_with(&b, &request, &Store::new(1 << 20), &mut scratch);
         assert_eq!(kept, new, "{fast:?}");
     }
 }

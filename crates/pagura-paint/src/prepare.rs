@@ -15,27 +15,38 @@ mod overprint;
 pub(crate) mod planner;
 mod storage;
 
-pub(crate) use backend::{Backend, PaintRequest, Prepared, Producer, Raster};
+pub(crate) use backend::{Backend, PaintRequest, Prepared, Producer, Raster, Storage};
 
-use crate::execute::{Destination, Executor, Workspace};
+use crate::execute::{Destination, Executing, Executor, Scratch, Workspace};
 use crate::plan::{MAX_BAND_HEIGHT, Plan};
 use crate::request::RenderRequest;
 use pagura_core::{Diagnostic, Error, Limits, Meter, Result, Store};
 use pagura_interpret::Scene;
-use pagura_raster::{Area, DeviceRect, GlyphOrigins, Pixmap};
+use pagura_raster::{Area, BandRasterizer, DeviceRect, GlyphOrigins, Pixmap};
 
 /// A scene prepared for one request: every mark that meets the region
 /// culled, validated, reserved and binned to bands, with its coverage
 /// source and prepared paint, and every buffer's storage format chosen.
 ///
-/// Rendering it cannot fail; it can be rendered any number of times.
+/// It holds no storage of rendering: a render takes that from a caller's
+/// [`Scratch`] ([`Self::with_scratch`]), so the scene is shared, immutable,
+/// and rendered any number of times.
 #[derive(Debug)]
 pub struct PreparedScene {
     plan: Plan,
     producer: Box<dyn Producer>,
-    workspace: Workspace,
     repairs: Vec<Diagnostic>,
     charges: Charges,
+}
+
+/// A prepared scene with scratch storage sized for it. Rendering cannot
+/// fail.
+#[derive(Debug)]
+pub struct Rendering<'a> {
+    plan: &'a Plan,
+    producer: &'a dyn Producer,
+    workspace: &'a mut Workspace,
+    rasterizer: &'a mut BandRasterizer,
 }
 
 /// How far a render got.
@@ -125,6 +136,16 @@ pub fn prepare(
     store: &Store,
     limits: &Limits,
 ) -> Result<PreparedScene> {
+    prepare_in(scene, request, (store, limits), Storage::default())
+}
+
+/// [`prepare`] in the storage of an earlier prepared scene.
+pub(crate) fn prepare_in(
+    scene: &Scene,
+    request: &RenderRequest,
+    (store, limits): (&Store, &Limits),
+    storage: Storage,
+) -> Result<PreparedScene> {
     let origins = if request.fast.glyph_origin_bins {
         GlyphOrigins::Binned
     } else {
@@ -134,10 +155,12 @@ pub fn prepare(
         scene,
         request,
         (store, limits),
-        Raster::new(store, limits, origins).with_scale({
-            let t = request.transform;
-            (t.a * t.d - t.b * t.c).abs().sqrt()
-        }),
+        Raster::new(store, limits, origins)
+            .with_scale({
+                let t = request.transform;
+                (t.a * t.d - t.b * t.c).abs().sqrt()
+            })
+            .with_storage(storage),
     )
 }
 
@@ -155,7 +178,6 @@ pub(crate) fn prepare_with<B: Backend>(
     Ok(PreparedScene {
         plan: finished.plan,
         producer: finished.producer,
-        workspace: finished.workspace,
         repairs: finished.repairs,
         charges: budget.charges(),
     })
@@ -214,6 +236,40 @@ impl PreparedScene {
         &self.repairs
     }
 
+    /// The background as the render stores it, premultiplied.
+    pub fn background(&self) -> [u8; 4] {
+        self.plan.output.background
+    }
+
+    /// Renders of this scene in `scratch`, sized for it: the one step of
+    /// rendering that allocates.
+    ///
+    /// # Errors
+    ///
+    /// A `Limit` error when the storage cannot be allocated.
+    pub fn with_scratch<'a>(&'a self, scratch: &'a mut Scratch) -> Result<Rendering<'a>> {
+        let (workspace, rasterizer) = scratch.fit(&self.plan)?;
+        Ok(Rendering {
+            plan: &self.plan,
+            producer: self.producer.as_ref(),
+            workspace,
+            rasterizer,
+        })
+    }
+
+    /// The storage of its shapes and glyph masks, for the next preparation.
+    pub(crate) fn into_storage(self) -> Storage {
+        self.producer.into_storage()
+    }
+
+    /// The plan, for tests.
+    #[cfg(test)]
+    pub(crate) fn plan(&self) -> &Plan {
+        &self.plan
+    }
+}
+
+impl Rendering<'_> {
     /// Renders every band into `target`, whose pixel `(0, 0)` is the
     /// region's first pixel and which covers the region.
     pub fn render(&mut self, target: &mut Pixmap) {
@@ -227,8 +283,8 @@ impl PreparedScene {
         target: &mut Pixmap,
         stop: impl FnMut(u32) -> bool,
     ) -> Completion {
-        self.bands(stop, |plan, ws, producer, band| {
-            Executor::band(plan, ws, producer, band, Destination::Pixmap(target));
+        self.bands(stop, |executor, band| {
+            Executor::band(executor, band, Destination::Pixmap(target));
         })
     }
 
@@ -241,31 +297,29 @@ impl PreparedScene {
         rows: &mut Vec<u8>,
         stop: impl FnMut(u32) -> bool,
     ) -> Completion {
-        self.bands(stop, |plan, ws, producer, band| {
-            Executor::band(plan, ws, producer, band, Destination::Rows(rows));
+        self.bands(stop, |executor, band| {
+            Executor::band(executor, band, Destination::Rows(rows));
         })
-    }
-
-    /// The background as the render stores it, premultiplied.
-    pub fn background(&self) -> [u8; 4] {
-        self.plan.output.background
     }
 
     fn bands(
         &mut self,
         mut stop: impl FnMut(u32) -> bool,
-        mut band: impl FnMut(&Plan, &mut Workspace, &mut dyn Producer, u32),
+        mut band: impl FnMut(Executing<'_>, u32),
     ) -> Completion {
+        let plan = self.plan;
         self.workspace.restart();
-        for index in self.plan.area.bands() {
-            let row = self.plan.area.band_rows(index).start;
+        for index in plan.area.bands() {
+            let row = plan.area.band_rows(index).start;
             if stop(row) {
                 return Completion::Stopped { row };
             }
             band(
-                &self.plan,
-                &mut self.workspace,
-                self.producer.as_mut(),
+                (
+                    plan,
+                    &mut *self.workspace,
+                    (self.producer, &mut *self.rasterizer),
+                ),
                 index,
             );
         }
@@ -273,20 +327,16 @@ impl PreparedScene {
     }
 
     /// The work and executor-side function evaluations of the last render,
-    /// and the bytes retained: what [`Self::charges`] bounds.
+    /// and the bytes retained: what [`PreparedScene::charges`] bounds.
     #[cfg(test)]
     pub(crate) fn usage(&self) -> Charges {
         let usage = self.workspace.usage;
         Charges {
-            render_bytes: self.workspace.bytes() + finish::plan_bytes(&self.plan),
+            render_bytes: self.workspace.bytes()
+                + self.rasterizer.retained_bytes()
+                + finish::plan_bytes(self.plan),
             render_work: usage.work,
             function_work: usage.functions,
         }
-    }
-
-    /// The plan, for tests.
-    #[cfg(test)]
-    pub(crate) fn plan(&self) -> &Plan {
-        &self.plan
     }
 }

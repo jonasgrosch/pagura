@@ -7,10 +7,10 @@ use pagura_document::forms::FormFiller;
 use pagura_document::{Document, Page};
 use pagura_extract::{PositionedText, TextPage};
 use pagura_interpret::Scene;
-use pagura_paint::Completion;
+use pagura_paint::{Completion, Scratch};
 use pagura_raster::Pixmap;
 use pagura_text::Provider;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 /// A document, its font provider and the [`Store`] that holds everything
 /// rendering its pages reuses: recorded scenes, decoded images, colour
@@ -20,10 +20,15 @@ use std::sync::Arc;
 /// resolution, region or set of fast parameters. Dropping the context
 /// releases the store; the document's own object caches stay with the
 /// document (ADR 0012). The context is `Send + Sync`.
+///
+/// It also keeps the scratch storage of its last render for the next, while
+/// the store's capacity holds it; a render that finds it taken by another
+/// thread makes its own.
 pub struct RenderContext {
     document: Arc<Document>,
     provider: Option<Arc<dyn Provider>>,
     store: Store,
+    scratch: Mutex<Option<Scratch>>,
 }
 
 impl std::fmt::Debug for RenderContext {
@@ -32,7 +37,7 @@ impl std::fmt::Debug for RenderContext {
             .field("document", &self.document)
             .field("provider", &self.provider.is_some())
             .field("store", &self.store)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -87,6 +92,7 @@ impl RenderContext {
             document,
             provider,
             store: Store::new(capacity),
+            scratch: Mutex::new(None),
         }
     }
 
@@ -223,7 +229,17 @@ impl RenderContext {
         tile: Option<Tile>,
         stop: impl FnMut(u32) -> bool,
     ) -> Result<(Pixmap, Completion)> {
-        self.renderer().render(scene, options, tile, stop)
+        let kept = self.scratch.lock().ok().and_then(|mut kept| kept.take());
+        let mut scratch = kept.unwrap_or_default();
+        let rendered = self
+            .renderer()
+            .render(scene, (options, tile), &mut scratch, stop);
+        if scratch.retained_bytes() <= self.store.capacity()
+            && let Ok(mut kept) = self.scratch.lock()
+        {
+            *kept = Some(scratch);
+        }
+        rendered
     }
 
     /// The positioned text of `page` in reading order with its logical
