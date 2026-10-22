@@ -80,8 +80,9 @@ pub(super) struct Lanes {
     /// The largest code.
     maximum: u8,
     /// The value of a code shared by every lane of opaque lanes that follow
-    /// their own component.
+    /// their own component, and that value of every code.
     direct: Option<Affine>,
+    codes: Option<Box<[f64; 256]>>,
     /// The same, shared by opaque lanes that all follow the one component.
     replicated: Option<Affine>,
     /// Colour channels: all lanes when opaque, all but alpha and shape
@@ -150,6 +151,13 @@ impl Lanes {
         let replicated = (opaque && single && shared)
             .then(|| affine.first().copied())
             .flatten();
+        let codes = direct.map(|map| {
+            let mut codes = Box::new([0.0; 256]);
+            for (code, value) in (0..=u8::MAX).zip(codes.iter_mut()) {
+                *value = map.apply(f64::from(code));
+            }
+            codes
+        });
         Some(Self {
             component: component.to_vec(),
             table,
@@ -157,6 +165,7 @@ impl Lanes {
             ends,
             maximum,
             direct,
+            codes,
             replicated,
             channels,
             opaque,
@@ -318,11 +327,11 @@ impl Lanes {
         out: &mut SpanColors,
         shape: Option<&mut Vec<f64>>,
     ) {
-        if let Some(map) = self.direct.filter(|_| n == self.table.len()) {
+        if let Some(values) = self.codes.as_deref().filter(|_| n == self.table.len()) {
             // Every code becomes its colour value alike.
             out.colors.clear();
             out.colors
-                .extend(codes.iter().map(|&code| map.apply(f64::from(code))));
+                .extend(codes.iter().map(|&code| values[usize::from(code)]));
             opaque_shape(codes.len() / n, shape);
             return;
         }

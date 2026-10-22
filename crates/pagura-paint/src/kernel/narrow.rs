@@ -236,21 +236,45 @@ pub(crate) fn dynamic_n16(pixels: &mut [[u16; 4]], colors: &Colors<'_>, alpha: &
     )]
     let round = |value: f64| value.clamp(0.0, 65535.0).round() as u16;
     if let Colors::Strided { values, stride: 3 } = *colors
-        && alpha.iter().all(|&a| a == 1.0)
+        && full(alpha)
     {
         // At full opacity `(1 − a)·x + a·t` is `t`. `max` and `min` clamp
-        // as `clamp` does, with a NaN to zero, which is also its word.
+        // as `clamp` does, with a NaN to zero, which is also its word; the
+        // target then needs no clamp to the word range.
         #[expect(
             clippy::manual_clamp,
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
             reason = "unlike clamp, max and min vectorize, and NaN gives the same word"
         )]
-        let word = |value: f64| round(value.max(0.0).min(1.0) * 65535.0);
-        for (pixel, color) in pixels.iter_mut().zip(values.as_chunks::<3>().0) {
+        let word = |value: f64| (value.max(0.0).min(1.0) * 65535.0).round() as u16;
+        // Eight pixels at a time: their 24 values convert as one run.
+        let (blocks, last) = pixels.as_chunks_mut::<8>();
+        let (colors, rest) = values.as_chunks::<24>();
+        for (block, color) in blocks.iter_mut().zip(colors) {
+            let mut words = [0u16; 24];
+            for (word_value, &value) in words.iter_mut().zip(color) {
+                *word_value = word(value);
+            }
+            for (pixel, words) in block.iter_mut().zip(words.as_chunks::<3>().0) {
+                *pixel = [words[0], words[1], words[2], u16::MAX];
+            }
+        }
+        for (pixel, color) in last.iter_mut().zip(rest.as_chunks::<3>().0) {
             *pixel = [word(color[0]), word(color[1]), word(color[2]), u16::MAX];
         }
         return;
     }
     dynamic(pixels, colors, alpha, 65535.0, round, f64::from);
+}
+
+/// Whether every opacity of `alpha` is 1.
+#[expect(
+    clippy::needless_bitwise_bool,
+    reason = "without a branch per value the test vectorizes"
+)]
+fn full(alpha: &[f64]) -> bool {
+    alpha.iter().fold(true, |all, &a| all & (a == 1.0))
 }
 
 /// A dynamic store into F32 levels: `(1 − a)·x + a·t` for the target
@@ -361,10 +385,22 @@ pub(crate) fn store_u8(pixels: &mut [[u8; 4]], colors: &Colors<'_>, alpha: &[f64
                 over(pixel, source, a);
             }
         }
-        Colors::Strided { values, stride: 3 } if alpha.iter().all(|&a| a == 1.0) => {
-            // At full opacity a store takes the source's bytes.
+        Colors::Strided { values, stride: 3 } if full(alpha) => {
+            // At full opacity a store takes the source's bytes; eight pixels
+            // at a time, their 24 values rounded as one run.
             let quantize = pagura_raster::quantize_unit;
-            for (pixel, color) in pixels.iter_mut().zip(values.as_chunks::<3>().0) {
+            let (blocks, last) = pixels.as_chunks_mut::<8>();
+            let (colors, rest) = values.as_chunks::<24>();
+            for (block, color) in blocks.iter_mut().zip(colors) {
+                let mut bytes = [0u8; 24];
+                for (byte, &value) in bytes.iter_mut().zip(color) {
+                    *byte = quantize(value);
+                }
+                for (pixel, bytes) in block.iter_mut().zip(bytes.as_chunks::<3>().0) {
+                    *pixel = [bytes[0], bytes[1], bytes[2], 255];
+                }
+            }
+            for (pixel, color) in last.iter_mut().zip(rest.as_chunks::<3>().0) {
                 *pixel = [
                     quantize(color[0]),
                     quantize(color[1]),

@@ -382,37 +382,36 @@ impl Separable {
             let n = rows.width();
             let across = row(&self.geometry, self.taps, y);
             gathered.clear();
-            gathered.resize(len * n, R::Value::default());
             let (low, high) = cells.iter().fold((u32::MAX, 0), |(low, high), &cell| {
                 (low.min(cell), high.max(cell))
             });
             if low <= high && across.first < across.end {
                 let (first, end) = (index(low), index(high) + 1);
                 let values = rows.row(index(across.first), (first, end), cache);
-                if consecutive {
+                if consecutive && let Some(values) = values.get(..len * n) {
                     // One sample per pixel in order: the row itself.
-                    if let Some(values) = values.get(..gathered.len()) {
-                        gathered.copy_from_slice(values);
-                    }
-                } else {
-                    let cells = (values, cells, first);
-                    match n {
-                        1 => pick::<1, R::Value>(cells, gathered),
-                        2 => pick::<2, R::Value>(cells, gathered),
-                        3 => pick::<3, R::Value>(cells, gathered),
-                        4 => pick::<4, R::Value>(cells, gathered),
-                        _ => {
-                            let (values, cells, first) = cells;
-                            for (out, &cell) in gathered.chunks_exact_mut(n.max(1)).zip(cells) {
-                                let start = (index(cell) - first) * n;
-                                if let Some(values) = values.get(start..start + n) {
-                                    out.copy_from_slice(values);
-                                }
+                    finish(values);
+                    return;
+                }
+                gathered.resize(len * n, R::Value::default());
+                let cells = (values, cells, first);
+                match n {
+                    1 => pick::<1, R::Value>(cells, gathered),
+                    2 => pick::<2, R::Value>(cells, gathered),
+                    3 => pick::<3, R::Value>(cells, gathered),
+                    4 => pick::<4, R::Value>(cells, gathered),
+                    _ => {
+                        let (values, cells, first) = cells;
+                        for (out, &cell) in gathered.chunks_exact_mut(n.max(1)).zip(cells) {
+                            let start = (index(cell) - first) * n;
+                            if let Some(values) = values.get(start..start + n) {
+                                out.copy_from_slice(values);
                             }
                         }
                     }
                 }
             }
+            gathered.resize(len * n, R::Value::default());
             finish(gathered);
         });
     }
@@ -612,7 +611,11 @@ impl Span<'_> {
     /// Writes values `offset .. offset + N` of each covered pixel: `map` of
     /// `sum` of its footprint's cells of `reduced`, scaled by both
     /// normalizations.
-    #[inline]
+    #[expect(
+        clippy::inline_always,
+        reason = "called per pixel; a call per pixel costs a quarter of the span"
+    )]
+    #[inline(always)]
     fn pixels<const N: usize, T>(
         &self,
         reduced: &[T],
@@ -670,7 +673,11 @@ fn strided<const N: usize, T: Copy + Default>(
 /// The sum of `cells`: the first weighted by the footprint's first weight,
 /// those between added, the last weighted by its last weight, left to
 /// right.
-#[inline]
+#[expect(
+    clippy::inline_always,
+    reason = "called per pixel; a call per pixel costs a quarter of the span"
+)]
+#[inline(always)]
 fn weighted<const N: usize>(
     mut cells: impl DoubleEndedIterator<Item = [f64; N]>,
     foot: &Footprint,
@@ -694,7 +701,11 @@ fn weighted<const N: usize>(
 }
 
 /// [`weighted`] of whole cells, by their count.
-#[inline]
+#[expect(
+    clippy::inline_always,
+    reason = "called per pixel; a call per pixel costs a quarter of the span"
+)]
+#[inline(always)]
 fn line<const N: usize>(cells: &[[f64; N]], foot: &Footprint) -> [f64; N] {
     let (first, last) = (foot.first_weight, foot.last_weight);
     match cells {
@@ -719,7 +730,11 @@ fn line<const N: usize>(cells: &[[f64; N]], foot: &Footprint) -> [f64; N] {
 }
 
 /// The sum of whole cells of exact sums.
-#[inline]
+#[expect(
+    clippy::inline_always,
+    reason = "called per pixel; a call per pixel costs a quarter of the span"
+)]
+#[inline(always)]
 fn integers<const N: usize, V: Value>(cells: impl Iterator<Item = [V::Sum; N]>) -> [f64; N] {
     let mut total = [V::Sum::default(); N];
     for cell in cells {
