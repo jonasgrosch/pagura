@@ -97,8 +97,6 @@ pub(crate) struct Planner<'s> {
     /// What the placements of the glyph run being gathered share, once one
     /// of them has been prepared in full.
     memo: Option<runs::Memo>,
-    /// The edges handle of each source of the glyph node being prepared.
-    glyph_edges: Vec<Option<u32>>,
 }
 
 /// What the walk builds.
@@ -228,7 +226,6 @@ impl<'s> Planner<'s> {
             run: None,
             gathered: 0,
             memo: None,
-            glyph_edges: Vec::new(),
         })
     }
 

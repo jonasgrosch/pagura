@@ -507,3 +507,81 @@ fn placement_byte_errors_are_the_same_with_cold_and_warm_glyph_edges() {
         );
     }
 }
+
+#[test]
+fn source_lookup_refusal_uses_the_first_placement_position_at_every_band_height() {
+    let mut b = Build::new(16.0, 16.0);
+    let ink = b.rgb([0.0; 3]);
+    b.node(
+        PAGE,
+        Node::Glyphs(GlyphsNode {
+            sources: vec![source(3, [2.0, 3.0]); 1024],
+            placements: vec![Placement {
+                source: 0,
+                origin: Point::new(2.0, 3.0),
+            }],
+            positions: vec![(0, Position::Buffer(201))],
+            paint: ink,
+            mark: mark(StateId(0)),
+        }),
+    );
+    let limits = Limits {
+        render_bytes: 4096,
+        ..Limits::default()
+    };
+    for height in HEIGHTS {
+        let error = b
+            .prepare(&b.request(b.page(), height), &limits)
+            .unwrap_err();
+        assert_eq!(
+            (error.kind, error.message, error.position),
+            (
+                pagura_core::ErrorKind::Limit,
+                "render memory budget exceeded",
+                Position::Buffer(201)
+            )
+        );
+    }
+    // Invalid source references precede any source-cache reservation.
+    let Node::Glyphs(node) = &mut b.scene.nodes[0] else {
+        panic!("expected glyphs")
+    };
+    node.placements[0].source = 1024;
+    let error = b.prepare(&b.request(b.page(), 1), &limits).unwrap_err();
+    assert_eq!(
+        (error.kind, error.message, error.position),
+        (
+            pagura_core::ErrorKind::InvalidArgument,
+            "glyph source out of range",
+            Position::Buffer(201)
+        )
+    );
+}
+
+#[test]
+fn source_lookup_capacity_is_released_before_final_reservations() {
+    let prepare = |count, placements| {
+        let mut b = Build::new(16.0, 16.0);
+        let ink = b.rgb([0.0; 3]);
+        b.node(
+            PAGE,
+            Node::Glyphs(GlyphsNode {
+                sources: vec![source(3, [2.0, 3.0]); count],
+                placements,
+                positions: Vec::new(),
+                paint: ink,
+                mark: mark(StateId(0)),
+            }),
+        );
+        let request = b.request(b.page(), 1);
+        b.prepare(&request, &Limits::default()).unwrap().charges()
+    };
+    let placements = || {
+        vec![Placement {
+            source: 0,
+            origin: Point::new(2.0, 3.0),
+        }]
+    };
+    assert_eq!(prepare(1, placements()), prepare(1024, placements()));
+    assert_eq!(prepare(0, Vec::new()), prepare(1024, Vec::new()));
+}

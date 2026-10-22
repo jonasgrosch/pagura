@@ -10,7 +10,7 @@ mod patterns;
 mod runs;
 
 use crate::execute::Rendering;
-use crate::plan::{Conversion, GroupPlan, Item, MaskPlan, Plan};
+use crate::plan::{Conversion, Glyph, GroupPlan, Item, ItemKind, MaskPlan, Plan};
 use crate::request::RenderRequest;
 use crate::source::Source;
 use crate::testing::Build;
@@ -68,9 +68,18 @@ fn plan_bytes(plan: &Plan) -> usize {
         .iter()
         .map(|g| (g.items.capacity() + g.order.capacity()) * size_of::<u32>())
         .sum();
+    let glyphs: usize = plan
+        .items
+        .iter()
+        .map(|item| match &item.kind {
+            ItemKind::Run(run) => run.glyphs.capacity() * size_of::<Glyph>(),
+            _ => 0,
+        })
+        .sum();
     plan.items.capacity() * size_of::<Item>()
         + plan.groups.capacity() * size_of::<GroupPlan>()
         + groups
+        + glyphs
         + plan.masks.capacity() * size_of::<MaskPlan>()
         + plan.paints.capacity() * size_of::<Source>()
         + plan.conversions.capacity() * size_of::<Conversion>()

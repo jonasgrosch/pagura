@@ -657,7 +657,11 @@ impl Fixture {
             })
             .collect();
         if alone {
-            crate::prepare::planner::runs::mark_alone(&mut glyphs);
+            crate::prepare::planner::runs::mark_alone(
+                &mut glyphs,
+                &mut Meter::new(usize::MAX, "test bytes"),
+            )
+            .unwrap();
         }
         let union = bounds
             .iter()

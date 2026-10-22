@@ -20,6 +20,7 @@ use pagura_interpret::{
     Pen, ShadingNode, ShadingPaint, StrokeNode, TilingPaint,
 };
 use pagura_raster::{FillRegion, FillRule, Path, Point, ShapeOptions, Transform};
+use std::cell::Cell;
 use std::sync::Arc;
 
 /// Bytes charged per prepared paint, besides what its source retains.
@@ -32,7 +33,7 @@ enum Geometry<'a> {
     /// A stroke.
     Stroke(&'a Path, &'a Pen),
     /// A glyph placement: its device linear map and origin.
-    Glyph(&'a GlyphSource, [f64; 4], Point, usize),
+    Glyph(&'a GlyphSource, [f64; 4], Point, &'a Cell<Option<u32>>),
     /// An image's unit square under this transform.
     Unit(Transform),
     /// A shading's `BBox` under its transform, or its clip region.
@@ -483,14 +484,12 @@ impl Planner<'_> {
                 self.shapes
                     .stroke(path, (pen, inverse), scope.transform, &options)?
             }
-            Geometry::Glyph(source, linear, origin, index) => {
-                let mut edges = self.glyph_edges.get(*index).copied().flatten();
+            Geometry::Glyph(source, linear, origin, handle) => {
+                let mut edges = handle.get();
                 let prepared =
                     self.shapes
                         .glyph((source, &mut edges), *linear, *origin, &options)?;
-                if let Some(slot) = self.glyph_edges.get_mut(*index) {
-                    *slot = edges;
-                }
+                handle.set(edges);
                 prepared
             }
             Geometry::Unit(transform) => self.shapes.fill(
