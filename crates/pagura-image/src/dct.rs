@@ -49,7 +49,7 @@ pub struct DctImage {
     pub cells: u8,
 }
 
-pub(crate) use deferred::{Deferred, decode_deferred};
+pub(crate) use deferred::{Deferred, Native, decode_deferred};
 
 struct Decoder {
     /// Whether baseline frames decode into native planes.
@@ -158,13 +158,7 @@ fn decode_inner(
     diagnostics: &mut Diagnostics,
     cells: usize,
 ) -> Result<DctImage> {
-    let mut decoder = run(
-        data,
-        color_transform,
-        limits,
-        diagnostics,
-        (cells, false, None),
-    )?;
+    let mut decoder = run(data, color_transform, limits, diagnostics, (cells, None))?;
     let mut frame = decoder
         .frame
         .take()
@@ -174,19 +168,19 @@ fn decode_inner(
 
 /// Parses and decodes every segment through EOI, keeping `cells` samples
 /// per block axis. With `native`, baseline frames decode into native planes
-/// (see [`deferred`]), in storage from its buffers when given.
+/// (see [`deferred`]) as its options say.
 fn run(
     data: &[u8],
     color_transform: Option<i64>,
     limits: &Limits,
     diagnostics: &mut Diagnostics,
-    (cells, native, buffers): (usize, bool, Option<&crate::deferred::SampleBuffers>),
+    (cells, native): (usize, Option<Native<'_>>),
 ) -> Result<Decoder> {
     if data.get(..2) != Some(&[255, 216]) {
         return Err(Error::syntax("missing JPEG SOI"));
     }
     let mut decoder = Decoder {
-        native,
+        native: native.is_some(),
         cells,
         frame: None,
         quant: [None; 4],
@@ -218,8 +212,13 @@ fn run(
                     return Err(Error::syntax("multiple JPEG frames").at(Position::Buffer(at)));
                 }
                 let mut frame = Frame::parse(payload, marker, limits, decoder.cells)?;
-                if native {
-                    deferred::prepare(&mut frame, decoder.adobe, color_transform, limits, buffers)?;
+                if let Some(native) = native {
+                    deferred::prepare(
+                        &mut frame,
+                        (decoder.adobe, color_transform),
+                        limits,
+                        native,
+                    )?;
                 }
                 decoder.frame = Some(frame);
                 Ok(())

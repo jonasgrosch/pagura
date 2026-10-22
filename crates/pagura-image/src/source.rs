@@ -126,6 +126,21 @@ pub enum Layout {
     Native,
 }
 
+/// How decoded samples relate to the image's rows.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Orientation {
+    /// Rows as the image stores them.
+    #[default]
+    Rows,
+    /// Rows and columns exchanged: sample (`x`, `y`) of the decoded image
+    /// is sample (`y`, `x`) of the image, as
+    /// [`DecodedImage::transposed`](crate::DecodedImage::transposed) gives
+    /// it. A JPEG decoded into component planes stores its blocks
+    /// exchanged as it decodes them, which costs no extra pass.
+    Transposed,
+}
+
 /// A rectangle of source samples, `x0..x1` × `y0..y1`, top row first.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SampleRect {
@@ -150,6 +165,8 @@ pub struct DecodeRequest {
     pub region: Option<SampleRect>,
     /// The sample layout.
     pub layout: Layout,
+    /// Whether rows and columns are exchanged.
+    pub orientation: Orientation,
 }
 
 impl DecodeRequest {
@@ -158,6 +175,7 @@ impl DecodeRequest {
         reduce: Reduce::Full,
         region: None,
         layout: Layout::Interleaved,
+        orientation: Orientation::Rows,
     };
 
     /// A request for `reduce` over `region` in `layout`.
@@ -166,6 +184,16 @@ impl DecodeRequest {
             reduce,
             region,
             layout,
+            orientation: Orientation::Rows,
+        }
+    }
+
+    /// The same request with samples in `orientation`.
+    #[must_use]
+    pub fn with_orientation(self, orientation: Orientation) -> Self {
+        Self {
+            orientation,
+            ..self
         }
     }
 }
@@ -431,7 +459,15 @@ impl ImageSource {
                 source_values.saturating_mul(64),
             ),
         };
-        let bytes = output.saturating_add(alpha).saturating_add(working);
+        // Samples exchanged after decoding are held twice for a moment.
+        let exchange = match request.orientation {
+            Orientation::Transposed => output.saturating_add(alpha),
+            Orientation::Rows => 0,
+        };
+        let bytes = output
+            .saturating_add(alpha)
+            .saturating_add(working)
+            .saturating_add(exchange);
         (saturate(bytes), saturate(work))
     }
 
@@ -453,7 +489,7 @@ impl ImageSource {
         let result = codec::decode(
             &self.header,
             &self.data,
-            self.layout(request),
+            (self.layout(request), request.orientation),
             limits,
             &mut diagnostics,
         );

@@ -81,13 +81,12 @@ struct MaskSampling {
     scales_shape: bool,
 }
 
-/// A decoded image in the store: the source, the reduction, the region
-/// and the layout, and whether rows and columns are exchanged.
+/// A decoded image in the store: the source and the request (reduction,
+/// region, layout and orientation).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct DecodedKey {
     image: ImageId,
     request: DecodeRequest,
-    orientation: Orientation,
 }
 
 /// How stored samples relate to the image's rows.
@@ -531,17 +530,16 @@ fn decode_request(
     (reduce, layout, orientation): (Reduce, Layout, Orientation),
     context: &PaintContext<'_>,
 ) -> Result<Arc<Decoded>> {
-    let request = DecodeRequest::new(reduce, None, layout);
+    let request = DecodeRequest::new(reduce, None, layout).with_orientation(match orientation {
+        Orientation::Rows => pagura_image::Orientation::Rows,
+        Orientation::Transposed => pagura_image::Orientation::Transposed,
+    });
     let key = DecodedKey {
         image: source.id(),
         request,
-        orientation,
     };
     context.store.get_or_build(key, || {
-        let mut decoded = source.decode(&request, context.limits, source.recovery())?;
-        if orientation == Orientation::Transposed {
-            decoded.image = decoded.image.transposed(context.limits)?;
-        }
+        let decoded = source.decode(&request, context.limits, source.recovery())?;
         let bytes = decoded_bytes(&decoded.image);
         Ok(Built {
             value: decoded,

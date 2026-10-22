@@ -17,6 +17,17 @@ use super::{DctImage, Decoder, frame::Frame, frame::Storage};
 use crate::deferred::{Planar, SampleBuffers};
 use pagura_core::{Diagnostics, Error, Limits, Result};
 
+/// How a frame decodes into native planes.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Native<'a> {
+    /// Storage kept from earlier decodes.
+    pub(crate) buffers: Option<&'a SampleBuffers>,
+    /// Samples kept per block axis.
+    pub(crate) cells: usize,
+    /// Whether planes store rows and columns exchanged.
+    pub(crate) transposed: bool,
+}
+
 /// The result of a deferred decode.
 pub(crate) enum Deferred {
     /// A YCbCr frame in its component planes.
@@ -44,7 +55,7 @@ pub(crate) fn decode_deferred(
     data: &[u8],
     color_transform: Option<i64>,
     limits: &Limits,
-    (buffers, cells): (Option<&SampleBuffers>, usize),
+    native: Native<'_>,
     diagnostics: &mut Diagnostics,
 ) -> Option<Deferred> {
     if data.len() > limits.stream_bytes {
@@ -56,7 +67,7 @@ pub(crate) fn decode_deferred(
         color_transform,
         limits,
         &mut scratch,
-        (cells, true, buffers),
+        (native.cells, Some(native)),
     )
     .and_then(|decoder| finish(decoder, color_transform, limits));
     let Ok(Finished::Done(result)) = outcome else {
@@ -92,10 +103,9 @@ fn qualifies(frame: &Frame, adobe: Option<u8>, color_transform: Option<i64>) -> 
 /// Replaces a qualifying frame's sample planes with native planes.
 pub(super) fn prepare(
     frame: &mut Frame,
-    adobe: Option<u8>,
-    color_transform: Option<i64>,
+    (adobe, color_transform): (Option<u8>, Option<i64>),
     limits: &Limits,
-    buffers: Option<&SampleBuffers>,
+    native: Native<'_>,
 ) -> Result<()> {
     if !qualifies(frame, adobe, color_transform) {
         return Err(Error::unsupported(
@@ -116,9 +126,14 @@ pub(super) fn prepare(
     }
     for (index, c) in frame.components.iter_mut().enumerate() {
         c.storage = Storage::Native(Box::new(Plane::new(
-            (c.stride * c.rows, c.stride, frame.cells),
+            plane::Shape {
+                stride: c.stride,
+                rows: c.rows,
+                side: frame.cells,
+                transposed: native.transposed,
+            },
             if index == 0 { 255 } else { 128 },
-            buffers,
+            native.buffers,
         )?));
     }
     Ok(())
@@ -149,10 +164,13 @@ fn gray(frame: &Frame, limits: &Limits) -> Result<DctImage> {
     let Storage::Native(plane) = &frame.components[0].storage else {
         return Err(Error::syntax("missing JPEG component plane"));
     };
-    let (width, height) = (
+    let (mut width, mut height) = (
         super::transform::scaled(frame.width, frame.cells),
         super::transform::scaled(frame.height, frame.cells),
     );
+    if plane.transposed() {
+        (width, height) = (height, width);
+    }
     let count = crate::parameters::budget(width, height, 1, 8, limits)?;
     let rows = height as usize;
     let width = width as usize;
@@ -173,9 +191,17 @@ fn gray(frame: &Frame, limits: &Limits) -> Result<DctImage> {
 }
 
 fn take_planar(frame: &mut Frame) -> Result<Planar> {
+    let transposed = frame
+        .components
+        .iter()
+        .any(|c| matches!(&c.storage, Storage::Native(plane) if plane.transposed()));
     let geometry = std::array::from_fn(|i| {
         let c = &frame.components[i];
-        [c.h, c.v, c.stride * frame.cells]
+        if transposed {
+            [c.v, c.h, c.rows * frame.cells]
+        } else {
+            [c.h, c.v, c.stride * frame.cells]
+        }
     });
     let mut planes = std::array::from_fn(|_| Vec::new());
     let mut dirty = std::array::from_fn(|_| Vec::new());
@@ -188,10 +214,19 @@ fn take_planar(frame: &mut Frame) -> Result<Planar> {
         dirty[i] = plane.take_dirty();
         planes[i] = plane.take_samples();
     }
+    let (width, height) = (
+        super::transform::scaled(frame.width, frame.cells) as usize,
+        super::transform::scaled(frame.height, frame.cells) as usize,
+    );
+    let (width, height, maximum) = if transposed {
+        (height, width, [frame.max_v, frame.max_h])
+    } else {
+        (width, height, [frame.max_h, frame.max_v])
+    };
     Ok(Planar {
-        width: super::transform::scaled(frame.width, frame.cells) as usize,
-        height: super::transform::scaled(frame.height, frame.cells) as usize,
-        maximum: [frame.max_h, frame.max_v],
+        width,
+        height,
+        maximum,
         geometry,
         planes,
         dirty,

@@ -1,7 +1,7 @@
 //! Unit tests of image sources: what interpretation reads without decoding,
 //! drawn-size reductions and independence from the document.
 
-use super::{DecodeRequest, ImageSource, Layout, Reduce, SourceMask};
+use super::{DecodeRequest, ImageSource, Layout, Orientation, Reduce, SourceMask};
 use crate::{ImageKind, MaskKind, Samples};
 use pagura_core::{ObjectId, Recovery, Value};
 use pagura_document::{Document, OpenOptions};
@@ -229,7 +229,7 @@ fn frame(jpeg: &[u8]) -> Option<(u16, u16, u8)> {
 }
 
 #[test]
-fn native_cell_planes_hold_the_interleaved_cells() {
+fn native_cell_planes_hold_the_interleaved_cells_in_either_orientation() {
     let directory = pagura_testkit::workspace_root().join("corpus/generated/image");
     let mut planar = 0;
     for entry in std::fs::read_dir(directory).unwrap().flatten() {
@@ -257,38 +257,48 @@ fn native_cell_planes_hold_the_interleaved_cells() {
         else {
             continue;
         };
-        for cells in [1, 2, 3, 4, 6] {
-            let decode = |layout| {
+        for reduce in [1, 2, 3, 4, 6]
+            .map(|cells| Reduce::Drawn { cells })
+            .into_iter()
+            .chain([Reduce::Full])
+        {
+            let decode = |layout, orientation| {
                 image.decode(
-                    &DecodeRequest::new(Reduce::Drawn { cells }, None, layout),
+                    &DecodeRequest::new(reduce, None, layout).with_orientation(orientation),
                     &document.limits(),
                     Recovery::Repair,
                 )
             };
-            let (Ok(native), Ok(interleaved)) =
-                (decode(Layout::Native), decode(Layout::Interleaved))
-            else {
+            let Ok(interleaved) = decode(Layout::Interleaved, Orientation::Rows) else {
                 continue;
             };
-            let (native, interleaved) = (native.image, interleaved.image);
-            assert_eq!(
-                (native.width, native.height, native.reduction),
-                (interleaved.width, interleaved.height, interleaved.reduction),
-                "{name} {cells}"
-            );
-            match (&native.samples, &interleaved.samples) {
-                (Samples::Planar(planes), Samples::Bytes(bytes)) => {
-                    planar += 1;
-                    let row = usize::try_from(native.width).unwrap() * 3;
-                    let mut converted = vec![0; row];
-                    for (y, expected) in bytes.chunks_exact(row).enumerate() {
-                        assert!(planes.rgb(y, &mut converted));
-                        assert_eq!(converted, expected, "{name} {cells} row {y}");
+            let interleaved = interleaved.image;
+            for orientation in [Orientation::Rows, Orientation::Transposed] {
+                let native = decode(Layout::Native, orientation).unwrap().image;
+                let expected = match orientation {
+                    Orientation::Rows => interleaved.clone(),
+                    _ => interleaved.transposed(&document.limits()).unwrap(),
+                };
+                let context = format!("{name} {reduce:?} {orientation:?}");
+                assert_eq!(
+                    (native.width, native.height, native.reduction),
+                    (expected.width, expected.height, expected.reduction),
+                    "{context}"
+                );
+                match (&native.samples, &expected.samples) {
+                    (Samples::Planar(planes), Samples::Bytes(bytes)) => {
+                        planar += 1;
+                        let row = usize::try_from(native.width).unwrap() * 3;
+                        let mut converted = vec![0; row];
+                        for (y, expected) in bytes.chunks_exact(row).enumerate() {
+                            assert!(planes.rgb(y, &mut converted));
+                            assert_eq!(converted, expected, "{context} row {y}");
+                        }
                     }
+                    (native, expected) => assert_eq!(native, expected, "{context}"),
                 }
-                (native, interleaved) => assert_eq!(native, interleaved, "{name} {cells}"),
             }
         }
     }
-    assert!(planar > 0, "no JPEG decoded into native cell planes");
+    assert!(planar > 0, "no JPEG decoded into native planes");
 }

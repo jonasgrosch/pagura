@@ -5,10 +5,25 @@ use super::super::transform::Cells;
 use super::basis::Reference;
 use pagura_core::{Error, Result};
 
+/// The blocks of a component and how its plane stores them.
+#[derive(Debug, Clone, Copy)]
+pub(in crate::dct) struct Shape {
+    /// Blocks per block row.
+    pub(in crate::dct) stride: usize,
+    /// Block rows.
+    pub(in crate::dct) rows: usize,
+    /// Samples kept per block axis.
+    pub(in crate::dct) side: usize,
+    /// Whether the plane stores rows and columns exchanged.
+    pub(in crate::dct) transposed: bool,
+}
+
 /// Sample bytes for eight-by-eight blocks in block-row order, initialized to
 /// a background value, plus per-block flags. With cells, each block keeps
-/// fewer samples per axis (see [`Cells`]).
+/// fewer samples per axis (see [`Cells`]); transposed, rows and columns are
+/// exchanged, blocks and flags with them.
 pub(in crate::dct) struct Plane {
+    shape: Shape,
     samples: Vec<u8>,
     /// Samples kept per block axis, and how blocks become them when fewer
     /// than eight.
@@ -39,10 +54,15 @@ fn filled<T: Clone>(length: usize, value: T, message: &'static str) -> Result<Ve
 
 impl Plane {
     pub(in crate::dct) fn new(
-        (blocks, stride, side): (usize, usize, usize),
+        shape: Shape,
         background: u8,
         buffers: Option<&crate::deferred::SampleBuffers>,
     ) -> Result<Self> {
+        let side = shape.side;
+        let blocks = shape
+            .stride
+            .checked_mul(shape.rows)
+            .ok_or(Error::limit("JPEG native storage overflow"))?;
         let length = blocks
             .checked_mul(side * side)
             .ok_or(Error::limit("JPEG native storage overflow"))?;
@@ -51,6 +71,7 @@ impl Plane {
             .try_reserve_exact(4096)
             .map_err(|_| Error::limit("JPEG native prefix allocation failed"))?;
         Ok(Self {
+            shape,
             samples: match buffers {
                 Some(buffers) => buffers
                     .filled(length, background)
@@ -60,7 +81,11 @@ impl Plane {
             dirty: filled(blocks, 0, "JPEG block flag allocation failed")?,
             cells: (side < 8).then(|| Box::new(Cells::new(side))),
             side,
-            pitch: stride * side,
+            pitch: if shape.transposed {
+                shape.rows * side
+            } else {
+                shape.stride * side
+            },
             scratch: [0; 64],
             reference: Reference::new(),
             shortcut,
@@ -90,6 +115,11 @@ impl Plane {
         self.pitch
     }
 
+    /// Whether rows and columns are exchanged.
+    pub(in crate::dct) fn transposed(&self) -> bool {
+        self.shape.transposed
+    }
+
     pub(in crate::dct) fn bytes(&self) -> usize {
         self.samples.capacity()
             + self.dirty.capacity()
@@ -107,11 +137,20 @@ impl Plane {
         predictor: &mut i32,
         quant: &[u16; 64],
     ) -> Result<()> {
-        let stride = self.pitch / self.side;
+        let stride = self.shape.stride;
         let index = row * stride + column;
         if column >= stride || index >= self.blocks {
             return Err(bits.error("JPEG block outside component"));
         }
+        // Where the block is stored: exchanged with its rows and columns.
+        let (flag, base) = if self.shape.transposed {
+            (
+                column * self.shape.rows + row,
+                (column * self.pitch + row) * self.side,
+            )
+        } else {
+            (index, (row * self.pitch + column) * self.side)
+        };
         if self.shortcut.is_empty() {
             let table = bits.native_shortcut(dc, ac)?;
             self.shortcut.extend_from_slice(&table);
@@ -136,9 +175,8 @@ impl Plane {
         if !nonconstant && constant == self.background {
             return Ok(());
         }
-        self.dirty[index] = 1;
+        self.dirty[flag] = 1;
         let side = self.side;
-        let base = (row * self.pitch + column) * side;
         if let Some(cells) = self.cells.take() {
             // One cell per block keeps the DC mean of every block.
             let constant = (!nonconstant || side == 1).then_some(constant);
@@ -152,6 +190,11 @@ impl Plane {
             self.cells = Some(cells);
             refined?;
             let block = block.ok_or_else(|| bits.error("JPEG cell reconstruction failed"))?;
+            let block = if self.shape.transposed {
+                transpose(block)
+            } else {
+                block
+            };
             let out = self.samples.get_mut(base..).unwrap_or_default();
             let stored = match side {
                 1 => store::<1>(&block, out, self.pitch),
@@ -163,7 +206,12 @@ impl Plane {
             return stored.ok_or_else(|| bits.error("JPEG block outside component"));
         }
         let output = if nonconstant {
-            self.reconstruct(bits, l1)?
+            let block = self.reconstruct(bits, l1)?;
+            if self.shape.transposed {
+                transpose(block)
+            } else {
+                block
+            }
         } else {
             [[constant; 8]; 8]
         };
@@ -216,6 +264,17 @@ impl Plane {
     }
 }
 
+/// `block` with rows and columns exchanged.
+fn transpose<const N: usize>(block: [[u8; N]; N]) -> [[u8; N]; N] {
+    let mut out = [[0; N]; N];
+    for (y, row) in block.iter().enumerate() {
+        for (x, &value) in row.iter().enumerate() {
+            out[x][y] = value;
+        }
+    }
+    out
+}
+
 /// Writes the first `N` rows of `N` cells of `block`, `pitch` apart.
 fn store<const N: usize>(block: &[[u8; 6]; 6], out: &mut [u8], pitch: usize) -> Option<()> {
     for (y, row) in block.iter().take(N).enumerate() {
@@ -252,7 +311,13 @@ mod tests {
     #[test]
     fn certified_samples_are_the_ordered_annex_a_result() {
         let reference = Reference::new();
-        let mut plane = Plane::new((1, 1, 8), 255, None).unwrap();
+        let shape = Shape {
+            stride: 1,
+            rows: 1,
+            side: 8,
+            transposed: false,
+        };
+        let mut plane = Plane::new(shape, 255, None).unwrap();
         let mut bits = Bits::new(&[], 0);
         bits.limit_stream(0, 100_000_000);
         let mut state = 0x75a3_194bu32;
