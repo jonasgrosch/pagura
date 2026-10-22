@@ -68,7 +68,8 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
     if (job) {
       result.gpu_render_ms = stats(result.samples.map(s => s.gpu.render_ms));
       result.gpu_frame_ms = stats(result.samples.map(s => s.gpu.frame_ms));
-      result.gpu_kernel_ms = stats(result.samples.map(s => s.gpu.kernel_ms ?? 0));
+      result.gpu_kernel_ms = result.samples.every(s => s.gpu.kernel_ms !== null)
+        ? stats(result.samples.map(s => s.gpu.kernel_ms)) : null;
       result.gpu_complete_ms = stats(result.samples.map(s => s.gpu.gpu_ms));
       result.packet_build_ms = stats(result.samples.map(s => s.gpu.engine.execute_ms));
       result.render_speedup = result.cpu_render_ms.median / result.gpu_render_ms.median;

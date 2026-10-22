@@ -33,7 +33,7 @@ export function show({result, cpu, gpu}, label) {
   $('gpu-time').textContent = result.fallback ? 'CPU fallback' : ms(result.gpu_render_ms.median);
   $('speedup').textContent = result.fallback ? '—' : `${result.render_speedup.toFixed(2)}×`;
   $('speed-caption').textContent = result.fallback ? 'Same CPU renderer' : result.render_speedup >= 1 ? 'Hybrid is faster on this workload' : 'CPU is faster on this workload';
-  $('kernel-time').textContent = result.fallback ? '—' : ms(result.gpu_kernel_ms.median);
+  $('kernel-time').textContent = result.fallback || !result.gpu_kernel_ms ? '—' : ms(result.gpu_kernel_ms.median);
   $('identity').textContent = result.fallback ? 'Exact CPU fallback' : '✓ Byte-identical to CPU';
   $('gpu-path').textContent = result.fallback ? 'CPU fallback' : 'WebGPU · N16 integer';
   $('detail').textContent = result.fallback ? `CPU fallback: ${result.fallback}. Both previews show the exact CPU result.`
