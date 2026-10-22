@@ -90,8 +90,17 @@ impl Bits<'_> {
             return None;
         }
         let offset = self.at / 8;
-        let byte = |i| usize::from(self.data.get(offset + i).copied().unwrap_or(0));
-        let word = (byte(0) << 16) | (byte(1) << 8) | byte(2);
+        // One load where four bytes remain; the last bytes one at a time.
+        let word = if let Some(bytes) = self
+            .data
+            .get(offset..offset + 4)
+            .and_then(|bytes| bytes.first_chunk::<4>())
+        {
+            usize::try_from(u32::from_be_bytes(*bytes) >> 8).unwrap_or(0)
+        } else {
+            let byte = |i| usize::from(self.data.get(offset + i).copied().unwrap_or(0));
+            (byte(0) << 16) | (byte(1) << 8) | byte(2)
+        };
         Some((word >> (24 - self.at % 8 - width)) & ((1 << width) - 1))
     }
     /// Consumes `count` peeked bits and charges them as `count` calls to
