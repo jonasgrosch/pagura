@@ -51,25 +51,28 @@ pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, target: 
     let output = &plan.output;
     let mut preview = Preview::default();
     // Bytes holding row `origin` first and each next row `stride` later,
-    // `count` pixels of each written.
-    let (data, origin, stride, count) = match target {
+    // `count` pixels of each written, and whether they hold the background.
+    let ((data, origin, stride, count), filled) = match target {
         Destination::Pixmap(pixmap) => {
             let target_width = u32_to_usize(pixmap.width());
+            let data = pixmap.data_mut();
             (
-                pixmap.data_mut(),
-                region.y0,
-                target_width * 4,
-                width.min(target_width),
+                (data, region.y0, target_width * 4, width.min(target_width)),
+                false,
             )
         }
         Destination::Rows(collected) => {
             // One fill of the whole band, written over while it is still in
             // cache: cheaper than filling the surface beforehand, and than
-            // appending row by row.
+            // appending row by row. A background of one repeated byte, as
+            // white and transparent are, is that fill.
+            let [byte, ..] = output.background;
+            let uniform = output.background.iter().all(|&b| b == byte);
             let start = collected.len();
-            collected.resize(start + rows.len() * width * 4, 0);
+            let fill = if uniform { byte } else { 0 };
+            collected.resize(start + rows.len() * width * 4, fill);
             let band = collected.get_mut(start..).unwrap_or_default();
-            (band, rows.start, width * 4, width)
+            ((band, rows.start, width * 4, width), uniform)
         }
     };
     for (band_row, y) in rows.clone().enumerate() {
@@ -88,8 +91,10 @@ pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, target: 
             .map_or((0, 0), |(lo, hi)| (lo.min(count), hi.min(count)));
         let (head, rest) = out.split_at_mut(lo);
         let (out, tail) = rest.split_at_mut(hi - lo);
-        head.fill(output.background);
-        tail.fill(output.background);
+        if !filled {
+            head.fill(output.background);
+            tail.fill(output.background);
+        }
         let first = band_row * width + lo;
         let end = first + out.len();
         match &ws.page {
