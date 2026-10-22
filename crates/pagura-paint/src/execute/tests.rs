@@ -100,7 +100,10 @@ fn gradient(channels: usize) -> Source {
         Transform::IDENTITY,
         &context,
         64 * 64,
-        &mut functions,
+        (
+            &mut functions,
+            &Meter::new(Limits::default().render_bytes, "test bytes"),
+        ),
     );
     let source = source.unwrap();
     assert!(matches!(source, Source::Shading(_)));

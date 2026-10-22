@@ -5,14 +5,77 @@ use crate::Completion;
 use crate::testing::{Build, assert_within_one_level, mark};
 use pagura_core::{Limits, Position};
 use pagura_interpret::{
-    BlendMode, FillNode, GroupAttributes, GroupId, MarkInfo, MaskKind, Node, Paint, PatternId, Pen,
-    PenId, StateId, StrokeNode, Tiling, TilingColors, TilingPaint,
+    BlendMode, ClipId, ClipNode, FillNode, GroupAttributes, GroupId, MarkInfo, MaskKind, Node,
+    Paint, PatternId, Pen, PenId, StateId, StrokeNode, Tiling, TilingColors, TilingPaint,
 };
-use pagura_raster::{Adjustment, DeviceRect, PathBuilder, Point, Stroke, Transform};
+use pagura_raster::{Adjustment, DeviceRect, FillRule, PathBuilder, Point, Stroke, Transform};
 use std::sync::Arc;
 
 const PAGE: GroupId = GroupId(0);
 const HEIGHTS: [u32; 5] = [1, 5, 16, 32, 256];
+
+#[test]
+fn distant_line_interpolation_survives_repeated_composition() {
+    let n = 549_755_813_888.0;
+    let u = 1.0 / 8192.0;
+    let c = 7679.0 / 8192.0;
+    let cases = [
+        // Area=(1-u/2)^2/(2+u/n)=0.4999389667063951, coverage127.
+        // Two black stores reference16384/255=64.25098039215686; old63
+        // violates the unrounded one-level contract.
+        ([(-n, -n), (n, n + u), (-n, n + u)], 2, 64),
+        // Area0.0019645858556032185 rounds to coverage1. A false empty
+        // clip loses all three stores: old255 instead of reference252.0117.
+        ([(-n + c, -n), (n + c, n + u), (n + c, -n)], 3, 252),
+    ];
+    for (points, repeats, level) in cases {
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(points[0].0, points[0].1));
+        for (x, y) in &points[1..] {
+            path.line_to(Point::new(*x, *y)).unwrap();
+        }
+        path.close();
+        let path = Arc::new(path.finish());
+        for clipped in [false, true] {
+            let mut b = Build::new(1.0, 1.0);
+            let black = b.rgb([0.0; 3]);
+            if clipped {
+                b.scene.clips.push(ClipNode {
+                    parent: None,
+                    path: Arc::clone(&path),
+                    rule: FillRule::NonZero,
+                });
+            }
+            for _ in 0..repeats {
+                let info = MarkInfo {
+                    clip: clipped.then_some(ClipId(0)),
+                    ..mark(StateId(0))
+                };
+                if clipped {
+                    b.rect(PAGE, [-2.0, -2.0, 2.0, 2.0], black, info);
+                } else {
+                    b.node(
+                        PAGE,
+                        Node::Fill(FillNode {
+                            path: Arc::clone(&path),
+                            rule: FillRule::NonZero,
+                            paint: black,
+                            mark: info,
+                        }),
+                    );
+                }
+            }
+            for height in HEIGHTS {
+                let actual = b.render(&b.request(b.page(), height)).unwrap();
+                assert_eq!(
+                    actual,
+                    [level, level, level, 255],
+                    "clipped={clipped}, height={height}, repeats={repeats}"
+                );
+            }
+        }
+    }
+}
 
 /// A page that exercises every buffer kind: translucent marks, blend
 /// modes, a knockout group, a soft mask, a tiling pattern and clips.
@@ -258,7 +321,7 @@ fn geometry_preparation_uses_what_earlier_marks_leave() {
             PAGE,
             Node::Fill(FillNode {
                 path: Arc::clone(&path),
-                rule: pagura_raster::FillRule::NonZero,
+                rule: FillRule::NonZero,
                 paint,
                 mark: MarkInfo {
                     position: Position::Buffer(7),

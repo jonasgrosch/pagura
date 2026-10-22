@@ -479,6 +479,78 @@ fn patterns_and_wide_targets_are_rejected() {
 }
 
 #[test]
+fn metered_converters_charge_owned_tables_before_allocating() {
+    let target = Target::new(Process::Rgb);
+    let conversion = Conversion::default();
+    let native = Converter::new_metered(
+        &ColorSpace::DeviceRgb,
+        &target,
+        &conversion,
+        &mut Meter::new(0, "test"),
+    )
+    .unwrap();
+    assert_eq!(native.owned_bytes(), 0);
+    let source = ColorSpace::Indexed(Arc::new(Indexed {
+        base: Arc::new(ColorSpace::DeviceRgb),
+        high: 3,
+        lookup: vec![17; 12].into(),
+    }));
+    let required = 12 * size_of::<f64>();
+    let mut bytes = Meter::new(required, "test");
+    let converter = Converter::new_metered(&source, &target, &conversion, &mut bytes).unwrap();
+    assert_eq!(converter.owned_bytes(), required);
+    assert_eq!(bytes.used(), converter.owned_bytes());
+    assert!(
+        Converter::new_metered(
+            &source,
+            &target,
+            &conversion,
+            &mut Meter::new(required - 1, "test"),
+        )
+        .is_err()
+    );
+    let mut expected = [0.0; 3];
+    Converter::new(&source, &target, &conversion)
+        .unwrap()
+        .convert(&[2.0], &mut expected);
+    let mut actual = [0.0; 3];
+    converter.convert(&[2.0], &mut actual);
+    assert_eq!(bits(&actual), bits(&expected));
+}
+
+#[test]
+fn metered_chains_include_live_buffer_overlap() {
+    let mut source = ColorSpace::DeviceRgb;
+    for _ in 0..3 {
+        let components = source.components();
+        source = ColorSpace::Indexed(Arc::new(Indexed {
+            base: Arc::new(source),
+            high: 3,
+            lookup: vec![1; 4 * components].into(),
+        }));
+    }
+    let target = Target::new(Process::Rgb);
+    let conversion = Conversion::default();
+    let mut bytes = Meter::new(usize::MAX, "test");
+    let converter = Converter::new_metered(&source, &target, &conversion, &mut bytes).unwrap();
+    let retained = converter.owned_bytes();
+    assert!(retained > 0);
+    assert_eq!(bytes.used(), retained);
+    assert!(
+        Converter::new_metered(
+            &source,
+            &target,
+            &conversion,
+            &mut Meter::new(retained, "test"),
+        )
+        .is_err()
+    );
+    let mut bytes = Meter::new(retained * 2, "test");
+    let rebuilt = Converter::new_metered(&source, &target, &conversion, &mut bytes).unwrap();
+    assert_eq!(bytes.used(), rebuilt.owned_bytes());
+}
+
+#[test]
 fn painted_sets_name_their_channels() {
     assert_eq!(Painted::all(3), Painted(0b111));
     assert_eq!(Painted::all(64), Painted(u64::MAX));

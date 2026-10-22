@@ -14,6 +14,7 @@
 
 use super::super::Input;
 use super::Bounds;
+use pagura_core::{Meter, Result};
 use pagura_raster::Point;
 
 /// The most subdivision boxes one sample of one patch visits.
@@ -38,8 +39,12 @@ struct Search {
 }
 
 impl Patch {
-    pub(super) fn new(patch: &pagura_interpret::Patch, values: usize) -> Self {
-        let mut colors = vec![0.0; 4 * values];
+    pub(super) fn new(
+        patch: &pagura_interpret::Patch,
+        values: usize,
+        bytes: &mut Meter,
+    ) -> Result<Self> {
+        let mut colors = super::super::allocate(4 * values, bytes)?;
         for (corner, out) in patch
             .colors
             .iter()
@@ -50,12 +55,12 @@ impl Patch {
             }
         }
         let points = transpose(patch.points);
-        Self {
+        Ok(Self {
             points,
             colors: colors.into(),
             regular: injective(&points),
             bounds: Bounds::points(points),
-        }
+        })
     }
 
     pub(super) fn bounds(&self) -> Bounds {

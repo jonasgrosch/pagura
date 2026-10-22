@@ -200,9 +200,17 @@ fn random_shadings_match_the_previous_sampling() {
         let converter = Converter::new(&parsed.space, &target, &composite.conversion).unwrap();
         for antialias in [false, true] {
             for usage in [Use::Operator, Use::Pattern] {
-                let source =
-                    ShadingSource::new(&parts(&parsed, antialias), transform, &context, usage)
-                        .unwrap();
+                let source = ShadingSource::new(
+                    &parts(&parsed, antialias),
+                    transform,
+                    &context,
+                    usage,
+                    (
+                        &mut Meter::new(limits.render_bytes, "test bytes"),
+                        &mut Meter::new(usize::MAX, "test functions"),
+                    ),
+                )
+                .unwrap();
                 aligned += usize::from(source.aligned.is_some());
                 let old = Oracle {
                     parsed: &parsed,
@@ -265,6 +273,10 @@ fn constant_shadings_collapse_to_the_previous_colour() {
             transform,
             &context,
             Use::Operator,
+            (
+                &mut Meter::new(limits.render_bytes, "test bytes"),
+                &mut Meter::new(usize::MAX, "test functions"),
+            ),
         )
         .unwrap();
         let constant = source.constant().unwrap().to_vec();
@@ -325,7 +337,16 @@ fn solid_paint_is_converted_once_with_its_overprint_channels() {
         composite.overprint = overprint;
         let context = context(&target, &composite, &store, &limits);
         let mut functions = Meter::new(10, "function work");
-        let source = Source::prepare(&paint, &context, 100, &mut functions).unwrap();
+        let source = Source::prepare(
+            &paint,
+            &context,
+            100,
+            (
+                &mut functions,
+                &Meter::new(limits.render_bytes, "test bytes"),
+            ),
+        )
+        .unwrap();
         let Source::Solid {
             color,
             painted: actual,
@@ -354,14 +375,107 @@ fn function_work_is_reserved_per_sample() {
         ShadingFunction::Single(f) => f.cost(),
         ShadingFunction::PerComponent(_) => unreachable!(),
     };
-    let prepare =
-        || ShadingSource::new(&shading, Transform::IDENTITY, &context, Use::Operator).unwrap();
+    let prepare = || {
+        ShadingSource::new(
+            &shading,
+            Transform::IDENTITY,
+            &context,
+            Use::Operator,
+            (
+                &mut Meter::new(limits.render_bytes, "test bytes"),
+                &mut Meter::new(usize::MAX, "test functions"),
+            ),
+        )
+        .unwrap()
+    };
     let mut meter = Meter::new(usize::MAX, "function work");
     prepare().reserve(1000, &mut meter).unwrap();
     assert_eq!(meter.used(), 1000 * 4 * cost);
     let mut tight = Meter::new(1000 * 4 * cost - 1, "function work");
     let error = prepare().reserve(1000, &mut tight).unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
+}
+
+#[test]
+fn aligned_tables_are_reserved_before_building_and_match_retained_bytes() {
+    let target = Target::new(Process::Rgb);
+    let (composite, store, limits) = (Composite::default(), Store::new(1 << 20), Limits::default());
+    let context = context(&target, &composite, &store, &limits);
+    let mut parsed = shading(&mut Rng(7));
+    parsed.kind = ShadingKind::Axial {
+        start: Point::new(0.0, 0.0),
+        end: Point::new(65_000.0, 0.0),
+        domain: [0.0, 1.0],
+        extend: [true; 2],
+    };
+    parsed.bbox = None;
+    let parts = parts(&parsed, true);
+    let mut tight = Meter::new(4096, "shading test");
+    assert_eq!(
+        ShadingSource::new(
+            &parts,
+            Transform::IDENTITY,
+            &context,
+            Use::Operator,
+            (&mut tight, &mut Meter::new(usize::MAX, "test functions"))
+        )
+        .unwrap_err()
+        .kind,
+        ErrorKind::Limit
+    );
+    let mut bytes = Meter::new(8 << 20, "shading test");
+    bytes.charge(19).unwrap();
+    let source = ShadingSource::new(
+        &parts,
+        Transform::IDENTITY,
+        &context,
+        Use::Operator,
+        (&mut bytes, &mut Meter::new(usize::MAX, "test functions")),
+    )
+    .unwrap();
+    assert!(source.aligned.as_ref().unwrap().pixels() > 64_000);
+    assert_eq!(bytes.used(), 19 + source.bytes());
+
+    // Enough work to inspect the constant-function case, but not to
+    // populate the table: refusal precedes the large table allocation.
+    let mut bytes = Meter::new(4096, "table memory");
+    let mut functions = Meter::new(1, "table function work");
+    let error = ShadingSource::new(
+        &parts,
+        Transform::IDENTITY,
+        &context,
+        Use::Operator,
+        (&mut bytes, &mut functions),
+    )
+    .unwrap_err();
+    assert_eq!(error.message, "table function work");
+    assert!(bytes.used() < bytes.max());
+}
+
+#[test]
+fn solid_conversion_reserves_its_live_lookup_and_output_together() {
+    let target = Target::new(Process::Rgb);
+    let (composite, store, limits) = (Composite::default(), Store::new(1 << 20), Limits::default());
+    let context = context(&target, &composite, &store, &limits);
+    let paint = Paint::Solid(Color {
+        space: Arc::new(ColorSpace::Indexed(Arc::new(pagura_color::Indexed {
+            base: Arc::new(ColorSpace::DeviceRgb),
+            high: 255,
+            lookup: vec![128; 256 * 3].into(),
+        }))),
+        components: Components::from_slice(&[7.0]),
+    });
+    let lookup = 256 * 3 * size_of::<f64>();
+    let mut functions = Meter::new(0, "solid function work");
+    let tight = Meter::new(lookup, "solid memory");
+    let error = Source::prepare(&paint, &context, 1, (&mut functions, &tight)).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::Limit);
+    let mut enough = Meter::new(17 + lookup + 3 * size_of::<f64>(), "solid memory");
+    enough.charge(17).unwrap();
+    let source = Source::prepare(&paint, &context, 1, (&mut functions, &enough)).unwrap();
+    let (color, _) = source.constant().unwrap();
+    assert_eq!(color, &[128.0 / 255.0; 3]);
+    assert_eq!(source.bytes(), 3 * size_of::<f64>());
 }
 
 /// Times the span fill of a 512² page of an axial shading along the page
@@ -414,9 +528,17 @@ fn axial_span_timing() {
             let mut checksum = 0.0;
             for _ in 0..15 {
                 let start = std::time::Instant::now();
-                let mut source =
-                    ShadingSource::new(&parts(&parsed, false), transform, &context, Use::Operator)
-                        .unwrap();
+                let mut source = ShadingSource::new(
+                    &parts(&parsed, false),
+                    transform,
+                    &context,
+                    Use::Operator,
+                    (
+                        &mut Meter::new(limits.render_bytes, "test bytes"),
+                        &mut Meter::new(usize::MAX, "test functions"),
+                    ),
+                )
+                .unwrap();
                 if !shared {
                     source.aligned = None;
                     source.constant = None;

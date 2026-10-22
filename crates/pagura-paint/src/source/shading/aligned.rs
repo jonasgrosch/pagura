@@ -10,8 +10,9 @@
 //! Samples whose projection `u` is zero are evaluated pixel by pixel.
 
 use super::geometry::Axial;
-use super::{Geometry, ShadingSource, Span, SpanColors};
+use super::{Geometry, ShadingSource, Span, SpanColors, allocate};
 use pagura_color::MAX_COMPONENTS;
+use pagura_core::{Meter, Result};
 use pagura_raster::Point;
 
 /// The most columns a column table holds.
@@ -53,9 +54,13 @@ struct Table {
 }
 
 impl Aligned {
-    pub(super) fn new(source: &ShadingSource) -> Option<Self> {
+    pub(super) fn new(
+        source: &ShadingSource,
+        bytes: &mut Meter,
+        functions: &mut Meter,
+    ) -> Result<Option<Self>> {
         let Geometry::Axial(axial) = &*source.geometry else {
-            return None;
+            return Ok(None);
         };
         // A pattern's `BBox` test and `Background` depend on the whole
         // sample point.
@@ -64,7 +69,7 @@ impl Aligned {
             .as_ref()
             .is_some_and(|p| p.bbox.is_some() || p.background.is_some());
         if tested || !source.moderate(axial) {
-            return None;
+            return Ok(None);
         }
         let i = source.inverse;
         let direction = if i.c == 0.0 && axial.delta.y == 0.0 {
@@ -72,37 +77,42 @@ impl Aligned {
         } else if i.b == 0.0 && axial.delta.x == 0.0 {
             Direction::Rows
         } else {
-            return None;
+            return Ok(None);
         };
-        let pixel = |input: f64| {
-            let mut color = vec![0.0; source.channels];
+        bytes.charge_items::<Self>(1)?;
+        functions.charge_product(2 * source.samples(), source.colors.cost())?;
+        let mut pixel = |input: f64| -> Result<Pixel> {
+            let mut color = allocate(source.channels, bytes)?;
             let alpha = source.uniform(axial.input(input), &mut color);
-            Pixel {
+            Ok(Pixel {
                 color: color.into(),
                 alpha,
-            }
+            })
         };
         let mut aligned = Self {
             direction,
-            before: pixel(-1.0),
-            after: pixel(2.0),
+            before: pixel(-1.0)?,
+            after: pixel(2.0)?,
             table: None,
         };
         if direction == Direction::Columns {
-            aligned.table = Table::new(source, axial);
+            aligned.table = Table::new(source, axial, bytes, functions)?;
         }
-        Some(aligned)
+        Ok(Some(aligned))
     }
 
     /// Pixels evaluated while preparing.
+    #[cfg(test)]
     pub(super) fn pixels(&self) -> usize {
         2 + self.table.as_ref().map_or(0, |t| t.valid.len())
     }
 
     pub(super) fn bytes(&self) -> usize {
-        self.table
-            .as_ref()
-            .map_or(0, |t| (t.colors.len() + t.alpha.len()) * 8 + t.valid.len())
+        size_of::<Self>()
+            + (self.before.color.len() + self.after.color.len()) * size_of::<f64>()
+            + self.table.as_ref().map_or(0, |t| {
+                (t.colors.len() + t.alpha.len()) * size_of::<f64>() + t.valid.len()
+            })
     }
 
     pub(super) fn fill(
@@ -227,7 +237,12 @@ impl Table {
         clippy::cast_sign_loss,
         reason = "column bounds are clamped to the u32 device grid"
     )]
-    fn new(source: &ShadingSource, axial: &Axial) -> Option<Self> {
+    fn new(
+        source: &ShadingSource,
+        axial: &Axial,
+        bytes: &mut Meter,
+        functions: &mut Meter,
+    ) -> Result<Option<Self>> {
         let t = source.transform();
         let end = Point::new(axial.start.x + axial.delta.x, axial.start.y + axial.delta.y);
         let (a, b) = (t.apply(axial.start).x, t.apply(end).x);
@@ -235,13 +250,14 @@ impl Table {
         let last = (a.max(b).ceil() + 2.0).clamp(0.0, f64::from(u32::MAX));
         let count = (last - first) as usize + 1;
         if !(first.is_finite() && last.is_finite()) || count > MAX_COLUMNS {
-            return None;
+            return Ok(None);
         }
         let first = first as u32;
         let channels = source.channels.max(1);
-        let mut colors = vec![0.0; count * channels];
-        let mut alpha = vec![0.0; count];
-        let mut valid = vec![false; count];
+        let mut colors = allocate(count * channels, bytes)?;
+        let mut alpha = allocate(count, bytes)?;
+        let mut valid = allocate(count, bytes)?;
+        functions.charge_product(count * source.samples(), source.colors.cost())?;
         for (i, ((color, alpha), valid)) in colors
             .chunks_exact_mut(channels)
             .zip(alpha.iter_mut())
@@ -257,12 +273,12 @@ impl Table {
                 *alpha = source.pixel(axial, (x, 0), None, (color, &mut [0.0; MAX_COMPONENTS]));
             }
         }
-        Some(Self {
+        Ok(Some(Self {
             first,
             colors: colors.into(),
             alpha: alpha.into(),
             valid: valid.into(),
-        })
+        }))
     }
 }
 

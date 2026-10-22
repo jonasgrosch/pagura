@@ -314,3 +314,39 @@ fn constant_functions_are_recognized_exactly() {
     }
     assert!(found > 50, "{found}");
 }
+
+#[test]
+fn constant_inspection_reserves_every_stitching_branch() {
+    let leaf = Arc::new(
+        Function::exponential(ExponentialFunction {
+            domain: [0.0, 1.0],
+            range: None,
+            c0: vec![0.25],
+            c1: vec![0.25],
+            exponent: 1.0,
+        })
+        .unwrap(),
+    );
+    let function = Function::stitching(StitchingFunction {
+        domain: [0.0, 1.0],
+        range: None,
+        functions: vec![Arc::clone(&leaf), Arc::clone(&leaf), leaf],
+        bounds: vec![0.25, 0.75],
+        encode: vec![[0.0, 1.0]; 3],
+    })
+    .unwrap();
+    assert_eq!(function.cost(), 2);
+    let mut output = [0.0];
+    let mut tight = Meter::new(3, "constant inspection");
+    assert_eq!(
+        function
+            .constant_metered(&mut output, &mut tight)
+            .unwrap_err()
+            .message,
+        "constant inspection"
+    );
+    assert_eq!(tight.used(), 3);
+    let mut enough = Meter::new(4, "constant inspection");
+    assert!(function.constant_metered(&mut output, &mut enough).unwrap());
+    assert_eq!((output, enough.used()), ([0.25], 4));
+}
