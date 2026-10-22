@@ -402,40 +402,44 @@ impl ImageSampler {
             return;
         }
         let lanes = channels + 2;
-        let fused = prepared.mask.as_ref().is_some_and(|mask| mask.fused);
-        if fused {
-            return prepared.fused((x, y, len), lanes, out, shape);
-        }
-        if let Some(mask) = &prepared.mask {
-            out.alpha.resize(len, 0.0);
+        let mask = prepared.mask.as_ref();
+        // A mask on the image's grid averages ahead of the texels; another
+        // is sampled into the alphas first.
+        let fused = mask.is_some_and(|mask| mask.fused);
+        out.alpha.resize(len, 0.0);
+        if let Some(mask) = mask.filter(|mask| !mask.fused) {
             let texels = OpacityTexels {
                 mask: &mask.image.image,
                 opacity: &mask.opacity,
             };
-            sample(
-                (
-                    mask.separable.as_ref(),
-                    mask.contour.as_ref(),
-                    &mask.geometry,
-                ),
-                (x, y, len),
-                &texels,
-                &mut out.alpha,
+            let plan = (
+                mask.separable.as_ref(),
+                mask.contour.as_ref(),
+                &mask.geometry,
             );
+            sample(plan, (x, y, len), &texels, &mut out.alpha);
         }
-        out.colors.resize(len * lanes, 0.0);
+        let stride = lanes + usize::from(fused);
+        out.colors.resize(len * stride, 0.0);
         prepared.texels((x, y, len), lanes, &mut out.colors);
         let mut shape = shape;
         if let Some(shape) = shape.as_deref_mut() {
             shape.clear();
         }
-        let factors = prepared.mask.as_ref().map(|mask| mask.scales_shape);
+        let scales_shape = mask.is_some_and(|mask| mask.scales_shape);
         for i in 0..len {
-            let base = i * lanes;
-            let (color, rest) = out.colors[base..base + lanes].split_at_mut(channels);
-            let (mut alpha, mut own) = (rest[0], rest[1]);
-            if let Some(scales_shape) = factors {
-                let factor = out.alpha[i];
+            let base = i * stride;
+            let texel = &out.colors[base..base + stride];
+            let (factor, texel) = match (mask, fused) {
+                (Some(_), true) => (Some(texel[0]), &texel[1..]),
+                (Some(_), false) => (Some(out.alpha[i]), texel),
+                (None, _) => (None, texel),
+            };
+            let mut color = [0.0; geometry::MAX_LANES];
+            let color = &mut color[..channels];
+            texels::copy_texel(color, texel);
+            let (mut alpha, mut own) = (texel[channels], texel[channels + 1]);
+            if let Some(factor) = factor {
                 for value in color.iter_mut() {
                     *value *= factor;
                 }
@@ -449,16 +453,8 @@ impl ImageSampler {
                     *value = if alpha > 0.0 { *value / alpha } else { 0.0 };
                 }
             }
-            // Moved value by value: a few values each, where a copy call
-            // costs more than the move.
-            for (to, from) in (i * channels..).zip(base..base + channels) {
-                out.colors[to] = out.colors[from];
-            }
-            if factors.is_some() {
-                out.alpha[i] = alpha;
-            } else {
-                out.alpha.push(alpha);
-            }
+            texels::copy_texel(&mut out.colors[i * channels..], color);
+            out.alpha[i] = alpha;
             if let Some(shape) = shape.as_deref_mut() {
                 shape.push(own);
             }
@@ -529,54 +525,6 @@ impl Prepared {
             ];
         }
         true
-    }
-
-    /// [`ImageSampler::fill`] of an image whose mask is on its grid: the
-    /// opacity of each pixel averaged with its texels.
-    fn fused(
-        &self,
-        (x, y, len): (u32, u32, usize),
-        lanes: usize,
-        out: &mut SpanColors,
-        shape: Option<&mut Vec<f64>>,
-    ) {
-        let channels = lanes - 2;
-        let stride = lanes + 1;
-        let scales_shape = self.mask.as_ref().is_some_and(|mask| mask.scales_shape);
-        out.colors.resize(len * stride, 0.0);
-        self.texels((x, y, len), lanes, &mut out.colors);
-        let mut shape = shape;
-        if let Some(shape) = shape.as_deref_mut() {
-            shape.clear();
-        }
-        for i in 0..len {
-            let base = i * stride;
-            let Some((&factor, values)) = out.colors[base..base + stride].split_first() else {
-                continue;
-            };
-            let mut color = [0.0; geometry::MAX_LANES];
-            let color = &mut color[..channels];
-            texels::copy_texel(color, values);
-            let (mut alpha, mut own) = (values[channels], values[channels + 1]);
-            for value in color.iter_mut() {
-                *value *= factor;
-            }
-            alpha *= factor;
-            if scales_shape {
-                own *= factor;
-            }
-            if alpha != 1.0 {
-                for value in color.iter_mut() {
-                    *value = if alpha > 0.0 { *value / alpha } else { 0.0 };
-                }
-            }
-            texels::copy_texel(&mut out.colors[i * channels..], color);
-            out.alpha.push(alpha);
-            if let Some(shape) = shape.as_deref_mut() {
-                shape.push(own);
-            }
-        }
-        out.colors.truncate(len * channels);
     }
 
     /// Writes the summed texels of the span's pixels, `lanes` values each.
