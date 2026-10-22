@@ -79,10 +79,7 @@ fn oriented_sampler(decoded: Arc<Decoded>, unit_to_device: Transform, width: u32
         Some(convert),
     )
     .unwrap();
-    ImageSampler {
-        prepared: Some(Box::new(prepared)),
-        channels: 3,
-    }
+    ImageSampler::new(Some(Box::new(prepared)), 3)
 }
 
 /// Every span of a `width` × `height` device window, colours then alpha.

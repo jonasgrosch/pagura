@@ -17,7 +17,7 @@ mod storage;
 
 pub(crate) use backend::{Backend, PaintRequest, Prepared, Producer, Raster};
 
-use crate::execute::{Executor, Workspace};
+use crate::execute::{Destination, Executor, Workspace};
 use crate::plan::{MAX_BAND_HEIGHT, Plan};
 use crate::request::RenderRequest;
 use pagura_core::{Diagnostic, Error, Limits, Meter, Result, Store};
@@ -225,20 +225,48 @@ impl PreparedScene {
     pub fn render_until(
         &mut self,
         target: &mut Pixmap,
+        stop: impl FnMut(u32) -> bool,
+    ) -> Completion {
+        self.bands(stop, |plan, ws, producer, band| {
+            Executor::band(plan, ws, producer, band, Destination::Pixmap(target));
+        })
+    }
+
+    /// Renders bands top to bottom as [`Self::render_until`] does, appending
+    /// each rendered row of the region to `rows` as premultiplied RGBA8,
+    /// `4 × width` bytes, so that a surface need not be filled first. Room
+    /// for the rows should be reserved: appending beyond it allocates.
+    pub fn render_rows_until(
+        &mut self,
+        rows: &mut Vec<u8>,
+        stop: impl FnMut(u32) -> bool,
+    ) -> Completion {
+        self.bands(stop, |plan, ws, producer, band| {
+            Executor::band(plan, ws, producer, band, Destination::Rows(rows));
+        })
+    }
+
+    /// The background as the render stores it, premultiplied.
+    pub fn background(&self) -> [u8; 4] {
+        self.plan.output.background
+    }
+
+    fn bands(
+        &mut self,
         mut stop: impl FnMut(u32) -> bool,
+        mut band: impl FnMut(&Plan, &mut Workspace, &mut dyn Producer, u32),
     ) -> Completion {
         self.workspace.restart();
-        for band in self.plan.area.bands() {
-            let row = self.plan.area.band_rows(band).start;
+        for index in self.plan.area.bands() {
+            let row = self.plan.area.band_rows(index).start;
             if stop(row) {
                 return Completion::Stopped { row };
             }
-            Executor::band(
+            band(
                 &self.plan,
                 &mut self.workspace,
                 self.producer.as_mut(),
-                band,
-                target,
+                index,
             );
         }
         Completion::Complete

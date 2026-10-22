@@ -404,6 +404,41 @@ fn kept_glyph_edges_change_nothing() {
     }
 }
 
+/// A rasterizer kept from an earlier render of the same area, whatever
+/// that render drew, renders as a new one and charges as much.
+#[test]
+fn a_kept_rasterizer_renders_as_a_new_one() {
+    let (mut b, [_, ink]) = page();
+    run(
+        &mut b,
+        PAGE,
+        &line(14, [1.25, 3.5], 2.5),
+        ink,
+        mark(StateId(0)),
+    );
+    let clip = b.clip(None, [3.25, 4.5, 30.5, 19.75]);
+    let info = MarkInfo {
+        clip: Some(clip),
+        ..mark(StateId(0))
+    };
+    run(&mut b, PAGE, &line(12, [1.0, 15.0], 2.5), ink, info);
+    let earlier = groups();
+    for fast in [FastParams::EXACT, FastParams::COMPETITIVE] {
+        let mut request = b.request(b.page(), 16);
+        request.fast = fast;
+        // A new thread has no rasterizer kept.
+        let new = std::thread::scope(|scope| {
+            scope
+                .spawn(|| render(&b, &request, Backend::Raster))
+                .join()
+                .unwrap_or_else(|_| panic!("render panicked"))
+        });
+        render(&earlier, &request, Backend::Raster);
+        let kept = render(&b, &request, Backend::Raster);
+        assert_eq!(kept, new, "{fast:?}");
+    }
+}
+
 #[test]
 fn stacked_long_and_scattered_runs() {
     let (mut b, [_, ink]) = page();

@@ -4,7 +4,7 @@
 //! transfer functions, black generation, and narrow stores of group
 //! results. Expected values are clause-11 formulas evaluated here.
 
-use super::{Executor, Sizes, Tops, Workspace};
+use super::{Destination, Executor, Sizes, Tops, Workspace};
 use crate::format::Format;
 use crate::paint::{Convert, Curve, PaintSpans};
 use crate::plan::{
@@ -293,9 +293,18 @@ impl Fixture {
             Pixmap::new(self.width, self.height, Rgba8::TRANSPARENT, usize::MAX).unwrap();
         workspace.restart();
         for band in area.bands() {
-            Executor::band(&plan, &mut workspace, producer.as_mut(), band, &mut target);
+            let target = Destination::Pixmap(&mut target);
+            Executor::band(&plan, &mut workspace, producer.as_mut(), band, target);
         }
-        target.data().to_vec()
+        // Rows collected without a surface are the surface's rows.
+        let mut rows = Vec::new();
+        workspace.restart();
+        for band in area.bands() {
+            let target = Destination::Rows(&mut rows);
+            Executor::band(&plan, &mut workspace, producer.as_mut(), band, target);
+        }
+        assert_eq!(rows, target.data());
+        rows
     }
 }
 

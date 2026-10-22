@@ -15,15 +15,18 @@ mod workspace;
 
 pub(crate) use frame::{Backdrop, Buffer, Frame, Read, Tops};
 pub(crate) use mask::transfer as mask_transfer;
+pub(crate) use output::Destination;
 pub(crate) use schedule::Active;
 pub(crate) use transfer::validate;
 pub(crate) use workspace::{Extents, MaskCache, PageBuffer, Sizes, Usage, Workspace};
 
 use crate::kernel::{self, Colors, Mode, Sources};
+use crate::paint::PaintSpans;
 use crate::plan::{Boundary, Compositing, Item, ItemKind, Mark, Plan, area};
 use crate::prepare::Producer;
+use pagura_color::Painted;
 use pagura_core::convert::u32_to_usize;
-use pagura_raster::{DeviceRect, Pixmap, Span};
+use pagura_raster::{DeviceRect, Span};
 use std::ops::Range;
 
 #[cfg(test)]
@@ -46,7 +49,7 @@ impl<'a> Executor<'a> {
         ws: &'a mut Workspace,
         producer: &'a mut dyn Producer,
         band: u32,
-        target: &mut Pixmap,
+        target: Destination<'_>,
     ) {
         let rows = plan.area.band_rows(band);
         if rows.is_empty() {
@@ -174,6 +177,11 @@ impl<'a> Executor<'a> {
             self.ws.coverage = coverage;
             return;
         }
+        if self.image_bytes(mark, frame) {
+            self.image_store(&coverage, frame, mark);
+            self.ws.coverage = coverage;
+            return;
+        }
         for row in coverage.rows() {
             if row.y < frame.rect.y0 || row.y >= frame.rect.y1 {
                 continue;
@@ -188,8 +196,8 @@ impl<'a> Executor<'a> {
     }
 
     /// How `mark` stores straight from coverage into `frame`: an opaque
-    /// constant colour into the N16 page, and a constant colour without a
-    /// soft mask into the byte page.
+    /// constant colour into the N16 page, and a constant or uniform colour
+    /// without a soft mask into the byte page.
     pub(super) fn opaque(&self, mark: &Mark, frame: Frame) -> Option<Opaque> {
         if mark.records || frame.buffer != Buffer::Page {
             return None;
@@ -198,7 +206,10 @@ impl<'a> Executor<'a> {
             PageBuffer::N16(_) => mark.words.map(Opaque::N16),
             PageBuffer::U8(_) => {
                 let paint = self.plan.paints.get(u32_to_usize(mark.paint))?;
-                let bytes = kernel::color_bytes(paint.constant()?);
+                let color = paint
+                    .constant()
+                    .or_else(|| paint.uniform().map(|(color, _)| color))?;
+                let bytes = kernel::color_bytes(color);
                 let compositing = &mark.compositing;
                 if mark.words.is_some() {
                     Some(Opaque::U8(bytes))
@@ -214,6 +225,77 @@ impl<'a> Executor<'a> {
             }
             PageBuffer::F64(_) | PageBuffer::F32(_) => None,
         }
+    }
+
+    /// Whether `mark` is an image whose pixels come as bytes, stored into
+    /// the byte page with a constant alpha and nothing else.
+    fn image_bytes(&self, mark: &Mark, frame: Frame) -> bool {
+        let compositing = &mark.compositing;
+        !mark.records
+            && frame.buffer == Buffer::Page
+            && matches!(self.ws.page, PageBuffer::U8(_))
+            && compositing.mask.is_none()
+            && compositing.blend == pagura_interpret::BlendMode::Normal
+            && compositing.overprint == 0
+            && mark.boundary == Boundary::Absent
+            && self
+                .plan
+                .paints
+                .get(u32_to_usize(mark.paint))
+                .is_some_and(|paint| paint.byte_spans())
+    }
+
+    /// An image's spans as bytes into the byte page, each pixel stored as
+    /// the byte path stores its rounded colour at its byte opacity.
+    fn image_store(&mut self, coverage: &pagura_raster::BandCoverage, frame: Frame, mark: &Mark) {
+        let Some(paint) = self.plan.paints.get(u32_to_usize(mark.paint)) else {
+            return;
+        };
+        let paint = paint.as_ref();
+        let alpha = mark.compositing.alpha;
+        let ws = &mut *self.ws;
+        let PageBuffer::U8(page) = &mut ws.page else {
+            return;
+        };
+        let (bits, table) = &mut ws.alpha_table;
+        if *bits != Some(alpha.to_bits()) {
+            *table = kernel::alpha_bytes(alpha);
+            *bits = Some(alpha.to_bits());
+        }
+        let rect = frame.rect;
+        let width = u32_to_usize(rect.width());
+        let mut stored = 0;
+        for row in coverage.rows() {
+            if row.y < rect.y0 || row.y >= rect.y1 {
+                continue;
+            }
+            let base = u32_to_usize(row.y - rect.y0) * width;
+            let (mut lo, mut hi) = (u32::MAX, 0);
+            for span in row.spans() {
+                let Some((x, cover)) = clamp(span, rect) else {
+                    continue;
+                };
+                let len = cover.len();
+                let column = x - rect.x0;
+                let start = base + u32_to_usize(column);
+                let (Some(pixels), Some(sources)) = (
+                    page.get_mut(start..start + len),
+                    ws.span_bytes.get_mut(..len),
+                ) else {
+                    continue;
+                };
+                if paint.span_bytes(x, row.y, sources) {
+                    kernel::store_u8_bytes(pixels, sources, cover.coverage(), table);
+                }
+                lo = lo.min(column);
+                hi = hi.max(column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX)));
+                stored += len;
+            }
+            if lo < hi {
+                ws.extents.mark(u32_to_usize(row.y - rect.y0), lo, hi);
+            }
+        }
+        ws.usage.work = ws.usage.work.saturating_add(stored);
     }
 
     /// Opaque constant colour into the N16 or byte page: one rounding per
@@ -241,7 +323,7 @@ impl<'a> Executor<'a> {
             Some(m) => mask::row(plan, &ws.masks, &mut ws.mask, m, (x, y), len),
             None => None,
         };
-        let constant = paint.constant();
+        let constant = constant(paint);
         if constant.is_none() {
             match mark.boundary {
                 Boundary::Shape(_) | Boundary::Empty => {
@@ -263,8 +345,8 @@ impl<'a> Executor<'a> {
         let paint_shape = (constant.is_none() && !paint.shape_is_alpha())
             .then(|| ws.texel_shape.get(..len))
             .flatten();
-        let (colors, paint_alpha, painted) = if let Some(color) = constant {
-            (Colors::Constant(color), None, paint.painted())
+        let (colors, paint_alpha, painted) = if let Some((color, painted)) = constant {
+            (Colors::Constant(color), None, painted)
         } else {
             let alpha = if ws.colors.alpha.is_empty() {
                 None
@@ -327,6 +409,15 @@ impl<'a> Executor<'a> {
             kind,
         );
     }
+}
+
+/// The colour every pixel of `paint` has and the channels it paints, when
+/// it is constant or its spans are uniform.
+fn constant(paint: &dyn PaintSpans) -> Option<(&[f64], Painted)> {
+    paint
+        .constant()
+        .map(|color| (color, paint.painted()))
+        .or_else(|| paint.uniform())
 }
 
 /// Coverage an opaque store writes into the page.

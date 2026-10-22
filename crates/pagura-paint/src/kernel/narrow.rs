@@ -88,6 +88,40 @@ pub(crate) fn store_u8_alpha(
     }
 }
 
+/// Stores pixels of an image given as bytes (`[0, 0, 0, 0]` where it paints
+/// nothing) at the byte alpha `alpha[c]` of each pixel's coverage byte `c`
+/// (`None` covers every pixel), the store the byte path makes.
+pub(crate) fn store_u8_bytes(
+    pixels: &mut [[u8; 4]],
+    sources: &[[u8; 4]],
+    coverage: Option<&[u8]>,
+    alpha: &[u8; 256],
+) {
+    let one = |pixel: &mut [u8; 4], source: [u8; 4], a: u8| {
+        if source[3] == 0 {
+            return;
+        }
+        match a {
+            255 => *pixel = source,
+            0 => {}
+            a => *pixel = Lanes::new(source).over(*pixel, u32::from(a)),
+        }
+    };
+    match coverage {
+        None => {
+            let a = alpha[255];
+            for (pixel, &source) in pixels.iter_mut().zip(sources) {
+                one(pixel, source, a);
+            }
+        }
+        Some(coverage) => {
+            for ((pixel, &source), &c) in pixels.iter_mut().zip(sources).zip(coverage) {
+                one(pixel, source, alpha[usize::from(c)]);
+            }
+        }
+    }
+}
+
 /// A byte colour as two pairs of channels in the 16-bit halves of a word
 /// each, so that one multiply weights two channels: a weighted channel is
 /// at most `255² + 128 + 254 < 2^16`, so no half carries into the other.
@@ -438,6 +472,32 @@ mod tests {
         let mut full = [[3_u8; 4]; 3];
         store_u8_opaque(&mut full, [9, 8, 7, 255], None);
         assert_eq!(full, [[9, 8, 7, 255]; 3]);
+    }
+
+    #[test]
+    fn image_byte_stores_match_the_byte_path() {
+        for k in [0.25, 1.0] {
+            let table = alpha_bytes(k);
+            for c in (0..=255_u8).step_by(3) {
+                let alpha = crate::execute::unit(usize::from(c)) * k;
+                let sources = [[200, 10, 90, 255], [0, 0, 0, 0], [7, 255, 0, 255]];
+                let mut fast = [[30, 60, 90, 255], [1, 2, 3, 4], [255, 0, 255, 255]];
+                let mut slow = fast;
+                store_u8_bytes(&mut fast, &sources, Some(&[c; 3]), &table);
+                for (pixel, source) in slow.iter_mut().zip(sources) {
+                    if source[3] == 255 {
+                        reference_over(pixel, source, alpha);
+                    }
+                }
+                assert_eq!(fast, slow, "k {k} c {c}");
+            }
+            let sources = [[200, 10, 90, 255], [0, 0, 0, 0]];
+            let mut fast = [[30, 60, 90, 255], [1, 2, 3, 4]];
+            let mut slow = fast;
+            store_u8_bytes(&mut fast, &sources, None, &table);
+            reference_over(&mut slow[0], sources[0], k);
+            assert_eq!(fast, slow, "k {k}");
+        }
     }
 
     #[test]

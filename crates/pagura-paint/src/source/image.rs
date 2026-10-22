@@ -17,7 +17,7 @@ mod tests;
 mod texels;
 
 use super::{PaintContext, SpanColors};
-use geometry::Geometry;
+use geometry::{Geometry, Mode};
 use lines::Lines;
 use pagura_color::{ColorSpace, Converter, Painted, Process};
 use pagura_core::{Built, Diagnostic, Error, Meter, Result, StoreKey};
@@ -40,6 +40,8 @@ use texels::{
 pub struct ImageSampler {
     prepared: Option<Box<Prepared>>,
     channels: usize,
+    /// The colour of every pixel, opaque, when all are alike.
+    uniform: Option<Vec<f64>>,
 }
 
 /// The budgets preparing an image charges.
@@ -178,10 +180,7 @@ impl ImageSampler {
         } else {
             0
         };
-        let empty = Self {
-            prepared: None,
-            channels,
-        };
+        let empty = Self::new(None, channels);
         let Some(inverse) = unit_to_device.inverse() else {
             return Ok(empty);
         };
@@ -264,10 +263,48 @@ impl ImageSampler {
             convert,
         )?;
         prepared.charge(pixels, conversions, &mut budgets)?;
-        Ok(Self {
-            prepared: Some(Box::new(prepared)),
+        Ok(Self::new(Some(Box::new(prepared)), channels))
+    }
+
+    fn new(prepared: Option<Box<Prepared>>, channels: usize) -> Self {
+        let mut sampler = Self {
+            prepared,
             channels,
-        })
+            uniform: None,
+        };
+        sampler.uniform = sampler.find_uniform();
+        sampler
+    }
+
+    /// The colour every pixel takes, when each takes the same opaque one:
+    /// an image of one texel sampled nearest, without a mask image, whose
+    /// texel has alpha and shape 1. Each pixel's span then holds exactly
+    /// these values.
+    fn find_uniform(&self) -> Option<Vec<f64>> {
+        let prepared = self.prepared.as_ref()?;
+        let image = &prepared.image.image;
+        if prepared.mask.is_some()
+            || prepared.geometry.mode() != Mode::Nearest
+            || (image.width, image.height) != (1, 1)
+        {
+            return None;
+        }
+        let mut colors = SpanColors::default();
+        let mut shape = Vec::new();
+        if prepared.shape_is_alpha {
+            self.span(0, 0, 1, &mut colors);
+        } else {
+            self.span_with_shape(0, 0, 1, &mut colors, &mut shape);
+        }
+        let opaque = colors.alpha.iter().chain(&shape).all(|&value| value == 1.0);
+        (opaque && colors.colors.len() == self.channels).then_some(colors.colors)
+    }
+
+    /// The colour of every pixel, opaque, when the image paints one colour
+    /// alike everywhere, and the channels it paints.
+    pub(crate) fn uniform(&self) -> Option<(&[f64], Painted)> {
+        let painted = self.prepared.as_ref()?.painted;
+        Some((self.uniform.as_deref()?, painted))
     }
 
     /// Gives a stencil mask its colour, `color` in working colours painting
@@ -299,6 +336,7 @@ impl ImageSampler {
             prepared.painted = painted;
             self.channels = color.len();
         }
+        self.uniform = self.find_uniform();
         self
     }
 
