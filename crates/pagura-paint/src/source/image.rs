@@ -479,9 +479,9 @@ impl ImageSampler {
         let len = pixels.len;
         let channels = self.channels;
         out.channels = channels;
-        out.colors.clear();
         out.alpha.clear();
         let Some(prepared) = &self.prepared else {
+            out.colors.clear();
             out.colors.resize(len * channels, 0.0);
             out.alpha.resize(len, 0.0);
             if let Some(shape) = shape {
@@ -536,8 +536,7 @@ impl ImageSampler {
                 (Some(_), false) => (Some(out.alpha[i]), texel),
                 (None, _) => (None, texel),
             };
-            let mut color = [0.0; geometry::MAX_LANES];
-            let color = &mut color[..channels];
+            let color = &mut out.colors[i * channels..(i + 1) * channels];
             texels::copy_texel(color, texel);
             let (mut alpha, mut own) = (texel[channels], texel[channels + 1]);
             if let Some(factor) = factor {
@@ -554,7 +553,6 @@ impl ImageSampler {
                     *value = if alpha > 0.0 { *value / alpha } else { 0.0 };
                 }
             }
-            texels::copy_texel(&mut out.colors[i * channels..], color);
             out.alpha[i] = alpha;
             if let Some(shape) = shape.as_deref_mut() {
                 shape.push(own);
