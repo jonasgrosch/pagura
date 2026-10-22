@@ -19,19 +19,6 @@ const MAX_PLACEMENTS: usize = 65_535;
 /// distinguished.
 type SourceKey = (OutlineKey, [u64; 4]);
 
-/// Entries of the lookaside in front of the hull and source maps.
-const RECENT: usize = 256;
-
-/// A source met recently: its hull, and its index in the glyphs node
-/// `node`.
-#[derive(Debug, Clone, Copy)]
-struct Recent {
-    key: SourceKey,
-    hull: [Point; 2],
-    node: NodeId,
-    source: u32,
-}
-
 /// The glyph state of a recording.
 #[derive(Debug, Default)]
 pub(super) struct Glyphs {
@@ -43,10 +30,6 @@ pub(super) struct Glyphs {
     hulls: FastMap<SourceKey, [Point; 2]>,
     /// The fill-and-stroke group states derived for interned state pairs.
     derived: FastMap<(StateId, StateId), FillStroke>,
-    /// Recently placed sources, direct-mapped by glyph: consecutive glyphs
-    /// of a run mostly share their font and linear map, so comparing keys
-    /// here replaces hashing them into the maps above.
-    recent: Vec<Option<Recent>>,
 }
 
 /// What the filled glyphs of one run share: their paint and mark, and the
@@ -99,18 +82,7 @@ impl SceneRecorder {
             glyph.outline_key,
             [linear.a, linear.b, linear.c, linear.d].map(f64::to_bits),
         );
-        let slot = recent_slot(&key);
-        let recent = self
-            .glyphs
-            .recent
-            .get(slot)
-            .and_then(Option::as_ref)
-            .filter(|recent| recent.key == key)
-            .map(|recent| (recent.hull, recent.node, recent.source));
-        let hull = match recent {
-            Some((hull, ..)) => hull,
-            None => self.hull(key, outline, linear)?,
-        };
+        let hull = self.hull(key, outline, linear)?;
         let origin = Point::new(glyph.transform.e, glyph.transform.f);
         let low = Point::new(hull[0].x + origin.x, hull[0].y + origin.y);
         let high = Point::new(hull[1].x + origin.x, hull[1].y + origin.y);
@@ -123,26 +95,21 @@ impl SceneRecorder {
         let Some(Node::Glyphs(glyphs)) = self.nodes.get_mut(node.index()) else {
             return Err(Error::invalid_argument("glyphs node expected"));
         };
-        let source = match recent {
-            Some((_, at, source)) if at == node => source,
-            _ => {
-                if let Some(&source) = sources.get(&key) {
-                    source
-                } else {
-                    let source = u32::try_from(glyphs.sources.len())
-                        .map_err(|_| Error::limit("glyph source count exceeded"))?;
-                    self.bytes.charge_items::<GlyphSource>(1)?;
-                    self.bytes
-                        .charge_items::<Segment>(outline.segments().len())?;
-                    glyphs.sources.push(GlyphSource {
-                        outline: Arc::clone(outline),
-                        key: glyph.outline_key,
-                        linear,
-                    });
-                    sources.insert(key, source);
-                    source
-                }
-            }
+        let source = if let Some(&source) = sources.get(&key) {
+            source
+        } else {
+            let source = u32::try_from(glyphs.sources.len())
+                .map_err(|_| Error::limit("glyph source count exceeded"))?;
+            self.bytes.charge_items::<GlyphSource>(1)?;
+            self.bytes
+                .charge_items::<Segment>(outline.segments().len())?;
+            glyphs.sources.push(GlyphSource {
+                outline: Arc::clone(outline),
+                key: glyph.outline_key,
+                linear,
+            });
+            sources.insert(key, source);
+            source
         };
         let index = u32::try_from(glyphs.placements.len())
             .map_err(|_| Error::limit("glyph placement count exceeded"))?;
@@ -154,20 +121,6 @@ impl SceneRecorder {
             glyphs.positions.push((index, glyph.position));
         }
         glyphs.placements.push(Placement { source, origin });
-        if recent.is_none_or(|(_, at, _)| at != node) {
-            let table = &mut self.glyphs.recent;
-            if table.is_empty() {
-                table.resize(RECENT, None);
-            }
-            if let Some(entry) = table.get_mut(slot) {
-                *entry = Some(Recent {
-                    key,
-                    hull,
-                    node,
-                    source,
-                });
-            }
-        }
         Ok(())
     }
 
@@ -326,13 +279,6 @@ impl SceneRecorder {
         self.stroke_glyph(run, glyph, outline, Some(&states.stroke))?;
         self.close(super::Open::Group)
     }
-}
-
-/// The lookaside entry of a source: by glyph, with the font mixed in.
-fn recent_slot(key: &SourceKey) -> usize {
-    let (outline, _) = key;
-    let mixed = u64::from(outline.glyph) ^ outline.font.0.rotate_left(7);
-    usize::try_from(mixed % RECENT as u64).unwrap_or(0)
 }
 
 /// A glyph outline in default user space, every point finite.
