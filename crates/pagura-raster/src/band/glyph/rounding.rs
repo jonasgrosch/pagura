@@ -605,6 +605,57 @@ mod tests {
     use pagura_core::Limits;
 
     #[test]
+    fn analytic_integral_cancellation_cannot_skip_a_coverage_byte() {
+        let limits = Limits::default();
+        let m = 98_304.0;
+        let mut path = PathBuilder::new();
+        path.move_to(Point::default());
+        path.cubic_to(
+            Point::new(m / 6.0, m / 3.0),
+            Point::new(m / 2.0, 2.0 * m / 3.0),
+            Point::new(m, m),
+        )
+        .unwrap();
+        path.line_to(Point::new(m + 2.0, m)).unwrap();
+        path.line_to(Point::new(m + 2.0, 0.0)).unwrap();
+        path.close();
+        let path = path.finish();
+        let edges =
+            std::sync::Arc::new(GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+        assert!(edges.curved());
+        let origin = Point::new(-98_302.997_063_444_05, 1.0 - m);
+        let options = Prep {
+            area: Area {
+                region: DeviceRect {
+                    x0: 0,
+                    y0: 0,
+                    x1: 1,
+                    y1: 1,
+                },
+                band_height: 1,
+            },
+            limits: &limits,
+            clip: None,
+        };
+        // Recover z=M(1-t) from x=0 using the original quadratic, then
+        // integrate its pixel-local polynomial. This avoids H(tb)-H(ta)
+        // and its large, nearly equal antiderivative values entirely.
+        let u = origin.x + m;
+        let z = 2.0 * u / (1.5 + (2.25 - 2.0 * u / m).sqrt());
+        let exact = 1.0 - (u * z - 0.75 * z * z + z * z * z / (6.0 * m));
+        assert!((exact - 0.664_705_581_461_998_8).abs() < 2e-15);
+        assert_eq!(quantize_unit(exact), 169);
+        let prepared = super::super::place(&edges, origin, &options).unwrap().unwrap();
+        let mut cells = Cells::new(1, &mut Meter::new(limits.render_bytes, RENDER_BYTES)).unwrap();
+        let mut actual = None;
+        raster::inspect(&prepared, &mut cells, |_, _, _, value, _| {
+            actual = Some(quantize_unit(value));
+        })
+        .unwrap();
+        assert_eq!(actual, Some(169));
+    }
+
+    #[test]
     fn replacement_releases_dead_builder_scratch_before_the_next_inspection() {
         let limits = Limits::default();
         let mut path = PathBuilder::new();
