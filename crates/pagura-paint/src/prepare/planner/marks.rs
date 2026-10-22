@@ -8,7 +8,9 @@ use super::clips::{Clipping, Extra};
 use super::runs::Placed;
 use super::{Planner, Scope};
 use crate::paint::PaintSpans;
-use crate::plan::{Compositing, Cover, GroupUse, Item, ItemKind, Mark, area, intersect};
+use crate::plan::{
+    Boundary, Compositing, Cover, GroupUse, Item, ItemKind, Mark, area, intersect,
+};
 use crate::prepare::overprint::{Keeping, Place, direct_cmyk};
 use crate::prepare::{Backend, Budget, PaintRequest, Prepared, bounds, index};
 use crate::source::{BBoxUse, PaintContext, Source};
@@ -350,7 +352,7 @@ impl<B: Backend> Planner<'_, B> {
             },
             bounds,
             work: shape.map_or(0, |s| s.work),
-            boundary: None,
+            boundary: Boundary::Absent,
         }))
     }
 
@@ -399,11 +401,15 @@ impl<B: Backend> Planner<'_, B> {
             FillRule::NonZero,
             &options,
         )?;
-        if let Some(prepared) = prepared {
-            budget.bytes.charge(prepared.bytes)?;
-            covered.work = covered.work.saturating_add(prepared.work);
-            covered.boundary = Some(prepared.key);
-        }
+        covered.boundary = match prepared {
+            Some(prepared) => {
+                budget.bytes.charge(prepared.bytes)?;
+                covered.work = covered.work.saturating_add(prepared.work);
+                Boundary::Shape(prepared.key)
+            }
+            // Away from the outline the background alone shows.
+            None => Boundary::Empty,
+        };
         Ok(())
     }
 
@@ -479,7 +485,7 @@ impl<B: Backend> Planner<'_, B> {
         };
         if self.gathering == Some(scope.group)
             && !records
-            && covered.boundary.is_none()
+            && covered.boundary == Boundary::Absent
             && let Some(shape) = covered.cover.shape
         {
             let placed = Placed {
@@ -723,7 +729,7 @@ struct Covered {
     bounds: pagura_raster::DeviceRect,
     work: usize,
     /// A shading pattern's outline shape, for its `Background`.
-    boundary: Option<u32>,
+    boundary: Boundary,
 }
 
 /// How a shading pattern's `BBox` applies, decided as its source decides
