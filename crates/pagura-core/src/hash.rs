@@ -1,32 +1,21 @@
-//! A fast deterministic hasher for preparation's tables, whose keys are
-//! ids, bits of transforms and small enums: one multiply-rotate step per
-//! word instead of SipHash's rounds. Keys come from the scene, not from an
-//! adversary who could choose collisions, so a keyed hash buys nothing, and
-//! the same keys always hash the same way.
+//! Deterministic hashing for bounded tables of internal identities, enums
+//! and numeric bits. This non-cryptographic hasher does not resist chosen
+//! collisions; callers bound each table with its domain's work and memory
+//! budgets. Keys still use their complete equality comparison.
 
 use std::collections::{HashMap, HashSet};
 use std::hash::{BuildHasherDefault, Hasher};
 
 /// A [`HashMap`] with [`FastHasher`].
-pub(crate) type FastMap<K, V> = HashMap<K, V, BuildHasherDefault<FastHasher>>;
+pub type FastMap<K, V> = HashMap<K, V, BuildHasherDefault<FastHasher>>;
 
 /// A [`HashSet`] with [`FastHasher`].
-pub(crate) type FastSet<T> = HashSet<T, BuildHasherDefault<FastHasher>>;
-
-/// An empty [`FastMap`].
-pub(crate) fn map<K, V>() -> FastMap<K, V> {
-    FastMap::default()
-}
-
-/// An empty [`FastSet`].
-pub(crate) fn set<T>() -> FastSet<T> {
-    FastSet::default()
-}
+pub type FastSet<T> = HashSet<T, BuildHasherDefault<FastHasher>>;
 
 /// Add-multiply hashing of whole words, rotated at the end so that the
 /// well-mixed high bits of the last product reach the bucket index.
 #[derive(Debug, Clone, Copy, Default)]
-pub(crate) struct FastHasher {
+pub struct FastHasher {
     hash: u64,
 }
 
@@ -120,14 +109,14 @@ mod tests {
     #[test]
     fn maps_iterate_in_one_order_for_one_insertion_order() {
         let fill = || {
-            let mut map = map();
+            let mut map = FastMap::default();
             for id in (0..500_u32).rev() {
                 map.insert((id, id % 3), id);
             }
             map.into_iter().collect::<Vec<_>>()
         };
         assert_eq!(fill(), fill());
-        let mut keys = set();
+        let mut keys = FastSet::default();
         assert!(keys.insert(5_u32));
         assert!(!keys.insert(5_u32));
     }
