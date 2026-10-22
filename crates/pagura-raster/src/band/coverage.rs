@@ -318,8 +318,6 @@ pub(crate) trait RowOut {
     fn push_row(&mut self, y: u32);
     /// Pixels `x .. x + len` of the current row have `value`.
     fn put_run(&mut self, x: u32, len: u32, value: u8);
-    /// Pixels from `x` of the current row have `values`.
-    fn put_row(&mut self, x: u32, values: &[u8]);
 }
 
 impl RowOut for BandCoverage {
@@ -331,11 +329,6 @@ impl RowOut for BandCoverage {
     #[inline]
     fn put_run(&mut self, x: u32, len: u32, value: u8) {
         Self::put_run(self, x, len, value);
-    }
-
-    #[inline]
-    fn put_row(&mut self, x: u32, values: &[u8]) {
-        Self::put_row(self, x, values);
     }
 }
 

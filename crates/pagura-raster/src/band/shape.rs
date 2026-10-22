@@ -5,8 +5,8 @@
 use super::certify::uncertified;
 use super::clip::{ClipShape, INSIDE, Rows, columns, fill_polygon};
 use super::curve::{self, Quadratic};
-use super::edges::{self, Bounds, Chained, Line, Polygon, RowList, line_work, rows};
-use super::rect::rectangle;
+use super::cells::STRIP;
+use super::edges::{self, Bounds, Chained, Line, Polygon, StripList, line_work, rows, strips};
 use super::row::fold;
 use super::scan::{RowIndex, Scanner, Stored, Walk, gap_winding, inside};
 use super::{Adjustment, Area, DeviceRect, Prep, ShapeOptions};
@@ -38,9 +38,7 @@ pub struct Shape {
 /// How a shape's rows are produced.
 #[derive(Debug)]
 pub(crate) enum Body {
-    /// An axis-aligned rectangle in closed form, within the region.
-    Rect(Bounds),
-    /// Edges accumulated into the row.
+    /// Edges accumulated into the cells.
     Edges(EdgeBody),
     /// A certified glyph's relative edges, translated as they accumulate.
     Glyph(GlyphBody),
@@ -51,20 +49,18 @@ pub(crate) enum Body {
 pub(crate) struct GlyphBody {
     pub(crate) edges: std::sync::Arc<super::GlyphEdges>,
     pub(crate) origin: crate::Point,
-    /// The device row of the relative row list's first row.
-    pub(crate) row0: i64,
     pub(crate) scan: (usize, usize),
 }
 
-/// Straight edges and monotone quadratics listed by band, and the columns
-/// their cells can be touched in.
+/// Straight edges and monotone quadratics, listed by strip, and the
+/// columns their cells can be touched in.
 #[derive(Debug, Default)]
 pub(crate) struct EdgeBody {
     pub(crate) lines: Vec<Line>,
     pub(crate) curves: Vec<Quadratic>,
-    /// Items by row; a small, narrow shape with nothing to overlay has
-    /// none and goes edge by edge into the rasterizer's grid.
-    pub(crate) index: Option<RowList>,
+    /// Items by strip; a shape within one strip has none and visits every
+    /// item.
+    pub(crate) strips: Option<StripList>,
     pub(crate) scan: (usize, usize),
 }
 
@@ -119,20 +115,6 @@ impl Shape {
         rule: FillRule,
         options: &Prep<'_>,
     ) -> Result<Option<Self>> {
-        // A rectangle is filled in closed form.
-        if let Some(rect) = rect_fill(path, transform, options.limits) {
-            // The rectangle the polygon would be, without building it.
-            let Some(mut frame) = Frame::new(options) else {
-                return Ok(None);
-            };
-            frame.fit([
-                crate::Point::new(rect.left, rect.top),
-                crate::Point::new(rect.right, rect.bottom),
-            ]);
-            if frame.rows.is_none() {
-                return Ok(Self::rect(rect, &frame, options));
-            }
-        }
         let (polygon, rule) = fill_polygon(path, transform, rule, options.limits)?;
         Self::polygon(polygon, rule, Winding::Check(0.0), options)
     }
@@ -318,11 +300,6 @@ impl Shape {
             return Ok(None);
         };
         frame.fit(hull);
-        if frame.rows.is_none()
-            && let Some(rect) = rectangle(&polygon)
-        {
-            return Ok(Self::rect(rect, &frame, options));
-        }
         // The heights the winding certificate leaves in doubt: none when
         // certified throughout, all when unknown.
         // A lone triangle bounds winding 0 or one sign of magnitude one,
@@ -476,15 +453,6 @@ impl Shape {
         options: &Prep<'_>,
     ) -> Result<Option<Self>> {
         let o = origin;
-        if let Some(r) = relative.rect {
-            let rect = Bounds {
-                left: r.left + o.x,
-                top: r.top + o.y,
-                right: r.right + o.x,
-                bottom: r.bottom + o.y,
-            };
-            return Ok(Self::rect(rect, frame, options));
-        }
         let [lo, hi] = relative.hull;
         let (lo, hi) = (
             crate::Point::new(lo.x + o.x, lo.y + o.y),
@@ -495,11 +463,10 @@ impl Shape {
         };
         let width = super::row::width(options.area.region.x1)?;
         let scan = columns(lo.x, hi.x, width);
-        // Rows scanned through the bitmap or whole in the grid.
         let columns = scan.1.saturating_sub(scan.0);
         let words = columns / 64 + 2;
-        // In the grid each band it meets visits every edge once, at most
-        // as often as it has rows.
+        // Each window of a band visits every item once, at most as often as
+        // the placement has rows.
         let items = relative.lines.len() + relative.curves.len();
         let rows = bounds.height() as usize;
         let work = relative
@@ -509,11 +476,6 @@ impl Shape {
         if work > options.limits.raster_work {
             return Err(Error::limit(RASTER_WORK));
         }
-        #[expect(
-            clippy::cast_possible_truncation,
-            reason = "bounded origins lie within i64"
-        )]
-        let row0 = o.y.floor() as i64 + relative.first;
         Ok(Some(Self {
             area: options.area,
             bounds,
@@ -523,44 +485,12 @@ impl Shape {
             body: Body::Glyph(GlyphBody {
                 edges: std::sync::Arc::clone(edges),
                 origin,
-                row0,
                 scan,
             }),
             clip: frame.clip.cloned(),
             overlay: false,
             stored: Stored::default(),
         }))
-    }
-
-    fn rect(rect: Bounds, frame: &Frame<'_>, options: &Prep<'_>) -> Option<Self> {
-        let region = options.area.region;
-        let mut rect = rect.intersect(Bounds {
-            left: f64::from(region.x0),
-            top: f64::from(region.y0),
-            right: f64::from(region.x1),
-            bottom: f64::from(region.y1),
-        });
-        if let Some(r) = frame.rect {
-            rect = rect.intersect(r);
-        }
-        if rect.is_empty() {
-            return None;
-        }
-        let bounds = rect.pixels(region).intersect(&frame.limit);
-        if bounds.is_empty() {
-            return None;
-        }
-        Some(Self {
-            area: options.area,
-            bounds,
-            work: (bounds.height() as usize).saturating_mul(8),
-            retained: size_of::<Self>(),
-            rule: FillRule::NonZero,
-            body: Body::Rect(rect),
-            clip: frame.clip.cloned(),
-            overlay: false,
-            stored: Stored::default(),
-        })
     }
 
     fn edges(
@@ -594,23 +524,16 @@ impl Shape {
             None => curves.get(i - lines.len()).and_then(curve_rows),
         };
         let columns = scan.1.saturating_sub(scan.0);
-        // A mark of at most 16 rows and a bitmap word's width, with nothing
-        // to overlay, goes into the grid: each band it meets visits every
-        // item once, at most as often as it has rows, and each row it
-        // crosses.
+        // A shape within one strip visits every item in each window of a
+        // band, at most once per row; a taller one lists its items per
+        // strip, each visited at most once per row of the strip.
         let height = bounds.height() as usize;
-        let grid = stored.len() == 0 && frame.rows.is_none() && columns <= 64 && height <= 16;
-        let (index, mut work) = if grid {
-            let visits = (0..count)
-                .filter_map(item_rows)
-                .fold(count.saturating_mul(height), |n, (a, b)| {
-                    n.saturating_add((b - a) as usize + 1)
-                });
-            (None, visits)
+        let (list, mut work) = if strips((bounds.y0, bounds.y1 - 1)) == 1 {
+            (None, count.saturating_mul(height))
         } else {
-            let index = RowList::new((bounds.y0, bounds.y1), count, item_rows)?;
-            let visits = index.len();
-            (Some(index), visits)
+            let list = StripList::new((bounds.y0, bounds.y1), count, item_rows)?;
+            let visits = list.len().saturating_mul(STRIP as usize);
+            (Some(list), visits)
         };
         let mut cells = 0_usize;
         for l in &lines {
@@ -637,13 +560,13 @@ impl Shape {
         let body = EdgeBody {
             lines,
             curves,
-            index,
+            strips: list,
             scan,
         };
         let retained = size_of::<Self>()
             .saturating_add(body.lines.capacity() * size_of::<Line>())
             .saturating_add(body.curves.capacity() * size_of::<Quadratic>())
-            .saturating_add(body.index.as_ref().map_or(0, RowList::retained_bytes))
+            .saturating_add(body.strips.as_ref().map_or(0, StripList::retained_bytes))
             .saturating_add(stored.retained_bytes());
         Ok(Self {
             area,
@@ -662,55 +585,6 @@ impl Shape {
     pub(crate) fn add_work(&mut self, units: usize) {
         self.work = self.work.saturating_add(units);
     }
-}
-
-/// The device rectangle a fill of `path` is when the path is one subpath of
-/// four corners that `transform` keeps axis-aligned: the corners as the
-/// flattened polygon holds them, so the fill's bytes do not change. `None`
-/// for anything else, which goes through the polygon.
-fn rect_fill(path: &Path, transform: Transform, limits: &pagura_core::Limits) -> Option<Bounds> {
-    use crate::Segment;
-    let segments = path.segments();
-    if !transform.is_finite() || segments.len() > limits.path_segments {
-        return None;
-    }
-    let mut corners = [crate::Point::default(); 5];
-    let mut n = 0;
-    for (i, segment) in segments.iter().enumerate() {
-        match (i, *segment) {
-            (0, Segment::MoveTo(p)) => {
-                corners[0] = p;
-                n = 1;
-            }
-            (1..=4, Segment::LineTo(p)) if n == i => {
-                corners[n] = p;
-                n += 1;
-            }
-            (_, Segment::Close) if i + 1 == segments.len() && i == n => {}
-            _ => return None,
-        }
-    }
-    // An explicit return to the first corner closes as a close does.
-    if n == 5 && corners[4] == corners[0] {
-        n = 4;
-    }
-    if n != 4 {
-        return None;
-    }
-    let mut device = [crate::Point::default(); 4];
-    for (d, &p) in device.iter_mut().zip(&corners[..4]) {
-        *d = p * transform;
-        crate::flatten::bounded(*d).ok()?;
-    }
-    let [a, b, c, d] = device;
-    let axis = (a.x == b.x && b.y == c.y && c.x == d.x && d.y == a.y)
-        || (a.y == b.y && b.x == c.x && c.y == d.y && d.x == a.x);
-    (axis && a != b && b != c && c != d && d != a).then_some(Bounds {
-        left: a.x.min(c.x),
-        top: a.y.min(c.y),
-        right: a.x.max(c.x),
-        bottom: a.y.max(c.y),
-    })
 }
 
 /// The columns cells of edges with these x can be touched in.

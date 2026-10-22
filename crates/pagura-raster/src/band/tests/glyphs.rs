@@ -88,7 +88,7 @@ fn translated_placements_match_translated_vertices() {
                     let slow = glyph::general(&edges, origin, &prep);
                     let (fast, slow) = (fast.unwrap(), slow.unwrap().unwrap());
                     if !clipped {
-                        assert!(matches!(fast.body, Body::Glyph(_) | Body::Rect(_)));
+                        assert!(matches!(fast.body, Body::Glyph(_)));
                     }
                     let (a, work) = raster(&area, Some(&fast), clip.as_ref());
                     let (b, _) = raster(&area, Some(&slow), clip.as_ref());

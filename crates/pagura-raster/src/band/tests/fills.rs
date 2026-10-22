@@ -58,10 +58,10 @@ fn rectangle_fills_skip_the_polygon_with_its_bytes() {
     }
 }
 
-/// Small shapes accumulated edge by edge in the grid give the bytes of the
-/// row lists.
+/// Shapes within one strip visit every item; listed per strip they give
+/// the same bytes.
 #[test]
-fn grid_shapes_match_their_row_lists() {
+fn unlisted_shapes_match_their_strip_lists() {
     let limits = Limits::default();
     let area = area(0, 0, 48, 40, 4);
     let mut rng = Lcg(404);
@@ -91,13 +91,13 @@ fn grid_shapes_match_their_row_lists() {
         let grid = raster(&area, Some(&shape), None).0;
         let bounds = shape.bounds();
         if let shape::Body::Edges(e) = &mut shape.body
-            && e.index.is_none()
+            && e.strips.is_none()
         {
             grids += 1;
             let right = 48.0;
             let lines = e.lines.clone();
-            e.index = Some(
-                edges::RowList::new((bounds.y0, bounds.y1), lines.len(), |i| {
+            e.strips = Some(
+                edges::StripList::new((bounds.y0, bounds.y1), lines.len(), |i| {
                     let l = lines[i];
                     if l.a.x.min(l.b.x) >= right {
                         return None;

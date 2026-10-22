@@ -10,8 +10,7 @@
 use super::Prep;
 use super::certify::certified;
 use super::curve::{self, Piece, Quadratic};
-use super::edges::{self, Bounds, Line, Polygon, RowList};
-use super::rect::rectangle;
+use super::edges::{self, Line, Polygon};
 use super::shape::{Frame, Shape, Winding};
 use crate::flatten::{CurveStack, Polyline, TOLERANCE, bounded, flatten_into};
 use crate::{FillRule, Path, Point, Segment, Transform};
@@ -37,38 +36,24 @@ pub struct GlyphEdges {
     relative: Option<Relative>,
 }
 
-/// A certified glyph's edges relative to its origin, listed per row for any
-/// origin within one pixel row: a placement adds its origin to each edge as
-/// the edge is accumulated, so placing costs no geometry work and no
-/// allocation, and gives the bytes of translating every vertex first.
+/// A certified glyph's edges relative to its origin: a placement adds its
+/// origin to each edge as the edge is accumulated, so placing costs no
+/// geometry work and no allocation, and gives the bytes of translating
+/// every vertex first.
 #[derive(Debug)]
 pub(crate) struct Relative {
     /// Edges that are not horizontal, then curves, in accumulation order.
     pub(crate) lines: Vec<Line>,
     pub(crate) curves: Vec<Quadratic>,
-    /// Items by row, from relative row `first`; an item is listed one row
-    /// further than it reaches at a whole origin, for fractional ones.
-    pub(crate) index: RowList,
-    pub(crate) first: i64,
-    /// Per item, its first and last listed rows and the fractional origins
-    /// that reach them: the first row only below `reach[0]`, the last only
-    /// above `reach[1]`.
-    pub(crate) ends: Vec<[u32; 2]>,
-    pub(crate) reach: Vec<[f64; 2]>,
     /// The extent the pixels and the scanned columns come from.
     pub(crate) hull: [Point; 2],
-    /// An axis-aligned rectangle, filled in closed form.
-    pub(crate) rect: Option<Bounds>,
-    /// Edge visits and four units per cell they can touch, over all rows.
+    /// Four units per cell and row the edges can touch, over every row an
+    /// edge can reach at any fractional origin.
     pub(crate) work: usize,
 }
 
 impl Relative {
     /// From every line (horizontal ones bound the extent only) and curve.
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "bounded coordinates; rows are checked to fit u32"
-    )]
     fn new(all: &[Line], curves: Vec<Quadratic>) -> Result<Self> {
         let allocation = |_| Error::limit("glyph geometry allocation failed");
         let mut lo = Point::new(f64::INFINITY, f64::INFINITY);
@@ -84,64 +69,21 @@ impl Relative {
         let mut lines: Vec<Line> = Vec::new();
         lines.try_reserve_exact(all.len()).map_err(allocation)?;
         lines.extend(all.iter().filter(|l| !l.is_horizontal()));
-        // A curve spans its ends, as monotone pieces do.
-        let chord = |i: usize| {
-            lines.get(i).copied().unwrap_or_else(|| {
-                let q = curves[i - lines.len()];
-                Line {
-                    a: q.points[0],
-                    b: q.points[2],
-                }
-            })
-        };
-        let span = |i: usize| {
-            let l = chord(i);
-            (l.a.y.min(l.b.y), l.a.y.max(l.b.y))
-        };
-        let count = lines.len() + curves.len();
-        let (first, last) = (0..count).fold((f64::INFINITY, f64::NEG_INFINITY), |(f, l), i| {
-            let (a, b) = span(i);
-            (f.min(a.floor()), l.max(b.ceil()))
-        });
-        let (first, rows) = if count == 0 {
-            (0, 0)
-        } else {
-            let rows = u32::try_from(last as i64 - first as i64 + 1)
-                .map_err(|_| Error::limit("glyph extent budget exceeded"))?;
-            (first as i64, rows)
-        };
-        // Within `0..rows` by construction.
-        let relative = |i: usize| {
-            let (a, b) = span(i);
-            let row = |v: f64| u32::try_from(v as i64 - first).unwrap_or(0);
-            (row(a.floor()), row(b.ceil()))
-        };
-        let index = RowList::new((0, rows), count, |i| Some(relative(i)))?;
-        let mut ends = Vec::new();
-        let mut reach = Vec::new();
-        ends.try_reserve_exact(count)
-            .and_then(|()| reach.try_reserve_exact(count))
-            .map_err(allocation)?;
-        for i in 0..count {
-            let (a, b) = span(i);
-            ends.push(<[u32; 2]>::from(relative(i)));
-            reach.push([a.floor() + 1.0 - a, b.ceil() - b]);
-        }
-        let mut work = index.len();
-        for i in 0..count {
-            let line = chord(i);
-            work = work
-                .saturating_add(edges::line_work(line, relative(i), usize::MAX).saturating_mul(4));
+        // A curve spans its ends, as monotone pieces do; a fractional
+        // origin moves an edge into at most one more row.
+        let chords = lines.iter().copied().chain(curves.iter().map(|q| Line {
+            a: q.points[0],
+            b: q.points[2],
+        }));
+        let mut work = 0_usize;
+        for line in chords {
+            let rows = (line.a.y.min(line.b.y), line.a.y.max(line.b.y));
+            work = work.saturating_add(edges::line_work(line, rows_reached(rows), usize::MAX).saturating_mul(4));
         }
         Ok(Self {
             lines,
             curves,
-            index,
-            first,
-            ends,
-            reach,
             hull: [lo, hi],
-            rect: None,
             work,
         })
     }
@@ -149,10 +91,20 @@ impl Relative {
     fn retained_bytes(&self) -> usize {
         (self.lines.capacity() * size_of::<Line>())
             .saturating_add(self.curves.capacity() * size_of::<Quadratic>())
-            .saturating_add(self.ends.capacity() * size_of::<[u32; 2]>())
-            .saturating_add(self.reach.capacity() * size_of::<[f64; 2]>())
-            .saturating_add(self.index.retained_bytes())
     }
+}
+
+/// The rows, counted from the edge's own first one, that an edge spanning
+/// heights `(lo, hi)` relative to an origin can reach at any fractional
+/// origin, as `(0, last)`.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "bounded glyph extents; saturating conversion of a nonnegative span"
+)]
+fn rows_reached((lo, hi): (f64, f64)) -> (u32, u32) {
+    let span = (hi.ceil() - lo.floor()).max(0.0);
+    (0, span as u32)
 }
 
 impl GlyphEdges {
@@ -237,9 +189,7 @@ impl GlyphEdges {
             }
             Some(Relative::new(&lines, quadratics)?)
         } else if certified_polygon && !polygon.points_cells {
-            let mut relative = Relative::new(&edges::lines(&polygon)?, Vec::new())?;
-            relative.rect = rectangle(&polygon);
-            Some(relative)
+            Some(Relative::new(&edges::lines(&polygon)?, Vec::new())?)
         } else {
             None
         };

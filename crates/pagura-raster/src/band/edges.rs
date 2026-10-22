@@ -6,6 +6,7 @@
 //! arithmetic produces a cell, so coverage is independent of both.
 
 use super::DeviceRect;
+use super::cells::STRIP;
 use crate::flatten::{CurveStack, Polyline, bounded, flatten_into};
 use crate::{Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Result};
@@ -693,93 +694,96 @@ pub(crate) fn rows(lo: f64, hi: f64, region: DeviceRect) -> Option<(u32, u32)> {
     Some((first.max(top) as u32, last.min(bottom) as u32))
 }
 
-/// The edges and curves of one shape listed per row they have area in,
-/// each row in the shapes' own order: a row visits only the edges that
-/// cross it, whatever the band height.
+/// The items of one shape listed per strip ([`STRIP`] rows of the global
+/// grid) they have area in, each strip in the items' own order: a band
+/// visits only the items that cross its strips, whatever its height.
 #[derive(Debug, Default)]
-pub(crate) struct RowList {
+pub(crate) struct StripList {
     first: u32,
     offsets: Vec<u32>,
     items: Vec<u32>,
 }
 
-impl RowList {
-    /// Lists every item `i` in each row of `ranges(i)` (inclusive) within
-    /// rows `first..end`.
+impl StripList {
+    /// Lists every item `i` in each strip that rows `ranges(i)` (inclusive)
+    /// meet within rows `first..end`.
     pub(crate) fn new(
         (first, end): (u32, u32),
         count: usize,
         ranges: impl Fn(usize) -> Option<(u32, u32)>,
     ) -> Result<Self> {
-        let span = end.saturating_sub(first) as usize;
+        if u32::try_from(count).is_err() {
+            return Err(Error::limit("strip list exceeds u32"));
+        }
+        let last = end.checked_sub(1).filter(|&last| last >= first);
+        let Some(last) = last else {
+            return Ok(Self::default());
+        };
+        let strip0 = first / STRIP;
+        let span = (last / STRIP - strip0) as usize + 1;
         let mut list = Self {
-            first,
+            first: strip0,
             ..Self::default()
         };
-        if u32::try_from(count).is_err() {
-            return Err(Error::limit("row list exceeds u32"));
-        }
-        let allocation = |_| Error::limit("row list allocation failed");
+        let allocation = |_| Error::limit("strip list allocation failed");
         list.offsets
             .try_reserve_exact(span + 1)
             .map_err(allocation)?;
         list.offsets.resize(span + 1, 0);
         let clamp = |i: usize| {
             let (a, b) = ranges(i)?;
-            let (a, b) = (a.max(first), b.min(end.checked_sub(1)?));
-            (a <= b).then(|| ((a - first) as usize, (b - first) as usize))
+            let (a, b) = (a.max(first), b.min(last));
+            (a <= b).then(|| ((a / STRIP - strip0) as usize, (b / STRIP - strip0) as usize))
         };
         let mut total = 0_u32;
         for i in 0..count {
             if let Some((a, b)) = clamp(i) {
-                for row in a..=b {
-                    list.offsets[row + 1] += 1;
+                for strip in a..=b {
+                    list.offsets[strip + 1] += 1;
                 }
                 total = u32::try_from(b - a + 1)
                     .ok()
                     .and_then(|n| total.checked_add(n))
-                    .ok_or(Error::limit("row list exceeds u32"))?;
+                    .ok_or(Error::limit("strip list exceeds u32"))?;
             }
         }
-        for row in 0..span {
-            list.offsets[row + 1] += list.offsets[row];
+        for strip in 0..span {
+            list.offsets[strip + 1] += list.offsets[strip];
         }
         list.items
             .try_reserve_exact(total as usize)
             .map_err(allocation)?;
         list.items.resize(total as usize, 0);
-        // Fill each row from its start, which leaves every start at the
-        // next row's; shifting restores them.
+        // Fill each strip from its start, which leaves every start at the
+        // next strip's; shifting restores them.
         for i in 0..count {
             if let Some((a, b)) = clamp(i) {
-                for row in a..=b {
-                    let slot = &mut list.offsets[row];
+                for strip in a..=b {
+                    let slot = &mut list.offsets[strip];
                     // Checked above: the item count fits u32.
                     list.items[*slot as usize] = u32::try_from(i).unwrap_or(u32::MAX);
                     *slot += 1;
                 }
             }
         }
-        if span > 0 {
-            list.offsets.copy_within(0..span, 1);
-            list.offsets[0] = 0;
-        }
+        list.offsets.copy_within(0..span, 1);
+        list.offsets[0] = 0;
         Ok(list)
     }
 
-    /// The items listed for row `y`.
-    pub(crate) fn row(&self, y: u32) -> &[u32] {
-        let Some(local) = y.checked_sub(self.first) else {
+    /// The items listed for strip `strip`.
+    pub(crate) fn strip(&self, strip: u32) -> &[u32] {
+        let Some(local) = strip.checked_sub(self.first) else {
             return &[];
         };
         let local = local as usize;
         match (self.offsets.get(local), self.offsets.get(local + 1)) {
-            (Some(&start), Some(&end)) => &self.items[start as usize..end as usize],
+            (Some(&start), Some(&end)) => self.items.get(start as usize..end as usize).unwrap_or(&[]),
             _ => &[],
         }
     }
 
-    /// Row visits over all rows.
+    /// Strip visits over all strips.
     pub(crate) fn len(&self) -> usize {
         self.items.len()
     }
@@ -787,6 +791,11 @@ impl RowList {
     pub(crate) fn retained_bytes(&self) -> usize {
         (self.offsets.capacity() + self.items.capacity()).saturating_mul(size_of::<u32>())
     }
+}
+
+/// The strips rows `first..=last` meet.
+pub(crate) fn strips((first, last): (u32, u32)) -> usize {
+    (last / STRIP - first / STRIP) as usize + 1
 }
 
 /// An upper bound of the cells a straight edge visits in rows
