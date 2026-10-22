@@ -5,7 +5,10 @@
 //! place into buffers the reader keeps from one operation to the next, so
 //! reading an operation allocates nothing; dictionaries, other arrays and
 //! malformed tokens go through the object parser, whose values, errors and
-//! repairs are the reference for all of them.
+//! repairs are the reference for all of them. Reading every operand with
+//! the object parser instead, which looks ahead for a reference after each
+//! integer and allocates strings and arrays, makes interpretation
+//! measurably slower.
 
 use crate::number::{self, Number};
 use crate::op::{Buffers, Item, Operand, Slot};
