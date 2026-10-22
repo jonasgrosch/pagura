@@ -65,11 +65,13 @@ fn oriented_sampler(decoded: Arc<Decoded>, unit_to_device: Transform, width: u32
         alpha_is_shape: false,
     };
     let convert = converter(&space, 3);
-    let (prepared, _) = Prepared::new(
+    let prepared = Prepared::new(
         &description,
         (decoded, None),
         (unit_to_device.inverse().unwrap(), (0, width), orientation),
         Some(convert),
+        &mut super::meter(),
+        &mut super::meter(),
     )
     .unwrap();
     ImageSampler::new(Some(Box::new(prepared)), 3)

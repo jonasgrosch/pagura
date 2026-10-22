@@ -274,7 +274,7 @@ pub(super) fn sampler(placed: &Placed, decoded: Arc<Decoded>) -> Option<ImageSam
         alpha_is_shape: false,
     };
     let convert = placed.space.as_ref().map(|space| converter(space, 3));
-    let (prepared, _) = Prepared::new(
+    let prepared = Prepared::new(
         &description,
         (decoded, None),
         (
@@ -283,6 +283,8 @@ pub(super) fn sampler(placed: &Placed, decoded: Arc<Decoded>) -> Option<ImageSam
             Orientation::of(placed.unit_to_device),
         ),
         convert,
+        &mut super::meter(),
+        &mut super::meter(),
     )
     .ok()?;
     Some(ImageSampler::new(
