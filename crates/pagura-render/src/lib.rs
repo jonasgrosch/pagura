@@ -5,7 +5,7 @@
 //!
 //! A page is interpreted once into a device-independent [`Scene`]
 //! (`pagura-interpret`), which a [`RenderContext`] keeps in its
-//! [`Store`](pagura_core::Store). Rendering a region of it at a resolution
+//! [`Store`]. Rendering a region of it at a resolution
 //! maps the page to device pixels ([`PageSpace::device_transform`](pagura_interpret::PageSpace::device_transform)),
 //! prepares the scene for that region (`pagura_paint::prepare`, the only
 //! step that can fail: it validates every mark that meets the region and
