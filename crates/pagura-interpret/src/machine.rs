@@ -533,10 +533,9 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
                 value: content,
             })
         };
-        match self.session.store {
-            Some(store) => store.get_or_build(PageContent(page.id()), build),
-            None => Ok(Arc::new(build()?.value)),
-        }
+        // A page's content is read once per recording; the recorded scene,
+        // not the content, is what the store keeps for reuse.
+        Ok(Arc::new(build()?.value))
     }
 
     /// The next soft mask number.
@@ -566,14 +565,6 @@ impl Scope {
 struct StreamContent(ObjectId);
 
 impl pagura_core::StoreKey for StreamContent {
-    type Value = Content<'static>;
-}
-
-/// The store key of a page's decoded content.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct PageContent(ObjectId);
-
-impl pagura_core::StoreKey for PageContent {
     type Value = Content<'static>;
 }
 
