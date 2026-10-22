@@ -62,7 +62,7 @@ fn transfer_error(plan: &Plan, serial: u32) -> Error {
         .unwrap_or_default();
     Error::unsupported(
         crate::features::TRANSPARENCY_TRANSFER,
-        "a fractional boundary meets a transfer function selection",
+        "fractional transfer regions require correlated colour coverage",
     )
     .at(position)
 }

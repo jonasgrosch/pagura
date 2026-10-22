@@ -114,11 +114,14 @@ impl<B: Backend> Planner<'_, B> {
             return Ok(state.bounds);
         }
         let region = self.area.region;
+        // A pixel wider: a clipping path without area still keeps the
+        // pixels its boundary touches.
         let bounds =
             self.chain(scope, clip, extra)?
                 .iter()
                 .fold(region, |acc, (path, _, transform)| {
-                    intersect(acc, bounds::device(bounds::path(path, *transform), region))
+                    let hull = bounds::path(path, *transform).map(|h| bounds::expand(h, 1.0));
+                    intersect(acc, bounds::device(hull, region))
                 });
         self.clip_states().insert(
             key,

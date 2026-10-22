@@ -74,11 +74,19 @@ fn opaque_pages_store_n16_and_translucent_ones_f32() {
     check(&b);
     b.rect(group, [5.5, 1.0, 6.5, 2.0], red, mark(StateId(0)));
     assert_eq!(exact(&b)[0], Format::F32);
+    // Byte storage narrows a page without group results, cells or masks;
+    // everything else keeps f64, as the earlier competitive renderer did.
     let bytes = FastParams {
         byte_storage: true,
         ..FastParams::EXACT
     };
-    assert_eq!(formats(&b, bytes), [Format::U8, Format::U8]);
+    assert_eq!(formats(&b, bytes), [Format::F64, Format::F64]);
+    let mut b = Build::new(8.0, 4.0);
+    let red = b.rgb([1.0, 0.0, 0.0]);
+    let half = b.state(|s| s.alpha = 0.5);
+    b.rect(PAGE, [0.5, 0.5, 7.5, 3.5], red, mark(StateId(0)));
+    b.rect(PAGE, [1.0, 0.0, 5.0, 4.0], red, mark(half));
+    assert_eq!(formats(&b, bytes), [Format::U8]);
 }
 
 #[test]

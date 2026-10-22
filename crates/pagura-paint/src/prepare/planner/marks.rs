@@ -9,9 +9,10 @@ use super::runs::Placed;
 use super::{Planner, Scope};
 use crate::paint::PaintSpans;
 use crate::plan::{Compositing, Cover, GroupUse, Item, ItemKind, Mark, area, intersect};
+use crate::prepare::overprint::{Keeping, Place, direct_cmyk};
 use crate::prepare::{Backend, Budget, PaintRequest, Prepared, bounds, index};
 use crate::source::{BBoxUse, PaintContext, Source};
-use pagura_core::{Error, Position, Result};
+use pagura_core::{Error, Limits, Position, Result};
 use pagura_interpret::{
     BlendMode, Composite, FillNode, GlyphSource, GlyphsNode, ImageMask, ImageNode, MarkInfo, Paint,
     PaintId, Pen, ShadingNode, ShadingPaint, StrokeNode, TilingPaint,
@@ -191,7 +192,7 @@ impl<B: Backend> Planner<'_, B> {
     ) -> Result<()> {
         let to_device = node.transform.then(scope.transform);
         let (hull, geometry) = if let Some(rect) = node.shading.bbox {
-            let path = Path::rect(rect);
+            let path = bbox_path(rect, self.limits)?;
             let hull = bounds::path(&path, to_device).map(|h| bounds::expand(h, 1.0));
             (hull, Geometry::Area(Some((path, to_device))))
         } else {
@@ -236,6 +237,20 @@ impl<B: Backend> Planner<'_, B> {
             }
             Colour::Shading(_) | Colour::Image(_) => None,
         };
+        // With a transfer function anywhere outside soft masks, a pattern or
+        // a simulated overprint outside them needs per-region selection,
+        // which is not implemented.
+        let patterned = scope.paint.is_none() && paint.as_deref().is_some_and(is_pattern);
+        let policy = self.request.overprint == crate::request::OverprintMode::Simulate;
+        if self.storage.transfer_gate
+            && !scope.masked
+            && (patterned || (policy && state.overprint.enabled))
+        {
+            return Err(Error::unsupported(
+                crate::features::TRANSPARENCY_TRANSFER,
+                "per-colourant and pattern transfer-region selection is not implemented",
+            ));
+        }
         if !paints(paint.as_deref(), spec.colour, scope, scene) {
             return Ok(());
         }
@@ -245,7 +260,7 @@ impl<B: Backend> Planner<'_, B> {
         };
         let pattern_box = match (paint.as_deref(), spec.colour) {
             (Some(Paint::Shading(pattern)), Colour::Paint(id)) if scope.paint.is_none() => {
-                pattern_bbox(pattern, scope.transform).map(|(usage, extra)| {
+                pattern_bbox(pattern, scope.transform, self.limits)?.map(|(usage, extra)| {
                     (
                         usage,
                         Extra {
@@ -269,14 +284,6 @@ impl<B: Backend> Planner<'_, B> {
         if culling.is_empty() {
             return Ok(());
         }
-        if self.storage.transfers
-            && (tiling.is_some() || (self.simulate && state.overprint.enabled))
-        {
-            return Err(Error::unsupported(
-                crate::features::TRANSPARENCY_TRANSFER,
-                "transfer selection with patterns or simulated overprint is not supported",
-            ));
-        }
         let mask = state
             .soft_mask
             .map(|id| self.mask_use(scope, id, budget))
@@ -293,7 +300,7 @@ impl<B: Backend> Planner<'_, B> {
             blend: state.blend,
             alpha_is_shape: state.alpha_is_shape,
             mask,
-            overprint: if self.simulate && state.overprint.enabled {
+            overprint: if self.keeps(scope, spec.colour, &state) {
                 scope.layout.mask()
             } else {
                 0
@@ -345,6 +352,32 @@ impl<B: Backend> Planner<'_, B> {
             work: shape.map_or(0, |s| s.work),
             boundary: None,
         }))
+    }
+
+    /// Whether the mark keeps the backdrop's channels where its colour does
+    /// not paint them.
+    fn keeps(&self, scope: &Scope, colour: Colour<'_>, state: &Composite) -> bool {
+        let paint = |id: PaintId| match &scope.paint {
+            Some((_, paint)) => Some(Arc::clone(paint)),
+            None => self.scene.paints.get(id.index()).cloned(),
+        };
+        let direct = match colour {
+            Colour::Paint(id) => paint(id),
+            Colour::Image(node) if node.image.space.is_none() => node.stencil.and_then(paint),
+            Colour::Image(_) | Colour::Shading(_) => None,
+        };
+        let keeping = Keeping {
+            separated: self.simulate,
+            policy: self.request.overprint == crate::request::OverprintMode::Simulate,
+        };
+        keeping.keeps(
+            state,
+            Place {
+                masked: scope.masked,
+                cmyk: scope.layout.process == pagura_color::Process::Cmyk,
+                direct_cmyk: direct.as_deref().is_some_and(direct_cmyk),
+            },
+        )
     }
 
     /// The outline coverage a shading pattern with a `Background` and a
@@ -538,7 +571,7 @@ impl<B: Backend> Planner<'_, B> {
                         .get(id.index())
                         .ok_or(Error::invalid_argument("scene paint out of range"))?,
                 );
-                let key = (id.0, state_id, scope.layout);
+                let key = (id.0, state_id, scope.layout, target.colorants);
                 if matches!(*paint, Paint::Solid(_))
                     && let Some(&cached) = self.solids().get(&key)
                 {
@@ -595,10 +628,10 @@ impl<B: Backend> Planner<'_, B> {
             ),
             (None, None) => return Err(Error::invalid_argument("stencil mask without a paint")),
         };
-        if matches!(*paint, Paint::Tiling(_)) {
+        if is_pattern(&paint) {
             return Err(Error::unsupported(
                 crate::features::PATTERN_IMAGE_MASK,
-                "an image mask painted with a tiling pattern is not supported",
+                "pattern-coloured image stencils are not implemented",
             ));
         }
         budget.bytes.charge(PAINT_BYTES)?;
@@ -697,9 +730,15 @@ struct Covered {
 /// it: no `BBox` limits nothing; without a `Background` the mark is clipped
 /// to the box; with one, a degenerate box mixes colours by its outline's
 /// coverage and any other box is tested per sample by the source.
-fn pattern_bbox(pattern: &ShadingPaint, transform: Transform) -> Option<(BBoxUse, Extra)> {
-    let bbox = pattern.shading.bbox?;
-    let path = Path::rect(bbox);
+fn pattern_bbox(
+    pattern: &ShadingPaint,
+    transform: Transform,
+    limits: &Limits,
+) -> Result<Option<(BBoxUse, Extra)>> {
+    let Some(bbox) = pattern.shading.bbox else {
+        return Ok(None);
+    };
+    let path = bbox_path(bbox, limits)?;
     let degenerate = path
         .fill_region(FillRule::NonZero)
         .is_some_and(|region| region != FillRegion::Ordinary);
@@ -708,16 +747,24 @@ fn pattern_bbox(pattern: &ShadingPaint, transform: Transform) -> Option<(BBoxUse
     } else if degenerate {
         BBoxUse::Boundary
     } else {
-        return None;
+        return Ok(None);
     };
-    Some((
+    Ok(Some((
         usage,
         Extra {
             paint: 0,
             path: Arc::new(path),
             transform: pattern.matrix.then(transform),
         },
-    ))
+    )))
+}
+
+/// A shading's `BBox` as a path, classified so that a box without area
+/// clips and fills as its device hairline outline, as a clipping path does.
+fn bbox_path(bbox: pagura_core::Rect, limits: &Limits) -> Result<Path> {
+    let mut path = Path::rect(bbox);
+    path.classify_fill(FillRule::NonZero, limits, &mut 0)?;
+    Ok(path)
 }
 
 /// Whether a mark's colour space can change any colorant (Separation
@@ -728,15 +775,17 @@ fn paints(
     scope: &Scope,
     scene: &pagura_interpret::Scene,
 ) -> bool {
+    // A Pattern colour space before any `scn` selects a pattern paints
+    // nothing; a stencil mask in it is refused when prepared.
     let of = |paint: &Paint| match paint {
-        Paint::Solid(color) => color.space.paints(),
+        Paint::Solid(color) => color.space.paints() && !is_pattern(paint),
         Paint::Shading(pattern) => pattern.shading.space.paints(),
         Paint::Tiling(_) => true,
     };
     let stencil = |node: &ImageNode| {
         node.stencil
             .and_then(|id| scene.paints.get(id.index()))
-            .is_none_or(|paint| of(paint))
+            .is_none_or(|paint| is_pattern(paint) || of(paint))
     };
     match (colour, &scope.paint) {
         (Colour::Image(node), _) if node.image.space.is_some() => {
@@ -746,6 +795,15 @@ fn paints(
         (Colour::Paint(_), None) => paint.is_none_or(of),
         (Colour::Image(node), None) => stencil(node),
         (Colour::Shading(node), _) => node.shading.space.paints(),
+    }
+}
+
+/// Whether `paint` is a pattern: tiling, shading, or a Pattern colour
+/// space with no pattern selected.
+fn is_pattern(paint: &Paint) -> bool {
+    match paint {
+        Paint::Solid(color) => matches!(*color.space, pagura_color::ColorSpace::Pattern(_)),
+        Paint::Shading(_) | Paint::Tiling(_) => true,
     }
 }
 

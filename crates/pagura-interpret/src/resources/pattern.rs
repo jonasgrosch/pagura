@@ -3,7 +3,7 @@
 
 use super::numbers::{GEOMETRY, array, entry};
 use crate::features;
-use crate::model::TilingColors;
+use crate::model::{TilingColors, TilingSpacing};
 use pagura_core::{Dictionary, Error, ObjectId, Rect, Result, Value};
 use pagura_document::Document;
 use pagura_raster::Transform;
@@ -15,6 +15,7 @@ pub(crate) struct Tiling<'a> {
     pub(crate) bbox: Rect,
     pub(crate) step: [f64; 2],
     pub(crate) colors: TilingColors,
+    pub(crate) spacing: TilingSpacing,
     pub(crate) resources: &'a Dictionary,
 }
 
@@ -109,9 +110,12 @@ fn tiling<'a>(document: &'a Document, value: &Value, d: &'a Dictionary) -> Resul
         2 => TilingColors::Uncolored,
         _ => return Err(Error::syntax("invalid PaintType")),
     };
-    if !matches!(integer(b"TilingType")?, 1..=3) {
-        return Err(Error::syntax("invalid TilingType"));
-    }
+    let spacing = match integer(b"TilingType")? {
+        1 => TilingSpacing::Constant,
+        2 => TilingSpacing::NoDistortion,
+        3 => TilingSpacing::Faster,
+        _ => return Err(Error::syntax("invalid TilingType")),
+    };
     let b = array::<4>(
         document,
         d.get(b"BBox")
@@ -137,6 +141,7 @@ fn tiling<'a>(document: &'a Document, value: &Value, d: &'a Dictionary) -> Resul
         bbox,
         step,
         colors,
+        spacing,
         resources,
     })
 }

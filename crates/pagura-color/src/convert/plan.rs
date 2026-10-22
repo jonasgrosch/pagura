@@ -139,7 +139,7 @@ impl Plan {
             Kind::All => Painted::all(channels),
             Kind::Chain(_) => Painted::all(process),
         };
-        let zero_selection = separated
+        let zero_selection = (separated || target.colorants == Colorants::ProcessOverprint)
             && target.process == Process::Cmyk
             && matches!(&kind, Kind::Chain(chain)
                 if matches!(chain.terminal, Terminal::Native { .. })

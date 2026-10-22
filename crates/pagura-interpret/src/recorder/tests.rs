@@ -209,6 +209,7 @@ fn definitions_are_numbered_in_order_and_groups_balance() {
         step: [1.0, 1.0],
         matrix: Transform::IDENTITY,
         colors: TilingColors::Colored,
+        spacing: crate::model::TilingSpacing::Constant,
         object: None,
     };
     assert!(recorder.begin_tiling(&tiling).is_err());

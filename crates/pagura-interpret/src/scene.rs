@@ -6,7 +6,7 @@
 use crate::device::{OutlineKey, PageInfo};
 use crate::model::{
     Composite, GroupAttributes, GroupCause, Image, MaskKind, Paint, Pen, Shading, TilingColors,
-    ViewFit,
+    TilingSpacing, ViewFit,
 };
 use pagura_color::{Components, Function};
 use pagura_core::{Error, Position, Rect, Result};
@@ -316,6 +316,8 @@ pub struct Tiling {
     pub matrix: Transform,
     /// `PaintType`.
     pub colors: TilingColors,
+    /// `TilingType`.
+    pub spacing: TilingSpacing,
 }
 
 /// A clip in the scene's interned chain.

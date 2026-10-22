@@ -503,6 +503,20 @@ pub enum MaskKind {
     Luminosity,
 }
 
+/// How a tiling pattern's instances are spaced on the device (`TilingType`,
+/// 8.7.3.1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum TilingSpacing {
+    /// `TilingType 1`: constant spacing; cells may be distorted by up to a
+    /// device pixel.
+    #[default]
+    Constant,
+    /// `TilingType 2`: no distortion; spacing may vary by a device pixel.
+    NoDistortion,
+    /// `TilingType 3`: constant spacing with faster tiling.
+    Faster,
+}
+
 /// Whether a tiling pattern's cell paints its own colours (8.7.3.1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum TilingColors {

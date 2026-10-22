@@ -21,10 +21,15 @@ use pagura_color::{Process, Target};
 use pagura_core::{Error, Limits, Name, Position, Result, Store};
 use pagura_interpret::{
     GroupId, GroupRole, MaskId, MaskKind, Node, NodeId, Paint, Scene, TilingColors, TilingPaint,
+    TilingSpacing,
 };
 use pagura_raster::{Area, DeviceRect, Path, Precision, Transform};
 use std::collections::HashMap;
 use std::sync::Arc;
+
+/// A prepared solid paint's identity: paint, state, layout and how the
+/// target takes colorants.
+pub(crate) type SolidKey = (u32, u32, Layout, pagura_color::Colorants);
 
 /// Bytes charged per item: the item and its places in its group's lists.
 const ITEM_BYTES: usize = size_of::<Item>() + 2 * size_of::<u32>();
@@ -48,7 +53,7 @@ pub(crate) struct Planner<'s, B: Backend> {
     /// The page crop in default user space.
     pub(crate) crop: Arc<Path>,
     clips: HashMap<clips::Key, clips::State>,
-    solids: HashMap<(u32, u32, Layout), u32>,
+    solids: HashMap<SolidKey, u32>,
     masks: HashMap<(MaskId, [u64; 6], Process), u32>,
     open: Vec<(MaskId, [u64; 6], Process)>,
     /// Union of the bounds that use each mask plan.
@@ -105,6 +110,8 @@ pub(crate) struct Scope {
     /// Colours keep spot colorants as channels (overprint simulation);
     /// soft masks use the alternates.
     pub(crate) separated: bool,
+    /// Soft-mask content, which the transfer gate does not reach.
+    pub(crate) masked: bool,
     /// The paint of an uncoloured tiling pattern's cell content: its index
     /// and the paint, for stencil masks that need their own.
     pub(crate) paint: Option<(u32, Arc<Paint>)>,
@@ -144,6 +151,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             Inputs {
                 page,
                 simulate: separations.simulate,
+                policy: request.overprint == crate::request::OverprintMode::Simulate,
                 bytes: request.fast.byte_storage,
                 depth: limits.depth,
                 transform: request.transform,
@@ -224,6 +232,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             plain: true,
             records: self.storage.transfers,
             separated: self.simulate,
+            masked: false,
             paint: None,
             depth: 0,
         };
@@ -241,6 +250,13 @@ impl<'s, B: Backend> Planner<'s, B> {
                 Arc::from([])
             };
             Target::separated(scope.layout.process, spots)
+        } else if self.request.overprint == crate::request::OverprintMode::Simulate {
+            // Process colours still overprint where nothing is separated, in
+            // soft masks in particular.
+            Target {
+                colorants: pagura_color::Colorants::ProcessOverprint,
+                ..Target::new(scope.layout.process)
+            }
         } else {
             Target::new(scope.layout.process)
         }
@@ -340,7 +356,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             .bbox
             .as_ref()
             .map_or(Some([f64::MIN, f64::MIN, f64::MAX, f64::MAX]), |b| {
-                bounds::path(b, transform)
+                bounds::path(b, transform).map(|h| bounds::expand(h, 1.0))
             });
         let clip = self.clip_bounds(scope, group.mark.clip, None)?;
         let culling = intersect(
@@ -362,6 +378,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             plain: scope.plain && plain,
             records: scope.records,
             separated: scope.separated,
+            masked: scope.masked,
             paint: scope.paint.clone(),
             depth: scope.depth + 1,
         };
@@ -564,7 +581,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             .bbox
             .as_ref()
             .map_or(Some([f64::MIN, f64::MIN, f64::MAX, f64::MAX]), |b| {
-                bounds::path(b, scope.transform)
+                bounds::path(b, scope.transform).map(|h| bounds::expand(h, 1.0))
             });
         let culling = bounds::device(hull, self.area.region);
         let child = self.new_group(
@@ -588,6 +605,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             plain: false,
             records: false,
             separated: false,
+            masked: true,
             paint: None,
             depth: scope.depth + 1,
         };
@@ -642,7 +660,7 @@ impl<'s, B: Backend> Planner<'s, B> {
         let cell = scene
             .group(tiling.cell)
             .ok_or(Error::invalid_argument("scene group out of range"))?;
-        let transform = tiling.matrix.then(scope.transform);
+        let transform = fit(tiling.matrix.then(scope.transform), tiling)?;
         let inverse = transform.inverse().ok_or(Error::unsupported(
             crate::features::PATTERN_TILING,
             "singular tiling transform",
@@ -704,6 +722,7 @@ impl<'s, B: Backend> Planner<'s, B> {
                     plain: false,
                     records: false,
                     separated: scope.separated,
+                    masked: scope.masked,
                     paint: override_paint.clone().or_else(|| scope.paint.clone()),
                     depth: scope.depth + 1,
                 };
@@ -758,7 +777,7 @@ impl<'s, B: Backend> Planner<'s, B> {
         Ok(index)
     }
 
-    pub(crate) fn solids(&mut self) -> &mut HashMap<(u32, u32, Layout), u32> {
+    pub(crate) fn solids(&mut self) -> &mut HashMap<SolidKey, u32> {
         &mut self.solids
     }
 
@@ -875,6 +894,57 @@ fn instances(
     let columns = range(hull[0], hull[2], (b.x0(), b.x1()), tiling.step[0])?;
     let rows = range(hull[1], hull[3], (b.y0(), b.y1()), tiling.step[1])?;
     Ok((columns, rows))
+}
+
+/// The device transform of a tiling pattern's cells (Table 74): constant
+/// spacing rounds the lattice vectors `XStep·(a, b)` and `YStep·(c, d)` to
+/// whole pixels, a vanishing one to a unit step along its larger component;
+/// `TilingType 1` refuses a cell corner moved by more than a pixel, and
+/// `TilingType 2` keeps the exact transform.
+fn fit(t: Transform, tiling: &pagura_interpret::Tiling) -> Result<Transform> {
+    if tiling.spacing == TilingSpacing::NoDistortion {
+        return Ok(t);
+    }
+    let vector = |x: f64, y: f64| {
+        let (mut a, mut b) = (x.round(), y.round());
+        if a == 0.0 && b == 0.0 {
+            if x.abs() >= y.abs() {
+                a = x.signum();
+            } else {
+                b = y.signum();
+            }
+        }
+        (a, b)
+    };
+    let [x_step, y_step] = tiling.step;
+    let (a, b) = vector(t.a * x_step, t.b * x_step);
+    let (c, d) = vector(t.c * y_step, t.d * y_step);
+    let fitted = Transform::new(a / x_step, b / x_step, c / y_step, d / y_step, t.e, t.f);
+    if fitted.inverse().is_none() {
+        return Err(Error::unsupported(
+            crate::features::PATTERN_TILING,
+            "device lattice collapses the pattern",
+        ));
+    }
+    if tiling.spacing == TilingSpacing::Constant {
+        let b = tiling.bbox;
+        for (x, y) in [
+            (b.x0(), b.y0()),
+            (b.x1(), b.y0()),
+            (b.x0(), b.y1()),
+            (b.x1(), b.y1()),
+        ] {
+            let p = pagura_raster::Point::new(x, y);
+            let (exact, moved) = (t.apply(p), fitted.apply(p));
+            if (exact.x - moved.x).hypot(exact.y - moved.y) > 1.0 + 1e-12 {
+                return Err(Error::unsupported(
+                    crate::features::PATTERN_TILING,
+                    "constant spacing requires excessive cell distortion",
+                ));
+            }
+        }
+    }
+    Ok(fitted)
 }
 
 /// The integers `k` for which `[b0, b1] + k·step` meets `[lo, hi]`.

@@ -172,3 +172,52 @@ pub(crate) fn process(name: &Name) -> bool {
         .iter()
         .any(|&n| name == n)
 }
+
+/// When a store keeps the backdrop's channels where its colour does not
+/// paint them (8.6.7), as the earlier renderer decided.
+#[derive(Debug, Clone, Copy, Default)]
+pub(crate) struct Keeping {
+    /// The page's separations are simulated.
+    pub(crate) separated: bool,
+    /// The simulation policy is on, page separations or not.
+    pub(crate) policy: bool,
+}
+
+/// Where a store is and what paints it, for [`Keeping::keeps`].
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Place {
+    /// In soft-mask content, which takes alternate colours.
+    pub(crate) masked: bool,
+    /// Into a buffer whose blending space is DeviceCMYK.
+    pub(crate) cmyk: bool,
+    /// A solid colour natively in DeviceCMYK: a fill, stroke, glyph or
+    /// stencil mask colour.
+    pub(crate) direct_cmyk: bool,
+}
+
+impl Keeping {
+    /// Whether an overprinting store keeps channels: every one outside soft
+    /// masks under page separations, and under the policy alone a direct
+    /// DeviceCMYK colour with `OPM 1` in a DeviceCMYK buffer, soft masks
+    /// included.
+    pub(crate) fn keeps(self, state: &Composite, place: Place) -> bool {
+        let overprint = state.overprint;
+        overprint.enabled
+            && ((self.separated && !place.masked)
+                || (self.policy && overprint.nonzero && place.cmyk && place.direct_cmyk))
+    }
+}
+
+/// Whether `paint` is a solid colour natively in DeviceCMYK (an Indexed
+/// base or an ICCBased alternate in use included).
+pub(crate) fn direct_cmyk(paint: &Paint) -> bool {
+    fn native(space: &ColorSpace) -> bool {
+        match space {
+            ColorSpace::DeviceCmyk => true,
+            ColorSpace::Indexed(indexed) => native(&indexed.base),
+            ColorSpace::Icc(icc) if icc.profile.is_none() => native(&icc.alternate),
+            _ => false,
+        }
+    }
+    matches!(paint, Paint::Solid(color) if native(&color.space))
+}

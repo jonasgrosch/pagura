@@ -23,6 +23,7 @@ fn pattern(b: &mut Build, colors: TilingColors, matrix: Transform, step: [f64; 2
         step,
         matrix,
         colors,
+        spacing: pagura_interpret::TilingSpacing::NoDistortion,
     });
     cell
 }

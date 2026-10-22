@@ -3,7 +3,7 @@
 
 use crate::model::{
     Clip, Composite, GroupAttributes, GroupCause, Image, MaskId, MaskKind, Paint, PatternId, Pen,
-    Shading, TilingColors, ViewFit,
+    Shading, TilingColors, TilingSpacing, ViewFit,
 };
 use pagura_color::{Components, Function};
 use pagura_core::{Name, ObjectId, Position, Rect, Result};
@@ -294,6 +294,8 @@ pub struct TilingInfo {
     pub matrix: Transform,
     /// `PaintType`.
     pub colors: TilingColors,
+    /// `TilingType`.
+    pub spacing: TilingSpacing,
     /// The pattern's object, for caches.
     pub object: Option<ObjectId>,
 }

@@ -60,6 +60,11 @@ pub enum Colorants {
     /// space naming a process colorant converts through its alternate in a
     /// Gray or RGB target.
     Separated,
+    /// Composite colour with process overprinting simulated: as
+    /// `Composite`, except that `OPM 1` zero selection (8.6.7) applies to a
+    /// colour natively in DeviceCMYK, as in a soft mask's DeviceCMYK content
+    /// while overprint is simulated.
+    ProcessOverprint,
 }
 
 /// Where converted colours go: a process space plus the spot colorants that
