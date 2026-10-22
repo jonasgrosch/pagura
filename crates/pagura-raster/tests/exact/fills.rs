@@ -112,6 +112,34 @@ fn curves_and_compound_paths_are_within_one_level() {
     eprintln!("curved paths: {differences} differing pixels of {pixels}");
 }
 
+/// Hundreds of edges meeting in a cell without crossing, as a fan of
+/// overlapping slivers through one point gives (and the shared sides of
+/// unions, or repeated points filling their floor cells): the resolver
+/// integrates the cell in the few slabs they make, within the default
+/// budget.
+#[test]
+fn crowded_cells_resolve_within_the_default_budget() {
+    let area = area(0, 0, 4, 4, 2);
+    let apex = Point::new(1.5, 1.5);
+    let mut path = PathBuilder::new();
+    for i in 0..300 {
+        let at = |turn: f64| {
+            let angle = std::f64::consts::TAU * turn;
+            Point::new(apex.x + 2.5 * angle.cos(), apex.y + 2.5 * angle.sin())
+        };
+        let turn = f64::from(i) / 300.0;
+        path.move_to(apex);
+        path.line_to(at(turn)).unwrap();
+        path.line_to(at(turn + 0.008)).unwrap();
+        path.close();
+    }
+    let path = path.finish();
+    for rule in [FillRule::NonZero, FillRule::EvenOdd] {
+        let (count, largest) = check_fill(&area, &path, Transform::IDENTITY, rule);
+        assert!(largest <= 1, "{rule:?}: {count} differ by up to {largest}");
+    }
+}
+
 #[test]
 fn rectangles_are_exact() {
     let mut rng = Lcg(99);

@@ -41,9 +41,18 @@ impl LocalEdge {
 #[derive(Debug, Default)]
 pub(crate) struct Resolver {
     heights: Vec<f64>,
-    order: Vec<(f64, u32)>,
+    /// The edges by their lower end.
+    rising: Vec<u32>,
+    /// The edges spanning the current slab by their places across it.
+    order: Vec<Place>,
+    /// The edges joining at the current slab.
+    joining: Vec<Place>,
     windings: Vec<i64>,
 }
+
+/// An edge's place across a slab, at the slab's middle height, and its
+/// index.
+type Place = (f64, u32);
 
 /// Work units for sorting `count` values and passing over them once.
 fn sort_work(count: usize) -> usize {
@@ -53,13 +62,15 @@ fn sort_work(count: usize) -> usize {
 impl Resolver {
     /// The covered area of the cell within heights `span`, quantized.
     ///
-    /// Each stage is charged to `meter` before it runs, with what it does
-    /// on these edges: the search for crossings among every pair, the sort
-    /// of the heights found, then per slab between consecutive heights a
-    /// pass over every edge and a sort of those spanning it. The slabs are
-    /// as many as the heights found, not as the pairs that could cross:
-    /// coincident edges (the floor cells of points, the shared sides of a
-    /// union) cross nowhere and cost one slab.
+    /// The edges are swept by height, those spanning the current slab kept
+    /// in order across it. Each stage is charged to `meter` before it runs,
+    /// with what it does on these edges: the sort of the edges by their
+    /// lower ends, the crossing tests of the pairs whose heights overlap,
+    /// the sort of the heights found, and per slab a unit per edge spanning
+    /// it, one per pair that crossed below it and a sort of those joining.
+    /// Edges that meet without crossing (the floor cells of points, the
+    /// shared sides of a union) add no slab, and an edge costs the slabs it
+    /// spans, not every slab of the cell.
     ///
     /// # Errors
     ///
@@ -82,8 +93,18 @@ impl Resolver {
         span: (f64, f64),
         meter: &mut Meter,
     ) -> Result<f64> {
-        meter.charge_product(edges.len(), edges.len().saturating_add(1))?;
-        self.heights(edges, span)?;
+        let count =
+            u32::try_from(edges.len()).map_err(|_| Error::limit("cell edges exceed u32"))?;
+        // The sort, and a search for the overlapping pairs per edge.
+        meter.charge_product(sort_work(edges.len()), 2)?;
+        self.rising.clear();
+        self.rising
+            .try_reserve(edges.len())
+            .map_err(|_| Error::limit("cell resolver allocation failed"))?;
+        self.rising.extend(0..count);
+        self.rising
+            .sort_unstable_by(|&a, &b| edges[a as usize].y0.total_cmp(&edges[b as usize].y0));
+        self.heights(edges, span, meter)?;
         meter.charge(sort_work(self.heights.len()))?;
         self.heights.sort_unstable_by(f64::total_cmp);
         self.heights.dedup();
@@ -92,7 +113,12 @@ impl Resolver {
 
     /// Collects the heights within `span` where an edge ends or two cross,
     /// and the span's own ends.
-    fn heights(&mut self, edges: &[LocalEdge], (bottom, top): (f64, f64)) -> Result<()> {
+    fn heights(
+        &mut self,
+        edges: &[LocalEdge],
+        (bottom, top): (f64, f64),
+        meter: &mut Meter,
+    ) -> Result<()> {
         let allocation = |_| Error::limit("cell resolver allocation failed");
         self.heights.clear();
         self.heights
@@ -106,8 +132,15 @@ impl Resolver {
                 }
             }
         }
-        for (i, a) in edges.iter().enumerate() {
-            for b in &edges[i + 1..] {
+        for (n, &i) in self.rising.iter().enumerate() {
+            let a = edges[i as usize];
+            // Later edges start no lower; those starting at or above `a`'s
+            // upper end share no height range with it.
+            let later = &self.rising[n + 1..];
+            let overlapping = later.partition_point(|&j| edges[j as usize].y0 < a.y1);
+            meter.charge(overlapping)?;
+            for &j in &later[..overlapping] {
+                let b = edges[j as usize];
                 let lo = a.y0.max(b.y0);
                 let hi = a.y1.min(b.y1);
                 if lo >= hi {
@@ -128,7 +161,9 @@ impl Resolver {
     }
 
     /// Integrates the covered width over the slabs between the sorted
-    /// heights.
+    /// heights, keeping the edges that span the current slab: an edge joins
+    /// once the slab's lower height reaches its lower end and leaves for
+    /// good once the slab's upper height passes its upper end.
     fn integrate(
         &mut self,
         edges: &[LocalEdge],
@@ -141,7 +176,14 @@ impl Resolver {
         self.windings.try_reserve(rules.len()).map_err(allocation)?;
         self.windings.resize(rules.len(), 0);
         self.order.clear();
-        self.order.try_reserve(edges.len()).map_err(allocation)?;
+        self.joining.clear();
+        self.order
+            .try_reserve(edges.len())
+            .and_then(|()| self.joining.try_reserve(edges.len()))
+            .map_err(allocation)?;
+        // Every edge joins once at most.
+        meter.charge(edges.len())?;
+        let mut joined = 0;
         let mut area = 0.0;
         for pair in self.heights.windows(2) {
             let (lo, hi) = (pair[0], pair[1]);
@@ -149,15 +191,30 @@ impl Resolver {
                 continue;
             }
             let mid = lo.midpoint(hi);
-            meter.charge(edges.len())?;
-            self.order.clear();
-            for (i, e) in (0_u32..).zip(edges) {
-                if e.y0 <= lo && e.y1 >= hi {
-                    self.order.push((e.x(mid).clamp(0.0, 1.0), i));
+            let place = |i: u32| (edges[i as usize].x(mid).clamp(0.0, 1.0), i);
+            // A unit per edge spanning the slab below, placed anew and
+            // dropped when it ended, then checked and swept in order: the
+            // others keep their order but where they crossed.
+            meter.charge(self.order.len())?;
+            self.order.retain_mut(|entry| {
+                *entry = place(entry.1);
+                edges[entry.1 as usize].y1 >= hi
+            });
+            settle(&mut self.order, meter)?;
+            self.joining.clear();
+            while let Some(&i) = self.rising.get(joined)
+                && edges[i as usize].y0 <= lo
+            {
+                if edges[i as usize].y1 >= hi {
+                    self.joining.push(place(i));
                 }
+                joined += 1;
             }
-            meter.charge(sort_work(self.order.len()))?;
-            self.order.sort_unstable_by(|a, b| a.0.total_cmp(&b.0));
+            if !self.joining.is_empty() {
+                meter.charge(sort_work(self.joining.len()).saturating_add(self.order.len()))?;
+                self.joining.sort_unstable_by(|a, b| a.0.total_cmp(&b.0));
+                merge(&mut self.order, &self.joining);
+            }
             self.windings.fill(0);
             let mut width = 0.0;
             let mut previous = 0.0;
@@ -186,6 +243,41 @@ impl Resolver {
     }
 }
 
+/// Restores the order of `order` by moving entries down one at a time,
+/// charging each move: edges that crossed at the height between two slabs
+/// are one move apart per crossing. Ties may end in any order: they add no
+/// width between them, and the windings after them are their sum.
+fn settle(order: &mut [Place], meter: &mut Meter) -> Result<()> {
+    for n in 1..order.len() {
+        let mut j = n;
+        while j > 0 && order[j - 1].0.total_cmp(&order[j].0).is_gt() {
+            meter.charge(1)?;
+            order.swap(j - 1, j);
+            j -= 1;
+        }
+    }
+    Ok(())
+}
+
+/// Merges the sorted `joining` into the sorted `order`, from the back;
+/// `order` has room for them.
+fn merge(order: &mut Vec<Place>, joining: &[Place]) {
+    let mut kept = order.len();
+    order.extend_from_slice(joining);
+    let mut taken = joining.len();
+    while taken > 0 {
+        let next = joining[taken - 1];
+        let write = kept + taken - 1;
+        if kept > 0 && order[kept - 1].0.total_cmp(&next.0).is_gt() {
+            order[write] = order[kept - 1];
+            kept -= 1;
+        } else {
+            order[write] = next;
+            taken -= 1;
+        }
+    }
+}
+
 fn covered(winding: i64, rule: FillRule) -> bool {
     match rule {
         FillRule::NonZero => winding != 0,
@@ -194,86 +286,4 @@ fn covered(winding: i64, rule: FillRule) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn edge(x0: f64, y0: f64, x1: f64, y1: f64, winding: i32, group: u8) -> LocalEdge {
-        LocalEdge {
-            x0,
-            y0,
-            x1,
-            y1,
-            winding,
-            group,
-        }
-    }
-
-    fn area(edges: &[LocalEdge], rules: &[FillRule]) -> f64 {
-        let mut meter = Meter::new(usize::MAX, "budget");
-        Resolver::default()
-            .area(edges, rules, (0.0, 1.0), &mut meter)
-            .unwrap()
-    }
-
-    #[test]
-    fn crossing_diagonals_cover_their_union_or_their_parity() {
-        // Two triangles sharing the cell's left side, crossing at the middle.
-        let edges = [
-            edge(0.0, 0.0, 0.0, 1.0, 2, 0),
-            edge(0.0, 0.0, 1.0, 1.0, -1, 0),
-            edge(1.0, 0.0, 0.0, 1.0, -1, 0),
-        ];
-        let nonzero = area(&edges, &[FillRule::NonZero]);
-        assert!((nonzero - 0.75).abs() < 1e-15, "{nonzero}");
-        let even_odd = area(&edges, &[FillRule::EvenOdd]);
-        assert!((even_odd - 0.5).abs() < 1e-15, "{even_odd}");
-    }
-
-    #[test]
-    fn groups_intersect() {
-        // The left half and the upper half: a quarter of the cell.
-        let edges = [
-            edge(0.0, 0.0, 0.0, 1.0, 1, 0),
-            edge(0.5, 0.0, 0.5, 1.0, -1, 0),
-            edge(0.0, 0.0, 0.0, 0.5, 1, 1),
-        ];
-        let both = area(&edges, &[FillRule::NonZero, FillRule::NonZero]);
-        assert!((both - 0.25).abs() < 1e-15);
-        let mut meter = Meter::new(usize::MAX, "budget");
-        let lower = Resolver::default()
-            .area(&edges, &[FillRule::NonZero], (0.25, 1.0), &mut meter)
-            .unwrap();
-        assert!((lower - 0.375).abs() < 1e-15);
-        let mut meter = Meter::new(usize::MAX, "budget");
-        let value = Resolver::default()
-            .coverage(&edges, &[FillRule::NonZero; 2], (0.0, 1.0), &mut meter)
-            .unwrap();
-        assert_eq!(value, 64);
-        assert!(meter.used() >= 3 * 3);
-        let mut tiny = Meter::new(1, "budget");
-        assert!(
-            Resolver::default()
-                .coverage(&edges, &[FillRule::NonZero; 2], (0.0, 1.0), &mut tiny)
-                .is_err()
-        );
-    }
-
-    /// Coincident edges, as the floor cells of many points in one pixel
-    /// give, cross nowhere: one slab, and a charge quadratic in the edges
-    /// rather than the cubic bound of every pair crossing.
-    #[test]
-    fn coincident_edges_cost_one_slab() {
-        let mut edges = Vec::new();
-        for _ in 0..300 {
-            edges.push(edge(0.0, 0.0, 0.0, 1.0, 1, 0));
-            edges.push(edge(1.0, 0.0, 1.0, 1.0, -1, 0));
-        }
-        let limits = pagura_core::Limits::default();
-        let mut meter = Meter::new(limits.raster_work, "budget");
-        let value = Resolver::default()
-            .coverage(&edges, &[FillRule::NonZero], (0.0, 1.0), &mut meter)
-            .unwrap();
-        assert_eq!(value, u8::MAX);
-        assert!(meter.used() <= 2 * 600 * 600, "{}", meter.used());
-    }
-}
+mod tests;
