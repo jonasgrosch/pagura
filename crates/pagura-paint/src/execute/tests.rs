@@ -116,7 +116,12 @@ fn sample(paint: &Source, (x, y): (u32, u32)) -> (Vec<f64>, f64) {
         len: 1,
         boundary: None,
     };
-    paint.fill(pixels, &mut out, &mut Vec::new());
+    paint.fill(
+        pixels,
+        &mut crate::source::PaintScratch::default(),
+        &mut out,
+        &mut Vec::new(),
+    );
     (out.colors, out.alpha.first().copied().unwrap_or(1.0))
 }
 

@@ -1,10 +1,10 @@
 //! Coverage sources (ADR 0034 §4): the shapes and clips preparation builds
 //! with the band rasterizer, and their coverage band by band.
 
-use crate::hash::{self, FastMap};
 use crate::plan::Cover;
 use crate::prepare::bounds::{self, Hull};
 use pagura_core::convert::u32_to_usize;
+use pagura_core::hash::FastMap;
 use pagura_core::{Built, Limits, Result, Store, StoreKey};
 use pagura_interpret::{GlyphSource, OutlineKey, Pen};
 use pagura_raster::{
@@ -80,7 +80,7 @@ impl<'a> ShapeBuilder<'a> {
             limits,
             shapes: storage,
             clips: Vec::new(),
-            edges: hash::map(),
+            edges: FastMap::default(),
             handles: Vec::new(),
             clip: None,
         }

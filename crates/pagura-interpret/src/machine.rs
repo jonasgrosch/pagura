@@ -26,6 +26,7 @@ use crate::resources::optional::Visibility;
 use emit::Lazy;
 use pagura_color::ColorSpace;
 use pagura_content::{Content, Op, Operation, Reader};
+use pagura_core::hash::FastMap;
 use pagura_core::{
     Diagnostic, Dictionary, Error, Limits, Meter, ObjectId, Position, Result, Store,
 };
@@ -53,7 +54,7 @@ pub(crate) struct Session<'a> {
     pub(crate) name_work: usize,
     /// Decoded content of forms, tiling cells and glyph procedures, which
     /// run again at every use, and the bytes it holds.
-    pub(crate) contents: crate::hash::FastMap<ObjectId, Arc<Content<'static>>>,
+    pub(crate) contents: FastMap<ObjectId, Arc<Content<'static>>>,
     pub(crate) content_bytes: usize,
     pub(crate) store: Option<&'a Store>,
     /// The solid paints of colours set so far.
@@ -211,7 +212,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
                 solids: state::SolidPaints::default(),
                 device_spaces: [None, None, None],
                 strings: text::Strings::default(),
-                contents: crate::hash::FastMap::default(),
+                contents: FastMap::default(),
                 content_bytes: 0,
                 store: inputs.store,
                 opaque: Arc::new(Composite::default()),

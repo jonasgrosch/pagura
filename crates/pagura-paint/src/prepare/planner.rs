@@ -15,11 +15,11 @@ pub(crate) use groups::view_transform;
 
 use super::storage::{self, Inputs, Storage};
 use super::{Budget, ShapeBuilder, index, overprint};
-use crate::hash::{self, FastMap};
 use crate::plan::{Conversion, Curve, GroupPlan, Item, Layout, MaskPlan, Start, union};
 use crate::request::RenderRequest;
 use crate::source::Source;
 use pagura_color::{Process, Target};
+use pagura_core::hash::FastMap;
 use pagura_core::{Error, Limits, Name, Position, Result, Store};
 use pagura_interpret::{MaskId, Node, NodeId, Paint, Scene};
 use pagura_raster::{Area, DeviceRect, Path, Transform};
@@ -213,14 +213,14 @@ impl<'s> Planner<'s> {
             definitions: separations.spots,
             parts,
             crop: Arc::new(crop(scene)),
-            clips: hash::map(),
-            built_clips: hash::map(),
+            clips: FastMap::default(),
+            built_clips: FastMap::default(),
             last_clip: None,
-            solids: hash::map(),
-            masks: hash::map(),
+            solids: FastMap::default(),
+            masks: FastMap::default(),
             open: Vec::new(),
             users: Vec::new(),
-            transfers: hash::map(),
+            transfers: FastMap::default(),
             serial: 0,
             failed: None,
             repairs: Vec::new(),

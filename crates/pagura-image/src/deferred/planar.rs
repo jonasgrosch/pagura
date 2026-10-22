@@ -17,7 +17,20 @@ pub struct Planar {
     pub(crate) dirty: [Vec<u8>; 3],
     /// The value each plane was initialized with.
     pub(crate) backgrounds: [u8; 3],
+    /// One bit per luma block, `clean_words` words per block row: set
+    /// where the block and every chroma block under it hold only their
+    /// planes' backgrounds, so its samples convert to one colour.
+    pub(crate) clean: Vec<u64>,
+    pub(crate) clean_words: usize,
+    /// The RGB codes the backgrounds convert to.
+    pub(crate) background_rgb: [u8; 3],
 }
+
+/// Samples per block side.
+const SIDE: usize = 8;
+
+/// The shortest run of background blocks taken apart from its neighbours.
+const GAP: usize = 64;
 
 impl Planar {
     /// Builds a planar image from Y, Cb and Cr planes in eight-by-eight
@@ -60,7 +73,7 @@ impl Planar {
                 })
                 .collect();
         }
-        Some(Self {
+        let planar = Self {
             width,
             height,
             maximum,
@@ -68,7 +81,138 @@ impl Planar {
             planes,
             dirty,
             backgrounds: BACKGROUNDS,
-        })
+            clean: Vec::new(),
+            clean_words: 0,
+            background_rgb: [0; 3],
+        };
+        Some(planar.with_clean())
+    }
+
+    /// The planes with their background blocks marked: luma blocks that,
+    /// with the chroma blocks under them, hold only their planes'
+    /// backgrounds.
+    pub(crate) fn with_clean(mut self) -> Self {
+        self.find_clean();
+        let [y, cb, cr] = self.backgrounds;
+        let _ = super::ycbcr(&[y], &[cb], &[cr], 1, &mut self.background_rgb);
+        self
+    }
+
+    fn find_clean(&mut self) {
+        let [_, _, pitch] = self.geometry[0];
+        let [max_h, max_v] = self.maximum;
+        let columns = pitch / SIDE;
+        let rows = self.height.div_ceil(SIDE);
+        let words = columns.div_ceil(64);
+        let mut bits = vec![0u64; words * rows];
+        // The chroma blocks under luma samples `a..=b` of a component with
+        // sampling factor `factor` of `maximum`.
+        let under = |(a, b): (usize, usize), factor: usize, maximum: usize| {
+            (a * factor / maximum / SIDE)..=(b * factor / maximum / SIDE)
+        };
+        // Per chroma component: each luma column's chroma columns, and per
+        // luma row the chroma columns any chroma row under it marks.
+        let chroma: [(Vec<std::ops::RangeInclusive<usize>>, usize); 2] = [1, 2].map(|c| {
+            let [h, _, chroma_pitch] = self.geometry[c];
+            let ranges = (0..columns)
+                .map(|column| under((column * SIDE, column * SIDE + SIDE - 1), h, max_h))
+                .collect();
+            (ranges, chroma_pitch / SIDE)
+        });
+        let mut marked: Vec<bool> = Vec::new();
+        for (row, line) in bits.chunks_exact_mut(words.max(1)).enumerate() {
+            let samples = (row * SIDE, row * SIDE + SIDE - 1);
+            for column in 0..columns {
+                if !self.dirty(0, row, column) {
+                    line[column / 64] |= 1 << (column % 64);
+                }
+            }
+            for (c, (ranges, chroma_columns)) in (1..3).zip(&chroma) {
+                let [_, v, _] = self.geometry[c];
+                marked.clear();
+                marked.resize(*chroma_columns, false);
+                for y in under(samples, v, max_v) {
+                    for (x, mark) in marked.iter_mut().enumerate() {
+                        *mark |= self.dirty(c, y, x);
+                    }
+                }
+                if !marked.contains(&true) {
+                    continue;
+                }
+                for (column, range) in ranges.iter().enumerate() {
+                    let last = (*range.end()).min(marked.len().saturating_sub(1));
+                    if marked
+                        .get(*range.start()..=last)
+                        .is_some_and(|marks| marks.contains(&true))
+                    {
+                        line[column / 64] &= !(1 << (column % 64));
+                    }
+                }
+            }
+        }
+        self.clean = bits;
+        self.clean_words = words;
+    }
+
+    /// Hands `run` the runs of samples `first..end` of rows `top..=bottom`
+    /// that are background in every one of them (`true`) or may not be,
+    /// background shorter than 64 samples joining the runs around it.
+    pub fn background_runs(
+        &self,
+        (top, bottom): (usize, usize),
+        (first, end): (usize, usize),
+        mut run: impl FnMut(usize, usize, bool),
+    ) {
+        let mut pending: Option<(usize, usize, bool)> = None;
+        let mut push = |start: usize, stop: usize, background: bool| {
+            let background = background && (stop - start >= GAP || start == first && stop == end);
+            match &mut pending {
+                Some(last) if last.2 == background => last.1 = stop,
+                _ => {
+                    if let Some((a, b, c)) = pending.replace((start, stop, background)) {
+                        run(a, b, c);
+                    }
+                }
+            }
+        };
+        let (mut column, last) = (first / SIDE, (end - 1) / SIDE);
+        while column <= last {
+            // The background bits of this word's columns from `column` on,
+            // over every block row.
+            let (word, shift) = (column / 64, column % 64);
+            let mut bits = u64::MAX;
+            for row in top / SIDE..=bottom / SIDE {
+                bits &= self
+                    .clean
+                    .get(row * self.clean_words + word)
+                    .copied()
+                    .unwrap_or(0);
+            }
+            let bits = bits >> shift;
+            let background = bits & 1 == 1;
+            let same = if background {
+                bits.trailing_ones()
+            } else {
+                bits.trailing_zeros()
+            };
+            let available = u32::try_from(64 - shift).unwrap_or(64);
+            let count = usize::try_from(same.min(available))
+                .unwrap_or(1)
+                .max(1)
+                .min(last + 1 - column);
+            let start = (column * SIDE).max(first);
+            column += count;
+            push(start, (column * SIDE).min(end), background);
+        }
+        if let Some((a, b, c)) = pending {
+            run(a, b, c);
+        }
+    }
+
+    /// The RGB codes the planes' backgrounds convert to.
+    #[must_use]
+    pub fn background_rgb(&self) -> &[u8; 3] {
+        &self.background_rgb
     }
 
     /// Image width in samples.
@@ -131,6 +275,7 @@ impl Planar {
             .iter()
             .chain(&self.dirty)
             .fold(size_of::<Self>(), |n, v| n.saturating_add(v.capacity()))
+            .saturating_add(self.clean.capacity() * size_of::<u64>())
     }
 
     /// Component `c`'s samples for image row `y`, before horizontal
@@ -187,12 +332,31 @@ impl Planar {
     }
 
     /// Converts samples `x0..x1` of source row `y` to interleaved RGB as
-    /// [`Self::rgb`] does for the whole row. Returns false when the range
-    /// is empty or outside the row, or `out` does not hold it.
+    /// [`Self::rgb`] does for the whole row; runs of background blocks take
+    /// their one colour without conversion. Returns false when the range is
+    /// empty or outside the row, or `out` does not hold it.
     pub fn rgb_range(&self, y: usize, x0: usize, x1: usize, out: &mut [u8]) -> bool {
         if x0 >= x1 || x1 > self.width || y >= self.height || out.len() != (x1 - x0) * 3 {
             return false;
         }
+        let background = self.background_rgb;
+        let mut converted = true;
+        self.background_runs((y, y), (x0, x1), |start, stop, clean| {
+            let Some(part) = out.get_mut((start - x0) * 3..(stop - x0) * 3) else {
+                converted = false;
+                return;
+            };
+            if clean {
+                fill_rgb(part, background);
+            } else {
+                converted &= self.convert(y, start, stop, part);
+            }
+        });
+        converted
+    }
+
+    /// Converts samples `x0..x1` of row `y`, which the caller checked.
+    fn convert(&self, y: usize, x0: usize, x1: usize, out: &mut [u8]) -> bool {
         let Some(repeat) = self.chroma_repeat() else {
             for (x, p) in (x0..).zip(out.as_chunks_mut::<3>().0) {
                 for (c, v) in p.iter_mut().enumerate() {
@@ -242,6 +406,21 @@ impl Planar {
     }
 }
 
+/// Fills `out` with `rgb` repeated, sixteen samples at a copy.
+fn fill_rgb(out: &mut [u8], rgb: [u8; 3]) {
+    let mut pattern = [0u8; 48];
+    for chunk in pattern.as_chunks_mut::<3>().0 {
+        *chunk = rgb;
+    }
+    let (chunks, rest) = out.as_chunks_mut::<48>();
+    for chunk in chunks {
+        *chunk = pattern;
+    }
+    for (out, &value) in rest.iter_mut().zip(&pattern) {
+        *out = value;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Planar;
@@ -269,5 +448,83 @@ mod tests {
             )
             .is_none()
         );
+    }
+
+    /// Background blocks are those whose luma block and every chroma block
+    /// under it hold the background, for every sampling of the chroma, and
+    /// their rows convert as every other row does.
+    #[test]
+    fn background_blocks_have_clean_chroma_under_them() {
+        let mut state = 0x1234_5678u32;
+        let mut random = move || {
+            state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            state >> 16
+        };
+        let cases: [([usize; 2], (usize, usize)); 4] = [
+            ([2, 2], (37, 29)),
+            ([1, 1], (24, 16)),
+            ([2, 1], (40, 9)),
+            ([4, 1], (70, 15)),
+        ];
+        for ([h, v], (width, height)) in cases {
+            let maximum = [h, v];
+            let geometry = [
+                [h, v, (width.div_ceil(8 * h) * 8 * h).next_multiple_of(8)],
+                [1, 1, width.div_ceil(8 * h) * 8],
+                [1, 1, width.div_ceil(8 * h) * 8],
+            ];
+            let rows = [
+                height.div_ceil(8 * v) * 8 * v,
+                height.div_ceil(8 * v) * 8,
+                height.div_ceil(8 * v) * 8,
+            ];
+            let backgrounds = [255u8, 128, 128];
+            let planes: [Vec<u8>; 3] = std::array::from_fn(|c| {
+                let [_, _, pitch] = geometry[c];
+                let mut plane = vec![backgrounds[c]; pitch * rows[c]];
+                for block in 0..(pitch / 8) * (rows[c] / 8) {
+                    if random() % 5 == 0 {
+                        let (row, column) = (block / (pitch / 8), block % (pitch / 8));
+                        plane[(row * 8 + 3) * pitch + column * 8 + 2] = 7;
+                    }
+                }
+                plane
+            });
+            let planar = Planar::new((width, height), maximum, geometry, planes).unwrap();
+            let side = 8;
+            let under = |(a, b): (usize, usize), factor: usize, maximum: usize| {
+                (a * factor / maximum / side)..=(b * factor / maximum / side)
+            };
+            for row in 0..height.div_ceil(side) {
+                for column in 0..geometry[0][2] / side {
+                    let samples = (row * side, row * side + side - 1);
+                    let across = (column * side, column * side + side - 1);
+                    let expected = !planar.dirty(0, row, column)
+                        && (1..3).all(|c| {
+                            let [h, v, _] = planar.geometry(c);
+                            under(samples, v, maximum[1]).all(|y| {
+                                under(across, h, maximum[0]).all(|x| !planar.dirty(c, y, x))
+                            })
+                        });
+                    let actual =
+                        planar.clean[row * planar.clean_words + column / 64] >> (column % 64) & 1
+                            == 1;
+                    assert_eq!(actual, expected, "{maximum:?} block {row} {column}");
+                }
+            }
+            // Filled background runs read as converted rows.
+            for y in 0..height {
+                let mut filled = vec![0u8; width * 3];
+                assert!(planar.rgb_range(y, 0, width, &mut filled));
+                let mut converted = vec![0u8; width * 3];
+                assert!(planar.convert(y, 0, width, &mut converted));
+                assert_eq!(filled, converted, "{maximum:?} row {y}");
+                for (x0, x1) in [(1, width / 2), (width / 3, width - 1), (5, 6)] {
+                    let mut part = vec![0u8; (x1 - x0) * 3];
+                    assert!(planar.rgb_range(y, x0, x1, &mut part));
+                    assert_eq!(part, converted[x0 * 3..x1 * 3], "row {y} {x0}..{x1}");
+                }
+            }
+        }
     }
 }

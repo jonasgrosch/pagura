@@ -2,18 +2,19 @@
 //! sample of its centre, or with `Interpolate` the bilinear weights of the
 //! four samples around it, when the image is not minified; otherwise the
 //! exact area average of the source samples under the pixel's footprint.
-//! Upright placements sample separably ([`super::separable`]); any other
-//! pixel by itself here, its area average by polygon clipping.
+//! Area averages use the prepared separable or contour plan in
+//! [`super::sampling`]; nearest and bilinear pixels are evaluated here.
 //!
 //! Every weighted sum adds texels in a fixed order with the same f64
 //! operations for every partition of the device grid, so a pixel's value
 //! does not depend on which span asks for it.
 
+use crate::source::Pixels;
 use pagura_core::{Error, Result};
 use pagura_raster::{Point, Transform};
 
 /// The most values one texel holds: colour channels, alpha and shape.
-pub(super) const MAX_LANES: usize = pagura_color::MAX_CHANNELS + 2;
+pub(super) const MAX_LANES: usize = pagura_color::MAX_CHANNELS + 3;
 
 /// A source of texels, each `lanes` values that sum with weights: colour
 /// channels, alpha and shape.
@@ -70,9 +71,6 @@ pub(super) enum Mode {
     Bilinear,
     /// The exact area average over the pixel's quadrilateral footprint.
     Area,
-    /// The exact area average over separable footprints of an upright
-    /// placement.
-    Separable,
 }
 
 /// The placement of one image's samples on the device grid.
@@ -283,19 +281,15 @@ impl Geometry {
         match self.mode {
             Mode::Nearest => 1,
             Mode::Bilinear => 4,
-            Mode::Separable | Mode::Area => cells(t.a.abs() + t.c.abs(), self.width)
+            Mode::Area => cells(t.a.abs() + t.c.abs(), self.width)
                 .saturating_mul(cells(t.b.abs() + t.d.abs(), self.height)),
         }
     }
 
     /// Writes the values of device pixels `x .. x + len` of row `y`, each
     /// `texels.lanes()` values, into `out`.
-    pub(super) fn fill(
-        &self,
-        (x, y, len): (u32, u32, usize),
-        texels: &impl Texels,
-        out: &mut [f64],
-    ) {
+    pub(super) fn fill(&self, pixels: Pixels<'_>, texels: &impl Texels, out: &mut [f64]) {
+        let Pixels { x, y, len, .. } = pixels;
         let lanes = texels.lanes();
         let opaque = texels.opaque();
         let pixels = out.chunks_exact_mut(lanes).take(len);
@@ -312,11 +306,9 @@ impl Geometry {
                     self.bilinear(px, y, texels, value);
                 }
             }
-            Mode::Area | Mode::Separable => {
-                for (value, px) in pixels.zip(x..) {
-                    self.area(px, y, texels, value);
-                }
-            }
+            // Minified placements average through their separable or
+            // contour plans.
+            Mode::Area => {}
         }
     }
 
@@ -350,49 +342,6 @@ impl Geometry {
         rest.fill(alpha);
     }
 
-    fn area(&self, x: u32, y: u32, texels: &impl Texels, out: &mut [f64]) {
-        let (x, y) = (f64::from(x), f64::from(y));
-        let polygon = [
-            Point::new(x, y),
-            Point::new(x + 1.0, y),
-            Point::new(x + 1.0, y + 1.0),
-            Point::new(x, y + 1.0),
-        ]
-        .map(|p| p * self.inverse);
-        let (low, high) = polygon
-            .iter()
-            .fold((polygon[0], polygon[0]), |(low, high), p| {
-                (
-                    Point::new(low.x.min(p.x), low.y.min(p.y)),
-                    Point::new(high.x.max(p.x), high.y.max(p.y)),
-                )
-            });
-        let x0 = coordinate(low.x.floor(), self.width);
-        let y0 = coordinate(low.y.floor(), self.height);
-        let x1 = coordinate(high.x.ceil(), self.width);
-        let y1 = coordinate(high.y.ceil(), self.height);
-        out.fill(0.0);
-        let (color, rest) = split(out, texels.opaque());
-        let mut weight = 0.0;
-        for row in y0..y1 {
-            for col in x0..x1 {
-                let area = intersection(&polygon, f64::from(col), f64::from(row));
-                if area > 0.0 {
-                    texels.add(self.index(f64::from(col), f64::from(row)), area, color);
-                    weight += area;
-                }
-            }
-        }
-        // An opaque texel's alpha sums exactly as the weights do.
-        rest.fill(weight);
-        if weight > 0.0 {
-            let scale = 1.0 / weight;
-            for value in out.iter_mut() {
-                *value *= scale;
-            }
-        }
-    }
-
     fn index(&self, x: f64, y: f64) -> usize {
         let x = coordinate(x, self.width.saturating_sub(1));
         let y = coordinate(y, self.height.saturating_sub(1));
@@ -419,9 +368,7 @@ pub(super) fn reaches(inverse: Transform, extent: (f64, f64)) -> bool {
 /// How a placement whose device pixels map by `t` to sample space samples.
 fn mode(t: Transform, interpolate: bool) -> Mode {
     let minifying = t.a.hypot(t.b) > 1.0 + 1e-9 || t.c.hypot(t.d) > 1.0 + 1e-9;
-    if minifying && t.b == 0.0 && t.c == 0.0 {
-        Mode::Separable
-    } else if minifying {
+    if minifying {
         Mode::Area
     } else if interpolate {
         Mode::Bilinear
@@ -449,49 +396,4 @@ pub(super) fn sample_index(index: u64) -> usize {
 )]
 fn coordinate(value: f64, maximum: u32) -> u32 {
     value.clamp(0.0, f64::from(maximum)) as u32
-}
-
-/// The area of `polygon` within the unit cell at (`x`, `y`).
-fn intersection(polygon: &[Point; 4], x: f64, y: f64) -> f64 {
-    let mut points = [Point::default(); 12];
-    points[..4].copy_from_slice(polygon);
-    let mut len = 4;
-    for (axis, bound, sign) in [
-        (0, x, 1.0),
-        (0, x + 1.0, -1.0),
-        (1, y, 1.0),
-        (1, y + 1.0, -1.0),
-    ] {
-        if len == 0 {
-            return 0.0;
-        }
-        let mut output = [Point::default(); 12];
-        let mut count = 0;
-        for i in 0..len {
-            let (a, b) = (points[i], points[(i + 1) % len]);
-            let coord = |p: Point| if axis == 0 { p.x } else { p.y };
-            let (da, db) = (sign * (coord(a) - bound), sign * (coord(b) - bound));
-            if da >= 0.0 {
-                output[count] = a;
-                count += 1;
-            }
-            if (da >= 0.0) != (db >= 0.0) {
-                let t = da / (da - db);
-                output[count] = Point::new(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y));
-                count += 1;
-            }
-        }
-        points = output;
-        len = count;
-    }
-    // Translate to the cell to avoid cancellation at large source coordinates.
-    (0..len)
-        .map(|i| {
-            let a = points[i];
-            let b = points[(i + 1) % len];
-            (a.x - x) * (b.y - y) - (a.y - y) * (b.x - x)
-        })
-        .sum::<f64>()
-        .abs()
-        * 0.5
 }

@@ -3,11 +3,11 @@
 
 use super::SceneRecorder;
 use crate::device::{Glyph, GlyphRun, OutlineKey};
-use crate::hash::FastMap;
 use crate::model::{Composite, FillStroke, GroupAttributes, GroupCause};
 use crate::scene::{
     GlyphSource, GlyphsNode, Group, GroupRole, MarkInfo, Node, NodeId, PaintId, Placement, StateId,
 };
+use pagura_core::hash::FastMap;
 use pagura_core::{Error, Result};
 use pagura_raster::{FillRule, Path, Point, Segment, Transform};
 use std::sync::Arc;
