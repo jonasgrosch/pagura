@@ -34,9 +34,8 @@ struct Outcome {
     pixels: usize,
     /// Pixels with a channel more than one level from the reference.
     beyond: usize,
-    /// Of those, pixels also more than one level from the reference with
-    /// unquantized coverage: not a coverage byte rounded the other way at a
-    /// near-tie, which the coverage bound allows.
+    /// Raw-area diagnostic for those pixels. The contract's acceptance
+    /// gate uses `beyond`: scene composition references coverage bytes.
     beyond_both: usize,
     /// Channels equal to the correctly rounded value: new and golden.
     new_rounded: usize,
@@ -126,7 +125,7 @@ pub fn run() -> bool {
     write(&results);
     let failed = results
         .iter()
-        .filter(|(_, _, outcome)| outcome.error.is_some() || outcome.beyond_both != 0)
+        .filter(|(_, _, outcome)| outcome.failed())
         .count();
     assert_eq!(
         failed, 0,
@@ -226,13 +225,13 @@ fn measure(
             let area_level = (area[channel] + (1.0 - area[3])) * 255.0;
             if new_error > 1.0 + 1e-6 {
                 beyond = true;
+                if outcome.first_beyond.len() < 8 {
+                    outcome
+                        .first_beyond
+                        .push((x, y, channel, n[channel], level));
+                }
                 if (f64::from(n[channel]) - area_level).abs() > 1.0 + 1e-6 {
                     beyond_area = true;
-                    if outcome.first_beyond.len() < 8 {
-                        outcome
-                            .first_beyond
-                            .push((x, y, channel, n[channel], level));
-                    }
                 }
             }
             if n[channel] != g[channel] {
@@ -323,10 +322,8 @@ fn line(item: &Item, o: &Outcome) -> String {
             "{} {} @{}: {} pixels, beyond {} (also with exact areas {}), changed {} channels (golden within {}, new within {}; \
              correctly rounded golden {}, new {}), exact rounding golden {:.6} new {:.6}, max error \
              golden {:.3} new {:.3}, reference {:.1} s{}",
-            if o.beyond_both > 0 {
+            if o.beyond > 0 {
                 "BEYOND   "
-            } else if o.beyond > 0 {
-                "tie      "
             } else {
                 "page     "
             },
@@ -352,6 +349,23 @@ fn line(item: &Item, o: &Outcome) -> String {
             },
         ),
     }
+}
+
+impl Outcome {
+    fn failed(&self) -> bool {
+        self.error.is_some() || self.beyond != 0
+    }
+}
+
+#[test]
+fn raw_area_diagnostics_cannot_excuse_a_coverage_byte_reference_failure() {
+    let outcome = Outcome {
+        beyond: 1,
+        beyond_both: 0,
+        ..Outcome::default()
+    };
+    assert!(outcome.failed());
+    assert!(!Outcome::default().failed());
 }
 
 fn write(results: &[(usize, Item, Outcome)]) {
