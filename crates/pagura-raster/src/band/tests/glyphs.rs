@@ -113,6 +113,9 @@ fn runs_merge_the_rows_of_glyphs_that_share_no_pixel() {
     let outlines = outlines();
     for origins in [GlyphOrigins::Exact, GlyphOrigins::Binned] {
         let mut placed = Vec::new();
+        // The render's placements and formed levels.
+        let (mut placements, mut formed) = (Vec::new(), Vec::new());
+        let scratch = &mut super::super::binned::Scratch::default();
         for (i, x) in (0..700).map(|i| (i, 1.3 + f64::from(i) * 2.71)) {
             let outline = &outlines[i as usize % outlines.len()];
             let linear = [0.0021, 0.0, 0.0, -0.0023];
@@ -122,9 +125,14 @@ fn runs_merge_the_rows_of_glyphs_that_share_no_pixel() {
             });
             let origin = Point::new(x, 20.37 + f64::from(i % 3) * 7.0);
             let prep = options(area, &limits, None);
-            let mut masks = Vec::new();
-            glyph::mask(&edges, origin, &prep, &mut masks).unwrap();
-            let mask = masks.pop();
+            let mask = glyph::mask(
+                &edges,
+                origin,
+                &prep,
+                (&mut placements, &mut formed, scratch),
+            )
+            .unwrap()
+            .then(|| placements.len() - 1);
             if let Some(shape) = glyph::place(&edges, origin, origins, &prep).unwrap() {
                 placed.push((shape, mask));
             }
@@ -134,7 +142,7 @@ fn runs_merge_the_rows_of_glyphs_that_share_no_pixel() {
             origins == GlyphOrigins::Binned
         );
         // Keep glyphs whose pixels another kept glyph does not reach.
-        let mut kept: Vec<&(Shape, Option<GlyphMask>)> = Vec::new();
+        let mut kept: Vec<&(Shape, Option<usize>)> = Vec::new();
         for glyph in &placed {
             let b = glyph.0.bounds();
             if kept.iter().all(|k| k.0.bounds().intersect(&b).is_empty()) {
@@ -153,7 +161,7 @@ fn runs_merge_the_rows_of_glyphs_that_share_no_pixel() {
             .iter()
             .enumerate()
             .map(|(i, (shape, mask))| match mask {
-                Some(mask) if i % 2 == 0 => RunGlyph::Mask(mask),
+                Some(mask) if i % 2 == 0 => RunGlyph::Mask(placements[*mask].view(&formed)),
                 _ => RunGlyph::Shape(shape),
             })
             .collect();
@@ -172,7 +180,7 @@ fn runs_merge_the_rows_of_glyphs_that_share_no_pixel() {
             }
             for glyph in &run {
                 if let RunGlyph::Mask(mask) = glyph {
-                    raster.rasterize_mask(mask, b, &mut band);
+                    raster.rasterize_mask(*mask, b, &mut band);
                     add(&band, &mut alone);
                 }
             }
@@ -180,8 +188,8 @@ fn runs_merge_the_rows_of_glyphs_that_share_no_pixel() {
         assert_eq!(got, expected);
         let masks: usize = kept
             .iter()
-            .filter_map(|(_, m)| m.as_ref())
-            .map(GlyphMask::work)
+            .filter_map(|(_, m)| *m)
+            .map(|m| placements[m].view(&formed).work())
             .sum();
         let total: usize = kept.iter().map(|(s, _)| s.work()).sum();
         assert!(raster.work_done() <= total + masks);
