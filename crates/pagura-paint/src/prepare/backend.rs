@@ -70,12 +70,16 @@ pub(crate) trait Backend {
     /// A glyph placement of `source` under the device linear map `linear`
     /// at the device `origin`.
     ///
+    /// The second of `glyph` names the source's edges once a placement of
+    /// it has found them, so that its other placements need not look them
+    /// up again.
+    ///
     /// # Errors
     ///
     /// As `GlyphEdges::new` and `Shape::glyph`.
     fn glyph(
         &mut self,
-        source: &GlyphSource,
+        glyph: (&GlyphSource, &mut Option<u32>),
         linear: [f64; 4],
         origin: Point,
         options: &ShapeOptions<'_>,
@@ -170,6 +174,27 @@ pub(crate) trait Producer: Send + Sync + fmt::Debug {
         band: u32,
         out: &mut BandCoverage,
     );
+
+    /// Writes the coverage within `band` of the leading `shapes`, which
+    /// share no pixel and are all within `clip`, to `out`, replacing it:
+    /// each pixel's coverage as [`Self::rasterize`] gives it for the one
+    /// shape that can cover it, with zero coverage in the gaps of a row.
+    /// Returns how many shapes it took, at least one when there are any.
+    fn rasterize_run(
+        &mut self,
+        shapes: &[u32],
+        clip: Option<u32>,
+        band: u32,
+        out: &mut BandCoverage,
+    ) -> usize {
+        if let Some(&shape) = shapes.first() {
+            self.rasterize(Some(shape), clip, band, out);
+            1
+        } else {
+            out.clear();
+            0
+        }
+    }
 }
 
 /// The production backend: the band rasterizer and the paint sources.
@@ -182,6 +207,8 @@ pub(crate) struct Raster<'a> {
     shapes: Vec<Shape>,
     clips: Vec<ClipShape>,
     edges: FastMap<EdgesKey, Arc<GlyphEdges>>,
+    /// Edges by the handles [`Backend::glyph`] gives out.
+    handles: Vec<Arc<GlyphEdges>>,
     current: Option<u32>,
 }
 
@@ -194,9 +221,12 @@ impl<'a> Raster<'a> {
             limits,
             origins,
             scale: 1.0,
-            shapes: Vec::new(),
+            shapes: SPARE_SHAPES
+                .try_with(std::cell::Cell::take)
+                .unwrap_or_default(),
             clips: Vec::new(),
             edges: hash::map(),
+            handles: Vec::new(),
             current: None,
         }
     }
@@ -275,11 +305,16 @@ impl Backend for Raster<'_> {
 
     fn glyph(
         &mut self,
-        source: &GlyphSource,
+        (source, handle): (&GlyphSource, &mut Option<u32>),
         linear: [f64; 4],
         origin: Point,
         options: &ShapeOptions<'_>,
     ) -> Result<Option<Prepared>> {
+        if let Some(edges) = handle.and_then(|i| self.handles.get(i as usize)) {
+            let clip = self.current.and_then(|k| self.clips.get(k as usize));
+            let shape = Shape::glyph_with_clip(edges, origin, self.origins, clip, options)?;
+            return self.shape(shape);
+        }
         let binned = (self.origins == GlyphOrigins::Binned).then_some(self.scale);
         let key = EdgesKey {
             outline: source.key,
@@ -307,6 +342,8 @@ impl Backend for Raster<'_> {
             self.edges.insert(key, Arc::clone(&edges));
             edges
         };
+        *handle = u32::try_from(self.handles.len()).ok();
+        self.handles.push(Arc::clone(&edges));
         let clip = self.current.and_then(|k| self.clips.get(k as usize));
         let shape = Shape::glyph_with_clip(&edges, origin, self.origins, clip, options)?;
         self.shape(shape)
@@ -418,6 +455,28 @@ struct RasterCoverage {
     clips: Vec<ClipShape>,
 }
 
+thread_local! {
+    /// The emptied shape list of the coverage producer dropped last on this
+    /// thread: the next preparation fills it without growing it again.
+    static SPARE_SHAPES: std::cell::Cell<Vec<Shape>> = const { std::cell::Cell::new(Vec::new()) };
+}
+
+impl Drop for RasterCoverage {
+    fn drop(&mut self) {
+        let mut shapes = std::mem::take(&mut self.shapes);
+        shapes.clear();
+        // A thread being torn down has no spare to keep.
+        let _ = SPARE_SHAPES.try_with(|spare| {
+            let kept = spare.take();
+            spare.set(if kept.capacity() > shapes.capacity() {
+                kept
+            } else {
+                shapes
+            });
+        });
+    }
+}
+
 impl Producer for RasterCoverage {
     fn rasterize(
         &mut self,
@@ -432,4 +491,28 @@ impl Producer for RasterCoverage {
         self.rasterizer
             .rasterize(MarkCoverage { shape, clip }, band, out);
     }
+
+    fn rasterize_run(
+        &mut self,
+        shapes: &[u32],
+        clip: Option<u32>,
+        band: u32,
+        out: &mut BandCoverage,
+    ) -> usize {
+        let get = |i: u32| pagura_core::convert::u32_to_usize(i);
+        let run: Vec<&Shape> = shapes
+            .iter()
+            .take(RUN_SHAPES)
+            .map_while(|&i| self.shapes.get(get(i)))
+            .collect();
+        if run.is_empty() {
+            out.clear();
+            return 0;
+        }
+        let clip = clip.and_then(|i| self.clips.get(get(i)));
+        self.rasterizer.rasterize_run(&run, clip, band, out)
+    }
 }
+
+/// The most shapes one call of [`Producer::rasterize_run`] passes on.
+const RUN_SHAPES: usize = 256;

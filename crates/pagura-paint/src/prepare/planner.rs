@@ -53,6 +53,8 @@ pub(crate) struct Planner<'s, B: Backend> {
     /// The page crop in default user space.
     pub(crate) crop: Arc<Path>,
     clips: FastMap<clips::Key, clips::State>,
+    /// The clip state looked up last: marks in a row usually share one.
+    last_clip: Option<(clips::Key, clips::State)>,
     solids: FastMap<SolidKey, u32>,
     masks: FastMap<(MaskId, [u64; 6], Process), u32>,
     open: Vec<(MaskId, [u64; 6], Process)>,
@@ -72,6 +74,11 @@ pub(crate) struct Planner<'s, B: Backend> {
     run: Option<runs::Open>,
     /// Placements gathered into runs, for the mark budget.
     gathered: usize,
+    /// What the placements of the glyph run being gathered share, once one
+    /// of them has been prepared in full.
+    memo: Option<runs::Memo>,
+    /// The edges handle of each source of the glyph node being prepared.
+    glyph_edges: Vec<Option<u32>>,
 }
 
 /// What the walk builds.
@@ -194,6 +201,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             parts,
             crop: Arc::new(crop(scene)),
             clips: hash::map(),
+            last_clip: None,
             solids: hash::map(),
             masks: hash::map(),
             open: Vec::new(),
@@ -205,6 +213,8 @@ impl<'s, B: Backend> Planner<'s, B> {
             gathering: None,
             run: None,
             gathered: 0,
+            memo: None,
+            glyph_edges: Vec::new(),
         })
     }
 

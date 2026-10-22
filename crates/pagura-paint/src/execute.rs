@@ -169,11 +169,8 @@ impl<'a> Executor<'a> {
         let mut coverage = std::mem::take(&mut self.ws.coverage);
         self.producer
             .rasterize(mark.cover.shape, mark.cover.clip, self.band, &mut coverage);
-        if let (Some(words), Buffer::Page, PageBuffer::N16(_)) =
-            (mark.words, frame.buffer, &self.ws.page)
-            && !mark.records
-        {
-            self.opaque_n16(&coverage, frame, words);
+        if let Some(opaque) = self.opaque(mark, frame) {
+            self.opaque_store(&coverage, frame, opaque);
             self.ws.coverage = coverage;
             return;
         }
@@ -190,39 +187,80 @@ impl<'a> Executor<'a> {
         self.ws.coverage = coverage;
     }
 
-    /// Opaque constant colour into the N16 page: one rounding per store
-    /// straight from coverage, nothing else to evaluate.
-    fn opaque_n16(
+    /// How `mark` stores straight from coverage into `frame`: an opaque
+    /// constant colour into the N16 page, and a constant colour without a
+    /// soft mask into the byte page.
+    pub(super) fn opaque(&self, mark: &Mark, frame: Frame) -> Option<Opaque> {
+        if mark.records || frame.buffer != Buffer::Page {
+            return None;
+        }
+        match &self.ws.page {
+            PageBuffer::N16(_) => mark.words.map(Opaque::N16),
+            PageBuffer::U8(_) => {
+                let paint = self.plan.paints.get(u32_to_usize(mark.paint))?;
+                let bytes = kernel::color_bytes(paint.constant()?);
+                let compositing = &mark.compositing;
+                if mark.words.is_some() {
+                    Some(Opaque::U8(bytes))
+                } else if compositing.mask.is_none()
+                    && compositing.blend == pagura_interpret::BlendMode::Normal
+                    && compositing.overprint == 0
+                    && mark.boundary == Boundary::Absent
+                {
+                    Some(Opaque::U8Alpha(bytes, compositing.alpha))
+                } else {
+                    None
+                }
+            }
+            PageBuffer::F64(_) | PageBuffer::F32(_) => None,
+        }
+    }
+
+    /// Opaque constant colour into the N16 or byte page: one rounding per
+    /// store straight from coverage, nothing else to evaluate.
+    pub(super) fn opaque_store(
         &mut self,
         coverage: &pagura_raster::BandCoverage,
         frame: Frame,
-        words: [u16; 4],
+        opaque: Opaque,
     ) {
         let ws = &mut *self.ws;
-        let PageBuffer::N16(page) = &mut ws.page else {
-            return;
-        };
-        for row in coverage.rows() {
-            if row.y < frame.rect.y0 || row.y >= frame.rect.y1 {
-                continue;
-            }
-            for span in row.spans() {
-                let Some((x, cover)) = clamp(span, frame.rect) else {
-                    continue;
-                };
-                let (Some(start), len) = (frame.index(x, row.y), cover.len()) else {
-                    continue;
-                };
-                if let Some(pixels) = page.get_mut(start..start + len) {
-                    kernel::store_n16(pixels, words, cover.coverage());
+        let stored = match (&mut ws.page, opaque) {
+            (PageBuffer::N16(page), Opaque::N16(words)) => store_rows(
+                page,
+                &mut ws.extents,
+                (coverage, frame),
+                |pixels, coverage| {
+                    kernel::store_n16(pixels, words, coverage);
+                },
+            ),
+            (PageBuffer::U8(page), Opaque::U8(bytes)) => store_rows(
+                page,
+                &mut ws.extents,
+                (coverage, frame),
+                |pixels, coverage| {
+                    kernel::store_u8_opaque(pixels, bytes, coverage);
+                },
+            ),
+            (PageBuffer::U8(page), Opaque::U8Alpha(bytes, alpha)) => {
+                let (bits, table) = &mut ws.alpha_table;
+                if *bits != Some(alpha.to_bits()) {
+                    *table = kernel::alpha_bytes(alpha);
+                    *bits = Some(alpha.to_bits());
                 }
-                let column = x - frame.rect.x0;
-                let end = column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
-                ws.extents
-                    .mark(u32_to_usize(row.y - frame.rect.y0), column, end);
-                ws.usage.work = ws.usage.work.saturating_add(len);
+                let table = &*table;
+                store_rows(
+                    page,
+                    &mut ws.extents,
+                    (coverage, frame),
+                    |pixels, coverage| {
+                        kernel::store_u8_alpha(pixels, bytes, coverage, table);
+                    },
+                )
             }
-        }
+            _ => 0,
+        };
+        ws.usage.work = ws.usage.work.saturating_add(stored);
     }
 
     fn mark_span(&mut self, mark: &Mark, frame: Frame, (x, y): (u32, u32), cover: Cover<'_>) {
@@ -325,6 +363,60 @@ impl<'a> Executor<'a> {
             kind,
         );
     }
+}
+
+/// Stores every span of `coverage` within `frame` into the page's band
+/// `page` with `store`, recording each row's painted columns once; returns
+/// the pixels stored.
+fn store_rows<T>(
+    page: &mut [T],
+    extents: &mut Extents,
+    (coverage, frame): (&pagura_raster::BandCoverage, Frame),
+    store: impl Fn(&mut [T], Option<&[u8]>),
+) -> usize {
+    let rect = frame.rect;
+    let width = u32_to_usize(rect.width());
+    let mut stored = 0;
+    for row in coverage.rows() {
+        if row.y < rect.y0 || row.y >= rect.y1 {
+            continue;
+        }
+        let base = u32_to_usize(row.y - rect.y0) * width;
+        let Some(line) = page.get_mut(base..base + width) else {
+            continue;
+        };
+        let (mut lo, mut hi) = (u32::MAX, 0);
+        for span in row.spans() {
+            let Some((x, cover)) = clamp(span, rect) else {
+                continue;
+            };
+            let column = x - rect.x0;
+            let start = u32_to_usize(column);
+            let len = cover.len();
+            if let Some(pixels) = line.get_mut(start..start + len) {
+                store(pixels, cover.coverage());
+            }
+            lo = lo.min(column);
+            hi = hi.max(column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX)));
+            stored += len;
+        }
+        if lo < hi {
+            extents.mark(u32_to_usize(row.y - rect.y0), lo, hi);
+        }
+    }
+    stored
+}
+
+/// An opaque constant colour encoded for the page's narrow storage.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum Opaque {
+    /// N16 words.
+    N16([u16; 4]),
+    /// Bytes.
+    U8([u8; 4]),
+    /// Bytes at a constant alpha, whose byte opacity per coverage byte the
+    /// workspace tabulates.
+    U8Alpha([u8; 4], f64),
 }
 
 /// The coverage of `coverage` at the pixels from `(x, y)`, one byte each.
@@ -443,6 +535,11 @@ fn opacity(
             *s *= factor;
         }
     }
+}
+
+/// `c / 255` for coverage byte `c`, as [`opacity`] takes it.
+pub(crate) fn unit(c: usize) -> f64 {
+    UNIT.get(c).copied().unwrap_or(1.0)
 }
 
 /// `c / 255` for every coverage byte, as the division gives it.

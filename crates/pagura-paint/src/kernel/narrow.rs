@@ -17,14 +17,12 @@ pub(crate) fn div255(x: u32) -> u32 {
 }
 
 /// The nearest byte of an N16 word, `round(w / 257)` (never a tie):
-/// `n = w + 128`, then `(n − (n >> 8)) >> 8`.
+/// `n = w + 128`, then `(n − (n >> 8)) >> 8`, in u16 lanes: `n` saturates
+/// at 65535 only for words above 65407, whose byte is 255 either way
+/// (checked exhaustively in the tests).
 #[inline]
-#[expect(
-    clippy::cast_possible_truncation,
-    reason = "(65535 + 128 − 256) >> 8 is 255"
-)]
 pub(crate) fn word_byte(word: u16) -> u8 {
-    let n = u32::from(word).wrapping_add(128);
+    let n = word.saturating_add(128);
     (n.wrapping_sub(n >> 8) >> 8) as u8
 }
 
@@ -54,9 +52,110 @@ fn level_byte(level: f32) -> u8 {
     level.round().clamp(0.0, 255.0) as u8
 }
 
+/// Stores an opaque colour, already encoded as bytes, at `coverage` (`None`
+/// covers every pixel): `round((c·s + (255 − c)·u) / 255)`, the store the
+/// byte path makes at alpha `c / 255`, with no branch.
+pub(crate) fn store_u8_opaque(pixels: &mut [[u8; 4]], source: [u8; 4], coverage: Option<&[u8]>) {
+    let Some(coverage) = coverage else {
+        pixels.fill(source);
+        return;
+    };
+    let source = Lanes::new(source);
+    for (pixel, &c) in pixels.iter_mut().zip(coverage) {
+        *pixel = source.over(*pixel, u32::from(c));
+    }
+}
+
+/// Stores a constant colour, encoded as bytes, at the byte alpha `alpha[c]`
+/// of each pixel's coverage byte `c` (`None` covers every pixel), the store
+/// the byte path makes once the opacity is a byte.
+pub(crate) fn store_u8_alpha(
+    pixels: &mut [[u8; 4]],
+    source: [u8; 4],
+    coverage: Option<&[u8]>,
+    alpha: &[u8; 256],
+) {
+    let source = Lanes::new(source);
+    let Some(coverage) = coverage else {
+        let a = u32::from(alpha[255]);
+        for pixel in pixels.iter_mut() {
+            *pixel = source.over(*pixel, a);
+        }
+        return;
+    };
+    for (pixel, &c) in pixels.iter_mut().zip(coverage) {
+        *pixel = source.over(*pixel, u32::from(alpha[usize::from(c)]));
+    }
+}
+
+/// A byte colour as two pairs of channels in the 16-bit halves of a word
+/// each, so that one multiply weights two channels: a weighted channel is
+/// at most `255² + 128 + 254 < 2^16`, so no half carries into the other.
+#[derive(Clone, Copy)]
+struct Lanes {
+    /// Channels 0 and 2.
+    even: u32,
+    /// Channels 1 and 3.
+    odd: u32,
+}
+
+/// The low byte of each 16-bit half of a word.
+const HALVES: u32 = 0x00ff_00ff;
+
+impl Lanes {
+    fn new(color: [u8; 4]) -> Self {
+        let word = u32::from_le_bytes(color);
+        Self {
+            even: word & HALVES,
+            odd: (word >> 8) & HALVES,
+        }
+    }
+
+    /// `round255(s·a + u·(255 − a))` per channel of `pixel`.
+    #[inline]
+    fn over(self, pixel: [u8; 4], a: u32) -> [u8; 4] {
+        let word = u32::from_le_bytes(pixel);
+        let rest = 255_u32.wrapping_sub(a);
+        let even = round255_halves(
+            self.even
+                .wrapping_mul(a)
+                .wrapping_add((word & HALVES).wrapping_mul(rest)),
+        );
+        let odd = round255_halves(
+            self.odd
+                .wrapping_mul(a)
+                .wrapping_add(((word >> 8) & HALVES).wrapping_mul(rest)),
+        );
+        (even | (odd << 8)).to_le_bytes()
+    }
+}
+
+/// `round255` in both 16-bit halves of a word.
+#[inline]
+fn round255_halves(p: u32) -> u32 {
+    let t = p.wrapping_add(0x0080_0080);
+    (t.wrapping_add((t >> 8) & HALVES) >> 8) & HALVES
+}
+
+/// The byte opacity of every coverage byte under constant alpha `k`: the
+/// byte path's `quantize(c / 255 · k)`.
+pub(crate) fn alpha_bytes(k: f64) -> [u8; 256] {
+    let mut table = [0; 256];
+    for (c, out) in table.iter_mut().enumerate() {
+        let unit = crate::execute::unit(c);
+        *out = pagura_raster::quantize_unit(unit * k);
+    }
+    table
+}
+
+/// The bytes the byte path stores for an opaque constant colour.
+pub(crate) fn color_bytes(color: &[f64]) -> [u8; 4] {
+    bytes(color)
+}
+
 /// `round(p / 255)` for `p ≤ 255²` (never a tie): `t = p + 128`, then
 /// `(t + (t >> 8)) >> 8`.
-#[inline]
+#[cfg(test)]
 pub(crate) fn round255(p: u32) -> u32 {
     let t = p.wrapping_add(128);
     t.wrapping_add(t >> 8) >> 8
@@ -273,26 +372,97 @@ fn bytes(color: &[f64]) -> [u8; 4] {
     [at(0), at(1), at(2), 255]
 }
 
-/// One byte store, rounded once; at alpha 0 the pixel stays and at 255 it
-/// takes the source, from the formula itself.
-#[expect(
-    clippy::cast_possible_truncation,
-    reason = "a convex combination of two bytes stays within 0..255"
-)]
+/// One byte store at alpha `quantize(alpha)`, rounded once: at 255 the
+/// source, at 0 the pixel as it is, which is what the rounding gives too.
 fn over(pixel: &mut [u8; 4], source: [u8; 4], alpha: f64) {
-    let a = u32::from(pagura_raster::quantize_unit(alpha));
-    let rest = 255_u32.wrapping_sub(a);
-    for (out, source) in pixel.iter_mut().zip(source) {
-        let sum = u32::from(source)
-            .wrapping_mul(a)
-            .wrapping_add(u32::from(*out).wrapping_mul(rest));
-        *out = round255(sum) as u8;
+    match pagura_raster::quantize_unit(alpha) {
+        255 => *pixel = source,
+        0 => {}
+        a => *pixel = Lanes::new(source).over(*pixel, u32::from(a)),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// One byte store channel by channel, as the byte path defines it.
+    fn reference_over(pixel: &mut [u8; 4], source: [u8; 4], alpha: f64) {
+        let a = u32::from(pagura_raster::quantize_unit(alpha));
+        let rest = 255 - a;
+        for (out, source) in pixel.iter_mut().zip(source) {
+            let sum = u32::from(source) * a + u32::from(*out) * rest;
+            *out = u8::try_from(round255(sum)).unwrap();
+        }
+    }
+
+    #[test]
+    fn byte_stores_round_once_per_channel() {
+        for a in 0..=255_u8 {
+            let alpha = f64::from(a) / 255.0;
+            for s in (0..=255_u8).step_by(3) {
+                for b in (0..=255_u8).step_by(7) {
+                    let mut fast = [b, 255 - b, b / 2, 255];
+                    let mut slow = fast;
+                    over(&mut fast, [s, 255 - s, s / 3, 255], alpha);
+                    reference_over(&mut slow, [s, 255 - s, s / 3, 255], alpha);
+                    assert_eq!(fast, slow, "a {a} s {s} b {b}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn words_round_to_their_nearest_byte_in_u16_lanes() {
+        for word in 0..=u16::MAX {
+            let exact = (f64::from(word) / 257.0).round();
+            assert_eq!(f64::from(word_byte(word)), exact, "word {word}");
+        }
+    }
+
+    #[test]
+    fn opaque_byte_stores_match_the_byte_path() {
+        for c in 0..=255_u8 {
+            let alpha = f64::from(c) / 255.0;
+            assert_eq!(pagura_raster::quantize_unit(alpha), c);
+            for s in [0_u8, 1, 77, 128, 254, 255] {
+                for b in 0..=255_u8 {
+                    let mut fast = [[b, b, b, b]];
+                    store_u8_opaque(&mut fast, [s, s, s, 255], Some(&[c]));
+                    let mut slow = [b, b, b, b];
+                    reference_over(&mut slow, [s, s, s, 255], alpha);
+                    assert_eq!(fast[0], slow, "s {s} b {b} c {c}");
+                }
+            }
+        }
+        let mut full = [[3_u8; 4]; 3];
+        store_u8_opaque(&mut full, [9, 8, 7, 255], None);
+        assert_eq!(full, [[9, 8, 7, 255]; 3]);
+    }
+
+    #[test]
+    fn translucent_byte_stores_match_the_byte_path() {
+        for k in [0.0, 0.001, 0.25, 0.4, 0.5, 0.75, 0.999, 1.0] {
+            let table = alpha_bytes(k);
+            for c in 0..=255_u8 {
+                let alpha = crate::execute::unit(usize::from(c)) * k;
+                for s in [0_u8, 90, 255] {
+                    for b in (0..=255_u8).step_by(5) {
+                        let mut fast = [[b; 4]];
+                        store_u8_alpha(&mut fast, [s, s, s, 255], Some(&[c]), &table);
+                        let mut slow = [b; 4];
+                        reference_over(&mut slow, [s, s, s, 255], alpha);
+                        assert_eq!(fast[0], slow, "k {k} s {s} b {b} c {c}");
+                    }
+                }
+            }
+            let mut full = [[40_u8; 4]; 2];
+            store_u8_alpha(&mut full, [200, 100, 0, 255], None, &table);
+            let mut slow = [40_u8; 4];
+            reference_over(&mut slow, [200, 100, 0, 255], 1.0 * k);
+            assert_eq!(full, [slow; 2], "k {k}");
+        }
+    }
 
     #[test]
     fn words_round_to_the_nearest_byte_at_the_output() {

@@ -105,7 +105,7 @@ impl Backend for Rects {
 
     fn glyph(
         &mut self,
-        source: &GlyphSource,
+        (source, _): (&GlyphSource, &mut Option<u32>),
         linear: [f64; 4],
         origin: Point,
         options: &ShapeOptions<'_>,
@@ -305,6 +305,65 @@ impl Producer for RectCoverage {
         out.finish();
         self.cells = cells;
     }
+
+    fn rasterize_run(
+        &mut self,
+        shapes: &[u32],
+        clip: Option<u32>,
+        band: u32,
+        out: &mut BandCoverage,
+    ) -> usize {
+        merge_run(shapes, out, |shape, one| {
+            self.rasterize(Some(shape), clip, band, one);
+        })
+    }
+}
+
+/// [`Producer::rasterize_run`] for test producers: at most three of
+/// `shapes` rasterized one by one with `one`, merged into one partial span
+/// per row from the first to the last covered column, zero between.
+pub(crate) fn merge_run(
+    shapes: &[u32],
+    out: &mut BandCoverage,
+    mut one: impl FnMut(u32, &mut BandCoverage),
+) -> usize {
+    let taken = shapes.len().min(3);
+    let mut rows: std::collections::BTreeMap<u32, Vec<(u32, Vec<u8>)>> =
+        std::collections::BTreeMap::new();
+    let mut single = BandCoverage::default();
+    for &shape in &shapes[..taken] {
+        one(shape, &mut single);
+        for row in single.rows() {
+            for span in row.spans() {
+                let (x, bytes) = match span {
+                    pagura_raster::Span::Full { x, len } => (x, vec![255; len as usize]),
+                    pagura_raster::Span::Partial { x, coverage } => (x, coverage.to_vec()),
+                };
+                rows.entry(row.y).or_default().push((x, bytes));
+            }
+        }
+    }
+    out.clear();
+    for (y, spans) in rows {
+        let x0 = spans.iter().map(|(x, _)| *x).min().unwrap_or(0);
+        let x1 = spans
+            .iter()
+            .map(|(x, bytes)| *x + index(bytes.len()))
+            .max()
+            .unwrap_or(0);
+        let mut dense = vec![0_u8; (x1 - x0) as usize];
+        for (x, bytes) in spans {
+            let at = (x - x0) as usize;
+            for (out, byte) in dense[at..at + bytes.len()].iter_mut().zip(bytes) {
+                assert_eq!(*out, 0, "merged shapes share a pixel");
+                *out = byte;
+            }
+        }
+        out.push_row(y);
+        out.push_partial(x0, &dense);
+    }
+    out.finish();
+    taken
 }
 
 /// Builds scenes in device space (an identity request transform unless

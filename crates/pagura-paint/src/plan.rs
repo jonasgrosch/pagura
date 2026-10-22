@@ -133,9 +133,9 @@ pub(crate) enum ItemKind {
 }
 
 /// The glyph placements of one text-showing operator painted with one solid
-/// paint, as one item (ADR 0004 §4): where no pixel can get coverage from
-/// two placements their coverage is gathered into one band row and stored
-/// once; where two may meet, each stores in content order.
+/// paint, as one item (ADR 0004 §4): placements whose bounds meet no other
+/// placement's are rasterized together into merged rows and stored at once;
+/// the others store one by one in content order.
 #[derive(Debug)]
 pub(crate) struct Run {
     /// What the placements share: clip, paint, compositing and N16 words.
@@ -143,19 +143,6 @@ pub(crate) struct Run {
     pub(crate) mark: Mark,
     /// The placements in content order.
     pub(crate) glyphs: Vec<Glyph>,
-    /// Where two placements' bounds meet, both ways, by placement.
-    pub(crate) shared: Vec<DeviceRect>,
-    /// Whether coverage is gathered; otherwise each placement stores in
-    /// turn.
-    pub(crate) gather: bool,
-}
-
-impl Run {
-    /// The rectangles of `glyph`'s pixels other placements may also cover.
-    pub(crate) fn shared(&self, glyph: &Glyph) -> &[DeviceRect] {
-        let [start, end] = glyph.shared.map(pagura_core::convert::u32_to_usize);
-        self.shared.get(start..end).unwrap_or_default()
-    }
 }
 
 /// One glyph placement of a [`Run`].
@@ -167,8 +154,8 @@ pub(crate) struct Glyph {
     pub(crate) bounds: DeviceRect,
     /// The first and last band it meets.
     pub(crate) bands: [u32; 2],
-    /// Its range of [`Run::shared`].
-    pub(crate) shared: [u32; 2],
+    /// No other placement's bounds meet its own.
+    pub(crate) alone: bool,
 }
 
 /// A mark's coverage: its shape and clip in the coverage producer.
@@ -181,7 +168,7 @@ pub(crate) struct Cover {
 }
 
 /// A fill, stroke, glyph placement, image or shading.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct Mark {
     /// Coverage.
     pub(crate) cover: Cover,

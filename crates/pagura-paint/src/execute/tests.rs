@@ -630,6 +630,18 @@ impl Producer for Speckles {
         }
         out.finish();
     }
+
+    fn rasterize_run(
+        &mut self,
+        shapes: &[u32],
+        clip: Option<u32>,
+        band: u32,
+        out: &mut BandCoverage,
+    ) -> usize {
+        crate::testing::merge_run(shapes, out, |shape, one| {
+            self.rasterize(Some(shape), clip, band, one);
+        })
+    }
 }
 
 impl Fixture {
@@ -660,7 +672,7 @@ impl Fixture {
             boundary: crate::plan::Boundary::Absent,
             words,
         };
-        let Some(gather) = run else {
+        let Some(alone) = run else {
             for (i, &b) in bounds.iter().enumerate() {
                 let shape = first + u32::try_from(i).unwrap();
                 self.push(group, b, ItemKind::Mark(mark(Some(shape))));
@@ -674,18 +686,18 @@ impl Fixture {
                 shape: first + u32::try_from(i).unwrap(),
                 bounds: b,
                 bands: [0, u32::MAX],
-                shared: [0, 0],
+                alone: false,
             })
             .collect();
-        let shared = crate::prepare::planner::runs::meetings(&mut glyphs).unwrap();
+        if alone {
+            crate::prepare::planner::runs::mark_alone(&mut glyphs);
+        }
         let union = bounds
             .iter()
             .fold(DeviceRect::default(), |a, &b| crate::plan::union(a, b));
         let kind = ItemKind::Run(Run {
             mark: mark(None),
             glyphs,
-            shared,
-            gather,
         });
         self.push(group, union, kind);
     }
@@ -755,10 +767,10 @@ fn runs_store_as_one_item_per_placement_with_holes_in_coverage() {
                 };
                 for knockout in [false, true] {
                     let expected = render(None, knockout);
-                    for gather in [true, false] {
+                    for alone in [true, false] {
                         assert!(
-                            render(Some(gather), knockout) == expected,
-                            "{format:?} {style:?} band height {band_height} knockout {knockout} gather {gather}"
+                            render(Some(alone), knockout) == expected,
+                            "{format:?} {style:?} band height {band_height} knockout {knockout} alone {alone}"
                         );
                     }
                 }

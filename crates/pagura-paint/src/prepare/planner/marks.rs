@@ -5,7 +5,7 @@
 //! own, gathered into its run's item where it can be (`runs`).
 
 use super::clips::{Clipping, Extra};
-use super::runs::Placed;
+use super::runs::{Memo, Placed};
 use super::{Planner, Scope};
 use crate::paint::PaintSpans;
 use crate::plan::{Boundary, Compositing, Cover, GroupUse, Item, ItemKind, Mark, area, intersect};
@@ -30,7 +30,7 @@ enum Geometry<'a> {
     /// A stroke.
     Stroke(&'a Path, &'a Pen),
     /// A glyph placement: its device linear map and origin.
-    Glyph(&'a GlyphSource, [f64; 4], Point),
+    Glyph(&'a GlyphSource, [f64; 4], Point, usize),
     /// An image's unit square under this transform.
     Unit(Transform),
     /// A shading's `BBox` under its transform, or its clip region.
@@ -111,8 +111,12 @@ impl<B: Backend> Planner<'_, B> {
     ) -> Result<()> {
         let gather = node.placements.len() > 1 && self.gathers(scope, node);
         let outer = std::mem::replace(&mut self.gathering, gather.then_some(scope.group));
+        let outer_memo = self.memo.take();
+        let outer_edges = std::mem::replace(&mut self.glyph_edges, vec![None; node.sources.len()]);
         let placed = self.placements(scope, node, budget);
         self.gathering = outer;
+        self.memo = outer_memo;
+        self.glyph_edges = outer_edges;
         placed?;
         if gather {
             let position = self.run.as_ref().map(|open| open.position);
@@ -126,7 +130,10 @@ impl<B: Backend> Planner<'_, B> {
     fn placements(&mut self, scope: &Scope, node: &GlyphsNode, budget: &mut Budget) -> Result<()> {
         let t = scope.transform;
         let device = Transform::new(t.a, t.b, t.c, t.d, 0.0, 0.0);
-        let mut hulls: Vec<Option<Option<bounds::Hull>>> = vec![None; node.sources.len()];
+        // Each source's device linear map and hull relative to the origin,
+        // once.
+        let mut sources: Vec<Option<([f64; 4], Option<bounds::Hull>)>> =
+            vec![None; node.sources.len()];
         for (i, placement) in node.placements.iter().enumerate() {
             let source_index = index(placement.source);
             let Some(source) = node.sources.get(source_index) else {
@@ -136,17 +143,18 @@ impl<B: Backend> Planner<'_, B> {
                     node.position(i),
                 ));
             };
-            let l = source.linear;
-            let linear = Transform::new(l.a, l.b, l.c, l.d, 0.0, 0.0).then(device);
-            let relative = if let Some(hull) = hulls.get(source_index).copied().flatten() {
-                hull
-            } else {
+            let cached = sources.get(source_index).copied().flatten();
+            let (linear, relative) = cached.unwrap_or_else(|| {
+                let l = source.linear;
+                let linear = Transform::new(l.a, l.b, l.c, l.d, 0.0, 0.0).then(device);
                 let hull = bounds::path(&source.outline, linear);
-                if let Some(slot) = hulls.get_mut(source_index) {
-                    *slot = Some(hull);
-                }
-                hull
-            };
+                ([linear.a, linear.b, linear.c, linear.d], hull)
+            });
+            if cached.is_none()
+                && let Some(slot) = sources.get_mut(source_index)
+            {
+                *slot = Some((linear, relative));
+            }
             let origin = t.apply(placement.origin);
             let hull = relative.map(|[x0, y0, x1, y1]| {
                 bounds::expand(
@@ -154,11 +162,19 @@ impl<B: Backend> Planner<'_, B> {
                     1.0,
                 )
             });
+            let geometry = Geometry::Glyph(source, linear, origin, source_index);
+            if let Some(memo) = self.memo.filter(|_| self.gathering == Some(scope.group)) {
+                self.serial += 1;
+                let position = node.position(i);
+                let placed = self.placement(scope, (&memo, hull, &geometry, position), budget);
+                placed.map_err(|error| self.fail(error, position))?;
+                continue;
+            }
             let spec = Spec {
                 info: &node.mark,
                 position: node.position(i),
                 hull,
-                geometry: Geometry::Glyph(source, [linear.a, linear.b, linear.c, linear.d], origin),
+                geometry,
                 colour: Colour::Paint(node.paint),
             };
             self.mark(scope, &spec, budget)?;
@@ -310,6 +326,62 @@ impl<B: Backend> Planner<'_, B> {
             Some(tiling) => self.pattern_item(scope, spec, (&tiling, covered, compositing), budget),
             None => self.mark_item(scope, spec, (&state, covered, compositing), budget),
         }
+    }
+
+    /// A glyph placement of the run being gathered, with what its run's
+    /// first prepared placement found: culled, its shape prepared within
+    /// the clip state, its mask use and work charged, then gathered.
+    fn placement(
+        &mut self,
+        scope: &Scope,
+        (memo, hull, geometry, position): (&Memo, Option<bounds::Hull>, &Geometry<'_>, Position),
+        budget: &mut Budget,
+    ) -> Result<()> {
+        let region = self.area.region;
+        let culling = intersect(
+            intersect(bounds::device(hull, region), memo.clip_bounds),
+            scope.bounds,
+        );
+        if culling.is_empty() {
+            return Ok(());
+        }
+        let (clip, clip_rect) = match memo.clipping {
+            Clipping::Empty => return Ok(()),
+            Clipping::All => (None, region),
+            Clipping::Shape(prepared) => (Some(prepared.key), prepared.bounds),
+        };
+        self.backend.shapes_clip(clip);
+        let shape = self.shape(scope, geometry);
+        self.backend.shapes_clip(None);
+        let Shape::Prepared(prepared) = shape? else {
+            return Ok(());
+        };
+        let bounds = intersect(
+            intersect(prepared.bounds, clip_rect),
+            intersect(scope.bounds, culling),
+        );
+        if bounds.is_empty() {
+            return Ok(());
+        }
+        budget.bytes.charge(prepared.bytes)?;
+        self.use_mask(memo.mask, bounds, budget)?;
+        budget.work.charge(prepared.work)?;
+        budget.work.charge(area(bounds))?;
+        let mark = Mark {
+            cover: Cover {
+                shape: Some(prepared.key),
+                clip,
+            },
+            ..memo.mark
+        };
+        let placed = Placed {
+            shape: prepared.key,
+            bounds,
+            work: prepared.work,
+            serial: self.serial,
+            position,
+        };
+        self.gather(scope.group, mark, placed, budget)
     }
 
     /// The clip and shape of a mark that meets the region, and the pixels
@@ -493,6 +565,16 @@ impl<B: Backend> Planner<'_, B> {
                 serial,
                 position: spec.position,
             };
+            if self.memo.is_none() {
+                let clip_bounds = self.clip_bounds(scope, spec.info.clip, None)?;
+                let clipping = self.clip(scope, (spec.info.clip, None), budget)?;
+                self.memo = Some(Memo {
+                    clip_bounds,
+                    clipping,
+                    mask: compositing.mask,
+                    mark,
+                });
+            }
             return self.gather(scope.group, mark, placed, budget);
         }
         let item = Item {
@@ -524,8 +606,15 @@ impl<B: Backend> Planner<'_, B> {
                 self.backend
                     .stroke(path, (pen, inverse), scope.transform, &options)?
             }
-            Geometry::Glyph(source, linear, origin) => {
-                self.backend.glyph(source, *linear, *origin, &options)?
+            Geometry::Glyph(source, linear, origin, index) => {
+                let mut edges = self.glyph_edges.get(*index).copied().flatten();
+                let prepared =
+                    self.backend
+                        .glyph((source, &mut edges), *linear, *origin, &options)?;
+                if let Some(slot) = self.glyph_edges.get_mut(*index) {
+                    *slot = edges;
+                }
+                prepared
             }
             Geometry::Unit(transform) => self.backend.fill(
                 &bounds::unit_square(),
