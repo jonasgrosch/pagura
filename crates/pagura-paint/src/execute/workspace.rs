@@ -304,8 +304,6 @@ pub(crate) struct Workspace {
     /// The byte opacity of every coverage byte under the constant alpha
     /// with these bits.
     pub(crate) alpha_table: (Option<u64>, [u8; 256]),
-    /// One span of an image as bytes.
-    pub(crate) span_bytes: Vec<[u8; 4]>,
 }
 
 /// The sizes of a workspace, from which preparation charges it.
@@ -353,9 +351,7 @@ impl Sizes {
             .iter()
             .map(|group| group.items.len())
             .fold(0, usize::saturating_add);
-        let gathered = run_shapes(plan)
-            .saturating_mul(size_of::<u32>())
-            .saturating_add(self.width.saturating_mul(size_of::<[u8; 4]>()));
+        let gathered = run_shapes(plan).saturating_mul(size_of::<u32>());
         let f64s = stack.wide.saturating_add(masks).saturating_add(spans);
         f64s.saturating_mul(size_of::<f64>())
             .saturating_add(stack.levels.saturating_mul(size_of::<[f32; 4]>()))
@@ -498,11 +494,6 @@ impl Workspace {
             usage: Usage::default(),
             capacity: (sizes.rows, pixels),
             alpha_table: (None, [0; 256]),
-            span_bytes: {
-                let mut bytes = reserve(sizes.width)?;
-                bytes.resize(sizes.width, [0; 4]);
-                bytes
-            },
         })
     }
 
@@ -530,7 +521,6 @@ impl Workspace {
             + self.extents.rows.capacity() * size_of::<[u32; 2]>()
             + self.boundary.1.capacity()
             + self.run_shapes.capacity() * size_of::<u32>()
-            + self.span_bytes.capacity() * size_of::<[u8; 4]>()
             + self.active.iter().map(Active::bytes).sum::<usize>()
             + self.active.capacity() * size_of::<Active>()
             + self.masks.capacity() * size_of::<MaskCache>()

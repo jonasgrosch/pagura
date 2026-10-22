@@ -480,12 +480,6 @@ impl<C: Codes> Texels for TableTexels<'_, C> {
             *sum += value * weight;
         }
     }
-
-    fn add_unit(&self, index: usize, sum: &mut [f64]) {
-        for (sum, value) in sum.iter_mut().zip(self.texel(index)) {
-            *sum += value;
-        }
-    }
 }
 
 /// Whether every texel of `table`, `lanes` values each, has alpha and
@@ -553,12 +547,6 @@ impl Texels for RgbTexels<'_> {
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]) {
         for (sum, value) in sum.iter_mut().zip(self.texel(index)) {
             *sum += value * weight;
-        }
-    }
-
-    fn add_unit(&self, index: usize, sum: &mut [f64]) {
-        for (sum, value) in sum.iter_mut().zip(self.texel(index)) {
-            *sum += value;
         }
     }
 }
@@ -704,7 +692,8 @@ pub(super) struct Unmatted {
     blocks: Vec<Option<Box<Block>>>,
 }
 
-/// The values of the codes seen with one opacity code.
+/// The values of the codes seen with one opacity code: `channels` per
+/// code, NaN until known.
 #[derive(Debug)]
 struct Block {
     /// Which codes' values are known, a bit each, 64 codes a word.
@@ -810,9 +799,20 @@ impl<'a> UnmatteTexels<'a> {
     fn write(&self, memo: &mut Unmatted, index: usize, out: &mut [f64]) {
         let mask = self.mask.get(index).copied().unwrap_or(0);
         let channels = memo.channels;
-        let Some(block) = memo.block(mask) else {
-            return;
-        };
+        if let Some(block) = memo.block(mask) {
+            self.unmatte((block, channels), (mask, index), out);
+        }
+    }
+
+    /// Writes the colour of sample `index`, whose opacity code is `mask`,
+    /// into `out`, from `block`, the values of that opacity code.
+    #[inline]
+    fn unmatte(
+        &self,
+        (block, channels): (&mut Block, usize),
+        (mask, index): (u8, usize),
+        out: &mut [f64],
+    ) {
         let compute = |code: u8, texel: &mut [f64]| {
             let codes = [u16::from(code); 3];
             let extra = Extra {
@@ -867,9 +867,23 @@ impl Texels for UnmatteTexels<'_> {
             return;
         };
         let mut memo = self.memo.borrow_mut();
-        let base = u64::from(row) * u64::from(width);
-        for (cell, values) in (first..end).zip(out.chunks_exact_mut(stride)) {
-            self.write(&mut memo, sample_index(base + u64::from(cell)), values);
+        let channels = memo.channels;
+        let start = sample_index(u64::from(row) * u64::from(width) + u64::from(first));
+        let masks = self.mask.get(start..start + count).unwrap_or(&[]);
+        let mut pixels = out.chunks_exact_mut(stride);
+        // Runs of one opacity code share their block.
+        let mut cell = 0;
+        while let Some(&mask) = masks.get(cell) {
+            let run = masks.get(cell..).map_or(1, |rest| {
+                rest.iter().take_while(|&&code| code == mask).count()
+            });
+            let Some(block) = memo.block(mask) else {
+                return;
+            };
+            for (index, values) in (start + cell..start + cell + run).zip(pixels.by_ref()) {
+                self.unmatte((block, channels), (mask, index), values);
+            }
+            cell += run.max(1);
         }
     }
 }
