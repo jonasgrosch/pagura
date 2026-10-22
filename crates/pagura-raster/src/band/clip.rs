@@ -178,7 +178,7 @@ pub(crate) fn fill_polygon(
     if !transform.is_finite() {
         return Err(Error::invalid_argument("path transform is not finite"));
     }
-    if let Some(outline) = crate::empty_fill::outline(path, transform, rule, limits)? {
+    if let Some(outline) = crate::empty_fill::classified_outline(path, transform, rule, limits)? {
         return Ok((
             Polygon::from_path(&outline, Transform::IDENTITY, tolerance, limits)?,
             FillRule::NonZero,

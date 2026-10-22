@@ -218,6 +218,14 @@ impl MarkCoverage<'_> {
     /// render-work reservation.
     pub fn work(&self, area: &Area) -> usize {
         match (self.shape, self.clip) {
+            (Some(shape), Some(_)) if shape.clip.is_none() && shape.multiplied.is_none() => {
+                // A clip the shape was not prepared in multiplies every
+                // pixel the shape emits.
+                let b = shape.bounds();
+                shape
+                    .work()
+                    .saturating_add((b.width() as usize + 2).saturating_mul(b.height() as usize))
+            }
             (Some(shape), _) => shape.work(),
             (None, Some(clip)) => clip.work(),
             (None, None) => area.region.height() as usize * 2,

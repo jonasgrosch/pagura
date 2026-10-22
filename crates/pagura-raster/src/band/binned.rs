@@ -768,7 +768,7 @@ impl Cache {
     pub(crate) fn rasterize(
         &mut self,
         placement: &Placement,
-        shape: &Shape,
+        shape: (&Shape, Option<&super::ClipShape>),
         rows: std::ops::Range<u32>,
         (out, buffer): (&mut BandCoverage, &mut Vec<u8>),
     ) -> usize {

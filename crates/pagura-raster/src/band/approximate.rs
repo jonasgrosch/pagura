@@ -142,7 +142,7 @@ impl Scratch {
     pub(crate) fn rasterize(
         &mut self,
         cells: &Cells,
-        shape: &Shape,
+        shape: (&Shape, Option<&ClipShape>),
         (band, rows): (u32, std::ops::Range<u32>),
         out: &mut BandCoverage,
     ) -> usize {
@@ -167,13 +167,14 @@ impl Scratch {
     fn emit(
         &mut self,
         (from, to): (usize, usize),
-        shape: &Shape,
+        (shape, late): (&Shape, Option<&ClipShape>),
         y: u32,
         out: &mut BandCoverage,
     ) -> usize {
         let to = to.min(self.values.len());
         let rule = shape.rule;
-        let mut sink = Multiplied::new(out, shape, y, &mut self.product);
+        let clip = shape.multiplied.as_ref().or(late);
+        let mut sink = Multiplied::new(out, shape, clip, y, &mut self.product);
         let mut work = 2;
         if from < to {
             let mut winding = 0.0_f32;
@@ -241,10 +242,10 @@ impl<'a> Multiplied<'a> {
     pub(crate) fn new(
         out: &'a mut BandCoverage,
         shape: &'a Shape,
+        clip: Option<&'a ClipShape>,
         y: u32,
         row: &'a mut Vec<u8>,
     ) -> Self {
-        let clip = shape.multiplied.as_ref();
         Self {
             out: Out {
                 coverage: out,
@@ -285,10 +286,13 @@ impl Sink for Multiplied<'_> {
                     *v = product_or(*v, f);
                 }
             }
+            if let Some(rect) = clip.rect() {
+                scale_edges(rect, (a, self.y), self.row);
+            }
         } else if let Some(rows) = clip.rows() {
+            // Exact rows already hold the rectangle.
             rows.scale(self.y, a, self.row);
-        }
-        if let Some(rect) = clip.rect() {
+        } else if let Some(rect) = clip.rect() {
             scale_edges(rect, (a, self.y), self.row);
         }
         for (x, &v) in (a..).zip(self.row.iter()) {
@@ -482,7 +486,7 @@ pub(crate) fn fill(
     if path.segments().len() > limits.path_segments {
         return Err(Error::limit("path segment budget exceeded"));
     }
-    let empty = path.fill_region(rule) == Some(crate::FillRegion::EmptyBoundary);
+    let empty = crate::empty_fill::region(path, rule, limits)? == crate::FillRegion::EmptyBoundary;
     let compound = path.fill_region(rule).is_none() && subpaths(path) >= 2;
     let quad = quadrilateral(path, transform);
     let hull = {

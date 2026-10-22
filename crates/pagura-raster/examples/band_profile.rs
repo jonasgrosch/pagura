@@ -252,9 +252,14 @@ fn new(marks: &[Mark], scale: f64, area: &Area) -> Result<u64, Box<dyn Error>> {
     for mark in marks {
         let shape = match mark {
             Mark::Fill(path, rule) => Shape::fill(path, device, *rule, &options)?,
-            Mark::Stroke(path, stroke, pen) => {
-                Shape::stroke(path, stroke, *pen, device, Adjustment::None, &options)?
-            }
+            Mark::Stroke(path, stroke, pen) => Shape::stroke(
+                path,
+                stroke,
+                pen.inverse().ok_or("singular pen")?,
+                device,
+                Adjustment::None,
+                &options,
+            )?,
         };
         let Some(shape) = shape else { continue };
         for b in shape.bands(area) {

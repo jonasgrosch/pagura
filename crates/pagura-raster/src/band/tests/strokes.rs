@@ -23,7 +23,14 @@ fn check(
     tally: &mut Tally,
 ) {
     let prepare = |options: &Prep<'_>| {
-        Shape::stroke_in(path, stroke, (pen, transform), adjustment, options).unwrap()
+        Shape::stroke_in(
+            path,
+            stroke,
+            (pen.inverse().unwrap(), transform),
+            adjustment,
+            options,
+        )
+        .unwrap()
     };
     let new = if partitions {
         invariant(area, &prepare, None)

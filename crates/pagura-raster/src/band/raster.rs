@@ -77,22 +77,32 @@ impl BandRasterizer {
             }
             (None, Some(clip)) => self.clip(clip, rows, out),
             (Some(shape), clip) => {
+                let prepared = shape.clip.as_ref().or(shape.multiplied.as_ref());
                 debug_assert!(
-                    match (shape.clip.as_ref().or(shape.multiplied.as_ref()), clip) {
+                    match (prepared, clip) {
                         (Some(a), Some(b)) => a.same(b),
-                        (None, None) => true,
-                        _ => false,
+                        (Some(_), None) => false,
+                        (None, _) => true,
                     },
                     "a shape is rasterized with the clip it was prepared against"
                 );
                 debug_assert_eq!(shape.area, self.area, "a shape of another area");
-                let bounds = shape.bounds;
+                // A shape prepared outside the mark's clip has the clip's
+                // coverage multiplied in: exact wherever either is empty or
+                // full, a product where both are partial. Preparing the
+                // shape in its clip state keeps every pixel exact.
+                let late = if prepared.is_none() { clip } else { None };
+                let mut bounds = shape.bounds;
+                if let Some(clip) = late {
+                    bounds = bounds.intersect(&clip.bounds());
+                }
                 let rows = rows.start.max(bounds.y0)..rows.end.min(bounds.y1);
                 if rows.is_empty() {
                     out.finish();
                     return;
                 }
-                match &shape.body {
+                let shape = (shape, late);
+                match &shape.0.body {
                     Body::Rect(r) => self.rect(*r, shape, rows, out),
                     Body::Edges(edges) => self.edges(edges, shape, (band, rows), out),
                     Body::Cells(cells) => {
@@ -120,7 +130,7 @@ impl BandRasterizer {
     fn rect(
         &mut self,
         r: Bounds,
-        shape: &Shape,
+        shape: (&Shape, Option<&ClipShape>),
         rows: std::ops::Range<u32>,
         out: &mut BandCoverage,
     ) {
@@ -138,7 +148,7 @@ impl BandRasterizer {
     fn edges(
         &mut self,
         edges: &EdgeBody,
-        shape: &Shape,
+        shape: (&Shape, Option<&ClipShape>),
         (band, rows): (u32, std::ops::Range<u32>),
         out: &mut BandCoverage,
     ) {
@@ -160,7 +170,7 @@ impl BandRasterizer {
             }
             out.push_row(y);
             let mut sink = sink(out, shape, y, self.cells.row_buffer());
-            let touched = self.row.emit(edges.scan, shape.rule, &mut sink);
+            let touched = self.row.emit(edges.scan, shape.0.rule, &mut sink);
             let words = (edges.scan.1.saturating_sub(edges.scan.0)) / 64 + 2;
             self.work = self
                 .work
@@ -242,15 +252,26 @@ impl Sink for Out<'_> {
 
 /// The sink of one row of `shape`: its cells resolved at preparation and
 /// its clip's rows, where it has them, over the output, or its multiplied
-/// clip.
+/// clip; a clip it was not prepared in (`late`) is multiplied in after its
+/// resolved cells.
 pub(crate) fn sink<'a>(
     out: &'a mut BandCoverage,
-    shape: &'a Shape,
+    (shape, late): (&'a Shape, Option<&'a ClipShape>),
     y: u32,
     buffer: &'a mut Vec<u8>,
 ) -> RowSink<'a> {
-    if shape.multiplied.is_some() {
-        return RowSink::Multiplied(Multiplied::new(out, shape, y, buffer));
+    if let Some(clip) = shape.multiplied.as_ref() {
+        return RowSink::Multiplied(Multiplied::new(out, shape, Some(clip), y, buffer));
+    }
+    if let Some(clip) = late {
+        return RowSink::Late(Overlay {
+            out: Multiplied::new(out, shape, Some(clip), y, buffer),
+            stored: shape.stored.row(y),
+            next: 0,
+            clip: None,
+            segment: 0,
+            extra: 0,
+        });
     }
     let rows = shape
         .clip
@@ -275,6 +296,7 @@ pub(crate) fn sink<'a>(
 pub(crate) enum RowSink<'a> {
     Overlay(Overlay<'a>),
     Multiplied(Multiplied<'a>),
+    Late(Overlay<'a, Multiplied<'a>>),
 }
 
 impl RowSink<'_> {
@@ -282,6 +304,7 @@ impl RowSink<'_> {
         match self {
             Self::Overlay(o) => o.extra(),
             Self::Multiplied(m) => m.work(),
+            Self::Late(o) => o.extra().saturating_add(o.out.work()),
         }
     }
 }
@@ -292,6 +315,7 @@ impl Sink for RowSink<'_> {
         match self {
             Self::Overlay(o) => o.run(x0, x1, value),
             Self::Multiplied(m) => m.run(x0, x1, value),
+            Self::Late(o) => o.run(x0, x1, value),
         }
     }
 }
@@ -299,8 +323,8 @@ impl Sink for RowSink<'_> {
 /// Runs of a shape's row with its resolved cells substituted and its clip's
 /// rows applied: inside runs keep the shape's value, a boundary cell takes
 /// the clip's value where the shape covers it fully, outside is dropped.
-pub(crate) struct Overlay<'a> {
-    out: Out<'a>,
+pub(crate) struct Overlay<'a, S = Out<'a>> {
+    out: S,
     stored: &'a [(u32, u8)],
     next: usize,
     clip: Option<(&'a Rows, &'a [Segment])>,
@@ -308,14 +332,14 @@ pub(crate) struct Overlay<'a> {
     extra: usize,
 }
 
-impl Overlay<'_> {
+impl<S> Overlay<'_, S> {
     /// Work units spent on resolved cells and clip runs.
     pub(crate) fn extra(&self) -> usize {
         self.extra
     }
 }
 
-impl Sink for Overlay<'_> {
+impl<S: Sink> Sink for Overlay<'_, S> {
     fn run(&mut self, x0: usize, x1: usize, value: u8) {
         if self.stored.is_empty() && self.clip.is_none() {
             self.out.run(x0, x1, value);

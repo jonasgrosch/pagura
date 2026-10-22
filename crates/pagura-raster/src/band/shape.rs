@@ -121,10 +121,10 @@ impl Shape {
     }
 
     /// A stroke of `path` (user space) with `stroke` whose line width and
-    /// dashes are measured in pen space; `pen` maps pen space to user space
-    /// (the CTM when the stroke was painted), and `transform` user space to
-    /// device space. Outside any clip; `None` when it covers no pixel of the
-    /// area.
+    /// dashes are measured in pen space; `pen` maps user space to pen space
+    /// (the inverse of the CTM the stroke was painted under, relative to
+    /// user space), and `transform` user space to device space. Outside any
+    /// clip; `None` when it covers no pixel of the area.
     ///
     /// # Errors
     ///
@@ -179,12 +179,12 @@ impl Shape {
         if path.segments().len() > limits.path_segments {
             return Err(Error::limit("path segment budget exceeded"));
         }
-        let inverse = pen.inverse().ok_or(Error::unsupported(
+        let to_user = pen.inverse().ok_or(Error::unsupported(
             features::SINGULAR_PEN,
             "singular stroke pen is not implemented",
         ))?;
-        let path = path.transformed(inverse);
-        let device = pen.then(transform);
+        let path = path.transformed(pen);
+        let device = to_user.then(transform);
         // Approximate strokes keep the old outlines: proven pieces or
         // components.
         let accept = match options.precision {
