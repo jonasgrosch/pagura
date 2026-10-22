@@ -88,17 +88,6 @@ pub enum Reduce {
     /// Every sample, exactly.
     #[default]
     Full,
-    /// Exact block means where they are exact and full samples elsewhere:
-    /// the result is the same as decoding fully and averaging. Decoding is
-    /// currently full everywhere: the mean of a JPEG block's decoded samples
-    /// cannot be taken from its DC term exactly, because each sample is
-    /// rounded to a byte.
-    ExactMeans {
-        /// The fewest samples per output pixel along x that painting needs.
-        x: u32,
-        /// The fewest samples per output pixel along y that painting needs.
-        y: u32,
-    },
 }
 
 /// How decoded samples are laid out.
@@ -394,52 +383,6 @@ impl ImageSource {
         .fold(0, usize::saturating_add)
     }
 
-    /// An upper bound of the bytes (decoded samples and the codec's working
-    /// storage) and `decode_work` units (one per coefficient, sample and
-    /// entropy symbol) a decode of `request` uses, for reservation before
-    /// decoding, for data the codec accepts. The decoders' own budgets
-    /// bound hostile data.
-    pub fn decode_cost(&self, request: &DecodeRequest) -> (usize, usize) {
-        let header = &self.header;
-        let pixels = u64::from(header.width) * u64::from(header.height);
-        let components = u64::from(header.components.max(1));
-        let wide = header.bits.iter().any(|&bits| bits > 8);
-        let values = pixels.saturating_mul(components);
-        let output = values.saturating_mul(if wide { 2 } else { 1 });
-        let alpha = if matches!(header.mask, SourceMask::Embedded { .. }) {
-            pixels.saturating_mul(2)
-        } else {
-            0
-        };
-        let source_values = pixels.saturating_mul(components.max(4));
-        let (working, work) = match header.codec {
-            Codec::None => (0, values),
-            // Coefficients or native planes with block padding, and the
-            // final interleave.
-            Codec::Dct(_) => (
-                source_values.saturating_mul(4 * 6),
-                source_values.saturating_mul(4),
-            ),
-            Codec::Ccitt(_) | Codec::Jbig2(_) => {
-                (pixels.saturating_mul(2), pixels.saturating_mul(4))
-            }
-            Codec::Jpx(_) => (
-                source_values.saturating_mul(16),
-                source_values.saturating_mul(64),
-            ),
-        };
-        // Samples exchanged after decoding are held twice for a moment.
-        let exchange = match request.orientation {
-            Orientation::Transposed => output.saturating_add(alpha),
-            Orientation::Rows => 0,
-        };
-        let bytes = output
-            .saturating_add(alpha)
-            .saturating_add(working)
-            .saturating_add(exchange);
-        (saturate(bytes), saturate(work))
-    }
-
     /// Decodes the samples `request` asks for, every sample exactly, with
     /// the decoded image's painting entries.
     ///
@@ -477,10 +420,6 @@ impl ImageSource {
             }),
         }
     }
-}
-
-fn saturate(value: u64) -> usize {
-    usize::try_from(value).unwrap_or(usize::MAX)
 }
 
 /// Places a decoder's buffer offset in the image stream and an unknown

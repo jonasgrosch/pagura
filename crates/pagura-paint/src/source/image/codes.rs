@@ -16,7 +16,7 @@
 
 use super::geometry::{Geometry, MAX_LANES};
 use super::separable::{RowCache, Rows, Runs, Separable};
-use crate::SpanColors;
+use crate::source::SpanColors;
 use pagura_core::Result;
 use pagura_image::deferred::{Packed, Planar};
 use pagura_image::{DecodedImage, Samples};

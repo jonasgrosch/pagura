@@ -17,8 +17,8 @@
 //! page.
 
 use super::converter;
-use crate::SpanColors;
 use crate::source::PaintContext;
+use crate::source::SpanColors;
 use crate::source::image::{
     Description, ImageSampler, MaskDescription, Orientation, Prepared, decode as decode_image,
     planes_suit,

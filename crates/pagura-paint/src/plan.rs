@@ -4,9 +4,9 @@
 //! preparation, read-only during execution.
 
 use crate::format::Format;
-use crate::paint::{Convert, Curve, PaintSpans};
-use pagura_color::Process;
-use pagura_core::Position;
+use crate::source::Source;
+use pagura_color::{Converter, Encoder, Function, MAX_COMPONENTS, Process};
+use pagura_core::{Error, Position, Result};
 use pagura_interpret::{BlendMode, MaskKind};
 use pagura_raster::{Area, DeviceRect};
 use std::sync::Arc;
@@ -63,7 +63,7 @@ pub(crate) struct Plan {
     /// Soft masks.
     pub(crate) masks: Vec<MaskPlan>,
     /// Prepared paints.
-    pub(crate) paints: Vec<Box<dyn PaintSpans>>,
+    pub(crate) paints: Vec<Source>,
     /// Process conversions of group results.
     pub(crate) conversions: Vec<Conversion>,
     /// Output.
@@ -72,6 +72,9 @@ pub(crate) struct Plan {
     pub(crate) stack: crate::execute::Tops,
     /// The sizes of the workspace a render needs.
     pub(crate) sizes: crate::execute::Sizes,
+    /// Bytes reserved for a render's scratch storage, the workspace and the
+    /// band rasterizer, which it allocates within them.
+    pub(crate) scratch: usize,
 }
 
 /// A buffer: the page, a transparency group, a soft mask's group or the
@@ -160,7 +163,7 @@ pub(crate) struct Glyph {
     pub(crate) alone: bool,
 }
 
-/// A mark's coverage: its shape and clip in the coverage producer.
+/// A mark's coverage: its shape and clip among the prepared ones.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) struct Cover {
     /// The shape; `None` covers the whole area.
@@ -258,7 +261,7 @@ pub(crate) struct MaskPlan {
     /// `BC` in the group's blending space, additively.
     pub(crate) backdrop: [f64; 4],
     /// `TR`.
-    pub(crate) transfer: Option<Arc<dyn Curve>>,
+    pub(crate) transfer: Option<Curve>,
     /// Where values are computed: its group's content within the pixels
     /// that use it.
     pub(crate) extent: DeviceRect,
@@ -273,10 +276,9 @@ pub(crate) struct Conversion {
     pub(crate) from: Process,
     /// The parent's.
     pub(crate) to: Process,
-    /// `BG` of the group's composite state.
-    pub(crate) black: Option<Arc<dyn Curve>>,
-    /// `UCR` of the group's composite state.
-    pub(crate) removal: Option<Arc<dyn Curve>>,
+    /// RGB into the parent's process channels, with the `BG` and `UCR` of
+    /// the group's composite state.
+    pub(crate) encoder: Encoder,
 }
 
 /// The page buffer's conversion into RGBA8 (11.3.3).
@@ -290,7 +292,7 @@ pub(crate) struct Output {
     pub(crate) spots: Vec<SpotPlan>,
     /// Transfer functions by selection, from selection 1 on: per RGB
     /// channel, `None` the identity.
-    pub(crate) transfers: Vec<[Option<Arc<dyn Curve>>; 3]>,
+    pub(crate) transfers: Vec<[Option<Curve>; 3]>,
 }
 
 /// One colorant definition that supplies the display equivalent of spot
@@ -298,11 +300,43 @@ pub(crate) struct Output {
 #[derive(Debug)]
 pub(crate) struct SpotPlan {
     /// Its alternate space into CMYK.
-    pub(crate) convert: Box<dyn Convert>,
+    pub(crate) convert: Converter,
     /// Its components.
     pub(crate) components: usize,
     /// `(component, spot channel)` pairs.
     pub(crate) inputs: Vec<(usize, usize)>,
+}
+
+/// A function of one input whose first output is used: a transfer or
+/// soft-mask transfer function.
+#[derive(Debug, Clone)]
+pub(crate) struct Curve(Arc<Function>);
+
+impl Curve {
+    /// `function` as a curve.
+    ///
+    /// # Errors
+    ///
+    /// A `Syntax` error unless it maps one input to at least one output.
+    pub(crate) fn new(function: &Arc<Function>) -> Result<Self> {
+        if function.inputs() != 1 || function.outputs() == 0 {
+            return Err(Error::syntax("transfer function must map one input"));
+        }
+        Ok(Self(Arc::clone(function)))
+    }
+
+    /// The first output at `x`.
+    pub(crate) fn map(&self, x: f64) -> f64 {
+        let mut output = [0.0; MAX_COMPONENTS];
+        let count = self.0.outputs().clamp(1, MAX_COMPONENTS);
+        self.0.evaluate(&[x], &mut output[..count]);
+        output[0]
+    }
+
+    /// The `function_work` units one evaluation costs.
+    pub(crate) fn cost(&self) -> usize {
+        self.0.cost()
+    }
 }
 
 /// The intersection of two rectangles; empty when they do not meet.

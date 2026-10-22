@@ -207,5 +207,34 @@ impl Converter {
     }
 }
 
+/// The encoding of an sRGB colour into a process space's channels (10.3),
+/// as every conversion into a [`Target`] through RGB ends: RGB as it is,
+/// gray as its [`luminosity`], and CMYK by black generation and undercolour
+/// removal (10.3.4), each channel `1 − tint`.
+#[derive(Debug, Clone)]
+pub struct Encoder(plan::Encode);
+
+impl Encoder {
+    /// The encoding into `process`, with the black generation and
+    /// undercolour removal of `conversion` for CMYK.
+    pub fn new(process: Process, conversion: &Conversion) -> Self {
+        Self(plan::Encode::new(process, conversion))
+    }
+
+    /// Writes `rgb` encoded into `output`, which holds the process
+    /// channels.
+    pub fn encode(&self, rgb: [f64; 3], output: &mut [f64]) {
+        self.0.apply(rgb, output);
+    }
+
+    /// The `function_work` units one encoding costs: black generation and
+    /// undercolour removal.
+    pub fn cost(&self) -> usize {
+        self.0.cost()
+    }
+}
+
+pub use plan::luminosity;
+
 #[cfg(test)]
 mod tests;

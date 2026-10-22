@@ -2,6 +2,7 @@
 //! zero-sized type per mode, so that span kernels are monomorphized over the
 //! mode and decide nothing per pixel.
 
+use pagura_color::luminosity;
 use pagura_interpret::BlendMode;
 
 /// A blend mode as the kernels use it.
@@ -173,7 +174,7 @@ macro_rules! nonseparable {
                 let ($b, $s) = (rgb(back), rgb(source));
                 let result: [f64; 3] = $body;
                 if count == 1 {
-                    [lum(result), 0.0, 0.0, 0.0]
+                    [luminosity(result), 0.0, 0.0, 0.0]
                 } else {
                     // CMYK keeps the backdrop's black, or the source's for
                     // Luminosity (11.3.5.3).
@@ -187,18 +188,13 @@ macro_rules! nonseparable {
 
 nonseparable! {
     /// Hue.
-    Hue, |b, s| set_lum(set_sat(s, saturation(b)), lum(b)), false;
+    Hue, |b, s| set_lum(set_sat(s, saturation(b)), luminosity(b)), false;
     /// Saturation.
-    Saturation, |b, s| set_lum(set_sat(b, saturation(s)), lum(b)), false;
+    Saturation, |b, s| set_lum(set_sat(b, saturation(s)), luminosity(b)), false;
     /// Color.
-    Color, |b, s| set_lum(s, lum(b)), false;
+    Color, |b, s| set_lum(s, luminosity(b)), false;
     /// Luminosity.
-    Luminosity, |b, s| set_lum(b, lum(s)), true;
-}
-
-/// The luminosity of an RGB colour (11.3.5.3).
-pub(crate) fn lum(c: [f64; 3]) -> f64 {
-    0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]
+    Luminosity, |b, s| set_lum(b, luminosity(s)), true;
 }
 
 fn saturation(c: [f64; 3]) -> f64 {
@@ -206,7 +202,7 @@ fn saturation(c: [f64; 3]) -> f64 {
 }
 
 fn set_lum(c: [f64; 3], target: f64) -> [f64; 3] {
-    let d = target - lum(c);
+    let d = target - luminosity(c);
     let mut c = c.map(|v| v + d);
     let low = c.into_iter().fold(f64::INFINITY, f64::min);
     let high = c.into_iter().fold(f64::NEG_INFINITY, f64::max);
@@ -272,8 +268,8 @@ mod tests {
         let back = [0.2, 0.4, 0.6, 0.3];
         let source = [0.9, 0.1, 0.5, 0.8];
         let result = with_blend(BlendMode::Luminosity, Apply(back, source, 4));
-        let expected = lum([source[0], source[1], source[2]]);
-        assert!((lum([result[0], result[1], result[2]]) - expected).abs() < 1e-12);
+        let expected = luminosity([source[0], source[1], source[2]]);
+        assert!((luminosity([result[0], result[1], result[2]]) - expected).abs() < 1e-12);
         assert_eq!(result[3], source[3]);
         assert_eq!(
             with_blend(BlendMode::Color, Apply(back, source, 4))[3],

@@ -8,7 +8,7 @@ use pagura_document::{Document, Page};
 use pagura_extract::{LayoutOptions, PositionedText, TextPage};
 use pagura_interpret::{Interpreter, Scene};
 use pagura_paint::{Completion, PreparedScene, RenderRequest, Scratch};
-use pagura_raster::{Pixmap, Rgba8};
+use pagura_raster::Pixmap;
 use pagura_text::Provider;
 
 /// A document, its font provider and the store that holds what rendering
@@ -71,38 +71,30 @@ impl<'a> Renderer<'a> {
         stop: impl FnMut(u32) -> bool,
     ) -> Result<(Pixmap, Completion)> {
         let prepared = self.prepare(scene, (options, tile), scratch)?;
-        let rendered = self.draw(&prepared, options.background, scratch, stop);
+        let rendered = self.draw(&prepared, scratch, stop);
         scratch.recycle(prepared);
         rendered
     }
 
-    /// Renders `prepared` over `background` in `scratch`.
+    /// Renders `prepared` in `scratch`.
     fn draw(
         self,
         prepared: &PreparedScene,
-        background: Rgba8,
         scratch: &mut Scratch,
         stop: impl FnMut(u32) -> bool,
     ) -> Result<(Pixmap, Completion)> {
-        let mut rendering = prepared.with_scratch(scratch)?;
         let region = prepared.region();
         let (width, height) = (region.width(), region.height());
         let limits = self.document.limits();
-        let Some(bytes) = surface_bytes(width, height, limits) else {
-            // An empty surface or one over the pixel budget is refused as
-            // allocation refuses it; one over only the byte budget, which an
-            // allocation taken over must keep to, is allocated by the pixmap.
-            let mut pixmap = Pixmap::new(width, height, background, limits.pixels)?;
-            let completion = rendering.render_until(&mut pixmap, stop);
-            return Ok((pixmap, completion));
-        };
+        let bytes = surface_bytes(width, height, limits)?;
+        let mut rendering = prepared.with_scratch(scratch)?;
         // Rendered rows are written whole, so the surface is collected band
         // by band rather than filled with the background first; rows a stop
         // leaves get the background.
         let mut data = Vec::new();
         data.try_reserve_exact(bytes)
             .map_err(|_| Error::limit("surface allocation failed"))?;
-        let completion = rendering.render_rows_until(&mut data, stop);
+        let completion = rendering.render_until(&mut data, stop);
         let rendered = data.len().min(bytes);
         data.resize(bytes, 0);
         if let Some(rest) = data.get_mut(rendered..) {
@@ -136,10 +128,15 @@ impl<'a> Renderer<'a> {
     }
 }
 
-/// The bytes of a `width × height` surface when it is within both the pixel
-/// and the byte budget.
-fn surface_bytes(width: u32, height: u32, limits: Limits) -> Option<usize> {
-    let pixels = usize::try_from(u64::from(width) * u64::from(height)).ok()?;
-    let bytes = pixels.checked_mul(4)?;
-    (pixels > 0 && pixels <= limits.pixels && bytes <= limits.decoded_bytes).then_some(bytes)
+/// The bytes of a `width × height` surface, which must be within both the
+/// pixel and the byte budget, as [`Pixmap::from_premultiplied`] requires.
+fn surface_bytes(width: u32, height: u32, limits: Limits) -> Result<usize> {
+    let pixels = usize::try_from(u64::from(width) * u64::from(height))
+        .ok()
+        .filter(|&pixels| pixels <= limits.pixels)
+        .ok_or(Error::limit("surface pixel budget exceeded"))?;
+    pixels
+        .checked_mul(4)
+        .filter(|&bytes| bytes <= limits.decoded_bytes)
+        .ok_or(Error::limit("surface byte budget exceeded"))
 }
