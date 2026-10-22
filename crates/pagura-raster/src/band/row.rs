@@ -295,7 +295,6 @@ pub(crate) trait Accumulate {
         self.cover_at(last, d * height);
         usize::try_from(to - from).unwrap_or(0) + 1
     }
-
 }
 
 impl Accumulate for Row {

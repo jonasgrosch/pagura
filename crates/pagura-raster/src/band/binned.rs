@@ -10,31 +10,26 @@
 //! 108 dpi, 1/16 pixel from 108 dpi and 1/64 pixel from 216 dpi; its mask
 //! is the f32 signed-area accumulation of the edges' row fragments at that
 //! phase, added in clipping order. A mask is a pure function of its edges
-//! and phase, so the cache that keeps masks changes time, never pixels.
-//! None of this meets the one-level contract.
+//! and phase, so the masks the edges keep for their placements, across
+//! renders, change time, never pixels. None of this meets the one-level
+//! contract.
 
 use super::row::Sink;
 use super::shape::{Body, Shape};
-use super::{BandCoverage, DeviceRect, GlyphEdges, Prep, edges};
+use super::{BandCoverage, ClipShape, DeviceRect, Prep};
 use crate::{FillRule, Path, Point, Segment, Transform};
-use pagura_core::{Error, Limits, Meter, Result};
-use std::sync::Arc;
+use pagura_core::{Error, Limits, Result};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 /// Horizontal origin phases per device pixel.
 const PHASES: u16 = 128;
 
-/// The largest mask the rasterizer's cache builds and keeps, in cells; a
-/// larger glyph's mask is built when its shape is prepared.
-const CACHED_CELLS: usize = 1 << 16;
+/// The masks one glyph keeps, at most.
+const KEPT_MASKS: usize = 128;
 
-/// The bytes of masks the rasterizer keeps.
-const CACHE_BYTES: usize = 4 << 20;
-
-/// The masks the rasterizer keeps at once.
-const CACHE_SLOTS: usize = 4096;
-
-/// The mask rows the rasterizer keeps, at least [`CACHED_CELLS`].
-const CACHE_ROWS: usize = 1 << 17;
+/// The bytes of masks one glyph keeps, at most, unless one mask is larger.
+const KEPT_BYTES: usize = 64 << 10;
 
 /// Flattening and vertical origin lattice for a rendering resolution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -91,15 +86,22 @@ enum Flattening {
 pub(crate) struct Prepared {
     resolution: Resolution,
     edges: Vec<[f32; 4]>,
-    /// The edges listed per local row they cross at some vertical phase, in
-    /// edge order: a row builds alone, with the additions of a whole mask.
-    index: edges::RowList,
     x: i32,
     y: i32,
     width: usize,
     height: usize,
     /// An upper bound of the work one mask costs.
     work: usize,
+    /// The masks built so far, by phase bits, within `budget` bytes.
+    masks: Mutex<Masks>,
+    budget: usize,
+}
+
+/// A glyph's masks by phases, and their bytes.
+#[derive(Debug, Default)]
+struct Masks {
+    map: HashMap<(u64, u64), Arc<[u8]>>,
+    bytes: usize,
 }
 
 impl Prepared {
@@ -145,12 +147,13 @@ impl Prepared {
             return Ok(Self {
                 resolution,
                 edges: Vec::new(),
-                index: edges::RowList::default(),
                 x: 0,
                 y: 0,
                 width: 0,
                 height: 0,
                 work: 0,
+                masks: Mutex::default(),
+                budget: 0,
             });
         }
         let x = min.x.floor() as i32;
@@ -181,39 +184,61 @@ impl Prepared {
             work = work.saturating_add(rows.saturating_mul(cells.min(width + 4) + 1));
             edges.push(e);
         }
-        // A phase in [0, 1) moves an edge's rows down by at most one.
-        let rows =
-            u32::try_from(height).map_err(|_| Error::limit("glyph extent budget exceeded"))?;
-        let index = edges::RowList::new((0, rows), edges.len(), |i| {
-            let [_, ay, _, by] = edges[i];
-            (ay != by).then(|| (ay.min(by).floor() as u32, ay.max(by).ceil() as u32))
-        })?;
+        let cells = width * height;
         Ok(Self {
             resolution,
             edges,
-            index,
             x,
             y,
             width,
             height,
             work,
+            masks: Mutex::default(),
+            budget: cells.saturating_mul(KEPT_MASKS).min(KEPT_BYTES).max(cells),
         })
     }
 
+    /// Bytes retained, counting the masks it may keep in full.
     pub(crate) fn retained_bytes(&self) -> usize {
         size_of::<Self>()
             .saturating_add(self.edges.capacity().saturating_mul(size_of::<[f32; 4]>()))
-            .saturating_add(self.index.retained_bytes())
+            .saturating_add(self.budget)
+            .saturating_add(KEPT_MASKS.saturating_mul(size_of::<((u64, u64), Arc<[u8]>)>()))
     }
 
     fn cells(&self) -> usize {
         self.width.saturating_mul(self.height)
     }
 
-    /// Whether the rasterizer's cache builds and keeps this glyph's masks:
-    /// with a width of at least one, its rows fit as well.
-    fn cacheable(&self) -> bool {
-        self.cells() <= CACHED_CELLS
+    /// The mask at `phases`: kept from an earlier placement, or built and
+    /// kept while the glyph's mask bytes allow, all of them dropped once
+    /// they would not.
+    fn mask(&self, (px, py): (f64, f64)) -> Result<Arc<[u8]>> {
+        let key = (px.to_bits(), py.to_bits());
+        if let Ok(masks) = self.masks.lock()
+            && let Some(mask) = masks.map.get(&key)
+        {
+            return Ok(Arc::clone(mask));
+        }
+        let mut built = Vec::new();
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "canonical phases lie within [0, 1)"
+        )]
+        Accumulator::default().build(self, (px as f32, py as f32), &mut built)?;
+        let mask: Arc<[u8]> = Arc::from(built);
+        let cells = mask.len();
+        if let Ok(mut masks) = self.masks.lock()
+            && cells <= self.budget
+        {
+            if masks.bytes + cells > self.budget || masks.map.len() >= KEPT_MASKS {
+                masks.map.clear();
+                masks.bytes = 0;
+            }
+            masks.bytes += cells;
+            masks.map.insert(key, Arc::clone(&mask));
+        }
+        Ok(mask)
     }
 }
 
@@ -404,33 +429,20 @@ fn phase(value: f64, phases: u16) -> Result<(f64, i32)> {
     Ok((value - f64::from(integer), integer))
 }
 
-/// One glyph placement in its bin.
+/// One glyph placement in its bin: its mask and where it lies.
 #[derive(Debug)]
 pub(crate) struct Placement {
-    edges: Arc<GlyphEdges>,
-    /// The phases, as their bits for the cache key.
-    px: f64,
-    py: f64,
+    mask: Arc<[u8]>,
     /// The device offset of the mask's first cell.
     x: i64,
     y: i64,
-    /// A mask too large for the rasterizer's cache, built at preparation.
-    mask: Option<Vec<u8>>,
+    width: usize,
+    height: usize,
 }
 
-impl Placement {
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "canonical phases lie within [0, 1)"
-    )]
-    fn phases(&self) -> (f32, f32) {
-        (self.px as f32, self.py as f32)
-    }
-}
-
-/// Places binned `edges` at `origin`.
+/// Places binned `prepared` at `origin`: its mask at the origin's phases,
+/// kept with the edges or built now.
 pub(crate) fn place(
-    edges: &Arc<GlyphEdges>,
     prepared: &Prepared,
     origin: Point,
     options: &Prep<'_>,
@@ -460,35 +472,42 @@ pub(crate) fn place(
     if bounds.is_empty() {
         return Ok(None);
     }
-    let mut placement = Placement {
-        edges: Arc::clone(edges),
-        px,
-        py,
+    if prepared.work > options.limits.raster_work {
+        return Err(Error::limit(super::shape::RASTER_WORK));
+    }
+    let placement = Placement {
+        mask: prepared.mask((px, py))?,
         x,
         y,
-        mask: None,
+        width: prepared.width,
+        height: prepared.height,
     };
-    if !prepared.cacheable() {
-        let mut mask = Vec::new();
-        Accumulator::default().build(prepared, placement.phases(), &mut mask)?;
-        placement.mask = Some(mask);
-    }
-    // Every row is built at most once, whichever band asks for it first,
-    // and emitted once; a band costs one lookup per row at most.
-    let work = prepared
-        .work
-        .saturating_add((prepared.width + 3).saturating_mul(bounds.height() as usize * 3));
+    // Each row is emitted once; a multiplied clip scales each pixel.
+    let work = (prepared.width + 3).saturating_mul(bounds.height() as usize * 3);
     if work > options.limits.raster_work {
         return Err(Error::limit(super::shape::RASTER_WORK));
     }
-    let retained = placement.mask.as_ref().map_or(0, Vec::capacity);
     let mut shape = Shape::with_body(
         Body::Binned(placement),
         bounds,
-        (FillRule::NonZero, work, retained),
+        (FillRule::NonZero, work, 0),
         options,
     );
-    if options.clip.is_some() {
+    // A clip that keeps the whole mask is not multiplied in.
+    let mut frame = super::shape::Frame::new(options);
+    let hull = [
+        Point::new(x as f64, y as f64),
+        Point::new(
+            x.saturating_add(width) as f64,
+            y.saturating_add(height) as f64,
+        ),
+    ];
+    if let Some(frame) = &mut frame {
+        frame.fit(hull);
+    }
+    let contained = frame.is_some_and(|f| f.rect.is_none() && f.rows.is_none());
+    shape.overlay = false;
+    if options.clip.is_some() && !contained {
         shape.multiplied = options.clip.cloned();
         shape.clip = None;
     }
@@ -504,51 +523,6 @@ struct Fragment {
     height: f32,
 }
 
-/// The fragment of edge `[ax, ay, bx, by]` at vertical phase `py` in local
-/// row `row` of a glyph `height` rows high, if it has one.
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::cast_precision_loss,
-    reason = "normalized finite geometry and checked extents bound row indices"
-)]
-fn fragment([ax, ay, bx, by]: [f32; 4], py: f32, row: usize, height: usize) -> Option<Fragment> {
-    let (mut ax, mut bx) = (ax, bx);
-    let (mut ay, mut by) = (ay + py, by + py);
-    let sign = if ay < by {
-        1.0
-    } else {
-        std::mem::swap(&mut ax, &mut bx);
-        std::mem::swap(&mut ay, &mut by);
-        -1.0
-    };
-    if ay == by || row < ay as usize || row >= ceil_index(by).min(height) {
-        return None;
-    }
-    let slope = (bx - ax) / (by - ay);
-    if !slope.is_finite() {
-        return None;
-    }
-    let low = ay.max(row as f32);
-    let high = by.min(row as f32 + 1.0);
-    let x0 = ax + slope * (low - ay);
-    let x1 = ax + slope * (high - ay);
-    let left = x0.min(x1);
-    let right = x0.max(x1);
-    let height = (high - low) * sign;
-    let scale = if right - left < 1e-6 {
-        0.0
-    } else {
-        height / (right - left)
-    };
-    Some(Fragment {
-        left,
-        right,
-        scale,
-        height,
-    })
-}
-
 /// Signed-area cells of one mask row in f32, with one sentinel.
 #[derive(Debug, Default)]
 struct Accumulator {
@@ -562,62 +536,63 @@ impl Accumulator {
         let cells = glyph.cells();
         mask.clear();
         mask.try_reserve(cells)
-            .and_then(|()| self.area.try_reserve(glyph.width + 1))
+            .and_then(|()| self.area.try_reserve(cells.saturating_add(glyph.height)))
             .map_err(|_| Error::limit("glyph coverage allocation failed"))?;
         mask.resize(cells, 0);
         if glyph.width > 0 {
-            for (row, line) in mask.chunks_exact_mut(glyph.width).enumerate() {
-                self.row(glyph, phases, row, line);
-            }
+            self.mask(glyph, phases, mask);
         }
         Ok(())
     }
 
-    /// Local row `row` of `glyph`'s mask at phases `(px, py)` into `line`:
-    /// the f32 signed-area accumulation of the row's fragments in edge
-    /// order. Returns the work spent.
+    /// The whole mask of `glyph` at phases `(px, py)` into `out`, edge by
+    /// edge: each edge's slope once, its fragments row by row, every cell
+    /// adding the edges in the order a row alone adds them. Returns the
+    /// work spent.
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
         reason = "coverage is clamped to [0, 255] before positive nearest rounding"
     )]
-    fn row(
-        &mut self,
-        glyph: &Prepared,
-        (px, py): (f32, f32),
-        row: usize,
-        line: &mut [u8],
-    ) -> usize {
-        let width = glyph.width;
+    fn mask(&mut self, glyph: &Prepared, (px, py): (f32, f32), out: &mut [u8]) -> usize {
+        let stride = glyph.width + 1;
+        let cells = glyph.height * stride;
         self.area.clear();
-        self.area.resize(width + 1, 0.0);
-        let mut work = 2 * width + 3;
-        let listed = u32::try_from(row).map_or(&[][..], |r| glyph.index.row(r));
-        for &edge in listed {
+        self.area.resize(cells, 0.0);
+        let mut work = 2 * cells;
+        for &edge in &glyph.edges {
             work += 1;
-            if let Some(f) = fragment(glyph.edges[edge as usize], py, row, glyph.height) {
-                work += self.add(f.left + px, f.right + px, f.height, f.scale);
-            }
+            edge_rows(edge, py, glyph.height, |row, f| {
+                let cells = &mut self.area[row * stride..(row + 1) * stride];
+                work += 1 + add(cells, f.left + px, f.right + px, f.height, f.scale);
+            });
         }
         let level = |value: f32| (value.abs().min(1.0) * 255.0 + 0.5) as u8;
-        let mut value = 0.0_f32;
-        for (level_out, &delta) in line.iter_mut().zip(&self.area[..width]) {
-            value += delta;
-            *level_out = level(value);
+        for (row, line) in self
+            .area
+            .chunks_exact(stride)
+            .zip(out.chunks_exact_mut(glyph.width))
+        {
+            let mut value = 0.0_f32;
+            for (level_out, &delta) in line.iter_mut().zip(row) {
+                value += delta;
+                *level_out = level(value);
+            }
         }
         work
     }
+}
 
-    /// Adds one fragment's signed area to the row. Returns the cells
-    /// visited.
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        clippy::cast_precision_loss,
-        reason = "finite fragment ends saturate to the checked local extent"
-    )]
-    fn add(&mut self, left: f32, right: f32, height: f32, scale: f32) -> usize {
-        let row = &mut self.area[..];
+/// Adds one fragment's signed area to a row of cells with one sentinel.
+/// Returns the cells visited.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    reason = "finite fragment ends saturate to the checked local extent"
+)]
+fn add(row: &mut [f32], left: f32, right: f32, height: f32, scale: f32) -> usize {
+    {
         let width = row.len() - 1;
         // Truncation is the floor here: the left end is not negative.
         let cell = left as usize;
@@ -647,6 +622,61 @@ impl Accumulator {
     }
 }
 
+/// The fragments of edge `[ax, ay, bx, by]` at vertical phase `py`, row by
+/// row within a glyph `height` rows high, as [`fragment`] gives each.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_precision_loss,
+    reason = "normalized finite geometry and checked extents bound row indices"
+)]
+fn edge_rows(
+    [ax, ay, bx, by]: [f32; 4],
+    py: f32,
+    height: usize,
+    mut store: impl FnMut(usize, Fragment),
+) {
+    let (mut ax, mut bx) = (ax, bx);
+    let (mut ay, mut by) = (ay + py, by + py);
+    let sign = if ay < by {
+        1.0
+    } else {
+        std::mem::swap(&mut ax, &mut bx);
+        std::mem::swap(&mut ay, &mut by);
+        -1.0
+    };
+    if ay == by {
+        return;
+    }
+    let slope = (bx - ax) / (by - ay);
+    if !slope.is_finite() {
+        return;
+    }
+    for row in ay as usize..ceil_index(by).min(height) {
+        let low = ay.max(row as f32);
+        let high = by.min(row as f32 + 1.0);
+        let x0 = ax + slope * (low - ay);
+        let x1 = ax + slope * (high - ay);
+        let left = x0.min(x1);
+        let right = x0.max(x1);
+        let height = (high - low) * sign;
+        let scale = if right - left < 1e-6 {
+            0.0
+        } else {
+            height / (right - left)
+        };
+        store(
+            row,
+            Fragment {
+                left,
+                right,
+                scale,
+                height,
+            },
+        );
+    }
+}
+
 /// The area of a unit ramp left of `value`: 0 below 0, v²/2 up to 1 and
 /// v - 1/2 beyond.
 fn primitive(value: f32) -> f32 {
@@ -665,153 +695,53 @@ fn ceil_index(value: f32) -> usize {
     truncated.saturating_add(usize::from((truncated as f32) < value))
 }
 
-/// A slot of the mask cache: a mask's place in the store, whose rows are
-/// built as bands ask for them.
-#[derive(Debug, Default)]
-struct Slot {
-    edges: Option<Arc<GlyphEdges>>,
-    phases: (u64, u64),
-    /// Unique per allocation; zero never is one.
-    generation: u64,
-    /// The mask's first cell in the store and first row in the stamps.
-    start: usize,
-    rows: usize,
-}
-
-/// The bounded cache of binned glyph masks, allocated once. Its store and
-/// row stamps are rings: a mask takes the next free cells and rows, and
-/// when they run out every slot allocated before goes stale at once. A row
-/// is built when a band first needs it and stamped with its slot's
-/// generation, so a mask costs the rows the bands read, never more than
-/// one whole build, whatever the band height.
-#[derive(Debug, Default)]
-pub(crate) struct Cache {
-    slots: Vec<Slot>,
-    store: Vec<u8>,
-    stamps: Vec<u64>,
-    /// Store cells and stamp rows in use since the rings last started over.
-    used: (usize, usize),
-    /// The next slot's generation, and the oldest one still valid.
-    generation: u64,
-    oldest: u64,
-    accumulator: Accumulator,
-}
-
-impl Cache {
-    pub(crate) fn new(bytes: &mut Meter) -> Result<Self> {
-        let mut cache = Self {
-            generation: 1,
-            oldest: 1,
-            ..Self::default()
+/// Writes the rows of `placement` within `rows`, which lie within its
+/// shape's bounds, to `out`. Returns the work spent.
+pub(crate) fn rasterize(
+    placement: &Placement,
+    shape: (&Shape, Option<&ClipShape>),
+    rows: std::ops::Range<u32>,
+    (out, buffer): (&mut BandCoverage, &mut Vec<u8>),
+) -> usize {
+    let width = placement.width;
+    let mask = &placement.mask[..];
+    // Without a clip to multiply in, a mask row goes out as runs at once,
+    // within the shape's columns.
+    let plain = shape.0.multiplied.is_none() && shape.1.is_none();
+    let bounds = shape.0.bounds;
+    let mut work = 1;
+    for y in rows {
+        let Some(line) = usize::try_from(i64::from(y) - placement.y)
+            .ok()
+            .filter(|&r| r < placement.height)
+            .map(|r| &mask[r * width..(r + 1) * width])
+        else {
+            continue;
         };
-        bytes.reserve(&mut cache.slots, CACHE_SLOTS)?;
-        cache.slots.resize_with(CACHE_SLOTS, Slot::default);
-        bytes.reserve(&mut cache.store, CACHE_BYTES)?;
-        cache.store.resize(CACHE_BYTES, 0);
-        bytes.reserve(&mut cache.stamps, CACHE_ROWS)?;
-        cache.stamps.resize(CACHE_ROWS, 0);
-        bytes.reserve(&mut cache.accumulator.area, CACHED_CELLS + 1)?;
-        Ok(cache)
-    }
-
-    pub(crate) fn retained_bytes(&self) -> usize {
-        self.slots
-            .capacity()
-            .saturating_mul(size_of::<Slot>())
-            .saturating_add(self.store.capacity())
-            .saturating_add(self.stamps.capacity().saturating_mul(size_of::<u64>()))
-            .saturating_add(
-                self.accumulator
-                    .area
-                    .capacity()
-                    .saturating_mul(size_of::<f32>()),
-            )
-    }
-
-    /// The slot holding `placement`'s mask, allocated on a miss.
-    fn slot(&mut self, placement: &Placement, prepared: &Prepared) -> usize {
-        let key = (placement.px.to_bits(), placement.py.to_bits());
-        let address = Arc::as_ptr(&placement.edges) as usize;
-        let mut hash = (address as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15)
-            ^ key.0.wrapping_mul(0xC2B2_AE3D_27D4_EB4F)
-            ^ key.1.rotate_left(17);
-        hash ^= hash >> 29;
-        let index = usize::try_from(hash % CACHE_SLOTS as u64).unwrap_or(0);
-        let slot = &self.slots[index];
-        let hit = slot.generation >= self.oldest
-            && slot.phases == key
-            && slot
-                .edges
-                .as_ref()
-                .is_some_and(|e| Arc::ptr_eq(e, &placement.edges));
-        if !hit {
-            let (cells, rows) = (prepared.cells(), prepared.height);
-            if self.used.0 + cells > self.store.len() || self.used.1 + rows > self.stamps.len() {
-                self.used = (0, 0);
-                self.oldest = self.generation;
+        out.push_row(y);
+        if plain {
+            let x0 = i64::from(bounds.x0).max(placement.x);
+            let x1 = i64::from(bounds.x1).min(placement.x.saturating_add(width as i64));
+            if let (Ok(skip), Ok(end), Ok(at)) = (
+                usize::try_from(x0 - placement.x),
+                usize::try_from(x1 - placement.x),
+                u32::try_from(x0),
+            ) && skip < end
+            {
+                out.put_row(at, &line[skip..end]);
             }
-            self.slots[index] = Slot {
-                edges: Some(Arc::clone(&placement.edges)),
-                phases: key,
-                generation: self.generation,
-                start: self.used.0,
-                rows: self.used.1,
-            };
-            self.generation += 1;
-            self.used = (self.used.0 + cells, self.used.1 + rows);
+            work += width + 3;
+            continue;
         }
-        index
-    }
-
-    /// Writes the rows of `placement` within `rows`, which lie within its
-    /// shape's bounds, to `out`. Returns the work spent.
-    pub(crate) fn rasterize(
-        &mut self,
-        placement: &Placement,
-        shape: (&Shape, Option<&super::ClipShape>),
-        rows: std::ops::Range<u32>,
-        (out, buffer): (&mut BandCoverage, &mut Vec<u8>),
-    ) -> usize {
-        let Some(prepared) = placement.edges.prepared() else {
-            return 0;
-        };
-        let width = prepared.width;
-        let local = |y: u32| {
-            usize::try_from(i64::from(y) - placement.y)
-                .ok()
-                .filter(|&r| r < prepared.height)
-        };
-        let mut work = 1;
-        let mask: &[u8] = if let Some(mask) = &placement.mask {
-            mask
-        } else {
-            let index = self.slot(placement, prepared);
-            let slot = &self.slots[index];
-            for r in rows.clone().filter_map(local) {
-                let stamp = &mut self.stamps[slot.rows + r];
-                if *stamp != slot.generation {
-                    let line = &mut self.store[slot.start + r * width..][..width];
-                    work += self.accumulator.row(prepared, placement.phases(), r, line);
-                    *stamp = slot.generation;
-                }
+        let mut sink = super::raster::sink(out, shape, y, buffer);
+        for (x, &value) in (placement.x..).zip(line) {
+            if let Ok(x) = usize::try_from(x) {
+                sink.run(x, x + 1, value);
             }
-            &self.store[slot.start..slot.start + prepared.cells()]
-        };
-        for y in rows {
-            let Some(line) = local(y).map(|r| &mask[r * width..(r + 1) * width]) else {
-                continue;
-            };
-            out.push_row(y);
-            let mut sink = super::raster::sink(out, shape, y, buffer);
-            for (x, &value) in (placement.x..).zip(line) {
-                if let Ok(x) = usize::try_from(x) {
-                    sink.run(x, x + 1, value);
-                }
-            }
-            work += width + 3 + sink.extra();
         }
-        work
+        work += width + 3 + sink.extra();
     }
+    work
 }
 
 #[cfg(test)]

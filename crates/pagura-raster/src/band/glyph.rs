@@ -307,14 +307,6 @@ impl GlyphEdges {
             Kind::Binned(_) => None,
         }
     }
-
-    /// The binned preparation, if the edges were prepared for bins.
-    pub(crate) fn prepared(&self) -> Option<&binned::Prepared> {
-        match &self.kind {
-            Kind::Binned(prepared) => Some(prepared),
-            Kind::Exact(_) => None,
-        }
-    }
 }
 
 /// Places `edges` at `origin`.
@@ -328,7 +320,7 @@ pub(crate) fn place(
     let exact = match &edges.kind {
         Kind::Binned(prepared) => {
             let _ = origins;
-            return binned::place(edges, prepared, origin, options);
+            return binned::place(prepared, origin, options);
         }
         Kind::Exact(exact) => exact,
     };

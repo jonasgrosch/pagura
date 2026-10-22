@@ -20,7 +20,6 @@ pub struct BandRasterizer {
     area: Area,
     row: Row,
     cells: approximate::Scratch,
-    cache: binned::Cache,
     grid: Grid,
     work: usize,
 }
@@ -70,9 +69,9 @@ impl Grid {
 impl BandRasterizer {
     /// Scratch storage for `area`, charged to `bytes` (`render_bytes`):
     /// one row of cells up to the region's right edge and its bitmap, one
-    /// row of approximate cells, and the bounded cache of binned glyph
-    /// masks. The charge depends on the region's right edge only, never on
-    /// the band height or the region's rows.
+    /// row of approximate cells, and a fixed grid for small marks. The
+    /// charge depends on the region's right edge only, never on the band
+    /// height or the region's rows.
     ///
     /// # Errors
     ///
@@ -83,7 +82,6 @@ impl BandRasterizer {
             area,
             row: Row::new(width, bytes)?,
             cells: approximate::Scratch::new(width, bytes)?,
-            cache: binned::Cache::new(bytes)?,
             grid: Grid::new(bytes)?,
             work: 0,
         })
@@ -105,7 +103,6 @@ impl BandRasterizer {
         self.row
             .retained_bytes()
             .saturating_add(self.cells.retained_bytes())
-            .saturating_add(self.cache.retained_bytes())
             .saturating_add(self.grid.retained_bytes())
     }
 
@@ -163,7 +160,7 @@ impl BandRasterizer {
                         ));
                     }
                     Body::Binned(placement) => {
-                        self.work = self.work.saturating_add(self.cache.rasterize(
+                        self.work = self.work.saturating_add(binned::rasterize(
                             placement,
                             shape,
                             rows,
@@ -273,7 +270,8 @@ impl BandRasterizer {
                 let item = item as usize;
                 let [first, last] = relative.ends[item];
                 let [below, above] = relative.reach[item];
-                if (local == Some(first) && low >= below) || (local == Some(last) && high <= above) {
+                if (local == Some(first) && low >= below) || (local == Some(last) && high <= above)
+                {
                     continue;
                 }
                 cells += match relative.lines.get(item) {
@@ -335,10 +333,15 @@ impl BandRasterizer {
             (lo < hi).then(|| lo as u32..hi as u32)
         };
         for l in &relative.lines {
-            let line = Line { a: at(l.a), b: at(l.b) };
+            let line = Line {
+                a: at(l.a),
+                b: at(l.b),
+            };
             work += 1;
             for y in span(line.a.y, line.b.y).into_iter().flatten() {
-                work += 1 + grid.row((y - rows.start) as usize, width, base).line(line, f64::from(y));
+                work += 1 + grid
+                    .row((y - rows.start) as usize, width, base)
+                    .line(line, f64::from(y));
             }
         }
         for q in &relative.curves {
@@ -347,7 +350,9 @@ impl BandRasterizer {
             };
             work += 1;
             for y in span(q.points[0].y, q.points[2].y).into_iter().flatten() {
-                work += 1 + grid.row((y - rows.start) as usize, width, base).curve(q, f64::from(y));
+                work += 1 + grid
+                    .row((y - rows.start) as usize, width, base)
+                    .curve(q, f64::from(y));
             }
         }
         for (k, y) in rows.enumerate() {
