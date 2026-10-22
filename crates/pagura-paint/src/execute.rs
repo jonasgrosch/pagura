@@ -15,6 +15,7 @@ mod workspace;
 
 pub(crate) use frame::{Backdrop, Buffer, Frame, Read, Tops};
 pub(crate) use mask::transfer as mask_transfer;
+pub(crate) use output::Destination;
 pub(crate) use schedule::Active;
 pub(crate) use transfer::validate;
 pub(crate) use workspace::{Extents, MaskCache, PageBuffer, Sizes, Usage, Workspace};
@@ -23,7 +24,7 @@ use crate::kernel::{self, Colors, Mode, Sources};
 use crate::plan::{Boundary, Compositing, Item, ItemKind, Mark, Plan, area};
 use crate::prepare::Producer;
 use pagura_core::convert::u32_to_usize;
-use pagura_raster::{DeviceRect, Pixmap, Span};
+use pagura_raster::{DeviceRect, Span};
 use std::ops::Range;
 
 #[cfg(test)]
@@ -46,7 +47,7 @@ impl<'a> Executor<'a> {
         ws: &'a mut Workspace,
         producer: &'a mut dyn Producer,
         band: u32,
-        target: &mut Pixmap,
+        target: Destination<'_>,
     ) {
         let rows = plan.area.band_rows(band);
         if rows.is_empty() {

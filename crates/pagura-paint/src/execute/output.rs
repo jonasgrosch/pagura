@@ -35,22 +35,48 @@ pub(super) fn record(
     }
 }
 
-/// Writes the band's rows of the page buffer to `target`, whose pixel
-/// `(0, 0)` is the region's first pixel.
-pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, target: &mut Pixmap) {
+/// Where output rows go.
+pub(crate) enum Destination<'a> {
+    /// A surface whose pixel `(0, 0)` is the region's first pixel.
+    Pixmap(&'a mut Pixmap),
+    /// The end of a buffer that collects whole rows of the region, with room
+    /// reserved for them.
+    Rows(&'a mut Vec<u8>),
+}
+
+/// Writes the band's rows of the page buffer to `target`.
+pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, target: Destination<'_>) {
     let region = plan.area.region;
     let width = u32_to_usize(region.width());
-    let target_width = u32_to_usize(target.width());
-    let target_height = target.height();
-    let count = width.min(target_width);
     let output = &plan.output;
     let mut preview = Preview::default();
-    let data = target.data_mut();
+    // Bytes holding row `origin` first and each next row `stride` later,
+    // `count` pixels of each written.
+    let (data, origin, stride, count) = match target {
+        Destination::Pixmap(pixmap) => {
+            let target_width = u32_to_usize(pixmap.width());
+            (
+                pixmap.data_mut(),
+                region.y0,
+                target_width * 4,
+                width.min(target_width),
+            )
+        }
+        Destination::Rows(collected) => {
+            // One fill of the whole band, written over while it is still in
+            // cache: cheaper than filling the surface beforehand, and than
+            // appending row by row.
+            let start = collected.len();
+            collected.resize(start + rows.len() * width * 4, 0);
+            let band = collected.get_mut(start..).unwrap_or_default();
+            (band, rows.start, width * 4, width)
+        }
+    };
     for (band_row, y) in rows.clone().enumerate() {
-        let Some(row) = y.checked_sub(region.y0).filter(|&r| r < target_height) else {
+        let Some(row) = y.checked_sub(origin) else {
             continue;
         };
-        let start = u32_to_usize(row) * target_width * 4;
+        let start = u32_to_usize(row) * stride;
         let Some(out) = data.get_mut(start..start + count * 4) else {
             continue;
         };

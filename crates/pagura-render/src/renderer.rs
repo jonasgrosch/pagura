@@ -2,7 +2,7 @@
 //! the steps the free functions and [`crate::RenderContext`] share.
 
 use crate::options::{RenderOptions, Tile};
-use pagura_core::{Error, ObjectId, Rect, Result, Store};
+use pagura_core::{Error, Limits, ObjectId, Rect, Result, Store};
 use pagura_document::forms::FormFiller;
 use pagura_document::{Document, Page};
 use pagura_extract::{LayoutOptions, PositionedText, TextPage};
@@ -72,13 +72,30 @@ impl<'a> Renderer<'a> {
     ) -> Result<(Pixmap, Completion)> {
         let mut prepared = self.prepare(scene, options, tile)?;
         let region = prepared.region();
-        let mut pixmap = Pixmap::new_with_limits(
-            region.width(),
-            region.height(),
-            options.background,
-            self.document.limits(),
-        )?;
-        let completion = prepared.render_until(&mut pixmap, stop);
+        let (width, height) = (region.width(), region.height());
+        let limits = self.document.limits();
+        let Some(bytes) = surface_bytes(width, height, limits) else {
+            // An empty surface or one over the pixel budget is refused as
+            // allocation refuses it; one over only the byte budget, which an
+            // allocation taken over must keep to, is allocated as before.
+            let mut pixmap = Pixmap::new_with_limits(width, height, options.background, limits)?;
+            let completion = prepared.render_until(&mut pixmap, stop);
+            return Ok((pixmap, completion));
+        };
+        // Rendered rows are written whole, so the surface is collected band
+        // by band rather than filled with the background first; rows a stop
+        // leaves get the background.
+        let mut data = Vec::new();
+        data.try_reserve_exact(bytes)
+            .map_err(|_| Error::limit("surface allocation failed"))?;
+        let completion = prepared.render_rows_until(&mut data, stop);
+        let rendered = data.len().min(bytes);
+        data.resize(bytes, 0);
+        let background = prepared.background();
+        if let Some(rest) = data.get_mut(rendered..) {
+            rest.as_chunks_mut::<4>().0.fill(background);
+        }
+        let pixmap = Pixmap::from_premultiplied(width, height, data, limits)?;
         Ok((pixmap, completion))
     }
 
@@ -112,4 +129,12 @@ impl<'a> Renderer<'a> {
         }
         Ok(prepared)
     }
+}
+
+/// The bytes of a `width × height` surface when it is within both the pixel
+/// and the byte budget.
+fn surface_bytes(width: u32, height: u32, limits: Limits) -> Option<usize> {
+    let pixels = usize::try_from(u64::from(width) * u64::from(height)).ok()?;
+    let bytes = pixels.checked_mul(4)?;
+    (pixels > 0 && pixels <= limits.pixels && bytes <= limits.decoded_bytes).then_some(bytes)
 }
