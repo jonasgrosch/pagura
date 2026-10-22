@@ -14,7 +14,6 @@ mod execute;
 mod format;
 mod hash;
 mod kernel;
-mod paint;
 mod plan;
 mod prepare;
 mod process;
@@ -27,6 +26,3 @@ pub use execute::Scratch;
 pub use format::Format;
 pub use prepare::{Charges, Completion, PreparedScene, Rendering, prepare};
 pub use request::{OverprintMode, RenderRequest};
-pub use source::{
-    BBoxUse, ImageBudgets, ImageSampler, PaintContext, ShadingSource, Source, SpanColors,
-};

@@ -3,7 +3,7 @@
 //! 10.3.4), soft-mask luminosity (11.5.3) and output need.
 
 use crate::blend::lum;
-use crate::paint::Curve;
+use crate::plan::Curve;
 use pagura_color::Process;
 
 /// The RGB of the process components `c` (10.4.2): CMYK subtracts black
@@ -33,9 +33,9 @@ pub(crate) fn luminosity(process: Process, c: &[f64]) -> f64 {
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Separation<'a> {
     /// `BG`.
-    pub(crate) black: Option<&'a dyn Curve>,
+    pub(crate) black: Option<&'a Curve>,
     /// `UCR`.
-    pub(crate) removal: Option<&'a dyn Curve>,
+    pub(crate) removal: Option<&'a Curve>,
 }
 
 impl Separation<'_> {

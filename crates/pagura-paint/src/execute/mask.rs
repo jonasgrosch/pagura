@@ -3,7 +3,7 @@
 //! values through `TR`; outside its group's content the mask has one value.
 
 use super::{Backdrop, Buffer, Executor, Frame, MaskCache, Read, Tops};
-use crate::plan::{Layout, MaskPlan, Plan, Start, area, intersect};
+use crate::plan::{Curve, Layout, MaskPlan, Plan, Start, area, intersect};
 use crate::process;
 use pagura_core::convert::u32_to_usize;
 use pagura_interpret::MaskKind;
@@ -109,7 +109,7 @@ fn values(
         .clamp(0.0, 1.0);
         if value.to_bits() != last.to_bits() {
             mapped = transfer(mask, value);
-            work += mask.transfer.as_ref().map_or(0, |f| f.cost());
+            work += mask.transfer.as_ref().map_or(0, Curve::cost);
             last = value;
         }
         *out = mapped;

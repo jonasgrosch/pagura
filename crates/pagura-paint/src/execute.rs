@@ -22,10 +22,9 @@ pub use workspace::Scratch;
 pub(crate) use workspace::{Extents, MaskCache, PageBuffer, Sizes, Usage, Workspace};
 
 use crate::kernel::{self, Colors, Mode, Sources};
-use crate::paint::PaintSpans;
 use crate::plan::{Boundary, Compositing, Item, ItemKind, Mark, Plan, area};
-use crate::prepare::Producer;
-use pagura_color::Painted;
+use crate::prepare::Shapes;
+use crate::source::{Pixels, Source};
 use pagura_core::convert::u32_to_usize;
 use pagura_raster::{BandCoverage, BandRasterizer, DeviceRect, Span};
 use std::ops::Range;
@@ -34,18 +33,18 @@ use std::ops::Range;
 mod tests;
 
 /// What one band's execution works with: the plan, the workspace, and the
-/// coverage producer with the rasterizer it rasterizes in.
+/// prepared shapes with the rasterizer they rasterize in.
 pub(crate) type Executing<'a> = (
     &'a Plan,
     &'a mut Workspace,
-    (&'a dyn Producer, &'a mut BandRasterizer),
+    (&'a Shapes, &'a mut BandRasterizer),
 );
 
 /// One band's execution.
 pub(crate) struct Executor<'a> {
     plan: &'a Plan,
     ws: &'a mut Workspace,
-    producer: &'a dyn Producer,
+    shapes: &'a Shapes,
     rasterizer: &'a mut BandRasterizer,
     band: u32,
     rows: Range<u32>,
@@ -55,7 +54,7 @@ pub(crate) struct Executor<'a> {
 impl<'a> Executor<'a> {
     /// Executes `band` of `plan` and writes its rows to `target`.
     pub(crate) fn band(
-        (plan, ws, (producer, rasterizer)): Executing<'a>,
+        (plan, ws, (shapes, rasterizer)): Executing<'a>,
         band: u32,
         target: Destination<'_>,
     ) {
@@ -67,7 +66,7 @@ impl<'a> Executor<'a> {
         let mut executor = Executor {
             plan,
             ws,
-            producer,
+            shapes,
             rasterizer,
             band,
             rows,
@@ -134,28 +133,12 @@ impl<'a> Executor<'a> {
             else {
                 continue;
             };
-            if !self.visible(item, frame) {
-                continue;
-            }
             match &item.kind {
                 ItemKind::Mark(mark) => self.mark(item, mark, frame, tops),
                 ItemKind::Run(run) => self.glyph_run(item, run, frame, tops),
                 ItemKind::Group(used) => self.group(item, used, frame, tops),
             }
         }
-    }
-
-    /// The hook of exact occlusion (ADR 0034 §4): whether `item` can still
-    /// change `frame` in this band. A span fully covered by a later opaque
-    /// Normal mark of the same group, with no mask, transfer or other blend
-    /// between, may be skipped for earlier items; this pass skips nothing.
-    #[expect(
-        clippy::unused_self,
-        reason = "the occlusion state will live in the executor"
-    )]
-    fn visible(&self, item: &Item, frame: Frame) -> bool {
-        let _ = (item, frame);
-        true
     }
 
     /// Counts the rasterization work of `item` once per render.
@@ -172,25 +155,19 @@ impl<'a> Executor<'a> {
         self.count_shape(item);
         match mark.boundary {
             Boundary::Shape(boundary) => {
-                self.producer.rasterize(
-                    self.rasterizer,
-                    Some(boundary),
-                    None,
-                    self.band,
-                    &mut self.ws.boundary.0,
-                );
+                let outline = crate::plan::Cover {
+                    shape: Some(boundary),
+                    clip: None,
+                };
+                self.shapes
+                    .rasterize(self.rasterizer, outline, self.band, &mut self.ws.boundary.0);
             }
             Boundary::Empty => self.ws.boundary.0.clear(),
             Boundary::Absent => {}
         }
         let mut coverage = std::mem::take(&mut self.ws.coverage);
-        self.producer.rasterize(
-            self.rasterizer,
-            mark.cover.shape,
-            mark.cover.clip,
-            self.band,
-            &mut coverage,
-        );
+        self.shapes
+            .rasterize(self.rasterizer, mark.cover, self.band, &mut coverage);
         if let Some(words) = self.opaque(mark, frame) {
             self.opaque_store(&coverage, frame, words);
             self.ws.coverage = coverage;
@@ -266,12 +243,11 @@ impl<'a> Executor<'a> {
         let Some(paint) = plan.paints.get(u32_to_usize(mark.paint)) else {
             return;
         };
-        let paint = paint.as_ref();
         let len = cover.len();
         let first_row = self.rows.start;
         let ws = &mut *self.ws;
         let compositing = &mark.compositing;
-        let constant = constant(paint);
+        let constant = paint.constant();
         if constant.is_none() && !fill_colors(ws, (paint, mark.boundary), (x, y, len)) {
             return;
         }
@@ -370,25 +346,27 @@ impl<'a> Executor<'a> {
 /// under `boundary`; false where the boundary's coverage does not fit.
 fn fill_colors(
     ws: &mut Workspace,
-    (paint, boundary): (&dyn PaintSpans, Boundary),
+    (paint, boundary): (&Source, Boundary),
     (x, y, len): (u32, u32, usize),
 ) -> bool {
-    match boundary {
+    let outline = match boundary {
         Boundary::Shape(_) | Boundary::Empty => {
             let (boundary, dense) = &mut ws.boundary;
             let Some(dense) = dense.get_mut(..len) else {
                 return false;
             };
             densify(boundary, (x, y), dense);
-            paint.span_with_boundary(x, y, dense, &mut ws.colors);
+            Some(&*dense)
         }
-        Boundary::Absent if paint.shape_is_alpha() => {
-            paint.span(x, y, len, &mut ws.colors);
-        }
-        Boundary::Absent => {
-            paint.span_with_shape(x, y, len, &mut ws.colors, &mut ws.texel_shape);
-        }
-    }
+        Boundary::Absent => None,
+    };
+    let pixels = Pixels {
+        x,
+        y,
+        len,
+        boundary: outline,
+    };
+    paint.fill(pixels, &mut ws.colors, &mut ws.texel_shape);
     true
 }
 
@@ -418,15 +396,6 @@ fn overwrite(
         usage.work = usage.work.saturating_add(len);
     }
     stored.is_some()
-}
-
-/// The colour every pixel of `paint` has and the channels it paints, when
-/// it is constant or its spans are uniform.
-fn constant(paint: &dyn PaintSpans) -> Option<(&[f64], Painted)> {
-    paint
-        .constant()
-        .map(|color| (color, paint.painted()))
-        .or_else(|| paint.uniform())
 }
 
 /// The coverage of `coverage` at the pixels from `(x, y)`, one byte each.

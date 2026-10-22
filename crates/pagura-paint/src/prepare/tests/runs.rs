@@ -6,15 +6,14 @@ use crate::plan::ItemKind;
 use crate::prepare::planner::runs::RUNS;
 use crate::request::RenderRequest;
 use crate::testing::{Build, check, index, mark, rect_path};
-use crate::{Charges, PreparedScene, Scratch};
+use crate::{Charges, Scratch};
 use pagura_core::{Limits, Position, Store};
 use pagura_interpret::{
     BlendMode, Composite, GlyphSource, GlyphsNode, GroupAttributes, GroupId, MarkInfo, MaskKind,
     Node, OutlineKey, Paint, PaintId, PatternId, Placement, StateId, Tiling, TilingColors,
     TilingPaint,
 };
-use pagura_raster::{DeviceRect, PathBuilder, Pixmap, Point, Rgba8, Transform};
-use std::sync::Arc;
+use pagura_raster::{DeviceRect, Pixmap, Point, Rgba8, Transform};
 
 const PAGE: GroupId = GroupId(0);
 const HEIGHTS: [u32; 5] = [1, 5, 16, 32, 256];
@@ -75,35 +74,47 @@ fn with_runs<T>(runs: bool, f: impl FnOnce() -> T) -> T {
 /// same charges at every band height, and that it has a run item with
 /// placements rasterized together, or one without, as `gathers` says.
 fn same_bytes(name: &str, b: &Build, gathers: bool) {
-    same_bytes_with(name, b, gathers, Backend::Rects);
-}
-
-/// The backend a test prepares with.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Backend {
-    /// The rectangle backend of the tests.
-    Rects,
-    /// The band rasterizer.
-    Raster,
-}
-
-/// Prepares `request` with `backend`.
-fn prepare(b: &Build, request: &RenderRequest, backend: Backend) -> PreparedScene {
-    let prepared = match backend {
-        Backend::Rects => b.prepare(request, &Limits::default()),
-        Backend::Raster => {
-            crate::prepare(&b.scene, request, &Store::new(1 << 20), &Limits::default())
+    let page = b.page();
+    let half = page.x1 / 2;
+    let regions = [
+        page,
+        DeviceRect {
+            x0: 0,
+            y0: 1,
+            x1: half + 1,
+            y1: page.y1,
+        },
+        DeviceRect {
+            x0: half - 2,
+            y0: 0,
+            x1: page.x1,
+            y1: page.y1 - 3,
+        },
+    ];
+    let request = b.request(page, 32);
+    let prepared = b
+        .prepare(&request, &Limits::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert!(
+        prepared.plan().items.iter().any(|item| matches!(&item.kind,
+                ItemKind::Run(run) if run.glyphs.iter().any(|g| g.alone) == gathers)),
+        "{name}: no run item with placements alone: {gathers}"
+    );
+    for region in regions {
+        let render = |runs, height| {
+            let request = b.request(region, height);
+            with_runs(runs, || render_in(b, &request, &Store::new(1 << 20)))
+        };
+        let (_, charges) = render(true, 32);
+        for height in HEIGHTS {
+            let (bytes, reserved) = render(true, height);
+            let (expected, _) = render(false, height);
+            assert!(
+                bytes == expected,
+                "{name}: region {region:?} band height {height}"
+            );
+            assert_eq!(reserved, charges, "{name}: charges at band height {height}");
         }
-    };
-    prepared.unwrap_or_else(|e| panic!("{e}"))
-}
-
-/// Renders `request` with `backend` into region-sized RGBA8 with the
-/// reserved charges, checking that rendering used no more.
-fn render(b: &Build, request: &RenderRequest, backend: Backend) -> (Vec<u8>, Charges) {
-    match backend {
-        Backend::Rects => b.render_charged(request).unwrap_or_else(|e| panic!("{e}")),
-        Backend::Raster => render_in(b, request, &Store::new(1 << 20)),
     }
 }
 
@@ -141,50 +152,6 @@ fn render_with(
         "used {used:?} beyond reserved {reserved:?}"
     );
     (target.data().to_vec(), reserved)
-}
-
-/// [`same_bytes`] with `backend`.
-fn same_bytes_with(name: &str, b: &Build, gathers: bool, backend: Backend) {
-    let page = b.page();
-    let half = page.x1 / 2;
-    let regions = [
-        page,
-        DeviceRect {
-            x0: 0,
-            y0: 1,
-            x1: half + 1,
-            y1: page.y1,
-        },
-        DeviceRect {
-            x0: half - 2,
-            y0: 0,
-            x1: page.x1,
-            y1: page.y1 - 3,
-        },
-    ];
-    let request = b.request(page, 32);
-    let prepared = prepare(b, &request, backend);
-    assert!(
-        prepared.plan().items.iter().any(|item| matches!(&item.kind,
-                ItemKind::Run(run) if run.glyphs.iter().any(|g| g.alone) == gathers)),
-        "{name}: no run item with placements alone: {gathers}"
-    );
-    for region in regions {
-        let render = |runs, height| {
-            let request = b.request(region, height);
-            with_runs(runs, || render(b, &request, backend))
-        };
-        let (_, charges) = render(true, 32);
-        for height in HEIGHTS {
-            let (bytes, reserved) = render(true, height);
-            let (expected, _) = render(false, height);
-            assert!(
-                bytes == expected,
-                "{name}: region {region:?} band height {height}"
-            );
-            assert_eq!(reserved, charges, "{name}: charges at band height {height}");
-        }
-    }
 }
 
 fn page() -> (Build, [PaintId; 2]) {
@@ -320,11 +287,10 @@ fn groups() -> Build {
     b
 }
 
-/// Runs through the band rasterizer, opaque, translucent and under a clip
-/// that keeps some placements whole and cuts others, render as one item per
-/// placement does.
+/// Runs, opaque, translucent and under a clip that keeps some placements
+/// whole and cuts others, render as one item per placement does.
 #[test]
-fn rasterized_runs_render_as_one_item_per_placement() {
+fn clipped_runs_render_as_one_item_per_placement() {
     let (mut opaque, [_, ink]) = page();
     run(
         &mut opaque,
@@ -355,8 +321,7 @@ fn rasterized_runs_render_as_one_item_per_placement() {
         ..mark(StateId(0))
     };
     run(&mut opaque, PAGE, &line(12, [1.0, 15.0], 2.5), ink, info);
-    same_bytes_with("rasterized opaque", &opaque, true, Backend::Raster);
-    same_bytes_with("rasterized groups", &groups(), true, Backend::Raster);
+    same_bytes("clipped", &opaque, true);
 }
 
 /// Glyph edges kept in the store from an earlier render, with their hulls,
@@ -453,18 +418,11 @@ fn stacked_long_and_scattered_runs() {
     check(&b);
 }
 
-/// A glyph outline the rectangle backend refuses.
-fn curved(glyph: u32) -> GlyphSource {
-    let mut path = PathBuilder::new();
-    path.move_to(Point::new(0.0, 0.0));
-    let _ = path.cubic_to(
-        Point::new(1.0, 0.0),
-        Point::new(2.0, 1.0),
-        Point::new(2.0, 2.0),
-    );
-    path.close();
+/// A glyph whose device linear map is not finite, which preparation
+/// refuses.
+fn refused(glyph: u32) -> GlyphSource {
     GlyphSource {
-        outline: Arc::new(path.finish()),
+        linear: Transform::new(f64::INFINITY, 0.0, 0.0, 1.0, 0.0, 0.0),
         ..source(glyph, [1.0, 1.0])
     }
 }
@@ -482,7 +440,7 @@ fn the_first_refused_placement_reports_its_position() {
     b.node(
         PAGE,
         Node::Glyphs(GlyphsNode {
-            sources: vec![source(3, [2.0, 3.0]), curved(9)],
+            sources: vec![source(3, [2.0, 3.0]), refused(9)],
             placements,
             positions: (0..8)
                 .map(|i| (index(i), Position::Buffer(100 + i)))

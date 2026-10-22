@@ -5,10 +5,10 @@ use crate::Completion;
 use crate::testing::{Build, assert_within_one_level, mark};
 use pagura_core::{Limits, Position};
 use pagura_interpret::{
-    BlendMode, FillNode, GroupAttributes, GroupId, MarkInfo, MaskKind, Node, Paint, PatternId,
-    StateId, Tiling, TilingColors, TilingPaint,
+    BlendMode, GroupAttributes, GroupId, MarkInfo, MaskKind, Node, Paint, PatternId, Pen, PenId,
+    StateId, StrokeNode, Tiling, TilingColors, TilingPaint,
 };
-use pagura_raster::{DeviceRect, FillRule, PathBuilder, Pixmap, Point, Rgba8, Transform};
+use pagura_raster::{Adjustment, DeviceRect, PathBuilder, Pixmap, Point, Rgba8, Stroke, Transform};
 use std::sync::Arc;
 
 const PAGE: GroupId = GroupId(0);
@@ -155,22 +155,23 @@ fn regions_assemble_into_the_page() {
     }
 }
 
-/// A fill the rectangle backend refuses: a curve, at `Buffer(offset)`.
+/// A stroke preparation refuses, with a singular pen, at `Buffer(offset)`.
 fn refused(b: &mut Build, at: [f64; 2], offset: usize) {
     let mut path = PathBuilder::new();
     path.move_to(Point::new(at[0], at[1]));
-    let _ = path.cubic_to(
-        Point::new(at[0] + 1.0, at[1]),
-        Point::new(at[0] + 2.0, at[1] + 1.0),
-        Point::new(at[0] + 2.0, at[1] + 2.0),
-    );
-    path.close();
+    let _ = path.line_to(Point::new(at[0] + 2.0, at[1] + 2.0));
+    b.scene.pens.push(Arc::new(Pen {
+        stroke: Stroke::default(),
+        transform: Transform::new(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+        adjustment: Adjustment::None,
+    }));
+    let pen = PenId(u32::try_from(b.scene.pens.len() - 1).unwrap());
     let paint = b.rgb([0.0, 0.0, 0.0]);
     b.node(
         PAGE,
-        Node::Fill(FillNode {
+        Node::Stroke(StrokeNode {
             path: Arc::new(path.finish()),
-            rule: FillRule::NonZero,
+            pen,
             paint,
             mark: MarkInfo {
                 position: Position::Buffer(offset),

@@ -62,13 +62,8 @@ impl Executor<'_> {
             }
             Some(cover) => {
                 let mut coverage = std::mem::take(&mut self.ws.coverage);
-                self.producer.rasterize(
-                    self.rasterizer,
-                    cover.shape,
-                    cover.clip,
-                    self.band,
-                    &mut coverage,
-                );
+                self.shapes
+                    .rasterize(self.rasterizer, cover, self.band, &mut coverage);
                 for row in coverage.rows() {
                     if row.y < rect.y0 || row.y >= rect.y1 {
                         continue;
@@ -261,8 +256,8 @@ fn sources(
         }
     }
     let separation = conversion.map(|c| Separation {
-        black: c.black.as_deref(),
-        removal: c.removal.as_deref(),
+        black: c.black.as_ref(),
+        removal: c.removal.as_ref(),
     });
     let mut work = 0;
     let mut straight = [0.0; CHANNELS];

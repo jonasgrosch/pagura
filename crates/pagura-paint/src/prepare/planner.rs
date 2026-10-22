@@ -7,17 +7,17 @@ mod marks;
 pub(crate) mod runs;
 
 use super::storage::{self, Inputs, Storage};
-use super::{Backend, Budget, bounds, index, overprint};
+use super::{Budget, ShapeBuilder, bounds, index, overprint};
 use crate::execute::Tops;
 use crate::format::Format;
 use crate::hash::{self, FastMap};
-use crate::paint::{Curve, PaintSpans};
 use crate::plan::{
-    Compositing, Conversion, GroupPlan, Item, ItemKind, Layout, MaskPlan, Start, area, intersect,
-    union,
+    Compositing, Conversion, Curve, GroupPlan, Item, ItemKind, Layout, MaskPlan, Start, area,
+    intersect, union,
 };
 use crate::process;
 use crate::request::RenderRequest;
+use crate::source::Source;
 use pagura_color::{Process, Target};
 use pagura_core::{Error, Limits, Name, Position, Result, Store};
 use pagura_interpret::{
@@ -35,12 +35,12 @@ pub(crate) type SolidKey = (u32, u32, Layout, pagura_color::Colorants);
 const ITEM_BYTES: usize = size_of::<Item>() + 2 * size_of::<u32>();
 
 /// The state of the walk.
-pub(crate) struct Planner<'s, B: Backend> {
+pub(crate) struct Planner<'s> {
     pub(crate) scene: &'s Scene,
     pub(crate) request: &'s RenderRequest,
     pub(crate) store: &'s Store,
     pub(crate) limits: &'s Limits,
-    pub(crate) backend: B,
+    pub(crate) shapes: ShapeBuilder<'s>,
     pub(crate) area: Area,
     pub(crate) storage: Storage,
     pub(crate) simulate: bool,
@@ -88,9 +88,9 @@ pub(crate) struct Parts {
     pub(crate) groups: Vec<GroupPlan>,
     pub(crate) items: Vec<Item>,
     pub(crate) masks: Vec<MaskPlan>,
-    pub(crate) paints: Vec<Box<dyn PaintSpans>>,
+    pub(crate) paints: Vec<Source>,
     pub(crate) conversions: Vec<Conversion>,
-    pub(crate) transfers: Vec<[Option<Arc<dyn Curve>>; 3]>,
+    pub(crate) transfers: Vec<[Option<Curve>; 3]>,
 }
 
 /// Where content is planned.
@@ -127,7 +127,7 @@ pub(crate) struct Scope {
     pub(crate) depth: usize,
 }
 
-impl<'s, B: Backend> Planner<'s, B> {
+impl<'s> Planner<'s> {
     /// Decides the page's separations and storage and readies the walk.
     ///
     /// # Errors
@@ -139,7 +139,7 @@ impl<'s, B: Backend> Planner<'s, B> {
         request: &'s RenderRequest,
         (store, limits): (&'s Store, &'s Limits),
         area: Area,
-        backend: B,
+        shapes: ShapeBuilder<'s>,
     ) -> Result<Self> {
         let separations = overprint::discover(scene, request.overprint, limits.depth)?;
         let root = scene
@@ -186,7 +186,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             request,
             store,
             limits,
-            backend,
+            shapes,
             area,
             storage,
             simulate: separations.simulate,
@@ -491,17 +491,17 @@ impl<'s, B: Backend> Planner<'s, B> {
         let black = conversion
             .black_generation
             .as_ref()
-            .map(|f| curve(f))
+            .map(Curve::new)
             .transpose()?;
         let removal = conversion
             .undercolor_removal
             .as_ref()
-            .map(|f| curve(f))
+            .map(Curve::new)
             .transpose()?;
         let cost = black
             .as_ref()
-            .map_or(0, |f| f.cost())
-            .saturating_add(removal.as_ref().map_or(0, |f| f.cost()));
+            .map_or(0, Curve::cost)
+            .saturating_add(removal.as_ref().map_or(0, Curve::cost));
         if to == Process::Cmyk {
             budget.functions.charge_product(area(bounds), cost)?;
         }
@@ -536,7 +536,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             .masks
             .get(index(mask))
             .and_then(|m| m.transfer.as_ref())
-            .map_or(0, |f| f.cost());
+            .map_or(0, Curve::cost);
         // The mask's buffer starts and becomes values over these pixels.
         budget.work.charge_product(area(bounds), 2)?;
         budget.functions.charge_product(area(bounds), cost)
@@ -761,20 +761,18 @@ impl<'s, B: Backend> Planner<'s, B> {
         }
         let functions = match transfer {
             pagura_interpret::Transfer::All(f) => {
-                let f = curve(f)?;
-                [Some(Arc::clone(&f)), Some(Arc::clone(&f)), Some(f)]
+                let f = Curve::new(f)?;
+                [Some(f.clone()), Some(f.clone()), Some(f)]
             }
             pagura_interpret::Transfer::PerComponent(functions) => {
-                let mut out: [Option<Arc<dyn Curve>>; 3] = [None, None, None];
+                let mut out: [Option<Curve>; 3] = [None, None, None];
                 for (slot, f) in out.iter_mut().zip(functions) {
-                    *slot = f.as_ref().map(|f| curve(f)).transpose()?;
+                    *slot = f.as_ref().map(Curve::new).transpose()?;
                 }
                 out
             }
         };
-        budget
-            .bytes
-            .charge(size_of::<[Option<Arc<dyn Curve>>; 3]>())?;
+        budget.bytes.charge(size_of::<[Option<Curve>; 3]>())?;
         self.parts.transfers.push(functions);
         let index = u16::try_from(self.parts.transfers.len())
             .map_err(|_| Error::limit("transfer function count exceeds u16"))?;
@@ -810,7 +808,7 @@ impl Scope {
 }
 
 /// A soft mask's `BC` and `TR`.
-type MaskParameters = ([f64; 4], Option<Arc<dyn Curve>>);
+type MaskParameters = ([f64; 4], Option<Curve>);
 
 /// A soft mask's `BC` in its group's blending space, additively, and its
 /// `TR`.
@@ -826,16 +824,8 @@ fn mask_parameters(mask: &pagura_interpret::SoftMask, process: Process) -> Resul
         }
         None => process::black(process),
     };
-    let transfer = mask.transfer.as_ref().map(curve).transpose()?;
+    let transfer = mask.transfer.as_ref().map(Curve::new).transpose()?;
     Ok((backdrop, transfer))
-}
-
-/// A one-input function as a curve; the first output is used.
-pub(crate) fn curve(function: &Arc<pagura_color::Function>) -> Result<Arc<dyn Curve>> {
-    if function.inputs() != 1 || function.outputs() == 0 {
-        return Err(Error::syntax("transfer function must map one input"));
-    }
-    Ok(Arc::clone(function) as Arc<dyn Curve>)
 }
 
 /// The device transform of a fixed view (12.5.3): `NoRotate` undoes the

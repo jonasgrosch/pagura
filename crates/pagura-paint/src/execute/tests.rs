@@ -6,106 +6,130 @@
 
 use super::{Destination, Executor, Sizes, Tops, Workspace};
 use crate::format::Format;
-use crate::paint::{Convert, Curve, PaintSpans};
 use crate::plan::{
-    Compositing, Conversion, Cover, Glyph, GroupPlan, GroupUse, Item, ItemKind, Layout, Mark,
-    MaskPlan, Output, Plan, Run, SpotPlan, Start,
+    Compositing, Conversion, Cover, Curve, Glyph, GroupPlan, GroupUse, Item, ItemKind, Layout,
+    Mark, MaskPlan, Output, Plan, Run, SpotPlan, Start,
 };
-use crate::prepare::Producer;
-use crate::source::{Source, SpanColors};
-use crate::testing::{Box4, rect_producer};
-use pagura_color::{Painted, Process};
-use pagura_core::Position;
-use pagura_interpret::{BlendMode, MaskKind};
-use pagura_raster::{Area, BandCoverage, DeviceRect, Pixmap, Rgba8};
+use crate::prepare::Shapes;
+use crate::source::{PaintContext, Pixels, Source, SpanColors};
+use crate::testing::Box4;
+use pagura_color::{
+    ColorSpace, Colorant, Conversion as ColorConversion, Converter, ExponentialFunction, Function,
+    Painted, Process, Separation, Target,
+};
+use pagura_core::{Limits, Meter, Position, Store};
+use pagura_interpret::{BlendMode, Composite, MaskKind, Shading, ShadingFunction, ShadingKind};
+use pagura_raster::{Area, DeviceRect, PathBuilder, Pixmap, Point, Rgba8, Transform};
 use std::sync::Arc;
 
-/// Colours that vary along a row, with alpha that varies too.
-#[derive(Debug)]
-struct Gradient {
-    channels: usize,
-    alpha: bool,
+/// `C0 + x^N (C1 − C0)` of one input.
+fn exponential(c0: &[f64], c1: &[f64], exponent: f64) -> Arc<Function> {
+    Arc::new(
+        Function::exponential(ExponentialFunction {
+            domain: [0.0, 1.0],
+            range: None,
+            c0: c0.to_vec(),
+            c1: c1.to_vec(),
+            exponent,
+        })
+        .unwrap(),
+    )
 }
 
-impl Gradient {
-    fn color(x: u32, k: usize) -> f64 {
-        (f64::from(x) / 16.0 + 0.1 * k as f64).fract()
-    }
-
-    fn alpha(x: u32, y: u32) -> f64 {
-        f64::from((x + y) % 5 + 1) / 5.0
-    }
+/// `x²`.
+fn square() -> Curve {
+    Curve::new(&exponential(&[0.0], &[1.0], 2.0)).unwrap()
 }
 
-impl PaintSpans for Gradient {
-    fn constant(&self) -> Option<&[f64]> {
-        None
-    }
-
-    fn painted(&self) -> Painted {
-        Painted::default()
-    }
-
-    fn span(&self, x: u32, y: u32, len: usize, out: &mut SpanColors) {
-        out.channels = self.channels;
-        out.colors.clear();
-        out.alpha.clear();
-        for column in (x..).take(len) {
-            out.colors
-                .extend((0..self.channels).map(|k| Self::color(column, k)));
-            if self.alpha {
-                out.alpha.push(Self::alpha(column, y));
-            }
-        }
-        out.painted = Painted((1 << self.channels) - 1);
-    }
+/// `x × factor`.
+fn scaled(factor: f64) -> Curve {
+    Curve::new(&exponential(&[0.0], &[factor], 1.0)).unwrap()
 }
 
-#[derive(Debug)]
-struct Square;
-
-impl Curve for Square {
-    fn map(&self, x: f64) -> f64 {
-        x * x
-    }
-    fn cost(&self) -> usize {
-        1
-    }
+/// A spot ink with this CMYK composition per unit of tint, converted into
+/// CMYK.
+fn ink(cmyk: [f64; 4]) -> Converter {
+    let space = ColorSpace::Separation(Arc::new(Separation {
+        colorant: Colorant::Named(pagura_core::Name::from(b"Spot")),
+        alternate: Arc::new(ColorSpace::DeviceCmyk),
+        tint: exponential(&[0.0; 4], &cmyk, 1.0),
+    }));
+    Converter::new(
+        &space,
+        &Target::new(Process::Cmyk),
+        &ColorConversion::default(),
+    )
+    .unwrap()
 }
 
-#[derive(Debug)]
-struct Scaled(f64);
-
-impl Curve for Scaled {
-    fn map(&self, x: f64) -> f64 {
-        x * self.0
-    }
-    fn cost(&self) -> usize {
-        1
-    }
+/// An anti-aliased axial shading across the page into `channels` process
+/// channels, not extended, so that colours vary and pixels near the axis
+/// ends are partly covered.
+fn gradient(channels: usize) -> Source {
+    let (space, process, c0, c1): (_, _, &[f64], &[f64]) = match channels {
+        1 => (ColorSpace::DeviceGray, Process::Gray, &[0.1], &[0.9]),
+        _ => (
+            ColorSpace::DeviceRgb,
+            Process::Rgb,
+            &[0.1, 0.6, 0.9],
+            &[0.9, 0.2, 0.4],
+        ),
+    };
+    let shading = Shading {
+        object: None,
+        space: Arc::new(space),
+        background: None,
+        bbox: None,
+        antialias: true,
+        kind: ShadingKind::Axial {
+            start: Point::new(1.6, 0.3),
+            end: Point::new(10.3, 4.1),
+            domain: [0.0, 1.0],
+            extend: [false, false],
+        },
+        function: Some(ShadingFunction::Single(exponential(c0, c1, 1.0))),
+    };
+    let target = Target::new(process);
+    let store = Store::new(1 << 16);
+    let context = PaintContext {
+        transform: Transform::IDENTITY,
+        target: &target,
+        composite: &Composite::default(),
+        store: &store,
+        limits: &Limits::default(),
+        region: page_rect(64, 64),
+    };
+    let mut functions = Meter::new(usize::MAX, "test functions");
+    let source = Source::shading(
+        &shading,
+        Transform::IDENTITY,
+        &context,
+        64 * 64,
+        &mut functions,
+    );
+    let source = source.unwrap();
+    assert!(matches!(source, Source::Shading(_)));
+    source
 }
 
-/// A spot ink with this CMYK composition per unit of tint.
-#[derive(Debug)]
-struct Ink([f64; 4]);
-
-impl Convert for Ink {
-    fn convert(&self, components: &[f64], output: &mut [f64]) -> Painted {
-        for (out, ink) in output.iter_mut().zip(self.0) {
-            *out = 1.0 - components[0] * ink;
-        }
-        Painted(0b1111)
-    }
-    fn cost(&self) -> usize {
-        2
-    }
+/// The colours and alpha `paint` gives pixel `(x, y)`.
+fn sample(paint: &Source, (x, y): (u32, u32)) -> (Vec<f64>, f64) {
+    let mut out = SpanColors::default();
+    let pixels = Pixels {
+        x,
+        y,
+        len: 1,
+        boundary: None,
+    };
+    paint.fill(pixels, &mut out, &mut Vec::new());
+    (out.colors, out.alpha.first().copied().unwrap_or(1.0))
 }
 
-fn solid(color: &[f64], painted: u64) -> Box<dyn PaintSpans> {
-    Box::new(Source::Solid {
+fn solid(color: &[f64], painted: u64) -> Source {
+    Source::Solid {
         color: color.into(),
         painted: Painted(painted),
-    })
+    }
 }
 
 fn opaque() -> Compositing {
@@ -129,13 +153,12 @@ struct Fixture {
     height: u32,
     groups: Vec<GroupPlan>,
     items: Vec<Item>,
-    shapes: Vec<Box4>,
-    paints: Vec<Box<dyn PaintSpans>>,
+    /// Shape outlines in device space, keyed in order.
+    paths: Vec<pagura_raster::Path>,
+    paints: Vec<Source>,
     masks: Vec<MaskPlan>,
     conversions: Vec<Conversion>,
     output: Output,
-    /// Shapes of [`Speckles`] coverage, used instead of `shapes` when set.
-    speckled: Option<Vec<DeviceRect>>,
 }
 
 fn page_rect(width: u32, height: u32) -> DeviceRect {
@@ -162,7 +185,7 @@ impl Fixture {
                 start: Start::Transparent,
             }],
             items: Vec::new(),
-            shapes: Vec::new(),
+            paths: Vec::new(),
             paints: Vec::new(),
             masks: Vec::new(),
             conversions: Vec::new(),
@@ -172,7 +195,6 @@ impl Fixture {
                 spots: Vec::new(),
                 transfers: Vec::new(),
             },
-            speckled: None,
         }
     }
 
@@ -197,12 +219,12 @@ impl Fixture {
         &mut self,
         group: u32,
         rect: Box4,
-        paint: Box<dyn PaintSpans>,
+        paint: Source,
         compositing: Compositing,
         select: u16,
     ) {
-        let shape = u32::try_from(self.shapes.len()).unwrap();
-        self.shapes.push(rect);
+        let shape = u32::try_from(self.paths.len()).unwrap();
+        self.paths.push((*crate::testing::rect_path(rect)).clone());
         let paint_index = u32::try_from(self.paints.len()).unwrap();
         self.paints.push(paint);
         let kind = ItemKind::Mark(Mark {
@@ -281,18 +303,15 @@ impl Fixture {
             },
         };
         let mut workspace = Workspace::new(&plan, plan.sizes, None).unwrap();
-        let mut free = pagura_core::Meter::new(usize::MAX, "test rasterizer");
+        let mut free = Meter::new(usize::MAX, "test rasterizer");
         let mut rasterizer = pagura_raster::BandRasterizer::new(area, &mut free).unwrap();
-        let producer: Box<dyn Producer> = match self.speckled {
-            Some(shapes) => Box::new(Speckles { area, shapes }),
-            None => rect_producer(area, self.shapes, Vec::new()),
-        };
+        let shapes: Shapes = crate::testing::path_shapes(area, &self.paths);
         let mut target =
             Pixmap::new(self.width, self.height, Rgba8::TRANSPARENT, usize::MAX).unwrap();
         workspace.restart();
         for band in area.bands() {
             let target = Destination::Pixmap(&mut target);
-            let executing = (&plan, &mut workspace, (producer.as_ref(), &mut rasterizer));
+            let executing = (&plan, &mut workspace, (&shapes, &mut rasterizer));
             Executor::band(executing, band, target);
         }
         // Rows collected without a surface are the surface's rows.
@@ -300,7 +319,7 @@ impl Fixture {
         workspace.restart();
         for band in area.bands() {
             let target = Destination::Rows(&mut rows);
-            let executing = (&plan, &mut workspace, (producer.as_ref(), &mut rasterizer));
+            let executing = (&plan, &mut workspace, (&shapes, &mut rasterizer));
             Executor::band(executing, band, target);
         }
         assert_eq!(rows, target.data());
@@ -324,23 +343,19 @@ fn varying_paint_with_alpha_composites_in_every_format() {
     for format in [Format::F64, Format::F32, Format::N16] {
         for band_height in [1, 3, 8] {
             let mut f = Fixture::new(12, 6, RGB, format);
-            let gradient = Gradient {
-                channels: 3,
-                alpha: format != Format::N16,
-            };
-            f.mark(0, [0.0, 0.0, 12.0, 6.0], Box::new(gradient), opaque(), 0);
+            f.mark(0, [0.0, 0.0, 12.0, 6.0], gradient(3), opaque(), 0);
             let bytes = f.render(band_height);
+            let paint = gradient(3);
+            let mut partial = 0;
             for y in 0..6 {
                 for x in 0..12 {
-                    let a = if format == Format::N16 {
-                        1.0
-                    } else {
-                        Gradient::alpha(x, y)
-                    };
-                    let c = [0, 1, 2].map(|k| Gradient::color(x, k) * a + (1.0 - a));
+                    let (color, a) = sample(&paint, (x, y));
+                    partial += usize::from(a > 0.0 && a < 1.0);
+                    let c = [0, 1, 2].map(|k| color[k] * a + (1.0 - a));
                     assert_close(&bytes, 12, (x, y), [c[0], c[1], c[2], 1.0]);
                 }
             }
+            assert!(partial > 0, "the gradient has partly covered pixels");
         }
     }
 }
@@ -348,11 +363,7 @@ fn varying_paint_with_alpha_composites_in_every_format() {
 #[test]
 fn the_last_opaque_mark_selects_its_transfer() {
     let mut f = Fixture::new(4, 2, RGB, Format::F64);
-    f.output.transfers = vec![[
-        Some(Arc::new(Square) as Arc<dyn Curve>),
-        None,
-        Some(Arc::new(Square)),
-    ]];
+    f.output.transfers = vec![[Some(square()), None, Some(square())]];
     f.mark(
         0,
         [0.0, 0.0, 4.0, 2.0],
@@ -381,7 +392,7 @@ fn spot_channels_overprint_and_preview_through_their_alternate() {
     for overprint in [true, false] {
         let mut f = Fixture::new(2, 1, layout, Format::F64);
         f.output.spots = vec![SpotPlan {
-            convert: Box::new(Ink([0.0, 0.8, 0.3, 0.0])),
+            convert: ink([0.0, 0.8, 0.3, 0.0]),
             components: 1,
             inputs: vec![(0, 0)],
         }];
@@ -445,7 +456,7 @@ fn soft_mask_transfer_functions_map_values() {
         kind: MaskKind::Alpha,
         isolated: true,
         backdrop: [0.0; 4],
-        transfer: Some(Arc::new(Square)),
+        transfer: Some(square()),
         extent: page_rect(3, 2),
         outside: 0.0,
     });
@@ -490,8 +501,8 @@ fn black_generation_converts_group_results_into_cmyk() {
     f.conversions.push(Conversion {
         from: Process::Rgb,
         to: Process::Cmyk,
-        black: Some(Arc::new(Scaled(0.5))),
-        removal: Some(Arc::new(Scaled(0.0))),
+        black: Some(scaled(0.5)),
+        removal: Some(scaled(0.0)),
     });
     f.use_group(0, group, opaque(), Some(0));
     let bytes = f.render(32);
@@ -568,86 +579,27 @@ fn narrow_parents_take_group_results_as_one_rounded_store() {
     }
 }
 
-/// Coverage with holes: within a shape's bounds each pixel is uncovered,
-/// fully or partly covered by a hash of its place, and partial spans keep
-/// single zero bytes inside.
-#[derive(Debug)]
-struct Speckles {
-    area: Area,
-    shapes: Vec<DeviceRect>,
-}
-
-fn speckle(shape: u32, x: u32, y: u32) -> u8 {
-    let h = (shape.wrapping_mul(2_654_435_761) ^ x.wrapping_mul(40_503) ^ y.wrapping_mul(9_973))
-        .wrapping_mul(2_246_822_519);
-    match (h >> 13) % 6 {
-        0 => 0,
-        1 | 2 => 255,
-        _ => u8::try_from((h >> 3) % 254 + 1).unwrap(),
-    }
-}
-
-impl Producer for Speckles {
-    fn rasterize(
-        &self,
-        _rasterizer: &mut pagura_raster::BandRasterizer,
-        shape: Option<u32>,
-        _clip: Option<u32>,
-        band: u32,
-        out: &mut BandCoverage,
-    ) {
-        out.clear();
-        let mut cells = Vec::new();
-        let Some((key, bounds)) = shape.and_then(|s| Some((s, *self.shapes.get(s as usize)?)))
-        else {
-            out.finish();
-            return;
-        };
-        for y in self.area.band_rows(band) {
-            if y < bounds.y0 || y >= bounds.y1 {
-                continue;
-            }
-            out.push_row(y);
-            let mut full: Option<(u32, u32)> = None;
-            cells.clear();
-            let mut start = 0;
-            for x in bounds.x0..=bounds.x1 {
-                let c = if x < bounds.x1 { speckle(key, x, y) } else { 0 };
-                if c != 255
-                    && let Some((at, len)) = full.take()
-                {
-                    out.push_full(at, len);
-                }
-                let gap = c == 0 && cells.last() == Some(&0);
-                if (c == 255 || gap || x == bounds.x1) && !cells.is_empty() {
-                    out.push_partial(start, &cells);
-                    cells.clear();
-                }
-                if c == 255 {
-                    full = Some(full.map_or((x, 1), |(at, len)| (at, len + 1)));
-                } else if !gap && x < bounds.x1 {
-                    if cells.is_empty() {
-                        start = x;
-                    }
-                    cells.push(c);
-                }
-            }
+/// A shape with holes within `bounds`: unit cells, each left out, filled
+/// or partly filled by a hash of its place, so that coverage is full,
+/// partial and zero within a row.
+fn speckled(shape: u32, bounds: DeviceRect) -> pagura_raster::Path {
+    let mut path = PathBuilder::new();
+    for y in bounds.y0..bounds.y1 {
+        for x in bounds.x0..bounds.x1 {
+            let h = (shape.wrapping_mul(2_654_435_761)
+                ^ x.wrapping_mul(40_503)
+                ^ y.wrapping_mul(9_973))
+            .wrapping_mul(2_246_822_519);
+            let inset = match (h >> 13) % 6 {
+                0 if (x, y) != (bounds.x0, bounds.y0) => continue,
+                0..=2 => 0.0,
+                _ => f64::from((h >> 3) % 7 + 1) / 16.0,
+            };
+            let (x, y) = (f64::from(x), f64::from(y));
+            path.rect(x + inset, y, 1.0 - inset, 1.0 - inset / 2.0);
         }
-        out.finish();
     }
-
-    fn rasterize_run(
-        &self,
-        rasterizer: &mut pagura_raster::BandRasterizer,
-        shapes: &[u32],
-        clip: Option<u32>,
-        band: u32,
-        out: &mut BandCoverage,
-    ) -> usize {
-        crate::testing::merge_run(shapes, out, |shape, one| {
-            self.rasterize(rasterizer, Some(shape), clip, band, one);
-        })
-    }
+    path.finish()
 }
 
 impl Fixture {
@@ -660,9 +612,11 @@ impl Fixture {
         (color, compositing): (&[f64], Compositing),
         run: Option<bool>,
     ) {
-        let shapes = self.speckled.get_or_insert_with(Vec::new);
-        let first = u32::try_from(shapes.len()).unwrap();
-        shapes.extend_from_slice(bounds);
+        let first = u32::try_from(self.paths.len()).unwrap();
+        for (i, &b) in bounds.iter().enumerate() {
+            let shape = first + u32::try_from(i).unwrap();
+            self.paths.push(speckled(shape, b));
+        }
         let paint = u32::try_from(self.paints.len()).unwrap();
         self.paints.push(solid(color, 0b111));
         let words = (compositing.is_opaque() && color.len() == 3).then(|| {

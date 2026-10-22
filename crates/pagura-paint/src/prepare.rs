@@ -8,14 +8,14 @@
 //! the region. The first error in source order among the marks that meet
 //! the region is the result; it does not depend on band height.
 
-mod backend;
 pub(crate) mod bounds;
 mod finish;
 mod overprint;
 pub(crate) mod planner;
+mod shapes;
 mod storage;
 
-pub(crate) use backend::{Backend, PaintRequest, Prepared, Producer, Raster, Storage};
+pub(crate) use shapes::{Prepared, ShapeBuilder, Shapes, Storage};
 
 use crate::execute::{Destination, Executing, Executor, Scratch, Workspace};
 use crate::plan::{MAX_BAND_HEIGHT, Plan};
@@ -34,7 +34,7 @@ use pagura_raster::{Area, BandRasterizer, DeviceRect, Pixmap};
 #[derive(Debug)]
 pub struct PreparedScene {
     plan: Plan,
-    producer: Box<dyn Producer>,
+    shapes: Shapes,
     repairs: Vec<Diagnostic>,
     charges: Charges,
 }
@@ -44,7 +44,7 @@ pub struct PreparedScene {
 #[derive(Debug)]
 pub struct Rendering<'a> {
     plan: &'a Plan,
-    producer: &'a dyn Producer,
+    shapes: &'a Shapes,
     workspace: &'a mut Workspace,
     rasterizer: &'a mut BandRasterizer,
 }
@@ -146,28 +146,14 @@ pub(crate) fn prepare_in(
     (store, limits): (&Store, &Limits),
     storage: Storage,
 ) -> Result<PreparedScene> {
-    prepare_with(
-        scene,
-        request,
-        (store, limits),
-        Raster::new(store, limits).with_storage(storage),
-    )
-}
-
-/// [`prepare`] with the geometry and paint of `backend`.
-pub(crate) fn prepare_with<B: Backend>(
-    scene: &Scene,
-    request: &RenderRequest,
-    (store, limits): (&Store, &Limits),
-    backend: B,
-) -> Result<PreparedScene> {
     let area = area(request, limits)?;
     let mut budget = Budget::new(limits);
-    let planner = planner::Planner::new(scene, request, (store, limits), area, backend)?;
+    let shapes = ShapeBuilder::new(store, limits, storage);
+    let planner = planner::Planner::new(scene, request, (store, limits), area, shapes)?;
     let finished = finish::finish(planner, &mut budget)?;
     Ok(PreparedScene {
         plan: finished.plan,
-        producer: finished.producer,
+        shapes: finished.shapes,
         repairs: finished.repairs,
         charges: budget.charges(),
     })
@@ -241,7 +227,7 @@ impl PreparedScene {
         let (workspace, rasterizer) = scratch.fit(&self.plan)?;
         Ok(Rendering {
             plan: &self.plan,
-            producer: self.producer.as_ref(),
+            shapes: &self.shapes,
             workspace,
             rasterizer,
         })
@@ -249,7 +235,7 @@ impl PreparedScene {
 
     /// The storage of its shapes, for the next preparation.
     pub(crate) fn into_storage(self) -> Storage {
-        self.producer.into_storage()
+        self.shapes.into_storage()
     }
 
     /// The plan, for tests.
@@ -308,7 +294,7 @@ impl Rendering<'_> {
                 (
                     plan,
                     &mut *self.workspace,
-                    (self.producer, &mut *self.rasterizer),
+                    (self.shapes, &mut *self.rasterizer),
                 ),
                 index,
             );

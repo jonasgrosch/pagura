@@ -1,366 +1,39 @@
-//! Test doubles: a backend of axis-aligned rectangles with exact coverage
-//! and device colours (standing in for the band rasterizer and the paint
-//! sources), a scene builder, and renders through this crate and through
-//! the reference renderer.
+//! Test support: a scene builder, prepared rectangle shapes, and renders
+//! through this crate and through the reference renderer.
 
-use crate::paint::{Convert, PaintSpans};
-use crate::prepare::{Backend, PaintRequest, Prepared, PreparedScene, Producer, prepare_with};
+use crate::prepare::{PreparedScene, ShapeBuilder, Shapes};
 use crate::request::RenderRequest;
-use crate::source::Source;
-use pagura_color::{ColorSpace, Components, Conversion, Target};
-use pagura_core::{Error, Limits, Meter, Position, Rect, Result, Store};
+use pagura_color::{ColorSpace, Components};
+use pagura_core::{Limits, Position, Rect, Result, Store};
 use pagura_interpret::{
-    ClipId, ClipNode, Color, Composite, FillNode, GlyphSource, Group, GroupAttributes, GroupCause,
-    GroupId, GroupRole, Image, MarkInfo, MaskId, MaskKind, Node, NodeId, PageSpace, Paint, PaintId,
-    Pen, Scene, Shading, SoftMask, StateId,
+    ClipId, ClipNode, Color, Composite, FillNode, Group, GroupAttributes, GroupCause, GroupId,
+    GroupRole, MarkInfo, MaskId, MaskKind, Node, NodeId, PageSpace, Paint, PaintId, Scene,
+    SoftMask, StateId,
 };
-use pagura_raster::{
-    Area, BandCoverage, BandRasterizer, DeviceRect, FillRule, Path, Pixmap, Point, Rgba8, Segment,
-    ShapeOptions, Transform, quantize_unit,
-};
+use pagura_raster::{Area, DeviceRect, FillRule, Path, Pixmap, Rgba8, ShapeOptions, Transform};
 use std::sync::Arc;
 
 /// A device rectangle `[x0, y0, x1, y1]` in f64.
 pub(crate) type Box4 = [f64; 4];
 
-/// The backend: every path must be an axis-aligned rectangle in device
-/// space; colours are device colours of the target's own family.
-#[derive(Debug, Default)]
-pub(crate) struct Rects {
-    shapes: Vec<Box4>,
-    clips: Vec<Box4>,
-}
-
-fn rectangle(path: &Path, transform: Transform) -> Result<Option<Box4>> {
-    let mut points = Vec::new();
-    for segment in path.segments() {
-        match *segment {
-            Segment::MoveTo(p) | Segment::LineTo(p) => points.push(transform.apply(p)),
-            Segment::Close => {}
-            Segment::CubicTo { .. } => {
-                return Err(Error::syntax("the test backend takes rectangles only"));
-            }
-        }
-    }
-    let Some(hull) = crate::prepare::bounds::points(points.iter().copied()) else {
-        return Ok(None);
-    };
-    let corner =
-        |p: &Point| (p.x == hull[0] || p.x == hull[2]) && (p.y == hull[1] || p.y == hull[3]);
-    if !points.iter().all(corner) {
-        return Err(Error::syntax("the test backend takes rectangles only"));
-    }
-    Ok(Some(hull))
-}
-
-fn meets(rect: Box4, area: Area) -> Option<DeviceRect> {
-    let r = area.region;
-    let bounds = crate::prepare::bounds::device(Some(rect), r);
-    (!bounds.is_empty() && rect[2] > rect[0] && rect[3] > rect[1]).then_some(bounds)
-}
-
-impl Rects {
-    fn shape(&mut self, rect: Option<Box4>, options: &ShapeOptions<'_>) -> Option<Prepared> {
-        let rect = rect?;
-        let bounds = meets(rect, options.area)?;
-        let key = u32::try_from(self.shapes.len()).ok()?;
-        self.shapes.push(rect);
-        Some(Prepared {
-            key,
-            bounds,
-            work: crate::plan::area(bounds) + 1,
-            bytes: size_of::<Box4>(),
-        })
-    }
-}
-
-impl Backend for Rects {
-    fn fill(
-        &mut self,
-        path: &Path,
-        transform: Transform,
-        _rule: FillRule,
-        options: &ShapeOptions<'_>,
-    ) -> Result<Option<Prepared>> {
-        let rect = rectangle(path, transform)?;
-        Ok(self.shape(rect, options))
-    }
-
-    fn stroke(
-        &mut self,
-        path: &Path,
-        (pen, _): (&Pen, Transform),
-        transform: Transform,
-        options: &ShapeOptions<'_>,
-    ) -> Result<Option<Prepared>> {
-        let points = path.segments().iter().filter_map(|s| match *s {
-            Segment::MoveTo(p) | Segment::LineTo(p) => Some(transform.apply(p)),
-            _ => None,
-        });
-        let half = pen.stroke.width / 2.0 * transform.a.abs();
-        let rect = crate::prepare::bounds::points(points)
-            .map(|h| [h[0] - half, h[1] - half, h[2] + half, h[3] + half]);
-        Ok(self.shape(rect, options))
-    }
-
-    fn glyph(
-        &mut self,
-        (source, _): (&GlyphSource, &mut Option<u32>),
-        linear: [f64; 4],
-        origin: Point,
-        options: &ShapeOptions<'_>,
-    ) -> Result<Option<Prepared>> {
-        let [a, b, c, d] = linear;
-        let transform = Transform::new(a, b, c, d, origin.x, origin.y);
-        let rect = rectangle(&source.outline, transform)?;
-        Ok(self.shape(rect, options))
-    }
-
-    fn clip(
-        &mut self,
-        paths: &[(&Path, FillRule)],
-        transform: Transform,
-        options: &ShapeOptions<'_>,
-    ) -> Result<Prepared> {
-        let mut rect = [
-            f64::NEG_INFINITY,
-            f64::NEG_INFINITY,
-            f64::INFINITY,
-            f64::INFINITY,
-        ];
-        for (path, _) in paths {
-            let r = rectangle(path, transform)?.unwrap_or([0.0; 4]);
-            rect = [
-                rect[0].max(r[0]),
-                rect[1].max(r[1]),
-                rect[2].min(r[2]),
-                rect[3].min(r[3]),
-            ];
-        }
-        let key = u32::try_from(self.clips.len()).unwrap_or(u32::MAX);
-        self.clips.push(rect);
-        Ok(Prepared {
-            key,
-            bounds: meets(rect, options.area).unwrap_or_default(),
-            work: 0,
-            bytes: size_of::<Box4>(),
-        })
-    }
-
-    fn paint(
-        &mut self,
-        paint: &Paint,
-        request: &PaintRequest<'_>,
-        functions: &mut Meter,
-    ) -> Result<Box<dyn PaintSpans>> {
-        Ok(Box::new(Source::prepare(
-            paint,
-            &request.context,
-            request.pixels,
-            functions,
-        )?))
-    }
-
-    fn shading(
-        &mut self,
-        shading: &Shading,
-        to_device: Transform,
-        request: &PaintRequest<'_>,
-        functions: &mut Meter,
-    ) -> Result<Box<dyn PaintSpans>> {
-        Ok(Box::new(Source::shading(
-            shading,
-            to_device,
-            &request.context,
-            request.pixels,
-            functions,
-        )?))
-    }
-
-    fn image(
-        &mut self,
-        _image: &Image,
-        _to_device: Transform,
-        _stencil: Option<Box<dyn PaintSpans>>,
-        _request: &PaintRequest<'_>,
-        _budgets: (&mut Meter, &mut Meter),
-    ) -> Result<Box<dyn PaintSpans>> {
-        Err(Error::syntax("the test backend has no images"))
-    }
-
-    fn converter(
-        &mut self,
-        space: &ColorSpace,
-        target: &Target,
-        conversion: &Conversion,
-    ) -> Result<Box<dyn Convert>> {
-        Ok(Box::new(pagura_color::Converter::new(
-            space, target, conversion,
-        )?))
-    }
-
-    fn finish(self, area: Area) -> Box<dyn Producer> {
-        Box::new(RectCoverage {
-            area,
-            shapes: self.shapes,
-            clips: self.clips,
-        })
-    }
-}
-
-/// A producer of exact rectangle coverage for `shapes` and `clips`.
-pub(crate) fn rect_producer(area: Area, shapes: Vec<Box4>, clips: Vec<Box4>) -> Box<dyn Producer> {
-    Box::new(RectCoverage {
+/// The prepared shapes of `paths`, filled in device space over `area`,
+/// keyed in order.
+pub(crate) fn path_shapes(area: Area, paths: &[Path]) -> Shapes {
+    let store = Store::new(1 << 20);
+    let limits = Limits::default();
+    let options = ShapeOptions {
         area,
-        shapes,
-        clips,
-    })
-}
-
-/// Exact coverage of rectangles, quantized once.
-#[derive(Debug)]
-struct RectCoverage {
-    area: Area,
-    shapes: Vec<Box4>,
-    clips: Vec<Box4>,
-}
-
-fn overlap(pixel: u32, low: f64, high: f64) -> f64 {
-    let p = f64::from(pixel);
-    (high.min(p + 1.0) - low.max(p)).clamp(0.0, 1.0)
-}
-
-impl Producer for RectCoverage {
-    fn rasterize(
-        &self,
-        _rasterizer: &mut BandRasterizer,
-        shape: Option<u32>,
-        clip: Option<u32>,
-        band: u32,
-        out: &mut BandCoverage,
-    ) {
-        out.clear();
-        let region = self.area.region;
-        let whole = [
-            f64::from(region.x0),
-            f64::from(region.y0),
-            f64::from(region.x1),
-            f64::from(region.y1),
-        ];
-        let get = |set: &[Box4], i: Option<u32>| {
-            i.and_then(|i| set.get(pagura_core::convert::u32_to_usize(i)).copied())
-        };
-        let s = get(&self.shapes, shape).unwrap_or(whole);
-        let c = get(&self.clips, clip).unwrap_or(whole);
-        let r = [
-            s[0].max(c[0]),
-            s[1].max(c[1]),
-            s[2].min(c[2]),
-            s[3].min(c[3]),
-        ];
-        let mut cells = Vec::new();
-        for y in self.area.band_rows(band) {
-            let vertical = overlap(y, r[1], r[3]);
-            if vertical <= 0.0 {
-                continue;
-            }
-            let first = crate::prepare::bounds::device(
-                Some([r[0], f64::from(y), r[2], f64::from(y) + 1.0]),
-                region,
-            );
-            if first.is_empty() {
-                continue;
-            }
-            out.push_row(y);
-            let mut full: Option<(u32, u32)> = None;
-            let mut partial: Option<u32> = None;
-            for x in first.x0..=first.x1 {
-                let area = if x < first.x1 {
-                    overlap(x, r[0], r[2]) * vertical
-                } else {
-                    0.0
-                };
-                let byte = quantize_unit(area);
-                let is_full = area >= 1.0;
-                if !is_full && let Some((start, len)) = full.take() {
-                    out.push_full(start, len);
-                }
-                if (is_full || byte == 0)
-                    && let Some(start) = partial.take()
-                {
-                    out.push_partial(start, &cells);
-                    cells.clear();
-                }
-                if is_full {
-                    full = Some(full.map_or((x, 1), |(start, len)| (start, len + 1)));
-                } else if byte > 0 {
-                    partial.get_or_insert(x);
-                    cells.push(byte);
-                }
-            }
-        }
-        out.finish();
+        limits: &limits,
+    };
+    let mut builder = ShapeBuilder::new(&store, &limits, Vec::new());
+    for (i, path) in paths.iter().enumerate() {
+        let prepared = builder
+            .fill(path, Transform::IDENTITY, FillRule::NonZero, &options)
+            .unwrap_or_else(|e| panic!("{e}"))
+            .unwrap_or_else(|| panic!("shape {i} covers no pixel"));
+        assert_eq!(prepared.key, index(i));
     }
-
-    fn rasterize_run(
-        &self,
-        rasterizer: &mut BandRasterizer,
-        shapes: &[u32],
-        clip: Option<u32>,
-        band: u32,
-        out: &mut BandCoverage,
-    ) -> usize {
-        merge_run(shapes, out, |shape, one| {
-            self.rasterize(rasterizer, Some(shape), clip, band, one);
-        })
-    }
-}
-
-/// [`Producer::rasterize_run`] for test producers: at most three of
-/// `shapes` rasterized one by one with `one`, merged into one partial span
-/// per row from the first to the last covered column, zero between.
-pub(crate) fn merge_run(
-    shapes: &[u32],
-    out: &mut BandCoverage,
-    mut one: impl FnMut(u32, &mut BandCoverage),
-) -> usize {
-    let taken = shapes.len().min(3);
-    let mut rows: std::collections::BTreeMap<u32, Vec<(u32, Vec<u8>)>> =
-        std::collections::BTreeMap::new();
-    let mut single = BandCoverage::default();
-    for &shape in &shapes[..taken] {
-        one(shape, &mut single);
-        for row in single.rows() {
-            for span in row.spans() {
-                let (x, bytes) = match span {
-                    pagura_raster::Span::Full { x, len } => (x, vec![255; len as usize]),
-                    pagura_raster::Span::Partial { x, coverage } => (x, coverage.to_vec()),
-                };
-                rows.entry(row.y).or_default().push((x, bytes));
-            }
-        }
-    }
-    out.clear();
-    for (y, spans) in rows {
-        let x0 = spans.iter().map(|(x, _)| *x).min().unwrap_or(0);
-        let x1 = spans
-            .iter()
-            .map(|(x, bytes)| *x + index(bytes.len()))
-            .max()
-            .unwrap_or(0);
-        let mut dense = vec![0_u8; (x1 - x0) as usize];
-        for (x, bytes) in spans {
-            let at = (x - x0) as usize;
-            for (out, byte) in dense[at..at + bytes.len()].iter_mut().zip(bytes) {
-                assert_eq!(*out, 0, "merged shapes share a pixel");
-                *out = byte;
-            }
-        }
-        out.push_row(y);
-        out.push_partial(x0, &dense);
-    }
-    out.finish();
-    taken
+    builder.finish()
 }
 
 /// Builds scenes in device space (an identity request transform unless
@@ -571,14 +244,13 @@ impl Build {
         request
     }
 
-    /// Prepares `request` with the rectangle backend.
+    /// Prepares `request` with a store of its own.
     pub(crate) fn prepare(
         &self,
         request: &RenderRequest,
         limits: &Limits,
     ) -> Result<PreparedScene> {
-        let store = Store::new(1 << 20);
-        prepare_with(&self.scene, request, (&store, limits), Rects::default())
+        crate::prepare(&self.scene, request, &Store::new(1 << 20), limits)
     }
 
     /// Renders `request` into region-sized premultiplied RGBA8, checking

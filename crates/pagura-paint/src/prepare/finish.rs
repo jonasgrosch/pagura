@@ -1,14 +1,14 @@
 //! The end of preparation: soft-mask extents, activation orders, stack
-//! sizes, output, the reservations of buffers and output, the coverage
-//! producer, the workspace's sizes, and the check of transfer selections.
+//! sizes, output, the reservations of buffers and output, the prepared
+//! shapes, the workspace's sizes, and the check of transfer selections.
 //! When the walk failed, the transfer check of the marks before the failure
 //! decides which error comes first in source order.
 
 use super::planner::{Parts, Planner, needs};
-use super::{Backend, Budget, Producer, index};
+use super::{Budget, Shapes, index};
 use crate::execute::{Sizes, validate};
-use crate::plan::{Item, Layout, MAX_BAND_HEIGHT, Output, Plan, SpotPlan, area, intersect};
-use pagura_color::{ColorSpace, Colorant, Conversion, Process, Target};
+use crate::plan::{Curve, Item, Layout, MAX_BAND_HEIGHT, Output, Plan, SpotPlan, area, intersect};
+use pagura_color::{ColorSpace, Colorant, Conversion, Converter, Process, Target};
 use pagura_core::{Error, Meter, Result};
 use pagura_raster::{BandCoverage, BandRasterizer, Rgba8};
 use std::sync::Arc;
@@ -19,10 +19,7 @@ use std::sync::Arc;
 ///
 /// The first error in source order, then the reservations of buffers and
 /// output.
-pub(crate) fn finish<B: Backend>(
-    mut planner: Planner<'_, B>,
-    budget: &mut Budget,
-) -> Result<Finished> {
+pub(crate) fn finish(mut planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
     if let Err(error) = planner.page(budget) {
         return Err(first(planner, error));
     }
@@ -31,16 +28,16 @@ pub(crate) fn finish<B: Backend>(
 
 /// Between the walk's error and a transfer boundary met by an earlier mark,
 /// the one earlier in source order.
-fn first<B: Backend>(planner: Planner<'_, B>, error: Error) -> Error {
+fn first(planner: Planner<'_>, error: Error) -> Error {
     if !planner.storage.transfers {
         return error;
     }
     let serial = planner.failed.map_or(planner.serial, |(serial, _)| serial);
     let area = planner.area;
-    let Planner { backend, parts, .. } = planner;
-    let producer = backend.finish(area);
+    let Planner { shapes, parts, .. } = planner;
+    let shapes = shapes.finish();
     let plan = partial(area, parts);
-    match check_transfers(&plan, producer.as_ref()) {
+    match check_transfers(&plan, &shapes) {
         Ok(Some(found)) if found < serial => transfer_error(&plan, found),
         _ => error,
     }
@@ -48,7 +45,7 @@ fn first<B: Backend>(planner: Planner<'_, B>, error: Error) -> Error {
 
 /// The serial of the first recording mark whose transfer selection is not
 /// whole, rasterized in scratch storage of its own.
-fn check_transfers(plan: &Plan, producer: &dyn Producer) -> Result<Option<u32>> {
+fn check_transfers(plan: &Plan, shapes: &Shapes) -> Result<Option<u32>> {
     let area = plan.area;
     let rows = index(area.band_height.min(area.region.height()));
     // Charged with the render's rasterizer and workspace.
@@ -58,7 +55,7 @@ fn check_transfers(plan: &Plan, producer: &dyn Producer) -> Result<Option<u32>> 
     let mut selection = vec![0; index(area.region.width()).saturating_mul(rows)];
     Ok(validate(
         plan,
-        (producer, &mut rasterizer),
+        (shapes, &mut rasterizer),
         &mut coverage,
         &mut selection,
     ))
@@ -110,11 +107,11 @@ fn partial(area: pagura_raster::Area, parts: Parts) -> Plan {
 /// A completed preparation.
 pub(crate) struct Finished {
     pub(crate) plan: Plan,
-    pub(crate) producer: Box<dyn Producer>,
+    pub(crate) shapes: Shapes,
     pub(crate) repairs: Vec<pagura_core::Diagnostic>,
 }
 
-fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<Finished> {
+fn complete(planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
     let area = planner.area;
     // Buffers are charged for the tallest band any band height gives, so
     // that charges never depend on it, and hold the tallest band of this
@@ -125,7 +122,7 @@ fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<
     let spots = spot_plans(&planner.definitions);
     let background = premultiplied(planner.request.background)?;
     let Planner {
-        mut backend,
+        shapes,
         mut parts,
         users,
         repairs,
@@ -144,7 +141,7 @@ fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<
     let mut output_spots = Vec::new();
     for (space, inputs) in spots {
         let target = Target::new(Process::Cmyk);
-        let convert = backend.converter(&space, &target, &Conversion::default())?;
+        let convert = Converter::new(&space, &target, &Conversion::default())?;
         output_spots.push(SpotPlan {
             convert,
             components: space.components(),
@@ -183,7 +180,7 @@ fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<
         rows: band_rows,
         ..sizes
     };
-    let producer = backend.finish(area);
+    let shapes = shapes.finish();
     if transfers {
         let checked: usize = plan
             .items
@@ -192,13 +189,13 @@ fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<
             .map(|item| item.work)
             .fold(0, usize::saturating_add);
         budget.work.charge(checked)?;
-        if let Some(serial) = check_transfers(&plan, producer.as_ref())? {
+        if let Some(serial) = check_transfers(&plan, &shapes)? {
             return Err(transfer_error(&plan, serial));
         }
     }
     Ok(Finished {
         plan,
-        producer,
+        shapes,
         repairs,
     })
 }
@@ -246,7 +243,7 @@ fn reserve_output(plan: &Plan, budget: &mut Budget) -> Result<()> {
             functions
                 .iter()
                 .flatten()
-                .map(|f| f.cost())
+                .map(Curve::cost)
                 .fold(0, usize::saturating_add)
         })
         .max()
@@ -334,17 +331,11 @@ pub(crate) fn plan_bytes(plan: &Plan) -> usize {
         .iter()
         .map(|g| (g.items.capacity() + g.order.capacity()) * size_of::<u32>())
         .sum();
-    let paints: usize = plan
-        .paints
-        .iter()
-        .map(|paint| size_of_val::<dyn crate::paint::PaintSpans>(&**paint))
-        .sum();
     plan.items.capacity() * size_of::<Item>()
         + plan.groups.capacity() * size_of::<crate::plan::GroupPlan>()
         + groups
         + plan.masks.capacity() * size_of::<crate::plan::MaskPlan>()
-        + plan.paints.capacity() * size_of::<Box<dyn crate::paint::PaintSpans>>()
-        + paints
+        + plan.paints.capacity() * size_of::<crate::source::Source>()
         + plan.conversions.capacity() * size_of::<crate::plan::Conversion>()
 }
 

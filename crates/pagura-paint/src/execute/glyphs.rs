@@ -30,7 +30,7 @@ impl Executor<'_> {
         );
         let mut next = 0;
         while let Some(shapes) = alone.get(next..).filter(|rest| !rest.is_empty()) {
-            let taken = self.producer.rasterize_run(
+            let taken = self.shapes.rasterize_run(
                 self.rasterizer,
                 shapes,
                 mark.cover.clip,
@@ -44,13 +44,12 @@ impl Executor<'_> {
             if glyph.alone || !self.meets(glyph, frame) {
                 continue;
             }
-            self.producer.rasterize(
-                self.rasterizer,
-                Some(glyph.shape),
-                mark.cover.clip,
-                self.band,
-                &mut coverage,
-            );
+            let cover = crate::plan::Cover {
+                shape: Some(glyph.shape),
+                clip: mark.cover.clip,
+            };
+            self.shapes
+                .rasterize(self.rasterizer, cover, self.band, &mut coverage);
             self.store_coverage(mark, frame, opaque, &coverage);
         }
         self.ws.coverage = coverage;

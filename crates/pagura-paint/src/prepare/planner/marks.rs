@@ -7,12 +7,12 @@
 use super::clips::{Clipping, Extra};
 use super::runs::{Memo, Placed};
 use super::{Planner, Scope};
-use crate::paint::PaintSpans;
 use crate::plan::{Boundary, Compositing, Cover, GroupUse, Item, ItemKind, Mark, area, intersect};
 use crate::prepare::overprint::{Keeping, Place, direct_cmyk};
-use crate::prepare::{Backend, Budget, PaintRequest, Prepared, bounds, index};
-use crate::source::{BBoxUse, PaintContext, Source};
-use pagura_core::{Error, Limits, Position, Result};
+use crate::prepare::{Budget, Prepared, bounds, index};
+use crate::source::{BBoxUse, ImageBudgets, PaintContext, Source};
+use pagura_color::Painted;
+use pagura_core::{Diagnostic, Error, Limits, Position, Result};
 use pagura_interpret::{
     BlendMode, Composite, FillNode, GlyphSource, GlyphsNode, ImageMask, ImageNode, MarkInfo, Paint,
     PaintId, Pen, ShadingNode, ShadingPaint, StrokeNode, TilingPaint,
@@ -21,7 +21,7 @@ use pagura_raster::{FillRegion, FillRule, Path, Point, ShapeOptions, Transform};
 use std::sync::Arc;
 
 /// Bytes charged per prepared paint, besides what its source retains.
-const PAINT_BYTES: usize = size_of::<Source>() + size_of::<Box<dyn PaintSpans>>();
+const PAINT_BYTES: usize = size_of::<Source>();
 
 /// A mark's geometry.
 enum Geometry<'a> {
@@ -57,7 +57,7 @@ struct Spec<'a> {
     colour: Colour<'a>,
 }
 
-impl<B: Backend> Planner<'_, B> {
+impl Planner<'_> {
     pub(super) fn fill(
         &mut self,
         scope: &Scope,
@@ -152,7 +152,7 @@ impl<B: Backend> Planner<'_, B> {
                 let l = source.linear;
                 let linear = Transform::new(l.a, l.b, l.c, l.d, 0.0, 0.0).then(device);
                 let mut edges = self.glyph_edges.get(source_index).copied().flatten();
-                let hull = self.backend.glyph_hull((source, &mut edges), linear);
+                let hull = self.shapes.glyph_hull((source, &mut edges), linear);
                 if let Some(slot) = self.glyph_edges.get_mut(source_index) {
                     *slot = edges;
                 }
@@ -356,9 +356,9 @@ impl<B: Backend> Planner<'_, B> {
             Clipping::All => (None, region),
             Clipping::Shape(prepared) => (Some(prepared.key), prepared.bounds),
         };
-        self.backend.shapes_clip(clip);
+        self.shapes.set_clip(clip);
         let shape = self.shape(scope, geometry);
-        self.backend.shapes_clip(None);
+        self.shapes.set_clip(None);
         let Shape::Prepared(prepared) = shape? else {
             return Ok(());
         };
@@ -405,9 +405,9 @@ impl<B: Backend> Planner<'_, B> {
             Clipping::All => (None, region),
             Clipping::Shape(prepared) => (Some(prepared.key), prepared.bounds),
         };
-        self.backend.shapes_clip(clip);
+        self.shapes.set_clip(clip);
         let shape = self.shape(scope, &spec.geometry);
-        self.backend.shapes_clip(None);
+        self.shapes.set_clip(None);
         let shape = match shape? {
             Shape::Nothing => return Ok(None),
             Shape::Everything => None,
@@ -470,7 +470,7 @@ impl<B: Backend> Planner<'_, B> {
             area: self.area,
             limits: self.limits,
         };
-        let prepared = self.backend.fill(
+        let prepared = self.shapes.fill(
             &boundary.path,
             boundary.transform,
             FillRule::NonZero,
@@ -537,13 +537,19 @@ impl<B: Backend> Planner<'_, B> {
             budget,
         )?;
         let (records, select) = self.selection(scope, spec.colour, (state, state_id), budget)?;
+        // An image stores dynamically even where every pixel takes one
+        // colour, as the storage survey counts it (ADR 0004 §6).
         let words = self
             .parts
             .paints
             .get(index(paint))
-            .and_then(|paint| paint.constant())
-            .filter(|color| color.len() >= 3 && compositing.is_opaque())
-            .map(|c| {
+            .and_then(Source::constant)
+            .filter(|(color, _)| {
+                color.len() >= 3
+                    && compositing.is_opaque()
+                    && !matches!(spec.colour, Colour::Image(_))
+            })
+            .map(|(c, _)| {
                 let word = crate::kernel::word;
                 [word(c[0]), word(c[1]), word(c[2]), u16::MAX]
             });
@@ -600,34 +606,34 @@ impl<B: Backend> Planner<'_, B> {
         };
         let prepared = match geometry {
             Geometry::Fill(path, rule) => {
-                self.backend.fill(path, scope.transform, *rule, &options)?
+                self.shapes.fill(path, scope.transform, *rule, &options)?
             }
             Geometry::Stroke(path, pen) => {
                 let inverse = pen.transform.inverse().ok_or(Error::unsupported(
                     pagura_interpret::features::SINGULAR_STROKE,
                     "singular stroke transform",
                 ))?;
-                self.backend
+                self.shapes
                     .stroke(path, (pen, inverse), scope.transform, &options)?
             }
             Geometry::Glyph(source, linear, origin, index) => {
                 let mut edges = self.glyph_edges.get(*index).copied().flatten();
                 let prepared =
-                    self.backend
+                    self.shapes
                         .glyph((source, &mut edges), *linear, *origin, &options)?;
                 if let Some(slot) = self.glyph_edges.get_mut(*index) {
                     *slot = edges;
                 }
                 prepared
             }
-            Geometry::Unit(transform) => self.backend.fill(
+            Geometry::Unit(transform) => self.shapes.fill(
                 &bounds::unit_square(),
                 *transform,
                 FillRule::NonZero,
                 &options,
             )?,
             Geometry::Area(Some((path, transform))) => {
-                self.backend
+                self.shapes
                     .fill(path, *transform, FillRule::NonZero, &options)?
             }
             Geometry::Area(None) => return Ok(Shape::Everything),
@@ -655,7 +661,6 @@ impl<B: Backend> Planner<'_, B> {
             limits: self.limits,
             region: bounds,
         };
-        let request = PaintRequest { context, pixels };
         let prepared = match colour {
             Colour::Paint(id) => {
                 if let Some((paint, _)) = scope.paint.as_ref() {
@@ -673,47 +678,54 @@ impl<B: Backend> Planner<'_, B> {
                 {
                     return Ok(cached);
                 }
-                let prepared = self
-                    .backend
-                    .paint(&paint, &request, &mut budget.functions)?;
-                let index = self.add_paint(prepared, scope, pixels, budget)?;
+                let prepared = Source::prepare(&paint, &context, pixels, &mut budget.functions)?;
+                let index = self.add_paint(prepared, (scope, pixels), budget)?;
                 if matches!(*paint, Paint::Solid(_)) {
                     self.solids().insert(key, index);
                 }
                 return Ok(index);
             }
-            Colour::Shading(node) => self.backend.shading(
-                &node.shading,
-                node.transform.then(scope.transform),
-                &request,
-                &mut budget.functions,
-            )?,
+            Colour::Shading(node) => {
+                let to_device = node.transform.then(scope.transform);
+                Source::shading(
+                    &node.shading,
+                    to_device,
+                    &context,
+                    pixels,
+                    &mut budget.functions,
+                )?
+            }
             Colour::Image(node) => {
                 let stencil = match (&node.image.space, node.stencil) {
                     (Some(_), _) => None,
-                    (None, stencil) => Some(self.stencil(scope, stencil, &request, budget)?),
+                    (None, stencil) => Some(self.stencil(scope, stencil, &context, budget)?),
                 };
-                self.backend.image(
+                Source::image(
                     &node.image,
                     node.transform.then(scope.transform),
-                    stencil,
-                    &request,
-                    (&mut budget.work, &mut budget.functions),
+                    stencil
+                        .as_ref()
+                        .map(|(color, painted)| (&**color, *painted)),
+                    (&context, pixels),
+                    ImageBudgets {
+                        work: &mut budget.work,
+                        functions: &mut budget.functions,
+                    },
                 )?
             }
         };
-        self.add_paint(prepared, scope, pixels, budget)
+        self.add_paint(prepared, (scope, pixels), budget)
     }
 
     /// The colour of a stencil mask (8.9.6.2): its fill paint, or the colour
-    /// of an uncoloured pattern's cell.
+    /// of an uncoloured pattern's cell, which is a solid colour.
     fn stencil(
         &mut self,
         scope: &Scope,
         stencil: Option<PaintId>,
-        request: &PaintRequest<'_>,
+        context: &PaintContext<'_>,
         budget: &mut Budget,
-    ) -> Result<Box<dyn PaintSpans>> {
+    ) -> Result<(Box<[f64]>, Painted)> {
         let paint = match (&scope.paint, stencil) {
             (Some((_, paint)), _) => Arc::clone(paint),
             (None, Some(id)) => Arc::clone(
@@ -724,23 +736,25 @@ impl<B: Backend> Planner<'_, B> {
             ),
             (None, None) => return Err(Error::invalid_argument("stencil mask without a paint")),
         };
-        if is_pattern(&paint) {
-            return Err(Error::unsupported(
-                pagura_interpret::features::PATTERN_IMAGE_MASK,
-                "pattern-coloured image stencils are not implemented",
-            ));
-        }
+        let color = match &*paint {
+            Paint::Solid(color) if !is_pattern(&paint) => color,
+            _ => {
+                return Err(Error::unsupported(
+                    pagura_interpret::features::PATTERN_IMAGE_MASK,
+                    "pattern-coloured image stencils are not implemented",
+                ));
+            }
+        };
         budget.bytes.charge(PAINT_BYTES)?;
-        self.backend.paint(&paint, request, &mut budget.functions)
+        Source::solid_color(color, context, &mut budget.functions)
     }
 
     /// Keeps a prepared paint, reserving its bytes and its geometry work
-    /// over `pixels` (mesh shadings).
+    /// over `pixels` (mesh shadings), and the repairs preparing it made.
     fn add_paint(
         &mut self,
-        paint: Box<dyn PaintSpans>,
-        scope: &Scope,
-        pixels: usize,
+        paint: Source,
+        (scope, pixels): (&Scope, usize),
         budget: &mut Budget,
     ) -> Result<u32> {
         budget.bytes.charge(
@@ -752,7 +766,7 @@ impl<B: Backend> Planner<'_, B> {
         let repairs = paint.repairs();
         budget
             .bytes
-            .charge_product(repairs.len(), size_of::<pagura_core::Diagnostic>())?;
+            .charge_product(repairs.len(), size_of::<Diagnostic>())?;
         self.repairs.extend_from_slice(repairs);
         let index = u32::try_from(self.parts.paints.len())
             .map_err(|_| Error::limit("paint count exceeds u32"))?;
@@ -778,9 +792,8 @@ impl<B: Backend> Planner<'_, B> {
             limits: self.limits,
             region: bounds,
         };
-        let request = PaintRequest { context, pixels };
-        let prepared = self.backend.paint(paint, &request, &mut budget.functions)?;
-        self.add_paint(prepared, scope, pixels, budget)
+        let prepared = Source::prepare(paint, &context, pixels, &mut budget.functions)?;
+        self.add_paint(prepared, (scope, pixels), budget)
     }
 
     /// Whether the mark records a transfer selection and which (11.7.5.2):

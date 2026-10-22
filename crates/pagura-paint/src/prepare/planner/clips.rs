@@ -8,7 +8,7 @@
 use super::{Planner, Scope};
 use crate::hash::{FastHasher, FastMap};
 use crate::plan::intersect;
-use crate::prepare::{Backend, Budget, Prepared, bounds, index};
+use crate::prepare::{Budget, Prepared, bounds, index};
 use pagura_core::{Error, Result};
 use pagura_interpret::ClipId;
 use pagura_raster::{DeviceRect, FillRule, Path, Segment, ShapeOptions, Transform};
@@ -63,7 +63,7 @@ pub(crate) enum Clipping {
     Shape(Prepared),
 }
 
-impl<B: Backend> Planner<'_, B> {
+impl Planner<'_> {
     fn key(scope: &Scope, clip: Option<ClipId>, extra: Option<&Extra>) -> Key {
         let bits = |t: Transform| [t.a, t.b, t.c, t.d, t.e, t.f].map(f64::to_bits);
         Key {
@@ -217,7 +217,7 @@ impl<B: Backend> Planner<'_, B> {
                 .iter()
                 .map(|(path, rule, _)| (&**path, *rule))
                 .collect();
-            self.backend.clip(&paths, scope.transform, &options)?
+            self.shapes.clip(&paths, scope.transform, &options)?
         } else {
             // A fixed view moves its content but not the crop: clip in
             // device space.
@@ -227,7 +227,7 @@ impl<B: Backend> Planner<'_, B> {
                 .collect();
             let paths: Vec<(&Path, FillRule)> =
                 device.iter().map(|(path, rule)| (path, *rule)).collect();
-            self.backend.clip(&paths, Transform::IDENTITY, &options)?
+            self.shapes.clip(&paths, Transform::IDENTITY, &options)?
         };
         budget.bytes.charge(prepared.bytes)?;
         let clipping = if prepared.bounds.is_empty() {
