@@ -507,6 +507,8 @@ fn repeated_uncertified_quadratics_keep_the_true_coverage_byte() {
         x1: 1,
         y1: 1,
     };
+    let emitted = emitted_glyph_byte(geometry, pixel, &limits);
+    assert_eq!(emitted, 1);
     let request = pagura_paint::RenderRequest::new(Transform::IDENTITY, pixel, pixel);
     let store = pagura_core::Store::new(64 << 20);
     let prepared = pagura_paint::prepare(&b.scene, &request, &store, &limits).unwrap();
@@ -523,6 +525,57 @@ fn repeated_uncertified_quadratics_keep_the_true_coverage_byte() {
             255.0 * expected,
         );
     }
+    assert_eq!(actual, [252, 252, 252, 255]);
+    eprintln!(
+        "coverage{emitted}, RGBA{actual:?}, byte-reference{}, raw-area analytic diagnostic{}",
+        255.0 * expected,
+        255.0 * (1.0 - area).powi(3),
+    );
+}
+
+/// Exercise product preparation and ordinary Cells emission independently
+/// of the final-pixel differential assertion.
+fn emitted_glyph_byte(
+    geometry: pagura_raster::GlyphEdges,
+    pixel: DeviceRect,
+    limits: &Limits,
+) -> u8 {
+    let area = pagura_raster::Area {
+        region: pixel,
+        band_height: 1,
+    };
+    let shape = pagura_raster::Shape::glyph(
+        &Arc::new(geometry),
+        Point::default(),
+        &pagura_raster::ShapeOptions { area, limits },
+    )
+    .unwrap()
+    .unwrap();
+    let mut bytes = pagura_core::Meter::new(limits.render_bytes, "test bytes");
+    let mut raster = pagura_raster::BandRasterizer::new(area, &mut bytes).unwrap();
+    let mut coverage =
+        pagura_raster::BandCoverage::with_capacity(shape.capacity(), &mut bytes).unwrap();
+    raster.rasterize(
+        pagura_raster::MarkCoverage {
+            shape: Some(&shape),
+            clip: None,
+        },
+        0,
+        &mut coverage,
+    );
+    let row = coverage.rows().next().unwrap();
+    let mut spans = row.spans();
+    let value = match spans.next() {
+        Some(pagura_raster::Span::Partial {
+            x: 0,
+            coverage: [value],
+        }) => *value,
+        Some(pagura_raster::Span::Full { x: 0, len: 1 }) => 255,
+        None => 0,
+        other => panic!("unexpected single-pixel coverage: {other:?}"),
+    };
+    assert!(spans.next().is_none());
+    value
 }
 
 #[test]

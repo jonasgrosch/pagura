@@ -316,6 +316,29 @@ impl Cells {
     /// cells: consecutive touched cells together, and each run between them
     /// once with the cover carried into it. Returns the touched cells.
     pub(crate) fn emit(&mut self, r: usize, rule: FillRule, sink: &mut impl Sink) -> usize {
+        self.emit_with(r, sink, |_, _, value| fold(value, rule))
+    }
+
+    /// The identical prefix sum before quantization, for preparation's
+    /// coverage-byte certificate. Inspection clears the cells as emission
+    /// does, and introduces no retained execution representation.
+    pub(crate) fn inspect(&mut self, r: usize, mut visit: impl FnMut(usize, usize, f64)) -> usize {
+        struct Ignore;
+        impl Sink for Ignore {
+            fn run(&mut self, _: usize, _: usize, _: u8) {}
+        }
+        self.emit_with(r, &mut Ignore, |x0, x1, value| {
+            visit(x0, x1, value);
+            0
+        })
+    }
+
+    fn emit_with(
+        &mut self,
+        r: usize,
+        sink: &mut impl Sink,
+        mut map: impl FnMut(usize, usize, f64) -> u8,
+    ) -> usize {
         let base = usize::try_from(self.base).unwrap_or(0);
         let cells = r.wrapping_mul(self.width);
         let words = r.wrapping_mul(self.words)..(r + 1).wrapping_mul(self.words);
@@ -341,7 +364,8 @@ impl Cells {
                         sink.cells(base + start, values);
                     }
                     pending = 0;
-                    sink.run(base + position, base + x, fold(cover, rule));
+                    let value = map(base + position, base + x, cover);
+                    sink.run(base + position, base + x, value);
                 }
                 cover += std::mem::take(c);
                 let value = std::mem::take(a) + cover;
@@ -349,7 +373,7 @@ impl Cells {
                     start = x;
                 }
                 if let Some(slot) = self.bytes.get_mut(pending) {
-                    *slot = fold(value, rule);
+                    *slot = map(base + x, base + x + 1, value);
                     pending += 1;
                 }
                 position = x + 1;
@@ -360,7 +384,8 @@ impl Cells {
             sink.cells(base + start, values);
         }
         if position < self.width {
-            sink.run(base + position, base + self.width, fold(cover, rule));
+            let value = map(base + position, base + self.width, cover);
+            sink.run(base + position, base + self.width, value);
         }
         touched
     }
@@ -486,6 +511,38 @@ mod tests {
         }
         // An area of 4 pixels, quantized per cell.
         assert!((i64::from(total) - 4 * 255).abs() <= 4, "{total}");
+    }
+
+    #[test]
+    fn inspection_and_emission_share_the_unquantized_prefix_sum() {
+        let edges = [
+            line((0.25, 0.125), (5.75, 1.875)),
+            line((5.75, 1.875), (0.25, 1.875)),
+            line((0.25, 1.875), (0.25, 0.125)),
+        ];
+        for rule in [FillRule::NonZero, FillRule::EvenOdd] {
+            let mut a = cells(8);
+            let mut b = cells(8);
+            assert!(a.open((0, 8), 0..2));
+            assert!(b.open((0, 8), 0..2));
+            for edge in edges {
+                a.line(edge);
+                b.line(edge);
+            }
+            for row in 0..2 {
+                let mut expected = Collect(Vec::new());
+                a.emit(row, rule, &mut expected);
+                let mut emitted = [0; 8];
+                for (x0, x1, value) in expected.0 {
+                    emitted[x0..x1].fill(value);
+                }
+                let mut inspected = [0; 8];
+                b.inspect(row, |x0, x1, area| inspected[x0..x1].fill(fold(area, rule)));
+                assert_eq!(inspected, emitted);
+            }
+            assert!(b.area.iter().chain(&b.cover).all(|&v| v == 0.0));
+            assert!(b.touched.iter().all(|&v| v == 0));
+        }
     }
 
     #[test]

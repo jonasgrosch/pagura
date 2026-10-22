@@ -33,26 +33,61 @@ impl Flatness {
         match self {
             Self::Distance => close(b, a, d, TOLERANCE) && close(c, a, d, TOLERANCE),
             Self::Area(allowance) => {
-                let triangle = |p: Point, q: Point| {
-                    let (ux, uy, vx, vy) = (p.x - a.x, p.y - a.y, q.x - a.x, q.y - a.y);
-                    let products = (ux * vy).abs() + (uy * vx).abs();
-                    let radius = 2.0 * rounding;
-                    let perturbation = radius * (ux.abs() + uy.abs() + vx.abs() + vy.abs())
-                        + 2.0 * radius * radius;
-                    let determinant =
-                        (ux * vy - uy * vx).abs() + 8.0 * f64::EPSILON * products + perturbation;
-                    determinant * (0.5 + 8.0 * f64::EPSILON) + f64::MIN_POSITIVE
-                };
-                // These triangles cover the hull. The outward determinant
-                // bound includes subdivision, mapping and cancellation;
-                // an uncertain zero determinant cannot certify zero area.
-                let area =
-                    (triangle(b, c) + triangle(b, d) + triangle(c, d)) * (1.0 + 8.0 * f64::EPSILON);
                 let share = allowance * 0.5_f64.powi(i32::try_from(depth).unwrap_or(i32::MAX));
-                area <= share
+                Hull::new([a, b, c, d], rounding).area <= share
             }
         }
     }
+}
+
+/// A curve piece and its chord lie in this outward control hull. The
+/// three triangles cover that hull; determinant error includes mapping,
+/// subdivision and cancellation, so an uncertain zero never means zero area.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Hull {
+    pub(crate) bounds: [f64; 4],
+    pub(crate) area: f64,
+}
+
+impl Hull {
+    fn new([a, b, c, d]: [Point; 4], rounding: f64) -> Self {
+        let triangle = |p: Point, q: Point| {
+            let (ux, uy, vx, vy) = (p.x - a.x, p.y - a.y, q.x - a.x, q.y - a.y);
+            let products = (ux * vy).abs() + (uy * vx).abs();
+            let radius = 2.0 * rounding;
+            let perturbation =
+                radius * (ux.abs() + uy.abs() + vx.abs() + vy.abs()) + 2.0 * radius * radius;
+            let determinant =
+                (ux * vy - uy * vx).abs() + 8.0 * f64::EPSILON * products + perturbation;
+            determinant * (0.5 + 8.0 * f64::EPSILON) + f64::MIN_POSITIVE
+        };
+        Self {
+            bounds: [
+                (a.x.min(b.x).min(c.x).min(d.x) - rounding).next_down(),
+                (a.y.min(b.y).min(c.y).min(d.y) - rounding).next_down(),
+                (a.x.max(b.x).max(c.x).max(d.x) + rounding).next_up(),
+                (a.y.max(b.y).max(c.y).max(d.y) + rounding).next_up(),
+            ],
+            area: (triangle(b, c) + triangle(b, d) + triangle(c, d)) * (1.0 + 8.0 * f64::EPSILON),
+        }
+    }
+
+    pub(crate) fn intersects(self, b: [f64; 4]) -> bool {
+        let a = self.bounds;
+        b[0] < b[2] && b[1] < b[3] && a[0] < b[2] && a[1] < b[3] && a[2] > b[0] && a[3] > b[1]
+    }
+}
+
+/// Optional original-curve evidence from the same subdivision used for
+/// polygon production. Refinement changes only pieces whose full outward
+/// hull meets a target rectangle after `offset` is added.
+pub(crate) struct Inspection<'a> {
+    pub(crate) hulls: Option<&'a mut Vec<Hull>>,
+    pub(crate) work: &'a mut Meter,
+    pub(crate) rounding: f64,
+    pub(crate) targets: &'a [[f64; 4]],
+    pub(crate) offset: Point,
+    pub(crate) factor: f64,
 }
 
 pub(crate) type CurveStack = Vec<([Point; 4], usize)>;
@@ -160,8 +195,59 @@ pub(crate) fn flatten_with(
     flatness: Flatness,
     bytes: &mut Meter,
 ) -> Result<usize> {
+    flatten_using(
+        path,
+        transform,
+        limits,
+        result,
+        pending,
+        Subdivision {
+            flatness,
+            bytes,
+            inspection: None,
+        },
+    )
+}
+
+/// The shared flattener with retained hull intervals and bounded inspection
+/// work. Only quadratic glyph coverage certification needs this evidence.
+pub(crate) fn flatten_inspected(
+    path: &Path,
+    transform: Transform,
+    limits: &Limits,
+    result: &mut Vec<Polyline>,
+    pending: &mut CurveStack,
+    subdivision: (Flatness, &mut Meter, Inspection<'_>),
+) -> Result<usize> {
+    let (flatness, bytes, inspection) = subdivision;
+    flatten_using(
+        path,
+        transform,
+        limits,
+        result,
+        pending,
+        Subdivision {
+            flatness,
+            bytes,
+            inspection: Some(inspection),
+        },
+    )
+}
+
+fn flatten_using(
+    path: &Path,
+    transform: Transform,
+    limits: &Limits,
+    result: &mut Vec<Polyline>,
+    pending: &mut CurveStack,
+    mut subdivision: Subdivision<'_>,
+) -> Result<usize> {
+    let bytes = &mut *subdivision.bytes;
     pending.clear();
     validate(path, transform, limits)?;
+    if let Some(inspection) = &mut subdivision.inspection {
+        inspection.work.charge(path.segments().len())?;
+    }
     let mut contour = 0;
     let mut count = 0;
     let mut current = prepare(result, contour, bytes)?;
@@ -215,7 +301,18 @@ pub(crate) fn flatten_with(
                     &mut current.points,
                     &mut count,
                     limits,
-                    Subdivision { flatness, bytes },
+                    Subdivision {
+                        flatness: subdivision.flatness,
+                        bytes,
+                        inspection: subdivision.inspection.as_mut().map(|i| Inspection {
+                            hulls: i.hulls.as_deref_mut(),
+                            work: i.work,
+                            rounding: i.rounding,
+                            targets: i.targets,
+                            offset: i.offset,
+                            factor: i.factor,
+                        }),
+                    },
                 )?;
                 position = end;
             }
@@ -267,6 +364,7 @@ fn append(
 struct Subdivision<'a> {
     flatness: Flatness,
     bytes: &'a mut Meter,
+    inspection: Option<Inspection<'a>>,
 }
 
 fn curve(
@@ -278,7 +376,11 @@ fn curve(
     limits: &Limits,
     subdivision: Subdivision<'_>,
 ) -> Result<()> {
-    let Subdivision { flatness, bytes } = subdivision;
+    let Subdivision {
+        flatness,
+        bytes,
+        mut inspection,
+    } = subdivision;
     let magnitude = points
         .iter()
         .map(|p| {
@@ -289,6 +391,9 @@ fn curve(
     let mut points = points;
     let mut depth = 0;
     loop {
+        if let Some(inspection) = &mut inspection {
+            inspection.work.charge(1 + inspection.targets.len())?;
+        }
         let [a, b, c, d] = points.map(|p| p * transform);
         // A Bézier lies in its control hull (ISO 32000-2, 8.5.2.2).
         // The tolerance neighbourhood of a segment is convex, so admitting
@@ -296,8 +401,38 @@ fn curve(
         let rounding = magnitude
             * f64::EPSILON
             * 16.0
-            * f64::from(u32::try_from(depth + 4).unwrap_or(u32::MAX));
+            * f64::from(u32::try_from(depth + 4).unwrap_or(u32::MAX))
+            + inspection.as_ref().map_or(0.0, |i| i.rounding);
+        let hull = inspection
+            .as_ref()
+            .map(|_| Hull::new([a, b, c, d], rounding));
+        let flatness = match (flatness, &inspection, hull) {
+            (Flatness::Area(area), Some(i), Some(hull)) => {
+                let [x0, y0, x1, y1] = hull.bounds;
+                let shifted = Hull {
+                    bounds: [
+                        (x0 + i.offset.x).next_down(),
+                        (y0 + i.offset.y).next_down(),
+                        (x1 + i.offset.x).next_up(),
+                        (y1 + i.offset.y).next_up(),
+                    ],
+                    area: hull.area,
+                };
+                if i.targets.iter().any(|&b| shifted.intersects(b)) {
+                    Flatness::Area(area * i.factor)
+                } else {
+                    Flatness::Area(area)
+                }
+            }
+            (flatness, _, _) => flatness,
+        };
         if flatness.accepts([a, b, c, d], depth, rounding) {
+            if let (Some(i), Some(hull)) = (&mut inspection, hull)
+                && let Some(hulls) = &mut i.hulls
+            {
+                bytes.reserve_capacity(hulls, 1)?;
+                hulls.push(hull);
+            }
             append(out, points[3], count, limits, bytes)?;
             let Some(next) = pending.pop() else {
                 return Ok(());
@@ -395,6 +530,7 @@ mod tests {
                 Subdivision {
                     flatness: Flatness::Distance,
                     bytes: &mut bytes,
+                    inspection: None,
                 },
             )
         };
@@ -553,6 +689,7 @@ mod tests {
                 Subdivision {
                     flatness: Flatness::Distance,
                     bytes: &mut crate::testing::bytes(),
+                    inspection: None,
                 },
             )
             .unwrap();
@@ -597,6 +734,7 @@ mod tests {
             Subdivision {
                 flatness: Flatness::Distance,
                 bytes: &mut crate::testing::bytes(),
+                inspection: None,
             },
         )
         .unwrap();

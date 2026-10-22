@@ -6,20 +6,26 @@
 //! integrated as quadratics when its pieces certify winding zero or one
 //! sign everywhere. Uncertified quadratic outlines and placements crossed
 //! by a clip path use the same flattener with a whole-outline area bound;
-//! general cubics retain the canonical 1/256-pixel polygon.
+//! every quadratic placement certifies its coverage bytes before execution,
+//! refining ambiguous pixels from the original controls. General cubics
+//! retain the canonical 1/256-pixel polygon.
 
 use super::certify::{certified, spline_certified};
 use super::curve::{self, Mono, Piece, Quadratic, Spline};
 use super::edges::{self, Line, Polygon};
 use super::shape::{Frame, Shape, Winding};
 use super::{Prep, RENDER_BYTES};
-use crate::flatten::{CurveStack, Flatness, Polyline, bounded, flatten_with};
+use crate::flatten::{
+    CurveStack, Flatness, Inspection, Polyline, bounded, flatten_inspected, flatten_with,
+};
 use crate::{FillRule, Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
 use std::sync::Arc;
 
 #[cfg(test)]
 mod tests;
+
+mod rounding;
 
 /// A glyph outline prepared once for one linear map (outline space to device
 /// space without translation): its device-space edges relative to the glyph
@@ -50,6 +56,8 @@ enum Kind {
         polygon: Polygon,
         points: Vec<Point>,
         certified: bool,
+        /// Original curves retained for coverage-byte certification.
+        source: Option<(Arc<Path>, Transform)>,
     },
 }
 
@@ -192,10 +200,23 @@ impl GlyphEdges {
         }
         let (polygon, points) = polygon(outline, transform, limits, bytes)?;
         let certified = points.is_empty() && certified(&polygon, 0.0, bytes)?;
+        let source = if regular
+            && outline
+                .segments()
+                .iter()
+                .any(|s| matches!(s, Segment::CubicTo { .. }))
+            && curve::quadratic_outline(outline, transform)
+        {
+            bytes.charge(size_of::<Path>() + 2 * size_of::<usize>())?;
+            Some((Arc::new(outline.clone_with_bytes(bytes)?), transform))
+        } else {
+            None
+        };
         Ok(Kind::Polygon {
             polygon,
             points,
             certified,
+            source,
         })
     }
 
@@ -219,8 +240,9 @@ impl GlyphEdges {
         }
     }
 
-    /// Whether placements integrate the outline's true curve where no clip
-    /// path crosses them (ADR 0004 §4).
+    /// Whether the stored outline admits analytic placements. A placement
+    /// whose coverage byte is ambiguous takes the shared bounded polygon
+    /// refinement before execution (ADR 0004 §4).
     pub fn curved(&self) -> bool {
         matches!(self.kind, Kind::Curve { .. })
     }
@@ -251,8 +273,18 @@ fn flattened(
     limits: &Limits,
     bytes: &mut Meter,
 ) -> Result<(Polygon, Vec<Point>)> {
+    flattened_with(outline, transform, limits, bytes, None)
+}
+
+fn flattened_with(
+    outline: &Path,
+    transform: Transform,
+    limits: &Limits,
+    bytes: &mut Meter,
+    inspection: Option<Inspection<'_>>,
+) -> Result<(Polygon, Vec<Point>)> {
     let mut contours: Vec<Polyline> = Vec::new();
-    let flatness = if curve::quadratic_outline(outline, transform) {
+    let flatness = if inspection.is_some() || curve::quadratic_outline(outline, transform) {
         // The convex-hull areas sum to at most 1/4096 pixel over the entire
         // outline: less than 0.063 levels in any pixel, also after clipping.
         let curves = outline
@@ -265,20 +297,38 @@ fn flattened(
         Flatness::Distance
     };
     let mut pending = CurveStack::new();
-    let count = flatten_with(
-        outline,
-        transform,
-        limits,
-        &mut contours,
-        &mut pending,
-        flatness,
-        bytes,
-    )?;
+    let count = match inspection {
+        Some(inspection) => flatten_inspected(
+            outline,
+            transform,
+            limits,
+            &mut contours,
+            &mut pending,
+            (flatness, bytes, inspection),
+        )?,
+        None => flatten_with(
+            outline,
+            transform,
+            limits,
+            &mut contours,
+            &mut pending,
+            flatness,
+            bytes,
+        )?,
+    };
     let released = crate::flatten::stack_bytes(&pending);
     drop(pending);
     bytes.refund(released);
     contours.truncate(count);
-    classify(outline, transform, &mut contours)?;
+    classify(
+        outline,
+        Transform {
+            e: 0.0,
+            f: 0.0,
+            ..transform
+        },
+        &mut contours,
+    )?;
     let mut polygon = Polygon::default();
     let mut points = Vec::new();
     let n = contours.len();
@@ -342,6 +392,9 @@ pub(crate) fn place(
     options: &Prep<'_>,
 ) -> Result<Option<Shape>> {
     let mut shape = placed(edges, origin, options)?;
+    if let Some(prepared) = shape.take() {
+        shape = Some(rounding::certify(edges, origin, prepared, options)?);
+    }
     if let Some(shape) = &mut shape {
         shape.add_work(merged(shape.bounds()));
     }
@@ -392,6 +445,7 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
                         Winding::Check(0.0),
                         options,
                         &mut bytes,
+                        None,
                     )
                 }
             }
@@ -400,13 +454,14 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
             polygon,
             points,
             certified,
+            ..
         } => {
             let winding = if *certified {
                 Winding::Certified
             } else {
                 Winding::Unknown
             };
-            translated(polygon, points, origin, winding, options, &mut bytes)
+            translated(polygon, points, origin, winding, options, &mut bytes, None)
         }
     }
 }
@@ -474,6 +529,7 @@ fn translated(
     winding: Winding,
     options: &Prep<'_>,
     bytes: &mut Meter,
+    work: Option<&mut Meter>,
 ) -> Result<Option<Shape>> {
     let mut polygon = Polygon::default();
     bytes.reserve(&mut polygon.points, source.points.len())?;
@@ -490,7 +546,13 @@ fn translated(
         bounded(p)?;
         polygon.cell(p, options.limits, bytes)?;
     }
-    Shape::polygon(polygon, FillRule::NonZero, winding, options, bytes)
+    match work {
+        Some(work) => {
+            work.charge(polygon.vertices())?;
+            Shape::polygon_metered(polygon, FillRule::NonZero, winding, options, bytes, work)
+        }
+        None => Shape::polygon(polygon, FillRule::NonZero, winding, options, bytes),
+    }
 }
 
 // The shared flattener retains source point classification. A singular linear

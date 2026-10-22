@@ -356,6 +356,18 @@ impl Shape {
         self.retained
     }
 
+    /// Boundary pieces that translation and row resolution can perturb.
+    pub(crate) fn boundaries(&self) -> usize {
+        let own = match &self.body {
+            Body::Edges(edges) => edges.lines.len() + edges.curves.len(),
+            Body::Glyph(glyph) => glyph
+                .edges
+                .relative()
+                .map_or(0, |relative| relative.lines.len() + relative.curves.len()),
+        };
+        own.saturating_add(self.resolved.len())
+    }
+
     /// The most coverage one band of this shape can hold: its rows within a
     /// band, and every pixel of its width in them a partial cell and a span
     /// of its own.
@@ -376,6 +388,20 @@ impl Shape {
         winding: Winding,
         options: &Prep<'_>,
         bytes: &mut Meter,
+    ) -> Result<Option<Self>> {
+        let mut work = Meter::new(options.limits.raster_work, RASTER_WORK);
+        Self::polygon_metered(polygon, rule, winding, options, bytes, &mut work)
+    }
+
+    /// A polygon replacement whose preparation shares the certificate's
+    /// cumulative inspection/refinement work meter.
+    pub(crate) fn polygon_metered(
+        polygon: Polygon,
+        rule: FillRule,
+        winding: Winding,
+        options: &Prep<'_>,
+        bytes: &mut Meter,
+        work: &mut Meter,
     ) -> Result<Option<Self>> {
         let Some(mut frame) = Frame::new(options) else {
             return Ok(None);
@@ -444,7 +470,7 @@ impl Shape {
         let resolved = if chosen.is_empty() {
             Resolved::default()
         } else {
-            resolve(&lines, rule, &frame, (bounds, &chosen), options, bytes)?
+            resolve(&lines, rule, &frame, (bounds, &chosen), work, bytes)?
         };
         Self::edges(
             lines,
@@ -775,10 +801,9 @@ fn resolve(
     rule: FillRule,
     frame: &Frame<'_>,
     (bounds, chosen): (DeviceRect, &[(u32, bool)]),
-    options: &Prep<'_>,
+    work: &mut Meter,
     bytes: &mut Meter,
 ) -> Result<Resolved> {
-    let mut work = Meter::new(options.limits.raster_work, RASTER_WORK);
     // The lines of each strip, then each row's pieces from its strip.
     let strip_rows =
         |l: &Line| rows_of(l, bounds).map(|(a, b)| (b / STRIP - a / STRIP) as usize + 1);
@@ -823,10 +848,7 @@ fn resolve(
         };
         work.charge(pieces.len())?;
         sides.clear();
-        let meters = Meters {
-            work: &mut work,
-            bytes,
-        };
+        let meters = Meters { work, bytes };
         resolver.row(&pieces, &rules[..groups], top, (&mut sides, meters))?;
         resolved.push(y, &sides, bytes)?;
     }

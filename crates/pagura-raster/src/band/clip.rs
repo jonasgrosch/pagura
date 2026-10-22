@@ -55,6 +55,35 @@ pub(crate) struct Paths {
 }
 
 impl Paths {
+    /// Outward rectangles containing each canonical path's covered set,
+    /// intersected. A curve can affect the joint area only inside them.
+    pub(crate) fn proof_bounds(&self) -> Option<Bounds> {
+        let mut first = 0;
+        self.ends
+            .iter()
+            .filter_map(|&(end, _)| {
+                let lines = self.lines.get(first..end as usize).unwrap_or(&[]);
+                first = end as usize;
+                let mut points = lines.iter().flat_map(|line| [line.a, line.b]);
+                let p = points.next()?;
+                Some(points.fold(
+                    Bounds {
+                        left: p.x,
+                        top: p.y,
+                        right: p.x,
+                        bottom: p.y,
+                    },
+                    |b, p| Bounds {
+                        left: b.left.min(p.x),
+                        top: b.top.min(p.y),
+                        right: b.right.max(p.x),
+                        bottom: b.bottom.max(p.y),
+                    },
+                ))
+            })
+            .reduce(Bounds::intersect)
+    }
+
     /// The rules of the paths, in order.
     pub(crate) fn rules(&self) -> impl Iterator<Item = FillRule> + '_ {
         self.ends.iter().map(|&(_, rule)| rule)

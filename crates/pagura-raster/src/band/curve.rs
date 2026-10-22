@@ -52,6 +52,20 @@ pub(crate) fn quadratic_outline(outline: &Path, linear: Transform) -> bool {
 /// Sixty-four rounding units cover the two-term maps, the four-term third
 /// difference, and the midpoint quadratic's additions and multiplications.
 fn reducible_with_rounding(outline: &Path, linear: Transform) -> bool {
+    reduction_errors(outline, linear)
+        .into_iter()
+        .all(|bound| bound <= REDUCIBLE)
+}
+
+/// Local area swept by the midpoint reduction, including mapping and
+/// control construction rounding. Each cubic coordinate has at most three
+/// monotone intervals in a unit pixel (ADR 0004 §4).
+pub(crate) fn reduction_area(outline: &Path, linear: Transform) -> f64 {
+    let [x, y] = reduction_errors(outline, linear);
+    3.0 * (x + y) * (1.0 + 8.0 * f64::EPSILON)
+}
+
+fn reduction_errors(outline: &Path, linear: Transform) -> [f64; 2] {
     let (mut start, mut current) = (Point::default(), Point::default());
     let mut error = [0.0_f64; 2];
     for segment in outline.segments() {
@@ -84,7 +98,7 @@ fn reducible_with_rounding(outline: &Path, linear: Transform) -> bool {
             Segment::Close => current = start,
         }
     }
-    error.into_iter().all(|bound| bound <= REDUCIBLE)
+    error
 }
 
 /// A quadratic Bézier piece.

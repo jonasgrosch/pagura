@@ -89,3 +89,59 @@ fn store_geometry_counts_all_retained_storage_independently_of_render_bytes() {
         (ErrorKind::Limit, "glyph geometry byte budget exceeded")
     );
 }
+
+#[test]
+fn coverage_inspection_charges_temporary_cells_and_cumulative_work() {
+    let limits = Limits::default();
+    let edges = Arc::new(GlyphEdges::new(&arch(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+    let area = crate::Area {
+        region: crate::DeviceRect {
+            x0: 0,
+            y0: 0,
+            x1: 8,
+            y1: 8,
+        },
+        band_height: 2,
+    };
+    let options = Prep {
+        area,
+        limits: &limits,
+        clip: None,
+    };
+    let origin = Point::new(1.2, 1.3);
+    let base = placed(&edges, origin, &options).unwrap().unwrap();
+    let super::super::shape::Body::Glyph(body) = &base.body else {
+        panic!("the arch should retain relative edges");
+    };
+    let width = body.scan.1 - body.scan.0;
+    let mut bytes = crate::testing::bytes();
+    let cells = super::super::cells::Cells::new(width, &mut bytes).unwrap();
+    let required = base.retained_bytes() + cells.retained_bytes();
+    let tight = Limits {
+        render_bytes: required - 1,
+        ..limits
+    };
+    let options = Prep {
+        limits: &tight,
+        ..options
+    };
+    assert_eq!(
+        place(&edges, origin, &options).unwrap_err().message,
+        RENDER_BYTES
+    );
+    let tight = Limits {
+        raster_work: base.work(),
+        ..limits
+    };
+    let options = Prep {
+        limits: &tight,
+        ..options
+    };
+    // The ordinary placement fits; inspecting it shares a meter with the
+    // source traversal and must refuse before exceeding that allowance.
+    assert!(placed(&edges, origin, &options).unwrap().is_some());
+    assert_eq!(
+        place(&edges, origin, &options).unwrap_err().message,
+        super::super::RASTER_WORK
+    );
+}

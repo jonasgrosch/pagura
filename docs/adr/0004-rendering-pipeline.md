@@ -216,6 +216,31 @@ reference without depending on a distance tolerance or on the number of
 boundaries in a cell. Segment and subdivision limits still apply; an
 unattainable bound returns a limit error.
 
+Neither area allowance alone certifies a coverage byte. A curve and a fine
+inscribed polygon can fall on opposite sides of a half-level; repeating
+that one-byte difference in separate glyph placements can exceed the scene's
+one-level contract. Preparation therefore inspects the common cell kernel's
+unquantized areas and quantizes both ends of their source-curve intervals,
+including reduction, mapping and translation error. An unambiguous interval
+certifies the byte that ordinary execution emits. Ambiguous pixels are
+resolved from the original stored cubics in a pixel-local frame using the
+shared bounded subdivision and row-union arithmetic. Accepted control hulls
+bound the area uncertainty under the canonical clips. Integer localization
+retains its two-sum tails; full outward hulls must miss outward clip bounds
+before their error is omitted.
+
+When the proven byte differs from the prepared representation, only curve
+pieces whose full hulls meet those pixels are subdivided more finely. The
+replacement remains an ordinary polygon with resolved rows. Every cell of
+that replacement is inspected again, so refining one boundary cannot silently
+change a neighboring byte. Inspection, local proofs and all replacement
+resolutions share one bounded work meter; scratch and overlapping old/new
+geometry are charged before allocation. Unresolved precision or exhausted
+work, segment, subdivision or memory limits refuse preparation. Execution
+has no coverage overrides, allocation or fallible refinement. A synthetic
+coincident-outline composition checks coverage byte one directly and its
+three-placement composed result against the analytic byte reference.
+
 A general cubic's displacement tolerance alone does not bound area when
 several edges share a pixel, so its outline retains the canonical 1/256-pixel
 polygon as its reference. Singular linear maps retain the polygon's

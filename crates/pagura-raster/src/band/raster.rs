@@ -9,7 +9,7 @@ use super::row::Sink;
 use super::shape::{Body, Resolved, Shape};
 use super::{Area, BandCoverage, ClipShape, DeviceRect, MarkCoverage};
 use crate::{FillRule, Point};
-use pagura_core::{Meter, Result};
+use pagura_core::{Error, Meter, Result};
 
 /// The band rasterizer: strip-sized cells with a touched bitmap per row,
 /// reused for every mark of a render.
@@ -355,29 +355,7 @@ impl BandRasterizer {
             if !self.cells.open(scan, window.clone()) {
                 continue;
             }
-            let mut work = 0;
-            // Resolved rows take their sides instead of the edges.
-            let resolved = !items.resolved.is_empty();
-            if resolved {
-                self.cells.skip(items.resolved.mask(&window));
-            }
-            if let Some(list) = items.strips {
-                let listed = list.strip(strip);
-                work += listed.len();
-                for &item in listed {
-                    work += items.add(&mut self.cells, item as usize);
-                }
-            } else {
-                work += items.all(&mut self.cells);
-            }
-            if resolved {
-                self.cells.skip(0);
-                let sides = items.resolved.lines(&window);
-                work += sides.len();
-                for &line in sides {
-                    work += self.cells.line(line);
-                }
-            }
+            let mut work = items.accumulate(&mut self.cells, &window);
             for (r, row) in (0_usize..).zip(self.cells.rows()) {
                 out.push_row(row);
                 let mut sink = target.sink(out, row);
@@ -457,6 +435,33 @@ struct Items<'a> {
 }
 
 impl Items<'_> {
+    /// The common accumulation for execution and preparation inspection.
+    fn accumulate(&self, cells: &mut Cells, window: &std::ops::Range<u32>) -> usize {
+        let resolved = !self.resolved.is_empty();
+        if resolved {
+            cells.skip(self.resolved.mask(window));
+        }
+        let mut work = if let Some(list) = self.strips {
+            let listed = list.strip(window.start / STRIP);
+            listed.len()
+                + listed
+                    .iter()
+                    .map(|&item| self.add(cells, item as usize))
+                    .sum::<usize>()
+        } else {
+            self.all(cells)
+        };
+        if resolved {
+            cells.skip(0);
+            let sides = self.resolved.lines(window);
+            work += sides.len();
+            for &line in sides {
+                work += cells.line(line);
+            }
+        }
+        work
+    }
+
     /// Adds every item to the open window, lines then curves. Returns the
     /// work spent, one unit per item visited.
     fn all(&self, cells: &mut Cells) -> usize {
@@ -513,6 +518,76 @@ impl Items<'_> {
                 }),
         }
     }
+}
+
+/// Inspect the same accumulated areas execution emits, before its single
+/// coverage quantization. Allocation and the execution work upper bound
+/// are charged by the caller before inspection starts.
+pub(crate) fn inspect(
+    shape: &Shape,
+    cells: &mut Cells,
+    mut visit: impl FnMut(u32, usize, usize, f64),
+) -> Result<()> {
+    let (items, scan) = match &shape.body {
+        Body::Edges(edges) => (
+            Items {
+                lines: &edges.lines,
+                curves: &edges.curves,
+                origin: None,
+                strips: edges.strips.as_ref(),
+                resolved: &shape.resolved,
+            },
+            edges.scan,
+        ),
+        Body::Glyph(glyph) => {
+            let Some(relative) = glyph.edges.relative() else {
+                return Err(Error::limit("glyph inspection has no relative edges"));
+            };
+            (
+                Items {
+                    lines: &relative.lines,
+                    curves: &relative.curves,
+                    origin: Some(glyph.origin),
+                    strips: None,
+                    resolved: &shape.resolved,
+                },
+                glyph.scan,
+            )
+        }
+    };
+    let target = Target::of(shape);
+    let fit = cells.rows_fit(scan.1.saturating_sub(scan.0));
+    let mut y = shape.bounds.y0;
+    while y < shape.bounds.y1 {
+        let end = match items.strips {
+            Some(_) => (y / STRIP + 1).saturating_mul(STRIP).min(shape.bounds.y1),
+            None => shape.bounds.y1,
+        };
+        let window = y..end.min(y.saturating_add(fit));
+        y = window.end;
+        if !cells.open(scan, window.clone()) {
+            return Err(Error::limit("glyph inspection cells exceed allocation"));
+        }
+        items.accumulate(cells, &window);
+        for (r, row) in (0_usize..).zip(cells.rows()) {
+            cells.inspect(r, |x0, x1, area| {
+                let x0 = x0.max(target.bounds.x0 as usize);
+                let x1 = x1.min(target.bounds.x1 as usize);
+                if let Some(mask) = target.mask {
+                    for segment in mask.row(row) {
+                        let a = x0.max(segment.x0 as usize);
+                        let b = x1.min(segment.x1 as usize);
+                        if a < b {
+                            visit(row, a, b, area.abs());
+                        }
+                    }
+                } else if x0 < x1 {
+                    visit(row, x0, x1, area.abs());
+                }
+            });
+        }
+    }
+    Ok(())
 }
 
 /// Writes runs to the current row of a coverage, within columns `x0..x1`.

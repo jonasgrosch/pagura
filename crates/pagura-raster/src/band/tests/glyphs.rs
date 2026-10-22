@@ -353,3 +353,86 @@ fn large_source_coordinates_and_linear_scales_keep_true_curve_coverage() {
     }
     eprintln!("large-source true-curve maximum error: {maximum:.9} levels");
 }
+
+#[test]
+fn fallback_half_levels_keep_their_bytes_at_translated_origins_and_band_grids() {
+    let limits = Limits::default();
+    let mut path = PathBuilder::new();
+    let h = 3.0 * 0.500_001 / 255.0;
+    for _ in 0..2 {
+        path.move_to(Point::default());
+        path.cubic_to(
+            Point::new(1.0 / 3.0, 2.0 * h / 3.0),
+            Point::new(2.0 / 3.0, 2.0 * h / 3.0),
+            Point::new(1.0, 0.0),
+        )
+        .unwrap();
+        path.close();
+    }
+    let edges = Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+    assert!(!edges.curved());
+    for offset in [0, 10_000] {
+        let origin = Point::new(f64::from(offset), f64::from(offset));
+        for height in [1, 3, 16, 256] {
+            let area = area(offset, offset, offset + 1, offset + 1, height);
+            let shape = Shape::glyph_in(&edges, origin, &options(area, &limits, None))
+                .unwrap()
+                .unwrap();
+            assert_eq!(raster(&area, Some(&shape), None).0, [1]);
+        }
+    }
+}
+
+#[test]
+fn translated_clip_half_levels_use_only_hulls_that_can_change_the_joint_area() {
+    let limits = Limits::default();
+    let mut path = PathBuilder::new();
+    path.move_to(Point::new(-1.0, 0.0));
+    path.cubic_to(
+        Point::new(0.0, 1.0),
+        Point::new(1.0, 1.0),
+        Point::new(2.0, 0.0),
+    )
+    .unwrap();
+    path.close();
+    let edges = Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+    for offset in [0, 10_000] {
+        let base = f64::from(offset);
+        let left = if offset == 0 { -0.1 } else { 1.0 / 3.0 };
+        let top = base + 0.3;
+        let rectangle = polygon(&[
+            Point::new(left, base - 0.1),
+            Point::new(base + 1.1, base - 0.1),
+            Point::new(base + 1.1, top),
+            Point::new(left, top),
+        ]);
+        let trapezoid = polygon(&[
+            Point::new(left, base - 0.1),
+            Point::new(base + 1.1, base - 0.1),
+            Point::new(base + 1.2, top),
+            Point::new(left, top),
+        ]);
+        for clip_path in [&rectangle, &trapezoid] {
+            for height in [1, 3, 16] {
+                let area = area(offset, offset, offset + 1, offset + 1, height);
+                let clip = ClipShape::new(
+                    &[(clip_path, FillRule::NonZero)],
+                    Transform::IDENTITY,
+                    &public(area, &limits),
+                )
+                .unwrap();
+                let shape = Shape::glyph_in(
+                    &edges,
+                    Point::new(base + 0.2, base),
+                    &options(area, &limits, Some(&clip)),
+                )
+                .unwrap()
+                .unwrap();
+                assert_eq!(
+                    raster(&area, Some(&shape), Some(&clip)).0,
+                    [crate::quantize_unit(top - base)],
+                );
+            }
+        }
+    }
+}
