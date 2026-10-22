@@ -22,6 +22,7 @@
 //! case there as PPM on white, and `PAGURA_REFERENCE_FULL=1` probes charges
 //! on every case rather than on every eighth.
 
+mod bench;
 mod cases;
 mod compare;
 mod goldens;
@@ -497,4 +498,13 @@ fn fast_parameters_alone_against_the_reference() {
     }
     // Fast parameters are outside the one-level contract: reported only.
     report.finish("fast");
+}
+
+#[test]
+#[ignore = "real documents: needs the benchmark pages, corpus and goldens (see bench.rs)"]
+fn benchmark_pages_against_the_goldens() {
+    assert!(
+        bench::run(),
+        "set PAGURA_REFERENCE_BENCH, _CORPORA and _BENCH_GOLDENS"
+    );
 }

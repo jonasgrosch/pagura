@@ -513,3 +513,24 @@ fn the_initial_pattern_colour_paints_nothing() {
     b.rect(GroupId(0), [0.0, 0.0, 1.0, 1.0], pattern, StateId(0));
     assert_pixel(&b.render(Rgba8::WHITE), (0, 0), [1.0, 1.0, 1.0, 1.0]);
 }
+
+#[test]
+fn exact_quantization_composes_unquantized_areas() {
+    let mut b = Build::new(1.0, 1.0);
+    let black = b.rgb([0.0, 0.0, 0.0]);
+    b.rect(GroupId(0), [0.0, 0.0, 0.5, 0.501], black, StateId(0));
+    let region = DeviceRect {
+        x0: 0,
+        y0: 0,
+        x1: 1,
+        y1: 1,
+    };
+    let mut request = Request::new(Transform::IDENTITY, region);
+    let bytes = render(&b.scene, &request, &Limits::default()).unwrap();
+    request.quantization = crate::request::Quantization::Exact;
+    let exact = render(&b.scene, &request, &Limits::default()).unwrap();
+    let area = 0.5 * 0.501;
+    let v = 1.0 - level(area);
+    assert_pixel(&bytes, (0, 0), [v, v, v, 1.0]);
+    assert_pixel(&exact, (0, 0), [1.0 - area, 1.0 - area, 1.0 - area, 1.0]);
+}

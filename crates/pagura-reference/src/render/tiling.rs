@@ -95,7 +95,7 @@ impl Renderer<'_> {
         let contributions = results
             .into_iter()
             .filter_map(|(x, y, color, group, shape)| {
-                let factor = f64::from(coverage.get(x, y)) / 255.0;
+                let factor = coverage.get(x, y);
                 (factor > 0.0).then_some(Contribution {
                     x,
                     y,

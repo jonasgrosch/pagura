@@ -24,6 +24,7 @@ mod blend;
 mod buffer;
 mod color;
 mod flatten;
+mod glyph;
 mod image;
 mod overprint;
 mod pixel;
@@ -33,4 +34,4 @@ mod shading;
 mod shapes;
 
 pub use render::render;
-pub use request::{Overprint, Rendering, Request};
+pub use request::{Overprint, Quantization, Rendering, Request};

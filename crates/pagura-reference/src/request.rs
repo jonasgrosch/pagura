@@ -14,6 +14,19 @@ pub enum Overprint {
     Simulate,
 }
 
+/// How a mark's coverage enters composition.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum Quantization {
+    /// Quantized once per mark with `quantize_unit`, as the renderer's
+    /// coverage bytes are: the contract's exact result (ADR 0004 §2).
+    #[default]
+    Bytes,
+    /// The exact area, unquantized: the end-to-end exact result, which a
+    /// coverage byte rounded the other way near a half level (allowed by
+    /// the coverage bound of ADR 0004 §4) can be told apart from.
+    Exact,
+}
+
 /// One reference rendering of a scene.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
@@ -27,6 +40,8 @@ pub struct Request {
     pub background: Rgba8,
     /// Overprint simulation.
     pub overprint: Overprint,
+    /// How coverage enters composition.
+    pub quantization: Quantization,
 }
 
 impl Request {
@@ -37,6 +52,7 @@ impl Request {
             region,
             background: Rgba8::WHITE,
             overprint: Overprint::Ignore,
+            quantization: Quantization::Bytes,
         }
     }
 }
