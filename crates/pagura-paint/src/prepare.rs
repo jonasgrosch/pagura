@@ -134,7 +134,10 @@ pub fn prepare(
         scene,
         request,
         (store, limits),
-        Raster::new(store, limits, origins),
+        Raster::new(store, limits, origins).with_scale({
+            let t = request.transform;
+            (t.a * t.d - t.b * t.c).abs().sqrt()
+        }),
     )
 }
 

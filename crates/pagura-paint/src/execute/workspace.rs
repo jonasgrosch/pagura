@@ -426,16 +426,15 @@ impl Workspace {
 /// A coverage buffer grown once to the largest band of one mark (a span
 /// per pixel), so that rasterization does not allocate.
 fn warm_coverage(sizes: Sizes) -> BandCoverage {
-    let mut coverage = BandCoverage::default();
-    let width = u32::try_from(sizes.width).unwrap_or(0);
-    for y in 0..u32::try_from(sizes.rows).unwrap_or(0) {
-        coverage.push_row(y);
-        for x in 0..width {
-            coverage.push_partial(x, &[1]);
-        }
-    }
-    coverage.clear();
-    coverage
+    let cells = sizes.width.saturating_mul(sizes.rows);
+    let capacity = pagura_raster::Capacity {
+        rows: sizes.rows,
+        spans: cells,
+        cells,
+    };
+    // Charged by preparation already.
+    let mut free = pagura_core::Meter::new(usize::MAX, "coverage bytes");
+    BandCoverage::with_capacity(capacity, &mut free).unwrap_or_default()
 }
 
 #[cfg(test)]

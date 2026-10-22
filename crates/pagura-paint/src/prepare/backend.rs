@@ -178,6 +178,7 @@ pub(crate) struct Raster<'a> {
     store: &'a Store,
     limits: &'a Limits,
     origins: GlyphOrigins,
+    scale: f64,
     shapes: Vec<Shape>,
     clips: Vec<ClipShape>,
     edges: FastMap<EdgesKey, Arc<GlyphEdges>>,
@@ -192,11 +193,18 @@ impl<'a> Raster<'a> {
             store,
             limits,
             origins,
+            scale: 1.0,
             shapes: Vec::new(),
             clips: Vec::new(),
             edges: hash::map(),
             current: None,
         }
+    }
+
+    /// Device pixels per default user-space unit, for binned glyph edges.
+    pub(crate) fn with_scale(mut self, scale: f64) -> Self {
+        self.scale = scale;
+        self
     }
 
     fn shape(&mut self, shape: Option<Shape>) -> Result<Option<Prepared>> {
@@ -221,6 +229,8 @@ impl<'a> Raster<'a> {
 struct EdgesKey {
     outline: OutlineKey,
     linear: [u64; 4],
+    /// The device scale binned edges are flattened for; exact edges have none.
+    binned: Option<u64>,
 }
 
 impl StoreKey for EdgesKey {
@@ -270,9 +280,11 @@ impl Backend for Raster<'_> {
         origin: Point,
         options: &ShapeOptions<'_>,
     ) -> Result<Option<Prepared>> {
+        let binned = (self.origins == GlyphOrigins::Binned).then_some(self.scale);
         let key = EdgesKey {
             outline: source.key,
             linear: linear.map(f64::to_bits),
+            binned: binned.map(f64::to_bits),
         };
         // Edges are a value of the store: they cost the render nothing,
         // found or built (ADR 0016), and are kept for the render's other
@@ -282,7 +294,10 @@ impl Backend for Raster<'_> {
         } else {
             let limits = self.limits;
             let edges = self.store.get_or_build(key, || {
-                let edges = GlyphEdges::new(&source.outline, linear, limits)?;
+                let edges = match binned {
+                    Some(scale) => GlyphEdges::binned(&source.outline, linear, scale, limits)?,
+                    None => GlyphEdges::new(&source.outline, linear, limits)?,
+                };
                 let bytes = edges.retained_bytes();
                 Ok(Built {
                     value: edges,
