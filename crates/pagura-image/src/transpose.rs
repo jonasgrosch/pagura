@@ -138,37 +138,104 @@ fn exchange<T: Copy, const N: usize>(values: &[T], (width, height): (usize, usiz
     }
 }
 
-/// One-bit rows exchanged eight by eight bits.
+/// One-bit rows exchanged eight by eight bits. The result starts out as
+/// the more common of the all-zero and all-one bytes, so that the uniform
+/// blocks of that value, most of a scanned page, need no stores; padding
+/// bits end up zero.
 fn packed_transposed(packed: &Packed, limits: &Limits) -> Result<Packed> {
     let (width, height) = (packed.width(), packed.height());
-    let stride = height.div_ceil(8);
+    let (stride, source) = (height.div_ceil(8), packed.stride);
+    // The fill: the more common of all-one and all-zero words.
+    let (ones, zeros) =
+        packed
+            .bytes
+            .as_chunks::<8>()
+            .0
+            .iter()
+            .fold((0usize, 0usize), |(ones, zeros), word| {
+                let word = u64::from_ne_bytes(*word);
+                (
+                    ones + usize::from(word == u64::MAX),
+                    zeros + usize::from(word == 0),
+                )
+            });
+    let fill = if ones > zeros { u8::MAX } else { 0 };
+    let uniform = u64::from_ne_bytes([fill; 8]);
     let mut out = storage::<u8>(stride.saturating_mul(width), limits)?;
-    let empty: &[u8] = &[];
-    for block_row in 0..stride {
-        // The eight source rows of this block row; rows past the image
-        // read as zeros.
-        let rows: [&[u8]; 8] =
-            std::array::from_fn(|i| packed.row(block_row * 8 + i).unwrap_or(empty));
-        for column in 0..packed.stride {
-            let mut block = 0u64;
-            for (i, row) in rows.iter().enumerate() {
-                block |= u64::from(row.get(column).copied().unwrap_or(0)) << (56 - 8 * i);
+    out.fill(fill);
+    for (block_row, rows) in packed.bytes.chunks(source * 8).enumerate() {
+        let mut column = 0;
+        while column < source {
+            // Eight columns of eight rows that all hold the fill need
+            // nothing.
+            let words = column + 8 <= source
+                && rows.len() == source * 8
+                && rows.chunks_exact(source).all(|row| {
+                    row.get(column..column + 8)
+                        .and_then(|bytes| bytes.first_chunk::<8>())
+                        .is_some_and(|bytes| u64::from_ne_bytes(*bytes) == uniform)
+                });
+            if words {
+                column += 8;
+                continue;
             }
-            // Uniform blocks are their own transposes.
-            let bytes = if block == 0 || block == u64::MAX {
-                block.to_be_bytes()
-            } else {
-                transpose_bits(block).to_be_bytes()
-            };
-            let first = column * 8;
-            for (x, &byte) in (first..width).zip(&bytes) {
-                if let Some(out) = out.get_mut(x * stride + block_row) {
-                    *out = byte;
-                }
+            let end = (column + 8).min(source);
+            for column in column..end {
+                transpose_block(
+                    rows,
+                    (source, column),
+                    (fill, uniform),
+                    (block_row, stride, width),
+                    &mut out,
+                );
+            }
+            column = end;
+        }
+    }
+    // Rows past the image's height in the last block row are padding.
+    let padding = stride * 8 - height;
+    if padding > 0 {
+        let mask = u8::MAX << padding;
+        for row in out.chunks_exact_mut(stride.max(1)) {
+            if let Some(last) = row.last_mut() {
+                *last &= mask;
             }
         }
     }
     Packed::from_rows(height, width, out).ok_or(Error::syntax("packed image size mismatch"))
+}
+
+/// Exchanges the block of bit column `column` of the up to eight packed
+/// `rows`, `source` bytes each, into `out`, rows `stride` bytes apart, of
+/// which `width` exist; rows past the image read as `fill`.
+fn transpose_block(
+    rows: &[u8],
+    (source, column): (usize, usize),
+    (fill, uniform): (u8, u64),
+    (block_row, stride, width): (usize, usize, usize),
+    out: &mut [u8],
+) {
+    let mut block = uniform;
+    for (i, row) in rows.chunks_exact(source).enumerate() {
+        let byte = row.get(column).copied().unwrap_or(fill);
+        let shift = 56 - 8 * i;
+        block = block & !(0xff << shift) | u64::from(byte) << shift;
+    }
+    if block == uniform {
+        return;
+    }
+    // Uniform blocks are their own transposes.
+    let bytes = if block == 0 || block == u64::MAX {
+        block.to_be_bytes()
+    } else {
+        transpose_bits(block).to_be_bytes()
+    };
+    let first = column * 8;
+    for (x, &byte) in (first..width).zip(&bytes) {
+        if let Some(out) = out.get_mut(x * stride + block_row) {
+            *out = byte;
+        }
+    }
 }
 
 /// An eight-by-eight bit matrix, rows as bytes from the most significant

@@ -693,3 +693,72 @@ fn byte_spans_cover_opaque_images_sampled_by_codes() {
     assert!(!sampler(&masked, unit_to_device, 3).has_byte_spans());
     assert!(!sampler(&rgb, unit_to_device, 1).has_byte_spans());
 }
+
+/// A packed one-bit image of `width` × `height` samples, mostly ones when
+/// `white`.
+fn packed_image((width, height): (u32, u32), white: bool, seed: u32) -> DecodedImage {
+    let (w, h) = (
+        usize::try_from(width).unwrap(),
+        usize::try_from(height).unwrap(),
+    );
+    let stride = w.div_ceil(8);
+    let values = codes(w * h, 8, seed);
+    let mut rows = vec![0u8; stride * h];
+    for (i, &v) in values.iter().enumerate() {
+        let (y, x) = (i / w, i % w);
+        let one = if white { v % 7 != 0 } else { v % 2 == 1 };
+        rows[y * stride + x / 8] |= u8::from(one) << (7 - x % 8);
+    }
+    let packed = pagura_image::deferred::Packed::from_rows(w, h, rows).unwrap();
+    image((width, height), 1, 1, Samples::Packed(packed))
+}
+
+/// Packed one-bit images fill byte spans from counts of their bits: whole
+/// two-by-two means, and footprints of every size and phase, at both
+/// decodes, each byte the rounded f64 colour.
+#[test]
+fn packed_bits_fill_bytes_as_their_colours_round() {
+    let (w, h) = (70.0, 53.0);
+    let placements = [
+        Transform::new(w / 2.0, 0.0, 0.0, h / 2.0, 0.0, 0.0),
+        Transform::new(w / 2.0, 0.0, 0.0, -h / 2.0, 3.0, 1.0 + h / 2.0),
+        Transform::new(w / 4.17, 0.0, 0.0, -h / 4.17, 0.3, 0.7 + h / 4.17),
+        Transform::new(w / 1.5, 0.0, 0.0, h / 1.7, 0.25, 0.4),
+        Transform::new(w / 7.3, 0.0, 0.0, h / 9.1, 0.6, 0.1),
+        Transform::new(w / 2.0, 0.0, 0.0, h / 2.0, 0.5, 0.0),
+        Transform::new(0.0, -h / 2.0, -w / 2.0, 0.0, w / 2.0, h / 2.0),
+        Transform::new(0.0, h / 4.3, w / 3.9, 0.0, 0.2, 0.3),
+    ];
+    for white in [false, true] {
+        for decode in [[0.0, 1.0], [1.0, 0.0]] {
+            let mut bits = case(packed_image((70, 53), white, 101));
+            bits.decode = vec![decode];
+            for &unit_to_device in &placements {
+                let sampler = sampler(&bits, unit_to_device, 3);
+                let (x0, y0, x1, y1) = window(unit_to_device);
+                let len = usize::try_from(x1 - x0).unwrap();
+                assert!(bytes_agree(&sampler, (x0, len), y0..y1));
+                // The columns inside the image, whose footprints are all
+                // whole where the scale is two.
+                let corners = [(0.0, 0.0), (1.0, 1.0)]
+                    .map(|(x, y)| pagura_raster::Point::new(x, y) * unit_to_device);
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "test columns"
+                )]
+                let (left, right) = (
+                    corners[0].x.min(corners[1].x).ceil() as u32,
+                    corners[0].x.max(corners[1].x).floor() as u32,
+                );
+                let inside = usize::try_from(right - left).unwrap();
+                assert!(bytes_agree(&sampler, (left, inside), y0..y1));
+                // Spans of a few pixels from every start.
+                for start in x0..x1 {
+                    let len = usize::try_from((x1 - start).min(5)).unwrap();
+                    bytes_agree(&sampler, (start, len), y0..y0 + 3);
+                }
+            }
+        }
+    }
+}
