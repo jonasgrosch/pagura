@@ -253,10 +253,16 @@ from below a half-level onto it. Independent analytic source-line and
 clip-line regressions require that case to remain inside the interval and
 refuse unresolved precision.
 
-Signed accumulation is bounded with gamma_n times the sum of absolute cell
-inputs, including the final prefix additions. Preparation measures those
-inputs in the common kernel for both initial ambiguity selection and local
-proof; a linear count alone cannot bound cancellation of many boundaries.
+Preparation measures signed accumulation in the common kernel for both
+initial ambiguity selection and local proof. Error-free TwoSum retains the
+actual roundoff of each area/cover addition without changing the stored
+result or operation order. Let A be the outward sum of absolute inputs and
+E the outward sum of primitive errors and addition tails. Stored cell
+magnitudes total at most A+E. Only emission's prefix remains unmeasured: at
+most window width plus four operations per pixel, bounded by gamma_n(A+E).
+The positive A/E sums include their own count-dependent rounding allowance.
+Thus thousands of exactly added fragments do not themselves impose a
+precision floor, while lost low terms under cancellation remain bounded.
 This includes the primitives before they cancel: H's coefficient products
 and endpoint evaluations, coordinate evaluations, area products and the
 multi-column kernel's internal prefix of dy values. Their absolute operand

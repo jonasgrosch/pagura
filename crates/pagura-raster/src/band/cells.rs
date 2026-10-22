@@ -58,12 +58,24 @@ struct Rounding {
 }
 
 impl Rounding {
-    fn add(&mut self, value: f64) {
+    fn add(&mut self, before: f64, value: f64, sum: f64) {
+        if value == 0.0 {
+            return;
+        }
+        // TwoSum recovers this actual addition's exact rounding tail.
+        // Many off-window fragments can add exactly: their count alone
+        // must not impose an irreducible local precision floor.
+        let back = sum - before;
+        let tail = (before - (sum - back)) + (value - back);
+        self.primitive += tail.abs();
         self.absolute += value.abs();
-        self.additions = self.additions.saturating_add(1);
+        self.additions = self.additions.saturating_add(2);
     }
 
     fn primitive(&mut self, error: f64) {
+        if error == 0.0 {
+            return;
+        }
         self.primitive += error;
         self.additions = self.additions.saturating_add(1);
     }
@@ -72,18 +84,22 @@ impl Rounding {
         clippy::cast_precision_loss,
         reason = "inflated before use; enormous counts refuse precision"
     )]
-    fn bound(&self) -> f64 {
-        let n = (self.additions as f64 + 4.0) * (1.0 + 4.0 * f64::EPSILON);
-        let product = n * f64::EPSILON;
-        if product >= 0.25 {
+    fn bound(&self, width: usize) -> f64 {
+        let positive = (self.additions as f64 + 4.0) * (1.0 + 4.0 * f64::EPSILON);
+        let prefix = (width as f64 + 4.0) * (1.0 + 4.0 * f64::EPSILON);
+        let (positive, prefix) = (positive * f64::EPSILON, prefix * f64::EPSILON);
+        if positive >= 0.25 || prefix >= 0.25 {
             return f64::INFINITY;
         }
-        // Gamma_n bounds signed accumulation by the sum of absolute
-        // inputs. Include its own positive-sum rounding, per-piece products
-        // and the final cover/area additions, without assigning a whole
-        // square pixel of rounding to every tiny boundary fragment.
-        (self.primitive / (1.0 - product)
-            + (8.0 * product / (1.0 - product) + 64.0 * f64::EPSILON) * self.absolute)
+        // Outward sums of primitive errors, exact addition tails and
+        // absolute inputs. Stored cell magnitudes total at most S+E. Only
+        // emission remains unmeasured: at most width cover additions and
+        // one area addition per pixel, bounded by gamma_(width+4).
+        let error = self.primitive / (1.0 - positive);
+        let absolute = self.absolute / (1.0 - positive);
+        (error
+            + (8.0 * prefix / (1.0 - prefix)) * (absolute + error)
+            + 64.0 * f64::EPSILON * absolute)
             * (1.0 + 8.0 * f64::EPSILON)
             + f64::MIN_POSITIVE
     }
@@ -251,7 +267,7 @@ impl Cells {
     }
 
     pub(crate) fn arithmetic_error(&self) -> f64 {
-        self.rounding.bound()
+        self.rounding.bound(self.width)
     }
 
     #[inline]
@@ -562,9 +578,10 @@ impl<const MEASURE: bool> Accumulate for Row<'_, MEASURE> {
         if let Ok(x) = usize::try_from(column.wrapping_sub(self.base))
             && let Some(cell) = self.area.get_mut(x)
         {
+            let before = *cell;
             *cell += value;
             if MEASURE {
-                self.rounding.add(value);
+                self.rounding.add(before, value, *cell);
             }
             self.mark(x);
         }
@@ -574,9 +591,10 @@ impl<const MEASURE: bool> Accumulate for Row<'_, MEASURE> {
     fn cover_at(&mut self, column: i64, value: f64) {
         let x = usize::try_from(column.wrapping_sub(self.base).max(0)).unwrap_or(usize::MAX);
         if let Some(cell) = self.cover.get_mut(x) {
+            let before = *cell;
             *cell += value;
             if MEASURE {
-                self.rounding.add(value);
+                self.rounding.add(before, value, *cell);
             }
             self.mark(x);
         }
@@ -611,6 +629,44 @@ mod tests {
             a: Point::new(a.0, a.1),
             b: Point::new(b.0, b.1),
         }
+    }
+
+    #[test]
+    fn exact_fragment_additions_do_not_create_a_count_precision_floor() {
+        let mut measured = cells(1);
+        assert!(measured.open((0, 1), 0..1));
+        // Every nonzero height is an exact binary fraction. Excluding
+        // zero additions alone cannot tighten the old global gamma bound.
+        for index in 0..8_192_u32 {
+            let a = f64::from(index) / 16_384.0;
+            let b = f64::from(index + 1) / 16_384.0;
+            measured.line_measured(line((-2.0, a), (-2.0, b)));
+        }
+        let error = measured.arithmetic_error();
+        assert_eq!(measured.rounding.primitive, 0.0);
+        assert_eq!(measured.rounding.additions, 16_384);
+        assert!(error < 1e-12, "exact fragment allowance {error}");
+        measured.inspect(0, |_, _, value| {
+            assert_eq!(value, 0.5);
+            assert_eq!(crate::quantize_unit(value - error), 128);
+            assert_eq!(crate::quantize_unit(value + error), 128);
+        });
+
+        // A small term lost between cancelling large values is an actual
+        // residual and must survive in the measured interval.
+        let mut measured = cells(1);
+        assert!(measured.open((0, 1), 0..1));
+        {
+            let mut row = measured.row::<true>(0);
+            row.area_at(0, 2.0_f64.powi(40));
+            row.area_at(0, 2.0_f64.powi(-20));
+            row.area_at(0, -2.0_f64.powi(40));
+        }
+        let error = measured.arithmetic_error();
+        assert_eq!(measured.rounding.primitive, 2.0_f64.powi(-20));
+        measured.inspect(0, |_, _, value| {
+            assert!((value - 2.0_f64.powi(-20)).abs() <= error);
+        });
     }
 
     #[test]
