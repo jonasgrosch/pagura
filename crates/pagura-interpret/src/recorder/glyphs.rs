@@ -6,7 +6,7 @@ use crate::device::{Glyph, GlyphRun, OutlineKey};
 use crate::hash::FastMap;
 use crate::model::{Composite, FillStroke, GroupAttributes, GroupCause};
 use crate::scene::{
-    GlyphSource, GlyphsNode, Group, GroupRole, MarkInfo, Node, NodeId, PaintId, Placement,
+    GlyphSource, GlyphsNode, Group, GroupRole, MarkInfo, Node, NodeId, PaintId, Placement, StateId,
 };
 use pagura_core::{Error, Result};
 use pagura_raster::{FillRule, Path, Point, Segment, Transform};
@@ -41,8 +41,8 @@ pub(super) struct Glyphs {
     sources: FastMap<SourceKey, u32>,
     /// The hulls of the sources met: the outline's under the linear map.
     hulls: FastMap<SourceKey, [Point; 2]>,
-    /// The fill-and-stroke group states derived for state pairs.
-    derived: FastMap<(usize, usize), FillStroke>,
+    /// The fill-and-stroke group states derived for interned state pairs.
+    derived: FastMap<(StateId, StateId), FillStroke>,
     /// Recently placed sources, direct-mapped by glyph: consecutive glyphs
     /// of a run mostly share their font and linear map, so comparing keys
     /// here replaces hashing them into the maps above.
@@ -287,18 +287,15 @@ impl SceneRecorder {
             ));
         };
         let key = (
-            Arc::as_ptr(fill_state.composite).addr(),
-            Arc::as_ptr(stroke_state.composite).addr(),
+            self.interner.state(fill_state.composite, &mut self.bytes)?,
+            self.interner
+                .state(stroke_state.composite, &mut self.bytes)?,
         );
         let states = if let Some(states) = self.glyphs.derived.get(&key) {
             states.clone()
         } else {
             let opaque = Arc::new(Composite::default());
             let states = FillStroke::new(fill_state.composite, stroke_state.composite, &opaque);
-            // Keep the pair's states interned so the addresses stay theirs.
-            self.interner.state(fill_state.composite, &mut self.bytes)?;
-            self.interner
-                .state(stroke_state.composite, &mut self.bytes)?;
             self.glyphs.derived.insert(key, states.clone());
             states
         };
