@@ -402,6 +402,50 @@ impl Lanes {
     }
 }
 
+/// The bytes of nearest samples' codes, `N` per pixel, through `bytes`.
+fn nearest_bytes<const N: usize>(bytes: &ByteLanes, codes: &[u8], out: &mut [[u8; 4]]) {
+    let codes = codes.as_chunks::<N>().0;
+    if bytes.identity && (N == 1 || bytes.component == [0, 1, 2]) {
+        for (pixel, code) in out.iter_mut().zip(codes) {
+            *pixel = if N == 1 {
+                [code[0], code[0], code[0], 255]
+            } else {
+                [code[0], code[1 % N], code[2 % N], 255]
+            };
+        }
+        return;
+    }
+    let [a, b, c] = bytes.component.map(|component| component.min(N - 1));
+    let [ta, tb, tc] = &bytes.tables;
+    for (pixel, code) in out.iter_mut().zip(codes) {
+        *pixel = [
+            ta[usize::from(code[a])],
+            tb[usize::from(code[b])],
+            tc[usize::from(code[c])],
+            255,
+        ];
+    }
+}
+
+/// Rounds a span's opaque colours, three per pixel, to bytes; a pixel of
+/// alpha 0 becomes `[0, 0, 0, 0]`.
+fn round_bytes(span: &SpanColors, out: &mut [[u8; 4]]) {
+    let quantize = pagura_raster::quantize_unit;
+    let colors = span.colors.as_chunks::<3>().0;
+    for (i, (pixel, color)) in out.iter_mut().zip(colors).enumerate() {
+        *pixel = if span.alpha.get(i).is_some_and(|&alpha| alpha == 0.0) {
+            [0; 4]
+        } else {
+            [
+                quantize(color[0]),
+                quantize(color[1]),
+                quantize(color[2]),
+                255,
+            ]
+        };
+    }
+}
+
 /// The shape of `len` opaque pixels: 1 each.
 fn opaque_shape(len: usize, shape: Option<&mut Vec<f64>>) {
     if let Some(shape) = shape {
@@ -451,7 +495,57 @@ pub(super) struct Codes {
     whole: bool,
     /// The blocks of planar samples that hold only background.
     clean: Option<Clean>,
+    /// The bytes of opaque three-channel colours, for spans filled as
+    /// bytes.
+    bytes: Option<Box<ByteLanes>>,
     scratch: Mutex<Scratch>,
+}
+
+/// The bytes that the colours of nearest samples round to, per lane and
+/// code, for opaque lanes of three colour channels: what
+/// [`pagura_raster::quantize_unit`] gives the values [`Lanes::write_codes`]
+/// writes.
+#[derive(Debug)]
+struct ByteLanes {
+    tables: [[u8; 256]; 3],
+    /// Each lane's component.
+    component: [usize; 3],
+    /// Whether every lane is its component's code itself: the bytes are the
+    /// codes.
+    identity: bool,
+}
+
+impl ByteLanes {
+    /// The byte tables of opaque `lanes` of three channels whose image has
+    /// `n` components, or `None` for other lanes.
+    fn new(lanes: &Lanes, n: usize) -> Option<Box<Self>> {
+        if !lanes.opaque || lanes.table.len() != 3 || lanes.channels != 3 {
+            return None;
+        }
+        let component: [usize; 3] = lanes.component.as_slice().try_into().ok()?;
+        let direct = lanes.direct.filter(|_| n == 3);
+        let mut tables = [[0u8; 256]; 3];
+        for (lane, table) in tables.iter_mut().enumerate() {
+            for (code, byte) in (0..=u8::MAX).zip(table.iter_mut()) {
+                let value = match direct {
+                    Some(map) => map.apply(f64::from(code)),
+                    None => lanes.table[lane][usize::from(code)],
+                };
+                *byte = pagura_raster::quantize_unit(value);
+            }
+        }
+        let codes = usize::from(lanes.maximum) + 1;
+        let identity = tables.iter().all(|table| {
+            (0..=u8::MAX)
+                .zip(&table[..codes])
+                .all(|(code, &byte)| code == byte)
+        });
+        Some(Box::new(Self {
+            tables,
+            component,
+            identity,
+        }))
+    }
 }
 
 /// Which eight-by-eight luma blocks of planar samples, with the chroma
@@ -578,6 +672,8 @@ struct Scratch {
     runs: Vec<(usize, usize, bool)>,
     codes: Vec<u8>,
     rows: RowCache,
+    /// The colours of a span filled as bytes, before they are rounded.
+    span: SpanColors,
 }
 
 /// Rows of codes converted from planar or packed samples, by row and range.
@@ -887,6 +983,7 @@ impl Codes {
                 .all(|foot| foot.first >= foot.end || foot.whole()),
             Plan::Nearest(..) => false,
         };
+        let bytes = ByteLanes::new(&lanes, components);
         Ok(Some(Self {
             lanes,
             kind,
@@ -897,6 +994,7 @@ impl Codes {
             plan,
             whole,
             clean,
+            bytes,
             scratch: Mutex::new(Scratch::default()),
         }))
     }
@@ -913,8 +1011,62 @@ impl Codes {
 
     /// Replaces the lanes, keeping the placement.
     pub(super) fn set_lanes(&mut self, lanes: Lanes) {
+        self.bytes = ByteLanes::new(&lanes, self.components);
         self.lanes = lanes;
         self.scratch = Mutex::new(Scratch::default());
+    }
+
+    /// Whether [`Self::fill_bytes`] fills spans: opaque lanes of three
+    /// colour channels.
+    pub(super) fn fills_bytes(&self) -> bool {
+        self.bytes.is_some()
+    }
+
+    /// Fills `out` with device pixels `x .. x + out.len()` of row `y` as
+    /// premultiplied RGBA bytes: the colours [`Self::fill`] gives, each
+    /// rounded by [`pagura_raster::quantize_unit`], with alpha 255, and
+    /// `[0, 0, 0, 0]` where a footprint misses the image (alpha 0). Returns
+    /// false, with `out` unspecified, unless [`Self::fills_bytes`].
+    pub(super) fn fill_bytes(
+        &self,
+        image: &DecodedImage,
+        (x, y): (u32, u32),
+        out: &mut [[u8; 4]],
+    ) -> bool {
+        let Some(bytes) = self.bytes.as_deref() else {
+            return false;
+        };
+        let len = out.len();
+        let Some(grid) = Grid::new(image, self.clean.as_ref()) else {
+            out.fill([0, 0, 0, 255]);
+            return true;
+        };
+        let mut guard = match self.scratch.try_lock() {
+            Ok(guard) => Some(guard),
+            Err(TryLockError::Poisoned(poisoned)) => Some(poisoned.into_inner()),
+            Err(TryLockError::WouldBlock) => None,
+        };
+        let mut local = None;
+        let scratch = match guard.as_deref_mut() {
+            Some(scratch) => scratch,
+            None => local.insert(Scratch::default()),
+        };
+        let n = self.components;
+        if self.kind == Kind::Nearest && matches!(n, 1 | 3) {
+            if n == 1 {
+                self.nearest::<1>(&grid, (x, y, len), scratch);
+                nearest_bytes::<1>(bytes, &scratch.codes, out);
+            } else {
+                self.nearest::<3>(&grid, (x, y, len), scratch);
+                nearest_bytes::<3>(bytes, &scratch.codes, out);
+            }
+            return true;
+        }
+        let mut span = std::mem::take(&mut scratch.span);
+        self.fill_in(&grid, (x, y, len), scratch, &mut span, None);
+        round_bytes(&span, out);
+        scratch.span = span;
+        true
     }
 
     /// Fills `out` with device pixels `x .. x + len` of row `y`: straight
@@ -926,9 +1078,9 @@ impl Codes {
         out: &mut SpanColors,
         shape: Option<&mut Vec<f64>>,
     ) {
-        out.channels = self.lanes.channels;
-        out.alpha.clear();
         let Some(grid) = Grid::new(image, self.clean.as_ref()) else {
+            out.channels = self.lanes.channels;
+            out.alpha.clear();
             out.colors.clear();
             out.colors.resize(len * self.lanes.channels, 0.0);
             return;
@@ -944,14 +1096,28 @@ impl Codes {
             Some(scratch) => scratch,
             None => local.insert(Scratch::default()),
         };
+        self.fill_in(&grid, (x, y, len), scratch, out, shape);
+    }
+
+    /// [`Self::fill`] over `grid` in `scratch`.
+    fn fill_in(
+        &self,
+        grid: &Grid<'_>,
+        (x, y, len): (u32, u32, usize),
+        scratch: &mut Scratch,
+        out: &mut SpanColors,
+        shape: Option<&mut Vec<f64>>,
+    ) {
+        out.channels = self.lanes.channels;
+        out.alpha.clear();
         let n = self.components;
         match self.kind {
             Kind::Nearest => {
                 match n {
-                    1 => self.nearest::<1>(&grid, (x, y, len), scratch),
-                    2 => self.nearest::<2>(&grid, (x, y, len), scratch),
-                    3 => self.nearest::<3>(&grid, (x, y, len), scratch),
-                    _ => self.nearest::<4>(&grid, (x, y, len), scratch),
+                    1 => self.nearest::<1>(grid, (x, y, len), scratch),
+                    2 => self.nearest::<2>(grid, (x, y, len), scratch),
+                    3 => self.nearest::<3>(grid, (x, y, len), scratch),
+                    _ => self.nearest::<4>(grid, (x, y, len), scratch),
                 }
                 self.lanes.write_codes(&scratch.codes, n, out, shape);
             }
@@ -982,12 +1148,12 @@ impl Codes {
                 let into = (target.as_mut_slice(), map);
                 let span = (x, y, len);
                 match (n, copies) {
-                    (1, 3) => self.area::<1, 3>(&grid, span, scratch, into),
-                    (1, 4) => self.area::<1, 4>(&grid, span, scratch, into),
-                    (1, _) => self.area::<1, 1>(&grid, span, scratch, into),
-                    (2, _) => self.area::<2, 1>(&grid, span, scratch, into),
-                    (3, _) => self.area::<3, 1>(&grid, span, scratch, into),
-                    _ => self.area::<4, 1>(&grid, span, scratch, into),
+                    (1, 3) => self.area::<1, 3>(grid, span, scratch, into),
+                    (1, 4) => self.area::<1, 4>(grid, span, scratch, into),
+                    (1, _) => self.area::<1, 1>(grid, span, scratch, into),
+                    (2, _) => self.area::<2, 1>(grid, span, scratch, into),
+                    (3, _) => self.area::<3, 1>(grid, span, scratch, into),
+                    _ => self.area::<4, 1>(grid, span, scratch, into),
                 }
                 let mut shape = shape;
                 if direct.is_some() {

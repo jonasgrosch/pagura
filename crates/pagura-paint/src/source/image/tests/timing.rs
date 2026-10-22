@@ -527,3 +527,51 @@ fn image_decode_timing() {
         }
     }
 }
+
+/// What each image of the pages is and how it is sampled at each
+/// resolution.
+#[test]
+#[ignore = "needs the benchmark corpus"]
+fn image_page_details() {
+    let dpis: Vec<f64> = setting("PAGURA_IMAGE_DPI", "72,150,300")
+        .split(',')
+        .filter_map(|v| v.trim().parse().ok())
+        .collect();
+    for (name, document, index) in pages(IMAGE_PAGES) {
+        let page = document.page(index).unwrap();
+        let limits = document.limits();
+        for &dpi in &dpis {
+            for placed in placed(&document, page, dpi / 72.0) {
+                let source = &placed.source;
+                let decoded = decode_once(&placed, &limits, true).unwrap();
+                let sampler = sampler(&placed, Arc::clone(&decoded)).unwrap();
+                let prepared = sampler.prepared.as_deref().unwrap();
+                let image = &decoded.image;
+                let layout = match &image.samples {
+                    pagura_image::Samples::Bytes(_) => "bytes",
+                    pagura_image::Samples::Words(_) => "words",
+                    pagura_image::Samples::Mixed { .. } => "mixed",
+                    pagura_image::Samples::Packed(_) => "packed",
+                    pagura_image::Samples::Planar(_) => "planar",
+                };
+                eprintln!(
+                    "{name} {dpi}: source {}x{} {}x{}bit {:?} | decoded {}x{} {layout} reduction {:?} | \
+                     drawn {}x{} at {:?} | mode {:?} codes {}",
+                    source.width(),
+                    source.height(),
+                    source.components(),
+                    source.bits_per_component(),
+                    source.kind(),
+                    image.width,
+                    image.height,
+                    image.reduction,
+                    placed.rect.x1 - placed.rect.x0,
+                    placed.rect.y1 - placed.rect.y0,
+                    placed.unit_to_device,
+                    prepared.geometry.mode(),
+                    prepared.codes.is_some(),
+                );
+            }
+        }
+    }
+}

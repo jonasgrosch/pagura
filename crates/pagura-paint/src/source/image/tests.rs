@@ -221,6 +221,47 @@ fn close(actual: f64, expected: f64) -> bool {
         || (actual - expected).abs() <= 1e-13 * expected.abs().max(1.0)
 }
 
+/// Checks that byte spans, where the sampler fills them, are the colours of
+/// its f64 spans as `U8` storage rounds them, over every pixel of rows
+/// `rows` from column `x0` on, as whole rows and as single pixels. Returns
+/// whether it fills byte spans.
+pub(super) fn bytes_agree(
+    sampler: &ImageSampler,
+    (x0, len): (u32, usize),
+    rows: std::ops::Range<u32>,
+) -> bool {
+    if !sampler.has_byte_spans() {
+        return false;
+    }
+    let quantize = pagura_raster::quantize_unit;
+    let mut span = SpanColors::default();
+    let (mut bytes, mut single) = (vec![[9u8; 4]; len], [[9u8; 4]; 1]);
+    for y in rows {
+        sampler.span(x0, y, len, &mut span);
+        assert_eq!(span.channels, 3);
+        assert!(sampler.span_bytes(x0, y, &mut bytes));
+        for (i, (x, &actual)) in (x0..).zip(&bytes).enumerate() {
+            let alpha = span.alpha.get(i).copied().unwrap_or(1.0);
+            assert!(alpha == 0.0 || alpha == 1.0, "opaque byte spans");
+            let color = &span.colors[i * 3..i * 3 + 3];
+            let expected = if alpha == 0.0 {
+                [0; 4]
+            } else {
+                [
+                    quantize(color[0]),
+                    quantize(color[1]),
+                    quantize(color[2]),
+                    255,
+                ]
+            };
+            assert_eq!(actual, expected, "pixel ({x}, {y}) of {color:?}");
+            assert!(sampler.span_bytes(x, y, &mut single));
+            assert_eq!(single[0], expected, "single pixel ({x}, {y})");
+        }
+    }
+    true
+}
+
 /// Compares the new sampler with the oracle on every pixel of the window,
 /// as whole rows and as single pixels. Nearest samples and the general
 /// paths agree bit for bit; averages of codes within [`close`]. An empty
@@ -231,6 +272,8 @@ fn agree(case: &Case, target: usize) {
         let mut oracle = oracle::Oracle::new(case, unit_to_device, target);
         let (x0, y0, x1, y1) = window(unit_to_device);
         let len = usize::try_from(x1 - x0).unwrap();
+        let bytes = bytes_agree(&sampler, (x0, len), y0..y1);
+        assert!(!bytes || target == 3, "byte spans fill three channels");
         let (mut row, mut single) = (SpanColors::default(), SpanColors::default());
         let (mut row_shape, mut single_shape) = (Vec::new(), Vec::new());
         for y in y0..y1 {
@@ -613,4 +656,36 @@ fn rows_and_tables_sum_as_samples_do() {
             }
         }
     }
+}
+
+/// Opaque gray and RGB images of every precision fill byte spans into an
+/// RGB space, at every placement the codes sample; masked and translucent
+/// images do not.
+#[test]
+fn byte_spans_cover_opaque_images_sampled_by_codes() {
+    let rgb = case(image((9, 7), 3, 8, bytes(9 * 7 * 3, 8, 83)));
+    let mut filled = 0;
+    for bits in [1, 2, 4, 8] {
+        let gray = case(image((13, 9), 1, bits, bytes(13 * 9, bits, 89)));
+        for case in [&gray, &rgb] {
+            for unit_to_device in placements(case.image.width, case.image.height) {
+                let sampler = sampler(case, unit_to_device, 3);
+                let (x0, y0, x1, y1) = window(unit_to_device);
+                let len = usize::try_from(x1 - x0).unwrap();
+                filled += usize::from(bytes_agree(&sampler, (x0, len), y0..y1));
+            }
+        }
+    }
+    // Every upright, flipped and quarter-turned placement; not the rotated
+    // and skewed ones.
+    assert_eq!(filled, 4 * 2 * 10);
+    let mut masked = rgb.clone();
+    masked.mask = Some((
+        image((9, 7), 1, 8, bytes(63, 8, 97)),
+        [0.0, 1.0],
+        MaskUse::Soft(None),
+    ));
+    let unit_to_device = Transform::new(4.5, 0.0, 0.0, 3.5, 0.0, 0.0);
+    assert!(!sampler(&masked, unit_to_device, 3).has_byte_spans());
+    assert!(!sampler(&rgb, unit_to_device, 1).has_byte_spans());
 }
