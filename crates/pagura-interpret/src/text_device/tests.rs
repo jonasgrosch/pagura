@@ -1,9 +1,9 @@
 use super::*;
-use crate::device::{FontKey, Glyph, GlyphPaint, MarkedText, OutlineKey};
-use pagura_core::{Name, Position, Rect};
+use crate::device::{FontKey, MarkedText};
+use pagura_core::{Name, Rect};
 use pagura_document::Rotation;
 use pagura_extract::{Quad, TextRenderingMode};
-use pagura_raster::{Point, Transform};
+use pagura_raster::Point;
 
 fn font(key: u64) -> FontInfo {
     FontInfo {
@@ -15,47 +15,29 @@ fn font(key: u64) -> FontInfo {
     }
 }
 
-fn glyph(text: &str) -> Glyph {
-    Glyph {
-        code: 65,
-        outline_key: OutlineKey {
-            font: FontKey(1),
-            glyph: 65,
-        },
-        transform: Transform::IDENTITY,
-        outline: None,
-        text: Some(Box::new(PositionedGlyph {
-            unicode: Some(text.into()),
-            font: 0,
-            size: 12.0,
-            writing_mode: pagura_text::WritingMode::Horizontal,
-            quad: Quad([Point::default(); 4]),
-            origin: Point::default(),
-            axis: Point::new(1.0, 0.0),
-            em: 1.0,
-            advance_end: Point::new(1.0, 0.0),
-            render_mode: TextRenderingMode::Fill,
-            hidden: false,
-            marked_content: Arc::from([]),
-            show: 0,
-        })),
-        position: Position::Unknown,
+fn glyph(text: &str) -> PositionedGlyph {
+    PositionedGlyph {
+        unicode: Some(text.into()),
+        font: 0,
+        size: 12.0,
+        writing_mode: pagura_text::WritingMode::Horizontal,
+        quad: Quad([Point::default(); 4]),
+        origin: Point::default(),
+        axis: Point::new(1.0, 0.0),
+        em: 1.0,
+        advance_end: Point::new(1.0, 0.0),
+        render_mode: TextRenderingMode::Fill,
+        hidden: false,
+        marked_content: Arc::from([]),
+        show: 0,
     }
 }
 
-fn show(device: &mut TextDevice, font: &FontInfo, glyphs: &[Glyph]) {
+fn show(device: &mut TextDevice, font: &FontInfo, text: &[PositionedGlyph]) {
     device
-        .glyphs(&GlyphRun {
+        .text(TextRun {
             font,
-            glyphs,
-            mode: TextRenderingMode::Fill,
-            paint: GlyphPaint {
-                fill: None,
-                fill_state: None,
-                stroke: None,
-                stroke_state: None,
-            },
-            hidden: false,
+            glyphs: &mut text.to_vec(),
         })
         .unwrap();
 }
@@ -146,17 +128,9 @@ fn unbalanced_structure_and_unknown_fonts_are_errors() {
     device.select_font(&font).unwrap();
     show(&mut device, &font, &[glyph("a")]);
     let error = device
-        .glyphs(&GlyphRun {
+        .text(TextRun {
             font: &font,
-            glyphs: &[glyph("b")],
-            mode: TextRenderingMode::Fill,
-            paint: GlyphPaint {
-                fill: None,
-                fill_state: None,
-                stroke: None,
-                stroke_state: None,
-            },
-            hidden: false,
+            glyphs: &mut vec![glyph("b")],
         })
         .unwrap_err();
     assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
@@ -165,17 +139,9 @@ fn unbalanced_structure_and_unknown_fonts_are_errors() {
 fn show_error(device: &mut TextDevice) {
     let font = font(7);
     let error = device
-        .glyphs(&GlyphRun {
+        .text(TextRun {
             font: &font,
-            glyphs: &[glyph("a")],
-            mode: TextRenderingMode::Fill,
-            paint: GlyphPaint {
-                fill: None,
-                fill_state: None,
-                stroke: None,
-                stroke_state: None,
-            },
-            hidden: false,
+            glyphs: &mut vec![glyph("a")],
         })
         .unwrap_err();
     assert_eq!(error.message, "missing extraction font");

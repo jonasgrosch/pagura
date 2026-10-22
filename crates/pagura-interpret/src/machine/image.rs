@@ -3,36 +3,37 @@
 
 mod describe;
 
-use super::{Machine, Scope, Text};
+use super::{Machine, Scope};
 use crate::device::{Device, ImageMark, MarkState, Marked};
 use crate::model::Image;
-use pagura_content::Reader;
 use pagura_core::{Dictionary, Error, Name, ObjectId, Position, Result, Value};
 use pagura_image::{ImageId, ImageSource};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// Image descriptions read in one interpretation, by image and the
-/// resources its colour space was resolved in.
+/// Image descriptions read in one interpretation, by image and the colour
+/// space resources they were resolved in: the only resources describing
+/// an image reads (named and `Default` spaces, 8.6.5.6).
 #[derive(Debug, Default)]
 pub(crate) struct Images {
     entries: HashMap<(ObjectId, usize), Arc<Image>>,
-    /// The resources dictionaries met, kept so their addresses identify
-    /// them for the whole interpretation.
-    resources: Vec<Dictionary>,
+    /// The `ColorSpace` entries of the resources met.
+    spaces: Vec<Option<Value>>,
 }
 
 impl Images {
-    /// A number identifying `resources` among those met.
-    fn resources(&mut self, resources: &Dictionary) -> Result<usize> {
-        if let Some(index) = self.resources.iter().position(|r| r == resources) {
+    /// A number identifying the colour space resources of `resources`
+    /// among those met.
+    fn spaces(&mut self, resources: &Dictionary) -> Result<usize> {
+        let spaces = resources.get(b"ColorSpace");
+        if let Some(index) = self.spaces.iter().position(|s| s.as_ref() == spaces) {
             return Ok(index);
         }
-        if self.resources.len() >= 256 {
+        if self.spaces.len() >= 256 {
             return Err(Error::limit("image resource cache budget exceeded"));
         }
-        self.resources.push(resources.clone());
-        Ok(self.resources.len() - 1)
+        self.spaces.push(spaces.cloned());
+        Ok(self.spaces.len() - 1)
     }
 }
 
@@ -60,7 +61,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             .map(|v| self.session.visibility.visible(document, v))
             .transpose()?
             .unwrap_or(true);
-        if scope.role == Text::Page && self.needs().text && self.needs().structure {
+        if self.structure(scope) {
             self.device.marked(&Marked::ObjectBegin {
                 object: id,
                 hidden: !visible || !scope.visible,
@@ -90,7 +91,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         if stack.len() >= self.session.limits.depth {
             return Err(Error::limit("image mask nesting exceeded"));
         }
-        let key = (id, self.session.images.resources(resources)?);
+        let key = (id, self.session.images.spaces(resources)?);
         if let Some(image) = self.session.images.entries.get(&key) {
             return Ok(Arc::clone(image));
         }
@@ -114,8 +115,8 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let Some(emission) = self.admit(scope)? else {
             return Ok(());
         };
-        let base = scope.state.fill_composite();
-        let composite = if image.intent.is_some() || has_mask(image) {
+        let base = self.fill_state(scope);
+        let composite = if self.needs().paint && (image.intent.is_some() || has_mask(image)) {
             let mut composite = base.as_ref().clone();
             if let Some(intent) = image.intent {
                 composite.conversion.intent = intent;
@@ -147,21 +148,14 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         })
     }
 
-    /// `BI … ID … EI` (8.9.7).
+    /// `BI … ID … EI` (8.9.7) with its `data`.
     pub(super) fn inline_image(
         &mut self,
         dictionary: &Dictionary,
-        reader: &mut Reader<'_>,
+        data: &[u8],
         resources: &Dictionary,
         scope: &mut Scope,
     ) -> Result<()> {
-        let framing = if self.needs().paint {
-            self.inline_framing(dictionary, resources)?
-        } else {
-            light_framing(self.document(), dictionary, resources)?
-        };
-        let data =
-            reader.inline_image_data(|data| pagura_image::inline_data_length(&framing, data))?;
         let stencil = dictionary
             .get(b"ImageMask")
             .or_else(|| dictionary.get(b"IM"))
@@ -186,50 +180,12 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let image = self.describe(source, resources, &mut Vec::new())?;
         self.image_mark(&image, scope)
     }
-
-    /// Reads past an inline image a stencil cell ignores (8.6.8): only its
-    /// header and encoded length are examined.
-    pub(super) fn skip_inline_image(
-        &mut self,
-        dictionary: &Dictionary,
-        reader: &mut Reader<'_>,
-        resources: &Dictionary,
-    ) -> Result<()> {
-        let framing = light_framing(self.document(), dictionary, resources)?;
-        reader.inline_image_data(|data| pagura_image::inline_data_length(&framing, data))?;
-        Ok(())
-    }
-
-    /// The dictionary inline image framing needs: a named colour space is
-    /// replaced by its definition, and an ICCBased one by the device space
-    /// of its component count.
-    fn inline_framing(
-        &mut self,
-        dictionary: &Dictionary,
-        resources: &Dictionary,
-    ) -> Result<Dictionary> {
-        let document = self.document();
-        let mut framing = dictionary.clone();
-        let Some(name) = named_space(dictionary) else {
-            return Ok(framing);
-        };
-        let value = super::form::resource(document, resources, b"ColorSpace", name.as_bytes())?;
-        let value = document.resolve(value)?;
-        let definition = if is_icc(value) {
-            let count = self.session.colors.resolve(resources, value)?.components();
-            device_name(count)?
-        } else {
-            value.clone()
-        };
-        framing.insert(Name::new(b"ColorSpace"), definition);
-        framing.remove(b"CS");
-        Ok(framing)
-    }
 }
 
-/// Framing without colour-space resolution: an ICCBased space's `N` gives
-/// its component count.
-fn light_framing(
+/// The dictionary that frames an inline image's data (8.9.7): a named
+/// colour space is replaced by its definition, and an ICCBased one by the
+/// device space of its stream's `N`, without resolving the space.
+pub(super) fn framing(
     document: &pagura_document::Document,
     dictionary: &Dictionary,
     resources: &Dictionary,

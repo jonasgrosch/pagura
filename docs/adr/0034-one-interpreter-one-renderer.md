@@ -55,8 +55,8 @@ PreparedScene ─► band executor (infallible, cancellable between bands) ─�
 
 Dependencies point downward: `pagura-render` → `pagura-paint` →
 `pagura-interpret` → `pagura-content`, `pagura-color`, `pagura-image`,
-`pagura-raster`, `pagura-text`, `pagura-extract`, `pagura-appearance`,
-`pagura-document`, `pagura-core`. `pagura-color` stays free of PDF objects
+`pagura-raster`, `pagura-text`, `pagura-font`, `pagura-extract`,
+`pagura-appearance`, `pagura-document`, `pagura-core`. `pagura-color` stays free of PDF objects
 (ADR 0028): the interpreter resolves colour-space and function objects into
 its types.
 

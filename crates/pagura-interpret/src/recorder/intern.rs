@@ -1,7 +1,8 @@
-//! Interning of the shared values marks carry: by `Arc` identity first,
-//! then composite states and solid colours by value, so equal values the
-//! interpreter built separately share one table entry. The interner holds
-//! every `Arc` it has seen, so an identity is never reused while interned.
+//! Interning of the shared values marks carry. Composite states and solid
+//! colours of up to four components are interned by value, so equal values
+//! the interpreter built separately share one table entry; other paints,
+//! pens and clips by identity. The tables hold every value interned by
+//! identity, so its address names it for the whole recording.
 
 use crate::hash::FastMap;
 use crate::model::{BlendMode, Clip, Composite, MaskId, Overprint, Paint, Pen};
@@ -18,26 +19,17 @@ pub(super) struct Interner {
     /// The interned clips, kept so their addresses stay theirs.
     clip_arcs: Vec<Arc<Clip>>,
     states: Vec<Arc<Composite>>,
-    state_ids: FastMap<usize, StateId>,
-    state_values: FastMap<StateKey, StateId>,
+    state_ids: FastMap<StateKey, StateId>,
     paints: Vec<Arc<Paint>>,
+    solid_ids: FastMap<SolidKey, PaintId>,
+    /// Paints interned by identity, which `paints` holds.
     paint_ids: FastMap<usize, PaintId>,
-    paint_values: FastMap<(usize, Vec<u64>), PaintId>,
-    /// States and paints interned as aliases of equal values, kept alive so
-    /// their addresses stay theirs.
-    state_aliases: Vec<Arc<Composite>>,
-    paint_aliases: Vec<Arc<Paint>>,
     pens: Vec<Arc<Pen>>,
     pen_ids: FastMap<usize, PenId>,
-    /// The last states, paints and clips interned, by address: marks
-    /// mostly repeat their neighbours', so these are checked before the
-    /// maps.
-    recent_state: Option<(usize, StateId)>,
-    recent_paints: [Option<(usize, PaintId)>; 2],
-    recent_clip: Option<(usize, ClipId)>,
 }
 
-/// A composite state by value; functions by identity.
+/// A composite state by value; functions by identity, which the interned
+/// state holds.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 struct StateKey {
     alpha: u64,
@@ -73,6 +65,37 @@ impl StateKey {
     }
 }
 
+/// A solid colour of up to four components by value: its space by
+/// identity, which the interned paint holds, and its components' bits
+/// (signed zeros distinguished).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct SolidKey {
+    space: usize,
+    len: usize,
+    bits: [u64; 4],
+}
+
+impl SolidKey {
+    fn of(paint: &Paint) -> Option<Self> {
+        let Paint::Solid(color) = paint else {
+            return None;
+        };
+        let values = color.components.as_slice();
+        let mut bits = [0; 4];
+        if values.len() > bits.len() {
+            return None;
+        }
+        for (bits, value) in bits.iter_mut().zip(values) {
+            *bits = value.to_bits();
+        }
+        Some(Self {
+            space: address(&color.space),
+            len: values.len(),
+            bits,
+        })
+    }
+}
+
 /// The tables of a finished recording.
 pub(super) type Tables = (
     Vec<ClipNode>,
@@ -95,77 +118,33 @@ impl Interner {
     }
 
     pub(super) fn state(&mut self, state: &Arc<Composite>, bytes: &mut Meter) -> Result<StateId> {
-        let address = address(state);
-        if let Some((recent, id)) = self.recent_state
-            && recent == address
-        {
-            return Ok(id);
-        }
-        let id = self.state_by_value(state, bytes)?;
-        self.recent_state = Some((address, id));
-        Ok(id)
-    }
-
-    fn state_by_value(&mut self, state: &Arc<Composite>, bytes: &mut Meter) -> Result<StateId> {
-        if let Some(&id) = self.state_ids.get(&address(state)) {
-            return Ok(id);
-        }
         let key = StateKey::of(state);
-        if let Some(&id) = self.state_values.get(&key) {
-            self.state_aliases.push(Arc::clone(state));
-            self.state_ids.insert(address(state), id);
+        if let Some(&id) = self.state_ids.get(&key) {
             return Ok(id);
         }
         bytes.charge_items::<Composite>(1)?;
         let id = StateId(index(self.states.len())?);
         self.states.push(Arc::clone(state));
-        self.state_ids.insert(address(state), id);
-        self.state_values.insert(key, id);
+        self.state_ids.insert(key, id);
         Ok(id)
     }
 
     pub(super) fn paint(&mut self, paint: &Arc<Paint>, bytes: &mut Meter) -> Result<PaintId> {
-        let address = address(paint);
-        if let Some(&(_, id)) = self
-            .recent_paints
-            .iter()
-            .flatten()
-            .find(|(recent, _)| *recent == address)
-        {
-            return Ok(id);
-        }
-        let id = self.paint_by_value(paint, bytes)?;
-        self.recent_paints = [Some((address, id)), self.recent_paints[0]];
-        Ok(id)
-    }
-
-    fn paint_by_value(&mut self, paint: &Arc<Paint>, bytes: &mut Meter) -> Result<PaintId> {
-        if let Some(&id) = self.paint_ids.get(&address(paint)) {
-            return Ok(id);
-        }
-        let key = match paint.as_ref() {
-            Paint::Solid(color) => Some((
-                address(&color.space),
-                color
-                    .components
-                    .iter()
-                    .map(|c| c.to_bits())
-                    .collect::<Vec<_>>(),
-            )),
-            Paint::Shading(_) | Paint::Tiling(_) => None,
+        let solid = SolidKey::of(paint);
+        let known = match &solid {
+            Some(key) => self.solid_ids.get(key),
+            None => self.paint_ids.get(&address(paint)),
         };
-        if let Some(&id) = key.as_ref().and_then(|key| self.paint_values.get(key)) {
-            self.paint_aliases.push(Arc::clone(paint));
-            self.paint_ids.insert(address(paint), id);
+        if let Some(&id) = known {
             return Ok(id);
         }
         bytes.charge_items::<Paint>(1)?;
         let id = PaintId(index(self.paints.len())?);
         self.paints.push(Arc::clone(paint));
-        self.paint_ids.insert(address(paint), id);
-        if let Some(key) = key {
-            self.paint_values.insert(key, id);
-        }
+        match solid {
+            Some(key) => self.solid_ids.insert(key, id),
+            None => self.paint_ids.insert(address(paint), id),
+        };
         Ok(id)
     }
 
@@ -183,18 +162,6 @@ impl Interner {
 
     /// Interns `clip` and the chain above it.
     pub(super) fn clip(&mut self, clip: &Arc<Clip>, bytes: &mut Meter) -> Result<ClipId> {
-        let address = address(clip);
-        if let Some((recent, id)) = self.recent_clip
-            && recent == address
-        {
-            return Ok(id);
-        }
-        let id = self.clip_chain(clip, bytes)?;
-        self.recent_clip = Some((address, id));
-        Ok(id)
-    }
-
-    fn clip_chain(&mut self, clip: &Arc<Clip>, bytes: &mut Meter) -> Result<ClipId> {
         if let Some(&id) = self.clip_ids.get(&address(clip)) {
             return Ok(id);
         }

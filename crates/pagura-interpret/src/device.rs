@@ -26,10 +26,12 @@ use std::sync::Arc;
 pub struct Needs {
     /// Colours, patterns, shadings, soft masks, groups and transfer
     /// functions are resolved and emitted. Without it, marks carry no
-    /// paint and no colour space, shading, pattern or soft mask is read.
+    /// paint and the default composite state, and no colour space,
+    /// shading, pattern or soft mask is read. Pen and geometry state apply
+    /// either way.
     pub paint: bool,
     /// Image marks are emitted with their sources. Without it, images are
-    /// not read beyond what text extraction's object occurrences need.
+    /// not read beyond what object occurrences need.
     pub images: bool,
     /// Glyph runs carry outlines (font programs are loaded), and Type 3
     /// glyph procedures are interpreted.
@@ -103,7 +105,8 @@ pub struct PageInfo {
 pub struct MarkState<'a> {
     /// The clipping path chain; `None` clips nothing.
     pub clip: Option<&'a Arc<Clip>>,
-    /// The compositing state.
+    /// The compositing state; the default state for devices that do not
+    /// need paint.
     pub composite: &'a Arc<Composite>,
     /// The operator that painted the mark.
     pub position: Position,
@@ -183,8 +186,6 @@ pub struct Glyph {
     /// font has outlines (not for Type 3 fonts, whose glyph procedures are
     /// interpreted into ordinary marks).
     pub outline: Option<Arc<Path>>,
-    /// Text for extraction, when the device needs text.
-    pub text: Option<Box<pagura_extract::PositionedGlyph>>,
     /// The string operand that showed it.
     pub position: Position,
 }
@@ -215,6 +216,18 @@ pub struct GlyphRun<'a> {
     pub paint: GlyphPaint<'a>,
     /// Whether optional content hides the run.
     pub hidden: bool,
+}
+
+/// The page text one string operand shows (9.4.4, 9.10), for devices that
+/// need text.
+#[derive(Debug)]
+pub struct TextRun<'a> {
+    /// The font.
+    pub font: &'a FontInfo,
+    /// The glyphs' records in show order, which the device may take: the
+    /// interpreter discards what is left. Their font index, marked-content
+    /// path and string number are the device's to fill in.
+    pub glyphs: &'a mut Vec<pagura_extract::PositionedGlyph>,
 }
 
 /// An image mark (8.9.5) or a stencil mask painted with the fill paint.
@@ -399,12 +412,24 @@ pub trait Device {
         Ok(())
     }
 
-    /// Glyphs shown by one string operand.
+    /// Glyphs shown by one string operand that paints at least one of
+    /// them; only devices that need outlines receive them.
     ///
     /// # Errors
     ///
     /// As [`Self::begin_page`].
     fn glyphs(&mut self, run: &GlyphRun<'_>) -> Result<()> {
+        Ok(())
+    }
+
+    /// The text of one string operand of page text, after its glyphs; only
+    /// devices that need text receive it, for every string, empty ones
+    /// included.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::begin_page`].
+    fn text(&mut self, run: TextRun<'_>) -> Result<()> {
         Ok(())
     }
 

@@ -8,8 +8,8 @@
 //! it does not need. Two devices live here: [`SceneRecorder`], which records
 //! a device-independent [`Scene`] for rendering, and [`TextDevice`], which
 //! collects positioned glyphs for `pagura-extract` without decoding images,
-//! parsing shadings or converting colours. [`dump`] prints a scene for
-//! snapshots and debugging.
+//! parsing shadings or converting colours. The non-default `dump` feature
+//! adds `dump`, which prints a scene for snapshot tests and debugging.
 //!
 //! Content is read by `pagura-content`; colour spaces and functions are
 //! resolved into `pagura-color` values, images into undecoded
@@ -21,6 +21,7 @@
 //! tag.
 
 mod device;
+#[cfg(feature = "dump")]
 mod dump;
 pub mod features;
 mod fonts;
@@ -36,8 +37,9 @@ mod text_device;
 pub use device::{
     Device, FillMark, FontInfo, FontKey, Glyph, GlyphPaint, GlyphRun, GroupInfo, ImageMark,
     MarkState, Marked, MarkedText, Needs, OutlineKey, PageInfo, ShadingMark, SoftMaskInfo,
-    StrokeMark, TilingInfo, glyph_origin,
+    StrokeMark, TextRun, TilingInfo, glyph_origin,
 };
+#[cfg(feature = "dump")]
 pub use dump::dump;
 pub use model::{
     BlendMode, Clip, Color, Composite, GroupAttributes, GroupCause, Image, ImageMask, MaskId,

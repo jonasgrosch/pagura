@@ -10,7 +10,7 @@ use pagura_core::{
 };
 use pagura_document::Document;
 use pagura_raster::{Path, Segment};
-use pagura_text::{FontKind, PdfFont, Provider, WritingMode};
+use pagura_text::{FontKind, FontUnicode, PdfFont, Provider, WritingMode};
 use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::Arc;
@@ -23,6 +23,9 @@ const MAX_FONTS: usize = 256;
 pub(crate) struct LoadedFont {
     pub(crate) font: Arc<PdfFont>,
     pub(crate) info: FontInfo,
+    /// The Unicode of its codes; loaded only for interpretations that
+    /// extract text.
+    pub(crate) unicode: Option<Arc<FontUnicode>>,
     /// `FontBBox`, which sizes text selection quads, when it can be read;
     /// read only for interpretations that extract text.
     pub(crate) bbox: Option<Rect>,
@@ -42,6 +45,14 @@ impl StoreKey for FontStoreKey {
     type Value = PdfFont;
 }
 
+/// The store key of a font's Unicode: its dictionary's object.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct UnicodeStoreKey(ObjectId);
+
+impl StoreKey for UnicodeStoreKey {
+    type Value = FontUnicode;
+}
+
 /// The store key of a glyph outline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct OutlineStoreKey(OutlineKey);
@@ -58,9 +69,6 @@ pub(crate) struct Fonts<'a> {
     indirect: BTreeMap<ObjectId, Arc<LoadedFont>>,
     direct: Vec<(Dictionary, Arc<LoadedFont>)>,
     outlines: FastMap<OutlineKey, Arc<Path>>,
-    /// Recently read outlines, direct-mapped: a lookaside that compares
-    /// keys in front of `outlines`, which hashes them.
-    recent: Vec<Option<(OutlineKey, Arc<Path>)>>,
     bytes: Meter,
     /// Whether text is extracted, which reads font boxes.
     text: bool,
@@ -89,7 +97,6 @@ impl<'a> Fonts<'a> {
             indirect: BTreeMap::new(),
             direct: Vec::new(),
             outlines: FastMap::default(),
-            recent: Vec::new(),
             bytes: Meter::new(
                 document.limits().render_bytes,
                 "text and image retained byte budget exceeded",
@@ -129,8 +136,14 @@ impl<'a> Fonts<'a> {
             return Err(Error::limit("font cache budget exceeded"));
         }
         let font = self.load(id, dictionary, position)?;
+        let unicode = if self.text {
+            Some(self.unicode(&font, id, dictionary, position)?)
+        } else {
+            None
+        };
         let charge = font
             .retained_bytes()
+            .saturating_add(unicode.as_ref().map_or(0, |u| u.retained_bytes()))
             .saturating_add(size_of::<LoadedFont>() + 64)
             .saturating_add(id.map_or_else(|| dictionary.retained_bytes(), |_| 0));
         self.bytes.charge(charge)?;
@@ -151,6 +164,7 @@ impl<'a> Fonts<'a> {
             } else {
                 None
             },
+            unicode,
             font,
         });
         match id {
@@ -171,21 +185,36 @@ impl<'a> Fonts<'a> {
     ) -> Result<Arc<PdfFont>> {
         let load = || -> Result<Built<PdfFont>> {
             let font = PdfFont::load_at(self.document, dictionary, self.provider, position)
-                .map_err(|mut error| {
-                    if matches!(error.position, Position::Unknown | Position::Buffer(_)) {
-                        error.position = position;
-                    }
-                    if error.repair == Some(pagura_text::repairs::DESCRIPTOR_FLAGS) {
-                        error
-                    } else {
-                        error.in_object_opt(id)
-                    }
-                })?;
+                .map_err(|error| placed(error, id, position))?;
             let bytes = font.retained_bytes();
             Ok(Built { value: font, bytes })
         };
         match (self.store, id) {
             (Some(store), Some(id)) => store.get_or_build(FontStoreKey(id), load),
+            _ => load().map(|built| Arc::new(built.value)),
+        }
+    }
+
+    /// Loads the Unicode of `font`, through the store for indirect fonts.
+    fn unicode(
+        &self,
+        font: &PdfFont,
+        id: Option<ObjectId>,
+        dictionary: &Dictionary,
+        position: Position,
+    ) -> Result<Arc<FontUnicode>> {
+        let load = || -> Result<Built<FontUnicode>> {
+            let unicode = font
+                .unicode(self.document, dictionary, self.provider)
+                .map_err(|error| placed(error, id, position))?;
+            let bytes = unicode.retained_bytes();
+            Ok(Built {
+                value: unicode,
+                bytes,
+            })
+        };
+        match (self.store, id) {
+            (Some(store), Some(id)) => store.get_or_build(UnicodeStoreKey(id), load),
             _ => load().map(|built| Arc::new(built.value)),
         }
     }
@@ -212,16 +241,8 @@ impl<'a> Fonts<'a> {
             font: font.info.key,
             glyph: glyph.0,
         };
-        let slot = recent_slot(key);
-        if let Some(Some((recent, path))) = self.recent.get(slot)
-            && *recent == key
-        {
-            return Ok(Arc::clone(path));
-        }
         if let Some(path) = self.outlines.get(&key) {
-            let path = Arc::clone(path);
-            self.remember(slot, key, &path);
-            return Ok(path);
+            return Ok(Arc::clone(path));
         }
         let document = self.document;
         let object = font.info.object;
@@ -246,28 +267,21 @@ impl<'a> Fonts<'a> {
         };
         self.bytes.charge(path_bytes(&path))?;
         self.outlines.insert(key, Arc::clone(&path));
-        self.remember(slot, key, &path);
         Ok(path)
-    }
-
-    /// Keeps `path` in the lookaside entry `slot`.
-    fn remember(&mut self, slot: usize, key: OutlineKey, path: &Arc<Path>) {
-        if self.recent.is_empty() {
-            self.recent.resize(RECENT, None);
-        }
-        if let Some(entry) = self.recent.get_mut(slot) {
-            *entry = Some((key, Arc::clone(path)));
-        }
     }
 }
 
-/// Entries of the outline lookaside.
-const RECENT: usize = 256;
-
-/// The lookaside entry of an outline: by glyph, with the font mixed in.
-fn recent_slot(key: OutlineKey) -> usize {
-    let mixed = u64::from(key.glyph) ^ key.font.0.rotate_left(11);
-    usize::try_from(mixed % RECENT as u64).unwrap_or(0)
+/// Places a font loading error at the operator that selected the font, in
+/// the font's object; descriptor flag repairs keep the descriptor's.
+fn placed(mut error: Error, id: Option<ObjectId>, position: Position) -> Error {
+    if matches!(error.position, Position::Unknown | Position::Buffer(_)) {
+        error.position = position;
+    }
+    if error.repair == Some(pagura_text::repairs::DESCRIPTOR_FLAGS) {
+        error
+    } else {
+        error.in_object_opt(id)
+    }
 }
 
 /// The bytes a path's segments occupy.

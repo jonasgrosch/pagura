@@ -3,7 +3,7 @@ use crate::{
     CidToUnicode, FontKind, PdfFont, Provider, WritingMode,
     cid::Cid,
     features,
-    font::{Mapping, Source, cid_collection, to_unicode},
+    font::{Mapping, Source, cid_collection},
     metrics::Metrics,
     report::Report,
 };
@@ -13,7 +13,6 @@ use pagura_font::{CmapSubtable, FontProgram, GlyphId};
 
 pub(crate) fn load(
     document: &Document,
-    font: &Dictionary,
     descendant: &Dictionary,
     id: Option<ObjectId>,
     mapping: Mapping,
@@ -63,7 +62,6 @@ pub(crate) fn load(
             break;
         }
     }
-    let to_unicode = to_unicode(document, font, &mapping)?;
     report.diagnostic(
         Diagnostic::information(
             crate::information::SUBSTITUTED,
@@ -74,12 +72,10 @@ pub(crate) fn load(
     Ok(PdfFont {
         kind: FontKind::Type0,
         writing_mode: WritingMode::Horizontal,
-        source: Source::CidSubstitute { program },
+        source: Source::CidSubstitute { program, unicode },
         mapping,
         metrics,
-        to_unicode,
         limits: document.limits(),
-        cid_unicode: Some(unicode),
         retained: 0,
     }
     .accounted())

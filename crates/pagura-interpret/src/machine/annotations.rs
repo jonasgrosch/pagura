@@ -7,7 +7,7 @@ use super::emit::GroupStart;
 use super::form::{FormBody, geometry};
 use super::state::Graphics;
 use super::{Machine, Scope, Text};
-use crate::device::{Device, Marked};
+use crate::device::{Device, Marked, Needs};
 use crate::model::{GroupAttributes, GroupCause, ViewFit};
 use crate::repairs;
 use pagura_appearance::{Appearance, AppearanceStream, FilledWidgets, FontSource};
@@ -44,7 +44,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             return Err(Error::limit("annotation count exceeded"));
         }
         let filled = match self.session.filler {
-            Some(filler) if self.needs().paint => Some(FilledWidgets::new(filler)?),
+            Some(filler) if draws(self.needs()) => Some(FilledWidgets::new(filler)?),
             _ => None,
         };
         for value in values {
@@ -95,7 +95,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             return self.occurrence(value, true);
         }
         self.occurrence(value, false)?;
-        if !self.needs().paint {
+        if !draws(self.needs()) {
             return Ok(());
         }
         let rect = rectangle(document, d, b"Rect")?;
@@ -176,7 +176,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let Some(object) = value.as_reference() else {
             return Ok(());
         };
-        if self.needs().structure && self.needs().text {
+        if self.needs().structure {
             self.device
                 .marked(&Marked::ObjectBegin { object, hidden })?;
             self.device.marked(&Marked::ObjectEnd)?;
@@ -274,6 +274,13 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         }
         Ok(())
     }
+}
+
+/// Whether a device receives annotation appearances: they are drawn
+/// content (12.5.5), not page text, so devices that need only text and
+/// structure skip them; occurrences reach structure devices either way.
+fn draws(needs: Needs) -> bool {
+    needs.paint || needs.images || needs.outlines
 }
 
 /// The interpreter's fonts, for laying out generated field text.

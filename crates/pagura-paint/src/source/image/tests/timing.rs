@@ -193,10 +193,11 @@ pub(super) fn placed(document: &Document, page: &Page, scale: f64) -> Vec<Placed
         rotation: page.rotation(),
         user_unit: page.user_unit(),
     };
-    let device = space.device_transform(scale);
-    let Ok(size) = space.device_size(scale) else {
+    let Ok(request) = crate::RenderRequest::page(&space, scale) else {
         return Vec::new();
     };
+    let device = request.transform;
+    let size = (request.page.width(), request.page.height());
     walk.draws
         .into_iter()
         .filter_map(|draw| {

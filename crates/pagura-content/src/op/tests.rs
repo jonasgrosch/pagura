@@ -21,7 +21,7 @@ fn first_operator(content: &[u8]) -> Result<Operator> {
     let operation = reader
         .next(&mut tokens)?
         .ok_or(Error::syntax("no operation"))?;
-    Ok(operation.op.operator())
+    Ok(operator(&operation.op))
 }
 
 fn error(content: &[u8]) -> &'static str {
@@ -30,8 +30,9 @@ fn error(content: &[u8]) -> &'static str {
 
 #[test]
 fn every_operator_round_trips_through_its_operation() {
-    for operator in Operator::ALL {
-        let operands = match operator.as_bytes() {
+    for spelled in crate::operator::tests::SPELLINGS {
+        let operator = Operator::from_bytes(spelled.as_bytes()).unwrap();
+        let operands = match spelled.as_bytes() {
             b"BDC" | b"DP" => "/T /P",
             b"BMC" | b"CS" | b"cs" | b"Do" | b"gs" | b"MP" | b"ri" | b"sh" => "/N",
             b"c" | b"cm" | b"d1" | b"Tm" => "0 0 0 0 0 0",
@@ -47,12 +48,11 @@ fn every_operator_round_trips_through_its_operation() {
             b"\"" => "0 0 ()",
             _ => "",
         };
-        let spelled = std::str::from_utf8(operator.as_bytes()).unwrap();
         let content = format!("{operands} {spelled} ");
         match first_operator(content.as_bytes()) {
             Ok(read) => assert_eq!(read, operator, "{operator:?}"),
             Err(error) => assert!(
-                matches!(operator.as_bytes(), b"ID" | b"EI" | b"BI" | b"EX"),
+                matches!(spelled, "ID" | "EI" | "BI" | "EX"),
                 "{operator:?}: {error}"
             ),
         }
@@ -144,5 +144,96 @@ fn painting_operators_know_their_rules() {
     assert_eq!(Painting::FillObsolete.fill(), Some(Rule::NonZero));
     assert!(Painting::CloseFillStroke.closes() && Painting::CloseFillStroke.strokes());
     assert!(!Painting::EndPath.strokes() && Painting::EndPath.fill().is_none());
-    assert!(Op::NextLine.is_text() && !Op::BeginText.is_text());
+}
+
+/// The operator that spells `op`.
+pub(crate) fn operator(op: &Op<'_>) -> Operator {
+    use Operator as O;
+    match op {
+        Op::Save => O::Save,
+        Op::Restore => O::Restore,
+        Op::Concatenate(_) => O::Concatenate,
+        Op::LineWidth(_) => O::LineWidth,
+        Op::LineCap(_) => O::LineCap,
+        Op::LineJoin(_) => O::LineJoin,
+        Op::MiterLimit(_) => O::MiterLimit,
+        Op::Dash(_) => O::Dash,
+        Op::RenderingIntent(_) => O::RenderingIntent,
+        Op::Flatness(_) => O::Flatness,
+        Op::ExtGState(_) => O::ExtGState,
+        Op::MoveTo(_) => O::MoveTo,
+        Op::LineTo(_) => O::LineTo,
+        Op::CurveTo(_) => O::CurveTo,
+        Op::CurveToInitial(_) => O::CurveToInitial,
+        Op::CurveToFinal(_) => O::CurveToFinal,
+        Op::ClosePath => O::ClosePath,
+        Op::Rectangle(_) => O::Rectangle,
+        Op::Paint(painting) => painting_operator(*painting),
+        Op::Clip(Rule::NonZero) => O::Clip,
+        Op::Clip(Rule::EvenOdd) => O::ClipEvenOdd,
+        Op::StrokeColorSpace(_) => O::StrokeColorSpace,
+        Op::FillColorSpace(_) => O::FillColorSpace,
+        Op::StrokeColor(_) => O::StrokeColor,
+        Op::FillColor(_) => O::FillColor,
+        Op::StrokeColorN(_) => O::StrokeColorN,
+        Op::FillColorN(_) => O::FillColorN,
+        Op::StrokeGray(_) => O::StrokeGray,
+        Op::FillGray(_) => O::FillGray,
+        Op::StrokeRgb(_) => O::StrokeRgb,
+        Op::FillRgb(_) => O::FillRgb,
+        Op::StrokeCmyk(_) => O::StrokeCmyk,
+        Op::FillCmyk(_) => O::FillCmyk,
+        Op::Shading(_) => O::Shading,
+        Op::XObject(_) => O::XObject,
+        Op::BeginMarkedContent(_) => O::BeginMarkedContent,
+        Op::BeginMarkedContentProperties { .. } => O::BeginMarkedContentProperties,
+        Op::MarkedPoint(_) => O::MarkedPoint,
+        Op::MarkedPointProperties { .. } => O::MarkedPointProperties,
+        Op::EndMarkedContent => O::EndMarkedContent,
+        Op::BeginCompatibility => O::BeginCompatibility,
+        Op::EndCompatibility => O::EndCompatibility,
+        Op::InlineImage(_) => O::BeginInlineImage,
+        text => text_operator(text),
+    }
+}
+
+fn painting_operator(painting: Painting) -> Operator {
+    use Operator as O;
+    match painting {
+        Painting::Stroke => O::Stroke,
+        Painting::CloseStroke => O::CloseStroke,
+        Painting::Fill => O::Fill,
+        Painting::FillObsolete => O::FillObsolete,
+        Painting::FillEvenOdd => O::FillEvenOdd,
+        Painting::FillStroke => O::FillStroke,
+        Painting::FillStrokeEvenOdd => O::FillStrokeEvenOdd,
+        Painting::CloseFillStroke => O::CloseFillStroke,
+        Painting::CloseFillStrokeEvenOdd => O::CloseFillStrokeEvenOdd,
+        Painting::EndPath => O::EndPath,
+    }
+}
+
+fn text_operator(op: &Op<'_>) -> Operator {
+    use Operator as O;
+    match op {
+        Op::BeginText => O::BeginText,
+        Op::EndText => O::EndText,
+        Op::CharSpacing(_) => O::CharSpacing,
+        Op::WordSpacing(_) => O::WordSpacing,
+        Op::HorizontalScaling(_) => O::HorizontalScaling,
+        Op::Leading(_) => O::Leading,
+        Op::Font { .. } => O::Font,
+        Op::RenderMode(_) => O::RenderMode,
+        Op::Rise(_) => O::Rise,
+        Op::MoveText(_) => O::MoveText,
+        Op::MoveTextLeading(_) => O::MoveTextLeading,
+        Op::TextMatrix(_) => O::TextMatrix,
+        Op::NextLine => O::NextLine,
+        Op::ShowText(_) => O::ShowText,
+        Op::ShowTextAdjusted(_) => O::ShowTextAdjusted,
+        Op::NextLineShowText(_) => O::NextLineShowText,
+        Op::NextLineShowTextSpaced { .. } => O::NextLineShowTextSpaced,
+        Op::GlyphWidth(_) => O::GlyphWidth,
+        _ => O::GlyphWidthBounds,
+    }
 }

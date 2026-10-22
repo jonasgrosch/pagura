@@ -9,7 +9,7 @@ use crate::model::{
     TilingSpacing, ViewFit,
 };
 use pagura_color::{Components, Function};
-use pagura_core::{Error, Position, Rect, Result};
+use pagura_core::{Position, Rect};
 use pagura_document::Rotation;
 use pagura_raster::{FillRule, Path, Point, Transform};
 use std::sync::Arc;
@@ -64,59 +64,6 @@ impl PageSpace {
             user_unit: page.user_unit,
         }
     }
-
-    /// Default user space to device pixels at `scale` device pixels per
-    /// default unit: the crop box's corner goes to the origin, y grows
-    /// downwards, and the page is rotated clockwise by `Rotate`.
-    pub fn device_transform(&self, scale: f64) -> Transform {
-        let r = self.crop;
-        let rotation = match self.rotation {
-            Rotation::None => Transform::new(1.0, 0.0, 0.0, -1.0, -r.x0(), r.y1()),
-            Rotation::Clockwise90 => Transform::new(0.0, 1.0, 1.0, 0.0, -r.y0(), -r.x0()),
-            Rotation::Clockwise180 => Transform::new(-1.0, 0.0, 0.0, 1.0, r.x1(), -r.y0()),
-            Rotation::Clockwise270 => Transform::new(0.0, -1.0, -1.0, 0.0, r.y1(), r.x1()),
-        };
-        let factor = scale * self.user_unit;
-        rotation.then(Transform::scale(factor, factor))
-    }
-
-    /// The page's size in device pixels at `scale`, rounded up.
-    ///
-    /// # Errors
-    ///
-    /// Returns `InvalidArgument` for a non-positive or non-finite scale and
-    /// a `Limit` error when the size does not fit `u32`.
-    pub fn device_size(&self, scale: f64) -> Result<(u32, u32)> {
-        if !(scale.is_finite() && scale > 0.0) {
-            return Err(Error::invalid_argument("scale must be positive and finite"));
-        }
-        let factor = scale * self.user_unit;
-        let (width, height) = match self.rotation {
-            Rotation::None | Rotation::Clockwise180 => (self.crop.width(), self.crop.height()),
-            Rotation::Clockwise90 | Rotation::Clockwise270 => {
-                (self.crop.height(), self.crop.width())
-            }
-        };
-        Ok((pixels(width * factor)?, pixels(height * factor)?))
-    }
-}
-
-/// Rounds a device extent up to whole pixels, ignoring floating-point noise
-/// just above an integer.
-fn pixels(extent: f64) -> Result<u32> {
-    if !extent.is_finite() || extent <= 0.0 {
-        return Err(Error::limit("device extent is not finite and positive"));
-    }
-    let rounded = (extent - 1e-9).ceil().max(1.0);
-    if rounded > f64::from(u32::MAX) {
-        return Err(Error::limit("device size exceeds u32"));
-    }
-    #[expect(
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "range checked above; the value is a positive integer"
-    )]
-    Ok(rounded as u32)
 }
 
 /// What every mark records besides its geometry and paint.

@@ -5,7 +5,7 @@ use crate::fonts::FontSource;
 use crate::values::{optional, optional_dictionary};
 use pagura_core::{Dictionary, Error, Position, Result};
 use pagura_document::Document;
-use pagura_text::{FontKind, PdfFont, WritingMode};
+use pagura_text::{FontKind, FontUnicode, PdfFont, WritingMode};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -40,7 +40,7 @@ impl Font {
             .get(name)
             .ok_or(Error::syntax("DA font is absent from form resources"))?;
         let dictionary = document.resolve_dictionary(entry)?;
-        let font = load(document, entry.as_reference(), dictionary, fonts)?;
+        let (font, unicode) = load(document, entry.as_reference(), dictionary, fonts)?;
         if font.kind() == FontKind::Type0 || font.writing_mode() != WritingMode::Horizontal {
             return Err(Error::unsupported(
                 features::APPEARANCE_FONT_ENCODING,
@@ -53,7 +53,7 @@ impl Font {
         }
         let mut codes = BTreeMap::new();
         for code in 0..=u8::MAX {
-            for glyph in font.decode(&[code])? {
+            for glyph in font.decode(&[code], Some(&unicode))? {
                 if let Some(text) = glyph.unicode {
                     let mut chars = text.chars();
                     if let Some(c) = chars.next().filter(|_| chars.next().is_none()) {
@@ -82,16 +82,20 @@ impl Font {
     }
 }
 
-/// Loads a font through `fonts`, placing its errors in the font object.
-/// Buffer offsets inside font programs mean nothing at the widget, which
-/// places the error instead.
+/// Loads a font through `fonts` with the Unicode of its codes, placing
+/// their errors in the font object. Buffer offsets inside font programs
+/// mean nothing at the widget, which places the error instead.
 fn load(
     document: &Document,
     id: Option<pagura_core::ObjectId>,
     dictionary: &Dictionary,
     fonts: &dyn FontSource,
-) -> Result<Arc<PdfFont>> {
-    fonts.font(document, id, dictionary).map_err(|mut error| {
+) -> Result<(Arc<PdfFont>, FontUnicode)> {
+    let loaded = fonts.font(document, id, dictionary).and_then(|font| {
+        let unicode = font.unicode(document, dictionary, fonts.provider())?;
+        Ok((font, unicode))
+    });
+    loaded.map_err(|mut error| {
         if matches!(error.position, Position::Buffer(_)) {
             error.position = Position::Unknown;
         }

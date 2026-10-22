@@ -79,6 +79,11 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let fill = painting.fill().map(fill_rule);
         let stroke = painting.strokes();
         match (fill, stroke) {
+            // Without paint there is no compositing to share.
+            (Some(rule), true) if !self.needs().paint => {
+                self.emit_fill(scope, path, rule, None)?;
+                self.emit_stroke(scope, path, None)
+            }
             (Some(rule), true) => {
                 if !scope.visible && !self.needs().structure {
                     return Ok(());

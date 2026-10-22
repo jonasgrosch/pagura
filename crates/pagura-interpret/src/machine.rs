@@ -61,9 +61,8 @@ pub(crate) struct Session<'a> {
     /// The space each device family (`g`, `rg`, `k`) last resolved to, and
     /// the serial of the content sequence it was resolved in.
     pub(crate) device_spaces: [Option<(u64, Arc<ColorSpace>)>; 3],
-    /// Buffers of the string being shown: decoded and placed glyphs.
-    pub(crate) decoded: Vec<pagura_text::Glyph>,
-    pub(crate) placed: Vec<crate::device::Glyph>,
+    /// Buffers of the string being shown.
+    pub(crate) strings: text::Strings,
     /// The composite state of implicit groups: opaque and Normal.
     pub(crate) opaque: Arc<Composite>,
     /// The next soft mask's number.
@@ -211,8 +210,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
                 name_work: 0,
                 solids: state::SolidPaints::default(),
                 device_spaces: [None, None, None],
-                decoded: Vec::new(),
-                placed: Vec::new(),
+                strings: text::Strings::default(),
                 contents: crate::hash::FastMap::default(),
                 content_bytes: 0,
                 store: inputs.store,
@@ -359,7 +357,8 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
         result
     }
 
-    /// Draws or skips an inline image, whose data follows in `reader`.
+    /// Draws or skips an inline image, whose data follows in `reader`: its
+    /// data is framed from the header alone either way (8.9.7).
     fn inline_operation(
         &mut self,
         dictionary: Box<Dictionary>,
@@ -369,14 +368,16 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
     ) -> Result<()> {
         let op = Op::InlineImage(dictionary);
         let ignored = self.ignores(&op, resources, scope)?;
-        if let Op::InlineImage(dictionary) = &op {
-            if ignored {
-                self.skip_inline_image(dictionary, reader, resources)?;
-            } else {
-                self.inline_image(dictionary, reader, resources, scope)?;
-            }
+        let Op::InlineImage(dictionary) = &op else {
+            return Ok(());
+        };
+        let framing = image::framing(self.document(), dictionary, resources)?;
+        let data =
+            reader.inline_image_data(|data| pagura_image::inline_data_length(&framing, data))?;
+        if ignored {
+            return Ok(());
         }
-        Ok(())
+        self.inline_image(dictionary, data, resources, scope)
     }
 
     /// Whether the glyph procedure or uncoloured tiling cell `scope` runs

@@ -4,11 +4,14 @@
 //!
 //! [`PdfFont::load`] interprets a font dictionary — simple fonts (Type 1,
 //! MMType1, TrueType, Type 3) and composite fonts (Type 0 with CIDFontType0
-//! or CIDFontType2 descendants) — with its encoding or CMap, widths, embedded
-//! font program and `/ToUnicode` map. [`PdfFont::decode`] splits a string
-//! operand into glyphs carrying everything the renderer and text extraction
-//! need. Positioning glyphs on the page (text state, `Tm`, `TJ` adjustments)
-//! belongs to the content interpreter in `pagura-render`.
+//! or CIDFontType2 descendants) — with its encoding or CMap, widths and
+//! embedded font program: what drawing its glyphs reads. Text extraction
+//! loads the Unicode of its codes (`/ToUnicode` and collection Unicode)
+//! separately with [`PdfFont::unicode`]. [`PdfFont::decode`] splits a string
+//! operand into glyphs carrying everything the renderer and, given the
+//! Unicode, text extraction need. Positioning glyphs on the page (text
+//! state, `Tm`, `TJ` adjustments) belongs to the content interpreter in
+//! `pagura-interpret`.
 //!
 //! [`PdfFont::load_with_provider`] accepts a [`Provider`] for non-embedded
 //! programs and predefined CMaps; [`PdfFont::load`] retains explicit failures
@@ -67,7 +70,7 @@ pub fn glyph_name_unicode_for_font(name: &[u8], base_font: &[u8]) -> Option<Stri
     encoding::unicode_for_font(name, base_font)
 }
 
-pub use font::{FontKind, PdfFont, WritingMode};
+pub use font::{FontKind, FontUnicode, PdfFont, WritingMode};
 pub use glyph::{Glyph, GlyphShape, GlyphText, VerticalMetrics};
 
 #[cfg(test)]
