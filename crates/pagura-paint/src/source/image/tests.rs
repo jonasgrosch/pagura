@@ -767,3 +767,57 @@ fn packed_bits_fill_bytes_as_their_colours_round() {
         }
     }
 }
+
+/// Images with regions of one colour fill byte spans over those regions,
+/// each byte the rounded f64 colour, at every minification and phase.
+#[test]
+fn even_regions_fill_bytes_as_their_colours_round() {
+    let (width, height) = (61u32, 37u32);
+    for components in [1u8, 3] {
+        let n = usize::from(components);
+        let noise = codes(61 * 37 * n, 8, 131);
+        let samples: Vec<u8> = noise
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| {
+                let x = (i / n) % 61;
+                let y = (i / n) / 61;
+                if x < 40 && y % 13 < 9 {
+                    [200, 17, 255][i % n]
+                } else {
+                    u8::try_from(v).unwrap()
+                }
+            })
+            .collect();
+        let even = case(image(
+            (width, height),
+            components,
+            8,
+            Samples::Bytes(samples),
+        ));
+        let (w, h) = (f64::from(width), f64::from(height));
+        for scale in [1.3, 2.0, 2.7, 4.4] {
+            for (flip, offset) in [(1.0, 0.0), (-1.0, 0.35)] {
+                let unit_to_device = Transform::new(
+                    w / scale,
+                    0.0,
+                    0.0,
+                    flip * h / scale,
+                    offset,
+                    if flip < 0.0 { h / scale + 0.2 } else { 0.1 },
+                );
+                let sampler = sampler(&even, unit_to_device, 3);
+                let (x0, y0, x1, y1) = window(unit_to_device);
+                let len = usize::try_from(x1 - x0).unwrap();
+                assert!(bytes_agree(&sampler, (x0, len), y0..y1));
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "test columns"
+                )]
+                let inside = ((w / scale).floor() as usize).saturating_sub(1);
+                assert!(bytes_agree(&sampler, (1, inside), y0..y1));
+            }
+        }
+    }
+}
