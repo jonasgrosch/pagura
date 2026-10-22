@@ -50,6 +50,9 @@ pub(crate) struct Paths {
     lines: Vec<Line>,
     /// Per path: the end of its edges in `lines`, and its rule.
     ends: Vec<(u32, FillRule)>,
+    /// Intersection of canonical path bounds, prepared once for local
+    /// curve interval proofs. Includes all rows, not only a strip's edges.
+    proof: Option<Bounds>,
     strips: StripList,
     pub(crate) rows: Rows,
 }
@@ -58,6 +61,10 @@ impl Paths {
     /// Outward rectangles containing each canonical path's covered set,
     /// intersected. A curve can affect the joint area only inside them.
     pub(crate) fn proof_bounds(&self) -> Option<Bounds> {
+        self.proof
+    }
+
+    fn calculate_bounds(&self) -> Option<Bounds> {
         let mut first = 0;
         self.ends
             .iter()
@@ -414,9 +421,12 @@ fn classify(
     let mut paths = Paths {
         lines,
         ends,
+        proof: None,
         strips: strips_list,
         rows: Rows::default(),
     };
+    meter.charge(paths.lines.len().saturating_add(paths.ends.len()))?;
+    paths.proof = paths.calculate_bounds();
     let mut rules = Vec::new();
     bytes.reserve(&mut rules, paths.ends.len())?;
     rules.extend(paths.rules());
