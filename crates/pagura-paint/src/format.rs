@@ -4,7 +4,7 @@
 /// soft-mask buffer gets its format before its first store, from its
 /// group's whole content.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Format {
+pub(crate) enum Format {
     /// 16-bit normalized with one rounding per store: Normal source-over
     /// chains within ADR 0004's bound.
     N16,

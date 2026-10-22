@@ -6,6 +6,12 @@
 //! groups composite as their members (flattening), which run from a
 //! transparent start, and whether the page selects transfer functions.
 
+mod formats;
+mod hulls;
+
+use formats::{F64_STORE, FOOTPRINTS, MARGIN};
+use hulls::{extent, hulls, unite};
+
 use crate::format::Format;
 use crate::hash::{self, FastMap};
 use crate::plan::Layout;
@@ -18,21 +24,7 @@ use pagura_interpret::{
     BlendMode, Composite, GroupAttributes, GroupId, GroupRole, ImageMask, MaskId, Node, Paint,
     PatternId, Scene,
 };
-use pagura_raster::{DeviceRect, Path, Transform};
-
-/// `π` of the F32 bound: source encoding and six roundings relative to the
-/// opacity, in levels.
-const PI: f64 = 1.0 / 65_536.0 + 255.0 * 6.0 / 16_777_216.0;
-/// `ρ` of the F32 bound: one rounding below 256 levels.
-const RHO: f64 = 1.0 / 131_072.0;
-/// The margin for f64 source evaluation, in levels.
-const MARGIN: f64 = 1.0 / 4096.0;
-/// The error of one f64 store of a non-amplifying operation, in levels.
-const F64_STORE: f64 = 1.0 / 1_099_511_627_776.0;
-/// The F32 admission limit, in levels.
-const F32_LIMIT: f64 = 0.5 - 1.0 / 4096.0;
-/// The room an N16 buffer leaves for dynamic stores, in words.
-const N16_ROOM: f64 = 0.5 - 1.0 / 68_719_476_736.0;
+use pagura_raster::{DeviceRect, Transform};
 
 /// What preparation needs to know about one transparency group.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -205,57 +197,6 @@ struct Dynamic {
     child: Option<usize>,
     /// The soft mask of its opacity.
     mask: Option<usize>,
-}
-
-/// The most dynamic stores whose footprints N16 admission compares.
-const FOOTPRINTS: usize = 4096;
-
-/// Whether an N16 page admits `buffer`'s dynamic stores: at most one at
-/// any pixel, each injecting less than the room an N16 pixel leaves
-/// (ADR 0004 §6). Footprints are page-level device bounds, so the answer
-/// does not depend on the region. Children and masks are resolved first.
-fn n16_admits(buffer: &Buffer, resolved: &[Option<(Format, f64)>]) -> bool {
-    if buffer.dynamics.len() != buffer.dynamic || buffer.dynamic > FOOTPRINTS {
-        return false;
-    }
-    let bound = |node: usize| {
-        resolved
-            .get(node)
-            .copied()
-            .flatten()
-            .map_or(f64::INFINITY, |(_, bound)| bound)
-    };
-    let fits = buffer.dynamics.iter().all(|store| {
-        let child = store
-            .child
-            .map_or(0.0, |c| bound(c) * (1.0 + 256.0 / 255.0) + F64_STORE);
-        let mask = store.mask.map_or(0.0, |m| 256.0 / 255.0 * bound(m));
-        257.0 * (store.eta + child + mask) <= N16_ROOM
-    });
-    let mut rects: Vec<DeviceRect> = buffer
-        .dynamics
-        .iter()
-        .map(|store| store.rect)
-        .filter(|rect| !rect.is_empty())
-        .collect();
-    fits && disjoint(&mut rects)
-}
-
-/// Whether no two rectangles share a pixel.
-fn disjoint(rects: &mut [DeviceRect]) -> bool {
-    rects.sort_unstable_by_key(|r| r.x0);
-    let mut active: Vec<DeviceRect> = Vec::new();
-    for rect in rects.iter() {
-        active.retain(|other| other.x1 > rect.x0);
-        if active
-            .iter()
-            .any(|other| other.y0 < rect.y1 && rect.y0 < other.y1)
-        {
-            return false;
-        }
-        active.push(*rect);
-    }
-    true
 }
 
 /// A buffer described by its stores.
@@ -732,77 +673,6 @@ impl Survey<'_> {
         self.buffers[buffer].forced = true;
         Ok(buffer)
     }
-
-    /// Chooses formats from the innermost buffer outwards and records each
-    /// buffer's error bound in levels.
-    fn resolve(
-        &self,
-        node: usize,
-        resolved: &mut Vec<Option<(Format, f64)>>,
-        depth: usize,
-    ) -> Result<(Format, f64)> {
-        if let Some(Some(done)) = resolved.get(node) {
-            return Ok(*done);
-        }
-        if depth > self.inputs.depth.saturating_mul(2) {
-            return Err(Error::limit("compositing depth exceeded"));
-        }
-        let buffer = &self.buffers[node];
-        let mut injected = 0.0;
-        for &(child, count) in &buffer.children {
-            let (_, bound) = self.resolve(child, resolved, depth + 1)?;
-            injected += (bound * (1.0 + 256.0 / 255.0) + F64_STORE) * count as f64;
-        }
-        for &(mask, count) in &buffer.masks {
-            let (_, bound) = self.resolve(mask, resolved, depth + 1)?;
-            injected += 256.0 / 255.0 * bound * count as f64;
-        }
-        let stores = buffer.stores as f64;
-        let wide = (stores * F64_STORE + MARGIN + injected, Format::F64);
-        let n16 = buffer.page && n16_admits(buffer, resolved);
-        let f32_bound =
-            PI + RHO * stores.min(1.0 / buffer.theta + buffer.dynamic as f64) + injected;
-        let (bound, format) = if buffer.forced {
-            wide
-        } else if n16 {
-            // The page's bound is never used as a child's.
-            (0.5, Format::N16)
-        } else if f32_bound <= F32_LIMIT {
-            (f32_bound + MARGIN, Format::F32)
-        } else {
-            wide
-        };
-        if let Some(slot) = resolved.get_mut(node) {
-            *slot = Some((format, bound));
-        }
-        Ok((format, bound))
-    }
-
-    /// Widens every child and mask of an F64 buffer to F64, from the
-    /// outermost buffer inwards: no narrow child of an F64 parent is proven.
-    fn widen(&self, root: usize, resolved: &mut [Option<(Format, f64)>]) {
-        // 1: visited while narrow, 2: visited while F64.
-        let mut seen = vec![0_u8; self.buffers.len()];
-        let mut pending = vec![(root, false)];
-        while let Some((node, parent_wide)) = pending.pop() {
-            let Some(Some((format, _))) = resolved.get_mut(node) else {
-                continue;
-            };
-            if parent_wide {
-                *format = Format::F64;
-            }
-            let wide = *format == Format::F64;
-            let mark = if wide { 2 } else { 1 };
-            if seen[node] >= mark {
-                continue;
-            }
-            seen[node] = mark;
-            let buffer = &self.buffers[node];
-            for &(child, _) in buffer.children.iter().chain(&buffer.masks) {
-                pending.push((child, wide));
-            }
-        }
-    }
 }
 
 /// The blending space of a group: its own when isolated, else its parent's
@@ -826,23 +696,6 @@ fn state(scene: &Scene, id: pagura_interpret::StateId) -> Result<&Composite> {
         .ok_or(Error::invalid_argument("scene state out of range"))
 }
 
-/// A device rectangle that covers every pixel.
-const WHOLE: bounds::Hull = [f64::MIN, f64::MIN, f64::MAX, f64::MAX];
-
-/// The smallest hull holding both.
-fn unite(a: Option<bounds::Hull>, b: Option<bounds::Hull>) -> Option<bounds::Hull> {
-    match (a, b) {
-        (Some(a), Some(b)) => Some([
-            a[0].min(b[0]),
-            a[1].min(b[1]),
-            a[2].max(b[2]),
-            a[3].max(b[3]),
-        ]),
-        (a, None) => a,
-        (None, b) => b,
-    }
-}
-
 /// The stores of one node.
 struct Stores<'h> {
     kind: Kind,
@@ -860,107 +713,4 @@ struct Stores<'h> {
 /// but opaque constant colours that only coverage reduces.
 fn dynamic(kind: Kind, state: &Composite) -> bool {
     !(kind == Kind::Constant && state.soft_mask.is_none() && state.alpha == 1.0)
-}
-
-/// The device hull of all of a node's stores.
-fn extent(scene: &Scene, node: &Node, t: Transform) -> Result<Option<bounds::Hull>> {
-    let Node::Glyphs(glyphs) = node else {
-        return Ok(hulls(scene, node, t)?
-            .iter()
-            .fold(None, |extent, &hull| unite(extent, hull)));
-    };
-    // Each source's hull at the extreme origins of its placements.
-    let mut origins: Vec<Option<bounds::Hull>> = vec![None; glyphs.sources.len()];
-    for placement in &glyphs.placements {
-        let origin = t.apply(placement.origin);
-        if let Some(slot) = origins.get_mut(index(placement.source)) {
-            *slot = unite(*slot, Some([origin.x, origin.y, origin.x, origin.y]));
-        }
-    }
-    let device = Transform::new(t.a, t.b, t.c, t.d, 0.0, 0.0);
-    let mut extent = None;
-    for (source, origins) in glyphs.sources.iter().zip(origins) {
-        let Some([ox0, oy0, ox1, oy1]) = origins else {
-            continue;
-        };
-        let l = source.linear;
-        let linear = Transform::new(l.a, l.b, l.c, l.d, 0.0, 0.0).then(device);
-        let hull = bounds::path(&source.outline, linear)
-            .map(|[x0, y0, x1, y1]| bounds::expand([x0 + ox0, y0 + oy0, x1 + ox1, y1 + oy1], 1.0));
-        extent = unite(extent, hull);
-    }
-    Ok(extent)
-}
-
-/// The device hulls of a node's stores.
-fn hulls(scene: &Scene, node: &Node, t: Transform) -> Result<Vec<Option<bounds::Hull>>> {
-    Ok(match node {
-        Node::Fill(fill) => vec![fill_hull(fill, t)],
-        Node::Stroke(stroke) => vec![stroke_hull(scene, stroke, t)?],
-        Node::Glyphs(glyphs) => glyph_hulls(glyphs, t),
-        Node::Image(image) => vec![bounds::path(
-            &bounds::unit_square(),
-            image.transform.then(t),
-        )],
-        Node::Shading(shading) => vec![shading.shading.bbox.map_or(Some(WHOLE), |b| {
-            bounds::path(&Path::rect(b), shading.transform.then(t))
-        })],
-        Node::Group(_) => Vec::new(),
-    })
-}
-
-/// A fill's device hull, a pixel wider for degenerate subpaths.
-fn fill_hull(fill: &pagura_interpret::FillNode, transform: Transform) -> Option<bounds::Hull> {
-    bounds::path(&fill.path, transform).map(|h| bounds::expand(h, 1.0))
-}
-
-/// A stroke's device hull: its path's, grown by the pen's reach.
-fn stroke_hull(
-    scene: &Scene,
-    stroke: &pagura_interpret::StrokeNode,
-    transform: Transform,
-) -> Result<Option<bounds::Hull>> {
-    let pen = scene
-        .pens
-        .get(stroke.pen.index())
-        .ok_or(Error::invalid_argument("scene pen out of range"))?;
-    Ok(bounds::path(&stroke.path, transform)
-        .map(|h| bounds::expand(h, bounds::stroke_reach(pen, transform) + 2.0)))
-}
-
-/// The device hull of every placement of a glyph run.
-fn glyph_hulls(
-    glyphs: &pagura_interpret::GlyphsNode,
-    transform: Transform,
-) -> Vec<Option<bounds::Hull>> {
-    let t = transform;
-    let device = Transform::new(t.a, t.b, t.c, t.d, 0.0, 0.0);
-    let relative: Vec<Option<bounds::Hull>> = glyphs
-        .sources
-        .iter()
-        .map(|source| {
-            let l = source.linear;
-            bounds::path(
-                &source.outline,
-                Transform::new(l.a, l.b, l.c, l.d, 0.0, 0.0).then(device),
-            )
-        })
-        .collect();
-    glyphs
-        .placements
-        .iter()
-        .map(|placement| {
-            let origin = t.apply(placement.origin);
-            relative
-                .get(index(placement.source))
-                .copied()
-                .flatten()
-                .map(|[x0, y0, x1, y1]| {
-                    bounds::expand(
-                        [x0 + origin.x, y0 + origin.y, x1 + origin.x, y1 + origin.y],
-                        1.0,
-                    )
-                })
-        })
-        .collect()
 }

@@ -3,7 +3,7 @@
 use crate::cases::{Recorded, limits};
 use pagura_core::{Limits, Result, Store};
 use pagura_paint::{OverprintMode, RenderRequest, Scratch, prepare};
-use pagura_raster::{DeviceRect, Pixmap, Rgba8};
+use pagura_raster::{DeviceRect, Rgba8};
 use pagura_reference::{Overprint, Rendering, Request};
 
 /// Bytes of the store each rendering gets.
@@ -80,16 +80,11 @@ impl Run {
     pub fn render_with(&self, recorded: &Recorded, store: &Store) -> Result<Vec<u8>> {
         let limits = limits();
         let prepared = prepare(&recorded.scene, &self.request(recorded), store, &limits)?;
-        let mut target = Pixmap::new(
-            self.region.width(),
-            self.region.height(),
-            Rgba8::WHITE,
-            limits.pixels,
-        )?;
+        let mut rows = Vec::new();
         prepared
             .with_scratch(&mut Scratch::default())?
-            .render(&mut target);
-        Ok(target.data().to_vec())
+            .render(&mut rows);
+        Ok(rows)
     }
 
     /// Renders with the reference.

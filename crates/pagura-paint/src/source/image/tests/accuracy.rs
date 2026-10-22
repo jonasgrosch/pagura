@@ -24,7 +24,7 @@
 use super::oracle::Oracle;
 use super::timing::{IMAGE_PAGES, Placed, decode_once, pages, placed, sampler, setting};
 use super::{Case, case};
-use crate::SpanColors;
+use crate::source::SpanColors;
 use pagura_color::ColorSpace;
 use pagura_document::{Document, OpenOptions};
 use pagura_image::{DecodeRequest, Layout, Reduce, SourceMask};

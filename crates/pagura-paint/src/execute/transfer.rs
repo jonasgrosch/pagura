@@ -5,8 +5,8 @@
 //! averaged before the nonlinear function; that is not supported, and the
 //! first such mark in source order fails preparation, so execution cannot.
 
-use crate::plan::{ItemKind, Plan};
-use crate::prepare::Producer;
+use crate::plan::{Cover, ItemKind, Plan};
+use crate::prepare::Shapes;
 use pagura_core::convert::u32_to_usize;
 use pagura_raster::{BandCoverage, BandRasterizer, Span};
 
@@ -15,7 +15,7 @@ use pagura_raster::{BandCoverage, BandRasterizer, Span};
 /// `selection` (one band of the region) as storage.
 pub(crate) fn validate(
     plan: &Plan,
-    (producer, rasterizer): (&dyn Producer, &mut BandRasterizer),
+    (shapes, rasterizer): (&Shapes, &mut BandRasterizer),
     coverage: &mut BandCoverage,
     selection: &mut [u16],
 ) -> Option<u32> {
@@ -25,7 +25,7 @@ pub(crate) fn validate(
         selection.fill(0);
         let mut check = Check {
             plan,
-            producer,
+            shapes,
             rasterizer: &mut *rasterizer,
             coverage: &mut *coverage,
             selection: &mut *selection,
@@ -41,7 +41,7 @@ pub(crate) fn validate(
 
 struct Check<'a> {
     plan: &'a Plan,
-    producer: &'a dyn Producer,
+    shapes: &'a Shapes,
     rasterizer: &'a mut BandRasterizer,
     coverage: &'a mut BandCoverage,
     selection: &'a mut [u16],
@@ -76,17 +76,12 @@ impl Check<'_> {
         }
     }
 
-    fn mark(&mut self, cover: crate::plan::Cover, select: u16, serial: u32) {
+    fn mark(&mut self, cover: Cover, select: u16, serial: u32) {
         let region = self.plan.area.region;
         let width = u32_to_usize(region.width());
         let coverage = &mut *self.coverage;
-        self.producer.rasterize(
-            self.rasterizer,
-            cover.shape,
-            cover.clip,
-            self.band,
-            coverage,
-        );
+        self.shapes
+            .rasterize(self.rasterizer, cover, self.band, coverage);
         let mut failed = false;
         for row in coverage.rows() {
             if row.y < self.first_row || row.y >= self.rows_end {

@@ -8,7 +8,7 @@
 use super::clips::Clipping;
 use super::{Planner, Scope};
 use crate::plan::{Glyph, Item, ItemKind, Mark, Run, area, intersect, union};
-use crate::prepare::{Backend, Budget};
+use crate::prepare::Budget;
 use pagura_core::{Error, Position, Result};
 use pagura_interpret::{GlyphsNode, Paint};
 use pagura_raster::DeviceRect;
@@ -71,7 +71,7 @@ pub(crate) struct Placed {
     pub(crate) position: Position,
 }
 
-impl<B: Backend> Planner<'_, B> {
+impl Planner<'_> {
     /// Whether `node`'s placements gather into runs: a solid paint and no
     /// transfer selection to record.
     pub(super) fn gathers(&self, scope: &Scope, node: &GlyphsNode) -> bool {

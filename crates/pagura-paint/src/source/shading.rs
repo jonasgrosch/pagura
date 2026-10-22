@@ -45,11 +45,11 @@ trait Sampler {
 
 /// How the executor applies a shading's `BBox`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BBoxUse {
+pub(crate) enum BBoxUse {
     /// The `BBox` does not limit the painted area.
     None,
-    /// The mark is clipped to [`ShadingSource::bbox`] under
-    /// [`ShadingSource::transform`] (a degenerate box clips to its outline).
+    /// The mark is clipped to the `BBox` under the shading's transform (a
+    /// degenerate box clips to its outline).
     Clip,
     /// A shading pattern with a `Background` and a degenerate `BBox`: the
     /// executor passes the box outline's coverage to
@@ -60,9 +60,9 @@ pub enum BBoxUse {
 
 /// A shading prepared for one render.
 #[derive(Debug)]
-pub struct ShadingSource {
-    /// Shading space to device space, and the `BBox` in shading space.
-    frame: Box<(Transform, Option<Rect>)>,
+pub(crate) struct ShadingSource {
+    /// Shading space to device space.
+    transform: Transform,
     /// Device space to shading space.
     inverse: Transform,
     /// Samples per pixel along each axis: 1, or 2 with `AntiAlias`.
@@ -110,7 +110,7 @@ impl ShadingSource {
     /// Returns `Unsupported` for a singular transform or colour the
     /// conversion cannot perform, and a `Limit` error when the reservation
     /// exceeds `functions`.
-    pub fn prepare(
+    pub(crate) fn prepare(
         shading: &Shading,
         shading_to_device: Transform,
         context: &PaintContext<'_>,
@@ -132,7 +132,7 @@ impl ShadingSource {
     /// # Errors
     ///
     /// As [`Self::prepare`].
-    pub fn pattern(
+    pub(crate) fn pattern(
         shading: &Shading,
         shading_to_device: Transform,
         context: &PaintContext<'_>,
@@ -194,7 +194,7 @@ impl ShadingSource {
         };
         let rate = if shading.antialias { 2 } else { 1 };
         let mut source = Self {
-            frame: Box::new((transform, shading.bbox)),
+            transform,
             inverse,
             rate,
             covers: false,
@@ -233,28 +233,18 @@ impl ShadingSource {
     }
 
     /// Shading space to device space.
-    pub fn transform(&self) -> Transform {
-        self.frame.0
-    }
-
-    /// The `BBox` in shading space, if any.
-    pub fn bbox(&self) -> Option<Rect> {
-        self.frame.1
-    }
-
-    /// How the executor applies [`Self::bbox`].
-    pub fn bbox_use(&self) -> BBoxUse {
-        self.bbox_use
+    pub(crate) fn transform(&self) -> Transform {
+        self.transform
     }
 
     /// The channels every pixel paints.
-    pub fn painted(&self) -> Painted {
+    pub(crate) fn painted(&self) -> Painted {
         self.painted
     }
 
     /// The colour of every pixel, when the shading paints one opaque colour
     /// everywhere (a constant function and geometry that every sample hits).
-    pub fn constant(&self) -> Option<&[f64]> {
+    pub(crate) fn constant(&self) -> Option<&[f64]> {
         let all = self.samples() - 1;
         self.constant
             .as_deref()
@@ -266,7 +256,7 @@ impl ShadingSource {
     /// reserves as render work: mesh primitive tests (one per triangle, at
     /// most `MAX_WORK` per patch) for each sample; zero for analytic
     /// shadings.
-    pub fn geometry_work(&self) -> usize {
+    pub(crate) fn geometry_work(&self) -> usize {
         match &*self.geometry {
             Geometry::Mesh(mesh) => mesh.work().saturating_mul(self.samples()),
             _ => 0,
@@ -275,7 +265,7 @@ impl ShadingSource {
 
     /// Bytes this source holds besides its function and colour data: mesh
     /// geometry and aligned tables.
-    pub fn bytes(&self) -> usize {
+    pub(crate) fn bytes(&self) -> usize {
         let mesh = match &*self.geometry {
             Geometry::Mesh(mesh) => mesh.bytes(),
             _ => 0,
@@ -286,13 +276,13 @@ impl ShadingSource {
     /// Fills `out` with the colours of device pixels `x .. x + len` of row
     /// `y`. `out.alpha` holds each pixel's covered fraction (its alpha and
     /// shape), or is empty when every pixel is fully covered.
-    pub fn span(&self, x: u32, y: u32, len: usize, out: &mut SpanColors) {
+    pub(crate) fn span(&self, x: u32, y: u32, len: usize, out: &mut SpanColors) {
         self.fill(x, y, len, None, out);
     }
 
     /// As [`Self::span`], for [`BBoxUse::Boundary`]: `boundary` holds the
     /// coverage of the box outline at each pixel.
-    pub fn span_with_boundary(&self, x: u32, y: u32, boundary: &[u8], out: &mut SpanColors) {
+    pub(crate) fn span_with_boundary(&self, x: u32, y: u32, boundary: &[u8], out: &mut SpanColors) {
         self.fill(x, y, boundary.len(), Some(boundary), out);
     }
 
