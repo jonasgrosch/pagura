@@ -118,9 +118,8 @@ background premultiplied once.
 
 The band rasterizer accumulates a mark's edges per band into a dense row of
 f64 cells with a touched-cell bitmap and no sorting (ADR 0004 §4); cells
-with conflicting windings go to the exact local resolver;
-glyph quadratics are integrated against the true curve; interiors leave as
-full spans. For the same flattened geometry every exact producer yields the
+with conflicting windings go to the exact local resolver; glyph quadratics
+are integrated against the true curve; interiors leave as full spans. For the same flattened geometry every exact producer yields the
 same coverage bytes. Clips are prepared once per clip state and classified per
 band row into outside, inside and boundary runs; exact joint geometry runs only
 where mark and clip are both partial.
@@ -137,8 +136,8 @@ from its group's whole content and never from the requested region: N16 for
 Normal source-over chains within ADR 0004's bound, F32 under its count bound,
 F64 for every buffer that feeds an amplifying operation (including the
 backdrop of a non-isolated group that contains one) and for buffers with spot
-channels. Spot colourants
-under overprint simulation are extra channels of the buffers, not replays.
+channels. Spot colourants under overprint simulation are extra channels of
+the buffers, not replays.
 
 ### 6. Exact rendering
 
