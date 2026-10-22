@@ -16,7 +16,7 @@
 
 use super::geometry::{Geometry, MAX_LANES};
 use super::separable::{RowCache, Rows, Runs, Separable};
-use crate::source::SpanColors;
+use crate::source::{Pixels, SpanColors};
 use pagura_core::Result;
 use pagura_image::deferred::{Packed, Planar};
 use pagura_image::{DecodedImage, Samples};
@@ -415,14 +415,16 @@ fn opaque_shape(len: usize, shape: Option<&mut Vec<f64>>) {
     }
 }
 
-/// The sampler of one image by its codes: its lanes, the separable
-/// placement and, for planar samples, their background blocks.
+/// The sampler of one image by its codes: its lanes and the separable
+/// placement.
 #[derive(Debug)]
 pub(super) struct Codes {
     lanes: Lanes,
     components: usize,
-    clean: Option<Clean>,
     separable: Separable,
+    /// Per colour lane, the N16 word of each code's colour, where three
+    /// opaque lanes take nearest samples.
+    words: Option<Box<[[u16; 256]; 3]>>,
 }
 
 impl Codes {
@@ -455,29 +457,91 @@ impl Codes {
         let Some(separable) = Separable::new(geometry, columns)? else {
             return Ok(None);
         };
-        let clean = match &image.samples {
-            Samples::Planar(planar) => Some(Clean::new(planar)),
-            _ => None,
-        };
+        let words = word_tables(&lanes, components, &separable);
         Ok(Some(Self {
             lanes,
             components,
-            clean,
             separable,
+            words,
         }))
+    }
+
+    /// The caller-owned storage needed by the code sampler.
+    pub(super) fn layout(&self) -> super::separable::Layout {
+        let values = if self.lanes.complement().is_some() {
+            2
+        } else {
+            self.components
+        };
+        self.separable
+            .layout(values, super::separable::Values::Codes)
+    }
+
+    /// The lone texel's colour, without constructing execution storage.
+    pub(super) fn constant(&self, image: &DecodedImage, out: &mut SpanColors) {
+        let mut codes = [0u8; 4];
+        for (i, code) in codes.iter_mut().enumerate().take(self.components) {
+            *code = u8::try_from(image.samples.get(i).unwrap_or(0)).unwrap_or(0);
+        }
+        out.channels = self.lanes.channels;
+        self.lanes
+            .write_codes(&codes[..self.components], self.components, out, None);
+    }
+
+    /// Writes the N16 words of the opaque colours of device pixels
+    /// `x .. x + len` of row `y` into `out`, as a store at full opacity
+    /// writes them; false, with nothing written, unless the image's three
+    /// lanes are opaque and its pixels take nearest samples.
+    pub(super) fn words(
+        &self,
+        image: &DecodedImage,
+        pixels: Pixels<'_>,
+        scratch: &mut super::separable::Scratch,
+        out: &mut [[u16; 4]],
+    ) -> bool {
+        let Some(words) = self.words.as_deref() else {
+            return false;
+        };
+        let Some(grid) = Grid::new(image) else {
+            return false;
+        };
+        let rows = CodeRows {
+            grid,
+            components: self.components,
+            complement: None,
+        };
+        let n = rows.width().max(1);
+        let &[a, b, c] = self.lanes.component.as_slice() else {
+            return false;
+        };
+        let code = |sample: &[u8], k: usize| usize::from(sample.get(k).copied().unwrap_or(0));
+        self.separable.gather(&rows, pixels, scratch, |codes| {
+            for (pixel, sample) in out.iter_mut().zip(codes.chunks_exact(n)) {
+                *pixel = [
+                    words[0][code(sample, a)],
+                    words[1][code(sample, b)],
+                    words[2][code(sample, c)],
+                    u16::MAX,
+                ];
+            }
+        });
+        true
     }
 
     /// Bytes the plan and lanes hold.
     pub(super) fn bytes(&self) -> usize {
-        self.separable.bytes()
-            + self.lanes.table.len() * size_of::<[f64; 256]>()
-            + self.clean.as_ref().map_or(0, Clean::bytes)
+        self.separable.bytes() + self.lanes.table.len() * size_of::<[f64; 256]>()
     }
 
     /// Replaces the lanes, keeping the placement.
     pub(super) fn set_lanes(&mut self, lanes: Lanes) {
+        self.words = word_tables(&lanes, self.components, &self.separable);
         self.lanes = lanes;
-        self.separable.forget();
+    }
+
+    /// The placement for a stencil whose colour no longer follows codes.
+    pub(super) fn into_separable(self) -> Separable {
+        self.separable
     }
 
     /// Fills `out` with device pixels `x .. x + len` of row `y`: straight
@@ -485,13 +549,15 @@ impl Codes {
     pub(super) fn fill(
         &self,
         image: &DecodedImage,
-        (x, y, len): (u32, u32, usize),
+        pixels: Pixels<'_>,
+        scratch: &mut super::separable::Scratch,
         out: &mut SpanColors,
         shape: Option<&mut Vec<f64>>,
     ) {
+        let len = pixels.len;
         out.channels = self.lanes.channels;
         out.alpha.clear();
-        let Some(grid) = Grid::new(image, self.clean.as_ref()) else {
+        let Some(grid) = Grid::new(image) else {
             out.colors.clear();
             out.colors.resize(len * self.lanes.channels, 0.0);
             return;
@@ -503,7 +569,7 @@ impl Codes {
         };
         let n = rows.width();
         if self.separable.nearest() {
-            self.separable.gather(&rows, (x, y, len), |codes| {
+            self.separable.gather(&rows, pixels, scratch, |codes| {
                 self.lanes.write_codes(codes, n, out, shape);
             });
             return;
@@ -541,7 +607,7 @@ impl Codes {
             let into = Some((colors.as_mut_slice(), lanes));
             let map = |average| map.apply(average);
             self.separable
-                .average(&rows, (x, y, len), into, (map, finish));
+                .average(&rows, pixels, scratch, into, (map, finish));
             out.colors = colors;
             return;
         }
@@ -552,8 +618,29 @@ impl Codes {
                 .uncover(covered, (&mut out.colors, &mut out.alpha), shape);
         };
         self.separable
-            .average(&rows, (x, y, len), None, (|average| average, finish));
+            .average(&rows, pixels, scratch, None, (|average| average, finish));
     }
+}
+
+/// Per colour lane, the N16 word of each code's colour as
+/// [`Lanes::write_codes`] gives it, for three opaque lanes sampled nearest.
+fn word_tables(
+    lanes: &Lanes,
+    components: usize,
+    separable: &Separable,
+) -> Option<Box<[[u16; 256]; 3]>> {
+    if !separable.nearest() || !lanes.opaque || lanes.table.len() != 3 {
+        return None;
+    }
+    let direct = lanes.codes.as_deref().filter(|_| components == 3);
+    let mut words = Box::new([[0u16; 256]; 3]);
+    for (words, table) in words.iter_mut().zip(&lanes.table) {
+        for (code, word) in words.iter_mut().enumerate() {
+            let value = direct.map_or(table[code], |direct| direct[code]);
+            *word = crate::kernel::opaque_word(value);
+        }
+    }
+    Some(words)
 }
 
 /// An image's samples as rows of codes, each of a one-component image
@@ -592,167 +679,34 @@ impl Rows for CodeRows<'_> {
         runs: &mut Runs,
     ) -> Option<&[u8]> {
         match (&self.grid, self.complement) {
-            (Grid::Planar(_, Some(clean)), None) => {
-                clean.runs(rows, columns, runs);
-                Some(&clean.background)
+            (Grid::Planar(planar), None) => {
+                runs.clear();
+                planar.background_runs(rows, columns, |start, stop, background| {
+                    runs.push((start, stop, !background));
+                });
+                Some(planar.background_rgb())
             }
             _ => None,
         }
     }
 }
 
-/// Which eight-by-eight luma blocks of planar samples, with the chroma
-/// blocks over them, hold only their planes' backgrounds, and the colour
-/// those convert to. Their samples need no conversion and their sums no
-/// arithmetic beyond one value per device row.
-#[derive(Debug)]
-struct Clean {
-    /// Bit words per block row.
-    words: usize,
-    /// One bit per luma block, set where it is background.
-    bits: Vec<u64>,
-    /// The RGB codes of the backgrounds.
-    background: [u8; 3],
-}
-
-impl Clean {
-    fn new(planar: &Planar) -> Self {
-        let side = Self::SIDE;
-        let [_, _, pitch] = planar.geometry(0);
-        let [max_h, max_v] = planar.maximum();
-        let columns = pitch / side;
-        let rows = planar.height().div_ceil(side);
-        let words = columns.div_ceil(64);
-        let mut bits = vec![0u64; words * rows];
-        // The chroma blocks under luma samples `a..=b` of a component with
-        // sampling factor `factor` of `maximum`.
-        let under = |(a, b): (usize, usize), factor: usize, maximum: usize| {
-            (a * factor / maximum / side)..=(b * factor / maximum / side)
-        };
-        // Per chroma component: each luma column's chroma columns, and per
-        // luma row the chroma columns any chroma row under it marks.
-        let chroma: [(Vec<std::ops::RangeInclusive<usize>>, usize); 2] = [1, 2].map(|c| {
-            let [h, _, chroma_pitch] = planar.geometry(c);
-            let ranges = (0..columns)
-                .map(|column| under((column * side, column * side + side - 1), h, max_h))
-                .collect();
-            (ranges, chroma_pitch / side)
-        });
-        let mut marked: Vec<bool> = Vec::new();
-        for (row, line) in bits.chunks_exact_mut(words.max(1)).enumerate() {
-            let samples = (row * side, row * side + side - 1);
-            for column in 0..columns {
-                if !planar.dirty(0, row, column) {
-                    line[column / 64] |= 1 << (column % 64);
-                }
-            }
-            for (c, (ranges, chroma_columns)) in (1..3).zip(&chroma) {
-                let [_, v, _] = planar.geometry(c);
-                marked.clear();
-                marked.resize(*chroma_columns, false);
-                for y in under(samples, v, max_v) {
-                    for (x, mark) in marked.iter_mut().enumerate() {
-                        *mark |= planar.dirty(c, y, x);
-                    }
-                }
-                if !marked.contains(&true) {
-                    continue;
-                }
-                for (column, range) in ranges.iter().enumerate() {
-                    let last = (*range.end()).min(marked.len().saturating_sub(1));
-                    if marked
-                        .get(*range.start()..=last)
-                        .is_some_and(|marks| marks.contains(&true))
-                    {
-                        line[column / 64] &= !(1 << (column % 64));
-                    }
-                }
-            }
-        }
-        let [y, cb, cr] = planar.backgrounds();
-        let mut background = [0; 3];
-        let _ = pagura_image::deferred::ycbcr(&[y], &[cb], &[cr], 1, &mut background);
-        Self {
-            words,
-            bits,
-            background,
-        }
-    }
-
-    fn bytes(&self) -> usize {
-        self.bits.capacity() * size_of::<u64>()
-    }
-
-    /// Splits samples `first..end` of source rows `top..=bottom` into runs
-    /// that are all background (`false`) or may not be (`true`). Background
-    /// shorter than [`Clean::GAP`] samples joins the runs around it.
-    fn runs(
-        &self,
-        (top, bottom): (usize, usize),
-        (first, end): (usize, usize),
-        runs: &mut Vec<(usize, usize, bool)>,
-    ) {
-        runs.clear();
-        let mut push = |start: usize, stop: usize, dirty: bool| {
-            let dirty = dirty || stop - start < Self::GAP && (start != first || stop != end);
-            match runs.last_mut() {
-                Some(last) if last.2 == dirty => last.1 = stop,
-                _ => runs.push((start, stop, dirty)),
-            }
-        };
-        let side = Self::SIDE;
-        let (mut column, last) = (first / side, (end - 1) / side);
-        while column <= last {
-            // The background bits of this word's columns from `column` on,
-            // over every block row.
-            let (word, shift) = (column / 64, column % 64);
-            let mut bits = u64::MAX;
-            for row in top / side..=bottom / side {
-                bits &= self.bits.get(row * self.words + word).copied().unwrap_or(0);
-            }
-            let bits = bits >> shift;
-            let background = bits & 1 == 1;
-            let same = if background {
-                bits.trailing_ones()
-            } else {
-                bits.trailing_zeros()
-            };
-            let available = 64 - shift;
-            let count = usize::try_from(same.min(u32::try_from(available).unwrap_or(64)))
-                .unwrap_or(1)
-                .max(1)
-                .min(last + 1 - column);
-            let start = (column * side).max(first);
-            column += count;
-            let stop = (column * side).min(end);
-            push(start, stop, !background);
-        }
-    }
-
-    /// The shortest background run worth reducing apart from its
-    /// neighbours.
-    const GAP: usize = 64;
-
-    /// Samples per block side.
-    const SIDE: usize = 8;
-}
-
 /// The decoded samples as rows of codes.
 enum Grid<'a> {
     Bytes { bytes: &'a [u8], width: usize },
     Packed(&'a Packed),
-    Planar(&'a Planar, Option<&'a Clean>),
+    Planar(&'a Planar),
 }
 
 impl<'a> Grid<'a> {
-    fn new(image: &'a DecodedImage, clean: Option<&'a Clean>) -> Option<Self> {
+    fn new(image: &'a DecodedImage) -> Option<Self> {
         match &image.samples {
             Samples::Bytes(bytes) => Some(Self::Bytes {
                 bytes,
                 width: usize::try_from(image.width).ok()?,
             }),
             Samples::Packed(packed) => Some(Self::Packed(packed)),
-            Samples::Planar(planar) => Some(Self::Planar(planar, clean)),
+            Samples::Planar(planar) => Some(Self::Planar(planar)),
             Samples::Words(_) | Samples::Mixed { .. } => None,
         }
     }
@@ -797,40 +751,10 @@ impl<'a> Grid<'a> {
                     true
                 })
             }),
-            Self::Planar(planar, clean) => cache.get((y, (x0, x1)), 3, |out, runs| {
-                let Some(clean) = clean else {
-                    return planar.rgb_range(y, x0, x1, out);
-                };
-                // Background blocks need no conversion.
-                clean.runs((y, y), (x0, x1), runs);
-                runs.iter().all(|&(start, stop, dirty)| {
-                    let Some(out) = out.get_mut((start - x0) * 3..(stop - x0) * 3) else {
-                        return false;
-                    };
-                    if dirty {
-                        planar.rgb_range(y, start, stop, out)
-                    } else {
-                        fill_rgb(out, clean.background);
-                        true
-                    }
-                })
-            }),
+            Self::Planar(planar) => {
+                cache.get((y, (x0, x1)), 3, |out, _| planar.rgb_range(y, x0, x1, out))
+            }
         }
-    }
-}
-
-/// Fills `out` with `rgb` repeated, sixteen samples at a copy.
-fn fill_rgb(out: &mut [u8], rgb: [u8; 3]) {
-    let mut pattern = [0u8; 48];
-    for chunk in pattern.as_chunks_mut::<3>().0 {
-        *chunk = rgb;
-    }
-    let (chunks, rest) = out.as_chunks_mut::<48>();
-    for chunk in chunks {
-        *chunk = pattern;
-    }
-    for (out, &value) in rest.iter_mut().zip(&pattern) {
-        *out = value;
     }
 }
 
@@ -876,74 +800,4 @@ const fn unpacked() -> [u64; 256] {
 /// Sample `x` of a packed row.
 fn bit(row: &[u8], x: usize) -> u8 {
     row.get(x / 8).map_or(0, |byte| (byte >> (7 - x % 8)) & 1)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::Clean;
-    use pagura_image::deferred::Planar;
-
-    /// Background blocks are those whose luma block and every chroma block
-    /// under it hold the background, for every sampling of the chroma.
-    #[test]
-    fn background_blocks_have_clean_chroma_under_them() {
-        let mut state = 0x1234_5678u32;
-        let mut random = move || {
-            state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
-            state >> 16
-        };
-        let cases: [([usize; 2], (usize, usize)); 4] = [
-            ([2, 2], (37, 29)),
-            ([1, 1], (24, 16)),
-            ([2, 1], (40, 9)),
-            ([4, 1], (70, 15)),
-        ];
-        for ([h, v], (width, height)) in cases {
-            let maximum = [h, v];
-            let geometry = [
-                [h, v, (width.div_ceil(8 * h) * 8 * h).next_multiple_of(8)],
-                [1, 1, width.div_ceil(8 * h) * 8],
-                [1, 1, width.div_ceil(8 * h) * 8],
-            ];
-            let rows = [
-                height.div_ceil(8 * v) * 8 * v,
-                height.div_ceil(8 * v) * 8,
-                height.div_ceil(8 * v) * 8,
-            ];
-            let backgrounds = [255u8, 128, 128];
-            let planes: [Vec<u8>; 3] = std::array::from_fn(|c| {
-                let [_, _, pitch] = geometry[c];
-                let mut plane = vec![backgrounds[c]; pitch * rows[c]];
-                for block in 0..(pitch / 8) * (rows[c] / 8) {
-                    if random() % 5 == 0 {
-                        let (row, column) = (block / (pitch / 8), block % (pitch / 8));
-                        plane[(row * 8 + 3) * pitch + column * 8 + 2] = 7;
-                    }
-                }
-                plane
-            });
-            let planar = Planar::new((width, height), maximum, geometry, planes).unwrap();
-            let clean = Clean::new(&planar);
-            let side = 8;
-            let under = |(a, b): (usize, usize), factor: usize, maximum: usize| {
-                (a * factor / maximum / side)..=(b * factor / maximum / side)
-            };
-            for row in 0..height.div_ceil(side) {
-                for column in 0..geometry[0][2] / side {
-                    let samples = (row * side, row * side + side - 1);
-                    let across = (column * side, column * side + side - 1);
-                    let expected = !planar.dirty(0, row, column)
-                        && (1..3).all(|c| {
-                            let [h, v, _] = planar.geometry(c);
-                            under(samples, v, maximum[1]).all(|y| {
-                                under(across, h, maximum[0]).all(|x| !planar.dirty(c, y, x))
-                            })
-                        });
-                    let actual =
-                        clean.bits[row * clean.words + column / 64] >> (column % 64) & 1 == 1;
-                    assert_eq!(actual, expected, "{maximum:?} block {row} {column}");
-                }
-            }
-        }
-    }
 }
