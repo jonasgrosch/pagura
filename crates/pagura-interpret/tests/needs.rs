@@ -3,7 +3,7 @@
 //! extraction reads no image, shading or colour space, and a scene builds
 //! no extraction records.
 
-use pagura_core::Result;
+use pagura_core::{Recovery, Result, Store};
 use pagura_document::{Document, OpenOptions};
 use pagura_interpret::{
     Device, FillMark, GlyphRun, ImageMark, Interpreter, Needs, SceneRecorder, ShadingMark, TextRun,
@@ -167,4 +167,39 @@ fn a_scene_recording_builds_no_extraction_records() {
         .run(page, &mut recorder)
         .unwrap();
     assert!(recorder.finish().unwrap().marks() > 0);
+}
+
+#[test]
+fn malformed_unicode_is_read_only_for_text_even_with_a_shared_store() -> Result<()> {
+    for (name, tag) in [
+        ("simple", "font.tounicode-simple-codes"),
+        ("utf16", "font.tounicode-utf16"),
+        ("range", "font.tounicode-range"),
+        ("block-count", "font.cmap-block-count"),
+        ("invalid", "font.tounicode-invalid"),
+    ] {
+        let document = Document::open(
+            pagura_testkit::fixture("text", &format!("paint-tounicode-{name}.pdf")),
+            &OpenOptions {
+                recovery: Recovery::Strict,
+                ..OpenOptions::default()
+            },
+        )?;
+        let store = Store::new(document.limits().render_bytes);
+        let interpreter = Interpreter::new(&document).with_store(&store);
+        let page = document.page(0)?;
+        assert!(interpreter.scene(page)?.marks() > 0, "{name}");
+        assert!(document.diagnostics().is_empty(), "{name}");
+        let error = interpreter.text(page).unwrap_err();
+        assert_eq!(
+            error.repair.map(pagura_core::Repair::as_str),
+            Some(tag),
+            "{name}"
+        );
+        assert!(error.object.is_some(), "{name}");
+        assert_eq!(interpreter.text(page).unwrap_err(), error, "{name}");
+        assert!(interpreter.scene(page)?.marks() > 0, "{name}");
+        assert!(document.diagnostics().is_empty(), "{name}");
+    }
+    Ok(())
 }
