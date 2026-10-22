@@ -4,10 +4,10 @@
 //! pens and clips by identity. The tables hold every value interned by
 //! identity, so its address names it for the whole recording.
 
-use crate::hash::FastMap;
 use crate::model::{BlendMode, Clip, Composite, MaskId, Overprint, Paint, Pen};
 use crate::scene::{ClipId, ClipNode, PaintId, PenId, StateId};
 use pagura_color::Intent;
+use pagura_core::hash::FastMap;
 use pagura_core::{Error, Meter, Result};
 use std::sync::Arc;
 

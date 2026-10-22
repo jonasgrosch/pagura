@@ -25,7 +25,6 @@ mod device;
 mod dump;
 pub mod features;
 mod fonts;
-mod hash;
 mod machine;
 mod model;
 mod recorder;

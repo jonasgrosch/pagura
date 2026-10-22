@@ -2,9 +2,9 @@
 //! receive: paints, composite states and pens, built once per change.
 
 use crate::fonts::LoadedFont;
-use crate::hash::FastMap;
 use crate::model::{BlendMode, Clip, Color, Composite, MaskId, Overprint, Paint, Pen, Transfer};
 use pagura_color::{ColorSpace, Components, Conversion, Function, Intent};
+use pagura_core::hash::FastMap;
 use pagura_raster::{Adjustment, Stroke, Transform};
 use std::sync::Arc;
 

@@ -3,9 +3,9 @@
 //! become channels of every buffer, each with its first painting
 //! definition for the preview at output.
 
-use crate::hash::{self, FastSet};
 use crate::request::OverprintMode;
 use pagura_color::{ColorSpace, Colorant};
+use pagura_core::hash::FastSet;
 use pagura_core::{Error, Name, Result};
 use pagura_interpret::{Composite, GroupId, GroupRole, Node, Paint, PatternId, Scene};
 use std::sync::Arc;
@@ -32,7 +32,7 @@ pub(crate) fn discover(scene: &Scene, mode: OverprintMode, depth: usize) -> Resu
     let mut walk = Walk {
         scene,
         depth,
-        cells: hash::set(),
+        cells: FastSet::default(),
         overprint: false,
         tint: false,
         nonzero: false,
