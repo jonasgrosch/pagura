@@ -224,43 +224,7 @@ impl<'a> Executor<'a> {
         frame: Frame,
         opaque: Opaque,
     ) {
-        let ws = &mut *self.ws;
-        let stored = match (&mut ws.page, opaque) {
-            (PageBuffer::N16(page), Opaque::N16(words)) => store_rows(
-                page,
-                &mut ws.extents,
-                (coverage, frame),
-                |pixels, coverage| {
-                    kernel::store_n16(pixels, words, coverage);
-                },
-            ),
-            (PageBuffer::U8(page), Opaque::U8(bytes)) => store_rows(
-                page,
-                &mut ws.extents,
-                (coverage, frame),
-                |pixels, coverage| {
-                    kernel::store_u8_opaque(pixels, bytes, coverage);
-                },
-            ),
-            (PageBuffer::U8(page), Opaque::U8Alpha(bytes, alpha)) => {
-                let (bits, table) = &mut ws.alpha_table;
-                if *bits != Some(alpha.to_bits()) {
-                    *table = kernel::alpha_bytes(alpha);
-                    *bits = Some(alpha.to_bits());
-                }
-                let table = &*table;
-                store_rows(
-                    page,
-                    &mut ws.extents,
-                    (coverage, frame),
-                    |pixels, coverage| {
-                        kernel::store_u8_alpha(pixels, bytes, coverage, table);
-                    },
-                )
-            }
-            _ => 0,
-        };
-        ws.usage.work = ws.usage.work.saturating_add(stored);
+        opaque_store(self.ws, coverage, frame, opaque);
     }
 
     fn mark_span(&mut self, mark: &Mark, frame: Frame, (x, y): (u32, u32), cover: Cover<'_>) {
@@ -365,46 +329,96 @@ impl<'a> Executor<'a> {
     }
 }
 
-/// Stores every span of `coverage` within `frame` into the page's band
-/// `page` with `store`, recording each row's painted columns once; returns
-/// the pixels stored.
-fn store_rows<T>(
-    page: &mut [T],
-    extents: &mut Extents,
-    (coverage, frame): (&pagura_raster::BandCoverage, Frame),
-    store: impl Fn(&mut [T], Option<&[u8]>),
-) -> usize {
-    let rect = frame.rect;
-    let width = u32_to_usize(rect.width());
-    let mut stored = 0;
-    for row in coverage.rows() {
-        if row.y < rect.y0 || row.y >= rect.y1 {
-            continue;
-        }
-        let base = u32_to_usize(row.y - rect.y0) * width;
-        let Some(line) = page.get_mut(base..base + width) else {
-            continue;
-        };
-        let (mut lo, mut hi) = (u32::MAX, 0);
-        for span in row.spans() {
-            let Some((x, cover)) = clamp(span, rect) else {
+/// Coverage an opaque store writes into the page.
+pub(crate) trait Stores {
+    /// Stores the coverage within `frame` into the page's band `page` with
+    /// `store`, recording each row's painted columns; returns the pixels
+    /// stored.
+    fn store_into<T>(
+        &self,
+        page: &mut [T],
+        extents: &mut Extents,
+        frame: Frame,
+        store: impl Fn(&mut [T], Option<&[u8]>),
+    ) -> usize;
+}
+
+impl Stores for pagura_raster::BandCoverage {
+    fn store_into<T>(
+        &self,
+        page: &mut [T],
+        extents: &mut Extents,
+        frame: Frame,
+        store: impl Fn(&mut [T], Option<&[u8]>),
+    ) -> usize {
+        let rect = frame.rect;
+        let width = u32_to_usize(rect.width());
+        let mut stored = 0;
+        for row in self.rows() {
+            if row.y < rect.y0 || row.y >= rect.y1 {
+                continue;
+            }
+            let base = u32_to_usize(row.y - rect.y0) * width;
+            let Some(line) = page.get_mut(base..base + width) else {
                 continue;
             };
-            let column = x - rect.x0;
-            let start = u32_to_usize(column);
-            let len = cover.len();
-            if let Some(pixels) = line.get_mut(start..start + len) {
-                store(pixels, cover.coverage());
+            let (mut lo, mut hi) = (u32::MAX, 0);
+            for span in row.spans() {
+                let Some((x, cover)) = clamp(span, rect) else {
+                    continue;
+                };
+                let column = x - rect.x0;
+                let start = u32_to_usize(column);
+                let len = cover.len();
+                if let Some(pixels) = line.get_mut(start..start + len) {
+                    store(pixels, cover.coverage());
+                }
+                lo = lo.min(column);
+                hi = hi.max(column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX)));
+                stored += len;
             }
-            lo = lo.min(column);
-            hi = hi.max(column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX)));
-            stored += len;
+            if lo < hi {
+                extents.mark(u32_to_usize(row.y - rect.y0), lo, hi);
+            }
         }
-        if lo < hi {
-            extents.mark(u32_to_usize(row.y - rect.y0), lo, hi);
-        }
+        stored
     }
-    stored
+}
+
+/// Opaque constant colour into the N16 or byte page, as
+/// [`Executor::opaque_store`] stores it, from any coverage that stores.
+pub(crate) fn opaque_store(
+    ws: &mut Workspace,
+    coverage: &impl Stores,
+    frame: Frame,
+    opaque: Opaque,
+) {
+    let extents = &mut ws.extents;
+    let stored = match (&mut ws.page, opaque) {
+        (PageBuffer::N16(page), Opaque::N16(words)) => {
+            coverage.store_into(page, extents, frame, |pixels, coverage| {
+                kernel::store_n16(pixels, words, coverage);
+            })
+        }
+        (PageBuffer::U8(page), Opaque::U8(bytes)) => {
+            coverage.store_into(page, extents, frame, |pixels, coverage| {
+                kernel::store_u8_opaque(pixels, bytes, coverage);
+            })
+        }
+        (PageBuffer::U8(page), Opaque::U8Alpha(bytes, alpha)) => {
+            let (bits, table) = &mut ws.alpha_table;
+            if *bits != Some(alpha.to_bits()) {
+                *table = kernel::alpha_bytes(alpha);
+                *bits = Some(alpha.to_bits());
+            }
+            let table = &*table;
+            coverage.store_into(page, extents, frame, |pixels, coverage| {
+                kernel::store_u8_alpha(pixels, bytes, coverage, table);
+            })
+        }
+        _ => 0,
+    };
+    ws.usage.work = ws.usage.work.saturating_add(stored);
 }
 
 /// An opaque constant colour encoded for the page's narrow storage.

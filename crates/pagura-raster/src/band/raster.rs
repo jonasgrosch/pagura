@@ -10,7 +10,7 @@ use super::edges::Line;
 use super::rect;
 use super::row::{Accumulate, DenseRow, Row, Sink, fold};
 use super::shape::{Body, EdgeBody, GlyphBody, Shape};
-use super::{Area, BandCoverage, ClipShape, MarkCoverage};
+use super::{Area, BandCoverage, ClipShape, GlyphMask, MarkCoverage};
 use crate::FillRule;
 use pagura_core::{Meter, Result};
 
@@ -24,6 +24,24 @@ pub struct BandRasterizer {
     grid: Grid,
     run: Run,
     work: usize,
+}
+
+/// One glyph of a run: a shape, or a mask that stores as it is.
+#[derive(Debug, Clone, Copy)]
+pub enum RunGlyph<'a> {
+    /// A prepared shape.
+    Shape(&'a Shape),
+    /// A binned mask its clip state keeps whole.
+    Mask(&'a GlyphMask),
+}
+
+impl RunGlyph<'_> {
+    fn bounds(&self) -> super::DeviceRect {
+        match self {
+            Self::Shape(shape) => shape.bounds,
+            Self::Mask(mask) => mask.bounds(),
+        }
+    }
 }
 
 /// The shapes of a run at once, at most.
@@ -264,9 +282,9 @@ impl BandRasterizer {
                     self.work
                         .saturating_add(self.cells.rasterize(cells, shape, (band, rows), out));
             }
-            Body::Binned(placement) => {
+            Body::Binned(mask) => {
                 self.work = self.work.saturating_add(binned::rasterize(
-                    placement,
+                    mask,
                     shape,
                     rows,
                     (out, self.cells.row_buffer()),
@@ -275,15 +293,33 @@ impl BandRasterizer {
         }
     }
 
+    /// Writes the coverage of `mask` within `band` to `out`, replacing its
+    /// contents: its rows as they are. The clip state it was prepared in
+    /// keeps all of it.
+    pub fn rasterize_mask(&mut self, mask: &GlyphMask, band: u32, out: &mut BandCoverage) {
+        out.clear();
+        let rows = Self::mask_rows(mask, self.area.band_rows(band));
+        self.work = self.work.saturating_add(binned::emit(mask, rows, out));
+        out.finish();
+    }
+
+    /// The rows of `band` (`rows`) that `mask` can cover.
+    fn mask_rows(mask: &GlyphMask, rows: std::ops::Range<u32>) -> std::ops::Range<u32> {
+        let b = mask.bounds();
+        let start = rows.start.max(b.y0);
+        start..rows.end.min(b.y1).max(start)
+    }
+
     /// Writes the coverage within `band` of glyphs of one run, all in the
-    /// clip state `clip`, to `out`, replacing its contents: each shape's
-    /// rows as [`Self::rasterize`] writes them alone, merged into the band's
-    /// rows. The shapes must share no pixel; they come in content order.
-    /// Rasterizes the leading shapes that fit the run storage, at least
-    /// one, and returns how many it took; the caller passes the rest again.
+    /// clip state `clip`, to `out`, replacing its contents: each glyph's
+    /// rows as [`Self::rasterize`] and [`Self::rasterize_mask`] write them
+    /// alone, merged into the band's rows. The glyphs must share no pixel;
+    /// they come in content order. Rasterizes the leading glyphs that fit
+    /// the run storage, at least one, and returns how many it took; the
+    /// caller passes the rest again.
     pub fn rasterize_run(
         &mut self,
-        shapes: &[&Shape],
+        glyphs: &[RunGlyph<'_>],
         clip: Option<&ClipShape>,
         band: u32,
         out: &mut BandCoverage,
@@ -294,22 +330,29 @@ impl BandRasterizer {
         run.slots.clear();
         let mut used = 0_usize;
         let mut taken = 0;
-        for shape in shapes {
-            let own = Self::shape_rows(shape, clip, rows.clone());
-            let width = shape.bounds.width() as usize;
+        for glyph in glyphs {
+            let own = match glyph {
+                RunGlyph::Shape(shape) => Self::shape_rows(shape, clip, rows.clone()),
+                RunGlyph::Mask(mask) => Self::mask_rows(mask, rows.clone()),
+            };
+            let bounds = glyph.bounds();
+            let width = bounds.width() as usize;
             let cells = own.len().saturating_mul(width);
             if run.slots.len() == RUN_SHAPES || used.saturating_add(cells) > RUN_CELLS {
                 if taken == 0 {
                     // Too large to share the run storage: alone.
                     self.run = run;
-                    self.rasterize(
-                        MarkCoverage {
-                            shape: Some(shape),
-                            clip,
-                        },
-                        band,
-                        out,
-                    );
+                    match *glyph {
+                        RunGlyph::Shape(shape) => self.rasterize(
+                            MarkCoverage {
+                                shape: Some(shape),
+                                clip,
+                            },
+                            band,
+                            out,
+                        ),
+                        RunGlyph::Mask(mask) => self.rasterize_mask(mask, band, out),
+                    }
                     return 1;
                 }
                 break;
@@ -319,7 +362,7 @@ impl BandRasterizer {
                 run.slots.push(Slot {
                     shape: taken - 1,
                     start: used,
-                    x0: shape.bounds.x0,
+                    x0: bounds.x0,
                     width,
                     rows: own,
                 });
@@ -336,12 +379,15 @@ impl BandRasterizer {
                 y0: slot.rows.start,
                 row: 0,
             };
-            self.shape(
-                shapes[slot.shape],
-                clip,
-                (band, slot.rows.clone()),
-                &mut target,
-            );
+            match glyphs[slot.shape] {
+                RunGlyph::Shape(shape) => {
+                    self.shape(shape, clip, (band, slot.rows.clone()), &mut target);
+                }
+                RunGlyph::Mask(mask) => {
+                    let work = binned::emit(mask, slot.rows.clone(), &mut target);
+                    self.work = self.work.saturating_add(work);
+                }
+            }
         }
         // Rows merged left to right; shapes whose columns meet go out as one
         // stretch, each pixel from the one shape that covers it.

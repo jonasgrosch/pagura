@@ -145,6 +145,13 @@ impl Extents {
         }
     }
 
+    /// Records a store at columns `start .. end` of each of `rows`.
+    pub(crate) fn mark_rows(&mut self, rows: std::ops::Range<usize>, start: u32, end: u32) {
+        for extent in self.rows.get_mut(rows).unwrap_or_default() {
+            *extent = [extent[0].min(start), extent[1].max(end)];
+        }
+    }
+
     /// The painted columns of `row`, if any.
     pub(crate) fn get(&self, row: usize) -> Option<(usize, usize)> {
         let [lo, hi] = *self.rows.get(row)?;

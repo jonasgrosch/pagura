@@ -4,15 +4,16 @@
 
 use crate::plan::ItemKind;
 use crate::prepare::planner::runs::RUNS;
-use crate::request::FastParams;
+use crate::request::{FastParams, RenderRequest};
 use crate::testing::{Build, check, index, mark, rect_path};
-use pagura_core::{Limits, Position};
+use crate::{Charges, PreparedScene};
+use pagura_core::{Limits, Position, Store};
 use pagura_interpret::{
     BlendMode, Composite, GlyphSource, GlyphsNode, GroupAttributes, GroupId, MarkInfo, MaskKind,
     Node, OutlineKey, Paint, PaintId, PatternId, Placement, StateId, Tiling, TilingColors,
     TilingPaint,
 };
-use pagura_raster::{DeviceRect, PathBuilder, Point, Transform};
+use pagura_raster::{DeviceRect, PathBuilder, Pixmap, Point, Rgba8, Transform};
 use std::sync::Arc;
 
 const PAGE: GroupId = GroupId(0);
@@ -74,6 +75,63 @@ fn with_runs<T>(runs: bool, f: impl FnOnce() -> T) -> T {
 /// same charges at every band height, and that it has a run item with
 /// placements rasterized together, or one without, as `gathers` says.
 fn same_bytes(name: &str, b: &Build, fast: FastParams, gathers: bool) {
+    same_bytes_with(name, b, fast, gathers, Backend::Rects);
+}
+
+/// The backend a test prepares with.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Backend {
+    /// The rectangle backend of the tests.
+    Rects,
+    /// The band rasterizer, whose binned glyphs are masks.
+    Raster,
+}
+
+/// Prepares `request` with `backend`.
+fn prepare(b: &Build, request: &RenderRequest, backend: Backend) -> PreparedScene {
+    let prepared = match backend {
+        Backend::Rects => b.prepare(request, &Limits::default()),
+        Backend::Raster => {
+            crate::prepare(&b.scene, request, &Store::new(1 << 20), &Limits::default())
+        }
+    };
+    prepared.unwrap_or_else(|e| panic!("{e}"))
+}
+
+/// Renders `request` with `backend` into region-sized RGBA8 with the
+/// reserved charges, checking that rendering used no more.
+fn render(b: &Build, request: &RenderRequest, backend: Backend) -> (Vec<u8>, Charges) {
+    match backend {
+        Backend::Rects => b.render_charged(request).unwrap_or_else(|e| panic!("{e}")),
+        Backend::Raster => render_in(b, request, &Store::new(1 << 20)),
+    }
+}
+
+/// [`render`] with the band rasterizer and `store`.
+fn render_in(b: &Build, request: &RenderRequest, store: &Store) -> (Vec<u8>, Charges) {
+    let mut prepared = crate::prepare(&b.scene, request, store, &Limits::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    let region = request.region;
+    let mut target = Pixmap::new(
+        region.width(),
+        region.height(),
+        Rgba8::TRANSPARENT,
+        usize::MAX,
+    )
+    .unwrap_or_else(|e| panic!("{e}"));
+    prepared.render(&mut target);
+    let (used, reserved) = (prepared.usage(), prepared.charges());
+    assert!(
+        used.render_bytes() <= reserved.render_bytes()
+            && used.render_work() <= reserved.render_work()
+            && used.function_work() <= reserved.function_work(),
+        "used {used:?} beyond reserved {reserved:?}"
+    );
+    (target.data().to_vec(), reserved)
+}
+
+/// [`same_bytes`] with `backend`.
+fn same_bytes_with(name: &str, b: &Build, fast: FastParams, gathers: bool, backend: Backend) {
     let page = b.page();
     let half = page.x1 / 2;
     let regions = [
@@ -93,9 +151,7 @@ fn same_bytes(name: &str, b: &Build, fast: FastParams, gathers: bool) {
     ];
     let mut request = b.request(page, 32);
     request.fast = fast;
-    let prepared = b
-        .prepare(&request, &Limits::default())
-        .unwrap_or_else(|e| panic!("{name}: {e}"));
+    let prepared = prepare(b, &request, backend);
     assert!(
         prepared.plan().items.iter().any(|item| matches!(&item.kind,
                 ItemKind::Run(run) if run.glyphs.iter().any(|g| g.alone) == gathers)),
@@ -105,10 +161,7 @@ fn same_bytes(name: &str, b: &Build, fast: FastParams, gathers: bool) {
         let render = |runs, height| {
             let mut request = b.request(region, height);
             request.fast = fast;
-            with_runs(runs, || {
-                b.render_charged(&request)
-                    .unwrap_or_else(|e| panic!("{name}: {e}"))
-            })
+            with_runs(runs, || render(b, &request, backend))
         };
         let (_, charges) = render(true, 32);
         for height in HEIGHTS {
@@ -182,6 +235,14 @@ fn translucent_and_blended_runs_gather_where_placements_do_not_meet() {
 
 #[test]
 fn runs_in_groups_masks_clips_and_patterns() {
+    let b = groups();
+    same_bytes("groups", &b, FastParams::EXACT, true);
+    check(&b);
+}
+
+/// Runs in a knockout and an isolated group, a soft mask, a clip and a
+/// tiling cell.
+fn groups() -> Build {
     let (mut b, [back, ink]) = page();
     let half = b.state(|s| s.alpha = 0.5);
     // A non-isolated knockout group of translucent runs.
@@ -250,8 +311,97 @@ fn runs_in_groups_masks_clips_and_patterns() {
         color: None,
     }));
     b.rect(PAGE, [24.25, 1.5, 39.0, 9.75], tiles, mark(StateId(0)));
-    same_bytes("groups", &b, FastParams::EXACT, true);
-    check(&b);
+    b
+}
+
+/// Binned glyphs are masks: stored straight into the page under an opaque
+/// store, through band coverage elsewhere, and as shapes where a clip cuts
+/// them; runs of them render as one item per placement does.
+#[test]
+fn binned_masks_render_as_one_item_per_placement() {
+    let bins = FastParams {
+        glyph_origin_bins: true,
+        ..FastParams::EXACT
+    };
+    let bytes = FastParams {
+        byte_storage: true,
+        ..bins
+    };
+    let (mut opaque, [_, ink]) = page();
+    run(
+        &mut opaque,
+        PAGE,
+        &line(14, [1.25, 3.5], 2.5),
+        ink,
+        mark(StateId(0)),
+    );
+    run(
+        &mut opaque,
+        PAGE,
+        &line(9, [6.0, 12.75], 3.25),
+        ink,
+        mark(StateId(0)),
+    );
+    let half = opaque.state(|s| s.alpha = 0.5);
+    run(
+        &mut opaque,
+        PAGE,
+        &line(5, [30.0, 15.0], 3.0),
+        ink,
+        mark(half),
+    );
+    // A clip that keeps some placements whole and cuts others.
+    let clip = opaque.clip(None, [3.25, 4.5, 30.5, 19.75]);
+    let info = MarkInfo {
+        clip: Some(clip),
+        ..mark(StateId(0))
+    };
+    run(&mut opaque, PAGE, &line(12, [1.0, 15.0], 2.5), ink, info);
+    for fast in [bins, bytes, FastParams::COMPETITIVE] {
+        same_bytes_with("binned opaque", &opaque, fast, true, Backend::Raster);
+        same_bytes_with("binned groups", &groups(), fast, true, Backend::Raster);
+    }
+}
+
+/// Glyph edges kept in the store from an earlier render, with their masks
+/// and hulls, change no byte and no charge.
+#[test]
+fn kept_glyph_edges_change_nothing() {
+    let (mut b, [_, ink]) = page();
+    run(
+        &mut b,
+        PAGE,
+        &line(14, [1.25, 3.5], 2.5),
+        ink,
+        mark(StateId(0)),
+    );
+    // Placements outside the region keep their edges unbuilt.
+    run(
+        &mut b,
+        PAGE,
+        &line(6, [2.0, 20.0], 2.5),
+        ink,
+        mark(StateId(0)),
+    );
+    let bins = FastParams {
+        glyph_origin_bins: true,
+        ..FastParams::EXACT
+    };
+    for fast in [FastParams::EXACT, bins, FastParams::COMPETITIVE] {
+        let page = b.page();
+        let tops = DeviceRect {
+            y1: page.y1 / 2,
+            ..page
+        };
+        let store = Store::new(1 << 20);
+        for region in [tops, page] {
+            let mut request = b.request(region, 16);
+            request.fast = fast;
+            let cold = render_in(&b, &request, &Store::new(1 << 20));
+            let warm = render_in(&b, &request, &store);
+            assert_eq!(cold, warm, "{fast:?} {region:?}");
+        }
+    }
 }
 
 #[test]

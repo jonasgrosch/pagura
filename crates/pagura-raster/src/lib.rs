@@ -25,7 +25,8 @@ mod stroke;
 
 pub use band::{
     Adjustment, Area, BandCoverage, BandRasterizer, Capacity, ClipShape, CoverageRow, DeviceRect,
-    GlyphEdges, GlyphOrigins, MarkCoverage, Precision, Shape, ShapeOptions, Span,
+    GlyphEdges, GlyphMask, GlyphMasks, GlyphOrigins, MarkCoverage, Precision, RunGlyph, Shape,
+    ShapeOptions, Span,
 };
 pub use geometry::{Point, Transform};
 pub use glyph::{GlyphContour, GlyphGeometry};

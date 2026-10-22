@@ -3,7 +3,7 @@
 //! with the cells their signed area does not determine already resolved.
 
 use super::approximate::Cells;
-use super::binned::Placement;
+use super::binned::GlyphMask;
 use super::certify::{certified, uncertified};
 use super::clip::{ClipShape, INSIDE, Rows, columns, fill_polygon};
 use super::curve::{self, Quadratic};
@@ -49,7 +49,7 @@ pub(crate) enum Body {
     /// Approximate signed cells.
     Cells(Cells),
     /// A glyph mask reused per origin bin.
-    Binned(Placement),
+    Binned(GlyphMask),
     /// A certified glyph's relative edges, translated as they accumulate.
     Glyph(GlyphBody),
 }
@@ -821,16 +821,11 @@ impl<'a> Frame<'a> {
         if self.rect.is_some_and(|r| r.contains(hull)) {
             self.rect = None;
         }
-        if let Some(rows) = self.rows {
-            let bounds = edges::pixels([lo, hi], self.limit, false);
-            let inside = (bounds.y0..bounds.y1).all(|y| {
-                rows.row(y)
-                    .iter()
-                    .any(|s| s.cell == INSIDE && s.x0 <= bounds.x0 && s.x1 >= bounds.x1)
-            });
-            if inside {
-                self.rows = None;
-            }
+        if self
+            .rows
+            .is_some_and(|rows| rows.inside(edges::pixels([lo, hi], self.limit, false)))
+        {
+            self.rows = None;
         }
     }
 
