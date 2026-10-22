@@ -146,17 +146,22 @@ impl<B: Backend> Planner<'_, B> {
                 ));
             };
             let cached = sources.get(source_index).copied().flatten();
-            let (linear, relative) = cached.unwrap_or_else(|| {
+            let (linear, relative) = if let Some(cached) = cached {
+                cached
+            } else {
                 let l = source.linear;
                 let linear = Transform::new(l.a, l.b, l.c, l.d, 0.0, 0.0).then(device);
-                let hull = bounds::path(&source.outline, linear);
-                ([linear.a, linear.b, linear.c, linear.d], hull)
-            });
-            if cached.is_none()
-                && let Some(slot) = sources.get_mut(source_index)
-            {
-                *slot = Some((linear, relative));
-            }
+                let mut edges = self.glyph_edges.get(source_index).copied().flatten();
+                let hull = self.backend.glyph_hull((source, &mut edges), linear);
+                if let Some(slot) = self.glyph_edges.get_mut(source_index) {
+                    *slot = edges;
+                }
+                let found = ([linear.a, linear.b, linear.c, linear.d], hull);
+                if let Some(slot) = sources.get_mut(source_index) {
+                    *slot = Some(found);
+                }
+                found
+            };
             let origin = t.apply(placement.origin);
             let hull = relative.map(|[x0, y0, x1, y1]| {
                 bounds::expand(

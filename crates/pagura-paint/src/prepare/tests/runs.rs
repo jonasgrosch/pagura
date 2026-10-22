@@ -101,10 +101,16 @@ fn prepare(b: &Build, request: &RenderRequest, backend: Backend) -> PreparedScen
 /// Renders `request` with `backend` into region-sized RGBA8 with the
 /// reserved charges, checking that rendering used no more.
 fn render(b: &Build, request: &RenderRequest, backend: Backend) -> (Vec<u8>, Charges) {
-    if backend == Backend::Rects {
-        return b.render_charged(request).unwrap_or_else(|e| panic!("{e}"));
+    match backend {
+        Backend::Rects => b.render_charged(request).unwrap_or_else(|e| panic!("{e}")),
+        Backend::Raster => render_in(b, request, &Store::new(1 << 20)),
     }
-    let mut prepared = prepare(b, request, backend);
+}
+
+/// [`render`] with the band rasterizer and `store`.
+fn render_in(b: &Build, request: &RenderRequest, store: &Store) -> (Vec<u8>, Charges) {
+    let mut prepared = crate::prepare(&b.scene, request, store, &Limits::default())
+        .unwrap_or_else(|e| panic!("{e}"));
     let region = request.region;
     let mut target = Pixmap::new(
         region.width(),
@@ -354,6 +360,47 @@ fn binned_masks_render_as_one_item_per_placement() {
     for fast in [bins, bytes, FastParams::COMPETITIVE] {
         same_bytes_with("binned opaque", &opaque, fast, true, Backend::Raster);
         same_bytes_with("binned groups", &groups(), fast, true, Backend::Raster);
+    }
+}
+
+/// Glyph edges kept in the store from an earlier render, with their masks
+/// and hulls, change no byte and no charge.
+#[test]
+fn kept_glyph_edges_change_nothing() {
+    let (mut b, [_, ink]) = page();
+    run(
+        &mut b,
+        PAGE,
+        &line(14, [1.25, 3.5], 2.5),
+        ink,
+        mark(StateId(0)),
+    );
+    // Placements outside the region keep their edges unbuilt.
+    run(
+        &mut b,
+        PAGE,
+        &line(6, [2.0, 20.0], 2.5),
+        ink,
+        mark(StateId(0)),
+    );
+    let bins = FastParams {
+        glyph_origin_bins: true,
+        ..FastParams::EXACT
+    };
+    for fast in [FastParams::EXACT, bins, FastParams::COMPETITIVE] {
+        let page = b.page();
+        let tops = DeviceRect {
+            y1: page.y1 / 2,
+            ..page
+        };
+        let store = Store::new(1 << 20);
+        for region in [tops, page] {
+            let mut request = b.request(region, 16);
+            request.fast = fast;
+            let cold = render_in(&b, &request, &Store::new(1 << 20));
+            let warm = render_in(&b, &request, &store);
+            assert_eq!(cold, warm, "{fast:?} {region:?}");
+        }
     }
 }
 

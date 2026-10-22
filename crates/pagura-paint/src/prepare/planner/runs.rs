@@ -192,6 +192,7 @@ impl<B: Backend> Planner<'_, B> {
 }
 
 /// Whether two placements' marks composite alike.
+#[inline]
 fn same(a: &Mark, b: &Mark) -> bool {
     a.cover.clip == b.cover.clip
         && a.paint == b.paint

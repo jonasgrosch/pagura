@@ -28,6 +28,7 @@ use std::sync::Arc;
 pub struct GlyphEdges {
     retained: usize,
     kind: Kind,
+    hull: Option<[f64; 4]>,
 }
 
 #[derive(Debug)]
@@ -269,6 +270,7 @@ impl GlyphEdges {
         }
         Ok(Self {
             retained,
+            hull: control_hull(outline, transform),
             kind: Kind::Exact(Box::new(Exact {
                 polygon,
                 points,
@@ -289,10 +291,19 @@ impl GlyphEdges {
     /// As [`Self::new`].
     pub fn binned(outline: &Path, linear: [f64; 4], scale: f64, limits: &Limits) -> Result<Self> {
         let prepared = binned::Prepared::new(outline, linear, scale, limits)?;
+        let [a, b, c, d] = linear;
         Ok(Self {
             retained: size_of::<Self>().saturating_add(prepared.retained_bytes()),
             kind: Kind::Binned(prepared),
+            hull: control_hull(outline, Transform::new(a, b, c, d, 0.0, 0.0)),
         })
+    }
+
+    /// The bounds of the outline's points under the linear map, relative to
+    /// a placement's origin, `[x0, y0, x1, y1]`: each point mapped once, in
+    /// path order. `None` for an outline without points.
+    pub fn hull(&self) -> Option<[f64; 4]> {
+        self.hull
     }
 
     /// Bytes retained.
@@ -307,6 +318,31 @@ impl GlyphEdges {
             Kind::Binned(_) => None,
         }
     }
+}
+
+/// The bounds of `outline`'s points under `transform`, as
+/// [`GlyphEdges::hull`] gives them.
+fn control_hull(outline: &Path, transform: Transform) -> Option<[f64; 4]> {
+    let mut hull: Option<[f64; 4]> = None;
+    let mut add = |p: Point| {
+        let p = transform.apply(p);
+        hull = Some(match hull {
+            None => [p.x, p.y, p.x, p.y],
+            Some([x0, y0, x1, y1]) => [x0.min(p.x), y0.min(p.y), x1.max(p.x), y1.max(p.y)],
+        });
+    };
+    for segment in outline.segments() {
+        match *segment {
+            Segment::MoveTo(p) | Segment::LineTo(p) => add(p),
+            Segment::CubicTo { c1, c2, end } => {
+                add(c1);
+                add(c2);
+                add(end);
+            }
+            Segment::Close => {}
+        }
+    }
+    hull
 }
 
 /// Places `edges` at `origin`.

@@ -5,6 +5,7 @@
 
 use crate::hash::{self, FastMap};
 use crate::paint::{Convert, PaintSpans, StencilPaint};
+use crate::prepare::bounds::{self, Hull};
 use crate::source::{ImageBudgets, ImageSampler, PaintContext, Source};
 use pagura_color::{ColorSpace, Conversion, Converter, Target};
 use pagura_core::{Built, Limits, Meter, Result, Store, StoreKey};
@@ -84,6 +85,19 @@ pub(crate) trait Backend {
         origin: Point,
         options: &ShapeOptions<'_>,
     ) -> Result<Option<Prepared>>;
+
+    /// The hull of `source`'s outline under the device linear map
+    /// `transform` relative to a placement's origin, as [`bounds::path`]
+    /// gives it. The second of `glyph` names the source's edges as in
+    /// [`Self::glyph`]; a backend that finds them may take the hull they
+    /// keep, and name them.
+    fn glyph_hull(
+        &mut self,
+        glyph: (&GlyphSource, &mut Option<u32>),
+        transform: Transform,
+    ) -> Option<Hull> {
+        bounds::path(&glyph.0.outline, transform)
+    }
 
     /// The clip state the next shapes are prepared in.
     fn shapes_clip(&mut self, clip: Option<u32>) {
@@ -249,6 +263,17 @@ impl<'a> Raster<'a> {
         self
     }
 
+    /// The store key of `source`'s edges under the device linear map
+    /// `linear`.
+    fn edges_key(&self, source: &GlyphSource, linear: [f64; 4]) -> EdgesKey {
+        let binned = (self.origins == GlyphOrigins::Binned).then_some(self.scale);
+        EdgesKey {
+            outline: source.key,
+            linear: linear.map(f64::to_bits),
+            binned: binned.map(f64::to_bits),
+        }
+    }
+
     fn shape(&mut self, shape: Option<Shape>) -> Result<Option<Prepared>> {
         let Some(shape) = shape else {
             return Ok(None);
@@ -350,11 +375,7 @@ impl Backend for Raster<'_> {
             return self.shape(shape);
         }
         let binned = (self.origins == GlyphOrigins::Binned).then_some(self.scale);
-        let key = EdgesKey {
-            outline: source.key,
-            linear: linear.map(f64::to_bits),
-            binned: binned.map(f64::to_bits),
-        };
+        let key = self.edges_key(source, linear);
         // Edges are a value of the store: they cost the render nothing,
         // found or built (ADR 0016), and are kept for the render's other
         // placements.
@@ -384,6 +405,32 @@ impl Backend for Raster<'_> {
         }
         let shape = Shape::glyph_with_clip(&edges, origin, self.origins, clip, options)?;
         self.shape(shape)
+    }
+
+    fn glyph_hull(
+        &mut self,
+        (source, handle): (&GlyphSource, &mut Option<u32>),
+        transform: Transform,
+    ) -> Option<Hull> {
+        if let Some(edges) = handle.and_then(|i| self.handles.get(i as usize)) {
+            return edges.hull();
+        }
+        // Edges kept from an earlier render keep the hull; edges are not
+        // built before a placement meets the region.
+        let key = self.edges_key(source, [transform.a, transform.b, transform.c, transform.d]);
+        let Some(edges) = self
+            .edges
+            .get(&key)
+            .cloned()
+            .or_else(|| self.store.get(&key))
+        else {
+            return bounds::path(&source.outline, transform);
+        };
+        self.edges.entry(key).or_insert_with(|| Arc::clone(&edges));
+        *handle = u32::try_from(self.handles.len()).ok();
+        let hull = edges.hull();
+        self.handles.push(edges);
+        hull
     }
 
     fn shapes_clip(&mut self, clip: Option<u32>) {
