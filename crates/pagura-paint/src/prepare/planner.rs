@@ -72,6 +72,9 @@ pub(crate) struct Planner<'s, B: Backend> {
     run: Option<runs::Open>,
     /// Placements gathered into runs, for the mark budget.
     gathered: usize,
+    /// What the placements of the glyph run being gathered share, once one
+    /// of them has been prepared in full.
+    memo: Option<runs::Memo>,
 }
 
 /// What the walk builds.
@@ -205,6 +208,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             gathering: None,
             run: None,
             gathered: 0,
+            memo: None,
         })
     }
 

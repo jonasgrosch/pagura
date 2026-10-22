@@ -5,7 +5,7 @@
 //! own, gathered into its run's item where it can be (`runs`).
 
 use super::clips::{Clipping, Extra};
-use super::runs::Placed;
+use super::runs::{Memo, Placed};
 use super::{Planner, Scope};
 use crate::paint::PaintSpans;
 use crate::plan::{Boundary, Compositing, Cover, GroupUse, Item, ItemKind, Mark, area, intersect};
@@ -111,8 +111,10 @@ impl<B: Backend> Planner<'_, B> {
     ) -> Result<()> {
         let gather = node.placements.len() > 1 && self.gathers(scope, node);
         let outer = std::mem::replace(&mut self.gathering, gather.then_some(scope.group));
+        let outer_memo = self.memo.take();
         let placed = self.placements(scope, node, budget);
         self.gathering = outer;
+        self.memo = outer_memo;
         placed?;
         if gather {
             let position = self.run.as_ref().map(|open| open.position);
@@ -154,11 +156,20 @@ impl<B: Backend> Planner<'_, B> {
                     1.0,
                 )
             });
+            let geometry =
+                Geometry::Glyph(source, [linear.a, linear.b, linear.c, linear.d], origin);
+            if let Some(memo) = self.memo.filter(|_| self.gathering == Some(scope.group)) {
+                self.serial += 1;
+                let position = node.position(i);
+                let placed = self.placement(scope, (&memo, hull, &geometry, position), budget);
+                placed.map_err(|error| self.fail(error, position))?;
+                continue;
+            }
             let spec = Spec {
                 info: &node.mark,
                 position: node.position(i),
                 hull,
-                geometry: Geometry::Glyph(source, [linear.a, linear.b, linear.c, linear.d], origin),
+                geometry,
                 colour: Colour::Paint(node.paint),
             };
             self.mark(scope, &spec, budget)?;
@@ -310,6 +321,62 @@ impl<B: Backend> Planner<'_, B> {
             Some(tiling) => self.pattern_item(scope, spec, (&tiling, covered, compositing), budget),
             None => self.mark_item(scope, spec, (&state, covered, compositing), budget),
         }
+    }
+
+    /// A glyph placement of the run being gathered, with what its run's
+    /// first prepared placement found: culled, its shape prepared within
+    /// the clip state, its mask use and work charged, then gathered.
+    fn placement(
+        &mut self,
+        scope: &Scope,
+        (memo, hull, geometry, position): (&Memo, Option<bounds::Hull>, &Geometry<'_>, Position),
+        budget: &mut Budget,
+    ) -> Result<()> {
+        let region = self.area.region;
+        let culling = intersect(
+            intersect(bounds::device(hull, region), memo.clip_bounds),
+            scope.bounds,
+        );
+        if culling.is_empty() {
+            return Ok(());
+        }
+        let (clip, clip_rect) = match memo.clipping {
+            Clipping::Empty => return Ok(()),
+            Clipping::All => (None, region),
+            Clipping::Shape(prepared) => (Some(prepared.key), prepared.bounds),
+        };
+        self.backend.shapes_clip(clip);
+        let shape = self.shape(scope, geometry);
+        self.backend.shapes_clip(None);
+        let Shape::Prepared(prepared) = shape? else {
+            return Ok(());
+        };
+        let bounds = intersect(
+            intersect(prepared.bounds, clip_rect),
+            intersect(scope.bounds, culling),
+        );
+        if bounds.is_empty() {
+            return Ok(());
+        }
+        budget.bytes.charge(prepared.bytes)?;
+        self.use_mask(memo.mask, bounds, budget)?;
+        budget.work.charge(prepared.work)?;
+        budget.work.charge(area(bounds))?;
+        let mark = Mark {
+            cover: Cover {
+                shape: Some(prepared.key),
+                clip,
+            },
+            ..memo.mark
+        };
+        let placed = Placed {
+            shape: prepared.key,
+            bounds,
+            work: prepared.work,
+            serial: self.serial,
+            position,
+        };
+        self.gather(scope.group, mark, placed, budget)
     }
 
     /// The clip and shape of a mark that meets the region, and the pixels
@@ -493,6 +560,16 @@ impl<B: Backend> Planner<'_, B> {
                 serial,
                 position: spec.position,
             };
+            if self.memo.is_none() {
+                let clip_bounds = self.clip_bounds(scope, spec.info.clip, None)?;
+                let clipping = self.clip(scope, (spec.info.clip, None), budget)?;
+                self.memo = Some(Memo {
+                    clip_bounds,
+                    clipping,
+                    mask: compositing.mask,
+                    mark,
+                });
+            }
             return self.gather(scope.group, mark, placed, budget);
         }
         let item = Item {

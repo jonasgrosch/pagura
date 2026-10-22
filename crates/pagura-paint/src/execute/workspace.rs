@@ -195,9 +195,8 @@ pub(crate) struct Workspace {
     pub(crate) initial: Vec<f64>,
     /// Transfer selections of the band (11.7.5.2); empty without them.
     pub(crate) selection: Vec<u16>,
-    /// The gathered coverage rows of a glyph run, zero between runs, and
-    /// each row's gathered columns.
-    pub(crate) gathered: (Vec<u8>, Vec<[u32; 2]>),
+    /// The shapes of a glyph run's placements rasterized together.
+    pub(crate) run_shapes: Vec<u32>,
     /// Active items per group.
     pub(crate) active: Vec<Active>,
     /// What the last render used.
@@ -248,8 +247,7 @@ impl Sizes {
             .iter()
             .map(|group| group.items.len())
             .fold(0, usize::saturating_add);
-        let gathered = gathered(plan, self.rows)
-            .saturating_add(self.rows.saturating_mul(size_of::<[u32; 2]>()));
+        let gathered = run_shapes(plan).saturating_mul(size_of::<u32>());
         let f64s = plan.stack.wide.saturating_add(masks).saturating_add(spans);
         f64s.saturating_mul(size_of::<f64>())
             .saturating_add(plan.stack.levels.saturating_mul(size_of::<[f32; 4]>()))
@@ -264,16 +262,12 @@ impl Sizes {
     }
 }
 
-/// Bytes of the gathered rows: the largest run that gathers, within the
-/// band rows.
-fn gathered(plan: &Plan, rows: usize) -> usize {
+/// The most placements of one glyph run.
+fn run_shapes(plan: &Plan) -> usize {
     plan.items
         .iter()
         .filter_map(|item| match &item.kind {
-            ItemKind::Run(run) if run.gather => Some(
-                u32_to_usize(item.bounds.width())
-                    .saturating_mul(u32_to_usize(item.bounds.height()).min(rows)),
-            ),
+            ItemKind::Run(run) => Some(run.glyphs.len()),
             _ => None,
         })
         .max()
@@ -349,10 +343,7 @@ impl Workspace {
             selection = reserve(pixels)?;
             selection.resize(pixels, 0);
         }
-        let mut gathered_rows = reserve(gathered(plan, sizes.rows))?;
-        gathered_rows.resize(gathered(plan, sizes.rows), 0);
-        let mut gathered_extents = reserve(sizes.rows)?;
-        gathered_extents.resize(sizes.rows, super::glyphs::EMPTY);
+        let run_shapes = reserve(run_shapes(plan))?;
         Ok(Self {
             page: PageBuffer::new(format, pixels, layout)?,
             extents: Extents::new(sizes.rows)?,
@@ -374,7 +365,7 @@ impl Workspace {
             source: scratch(sizes.width.saturating_mul(sizes.channels))?,
             initial: scratch(sizes.width.saturating_mul(sizes.stride))?,
             selection,
-            gathered: (gathered_rows, gathered_extents),
+            run_shapes,
             active,
             usage: Usage::default(),
         })
@@ -404,8 +395,7 @@ impl Workspace {
             + self.selection.capacity() * 2
             + self.extents.rows.capacity() * size_of::<[u32; 2]>()
             + self.boundary.1.capacity()
-            + self.gathered.0.capacity()
-            + self.gathered.1.capacity() * size_of::<[u32; 2]>()
+            + self.run_shapes.capacity() * size_of::<u32>()
             + self.active.iter().map(Active::bytes).sum::<usize>()
             + self.active.capacity() * size_of::<Active>()
             + self.masks.capacity() * size_of::<MaskCache>()

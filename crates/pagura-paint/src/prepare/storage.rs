@@ -425,17 +425,22 @@ impl Survey<'_> {
                 }
             };
             let state = state(scene, mark.state)?;
-            // Footprints matter for dynamic stores and for the extent of a
+            // Footprints matter for dynamic stores, and the extent of a
             // group, whose result is a dynamic store of its parent.
-            let hulls = if dynamic(kind, state) || !self.buffers[buffer].page {
-                hulls(scene, node, context.transform)?
+            let (hulls, extent) = if dynamic(kind, state) {
+                let hulls = hulls(scene, node, context.transform)?;
+                let extent = hulls.iter().fold(None, |extent, &hull| unite(extent, hull));
+                (hulls, extent)
+            } else if self.buffers[buffer].page {
+                (Vec::new(), None)
             } else {
-                Vec::new()
+                (Vec::new(), extent(scene, node, context.transform)?)
             };
             let stores = Stores {
                 kind,
                 count,
                 hulls: &hulls,
+                extent,
                 alpha_shape,
             };
             self.mark(buffer, state, &stores, context, depth)?;
@@ -530,9 +535,7 @@ impl Survey<'_> {
         // A store with a transfer function is outside the narrow bounds
         // wherever it is (ADR 0004 §5).
         target.forced |= state.blend != BlendMode::Normal || state.transfer.is_some();
-        for &hull in stores.hulls {
-            target.extent = unite(target.extent, hull);
-        }
+        target.extent = unite(target.extent, stores.extent);
         // Opacity equals shape, and a knockout of such stores is source-over
         // only when they blend Normal and keep no channel of the backdrop.
         let shaped =
@@ -858,6 +861,8 @@ struct Stores<'h> {
     count: usize,
     /// One device hull per store where footprints matter, else none.
     hulls: &'h [Option<bounds::Hull>],
+    /// The device hull of all of them, where a group's extent needs it.
+    extent: Option<bounds::Hull>,
     /// The source's alpha is its shape (not an image with a soft mask).
     alpha_shape: bool,
 }
@@ -866,6 +871,36 @@ struct Stores<'h> {
 /// but opaque constant colours that only coverage reduces.
 fn dynamic(kind: Kind, state: &Composite) -> bool {
     !(kind == Kind::Constant && state.soft_mask.is_none() && state.alpha == 1.0)
+}
+
+/// The device hull of all of a node's stores.
+fn extent(scene: &Scene, node: &Node, t: Transform) -> Result<Option<bounds::Hull>> {
+    let Node::Glyphs(glyphs) = node else {
+        return Ok(hulls(scene, node, t)?
+            .iter()
+            .fold(None, |extent, &hull| unite(extent, hull)));
+    };
+    // Each source's hull at the extreme origins of its placements.
+    let mut origins: Vec<Option<bounds::Hull>> = vec![None; glyphs.sources.len()];
+    for placement in &glyphs.placements {
+        let origin = t.apply(placement.origin);
+        if let Some(slot) = origins.get_mut(index(placement.source)) {
+            *slot = unite(*slot, Some([origin.x, origin.y, origin.x, origin.y]));
+        }
+    }
+    let device = Transform::new(t.a, t.b, t.c, t.d, 0.0, 0.0);
+    let mut extent = None;
+    for (source, origins) in glyphs.sources.iter().zip(origins) {
+        let Some([ox0, oy0, ox1, oy1]) = origins else {
+            continue;
+        };
+        let l = source.linear;
+        let linear = Transform::new(l.a, l.b, l.c, l.d, 0.0, 0.0).then(device);
+        let hull = bounds::path(&source.outline, linear)
+            .map(|[x0, y0, x1, y1]| bounds::expand([x0 + ox0, y0 + oy0, x1 + ox1, y1 + oy1], 1.0));
+        extent = unite(extent, hull);
+    }
+    Ok(extent)
 }
 
 /// The device hulls of a node's stores.

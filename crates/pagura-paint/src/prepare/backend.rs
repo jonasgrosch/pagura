@@ -170,6 +170,27 @@ pub(crate) trait Producer: Send + Sync + fmt::Debug {
         band: u32,
         out: &mut BandCoverage,
     );
+
+    /// Writes the coverage within `band` of the leading `shapes`, which
+    /// share no pixel and are all within `clip`, to `out`, replacing it:
+    /// each pixel's coverage as [`Self::rasterize`] gives it for the one
+    /// shape that can cover it, with zero coverage in the gaps of a row.
+    /// Returns how many shapes it took, at least one when there are any.
+    fn rasterize_run(
+        &mut self,
+        shapes: &[u32],
+        clip: Option<u32>,
+        band: u32,
+        out: &mut BandCoverage,
+    ) -> usize {
+        if let Some(&shape) = shapes.first() {
+            self.rasterize(Some(shape), clip, band, out);
+            1
+        } else {
+            out.clear();
+            0
+        }
+    }
 }
 
 /// The production backend: the band rasterizer and the paint sources.
@@ -432,4 +453,28 @@ impl Producer for RasterCoverage {
         self.rasterizer
             .rasterize(MarkCoverage { shape, clip }, band, out);
     }
+
+    fn rasterize_run(
+        &mut self,
+        shapes: &[u32],
+        clip: Option<u32>,
+        band: u32,
+        out: &mut BandCoverage,
+    ) -> usize {
+        let get = |i: u32| pagura_core::convert::u32_to_usize(i);
+        let run: Vec<&Shape> = shapes
+            .iter()
+            .take(RUN_SHAPES)
+            .map_while(|&i| self.shapes.get(get(i)))
+            .collect();
+        if run.is_empty() {
+            out.clear();
+            return 0;
+        }
+        let clip = clip.and_then(|i| self.clips.get(get(i)));
+        self.rasterizer.rasterize_run(&run, clip, band, out)
+    }
 }
+
+/// The most shapes one call of [`Producer::rasterize_run`] passes on.
+const RUN_SHAPES: usize = 256;

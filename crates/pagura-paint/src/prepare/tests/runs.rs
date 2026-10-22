@@ -71,8 +71,8 @@ fn with_runs<T>(runs: bool, f: impl FnOnce() -> T) -> T {
 
 /// Asserts that `b` renders the same bytes with run items as with one
 /// item per placement for every band height and a few regions, with the
-/// same charges at every band height, and that it has a run item that
-/// gathers or not as `gathers` says.
+/// same charges at every band height, and that it has a run item with
+/// placements rasterized together, or one without, as `gathers` says.
 fn same_bytes(name: &str, b: &Build, fast: FastParams, gathers: bool) {
     let page = b.page();
     let half = page.x1 / 2;
@@ -101,8 +101,9 @@ fn same_bytes(name: &str, b: &Build, fast: FastParams, gathers: bool) {
             .plan()
             .items
             .iter()
-            .any(|item| matches!(&item.kind, ItemKind::Run(run) if run.gather == gathers)),
-        "{name}: no run item that gathers: {gathers}"
+            .any(|item| matches!(&item.kind,
+                ItemKind::Run(run) if run.glyphs.iter().any(|g| g.alone) == gathers)),
+        "{name}: no run item with placements alone: {gathers}"
     );
     for region in regions {
         let render = |runs, height| {
@@ -135,7 +136,7 @@ fn page() -> (Build, [PaintId; 2]) {
 }
 
 #[test]
-fn opaque_runs_store_each_placement_straight_into_n16() {
+fn opaque_runs_store_straight_into_n16() {
     let (mut b, [_, ink]) = page();
     run(
         &mut b,
@@ -151,7 +152,7 @@ fn opaque_runs_store_each_placement_straight_into_n16() {
         ink,
         mark(StateId(0)),
     );
-    same_bytes("opaque", &b, FastParams::EXACT, false);
+    same_bytes("opaque", &b, FastParams::EXACT, true);
     check(&b);
 }
 
@@ -261,7 +262,7 @@ fn runs_in_groups_masks_clips_and_patterns() {
 fn stacked_long_and_scattered_runs() {
     let (mut b, [_, ink]) = page();
     let half = b.state(|s| s.alpha = 0.375);
-    // Every placement on the same pixels: too many meetings to gather.
+    // Every placement on the same pixels: none rasterized together.
     run(&mut b, PAGE, &[[5.25, 6.5]; 12], ink, mark(half));
     // More placements than one run item holds.
     let long: Vec<[f64; 2]> = (0..300_u32)
