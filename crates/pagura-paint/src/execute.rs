@@ -5,6 +5,7 @@
 //! cannot fail.
 
 mod frame;
+mod glyphs;
 mod group;
 mod mask;
 mod output;
@@ -126,6 +127,7 @@ impl<'a> Executor<'a> {
             }
             match &item.kind {
                 ItemKind::Mark(mark) => self.mark(item, mark, frame, tops),
+                ItemKind::Run(run) => self.glyph_run(item, run, frame, tops),
                 ItemKind::Group(used) => self.group(item, used, frame, tops),
             }
         }

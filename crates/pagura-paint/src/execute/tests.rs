@@ -8,8 +8,8 @@ use super::{Executor, Sizes, Tops, Workspace};
 use crate::format::Format;
 use crate::paint::{Convert, Curve, PaintSpans};
 use crate::plan::{
-    Compositing, Conversion, Cover, GroupPlan, GroupUse, Item, ItemKind, Layout, Mark, MaskPlan,
-    Output, Plan, SpotPlan, Start,
+    Compositing, Conversion, Cover, Glyph, GroupPlan, GroupUse, Item, ItemKind, Layout, Mark,
+    MaskPlan, Output, Plan, Run, SpotPlan, Start,
 };
 use crate::prepare::Producer;
 use crate::source::{Source, SpanColors};
@@ -17,7 +17,7 @@ use crate::testing::{Box4, rect_producer};
 use pagura_color::{Painted, Process};
 use pagura_core::Position;
 use pagura_interpret::{BlendMode, MaskKind};
-use pagura_raster::{Area, DeviceRect, Pixmap, Rgba8};
+use pagura_raster::{Area, BandCoverage, DeviceRect, Pixmap, Rgba8};
 use std::sync::Arc;
 
 /// Colours that vary along a row, with alpha that varies too.
@@ -134,6 +134,8 @@ struct Fixture {
     masks: Vec<MaskPlan>,
     conversions: Vec<Conversion>,
     output: Output,
+    /// Shapes of [`Speckles`] coverage, used instead of `shapes` when set.
+    speckled: Option<Vec<DeviceRect>>,
 }
 
 fn page_rect(width: u32, height: u32) -> DeviceRect {
@@ -170,6 +172,7 @@ impl Fixture {
                 spots: Vec::new(),
                 transfers: Vec::new(),
             },
+            speckled: None,
         }
     }
 
@@ -278,7 +281,14 @@ impl Fixture {
             selections,
         };
         let mut workspace = Workspace::new(&plan, sizes).unwrap();
-        let mut producer: Box<dyn Producer> = rect_producer(area, self.shapes, Vec::new());
+        let mut producer: Box<dyn Producer> = match self.speckled {
+            Some(shapes) => Box::new(Speckles {
+                area,
+                shapes,
+                cells: Vec::new(),
+            }),
+            None => rect_producer(area, self.shapes, Vec::new()),
+        };
         let mut target =
             Pixmap::new(self.width, self.height, Rgba8::TRANSPARENT, usize::MAX).unwrap();
         workspace.restart();
@@ -551,5 +561,208 @@ fn narrow_parents_take_group_results_as_one_rounded_store() {
             );
         }
         assert_eq!(bytes[start + 3], 255);
+    }
+}
+
+/// Coverage with holes: within a shape's bounds each pixel is uncovered,
+/// fully or partly covered by a hash of its place, and partial spans keep
+/// single zero bytes inside.
+#[derive(Debug)]
+struct Speckles {
+    area: Area,
+    shapes: Vec<DeviceRect>,
+    cells: Vec<u8>,
+}
+
+fn speckle(shape: u32, x: u32, y: u32) -> u8 {
+    let h = (shape.wrapping_mul(2_654_435_761) ^ x.wrapping_mul(40_503) ^ y.wrapping_mul(9_973))
+        .wrapping_mul(2_246_822_519);
+    match (h >> 13) % 6 {
+        0 => 0,
+        1 | 2 => 255,
+        _ => u8::try_from((h >> 3) % 254 + 1).unwrap(),
+    }
+}
+
+impl Producer for Speckles {
+    fn rasterize(
+        &mut self,
+        shape: Option<u32>,
+        _clip: Option<u32>,
+        band: u32,
+        out: &mut BandCoverage,
+    ) {
+        out.clear();
+        let Some((key, bounds)) = shape.and_then(|s| Some((s, *self.shapes.get(s as usize)?)))
+        else {
+            out.finish();
+            return;
+        };
+        for y in self.area.band_rows(band) {
+            if y < bounds.y0 || y >= bounds.y1 {
+                continue;
+            }
+            out.push_row(y);
+            let mut full: Option<(u32, u32)> = None;
+            self.cells.clear();
+            let mut start = 0;
+            for x in bounds.x0..=bounds.x1 {
+                let c = if x < bounds.x1 { speckle(key, x, y) } else { 0 };
+                if c != 255
+                    && let Some((at, len)) = full.take()
+                {
+                    out.push_full(at, len);
+                }
+                let gap = c == 0 && self.cells.last() == Some(&0);
+                if (c == 255 || gap || x == bounds.x1) && !self.cells.is_empty() {
+                    out.push_partial(start, &self.cells);
+                    self.cells.clear();
+                }
+                if c == 255 {
+                    full = Some(full.map_or((x, 1), |(at, len)| (at, len + 1)));
+                } else if !gap && x < bounds.x1 {
+                    if self.cells.is_empty() {
+                        start = x;
+                    }
+                    self.cells.push(c);
+                }
+            }
+        }
+        out.finish();
+    }
+}
+
+impl Fixture {
+    /// One item per placement, or one run of them, over `bounds` with one
+    /// solid paint.
+    fn glyphs(
+        &mut self,
+        group: u32,
+        bounds: &[DeviceRect],
+        (color, compositing): (&[f64], Compositing),
+        run: Option<bool>,
+    ) {
+        let shapes = self.speckled.get_or_insert_with(Vec::new);
+        let first = u32::try_from(shapes.len()).unwrap();
+        shapes.extend_from_slice(bounds);
+        let paint = u32::try_from(self.paints.len()).unwrap();
+        self.paints.push(solid(color, 0b111));
+        let words = (compositing.is_opaque() && color.len() == 3).then(|| {
+            let word = crate::kernel::word;
+            [word(color[0]), word(color[1]), word(color[2]), u16::MAX]
+        });
+        let mark = |shape: Option<u32>| Mark {
+            cover: Cover { shape, clip: None },
+            paint,
+            compositing,
+            select: 0,
+            records: false,
+            boundary: None,
+            words,
+        };
+        let Some(gather) = run else {
+            for (i, &b) in bounds.iter().enumerate() {
+                let shape = first + u32::try_from(i).unwrap();
+                self.push(group, b, ItemKind::Mark(mark(Some(shape))));
+            }
+            return;
+        };
+        let mut glyphs: Vec<Glyph> = bounds
+            .iter()
+            .enumerate()
+            .map(|(i, &b)| Glyph {
+                shape: first + u32::try_from(i).unwrap(),
+                bounds: b,
+                bands: [0, u32::MAX],
+                shared: [0, 0],
+            })
+            .collect();
+        let shared = crate::prepare::planner::runs::meetings(&mut glyphs).unwrap();
+        let union = bounds
+            .iter()
+            .fold(DeviceRect::default(), |a, &b| crate::plan::union(a, b));
+        let kind = ItemKind::Run(Run {
+            mark: mark(None),
+            glyphs,
+            shared,
+            gather,
+        });
+        self.push(group, union, kind);
+    }
+}
+
+#[test]
+fn runs_store_as_one_item_per_placement_with_holes_in_coverage() {
+    let mut seed = 17_u32;
+    let mut next = |bound: u32| {
+        seed = seed.wrapping_mul(1_103_515_245).wrapping_add(12_345);
+        (seed >> 8) % bound
+    };
+    let bounds: Vec<DeviceRect> = (0..40)
+        .map(|_| {
+            let (x, y) = (next(27), next(13));
+            DeviceRect {
+                x0: x,
+                y0: y,
+                x1: x + 2 + next(5),
+                y1: y + 2 + next(5),
+            }
+        })
+        .collect();
+    let styles = [
+        opaque(),
+        Compositing {
+            alpha: 0.6,
+            ..opaque()
+        },
+        Compositing {
+            blend: BlendMode::Multiply,
+            ..opaque()
+        },
+    ];
+    let color = [0.8, 0.25, 0.1];
+    for format in [Format::F64, Format::F32, Format::N16, Format::U8] {
+        for style in styles {
+            if format != Format::F64 && style.blend != BlendMode::Normal {
+                continue;
+            }
+            for band_height in [1, 4, 7, 32] {
+                let render = |run: Option<bool>, knockout: bool| {
+                    let mut f = Fixture::new(32, 20, RGB, format);
+                    let back = DeviceRect {
+                        x0: 0,
+                        y0: 0,
+                        x1: 32,
+                        y1: 20,
+                    };
+                    f.glyphs(0, &[back], (&[0.1, 0.5, 0.9], opaque()), None);
+                    if knockout {
+                        let group = f.group(GroupPlan {
+                            bounds: back,
+                            items: Vec::new(),
+                            order: Vec::new(),
+                            layout: RGB,
+                            format: Format::F64,
+                            knockout: true,
+                            start: Start::Backdrop,
+                        });
+                        f.glyphs(group, &bounds, (&color, style), run);
+                        f.use_group(0, group, opaque(), None);
+                    } else {
+                        f.glyphs(0, &bounds, (&color, style), run);
+                    }
+                    f.render(band_height)
+                };
+                for knockout in [false, true] {
+                    let expected = render(None, knockout);
+                    for gather in [true, false] {
+                        assert!(
+                            render(Some(gather), knockout) == expected,
+                            "{format:?} {style:?} band height {band_height} knockout {knockout} gather {gather}"
+                        );
+                    }
+                }
+            }
+        }
     }
 }

@@ -4,6 +4,7 @@
 
 mod clips;
 mod marks;
+pub(crate) mod runs;
 
 use super::storage::{self, Inputs, Storage};
 use super::{Backend, Budget, bounds, index, overprint};
@@ -59,6 +60,13 @@ pub(crate) struct Planner<'s, B: Backend> {
     pub(crate) failed: Option<(u32, Position)>,
     /// Repairs made preparing paint, in source order.
     pub(crate) repairs: Vec<pagura_core::Diagnostic>,
+    /// The group whose glyph run's placements are being gathered; content
+    /// walked meanwhile (a soft mask's, at its first use) is not.
+    gathering: Option<u32>,
+    /// The run being gathered.
+    run: Option<runs::Open>,
+    /// Placements gathered into runs, for the mark budget.
+    gathered: usize,
 }
 
 /// What the walk builds.
@@ -186,6 +194,9 @@ impl<'s, B: Backend> Planner<'s, B> {
             serial: 0,
             failed: None,
             repairs: Vec::new(),
+            gathering: None,
+            run: None,
+            gathered: 0,
         })
     }
 
@@ -258,7 +269,9 @@ impl<'s, B: Backend> Planner<'s, B> {
 
     /// Adds `item` to `group`.
     pub(crate) fn push(&mut self, group: u32, item: Item, budget: &mut Budget) -> Result<()> {
-        if self.parts.items.len() >= self.limits.display_commands {
+        // A run being gathered comes first in source order.
+        self.flush(budget)?;
+        if self.parts.items.len().saturating_add(self.gathered) >= self.limits.display_commands {
             return Err(Error::limit("painted mark budget exceeded"));
         }
         budget.bytes.charge(ITEM_BYTES)?;
@@ -921,6 +934,7 @@ fn need(
         };
         let inner = match &item.kind {
             ItemKind::Mark(mark) => mask_need(mark.compositing.mask, memo),
+            ItemKind::Run(run) => mask_need(run.mark.compositing.mask, memo),
             ItemKind::Group(used) => {
                 let child = need(parts, used.group, rows, memo, depth + 1);
                 let own = own(parts, used.group, rows);

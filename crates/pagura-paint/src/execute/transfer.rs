@@ -69,7 +69,7 @@ impl Check<'_> {
                     self.mark(mark.cover, mark.select, item.serial);
                 }
                 ItemKind::Group(used) if used.cover.is_none() => self.group(used.group),
-                ItemKind::Mark(_) | ItemKind::Group(_) => {}
+                ItemKind::Mark(_) | ItemKind::Group(_) | ItemKind::Run(_) => {}
             }
         }
     }
