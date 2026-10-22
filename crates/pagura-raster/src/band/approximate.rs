@@ -629,7 +629,7 @@ pub(crate) fn fill(
     };
     place(
         &Source {
-            cells,
+            cells: cells.as_ref(),
             hull,
             quad,
             exact: &|options| {
@@ -678,7 +678,7 @@ pub(crate) fn stroke(
     };
     place(
         &Source {
-            cells,
+            cells: cells.as_ref(),
             hull,
             quad,
             exact: &|options| {
@@ -696,6 +696,35 @@ pub(crate) fn stroke(
     )
 }
 
+/// A stroke whose pieces may overlap where its centreline comes back,
+/// from the boundary of their union: cells where that boundary's winding
+/// is `certified`, the exact union otherwise.
+pub(crate) fn union(polygon: &Polygon, certified: bool, options: &Prep<'_>) -> Result<Option<Shape>> {
+    let hull = polygon.bounds().map(|[min, max]| {
+        [
+            Point::new(min.x.floor(), min.y.floor()),
+            Point::new(max.x.floor() + 1.0, max.y.floor() + 1.0),
+        ]
+    });
+    let winding = if certified {
+        super::shape::Winding::Certified
+    } else {
+        super::shape::Winding::Unknown
+    };
+    place(
+        &Source {
+            cells: certified.then_some(polygon),
+            hull,
+            quad: None,
+            exact: &|options| {
+                Shape::polygon(polygon.clone_shallow(), FillRule::NonZero, winding, options)
+            },
+        },
+        FillRule::NonZero,
+        options,
+    )
+}
+
 /// A placed glyph polygon under the approximate rules.
 pub(crate) fn glyph(polygon: &Polygon, options: &Prep<'_>) -> Result<Option<Shape>> {
     let quad = polygon_quadrilateral(polygon);
@@ -705,10 +734,9 @@ pub(crate) fn glyph(polygon: &Polygon, options: &Prep<'_>) -> Result<Option<Shap
         polygon.bounds()
     };
     let exact = polygon.points_cells || quad.is_some_and(|q| axis_aligned(q).is_some());
-    let cells = (!exact).then(|| polygon.clone_shallow());
     place(
         &Source {
-            cells,
+            cells: (!exact).then_some(polygon),
             hull,
             quad,
             exact: &|options| {
@@ -728,7 +756,7 @@ pub(crate) fn glyph(polygon: &Polygon, options: &Prep<'_>) -> Result<Option<Shap
 /// What an approximate mark offers: its cells' polygon, unless it keeps
 /// exact coverage, its pixel hull, its quadrilateral, and its exact shape.
 struct Source<'a> {
-    cells: Option<Polygon>,
+    cells: Option<&'a Polygon>,
     hull: Option<[Point; 2]>,
     quad: Option<[Point; 4]>,
     exact: &'a dyn Fn(&Prep<'_>) -> Result<Option<Shape>>,
@@ -792,7 +820,7 @@ fn place(source: &Source<'_>, rule: FillRule, options: &Prep<'_>) -> Result<Opti
 
 /// The mark alone: approximate cells where it takes them, exact otherwise.
 fn mark(source: &Source<'_>, rule: FillRule, options: &Prep<'_>) -> Result<Option<Shape>> {
-    match &source.cells {
+    match source.cells {
         Some(polygon) => cells(polygon, rule, options),
         None => (source.exact)(options),
     }

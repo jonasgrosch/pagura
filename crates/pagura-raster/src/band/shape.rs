@@ -125,9 +125,7 @@ impl Shape {
         rule: FillRule,
         options: &Prep<'_>,
     ) -> Result<Option<Self>> {
-        if options.precision == Precision::Approximate {
-            return super::approximate::fill(path, transform, rule, options);
-        }
+        // A rectangle is filled in closed form under either precision.
         if let Some(rect) = rect_fill(path, transform, options.limits) {
             // The rectangle the polygon would be, without building it.
             let Some(mut frame) = Frame::new(options) else {
@@ -140,6 +138,9 @@ impl Shape {
             if frame.rows.is_none() {
                 return Ok(Self::rect(rect, &frame, options));
             }
+        }
+        if options.precision == Precision::Approximate {
+            return super::approximate::fill(path, transform, rule, options);
         }
         let (polygon, rule) = fill_polygon(path, transform, rule, None, options.limits)?;
         Self::polygon(polygon, rule, Winding::Check(0.0), options)
@@ -210,20 +211,17 @@ impl Shape {
         ))?;
         let path = path.transformed(pen);
         let device = to_user.then(transform);
-        // Approximate strokes keep the old outlines: proven pieces or
-        // components.
-        let accept = match options.precision {
-            Precision::Exact => Tiling::Unproven,
-            Precision::Approximate => Tiling::Proven,
-        };
         let (outline, outline_transform, tiling) = match adjustment {
             Adjustment::Adjusted => {
                 let (outline, t) = crate::adjust::outline(&path, device, stroke, limits)?;
                 (outline, t, Tiling::Components)
             }
-            Adjustment::None => crate::stroke::pieces(&path, device, stroke, limits, accept)?,
+            Adjustment::None => {
+                crate::stroke::pieces(&path, device, stroke, limits, Tiling::Unproven)?
+            }
         };
-        if options.precision == Precision::Approximate {
+        let approximate = options.precision == Precision::Approximate;
+        if approximate && tiling != Tiling::Unproven {
             return super::approximate::stroke(
                 &outline,
                 outline_transform,
@@ -232,6 +230,11 @@ impl Shape {
             );
         }
         let mut polygon = Polygon::from_path(&outline, outline_transform, None, limits)?;
+        if approximate {
+            // Cells take the union's boundary where it certifies.
+            let union = polygon.cancel_shared()? && certified(&polygon, 0.0);
+            return super::approximate::union(&polygon, union, options);
+        }
         let winding = match tiling {
             Tiling::Proven => Winding::Certified,
             // The union's boundary, where it relinks, may still certify.
