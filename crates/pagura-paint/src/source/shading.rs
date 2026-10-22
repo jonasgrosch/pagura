@@ -169,9 +169,7 @@ impl ShadingSource {
         let geometry = Box::new(Geometry::new(shading, colors.values(), bytes)?);
         // A box without area is certified once classified: the mark is
         // clipped to its hairline outline, and no sample is tested.
-        let certified = shading
-            .bbox
-            .is_some_and(|b| b.width() == 0.0 || b.height() == 0.0);
+        let certified = shading.bbox.is_some_and(|b| b.is_empty());
         let pattern = if usage == Use::Pattern {
             bytes.charge_items::<Pattern>(1)?;
             let background = match shading.background {

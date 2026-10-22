@@ -128,7 +128,7 @@ fn complete(planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
     let rows = rows(area.region.height());
     let band_rows = index(area.band_height.min(area.region.height()));
     let transfers = planner.storage.transfers;
-    let spots = spot_plans(&planner.definitions);
+    let spots = spot_plans(&planner.definitions, &mut budget.bytes)?;
     let background = premultiplied(planner.request.background)?;
     let Planner {
         shapes,
@@ -147,16 +147,6 @@ fn complete(planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
     order(&mut parts);
     let charged = needs(&parts, rows);
     let stack = needs(&parts, band_rows);
-    let mut output_spots = Vec::new();
-    for (space, inputs) in spots {
-        let target = Target::new(Process::Cmyk);
-        let convert = Converter::new(&space, &target, &Conversion::default())?;
-        output_spots.push(SpotPlan {
-            convert,
-            components: space.components(),
-            inputs,
-        });
-    }
     let layout = parts.groups.first().map_or(
         Layout {
             process: Process::Rgb,
@@ -174,7 +164,7 @@ fn complete(planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
         output: Output {
             layout,
             background,
-            spots: output_spots,
+            spots,
             transfers: parts.transfers,
         },
         stack,
@@ -316,14 +306,16 @@ fn premultiplied(background: Rgba8) -> Result<[u8; 4]> {
     Ok(bytes)
 }
 
-/// A colorant definition and the `(component, spot channel)` pairs it
-/// supplies.
-type Definition = (Arc<ColorSpace>, Vec<(usize, usize)>);
-
 /// Spot channels grouped by their first painting definition (ADR 0004 §7).
-fn spot_plans(definitions: &[(pagura_core::Name, Arc<ColorSpace>)]) -> Vec<Definition> {
-    let mut used = vec![false; definitions.len()];
+fn spot_plans(
+    definitions: &[(pagura_core::Name, Arc<ColorSpace>)],
+    bytes: &mut Meter,
+) -> Result<Vec<SpotPlan>> {
+    let mut used = Vec::new();
+    bytes.reserve(&mut used, definitions.len())?;
+    used.resize(definitions.len(), false);
     let mut plans = Vec::new();
+    bytes.reserve(&mut plans, definitions.len())?;
     for (spot, (_, space)) in definitions.iter().enumerate() {
         if used.get(spot).copied().unwrap_or(true) {
             continue;
@@ -334,6 +326,7 @@ fn spot_plans(definitions: &[(pagura_core::Name, Arc<ColorSpace>)]) -> Vec<Defin
             _ => continue,
         };
         let mut inputs = Vec::new();
+        bytes.reserve(&mut inputs, colorants.len())?;
         for (component, colorant) in colorants.iter().enumerate() {
             let Colorant::Named(name) = colorant else {
                 continue;
@@ -349,9 +342,18 @@ fn spot_plans(definitions: &[(pagura_core::Name, Arc<ColorSpace>)]) -> Vec<Defin
                 inputs.push((component, channel));
             }
         }
-        plans.push((Arc::clone(space), inputs));
+        let target = Target::new(Process::Cmyk);
+        let convert = Converter::new_metered(space, &target, &Conversion::default(), bytes)?;
+        plans.push(SpotPlan {
+            convert,
+            components: space.components(),
+            inputs,
+        });
     }
-    plans
+    let released = used.capacity() * size_of::<bool>();
+    drop(used);
+    bytes.refund(released);
+    Ok(plans)
 }
 
 /// Whether two colorant spaces share their tint transform.
@@ -360,5 +362,50 @@ fn same(a: &ColorSpace, b: &ColorSpace) -> bool {
         (ColorSpace::Separation(a), ColorSpace::Separation(b)) => Arc::ptr_eq(&a.tint, &b.tint),
         (ColorSpace::DeviceN(a), ColorSpace::DeviceN(b)) => Arc::ptr_eq(&a.tint, &b.tint),
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pagura_color::{CalculatorFunction, DeviceN, Function, Indexed};
+    use pagura_core::{Limits, Name};
+
+    #[test]
+    fn spot_plans_share_their_definition_and_charge_live_conversion_storage() {
+        let names = [Name::new(b"First"), Name::new(b"Second")];
+        let tint = Function::calculator(
+            CalculatorFunction {
+                domain: vec![[0.0, 1.0]; 2],
+                range: vec![[0.0, 1.0]],
+                program: Arc::from(b"{ add 0.5 mul }".as_slice()),
+            },
+            &Limits::default(),
+        )
+        .unwrap();
+        let space = Arc::new(ColorSpace::DeviceN(Arc::new(DeviceN {
+            colorants: names.iter().cloned().map(Colorant::Named).collect(),
+            alternate: Arc::new(ColorSpace::Indexed(Arc::new(Indexed {
+                base: Arc::new(ColorSpace::DeviceRgb),
+                high: 255,
+                lookup: vec![128; 256 * 3].into(),
+            }))),
+            tint: Arc::new(tint),
+        })));
+        let definitions = names.map(|name| (name, Arc::clone(&space)));
+        let mut bytes = Meter::new(1 << 20, "spot memory");
+        bytes.charge(31).unwrap();
+        let plans = spot_plans(&definitions, &mut bytes).unwrap();
+        assert_eq!(plans.len(), 1);
+        assert_eq!(plans[0].inputs, [(0, 0), (1, 1)]);
+        let retained = plans.capacity() * size_of::<SpotPlan>()
+            + plans[0].inputs.capacity() * size_of::<(usize, usize)>()
+            + plans[0].convert.owned_bytes();
+        assert_eq!(bytes.used(), 31 + retained);
+        let mut tiny = Meter::new(256 * 3 * size_of::<f64>() - 1, "spot memory");
+        assert_eq!(
+            spot_plans(&definitions, &mut tiny).unwrap_err().message,
+            "spot memory"
+        );
     }
 }
