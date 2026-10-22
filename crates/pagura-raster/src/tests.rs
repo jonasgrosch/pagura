@@ -262,8 +262,14 @@ fn stroke_transform_hairline_dash_and_miter() {
         dash_array: vec![1.0, 1.0],
         ..Stroke::default()
     };
-    let (outline, _) =
-        crate::stroke::outline(&path, Transform::IDENTITY, &stroke, &limits).unwrap();
+    let (outline, _) = crate::stroke::outline(
+        &path,
+        Transform::IDENTITY,
+        &stroke,
+        &limits,
+        &mut crate::testing::bytes(),
+    )
+    .unwrap();
     let coverage = fill(
         window(8, 8),
         (&outline, Transform::IDENTITY, FillRule::NonZero),
@@ -287,6 +293,7 @@ fn stroke_transform_hairline_dash_and_miter() {
                 ..Stroke::default()
             },
             &limits,
+            &mut crate::testing::bytes(),
         )
         .unwrap();
         assert!(!outline.is_empty());
@@ -499,6 +506,7 @@ fn tiled(path: &Path, transform: Transform, stroke: &Stroke) -> (Path, Transform
         stroke,
         &Limits::default(),
         (crate::stroke::Tiling::Proven, crate::flatten::TOLERANCE),
+        &mut crate::testing::bytes(),
     )
     .unwrap();
     (outline, pen, tiling == crate::stroke::Tiling::Proven)
@@ -558,15 +566,28 @@ fn components(path: &Path, transform: Transform, stroke: &Stroke) -> Path {
     let limits = Limits::default();
     let stretch = transform.a.hypot(transform.b) + transform.c.hypot(transform.d);
     let mut components = PathBuilder::new();
-    for contour in crate::flatten::flatten(path, transform, &limits).unwrap() {
-        for run in crate::stroke::dash(contour.points, contour.closed, stroke, &limits).unwrap() {
+    for contour in
+        crate::flatten::flatten(path, transform, &limits, &mut crate::testing::bytes()).unwrap()
+    {
+        for run in crate::stroke::dash(
+            contour.points,
+            contour.closed,
+            stroke,
+            &limits,
+            &mut crate::testing::bytes(),
+        )
+        .unwrap()
+        {
             crate::stroke::draw(
                 &mut components,
                 &run,
-                stroke.width / 2.0,
-                crate::flatten::TOLERANCE / stretch,
+                crate::stroke::Pen {
+                    radius: stroke.width / 2.0,
+                    tolerance: crate::flatten::TOLERANCE / stretch,
+                },
                 stroke,
                 &limits,
+                &mut crate::testing::bytes(),
             )
             .unwrap();
         }

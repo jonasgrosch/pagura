@@ -44,9 +44,12 @@ fn rectangle_fills_skip_the_polygon_with_its_bytes() {
                 .map(|c| ClipShape::new(c, Transform::IDENTITY, &public(area, &limits)).unwrap());
             let prep = options(area, &limits, clip.as_ref());
             let fast = Shape::fill_in(&path, transform, FillRule::NonZero, &prep).unwrap();
+            let mut bytes = crate::testing::bytes();
             let (polygon, rule) =
-                clip::fill_polygon(&path, transform, FillRule::NonZero, &limits).unwrap();
-            let slow = Shape::polygon(polygon, rule, shape::Winding::Check(0.0), &prep).unwrap();
+                clip::fill_polygon(&path, transform, FillRule::NonZero, &limits, &mut bytes)
+                    .unwrap();
+            let slow = Shape::polygon(polygon, rule, shape::Winding::Check(0.0), &prep, &mut bytes)
+                .unwrap();
             let bytes = |s: Option<&Shape>| {
                 s.map_or_else(
                     || vec![0; 40 * 32],

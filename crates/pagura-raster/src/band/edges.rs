@@ -67,12 +67,21 @@ impl Polygon {
 
     /// The fill polygon of `path` under `transform`, flattened within the
     /// exact tolerance (1/256 pixel).
-    pub(crate) fn from_path(path: &Path, transform: Transform, limits: &Limits) -> Result<Self> {
+    pub(crate) fn from_path(
+        path: &Path,
+        transform: Transform,
+        limits: &Limits,
+        bytes: &mut Meter,
+    ) -> Result<Self> {
+        let before = bytes.used();
         let mut contours: Vec<Polyline> = Vec::new();
         let mut curves = CurveStack::new();
-        let count = flatten_into(path, transform, limits, &mut contours, &mut curves)?;
+        let count = flatten_into(path, transform, limits, &mut contours, &mut curves, bytes)?;
         let mut polygon = Self::default();
-        polygon.extend(&contours[..count], transform, limits)?;
+        polygon.extend(&contours[..count], transform, limits, bytes)?;
+        drop(contours);
+        drop(curves);
+        bytes.refund((bytes.used() - before).saturating_sub(polygon.heap_bytes()));
         Ok(polygon)
     }
 
@@ -82,6 +91,7 @@ impl Polygon {
         path: &Path,
         transform: Transform,
         limits: &Limits,
+        bytes: &mut Meter,
     ) -> Result<Option<Self>> {
         if path
             .segments()
@@ -97,67 +107,76 @@ impl Polygon {
         // untransformed until the contour ends.
         let mut user: Vec<Point> = Vec::new();
         let mut closed = false;
-        let finish =
-            |polygon: &mut Self, user: &mut Vec<Point>, last: bool, closed: bool| -> Result<()> {
-                let Some(&first) = user.first() else {
-                    return Ok(());
-                };
-                if last && !closed && user.len() == 1 {
-                    user.clear();
-                    return Ok(());
-                }
-                if user.iter().all(|&p| p == first) {
-                    let p = first * transform;
-                    bounded(p)?;
-                    polygon.cell(p, limits)?;
-                } else {
-                    polygon.begin(limits, user.len())?;
-                    for &point in user.iter() {
-                        let p = point * transform;
-                        bounded(p)?;
-                        polygon.points.push(p);
-                    }
-                    polygon.end();
-                }
-                user.clear();
-                Ok(())
+        let finish = |polygon: &mut Self,
+                      user: &mut Vec<Point>,
+                      last: bool,
+                      closed: bool,
+                      bytes: &mut Meter|
+         -> Result<()> {
+            let Some(&first) = user.first() else {
+                return Ok(());
             };
-        let mut append = |user: &mut Vec<Point>, point: Point| -> Result<()> {
+            if last && !closed && user.len() == 1 {
+                user.clear();
+                return Ok(());
+            }
+            if user.iter().all(|&p| p == first) {
+                let p = first * transform;
+                bounded(p)?;
+                polygon.cell(p, limits, bytes)?;
+            } else {
+                polygon.begin(limits, user.len(), bytes)?;
+                for &point in user.iter() {
+                    let p = point * transform;
+                    bounded(p)?;
+                    polygon.points.push(p);
+                }
+                polygon.end();
+            }
+            user.clear();
+            Ok(())
+        };
+        let mut append = |user: &mut Vec<Point>, point: Point, bytes: &mut Meter| -> Result<()> {
             if count >= limits.path_segments {
                 return Err(Error::limit("flattened segment budget exceeded"));
             }
             count += 1;
-            user.try_reserve(1)
-                .map_err(|_| Error::limit("raster geometry allocation failed"))?;
+            bytes.reserve_capacity(user, 1)?;
             user.push(point);
             Ok(())
         };
         for segment in path.segments() {
             match *segment {
                 Segment::MoveTo(point) => {
-                    finish(&mut polygon, &mut user, false, closed)?;
+                    finish(&mut polygon, &mut user, false, closed, bytes)?;
                     bounded(point)?;
                     bounded(point * transform)?;
-                    append(&mut user, point)?;
+                    append(&mut user, point, bytes)?;
                     closed = false;
                 }
                 Segment::LineTo(point) => {
                     if closed {
                         // A line after a close reopens at the subpath start.
                         let first = user.first().copied();
-                        finish(&mut polygon, &mut user, false, closed)?;
-                        user.extend(first);
+                        finish(&mut polygon, &mut user, false, closed, bytes)?;
+                        if let Some(first) = first {
+                            bytes.reserve_capacity(&mut user, 1)?;
+                            user.push(first);
+                        }
                         closed = false;
                     }
                     bounded(point)?;
                     bounded(point * transform)?;
-                    append(&mut user, point)?;
+                    append(&mut user, point, bytes)?;
                 }
                 Segment::Close => closed = true,
                 Segment::CubicTo { .. } => return Ok(None),
             }
         }
-        finish(&mut polygon, &mut user, true, closed)?;
+        finish(&mut polygon, &mut user, true, closed, bytes)?;
+        let scratch = user.capacity().saturating_mul(size_of::<Point>());
+        drop(user);
+        bytes.refund(scratch);
         Ok(Some(polygon))
     }
 
@@ -169,6 +188,7 @@ impl Polygon {
         contours: &[Polyline],
         transform: Transform,
         limits: &Limits,
+        bytes: &mut Meter,
     ) -> Result<()> {
         let count = contours.len();
         for (i, contour) in contours.iter().enumerate() {
@@ -181,10 +201,10 @@ impl Polygon {
             if contour.degenerate {
                 let p = first * transform;
                 bounded(p)?;
-                self.cell(p, limits)?;
+                self.cell(p, limits, bytes)?;
                 continue;
             }
-            self.begin(limits, contour.points.len())?;
+            self.begin(limits, contour.points.len(), bytes)?;
             for &point in &contour.points {
                 let p = point * transform;
                 bounded(p)?;
@@ -196,9 +216,9 @@ impl Polygon {
     }
 
     /// The floor cell of a geometric point at `p`.
-    pub(crate) fn cell(&mut self, p: Point, limits: &Limits) -> Result<()> {
+    pub(crate) fn cell(&mut self, p: Point, limits: &Limits, bytes: &mut Meter) -> Result<()> {
         let (x, y) = (p.x.floor(), p.y.floor());
-        self.begin(limits, 4)?;
+        self.begin(limits, 4, bytes)?;
         self.points.extend([
             Point::new(x, y),
             Point::new(x + 1.0, y),
@@ -210,7 +230,7 @@ impl Polygon {
         Ok(())
     }
 
-    pub(crate) fn begin(&mut self, limits: &Limits, count: usize) -> Result<()> {
+    pub(crate) fn begin(&mut self, limits: &Limits, count: usize, bytes: &mut Meter) -> Result<()> {
         if self
             .points
             .len()
@@ -219,10 +239,8 @@ impl Polygon {
         {
             return Err(Error::limit("flattened segment budget exceeded"));
         }
-        self.points
-            .try_reserve(count)
-            .and_then(|()| self.starts.try_reserve(1))
-            .map_err(|_| Error::limit("raster geometry allocation failed"))?;
+        bytes.reserve_capacity(&mut self.points, count)?;
+        bytes.reserve_capacity(&mut self.starts, 1)?;
         self.starts.push(self.points.len());
         Ok(())
     }
@@ -257,14 +275,29 @@ impl Polygon {
     /// edges become the boundary of their union. Returns whether any edge
     /// was removed; the polygon is unchanged when none was or the rest does
     /// not relink.
-    pub(crate) fn cancel_shared(&mut self) -> Result<bool> {
-        let allocation = |_| Error::limit("raster geometry allocation failed");
+    pub(crate) fn cancel_shared(&mut self, bytes: &mut Meter) -> Result<bool> {
+        let before = bytes.used();
+        let result = self.cancelled(bytes);
+        let retained = result
+            .as_ref()
+            .ok()
+            .and_then(Option::as_ref)
+            .map_or(0, Self::heap_bytes);
+        bytes.refund((bytes.used() - before).saturating_sub(retained));
+        if let Some(polygon) = result? {
+            let old = self.heap_bytes();
+            *self = polygon;
+            bytes.refund(old);
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    fn cancelled(&self, bytes: &mut Meter) -> Result<Option<Self>> {
         // Points ordered by their coordinates' total order, as integers.
         let key = |p: Point| (ordered(p.x), ordered(p.y));
         let mut edges: Vec<Keyed> = Vec::new();
-        edges
-            .try_reserve_exact(self.points.len())
-            .map_err(allocation)?;
+        bytes.reserve(&mut edges, self.points.len())?;
         for contour in self.contours() {
             let n = contour.len();
             edges.extend((0..n).map(|i| {
@@ -284,7 +317,7 @@ impl Polygon {
         // opposite directions cancel.
         edges.sort_unstable_by_key(|e| (e.lo, e.hi, e.forward));
         let mut kept: Vec<Keyed> = Vec::new();
-        kept.try_reserve_exact(edges.len()).map_err(allocation)?;
+        bytes.reserve(&mut kept, edges.len())?;
         let mut start = 0;
         while let Some(first) = edges.get(start) {
             let end = start
@@ -300,22 +333,22 @@ impl Polygon {
             start = end;
         }
         if kept.len() == edges.len() {
-            return Ok(false);
+            return Ok(None);
         }
         // Relink by start point: any pairing at a shared vertex keeps the
         // winding.
         kept.sort_unstable_by_key(|e| e.from);
         let mut used: Vec<bool> = Vec::new();
-        used.try_reserve_exact(kept.len()).map_err(allocation)?;
+        bytes.reserve(&mut used, kept.len())?;
         used.resize(kept.len(), false);
         let mut points = Vec::new();
         let mut starts = Vec::new();
-        points.try_reserve_exact(kept.len()).map_err(allocation)?;
+        bytes.reserve(&mut points, kept.len())?;
         for first in 0..kept.len() {
             if used[first] {
                 continue;
             }
-            starts.try_reserve(1).map_err(allocation)?;
+            bytes.reserve_capacity(&mut starts, 1)?;
             starts.push(points.len());
             let origin = kept[first].from;
             let mut current = first;
@@ -331,14 +364,24 @@ impl Polygon {
                     .take_while(|&i| kept[i].from == next)
                     .find(|&i| !used[i])
                 else {
-                    return Ok(false);
+                    return Ok(None);
                 };
                 current = found;
             }
         }
-        self.points = points;
-        self.starts = starts;
-        Ok(true)
+        Ok(Some(Self {
+            points,
+            starts,
+            points_cells: self.points_cells,
+        }))
+    }
+
+    /// Heap storage of this owned polygon.
+    pub(crate) fn heap_bytes(&self) -> usize {
+        self.points
+            .capacity()
+            .saturating_mul(size_of::<Point>())
+            .saturating_add(self.starts.capacity().saturating_mul(size_of::<usize>()))
     }
 
     /// The device bounds of the vertices, as `[min, max]`.
@@ -674,116 +717,4 @@ pub(crate) fn line_work(line: Line, (first, last): (u32, u32), width: usize) -> 
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::PathBuilder;
-
-    #[test]
-    fn line_paths_skip_flattening_with_its_contours() {
-        let limits = Limits::default();
-        let t = Transform::new(1.5, 0.25, -0.5, 2.0, 3.0, -1.0);
-        let p = |x: f64, y: f64| Point::new(x, y);
-        let mut paths = Vec::new();
-        let mut b = PathBuilder::new();
-        b.move_to(p(0.0, 0.0));
-        b.line_to(p(4.0, 0.0)).unwrap();
-        b.line_to(p(4.0, 3.0)).unwrap();
-        b.close();
-        // A line after a close reopens at the start; a lone move is a point.
-        b.line_to(p(-2.0, 5.0)).unwrap();
-        b.line_to(p(1.0, 6.0)).unwrap();
-        b.move_to(p(9.0, 9.0));
-        b.move_to(p(7.0, 1.0));
-        b.line_to(p(7.0, 1.0)).unwrap();
-        b.close();
-        b.move_to(p(2.0, 2.0));
-        b.line_to(p(5.0, 2.0)).unwrap();
-        b.line_to(p(5.0, 2.0)).unwrap();
-        b.line_to(p(2.0, 7.0)).unwrap();
-        b.move_to(p(8.0, 8.0));
-        paths.push(b.finish());
-        let mut b = PathBuilder::new();
-        b.rect(1.0, 2.0, 3.0, 4.0);
-        paths.push(b.finish());
-        for path in &paths {
-            let fast = Polygon::from_lines(path, t, &limits).unwrap().unwrap();
-            let slow = Polygon::from_path(path, t, &limits).unwrap();
-            assert_eq!(fast.points, slow.points);
-            assert_eq!(fast.starts, slow.starts);
-            assert_eq!(fast.points_cells, slow.points_cells);
-        }
-    }
-
-    #[test]
-    fn shared_edges_cancel_into_the_union_boundary() {
-        let square = |x: f64| {
-            [
-                Point::new(x, 0.0),
-                Point::new(x + 1.0, 0.0),
-                Point::new(x + 1.0, 1.0),
-                Point::new(x, 1.0),
-            ]
-        };
-        let mut polygon = Polygon::default();
-        for x in [0.0, 1.0] {
-            polygon.starts.push(polygon.points.len());
-            polygon.points.extend(square(x));
-        }
-        assert!(polygon.cancel_shared().unwrap());
-        assert_eq!(polygon.starts, [0]);
-        assert_eq!(polygon.points.len(), 6);
-        assert!(crate::band::certify::certified(&polygon, 0.0));
-        // Nothing shared: unchanged.
-        let before = polygon.points.clone();
-        assert!(!polygon.cancel_shared().unwrap());
-        assert_eq!(polygon.points, before);
-    }
-
-    #[test]
-    fn rectangle_clipping_projects_outside_parts_onto_the_sides() {
-        let bounds = Bounds {
-            left: 1.0,
-            top: 0.0,
-            right: 3.0,
-            bottom: 4.0,
-        };
-        let edge = Line {
-            a: Point::new(0.0, -1.0),
-            b: Point::new(4.0, 7.0),
-        };
-        let mut lines = Vec::new();
-        clip_line(edge, bounds, &mut lines).unwrap();
-        assert_eq!(
-            lines,
-            [
-                Line {
-                    a: Point::new(1.0, 0.0),
-                    b: Point::new(1.0, 1.0)
-                },
-                Line {
-                    a: Point::new(1.0, 1.0),
-                    b: Point::new(2.5, 4.0)
-                },
-            ]
-        );
-    }
-
-    #[test]
-    fn polygons_drop_repeats_and_keep_point_cells() {
-        let mut path = PathBuilder::new();
-        path.move_to(Point::new(1.5, 2.5));
-        path.close();
-        path.move_to(Point::new(0.0, 0.0));
-        path.line_to(Point::new(0.0, 0.0)).unwrap();
-        path.line_to(Point::new(2.0, 0.0)).unwrap();
-        path.line_to(Point::new(2.0, 2.0)).unwrap();
-        path.line_to(Point::new(0.0, 0.0)).unwrap();
-        let polygon =
-            Polygon::from_path(&path.finish(), Transform::IDENTITY, &Limits::default()).unwrap();
-        let contours: Vec<_> = polygon.contours().collect();
-        assert_eq!(contours.len(), 2);
-        assert_eq!(contours[0][0], Point::new(1.0, 2.0));
-        assert_eq!(contours[1].len(), 3);
-        assert!(polygon.points_cells);
-    }
-}
+mod tests;

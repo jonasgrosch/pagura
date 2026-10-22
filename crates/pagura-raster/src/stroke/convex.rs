@@ -2,7 +2,7 @@
 
 use crate::flatten::bounded;
 use crate::{PathBuilder, Point};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 
 // Shorter closed runs keep their components.
 pub(super) const MIN_VERTICES: usize = 16;
@@ -16,6 +16,30 @@ pub(super) fn boundaries(
     tolerance: f64,
     miter_limit: f64,
     limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<Option<[Vec<Point>; 2]>> {
+    let before = bytes.used();
+    let result = build_boundaries(points, radius, tolerance, miter_limit, limits, bytes);
+    let retained = result
+        .as_ref()
+        .ok()
+        .and_then(Option::as_ref)
+        .map_or(0, |contours| {
+            contours.iter().fold(0usize, |n, p| {
+                n.saturating_add(p.capacity().saturating_mul(size_of::<Point>()))
+            })
+        });
+    bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
+    result
+}
+
+fn build_boundaries(
+    points: &[Point],
+    radius: f64,
+    tolerance: f64,
+    miter_limit: f64,
+    limits: &Limits,
+    bytes: &mut Meter,
 ) -> Result<Option<[Vec<Point>; 2]>> {
     if points.len() < MIN_VERTICES || radius == 0.0 {
         return Ok(None);
@@ -41,7 +65,7 @@ pub(super) fn boundaries(
     let Some(orientation) = orientation(points) else {
         return Ok(None);
     };
-    let mut directions = buffer(points.len())?;
+    let mut directions = buffer(points.len(), bytes)?;
     for (a, b) in points
         .iter()
         .zip(points.iter().cycle().skip(1))
@@ -52,8 +76,8 @@ pub(super) fn boundaries(
         directions.push(Point::new(x / length, y / length));
     }
     let filled = fills_interior(points, radius);
-    let mut outer = buffer(points.len() * 3)?;
-    let mut inner = buffer(if filled { 0 } else { points.len() })?;
+    let mut outer = buffer(points.len().saturating_mul(3), bytes)?;
+    let mut inner = buffer(if filled { 0 } else { points.len() }, bytes)?;
     for i in 0..points.len() {
         super::charge(&mut work, 1, limits.raster_work)?;
         let a = directions[if i == 0 { directions.len() - 1 } else { i - 1 }];
@@ -95,8 +119,9 @@ pub(super) fn boundaries(
 
 pub(super) fn append(
     out: &mut PathBuilder,
-    contours: [Vec<Point>; 2],
+    contours: &[Vec<Point>; 2],
     limits: &Limits,
+    bytes: &mut Meter,
 ) -> Result<()> {
     // Each nonempty contour adds its points and a close.
     let count = contours
@@ -110,10 +135,11 @@ pub(super) fn append(
         if contour.is_empty() {
             continue;
         }
-        for &p in &contour {
+        for &p in contour {
             bounded(p)?;
         }
-        out.polygon(contour);
+        out.reserve(contour.len() + 1, bytes)?;
+        out.polygon(contour.iter().copied());
     }
     Ok(())
 }
@@ -134,11 +160,9 @@ fn fills_interior(points: &[Point], radius: f64) -> bool {
     (hi.x - lo.x).next_up().min((hi.y - lo.y).next_up()) * 0.5 <= radius
 }
 
-fn buffer(capacity: usize) -> Result<Vec<Point>> {
+fn buffer(capacity: usize, bytes: &mut Meter) -> Result<Vec<Point>> {
     let mut points = Vec::new();
-    points
-        .try_reserve_exact(capacity)
-        .map_err(|_| Error::limit("stroke boundary allocation failed"))?;
+    bytes.reserve(&mut points, capacity)?;
     Ok(points)
 }
 
@@ -216,16 +240,30 @@ mod tests {
         let limits = Limits::default();
         let points = regular(16, 3.0);
         assert!(
-            boundaries(&regular(15, 3.0), 1.0, 1.0 / 256.0, 10.0, &limits)
-                .unwrap()
-                .is_none()
+            boundaries(
+                &regular(15, 3.0),
+                1.0,
+                1.0 / 256.0,
+                10.0,
+                &limits,
+                &mut crate::testing::bytes()
+            )
+            .unwrap()
+            .is_none()
         );
         // A collapsing inner side, a clipped miter and a negligible radius.
         for (radius, miter) in [(2.95, 10.0), (1.0, 1.0), (1e-20, 10.0)] {
             assert!(
-                boundaries(&points, radius, 1.0 / 256.0, miter, &limits)
-                    .unwrap()
-                    .is_none()
+                boundaries(
+                    &points,
+                    radius,
+                    1.0 / 256.0,
+                    miter,
+                    &limits,
+                    &mut crate::testing::bytes()
+                )
+                .unwrap()
+                .is_none()
             );
         }
         let work = Limits {
@@ -233,21 +271,37 @@ mod tests {
             ..limits
         };
         assert_eq!(
-            boundaries(&points, 1.0, 1.0 / 256.0, 10.0, &work)
-                .unwrap_err()
-                .kind,
+            boundaries(
+                &points,
+                1.0,
+                1.0 / 256.0,
+                10.0,
+                &work,
+                &mut crate::testing::bytes()
+            )
+            .unwrap_err()
+            .kind,
             pagura_core::ErrorKind::Limit
         );
-        let contours = boundaries(&points, 1.0, 1.0 / 256.0, 10.0, &limits)
-            .unwrap()
-            .unwrap();
+        let contours = boundaries(
+            &points,
+            1.0,
+            1.0 / 256.0,
+            10.0,
+            &limits,
+            &mut crate::testing::bytes(),
+        )
+        .unwrap()
+        .unwrap();
         let segments = Limits {
             path_segments: 3,
             ..limits
         };
         let mut out = PathBuilder::new();
         assert_eq!(
-            append(&mut out, contours, &segments).unwrap_err().kind,
+            append(&mut out, &contours, &segments, &mut crate::testing::bytes())
+                .unwrap_err()
+                .kind,
             pagura_core::ErrorKind::Limit
         );
         assert_eq!(out.len(), 0);
@@ -259,12 +313,25 @@ mod tests {
         let points = regular(16, 3.0);
         assert!(!fills_interior(&points, 3.0));
         assert!(fills_interior(&points, 4.0));
-        let [outer, inner] = boundaries(&points, 4.0, 1.0 / 256.0, 10.0, &limits)
-            .unwrap()
-            .unwrap();
+        let [outer, inner] = boundaries(
+            &points,
+            4.0,
+            1.0 / 256.0,
+            10.0,
+            &limits,
+            &mut crate::testing::bytes(),
+        )
+        .unwrap()
+        .unwrap();
         assert_eq!(inner, []);
         let mut out = PathBuilder::new();
-        append(&mut out, [outer, inner], &limits).unwrap();
+        append(
+            &mut out,
+            &[outer, inner],
+            &limits,
+            &mut crate::testing::bytes(),
+        )
+        .unwrap();
         let coverage = crate::testing::fill(
             crate::testing::window(8, 8),
             (
@@ -288,9 +355,16 @@ mod tests {
         );
         assert!(!fills_interior(&short, 1.0));
         assert!(
-            boundaries(&short, 1.0, 1.0 / 256.0, 10.0, &limits)
-                .unwrap()
-                .is_none()
+            boundaries(
+                &short,
+                1.0,
+                1.0 / 256.0,
+                10.0,
+                &limits,
+                &mut crate::testing::bytes()
+            )
+            .unwrap()
+            .is_none()
         );
     }
 }

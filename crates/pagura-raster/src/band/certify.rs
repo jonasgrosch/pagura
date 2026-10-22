@@ -666,7 +666,13 @@ mod tests {
     fn polygon(contours: &[&[(f64, f64)]]) -> Polygon {
         let mut polygon = Polygon::default();
         for contour in contours {
-            polygon.begin(&Limits::default(), contour.len()).unwrap();
+            polygon
+                .begin(
+                    &Limits::default(),
+                    contour.len(),
+                    &mut crate::testing::bytes(),
+                )
+                .unwrap();
             polygon
                 .points
                 .extend(contour.iter().map(|&(x, y)| Point::new(x, y)));

@@ -9,7 +9,7 @@ use super::{Planner, Scope};
 use crate::hash::{FastHasher, FastMap};
 use crate::plan::intersect;
 use crate::prepare::{Budget, Prepared, bounds, index};
-use pagura_core::{Error, Result};
+use pagura_core::{Error, Meter, Result};
 use pagura_interpret::ClipId;
 use pagura_raster::{DeviceRect, FillRule, Path, Segment, ShapeOptions, Transform};
 use std::hash::{Hash, Hasher};
@@ -82,20 +82,26 @@ impl Planner<'_> {
         }
     }
 
-    /// The paths of `clip`'s chain, outermost first, with the transform of
-    /// each (the crop is in default user space).
-    fn chain(&self, scope: &Scope, clip: Option<ClipId>, extra: Option<&Extra>) -> Result<Chain> {
-        let mut chain = Vec::new();
+    /// Visits `clip` from its innermost path to the crop, with each
+    /// transform. Bounds can intersect these without allocating a chain.
+    fn walk_chain(
+        &self,
+        scope: &Scope,
+        clip: Option<ClipId>,
+        extra: Option<&Extra>,
+        mut visit: impl FnMut(Link) -> Result<()>,
+    ) -> Result<()> {
+        let mut count = usize::from(extra.is_some());
         if let Some(extra) = extra {
-            chain.push(Link {
+            visit(Link {
                 path: Arc::clone(&extra.path),
                 rule: FillRule::NonZero,
                 transform: extra.transform,
-            });
+            })?;
         }
         let mut current = clip;
         while let Some(id) = current {
-            if chain.len() >= self.limits.mask_sources {
+            if count >= self.limits.mask_sources {
                 return Err(Error::limit("clip path budget exceeded"));
             }
             let node = self
@@ -106,22 +112,22 @@ impl Planner<'_> {
             if node.parent.is_some_and(|parent| parent.0 >= id.0) {
                 return Err(Error::invalid_argument("scene clip chain is not ordered"));
             }
-            chain.push(Link {
+            visit(Link {
                 path: Arc::clone(&node.path),
                 rule: node.rule,
                 transform: scope.transform,
-            });
+            })?;
+            count += 1;
             current = node.parent;
         }
         if scope.crop {
-            chain.push(Link {
+            visit(Link {
                 path: Arc::clone(&self.crop),
                 rule: FillRule::NonZero,
                 transform: self.request.transform,
-            });
+            })?;
         }
-        chain.reverse();
-        Ok(chain)
+        Ok(())
     }
 
     /// Conservative bounds of the pixels `clip` keeps in `scope`.
@@ -144,13 +150,12 @@ impl Planner<'_> {
         let region = self.area.region;
         // A pixel wider: a clipping path without area still keeps the
         // pixels its boundary touches.
-        let bounds = self
-            .chain(scope, clip, extra)?
-            .iter()
-            .fold(region, |acc, link| {
-                let hull = bounds::path(&link.path, link.transform).map(|h| bounds::expand(h, 1.0));
-                intersect(acc, bounds::device(hull, region))
-            });
+        let mut bounds = region;
+        self.walk_chain(scope, clip, extra, |link| {
+            let hull = bounds::path(&link.path, link.transform).map(|h| bounds::expand(h, 1.0));
+            bounds = intersect(bounds, bounds::device(hull, region));
+            Ok(())
+        })?;
         let state = State {
             bounds,
             built: None,
@@ -207,15 +212,14 @@ impl Planner<'_> {
         (clip, extra): (Option<ClipId>, Option<&Extra>),
         budget: &mut Budget,
     ) -> Result<Clipping> {
-        let limits = pagura_core::Limits {
-            render_bytes: budget.bytes.remaining(),
-            ..*self.limits
-        };
-        let options = ShapeOptions {
-            area: self.area,
-            limits: &limits,
-        };
-        let chain = self.chain(scope, clip, extra)?;
+        let mut bytes = Meter::new(budget.bytes.remaining(), "render memory budget exceeded");
+        let mut chain = Vec::new();
+        self.walk_chain(scope, clip, extra, |link| {
+            bytes.reserve_capacity(&mut chain, 1)?;
+            chain.push(link);
+            Ok(())
+        })?;
+        chain.reverse();
         if chain.is_empty() {
             return Ok(Clipping::All);
         }
@@ -231,18 +235,42 @@ impl Planner<'_> {
         }
         let uniform = chain.iter().all(|link| link.transform == scope.transform);
         let prepared = if uniform {
-            let paths: Vec<(&Path, FillRule)> =
-                chain.iter().map(|link| (&*link.path, link.rule)).collect();
+            let mut paths = Vec::new();
+            bytes.reserve(&mut paths, chain.len())?;
+            paths.extend(chain.iter().map(|link| (&*link.path, link.rule)));
+            let limits = pagura_core::Limits {
+                render_bytes: bytes.remaining(),
+                ..*self.limits
+            };
+            let options = ShapeOptions {
+                area: self.area,
+                limits: &limits,
+            };
             self.shapes.clip(&paths, scope.transform, &options)?
         } else {
             // A fixed view moves its content but not the crop: clip in
-            // device space.
-            let device: Vec<(Path, FillRule)> = chain
-                .iter()
-                .map(|link| (link.path.transformed(link.transform), link.rule))
-                .collect();
-            let paths: Vec<(&Path, FillRule)> =
-                device.iter().map(|(path, rule)| (path, *rule)).collect();
+            // device space. Source copies stay charged while the prepared
+            // clip is constructed beside them.
+            let mut device = Vec::new();
+            bytes.reserve(&mut device, chain.len())?;
+            for link in &chain {
+                device.push((
+                    link.path
+                        .transformed_with_bytes(link.transform, &mut bytes)?,
+                    link.rule,
+                ));
+            }
+            let mut paths = Vec::new();
+            bytes.reserve(&mut paths, device.len())?;
+            paths.extend(device.iter().map(|(path, rule)| (path, *rule)));
+            let limits = pagura_core::Limits {
+                render_bytes: bytes.remaining(),
+                ..*self.limits
+            };
+            let options = ShapeOptions {
+                area: self.area,
+                limits: &limits,
+            };
             self.shapes.clip(&paths, Transform::IDENTITY, &options)?
         };
         budget.bytes.charge(prepared.bytes)?;

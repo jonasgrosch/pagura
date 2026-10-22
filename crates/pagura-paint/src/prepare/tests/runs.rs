@@ -446,3 +446,64 @@ fn the_first_refused_placement_reports_its_position() {
         assert_eq!(error.position, Position::Buffer(105), "runs {runs}");
     }
 }
+
+#[test]
+fn placement_byte_errors_are_the_same_with_cold_and_warm_glyph_edges() {
+    let mut b = Build::new(16.0, 16.0);
+    let ink = b.rgb([0.0, 0.0, 0.0]);
+    let mut path = pagura_raster::PathBuilder::new();
+    for _ in 0..10 {
+        path.move_to(Point::new(1.0, 1.0));
+        path.cubic_to(
+            Point::new(1.0, 15.0),
+            Point::new(15.0, 15.0),
+            Point::new(12.0, 1.0),
+        )
+        .unwrap();
+        path.close();
+    }
+    let source = GlyphSource {
+        outline: std::sync::Arc::new(path.finish()),
+        ..source(8, [1.0, 1.0])
+    };
+    b.node(
+        PAGE,
+        Node::Glyphs(GlyphsNode {
+            sources: vec![source],
+            placements: vec![Placement {
+                source: 0,
+                origin: Point::default(),
+            }],
+            positions: vec![(0, Position::Buffer(91))],
+            paint: ink,
+            mark: mark(StateId(0)),
+        }),
+    );
+    let warm = Store::new(1 << 20);
+    crate::prepare(&b.scene, &b.request(b.page(), 1), &warm, &Limits::default()).unwrap();
+    let limits = Limits {
+        render_bytes: 4096,
+        ..Limits::default()
+    };
+    for height in HEIGHTS {
+        let request = b.request(b.page(), height);
+        let cold = crate::prepare(&b.scene, &request, &Store::new(1 << 20), &limits)
+            .map(|_| ())
+            .unwrap_err();
+        let kept = crate::prepare(&b.scene, &request, &warm, &limits)
+            .map(|_| ())
+            .unwrap_err();
+        assert_eq!(
+            (cold.kind, cold.message, cold.position),
+            (
+                pagura_core::ErrorKind::Limit,
+                "render memory budget exceeded",
+                Position::Buffer(91)
+            )
+        );
+        assert_eq!(
+            (kept.kind, kept.message, kept.position),
+            (cold.kind, cold.message, cold.position)
+        );
+    }
+}

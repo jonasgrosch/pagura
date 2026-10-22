@@ -8,7 +8,7 @@
 use super::edges::{Bounds, Line};
 use crate::flatten::bounded;
 use crate::{Path, Point, Segment, Transform};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 
 /// Maximum sum of absolute cubic third differences per coordinate in one
 /// quadratic outline. Bounding the sum, rather than each segment, bounds
@@ -534,6 +534,7 @@ pub(crate) fn clip(
     bounds: Bounds,
     lines: &mut Vec<Line>,
     out: &mut Vec<Quadratic>,
+    bytes: &mut Meter,
 ) -> Result<()> {
     if bounds.is_empty() {
         return Ok(());
@@ -547,18 +548,12 @@ pub(crate) fn clip(
     if first.y == last.y {
         return Ok(());
     }
-    let reserve = |n: usize, lines: &mut Vec<Line>, out: &mut Vec<Quadratic>| {
-        lines
-            .try_reserve(n)
-            .and_then(|()| out.try_reserve(n))
-            .map_err(|_| Error::limit("raster geometry allocation failed"))
-    };
     if bounds.left <= first.x.min(last.x)
         && first.x.max(last.x) <= bounds.right
         && bounds.top <= first.y
         && last.y <= bounds.bottom
     {
-        reserve(1, lines, out)?;
+        bytes.reserve_capacity(out, 1)?;
         out.push(piece);
         return Ok(());
     }
@@ -583,7 +578,6 @@ pub(crate) fn clip(
     }
     let events = &mut events[..count];
     events.sort_unstable_by(f64::total_cmp);
-    reserve(count, lines, out)?;
     for pair in events.windows(2) {
         let mut part = curve.interval(pair[0], pair[1]);
         let x = part.at(0.5).x;
@@ -593,6 +587,7 @@ pub(crate) fn clip(
                 Point::new(x, part.points[0].y),
                 Point::new(x, part.points[2].y),
             );
+            bytes.reserve_capacity(lines, 1)?;
             lines.push(if reversed {
                 Line { a: b, b: a }
             } else {
@@ -602,6 +597,7 @@ pub(crate) fn clip(
             if reversed {
                 part.points.reverse();
             }
+            bytes.reserve_capacity(out, 1)?;
             out.push(part);
         }
     }

@@ -5,8 +5,8 @@ use crate::Completion;
 use crate::testing::{Build, assert_within_one_level, mark};
 use pagura_core::{Limits, Position};
 use pagura_interpret::{
-    BlendMode, GroupAttributes, GroupId, MarkInfo, MaskKind, Node, Paint, PatternId, Pen, PenId,
-    StateId, StrokeNode, Tiling, TilingColors, TilingPaint,
+    BlendMode, FillNode, GroupAttributes, GroupId, MarkInfo, MaskKind, Node, Paint, PatternId, Pen,
+    PenId, StateId, StrokeNode, Tiling, TilingColors, TilingPaint,
 };
 use pagura_raster::{Adjustment, DeviceRect, PathBuilder, Point, Stroke, Transform};
 use std::sync::Arc;
@@ -239,6 +239,67 @@ fn budgets_fail_in_source_order_and_bound_what_rendering_uses() {
                 .unwrap_err();
             assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
         }
+    }
+}
+
+#[test]
+fn geometry_preparation_uses_what_earlier_marks_leave() {
+    let mut path = PathBuilder::new();
+    path.polygon((0..736_u32).map(|i| {
+        let angle = f64::from(i) * std::f64::consts::TAU / 736.0;
+        Point::new(2.0 + 1.7 * angle.cos(), 2.0 + 1.7 * angle.sin())
+    }));
+    let path = Arc::new(path.finish());
+    let geometry = |b: &mut Build| {
+        let paint = b.rgb([0.0, 0.0, 0.0]);
+        b.node(
+            PAGE,
+            Node::Fill(FillNode {
+                path: Arc::clone(&path),
+                rule: pagura_raster::FillRule::NonZero,
+                paint,
+                mark: MarkInfo {
+                    position: Position::Buffer(7),
+                    ..mark(StateId(0))
+                },
+            }),
+        );
+    };
+    let limits = Limits {
+        render_bytes: 256 * 1024,
+        ..Limits::default()
+    };
+    let mut alone = Build::new(4.0, 4.0);
+    geometry(&mut alone);
+    alone
+        .prepare(&alone.request(alone.page(), 1), &limits)
+        .unwrap();
+    let mut occupied = Build::new(4.0, 4.0);
+    let paint = occupied.rgb([0.0, 0.0, 0.0]);
+    for _ in 0..40 {
+        occupied.rect(PAGE, [0.25, 0.25, 3.75, 3.75], paint, mark(StateId(0)));
+    }
+    assert!(
+        occupied
+            .prepare(&occupied.request(occupied.page(), 1), &limits)
+            .is_ok()
+    );
+    geometry(&mut occupied);
+    refused(&mut occupied, [1.0, 1.0], 11);
+    for height in HEIGHTS {
+        let error = occupied
+            .prepare(&occupied.request(occupied.page(), height), &limits)
+            .map(|_| ())
+            .unwrap_err();
+        assert_eq!(
+            (error.kind, error.message, error.position),
+            (
+                pagura_core::ErrorKind::Limit,
+                "render memory budget exceeded",
+                Position::Buffer(7)
+            ),
+            "band height {height}"
+        );
     }
 }
 

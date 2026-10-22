@@ -151,19 +151,7 @@ pub(crate) struct Meters<'a> {
 /// Makes room for `extra` more values in `values`, charging `bytes` for the
 /// capacity added: at least twice the old, so that growth stays amortized.
 pub(crate) fn room<T>(values: &mut Vec<T>, extra: usize, bytes: &mut Meter) -> Result<()> {
-    let need = values
-        .len()
-        .checked_add(extra)
-        .ok_or(Error::limit("row resolver allocation failed"))?;
-    let capacity = values.capacity();
-    if need <= capacity {
-        return Ok(());
-    }
-    let target = need.max(capacity.saturating_mul(2));
-    bytes.charge_items::<T>(target - capacity)?;
-    values
-        .try_reserve_exact(target - values.len())
-        .map_err(|_| Error::limit("row resolver allocation failed"))
+    bytes.reserve_capacity(values, extra)
 }
 
 impl Resolver {

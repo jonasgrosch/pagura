@@ -97,5 +97,5 @@ fn clip_preparation_cells_and_rows_use_the_remaining_byte_budget() {
         &public(area, &limited),
     )
     .unwrap_err();
-    assert_eq!(error.message, shape::RENDER_BYTES);
+    assert_eq!(error.message, RENDER_BYTES);
 }
