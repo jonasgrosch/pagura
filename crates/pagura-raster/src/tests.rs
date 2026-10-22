@@ -23,22 +23,12 @@ impl Vector {
         let text =
             String::from_utf8(pagura_testkit::fixture("raster", &format!("{name}.path"))).unwrap();
         let (path, rule, stroke, clips) = vector_geometry(&text);
-        // The resolver's work bound for hundreds of coincident edges in one
-        // cell exceeds the default raster work budget.
-        let raster_work = if name.starts_with("quad-union") {
-            usize::MAX
-        } else {
-            Limits::default().raster_work
-        };
         Self {
             path,
             rule,
             stroke,
             clips,
-            limits: Limits {
-                raster_work,
-                ..Limits::default()
-            },
+            limits: Limits::default(),
         }
     }
 

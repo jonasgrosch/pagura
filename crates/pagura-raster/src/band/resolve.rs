@@ -45,22 +45,21 @@ pub(crate) struct Resolver {
     windings: Vec<i64>,
 }
 
-/// The work units [`Resolver::coverage`] spends on `edges` at most.
-pub(crate) fn work(edges: usize) -> usize {
-    let k = edges.saturating_add(2);
-    // Pairwise crossings, then per slab (at most 2k + k²/2 of them) a
-    // sort of k edges and one pass.
-    let slabs = k.saturating_mul(k).saturating_add(2 * k);
-    k.saturating_mul(k).saturating_add(
-        slabs.saturating_mul(
-            k.saturating_mul(usize::BITS as usize - k.leading_zeros() as usize + 1),
-        ),
-    )
+/// Work units for sorting `count` values and passing over them once.
+fn sort_work(count: usize) -> usize {
+    count.saturating_mul(count.max(1).ilog2() as usize + 2)
 }
 
 impl Resolver {
-    /// The covered area of the cell within heights `span`, quantized,
-    /// charging [`work`] to `meter` first.
+    /// The covered area of the cell within heights `span`, quantized.
+    ///
+    /// Each stage is charged to `meter` before it runs, with what it does
+    /// on these edges: the search for crossings among every pair, the sort
+    /// of the heights found, then per slab between consecutive heights a
+    /// pass over every edge and a sort of those spanning it. The slabs are
+    /// as many as the heights found, not as the pairs that could cross:
+    /// coincident edges (the floor cells of points, the shared sides of a
+    /// union) cross nowhere and cost one slab.
     ///
     /// # Errors
     ///
@@ -72,8 +71,7 @@ impl Resolver {
         span: (f64, f64),
         meter: &mut Meter,
     ) -> Result<u8> {
-        meter.charge(work(edges.len()))?;
-        let area = self.area(edges, rules, span)?;
+        let area = self.area(edges, rules, span, meter)?;
         Ok(fold(area, FillRule::NonZero))
     }
 
@@ -81,17 +79,24 @@ impl Resolver {
         &mut self,
         edges: &[LocalEdge],
         rules: &[FillRule],
-        (bottom, top): (f64, f64),
+        span: (f64, f64),
+        meter: &mut Meter,
     ) -> Result<f64> {
+        meter.charge_product(edges.len(), edges.len().saturating_add(1))?;
+        self.heights(edges, span)?;
+        meter.charge(sort_work(self.heights.len()))?;
+        self.heights.sort_unstable_by(f64::total_cmp);
+        self.heights.dedup();
+        self.integrate(edges, rules, span, meter)
+    }
+
+    /// Collects the heights within `span` where an edge ends or two cross,
+    /// and the span's own ends.
+    fn heights(&mut self, edges: &[LocalEdge], (bottom, top): (f64, f64)) -> Result<()> {
         let allocation = |_| Error::limit("cell resolver allocation failed");
         self.heights.clear();
         self.heights
-            .try_reserve(
-                edges
-                    .len()
-                    .saturating_mul(edges.len())
-                    .saturating_add(2 * edges.len() + 2),
-            )
+            .try_reserve(edges.len().saturating_mul(2).saturating_add(2))
             .map_err(allocation)?;
         self.heights.extend([bottom, top]);
         for e in edges {
@@ -113,13 +118,25 @@ impl Resolver {
                 if (d0 < 0.0 && d1 > 0.0) || (d0 > 0.0 && d1 < 0.0) {
                     let y = lo + (hi - lo) * (d0 / (d0 - d1));
                     if y > lo && y < hi && y > bottom && y < top {
+                        self.heights.try_reserve(1).map_err(allocation)?;
                         self.heights.push(y);
                     }
                 }
             }
         }
-        self.heights.sort_unstable_by(f64::total_cmp);
-        self.heights.dedup();
+        Ok(())
+    }
+
+    /// Integrates the covered width over the slabs between the sorted
+    /// heights.
+    fn integrate(
+        &mut self,
+        edges: &[LocalEdge],
+        rules: &[FillRule],
+        (bottom, top): (f64, f64),
+        meter: &mut Meter,
+    ) -> Result<f64> {
+        let allocation = |_| Error::limit("cell resolver allocation failed");
         self.windings.clear();
         self.windings.try_reserve(rules.len()).map_err(allocation)?;
         self.windings.resize(rules.len(), 0);
@@ -132,12 +149,14 @@ impl Resolver {
                 continue;
             }
             let mid = lo.midpoint(hi);
+            meter.charge(edges.len())?;
             self.order.clear();
             for (i, e) in (0_u32..).zip(edges) {
                 if e.y0 <= lo && e.y1 >= hi {
                     self.order.push((e.x(mid).clamp(0.0, 1.0), i));
                 }
             }
+            meter.charge(sort_work(self.order.len()))?;
             self.order.sort_unstable_by(|a, b| a.0.total_cmp(&b.0));
             self.windings.fill(0);
             let mut width = 0.0;
@@ -190,7 +209,10 @@ mod tests {
     }
 
     fn area(edges: &[LocalEdge], rules: &[FillRule]) -> f64 {
-        Resolver::default().area(edges, rules, (0.0, 1.0)).unwrap()
+        let mut meter = Meter::new(usize::MAX, "budget");
+        Resolver::default()
+            .area(edges, rules, (0.0, 1.0), &mut meter)
+            .unwrap()
     }
 
     #[test]
@@ -217,8 +239,9 @@ mod tests {
         ];
         let both = area(&edges, &[FillRule::NonZero, FillRule::NonZero]);
         assert!((both - 0.25).abs() < 1e-15);
+        let mut meter = Meter::new(usize::MAX, "budget");
         let lower = Resolver::default()
-            .area(&edges, &[FillRule::NonZero], (0.25, 1.0))
+            .area(&edges, &[FillRule::NonZero], (0.25, 1.0), &mut meter)
             .unwrap();
         assert!((lower - 0.375).abs() < 1e-15);
         let mut meter = Meter::new(usize::MAX, "budget");
@@ -226,12 +249,31 @@ mod tests {
             .coverage(&edges, &[FillRule::NonZero; 2], (0.0, 1.0), &mut meter)
             .unwrap();
         assert_eq!(value, 64);
-        assert!(meter.used() >= work(3));
+        assert!(meter.used() >= 3 * 3);
         let mut tiny = Meter::new(1, "budget");
         assert!(
             Resolver::default()
                 .coverage(&edges, &[FillRule::NonZero; 2], (0.0, 1.0), &mut tiny)
                 .is_err()
         );
+    }
+
+    /// Coincident edges, as the floor cells of many points in one pixel
+    /// give, cross nowhere: one slab, and a charge quadratic in the edges
+    /// rather than the cubic bound of every pair crossing.
+    #[test]
+    fn coincident_edges_cost_one_slab() {
+        let mut edges = Vec::new();
+        for _ in 0..300 {
+            edges.push(edge(0.0, 0.0, 0.0, 1.0, 1, 0));
+            edges.push(edge(1.0, 0.0, 1.0, 1.0, -1, 0));
+        }
+        let limits = pagura_core::Limits::default();
+        let mut meter = Meter::new(limits.raster_work, "budget");
+        let value = Resolver::default()
+            .coverage(&edges, &[FillRule::NonZero], (0.0, 1.0), &mut meter)
+            .unwrap();
+        assert_eq!(value, u8::MAX);
+        assert!(meter.used() <= 2 * 600 * 600, "{}", meter.used());
     }
 }
