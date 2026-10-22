@@ -42,10 +42,11 @@ mod row;
 mod scan;
 mod shape;
 
+pub use binned::GlyphMask;
 pub use clip::ClipShape;
 pub use coverage::{BandCoverage, Capacity, CoverageRow, Span};
 pub use glyph::GlyphEdges;
-pub use raster::BandRasterizer;
+pub use raster::{BandRasterizer, RunGlyph};
 pub use shape::Shape;
 
 use pagura_core::Limits;

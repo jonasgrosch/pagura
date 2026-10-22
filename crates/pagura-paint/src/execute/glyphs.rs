@@ -6,10 +6,15 @@
 //! the stores it would receive with one item per placement, in the same
 //! order, plus zero-coverage stores at the gaps, which leave every format
 //! as it is. Results are byte-identical.
+//!
+//! Under an opaque store, a binned placement whose clip state keeps all of
+//! it stores its mask's rows straight into the page, in content order with
+//! the placements that store one by one.
 
-use super::{Executor, Frame, Opaque, Tops, clamp};
+use super::{Cover, Executor, Frame, Opaque, Runs, Tops, clamp, opaque_store};
 use crate::plan::{Glyph, Item, Mark, Run, intersect};
-use pagura_raster::BandCoverage;
+use pagura_raster::{BandCoverage, DeviceRect, GlyphMask};
+use std::ops::Range;
 
 impl Executor<'_> {
     pub(super) fn glyph_run(&mut self, item: &Item, run: &Run, frame: Frame, tops: Tops) {
@@ -22,10 +27,11 @@ impl Executor<'_> {
         let mut coverage = std::mem::take(&mut self.ws.coverage);
         let mut alone = std::mem::take(&mut self.ws.run_shapes);
         alone.clear();
+        let direct = |glyph: &Glyph| opaque.is_some() && self.producer.mask(glyph.shape).is_some();
         alone.extend(
             run.glyphs
                 .iter()
-                .filter(|glyph| glyph.alone && self.meets(glyph, frame))
+                .filter(|glyph| glyph.alone && self.meets(glyph, frame) && !direct(glyph))
                 .map(|glyph| glyph.shape),
         );
         let mut next = 0;
@@ -37,7 +43,17 @@ impl Executor<'_> {
             self.store_coverage(mark, frame, opaque, &coverage);
         }
         for glyph in &run.glyphs {
-            if glyph.alone || !self.meets(glyph, frame) {
+            if !self.meets(glyph, frame) {
+                continue;
+            }
+            if let Some(opaque) = opaque
+                && let Some(mask) = self.producer.mask(glyph.shape)
+            {
+                let rows = self.rows.clone();
+                opaque_store(self.ws, &MaskRuns { mask, rows }, frame, opaque);
+                continue;
+            }
+            if glyph.alone {
                 continue;
             }
             self.producer
@@ -75,6 +91,34 @@ impl Executor<'_> {
                 if let Some((x, cover)) = clamp(span, frame.rect) {
                     self.mark_span(mark, frame, (x, row.y), cover);
                 }
+            }
+        }
+    }
+}
+
+/// The rows of a glyph mask within a band.
+struct MaskRuns<'a> {
+    mask: &'a GlyphMask,
+    rows: Range<u32>,
+}
+
+impl Runs for MaskRuns<'_> {
+    fn runs(&self, rect: DeviceRect, mut run: impl FnMut(u32, u32, Cover<'_>)) {
+        let bounds = self.mask.bounds();
+        let start = self.rows.start.max(rect.y0).max(bounds.y0);
+        let end = self.rows.end.min(rect.y1).min(bounds.y1);
+        for y in start..end {
+            let Some((x, values)) = self.mask.row(y) else {
+                continue;
+            };
+            let lo = x.max(rect.x0);
+            let hi = x
+                .saturating_add(u32::try_from(values.len()).unwrap_or(u32::MAX))
+                .min(rect.x1);
+            if lo < hi
+                && let Some(values) = values.get((lo - x) as usize..(hi - x) as usize)
+            {
+                run(y, lo, Cover::Partial(values));
             }
         }
     }

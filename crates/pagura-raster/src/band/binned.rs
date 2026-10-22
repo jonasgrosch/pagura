@@ -13,14 +13,21 @@
 //! and phase, so the masks the edges keep for their placements, across
 //! renders, change time, never pixels. None of this meets the one-level
 //! contract.
+//!
+//! A placement is its mask, offset and bounds ([`GlyphMask`]): a lookup by
+//! phase, no geometry. Where its clip state keeps every pixel it covers,
+//! its rows are its coverage as they are and store straight into a page;
+//! a clip that cuts it is multiplied in through a shape.
 
 use super::coverage::RowOut;
+use super::edges::Bounds;
 use super::row::Sink;
 use super::shape::{Body, Shape};
 use super::{ClipShape, DeviceRect, Prep};
 use crate::{FillRule, Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Result};
 use std::collections::HashMap;
+use std::hash::{BuildHasherDefault, Hasher};
 use std::sync::{Arc, Mutex};
 
 /// Horizontal origin phases per device pixel.
@@ -101,8 +108,66 @@ pub(crate) struct Prepared {
 /// A glyph's masks by phases, and their bytes.
 #[derive(Debug, Default)]
 struct Masks {
-    map: HashMap<(u64, u64), Arc<[u8]>>,
+    map: HashMap<u32, Built, BuildHasherDefault<PhaseHasher>>,
     bytes: usize,
+}
+
+/// One built mask: its cells, rows of the glyph's width, and the columns
+/// and rows its coverage lies in, `[x0, y0, x1, y1]`, empty when it has
+/// none.
+#[derive(Debug, Clone)]
+struct Built {
+    values: Arc<[u8]>,
+    hull: [u32; 4],
+}
+
+impl Built {
+    fn new(values: Vec<u8>, width: usize) -> Result<Self> {
+        let index =
+            |i: usize| u32::try_from(i).map_err(|_| Error::limit("glyph extent budget exceeded"));
+        let mut hull = [u32::MAX, u32::MAX, 0, 0];
+        for (r, row) in values.chunks_exact(width.max(1)).enumerate() {
+            if let (Some(first), Some(last)) = (
+                row.iter().position(|&v| v != 0),
+                row.iter().rposition(|&v| v != 0),
+            ) {
+                hull = [
+                    hull[0].min(index(first)?),
+                    hull[1].min(index(r)?),
+                    hull[2].max(index(last + 1)?),
+                    index(r + 1)?,
+                ];
+            }
+        }
+        if hull[0] == u32::MAX {
+            hull = [0; 4];
+        }
+        Ok(Self {
+            values: Arc::from(values),
+            hull,
+        })
+    }
+}
+
+/// Hashes the one word of a mask's phase key: a multiply, with the high
+/// half folded into the bucket bits.
+#[derive(Debug, Default)]
+struct PhaseHasher(u64);
+
+impl Hasher for PhaseHasher {
+    fn write(&mut self, bytes: &[u8]) {
+        for &byte in bytes {
+            self.write_u32(u32::from(byte));
+        }
+    }
+
+    fn write_u32(&mut self, value: u32) {
+        self.0 = (self.0 ^ u64::from(value)).wrapping_mul(0x9e37_79b9_7f4a_7c15);
+    }
+
+    fn finish(&self) -> u64 {
+        self.0 ^ (self.0 >> 32)
+    }
 }
 
 impl Prepared {
@@ -204,31 +269,31 @@ impl Prepared {
         size_of::<Self>()
             .saturating_add(self.edges.capacity().saturating_mul(size_of::<[f32; 4]>()))
             .saturating_add(self.budget)
-            .saturating_add(KEPT_MASKS.saturating_mul(size_of::<((u64, u64), Arc<[u8]>)>()))
+            .saturating_add(KEPT_MASKS.saturating_mul(size_of::<(u32, Built)>()))
     }
 
     fn cells(&self) -> usize {
         self.width.saturating_mul(self.height)
     }
 
-    /// The mask at `phases`: kept from an earlier placement, or built and
-    /// kept while the glyph's mask bytes allow, all of them dropped once
-    /// they would not.
-    fn mask(&self, (px, py): (f64, f64)) -> Result<Arc<[u8]>> {
-        let key = (px.to_bits(), py.to_bits());
+    /// The mask at the phase indices `(px, py)`: kept from an earlier
+    /// placement, or built and kept while the glyph's mask bytes allow, all
+    /// of them dropped once they would not.
+    fn mask(&self, (px, py): (u16, u16)) -> Result<Built> {
+        let key = u32::from(px) << 16 | u32::from(py);
         if let Ok(masks) = self.masks.lock()
             && let Some(mask) = masks.map.get(&key)
         {
-            return Ok(Arc::clone(mask));
+            return Ok(mask.clone());
         }
         let mut built = Vec::new();
-        #[expect(
-            clippy::cast_possible_truncation,
-            reason = "canonical phases lie within [0, 1)"
-        )]
-        Accumulator::default().build(self, (px as f32, py as f32), &mut built)?;
-        let mask: Arc<[u8]> = Arc::from(built);
-        let cells = mask.len();
+        let phases = (
+            f32::from(px) / f32::from(PHASES),
+            f32::from(py) / f32::from(self.resolution.vertical_phases()),
+        );
+        Accumulator::default().build(self, phases, &mut built)?;
+        let mask = Built::new(built, self.width)?;
+        let cells = mask.values.len();
         if let Ok(mut masks) = self.masks.lock()
             && cells <= self.budget
         {
@@ -237,7 +302,7 @@ impl Prepared {
                 masks.bytes = 0;
             }
             masks.bytes += cells;
-            masks.map.insert(key, Arc::clone(&mask));
+            masks.map.insert(key, mask.clone());
         }
         Ok(mask)
     }
@@ -416,38 +481,87 @@ fn balanced_vertex([a, b, c, d]: [Point; 4]) -> Point {
 }
 
 /// Splits a device coordinate into its fraction, snapped to `phases` per
-/// pixel, and its integer part.
-fn phase(value: f64, phases: u16) -> Result<(f64, i32)> {
+/// pixel and given as the index of that phase, and its integer part.
+fn phase(value: f64, phases: u16) -> Result<(u16, i32)> {
     let value = (value * f64::from(phases)).round() / f64::from(phases);
     if !value.is_finite() || value.abs() > 1e8 {
         return Err(Error::limit("glyph origin exceeds working range"));
     }
     #[expect(
         clippy::cast_possible_truncation,
-        reason = "finite coordinate range checked above"
+        clippy::cast_sign_loss,
+        reason = "finite coordinate range checked above; the fraction's phase lies in 0..phases"
     )]
-    let integer = value.floor() as i32;
-    Ok((value - f64::from(integer), integer))
+    let (integer, index) = {
+        let integer = value.floor() as i32;
+        let index = ((value - f64::from(integer)) * f64::from(phases)) as u16;
+        (integer, index)
+    };
+    Ok((index, integer))
 }
 
-/// One glyph placement in its bin: its mask and where it lies.
-#[derive(Debug)]
-pub(crate) struct Placement {
+/// A binned glyph placement whose clip state keeps every pixel its mask
+/// can cover: its mask's rows, within its bounds, are its coverage as they
+/// are, so they store without passing through band coverage.
+#[derive(Debug, Clone)]
+pub struct GlyphMask {
     mask: Arc<[u8]>,
     /// The device offset of the mask's first cell.
     x: i64,
     y: i64,
     width: usize,
-    height: usize,
+    /// The pixels it covers within the area, all within the mask.
+    bounds: DeviceRect,
+    work: usize,
+}
+
+impl GlyphMask {
+    /// The pixels the mask can cover within the area.
+    pub fn bounds(&self) -> DeviceRect {
+        self.bounds
+    }
+
+    /// Work units emitting its rows costs at most over all its bands, as
+    /// [`Shape::work`] bounds a shape's.
+    pub fn work(&self) -> usize {
+        self.work
+    }
+
+    /// Bytes retained: the mask itself is the glyph edges' (ADR 0016).
+    pub fn retained_bytes(&self) -> usize {
+        size_of::<Self>()
+    }
+
+    /// The coverage of row `y` within the bounds: its first column and one
+    /// value per pixel, zero where the glyph covers nothing; `None` for a
+    /// row outside the bounds.
+    pub fn row(&self, y: u32) -> Option<(u32, &[u8])> {
+        let b = self.bounds;
+        if y < b.y0 || y >= b.y1 {
+            return None;
+        }
+        let row = usize::try_from(i64::from(y) - self.y).ok()?;
+        let skip = usize::try_from(i64::from(b.x0) - self.x).ok()?;
+        let start = row.checked_mul(self.width)?.checked_add(skip)?;
+        let values = self
+            .mask
+            .get(start..start.checked_add(b.width() as usize)?)?;
+        Some((b.x0, values))
+    }
+
+    pub(crate) fn add_work(&mut self, units: usize) {
+        self.work = self.work.saturating_add(units);
+    }
 }
 
 /// Places binned `prepared` at `origin`: its mask at the origin's phases,
-/// kept with the edges or built now.
+/// kept with the edges or built now, and whether its clip state keeps all
+/// of it; `None` when it covers no pixel of the area.
 pub(crate) fn place(
     prepared: &Prepared,
     origin: Point,
     options: &Prep<'_>,
-) -> Result<Option<Shape>> {
+) -> Result<Option<(GlyphMask, bool)>> {
     if prepared.width == 0 {
         return Ok(None);
     }
@@ -459,60 +573,74 @@ pub(crate) fn place(
     let limit = options
         .clip
         .map_or(region, |clip| clip.bounds().intersect(&region));
-    let clamp = |v: i64, lo: u32, hi: u32| {
-        u32::try_from(v.clamp(i64::from(lo), i64::from(hi))).unwrap_or(lo)
+    // The pixels of the mask's columns and rows `[x0, y0, x1, y1]`.
+    let pixels = |[x0, y0, x1, y1]: [i64; 4]| {
+        let clamp = |v: i64, lo: u32, hi: u32| {
+            u32::try_from(v.clamp(i64::from(lo), i64::from(hi))).unwrap_or(lo)
+        };
+        DeviceRect {
+            x0: clamp(x.saturating_add(x0), limit.x0, limit.x1),
+            y0: clamp(y.saturating_add(y0), limit.y0, limit.y1),
+            x1: clamp(x.saturating_add(x1), limit.x0, limit.x1),
+            y1: clamp(y.saturating_add(y1), limit.y0, limit.y1),
+        }
     };
     let width = i64::try_from(prepared.width).unwrap_or(i64::MAX);
     let height = i64::try_from(prepared.height).unwrap_or(i64::MAX);
-    let bounds = DeviceRect {
-        x0: clamp(x, limit.x0, limit.x1),
-        y0: clamp(y, limit.y0, limit.y1),
-        x1: clamp(x.saturating_add(width), limit.x0, limit.x1),
-        y1: clamp(y.saturating_add(height), limit.y0, limit.y1),
-    };
-    if bounds.is_empty() {
+    if pixels([0, 0, width, height]).is_empty() {
         return Ok(None);
     }
     if prepared.work > options.limits.raster_work {
         return Err(Error::limit(super::shape::RASTER_WORK));
     }
-    let placement = Placement {
-        mask: prepared.mask((px, py))?,
+    let built = prepared.mask((px, py))?;
+    let hull = built.hull.map(i64::from);
+    let bounds = pixels(hull);
+    if bounds.is_empty() {
+        return Ok(None);
+    }
+    // Each row is emitted once; a multiplied clip scales each pixel.
+    let work = (prepared.width + 3).saturating_mul(bounds.height() as usize);
+    if work.saturating_mul(3) > options.limits.raster_work {
+        return Err(Error::limit(super::shape::RASTER_WORK));
+    }
+    let kept = options.clip.is_none_or(|clip| {
+        let [x0, y0, x1, y1] = hull;
+        let hull = Bounds {
+            left: x.saturating_add(x0) as f64,
+            top: y.saturating_add(y0) as f64,
+            right: x.saturating_add(x1) as f64,
+            bottom: y.saturating_add(y1) as f64,
+        };
+        clip.keeps(hull, bounds)
+    });
+    let mask = GlyphMask {
+        mask: built.values,
         x,
         y,
         width: prepared.width,
-        height: prepared.height,
+        bounds,
+        work: if kept { work } else { work * 3 },
     };
-    // Each row is emitted once; a multiplied clip scales each pixel.
-    let work = (prepared.width + 3).saturating_mul(bounds.height() as usize * 3);
-    if work > options.limits.raster_work {
-        return Err(Error::limit(super::shape::RASTER_WORK));
-    }
+    Ok(Some((mask, kept)))
+}
+
+/// The shape of a placement prepared in the clip state of `options`: its
+/// mask as it is where the clip keeps all of it (`kept`), the clip
+/// multiplied in elsewhere.
+pub(crate) fn shape(mask: GlyphMask, kept: bool, options: &Prep<'_>) -> Shape {
+    let (bounds, work) = (mask.bounds, mask.work);
     let mut shape = Shape::with_body(
-        Body::Binned(placement),
+        Body::Binned(mask),
         bounds,
         (FillRule::NonZero, work, 0),
         options,
     );
-    // A clip that keeps the whole mask is not multiplied in.
-    let mut frame = super::shape::Frame::new(options);
-    let hull = [
-        Point::new(x as f64, y as f64),
-        Point::new(
-            x.saturating_add(width) as f64,
-            y.saturating_add(height) as f64,
-        ),
-    ];
-    if let Some(frame) = &mut frame {
-        frame.fit(hull);
-    }
-    let contained = frame.is_some_and(|f| f.rect.is_none() && f.rows.is_none());
     shape.overlay = false;
-    if options.clip.is_some() && !contained {
-        shape.multiplied = options.clip.cloned();
-        shape.clip = None;
+    if !kept {
+        shape.multiplied = shape.clip.take();
     }
-    Ok(Some(shape))
+    shape
 }
 
 /// One row fragment of an edge, with its area scale.
@@ -696,55 +824,49 @@ fn ceil_index(value: f32) -> usize {
     truncated.saturating_add(usize::from((truncated as f32) < value))
 }
 
-/// Writes the rows of `placement` within `rows`, which lie within its
-/// shape's bounds, to `out`. Returns the work spent.
+/// Writes the rows of `mask` within `rows`, which lie within its shape's
+/// bounds, to `out`, multiplying in the clip its shape carries or is
+/// rasterized with. Returns the work spent.
 pub(crate) fn rasterize(
-    placement: &Placement,
+    mask: &GlyphMask,
     shape: (&Shape, Option<&ClipShape>),
     rows: std::ops::Range<u32>,
     (out, buffer): (&mut dyn RowOut, &mut Vec<u8>),
 ) -> usize {
-    let width = placement.width;
-    let mask = &placement.mask[..];
-    // Without a clip to multiply in, a mask row goes out as runs at once,
-    // within the shape's columns.
-    let plain = shape.0.multiplied.is_none() && shape.1.is_none();
-    let bounds = shape.0.bounds;
+    if shape.0.multiplied.is_none() && shape.1.is_none() {
+        return emit(mask, rows, out);
+    }
+    let width = mask.width;
     let mut work = 1;
     for y in rows {
-        let Some(line) = usize::try_from(i64::from(y) - placement.y)
+        let Some(line) = usize::try_from(i64::from(y) - mask.y)
             .ok()
-            .filter(|&r| r < placement.height)
-            .map(|r| &mask[r * width..(r + 1) * width])
+            .and_then(|r| mask.mask.get(r * width..(r + 1) * width))
         else {
             continue;
         };
         out.push_row(y);
-        if plain {
-            let x0 = i64::from(bounds.x0).max(placement.x);
-            let x1 = i64::from(bounds.x1).min(
-                placement
-                    .x
-                    .saturating_add(i64::try_from(width).unwrap_or(i64::MAX)),
-            );
-            if let (Ok(skip), Ok(end), Ok(at)) = (
-                usize::try_from(x0 - placement.x),
-                usize::try_from(x1 - placement.x),
-                u32::try_from(x0),
-            ) && skip < end
-            {
-                out.put_row(at, &line[skip..end]);
-            }
-            work += width + 3;
-            continue;
-        }
         let mut sink = super::raster::sink(out, shape, y, buffer);
-        for (x, &value) in (placement.x..).zip(line) {
+        for (x, &value) in (mask.x..).zip(line) {
             if let Ok(x) = usize::try_from(x) {
                 sink.run(x, x + 1, value);
             }
         }
         work += width + 3 + sink.extra();
+    }
+    work
+}
+
+/// Writes the rows of `mask` within `rows` to `out` as they are, each as
+/// runs at once within the mask's bounds. Returns the work spent.
+pub(crate) fn emit(mask: &GlyphMask, rows: std::ops::Range<u32>, out: &mut dyn RowOut) -> usize {
+    let mut work = 1;
+    for y in rows {
+        if let Some((x, values)) = mask.row(y) {
+            out.push_row(y);
+            out.put_row(x, values);
+            work += mask.width + 3;
+        }
     }
     work
 }
@@ -756,10 +878,10 @@ mod tests {
 
     #[test]
     fn phases_carry_across_integer_and_negative_origins() {
-        assert_eq!(phase(3.999, 128).unwrap(), (0.0, 4));
-        assert_eq!(phase(-0.25, 128).unwrap(), (0.75, -1));
-        assert_eq!(phase(0.97, 16).unwrap(), (0.0, 1));
-        assert_eq!(phase(0.1, 16).unwrap(), (0.125, 0));
+        assert_eq!(phase(3.999, 128).unwrap(), (0, 4));
+        assert_eq!(phase(-0.25, 128).unwrap(), (96, -1));
+        assert_eq!(phase(0.97, 16).unwrap(), (0, 1));
+        assert_eq!(phase(0.1, 16).unwrap(), (2, 0));
         assert!(phase(f64::INFINITY, 128).is_err());
     }
 

@@ -71,6 +71,15 @@ pub(crate) struct Rows {
 }
 
 impl Rows {
+    /// Whether every pixel of `pixels` lies in an inside run.
+    pub(crate) fn inside(&self, pixels: DeviceRect) -> bool {
+        (pixels.y0..pixels.y1).all(|y| {
+            self.row(y)
+                .iter()
+                .any(|s| s.cell == INSIDE && s.x0 <= pixels.x0 && s.x1 >= pixels.x1)
+        })
+    }
+
     /// The runs of row `y`, left to right; pixels between them are outside.
     pub(crate) fn row(&self, y: u32) -> &[Segment] {
         let index = self.index.partition_point(|&(row, _)| row < y);
@@ -304,6 +313,14 @@ impl ClipShape {
 
     pub(crate) fn same(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.inner, &other.inner)
+    }
+
+    /// Whether the clip keeps every pixel geometry within `hull` can touch,
+    /// `pixels` within the region: its rectangle contains the hull, and its
+    /// rows are inside across those pixels.
+    pub(crate) fn keeps(&self, hull: Bounds, pixels: DeviceRect) -> bool {
+        self.rect().is_none_or(|r| r.contains(hull))
+            && self.rows().is_none_or(|rows| rows.inside(pixels))
     }
 }
 

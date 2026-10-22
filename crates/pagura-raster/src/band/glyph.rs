@@ -8,7 +8,7 @@
 //! curve where its contours are certified at least two flattening
 //! tolerances apart, so that the curves cannot meet either.
 
-use super::binned;
+use super::binned::{self, GlyphMask};
 use super::certify::certified;
 use super::curve::{self, Piece, Quadratic};
 use super::edges::{self, Bounds, Line, Polygon, RowList};
@@ -318,11 +318,34 @@ pub(crate) fn place(
 ) -> Result<Option<Shape>> {
     let mut shape = placed(edges, origin, origins, options)?;
     if let Some(shape) = &mut shape {
-        // In a run, its rows are kept apart and then merged.
-        let b = shape.bounds();
-        shape.add_work((b.height() as usize).saturating_mul(2 * b.width() as usize + 2) + 1);
+        shape.add_work(merged(shape.bounds()));
     }
     Ok(shape)
+}
+
+/// The mask of binned `edges` placed at `origin` when its clip state keeps
+/// all of it; `None` for any other placement.
+pub(crate) fn mask(
+    edges: &GlyphEdges,
+    origin: Point,
+    options: &Prep<'_>,
+) -> Result<Option<GlyphMask>> {
+    let Kind::Binned(prepared) = &edges.kind else {
+        return Ok(None);
+    };
+    bounded(origin)?;
+    Ok(match binned::place(prepared, origin, options)? {
+        Some((mut mask, true)) => {
+            mask.add_work(merged(mask.bounds()));
+            Some(mask)
+        }
+        _ => None,
+    })
+}
+
+/// Work keeping a placement's rows apart in a run and merging them.
+fn merged(b: super::DeviceRect) -> usize {
+    (b.height() as usize).saturating_mul(2 * b.width() as usize + 2) + 1
 }
 
 fn placed(
@@ -335,7 +358,8 @@ fn placed(
     let exact = match &edges.kind {
         Kind::Binned(prepared) => {
             let _ = origins;
-            return binned::place(prepared, origin, options);
+            let placed = binned::place(prepared, origin, options)?;
+            return Ok(placed.map(|(mask, kept)| binned::shape(mask, kept, options)));
         }
         Kind::Exact(exact) => exact,
     };
