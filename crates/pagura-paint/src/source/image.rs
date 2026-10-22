@@ -11,6 +11,8 @@
 
 mod codes;
 mod geometry;
+#[cfg(test)]
+mod proto;
 mod separable;
 #[cfg(test)]
 mod tests;

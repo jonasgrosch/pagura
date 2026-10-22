@@ -20,6 +20,7 @@ use std::sync::Arc;
 mod accuracy;
 mod documents;
 mod oracle;
+mod study;
 mod timing;
 
 /// A prepared conversion of `base` into a composite target of `channels`

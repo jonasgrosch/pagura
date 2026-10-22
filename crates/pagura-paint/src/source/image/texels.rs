@@ -230,6 +230,12 @@ impl Colors {
     fn code_texel(&self, code: u16, out: &mut [f64]) {
         self.texel(&[code], Extra::default(), out);
     }
+
+    /// The texel of one sample's `codes` without embedded opacity or Matte.
+    #[cfg(test)]
+    pub(super) fn plain_texel(&self, codes: &[u16], out: &mut [f64]) {
+        self.texel(codes, Extra::default(), out);
+    }
 }
 
 /// Opacities of a soft or stencil mask's samples (8.9.6.2–8.9.6.3).
@@ -267,6 +273,12 @@ impl Opacity {
             opacity.table = Some((0..1u16 << bits).map(|code| opacity.of(code)).collect());
         }
         opacity
+    }
+
+    /// The opacity of one code, for tests.
+    #[cfg(test)]
+    pub(super) fn of_code(&self, code: u16) -> f64 {
+        self.of(code)
     }
 
     /// The opacity of one code.
