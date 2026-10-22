@@ -9,7 +9,9 @@
 //!
 //! Under an opaque store, a binned placement whose clip state keeps all of
 //! it stores its mask's rows straight into the page, in content order with
-//! the placements that store one by one.
+//! the placements that store one by one. Zero coverage leaves a pixel as
+//! it is and full coverage stores the colour, as band coverage does, so
+//! the bytes are again those of one item per placement.
 
 use super::{Executor, Extents, Frame, Opaque, Stores, Tops, clamp, opaque_store};
 use crate::plan::{Glyph, Item, Mark, Run, intersect};
@@ -125,7 +127,7 @@ impl Stores for MaskRows<'_> {
         let (lo, hi) = (block.x0 - rect.x0, block.x1 - rect.x0);
         let first = u32_to_usize(block.y0 - rect.y0);
         let mut at = first * width + u32_to_usize(lo);
-        for values in cells.chunks(stride).take(rows) {
+        for values in cells.chunks(stride.max(1)).take(rows) {
             if let (Some(pixels), Some(values)) =
                 (page.get_mut(at..at + columns), values.get(..columns))
             {
