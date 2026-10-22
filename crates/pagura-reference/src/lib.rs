@@ -17,12 +17,16 @@
 //!   and the contract's sampling definitions (ADR 0004);
 //! - the output is composited onto the background and quantized once.
 //!
+//! [`exact`] gives the coverage of single fills, strokes and glyph
+//! placements for differential tests of the band rasterizer.
+//!
 //! Test only; never a product dependency.
 
 mod area;
 mod blend;
 mod buffer;
 mod color;
+pub mod exact;
 mod flatten;
 mod image;
 mod overprint;
@@ -32,5 +36,6 @@ mod request;
 mod shading;
 mod shapes;
 
+pub use area::Region;
 pub use render::render;
 pub use request::{Overprint, Rendering, Request};

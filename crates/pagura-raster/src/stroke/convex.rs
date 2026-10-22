@@ -21,7 +21,7 @@ pub(super) fn boundaries(
         return Ok(None);
     }
     let mut work = 0;
-    crate::coverage::charge(
+    super::charge(
         &mut work,
         points.len().saturating_mul(14),
         limits.raster_work,
@@ -55,7 +55,7 @@ pub(super) fn boundaries(
     let mut outer = buffer(points.len() * 3)?;
     let mut inner = buffer(if filled { 0 } else { points.len() })?;
     for i in 0..points.len() {
-        crate::coverage::charge(&mut work, 1, limits.raster_work)?;
+        super::charge(&mut work, 1, limits.raster_work)?;
         let a = directions[if i == 0 { directions.len() - 1 } else { i - 1 }];
         let b = directions[i];
         let dot = a.x * b.x + a.y * b.y;
@@ -265,16 +265,18 @@ mod tests {
         assert_eq!(inner, []);
         let mut out = PathBuilder::new();
         append(&mut out, [outer, inner], &limits).unwrap();
-        let mask = crate::Mask::from_path(
-            8,
-            8,
-            &out.finish(),
-            crate::Transform::IDENTITY,
-            crate::FillRule::NonZero,
-            64,
+        let coverage = crate::testing::fill(
+            crate::testing::window(8, 8),
+            (
+                &out.finish(),
+                crate::Transform::IDENTITY,
+                crate::FillRule::NonZero,
+            ),
+            &[],
+            &limits,
         )
         .unwrap();
-        assert_eq!(mask.coverage(), [255; 64]);
+        assert_eq!(coverage, [255; 64]);
         // A short side's inner offset reverses while a large hole remains.
         let step = (std::f64::consts::TAU - 0.01) / 15.0;
         let short = polygon(

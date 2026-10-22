@@ -202,6 +202,7 @@ version = "0.1.0"
 dependencies = [
  "pagura-core",
  "pagura-font",
+ "pagura-reference",
  "pagura-testkit",
 ]
 

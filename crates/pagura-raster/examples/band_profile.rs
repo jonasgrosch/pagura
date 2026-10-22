@@ -1,8 +1,7 @@
-//! Times coverage generation of the band rasterizer against the old exact
-//! path (`stroke_outline` and `Rasterizer::clipped_coverage`) on many small
-//! strokes and fills and on large fills. Coverage only: nothing is
-//! composited. Timings are hypotheses until measured under the
-//! performance policy (`docs/ARCHITECTURE.md`).
+//! Times coverage generation of the band rasterizer on many small strokes
+//! and fills and on large fills, or on the marks of a page read from a file.
+//! Coverage only: nothing is composited. Timings are hypotheses until
+//! measured under the performance policy (`docs/ARCHITECTURE.md`).
 //!
 //! `cargo run --release -p pagura-raster --example band_profile`
 #![expect(
@@ -13,12 +12,11 @@
 
 use pagura_core::{Limits, Meter};
 use pagura_raster::{
-    Adjustment, Area, BandCoverage, BandRasterizer, ClipRegion, Coverage, DeviceRect, FillRule,
-    LineCap, LineJoin, MarkCoverage, Path, PathBuilder, Point, Precision, Rasterizer, Shape,
-    ShapeOptions, Span, Stroke, Transform,
+    Adjustment, Area, BandCoverage, BandRasterizer, DeviceRect, FillRule, LineCap, LineJoin,
+    MarkCoverage, Path, PathBuilder, Point, Precision, Shape, ShapeOptions, Span, Stroke,
+    Transform,
 };
 use std::error::Error;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 struct Lcg(u64);
@@ -189,55 +187,8 @@ fn large_fills(count: usize) -> Result<Vec<Mark>, Box<dyn Error>> {
     Ok(marks)
 }
 
-fn old(marks: &[Mark], scale: f64, area: &Area) -> Result<u64, Box<dyn Error>> {
-    let limits = Limits::default();
-    let r = area.region;
-    let mut whole = PathBuilder::new();
-    whole.rect(-1.0, -1.0, f64::from(r.x1) + 2.0, f64::from(r.y1) + 2.0);
-    let clip = ClipRegion::from_path(
-        r.width(),
-        r.height(),
-        &whole.finish(),
-        Transform::IDENTITY,
-        FillRule::NonZero,
-        limits,
-        (r.x0, r.y0),
-    )?;
-    let device = Transform::new(scale, 0.0, 0.0, -scale, 0.0, f64::from(area.region.y1));
-    let mut raster = Rasterizer::default();
-    let mut sum = 0_u64;
-    for mark in marks {
-        let (path, transform, rule) = match mark {
-            Mark::Fill(path, rule) => (path.clone(), device, *rule),
-            Mark::Stroke(path, stroke, pen) => {
-                let user = path.transformed(pen.inverse().ok_or("singular pen")?);
-                let (outline, t) =
-                    pagura_raster::stroke_outline(&user, pen.then(device), stroke, &limits)?;
-                (outline, t, FillRule::NonZero)
-            }
-        };
-        if let Some(coverage) =
-            raster.clipped_coverage(&clip, Arc::new(path), transform, rule, limits)?
-        {
-            match &coverage {
-                Coverage::Mask(mask) => {
-                    sum += mask.coverage().iter().map(|&v| u64::from(v)).sum::<u64>();
-                }
-                Coverage::Rectangle(rect) => {
-                    sum += rect
-                        .spans()
-                        .flat_map(|(_, _, run)| run)
-                        .map(|&v| u64::from(v))
-                        .sum::<u64>();
-                }
-            }
-            raster.recycle(coverage);
-        }
-    }
-    Ok(sum)
-}
-
-fn new(marks: &[Mark], scale: f64, area: &Area) -> Result<u64, Box<dyn Error>> {
+/// Rasterizes every mark at `scale` over `area`; the sum of the coverage.
+fn rasterize(marks: &[Mark], scale: f64, area: &Area) -> Result<u64, Box<dyn Error>> {
     let limits = Limits::default();
     let mut bytes = Meter::new(usize::MAX, "bytes");
     let mut raster = BandRasterizer::new(*area, &mut bytes)?;
@@ -286,54 +237,13 @@ fn new(marks: &[Mark], scale: f64, area: &Area) -> Result<u64, Box<dyn Error>> {
     Ok(sum)
 }
 
-fn compare(marks: &[Mark], (width, height): (f64, f64)) -> Result<(), Box<dyn Error>> {
-    let area = Area {
-        region: DeviceRect {
-            x0: 0,
-            y0: 0,
-            x1: width as u32,
-            y1: height as u32,
-        },
-        band_height: 16,
-    };
-    let mut worst = (0, 0, 0usize);
-    for (i, mark) in marks.iter().enumerate().take(3000) {
-        let one = std::slice::from_ref(mark);
-        let (a, b) = (old(one, 1.0, &area)?, new(one, 1.0, &area)?);
-        if a != b {
-            worst.2 += 1;
-            if a.abs_diff(b) > worst.1 {
-                worst = (i, a.abs_diff(b), worst.2);
-            }
-            if worst.2 < 5 {
-                match mark {
-                    Mark::Stroke(path, stroke, pen) => {
-                        println!("{i}: {a} {b} {stroke:?} {pen:?} {:?}", path.segments());
-                    }
-                    Mark::Fill(path, rule) => {
-                        println!("{i}: {a} {b} {rule:?} {:?}", path.segments());
-                    }
-                }
-            }
-        }
-    }
-    println!("{worst:?}");
-    Ok(())
-}
-
-type Producer = fn(&[Mark], f64, &Area) -> Result<u64, Box<dyn Error>>;
-
-fn best(
-    marks: &[Mark],
-    scale: f64,
-    area: &Area,
-    run: Producer,
-) -> Result<(Duration, u64), Box<dyn Error>> {
+/// The best of seven runs and the coverage sum.
+fn best(marks: &[Mark], scale: f64, area: &Area) -> Result<(Duration, u64), Box<dyn Error>> {
     let mut best = Duration::MAX;
     let mut sum = 0;
     for _ in 0..7 {
         let start = Instant::now();
-        sum = run(marks, scale, area)?;
+        sum = rasterize(marks, scale, area)?;
         best = best.min(start.elapsed());
     }
     Ok((best, sum))
@@ -380,13 +290,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         };
         let mut sum = 0;
         for _ in 0..100 {
-            sum += new(marks, 1.0, &area)?;
+            sum += rasterize(marks, 1.0, &area)?;
         }
         println!("{sum}");
-        return Ok(());
-    }
-    if std::env::var("COMPARE").is_ok() {
-        compare(&workloads[0].1, workloads[0].2)?;
         return Ok(());
     }
     for (name, marks, (width, height)) in &workloads {
@@ -401,13 +307,10 @@ fn main() -> Result<(), Box<dyn Error>> {
                 },
                 band_height,
             };
-            let (t_old, s_old) = best(marks, scale, &area, old)?;
-            let (t_new, s_new) = best(marks, scale, &area, new)?;
+            let (time, sum) = best(marks, scale, &area)?;
             println!(
-                "{name} at {dpi} dpi, bands of {band_height}: old {:.2} ms, band {:.2} ms ({:.2}x); coverage sums {s_old} / {s_new}",
-                t_old.as_secs_f64() * 1e3,
-                t_new.as_secs_f64() * 1e3,
-                t_old.as_secs_f64() / t_new.as_secs_f64()
+                "{name} at {dpi} dpi, bands of {band_height}: {:.2} ms; coverage sum {sum}",
+                time.as_secs_f64() * 1e3
             );
         }
     }
