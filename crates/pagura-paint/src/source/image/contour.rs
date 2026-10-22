@@ -105,7 +105,12 @@ impl Contour {
     /// `texels.lanes()` values each, into `out`; the alpha and shape of
     /// opaque texels are 1 where a pixel's footprint meets the image and 0
     /// elsewhere.
-    pub(super) fn fill(&self, (x, y, len): (u32, u32, usize), texels: &impl Texels, out: &mut [f64]) {
+    pub(super) fn fill(
+        &self,
+        (x, y, len): (u32, u32, usize),
+        texels: &impl Texels,
+        out: &mut [f64],
+    ) {
         let mut guard = match self.scratch.try_lock() {
             Ok(guard) => Some(guard),
             Err(TryLockError::Poisoned(poisoned)) => Some(poisoned.into_inner()),
@@ -189,10 +194,9 @@ impl Contour {
         }
         let stride = N + 1;
         for (j, pixel) in out.chunks_exact_mut(lanes).take(len).enumerate() {
-            let (Some(upper), Some(lower)) = (
-                scratch.upper.get(j..j + 2),
-                scratch.lower.get(j..j + 2),
-            ) else {
+            let (Some(upper), Some(lower)) =
+                (scratch.upper.get(j..j + 2), scratch.lower.get(j..j + 2))
+            else {
                 continue;
             };
             let top = self.walk::<N>((upper[0], upper[1]), scratch);
@@ -382,7 +386,11 @@ fn row_at(scratch: &Scratch, index: f64) -> Option<&Row> {
 /// `F` at `x` in cell `k` of `row` (`N` values, from its sums), and the
 /// area's `F`: the distance from the base, within the image.
 #[inline]
-fn value<const N: usize>(row: &Row, (k, x, width): (f64, f64, f64), sums: &[f64]) -> ([f64; N], f64) {
+fn value<const N: usize>(
+    row: &Row,
+    (k, x, width): (f64, f64, f64),
+    sums: &[f64],
+) -> ([f64; N], f64) {
     let mut out = [0.0; N];
     if k < 0.0 || row.end <= row.first && x < row.base {
         return (out, 0.0);
@@ -395,7 +403,14 @@ fn value<const N: usize>(row: &Row, (k, x, width): (f64, f64, f64), sums: &[f64]
             out.copy_from_slice(sum);
         }
         let x = x.clamp(row.base, width);
-        return (out, if k >= width { width - row.base } else { x - row.base });
+        return (
+            out,
+            if k >= width {
+                width - row.base
+            } else {
+                x - row.base
+            },
+        );
     }
     let cell = coordinate(k).clamp(row.first, row.end - 1) - row.first;
     let fraction = x - (cell + row.first) as f64;
@@ -491,5 +506,3 @@ impl Texels for Ones {
         }
     }
 }
-
-

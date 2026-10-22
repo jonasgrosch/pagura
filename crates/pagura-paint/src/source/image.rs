@@ -71,6 +71,8 @@ struct Prepared {
     separable: Option<Separable>,
     /// Contour sampling where a turned placement minifies.
     contour: Option<Contour>,
+    /// Texel values of a span before they become words.
+    scratch: std::sync::Mutex<Vec<f64>>,
 }
 
 #[derive(Debug)]
@@ -395,6 +397,24 @@ impl ImageSampler {
         self.fill((x, y, len), out, Some(shape));
     }
 
+    /// Writes the N16 words of device pixels `x .. x + out.len()` of row
+    /// `y` into `out`, as a store at full opacity writes opaque colours,
+    /// where every pixel of the span is opaque and its colour needs no
+    /// other pass: an RGB image without a mask whose pixels take nearest
+    /// samples. False, with `out` unspecified, otherwise.
+    pub fn words(&self, x: u32, y: u32, out: &mut [[u16; 4]]) -> bool {
+        let Some(prepared) = &self.prepared else {
+            return false;
+        };
+        if self.channels != 3 || prepared.mask.is_some() {
+            return false;
+        }
+        match &prepared.codes {
+            Some(codes) => codes.words(&prepared.image.image, (x, y), out),
+            None => prepared.texel_words((x, y), out),
+        }
+    }
+
     fn fill(
         &self,
         (x, y, len): (u32, u32, usize),
@@ -432,7 +452,11 @@ impl ImageSampler {
                 opacity: &mask.opacity,
             };
             sample(
-                (mask.separable.as_ref(), mask.contour.as_ref(), &mask.geometry),
+                (
+                    mask.separable.as_ref(),
+                    mask.contour.as_ref(),
+                    &mask.geometry,
+                ),
                 (x, y, len),
                 &texels,
                 &mut out.alpha,
@@ -506,6 +530,44 @@ impl Prepared {
             }
             None => sample(plan, span, texels, out),
         }
+    }
+
+    /// [`ImageSampler::words`] of opaque texels sampled nearest: the
+    /// texels, then their words.
+    fn texel_words(&self, (x, y): (u32, u32), out: &mut [[u16; 4]]) -> bool {
+        let lanes = 5;
+        let opaque = match &self.paint {
+            Paint::Colors(paint) => match &paint.1 {
+                Strategy::Table(_, opaque) => *opaque,
+                Strategy::Rgb(_) => true,
+                Strategy::Memo(memo) => memo
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner)
+                    .opaque(),
+                Strategy::General => false,
+            },
+            Paint::Stencil { .. } => false,
+        };
+        let nearest = self.separable.as_ref().is_some_and(Separable::nearest);
+        if !opaque || !nearest {
+            return false;
+        }
+        let len = out.len();
+        let mut guard = self.scratch.try_lock().ok();
+        let mut own = Vec::new();
+        let values = guard.as_deref_mut().unwrap_or(&mut own);
+        values.clear();
+        values.resize(len * lanes, 0.0);
+        self.texels((x, y, len), lanes, values);
+        for (pixel, texel) in out.iter_mut().zip(values.as_chunks::<5>().0) {
+            *pixel = [
+                crate::kernel::opaque_word(texel[0]),
+                crate::kernel::opaque_word(texel[1]),
+                crate::kernel::opaque_word(texel[2]),
+                u16::MAX,
+            ];
+        }
+        true
     }
 
     /// [`ImageSampler::fill`] of an image whose mask is on its grid: the
@@ -956,6 +1018,7 @@ impl Prepared {
                 codes,
                 separable,
                 contour,
+                scratch: std::sync::Mutex::new(Vec::new()),
             },
             conversions,
         ))

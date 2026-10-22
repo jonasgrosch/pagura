@@ -748,3 +748,37 @@ fn rows_and_tables_sum_as_samples_do() {
         }
     }
 }
+
+/// Wherever the sampler writes a span's words itself, they are the words
+/// a store at full opacity writes for its colours.
+#[test]
+fn words_store_as_opaque_spans_do() {
+    let rgb = case(image((9, 12), 3, 8, bytes(9 * 12 * 3, 8, 5)));
+    let gray = case(image((13, 9), 1, 8, bytes(13 * 9, 8, 3)));
+    let mut icc_like = case(image((10, 8), 3, 8, bytes(10 * 8 * 3, 8, 7)));
+    icc_like.decode = vec![[0.1, 0.9], [0.0, 1.0], [1.0, 0.0]];
+    let mut written = 0;
+    for case in [&rgb, &gray, &icc_like] {
+        for target in [3, 4] {
+            for unit_to_device in placements(case.image.width, case.image.height) {
+                let sampler = sampler(case, unit_to_device, target);
+                let (x0, y0, x1, y1) = window(unit_to_device);
+                let len = usize::try_from(x1 - x0).unwrap();
+                let mut span = SpanColors::default();
+                for y in y0..y1 {
+                    let mut words = vec![[0u16; 4]; len];
+                    if !sampler.words(x0, y, &mut words) {
+                        continue;
+                    }
+                    written += 1;
+                    sampler.span(x0, y, len, &mut span);
+                    assert!(span.alpha.iter().all(|&a| a == 1.0));
+                    let mut expected = vec![[0u16; 4]; len];
+                    crate::kernel::overwrite_n16(&mut expected, &span.colors);
+                    assert_eq!(words, expected, "{unit_to_device:?} row {y}");
+                }
+            }
+        }
+    }
+    assert!(written > 0);
+}

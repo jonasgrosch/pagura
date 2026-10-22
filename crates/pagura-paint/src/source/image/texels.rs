@@ -362,11 +362,17 @@ impl Strategy {
         }
         if let Some(key) = Key::new(image, colors) {
             let samples = u64::from(image.width) * u64::from(image.height);
-            let entries = usize::try_from(samples).unwrap_or(usize::MAX).min(Memo::CAP);
+            let entries = usize::try_from(samples)
+                .unwrap_or(usize::MAX)
+                .min(Memo::CAP);
             let opaque = colors.key.is_none() && colors.embedded.is_none();
             let held = if opaque { lanes - 2 } else { lanes };
             return (
-                Self::Memo(Box::new(Mutex::new(Memo::new(key, held, entries)))),
+                Self::Memo(Box::new(Mutex::new(Memo::new(
+                    key,
+                    (held, opaque),
+                    entries,
+                )))),
                 0,
             );
         }
@@ -664,7 +670,9 @@ impl<T: Texels> Texels for Fused<'_, T> {
         let mut start = 0;
         while start < count {
             let take = (count - start).min(opacities.len());
-            let first = cells.0.saturating_add(u32::try_from(start).unwrap_or(u32::MAX));
+            let first = cells
+                .0
+                .saturating_add(u32::try_from(start).unwrap_or(u32::MAX));
             let end = first.saturating_add(u32::try_from(take).unwrap_or(u32::MAX));
             self.mask.row(row, (first, end), &mut opacities[..take]);
             for ((pixel, &opacity), value) in out[start * stride..]
@@ -726,6 +734,9 @@ impl Key {
 #[derive(Debug)]
 pub(super) struct Memo {
     key: Key,
+    /// Whether every texel has alpha and shape 1, which it then does not
+    /// hold.
+    opaque: bool,
     held: usize,
     /// The most texels the image's samples can make.
     bound: usize,
@@ -743,15 +754,22 @@ impl Memo {
     /// The most texels kept.
     pub(super) const CAP: usize = 1 << 20;
 
-    fn new(key: Key, held: usize, bound: usize) -> Self {
+    fn new(key: Key, (held, opaque): (usize, bool), bound: usize) -> Self {
         Self {
             key,
+            opaque,
             held,
             bound,
             slots: Vec::new(),
             len: 0,
             spare: Vec::new(),
         }
+    }
+
+    /// Whether every texel has alpha and shape 1, which the memo then does
+    /// not hold.
+    pub(super) fn opaque(&self) -> bool {
+        self.opaque
     }
 
     /// The most bytes the memo holds: slots for its texels at most half
@@ -943,7 +961,7 @@ impl Texels for MemoTexels<'_> {
     }
 
     fn opaque(&self) -> bool {
-        self.memo.borrow().held + 2 == self.colors.lanes()
+        self.memo.borrow().opaque
     }
 
     fn get(&self, index: usize, out: &mut [f64]) {

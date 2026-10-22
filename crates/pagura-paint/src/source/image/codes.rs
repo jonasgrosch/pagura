@@ -423,6 +423,9 @@ pub(super) struct Codes {
     components: usize,
     clean: Option<Clean>,
     separable: Separable,
+    /// Per colour lane, the N16 word of each code's colour, where three
+    /// opaque lanes take nearest samples.
+    words: Option<Box<[[u16; 256]; 3]>>,
 }
 
 impl Codes {
@@ -459,12 +462,53 @@ impl Codes {
             Samples::Planar(planar) => Some(Clean::new(planar)),
             _ => None,
         };
+        let words = word_tables(&lanes, components, &separable);
         Ok(Some(Self {
             lanes,
             components,
             clean,
             separable,
+            words,
         }))
+    }
+
+    /// Writes the N16 words of the opaque colours of device pixels
+    /// `x .. x + len` of row `y` into `out`, as a store at full opacity
+    /// writes them; false, with nothing written, unless the image's three
+    /// lanes are opaque and its pixels take nearest samples.
+    pub(super) fn words(
+        &self,
+        image: &DecodedImage,
+        (x, y): (u32, u32),
+        out: &mut [[u16; 4]],
+    ) -> bool {
+        let Some(words) = self.words.as_deref() else {
+            return false;
+        };
+        let Some(grid) = Grid::new(image, self.clean.as_ref()) else {
+            return false;
+        };
+        let rows = CodeRows {
+            grid,
+            components: self.components,
+            complement: None,
+        };
+        let n = rows.width().max(1);
+        let &[a, b, c] = self.lanes.component.as_slice() else {
+            return false;
+        };
+        let code = |sample: &[u8], k: usize| usize::from(sample.get(k).copied().unwrap_or(0));
+        self.separable.gather(&rows, (x, y, out.len()), |codes| {
+            for (pixel, sample) in out.iter_mut().zip(codes.chunks_exact(n)) {
+                *pixel = [
+                    words[0][code(sample, a)],
+                    words[1][code(sample, b)],
+                    words[2][code(sample, c)],
+                    u16::MAX,
+                ];
+            }
+        });
+        true
     }
 
     /// Bytes the plan and lanes hold.
@@ -476,6 +520,7 @@ impl Codes {
 
     /// Replaces the lanes, keeping the placement.
     pub(super) fn set_lanes(&mut self, lanes: Lanes) {
+        self.words = word_tables(&lanes, self.components, &self.separable);
         self.lanes = lanes;
         self.separable.forget();
     }
@@ -554,6 +599,27 @@ impl Codes {
         self.separable
             .average(&rows, (x, y, len), None, (|average| average, finish));
     }
+}
+
+/// Per colour lane, the N16 word of each code's colour as
+/// [`Lanes::write_codes`] gives it, for three opaque lanes sampled nearest.
+fn word_tables(
+    lanes: &Lanes,
+    components: usize,
+    separable: &Separable,
+) -> Option<Box<[[u16; 256]; 3]>> {
+    if !separable.nearest() || !lanes.opaque || lanes.table.len() != 3 {
+        return None;
+    }
+    let direct = lanes.codes.as_deref().filter(|_| components == 3);
+    let mut words = Box::new([[0u16; 256]; 3]);
+    for (words, table) in words.iter_mut().zip(&lanes.table) {
+        for (code, word) in words.iter_mut().enumerate() {
+            let value = direct.map_or(table[code], |direct| direct[code]);
+            *word = crate::kernel::opaque_word(value);
+        }
+    }
+    Some(words)
 }
 
 /// An image's samples as rows of codes, each of a one-component image

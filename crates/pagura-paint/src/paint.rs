@@ -71,6 +71,14 @@ pub(crate) trait PaintSpans: Send + Sync + fmt::Debug {
     fn repairs(&self) -> &[Diagnostic] {
         &[]
     }
+
+    /// Writes into `out` the N16 words a store at full opacity writes for
+    /// device pixels `x .. x + out.len()` of row `y`, where the paint gives
+    /// them without forming colours first; false otherwise.
+    fn words(&self, x: u32, y: u32, out: &mut [[u16; 4]]) -> bool {
+        let _ = (x, y, out);
+        false
+    }
 }
 
 impl PaintSpans for Source {
@@ -147,6 +155,13 @@ impl PaintSpans for Source {
         match self {
             Self::Image(image) => image.repairs(),
             Self::Solid { .. } | Self::Shading(_) => &[],
+        }
+    }
+
+    fn words(&self, x: u32, y: u32, out: &mut [[u16; 4]]) -> bool {
+        match self {
+            Self::Image(image) => image.words(x, y, out),
+            Self::Solid { .. } | Self::Shading(_) => false,
         }
     }
 }
