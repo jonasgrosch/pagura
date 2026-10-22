@@ -12,6 +12,7 @@
 
 use super::DeviceRect;
 use super::clip::{ClipShape, fill_polygon};
+use super::coverage::RowOut;
 use super::edges::{self, Bounds, Line, Polygon, RowList, rows};
 use super::raster::Out;
 use super::row::Sink;
@@ -23,55 +24,37 @@ use pagura_core::{Error, Meter, Result};
 /// The chord tolerance of approximate cells, in device pixels.
 pub(crate) const TOLERANCE: f64 = 1.0 / 64.0;
 
-/// A shape's edges for approximate cells, in contour order.
+/// A shape's edges for approximate cells, in contour order; a small mark's
+/// are accumulated edge by edge into a grid instead of listed per row.
 #[derive(Debug)]
 pub(crate) struct Cells {
     lines: Vec<Line>,
-    index: RowList,
+    index: Option<RowList>,
     scan: (usize, usize),
 }
 
-/// Reusable f32 cells of one row.
+/// The cells of the largest mark accumulated in the grid.
+const GRID_CELLS: usize = 1 << 14;
+
+/// Reusable f32 cells of one row, and of a small mark's rows.
 #[derive(Debug, Default)]
 pub(crate) struct Scratch {
     values: Vec<f32>,
     touched: Vec<u64>,
     product: Vec<u8>,
+    grid: Vec<f32>,
+    bytes: Vec<u8>,
 }
 
-impl Scratch {
-    pub(crate) fn new(width: usize, bytes: &mut Meter) -> Result<Self> {
-        let mut scratch = Self::default();
-        bytes.reserve(&mut scratch.values, width)?;
-        bytes.reserve(&mut scratch.touched, width.div_ceil(64) + 1)?;
-        bytes.reserve(&mut scratch.product, width)?;
-        scratch.values.resize(width, 0.0);
-        scratch.touched.resize(width.div_ceil(64) + 1, 0);
-        Ok(scratch)
-    }
+/// Where an edge adds its f32 deltas.
+trait Deltas {
+    /// The number of device columns cells exist for.
+    fn right_edge(&self) -> f64;
+    /// Adds `value` to the cell of device column `x`; zero adds nothing.
+    fn delta(&mut self, x: usize, value: f32);
 
-    pub(crate) fn retained_bytes(&self) -> usize {
-        self.values
-            .capacity()
-            .saturating_mul(4)
-            .saturating_add(self.touched.capacity().saturating_mul(8))
-            .saturating_add(self.product.capacity())
-    }
-
-    #[inline]
-    fn delta(&mut self, x: usize, value: f32) {
-        if value != 0.0
-            && let Some(cell) = self.values.get_mut(x)
-        {
-            *cell += value;
-            if let Some(word) = self.touched.get_mut(x / 64) {
-                *word |= 1 << (x % 64);
-            }
-        }
-    }
-
-    /// Adds the part of `line` within row `top..top + 1`. Returns the cells
-    /// visited.
+    /// Adds the part of `line` within row `top..top + 1`. Returns the
+    /// cells visited.
     #[expect(
         clippy::cast_possible_truncation,
         clippy::cast_sign_loss,
@@ -87,7 +70,7 @@ impl Scratch {
         let dx = (b.x - a.x) / (b.y - a.y);
         let ax = a.x + (low - a.y) * dx;
         let bx = a.x + (high - a.y) * dx;
-        let right_edge = self.values.len() as f64;
+        let right_edge = self.right_edge();
         if ax == bx {
             if ax < 0.0 {
                 self.delta(0, ((high - low) * sign) as f32);
@@ -132,6 +115,75 @@ impl Scratch {
         }
         count
     }
+}
+
+impl Deltas for Scratch {
+    #[expect(clippy::cast_precision_loss, reason = "row widths are far below 2^52")]
+    fn right_edge(&self) -> f64 {
+        self.values.len() as f64
+    }
+
+    #[inline]
+    fn delta(&mut self, x: usize, value: f32) {
+        if value != 0.0
+            && let Some(cell) = self.values.get_mut(x)
+        {
+            *cell += value;
+            if let Some(word) = self.touched.get_mut(x / 64) {
+                *word |= 1 << (x % 64);
+            }
+        }
+    }
+}
+
+/// One row of a small mark's grid: its scanned columns from `base`.
+struct GridRow<'a> {
+    base: usize,
+    right_edge: f64,
+    values: &'a mut [f32],
+}
+
+impl Deltas for GridRow<'_> {
+    fn right_edge(&self) -> f64 {
+        self.right_edge
+    }
+
+    #[inline]
+    fn delta(&mut self, x: usize, value: f32) {
+        if value != 0.0
+            && let Some(cell) = x
+                .checked_sub(self.base)
+                .and_then(|x| self.values.get_mut(x))
+        {
+            *cell += value;
+        }
+    }
+}
+
+impl Scratch {
+    pub(crate) fn new(width: usize, bytes: &mut Meter) -> Result<Self> {
+        let mut scratch = Self::default();
+        bytes.reserve(&mut scratch.values, width)?;
+        bytes.reserve(&mut scratch.touched, width.div_ceil(64) + 1)?;
+        bytes.reserve(&mut scratch.product, width)?;
+        bytes.reserve(&mut scratch.grid, GRID_CELLS)?;
+        bytes.reserve(&mut scratch.bytes, GRID_CELLS)?;
+        scratch.values.resize(width, 0.0);
+        scratch.touched.resize(width.div_ceil(64) + 1, 0);
+        scratch.grid.resize(GRID_CELLS, 0.0);
+        scratch.bytes.resize(GRID_CELLS, 0);
+        Ok(scratch)
+    }
+
+    pub(crate) fn retained_bytes(&self) -> usize {
+        self.values
+            .capacity()
+            .saturating_mul(4)
+            .saturating_add(self.touched.capacity().saturating_mul(8))
+            .saturating_add(self.product.capacity())
+            .saturating_add(self.grid.capacity().saturating_mul(4))
+            .saturating_add(self.bytes.capacity())
+    }
 
     /// The row buffer multiplied clips scale coverage in.
     pub(crate) fn row_buffer(&mut self) -> &mut Vec<u8> {
@@ -144,19 +196,87 @@ impl Scratch {
         cells: &Cells,
         shape: (&Shape, Option<&ClipShape>),
         (band, rows): (u32, std::ops::Range<u32>),
-        out: &mut BandCoverage,
+        out: &mut dyn RowOut,
     ) -> usize {
         let _ = band;
+        let Some(index) = &cells.index else {
+            return self.grid(cells, shape, rows, out);
+        };
         let mut work = 0;
         for y in rows {
             let top = f64::from(y);
-            for &item in cells.index.row(y) {
+            for &item in index.row(y) {
                 if let Some(&line) = cells.lines.get(item as usize) {
                     work += self.edge(line, top) + 1;
                 }
             }
             out.push_row(y);
             work += self.emit(cells.scan, shape, y, out);
+        }
+        work
+    }
+
+    /// A small mark's rows accumulated edge by edge into the grid, each
+    /// cell adding the edges in their order, as row by row; then scanned
+    /// whole.
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "rows clamped to the band's u32 rows"
+    )]
+    fn grid(
+        &mut self,
+        cells: &Cells,
+        (shape, late): (&Shape, Option<&ClipShape>),
+        rows: std::ops::Range<u32>,
+        out: &mut dyn RowOut,
+    ) -> usize {
+        let (from, to) = cells.scan;
+        let to = to.min(self.values.len());
+        let width = to.saturating_sub(from);
+        let right_edge = self.right_edge();
+        let (first, end) = (f64::from(rows.start), f64::from(rows.end));
+        let mut work = 0;
+        for &line in &cells.lines {
+            work += 1;
+            let (lo, hi) = (line.a.y.min(line.b.y), line.a.y.max(line.b.y));
+            let (lo, hi) = (lo.floor().max(first), hi.ceil().min(end));
+            if lo >= hi {
+                continue;
+            }
+            for y in lo as u32..hi as u32 {
+                let k = (y - rows.start) as usize * width;
+                let mut row = GridRow {
+                    base: from,
+                    right_edge,
+                    values: &mut self.grid[k..k + width],
+                };
+                work += 1 + row.edge(line, f64::from(y));
+            }
+        }
+        let rule = shape.rule;
+        let clip = shape.multiplied.as_ref().or(late);
+        for (k, y) in rows.enumerate() {
+            let cells = &mut self.grid[k * width..(k + 1) * width];
+            let mut winding = 0.0_f32;
+            for (byte, value) in self.bytes[..width].iter_mut().zip(cells.iter_mut()) {
+                winding += std::mem::take(value);
+                *byte = fold(winding, rule);
+            }
+            out.push_row(y);
+            work += width + 2;
+            let bytes = &self.bytes[..width];
+            if clip.is_none() {
+                let x0 = (shape.bounds.x0 as usize).clamp(from, from + width);
+                let x1 = (shape.bounds.x1 as usize).clamp(x0, from + width);
+                out.put_row(x0 as u32, &bytes[x0 - from..x1 - from]);
+                continue;
+            }
+            let mut sink = Multiplied::new(out, shape, clip, y, &mut self.product);
+            for (x, &value) in (from..).zip(bytes) {
+                sink.run(x, x + 1, value);
+            }
+            work += sink.work;
         }
         work
     }
@@ -169,7 +289,7 @@ impl Scratch {
         (from, to): (usize, usize),
         (shape, late): (&Shape, Option<&ClipShape>),
         y: u32,
-        out: &mut BandCoverage,
+        out: &mut dyn RowOut,
     ) -> usize {
         let to = to.min(self.values.len());
         let rule = shape.rule;
@@ -240,7 +360,7 @@ pub(crate) struct Multiplied<'a> {
 
 impl<'a> Multiplied<'a> {
     pub(crate) fn new(
-        out: &'a mut BandCoverage,
+        out: &'a mut dyn RowOut,
         shape: &'a Shape,
         clip: Option<&'a ClipShape>,
         y: u32,
@@ -626,18 +746,31 @@ fn place(source: &Source<'_>, rule: FillRule, options: &Prep<'_>) -> Result<Opti
     let Some(clip) = options.clip else {
         return mark(source, rule, &unclipped);
     };
-    let needed: Vec<&ClipPath> = clip
-        .paths()
-        .iter()
-        .filter(|p| {
-            !(source.hull.is_some_and(|hull| p.contains_hull(hull))
-                || source.hull.is_some_and(|hull| p.covers(hull)))
+    // A path holding the mark's hull drops; a rectangle is the cheaper test.
+    let needed = |p: &&ClipPath| {
+        !source
+            .hull
+            .is_some_and(|hull| p.covers(hull) || p.contains_hull(hull))
+    };
+    // A clip whose rows are inside across the mark's pixels drops whole,
+    // whatever its paths.
+    let inside = source.hull.is_some_and(|hull| {
+        let pixels = edges::pixels(hull, options.area.region, false);
+        super::shape::Frame::new(options).is_some_and(|mut frame| {
+            frame.fit(hull);
+            frame.rect.is_none() && frame.rows.is_none() && pixels.intersect(&frame.limit) == pixels
         })
-        .collect();
-    if needed.is_empty() {
-        return mark(source, rule, &unclipped);
+    });
+    if inside || !clip.paths().iter().any(|p| needed(&p)) {
+        // Prepared in its clip state, which keeps all of it.
+        let mut shape = mark(source, rule, &unclipped)?;
+        if let Some(shape) = &mut shape {
+            shape.clip = Some(clip.clone());
+            shape.overlay = false;
+        }
+        return Ok(shape);
     }
-    if source.quad.is_some() && needed.iter().all(|p| p.quad.is_some()) {
+    if source.quad.is_some() && clip.paths().iter().filter(needed).all(|p| p.quad.is_some()) {
         let exact = Prep {
             precision: Precision::Exact,
             ..*options
@@ -693,28 +826,43 @@ fn cells(polygon: &Polygon, rule: FillRule, options: &Prep<'_>) -> Result<Option
         }
     }
     let right = f64::from(region.x1);
-    let index = RowList::new((bounds_px.y0, bounds_px.y1), lines.len(), |i| {
-        let l = lines.get(i)?;
-        if l.a.x.min(l.b.x) >= right {
-            return None;
-        }
-        rows(l.a.y.min(l.b.y), l.a.y.max(l.b.y), bounds_px)
-    })?;
     let width = super::row::width(region.x1)?;
     let scan = super::clip::columns(bounds[0].x, bounds[1].x, width);
-    let mut work = index.len();
+    let columns = scan.1.saturating_sub(scan.0);
+    let rows_of = |l: &Line| rows(l.a.y.min(l.b.y), l.a.y.max(l.b.y), bounds_px);
+    // A small mark needs no row lists: the grid takes it edge by edge.
+    let small = columns.saturating_mul(bounds_px.height() as usize) <= GRID_CELLS;
+    let index = if small {
+        None
+    } else {
+        Some(RowList::new(
+            (bounds_px.y0, bounds_px.y1),
+            lines.len(),
+            |i| {
+                let l = lines.get(i)?;
+                if l.a.x.min(l.b.x) >= right {
+                    return None;
+                }
+                rows_of(l)
+            },
+        )?)
+    };
+    let mut work = 0_usize;
     for l in &lines {
-        if let Some(r) = rows(l.a.y.min(l.b.y), l.a.y.max(l.b.y), bounds_px) {
-            work = work.saturating_add(edges::line_work(*l, r, width).saturating_mul(2));
+        if let Some(r) = rows_of(l) {
+            work = work
+                .saturating_add((r.1 - r.0) as usize + 2)
+                .saturating_add(edges::line_work(*l, r, width).saturating_mul(2));
         }
     }
     let rows = bounds_px.height() as usize;
-    work = work.saturating_add(rows.saturating_mul((scan.1 - scan.0) / 64 + 4));
+    work = work.saturating_add(rows.saturating_mul(columns / 64 + columns + 4));
     work = work.saturating_add(work);
     if work > options.limits.raster_work {
         return Err(Error::limit(super::shape::RASTER_WORK));
     }
-    let retained = lines.capacity() * size_of::<Line>() + index.retained_bytes();
+    let retained =
+        lines.capacity() * size_of::<Line>() + index.as_ref().map_or(0, RowList::retained_bytes);
     Ok(Some(Shape::with_body(
         Body::Cells(Cells { lines, index, scan }),
         bounds_px,

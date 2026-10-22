@@ -50,6 +50,18 @@ pub(crate) enum Body {
     Cells(Cells),
     /// A glyph mask reused per origin bin.
     Binned(Placement),
+    /// A certified glyph's relative edges, translated as they accumulate.
+    Glyph(GlyphBody),
+}
+
+/// One translated placement of a certified glyph.
+#[derive(Debug)]
+pub(crate) struct GlyphBody {
+    pub(crate) edges: std::sync::Arc<super::GlyphEdges>,
+    pub(crate) origin: crate::Point,
+    /// The device row of the relative row list's first row.
+    pub(crate) row0: i64,
+    pub(crate) scan: (usize, usize),
 }
 
 /// Straight edges and monotone quadratics listed by band, and the columns
@@ -115,6 +127,19 @@ impl Shape {
     ) -> Result<Option<Self>> {
         if options.precision == Precision::Approximate {
             return super::approximate::fill(path, transform, rule, options);
+        }
+        if let Some(rect) = rect_fill(path, transform, options.limits) {
+            // The rectangle the polygon would be, without building it.
+            let Some(mut frame) = Frame::new(options) else {
+                return Ok(None);
+            };
+            frame.fit([
+                crate::Point::new(rect.left, rect.top),
+                crate::Point::new(rect.right, rect.bottom),
+            ]);
+            if frame.rows.is_none() {
+                return Ok(Self::rect(rect, &frame, options));
+            }
         }
         let (polygon, rule) = fill_polygon(path, transform, rule, None, options.limits)?;
         Self::polygon(polygon, rule, Winding::Check(0.0), options)
@@ -439,6 +464,69 @@ impl Shape {
         .map(Some)
     }
 
+    /// A placement of a certified glyph within `frame`, which keeps every
+    /// pixel the glyph can touch: its relative edges and the origin, with
+    /// no geometry work and no allocation.
+    pub(crate) fn translated(
+        edges: &std::sync::Arc<super::GlyphEdges>,
+        relative: &super::glyph::Relative,
+        origin: crate::Point,
+        frame: &Frame<'_>,
+        options: &Prep<'_>,
+    ) -> Result<Option<Self>> {
+        let o = origin;
+        if let Some(r) = relative.rect {
+            let rect = Bounds {
+                left: r.left + o.x,
+                top: r.top + o.y,
+                right: r.right + o.x,
+                bottom: r.bottom + o.y,
+            };
+            return Ok(Self::rect(rect, frame, options));
+        }
+        let [lo, hi] = relative.hull;
+        let (lo, hi) = (
+            crate::Point::new(lo.x + o.x, lo.y + o.y),
+            crate::Point::new(hi.x + o.x, hi.y + o.y),
+        );
+        let Some(bounds) = frame.bounds([lo, hi].into_iter()) else {
+            return Ok(None);
+        };
+        let width = super::row::width(options.area.region.x1)?;
+        let scan = columns(lo.x, hi.x, width);
+        // Rows scanned through the bitmap or whole in the grid.
+        let columns = scan.1.saturating_sub(scan.0);
+        let words = columns / 64 + 2;
+        let work = relative
+            .work
+            .saturating_add((bounds.height() as usize).saturating_mul(words + columns + 4));
+        if work > options.limits.raster_work {
+            return Err(Error::limit(RASTER_WORK));
+        }
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "bounded origins lie within i64"
+        )]
+        let row0 = o.y.floor() as i64 + relative.first;
+        Ok(Some(Self {
+            area: options.area,
+            bounds,
+            work,
+            retained: size_of::<Self>(),
+            rule: FillRule::NonZero,
+            body: Body::Glyph(GlyphBody {
+                edges: std::sync::Arc::clone(edges),
+                origin,
+                row0,
+                scan,
+            }),
+            clip: frame.clip.cloned(),
+            overlay: false,
+            stored: Stored::default(),
+            multiplied: None,
+        }))
+    }
+
     fn rect(rect: Bounds, frame: &Frame<'_>, options: &Prep<'_>) -> Option<Self> {
         let region = options.area.region;
         let mut rect = rect.intersect(Bounds {
@@ -574,6 +662,55 @@ impl Shape {
     pub(crate) fn add_work(&mut self, units: usize) {
         self.work = self.work.saturating_add(units);
     }
+}
+
+/// The device rectangle a fill of `path` is when the path is one subpath of
+/// four corners that `transform` keeps axis-aligned: the corners as the
+/// flattened polygon holds them, so the fill's bytes do not change. `None`
+/// for anything else, which goes through the polygon.
+fn rect_fill(path: &Path, transform: Transform, limits: &pagura_core::Limits) -> Option<Bounds> {
+    use crate::Segment;
+    let segments = path.segments();
+    if !transform.is_finite() || segments.len() > limits.path_segments {
+        return None;
+    }
+    let mut corners = [crate::Point::default(); 5];
+    let mut n = 0;
+    for (i, segment) in segments.iter().enumerate() {
+        match (i, *segment) {
+            (0, Segment::MoveTo(p)) => {
+                corners[0] = p;
+                n = 1;
+            }
+            (1..=4, Segment::LineTo(p)) if n == i => {
+                corners[n] = p;
+                n += 1;
+            }
+            (_, Segment::Close) if i + 1 == segments.len() && i == n => {}
+            _ => return None,
+        }
+    }
+    // An explicit return to the first corner closes as a close does.
+    if n == 5 && corners[4] == corners[0] {
+        n = 4;
+    }
+    if n != 4 {
+        return None;
+    }
+    let mut device = [crate::Point::default(); 4];
+    for (d, &p) in device.iter_mut().zip(&corners[..4]) {
+        *d = p * transform;
+        crate::flatten::bounded(*d).ok()?;
+    }
+    let [a, b, c, d] = device;
+    let axis = (a.x == b.x && b.y == c.y && c.x == d.x && d.y == a.y)
+        || (a.y == b.y && b.x == c.x && c.y == d.y && d.x == a.x);
+    (axis && a != b && b != c && c != d && d != a).then_some(Bounds {
+        left: a.x.min(c.x),
+        top: a.y.min(c.y),
+        right: a.x.max(c.x),
+        bottom: a.y.max(c.y),
+    })
 }
 
 /// The columns cells of edges with these x can be touched in.

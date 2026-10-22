@@ -90,103 +90,6 @@ impl Row {
         }
     }
 
-    /// Adds the part of `line` within row `top..top + 1`. Returns the cells
-    /// visited.
-    #[inline]
-    pub(crate) fn line(&mut self, line: Line, top: f64) -> usize {
-        let Line { a, b } = line;
-        if a.y == b.y {
-            return 0;
-        }
-        let (upper, lower, d) = if a.y < b.y { (a, b, 1.0) } else { (b, a, -1.0) };
-        let lo = upper.y.max(top);
-        let hi = lower.y.min(top + 1.0);
-        if lo >= hi {
-            return 0;
-        }
-        self.piece(line.x(lo), line.x(hi), (hi - lo) * d)
-    }
-
-    /// Adds a straight piece within one row, from x `xa` to `xb`, of signed
-    /// height `h`.
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "device coordinates are bounded by 10^12, within i64"
-    )]
-    fn piece(&mut self, xa: f64, xb: f64, h: f64) -> usize {
-        let (l, r) = if xa < xb { (xa, xb) } else { (xb, xa) };
-        let start = l.floor();
-        let end = r.ceil();
-        let first = start as i64;
-        if end <= start + 1.0 {
-            if end == start {
-                // Vertical on a column boundary: every cell from it on lies
-                // right of the piece.
-                self.add_cover(first, h);
-                return 1;
-            }
-            #[expect(clippy::manual_midpoint, reason = "bounded coordinates; one rounding")]
-            let middle = (xa + xb) * 0.5;
-            self.add_area(first, h * ((start + 1.0) - middle));
-            self.add_cover(first + 1, h);
-            return 2;
-        }
-        let last = end as i64;
-        let s = h / (r - l);
-        let width = i64::try_from(self.area.len()).unwrap_or(i64::MAX);
-        let from = first.max(self.base);
-        let to = last.min(self.base.saturating_add(width));
-        for column in from..to {
-            let c = column as f64;
-            let x0 = l.max(c);
-            let x1 = r.min(c + 1.0);
-            let near = (c + 1.0) - x0;
-            let far = (c + 1.0) - x1;
-            let right = s * ((x0 - l) + (near * near - far * far) * 0.5);
-            self.add_area(column, right);
-        }
-        self.add_cover(last, h);
-        usize::try_from(to - from).unwrap_or(0) + 1
-    }
-
-    /// Adds the part of a monotone quadratic within row `top..top + 1`,
-    /// integrated under the curve. Returns the cells visited.
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "device coordinates are bounded by 10^12, within i64"
-    )]
-    pub(crate) fn curve(&mut self, curve: Quadratic, top: f64) -> usize {
-        let (curve, d) = if curve.points[0].y < curve.points[2].y {
-            (curve, 1.0)
-        } else {
-            let mut points = curve.points;
-            points.reverse();
-            (Quadratic { points }, -1.0)
-        };
-        let lo = curve.points[0].y.max(top);
-        let hi = curve.points[2].y.min(top + 1.0);
-        if lo >= hi {
-            return 0;
-        }
-        let t0 = curve.parameter(lo, false);
-        // Rounding can invert the parameters of nearly equal heights.
-        let t1 = curve.parameter(hi, false).max(t0);
-        let xa = curve.at(t0).x;
-        let xb = curve.at(t1).x;
-        let first = xa.min(xb).floor() as i64;
-        let last = xa.max(xb).ceil() as i64;
-        let width = i64::try_from(self.area.len()).unwrap_or(i64::MAX);
-        let from = first.max(self.base);
-        let to = last.min(self.base.saturating_add(width));
-        let height = hi - lo;
-        for column in from..to {
-            let left = curve.cell(t0, t1, column as f64);
-            self.add_area(column, d * (height - left));
-        }
-        self.add_cover(last, d * height);
-        usize::try_from(to - from).unwrap_or(0) + 1
-    }
-
     /// Adds signed area `value` to cell `column` without cover, and `cover`
     /// to every cell from `column + 1` on; for analysis-free producers.
     pub(crate) fn add_cell(&mut self, column: i64, value: f64, cover: f64) {
@@ -278,6 +181,178 @@ impl Row {
         self.area.fill(0.0);
         self.cover.fill(0.0);
         self.touched.fill(0);
+    }
+}
+
+/// Signed-area accumulation into one row of cells: an edge with direction
+/// d adds d times the part of each cell right of it, and d times its height
+/// to the cover of the cell after its last. Every producer shares this
+/// arithmetic, so equal edges give equal bits in any cell store.
+pub(crate) trait Accumulate {
+    /// The device column of the first cell.
+    fn base(&self) -> i64;
+    /// The number of cells.
+    fn width(&self) -> usize;
+    /// Adds `value` to the area of cell `column`; outside the row it drops.
+    fn area_at(&mut self, column: i64, value: f64);
+    /// Adds `value` to the cover of cell `column`, or of the first cell for
+    /// columns left of it; right of the row it drops.
+    fn cover_at(&mut self, column: i64, value: f64);
+
+    /// Adds the part of `line` within row `top..top + 1`. Returns the cells
+    /// visited.
+    #[inline]
+    fn line(&mut self, line: Line, top: f64) -> usize {
+        let Line { a, b } = line;
+        if a.y == b.y {
+            return 0;
+        }
+        let (upper, lower, d) = if a.y < b.y { (a, b, 1.0) } else { (b, a, -1.0) };
+        let lo = upper.y.max(top);
+        let hi = lower.y.min(top + 1.0);
+        if lo >= hi {
+            return 0;
+        }
+        self.piece(line.x(lo), line.x(hi), (hi - lo) * d)
+    }
+
+    /// Adds a straight piece within one row, from x `xa` to `xb`, of signed
+    /// height `h`.
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "device coordinates are bounded by 10^12, within i64"
+    )]
+    fn piece(&mut self, xa: f64, xb: f64, h: f64) -> usize {
+        let (l, r) = if xa < xb { (xa, xb) } else { (xb, xa) };
+        let start = l.floor();
+        let end = r.ceil();
+        let first = start as i64;
+        if end <= start + 1.0 {
+            if end == start {
+                // Vertical on a column boundary: every cell from it on lies
+                // right of the piece.
+                self.cover_at(first, h);
+                return 1;
+            }
+            #[expect(clippy::manual_midpoint, reason = "bounded coordinates; one rounding")]
+            let middle = (xa + xb) * 0.5;
+            self.area_at(first, h * ((start + 1.0) - middle));
+            self.cover_at(first + 1, h);
+            return 2;
+        }
+        let last = end as i64;
+        let s = h / (r - l);
+        let width = i64::try_from(self.width()).unwrap_or(i64::MAX);
+        let from = first.max(self.base());
+        let to = last.min(self.base().saturating_add(width));
+        for column in from..to {
+            let c = column as f64;
+            let x0 = l.max(c);
+            let x1 = r.min(c + 1.0);
+            let near = (c + 1.0) - x0;
+            let far = (c + 1.0) - x1;
+            let right = s * ((x0 - l) + (near * near - far * far) * 0.5);
+            self.area_at(column, right);
+        }
+        self.cover_at(last, h);
+        usize::try_from(to - from).unwrap_or(0) + 1
+    }
+
+    /// Adds the part of a monotone quadratic within row `top..top + 1`,
+    /// integrated under the curve. Returns the cells visited.
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "device coordinates are bounded by 10^12, within i64"
+    )]
+    fn curve(&mut self, curve: Quadratic, top: f64) -> usize {
+        let (curve, d) = if curve.points[0].y < curve.points[2].y {
+            (curve, 1.0)
+        } else {
+            let mut points = curve.points;
+            points.reverse();
+            (Quadratic { points }, -1.0)
+        };
+        let lo = curve.points[0].y.max(top);
+        let hi = curve.points[2].y.min(top + 1.0);
+        if lo >= hi {
+            return 0;
+        }
+        let t0 = curve.parameter(lo, false);
+        // Rounding can invert the parameters of nearly equal heights.
+        let t1 = curve.parameter(hi, false).max(t0);
+        let xa = curve.at(t0).x;
+        let xb = curve.at(t1).x;
+        let first = xa.min(xb).floor() as i64;
+        let last = xa.max(xb).ceil() as i64;
+        let width = i64::try_from(self.width()).unwrap_or(i64::MAX);
+        let from = first.max(self.base());
+        let to = last.min(self.base().saturating_add(width));
+        let height = hi - lo;
+        for column in from..to {
+            let left = curve.cell(t0, t1, column as f64);
+            self.area_at(column, d * (height - left));
+        }
+        self.cover_at(last, d * height);
+        usize::try_from(to - from).unwrap_or(0) + 1
+    }
+}
+
+impl Accumulate for Row {
+    #[inline]
+    fn base(&self) -> i64 {
+        self.base
+    }
+
+    #[inline]
+    fn width(&self) -> usize {
+        self.area.len()
+    }
+
+    #[inline]
+    fn area_at(&mut self, column: i64, value: f64) {
+        self.add_area(column, value);
+    }
+
+    #[inline]
+    fn cover_at(&mut self, column: i64, value: f64) {
+        self.add_cover(column, value);
+    }
+}
+
+/// One row of a dense grid of cells, without a touched bitmap: a small
+/// mark's cells are all scanned.
+pub(crate) struct DenseRow<'a> {
+    pub(crate) base: i64,
+    pub(crate) area: &'a mut [f64],
+    pub(crate) cover: &'a mut [f64],
+}
+
+impl Accumulate for DenseRow<'_> {
+    #[inline]
+    fn base(&self) -> i64 {
+        self.base
+    }
+
+    #[inline]
+    fn width(&self) -> usize {
+        self.area.len()
+    }
+
+    #[inline]
+    fn area_at(&mut self, column: i64, value: f64) {
+        if let Ok(x) = usize::try_from(column.wrapping_sub(self.base))
+            && let Some(cell) = self.area.get_mut(x)
+        {
+            *cell += value;
+        }
+    }
+
+    #[inline]
+    fn cover_at(&mut self, column: i64, value: f64) {
+        let x = usize::try_from(column.wrapping_sub(self.base).max(0)).unwrap_or(usize::MAX);
+        if let Some(cell) = self.cover.get_mut(x) {
+            *cell += value;
+        }
     }
 }
 

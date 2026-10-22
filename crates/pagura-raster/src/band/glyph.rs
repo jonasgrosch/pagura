@@ -10,8 +10,9 @@
 
 use super::binned;
 use super::certify::certified;
-use super::curve::{self, Piece};
-use super::edges::Polygon;
+use super::curve::{self, Piece, Quadratic};
+use super::edges::{self, Bounds, Line, Polygon, RowList};
+use super::rect::rectangle;
 use super::shape::{Frame, Shape, Winding};
 use super::{GlyphOrigins, Precision, Prep};
 use crate::flatten::{CurveStack, Polyline, TOLERANCE, bounded, flatten_into};
@@ -31,7 +32,7 @@ pub struct GlyphEdges {
 
 #[derive(Debug)]
 enum Kind {
-    Exact(Exact),
+    Exact(Box<Exact>),
     Binned(binned::Prepared),
 }
 
@@ -44,6 +45,126 @@ struct Exact {
     /// Lines and monotone quadratics, when the outline has them and its
     /// contours stay apart.
     curves: Option<Vec<Piece>>,
+    /// The edges a certified placement accumulates, ready for translation.
+    relative: Option<Relative>,
+}
+
+/// A certified glyph's edges relative to its origin, listed per row for any
+/// origin within one pixel row: a placement adds its origin to each edge as
+/// the edge is accumulated, so placing costs no geometry work and no
+/// allocation, and gives the bytes of translating every vertex first.
+#[derive(Debug)]
+pub(crate) struct Relative {
+    /// Edges that are not horizontal, then curves, in accumulation order.
+    pub(crate) lines: Vec<Line>,
+    pub(crate) curves: Vec<Quadratic>,
+    /// Items by row, from relative row `first`; an item is listed one row
+    /// further than it reaches at a whole origin, for fractional ones.
+    pub(crate) index: RowList,
+    pub(crate) first: i64,
+    /// Per item, its first and last listed rows and the fractional origins
+    /// that reach them: the first row only below `reach[0]`, the last only
+    /// above `reach[1]`.
+    pub(crate) ends: Vec<[u32; 2]>,
+    pub(crate) reach: Vec<[f64; 2]>,
+    /// The extent the pixels and the scanned columns come from.
+    pub(crate) hull: [Point; 2],
+    /// An axis-aligned rectangle, filled in closed form.
+    pub(crate) rect: Option<Bounds>,
+    /// Edge visits and four units per cell they can touch, over all rows.
+    pub(crate) work: usize,
+}
+
+impl Relative {
+    /// From every line (horizontal ones bound the extent only) and curve.
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "bounded coordinates; rows are checked to fit u32"
+    )]
+    fn new(all: &[Line], curves: Vec<Quadratic>) -> Result<Self> {
+        let allocation = |_| Error::limit("glyph geometry allocation failed");
+        let mut lo = Point::new(f64::INFINITY, f64::INFINITY);
+        let mut hi = Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
+        let ends = all
+            .iter()
+            .flat_map(|l| [l.a, l.b])
+            .chain(curves.iter().flat_map(|q| [q.points[0], q.points[2]]));
+        for p in ends {
+            lo = Point::new(lo.x.min(p.x), lo.y.min(p.y));
+            hi = Point::new(hi.x.max(p.x), hi.y.max(p.y));
+        }
+        let mut lines: Vec<Line> = Vec::new();
+        lines.try_reserve_exact(all.len()).map_err(allocation)?;
+        lines.extend(all.iter().filter(|l| !l.is_horizontal()));
+        // A curve spans its ends, as monotone pieces do.
+        let chord = |i: usize| {
+            lines.get(i).copied().unwrap_or_else(|| {
+                let q = curves[i - lines.len()];
+                Line {
+                    a: q.points[0],
+                    b: q.points[2],
+                }
+            })
+        };
+        let span = |i: usize| {
+            let l = chord(i);
+            (l.a.y.min(l.b.y), l.a.y.max(l.b.y))
+        };
+        let count = lines.len() + curves.len();
+        let (first, last) = (0..count).fold((f64::INFINITY, f64::NEG_INFINITY), |(f, l), i| {
+            let (a, b) = span(i);
+            (f.min(a.floor()), l.max(b.ceil()))
+        });
+        let (first, rows) = if count == 0 {
+            (0, 0)
+        } else {
+            let rows = u32::try_from(last as i64 - first as i64 + 1)
+                .map_err(|_| Error::limit("glyph extent budget exceeded"))?;
+            (first as i64, rows)
+        };
+        // Within `0..rows` by construction.
+        let relative = |i: usize| {
+            let (a, b) = span(i);
+            let row = |v: f64| u32::try_from(v as i64 - first).unwrap_or(0);
+            (row(a.floor()), row(b.ceil()))
+        };
+        let index = RowList::new((0, rows), count, |i| Some(relative(i)))?;
+        let mut ends = Vec::new();
+        let mut reach = Vec::new();
+        ends.try_reserve_exact(count)
+            .and_then(|()| reach.try_reserve_exact(count))
+            .map_err(allocation)?;
+        for i in 0..count {
+            let (a, b) = span(i);
+            ends.push(<[u32; 2]>::from(relative(i)));
+            reach.push([a.floor() + 1.0 - a, b.ceil() - b]);
+        }
+        let mut work = index.len();
+        for i in 0..count {
+            let line = chord(i);
+            work = work
+                .saturating_add(edges::line_work(line, relative(i), usize::MAX).saturating_mul(4));
+        }
+        Ok(Self {
+            lines,
+            curves,
+            index,
+            first,
+            ends,
+            reach,
+            hull: [lo, hi],
+            rect: None,
+            work,
+        })
+    }
+
+    fn retained_bytes(&self) -> usize {
+        (self.lines.capacity() * size_of::<Line>())
+            .saturating_add(self.curves.capacity() * size_of::<Quadratic>())
+            .saturating_add(self.ends.capacity() * size_of::<[u32; 2]>())
+            .saturating_add(self.reach.capacity() * size_of::<[f64; 2]>())
+            .saturating_add(self.index.retained_bytes())
+    }
 }
 
 impl GlyphEdges {
@@ -117,6 +238,23 @@ impl GlyphEdges {
             curve::pieces(outline, transform, cap, limits)?
                 .filter(|_| certified(&polygon, 2.0 * TOLERANCE))
         };
+        let relative = if let Some(pieces) = &curves {
+            let mut lines = Vec::new();
+            let mut quadratics = Vec::new();
+            for piece in pieces {
+                match *piece {
+                    Piece::Line(line) => lines.push(line),
+                    Piece::Curve(q) => quadratics.push(q),
+                }
+            }
+            Some(Relative::new(&lines, quadratics)?)
+        } else if certified_polygon && !polygon.points_cells {
+            let mut relative = Relative::new(&edges::lines(&polygon)?, Vec::new())?;
+            relative.rect = rectangle(&polygon);
+            Some(relative)
+        } else {
+            None
+        };
         let retained = size_of::<Self>()
             .saturating_add(polygon.points.capacity() * size_of::<Point>())
             .saturating_add(polygon.starts.capacity() * size_of::<usize>())
@@ -124,18 +262,20 @@ impl GlyphEdges {
                 curves
                     .as_ref()
                     .map_or(0, |c| c.capacity() * size_of::<Piece>()),
-            );
+            )
+            .saturating_add(relative.as_ref().map_or(0, Relative::retained_bytes));
         if retained > limits.decoded_bytes {
             return Err(Error::limit("glyph geometry byte budget exceeded"));
         }
         Ok(Self {
             retained,
-            kind: Kind::Exact(Exact {
+            kind: Kind::Exact(Box::new(Exact {
                 polygon,
                 points,
                 certified: certified_polygon,
                 curves,
-            }),
+                relative,
+            })),
         })
     }
 
@@ -160,11 +300,11 @@ impl GlyphEdges {
         self.retained
     }
 
-    /// The binned preparation, if the edges were prepared for bins.
-    pub(crate) fn prepared(&self) -> Option<&binned::Prepared> {
+    /// The edges a certified exact placement translates.
+    pub(crate) fn relative(&self) -> Option<&Relative> {
         match &self.kind {
-            Kind::Binned(prepared) => Some(prepared),
-            Kind::Exact(_) => None,
+            Kind::Exact(exact) => exact.relative.as_ref(),
+            Kind::Binned(_) => None,
         }
     }
 }
@@ -176,14 +316,68 @@ pub(crate) fn place(
     origins: GlyphOrigins,
     options: &Prep<'_>,
 ) -> Result<Option<Shape>> {
+    let mut shape = placed(edges, origin, origins, options)?;
+    if let Some(shape) = &mut shape {
+        // In a run, its rows are kept apart and then merged.
+        let b = shape.bounds();
+        shape.add_work((b.height() as usize).saturating_mul(2 * b.width() as usize + 2) + 1);
+    }
+    Ok(shape)
+}
+
+fn placed(
+    edges: &Arc<GlyphEdges>,
+    origin: Point,
+    origins: GlyphOrigins,
+    options: &Prep<'_>,
+) -> Result<Option<Shape>> {
     bounded(origin)?;
     let exact = match &edges.kind {
         Kind::Binned(prepared) => {
             let _ = origins;
-            return binned::place(edges, prepared, origin, options);
+            return binned::place(prepared, origin, options);
         }
         Kind::Exact(exact) => exact,
     };
+    // Under either precision a certified glyph the clip keeps whole is its
+    // exact translated edges: no cheaper coverage exists.
+    if let Some(relative) = &exact.relative {
+        let Some(mut frame) = Frame::new(options) else {
+            return Ok(None);
+        };
+        let [lo, hi] = relative.hull;
+        if lo.x > hi.x {
+            // No edges: nothing to cover.
+            return Ok(None);
+        }
+        let lo = Point::new(lo.x + origin.x, lo.y + origin.y);
+        let hi = Point::new(hi.x + origin.x, hi.y + origin.y);
+        bounded(lo)?;
+        bounded(hi)?;
+        frame.fit([lo, hi]);
+        if frame.rows.is_none() && frame.rect.is_none() {
+            return Shape::translated(edges, relative, origin, &frame, options);
+        }
+    }
+    general(exact, origin, options)
+}
+
+/// [`place`] translating every vertex first, for exact edges.
+#[cfg(test)]
+pub(crate) fn place_general(
+    edges: &GlyphEdges,
+    origin: Point,
+    options: &Prep<'_>,
+) -> Result<Option<Shape>> {
+    match &edges.kind {
+        Kind::Exact(exact) => general(exact, origin, options),
+        Kind::Binned(_) => Ok(None),
+    }
+}
+
+/// A placement that translates the outline's vertices and prepares them as
+/// any shape: where the clip cuts the glyph or the glyph is not certified.
+fn general(exact: &Exact, origin: Point, options: &Prep<'_>) -> Result<Option<Shape>> {
     if options.precision == Precision::Exact
         && let Some(pieces) = &exact.curves
     {
