@@ -10,7 +10,7 @@
 //! multiplied.
 
 use super::cells::{Cells, STRIP};
-use super::certify::{scratch_bytes, uncertified};
+use super::certify::uncertified;
 use super::edges::{self, Bounds, Line, Polygon, StripList};
 use super::rect::rectangle;
 use super::row::Sink;
@@ -349,14 +349,7 @@ fn boundaries(
         let end = u32::try_from(lines.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
         ends.push((end, *rule));
         if groups.len() == 1 {
-            let certificate = scratch_bytes(polygon.vertices());
-            bytes.charge(certificate)?;
-            doubtful = uncertified(polygon, 0.0);
-            let kept = doubtful
-                .as_ref()
-                .map_or(0, |s| s.capacity().saturating_mul(size_of::<[f64; 2]>()));
-            debug_assert!(kept <= certificate);
-            bytes.refund(certificate.saturating_sub(kept));
+            doubtful = uncertified(polygon, 0.0, bytes)?;
         }
     }
     Ok(Boundaries {

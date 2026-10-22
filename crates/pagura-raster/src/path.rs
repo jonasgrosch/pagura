@@ -136,6 +136,17 @@ impl Path {
         })
     }
 
+    /// Copies the stored geometry and certificates without mapping points.
+    pub(crate) fn clone_with_bytes(&self, bytes: &mut Meter) -> Result<Self> {
+        let mut segments = Vec::new();
+        bytes.reserve(&mut segments, self.segments.len())?;
+        segments.extend_from_slice(&self.segments);
+        Ok(Self {
+            segments,
+            fill_certificates: self.fill_certificates,
+        })
+    }
+
     fn mapped(&self, transform: Transform) -> impl ExactSizeIterator<Item = Segment> + '_ {
         self.segments.iter().map(move |segment| match *segment {
             Segment::MoveTo(p) => Segment::MoveTo(p * transform),
@@ -346,6 +357,30 @@ impl PathBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bounded_clone_preserves_certificates_and_point_bits() {
+        let mut builder = PathBuilder::new();
+        builder.move_to(Point::new(-0.0, 0.0)).close();
+        let mut path = builder.finish();
+        path.fill_certificates = [Some(FillRegion::Points), Some(FillRegion::EmptyBoundary)];
+        let needed = size_of_val(path.segments());
+        let mut refused = Meter::new(needed - 1, "outline bytes");
+        assert_eq!(
+            path.clone_with_bytes(&mut refused).unwrap_err().message,
+            "outline bytes"
+        );
+        assert_eq!(refused.used(), 0);
+        let mut exact = Meter::new(needed, "outline bytes");
+        let copy = path.clone_with_bytes(&mut exact).unwrap();
+        assert_eq!(copy, path);
+        let Segment::MoveTo(point) = copy.segments()[0] else {
+            panic!("the first point changed");
+        };
+        assert_eq!(point.x.to_bits(), (-0.0_f64).to_bits());
+        assert_eq!(point.y.to_bits(), 0.0_f64.to_bits());
+        assert_eq!(exact.used(), copy.retained_bytes());
+    }
 
     #[test]
     fn rect_paths_match_re_and_keep_exact_corners() {

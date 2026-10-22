@@ -3,7 +3,7 @@
 //! with the rows their signed area does not determine already resolved.
 
 use super::cells::STRIP;
-use super::certify::{scratch_bytes, uncertified};
+use super::certify::uncertified;
 use super::clip::{self, ClipShape, Paths, columns, fill_polygon};
 use super::curve::{self, Mono, Quadratic};
 use super::edges::{self, Bounds, Line, Polygon, StripList, line_work, rows, strips};
@@ -391,23 +391,12 @@ impl Shape {
         let triangle =
             polygon.starts.len() == 1 && polygon.vertices() == 3 && !polygon.points_cells;
         let polygon_bytes = polygon.heap_bytes();
-        let certificate = if matches!(winding, Winding::Check(_)) && !triangle {
-            scratch_bytes(polygon.vertices())
-        } else {
-            0
-        };
-        bytes.charge(certificate)?;
         let doubtful = match winding {
             Winding::Certified => Some(Vec::new()),
             Winding::Check(_) if triangle => Some(Vec::new()),
-            Winding::Check(margin) => uncertified(&polygon, margin),
+            Winding::Check(margin) => uncertified(&polygon, margin, bytes)?,
             Winding::Unknown => None,
         };
-        let kept_certificate = doubtful
-            .as_ref()
-            .map_or(0, |s| s.capacity().saturating_mul(size_of::<[f64; 2]>()));
-        debug_assert!(kept_certificate <= certificate);
-        bytes.refund(certificate.saturating_sub(kept_certificate));
         let all_bytes = polygon.vertices().saturating_mul(size_of::<Line>());
         let all = edges::lines(&polygon, bytes)?;
         drop(polygon);

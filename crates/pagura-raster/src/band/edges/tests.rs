@@ -59,7 +59,7 @@ fn shared_edges_cancel_into_the_union_boundary() {
     assert!(polygon.cancel_shared(&mut bytes).unwrap());
     assert_eq!(polygon.starts, [0]);
     assert_eq!(polygon.points.len(), 6);
-    assert!(crate::band::certify::certified(&polygon, 0.0));
+    assert!(crate::band::certify::certified(&polygon, 0.0, &mut crate::testing::bytes()).unwrap());
     // Nothing shared: unchanged.
     let before = polygon.points.clone();
     assert!(!polygon.cancel_shared(&mut bytes).unwrap());

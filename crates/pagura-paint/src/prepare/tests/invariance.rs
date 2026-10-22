@@ -244,9 +244,11 @@ fn budgets_fail_in_source_order_and_bound_what_rendering_uses() {
 
 #[test]
 fn geometry_preparation_uses_what_earlier_marks_leave() {
+    // Enough vertices make the polygon and its edge copy overlap by more
+    // than the final render's scratch; each input separately still fits.
     let mut path = PathBuilder::new();
-    path.polygon((0..736_u32).map(|i| {
-        let angle = f64::from(i) * std::f64::consts::TAU / 736.0;
+    path.polygon((0..8000_u32).map(|i| {
+        let angle = f64::from(i) * std::f64::consts::TAU / 8000.0;
         Point::new(2.0 + 1.7 * angle.cos(), 2.0 + 1.7 * angle.sin())
     }));
     let path = Arc::new(path.finish());
@@ -266,7 +268,7 @@ fn geometry_preparation_uses_what_earlier_marks_leave() {
         );
     };
     let limits = Limits {
-        render_bytes: 256 * 1024,
+        render_bytes: 390 * 1024,
         ..Limits::default()
     };
     let mut alone = Build::new(4.0, 4.0);

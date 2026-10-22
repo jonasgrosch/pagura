@@ -4,8 +4,8 @@
 
 use pagura_core::{ErrorKind, Limits, Meter};
 use pagura_raster::{
-    Adjustment, Area, ClipShape, DeviceRect, FillRule, PathBuilder, Point, Shape, ShapeOptions,
-    Stroke, Transform,
+    Adjustment, Area, ClipShape, DeviceRect, FillRule, GlyphEdges, PathBuilder, Point, Shape,
+    ShapeOptions, Stroke, Transform,
 };
 
 #[test]
@@ -78,4 +78,22 @@ fn geometry_factories_refuse_without_an_allocation_allowance() {
             (ErrorKind::Limit, "render memory budget exceeded")
         );
     }
+}
+
+#[test]
+fn source_segment_bound_precedes_construction_allocations() {
+    let mut path = PathBuilder::new();
+    for x in 0..4096 {
+        path.rect(f64::from(x), 0.0, 1.0, 1.0);
+    }
+    let limits = Limits {
+        path_segments: 32,
+        decoded_bytes: 0,
+        ..Limits::default()
+    };
+    let error = GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap_err();
+    assert_eq!(
+        (error.kind, error.message),
+        (ErrorKind::Limit, "path segment budget exceeded")
+    );
 }

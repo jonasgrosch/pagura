@@ -18,6 +18,9 @@ use crate::{FillRule, Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
 use std::sync::Arc;
 
+#[cfg(test)]
+mod tests;
+
 /// A glyph outline prepared once for one linear map (outline space to device
 /// space without translation): its device-space edges relative to the glyph
 /// origin, ready for translation and accumulation. Shareable across
@@ -68,15 +71,23 @@ pub(crate) struct Relative {
 
 impl Relative {
     /// From a certified spline's pieces.
-    fn new(spline: &Spline) -> Result<Self> {
-        let allocation = |_| Error::limit("glyph geometry allocation failed");
+    fn new(spline: &Spline, bytes: &mut Meter) -> Result<Self> {
         let mut lo = Point::new(f64::INFINITY, f64::INFINITY);
         let mut hi = Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
         let mut lines: Vec<Line> = Vec::new();
         let mut curves: Vec<Mono> = Vec::new();
-        lines
-            .try_reserve_exact(spline.pieces.len())
-            .map_err(allocation)?;
+        let line_count = spline
+            .pieces
+            .iter()
+            .filter(|p| matches!(p, Piece::Line(line) if !line.is_horizontal()))
+            .count();
+        let curve_count = spline
+            .pieces
+            .iter()
+            .filter(|p| matches!(p, Piece::Curve(_)))
+            .count();
+        bytes.reserve(&mut lines, line_count)?;
+        bytes.reserve(&mut curves, curve_count)?;
         let mut work = 0_usize;
         for &piece in &spline.pieces {
             for p in piece.ends() {
@@ -91,7 +102,6 @@ impl Relative {
                 Piece::Line(line) if !line.is_horizontal() => lines.push(line),
                 Piece::Line(_) => continue,
                 Piece::Curve(q) => {
-                    curves.try_reserve(1).map_err(allocation)?;
                     curves.push(Mono::new(q));
                 }
             }
@@ -104,11 +114,6 @@ impl Relative {
             hull: [lo, hi],
             work,
         })
-    }
-
-    fn retained_bytes(&self) -> usize {
-        (self.lines.capacity() * size_of::<Line>())
-            .saturating_add(self.curves.capacity() * size_of::<Mono>())
     }
 }
 
@@ -143,58 +148,54 @@ impl GlyphEdges {
             return Err(Error::limit("path segment budget exceeded"));
         }
         let hull = control_hull(outline, transform);
+        let mut bytes = Meter::new(limits.decoded_bytes, "glyph geometry byte budget exceeded");
+        bytes.charge_items::<Self>(1)?;
+        let kind = Self::geometry(outline, transform, limits, &mut bytes)?;
+        Ok(Self {
+            retained: bytes.used(),
+            hull,
+            kind,
+        })
+    }
+
+    fn geometry(
+        outline: &Path,
+        transform: Transform,
+        limits: &Limits,
+        bytes: &mut Meter,
+    ) -> Result<Kind> {
         // A singular map can make a genuine point of a curve; the polygon
         // keeps the point rule.
-        let regular = a * d - b * c != 0.0;
+        let regular = transform.determinant() != 0.0;
         let spline = if regular {
-            curve::spline(outline, transform, limits)?
+            curve::spline(outline, transform, limits, bytes)?
         } else {
             None
         };
-        let mut bytes = Meter::new(limits.decoded_bytes, "glyph geometry byte budget exceeded");
-        let kind = match spline {
-            Some(spline) if spline_certified(&spline) => {
-                let relative = Relative::new(&spline)?;
-                Kind::Curve {
+        if let Some(spline) = spline {
+            if spline_certified(&spline, bytes)? {
+                let relative = Relative::new(&spline, bytes)?;
+                // The outline's allocation includes the Arc counters and
+                // Path, whose segment vector is charged separately.
+                bytes.charge(size_of::<Path>() + 2 * size_of::<usize>())?;
+                let outline = Arc::new(outline.clone_with_bytes(bytes)?);
+                return Ok(Kind::Curve {
                     spline,
                     relative,
-                    outline: Arc::new(outline.clone()),
+                    outline,
                     linear: transform,
-                }
+                });
             }
-            _ => {
-                let (polygon, points) = polygon(outline, transform, limits, &mut bytes)?;
-                let certified = points.is_empty() && certified(&polygon, 0.0);
-                Kind::Polygon {
-                    polygon,
-                    points,
-                    certified,
-                }
-            }
-        };
-        let retained = size_of::<Self>().saturating_add(match &kind {
-            Kind::Curve {
-                spline,
-                relative,
-                outline,
-                ..
-            } => spline
-                .retained_bytes()
-                .saturating_add(relative.retained_bytes())
-                .saturating_add(size_of_val(outline.segments())),
-            Kind::Polygon {
-                polygon, points, ..
-            } => (polygon.points.capacity() * size_of::<Point>())
-                .saturating_add(polygon.starts.capacity() * size_of::<usize>())
-                .saturating_add(points.capacity() * size_of::<Point>()),
-        });
-        if retained > limits.decoded_bytes {
-            return Err(Error::limit("glyph geometry byte budget exceeded"));
+            let released = spline.retained_bytes();
+            drop(spline);
+            bytes.refund(released);
         }
-        Ok(Self {
-            retained,
-            hull,
-            kind,
+        let (polygon, points) = polygon(outline, transform, limits, bytes)?;
+        let certified = points.is_empty() && certified(&polygon, 0.0, bytes)?;
+        Ok(Kind::Polygon {
+            polygon,
+            points,
+            certified,
         })
     }
 
