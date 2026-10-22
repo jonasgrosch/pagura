@@ -505,6 +505,8 @@ impl Workspace {
             + self.active.iter().map(Active::bytes).sum::<usize>()
             + self.active.capacity() * size_of::<Active>()
             + self.masks.capacity() * size_of::<MaskCache>()
+            + self.coverage.retained_bytes()
+            + self.boundary.0.retained_bytes()
     }
 
     /// Clears the state of a previous render.
@@ -565,6 +567,23 @@ pub(crate) fn coverage_capacity(width: usize, rows: usize) -> pagura_raster::Cap
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn retained_scratch_includes_its_coverage_allocations() {
+        let scene = crate::testing::Build::new(192.0, 256.0);
+        let prepared = scene
+            .prepare(&scene.request(scene.page(), 256), &Limits::default())
+            .unwrap();
+        let mut scratch = Scratch::default();
+        let buffers = {
+            let rendering = prepared.with_scratch(&mut scratch).unwrap();
+            rendering.workspace.page.bytes()
+                + rendering.workspace.coverage.retained_bytes()
+                + rendering.workspace.boundary.0.retained_bytes()
+                + rendering.rasterizer.retained_bytes()
+        };
+        assert!(scratch.retained_bytes() >= buffers);
+    }
 
     #[test]
     fn page_buffers_start_with_the_premultiplied_background() {
