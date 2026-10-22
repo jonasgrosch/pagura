@@ -184,10 +184,11 @@ pub(crate) fn fill_polygon(
             FillRule::NonZero,
         ));
     }
-    Ok((
-        Polygon::from_path(path, transform, tolerance, limits)?,
-        rule,
-    ))
+    let polygon = match Polygon::from_lines(path, transform, limits)? {
+        Some(polygon) => polygon,
+        None => Polygon::from_path(path, transform, tolerance, limits)?,
+    };
+    Ok((polygon, rule))
 }
 
 impl ClipShape {

@@ -7,7 +7,7 @@
 
 use super::DeviceRect;
 use crate::flatten::{CurveStack, Polyline, bounded, flatten_into};
-use crate::{Path, Point, Transform};
+use crate::{Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Result};
 
 /// A straight edge in device space, in contour order.
@@ -88,6 +88,91 @@ impl Polygon {
         let mut polygon = Self::default();
         polygon.extend(&contours[..count], transform, limits)?;
         Ok(polygon)
+    }
+
+    /// [`Self::from_path`] for a path of lines only, without flattening:
+    /// the same contours, points and errors. `None` for a path with curves.
+    pub(crate) fn from_lines(
+        path: &Path,
+        transform: Transform,
+        limits: &Limits,
+    ) -> Result<Option<Self>> {
+        if path
+            .segments()
+            .iter()
+            .any(|s| matches!(s, Segment::CubicTo { .. }))
+        {
+            return Ok(None);
+        }
+        crate::flatten::validate(path, transform, limits)?;
+        let mut polygon = Self::default();
+        let mut count = 0_usize;
+        // The current contour's user points start at `from` in `points`,
+        // untransformed until the contour ends.
+        let mut user: Vec<Point> = Vec::new();
+        let mut closed = false;
+        let finish =
+            |polygon: &mut Self, user: &mut Vec<Point>, last: bool, closed: bool| -> Result<()> {
+                let Some(&first) = user.first() else {
+                    return Ok(());
+                };
+                if last && !closed && user.len() == 1 {
+                    user.clear();
+                    return Ok(());
+                }
+                if user.iter().all(|&p| p == first) {
+                    let p = first * transform;
+                    bounded(p)?;
+                    polygon.cell(p, limits)?;
+                } else {
+                    polygon.begin(limits, user.len())?;
+                    for &point in user.iter() {
+                        let p = point * transform;
+                        bounded(p)?;
+                        polygon.points.push(p);
+                    }
+                    polygon.end();
+                }
+                user.clear();
+                Ok(())
+            };
+        let mut append = |user: &mut Vec<Point>, point: Point| -> Result<()> {
+            if count >= limits.path_segments {
+                return Err(Error::limit("flattened segment budget exceeded"));
+            }
+            count += 1;
+            user.try_reserve(1)
+                .map_err(|_| Error::limit("raster geometry allocation failed"))?;
+            user.push(point);
+            Ok(())
+        };
+        for segment in path.segments() {
+            match *segment {
+                Segment::MoveTo(point) => {
+                    finish(&mut polygon, &mut user, false, closed)?;
+                    bounded(point)?;
+                    bounded(point * transform)?;
+                    append(&mut user, point)?;
+                    closed = false;
+                }
+                Segment::LineTo(point) => {
+                    if closed {
+                        // A line after a close reopens at the subpath start.
+                        let first = user.first().copied();
+                        finish(&mut polygon, &mut user, false, closed)?;
+                        user.extend(first);
+                        closed = false;
+                    }
+                    bounded(point)?;
+                    bounded(point * transform)?;
+                    append(&mut user, point)?;
+                }
+                Segment::Close => closed = true,
+                Segment::CubicTo { .. } => return Ok(None),
+            }
+        }
+        finish(&mut polygon, &mut user, true, closed)?;
+        Ok(Some(polygon))
     }
 
     /// Adds flattened contours: a final open one-point contour is omitted,
@@ -188,45 +273,42 @@ impl Polygon {
     /// not relink.
     pub(crate) fn cancel_shared(&mut self) -> Result<bool> {
         let allocation = |_| Error::limit("raster geometry allocation failed");
-        let order = |p: Point, q: Point| p.x.total_cmp(&q.x).then(p.y.total_cmp(&q.y));
-        let mut edges: Vec<(Point, Point)> = Vec::new();
+        // Points ordered by their coordinates' total order, as integers.
+        let key = |p: Point| (ordered(p.x), ordered(p.y));
+        let mut edges: Vec<Keyed> = Vec::new();
         edges
             .try_reserve_exact(self.points.len())
             .map_err(allocation)?;
         for contour in self.contours() {
             let n = contour.len();
-            edges.extend((0..n).map(|i| (contour[i], contour[(i + 1) % n])));
+            edges.extend((0..n).map(|i| {
+                let (a, b) = (contour[i], contour[(i + 1) % n]);
+                let (ka, kb) = (key(a), key(b));
+                Keyed {
+                    lo: ka.min(kb),
+                    hi: ka.max(kb),
+                    forward: ka <= kb,
+                    from: ka,
+                    to: kb,
+                    a,
+                }
+            }));
         }
-        // Each edge by its undirected key; opposite directions cancel.
-        let key = |&(a, b): &(Point, Point)| {
-            if order(a, b).is_le() {
-                (a, b, true)
-            } else {
-                (b, a, false)
-            }
-        };
-        edges.sort_unstable_by(|e, f| {
-            let (e, f) = (key(e), key(f));
-            order(e.0, f.0).then(order(e.1, f.1)).then(e.2.cmp(&f.2))
-        });
-        let mut kept: Vec<(Point, Point)> = Vec::new();
+        // Each edge by its undirected key, the reversed ones first;
+        // opposite directions cancel.
+        edges.sort_unstable_by_key(|e| (e.lo, e.hi, e.forward));
+        let mut kept: Vec<Keyed> = Vec::new();
         kept.try_reserve_exact(edges.len()).map_err(allocation)?;
         let mut start = 0;
-        while start < edges.len() {
-            let (a, b, _) = key(&edges[start]);
+        while let Some(first) = edges.get(start) {
             let end = start
                 + edges[start..]
                     .iter()
-                    .take_while(|e| {
-                        let k = key(e);
-                        k.0 == a && k.1 == b
-                    })
+                    .take_while(|e| e.lo == first.lo && e.hi == first.hi)
                     .count();
-            // Sorted with the reversed ones first.
             let group = &edges[start..end];
-            let reversed = group.iter().filter(|e| !key(e).2).count();
-            let forward = group.len() - reversed;
-            let cancelled = reversed.min(forward);
+            let reversed = group.iter().filter(|e| !e.forward).count();
+            let cancelled = reversed.min(group.len() - reversed);
             kept.extend_from_slice(&group[cancelled..reversed]);
             kept.extend_from_slice(&group[reversed + cancelled..]);
             start = end;
@@ -236,7 +318,7 @@ impl Polygon {
         }
         // Relink by start point: any pairing at a shared vertex keeps the
         // winding.
-        kept.sort_unstable_by(|e, f| order(e.0, f.0));
+        kept.sort_unstable_by_key(|e| e.from);
         let mut used: Vec<bool> = Vec::new();
         used.try_reserve_exact(kept.len()).map_err(allocation)?;
         used.resize(kept.len(), false);
@@ -249,18 +331,18 @@ impl Polygon {
             }
             starts.try_reserve(1).map_err(allocation)?;
             starts.push(points.len());
-            let origin = kept[first].0;
+            let origin = kept[first].from;
             let mut current = first;
             loop {
                 used[current] = true;
-                points.push(kept[current].0);
-                let next = kept[current].1;
+                points.push(kept[current].a);
+                let next = kept[current].to;
                 if next == origin {
                     break;
                 }
-                let from = kept.partition_point(|e| order(e.0, next).is_lt());
+                let from = kept.partition_point(|e| e.from < next);
                 let Some(found) = (from..kept.len())
-                    .take_while(|&i| kept[i].0 == next)
+                    .take_while(|&i| kept[i].from == next)
                     .find(|&i| !used[i])
                 else {
                     return Ok(false);
@@ -285,6 +367,29 @@ impl Polygon {
         }
         (lo.x <= hi.x && lo.y <= hi.y).then_some([lo, hi])
     }
+}
+
+/// An edge keyed for cancelling: its ends' integer keys, undirected and
+/// directed, and its first end.
+#[derive(Debug, Clone, Copy)]
+struct Keyed {
+    lo: (i64, i64),
+    hi: (i64, i64),
+    forward: bool,
+    from: (i64, i64),
+    to: (i64, i64),
+    a: Point,
+}
+
+/// The total order of f64 as an integer: equal keys exactly for equal bits.
+#[expect(
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss,
+    reason = "bit reinterpretation of the total order"
+)]
+fn ordered(value: f64) -> i64 {
+    let bits = value.to_bits() as i64;
+    bits ^ (((bits >> 63) as u64) >> 1) as i64
 }
 
 /// A straight edge with the monotone chain it belongs to and its group (a
@@ -720,6 +825,42 @@ pub(crate) fn line_work(line: Line, (first, last): (u32, u32), width: usize) -> 
 mod tests {
     use super::*;
     use crate::PathBuilder;
+
+    #[test]
+    fn line_paths_skip_flattening_with_its_contours() {
+        let limits = Limits::default();
+        let t = Transform::new(1.5, 0.25, -0.5, 2.0, 3.0, -1.0);
+        let p = |x: f64, y: f64| Point::new(x, y);
+        let mut paths = Vec::new();
+        let mut b = PathBuilder::new();
+        b.move_to(p(0.0, 0.0));
+        b.line_to(p(4.0, 0.0)).unwrap();
+        b.line_to(p(4.0, 3.0)).unwrap();
+        b.close();
+        // A line after a close reopens at the start; a lone move is a point.
+        b.line_to(p(-2.0, 5.0)).unwrap();
+        b.line_to(p(1.0, 6.0)).unwrap();
+        b.move_to(p(9.0, 9.0));
+        b.move_to(p(7.0, 1.0));
+        b.line_to(p(7.0, 1.0)).unwrap();
+        b.close();
+        b.move_to(p(2.0, 2.0));
+        b.line_to(p(5.0, 2.0)).unwrap();
+        b.line_to(p(5.0, 2.0)).unwrap();
+        b.line_to(p(2.0, 7.0)).unwrap();
+        b.move_to(p(8.0, 8.0));
+        paths.push(b.finish());
+        let mut b = PathBuilder::new();
+        b.rect(1.0, 2.0, 3.0, 4.0);
+        paths.push(b.finish());
+        for path in &paths {
+            let fast = Polygon::from_lines(path, t, &limits).unwrap().unwrap();
+            let slow = Polygon::from_path(path, t, None, &limits).unwrap();
+            assert_eq!(fast.points, slow.points);
+            assert_eq!(fast.starts, slow.starts);
+            assert_eq!(fast.points_cells, slow.points_cells);
+        }
+    }
 
     #[test]
     fn shared_edges_cancel_into_the_union_boundary() {

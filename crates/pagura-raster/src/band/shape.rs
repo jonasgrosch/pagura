@@ -4,7 +4,7 @@
 
 use super::approximate::Cells;
 use super::binned::Placement;
-use super::certify::certified;
+use super::certify::{certified, uncertified};
 use super::clip::{ClipShape, INSIDE, Rows, columns, fill_polygon};
 use super::curve::{self, Quadratic};
 use super::edges::{self, Bounds, Chained, Line, Polygon, RowList, line_work, rows};
@@ -70,7 +70,9 @@ pub(crate) struct GlyphBody {
 pub(crate) struct EdgeBody {
     pub(crate) lines: Vec<Line>,
     pub(crate) curves: Vec<Quadratic>,
-    pub(crate) index: RowList,
+    /// Items by row; a small, narrow shape with nothing to overlay has
+    /// none and goes edge by edge into the rasterizer's grid.
+    pub(crate) index: Option<RowList>,
     pub(crate) scan: (usize, usize),
 }
 
@@ -125,9 +127,7 @@ impl Shape {
         rule: FillRule,
         options: &Prep<'_>,
     ) -> Result<Option<Self>> {
-        if options.precision == Precision::Approximate {
-            return super::approximate::fill(path, transform, rule, options);
-        }
+        // A rectangle is filled in closed form under either precision.
         if let Some(rect) = rect_fill(path, transform, options.limits) {
             // The rectangle the polygon would be, without building it.
             let Some(mut frame) = Frame::new(options) else {
@@ -140,6 +140,9 @@ impl Shape {
             if frame.rows.is_none() {
                 return Ok(Self::rect(rect, &frame, options));
             }
+        }
+        if options.precision == Precision::Approximate {
+            return super::approximate::fill(path, transform, rule, options);
         }
         let (polygon, rule) = fill_polygon(path, transform, rule, None, options.limits)?;
         Self::polygon(polygon, rule, Winding::Check(0.0), options)
@@ -210,20 +213,22 @@ impl Shape {
         ))?;
         let path = path.transformed(pen);
         let device = to_user.then(transform);
-        // Approximate strokes keep the old outlines: proven pieces or
-        // components.
-        let accept = match options.precision {
-            Precision::Exact => Tiling::Unproven,
-            Precision::Approximate => Tiling::Proven,
-        };
         let (outline, outline_transform, tiling) = match adjustment {
             Adjustment::Adjusted => {
                 let (outline, t) = crate::adjust::outline(&path, device, stroke, limits)?;
                 (outline, t, Tiling::Components)
             }
-            Adjustment::None => crate::stroke::pieces(&path, device, stroke, limits, accept)?,
+            Adjustment::None => {
+                // Approximate cells take approximate round parts too.
+                let tolerance = match options.precision {
+                    Precision::Exact => crate::flatten::TOLERANCE,
+                    Precision::Approximate => super::approximate::TOLERANCE,
+                };
+                crate::stroke::pieces(&path, device, stroke, limits, (Tiling::Unproven, tolerance))?
+            }
         };
-        if options.precision == Precision::Approximate {
+        let approximate = options.precision == Precision::Approximate;
+        if approximate && tiling != Tiling::Unproven {
             return super::approximate::stroke(
                 &outline,
                 outline_transform,
@@ -231,7 +236,15 @@ impl Shape {
                 options,
             );
         }
-        let mut polygon = Polygon::from_path(&outline, outline_transform, None, limits)?;
+        let mut polygon = match Polygon::from_lines(&outline, outline_transform, limits)? {
+            Some(polygon) => polygon,
+            None => Polygon::from_path(&outline, outline_transform, None, limits)?,
+        };
+        if approximate {
+            // Cells take the union's boundary where it certifies.
+            let union = polygon.cancel_shared()? && certified(&polygon, 0.0);
+            return super::approximate::union(&polygon, union, options);
+        }
         let winding = match tiling {
             Tiling::Proven => Winding::Certified,
             // The union's boundary, where it relinks, may still certify.
@@ -344,11 +357,19 @@ impl Shape {
         {
             return Ok(Self::rect(rect, &frame, options));
         }
-        let certain = match winding {
-            Winding::Certified => true,
-            Winding::Check(margin) => certified(&polygon, margin),
-            Winding::Unknown => false,
+        // The heights the winding certificate leaves in doubt: none when
+        // certified throughout, all when unknown.
+        // A lone triangle bounds winding 0 or one sign of magnitude one,
+        // whatever its vertices.
+        let triangle =
+            polygon.starts.len() == 1 && polygon.vertices() == 3 && !polygon.points_cells;
+        let doubtful = match winding {
+            Winding::Certified => Some(Vec::new()),
+            Winding::Check(_) if triangle => Some(Vec::new()),
+            Winding::Check(margin) => uncertified(&polygon, margin),
+            Winding::Unknown => None,
         };
+        let certain = doubtful.as_ref().is_some_and(Vec::is_empty);
         let width = super::row::width(options.area.region.x1)?;
         if certain && frame.rows.is_none() {
             // Nothing to analyse: the edges alone, clipped to the rectangle.
@@ -390,7 +411,21 @@ impl Shape {
         };
         let scan = super::clip::scan_range(&chained, width);
         let stored = if !certain || frame.crossed(bounds) {
-            analyse(&chained, rule, certain, &frame, (bounds, scan), options)?
+            // Rows that meet no doubtful slab keep their signed area.
+            let row_certain = |y: u32| {
+                doubtful.as_ref().is_some_and(|slabs| {
+                    let (top, bottom) = (f64::from(y), f64::from(y) + 1.0);
+                    !slabs.iter().any(|&[lo, hi]| lo < bottom && hi > top)
+                })
+            };
+            analyse(
+                &chained,
+                rule,
+                &row_certain,
+                &frame,
+                (bounds, scan),
+                options,
+            )?
         } else {
             Stored::default()
         };
@@ -497,9 +532,14 @@ impl Shape {
         // Rows scanned through the bitmap or whole in the grid.
         let columns = scan.1.saturating_sub(scan.0);
         let words = columns / 64 + 2;
+        // In the grid each band it meets visits every edge once, at most
+        // as often as it has rows.
+        let items = relative.lines.len() + relative.curves.len();
+        let rows = bounds.height() as usize;
         let work = relative
             .work
-            .saturating_add((bounds.height() as usize).saturating_mul(words + columns + 4));
+            .saturating_add(rows.saturating_mul(words + columns + 4))
+            .saturating_add(rows.saturating_mul(items));
         if work > options.limits.raster_work {
             return Err(Error::limit(RASTER_WORK));
         }
@@ -585,11 +625,29 @@ impl Shape {
             extent(a.y.min(b.y), a.y.max(b.y))
         };
         let count = lines.len() + curves.len();
-        let index = RowList::new((bounds.y0, bounds.y1), count, |i| match lines.get(i) {
+        let item_rows = |i: usize| match lines.get(i) {
             Some(l) => line_rows(l),
             None => curves.get(i - lines.len()).and_then(curve_rows),
-        })?;
-        let mut work = index.len();
+        };
+        let columns = scan.1.saturating_sub(scan.0);
+        // A mark of at most 16 rows and a bitmap word's width, with nothing
+        // to overlay, goes into the grid: each band it meets visits every
+        // item once, at most as often as it has rows, and each row it
+        // crosses.
+        let height = bounds.height() as usize;
+        let grid = stored.len() == 0 && frame.rows.is_none() && columns <= 64 && height <= 16;
+        let (index, mut work) = if grid {
+            let visits = (0..count)
+                .filter_map(item_rows)
+                .fold(count.saturating_mul(height), |n, (a, b)| {
+                    n.saturating_add((b - a) as usize + 1)
+                });
+            (None, visits)
+        } else {
+            let index = RowList::new((bounds.y0, bounds.y1), count, item_rows)?;
+            let visits = index.len();
+            (Some(index), visits)
+        };
         let mut cells = 0_usize;
         for l in &lines {
             if let Some(r) = line_rows(l) {
@@ -606,7 +664,7 @@ impl Shape {
         let words = (scan.1.saturating_sub(scan.0)) / 64 + 2;
         work = work
             .saturating_add(cells.saturating_mul(4))
-            .saturating_add(rows.saturating_mul(words + 2))
+            .saturating_add(rows.saturating_mul(words + columns + 4))
             .saturating_add(stored.len().saturating_mul(2))
             .saturating_add(frame.segments(bounds));
         if work > options.limits.raster_work {
@@ -621,7 +679,7 @@ impl Shape {
         let retained = size_of::<Self>()
             .saturating_add(body.lines.capacity() * size_of::<Line>())
             .saturating_add(body.curves.capacity() * size_of::<Quadratic>())
-            .saturating_add(body.index.retained_bytes())
+            .saturating_add(body.index.as_ref().map_or(0, RowList::retained_bytes))
             .saturating_add(stored.retained_bytes());
         Ok(Self {
             area,
@@ -846,7 +904,7 @@ pub(crate) fn span(rect: Option<Bounds>, y: u32) -> (f64, f64) {
 fn analyse(
     chained: &[Chained],
     rule: FillRule,
-    certain: bool,
+    certain: &dyn Fn(u32) -> bool,
     frame: &Frame<'_>,
     (bounds, scan): (DeviceRect, (usize, usize)),
     options: &Prep<'_>,
@@ -861,6 +919,7 @@ fn analyse(
             s.iter()
                 .any(|s| s.cell != INSIDE && s.x0 < bounds.x1 && s.x1 > bounds.x0)
         });
+        let certain = certain(y);
         if certain && !joint {
             continue;
         }

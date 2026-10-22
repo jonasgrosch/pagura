@@ -37,8 +37,16 @@ struct Active {
 /// everywhere, with neighbouring chains at least `margin` apart where they
 /// do not share a vertex. Geometric-point cells are never certified.
 pub(crate) fn certified(polygon: &Polygon, margin: f64) -> bool {
+    uncertified(polygon, margin).is_some_and(|slabs| slabs.is_empty())
+}
+
+/// The heights `[lo, hi]` of the slabs [`certified`] cannot certify, merged
+/// where they meet; every other slab holds winding 0 or the common sign.
+/// `None` when no slab is certified: geometric points, or the sweep's work
+/// or storage ran out.
+pub(crate) fn uncertified(polygon: &Polygon, margin: f64) -> Option<Vec<[f64; 2]>> {
     if polygon.points_cells || polygon.points.len() > u32::MAX as usize {
-        return false;
+        return None;
     }
     let mut points = Vec::new();
     let mut chains = Vec::new();
@@ -47,9 +55,7 @@ pub(crate) fn certified(polygon: &Polygon, margin: f64) -> bool {
         for p in contour {
             magnitude = magnitude.max(p.x.abs()).max(p.y.abs());
         }
-        if split(contour, &mut points, &mut chains).is_none() {
-            return false;
-        }
+        split(contour, &mut points, &mut chains)?;
     }
     let mut work = Work {
         done: 0,
@@ -61,7 +67,9 @@ pub(crate) fn certified(polygon: &Polygon, margin: f64) -> bool {
         rounding: margin + magnitude * 2f64.powi(-45),
         vertices: margin,
     };
-    sweep(&points, &mut chains, margins, &mut work).is_some()
+    let mut failing = Vec::new();
+    sweep(&points, &mut chains, margins, &mut work, &mut failing)?;
+    Some(failing)
 }
 
 /// The separation chains need: `rounding` between interpolated positions,
@@ -86,7 +94,13 @@ impl Work {
     }
 }
 
-fn sweep(points: &[Point], chains: &mut [Chain], margins: Margins, work: &mut Work) -> Option<()> {
+fn sweep(
+    points: &[Point],
+    chains: &mut [Chain],
+    margins: Margins,
+    work: &mut Work,
+    failing: &mut Vec<[f64; 2]>,
+) -> Option<()> {
     let mut heights = Vec::new();
     heights.try_reserve(2 * chains.len()).ok()?;
     heights.extend(
@@ -144,25 +158,32 @@ fn sweep(points: &[Point], chains: &mut [Chain], margins: Margins, work: &mut Wo
         }
         active.sort_unstable_by(|a, b| a.x.total_cmp(&b.x));
         let first = *sign.get_or_insert(active.first().is_some_and(|a| a.chain.up));
-        if !active.len().is_multiple_of(2)
-            || active
+        // Each slab stands alone: its order, directions and separation
+        // decide its own winding, whatever another slab holds.
+        let ordered = active.len().is_multiple_of(2)
+            && active
                 .iter()
                 .enumerate()
-                .any(|(k, a)| a.chain.up != (first ^ (k % 2 == 1)))
-        {
-            return None;
-        }
-        for w in active.windows(2) {
-            let separated = w[0].range[1] + margins.rounding < w[1].range[0]
-                || apart(
-                    points,
-                    (w[0].segment, w[1].segment),
-                    (lo, hi),
-                    margins,
-                    work,
-                );
-            if !separated {
-                return None;
+                .all(|(k, a)| a.chain.up == (first ^ (k % 2 == 1)));
+        let separated = ordered
+            && active.windows(2).all(|w| {
+                w[0].range[1] + margins.rounding < w[1].range[0]
+                    || apart(
+                        points,
+                        (w[0].segment, w[1].segment),
+                        (lo, hi),
+                        margins,
+                        work,
+                    )
+            });
+        work.add(0)?;
+        if !separated {
+            match failing.last_mut() {
+                Some(last) if last[1] >= lo => last[1] = hi,
+                _ => {
+                    failing.try_reserve(1).ok()?;
+                    failing.push([lo, hi]);
+                }
             }
         }
     }
