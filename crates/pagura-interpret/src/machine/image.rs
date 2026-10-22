@@ -11,27 +11,29 @@ use pagura_image::{ImageId, ImageSource};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// Image descriptions read in one interpretation, by image and the
-/// resources its colour space was resolved in.
+/// Image descriptions read in one interpretation, by image and the colour
+/// space resources they were resolved in: the only resources describing
+/// an image reads (named and `Default` spaces, 8.6.5.6).
 #[derive(Debug, Default)]
 pub(crate) struct Images {
     entries: HashMap<(ObjectId, usize), Arc<Image>>,
-    /// The resources dictionaries met, kept so their addresses identify
-    /// them for the whole interpretation.
-    resources: Vec<Dictionary>,
+    /// The `ColorSpace` entries of the resources met.
+    spaces: Vec<Option<Value>>,
 }
 
 impl Images {
-    /// A number identifying `resources` among those met.
-    fn resources(&mut self, resources: &Dictionary) -> Result<usize> {
-        if let Some(index) = self.resources.iter().position(|r| r == resources) {
+    /// A number identifying the colour space resources of `resources`
+    /// among those met.
+    fn spaces(&mut self, resources: &Dictionary) -> Result<usize> {
+        let spaces = resources.get(b"ColorSpace");
+        if let Some(index) = self.spaces.iter().position(|s| s.as_ref() == spaces) {
             return Ok(index);
         }
-        if self.resources.len() >= 256 {
+        if self.spaces.len() >= 256 {
             return Err(Error::limit("image resource cache budget exceeded"));
         }
-        self.resources.push(resources.clone());
-        Ok(self.resources.len() - 1)
+        self.spaces.push(spaces.cloned());
+        Ok(self.spaces.len() - 1)
     }
 }
 
@@ -89,7 +91,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         if stack.len() >= self.session.limits.depth {
             return Err(Error::limit("image mask nesting exceeded"));
         }
-        let key = (id, self.session.images.resources(resources)?);
+        let key = (id, self.session.images.spaces(resources)?);
         if let Some(image) = self.session.images.entries.get(&key) {
             return Ok(Arc::clone(image));
         }
