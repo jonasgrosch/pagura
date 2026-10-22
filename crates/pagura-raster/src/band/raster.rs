@@ -661,13 +661,17 @@ pub(crate) fn sink<'a>(
     y: u32,
     buffer: &'a mut Vec<u8>,
 ) -> RowSink<'a> {
-    if let Some(clip) = shape.multiplied.as_ref() {
-        return RowSink::Multiplied(Multiplied::new(out, shape, Some(clip), y, buffer));
-    }
-    if let Some(clip) = late {
+    // A multiplied clip scales the shape's own coverage, its resolved
+    // cells included.
+    if let Some(clip) = shape.multiplied.as_ref().or(late) {
+        let stored = shape.stored.row(y);
+        let multiplied = Multiplied::new(out, shape, Some(clip), y, buffer);
+        if stored.is_empty() {
+            return RowSink::Multiplied(multiplied);
+        }
         return RowSink::Late(Overlay {
-            out: Multiplied::new(out, shape, Some(clip), y, buffer),
-            stored: shape.stored.row(y),
+            out: multiplied,
+            stored,
             next: 0,
             clip: None,
             segment: 0,
