@@ -283,6 +283,9 @@ struct Buffer {
     dynamics: Vec<Dynamic>,
     /// The device pixels its stores can reach.
     extent: Option<bounds::Hull>,
+    /// Plain groups of opaque members that flatten into it if its knockout
+    /// turns out to be the opaque-member identity, with their buffers.
+    pending: Vec<((GroupId, Process), usize)>,
 }
 
 impl Buffer {
@@ -357,6 +360,7 @@ impl Survey<'_> {
             masks: Vec::new(),
             dynamics: Vec::new(),
             extent: None,
+            pending: Vec::new(),
         });
         self.buffers.len() - 1
     }
@@ -418,7 +422,31 @@ impl Survey<'_> {
             };
             self.mark(buffer, state, &stores, context, depth)?;
         }
+        self.settle(buffer);
         Ok(())
+    }
+
+    /// Flattens the pending groups of `buffer` once its content shows that
+    /// its knockout is the opaque-member identity, so that it composites as
+    /// source-over and they can composite straight into it.
+    fn settle(&mut self, buffer: usize) {
+        let pending = std::mem::take(&mut self.buffers[buffer].pending);
+        if self.buffers[buffer].knockout() {
+            return;
+        }
+        for (key, child) in pending {
+            let facts = self.buffers[child].clone();
+            let target = &mut self.buffers[buffer];
+            // Its result was one dynamic store.
+            target.stores = target.stores.saturating_sub(1);
+            target.dynamic = target.dynamic.saturating_sub(1);
+            target.dynamics.retain(|store| store.child != Some(child));
+            target.children.retain(|&(c, _)| c != child);
+            target.merge(&facts);
+            if let Some(entry) = self.groups.get_mut(&key) {
+                entry.flatten = true;
+            }
+        }
     }
 
     /// The device pixels of `hull` on the page.
@@ -471,9 +499,13 @@ impl Survey<'_> {
         for &hull in stores.hulls {
             target.extent = unite(target.extent, hull);
         }
+        // Opacity equals shape, and a knockout of such stores is source-over
+        // only when they blend Normal and keep no channel of the backdrop.
         let shaped =
-            state.alpha_is_shape || (state.alpha == 1.0 && mask.is_none() && stores.alpha_shape);
-        target.opaque_members &= shaped && cell.is_none();
+            stores.alpha_shape && (state.alpha_is_shape || (state.alpha == 1.0 && mask.is_none()));
+        let keeps = self.inputs.simulate && state.overprint.enabled;
+        target.opaque_members &=
+            shaped && cell.is_none() && state.blend == BlendMode::Normal && !keeps;
         if cell_reads {
             // A cell whose content reads its backdrop reads this buffer.
             target.reads = true;
@@ -540,11 +572,16 @@ impl Survey<'_> {
         let facts = self.buffers[child].clone();
         let plain =
             state.alpha == 1.0 && state.blend == BlendMode::Normal && state.soft_mask.is_none();
-        let flatten = plain
+        let fits = plain
             && !facts.knockout()
-            && !self.buffers[parent].knockout_attribute
             && layout == parent_layout
             && (!group.attributes.isolated || facts.normal_content());
+        let parent_knockout = self.buffers[parent].knockout_attribute;
+        let flatten = fits && !parent_knockout;
+        // In a knockout group, a plain group of opaque members is one opaque
+        // member: the implicit groups of text objects and of fill-and-stroke
+        // operators around Type 3 glyphs or fill-and-stroke text.
+        let pending = fits && parent_knockout && facts.opaque_members;
         let transparent = group.attributes.isolated || facts.normal_content();
         self.groups.insert(
             (id, parent_layout.process),
@@ -578,7 +615,10 @@ impl Survey<'_> {
         target.dynamic = target.dynamic.saturating_add(1);
         target.normal &= state.blend == BlendMode::Normal;
         target.forced |= state.blend != BlendMode::Normal;
-        target.opaque_members = false;
+        target.opaque_members &= pending;
+        if pending {
+            target.pending.push(((id, parent_layout.process), child));
+        }
         target.children.push((child, 1));
         if let Some(mask) = mask {
             target.masks.push((mask, 1));

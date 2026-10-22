@@ -201,3 +201,74 @@ fn the_f32_count_bound_sends_long_faint_stacks_to_f64() {
     b.node(PAGE, glyphs(70_000));
     assert_eq!(exact(&b), [Format::F64]);
 }
+
+#[test]
+fn knockout_groups_of_opaque_members_fold_with_their_plain_groups() {
+    let knockout = GroupAttributes {
+        isolated: false,
+        knockout: true,
+        space: None,
+    };
+    let mut b = Build::new(12.0, 6.0);
+    let back = b.rgb([0.1, 0.5, 0.9]);
+    let red = b.rgb([0.9, 0.2, 0.1]);
+    let black = b.rgb([0.0, 0.0, 0.0]);
+    b.rect(PAGE, [0.0, 0.0, 12.0, 6.0], back, mark(StateId(0)));
+    // A text object under text knockout: its glyphs, a Type 3 glyph (a plain
+    // group) and fill-and-stroke text (a knockout group), all opaque.
+    let text = b.transparency(PAGE, knockout, mark(StateId(0)));
+    let source = GlyphSource {
+        outline: rect_path([0.0, 0.0, 1.5, 2.5]),
+        key: OutlineKey {
+            font: pagura_interpret::FontKey(1),
+            glyph: 2,
+        },
+        linear: Transform::IDENTITY,
+    };
+    b.node(
+        text,
+        Node::Glyphs(GlyphsNode {
+            sources: vec![source],
+            placements: (0..4_u32)
+                .map(|i| Placement {
+                    source: 0,
+                    origin: Point::new(0.5 + 1.25 * f64::from(i), 0.5),
+                })
+                .collect(),
+            positions: Vec::new(),
+            paint: red,
+            mark: mark(StateId(0)),
+        }),
+    );
+    let type3 = b.transparency(text, GroupAttributes::default(), mark(StateId(0)));
+    b.rect(type3, [6.25, 0.5, 8.5, 3.0], black, mark(StateId(0)));
+    b.rect(type3, [7.0, 1.25, 9.75, 4.5], red, mark(StateId(0)));
+    let both = b.transparency(text, knockout, mark(StateId(0)));
+    b.rect(both, [2.5, 3.0, 6.0, 5.5], red, mark(StateId(0)));
+    b.rect(both, [2.25, 2.75, 6.25, 5.75], black, mark(StateId(0)));
+    assert_eq!(exact(&b), [Format::N16]);
+    let prepared = b
+        .prepare(&b.request(b.page(), 32), &Limits::default())
+        .unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(prepared.plan().groups.len(), 1);
+    check(&b);
+    // A translucent member makes the text object knock out: its groups are
+    // members of their own.
+    let half = b.state(|s| s.alpha = 0.5);
+    b.rect(text, [5.0, 2.0, 11.5, 3.5], black, mark(half));
+    let formats = exact(&b);
+    assert_eq!(formats.len(), 4);
+    assert!(formats.iter().all(|&f| f == Format::F64));
+    check(&b);
+    // Opaque members that blend otherwise than Normal knock out too.
+    let mut b = Build::new(6.0, 4.0);
+    let back = b.rgb([0.1, 0.5, 0.9]);
+    let a = b.rgb([0.9, 0.2, 0.1]);
+    let c = b.rgb([0.3, 0.9, 0.2]);
+    let multiply = b.state(|s| s.blend = BlendMode::Multiply);
+    b.rect(PAGE, [0.0, 0.0, 6.0, 4.0], back, mark(StateId(0)));
+    let group = b.transparency(PAGE, knockout, mark(StateId(0)));
+    b.rect(group, [0.5, 0.5, 4.25, 3.25], a, mark(multiply));
+    b.rect(group, [2.75, 1.5, 6.0, 4.0], c, mark(multiply));
+    check(&b);
+}
