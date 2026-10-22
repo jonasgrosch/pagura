@@ -69,6 +69,7 @@ pub fn render(scene: &Scene, request: &Request, limits: &Limits) -> Result<Rende
         selection: Selection::Opaque,
         stencil: None,
         depth: 0,
+        crop: Crop::Page,
     };
     renderer.children(&root.children, &mut page, &context)?;
     renderer.output(&page, &target)
@@ -92,6 +93,19 @@ pub(crate) struct Context<'b> {
     pub(crate) stencil: Option<&'b Color>,
     /// Nesting depth.
     pub(crate) depth: usize,
+    /// Whether marks are clipped to the page's crop box.
+    pub(crate) crop: Crop,
+}
+
+/// Whether marks are clipped to the page's crop box: page content is,
+/// soft-mask sources and tiling cells are not (their results meet the crop
+/// where they are used).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Crop {
+    /// Clipped to the crop box.
+    Page,
+    /// Not clipped.
+    Free,
 }
 
 pub(crate) fn elements(knockout: bool) -> Elements {
@@ -111,6 +125,8 @@ pub(crate) struct Renderer<'s> {
     pub(crate) colors: Colors,
     pub(crate) simulation: Simulation,
     pub(crate) transfers: Option<Transfers>,
+    /// The crop box in device space.
+    crop: crate::area::Region,
     masks: HashMap<MaskKey, Rc<Vec<f64>>>,
     images: HashMap<usize, Rc<DecodedImage>>,
 }
@@ -148,6 +164,7 @@ impl<'s> Renderer<'s> {
             colors: Colors::new(),
             simulation,
             transfers: Transfers::new(scene, request.region),
+            crop: shapes::rect(scene.page.crop, request.transform, limits)?,
             masks: HashMap::new(),
             images: HashMap::new(),
         })
@@ -184,6 +201,19 @@ impl<'s> Renderer<'s> {
         Ok(())
     }
 
+    /// The regions of a mark's clip, with the crop box where it applies.
+    fn clips(
+        &self,
+        clip: Option<pagura_interpret::ClipId>,
+        context: &Context<'_>,
+    ) -> Result<Vec<crate::area::Region>> {
+        let mut regions = shapes::clips(self.scene, clip, context.device, self.limits)?;
+        if context.crop == Crop::Page {
+            regions.push(self.crop.clone());
+        }
+        Ok(regions)
+    }
+
     pub(crate) fn state(&self, mark: &MarkInfo) -> Result<&'s Composite> {
         self.scene
             .states
@@ -209,12 +239,7 @@ impl<'s> Renderer<'s> {
             context.device,
             self.limits,
         )?];
-        regions.extend(shapes::clips(
-            self.scene,
-            fill.mark.clip,
-            context.device,
-            self.limits,
-        )?);
+        regions.extend(self.clips(fill.mark.clip, context)?);
         self.paint_regions(regions, paint, state, buffer, context)
     }
 
@@ -237,12 +262,7 @@ impl<'s> Renderer<'s> {
             context.device,
             self.limits,
         )?];
-        regions.extend(shapes::clips(
-            self.scene,
-            stroke.mark.clip,
-            context.device,
-            self.limits,
-        )?);
+        regions.extend(self.clips(stroke.mark.clip, context)?);
         self.paint_regions(regions, paint, state, buffer, context)
     }
 
@@ -255,7 +275,8 @@ impl<'s> Renderer<'s> {
     ) -> Result<()> {
         let paint = self.paint(glyphs.paint)?;
         let state = self.state(&glyphs.mark)?;
-        let clips = shapes::clips(self.scene, glyphs.mark.clip, context.device, self.limits)
+        let clips = self
+            .clips(glyphs.mark.clip, context)
             .at(glyphs.mark.position)?;
         for (i, placement) in glyphs.placements.iter().enumerate() {
             let result = (|| {
@@ -360,12 +381,7 @@ impl<'s> Renderer<'s> {
             return Ok(());
         }
         let mut regions = vec![shapes::unit_square(to_device, self.limits)?];
-        regions.extend(shapes::clips(
-            self.scene,
-            node.mark.clip,
-            context.device,
-            self.limits,
-        )?);
+        regions.extend(self.clips(node.mark.clip, context)?);
         let coverage = Coverage::of(&regions, buffer.rect());
         let sources = self.image_source(node, stencil.as_ref(), to_device, state, context)?;
         let eligible = if matches!(
@@ -400,12 +416,7 @@ impl<'s> Renderer<'s> {
         if let Some(bbox) = node.shading.bbox {
             regions.push(shapes::rect(bbox, to_device, self.limits)?);
         }
-        regions.extend(shapes::clips(
-            self.scene,
-            node.mark.clip,
-            context.device,
-            self.limits,
-        )?);
+        regions.extend(self.clips(node.mark.clip, context)?);
         let coverage = Coverage::of(&regions, buffer.rect());
         let sources =
             self.shading_source(&node.shading, to_device, state, context, sources::Use::Mark)?;
@@ -429,7 +440,7 @@ impl<'s> Renderer<'s> {
                 "the reference has no transfer selection for pattern paint",
             ));
         }
-        if state.overprint.enabled && self.simulation.enabled {
+        if state.overprint.enabled && self.request.overprint == Overprint::Simulate {
             return Err(Error::invalid_argument(
                 "the reference has no transfer selection for simulated overprinting",
             ));
@@ -516,7 +527,10 @@ impl<'s> Renderer<'s> {
         target: &Target,
         direct: Option<(&Arc<pagura_color::ColorSpace>, &[f64])>,
     ) -> u64 {
-        if !(self.simulation.enabled && state.overprint.enabled) {
+        // The preview policy decides, not the page's discovery: a CMYK
+        // group simulates `OPM 1` even where the page needs no plates
+        // (ADR 0004 §7).
+        if !(self.request.overprint == Overprint::Simulate && state.overprint.enabled) {
             return 0;
         }
         let channels = target.channels().min(64);
@@ -529,9 +543,9 @@ impl<'s> Renderer<'s> {
         if state.overprint.nonzero
             && target.process == Process::Cmyk
             && let Some((space, components)) = direct
-            && cmyk(space)
+            && let Some(cmyk) = cmyk_components(space, components)
         {
-            for (i, &c) in components.iter().enumerate().take(4) {
+            for (i, &c) in cmyk.iter().enumerate() {
                 if c.clamp(0.0, 1.0) == 0.0 {
                     preserve |= 1 << i;
                 }
@@ -579,6 +593,57 @@ impl<'s> Renderer<'s> {
     }
 }
 
+/// What a group or a pattern's instances contribute at one pixel: their
+/// colour without the backdrop, their group alpha and their shape.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Contribution {
+    pub(crate) x: u32,
+    pub(crate) y: u32,
+    pub(crate) color: crate::color::Channels,
+    pub(crate) alpha: f64,
+    pub(crate) shape: f64,
+}
+
+impl Renderer<'_> {
+    /// Composites `contributions` into `parent` with `state`: its constant
+    /// alpha, soft mask and blend mode (11.4.4).
+    pub(crate) fn contribute(
+        &mut self,
+        contributions: Vec<Contribution>,
+        state: &Composite,
+        parent: &mut Buffer,
+        context: &Context<'_>,
+    ) -> Result<()> {
+        let mask = state
+            .soft_mask
+            .map(|mask| self.soft_mask(mask, context.device, context.target.process, context.depth))
+            .transpose()?;
+        let blending = Blending {
+            mode: state.blend,
+            process: context.target.process,
+            channels: context.target.channels(),
+        };
+        for c in contributions {
+            let mut source = Source {
+                color: c.color,
+                alpha: c.alpha,
+                shape: c.shape,
+                preserve: 0,
+            };
+            source.apply(
+                state,
+                mask.as_ref()
+                    .map_or(1.0, |m| mask_value(m, self.window, c.x, c.y)),
+            );
+            let base = context.initial.pixel(c.x, c.y);
+            let mut out = parent.get(c.x, c.y);
+            out.paint(&source, blending, &base, context.elements);
+            parent.set(c.x, c.y, &out);
+        }
+        Ok(())
+    }
+}
+
 /// Whether an image mark may select its transfer: not with a soft mask
 /// or embedded alpha.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -594,22 +659,41 @@ fn mask_value(values: &[f64], window: DeviceRect, x: u32, y: u32) -> f64 {
         .unwrap_or(1.0)
 }
 
-/// Whether a paint can change any colorant (8.6.6.4).
+/// Whether a paint can change any colorant (8.6.6.4). A colour in a
+/// Pattern space is the initial pattern colour, which paints nothing
+/// (8.6.6.2).
 fn paints(paint: &Paint) -> bool {
     match paint {
-        Paint::Solid(color) => color.space.paints(),
+        Paint::Solid(color) => {
+            !matches!(color.space.as_ref(), pagura_color::ColorSpace::Pattern(_))
+                && color.space.paints()
+        }
         Paint::Shading(pattern) => pattern.shading.space.paints(),
         Paint::Tiling(_) => true,
     }
 }
 
-/// Whether a space is DeviceCMYK, directly or as the alternate of an
-/// ICCBased space used without its profile.
-fn cmyk(space: &pagura_color::ColorSpace) -> bool {
+/// The DeviceCMYK components a colour paints, directly, through an Indexed
+/// palette (8.6.6.3), or as the alternate of an ICCBased space used without
+/// its profile; `None` for any other space.
+fn cmyk_components(space: &pagura_color::ColorSpace, components: &[f64]) -> Option<[f64; 4]> {
+    use pagura_color::ColorSpace;
     match space {
-        pagura_color::ColorSpace::DeviceCmyk => true,
-        pagura_color::ColorSpace::Icc(icc) if icc.profile.is_none() => cmyk(&icc.alternate),
-        _ => false,
+        ColorSpace::DeviceCmyk => {
+            let mut out = [0.0; 4];
+            for (out, &c) in out.iter_mut().zip(components) {
+                *out = c;
+            }
+            Some(out)
+        }
+        ColorSpace::Icc(icc) if icc.profile.is_none() => {
+            cmyk_components(&icc.alternate, components)
+        }
+        ColorSpace::Indexed(indexed) => {
+            let base = crate::color::palette(indexed, components.first().copied().unwrap_or(0.0));
+            cmyk_components(&indexed.base, &base)
+        }
+        _ => None,
     }
 }
 

@@ -17,8 +17,9 @@
 //! reported as pending. Run with `-- --nocapture` for one line per case;
 //! `PAGURA_REFERENCE_REPORT=<dir>` writes a JSON summary per test there,
 //! `PAGURA_REFERENCE_FILTER=<text>` keeps the cases whose id contains it,
-//! and `PAGURA_REFERENCE_FULL=1` probes charges on every case rather than
-//! on every eighth.
+//! `PAGURA_REFERENCE_DUMP=<dir>` writes both renderings of every compared
+//! case there as PPM on white, and `PAGURA_REFERENCE_FULL=1` probes charges
+//! on every case rather than on every eighth.
 
 mod cases;
 mod compare;
@@ -94,6 +95,14 @@ fn the_renderer_is_within_one_level_of_the_reference() {
             &case.id,
             Status::Compared(Comparison::of(&rendered, &reference)),
         );
+        if let Some(directory) = std::env::var_os("PAGURA_REFERENCE_DUMP") {
+            dump(
+                std::path::Path::new(&directory),
+                &case.id,
+                &rendered,
+                &reference,
+            );
+        }
         if let Some(directory) = &goldens {
             let status = match goldens::load(directory, &case.id) {
                 Some((width, height, golden))
@@ -116,6 +125,25 @@ fn the_renderer_is_within_one_level_of_the_reference() {
         failures.is_empty(),
         "beyond one level of the reference: {failures:?}"
     );
+}
+
+/// Writes the renderer's and the reference's output of case `id` as PPM.
+fn dump(
+    directory: &std::path::Path,
+    id: &str,
+    rendered: &[u8],
+    reference: &pagura_reference::Rendering,
+) {
+    let (width, height) = (reference.region().width(), reference.region().height());
+    let name = id.replace('/', "__");
+    let _ = std::fs::create_dir_all(directory);
+    for (suffix, rgba) in [
+        ("renderer", rendered.to_vec()),
+        ("reference", reference.to_rgba8()),
+    ] {
+        let ppm = pagura_testkit::ppm(width, height, &rgb_on_white(&rgba));
+        let _ = std::fs::write(directory.join(format!("{name}.{suffix}.ppm")), ppm);
+    }
 }
 
 #[test]

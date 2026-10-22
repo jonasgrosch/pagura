@@ -81,6 +81,10 @@ pub(crate) struct ShadingSamples<'a> {
     channels: usize,
     rate: u32,
     background: Option<Channels>,
+    /// With a background, the coverage of the shading's `BBox`: a pattern
+    /// paints its background, then the shading clipped to the box
+    /// (8.7.4.3, 11.6.7), so the two mix by the box's exact coverage.
+    bbox: Option<crate::shapes::Coverage>,
     preserve: u64,
 }
 
@@ -95,17 +99,7 @@ impl ShadingSamples<'_> {
             self.inverse,
             self.channels,
             |point, out| {
-                let inside = || {
-                    shading.bbox.is_none_or(|b| {
-                        point.x >= b.x0()
-                            && point.x <= b.x1()
-                            && point.y >= b.y0()
-                            && point.y <= b.y1()
-                    })
-                };
-                if (self.background.is_none() || inside())
-                    && self.sampler.sample(point, &mut components)
-                {
+                if self.sampler.sample(point, &mut components) {
                     self.convert.convert(&components[..n], out);
                     true
                 } else if let Some(background) = &self.background {
@@ -116,6 +110,13 @@ impl ShadingSamples<'_> {
                 }
             },
         )?;
+        let mut color = color;
+        if let (Some(background), Some(bbox)) = (&self.background, &self.bbox) {
+            let c = f64::from(bbox.get(x, y)) / 255.0;
+            for (v, &b) in color.iter_mut().zip(background).take(self.channels) {
+                *v = c * *v + (1.0 - c) * b;
+            }
+        }
         Some(Sample {
             color,
             alpha: shape,
@@ -254,6 +255,13 @@ impl Renderer<'_> {
             }
             _ => None,
         };
+        let bbox = match (&background, shading.bbox) {
+            (Some(_), Some(bbox)) => Some(crate::shapes::Coverage::of(
+                &[crate::shapes::rect(bbox, to_device, self.limits)?],
+                self.window,
+            )),
+            _ => None,
+        };
         Ok(Sources::Shading(ShadingSamples {
             sampler: shading::Sampler::new(shading)?,
             inverse,
@@ -261,6 +269,7 @@ impl Renderer<'_> {
             channels: target.channels(),
             rate: if shading.antialias { 2 } else { 1 },
             background,
+            bbox,
             preserve: self.preserve(state, painted, target, None),
         }))
     }
@@ -301,9 +310,24 @@ impl Renderer<'_> {
         if let Some(intent) = image.intent {
             conversion.intent = intent;
         }
-        let convert = self.colors.prepare(space, target, &conversion)?;
         let mut probe = [0.0; MAX];
-        let painted: Painted = convert.convert(&space.initial(), &mut probe[..channels]);
+        let painted: Painted = self
+            .colors
+            .prepare(space, target, &conversion)?
+            .convert(&space.initial(), &mut probe[..channels]);
+        // A matte is removed from an Indexed image's palette colour in the
+        // base space, so the palette is looked up before conversion.
+        let palette = match (&image.mask, space.as_ref()) {
+            (
+                ImageMask::Soft { matte: Some(_), .. },
+                pagura_color::ColorSpace::Indexed(indexed),
+            ) => Some(indexed.as_ref()),
+            _ => None,
+        };
+        let convert = match palette {
+            Some(indexed) => self.colors.prepare(&indexed.base, target, &conversion)?,
+            None => self.colors.prepare(space, target, &conversion)?,
+        };
         let mask = match &image.mask {
             ImageMask::Stencil(mask) | ImageMask::Soft { mask, .. } => {
                 Some((mask, self.decoded(mask)?))
@@ -324,6 +348,7 @@ impl Renderer<'_> {
             decoded: &decoded,
             matte,
             convert: &convert,
+            palette,
             channels,
             alpha_is_shape: state.alpha_is_shape,
         };

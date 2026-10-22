@@ -5,10 +5,10 @@
 //! composite once (11.6.7).
 
 use super::transfer::Selection;
-use super::{Context, Renderer};
+use super::{Context, Contribution, Crop, Renderer};
 use crate::buffer::{Buffer, Initial};
 use crate::color::Channels;
-use crate::pixel::{Blending, Elements, Source};
+use crate::pixel::Elements;
 use crate::shapes::Coverage;
 use pagura_core::{Error, Result};
 use pagura_interpret::{Composite, TilingColors, TilingPaint};
@@ -86,44 +86,26 @@ impl Renderer<'_> {
                     selection: Selection::Off,
                     stencil,
                     depth: context.depth + 1,
+                    crop: Crop::Free,
                 };
                 self.children(&cell.children, &mut cells, &inner)?;
             }
         }
         let results = colors(&cells, &backdrop, context.target.channels());
-        let mask = state
-            .soft_mask
-            .map(|mask| self.soft_mask(mask, context.device, context.target.process, context.depth))
-            .transpose()?;
-        let blending = Blending {
-            mode: state.blend,
-            process: context.target.process,
-            channels: context.target.channels(),
-        };
-        for (x, y, color, group, shape) in results {
-            let covered = coverage.get(x, y);
-            if covered == 0 {
-                continue;
-            }
-            let factor = f64::from(covered) / 255.0;
-            let mut source = Source {
-                color,
-                alpha: group * factor,
-                shape: shape * factor,
-                preserve: 0,
-            };
-            let m = mask
-                .as_ref()
-                .and_then(|m| crate::area::index(self.window, x, y).and_then(|i| m.get(i)))
-                .copied()
-                .unwrap_or(1.0);
-            source.apply(state, m);
-            let base = context.initial.pixel(x, y);
-            let mut out = parent.get(x, y);
-            out.paint(&source, blending, &base, context.elements);
-            parent.set(x, y, &out);
-        }
-        Ok(())
+        let contributions = results
+            .into_iter()
+            .filter_map(|(x, y, color, group, shape)| {
+                let factor = f64::from(coverage.get(x, y)) / 255.0;
+                (factor > 0.0).then_some(Contribution {
+                    x,
+                    y,
+                    color,
+                    alpha: group * factor,
+                    shape: shape * factor,
+                })
+            })
+            .collect();
+        self.contribute(contributions, state, parent, context)
     }
 }
 
