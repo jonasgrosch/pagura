@@ -5,10 +5,12 @@
 //! Here each segment's quadrilateral ends, on the inner side of a turn, at the
 //! joint's inner miter point (on the bisector of the turn) and, on the outer
 //! side, at the segment's own normal. The outer wedge between two normals
-//! takes the join, and a round cap is the half disc beyond its endpoint.
-//! Pieces that meet share their vertices bit for bit, so the nonzero filled
-//! set is the components' and every point is covered once. A reversal, or a
-//! turn tighter than the pen around a short segment, takes the components'
+//! takes the join. Round caps keep the component stroker's circle polygon:
+//! its angular grid is part of the canonical outline. Those circles overlap
+//! the adjacent pieces, so open round-capped runs remain unproven.
+//! Pieces that meet share their vertices bit for bit. Their nonzero filled
+//! set is the components'; where proven, every point is covered once. A
+//! reversal, or a turn tighter than the pen around a short segment, takes the components'
 //! form instead, which overlaps inside the turn; such runs, and runs that
 //! could bring the pen back over itself (an open centreline whose directions
 //! span a half turn, a closed one that is not convex, and runs whose pens
@@ -72,10 +74,10 @@ pub(super) fn append(
             if let Some(&point) = points.first() {
                 let tangent = run.tangent;
                 let back = Point::new(-tangent.x, -tangent.y);
-                end(out, point, tangent, pen, stroke.cap, limits, bytes)?;
-                end(out, point, back, pen, stroke.cap, limits, bytes)?;
+                cap(out, point, tangent, pen, stroke.cap, limits, bytes)?;
+                cap(out, point, back, pen, stroke.cap, limits, bytes)?;
             }
-            return Ok(true);
+            return Ok(stroke.cap != LineCap::Round);
         };
         let joints = Joints {
             closed: run.closed,
@@ -88,7 +90,9 @@ pub(super) fn append(
         let segments = segments(&points, joints, bytes)?;
         let turns = turns(&segments, joints, radius, stroke.cap, bytes)?;
         let overlaps = turns.iter().any(|j| matches!(j, Joint::Overlap));
-        let proven = !overlaps && advances(&segments, joints.closed);
+        let proven = !overlaps
+            && advances(&segments, joints.closed)
+            && (run.closed || stroke.cap != LineCap::Round);
         if out
             .len()
             .checked_add(segments.len().saturating_mul(7))
@@ -113,11 +117,8 @@ pub(super) fn append(
             (run.closed, segments.as_slice(), segments.as_slice())
         {
             let back = Point::new(-start.x, -start.y);
-            // A half disc relies on the pieces beyond it ending where the
-            // components' would; beside overlaps the ends are the components'.
-            let end = if overlaps { cap } else { end };
-            end(out, *first, back, pen, stroke.cap, limits, bytes)?;
-            end(out, *last, *finish, pen, stroke.cap, limits, bytes)?;
+            cap(out, *first, back, pen, stroke.cap, limits, bytes)?;
+            cap(out, *last, *finish, pen, stroke.cap, limits, bytes)?;
         }
         Ok(proven)
     })();
@@ -424,63 +425,6 @@ fn piece(
     polygon(out, &piece[..n], limits, bytes)
 }
 
-/// The cap beyond `point` in `direction`: a projecting square as drawn, and a
-/// round cap as the half disc on that side.
-fn end(
-    out: &mut PathBuilder,
-    point: Point,
-    direction: Point,
-    pen: Pen,
-    style: LineCap,
-    limits: &Limits,
-    bytes: &mut Meter,
-) -> Result<()> {
-    let before = bytes.used().saturating_sub(out.heap_bytes());
-    let result = (|| {
-        let Pen { radius, tolerance } = pen;
-        if style != LineCap::Round {
-            return cap(out, point, direction, pen, style, limits, bytes);
-        }
-        if radius == 0.0 {
-            return Ok(());
-        }
-        let step = 2.0 * (1.0 - (tolerance / radius).min(1.0)).acos();
-        let count = (std::f64::consts::PI / step).ceil().max(4.0);
-        if !count.is_finite() || count > limits.path_segments as f64 || count > f64::from(u32::MAX)
-        {
-            return Err(Error::limit("round stroke subdivision budget exceeded"));
-        }
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "integer count is bounded by the u32-compatible path budget above"
-        )]
-        let count = count as u32;
-        let normal = Point::new(-direction.y * radius, direction.x * radius);
-        let start = normal.y.atan2(normal.x);
-        // From the left normal through the direction to the right normal; the
-        // diameter's ends are the pieces' corners exactly.
-        let mut points = Vec::new();
-        bytes.reserve(&mut points, count as usize + 1)?;
-        points.push(point + normal);
-        for i in 1..count {
-            let angle = start - std::f64::consts::PI * f64::from(i) / f64::from(count);
-            points.push(Point::new(
-                point.x + radius * angle.cos(),
-                point.y + radius * angle.sin(),
-            ));
-        }
-        points.push(point - normal);
-        polygon(out, &points, limits, bytes)
-    })();
-    bytes.refund(
-        bytes
-            .used()
-            .saturating_sub(before.saturating_add(out.heap_bytes())),
-    );
-    result
-}
-
 #[cfg(test)]
 mod tests {
     use crate::flatten::TOLERANCE;
@@ -608,7 +552,20 @@ mod tests {
                     crate::stroke_outline(&path, transform, &stroke, &limits).unwrap();
                 let (tiles, tiled_pen, tiling) = tiled(&path, transform, &stroke);
                 assert_eq!(pen, tiled_pen);
-                assert_eq!(tiling, Tiling::Proven, "{stroke:?}");
+                let round_caps = stroke.cap == LineCap::Round
+                    && !matches!(path.segments().last(), Some(crate::Segment::Close));
+                assert_eq!(
+                    tiling,
+                    if round_caps {
+                        Tiling::Components
+                    } else {
+                        Tiling::Proven
+                    },
+                    "{stroke:?}"
+                );
+                if round_caps {
+                    assert_eq!(tiles.segments(), components.segments());
+                }
                 let difference = largest_difference(&exact(&tiles, pen), &exact(&components, pen));
                 assert!(difference <= 1, "{stroke:?} {transform:?}: {difference}");
             }
@@ -668,6 +625,35 @@ mod tests {
         crossed.move_to(Point::new(1.0, 10.0));
         crossed.line_to(Point::new(21.0, 11.0)).unwrap();
         components_kept(&crossed.finish(), &stroke);
+    }
+
+    #[test]
+    fn round_cap_circles_keep_open_runs_unproven() {
+        let limits = Limits::default();
+        for (points, dash_array) in [
+            (vec![(8.0, 8.0), (8.0, 8.0)], vec![]),
+            (vec![(8.0, 8.0), (8.125, 8.0)], vec![]),
+            (vec![(8.0, 8.0), (18.0, 8.0)], vec![0.0, 3.0]),
+        ] {
+            let path = polyline(&points, false);
+            let stroke = Stroke {
+                width: 2.0,
+                cap: LineCap::Round,
+                dash_array,
+                ..Stroke::default()
+            };
+            let (_, _, tiling) = pieces(
+                &path,
+                Transform::IDENTITY,
+                &stroke,
+                &limits,
+                (Tiling::Unproven, TOLERANCE),
+                &mut crate::testing::bytes(),
+            )
+            .unwrap();
+            assert_eq!(tiling, Tiling::Unproven);
+            components_kept(&path, &stroke);
+        }
     }
 
     #[test]
@@ -775,7 +761,9 @@ mod tests {
         )]
         let mut next = || (bits() >> 11) as f64 / (1u64 << 53) as f64;
         let mut taken = 0;
-        for case in 0..1000 {
+        // Open round caps now retain overlapping canonical circles. Keep
+        // enough eligible runs to exercise the proven-piece admission too.
+        for case in 0..2000 {
             let count = 2 + usize::from(next() < 0.5) + usize::from(next() < 0.5) * 2;
             let mut points: Vec<(f64, f64)> = (0..count)
                 .map(|_| (4.0 + 40.0 * next(), 4.0 + 40.0 * next()))

@@ -50,6 +50,103 @@ fn check(
     tally.largest = tally.largest.max(largest);
 }
 
+#[test]
+fn round_cap_keeps_the_canonical_polygon_near_a_half_level() {
+    let limits = Limits::default();
+    let area = area(0, 0, 3, 2, 32);
+    let transform = Transform::new(25.0 / 6.0, 0.0, 0.0, -25.0 / 6.0, -652.0, 823.0);
+    let stroke = Stroke {
+        width: 1.0,
+        cap: LineCap::Round,
+        ..Stroke::default()
+    };
+    for points in [
+        [(156.83, 207.0), (156.83, 198.0)],
+        [(156.83, 198.0), (156.83, 207.0)],
+    ] {
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(points[0].0, points[0].1));
+        path.line_to(Point::new(points[1].0, points[1].1)).unwrap();
+        let path = path.finish();
+        let mark = exact::stroke(
+            &path,
+            &stroke,
+            Transform::IDENTITY,
+            Adjustment::None,
+            transform,
+            &limits,
+        )
+        .unwrap();
+        let expected = reference(area.region, mark, &[]);
+        // Exact Fraction clipping of the canonical stored circle polygon
+        // gives 0.5000447760 levels here. A separately sampled half disc
+        // gives 0.4864086785, dropping a coverage byte before composition.
+        assert_eq!(expected[0], 1);
+        let prepare = |options: &ShapeOptions<'_>, clip: Option<&ClipShape>| {
+            Shape::stroke_with_clip(
+                &path,
+                &stroke,
+                (Transform::IDENTITY, transform),
+                Adjustment::None,
+                clip,
+                options,
+            )
+            .unwrap()
+        };
+        assert_eq!(invariant(&area, &prepare, &[]), expected);
+    }
+}
+
+#[test]
+fn round_cap_polygons_match_for_reversed_rotated_and_dashed_lines() {
+    let limits = Limits::default();
+    let area = area(0, 0, 48, 48, 16);
+    for transform in [
+        Transform::IDENTITY,
+        Transform::new(0.8, 0.6, -0.6, 0.8, 20.0, 1.0),
+        Transform::new(1.2, 0.3, 0.2, 0.7, 1.0, 2.0),
+    ] {
+        for points in [[(5.3, 6.2), (16.7, 17.3)], [(16.7, 17.3), (5.3, 6.2)]] {
+            let mut path = PathBuilder::new();
+            path.move_to(Point::new(points[0].0, points[0].1));
+            path.line_to(Point::new(points[1].0, points[1].1)).unwrap();
+            let path = path.finish();
+            for dash_array in [vec![], vec![3.0, 2.0], vec![0.0, 3.0]] {
+                let stroke = Stroke {
+                    width: 1.25,
+                    cap: LineCap::Round,
+                    dash_array,
+                    ..Stroke::default()
+                };
+                let mark = exact::stroke(
+                    &path,
+                    &stroke,
+                    Transform::IDENTITY,
+                    Adjustment::None,
+                    transform,
+                    &limits,
+                )
+                .unwrap();
+                let shape = Shape::stroke(
+                    &path,
+                    &stroke,
+                    Transform::IDENTITY,
+                    transform,
+                    Adjustment::None,
+                    &options(area, &limits),
+                )
+                .unwrap()
+                .unwrap();
+                assert_eq!(
+                    raster(&area, Some(&shape), None).0,
+                    reference(area.region, mark, &[]),
+                    "{points:?}, {transform:?}, {stroke:?}"
+                );
+            }
+        }
+    }
+}
+
 fn paths(rng: &mut Lcg) -> Vec<Path> {
     let mut out = Vec::new();
     // Two-segment polylines, as most marks of dense vector pages are.
