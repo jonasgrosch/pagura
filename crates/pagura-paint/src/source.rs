@@ -48,8 +48,6 @@ pub struct PaintContext<'a> {
     pub store: &'a Store,
     /// Budgets.
     pub limits: &'a Limits,
-    /// Whether images may be decoded near their drawn size.
-    pub reduced_image_decode: bool,
     /// The device pixels the paint is sampled in: the render's region
     /// intersected with the mark's bounds. Sources may skip what lies
     /// outside (rows of an image's decode, for example).

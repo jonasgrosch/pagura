@@ -17,9 +17,6 @@ pub struct Planar {
     pub(crate) dirty: [Vec<u8>; 3],
     /// The value each plane was initialized with.
     pub(crate) backgrounds: [u8; 3],
-    /// Samples per block side: eight, or the cells a block keeps when the
-    /// image was reconstructed near its drawn size.
-    pub(crate) block: usize,
 }
 
 impl Planar {
@@ -71,7 +68,6 @@ impl Planar {
             planes,
             dirty,
             backgrounds: BACKGROUNDS,
-            block: 8,
         })
     }
 
@@ -114,13 +110,6 @@ impl Planar {
         matches!(repeat, 1 | 2 | 4).then_some(repeat)
     }
 
-    /// Samples per block side: eight, or fewer for cells near the drawn
-    /// size.
-    #[must_use]
-    pub fn block(&self) -> usize {
-        self.block
-    }
-
     /// The value each component's plane holds where no block was stored.
     #[must_use]
     pub fn backgrounds(&self) -> [u8; 3] {
@@ -131,7 +120,7 @@ impl Planar {
     /// the plane's background.
     #[must_use]
     pub fn dirty(&self, c: usize, row: usize, block: usize) -> bool {
-        let stride = self.geometry[c][2] / self.block;
+        let stride = self.geometry[c][2] / 8;
         self.dirty[c]
             .get(row * stride + block)
             .is_some_and(|&flag| flag != 0)

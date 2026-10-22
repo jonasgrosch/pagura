@@ -653,7 +653,6 @@ impl<B: Backend> Planner<'_, B> {
             composite: state,
             store: self.store,
             limits: self.limits,
-            reduced_image_decode: self.request.fast.reduced_image_decode,
             region: bounds,
         };
         let request = PaintRequest { context, pixels };
@@ -777,7 +776,6 @@ impl<B: Backend> Planner<'_, B> {
             composite: state,
             store: self.store,
             limits: self.limits,
-            reduced_image_decode: self.request.fast.reduced_image_decode,
             region: bounds,
         };
         let request = PaintRequest { context, pixels };

@@ -503,10 +503,7 @@ fn black_generation_converts_group_results_into_cmyk() {
 
 #[test]
 fn narrow_parents_take_group_results_as_one_rounded_store() {
-    for (page, child) in [
-        (Format::F32, Format::F32),
-        (Format::N16, Format::F64),
-    ] {
+    for (page, child) in [(Format::F32, Format::F32), (Format::N16, Format::F64)] {
         let mut f = Fixture::new(5, 3, RGB, page);
         f.mark(
             0,

@@ -1,13 +1,12 @@
 //! Image sources decoded on request (ADR 0034): an image is read and
 //! validated when content is interpreted, and its samples are decoded only
-//! when painting asks for them, at the reduction and region it needs.
+//! when painting asks for them, in the layout and orientation it needs.
 
 mod codec;
 mod header;
 #[cfg(test)]
 mod tests;
 
-use crate::deferred::SampleLayout;
 use crate::{DecodedImage, ImageKind};
 use header::{Codec, Header};
 use pagura_core::{
@@ -79,7 +78,6 @@ pub struct ImageSource {
     origin: Option<Position>,
     header: Arc<Header>,
     data: Arc<[u8]>,
-    drawn: bool,
     recovery: Recovery,
 }
 
@@ -100,16 +98,6 @@ pub enum Reduce {
         x: u32,
         /// The fewest samples per output pixel along y that painting needs.
         y: u32,
-    },
-    /// Reconstruction near the drawn size: JPEG cells per eight-sample block
-    /// axis (1, 2, 3, 4 or 6), from [`ImageSource::drawn`], interleaved or,
-    /// in the [`Layout::Native`] layout, in component planes of cells. Only
-    /// under the `reduced_image_decode` fast parameter; not within the
-    /// one-level contract. JPEG 2000 resolution levels are not supported by
-    /// the decoder, so JPEG 2000 images decode fully.
-    Drawn {
-        /// Samples kept per eight-sample block axis.
-        cells: u8,
     },
 }
 
@@ -249,15 +237,11 @@ impl ImageSource {
                 .map(|diagnostic| place_diagnostic(diagnostic, id, origin)),
         );
         let (header, data) = result.map_err(|error| place_error(error, id, origin))?;
-        let drawn = image
-            .dictionary()
-            .is_some_and(|dictionary| header::drawn(document, dictionary));
         Ok(Self {
             id: ImageId::Object(id),
             origin: Some(origin),
             header: Arc::new(header),
             data: data.into(),
-            drawn,
             recovery: document.recovery(),
         })
     }
@@ -285,7 +269,6 @@ impl ImageSource {
             origin: None,
             header: Arc::new(header),
             data: data.into(),
-            drawn: false,
             recovery: document.recovery(),
         })
     }
@@ -411,23 +394,6 @@ impl ImageSource {
         .fold(0, usize::saturating_add)
     }
 
-    /// The reduction near the drawn size for an image drawn with
-    /// `samples_per_pixel` source samples per device pixel along its less
-    /// minified axis, under the `reduced_image_decode` fast parameter: the
-    /// fewest JPEG cells per block axis, of 1, 2, 3, 4 and 6, that leave at
-    /// least two and a half cells per device pixel, for an opaque DeviceGray
-    /// or DeviceRGB `DCTDecode` image XObject without `Mask`, `SMask` or
-    /// `Decode`; [`Reduce::Full`] otherwise.
-    pub fn drawn(&self, samples_per_pixel: f64) -> Reduce {
-        if !self.drawn {
-            return Reduce::Full;
-        }
-        [1, 2, 3, 4, 6]
-            .into_iter()
-            .find(|&cells| samples_per_pixel * f64::from(cells) >= 20.0)
-            .map_or(Reduce::Full, |cells| Reduce::Drawn { cells })
-    }
-
     /// An upper bound of the bytes (decoded samples and the codec's working
     /// storage) and `decode_work` units (one per coefficient, sample and
     /// entropy symbol) a decode of `request` uses, for reservation before
@@ -435,8 +401,7 @@ impl ImageSource {
     /// bound hostile data.
     pub fn decode_cost(&self, request: &DecodeRequest) -> (usize, usize) {
         let header = &self.header;
-        let (width, height) = self.decoded_size(request);
-        let pixels = u64::from(width) * u64::from(height);
+        let pixels = u64::from(header.width) * u64::from(header.height);
         let components = u64::from(header.components.max(1));
         let wide = header.bits.iter().any(|&bits| bits > 8);
         let values = pixels.saturating_mul(components);
@@ -446,8 +411,7 @@ impl ImageSource {
         } else {
             0
         };
-        let source = u64::from(header.width) * u64::from(header.height);
-        let source_values = source.saturating_mul(components.max(4));
+        let source_values = pixels.saturating_mul(components.max(4));
         let (working, work) = match header.codec {
             Codec::None => (0, values),
             // Coefficients or native planes with block padding, and the
@@ -457,7 +421,7 @@ impl ImageSource {
                 source_values.saturating_mul(4),
             ),
             Codec::Ccitt(_) | Codec::Jbig2(_) => {
-                (source.saturating_mul(2), source.saturating_mul(4))
+                (pixels.saturating_mul(2), pixels.saturating_mul(4))
             }
             Codec::Jpx(_) => (
                 source_values.saturating_mul(16),
@@ -476,8 +440,8 @@ impl ImageSource {
         (saturate(bytes), saturate(work))
     }
 
-    /// Decodes the samples `request` asks for: every sample exactly unless
-    /// the request reduces it, with the decoded image's painting entries.
+    /// Decodes the samples `request` asks for, every sample exactly, with
+    /// the decoded image's painting entries.
     ///
     /// # Errors
     ///
@@ -494,7 +458,7 @@ impl ImageSource {
         let result = codec::decode(
             &self.header,
             &self.data,
-            (self.layout(request), request.orientation),
+            (request.layout, request.orientation),
             limits,
             &mut diagnostics,
         );
@@ -511,39 +475,6 @@ impl ImageSource {
                 image: result.map_err(|error| error.at(Position::Buffer(0)))?,
                 diagnostics,
             }),
-        }
-    }
-
-    /// The sample layout a request decodes into.
-    fn layout(&self, request: &DecodeRequest) -> SampleLayout {
-        match request.reduce {
-            Reduce::Drawn { cells }
-                if self.drawn
-                    && matches!(self.header.codec, Codec::Dct(_))
-                    && matches!(cells, 1 | 2 | 3 | 4 | 6) =>
-            {
-                match request.layout {
-                    Layout::Interleaved => SampleLayout::Cells(cells),
-                    Layout::Native => SampleLayout::DeferredCells(cells),
-                }
-            }
-            _ => match request.layout {
-                Layout::Interleaved => SampleLayout::Interleaved,
-                Layout::Native => SampleLayout::Deferred,
-            },
-        }
-    }
-
-    /// The stored dimensions of a decode of `request`.
-    fn decoded_size(&self, request: &DecodeRequest) -> (u32, u32) {
-        match self.layout(request) {
-            SampleLayout::Cells(cells) | SampleLayout::DeferredCells(cells) => (
-                crate::dct::scaled_length(self.header.width, cells),
-                crate::dct::scaled_length(self.header.height, cells),
-            ),
-            SampleLayout::Interleaved | SampleLayout::Deferred => {
-                (self.header.width, self.header.height)
-            }
         }
     }
 }

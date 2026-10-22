@@ -607,8 +607,6 @@ impl Rows for CodeRows<'_> {
 /// arithmetic beyond one value per device row.
 #[derive(Debug)]
 struct Clean {
-    /// Samples per block side.
-    side: usize,
     /// Bit words per block row.
     words: usize,
     /// One bit per luma block, set where it is background.
@@ -619,7 +617,7 @@ struct Clean {
 
 impl Clean {
     fn new(planar: &Planar) -> Self {
-        let side = planar.block().max(1);
+        let side = Self::SIDE;
         let [_, _, pitch] = planar.geometry(0);
         let [max_h, max_v] = planar.maximum();
         let columns = pitch / side;
@@ -675,7 +673,6 @@ impl Clean {
         let mut background = [0; 3];
         let _ = pagura_image::deferred::ycbcr(&[y], &[cb], &[cr], 1, &mut background);
         Self {
-            side,
             words,
             bits,
             background,
@@ -703,7 +700,7 @@ impl Clean {
                 _ => runs.push((start, stop, dirty)),
             }
         };
-        let side = self.side;
+        let side = Self::SIDE;
         let (mut column, last) = (first / side, (end - 1) / side);
         while column <= last {
             // The background bits of this word's columns from `column` on,
@@ -735,6 +732,9 @@ impl Clean {
     /// The shortest background run worth reducing apart from its
     /// neighbours.
     const GAP: usize = 64;
+
+    /// Samples per block side.
+    const SIDE: usize = 8;
 }
 
 /// The decoded samples as rows of codes.

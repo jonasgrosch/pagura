@@ -149,7 +149,6 @@ fn compare(parsed: &Parsed, target: &Target, counts: &mut Counts) {
         composite: &composite,
         store: &store,
         limits: &limits,
-        reduced_image_decode: false,
         region: pagura_raster::DeviceRect {
             x0: 0,
             y0: 0,
