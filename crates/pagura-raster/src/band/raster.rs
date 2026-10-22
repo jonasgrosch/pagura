@@ -679,13 +679,18 @@ pub(crate) fn sink<'a>(
         .as_ref()
         .filter(|_| shape.overlay)
         .and_then(ClipShape::rows);
+    let stored = shape.stored.row(y);
+    let out = Out {
+        coverage: out,
+        x0: shape.bounds.x0 as usize,
+        x1: shape.bounds.x1 as usize,
+    };
+    if stored.is_empty() && rows.is_none() {
+        return RowSink::Plain(out);
+    }
     RowSink::Overlay(Overlay {
-        out: Out {
-            coverage: out,
-            x0: shape.bounds.x0 as usize,
-            x1: shape.bounds.x1 as usize,
-        },
-        stored: shape.stored.row(y),
+        out,
+        stored,
         next: 0,
         clip: rows.map(|rows| (rows, rows.row(y))),
         segment: 0,
@@ -695,6 +700,8 @@ pub(crate) fn sink<'a>(
 
 /// A shape row's sink.
 pub(crate) enum RowSink<'a> {
+    /// Nothing between the shape and the output.
+    Plain(Out<'a>),
     Overlay(Overlay<'a>),
     Multiplied(Multiplied<'a>),
     Late(Overlay<'a, Multiplied<'a>>),
@@ -703,6 +710,7 @@ pub(crate) enum RowSink<'a> {
 impl RowSink<'_> {
     pub(crate) fn extra(&self) -> usize {
         match self {
+            Self::Plain(_) => 0,
             Self::Overlay(o) => o.extra(),
             Self::Multiplied(m) => m.work(),
             Self::Late(o) => o.extra().saturating_add(o.out.work()),
@@ -714,6 +722,7 @@ impl Sink for RowSink<'_> {
     #[inline]
     fn run(&mut self, x0: usize, x1: usize, value: u8) {
         match self {
+            Self::Plain(o) => o.run(x0, x1, value),
             Self::Overlay(o) => o.run(x0, x1, value),
             Self::Multiplied(m) => m.run(x0, x1, value),
             Self::Late(o) => o.run(x0, x1, value),

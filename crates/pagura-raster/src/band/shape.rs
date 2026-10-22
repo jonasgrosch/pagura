@@ -128,6 +128,19 @@ impl Shape {
         if options.precision == Precision::Approximate {
             return super::approximate::fill(path, transform, rule, options);
         }
+        if let Some(rect) = rect_fill(path, transform, options.limits) {
+            // The rectangle the polygon would be, without building it.
+            let Some(mut frame) = Frame::new(options) else {
+                return Ok(None);
+            };
+            frame.fit([
+                crate::Point::new(rect.left, rect.top),
+                crate::Point::new(rect.right, rect.bottom),
+            ]);
+            if frame.rows.is_none() {
+                return Ok(Self::rect(rect, &frame, options));
+            }
+        }
         let (polygon, rule) = fill_polygon(path, transform, rule, None, options.limits)?;
         Self::polygon(polygon, rule, Winding::Check(0.0), options)
     }
@@ -649,6 +662,55 @@ impl Shape {
     pub(crate) fn add_work(&mut self, units: usize) {
         self.work = self.work.saturating_add(units);
     }
+}
+
+/// The device rectangle a fill of `path` is when the path is one subpath of
+/// four corners that `transform` keeps axis-aligned: the corners as the
+/// flattened polygon holds them, so the fill's bytes do not change. `None`
+/// for anything else, which goes through the polygon.
+fn rect_fill(path: &Path, transform: Transform, limits: &pagura_core::Limits) -> Option<Bounds> {
+    use crate::Segment;
+    let segments = path.segments();
+    if !transform.is_finite() || segments.len() > limits.path_segments {
+        return None;
+    }
+    let mut corners = [crate::Point::default(); 5];
+    let mut n = 0;
+    for (i, segment) in segments.iter().enumerate() {
+        match (i, *segment) {
+            (0, Segment::MoveTo(p)) => {
+                corners[0] = p;
+                n = 1;
+            }
+            (1..=4, Segment::LineTo(p)) if n == i => {
+                corners[n] = p;
+                n += 1;
+            }
+            (_, Segment::Close) if i + 1 == segments.len() && i == n => {}
+            _ => return None,
+        }
+    }
+    // An explicit return to the first corner closes as a close does.
+    if n == 5 && corners[4] == corners[0] {
+        n = 4;
+    }
+    if n != 4 {
+        return None;
+    }
+    let mut device = [crate::Point::default(); 4];
+    for (d, &p) in device.iter_mut().zip(&corners[..4]) {
+        *d = p * transform;
+        crate::flatten::bounded(*d).ok()?;
+    }
+    let [a, b, c, d] = device;
+    let axis = (a.x == b.x && b.y == c.y && c.x == d.x && d.y == a.y)
+        || (a.y == b.y && b.x == c.x && c.y == d.y && d.x == a.x);
+    (axis && a != b && b != c && c != d && d != a).then_some(Bounds {
+        left: a.x.min(c.x),
+        top: a.y.min(c.y),
+        right: a.x.max(c.x),
+        bottom: a.y.max(c.y),
+    })
 }
 
 /// The columns cells of edges with these x can be touched in.

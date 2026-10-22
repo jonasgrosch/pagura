@@ -262,3 +262,63 @@ fn degenerate_overlaps_on_pixel_boundaries_match_the_old_backends() {
     }
     eprintln!("degenerate overlaps: {differences} differing pixels");
 }
+
+/// Rectangle fills skip the polygon and give its bytes, under axis-keeping
+/// transforms and clips.
+#[test]
+fn rectangle_fills_skip_the_polygon_with_its_bytes() {
+    let limits = Limits::default();
+    let area = area(0, 0, 40, 32, 8);
+    let mut rng = Lcg(31);
+    let mut crop = PathBuilder::new();
+    crop.rect(1.5, 0.25, 36.0, 30.0);
+    let crop = crop.finish();
+    let triangle = polygon(&[
+        Point::new(2.0, 1.0),
+        Point::new(39.0, 6.0),
+        Point::new(9.0, 31.0),
+    ]);
+    let transforms = [
+        Transform::IDENTITY,
+        Transform::new(1.5, 0.0, 0.0, -1.25, 0.3, 31.0),
+        Transform::new(0.0, 1.0, -1.0, 0.0, 39.0, 0.5),
+    ];
+    for case in 0..200 {
+        let mut path = PathBuilder::new();
+        path.rect(
+            rng.grid(-2.0, 30.0, 64),
+            rng.grid(-2.0, 22.0, 64),
+            rng.grid(0.0, 14.0, 64),
+            rng.grid(0.0, 12.0, 64),
+        );
+        let path = path.finish();
+        let transform = transforms[case % 3];
+        let clips: [Option<Vec<(&Path, FillRule)>>; 3] = [
+            None,
+            Some(vec![(&crop, FillRule::NonZero)]),
+            Some(vec![(&triangle, FillRule::NonZero)]),
+        ];
+        for clips in &clips {
+            let clip = clips.as_ref().map(|c| {
+                ClipShape::new(
+                    c,
+                    Transform::IDENTITY,
+                    &public(area, &limits, Precision::Exact),
+                )
+                .unwrap()
+            });
+            let prep = options(area, &limits, clip.as_ref());
+            let fast = Shape::fill_in(&path, transform, FillRule::NonZero, &prep).unwrap();
+            let (polygon, rule) =
+                clip::fill_polygon(&path, transform, FillRule::NonZero, None, &limits).unwrap();
+            let slow = Shape::polygon(polygon, rule, shape::Winding::Check(0.0), &prep).unwrap();
+            let bytes = |s: Option<&Shape>| {
+                s.map_or_else(
+                    || vec![0; 40 * 32],
+                    |s| raster(&area, Some(s), clip.as_ref()).0,
+                )
+            };
+            assert_eq!(bytes(fast.as_ref()), bytes(slow.as_ref()), "case {case}");
+        }
+    }
+}
