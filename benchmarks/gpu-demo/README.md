@@ -1,13 +1,16 @@
 # Rendering backend experiment
 
-A WebGPU host for the existing prepared scene, branched from
-`render/one-pass` at `87fa81b64162281fccbdcae5564e1ec431022c4c`.
-The CPU's exact coverage feeds an integer N16 GPU compositor. There is no
-general GPU rasterizer here. This experiment does not change the production
-renderer or the scope of ADR 0004.
+A comparison host branched from `render/one-pass` at
+`87fa81b64162281fccbdcae5564e1ec431022c4c`. It presents exact CPU output,
+a hybrid integer N16 WebGPU compositor using CPU coverage, and browser SVG
+exported from the shared scene. There is no general GPU rasterizer here.
+This experiment does not change the production renderer or the scope of
+ADR 0004.
 
-[`RESULTS.md`](RESULTS.md) records the measured CPU/GPU comparison and its
-limits; raw evidence remains local under `target/gpu-demo/`.
+[`SVG_RESULTS.md`](SVG_RESULTS.md) records the three-backend comparison,
+zoom studies and visual differences. [`RESULTS.md`](RESULTS.md) preserves
+the earlier CPU/GPU measurements. Raw evidence remains local under
+`target/gpu-demo/`.
 
 ```sh
 cargo build --manifest-path benchmarks/gpu-demo/engine/Cargo.toml --locked \
@@ -16,7 +19,7 @@ node benchmarks/gpu-demo/run.mjs serve
 ```
 
 Open `http://127.0.0.1:8097/` in a WebGPU-capable Chrome. Choose a generated
-workload or open a PDF, then compare both previews at 72, 150 or 300 DPI.
+workload or open a PDF, then compare the previews at 72, 150 or 300 DPI.
 PDFs stay in the browser. The server binds only to loopback and exposes
 the demo, its WASM module and generated development fixtures. No packages
 need installing. The existing bundled font notices accompany this host in
@@ -47,7 +50,7 @@ then remaining stores execute forward. Final conversion is
 `(word + 128) / 257`. No GPU floating-point math or normalized texture
 conversion enters these pixels.
 
-The small development host is a separate, dependency-free Cargo workspace
+The small development host is a separate Cargo workspace
 with only local engine dependencies. Native and WASI builds use the same
 code. The browser reuses the viewer's WASI shim, bounded mailbox and extracted
 `web/host_runtime.mjs`. WebGPU and shader code stay in the host.
@@ -55,9 +58,10 @@ code. The browser reuses the viewer's WASI shim, bounded mailbox and extracted
 ## Measurement
 
 [`policy.json`](policy.json) defines exploratory reporting, separately from
-the release gate. Both browser paths use the same SIMD WASI engine, cached
-scene and warm resources. Every measured result is checked byte-for-byte
-outside timing. Adjacent paired samples alternate CPU/GPU/GPU/CPU.
+the release gate. All paths use the same SIMD WASI engine, cached scene and
+warm resources. CPU and hybrid results are checked byte-for-byte outside
+timing. SVG differences are reported separately. Samples rotate and reverse
+the CPU, GPU and SVG order.
 
 The main comparison includes CPU preparation and coverage, packet
 construction, program upload on every render, GPU completion and RGBA
@@ -163,6 +167,10 @@ The comparison distinguishes three costs:
 - **Zoom:** reuse the SVG vector source at 1×, 1.5× and 2× while CPU/hybrid
   produce fresh pixels. A separate CSS gesture scales existing content for
   every backend; bitmap preview scaling is not fresh-resolution rendering.
+
+Zoom differences read back the retained SVG image actually shown by the
+browser. A fresh serialization at the same DPI is also compared separately;
+changing an SVG image's intrinsic dimensions can change browser rasterization.
 
 Slow SVG raster cases remain in the report, with an explicit sample cap from
 `policy.json`. SVG differences against CPU include changed pixels, pixels
