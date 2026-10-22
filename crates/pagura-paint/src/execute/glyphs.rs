@@ -7,7 +7,7 @@
 //! cover it, and a zero-coverage store, which leaves every format as it is,
 //! at the gaps of a gathered row. Results are byte-identical.
 
-use super::{Buffer, Cover, Executor, Frame, PageBuffer, Tops, clamp};
+use super::{Cover, Executor, Frame, Tops, clamp};
 use crate::plan::{Glyph, Item, Run, intersect};
 use pagura_core::convert::u32_to_usize;
 use pagura_raster::DeviceRect;
@@ -22,12 +22,9 @@ impl Executor<'_> {
             self.ensure_mask(mask, tops);
         }
         self.count_shape(item);
-        let words = match (mark.words, frame.buffer, &self.ws.page) {
-            (Some(words), Buffer::Page, PageBuffer::N16(_)) if !mark.records => Some(words),
-            _ => None,
-        };
+        let opaque = self.opaque(mark, frame);
         let rect = intersect(item.bounds, frame.rect);
-        let gather = words.is_none() && run.gather && !rect.is_empty();
+        let gather = opaque.is_none() && run.gather && !rect.is_empty();
         let mut coverage = std::mem::take(&mut self.ws.coverage);
         for glyph in &run.glyphs {
             if glyph.bands[0] > self.band || glyph.bands[1] < self.band {
@@ -39,8 +36,8 @@ impl Executor<'_> {
             }
             self.producer
                 .rasterize(Some(glyph.shape), mark.cover.clip, self.band, &mut coverage);
-            if let Some(words) = words {
-                self.opaque_n16(&coverage, frame, words);
+            if let Some(opaque) = opaque {
+                self.opaque_store(&coverage, frame, opaque);
                 continue;
             }
             // A gathered span stays within its placement's bounds, as the

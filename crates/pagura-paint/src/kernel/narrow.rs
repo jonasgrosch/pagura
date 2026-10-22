@@ -17,14 +17,12 @@ pub(crate) fn div255(x: u32) -> u32 {
 }
 
 /// The nearest byte of an N16 word, `round(w / 257)` (never a tie):
-/// `n = w + 128`, then `(n − (n >> 8)) >> 8`.
+/// `n = w + 128`, then `(n − (n >> 8)) >> 8`, in u16 lanes: `n` saturates
+/// at 65535 only for words above 65407, whose byte is 255 either way
+/// (checked exhaustively in the tests).
 #[inline]
-#[expect(
-    clippy::cast_possible_truncation,
-    reason = "(65535 + 128 − 256) >> 8 is 255"
-)]
 pub(crate) fn word_byte(word: u16) -> u8 {
-    let n = u32::from(word).wrapping_add(128);
+    let n = word.saturating_add(128);
     (n.wrapping_sub(n >> 8) >> 8) as u8
 }
 
@@ -52,6 +50,44 @@ pub(crate) fn f32_bytes(out: &mut [[u8; 4]], levels: &[[f32; 4]]) {
 )]
 fn level_byte(level: f32) -> u8 {
     level.round().clamp(0.0, 255.0) as u8
+}
+
+/// Stores an opaque colour, already encoded as bytes, at `coverage` (`None`
+/// covers every pixel): `round((c·s + (255 − c)·u) / 255)`, the store the
+/// byte path makes at alpha `c / 255`, in u16 lanes (`255² + 128 + 254`
+/// stays below 2^16) with no branch.
+pub(crate) fn store_u8_opaque(pixels: &mut [[u8; 4]], source: [u8; 4], coverage: Option<&[u8]>) {
+    let Some(coverage) = coverage else {
+        pixels.fill(source);
+        return;
+    };
+    let s = source.map(u16::from);
+    for (pixel, &c) in pixels.iter_mut().zip(coverage) {
+        let c = u16::from(c);
+        let r = 255_u16.wrapping_sub(c);
+        let b = pixel.map(u16::from);
+        *pixel = [
+            mix_byte(s[0], b[0], (c, r)),
+            mix_byte(s[1], b[1], (c, r)),
+            mix_byte(s[2], b[2], (c, r)),
+            mix_byte(s[3], b[3], (c, r)),
+        ];
+    }
+}
+
+/// One byte store, `round255` in u16.
+#[inline]
+fn mix_byte(source: u16, backdrop: u16, (c, rest): (u16, u16)) -> u8 {
+    let t = source
+        .wrapping_mul(c)
+        .wrapping_add(backdrop.wrapping_mul(rest))
+        .wrapping_add(128);
+    (t.wrapping_add(t >> 8) >> 8) as u8
+}
+
+/// The bytes the byte path stores for an opaque constant colour.
+pub(crate) fn color_bytes(color: &[f64]) -> [u8; 4] {
+    bytes(color)
 }
 
 /// `round(p / 255)` for `p ≤ 255²` (never a tie): `t = p + 128`, then
@@ -293,6 +329,34 @@ fn over(pixel: &mut [u8; 4], source: [u8; 4], alpha: f64) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn words_round_to_their_nearest_byte_in_u16_lanes() {
+        for word in 0..=u16::MAX {
+            let exact = (f64::from(word) / 257.0).round();
+            assert_eq!(f64::from(word_byte(word)), exact, "word {word}");
+        }
+    }
+
+    #[test]
+    fn opaque_byte_stores_match_the_byte_path() {
+        for c in 0..=255_u8 {
+            let alpha = f64::from(c) / 255.0;
+            assert_eq!(pagura_raster::quantize_unit(alpha), c);
+            for s in [0_u8, 1, 77, 128, 254, 255] {
+                for b in 0..=255_u8 {
+                    let mut fast = [[b, b, b, b]];
+                    store_u8_opaque(&mut fast, [s, s, s, 255], Some(&[c]));
+                    let mut slow = [b, b, b, b];
+                    over(&mut slow, [s, s, s, 255], alpha);
+                    assert_eq!(fast[0], slow, "s {s} b {b} c {c}");
+                }
+            }
+        }
+        let mut full = [[3_u8; 4]; 3];
+        store_u8_opaque(&mut full, [9, 8, 7, 255], None);
+        assert_eq!(full, [[9, 8, 7, 255]; 3]);
+    }
 
     #[test]
     fn words_round_to_the_nearest_byte_at_the_output() {

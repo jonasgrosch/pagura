@@ -159,9 +159,11 @@ impl<B: Backend> Planner<'_, B> {
             };
             return self.push(group, item, budget);
         }
-        // Opaque constant stores into the N16 page need no gathering: each
-        // placement stores straight from its coverage.
-        let direct = group == 0 && self.storage.page == Format::N16 && mark.words.is_some();
+        // Opaque constant stores into the N16 or byte page need no
+        // gathering: each placement stores straight from its coverage.
+        let direct = group == 0
+            && matches!(self.storage.page, Format::N16 | Format::U8)
+            && mark.words.is_some();
         let shared = if direct { None } else { meetings(&mut glyphs) };
         let gather = shared.is_some();
         let shared = shared.unwrap_or_default();
