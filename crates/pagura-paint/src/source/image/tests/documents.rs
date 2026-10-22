@@ -237,17 +237,17 @@ fn planes_background_blocks_and_turns_sample_as_interleaved_samples() {
                     ((a.abs() + c.abs()).ceil() as u32 + 1).min(200),
                     ((b.abs() + d.abs()).ceil() as u32 + 1).min(200),
                 );
+                let planes = oriented_sampler(Arc::clone(&native), placement, window.0);
                 assert_eq!(
                     sample_all(
                         &oriented_sampler(Arc::clone(&interleaved), placement, window.0),
                         window
                     ),
-                    sample_all(
-                        &oriented_sampler(Arc::clone(&native), placement, window.0),
-                        window
-                    ),
+                    sample_all(&planes, window),
                     "{id} {placement:?}"
                 );
+                let len = usize::try_from(window.0).unwrap();
+                assert!(super::bytes_agree(&planes, (0, len), 0..window.1));
             }
         }
     }

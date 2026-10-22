@@ -10,7 +10,9 @@
 //! benchmark pages); `PAGURA_IMAGE_DPI` the resolutions (default
 //! `72,150,300`); `PAGURA_IMAGE_RUNS` the samples of which the best is kept
 //! (default 7); `PAGURA_IMAGE_ROUTES` the routes (default
-//! `old,exact,reduced`).
+//! `old,exact,reduced`); `PAGURA_IMAGE_STAGE` `decode` or `sample` times
+//! that stage alone; `PAGURA_IMAGE_OUTPUT=f64` fills the reduced route's
+//! spans as f64 colours rather than as bytes.
 //!
 //! The new routes decode every image of the page with a fresh store, then
 //! prepare its sampler and fill every span of its device bounds within the
@@ -312,15 +314,24 @@ pub(super) fn sampler(placed: &Placed, decoded: Arc<Decoded>) -> Option<ImageSam
 }
 
 /// Prepares the sampler of `placed` over `decoded` and fills every span of
-/// its bounds, returning a checksum.
-fn sample_once(placed: &Placed, decoded: Arc<Decoded>) -> f64 {
+/// its bounds, as bytes where `bytes` asks for them and the sampler fills
+/// them, returning a checksum.
+fn sample_once(placed: &Placed, decoded: Arc<Decoded>, bytes: bool) -> f64 {
     let Some(sampler) = sampler(placed, decoded) else {
         return 0.0;
     };
     let rect = placed.rect;
     let len = usize::try_from(rect.x1 - rect.x0).unwrap();
-    let mut out = SpanColors::default();
     let mut checksum = 0.0;
+    if bytes && sampler.has_byte_spans() {
+        let mut out = vec![[0u8; 4]; len];
+        for y in rect.y0..rect.y1 {
+            sampler.span_bytes(rect.x0, y, &mut out);
+            checksum += out.iter().step_by(97).map(|p| f64::from(p[1])).sum::<f64>();
+        }
+        return checksum;
+    }
+    let mut out = SpanColors::default();
     for y in rect.y0..rect.y1 {
         sampler.span(rect.x0, y, len, &mut out);
         checksum += out.colors.iter().step_by(97).sum::<f64>();
@@ -358,10 +369,13 @@ fn new_route(images: &[Placed], limits: &Limits, reduced: bool, runs: usize) -> 
         .iter()
         .map(|placed| decode_once(placed, limits, reduced))
         .collect();
+    // The reduced route fills bytes, as fast storage takes them, unless
+    // `PAGURA_IMAGE_OUTPUT=f64`.
+    let bytes = reduced && setting("PAGURA_IMAGE_OUTPUT", "bytes") == "bytes";
     let sampling = best(runs, || {
         for (placed, decoded) in images.iter().zip(&decoded) {
             if let Some(decoded) = decoded {
-                std::hint::black_box(sample_once(placed, Arc::clone(decoded)));
+                std::hint::black_box(sample_once(placed, Arc::clone(decoded), bytes));
             }
         }
     });
@@ -524,6 +538,54 @@ fn image_decode_timing() {
                 }
             }
             eprintln!("{line}");
+        }
+    }
+}
+
+/// What each image of the pages is and how it is sampled at each
+/// resolution.
+#[test]
+#[ignore = "needs the benchmark corpus"]
+fn image_page_details() {
+    let dpis: Vec<f64> = setting("PAGURA_IMAGE_DPI", "72,150,300")
+        .split(',')
+        .filter_map(|v| v.trim().parse().ok())
+        .collect();
+    for (name, document, index) in pages(IMAGE_PAGES) {
+        let page = document.page(index).unwrap();
+        let limits = document.limits();
+        for &dpi in &dpis {
+            for placed in placed(&document, page, dpi / 72.0) {
+                let source = &placed.source;
+                let decoded = decode_once(&placed, &limits, true).unwrap();
+                let sampler = sampler(&placed, Arc::clone(&decoded)).unwrap();
+                let prepared = sampler.prepared.as_deref().unwrap();
+                let image = &decoded.image;
+                let layout = match &image.samples {
+                    pagura_image::Samples::Bytes(_) => "bytes",
+                    pagura_image::Samples::Words(_) => "words",
+                    pagura_image::Samples::Mixed { .. } => "mixed",
+                    pagura_image::Samples::Packed(_) => "packed",
+                    pagura_image::Samples::Planar(_) => "planar",
+                };
+                eprintln!(
+                    "{name} {dpi}: source {}x{} {}x{}bit {:?} | decoded {}x{} {layout} reduction {:?} | \
+                     drawn {}x{} at {:?} | mode {:?} codes {}",
+                    source.width(),
+                    source.height(),
+                    source.components(),
+                    source.bits_per_component(),
+                    source.kind(),
+                    image.width,
+                    image.height,
+                    image.reduction,
+                    placed.rect.x1 - placed.rect.x0,
+                    placed.rect.y1 - placed.rect.y0,
+                    placed.unit_to_device,
+                    prepared.geometry.mode(),
+                    prepared.codes.is_some(),
+                );
+            }
         }
     }
 }

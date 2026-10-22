@@ -40,15 +40,19 @@ struct Affine {
     /// `slope` `1 / maximum`); then a code that is exact in f64 stays exact
     /// as the value that multiplies back to it.
     unit: Option<f64>,
+    /// Levels of 255 per code on a unit map: `255 / maximum`.
+    level: f64,
 }
 
 impl Affine {
     /// The values `zero + code × slope` for codes `0..=maximum`.
     fn new(zero: f64, slope: f64, maximum: f64) -> Self {
+        let unit = (zero == 0.0 && slope * maximum == 1.0).then_some(maximum);
         Self {
             zero,
             slope,
-            unit: (zero == 0.0 && slope * maximum == 1.0).then_some(maximum),
+            unit,
+            level: unit.map_or(0.0, |maximum| 255.0 / maximum),
         }
     }
 
@@ -67,11 +71,118 @@ impl Affine {
     }
 }
 
+impl Affine {
+    /// The bytes of `codes` on a unit map, as [`Self::byte`] gives them away
+    /// from rounding boundaries, into `out`, in one pass the compiler
+    /// vectorizes. Returns whether a level came near a boundary; `out` then
+    /// needs the colour values rounded.
+    fn levels(self, codes: &[f64], out: &mut [u8]) -> bool {
+        const LANES: usize = 8;
+        let (scale, offset) = (self.level, 0.5 + TIE_GUARD);
+        // Levels within 0..256 truncate to their floor; a level whose
+        // fraction is within NEAR of a whole number is near a boundary.
+        let level = |code: f64| {
+            let level = code * scale + offset;
+            #[expect(
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss,
+                reason = "a level of an average code, within 0..256"
+            )]
+            let floor = level as u32;
+            let fraction = level - f64::from(floor);
+            let near = u32::from(fraction <= BOUNDARY_NEAR || fraction >= 1.0 - BOUNDARY_NEAR);
+            (floor.min(255), near)
+        };
+        let mut near = 0;
+        let (chunks, codes) = codes.as_chunks::<LANES>();
+        let (outs, out) = out.as_chunks_mut::<LANES>();
+        for (out, chunk) in outs.iter_mut().zip(chunks) {
+            let mut flags = [0u32; LANES];
+            for ((byte, flag), &code) in out.iter_mut().zip(&mut flags).zip(chunk) {
+                let (value, close) = level(code);
+                *byte = value.to_le_bytes()[0];
+                *flag = close;
+            }
+            near |= flags.iter().fold(0, |a, &b| a | b);
+        }
+        for (byte, &code) in out.iter_mut().zip(codes) {
+            let (value, close) = level(code);
+            *byte = value.to_le_bytes()[0];
+            near |= close;
+        }
+        near != 0
+    }
+
+    /// The bytes of three averages on a unit map, as [`Self::byte`] gives
+    /// them, with one test for all three; `None` when one comes near a
+    /// rounding boundary or the map is not a unit map.
+    #[inline]
+    fn bytes3(self, codes: [f64; 3]) -> Option<[u8; 4]> {
+        self.unit?;
+        let level = codes.map(|code| code * self.level + (0.5 + TIE_GUARD));
+        let floor = level.map(f64::floor);
+        let fraction = [
+            level[0] - floor[0],
+            level[1] - floor[1],
+            level[2] - floor[2],
+        ];
+        let low = fraction[0].min(fraction[1]).min(fraction[2]);
+        let high = fraction[0].max(fraction[1]).max(fraction[2]);
+        let top = level[0].max(level[1]).max(level[2]);
+        let bottom = level[0].min(level[1]).min(level[2]);
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "levels within 0..256 truncate to their floors"
+        )]
+        let byte = |level: f64| level as u8;
+        (low > 2.0 * BOUNDARY_NEAR
+            && high < 1.0 - 2.0 * BOUNDARY_NEAR
+            && bottom >= 0.0
+            && top < 256.0)
+            .then(|| [byte(floor[0]), byte(floor[1]), byte(floor[2]), 255])
+    }
+
+    /// The byte [`pagura_raster::quantize_unit`] gives [`Self::apply`] of
+    /// `code`. On a unit map the level is the code scaled by `255 /
+    /// maximum`, which is within 3e-13 of the level the colour value
+    /// multiplies back to; away from a rounding boundary by more than
+    /// 1e-12 the scaled code rounds alike, and near one the colour value
+    /// itself is rounded.
+    #[inline]
+    fn byte(self, code: f64) -> u8 {
+        const NEAR: f64 = BOUNDARY_NEAR;
+        if self.unit.is_some() {
+            let level = code * self.level + 0.5 + TIE_GUARD;
+            let fraction = level - level.floor();
+            if fraction > NEAR && fraction < 1.0 - NEAR && (0.0..256.0).contains(&level) {
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "a level within 0..256"
+                )]
+                let byte = level as u8;
+                return byte;
+            }
+        }
+        pagura_raster::quantize_unit(self.apply(code))
+    }
+}
+
+/// The tie guard of [`pagura_raster::quantize_unit`].
+const TIE_GUARD: f64 = 1e-9;
+
+/// How near a level computed from a code may come to a rounding boundary
+/// and still round as the colour value does: the two differ by less than
+/// 3e-13 of a level.
+const BOUNDARY_NEAR: f64 = 1e-12;
+
 /// The map of averages already in colour values.
 const IDENTITY: Affine = Affine {
     zero: 0.0,
     slope: 1.0,
     unit: None,
+    level: 0.0,
 };
 
 /// How each texel lane follows the codes.
@@ -402,6 +513,98 @@ impl Lanes {
     }
 }
 
+/// The bytes of nearest samples' codes, `N` per pixel, through `bytes`.
+fn nearest_bytes<const N: usize>(bytes: &ByteLanes, codes: &[u8], out: &mut [[u8; 4]]) {
+    let codes = codes.as_chunks::<N>().0;
+    if bytes.identity && (N == 1 || bytes.component == [0, 1, 2]) {
+        for (pixel, code) in out.iter_mut().zip(codes) {
+            *pixel = if N == 1 {
+                [code[0], code[0], code[0], 255]
+            } else {
+                [code[0], code[1 % N], code[2 % N], 255]
+            };
+        }
+        return;
+    }
+    let [a, b, c] = bytes.component.map(|component| component.min(N - 1));
+    let [ta, tb, tc] = &bytes.tables;
+    for (pixel, code) in out.iter_mut().zip(codes) {
+        *pixel = [
+            ta[usize::from(code[a])],
+            tb[usize::from(code[b])],
+            tc[usize::from(code[c])],
+            255,
+        ];
+    }
+}
+
+/// The bytes of covered pixels' average codes, `N` per pixel, through each
+/// lane's map; `[0, 0, 0, 0]` where a pixel is not covered. Lanes that
+/// share one unit map round every average in one pass, with `levels`
+/// holding the bytes.
+fn average_bytes<const N: usize>(
+    (maps, component): (&[Affine], [usize; 3]),
+    averages: &[f64],
+    (covered, levels): (&[bool], &mut Vec<u8>),
+    out: &mut [[u8; 4]],
+) {
+    let (Some(&a), Some(&b), Some(&c)) = (maps.first(), maps.get(1), maps.get(2)) else {
+        return;
+    };
+    let [ca, cb, cc] = component.map(|component| component.min(N - 1));
+    if a.unit.is_some() && a == b && a == c {
+        levels.clear();
+        levels.resize(averages.len(), 0);
+        if a.levels(averages, levels) {
+            // A level next to a rounding boundary: round the colour values.
+            for (level, &average) in levels.iter_mut().zip(averages) {
+                *level = pagura_raster::quantize_unit(a.apply(average));
+            }
+        }
+        for ((pixel, level), &covered) in out.iter_mut().zip(levels.as_chunks::<N>().0).zip(covered)
+        {
+            *pixel = if covered {
+                [level[ca], level[cb], level[cc], 255]
+            } else {
+                [0; 4]
+            };
+        }
+        return;
+    }
+    for ((pixel, average), &covered) in out.iter_mut().zip(averages.as_chunks::<N>().0).zip(covered)
+    {
+        *pixel = if covered {
+            [
+                a.byte(average[ca]),
+                b.byte(average[cb]),
+                c.byte(average[cc]),
+                255,
+            ]
+        } else {
+            [0; 4]
+        };
+    }
+}
+
+/// Rounds a span's opaque colours, three per pixel, to bytes; a pixel of
+/// alpha 0 becomes `[0, 0, 0, 0]`.
+fn round_bytes(span: &SpanColors, out: &mut [[u8; 4]]) {
+    let quantize = pagura_raster::quantize_unit;
+    let colors = span.colors.as_chunks::<3>().0;
+    for (i, (pixel, color)) in out.iter_mut().zip(colors).enumerate() {
+        *pixel = if span.alpha.get(i).is_some_and(|&alpha| alpha == 0.0) {
+            [0; 4]
+        } else {
+            [
+                quantize(color[0]),
+                quantize(color[1]),
+                quantize(color[2]),
+                255,
+            ]
+        };
+    }
+}
+
 /// The shape of `len` opaque pixels: 1 each.
 fn opaque_shape(len: usize, shape: Option<&mut Vec<f64>>) {
     if let Some(shape) = shape {
@@ -449,9 +652,68 @@ pub(super) struct Codes {
     plan: Plan,
     /// Whether every planned footprint weights its samples whole.
     whole: bool,
+    /// The longest run of planned footprints that are whole pairs of
+    /// samples, each next to the last, with one normalization.
+    pairs: std::ops::Range<usize>,
+    /// Whether the planned footprints' first and last samples never
+    /// decrease.
+    monotone: bool,
+
     /// The blocks of planar samples that hold only background.
     clean: Option<Clean>,
+    /// The bytes of opaque three-channel colours, for spans filled as
+    /// bytes.
+    bytes: Option<Box<ByteLanes>>,
+    /// Per device column of the region, its bilinear footprint for bytes.
+    bilinear: Vec<BilinearTap>,
     scratch: Mutex<Scratch>,
+}
+
+/// The bytes that the colours of nearest samples round to, per lane and
+/// code, for opaque lanes of three colour channels: what
+/// [`pagura_raster::quantize_unit`] gives the values [`Lanes::write_codes`]
+/// writes.
+#[derive(Debug)]
+struct ByteLanes {
+    tables: [[u8; 256]; 3],
+    /// Each lane's component.
+    component: [usize; 3],
+    /// Whether every lane is its component's code itself: the bytes are the
+    /// codes.
+    identity: bool,
+}
+
+impl ByteLanes {
+    /// The byte tables of opaque `lanes` of three channels whose image has
+    /// `n` components, or `None` for other lanes.
+    fn new(lanes: &Lanes, n: usize) -> Option<Box<Self>> {
+        if !lanes.opaque || lanes.table.len() != 3 || lanes.channels != 3 {
+            return None;
+        }
+        let component: [usize; 3] = lanes.component.as_slice().try_into().ok()?;
+        let direct = lanes.direct.filter(|_| n == 3);
+        let mut tables = [[0u8; 256]; 3];
+        for (lane, table) in tables.iter_mut().enumerate() {
+            for (code, byte) in (0..=u8::MAX).zip(table.iter_mut()) {
+                let value = match direct {
+                    Some(map) => map.apply(f64::from(code)),
+                    None => lanes.table[lane][usize::from(code)],
+                };
+                *byte = pagura_raster::quantize_unit(value);
+            }
+        }
+        let codes = usize::from(lanes.maximum) + 1;
+        let identity = tables.iter().all(|table| {
+            (0..=u8::MAX)
+                .zip(&table[..codes])
+                .all(|(code, &byte)| code == byte)
+        });
+        Some(Box::new(Self {
+            tables,
+            component,
+            identity,
+        }))
+    }
 }
 
 /// Which eight-by-eight luma blocks of planar samples, with the chroma
@@ -484,17 +746,43 @@ impl Clean {
         let under = |(a, b): (usize, usize), factor: usize, maximum: usize| {
             (a * factor / maximum / side)..=(b * factor / maximum / side)
         };
+        // Per chroma component: each luma column's chroma columns, and per
+        // luma row the chroma columns any chroma row under it marks.
+        let chroma: [(Vec<std::ops::RangeInclusive<usize>>, usize); 2] = [1, 2].map(|c| {
+            let [h, _, chroma_pitch] = planar.geometry(c);
+            let ranges = (0..columns)
+                .map(|column| under((column * side, column * side + side - 1), h, max_h))
+                .collect();
+            (ranges, chroma_pitch / side)
+        });
+        let mut marked: Vec<bool> = Vec::new();
         for (row, line) in bits.chunks_exact_mut(words.max(1)).enumerate() {
             let samples = (row * side, row * side + side - 1);
             for column in 0..columns {
-                let across = (column * side, column * side + side - 1);
-                let chroma = (1..3).all(|c| {
-                    let [h, v, _] = planar.geometry(c);
-                    under(samples, v, max_v)
-                        .all(|y| under(across, h, max_h).all(|x| !planar.dirty(c, y, x)))
-                });
-                if chroma && !planar.dirty(0, row, column) {
+                if !planar.dirty(0, row, column) {
                     line[column / 64] |= 1 << (column % 64);
+                }
+            }
+            for (c, (ranges, chroma_columns)) in (1..3).zip(&chroma) {
+                let [_, v, _] = planar.geometry(c);
+                marked.clear();
+                marked.resize(*chroma_columns, false);
+                for y in under(samples, v, max_v) {
+                    for (x, mark) in marked.iter_mut().enumerate() {
+                        *mark |= planar.dirty(c, y, x);
+                    }
+                }
+                if !marked.contains(&true) {
+                    continue;
+                }
+                for (column, range) in ranges.iter().enumerate() {
+                    let last = (*range.end()).min(marked.len().saturating_sub(1));
+                    if marked
+                        .get(*range.start()..=last)
+                        .is_some_and(|marks| marks.contains(&true))
+                    {
+                        line[column / 64] &= !(1 << (column % 64));
+                    }
                 }
             }
         }
@@ -578,6 +866,20 @@ struct Scratch {
     runs: Vec<(usize, usize, bool)>,
     codes: Vec<u8>,
     rows: RowCache,
+    /// The colours of a span filled as bytes, before they are rounded.
+    span: SpanColors,
+    /// The bytes of a span's average codes.
+    levels: Vec<u8>,
+    /// Per source column of a span, the columns before it that are not
+    /// background.
+    dirty: Vec<u32>,
+    /// Per source column of a span, its level plus a half under bilinear
+    /// weights, in f32.
+    levels32: Vec<[f32; 4]>,
+    /// The codes of a bilinear span's first source row.
+    top: Vec<u8>,
+    /// Runs of one class of a one-bit span's columns.
+    class_runs: Vec<ClassRun>,
 }
 
 /// Rows of codes converted from planar or packed samples, by row and range.
@@ -705,14 +1007,27 @@ impl<'a> Grid<'a> {
                     if dirty {
                         planar.rgb_range(y, start, stop, out)
                     } else {
-                        for pixel in out.as_chunks_mut::<3>().0 {
-                            *pixel = clean.background;
-                        }
+                        fill_rgb(out, clean.background);
                         true
                     }
                 })
             }),
         }
+    }
+}
+
+/// Fills `out` with `rgb` repeated, sixteen samples at a copy.
+fn fill_rgb(out: &mut [u8], rgb: [u8; 3]) {
+    let mut pattern = [0u8; 48];
+    for chunk in pattern.as_chunks_mut::<3>().0 {
+        *chunk = rgb;
+    }
+    let (chunks, rest) = out.as_chunks_mut::<48>();
+    for chunk in chunks {
+        *chunk = pattern;
+    }
+    for (out, &value) in rest.iter_mut().zip(&pattern) {
+        *out = value;
     }
 }
 
@@ -739,11 +1054,32 @@ fn unpack(row: &[u8], (x0, x1): (usize, usize), out: &mut [u8]) {
     let (middle, tail) = middle.split_at_mut(whole * 8);
     let bytes = row.get(head / 8..).unwrap_or(&[]);
     for (out, &byte) in middle.as_chunks_mut::<8>().0.iter_mut().zip(bytes) {
-        *out = [7, 6, 5, 4, 3, 2, 1, 0].map(|shift| (byte >> shift) & 1);
+        *out = UNPACKED[usize::from(byte)].to_ne_bytes();
     }
     for (x, out) in (head + whole * 8..).zip(tail) {
         *out = bit(row, x);
     }
+}
+
+/// Per byte, its eight bits as eight bytes of 0 or 1, most significant
+/// first in memory order.
+static UNPACKED: [u64; 256] = unpacked();
+
+#[expect(clippy::cast_possible_truncation, reason = "a bit of a byte is 0 or 1")]
+const fn unpacked() -> [u64; 256] {
+    let mut table = [0; 256];
+    let mut byte = 0;
+    while byte < 256 {
+        let mut bytes = [0u8; 8];
+        let mut bit = 0;
+        while bit < 8 {
+            bytes[bit] = ((byte >> (7 - bit)) & 1) as u8;
+            bit += 1;
+        }
+        table[byte] = u64::from_ne_bytes(bytes);
+        byte += 1;
+    }
+    table
 }
 
 /// Sample `x` of a packed row.
@@ -887,6 +1223,26 @@ impl Codes {
                 .all(|foot| foot.first >= foot.end || foot.whole()),
             Plan::Nearest(..) => false,
         };
+        let (pairs, monotone) = match &plan {
+            Plan::Area(feet) => (
+                pair_run(feet),
+                feet.windows(2)
+                    .all(|pair| pair[0].first <= pair[1].first && pair[0].end <= pair[1].end),
+            ),
+            Plan::Nearest(..) => (0..0, false),
+        };
+        let bytes = ByteLanes::new(&lanes, components);
+        let bilinear = match (&plan, taps, &bytes) {
+            (Plan::Area(feet), Taps::Bilinear, Some(_)) => {
+                let mut bilinear = Vec::new();
+                bilinear
+                    .try_reserve_exact(feet.len())
+                    .map_err(|_| Error::limit("image plan allocation failed"))?;
+                bilinear.extend(feet.iter().map(BilinearTap::new));
+                bilinear
+            }
+            _ => Vec::new(),
+        };
         Ok(Some(Self {
             lanes,
             kind,
@@ -896,7 +1252,11 @@ impl Codes {
             x0,
             plan,
             whole,
+            pairs,
+            monotone,
             clean,
+            bytes,
+            bilinear,
             scratch: Mutex::new(Scratch::default()),
         }))
     }
@@ -907,14 +1267,78 @@ impl Codes {
             Plan::Nearest(indices, _) => indices.capacity() * size_of::<u32>(),
             Plan::Area(feet) => feet.capacity() * size_of::<Footprint>(),
         };
-        plan + self.lanes.table.len() * size_of::<[f64; 256]>()
+        plan + self.bilinear.capacity() * size_of::<BilinearTap>()
+            + self.lanes.table.len() * size_of::<[f64; 256]>()
             + self.clean.as_ref().map_or(0, Clean::bytes)
     }
 
     /// Replaces the lanes, keeping the placement.
     pub(super) fn set_lanes(&mut self, lanes: Lanes) {
+        self.bytes = ByteLanes::new(&lanes, self.components);
         self.lanes = lanes;
         self.scratch = Mutex::new(Scratch::default());
+    }
+
+    /// Whether [`Self::fill_bytes`] fills spans: opaque lanes of three
+    /// colour channels.
+    pub(super) fn fills_bytes(&self) -> bool {
+        self.bytes.is_some()
+    }
+
+    /// Fills `out` with device pixels `x .. x + out.len()` of row `y` as
+    /// premultiplied RGBA bytes: the colours [`Self::fill`] gives, each
+    /// rounded by [`pagura_raster::quantize_unit`], with alpha 255, and
+    /// `[0, 0, 0, 0]` where a footprint misses the image (alpha 0). Returns
+    /// false, with `out` unspecified, unless [`Self::fills_bytes`].
+    pub(super) fn fill_bytes(
+        &self,
+        image: &DecodedImage,
+        (x, y): (u32, u32),
+        out: &mut [[u8; 4]],
+    ) -> bool {
+        let Some(bytes) = self.bytes.as_deref() else {
+            return false;
+        };
+        let len = out.len();
+        let Some(grid) = Grid::new(image, self.clean.as_ref()) else {
+            out.fill([0, 0, 0, 255]);
+            return true;
+        };
+        let mut guard = match self.scratch.try_lock() {
+            Ok(guard) => Some(guard),
+            Err(TryLockError::Poisoned(poisoned)) => Some(poisoned.into_inner()),
+            Err(TryLockError::WouldBlock) => None,
+        };
+        let mut local = None;
+        let scratch = match guard.as_deref_mut() {
+            Some(scratch) => scratch,
+            None => local.insert(Scratch::default()),
+        };
+        let n = self.components;
+        if self.kind == Kind::Nearest && matches!(n, 1 | 3) {
+            if n == 1 {
+                self.nearest::<1>(&grid, (x, y, len), scratch);
+                nearest_bytes::<1>(bytes, &scratch.codes, out);
+            } else {
+                self.nearest::<3>(&grid, (x, y, len), scratch);
+                nearest_bytes::<3>(bytes, &scratch.codes, out);
+            }
+            return true;
+        }
+        if let Grid::Packed(packed) = &grid
+            && self.packed_bytes(&grid, packed, (x, y), scratch, out)
+        {
+            return true;
+        }
+        if self.kind == Kind::Area {
+            self.area_bytes(&grid, (x, y), (scratch, bytes), out);
+            return true;
+        }
+        let mut span = std::mem::take(&mut scratch.span);
+        self.fill_in(&grid, (x, y, len), scratch, &mut span, None);
+        round_bytes(&span, out);
+        scratch.span = span;
+        true
     }
 
     /// Fills `out` with device pixels `x .. x + len` of row `y`: straight
@@ -926,9 +1350,9 @@ impl Codes {
         out: &mut SpanColors,
         shape: Option<&mut Vec<f64>>,
     ) {
-        out.channels = self.lanes.channels;
-        out.alpha.clear();
         let Some(grid) = Grid::new(image, self.clean.as_ref()) else {
+            out.channels = self.lanes.channels;
+            out.alpha.clear();
             out.colors.clear();
             out.colors.resize(len * self.lanes.channels, 0.0);
             return;
@@ -944,14 +1368,157 @@ impl Codes {
             Some(scratch) => scratch,
             None => local.insert(Scratch::default()),
         };
+        self.fill_in(&grid, (x, y, len), scratch, out, shape);
+    }
+
+    /// The bytes of a one-bit image's span of row `y` from column `x`, by
+    /// counts of its bits, unless the span is not one-bit, separable or
+    /// planned.
+    fn packed_bytes(
+        &self,
+        grid: &Grid<'_>,
+        packed: &Packed,
+        (x, y): (u32, u32),
+        scratch: &mut Scratch,
+        out: &mut [[u8; 4]],
+    ) -> bool {
+        let Some(range) = self
+            .planned(x, out.len())
+            .filter(|_| self.components == 1 && self.kind == Kind::Area)
+            .filter(|_| self.taps == Taps::Area)
+        else {
+            return false;
+        };
+        let (Plan::Area(feet), Some(&[a, b, c])) = (&self.plan, self.lanes.affine.get(..3)) else {
+            return false;
+        };
+        let Some(feet) = feet.get(range.clone()) else {
+            return false;
+        };
+        let across = row_footprint(&self.geometry, self.taps, y);
+        let maps = [a, b, c];
+        if self.pairs.start <= range.start
+            && range.end <= self.pairs.end
+            && across.end.wrapping_sub(across.first) == 2
+            && across.whole()
+        {
+            pair_bytes(packed, (&across, feet), maps, out);
+            return true;
+        }
+        let whole = self.whole && across.whole();
+        let storage = (
+            &mut scratch.rows,
+            &mut scratch.codes,
+            &mut scratch.class_runs,
+        );
+        bit_bytes(
+            grid,
+            (&across, feet, (whole, self.monotone)),
+            maps,
+            storage,
+            out,
+        )
+    }
+
+    /// The bytes of an averaged span of row `y` from column `x`: bilinear
+    /// or separable footprints of lanes that share a unit map in fast
+    /// arithmetic, others from their average codes.
+    fn area_bytes(
+        &self,
+        grid: &Grid<'_>,
+        (x, y): (u32, u32),
+        (scratch, bytes): (&mut Scratch, &ByteLanes),
+        out: &mut [[u8; 4]],
+    ) {
+        let (n, len) = (self.components, out.len());
+        let span = (x, y, len);
+        let shared = match self.lanes.affine.as_slice() {
+            [a, b, c] if a.unit.is_some() && a == b && a == c => Some(*a),
+            _ => None,
+        };
+        if let Some(map) = shared {
+            out.fill([0; 4]);
+            let maps = (map, bytes.component);
+            if self.taps == Taps::Bilinear
+                && let Some(range) = self.planned(x, len)
+                && let (Some(taps), Plan::Area(feet)) =
+                    (self.bilinear.get(range.clone()), &self.plan)
+                && let Some(feet) = feet.get(range)
+            {
+                match n {
+                    1 => self.bilinear_bytes::<1>(grid, (y, taps, feet), scratch, (maps, out)),
+                    2 => self.bilinear_bytes::<2>(grid, (y, taps, feet), scratch, (maps, out)),
+                    3 => self.bilinear_bytes::<3>(grid, (y, taps, feet), scratch, (maps, out)),
+                    _ => self.bilinear_bytes::<4>(grid, (y, taps, feet), scratch, (maps, out)),
+                }
+                return;
+            }
+            // Background pixels need no lines, and those of the others
+            // only near a background run's ends.
+            let lanes = bytes.component.map(|component| component.min(n - 1));
+            let background = self
+                .clean
+                .as_ref()
+                .and_then(|clean| certified_background(clean.background, (map, lanes)));
+            let edges = background.is_some();
+            let kernel = (maps, background);
+            let finish = |reduction: Reduction<'_>, _: &mut [bool], dirty: &mut Vec<u32>| match n {
+                1 => column_bytes::<1>(&reduction, kernel, dirty, out),
+                2 => column_bytes::<2>(&reduction, kernel, dirty, out),
+                3 => column_bytes::<3>(&reduction, kernel, dirty, out),
+                _ => column_bytes::<4>(&reduction, kernel, dirty, out),
+            };
+            match n {
+                1 => self.separable::<1>(grid, (x, y, len, edges), scratch, finish),
+                2 => self.separable::<2>(grid, (x, y, len, edges), scratch, finish),
+                3 => self.separable::<3>(grid, (x, y, len, edges), scratch, finish),
+                _ => self.separable::<4>(grid, (x, y, len, edges), scratch, finish),
+            }
+            return;
+        }
+        // The average codes, mapped per lane as the colours are.
+        scratch.covered.clear();
+        scratch.covered.resize(len, false);
+        let mut averages = std::mem::take(&mut scratch.averages);
+        averages.clear();
+        averages.resize(len * n, 0.0);
+        let into = (averages.as_mut_slice(), IDENTITY);
+        match n {
+            1 => self.area::<1, 1>(grid, span, scratch, into),
+            2 => self.area::<2, 1>(grid, span, scratch, into),
+            3 => self.area::<3, 1>(grid, span, scratch, into),
+            _ => self.area::<4, 1>(grid, span, scratch, into),
+        }
+        let maps = (self.lanes.affine.as_slice(), bytes.component);
+        let flags = (scratch.covered.as_slice(), &mut scratch.levels);
+        match n {
+            1 => average_bytes::<1>(maps, &averages, flags, out),
+            2 => average_bytes::<2>(maps, &averages, flags, out),
+            3 => average_bytes::<3>(maps, &averages, flags, out),
+            _ => average_bytes::<4>(maps, &averages, flags, out),
+        }
+        scratch.averages = averages;
+    }
+
+    /// [`Self::fill`] over `grid` in `scratch`.
+    fn fill_in(
+        &self,
+        grid: &Grid<'_>,
+        (x, y, len): (u32, u32, usize),
+        scratch: &mut Scratch,
+        out: &mut SpanColors,
+        shape: Option<&mut Vec<f64>>,
+    ) {
+        out.channels = self.lanes.channels;
+        out.alpha.clear();
         let n = self.components;
         match self.kind {
             Kind::Nearest => {
                 match n {
-                    1 => self.nearest::<1>(&grid, (x, y, len), scratch),
-                    2 => self.nearest::<2>(&grid, (x, y, len), scratch),
-                    3 => self.nearest::<3>(&grid, (x, y, len), scratch),
-                    _ => self.nearest::<4>(&grid, (x, y, len), scratch),
+                    1 => self.nearest::<1>(grid, (x, y, len), scratch),
+                    2 => self.nearest::<2>(grid, (x, y, len), scratch),
+                    3 => self.nearest::<3>(grid, (x, y, len), scratch),
+                    _ => self.nearest::<4>(grid, (x, y, len), scratch),
                 }
                 self.lanes.write_codes(&scratch.codes, n, out, shape);
             }
@@ -982,12 +1549,12 @@ impl Codes {
                 let into = (target.as_mut_slice(), map);
                 let span = (x, y, len);
                 match (n, copies) {
-                    (1, 3) => self.area::<1, 3>(&grid, span, scratch, into),
-                    (1, 4) => self.area::<1, 4>(&grid, span, scratch, into),
-                    (1, _) => self.area::<1, 1>(&grid, span, scratch, into),
-                    (2, _) => self.area::<2, 1>(&grid, span, scratch, into),
-                    (3, _) => self.area::<3, 1>(&grid, span, scratch, into),
-                    _ => self.area::<4, 1>(&grid, span, scratch, into),
+                    (1, 3) => self.area::<1, 3>(grid, span, scratch, into),
+                    (1, 4) => self.area::<1, 4>(grid, span, scratch, into),
+                    (1, _) => self.area::<1, 1>(grid, span, scratch, into),
+                    (2, _) => self.area::<2, 1>(grid, span, scratch, into),
+                    (3, _) => self.area::<3, 1>(grid, span, scratch, into),
+                    _ => self.area::<4, 1>(grid, span, scratch, into),
                 }
                 let mut shape = shape;
                 if direct.is_some() {
@@ -1001,6 +1568,65 @@ impl Codes {
                 self.lanes.uncover(&scratch.covered, out, shape);
             }
         }
+    }
+
+    /// Fills `out` with the bytes of a bilinear span of row `y`, whose
+    /// device columns have the footprints `feet` and `taps`, in f32 with
+    /// the three lanes side by side. Each source column's level under the
+    /// row's two weights, `g·(w₀·T + w₁·B)` for the row's scale `g` (its
+    /// normalization times levels per code), is formed once; a pixel between
+    /// columns `c` and `c + 1` has the level `h[c] + t·(h[c + 1] − h[c])`
+    /// for its `t` (its normalization times its second weight), its f64
+    /// average's level rearranged because the normalized weights sum to
+    /// one. The level truncates to the byte the f64 colours round to unless
+    /// it lies within the f32 arithmetic's error bound of a rounding
+    /// boundary; then the f64 colours of [`Self::fill`] are rounded.
+    ///
+    /// Levels are at most 256.5 and nonnegative, so each of the ten f32
+    /// roundings (the two weights, their products and sum with the offset,
+    /// `t`, the difference, product and sum, and the two bound offsets)
+    /// moves the level by at most 2^-24 · 257; the f64 colours lie within
+    /// 1e-12 of the exact average and the tie guard moves the boundary by
+    /// 1e-9. The bound taken, 3e-4, covers twice that.
+    fn bilinear_bytes<const N: usize>(
+        &self,
+        grid: &Grid<'_>,
+        (y, taps, feet): (u32, &[BilinearTap], &[Footprint]),
+        scratch: &mut Scratch,
+        ((map, component), out): ((Affine, [usize; 3]), &mut [[u8; 4]]),
+    ) {
+        let Scratch {
+            rows,
+            levels32,
+            top,
+            ..
+        } = scratch;
+        let across = row_footprint(&self.geometry, Taps::Bilinear, y);
+        let (low, high) = taps.iter().fold((u32::MAX, 0), |(low, high), tap| {
+            (low.min(tap.column), high.max(tap.column))
+        });
+        let width = self.geometry.size().0;
+        if low > high || across.first >= across.end {
+            return;
+        }
+        let (first, end) = (index(low), index(high.saturating_add(2).min(width)));
+        let codes = grid.row(index(across.first), ((first, end), N), None, rows);
+        top.clear();
+        top.extend_from_slice(codes);
+        let bottom = if across.end - across.first > 1 {
+            grid.row(index(across.first) + 1, ((first, end), N), None, rows)
+        } else {
+            &[]
+        };
+        let source = BilinearRows {
+            top,
+            bottom,
+            first,
+            across,
+            lanes: component.map(|component| component.min(N - 1)),
+        };
+        source.levels::<N>(map, levels32);
+        bilinear_pixels::<N>(&source, (levels32, taps, feet), map, out);
     }
 
     /// The plan's entries for device columns `x .. x + len`, or `None` when
@@ -1070,9 +1696,56 @@ impl Codes {
     fn area<const N: usize, const C: usize>(
         &self,
         grid: &Grid<'_>,
-        (x, y, len): (u32, u32, usize),
+        span: (u32, u32, usize),
         scratch: &mut Scratch,
         (averages, map): (&mut [f64], Affine),
+    ) {
+        let (x, y, len) = span;
+        self.separable::<N>(
+            grid,
+            (x, y, len, false),
+            scratch,
+            |reduction, covered, _| {
+                let Reduction {
+                    feet,
+                    first,
+                    reduced,
+                    scale,
+                    ..
+                } = reduction;
+                let map = (scale, map);
+                match reduced {
+                    Reduced::Sums(sums) => columns::<N, C, u32>(
+                        (feet, first),
+                        sums,
+                        (averages, covered),
+                        map,
+                        |values, _| whole_sum::<N>(values),
+                    ),
+                    Reduced::Lines(lines) => columns::<N, C, f64>(
+                        (feet, first),
+                        lines,
+                        (averages, covered),
+                        map,
+                        |values, foot| {
+                            line_values::<N>(values, foot.first_weight, foot.last_weight)
+                        },
+                    ),
+                }
+            },
+        );
+    }
+
+    /// Reduces the span's source rows for every source column its separable
+    /// footprints reach, and hands the reduction to `finish` with the
+    /// span's coverage flags and quad storage; an empty span leaves both
+    /// alone.
+    fn separable<const N: usize>(
+        &self,
+        grid: &Grid<'_>,
+        (x, y, len, edges): (u32, u32, usize, bool),
+        scratch: &mut Scratch,
+        finish: impl FnOnce(Reduction<'_>, &mut [bool], &mut Vec<u32>),
     ) {
         let Scratch {
             feet,
@@ -1081,11 +1754,12 @@ impl Codes {
             covered,
             runs,
             rows,
+            dirty,
             ..
         } = scratch;
-        let (feet, whole): (&[Footprint], bool) =
+        let (feet, whole, monotone): (&[Footprint], bool, bool) =
             if let (Plan::Area(planned), Some(range)) = (&self.plan, self.planned(x, len)) {
-                (&planned[range], self.whole)
+                (&planned[range], self.whole, self.monotone)
             } else {
                 feet.clear();
                 feet.extend(
@@ -1096,7 +1770,7 @@ impl Codes {
                 let whole = feet
                     .iter()
                     .all(|foot| foot.first >= foot.end || foot.whole());
-                (feet, whole)
+                (feet, whole, false)
             };
         let across = row_footprint(&self.geometry, self.taps, y);
         let Some((first, end)) = extent(feet) else {
@@ -1113,7 +1787,7 @@ impl Codes {
             (Grid::Planar(..), Some(clean)) => clean.runs(rows_spanned, (first, end), runs),
             _ => runs.push((first, end, true)),
         }
-        let map = (across.normalization, map);
+        let scale = across.normalization;
         if whole && across.whole() {
             // Whole samples sum as integers throughout.
             sum_rows::<N>(
@@ -1121,23 +1795,17 @@ impl Codes {
                 &across,
                 (first, end),
                 (sums, rows),
+                (runs, edges.then_some(widest(feet))),
+            );
+            let reduction = Reduction {
+                feet,
+                first,
+                reduced: Reduced::Sums(sums),
+                scale,
                 runs,
-            );
-            columns::<N, C, u32>(
-                (feet, first),
-                sums,
-                (averages, covered),
-                map,
-                |values, _| {
-                    let mut sum = [0u32; N];
-                    for cell in values.as_chunks::<N>().0 {
-                        for (sum, &value) in sum.iter_mut().zip(cell) {
-                            *sum = sum.wrapping_add(value);
-                        }
-                    }
-                    sum.map(f64::from)
-                },
-            );
+                monotone,
+            };
+            finish(reduction, covered, dirty);
             return;
         }
         if lines.len() != length {
@@ -1149,7 +1817,7 @@ impl Codes {
                 let code = clean.background.get(k).copied().unwrap_or(0);
                 reduce_constant(&across, code)
             });
-            for &(start, stop, _) in runs.iter().filter(|run| !run.2) {
+            for (start, stop) in clean_spans(runs, edges.then_some(widest(feet))) {
                 if let Some(lines) = lines.get_mut((start - first) * N..(stop - first) * N) {
                     for line in lines.as_chunks_mut::<N>().0 {
                         *line = constant;
@@ -1166,14 +1834,725 @@ impl Codes {
                 runs,
             );
         }
-        columns::<N, C, f64>(
-            (feet, first),
-            lines,
-            (averages, covered),
-            map,
-            |values, foot| line_values::<N>(values, foot.first_weight, foot.last_weight),
-        );
+        let reduction = Reduction {
+            feet,
+            first,
+            reduced: Reduced::Lines(lines),
+            scale,
+            runs,
+            monotone,
+        };
+        finish(reduction, covered, dirty);
     }
+}
+
+/// A span's source rows reduced for every source column its footprints
+/// reach, `N` values per column from `first`, and the row footprint's
+/// normalization.
+struct Reduction<'a> {
+    feet: &'a [Footprint],
+    first: usize,
+    reduced: Reduced<'a>,
+    scale: f64,
+    /// Runs of background (`false`) and other source columns.
+    runs: &'a [(usize, usize, bool)],
+    /// Whether the footprints' first and last samples never decrease.
+    monotone: bool,
+}
+
+/// How the rows reduced: integer sums where every weight is whole, else
+/// weighted lines.
+#[derive(Clone, Copy)]
+enum Reduced<'a> {
+    Sums(&'a [u32]),
+    Lines(&'a [f64]),
+}
+
+/// The sum of a footprint's whole cells of integer sums, `N` per cell.
+#[inline]
+fn whole_sum<const N: usize>(values: &[u32]) -> [f64; N] {
+    let mut sum = [0u32; N];
+    for cell in values.as_chunks::<N>().0 {
+        for (sum, &value) in sum.iter_mut().zip(cell) {
+            *sum = sum.wrapping_add(value);
+        }
+    }
+    sum.map(f64::from)
+}
+
+/// Writes each pixel's bytes from its footprint over `reduction`: the f64
+/// average [`columns`] gives, rounded as [`Affine::byte`] rounds it. A pixel
+/// whose footprint lies in background columns takes the background's bytes;
+/// one whose footprint is empty is `[0, 0, 0, 0]`.
+fn column_bytes<const N: usize>(
+    reduction: &Reduction<'_>,
+    ((map, component), background): ((Affine, [usize; 3]), Option<[u8; 4]>),
+    dirty: &mut Vec<u32>,
+    out: &mut [[u8; 4]],
+) {
+    let [a, b, c] = component.map(|component| component.min(N - 1));
+    let columns = match reduction.reduced {
+        Reduced::Sums(sums) => sums.len() / N,
+        Reduced::Lines(lines) => lines.len() / N,
+    };
+    let background = background.filter(|_| reduction.runs.iter().any(|run| !run.2));
+    if background.is_some() && !reduction.monotone {
+        dirty_counts(reduction, columns, dirty);
+    }
+    let first = reduction.first;
+    let (feet, runs) = (reduction.feet, reduction.runs);
+    // With footprints that never step back, the run holding a footprint's
+    // first sample only moves forward.
+    let mut run = 0;
+    let mut i = 0;
+    while let (Some(foot), Some(pixel)) = (feet.get(i), out.get_mut(i)) {
+        i += 1;
+        if foot.first >= foot.end {
+            *pixel = [0; 4];
+            continue;
+        }
+        let (start, stop) = (index(foot.first) - first, index(foot.end) - first);
+        if let Some(background) = background {
+            if reduction.monotone {
+                while runs
+                    .get(run)
+                    .is_some_and(|&(_, end, _)| end <= index(foot.first))
+                {
+                    run += 1;
+                }
+                if let Some(&(_, end, false)) = runs.get(run)
+                    && index(foot.end) <= end
+                {
+                    *pixel = background;
+                    // The pixels whose footprints end in the same run are
+                    // background too.
+                    let rest = feet.get(i..).unwrap_or(&[]);
+                    let more = rest
+                        .partition_point(|foot| foot.first < foot.end && index(foot.end) <= end);
+                    if let Some(pixels) = out.get_mut(i..i + more) {
+                        pixels.fill(background);
+                    }
+                    i += more;
+                    continue;
+                }
+            } else if dirty.get(start) == dirty.get(stop) {
+                *pixel = background;
+                continue;
+            }
+        }
+        let sum = match reduction.reduced {
+            Reduced::Sums(sums) => sums.get(start * N..stop * N).map(whole_sum::<N>),
+            Reduced::Lines(lines) => lines
+                .get(start * N..stop * N)
+                .map(|values| line_values::<N>(values, foot.first_weight, foot.last_weight)),
+        };
+        let Some(sum) = sum else {
+            *pixel = [0; 4];
+            continue;
+        };
+        let factor = foot.normalization * reduction.scale;
+        let averages = [sum[a] * factor, sum[b] * factor, sum[c] * factor];
+        *pixel = map.bytes3(averages).unwrap_or_else(|| {
+            [
+                map.byte(averages[0]),
+                map.byte(averages[1]),
+                map.byte(averages[2]),
+                255,
+            ]
+        });
+    }
+}
+
+/// The two source rows of a bilinear span from column `first`, `N` codes
+/// per column, under the row footprint `across`, for lanes of `lanes`.
+struct BilinearRows<'a> {
+    top: &'a [u8],
+    /// Empty when the footprint has one row.
+    bottom: &'a [u8],
+    first: usize,
+    across: Footprint,
+    lanes: [usize; 3],
+}
+
+impl BilinearRows<'_> {
+    /// Each column's level under the row's weights, plus a half, in f32,
+    /// and the last column's again.
+    fn levels<const N: usize>(&self, map: Affine, levels: &mut Vec<[f32; 4]>) {
+        let scale = self.across.normalization * map.level;
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "weights narrowed to f32 within the error bound"
+        )]
+        let (upper, lower) = (
+            (self.across.first_weight * scale) as f32,
+            (self.across.last_weight * scale) as f32,
+        );
+        let lanes = self.lanes;
+        levels.clear();
+        let top = self.top.as_chunks::<N>().0;
+        if self.bottom.is_empty() {
+            levels.extend(top.iter().map(|t| {
+                let at = |lane: usize| f32::from(t[lanes[lane]]) * upper + 0.5;
+                [at(0), at(1), at(2), 0.5]
+            }));
+        } else {
+            levels.extend(
+                top.iter()
+                    .zip(self.bottom.as_chunks::<N>().0)
+                    .map(|(t, b)| {
+                        let at = |lane: usize| {
+                            f32::from(t[lanes[lane]]) * upper
+                                + f32::from(b[lanes[lane]]) * lower
+                                + 0.5
+                        };
+                        [at(0), at(1), at(2), 0.5]
+                    }),
+            );
+        }
+        if let Some(&last) = levels.last() {
+            levels.push(last);
+        }
+    }
+
+    /// The bytes of the f64 colours [`Codes::fill`] gives the pixel of
+    /// footprint `foot`: each column's line as `reduce_rows` forms it, the
+    /// line's weighted sum as `columns` forms it, rounded by `map`.
+    fn exact<const N: usize>(&self, foot: &Footprint, map: Affine) -> [u8; 4] {
+        let across = &self.across;
+        let column = |c: u32, lane: usize| -> f64 {
+            let at = (index(c) - self.first) * N + self.lanes[lane];
+            let line = across.first_weight * f64::from(self.top.get(at).copied().unwrap_or(0));
+            if self.bottom.is_empty() {
+                line
+            } else {
+                line + across.last_weight * f64::from(self.bottom.get(at).copied().unwrap_or(0))
+            }
+        };
+        let factor = foot.normalization * across.normalization;
+        let byte = |lane: usize| {
+            let mut sum = foot.first_weight * column(foot.first, lane);
+            if foot.end - foot.first > 1 {
+                sum += foot.last_weight * column(foot.first + 1, lane);
+            }
+            pagura_raster::quantize_unit(map.apply(sum * factor))
+        };
+        [byte(0), byte(1), byte(2), 255]
+    }
+}
+
+/// The pixels of [`Codes::bilinear_bytes`] from the columns' `levels`.
+fn bilinear_pixels<const N: usize>(
+    source: &BilinearRows<'_>,
+    (levels, taps, feet): (&[[f32; 4]], &[BilinearTap], &[Footprint]),
+    map: Affine,
+    out: &mut [[u8; 4]],
+) {
+    const BOUND: f32 = 3e-4;
+    let base = u32::try_from(source.first).unwrap_or(u32::MAX);
+    // Magnified pixels share their columns: the level and its difference
+    // stay while the column does.
+    let mut current = u32::MAX;
+    let (mut here, mut difference) = ([0.0f32; 4], [0.0f32; 4]);
+    for ((pixel, tap), foot) in out.iter_mut().zip(taps).zip(feet) {
+        if tap.column != current {
+            let column = index(tap.column.wrapping_sub(base));
+            let Some(&[level, next]) = levels.get(column..column.wrapping_add(2)) else {
+                *pixel = [0; 4];
+                continue;
+            };
+            current = tap.column;
+            here = level;
+            difference = [
+                next[0] - level[0],
+                next[1] - level[1],
+                next[2] - level[2],
+                next[3] - level[3],
+            ];
+        }
+        let level = [
+            here[0] + tap.t * difference[0],
+            here[1] + tap.t * difference[1],
+            here[2] + tap.t * difference[2],
+            here[3] + tap.t * difference[3],
+        ];
+        let low = level.map(|level| floor(level - BOUND));
+        let high = level.map(|level| floor(level + BOUND));
+        *pixel = if low == high {
+            (u32::from(byte(low[0]))
+                | u32::from(byte(low[1])) << 8
+                | u32::from(byte(low[2])) << 16
+                | 0xff00_0000)
+                .to_le_bytes()
+        } else {
+            source.exact::<N>(foot, map)
+        };
+    }
+}
+
+/// One device column's bilinear footprint for [`Codes::bilinear_bytes`]:
+/// its first source column and its normalization times its second weight.
+#[derive(Debug, Clone, Copy)]
+struct BilinearTap {
+    column: u32,
+    t: f32,
+}
+
+impl BilinearTap {
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "a weight narrowed to f32 within the error bound"
+    )]
+    fn new(foot: &Footprint) -> Self {
+        let t = if foot.end.saturating_sub(foot.first) > 1 {
+            (foot.normalization * foot.last_weight) as f32
+        } else {
+            0.0
+        };
+        Self {
+            column: foot.first,
+            t,
+        }
+    }
+}
+
+/// The floor of a nonnegative level below 2^32; zero below zero.
+#[inline]
+fn floor(level: f32) -> u32 {
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "levels within 0..257 truncate to their floors; below zero to zero"
+    )]
+    let floor = level as u32;
+    floor
+}
+
+/// A level's floor as a byte.
+#[inline]
+fn byte(floor: u32) -> u8 {
+    floor.min(255).to_le_bytes()[0]
+}
+
+/// Bytes of a one-bit image whose device pixels each cover a whole pair of
+/// samples in a whole pair of rows, `across` and `feet`, with one
+/// normalization: a pixel's average is its count of one bits, 0 to 4,
+/// times that normalization, so the bytes of the five counts, computed as
+/// [`Codes::fill`] computes the colours and rounded, serve every pixel. Two
+/// rows' bits count pairwise eight at a time.
+fn pair_bytes(
+    packed: &Packed,
+    (across, feet): (&Footprint, &[Footprint]),
+    maps: [Affine; 3],
+    out: &mut [[u8; 4]],
+) {
+    let Some(start) = feet.first() else {
+        return;
+    };
+    let factor = start.normalization * across.normalization;
+    let table: [[u8; 4]; 5] = std::array::from_fn(|count| {
+        let average = f64::from(u32::try_from(count).unwrap_or(0)) * factor;
+        let byte = |map: Affine| pagura_raster::quantize_unit(map.apply(average));
+        [byte(maps[0]), byte(maps[1]), byte(maps[2]), 255]
+    });
+    let rows = (
+        packed.row(index(across.first)).unwrap_or(&[]),
+        packed.row(index(across.first) + 1).unwrap_or(&[]),
+    );
+    // Seven bytes of both rows at a time: 28 pixels.
+    let mut at = index(start.first);
+    for pixels in out.chunks_mut(28) {
+        let (byte, shift) = (at / 8, at % 8);
+        let words = (
+            word_at(rows.0, byte) << shift,
+            word_at(rows.1, byte) << shift,
+        );
+        for (group, pixels) in pixels.chunks_mut(4).enumerate() {
+            let at = 56 - 8 * group;
+            let pair = |word: u64| PAIRS[usize::from((word >> at).to_le_bytes()[0])];
+            let counts = pair(words.0) + pair(words.1);
+            for (pixel, shift) in pixels.iter_mut().zip([12, 8, 4, 0]) {
+                *pixel = table[usize::from((counts >> shift) & 15).min(4)];
+            }
+        }
+        at += 56;
+    }
+}
+
+/// The eight bytes of a packed row from byte `start` on, most significant
+/// first; bytes past the row are zero.
+#[inline]
+fn word_at(row: &[u8], start: usize) -> u64 {
+    if let Some(bytes) = row
+        .get(start..start.wrapping_add(8))
+        .and_then(|bytes| bytes.first_chunk::<8>())
+    {
+        return u64::from_be_bytes(*bytes);
+    }
+    let mut word = [0u8; 8];
+    if let Some(bytes) = row.get(start..) {
+        for (word, &byte) in word.iter_mut().zip(bytes) {
+            *word = byte;
+        }
+    }
+    u64::from_be_bytes(word)
+}
+
+/// The longest run of `feet` that are whole pairs of samples, each next to
+/// the last, with one normalization.
+fn pair_run(feet: &[Footprint]) -> std::ops::Range<usize> {
+    let pair = |foot: &Footprint| foot.end.wrapping_sub(foot.first) == 2 && foot.whole();
+    let (mut best, mut start) = (0..0, 0);
+    for (i, foot) in feet.iter().enumerate() {
+        let continues = i > start
+            && pair(foot)
+            && feet.get(i - 1).is_some_and(|previous| {
+                foot.first == previous.first.wrapping_add(2)
+                    && foot.normalization == previous.normalization
+            });
+        if !continues {
+            start = if pair(foot) { i } else { i + 1 };
+        }
+        if pair(foot) && i + 1 - start > best.len() {
+            best = start..i + 1;
+        }
+    }
+    best
+}
+
+/// Per byte, the counts of one bits in each of its four pairs of bits,
+/// most significant pair in the highest nibble.
+static PAIRS: [u16; 256] = pair_counts();
+
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "a pair holds at most two one bits"
+)]
+const fn pair_counts() -> [u16; 256] {
+    let mut table = [0; 256];
+    let mut byte = 0;
+    while byte < 256 {
+        let mut counts = 0u16;
+        let mut pair = 0;
+        while pair < 4 {
+            let bits = (byte >> (6 - 2 * pair)) & 3;
+            let count = (bits & 1) + (bits >> 1);
+            counts |= (count as u16) << (12 - 4 * pair);
+            pair += 1;
+        }
+        table[byte] = counts;
+        byte += 1;
+    }
+    table
+}
+
+/// Bytes of a one-bit image under separable footprints `across` and
+/// `feet`, through `rows`: each source column's bits in the footprint's
+/// rows make a class, the first row's bit plus twice the last row's plus
+/// four times the count of those between; each class's line is formed as
+/// `reduce_rows` forms it (or summed whole, as `sum_rows` sums it, when
+/// `whole`), once per row; each pixel then adds its columns' lines as
+/// `columns` does. The colours are those of [`Codes::fill`], operation for
+/// operation.
+fn bit_bytes(
+    grid: &Grid<'_>,
+    (across, feet, (whole, monotone)): (&Footprint, &[Footprint], (bool, bool)),
+    maps: [Affine; 3],
+    (rows, classes, runs): (&mut RowCache, &mut Vec<u8>, &mut Vec<ClassRun>),
+    out: &mut [[u8; 4]],
+) -> bool {
+    let Some((first, end)) = extent(feet) else {
+        out.fill([0; 4]);
+        return true;
+    };
+    let (top, bottom) = (index(across.first), index(across.end));
+    let count = bottom.saturating_sub(top);
+    if count == 0 || count > 65 {
+        return false;
+    }
+    classes.clear();
+    classes.extend_from_slice(grid.row(top, ((first, end), 1), None, rows));
+    if count > 1 {
+        let last = grid.row(bottom - 1, ((first, end), 1), None, rows);
+        for (class, &bit) in classes.iter_mut().zip(last) {
+            *class = class.wrapping_add(bit.wrapping_mul(2));
+        }
+        for y in top + 1..bottom - 1 {
+            let row = grid.row(y, ((first, end), 1), None, rows);
+            for (class, &bit) in classes.iter_mut().zip(row) {
+                *class = class.wrapping_add(bit.wrapping_mul(4));
+            }
+        }
+    }
+    if classes.len() != end - first {
+        return false;
+    }
+    // Each class's line; whole footprints weight their cells by one, so
+    // the weighted sum of their integer lines is the integer sum.
+    let mut lines = [0.0f64; 256];
+    // Classes reach four times the rows between, plus three.
+    let used = 4 * count.saturating_sub(2) + 4;
+    for (class, line) in (0..=u8::MAX).zip(lines.iter_mut()).take(used) {
+        let (first_bit, last_bit, between) = (
+            f64::from(class & 1),
+            f64::from((class >> 1) & 1),
+            f64::from(class >> 2),
+        );
+        *line = if whole {
+            first_bit + last_bit + between
+        } else if count == 1 {
+            across.first_weight * first_bit
+        } else if count == 2 {
+            across.first_weight * first_bit + across.last_weight * last_bit
+        } else {
+            (across.first_weight * first_bit + between) + across.last_weight * last_bit
+        };
+    }
+    let shared = maps[0] == maps[1] && maps[0] == maps[2];
+    // Padding classes past the last column, whose lines a zero weight
+    // drops.
+    let widest = feet
+        .iter()
+        .map(|foot| index(foot.end.saturating_sub(foot.first)))
+        .max()
+        .unwrap_or(0);
+    classes.resize(classes.len() + widest.max(8), 0);
+    // Runs of one class at least as wide as the widest footprint.
+    runs.clear();
+    let columns = end - first;
+    let mut start = 0;
+    while start < columns {
+        let class = classes.get(start).copied().unwrap_or(0);
+        let length = classes
+            .get(start..columns)
+            .unwrap_or(&[])
+            .iter()
+            .take_while(|&&other| other == class)
+            .count()
+            .max(1);
+        if length >= widest.max(2) {
+            runs.push((start, start + length, class));
+        }
+        start += length;
+    }
+    let span = BitSpan {
+        classes,
+        first,
+        lines: &lines,
+        scale: across.normalization,
+        maps: (maps, shared),
+        runs,
+        monotone,
+    };
+    match widest {
+        0..=4 => span.fill::<4>(feet, out),
+        5..=6 => span.fill::<6>(feet, out),
+        7..=8 => span.fill::<8>(feet, out),
+        _ => span.fill_any(feet, out),
+    }
+    true
+}
+
+/// A run of a one-bit span's source columns of one class: its first and
+/// end column, relative to the span's first, and the class.
+type ClassRun = (usize, usize, u8);
+
+/// A device row of [`bit_bytes`]: each source column's class from `first`,
+/// padded past the end, the classes' lines, the row's normalization and
+/// the lanes' maps, and whether they share one.
+struct BitSpan<'a> {
+    classes: &'a [u8],
+    first: usize,
+    lines: &'a [f64; 256],
+    scale: f64,
+    maps: ([Affine; 3], bool),
+    /// Runs of columns of one class.
+    runs: &'a [ClassRun],
+    /// Whether the footprints' first and last samples never decrease.
+    monotone: bool,
+}
+
+impl BitSpan<'_> {
+    /// The pixels of `feet`, at most `W` samples wide, each summing exactly
+    /// `W` lines: the cells past its last weigh zero, which adds nothing,
+    /// so the sum is `columns`' sum without a branch on the width.
+    fn fill<const W: usize>(&self, feet: &[Footprint], out: &mut [[u8; 4]]) {
+        let mut run = 0;
+        let mut i = 0;
+        while let Some(foot) = feet.get(i).filter(|_| i < out.len()) {
+            i += 1;
+            let cells = index(foot.end.saturating_sub(foot.first));
+            let start = index(foot.first).wrapping_sub(self.first);
+            if let Some(more) = self.uniform((start, cells), (feet, i, &mut run), out) {
+                i += more;
+                continue;
+            }
+            let bytes = match self
+                .classes
+                .get(start..start.wrapping_add(W))
+                .and_then(|window| window.first_chunk::<W>())
+                .filter(|_| cells > 0)
+            {
+                Some(window) => {
+                    let mut sum = foot.first_weight * self.lines[usize::from(window[0])];
+                    for (j, &class) in window.iter().enumerate().skip(1) {
+                        let line = self.lines[usize::from(class)];
+                        let weight = match (j + 1).cmp(&cells) {
+                            std::cmp::Ordering::Less => 1.0,
+                            std::cmp::Ordering::Equal => foot.last_weight,
+                            std::cmp::Ordering::Greater => 0.0,
+                        };
+                        sum += weight * line;
+                    }
+                    self.bytes(sum * (foot.normalization * self.scale))
+                }
+                None => [0; 4],
+            };
+            if let Some(pixel) = out.get_mut(i - 1) {
+                *pixel = bytes;
+            }
+        }
+    }
+
+    /// Where footprints never step back and the one of pixel `i - 1`
+    /// (`start`, `cells` columns) lies in a run of columns of one class,
+    /// fills it and the following pixels in that run with the bytes of the
+    /// class's line and returns how many followed; `None` otherwise, or
+    /// when the line's level is within [`UNIFORM_NEAR`] of a rounding
+    /// boundary. Such a footprint averages to the line times the row's
+    /// normalization, within the trimming of its weights.
+    fn uniform(
+        &self,
+        (start, cells): (usize, usize),
+        (feet, i, run): (&[Footprint], usize, &mut usize),
+        out: &mut [[u8; 4]],
+    ) -> Option<usize> {
+        if !self.monotone || cells == 0 {
+            return None;
+        }
+        while self.runs.get(*run).is_some_and(|&(_, end, _)| end <= start) {
+            *run += 1;
+        }
+        let &(from, to, class) = self.runs.get(*run)?;
+        if from > start || start + cells > to {
+            return None;
+        }
+        let average = self.lines[usize::from(class)] * self.scale;
+        let ([a, b, c], _) = self.maps;
+        let bytes = [
+            uniform_byte(a, average)?,
+            uniform_byte(b, average)?,
+            uniform_byte(c, average)?,
+            255,
+        ];
+        let rest = feet.get(i..).unwrap_or(&[]);
+        let more = rest.partition_point(|foot| {
+            foot.first < foot.end && index(foot.end).wrapping_sub(self.first) <= to
+        });
+        if let Some(pixels) = out.get_mut(i - 1..i + more) {
+            pixels.fill(bytes);
+        }
+        Some(more)
+    }
+
+    /// The pixels of `feet` of any width.
+    fn fill_any(&self, feet: &[Footprint], out: &mut [[u8; 4]]) {
+        for (pixel, foot) in out.iter_mut().zip(feet) {
+            let start = index(foot.first).wrapping_sub(self.first);
+            let cells = index(foot.end.saturating_sub(foot.first));
+            let window = self
+                .classes
+                .get(start..start.wrapping_add(cells))
+                .unwrap_or(&[]);
+            let Some((&a, rest)) = window.split_first() else {
+                *pixel = [0; 4];
+                continue;
+            };
+            let mut sum = foot.first_weight * self.lines[usize::from(a)];
+            if let Some((&z, between)) = rest.split_last() {
+                for &class in between {
+                    sum += self.lines[usize::from(class)];
+                }
+                sum += foot.last_weight * self.lines[usize::from(z)];
+            }
+            *pixel = self.bytes(sum * (foot.normalization * self.scale));
+        }
+    }
+
+    #[inline]
+    fn bytes(&self, average: f64) -> [u8; 4] {
+        let ([a, b, c], shared) = self.maps;
+        if shared {
+            let byte = a.byte(average);
+            [byte, byte, byte, 255]
+        } else {
+            [a.byte(average), b.byte(average), c.byte(average), 255]
+        }
+    }
+}
+
+/// How near a level of a run of one class may come to a rounding boundary:
+/// the run's line times the row's normalization differs from a pixel's f64
+/// average there by the trimming of its weights, under 2^-40 of the value.
+const UNIFORM_NEAR: f64 = 1e-8;
+
+/// The byte of the colour `map` gives `average`, unless its level lies
+/// within [`UNIFORM_NEAR`] of a rounding boundary.
+fn uniform_byte(map: Affine, average: f64) -> Option<u8> {
+    let value = if map.unit.is_some() {
+        average * map.level
+    } else {
+        (map.zero + average * map.slope).clamp(0.0, 1.0) * 255.0
+    };
+    let level = value + 0.5 + TIE_GUARD;
+    let fraction = level - level.floor();
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "a level within 0..257 truncates to its floor"
+    )]
+    let byte = level.min(255.0) as u8;
+    (fraction > UNIFORM_NEAR && fraction < 1.0 - UNIFORM_NEAR && level >= 0.0).then_some(byte)
+}
+
+/// In `dirty`, per source column of `reduction` and one past, the count
+/// of columns before it that are not background.
+fn dirty_counts(reduction: &Reduction<'_>, columns: usize, dirty: &mut Vec<u32>) {
+    dirty.clear();
+    dirty.resize(columns + 1, 0);
+    let mut count = 0u32;
+    for &(start, stop, is_dirty) in reduction.runs {
+        let range = (start.max(reduction.first) - reduction.first + 1)
+            ..(stop.max(reduction.first) - reduction.first + 1).min(columns + 1);
+        let Some(counts) = dirty.get_mut(range) else {
+            continue;
+        };
+        if is_dirty {
+            for value in counts.iter_mut() {
+                count = count.wrapping_add(1);
+                *value = count;
+            }
+        } else {
+            counts.fill(count);
+        }
+    }
+}
+
+/// The bytes of a pixel whose footprint lies in background columns of
+/// codes `background`, under `map` for lanes of `lanes`, unless a level is
+/// within 1e-6 of a rounding boundary: such a footprint averages to the
+/// background codes within a few roundings of its weights.
+fn certified_background(
+    background: [u8; 3],
+    (map, lanes): (Affine, [usize; 3]),
+) -> Option<[u8; 4]> {
+    let byte = |lane: usize| {
+        let code = f64::from(background.get(lane).copied().unwrap_or(0));
+        let level = code * map.level + 0.5 + TIE_GUARD;
+        let fraction = level - level.floor();
+        (fraction > 1e-6 && fraction < 1.0 - 1e-6)
+            .then(|| pagura_raster::quantize_unit(map.apply(code)))
+    };
+    Some([byte(lanes[0])?, byte(lanes[1])?, byte(lanes[2])?, 255])
 }
 
 /// Reduces the source rows of `rows` for the source columns of the `true`
@@ -1281,7 +2660,7 @@ fn sum_rows<const N: usize>(
     rows: &Footprint,
     (first, end): (usize, usize),
     (sums, cache): (&mut Vec<u32>, &mut RowCache),
-    runs: &[(usize, usize, bool)],
+    (runs, edges): (&[(usize, usize, bool)], Option<usize>),
 ) {
     let n = N;
     let (top, bottom) = (index(rows.first), index(rows.end) - 1);
@@ -1295,7 +2674,7 @@ fn sum_rows<const N: usize>(
         let constant: [u32; N] = std::array::from_fn(|k| {
             u32::from(clean.background.get(k).copied().unwrap_or(0)).wrapping_mul(count)
         });
-        for &(start, stop, _) in runs.iter().filter(|run| !run.2) {
+        for (start, stop) in clean_spans(runs, edges) {
             if let Some(sums) = sums.get_mut((start - first) * n..(stop - first) * n) {
                 for sum in sums.as_chunks_mut::<N>().0 {
                     *sum = constant;
@@ -1327,6 +2706,31 @@ fn sum_rows<const N: usize>(
     }
 }
 
+/// The background runs of `runs` that need their constant: whole, or with
+/// `edges`, only the samples within that many of a run's ends, all a
+/// footprint that is not all background reaches.
+fn clean_spans(
+    runs: &[(usize, usize, bool)],
+    edges: Option<usize>,
+) -> impl Iterator<Item = (usize, usize)> + '_ {
+    runs.iter()
+        .filter(|run| !run.2)
+        .flat_map(move |&(start, stop, _)| match edges {
+            Some(width) if stop - start > 2 * width => {
+                [(start, start + width), (stop - width, stop)]
+            }
+            _ => [(start, stop), (stop, stop)],
+        })
+}
+
+/// The most samples one of `feet` spans.
+fn widest(feet: &[Footprint]) -> usize {
+    feet.iter()
+        .map(|foot| index(foot.end.saturating_sub(foot.first)))
+        .max()
+        .unwrap_or(0)
+}
+
 /// What [`reduce_rows`] gives a column whose rows all hold `code`.
 fn reduce_constant(rows: &Footprint, code: u8) -> f64 {
     let code32 = u32::from(code);
@@ -1341,4 +2745,112 @@ fn reduce_constant(rows: &Footprint, code: u8) -> f64 {
         }
     }
     line
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Affine, Clean};
+    use pagura_image::deferred::Planar;
+
+    /// Background blocks are those whose luma block and every chroma block
+    /// under it hold the background, for every sampling of the chroma.
+    #[test]
+    fn background_blocks_have_clean_chroma_under_them() {
+        let mut state = 0x1234_5678u32;
+        let mut random = move || {
+            state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            state >> 16
+        };
+        let cases: [([usize; 2], (usize, usize)); 4] = [
+            ([2, 2], (37, 29)),
+            ([1, 1], (24, 16)),
+            ([2, 1], (40, 9)),
+            ([4, 1], (70, 15)),
+        ];
+        for ([h, v], (width, height)) in cases {
+            let maximum = [h, v];
+            let geometry = [
+                [h, v, (width.div_ceil(8 * h) * 8 * h).next_multiple_of(8)],
+                [1, 1, width.div_ceil(8 * h) * 8],
+                [1, 1, width.div_ceil(8 * h) * 8],
+            ];
+            let rows = [
+                height.div_ceil(8 * v) * 8 * v,
+                height.div_ceil(8 * v) * 8,
+                height.div_ceil(8 * v) * 8,
+            ];
+            let backgrounds = [255u8, 128, 128];
+            let planes: [Vec<u8>; 3] = std::array::from_fn(|c| {
+                let [_, _, pitch] = geometry[c];
+                let mut plane = vec![backgrounds[c]; pitch * rows[c]];
+                for block in 0..(pitch / 8) * (rows[c] / 8) {
+                    if random() % 5 == 0 {
+                        let (row, column) = (block / (pitch / 8), block % (pitch / 8));
+                        plane[(row * 8 + 3) * pitch + column * 8 + 2] = 7;
+                    }
+                }
+                plane
+            });
+            let planar = Planar::new((width, height), maximum, geometry, planes).unwrap();
+            let clean = Clean::new(&planar);
+            let side = 8;
+            let under = |(a, b): (usize, usize), factor: usize, maximum: usize| {
+                (a * factor / maximum / side)..=(b * factor / maximum / side)
+            };
+            for row in 0..height.div_ceil(side) {
+                for column in 0..geometry[0][2] / side {
+                    let samples = (row * side, row * side + side - 1);
+                    let across = (column * side, column * side + side - 1);
+                    let expected = !planar.dirty(0, row, column)
+                        && (1..3).all(|c| {
+                            let [h, v, _] = planar.geometry(c);
+                            under(samples, v, maximum[1]).all(|y| {
+                                under(across, h, maximum[0]).all(|x| !planar.dirty(c, y, x))
+                            })
+                        });
+                    let actual =
+                        clean.bits[row * clean.words + column / 64] >> (column % 64) & 1 == 1;
+                    assert_eq!(actual, expected, "{maximum:?} block {row} {column}");
+                }
+            }
+        }
+    }
+
+    /// Bytes of mapped codes equal the rounding of the colour values, at
+    /// exact half levels, next to them and at random averages, for unit
+    /// maps of every precision and other affine maps.
+    #[test]
+    fn bytes_of_averages_round_their_colour_values() {
+        let mut state = 0x2545_f491_4f6c_dd1du64;
+        let mut random = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            f64::from(u32::try_from(state >> 40).unwrap()) / f64::from(1u32 << 24)
+        };
+        for maximum in [1.0, 3.0, 15.0, 255.0] {
+            let maps = [
+                Affine::new(0.0, 1.0 / maximum, maximum),
+                Affine::new(0.25, 0.5 / maximum, maximum),
+                Affine::new(1.0, -1.0 / maximum, maximum),
+            ];
+            for map in maps {
+                let mut codes = Vec::new();
+                for level in 0..=510u32 {
+                    // Half levels of 255 as codes, and their neighbours.
+                    let code = f64::from(level) / 2.0 * maximum / 255.0;
+                    codes.extend([code, code.next_up(), code.next_down()]);
+                    codes.extend([code + 1e-12, code - 1e-12, code + 1e-9, code - 1e-9]);
+                }
+                codes.extend((0..20_000).map(|_| random() * maximum));
+                for code in codes.into_iter().filter(|c| (0.0..=maximum).contains(c)) {
+                    assert_eq!(
+                        map.byte(code),
+                        pagura_raster::quantize_unit(map.apply(code)),
+                        "{map:?} {code}"
+                    );
+                }
+            }
+        }
+    }
 }

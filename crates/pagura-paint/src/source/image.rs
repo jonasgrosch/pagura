@@ -336,6 +336,35 @@ impl ImageSampler {
             .map_or(&[], |prepared| prepared.image.diagnostics.as_slice())
     }
 
+    /// Whether [`Self::span_bytes`] fills this image's spans: an opaque
+    /// image without a mask, sampled by its codes into three colour
+    /// channels (an RGB blending space).
+    pub fn has_byte_spans(&self) -> bool {
+        self.prepared.as_ref().is_some_and(|prepared| {
+            prepared
+                .codes
+                .as_ref()
+                .is_some_and(codes::Codes::fills_bytes)
+        })
+    }
+
+    /// Fills `out` with device pixels `x .. x + out.len()` of row `y` as
+    /// premultiplied RGBA bytes, without the f64 colours of [`Self::span`]
+    /// in between: each pixel's three colours as `span` gives them, rounded
+    /// by [`pagura_raster::quantize_unit`] (the bytes a `U8` store takes
+    /// them as), and alpha 255; a pixel whose footprint misses the image,
+    /// which `span` gives alpha 0, is `[0, 0, 0, 0]`. Returns false, with
+    /// `out` unspecified, unless [`Self::has_byte_spans`].
+    pub fn span_bytes(&self, x: u32, y: u32, out: &mut [[u8; 4]]) -> bool {
+        let Some(prepared) = &self.prepared else {
+            return false;
+        };
+        prepared
+            .codes
+            .as_ref()
+            .is_some_and(|codes| codes.fill_bytes(&prepared.image.image, (x, y), out))
+    }
+
     /// Fills `out` with the colours and alpha of device pixels `x .. x +
     /// len` of row `y`: unpremultiplied working colours (none for an
     /// uncoloured stencil mask) and one alpha per pixel, before coverage.

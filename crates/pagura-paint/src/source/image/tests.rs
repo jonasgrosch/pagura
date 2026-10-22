@@ -221,6 +221,47 @@ fn close(actual: f64, expected: f64) -> bool {
         || (actual - expected).abs() <= 1e-13 * expected.abs().max(1.0)
 }
 
+/// Checks that byte spans, where the sampler fills them, are the colours of
+/// its f64 spans as `U8` storage rounds them, over every pixel of rows
+/// `rows` from column `x0` on, as whole rows and as single pixels. Returns
+/// whether it fills byte spans.
+pub(super) fn bytes_agree(
+    sampler: &ImageSampler,
+    (x0, len): (u32, usize),
+    rows: std::ops::Range<u32>,
+) -> bool {
+    if !sampler.has_byte_spans() {
+        return false;
+    }
+    let quantize = pagura_raster::quantize_unit;
+    let mut span = SpanColors::default();
+    let (mut bytes, mut single) = (vec![[9u8; 4]; len], [[9u8; 4]; 1]);
+    for y in rows {
+        sampler.span(x0, y, len, &mut span);
+        assert_eq!(span.channels, 3);
+        assert!(sampler.span_bytes(x0, y, &mut bytes));
+        for (i, (x, &actual)) in (x0..).zip(&bytes).enumerate() {
+            let alpha = span.alpha.get(i).copied().unwrap_or(1.0);
+            assert!(alpha == 0.0 || alpha == 1.0, "opaque byte spans");
+            let color = &span.colors[i * 3..i * 3 + 3];
+            let expected = if alpha == 0.0 {
+                [0; 4]
+            } else {
+                [
+                    quantize(color[0]),
+                    quantize(color[1]),
+                    quantize(color[2]),
+                    255,
+                ]
+            };
+            assert_eq!(actual, expected, "pixel ({x}, {y}) of {color:?}");
+            assert!(sampler.span_bytes(x, y, &mut single));
+            assert_eq!(single[0], expected, "single pixel ({x}, {y})");
+        }
+    }
+    true
+}
+
 /// Compares the new sampler with the oracle on every pixel of the window,
 /// as whole rows and as single pixels. Nearest samples and the general
 /// paths agree bit for bit; averages of codes within [`close`]. An empty
@@ -231,6 +272,8 @@ fn agree(case: &Case, target: usize) {
         let mut oracle = oracle::Oracle::new(case, unit_to_device, target);
         let (x0, y0, x1, y1) = window(unit_to_device);
         let len = usize::try_from(x1 - x0).unwrap();
+        let bytes = bytes_agree(&sampler, (x0, len), y0..y1);
+        assert!(!bytes || target == 3, "byte spans fill three channels");
         let (mut row, mut single) = (SpanColors::default(), SpanColors::default());
         let (mut row_shape, mut single_shape) = (Vec::new(), Vec::new());
         for y in y0..y1 {
@@ -610,6 +653,170 @@ fn rows_and_tables_sum_as_samples_do() {
                         assert_eq!(bits(&rows), bits(&samples), "mask {context}");
                     }
                 }
+            }
+        }
+    }
+}
+
+/// Opaque gray and RGB images of every precision fill byte spans into an
+/// RGB space, at every placement the codes sample; masked and translucent
+/// images do not.
+#[test]
+fn byte_spans_cover_opaque_images_sampled_by_codes() {
+    let rgb = case(image((9, 7), 3, 8, bytes(9 * 7 * 3, 8, 83)));
+    let mut filled = 0;
+    for bits in [1, 2, 4, 8] {
+        let gray = case(image((13, 9), 1, bits, bytes(13 * 9, bits, 89)));
+        for interpolate in [false, true] {
+            for case in [&gray, &rgb] {
+                let mut case = case.clone();
+                case.image.interpolate = interpolate;
+                for unit_to_device in placements(case.image.width, case.image.height) {
+                    let sampler = sampler(&case, unit_to_device, 3);
+                    let (x0, y0, x1, y1) = window(unit_to_device);
+                    let len = usize::try_from(x1 - x0).unwrap();
+                    filled += usize::from(bytes_agree(&sampler, (x0, len), y0..y1));
+                }
+            }
+        }
+    }
+    // Every upright, flipped and quarter-turned placement; not the rotated
+    // and skewed ones.
+    assert_eq!(filled, 4 * 2 * 2 * 10);
+    let mut masked = rgb.clone();
+    masked.mask = Some((
+        image((9, 7), 1, 8, bytes(63, 8, 97)),
+        [0.0, 1.0],
+        MaskUse::Soft(None),
+    ));
+    let unit_to_device = Transform::new(4.5, 0.0, 0.0, 3.5, 0.0, 0.0);
+    assert!(!sampler(&masked, unit_to_device, 3).has_byte_spans());
+    assert!(!sampler(&rgb, unit_to_device, 1).has_byte_spans());
+}
+
+/// A packed one-bit image of `width` × `height` samples, mostly ones when
+/// `white`.
+fn packed_image((width, height): (u32, u32), white: bool, seed: u32) -> DecodedImage {
+    let (w, h) = (
+        usize::try_from(width).unwrap(),
+        usize::try_from(height).unwrap(),
+    );
+    let stride = w.div_ceil(8);
+    let values = codes(w * h, 8, seed);
+    let mut rows = vec![0u8; stride * h];
+    for (i, &v) in values.iter().enumerate() {
+        let (y, x) = (i / w, i % w);
+        // Mostly white: blocks of white between blocks of noise.
+        let one = if white {
+            (x / 9 + y / 7) % 3 != 0 || v % 2 == 1
+        } else {
+            v % 2 == 1
+        };
+        rows[y * stride + x / 8] |= u8::from(one) << (7 - x % 8);
+    }
+    let packed = pagura_image::deferred::Packed::from_rows(w, h, rows).unwrap();
+    image((width, height), 1, 1, Samples::Packed(packed))
+}
+
+/// Packed one-bit images fill byte spans from counts of their bits: whole
+/// two-by-two means, and footprints of every size and phase, at both
+/// decodes, each byte the rounded f64 colour.
+#[test]
+fn packed_bits_fill_bytes_as_their_colours_round() {
+    let (w, h) = (70.0, 53.0);
+    let placements = [
+        Transform::new(w / 2.0, 0.0, 0.0, h / 2.0, 0.0, 0.0),
+        Transform::new(w / 2.0, 0.0, 0.0, -h / 2.0, 3.0, 1.0 + h / 2.0),
+        Transform::new(w / 4.17, 0.0, 0.0, -h / 4.17, 0.3, 0.7 + h / 4.17),
+        Transform::new(w / 1.5, 0.0, 0.0, h / 1.7, 0.25, 0.4),
+        Transform::new(w / 7.3, 0.0, 0.0, h / 9.1, 0.6, 0.1),
+        Transform::new(w / 2.0, 0.0, 0.0, h / 2.0, 0.5, 0.0),
+        Transform::new(0.0, -h / 2.0, -w / 2.0, 0.0, w / 2.0, h / 2.0),
+        Transform::new(0.0, h / 4.3, w / 3.9, 0.0, 0.2, 0.3),
+    ];
+    for white in [false, true] {
+        for decode in [[0.0, 1.0], [1.0, 0.0]] {
+            let mut bits = case(packed_image((70, 53), white, 101));
+            bits.decode = vec![decode];
+            for &unit_to_device in &placements {
+                let sampler = sampler(&bits, unit_to_device, 3);
+                let (x0, y0, x1, y1) = window(unit_to_device);
+                let len = usize::try_from(x1 - x0).unwrap();
+                assert!(bytes_agree(&sampler, (x0, len), y0..y1));
+                // The columns inside the image, whose footprints are all
+                // whole where the scale is two.
+                let corners = [(0.0, 0.0), (1.0, 1.0)]
+                    .map(|(x, y)| pagura_raster::Point::new(x, y) * unit_to_device);
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "test columns"
+                )]
+                let (left, right) = (
+                    corners[0].x.min(corners[1].x).ceil() as u32,
+                    corners[0].x.max(corners[1].x).floor() as u32,
+                );
+                let inside = usize::try_from(right - left).unwrap();
+                assert!(bytes_agree(&sampler, (left, inside), y0..y1));
+                // Spans of a few pixels from every start.
+                for start in x0..x1 {
+                    let len = usize::try_from((x1 - start).min(5)).unwrap();
+                    bytes_agree(&sampler, (start, len), y0..y0 + 3);
+                }
+            }
+        }
+    }
+}
+
+/// Images with regions of one colour fill byte spans over those regions,
+/// each byte the rounded f64 colour, at every minification and phase.
+#[test]
+fn even_regions_fill_bytes_as_their_colours_round() {
+    let (width, height) = (61u32, 37u32);
+    for components in [1u8, 3] {
+        let n = usize::from(components);
+        let noise = codes(61 * 37 * n, 8, 131);
+        let samples: Vec<u8> = noise
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| {
+                let x = (i / n) % 61;
+                let y = (i / n) / 61;
+                if x < 40 && y % 13 < 9 {
+                    [200, 17, 255][i % n]
+                } else {
+                    u8::try_from(v).unwrap()
+                }
+            })
+            .collect();
+        let even = case(image(
+            (width, height),
+            components,
+            8,
+            Samples::Bytes(samples),
+        ));
+        let (w, h) = (f64::from(width), f64::from(height));
+        for scale in [1.3, 2.0, 2.7, 4.4] {
+            for (flip, offset) in [(1.0, 0.0), (-1.0, 0.35)] {
+                let unit_to_device = Transform::new(
+                    w / scale,
+                    0.0,
+                    0.0,
+                    flip * h / scale,
+                    offset,
+                    if flip < 0.0 { h / scale + 0.2 } else { 0.1 },
+                );
+                let sampler = sampler(&even, unit_to_device, 3);
+                let (x0, y0, x1, y1) = window(unit_to_device);
+                let len = usize::try_from(x1 - x0).unwrap();
+                assert!(bytes_agree(&sampler, (x0, len), y0..y1));
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "test columns"
+                )]
+                let inside = ((w / scale).floor() as usize).saturating_sub(1);
+                assert!(bytes_agree(&sampler, (1, inside), y0..y1));
             }
         }
     }
