@@ -9,16 +9,18 @@
 //! bit for bit.
 
 use super::geometry::Geometry;
-use super::texels::{Convert, Opacity};
-use super::{Description, ImageSampler, MaskDescription, Prepared};
+use super::texels::{Convert, Opacity, OpacityTexels, SampleTexels};
+use super::{Description, ImageSampler, MaskDescription, Orientation, Paint, Prepared};
 use crate::SpanColors;
 use pagura_color::{ColorSpace, Conversion, Converter, Indexed, Painted, Process, Target};
 use pagura_image::{Decoded, DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples};
 use pagura_raster::Transform;
 use std::sync::Arc;
 
+mod accuracy;
 mod documents;
 mod oracle;
+mod timing;
 
 /// A prepared conversion of `base` into a composite target of `channels`
 /// process channels (1 Gray, 3 RGB, 4 CMYK), and whether it is per channel.
@@ -124,6 +126,7 @@ fn case(image: DecodedImage) -> Case {
 /// channels.
 fn sampler(case: &Case, unit_to_device: Transform, target: usize) -> ImageSampler {
     let inverse = unit_to_device.inverse().unwrap();
+    let window = window(unit_to_device);
     let mask = case.mask.as_ref().map(|(mask, decode, kind)| {
         let description = match kind {
             MaskUse::Stencil => MaskDescription::Stencil,
@@ -145,13 +148,20 @@ fn sampler(case: &Case, unit_to_device: Transform, target: usize) -> ImageSample
         .space
         .as_ref()
         .map(|space| converter(base(space), target));
+    // Quarter turns sample the image with rows and columns exchanged, as
+    // preparation decodes it.
+    let orientation = Orientation::of(unit_to_device, description.mask);
+    let image = match orientation {
+        Orientation::Rows => case.image.clone(),
+        Orientation::Transposed => case
+            .image
+            .transposed(&pagura_core::Limits::default())
+            .unwrap(),
+    };
     let (prepared, _) = Prepared::new(
         &description,
-        (
-            Arc::new(Decoded::from(case.image.clone())),
-            mask.map(|(m, _)| m),
-        ),
-        inverse,
+        (Arc::new(Decoded::from(image)), mask.map(|(m, _)| m)),
+        (inverse, (window.0, window.2), orientation),
         convert,
     )
     .unwrap();
@@ -176,6 +186,8 @@ fn placements(width: u32, height: u32) -> Vec<Transform> {
         Transform::new(-w / 3.0, 0.0, 0.0, h / 2.0, 0.5 + w / 3.0, 0.75),
         Transform::new(0.0, h / 2.5, w / 3.5, 0.0, 0.3, 0.6),
         Transform::new(0.0, -h / 4.0, -w / 2.0, 0.0, 1.5 + w / 2.0, 0.5 + h / 4.0),
+        Transform::new(0.0, 2.7 * h, 3.1 * w, 0.0, 0.2, 0.4),
+        Transform::new(0.0, -h * 0.9, w * 1.6, 0.0, 0.7, 0.3 + h * 0.9),
         Transform::new(w * 0.31, w * 0.17, -h * 0.13, h * 0.29, 4.5, 0.25),
         Transform::new(w * 1.9, w * 0.4, h * 0.6, -h * 1.7, 0.5, 2.0 * h),
         Transform::new(w / 7.3, 0.0, 0.0, h * 2.1, 0.25, 0.0),
@@ -201,8 +213,18 @@ fn window(unit_to_device: Transform) -> (u32, u32, u32, u32) {
     (0, 0, clamp(x1) + 2, clamp(y1) + 2)
 }
 
+/// Whether a sampled value agrees with the oracle's: bit for bit, or, where
+/// codes are averaged as integers, within the rounding of a few f64
+/// operations.
+fn close(actual: f64, expected: f64) -> bool {
+    actual.to_bits() == expected.to_bits()
+        || (actual - expected).abs() <= 1e-13 * expected.abs().max(1.0)
+}
+
 /// Compares the new sampler with the oracle on every pixel of the window,
-/// as whole rows and as single pixels.
+/// as whole rows and as single pixels. Nearest samples and the general
+/// paths agree bit for bit; averages of codes within [`close`]. An empty
+/// alpha span means every alpha is 1.
 fn agree(case: &Case, target: usize) {
     for unit_to_device in placements(case.image.width, case.image.height) {
         let sampler = sampler(case, unit_to_device, target);
@@ -215,42 +237,43 @@ fn agree(case: &Case, target: usize) {
             sampler.span_with_shape(x0, y, len, &mut row, &mut row_shape);
             let channels = row.channels;
             assert_eq!(row.colors.len(), len * channels);
+            assert!(row.alpha.is_empty() || row.alpha.len() == len);
             for (i, x) in (x0..x1).enumerate() {
                 let expected = oracle.pixel(x, y);
                 let colors = &row.colors[i * channels..(i + 1) * channels];
+                let alpha = row.alpha.get(i).copied().unwrap_or(1.0);
                 let context = || format!("{unit_to_device:?} pixel ({x}, {y})");
-                assert_eq!(
-                    colors.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
-                    expected.color[..channels]
-                        .iter()
-                        .map(|v| v.to_bits())
-                        .collect::<Vec<_>>(),
-                    "colour {}",
-                    context()
-                );
-                assert_eq!(
-                    row.alpha[i].to_bits(),
-                    expected.alpha.to_bits(),
-                    "alpha {}",
-                    context()
-                );
-                assert_eq!(
-                    row_shape[i].to_bits(),
-                    expected.shape.to_bits(),
-                    "shape {}",
-                    context()
-                );
-                if sampler.shape_is_alpha() {
-                    assert_eq!(
-                        row_shape[i].to_bits(),
-                        row.alpha[i].to_bits(),
-                        "{}",
+                for (&actual, &expected) in colors.iter().zip(&expected.color[..channels]) {
+                    assert!(
+                        close(actual, expected),
+                        "colour {actual} vs {expected} {}",
                         context()
                     );
                 }
+                assert!(
+                    close(alpha, expected.alpha),
+                    "alpha {alpha} vs {} {}",
+                    expected.alpha,
+                    context()
+                );
+                assert!(
+                    close(row_shape[i], expected.shape),
+                    "shape {} vs {} {}",
+                    row_shape[i],
+                    expected.shape,
+                    context()
+                );
+                if sampler.shape_is_alpha() {
+                    assert_eq!(row_shape[i].to_bits(), alpha.to_bits(), "{}", context());
+                }
                 sampler.span_with_shape(x, y, 1, &mut single, &mut single_shape);
                 assert_eq!(single.colors, colors, "partition {}", context());
-                assert_eq!(single.alpha, [row.alpha[i]], "partition {}", context());
+                assert_eq!(
+                    single.alpha.first().copied().unwrap_or(1.0).to_bits(),
+                    alpha.to_bits(),
+                    "partition {}",
+                    context()
+                );
             }
         }
     }
@@ -484,6 +507,110 @@ fn device_and_cie_spaces_into_every_process_target() {
     for target in [1, 3, 4] {
         for case in [&cmyk, &lab, &rgb, &gray] {
             agree(case, target);
+        }
+    }
+}
+
+/// The bits of `values`.
+fn bits(values: &[f64]) -> Vec<u64> {
+    values.iter().map(|v| v.to_bits()).collect()
+}
+
+/// Spans of `len` pixels from `x0`: single pixels from the right or, on
+/// odd rows, from the left, then halves and the whole row, so that kept
+/// rows extend both ways and serve other ranges.
+fn partitions(x0: u32, len: usize, y: u32) -> Vec<(u32, usize)> {
+    let at = |i: usize| x0 + u32::try_from(i).unwrap();
+    let mut spans: Vec<_> = (0..len).map(|i| (at(i), 1)).collect();
+    if y.is_multiple_of(2) {
+        spans.reverse();
+    }
+    let half = len / 2;
+    spans.extend([(at(half), len - half), (x0, half), (x0, len)]);
+    spans
+}
+
+/// Source rows summed row by row, with texels from channel and Matte
+/// tables, give every pixel bit for bit what summing each pixel's
+/// per-sample texels gives, the image's and the mask's, for every partition
+/// of the device row.
+#[test]
+fn rows_and_tables_sum_as_samples_do() {
+    let rgb = image((23, 17), 3, 8, bytes(23 * 17 * 3, 8, 71));
+    let gray = image((23, 17), 1, 8, bytes(23 * 17, 8, 73));
+    // Mostly opaque, with transparent and partly covered samples.
+    let mask = image(
+        (23, 17),
+        1,
+        8,
+        Samples::Bytes(
+            codes(23 * 17, 8, 79)
+                .into_iter()
+                .map(|v| match v % 4 {
+                    0 => 0,
+                    1 => u8::try_from(v >> 8).unwrap(),
+                    _ => 255,
+                })
+                .collect(),
+        ),
+    );
+    let mut cases = Vec::new();
+    for source in [&rgb, &gray] {
+        for matte in [None, Some(vec![0.0; 3]), Some(vec![1.0, 0.25, 0.0])] {
+            for decode in [[0.0, 1.0], [0.25, 0.75]] {
+                let mut soft = case(source.clone());
+                let matte = matte
+                    .clone()
+                    .map(|m| m[..usize::from(source.components)].to_vec());
+                soft.mask = Some((mask.clone(), decode, MaskUse::Soft(matte)));
+                cases.push(soft);
+            }
+        }
+    }
+    let flipped =
+        |w: f64, h: f64| Transform::new(w / 2.78, 0.0, 0.0, -h / 2.78, 0.5, 1.0 + h / 2.78);
+    for case in &cases {
+        let (w, h) = (f64::from(case.image.width), f64::from(case.image.height));
+        let mut placements = placements(case.image.width, case.image.height);
+        placements.push(flipped(w, h));
+        placements.push(Transform::new(w / 1.34, 0.0, 0.0, h / 1.34, 0.3, 0.2));
+        for target in [1, 3, 4] {
+            for &unit_to_device in &placements {
+                let sampler = sampler(case, unit_to_device, target);
+                let prepared = sampler.prepared.as_deref().unwrap();
+                let Paint::Colors(paint) = &prepared.paint else {
+                    panic!("colour image");
+                };
+                let (colors, _) = paint.as_ref();
+                let mask = prepared.mask.as_ref().unwrap();
+                let lanes = colors.lanes();
+                let (x0, y0, x1, y1) = window(unit_to_device);
+                let len = usize::try_from(x1 - x0).unwrap();
+                for y in y0..y1 {
+                    for (x, len) in partitions(x0, len, y) {
+                        let span = (x, y, len);
+                        let mut rows = vec![0.0; len * lanes];
+                        prepared.texels(span, lanes, &mut rows);
+                        let matte = colors
+                            .matte
+                            .as_ref()
+                            .map(|_| (&mask.image.image, &mask.opacity));
+                        let texels = SampleTexels::new(&prepared.image.image, colors, matte, None);
+                        let mut samples = vec![0.0; len * lanes];
+                        prepared.geometry.fill(span, &texels, &mut samples);
+                        let context = format!("{unit_to_device:?} target {target} span {span:?}");
+                        assert_eq!(bits(&rows), bits(&samples), "{context}");
+                        let opacity = OpacityTexels {
+                            mask: &mask.image.image,
+                            opacity: &mask.opacity,
+                        };
+                        let (mut rows, mut samples) = (vec![0.0; len], vec![0.0; len]);
+                        mask.lines.fill(&mask.geometry, span, &opacity, &mut rows);
+                        mask.geometry.fill(span, &opacity, &mut samples);
+                        assert_eq!(bits(&rows), bits(&samples), "mask {context}");
+                    }
+                }
+            }
         }
     }
 }

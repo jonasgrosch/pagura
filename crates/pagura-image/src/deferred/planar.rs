@@ -17,6 +17,9 @@ pub struct Planar {
     pub(crate) dirty: [Vec<u8>; 3],
     /// The value each plane was initialized with.
     pub(crate) backgrounds: [u8; 3],
+    /// Samples per block side: eight, or the cells a block keeps when the
+    /// image was reconstructed near its drawn size.
+    pub(crate) block: usize,
 }
 
 impl Planar {
@@ -68,6 +71,7 @@ impl Planar {
             planes,
             dirty,
             backgrounds: BACKGROUNDS,
+            block: 8,
         })
     }
 
@@ -111,11 +115,24 @@ impl Planar {
         matches!(repeat, 1 | 2 | 4).then_some(repeat)
     }
 
+    /// Samples per block side: eight, or fewer for cells near the drawn
+    /// size.
+    #[must_use]
+    pub fn block(&self) -> usize {
+        self.block
+    }
+
+    /// The value each component's plane holds where no block was stored.
+    #[must_use]
+    pub fn backgrounds(&self) -> [u8; 3] {
+        self.backgrounds
+    }
+
     /// Whether block `block` of component `c`'s block row `row` differs from
     /// the plane's background.
     #[must_use]
     pub fn dirty(&self, c: usize, row: usize, block: usize) -> bool {
-        let stride = self.geometry[c][2] / 8;
+        let stride = self.geometry[c][2] / self.block;
         self.dirty[c]
             .get(row * stride + block)
             .is_some_and(|&flag| flag != 0)
@@ -179,6 +196,61 @@ impl Planar {
             }
         }
         true
+    }
+
+    /// Converts samples `x0..x1` of source row `y` to interleaved RGB as
+    /// [`Self::rgb`] does for the whole row. Returns false when the range
+    /// is empty or outside the row, or `out` does not hold it.
+    pub fn rgb_range(&self, y: usize, x0: usize, x1: usize, out: &mut [u8]) -> bool {
+        if x0 >= x1 || x1 > self.width || y >= self.height || out.len() != (x1 - x0) * 3 {
+            return false;
+        }
+        let Some(repeat) = self.chroma_repeat() else {
+            for (x, p) in (x0..).zip(out.as_chunks_mut::<3>().0) {
+                for (c, v) in p.iter_mut().enumerate() {
+                    *v = self
+                        .get((y * self.width + x) * 3 + c)
+                        .unwrap_or(0)
+                        .to_le_bytes()[0];
+                }
+            }
+            return true;
+        };
+        // Chroma runs start at multiples of `repeat`; convert from the run
+        // holding `x0` and drop its leading samples.
+        let lead = x0 % repeat;
+        let start = x0 - lead;
+        let (luma, cb, cr) = (self.row(0, y), self.row(1, y), self.row(2, y));
+        let (Some(luma), Some(cb), Some(cr)) = (
+            luma.get(start..x1),
+            cb.get(start / repeat..),
+            cr.get(start / repeat..),
+        ) else {
+            return false;
+        };
+        if lead == 0 {
+            return super::ycbcr(luma, cb, cr, repeat, out);
+        }
+        let mut first = [0u8; 12];
+        let head = (repeat).min(x1 - start);
+        let Some(first) = first.get_mut(..head * 3) else {
+            return false;
+        };
+        if !super::ycbcr(&luma[..head], cb, cr, repeat, first) {
+            return false;
+        }
+        let taken = (head - lead) * 3;
+        out[..taken].copy_from_slice(&first[lead * 3..]);
+        if start + head == x1 {
+            return true;
+        }
+        super::ycbcr(
+            &luma[head..],
+            &cb[head / repeat..],
+            &cr[head / repeat..],
+            repeat,
+            &mut out[taken..],
+        )
     }
 
     /// Whether source rows `a` and `b` have equal components, so they

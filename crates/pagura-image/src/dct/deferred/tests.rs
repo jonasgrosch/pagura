@@ -26,7 +26,11 @@ fn deferred(bytes: &[u8], transform: Option<i64>) -> Option<Deferred> {
         bytes,
         transform,
         &Limits::default(),
-        None,
+        super::Native {
+            buffers: None,
+            cells: 8,
+            transposed: false,
+        },
         &mut Diagnostics::new(Recovery::Strict),
     )
 }

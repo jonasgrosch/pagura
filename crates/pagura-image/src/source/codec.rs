@@ -1,21 +1,24 @@
 //! Samples from the data of an image source: the codec part of decoding,
 //! then the entries of finishing that the header already validated.
 
+use super::Orientation;
 use super::header::{Codec, Header};
 use crate::deferred::SampleLayout;
 use crate::{DecodedImage, MaskKind, Samples, dispatch, fax_image, parameters as p};
 use pagura_core::{Diagnostics, Error, Limits, Result};
 use std::borrow::Cow;
 
-/// Decodes `data` as `header` describes it, in `layout`.
+/// Decodes `data` as `header` describes it, in `layout` and `orientation`.
 pub(crate) fn decode(
     header: &Header,
     data: &[u8],
-    layout: SampleLayout,
+    (layout, orientation): (SampleLayout, Orientation),
     limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<DecodedImage> {
-    let (deferred, cells) = (layout == SampleLayout::Deferred, layout.cells());
+    let transposed = orientation == Orientation::Transposed;
+    let mut exchanged = false;
+    let (deferred, cells) = (layout.deferred(), layout.cells());
     let (width, height) = (header.width, header.height);
     let (components, bits) = (header.declared_components, header.declared_bits);
     let mut image = DecodedImage {
@@ -47,11 +50,18 @@ pub(crate) fn decode(
             // A baseline YCbCr frame decodes faster into its native planes;
             // their rows convert to exactly the interleaved samples.
             let planes = layout == SampleLayout::Interleaved && bits == 8;
-            dispatch::decode_dct(
+            let options = dispatch::DctOptions {
+                deferred: deferred || planes,
+                cells,
+                buffers: None,
+                // Interleaved samples come from planes in image rows.
+                transposed: transposed && !planes,
+            };
+            exchanged = dispatch::decode_dct(
                 data,
                 params.as_ref(),
                 (&mut image, bits),
-                (deferred || planes, cells, None),
+                options,
                 limits,
                 diagnostics,
             )?;
@@ -74,7 +84,11 @@ pub(crate) fn decode(
         }
         Codec::Jpx(jpx) => jpx.decode(data, &mut image, limits, diagnostics)?,
     }
-    finish(header, image)
+    let image = finish(header, image)?;
+    if transposed && !exchanged {
+        return image.transposed(limits);
+    }
+    Ok(image)
 }
 
 /// Converts a JPEG's native planes into interleaved RGB samples, row by

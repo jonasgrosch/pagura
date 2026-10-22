@@ -372,6 +372,16 @@ pub(super) struct Oracle<'a> {
 
 impl<'a> Oracle<'a> {
     pub(super) fn new(case: &'a Case, unit_to_device: Transform, target: usize) -> Self {
+        Self::with_columns(case, unit_to_device, target, (0, 256))
+    }
+
+    /// As [`Self::new`] for device columns `x0..x1`.
+    pub(super) fn with_columns(
+        case: &'a Case,
+        unit_to_device: Transform,
+        target: usize,
+        (x0, x1): (u32, u32),
+    ) -> Self {
         let inverse = unit_to_device.inverse().unwrap();
         Self {
             case,
@@ -379,11 +389,11 @@ impl<'a> Oracle<'a> {
                 .space
                 .as_ref()
                 .map(|space| converter(base(space), target).0),
-            image: sampler_for(&case.image, inverse).prepare(0, 256),
+            image: sampler_for(&case.image, inverse).prepare(x0, x1 - x0),
             mask: case
                 .mask
                 .as_ref()
-                .map(|(mask, _, _)| sampler_for(mask, inverse).prepare(0, 256)),
+                .map(|(mask, _, _)| sampler_for(mask, inverse).prepare(x0, x1 - x0)),
         }
     }
 
