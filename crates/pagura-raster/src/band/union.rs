@@ -541,7 +541,7 @@ fn clip(piece: Piece, (left, right): (f64, f64)) -> Option<Piece> {
     let rising = end > start;
     let (mut lo, mut hi) = (piece.lo, piece.hi);
     if start.min(end) < left {
-        let y = cross(piece.line, left).clamp(lo, hi);
+        let y = piece.line.y(left).clamp(lo, hi);
         if rising {
             lo = y;
         } else {
@@ -549,7 +549,7 @@ fn clip(piece: Piece, (left, right): (f64, f64)) -> Option<Piece> {
         }
     }
     if start.max(end) >= right {
-        let y = cross(piece.line, right).clamp(lo, hi);
+        let y = piece.line.y(right).clamp(lo, hi);
         if rising {
             hi = y;
         } else {
@@ -557,17 +557,6 @@ fn clip(piece: Piece, (left, right): (f64, f64)) -> Option<Piece> {
         }
     }
     (lo < hi).then_some(Piece { lo, hi, ..piece })
-}
-
-/// The height where `line`, not vertical, crosses column `x`, by one
-/// interpolation from its upper end.
-fn cross(line: Line, x: f64) -> f64 {
-    let (top, bottom) = if line.a.y < line.b.y {
-        (line.a, line.b)
-    } else {
-        (line.b, line.a)
-    };
-    top.y + (x - top.x) / (bottom.x - top.x) * (bottom.y - top.y)
 }
 
 /// The pairs of `spans`, ordered by start, that overlap: for each, the
