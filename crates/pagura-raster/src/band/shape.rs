@@ -841,7 +841,7 @@ fn resolve(
         }
         let groups = match (joint, frame.paths) {
             (true, Some(paths)) => {
-                paths.pieces(y, 1, (&mut pieces, bytes))?;
+                paths.pieces(y, 1, (&mut pieces, bytes), work)?;
                 rules.len()
             }
             _ => 1,

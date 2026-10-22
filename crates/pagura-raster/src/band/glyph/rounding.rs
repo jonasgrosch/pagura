@@ -32,7 +32,7 @@ struct Source<'a> {
 }
 
 impl<'a> Source<'a> {
-    fn of(edges: &'a GlyphEdges, origin: Point) -> Option<Self> {
+    fn of(edges: &'a GlyphEdges, origin: Point, work: &mut Meter) -> Result<Option<Self>> {
         let (outline, linear, points) = match &edges.kind {
             Kind::Curve {
                 outline, linear, ..
@@ -42,9 +42,10 @@ impl<'a> Source<'a> {
                 points,
                 ..
             } => (outline.as_ref(), *linear, points.as_slice()),
-            Kind::Polygon { source: None, .. } => return None,
+            Kind::Polygon { source: None, .. } => return Ok(None),
         };
-        outline
+        work.charge(outline.segments().len())?;
+        Ok(outline
             .segments()
             .iter()
             .any(|s| matches!(s, Segment::CubicTo { .. }))
@@ -53,7 +54,7 @@ impl<'a> Source<'a> {
                 linear,
                 origin,
                 points,
-            })
+            }))
     }
 }
 
@@ -65,13 +66,13 @@ pub(super) fn certify(
     mut shape: Shape,
     options: &Prep<'_>,
 ) -> Result<Shape> {
-    let Some(source) = Source::of(edges, origin) else {
+    let mut work = Meter::new(options.limits.raster_work, RASTER_WORK);
+    let Some(source) = Source::of(edges, origin, &mut work)? else {
         return Ok(shape);
     };
     let Source {
         outline, linear, ..
     } = source;
-    let mut work = Meter::new(options.limits.raster_work, RASTER_WORK);
     let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
     bytes.charge(shape.retained_bytes())?;
     let mut targets = Vec::new();
@@ -80,12 +81,16 @@ pub(super) fn certify(
             Body::Glyph(_) => true,
             Body::Edges(body) => !body.curves.is_empty(),
         };
-        work.charge(outline.segments().len())?;
+        work.charge_product(outline.segments().len(), 2)?;
         let error = if analytic {
             curve::reduction_area(outline, linear)
         } else {
             AREA
-        } + placement_error(outline, linear, origin, &shape);
+        } + placement_error(outline, linear, origin, &shape)
+            + options
+                .clip
+                .and_then(|clip| clip.paths())
+                .map_or(0.0, Paths::arithmetic_error);
         let pending = ambiguous(&shape, error, (&mut work, &mut bytes))?;
         let mut wrong = false;
         for pixel in pending {
@@ -119,42 +124,69 @@ pub(super) fn certify(
         if round == ROUNDS {
             break;
         }
-        let before = bytes.used();
-        let (polygon, points) = flattened_with(
-            outline,
-            linear,
-            options.limits,
-            &mut bytes,
-            Some(Inspection {
-                hulls: None,
+        shape = replacement(
+            source,
+            shape,
+            &targets,
+            (options, round),
+            Meters {
                 work: &mut work,
-                rounding: 0.0,
-                targets: &targets,
-                offset: origin,
-                factor: 16.0_f64.powi(-round - 1),
-            }),
+                bytes: &mut bytes,
+            },
         )?;
-        let polygon_bytes = polygon.heap_bytes() + points.capacity() * size_of::<Point>();
-        bytes.refund(bytes.used().saturating_sub(before + polygon_bytes));
-        // Old geometry stays charged until its replacement is fully ready.
-        let prepared = translated(
-            &polygon,
-            &points,
-            origin,
-            Winding::Unknown,
-            options,
-            &mut bytes,
-            Some(&mut work),
-        )?
-        .ok_or(Error::limit("unresolved curve coverage interval"))?;
-        drop((polygon, points));
-        bytes.refund(polygon_bytes);
-        let released = shape.retained_bytes();
-        drop(shape);
-        bytes.refund(released);
-        shape = prepared;
     }
     Err(Error::limit("unresolved curve coverage interval"))
+}
+
+fn replacement(
+    source: Source<'_>,
+    shape: Shape,
+    targets: &[[f64; 4]],
+    (options, round): (&Prep<'_>, i32),
+    Meters { work, bytes }: Meters<'_>,
+) -> Result<Shape> {
+    let before = bytes.used();
+    let (polygon, points) = flattened_with(
+        source.outline,
+        source.linear,
+        options.limits,
+        bytes,
+        Some(Inspection {
+            hulls: None,
+            work,
+            rounding: 0.0,
+            targets,
+            offset: source.origin,
+            factor: 16.0_f64.powi(-round - 1),
+        }),
+    )?;
+    let polygon_bytes = polygon.heap_bytes() + points.capacity() * size_of::<Point>();
+    bytes.refund(bytes.used().saturating_sub(before + polygon_bytes));
+    // Old geometry stays charged until its replacement is fully ready.
+    let prepared = translated(
+        &polygon,
+        &points,
+        source.origin,
+        Winding::Unknown,
+        options,
+        bytes,
+        Some(work),
+    )?
+    .ok_or(Error::limit("unresolved curve coverage interval"))?;
+    drop((polygon, points));
+    bytes.refund(polygon_bytes);
+    // The replacement's row resolver and lists have dropped their
+    // scratch. Keep only old geometry, targets and the ready replacement
+    // charged before the next cell inspection can allocate anything.
+    bytes.refund(
+        bytes
+            .used()
+            .saturating_sub(before + prepared.retained_bytes()),
+    );
+    let released = shape.retained_bytes();
+    drop(shape);
+    bytes.refund(released);
+    Ok(prepared)
 }
 
 /// Translation and row/intersection arithmetic can move a boundary. The
@@ -199,7 +231,8 @@ fn ambiguous(
     work.charge(shape.work())?;
     let mut pending = Vec::new();
     let mut failure = None;
-    raster::inspect(shape, &mut cells, |y, x0, x1, area| {
+    raster::inspect(shape, &mut cells, |y, x0, x1, area, arithmetic| {
+        let error = outward(error + arithmetic);
         if failure.is_some() || quantize_unit(area - error) == quantize_unit(area + error) {
             return;
         }
@@ -308,6 +341,9 @@ fn interval(
     bytes.reserve(&mut pieces, lines.len())?;
     pieces.extend(lines.iter().filter_map(|&line| Piece::new(line, 0.0, 0)));
     work.charge(lines.len())?;
+    let arithmetic = lines.iter().fold(0.0, |sum, &line| {
+        outward(sum + edge_error(line, line.interpolation_error(), [0.0, 0.0, 1.0, 1.0]))
+    });
     let released = lines.capacity() * size_of::<Line>();
     drop(lines);
     bytes.refund(released);
@@ -321,11 +357,21 @@ fn interval(
     let released = hulls.capacity() * size_of::<Hull>();
     drop(hulls);
     bytes.refund(released);
-    error = outward(error + source_lines(outline, linear, origin, pixel, local, bounds, work)?);
+    error = outward(
+        error + arithmetic + source_lines(outline, linear, origin, pixel, local, bounds, work)?,
+    );
     let mut rules = Vec::new();
     bytes.reserve_capacity(&mut rules, 1)?;
     rules.push(FillRule::NonZero);
-    error = outward(error + clip_pieces(&frame, pixel, (&mut pieces, &mut rules), bytes)?);
+    error = outward(
+        error
+            + clip_pieces(
+                &frame,
+                pixel,
+                (&mut pieces, &mut rules),
+                Meters { work, bytes },
+            )?,
+    );
     work.charge(pieces.len())?;
     let mut sides = Vec::new();
     Resolver::default().row(&pieces, &rules, 0.0, (&mut sides, Meters { work, bytes }))?;
@@ -335,10 +381,11 @@ fn interval(
     }
     work.charge_product(sides.len(), 8)?;
     for side in sides {
-        cells.line(side);
+        cells.line_measured(side);
     }
     let mut area = 0.0;
     cells.inspect(0, |_, _, value| area = value.abs());
+    error = outward(error + cells.arithmetic_error());
     Ok((area, error))
 }
 
@@ -346,7 +393,7 @@ fn clip_pieces(
     frame: &Frame<'_>,
     pixel: Pixel,
     (pieces, rules): (&mut Vec<Piece>, &mut Vec<FillRule>),
-    bytes: &mut Meter,
+    Meters { work, bytes }: Meters<'_>,
 ) -> Result<f64> {
     let mut error = 0.0;
     if let Some(rect) = frame.rect {
@@ -368,7 +415,11 @@ fn clip_pieces(
                 },
                 pixel,
             );
-            error = outward(error + edge_error(line, bound, [0.0, 0.0, 1.0, 1.0]));
+            error = outward(
+                error
+                    + edge_error(line, bound, [0.0, 0.0, 1.0, 1.0])
+                    + edge_error(line, line.interpolation_error(), [0.0, 0.0, 1.0, 1.0]),
+            );
             if let Some(piece) = Piece::new(line, 0.0, group) {
                 bytes.reserve_capacity(pieces, 1)?;
                 pieces.push(piece);
@@ -379,10 +430,14 @@ fn clip_pieces(
         let group =
             u8::try_from(rules.len()).map_err(|_| Error::limit("clip path count exceeds u8"))?;
         let start = pieces.len();
-        paths.pieces(pixel.y, group, (pieces, bytes))?;
+        paths.pieces(pixel.y, group, (pieces, bytes), work)?;
         for piece in pieces.get_mut(start..).unwrap_or_default() {
             let (line, bound) = localized_line(piece.line, pixel);
-            error = outward(error + edge_error(line, bound, [0.0, 0.0, 1.0, 1.0]));
+            error = outward(
+                error
+                    + edge_error(line, bound, [0.0, 0.0, 1.0, 1.0])
+                    + edge_error(line, line.interpolation_error(), [0.0, 0.0, 1.0, 1.0]),
+            );
             *piece = Piece::new(line, 0.0, piece.group)
                 .ok_or(Error::limit("unresolved clip localization interval"))?;
         }
@@ -550,6 +605,75 @@ mod tests {
     use pagura_core::Limits;
 
     #[test]
+    fn replacement_releases_dead_builder_scratch_before_the_next_inspection() {
+        let limits = Limits::default();
+        let mut path = PathBuilder::new();
+        let h = 3.0 * 0.500_001 / 255.0;
+        for _ in 0..2 {
+            path.move_to(Point::default());
+            path.cubic_to(
+                Point::new(1.0 / 3.0, 2.0 * h / 3.0),
+                Point::new(2.0 / 3.0, 2.0 * h / 3.0),
+                Point::new(1.0, 0.0),
+            )
+            .unwrap();
+            path.close();
+        }
+        let edges = std::sync::Arc::new(
+            GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
+        );
+        let options = Prep {
+            area: Area {
+                region: DeviceRect {
+                    x0: 0,
+                    y0: 0,
+                    x1: 1,
+                    y1: 1,
+                },
+                band_height: 1,
+            },
+            limits: &limits,
+            clip: None,
+        };
+        let shape = super::super::placed(&edges, Point::default(), &options)
+            .unwrap()
+            .unwrap();
+        let mut work = Meter::new(limits.raster_work, RASTER_WORK);
+        let source = Source::of(&edges, Point::default(), &mut work)
+            .unwrap()
+            .unwrap();
+        let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+        bytes.charge(shape.retained_bytes()).unwrap();
+        let shape = replacement(
+            source,
+            shape,
+            &[[0.0, 0.0, 1.0, 1.0]],
+            (&options, 0),
+            Meters {
+                work: &mut work,
+                bytes: &mut bytes,
+            },
+        )
+        .unwrap();
+        assert_eq!(bytes.used(), shape.retained_bytes());
+        let Body::Edges(body) = &shape.body else {
+            panic!("replacement must be a polygon")
+        };
+        let mut needed = Meter::new(usize::MAX, RENDER_BYTES);
+        Cells::charge(body.scan.1 - body.scan.0, &mut needed).unwrap();
+        // One pending pixel must coexist with the cell buffer. Dead row
+        // builder allocations must not consume this exact next-stage peak.
+        let mut tight = Meter::new(
+            bytes.used() + needed.used() + size_of::<Pixel>(),
+            RENDER_BYTES,
+        );
+        tight.charge(bytes.used()).unwrap();
+        let pending = ambiguous(&shape, AREA, (&mut work, &mut tight)).unwrap();
+        assert_eq!(pending.len(), 1);
+        assert_eq!(tight.used(), shape.retained_bytes() + size_of::<Pixel>());
+    }
+
+    #[test]
     fn canonical_clip_interpolation_cancellation_stays_inside_the_interval() {
         let limits = Limits::default();
         let n = 2.0_f64.powi(39);
@@ -624,6 +748,82 @@ mod tests {
         assert!(
             (actual - exact).abs() <= error + 1e-15,
             "clip area{actual} ±{error} excludes analytic {exact}"
+        );
+        let edges =
+            std::sync::Arc::new(GlyphEdges::new(&mark, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+        assert_eq!(
+            super::super::place(&edges, Point::default(), &options)
+                .unwrap_err()
+                .message,
+            "unresolved curve coverage interval",
+        );
+    }
+
+    #[test]
+    fn canonical_source_line_cancellation_cannot_bypass_curve_intervals() {
+        let limits = Limits::default();
+        let n = 2.0_f64.powi(39);
+        let u = 2.0_f64.powi(-13);
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(-n, -n));
+        path.line_to(Point::new(n, n + u)).unwrap();
+        path.line_to(Point::new(-n, n + 1.0)).unwrap();
+        path.close();
+        for _ in 0..2 {
+            path.move_to(Point::new(3.0, 3.0));
+            path.cubic_to(
+                Point::new(3.0 + 1.0 / 3.0, 3.0 + 2.0 / 3.0),
+                Point::new(3.0 + 2.0 / 3.0, 3.0 + 2.0 / 3.0),
+                Point::new(4.0, 3.0),
+            )
+            .unwrap();
+            path.close();
+        }
+        let path = path.finish();
+        let edges =
+            std::sync::Arc::new(GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+        assert!(!edges.curved());
+        let area = Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 1,
+                y1: 1,
+            },
+            band_height: 1,
+        };
+        let options = Prep {
+            area,
+            limits: &limits,
+            clip: None,
+        };
+        let source = Source {
+            outline: &path,
+            linear: Transform::IDENTITY,
+            origin: Point::default(),
+            points: &[],
+        };
+        let mut work = Meter::new(limits.raster_work, RASTER_WORK);
+        let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+        let (actual, error) = interval(
+            source,
+            Pixel {
+                x: 0,
+                y: 0,
+                byte: 0,
+            },
+            (&options, 0),
+            (&mut work, &mut bytes),
+        )
+        .unwrap();
+        let exact = (1.0 - u / 2.0).powi(2) / (2.0 * (1.0 + u / (2.0 * n)));
+        assert_eq!(quantize_unit(exact), 127);
+        assert!((actual - exact).abs() <= error + 1e-15);
+        assert_eq!(
+            super::super::place(&edges, Point::default(), &options)
+                .unwrap_err()
+                .message,
+            "unresolved curve coverage interval",
         );
     }
 }

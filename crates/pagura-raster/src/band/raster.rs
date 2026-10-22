@@ -355,7 +355,7 @@ impl BandRasterizer {
             if !self.cells.open(scan, window.clone()) {
                 continue;
             }
-            let mut work = items.accumulate(&mut self.cells, &window);
+            let mut work = items.accumulate::<false>(&mut self.cells, &window);
             for (r, row) in (0_usize..).zip(self.cells.rows()) {
                 out.push_row(row);
                 let mut sink = target.sink(out, row);
@@ -436,7 +436,11 @@ struct Items<'a> {
 
 impl Items<'_> {
     /// The common accumulation for execution and preparation inspection.
-    fn accumulate(&self, cells: &mut Cells, window: &std::ops::Range<u32>) -> usize {
+    fn accumulate<const MEASURE: bool>(
+        &self,
+        cells: &mut Cells,
+        window: &std::ops::Range<u32>,
+    ) -> usize {
         let resolved = !self.resolved.is_empty();
         if resolved {
             cells.skip(self.resolved.mask(window));
@@ -446,17 +450,21 @@ impl Items<'_> {
             listed.len()
                 + listed
                     .iter()
-                    .map(|&item| self.add(cells, item as usize))
+                    .map(|&item| self.add::<MEASURE>(cells, item as usize))
                     .sum::<usize>()
         } else {
-            self.all(cells)
+            self.all::<MEASURE>(cells)
         };
         if resolved {
             cells.skip(0);
             let sides = self.resolved.lines(window);
             work += sides.len();
             for &line in sides {
-                work += cells.line(line);
+                work += if MEASURE {
+                    cells.line_measured(line)
+                } else {
+                    cells.line(line)
+                };
             }
         }
         work
@@ -464,7 +472,7 @@ impl Items<'_> {
 
     /// Adds every item to the open window, lines then curves. Returns the
     /// work spent, one unit per item visited.
-    fn all(&self, cells: &mut Cells) -> usize {
+    fn all<const MEASURE: bool>(&self, cells: &mut Cells) -> usize {
         let origin = self.origin.unwrap_or_default();
         let mut work = self.lines.len() + self.curves.len();
         for l in self.lines {
@@ -473,12 +481,20 @@ impl Items<'_> {
                 b: Point::new(l.b.x + origin.x, l.b.y + origin.y),
             };
             if cells.reaches(line.a.x.min(line.b.x)) {
-                work += cells.line(line);
+                work += if MEASURE {
+                    cells.line_measured(line)
+                } else {
+                    cells.line(line)
+                };
             }
         }
         for m in self.curves {
             if cells.reaches(m.x0.min(m.x1) + origin.x) {
-                work += cells.curve(m, origin);
+                work += if MEASURE {
+                    cells.curve_measured(m, origin)
+                } else {
+                    cells.curve(m, origin)
+                };
             }
         }
         work
@@ -487,7 +503,7 @@ impl Items<'_> {
     /// Adds item `item` to the open window: each point plus the origin, as
     /// translating the vertices first would give. Returns the work spent.
     #[inline]
-    fn add(&self, cells: &mut Cells, item: usize) -> usize {
+    fn add<const MEASURE: bool>(&self, cells: &mut Cells, item: usize) -> usize {
         let at = |p: Point| match self.origin {
             Some(o) => Point::new(p.x + o.x, p.y + o.y),
             None => p,
@@ -500,7 +516,11 @@ impl Items<'_> {
                     b: at(l.b),
                 };
                 if cells.reaches(line.a.x.min(line.b.x)) {
-                    cells.line(line)
+                    if MEASURE {
+                        cells.line_measured(line)
+                    } else {
+                        cells.line(line)
+                    }
                 } else {
                     0
                 }
@@ -511,7 +531,11 @@ impl Items<'_> {
                 .map_or(0, |m| {
                     let origin = self.origin.unwrap_or_default();
                     if cells.reaches(m.x0.min(m.x1) + origin.x) {
-                        cells.curve(m, origin)
+                        if MEASURE {
+                            cells.curve_measured(m, origin)
+                        } else {
+                            cells.curve(m, origin)
+                        }
                     } else {
                         0
                     }
@@ -526,7 +550,7 @@ impl Items<'_> {
 pub(crate) fn inspect(
     shape: &Shape,
     cells: &mut Cells,
-    mut visit: impl FnMut(u32, usize, usize, f64),
+    mut visit: impl FnMut(u32, usize, usize, f64, f64),
 ) -> Result<()> {
     let (items, scan) = match &shape.body {
         Body::Edges(edges) => (
@@ -568,21 +592,19 @@ pub(crate) fn inspect(
         if !cells.open(scan, window.clone()) {
             return Err(Error::limit("glyph inspection cells exceed allocation"));
         }
-        items.accumulate(cells, &window);
+        items.accumulate::<true>(cells, &window);
+        let rounding = cells.arithmetic_error();
         for (r, row) in (0_usize..).zip(cells.rows()) {
+            let mut next = 0;
             cells.inspect(r, |x0, x1, area| {
                 let x0 = x0.max(target.bounds.x0 as usize);
                 let x1 = x1.min(target.bounds.x1 as usize);
                 if let Some(mask) = target.mask {
-                    for segment in mask.row(row) {
-                        let a = x0.max(segment.x0 as usize);
-                        let b = x1.min(segment.x1 as usize);
-                        if a < b {
-                            visit(row, a, b, area.abs());
-                        }
-                    }
+                    masked_ranges(mask.row(row), &mut next, (x0, x1), |a, b| {
+                        visit(row, a, b, area.abs(), rounding);
+                    });
                 } else if x0 < x1 {
-                    visit(row, x0, x1, area.abs());
+                    visit(row, x0, x1, area.abs(), rounding);
                 }
             });
         }
@@ -711,53 +733,71 @@ struct Masked<'a> {
 
 impl Sink for Masked<'_> {
     fn run(&mut self, x0: usize, x1: usize, value: u8) {
-        let mut x = x0;
-        while x < x1 {
-            while self
-                .segments
-                .get(self.next)
-                .is_some_and(|s| s.x1 as usize <= x)
-            {
-                self.next += 1;
-                self.extra += 1;
-            }
-            let Some(s) = self.segments.get(self.next) else {
-                return;
-            };
-            if s.x0 as usize >= x1 {
-                return;
-            }
-            let start = x.max(s.x0 as usize);
-            let end = x1.min(s.x1 as usize);
-            self.out.run(start, end, value);
-            x = end;
-        }
+        self.extra += masked_ranges(self.segments, &mut self.next, (x0, x1), |a, b| {
+            self.out.run(a, b, value);
+        });
     }
 
     fn cells(&mut self, x0: usize, values: &[u8]) {
         let x1 = x0 + values.len();
-        let mut x = x0;
-        while x < x1 {
-            while self
-                .segments
-                .get(self.next)
-                .is_some_and(|s| s.x1 as usize <= x)
-            {
-                self.next += 1;
-                self.extra += 1;
+        self.extra += masked_ranges(self.segments, &mut self.next, (x0, x1), |a, b| {
+            if let Some(kept) = values.get(a - x0..b - x0) {
+                self.out.cells(a, kept);
             }
-            let Some(s) = self.segments.get(self.next) else {
-                return;
-            };
-            if s.x0 as usize >= x1 {
-                return;
-            }
-            let start = x.max(s.x0 as usize);
-            let end = x1.min(s.x1 as usize);
-            if let Some(kept) = values.get(start - x0..end - x0) {
-                self.out.cells(start, kept);
-            }
-            x = end;
+        });
+    }
+}
+
+/// One monotone clip-row cursor for execution and unquantized inspection.
+/// Each segment advances at most once per row, regardless of touched cells.
+fn masked_ranges(
+    segments: &[Segment],
+    next: &mut usize,
+    (mut x, x1): (usize, usize),
+    mut keep: impl FnMut(usize, usize),
+) -> usize {
+    let mut advanced = 0;
+    while x < x1 {
+        while segments.get(*next).is_some_and(|s| s.x1 as usize <= x) {
+            *next += 1;
+            advanced += 1;
         }
+        let Some(segment) = segments.get(*next) else {
+            break;
+        };
+        if segment.x0 as usize >= x1 {
+            break;
+        }
+        let a = x.max(segment.x0 as usize);
+        let b = x1.min(segment.x1 as usize);
+        keep(a, b);
+        x = b;
+    }
+    advanced
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn inspection_and_emission_advance_each_mask_segment_once() {
+        let segments: Vec<_> = (0..256)
+            .map(|i| Segment {
+                x0: i * 2,
+                x1: i * 2 + 1,
+                value: 255,
+                inside: true,
+            })
+            .collect();
+        let (mut next, mut advanced, mut visits) = (0, 0, 0);
+        for x in 0..512 {
+            advanced += masked_ranges(&segments, &mut next, (x, x + 1), |a, b| {
+                assert_eq!((a, b), (x, x + 1));
+                visits += 1;
+            });
+        }
+        assert_eq!(visits, segments.len());
+        assert_eq!(advanced, segments.len());
     }
 }

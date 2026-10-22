@@ -53,6 +53,9 @@ pub(crate) struct Paths {
     /// Intersection of canonical path bounds, prepared once for local
     /// curve interval proofs. Includes all rows, not only a strip's edges.
     proof: Option<Bounds>,
+    /// Broad sum of canonical boundary-evaluation uncertainty, used only
+    /// to select ambiguous placement pixels before a local interval proof.
+    arithmetic: f64,
     strips: StripList,
     pub(crate) rows: Rows,
 }
@@ -62,6 +65,10 @@ impl Paths {
     /// intersected. A curve can affect the joint area only inside them.
     pub(crate) fn proof_bounds(&self) -> Option<Bounds> {
         self.proof
+    }
+
+    pub(crate) fn arithmetic_error(&self) -> f64 {
+        self.arithmetic
     }
 
     fn calculate_bounds(&self) -> Option<Bounds> {
@@ -103,9 +110,11 @@ impl Paths {
         y: u32,
         first: u8,
         (out, bytes): (&mut Vec<Piece>, &mut Meter),
+        work: &mut Meter,
     ) -> Result<()> {
         let top = f64::from(y);
         let listed = self.strips.strip(y / STRIP);
+        work.charge(listed.len().saturating_add(self.ends.len()))?;
         room(out, listed.len(), bytes)?;
         for &item in listed {
             let Some(&line) = self.lines.get(item as usize) else {
@@ -422,11 +431,17 @@ fn classify(
         lines,
         ends,
         proof: None,
+        arithmetic: 0.0,
         strips: strips_list,
         rows: Rows::default(),
     };
     meter.charge(paths.lines.len().saturating_add(paths.ends.len()))?;
     paths.proof = paths.calculate_bounds();
+    meter.charge(paths.lines.len())?;
+    paths.arithmetic = paths.lines.iter().fold(0.0, |sum, line| {
+        let delta = line.interpolation_error();
+        (sum + 4.0 * (delta.x + delta.y)) * (1.0 + 16.0 * f64::EPSILON)
+    });
     let mut rules = Vec::new();
     bytes.reserve(&mut rules, paths.ends.len())?;
     rules.extend(paths.rules());
@@ -442,7 +457,7 @@ fn classify(
             .as_ref()
             .is_some_and(|slabs| !slabs.iter().any(|&[lo, hi]| lo < top + 1.0 && hi > top));
         pieces.clear();
-        paths.pieces(y, 0, (&mut pieces, bytes))?;
+        paths.pieces(y, 0, (&mut pieces, bytes), &mut meter)?;
         meter.charge(pieces.len().saturating_add(2))?;
         if !cells.open(scan, y..y + 1) {
             return Err(Error::limit(CLIP_WORK));
@@ -545,4 +560,47 @@ pub(crate) fn columns(lo: f64, hi: f64, width: usize) -> (usize, usize) {
     let from = lo.floor().clamp(0.0, w) as usize;
     let to = (hi.ceil() + 1.0).clamp(0.0, w) as usize;
     (from, to.max(from))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Point;
+
+    #[test]
+    fn off_row_strip_edges_are_charged_before_a_local_proof_scans_them() {
+        let lines = vec![
+            Line {
+                a: Point::new(0.0, 15.2),
+                b: Point::new(1.0, 15.8),
+            };
+            100
+        ];
+        let mut bytes = Meter::new(1 << 20, RENDER_BYTES);
+        let strips = StripList::new((0, 16), lines.len(), |_| Some((15, 15)), &mut bytes).unwrap();
+        let paths = Paths {
+            lines,
+            ends: vec![(100, FillRule::NonZero)],
+            proof: None,
+            arithmetic: 0.0,
+            strips,
+            rows: Rows::default(),
+        };
+        let mut out = Vec::new();
+        let mut tight = Meter::new(100, CLIP_WORK);
+        assert_eq!(
+            paths
+                .pieces(0, 0, (&mut out, &mut bytes), &mut tight)
+                .unwrap_err()
+                .message,
+            CLIP_WORK
+        );
+        assert!(out.is_empty());
+        let mut exact = Meter::new(101, CLIP_WORK);
+        paths
+            .pieces(0, 0, (&mut out, &mut bytes), &mut exact)
+            .unwrap();
+        assert!(out.is_empty());
+        assert_eq!(exact.used(), 101);
+    }
 }

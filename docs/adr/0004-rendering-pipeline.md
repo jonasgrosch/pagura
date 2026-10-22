@@ -241,6 +241,28 @@ has no coverage overrides, allocation or fallible refinement. A synthetic
 coincident-outline composition checks coverage byte one directly and its
 three-placement composed result against the analytic byte reference.
 
+The interval includes canonical straight-edge arithmetic as well as curve
+approximation. An interior interpolation parameter lies in [0,1]; rounding
+its two differences, division, product and addition is bounded by sixteen
+rounding units times the endpoint magnitudes in each coordinate. A linear
+boundary's swept uncertainty inside a unit pixel is bounded by those radii
+times its coordinate variations there. Axis-aligned boundaries require no
+such interpolation; localization tails are still retained. Large opposite
+endpoints can otherwise hide a low bit in the denominator and move an area
+from below a half-level onto it. Independent analytic source-line and
+clip-line regressions require that case to remain inside the interval and
+refuse unresolved precision.
+
+Signed accumulation is bounded with gamma_n times the sum of absolute cell
+inputs, including the final prefix additions. Preparation measures those
+inputs in the common kernel for both initial ambiguity selection and local
+proof; a linear count alone cannot bound cancellation of many boundaries.
+The execution specialization omits that measurement. Canonical clip proof
+bounds and their broad arithmetic allowance are computed once with charged
+work. Strip input scans are reserved before traversal, mask filtering uses
+one monotone row cursor, and replacement-builder scratch is returned before
+the next inspection starts.
+
 A general cubic's displacement tolerance alone does not bound area when
 several edges share a pixel, so its outline retains the canonical 1/256-pixel
 polygon as its reference. Singular linear maps retain the polygon's

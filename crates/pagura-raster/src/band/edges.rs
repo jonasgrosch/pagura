@@ -41,6 +41,20 @@ impl Line {
     pub(crate) fn is_horizontal(self) -> bool {
         self.a.y == self.b.y
     }
+
+    /// Outward coordinate uncertainty of interpolation and crossing
+    /// evaluation on this stored line. For an interior parameter, each
+    /// subtraction has relative error at most EPS, division adds one,
+    /// and multiplication/addition contribute at most six EPS times the
+    /// endpoint magnitudes; sixteen covers their products and rounding.
+    /// Axis-aligned boundaries need no such interpolation.
+    pub(crate) fn interpolation_error(self) -> Point {
+        if self.a.x == self.b.x || self.a.y == self.b.y {
+            return Point::default();
+        }
+        let bound = |a: f64, b: f64| 16.0 * f64::EPSILON * (1.0 + a.abs() + b.abs());
+        Point::new(bound(self.a.x, self.b.x), bound(self.a.y, self.b.y))
+    }
 }
 
 /// Closed device polygons: contour `i` is `points[starts[i]..starts[i + 1]]`

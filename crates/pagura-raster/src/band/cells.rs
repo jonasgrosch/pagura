@@ -45,6 +45,41 @@ pub(crate) struct Cells {
     rows: usize,
     /// Window rows (bits from the first) that items skip.
     skip: u32,
+    /// Used only by the preparation-only measured line entry point. The
+    /// ordinary kernel specializes measurement away at compile time.
+    rounding: Rounding,
+}
+
+#[derive(Debug, Default)]
+struct Rounding {
+    absolute: f64,
+    additions: usize,
+}
+
+impl Rounding {
+    fn add(&mut self, value: f64) {
+        self.absolute += value.abs();
+        self.additions = self.additions.saturating_add(1);
+    }
+
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "inflated before use; enormous counts refuse precision"
+    )]
+    fn bound(&self) -> f64 {
+        let n = (self.additions as f64 + 4.0) * (1.0 + 4.0 * f64::EPSILON);
+        let product = n * f64::EPSILON;
+        if product >= 0.25 {
+            return f64::INFINITY;
+        }
+        // Gamma_n bounds signed accumulation by the sum of absolute
+        // inputs. Include its own positive-sum rounding, per-piece products
+        // and the final cover/area additions, without assigning a whole
+        // square pixel of rounding to every tiny boundary fragment.
+        ((8.0 * product / (1.0 - product) + 64.0 * f64::EPSILON) * self.absolute)
+            * (1.0 + 8.0 * f64::EPSILON)
+            + f64::MIN_POSITIVE
+    }
 }
 
 impl Cells {
@@ -123,6 +158,7 @@ impl Cells {
         self.y0 = rows.start;
         self.rows = count;
         self.skip = 0;
+        self.rounding = Rounding::default();
         true
     }
 
@@ -175,10 +211,11 @@ impl Cells {
     /// The cells and bitmap words of window row `r`, as a view whose
     /// slices the accumulation keeps in registers.
     #[inline]
-    fn row(&mut self, r: usize) -> Row<'_> {
+    fn row<const MEASURE: bool>(&mut self, r: usize) -> Row<'_, MEASURE> {
         let cells = r.wrapping_mul(self.width);
         let words = r.wrapping_mul(self.words);
         Row {
+            rounding: &mut self.rounding,
             base: self.base,
             area: self
                 .area
@@ -199,6 +236,19 @@ impl Cells {
     /// rows visited.
     #[inline]
     pub(crate) fn line(&mut self, line: Line) -> usize {
+        self.line_with::<false>(line)
+    }
+
+    pub(crate) fn line_measured(&mut self, line: Line) -> usize {
+        self.line_with::<true>(line)
+    }
+
+    pub(crate) fn arithmetic_error(&self) -> f64 {
+        self.rounding.bound()
+    }
+
+    #[inline]
+    fn line_with<const MEASURE: bool>(&mut self, line: Line) -> usize {
         let Line { a, b } = line;
         if a.y == b.y {
             return 0;
@@ -224,7 +274,7 @@ impl Cells {
             };
             let xb = line.x(hi);
             carried = Some((hi, xb));
-            visited += 1 + self.row(r).piece(xa, xb, (hi - lo) * d);
+            visited += 1 + self.row::<MEASURE>(r).piece(xa, xb, (hi - lo) * d);
         }
         visited
     }
@@ -234,11 +284,19 @@ impl Cells {
     /// lower side (its upper one is the row above's) and one per column
     /// side crossed, and each cell's area from the closed-form integral of
     /// x dy between them. Returns the cells and rows visited.
+    pub(crate) fn curve(&mut self, curve: &Mono, origin: Point) -> usize {
+        self.curve_with::<false>(curve, origin)
+    }
+
+    pub(crate) fn curve_measured(&mut self, curve: &Mono, origin: Point) -> usize {
+        self.curve_with::<true>(curve, origin)
+    }
+
     #[expect(
         clippy::cast_possible_truncation,
-        reason = "device coordinates are bounded by 10^12, within i64"
+        reason = "bounded device coordinates are within i64"
     )]
-    pub(crate) fn curve(&mut self, curve: &Mono, origin: Point) -> usize {
+    fn curve_with<const MEASURE: bool>(&mut self, curve: &Mono, origin: Point) -> usize {
         let m = curve;
         let (x0, y0) = (m.x0 + origin.x, m.y0 + origin.y);
         let (x1, y1) = (m.x1 + origin.x, m.y1 + origin.y);
@@ -267,7 +325,7 @@ impl Cells {
             let start = l.floor();
             let end = right.ceil();
             let first = start as i64;
-            let mut row = self.row(r);
+            let mut row = self.row::<MEASURE>(r);
             visited += 2;
             if end <= start + 1.0 {
                 if end == start {
@@ -398,14 +456,15 @@ impl Cells {
 }
 
 /// One row of a window's cells, for [`Accumulate`].
-struct Row<'a> {
+struct Row<'a, const MEASURE: bool> {
     base: i64,
     area: &'a mut [f64],
     cover: &'a mut [f64],
     touched: &'a mut [u64],
+    rounding: &'a mut Rounding,
 }
 
-impl Row<'_> {
+impl<const MEASURE: bool> Row<'_, MEASURE> {
     #[inline]
     fn mark(&mut self, x: usize) {
         if let Some(word) = self.touched.get_mut(x / 64) {
@@ -414,7 +473,7 @@ impl Row<'_> {
     }
 }
 
-impl Accumulate for Row<'_> {
+impl<const MEASURE: bool> Accumulate for Row<'_, MEASURE> {
     #[inline]
     fn base(&self) -> i64 {
         self.base
@@ -431,6 +490,9 @@ impl Accumulate for Row<'_> {
             && let Some(cell) = self.area.get_mut(x)
         {
             *cell += value;
+            if MEASURE {
+                self.rounding.add(value);
+            }
             self.mark(x);
         }
     }
@@ -440,6 +502,9 @@ impl Accumulate for Row<'_> {
         let x = usize::try_from(column.wrapping_sub(self.base).max(0)).unwrap_or(usize::MAX);
         if let Some(cell) = self.cover.get_mut(x) {
             *cell += value;
+            if MEASURE {
+                self.rounding.add(value);
+            }
             self.mark(x);
         }
     }
