@@ -12,6 +12,17 @@ use pagura_raster::Point;
 /// Depth at which parameter boxes are solved instead of halved.
 const DEPTH: u32 = 12;
 
+/// Parameters closer than this are the same: a root on a box boundary is
+/// found from either side with rounding noise, which must not decide which
+/// of two preimages with equal `v` paints.
+const SAME: f64 = 1e-9;
+
+/// Whether `(u, v)` paints over `best`: a larger `v`, or the same `v` and
+/// a larger `u`.
+fn above((u, v): (f64, f64), (best_u, best_v): (f64, f64)) -> bool {
+    v > best_v + SAME || ((v - best_v).abs() <= SAME && u > best_u + SAME)
+}
+
 /// The parameters `(u, v)` of `p`, if the patch covers it.
 pub(super) fn locate(points: &[Point; 16], p: Point) -> Option<(f64, f64)> {
     let mut best = None;
@@ -29,12 +40,13 @@ fn search(
     depth: u32,
     best: &mut Option<(f64, f64)>,
 ) {
-    if best.is_some_and(|(u, v)| b[3] < v || (b[3] == v && b[2] <= u)) || !hull_contains(piece, p) {
+    if best.is_some_and(|best| !above((b[2] + SAME, b[3] + SAME), best)) || !hull_contains(piece, p)
+    {
         return;
     }
     if depth >= DEPTH {
         if let Some(found) = newton(patch, p, b)
-            && best.is_none_or(|(u, v)| found.1 > v || (found.1 == v && found.0 > u))
+            && best.is_none_or(|best| above(found, best))
         {
             *best = Some(found);
         }
@@ -191,6 +203,20 @@ mod tests {
         let (u, v) = locate(&points, p).unwrap();
         assert!((u - 0.3).abs() < 1e-9 && (v - 0.7).abs() < 1e-9, "{u} {v}");
         assert!(locate(&points, Point::new(-5.0, -5.0)).is_none());
+    }
+
+    #[test]
+    fn equal_v_paints_the_largest_u_despite_rounding() {
+        // S = (24 u (1 - u), 24 v (1 - v)): every point has four preimages,
+        // and v = 3/4 lies on a box boundary of the search.
+        let f = [0.0, 8.0, 8.0, 0.0];
+        let points: [Point; 16] = std::array::from_fn(|k| Point::new(f[k / 4], f[k % 4]));
+        let (u, v) = locate(&points, Point::new(1.5, 4.5)).unwrap();
+        let expected = f64::midpoint(1.0, 0.75_f64.sqrt());
+        assert!(
+            (u - expected).abs() < 1e-9 && (v - 0.75).abs() < 1e-9,
+            "{u} {v}"
+        );
     }
 
     #[test]

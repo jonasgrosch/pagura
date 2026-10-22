@@ -1,8 +1,9 @@
 //! Images read from documents: requests for exact means decode and sample
-//! as full decoding does, and the large JPEG benchmark page's timing.
+//! as full decoding does, and JPEG component planes, background blocks and
+//! exchanged rows and columns sample as interleaved samples do.
 
 use super::{SpanColors, converter};
-use crate::source::image::{Description, ImageSampler, MaskDescription, Prepared};
+use crate::source::image::{Description, ImageSampler, MaskDescription, Orientation, Prepared};
 use pagura_color::ColorSpace;
 use pagura_core::{ObjectId, Value};
 use pagura_document::{Document, OpenOptions};
@@ -37,8 +38,25 @@ fn jpeg_images(document: &Document) -> Vec<ObjectId> {
         .collect()
 }
 
-/// A sampler of an opaque device-colour image without masks.
-fn device_sampler(decoded: Arc<Decoded>, unit_to_device: Transform) -> ImageSampler {
+/// A sampler of an opaque device-colour image without masks, placed
+/// upright.
+fn device_sampler(decoded: Arc<Decoded>, unit_to_device: Transform, width: u32) -> ImageSampler {
+    oriented_sampler(decoded, unit_to_device, width)
+}
+
+/// A sampler of an opaque device-colour image without masks, its samples
+/// exchanged for a quarter turn as preparation decodes them.
+fn oriented_sampler(decoded: Arc<Decoded>, unit_to_device: Transform, width: u32) -> ImageSampler {
+    let orientation = Orientation::of(unit_to_device, MaskDescription::None);
+    let decoded = match orientation {
+        Orientation::Rows => decoded,
+        Orientation::Transposed => Arc::new(Decoded::from(
+            decoded
+                .image
+                .transposed(&pagura_core::Limits::default())
+                .unwrap(),
+        )),
+    };
     let components = usize::from(decoded.image.components);
     let space = match components {
         1 => ColorSpace::DeviceGray,
@@ -57,7 +75,7 @@ fn device_sampler(decoded: Arc<Decoded>, unit_to_device: Transform) -> ImageSamp
     let (prepared, _) = Prepared::new(
         &description,
         (decoded, None),
-        unit_to_device.inverse().unwrap(),
+        (unit_to_device.inverse().unwrap(), (0, width), orientation),
         Some(convert),
     )
     .unwrap();
@@ -144,8 +162,14 @@ fn exact_means_decode_and_sample_as_full_decoding() {
                     (h / minified).ceil() as u32 + 1,
                 );
                 assert_eq!(
-                    sample_all(&device_sampler(Arc::clone(&full), placement), window),
-                    sample_all(&device_sampler(Arc::clone(&means), placement), window),
+                    sample_all(
+                        &device_sampler(Arc::clone(&full), placement, window.0),
+                        window
+                    ),
+                    sample_all(
+                        &device_sampler(Arc::clone(&means), placement, window.0),
+                        window
+                    ),
                     "{id}"
                 );
             }
@@ -155,83 +179,77 @@ fn exact_means_decode_and_sample_as_full_decoding() {
     assert!(checked > 0, "no JPEG fixtures");
 }
 
-/// The page-0 image of `0000603.pdf` at 72 dpi, decoded and sampled
-/// through the new request and sampler, exactly and with drawn-size cells.
-/// Run in release with `--ignored --nocapture`.
 #[test]
-#[ignore = "timing; needs the benchmark corpus"]
-fn large_jpeg_page_timing() {
-    let Some(bytes) = corpus("0000603.pdf") else {
-        return;
-    };
-    let document = Document::open(bytes, &OpenOptions::default()).unwrap();
-    let source =
-        ImageSource::from_xobject(&document, document.object(ObjectId::new(21, 0)).unwrap())
-            .unwrap();
-    // `0.24 0 0 0.24 0 0 cm 2552 0 0 4200 0 0 cm` on a 612 × 1008 page
-    // turned by 90 degrees, at 72 dpi.
-    let unit_to_user = Transform::new(2552.0, 0.0, 0.0, 4200.0, 0.0, 0.0)
-        .then(Transform::new(0.24, 0.0, 0.0, 0.24, 0.0, 0.0));
-    let device = Transform::new(0.0, 1.0, 1.0, 0.0, 0.0, 0.0);
-    let unit_to_device = unit_to_user.then(device);
-    let window = (1008, 612);
-    let limits = document.limits();
-    let t = unit_to_device;
-    let ratio = (2552.0 / t.a.hypot(t.b)).min(4200.0 / t.c.hypot(t.d));
-    let decode = |reduce| {
-        Arc::new(
-            source
-                .decode(
-                    &DecodeRequest::new(reduce, None, Layout::Interleaved),
-                    &limits,
-                    source.recovery(),
-                )
-                .unwrap(),
-        )
-    };
-    let best = |run: &mut dyn FnMut()| {
-        (0..15)
-            .map(|_| {
-                let start = std::time::Instant::now();
-                run();
-                start.elapsed().as_secs_f64() * 1e3
-            })
-            .fold(f64::INFINITY, f64::min)
-    };
-    // `PAGURA_IMAGE_SAMPLES=n` samples the exact decode n times and stops,
-    // for counting instructions.
-    if let Some(count) = std::env::var("PAGURA_IMAGE_SAMPLES")
-        .ok()
-        .and_then(|n| n.parse::<usize>().ok())
-    {
-        let decoded = decode(Reduce::Full);
-        for _ in 0..count {
-            sample_all(
-                &device_sampler(Arc::clone(&decoded), unit_to_device),
-                window,
-            );
+fn planes_background_blocks_and_turns_sample_as_interleaved_samples() {
+    let directory = pagura_testkit::workspace_root().join("corpus/generated/image");
+    let mut files: Vec<_> = std::fs::read_dir(&directory)
+        .unwrap()
+        .filter_map(|entry| entry.ok().map(|e| e.path()))
+        .filter(|path| path.extension().is_some_and(|e| e == "pdf"))
+        .filter_map(|path| std::fs::read(path).ok())
+        .collect();
+    files.extend(corpus("0000095.pdf"));
+    let mut planar = 0;
+    for bytes in files {
+        let Ok(document) = Document::open(bytes, &OpenOptions::default()) else {
+            continue;
+        };
+        for id in jpeg_images(&document).into_iter().take(1) {
+            let Ok(source) = ImageSource::from_xobject(&document, document.object(id).unwrap())
+            else {
+                continue;
+            };
+            let limits = document.limits();
+            let decode = |layout| {
+                source
+                    .decode(
+                        &DecodeRequest::new(Reduce::Full, None, layout),
+                        &limits,
+                        source.recovery(),
+                    )
+                    .map(Arc::new)
+            };
+            let (Ok(interleaved), Ok(native)) =
+                (decode(Layout::Interleaved), decode(Layout::Native))
+            else {
+                continue;
+            };
+            if !matches!(native.image.samples, pagura_image::Samples::Planar(_)) {
+                continue;
+            }
+            planar += 1;
+            let (w, h) = (f64::from(source.width()), f64::from(source.height()));
+            let scale = (240.0 / w.max(h)).min(1.0);
+            for (a, b, c, d) in [
+                (w * scale / 3.3, 0.0, 0.0, -h * scale / 3.3),
+                (w * scale, 0.0, 0.0, -h * scale),
+                (w * 1.7, 0.0, 0.0, h * 1.7),
+                (0.0, h * scale / 2.6, w * scale / 2.6, 0.0),
+                (0.0, -h * 1.3, w * 1.3, 0.0),
+            ] {
+                let placement = Transform::new(a, b, c, d, 0.25, 0.4 - d.min(0.0) - b.min(0.0));
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "test window"
+                )]
+                let window = (
+                    ((a.abs() + c.abs()).ceil() as u32 + 1).min(200),
+                    ((b.abs() + d.abs()).ceil() as u32 + 1).min(200),
+                );
+                assert_eq!(
+                    sample_all(
+                        &oriented_sampler(Arc::clone(&interleaved), placement, window.0),
+                        window
+                    ),
+                    sample_all(
+                        &oriented_sampler(Arc::clone(&native), placement, window.0),
+                        window
+                    ),
+                    "{id} {placement:?}"
+                );
+            }
         }
-        return;
     }
-    for (name, reduce) in [("exact", Reduce::Full), ("reduced", source.drawn(ratio))] {
-        let decoding = best(&mut || {
-            decode(reduce);
-        });
-        let decoded = decode(reduce);
-        let sampling = best(&mut || {
-            sample_all(
-                &device_sampler(Arc::clone(&decoded), unit_to_device),
-                window,
-            );
-        });
-        let checksum: f64 = sample_all(&device_sampler(decoded, unit_to_device), window)
-            .0
-            .iter()
-            .sum();
-        eprintln!(
-            "{name} {reduce:?}: decode {decoding:.1} ms, sample {sampling:.1} ms, \
-             total {:.1} ms (checksum {checksum:.3})",
-            decoding + sampling
-        );
-    }
+    assert!(planar > 0, "no planar JPEG fixtures");
 }

@@ -102,10 +102,11 @@ pub enum Reduce {
         y: u32,
     },
     /// Reconstruction near the drawn size: JPEG cells per eight-sample block
-    /// axis (1, 2, 3, 4 or 6), from [`ImageSource::drawn`]. Only under the
-    /// `reduced_image_decode` fast parameter; not within the one-level
-    /// contract. JPEG 2000 resolution levels are not supported by the
-    /// decoder, so JPEG 2000 images decode fully.
+    /// axis (1, 2, 3, 4 or 6), from [`ImageSource::drawn`], interleaved or,
+    /// in the [`Layout::Native`] layout, in component planes of cells. Only
+    /// under the `reduced_image_decode` fast parameter; not within the
+    /// one-level contract. JPEG 2000 resolution levels are not supported by
+    /// the decoder, so JPEG 2000 images decode fully.
     Drawn {
         /// Samples kept per eight-sample block axis.
         cells: u8,
@@ -124,6 +125,21 @@ pub enum Layout {
     /// one-component samples packed ([`crate::Samples::Packed`]). Values are
     /// those of the interleaved layout.
     Native,
+}
+
+/// How decoded samples relate to the image's rows.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum Orientation {
+    /// Rows as the image stores them.
+    #[default]
+    Rows,
+    /// Rows and columns exchanged: sample (`x`, `y`) of the decoded image
+    /// is sample (`y`, `x`) of the image, as
+    /// [`DecodedImage::transposed`](crate::DecodedImage::transposed) gives
+    /// it. A JPEG decoded into component planes stores its blocks
+    /// exchanged as it decodes them, which costs no extra pass.
+    Transposed,
 }
 
 /// A rectangle of source samples, `x0..x1` × `y0..y1`, top row first.
@@ -147,9 +163,15 @@ pub struct DecodeRequest {
     pub reduce: Reduce,
     /// The samples painting reads; rows and blocks outside may be skipped
     /// and then hold unspecified values. `None` asks for the whole image.
+    /// The decoders currently decode every sample: errors and repairs must
+    /// not depend on the region, so the entropy-coded data, most of a
+    /// JPEG's decoding, is read in full either way, and a whole decode in
+    /// the store serves every region of a page.
     pub region: Option<SampleRect>,
     /// The sample layout.
     pub layout: Layout,
+    /// Whether rows and columns are exchanged.
+    pub orientation: Orientation,
 }
 
 impl DecodeRequest {
@@ -158,6 +180,7 @@ impl DecodeRequest {
         reduce: Reduce::Full,
         region: None,
         layout: Layout::Interleaved,
+        orientation: Orientation::Rows,
     };
 
     /// A request for `reduce` over `region` in `layout`.
@@ -166,6 +189,16 @@ impl DecodeRequest {
             reduce,
             region,
             layout,
+            orientation: Orientation::Rows,
+        }
+    }
+
+    /// The same request with samples in `orientation`.
+    #[must_use]
+    pub fn with_orientation(self, orientation: Orientation) -> Self {
+        Self {
+            orientation,
+            ..self
         }
     }
 }
@@ -431,7 +464,15 @@ impl ImageSource {
                 source_values.saturating_mul(64),
             ),
         };
-        let bytes = output.saturating_add(alpha).saturating_add(working);
+        // Samples exchanged after decoding are held twice for a moment.
+        let exchange = match request.orientation {
+            Orientation::Transposed => output.saturating_add(alpha),
+            Orientation::Rows => 0,
+        };
+        let bytes = output
+            .saturating_add(alpha)
+            .saturating_add(working)
+            .saturating_add(exchange);
         (saturate(bytes), saturate(work))
     }
 
@@ -453,7 +494,7 @@ impl ImageSource {
         let result = codec::decode(
             &self.header,
             &self.data,
-            self.layout(request),
+            (self.layout(request), request.orientation),
             limits,
             &mut diagnostics,
         );
@@ -481,7 +522,10 @@ impl ImageSource {
                     && matches!(self.header.codec, Codec::Dct(_))
                     && matches!(cells, 1 | 2 | 3 | 4 | 6) =>
             {
-                SampleLayout::Cells(cells)
+                match request.layout {
+                    Layout::Interleaved => SampleLayout::Cells(cells),
+                    Layout::Native => SampleLayout::DeferredCells(cells),
+                }
             }
             _ => match request.layout {
                 Layout::Interleaved => SampleLayout::Interleaved,
@@ -493,7 +537,7 @@ impl ImageSource {
     /// The stored dimensions of a decode of `request`.
     fn decoded_size(&self, request: &DecodeRequest) -> (u32, u32) {
         match self.layout(request) {
-            SampleLayout::Cells(cells) => (
+            SampleLayout::Cells(cells) | SampleLayout::DeferredCells(cells) => (
                 crate::dct::scaled_length(self.header.width, cells),
                 crate::dct::scaled_length(self.header.height, cells),
             ),
