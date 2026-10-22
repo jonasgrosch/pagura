@@ -1,7 +1,7 @@
 //! Path geometry: subpaths of lines and cubic Bézier curves.
 
 use crate::{Point, Transform};
-use pagura_core::{Limits, Rect, Result};
+use pagura_core::{Limits, Meter, Rect, Result};
 use std::fmt;
 
 /// One path construction step (8.5.2). Exhaustive: every PDF path
@@ -94,8 +94,13 @@ impl Path {
     ) -> Result<()> {
         let index = usize::from(rule == FillRule::EvenOdd);
         if self.fill_certificates[index].is_none() {
-            self.fill_certificates[index] =
-                Some(crate::empty_fill::classify(self, rule, limits, work)?);
+            self.fill_certificates[index] = Some(crate::empty_fill::classify(
+                self,
+                rule,
+                limits,
+                work,
+                &mut Meter::new(limits.render_bytes, crate::band::RENDER_BYTES),
+            )?);
         }
         Ok(())
     }
@@ -109,25 +114,57 @@ impl Path {
     /// A copy with every point mapped by `transform`.
     #[must_use]
     pub fn transformed(&self, transform: Transform) -> Self {
-        let map = |point: Point| transform.apply(point);
-        let segments = self
-            .segments
-            .iter()
-            .map(|segment| match *segment {
-                Segment::MoveTo(p) => Segment::MoveTo(map(p)),
-                Segment::LineTo(p) => Segment::LineTo(map(p)),
-                Segment::CubicTo { c1, c2, end } => Segment::CubicTo {
-                    c1: map(c1),
-                    c2: map(c2),
-                    end: map(end),
-                },
-                Segment::Close => Segment::Close,
-            })
-            .collect();
+        let segments = self.mapped(transform).collect();
         Self {
             segments,
             fill_certificates: [None; 2],
         }
+    }
+
+    /// A copy charged to `bytes` before its storage is allocated.
+    ///
+    /// # Errors
+    /// Returns the meter's `Limit` error if the allocation exceeds its budget
+    /// or cannot be reserved.
+    pub fn transformed_with_bytes(&self, transform: Transform, bytes: &mut Meter) -> Result<Self> {
+        let mut segments = Vec::new();
+        bytes.reserve(&mut segments, self.segments.len())?;
+        segments.extend(self.mapped(transform));
+        Ok(Self {
+            segments,
+            fill_certificates: [None; 2],
+        })
+    }
+
+    /// Copies the stored geometry and certificates without mapping points.
+    pub(crate) fn clone_with_bytes(&self, bytes: &mut Meter) -> Result<Self> {
+        let mut segments = Vec::new();
+        bytes.reserve(&mut segments, self.segments.len())?;
+        segments.extend_from_slice(&self.segments);
+        Ok(Self {
+            segments,
+            fill_certificates: self.fill_certificates,
+        })
+    }
+
+    fn mapped(&self, transform: Transform) -> impl ExactSizeIterator<Item = Segment> + '_ {
+        self.segments.iter().map(move |segment| match *segment {
+            Segment::MoveTo(p) => Segment::MoveTo(p * transform),
+            Segment::LineTo(p) => Segment::LineTo(p * transform),
+            Segment::CubicTo { c1, c2, end } => Segment::CubicTo {
+                c1: c1 * transform,
+                c2: c2 * transform,
+                end: end * transform,
+            },
+            Segment::Close => Segment::Close,
+        })
+    }
+
+    /// Bytes retained by this path's segment storage.
+    pub fn retained_bytes(&self) -> usize {
+        self.segments
+            .capacity()
+            .saturating_mul(size_of::<Segment>())
     }
 }
 
@@ -173,6 +210,19 @@ impl PathBuilder {
     /// Whether no segment was added.
     pub fn is_empty(&self) -> bool {
         self.segments.is_empty()
+    }
+
+    /// Makes room for the next preparation output before its infallible
+    /// construction methods append the already budgeted segments.
+    pub(crate) fn reserve(&mut self, count: usize, bytes: &mut Meter) -> Result<()> {
+        bytes.reserve_capacity(&mut self.segments, count)
+    }
+
+    /// Heap bytes of the output built so far.
+    pub(crate) fn heap_bytes(&self) -> usize {
+        self.segments
+            .capacity()
+            .saturating_mul(size_of::<Segment>())
     }
 
     /// Begins a new subpath at `point` (`m`).
@@ -307,6 +357,30 @@ impl PathBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bounded_clone_preserves_certificates_and_point_bits() {
+        let mut builder = PathBuilder::new();
+        builder.move_to(Point::new(-0.0, 0.0)).close();
+        let mut path = builder.finish();
+        path.fill_certificates = [Some(FillRegion::Points), Some(FillRegion::EmptyBoundary)];
+        let needed = size_of_val(path.segments());
+        let mut refused = Meter::new(needed - 1, "outline bytes");
+        assert_eq!(
+            path.clone_with_bytes(&mut refused).unwrap_err().message,
+            "outline bytes"
+        );
+        assert_eq!(refused.used(), 0);
+        let mut exact = Meter::new(needed, "outline bytes");
+        let copy = path.clone_with_bytes(&mut exact).unwrap();
+        assert_eq!(copy, path);
+        let Segment::MoveTo(point) = copy.segments()[0] else {
+            panic!("the first point changed");
+        };
+        assert_eq!(point.x.to_bits(), (-0.0_f64).to_bits());
+        assert_eq!(point.y.to_bits(), 0.0_f64.to_bits());
+        assert_eq!(exact.used(), copy.retained_bytes());
+    }
 
     #[test]
     fn rect_paths_match_re_and_keep_exact_corners() {

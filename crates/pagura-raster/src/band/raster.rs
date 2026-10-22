@@ -1,24 +1,22 @@
-//! The band rasterizer: one dense cell row, reused for every mark and band.
+//! The band rasterizer: one strip of cells, reused for every mark and band.
 
-use super::clip::{INSIDE, Rows, Segment};
+use super::cells::{Cells, STRIP};
+use super::clip::{Rows, Segment};
 use super::coverage::RowOut;
-use super::curve::Quadratic;
-use super::edges::Bounds;
-use super::edges::Line;
-use super::rect;
-use super::row::{Accumulate, DenseRow, Row, Sink, fold};
-use super::shape::{Body, EdgeBody, GlyphBody, Shape};
-use super::{Area, BandCoverage, ClipShape, MarkCoverage};
-use crate::FillRule;
-use pagura_core::{Meter, Result};
+use super::curve::Mono;
+use super::edges::{Line, StripList};
+use super::row::Sink;
+use super::shape::{Body, Resolved, Shape};
+use super::{Area, BandCoverage, ClipShape, DeviceRect, MarkCoverage};
+use crate::{FillRule, Point};
+use pagura_core::{Error, Meter, Result};
 
-/// The band rasterizer: a dense band-width cell row with a touched-cell
-/// bitmap, reused for every mark of a render.
+/// The band rasterizer: strip-sized cells with a touched bitmap per row,
+/// reused for every mark of a render.
 #[derive(Debug)]
 pub struct BandRasterizer {
     area: Area,
-    row: Row,
-    grid: Grid,
+    cells: Cells,
     run: Run,
     work: usize,
 }
@@ -98,58 +96,17 @@ impl RowOut for SlotOut<'_> {
     fn put_row(&mut self, x: u32, values: &[u8]) {
         let (cells, skip) = self.span(x, values.len());
         let n = cells.len();
-        cells.copy_from_slice(&values[skip..skip + n]);
-    }
-}
-
-/// The cells of a small mark's rows within a band, accumulated edge by edge
-/// and scanned whole, and the bytes of one of its rows.
-#[derive(Debug, Default)]
-struct Grid {
-    area: Vec<f64>,
-    cover: Vec<f64>,
-    bytes: Vec<u8>,
-}
-
-/// The cells of the largest mark the grid holds.
-pub(crate) const GRID_CELLS: usize = 1 << 14;
-
-impl Grid {
-    fn new(bytes: &mut Meter) -> Result<Self> {
-        let mut grid = Self::default();
-        bytes.reserve(&mut grid.area, GRID_CELLS)?;
-        bytes.reserve(&mut grid.cover, GRID_CELLS)?;
-        bytes.reserve(&mut grid.bytes, GRID_CELLS)?;
-        grid.area.resize(GRID_CELLS, 0.0);
-        grid.cover.resize(GRID_CELLS, 0.0);
-        grid.bytes.resize(GRID_CELLS, 0);
-        Ok(grid)
-    }
-
-    fn retained_bytes(&self) -> usize {
-        (self.area.capacity() + self.cover.capacity())
-            .saturating_mul(size_of::<f64>())
-            .saturating_add(self.bytes.capacity())
-    }
-
-    /// Row `k` of a grid `width` cells wide from device column `base`.
-    #[inline]
-    fn row(&mut self, k: usize, width: usize, base: i64) -> DenseRow<'_> {
-        let cells = k * width..(k + 1) * width;
-        DenseRow {
-            base,
-            area: &mut self.area[cells.clone()],
-            cover: &mut self.cover[cells],
+        if let Some(values) = values.get(skip..skip + n) {
+            cells.copy_from_slice(values);
         }
     }
 }
 
 impl BandRasterizer {
     /// Scratch storage for `area`, charged to `bytes` (`render_bytes`):
-    /// one row of cells up to the region's right edge and its bitmap, a
-    /// fixed grid for small marks, and the storage of glyph runs. The
-    /// charge depends on the region's right edge only, never on the band
-    /// height or the region's rows.
+    /// one strip of cells up to the region's right edge and its bitmaps,
+    /// and the storage of glyph runs. The charge depends on the region's
+    /// right edge only, never on the band height or the region's rows.
     ///
     /// # Errors
     ///
@@ -158,8 +115,7 @@ impl BandRasterizer {
         let width = super::row::width(area.region.x1)?;
         Ok(Self {
             area,
-            row: Row::new(width, bytes)?,
-            grid: Grid::new(bytes)?,
+            cells: Cells::new(width, bytes)?,
             run: Run::new(width, bytes)?,
             work: 0,
         })
@@ -174,15 +130,7 @@ impl BandRasterizer {
     /// As [`Self::new`].
     pub fn charge(area: Area, bytes: &mut Meter) -> Result<()> {
         let width = super::row::width(area.region.x1)?;
-        let words = width.div_ceil(64) + 1;
-        // The row: area, cover and its bitmap.
-        bytes.charge_items::<f64>(width)?;
-        bytes.charge_items::<f64>(width)?;
-        bytes.charge_items::<u64>(words)?;
-        // The grid.
-        bytes.charge_items::<f64>(GRID_CELLS)?;
-        bytes.charge_items::<f64>(GRID_CELLS)?;
-        bytes.charge_items::<u8>(GRID_CELLS)?;
+        Cells::charge(width, bytes)?;
         // The run.
         bytes.charge_items::<Slot>(RUN_SHAPES)?;
         bytes.charge_items::<u8>(RUN_CELLS)?;
@@ -202,9 +150,8 @@ impl BandRasterizer {
 
     /// Bytes retained.
     pub fn retained_bytes(&self) -> usize {
-        self.row
+        self.cells
             .retained_bytes()
-            .saturating_add(self.grid.retained_bytes())
             .saturating_add(self.run.retained_bytes())
     }
 
@@ -255,10 +202,36 @@ impl BandRasterizer {
         if rows.is_empty() {
             return;
         }
+        let _ = band;
         match &shape.body {
-            Body::Rect(r) => self.rect(*r, shape, rows, out),
-            Body::Edges(edges) => self.edges(edges, shape, (band, rows), out),
-            Body::Glyph(glyph) => self.glyph(glyph, shape, rows, out),
+            Body::Edges(edges) => {
+                let items = Items {
+                    lines: &edges.lines,
+                    curves: &edges.curves,
+                    origin: None,
+                    strips: edges.strips.as_ref(),
+                    resolved: &shape.resolved,
+                };
+                self.items(
+                    &items,
+                    (Target::of(shape), edges.scan, shape.rule),
+                    rows,
+                    out,
+                );
+            }
+            Body::Glyph(glyph) => {
+                if let Some(relative) = glyph.edges.relative() {
+                    let items = Items {
+                        lines: &relative.lines,
+                        curves: &relative.curves,
+                        origin: Some(glyph.origin),
+                        strips: None,
+                        resolved: &shape.resolved,
+                    };
+                    let target = Target::of(shape);
+                    self.items(&items, (target, glyph.scan, FillRule::NonZero), rows, out);
+                }
+            }
         }
     }
 
@@ -356,261 +329,287 @@ impl BandRasterizer {
         taken
     }
 
-    fn rect(&mut self, r: Bounds, shape: &Shape, rows: std::ops::Range<u32>, out: &mut dyn RowOut) {
-        for y in rows {
-            out.push_row(y);
-            let mut sink = sink(out, shape, y);
-            let runs = rect::emit_row(r, y, &mut sink);
-            self.work = self
-                .work
-                .saturating_add(runs + 2)
-                .saturating_add(sink.extra());
-        }
-    }
-
-    fn edges(
+    /// Writes `items`' `rows` strip by strip: each strip's items accumulate
+    /// into the cells, then its rows leave for `target`.
+    fn items(
         &mut self,
-        edges: &EdgeBody,
-        shape: &Shape,
-        (band, rows): (u32, std::ops::Range<u32>),
-        out: &mut dyn RowOut,
-    ) {
-        let _ = band;
-        let Some(index) = &edges.index else {
-            let at = |p: crate::Point| p;
-            self.grid(
-                (&edges.lines, &edges.curves, &at),
-                (edges.scan, shape.rule),
-                shape,
-                rows,
-                out,
-            );
-            return;
-        };
-        let count = edges.lines.len();
-        for y in rows {
-            let top = f64::from(y);
-            let mut cells = 0;
-            let items = index.row(y);
-            for &item in items {
-                let item = item as usize;
-                cells += match edges.lines.get(item) {
-                    Some(&line) => self.row.line(line, top),
-                    None => edges
-                        .curves
-                        .get(item - count)
-                        .map_or(0, |&q| self.row.curve(q, top)),
-                };
-            }
-            out.push_row(y);
-            let mut sink = sink(out, shape, y);
-            let touched = self.row.emit(edges.scan, shape.rule, &mut sink);
-            let words = (edges.scan.1.saturating_sub(edges.scan.0)) / 64 + 2;
-            self.work = self
-                .work
-                .saturating_add(items.len())
-                .saturating_add(cells)
-                .saturating_add(touched.saturating_mul(3))
-                .saturating_add(words + 2)
-                .saturating_add(sink.extra());
-        }
-    }
-
-    /// Accumulates a translated glyph: each listed edge plus the origin, as
-    /// translating the vertices first would give.
-    fn glyph(
-        &mut self,
-        glyph: &GlyphBody,
-        shape: &Shape,
+        items: &Items<'_>,
+        (target, scan, rule): (Target<'_>, (usize, usize), FillRule),
         rows: std::ops::Range<u32>,
         out: &mut dyn RowOut,
     ) {
-        let Some(relative) = glyph.edges.relative() else {
-            return;
-        };
-        let width = glyph.scan.1.saturating_sub(glyph.scan.0);
-        let height = rows.len();
-        if !shape.overlay && width > 0 && width.saturating_mul(height) <= GRID_CELLS {
-            let o = glyph.origin;
-            let at = |p: crate::Point| crate::Point::new(p.x + o.x, p.y + o.y);
-            self.grid(
-                (&relative.lines, &relative.curves, &at),
-                (glyph.scan, FillRule::NonZero),
-                shape,
-                rows,
-                out,
-            );
-            return;
-        }
-        let o = glyph.origin;
-        let at = |p: crate::Point| crate::Point::new(p.x + o.x, p.y + o.y);
-        let count = relative.lines.len();
-        let words = (glyph.scan.1.saturating_sub(glyph.scan.0)) / 64 + 2;
-        // An item's first and last listed rows are reached only by some
-        // fractional origins; others skip them, with a margin far above the
-        // rounding of the translation.
-        let f = o.y - o.y.floor();
-        let (low, high) = (f - 1e-9, f + 1e-9);
-        for y in rows {
-            let top = f64::from(y);
-            let local = u32::try_from(i64::from(y) - glyph.row0).ok();
-            let items = local.map_or(&[][..], |r| relative.index.row(r));
-            let mut cells = 0;
-            for &item in items {
-                let item = item as usize;
-                let [first, last] = relative.ends[item];
-                let [below, above] = relative.reach[item];
-                if (local == Some(first) && low >= below) || (local == Some(last) && high <= above)
-                {
-                    continue;
-                }
-                cells += match relative.lines.get(item) {
-                    Some(l) => self.row.line(
-                        Line {
-                            a: at(l.a),
-                            b: at(l.b),
-                        },
-                        top,
-                    ),
-                    None => relative.curves.get(item - count).map_or(0, |q| {
-                        self.row.curve(
-                            Quadratic {
-                                points: q.points.map(at),
-                            },
-                            top,
-                        )
-                    }),
-                };
+        let width = scan.1.saturating_sub(scan.0);
+        let words = width / 64 + 2;
+        let fit = self.cells.rows_fit(width);
+        let mut y = rows.start;
+        while y < rows.end {
+            // Listed items come strip by strip; the others as many rows of
+            // the band at once as fit.
+            let strip = y / STRIP;
+            let end = match items.strips {
+                Some(_) => strip.saturating_add(1).saturating_mul(STRIP).min(rows.end),
+                None => rows.end,
+            };
+            let window = y..end.min(y.saturating_add(fit));
+            y = window.end;
+            if !self.cells.open(scan, window.clone()) {
+                continue;
             }
-            out.push_row(y);
-            let mut sink = sink(out, shape, y);
-            let touched = self.row.emit(glyph.scan, FillRule::NonZero, &mut sink);
-            self.work = self
-                .work
-                .saturating_add(items.len())
-                .saturating_add(cells)
-                .saturating_add(touched.saturating_mul(3))
-                .saturating_add(words + 2)
-                .saturating_add(sink.extra());
+            let mut work = items.accumulate::<false>(&mut self.cells, &window);
+            for (r, row) in (0_usize..).zip(self.cells.rows()) {
+                out.push_row(row);
+                let mut sink = target.sink(out, row);
+                let touched = self.cells.emit(r, rule, &mut sink);
+                work = work
+                    .saturating_add(touched.saturating_mul(3))
+                    .saturating_add(words + 2)
+                    .saturating_add(sink.extra());
+            }
+            self.work = self.work.saturating_add(work);
         }
     }
 
-    /// A small mark's rows accumulated edge by edge into the grid, each
-    /// edge (moved by `at`) visiting only the rows it crosses, then scanned
-    /// whole: per cell the edges add in the same order and arithmetic as
-    /// row by row. Its rows go out at once.
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "bounded device rows are clamped to the band's u32 rows"
-    )]
-    fn grid(
-        &mut self,
-        (lines, curves, at): (&[Line], &[Quadratic], &dyn Fn(crate::Point) -> crate::Point),
-        (scan, rule): ((usize, usize), FillRule),
-        shape: &Shape,
-        rows: std::ops::Range<u32>,
-        out: &mut dyn RowOut,
-    ) {
-        let (from, to) = scan;
-        let width = to - from;
-        let base = i64::try_from(from).unwrap_or(i64::MAX);
-        let (first, end) = (f64::from(rows.start), f64::from(rows.end));
-        // Edges right of the area change no cell of it.
-        let right = f64::from(self.area.region.x1);
-        let grid = &mut self.grid;
-        let mut work = 0_usize;
-        // The rows an edge from height `ya` to `yb` crosses in the band.
-        let span = |ya: f64, yb: f64| {
-            let (lo, hi) = (ya.min(yb).floor().max(first), ya.max(yb).ceil().min(end));
-            // Within the band's u32 rows.
-            #[expect(clippy::cast_sign_loss, reason = "clamped to the band's rows")]
-            (lo < hi).then_some(lo as u32..hi as u32)
-        };
-        for l in lines {
-            let line = Line {
-                a: at(l.a),
-                b: at(l.b),
-            };
-            work += 1;
-            if line.a.x.min(line.b.x) >= right {
-                continue;
-            }
-            for y in span(line.a.y, line.b.y).into_iter().flatten() {
-                work += 1 + grid
-                    .row((y - rows.start) as usize, width, base)
-                    .line(line, f64::from(y));
-            }
-        }
-        for q in curves {
-            let q = Quadratic {
-                points: q.points.map(at),
-            };
-            work += 1;
-            if q.points[0].x.min(q.points[2].x) >= right {
-                continue;
-            }
-            for y in span(q.points[0].y, q.points[2].y).into_iter().flatten() {
-                work += 1 + grid
-                    .row((y - rows.start) as usize, width, base)
-                    .curve(q, f64::from(y));
-            }
-        }
-        let bounds = shape.bounds;
-        for (k, y) in rows.enumerate() {
-            let cells = k * width..(k + 1) * width;
-            let mut cover = 0.0;
-            for ((a, c), byte) in grid.area[cells.clone()]
-                .iter_mut()
-                .zip(&mut grid.cover[cells])
-                .zip(&mut grid.bytes[..width])
-            {
-                cover += std::mem::take(c);
-                *byte = fold(std::mem::take(a) + cover, rule);
-            }
-            out.push_row(y);
-            work += width + 2;
-            // The shape's own columns: the scan may reach past the area.
-            let x0 = (bounds.x0 as usize).clamp(from, to);
-            let x1 = (bounds.x1 as usize).clamp(x0, to);
-            out.put_row(x0 as u32, &grid.bytes[x0 - from..x1 - from]);
-        }
-        self.work = self.work.saturating_add(work);
-    }
-
+    /// Writes a clip's own coverage: its paths' classified rows, or its
+    /// rectangle's sides through the cells.
     fn clip(&mut self, clip: &ClipShape, rows: std::ops::Range<u32>, out: &mut dyn RowOut) {
         let bounds = clip.bounds();
-        let rows = rows.start.max(bounds.y0)..rows.end.min(bounds.y1);
-        for y in rows {
-            out.push_row(y);
-            let mut sink = Out {
-                coverage: out,
-                x0: bounds.x0 as usize,
-                x1: bounds.x1 as usize,
-            };
-            if let Some(rows) = clip.rows() {
-                let segments = rows.row(y);
+        let rows = rows.start.max(bounds.y0)..rows.end.min(bounds.y1).max(rows.start);
+        if let Some(classified) = clip.rows() {
+            for y in rows {
+                out.push_row(y);
+                let mut sink = Out {
+                    coverage: out,
+                    x0: bounds.x0 as usize,
+                    x1: bounds.x1 as usize,
+                };
+                let segments = classified.row(y);
                 for s in segments {
-                    let value = if s.cell == INSIDE {
-                        u8::MAX
-                    } else {
-                        rows.cell(s.cell).map_or(0, |(c, _, _)| c.value)
-                    };
-                    sink.run(s.x0 as usize, s.x1 as usize, value);
+                    sink.run(s.x0 as usize, s.x1 as usize, s.value);
                 }
                 self.work = self.work.saturating_add(segments.len() + 2);
-                continue;
             }
-            let whole = Bounds {
-                left: f64::from(bounds.x0),
-                top: f64::from(bounds.y0),
-                right: f64::from(bounds.x1),
-                bottom: f64::from(bounds.y1),
+            return;
+        }
+        let whole = [
+            f64::from(bounds.x0),
+            f64::from(bounds.y0),
+            f64::from(bounds.x1),
+            f64::from(bounds.y1),
+        ];
+        let [left, top, right, bottom] = clip
+            .rect()
+            .map_or(whole, |r| [r.left, r.top, r.right, r.bottom]);
+        let sides = [
+            Line {
+                a: Point::new(left, top),
+                b: Point::new(left, bottom),
+            },
+            Line {
+                a: Point::new(right, bottom),
+                b: Point::new(right, top),
+            },
+        ];
+        let scan = super::clip::scan_columns(&sides, bounds.x1 as usize);
+        let none = Resolved::default();
+        let items = Items {
+            lines: &sides,
+            curves: &[],
+            origin: None,
+            strips: None,
+            resolved: &none,
+        };
+        let target = Target { bounds, mask: None };
+        self.items(&items, (target, scan, FillRule::NonZero), rows, out);
+    }
+}
+
+/// A mark's items: its lines, then its monotone quadratics, moved by a
+/// glyph's origin, and listed per strip where the mark has lists.
+struct Items<'a> {
+    lines: &'a [Line],
+    curves: &'a [Mono],
+    origin: Option<Point>,
+    strips: Option<&'a StripList>,
+    /// Rows whose sides replace the items.
+    resolved: &'a Resolved,
+}
+
+impl Items<'_> {
+    /// The common accumulation for execution and preparation inspection.
+    fn accumulate<const MEASURE: bool>(
+        &self,
+        cells: &mut Cells,
+        window: &std::ops::Range<u32>,
+    ) -> usize {
+        let resolved = !self.resolved.is_empty();
+        if resolved {
+            cells.skip(self.resolved.mask(window));
+        }
+        let mut work = if let Some(list) = self.strips {
+            let listed = list.strip(window.start / STRIP);
+            listed.len()
+                + listed
+                    .iter()
+                    .map(|&item| self.add::<MEASURE>(cells, item as usize))
+                    .sum::<usize>()
+        } else {
+            self.all::<MEASURE>(cells)
+        };
+        if resolved {
+            cells.skip(0);
+            let sides = self.resolved.lines(window);
+            work += sides.len();
+            for &line in sides {
+                work += if MEASURE {
+                    cells.line_measured(line)
+                } else {
+                    cells.line(line)
+                };
+            }
+        }
+        work
+    }
+
+    /// Adds every item to the open window, lines then curves. Returns the
+    /// work spent, one unit per item visited.
+    fn all<const MEASURE: bool>(&self, cells: &mut Cells) -> usize {
+        let origin = self.origin.unwrap_or_default();
+        let mut work = self.lines.len() + self.curves.len();
+        for l in self.lines {
+            let line = Line {
+                a: Point::new(l.a.x + origin.x, l.a.y + origin.y),
+                b: Point::new(l.b.x + origin.x, l.b.y + origin.y),
             };
-            let rect = clip.rect().map_or(whole, |r| r.intersect(whole));
-            let runs = rect::emit_row(rect, y, &mut sink);
-            self.work = self.work.saturating_add(runs + 2);
+            if cells.reaches(line.a.x.min(line.b.x)) {
+                work += if MEASURE {
+                    cells.line_measured(line)
+                } else {
+                    cells.line(line)
+                };
+            }
+        }
+        for m in self.curves {
+            if cells.reaches(m.x0.min(m.x1) + origin.x) {
+                work += if MEASURE {
+                    cells.curve_measured(m, origin)
+                } else {
+                    cells.curve(m, origin)
+                };
+            }
+        }
+        work
+    }
+
+    /// Adds item `item` to the open window: each point plus the origin, as
+    /// translating the vertices first would give. Returns the work spent.
+    #[inline]
+    fn add<const MEASURE: bool>(&self, cells: &mut Cells, item: usize) -> usize {
+        let at = |p: Point| match self.origin {
+            Some(o) => Point::new(p.x + o.x, p.y + o.y),
+            None => p,
+        };
+        // Items right of the window change none of its cells.
+        match self.lines.get(item) {
+            Some(l) => {
+                let line = Line {
+                    a: at(l.a),
+                    b: at(l.b),
+                };
+                if cells.reaches(line.a.x.min(line.b.x)) {
+                    if MEASURE {
+                        cells.line_measured(line)
+                    } else {
+                        cells.line(line)
+                    }
+                } else {
+                    0
+                }
+            }
+            None => self
+                .curves
+                .get(item.wrapping_sub(self.lines.len()))
+                .map_or(0, |m| {
+                    let origin = self.origin.unwrap_or_default();
+                    if cells.reaches(m.x0.min(m.x1) + origin.x) {
+                        if MEASURE {
+                            cells.curve_measured(m, origin)
+                        } else {
+                            cells.curve(m, origin)
+                        }
+                    } else {
+                        0
+                    }
+                }),
         }
     }
+}
+
+/// Inspect the same accumulated areas execution emits, before its single
+/// coverage quantization. Allocation and the execution work upper bound
+/// are charged by the caller before inspection starts.
+pub(crate) fn inspect(
+    shape: &Shape,
+    cells: &mut Cells,
+    mut visit: impl FnMut(u32, usize, usize, f64, f64),
+) -> Result<()> {
+    let (items, scan) = match &shape.body {
+        Body::Edges(edges) => (
+            Items {
+                lines: &edges.lines,
+                curves: &edges.curves,
+                origin: None,
+                strips: edges.strips.as_ref(),
+                resolved: &shape.resolved,
+            },
+            edges.scan,
+        ),
+        Body::Glyph(glyph) => {
+            let Some(relative) = glyph.edges.relative() else {
+                return Err(Error::limit("glyph inspection has no relative edges"));
+            };
+            (
+                Items {
+                    lines: &relative.lines,
+                    curves: &relative.curves,
+                    origin: Some(glyph.origin),
+                    strips: None,
+                    resolved: &shape.resolved,
+                },
+                glyph.scan,
+            )
+        }
+    };
+    let target = Target::of(shape);
+    let fit = cells.rows_fit(scan.1.saturating_sub(scan.0));
+    let mut y = shape.bounds.y0;
+    while y < shape.bounds.y1 {
+        let end = match items.strips {
+            Some(_) => (y / STRIP + 1).saturating_mul(STRIP).min(shape.bounds.y1),
+            None => shape.bounds.y1,
+        };
+        let window = y..end.min(y.saturating_add(fit));
+        y = window.end;
+        if !cells.open(scan, window.clone()) {
+            return Err(Error::limit("glyph inspection cells exceed allocation"));
+        }
+        items.accumulate::<true>(cells, &window);
+        let rounding = cells.arithmetic_error();
+        for (r, row) in (0_usize..).zip(cells.rows()) {
+            let mut next = 0;
+            cells.inspect(r, |x0, x1, area| {
+                let x0 = x0.max(target.bounds.x0 as usize);
+                let x1 = x1.min(target.bounds.x1 as usize);
+                if let Some(mask) = target.mask {
+                    masked_ranges(mask.row(row), &mut next, (x0, x1), |a, b| {
+                        visit(row, a, b, area.abs(), rounding);
+                    });
+                } else if x0 < x1 {
+                    visit(row, x0, x1, area.abs(), rounding);
+                }
+            });
+        }
+    }
+    Ok(())
 }
 
 /// Writes runs to the current row of a coverage, within columns `x0..x1`.
@@ -633,47 +632,74 @@ impl Sink for Out<'_> {
             self.coverage.put_run(a as u32, (b - a) as u32, value);
         }
     }
+
+    #[inline]
+    fn cells(&mut self, x: usize, values: &[u8]) {
+        let a = x.max(self.x0);
+        let b = (x + values.len()).min(self.x1);
+        if a < b
+            && let Some(values) = values.get(a - x..b - x)
+        {
+            #[expect(
+                clippy::cast_possible_truncation,
+                reason = "columns lie within the u32 region"
+            )]
+            self.coverage.put_row(a as u32, values);
+        }
+    }
 }
 
-/// The sink of one row of `shape`: its cells resolved at preparation and
-/// its clip's rows, where it has them, over the output.
-fn sink<'a>(out: &'a mut dyn RowOut, shape: &'a Shape, y: u32) -> RowSink<'a> {
-    let rows = shape
-        .clip
-        .as_ref()
-        .filter(|_| shape.overlay)
-        .and_then(ClipShape::rows);
-    let stored = shape.stored.row(y);
-    let out = Out {
-        coverage: out,
-        x0: shape.bounds.x0 as usize,
-        x1: shape.bounds.x1 as usize,
-    };
-    if stored.is_empty() && rows.is_none() {
-        return RowSink::Plain(out);
+/// Where a mark's rows go: its own columns, restricted to the inside and
+/// boundary runs of the clip it is masked by.
+#[derive(Debug, Clone, Copy)]
+struct Target<'a> {
+    bounds: DeviceRect,
+    mask: Option<&'a Rows>,
+}
+
+impl<'a> Target<'a> {
+    fn of(shape: &'a Shape) -> Self {
+        Self {
+            bounds: shape.bounds,
+            mask: shape
+                .clip
+                .as_ref()
+                .filter(|_| shape.masked)
+                .and_then(ClipShape::rows),
+        }
     }
-    RowSink::Overlay(Overlay {
-        out,
-        stored,
-        next: 0,
-        clip: rows.map(|rows| (rows, rows.row(y))),
-        segment: 0,
-        extra: 0,
-    })
+
+    /// The sink of row `y`.
+    fn sink(self, out: &'a mut dyn RowOut, y: u32) -> RowSink<'a> {
+        let out = Out {
+            coverage: out,
+            x0: self.bounds.x0 as usize,
+            x1: self.bounds.x1 as usize,
+        };
+        match self.mask {
+            None => RowSink::Plain(out),
+            Some(rows) => RowSink::Masked(Masked {
+                out,
+                segments: rows.row(y),
+                next: 0,
+                extra: 0,
+            }),
+        }
+    }
 }
 
 /// A shape row's sink.
 enum RowSink<'a> {
     /// Nothing between the shape and the output.
     Plain(Out<'a>),
-    Overlay(Overlay<'a>),
+    Masked(Masked<'a>),
 }
 
 impl RowSink<'_> {
     fn extra(&self) -> usize {
         match self {
             Self::Plain(_) => 0,
-            Self::Overlay(o) => o.extra(),
+            Self::Masked(m) => m.extra,
         }
     }
 }
@@ -683,84 +709,95 @@ impl Sink for RowSink<'_> {
     fn run(&mut self, x0: usize, x1: usize, value: u8) {
         match self {
             Self::Plain(o) => o.run(x0, x1, value),
-            Self::Overlay(o) => o.run(x0, x1, value),
+            Self::Masked(m) => m.run(x0, x1, value),
+        }
+    }
+
+    #[inline]
+    fn cells(&mut self, x: usize, values: &[u8]) {
+        match self {
+            Self::Plain(o) => o.cells(x, values),
+            Self::Masked(m) => m.cells(x, values),
         }
     }
 }
 
-/// Runs of a shape's row with its resolved cells substituted and its clip's
-/// rows applied: inside runs keep the shape's value, a boundary cell takes
-/// the clip's value where the shape covers it fully, outside is dropped.
-struct Overlay<'a> {
+/// Runs of a row kept only where a clip's runs lie: outside them the clip
+/// removes the pixels; on its boundary the row was resolved with it.
+struct Masked<'a> {
     out: Out<'a>,
-    stored: &'a [(u32, u8)],
+    segments: &'a [Segment],
     next: usize,
-    clip: Option<(&'a Rows, &'a [Segment])>,
-    segment: usize,
     extra: usize,
 }
 
-impl Overlay<'_> {
-    /// Work units spent on resolved cells and clip runs.
-    fn extra(&self) -> usize {
-        self.extra
+impl Sink for Masked<'_> {
+    fn run(&mut self, x0: usize, x1: usize, value: u8) {
+        self.extra += masked_ranges(self.segments, &mut self.next, (x0, x1), |a, b| {
+            self.out.run(a, b, value);
+        });
+    }
+
+    fn cells(&mut self, x0: usize, values: &[u8]) {
+        let x1 = x0 + values.len();
+        self.extra += masked_ranges(self.segments, &mut self.next, (x0, x1), |a, b| {
+            if let Some(kept) = values.get(a - x0..b - x0) {
+                self.out.cells(a, kept);
+            }
+        });
     }
 }
 
-impl Sink for Overlay<'_> {
-    fn run(&mut self, x0: usize, x1: usize, value: u8) {
-        if self.stored.is_empty() && self.clip.is_none() {
-            self.out.run(x0, x1, value);
-            return;
+/// One monotone clip-row cursor for execution and unquantized inspection.
+/// Each segment advances at most once per row, regardless of touched cells.
+fn masked_ranges(
+    segments: &[Segment],
+    next: &mut usize,
+    (mut x, x1): (usize, usize),
+    mut keep: impl FnMut(usize, usize),
+) -> usize {
+    let mut advanced = 0;
+    while x < x1 {
+        while segments.get(*next).is_some_and(|s| s.x1 as usize <= x) {
+            *next += 1;
+            advanced += 1;
         }
-        let mut x = x0;
-        while x < x1 {
-            while self
-                .stored
-                .get(self.next)
-                .is_some_and(|&(s, _)| (s as usize) < x)
-            {
-                self.next += 1;
-                self.extra += 1;
-            }
-            let stored = self.stored.get(self.next).copied();
-            if let Some((s, v)) = stored
-                && s as usize == x
-            {
-                self.out.run(x, x + 1, v);
-                self.next += 1;
-                self.extra += 1;
-                x += 1;
-                continue;
-            }
-            let limit = stored.map_or(x1, |(s, _)| (s as usize).min(x1));
-            let Some((rows, segments)) = self.clip else {
-                self.out.run(x, limit, value);
-                x = limit;
-                continue;
-            };
-            while segments
-                .get(self.segment)
-                .is_some_and(|s| s.x1 as usize <= x)
-            {
-                self.segment += 1;
-                self.extra += 1;
-            }
-            match segments.get(self.segment) {
-                None => x = limit,
-                Some(s) if s.x0 as usize > x => x = limit.min(s.x0 as usize),
-                Some(s) if s.cell == INSIDE => {
-                    let end = limit.min(s.x1 as usize);
-                    self.out.run(x, end, value);
-                    x = end;
-                }
-                Some(s) => {
-                    let clip = rows.cell(s.cell).map_or(0, |(c, _, _)| c.value);
-                    let v = if value == u8::MAX { clip } else { 0 };
-                    self.out.run(x, x + 1, v);
-                    x += 1;
-                }
-            }
+        let Some(segment) = segments.get(*next) else {
+            break;
+        };
+        if segment.x0 as usize >= x1 {
+            break;
         }
+        let a = x.max(segment.x0 as usize);
+        let b = x1.min(segment.x1 as usize);
+        keep(a, b);
+        x = b;
+    }
+    advanced
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn inspection_and_emission_advance_each_mask_segment_once() {
+        let segments: Vec<_> = (0..256)
+            .map(|i| Segment {
+                x0: i * 2,
+                x1: i * 2 + 1,
+                value: 255,
+                inside: true,
+            })
+            .collect();
+        let (mut next, mut advanced, mut visits) = (0, 0, 0);
+        for x in 0..512 {
+            advanced += masked_ranges(&segments, &mut next, (x, x + 1), |a, b| {
+                assert_eq!((a, b), (x, x + 1));
+                visits += 1;
+            });
+        }
+        assert_eq!(visits, segments.len());
+        assert_eq!(advanced, segments.len());
     }
 }

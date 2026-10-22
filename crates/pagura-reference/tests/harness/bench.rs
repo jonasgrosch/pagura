@@ -34,9 +34,8 @@ struct Outcome {
     pixels: usize,
     /// Pixels with a channel more than one level from the reference.
     beyond: usize,
-    /// Of those, pixels also more than one level from the reference with
-    /// unquantized coverage: not a coverage byte rounded the other way at a
-    /// near-tie, which the coverage bound allows.
+    /// Raw-area diagnostic for those pixels. The contract's acceptance
+    /// gate uses `beyond`: scene composition references coverage bytes.
     beyond_both: usize,
     /// Channels equal to the correctly rounded value: new and golden.
     new_rounded: usize,
@@ -124,6 +123,14 @@ pub fn run() -> bool {
     let mut results = results.into_inner().unwrap_or_default();
     results.sort_by_key(|(index, ..)| *index);
     write(&results);
+    let failed = results
+        .iter()
+        .filter(|(_, _, outcome)| outcome.failed())
+        .count();
+    assert_eq!(
+        failed, 0,
+        "benchmark reference failures; see the per-page report for errors and pixels beyond one level"
+    );
     true
 }
 
@@ -163,17 +170,8 @@ fn measure(
     let rendered =
         pagura_render::render_page(&document, page, &options, Some(provider)).map_err(describe)?;
     let scene = pagura_render::record_page(&document, page, Some(provider)).map_err(describe)?;
-    let golden_path: PathBuf = goldens
-        .join(item.dpi.to_string())
-        .join(format!("{}.ppm.gz", stem(item)));
-    let (width, height, golden) = load_path(&golden_path).ok_or("no golden")?;
-    if (width, height) != (rendered.width(), rendered.height()) {
-        return Err(format!(
-            "golden is {width}×{height}, render {}×{}",
-            rendered.width(),
-            rendered.height()
-        ));
-    }
+    let (width, height) = (rendered.width(), rendered.height());
+    let golden = previous(item, goldens, (width, height))?;
     let scale = f64::from(item.dpi) / 72.0;
     let region = pagura_raster::DeviceRect {
         x0: 0,
@@ -196,6 +194,7 @@ fn measure(
     let unquantized =
         pagura_reference::render(&scene, &request, &document.limits()).map_err(describe)?;
     let new = rgb_on_white(rendered.data());
+    let mut changed_pixels = pixel_report(item)?;
     let coordinates = (0..height).flat_map(|y| (0..width).map(move |x| (x, y)));
     for (((n, g), exact), (x, y)) in new
         .as_chunks::<3>()
@@ -226,13 +225,13 @@ fn measure(
             let area_level = (area[channel] + (1.0 - area[3])) * 255.0;
             if new_error > 1.0 + 1e-6 {
                 beyond = true;
+                if outcome.first_beyond.len() < 8 {
+                    outcome
+                        .first_beyond
+                        .push((x, y, channel, n[channel], level));
+                }
                 if (f64::from(n[channel]) - area_level).abs() > 1.0 + 1e-6 {
                     beyond_area = true;
-                    if outcome.first_beyond.len() < 8 {
-                        outcome
-                            .first_beyond
-                            .push((x, y, channel, n[channel], level));
-                    }
                 }
             }
             if n[channel] != g[channel] {
@@ -242,6 +241,15 @@ fn measure(
                 outcome.new_within += usize::from(new_error <= 1.0 + 1e-6);
                 outcome.golden_changed_rounded += usize::from(g[channel] == rounded);
                 outcome.new_changed_rounded += usize::from(n[channel] == rounded);
+                if let Some(report) = &mut changed_pixels {
+                    write_pixel(
+                        report,
+                        (x, y),
+                        channel,
+                        [g[channel], n[channel]],
+                        [level, area_level],
+                    )?;
+                }
             }
         }
         outcome.beyond += usize::from(beyond);
@@ -249,6 +257,54 @@ fn measure(
         outcome.changed_pixels += usize::from(changed);
     }
     Ok(())
+}
+
+fn previous(item: &Item, goldens: &Path, (width, height): (u32, u32)) -> Result<Vec<u8>, String> {
+    let path = goldens
+        .join(item.dpi.to_string())
+        .join(format!("{}.ppm.gz", stem(item)));
+    let (old_width, old_height, pixels) = load_path(&path).ok_or("no golden")?;
+    if (old_width, old_height) != (width, height) {
+        return Err(format!(
+            "golden is {old_width}×{old_height}, render {width}×{height}"
+        ));
+    }
+    Ok(pixels)
+}
+
+fn write_pixel(
+    report: &mut std::io::BufWriter<std::fs::File>,
+    (x, y): (u32, u32),
+    channel: usize,
+    [old, new]: [u8; 2],
+    [reference, area]: [f64; 2],
+) -> Result<(), String> {
+    use std::io::Write;
+    writeln!(
+        report,
+        "{x},{y},{channel},{old},{new},{reference:.12},{area:.12}"
+    )
+    .map_err(|e| e.to_string())
+}
+
+/// Optional per-channel evidence for ADR 0004 section 3. Stored separately
+/// from the compact summary so large pages need no retained pixel list.
+fn pixel_report(item: &Item) -> Result<Option<std::io::BufWriter<std::fs::File>>, String> {
+    use std::io::Write;
+    let Some(directory) = env("PAGURA_REFERENCE_PIXELS") else {
+        return Ok(None);
+    };
+    let directory = PathBuf::from(directory).join(item.dpi.to_string());
+    std::fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
+    let file = std::fs::File::create(directory.join(format!("{}.csv", stem(item))))
+        .map_err(|e| e.to_string())?;
+    let mut report = std::io::BufWriter::new(file);
+    writeln!(
+        report,
+        "x,y,channel,previous,new,reference_levels,unquantized_levels"
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(Some(report))
 }
 
 fn rate(part: usize, whole: usize) -> f64 {
@@ -266,10 +322,8 @@ fn line(item: &Item, o: &Outcome) -> String {
             "{} {} @{}: {} pixels, beyond {} (also with exact areas {}), changed {} channels (golden within {}, new within {}; \
              correctly rounded golden {}, new {}), exact rounding golden {:.6} new {:.6}, max error \
              golden {:.3} new {:.3}, reference {:.1} s{}",
-            if o.beyond_both > 0 {
+            if o.beyond > 0 {
                 "BEYOND   "
-            } else if o.beyond > 0 {
-                "tie      "
             } else {
                 "page     "
             },
@@ -295,6 +349,23 @@ fn line(item: &Item, o: &Outcome) -> String {
             },
         ),
     }
+}
+
+impl Outcome {
+    fn failed(&self) -> bool {
+        self.error.is_some() || self.beyond != 0
+    }
+}
+
+#[test]
+fn raw_area_diagnostics_cannot_excuse_a_coverage_byte_reference_failure() {
+    let outcome = Outcome {
+        beyond: 1,
+        beyond_both: 0,
+        ..Outcome::default()
+    };
+    assert!(outcome.failed());
+    assert!(!Outcome::default().failed());
 }
 
 fn write(results: &[(usize, Item, Outcome)]) {

@@ -48,7 +48,8 @@ pub fn stroke(
 
 /// The region of a glyph outline placed at the device-space `origin`, its
 /// points mapped by the linear map `linear` (glyph space to device pixels),
-/// against its true curve where every curve is an exact quadratic.
+/// against its true curve where the renderer integrates a spline of it
+/// (ADR 0004 §4).
 ///
 /// # Errors
 ///
@@ -65,13 +66,14 @@ pub fn glyph(outline: &Path, linear: [f64; 4], origin: Point, limits: &Limits) -
 ///
 /// # Errors
 ///
-/// Returns a `Limit` error for a window whose pixels do not fit `usize`.
+/// Returns a `Limit` error for a window whose pixels do not fit `usize` or
+/// a true-curve coverage byte its refinement limits cannot resolve.
 pub fn coverage(regions: &[Region], window: DeviceRect) -> Result<Vec<u8>> {
     let pixels = usize::try_from(window.width())
         .ok()
         .and_then(|w| w.checked_mul(usize::try_from(window.height()).ok()?))
         .ok_or(Error::limit("coverage window too large"))?;
-    let coverage = Coverage::of(regions, window, Quantization::Bytes);
+    let coverage = Coverage::of(regions, window, Quantization::Bytes)?;
     let mut bytes = Vec::with_capacity(pixels);
     for y in window.y0..window.y1 {
         bytes.extend((window.x0..window.x1).map(|x| quantize_unit(coverage.get(x, y))));

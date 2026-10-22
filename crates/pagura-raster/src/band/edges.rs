@@ -6,9 +6,10 @@
 //! arithmetic produces a cell, so coverage is independent of both.
 
 use super::DeviceRect;
+use super::cells::STRIP;
 use crate::flatten::{CurveStack, Polyline, bounded, flatten_into};
 use crate::{Path, Point, Segment, Transform};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 
 /// A straight edge in device space, in contour order.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -19,8 +20,9 @@ pub(crate) struct Line {
 
 impl Line {
     /// The x of the edge at height `y` within its vertical extent: the end
-    /// points exactly, and between them by one interpolation from the upper
-    /// end, as every row and column crossing of this edge is computed.
+    /// points exactly, and between them by the weighted endpoint numerator.
+    /// Its products and sums keep their rounding tails: distant endpoints
+    /// may cancel almost completely at an ordinary device pixel.
     pub(crate) fn x(self, y: f64) -> f64 {
         let (top, bottom) = if self.a.y < self.b.y {
             (self.a, self.b)
@@ -31,15 +33,127 @@ impl Line {
             top.x
         } else if y >= bottom.y {
             bottom.x
+        } else if top.x == bottom.x {
+            top.x
         } else {
-            let t = (y - top.y) / (bottom.y - top.y);
-            top.x + t * (bottom.x - top.x)
+            let (height, low) = sum(bottom.y, -top.y);
+            // Normalize the vertical weights by an exact power of two.
+            // Subnormal heights must not underflow their x products.
+            let exponent = (height.to_bits() >> 52).max(1);
+            let scale = f64::from_bits((2046 - exponent) << 52);
+            let (wa, ea) = sum(bottom.y, -y);
+            let (wb, eb) = sum(y, -top.y);
+            let (wa, ea, wb, eb) = (wa * scale, ea * scale, wb * scale, eb * scale);
+            let (height, low) = (height * scale, low * scale);
+            let (pa, ra) = product(top.x, wa);
+            let (pb, rb) = product(bottom.x, wb);
+            let (numerator, tail) = sum(pa, pb);
+            let tail = tail + ra + rb + top.x * ea + bottom.x * eb;
+            let quotient = numerator / height;
+            let (back, error) = product(quotient, height);
+            let x = quotient + (((numerator - back) + tail - error) - quotient * low) / height;
+            x.max(top.x.min(bottom.x)).min(top.x.max(bottom.x))
         }
+    }
+
+    /// The height of a nonvertical line at column `x`, through the same
+    /// interpolation with the coordinate axes exchanged.
+    pub(crate) fn y(self, x: f64) -> f64 {
+        Self {
+            a: Point::new(self.a.y, self.a.x),
+            b: Point::new(self.b.y, self.b.x),
+        }
+        .x(x)
     }
 
     pub(crate) fn is_horizontal(self) -> bool {
         self.a.y == self.b.y
     }
+
+    /// Outward coordinate uncertainty of interpolation and crossing
+    /// evaluation on this stored line. For an interior parameter, each
+    /// subtraction has relative error at most EPS, division adds one,
+    /// and multiplication/addition contribute at most six EPS times the
+    /// endpoint magnitudes; sixteen covers their products and rounding.
+    /// Axis-aligned boundaries need no such interpolation.
+    pub(crate) fn interpolation_error(self) -> Point {
+        if self.a.x == self.b.x || self.a.y == self.b.y {
+            return Point::default();
+        }
+        let bound = |a: f64, b: f64| 16.0 * f64::EPSILON * (1.0 + a.abs() + b.abs());
+        Point::new(bound(self.a.x, self.b.x), bound(self.a.y, self.b.y))
+    }
+}
+
+/// The exact sum of two finite values, apart from subnormal underflow.
+fn sum(a: f64, b: f64) -> (f64, f64) {
+    let high = a + b;
+    let back = high - a;
+    (high, (a - (high - back)) + (b - back))
+}
+
+/// Product and rounding tail without fused operations. Device coordinates
+/// are bounded by 10^12, so splitting and the products cannot overflow.
+fn product(a: f64, b: f64) -> (f64, f64) {
+    let split = |value| {
+        let expanded = value * 134_217_729.0;
+        let high = expanded - (expanded - value);
+        (high, value - high)
+    };
+    let (ah, al) = split(a);
+    let (bh, bl) = split(b);
+    let high = a * b;
+    let low = ((ah * bh - high) + ah * bl + al * bh) + al * bl;
+    (high, low)
+}
+
+#[cfg(test)]
+#[test]
+fn distant_endpoints_preserve_the_stored_line_inside_a_pixel() {
+    let n = 549_755_813_888.0;
+    let u = 1.0 / 8192.0;
+    let line = Line {
+        a: Point::new(-n, -n),
+        b: Point::new(n, n + u),
+    };
+    // Exact rational x(y) = n * (2*y-u) / (2*n+u), rounded to f64.
+    let expected = [
+        (0.0, -6.103_515_624_999_999e-5),
+        (0.5, 0.499_938_964_843_749_94),
+        (1.0, 0.999_938_964_843_749_9),
+    ];
+    for (y, x) in expected {
+        assert_eq!(line.x(y), x);
+        assert_eq!(
+            Line {
+                a: line.b,
+                b: line.a
+            }
+            .x(y),
+            x
+        );
+    }
+    assert_eq!(line.x(line.a.y), line.a.x);
+    assert_eq!(line.x(line.b.y), line.b.x);
+    // Its inverse at zero is exactly u/2; an uncorrected height
+    // interpolation from either distant end loses that displacement.
+    assert_eq!(line.y(0.0), u * 0.5);
+}
+
+#[cfg(test)]
+#[test]
+fn interpolation_keeps_subnormal_heights_and_endpoint_ranges() {
+    let tiny = f64::from_bits(1);
+    let line = Line {
+        a: Point::new(0.25, 0.0),
+        b: Point::new(0.5, 2.0 * tiny),
+    };
+    assert_eq!(line.x(tiny), 0.375);
+    let line = Line {
+        a: Point::new(tiny, 0.0),
+        b: Point::new(2.0 * tiny, 2.0 * tiny),
+    };
+    assert!((tiny..=2.0 * tiny).contains(&line.x(tiny)));
 }
 
 /// Closed device polygons: contour `i` is `points[starts[i]..starts[i + 1]]`
@@ -66,12 +180,21 @@ impl Polygon {
 
     /// The fill polygon of `path` under `transform`, flattened within the
     /// exact tolerance (1/256 pixel).
-    pub(crate) fn from_path(path: &Path, transform: Transform, limits: &Limits) -> Result<Self> {
+    pub(crate) fn from_path(
+        path: &Path,
+        transform: Transform,
+        limits: &Limits,
+        bytes: &mut Meter,
+    ) -> Result<Self> {
+        let before = bytes.used();
         let mut contours: Vec<Polyline> = Vec::new();
         let mut curves = CurveStack::new();
-        let count = flatten_into(path, transform, limits, &mut contours, &mut curves)?;
+        let count = flatten_into(path, transform, limits, &mut contours, &mut curves, bytes)?;
         let mut polygon = Self::default();
-        polygon.extend(&contours[..count], transform, limits)?;
+        polygon.extend(&contours[..count], transform, limits, bytes)?;
+        drop(contours);
+        drop(curves);
+        bytes.refund((bytes.used() - before).saturating_sub(polygon.heap_bytes()));
         Ok(polygon)
     }
 
@@ -81,6 +204,7 @@ impl Polygon {
         path: &Path,
         transform: Transform,
         limits: &Limits,
+        bytes: &mut Meter,
     ) -> Result<Option<Self>> {
         if path
             .segments()
@@ -96,67 +220,76 @@ impl Polygon {
         // untransformed until the contour ends.
         let mut user: Vec<Point> = Vec::new();
         let mut closed = false;
-        let finish =
-            |polygon: &mut Self, user: &mut Vec<Point>, last: bool, closed: bool| -> Result<()> {
-                let Some(&first) = user.first() else {
-                    return Ok(());
-                };
-                if last && !closed && user.len() == 1 {
-                    user.clear();
-                    return Ok(());
-                }
-                if user.iter().all(|&p| p == first) {
-                    let p = first * transform;
-                    bounded(p)?;
-                    polygon.cell(p, limits)?;
-                } else {
-                    polygon.begin(limits, user.len())?;
-                    for &point in user.iter() {
-                        let p = point * transform;
-                        bounded(p)?;
-                        polygon.points.push(p);
-                    }
-                    polygon.end();
-                }
-                user.clear();
-                Ok(())
+        let finish = |polygon: &mut Self,
+                      user: &mut Vec<Point>,
+                      last: bool,
+                      closed: bool,
+                      bytes: &mut Meter|
+         -> Result<()> {
+            let Some(&first) = user.first() else {
+                return Ok(());
             };
-        let mut append = |user: &mut Vec<Point>, point: Point| -> Result<()> {
+            if last && !closed && user.len() == 1 {
+                user.clear();
+                return Ok(());
+            }
+            if user.iter().all(|&p| p == first) {
+                let p = first * transform;
+                bounded(p)?;
+                polygon.cell(p, limits, bytes)?;
+            } else {
+                polygon.begin(limits, user.len(), bytes)?;
+                for &point in user.iter() {
+                    let p = point * transform;
+                    bounded(p)?;
+                    polygon.points.push(p);
+                }
+                polygon.end();
+            }
+            user.clear();
+            Ok(())
+        };
+        let mut append = |user: &mut Vec<Point>, point: Point, bytes: &mut Meter| -> Result<()> {
             if count >= limits.path_segments {
                 return Err(Error::limit("flattened segment budget exceeded"));
             }
             count += 1;
-            user.try_reserve(1)
-                .map_err(|_| Error::limit("raster geometry allocation failed"))?;
+            bytes.reserve_capacity(user, 1)?;
             user.push(point);
             Ok(())
         };
         for segment in path.segments() {
             match *segment {
                 Segment::MoveTo(point) => {
-                    finish(&mut polygon, &mut user, false, closed)?;
+                    finish(&mut polygon, &mut user, false, closed, bytes)?;
                     bounded(point)?;
                     bounded(point * transform)?;
-                    append(&mut user, point)?;
+                    append(&mut user, point, bytes)?;
                     closed = false;
                 }
                 Segment::LineTo(point) => {
                     if closed {
                         // A line after a close reopens at the subpath start.
                         let first = user.first().copied();
-                        finish(&mut polygon, &mut user, false, closed)?;
-                        user.extend(first);
+                        finish(&mut polygon, &mut user, false, closed, bytes)?;
+                        if let Some(first) = first {
+                            bytes.reserve_capacity(&mut user, 1)?;
+                            user.push(first);
+                        }
                         closed = false;
                     }
                     bounded(point)?;
                     bounded(point * transform)?;
-                    append(&mut user, point)?;
+                    append(&mut user, point, bytes)?;
                 }
                 Segment::Close => closed = true,
                 Segment::CubicTo { .. } => return Ok(None),
             }
         }
-        finish(&mut polygon, &mut user, true, closed)?;
+        finish(&mut polygon, &mut user, true, closed, bytes)?;
+        let scratch = user.capacity().saturating_mul(size_of::<Point>());
+        drop(user);
+        bytes.refund(scratch);
         Ok(Some(polygon))
     }
 
@@ -168,6 +301,7 @@ impl Polygon {
         contours: &[Polyline],
         transform: Transform,
         limits: &Limits,
+        bytes: &mut Meter,
     ) -> Result<()> {
         let count = contours.len();
         for (i, contour) in contours.iter().enumerate() {
@@ -180,10 +314,10 @@ impl Polygon {
             if contour.degenerate {
                 let p = first * transform;
                 bounded(p)?;
-                self.cell(p, limits)?;
+                self.cell(p, limits, bytes)?;
                 continue;
             }
-            self.begin(limits, contour.points.len())?;
+            self.begin(limits, contour.points.len(), bytes)?;
             for &point in &contour.points {
                 let p = point * transform;
                 bounded(p)?;
@@ -195,9 +329,9 @@ impl Polygon {
     }
 
     /// The floor cell of a geometric point at `p`.
-    pub(crate) fn cell(&mut self, p: Point, limits: &Limits) -> Result<()> {
+    pub(crate) fn cell(&mut self, p: Point, limits: &Limits, bytes: &mut Meter) -> Result<()> {
         let (x, y) = (p.x.floor(), p.y.floor());
-        self.begin(limits, 4)?;
+        self.begin(limits, 4, bytes)?;
         self.points.extend([
             Point::new(x, y),
             Point::new(x + 1.0, y),
@@ -209,7 +343,7 @@ impl Polygon {
         Ok(())
     }
 
-    pub(crate) fn begin(&mut self, limits: &Limits, count: usize) -> Result<()> {
+    pub(crate) fn begin(&mut self, limits: &Limits, count: usize, bytes: &mut Meter) -> Result<()> {
         if self
             .points
             .len()
@@ -218,10 +352,8 @@ impl Polygon {
         {
             return Err(Error::limit("flattened segment budget exceeded"));
         }
-        self.points
-            .try_reserve(count)
-            .and_then(|()| self.starts.try_reserve(1))
-            .map_err(|_| Error::limit("raster geometry allocation failed"))?;
+        bytes.reserve_capacity(&mut self.points, count)?;
+        bytes.reserve_capacity(&mut self.starts, 1)?;
         self.starts.push(self.points.len());
         Ok(())
     }
@@ -256,14 +388,29 @@ impl Polygon {
     /// edges become the boundary of their union. Returns whether any edge
     /// was removed; the polygon is unchanged when none was or the rest does
     /// not relink.
-    pub(crate) fn cancel_shared(&mut self) -> Result<bool> {
-        let allocation = |_| Error::limit("raster geometry allocation failed");
+    pub(crate) fn cancel_shared(&mut self, bytes: &mut Meter) -> Result<bool> {
+        let before = bytes.used();
+        let result = self.cancelled(bytes);
+        let retained = result
+            .as_ref()
+            .ok()
+            .and_then(Option::as_ref)
+            .map_or(0, Self::heap_bytes);
+        bytes.refund((bytes.used() - before).saturating_sub(retained));
+        if let Some(polygon) = result? {
+            let old = self.heap_bytes();
+            *self = polygon;
+            bytes.refund(old);
+            return Ok(true);
+        }
+        Ok(false)
+    }
+
+    fn cancelled(&self, bytes: &mut Meter) -> Result<Option<Self>> {
         // Points ordered by their coordinates' total order, as integers.
         let key = |p: Point| (ordered(p.x), ordered(p.y));
         let mut edges: Vec<Keyed> = Vec::new();
-        edges
-            .try_reserve_exact(self.points.len())
-            .map_err(allocation)?;
+        bytes.reserve(&mut edges, self.points.len())?;
         for contour in self.contours() {
             let n = contour.len();
             edges.extend((0..n).map(|i| {
@@ -283,7 +430,7 @@ impl Polygon {
         // opposite directions cancel.
         edges.sort_unstable_by_key(|e| (e.lo, e.hi, e.forward));
         let mut kept: Vec<Keyed> = Vec::new();
-        kept.try_reserve_exact(edges.len()).map_err(allocation)?;
+        bytes.reserve(&mut kept, edges.len())?;
         let mut start = 0;
         while let Some(first) = edges.get(start) {
             let end = start
@@ -299,22 +446,22 @@ impl Polygon {
             start = end;
         }
         if kept.len() == edges.len() {
-            return Ok(false);
+            return Ok(None);
         }
         // Relink by start point: any pairing at a shared vertex keeps the
         // winding.
         kept.sort_unstable_by_key(|e| e.from);
         let mut used: Vec<bool> = Vec::new();
-        used.try_reserve_exact(kept.len()).map_err(allocation)?;
+        bytes.reserve(&mut used, kept.len())?;
         used.resize(kept.len(), false);
         let mut points = Vec::new();
         let mut starts = Vec::new();
-        points.try_reserve_exact(kept.len()).map_err(allocation)?;
+        bytes.reserve(&mut points, kept.len())?;
         for first in 0..kept.len() {
             if used[first] {
                 continue;
             }
-            starts.try_reserve(1).map_err(allocation)?;
+            bytes.reserve_capacity(&mut starts, 1)?;
             starts.push(points.len());
             let origin = kept[first].from;
             let mut current = first;
@@ -330,14 +477,24 @@ impl Polygon {
                     .take_while(|&i| kept[i].from == next)
                     .find(|&i| !used[i])
                 else {
-                    return Ok(false);
+                    return Ok(None);
                 };
                 current = found;
             }
         }
-        self.points = points;
-        self.starts = starts;
-        Ok(true)
+        Ok(Some(Self {
+            points,
+            starts,
+            points_cells: self.points_cells,
+        }))
+    }
+
+    /// Heap storage of this owned polygon.
+    pub(crate) fn heap_bytes(&self) -> usize {
+        self.points
+            .capacity()
+            .saturating_mul(size_of::<Point>())
+            .saturating_add(self.starts.capacity().saturating_mul(size_of::<usize>()))
     }
 
     /// The device bounds of the vertices, as `[min, max]`.
@@ -375,134 +532,6 @@ struct Keyed {
 fn ordered(value: f64) -> i64 {
     let bits = value.to_bits() as i64;
     bits ^ (((bits >> 63) as u64) >> 1) as i64
-}
-
-/// A straight edge with the monotone chain it belongs to and its group (a
-/// clip path of an intersection), for the analysis of uncertified cells.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct Chained {
-    pub(crate) line: Line,
-    pub(crate) chain: u32,
-    pub(crate) group: u8,
-    /// Whether the edge's contour fits in one pixel, where it can enclose
-    /// a region no side of the pixel meets.
-    pub(crate) enclosed: bool,
-    /// The edge's place: its contour, its index there, and the contour's
-    /// edge count; pieces of one edge share it.
-    pub(crate) place: Place,
-}
-
-/// Where an edge lies in its polygon.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub(crate) struct Place {
-    pub(crate) contour: u32,
-    pub(crate) index: u32,
-    pub(crate) count: u32,
-}
-
-impl Place {
-    /// Whether two edges are one or consecutive edges of one contour.
-    pub(crate) fn adjacent(self, other: Self) -> bool {
-        self.contour == other.contour
-            && (self.index == other.index
-                || (self.index + 1) % self.count.max(1) == other.index
-                || (other.index + 1) % other.count.max(1) == self.index)
-    }
-}
-
-/// The edges of `polygon` in contour order with their chains: maximal runs
-/// whose vertical direction does not reverse. Chain numbers continue from
-/// `next`, which is advanced.
-pub(crate) fn chained(
-    polygon: &Polygon,
-    group: u8,
-    next: &mut u32,
-    out: &mut Vec<Chained>,
-) -> Result<()> {
-    out.try_reserve(polygon.vertices())
-        .map_err(|_| Error::limit("raster geometry allocation failed"))?;
-    for (contour_number, contour) in polygon.contours().enumerate() {
-        let n = contour.len();
-        let direction = |i: usize| {
-            let (a, b) = (contour[i].y, contour[(i + 1) % n].y);
-            if a < b {
-                1
-            } else if a > b {
-                -1
-            } else {
-                0
-            }
-        };
-        let base = out.len();
-        let (mut lo, mut hi) = (contour[0], contour[0]);
-        for p in contour {
-            lo = Point::new(lo.x.min(p.x), lo.y.min(p.y));
-            hi = Point::new(hi.x.max(p.x), hi.y.max(p.y));
-        }
-        let enclosed = hi.x.ceil() - lo.x.floor() <= 1.0 && hi.y.ceil() - lo.y.floor() <= 1.0;
-        let count = u32::try_from(n).map_err(|_| Error::limit("contour exceeds u32"))?;
-        let contour_index =
-            u32::try_from(contour_number).map_err(|_| Error::limit("contours exceed u32"))?;
-        for (i, index) in (0..n).zip(0_u32..) {
-            out.push(Chained {
-                line: Line {
-                    a: contour[i],
-                    b: contour[(i + 1) % n],
-                },
-                chain: 0,
-                group,
-                enclosed,
-                place: Place {
-                    contour: contour_index,
-                    index,
-                    count,
-                },
-            });
-        }
-        let Some(last) = (0..n).rev().find(|&i| direction(i) != 0) else {
-            *next = next
-                .checked_add(1)
-                .ok_or(Error::limit("chain index overflow"))?;
-            for edge in &mut out[base..] {
-                edge.chain = *next;
-            }
-            continue;
-        };
-        // Start where the direction changes, so a walk around the contour
-        // never splits a chain at the seam.
-        let mut previous = direction(last);
-        let start = (0..n)
-            .find(|&i| {
-                let d = direction(i);
-                let changed = d != 0 && d != previous;
-                if d != 0 {
-                    previous = d;
-                }
-                changed
-            })
-            .unwrap_or(0);
-        let mut previous = 0;
-        for offset in 0..n {
-            let i = (start + offset) % n;
-            let d = direction(i);
-            let prior = (i + n - 1) % n;
-            // A horizontal reversal is a spike of zero area: a new chain.
-            let spike = d == 0
-                && direction(prior) == 0
-                && (contour[i].x - contour[prior].x).signum()
-                    != (contour[(i + 1) % n].x - contour[i].x).signum();
-            if offset == 0 || (d != 0 && d != previous) || spike {
-                *next = next
-                    .checked_add(1)
-                    .ok_or(Error::limit("chain index overflow"))?;
-            }
-            out[base + i].chain = *next;
-            if d != 0 {
-                previous = d;
-            }
-        }
-    }
-    Ok(())
 }
 
 /// A device rectangle `[left, right] × [top, bottom]` of real coordinates.
@@ -590,10 +619,9 @@ pub(crate) fn clip_line(line: Line, bounds: Bounds, out: &mut Vec<Line>) -> Resu
 }
 
 /// The straight edges of `polygon` that bound area (not horizontal).
-pub(crate) fn lines(polygon: &Polygon) -> Result<Vec<Line>> {
+pub(crate) fn lines(polygon: &Polygon, bytes: &mut Meter) -> Result<Vec<Line>> {
     let mut out = Vec::new();
-    out.try_reserve(polygon.vertices())
-        .map_err(|_| Error::limit("raster geometry allocation failed"))?;
+    bytes.reserve(&mut out, polygon.vertices())?;
     for contour in polygon.contours() {
         let n = contour.len();
         for i in 0..n {
@@ -604,17 +632,6 @@ pub(crate) fn lines(polygon: &Polygon) -> Result<Vec<Line>> {
         }
     }
     Ok(out)
-}
-
-/// Clips a chained edge to `bounds`: parts above or below disappear and
-/// parts left or right of it become vertical edges on its sides, which keeps
-/// the winding inside and leaves none outside (8.5.4). Horizontal edges are
-/// kept within the bounds' height with their x clamped.
-pub(crate) fn clip(edge: Chained, bounds: Bounds, out: &mut Vec<Chained>) -> Result<()> {
-    out.try_reserve(3)
-        .map_err(|_| Error::limit("raster geometry allocation failed"))?;
-    clip_pieces(edge.line, bounds, |line| out.push(Chained { line, ..edge }));
-    Ok(())
 }
 
 /// The at most three pieces of `line` within `bounds`, in its direction.
@@ -644,7 +661,7 @@ fn clip_pieces(line: Line, bounds: Bounds, mut emit: impl FnMut(Line)) {
     let mut count = 2;
     if top.x != bottom.x {
         for side in [bounds.left, bounds.right] {
-            let y = top.y + (bottom.y - top.y) * ((side - top.x) / (bottom.x - top.x));
+            let y = line.y(side);
             if y > lo && y < hi {
                 events[count] = y;
                 count += 1;
@@ -693,93 +710,94 @@ pub(crate) fn rows(lo: f64, hi: f64, region: DeviceRect) -> Option<(u32, u32)> {
     Some((first.max(top) as u32, last.min(bottom) as u32))
 }
 
-/// The edges and curves of one shape listed per row they have area in,
-/// each row in the shapes' own order: a row visits only the edges that
-/// cross it, whatever the band height.
+/// The items of one shape listed per strip ([`STRIP`] rows of the global
+/// grid) they have area in, each strip in the items' own order: a band
+/// visits only the items that cross its strips, whatever its height.
 #[derive(Debug, Default)]
-pub(crate) struct RowList {
+pub(crate) struct StripList {
     first: u32,
     offsets: Vec<u32>,
     items: Vec<u32>,
 }
 
-impl RowList {
-    /// Lists every item `i` in each row of `ranges(i)` (inclusive) within
-    /// rows `first..end`.
+impl StripList {
+    /// Lists every item `i` in each strip that rows `ranges(i)` (inclusive)
+    /// meet within rows `first..end`.
     pub(crate) fn new(
         (first, end): (u32, u32),
         count: usize,
         ranges: impl Fn(usize) -> Option<(u32, u32)>,
+        bytes: &mut Meter,
     ) -> Result<Self> {
-        let span = end.saturating_sub(first) as usize;
+        if u32::try_from(count).is_err() {
+            return Err(Error::limit("strip list exceeds u32"));
+        }
+        let last = end.checked_sub(1).filter(|&last| last >= first);
+        let Some(last) = last else {
+            return Ok(Self::default());
+        };
+        let strip0 = first / STRIP;
+        let span = (last / STRIP - strip0) as usize + 1;
         let mut list = Self {
-            first,
+            first: strip0,
             ..Self::default()
         };
-        if u32::try_from(count).is_err() {
-            return Err(Error::limit("row list exceeds u32"));
-        }
-        let allocation = |_| Error::limit("row list allocation failed");
-        list.offsets
-            .try_reserve_exact(span + 1)
-            .map_err(allocation)?;
+        bytes.reserve(&mut list.offsets, span + 1)?;
         list.offsets.resize(span + 1, 0);
         let clamp = |i: usize| {
             let (a, b) = ranges(i)?;
-            let (a, b) = (a.max(first), b.min(end.checked_sub(1)?));
-            (a <= b).then(|| ((a - first) as usize, (b - first) as usize))
+            let (a, b) = (a.max(first), b.min(last));
+            (a <= b).then(|| ((a / STRIP - strip0) as usize, (b / STRIP - strip0) as usize))
         };
         let mut total = 0_u32;
         for i in 0..count {
             if let Some((a, b)) = clamp(i) {
-                for row in a..=b {
-                    list.offsets[row + 1] += 1;
+                for strip in a..=b {
+                    list.offsets[strip + 1] += 1;
                 }
                 total = u32::try_from(b - a + 1)
                     .ok()
                     .and_then(|n| total.checked_add(n))
-                    .ok_or(Error::limit("row list exceeds u32"))?;
+                    .ok_or(Error::limit("strip list exceeds u32"))?;
             }
         }
-        for row in 0..span {
-            list.offsets[row + 1] += list.offsets[row];
+        for strip in 0..span {
+            list.offsets[strip + 1] += list.offsets[strip];
         }
-        list.items
-            .try_reserve_exact(total as usize)
-            .map_err(allocation)?;
+        bytes.reserve(&mut list.items, total as usize)?;
         list.items.resize(total as usize, 0);
-        // Fill each row from its start, which leaves every start at the
-        // next row's; shifting restores them.
+        // Fill each strip from its start, which leaves every start at the
+        // next strip's; shifting restores them.
         for i in 0..count {
             if let Some((a, b)) = clamp(i) {
-                for row in a..=b {
-                    let slot = &mut list.offsets[row];
+                for strip in a..=b {
+                    let slot = &mut list.offsets[strip];
                     // Checked above: the item count fits u32.
                     list.items[*slot as usize] = u32::try_from(i).unwrap_or(u32::MAX);
                     *slot += 1;
                 }
             }
         }
-        if span > 0 {
-            list.offsets.copy_within(0..span, 1);
-            list.offsets[0] = 0;
-        }
+        list.offsets.copy_within(0..span, 1);
+        list.offsets[0] = 0;
         Ok(list)
     }
 
-    /// The items listed for row `y`.
-    pub(crate) fn row(&self, y: u32) -> &[u32] {
-        let Some(local) = y.checked_sub(self.first) else {
+    /// The items listed for strip `strip`.
+    pub(crate) fn strip(&self, strip: u32) -> &[u32] {
+        let Some(local) = strip.checked_sub(self.first) else {
             return &[];
         };
         let local = local as usize;
         match (self.offsets.get(local), self.offsets.get(local + 1)) {
-            (Some(&start), Some(&end)) => &self.items[start as usize..end as usize],
+            (Some(&start), Some(&end)) => {
+                self.items.get(start as usize..end as usize).unwrap_or(&[])
+            }
             _ => &[],
         }
     }
 
-    /// Row visits over all rows.
+    /// Strip visits over all strips.
     pub(crate) fn len(&self) -> usize {
         self.items.len()
     }
@@ -787,6 +805,11 @@ impl RowList {
     pub(crate) fn retained_bytes(&self) -> usize {
         (self.offsets.capacity() + self.items.capacity()).saturating_mul(size_of::<u32>())
     }
+}
+
+/// The strips rows `first..=last` meet.
+pub(crate) fn strips((first, last): (u32, u32)) -> usize {
+    (last / STRIP - first / STRIP) as usize + 1
 }
 
 /// An upper bound of the cells a straight edge visits in rows
@@ -807,146 +830,4 @@ pub(crate) fn line_work(line: Line, (first, last): (u32, u32), width: usize) -> 
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::PathBuilder;
-
-    #[test]
-    fn line_paths_skip_flattening_with_its_contours() {
-        let limits = Limits::default();
-        let t = Transform::new(1.5, 0.25, -0.5, 2.0, 3.0, -1.0);
-        let p = |x: f64, y: f64| Point::new(x, y);
-        let mut paths = Vec::new();
-        let mut b = PathBuilder::new();
-        b.move_to(p(0.0, 0.0));
-        b.line_to(p(4.0, 0.0)).unwrap();
-        b.line_to(p(4.0, 3.0)).unwrap();
-        b.close();
-        // A line after a close reopens at the start; a lone move is a point.
-        b.line_to(p(-2.0, 5.0)).unwrap();
-        b.line_to(p(1.0, 6.0)).unwrap();
-        b.move_to(p(9.0, 9.0));
-        b.move_to(p(7.0, 1.0));
-        b.line_to(p(7.0, 1.0)).unwrap();
-        b.close();
-        b.move_to(p(2.0, 2.0));
-        b.line_to(p(5.0, 2.0)).unwrap();
-        b.line_to(p(5.0, 2.0)).unwrap();
-        b.line_to(p(2.0, 7.0)).unwrap();
-        b.move_to(p(8.0, 8.0));
-        paths.push(b.finish());
-        let mut b = PathBuilder::new();
-        b.rect(1.0, 2.0, 3.0, 4.0);
-        paths.push(b.finish());
-        for path in &paths {
-            let fast = Polygon::from_lines(path, t, &limits).unwrap().unwrap();
-            let slow = Polygon::from_path(path, t, &limits).unwrap();
-            assert_eq!(fast.points, slow.points);
-            assert_eq!(fast.starts, slow.starts);
-            assert_eq!(fast.points_cells, slow.points_cells);
-        }
-    }
-
-    #[test]
-    fn shared_edges_cancel_into_the_union_boundary() {
-        let square = |x: f64| {
-            [
-                Point::new(x, 0.0),
-                Point::new(x + 1.0, 0.0),
-                Point::new(x + 1.0, 1.0),
-                Point::new(x, 1.0),
-            ]
-        };
-        let mut polygon = Polygon::default();
-        for x in [0.0, 1.0] {
-            polygon.starts.push(polygon.points.len());
-            polygon.points.extend(square(x));
-        }
-        assert!(polygon.cancel_shared().unwrap());
-        assert_eq!(polygon.starts, [0]);
-        assert_eq!(polygon.points.len(), 6);
-        assert!(crate::band::certify::certified(&polygon, 0.0));
-        // Nothing shared: unchanged.
-        let before = polygon.points.clone();
-        assert!(!polygon.cancel_shared().unwrap());
-        assert_eq!(polygon.points, before);
-    }
-
-    #[test]
-    fn chains_follow_vertical_direction_and_wrap_at_the_seam() {
-        let mut polygon = Polygon::default();
-        let limits = Limits::default();
-        polygon.begin(&limits, 4).unwrap();
-        polygon.points.extend([
-            Point::new(0.0, 1.0),
-            Point::new(1.0, 0.0),
-            Point::new(2.0, 1.0),
-            Point::new(1.0, 2.0),
-        ]);
-        polygon.end();
-        let mut next = 0;
-        let mut out = Vec::new();
-        chained(&polygon, 0, &mut next, &mut out).unwrap();
-        let chains: Vec<_> = out.iter().map(|e| e.chain).collect();
-        // Up, down, down, up: the two upward edges form one chain across
-        // the seam.
-        assert_eq!(chains[0], chains[3]);
-        assert_eq!(chains[1], chains[2]);
-        assert_ne!(chains[0], chains[1]);
-    }
-
-    #[test]
-    fn rectangle_clipping_projects_outside_parts_onto_the_sides() {
-        let bounds = Bounds {
-            left: 1.0,
-            top: 0.0,
-            right: 3.0,
-            bottom: 4.0,
-        };
-        let edge = Chained {
-            line: Line {
-                a: Point::new(0.0, -1.0),
-                b: Point::new(4.0, 7.0),
-            },
-            chain: 1,
-            group: 0,
-            enclosed: false,
-            place: Place::default(),
-        };
-        let mut out = Vec::new();
-        clip(edge, bounds, &mut out).unwrap();
-        let lines: Vec<_> = out.iter().map(|e| e.line).collect();
-        assert_eq!(
-            lines,
-            [
-                Line {
-                    a: Point::new(1.0, 0.0),
-                    b: Point::new(1.0, 1.0)
-                },
-                Line {
-                    a: Point::new(1.0, 1.0),
-                    b: Point::new(2.5, 4.0)
-                },
-            ]
-        );
-    }
-
-    #[test]
-    fn polygons_drop_repeats_and_keep_point_cells() {
-        let mut path = PathBuilder::new();
-        path.move_to(Point::new(1.5, 2.5));
-        path.close();
-        path.move_to(Point::new(0.0, 0.0));
-        path.line_to(Point::new(0.0, 0.0)).unwrap();
-        path.line_to(Point::new(2.0, 0.0)).unwrap();
-        path.line_to(Point::new(2.0, 2.0)).unwrap();
-        path.line_to(Point::new(0.0, 0.0)).unwrap();
-        let polygon =
-            Polygon::from_path(&path.finish(), Transform::IDENTITY, &Limits::default()).unwrap();
-        let contours: Vec<_> = polygon.contours().collect();
-        assert_eq!(contours.len(), 2);
-        assert_eq!(contours[0][0], Point::new(1.0, 2.0));
-        assert_eq!(contours[1].len(), 3);
-        assert!(polygon.points_cells);
-    }
-}
+mod tests;

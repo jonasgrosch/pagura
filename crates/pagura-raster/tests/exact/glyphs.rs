@@ -119,8 +119,13 @@ fn glyphs_of_fixture_and_bundled_fonts_are_within_one_level() {
                     let options = options(area, &limits);
                     let clip = (!clips.is_empty())
                         .then(|| ClipShape::new(clips, Transform::IDENTITY, &options).unwrap());
-                    let shape =
-                        Shape::glyph_with_clip(&edges, origin, clip.as_ref(), &options).unwrap();
+                    let shape = Shape::glyph_with_clip(&edges, origin, clip.as_ref(), &options)
+                        .unwrap_or_else(|error| {
+                            panic!(
+                                "{name} glyph{g} size{size} skew{skew} clips{}: {error}",
+                                clips.len()
+                            )
+                        });
                     let new = match &shape {
                         Some(shape) => {
                             let (coverage, work) = raster(&area, Some(shape), clip.as_ref());

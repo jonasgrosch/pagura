@@ -11,16 +11,31 @@
 
 use crate::flatten::{MAX_COORDINATE, TOLERANCE, flatten};
 use crate::{LineCap, Path, PathBuilder, Point, Stroke, Transform};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 
 pub(crate) fn outline(
     path: &Path,
     transform: Transform,
     stroke: &Stroke,
     limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<(Path, Transform)> {
+    let before = bytes.used();
+    let result = fitted_outline(path, transform, stroke, limits, bytes);
+    let retained = result.as_ref().map_or(0, |(path, _)| path.retained_bytes());
+    bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
+    result
+}
+
+fn fitted_outline(
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+    bytes: &mut Meter,
 ) -> Result<(Path, Transform)> {
     crate::stroke::validate(stroke, limits)?;
-    let contours = flatten(path, transform, limits)?;
+    let contours = flatten(path, transform, limits, bytes)?;
     if !contours.iter().any(|c| c.strokeable(stroke.cap)) {
         return Ok((PathBuilder::new().finish(), Transform::IDENTITY));
     }
@@ -37,7 +52,7 @@ pub(crate) fn outline(
                     .is_none_or(|(a, b)| a.x == b.x || a.y == b.y))
     });
     if !axis || !orthogonal {
-        return general(contours, transform, stroke, limits);
+        return general(contours, transform, stroke, limits, bytes);
     }
     let width = |scale: f64| {
         if stroke.width == 0.0 {
@@ -55,22 +70,48 @@ pub(crate) fn outline(
     let mut out = PathBuilder::new();
     for contour in contours {
         if !contour.strokeable(stroke.cap) {
+            let released = contour.points.capacity().saturating_mul(size_of::<Point>());
+            drop(contour);
+            bytes.refund(released);
             continue;
         }
-        for run in crate::stroke::dash(contour.points, contour.closed, stroke, limits)? {
+        let runs = crate::stroke::dash(contour.points, contour.closed, stroke, limits, bytes)?;
+        let header_bytes = runs
+            .capacity()
+            .saturating_mul(size_of::<crate::stroke::Run>());
+        for run in runs {
             let mut run = run.transformed(transform);
             let device = &run.points;
-            let mut fitted: Vec<_> = device
-                .iter()
-                .map(|p| Point::new(snap(p.x, wx), snap(p.y, wy)))
-                .collect();
+            let mut fitted = Vec::new();
+            bytes.reserve(&mut fitted, device.len())?;
+            fitted.extend(
+                device
+                    .iter()
+                    .map(|p| Point::new(snap(p.x, wx), snap(p.y, wy))),
+            );
             if !run.closed && stroke.cap == LineCap::Butt {
                 butt_endpoints(device, &mut fitted);
             }
+            let released = run.points.capacity().saturating_mul(size_of::<Point>());
             run.points = fitted;
+            bytes.refund(released);
             let run = run.transformed(Transform::scale(1.0 / wx, 1.0 / wy));
-            crate::stroke::draw(&mut out, &run, 0.5, TOLERANCE / (wx + wy), stroke, limits)?;
+            crate::stroke::draw(
+                &mut out,
+                &run,
+                crate::stroke::Pen {
+                    radius: 0.5,
+                    tolerance: TOLERANCE / (wx + wy),
+                },
+                stroke,
+                limits,
+                bytes,
+            )?;
+            let released = run.points.capacity().saturating_mul(size_of::<Point>());
+            drop(run);
+            bytes.refund(released);
         }
+        bytes.refund(header_bytes);
     }
     Ok((out.finish(), pen))
 }
@@ -107,6 +148,7 @@ fn general(
     transform: Transform,
     stroke: &Stroke,
     limits: &Limits,
+    bytes: &mut Meter,
 ) -> Result<(Path, Transform)> {
     let pen = if stroke.width == 0.0 {
         Transform::IDENTITY
@@ -121,18 +163,33 @@ fn general(
     let mut out = PathBuilder::new();
     for contour in contours {
         if !contour.strokeable(stroke.cap) {
+            let released = contour.points.capacity().saturating_mul(size_of::<Point>());
+            drop(contour);
+            bytes.refund(released);
             continue;
         }
-        for run in crate::stroke::dash(contour.points, contour.closed, stroke, limits)? {
+        let runs = crate::stroke::dash(contour.points, contour.closed, stroke, limits, bytes)?;
+        let header_bytes = runs
+            .capacity()
+            .saturating_mul(size_of::<crate::stroke::Run>());
+        for run in runs {
+            let run = run.transformed(normalize);
             crate::stroke::draw(
                 &mut out,
-                &run.transformed(normalize),
-                0.5,
-                TOLERANCE / (2.0 * scale),
+                &run,
+                crate::stroke::Pen {
+                    radius: 0.5,
+                    tolerance: TOLERANCE / (2.0 * scale),
+                },
                 stroke,
                 limits,
+                bytes,
             )?;
+            let released = run.points.capacity().saturating_mul(size_of::<Point>());
+            drop(run);
+            bytes.refund(released);
         }
+        bytes.refund(header_bytes);
     }
     Ok((out.finish(), pen))
 }

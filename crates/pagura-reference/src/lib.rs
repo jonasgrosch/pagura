@@ -7,8 +7,9 @@
 //! - coverage is the exact area of each pixel's intersection with the mark
 //!   and every clipping path, by slab integration, quantized once per mark
 //!   as the renderer's coverage bytes are;
-//! - curves are flattened at the documented 1/256-pixel tolerance, glyph
-//!   quadratics sixteen times finer, against their true curves;
+//! - curves are flattened at the documented 1/256-pixel tolerance; quadratic
+//!   glyphs use original-curve polygons with bounded hull area, refined
+//!   until each coverage byte is unambiguous under that error interval;
 //! - every mark composites pixel by pixel with the formulas of clause 11:
 //!   blend modes, constant alpha, alpha-is-shape, soft masks, isolated,
 //!   non-isolated and knockout groups, transfer functions, overprint with

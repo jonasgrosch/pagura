@@ -265,7 +265,7 @@ impl Planner<'_> {
             Clipping::Shape(prepared) => (Some(prepared.key), prepared.bounds),
         };
         self.shapes.set_clip(clip);
-        let shape = self.shape(scope, &spec.geometry);
+        let shape = self.shape(scope, &spec.geometry, budget);
         self.shapes.set_clip(None);
         let shape = match shape? {
             Shape::Nothing => return Ok(None),
@@ -325,9 +325,13 @@ impl Planner<'_> {
         boundary: &Extra,
         budget: &mut Budget,
     ) -> Result<()> {
+        let limits = Limits {
+            render_bytes: budget.bytes.remaining(),
+            ..*self.limits
+        };
         let options = ShapeOptions {
             area: self.area,
-            limits: self.limits,
+            limits: &limits,
         };
         let prepared = self.shapes.fill(
             &boundary.path,
@@ -458,10 +462,14 @@ impl Planner<'_> {
         self.push(scope.group, item, budget)
     }
 
-    fn shape(&mut self, scope: &Scope, geometry: &Geometry<'_>) -> Result<Shape> {
+    fn shape(&mut self, scope: &Scope, geometry: &Geometry<'_>, budget: &Budget) -> Result<Shape> {
+        let limits = Limits {
+            render_bytes: budget.bytes.remaining(),
+            ..*self.limits
+        };
         let options = ShapeOptions {
             area: self.area,
-            limits: self.limits,
+            limits: &limits,
         };
         let prepared = match geometry {
             Geometry::Fill(path, rule) => {

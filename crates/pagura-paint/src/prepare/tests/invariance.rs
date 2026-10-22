@@ -5,14 +5,77 @@ use crate::Completion;
 use crate::testing::{Build, assert_within_one_level, mark};
 use pagura_core::{Limits, Position};
 use pagura_interpret::{
-    BlendMode, GroupAttributes, GroupId, MarkInfo, MaskKind, Node, Paint, PatternId, Pen, PenId,
-    StateId, StrokeNode, Tiling, TilingColors, TilingPaint,
+    BlendMode, ClipId, ClipNode, FillNode, GroupAttributes, GroupId, MarkInfo, MaskKind, Node,
+    Paint, PatternId, Pen, PenId, StateId, StrokeNode, Tiling, TilingColors, TilingPaint,
 };
-use pagura_raster::{Adjustment, DeviceRect, PathBuilder, Point, Stroke, Transform};
+use pagura_raster::{Adjustment, DeviceRect, FillRule, PathBuilder, Point, Stroke, Transform};
 use std::sync::Arc;
 
 const PAGE: GroupId = GroupId(0);
 const HEIGHTS: [u32; 5] = [1, 5, 16, 32, 256];
+
+#[test]
+fn distant_line_interpolation_survives_repeated_composition() {
+    let n = 549_755_813_888.0;
+    let u = 1.0 / 8192.0;
+    let c = 7679.0 / 8192.0;
+    let cases = [
+        // Area=(1-u/2)^2/(2+u/n)=0.4999389667063951, coverage127.
+        // Two black stores reference16384/255=64.25098039215686; old63
+        // violates the unrounded one-level contract.
+        ([(-n, -n), (n, n + u), (-n, n + u)], 2, 64),
+        // Area0.0019645858556032185 rounds to coverage1. A false empty
+        // clip loses all three stores: old255 instead of reference252.0117.
+        ([(-n + c, -n), (n + c, n + u), (n + c, -n)], 3, 252),
+    ];
+    for (points, repeats, level) in cases {
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(points[0].0, points[0].1));
+        for (x, y) in &points[1..] {
+            path.line_to(Point::new(*x, *y)).unwrap();
+        }
+        path.close();
+        let path = Arc::new(path.finish());
+        for clipped in [false, true] {
+            let mut b = Build::new(1.0, 1.0);
+            let black = b.rgb([0.0; 3]);
+            if clipped {
+                b.scene.clips.push(ClipNode {
+                    parent: None,
+                    path: Arc::clone(&path),
+                    rule: FillRule::NonZero,
+                });
+            }
+            for _ in 0..repeats {
+                let info = MarkInfo {
+                    clip: clipped.then_some(ClipId(0)),
+                    ..mark(StateId(0))
+                };
+                if clipped {
+                    b.rect(PAGE, [-2.0, -2.0, 2.0, 2.0], black, info);
+                } else {
+                    b.node(
+                        PAGE,
+                        Node::Fill(FillNode {
+                            path: Arc::clone(&path),
+                            rule: FillRule::NonZero,
+                            paint: black,
+                            mark: info,
+                        }),
+                    );
+                }
+            }
+            for height in HEIGHTS {
+                let actual = b.render(&b.request(b.page(), height)).unwrap();
+                assert_eq!(
+                    actual,
+                    [level, level, level, 255],
+                    "clipped={clipped}, height={height}, repeats={repeats}"
+                );
+            }
+        }
+    }
+}
 
 /// A page that exercises every buffer kind: translucent marks, blend
 /// modes, a knockout group, a soft mask, a tiling pattern and clips.
@@ -239,6 +302,69 @@ fn budgets_fail_in_source_order_and_bound_what_rendering_uses() {
                 .unwrap_err();
             assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
         }
+    }
+}
+
+#[test]
+fn geometry_preparation_uses_what_earlier_marks_leave() {
+    // Enough vertices make the polygon and its edge copy overlap by more
+    // than the final render's scratch; each input separately still fits.
+    let mut path = PathBuilder::new();
+    path.polygon((0..8000_u32).map(|i| {
+        let angle = f64::from(i) * std::f64::consts::TAU / 8000.0;
+        Point::new(2.0 + 1.7 * angle.cos(), 2.0 + 1.7 * angle.sin())
+    }));
+    let path = Arc::new(path.finish());
+    let geometry = |b: &mut Build| {
+        let paint = b.rgb([0.0, 0.0, 0.0]);
+        b.node(
+            PAGE,
+            Node::Fill(FillNode {
+                path: Arc::clone(&path),
+                rule: FillRule::NonZero,
+                paint,
+                mark: MarkInfo {
+                    position: Position::Buffer(7),
+                    ..mark(StateId(0))
+                },
+            }),
+        );
+    };
+    let limits = Limits {
+        render_bytes: 390 * 1024,
+        ..Limits::default()
+    };
+    let mut alone = Build::new(4.0, 4.0);
+    geometry(&mut alone);
+    alone
+        .prepare(&alone.request(alone.page(), 1), &limits)
+        .unwrap();
+    let mut occupied = Build::new(4.0, 4.0);
+    let paint = occupied.rgb([0.0, 0.0, 0.0]);
+    for _ in 0..40 {
+        occupied.rect(PAGE, [0.25, 0.25, 3.75, 3.75], paint, mark(StateId(0)));
+    }
+    assert!(
+        occupied
+            .prepare(&occupied.request(occupied.page(), 1), &limits)
+            .is_ok()
+    );
+    geometry(&mut occupied);
+    refused(&mut occupied, [1.0, 1.0], 11);
+    for height in HEIGHTS {
+        let error = occupied
+            .prepare(&occupied.request(occupied.page(), height), &limits)
+            .map(|_| ())
+            .unwrap_err();
+        assert_eq!(
+            (error.kind, error.message, error.position),
+            (
+                pagura_core::ErrorKind::Limit,
+                "render memory budget exceeded",
+                Position::Buffer(7)
+            ),
+            "band height {height}"
+        );
     }
 }
 

@@ -60,8 +60,19 @@ fn record(case: &Case, provider: &dyn pagura_text::Provider) -> Recording {
 
 /// The status of a case whose renderer or reference failed.
 fn failed(rendered: Option<&Error>, reference: Option<&Error>) -> Status {
+    // A reference precision/segment limit is a missing numeric proof, not
+    // an input the renderer successfully declined. Never reduce the number
+    // of comparisons and leave this gate green after such a failure.
+    if let Some(error) = reference.filter(|error| error.kind == ErrorKind::Limit) {
+        return Status::Failed(format!("reference: {}", describe(error)));
+    }
     if let Some(error) = rendered.into_iter().chain(reference).find(|e| pending(e)) {
         return Status::Pending(describe(error));
+    }
+    if rendered.is_none()
+        && let Some(error) = reference
+    {
+        return Status::Failed(format!("reference: {}", describe(error)));
     }
     let side =
         |name: &str, error: Option<&Error>| error.map(|e| format!("{name}: {}", describe(e)));
@@ -70,6 +81,18 @@ fn failed(rendered: Option<&Error>, reference: Option<&Error>) -> Status {
         .flatten()
         .collect();
     Status::Declined(reasons.join("; "))
+}
+
+#[test]
+fn reference_limits_fail_the_gate_instead_of_reducing_comparisons() {
+    let precision = Error::limit("unresolved curve coverage interval");
+    let render_limit = Error::limit("render byte budget exceeded");
+    for rendered in [None, Some(&render_limit)] {
+        let status = failed(rendered, Some(&precision));
+        let mut report = Report::default();
+        report.push("reference precision", status);
+        assert_eq!(report.failures().len(), 1);
+    }
 }
 
 #[test]
@@ -416,7 +439,7 @@ fn partitions(id: &str, page: DeviceRect) -> Vec<Vec<DeviceRect>> {
 #[test]
 #[ignore = "real documents: needs the benchmark pages, corpus and goldens (see bench.rs)"]
 fn benchmark_pages_against_the_goldens() {
-    // A report over local documents; CI has neither the corpus nor goldens.
+    // A gate over local documents; CI has neither the corpus nor goldens.
     if !bench::run() {
         eprintln!(
             "skipped: set PAGURA_REFERENCE_BENCH, _CORPORA and _BENCH_GOLDENS to compare the benchmark pages"
