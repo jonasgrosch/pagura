@@ -1,11 +1,11 @@
 //! Colour operators (8.6.8, Table 73). Devices without paint resolve no
 //! colour space.
 
-use super::state::Ink;
+use super::state::{Ink, SolidPaints};
 use super::{Machine, Scope};
 use crate::device::Device;
 use crate::repairs;
-use pagura_color::{ColorSpace, Components};
+use pagura_color::ColorSpace;
 use pagura_content::{ColorOperands, Op};
 use pagura_core::{Dictionary, Error, Result};
 use std::sync::Arc;
@@ -52,7 +52,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             Op::StrokeColor(operands) | Op::FillColor(operands) => {
                 let space = current(scope, target)?;
                 self.simple_operator(&space, &operands)?;
-                set(&space, &operands)?
+                set(&space, &operands, &mut self.session.solids)?
             }
             Op::StrokeColorN(operands) | Op::FillColorN(operands) => {
                 let space = current(scope, target)?;
@@ -60,7 +60,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                     let paint = self.select_pattern(base.as_ref(), &operands, resources, scope)?;
                     Ink { space, paint }
                 } else {
-                    set(&space, &operands)?
+                    set(&space, &operands, &mut self.session.solids)?
                 }
             }
             _ => return Err(Error::syntax("invalid colour operator")),
@@ -77,7 +77,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         if values.len() != space.components() {
             return Err(Error::syntax("wrong colour component count"));
         }
-        Ok(Ink::solid(&space, Components::from_slice(values)))
+        Ok(self.session.solids.ink(&space, values))
     }
 
     /// Table 73: `SC` and `sc` do not select Separation, DeviceN or ICCBased
@@ -107,7 +107,11 @@ fn current(scope: &Scope, target: Target) -> Result<Arc<ColorSpace>> {
 }
 
 /// A colour in a non-pattern `space` from numeric operands.
-pub(super) fn set(space: &Arc<ColorSpace>, operands: &ColorOperands<'_>) -> Result<Ink> {
+pub(super) fn set(
+    space: &Arc<ColorSpace>,
+    operands: &ColorOperands<'_>,
+    solids: &mut SolidPaints,
+) -> Result<Ink> {
     if matches!(space.as_ref(), ColorSpace::Pattern(_)) {
         return Err(Error::syntax("pattern requires SCN or scn"));
     }
@@ -117,8 +121,5 @@ pub(super) fn set(space: &Arc<ColorSpace>, operands: &ColorOperands<'_>) -> Resu
     if operands.pattern.is_some() {
         return Err(Error::syntax("colour component must be a number"));
     }
-    Ok(Ink::solid(
-        space,
-        Components::from_slice(&operands.components),
-    ))
+    Ok(solids.ink(space, &operands.components))
 }

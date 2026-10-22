@@ -235,8 +235,8 @@ impl ColorOperands<'_> {
 pub enum Properties {
     /// A name in the `Properties` resources.
     Name(Name),
-    /// An inline dictionary.
-    Inline(Dictionary),
+    /// An inline dictionary, boxed to keep operations small.
+    Inline(Box<Dictionary>),
 }
 
 /// One operand on the reader's stack and the offset of its token.
@@ -474,10 +474,10 @@ pub enum Op<'a> {
     BeginCompatibility,
     /// `EX`.
     EndCompatibility,
-    /// `BI … ID`: an inline image's dictionary, abbreviations as written.
-    /// Its data follows and must be read with
-    /// [`Reader::inline_image_data`](crate::Reader::inline_image_data).
-    InlineImage(Dictionary),
+    /// `BI … ID`: an inline image's dictionary, abbreviations as written,
+    /// boxed to keep operations small. Its data follows and must be read
+    /// with [`Reader::inline_image_data`](crate::Reader::inline_image_data).
+    InlineImage(Box<Dictionary>),
 }
 
 impl<'a> Op<'a> {

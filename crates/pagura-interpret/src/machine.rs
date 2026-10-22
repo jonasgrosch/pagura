@@ -55,6 +55,8 @@ pub(crate) struct Session<'a> {
     pub(crate) contents: crate::hash::FastMap<ObjectId, Arc<Content<'static>>>,
     pub(crate) content_bytes: usize,
     pub(crate) store: Option<&'a Store>,
+    /// The solid paints of colours set so far.
+    pub(crate) solids: state::SolidPaints,
     /// Buffers of the string being shown: decoded and placed glyphs.
     pub(crate) decoded: Vec<pagura_text::Glyph>,
     pub(crate) placed: Vec<crate::device::Glyph>,
@@ -203,6 +205,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
                 tokens: Meter::new(limits.operations, "content operation budget exceeded"),
                 page_resources: inputs.page_resources,
                 name_work: 0,
+                solids: state::SolidPaints::default(),
                 decoded: Vec::new(),
                 placed: Vec::new(),
                 contents: crate::hash::FastMap::default(),
@@ -251,12 +254,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
             let gray = self.session.colors.named(page.resources(), b"DeviceGray")?;
             state.set_both_inks(&gray);
         }
-        let streams = document.content_streams(page)?;
-        let mut data = Vec::with_capacity(streams.len());
-        for stream in &streams {
-            data.push((stream.id(), document.stream_data(stream)?));
-        }
-        let content = Content::from_streams(data, &self.session.limits)?;
+        let content = self.page_content(page)?;
         self.device.begin_page(&PageInfo {
             object: page.id(),
             crop: page.crop_box(),
@@ -359,7 +357,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
     /// Draws or skips an inline image, whose data follows in `reader`.
     fn inline_operation(
         &mut self,
-        dictionary: Dictionary,
+        dictionary: Box<Dictionary>,
         reader: &mut Reader<'_>,
         resources: &Dictionary,
         scope: &mut Scope,
@@ -502,6 +500,37 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
         Ok(content)
     }
 
+    /// The decoded content of `page`: its content streams as one sequence,
+    /// read once per store.
+    ///
+    /// # Errors
+    ///
+    /// The errors of reading and decoding the streams and the content
+    /// budget.
+    fn page_content(&self, page: &Page) -> Result<Arc<Content<'static>>> {
+        let document = self.document();
+        let limits = self.session.limits;
+        let build = || -> Result<pagura_core::Built<Content<'static>>> {
+            let streams = document.content_streams(page)?;
+            let mut data = Vec::with_capacity(streams.len());
+            for stream in &streams {
+                data.push((stream.id(), document.stream_data(stream)?));
+            }
+            let content = Content::from_streams(data, &limits)?;
+            Ok(pagura_core::Built {
+                bytes: content
+                    .bytes()
+                    .len()
+                    .saturating_add(size_of::<Content<'static>>()),
+                value: content,
+            })
+        };
+        match self.session.store {
+            Some(store) => store.get_or_build(PageContent(page.id()), build),
+            None => Ok(Arc::new(build()?.value)),
+        }
+    }
+
     /// The next soft mask number.
     pub(crate) fn next_mask(&mut self) -> Result<MaskId> {
         let id = MaskId(self.session.masks);
@@ -529,6 +558,14 @@ impl Scope {
 struct StreamContent(ObjectId);
 
 impl pagura_core::StoreKey for StreamContent {
+    type Value = Content<'static>;
+}
+
+/// The store key of a page's decoded content.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct PageContent(ObjectId);
+
+impl pagura_core::StoreKey for PageContent {
     type Value = Content<'static>;
 }
 

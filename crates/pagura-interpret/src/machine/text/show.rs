@@ -65,8 +65,10 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             .charge(decoded.len())
             .map_err(|_| Error::limit("text glyph work exceeded"))?;
         glyphs.reserve(decoded.len());
-        for glyph in decoded.drain(..) {
-            glyphs.push(self.glyph(font, glyph, text, resources, scope)?);
+        let run = Run::new(scope, self.needs().outlines);
+        for glyph in decoded.iter() {
+            let placed = self.glyph(font, glyph, text, &run, resources, scope)?;
+            glyphs.push(placed);
         }
         self.emit_run(font, glyphs, text, scope)
     }
@@ -76,45 +78,30 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
     fn glyph(
         &mut self,
         font: &crate::fonts::LoadedFont,
-        glyph: pagura_text::Glyph,
+        glyph: &pagura_text::Glyph,
         text: bool,
+        run: &Run,
         resources: &Dictionary,
         scope: &mut Scope,
     ) -> Result<Glyph> {
-        let params = &scope.state.text;
         let matrix = scope
             .text
             .as_ref()
             .ok_or(Error::syntax("glyph outside text object"))?
             .matrix;
-        let origin = glyph
-            .vertical
-            .map_or((0.0, 0.0), |v| (-v.origin.0, -v.origin.1));
-        let size = params.size;
-        let horizontal = params.horizontal;
-        let transform = checked(
-            Transform::translate(origin.0, origin.1)
-                .then(Transform::new(
-                    size * horizontal,
-                    0.0,
-                    0.0,
-                    size,
-                    0.0,
-                    params.rise,
-                ))
-                .then(matrix)
-                .then(scope.state.ctm),
-        )?;
-        let mode = params.mode;
-        let spacing = params.character + if glyph.word_space { params.word } else { 0.0 };
-        let (dx, dy) = glyph
-            .vertical
-            .map_or(((glyph.advance * size + spacing) * horizontal, 0.0), |v| {
-                (0.0, v.advance * size + spacing)
-            });
+        let scaled = match glyph.vertical {
+            Some(v) => Transform::translate(-v.origin.0, -v.origin.1).then(run.scale),
+            None => run.scaled,
+        };
+        let transform = checked(scaled.then(matrix).then(run.ctm))?;
+        let spacing = run.character + if glyph.word_space { run.word } else { 0.0 };
+        let (dx, dy) = glyph.vertical.map_or(
+            ((glyph.advance * run.size + spacing) * run.horizontal, 0.0),
+            |v| (0.0, v.advance * run.size + spacing),
+        );
         let positioned = if text {
             Some(Box::new(
-                self.positioned(font, &glyph, matrix, transform, scope)?,
+                self.positioned(font, glyph, matrix, transform, scope)?,
             ))
         } else {
             None
@@ -130,9 +117,10 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             text: positioned,
             position: self.position,
         };
+        let mode = run.mode;
         // Zero-sized text neither paints nor clips (Table 103), but advances.
-        if size != 0.0 && self.needs().outlines {
-            match glyph.shape {
+        if run.size != 0.0 && run.outlines {
+            match &glyph.shape {
                 GlyphShape::Outline {
                     program,
                     glyph: id,
@@ -143,7 +131,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                     let outline = self
                         .session
                         .fonts
-                        .outline(font, id, &program, self.position)?;
+                        .outline(font, *id, program, self.position)?;
                     if !outline.is_empty() {
                         if mode >= 4 {
                             self.clip_glyph(&outline, placed.transform, scope)?;
@@ -160,7 +148,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                     placed.transform = checked(font_matrix.then(transform))?;
                     self.type3_glyph(
                         font,
-                        procedure,
+                        *procedure,
                         placed.transform,
                         resources,
                         (glyph.advance, font_matrix.a),
@@ -269,4 +257,46 @@ fn append(builder: &mut PathBuilder, path: &Path, limit: usize) -> Result<()> {
     }
     builder.append(path, Transform::IDENTITY);
     Ok(())
+}
+
+/// What the glyphs of one string share: the text state and CTM, which
+/// showing the string does not change.
+struct Run {
+    size: f64,
+    horizontal: f64,
+    character: f64,
+    word: f64,
+    mode: u8,
+    ctm: Transform,
+    /// Font size, horizontal scaling and rise (9.4.4).
+    scale: Transform,
+    /// `scale` after the origin of a horizontal glyph, which is the
+    /// origin.
+    scaled: Transform,
+    outlines: bool,
+}
+
+impl Run {
+    fn new(scope: &Scope, outlines: bool) -> Self {
+        let params = &scope.state.text;
+        let scale = Transform::new(
+            params.size * params.horizontal,
+            0.0,
+            0.0,
+            params.size,
+            0.0,
+            params.rise,
+        );
+        Self {
+            size: params.size,
+            horizontal: params.horizontal,
+            character: params.character,
+            word: params.word,
+            mode: params.mode,
+            ctm: scope.state.ctm,
+            scale,
+            scaled: Transform::translate(0.0, 0.0).then(scale),
+            outlines,
+        }
+    }
 }

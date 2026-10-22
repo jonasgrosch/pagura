@@ -285,6 +285,9 @@ impl PdfFont {
         if string.len() > self.limits.string_bytes {
             return Err(Error::limit("text string byte budget exceeded"));
         }
+        if let Mapping::Simple(simple) = &self.mapping {
+            return self.decode_simple(simple, string, unicode, glyphs);
+        }
         let mut offset = 0;
         let mut work = Meter::new(self.limits.font_work, "text decoding work budget exceeded");
         let mut text_bytes = Meter::new(
@@ -305,6 +308,59 @@ impl PdfFont {
                 .map_err(|e| e.at(Position::Buffer(offset)))?;
             offset += usize::from(glyph.byte_len);
             glyphs.push(glyph);
+        }
+        Ok(())
+    }
+
+    /// [`Self::decode_inner`] for a simple font, one glyph per byte: the
+    /// same glyphs, budgets and error positions, without the per-code
+    /// dispatch, and without copying text the glyphs do not carry.
+    fn decode_simple(
+        &self,
+        simple: &SimpleMapping,
+        string: &[u8],
+        unicode: bool,
+        glyphs: &mut Vec<Glyph>,
+    ) -> Result<()> {
+        let mut work = Meter::new(self.limits.font_work, "text decoding work budget exceeded");
+        let mut text_bytes = Meter::new(
+            self.limits.string_bytes,
+            "decoded glyph text byte budget exceeded",
+        );
+        glyphs.reserve(string.len().min(self.limits.text_items));
+        for (offset, &byte) in string.iter().enumerate() {
+            let at = Position::Buffer(offset);
+            work.charge(1).map_err(|e| e.at(at))?;
+            if glyphs.len() >= self.limits.text_items {
+                return Err(Error::limit("decoded glyph budget exceeded").at(at));
+            }
+            let code = cmap::Code {
+                value: u32::from(byte),
+                len: 1,
+            };
+            let name = simple.names[usize::from(byte)].as_ref();
+            let fallback = simple.unicode[usize::from(byte)].as_ref();
+            let mapped = self.to_unicode.as_ref().and_then(|map| map.text(code));
+            let length = mapped
+                .as_ref()
+                .or(fallback)
+                .map_or(0, |text| text.as_str().len());
+            let shape = self.shape(code, code.value, name, fallback.map(GlyphText::as_str));
+            text_bytes.charge(length).map_err(|e| e.at(at))?;
+            glyphs.push(Glyph {
+                code: code.value,
+                byte_len: 1,
+                advance: self.metrics.width(code.value),
+                vertical: (self.writing_mode == WritingMode::Vertical)
+                    .then(|| self.metrics.vertical(code.value)),
+                word_space: byte == 32,
+                unicode: if unicode {
+                    mapped.or_else(|| fallback.cloned())
+                } else {
+                    None
+                },
+                shape,
+            });
         }
         Ok(())
     }

@@ -101,7 +101,7 @@ pub(super) fn marked(operands: &mut [Slot]) -> Result<(Name, Properties)> {
     match (tag, properties) {
         (Operand::Name(tag), Operand::Name(name)) => Ok((tag, Properties::Name(name))),
         (Operand::Name(tag), Operand::Value(Value::Dictionary(d))) => {
-            Ok((tag, Properties::Inline(d)))
+            Ok((tag, Properties::Inline(Box::new(d))))
         }
         _ => Err(wrong_type()),
     }
