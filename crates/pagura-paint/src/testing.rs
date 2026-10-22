@@ -10,9 +10,9 @@ use crate::source::Source;
 use pagura_color::{ColorSpace, Components, Conversion, Target};
 use pagura_core::{Error, Limits, Meter, Position, Rect, Result, Store};
 use pagura_interpret::{
-    ClipId, ClipNode, Color, Composite, FillNode, GlyphSource, Group, GroupAttributes, GroupId,
-    GroupRole, Image, MarkInfo, MaskId, MaskKind, Node, NodeId, PageSpace, Paint, PaintId, Pen,
-    Scene, Shading, SoftMask, StateId,
+    ClipId, ClipNode, Color, Composite, FillNode, GlyphSource, Group, GroupAttributes, GroupCause,
+    GroupId, GroupRole, Image, MarkInfo, MaskId, MaskKind, Node, NodeId, PageSpace, Paint, PaintId,
+    Pen, Scene, Shading, SoftMask, StateId,
 };
 use pagura_raster::{
     Area, BandCoverage, DeviceRect, FillRule, Path, Pixmap, Point, Rgba8, Segment, ShapeOptions,
@@ -335,6 +335,7 @@ impl Build {
     pub(crate) fn new(width: f64, height: f64) -> Self {
         let root = Group {
             role: GroupRole::Page,
+            cause: GroupCause::Document,
             attributes: GroupAttributes::default(),
             bbox: None,
             view: None,
@@ -437,6 +438,7 @@ impl Build {
     ) -> GroupId {
         self.scene.groups.push(Group {
             role,
+            cause: GroupCause::Document,
             attributes,
             bbox: None,
             view: None,
