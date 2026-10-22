@@ -7,6 +7,40 @@ use super::*;
 use crate::band::shape::Body;
 use std::sync::Arc;
 
+#[test]
+fn a_fractional_clip_run_rounding_to_full_still_clips_glyph_geometry() {
+    let limits = Limits::default();
+    let area = area(0, 0, 3, 2, 16);
+    let clip_path = polygon(&[
+        Point::new(-2.0, 0.0),
+        Point::new(3.0, 0.0),
+        Point::new(4.0, 0.5),
+        Point::new(3.0, 0.9985),
+        Point::new(-2.0, 0.9985),
+    ]);
+    let mut mark = PathBuilder::new();
+    mark.move_to(Point::new(-1.0, 0.4995));
+    mark.cubic_to(
+        Point::new(0.0, 0.4995),
+        Point::new(1.0, 0.4995),
+        Point::new(2.0, 0.4995),
+    )
+    .unwrap();
+    mark.line_to(Point::new(2.0, 1.0)).unwrap();
+    mark.line_to(Point::new(-1.0, 1.0)).unwrap();
+    mark.close();
+    let edges = Arc::new(GlyphEdges::new(&mark.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+    let prepare = |options: &Prep<'_>| glyph::place(&edges, Point::default(), options).unwrap();
+    let clip = |options: &ShapeOptions<'_>| {
+        ClipShape::new(&[(&clip_path, FillRule::NonZero)], Transform::IDENTITY, options).unwrap()
+    };
+    let coverage = invariant(&area, &prepare, Some(&clip));
+    // The clip alone rounds .9985 to255, but its intersection with this
+    // mark has area .9985-.4995=.499, whose coverage byte is127, not128.
+    assert_eq!(coverage[0], 127);
+    assert_eq!(coverage[1], 127);
+}
+
 fn outlines() -> Vec<Path> {
     let mut out = Vec::new();
     // An "o": two quadratic contours of opposite directions.
