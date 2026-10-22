@@ -24,7 +24,7 @@ use pagura_interpret::{
     TilingSpacing,
 };
 use pagura_raster::{Area, DeviceRect, Path, Precision, Transform};
-use std::collections::HashMap;
+use crate::hash::{self, FastMap};
 use std::sync::Arc;
 
 /// A prepared solid paint's identity: paint, state, layout and how the
@@ -52,13 +52,13 @@ pub(crate) struct Planner<'s, B: Backend> {
     pub(crate) parts: Parts,
     /// The page crop in default user space.
     pub(crate) crop: Arc<Path>,
-    clips: HashMap<clips::Key, clips::State>,
-    solids: HashMap<SolidKey, u32>,
-    masks: HashMap<(MaskId, [u64; 6], Process), u32>,
+    clips: FastMap<clips::Key, clips::State>,
+    solids: FastMap<SolidKey, u32>,
+    masks: FastMap<(MaskId, [u64; 6], Process), u32>,
     open: Vec<(MaskId, [u64; 6], Process)>,
     /// Union of the bounds that use each mask plan.
     pub(crate) users: Vec<DeviceRect>,
-    transfers: HashMap<u32, u16>,
+    transfers: FastMap<u32, u16>,
     /// The serial of the mark being prepared.
     pub(crate) serial: u32,
     /// Where the walk failed.
@@ -193,12 +193,12 @@ impl<'s, B: Backend> Planner<'s, B> {
             definitions: separations.spots,
             parts,
             crop: Arc::new(crop(scene)),
-            clips: HashMap::new(),
-            solids: HashMap::new(),
-            masks: HashMap::new(),
+            clips: hash::map(),
+            solids: hash::map(),
+            masks: hash::map(),
             open: Vec::new(),
             users: Vec::new(),
-            transfers: HashMap::new(),
+            transfers: hash::map(),
             serial: 0,
             failed: None,
             repairs: Vec::new(),
@@ -777,11 +777,11 @@ impl<'s, B: Backend> Planner<'s, B> {
         Ok(index)
     }
 
-    pub(crate) fn solids(&mut self) -> &mut HashMap<SolidKey, u32> {
+    pub(crate) fn solids(&mut self) -> &mut FastMap<SolidKey, u32> {
         &mut self.solids
     }
 
-    pub(crate) fn clip_states(&mut self) -> &mut HashMap<clips::Key, clips::State> {
+    pub(crate) fn clip_states(&mut self) -> &mut FastMap<clips::Key, clips::State> {
         &mut self.clips
     }
 }

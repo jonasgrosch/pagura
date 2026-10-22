@@ -7,7 +7,7 @@ use crate::request::OverprintMode;
 use pagura_color::{ColorSpace, Colorant};
 use pagura_core::{Error, Name, Result};
 use pagura_interpret::{Composite, GroupId, GroupRole, Node, Paint, PatternId, Scene};
-use std::collections::HashSet;
+use crate::hash::{self, FastSet};
 use std::sync::Arc;
 
 /// The separations of a page.
@@ -32,7 +32,7 @@ pub(crate) fn discover(scene: &Scene, mode: OverprintMode, depth: usize) -> Resu
     let mut walk = Walk {
         scene,
         depth,
-        cells: HashSet::new(),
+        cells: hash::set(),
         overprint: false,
         tint: false,
         nonzero: false,
@@ -51,7 +51,7 @@ pub(crate) fn discover(scene: &Scene, mode: OverprintMode, depth: usize) -> Resu
 struct Walk<'s> {
     scene: &'s Scene,
     depth: usize,
-    cells: HashSet<PatternId>,
+    cells: FastSet<PatternId>,
     overprint: bool,
     tint: bool,
     nonzero: bool,

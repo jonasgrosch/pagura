@@ -18,7 +18,7 @@ use pagura_interpret::{
     PatternId, Scene,
 };
 use pagura_raster::{DeviceRect, Path, Transform};
-use std::collections::HashMap;
+use crate::hash::{self, FastMap};
 
 /// `π` of the F32 bound: source encoding and six roundings relative to the
 /// opacity, in levels.
@@ -57,12 +57,12 @@ pub(crate) struct Storage {
     /// Whether the page's knockout is real (not the opaque-member identity).
     pub(crate) page_knockout: bool,
     /// Transparency groups by group and parent blending space.
-    pub(crate) groups: HashMap<(GroupId, Process), Decision>,
+    pub(crate) groups: FastMap<(GroupId, Process), Decision>,
     /// Soft masks by mask and parent blending space.
-    pub(crate) masks: HashMap<(MaskId, Process), Format>,
+    pub(crate) masks: FastMap<(MaskId, Process), Format>,
     /// Whether the instances of a tiling pattern start transparent (Normal
     /// cell content), by pattern and blending space.
-    pub(crate) cells: HashMap<(PatternId, Process), bool>,
+    pub(crate) cells: FastMap<(PatternId, Process), bool>,
     /// Some page content selects a transfer function (11.7.5.2).
     pub(crate) transfers: bool,
     /// Some content outside soft masks, tiling cells included, has a
@@ -104,9 +104,9 @@ pub(crate) fn survey(scene: &Scene, inputs: Inputs) -> Result<Storage> {
         scene,
         inputs,
         buffers: Vec::new(),
-        groups: HashMap::new(),
-        masks: HashMap::new(),
-        cells: HashMap::new(),
+        groups: hash::map(),
+        masks: hash::map(),
+        cells: hash::map(),
         open: Vec::new(),
         transfers: false,
     };
@@ -344,9 +344,9 @@ struct Survey<'s> {
     scene: &'s Scene,
     inputs: Inputs,
     buffers: Vec<Buffer>,
-    groups: HashMap<(GroupId, Process), GroupEntry>,
-    masks: HashMap<(MaskId, Process), usize>,
-    cells: HashMap<(PatternId, Process), usize>,
+    groups: FastMap<(GroupId, Process), GroupEntry>,
+    masks: FastMap<(MaskId, Process), usize>,
+    cells: FastMap<(PatternId, Process), usize>,
     open: Vec<(MaskId, Process)>,
     transfers: bool,
 }

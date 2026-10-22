@@ -15,6 +15,7 @@ mod blend;
 mod execute;
 pub mod features;
 mod format;
+mod hash;
 mod kernel;
 mod paint;
 mod plan;
