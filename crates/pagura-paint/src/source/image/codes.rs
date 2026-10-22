@@ -113,6 +113,36 @@ impl Affine {
         near != 0
     }
 
+    /// The bytes of three averages on a unit map, as [`Self::byte`] gives
+    /// them, with one test for all three; `None` when one comes near a
+    /// rounding boundary or the map is not a unit map.
+    #[inline]
+    fn bytes3(self, codes: [f64; 3]) -> Option<[u8; 4]> {
+        self.unit?;
+        let level = codes.map(|code| code * self.level + (0.5 + TIE_GUARD));
+        let floor = level.map(f64::floor);
+        let fraction = [
+            level[0] - floor[0],
+            level[1] - floor[1],
+            level[2] - floor[2],
+        ];
+        let low = fraction[0].min(fraction[1]).min(fraction[2]);
+        let high = fraction[0].max(fraction[1]).max(fraction[2]);
+        let top = level[0].max(level[1]).max(level[2]);
+        let bottom = level[0].min(level[1]).min(level[2]);
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "levels within 0..256 truncate to their floors"
+        )]
+        let byte = |level: f64| level as u8;
+        (low > 2.0 * BOUNDARY_NEAR
+            && high < 1.0 - 2.0 * BOUNDARY_NEAR
+            && bottom >= 0.0
+            && top < 256.0)
+            .then(|| [byte(floor[0]), byte(floor[1]), byte(floor[2]), 255])
+    }
+
     /// The byte [`pagura_raster::quantize_unit`] gives [`Self::apply`] of
     /// `code`. On a unit map the level is the code scaled by `255 /
     /// maximum`, which is within 3e-13 of the level the colour value
@@ -625,6 +655,9 @@ pub(super) struct Codes {
     /// The longest run of planned footprints that are whole pairs of
     /// samples, each next to the last, with one normalization.
     pairs: std::ops::Range<usize>,
+    /// Whether the planned footprints' first and last samples never
+    /// decrease.
+    monotone: bool,
 
     /// The blocks of planar samples that hold only background.
     clean: Option<Clean>,
@@ -1188,9 +1221,13 @@ impl Codes {
                 .all(|foot| foot.first >= foot.end || foot.whole()),
             Plan::Nearest(..) => false,
         };
-        let pairs = match &plan {
-            Plan::Area(feet) => pair_run(feet),
-            Plan::Nearest(..) => 0..0,
+        let (pairs, monotone) = match &plan {
+            Plan::Area(feet) => (
+                pair_run(feet),
+                feet.windows(2)
+                    .all(|pair| pair[0].first <= pair[1].first && pair[0].end <= pair[1].end),
+            ),
+            Plan::Nearest(..) => (0..0, false),
         };
         let bytes = ByteLanes::new(&lanes, components);
         let bilinear = match (&plan, taps, &bytes) {
@@ -1214,6 +1251,7 @@ impl Codes {
             plan,
             whole,
             pairs,
+            monotone,
             clean,
             bytes,
             bilinear,
@@ -1403,17 +1441,26 @@ impl Codes {
                 }
                 return;
             }
+            // Background pixels need no lines, and those of the others
+            // only near a background run's ends.
+            let lanes = bytes.component.map(|component| component.min(n - 1));
+            let background = self
+                .clean
+                .as_ref()
+                .and_then(|clean| certified_background(clean.background, (map, lanes)));
+            let edges = background.is_some();
+            let kernel = (maps, background);
             let finish = |reduction: Reduction<'_>, _: &mut [bool], dirty: &mut Vec<u32>| match n {
-                1 => column_bytes::<1>(&reduction, maps, dirty, out),
-                2 => column_bytes::<2>(&reduction, maps, dirty, out),
-                3 => column_bytes::<3>(&reduction, maps, dirty, out),
-                _ => column_bytes::<4>(&reduction, maps, dirty, out),
+                1 => column_bytes::<1>(&reduction, kernel, dirty, out),
+                2 => column_bytes::<2>(&reduction, kernel, dirty, out),
+                3 => column_bytes::<3>(&reduction, kernel, dirty, out),
+                _ => column_bytes::<4>(&reduction, kernel, dirty, out),
             };
             match n {
-                1 => self.separable::<1>(grid, span, scratch, finish),
-                2 => self.separable::<2>(grid, span, scratch, finish),
-                3 => self.separable::<3>(grid, span, scratch, finish),
-                _ => self.separable::<4>(grid, span, scratch, finish),
+                1 => self.separable::<1>(grid, (x, y, len, edges), scratch, finish),
+                2 => self.separable::<2>(grid, (x, y, len, edges), scratch, finish),
+                3 => self.separable::<3>(grid, (x, y, len, edges), scratch, finish),
+                _ => self.separable::<4>(grid, (x, y, len, edges), scratch, finish),
             }
             return;
         }
@@ -1641,32 +1688,40 @@ impl Codes {
         scratch: &mut Scratch,
         (averages, map): (&mut [f64], Affine),
     ) {
-        self.separable::<N>(grid, span, scratch, |reduction, covered, _| {
-            let Reduction {
-                feet,
-                first,
-                reduced,
-                scale,
-                ..
-            } = reduction;
-            let map = (scale, map);
-            match reduced {
-                Reduced::Sums(sums) => columns::<N, C, u32>(
-                    (feet, first),
-                    sums,
-                    (averages, covered),
-                    map,
-                    |values, _| whole_sum::<N>(values),
-                ),
-                Reduced::Lines(lines) => columns::<N, C, f64>(
-                    (feet, first),
-                    lines,
-                    (averages, covered),
-                    map,
-                    |values, foot| line_values::<N>(values, foot.first_weight, foot.last_weight),
-                ),
-            }
-        });
+        let (x, y, len) = span;
+        self.separable::<N>(
+            grid,
+            (x, y, len, false),
+            scratch,
+            |reduction, covered, _| {
+                let Reduction {
+                    feet,
+                    first,
+                    reduced,
+                    scale,
+                    ..
+                } = reduction;
+                let map = (scale, map);
+                match reduced {
+                    Reduced::Sums(sums) => columns::<N, C, u32>(
+                        (feet, first),
+                        sums,
+                        (averages, covered),
+                        map,
+                        |values, _| whole_sum::<N>(values),
+                    ),
+                    Reduced::Lines(lines) => columns::<N, C, f64>(
+                        (feet, first),
+                        lines,
+                        (averages, covered),
+                        map,
+                        |values, foot| {
+                            line_values::<N>(values, foot.first_weight, foot.last_weight)
+                        },
+                    ),
+                }
+            },
+        );
     }
 
     /// Reduces the span's source rows for every source column its separable
@@ -1676,7 +1731,7 @@ impl Codes {
     fn separable<const N: usize>(
         &self,
         grid: &Grid<'_>,
-        (x, y, len): (u32, u32, usize),
+        (x, y, len, edges): (u32, u32, usize, bool),
         scratch: &mut Scratch,
         finish: impl FnOnce(Reduction<'_>, &mut [bool], &mut Vec<u32>),
     ) {
@@ -1690,9 +1745,9 @@ impl Codes {
             dirty,
             ..
         } = scratch;
-        let (feet, whole): (&[Footprint], bool) =
+        let (feet, whole, monotone): (&[Footprint], bool, bool) =
             if let (Plan::Area(planned), Some(range)) = (&self.plan, self.planned(x, len)) {
-                (&planned[range], self.whole)
+                (&planned[range], self.whole, self.monotone)
             } else {
                 feet.clear();
                 feet.extend(
@@ -1703,7 +1758,7 @@ impl Codes {
                 let whole = feet
                     .iter()
                     .all(|foot| foot.first >= foot.end || foot.whole());
-                (feet, whole)
+                (feet, whole, false)
             };
         let across = row_footprint(&self.geometry, self.taps, y);
         let Some((first, end)) = extent(feet) else {
@@ -1728,7 +1783,7 @@ impl Codes {
                 &across,
                 (first, end),
                 (sums, rows),
-                runs,
+                (runs, edges.then_some(widest(feet))),
             );
             let reduction = Reduction {
                 feet,
@@ -1736,7 +1791,7 @@ impl Codes {
                 reduced: Reduced::Sums(sums),
                 scale,
                 runs,
-                background: self.clean.as_ref().map(|clean| clean.background),
+                monotone,
             };
             finish(reduction, covered, dirty);
             return;
@@ -1750,7 +1805,7 @@ impl Codes {
                 let code = clean.background.get(k).copied().unwrap_or(0);
                 reduce_constant(&across, code)
             });
-            for &(start, stop, _) in runs.iter().filter(|run| !run.2) {
+            for (start, stop) in clean_spans(runs, edges.then_some(widest(feet))) {
                 if let Some(lines) = lines.get_mut((start - first) * N..(stop - first) * N) {
                     for line in lines.as_chunks_mut::<N>().0 {
                         *line = constant;
@@ -1773,7 +1828,7 @@ impl Codes {
             reduced: Reduced::Lines(lines),
             scale,
             runs,
-            background: self.clean.as_ref().map(|clean| clean.background),
+            monotone,
         };
         finish(reduction, covered, dirty);
     }
@@ -1789,8 +1844,8 @@ struct Reduction<'a> {
     scale: f64,
     /// Runs of background (`false`) and other source columns.
     runs: &'a [(usize, usize, bool)],
-    /// The background's codes, where the runs mark background.
-    background: Option<[u8; 3]>,
+    /// Whether the footprints' first and last samples never decrease.
+    monotone: bool,
 }
 
 /// How the rows reduced: integer sums where every weight is whole, else
@@ -1819,7 +1874,7 @@ fn whole_sum<const N: usize>(values: &[u32]) -> [f64; N] {
 /// one whose footprint is empty is `[0, 0, 0, 0]`.
 fn column_bytes<const N: usize>(
     reduction: &Reduction<'_>,
-    (map, component): (Affine, [usize; 3]),
+    ((map, component), background): ((Affine, [usize; 3]), Option<[u8; 4]>),
     dirty: &mut Vec<u32>,
     out: &mut [[u8; 4]],
 ) {
@@ -1828,9 +1883,15 @@ fn column_bytes<const N: usize>(
         Reduced::Sums(sums) => sums.len() / N,
         Reduced::Lines(lines) => lines.len() / N,
     };
-    let background = background_bytes(reduction, columns, dirty, (map, [a, b, c]));
+    let background = background.filter(|_| reduction.runs.iter().any(|run| !run.2));
+    if background.is_some() {
+        dirty_counts(reduction, columns, dirty);
+    }
     let first = reduction.first;
-    for (pixel, foot) in out.iter_mut().zip(reduction.feet) {
+    let feet = reduction.feet;
+    let mut i = 0;
+    while let (Some(foot), Some(pixel)) = (feet.get(i), out.get_mut(i)) {
+        i += 1;
         if foot.first >= foot.end {
             *pixel = [0; 4];
             continue;
@@ -1840,6 +1901,20 @@ fn column_bytes<const N: usize>(
             && dirty.get(start) == dirty.get(stop)
         {
             *pixel = background;
+            if reduction.monotone {
+                // The pixels whose footprints end before the next column
+                // that is not background are background too.
+                let count = dirty.get(start).copied().unwrap_or(0);
+                let limit = dirty.partition_point(|&d| d <= count).saturating_sub(1);
+                let rest = feet.get(i..).unwrap_or(&[]);
+                let more = rest.partition_point(|foot| {
+                    foot.first < foot.end && index(foot.end) - first <= limit
+                });
+                if let Some(pixels) = out.get_mut(i..i + more) {
+                    pixels.fill(background);
+                }
+                i += more;
+            }
             continue;
         }
         let sum = match reduction.reduced {
@@ -1853,12 +1928,15 @@ fn column_bytes<const N: usize>(
             continue;
         };
         let factor = foot.normalization * reduction.scale;
-        *pixel = [
-            map.byte(sum[a] * factor),
-            map.byte(sum[b] * factor),
-            map.byte(sum[c] * factor),
-            255,
-        ];
+        let averages = [sum[a] * factor, sum[b] * factor, sum[c] * factor];
+        *pixel = map.bytes3(averages).unwrap_or_else(|| {
+            [
+                map.byte(averages[0]),
+                map.byte(averages[1]),
+                map.byte(averages[2]),
+                255,
+            ]
+        });
     }
 }
 
@@ -2309,17 +2387,9 @@ impl BitSpan<'_> {
     }
 }
 
-/// The bytes of a pixel whose footprint lies in background columns, unless
-/// the background's level is within 1e-6 of a rounding boundary or there is
-/// none; and in `dirty`, the count of columns before each that are not
-/// background.
-fn background_bytes(
-    reduction: &Reduction<'_>,
-    columns: usize,
-    dirty: &mut Vec<u32>,
-    (map, lanes): (Affine, [usize; 3]),
-) -> Option<[u8; 4]> {
-    let background = reduction.background?;
+/// In `dirty`, per source column of `reduction` and one past, the count
+/// of columns before it that are not background.
+fn dirty_counts(reduction: &Reduction<'_>, columns: usize, dirty: &mut Vec<u32>) {
     dirty.clear();
     dirty.resize(columns + 1, 0);
     let mut count = 0u32;
@@ -2338,8 +2408,16 @@ fn background_bytes(
             counts.fill(count);
         }
     }
-    // A footprint of background cells averages to the background code
-    // within a few roundings of its weights.
+}
+
+/// The bytes of a pixel whose footprint lies in background columns of
+/// codes `background`, under `map` for lanes of `lanes`, unless a level is
+/// within 1e-6 of a rounding boundary: such a footprint averages to the
+/// background codes within a few roundings of its weights.
+fn certified_background(
+    background: [u8; 3],
+    (map, lanes): (Affine, [usize; 3]),
+) -> Option<[u8; 4]> {
     let byte = |lane: usize| {
         let code = f64::from(background.get(lane).copied().unwrap_or(0));
         let level = code * map.level + 0.5 + TIE_GUARD;
@@ -2455,7 +2533,7 @@ fn sum_rows<const N: usize>(
     rows: &Footprint,
     (first, end): (usize, usize),
     (sums, cache): (&mut Vec<u32>, &mut RowCache),
-    runs: &[(usize, usize, bool)],
+    (runs, edges): (&[(usize, usize, bool)], Option<usize>),
 ) {
     let n = N;
     let (top, bottom) = (index(rows.first), index(rows.end) - 1);
@@ -2469,7 +2547,7 @@ fn sum_rows<const N: usize>(
         let constant: [u32; N] = std::array::from_fn(|k| {
             u32::from(clean.background.get(k).copied().unwrap_or(0)).wrapping_mul(count)
         });
-        for &(start, stop, _) in runs.iter().filter(|run| !run.2) {
+        for (start, stop) in clean_spans(runs, edges) {
             if let Some(sums) = sums.get_mut((start - first) * n..(stop - first) * n) {
                 for sum in sums.as_chunks_mut::<N>().0 {
                     *sum = constant;
@@ -2499,6 +2577,31 @@ fn sum_rows<const N: usize>(
             }
         }
     }
+}
+
+/// The background runs of `runs` that need their constant: whole, or with
+/// `edges`, only the samples within that many of a run's ends, all a
+/// footprint that is not all background reaches.
+fn clean_spans(
+    runs: &[(usize, usize, bool)],
+    edges: Option<usize>,
+) -> impl Iterator<Item = (usize, usize)> + '_ {
+    runs.iter()
+        .filter(|run| !run.2)
+        .flat_map(move |&(start, stop, _)| match edges {
+            Some(width) if stop - start > 2 * width => {
+                [(start, start + width), (stop - width, stop)]
+            }
+            _ => [(start, stop), (stop, stop)],
+        })
+}
+
+/// The most samples one of `feet` spans.
+fn widest(feet: &[Footprint]) -> usize {
+    feet.iter()
+        .map(|foot| index(foot.end.saturating_sub(foot.first)))
+        .max()
+        .unwrap_or(0)
 }
 
 /// What [`reduce_rows`] gives a column whose rows all hold `code`.
