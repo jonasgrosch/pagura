@@ -320,7 +320,10 @@ impl<B: Backend> Planner<'_, B> {
             Clipping::All => (None, region),
             Clipping::Shape(prepared) => (Some(prepared.key), prepared.bounds),
         };
-        let shape = match self.shape(scope, &spec.geometry)? {
+        self.backend.shapes_clip(clip);
+        let shape = self.shape(scope, &spec.geometry);
+        self.backend.shapes_clip(None);
+        let shape = match shape? {
             Shape::Nothing => return Ok(None),
             Shape::Everything => None,
             Shape::Prepared(prepared) => Some(prepared),
