@@ -500,6 +500,20 @@ fn convex_strokes_preserve_reflected_oracles_at_large_origins() {
     }
 }
 
+/// The stroke of `path` under `transform` as pieces when they are proven to
+/// tile, else as components, and whether they are proven.
+fn tiled(path: &Path, transform: Transform, stroke: &Stroke) -> (Path, Transform, bool) {
+    let (outline, pen, tiling) = crate::stroke::pieces(
+        path,
+        transform,
+        stroke,
+        &Limits::default(),
+        (crate::stroke::Tiling::Proven, crate::flatten::TOLERANCE),
+    )
+    .unwrap();
+    (outline, pen, tiling == crate::stroke::Tiling::Proven)
+}
+
 #[test]
 fn sixteen_sided_oracles_exercise_boundary_and_reversed_inner_fallback() {
     for shape in ["thin", "wide", "filled", "near-miter", "reversed-inner"] {
@@ -510,18 +524,8 @@ fn sixteen_sided_oracles_exercise_boundary_and_reversed_inner_fallback() {
             ))
             .unwrap();
             let (path, _, stroke, _) = vector_geometry(&text);
-            let (outline, _) = crate::stroke_outline(
-                &path,
-                Transform::IDENTITY,
-                &stroke.unwrap(),
-                &Limits::default(),
-            )
-            .unwrap();
-            assert_eq!(
-                outline.boundary.is_some(),
-                shape != "reversed-inner",
-                "{shape} {order}"
-            );
+            let (_, _, proven) = tiled(&path, Transform::IDENTITY, &stroke.unwrap());
+            assert_eq!(proven, shape != "reversed-inner", "{shape} {order}");
         }
     }
 }
@@ -591,13 +595,13 @@ fn boundary_strokes_cover_their_components_under_uniform_scales() {
         for scale in [0.75, 1.0, 1.25] {
             let transform = Transform::scale(scale, scale);
             let (outline, pen) = crate::stroke_outline(&path, transform, &stroke, &limits).unwrap();
-            assert!(outline.boundary.is_some());
+            let (boundary, _, proven) = tiled(&path, transform, &stroke);
+            assert!(proven);
             let components = components(&path, transform, &stroke);
             assert_eq!(outline.segments(), components.segments());
-            let boundary = outline.boundary.as_deref().unwrap();
             let window = window(12, 12);
             let fill = |path| fill(window, (path, pen, FillRule::NonZero), &[], &limits).unwrap();
-            assert_eq!(fill(boundary), fill(&components), "{phase} {scale}");
+            assert_eq!(fill(&boundary), fill(&components), "{phase} {scale}");
         }
     }
 }
@@ -632,23 +636,30 @@ fn boundary_strokes_clean_repeated_closure_and_exclude_dashes_and_affine_pens() 
     let path = repeated.finish();
     let stroke = stroke.unwrap();
     let limits = Limits::default();
-    let (boundary, _) =
-        crate::stroke_outline(&path, Transform::IDENTITY, &stroke, &limits).unwrap();
-    assert!(boundary.boundary.is_some());
-    for transform in [
-        Transform::scale(1.0, 2.0),
-        Transform {
-            c: 0.5,
-            ..Transform::IDENTITY
-        },
-    ] {
-        let (outline, _) = crate::stroke_outline(&path, transform, &stroke, &limits).unwrap();
-        assert!(outline.boundary.is_none());
-    }
+    assert!(tiled(&path, Transform::IDENTITY, &stroke).2);
+    // Affine pens and dashes take no convex boundary; their pieces still
+    // cover the components' set.
     let dashed = Stroke {
         dash_array: vec![1000.0, 1.0],
-        ..stroke
+        ..stroke.clone()
     };
-    let (outline, _) = crate::stroke_outline(&path, Transform::IDENTITY, &dashed, &limits).unwrap();
-    assert!(outline.boundary.is_none());
+    for (transform, stroke) in [
+        (Transform::scale(1.0, 2.0), &stroke),
+        (
+            Transform {
+                c: 0.5,
+                ..Transform::IDENTITY
+            },
+            &stroke,
+        ),
+        (Transform::IDENTITY, &dashed),
+    ] {
+        let (outline, pen) = crate::stroke_outline(&path, transform, stroke, &limits).unwrap();
+        let (pieces, _, _) = tiled(&path, transform, stroke);
+        let window = window(24, 24);
+        let fill = |path| fill(window, (path, pen, FillRule::NonZero), &[], &limits).unwrap();
+        let (a, b) = (fill(&pieces), fill(&outline));
+        let worst = a.iter().zip(&b).map(|(x, y)| x.abs_diff(*y)).max();
+        assert!(worst <= Some(1), "{transform:?}: {worst:?}");
+    }
 }
