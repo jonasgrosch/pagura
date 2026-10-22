@@ -32,7 +32,7 @@ pub struct GlyphEdges {
 
 #[derive(Debug)]
 enum Kind {
-    Exact(Exact),
+    Exact(Box<Exact>),
     Binned(binned::Prepared),
 }
 
@@ -269,13 +269,13 @@ impl GlyphEdges {
         }
         Ok(Self {
             retained,
-            kind: Kind::Exact(Exact {
+            kind: Kind::Exact(Box::new(Exact {
                 polygon,
                 points,
                 certified: certified_polygon,
                 curves,
                 relative,
-            }),
+            })),
         })
     }
 
@@ -311,6 +311,21 @@ impl GlyphEdges {
 
 /// Places `edges` at `origin`.
 pub(crate) fn place(
+    edges: &Arc<GlyphEdges>,
+    origin: Point,
+    origins: GlyphOrigins,
+    options: &Prep<'_>,
+) -> Result<Option<Shape>> {
+    let mut shape = placed(edges, origin, origins, options)?;
+    if let Some(shape) = &mut shape {
+        // In a run, its rows are kept apart and then merged.
+        let b = shape.bounds();
+        shape.add_work((b.height() as usize).saturating_mul(2 * b.width() as usize + 2) + 1);
+    }
+    Ok(shape)
+}
+
+fn placed(
     edges: &Arc<GlyphEdges>,
     origin: Point,
     origins: GlyphOrigins,

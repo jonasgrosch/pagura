@@ -14,9 +14,10 @@
 //! renders, change time, never pixels. None of this meets the one-level
 //! contract.
 
+use super::coverage::RowOut;
 use super::row::Sink;
 use super::shape::{Body, Shape};
-use super::{BandCoverage, ClipShape, DeviceRect, Prep};
+use super::{ClipShape, DeviceRect, Prep};
 use crate::{FillRule, Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Result};
 use std::collections::HashMap;
@@ -701,7 +702,7 @@ pub(crate) fn rasterize(
     placement: &Placement,
     shape: (&Shape, Option<&ClipShape>),
     rows: std::ops::Range<u32>,
-    (out, buffer): (&mut BandCoverage, &mut Vec<u8>),
+    (out, buffer): (&mut dyn RowOut, &mut Vec<u8>),
 ) -> usize {
     let width = placement.width;
     let mask = &placement.mask[..];
@@ -721,7 +722,11 @@ pub(crate) fn rasterize(
         out.push_row(y);
         if plain {
             let x0 = i64::from(bounds.x0).max(placement.x);
-            let x1 = i64::from(bounds.x1).min(placement.x.saturating_add(width as i64));
+            let x1 = i64::from(bounds.x1).min(
+                placement
+                    .x
+                    .saturating_add(i64::try_from(width).unwrap_or(i64::MAX)),
+            );
             if let (Ok(skip), Ok(end), Ok(at)) = (
                 usize::try_from(x0 - placement.x),
                 usize::try_from(x1 - placement.x),

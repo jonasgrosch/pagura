@@ -312,6 +312,33 @@ impl BandCoverage {
     }
 }
 
+/// Where a shape's rows go: a band's coverage, or a run's scratch.
+pub(crate) trait RowOut {
+    /// Starts row `y`; rows come top to bottom.
+    fn push_row(&mut self, y: u32);
+    /// Pixels `x .. x + len` of the current row have `value`.
+    fn put_run(&mut self, x: u32, len: u32, value: u8);
+    /// Pixels from `x` of the current row have `values`.
+    fn put_row(&mut self, x: u32, values: &[u8]);
+}
+
+impl RowOut for BandCoverage {
+    #[inline]
+    fn push_row(&mut self, y: u32) {
+        Self::push_row(self, y);
+    }
+
+    #[inline]
+    fn put_run(&mut self, x: u32, len: u32, value: u8) {
+        Self::put_run(self, x, len, value);
+    }
+
+    #[inline]
+    fn put_row(&mut self, x: u32, values: &[u8]) {
+        Self::put_row(self, x, values);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

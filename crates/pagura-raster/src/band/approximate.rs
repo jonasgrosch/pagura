@@ -12,6 +12,7 @@
 
 use super::DeviceRect;
 use super::clip::{ClipShape, fill_polygon};
+use super::coverage::RowOut;
 use super::edges::{self, Bounds, Line, Polygon, RowList, rows};
 use super::raster::Out;
 use super::row::Sink;
@@ -144,7 +145,7 @@ impl Scratch {
         cells: &Cells,
         shape: (&Shape, Option<&ClipShape>),
         (band, rows): (u32, std::ops::Range<u32>),
-        out: &mut BandCoverage,
+        out: &mut dyn RowOut,
     ) -> usize {
         let _ = band;
         let mut work = 0;
@@ -169,7 +170,7 @@ impl Scratch {
         (from, to): (usize, usize),
         (shape, late): (&Shape, Option<&ClipShape>),
         y: u32,
-        out: &mut BandCoverage,
+        out: &mut dyn RowOut,
     ) -> usize {
         let to = to.min(self.values.len());
         let rule = shape.rule;
@@ -240,7 +241,7 @@ pub(crate) struct Multiplied<'a> {
 
 impl<'a> Multiplied<'a> {
     pub(crate) fn new(
-        out: &'a mut BandCoverage,
+        out: &'a mut dyn RowOut,
         shape: &'a Shape,
         clip: Option<&'a ClipShape>,
         y: u32,

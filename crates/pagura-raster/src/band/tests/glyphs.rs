@@ -102,3 +102,76 @@ fn translated_placements_match_translated_vertices() {
         }
     }
 }
+
+/// A run's glyphs merged at once give each glyph's own bytes, in chunks
+/// when the run storage fills, within the glyphs' work.
+#[test]
+fn runs_merge_the_rows_of_glyphs_that_share_no_pixel() {
+    let limits = Limits::default();
+    let area = area(0, 0, 2000, 40, 16);
+    let outlines = outlines();
+    for origins in [GlyphOrigins::Exact, GlyphOrigins::Binned] {
+        let mut placed = Vec::new();
+        for (i, x) in (0..700).map(|i| (i, 1.3 + f64::from(i) * 2.71)) {
+            let outline = &outlines[i as usize % outlines.len()];
+            let linear = [0.0021, 0.0, 0.0, -0.0023];
+            let edges = Arc::new(match origins {
+                GlyphOrigins::Exact => GlyphEdges::new(outline, linear, &limits).unwrap(),
+                GlyphOrigins::Binned => GlyphEdges::binned(outline, linear, 1.0, &limits).unwrap(),
+            });
+            let origin = Point::new(x, 20.37 + f64::from(i % 3) * 7.0);
+            let prep = options(area, &limits, None);
+            if let Some(shape) = Shape::glyph_in(&edges, origin, origins, &prep).unwrap() {
+                placed.push(shape);
+            }
+        }
+        // Keep glyphs whose pixels another kept glyph does not reach.
+        let mut kept: Vec<&Shape> = Vec::new();
+        for shape in &placed {
+            let b = shape.bounds();
+            if kept.iter().all(|k| k.bounds().intersect(&b).is_empty()) {
+                kept.push(shape);
+            }
+        }
+        assert!(kept.len() > 300, "{}", kept.len());
+        let mut expected = vec![0_u8; 2000 * 40];
+        for shape in &kept {
+            for (e, v) in expected.iter_mut().zip(raster(&area, Some(shape), None).0) {
+                *e = (*e).max(v);
+            }
+        }
+        let mut bytes = Meter::new(usize::MAX, "bytes");
+        let mut raster = BandRasterizer::new(area, &mut bytes).unwrap();
+        let mut band = BandCoverage::with_capacity(Capacity::band(&area), &mut bytes).unwrap();
+        let mut got = vec![0_u8; 2000 * 40];
+        for b in area.bands() {
+            let mut rest = &kept[..];
+            while !rest.is_empty() {
+                let taken = raster.rasterize_run(rest, None, b, &mut band);
+                assert!(taken >= 1);
+                rest = &rest[taken..];
+                let mut last = None;
+                for row in band.rows() {
+                    assert!(last.is_none_or(|y| y < row.y));
+                    last = Some(row.y);
+                    let mut end = 0;
+                    for span in row.spans() {
+                        let (x, values) = match span {
+                            Span::Full { x, len } => (x, vec![255; len as usize]),
+                            Span::Partial { x, coverage } => (x, coverage.to_vec()),
+                        };
+                        assert!(x >= end, "spans in order");
+                        end = x + values.len() as u32;
+                        let start = row.y as usize * 2000 + x as usize;
+                        for (g, v) in got[start..start + values.len()].iter_mut().zip(values) {
+                            *g = (*g).max(v);
+                        }
+                    }
+                }
+            }
+        }
+        assert_eq!(got, expected);
+        let total: usize = kept.iter().map(|s| s.work()).sum();
+        assert!(raster.work_done() <= total);
+    }
+}
