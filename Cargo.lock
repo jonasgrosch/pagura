@@ -218,6 +218,7 @@ name = "pagura-raster"
 version = "0.1.0"
 dependencies = [
  "pagura-core",
+ "pagura-font",
  "pagura-testkit",
 ]
 

@@ -257,6 +257,30 @@ pub(crate) fn outline(
     outline_boundary(path, transform, rule, limits).map(Some)
 }
 
+/// The boundary outline of an empty filling region of `path`, classified
+/// now when it carries no retained certificate (8.5.3.3, 10.7.4); `None`
+/// for ordinary filling.
+pub(crate) fn classified_outline(
+    path: &Path,
+    transform: Transform,
+    rule: FillRule,
+    limits: &Limits,
+) -> Result<Option<Path>> {
+    if region(path, rule, limits)? != FillRegion::EmptyBoundary {
+        return Ok(None);
+    }
+    outline_boundary(path, transform, rule, limits).map(Some)
+}
+
+/// The retained fill certificate of `path` for `rule`, or one classified
+/// now.
+pub(crate) fn region(path: &Path, rule: FillRule, limits: &Limits) -> Result<FillRegion> {
+    match path.fill_region(rule) {
+        Some(region) => Ok(region),
+        None => classify(path, rule, limits, &mut 0),
+    }
+}
+
 pub(crate) fn outline_boundary(
     path: &Path,
     transform: Transform,

@@ -45,13 +45,28 @@ impl Run {
     }
 }
 
+/// How far the pieces of a stroke outline are known to tile.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum Tiling {
+    /// Pieces that meet without overlapping: the outline is its own
+    /// boundary.
+    Proven,
+    /// Pieces whose union is the stroke, meeting without overlapping at
+    /// every joint, which may overlap where the centreline comes back near
+    /// itself.
+    Unproven,
+    /// The components, which overlap inside every turn.
+    Components,
+}
+
 pub(crate) fn outline(
     path: &Path,
     transform: Transform,
     stroke: &Stroke,
     limits: &Limits,
 ) -> Result<(Path, Transform)> {
-    outline_with(path, transform, stroke, limits, false)
+    outline_with(path, transform, stroke, limits, Tiling::Components)
+        .map(|(path, transform, _)| (path, transform))
 }
 
 /// [`outline`] whose boundary, when every run admits one, is made of pieces
@@ -63,7 +78,20 @@ pub(crate) fn tiled_outline(
     stroke: &Stroke,
     limits: &Limits,
 ) -> Result<(Path, Transform)> {
-    outline_with(path, transform, stroke, limits, true)
+    outline_with(path, transform, stroke, limits, Tiling::Proven)
+        .map(|(path, transform, _)| (path, transform))
+}
+
+/// The outline as pieces where every run admits them at least as well as
+/// `accept`, else as components, and how far its pieces tile.
+pub(crate) fn pieces(
+    path: &Path,
+    transform: Transform,
+    stroke: &Stroke,
+    limits: &Limits,
+    accept: Tiling,
+) -> Result<(Path, Transform, Tiling)> {
+    outline_with(path, transform, stroke, limits, accept)
 }
 
 fn outline_with(
@@ -71,8 +99,8 @@ fn outline_with(
     transform: Transform,
     stroke: &Stroke,
     limits: &Limits,
-    tiled: bool,
-) -> Result<(Path, Transform)> {
+    accept: Tiling,
+) -> Result<(Path, Transform, Tiling)> {
     validate(stroke, limits)?;
     // Dash distances belong to user space even for a device-width hairline
     // (8.4.3.6). Flatten with a device-space error bound, split there, and only
@@ -131,26 +159,39 @@ fn outline_with(
         }
     }
     // Pieces replace the components when every run admits them; they cover
-    // the same set, so they serve as the outline and as its boundary.
-    if tiled {
+    // the same set, so proven ones serve as the outline and as its boundary.
+    if accept < Tiling::Components {
         let mut tiles = PathBuilder::new();
-        let mut complete = tiling::apart(runs.iter().map(|(run, _)| run), radius, stroke)?;
+        let mut tiling = if tiling::apart(runs.iter().map(|(run, _)| run), radius, stroke)? {
+            Tiling::Proven
+        } else {
+            Tiling::Unproven
+        };
         for (run, boundary) in &runs {
-            if !complete {
+            if tiling > accept {
                 break;
             }
-            complete = match boundary {
+            let built = match boundary {
                 Some(contours) => {
                     convex::append(&mut tiles, contours.clone(), limits)?;
-                    true
+                    Tiling::Proven
                 }
-                None => tiling::append(&mut tiles, run, radius, tolerance, stroke, limits)?,
+                None => {
+                    if tiling::append(&mut tiles, run, radius, tolerance, stroke, limits)? {
+                        Tiling::Proven
+                    } else {
+                        Tiling::Unproven
+                    }
+                }
             };
+            tiling = tiling.max(built);
         }
-        if complete {
+        if tiling <= accept {
             let mut outline = tiles.finish();
-            outline.boundary = Some(Arc::new(outline.clone()));
-            return Ok((outline, pen_transform));
+            if tiling == Tiling::Proven {
+                outline.boundary = Some(Arc::new(outline.clone()));
+            }
+            return Ok((outline, pen_transform, tiling));
         }
     }
     let mut components = PathBuilder::new();
@@ -168,7 +209,7 @@ fn outline_with(
     }
     let mut outline = components.finish();
     outline.boundary = boundaries.map(|mut boundaries| Arc::new(boundaries.finish()));
-    Ok((outline, pen_transform))
+    Ok((outline, pen_transform, Tiling::Components))
 }
 
 pub(crate) fn validate(stroke: &Stroke, limits: &Limits) -> Result<()> {
