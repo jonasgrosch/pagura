@@ -120,7 +120,7 @@ impl Device for Counter {
 
     fn glyphs(&mut self, run: &GlyphRun<'_>) -> Result<()> {
         self.glyphs += run.glyphs.len();
-        self.text += run.glyphs.iter().filter(|g| g.text.is_some()).count();
+        self.text += run.text.len();
         Ok(())
     }
 

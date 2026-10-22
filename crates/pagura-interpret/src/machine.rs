@@ -61,9 +61,8 @@ pub(crate) struct Session<'a> {
     /// The space each device family (`g`, `rg`, `k`) last resolved to, and
     /// the serial of the content sequence it was resolved in.
     pub(crate) device_spaces: [Option<(u64, Arc<ColorSpace>)>; 3],
-    /// Buffers of the string being shown: decoded and placed glyphs.
-    pub(crate) decoded: Vec<pagura_text::Glyph>,
-    pub(crate) placed: Vec<crate::device::Glyph>,
+    /// Buffers of the string being shown.
+    pub(crate) strings: text::Strings,
     /// The composite state of implicit groups: opaque and Normal.
     pub(crate) opaque: Arc<Composite>,
     /// The next soft mask's number.
@@ -211,8 +210,7 @@ impl<'a, 'd, D: Device + ?Sized> Machine<'a, 'd, D> {
                 name_work: 0,
                 solids: state::SolidPaints::default(),
                 device_spaces: [None, None, None],
-                decoded: Vec::new(),
-                placed: Vec::new(),
+                strings: text::Strings::default(),
                 contents: crate::hash::FastMap::default(),
                 content_bytes: 0,
                 store: inputs.store,

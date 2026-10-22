@@ -186,8 +186,6 @@ pub struct Glyph {
     /// font has outlines (not for Type 3 fonts, whose glyph procedures are
     /// interpreted into ordinary marks).
     pub outline: Option<Arc<Path>>,
-    /// Text for extraction, when the device needs text.
-    pub text: Option<Box<pagura_extract::PositionedGlyph>>,
     /// The string operand that showed it.
     pub position: Position,
 }
@@ -212,6 +210,10 @@ pub struct GlyphRun<'a> {
     pub font: &'a FontInfo,
     /// The glyphs in show order.
     pub glyphs: &'a [Glyph],
+    /// The glyphs' records for extraction, in show order, when the device
+    /// needs text and the run is page text; empty otherwise. The text
+    /// device fills in their font, marked content and string number.
+    pub text: &'a [pagura_extract::PositionedGlyph],
     /// The rendering mode.
     pub mode: pagura_extract::TextRenderingMode,
     /// How the glyphs are painted; empty for invisible and clip-only text.

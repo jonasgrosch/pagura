@@ -173,10 +173,8 @@ impl Device for TextDevice {
             .show
             .checked_add(1)
             .ok_or(Error::limit("text string count exceeded"))?;
-        for glyph in run.glyphs {
-            if let Some(text) = &glyph.text {
-                self.glyph(text, run.font.key)?;
-            }
+        for text in run.text {
+            self.glyph(text, run.font.key)?;
         }
         Ok(())
     }

@@ -64,7 +64,6 @@ fn glyph(outline: &Arc<Path>, x: u8) -> Glyph {
         },
         transform: Transform::new(10.0, 0.0, 0.0, 10.0, f64::from(x), 0.0),
         outline: Some(Arc::clone(outline)),
-        text: None,
         position: Position::Buffer(usize::from(x)),
     }
 }
@@ -80,6 +79,7 @@ fn run<'a>(
     GlyphRun {
         font,
         glyphs,
+        text: &[],
         mode,
         paint: GlyphPaint {
             fill: mode.fills().then_some(paint),
