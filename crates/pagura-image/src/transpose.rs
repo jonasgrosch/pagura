@@ -2,7 +2,7 @@
 //! quarter-turned placement reads its source rows contiguously.
 
 use crate::deferred::{Packed, Planar};
-use crate::{DecodedImage, ImageAlpha, MaskKind, Reduction, Samples};
+use crate::{DecodedImage, ImageAlpha, MaskKind, Samples};
 use pagura_core::{Error, Limits, Result};
 
 /// The side of the square tiles values are exchanged in, which keeps both
@@ -11,9 +11,8 @@ const TILE: usize = 16;
 
 impl DecodedImage {
     /// The image with rows and columns exchanged: sample (`x`, `y`) of the
-    /// result is sample (`y`, `x`) of `self`, with every component, the
-    /// embedded opacity and the drawn-size reduction exchanged alike. Its
-    /// unit square spans its extent with the axes exchanged.
+    /// result is sample (`y`, `x`) of `self`, with every component and the
+    /// embedded opacity exchanged alike.
     ///
     /// # Errors
     ///
@@ -44,11 +43,6 @@ impl DecodedImage {
             decode: self.decode.clone(),
             mask,
             interpolate: self.interpolate,
-            reduction: self.reduction.map(|reduction| Reduction {
-                cells: reduction.cells,
-                width: reduction.height,
-                height: reduction.width,
-            }),
         })
     }
 }
@@ -261,7 +255,7 @@ fn planar_transposed(planar: &Planar, limits: &Limits) -> Result<Planar> {
         let rows = plane.len().checked_div(pitch).unwrap_or(0);
         planes[c] = values_transposed(plane, (pitch, rows), 1, limits)?;
         geometry[c] = [v, h, rows];
-        let (stride, block_rows) = (pitch / planar.block, rows / planar.block);
+        let (stride, block_rows) = (pitch / 8, rows / 8);
         let flags = &planar.dirty[c];
         let mut exchanged = storage::<u8>(flags.len(), limits)?;
         for row in 0..block_rows {
@@ -284,7 +278,6 @@ fn planar_transposed(planar: &Planar, limits: &Limits) -> Result<Planar> {
         planes,
         dirty,
         backgrounds: planar.backgrounds,
-        block: planar.block,
     })
 }
 
@@ -303,7 +296,6 @@ mod tests {
             decode: None,
             mask: MaskKind::None,
             interpolate: false,
-            reduction: None,
         }
     }
 

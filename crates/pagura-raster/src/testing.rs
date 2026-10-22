@@ -2,7 +2,7 @@
 
 use crate::{
     Adjustment, Area, BandCoverage, BandRasterizer, Capacity, ClipShape, DeviceRect, FillRule,
-    MarkCoverage, Path, Precision, Shape, ShapeOptions, Span, Stroke, Transform,
+    MarkCoverage, Path, Shape, ShapeOptions, Span, Stroke, Transform,
 };
 use pagura_core::{Limits, Meter, Result};
 
@@ -67,7 +67,6 @@ fn options(region: DeviceRect, limits: &Limits) -> ShapeOptions<'_> {
             region,
             band_height: 16,
         },
-        precision: Precision::Exact,
         limits,
     }
 }

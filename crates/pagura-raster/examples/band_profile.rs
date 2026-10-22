@@ -14,8 +14,7 @@
 use pagura_core::{Limits, Meter};
 use pagura_raster::{
     Adjustment, Area, BandCoverage, BandRasterizer, DeviceRect, FillRule, LineCap, LineJoin,
-    MarkCoverage, Path, PathBuilder, Point, Precision, Shape, ShapeOptions, Span, Stroke,
-    Transform,
+    MarkCoverage, Path, PathBuilder, Point, Shape, ShapeOptions, Span, Stroke, Transform,
 };
 use std::error::Error;
 use std::time::{Duration, Instant};
@@ -196,7 +195,6 @@ fn rasterize(marks: &[Mark], scale: f64, area: &Area) -> Result<u64, Box<dyn Err
     let mut band = BandCoverage::with_capacity(pagura_raster::Capacity::band(area), &mut bytes)?;
     let options = ShapeOptions {
         area: *area,
-        precision: Precision::Exact,
         limits: &limits,
     };
     let device = Transform::new(scale, 0.0, 0.0, -scale, 0.0, f64::from(area.region.y1));

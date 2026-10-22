@@ -11,7 +11,6 @@
 
 mod adjust;
 mod band;
-mod bounds;
 mod empty_fill;
 pub mod features;
 mod flatten;
@@ -23,8 +22,7 @@ mod stroke;
 
 pub use band::{
     Adjustment, Area, BandCoverage, BandRasterizer, Capacity, ClipShape, CoverageRow, DeviceRect,
-    GlyphEdges, GlyphMask, GlyphMasks, GlyphOrigins, MarkCoverage, Precision, RunGlyph, Shape,
-    ShapeOptions, Span,
+    GlyphEdges, MarkCoverage, Shape, ShapeOptions, Span,
 };
 pub use empty_fill::empty_fill_outline;
 pub use geometry::{Point, Transform};

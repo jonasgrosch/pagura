@@ -1,7 +1,7 @@
 //! Rendering against independent analytic oracles.
 
 use crate::support::{self, open, ppm};
-use pagura::{Document, ErrorKind, FastParams, OpenOptions, RenderOptions, Tile};
+use pagura::{Document, ErrorKind, OpenOptions, RenderOptions, Tile};
 use pagura_testkit::{Json, Manifest, assert_bytes_eq, fixture};
 
 /// Every classic case with an image oracle renders to it, exactly or within
@@ -100,39 +100,4 @@ fn pixel_budget_and_invalid_scale_are_enforced() {
     assert_eq!(error.kind, ErrorKind::Limit);
     let error = pagura::render_page(&document, page, &RenderOptions::from_dpi(0.0)).unwrap_err();
     assert_eq!(error.kind, ErrorKind::InvalidArgument);
-}
-
-/// Each fast parameter switches alone and all together; a rectangle on
-/// whole pixels renders exactly under every one of them.
-#[test]
-fn every_fast_parameter_renders_alone_and_together() {
-    let document = open(fixture("classic", "rectangle.pdf")).unwrap();
-    let page = document.page(0).unwrap();
-    let exact = pagura::render_page(&document, page, &RenderOptions::default()).unwrap();
-    let alone = [
-        FastParams {
-            glyph_origin_bins: true,
-            ..FastParams::EXACT
-        },
-        FastParams {
-            approximate_coverage: true,
-            ..FastParams::EXACT
-        },
-        FastParams {
-            byte_storage: true,
-            ..FastParams::EXACT
-        },
-        FastParams {
-            reduced_image_decode: true,
-            ..FastParams::EXACT
-        },
-    ];
-    for fast in alone.into_iter().chain([FastParams::COMPETITIVE]) {
-        let options = RenderOptions {
-            fast,
-            ..RenderOptions::default()
-        };
-        let pixmap = pagura::render_page(&document, page, &options).unwrap();
-        assert_eq!(pixmap.data(), exact.data(), "{fast:?}");
-    }
 }

@@ -24,7 +24,7 @@ use pagura_interpret::{
     GroupId, GroupRole, MaskId, MaskKind, Node, NodeId, Paint, Scene, TilingColors, TilingPaint,
     TilingSpacing,
 };
-use pagura_raster::{Area, DeviceRect, Path, Precision, Transform};
+use pagura_raster::{Area, DeviceRect, Path, Transform};
 use std::sync::Arc;
 
 /// A prepared solid paint's identity: paint, state, layout and how the
@@ -42,7 +42,6 @@ pub(crate) struct Planner<'s, B: Backend> {
     pub(crate) limits: &'s Limits,
     pub(crate) backend: B,
     pub(crate) area: Area,
-    pub(crate) precision: Precision,
     pub(crate) storage: Storage,
     pub(crate) simulate: bool,
     /// Spot colorants of the page target.
@@ -161,7 +160,6 @@ impl<'s, B: Backend> Planner<'s, B> {
                 page,
                 simulate: separations.simulate,
                 policy: request.overprint == crate::request::OverprintMode::Simulate,
-                bytes: request.fast.byte_storage,
                 depth: limits.depth,
                 transform: request.transform,
                 pixels: request.page,
@@ -173,11 +171,6 @@ impl<'s, B: Backend> Planner<'s, B> {
             .iter()
             .map(|(name, _)| name.clone())
             .collect();
-        let precision = if request.fast.approximate_coverage {
-            Precision::Approximate
-        } else {
-            Precision::Exact
-        };
         let mut parts = Parts::default();
         parts.groups.push(GroupPlan {
             bounds: area.region,
@@ -195,7 +188,6 @@ impl<'s, B: Backend> Planner<'s, B> {
             limits,
             backend,
             area,
-            precision,
             storage,
             simulate: separations.simulate,
             spots,
@@ -1048,10 +1040,6 @@ fn own(parts: &Parts, group: u32, rows: usize) -> Tops {
             wide: pixels.saturating_mul(plan.layout.stride()),
             ..Tops::default()
         },
-        Format::U8 => Tops {
-            bytes: pixels,
-            ..Tops::default()
-        },
         Format::F32 | Format::N16 => Tops {
             levels: pixels,
             ..Tops::default()
@@ -1063,7 +1051,6 @@ fn add(a: Tops, b: Tops) -> Tops {
     Tops {
         wide: a.wide.saturating_add(b.wide),
         levels: a.levels.saturating_add(b.levels),
-        bytes: a.bytes.saturating_add(b.bytes),
     }
 }
 
@@ -1071,6 +1058,5 @@ fn max(a: Tops, b: Tops) -> Tops {
     Tops {
         wide: a.wide.max(b.wide),
         levels: a.levels.max(b.levels),
-        bytes: a.bytes.max(b.bytes),
     }
 }

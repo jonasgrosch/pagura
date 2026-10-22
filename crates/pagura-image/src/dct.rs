@@ -42,11 +42,6 @@ pub struct DctImage {
     pub components: u8,
     /// Interleaved 8-bit samples after any colour transform, top row first.
     pub samples: Vec<u8>,
-    /// Samples kept per eight-sample block axis: 8, or fewer when
-    /// [`decode_cells`] reconstructed an eight-bit frame near its drawn size.
-    /// `width` and `height` then count cells, the last of which may extend
-    /// past the frame edge into its padding.
-    pub cells: u8,
 }
 
 pub(crate) use deferred::{Deferred, Native, decode_deferred};
@@ -54,8 +49,6 @@ pub(crate) use deferred::{Deferred, Native, decode_deferred};
 struct Decoder {
     /// Whether baseline frames decode into native planes.
     native: bool,
-    /// Samples kept per block axis of an eight-bit sequential frame.
-    cells: usize,
     frame: Option<Frame>,
     quant: [Option<[u16; 64]>; 4],
     huffman: [Option<Huffman>; 8],
@@ -102,53 +95,10 @@ pub fn decode_with_diagnostics(
     limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<DctImage> {
-    decode_cells(data, color_transform, limits, diagnostics, 8)
-}
-
-/// The number of cells along an axis of `length` samples that keeps `cells`
-/// per eight: whole blocks plus the cells that a partial block touches.
-pub fn scaled_length(length: u32, cells: u8) -> u32 {
-    transform::scaled(length, usize::from(cells))
-}
-
-/// Decodes as [`decode_with_diagnostics`], keeping `cells` samples per
-/// eight-sample block axis of an eight-bit frame: 1, 2, 3, 4, 6 or 8.
-///
-/// This is an approximate path for images drawn smaller than their samples
-/// (ADR 0004). Each cell is the area mean of its block's samples: for up to
-/// four cells, the mean of the unclamped T.81 A.3.3 samples from an
-/// integrated cosine basis, rounded and clamped once; for six, the mean of
-/// the exact block's samples where a block may overshoot the sample range.
-/// Every coefficient is consumed and validated as in a full decode, and
-/// storage only shrinks. Chroma keeps its sampling ratio to luma, and
-/// Table 13 conversion is unchanged. Twelve-bit frames keep all eight
-/// samples; [`DctImage::cells`] reports the result.
-///
-/// # Errors
-/// As [`decode_with_diagnostics`], plus `InvalidArgument` for another count.
-pub fn decode_cells(
-    data: &[u8],
-    color_transform: Option<i64>,
-    limits: &Limits,
-    diagnostics: &mut Diagnostics,
-    cells: u8,
-) -> Result<DctImage> {
-    if !matches!(cells, 1 | 2 | 3 | 4 | 6 | 8) {
-        return Err(Error::invalid_argument(
-            "JPEG cells per block axis must be 1, 2, 3, 4, 6 or 8",
-        ));
-    }
     if data.len() > limits.stream_bytes {
         return Err(Error::limit("JPEG input budget exceeded").at(Position::Buffer(0)));
     }
-    decode_inner(
-        data,
-        color_transform,
-        limits,
-        diagnostics,
-        usize::from(cells),
-    )
-    .map_err(|e| e.at(Position::Buffer(0)))
+    decode_inner(data, color_transform, limits, diagnostics).map_err(|e| e.at(Position::Buffer(0)))
 }
 
 fn decode_inner(
@@ -156,9 +106,8 @@ fn decode_inner(
     color_transform: Option<i64>,
     limits: &Limits,
     diagnostics: &mut Diagnostics,
-    cells: usize,
 ) -> Result<DctImage> {
-    let mut decoder = run(data, color_transform, limits, diagnostics, (cells, None))?;
+    let mut decoder = run(data, color_transform, limits, diagnostics, None)?;
     let mut frame = decoder
         .frame
         .take()
@@ -166,22 +115,20 @@ fn decode_inner(
     transform::output(&mut frame, decoder.adobe, color_transform, limits)
 }
 
-/// Parses and decodes every segment through EOI, keeping `cells` samples
-/// per block axis. With `native`, baseline frames decode into native planes
-/// (see [`deferred`]) as its options say.
+/// Parses and decodes every segment through EOI. With `native`, baseline
+/// frames decode into native planes (see [`deferred`]) as its options say.
 fn run(
     data: &[u8],
     color_transform: Option<i64>,
     limits: &Limits,
     diagnostics: &mut Diagnostics,
-    (cells, native): (usize, Option<Native>),
+    native: Option<Native>,
 ) -> Result<Decoder> {
     if data.get(..2) != Some(&[255, 216]) {
         return Err(Error::syntax("missing JPEG SOI"));
     }
     let mut decoder = Decoder {
         native: native.is_some(),
-        cells,
         frame: None,
         quant: [None; 4],
         huffman: std::array::from_fn(|_| None),
@@ -211,7 +158,7 @@ fn run(
                 if decoder.frame.is_some() {
                     return Err(Error::syntax("multiple JPEG frames").at(Position::Buffer(at)));
                 }
-                let mut frame = Frame::parse(payload, marker, limits, decoder.cells)?;
+                let mut frame = Frame::parse(payload, marker, limits)?;
                 if let Some(native) = native {
                     deferred::prepare(
                         &mut frame,

@@ -8,7 +8,6 @@ use crate::band::RASTER_WORK;
 use crate::flatten::{TOLERANCE, bounded, flatten};
 use crate::{Path, PathBuilder, Point, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
-use std::sync::Arc;
 
 mod convex;
 mod tiling;
@@ -211,8 +210,8 @@ fn outline_with(
     } else {
         device_tolerance / stretch
     };
-    // Boundaries replace components only for undashed miter strokes whose pen
-    // maps circles to circles.
+    // A closed run's convex boundaries serve as its pieces only for undashed
+    // miter strokes whose pen maps circles to circles.
     let boundaries_allowed = stroke.dash_array.is_empty()
         && stroke.join == LineJoin::Miter
         && ((transform.a == transform.d && transform.b == -transform.c)
@@ -248,7 +247,7 @@ fn outline_with(
         }
     }
     // Pieces replace the components when every run admits them; they cover
-    // the same set, so proven ones serve as the outline and as its boundary.
+    // the same set.
     if accept < Tiling::Components {
         let mut tiles = PathBuilder::new();
         let mut tiling = if tiling::apart(runs.iter().map(|(run, _)| run), radius, stroke)? {
@@ -276,29 +275,14 @@ fn outline_with(
             tiling = tiling.max(built);
         }
         if tiling <= accept {
-            let mut outline = tiles.finish();
-            if tiling == Tiling::Proven {
-                outline.boundary = Some(Arc::new(outline.clone()));
-            }
-            return Ok((outline, pen_transform, tiling));
+            return Ok((tiles.finish(), pen_transform, tiling));
         }
     }
     let mut components = PathBuilder::new();
-    // Begins at the first proven boundary as a copy of the components so far;
-    // each later run adds its boundary or its components.
-    let mut boundaries: Option<PathBuilder> = None;
-    for (run, boundary) in runs {
-        if let Some(contours) = boundary {
-            let out = boundaries.get_or_insert_with(|| components.clone());
-            convex::append(out, contours, limits)?;
-        } else if let Some(out) = &mut boundaries {
-            draw(out, &run, radius, tolerance, stroke, limits)?;
-        }
-        draw(&mut components, &run, radius, tolerance, stroke, limits)?;
+    for (run, _) in &runs {
+        draw(&mut components, run, radius, tolerance, stroke, limits)?;
     }
-    let mut outline = components.finish();
-    outline.boundary = boundaries.map(|mut boundaries| Arc::new(boundaries.finish()));
-    Ok((outline, pen_transform, Tiling::Components))
+    Ok((components.finish(), pen_transform, Tiling::Components))
 }
 
 pub(crate) fn validate(stroke: &Stroke, limits: &Limits) -> Result<()> {

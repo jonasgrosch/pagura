@@ -74,22 +74,6 @@ pub(crate) fn flatten_into(
     result: &mut Vec<Polyline>,
     pending: &mut CurveStack,
 ) -> Result<usize> {
-    flatten_into_at_tolerance(path, transform, limits, result, pending, TOLERANCE)
-}
-
-pub(crate) fn flatten_into_at_tolerance(
-    path: &Path,
-    transform: Transform,
-    limits: &Limits,
-    result: &mut Vec<Polyline>,
-    pending: &mut CurveStack,
-    tolerance: f64,
-) -> Result<usize> {
-    if !tolerance.is_finite() || tolerance <= 0.0 || tolerance > 0.25 {
-        return Err(Error::invalid_argument(
-            "flattening tolerance outside (0, 0.25]",
-        ));
-    }
     pending.clear();
     validate(path, transform, limits)?;
     let mut contour = 0;
@@ -135,14 +119,13 @@ pub(crate) fn flatten_into_at_tolerance(
                     bounded(point)?;
                     bounded(point * transform)?;
                 }
-                curve_at_tolerance(
+                curve(
                     [position, c1, c2, end],
                     transform,
                     pending,
                     &mut current.points,
                     &mut count,
                     limits,
-                    tolerance,
                 )?;
                 position = end;
             }
@@ -179,7 +162,6 @@ fn append(points: &mut Vec<Point>, point: Point, count: &mut usize, limits: &Lim
     Ok(())
 }
 
-#[cfg(test)]
 fn curve(
     points: [Point; 4],
     transform: Transform,
@@ -188,18 +170,6 @@ fn curve(
     count: &mut usize,
     limits: &Limits,
 ) -> Result<()> {
-    curve_at_tolerance(points, transform, pending, out, count, limits, TOLERANCE)
-}
-
-fn curve_at_tolerance(
-    points: [Point; 4],
-    transform: Transform,
-    pending: &mut CurveStack,
-    out: &mut Vec<Point>,
-    count: &mut usize,
-    limits: &Limits,
-    tolerance: f64,
-) -> Result<()> {
     let mut points = points;
     let mut depth = 0;
     loop {
@@ -207,7 +177,7 @@ fn curve_at_tolerance(
         // A Bézier lies in its control hull (ISO 32000-2, 8.5.2.2).
         // The tolerance neighbourhood of a segment is convex, so admitting
         // both inner controls certifies the whole curve, including cusps.
-        if close(b, a, d, tolerance) && close(c, a, d, tolerance) {
+        if close(b, a, d, TOLERANCE) && close(c, a, d, TOLERANCE) {
             append(out, points[3], count, limits)?;
             let Some(next) = pending.pop() else {
                 return Ok(());

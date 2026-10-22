@@ -13,10 +13,9 @@
 //!   their domains.
 //!
 //! A page is recorded once into a device-independent [`Scene`] and rendered
-//! from it by region at any resolution (ADR 0034). Rendering is exact by
-//! default, every pixel within one level of its exact result (ADR 0004);
-//! [`RenderOptions::fast`] switches the named [`FastParams`]. Text extraction
-//! runs the same interpreter without painting.
+//! from it by region at any resolution (ADR 0034), every pixel within one
+//! level of its exact result (ADR 0004). Text extraction runs the same
+//! interpreter without painting.
 //!
 //! The free functions ([`record_page`], [`text_page`], [`render_page`],
 //! [`render_tile`], [`appearance_text`], [`prepare_form`]) use the
@@ -103,8 +102,7 @@ pub use pagura_document::{
 };
 pub use pagura_raster::{Pixmap, Point, Rgba8};
 pub use pagura_render::{
-    Completion, FastParams, OverprintPreview, RenderContext, RenderOptions, Scene, Tile,
-    device_size,
+    Completion, OverprintPreview, RenderContext, RenderOptions, Scene, Tile, device_size,
 };
 pub use pagura_write::{Builder, NewObject};
 pub use text::{SearchOptions, TextMatch, TextPage};

@@ -4,8 +4,9 @@ Pagura is in **milestones M3–M5** (`docs/ROADMAP.md`). It opens real-world
 files reliably and paints vector graphics, text and images; colour and
 transparency are partly done, and the remaining gaps fail explicitly with
 stable tags. The rendering core is one interpreter and one renderer (ADR
-0034); its performance phase against the competitive goals of ADR 0004 is
-the current focus. No claim of conformance or speed superiority is made. Requirement registries
+0034), exact throughout; its performance phase, exact rendering faster than
+hayro per category, is the current focus. No claim of conformance or speed
+superiority is made. Requirement registries
 whose `scope` does not say so have not yet been verified against the
 primary standards.
 
@@ -18,7 +19,7 @@ primary standards.
 | Fonts | `pagura-font`: TrueType and OpenType (glyf and CFF/CFF2 default instance), bare and CID-keyed CFF, Type 1 (PFA, PFB, eexec); outlines, advances, matrices, names, built-in encodings, cmap formats 0, 4, 6, 12 | Expert CFF charsets, FDSelect 4, CFF2 Private DICT blends and variations, other cmap formats, hinting |
 | Text | `pagura-text`: simple, Type 3 and composite fonts; standard encodings and Differences; widths, CID metrics, embedded CMaps with usecmap, CIDToGIDMap, ToUnicode; non-embedded fonts through bundled substitutes via a `Provider` (ADR 0009): metric-compatible Latin outlines, FoxitSymbol and FoxitDingbats, and, with the opt-in `cjk-fonts` feature, Source Han Sans for the four CJK collections; the predefined CJK CMaps; `pagura licenses` lists the notices; fonts and outlines shared across a document's pages by `RenderContext`; TrueType glyph selection per 9.6.5.4 with documented reader fallbacks; per-font retained-memory estimates | Vertical writing with substituted CID fonts (`font.cid-substitute-vertical`); non-embedded fonts with unknown symbolic encodings or Identity-ordered collections; Type 1 programs that need PostScript |
 | Images | `pagura-image`: samples at 1–16 bits, decode arrays, mask metadata, inline images; JPEG (baseline, extended sequential and progressive, Huffman/QM arithmetic, 8/12-bit precision, CMYK/YCCK); CCITT G3/G4; JBIG2 generic, refinement, symbol, text, halftone and Huffman-coded regions; JPEG 2000 Part 1 with precincts, progression changes, code-block modes, ROI and partial-quality reconstruction; reported repairs for damaged data and malformed parameters | JPEG lossless/hierarchical processes; JBIG2 extended templates; JPEG 2000 colour specifications and sample layouts outside the supported set |
-| Rendering | One interpreter recording a device-independent scene per page; one renderer that prepares and reserves it per region and executes it in bands (ADR 0034); the band rasterizer's exact-area coverage; per-buffer storage formats (N16, F32, F64); four fast parameters inside the same kernels; strokes with caps, joins, dashes and stroke adjustment; geometric clipping; Device, Default, Indexed, ICC (matrix/TRC and LUT profiles), CalGray, CalRGB, Lab, Separation and DeviceN colour; PDF functions with linear and cubic sampled interpolation and transfer functions; form XObjects; text in every render mode, Type 3 glyphs and bundled substitutes; images with masks, soft masks, Decode, Interpolate and separable minification; tiling patterns and mesh shadings; transparency groups, soft masks and blend modes; CMYK and spot overprint display simulation; optional content with View usage; annotation appearances; crop, rotation, UserUnit; tiles; reported recovery of common content faults | Non-RGB group colour spaces (`transparency.group-colorspace`); fractional, pattern and per-colourant transfer regions (`transparency.transfer`); nonempty widgets and rotated widget borders without explicit appearances |
+| Rendering | One interpreter recording a device-independent scene per page; one renderer that prepares and reserves it per region and executes it in bands (ADR 0034); the band rasterizer's exact-area coverage; per-buffer storage formats (N16, F32, F64); strokes with caps, joins, dashes and stroke adjustment; geometric clipping; Device, Default, Indexed, ICC (matrix/TRC and LUT profiles), CalGray, CalRGB, Lab, Separation and DeviceN colour; PDF functions with linear and cubic sampled interpolation and transfer functions; form XObjects; text in every render mode, Type 3 glyphs and bundled substitutes; images with masks, soft masks, Decode, Interpolate and separable minification; tiling patterns and mesh shadings; transparency groups, soft masks and blend modes; CMYK and spot overprint display simulation; optional content with View usage; annotation appearances; crop, rotation, UserUnit; tiles; reported recovery of common content faults | Non-RGB group colour spaces (`transparency.group-colorspace`); fractional, pattern and per-colourant transfer regions (`transparency.transfer`); nonempty widgets and rotated widget borders without explicit appearances |
 | Reading | Positioned text extraction from the content interpreter, with words, lines, reading order, ActualText/Alt/ReversedChars (14.9.4) and search with highlight quads (`pagura text`, `pagura find`); a separate logical view for tagged pages (14.7–14.8: structure order, role maps, artifacts, structure ActualText/Alt, linked to the page's glyphs) that never changes page search or selection; viewer search, selection, copy, links and outlines (protocol 1.4); navigation: name and number trees, every destination type, named destinations, outlines, link annotations, inert actions (never followed or executed) and page labels; a form field model (AcroForm 12.7: field tree, types, inherited values, widgets, inert field actions; XFA detected, not interpreted); in-memory filling of text, check box, radio and choice fields, with their widget appearances prepared as data (12.7.4.3: DA and DR, auto-size, quadding, comb, multiline, MK borders and backgrounds) | The logical view in the viewer's accessibility tree; structure namespaces (`text.structure-namespace`); bidirectional text; rendering and saving filled forms; XFA (`form.xfa`), rich text (`form.rich-text`) and other field types (`form.field-type`); appearances with oblique text matrices or negative font sizes (`appearance.text-matrix`), other DA operators (`appearance.default-appearance`), fonts without a reversible simple encoding (`appearance.font-encoding`), rounded, beveled or inset borders (`appearance.border-style`), rotated widgets (`appearance.widget-rotation`) and AP updates with inline images, several Tx sections or crossed scopes (`appearance.update`); accessibility; signature validation (ADR 0015) (M6) |
 | Signatures | Read-only fields, source-bound ByteRange and revision coverage; `pagura::signatures` verifies CMS integrity for adbe.pkcs7.detached, ETSI.CAdES.detached and ETSI.RFC3161: SHA-1 (reported weak), SHA-224/256/384/512, RSA v1.5/PSS and ECDSA P-256/P-384/P-521, signed attributes, signer-certificate identifiers, ESS v1/v2 binding, CMSAlgorithmProtection and timestamp imprints/token signatures; isolated signature errors and malformed certificate schemas; Perms/DocMDP certification link | Host trust anchors/path validation, revocation, modification classification, TSA authorization and clock trust, complete PAdES attribute/policy validation; normalized issuer-name matching; unreadable form values can still prevent discovery (ADR 0015) |
 | Writing | Deterministic new documents; immutable editing transactions; append-only classic/xref-stream revisions; saved text/choice fields and existing checkbox/radio states with appearances; inline browser form controls and PDF download (ADR 0031) | Full rewrite, object deletion, encryption-on-write, redaction, undo/redo and general page-content editing; signed-change permission enforcement; generated button states and nested direct fields |
@@ -46,26 +47,20 @@ branch head.
 
 ## Accuracy policy
 
-`RenderOptions::fast` holds the four fast parameters of ADR 0004 (section 9):
-glyph origin bins, approximate coverage, byte storage and reduced image
-decode. `FastParams::EXACT`, every parameter off, is the default and keeps
-every pixel within one level of its exact result; `FastParams::COMPETITIVE`
-switches all four and is measured against ADR 0004's competitive gate. Each
-parameter works alone, inside the same pipeline. The CLI exposes
-`--accuracy exact|competitive` and `--fast LIST`; the host protocol and
-viewer render exactly.
+Rendering is exact: every pixel within one level of its exact result (ADR
+0004). The fast parameters were retired on 2026-10-22; a rough preview
+profile for thumbnails and first paint is on the roadmap.
 
 ## Rendering pipeline evidence
 
-- **Conformance:** every render fixture passes in both policies
-  (`tools/conformance.py`, with `tolerance` and `competitive_tolerance`).
+- **Conformance:** every render fixture passes within its `tolerance`
+  (`tools/conformance.py`).
 - **Reference harness** (`crates/pagura-reference/tests/harness`, run in
   release by `tools/check.py` on every CI platform): over all 1,026 render
   cases of the conformance fixtures, no pixel is more than one level from
   the reference's exact result (1,537,218 pixels; 132 not correctly rounded,
   an exact-rounding rate of 0.99994 of channels); the reference meets every
-  fixture's independent oracle; each fast parameter alone is reported
-  against the reference.
+  fixture's independent oracle.
 - **Invariance:** pixels, errors (kind, object, position) and reserved
   charges are identical across band heights, region partitions and cached
   store values for every case; native and WASI output is byte-identical

@@ -6,11 +6,8 @@
 //! a caller's [`Scratch`] ([`PreparedScene::with_scratch`]), then
 //! [`Rendering::render`] executes bands of the global device grid without
 //! failing, composites through span kernels into per-buffer storage formats
-//! and quantizes each output pixel once.
-//!
-//! Exact rendering (every pixel within one level of its exact result, ADR
-//! 0004) is the default; [`FastParams`] switches the four named fast
-//! parameters inside the same kernels.
+//! and quantizes each output pixel once. Every pixel is within one level of
+//! its exact result (ADR 0004).
 
 mod blend;
 mod execute;
@@ -29,7 +26,7 @@ mod testing;
 pub use execute::Scratch;
 pub use format::Format;
 pub use prepare::{Charges, Completion, PreparedScene, Rendering, prepare};
-pub use request::{FastParams, OverprintMode, RenderRequest};
+pub use request::{OverprintMode, RenderRequest};
 pub use source::{
     BBoxUse, ImageBudgets, ImageSampler, PaintContext, ShadingSource, Source, SpanColors,
 };

@@ -60,7 +60,6 @@ impl Executor<'_> {
                 page: &ws.page,
                 wide: &ws.wide,
                 levels: &ws.levels,
-                bytes: &ws.bytes,
             };
             if let Some(cache) = ws.masks.get_mut(index) {
                 let spent = values(mask, (read, buffer, layout), area(rect), cache);

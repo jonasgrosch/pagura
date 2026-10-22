@@ -99,10 +99,10 @@ rollback, diagnostic truncation and cyclic/deep stream Length dependencies.
 
 Rendering kept its reusable values in separate caches with separate bounds:
 fonts and glyph outlines in the `RenderContext` under `document_bytes`, the
-planes of the last painted image under `decoded_bytes`, Competitive glyph
-masks (16 MiB within `document_bytes`), a recycled surface, per-render clip
-and path-hull caches and an unbounded glyph-hull map, while the host cached
-compiled pages on its own. Several bounds borrowed fields of other meanings
+planes of the last painted image under `decoded_bytes`, glyph masks of the
+former fast mode (16 MiB within `document_bytes`), a recycled surface,
+per-render clip and path-hull caches and an unbounded glyph-hull map, while
+the host cached compiled pages on its own. Several bounds borrowed fields of other meanings
 (ADR 0016), nothing bounded their sum, and direct rendering decoded the same
 images again on every call.
 
