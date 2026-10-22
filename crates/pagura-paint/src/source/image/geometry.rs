@@ -1,9 +1,9 @@
 //! Where a device pixel samples an image (8.9.5.3, ADR 0004): the nearest
 //! sample of its centre, or with `Interpolate` the bilinear weights of the
 //! four samples around it, when the image is not minified; otherwise the
-//! exact area average of the source samples under the pixel's footprint,
-//! separably for upright placements and quarter turns, by polygon clipping
-//! for any other.
+//! exact area average of the source samples under the pixel's footprint.
+//! Upright placements sample separably ([`super::separable`]); any other
+//! pixel by itself here, its area average by polygon clipping.
 //!
 //! Every weighted sum adds texels in a fixed order with the same f64
 //! operations for every partition of the device grid, so a pixel's value
@@ -34,12 +34,6 @@ pub(super) trait Texels {
 
     /// Adds `weight` times the texel of sample `index` to `sum`.
     fn add(&self, index: usize, weight: f64, sum: &mut [f64]);
-
-    /// Adds the texel of sample `index` to `sum`, as [`Self::add`] with a
-    /// weight of exactly 1 does.
-    fn add_unit(&self, index: usize, sum: &mut [f64]) {
-        self.add(index, 1.0, sum);
-    }
 
     /// Writes the texels of samples `first..end` of row `row` of an image
     /// `width` samples wide into `out`, as [`Self::get`] gives them, an
@@ -76,12 +70,9 @@ pub(super) enum Mode {
     Bilinear,
     /// The exact area average over the pixel's quadrilateral footprint.
     Area,
-    /// The exact area average over separable footprints: device columns
-    /// step along source columns (or rows, when `swapped` by a quarter turn).
-    Separable {
-        /// Device columns step along source rows.
-        swapped: bool,
-    },
+    /// The exact area average over separable footprints of an upright
+    /// placement.
+    Separable,
 }
 
 /// The placement of one image's samples on the device grid.
@@ -109,6 +100,20 @@ pub(super) struct Footprint {
 }
 
 impl Footprint {
+    /// The cell under the centre of device pixel `pixel` along an axis that
+    /// maps pixels by `scale` and `offset` onto `0..maximum` cells, whole.
+    pub(super) fn nearest(pixel: u32, scale: f64, offset: f64, maximum: u32) -> Self {
+        let center = (f64::from(pixel) + 0.5) * scale + offset;
+        let first = coordinate(center.floor(), maximum.saturating_sub(1));
+        Self {
+            first,
+            end: first + 1,
+            first_weight: 1.0,
+            last_weight: 1.0,
+            normalization: 1.0,
+        }
+    }
+
     /// The cells under device pixel `pixel` along an axis that maps pixels
     /// by `scale` and `offset` onto `0..maximum` cells.
     pub(super) fn new(pixel: u32, scale: f64, offset: f64, maximum: u32) -> Self {
@@ -202,17 +207,6 @@ impl Footprint {
     pub(super) fn whole(&self) -> bool {
         self.first_weight == 1.0 && self.last_weight == 1.0
     }
-
-    /// The weight of `cell`, which lies in `first..end`.
-    pub(super) fn weight(self, cell: u32) -> f64 {
-        if cell == self.first {
-            self.first_weight
-        } else if cell.wrapping_add(1) == self.end {
-            self.last_weight
-        } else {
-            1.0
-        }
-    }
 }
 
 impl Geometry {
@@ -275,16 +269,6 @@ impl Geometry {
         (self.width, self.height)
     }
 
-    /// The column and row of the sample under the centre of device pixel
-    /// (`x`, `y`), as [`Self::fill`] finds it without interpolation.
-    pub(super) fn nearest_cell(&self, x: u32, y: u32) -> (u32, u32) {
-        let center = self.center(x, y);
-        (
-            coordinate(center.x.floor(), self.width.saturating_sub(1)),
-            coordinate(center.y.floor(), self.height.saturating_sub(1)),
-        )
-    }
-
     /// An upper bound of the texels one device pixel reads.
     pub(super) fn cost(&self) -> usize {
         let t = self.inverse;
@@ -300,7 +284,7 @@ impl Geometry {
         match self.mode {
             Mode::Nearest => 1,
             Mode::Bilinear => 4,
-            Mode::Separable { .. } | Mode::Area => cells(t.a.abs() + t.c.abs(), self.width)
+            Mode::Separable | Mode::Area => cells(t.a.abs() + t.c.abs(), self.width)
                 .saturating_mul(cells(t.b.abs() + t.d.abs(), self.height)),
         }
     }
@@ -329,23 +313,9 @@ impl Geometry {
                     self.bilinear(px, y, texels, value);
                 }
             }
-            Mode::Area => {
+            Mode::Area | Mode::Separable => {
                 for (value, px) in pixels.zip(x..) {
                     self.area(px, y, texels, value);
-                }
-            }
-            Mode::Separable { swapped } => {
-                let t = self.inverse;
-                let (scale, offset, bound) = if swapped {
-                    (t.c, t.e, self.width)
-                } else {
-                    (t.d, t.f, self.height)
-                };
-                let rows = Footprint::new(y, scale, offset, bound);
-                let mut line = [0.0; MAX_LANES];
-                let line = &mut line[..lanes];
-                for (value, px) in pixels.zip(x..) {
-                    self.reduce((px, rows, swapped), texels, value, line);
                 }
             }
         }
@@ -424,75 +394,6 @@ impl Geometry {
         }
     }
 
-    /// The separable area average: each source line under the pixel's
-    /// column footprint, normalized, then the lines weighted by the row
-    /// footprint, in the order the lines are reached.
-    fn reduce(
-        &self,
-        (x, rows, swapped): (u32, Footprint, bool),
-        texels: &impl Texels,
-        out: &mut [f64],
-        line: &mut [f64],
-    ) {
-        let t = self.inverse;
-        let (scale, offset, maximum) = if swapped {
-            (t.b, t.f, self.height)
-        } else {
-            (t.a, t.e, self.width)
-        };
-        let columns = Footprint::new(x, scale, offset, maximum);
-        let descending = (if swapped { t.c } else { t.d }) < 0.0;
-        let opaque = texels.opaque();
-        let width = u64::from(self.width);
-        // The source step between cells of a line, and from line to line.
-        let (step, stride) = if swapped { (width, 1) } else { (1, width) };
-        let first = u64::from(columns.first) * step;
-        // An opaque line's alpha: its cells' weights, as its texels sum them.
-        let mut line_alpha = 0.0;
-        if opaque {
-            for cell in columns.first..columns.end {
-                line_alpha += columns.weight(cell);
-            }
-        }
-        out.fill(0.0);
-        let (color, rest) = split(out, opaque);
-        let line = &mut line[..color.len()];
-        let mut alpha = 0.0;
-        let cells = columns.end.saturating_sub(columns.first);
-        for offset in rows.first..rows.end {
-            let row = if descending {
-                rows.end - 1 - (offset - rows.first)
-            } else {
-                offset
-            };
-            line.fill(0.0);
-            // Cells lie within the image, so their indices cannot overflow.
-            let base = u64::from(row).wrapping_mul(stride).wrapping_add(first);
-            let index =
-                |cell: u32| sample_index(base.wrapping_add(u64::from(cell).wrapping_mul(step)));
-            // The first and last cells are weighted; the cells between are
-            // whole, and a whole texel adds as itself.
-            if cells > 0 {
-                texels.add(index(0), columns.first_weight, line);
-            }
-            for cell in 1..cells.saturating_sub(1) {
-                texels.add_unit(index(cell), line);
-            }
-            if cells > 1 {
-                texels.add(index(cells - 1), columns.last_weight, line);
-            }
-            let weight = rows.weight(row);
-            for (sum, value) in color.iter_mut().zip(line.iter()) {
-                *sum += value * columns.normalization * weight;
-            }
-            alpha += line_alpha * columns.normalization * weight;
-        }
-        rest.fill(alpha);
-        for value in out.iter_mut() {
-            *value *= rows.normalization;
-        }
-    }
-
     fn index(&self, x: f64, y: f64) -> usize {
         let x = coordinate(x, self.width.saturating_sub(1));
         let y = coordinate(y, self.height.saturating_sub(1));
@@ -519,9 +420,8 @@ pub(super) fn reaches(inverse: Transform, extent: (f64, f64)) -> bool {
 /// How a placement whose device pixels map by `t` to sample space samples.
 fn mode(t: Transform, interpolate: bool) -> Mode {
     let minifying = t.a.hypot(t.b) > 1.0 + 1e-9 || t.c.hypot(t.d) > 1.0 + 1e-9;
-    let swapped = t.a == 0.0 && t.d == 0.0;
-    if minifying && ((t.b == 0.0 && t.c == 0.0) || swapped) {
-        Mode::Separable { swapped }
+    if minifying && t.b == 0.0 && t.c == 0.0 {
+        Mode::Separable
     } else if minifying {
         Mode::Area
     } else if interpolate {

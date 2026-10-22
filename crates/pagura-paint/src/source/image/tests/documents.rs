@@ -47,7 +47,7 @@ fn device_sampler(decoded: Arc<Decoded>, unit_to_device: Transform, width: u32) 
 /// A sampler of an opaque device-colour image without masks, its samples
 /// exchanged for a quarter turn as preparation decodes them.
 fn oriented_sampler(decoded: Arc<Decoded>, unit_to_device: Transform, width: u32) -> ImageSampler {
-    let orientation = Orientation::of(unit_to_device, MaskDescription::None);
+    let orientation = Orientation::of(unit_to_device);
     let decoded = match orientation {
         Orientation::Rows => decoded,
         Orientation::Transposed => Arc::new(Decoded::from(
@@ -249,8 +249,6 @@ fn planes_background_blocks_and_turns_sample_as_interleaved_samples() {
                     sample_all(&planes, window),
                     "{id} {placement:?}"
                 );
-                let len = usize::try_from(window.0).unwrap();
-                assert!(super::bytes_agree(&planes, (0, len), 0..window.1));
             }
         }
     }

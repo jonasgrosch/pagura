@@ -177,11 +177,6 @@ impl<'a> Executor<'a> {
             self.ws.coverage = coverage;
             return;
         }
-        if self.image_bytes(mark, frame) {
-            self.image_store(&coverage, frame, mark);
-            self.ws.coverage = coverage;
-            return;
-        }
         for row in coverage.rows() {
             if row.y < frame.rect.y0 || row.y >= frame.rect.y1 {
                 continue;
@@ -225,77 +220,6 @@ impl<'a> Executor<'a> {
             }
             PageBuffer::F64(_) | PageBuffer::F32(_) => None,
         }
-    }
-
-    /// Whether `mark` is an image whose pixels come as bytes, stored into
-    /// the byte page with a constant alpha and nothing else.
-    fn image_bytes(&self, mark: &Mark, frame: Frame) -> bool {
-        let compositing = &mark.compositing;
-        !mark.records
-            && frame.buffer == Buffer::Page
-            && matches!(self.ws.page, PageBuffer::U8(_))
-            && compositing.mask.is_none()
-            && compositing.blend == pagura_interpret::BlendMode::Normal
-            && compositing.overprint == 0
-            && mark.boundary == Boundary::Absent
-            && self
-                .plan
-                .paints
-                .get(u32_to_usize(mark.paint))
-                .is_some_and(|paint| paint.byte_spans())
-    }
-
-    /// An image's spans as bytes into the byte page, each pixel stored as
-    /// the byte path stores its rounded colour at its byte opacity.
-    fn image_store(&mut self, coverage: &pagura_raster::BandCoverage, frame: Frame, mark: &Mark) {
-        let Some(paint) = self.plan.paints.get(u32_to_usize(mark.paint)) else {
-            return;
-        };
-        let paint = paint.as_ref();
-        let alpha = mark.compositing.alpha;
-        let ws = &mut *self.ws;
-        let PageBuffer::U8(page) = &mut ws.page else {
-            return;
-        };
-        let (bits, table) = &mut ws.alpha_table;
-        if *bits != Some(alpha.to_bits()) {
-            *table = kernel::alpha_bytes(alpha);
-            *bits = Some(alpha.to_bits());
-        }
-        let rect = frame.rect;
-        let width = u32_to_usize(rect.width());
-        let mut stored = 0;
-        for row in coverage.rows() {
-            if row.y < rect.y0 || row.y >= rect.y1 {
-                continue;
-            }
-            let base = u32_to_usize(row.y - rect.y0) * width;
-            let (mut lo, mut hi) = (u32::MAX, 0);
-            for span in row.spans() {
-                let Some((x, cover)) = clamp(span, rect) else {
-                    continue;
-                };
-                let len = cover.len();
-                let column = x - rect.x0;
-                let start = base + u32_to_usize(column);
-                let (Some(pixels), Some(sources)) = (
-                    page.get_mut(start..start + len),
-                    ws.span_bytes.get_mut(..len),
-                ) else {
-                    continue;
-                };
-                if paint.span_bytes(x, row.y, sources) {
-                    kernel::store_u8_bytes(pixels, sources, cover.coverage(), table);
-                }
-                lo = lo.min(column);
-                hi = hi.max(column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX)));
-                stored += len;
-            }
-            if lo < hi {
-                ws.extents.mark(u32_to_usize(row.y - rect.y0), lo, hi);
-            }
-        }
-        ws.usage.work = ws.usage.work.saturating_add(stored);
     }
 
     /// Opaque constant colour into the N16 or byte page: one rounding per

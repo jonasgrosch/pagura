@@ -11,8 +11,7 @@
 //! `72,150,300`); `PAGURA_IMAGE_RUNS` the samples of which the best is kept
 //! (default 7); `PAGURA_IMAGE_ROUTES` the routes (default
 //! `exact,reduced`); `PAGURA_IMAGE_STAGE` `decode` or `sample` times
-//! that stage alone; `PAGURA_IMAGE_OUTPUT=f64` fills the reduced route's
-//! spans as f64 colours rather than as bytes.
+//! that stage alone.
 //!
 //! Each route decodes every image of the page with a fresh store, then
 //! prepares its sampler and fills every span of its device bounds within the
@@ -247,7 +246,7 @@ pub(super) fn decode_once(placed: &Placed, limits: &Limits, reduced: bool) -> Op
         placed.unit_to_device,
         &context,
     );
-    let orientation = Orientation::of(placed.unit_to_device, MaskDescription::None);
+    let orientation = Orientation::of(placed.unit_to_device);
     decode_image(
         &placed.source,
         placed.unit_to_device,
@@ -288,7 +287,7 @@ pub(super) fn sampler(placed: &Placed, decoded: Arc<Decoded>) -> Option<ImageSam
         (
             placed.unit_to_device.inverse()?,
             (placed.rect.x0, placed.rect.x1),
-            Orientation::of(placed.unit_to_device, MaskDescription::None),
+            Orientation::of(placed.unit_to_device),
         ),
         convert,
     )
@@ -300,23 +299,14 @@ pub(super) fn sampler(placed: &Placed, decoded: Arc<Decoded>) -> Option<ImageSam
 }
 
 /// Prepares the sampler of `placed` over `decoded` and fills every span of
-/// its bounds, as bytes where `bytes` asks for them and the sampler fills
-/// them, returning a checksum.
-fn sample_once(placed: &Placed, decoded: Arc<Decoded>, bytes: bool) -> f64 {
+/// its bounds, returning a checksum.
+fn sample_once(placed: &Placed, decoded: Arc<Decoded>) -> f64 {
     let Some(sampler) = sampler(placed, decoded) else {
         return 0.0;
     };
     let rect = placed.rect;
     let len = usize::try_from(rect.x1 - rect.x0).unwrap();
     let mut checksum = 0.0;
-    if bytes && sampler.has_byte_spans() {
-        let mut out = vec![[0u8; 4]; len];
-        for y in rect.y0..rect.y1 {
-            sampler.span_bytes(rect.x0, y, &mut out);
-            checksum += out.iter().step_by(97).map(|p| f64::from(p[1])).sum::<f64>();
-        }
-        return checksum;
-    }
     let mut out = SpanColors::default();
     for y in rect.y0..rect.y1 {
         sampler.span(rect.x0, y, len, &mut out);
@@ -355,13 +345,10 @@ fn new_route(images: &[Placed], limits: &Limits, reduced: bool, runs: usize) -> 
         .iter()
         .map(|placed| decode_once(placed, limits, reduced))
         .collect();
-    // The reduced route fills bytes, as fast storage takes them, unless
-    // `PAGURA_IMAGE_OUTPUT=f64`.
-    let bytes = reduced && setting("PAGURA_IMAGE_OUTPUT", "bytes") == "bytes";
     let sampling = best(runs, || {
         for (placed, decoded) in images.iter().zip(&decoded) {
             if let Some(decoded) = decoded {
-                std::hint::black_box(sample_once(placed, Arc::clone(decoded), bytes));
+                std::hint::black_box(sample_once(placed, Arc::clone(decoded)));
             }
         }
     });

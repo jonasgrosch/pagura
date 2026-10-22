@@ -11,14 +11,13 @@
 
 mod codes;
 mod geometry;
-mod lines;
+mod separable;
 #[cfg(test)]
 mod tests;
 mod texels;
 
 use super::{PaintContext, SpanColors};
-use geometry::{Geometry, Mode};
-use lines::Lines;
+use geometry::{Geometry, Mode, Texels};
 use pagura_color::{ColorSpace, Converter, Painted, Process};
 use pagura_core::{Built, Diagnostic, Error, Meter, Result, StoreKey};
 use pagura_image::{
@@ -27,6 +26,7 @@ use pagura_image::{
 };
 use pagura_interpret::{Image, ImageMask};
 use pagura_raster::Transform;
+use separable::{RowCache, Rows, Separable};
 use std::sync::Arc;
 use texels::{
     ByteCodes, Colors, Convert, Lookup, Opacity, OpacityTexels, PackedCodes, RgbTexels,
@@ -64,8 +64,9 @@ struct Prepared {
     shape_is_alpha: bool,
     /// Sampling by average codes, where the texels allow it.
     codes: Option<codes::Codes>,
-    /// Source rows converted for separable sampling otherwise.
-    lines: Lines,
+    /// Separable sampling of converted texels otherwise, where the
+    /// placement is upright.
+    separable: Option<Separable>,
 }
 
 #[derive(Debug)]
@@ -85,8 +86,8 @@ struct MaskSampling {
     /// Whether the mask's opacity also scales shape: an explicit stencil
     /// mask, or alpha is shape.
     scales_shape: bool,
-    /// Rows of opacities converted for separable sampling.
-    lines: Lines,
+    /// Separable sampling of the opacities, where the placement is upright.
+    separable: Option<Separable>,
 }
 
 /// A decoded image in the store: the source and the request (reduction,
@@ -108,12 +109,10 @@ enum Orientation {
 }
 
 impl Orientation {
-    /// The orientation an image is sampled in under `unit_to_device`:
-    /// exchanged for a quarter turn, unless a separate mask image is
-    /// sampled on the image's own grid.
-    fn of(unit_to_device: Transform, mask: MaskDescription<'_>) -> Self {
-        let turned = unit_to_device.a == 0.0 && unit_to_device.d == 0.0;
-        if turned && matches!(mask, MaskDescription::None) {
+    /// The orientation an image and its mask are sampled in under
+    /// `unit_to_device`: exchanged for a quarter turn.
+    fn of(unit_to_device: Transform) -> Self {
+        if unit_to_device.a == 0.0 && unit_to_device.d == 0.0 {
             Self::Transposed
         } else {
             Self::Rows
@@ -219,7 +218,7 @@ impl ImageSampler {
                 (None, MaskDescription::None)
             }
         };
-        let orientation = Orientation::of(unit_to_device, description);
+        let orientation = Orientation::of(unit_to_device);
         let decoded = decode(
             &image.source,
             unit_to_device,
@@ -228,7 +227,7 @@ impl ImageSampler {
         )?;
         let mask = mask
             .map(|mask| {
-                let request = (Reduce::Full, Layout::Native, Orientation::Rows);
+                let request = (Reduce::Full, Layout::Native, orientation);
                 decode_request(&mask.source, request, context)
             })
             .transpose()?;
@@ -326,7 +325,9 @@ impl ImageSampler {
             }
             debug_assert_eq!(table.len(), 2 * lanes);
             // Rows kept from the colourless table are stale.
-            prepared.lines = Lines::default();
+            if let Some(separable) = prepared.separable.as_mut() {
+                separable.forget();
+            }
             if let Some(codes) = prepared.codes.as_mut() {
                 match codes::Lanes::single(table, lanes, 2, false) {
                     Some(fast) => codes.set_lanes(fast),
@@ -372,35 +373,6 @@ impl ImageSampler {
         self.prepared
             .as_ref()
             .map_or(&[], |prepared| prepared.image.diagnostics.as_slice())
-    }
-
-    /// Whether [`Self::span_bytes`] fills this image's spans: an opaque
-    /// image without a mask, sampled by its codes into three colour
-    /// channels (an RGB blending space).
-    pub fn has_byte_spans(&self) -> bool {
-        self.prepared.as_ref().is_some_and(|prepared| {
-            prepared
-                .codes
-                .as_ref()
-                .is_some_and(codes::Codes::fills_bytes)
-        })
-    }
-
-    /// Fills `out` with device pixels `x .. x + out.len()` of row `y` as
-    /// premultiplied RGBA bytes, without the f64 colours of [`Self::span`]
-    /// in between: each pixel's three colours as `span` gives them, rounded
-    /// by [`pagura_raster::quantize_unit`] (the bytes a `U8` store takes
-    /// them as), and alpha 255; a pixel whose footprint misses the image,
-    /// which `span` gives alpha 0, is `[0, 0, 0, 0]`. Returns false, with
-    /// `out` unspecified, unless [`Self::has_byte_spans`].
-    pub fn span_bytes(&self, x: u32, y: u32, out: &mut [[u8; 4]]) -> bool {
-        let Some(prepared) = &self.prepared else {
-            return false;
-        };
-        prepared
-            .codes
-            .as_ref()
-            .is_some_and(|codes| codes.fill_bytes(&prepared.image.image, (x, y), out))
     }
 
     /// Fills `out` with the colours and alpha of device pixels `x .. x +
@@ -454,8 +426,12 @@ impl ImageSampler {
                 mask: &mask.image.image,
                 opacity: &mask.opacity,
             };
-            mask.lines
-                .fill(&mask.geometry, (x, y, len), &texels, &mut out.alpha);
+            sample(
+                (mask.separable.as_ref(), &mask.geometry),
+                (x, y, len),
+                &texels,
+                &mut out.alpha,
+            );
         }
         out.colors.resize(len * lanes, 0.0);
         prepared.texels((x, y, len), lanes, &mut out.colors);
@@ -502,6 +478,12 @@ impl ImageSampler {
 }
 
 impl Prepared {
+    /// Writes the summed texels of the span's pixels, `texels.lanes()`
+    /// values each, into `out`.
+    fn sample(&self, span: (u32, u32, usize), texels: &impl Texels, out: &mut [f64]) {
+        sample((self.separable.as_ref(), &self.geometry), span, texels, out);
+    }
+
     /// Writes the summed texels of the span's pixels, `lanes` values each.
     fn texels(&self, span: (u32, u32, usize), lanes: usize, out: &mut [f64]) {
         let image = &self.image.image;
@@ -515,17 +497,17 @@ impl Prepared {
                             pixels: bytes.as_chunks::<3>().0,
                             tables,
                         };
-                        self.lines.fill(&self.geometry, span, &texels, out);
+                        self.sample(span, &texels, out);
                     } else {
                         // Planes sampled by a placement that average codes
                         // do not cover convert each sample.
                         let texels = SampleTexels::new(image, &paint.0, None, None);
-                        self.lines.fill(&self.geometry, span, &texels, out);
+                        self.sample(span, &texels, out);
                     }
                 }
                 Strategy::Cached(cache) => {
                     let texels = SampleTexels::new(image, &paint.0, None, Some(cache));
-                    self.lines.fill(&self.geometry, span, &texels, out);
+                    self.sample(span, &texels, out);
                 }
                 Strategy::Unmatte(memo) => {
                     let colors = &paint.0;
@@ -533,7 +515,7 @@ impl Prepared {
                         UnmatteTexels::new(image, colors, (&mask.image.image, &mask.opacity), memo)
                     });
                     match texels {
-                        Some(texels) => self.lines.fill(&self.geometry, span, &texels, out),
+                        Some(texels) => self.sample(span, &texels, out),
                         None => self.general(span, colors, out),
                     }
                 }
@@ -551,7 +533,7 @@ impl Prepared {
             .filter(|_| colors.matte.is_some())
             .map(|mask| (&mask.image.image, &mask.opacity));
         let texels = SampleTexels::new(&self.image.image, colors, matte, None);
-        self.lines.fill(&self.geometry, span, &texels, out);
+        self.sample(span, &texels, out);
     }
 
     fn table(
@@ -568,7 +550,7 @@ impl Prepared {
                     lanes,
                     opaque,
                 };
-                self.lines.fill(&self.geometry, span, &texels, out);
+                self.sample(span, &texels, out);
             }
             Samples::Packed(packed) => {
                 let texels = TableTexels {
@@ -577,10 +559,104 @@ impl Prepared {
                     lanes,
                     opaque,
                 };
-                self.lines.fill(&self.geometry, span, &texels, out);
+                self.sample(span, &texels, out);
             }
             Samples::Words(_) | Samples::Mixed { .. } | Samples::Planar(_) => {}
         }
+    }
+}
+
+/// The separable sampling of texels placed by `geometry` for device columns
+/// `columns`, where the placement is upright and not interpolated: an
+/// interpolated pixel adds its four texels by their weights' products, as
+/// any placement's does.
+///
+/// # Errors
+///
+/// A `Limit` error when the plan cannot be allocated.
+fn texel_rows(geometry: &Geometry, columns: (u32, u32)) -> Result<Option<Separable>> {
+    if geometry.mode() == Mode::Bilinear {
+        return Ok(None);
+    }
+    Separable::new(geometry, columns)
+}
+
+/// Writes the summed texels of device pixels `x .. x + len` of row `y`,
+/// `texels.lanes()` values each, into `out`: separably where the placement
+/// is upright, pixel by pixel through `geometry` otherwise. The alpha and
+/// shape of opaque texels are 1 where a pixel's footprint meets the image
+/// and 0 elsewhere.
+fn sample(
+    (separable, geometry): (Option<&Separable>, &Geometry),
+    (x, y, len): (u32, u32, usize),
+    texels: &impl Texels,
+    out: &mut [f64],
+) {
+    let Some(separable) = separable else {
+        geometry.fill((x, y, len), texels, out);
+        return;
+    };
+    let lanes = texels.lanes();
+    let opaque = texels.opaque();
+    let rows = TexelRows {
+        texels,
+        width: geometry.size().0,
+        values: lanes - if opaque { 2 } else { 0 },
+    };
+    let n = rows.values;
+    if separable.nearest() {
+        separable.gather(&rows, (x, y, len), |pixels| {
+            let sources = pixels.chunks_exact(n.max(1));
+            for (pixel, source) in out.chunks_exact_mut(lanes).zip(sources) {
+                let (values, rest) = pixel.split_at_mut(n);
+                values.copy_from_slice(source);
+                rest.fill(1.0);
+            }
+        });
+        return;
+    }
+    out.fill(0.0);
+    let finish = |out: &mut [f64], covered: &[bool]| {
+        if lanes > n {
+            for (pixel, &covered) in out.chunks_exact_mut(lanes).zip(covered) {
+                pixel[n..].fill(f64::from(u8::from(covered)));
+            }
+        }
+    };
+    let into = Some((&mut *out, lanes));
+    separable.average(&rows, (x, y, len), into, (|average| average, finish));
+}
+
+/// Rows of an image's texels, `values` per sample: every lane, or the
+/// colour lanes of opaque texels; the image is `width` samples wide.
+struct TexelRows<'a, T> {
+    texels: &'a T,
+    width: u32,
+    values: usize,
+}
+
+impl<T: Texels> Rows for TexelRows<'_, T> {
+    type Value = f64;
+
+    fn width(&self) -> usize {
+        self.values
+    }
+
+    fn row<'c>(
+        &'c self,
+        y: usize,
+        (first, end): (usize, usize),
+        cache: &'c mut RowCache<f64>,
+    ) -> &'c [f64] {
+        let (Ok(row), Ok(start), Ok(stop)) =
+            (u32::try_from(y), u32::try_from(first), u32::try_from(end))
+        else {
+            return &[];
+        };
+        cache.get((y, (first, end)), self.values, |out, _| {
+            self.texels.row((row, self.width), (start, stop), out);
+            true
+        })
     }
 }
 
@@ -753,12 +829,13 @@ impl Prepared {
                     MaskDescription::Soft { decode, .. } => (decode, description.alpha_is_shape),
                     _ => ([0.0, 1.0], true),
                 };
+                let geometry = placement(&image.image, inverse, orientation)?;
                 Some(MaskSampling {
                     opacity: Opacity::new(&image.image, decode),
-                    geometry: placement(&image.image, inverse, Orientation::Rows)?,
+                    separable: texel_rows(&geometry, columns)?,
+                    geometry,
                     image,
                     scales_shape,
-                    lines: Lines::default(),
                 })
             }
             _ => None,
@@ -787,6 +864,10 @@ impl Prepared {
             (None, Some(lanes)) => codes::Codes::new(lanes, &decoded.image, &geometry, columns)?,
             _ => None,
         };
+        let separable = match codes {
+            Some(_) => None,
+            None => texel_rows(&geometry, columns)?,
+        };
         Ok((
             Self {
                 image: decoded,
@@ -796,7 +877,7 @@ impl Prepared {
                 painted,
                 shape_is_alpha,
                 codes,
-                lines: Lines::default(),
+                separable,
             },
             conversions,
         ))
@@ -817,6 +898,11 @@ impl Prepared {
             mask,
             tables,
             self.codes.as_ref().map_or(0, codes::Codes::bytes),
+            self.separable.as_ref().map_or(0, Separable::bytes),
+            self.mask
+                .as_ref()
+                .and_then(|mask| mask.separable.as_ref())
+                .map_or(0, Separable::bytes),
         ]
         .into_iter()
         .fold(size_of::<Self>(), usize::saturating_add)
