@@ -66,7 +66,7 @@ if (mode === 'serve') {
     'crates/pagura-paint/src/prepare/gpu.rs', 'crates/pagura-paint/src/prepare/gpu/tests.rs',
     'benchmarks/gpu-demo/engine/Cargo.toml', 'benchmarks/gpu-demo/engine/Cargo.lock',
     'benchmarks/gpu-demo/engine/src/main.rs', 'benchmarks/gpu-demo/engine/src/svg.rs',
-    'benchmarks/gpu-demo/engine/src/svg/images.rs', 'benchmarks/gpu-demo/engine/src/svg/tests.rs',
+    'benchmarks/gpu-demo/engine/src/svg/images.rs', 'benchmarks/gpu-demo/engine/src/svg/clips.rs', 'benchmarks/gpu-demo/engine/src/svg/tests.rs',
     'benchmarks/gpu-demo/policy.json', 'web/host_runtime.mjs', 'web/transport.mjs', 'web/wasi.mjs']);
   const initialHashes = Object.fromEntries(await Promise.all(sourceFiles.map(async file => [file, digest(await readFile(resolve(root, file)))])));
   const initialWasmHash = digest(await readFile(wasm));
@@ -125,7 +125,7 @@ if (mode === 'serve') {
     for (const file of [...demoFiles].sort()) source_hashes[`benchmarks/gpu-demo/${file}`] = digest(await readFile(resolve(here, file)));
     for (const file of ['crates/pagura-paint/src/prepare/gpu.rs', 'crates/pagura-paint/src/prepare/gpu/tests.rs',
       'benchmarks/gpu-demo/engine/Cargo.toml', 'benchmarks/gpu-demo/engine/Cargo.lock', 'benchmarks/gpu-demo/engine/src/main.rs',
-      'benchmarks/gpu-demo/engine/src/svg.rs', 'benchmarks/gpu-demo/engine/src/svg/images.rs', 'benchmarks/gpu-demo/engine/src/svg/tests.rs',
+      'benchmarks/gpu-demo/engine/src/svg.rs', 'benchmarks/gpu-demo/engine/src/svg/images.rs', 'benchmarks/gpu-demo/engine/src/svg/clips.rs', 'benchmarks/gpu-demo/engine/src/svg/tests.rs',
       'benchmarks/gpu-demo/policy.json', 'web/host_runtime.mjs', 'web/transport.mjs', 'web/wasi.mjs']) source_hashes[file] = digest(await readFile(resolve(root, file)));
     report.build = {commit: initialCommit,
       rustc: (await exec('rustc', ['--version'], {cwd: root})).stdout.trim(),

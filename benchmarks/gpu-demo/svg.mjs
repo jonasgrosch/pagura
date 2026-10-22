@@ -55,14 +55,16 @@ export class SvgPage {
     this.width = width; this.height = height; this.dpi = dpi;
   }
 
-  mount(container) {
+  prepare() {
     if (!this.image) {
       this.image = new Image(); this.image.alt = 'Browser SVG page';
       this.url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(this.root)], {type: 'image/svg+xml'}));
       this.image.src = this.url; this.resize(this.width, this.height, this.dpi);
     }
-    container.replaceChildren(this.image);
+    return this.image;
   }
+
+  mount(container) {container.replaceChildren(this.prepare());}
 
   async ready() {if (this.image) await imageReady(this.image);}
   destroy() {if (this.url) URL.revokeObjectURL(this.url);this.image?.remove();this.image = null;this.url = null;}
@@ -77,8 +79,7 @@ export class SvgPage {
     this.resize(width, height, dpi);
     // A retained image can rasterize differently from a fresh export with
     // different intrinsic dimensions. Zoom checks must sample the shown source.
-    const image = retained ? this.image : new Image();
-    if (!image) throw new Error('Retained SVG is not mounted');
+    const image = retained ? this.prepare() : new Image();
     let url;
     try {
       if (!retained) {

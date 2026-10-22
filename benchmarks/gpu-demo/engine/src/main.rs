@@ -8,6 +8,7 @@ use pagura_document::{Document, OpenOptions};
 use pagura_interpret::{Interpreter, Scene};
 use pagura_paint::{OverprintMode, RenderRequest, Scratch};
 use pagura_raster::DeviceRect;
+use std::borrow::Cow;
 use std::io::{self, Read, Write};
 use std::sync::Arc;
 use std::time::Instant;
@@ -19,6 +20,7 @@ mod svg;
 struct Session {
     document: Option<Document>,
     scene: Option<(usize, Scene)>,
+    svg: Option<svg::Export>,
     store: Store,
     scratch: Scratch,
     provider: Bundled,
@@ -29,6 +31,7 @@ impl Session {
         Self {
             document: None,
             scene: None,
+            svg: None,
             store: Store::new(MAX_FRAME),
             scratch: Scratch::default(),
             provider: Bundled::new(Self::limits()),
@@ -44,10 +47,11 @@ impl Session {
         }
     }
 
-    fn request(&mut self, bytes: &[u8]) -> Result<(String, Vec<u8>)> {
+    fn request(&mut self, bytes: &[u8]) -> Result<(String, Cow<'_, [u8]>)> {
         let operation = word(bytes, 0)?;
         if operation == 1 {
             self.scene = None;
+            self.svg = None;
             self.document = None;
             self.store = Store::new(MAX_FRAME);
             self.scratch = Scratch::default();
@@ -67,7 +71,7 @@ impl Session {
                     "{{\"ok\":true,\"pages\":{pages},\"open_ms\":{}}}",
                     ms(start)
                 ),
-                Vec::new(),
+                Cow::Owned(Vec::new()),
             ));
         }
         if !matches!(operation, 2..=4) || bytes.len() != 32 {
@@ -93,6 +97,7 @@ impl Session {
             .as_ref()
             .is_none_or(|(index, _)| *index != page_index)
         {
+            self.svg = None;
             let scene = Interpreter::new(document)
                 .with_provider(Some(&self.provider))
                 .with_store(&self.store)
@@ -127,35 +132,55 @@ impl Session {
             if region != page {
                 return Err(Error::invalid_argument("SVG demo exports whole pages"));
             }
+            if u64::from(size.0) * u64::from(size.1) > document.limits().pixels as u64 {
+                return Err(Error::limit("SVG output exceeds pixel budget"));
+            }
             let start = Instant::now();
-            return match svg::export(scene, document, dpi) {
-                Ok(svg) => Ok((
-                    format!(
-                        "{{\"ok\":true,\"width\":{},\"height\":{},\"record_ms\":{record_ms},\"export_ms\":{},\"engine_ms\":{},\"paths\":{},\"glyphs\":{},\"images\":{}}}",
-                        page.width(),
-                        page.height(),
-                        ms(start),
-                        ms(total),
-                        svg.paths,
-                        svg.glyphs,
-                        svg.images,
-                    ),
-                    svg.bytes,
-                )),
-                Err(svg::Failure::Unsupported(reason)) => Ok((
-                    format!("{{\"ok\":true,\"fallback\":{}}}", json_string(reason)),
-                    Vec::new(),
-                )),
-                Err(svg::Failure::Engine(error)) if error.kind == ErrorKind::Limit => Ok((
-                    format!(
-                        "{{\"ok\":true,\"fallback\":{}}}",
-                        json_string("SVG export exceeds its memory, element or work budget")
-                    ),
-                    Vec::new(),
-                )),
-                Err(svg::Failure::Engine(error)) => Err(error),
-            };
+            let cache_hit = self.svg.is_some();
+            if self.svg.is_none() {
+                match svg::export(scene, document) {
+                    Ok(export) => self.svg = Some(export),
+                    Err(svg::Failure::Unsupported(reason)) => {
+                        return Ok((
+                            format!("{{\"ok\":true,\"fallback\":{}}}", json_string(reason)),
+                            Cow::Owned(Vec::new()),
+                        ));
+                    }
+                    Err(svg::Failure::Engine(error)) if error.kind == ErrorKind::Limit => {
+                        return Ok((
+                            format!(
+                                "{{\"ok\":true,\"fallback\":{}}}",
+                                json_string(
+                                    "SVG export exceeds its memory, element or work budget"
+                                )
+                            ),
+                            Cow::Owned(Vec::new()),
+                        ));
+                    }
+                    Err(svg::Failure::Engine(error)) => return Err(error),
+                }
+            }
+            let svg = self
+                .svg
+                .as_ref()
+                .ok_or(Error::invalid_argument("no SVG export"))?;
+            return Ok((
+                format!(
+                    "{{\"ok\":true,\"width\":{},\"height\":{},\"record_ms\":{record_ms},\"export_ms\":{},\"engine_ms\":{},\"cache_hit\":{cache_hit},\"paths\":{},\"glyphs\":{},\"images\":{},\"clips_elided\":{},\"clips_retained\":{}}}",
+                    page.width(),
+                    page.height(),
+                    ms(start),
+                    ms(total),
+                    svg.paths,
+                    svg.glyphs,
+                    svg.images,
+                    svg.clips_elided,
+                    svg.clips_retained
+                ),
+                Cow::Borrowed(&svg.bytes),
+            ));
         }
+
         let mut request = RenderRequest::new(scene.page.device_transform(scale), page, region);
         request.band_height = band;
         request.overprint = if scene.print_intent {
@@ -181,7 +206,7 @@ impl Session {
                     "{{\"ok\":true,\"fallback\":{},\"prepare_ms\":{prepare_ms}}}",
                     json_string(reason)
                 ),
-                Vec::new(),
+                Cow::Owned(Vec::new()),
             ));
         }
         let start = Instant::now();
@@ -211,7 +236,7 @@ impl Session {
                             "{{\"ok\":true,\"fallback\":{},\"prepare_ms\":{prepare_ms}}}",
                             json_string("GPU packet exceeds its export memory or work budget")
                         ),
-                        Vec::new(),
+                        Cow::Owned(Vec::new()),
                     ));
                 }
                 Err(error) => return Err(error),
@@ -230,7 +255,7 @@ impl Session {
             region.width(),
             region.height()
         );
-        Ok((meta, data))
+        Ok((meta, Cow::Owned(data)))
     }
 }
 
@@ -295,7 +320,7 @@ fn main() -> io::Result<()> {
                     "{{\"ok\":false,\"error\":{}}}",
                     json_string(&error.to_string())
                 ),
-                Vec::new(),
+                Cow::Owned(Vec::new()),
             ),
         };
         let length = u32::try_from(4 + meta.len() + data.len()).map_err(io::Error::other)?;

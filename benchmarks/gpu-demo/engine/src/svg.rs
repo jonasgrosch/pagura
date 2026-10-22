@@ -4,10 +4,11 @@
 //! The browser owns antialiasing, sampling and compositing. Unsupported PDF
 //! semantics refuse the whole export; no incomplete page is called success.
 
+mod clips;
 mod images;
 
 use pagura_color::{ColorSpace, Converter, Process, Target};
-use pagura_core::{Error, Limits, Meter};
+use pagura_core::{Error, Limits, Meter, Rect};
 use pagura_document::Document;
 use pagura_interpret::{
     BlendMode, Composite, FillNode, GroupId, GroupRole, MarkInfo, Node, OutlineKey, Paint, PaintId,
@@ -36,11 +37,13 @@ pub struct Export {
     pub paths: usize,
     pub glyphs: usize,
     pub images: usize,
+    pub clips_elided: usize,
+    pub clips_retained: usize,
 }
 
 /// All attributes come from finite numbers or fixed strings; PDF strings,
 /// links, scripts, external resources and font names never enter the XML.
-pub fn export(scene: &Scene, document: &Document, dpi: u32) -> Result<Export> {
+pub fn export(scene: &Scene, document: &Document) -> Result<Export> {
     if scene.print_intent {
         return Err(Failure::Unsupported(
             "SVG does not simulate PDF print overprint",
@@ -64,7 +67,11 @@ pub fn export(scene: &Scene, document: &Document, dpi: u32) -> Result<Export> {
         image_ids: HashMap::new(),
         paths: 0,
         glyphs: 0,
+        clip_bounds: Vec::new(),
+        clips_elided: 0,
+        clips_retained: 0,
     };
+    writer.clip_bounds = clips::chains(scene, &mut writer.work)?;
     for (i, clip) in scene.clips.iter().enumerate() {
         writer.defs.add(format_args!(
             "<clipPath id=\"c{i}\" clipPathUnits=\"userSpaceOnUse\">"
@@ -83,11 +90,6 @@ pub fn export(scene: &Scene, document: &Document, dpi: u32) -> Result<Export> {
         writer.defs.add(format_args!("</clipPath>"))?;
     }
     writer.group(scene.root, 0)?;
-    let scale = f64::from(dpi) / 72.0;
-    let (width, height) = scene.page.device_size(scale)?;
-    if u64::from(width) * u64::from(height) > limits.pixels as u64 {
-        return Err(Error::limit("SVG output exceeds pixel budget").into());
-    }
     let mut xml = Xml::new();
     let (mut extent_width, mut extent_height) = (
         scene.page.crop.width() * scene.page.user_unit,
@@ -108,6 +110,8 @@ pub fn export(scene: &Scene, document: &Document, dpi: u32) -> Result<Export> {
         paths: writer.paths,
         glyphs: writer.glyphs,
         images: writer.image_ids.len(),
+        clips_elided: writer.clips_elided,
+        clips_retained: writer.clips_retained,
     })
 }
 
@@ -121,10 +125,13 @@ struct Writer<'a> {
     functions: Meter,
     image_bytes: Meter,
     colors: HashMap<(PaintId, StateId), String>,
-    glyph_ids: HashMap<OutlineKey, usize>,
+    glyph_ids: HashMap<OutlineKey, (usize, Option<Rect>)>,
     image_ids: HashMap<(pagura_image::ImageId, StateId, Option<PaintId>), usize>,
     paths: usize,
     glyphs: usize,
+    clip_bounds: Vec<Option<Rect>>,
+    clips_elided: usize,
+    clips_retained: usize,
 }
 
 impl Writer<'_> {
@@ -268,26 +275,27 @@ impl Writer<'_> {
                 for place in &node.placements {
                     self.work.charge(1)?;
                     let source = &node.sources[place.source as usize];
-                    let id = if let Some(&id) = self.glyph_ids.get(&source.key) {
-                        id
+                    let (id, bounds) = if let Some(&resource) = self.glyph_ids.get(&source.key) {
+                        resource
                     } else {
                         let id = self.glyph_ids.len();
                         self.defs.add(format_args!("<path id=\"g{id}\" d=\""))?;
                         path(&mut self.defs, &source.outline, &mut self.work)?;
                         self.defs.add(format_args!("\"/>"))?;
-                        self.glyph_ids.insert(source.key, id);
-                        id
+                        let bounds = clips::hull(&source.outline, &mut self.work)?;
+                        self.glyph_ids.insert(source.key, (id, bounds));
+                        (id, bounds)
                     };
-                    self.begin(node.mark)?;
+                    let transform = source
+                        .linear
+                        .then(Transform::translate(place.origin.x, place.origin.y));
+                    let mark = self.fill_mark(node.mark, clips::transformed(bounds, transform));
+                    self.begin(mark)?;
                     self.body.add(format_args!(
                         "<use href=\"#g{id}\" fill=\"{color}\" transform=\"{}\"/>",
-                        matrix(
-                            source
-                                .linear
-                                .then(Transform::translate(place.origin.x, place.origin.y))
-                        )?
+                        matrix(transform)?
                     ))?;
-                    self.end(node.mark)?;
+                    self.end(mark)?;
                     self.glyphs += 1;
                 }
                 Ok(())
@@ -307,7 +315,9 @@ impl Writer<'_> {
             ));
         }
         let color = self.color(node.paint, node.mark.state)?;
-        self.begin(node.mark)?;
+        let bounds = clips::hull(&node.path, &mut self.work)?;
+        let mark = self.fill_mark(node.mark, clips::transformed(bounds, Transform::IDENTITY));
+        self.begin(mark)?;
         self.body.add(format_args!(
             "<path fill=\"{color}\" fill-rule=\"{}\" d=\"",
             rule(node.rule)
@@ -315,7 +325,15 @@ impl Writer<'_> {
         path(&mut self.body, &node.path, &mut self.work)?;
         self.body.add(format_args!("\"/>"))?;
         self.paths += 1;
-        self.end(node.mark)
+        self.end(mark)
+    }
+
+    fn fill_mark(&mut self, mut mark: MarkInfo, bounds: Option<Rect>) -> MarkInfo {
+        if clips::inactive(mark, bounds, &self.clip_bounds, self.scene.page.user_unit) {
+            mark.clip = None;
+            self.clips_elided += 1;
+        }
+        mark
     }
 
     fn color(&mut self, paint: PaintId, state: StateId) -> Result<String> {
@@ -354,6 +372,7 @@ impl Writer<'_> {
         let state = &self.scene.states[mark.state.index()];
         validate_state(state)?;
         if let Some(clip) = mark.clip {
+            self.clips_retained += 1;
             self.body
                 .add(format_args!("<g clip-path=\"url(#c{})\">", clip.0))?;
         }

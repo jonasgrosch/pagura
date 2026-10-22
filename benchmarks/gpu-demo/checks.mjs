@@ -28,8 +28,8 @@ export async function run(config) {
       console.log(`Timing ${input.label} at ${dpi} DPI`);
       const output = await compare(engine, gpu, {page: 0, dpi}, {samples: config.samples, warmups: config.warmups});
       if (dpi === 150 && config.zoom) {
-        console.log(`Fresh viewport study ${input.label}`);
-        output.result.presentation = await presentationStudy(engine, gpu, {page: 0, dpi}, {samples: 12, warmups: 2});
+        console.log(`Retained SVG viewport study ${input.label}`);
+        output.result.presentation = await presentationStudy(engine, gpu, {page: 0, dpi}, output.svgPage, {samples: 12, warmups: 2});
         console.log(`Zoom study ${input.label}`);
         output.result.zoom = await zoomStudy(engine, gpu, {page: 0, dpi}, output.svgPage,
           {samples: config.zoomSamples, warmups: 3, gestureFrames: config.gestureFrames});
@@ -51,9 +51,9 @@ export async function run(config) {
   }
   if (preview) show(preview, inputs[0].label);
   return {
-    schema: 2, timestamp: new Date().toISOString(), adapter: gpu.info,
+    schema: 3, timestamp: new Date().toISOString(), adapter: gpu.info,
     scope: 'Exploratory shared-desktop CPU, hybrid WebGPU and browser SVG comparison. No release-gate or SVG exactness claim.',
-    timing: 'Render ms excludes worker transport in all paths. CPU/hybrid include preparation and execution; hybrid includes upload, GPU completion and RGBA readback. SVG includes scene export, browser validation/parse, image decode, Canvas rasterization and completed RGBA readback. Frame ms adds worker transport. SVG DOM interaction uses the separate retained zoom study. Every CPU/hybrid sample has a byte check outside timing; SVG differences against CPU are descriptive, not an oracle or a conformance pass.',
+    timing: 'CPU/hybrid render ms includes fresh preparation/execution and hybrid upload/completion/readback; frame ms adds worker transport. SVG reuses one exported page with its encoded resources and decoded browser image, then produces fresh Canvas RGBA/readback on every sample. Initial SVG export, transport, parse, decode and first raster are reported separately. No application raster cache is used. Viewport and zoom timings end at animation-frame opportunities, not scanout. CPU/hybrid remain byte-checked; SVG differences are descriptive.',
     order: 'Rotating and reversing CPU, GPU, SVG order across samples', cases, artifacts,
     summary: cases.map(c => ({label: c.label, dpi: c.options.dpi,
       cpu_ms: c.cpu_render_ms.median, hybrid_ms: c.gpu_render_ms?.median ?? null,
@@ -74,6 +74,7 @@ async function checkUi() {
     if (!document.querySelector('#error').hidden) throw new Error(document.querySelector('#error').textContent);
   };
   document.querySelector('#controls').requestSubmit();await wait(() => !demo.busy && demo.current);
+  if (document.querySelector('#export-svg').disabled) throw new Error('Portable SVG export is unavailable for an admitted page');
   const original = demo.current.output.result, image = document.querySelector('#svg img'), source = image.src;
   await image.decode();
   const bounds = image.getBoundingClientRect();
@@ -104,6 +105,9 @@ async function checkSvgFixtures(engine) {
         unsupported[svg.meta.fallback] = (unsupported[svg.meta.fallback] ?? 0) + 1;
         cases.push({id: fixture.id, unsupported: svg.meta.fallback});continue;
       }
+      const reused = await engine.render(4, {...options, dpi: Math.max(1, Math.floor(fixture.dpi / 2))});
+      assertPixels(reused.data, svg.data, 'retained SVG export bytes');
+      if (!reused.meta.cache_hit) throw new Error('SVG export was rebuilt for another resolution');
       const page = new SvgPage(svg.data, svg.meta, fixture.dpi);
       const raster = await page.rasterize();
       if (fixture.id === 'content/blend-isolated-page') {
@@ -113,7 +117,7 @@ async function checkSvgFixtures(engine) {
         for (let i = 0; i < raster.pixels.length; i++) if (Math.abs(raster.pixels[i] - [159,191,223,255][i % 4]) > 1) throw new Error('SVG isolated page blends with the output backdrop');
       }
       const difference = pixelDifference(raster.pixels, cpu.data);
-      cases.push({id: fixture.id, svg_sha256: await sha256(svg.data), cpu_sha256: await sha256(cpu.data), ...difference});
+      cases.push({id: fixture.id, clips_elided: svg.meta.clips_elided, clips_retained: svg.meta.clips_retained, export_reused: reused.meta.cache_hit, svg_sha256: await sha256(svg.data), cpu_sha256: await sha256(cpu.data), ...difference});
     } catch (error) {failures.push({id: fixture.id, error: String(error)});}
   }
   return {schema: 1, timestamp: new Date().toISOString(), fixtures: fixtures.length,

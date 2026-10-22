@@ -1,7 +1,7 @@
 /** Viewer timings use animation-frame opportunities, not a claim of display
  * scanout or GPU completion. Completed pixel checks are separate. */
 import {stats, assertPixels} from './measure.mjs';
-import {pixelDifference, SvgPage} from './svg.mjs';
+import {pixelDifference} from './svg.mjs';
 
 const frame = () => new Promise(resolve => requestAnimationFrame(resolve));
 export async function paintOpportunity() {await frame();await frame();}
@@ -10,26 +10,25 @@ export function putPixels(canvas, pixels, width, height) {
   canvas.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(pixels), width, height), 0, 0);
 }
 
-/** Fresh presentation from a recorded scene, with no forced full-page SVG
- * readback. Every sample rebuilds backend output and uses a new SVG image. */
-export async function presentationStudy(engine, gpu, options, {samples = 12, warmups = 2} = {}) {
-  const baseline = await engine.render(2, options), packet = await engine.render(3, options), exported = await engine.render(4, options);
-  const modes = ['cpu', ...(gpu && !packet.meta.fallback ? ['gpu'] : []), ...(!exported.meta.fallback ? ['svg'] : [])];
+/** Warm presentation: CPU/hybrid rebuild pixels; SVG retains its compiled
+ * vector/image resources. No forced full-page SVG readback in this study. */
+export async function presentationStudy(engine, gpu, options, vector, {samples = 12, warmups = 2} = {}) {
+  const baseline = await engine.render(2, options), packet = await engine.render(3, options), svg = vector?.clone();
+  const modes = ['cpu', ...(gpu && !packet.meta.fallback ? ['gpu'] : []), ...(svg ? ['svg'] : [])];
   const stage = document.createElement('div'); stage.className = 'zoom-stage';stage.setAttribute('aria-hidden', 'true');document.body.append(stage);
   const canvas = document.createElement('canvas'), measured = Object.fromEntries(modes.map(m => [m, []])), slow = {};
   try {
+    if (svg) {svg.mount(stage);await svg.ready();await paintOpportunity();}
     for (let i = -warmups; i < samples; i++) {
       const order = modes.slice((i + warmups) % modes.length).concat(modes.slice(0, (i + warmups) % modes.length));
       if (i % 2) order.reverse();
       for (const mode of order) {
         if (slow[mode] && measured[mode].length >= 3) continue;
         stage.replaceChildren();await paintOpportunity();
-        const start = performance.now();let svg, job, output;
+        const start = performance.now();let job, output;
         try {
           if (mode === 'svg') {
-            const exported = await engine.render(4, options);
-            svg = new SvgPage(exported.data, exported.meta, options.dpi);
-            svg.resize(exported.meta.width, exported.meta.height, options.dpi);svg.mount(stage);await svg.ready();
+            svg.resize(baseline.meta.width, baseline.meta.height, options.dpi);svg.mount(stage);await svg.ready();
           } else {
             const result = await engine.render(mode === 'cpu' ? 2 : 3, options);
             if (mode === 'cpu') output = result.data;
@@ -43,14 +42,14 @@ export async function presentationStudy(engine, gpu, options, {samples = 12, war
           if (output) assertPixels(output, baseline.data, `${mode} presentation`);
           if (frame_ms > 250) slow[mode] = true;
           if (i >= 0) measured[mode].push({position, frame_ms});
-        } finally {svg?.destroy();job?.destroy();}
+        } finally {job?.destroy();}
       }
     }
     return {samples, warmups, viewport: {width: 480, height: 480},
-      timing: 'Recorded scene and resources warm, freshly rebuilt backend output. Worker transport, SVG export/parse/image decode or CPU/hybrid pixel upload, then two animation-frame opportunities in top/centre viewport. No forced full-page SVG readback. Not display scanout or GPU-completion timing.',
+      timing: 'Warm recorded scene. CPU/hybrid rebuild and upload pixels; SVG reuses its export and decoded image. Request to two animation-frame opportunities in top/centre viewport, with no full-page SVG readback. Not display scanout or GPU-completion timing.',
       paths: Object.fromEntries(modes.map(mode => [mode, {sample_cap: slow[mode] ? 'Stop after a frame above 250 ms once at least 3 samples are collected' : null,
         frame_ms: stats(measured[mode].map(s => s.frame_ms)), samples: measured[mode]}]))};
-  } finally {stage.remove();}
+  } finally {svg?.destroy();stage.remove();}
 }
 
 export async function zoomStudy(engine, gpu, options, vector, {samples = 12, warmups = 2, gestureFrames = 60} = {}) {

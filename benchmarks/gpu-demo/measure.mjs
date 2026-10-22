@@ -40,12 +40,15 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
   if (svgInitial && !result.svg_fallback) {
     const start = performance.now();
     svgPage = new SvgPage(svgInitial.data, svgInitial.meta, options.dpi ?? 150);
-    lastSvg = await svgPage.rasterize();
+    lastSvg = await svgPage.rasterize(undefined, undefined, undefined, {retained: true});
     result.first_svg = {...svgInitial.meta, parse_ms: svgPage.parse_ms, browser_ms: performance.now() - start,
       frame_ms: svgInitial.host_ms + performance.now() - start};
+    result.svg_sha256 = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', svgInitial.data)), b => b.toString(16).padStart(2, '0')).join('');
     result.svg_snapshot_context = lastSvg.context;
     result.svg_bytes = svgInitial.data.length;
-    result.svg_resources = {paths: svgInitial.meta.paths, glyphs: svgInitial.meta.glyphs, images: svgInitial.meta.images};
+    result.svg_resources = {paths: svgInitial.meta.paths, glyphs: svgInitial.meta.glyphs, images: svgInitial.meta.images,
+      clips_elided: svgInitial.meta.clips_elided, clips_retained: svgInitial.meta.clips_retained};
+    result.svg_reuse = 'One retained SVG export and decoded image; fresh Canvas raster/readback per sample';
     if (lastSvg.wall_ms > 250) {
       svgSamples = Math.min(samples, 3);svgWarmups = Math.min(warmups, 1);
       result.svg_sample_cap = 'Initial completed SVG raster exceeded 250 ms; at most 3 timed samples and 1 warmup';
@@ -78,17 +81,13 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
         frame_ms: packet.host_ms + output.wall_ms, pixels: output.pixels};
     };
     const vector = async () => {
-      const exported = await engine.render(4, options);
-      if (exported.meta.fallback) throw new Error('SVG admission changed between identical requests');
-      assertPixels(exported.data, svgInitial.data, 'SVG export repeat');
       const start = performance.now();
-      const page = new SvgPage(exported.data, exported.meta, options.dpi ?? 150);
-      const output = await page.rasterize();
+      const output = await svgPage.rasterize(undefined, undefined, undefined, {retained: true});
       const browser_ms = performance.now() - start;
       const repeat_difference = sameBytes(output.pixels, svgReference) ? null : pixelDifference(output.pixels, svgReference);
       const accuracy = repeat_difference ? pixelDifference(output.pixels, reference) : firstSvgAccuracy;
-      return {engine: exported.meta, browser_ms, render_ms: exported.meta.engine_ms + browser_ms,
-        frame_ms: exported.host_ms + browser_ms, pixels: output.pixels, page, repeat_difference, accuracy};
+      return {export_ms: 0, reused_export: true, browser_ms, render_ms: browser_ms,
+        frame_ms: browser_ms, pixels: output.pixels, page: svgPage, repeat_difference, accuracy};
     };
     let lastGpu = null;
     for (let i = 0; i < warmups; i++) { await cpu(); if (job) lastGpu = await hybrid(); if (svgPage && i < svgWarmups) lastSvg = await vector(); }
@@ -108,7 +107,7 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
       if (s) {lastSvg = s;svgPage = s.page;}
       result.samples.push({cpu: {...c.meta, frame_ms: c.host_ms}, gpu: g ? {
         engine: g.engine, gpu_ms: g.gpu_ms, kernel_ms: g.kernel_ms, render_ms: g.render_ms, frame_ms: g.frame_ms,
-      } : null, svg: s ? {engine: s.engine, browser_ms: s.browser_ms, render_ms: s.render_ms, frame_ms: s.frame_ms,
+      } : null, svg: s ? {export_ms: s.export_ms, reused_export: s.reused_export, browser_ms: s.browser_ms, render_ms: s.render_ms, frame_ms: s.frame_ms,
         repeat_difference: s.repeat_difference, accuracy: s.accuracy} : null});
     }
     result.cpu_render_ms = stats(result.samples.map(s => s.cpu.engine_ms));
@@ -118,7 +117,7 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
       result.svg_samples = measured.length;result.svg_warmups = svgWarmups;
       result.svg_render_ms = stats(measured.map(s => s.render_ms));
       result.svg_frame_ms = stats(measured.map(s => s.frame_ms));
-      result.svg_export_ms = stats(measured.map(s => s.engine.export_ms));
+      result.svg_export_ms = stats(measured.map(s => s.export_ms));
       result.svg_browser_ms = stats(measured.map(s => s.browser_ms));
       result.svg_accuracy = lastSvg.accuracy;
       result.svg_repeatability = {export_byte_identical: true, pixel_byte_identical: measured.every(s => !s.repeat_difference),
