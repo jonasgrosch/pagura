@@ -50,6 +50,18 @@ pub(crate) enum Body {
     Cells(Cells),
     /// A glyph mask reused per origin bin.
     Binned(Placement),
+    /// A certified glyph's relative edges, translated as they accumulate.
+    Glyph(GlyphBody),
+}
+
+/// One translated placement of a certified glyph.
+#[derive(Debug)]
+pub(crate) struct GlyphBody {
+    pub(crate) edges: std::sync::Arc<super::GlyphEdges>,
+    pub(crate) origin: crate::Point,
+    /// The device row of the relative row list's first row.
+    pub(crate) row0: i64,
+    pub(crate) scan: (usize, usize),
 }
 
 /// Straight edges and monotone quadratics listed by band, and the columns
@@ -437,6 +449,67 @@ impl Shape {
             options,
         )
         .map(Some)
+    }
+
+    /// A placement of a certified glyph within `frame`, which keeps every
+    /// pixel the glyph can touch: its relative edges and the origin, with
+    /// no geometry work and no allocation.
+    pub(crate) fn translated(
+        edges: &std::sync::Arc<super::GlyphEdges>,
+        relative: &super::glyph::Relative,
+        origin: crate::Point,
+        frame: &Frame<'_>,
+        options: &Prep<'_>,
+    ) -> Result<Option<Self>> {
+        let o = origin;
+        if let Some(r) = relative.rect {
+            let rect = Bounds {
+                left: r.left + o.x,
+                top: r.top + o.y,
+                right: r.right + o.x,
+                bottom: r.bottom + o.y,
+            };
+            return Ok(Self::rect(rect, frame, options));
+        }
+        let [lo, hi] = relative.hull;
+        let (lo, hi) = (
+            crate::Point::new(lo.x + o.x, lo.y + o.y),
+            crate::Point::new(hi.x + o.x, hi.y + o.y),
+        );
+        let Some(bounds) = frame.bounds([lo, hi].into_iter()) else {
+            return Ok(None);
+        };
+        let width = super::row::width(options.area.region.x1)?;
+        let scan = columns(lo.x, hi.x, width);
+        let words = (scan.1.saturating_sub(scan.0)) / 64 + 2;
+        let work = relative
+            .work
+            .saturating_add((bounds.height() as usize).saturating_mul(words + 2));
+        if work > options.limits.raster_work {
+            return Err(Error::limit(RASTER_WORK));
+        }
+        #[expect(
+            clippy::cast_possible_truncation,
+            reason = "bounded origins lie within i64"
+        )]
+        let row0 = o.y.floor() as i64 + relative.first;
+        Ok(Some(Self {
+            area: options.area,
+            bounds,
+            work,
+            retained: size_of::<Self>(),
+            rule: FillRule::NonZero,
+            body: Body::Glyph(GlyphBody {
+                edges: std::sync::Arc::clone(edges),
+                origin,
+                row0,
+                scan,
+            }),
+            clip: frame.clip.cloned(),
+            overlay: false,
+            stored: Stored::default(),
+            multiplied: None,
+        }))
     }
 
     fn rect(rect: Bounds, frame: &Frame<'_>, options: &Prep<'_>) -> Option<Self> {

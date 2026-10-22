@@ -11,6 +11,7 @@ mod approximate;
 mod binned;
 mod clips;
 mod fills;
+mod glyphs;
 mod strokes;
 
 use super::*;

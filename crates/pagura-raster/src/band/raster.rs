@@ -3,11 +3,14 @@
 use super::approximate::{self, Multiplied};
 use super::binned;
 use super::clip::{INSIDE, Rows, Segment};
+use super::curve::Quadratic;
 use super::edges::Bounds;
+use super::edges::Line;
 use super::rect;
 use super::row::{Row, Sink};
-use super::shape::{Body, EdgeBody, Shape};
+use super::shape::{Body, EdgeBody, GlyphBody, Shape};
 use super::{Area, BandCoverage, ClipShape, MarkCoverage};
+use crate::FillRule;
 use pagura_core::{Meter, Result};
 
 /// The band rasterizer: a dense band-width cell row with a touched-cell
@@ -105,6 +108,7 @@ impl BandRasterizer {
                 match &shape.0.body {
                     Body::Rect(r) => self.rect(*r, shape, rows, out),
                     Body::Edges(edges) => self.edges(edges, shape, (band, rows), out),
+                    Body::Glyph(glyph) => self.glyph(glyph, shape, rows, out),
                     Body::Cells(cells) => {
                         self.work = self.work.saturating_add(self.cells.rasterize(
                             cells,
@@ -172,6 +176,60 @@ impl BandRasterizer {
             let mut sink = sink(out, shape, y, self.cells.row_buffer());
             let touched = self.row.emit(edges.scan, shape.0.rule, &mut sink);
             let words = (edges.scan.1.saturating_sub(edges.scan.0)) / 64 + 2;
+            self.work = self
+                .work
+                .saturating_add(items.len())
+                .saturating_add(cells)
+                .saturating_add(touched.saturating_mul(3))
+                .saturating_add(words + 2)
+                .saturating_add(sink.extra());
+        }
+    }
+
+    /// Accumulates a translated glyph: each listed edge plus the origin, as
+    /// translating the vertices first would give.
+    fn glyph(
+        &mut self,
+        glyph: &GlyphBody,
+        shape: (&Shape, Option<&ClipShape>),
+        rows: std::ops::Range<u32>,
+        out: &mut BandCoverage,
+    ) {
+        let Some(relative) = glyph.edges.relative() else {
+            return;
+        };
+        let o = glyph.origin;
+        let at = |p: crate::Point| crate::Point::new(p.x + o.x, p.y + o.y);
+        let count = relative.lines.len();
+        let words = (glyph.scan.1.saturating_sub(glyph.scan.0)) / 64 + 2;
+        for y in rows {
+            let top = f64::from(y);
+            let items =
+                u32::try_from(i64::from(y) - glyph.row0).map_or(&[][..], |r| relative.index.row(r));
+            let mut cells = 0;
+            for &item in items {
+                let item = item as usize;
+                cells += match relative.lines.get(item) {
+                    Some(l) => self.row.line(
+                        Line {
+                            a: at(l.a),
+                            b: at(l.b),
+                        },
+                        top,
+                    ),
+                    None => relative.curves.get(item - count).map_or(0, |q| {
+                        self.row.curve(
+                            Quadratic {
+                                points: q.points.map(at),
+                            },
+                            top,
+                        )
+                    }),
+                };
+            }
+            out.push_row(y);
+            let mut sink = sink(out, shape, y, self.cells.row_buffer());
+            let touched = self.row.emit(glyph.scan, FillRule::NonZero, &mut sink);
             self.work = self
                 .work
                 .saturating_add(items.len())
