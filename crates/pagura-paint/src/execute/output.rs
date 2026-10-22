@@ -65,20 +65,21 @@ pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, target: 
         head.fill(output.background);
         tail.fill(output.background);
         let first = band_row * width + lo;
+        let end = first + out.len();
         match &ws.page {
             PageBuffer::N16(words) => {
-                for (out, word) in out.iter_mut().zip(words.iter().skip(first)) {
-                    *out = word.map(nearest_byte);
+                if let Some(words) = words.get(first..end) {
+                    crate::kernel::n16_bytes(out, words);
                 }
             }
             PageBuffer::F32(levels) => {
-                for (out, level) in out.iter_mut().zip(levels.iter().skip(first)) {
-                    *out = level.map(byte);
+                if let Some(levels) = levels.get(first..end) {
+                    crate::kernel::f32_bytes(out, levels);
                 }
             }
             PageBuffer::U8(bytes) => {
-                for (out, pixel) in out.iter_mut().zip(bytes.iter().skip(first)) {
-                    *out = *pixel;
+                if let Some(bytes) = bytes.get(first..end) {
+                    out.copy_from_slice(bytes);
                 }
             }
             PageBuffer::F64(values) => {
@@ -94,24 +95,6 @@ pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, target: 
         }
         ws.usage.work = ws.usage.work.saturating_add(count);
     }
-}
-
-/// The nearest byte of an N16 word: `(w + 128) / 257`, never a tie.
-#[expect(
-    clippy::cast_possible_truncation,
-    reason = "(65535 + 128) / 257 is 255"
-)]
-fn nearest_byte(word: u16) -> u8 {
-    ((u32::from(word) + 128) / 257) as u8
-}
-
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "a level rounded and clamped to a byte"
-)]
-fn byte(level: f32) -> u8 {
-    level.round().clamp(0.0, 255.0) as u8
 }
 
 /// One f64 page pixel as premultiplied RGBA8 over the background.

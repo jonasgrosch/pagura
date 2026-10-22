@@ -50,20 +50,15 @@ impl<'a> Renderer<'a> {
             .with_structure(self.document, page)
     }
 
-    /// The positioned text of one stored annotation appearance.
-    ///
-    /// The interpreter has no entry point for a single appearance stream
-    /// yet, so this reports that the capability is missing.
+    /// The positioned text of one stored annotation appearance of `page`,
+    /// fitted into `rect`.
     pub(crate) fn appearance_text(
         self,
         page: &Page,
         appearance: ObjectId,
         rect: Rect,
     ) -> Result<PositionedText> {
-        let _ = (self, page, appearance, rect);
-        Err(Error::invalid_argument(
-            "appearance text extraction is not implemented",
-        ))
+        self.interpreter().appearance_text(page, appearance, rect)
     }
 
     /// Renders `tile` of `scene`, or the whole page, asking `stop` with the

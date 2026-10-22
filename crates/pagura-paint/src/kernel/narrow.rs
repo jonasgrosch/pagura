@@ -7,37 +7,104 @@
 
 use super::Colors;
 
+/// `floor(x / 255)` for `x ≤ 255 · 65535 + 127` without a division:
+/// `y = 257 x`, then `(y + (y >> 16) + 1) >> 16`. Every intermediate stays
+/// below 2^32 (checked exhaustively in the tests).
+#[inline]
+pub(crate) fn div255(x: u32) -> u32 {
+    let y = (x << 8).wrapping_add(x);
+    y.wrapping_add(y >> 16).wrapping_add(1) >> 16
+}
+
+/// The nearest byte of an N16 word, `round(w / 257)` (never a tie):
+/// `n = w + 128`, then `(n − (n >> 8)) >> 8`.
+#[inline]
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "(65535 + 128 − 256) >> 8 is 255"
+)]
+pub(crate) fn word_byte(word: u16) -> u8 {
+    let n = u32::from(word).wrapping_add(128);
+    (n.wrapping_sub(n >> 8) >> 8) as u8
+}
+
+/// A row of N16 pixels as output bytes, lane by lane. Kept out of line so
+/// that the compiler sees two unaliased slices and vectorizes the loop.
+#[inline(never)]
+pub(crate) fn n16_bytes(out: &mut [[u8; 4]], words: &[[u16; 4]]) {
+    for (byte, &word) in out.as_flattened_mut().iter_mut().zip(words.as_flattened()) {
+        *byte = word_byte(word);
+    }
+}
+
+/// A row of F32 levels as output bytes, rounded half away from zero.
+#[inline(never)]
+pub(crate) fn f32_bytes(out: &mut [[u8; 4]], levels: &[[f32; 4]]) {
+    for (byte, &level) in out.as_flattened_mut().iter_mut().zip(levels.as_flattened()) {
+        *byte = level_byte(level);
+    }
+}
+
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "a level rounded and clamped to a byte"
+)]
+fn level_byte(level: f32) -> u8 {
+    level.round().clamp(0.0, 255.0) as u8
+}
+
+/// `round(p / 255)` for `p ≤ 255²` (never a tie): `t = p + 128`, then
+/// `(t + (t >> 8)) >> 8`.
+#[inline]
+pub(crate) fn round255(p: u32) -> u32 {
+    let t = p.wrapping_add(128);
+    t.wrapping_add(t >> 8) >> 8
+}
+
 /// Stores an opaque colour, already encoded as N16 `words`, at `coverage`
 /// (`None` covers every pixel): `floor((c·s + (255 − c)·u + 127) / 255)`
 /// with one integer rounding per store. The formula leaves a pixel as it is
 /// at coverage 0 and stores the source at 255, so the loop has no branches
-/// and vectorizes on u32 lanes.
+/// and no division, and vectorizes on u32 lanes.
 pub(crate) fn store_n16(pixels: &mut [[u16; 4]], words: [u16; 4], coverage: Option<&[u8]>) {
     let Some(coverage) = coverage else {
         pixels.fill(words);
         return;
     };
-    let source = words.map(u32::from);
+    let s = words.map(u32::from);
     for (pixel, &c) in pixels.iter_mut().zip(coverage) {
+        // One pixel's four channels as four u32 lanes.
         let c = u32::from(c);
-        let rest = 255_u32.wrapping_sub(c);
-        for (out, &s) in pixel.iter_mut().zip(&source) {
-            *out = mix(s, u32::from(*out), (c, rest));
-        }
+        let r = 255_u32.wrapping_sub(c);
+        let b = [
+            u32::from(pixel[0]),
+            u32::from(pixel[1]),
+            u32::from(pixel[2]),
+            u32::from(pixel[3]),
+        ];
+        *pixel = [
+            mix(s[0], b[0], (c, r)),
+            mix(s[1], b[1], (c, r)),
+            mix(s[2], b[2], (c, r)),
+            mix(s[3], b[3], (c, r)),
+        ];
     }
 }
 
-/// One N16 store; the sum is at most 65535 · 255 + 127, far inside u32.
+/// One N16 store; the sum is at most 255 · 65535 + 127.
+#[inline]
 #[expect(
     clippy::cast_possible_truncation,
     reason = "a convex combination of two words stays within 0..65535"
 )]
 fn mix(source: u32, backdrop: u32, (c, rest): (u32, u32)) -> u16 {
-    (source
-        .wrapping_mul(c)
-        .wrapping_add(backdrop.wrapping_mul(rest))
-        .wrapping_add(127)
-        / 255) as u16
+    div255(
+        source
+            .wrapping_mul(c)
+            .wrapping_add(backdrop.wrapping_mul(rest))
+            .wrapping_add(127),
+    ) as u16
 }
 
 /// The N16 word of a unit value: `257 × L` for its level `L = 255·v`,
@@ -206,18 +273,20 @@ fn bytes(color: &[f64]) -> [u8; 4] {
     [at(0), at(1), at(2), 255]
 }
 
+/// One byte store, rounded once; at alpha 0 the pixel stays and at 255 it
+/// takes the source, from the formula itself.
+#[expect(
+    clippy::cast_possible_truncation,
+    reason = "a convex combination of two bytes stays within 0..255"
+)]
 fn over(pixel: &mut [u8; 4], source: [u8; 4], alpha: f64) {
     let a = u32::from(pagura_raster::quantize_unit(alpha));
-    if a == 0 {
-        return;
-    }
-    if a == 255 {
-        *pixel = source;
-        return;
-    }
+    let rest = 255_u32.wrapping_sub(a);
     for (out, source) in pixel.iter_mut().zip(source) {
-        let value = (u32::from(source) * a + u32::from(*out) * (255 - a) + 127) / 255;
-        *out = u8::try_from(value).unwrap_or(u8::MAX);
+        let sum = u32::from(source)
+            .wrapping_mul(a)
+            .wrapping_add(u32::from(*out).wrapping_mul(rest));
+        *out = round255(sum) as u8;
     }
 }
 
@@ -234,6 +303,23 @@ mod tests {
             let exact = value * 255.0;
             assert_eq!(f64::from(byte), exact.round(), "{value}");
             assert!((f64::from(word) - exact * 257.0).abs() <= 1.0 + 1e-9);
+        }
+    }
+
+    #[test]
+    fn integer_identities_hold_on_their_whole_domains() {
+        for x in 0..=255 * 65_535 + 127_u32 {
+            assert_eq!(div255(x), x / 255, "{x}");
+        }
+        for word in 0..=u16::MAX {
+            assert_eq!(
+                u32::from(word_byte(word)),
+                (u32::from(word) + 128) / 257,
+                "{word}"
+            );
+        }
+        for p in 0..=255 * 255_u32 {
+            assert_eq!(round255(p), (p + 127) / 255, "{p}");
         }
     }
 

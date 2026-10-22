@@ -5,6 +5,7 @@
 //! cannot fail.
 
 mod frame;
+mod glyphs;
 mod group;
 mod mask;
 mod output;
@@ -126,6 +127,7 @@ impl<'a> Executor<'a> {
             }
             match &item.kind {
                 ItemKind::Mark(mark) => self.mark(item, mark, frame, tops),
+                ItemKind::Run(run) => self.glyph_run(item, run, frame, tops),
                 ItemKind::Group(used) => self.group(item, used, frame, tops),
             }
         }
@@ -428,12 +430,23 @@ fn opacity(
     }
     if let Some(coverage) = coverage {
         for ((a, s), &c) in alpha.iter_mut().zip(shape.iter_mut()).zip(coverage) {
-            let factor = f64::from(c) / 255.0;
+            let factor = UNIT[usize::from(c)];
             *a *= factor;
             *s *= factor;
         }
     }
 }
+
+/// `c / 255` for every coverage byte, as the division gives it.
+const UNIT: [f64; 256] = {
+    let mut unit = [0.0; 256];
+    let mut c = 0;
+    while c < 256 {
+        unit[c] = c as f64 / 255.0;
+        c += 1;
+    }
+    unit
+};
 
 /// Constant alpha and soft mask (11.6.4.3): alpha always, shape too under
 /// `AIS` (11.6.4.4).
@@ -445,6 +458,10 @@ pub(crate) fn apply(
 ) {
     let constant = compositing.alpha;
     let shaped = compositing.alpha_is_shape;
+    if mask.is_none() && constant == 1.0 {
+        // Multiplying by one changes nothing.
+        return;
+    }
     match mask {
         Some(values) => {
             for ((a, s), &m) in alpha.iter_mut().zip(shape.iter_mut()).zip(values) {

@@ -2,8 +2,8 @@
 //! groups, masks, patterns and text into any [`Device`].
 
 use crate::model::{
-    Clip, Composite, GroupAttributes, Image, MaskId, MaskKind, Paint, PatternId, Pen, Shading,
-    TilingColors, ViewFit,
+    Clip, Composite, GroupAttributes, GroupCause, Image, MaskId, MaskKind, Paint, PatternId, Pen,
+    Shading, TilingColors, ViewFit,
 };
 use pagura_color::{Components, Function};
 use pagura_core::{Name, ObjectId, Position, Rect, Result};
@@ -13,8 +13,12 @@ use std::sync::Arc;
 
 /// What a device consumes, declared before interpretation starts. The
 /// interpreter does no work a device does not need.
+///
+/// A plain record of independent flags: devices build theirs from a
+/// constant with functional record update, such as
+/// `Needs { structure: true, ..Needs::SCENE }`, so it is not
+/// `#[non_exhaustive]`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-#[non_exhaustive]
 #[expect(
     clippy::struct_excessive_bools,
     reason = "independent capabilities a device declares"
@@ -27,7 +31,8 @@ pub struct Needs {
     /// Image marks are emitted with their sources. Without it, images are
     /// not read beyond what text extraction's object occurrences need.
     pub images: bool,
-    /// Glyph runs carry outlines (font programs are loaded).
+    /// Glyph runs carry outlines (font programs are loaded), and Type 3
+    /// glyph procedures are interpreted.
     pub outlines: bool,
     /// Glyph runs carry Unicode text and extraction metrics.
     pub text: bool,
@@ -37,6 +42,24 @@ pub struct Needs {
 }
 
 impl Needs {
+    /// Nothing: the content is only checked.
+    pub const NONE: Self = Self {
+        paint: false,
+        images: false,
+        outlines: false,
+        text: false,
+        structure: false,
+    };
+
+    /// Everything.
+    pub const ALL: Self = Self {
+        paint: true,
+        images: true,
+        outlines: true,
+        text: true,
+        structure: true,
+    };
+
     /// What recording a scene for rendering needs.
     pub const SCENE: Self = Self {
         paint: true,
@@ -128,6 +151,8 @@ pub struct FontInfo {
     pub base_name: Option<Name>,
     /// Vertical writing (`WMode 1`).
     pub vertical: bool,
+    /// `Subtype`.
+    pub kind: pagura_text::FontKind,
 }
 
 /// The identity of a font program within one document: never an address.
@@ -219,10 +244,13 @@ pub struct ShadingMark<'a> {
 /// A transparency group (11.6.6) or an annotation's fixed view.
 #[derive(Debug, Clone, Copy)]
 pub struct GroupInfo<'a> {
+    /// Why it exists.
+    pub cause: GroupCause,
     /// Its attributes.
     pub attributes: GroupAttributes,
     /// Its bounding box in default user space (`BBox` under the form matrix
-    /// and CTM).
+    /// and CTM): a bound for its buffer only. The `BBox` clips the group's
+    /// marks through their clip chains, which include it.
     pub bbox: Option<&'a Arc<Path>>,
     /// A fixed view, for annotations with `NoZoom` or `NoRotate`.
     pub view: Option<ViewFit>,
@@ -240,7 +268,9 @@ pub struct SoftMaskInfo<'a> {
     pub kind: MaskKind,
     /// The mask group's attributes.
     pub group: GroupAttributes,
-    /// The mask group's bounding box in default user space.
+    /// The mask group's bounding box in default user space: a bound for
+    /// its buffer only; the `BBox` clips the group's marks through their
+    /// clip chains.
     pub bbox: Option<&'a Arc<Path>>,
     /// `BC`, in the group's blending space.
     pub backdrop: Option<&'a Components>,
@@ -268,6 +298,20 @@ pub struct TilingInfo {
     pub object: Option<ObjectId>,
 }
 
+/// The marked-content properties text extraction reads (14.6.2, 14.7.5.2,
+/// 14.9.3–14.9.4), parsed for devices that need text. Malformed values are
+/// reported repairs and read as absent.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct MarkedText {
+    /// `MCID`.
+    pub mcid: Option<i64>,
+    /// `ActualText`, decoded.
+    pub actual_text: Option<String>,
+    /// `Alt`, decoded.
+    pub alt: Option<String>,
+}
+
 /// Marked content, object occurrences and annotation boundaries, for
 /// devices that need structure.
 #[derive(Debug, Clone, Copy)]
@@ -277,16 +321,29 @@ pub enum Marked<'a> {
     Begin {
         /// The tag.
         tag: &'a Name,
-        /// The properties dictionary, resolved.
+        /// The properties dictionary, resolved; `None` for `BMC` and for
+        /// properties that could not be read.
         properties: Option<&'a pagura_core::Dictionary>,
-        /// Whether optional content hides the sequence.
+        /// Whether optional content hides the sequence, this one's
+        /// membership included.
         hidden: bool,
+        /// The properties text extraction reads, for devices that need text
+        /// and in content whose text belongs to the page (not annotation
+        /// appearances, patterns, soft masks or Type 3 glyphs).
+        text: Option<&'a MarkedText>,
     },
     /// `EMC`.
     End,
-    /// An XObject or annotation starts (for structure `OBJR`).
-    ObjectBegin(ObjectId),
-    /// It ends.
+    /// An XObject or annotation occurrence starts (for structure `OBJR`).
+    /// The text shown until the matching [`Marked::ObjectEnd`] belongs to
+    /// it; images and annotations end at once.
+    ObjectBegin {
+        /// The XObject or annotation.
+        object: ObjectId,
+        /// Whether optional content hides the occurrence.
+        hidden: bool,
+    },
+    /// The innermost object occurrence ends.
     ObjectEnd,
 }
 
@@ -420,6 +477,17 @@ pub trait Device {
     ///
     /// As [`Self::begin_page`].
     fn end_tiling(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    /// A font is selected (`Tf`, or `Font` in a graphics state parameter
+    /// dictionary), in selection order; only devices that need text
+    /// receive it.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::begin_page`].
+    fn select_font(&mut self, font: &FontInfo) -> Result<()> {
         Ok(())
     }
 

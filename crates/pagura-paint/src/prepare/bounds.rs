@@ -85,6 +85,21 @@ pub(crate) fn scale(transform: Transform) -> f64 {
         .sqrt()
 }
 
+/// How far a stroke with `pen` reaches beyond its path in device pixels
+/// under `transform`: half the line width, times the miter limit for miter
+/// joins or √2 for square caps, through the pen's scale.
+pub(crate) fn stroke_reach(pen: &pagura_interpret::Pen, transform: Transform) -> f64 {
+    let stroke = &pen.stroke;
+    let join = if stroke.join == pagura_raster::LineJoin::Miter {
+        stroke.miter_limit.max(1.0)
+    } else {
+        1.0
+    };
+    stroke.width.max(0.0) / 2.0
+        * join.max(std::f64::consts::SQRT_2)
+        * scale(pen.transform.then(transform))
+}
+
 /// The unit square under `transform`, as a path.
 pub(crate) fn unit_square() -> Path {
     let mut builder = pagura_raster::PathBuilder::new();

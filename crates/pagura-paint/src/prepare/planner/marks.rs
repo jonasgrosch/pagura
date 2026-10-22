@@ -2,9 +2,10 @@
 //! bounds first; a mark that meets the region then has its soft mask, clip,
 //! shape and paint prepared and its work and bytes reserved, in that order,
 //! so its errors come in source order. A glyph placement is a mark of its
-//! own.
+//! own, gathered into its run's item where it can be (`runs`).
 
 use super::clips::{Clipping, Extra};
+use super::runs::Placed;
 use super::{Planner, Scope};
 use crate::paint::PaintSpans;
 use crate::plan::{Compositing, Cover, GroupUse, Item, ItemKind, Mark, area, intersect};
@@ -15,7 +16,7 @@ use pagura_interpret::{
     BlendMode, Composite, FillNode, GlyphSource, GlyphsNode, ImageMask, ImageNode, MarkInfo, Paint,
     PaintId, Pen, ShadingNode, ShadingPaint, StrokeNode, TilingPaint,
 };
-use pagura_raster::{FillRegion, FillRule, LineJoin, Path, Point, ShapeOptions, Transform};
+use pagura_raster::{FillRegion, FillRule, Path, Point, ShapeOptions, Transform};
 use std::sync::Arc;
 
 /// Bytes charged per prepared paint, besides what its source retains.
@@ -84,15 +85,7 @@ impl<B: Backend> Planner<'_, B> {
             .pens
             .get(node.pen.index())
             .ok_or(Error::invalid_argument("scene pen out of range"))?;
-        let stroke = &pen.stroke;
-        let join = if stroke.join == LineJoin::Miter {
-            stroke.miter_limit.max(1.0)
-        } else {
-            1.0
-        };
-        let reach = stroke.width.max(0.0) / 2.0
-            * join.max(std::f64::consts::SQRT_2)
-            * bounds::scale(pen.transform.then(scope.transform));
+        let reach = bounds::stroke_reach(pen, scope.transform);
         let hull =
             bounds::path(&node.path, scope.transform).map(|h| bounds::expand(h, reach + 2.0));
         let spec = Spec {
@@ -105,12 +98,31 @@ impl<B: Backend> Planner<'_, B> {
         self.mark(scope, &spec, budget)
     }
 
+    /// A glyph run: one item for its placements where they share a solid
+    /// paint and need no transfer selection (`runs`), one per placement
+    /// otherwise. Either way each placement is prepared, culled and charged
+    /// as a mark of its own, so errors come in the same order.
     pub(super) fn glyphs(
         &mut self,
         scope: &Scope,
         node: &GlyphsNode,
         budget: &mut Budget,
     ) -> Result<()> {
+        let gather = node.placements.len() > 1 && self.gathers(scope, node);
+        let outer = std::mem::replace(&mut self.gathering, gather.then_some(scope.group));
+        let placed = self.placements(scope, node, budget);
+        self.gathering = outer;
+        placed?;
+        if gather {
+            let position = self.run.as_ref().map(|open| open.position);
+            if let Err(error) = self.flush(budget) {
+                return Err(self.fail(error, position.unwrap_or_default()));
+            }
+        }
+        Ok(())
+    }
+
+    fn placements(&mut self, scope: &Scope, node: &GlyphsNode, budget: &mut Budget) -> Result<()> {
         let t = scope.transform;
         let device = Transform::new(t.a, t.b, t.c, t.d, 0.0, 0.0);
         let mut hulls: Vec<Option<Option<bounds::Hull>>> = vec![None; node.sources.len()];
@@ -420,21 +432,36 @@ impl<B: Backend> Planner<'_, B> {
             });
         budget.work.charge(covered.work)?;
         budget.work.charge(area(covered.bounds))?;
+        let mark = Mark {
+            cover: covered.cover,
+            paint,
+            compositing,
+            select,
+            records,
+            boundary: covered.boundary,
+            words,
+        };
+        if self.gathering == Some(scope.group)
+            && !records
+            && covered.boundary.is_none()
+            && let Some(shape) = covered.cover.shape
+        {
+            let placed = Placed {
+                shape,
+                bounds: covered.bounds,
+                work: covered.work,
+                serial,
+                position: spec.position,
+            };
+            return self.gather(scope.group, mark, placed, budget);
+        }
         let item = Item {
             bounds: covered.bounds,
             bands: self.bands(covered.bounds),
             serial,
             position: spec.position,
             work: covered.work,
-            kind: ItemKind::Mark(Mark {
-                cover: covered.cover,
-                paint,
-                compositing,
-                select,
-                records,
-                boundary: covered.boundary,
-                words,
-            }),
+            kind: ItemKind::Mark(mark),
         };
         self.push(scope.group, item, budget)
     }

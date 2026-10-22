@@ -171,6 +171,7 @@ dependencies = [
  "pagura-extract",
  "pagura-font",
  "pagura-image",
+ "pagura-legacy",
  "pagura-raster",
  "pagura-testkit",
  "pagura-text",

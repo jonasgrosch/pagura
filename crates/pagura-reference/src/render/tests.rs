@@ -34,6 +34,7 @@ impl Build {
     fn new(width: f64, height: f64) -> Self {
         let root = Group {
             role: GroupRole::Page,
+            cause: pagura_interpret::GroupCause::Document,
             attributes: GroupAttributes::default(),
             bbox: None,
             view: None,
@@ -112,6 +113,7 @@ impl Build {
     fn group(&mut self, role: GroupRole, attributes: GroupAttributes, state: StateId) -> GroupId {
         self.scene.groups.push(Group {
             role,
+            cause: pagura_interpret::GroupCause::Document,
             attributes,
             bbox: None,
             view: None,

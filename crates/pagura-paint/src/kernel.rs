@@ -7,7 +7,9 @@
 
 mod narrow;
 
-pub(crate) use narrow::{dynamic_f32, dynamic_n16, level, store_f32, store_n16, store_u8, word};
+pub(crate) use narrow::{
+    dynamic_f32, dynamic_n16, f32_bytes, level, n16_bytes, store_f32, store_n16, store_u8, word,
+};
 
 use crate::blend::{Blend, BlendVisitor, with_blend};
 use crate::plan::Layout;
