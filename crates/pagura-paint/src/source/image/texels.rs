@@ -707,10 +707,11 @@ pub(super) struct Unmatted {
 /// The values of the codes seen with one opacity code.
 #[derive(Debug)]
 struct Block {
-    /// Which codes' values are known, a bit each.
+    /// Which codes' values are known, a bit each, 64 codes a word.
     known: [u64; 4],
-    /// `channels` values per code.
-    values: Vec<f64>,
+    /// `channels` values per code of each word's 64 codes, held once one of
+    /// them is known: an image whose codes cluster holds a few of them.
+    values: [Vec<f64>; 4],
 }
 
 impl Unmatted {
@@ -729,14 +730,13 @@ impl Unmatted {
 
     /// The values of the codes seen with opacity code `mask`.
     fn block(&mut self, mask: u8) -> Option<&mut Block> {
-        let channels = self.channels;
         let block = self
             .blocks
             .get_mut(usize::from(mask))?
             .get_or_insert_with(|| {
                 Box::new(Block {
                     known: [0; 4],
-                    values: vec![0.0; 256 * channels],
+                    values: Default::default(),
                 })
             });
         Some(block)
@@ -749,15 +749,22 @@ impl Block {
     #[inline]
     fn values(&mut self, code: u8, channels: usize, compute: impl FnOnce(&mut [f64])) -> &[f64] {
         let (word, bit) = (usize::from(code >> 6), 1u64 << (code & 63));
-        let at = usize::from(code) * channels;
-        let Some(values) = self.values.get_mut(at..at + channels) else {
+        let (Some(known), Some(held)) = (self.known.get_mut(word), self.values.get_mut(word))
+        else {
             return &[];
         };
-        if self.known[word] & bit == 0 {
+        if held.is_empty() {
+            held.resize(64 * channels, 0.0);
+        }
+        let at = usize::from(code & 63) * channels;
+        let Some(values) = held.get_mut(at..at + channels) else {
+            return &[];
+        };
+        if *known & bit == 0 {
             let mut texel = [0.0; MAX_LANES];
             compute(&mut texel[..channels + 2]);
             values.copy_from_slice(&texel[..channels]);
-            self.known[word] |= bit;
+            *known |= bit;
         }
         values
     }
