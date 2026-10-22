@@ -14,7 +14,8 @@ use std::time::Instant;
 /// password and recovery mode, and prints one JSON line. The document is
 /// opened once outside the timing, except that `open-pages` opens it again
 /// every time. `render-cold` records and renders page 0 with a new context
-/// every time, so nothing is reused; `record-warm` records it with one
+/// every time, so nothing is reused; `record-cold` records it with a new
+/// context every time and keeps no scene; `record-warm` records it with one
 /// context, which reuses fonts, glyphs and images but keeps no scene;
 /// `render-warm` renders it from one context, which records the page once
 /// and keeps its scene.
@@ -39,6 +40,10 @@ pub(crate) fn run(
             Bench::RenderCold => {
                 let cold = pagura::render_context(Arc::clone(&document));
                 black_box(cold.render_page(page, options)?);
+            }
+            Bench::RecordCold => {
+                let cold = pagura::render_context(Arc::clone(&document));
+                black_box(cold.record(page)?);
             }
             Bench::RecordWarm => {
                 black_box(warm.record(page)?);

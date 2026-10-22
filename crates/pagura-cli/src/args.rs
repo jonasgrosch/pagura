@@ -44,7 +44,8 @@ commands:
   microbench  time COUNT (1 to 100000) repetitions of OPERATION on page 0 of
               a document opened once: open-pages opens it again;
               render-cold records and renders with a new context, so no
-              font, image or scene is reused; record-warm records with one
+              font, image or scene is reused; record-cold records with a new
+              context and keeps no scene; record-warm records with one
               context, which reuses fonts, glyphs and images but keeps no
               scene; render-warm renders from one context, which records the
               page once and keeps its scene. Pagura-only profiling, never a
@@ -161,6 +162,8 @@ pub(crate) enum Bench {
     OpenPages,
     /// Record and render the first page with a new render context.
     RenderCold,
+    /// Record the first page with a new render context, keeping no scene.
+    RecordCold,
     /// Record the first page with one render context, keeping no scene.
     RecordWarm,
     /// Render the first page from one render context, which keeps its scene.
@@ -168,9 +171,10 @@ pub(crate) enum Bench {
 }
 
 impl Bench {
-    const ALL: [Self; 4] = [
+    const ALL: [Self; 5] = [
         Self::OpenPages,
         Self::RenderCold,
+        Self::RecordCold,
         Self::RecordWarm,
         Self::RenderWarm,
     ];
@@ -180,6 +184,7 @@ impl Bench {
         match self {
             Self::OpenPages => "open-pages",
             Self::RenderCold => "render-cold",
+            Self::RecordCold => "record-cold",
             Self::RecordWarm => "record-warm",
             Self::RenderWarm => "render-warm",
         }
@@ -467,7 +472,9 @@ fn command(name: &str, operands: &[OsString], options: &Options) -> Result<Comma
                 .into_iter()
                 .find(|bench| operation.to_str() == Some(bench.name()))
                 .ok_or_else(|| {
-                    usage("OPERATION must be open-pages, render-cold, record-warm or render-warm")
+                    usage(
+                        "OPERATION must be open-pages, render-cold, record-cold, record-warm or render-warm",
+                    )
                 })?;
             let count: u32 = number(count, "COUNT")?;
             if !BENCH_COUNTS.contains(&count) {

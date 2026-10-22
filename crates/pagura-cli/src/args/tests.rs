@@ -134,7 +134,7 @@ fn malformed_arguments_name_what_is_wrong() {
         ),
         (
             &["microbench", "a.pdf", "warm", "1"],
-            "OPERATION must be open-pages, render-cold, record-warm or render-warm",
+            "OPERATION must be open-pages, render-cold, record-cold, record-warm or render-warm",
         ),
         (
             &["microbench", "a.pdf", "open-pages", "0"],
@@ -218,6 +218,7 @@ fn the_other_commands_parse_their_operands() {
         other => panic!("{name}: {other:?}"),
     };
     assert_eq!(operation("render-cold"), Bench::RenderCold);
+    assert_eq!(operation("record-cold"), Bench::RecordCold);
     assert_eq!(operation("record-warm"), Bench::RecordWarm);
     assert_eq!(
         run(&["microbench", "--strict", "a.pdf", "render-warm", "10", "96"]),

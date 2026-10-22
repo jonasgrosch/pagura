@@ -107,7 +107,7 @@ impl Run<'_, '_> {
             .glyphs
             .get(u32_to_usize(glyph.0))
             .ok_or_else(|| syntax(Position::Unknown, "glyph index outside Type 1 font"))?;
-        let r = charstring.cursor();
+        let r = charstring.cursor(&self.font.plain)?;
         let (start, end) = (r.position(), Position::Buffer(charstring.end()));
         self.work.depth(depth, usize::MAX, start)?;
         let mut s = State {
@@ -221,7 +221,7 @@ impl Run<'_, '_> {
                         .subrs
                         .get(index)
                         .ok_or_else(|| syntax(at, "Type 1 subroutine index out of range"))?;
-                    if self.charstring(subr.cursor(), depth + 1, s)? == Flow::End {
+                    if self.charstring(subr.cursor(&self.font.plain)?, depth + 1, s)? == Flow::End {
                         return self.end(&r, "data after Type 1 character end");
                     }
                 }
@@ -497,10 +497,8 @@ mod tests {
 
     fn font(charstring: &[u8]) -> Type1 {
         Type1 {
-            glyphs: vec![Charstring {
-                bytes: charstring.to_vec(),
-                at: 0,
-            }],
+            plain: charstring.to_vec(),
+            glyphs: vec![Charstring::new(0, charstring.len(), None)],
             glyph_count: 1,
             subrs: Vec::new(),
             names: BTreeMap::new(),
@@ -549,6 +547,36 @@ mod tests {
             run(&[239, 239, 21, 14]).unwrap_err().kind,
             ErrorKind::Syntax
         );
+    }
+
+    #[test]
+    fn charstrings_are_decrypted_when_first_drawn() {
+        // A plain glyph and an encrypted one too short for its lenIV: the
+        // damage surfaces only when that glyph is drawn, at its plaintext
+        // offset, and the decryption of a good glyph is kept.
+        let mut program = HSBW.to_vec();
+        program.extend([239, 239, 21, 14]);
+        let mut font = font(&program);
+        let good = program.len();
+        font.plain.extend([1, 2]);
+        font.glyphs.push(Charstring::new(good, 2, Some(4)));
+        font.glyph_count = 2;
+        let mut diagnostics = Diagnostics::new(Recovery::Strict);
+        let mut work = Work::new(FontBudget::new(&Limits::default()), &mut diagnostics);
+        assert!(outline(&font, GlyphId(0), &mut work).is_ok());
+        let error = outline(&font, GlyphId(1), &mut work).unwrap_err();
+        assert_eq!(
+            (error.kind, error.position),
+            (ErrorKind::Syntax, pagura_core::Position::Buffer(good))
+        );
+        let encrypted = Charstring::new(0, 6, Some(4));
+        let cipher = [1, 2, 3, 4, 5, 6];
+        let bytes = encrypted.bytes(&cipher).unwrap().to_vec();
+        assert_eq!(bytes.len(), 2);
+        assert!(std::ptr::eq(
+            encrypted.bytes(&cipher).unwrap(),
+            encrypted.decrypted.get().unwrap().as_slice()
+        ));
     }
 
     #[test]

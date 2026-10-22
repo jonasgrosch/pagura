@@ -328,6 +328,12 @@ impl PdfFont {
             "decoded glyph text byte budget exceeded",
         );
         glyphs.reserve(string.len().min(self.limits.text_items));
+        // Without glyph text to carry or a ToUnicode map, a string whose
+        // every code could map to the longest name's text stays within the
+        // text budget, so its text need not be looked up at all.
+        let textless = !unicode
+            && self.to_unicode.is_none()
+            && string.len().saturating_mul(simple.longest_text()) <= self.limits.string_bytes;
         for (offset, &byte) in string.iter().enumerate() {
             let at = Position::Buffer(offset);
             work.charge(1).map_err(|e| e.at(at))?;
@@ -339,13 +345,19 @@ impl PdfFont {
                 len: 1,
             };
             let name = simple.names[usize::from(byte)].as_ref();
-            let fallback = simple.unicode[usize::from(byte)].as_ref();
-            let mapped = self.to_unicode.as_ref().and_then(|map| map.text(code));
-            let length = mapped
-                .as_ref()
-                .or(fallback)
-                .map_or(0, |text| text.as_str().len());
-            let shape = self.shape(code, code.value, name, fallback.map(GlyphText::as_str));
+            let (mapped, length) = if textless {
+                (None, 0)
+            } else {
+                let mapped = self.to_unicode.as_ref().and_then(|map| map.text(code));
+                let length = mapped
+                    .as_ref()
+                    .or_else(|| simple.unicode(byte))
+                    .map_or(0, |text| text.as_str().len());
+                (mapped, length)
+            };
+            let shape = self.shape(code, code.value, name, || {
+                simple.unicode(byte).map(GlyphText::as_str)
+            });
             text_bytes.charge(length).map_err(|e| e.at(at))?;
             glyphs.push(Glyph {
                 code: code.value,
@@ -355,7 +367,7 @@ impl PdfFont {
                     .then(|| self.metrics.vertical(code.value)),
                 word_space: byte == 32,
                 unicode: if unicode {
-                    mapped.or_else(|| fallback.cloned())
+                    mapped.or_else(|| simple.unicode(byte).cloned())
                 } else {
                     None
                 },
@@ -385,7 +397,7 @@ impl PdfFont {
                     },
                     u32::from(byte),
                     encoding.names[usize::from(byte)].as_ref(),
-                    encoding.unicode[usize::from(byte)].as_ref(),
+                    encoding.unicode(byte),
                 )
             }
             Mapping::Composite { map, .. } => {
@@ -417,7 +429,7 @@ impl PdfFont {
                 .then(|| self.metrics.vertical(selector)),
             word_space: code.len == 1 && code.value == 32,
             unicode,
-            shape: self.shape(code, selector, name, fallback.map(GlyphText::as_str)),
+            shape: self.shape(code, selector, name, || fallback.map(GlyphText::as_str)),
         };
         Ok((glyph, length))
     }

@@ -10,12 +10,15 @@ use pagura_font::{FontProgram, GlyphId};
 use std::sync::Arc;
 
 impl PdfFont {
-    pub(crate) fn shape(
+    /// The shape of the glyph `code` selects; `unicode` gives the code's
+    /// Unicode text, which TrueType selection reads the first time a code
+    /// is selected.
+    pub(crate) fn shape<'u>(
         &self,
         code: Code,
         selector: u32,
         name: Option<&Name>,
-        unicode: Option<&str>,
+        unicode: impl FnOnce() -> Option<&'u str>,
     ) -> GlyphShape {
         match &self.source {
             Source::MetricsOnly => GlyphShape::Blank,
@@ -47,7 +50,7 @@ impl PdfFont {
                     if (self.kind == FontKind::TrueType || *ownership == Ownership::Provider)
                         && program.format() != pagura_font::FontFormat::Cff
                     {
-                        crate::selection::truetype(program, code.value, name, unicode, *route)
+                        crate::selection::truetype(program, code.value, name, unicode(), *route)
                     } else {
                         name.and_then(|name| program.glyph_for_name(name.as_bytes()))
                     }

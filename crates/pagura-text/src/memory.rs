@@ -23,13 +23,14 @@ pub(crate) fn estimate(font: &PdfFont) -> usize {
                     .flatten()
                     .fold(0_usize, |sum, name| sum.saturating_add(name.len())),
             )
-            .saturating_add(
-                mapping
-                    .unicode
-                    .iter()
-                    .flatten()
-                    .fold(0_usize, |sum, text| sum.saturating_add(text.heap_bytes())),
-            ),
+            // The names' Unicode, found on first use, is bounded by its
+            // names.
+            .saturating_add(mapping.names.iter().flatten().fold(0_usize, |sum, name| {
+                sum.saturating_add(
+                    name.len()
+                        .saturating_mul(crate::encoding::UNICODE_BYTES_PER_NAME_BYTE),
+                )
+            })),
         Mapping::Composite { map, shared: false } => size_of_val(map.as_ref())
             .saturating_add(2 * size_of::<usize>())
             .saturating_add(map.heap_bytes()),
