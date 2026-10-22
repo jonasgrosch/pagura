@@ -188,16 +188,29 @@ impl<'a> Executor<'a> {
     }
 
     /// How `mark` stores straight from coverage into `frame`: an opaque
-    /// constant colour into the N16 or byte page.
+    /// constant colour into the N16 page, and a constant colour without a
+    /// soft mask into the byte page.
     pub(super) fn opaque(&self, mark: &Mark, frame: Frame) -> Option<Opaque> {
-        let words = mark
-            .words
-            .filter(|_| !mark.records && frame.buffer == Buffer::Page)?;
+        if mark.records || frame.buffer != Buffer::Page {
+            return None;
+        }
         match &self.ws.page {
-            PageBuffer::N16(_) => Some(Opaque::N16(words)),
+            PageBuffer::N16(_) => mark.words.map(Opaque::N16),
             PageBuffer::U8(_) => {
                 let paint = self.plan.paints.get(u32_to_usize(mark.paint))?;
-                Some(Opaque::U8(kernel::color_bytes(paint.constant()?)))
+                let bytes = kernel::color_bytes(paint.constant()?);
+                let compositing = &mark.compositing;
+                if mark.words.is_some() {
+                    Some(Opaque::U8(bytes))
+                } else if compositing.mask.is_none()
+                    && compositing.blend == pagura_interpret::BlendMode::Normal
+                    && compositing.overprint == 0
+                    && mark.boundary == Boundary::Absent
+                {
+                    Some(Opaque::U8Alpha(bytes, compositing.alpha))
+                } else {
+                    None
+                }
             }
             PageBuffer::F64(_) | PageBuffer::F32(_) => None,
         }
@@ -229,6 +242,22 @@ impl<'a> Executor<'a> {
                     kernel::store_u8_opaque(pixels, bytes, coverage);
                 },
             ),
+            (PageBuffer::U8(page), Opaque::U8Alpha(bytes, alpha)) => {
+                let (bits, table) = &mut ws.alpha_table;
+                if *bits != Some(alpha.to_bits()) {
+                    *table = kernel::alpha_bytes(alpha);
+                    *bits = Some(alpha.to_bits());
+                }
+                let table = &*table;
+                store_rows(
+                    page,
+                    &mut ws.extents,
+                    (coverage, frame),
+                    |pixels, coverage| {
+                        kernel::store_u8_alpha(pixels, bytes, coverage, table);
+                    },
+                )
+            }
             _ => 0,
         };
         ws.usage.work = ws.usage.work.saturating_add(stored);
@@ -385,6 +414,9 @@ pub(crate) enum Opaque {
     N16([u16; 4]),
     /// Bytes.
     U8([u8; 4]),
+    /// Bytes at a constant alpha, whose byte opacity per coverage byte the
+    /// workspace tabulates.
+    U8Alpha([u8; 4], f64),
 }
 
 /// The coverage of `coverage` at the pixels from `(x, y)`, one byte each.
@@ -503,6 +535,11 @@ fn opacity(
             *s *= factor;
         }
     }
+}
+
+/// `c / 255` for coverage byte `c`, as [`opacity`] takes it.
+pub(crate) fn unit(c: usize) -> f64 {
+    UNIT.get(c).copied().unwrap_or(1.0)
 }
 
 /// `c / 255` for every coverage byte, as the division gives it.

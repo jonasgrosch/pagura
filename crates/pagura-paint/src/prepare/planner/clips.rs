@@ -110,7 +110,13 @@ impl<B: Backend> Planner<'_, B> {
         extra: Option<&Extra>,
     ) -> Result<DeviceRect> {
         let key = Self::key(scope, clip, extra);
-        if let Some(state) = self.clip_states().get(&key) {
+        if let Some((last, state)) = self.last_clip
+            && last == key
+        {
+            return Ok(state.bounds);
+        }
+        if let Some(&state) = self.clip_states().get(&key) {
+            self.last_clip = Some((key, state));
             return Ok(state.bounds);
         }
         let region = self.area.region;
@@ -123,13 +129,12 @@ impl<B: Backend> Planner<'_, B> {
                     let hull = bounds::path(path, *transform).map(|h| bounds::expand(h, 1.0));
                     intersect(acc, bounds::device(hull, region))
                 });
-        self.clip_states().insert(
-            key,
-            State {
-                bounds,
-                built: None,
-            },
-        );
+        let state = State {
+            bounds,
+            built: None,
+        };
+        self.clip_states().insert(key, state);
+        self.last_clip = Some((key, state));
         Ok(bounds)
     }
 
@@ -141,12 +146,26 @@ impl<B: Backend> Planner<'_, B> {
         budget: &mut Budget,
     ) -> Result<Clipping> {
         let key = Self::key(scope, clip, extra);
-        if let Some(State {
-            built: Some(clipping),
-            ..
-        }) = self.clip_states().get(&key)
+        if let Some((
+            last,
+            State {
+                built: Some(clipping),
+                ..
+            },
+        )) = self.last_clip
+            && last == key
         {
-            return Ok(*clipping);
+            return Ok(clipping);
+        }
+        if let Some(
+            &state @ State {
+                built: Some(clipping),
+                ..
+            },
+        ) = self.clip_states().get(&key)
+        {
+            self.last_clip = Some((key, state));
+            return Ok(clipping);
         }
         let clipping = self.build(scope, (clip, extra), budget)?;
         let region = self.area.region;
@@ -155,6 +174,8 @@ impl<B: Backend> Planner<'_, B> {
             built: None,
         });
         state.built = Some(clipping);
+        let state = *state;
+        self.last_clip = Some((key, state));
         Ok(clipping)
     }
 

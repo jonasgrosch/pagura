@@ -75,6 +75,54 @@ pub(crate) fn store_u8_opaque(pixels: &mut [[u8; 4]], source: [u8; 4], coverage:
     }
 }
 
+/// Stores a constant colour, encoded as bytes, at the byte alpha `alpha[c]`
+/// of each pixel's coverage byte `c` (`None` covers every pixel), the store
+/// the byte path makes once the opacity is a byte.
+pub(crate) fn store_u8_alpha(
+    pixels: &mut [[u8; 4]],
+    source: [u8; 4],
+    coverage: Option<&[u8]>,
+    alpha: &[u8; 256],
+) {
+    let s = source.map(u16::from);
+    let Some(coverage) = coverage else {
+        let a = u16::from(alpha[255]);
+        let r = 255_u16.wrapping_sub(a);
+        for pixel in pixels.iter_mut() {
+            let b = pixel.map(u16::from);
+            *pixel = [
+                mix_byte(s[0], b[0], (a, r)),
+                mix_byte(s[1], b[1], (a, r)),
+                mix_byte(s[2], b[2], (a, r)),
+                mix_byte(s[3], b[3], (a, r)),
+            ];
+        }
+        return;
+    };
+    for (pixel, &c) in pixels.iter_mut().zip(coverage) {
+        let a = u16::from(alpha[usize::from(c)]);
+        let r = 255_u16.wrapping_sub(a);
+        let b = pixel.map(u16::from);
+        *pixel = [
+            mix_byte(s[0], b[0], (a, r)),
+            mix_byte(s[1], b[1], (a, r)),
+            mix_byte(s[2], b[2], (a, r)),
+            mix_byte(s[3], b[3], (a, r)),
+        ];
+    }
+}
+
+/// The byte opacity of every coverage byte under constant alpha `k`: the
+/// byte path's `quantize(c / 255 · k)`.
+pub(crate) fn alpha_bytes(k: f64) -> [u8; 256] {
+    let mut table = [0; 256];
+    for (c, out) in table.iter_mut().enumerate() {
+        let unit = crate::execute::unit(c);
+        *out = pagura_raster::quantize_unit(unit * k);
+    }
+    table
+}
+
 /// One byte store, `round255` in u16.
 #[inline]
 fn mix_byte(source: u16, backdrop: u16, (c, rest): (u16, u16)) -> u8 {
@@ -356,6 +404,30 @@ mod tests {
         let mut full = [[3_u8; 4]; 3];
         store_u8_opaque(&mut full, [9, 8, 7, 255], None);
         assert_eq!(full, [[9, 8, 7, 255]; 3]);
+    }
+
+    #[test]
+    fn translucent_byte_stores_match_the_byte_path() {
+        for k in [0.0, 0.001, 0.25, 0.4, 0.5, 0.75, 0.999, 1.0] {
+            let table = alpha_bytes(k);
+            for c in 0..=255_u8 {
+                let alpha = crate::execute::unit(usize::from(c)) * k;
+                for s in [0_u8, 90, 255] {
+                    for b in (0..=255_u8).step_by(5) {
+                        let mut fast = [[b; 4]];
+                        store_u8_alpha(&mut fast, [s, s, s, 255], Some(&[c]), &table);
+                        let mut slow = [b; 4];
+                        over(&mut slow, [s, s, s, 255], alpha);
+                        assert_eq!(fast[0], slow, "k {k} s {s} b {b} c {c}");
+                    }
+                }
+            }
+            let mut full = [[40_u8; 4]; 2];
+            store_u8_alpha(&mut full, [200, 100, 0, 255], None, &table);
+            let mut slow = [40_u8; 4];
+            over(&mut slow, [200, 100, 0, 255], 1.0 * k);
+            assert_eq!(full, [slow; 2], "k {k}");
+        }
     }
 
     #[test]

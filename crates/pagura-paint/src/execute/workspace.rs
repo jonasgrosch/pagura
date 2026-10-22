@@ -4,7 +4,7 @@
 
 use super::Active;
 use crate::format::Format;
-use crate::plan::{ItemKind, Layout, Plan};
+use crate::plan::{Boundary, ItemKind, Layout, Plan};
 use crate::source::SpanColors;
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Result};
@@ -35,6 +35,20 @@ impl PageBuffer {
     }
 
     fn new(format: Format, pixels: usize, layout: Layout) -> Result<Self> {
+        if let Some(mut page) = SPARE.with(|spare| spare.borrow_mut().page.take()) {
+            let reused = match (&mut page, format) {
+                (Self::F64(values), Format::F64) => {
+                    recycle(values, pixels.saturating_mul(layout.stride()))
+                }
+                (Self::N16(pixels_), Format::N16) => recycle(pixels_, pixels),
+                (Self::F32(pixels_), Format::F32) => recycle(pixels_, pixels),
+                (Self::U8(pixels_), Format::U8) => recycle(pixels_, pixels),
+                _ => false,
+            };
+            if reused {
+                return Ok(page);
+            }
+        }
         Ok(match format {
             Format::F64 => Self::F64(reserve(pixels.saturating_mul(layout.stride()))?),
             Format::N16 => Self::N16(reserve(pixels)?),
@@ -201,6 +215,11 @@ pub(crate) struct Workspace {
     pub(crate) active: Vec<Active>,
     /// What the last render used.
     pub(crate) usage: Usage,
+    /// The rows and cells `coverage` was sized for.
+    capacity: (usize, usize),
+    /// The byte opacity of every coverage byte under the constant alpha
+    /// with these bits.
+    pub(crate) alpha_table: (Option<u64>, [u8; 256]),
 }
 
 /// The sizes of a workspace, from which preparation charges it.
@@ -279,6 +298,43 @@ pub(crate) fn mask_values(extent: DeviceRect, rows: usize) -> usize {
     u32_to_usize(extent.width()).saturating_mul(u32_to_usize(extent.height()).min(rows))
 }
 
+/// Empties `values` for reuse when it was sized for `count`: exactly, so
+/// that what a workspace holds stays what preparation reserved.
+fn recycle<T>(values: &mut Vec<T>, count: usize) -> bool {
+    values.clear();
+    values.capacity() == count
+}
+
+thread_local! {
+    /// The largest buffers of the workspace dropped last on this thread,
+    /// for the next one: rendering page after page reuses them instead of
+    /// returning megabytes to the system and asking for them again.
+    static SPARE: std::cell::RefCell<Spare> = std::cell::RefCell::new(Spare::default());
+}
+
+/// See [`SPARE`].
+#[derive(Default)]
+struct Spare {
+    page: Option<PageBuffer>,
+    /// A coverage buffer with the rows and cells it was sized for.
+    coverage: Option<((usize, usize), BandCoverage)>,
+}
+
+impl Drop for Workspace {
+    fn drop(&mut self) {
+        let page = std::mem::replace(&mut self.page, PageBuffer::U8(Vec::new()));
+        let coverage = std::mem::take(&mut self.coverage);
+        let capacity = self.capacity;
+        // A thread being torn down has no spare to keep.
+        let _ = SPARE.try_with(|spare| {
+            if let Ok(mut spare) = spare.try_borrow_mut() {
+                spare.page = Some(page);
+                spare.coverage = Some((capacity, coverage));
+            }
+        });
+    }
+}
+
 fn reserve<T>(count: usize) -> Result<Vec<T>> {
     let mut values = Vec::new();
     values
@@ -344,6 +400,9 @@ impl Workspace {
             selection.resize(pixels, 0);
         }
         let run_shapes = reserve(run_shapes(plan))?;
+        let outlines = plan.items.iter().any(|item| {
+            matches!(&item.kind, ItemKind::Mark(mark) if matches!(mark.boundary, Boundary::Shape(_)))
+        });
         Ok(Self {
             page: PageBuffer::new(format, pixels, layout)?,
             extents: Extents::new(sizes.rows)?,
@@ -352,11 +411,19 @@ impl Workspace {
             bytes,
             masks,
             coverage: warm_coverage(sizes),
-            boundary: (warm_coverage(sizes), {
-                let mut dense = reserve(sizes.width)?;
-                dense.resize(sizes.width, 0);
-                dense
-            }),
+            // Only a shading pattern's outline needs a second coverage.
+            boundary: (
+                if outlines {
+                    warm_coverage(sizes)
+                } else {
+                    BandCoverage::default()
+                },
+                {
+                    let mut dense = reserve(sizes.width)?;
+                    dense.resize(sizes.width, 0);
+                    dense
+                },
+            ),
             colors,
             alpha: scratch(sizes.width)?,
             shape: scratch(sizes.width)?,
@@ -368,6 +435,8 @@ impl Workspace {
             run_shapes,
             active,
             usage: Usage::default(),
+            capacity: (sizes.rows, pixels),
+            alpha_table: (None, [0; 256]),
         })
     }
 
@@ -417,6 +486,20 @@ impl Workspace {
 /// per pixel), so that rasterization does not allocate.
 fn warm_coverage(sizes: Sizes) -> BandCoverage {
     let cells = sizes.width.saturating_mul(sizes.rows);
+    let spare = SPARE.with(|spare| {
+        let mut spare = spare.borrow_mut();
+        match spare.coverage.take() {
+            Some(((rows, size), coverage)) if rows == sizes.rows && size == cells => Some(coverage),
+            other => {
+                spare.coverage = other;
+                None
+            }
+        }
+    });
+    if let Some(mut coverage) = spare {
+        coverage.clear();
+        return coverage;
+    }
     let capacity = pagura_raster::Capacity {
         rows: sizes.rows,
         spans: cells,
