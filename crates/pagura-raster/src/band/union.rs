@@ -537,6 +537,11 @@ impl Resolver {
 /// cut where it crosses `left` or `right`, at the same heights for the
 /// chunks on either side.
 fn clip(piece: Piece, (left, right): (f64, f64)) -> Option<Piece> {
+    // A vertical edge has no inverse crossing. Chunks own their left side
+    // and exclude their right, independently of the contour's direction.
+    if piece.line.a.x == piece.line.b.x {
+        return (left <= piece.line.a.x && piece.line.a.x < right).then_some(piece);
+    }
     let (start, end) = (piece.line.x(piece.lo), piece.line.x(piece.hi));
     let rising = end > start;
     let (mut lo, mut hi) = (piece.lo, piece.hi);

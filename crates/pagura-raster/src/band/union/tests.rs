@@ -55,6 +55,21 @@ fn polygon(points: &[(f64, f64)], group: u8) -> Vec<(Line, u8)> {
 }
 
 #[test]
+fn chunk_boundary_verticals_keep_half_open_ownership_when_reversed() {
+    for (x, kept) in [(-0.5, false), (0.0, true), (0.5, true), (1.0, false)] {
+        for (a, b) in [(0.0, 1.0), (1.0, 0.0)] {
+            let piece = Piece::new(line(x, a, x, b), 0.0, 0).unwrap();
+            let actual = clip(piece, (0.0, 1.0));
+            assert_eq!(actual.is_some(), kept, "x{x}, direction{a}->{b}");
+            if let Some(clipped) = actual {
+                assert_eq!((clipped.lo, clipped.hi), (0.0, 1.0));
+                assert_eq!(clipped.direction, piece.direction);
+            }
+        }
+    }
+}
+
+#[test]
 fn crossing_triangles_cover_their_union_or_their_parity() {
     // Left of the rising and of the falling diagonal, crossing at the
     // middle.
