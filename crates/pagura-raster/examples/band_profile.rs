@@ -290,8 +290,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     if let (Some(file), Some(width), Some(height)) = (args.next(), args.next(), args.next()) {
         workloads = vec![(file.clone(), read(&file)?, (width.parse()?, height.parse()?))];
     }
-    if std::env::var("LOOP").is_ok() {
-        let (marks, (w, h)) = (&workloads[0].1, workloads[0].2);
+    if let Ok(index) = std::env::var("LOOP") {
+        let index = index.parse::<usize>().unwrap_or(0).min(workloads.len() - 1);
+        let (marks, (w, h)) = (&workloads[index].1, workloads[index].2);
         let area = Area { region: DeviceRect { x0: 0, y0: 0, x1: w as u32, y1: h as u32 }, band_height: 16 };
         let mut sum = 0;
         for _ in 0..100 {

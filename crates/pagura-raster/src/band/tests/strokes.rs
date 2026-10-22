@@ -79,6 +79,39 @@ fn paths(rng: &mut Lcg) -> Vec<Path> {
     path.move_to(Point::new(17.5, 17.5));
     path.close();
     out.push(path.finish());
+    // Runs whose directions span more than a half turn: a letter-like
+    // hook, a closed non-convex outline, a curve that turns back near
+    // itself and a zigzag.
+    let polyline = |points: &[(f64, f64)], closed: bool| {
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(points[0].0, points[0].1));
+        for &(x, y) in &points[1..] {
+            path.line_to(Point::new(x, y)).unwrap();
+        }
+        if closed {
+            path.close();
+        }
+        path.finish()
+    };
+    out.push(polyline(
+        &[(6.0, 6.0), (6.0, 20.0), (8.1, 24.2), (12.0, 25.3), (16.2, 24.1), (18.0, 20.0), (18.0, 6.5)],
+        false,
+    ));
+    out.push(polyline(
+        &[(24.0, 4.0), (38.0, 4.5), (38.0, 12.0), (30.2, 12.3), (30.0, 26.0), (24.3, 26.0)],
+        true,
+    ));
+    let mut path = PathBuilder::new();
+    path.move_to(Point::new(8.0, 30.0));
+    path.cubic_to(Point::new(40.0, 34.0), Point::new(36.0, 4.0), Point::new(20.0, 14.0))
+        .unwrap();
+    path.cubic_to(Point::new(10.0, 20.0), Point::new(16.0, 31.0), Point::new(26.5, 27.5))
+        .unwrap();
+    out.push(path.finish());
+    out.push(polyline(
+        &[(4.0, 8.0), (10.0, 16.0), (16.0, 8.5), (22.0, 16.5), (28.0, 9.0), (34.0, 17.0), (20.0, 30.0), (5.0, 24.0)],
+        false,
+    ));
     out
 }
 

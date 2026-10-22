@@ -180,6 +180,93 @@ impl Polygon {
         }
     }
 
+    /// Removes the edges that coincide with an edge of opposite direction,
+    /// in pairs, and relinks the rest into contours: the winding number off
+    /// the removed edges stays the same, and tiles that meet along shared
+    /// edges become the boundary of their union. Returns whether any edge
+    /// was removed; the polygon is unchanged when none was or the rest does
+    /// not relink.
+    pub(crate) fn cancel_shared(&mut self) -> Result<bool> {
+        let allocation = |_| Error::limit("raster geometry allocation failed");
+        let order = |p: Point, q: Point| p.x.total_cmp(&q.x).then(p.y.total_cmp(&q.y));
+        let mut edges: Vec<(Point, Point)> = Vec::new();
+        edges.try_reserve_exact(self.points.len()).map_err(allocation)?;
+        for contour in self.contours() {
+            let n = contour.len();
+            edges.extend((0..n).map(|i| (contour[i], contour[(i + 1) % n])));
+        }
+        // Each edge by its undirected key; opposite directions cancel.
+        let key = |&(a, b): &(Point, Point)| {
+            if order(a, b).is_le() { (a, b, true) } else { (b, a, false) }
+        };
+        edges.sort_unstable_by(|e, f| {
+            let (e, f) = (key(e), key(f));
+            order(e.0, f.0).then(order(e.1, f.1)).then(e.2.cmp(&f.2))
+        });
+        let mut kept: Vec<(Point, Point)> = Vec::new();
+        kept.try_reserve_exact(edges.len()).map_err(allocation)?;
+        let mut start = 0;
+        while start < edges.len() {
+            let (a, b, _) = key(&edges[start]);
+            let end = start
+                + edges[start..]
+                    .iter()
+                    .take_while(|e| {
+                        let k = key(e);
+                        k.0 == a && k.1 == b
+                    })
+                    .count();
+            // Sorted with the reversed ones first.
+            let group = &edges[start..end];
+            let reversed = group.iter().filter(|e| !key(e).2).count();
+            let forward = group.len() - reversed;
+            let cancelled = reversed.min(forward);
+            kept.extend_from_slice(&group[cancelled..reversed]);
+            kept.extend_from_slice(&group[reversed + cancelled..]);
+            start = end;
+        }
+        if kept.len() == edges.len() {
+            return Ok(false);
+        }
+        // Relink by start point: any pairing at a shared vertex keeps the
+        // winding.
+        kept.sort_unstable_by(|e, f| order(e.0, f.0));
+        let mut used: Vec<bool> = Vec::new();
+        used.try_reserve_exact(kept.len()).map_err(allocation)?;
+        used.resize(kept.len(), false);
+        let mut points = Vec::new();
+        let mut starts = Vec::new();
+        points.try_reserve_exact(kept.len()).map_err(allocation)?;
+        for first in 0..kept.len() {
+            if used[first] {
+                continue;
+            }
+            starts.try_reserve(1).map_err(allocation)?;
+            starts.push(points.len());
+            let origin = kept[first].0;
+            let mut current = first;
+            loop {
+                used[current] = true;
+                points.push(kept[current].0);
+                let next = kept[current].1;
+                if next == origin {
+                    break;
+                }
+                let from = kept.partition_point(|e| order(e.0, next).is_lt());
+                let Some(found) = (from..kept.len())
+                    .take_while(|&i| kept[i].0 == next)
+                    .find(|&i| !used[i])
+                else {
+                    return Ok(false);
+                };
+                current = found;
+            }
+        }
+        self.points = points;
+        self.starts = starts;
+        Ok(true)
+    }
+
     /// The device bounds of the vertices, as `[min, max]`.
     pub(crate) fn bounds(&self) -> Option<[Point; 2]> {
         let mut lo = Point::new(f64::INFINITY, f64::INFINITY);
@@ -612,6 +699,31 @@ pub(crate) fn line_work(line: Line, (first, last): (u32, u32), width: usize) -> 
 mod tests {
     use super::*;
     use crate::PathBuilder;
+
+    #[test]
+    fn shared_edges_cancel_into_the_union_boundary() {
+        let square = |x: f64| {
+            [
+                Point::new(x, 0.0),
+                Point::new(x + 1.0, 0.0),
+                Point::new(x + 1.0, 1.0),
+                Point::new(x, 1.0),
+            ]
+        };
+        let mut polygon = Polygon::default();
+        for x in [0.0, 1.0] {
+            polygon.starts.push(polygon.points.len());
+            polygon.points.extend(square(x));
+        }
+        assert!(polygon.cancel_shared().unwrap());
+        assert_eq!(polygon.starts, [0]);
+        assert_eq!(polygon.points.len(), 6);
+        assert!(crate::band::certify::certified(&polygon, 0.0));
+        // Nothing shared: unchanged.
+        let before = polygon.points.clone();
+        assert!(!polygon.cancel_shared().unwrap());
+        assert_eq!(polygon.points, before);
+    }
 
     #[test]
     fn chains_follow_vertical_direction_and_wrap_at_the_seam() {

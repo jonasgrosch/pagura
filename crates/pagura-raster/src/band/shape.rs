@@ -12,6 +12,7 @@ use super::rect::rectangle;
 use super::scan::{RowIndex, Scanner, Stored, Walk, gap_winding, inside};
 use super::row::fold;
 use super::{Adjustment, Area, DeviceRect, Precision, Prep, ShapeOptions};
+use crate::stroke::Tiling;
 use crate::{FillRule, Path, Stroke, Transform, features};
 use pagura_core::{Error, Meter, Result};
 
@@ -172,21 +173,28 @@ impl Shape {
         ))?;
         let path = path.transformed(inverse);
         let device = pen.then(transform);
-        let (outline, outline_transform, pieces) = match adjustment {
+        // Approximate strokes keep the old outlines: proven pieces or
+        // components.
+        let accept = match options.precision {
+            Precision::Exact => Tiling::Unproven,
+            Precision::Approximate => Tiling::Proven,
+        };
+        let (outline, outline_transform, tiling) = match adjustment {
             Adjustment::Adjusted => {
                 let (outline, t) = crate::adjust::outline(&path, device, stroke, limits)?;
-                (outline, t, false)
+                (outline, t, Tiling::Components)
             }
-            Adjustment::None => crate::stroke::pieces(&path, device, stroke, limits)?,
+            Adjustment::None => crate::stroke::pieces(&path, device, stroke, limits, accept)?,
         };
         if options.precision == Precision::Approximate {
-            return super::approximate::stroke(&outline, outline_transform, pieces, options);
+            return super::approximate::stroke(&outline, outline_transform, tiling == Tiling::Proven, options);
         }
-        let polygon = Polygon::from_path(&outline, outline_transform, None, limits)?;
-        let winding = if pieces {
-            Winding::Certified
-        } else {
-            Winding::Unknown
+        let mut polygon = Polygon::from_path(&outline, outline_transform, None, limits)?;
+        let winding = match tiling {
+            Tiling::Proven => Winding::Certified,
+            // The union's boundary, where it relinks, may still certify.
+            Tiling::Unproven if polygon.cancel_shared()? => Winding::Check(0.0),
+            Tiling::Unproven | Tiling::Components => Winding::Unknown,
         };
         Self::polygon(polygon, FillRule::NonZero, winding, options)
     }
