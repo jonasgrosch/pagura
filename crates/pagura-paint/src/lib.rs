@@ -23,6 +23,6 @@ mod source;
 mod testing;
 
 pub use execute::{Rendering, Scratch};
-pub use format::Format;
+
 pub use prepare::{Charges, Completion, PreparedScene, prepare};
 pub use request::{OverprintMode, RenderRequest};

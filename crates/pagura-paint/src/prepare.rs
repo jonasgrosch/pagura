@@ -13,6 +13,7 @@ mod finish;
 mod overprint;
 pub(crate) mod planner;
 mod shapes;
+pub(crate) mod stacks;
 mod storage;
 
 pub(crate) use shapes::{Prepared, ShapeBuilder, Shapes, Storage};

@@ -18,9 +18,9 @@ use std::ops::Range;
 pub(super) fn record(
     plan: &Plan,
     selection: &mut [u16],
-    (x, y, first): (u32, u32, u32),
-    cover: Cover<'_>,
-    select: u16,
+    (x, y): (u32, u32),
+    first: u32,
+    (cover, select): (Cover<'_>, u16),
 ) {
     let region = plan.area.region;
     let width = u32_to_usize(region.width());

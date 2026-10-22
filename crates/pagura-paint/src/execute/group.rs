@@ -30,7 +30,7 @@ impl Executor<'_> {
         }
         self.count_shape(item);
         let layout = child.layout;
-        let Some((buffer, above)) = tops.place((child.format, rect, layout), plan.stack) else {
+        let Some((buffer, above)) = tops.place((child.format, layout), rect, plan.stack) else {
             return;
         };
         let initial = match child.start {

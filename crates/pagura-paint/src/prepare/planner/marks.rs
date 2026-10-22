@@ -4,18 +4,20 @@
 //! so its errors come in source order. A glyph placement is a mark of its
 //! own, gathered into its run's item where it can be (`runs`).
 
+mod glyphs;
+mod paints;
+
 use super::clips::{Clipping, Extra};
 use super::runs::{Memo, Placed};
 use super::{Planner, Scope};
 use crate::plan::{Boundary, Compositing, Cover, GroupUse, Item, ItemKind, Mark, area, intersect};
 use crate::prepare::overprint::{Keeping, Place, direct_cmyk};
 use crate::prepare::{Budget, Prepared, bounds, index};
-use crate::source::{BBoxUse, ImageBudgets, PaintContext, Source};
-use pagura_color::Painted;
-use pagura_core::{Diagnostic, Error, Limits, Position, Result};
+use crate::source::{BBoxUse, Source};
+use pagura_core::{Error, Limits, Position, Result};
 use pagura_interpret::{
-    BlendMode, Composite, FillNode, GlyphSource, GlyphsNode, ImageMask, ImageNode, MarkInfo, Paint,
-    PaintId, Pen, ShadingNode, ShadingPaint, StrokeNode, TilingPaint,
+    BlendMode, Composite, FillNode, GlyphSource, ImageMask, ImageNode, MarkInfo, Paint, PaintId,
+    Pen, ShadingNode, ShadingPaint, StrokeNode, TilingPaint,
 };
 use pagura_raster::{FillRegion, FillRule, Path, Point, ShapeOptions, Transform};
 use std::sync::Arc;
@@ -97,95 +99,6 @@ impl Planner<'_> {
             colour: Colour::Paint(node.paint),
         };
         self.mark(scope, &spec, budget)
-    }
-
-    /// A glyph run: one item for its placements where they share a solid
-    /// paint and need no transfer selection (`runs`), one per placement
-    /// otherwise. Either way each placement is prepared, culled and charged
-    /// as a mark of its own, so errors come in the same order.
-    pub(super) fn glyphs(
-        &mut self,
-        scope: &Scope,
-        node: &GlyphsNode,
-        budget: &mut Budget,
-    ) -> Result<()> {
-        let gather = node.placements.len() > 1 && self.gathers(scope, node);
-        let outer = std::mem::replace(&mut self.gathering, gather.then_some(scope.group));
-        let outer_memo = self.memo.take();
-        let outer_edges = std::mem::replace(&mut self.glyph_edges, vec![None; node.sources.len()]);
-        let placed = self.placements(scope, node, budget);
-        self.gathering = outer;
-        self.memo = outer_memo;
-        self.glyph_edges = outer_edges;
-        placed?;
-        if gather {
-            let position = self.run.as_ref().map(|open| open.position);
-            if let Err(error) = self.flush(budget) {
-                return Err(self.fail(error, position.unwrap_or_default()));
-            }
-        }
-        Ok(())
-    }
-
-    fn placements(&mut self, scope: &Scope, node: &GlyphsNode, budget: &mut Budget) -> Result<()> {
-        let t = scope.transform;
-        let device = Transform::new(t.a, t.b, t.c, t.d, 0.0, 0.0);
-        // Each source's device linear map and hull relative to the origin,
-        // once.
-        let mut sources: Vec<Option<([f64; 4], Option<bounds::Hull>)>> =
-            vec![None; node.sources.len()];
-        let mut positions = Positions::new(node);
-        for (i, placement) in node.placements.iter().enumerate() {
-            let position = positions.at(i);
-            let source_index = index(placement.source);
-            let Some(source) = node.sources.get(source_index) else {
-                self.serial += 1;
-                return Err(self.fail(
-                    Error::invalid_argument("glyph source out of range"),
-                    position,
-                ));
-            };
-            let cached = sources.get(source_index).copied().flatten();
-            let (linear, relative) = if let Some(cached) = cached {
-                cached
-            } else {
-                let l = source.linear;
-                let linear = Transform::new(l.a, l.b, l.c, l.d, 0.0, 0.0).then(device);
-                let mut edges = self.glyph_edges.get(source_index).copied().flatten();
-                let hull = self.shapes.glyph_hull((source, &mut edges), linear);
-                if let Some(slot) = self.glyph_edges.get_mut(source_index) {
-                    *slot = edges;
-                }
-                let found = ([linear.a, linear.b, linear.c, linear.d], hull);
-                if let Some(slot) = sources.get_mut(source_index) {
-                    *slot = Some(found);
-                }
-                found
-            };
-            let origin = t.apply(placement.origin);
-            let hull = relative.map(|[x0, y0, x1, y1]| {
-                bounds::expand(
-                    [x0 + origin.x, y0 + origin.y, x1 + origin.x, y1 + origin.y],
-                    1.0,
-                )
-            });
-            let geometry = Geometry::Glyph(source, linear, origin, source_index);
-            if let Some(memo) = self.memo.filter(|_| self.gathering == Some(scope.group)) {
-                self.serial += 1;
-                let placed = self.placement(scope, (&memo, hull, &geometry, position), budget);
-                placed.map_err(|error| self.fail(error, position))?;
-                continue;
-            }
-            let spec = Spec {
-                info: &node.mark,
-                position,
-                hull,
-                geometry,
-                colour: Colour::Paint(node.paint),
-            };
-            self.mark(scope, &spec, budget)?;
-        }
-        Ok(())
     }
 
     pub(super) fn image(
@@ -329,65 +242,11 @@ impl Planner<'_> {
             },
         };
         match tiling {
-            Some(tiling) => self.pattern_item(scope, spec, (&tiling, covered, compositing), budget),
-            None => self.mark_item(scope, spec, (&state, covered, compositing), budget),
+            Some(tiling) => {
+                self.pattern_item((scope, spec), &tiling, (covered, compositing), budget)
+            }
+            None => self.mark_item((scope, spec), &state, (covered, compositing), budget),
         }
-    }
-
-    /// A glyph placement of the run being gathered, with what its run's
-    /// first prepared placement found: culled, its shape prepared within
-    /// the clip state, its mask use and work charged, then gathered.
-    fn placement(
-        &mut self,
-        scope: &Scope,
-        (memo, hull, geometry, position): (&Memo, Option<bounds::Hull>, &Geometry<'_>, Position),
-        budget: &mut Budget,
-    ) -> Result<()> {
-        let region = self.area.region;
-        let culling = intersect(
-            intersect(bounds::device(hull, region), memo.clip_bounds),
-            scope.bounds,
-        );
-        if culling.is_empty() {
-            return Ok(());
-        }
-        let (clip, clip_rect) = match memo.clipping {
-            Clipping::Empty => return Ok(()),
-            Clipping::All => (None, region),
-            Clipping::Shape(prepared) => (Some(prepared.key), prepared.bounds),
-        };
-        self.shapes.set_clip(clip);
-        let shape = self.shape(scope, geometry);
-        self.shapes.set_clip(None);
-        let Shape::Prepared(prepared) = shape? else {
-            return Ok(());
-        };
-        let bounds = intersect(
-            intersect(prepared.bounds, clip_rect),
-            intersect(scope.bounds, culling),
-        );
-        if bounds.is_empty() {
-            return Ok(());
-        }
-        budget.bytes.charge(prepared.bytes)?;
-        self.use_mask(memo.mask, bounds, budget)?;
-        budget.work.charge(prepared.work)?;
-        budget.work.charge(area(bounds))?;
-        let mark = Mark {
-            cover: Cover {
-                shape: Some(prepared.key),
-                clip,
-            },
-            ..memo.mark
-        };
-        let placed = Placed {
-            shape: prepared.key,
-            bounds,
-            work: prepared.work,
-            serial: self.serial,
-            position,
-        };
-        self.gather(scope.group, mark, placed, budget)
     }
 
     /// The clip and shape of a mark that meets the region, and the pixels
@@ -492,9 +351,9 @@ impl Planner<'_> {
     /// group composited through the mark's coverage.
     fn pattern_item(
         &mut self,
-        scope: &Scope,
-        spec: &Spec<'_>,
-        (tiling, covered, compositing): (&TilingPaint, Covered, Compositing),
+        (scope, spec): (&Scope, &Spec<'_>),
+        tiling: &TilingPaint,
+        (covered, compositing): (Covered, Compositing),
         budget: &mut Budget,
     ) -> Result<()> {
         let serial = self.serial;
@@ -522,9 +381,9 @@ impl Planner<'_> {
     /// A mark with its prepared paint.
     fn mark_item(
         &mut self,
-        scope: &Scope,
-        spec: &Spec<'_>,
-        (state, covered, compositing): (&Arc<Composite>, Covered, Compositing),
+        (scope, spec): (&Scope, &Spec<'_>),
+        state: &Arc<Composite>,
+        (covered, compositing): (Covered, Compositing),
         budget: &mut Budget,
     ) -> Result<()> {
         let serial = self.serial;
@@ -639,161 +498,6 @@ impl Planner<'_> {
             Geometry::Area(None) => return Ok(Shape::Everything),
         };
         Ok(prepared.map_or(Shape::Nothing, Shape::Prepared))
-    }
-
-    /// The paint of a mark, prepared once per solid paint, state and
-    /// target, and per mark otherwise.
-    fn prepare_paint(
-        &mut self,
-        scope: &Scope,
-        colour: Colour<'_>,
-        (state, state_id): (&Arc<Composite>, u32),
-        bounds: pagura_raster::DeviceRect,
-        budget: &mut Budget,
-    ) -> Result<u32> {
-        let pixels = area(bounds);
-        let target = self.target(scope);
-        let context = PaintContext {
-            transform: scope.transform,
-            target: &target,
-            composite: state,
-            store: self.store,
-            limits: self.limits,
-            region: bounds,
-        };
-        let prepared = match colour {
-            Colour::Paint(id) => {
-                if let Some((paint, _)) = scope.paint.as_ref() {
-                    return Ok(*paint);
-                }
-                let paint = Arc::clone(
-                    self.scene
-                        .paints
-                        .get(id.index())
-                        .ok_or(Error::invalid_argument("scene paint out of range"))?,
-                );
-                let key = (id.0, state_id, scope.layout, target.colorants);
-                if matches!(*paint, Paint::Solid(_))
-                    && let Some(&cached) = self.solids().get(&key)
-                {
-                    return Ok(cached);
-                }
-                let prepared = Source::prepare(&paint, &context, pixels, &mut budget.functions)?;
-                let index = self.add_paint(prepared, (scope, pixels), budget)?;
-                if matches!(*paint, Paint::Solid(_)) {
-                    self.solids().insert(key, index);
-                }
-                return Ok(index);
-            }
-            Colour::Shading(node) => {
-                let to_device = node.transform.then(scope.transform);
-                Source::shading(
-                    &node.shading,
-                    to_device,
-                    &context,
-                    pixels,
-                    &mut budget.functions,
-                )?
-            }
-            Colour::Image(node) => {
-                let stencil = match (&node.image.space, node.stencil) {
-                    (Some(_), _) => None,
-                    (None, stencil) => Some(self.stencil(scope, stencil, &context, budget)?),
-                };
-                Source::image(
-                    &node.image,
-                    node.transform.then(scope.transform),
-                    stencil
-                        .as_ref()
-                        .map(|(color, painted)| (&**color, *painted)),
-                    (&context, pixels),
-                    ImageBudgets {
-                        work: &mut budget.work,
-                        functions: &mut budget.functions,
-                    },
-                )?
-            }
-        };
-        self.add_paint(prepared, (scope, pixels), budget)
-    }
-
-    /// The colour of a stencil mask (8.9.6.2): its fill paint, or the colour
-    /// of an uncoloured pattern's cell, which is a solid colour.
-    fn stencil(
-        &mut self,
-        scope: &Scope,
-        stencil: Option<PaintId>,
-        context: &PaintContext<'_>,
-        budget: &mut Budget,
-    ) -> Result<(Box<[f64]>, Painted)> {
-        let paint = match (&scope.paint, stencil) {
-            (Some((_, paint)), _) => Arc::clone(paint),
-            (None, Some(id)) => Arc::clone(
-                self.scene
-                    .paints
-                    .get(id.index())
-                    .ok_or(Error::invalid_argument("scene paint out of range"))?,
-            ),
-            (None, None) => return Err(Error::invalid_argument("stencil mask without a paint")),
-        };
-        let color = match &*paint {
-            Paint::Solid(color) if !is_pattern(&paint) => color,
-            _ => {
-                return Err(Error::unsupported(
-                    pagura_interpret::features::PATTERN_IMAGE_MASK,
-                    "pattern-coloured image stencils are not implemented",
-                ));
-            }
-        };
-        budget.bytes.charge(PAINT_BYTES)?;
-        Source::solid_color(color, context, &mut budget.functions)
-    }
-
-    /// Keeps a prepared paint, reserving its bytes and its geometry work
-    /// over `pixels` (mesh shadings), and the repairs preparing it made.
-    fn add_paint(
-        &mut self,
-        paint: Source,
-        (scope, pixels): (&Scope, usize),
-        budget: &mut Budget,
-    ) -> Result<u32> {
-        budget.bytes.charge(
-            PAINT_BYTES
-                .saturating_add(scope.layout.channels() * size_of::<f64>())
-                .saturating_add(paint.bytes()),
-        )?;
-        budget.work.charge_product(pixels, paint.work_per_pixel())?;
-        let repairs = paint.repairs();
-        budget
-            .bytes
-            .charge_product(repairs.len(), size_of::<Diagnostic>())?;
-        self.repairs.extend_from_slice(repairs);
-        let index = u32::try_from(self.parts.paints.len())
-            .map_err(|_| Error::limit("paint count exceeds u32"))?;
-        self.parts.paints.push(paint);
-        Ok(index)
-    }
-
-    /// A solid paint for an uncoloured pattern's cell content.
-    pub(crate) fn solid_paint(
-        &mut self,
-        paint: &Paint,
-        (state, scope): (&Arc<Composite>, &Scope),
-        bounds: pagura_raster::DeviceRect,
-        budget: &mut Budget,
-    ) -> Result<u32> {
-        let pixels = area(bounds);
-        let target = self.target(scope);
-        let context = PaintContext {
-            transform: scope.transform,
-            target: &target,
-            composite: state,
-            store: self.store,
-            limits: self.limits,
-            region: bounds,
-        };
-        let prepared = Source::prepare(paint, &context, pixels, &mut budget.functions)?;
-        self.add_paint(prepared, (scope, pixels), budget)
     }
 
     /// Whether the mark records a transfer selection and which (11.7.5.2):
@@ -923,34 +627,4 @@ enum Shape {
     Everything,
     /// A prepared shape.
     Prepared(Prepared),
-}
-
-/// The positions of a glyph node's placements in show order: its
-/// `(first, position)` pairs walked once, as [`GlyphsNode::position`] finds
-/// each.
-struct Positions<'a> {
-    node: &'a GlyphsNode,
-    next: usize,
-    current: Position,
-}
-
-impl<'a> Positions<'a> {
-    fn new(node: &'a GlyphsNode) -> Self {
-        Self {
-            node,
-            next: 0,
-            current: node.mark.position,
-        }
-    }
-
-    /// The position of placement `index`; indices come in increasing order.
-    fn at(&mut self, index: usize) -> Position {
-        while let Some(&(first, position)) = self.node.positions.get(self.next)
-            && pagura_core::convert::u32_to_usize(first) <= index
-        {
-            self.current = position;
-            self.next += 1;
-        }
-        self.current
-    }
 }

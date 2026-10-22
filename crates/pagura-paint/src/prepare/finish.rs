@@ -4,7 +4,8 @@
 //! When the walk failed, the transfer check of the marks before the failure
 //! decides which error comes first in source order.
 
-use super::planner::{Parts, Planner, needs};
+use super::planner::{Parts, Planner};
+use super::stacks::needs;
 use super::{Budget, Shapes, index};
 use crate::execute::{Sizes, coverage_capacity, validate};
 use crate::plan::{Curve, Item, Layout, MAX_BAND_HEIGHT, Output, Plan, SpotPlan, area, intersect};

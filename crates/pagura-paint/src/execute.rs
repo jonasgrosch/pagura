@@ -267,7 +267,7 @@ impl<'a> Executor<'a> {
         let ws = &mut *self.ws;
         let compositing = &mark.compositing;
         let constant = paint.constant();
-        if constant.is_none() && !fill_colors(ws, (paint, mark.boundary), (x, y, len)) {
+        if constant.is_none() && !fill_colors(ws, (paint, mark.boundary), (x, y), len) {
             return;
         }
         let mask = match compositing.mask {
@@ -293,9 +293,9 @@ impl<'a> Executor<'a> {
             output::record(
                 plan,
                 &mut ws.selection,
-                (x, y, first_row),
-                cover,
-                mark.select,
+                (x, y),
+                first_row,
+                (cover, mark.select),
             );
         }
         let preserve = compositing.overprint & !painted.0 & frame.layout.mask();
@@ -309,12 +309,13 @@ impl<'a> Executor<'a> {
             && preserve == 0
             && let Colors::Strided { values, stride: 3 } = colors
             && overwrite(
-                (&mut ws.page, &mut ws.extents, &mut ws.usage),
+                (&mut ws.page, &mut ws.extents),
                 frame,
                 (x, y),
                 values.get(..len * 3).unwrap_or(&[]),
             )
         {
+            ws.usage.work = ws.usage.work.saturating_add(len);
             return;
         }
         let (Some(alpha), Some(shape)) = (ws.alpha.get_mut(..len), ws.shape.get_mut(..len)) else {
@@ -357,7 +358,8 @@ impl<'a> Executor<'a> {
 fn fill_colors(
     ws: &mut Workspace,
     (paint, boundary): (&Source, Boundary),
-    (x, y, len): (u32, u32, usize),
+    (x, y): (u32, u32),
+    len: usize,
 ) -> bool {
     let outline = match boundary {
         Boundary::Shape(_) | Boundary::Empty => {
@@ -398,7 +400,7 @@ fn filled(colors: &SpanColors, len: usize) -> Option<(Colors<'_>, Option<&[f64]>
 /// colours, three `values` a pixel, as a store at full opacity does; false,
 /// with nothing stored, where the frame is not a narrow page.
 fn overwrite(
-    (page, extents, usage): (&mut PageBuffer, &mut Extents, &mut Usage),
+    (page, extents): (&mut PageBuffer, &mut Extents),
     frame: Frame,
     (x, y): (u32, u32),
     values: &[f64],
@@ -417,7 +419,6 @@ fn overwrite(
         let column = x - frame.rect.x0;
         let end = column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
         extents.mark(u32_to_usize(y - frame.rect.y0), column, end);
-        usage.work = usage.work.saturating_add(len);
     }
     stored.is_some()
 }

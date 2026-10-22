@@ -111,7 +111,8 @@ impl PageBuffer {
     /// A buffer of `pixels` in `format`, charged to `bytes`: `previous`
     /// when it was sized for them.
     fn new(
-        (format, pixels, layout): (Format, usize, Layout),
+        (format, layout): (Format, Layout),
+        pixels: usize,
         previous: Option<Self>,
         bytes: &mut Meter,
     ) -> Result<Self> {
@@ -456,7 +457,7 @@ impl Workspace {
             BandCoverage::default()
         };
         Ok(Self {
-            page: PageBuffer::new((format, pixels, layout), page, bytes)?,
+            page: PageBuffer::new((format, layout), pixels, page, bytes)?,
             extents: Extents::new(sizes.rows, bytes)?,
             wide,
             levels,
@@ -572,14 +573,14 @@ mod tests {
             spots: 0,
         };
         let mut bytes = Meter::new(usize::MAX, "test");
-        let mut page = PageBuffer::new((Format::N16, 2, layout), None, &mut bytes).unwrap();
+        let mut page = PageBuffer::new((Format::N16, layout), 2, None, &mut bytes).unwrap();
         let mut extents = Extents::new(1, &mut bytes).unwrap();
         page.reset(&mut extents, (2, 2), [10, 20, 30, 40], layout);
         let PageBuffer::N16(words) = &page else {
             unreachable!()
         };
         assert_eq!(words[1], [2570, 5140, 7710, 10280]);
-        let mut wide = PageBuffer::new((Format::F64, 2, layout), None, &mut bytes).unwrap();
+        let mut wide = PageBuffer::new((Format::F64, layout), 2, None, &mut bytes).unwrap();
         wide.reset(&mut extents, (2, 2), [10, 20, 30, 40], layout);
         let PageBuffer::F64(values) = &wide else {
             unreachable!()

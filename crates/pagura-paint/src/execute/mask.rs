@@ -36,7 +36,7 @@ impl Executor<'_> {
         let mut computed = DeviceRect::default();
         if let (false, Some(group)) = (rect.is_empty(), plan.groups.get(u32_to_usize(mask.group))) {
             let layout = group.layout;
-            let Some((buffer, above)) = tops.place((group.format, rect, layout), plan.stack) else {
+            let Some((buffer, above)) = tops.place((group.format, layout), rect, plan.stack) else {
                 return;
             };
             let initial = match group.start {
@@ -60,7 +60,7 @@ impl Executor<'_> {
                 levels: &ws.levels,
             };
             if let Some(cache) = ws.masks.get_mut(index) {
-                let spent = values(mask, (read, buffer, layout), area(rect), cache);
+                let spent = values(mask, read, (buffer, layout), area(rect), cache);
                 ws.usage.functions = ws.usage.functions.saturating_add(spent);
                 ws.usage.work = ws.usage.work.saturating_add(area(rect));
                 computed = rect;
@@ -77,7 +77,8 @@ impl Executor<'_> {
 /// the function work spent. Equal values share one transfer evaluation.
 fn values(
     mask: &MaskPlan,
-    (read, buffer, layout): (Read<'_>, Buffer, Layout),
+    read: Read<'_>,
+    (buffer, layout): (Buffer, Layout),
     count: usize,
     cache: &mut MaskCache,
 ) -> usize {

@@ -36,9 +36,17 @@ pub(crate) struct Extra {
     pub(crate) transform: Transform,
 }
 
-/// The paths of a clip state, outermost first, with their rules and
-/// transforms.
-type Chain = Vec<(Arc<Path>, FillRule, Transform)>;
+/// One path of a clip state.
+#[derive(Debug, Clone)]
+pub(crate) struct Link {
+    path: Arc<Path>,
+    rule: FillRule,
+    /// Its space to device pixels.
+    transform: Transform,
+}
+
+/// The paths of a clip state, outermost first.
+type Chain = Vec<Link>;
 
 /// Prepared clips by the hash of their chains. Content often sets the same
 /// clipping path again as a new clip; clip states with equal chains share
@@ -79,7 +87,11 @@ impl Planner<'_> {
     fn chain(&self, scope: &Scope, clip: Option<ClipId>, extra: Option<&Extra>) -> Result<Chain> {
         let mut chain = Vec::new();
         if let Some(extra) = extra {
-            chain.push((Arc::clone(&extra.path), FillRule::NonZero, extra.transform));
+            chain.push(Link {
+                path: Arc::clone(&extra.path),
+                rule: FillRule::NonZero,
+                transform: extra.transform,
+            });
         }
         let mut current = clip;
         while let Some(id) = current {
@@ -94,15 +106,19 @@ impl Planner<'_> {
             if node.parent.is_some_and(|parent| parent.0 >= id.0) {
                 return Err(Error::invalid_argument("scene clip chain is not ordered"));
             }
-            chain.push((Arc::clone(&node.path), node.rule, scope.transform));
+            chain.push(Link {
+                path: Arc::clone(&node.path),
+                rule: node.rule,
+                transform: scope.transform,
+            });
             current = node.parent;
         }
         if scope.crop {
-            chain.push((
-                Arc::clone(&self.crop),
-                FillRule::NonZero,
-                self.request.transform,
-            ));
+            chain.push(Link {
+                path: Arc::clone(&self.crop),
+                rule: FillRule::NonZero,
+                transform: self.request.transform,
+            });
         }
         chain.reverse();
         Ok(chain)
@@ -128,13 +144,13 @@ impl Planner<'_> {
         let region = self.area.region;
         // A pixel wider: a clipping path without area still keeps the
         // pixels its boundary touches.
-        let bounds =
-            self.chain(scope, clip, extra)?
-                .iter()
-                .fold(region, |acc, (path, _, transform)| {
-                    let hull = bounds::path(path, *transform).map(|h| bounds::expand(h, 1.0));
-                    intersect(acc, bounds::device(hull, region))
-                });
+        let bounds = self
+            .chain(scope, clip, extra)?
+            .iter()
+            .fold(region, |acc, link| {
+                let hull = bounds::path(&link.path, link.transform).map(|h| bounds::expand(h, 1.0));
+                intersect(acc, bounds::device(hull, region))
+            });
         let state = State {
             bounds,
             built: None,
@@ -209,21 +225,17 @@ impl Planner<'_> {
         if let Some(clipping) = built {
             return Ok(clipping);
         }
-        let uniform = chain
-            .iter()
-            .all(|(_, _, transform)| *transform == scope.transform);
+        let uniform = chain.iter().all(|link| link.transform == scope.transform);
         let prepared = if uniform {
-            let paths: Vec<(&Path, FillRule)> = chain
-                .iter()
-                .map(|(path, rule, _)| (&**path, *rule))
-                .collect();
+            let paths: Vec<(&Path, FillRule)> =
+                chain.iter().map(|link| (&*link.path, link.rule)).collect();
             self.shapes.clip(&paths, scope.transform, &options)?
         } else {
             // A fixed view moves its content but not the crop: clip in
             // device space.
             let device: Vec<(Path, FillRule)> = chain
                 .iter()
-                .map(|(path, rule, transform)| (path.transformed(*transform), *rule))
+                .map(|link| (link.path.transformed(link.transform), link.rule))
                 .collect();
             let paths: Vec<(&Path, FillRule)> =
                 device.iter().map(|(path, rule)| (path, *rule)).collect();
@@ -251,10 +263,10 @@ fn bits(t: Transform) -> [u64; 6] {
 /// A hash of the bits of `chain`'s rules, transforms and segments.
 fn chain_hash(chain: &Chain) -> u64 {
     let mut hasher = FastHasher::default();
-    for (path, rule, transform) in chain {
-        rule.hash(&mut hasher);
-        bits(*transform).hash(&mut hasher);
-        for segment in path.segments() {
+    for link in chain {
+        link.rule.hash(&mut hasher);
+        bits(link.transform).hash(&mut hasher);
+        for segment in link.path.segments() {
             segment_bits(*segment).hash(&mut hasher);
         }
     }
@@ -264,14 +276,15 @@ fn chain_hash(chain: &Chain) -> u64 {
 /// Whether two chains are the same paths, rules and transforms, bit for bit.
 fn same_chain(a: &Chain, b: &Chain) -> bool {
     a.len() == b.len()
-        && a.iter().zip(b).all(|((a, a_rule, a_t), (b, b_rule, b_t))| {
-            a_rule == b_rule
-                && bits(*a_t) == bits(*b_t)
-                && (Arc::ptr_eq(a, b)
-                    || a == b
-                        && a.segments()
+        && a.iter().zip(b).all(|(a, b)| {
+            a.rule == b.rule
+                && bits(a.transform) == bits(b.transform)
+                && (Arc::ptr_eq(&a.path, &b.path)
+                    || a.path == b.path
+                        && a.path
+                            .segments()
                             .iter()
-                            .zip(b.segments())
+                            .zip(b.path.segments())
                             .all(|(&a, &b)| segment_bits(a) == segment_bits(b)))
         })
 }

@@ -32,7 +32,8 @@ impl Tops {
     /// hold it. Preparation sizes the stacks for every nested buffer.
     pub(crate) fn place(
         self,
-        (format, rect, layout): (Format, DeviceRect, Layout),
+        (format, layout): (Format, Layout),
+        rect: DeviceRect,
         limits: Self,
     ) -> Option<(Buffer, Self)> {
         let pixels = area(rect);
