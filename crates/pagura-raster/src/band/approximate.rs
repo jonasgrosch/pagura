@@ -475,9 +475,13 @@ impl Product {
             options.limits.decoded_bytes,
             "clip product allocation failed",
         );
+        // The first path's coverage is its product with full values, as
+        // `product(255, c)` rounds to `c`; pixels it leaves stay zero.
         let mut values = Vec::new();
         meter.reserve(&mut values, count)?;
-        values.resize(count, u8::MAX);
+        values.resize(count, 0);
+        let mut first = true;
+        let mut coverage = Vec::new();
         let area = Area {
             region: bounds,
             band_height: options.area.band_height.max(1),
@@ -499,10 +503,18 @@ impl Product {
             };
             let Some(shape) = Shape::fill_in(path, transform, rule, &unclipped)? else {
                 values.fill(0);
+                first = false;
                 continue;
             };
             work = work.saturating_add(shape.work()).saturating_add(count);
-            let mut coverage = vec![0_u8; count];
+            if !first {
+                coverage.clear();
+                coverage
+                    .try_reserve(count)
+                    .map_err(|_| Error::limit("clip product allocation failed"))?;
+                coverage.resize(count, 0);
+            }
+            let target = if first { &mut values } else { &mut coverage };
             for b in shape.bands(&area) {
                 raster.rasterize(
                     super::MarkCoverage {
@@ -512,11 +524,14 @@ impl Product {
                     b,
                     &mut band,
                 );
-                write(&band, bounds, &mut coverage);
+                write(&band, bounds, target);
             }
-            for (v, &c) in values.iter_mut().zip(&coverage) {
-                *v = product(*v, c);
+            if !first {
+                for (v, &c) in values.iter_mut().zip(&coverage) {
+                    *v = product(*v, c);
+                }
             }
+            first = false;
         }
         Ok(Self {
             bounds,
