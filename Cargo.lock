@@ -236,6 +236,7 @@ dependencies = [
  "pagura-interpret",
  "pagura-paint",
  "pagura-raster",
+ "pagura-render",
  "pagura-testkit",
  "pagura-text",
 ]

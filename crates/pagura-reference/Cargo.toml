@@ -23,5 +23,6 @@ pagura-codec.workspace = true
 pagura-data.workspace = true
 pagura-document.workspace = true
 pagura-paint.workspace = true
+pagura-render.workspace = true
 pagura-testkit.workspace = true
 pagura-text.workspace = true

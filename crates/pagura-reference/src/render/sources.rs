@@ -112,7 +112,7 @@ impl ShadingSamples<'_> {
         )?;
         let mut color = color;
         if let (Some(background), Some(bbox)) = (&self.background, &self.bbox) {
-            let c = f64::from(bbox.get(x, y)) / 255.0;
+            let c = bbox.get(x, y);
             for (v, &b) in color.iter_mut().zip(background).take(self.channels) {
                 *v = c * *v + (1.0 - c) * b;
             }
@@ -259,6 +259,7 @@ impl Renderer<'_> {
             (Some(_), Some(bbox)) => Some(crate::shapes::Coverage::of(
                 &[crate::shapes::rect(bbox, to_device, self.limits)?],
                 self.window,
+                self.request.quantization,
             )),
             _ => None,
         };

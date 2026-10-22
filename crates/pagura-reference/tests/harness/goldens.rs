@@ -23,7 +23,12 @@ pub fn directory() -> Option<PathBuf> {
 
 /// The golden RGB bytes of case `id` (`area/name`), if present and valid.
 pub fn load(directory: &std::path::Path, id: &str) -> Option<(u32, u32, Vec<u8>)> {
-    let data = std::fs::read(directory.join(format!("{id}-p0.ppm.gz"))).ok()?;
+    load_path(&directory.join(format!("{id}-p0.ppm.gz")))
+}
+
+/// The RGB bytes of a gzipped binary PPM, if present and valid.
+pub fn load_path(path: &std::path::Path) -> Option<(u32, u32, Vec<u8>)> {
+    let data = std::fs::read(path).ok()?;
     let ppm = gunzip(&data)?;
     let (width, height, rgb) = parse_ppm(&ppm)?;
     Some((width, height, rgb.to_vec()))

@@ -9,6 +9,7 @@
 
 use crate::area::{Region, areas, index, pixels};
 use crate::flatten::{glyph_region, path_region};
+use crate::request::Quantization;
 use pagura_core::{Error, Limits, Rect, Result};
 use pagura_interpret::{ClipId, GlyphSource, Pen, Scene};
 use pagura_raster::{
@@ -94,6 +95,7 @@ pub(crate) fn glyph(
     source: &GlyphSource,
     origin: Point,
     device: Transform,
+    reference: crate::glyph::Reference,
     limits: &Limits,
 ) -> Result<Region> {
     let linear = source.linear.then(Transform {
@@ -101,7 +103,7 @@ pub(crate) fn glyph(
         f: 0.0,
         ..device
     });
-    glyph_region(&source.outline, linear, origin * device, limits)
+    glyph_region(&source.outline, linear, origin * device, reference, limits)
 }
 
 /// The region of a rectangle under `transform`, as a fill.
@@ -124,26 +126,30 @@ pub(crate) fn unit_square(transform: Transform, limits: &Limits) -> Result<Regio
     path_region(&Path::rect(square), transform, FillRule::NonZero, limits)
 }
 
-/// Coverage bytes over a rectangle: zero outside it.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Coverage over a rectangle, in `0..=1`: zero outside it.
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Coverage {
     rect: DeviceRect,
-    bytes: Vec<u8>,
+    values: Vec<f64>,
 }
 
 impl Coverage {
     /// The coverage of the intersection of `regions` (none covers every
-    /// pixel) in `window`.
-    pub(crate) fn of(regions: &[Region], window: DeviceRect) -> Self {
+    /// pixel) in `window`, quantized as `quantization` asks.
+    pub(crate) fn of(regions: &[Region], window: DeviceRect, quantization: Quantization) -> Self {
         let areas = areas(regions, window);
         let rect = areas.rect();
-        let mut bytes = Vec::with_capacity(pixels(rect));
+        let mut values = Vec::with_capacity(pixels(rect));
         for y in rect.y0..rect.y1 {
             for x in rect.x0..rect.x1 {
-                bytes.push(quantize_unit(areas.get(x, y)));
+                let area = areas.get(x, y);
+                values.push(match quantization {
+                    Quantization::Bytes => f64::from(quantize_unit(area)) / 255.0,
+                    Quantization::Exact => area,
+                });
             }
         }
-        Self { rect, bytes }
+        Self { rect, values }
     }
 
     /// The pixels that can be covered.
@@ -152,20 +158,20 @@ impl Coverage {
     }
 
     /// The coverage of `(x, y)`.
-    pub(crate) fn get(&self, x: u32, y: u32) -> u8 {
+    pub(crate) fn get(&self, x: u32, y: u32) -> f64 {
         index(self.rect, x, y)
-            .and_then(|i| self.bytes.get(i))
+            .and_then(|i| self.values.get(i))
             .copied()
-            .unwrap_or(0)
+            .unwrap_or(0.0)
     }
 
     /// The covered pixels and their coverage, row by row.
-    pub(crate) fn pixels(&self) -> impl Iterator<Item = (u32, u32, u8)> + '_ {
+    pub(crate) fn pixels(&self) -> impl Iterator<Item = (u32, u32, f64)> + '_ {
         let rect = self.rect;
         (rect.y0..rect.y1)
             .flat_map(move |y| (rect.x0..rect.x1).map(move |x| (x, y)))
-            .zip(&self.bytes)
-            .filter(|&(_, &c)| c > 0)
+            .zip(&self.values)
+            .filter(|&(_, &c)| c > 0.0)
             .map(|((x, y), &c)| (x, y, c))
     }
 }
@@ -199,13 +205,17 @@ mod tests {
             &limits,
         )
         .unwrap();
-        let coverage = Coverage::of(&[mark, clip], window(4, 4));
+        let regions = [mark, clip];
+        let coverage = Coverage::of(&regions, window(4, 4), Quantization::Bytes);
+        let byte = |x, y| (coverage.get(x, y) * 255.0).round();
         // Pixel (0, 0): 1/2 × 3/4 of its area.
-        assert_eq!(coverage.get(0, 0), quantize_unit(0.375));
-        assert_eq!(coverage.get(1, 0), quantize_unit(0.75));
-        assert_eq!(coverage.get(0, 1), 128);
-        assert_eq!(coverage.get(2, 2), 255);
+        assert_eq!(byte(0, 0), f64::from(quantize_unit(0.375)));
+        assert_eq!(byte(1, 0), f64::from(quantize_unit(0.75)));
+        assert_eq!(byte(0, 1), 128.0);
+        assert_eq!(byte(2, 2), 255.0);
         assert_eq!(coverage.pixels().count(), 16);
+        let exact = Coverage::of(&regions, window(4, 4), Quantization::Exact);
+        assert_eq!(exact.get(0, 0), 0.375);
     }
 
     #[test]
@@ -229,7 +239,7 @@ mod tests {
             &Limits::default(),
         )
         .unwrap();
-        let coverage = Coverage::of(&[region], window(8, 4));
+        let coverage = Coverage::of(&[region], window(8, 4), Quantization::Bytes);
         assert_eq!(
             coverage.rect(),
             DeviceRect {
@@ -239,7 +249,7 @@ mod tests {
                 y1: 3
             }
         );
-        assert!(coverage.pixels().all(|(_, _, c)| c == 255));
+        assert!(coverage.pixels().all(|(_, _, c)| c == 1.0));
         let singular = Pen {
             transform: Transform::scale(0.0, 1.0),
             ..pen

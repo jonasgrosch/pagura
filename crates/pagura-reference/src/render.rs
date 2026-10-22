@@ -128,6 +128,8 @@ pub(crate) struct Renderer<'s> {
     /// The crop box in device space.
     crop: crate::area::Region,
     masks: HashMap<MaskKey, Rc<Vec<f64>>>,
+    /// The reference of each glyph outline under each linear map.
+    glyph_references: HashMap<(usize, [u64; 4]), crate::glyph::Reference>,
     images: HashMap<usize, Rc<DecodedImage>>,
 }
 
@@ -166,6 +168,7 @@ impl<'s> Renderer<'s> {
             transfers: Transfers::new(scene, request.region),
             crop: shapes::rect(scene.page.crop, request.transform, limits)?,
             masks: HashMap::new(),
+            glyph_references: HashMap::new(),
             images: HashMap::new(),
         })
     }
@@ -212,6 +215,30 @@ impl<'s> Renderer<'s> {
             regions.push(self.crop.clone());
         }
         Ok(regions)
+    }
+
+    /// Whether a glyph outline's reference is its true curve or its polygon
+    /// under `device`, classified once per outline and linear map.
+    fn glyph_reference(
+        &mut self,
+        source: &pagura_interpret::GlyphSource,
+        device: Transform,
+    ) -> Result<crate::glyph::Reference> {
+        let linear = source.linear.then(Transform {
+            e: 0.0,
+            f: 0.0,
+            ..device
+        });
+        let key = (
+            Arc::as_ptr(&source.outline) as usize,
+            [linear.a, linear.b, linear.c, linear.d].map(f64::to_bits),
+        );
+        if let Some(&reference) = self.glyph_references.get(&key) {
+            return Ok(reference);
+        }
+        let reference = crate::glyph::reference(&source.outline, linear, self.limits)?;
+        self.glyph_references.insert(key, reference);
+        Ok(reference)
     }
 
     pub(crate) fn state(&self, mark: &MarkInfo) -> Result<&'s Composite> {
@@ -284,10 +311,12 @@ impl<'s> Renderer<'s> {
                     .sources
                     .get(pagura_core::convert::u32_to_usize(placement.source))
                     .ok_or(Error::invalid_argument("glyph source outside the run"))?;
+                let reference = self.glyph_reference(source, context.device)?;
                 let mut regions = vec![shapes::glyph(
                     source,
                     placement.origin,
                     context.device,
+                    reference,
                     self.limits,
                 )?];
                 regions.extend(clips.iter().cloned());
@@ -318,7 +347,7 @@ impl<'s> Renderer<'s> {
         match &paint {
             Paint::Solid(color) => {
                 let sample = self.solid(color, state, context.target)?;
-                let coverage = Coverage::of(&regions, buffer.rect());
+                let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization);
                 self.composite(
                     &coverage,
                     &Sources::Solid(sample),
@@ -335,7 +364,7 @@ impl<'s> Renderer<'s> {
                 {
                     regions.push(shapes::rect(bbox, to_device, self.limits)?);
                 }
-                let coverage = Coverage::of(&regions, buffer.rect());
+                let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization);
                 let sources = self.shading_source(
                     &pattern.shading,
                     to_device,
@@ -346,7 +375,7 @@ impl<'s> Renderer<'s> {
                 self.composite(&coverage, &sources, state, buffer, context, Eligible::Yes)
             }
             Paint::Tiling(tiling) => {
-                let coverage = Coverage::of(&regions, buffer.rect());
+                let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization);
                 self.tiling(tiling, &coverage, state, buffer, context)
             }
         }
@@ -382,7 +411,7 @@ impl<'s> Renderer<'s> {
         }
         let mut regions = vec![shapes::unit_square(to_device, self.limits)?];
         regions.extend(self.clips(node.mark.clip, context)?);
-        let coverage = Coverage::of(&regions, buffer.rect());
+        let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization);
         let sources = self.image_source(node, stencil.as_ref(), to_device, state, context)?;
         let eligible = if matches!(
             node.image.mask,
@@ -417,7 +446,7 @@ impl<'s> Renderer<'s> {
             regions.push(shapes::rect(bbox, to_device, self.limits)?);
         }
         regions.extend(self.clips(node.mark.clip, context)?);
-        let coverage = Coverage::of(&regions, buffer.rect());
+        let coverage = Coverage::of(&regions, buffer.rect(), self.request.quantization);
         let sources =
             self.shading_source(&node.shading, to_device, state, context, sources::Use::Mark)?;
         self.composite(&coverage, &sources, state, buffer, context, Eligible::Yes)
@@ -467,11 +496,10 @@ impl<'s> Renderer<'s> {
             process: context.target.process,
             channels: context.target.channels(),
         };
-        for (x, y, covered) in coverage.pixels() {
+        for (x, y, factor) in coverage.pixels() {
             let Some(sample) = sources.sample(x, y) else {
                 continue;
             };
-            let factor = f64::from(covered) / 255.0;
             let mut source = Source {
                 color: sample.color,
                 alpha: sample.alpha * factor,

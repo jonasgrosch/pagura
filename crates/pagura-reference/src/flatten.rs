@@ -16,6 +16,7 @@
 //! glyph's linear map, so a singular map can make a genuine point.
 
 use crate::area::Region;
+use crate::glyph::Reference;
 use pagura_core::{Error, Limits, Result};
 use pagura_raster::{FillRule, Path, Point, Segment, Transform};
 
@@ -24,10 +25,6 @@ pub(crate) const TOLERANCE: f64 = 1.0 / 256.0;
 
 /// The tolerance of glyph curves that are exact quadratics.
 pub(crate) const QUADRATIC_TOLERANCE: f64 = 1.0 / 16384.0;
-
-/// Third differences up to this many device pixels per coordinate make a
-/// cubic an exact quadratic (degree elevation with rounding).
-const QUADRATIC: f64 = 1.0 / 16_777_216.0;
 
 /// Halvings after which a curve piece is taken as its chord.
 const MAX_DEPTH: u32 = 48;
@@ -81,8 +78,8 @@ pub(crate) fn path_region(
 
 /// The region of a glyph outline placed at a device origin: outline points
 /// are mapped by the linear map `linear` (glyph space to device pixels, no
-/// translation), then `origin` is added (ADR 0004, canonical glyph
-/// polygons). Glyphs fill with the nonzero rule.
+/// translation), then `origin` is added (ADR 0004 §4). Glyphs fill with the
+/// nonzero rule; `reference` selects the true curve or the polygon.
 ///
 /// # Errors
 ///
@@ -91,6 +88,7 @@ pub(crate) fn glyph_region(
     outline: &Path,
     linear: Transform,
     origin: Point,
+    reference: Reference,
     limits: &Limits,
 ) -> Result<Region> {
     let linear = Transform {
@@ -98,10 +96,9 @@ pub(crate) fn glyph_region(
         f: 0.0,
         ..linear
     };
-    let curves = if quadratic_outline(outline, linear) {
-        Curves::Quadratic
-    } else {
-        Curves::Glyph
+    let curves = match reference {
+        Reference::Curve => Curves::Quadratic,
+        Reference::Polygon => Curves::Glyph,
     };
     let contours = contours(outline, linear, curves, limits)?;
     Ok(region(&contours, FillRule::NonZero, |p| {
@@ -110,23 +107,31 @@ pub(crate) fn glyph_region(
     }))
 }
 
-/// Whether every curve of `outline` is an exact quadratic under `linear`.
-fn quadratic_outline(outline: &Path, linear: Transform) -> bool {
-    let mut position = Point::default();
-    let mut start = Point::default();
-    let mut quadratic = true;
-    for segment in outline.segments() {
-        match *segment {
-            Segment::MoveTo(p) => (start, position) = (p, p),
-            Segment::LineTo(p) => position = p,
-            Segment::CubicTo { c1, c2, end } => {
-                quadratic &= is_quadratic(&[position, c1, c2, end].map(|p| p * linear));
-                position = end;
-            }
-            Segment::Close => position = start,
-        }
+/// A glyph outline's polygon at the documented tolerance under the
+/// translation-free `linear`, contour by contour; `None` when a contour is
+/// a geometric point.
+///
+/// # Errors
+///
+/// As [`path_region`].
+pub(crate) fn glyph_polygon(
+    outline: &Path,
+    linear: Transform,
+    limits: &Limits,
+) -> Result<Option<Vec<Vec<Point>>>> {
+    let contours = contours(outline, linear, Curves::Glyph, limits)?;
+    if contours.iter().any(|c| c.degenerate) {
+        return Ok(None);
     }
-    quadratic
+    let count = contours.len();
+    Ok(Some(
+        contours
+            .iter()
+            .enumerate()
+            .filter(|(i, c)| !(i + 1 == count && !c.closed && c.points.len() == 1))
+            .map(|(_, c)| c.points.iter().map(|&p| p * linear).collect())
+            .collect(),
+    ))
 }
 
 /// Device edges of `contours` under the contour policy.
@@ -257,13 +262,6 @@ fn flatten_curve(points: [Point; 4], device: Transform, curves: Curves, out: &mu
         pending.push((second, depth + 1));
         pending.push((first, depth + 1));
     }
-}
-
-/// Whether a device-space cubic is an exact quadratic.
-fn is_quadratic(p: &[Point; 4]) -> bool {
-    let x = -p[0].x + 3.0 * p[1].x - 3.0 * p[2].x + p[3].x;
-    let y = -p[0].y + 3.0 * p[1].y - 3.0 * p[2].y + p[3].y;
-    x.abs() <= QUADRATIC && y.abs() <= QUADRATIC
 }
 
 /// The two halves of a cubic.
@@ -427,11 +425,16 @@ mod tests {
         let limits = Limits::default();
         let coarse = contours(&path, Transform::IDENTITY, Curves::Path, &limits).unwrap();
         let fine = contours(&path, Transform::IDENTITY, Curves::Quadratic, &limits).unwrap();
-        assert!(quadratic_outline(&path, Transform::IDENTITY));
         assert!(fine[0].points.len() > 3 * coarse[0].points.len());
         // The parabola's segment area is 2/3 of base times height: 2/3·8·4.
-        let region =
-            glyph_region(&path, Transform::IDENTITY, Point::new(0.0, 0.0), &limits).unwrap();
+        let region = glyph_region(
+            &path,
+            Transform::IDENTITY,
+            Point::new(0.0, 0.0),
+            Reference::Curve,
+            &limits,
+        )
+        .unwrap();
         let areas = areas(&[region], window(8, 8));
         let total: f64 = (0..8)
             .flat_map(|y| (0..8).map(move |x| (x, y)))
