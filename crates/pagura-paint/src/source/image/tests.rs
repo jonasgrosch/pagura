@@ -511,9 +511,25 @@ fn soft_masks_with_and_without_matte_and_stencil_masks() {
     }
     let mut stencil = image((6, 4), 1, 1, bytes(24, 1, 23));
     stencil.kind = ImageKind::Stencil { inverted: true };
-    let mut masked = case(rgb);
+    let mut masked = case(rgb.clone());
     masked.mask = Some((stencil, [1.0, 0.0], MaskUse::Stencil));
     agree(&masked, 3);
+    // A mask on the image's grid with its own `Interpolate`, and Matte.
+    for interpolate in [false, true] {
+        let mut image = rgb.clone();
+        image.interpolate = interpolate;
+        let mut mask = image_mask((9, 7));
+        mask.interpolate = !interpolate;
+        let mut soft = case(image);
+        soft.mask = Some((mask, [0.0, 1.0], MaskUse::Soft(Some(vec![0.0; 3]))));
+        agree(&soft, 3);
+    }
+}
+
+/// An eight-bit soft mask of `size`.
+fn image_mask(size: (u32, u32)) -> DecodedImage {
+    let count = usize::try_from(size.0 * size.1).unwrap();
+    image(size, 1, 8, bytes(count, 8, 37))
 }
 
 #[test]

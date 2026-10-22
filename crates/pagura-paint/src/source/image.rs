@@ -921,8 +921,12 @@ impl Prepared {
                     _ => ([0.0, 1.0], true),
                 };
                 let geometry = placement(&image.image, inverse, orientation)?;
+                // On the image's grid and sampled alike: the same samples
+                // and the same reconstruction (a mask has its own
+                // `Interpolate`).
                 let fused = (image.image.width, image.image.height)
-                    == (decoded.image.width, decoded.image.height);
+                    == (decoded.image.width, decoded.image.height)
+                    && image.image.interpolate == decoded.image.interpolate;
                 Some(MaskSampling {
                     opacity: Opacity::new(&image.image, decode),
                     separable: texel_rows(&geometry, columns)?,
