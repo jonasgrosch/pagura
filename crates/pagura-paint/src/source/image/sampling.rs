@@ -5,7 +5,7 @@ use super::contour::{self, Contour};
 use super::geometry::{Geometry, Mode, Texels};
 use super::separable::{self, RowCache, Rows, Separable};
 use crate::source::Pixels;
-use pagura_core::Result;
+use pagura_core::{Meter, Result};
 
 /// Exactly one way to sample a placement, selected during preparation.
 #[derive(Debug)]
@@ -78,11 +78,11 @@ impl Sampling {
     /// # Errors
     ///
     /// A `Limit` error when the column plan cannot be allocated.
-    pub(super) fn new(geometry: &Geometry, columns: (u32, u32)) -> Result<Self> {
+    pub(super) fn new(geometry: &Geometry, columns: (u32, u32), bytes: &mut Meter) -> Result<Self> {
         // Bilinear pixels keep their four products in the same order for
         // every placement, including upright ones.
         if geometry.mode() != Mode::Bilinear
-            && let Some(separable) = Separable::new(geometry, columns)?
+            && let Some(separable) = Separable::new(geometry, columns, bytes)?
         {
             return Ok(Self::Separable(separable));
         }

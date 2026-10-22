@@ -19,7 +19,7 @@ mod plan;
 use crate::function::Function;
 use crate::icc::Intent;
 use crate::space::ColorSpace;
-use pagura_core::{Error, Name, Result};
+use pagura_core::{Error, Meter, Name, Result};
 use std::sync::Arc;
 
 /// The process components of a blending space (11.3.4): the group colour
@@ -160,13 +160,41 @@ impl Converter {
     /// target with more than [`MAX_CHANNELS`] channels or a space nested
     /// more than 64 levels deep.
     pub fn new(space: &ColorSpace, target: &Target, conversion: &Conversion) -> Result<Self> {
+        Self::new_metered(
+            space,
+            target,
+            conversion,
+            &mut Meter::new(usize::MAX, "colour conversion allocation failed"),
+        )
+    }
+
+    /// Prepares a conversion, reserving every owned allocation against
+    /// `bytes` before construction, including overlap while a buffer grows.
+    /// Shared profiles, functions and target colorant names are not charged.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::new`], or a `Limit` error when an allocation exceeds
+    /// `bytes` or cannot be fulfilled.
+    pub fn new_metered(
+        space: &ColorSpace,
+        target: &Target,
+        conversion: &Conversion,
+        bytes: &mut Meter,
+    ) -> Result<Self> {
         if target.channels() > MAX_CHANNELS {
             return Err(Error::limit("too many colour channels"));
         }
         Ok(Self {
             target: target.clone(),
-            plan: plan::Plan::new(space, target, conversion)?,
+            plan: plan::Plan::new(space, target, conversion, bytes)?,
         })
+    }
+
+    /// Heap bytes owned by this converter, excluding its inline value and
+    /// shared profiles, functions and target colorant names.
+    pub fn owned_bytes(&self) -> usize {
+        self.plan.owned_bytes()
     }
 
     /// The target.

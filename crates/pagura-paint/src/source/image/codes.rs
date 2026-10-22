@@ -17,7 +17,7 @@
 use super::geometry::{Geometry, MAX_LANES};
 use super::separable::{RowCache, Rows, Runs, Separable};
 use crate::source::{Pixels, SpanColors};
-use pagura_core::Result;
+use pagura_core::{Meter, Result};
 use pagura_image::deferred::{Packed, Planar};
 use pagura_image::{DecodedImage, Samples};
 
@@ -97,50 +97,82 @@ impl Lanes {
     /// The lanes of a one-component image of `codes` codes whose texels are
     /// `table`, `lanes` values per code (colours, alpha and shape), or
     /// `None` when a lane is not affine in the code.
-    pub(super) fn single(table: &[f64], lanes: usize, codes: usize, opaque: bool) -> Option<Self> {
+    pub(super) fn single(
+        table: &[f64],
+        lanes: usize,
+        codes: usize,
+        opaque: bool,
+        bytes: &mut Meter,
+    ) -> Result<Option<Self>> {
         if !(2..=256).contains(&codes) || lanes < 2 || table.len() != codes * lanes {
-            return None;
+            return Ok(None);
         }
         let kept = if opaque { lanes - 2 } else { lanes };
-        let columns: Vec<Vec<f64>> = (0..kept)
-            .map(|lane| table.iter().skip(lane).step_by(lanes).copied().collect())
-            .collect();
-        Self::new(&columns, &vec![0; kept], lanes - 2, opaque)
+        let components = [0; MAX_LANES];
+        let Some(component) = components.get(..kept) else {
+            return Ok(None);
+        };
+        Self::new(
+            (kept, codes),
+            component,
+            (lanes - 2, opaque),
+            |lane, code| table[code * lanes + lane],
+            bytes,
+        )
     }
 
     /// The lanes of an opaque three-component image of eight-bit codes whose
     /// channel `c` is `tables[c]` of component `c`.
-    pub(super) fn rgb(tables: &[[f64; 256]; 3]) -> Option<Self> {
-        let columns: Vec<Vec<f64>> = tables.iter().map(|table| table.to_vec()).collect();
-        Self::new(&columns, &[0, 1, 2], 3, true)
+    pub(super) fn rgb(tables: &[[f64; 256]; 3], bytes: &mut Meter) -> Result<Option<Self>> {
+        Self::new(
+            (3, 256),
+            &[0, 1, 2],
+            (3, true),
+            |lane, code| tables[lane][code],
+            bytes,
+        )
     }
 
     fn new(
-        columns: &[Vec<f64>],
+        (kept, count): (usize, usize),
         component: &[usize],
-        channels: usize,
-        opaque: bool,
-    ) -> Option<Self> {
-        let mut table = Vec::with_capacity(columns.len());
-        let mut affine = Vec::with_capacity(columns.len());
-        let mut ends = Vec::with_capacity(columns.len());
-        let maximum = u8::try_from(columns.first()?.len().checked_sub(1)?).ok()?;
-        for column in columns {
-            let (&zero, &top) = (column.first()?, column.last()?);
-            let maximum = f64::from(u32::try_from(column.len().checked_sub(1)?).ok()?);
+        (channels, opaque): (usize, bool),
+        value: impl Fn(usize, usize) -> f64,
+        bytes: &mut Meter,
+    ) -> Result<Option<Self>> {
+        let Some(maximum) = count.checked_sub(1).and_then(|n| u8::try_from(n).ok()) else {
+            return Ok(None);
+        };
+        if kept > MAX_LANES {
+            return Ok(None);
+        }
+        let mut maps = [Affine::new(0.0, 0.0, 1.0); MAX_LANES];
+        let mut ends = [(0.0, 0.0); MAX_LANES];
+        for lane in 0..kept {
+            let (zero, top) = (value(lane, 0), value(lane, count - 1));
+            let maximum = f64::from(maximum);
             let slope = (top - zero) / maximum;
-            let straight = column.iter().zip(0u32..).all(|(&value, code)| {
+            let straight = (0..count).zip(0u32..).all(|(index, code)| {
+                let value = value(lane, index);
                 let expected = zero + f64::from(code) * slope;
                 (value - expected).abs() <= AFFINE_TOLERANCE * value.abs().max(1.0)
             });
             if !straight || !slope.is_finite() {
-                return None;
+                return Ok(None);
             }
+            maps[lane] = Affine::new(zero, slope, maximum);
+            ends[lane] = (zero, top);
+        }
+        let affine = super::copied(&maps[..kept], bytes)?;
+        let ends = super::copied(&ends[..kept], bytes)?;
+        let component = super::copied(component, bytes)?;
+        let mut table = super::reserved(kept, bytes)?;
+        for lane in 0..kept {
             let mut entries = [0.0; 256];
-            entries.get_mut(..column.len())?.copy_from_slice(column);
+            for (code, entry) in entries[..count].iter_mut().enumerate() {
+                *entry = value(lane, code);
+            }
             table.push(entries);
-            affine.push(Affine::new(zero, slope, maximum));
-            ends.push((zero, top));
         }
         let own = component.iter().enumerate().all(|(lane, &c)| lane == c);
         let single = component.iter().all(|&c| c == 0);
@@ -151,15 +183,18 @@ impl Lanes {
         let replicated = (opaque && single && shared)
             .then(|| affine.first().copied())
             .flatten();
-        let codes = direct.map(|map| {
+        let codes = if let Some(map) = direct {
+            bytes.charge_items::<[f64; 256]>(1)?;
             let mut codes = Box::new([0.0; 256]);
             for (code, value) in (0..=u8::MAX).zip(codes.iter_mut()) {
                 *value = map.apply(f64::from(code));
             }
-            codes
-        });
-        Some(Self {
-            component: component.to_vec(),
+            Some(codes)
+        } else {
+            None
+        };
+        Ok(Some(Self {
+            component,
             table,
             affine,
             ends,
@@ -169,7 +204,15 @@ impl Lanes {
             replicated,
             channels,
             opaque,
-        })
+        }))
+    }
+
+    pub(super) fn bytes(&self) -> usize {
+        self.component.capacity() * size_of::<usize>()
+            + self.table.capacity() * size_of::<[f64; 256]>()
+            + self.affine.capacity() * size_of::<Affine>()
+            + self.ends.capacity() * size_of::<(f64, f64)>()
+            + self.codes.as_ref().map_or(0, |_| size_of::<[f64; 256]>())
     }
 
     /// The complements of codes averaged beside them, for lanes that are
@@ -440,6 +483,7 @@ impl Codes {
         image: &DecodedImage,
         geometry: &Geometry,
         columns: (u32, u32),
+        bytes: &mut Meter,
     ) -> Result<Option<Self>> {
         let components = usize::from(image.components);
         let usable = match &image.samples {
@@ -452,12 +496,18 @@ impl Codes {
             || lanes.component.iter().any(|&c| c >= components)
             || !lanes.opaque && components != 1
         {
+            let released = lanes.bytes();
+            drop(lanes);
+            bytes.refund(released);
             return Ok(None);
         }
-        let Some(separable) = Separable::new(geometry, columns)? else {
+        let Some(separable) = Separable::new(geometry, columns, bytes)? else {
+            let released = lanes.bytes();
+            drop(lanes);
+            bytes.refund(released);
             return Ok(None);
         };
-        let words = word_tables(&lanes, components, &separable);
+        let words = word_tables(&lanes, components, &separable, bytes)?;
         Ok(Some(Self {
             lanes,
             components,
@@ -530,18 +580,44 @@ impl Codes {
 
     /// Bytes the plan and lanes hold.
     pub(super) fn bytes(&self) -> usize {
-        self.separable.bytes() + self.lanes.table.len() * size_of::<[f64; 256]>()
+        self.separable.bytes()
+            + self.lanes.bytes()
+            + self
+                .words
+                .as_ref()
+                .map_or(0, |_| size_of::<[[u16; 256]; 3]>())
     }
 
     /// Replaces the lanes, keeping the placement.
-    pub(super) fn set_lanes(&mut self, lanes: Lanes) {
-        self.words = word_tables(&lanes, self.components, &self.separable);
-        self.lanes = lanes;
+    pub(super) fn set_lanes(&mut self, lanes: Lanes, bytes: &mut Meter) -> Result<()> {
+        let old = std::mem::replace(&mut self.lanes, lanes);
+        let released = old.bytes();
+        drop(old);
+        bytes.refund(released);
+        if let Some(old) = self.words.take() {
+            drop(old);
+            bytes.refund(size_of::<[[u16; 256]; 3]>());
+        }
+        self.words = word_tables(&self.lanes, self.components, &self.separable, bytes)?;
+        Ok(())
     }
 
     /// The placement for a stencil whose colour no longer follows codes.
-    pub(super) fn into_separable(self) -> Separable {
-        self.separable
+    pub(super) fn into_separable(self, bytes: &mut Meter) -> Separable {
+        let released = self.lanes.bytes()
+            + self
+                .words
+                .as_ref()
+                .map_or(0, |_| size_of::<[[u16; 256]; 3]>());
+        let Self {
+            lanes,
+            words,
+            separable,
+            ..
+        } = self;
+        drop((lanes, words));
+        bytes.refund(released);
+        separable
     }
 
     /// Fills `out` with device pixels `x .. x + len` of row `y`: straight
@@ -628,10 +704,12 @@ fn word_tables(
     lanes: &Lanes,
     components: usize,
     separable: &Separable,
-) -> Option<Box<[[u16; 256]; 3]>> {
+    bytes: &mut Meter,
+) -> Result<Option<Box<[[u16; 256]; 3]>>> {
     if !separable.nearest() || !lanes.opaque || lanes.table.len() != 3 {
-        return None;
+        return Ok(None);
     }
+    bytes.charge_items::<[[u16; 256]; 3]>(1)?;
     let direct = lanes.codes.as_deref().filter(|_| components == 3);
     let mut words = Box::new([[0u16; 256]; 3]);
     for (words, table) in words.iter_mut().zip(&lanes.table) {
@@ -640,7 +718,7 @@ fn word_tables(
             *word = crate::kernel::opaque_word(value);
         }
     }
-    Some(words)
+    Ok(Some(words))
 }
 
 /// An image's samples as rows of codes, each of a one-component image
