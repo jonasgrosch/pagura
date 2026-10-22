@@ -194,7 +194,7 @@ fn planar_transposed(planar: &Planar, limits: &Limits) -> Result<Planar> {
         let rows = plane.len().checked_div(pitch).unwrap_or(0);
         planes[c] = values_transposed(plane, (pitch, rows), 1, limits)?;
         geometry[c] = [v, h, rows];
-        let (stride, block_rows) = (pitch / 8, rows / 8);
+        let (stride, block_rows) = (pitch / planar.block, rows / planar.block);
         let flags = &planar.dirty[c];
         let mut exchanged = storage::<u8>(flags.len(), limits)?;
         for row in 0..block_rows {
@@ -217,6 +217,7 @@ fn planar_transposed(planar: &Planar, limits: &Limits) -> Result<Planar> {
         planes,
         dirty,
         backgrounds: planar.backgrounds,
+        block: planar.block,
     })
 }
 

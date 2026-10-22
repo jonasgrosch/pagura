@@ -488,7 +488,9 @@ fn image_decode_timing() {
                 ("interleaved", Reduce::Full, Layout::Interleaved),
                 ("native", Reduce::Full, Layout::Native),
                 ("cells 6", Reduce::Drawn { cells: 6 }, Layout::Interleaved),
+                ("native cells 6", Reduce::Drawn { cells: 6 }, Layout::Native),
                 ("cells 3", Reduce::Drawn { cells: 3 }, Layout::Interleaved),
+                ("native cells 3", Reduce::Drawn { cells: 3 }, Layout::Native),
             ] {
                 let request = DecodeRequest::new(reduce, None, layout);
                 let time = best(runs, || {
@@ -497,8 +499,16 @@ fn image_decode_timing() {
                     );
                 });
                 let _ = write!(line, " | {label} {time:.2}");
-                if let Ok(decoded) = source.decode(&request, &limits, source.recovery())
+                let decoded = source.decode(&request, &limits, source.recovery());
+                if let Ok(decoded) = &decoded
+                    && layout == Layout::Native
+                    && !matches!(decoded.image.samples, pagura_image::Samples::Planar(_))
+                {
+                    line += " (not planar)";
+                }
+                if let Ok(decoded) = decoded
                     && let pagura_image::Samples::Planar(planar) = &decoded.image.samples
+                    && reduce == Reduce::Full
                 {
                     let [_, _, pitch] = planar.geometry(0);
                     let (stride, rows) = (pitch / 8, planar.height().div_ceil(16) * 2);

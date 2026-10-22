@@ -15,7 +15,7 @@ pub(crate) fn decode(
     limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<DecodedImage> {
-    let (deferred, cells) = (layout == SampleLayout::Deferred, layout.cells());
+    let (deferred, cells) = (layout.deferred(), layout.cells());
     let (width, height) = (header.width, header.height);
     let (components, bits) = (header.declared_components, header.declared_bits);
     let mut image = DecodedImage {

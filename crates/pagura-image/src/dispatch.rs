@@ -52,7 +52,7 @@ pub(crate) fn decode_with(
     (layout, buffers): (SampleLayout, Option<&SampleBuffers>),
     diagnostics: &mut Diagnostics,
 ) -> Result<DecodedImage> {
-    let (deferred, cells) = (layout == SampleLayout::Deferred, layout.cells());
+    let (deferred, cells) = (layout.deferred(), layout.cells());
     let (width, height) = p::dimensions(dict)?;
     let limits = document.limits();
     p::budget(width, height, 1, 1, &limits)?;
@@ -236,8 +236,8 @@ pub(crate) fn color_transform(params: Option<&Dictionary>) -> Result<Option<i64>
         .transpose()
 }
 
-/// Decodes DCTDecode samples into `image`, in native planes when `deferred`
-/// and otherwise with `cells` samples per eight-sample block axis.
+/// Decodes DCTDecode samples into `image` with `cells` samples per
+/// eight-sample block axis, in native planes when `deferred`.
 ///
 /// An independently validated lossless image cannot be a JPEG with a damaged
 /// SOI: all Flate framing, checksums, row tags and sample counts must agree.
@@ -256,7 +256,13 @@ pub(crate) fn decode_dct(
     // ordinary decoder below then reports its own errors and repairs.
     if deferred
         && bits == 8
-        && let Some(decoded) = dct::decode_deferred(data, transform, limits, buffers, diagnostics)
+        && let Some(decoded) = dct::decode_deferred(
+            data,
+            transform,
+            limits,
+            (buffers, usize::from(cells)),
+            diagnostics,
+        )
     {
         let (size, samples) = match decoded {
             dct::Deferred::Planar(planar) => (
@@ -272,12 +278,25 @@ pub(crate) fn decode_dct(
                 Samples::Bytes(image.samples),
             ),
         };
-        if size != (width as usize, height as usize, components) {
+        let scaled = (
+            dct::scaled_length(width, cells) as usize,
+            dct::scaled_length(height, cells) as usize,
+        );
+        if size != (scaled.0, scaled.1, components) {
             return Err(Error::syntax(
                 "JPEG metadata disagrees with image dictionary",
             ));
         }
         image.samples = samples;
+        if cells < 8 {
+            image.width = dct::scaled_length(width, cells);
+            image.height = dct::scaled_length(height, cells);
+            image.reduction = Some(crate::Reduction {
+                cells,
+                width,
+                height,
+            });
+        }
         return Ok(());
     }
     let decoded = match dct::decode_cells(data, transform, limits, diagnostics, cells) {

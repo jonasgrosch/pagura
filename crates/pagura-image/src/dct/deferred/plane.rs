@@ -1,13 +1,19 @@
 //! One component's native samples, reconstructed while its entropy-coded
 //! blocks are consumed.
 use super::super::entropy::{Bits, Huffman};
+use super::super::transform::Cells;
 use super::basis::Reference;
 use pagura_core::{Error, Result};
 
 /// Sample bytes for eight-by-eight blocks in block-row order, initialized to
-/// a background value, plus per-block flags.
+/// a background value, plus per-block flags. With cells, each block keeps
+/// fewer samples per axis (see [`Cells`]).
 pub(in crate::dct) struct Plane {
     samples: Vec<u8>,
+    /// Samples kept per block axis, and how blocks become them when fewer
+    /// than eight.
+    cells: Option<Box<Cells>>,
+    side: usize,
     /// Per block: nonzero once the block differs from the background.
     dirty: Vec<u8>,
     pitch: usize,
@@ -33,13 +39,12 @@ fn filled<T: Clone>(length: usize, value: T, message: &'static str) -> Result<Ve
 
 impl Plane {
     pub(in crate::dct) fn new(
-        blocks: usize,
-        stride: usize,
+        (blocks, stride, side): (usize, usize, usize),
         background: u8,
         buffers: Option<&crate::deferred::SampleBuffers>,
     ) -> Result<Self> {
         let length = blocks
-            .checked_mul(64)
+            .checked_mul(side * side)
             .ok_or(Error::limit("JPEG native storage overflow"))?;
         let mut shortcut = Vec::new();
         shortcut
@@ -53,7 +58,9 @@ impl Plane {
                 None => filled(length, background, "JPEG native allocation failed")?,
             },
             dirty: filled(blocks, 0, "JPEG block flag allocation failed")?,
-            pitch: stride * 8,
+            cells: (side < 8).then(|| Box::new(Cells::new(side))),
+            side,
+            pitch: stride * side,
             scratch: [0; 64],
             reference: Reference::new(),
             shortcut,
@@ -100,7 +107,7 @@ impl Plane {
         predictor: &mut i32,
         quant: &[u16; 64],
     ) -> Result<()> {
-        let stride = self.pitch / 8;
+        let stride = self.pitch / self.side;
         let index = row * stride + column;
         if column >= stride || index >= self.blocks {
             return Err(bits.error("JPEG block outside component"));
@@ -129,13 +136,37 @@ impl Plane {
         if !nonconstant && constant == self.background {
             return Ok(());
         }
+        self.dirty[index] = 1;
+        let side = self.side;
+        let base = (row * self.pitch + column) * side;
+        if let Some(cells) = self.cells.take() {
+            // One cell per block keeps the DC mean of every block.
+            let constant = (!nonconstant || side == 1).then_some(constant);
+            let natural = self.scratch;
+            let mut refined = Ok(());
+            let block = cells.block((&natural, constant), || {
+                self.reconstruct(bits, l1)
+                    .map_err(|error| refined = Err(error))
+                    .ok()
+            });
+            self.cells = Some(cells);
+            refined?;
+            let block = block.ok_or_else(|| bits.error("JPEG cell reconstruction failed"))?;
+            let out = self.samples.get_mut(base..).unwrap_or_default();
+            let stored = match side {
+                1 => store::<1>(&block, out, self.pitch),
+                2 => store::<2>(&block, out, self.pitch),
+                3 => store::<3>(&block, out, self.pitch),
+                4 => store::<4>(&block, out, self.pitch),
+                _ => store::<6>(&block, out, self.pitch),
+            };
+            return stored.ok_or_else(|| bits.error("JPEG block outside component"));
+        }
         let output = if nonconstant {
             self.reconstruct(bits, l1)?
         } else {
             [[constant; 8]; 8]
         };
-        self.dirty[index] = 1;
-        let base = (row * self.pitch + column) * 8;
         for (y, row) in output.iter().enumerate() {
             let start = base + y * self.pitch;
             self.samples
@@ -185,6 +216,15 @@ impl Plane {
     }
 }
 
+/// Writes the first `N` rows of `N` cells of `block`, `pitch` apart.
+fn store<const N: usize>(block: &[[u8; 6]; 6], out: &mut [u8], pitch: usize) -> Option<()> {
+    for (y, row) in block.iter().take(N).enumerate() {
+        let cells: &[u8; N] = row.first_chunk::<N>()?;
+        *out.get_mut(y * pitch..)?.first_chunk_mut::<N>()? = *cells;
+    }
+    Some(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -212,7 +252,7 @@ mod tests {
     #[test]
     fn certified_samples_are_the_ordered_annex_a_result() {
         let reference = Reference::new();
-        let mut plane = Plane::new(1, 1, 255, None).unwrap();
+        let mut plane = Plane::new((1, 1, 8), 255, None).unwrap();
         let mut bits = Bits::new(&[], 0);
         bits.limit_stream(0, 100_000_000);
         let mut state = 0x75a3_194bu32;

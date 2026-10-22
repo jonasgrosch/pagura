@@ -208,3 +208,87 @@ fn stencils_report_their_polarity_and_pack_their_samples_on_request() {
     };
     assert_eq!(packed.row(1), Some(&rows[1..]));
 }
+
+/// Width, height and components from a JPEG's frame header.
+fn frame(jpeg: &[u8]) -> Option<(u16, u16, u8)> {
+    let mut at = 2;
+    while at + 9 < jpeg.len() {
+        if jpeg[at] != 0xff {
+            return None;
+        }
+        let marker = jpeg[at + 1];
+        let length = usize::from(u16::from_be_bytes([jpeg[at + 2], jpeg[at + 3]]));
+        if matches!(marker, 0xc0..=0xc2) {
+            let height = u16::from_be_bytes([jpeg[at + 5], jpeg[at + 6]]);
+            let width = u16::from_be_bytes([jpeg[at + 7], jpeg[at + 8]]);
+            return Some((width, height, jpeg[at + 9]));
+        }
+        at += 2 + length;
+    }
+    None
+}
+
+#[test]
+fn native_cell_planes_hold_the_interleaved_cells() {
+    let directory = pagura_testkit::workspace_root().join("corpus/generated/image");
+    let mut planar = 0;
+    for entry in std::fs::read_dir(directory).unwrap().flatten() {
+        let path = entry.path();
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if !name.starts_with("jpeg") || path.extension().is_none_or(|e| e != "in") {
+            continue;
+        }
+        let jpeg = std::fs::read(&path).unwrap();
+        let Some((width, height, components)) = frame(&jpeg) else {
+            continue;
+        };
+        let space = match components {
+            1 => "/DeviceGray",
+            3 => "/DeviceRGB",
+            _ => continue,
+        };
+        let dictionary = format!(
+            "/Type /XObject /Subtype /Image /Width {width} /Height {height} \
+             /BitsPerComponent 8 /ColorSpace {space} /Filter /DCTDecode"
+        );
+        let document = open(pdf(&[(&dictionary, &jpeg)]));
+        let Ok(image) =
+            ImageSource::from_xobject(&document, document.object(ObjectId::new(3, 0)).unwrap())
+        else {
+            continue;
+        };
+        for cells in [1, 2, 3, 4, 6] {
+            let decode = |layout| {
+                image.decode(
+                    &DecodeRequest::new(Reduce::Drawn { cells }, None, layout),
+                    &document.limits(),
+                    Recovery::Repair,
+                )
+            };
+            let (Ok(native), Ok(interleaved)) =
+                (decode(Layout::Native), decode(Layout::Interleaved))
+            else {
+                continue;
+            };
+            let (native, interleaved) = (native.image, interleaved.image);
+            assert_eq!(
+                (native.width, native.height, native.reduction),
+                (interleaved.width, interleaved.height, interleaved.reduction),
+                "{name} {cells}"
+            );
+            match (&native.samples, &interleaved.samples) {
+                (Samples::Planar(planes), Samples::Bytes(bytes)) => {
+                    planar += 1;
+                    let row = usize::try_from(native.width).unwrap() * 3;
+                    let mut converted = vec![0; row];
+                    for (y, expected) in bytes.chunks_exact(row).enumerate() {
+                        assert!(planes.rgb(y, &mut converted));
+                        assert_eq!(converted, expected, "{name} {cells} row {y}");
+                    }
+                }
+                (native, interleaved) => assert_eq!(native, interleaved, "{name} {cells}"),
+            }
+        }
+    }
+    assert!(planar > 0, "no JPEG decoded into native cell planes");
+}

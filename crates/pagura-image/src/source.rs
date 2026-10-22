@@ -481,7 +481,10 @@ impl ImageSource {
                     && matches!(self.header.codec, Codec::Dct(_))
                     && matches!(cells, 1 | 2 | 3 | 4 | 6) =>
             {
-                SampleLayout::Cells(cells)
+                match request.layout {
+                    Layout::Interleaved => SampleLayout::Cells(cells),
+                    Layout::Native => SampleLayout::DeferredCells(cells),
+                }
             }
             _ => match request.layout {
                 Layout::Interleaved => SampleLayout::Interleaved,
@@ -493,7 +496,7 @@ impl ImageSource {
     /// The stored dimensions of a decode of `request`.
     fn decoded_size(&self, request: &DecodeRequest) -> (u32, u32) {
         match self.layout(request) {
-            SampleLayout::Cells(cells) => (
+            SampleLayout::Cells(cells) | SampleLayout::DeferredCells(cells) => (
                 crate::dct::scaled_length(self.header.width, cells),
                 crate::dct::scaled_length(self.header.height, cells),
             ),

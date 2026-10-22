@@ -411,6 +411,8 @@ pub(super) struct Codes {
 /// arithmetic beyond one value per device row.
 #[derive(Debug)]
 struct Clean {
+    /// Samples per block side.
+    side: usize,
     /// Bit words per block row.
     words: usize,
     /// One bit per luma block, set where it is background.
@@ -421,19 +423,26 @@ struct Clean {
 
 impl Clean {
     fn new(planar: &Planar) -> Self {
+        let side = planar.block().max(1);
         let [_, _, pitch] = planar.geometry(0);
         let [max_h, max_v] = planar.maximum();
-        let columns = pitch / 8;
-        let rows = planar.height().div_ceil(8);
+        let columns = pitch / side;
+        let rows = planar.height().div_ceil(side);
         let words = columns.div_ceil(64);
         let mut bits = vec![0u64; words * rows];
+        // The chroma blocks under luma samples `a..=b` of a component with
+        // sampling factor `factor` of `maximum`.
+        let under = |(a, b): (usize, usize), factor: usize, maximum: usize| {
+            (a * factor / maximum / side)..=(b * factor / maximum / side)
+        };
         for (row, line) in bits.chunks_exact_mut(words.max(1)).enumerate() {
+            let samples = (row * side, row * side + side - 1);
             for column in 0..columns {
+                let across = (column * side, column * side + side - 1);
                 let chroma = (1..3).all(|c| {
                     let [h, v, _] = planar.geometry(c);
-                    let (y0, y1) = (row * 8 * v / max_v / 8, (row * 8 + 7) * v / max_v / 8);
-                    let (x0, x1) = (column * 8 * h / max_h / 8, (column * 8 + 7) * h / max_h / 8);
-                    (y0..=y1).all(|y| (x0..=x1).all(|x| !planar.dirty(c, y, x)))
+                    under(samples, v, max_v)
+                        .all(|y| under(across, h, max_h).all(|x| !planar.dirty(c, y, x)))
                 });
                 if chroma && !planar.dirty(0, row, column) {
                     line[column / 64] |= 1 << (column % 64);
@@ -444,6 +453,7 @@ impl Clean {
         let mut background = [0; 3];
         let _ = pagura_image::deferred::ycbcr(&[y], &[cb], &[cr], 1, &mut background);
         Self {
+            side,
             words,
             bits,
             background,
@@ -471,13 +481,14 @@ impl Clean {
                 _ => runs.push((start, stop, dirty)),
             }
         };
-        let (mut column, last) = (first / 8, (end - 1) / 8);
+        let side = self.side;
+        let (mut column, last) = (first / side, (end - 1) / side);
         while column <= last {
             // The background bits of this word's columns from `column` on,
             // over every block row.
             let (word, shift) = (column / 64, column % 64);
             let mut bits = u64::MAX;
-            for row in top / 8..=bottom / 8 {
+            for row in top / side..=bottom / side {
                 bits &= self.bits.get(row * self.words + word).copied().unwrap_or(0);
             }
             let bits = bits >> shift;
@@ -492,9 +503,9 @@ impl Clean {
                 .unwrap_or(1)
                 .max(1)
                 .min(last + 1 - column);
-            let start = (column * 8).max(first);
+            let start = (column * side).max(first);
             column += count;
-            let stop = (column * 8).min(end);
+            let stop = (column * side).min(end);
             push(start, stop, !background);
         }
     }

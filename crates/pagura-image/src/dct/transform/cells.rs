@@ -96,6 +96,46 @@ impl Cells {
         }
     }
 
+    /// The cells of a block given its dequantized coefficients in natural
+    /// order, the same as [`Self::reconstruct`] gives for them: `constant`
+    /// when no AC coefficient is set (its DC mean), and for six cells of a
+    /// block that may leave the sample range, the means of the block's exact
+    /// samples from `exact`. The first `count` rows and columns hold them.
+    pub(in crate::dct) fn block(
+        &self,
+        (natural, constant): (&[i32; 64], Option<u8>),
+        exact: impl FnOnce() -> Option<[[u8; 8]; 8]>,
+    ) -> Option<[[u8; 6]; 6]> {
+        Some(match self.count {
+            1 => pad::<1>(self.natural::<1>((natural, constant), exact)?),
+            2 => pad::<2>(self.natural::<2>((natural, constant), exact)?),
+            3 => pad::<3>(self.natural::<3>((natural, constant), exact)?),
+            4 => pad::<4>(self.natural::<4>((natural, constant), exact)?),
+            _ => self.natural::<6>((natural, constant), exact)?,
+        })
+    }
+
+    fn natural<const N: usize>(
+        &self,
+        (natural, constant): (&[i32; 64], Option<u8>),
+        exact: impl FnOnce() -> Option<[[u8; 8]; 8]>,
+    ) -> Option<[[u8; N]; N]> {
+        if let Some(value) = constant {
+            return Some([[value; N]; N]);
+        }
+        let mut values = [0.0f32; 64];
+        let mut set = 0_u64;
+        for ((value, &coefficient), bit) in values.iter_mut().zip(natural).zip(0u32..) {
+            *value = dequantize(coefficient, 1);
+            set |= u64::from(coefficient != 0).wrapping_shl(bit);
+        }
+        Some(if N == 6 && may_overshoot(&values, set, &self.reach) {
+            corner(six(&exact()?))
+        } else {
+            self.means::<N>(&values, set)
+        })
+    }
+
     fn store<const N: usize>(
         &self,
         (idct, quant, coefficients): (&Idct, &[u16; 64], Sparse<'_>),
@@ -174,6 +214,15 @@ impl Cells {
     }
 }
 
+/// `N` by `N` cells in the corner of six by six.
+fn pad<const N: usize>(cells: [[u8; N]; N]) -> [[u8; 6]; 6] {
+    let mut out = [[0; 6]; 6];
+    for (row, cells) in out.iter_mut().zip(cells) {
+        row[..N].copy_from_slice(&cells);
+    }
+    out
+}
+
 /// The first `N` by `N` cells of a six by six block.
 fn corner<const N: usize>(cells: [[u8; 6]; 6]) -> [[u8; N]; N] {
     std::array::from_fn(|i| std::array::from_fn(|j| cells[i][j]))
@@ -222,23 +271,33 @@ fn may_overshoot(natural: &[f32; 64], set: u64, reach: &[f32; 64]) -> bool {
 /// over cells of four thirds of a sample, rounded half up once.
 fn six(block: &[[u8; 8]; 8]) -> [[u8; 6]; 6] {
     // In eighths of a cell, each half block [a, b, c, d] of samples gives
-    // the cells 6a+2b, 4b+4c and 2c+6d (see `overlap`).
+    // the cells 6a+2b, 4b+4c and 2c+6d (see `overlap`). Inputs are at most
+    // 8 × 255 × 8, so the sums cannot wrap.
     fn reduce([a, b, c, d, e, f, g, h]: [u32; 8]) -> [u32; 6] {
+        let pair =
+            |x: u32, wx: u32, y: u32, wy: u32| x.wrapping_mul(wx).wrapping_add(y.wrapping_mul(wy));
         [
-            6 * a + 2 * b,
-            4 * (b + c),
-            2 * c + 6 * d,
-            6 * e + 2 * f,
-            4 * (f + g),
-            2 * g + 6 * h,
+            pair(a, 6, b, 2),
+            pair(b, 4, c, 4),
+            pair(c, 2, d, 6),
+            pair(e, 6, f, 2),
+            pair(f, 4, g, 4),
+            pair(g, 2, h, 6),
         ]
     }
-    let rows = block.map(|row| reduce(row.map(u32::from)));
+    let mut rows = [[0u32; 6]; 8];
+    for (out, row) in rows.iter_mut().zip(block) {
+        *out = reduce(row.map(u32::from));
+    }
     let mut out = [[0u8; 6]; 6];
     for x in 0..6 {
-        let column = reduce(std::array::from_fn(|y| rows[y][x]));
-        for (row, value) in out.iter_mut().zip(column) {
-            row[x] = u8::try_from((value + 32) / 64).unwrap_or(u8::MAX);
+        let column = [
+            rows[0][x], rows[1][x], rows[2][x], rows[3][x], rows[4][x], rows[5][x], rows[6][x],
+            rows[7][x],
+        ];
+        for (row, value) in out.iter_mut().zip(reduce(column)) {
+            // At most 64 × 255 + 32, so the mean fits a byte.
+            row[x] = (value.wrapping_add(32) / 64).to_le_bytes()[0];
         }
     }
     out

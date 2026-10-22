@@ -26,7 +26,7 @@ fn deferred(bytes: &[u8], transform: Option<i64>) -> Option<Deferred> {
         bytes,
         transform,
         &Limits::default(),
-        None,
+        (None, 8),
         &mut Diagnostics::new(Recovery::Strict),
     )
 }
