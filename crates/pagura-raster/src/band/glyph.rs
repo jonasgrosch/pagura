@@ -294,7 +294,7 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
         bounded(lo)?;
         bounded(hi)?;
         frame.fit([lo, hi]);
-        if frame.rows.is_none() && frame.rect.is_none() {
+        if frame.paths.is_none() && frame.rect.is_none() {
             return Shape::translated(edges, relative, origin, &frame, options);
         }
     }
@@ -323,7 +323,7 @@ pub(crate) fn general(
             }
         }
         frame.fit([lo, hi]);
-        if frame.rows.is_none() {
+        if frame.paths.is_none() {
             let mut lines = Vec::new();
             let mut curves = Vec::new();
             lines

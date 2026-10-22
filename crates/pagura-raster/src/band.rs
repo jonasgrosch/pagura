@@ -37,10 +37,9 @@ mod edges;
 mod glyph;
 mod raster;
 mod rect;
-mod resolve;
 mod row;
-mod scan;
 mod shape;
+mod union;
 
 pub use clip::ClipShape;
 pub use coverage::{BandCoverage, Capacity, CoverageRow, Span};

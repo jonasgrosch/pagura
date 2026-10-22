@@ -1,14 +1,13 @@
 //! The band rasterizer: one strip of cells, reused for every mark and band.
 
 use super::cells::{Cells, STRIP};
-use super::clip::{INSIDE, Rows, Segment};
+use super::clip::{Rows, Segment};
 use super::coverage::RowOut;
 use super::curve::Quadratic;
-use super::edges::{Bounds, Line, StripList};
-use super::rect;
+use super::edges::{Line, StripList};
 use super::row::Sink;
-use super::shape::{Body, Shape};
-use super::{Area, BandCoverage, ClipShape, MarkCoverage};
+use super::shape::{Body, Resolved, Shape};
+use super::{Area, BandCoverage, ClipShape, DeviceRect, MarkCoverage};
 use crate::{FillRule, Point};
 use pagura_core::{Meter, Result};
 
@@ -203,8 +202,9 @@ impl BandRasterizer {
                     curves: &edges.curves,
                     origin: None,
                     strips: edges.strips.as_ref(),
+                    resolved: &shape.resolved,
                 };
-                self.items(&items, (shape, edges.scan, shape.rule), rows, out);
+                self.items(&items, (Target::of(shape), edges.scan, shape.rule), rows, out);
             }
             Body::Glyph(glyph) => {
                 if let Some(relative) = glyph.edges.relative() {
@@ -213,8 +213,10 @@ impl BandRasterizer {
                         curves: &relative.curves,
                         origin: Some(glyph.origin),
                         strips: None,
+                        resolved: &shape.resolved,
                     };
-                    self.items(&items, (shape, glyph.scan, FillRule::NonZero), rows, out);
+                    let target = Target::of(shape);
+                    self.items(&items, (target, glyph.scan, FillRule::NonZero), rows, out);
                 }
             }
         }
@@ -315,11 +317,11 @@ impl BandRasterizer {
     }
 
     /// Writes `items`' `rows` strip by strip: each strip's items accumulate
-    /// into the cells, then its rows leave through `shape`'s sink.
+    /// into the cells, then its rows leave for `target`.
     fn items(
         &mut self,
         items: &Items<'_>,
-        (shape, scan, rule): (&Shape, (usize, usize), FillRule),
+        (target, scan, rule): (Target<'_>, (usize, usize), FillRule),
         rows: std::ops::Range<u32>,
         out: &mut dyn RowOut,
     ) {
@@ -336,6 +338,11 @@ impl BandRasterizer {
                 continue;
             }
             let mut work = 0;
+            // Resolved rows take their sides instead of the edges.
+            let resolved = !items.resolved.is_empty();
+            if resolved {
+                self.cells.skip(items.resolved.mask(&window));
+            }
             if let Some(list) = items.strips {
                 let listed = list.strip(strip);
                 work += listed.len();
@@ -349,9 +356,17 @@ impl BandRasterizer {
                     work += items.add(&mut self.cells, item);
                 }
             }
+            if resolved {
+                self.cells.skip(0);
+                let sides = items.resolved.lines(&window);
+                work += sides.len();
+                for &line in sides {
+                    work += self.cells.line(line);
+                }
+            }
             for (r, row) in (0_usize..).zip(self.cells.rows()) {
                 out.push_row(row);
-                let mut sink = sink(out, shape, row);
+                let mut sink = target.sink(out, row);
                 let touched = self.cells.emit(r, rule, &mut sink);
                 work = work
                     .saturating_add(touched.saturating_mul(3))
@@ -362,39 +377,57 @@ impl BandRasterizer {
         }
     }
 
+    /// Writes a clip's own coverage: its paths' classified rows, or its
+    /// rectangle's sides through the cells.
     fn clip(&mut self, clip: &ClipShape, rows: std::ops::Range<u32>, out: &mut dyn RowOut) {
         let bounds = clip.bounds();
-        let rows = rows.start.max(bounds.y0)..rows.end.min(bounds.y1);
-        for y in rows {
-            out.push_row(y);
-            let mut sink = Out {
-                coverage: out,
-                x0: bounds.x0 as usize,
-                x1: bounds.x1 as usize,
-            };
-            if let Some(rows) = clip.rows() {
-                let segments = rows.row(y);
+        let rows = rows.start.max(bounds.y0)..rows.end.min(bounds.y1).max(rows.start);
+        if let Some(classified) = clip.rows() {
+            for y in rows {
+                out.push_row(y);
+                let mut sink = Out {
+                    coverage: out,
+                    x0: bounds.x0 as usize,
+                    x1: bounds.x1 as usize,
+                };
+                let segments = classified.row(y);
                 for s in segments {
-                    let value = if s.cell == INSIDE {
-                        u8::MAX
-                    } else {
-                        rows.cell(s.cell).map_or(0, |(c, _, _)| c.value)
-                    };
-                    sink.run(s.x0 as usize, s.x1 as usize, value);
+                    sink.run(s.x0 as usize, s.x1 as usize, s.value);
                 }
                 self.work = self.work.saturating_add(segments.len() + 2);
-                continue;
             }
-            let whole = Bounds {
-                left: f64::from(bounds.x0),
-                top: f64::from(bounds.y0),
-                right: f64::from(bounds.x1),
-                bottom: f64::from(bounds.y1),
-            };
-            let rect = clip.rect().map_or(whole, |r| r.intersect(whole));
-            let runs = rect::emit_row(rect, y, &mut sink);
-            self.work = self.work.saturating_add(runs + 2);
+            return;
         }
+        let whole = [
+            f64::from(bounds.x0),
+            f64::from(bounds.y0),
+            f64::from(bounds.x1),
+            f64::from(bounds.y1),
+        ];
+        let [left, top, right, bottom] = clip
+            .rect()
+            .map_or(whole, |r| [r.left, r.top, r.right, r.bottom]);
+        let sides = [
+            Line {
+                a: Point::new(left, top),
+                b: Point::new(left, bottom),
+            },
+            Line {
+                a: Point::new(right, bottom),
+                b: Point::new(right, top),
+            },
+        ];
+        let scan = super::clip::scan_columns(&sides, bounds.x1 as usize);
+        let none = Resolved::default();
+        let items = Items {
+            lines: &sides,
+            curves: &[],
+            origin: None,
+            strips: None,
+            resolved: &none,
+        };
+        let target = Target { bounds, mask: None };
+        self.items(&items, (target, scan, FillRule::NonZero), rows, out);
     }
 }
 
@@ -405,6 +438,8 @@ struct Items<'a> {
     curves: &'a [Quadratic],
     origin: Option<Point>,
     strips: Option<&'a StripList>,
+    /// Rows whose sides replace the items.
+    resolved: &'a Resolved,
 }
 
 impl Items<'_> {
@@ -468,45 +503,57 @@ impl Sink for Out<'_> {
     }
 }
 
-/// The sink of one row of `shape`: its cells resolved at preparation and
-/// its clip's rows, where it has them, over the output.
-fn sink<'a>(out: &'a mut dyn RowOut, shape: &'a Shape, y: u32) -> RowSink<'a> {
-    let rows = shape
-        .clip
-        .as_ref()
-        .filter(|_| shape.overlay)
-        .and_then(ClipShape::rows);
-    let stored = shape.stored.row(y);
-    let out = Out {
-        coverage: out,
-        x0: shape.bounds.x0 as usize,
-        x1: shape.bounds.x1 as usize,
-    };
-    if stored.is_empty() && rows.is_none() {
-        return RowSink::Plain(out);
+/// Where a mark's rows go: its own columns, restricted to the inside and
+/// boundary runs of the clip it is masked by.
+#[derive(Debug, Clone, Copy)]
+struct Target<'a> {
+    bounds: DeviceRect,
+    mask: Option<&'a Rows>,
+}
+
+impl<'a> Target<'a> {
+    fn of(shape: &'a Shape) -> Self {
+        Self {
+            bounds: shape.bounds,
+            mask: shape
+                .clip
+                .as_ref()
+                .filter(|_| shape.masked)
+                .and_then(ClipShape::rows),
+        }
     }
-    RowSink::Overlay(Overlay {
-        out,
-        stored,
-        next: 0,
-        clip: rows.map(|rows| (rows, rows.row(y))),
-        segment: 0,
-        extra: 0,
-    })
+
+    /// The sink of row `y`.
+    fn sink(self, out: &'a mut dyn RowOut, y: u32) -> RowSink<'a> {
+        let out = Out {
+            coverage: out,
+            x0: self.bounds.x0 as usize,
+            x1: self.bounds.x1 as usize,
+        };
+        match self.mask {
+            None => RowSink::Plain(out),
+            Some(rows) => RowSink::Masked(Masked {
+                out,
+                segments: rows.row(y),
+                next: 0,
+                extra: 0,
+            }),
+        }
+    }
 }
 
 /// A shape row's sink.
 enum RowSink<'a> {
     /// Nothing between the shape and the output.
     Plain(Out<'a>),
-    Overlay(Overlay<'a>),
+    Masked(Masked<'a>),
 }
 
 impl RowSink<'_> {
     fn extra(&self) -> usize {
         match self {
             Self::Plain(_) => 0,
-            Self::Overlay(o) => o.extra(),
+            Self::Masked(m) => m.extra,
         }
     }
 }
@@ -516,84 +563,42 @@ impl Sink for RowSink<'_> {
     fn run(&mut self, x0: usize, x1: usize, value: u8) {
         match self {
             Self::Plain(o) => o.run(x0, x1, value),
-            Self::Overlay(o) => o.run(x0, x1, value),
+            Self::Masked(m) => m.run(x0, x1, value),
         }
     }
 }
 
-/// Runs of a shape's row with its resolved cells substituted and its clip's
-/// rows applied: inside runs keep the shape's value, a boundary cell takes
-/// the clip's value where the shape covers it fully, outside is dropped.
-struct Overlay<'a> {
+/// Runs of a row kept only where a clip's runs lie: outside them the clip
+/// removes the pixels; on its boundary the row was resolved with it.
+struct Masked<'a> {
     out: Out<'a>,
-    stored: &'a [(u32, u8)],
+    segments: &'a [Segment],
     next: usize,
-    clip: Option<(&'a Rows, &'a [Segment])>,
-    segment: usize,
     extra: usize,
 }
 
-impl Overlay<'_> {
-    /// Work units spent on resolved cells and clip runs.
-    fn extra(&self) -> usize {
-        self.extra
-    }
-}
-
-impl Sink for Overlay<'_> {
+impl Sink for Masked<'_> {
     fn run(&mut self, x0: usize, x1: usize, value: u8) {
-        if self.stored.is_empty() && self.clip.is_none() {
-            self.out.run(x0, x1, value);
-            return;
-        }
         let mut x = x0;
         while x < x1 {
             while self
-                .stored
+                .segments
                 .get(self.next)
-                .is_some_and(|&(s, _)| (s as usize) < x)
-            {
-                self.next += 1;
-                self.extra += 1;
-            }
-            let stored = self.stored.get(self.next).copied();
-            if let Some((s, v)) = stored
-                && s as usize == x
-            {
-                self.out.run(x, x + 1, v);
-                self.next += 1;
-                self.extra += 1;
-                x += 1;
-                continue;
-            }
-            let limit = stored.map_or(x1, |(s, _)| (s as usize).min(x1));
-            let Some((rows, segments)) = self.clip else {
-                self.out.run(x, limit, value);
-                x = limit;
-                continue;
-            };
-            while segments
-                .get(self.segment)
                 .is_some_and(|s| s.x1 as usize <= x)
             {
-                self.segment += 1;
+                self.next += 1;
                 self.extra += 1;
             }
-            match segments.get(self.segment) {
-                None => x = limit,
-                Some(s) if s.x0 as usize > x => x = limit.min(s.x0 as usize),
-                Some(s) if s.cell == INSIDE => {
-                    let end = limit.min(s.x1 as usize);
-                    self.out.run(x, end, value);
-                    x = end;
-                }
-                Some(s) => {
-                    let clip = rows.cell(s.cell).map_or(0, |(c, _, _)| c.value);
-                    let v = if value == u8::MAX { clip } else { 0 };
-                    self.out.run(x, x + 1, v);
-                    x += 1;
-                }
+            let Some(s) = self.segments.get(self.next) else {
+                return;
+            };
+            if s.x0 as usize >= x1 {
+                return;
             }
+            let start = x.max(s.x0 as usize);
+            let end = x1.min(s.x1 as usize);
+            self.out.run(start, end, value);
+            x = end;
         }
     }
 }

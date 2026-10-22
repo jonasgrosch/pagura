@@ -1,6 +1,5 @@
-//! The cell arithmetic every coverage producer shares, and one row of cells
-//! for analysis: signed area within each cell and cover carried to the cells
-//! right of it, with a bitmap of touched cells.
+//! The cell arithmetic every coverage producer shares: signed area within
+//! each cell and cover carried to the cells right of it.
 //!
 //! An edge with direction d (+1 downward, -1 upward) adds d times the part of
 //! each cell right of it within the row, and d times its height to every
@@ -11,114 +10,18 @@
 //! is dropped, since it cannot change cells left of it.
 
 use super::curve::Quadratic;
-use super::edges::Line;
 use crate::{FillRule, quantize_unit};
-use pagura_core::{Error, Meter, Result};
+use pagura_core::{Error, Result};
 
 /// Receives a row's coverage left to right as runs of equal value.
 pub(crate) trait Sink {
     /// Pixels `x0..x1` have `value`.
     fn run(&mut self, x0: usize, x1: usize, value: u8);
-}
 
-#[derive(Debug, Default)]
-pub(crate) struct Row {
-    /// The device column of the first cell; geometry left of it adds to the
-    /// first cell's cover.
-    base: i64,
-    area: Vec<f64>,
-    cover: Vec<f64>,
-    touched: Vec<u64>,
-}
-
-impl Row {
-    /// A row of `width` cells from column `base`, charged to `bytes`.
-    pub(crate) fn from(base: usize, width: usize, bytes: &mut Meter) -> Result<Self> {
-        let mut row = Self {
-            base: i64::try_from(base).map_err(|_| Error::limit("row base exceeds i64"))?,
-            ..Self::default()
-        };
-        let words = width.div_ceil(64) + 1;
-        bytes.reserve(&mut row.area, width)?;
-        bytes.reserve(&mut row.cover, width)?;
-        bytes.reserve(&mut row.touched, words)?;
-        row.area.resize(width, 0.0);
-        row.cover.resize(width, 0.0);
-        row.touched.resize(words, 0);
-        Ok(row)
-    }
-
-    /// One past the device column of the last cell.
-    pub(crate) fn end(&self) -> usize {
-        usize::try_from(self.base).unwrap_or(0) + self.area.len()
-    }
-
+    /// Pixel `x`, which an edge crosses or touches, has `value`.
     #[inline]
-    fn mark(&mut self, x: usize) {
-        if let Some(word) = self.touched.get_mut(x / 64) {
-            *word |= 1 << (x % 64);
-        }
-    }
-
-    #[inline]
-    fn add_area(&mut self, column: i64, value: f64) {
-        if let Ok(x) = usize::try_from(column.wrapping_sub(self.base))
-            && let Some(cell) = self.area.get_mut(x)
-        {
-            *cell += value;
-            self.mark(x);
-        }
-    }
-
-    #[inline]
-    fn add_cover(&mut self, column: i64, value: f64) {
-        let x = usize::try_from(column.wrapping_sub(self.base).max(0)).unwrap_or(usize::MAX);
-        if let Some(cell) = self.cover.get_mut(x) {
-            *cell += value;
-            self.mark(x);
-        }
-    }
-
-    /// Adds signed area `value` to cell `column` without cover, and `cover`
-    /// to every cell from `column + 1` on; for analysis-free producers.
-    pub(crate) fn add_cell(&mut self, column: i64, value: f64, cover: f64) {
-        self.add_area(column, value);
-        if cover != 0.0 {
-            self.add_cover(column + 1, cover);
-        }
-    }
-
-    /// The prefix integral at every touched cell, in order, for analysis;
-    /// `visit` receives the column, its area and the cover up to and
-    /// including it. Clears the touched cells of `from..to`.
-    pub(crate) fn drain(
-        &mut self,
-        (from, to): (usize, usize),
-        mut visit: impl FnMut(usize, f64, f64),
-    ) {
-        let base = usize::try_from(self.base).unwrap_or(0);
-        let to = to.min(self.end()).saturating_sub(base);
-        let from = from.saturating_sub(base);
-        if from >= to {
-            return;
-        }
-        let mut cover = 0.0;
-        for word in from / 64..=(to - 1) / 64 {
-            let mut bits = std::mem::take(&mut self.touched[word]);
-            while bits != 0 {
-                let x = word * 64 + bits.trailing_zeros() as usize;
-                bits &= bits - 1;
-                cover += std::mem::take(&mut self.cover[x]);
-                visit(base + x, std::mem::take(&mut self.area[x]), cover);
-            }
-        }
-    }
-
-    /// Clears every cell; used after an interrupted analysis.
-    pub(crate) fn reset(&mut self) {
-        self.area.fill(0.0);
-        self.cover.fill(0.0);
-        self.touched.fill(0);
+    fn cell(&mut self, x: usize, value: u8) {
+        self.run(x, x + 1, value);
     }
 }
 
@@ -136,23 +39,6 @@ pub(crate) trait Accumulate {
     /// Adds `value` to the cover of cell `column`, or of the first cell for
     /// columns left of it; right of the row it drops.
     fn cover_at(&mut self, column: i64, value: f64);
-
-    /// Adds the part of `line` within row `top..top + 1`. Returns the cells
-    /// visited.
-    #[inline]
-    fn line(&mut self, line: Line, top: f64) -> usize {
-        let Line { a, b } = line;
-        if a.y == b.y {
-            return 0;
-        }
-        let (upper, lower, d) = if a.y < b.y { (a, b, 1.0) } else { (b, a, -1.0) };
-        let lo = upper.y.max(top);
-        let hi = lower.y.min(top + 1.0);
-        if lo >= hi {
-            return 0;
-        }
-        self.piece(line.x(lo), line.x(hi), (hi - lo) * d)
-    }
 
     /// Adds a straight piece within one row, from x `xa` to `xb`, of signed
     /// height `h`.
@@ -232,28 +118,6 @@ pub(crate) trait Accumulate {
         }
         self.cover_at(last, d * height);
         usize::try_from(to - from).unwrap_or(0) + 1
-    }
-}
-
-impl Accumulate for Row {
-    #[inline]
-    fn base(&self) -> i64 {
-        self.base
-    }
-
-    #[inline]
-    fn width(&self) -> usize {
-        self.area.len()
-    }
-
-    #[inline]
-    fn area_at(&mut self, column: i64, value: f64) {
-        self.add_area(column, value);
-    }
-
-    #[inline]
-    fn cover_at(&mut self, column: i64, value: f64) {
-        self.add_cover(column, value);
     }
 }
 

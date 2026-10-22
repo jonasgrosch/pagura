@@ -29,7 +29,7 @@ fn disjoint_clips_remove_and_containing_clips_drop_out() {
     .unwrap();
     assert!(shape.is_none());
     // Clips that keep every pixel the mark can touch are dropped for it: no
-    // edge clipping, overlay or analysis, the work and bytes of the mark
+    // edge clipping, masking or resolution, the work and bytes of the mark
     // alone.
     let wide = polygon(&[
         Point::new(0.5, 0.5),
@@ -62,7 +62,7 @@ fn disjoint_clips_remove_and_containing_clips_drop_out() {
         )
         .unwrap()
         .unwrap();
-        assert!(!clipped.overlay);
+        assert!(!clipped.masked);
         assert_eq!(clipped.work(), alone.work());
         assert_eq!(raster(&area, Some(&clipped), Some(&clip)).0, expected);
     }

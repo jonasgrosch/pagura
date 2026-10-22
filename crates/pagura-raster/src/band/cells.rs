@@ -40,6 +40,8 @@ pub(crate) struct Cells {
     /// The start of the current row's cells and bitmap words.
     cell: usize,
     word: usize,
+    /// Window rows (bits from the first) that items skip.
+    skip: u32,
 }
 
 impl Cells {
@@ -111,7 +113,23 @@ impl Cells {
         self.words = words;
         self.y0 = rows.start;
         self.rows = count;
+        self.skip = 0;
         true
+    }
+
+    /// Makes items skip the window rows whose bits `mask` sets, from the
+    /// first; rows resolved at preparation take their sides instead.
+    pub(crate) fn skip(&mut self, mask: u32) {
+        self.skip = mask;
+    }
+
+    /// Whether window row `r` is skipped.
+    #[inline]
+    fn skipped(&self, r: usize) -> bool {
+        u32::try_from(r)
+            .ok()
+            .and_then(|r| self.skip.checked_shr(r))
+            .is_some_and(|bits| bits & 1 != 0)
     }
 
     /// Whether an item whose leftmost point lies at `x` can change a cell of
@@ -172,6 +190,9 @@ impl Cells {
         // computed once, the same value either way.
         let mut carried: Option<(f64, f64)> = None;
         for r in self.span(a.y, b.y) {
+            if self.skipped(r) {
+                continue;
+            }
             let top = f64::from(self.y0) + f64::from(u32::try_from(r).unwrap_or(u32::MAX));
             let lo = upper.y.max(top);
             let hi = lower.y.min(top + 1.0);
@@ -195,6 +216,9 @@ impl Cells {
     pub(crate) fn curve(&mut self, curve: Quadratic) -> usize {
         let mut visited = 0;
         for r in self.span(curve.points[0].y, curve.points[2].y) {
+            if self.skipped(r) {
+                continue;
+            }
             let top = f64::from(self.y0) + f64::from(u32::try_from(r).unwrap_or(u32::MAX));
             self.select(r);
             visited += 1 + Accumulate::curve(self, curve, top);
@@ -228,7 +252,7 @@ impl Cells {
                 }
                 cover += std::mem::take(c);
                 let value = std::mem::take(a) + cover;
-                sink.run(base + x, base + x + 1, fold(value, rule));
+                sink.cell(base + x, fold(value, rule));
                 position = x + 1;
                 touched += 1;
             }

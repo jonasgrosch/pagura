@@ -1,14 +1,13 @@
 //! Marks prepared for the band rasterizer: fills, strokes and glyph
 //! placements in device space, clipped by their clip state's rectangle,
-//! with the cells their signed area does not determine already resolved.
+//! with the rows their signed area does not determine already resolved.
 
-use super::certify::uncertified;
-use super::clip::{ClipShape, INSIDE, Rows, columns, fill_polygon};
-use super::curve::{self, Quadratic};
 use super::cells::STRIP;
-use super::edges::{self, Bounds, Chained, Line, Polygon, StripList, line_work, rows, strips};
-use super::row::fold;
-use super::scan::{RowIndex, Scanner, Stored, Walk, gap_winding, inside};
+use super::certify::uncertified;
+use super::clip::{self, ClipShape, Paths, columns, fill_polygon};
+use super::curve::{self, Quadratic};
+use super::edges::{self, Bounds, Line, Polygon, StripList, line_work, rows, strips};
+use super::union::{Piece, Resolver};
 use super::{Adjustment, Area, DeviceRect, Prep, ShapeOptions};
 use crate::stroke::Tiling;
 use crate::{FillRule, Path, Stroke, Transform, features};
@@ -29,10 +28,87 @@ pub struct Shape {
     pub(crate) rule: FillRule,
     pub(crate) body: Body,
     pub(crate) clip: Option<ClipShape>,
-    /// Whether the clip's rows apply to the shape's rows: not where the
+    /// Whether the clip's rows restrict the shape's rows: not where the
     /// clip keeps every pixel the shape can touch.
-    pub(crate) overlay: bool,
-    pub(crate) stored: Stored,
+    pub(crate) masked: bool,
+    /// The rows resolved at preparation and their sides.
+    pub(crate) resolved: Resolved,
+}
+
+/// Rows of a shape whose windings its signed area does not determine, or
+/// where a clip path's boundary meets it: the sides of their covered set,
+/// which replace the shape's edges there.
+#[derive(Debug, Default)]
+pub(crate) struct Resolved {
+    /// Per resolved row, the end of its sides in `lines`.
+    rows: Vec<(u32, u32)>,
+    lines: Vec<Line>,
+}
+
+impl Resolved {
+    /// Whether no row is resolved.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.rows.is_empty()
+    }
+
+    /// The resolved rows within `rows` as a mask of bits from `rows.start`.
+    pub(crate) fn mask(&self, rows: &std::ops::Range<u32>) -> u32 {
+        let first = self.rows.partition_point(|&(row, _)| row < rows.start);
+        let mut mask = 0_u32;
+        for &(row, _) in self.rows.get(first..).unwrap_or(&[]) {
+            if row >= rows.end {
+                break;
+            }
+            mask |= 1_u32.checked_shl(row - rows.start).unwrap_or(0);
+        }
+        mask
+    }
+
+    /// The sides of the resolved rows within `rows`.
+    pub(crate) fn lines(&self, rows: &std::ops::Range<u32>) -> &[Line] {
+        let first = self.rows.partition_point(|&(row, _)| row < rows.start);
+        let last = self.rows.partition_point(|&(row, _)| row < rows.end);
+        let start = first
+            .checked_sub(1)
+            .and_then(|i| self.rows.get(i))
+            .map_or(0, |&(_, end)| end as usize);
+        let end = last
+            .checked_sub(1)
+            .and_then(|i| self.rows.get(i))
+            .map_or(0, |&(_, end)| end as usize);
+        self.lines.get(start..end.max(start)).unwrap_or(&[])
+    }
+
+    fn push(&mut self, y: u32, sides: &[Line]) -> Result<()> {
+        if sides.is_empty() {
+            // A resolved row with nothing covered still replaces the edges.
+            return self.mark(y);
+        }
+        self.lines
+            .try_reserve(sides.len())
+            .map_err(|_| Error::limit("resolved row allocation failed"))?;
+        self.lines.extend_from_slice(sides);
+        self.mark(y)
+    }
+
+    fn mark(&mut self, y: u32) -> Result<()> {
+        let end = u32::try_from(self.lines.len())
+            .map_err(|_| Error::limit("resolved rows exceed u32"))?;
+        self.rows
+            .try_reserve(1)
+            .map_err(|_| Error::limit("resolved row allocation failed"))?;
+        self.rows.push((y, end));
+        Ok(())
+    }
+
+    fn len(&self) -> usize {
+        self.lines.len()
+    }
+
+    fn retained_bytes(&self) -> usize {
+        (self.rows.capacity() * size_of::<(u32, u32)>())
+            .saturating_add(self.lines.capacity() * size_of::<Line>())
+    }
 }
 
 /// How a shape's rows are produced.
@@ -312,76 +388,60 @@ impl Shape {
             Winding::Check(margin) => uncertified(&polygon, margin),
             Winding::Unknown => None,
         };
-        let certain = doubtful.as_ref().is_some_and(Vec::is_empty);
-        let width = super::row::width(options.area.region.x1)?;
-        if certain && frame.rows.is_none() {
-            // Nothing to analyse: the edges alone, clipped to the rectangle.
-            let lines = edges::lines(&polygon)?;
-            drop(polygon);
-            let lines = match frame.rect {
-                Some(r) => {
-                    let mut clipped = Vec::new();
-                    clipped
-                        .try_reserve(lines.len())
-                        .map_err(|_| Error::limit("raster geometry allocation failed"))?;
-                    for line in lines {
-                        edges::clip_line(line, r, &mut clipped)?;
-                    }
-                    clipped
-                }
-                None => lines,
-            };
-            let Some(bounds) = frame.bounds(lines.iter().flat_map(|l| [l.a, l.b])) else {
-                return Ok(None);
-            };
-            let scan = scan_columns(lines.iter().flat_map(|l| [l.a.x, l.b.x]), width);
-            return Self::edges(
-                lines,
-                Vec::new(),
-                rule,
-                (bounds, scan, Stored::default()),
-                &frame,
-                options,
-            )
-            .map(Some);
-        }
-        let mut chained = Vec::new();
-        edges::chained(&polygon, 0, &mut 0, &mut chained)?;
+        let all = edges::lines(&polygon)?;
         drop(polygon);
-        let chained = frame.clip(chained)?;
-        let Some(bounds) = frame.bounds(chained.iter().flat_map(|e| [e.line.a, e.line.b])) else {
+        let lines = match frame.rect {
+            Some(r) => {
+                let mut clipped = Vec::new();
+                clipped
+                    .try_reserve(all.len())
+                    .map_err(|_| Error::limit("raster geometry allocation failed"))?;
+                for line in all {
+                    edges::clip_line(line, r, &mut clipped)?;
+                }
+                clipped.retain(|l| !l.is_horizontal());
+                clipped
+            }
+            None => all,
+        };
+        let Some(bounds) = frame.bounds(lines.iter().flat_map(|l| [l.a, l.b])) else {
             return Ok(None);
         };
-        let scan = super::clip::scan_range(&chained, width);
-        let stored = if !certain || frame.crossed(bounds) {
-            // Rows that meet no doubtful slab keep their signed area.
-            let row_certain = |y: u32| {
-                doubtful.as_ref().is_some_and(|slabs| {
-                    let (top, bottom) = (f64::from(y), f64::from(y) + 1.0);
-                    !slabs.iter().any(|&[lo, hi]| lo < bottom && hi > top)
-                })
-            };
-            analyse(
-                &chained,
-                rule,
-                &row_certain,
-                &frame,
-                (bounds, scan),
-                options,
-            )?
-        } else {
-            Stored::default()
+        let width = super::row::width(options.area.region.x1)?;
+        let scan = clip::scan_columns(&lines, width);
+        // Rows that meet a doubtful slab, or where a clip path's boundary
+        // crosses the shape's columns.
+        let doubtful_row = |y: u32| {
+            doubtful.as_ref().is_none_or(|slabs| {
+                let (top, bottom) = (f64::from(y), f64::from(y) + 1.0);
+                slabs.iter().any(|&[lo, hi]| lo < bottom && hi > top)
+            })
         };
-        let lines = chained
-            .iter()
-            .filter(|e| !e.line.is_horizontal())
-            .map(|e| e.line)
-            .collect();
+        let joint = |y: u32| {
+            frame
+                .paths
+                .is_some_and(|p| p.rows.crosses(y, (bounds.x0, bounds.x1)))
+        };
+        let mut chosen = Vec::new();
+        for y in bounds.y0..bounds.y1 {
+            let joint = joint(y);
+            if joint || doubtful_row(y) {
+                chosen
+                    .try_reserve(1)
+                    .map_err(|_| Error::limit("resolved row allocation failed"))?;
+                chosen.push((y, joint));
+            }
+        }
+        let resolved = if chosen.is_empty() {
+            Resolved::default()
+        } else {
+            resolve(&lines, rule, &frame, (bounds, &chosen), options)?
+        };
         Self::edges(
             lines,
             Vec::new(),
             rule,
-            (bounds, scan, stored),
+            (bounds, scan, resolved),
             &frame,
             options,
         )
@@ -396,7 +456,7 @@ impl Shape {
         frame: &Frame<'_>,
         options: &Prep<'_>,
     ) -> Result<Option<Self>> {
-        debug_assert!(frame.rows.is_none(), "pieces meet no clip rows");
+        debug_assert!(frame.paths.is_none(), "pieces meet no clip rows");
         let (lines, curves) = match frame.rect {
             Some(r) => {
                 let mut clipped = Vec::new();
@@ -435,7 +495,7 @@ impl Shape {
             lines,
             curves,
             FillRule::NonZero,
-            (bounds, scan, Stored::default()),
+            (bounds, scan, Resolved::default()),
             frame,
             options,
         )
@@ -488,8 +548,8 @@ impl Shape {
                 scan,
             }),
             clip: frame.clip.cloned(),
-            overlay: false,
-            stored: Stored::default(),
+            masked: false,
+            resolved: Resolved::default(),
         }))
     }
 
@@ -497,7 +557,7 @@ impl Shape {
         lines: Vec<Line>,
         curves: Vec<Quadratic>,
         rule: FillRule,
-        (bounds, scan, stored): (DeviceRect, (usize, usize), Stored),
+        (bounds, scan, resolved): (DeviceRect, (usize, usize), Resolved),
         frame: &Frame<'_>,
         options: &Prep<'_>,
     ) -> Result<Self> {
@@ -549,10 +609,15 @@ impl Shape {
         }
         let rows = bounds.height() as usize;
         let words = (scan.1.saturating_sub(scan.0)) / 64 + 2;
+        // Each resolved side visits its one row.
+        for l in &resolved.lines {
+            let r = rows_of(l, bounds).unwrap_or((bounds.y0, bounds.y0));
+            cells = cells.saturating_add(line_work(*l, r, region.x1 as usize));
+        }
         work = work
             .saturating_add(cells.saturating_mul(4))
             .saturating_add(rows.saturating_mul(words + columns + 4))
-            .saturating_add(stored.len().saturating_mul(2))
+            .saturating_add(resolved.len())
             .saturating_add(frame.segments(bounds));
         if work > options.limits.raster_work {
             return Err(Error::limit(RASTER_WORK));
@@ -567,7 +632,7 @@ impl Shape {
             .saturating_add(body.lines.capacity() * size_of::<Line>())
             .saturating_add(body.curves.capacity() * size_of::<Quadratic>())
             .saturating_add(body.strips.as_ref().map_or(0, StripList::retained_bytes))
-            .saturating_add(stored.retained_bytes());
+            .saturating_add(resolved.retained_bytes());
         Ok(Self {
             area,
             bounds,
@@ -576,8 +641,8 @@ impl Shape {
             rule,
             body: Body::Edges(body),
             clip: frame.clip.cloned(),
-            overlay: frame.rows.is_some(),
-            stored,
+            masked: frame.paths.is_some(),
+            resolved,
         })
     }
 
@@ -601,7 +666,7 @@ fn scan_columns(xs: impl Iterator<Item = f64>, width: usize) -> (usize, usize) {
 pub(crate) struct Frame<'a> {
     pub(crate) clip: Option<&'a ClipShape>,
     pub(crate) rect: Option<Bounds>,
-    pub(crate) rows: Option<&'a Rows>,
+    pub(crate) paths: Option<&'a Paths>,
     /// The pixels the clip keeps within the region.
     pub(crate) limit: DeviceRect,
 }
@@ -618,7 +683,7 @@ impl<'a> Frame<'a> {
         Some(Self {
             clip,
             rect: clip.and_then(ClipShape::rect),
-            rows: clip.and_then(ClipShape::rows),
+            paths: clip.and_then(ClipShape::paths),
             limit,
         })
     }
@@ -638,26 +703,11 @@ impl<'a> Frame<'a> {
             self.rect = None;
         }
         if self
-            .rows
-            .is_some_and(|rows| rows.inside(edges::pixels([lo, hi], self.limit, false)))
+            .paths
+            .is_some_and(|p| p.rows.inside(edges::pixels([lo, hi], self.limit, false)))
         {
-            self.rows = None;
+            self.paths = None;
         }
-    }
-
-    /// The edges clipped to the clip's rectangle.
-    pub(crate) fn clip(&self, chained: Vec<Chained>) -> Result<Vec<Chained>> {
-        let Some(r) = self.rect else {
-            return Ok(chained);
-        };
-        let mut clipped = Vec::new();
-        clipped
-            .try_reserve(chained.len())
-            .map_err(|_| Error::limit("raster geometry allocation failed"))?;
-        for edge in chained {
-            edges::clip(edge, r, &mut clipped)?;
-        }
-        Ok(clipped)
     }
 
     /// The pixels geometry with these points can cover within the clip.
@@ -677,248 +727,69 @@ impl<'a> Frame<'a> {
         (!bounds.is_empty()).then_some(bounds)
     }
 
-    /// Whether a clip boundary cell lies within `bounds`.
-    fn crossed(&self, bounds: DeviceRect) -> bool {
-        self.rows.is_some_and(|rows| {
-            (bounds.y0..bounds.y1).any(|y| {
-                rows.row(y)
-                    .iter()
-                    .any(|s| s.cell != INSIDE && s.x0 < bounds.x1 && s.x1 > bounds.x0)
-            })
-        })
-    }
-
     /// The clip segments of the rows of `bounds`.
     pub(crate) fn segments(&self, bounds: DeviceRect) -> usize {
-        self.rows.map_or(0, |rows| {
+        self.paths.map_or(0, |p| {
             (bounds.y0..bounds.y1)
-                .map(|y| rows.row(y).len())
+                .map(|y| p.rows.row(y).len())
                 .fold(0, usize::saturating_add)
         })
     }
 }
 
-/// The heights of row `y` within `rect`, from the row's top.
-pub(crate) fn span(rect: Option<Bounds>, y: u32) -> (f64, f64) {
-    rect.map_or((0.0, 1.0), |r| {
-        let top = f64::from(y);
-        let lo = (r.top - top).clamp(0.0, 1.0);
-        let hi = (r.bottom - top).clamp(0.0, 1.0);
-        (lo, hi.max(lo))
-    })
+/// The rows of `bounds` a line has area in, as `(first, last)`.
+fn rows_of(l: &Line, bounds: DeviceRect) -> Option<(u32, u32)> {
+    rows(l.a.y.min(l.b.y), l.a.y.max(l.b.y), bounds)
 }
 
-/// Resolves the cells of `chained` that its signed area does not
-/// determine: cells where two chains meet in an uncertified shape, cells of
-/// rows the clip's rectangle cuts, and cells where it and a clip boundary
-/// meet.
-fn analyse(
-    chained: &[Chained],
+/// Resolves the rows `chosen` of `bounds`: the sides of the covered set of
+/// `lines` under `rule`, within the clip's paths in the rows marked joint.
+fn resolve(
+    lines: &[Line],
     rule: FillRule,
-    certain: &dyn Fn(u32) -> bool,
     frame: &Frame<'_>,
-    (bounds, scan): (DeviceRect, (usize, usize)),
+    (bounds, chosen): (DeviceRect, &[(u32, bool)]),
     options: &Prep<'_>,
-) -> Result<Stored> {
+) -> Result<Resolved> {
     let mut meter = Meter::new(options.limits.raster_work, RASTER_WORK);
-    let mut scanner = Scanner::new(scan, &mut meter)?;
-    let index = RowIndex::new(chained, (bounds.y0, bounds.y1 - 1), &mut meter)?;
-    let mut stored = Stored::default();
-    for y in bounds.y0..bounds.y1 {
-        let segments = frame.rows.map(|rows| rows.row(y));
-        let joint = segments.is_some_and(|s| {
-            s.iter()
-                .any(|s| s.cell != INSIDE && s.x0 < bounds.x1 && s.x1 > bounds.x0)
-        });
-        let certain = certain(y);
-        if certain && !joint {
-            continue;
+    let allocation = |_| Error::limit("raster geometry allocation failed");
+    // The lines of each strip, then each row's pieces from its strip.
+    let list = StripList::new((bounds.y0, bounds.y1), lines.len(), |i| {
+        lines.get(i).and_then(|l| rows_of(l, bounds))
+    })?;
+    meter.charge(list.len())?;
+    let mut rules = Vec::new();
+    rules.try_reserve(1).map_err(allocation)?;
+    rules.push(rule);
+    if let Some(paths) = frame.paths {
+        let count = paths.rules().count();
+        rules.try_reserve(count).map_err(allocation)?;
+        rules.extend(paths.rules());
+    }
+    let mut resolver = Resolver::default();
+    let (mut pieces, mut sides) = (Vec::new(), Vec::new());
+    let mut resolved = Resolved::default();
+    for &(y, joint) in chosen {
+        let top = f64::from(y);
+        pieces.clear();
+        let listed = list.strip(y / STRIP);
+        pieces.try_reserve(listed.len()).map_err(allocation)?;
+        for &i in listed {
+            if let Some(&line) = lines.get(i as usize) {
+                pieces.extend(Piece::new(line, top, 0));
+            }
         }
-        let context = Context {
-            rule,
-            certain,
-            bounds,
-            rows: frame.rows,
-            segments,
-            y,
+        let groups = match (joint, frame.paths) {
+            (true, Some(paths)) => {
+                paths.pieces(y, 1, &mut pieces)?;
+                rules.len()
+            }
+            _ => 1,
         };
-        let result = scanner
-            .load(
-                chained,
-                (index.row(y), y, span(frame.rect, y)),
-                scan,
-                &mut meter,
-            )
-            .and_then(|()| analyse_row(&mut scanner, &context, &mut stored, &mut meter));
-        scanner.unload();
-        if let Err(error) = result {
-            scanner.recover();
-            return Err(error);
-        }
+        meter.charge(pieces.len())?;
+        sides.clear();
+        resolver.row(&pieces, &rules[..groups], top, (&mut sides, &mut meter))?;
+        resolved.push(y, &sides)?;
     }
-    Ok(stored)
-}
-
-/// What one row's analysis needs besides the scanner.
-struct Context<'a> {
-    rule: FillRule,
-    certain: bool,
-    bounds: DeviceRect,
-    rows: Option<&'a Rows>,
-    segments: Option<&'a [super::clip::Segment]>,
-    y: u32,
-}
-
-impl Context<'_> {
-    /// The clip's state at columns `x..end`: the run it is in (inside, a
-    /// boundary cell, or `None` outside) and where that run ends.
-    fn clip(&self, x: u32, end: u32, cursor: &mut usize) -> (Option<u32>, u32) {
-        let Some(segments) = self.segments else {
-            return (Some(INSIDE), end);
-        };
-        while segments.get(*cursor).is_some_and(|s| s.x1 <= x) {
-            *cursor += 1;
-        }
-        match segments.get(*cursor) {
-            None => (None, end),
-            Some(s) if s.x0 > x => (None, end.min(s.x0)),
-            Some(s) => (Some(s.cell), end.min(s.x1)),
-        }
-    }
-}
-
-fn analyse_row(
-    scanner: &mut Scanner,
-    context: &Context<'_>,
-    stored: &mut Stored,
-    meter: &mut Meter,
-) -> Result<()> {
-    let bounds = context.bounds;
-    let mut cursor = 0;
-    let mut cover = 0.0;
-    let mut position = bounds.x0;
-    for index in 0..scanner.cells.len() {
-        let cell = scanner.cells[index];
-        if cell.x >= bounds.x1 {
-            break;
-        }
-        if cell.x > position {
-            gap(
-                scanner,
-                context,
-                (position, cell.x, cover),
-                &mut cursor,
-                stored,
-                meter,
-            )?;
-        }
-        if cell.x >= bounds.x0 {
-            if cell.listed {
-                listed(scanner, context, &cell, &mut cursor, stored, meter)?;
-            } else {
-                gap(
-                    scanner,
-                    context,
-                    (cell.x, cell.x + 1, cell.cover),
-                    &mut cursor,
-                    stored,
-                    meter,
-                )?;
-            }
-        }
-        cover = cell.cover;
-        position = position.max(cell.x + 1);
-    }
-    if position < bounds.x1 {
-        gap(
-            scanner,
-            context,
-            (position, bounds.x1, cover),
-            &mut cursor,
-            stored,
-            meter,
-        )?;
-    }
-    Ok(())
-}
-
-/// Cells `x0..x1` that no piece crosses, into which `cover` is carried:
-/// their winding is constant over the row's span.
-fn gap(
-    scanner: &mut Scanner,
-    context: &Context<'_>,
-    (x0, x1, cover): (u32, u32, f64),
-    cursor: &mut usize,
-    stored: &mut Stored,
-    meter: &mut Meter,
-) -> Result<()> {
-    let span = scanner.span;
-    let winding = gap_winding(cover, span);
-    let covered = inside(winding, context.rule);
-    let exact = if covered {
-        crate::quantize_unit(span.1 - span.0)
-    } else {
-        0
-    };
-    let folded = fold(cover, context.rule);
-    let partial = covered && span != (0.0, 1.0);
-    let mut x = x0;
-    while x < x1 {
-        let (state, end) = context.clip(x, x1, cursor);
-        meter.charge(1)?;
-        match state {
-            Some(INSIDE) => {
-                if exact != folded {
-                    for column in x..end {
-                        stored.push(context.y, column, exact)?;
-                    }
-                }
-            }
-            Some(boundary) if partial => {
-                let (_, edges, rules) = context
-                    .rows
-                    .and_then(|r| r.cell(boundary))
-                    .ok_or(Error::invalid_argument("clip cell out of range"))?;
-                let value =
-                    scanner.resolve_joint((None, cover), context.rule, (edges, rules), meter)?;
-                stored.push(context.y, x, value)?;
-            }
-            None | Some(_) => {}
-        }
-        x = end.max(x + 1);
-    }
-    Ok(())
-}
-
-/// A cell that pieces cross.
-fn listed(
-    scanner: &mut Scanner,
-    context: &Context<'_>,
-    cell: &super::scan::Cell,
-    cursor: &mut usize,
-    stored: &mut Stored,
-    meter: &mut Meter,
-) -> Result<()> {
-    let (state, _) = context.clip(cell.x, cell.x + 1, cursor);
-    let value = match state {
-        None => return Ok(()),
-        Some(INSIDE) => {
-            if context.certain || cell.certain {
-                return Ok(());
-            }
-            match scanner.walk(cell, context.rule, meter)? {
-                Walk::Fold => return Ok(()),
-                Walk::Value(value) => value,
-                Walk::Unknown => scanner.resolve(cell, context.rule, meter)?,
-            }
-        }
-        Some(boundary) => {
-            let (_, edges, rules) = context
-                .rows
-                .and_then(|r| r.cell(boundary))
-                .ok_or(Error::invalid_argument("clip cell out of range"))?;
-            scanner.resolve_joint((Some(cell), 0.0), context.rule, (edges, rules), meter)?
-        }
-    };
-    stored.push(context.y, cell.x, value)
+    Ok(resolved)
 }
