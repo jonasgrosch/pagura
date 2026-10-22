@@ -74,8 +74,9 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         resources: &Dictionary,
         scope: &mut Scope,
     ) -> Result<()> {
+        let unicode = if text { font.unicode.as_deref() } else { None };
         font.font
-            .decode_into(bytes, text, decoded)
+            .decode_into(bytes, unicode, decoded)
             .map_err(|mut e| {
                 e.position = self.position;
                 e
