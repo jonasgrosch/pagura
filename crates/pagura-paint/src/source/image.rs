@@ -608,9 +608,10 @@ fn sample(
         separable.gather(&rows, (x, y, len), |pixels| {
             let sources = pixels.chunks_exact(n.max(1));
             for (pixel, source) in out.chunks_exact_mut(lanes).zip(sources) {
-                let (values, rest) = pixel.split_at_mut(n);
-                values.copy_from_slice(source);
-                rest.fill(1.0);
+                if let Some((values, rest)) = pixel.split_at_mut_checked(n) {
+                    values.copy_from_slice(source);
+                    rest.fill(1.0);
+                }
             }
         });
         return;
@@ -619,7 +620,9 @@ fn sample(
     let finish = |out: &mut [f64], covered: &[bool]| {
         if lanes > n {
             for (pixel, &covered) in out.chunks_exact_mut(lanes).zip(covered) {
-                pixel[n..].fill(f64::from(u8::from(covered)));
+                if let Some(rest) = pixel.get_mut(n..) {
+                    rest.fill(f64::from(u8::from(covered)));
+                }
             }
         }
     };
