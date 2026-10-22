@@ -26,10 +26,12 @@ use std::sync::Arc;
 pub struct Needs {
     /// Colours, patterns, shadings, soft masks, groups and transfer
     /// functions are resolved and emitted. Without it, marks carry no
-    /// paint and no colour space, shading, pattern or soft mask is read.
+    /// paint and the default composite state, and no colour space,
+    /// shading, pattern or soft mask is read. Pen and geometry state apply
+    /// either way.
     pub paint: bool,
     /// Image marks are emitted with their sources. Without it, images are
-    /// not read beyond what text extraction's object occurrences need.
+    /// not read beyond what object occurrences need.
     pub images: bool,
     /// Glyph runs carry outlines (font programs are loaded), and Type 3
     /// glyph procedures are interpreted.
@@ -103,7 +105,8 @@ pub struct PageInfo {
 pub struct MarkState<'a> {
     /// The clipping path chain; `None` clips nothing.
     pub clip: Option<&'a Arc<Clip>>,
-    /// The compositing state.
+    /// The compositing state; the default state for devices that do not
+    /// need paint.
     pub composite: &'a Arc<Composite>,
     /// The operator that painted the mark.
     pub position: Position,
