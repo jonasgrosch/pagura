@@ -12,7 +12,7 @@ use pagura_raster::{
     Area, BandCoverage, BandRasterizer, ClipShape, DeviceRect, FillRule, GlyphEdges, GlyphOrigins,
     MarkCoverage, Path, Point, Shape, ShapeOptions, Transform,
 };
-use std::collections::HashMap;
+use crate::hash::{self, FastMap};
 use std::fmt;
 use std::sync::Arc;
 
@@ -180,7 +180,7 @@ pub(crate) struct Raster<'a> {
     origins: GlyphOrigins,
     shapes: Vec<Shape>,
     clips: Vec<ClipShape>,
-    edges: HashMap<EdgesKey, Arc<GlyphEdges>>,
+    edges: FastMap<EdgesKey, Arc<GlyphEdges>>,
     current: Option<u32>,
 }
 
@@ -194,7 +194,7 @@ impl<'a> Raster<'a> {
             origins,
             shapes: Vec::new(),
             clips: Vec::new(),
-            edges: HashMap::new(),
+            edges: hash::map(),
             current: None,
         }
     }

@@ -167,6 +167,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 step: tiling.step,
                 matrix,
                 colors: tiling.colors,
+                spacing: tiling.spacing,
                 object: Some(tiling.id),
             })?;
             self.run(&content, tiling.resources, &mut cell)?;

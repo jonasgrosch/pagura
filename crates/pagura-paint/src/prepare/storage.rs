@@ -10,6 +10,7 @@ use crate::format::Format;
 use crate::plan::Layout;
 use crate::prepare::bounds;
 use crate::prepare::index;
+use crate::prepare::overprint::{Keeping, Place};
 use pagura_color::Process;
 use pagura_core::{Error, Result};
 use pagura_interpret::{
@@ -17,7 +18,7 @@ use pagura_interpret::{
     PatternId, Scene,
 };
 use pagura_raster::{DeviceRect, Path, Transform};
-use std::collections::HashMap;
+use crate::hash::{self, FastMap};
 
 /// `π` of the F32 bound: source encoding and six roundings relative to the
 /// opacity, in levels.
@@ -56,14 +57,18 @@ pub(crate) struct Storage {
     /// Whether the page's knockout is real (not the opaque-member identity).
     pub(crate) page_knockout: bool,
     /// Transparency groups by group and parent blending space.
-    pub(crate) groups: HashMap<(GroupId, Process), Decision>,
+    pub(crate) groups: FastMap<(GroupId, Process), Decision>,
     /// Soft masks by mask and parent blending space.
-    pub(crate) masks: HashMap<(MaskId, Process), Format>,
+    pub(crate) masks: FastMap<(MaskId, Process), Format>,
     /// Whether the instances of a tiling pattern start transparent (Normal
     /// cell content), by pattern and blending space.
-    pub(crate) cells: HashMap<(PatternId, Process), bool>,
+    pub(crate) cells: FastMap<(PatternId, Process), bool>,
     /// Some page content selects a transfer function (11.7.5.2).
     pub(crate) transfers: bool,
+    /// Some content outside soft masks, tiling cells included, has a
+    /// transfer function: pattern-painted and simulated overprinting marks
+    /// outside soft masks are then unsupported, as before.
+    pub(crate) transfer_gate: bool,
 }
 
 /// The inputs of a survey.
@@ -71,8 +76,10 @@ pub(crate) struct Storage {
 pub(crate) struct Inputs {
     /// The page's channels.
     pub(crate) page: Layout,
-    /// Overprint simulation.
+    /// Overprint simulation with the page's separations.
     pub(crate) simulate: bool,
+    /// The overprint simulation policy, page separations or not.
+    pub(crate) policy: bool,
     /// The `byte_storage` fast parameter.
     pub(crate) bytes: bool,
     /// The nesting budget.
@@ -97,9 +104,9 @@ pub(crate) fn survey(scene: &Scene, inputs: Inputs) -> Result<Storage> {
         scene,
         inputs,
         buffers: Vec::new(),
-        groups: HashMap::new(),
-        masks: HashMap::new(),
-        cells: HashMap::new(),
+        groups: hash::map(),
+        masks: hash::map(),
+        cells: hash::map(),
         open: Vec::new(),
         transfers: false,
     };
@@ -111,6 +118,7 @@ pub(crate) fn survey(scene: &Scene, inputs: Inputs) -> Result<Storage> {
     survey.children(page, &root.children, Context::page(inputs.transform), 0)?;
     let page_knockout = survey.buffers[page].knockout();
     let transfers = survey.transfers;
+    let transfer_gate = survey.buffers[page].transfer;
     let buffer = &mut survey.buffers[page];
     buffer.forced |=
         inputs.simulate || inputs.page.process != Process::Rgb || page_knockout || transfers;
@@ -154,6 +162,7 @@ pub(crate) fn survey(scene: &Scene, inputs: Inputs) -> Result<Storage> {
         masks,
         cells,
         transfers,
+        transfer_gate,
     })
 }
 
@@ -162,6 +171,8 @@ pub(crate) fn survey(scene: &Scene, inputs: Inputs) -> Result<Storage> {
 struct Context {
     /// Page content, whose marks select transfer functions.
     selects: bool,
+    /// Soft-mask content.
+    masked: bool,
     /// Content space to device pixels.
     transform: Transform,
 }
@@ -170,13 +181,15 @@ impl Context {
     fn page(transform: Transform) -> Self {
         Self {
             selects: true,
+            masked: false,
             transform,
         }
     }
 
-    fn other(self) -> Self {
+    fn mask(self) -> Self {
         Self {
             selects: false,
+            masked: true,
             ..self
         }
     }
@@ -286,6 +299,9 @@ struct Buffer {
     /// Plain groups of opaque members that flatten into it if its knockout
     /// turns out to be the opaque-member identity, with their buffers.
     pending: Vec<((GroupId, Process), usize)>,
+    /// Some mark of its content, groups and tiling cells included and soft
+    /// masks not, has a transfer function.
+    transfer: bool,
 }
 
 impl Buffer {
@@ -312,6 +328,7 @@ impl Buffer {
         self.masks.extend_from_slice(&other.masks);
         self.dynamics.extend_from_slice(&other.dynamics);
         self.extent = unite(self.extent, other.extent);
+        self.transfer |= other.transfer;
     }
 }
 
@@ -327,9 +344,9 @@ struct Survey<'s> {
     scene: &'s Scene,
     inputs: Inputs,
     buffers: Vec<Buffer>,
-    groups: HashMap<(GroupId, Process), GroupEntry>,
-    masks: HashMap<(MaskId, Process), usize>,
-    cells: HashMap<(PatternId, Process), usize>,
+    groups: FastMap<(GroupId, Process), GroupEntry>,
+    masks: FastMap<(MaskId, Process), usize>,
+    cells: FastMap<(PatternId, Process), usize>,
     open: Vec<(MaskId, Process)>,
     transfers: bool,
 }
@@ -361,6 +378,7 @@ impl Survey<'_> {
             dynamics: Vec::new(),
             extent: None,
             pending: Vec::new(),
+            transfer: false,
         });
         self.buffers.len() - 1
     }
@@ -490,9 +508,25 @@ impl Survey<'_> {
             self.transfers = true;
         }
         let cell_reads = cell.is_some_and(|c| !self.buffers[c].normal_content());
+        let transfer = state.transfer.is_some() || cell.is_some_and(|c| self.buffers[c].transfer);
+        // Conservatively, as any colour of an uncoloured cell may paint it.
+        let keeps = Keeping {
+            separated: self.inputs.simulate,
+            policy: self.inputs.policy,
+        }
+        .keeps(
+            state,
+            Place {
+                masked: context.masked,
+                cmyk: layout.process == Process::Cmyk,
+                direct_cmyk: true,
+            },
+        );
         let target = &mut self.buffers[buffer];
         target.stores = target.stores.saturating_add(count);
-        target.normal &= state.blend == BlendMode::Normal;
+        target.transfer |= transfer;
+        // A store that keeps channels reads its backdrop.
+        target.normal &= state.blend == BlendMode::Normal && !keeps;
         // A store with a transfer function is outside the narrow bounds
         // wherever it is (ADR 0004 §5).
         target.forced |= state.blend != BlendMode::Normal || state.transfer.is_some();
@@ -503,7 +537,6 @@ impl Survey<'_> {
         // only when they blend Normal and keep no channel of the backdrop.
         let shaped =
             stores.alpha_shape && (state.alpha_is_shape || (state.alpha == 1.0 && mask.is_none()));
-        let keeps = self.inputs.simulate && state.overprint.enabled;
         target.opaque_members &=
             shaped && cell.is_none() && state.blend == BlendMode::Normal && !keeps;
         if cell_reads {
@@ -615,6 +648,7 @@ impl Survey<'_> {
         target.dynamic = target.dynamic.saturating_add(1);
         target.normal &= state.blend == BlendMode::Normal;
         target.forced |= state.blend != BlendMode::Normal;
+        target.transfer |= facts.transfer;
         target.opaque_members &= pending;
         if pending {
             target.pending.push(((id, parent_layout.process), child));
@@ -657,7 +691,7 @@ impl Survey<'_> {
         };
         let buffer = self.buffer(layout, group.attributes.knockout);
         self.open.push(key);
-        let walked = self.children(buffer, &group.children, context.other(), depth + 1);
+        let walked = self.children(buffer, &group.children, context.mask(), depth + 1);
         self.open.pop();
         walked?;
         let facts = &mut self.buffers[buffer];
@@ -691,6 +725,7 @@ impl Survey<'_> {
         let inner = Context {
             selects: false,
             transform: tiling.matrix.then(context.transform),
+            ..context
         };
         self.children(buffer, &group.children, inner, depth + 1)?;
         self.buffers[buffer].forced = true;
@@ -726,7 +761,11 @@ impl Survey<'_> {
         let n16 = buffer.page && n16_admits(buffer, resolved);
         let f32_bound =
             PI + RHO * stores.min(1.0 / buffer.theta + buffer.dynamic as f64) + injected;
-        let (bound, format) = if buffer.forced {
+        // Byte storage narrows only a page without group results, tiling
+        // cells or soft masks; everything else keeps f64, as the earlier
+        // competitive renderer kept it.
+        let bytes = buffer.page && buffer.children.is_empty() && buffer.masks.is_empty();
+        let (bound, format) = if buffer.forced || (self.inputs.bytes && !bytes) {
             wide
         } else if n16 {
             // The page's bound is never used as a child's.
@@ -736,7 +775,7 @@ impl Survey<'_> {
         } else {
             wide
         };
-        let format = if self.inputs.bytes && format != Format::F64 {
+        let format = if self.inputs.bytes && bytes && format != Format::F64 {
             Format::U8
         } else {
             format

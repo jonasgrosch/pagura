@@ -214,7 +214,7 @@ impl Fixture {
             compositing,
             select,
             records: true,
-            boundary: None,
+            boundary: crate::plan::Boundary::Absent,
             words: None,
         });
         self.push(group, Self::bounds(rect), kind);
@@ -657,7 +657,7 @@ impl Fixture {
             compositing,
             select: 0,
             records: false,
-            boundary: None,
+            boundary: crate::plan::Boundary::Absent,
             words,
         };
         let Some(gather) = run else {

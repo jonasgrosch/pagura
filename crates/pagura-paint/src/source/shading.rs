@@ -160,13 +160,19 @@ impl ShadingSource {
         ))?;
         let colors = Box::new(Colors::new(shading, context)?);
         let geometry = Box::new(Geometry::new(shading, colors.values())?);
-        let certified = shading.bbox.is_some_and(|b| {
-            PathBuilder::new()
-                .rect(b.x0(), b.y0(), b.width(), b.height())
-                .finish()
-                .fill_region(FillRule::NonZero)
-                .is_some_and(|region| region != FillRegion::Ordinary)
-        });
+        // A box without area is certified once classified: the mark is
+        // clipped to its hairline outline, and no sample is tested.
+        let certified = match shading.bbox {
+            Some(b) => {
+                let mut path = PathBuilder::new();
+                path.rect(b.x0(), b.y0(), b.width(), b.height());
+                let mut path = path.finish();
+                path.classify_fill(FillRule::NonZero, context.limits, &mut 0)?;
+                path.fill_region(FillRule::NonZero)
+                    .is_some_and(|region| region != FillRegion::Ordinary)
+            }
+            None => false,
+        };
         let pattern = (usage == Use::Pattern).then(|| {
             Box::new(Pattern {
                 bbox: shading.bbox.filter(|_| !certified),

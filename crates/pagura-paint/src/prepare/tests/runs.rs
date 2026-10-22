@@ -245,6 +245,7 @@ fn runs_in_groups_masks_clips_and_patterns() {
         step: [6.0, 4.0],
         matrix: Transform::translate(0.5, 0.25),
         colors: TilingColors::Colored,
+        spacing: pagura_interpret::TilingSpacing::NoDistortion,
     });
     run(&mut b, cell, &line(3, [0.25, 0.5], 1.75), ink, mark(half));
     let tiles = b.paint(Paint::Tiling(TilingPaint {

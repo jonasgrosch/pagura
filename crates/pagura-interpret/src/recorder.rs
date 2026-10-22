@@ -419,6 +419,7 @@ impl Device for SceneRecorder {
             step: tiling.step,
             matrix: tiling.matrix,
             colors: tiling.colors,
+            spacing: tiling.spacing,
         });
         Ok(())
     }

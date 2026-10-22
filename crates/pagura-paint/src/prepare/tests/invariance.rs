@@ -84,6 +84,7 @@ fn busy() -> Build {
         step: [3.0, 3.0],
         matrix: Transform::translate(0.5, 0.25),
         colors: TilingColors::Colored,
+        spacing: pagura_interpret::TilingSpacing::NoDistortion,
     });
     b.rect(cell, [0.25, 0.5, 2.0, 2.25], colors[1], mark(states[1]));
     let tiles = b.paint(Paint::Tiling(TilingPaint {

@@ -100,7 +100,7 @@ impl PaintSpans for Source {
         match self {
             Self::Solid { color, .. } => size_of_val::<[f64]>(color),
             Self::Shading(shading) => shading.bytes(),
-            Self::Image(_) => 0,
+            Self::Image(image) => image.bytes(),
         }
     }
 
@@ -168,7 +168,7 @@ impl PaintSpans for StencilPaint {
     }
 
     fn bytes(&self) -> usize {
-        self.color.bytes()
+        self.color.bytes().saturating_add(self.mask.bytes())
     }
 
     fn shape_is_alpha(&self) -> bool {

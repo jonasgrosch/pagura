@@ -390,6 +390,7 @@ fn tiling_instances_repeat_the_cell() {
         step: [2.0, 1.0],
         matrix: Transform::translate(0.5, 0.0),
         colors: TilingColors::Colored,
+        spacing: pagura_interpret::TilingSpacing::NoDistortion,
     });
     let pattern = b.paint(Paint::Tiling(TilingPaint {
         pattern: pagura_interpret::PatternId(0),

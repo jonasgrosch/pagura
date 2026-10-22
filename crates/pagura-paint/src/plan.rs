@@ -193,12 +193,24 @@ pub(crate) struct Mark {
     pub(crate) select: u16,
     /// Whether it records a transfer selection at all: page content only.
     pub(crate) records: bool,
-    /// The shape whose coverage a shading pattern mixes its `Background`
-    /// by ([`crate::source::BBoxUse::Boundary`]).
-    pub(crate) boundary: Option<u32>,
+    /// The outline whose coverage a shading pattern mixes its
+    /// `Background` by ([`crate::source::BBoxUse::Boundary`]).
+    pub(crate) boundary: Boundary,
     /// The N16 words of an opaque constant colour that only coverage
     /// reduces, encoded once (ADR 0004 §5).
     pub(crate) words: Option<[u16; 4]>,
+}
+
+/// The outline coverage a shading pattern mixes its `Background` by.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum Boundary {
+    /// The paint mixes by none.
+    #[default]
+    Absent,
+    /// The outline meets no pixel of the area: coverage 0 everywhere.
+    Empty,
+    /// The coverage of this shape.
+    Shape(u32),
 }
 
 /// A group's result composited into its parent.

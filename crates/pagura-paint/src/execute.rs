@@ -20,7 +20,7 @@ pub(crate) use transfer::validate;
 pub(crate) use workspace::{Extents, MaskCache, PageBuffer, Sizes, Usage, Workspace};
 
 use crate::kernel::{self, Colors, Mode, Sources};
-use crate::plan::{Compositing, Item, ItemKind, Mark, Plan, area};
+use crate::plan::{Boundary, Compositing, Item, ItemKind, Mark, Plan, area};
 use crate::prepare::Producer;
 use pagura_core::convert::u32_to_usize;
 use pagura_raster::{DeviceRect, Pixmap, Span};
@@ -158,9 +158,13 @@ impl<'a> Executor<'a> {
             self.ensure_mask(mask, tops);
         }
         self.count_shape(item);
-        if let Some(boundary) = mark.boundary {
-            self.producer
-                .rasterize(Some(boundary), None, self.band, &mut self.ws.boundary.0);
+        match mark.boundary {
+            Boundary::Shape(boundary) => {
+                self.producer
+                    .rasterize(Some(boundary), None, self.band, &mut self.ws.boundary.0);
+            }
+            Boundary::Empty => self.ws.boundary.0.clear(),
+            Boundary::Absent => {}
         }
         let mut coverage = std::mem::take(&mut self.ws.coverage);
         self.producer
@@ -238,7 +242,7 @@ impl<'a> Executor<'a> {
         let constant = paint.constant();
         if constant.is_none() {
             match mark.boundary {
-                Some(_) => {
+                Boundary::Shape(_) | Boundary::Empty => {
                     let (boundary, dense) = &mut ws.boundary;
                     let Some(dense) = dense.get_mut(..len) else {
                         return;
@@ -246,8 +250,12 @@ impl<'a> Executor<'a> {
                     densify(boundary, (x, y), dense);
                     paint.span_with_boundary(x, y, dense, &mut ws.colors);
                 }
-                None if paint.shape_is_alpha() => paint.span(x, y, len, &mut ws.colors),
-                None => paint.span_with_shape(x, y, len, &mut ws.colors, &mut ws.texel_shape),
+                Boundary::Absent if paint.shape_is_alpha() => {
+                    paint.span(x, y, len, &mut ws.colors);
+                }
+                Boundary::Absent => {
+                    paint.span_with_shape(x, y, len, &mut ws.colors, &mut ws.texel_shape);
+                }
             }
         }
         let paint_shape = (constant.is_none() && !paint.shape_is_alpha())
