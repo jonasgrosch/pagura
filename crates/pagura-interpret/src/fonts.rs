@@ -69,9 +69,6 @@ pub(crate) struct Fonts<'a> {
     indirect: BTreeMap<ObjectId, Arc<LoadedFont>>,
     direct: Vec<(Dictionary, Arc<LoadedFont>)>,
     outlines: FastMap<OutlineKey, Arc<Path>>,
-    /// Recently read outlines, direct-mapped: a lookaside that compares
-    /// keys in front of `outlines`, which hashes them.
-    recent: Vec<Option<(OutlineKey, Arc<Path>)>>,
     bytes: Meter,
     /// Whether text is extracted, which reads font boxes.
     text: bool,
@@ -100,7 +97,6 @@ impl<'a> Fonts<'a> {
             indirect: BTreeMap::new(),
             direct: Vec::new(),
             outlines: FastMap::default(),
-            recent: Vec::new(),
             bytes: Meter::new(
                 document.limits().render_bytes,
                 "text and image retained byte budget exceeded",
@@ -245,16 +241,8 @@ impl<'a> Fonts<'a> {
             font: font.info.key,
             glyph: glyph.0,
         };
-        let slot = recent_slot(key);
-        if let Some(Some((recent, path))) = self.recent.get(slot)
-            && *recent == key
-        {
-            return Ok(Arc::clone(path));
-        }
         if let Some(path) = self.outlines.get(&key) {
-            let path = Arc::clone(path);
-            self.remember(slot, key, &path);
-            return Ok(path);
+            return Ok(Arc::clone(path));
         }
         let document = self.document;
         let object = font.info.object;
@@ -279,18 +267,7 @@ impl<'a> Fonts<'a> {
         };
         self.bytes.charge(path_bytes(&path))?;
         self.outlines.insert(key, Arc::clone(&path));
-        self.remember(slot, key, &path);
         Ok(path)
-    }
-
-    /// Keeps `path` in the lookaside entry `slot`.
-    fn remember(&mut self, slot: usize, key: OutlineKey, path: &Arc<Path>) {
-        if self.recent.is_empty() {
-            self.recent.resize(RECENT, None);
-        }
-        if let Some(entry) = self.recent.get_mut(slot) {
-            *entry = Some((key, Arc::clone(path)));
-        }
     }
 }
 
@@ -305,15 +282,6 @@ fn placed(mut error: Error, id: Option<ObjectId>, position: Position) -> Error {
     } else {
         error.in_object_opt(id)
     }
-}
-
-/// Entries of the outline lookaside.
-const RECENT: usize = 256;
-
-/// The lookaside entry of an outline: by glyph, with the font mixed in.
-fn recent_slot(key: OutlineKey) -> usize {
-    let mixed = u64::from(key.glyph) ^ key.font.0.rotate_left(11);
-    usize::try_from(mixed % RECENT as u64).unwrap_or(0)
 }
 
 /// The bytes a path's segments occupy.
