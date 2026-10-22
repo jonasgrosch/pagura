@@ -234,7 +234,10 @@ impl Shape {
                 options,
             );
         }
-        let mut polygon = Polygon::from_path(&outline, outline_transform, None, limits)?;
+        let mut polygon = match Polygon::from_lines(&outline, outline_transform, limits)? {
+            Some(polygon) => polygon,
+            None => Polygon::from_path(&outline, outline_transform, None, limits)?,
+        };
         if approximate {
             // Cells take the union's boundary where it certifies.
             let union = polygon.cancel_shared()? && certified(&polygon, 0.0);
