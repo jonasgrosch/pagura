@@ -3,11 +3,11 @@
 //! Curves are halved (de Casteljau, in the path's own space) until both inner
 //! control points lie within the tolerance of the chord in device space; by
 //! the convex-hull property the curve then lies within the tolerance of its
-//! chord. Paths and glyph outlines with general cubics use the documented
-//! 1/256-pixel tolerance (ADR 0004 §2, §4). A glyph outline whose curves are
-//! all exact quadratics is referenced against its true curve, so it is
-//! flattened to 1/16384 pixel, which keeps every pixel's area within 1/10000
-//! of a pixel (0.03 levels) of the curve's.
+//! chord. Paths and glyph outlines referenced against their polygon use the
+//! documented 1/256-pixel tolerance (ADR 0004 §2, §4). A glyph outline
+//! referenced against its true curve is flattened to 1/16384 pixel, which
+//! keeps every pixel's area within 1/10000 of a pixel (0.03 levels) of the
+//! curve's.
 //!
 //! The contour policy is the renderer's (ADR 0004 §4): every contour is
 //! closed; a contour whose points all coincide covers the device pixel under
@@ -23,8 +23,8 @@ use pagura_raster::{FillRule, Path, Point, Segment, Transform};
 /// Distance of a flattened curve from its chord, in device pixels.
 pub(crate) const TOLERANCE: f64 = 1.0 / 256.0;
 
-/// The tolerance of glyph curves that are exact quadratics.
-pub(crate) const QUADRATIC_TOLERANCE: f64 = 1.0 / 16384.0;
+/// The tolerance of glyph curves referenced as true curves.
+pub(crate) const CURVE_TOLERANCE: f64 = 1.0 / 16384.0;
 
 /// Halvings after which a curve piece is taken as its chord.
 const MAX_DEPTH: u32 = 48;
@@ -43,9 +43,9 @@ struct Contour {
 enum Curves {
     /// A path: curves within [`TOLERANCE`], points compared in its space.
     Path,
-    /// A glyph outline whose curves are all exact quadratics: curves within
-    /// [`QUADRATIC_TOLERANCE`], points compared after the linear map.
-    Quadratic,
+    /// A glyph outline referenced against its true curve: curves within
+    /// [`CURVE_TOLERANCE`], points compared after the linear map.
+    Curve,
     /// Any other glyph outline: curves within [`TOLERANCE`], points
     /// compared after the linear map.
     Glyph,
@@ -54,7 +54,7 @@ enum Curves {
 impl Curves {
     fn tolerance(self) -> f64 {
         match self {
-            Self::Quadratic => QUADRATIC_TOLERANCE,
+            Self::Curve => CURVE_TOLERANCE,
             Self::Path | Self::Glyph => TOLERANCE,
         }
     }
@@ -97,7 +97,7 @@ pub(crate) fn glyph_region(
         ..linear
     };
     let curves = match reference {
-        Reference::Curve => Curves::Quadratic,
+        Reference::Curve => Curves::Curve,
         Reference::Polygon => Curves::Glyph,
     };
     let contours = contours(outline, linear, curves, limits)?;
@@ -175,7 +175,7 @@ fn contours(
     }
     let same = |a: Point, b: Point| match curves {
         Curves::Path => a == b,
-        Curves::Quadratic | Curves::Glyph => a * device == b * device,
+        Curves::Curve | Curves::Glyph => a * device == b * device,
     };
     let mut contours: Vec<Contour> = Vec::new();
     let mut count = 0_usize;
@@ -402,7 +402,7 @@ mod tests {
     }
 
     #[test]
-    fn quadratic_glyph_curves_are_flattened_finer() {
+    fn true_curve_glyphs_are_flattened_finer() {
         // An elevated quadratic: controls at 1/3 and 2/3 towards (4, 8).
         let q = [
             Point::new(0.0, 0.0),
@@ -424,7 +424,7 @@ mod tests {
         let path = path.finish();
         let limits = Limits::default();
         let coarse = contours(&path, Transform::IDENTITY, Curves::Path, &limits).unwrap();
-        let fine = contours(&path, Transform::IDENTITY, Curves::Quadratic, &limits).unwrap();
+        let fine = contours(&path, Transform::IDENTITY, Curves::Curve, &limits).unwrap();
         assert!(fine[0].points.len() > 3 * coarse[0].points.len());
         // The parabola's segment area is 2/3 of base times height: 2/3·8·4.
         let region = glyph_region(
@@ -443,7 +443,7 @@ mod tests {
         // Chords lose at most 2/3 of the tolerance times the arc length
         // (about 12.6 pixels) in total.
         assert!(
-            (total - 64.0 / 3.0).abs() < 2.0 / 3.0 * QUADRATIC_TOLERANCE * 13.0,
+            (total - 64.0 / 3.0).abs() < 2.0 / 3.0 * CURVE_TOLERANCE * 13.0,
             "{total}"
         );
     }

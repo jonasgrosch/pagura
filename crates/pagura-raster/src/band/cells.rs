@@ -9,10 +9,10 @@
 //! cover carried from the left) into a partial cell, and the cells between
 //! touched ones take the carried cover once, as one run.
 
-use super::curve::Quadratic;
+use super::curve::Mono;
 use super::edges::Line;
 use super::row::{Accumulate, Sink, fold};
-use crate::FillRule;
+use crate::{FillRule, Point};
 use pagura_core::{Error, Meter, Result};
 
 /// Rows per strip: strips lie on a global grid of this many rows, and a
@@ -229,16 +229,85 @@ impl Cells {
         visited
     }
 
-    /// Adds a monotone quadratic to the rows it crosses. Returns the cells
-    /// and rows visited.
-    pub(crate) fn curve(&mut self, curve: Quadratic) -> usize {
+    /// Adds monotone quadratic `curve` moved by `origin` to the rows it
+    /// crosses, integrated under the curve: per row one root for the row's
+    /// lower side (its upper one is the row above's) and one per column
+    /// side crossed, and each cell's area from the closed-form integral of
+    /// x dy between them. Returns the cells and rows visited.
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "device coordinates are bounded by 10^12, within i64"
+    )]
+    pub(crate) fn curve(&mut self, curve: &Mono, origin: Point) -> usize {
+        let m = curve;
+        let (x0, y0) = (m.x0 + origin.x, m.y0 + origin.y);
+        let (x1, y1) = (m.x1 + origin.x, m.y1 + origin.y);
+        let increasing = x1 >= x0;
         let mut visited = 0;
-        for r in self.span(curve.points[0].y, curve.points[2].y) {
-            if self.skipped(r) {
+        let mut carried = None;
+        for r in self.span(y0, y1) {
+            let top = f64::from(self.y0) + f64::from(u32::try_from(r).unwrap_or(u32::MAX));
+            let lo = y0.max(top);
+            let hi = y1.min(top + 1.0);
+            if lo >= hi || self.skipped(r) {
+                carried = None;
                 continue;
             }
-            let top = f64::from(self.y0) + f64::from(u32::try_from(r).unwrap_or(u32::MAX));
-            visited += 1 + self.row(r).curve(curve, top);
+            let ta = if lo == y0 {
+                0.0
+            } else {
+                carried.unwrap_or_else(|| m.ty(lo - y0))
+            };
+            let tb = if hi == y1 { 1.0 } else { m.ty(hi - y0).max(ta) };
+            carried = Some(tb);
+            let xa = if ta == 0.0 { x0 } else { x0 + m.dx(ta) };
+            let xb = if tb == 1.0 { x1 } else { x0 + m.dx(tb) };
+            let height = (hi - lo) * m.direction;
+            let (l, right) = if xa < xb { (xa, xb) } else { (xb, xa) };
+            let start = l.floor();
+            let end = right.ceil();
+            let first = start as i64;
+            let mut row = self.row(r);
+            visited += 2;
+            if end <= start + 1.0 {
+                if end == start {
+                    row.cover_at(first, height);
+                    continue;
+                }
+                let area = (start + 1.0 - x0) * (hi - lo) - (m.h(tb) - m.h(ta));
+                row.area_at(first, area * m.direction);
+                row.cover_at(first + 1, height);
+                continue;
+            }
+            let last = end as i64;
+            let total = hi - lo;
+            let (mut t, mut yt, mut ht) = (ta, m.dy(ta), m.h(ta));
+            let mut done = 0.0;
+            let columns = last.wrapping_sub(first);
+            for k in 0..columns {
+                let c = if increasing {
+                    first.wrapping_add(k)
+                } else {
+                    last.wrapping_sub(1).wrapping_sub(k)
+                };
+                let tn = if k + 1 == columns {
+                    tb
+                } else {
+                    let side = if increasing { c.wrapping_add(1) } else { c };
+                    m.tx(side as f64 - x0).clamp(t, tb)
+                };
+                let (yn, hn) = (m.dy(tn), m.h(tn));
+                let dy = yn - yt;
+                // The cell's part right of the curve where the curve is in
+                // it, and its full width where the curve is left of it.
+                let inside = (c.wrapping_add(1) as f64 - x0) * dy - (hn - ht);
+                let left = if increasing { done } else { total - done - dy };
+                row.area_at(c, (left + inside) * m.direction);
+                done += dy;
+                (t, yt, ht) = (tn, yn, hn);
+                visited += 1;
+            }
+            row.cover_at(last, height);
         }
         visited
     }
@@ -354,7 +423,6 @@ impl Accumulate for Row<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Point;
 
     /// Merges runs of equal value.
     struct Collect(Vec<(usize, usize, u8)>);

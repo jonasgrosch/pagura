@@ -59,19 +59,24 @@ fn outlines() -> Vec<Path> {
     out
 }
 
+/// Translated placements integrate the relative spline with the origin
+/// added per row; moving the pieces first rounds differently, by far less
+/// than a level, so the bytes agree but for rare ties.
 #[test]
-fn translated_placements_match_translated_vertices() {
+fn translated_placements_match_moved_pieces() {
     let limits = Limits::default();
     let area = area(0, 0, 48, 40, 16);
     let mut rng = Lcg(77);
     let mut crop = PathBuilder::new();
     crop.rect(0.0, 0.0, 48.0, 40.0);
     let crop = crop.finish();
+    let (mut pixels, mut differing) = (0, 0);
     for outline in outlines() {
         for size in [0.011, 0.023, 0.04] {
             let linear = [size, 0.002, 0.0, -size];
             let edges = Arc::new(GlyphEdges::new(&outline, linear, &limits).unwrap());
             assert!(edges.relative().is_some());
+            assert!(edges.curved());
             for _ in 0..12 {
                 let origin = Point::new(rng.grid(2.0, 42.0, 4096), rng.grid(4.0, 38.0, 4096));
                 for clipped in [false, true] {
@@ -84,15 +89,18 @@ fn translated_placements_match_translated_vertices() {
                         .unwrap()
                     });
                     let prep = options(area, &limits, clip.as_ref());
-                    let fast = Shape::glyph_in(&edges, origin, &prep).unwrap();
-                    let slow = glyph::general(&edges, origin, &prep);
-                    let (fast, slow) = (fast.unwrap(), slow.unwrap().unwrap());
+                    let fast = Shape::glyph_in(&edges, origin, &prep).unwrap().unwrap();
+                    let slow = glyph::moved(&edges, origin, &prep).unwrap().unwrap();
                     if !clipped {
                         assert!(matches!(fast.body, Body::Glyph(_)));
                     }
                     let (a, work) = raster(&area, Some(&fast), clip.as_ref());
                     let (b, _) = raster(&area, Some(&slow), clip.as_ref());
-                    assert_eq!(a, b, "origin {origin:?}");
+                    for (x, y) in a.iter().zip(&b) {
+                        assert!(x.abs_diff(*y) <= 1, "origin {origin:?}");
+                        differing += usize::from(x != y);
+                    }
+                    pixels += a.len();
                     assert!(work <= fast.work());
                 }
                 let prepare = |o: &Prep<'_>| Shape::glyph_in(&edges, origin, o).unwrap();
@@ -100,6 +108,7 @@ fn translated_placements_match_translated_vertices() {
             }
         }
     }
+    assert!(differing * 10_000 < pixels, "{differing} of {pixels}");
 }
 
 /// A run's glyphs merged at once give each glyph's own bytes, in chunks

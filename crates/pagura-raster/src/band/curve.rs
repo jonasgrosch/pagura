@@ -1,24 +1,23 @@
-//! Analytic quadratic glyph boundaries (8.5.2.2, 8.5.3.3).
+//! Glyph boundaries integrated against their true curve (8.5.2.2, 8.5.3.3).
 //!
-//! A TrueType glyph's quadratics arrive as degree-elevated cubics. Each is
-//! recovered and split at both coordinate extrema, so a piece crosses every
-//! pixel boundary at most once. Integrating x(t)y'(t) between those
-//! crossings gives a cell's area under the true curve, without a polygon.
+//! A glyph outline's curves become quadratics: a TrueType quadratic arrives
+//! as a degree-elevated cubic and is recovered exactly; any other cubic is
+//! split into equal parameter pieces whose midpoint quadratics lie within
+//! [`TOLERANCE`] of it. Each quadratic is split at both coordinate extrema,
+//! so a piece crosses every pixel boundary at most once, and the cells
+//! integrate x(t)y'(t) between those crossings in closed form ([`Mono`]),
+//! without a polygon.
 
 use super::edges::{Bounds, Line};
 use crate::flatten::bounded;
 use crate::{Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Result};
 
-// A cubic is a degree-elevated quadratic exactly when its third difference
-// D = -P0 + 3P1 - 3P2 + P3 vanishes. Its midpoint quadratic differs from it by
-// D t(t - 1/2)(t - 1), at most |D| sqrt(3)/36, and rounding leaves D at a few
-// ulps. Bounding each coordinate of D by 2^-24 pixels keeps that displacement
-// below 2^-27: a strip of that width along a monotone arc, which is at most
-// two pixels long inside any pixel. 32 pieces then change a pixel by under
-// 2^-21 of its area, about 1e-4 levels. General cubics have no such bound, so
-// their outlines keep polygons.
-const REDUCIBLE: f64 = 1.0 / 16_777_216.0;
+/// The farthest a glyph's quadratic spline lies from its true curve, in
+/// device pixels: each cubic is split into equal parameter pieces until the
+/// midpoint quadratic of each is within it. A degree-elevated quadratic is
+/// one piece, its own quadratic up to rounding.
+pub(crate) const TOLERANCE: f64 = 1.0 / 1024.0;
 
 /// A quadratic Bézier piece.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -26,11 +25,12 @@ pub(crate) struct Quadratic {
     pub(crate) points: [Point; 3],
 }
 
-/// One boundary piece of a glyph in contour order.
+/// One boundary piece of a glyph in contour order: a straight edge
+/// (horizontal ones included, which end chains) or a quadratic monotone in
+/// both coordinates.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum Piece {
     Line(Line),
-    /// A piece monotone in both coordinates.
     Curve(Quadratic),
 }
 
@@ -98,110 +98,253 @@ impl Quadratic {
         (2.0 * delta / (linear + (linear * linear + 4.0 * square * delta).max(0.0).sqrt()))
             .clamp(0.0, 1.0)
     }
+}
 
-    // A local polynomial avoids subtracting large antiderivatives on a page
-    // translated far from the origin. This is integral (x - column) dy.
-    fn integral(self, column: f64) -> f64 {
-        let [p, v, a] = self.coefficients();
-        (p.x - column) * (self.points[2].y - p.y)
-            + v.x * (v.y * 0.5 + a.y * (2.0 / 3.0))
-            + a.x * (v.y / 3.0 + a.y * 0.5)
+/// A monotone quadratic prepared for analytic accumulation, oriented so
+/// that y grows with t: x(t) = x0 + t (bx + t ax), y(t) = y0 + t (by + t ay),
+/// in coordinates a placement's origin is added to.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct Mono {
+    pub(crate) x0: f64,
+    pub(crate) y0: f64,
+    pub(crate) x1: f64,
+    pub(crate) y1: f64,
+    bx: f64,
+    ax: f64,
+    by: f64,
+    ay: f64,
+    /// H(t), the integral of (x - x0) dy from 0 to t, is
+    /// t^2 (h2 + t (h3 + t h4)).
+    h2: f64,
+    h3: f64,
+    h4: f64,
+    /// +1 when the piece runs downward in its own direction, else -1.
+    pub(crate) direction: f64,
+}
+
+impl Mono {
+    /// The integration form of monotone `q`.
+    pub(crate) fn new(q: Quadratic) -> Self {
+        let (points, direction) = if q.points[0].y <= q.points[2].y {
+            (q.points, 1.0)
+        } else {
+            let [a, b, c] = q.points;
+            ([c, b, a], -1.0)
+        };
+        let [p0, p1, p2] = points;
+        let bx = 2.0 * (p1.x - p0.x);
+        let ax = (p2.x - p1.x) - (p1.x - p0.x);
+        let by = 2.0 * (p1.y - p0.y);
+        let ay = (p2.y - p1.y) - (p1.y - p0.y);
+        Self {
+            x0: p0.x,
+            y0: p0.y,
+            x1: p2.x,
+            y1: p2.y,
+            bx,
+            ax,
+            by,
+            ay,
+            h2: bx * by * 0.5,
+            h3: (2.0 * bx * ay + ax * by) / 3.0,
+            h4: ax * ay * 0.5,
+            direction,
+        }
     }
 
-    /// The area of column `column` left of a monotone piece between
-    /// parameters `lo` and `hi`.
-    pub(crate) fn cell(self, lo: f64, hi: f64, column: f64) -> f64 {
-        let a = self.at(lo);
-        let b = self.at(hi);
-        if a.x == b.x {
-            return (b.y - a.y) * (a.x - column).clamp(0.0, 1.0);
-        }
-        let left = self.parameter(column, true).clamp(lo, hi);
-        let right = self.parameter(column + 1.0, true).clamp(lo, hi);
-        let (start, end, full) = if a.x < b.x {
-            (left, right, b.y - self.at(right).y)
+    /// H(t).
+    #[inline]
+    pub(crate) fn h(&self, t: f64) -> f64 {
+        t * t * (self.h2 + t * (self.h3 + t * self.h4))
+    }
+
+    /// x(t) - x0.
+    #[inline]
+    pub(crate) fn dx(&self, t: f64) -> f64 {
+        t * (self.bx + t * self.ax)
+    }
+
+    /// y(t) - y0.
+    #[inline]
+    pub(crate) fn dy(&self, t: f64) -> f64 {
+        t * (self.by + t * self.ay)
+    }
+
+    /// The parameter where y - y0 reaches `delta`, within `0..=y1 - y0`:
+    /// the root whose initial derivative is nonnegative, without
+    /// cancellation.
+    #[inline]
+    pub(crate) fn ty(&self, delta: f64) -> f64 {
+        let root = (self.by * self.by + 4.0 * self.ay * delta).max(0.0).sqrt();
+        let denominator = self.by + root;
+        if denominator > 0.0 {
+            (2.0 * delta / denominator).clamp(0.0, 1.0)
         } else {
-            (right, left, self.at(right).y - a.y)
+            0.0
+        }
+    }
+
+    /// The parameter where x - x0 reaches `delta`, x monotone.
+    #[inline]
+    pub(crate) fn tx(&self, delta: f64) -> f64 {
+        let (b, a, delta) = if self.x1 >= self.x0 {
+            (self.bx, self.ax, delta)
+        } else {
+            (-self.bx, -self.ax, -delta)
         };
-        full + self.interval(start, end).integral(column)
+        let root = (b * b + 4.0 * a * delta).max(0.0).sqrt();
+        let denominator = b + root;
+        if denominator > 0.0 {
+            (2.0 * delta / denominator).clamp(0.0, 1.0)
+        } else {
+            0.0
+        }
+    }
+
+    /// x at height `y` within the piece.
+    pub(crate) fn x_at(&self, y: f64) -> f64 {
+        if y <= self.y0 {
+            self.x0
+        } else if y >= self.y1 {
+            self.x1
+        } else {
+            self.x0 + self.dx(self.ty(y - self.y0))
+        }
+    }
+
+    /// The control point.
+    pub(crate) fn control(&self) -> Point {
+        Point::new(self.x0 + self.bx * 0.5, self.y0 + self.by * 0.5)
     }
 }
 
-/// The monotone pieces of `outline` under the translation-free `linear`
-/// map, or `None` unless it is made of lines and quadratics, has curved
-/// pieces, no geometric points, and at most `cap` pieces.
-pub(crate) fn pieces(
-    outline: &Path,
-    linear: Transform,
-    cap: usize,
-    limits: &Limits,
-) -> Result<Option<Vec<Piece>>> {
-    let mut builder = Builder {
-        pieces: Vec::new(),
-        cap,
-        rejected: false,
+/// A glyph outline as boundary pieces in contour order: `pieces` from
+/// `starts[i]` to the next start are contour `i`.
+#[derive(Debug, Default)]
+pub(crate) struct Spline {
+    pub(crate) pieces: Vec<Piece>,
+    pub(crate) starts: Vec<usize>,
+}
+
+impl Spline {
+    /// The contours' pieces.
+    pub(crate) fn contours(&self) -> impl Iterator<Item = &[Piece]> {
+        self.starts.iter().enumerate().map(|(i, &start)| {
+            let end = self.starts.get(i + 1).copied().unwrap_or(self.pieces.len());
+            self.pieces.get(start..end).unwrap_or(&[])
+        })
+    }
+
+    pub(crate) fn retained_bytes(&self) -> usize {
+        (self.pieces.capacity() * size_of::<Piece>())
+            .saturating_add(self.starts.capacity() * size_of::<usize>())
+    }
+}
+
+/// The spline of `outline` under the translation-free `linear` map: lines,
+/// and every cubic as quadratics within [`TOLERANCE`] of it, split into
+/// monotone pieces; `None` when a contour is a geometric point, which keeps
+/// the polygon's point rule (8.5.3.3.1).
+///
+/// # Errors
+///
+/// Returns a `Limit` error beyond `limits.path_segments` pieces and
+/// `InvalidArgument` for coordinates beyond the working range.
+pub(crate) fn spline(outline: &Path, linear: Transform, limits: &Limits) -> Result<Option<Spline>> {
+    let builder = Builder {
+        spline: Spline::default(),
         limits,
     };
-    builder.path(outline, linear)?;
-    Ok(
-        (!builder.rejected && builder.pieces.iter().any(|p| matches!(p, Piece::Curve(_))))
-            .then_some(builder.pieces),
-    )
+    builder.path(outline, linear)
 }
 
 struct Builder<'a> {
-    pieces: Vec<Piece>,
-    cap: usize,
-    rejected: bool,
+    spline: Spline,
     limits: &'a Limits,
 }
 
 impl Builder<'_> {
     fn push(&mut self, piece: Piece) -> Result<()> {
-        if self.pieces.len() >= self.cap {
-            self.rejected = true;
-            return Ok(());
-        }
-        if self.pieces.len() >= self.limits.path_segments {
+        if self.spline.pieces.len() >= self.limits.path_segments {
             return Err(Error::limit("quadratic edge budget exceeded"));
         }
-        self.pieces
+        self.spline
+            .pieces
             .try_reserve(1)
             .map_err(|_| Error::limit("glyph piece allocation failed"))?;
-        self.pieces.push(piece);
+        self.spline.pieces.push(piece);
         Ok(())
     }
 
-    // Horizontal lines bound no area of a certified outline; like flat
-    // curves they are neither kept nor counted.
+    fn begin(&mut self) -> Result<()> {
+        self.spline
+            .starts
+            .try_reserve(1)
+            .map_err(|_| Error::limit("glyph piece allocation failed"))?;
+        self.spline.starts.push(self.spline.pieces.len());
+        Ok(())
+    }
+
     fn line(&mut self, a: Point, b: Point) -> Result<()> {
-        if a.y != b.y {
+        if a != b {
             self.push(Piece::Line(Line { a, b }))?;
         }
         Ok(())
     }
 
+    /// A cubic: the fewest equal parameter pieces whose midpoint quadratics
+    /// lie within [`TOLERANCE`]. Each piece's third difference is the
+    /// cubic's D times the piece's length cubed, and its midpoint quadratic
+    /// departs from it by at most |D| sqrt(3)/36.
     fn cubic(&mut self, [a, b, c, d]: [Point; 4]) -> Result<()> {
-        if !reducible(sub(sub(d, a), scale(sub(c, b), 3.0))) {
-            self.rejected = true;
-            return Ok(());
+        let third = sub(sub(d, a), scale(sub(c, b), 3.0));
+        let bound = third.x.hypot(third.y) * (3.0_f64.sqrt() / 36.0);
+        let count = pieces(bound / TOLERANCE);
+        if count > self.limits.path_segments {
+            return Err(Error::limit("quadratic edge budget exceeded"));
         }
-        // Average the controls recovered from each degree-elevated cubic
-        // control. This also interpolates the cubic at its midpoint.
-        let control = add(lerp(a, d, 0.5), scale(add(sub(b, a), sub(c, d)), 0.75));
-        self.quadratic(Quadratic {
-            points: [a, control, d],
-        })
+        let n = f64::from(u32::try_from(count).unwrap_or(u32::MAX));
+        let at = |t: f64| {
+            let (ab, bc, cd) = (lerp(a, b, t), lerp(b, c, t), lerp(c, d, t));
+            lerp(lerp(ab, bc, t), lerp(bc, cd, t), t)
+        };
+        let tangent = |t: f64| {
+            let (ab, bc, cd) = (sub(b, a), sub(c, b), sub(d, c));
+            scale(lerp(lerp(ab, bc, t), lerp(bc, cd, t), t), 3.0)
+        };
+        let mut start = a;
+        for i in 0..count {
+            let k = f64::from(u32::try_from(i).unwrap_or(u32::MAX));
+            let (t0, t1) = (k / n, (k + 1.0) / n);
+            let end = if i + 1 == count { d } else { at(t1) };
+            let h = t1 - t0;
+            // The piece as a cubic, from its end tangents.
+            let p1 = add(start, scale(tangent(t0), h / 3.0));
+            let p2 = sub(end, scale(tangent(t1), h / 3.0));
+            let control = add(
+                lerp(start, end, 0.5),
+                scale(add(sub(p1, start), sub(p2, end)), 0.75),
+            );
+            self.quadratic(Quadratic {
+                points: [start, control, end],
+            })?;
+            start = end;
+        }
+        Ok(())
     }
 
+    /// A quadratic split at its x and y extrema into monotone pieces whose
+    /// shared ends are computed once; an extremum within rounding of an end
+    /// is that end.
     fn quadratic(&mut self, curve: Quadratic) -> Result<()> {
         let [_, v, a] = curve.coefficients();
+        let [p0, _, p2] = curve.points;
         let mut events = [0.0, 1.0, 0.0, 0.0];
         let mut count = 2;
         for (v, a) in [(v.x, a.x), (v.y, a.y)] {
             if a != 0.0 {
                 let t = -v / (2.0 * a);
-                if t > 0.0 && t < 1.0 {
+                if t > EXTREMUM && t < 1.0 - EXTREMUM {
                     events[count] = t;
                     count += 1;
                 }
@@ -209,22 +352,34 @@ impl Builder<'_> {
         }
         let events = &mut events[..count];
         events.sort_unstable_by(f64::total_cmp);
+        let at = |t: f64| {
+            if t == 0.0 {
+                p0
+            } else if t == 1.0 {
+                p2
+            } else {
+                curve.at(t)
+            }
+        };
         for pair in events.windows(2) {
             if pair[0] == pair[1] {
                 continue;
             }
-            let piece = curve.interval(pair[0], pair[1]);
-            // A collinear quadratic's parameterization has no area effect.
-            if cross(v, a) == 0.0 {
+            let mut piece = curve.interval(pair[0], pair[1]);
+            piece.points[0] = at(pair[0]);
+            piece.points[2] = at(pair[1]);
+            // A collinear quadratic's parameterization has no area effect;
+            // a piece without height is horizontal.
+            if cross(v, a) == 0.0 || piece.points[0].y == piece.points[2].y {
                 self.line(piece.points[0], piece.points[2])?;
-            } else if piece.points[0].y != piece.points[2].y {
+            } else {
                 self.push(Piece::Curve(piece))?;
             }
         }
         Ok(())
     }
 
-    fn path(&mut self, path: &Path, transform: Transform) -> Result<()> {
+    fn path(mut self, path: &Path, transform: Transform) -> Result<Option<Spline>> {
         if path.segments().len() > self.limits.path_segments {
             return Err(Error::limit("path segment budget exceeded"));
         }
@@ -241,16 +396,14 @@ impl Builder<'_> {
             Ok(point)
         };
         for segment in path.segments() {
-            if self.rejected {
-                return Ok(());
-            }
             match *segment {
                 Segment::MoveTo(p) => {
                     if let (Some(a), Some(b)) = (start, current)
                         && !closed
                         && segments > 0
+                        && !self.finish(a, b, degenerate)?
                     {
-                        self.finish(a, b, degenerate)?;
+                        return Ok(None);
                     }
                     source_current = Some(p);
                     let p = map(p)?;
@@ -259,6 +412,7 @@ impl Builder<'_> {
                     degenerate = true;
                     closed = false;
                     segments = 0;
+                    self.begin()?;
                 }
                 Segment::LineTo(p) => {
                     let source = p;
@@ -269,6 +423,7 @@ impl Builder<'_> {
                         degenerate = true;
                         segments = 0;
                         closed = false;
+                        self.begin()?;
                     }
                     degenerate &= source_current == Some(source);
                     source_current = Some(source);
@@ -283,6 +438,7 @@ impl Builder<'_> {
                         degenerate = true;
                         segments = 0;
                         closed = false;
+                        self.begin()?;
                     }
                     degenerate &= [c1, c2, end].iter().all(|p| Some(*p) == source_current);
                     source_current = Some(end);
@@ -295,7 +451,9 @@ impl Builder<'_> {
                     if let (Some(a), Some(b)) = (start, current)
                         && !closed
                     {
-                        self.finish(a, b, degenerate)?;
+                        if !self.finish(a, b, degenerate)? {
+                            return Ok(None);
+                        }
                         current = Some(a);
                         closed = true;
                     }
@@ -305,20 +463,49 @@ impl Builder<'_> {
         if let (Some(a), Some(b)) = (start, current)
             && !closed
             && segments > 0
+            && !self.finish(a, b, degenerate)?
         {
-            self.finish(a, b, degenerate)?;
+            return Ok(None);
         }
-        Ok(())
+        Ok(Some(self.spline))
     }
 
-    fn finish(&mut self, start: Point, current: Point, degenerate: bool) -> Result<()> {
+    /// Closes a contour; `false` for a geometric point, which keeps the
+    /// polygon's point rule.
+    fn finish(&mut self, start: Point, current: Point, degenerate: bool) -> Result<bool> {
         if degenerate {
-            // A geometric point's floor cell keeps the polygon path.
-            self.rejected = true;
-            return Ok(());
+            return Ok(false);
         }
-        self.line(current, start)
+        self.line(current, start)?;
+        Ok(true)
     }
+}
+
+/// An extremum this close to an end of a quadratic's parameter range is
+/// taken as that end: the piece it would cut off has no extent.
+const EXTREMUM: f64 = 1e-9;
+
+/// The pieces of a cubic whose midpoint quadratic errs by `ratio` times
+/// the tolerance when whole: the least `n` with `ratio / n^3 <= 1`.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "a positive count, saturated before conversion"
+)]
+fn pieces(ratio: f64) -> usize {
+    if ratio.is_nan() || ratio <= 1.0 {
+        return 1;
+    }
+    let n = ratio.cbrt().ceil().min(1e9) as usize;
+    // Rounding of the cube root: step to the least count that meets it.
+    let mut n = n.max(1);
+    while n > 1 && ratio <= ((n - 1) as f64).powi(3) {
+        n -= 1;
+    }
+    while ratio > (n as f64).powi(3) {
+        n += 1;
+    }
+    n
 }
 
 /// Clips monotone pieces to `bounds` as straight edges are clipped: parts
@@ -403,10 +590,6 @@ pub(crate) fn clip(
     Ok(())
 }
 
-fn reducible(d: Point) -> bool {
-    d.x.abs() <= REDUCIBLE && d.y.abs() <= REDUCIBLE
-}
-
 fn add(a: Point, b: Point) -> Point {
     Point::new(a.x + b.x, a.y + b.y)
 }
@@ -428,6 +611,21 @@ mod tests {
     use super::*;
     use crate::PathBuilder;
 
+    /// The integral of x dy along the pieces: the signed area they bound.
+    fn area(spline: &Spline) -> f64 {
+        spline
+            .pieces
+            .iter()
+            .map(|p| match *p {
+                Piece::Line(Line { a, b }) => (b.y - a.y) * (a.x + b.x) * 0.5,
+                Piece::Curve(q) => {
+                    let m = Mono::new(q);
+                    m.direction * ((m.y1 - m.y0) * m.x0 + m.h(1.0))
+                }
+            })
+            .sum()
+    }
+
     #[test]
     fn elevated_quadratics_split_into_monotone_pieces() {
         // The quadratic (0,0) (2,4) (4,0) as a cubic.
@@ -441,39 +639,79 @@ mod tests {
         )
         .unwrap();
         path.close();
-        let pieces = pieces(&path.finish(), Transform::IDENTITY, 32, &Limits::default())
+        let spline = spline(&path.finish(), Transform::IDENTITY, &Limits::default())
             .unwrap()
             .unwrap();
-        let curves = pieces
+        let curves = spline
+            .pieces
             .iter()
             .filter(|p| matches!(p, Piece::Curve(_)))
             .count();
         assert_eq!(curves, 2);
-        // The area under the arch, 2/3 × 4 × 2 = 16/3; its horizontal base
-        // adds nothing to the integral of x dy and is dropped.
-        let area: f64 = pieces
-            .iter()
-            .map(|p| match *p {
-                Piece::Line(Line { a, b }) => (b.y - a.y) * (a.x + b.x) * 0.5,
-                Piece::Curve(q) => q.integral(0.0),
-            })
-            .sum();
-        assert!((area.abs() - 16.0 / 3.0).abs() < 1e-12, "{area}");
+        // The area under the arch, 2/3 × 4 × 2 = 16/3.
+        assert!((area(&spline).abs() - 16.0 / 3.0).abs() < 1e-12);
     }
 
     #[test]
-    fn general_cubics_are_rejected() {
+    fn general_cubics_become_quadratics_within_the_tolerance() {
+        // A quarter circle of radius 100 as one cubic, closed through its
+        // centre: the area is pi/4 r^2 within the tolerance times its length.
+        let r = 100.0;
+        let k = 0.552_284_749_830_793_4 * r;
         let mut path = PathBuilder::new();
-        path.move_to(Point::new(0.0, 0.0));
-        path.cubic_to(
-            Point::new(1.0, 3.0),
-            Point::new(3.0, -1.0),
-            Point::new(4.0, 0.0),
-        )
-        .unwrap();
+        path.move_to(Point::new(r, 0.0));
+        path.cubic_to(Point::new(r, k), Point::new(k, r), Point::new(0.0, r))
+            .unwrap();
+        path.line_to(Point::new(0.0, 0.0)).unwrap();
+        path.close();
+        let spline = spline(&path.finish(), Transform::IDENTITY, &Limits::default())
+            .unwrap()
+            .unwrap();
+        let quadratics = spline
+            .pieces
+            .iter()
+            .filter(|p| matches!(p, Piece::Curve(_)))
+            .count();
+        assert!((2..40).contains(&quadratics), "{quadratics}");
+        // The cubic's own area, x dy integrated numerically; the chord to
+        // the centre adds nothing (x = 0) and the last edge is horizontal.
+        let [a, b, c, d] = [(r, 0.0), (r, k), (k, r), (0.0, r)];
+        let at = |t: f64, i: usize| {
+            let u = 1.0 - t;
+            let p = |q: (f64, f64)| if i == 0 { q.0 } else { q.1 };
+            u * u * u * p(a) + 3.0 * u * u * t * p(b) + 3.0 * u * t * t * p(c) + t * t * t * p(d)
+        };
+        let steps = 20_000;
+        let mut cubic = 0.0;
+        for i in 0..steps {
+            let (t0, t1) = (
+                f64::from(i) / f64::from(steps),
+                f64::from(i + 1) / f64::from(steps),
+            );
+            let tm = t0.midpoint(t1);
+            cubic += at(tm, 0) * (at(t1, 1) - at(t0, 1));
+        }
+        let length = std::f64::consts::FRAC_PI_2 * r;
+        assert!((area(&spline).abs() - cubic.abs()).abs() < TOLERANCE * length);
+    }
+
+    #[test]
+    fn piece_counts_meet_the_bound_with_the_fewest_pieces() {
+        assert_eq!(pieces(0.0), 1);
+        assert_eq!(pieces(1.0), 1);
+        assert_eq!(pieces(1.0001), 2);
+        assert_eq!(pieces(8.0), 2);
+        assert_eq!(pieces(8.0001), 3);
+        assert_eq!(pieces(f64::NAN), 1);
+    }
+
+    #[test]
+    fn points_are_left_to_the_polygon() {
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(1.0, 1.0));
         path.close();
         assert!(
-            pieces(&path.finish(), Transform::IDENTITY, 32, &Limits::default())
+            spline(&path.finish(), Transform::IDENTITY, &Limits::default())
                 .unwrap()
                 .is_none()
         );

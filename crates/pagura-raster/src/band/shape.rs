@@ -5,7 +5,7 @@
 use super::cells::STRIP;
 use super::certify::uncertified;
 use super::clip::{self, ClipShape, Paths, columns, fill_polygon};
-use super::curve::{self, Quadratic};
+use super::curve::{self, Mono, Quadratic};
 use super::edges::{self, Bounds, Line, Polygon, StripList, line_work, rows, strips};
 use super::union::{Meters, Piece, Resolver, room};
 use super::{Adjustment, Area, DeviceRect, Prep, ShapeOptions};
@@ -136,7 +136,7 @@ pub(crate) struct GlyphBody {
 #[derive(Debug, Default)]
 pub(crate) struct EdgeBody {
     pub(crate) lines: Vec<Line>,
-    pub(crate) curves: Vec<Quadratic>,
+    pub(crate) curves: Vec<Mono>,
     /// Items by strip; a shape within one strip has none and visits every
     /// item.
     pub(crate) strips: Option<StripList>,
@@ -478,6 +478,11 @@ impl Shape {
             }
             None => (lines, curves),
         };
+        let mut monos = Vec::new();
+        monos
+            .try_reserve(curves.len())
+            .map_err(|_| Error::limit("raster geometry allocation failed"))?;
+        monos.extend(curves.iter().map(|&q| Mono::new(q)));
         let points = lines
             .iter()
             .flat_map(|l| [l.a, l.b])
@@ -496,7 +501,7 @@ impl Shape {
         let lines = lines.into_iter().filter(|l| !l.is_horizontal()).collect();
         Self::edges(
             lines,
-            curves,
+            monos,
             FillRule::NonZero,
             (bounds, scan, Resolved::default()),
             frame,
@@ -558,7 +563,7 @@ impl Shape {
 
     fn edges(
         lines: Vec<Line>,
-        curves: Vec<Quadratic>,
+        curves: Vec<Mono>,
         rule: FillRule,
         (bounds, scan, resolved): (DeviceRect, (usize, usize), Resolved),
         frame: &Frame<'_>,
@@ -574,12 +579,11 @@ impl Shape {
             }
             extent(l.a.y.min(l.b.y), l.a.y.max(l.b.y))
         };
-        let curve_rows = |q: &Quadratic| {
-            let [a, _, b] = q.points;
-            if a.x.min(b.x) >= right {
+        let curve_rows = |m: &Mono| {
+            if m.x0.min(m.x1) >= right {
                 return None;
             }
-            extent(a.y.min(b.y), a.y.max(b.y))
+            extent(m.y0, m.y1)
         };
         let count = lines.len() + curves.len();
         let item_rows = |i: usize| match lines.get(i) {
@@ -604,10 +608,13 @@ impl Shape {
                 cells = cells.saturating_add(line_work(*l, r, region.x1 as usize));
             }
         }
-        for q in &curves {
-            if let Some(r) = curve_rows(q) {
-                let [a, _, b] = q.points;
-                cells = cells.saturating_add(line_work(Line { a, b }, r, region.x1 as usize));
+        for m in &curves {
+            if let Some(r) = curve_rows(m) {
+                let chord = Line {
+                    a: crate::Point::new(m.x0, m.y0),
+                    b: crate::Point::new(m.x1, m.y1),
+                };
+                cells = cells.saturating_add(line_work(chord, r, region.x1 as usize));
             }
         }
         let rows = bounds.height() as usize;
@@ -633,7 +640,7 @@ impl Shape {
         };
         let retained = size_of::<Self>()
             .saturating_add(body.lines.capacity() * size_of::<Line>())
-            .saturating_add(body.curves.capacity() * size_of::<Quadratic>())
+            .saturating_add(body.curves.capacity() * size_of::<Mono>())
             .saturating_add(body.strips.as_ref().map_or(0, StripList::retained_bytes))
             .saturating_add(resolved.retained_bytes());
         Ok(Self {

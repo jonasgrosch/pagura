@@ -9,7 +9,6 @@
 //! of column 0 adds to cell 0's cover, and geometry right of the row's width
 //! is dropped, since it cannot change cells left of it.
 
-use super::curve::Quadratic;
 use crate::{FillRule, quantize_unit};
 use pagura_core::{Error, Result};
 
@@ -81,44 +80,6 @@ pub(crate) trait Accumulate {
             self.area_at(column, right);
         }
         self.cover_at(last, h);
-        usize::try_from(to - from).unwrap_or(0) + 1
-    }
-
-    /// Adds the part of a monotone quadratic within row `top..top + 1`,
-    /// integrated under the curve. Returns the cells visited.
-    #[expect(
-        clippy::cast_possible_truncation,
-        reason = "device coordinates are bounded by 10^12, within i64"
-    )]
-    fn curve(&mut self, curve: Quadratic, top: f64) -> usize {
-        let (curve, d) = if curve.points[0].y < curve.points[2].y {
-            (curve, 1.0)
-        } else {
-            let mut points = curve.points;
-            points.reverse();
-            (Quadratic { points }, -1.0)
-        };
-        let lo = curve.points[0].y.max(top);
-        let hi = curve.points[2].y.min(top + 1.0);
-        if lo >= hi {
-            return 0;
-        }
-        let t0 = curve.parameter(lo, false);
-        // Rounding can invert the parameters of nearly equal heights.
-        let t1 = curve.parameter(hi, false).max(t0);
-        let xa = curve.at(t0).x;
-        let xb = curve.at(t1).x;
-        let first = xa.min(xb).floor() as i64;
-        let last = xa.max(xb).ceil() as i64;
-        let width = i64::try_from(self.width()).unwrap_or(i64::MAX);
-        let from = first.max(self.base());
-        let to = last.min(self.base().saturating_add(width));
-        let height = hi - lo;
-        for column in from..to {
-            let left = curve.cell(t0, t1, column as f64);
-            self.area_at(column, d * (height - left));
-        }
-        self.cover_at(last, d * height);
         usize::try_from(to - from).unwrap_or(0) + 1
     }
 }

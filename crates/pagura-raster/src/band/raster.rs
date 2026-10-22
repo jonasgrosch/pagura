@@ -3,7 +3,7 @@
 use super::cells::{Cells, STRIP};
 use super::clip::{Rows, Segment};
 use super::coverage::RowOut;
-use super::curve::Quadratic;
+use super::curve::Mono;
 use super::edges::{Line, StripList};
 use super::row::Sink;
 use super::shape::{Body, Resolved, Shape};
@@ -449,7 +449,7 @@ impl BandRasterizer {
 /// glyph's origin, and listed per strip where the mark has lists.
 struct Items<'a> {
     lines: &'a [Line],
-    curves: &'a [Quadratic],
+    curves: &'a [Mono],
     origin: Option<Point>,
     strips: Option<&'a StripList>,
     /// Rows whose sides replace the items.
@@ -471,12 +471,9 @@ impl Items<'_> {
                 work += cells.line(line);
             }
         }
-        for q in self.curves {
-            let curve = Quadratic {
-                points: q.points.map(|p| Point::new(p.x + origin.x, p.y + origin.y)),
-            };
-            if cells.reaches(curve.points[0].x.min(curve.points[2].x)) {
-                work += cells.curve(curve);
+        for m in self.curves {
+            if cells.reaches(m.x0.min(m.x1) + origin.x) {
+                work += cells.curve(m, origin);
             }
         }
         work
@@ -506,12 +503,10 @@ impl Items<'_> {
             None => self
                 .curves
                 .get(item.wrapping_sub(self.lines.len()))
-                .map_or(0, |q| {
-                    let curve = Quadratic {
-                        points: q.points.map(at),
-                    };
-                    if cells.reaches(curve.points[0].x.min(curve.points[2].x)) {
-                        cells.curve(curve)
+                .map_or(0, |m| {
+                    let origin = self.origin.unwrap_or_default();
+                    if cells.reaches(m.x0.min(m.x1) + origin.x) {
+                        cells.curve(m, origin)
                     } else {
                         0
                     }
