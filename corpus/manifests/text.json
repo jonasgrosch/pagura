@@ -3897,7 +3897,7 @@
     {
       "id": "text/paint-tounicode-simple",
       "kind": "pdf",
-      "description": "Strict rejects malformed extraction data; repair mode paints the same analytic rectangle glyph",
+      "description": "Painting never reads ToUnicode, so data that extraction rejects with font.tounicode-simple-codes neither fails nor repairs a rendering of the same analytic rectangle glyph",
       "expected": "render",
       "requirements": [
         "text-tounicode-recovery"
@@ -3905,10 +3905,8 @@
       "path": "corpus/generated/text/paint-tounicode-simple.pdf",
       "sha256": "aabf8bfce0505f521d821eba136ac9d39296f33e27222e72682ed60a0c6a096e",
       "pages": 1,
-      "strict_valid": false,
-      "repairs": [
-        "font.tounicode-simple-codes"
-      ],
+      "strict_valid": true,
+      "repairs": [],
       "oracle": "corpus/generated/text/paint-tounicode-simple.ppm",
       "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
       "dpi": 72,
@@ -3918,7 +3916,7 @@
     {
       "id": "text/paint-tounicode-utf16",
       "kind": "pdf",
-      "description": "Strict rejects malformed extraction data; repair mode paints the same analytic rectangle glyph",
+      "description": "Painting never reads ToUnicode, so data that extraction rejects with font.tounicode-utf16 neither fails nor repairs a rendering of the same analytic rectangle glyph",
       "expected": "render",
       "requirements": [
         "text-tounicode-recovery"
@@ -3926,10 +3924,8 @@
       "path": "corpus/generated/text/paint-tounicode-utf16.pdf",
       "sha256": "6874ebecb7203c23fa72a5a7b463c50ca5e908b2ea28e6f19755a34dfbb5cace",
       "pages": 1,
-      "strict_valid": false,
-      "repairs": [
-        "font.tounicode-utf16"
-      ],
+      "strict_valid": true,
+      "repairs": [],
       "oracle": "corpus/generated/text/paint-tounicode-utf16.ppm",
       "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
       "dpi": 72,
@@ -3939,7 +3935,7 @@
     {
       "id": "text/paint-tounicode-range",
       "kind": "pdf",
-      "description": "Strict rejects malformed extraction data; repair mode paints the same analytic rectangle glyph",
+      "description": "Painting never reads ToUnicode, so data that extraction rejects with font.tounicode-range neither fails nor repairs a rendering of the same analytic rectangle glyph",
       "expected": "render",
       "requirements": [
         "text-tounicode-recovery"
@@ -3947,10 +3943,8 @@
       "path": "corpus/generated/text/paint-tounicode-range.pdf",
       "sha256": "4eace401911c554a9c594ee0f4f0d2559f3770c76496747b058f28074ad1d097",
       "pages": 1,
-      "strict_valid": false,
-      "repairs": [
-        "font.tounicode-range"
-      ],
+      "strict_valid": true,
+      "repairs": [],
       "oracle": "corpus/generated/text/paint-tounicode-range.ppm",
       "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
       "dpi": 72,
@@ -3960,7 +3954,7 @@
     {
       "id": "text/paint-tounicode-block-count",
       "kind": "pdf",
-      "description": "Strict rejects malformed extraction data; repair mode paints the same analytic rectangle glyph",
+      "description": "Painting never reads ToUnicode, so data that extraction rejects with font.cmap-block-count neither fails nor repairs a rendering of the same analytic rectangle glyph",
       "expected": "render",
       "requirements": [
         "text-tounicode-recovery"
@@ -3968,10 +3962,8 @@
       "path": "corpus/generated/text/paint-tounicode-block-count.pdf",
       "sha256": "4eea5a8f4851131c19e1b8264d6c246ff713f2305ecb4e05d846d6e3a0ca5148",
       "pages": 1,
-      "strict_valid": false,
-      "repairs": [
-        "font.cmap-block-count"
-      ],
+      "strict_valid": true,
+      "repairs": [],
       "oracle": "corpus/generated/text/paint-tounicode-block-count.ppm",
       "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
       "dpi": 72,
@@ -3981,7 +3973,7 @@
     {
       "id": "text/paint-tounicode-invalid",
       "kind": "pdf",
-      "description": "Strict rejects malformed extraction data; repair mode paints the same analytic rectangle glyph",
+      "description": "Painting never reads ToUnicode, so data that extraction rejects with font.tounicode-invalid neither fails nor repairs a rendering of the same analytic rectangle glyph",
       "expected": "render",
       "requirements": [
         "text-tounicode-recovery"
@@ -3989,10 +3981,8 @@
       "path": "corpus/generated/text/paint-tounicode-invalid.pdf",
       "sha256": "19c2bafb67cd2f58400a1f53ec3f231461527e4aff8660f5e9089cf2f17b29c9",
       "pages": 1,
-      "strict_valid": false,
-      "repairs": [
-        "font.tounicode-invalid"
-      ],
+      "strict_valid": true,
+      "repairs": [],
       "oracle": "corpus/generated/text/paint-tounicode-invalid.ppm",
       "oracle_sha256": "8f3fffa5027d8eebc7262084c9013afefd7b2b9006d89e02866a3958be62b4ed",
       "dpi": 72,
