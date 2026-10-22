@@ -6,9 +6,9 @@
 //! earlier marks built.
 
 use super::{Planner, Scope};
-use crate::hash::{FastHasher, FastMap};
 use crate::plan::intersect;
 use crate::prepare::{Budget, Prepared, bounds, index};
+use pagura_core::hash::{FastHasher, FastMap};
 use pagura_core::{Error, Result};
 use pagura_interpret::ClipId;
 use pagura_raster::{DeviceRect, FillRule, Path, Segment, ShapeOptions, Transform};

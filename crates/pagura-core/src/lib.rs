@@ -22,6 +22,7 @@ pub mod convert;
 mod diagnostic;
 mod dictionary;
 mod error;
+pub mod hash;
 mod limits;
 mod meter;
 mod name;

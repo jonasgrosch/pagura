@@ -3,7 +3,7 @@
 //! object identity.
 
 use crate::device::{FontInfo, FontKey, OutlineKey};
-use crate::hash::FastMap;
+use pagura_core::hash::FastMap;
 use pagura_core::{
     Built, Diagnostics, Dictionary, Error, Meter, ObjectId, Position, Rect, Result, Store,
     StoreKey, Value,
