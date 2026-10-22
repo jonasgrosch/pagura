@@ -3,10 +3,10 @@
 //! extraction reads no image, shading or colour space, and a scene builds
 //! no extraction records.
 
-use pagura_core::Result;
+use pagura_core::{Recovery, Result, Store};
 use pagura_document::{Document, OpenOptions};
 use pagura_interpret::{
-    Device, FillMark, GlyphRun, ImageMark, Interpreter, Needs, SceneRecorder, ShadingMark,
+    Device, FillMark, GlyphRun, ImageMark, Interpreter, Needs, SceneRecorder, ShadingMark, TextRun,
 };
 
 /// A one-page PDF of `objects` (numbered from 1; object 1 the catalog,
@@ -120,7 +120,11 @@ impl Device for Counter {
 
     fn glyphs(&mut self, run: &GlyphRun<'_>) -> Result<()> {
         self.glyphs += run.glyphs.len();
-        self.text += run.glyphs.iter().filter(|g| g.text.is_some()).count();
+        Ok(())
+    }
+
+    fn text(&mut self, run: TextRun<'_>) -> Result<()> {
+        self.text += run.glyphs.len();
         Ok(())
     }
 
@@ -142,7 +146,8 @@ fn devices_without_paint_receive_no_paint_images_or_shadings() {
     let mut device = Counter::new(Needs::TEXT);
     Interpreter::new(&document).run(page, &mut device).unwrap();
     assert_eq!((device.images, device.shadings, device.painted), (0, 0, 0));
-    assert_eq!((device.glyphs, device.text), (1, 1));
+    // The Type 3 glyph is text, not an outline to draw.
+    assert_eq!((device.glyphs, device.text), (0, 1));
 }
 
 #[test]
@@ -162,4 +167,39 @@ fn a_scene_recording_builds_no_extraction_records() {
         .run(page, &mut recorder)
         .unwrap();
     assert!(recorder.finish().unwrap().marks() > 0);
+}
+
+#[test]
+fn malformed_unicode_is_read_only_for_text_even_with_a_shared_store() -> Result<()> {
+    for (name, tag) in [
+        ("simple", "font.tounicode-simple-codes"),
+        ("utf16", "font.tounicode-utf16"),
+        ("range", "font.tounicode-range"),
+        ("block-count", "font.cmap-block-count"),
+        ("invalid", "font.tounicode-invalid"),
+    ] {
+        let document = Document::open(
+            pagura_testkit::fixture("text", &format!("paint-tounicode-{name}.pdf")),
+            &OpenOptions {
+                recovery: Recovery::Strict,
+                ..OpenOptions::default()
+            },
+        )?;
+        let store = Store::new(document.limits().render_bytes);
+        let interpreter = Interpreter::new(&document).with_store(&store);
+        let page = document.page(0)?;
+        assert!(interpreter.scene(page)?.marks() > 0, "{name}");
+        assert!(document.diagnostics().is_empty(), "{name}");
+        let error = interpreter.text(page).unwrap_err();
+        assert_eq!(
+            error.repair.map(pagura_core::Repair::as_str),
+            Some(tag),
+            "{name}"
+        );
+        assert!(error.object.is_some(), "{name}");
+        assert_eq!(interpreter.text(page).unwrap_err(), error, "{name}");
+        assert!(interpreter.scene(page)?.marks() > 0, "{name}");
+        assert!(document.diagnostics().is_empty(), "{name}");
+    }
+    Ok(())
 }

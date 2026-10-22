@@ -58,7 +58,7 @@ impl SceneRecorder {
     pub fn new(limits: Limits) -> Self {
         Self {
             limits,
-            marks: Meter::new(limits.display_commands, "display list budget exceeded"),
+            marks: Meter::new(limits.display_commands, "scene mark budget exceeded"),
             bytes: Meter::new(limits.render_bytes, "scene byte budget exceeded"),
             page: None,
             root: GroupId(0),

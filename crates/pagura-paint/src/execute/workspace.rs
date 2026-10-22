@@ -556,6 +556,8 @@ impl Workspace {
                 .iter()
                 .map(PaintScratch::bytes)
                 .sum::<usize>()
+            + self.coverage.retained_bytes()
+            + self.boundary.0.retained_bytes()
     }
 
     /// Clears the state of a previous render.
@@ -643,6 +645,23 @@ mod tests {
         assert_eq!(bytes.used(), required);
         let mut bytes = Meter::new(required - 1, "test");
         assert!(paint_storage(&sources, storage, &mut bytes).is_err());
+    }
+
+    #[test]
+    fn retained_scratch_includes_its_coverage_allocations() {
+        let scene = crate::testing::Build::new(192.0, 256.0);
+        let prepared = scene
+            .prepare(&scene.request(scene.page(), 256), &Limits::default())
+            .unwrap();
+        let mut scratch = Scratch::default();
+        let buffers = {
+            let rendering = prepared.with_scratch(&mut scratch).unwrap();
+            rendering.workspace.page.bytes()
+                + rendering.workspace.coverage.retained_bytes()
+                + rendering.workspace.boundary.0.retained_bytes()
+                + rendering.rasterizer.retained_bytes()
+        };
+        assert!(scratch.retained_bytes() >= buffers);
     }
 
     #[test]

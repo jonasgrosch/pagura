@@ -31,7 +31,8 @@ pub enum Quantization {
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[non_exhaustive]
 pub struct Request {
-    /// Default user space to device pixels (`PageSpace::device_transform`).
+    /// Default user space to device pixels, as `pagura-paint`'s
+    /// `RenderRequest::page` maps a page.
     pub transform: Transform,
     /// The pixels to evaluate. Every pixel is evaluated on its own, so the
     /// result for a pixel does not depend on the region.

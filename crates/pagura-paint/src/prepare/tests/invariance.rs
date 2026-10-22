@@ -274,3 +274,48 @@ fn rendering_stops_between_bands() {
     assert_eq!(target.len(), rows);
     assert_eq!(target, whole[..rows]);
 }
+
+#[test]
+fn reused_scratch_forgets_scenes_backgrounds_and_stopped_renders() {
+    use pagura_raster::Rgba8;
+
+    let wide = busy();
+    let mut narrow = Build::new(37.0, 29.0);
+    let red = narrow.rgb([0.8, 0.1, 0.2]);
+    narrow.rect(PAGE, [2.25, 3.5, 28.75, 25.25], red, mark(StateId(0)));
+    let mut changed = Build::new(37.0, 29.0);
+    let green = changed.rgb([0.1, 0.7, 0.2]);
+    changed.rect(PAGE, [6.25, 5.5, 32.75, 27.25], green, mark(StateId(0)));
+    let mut scratch = crate::Scratch::default();
+    for height in [5, 8] {
+        for (scene, background) in [
+            (&narrow, Rgba8::WHITE),
+            (&changed, Rgba8::WHITE),
+            (&narrow, Rgba8::new(20, 40, 60, 128)),
+            (&changed, Rgba8::TRANSPARENT),
+            (&wide, Rgba8::WHITE),
+            (&wide, Rgba8::WHITE),
+            (&narrow, Rgba8::WHITE),
+        ] {
+            let mut request = scene.request(scene.page(), height);
+            request.background = background;
+            let (expected, charges) = scene.render_charged(&request).unwrap();
+            let prepared = scene.prepare(&request, &Limits::default()).unwrap();
+            assert_eq!(prepared.charges(), charges);
+            let mut stopped = Vec::new();
+            let completion = prepared
+                .with_scratch(&mut scratch)
+                .unwrap()
+                .render_until(&mut stopped, |row| row >= 16);
+            assert!(matches!(completion, Completion::Stopped { .. }));
+            assert_eq!(stopped, expected[..stopped.len()]);
+            for _ in 0..2 {
+                let mut rows = Vec::new();
+                let mut rendering = prepared.with_scratch(&mut scratch).unwrap();
+                rendering.render(&mut rows);
+                super::assert_within_charges(&rendering, charges);
+                assert_eq!(rows, expected);
+            }
+        }
+    }
+}

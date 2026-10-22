@@ -3,7 +3,7 @@
 /// An operator of Annex A, Table A.1. The standard closes the set; an
 /// unknown word is a syntax error outside a compatibility section.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum Operator {
+pub(crate) enum Operator {
     /// `b`: close, fill (nonzero) and stroke the path (8.5.3).
     CloseFillStroke,
     /// `B`: fill (nonzero) and stroke the path.
@@ -153,85 +153,8 @@ pub enum Operator {
 }
 
 impl Operator {
-    /// Every operator, in the order of Annex A, Table A.1.
-    pub const ALL: [Self; 73] = [
-        Self::CloseFillStroke,
-        Self::FillStroke,
-        Self::CloseFillStrokeEvenOdd,
-        Self::FillStrokeEvenOdd,
-        Self::BeginMarkedContentProperties,
-        Self::BeginInlineImage,
-        Self::BeginMarkedContent,
-        Self::BeginText,
-        Self::BeginCompatibility,
-        Self::CurveTo,
-        Self::Concatenate,
-        Self::StrokeColorSpace,
-        Self::FillColorSpace,
-        Self::Dash,
-        Self::GlyphWidth,
-        Self::GlyphWidthBounds,
-        Self::XObject,
-        Self::MarkedPointProperties,
-        Self::EndInlineImage,
-        Self::EndMarkedContent,
-        Self::EndText,
-        Self::EndCompatibility,
-        Self::Fill,
-        Self::FillObsolete,
-        Self::FillEvenOdd,
-        Self::StrokeGray,
-        Self::FillGray,
-        Self::ExtGState,
-        Self::ClosePath,
-        Self::Flatness,
-        Self::InlineImageData,
-        Self::LineJoin,
-        Self::LineCap,
-        Self::StrokeCmyk,
-        Self::FillCmyk,
-        Self::LineTo,
-        Self::MoveTo,
-        Self::MiterLimit,
-        Self::MarkedPoint,
-        Self::EndPath,
-        Self::Save,
-        Self::Restore,
-        Self::Rectangle,
-        Self::StrokeRgb,
-        Self::FillRgb,
-        Self::RenderingIntent,
-        Self::CloseStroke,
-        Self::Stroke,
-        Self::StrokeColor,
-        Self::FillColor,
-        Self::StrokeColorN,
-        Self::FillColorN,
-        Self::Shading,
-        Self::NextLine,
-        Self::CharSpacing,
-        Self::MoveText,
-        Self::MoveTextLeading,
-        Self::Font,
-        Self::ShowText,
-        Self::ShowTextAdjusted,
-        Self::Leading,
-        Self::TextMatrix,
-        Self::RenderMode,
-        Self::Rise,
-        Self::WordSpacing,
-        Self::HorizontalScaling,
-        Self::CurveToInitial,
-        Self::LineWidth,
-        Self::Clip,
-        Self::ClipEvenOdd,
-        Self::CurveToFinal,
-        Self::NextLineShowText,
-        Self::NextLineShowTextSpaced,
-    ];
-
     /// The operator spelled `word`, if any.
-    pub fn from_bytes(word: &[u8]) -> Option<Self> {
+    pub(crate) fn from_bytes(word: &[u8]) -> Option<Self> {
         Some(match word {
             b"b" => Self::CloseFillStroke,
             b"B" => Self::FillStroke,
@@ -309,96 +232,29 @@ impl Operator {
             _ => return None,
         })
     }
-
-    /// The operator's spelling.
-    pub fn as_bytes(self) -> &'static [u8] {
-        match self {
-            Self::CloseFillStroke => b"b",
-            Self::FillStroke => b"B",
-            Self::CloseFillStrokeEvenOdd => b"b*",
-            Self::FillStrokeEvenOdd => b"B*",
-            Self::BeginMarkedContentProperties => b"BDC",
-            Self::BeginInlineImage => b"BI",
-            Self::BeginMarkedContent => b"BMC",
-            Self::BeginText => b"BT",
-            Self::BeginCompatibility => b"BX",
-            Self::CurveTo => b"c",
-            Self::Concatenate => b"cm",
-            Self::StrokeColorSpace => b"CS",
-            Self::FillColorSpace => b"cs",
-            Self::Dash => b"d",
-            Self::GlyphWidth => b"d0",
-            Self::GlyphWidthBounds => b"d1",
-            Self::XObject => b"Do",
-            Self::MarkedPointProperties => b"DP",
-            Self::EndInlineImage => b"EI",
-            Self::EndMarkedContent => b"EMC",
-            Self::EndText => b"ET",
-            Self::EndCompatibility => b"EX",
-            Self::Fill => b"f",
-            Self::FillObsolete => b"F",
-            Self::FillEvenOdd => b"f*",
-            Self::StrokeGray => b"G",
-            Self::FillGray => b"g",
-            Self::ExtGState => b"gs",
-            Self::ClosePath => b"h",
-            Self::Flatness => b"i",
-            Self::InlineImageData => b"ID",
-            Self::LineJoin => b"j",
-            Self::LineCap => b"J",
-            Self::StrokeCmyk => b"K",
-            Self::FillCmyk => b"k",
-            Self::LineTo => b"l",
-            Self::MoveTo => b"m",
-            Self::MiterLimit => b"M",
-            Self::MarkedPoint => b"MP",
-            Self::EndPath => b"n",
-            Self::Save => b"q",
-            Self::Restore => b"Q",
-            Self::Rectangle => b"re",
-            Self::StrokeRgb => b"RG",
-            Self::FillRgb => b"rg",
-            Self::RenderingIntent => b"ri",
-            Self::CloseStroke => b"s",
-            Self::Stroke => b"S",
-            Self::StrokeColor => b"SC",
-            Self::FillColor => b"sc",
-            Self::StrokeColorN => b"SCN",
-            Self::FillColorN => b"scn",
-            Self::Shading => b"sh",
-            Self::NextLine => b"T*",
-            Self::CharSpacing => b"Tc",
-            Self::MoveText => b"Td",
-            Self::MoveTextLeading => b"TD",
-            Self::Font => b"Tf",
-            Self::ShowText => b"Tj",
-            Self::ShowTextAdjusted => b"TJ",
-            Self::Leading => b"TL",
-            Self::TextMatrix => b"Tm",
-            Self::RenderMode => b"Tr",
-            Self::Rise => b"Ts",
-            Self::WordSpacing => b"Tw",
-            Self::HorizontalScaling => b"Tz",
-            Self::CurveToInitial => b"v",
-            Self::LineWidth => b"w",
-            Self::Clip => b"W",
-            Self::ClipEvenOdd => b"W*",
-            Self::CurveToFinal => b"y",
-            Self::NextLineShowText => b"'",
-            Self::NextLineShowTextSpaced => b"\"",
-        }
-    }
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::Operator;
+    use std::collections::HashSet;
+
+    /// Every operator's spelling, in the order of Annex A, Table A.1.
+    pub(crate) const SPELLINGS: [&str; 73] = [
+        "b", "B", "b*", "B*", "BDC", "BI", "BMC", "BT", "BX", "c", "cm", "CS", "cs", "d", "d0",
+        "d1", "Do", "DP", "EI", "EMC", "ET", "EX", "f", "F", "f*", "G", "g", "gs", "h", "i", "ID",
+        "j", "J", "K", "k", "l", "m", "M", "MP", "n", "q", "Q", "re", "RG", "rg", "ri", "s", "S",
+        "SC", "sc", "SCN", "scn", "sh", "T*", "Tc", "Td", "TD", "Tf", "Tj", "TJ", "TL", "Tm", "Tr",
+        "Ts", "Tw", "Tz", "v", "w", "W", "W*", "y", "'", "\"",
+    ];
 
     #[test]
-    fn spellings_round_trip() {
-        for operator in Operator::ALL {
-            assert_eq!(Operator::from_bytes(operator.as_bytes()), Some(operator));
-        }
+    fn every_spelling_names_its_own_operator() {
+        let operators: HashSet<Operator> = SPELLINGS
+            .iter()
+            .filter_map(|spelling| Operator::from_bytes(spelling.as_bytes()))
+            .collect();
+        assert_eq!(operators.len(), SPELLINGS.len());
         assert_eq!(Operator::from_bytes(b"xyz"), None);
     }
 }

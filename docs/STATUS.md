@@ -178,9 +178,10 @@ Repairs with reader-dependent behaviour (security-relevant, ADR 0003):
   `font.tounicode-invalid` (9.10.3): use low-byte simple-font sources, omit
   invalid UTF-16 values, carry overflowing range destinations without
   full-string wrap, or discard unusable extraction data. Conflicting low-byte
-  aliases lose their Unicode value. Strict rejects font loading on malformed
-  ToUnicode data, preserving the original error kind, repair tag, object and
-  position without reporting an applied repair. Repair mode retains drawable
+  aliases lose their Unicode value. Text extraction loads ToUnicode with the
+  font's Unicode, and Strict rejects malformed data there, preserving the
+  original error kind, repair tag, object and position without reporting an
+  applied repair; rendering never reads ToUnicode. Repair mode retains drawable
   fonts and reports extraction repairs or discarded maps. Null ToUnicode
   values, including indirect and
   undefined references, are absent without repairs (7.3.9–7.3.10).

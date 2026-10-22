@@ -1,5 +1,6 @@
-//! Graphics state parameter dictionaries (8.4.5, Table 58). Devices without
-//! paint read only the font entry.
+//! Graphics state parameter dictionaries (8.4.5, Table 58). The font and
+//! the entries that operators also set apply for every device; devices
+//! without paint read no other entry.
 
 use super::form::resource;
 use super::{Machine, Scope, params};
@@ -35,10 +36,8 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 .ok_or(Error::syntax("invalid ExtGState font size"))?;
             self.select_font(&array[0], size, scope)?;
         }
-        if !self.needs().paint {
-            return Ok(());
-        }
-        if let Some(knockout) = dictionary.get(b"TK") {
+        let paint = self.needs().paint;
+        if paint && let Some(knockout) = dictionary.get(b"TK") {
             let knockout = document
                 .resolve(knockout)?
                 .as_bool()
@@ -51,12 +50,17 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             let key = key.as_bytes();
             // A Type 3 glyph declared with d1 ignores colour parameters
             // (9.6.4, Table 111).
-            if !defined_entry(key) || key == b"Font" || (uncolored && color_parameter(key)) {
+            if !defined_entry(key)
+                || key == b"Font"
+                || (uncolored && color_parameter(key))
+                || (!paint && !operator_entry(key))
+            {
                 continue;
             }
             self.entry(dictionary, key, value, resources, scope)?;
         }
-        if !uncolored && dictionary.contains_key(b"OP") && !dictionary.contains_key(b"op") {
+        if paint && !uncolored && dictionary.contains_key(b"OP") && !dictionary.contains_key(b"op")
+        {
             scope.state.fill_overprint = scope.state.stroke_overprint;
         }
         scope.state.composite_changed();
@@ -338,6 +342,15 @@ fn defined_entry(key: &[u8]) -> bool {
             | b"TK"
             | b"UseBlackPtComp"
             | b"HTO"
+    )
+}
+
+/// The entries that set what operators also set: the line parameters (with
+/// stroke adjustment), flatness and the rendering intent (8.4.3, 8.6.5.8).
+fn operator_entry(key: &[u8]) -> bool {
+    matches!(
+        key,
+        b"LW" | b"LC" | b"LJ" | b"ML" | b"D" | b"SA" | b"FL" | b"RI"
     )
 }
 

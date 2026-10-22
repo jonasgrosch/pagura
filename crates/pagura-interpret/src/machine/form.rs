@@ -3,7 +3,7 @@
 
 use super::emit::GroupStart;
 use super::path::add_clip;
-use super::{Machine, Scope, Text, matrix};
+use super::{Machine, Scope, matrix};
 use crate::device::{Device, Marked};
 use crate::features;
 use crate::model::GroupCause;
@@ -43,6 +43,15 @@ impl<'a> FormBody<'a> {
             Self::Generated { dictionary, .. } => Ok(dictionary),
         }
     }
+}
+
+/// What happens to a form that optional content hides (8.11.3.3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum HiddenForm {
+    /// It is skipped in its entirety (Table 93).
+    Skip,
+    /// It is interpreted, its marks flagged hidden.
+    Interpret,
 }
 
 /// A form prepared for interpretation: its scope, content and resources.
@@ -152,8 +161,13 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
         resources: &Dictionary,
         scope: &mut Scope,
     ) -> Result<()> {
-        let page_text = scope.role == Text::Page && self.needs().text && self.needs().structure;
-        let Some(form) = self.prepare_form(body, resources, scope, page_text)? else {
+        // Devices that need structure receive hidden marks, flagged.
+        let hidden = if self.needs().structure {
+            HiddenForm::Interpret
+        } else {
+            HiddenForm::Skip
+        };
+        let Some(form) = self.prepare_form(body, resources, scope, hidden)? else {
             return Ok(());
         };
         let PreparedForm {
@@ -185,7 +199,7 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
                 )?;
             }
         }
-        let occurrence = page_text.then(|| body.id()).flatten();
+        let occurrence = self.structure(scope).then(|| body.id()).flatten();
         if let Some(object) = occurrence {
             self.device.marked(&Marked::ObjectBegin {
                 object,
@@ -203,13 +217,13 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
     }
 
     /// Checks a form and builds its scope and content, or `None` for a form
-    /// optional content hides when its text is not needed.
+    /// optional content hides when `hidden` skips it.
     pub(crate) fn prepare_form<'f>(
         &mut self,
         body: FormBody<'f>,
         resources: &'f Dictionary,
         scope: &Scope,
-        page_text: bool,
+        hidden: HiddenForm,
     ) -> Result<Option<PreparedForm<'f>>>
     where
         'a: 'f,
@@ -236,8 +250,8 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
             }
         }
         // Table 93 (8.10.2): skip an invisible form in its entirety.
-        let hidden = self.form_hidden(dictionary)?;
-        if hidden && !page_text {
+        let invisible = self.form_hidden(dictionary)?;
+        if invisible && hidden == HiddenForm::Skip {
             return Ok(None);
         }
         if let Some(kind) = dictionary.get(b"FormType")
@@ -246,7 +260,7 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
             return Err(Error::syntax("invalid FormType"));
         }
         let (bbox, matrix) = geometry(document, dictionary)?;
-        let mut child = scope.child(if page_text { Text::Page } else { scope.role });
+        let mut child = scope.child(scope.role);
         if let Some(id) = body.id() {
             child.forms.push(id);
         }
@@ -263,7 +277,7 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
             FillRule::NonZero,
             self.session.limits.depth,
         )?;
-        child.visible &= !hidden;
+        child.visible &= !invisible;
         let resources = dictionary
             .get(b"Resources")
             .map(|v| document.resolve_dictionary(v))
