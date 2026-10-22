@@ -144,9 +144,9 @@ fn complete(planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
             group.bounds = extent;
         }
     }
-    order(&mut parts);
-    let charged = needs(&parts, rows);
-    let stack = needs(&parts, band_rows);
+    order(&mut parts)?;
+    let charged = needs(&parts, rows, &mut budget.bytes)?;
+    let stack = needs(&parts, band_rows, &mut budget.bytes)?;
     let layout = parts.groups.first().map_or(
         Layout {
             process: Process::Rgb,
@@ -261,7 +261,7 @@ fn reserve_output(plan: &Plan, budget: &mut Budget) -> Result<()> {
 
 /// Each group's activation order: positions by first band, then source
 /// order.
-fn order(parts: &mut Parts) {
+fn order(parts: &mut Parts) -> Result<()> {
     let items = &parts.items;
     let first = |id: u32| {
         items
@@ -269,18 +269,28 @@ fn order(parts: &mut Parts) {
             .map_or(u32::MAX, |item: &Item| item.bands[0])
     };
     for group in &mut parts.groups {
-        let mut order: Vec<u32> = (0..group.items.len())
-            .map(|i| u32::try_from(i).unwrap_or(u32::MAX))
-            .collect();
-        // Stable: positions of one band stay in source order.
-        order.sort_by_key(|&position| {
-            group
-                .items
-                .get(index(position))
-                .map_or(u32::MAX, |&id| first(id))
+        // Each item's two u32 list slots were reserved by ITEM_BYTES.
+        // Order in place; the source position makes ties explicit, without
+        // allocating the scratch of a stable sort.
+        group.order.clear();
+        group
+            .order
+            .try_reserve_exact(group.items.len())
+            .map_err(|_| Error::limit("render memory budget exceeded"))?;
+        group
+            .order
+            .extend((0..group.items.len()).map(|i| u32::try_from(i).unwrap_or(u32::MAX)));
+        group.order.sort_unstable_by_key(|&position| {
+            (
+                group
+                    .items
+                    .get(index(position))
+                    .map_or(u32::MAX, |&id| first(id)),
+                position,
+            )
         });
-        group.order = order;
     }
+    Ok(())
 }
 
 fn shrink(plan: &mut Plan) {
@@ -370,6 +380,58 @@ mod tests {
     use super::*;
     use pagura_color::{CalculatorFunction, DeviceN, Function, Indexed};
     use pagura_core::{Limits, Name};
+
+    #[test]
+    fn activation_order_keeps_source_positions_with_equal_first_bands() {
+        use crate::format::Format;
+        use crate::plan::{Compositing, GroupPlan, GroupUse, ItemKind, Start};
+        use pagura_interpret::BlendMode;
+        use pagura_raster::DeviceRect;
+
+        let mut parts = Parts {
+            groups: vec![GroupPlan {
+                bounds: DeviceRect::default(),
+                items: vec![4, 0, 3, 1, 2],
+                order: Vec::new(),
+                layout: Layout {
+                    process: Process::Rgb,
+                    spots: 0,
+                },
+                format: Format::N16,
+                knockout: false,
+                start: Start::Transparent,
+            }],
+            items: [2, 0, 2, 0, 0]
+                .map(|first| Item {
+                    bounds: DeviceRect::default(),
+                    bands: [first, first],
+                    serial: 0,
+                    position: pagura_core::Position::default(),
+                    work: 0,
+                    kind: ItemKind::Group(GroupUse {
+                        group: 0,
+                        cover: None,
+                        compositing: Compositing {
+                            alpha: 1.0,
+                            blend: BlendMode::Normal,
+                            alpha_is_shape: false,
+                            mask: None,
+                            overprint: 0,
+                        },
+                        conversion: None,
+                    }),
+                })
+                .into(),
+            ..Parts::default()
+        };
+        order(&mut parts).unwrap();
+        assert_eq!(parts.groups[0].items, [4, 0, 3, 1, 2]);
+        assert_eq!(parts.groups[0].order, [0, 2, 3, 1, 4]);
+        let capacity = parts.groups[0].order.capacity();
+        order(&mut parts).unwrap();
+        assert_eq!(parts.groups[0].order, [0, 2, 3, 1, 4]);
+        assert_eq!(parts.groups[0].order.capacity(), capacity);
+    }
 
     #[test]
     fn spot_plans_share_their_definition_and_charge_live_conversion_storage() {

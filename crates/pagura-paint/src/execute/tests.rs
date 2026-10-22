@@ -286,7 +286,12 @@ impl Fixture {
             transfers: Vec::new(),
         };
         let rows = self.height.min(256) as usize;
-        let stack: Tops = crate::prepare::stacks::needs(&parts, rows);
+        let stack: Tops = crate::prepare::stacks::needs(
+            &parts,
+            rows,
+            &mut Meter::new(usize::MAX, "test stack analysis"),
+        )
+        .unwrap();
         let selections = !self.output.transfers.is_empty();
         let plan = Plan {
             area,
