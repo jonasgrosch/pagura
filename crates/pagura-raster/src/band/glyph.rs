@@ -339,9 +339,9 @@ fn placed(
         }
         Kind::Exact(exact) => exact,
     };
-    if options.precision == Precision::Exact
-        && let Some(relative) = &exact.relative
-    {
+    // Under either precision a certified glyph the clip keeps whole is its
+    // exact translated edges: no cheaper coverage exists.
+    if let Some(relative) = &exact.relative {
         let Some(mut frame) = Frame::new(options) else {
             return Ok(None);
         };
