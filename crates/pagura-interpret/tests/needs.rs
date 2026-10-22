@@ -6,7 +6,7 @@
 use pagura_core::Result;
 use pagura_document::{Document, OpenOptions};
 use pagura_interpret::{
-    Device, FillMark, GlyphRun, ImageMark, Interpreter, Needs, SceneRecorder, ShadingMark,
+    Device, FillMark, GlyphRun, ImageMark, Interpreter, Needs, SceneRecorder, ShadingMark, TextRun,
 };
 
 /// A one-page PDF of `objects` (numbered from 1; object 1 the catalog,
@@ -120,7 +120,11 @@ impl Device for Counter {
 
     fn glyphs(&mut self, run: &GlyphRun<'_>) -> Result<()> {
         self.glyphs += run.glyphs.len();
-        self.text += run.text.len();
+        Ok(())
+    }
+
+    fn text(&mut self, run: TextRun<'_>) -> Result<()> {
+        self.text += run.glyphs.len();
         Ok(())
     }
 
@@ -142,7 +146,8 @@ fn devices_without_paint_receive_no_paint_images_or_shadings() {
     let mut device = Counter::new(Needs::TEXT);
     Interpreter::new(&document).run(page, &mut device).unwrap();
     assert_eq!((device.images, device.shadings, device.painted), (0, 0, 0));
-    assert_eq!((device.glyphs, device.text), (1, 1));
+    // The Type 3 glyph is text, not an outline to draw.
+    assert_eq!((device.glyphs, device.text), (0, 1));
 }
 
 #[test]

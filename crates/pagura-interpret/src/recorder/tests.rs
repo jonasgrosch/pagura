@@ -79,7 +79,6 @@ fn run<'a>(
     GlyphRun {
         font,
         glyphs,
-        text: &[],
         mode,
         paint: GlyphPaint {
             fill: mode.fills().then_some(paint),

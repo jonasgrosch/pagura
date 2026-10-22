@@ -1,5 +1,5 @@
 use super::*;
-use crate::device::{FontKey, GlyphPaint, MarkedText};
+use crate::device::{FontKey, MarkedText};
 use pagura_core::{Name, Rect};
 use pagura_document::Rotation;
 use pagura_extract::{Quad, TextRenderingMode};
@@ -35,18 +35,9 @@ fn glyph(text: &str) -> PositionedGlyph {
 
 fn show(device: &mut TextDevice, font: &FontInfo, text: &[PositionedGlyph]) {
     device
-        .glyphs(&GlyphRun {
+        .text(TextRun {
             font,
-            glyphs: &[],
-            text,
-            mode: TextRenderingMode::Fill,
-            paint: GlyphPaint {
-                fill: None,
-                fill_state: None,
-                stroke: None,
-                stroke_state: None,
-            },
-            hidden: false,
+            glyphs: &mut text.to_vec(),
         })
         .unwrap();
 }
@@ -137,18 +128,9 @@ fn unbalanced_structure_and_unknown_fonts_are_errors() {
     device.select_font(&font).unwrap();
     show(&mut device, &font, &[glyph("a")]);
     let error = device
-        .glyphs(&GlyphRun {
+        .text(TextRun {
             font: &font,
-            glyphs: &[],
-            text: &[glyph("b")],
-            mode: TextRenderingMode::Fill,
-            paint: GlyphPaint {
-                fill: None,
-                fill_state: None,
-                stroke: None,
-                stroke_state: None,
-            },
-            hidden: false,
+            glyphs: &mut vec![glyph("b")],
         })
         .unwrap_err();
     assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
@@ -157,18 +139,9 @@ fn unbalanced_structure_and_unknown_fonts_are_errors() {
 fn show_error(device: &mut TextDevice) {
     let font = font(7);
     let error = device
-        .glyphs(&GlyphRun {
+        .text(TextRun {
             font: &font,
-            glyphs: &[],
-            text: &[glyph("a")],
-            mode: TextRenderingMode::Fill,
-            paint: GlyphPaint {
-                fill: None,
-                fill_state: None,
-                stroke: None,
-                stroke_state: None,
-            },
-            hidden: false,
+            glyphs: &mut vec![glyph("a")],
         })
         .unwrap_err();
     assert_eq!(error.message, "missing extraction font");

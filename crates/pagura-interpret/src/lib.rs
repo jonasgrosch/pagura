@@ -37,7 +37,7 @@ mod text_device;
 pub use device::{
     Device, FillMark, FontInfo, FontKey, Glyph, GlyphPaint, GlyphRun, GroupInfo, ImageMark,
     MarkState, Marked, MarkedText, Needs, OutlineKey, PageInfo, ShadingMark, SoftMaskInfo,
-    StrokeMark, TilingInfo, glyph_origin,
+    StrokeMark, TextRun, TilingInfo, glyph_origin,
 };
 #[cfg(feature = "dump")]
 pub use dump::dump;

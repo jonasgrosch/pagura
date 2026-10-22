@@ -210,16 +210,24 @@ pub struct GlyphRun<'a> {
     pub font: &'a FontInfo,
     /// The glyphs in show order.
     pub glyphs: &'a [Glyph],
-    /// The glyphs' records for extraction, in show order, when the device
-    /// needs text and the run is page text; empty otherwise. The text
-    /// device fills in their font, marked content and string number.
-    pub text: &'a [pagura_extract::PositionedGlyph],
     /// The rendering mode.
     pub mode: pagura_extract::TextRenderingMode,
     /// How the glyphs are painted; empty for invisible and clip-only text.
     pub paint: GlyphPaint<'a>,
     /// Whether optional content hides the run.
     pub hidden: bool,
+}
+
+/// The page text one string operand shows (9.4.4, 9.10), for devices that
+/// need text.
+#[derive(Debug)]
+pub struct TextRun<'a> {
+    /// The font.
+    pub font: &'a FontInfo,
+    /// The glyphs' records in show order, which the device may take: the
+    /// interpreter discards what is left. Their font index, marked-content
+    /// path and string number are the device's to fill in.
+    pub glyphs: &'a mut Vec<pagura_extract::PositionedGlyph>,
 }
 
 /// An image mark (8.9.5) or a stencil mask painted with the fill paint.
@@ -404,12 +412,24 @@ pub trait Device {
         Ok(())
     }
 
-    /// Glyphs shown by one string operand.
+    /// Glyphs shown by one string operand that paints at least one of
+    /// them; only devices that need outlines receive them.
     ///
     /// # Errors
     ///
     /// As [`Self::begin_page`].
     fn glyphs(&mut self, run: &GlyphRun<'_>) -> Result<()> {
+        Ok(())
+    }
+
+    /// The text of one string operand of page text, after its glyphs; only
+    /// devices that need text receive it, for every string, empty ones
+    /// included.
+    ///
+    /// # Errors
+    ///
+    /// As [`Self::begin_page`].
+    fn text(&mut self, run: TextRun<'_>) -> Result<()> {
         Ok(())
     }
 

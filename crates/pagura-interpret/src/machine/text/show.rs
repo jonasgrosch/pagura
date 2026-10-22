@@ -2,7 +2,7 @@
 //! (9.3.6), and one glyph run per string operand for the device.
 
 use super::{Machine, Scope, checked, text_object, text_translate};
-use crate::device::{Device, Glyph, GlyphPaint, GlyphRun, MarkState, OutlineKey};
+use crate::device::{Device, Glyph, GlyphPaint, GlyphRun, MarkState, OutlineKey, TextRun};
 use crate::fonts::LoadedFont;
 use crate::machine::Text;
 use crate::machine::path::finite;
@@ -182,35 +182,45 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         append(clip, &path, limit)
     }
 
-    /// Emits the glyphs of one string operand: to devices that need text
-    /// always, and to others when the string paints a visible glyph.
+    /// Emits one string operand: its glyphs when it paints one, and its
+    /// text when it is page text and the device needs text. Hidden strings
+    /// reach only devices that need structure.
     fn emit_run(
         &mut self,
         font: &LoadedFont,
-        strings: &Strings,
+        strings: &mut Strings,
         text: bool,
         scope: &mut Scope,
     ) -> Result<()> {
-        let glyphs = strings.placed.as_slice();
-        let paints = glyphs.iter().any(|g| g.outline.is_some());
-        let hidden = if scope.visible {
-            if paints {
-                self.open_lazy()?;
-            }
-            false
-        } else {
-            true
-        };
-        let emit = if hidden {
-            self.needs().structure && (paints || text)
-        } else {
-            paints || text
-        };
-        if !emit {
+        let paints = strings.placed.iter().any(|g| g.outline.is_some());
+        if !scope.visible && !self.needs().structure {
             return Ok(());
         }
+        if paints {
+            self.emit_glyphs(font, &strings.placed, scope)?;
+        }
+        if text {
+            self.device.text(TextRun {
+                font: &font.info,
+                glyphs: &mut strings.text,
+            })?;
+        }
+        Ok(())
+    }
+
+    /// Emits the glyphs of a string that paints.
+    fn emit_glyphs(
+        &mut self,
+        font: &LoadedFont,
+        glyphs: &[Glyph],
+        scope: &mut Scope,
+    ) -> Result<()> {
+        let hidden = !scope.visible;
+        if !hidden {
+            self.open_lazy()?;
+        }
         let mode = pagura_extract::TextRenderingMode::from_low_bits(scope.state.text.mode);
-        let paint = self.needs().paint && paints;
+        let paint = self.needs().paint;
         let fill = (paint && mode.fills()).then(|| {
             let composite = scope.state.fill_composite();
             (self.fill_paint(scope), composite)
@@ -229,7 +239,6 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         self.device.glyphs(&GlyphRun {
             font: &font.info,
             glyphs,
-            text: &strings.text,
             mode,
             paint: GlyphPaint {
                 fill: fill.as_ref().and_then(|(paint, _)| paint.as_ref()),

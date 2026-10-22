@@ -1,7 +1,7 @@
 //! The text device: positioned glyphs, marked content and object
 //! occurrences for `pagura-extract` (ADR 0014, ADR 0025).
 
-use crate::device::{Device, FontInfo, FontKey, GlyphRun, Marked, Needs, PageInfo};
+use crate::device::{Device, FontInfo, FontKey, Marked, Needs, PageInfo, TextRun};
 use pagura_core::{Error, Limits, Meter, ObjectId, Result};
 use pagura_extract::{
     MarkedContent, MarkedSpan, PositionedGlyph, PositionedText, TextFont, TextObject,
@@ -72,7 +72,7 @@ impl TextDevice {
         Ok(())
     }
 
-    fn glyph(&mut self, glyph: &PositionedGlyph, key: FontKey) -> Result<()> {
+    fn glyph(&mut self, mut glyph: PositionedGlyph, key: FontKey) -> Result<()> {
         self.items(self.text.glyphs.len(), "positioned glyph count exceeded")?;
         self.bytes.charge(
             size_of::<PositionedGlyph>() * 2 + glyph.unicode.as_deref().map_or(0, str::len),
@@ -81,7 +81,6 @@ impl TextDevice {
             .fonts
             .get(&key)
             .ok_or(Error::syntax("missing extraction font"))?;
-        let mut glyph = glyph.clone();
         glyph.font = font;
         glyph.marked_content = Arc::clone(&self.path);
         glyph.show = self.show;
@@ -168,13 +167,13 @@ impl Device for TextDevice {
         Ok(())
     }
 
-    fn glyphs(&mut self, run: &GlyphRun<'_>) -> Result<()> {
+    fn text(&mut self, run: TextRun<'_>) -> Result<()> {
         self.show = self
             .show
             .checked_add(1)
             .ok_or(Error::limit("text string count exceeded"))?;
-        for text in run.text {
-            self.glyph(text, run.font.key)?;
+        for glyph in run.glyphs.drain(..) {
+            self.glyph(glyph, run.font.key)?;
         }
         Ok(())
     }
