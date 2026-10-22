@@ -2,7 +2,7 @@
 
 use crate::cases::{Recorded, limits};
 use pagura_core::{Limits, Result, Store};
-use pagura_paint::{FastParams, OverprintMode, RenderRequest, Scratch, prepare};
+use pagura_paint::{OverprintMode, RenderRequest, Scratch, prepare};
 use pagura_raster::{DeviceRect, Pixmap, Rgba8};
 use pagura_reference::{Overprint, Rendering, Request};
 
@@ -30,17 +30,14 @@ pub struct Run {
     pub region: DeviceRect,
     /// Rows per band.
     pub band_height: u32,
-    /// Fast parameters.
-    pub fast: FastParams,
 }
 
 impl Run {
-    /// The whole page, exact, at the default band height.
+    /// The whole page at the default band height.
     pub fn page(recorded: &Recorded) -> Self {
         Self {
             region: recorded.page,
             band_height: RenderRequest::BAND_HEIGHT,
-            fast: FastParams::EXACT,
         }
     }
 
@@ -48,7 +45,6 @@ impl Run {
         let mut request = RenderRequest::new(recorded.transform, recorded.page, self.region);
         request.background = Rgba8::WHITE;
         request.band_height = self.band_height;
-        request.fast = self.fast;
         request.overprint = if recorded.simulate {
             OverprintMode::Simulate
         } else {

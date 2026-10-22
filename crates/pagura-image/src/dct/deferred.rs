@@ -20,8 +20,6 @@ use pagura_core::{Diagnostics, Error, Limits, Result};
 /// How a frame decodes into native planes.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Native {
-    /// Samples kept per block axis.
-    pub(crate) cells: usize,
     /// Whether planes store rows and columns exchanged.
     pub(crate) transposed: bool,
 }
@@ -60,14 +58,8 @@ pub(crate) fn decode_deferred(
         return None;
     }
     let mut scratch = Diagnostics::new(diagnostics.mode());
-    let outcome = super::run(
-        data,
-        color_transform,
-        limits,
-        &mut scratch,
-        (native.cells, Some(native)),
-    )
-    .and_then(|decoder| finish(decoder, color_transform, limits));
+    let outcome = super::run(data, color_transform, limits, &mut scratch, Some(native))
+        .and_then(|decoder| finish(decoder, color_transform, limits));
     let Ok(Finished::Done(result)) = outcome else {
         return None;
     };
@@ -127,7 +119,6 @@ pub(super) fn prepare(
             plane::Shape {
                 stride: c.stride,
                 rows: c.rows,
-                side: frame.cells,
                 transposed: native.transposed,
             },
             if index == 0 { 255 } else { 128 },
@@ -161,10 +152,7 @@ fn gray(frame: &Frame, limits: &Limits) -> Result<DctImage> {
     let Storage::Native(plane) = &frame.components[0].storage else {
         return Err(Error::syntax("missing JPEG component plane"));
     };
-    let (mut width, mut height) = (
-        super::transform::scaled(frame.width, frame.cells),
-        super::transform::scaled(frame.height, frame.cells),
-    );
+    let (mut width, mut height) = (frame.width, frame.height);
     if plane.transposed() {
         (width, height) = (height, width);
     }
@@ -183,7 +171,6 @@ fn gray(frame: &Frame, limits: &Limits) -> Result<DctImage> {
         height: u32::try_from(rows).unwrap_or(u32::MAX),
         components: 1,
         samples,
-        cells: u8::try_from(frame.cells).unwrap_or(8),
     })
 }
 
@@ -195,9 +182,9 @@ fn take_planar(frame: &mut Frame) -> Result<Planar> {
     let geometry = std::array::from_fn(|i| {
         let c = &frame.components[i];
         if transposed {
-            [c.v, c.h, c.rows * frame.cells]
+            [c.v, c.h, c.rows * 8]
         } else {
-            [c.h, c.v, c.stride * frame.cells]
+            [c.h, c.v, c.stride * 8]
         }
     });
     let mut planes = std::array::from_fn(|_| Vec::new());
@@ -211,10 +198,7 @@ fn take_planar(frame: &mut Frame) -> Result<Planar> {
         dirty[i] = plane.take_dirty();
         planes[i] = plane.take_samples();
     }
-    let (width, height) = (
-        super::transform::scaled(frame.width, frame.cells) as usize,
-        super::transform::scaled(frame.height, frame.cells) as usize,
-    );
+    let (width, height) = (frame.width as usize, frame.height as usize);
     let (width, height, maximum) = if transposed {
         (height, width, [frame.max_v, frame.max_h])
     } else {
@@ -228,7 +212,6 @@ fn take_planar(frame: &mut Frame) -> Result<Planar> {
         planes,
         dirty,
         backgrounds,
-        block: frame.cells,
     })
 }
 

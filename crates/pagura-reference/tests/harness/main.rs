@@ -10,11 +10,9 @@
 //! - the reference meets the fixtures' independent oracles;
 //! - pixels, errors (kind, object, position) and reserved charges do not
 //!   depend on band height, region partition or whether store values are
-//!   cached;
-//! - each fast parameter alone, reported against the reference, never
-//!   failing.
+//!   cached.
 //!
-//! These four tests render every case several times, so the default test
+//! These three tests render every case several times, so the default test
 //! run skips them; `tools/check.py` runs them in release on every platform:
 //!
 //! ```text
@@ -39,7 +37,6 @@ mod report;
 use cases::{Case, Recorded, pending, render_cases};
 use compare::{Comparison, parse_ppm, rgb_on_white};
 use pagura_core::{Error, ErrorKind, Limits};
-use pagura_paint::FastParams;
 use pagura_raster::DeviceRect;
 use renderer::{Cache, Run, fresh};
 use report::{Report, Status, describe};
@@ -285,7 +282,7 @@ fn invariance(case: &Case, recorded: &Recorded, probe_charges: bool) -> Status {
         }
     }
     for (number, tiles) in partitions(&case.id, recorded.page).into_iter().enumerate() {
-        if let Some(problem) = partition(recorded, page, &base, &tiles) {
+        if let Some(problem) = partition(recorded, &base, &tiles) {
             problems.push(format!("partition {number}: {problem}"));
         }
     }
@@ -300,12 +297,7 @@ fn invariance(case: &Case, recorded: &Recorded, probe_charges: bool) -> Status {
 }
 
 /// Checks that `tiles` assemble into `base`, or report its error.
-fn partition(
-    recorded: &Recorded,
-    page: Run,
-    base: &Outcome,
-    tiles: &[DeviceRect],
-) -> Option<String> {
+fn partition(recorded: &Recorded, base: &Outcome, tiles: &[DeviceRect]) -> Option<String> {
     let width = usize::try_from(recorded.page.width()).ok()?;
     let mut assembled = vec![0_u8; width * usize::try_from(recorded.page.height()).ok()? * 4];
     let mut errors = Vec::new();
@@ -313,7 +305,6 @@ fn partition(
         let run = Run {
             region: tile,
             band_height: BAND_HEIGHTS[i % BAND_HEIGHTS.len()],
-            ..page
         };
         match outcome(run.render(recorded)) {
             Ok(Outcome::Pixels(pixels)) => {
@@ -420,95 +411,6 @@ fn partitions(id: &str, page: DeviceRect) -> Vec<Vec<DeviceRect>> {
             tiles
         })
         .collect()
-}
-
-/// How a premultiplied RGBA rendering misses a PPM oracle by more than
-/// `tolerance`, if it does.
-fn beyond_oracle(rgba: &[u8], oracle: &[u8], tolerance: u8) -> Option<String> {
-    let (_, _, expected) = parse_ppm(oracle)?;
-    let actual = rgb_on_white(rgba);
-    let (difference, pixel) = actual
-        .iter()
-        .zip(expected)
-        .enumerate()
-        .map(|(i, (&a, &e))| (a.abs_diff(e), i / 3))
-        .max()?;
-    (difference > tolerance).then(|| {
-        format!("differs from the oracle by {difference} (bound {tolerance}) at pixel {pixel}")
-    })
-}
-
-#[test]
-#[ignore = "renders every conformance case several times; tools/check.py runs it in release"]
-fn fast_parameters_alone_against_the_reference() {
-    let provider = pagura_data::Bundled::default();
-    let parameters = [
-        (
-            "glyph_origin_bins",
-            FastParams {
-                glyph_origin_bins: true,
-                ..FastParams::EXACT
-            },
-        ),
-        (
-            "approximate_coverage",
-            FastParams {
-                approximate_coverage: true,
-                ..FastParams::EXACT
-            },
-        ),
-        (
-            "byte_storage",
-            FastParams {
-                byte_storage: true,
-                ..FastParams::EXACT
-            },
-        ),
-        (
-            "reduced_image_decode",
-            FastParams {
-                reduced_image_decode: true,
-                ..FastParams::EXACT
-            },
-        ),
-    ];
-    let mut report = Report::default();
-    for case in render_cases() {
-        let recorded = match record(&case, &provider) {
-            Recording::Ready(recorded) => recorded,
-            Recording::Done(status) => {
-                report.push(&case.id, status);
-                continue;
-            }
-        };
-        let page = Run::page(&recorded);
-        let reference = page.reference(&recorded);
-        let oracle = case
-            .oracle
-            .as_ref()
-            .and_then(|path| std::fs::read(path).ok());
-        for (name, fast) in parameters {
-            let id = format!("{} {name}", case.id);
-            let run = Run { fast, ..page };
-            let rendered = run.render(&recorded);
-            // ADR 0004 §9: each parameter alone stays within the fixture's
-            // competitive tolerance of its oracle.
-            if let (Ok(rendered), Some(oracle)) = (&rendered, &oracle)
-                && let Some(problem) = beyond_oracle(rendered, oracle, case.fast_tolerance)
-            {
-                report.push(format!("{id} oracle"), Status::Failed(problem));
-            }
-            let status = match (rendered, &reference) {
-                (Ok(rendered), Ok(reference)) => {
-                    Status::Compared(Comparison::of(&rendered, reference))
-                }
-                (rendered, reference) => failed(rendered.as_ref().err(), reference.as_ref().err()),
-            };
-            report.push(id, status);
-        }
-    }
-    // Fast parameters are outside the one-level contract: reported only.
-    report.finish("fast");
 }
 
 #[test]

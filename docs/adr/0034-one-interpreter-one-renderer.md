@@ -1,6 +1,7 @@
 # ADR 0034: One interpreter, many devices; one renderer
 
-Status: accepted, 2026-10-21. Supersedes the archived ADR 0033 proposal
+Status: accepted, 2026-10-21; fast parameters retired 2026-10-22 (§6).
+Supersedes the archived ADR 0033 proposal
 (branch `codex/renderer-n16-interval`, `docs/adr/0033-*`). Amends ADR 0004
 (rewritten in the same change), ADR 0012 (the `Store`) and ADR 0016 (render
 budgets), and replaces the crate table of `docs/ARCHITECTURE.md`.
@@ -37,7 +38,7 @@ pagura-color       colour spaces, functions, prepared converters; ICC and CIE
 pagura-image       image streams decoded on request: reduction and region
 pagura-raster      geometry, flattening, stroker, band rasterizer → coverage spans, clips, quantize_unit
 pagura-paint       preparation and reservation, band executor, prepared paint, span kernels, storage formats
-pagura-render      RenderContext, RenderOptions and FastParams, orchestration
+pagura-render      RenderContext, RenderOptions, orchestration
 pagura-appearance  form-field and annotation appearance generation
 pagura-core        values, errors, limits, Meter, Store
 pagura-reference   test only: slow, obviously correct f64 raster and compositor
@@ -115,11 +116,10 @@ transfer or non-Normal blend between, may be skipped for earlier marks. Each
 output pixel is quantized once with `pagura_raster::quantize_unit`, onto a
 background premultiplied once.
 
-The band rasterizer accumulates a mark's edges per band into a dense cell row
-with a touched-cell bitmap and no sorting, with certified integer
-accumulation; cells with conflicting windings go to the exact local resolver;
-glyph quadratics are integrated against the true curve; interiors leave as
-full spans. For the same flattened geometry every exact producer yields the
+The band rasterizer accumulates a mark's edges per band into a dense row of
+f64 cells with a touched-cell bitmap and no sorting (ADR 0004 §4); cells
+with conflicting windings go to the exact local resolver; glyph quadratics
+are integrated against the true curve; interiors leave as full spans. For the same flattened geometry every exact producer yields the
 same coverage bytes. Clips are prepared once per clip state and classified per
 band row into outside, inside and boundary runs; exact joint geometry runs only
 where mark and clip are both partial.
@@ -136,25 +136,15 @@ from its group's whole content and never from the requested region: N16 for
 Normal source-over chains within ADR 0004's bound, F32 under its count bound,
 F64 for every buffer that feeds an amplifying operation (including the
 backdrop of a non-isolated group that contains one) and for buffers with spot
-channels, and U8 only under the byte-storage fast parameter. Spot colourants
-under overprint simulation are extra channels of the buffers, not replays.
+channels. Spot colourants under overprint simulation are extra channels of
+the buffers, not replays.
 
-### 6. Exact by default; four fast parameters
+### 6. Exact rendering
 
-There is one pipeline. Exact rendering, every pixel within one level of its
-exact result (ADR 0004), is the default. Faster rendering keeps the pipeline
-and switches named parameters inside its kernels:
-
-| Parameter | Effect |
-|---|---|
-| `glyph_origin_bins` | glyph coverage reused per origin bin and chord tolerance |
-| `approximate_coverage` | f32 signed cells instead of certified accumulation, and clip coverage multiplied into marks |
-| `byte_storage` | U8 instead of N16/F32 storage for Normal chains |
-| `reduced_image_decode` | drawn-size JPEG cells and JPEG 2000 resolution levels |
-
-`FastParams::EXACT` has all four off and `FastParams::COMPETITIVE` all on;
-each can be switched and tested alone. Fonts load the same way under every
-parameter set, and a fast parameter never routes a page to different code.
+There is one pipeline and one rendering: every pixel within one level of its
+exact result (ADR 0004). Fast parameters were retired on 2026-10-22 by owner
+decision: Exact is the only rendering. A deliberately rough preview profile
+for thumbnails and first paint is on the roadmap.
 
 ### 7. Failure
 
@@ -193,15 +183,15 @@ threads can follow; this pass is single threaded.
   opaque route (and with it ADR 0004's known defect), `lowp`, the narrow
   storage module, the duplicated image samplers, the fragment rasterizer, the
   strip sweep, certified accumulation, signed and approximate cells and
-  rectangle code as separate backends, spot replays, the Competitive exact
-  re-render and double compilation, private quantizers, per-render clip and
-  hull caches and the unbounded glyph hull map. The exact mathematics moves
-  into the band rasterizer and into `pagura-reference`.
+  rectangle code as separate backends, spot replays, the exact re-render and
+  double compilation of the former fast mode, private quantizers, per-render
+  clip and hull caches and the unbounded glyph hull map. The exact
+  mathematics moves into the band rasterizer and into `pagura-reference`.
 - Error order changes from region order to source order over the marks that
   meet the region; errors that depended on a page's tiling no longer do.
 - Text extraction no longer decodes images, parses shadings or converts
   colours.
-- `RenderOptions::accuracy` becomes `RenderOptions::fast`.
+- `RenderOptions::accuracy` is removed: rendering is exact (§6).
 - New devices (SVG, PDF re-emission, hit testing), native band threads and a
   prepared-scene cache are roadmap items (`docs/ROADMAP.md`).
 

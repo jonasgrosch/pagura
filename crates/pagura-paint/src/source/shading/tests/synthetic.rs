@@ -172,7 +172,6 @@ fn context<'a>(
         composite,
         store,
         limits,
-        reduced_image_decode: false,
         region: pagura_raster::DeviceRect {
             x0: 0,
             y0: 0,

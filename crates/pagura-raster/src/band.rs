@@ -27,8 +27,6 @@
 //! only which cells are visited. Rasterization is infallible and does not
 //! allocate: preparation validates, charges and bounds everything.
 
-mod approximate;
-mod binned;
 mod certify;
 mod clip;
 mod coverage;
@@ -42,11 +40,10 @@ mod row;
 mod scan;
 mod shape;
 
-pub use binned::{GlyphMask, GlyphMasks};
 pub use clip::ClipShape;
 pub use coverage::{BandCoverage, Capacity, CoverageRow, Span};
 pub use glyph::GlyphEdges;
-pub use raster::{BandRasterizer, RunGlyph};
+pub use raster::BandRasterizer;
 pub(crate) use shape::RASTER_WORK;
 pub use shape::Shape;
 
@@ -130,21 +127,6 @@ impl Area {
     }
 }
 
-/// How coverage is computed: exactly, or under the `approximate_coverage`
-/// fast parameter with f32 signed cells and clip coverage multiplied into
-/// marks (not within the one-level contract).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub enum Precision {
-    /// The exact covered area of every pixel.
-    #[default]
-    Exact,
-    /// Approximate signed-area cells: curves flattened to 1/64-pixel
-    /// chords, f32 cell sums whose winding is folded without resolving
-    /// overlaps, and clips other than a quadrilateral around a
-    /// quadrilateral multiplied in as their own coverage.
-    Approximate,
-}
-
 /// Stroke adjustment (10.7.5).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum Adjustment {
@@ -155,29 +137,11 @@ pub enum Adjustment {
     Adjusted,
 }
 
-/// Glyph-origin bins: under the `glyph_origin_bins` fast parameter, a glyph's
-/// device origin snaps to a bin and its coverage is reused for every
-/// placement in that bin (not within the one-level contract).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub enum GlyphOrigins {
-    /// Every placement is integrated at its exact origin (ADR 0013).
-    #[default]
-    Exact,
-    /// Origins snap to bins chosen for the device resolution: 1/128 pixel
-    /// horizontally; vertically 1/128 pixel below 108 dpi, 1/16 pixel from
-    /// 108 dpi and 1/64 pixel from 216 dpi. Curves become 0.15-pixel chords
-    /// below 108 dpi and area-balanced 1/4-pixel chords from 108 dpi. Needs
-    /// edges from [`GlyphEdges::binned`].
-    Binned,
-}
-
 /// The options shared by every shape of one render.
 #[derive(Debug, Clone, Copy)]
 pub struct ShapeOptions<'a> {
     /// The pixels and band grid of the render.
     pub area: Area,
-    /// The coverage precision.
-    pub precision: Precision,
     /// Per-fill budgets (`path_segments`, `raster_work`, `mask_sources`).
     pub limits: &'a Limits,
 }
@@ -187,7 +151,6 @@ pub struct ShapeOptions<'a> {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Prep<'a> {
     pub(crate) area: Area,
-    pub(crate) precision: Precision,
     pub(crate) limits: &'a Limits,
     pub(crate) clip: Option<&'a ClipShape>,
 }
@@ -196,7 +159,6 @@ impl<'a> Prep<'a> {
     pub(crate) fn new(options: &ShapeOptions<'a>, clip: Option<&'a ClipShape>) -> Self {
         Self {
             area: options.area,
-            precision: options.precision,
             limits: options.limits,
             clip,
         }
@@ -220,14 +182,6 @@ impl MarkCoverage<'_> {
     /// render-work reservation.
     pub fn work(&self, area: &Area) -> usize {
         match (self.shape, self.clip) {
-            (Some(shape), Some(_)) if shape.clip.is_none() && shape.multiplied.is_none() => {
-                // A clip the shape was not prepared in multiplies every
-                // pixel the shape emits.
-                let b = shape.bounds();
-                shape
-                    .work()
-                    .saturating_add((b.width() as usize + 2).saturating_mul(b.height() as usize))
-            }
             (Some(shape), _) => shape.work(),
             (None, Some(clip)) => clip.work(),
             (None, None) => area.region.height() as usize * 2,

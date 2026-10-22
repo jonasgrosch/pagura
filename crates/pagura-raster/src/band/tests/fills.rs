@@ -39,18 +39,13 @@ fn rectangle_fills_skip_the_polygon_with_its_bytes() {
             Some(vec![(&triangle, FillRule::NonZero)]),
         ];
         for clips in &clips {
-            let clip = clips.as_ref().map(|c| {
-                ClipShape::new(
-                    c,
-                    Transform::IDENTITY,
-                    &public(area, &limits, Precision::Exact),
-                )
-                .unwrap()
-            });
+            let clip = clips
+                .as_ref()
+                .map(|c| ClipShape::new(c, Transform::IDENTITY, &public(area, &limits)).unwrap());
             let prep = options(area, &limits, clip.as_ref());
             let fast = Shape::fill_in(&path, transform, FillRule::NonZero, &prep).unwrap();
             let (polygon, rule) =
-                clip::fill_polygon(&path, transform, FillRule::NonZero, None, &limits).unwrap();
+                clip::fill_polygon(&path, transform, FillRule::NonZero, &limits).unwrap();
             let slow = Shape::polygon(polygon, rule, shape::Winding::Check(0.0), &prep).unwrap();
             let bytes = |s: Option<&Shape>| {
                 s.map_or_else(

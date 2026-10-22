@@ -509,17 +509,16 @@ mod tests {
 
     /// The outline as pieces where every run is proven to tile, else as
     /// components.
-    fn tiled(path: &Path, transform: Transform, stroke: &Stroke) -> (Path, Transform) {
+    fn tiled(path: &Path, transform: Transform, stroke: &Stroke) -> (Path, Transform, Tiling) {
         let limits = Limits::default();
-        let (outline, pen, _) = pieces(
+        pieces(
             path,
             transform,
             stroke,
             &limits,
             (Tiling::Proven, TOLERANCE),
         )
-        .unwrap();
-        (outline, pen)
+        .unwrap()
     }
 
     /// The band rasterizer's stroke, whose pieces, where proven to tile,
@@ -583,9 +582,9 @@ mod tests {
             for (path, stroke) in strokes() {
                 let (components, pen) =
                     crate::stroke_outline(&path, transform, &stroke, &limits).unwrap();
-                let (tiles, tiled_pen) = tiled(&path, transform, &stroke);
+                let (tiles, tiled_pen, tiling) = tiled(&path, transform, &stroke);
                 assert_eq!(pen, tiled_pen);
-                assert!(tiles.boundary.is_some(), "{stroke:?}");
+                assert_eq!(tiling, Tiling::Proven, "{stroke:?}");
                 let difference = largest_difference(&exact(&tiles, pen), &exact(&components, pen));
                 assert!(difference <= 1, "{stroke:?} {transform:?}: {difference}");
             }
@@ -608,8 +607,8 @@ mod tests {
         let limits = Limits::default();
         let (components, _) =
             crate::stroke_outline(path, Transform::IDENTITY, stroke, &limits).unwrap();
-        let (outline, _) = tiled(path, Transform::IDENTITY, stroke);
-        assert!(outline.boundary.is_none(), "{stroke:?}");
+        let (outline, _, tiling) = tiled(path, Transform::IDENTITY, stroke);
+        assert_eq!(tiling, Tiling::Components, "{stroke:?}");
         assert_eq!(outline.segments(), components.segments());
     }
 
@@ -674,8 +673,8 @@ mod tests {
         for path in [separate.finish(), pentagon] {
             let (components, pen) =
                 crate::stroke_outline(&path, Transform::IDENTITY, &stroke, &limits).unwrap();
-            let (tiles, _) = tiled(&path, Transform::IDENTITY, &stroke);
-            assert!(tiles.boundary.is_some());
+            let (_, _, tiling) = tiled(&path, Transform::IDENTITY, &stroke);
+            assert_eq!(tiling, Tiling::Proven);
             let union = exact(&components, pen);
             assert!(largest_difference(&cells(&path, &stroke), &union) <= 1);
         }
@@ -687,10 +686,8 @@ mod tests {
         let limits = Limits::default();
         let (components, pen) =
             crate::stroke_outline(path, Transform::IDENTITY, stroke, &limits).unwrap();
-        let (tiles, _) = tiled(path, Transform::IDENTITY, stroke);
-        tiles
-            .boundary
-            .is_some()
+        let (_, _, tiling) = tiled(path, Transform::IDENTITY, stroke);
+        (tiling == Tiling::Proven)
             .then(|| largest_difference(&cells(path, stroke), &exact(&components, pen)))
     }
 

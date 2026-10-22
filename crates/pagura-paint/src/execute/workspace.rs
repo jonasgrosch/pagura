@@ -26,8 +26,7 @@ use pagura_raster::{BandCoverage, BandRasterizer, DeviceRect};
 pub struct Scratch {
     workspace: Option<Workspace>,
     rasterizer: Option<BandRasterizer>,
-    /// The storage of the shapes and glyph masks of the scene taken back
-    /// last.
+    /// The storage of the shapes of the scene taken back last.
     storage: Storage,
 }
 
@@ -48,23 +47,22 @@ impl Scratch {
         crate::prepare::prepare_in(scene, request, (store, limits), storage)
     }
 
-    /// Takes back the storage of `scene`'s shapes and glyph masks, emptied,
-    /// for the next preparation.
+    /// Takes back the storage of `scene`'s shapes, emptied, for the next
+    /// preparation.
     pub fn recycle(&mut self, scene: PreparedScene) {
-        let (mut shapes, mut masks) = scene.into_storage();
+        let mut shapes = scene.into_storage();
         shapes.clear();
-        masks.clear();
-        self.storage = (shapes, masks);
+        self.storage = shapes;
     }
 
-    /// Bytes held between renders, glyph mask storage aside.
+    /// Bytes held between renders.
     pub fn retained_bytes(&self) -> usize {
         self.workspace.as_ref().map_or(0, Workspace::bytes)
             + self
                 .rasterizer
                 .as_ref()
                 .map_or(0, BandRasterizer::retained_bytes)
-            + self.storage.0.capacity() * size_of::<pagura_raster::Shape>()
+            + self.storage.capacity() * size_of::<pagura_raster::Shape>()
     }
 
     /// The workspace and rasterizer for `plan`.
@@ -95,8 +93,6 @@ pub(crate) enum PageBuffer {
     N16(Vec<[u16; 4]>),
     /// Premultiplied RGBA levels with the background embedded.
     F32(Vec<[f32; 4]>),
-    /// Premultiplied RGBA bytes with the background embedded.
-    U8(Vec<[u8; 4]>),
 }
 
 impl PageBuffer {
@@ -106,7 +102,6 @@ impl PageBuffer {
             Format::F64 => layout.stride() * size_of::<f64>(),
             Format::N16 => size_of::<[u16; 4]>(),
             Format::F32 => size_of::<[f32; 4]>(),
-            Format::U8 => size_of::<[u8; 4]>(),
         }
     }
 
@@ -120,7 +115,6 @@ impl PageBuffer {
                 }
                 (Self::N16(pixels_), Format::N16) => recycle(pixels_, pixels),
                 (Self::F32(pixels_), Format::F32) => recycle(pixels_, pixels),
-                (Self::U8(pixels_), Format::U8) => recycle(pixels_, pixels),
                 _ => false,
             };
             if reused {
@@ -131,7 +125,6 @@ impl PageBuffer {
             Format::F64 => Self::F64(reserve(pixels.saturating_mul(layout.stride()))?),
             Format::N16 => Self::N16(reserve(pixels)?),
             Format::F32 => Self::F32(reserve(pixels)?),
-            Format::U8 => Self::U8(reserve(pixels)?),
         })
     }
 
@@ -162,14 +155,12 @@ impl PageBuffer {
                 Self::F64(values) => fill(values, lo * stride..hi * stride, 0.0),
                 Self::N16(pixels) => fill(pixels, lo..hi, words),
                 Self::F32(pixels) => fill(pixels, lo..hi, levels),
-                Self::U8(pixels) => fill(pixels, lo..hi, background),
             }
         }
         match self {
             Self::F64(values) => grow(values, count * stride, 0.0),
             Self::N16(pixels) => grow(pixels, count, words),
             Self::F32(pixels) => grow(pixels, count, levels),
-            Self::U8(pixels) => grow(pixels, count, background),
         }
     }
 
@@ -178,7 +169,6 @@ impl PageBuffer {
             Self::F64(values) => values.capacity() * size_of::<f64>(),
             Self::N16(words) => words.capacity() * size_of::<[u16; 4]>(),
             Self::F32(levels) => levels.capacity() * size_of::<[f32; 4]>(),
-            Self::U8(bytes) => bytes.capacity() * size_of::<[u8; 4]>(),
         }
     }
 }
@@ -222,13 +212,6 @@ impl Extents {
         }
     }
 
-    /// Records a store at columns `start .. end` of each of `rows`.
-    pub(crate) fn mark_rows(&mut self, rows: std::ops::Range<usize>, start: u32, end: u32) {
-        for extent in self.rows.get_mut(rows).unwrap_or_default() {
-            *extent = [extent[0].min(start), extent[1].max(end)];
-        }
-    }
-
     /// The painted columns of `row`, if any.
     pub(crate) fn get(&self, row: usize) -> Option<(usize, usize)> {
         let [lo, hi] = *self.rows.get(row)?;
@@ -268,8 +251,6 @@ pub(crate) struct Workspace {
     pub(crate) wide: Vec<f64>,
     /// F32 group buffers alive at once.
     pub(crate) levels: Vec<[f32; 4]>,
-    /// U8 group buffers alive at once.
-    pub(crate) bytes: Vec<[u8; 4]>,
     /// Soft-mask values by mask.
     pub(crate) masks: Vec<MaskCache>,
     /// One mark's coverage.
@@ -301,9 +282,6 @@ pub(crate) struct Workspace {
     pub(crate) usage: Usage,
     /// The rows and cells `coverage` was sized for.
     capacity: (usize, usize),
-    /// The byte opacity of every coverage byte under the constant alpha
-    /// with these bits.
-    pub(crate) alpha_table: (Option<u64>, [u8; 256]),
 }
 
 /// The sizes of a workspace, from which preparation charges it.
@@ -355,7 +333,6 @@ impl Sizes {
         let f64s = stack.wide.saturating_add(masks).saturating_add(spans);
         f64s.saturating_mul(size_of::<f64>())
             .saturating_add(stack.levels.saturating_mul(size_of::<[f32; 4]>()))
-            .saturating_add(stack.bytes.saturating_mul(size_of::<[u8; 4]>()))
             .saturating_add(page)
             .saturating_add(coverage)
             .saturating_add(gathered)
@@ -419,8 +396,6 @@ impl Workspace {
         wide.resize(plan.stack.wide, 0.0);
         let mut levels = reserve(plan.stack.levels)?;
         levels.resize(plan.stack.levels, [0.0; 4]);
-        let mut bytes = reserve(plan.stack.bytes)?;
-        bytes.resize(plan.stack.bytes, [0; 4]);
         let mut masks = Vec::new();
         masks
             .try_reserve_exact(plan.masks.len())
@@ -465,7 +440,6 @@ impl Workspace {
             extents: Extents::new(sizes.rows)?,
             wide,
             levels,
-            bytes,
             masks,
             coverage: coverage.unwrap_or_else(|| warm_coverage(sizes)),
             // Only a shading pattern's outline needs a second coverage.
@@ -493,7 +467,6 @@ impl Workspace {
             active,
             usage: Usage::default(),
             capacity: (sizes.rows, pixels),
-            alpha_table: (None, [0; 256]),
         })
     }
 
@@ -515,7 +488,6 @@ impl Workspace {
             + self.initial.capacity();
         f64s * size_of::<f64>()
             + self.levels.capacity() * size_of::<[f32; 4]>()
-            + self.bytes.capacity() * size_of::<[u8; 4]>()
             + self.page.bytes()
             + self.selection.capacity() * 2
             + self.extents.rows.capacity() * size_of::<[u32; 2]>()

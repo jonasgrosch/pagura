@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from round5 import (COMPETITIVE, CONTENT, V8_FLAGS, X86_V3, build_x86_v3, cpu_summary, failure_sink, idle_record, measurement,
+from round5 import (CONTENT, V8_FLAGS, X86_V3, build_x86_v3, cpu_summary, failure_sink, idle_record, measurement,
                     native_simd, parity, remaining_time, sha, subset_300, target_features, verify_runtime_parity,
                     wasm_command)
 from machine_record import probe, snapshot
@@ -150,33 +150,6 @@ class MatrixContracts(unittest.TestCase):
                 self.assertEqual(sample["baseline"]["status"], "runtime-parity-mismatch" if mismatch else "unverified")
                 self.assertEqual(next(item for item in report["runtime_parity"] if item["engine"] == X86_V3)["exact"],
                                  not mismatch)
-
-    def test_competitive_row_passes_its_flags_and_takes_no_part_in_parity(self):
-        from types import SimpleNamespace
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            source = root / "input.pdf"
-            source.write_bytes(b"independent input")
-            case = {"id": "one", "path": str(source), "page": 0, "dpi": 72, "sha256": sha(source.read_bytes())}
-            report = {"cells": [], "document_cells": [], "runtime_parity": [], "agreement": []}
-            bases = {"pagura": ["portable"], COMPETITIVE: ["portable", "--accuracy", "competitive"]}
-            args = SimpleNamespace(seed=17, samples=1, warmups=0, smoke=True, deadline=float("inf"),
-                                   engines=("pagura",), main_jobs={("one", 72)}, control_jobs=set())
-            commands = []
-
-            def run(command, *unused, **kwargs):
-                commands.append(command)
-                return {"status": "unverified", "pages": [{"page": 0, "status": "unverified", "width": 1, "height": 1,
-                        "pixels_sha256": "approximate" if "competitive" in command else "exact"}]}
-
-            with patch("round5.idle_record"), patch("round5.expected_pages", return_value={0: None}), \
-                 patch("round5.measure_document", side_effect=run):
-                measurement(report, [[case]], bases, "node", "wasmtime", root, {"timeout_seconds": 10}, root, {}, args)
-            self.assertIn(["portable", "--accuracy", "competitive", "convert", "--timings", str(source),
-                           str(root / "temporary" / COMPETITIVE), "72", "0", "0"], commands)
-            cell = next(cell for cell in report["document_cells"] if cell["engine"] == COMPETITIVE)
-            self.assertEqual(cell["samples"][0]["baseline"]["status"], "unverified")
-            self.assertFalse(report["runtime_parity"])
 
     def candidates(self):
         cases, metadata, geometry = [], {}, {}

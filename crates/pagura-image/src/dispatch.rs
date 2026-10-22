@@ -96,8 +96,6 @@ pub(crate) fn color_transform(params: Option<&Dictionary>) -> Result<Option<i64>
 pub(crate) struct DctOptions {
     /// Whether native planes are kept where the frame allows.
     pub(crate) deferred: bool,
-    /// Samples kept per eight-sample block axis.
-    pub(crate) cells: u8,
     /// Whether native planes store rows and columns exchanged.
     pub(crate) transposed: bool,
 }
@@ -118,7 +116,6 @@ pub(crate) fn decode_dct(
 ) -> Result<bool> {
     let DctOptions {
         deferred,
-        cells,
         transposed,
     } = options;
     let (width, height, components) = (image.width, image.height, image.components);
@@ -132,17 +129,14 @@ pub(crate) fn decode_dct(
             data,
             transform,
             limits,
-            dct::Native {
-                cells: usize::from(cells),
-                transposed,
-            },
+            dct::Native { transposed },
             diagnostics,
         )
     {
-        native_samples(image, decoded, (components, cells, transposed))?;
+        native_samples(image, decoded, (components, transposed))?;
         return Ok(transposed);
     }
-    let decoded = match dct::decode_cells(data, transform, limits, diagnostics, cells) {
+    let decoded = match dct::decode_with_diagnostics(data, transform, limits, diagnostics) {
         Ok(decoded) => decoded,
         Err(error) => {
             if !data.starts_with(&[0xff, 0xd8])
@@ -163,8 +157,8 @@ pub(crate) fn decode_dct(
             return Err(error);
         }
     };
-    if decoded.width != dct::scaled_length(width, decoded.cells)
-        || decoded.height != dct::scaled_length(height, decoded.cells)
+    if decoded.width != width
+        || decoded.height != height
         || decoded.components != components
         || bits != 8
     {
@@ -173,25 +167,15 @@ pub(crate) fn decode_dct(
         ));
     }
     image.samples = Samples::Bytes(decoded.samples);
-    if decoded.cells < 8 {
-        image.width = decoded.width;
-        image.height = decoded.height;
-        image.reduction = Some(crate::Reduction {
-            cells: decoded.cells,
-            width,
-            height,
-        });
-    }
     Ok(false)
 }
 
 /// Places a deferred decode's samples in `image`, checking them against
-/// the dictionary's dimensions and components, kept as `cells` per block
-/// axis and exchanged when `transposed`.
+/// the dictionary's dimensions and components, exchanged when `transposed`.
 fn native_samples(
     image: &mut DecodedImage,
     decoded: dct::Deferred,
-    (components, cells, transposed): (u8, u8, bool),
+    (components, transposed): (u8, bool),
 ) -> Result<()> {
     let (size, samples) = match decoded {
         dct::Deferred::Planar(planar) => (
@@ -207,27 +191,18 @@ fn native_samples(
             Samples::Bytes(image.samples),
         ),
     };
-    let declared = (image.width, image.height);
-    let scaled = (
-        dct::scaled_length(declared.0, cells),
-        dct::scaled_length(declared.1, cells),
-    );
-    let swap = |(a, b): (u32, u32)| if transposed { (b, a) } else { (a, b) };
-    let (scaled, declared) = (swap(scaled), swap(declared));
-    if size != (scaled.0 as usize, scaled.1 as usize, components) {
+    let declared = if transposed {
+        (image.height, image.width)
+    } else {
+        (image.width, image.height)
+    };
+    if size != (declared.0 as usize, declared.1 as usize, components) {
         return Err(Error::syntax(
             "JPEG metadata disagrees with image dictionary",
         ));
     }
     image.samples = samples;
-    (image.width, image.height) = scaled;
-    if cells < 8 {
-        image.reduction = Some(crate::Reduction {
-            cells,
-            width: declared.0,
-            height: declared.1,
-        });
-    }
+    (image.width, image.height) = declared;
     Ok(())
 }
 

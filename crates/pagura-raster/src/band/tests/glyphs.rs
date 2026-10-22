@@ -79,13 +79,13 @@ fn translated_placements_match_translated_vertices() {
                         ClipShape::new(
                             &[(&crop, FillRule::NonZero)],
                             Transform::IDENTITY,
-                            &public(area, &limits, Precision::Exact),
+                            &public(area, &limits),
                         )
                         .unwrap()
                     });
                     let prep = options(area, &limits, clip.as_ref());
-                    let fast = Shape::glyph_in(&edges, origin, GlyphOrigins::Exact, &prep).unwrap();
-                    let slow = glyph::place_general(&edges, origin, &prep);
+                    let fast = Shape::glyph_in(&edges, origin, &prep).unwrap();
+                    let slow = glyph::general(&edges, origin, &prep);
                     let (fast, slow) = (fast.unwrap(), slow.unwrap().unwrap());
                     if !clipped {
                         assert!(matches!(fast.body, Body::Glyph(_) | Body::Rect(_)));
@@ -95,8 +95,7 @@ fn translated_placements_match_translated_vertices() {
                     assert_eq!(a, b, "origin {origin:?}");
                     assert!(work <= fast.work());
                 }
-                let prepare =
-                    |o: &Prep<'_>| Shape::glyph_in(&edges, origin, GlyphOrigins::Exact, o).unwrap();
+                let prepare = |o: &Prep<'_>| Shape::glyph_in(&edges, origin, o).unwrap();
                 invariant(&area, &prepare, None);
             }
         }
@@ -104,113 +103,54 @@ fn translated_placements_match_translated_vertices() {
 }
 
 /// A run's glyphs merged at once give each glyph's own bytes, in chunks
-/// when the run storage fills, within the glyphs' work; binned masks give
-/// the bytes of their shapes.
+/// when the run storage fills, within the glyphs' work.
 #[test]
 fn runs_merge_the_rows_of_glyphs_that_share_no_pixel() {
     let limits = Limits::default();
     let area = area(0, 0, 2000, 40, 16);
     let outlines = outlines();
-    for origins in [GlyphOrigins::Exact, GlyphOrigins::Binned] {
-        let mut placed = Vec::new();
-        // The render's placements and formed levels.
-        let (mut placements, mut formed) = (Vec::new(), Vec::new());
-        let scratch = &mut super::super::binned::Scratch::default();
-        for (i, x) in (0..700).map(|i| (i, 1.3 + f64::from(i) * 2.71)) {
-            let outline = &outlines[i as usize % outlines.len()];
-            let linear = [0.0021, 0.0, 0.0, -0.0023];
-            let edges = Arc::new(match origins {
-                GlyphOrigins::Exact => GlyphEdges::new(outline, linear, &limits).unwrap(),
-                GlyphOrigins::Binned => GlyphEdges::binned(outline, linear, 1.0, &limits).unwrap(),
-            });
-            let origin = Point::new(x, 20.37 + f64::from(i % 3) * 7.0);
-            let prep = options(area, &limits, None);
-            let mask = glyph::mask(
-                &edges,
-                origin,
-                &prep,
-                (&mut placements, &mut formed, scratch),
-            )
-            .unwrap()
-            .then(|| placements.len() - 1);
-            if let Some(shape) = glyph::place(&edges, origin, origins, &prep).unwrap() {
-                placed.push((shape, mask));
-            }
-        }
-        assert_eq!(
-            placed.iter().all(|(_, mask)| mask.is_some()),
-            origins == GlyphOrigins::Binned
-        );
-        // Keep glyphs whose pixels another kept glyph does not reach.
-        let mut kept: Vec<&(Shape, Option<usize>)> = Vec::new();
-        for glyph in &placed {
-            let b = glyph.0.bounds();
-            if kept.iter().all(|k| k.0.bounds().intersect(&b).is_empty()) {
-                kept.push(glyph);
-            }
-        }
-        assert!(kept.len() > 300, "{}", kept.len());
-        let mut expected = vec![0_u8; 2000 * 40];
-        for (shape, _) in &kept {
-            for (e, v) in expected.iter_mut().zip(raster(&area, Some(shape), None).0) {
-                *e = (*e).max(v);
-            }
-        }
-        // Every other mask goes in as its shape.
-        let run: Vec<RunGlyph<'_>> = kept
-            .iter()
-            .enumerate()
-            .map(|(i, (shape, mask))| match mask {
-                Some(mask) if i % 2 == 0 => RunGlyph::Mask(placements[*mask].view(&formed)),
-                _ => RunGlyph::Shape(shape),
-            })
-            .collect();
-        let mut bytes = Meter::new(usize::MAX, "bytes");
-        let mut raster = BandRasterizer::new(area, &mut bytes).unwrap();
-        let mut band = BandCoverage::with_capacity(Capacity::band(&area), &mut bytes).unwrap();
-        let mut got = vec![0_u8; 2000 * 40];
-        let mut alone = vec![0_u8; 2000 * 40];
-        for b in area.bands() {
-            let mut rest = &run[..];
-            while !rest.is_empty() {
-                let taken = raster.rasterize_run(rest, None, b, &mut band);
-                assert!(taken >= 1);
-                rest = &rest[taken..];
-                add(&band, &mut got);
-            }
-            for glyph in &run {
-                if let RunGlyph::Mask(mask) = glyph {
-                    raster.rasterize_mask(*mask, b, &mut band);
-                    add(&band, &mut alone);
-                }
-            }
-        }
-        assert_eq!(got, expected);
-        let masks: usize = kept
-            .iter()
-            .filter_map(|(_, m)| *m)
-            .map(|m| placements[m].view(&formed).work())
-            .sum();
-        let total: usize = kept.iter().map(|(s, _)| s.work()).sum();
-        assert!(raster.work_done() <= total + masks);
-        if origins == GlyphOrigins::Binned {
-            for (i, (got, expected)) in alone.iter().zip(&expected).enumerate() {
-                let row = i / 2000;
-                let column = i % 2000;
-                let by_mask = run.iter().any(|g| match g {
-                    RunGlyph::Mask(m) => {
-                        let b = m.bounds();
-                        (b.y0..b.y1).contains(&(row as u32))
-                            && (b.x0..b.x1).contains(&(column as u32))
-                    }
-                    RunGlyph::Shape(_) => false,
-                });
-                if by_mask {
-                    assert_eq!(got, expected);
-                }
-            }
+    let mut placed = Vec::new();
+    for (i, x) in (0..700).map(|i| (i, 1.3 + f64::from(i) * 2.71)) {
+        let outline = &outlines[i as usize % outlines.len()];
+        let linear = [0.0021, 0.0, 0.0, -0.0023];
+        let edges = Arc::new(GlyphEdges::new(outline, linear, &limits).unwrap());
+        let origin = Point::new(x, 20.37 + f64::from(i % 3) * 7.0);
+        let prep = options(area, &limits, None);
+        if let Some(shape) = glyph::place(&edges, origin, &prep).unwrap() {
+            placed.push(shape);
         }
     }
+    // Keep glyphs whose pixels another kept glyph does not reach.
+    let mut kept: Vec<&Shape> = Vec::new();
+    for glyph in &placed {
+        let b = glyph.bounds();
+        if kept.iter().all(|k| k.bounds().intersect(&b).is_empty()) {
+            kept.push(glyph);
+        }
+    }
+    assert!(kept.len() > 300, "{}", kept.len());
+    let mut expected = vec![0_u8; 2000 * 40];
+    for shape in &kept {
+        for (e, v) in expected.iter_mut().zip(raster(&area, Some(shape), None).0) {
+            *e = (*e).max(v);
+        }
+    }
+    let mut bytes = Meter::new(usize::MAX, "bytes");
+    let mut raster = BandRasterizer::new(area, &mut bytes).unwrap();
+    let mut band = BandCoverage::with_capacity(Capacity::band(&area), &mut bytes).unwrap();
+    let mut got = vec![0_u8; 2000 * 40];
+    for b in area.bands() {
+        let mut rest = &kept[..];
+        while !rest.is_empty() {
+            let taken = raster.rasterize_run(rest, None, b, &mut band);
+            assert!(taken >= 1);
+            rest = &rest[taken..];
+            add(&band, &mut got);
+        }
+    }
+    assert_eq!(got, expected);
+    let total: usize = kept.iter().map(|s| s.work()).sum();
+    assert!(raster.work_done() <= total);
 }
 
 /// Adds the spans of `band`, in order, to `page` by maximum.

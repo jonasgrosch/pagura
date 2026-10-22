@@ -383,27 +383,3 @@ fn f32_stays_within_one_level_inside_its_count_bound() {
     }
     assert!(worst < 1.0, "{worst}");
 }
-
-#[test]
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "test values scaled into their ranges"
-)]
-fn u8_rounds_each_store_once() {
-    let mut random = Lcg(37);
-    for _ in 0..1000 {
-        let background = (random.unit() * 255.0).round() as u8;
-        let mut bytes = [[background; 4]];
-        let (color, alpha) = (random.unit(), random.unit());
-        store_u8(
-            &mut bytes,
-            &Colors::Constant(&[color, color, color]),
-            &[alpha],
-        );
-        let a = f64::from(pagura_raster::quantize_unit(alpha)) / 255.0;
-        let c = f64::from(pagura_raster::quantize_unit(color));
-        let exact = (1.0 - a) * f64::from(background) + a * c;
-        assert!((f64::from(bytes[0][0]) - exact).abs() <= 0.5 + 1e-9);
-    }
-}

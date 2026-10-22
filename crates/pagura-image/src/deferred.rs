@@ -18,45 +18,6 @@ pub use colour::ycbcr;
 pub use packed::Packed;
 pub use planar::Planar;
 
-/// How an image's samples may be represented after decoding.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub(crate) enum SampleLayout {
-    /// Interleaved samples, byte for byte as the decoders define them.
-    #[default]
-    Interleaved,
-    /// Baseline YCbCr JPEG frames as [`Samples::Planar`](crate::Samples::Planar)
-    /// and one-bit, one-component samples as
-    /// [`Samples::Packed`](crate::Samples::Packed); other images are
-    /// interleaved.
-    Deferred,
-    /// Interleaved samples, with an eight-bit DCTDecode image reconstructed
-    /// at this many cells per eight-sample block axis (1, 2, 3, 4 or 6; see
-    /// [`dct::decode_cells`](crate::dct::decode_cells)) and its
-    /// [`Reduction`](crate::Reduction) recorded: an approximate path for
-    /// images drawn smaller than their samples (ADR 0004). Other images,
-    /// and eight cells, are interleaved exactly.
-    Cells(u8),
-    /// As [`Self::Deferred`], with an eight-bit baseline JPEG reconstructed
-    /// at this many cells per block axis as [`Self::Cells`] reconstructs it,
-    /// in native planes of cells.
-    DeferredCells(u8),
-}
-
-impl SampleLayout {
-    /// JPEG samples kept per eight-sample block axis in this layout.
-    pub(crate) fn cells(self) -> u8 {
-        match self {
-            Self::Cells(cells) | Self::DeferredCells(cells) => cells,
-            Self::Interleaved | Self::Deferred => 8,
-        }
-    }
-
-    /// Whether native layouts are kept where they apply.
-    pub(crate) fn deferred(self) -> bool {
-        matches!(self, Self::Deferred | Self::DeferredCells(_))
-    }
-}
-
 /// Heap bytes retained by `samples`, including padded component planes,
 /// block flags and row padding.
 #[must_use]

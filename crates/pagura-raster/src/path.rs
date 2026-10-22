@@ -2,7 +2,7 @@
 
 use crate::{Point, Transform};
 use pagura_core::{Limits, Rect, Result};
-use std::{fmt, sync::Arc};
+use std::fmt;
 
 /// One path construction step (8.5.2). Exhaustive: every PDF path
 /// construction operator reduces to these four (`v`, `y` and `re` included).
@@ -53,10 +53,6 @@ pub enum FillRegion {
 pub struct Path {
     segments: Vec<Segment>,
     fill_certificates: [Option<FillRegion>; 2],
-    // A stroke outline's proven equivalent without overlapping parts: the two
-    // boundaries of a convex closed run, or pieces that meet without
-    // overlapping. Approximate cells integrate it in place of the outline.
-    pub(crate) boundary: Option<Arc<Path>>,
 }
 
 impl Path {
@@ -131,7 +127,6 @@ impl Path {
         Self {
             segments,
             fill_certificates: [None; 2],
-            boundary: None,
         }
     }
 }
@@ -305,7 +300,6 @@ impl PathBuilder {
         Path {
             segments: std::mem::take(&mut self.segments),
             fill_certificates: [None; 2],
-            boundary: None,
         }
     }
 }

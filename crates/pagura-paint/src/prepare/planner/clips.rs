@@ -193,7 +193,6 @@ impl<B: Backend> Planner<'_, B> {
     ) -> Result<Clipping> {
         let options = ShapeOptions {
             area: self.area,
-            precision: self.precision,
             limits: self.limits,
         };
         let chain = self.chain(scope, clip, extra)?;

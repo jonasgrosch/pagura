@@ -22,7 +22,7 @@ use crate::plan::{MAX_BAND_HEIGHT, Plan};
 use crate::request::RenderRequest;
 use pagura_core::{Diagnostic, Error, Limits, Meter, Result, Store};
 use pagura_interpret::Scene;
-use pagura_raster::{Area, BandRasterizer, DeviceRect, GlyphOrigins, Pixmap};
+use pagura_raster::{Area, BandRasterizer, DeviceRect, Pixmap};
 
 /// A scene prepared for one request: every mark that meets the region
 /// culled, validated, reserved and binned to bands, with its coverage
@@ -146,21 +146,11 @@ pub(crate) fn prepare_in(
     (store, limits): (&Store, &Limits),
     storage: Storage,
 ) -> Result<PreparedScene> {
-    let origins = if request.fast.glyph_origin_bins {
-        GlyphOrigins::Binned
-    } else {
-        GlyphOrigins::Exact
-    };
     prepare_with(
         scene,
         request,
         (store, limits),
-        Raster::new(store, limits, origins)
-            .with_scale({
-                let t = request.transform;
-                (t.a * t.d - t.b * t.c).abs().sqrt()
-            })
-            .with_storage(storage),
+        Raster::new(store, limits).with_storage(storage),
     )
 }
 
@@ -257,7 +247,7 @@ impl PreparedScene {
         })
     }
 
-    /// The storage of its shapes and glyph masks, for the next preparation.
+    /// The storage of its shapes, for the next preparation.
     pub(crate) fn into_storage(self) -> Storage {
         self.producer.into_storage()
     }

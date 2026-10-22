@@ -398,38 +398,3 @@ fn intent(document: &Document, dict: &Dictionary) -> Result<Option<Value>> {
         .filter(|value| !value.is_null())
         .cloned())
 }
-
-/// Whether an image XObject may be reconstructed near its drawn size under
-/// the `reduced_image_decode` fast parameter: an opaque DeviceGray or
-/// DeviceRGB `DCTDecode` image without `Mask`, `SMask` or `Decode` (ADR 0004
-/// §9).
-pub(crate) fn drawn(document: &Document, dictionary: &Dictionary) -> bool {
-    let resolve = |key: &[u8]| {
-        dictionary
-            .get(key)
-            .and_then(|value| document.resolve(value).ok())
-            .filter(|value| !value.is_null())
-    };
-    let terminal = match resolve(b"Filter") {
-        Some(Value::Array(filters)) => filters.last().and_then(|v| document.resolve(v).ok()),
-        filter => filter,
-    };
-    let name_is = |value: Option<&Value>, names: &[&[u8]]| {
-        value
-            .and_then(Value::as_name)
-            .is_some_and(|n| names.contains(&n.as_bytes()))
-    };
-    let dimension = |key: &[u8]| {
-        resolve(key)
-            .and_then(Value::as_integer)
-            .is_some_and(|n| n > 0 && u32::try_from(n).is_ok())
-    };
-    name_is(terminal, &[b"DCTDecode"])
-        && name_is(resolve(b"ColorSpace"), &[b"DeviceGray", b"DeviceRGB"])
-        && resolve(b"ImageMask").and_then(Value::as_bool) != Some(true)
-        && [b"Mask".as_slice(), b"SMask", b"Decode"]
-            .iter()
-            .all(|key| resolve(key).is_none())
-        && dimension(b"Width")
-        && dimension(b"Height")
-}
