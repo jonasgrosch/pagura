@@ -2,6 +2,7 @@
 //! receive: paints, composite states and pens, built once per change.
 
 use crate::fonts::LoadedFont;
+use crate::hash::FastMap;
 use crate::model::{BlendMode, Clip, Color, Composite, MaskId, Overprint, Paint, Pen, Transfer};
 use pagura_color::{ColorSpace, Components, Conversion, Function, Intent};
 use pagura_raster::{Adjustment, Stroke, Transform};
@@ -37,6 +38,41 @@ impl Ink {
                 components,
             })),
         }
+    }
+}
+
+/// The most solid paints one interpretation keeps for reuse.
+const MAX_SOLID_PAINTS: usize = 4096;
+
+/// Solid paints by colour space and components (up to four), so content
+/// that sets the same colours again shares one paint per colour instead of
+/// building one per operator.
+#[derive(Debug, Default)]
+pub(crate) struct SolidPaints(FastMap<(usize, usize, [u64; 4]), Arc<Paint>>);
+
+impl SolidPaints {
+    /// The colour `values` in `space`, as [`Ink::solid`] builds it.
+    pub(crate) fn ink(&mut self, space: &Arc<ColorSpace>, values: &[f64]) -> Ink {
+        if values.len() > 4 {
+            return Ink::solid(space, Components::from_slice(values));
+        }
+        let mut bits = [0; 4];
+        for (bits, value) in bits.iter_mut().zip(values) {
+            *bits = value.to_bits();
+        }
+        // A cached paint holds its space, so the address names one space.
+        let key = (Arc::as_ptr(space).addr(), values.len(), bits);
+        if let Some(paint) = self.0.get(&key) {
+            return Ink {
+                space: Arc::clone(space),
+                paint: Arc::clone(paint),
+            };
+        }
+        let ink = Ink::solid(space, Components::from_slice(values));
+        if self.0.len() < MAX_SOLID_PAINTS {
+            self.0.insert(key, Arc::clone(&ink.paint));
+        }
+        ink
     }
 }
 

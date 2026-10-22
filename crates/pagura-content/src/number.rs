@@ -3,7 +3,7 @@
 //! references, so an integer is read without looking at the tokens after
 //! it; `N G R` is recognised at its `R` instead.
 
-use pagura_core::syntax::is_regular;
+use crate::token::is_regular;
 use pagura_core::{Error, Position, Result};
 
 /// The most digit and point bytes, sign excluded, whose value is computed
@@ -38,26 +38,26 @@ pub(crate) fn read(data: &[u8], start: usize) -> Result<(Number, usize)> {
     let token = data.get(start..).unwrap_or_default();
     let negative = token.first() == Some(&b'-');
     let sign = usize::from(negative || token.first() == Some(&b'+'));
-    let (mut mantissa, mut decimals, mut dots) = (0_i64, 0_usize, 0_usize);
-    let (mut length, mut valid) = (sign, true);
-    for &byte in token.get(sign..).unwrap_or_default() {
-        match byte {
-            b'0'..=b'9' => {
-                if length - sign < SHORT_DIGITS {
-                    mantissa = mantissa * 10 + i64::from(byte - b'0');
-                }
-                decimals += dots;
-            }
-            b'.' => dots += 1,
-            _ if is_regular(byte) => valid = false,
-            _ => break,
-        }
-        length += 1;
-    }
-    let digits = length - sign;
-    if !valid || digits == dots || dots > 1 {
+    // The mantissa is meaningful only for short numbers, whose at most
+    // SHORT_DIGITS digits stay below 10^15; longer ones wrap harmlessly and
+    // are converted from their text.
+    let mut mantissa = 0_i64;
+    let mut index = sign;
+    let whole = digits(token, &mut index, &mut mantissa);
+    let (dots, decimals) = if token.get(index) == Some(&b'.') {
+        index += 1;
+        (1, digits(token, &mut index, &mut mantissa))
+    } else {
+        (0, 0)
+    };
+    // The token is the run of regular bytes: anything regular after the
+    // digits (a second point, a letter, a sign) makes it invalid, as does a
+    // token without digits.
+    if whole + decimals == 0 || token.get(index).copied().is_some_and(is_regular) {
         return Err(Error::syntax("invalid number").at(Position::Buffer(start)));
     }
+    let length = index;
+    let digits = length - sign;
     let end = start + length;
     if digits <= SHORT_DIGITS {
         let number = if dots == 1 {
@@ -84,6 +84,21 @@ pub(crate) fn read(data: &[u8], start: usize) -> Result<(Number, usize)> {
             .map_err(|_| Error::syntax("integer out of range").at(Position::Buffer(end)))?
     };
     Ok((number, end))
+}
+
+/// Reads the run of digits at `index` into `mantissa`, returning their
+/// count.
+fn digits(token: &[u8], index: &mut usize, mantissa: &mut i64) -> usize {
+    let first = *index;
+    while let Some(digit) = token
+        .get(*index)
+        .map(|byte| byte.wrapping_sub(b'0'))
+        .filter(|&digit| digit <= 9)
+    {
+        *mantissa = mantissa.wrapping_mul(10).wrapping_add(i64::from(digit));
+        *index += 1;
+    }
+    *index - first
 }
 
 #[cfg(test)]

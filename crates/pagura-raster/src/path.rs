@@ -247,6 +247,13 @@ impl PathBuilder {
     /// Appends a closed polygon subpath through `points` in order. Adds
     /// nothing for no points.
     pub fn polygon(&mut self, points: impl IntoIterator<Item = Point>) -> &mut Self {
+        let points = points.into_iter();
+        // Room for the points and the close at once (a rectangle is five
+        // segments, past the first growth step).
+        let (count, _) = points.size_hint();
+        if count > 0 {
+            self.segments.reserve(count.saturating_add(1));
+        }
         self.polyline(points).close()
     }
 

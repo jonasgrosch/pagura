@@ -52,7 +52,11 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                     components: std::borrow::Cow::Borrowed(&*operands.components),
                     pattern: None,
                 };
-                Some(super::color::set(space, &without_name)?)
+                Some(super::color::set(
+                    space,
+                    &without_name,
+                    &mut self.session.solids,
+                )?)
             }
             _ if !operands.components.is_empty() => {
                 if base.is_none_or(|s| s.components() != operands.components.len()) {

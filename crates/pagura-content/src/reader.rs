@@ -122,7 +122,7 @@ impl<'c> Reader<'c> {
                 .inline_header(offset, tokens)
                 .map_err(|error| content.locate(error, offset))?;
             return Ok(Some(Operation {
-                op: Op::InlineImage(dictionary),
+                op: Op::InlineImage(Box::new(dictionary)),
                 offset,
             }));
         }

@@ -81,10 +81,13 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
             Op::ShowText(bytes) => self.show(&bytes, resources, scope)?,
             Op::ShowTextAdjusted(items) => {
                 text_object(scope)?;
+                let mut font = None;
                 for item in items {
                     match item {
                         TextItem::Adjust(amount) => text_adjust(scope, amount)?,
-                        TextItem::Show(bytes) => self.show(bytes, resources, scope)?,
+                        TextItem::Show(bytes) => {
+                            self.show_with(&mut font, bytes, resources, scope)?;
+                        }
                     }
                 }
             }

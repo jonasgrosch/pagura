@@ -1,11 +1,11 @@
 //! Colour operators (8.6.8, Table 73). Devices without paint resolve no
 //! colour space.
 
-use super::state::Ink;
+use super::state::{Ink, SolidPaints};
 use super::{Machine, Scope};
 use crate::device::Device;
 use crate::repairs;
-use pagura_color::{ColorSpace, Components};
+use pagura_color::ColorSpace;
 use pagura_content::{ColorOperands, Op};
 use pagura_core::{Dictionary, Error, Result};
 use std::sync::Arc;
@@ -15,6 +15,24 @@ use std::sync::Arc;
 pub(super) enum Target {
     Fill,
     Stroke,
+}
+
+/// The device colour families of `g`, `rg` and `k`.
+#[derive(Debug, Clone, Copy)]
+enum Family {
+    Gray,
+    Rgb,
+    Cmyk,
+}
+
+impl Family {
+    fn name(self) -> &'static [u8] {
+        match self {
+            Self::Gray => b"DeviceGray",
+            Self::Rgb => b"DeviceRGB",
+            Self::Cmyk => b"DeviceCMYK",
+        }
+    }
 }
 
 impl<D: Device + ?Sized> Machine<'_, '_, D> {
@@ -41,18 +59,18 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                 Ink::initial(&self.session.colors.named(resources, name.as_bytes())?)
             }
             Op::StrokeGray(gray) | Op::FillGray(gray) => {
-                self.device_color(resources, b"DeviceGray", &[gray])?
+                self.device_color(resources, Family::Gray, &[gray], scope)?
             }
             Op::StrokeRgb(rgb) | Op::FillRgb(rgb) => {
-                self.device_color(resources, b"DeviceRGB", &rgb)?
+                self.device_color(resources, Family::Rgb, &rgb, scope)?
             }
             Op::StrokeCmyk(cmyk) | Op::FillCmyk(cmyk) => {
-                self.device_color(resources, b"DeviceCMYK", &cmyk)?
+                self.device_color(resources, Family::Cmyk, &cmyk, scope)?
             }
             Op::StrokeColor(operands) | Op::FillColor(operands) => {
                 let space = current(scope, target)?;
                 self.simple_operator(&space, &operands)?;
-                set(&space, &operands)?
+                set(&space, &operands, &mut self.session.solids)?
             }
             Op::StrokeColorN(operands) | Op::FillColorN(operands) => {
                 let space = current(scope, target)?;
@@ -60,7 +78,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
                     let paint = self.select_pattern(base.as_ref(), &operands, resources, scope)?;
                     Ink { space, paint }
                 } else {
-                    set(&space, &operands)?
+                    set(&space, &operands, &mut self.session.solids)?
                 }
             }
             _ => return Err(Error::syntax("invalid colour operator")),
@@ -72,12 +90,39 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         Ok(())
     }
 
-    fn device_color(&mut self, resources: &Dictionary, name: &[u8], values: &[f64]) -> Result<Ink> {
-        let space = self.session.colors.named(resources, name)?;
+    /// A colour of the device space `family` sets (`g`, `rg`, `k`), which a
+    /// default colour space of `resources` may replace (8.6.5.6). The space
+    /// is resolved once per content sequence, whose resources are fixed.
+    fn device_color(
+        &mut self,
+        resources: &Dictionary,
+        family: Family,
+        values: &[f64],
+        scope: &Scope,
+    ) -> Result<Ink> {
+        let serial = scope.initial.as_ref().map(|(_, serial)| *serial);
+        let slot = family as usize;
+        let cached = self
+            .session
+            .device_spaces
+            .get(slot)
+            .and_then(Option::as_ref)
+            .filter(|(at, _)| Some(*at) == serial)
+            .map(|(_, space)| Arc::clone(space));
+        let space = if let Some(space) = cached {
+            space
+        } else {
+            let space = self.session.colors.named(resources, family.name())?;
+            if let (Some(serial), Some(entry)) = (serial, self.session.device_spaces.get_mut(slot))
+            {
+                *entry = Some((serial, Arc::clone(&space)));
+            }
+            space
+        };
         if values.len() != space.components() {
             return Err(Error::syntax("wrong colour component count"));
         }
-        Ok(Ink::solid(&space, Components::from_slice(values)))
+        Ok(self.session.solids.ink(&space, values))
     }
 
     /// Table 73: `SC` and `sc` do not select Separation, DeviceN or ICCBased
@@ -107,7 +152,11 @@ fn current(scope: &Scope, target: Target) -> Result<Arc<ColorSpace>> {
 }
 
 /// A colour in a non-pattern `space` from numeric operands.
-pub(super) fn set(space: &Arc<ColorSpace>, operands: &ColorOperands<'_>) -> Result<Ink> {
+pub(super) fn set(
+    space: &Arc<ColorSpace>,
+    operands: &ColorOperands<'_>,
+    solids: &mut SolidPaints,
+) -> Result<Ink> {
     if matches!(space.as_ref(), ColorSpace::Pattern(_)) {
         return Err(Error::syntax("pattern requires SCN or scn"));
     }
@@ -117,8 +166,5 @@ pub(super) fn set(space: &Arc<ColorSpace>, operands: &ColorOperands<'_>) -> Resu
     if operands.pattern.is_some() {
         return Err(Error::syntax("colour component must be a number"));
     }
-    Ok(Ink::solid(
-        space,
-        Components::from_slice(&operands.components),
-    ))
+    Ok(solids.ink(space, &operands.components))
 }

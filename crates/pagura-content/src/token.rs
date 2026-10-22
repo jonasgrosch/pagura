@@ -5,13 +5,48 @@
 //! a name escape, a length budget) yields `None` and is read by the object
 //! parser instead, so errors and repairs stay the parser's.
 
-use pagura_core::syntax::{hex_digit, is_regular, is_whitespace};
+use pagura_core::syntax::{hex_digit, is_delimiter, is_whitespace};
+
+/// A byte's class: white space, delimiter, or regular (7.2.3).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Class {
+    Regular,
+    White,
+    Delimiter,
+}
+
+/// The class of every byte, one lookup in place of a chain of tests.
+const CLASSES: [Class; 256] = {
+    let mut classes = [Class::Regular; 256];
+    let mut byte = 0;
+    while byte < 256 {
+        // In range: the loop stops at 255.
+        #[expect(clippy::cast_possible_truncation, reason = "byte < 256")]
+        let value = byte as u8;
+        if is_whitespace(value) {
+            classes[byte] = Class::White;
+        } else if is_delimiter(value) {
+            classes[byte] = Class::Delimiter;
+        }
+        byte += 1;
+    }
+    classes
+};
+
+/// Whether `byte` is regular: neither white space nor a delimiter.
+pub(crate) fn is_regular(byte: u8) -> bool {
+    matches!(CLASSES[usize::from(byte)], Class::Regular)
+}
+
+fn is_white(byte: u8) -> bool {
+    matches!(CLASSES[usize::from(byte)], Class::White)
+}
 
 /// The offset of the first byte at or after `offset` that is neither white
 /// space nor in a comment.
 pub(crate) fn skip(data: &[u8], mut offset: usize) -> usize {
     loop {
-        while data.get(offset).is_some_and(|&b| is_whitespace(b)) {
+        while data.get(offset).copied().is_some_and(is_white) {
             offset += 1;
         }
         if data.get(offset) != Some(&b'%') {

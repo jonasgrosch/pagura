@@ -53,6 +53,11 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
 
     /// Opens every pending implicit group, outermost first.
     pub(crate) fn open_lazy(&mut self) -> Result<()> {
+        // Pending groups are the innermost ones: when the innermost is open,
+        // every group is.
+        if self.lazy.last().is_none_or(|lazy| lazy.opened) {
+            return Ok(());
+        }
         let opaque = Arc::clone(&self.session.opaque);
         for lazy in self.lazy.iter_mut().filter(|lazy| !lazy.opened) {
             self.device.begin_group(&GroupInfo {

@@ -38,7 +38,7 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
                     resource(document, resources, b"Properties", name.as_bytes())?
                 }
                 Properties::Inline(dictionary) => {
-                    inline = Value::Dictionary(dictionary.clone());
+                    inline = Value::Dictionary(dictionary.as_ref().clone());
                     &inline
                 }
             };
@@ -94,7 +94,7 @@ impl<'a, D: Device + ?Sized> Machine<'a, '_, D> {
     {
         let document = self.document();
         let result = match properties {
-            Properties::Inline(dictionary) => Ok(dictionary),
+            Properties::Inline(dictionary) => Ok(dictionary.as_ref()),
             Properties::Name(name) => resource(document, resources, b"Properties", name.as_bytes())
                 .and_then(|value| document.resolve_dictionary(value)),
         };
