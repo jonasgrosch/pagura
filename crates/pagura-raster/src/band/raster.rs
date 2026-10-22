@@ -115,7 +115,7 @@ struct Grid {
 }
 
 /// The cells of the largest mark the grid holds.
-const GRID_CELLS: usize = 1 << 14;
+pub(crate) const GRID_CELLS: usize = 1 << 14;
 
 impl Grid {
     fn new(bytes: &mut Meter) -> Result<Self> {
@@ -404,11 +404,22 @@ impl BandRasterizer {
         out: &mut dyn RowOut,
     ) {
         let _ = band;
+        let Some(index) = &edges.index else {
+            let at = |p: crate::Point| p;
+            self.grid(
+                (&edges.lines, &edges.curves, &at),
+                (edges.scan, shape.0.rule),
+                shape,
+                rows,
+                out,
+            );
+            return;
+        };
         let count = edges.lines.len();
         for y in rows {
             let top = f64::from(y);
             let mut cells = 0;
-            let items = edges.index.row(y);
+            let items = index.row(y);
             for &item in items {
                 let item = item as usize;
                 cells += match edges.lines.get(item) {
@@ -454,7 +465,15 @@ impl BandRasterizer {
             && width > 0
             && width.saturating_mul(height) <= GRID_CELLS
         {
-            self.glyph_grid((glyph, plain.bounds), relative, rows, out);
+            let o = glyph.origin;
+            let at = |p: crate::Point| crate::Point::new(p.x + o.x, p.y + o.y);
+            self.grid(
+                (&relative.lines, &relative.curves, &at),
+                (glyph.scan, FillRule::NonZero),
+                shape,
+                rows,
+                out,
+            );
             return;
         }
         let o = glyph.origin;
@@ -510,26 +529,29 @@ impl BandRasterizer {
         }
     }
 
-    /// A glyph's rows accumulated edge by edge into the grid, each edge
-    /// visiting only the rows it crosses, then scanned whole: per cell the
-    /// edges add in the same order and arithmetic as row by row.
+    /// A small mark's rows accumulated edge by edge into the grid, each
+    /// edge (moved by `at`) visiting only the rows it crosses, then scanned
+    /// whole: per cell the edges add in the same order and arithmetic as
+    /// row by row. Its rows go out at once, or through the shape's sink
+    /// where a clip is multiplied in.
     #[expect(
         clippy::cast_possible_truncation,
         reason = "bounded device rows are clamped to the band's u32 rows"
     )]
-    fn glyph_grid(
+    fn grid(
         &mut self,
-        (glyph, bounds): (&GlyphBody, super::DeviceRect),
-        relative: &super::glyph::Relative,
+        (lines, curves, at): (&[Line], &[Quadratic], &dyn Fn(crate::Point) -> crate::Point),
+        (scan, rule): ((usize, usize), FillRule),
+        shape: (&Shape, Option<&ClipShape>),
         rows: std::ops::Range<u32>,
         out: &mut dyn RowOut,
     ) {
-        let o = glyph.origin;
-        let at = |p: crate::Point| crate::Point::new(p.x + o.x, p.y + o.y);
-        let (from, to) = glyph.scan;
+        let (from, to) = scan;
         let width = to - from;
         let base = i64::try_from(from).unwrap_or(i64::MAX);
         let (first, end) = (f64::from(rows.start), f64::from(rows.end));
+        // Edges right of the area change no cell of it.
+        let right = f64::from(self.area.region.x1);
         let grid = &mut self.grid;
         let mut work = 0_usize;
         // The rows an edge from height `ya` to `yb` crosses in the band.
@@ -539,29 +561,37 @@ impl BandRasterizer {
             #[expect(clippy::cast_sign_loss, reason = "clamped to the band's rows")]
             (lo < hi).then_some(lo as u32..hi as u32)
         };
-        for l in &relative.lines {
+        for l in lines {
             let line = Line {
                 a: at(l.a),
                 b: at(l.b),
             };
             work += 1;
+            if line.a.x.min(line.b.x) >= right {
+                continue;
+            }
             for y in span(line.a.y, line.b.y).into_iter().flatten() {
                 work += 1 + grid
                     .row((y - rows.start) as usize, width, base)
                     .line(line, f64::from(y));
             }
         }
-        for q in &relative.curves {
+        for q in curves {
             let q = Quadratic {
                 points: q.points.map(at),
             };
             work += 1;
+            if q.points[0].x.min(q.points[2].x) >= right {
+                continue;
+            }
             for y in span(q.points[0].y, q.points[2].y).into_iter().flatten() {
                 work += 1 + grid
                     .row((y - rows.start) as usize, width, base)
                     .curve(q, f64::from(y));
             }
         }
+        let plain = shape.0.multiplied.is_none() && shape.1.is_none();
+        let bounds = shape.0.bounds;
         for (k, y) in rows.enumerate() {
             let cells = k * width..(k + 1) * width;
             let mut cover = 0.0;
@@ -571,14 +601,22 @@ impl BandRasterizer {
                 .zip(&mut grid.bytes[..width])
             {
                 cover += std::mem::take(c);
-                *byte = fold(std::mem::take(a) + cover, FillRule::NonZero);
+                *byte = fold(std::mem::take(a) + cover, rule);
             }
-            // The shape's own columns: the scan may reach past the area.
-            let x0 = (bounds.x0 as usize).clamp(from, to);
-            let x1 = (bounds.x1 as usize).clamp(x0, to);
             out.push_row(y);
-            out.put_row(x0 as u32, &grid.bytes[x0 - from..x1 - from]);
             work += width + 2;
+            if plain {
+                // The shape's own columns: the scan may reach past the area.
+                let x0 = (bounds.x0 as usize).clamp(from, to);
+                let x1 = (bounds.x1 as usize).clamp(x0, to);
+                out.put_row(x0 as u32, &grid.bytes[x0 - from..x1 - from]);
+                continue;
+            }
+            let mut sink = sink(out, shape, y, self.cells.row_buffer());
+            for (x, &value) in (from..).zip(&grid.bytes[..width]) {
+                sink.run(x, x + 1, value);
+            }
+            work += sink.extra();
         }
         self.work = self.work.saturating_add(work);
     }

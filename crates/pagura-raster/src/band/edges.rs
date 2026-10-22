@@ -92,8 +92,16 @@ impl Polygon {
 
     /// [`Self::from_path`] for a path of lines only, without flattening:
     /// the same contours, points and errors. `None` for a path with curves.
-    pub(crate) fn from_lines(path: &Path, transform: Transform, limits: &Limits) -> Result<Option<Self>> {
-        if path.segments().iter().any(|s| matches!(s, Segment::CubicTo { .. })) {
+    pub(crate) fn from_lines(
+        path: &Path,
+        transform: Transform,
+        limits: &Limits,
+    ) -> Result<Option<Self>> {
+        if path
+            .segments()
+            .iter()
+            .any(|s| matches!(s, Segment::CubicTo { .. }))
+        {
             return Ok(None);
         }
         crate::flatten::validate(path, transform, limits)?;
@@ -103,30 +111,31 @@ impl Polygon {
         // untransformed until the contour ends.
         let mut user: Vec<Point> = Vec::new();
         let mut closed = false;
-        let mut finish = |polygon: &mut Self, user: &mut Vec<Point>, last: bool, closed: bool| -> Result<()> {
-            let Some(&first) = user.first() else {
-                return Ok(());
-            };
-            if last && !closed && user.len() == 1 {
-                user.clear();
-                return Ok(());
-            }
-            if user.iter().all(|&p| p == first) {
-                let p = first * transform;
-                bounded(p)?;
-                polygon.cell(p, limits)?;
-            } else {
-                polygon.begin(limits, user.len())?;
-                for &point in user.iter() {
-                    let p = point * transform;
-                    bounded(p)?;
-                    polygon.points.push(p);
+        let finish =
+            |polygon: &mut Self, user: &mut Vec<Point>, last: bool, closed: bool| -> Result<()> {
+                let Some(&first) = user.first() else {
+                    return Ok(());
+                };
+                if last && !closed && user.len() == 1 {
+                    user.clear();
+                    return Ok(());
                 }
-                polygon.end();
-            }
-            user.clear();
-            Ok(())
-        };
+                if user.iter().all(|&p| p == first) {
+                    let p = first * transform;
+                    bounded(p)?;
+                    polygon.cell(p, limits)?;
+                } else {
+                    polygon.begin(limits, user.len())?;
+                    for &point in user.iter() {
+                        let p = point * transform;
+                        bounded(p)?;
+                        polygon.points.push(p);
+                    }
+                    polygon.end();
+                }
+                user.clear();
+                Ok(())
+            };
         let mut append = |user: &mut Vec<Point>, point: Point| -> Result<()> {
             if count >= limits.path_segments {
                 return Err(Error::limit("flattened segment budget exceeded"));

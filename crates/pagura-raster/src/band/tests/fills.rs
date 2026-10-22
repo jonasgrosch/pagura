@@ -322,3 +322,57 @@ fn rectangle_fills_skip_the_polygon_with_its_bytes() {
         }
     }
 }
+
+/// Small shapes accumulated edge by edge in the grid give the bytes of the
+/// row lists.
+#[test]
+fn grid_shapes_match_their_row_lists() {
+    let limits = Limits::default();
+    let area = area(0, 0, 48, 40, 4);
+    let mut rng = Lcg(404);
+    let mut grids = 0;
+    for case in 0..120 {
+        let points: Vec<Point> = (0..3 + case % 6)
+            .map(|_| Point::new(rng.grid(3.0, 45.0, 64), rng.grid(3.0, 37.0, 64)))
+            .collect();
+        let scale = rng.grid(0.1, 0.5, 256);
+        let centre = Point::new(rng.grid(10.0, 38.0, 16), rng.grid(10.0, 30.0, 16));
+        let points: Vec<Point> = points
+            .iter()
+            .map(|p| {
+                Point::new(
+                    centre.x + (p.x - 24.0) * scale,
+                    centre.y + (p.y - 20.0) * scale,
+                )
+            })
+            .collect();
+        let path = polygon(&points);
+        let rule = [FillRule::NonZero, FillRule::EvenOdd][case % 2];
+        let prep = options(area, &limits, None);
+        let Some(mut shape) = Shape::fill_in(&path, Transform::IDENTITY, rule, &prep).unwrap()
+        else {
+            continue;
+        };
+        let grid = raster(&area, Some(&shape), None).0;
+        let bounds = shape.bounds();
+        if let shape::Body::Edges(e) = &mut shape.body
+            && e.index.is_none()
+        {
+            grids += 1;
+            let right = 48.0;
+            let lines = e.lines.clone();
+            e.index = Some(
+                edges::RowList::new((bounds.y0, bounds.y1), lines.len(), |i| {
+                    let l = lines[i];
+                    if l.a.x.min(l.b.x) >= right {
+                        return None;
+                    }
+                    edges::rows(l.a.y.min(l.b.y), l.a.y.max(l.b.y), bounds)
+                })
+                .unwrap(),
+            );
+            assert_eq!(raster(&area, Some(&shape), None).0, grid, "case {case}");
+        }
+    }
+    assert!(grids > 40, "{grids}");
+}

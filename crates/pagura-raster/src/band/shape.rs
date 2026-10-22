@@ -70,7 +70,9 @@ pub(crate) struct GlyphBody {
 pub(crate) struct EdgeBody {
     pub(crate) lines: Vec<Line>,
     pub(crate) curves: Vec<Quadratic>,
-    pub(crate) index: RowList,
+    /// Items by row; a small, narrow shape with nothing to overlay has
+    /// none and goes edge by edge into the rasterizer's grid.
+    pub(crate) index: Option<RowList>,
     pub(crate) scan: (usize, usize),
 }
 
@@ -508,9 +510,14 @@ impl Shape {
         // Rows scanned through the bitmap or whole in the grid.
         let columns = scan.1.saturating_sub(scan.0);
         let words = columns / 64 + 2;
+        // In the grid each band it meets visits every edge once, at most
+        // as often as it has rows.
+        let items = relative.lines.len() + relative.curves.len();
+        let rows = bounds.height() as usize;
         let work = relative
             .work
-            .saturating_add((bounds.height() as usize).saturating_mul(words + columns + 4));
+            .saturating_add(rows.saturating_mul(words + columns + 4))
+            .saturating_add(rows.saturating_mul(items));
         if work > options.limits.raster_work {
             return Err(Error::limit(RASTER_WORK));
         }
@@ -596,11 +603,29 @@ impl Shape {
             extent(a.y.min(b.y), a.y.max(b.y))
         };
         let count = lines.len() + curves.len();
-        let index = RowList::new((bounds.y0, bounds.y1), count, |i| match lines.get(i) {
+        let item_rows = |i: usize| match lines.get(i) {
             Some(l) => line_rows(l),
             None => curves.get(i - lines.len()).and_then(curve_rows),
-        })?;
-        let mut work = index.len();
+        };
+        let columns = scan.1.saturating_sub(scan.0);
+        // A mark of at most 16 rows and a bitmap word's width, with nothing
+        // to overlay, goes into the grid: each band it meets visits every
+        // item once, at most as often as it has rows, and each row it
+        // crosses.
+        let height = bounds.height() as usize;
+        let grid = stored.len() == 0 && frame.rows.is_none() && columns <= 64 && height <= 16;
+        let (index, mut work) = if grid {
+            let visits = (0..count)
+                .filter_map(item_rows)
+                .fold(count.saturating_mul(height), |n, (a, b)| {
+                    n.saturating_add((b - a) as usize + 1)
+                });
+            (None, visits)
+        } else {
+            let index = RowList::new((bounds.y0, bounds.y1), count, item_rows)?;
+            let visits = index.len();
+            (Some(index), visits)
+        };
         let mut cells = 0_usize;
         for l in &lines {
             if let Some(r) = line_rows(l) {
@@ -617,7 +642,7 @@ impl Shape {
         let words = (scan.1.saturating_sub(scan.0)) / 64 + 2;
         work = work
             .saturating_add(cells.saturating_mul(4))
-            .saturating_add(rows.saturating_mul(words + 2))
+            .saturating_add(rows.saturating_mul(words + columns + 4))
             .saturating_add(stored.len().saturating_mul(2))
             .saturating_add(frame.segments(bounds));
         if work > options.limits.raster_work {
@@ -632,7 +657,7 @@ impl Shape {
         let retained = size_of::<Self>()
             .saturating_add(body.lines.capacity() * size_of::<Line>())
             .saturating_add(body.curves.capacity() * size_of::<Quadratic>())
-            .saturating_add(body.index.retained_bytes())
+            .saturating_add(body.index.as_ref().map_or(0, RowList::retained_bytes))
             .saturating_add(stored.retained_bytes());
         Ok(Self {
             area,
