@@ -5,7 +5,9 @@ replaces the original decision and its amendments of 2026-10-18 to
 2026-10-21 (canonical glyph polygons, overprint preview, certified
 accumulation, bounded storage, direct glyph curves, direct opaque images, the
 competitive gate, signed-area glyph coverage and the competitive path). The
-history of this file keeps them and their evidence.
+history of this file keeps them and their evidence. Section 4's coverage
+producers and the scope of `byte_storage` (section 9) were brought in line with
+the implementation on 2026-10-22.
 
 ## Decision
 
@@ -114,28 +116,58 @@ mechanism admitted under this rule records its bound here.
 
 ### 4. Coverage and glyphs
 
-The exact coverage producers are the band rasterizer's certified integer
-accumulation, its exact local resolver for cells that fail certification, the
-closed form for rectangles and the analytic integration of glyph quadratics.
-For the same flattened geometry they yield the same coverage bytes (ADR
-0034). A producer that covers a stroke by pieces meeting without overlapping
-(section 9) replaces the union's resolution on the exact path only after
-section 3 establishes it.
+The exact coverage producers are the band rasterizer's cell accumulation, its
+exact local resolver for the cells accumulation does not determine, the
+closed form for rectangles and the analytic integration of glyph quadratics
+(`pagura-raster`, `band`). For the same flattened geometry they yield the same
+coverage bytes (ADR 0034).
 
-**Certified accumulation** snaps flattened device geometry to a
-page-anchored grid of spacing u = 2^-20 pixels, with ties to even and
-consistently rounded shared crossings. A cell's count n conservatively counts
-the original flattened segments meeting it. A segment whose snapped image has
-zero length, or turns horizontal while its original did not, stays as a
-zero-cover, zero-area ghost that counts toward n and leaves its cells
-uncertified; a snapped contour that degenerates leaves every cell of its
-original bounding box uncertified. Cells are certified by one-chain,
-closed-cell boundary-walk, constant-fill or group-intersection certificates;
-cells with ghosts or n > 512 resolve the unsnapped geometry. For n <= 512,
-snapping and crossing err by at most (2.5n + 7)u, so with byte quantization a
-cell stays below 0.813 levels from the exact area. Subpaths degenerate before
-snapping keep the floor-cell policy. Certification depends only on the
-geometry, never on regions, bands or omitted redundant clips.
+**Cell accumulation.** Each mark's flattened device edges add their signed
+areas within each pixel cell, and their covers to the cells right of them, to
+a dense row of f64 cells, in the edges' own order and without snapping them
+to a grid. A prefix sum from the page's column 0 gives each cell's integral of
+the winding number, which the fill rule folds to a covered area and
+`quantize_unit` rounds once. The integral is the covered area wherever the
+winding takes at most two neighbouring values in the cell. Preparation
+establishes that, or resolves the cell, before any band is rasterized:
+
+- **Certification** covers a whole shape. Each contour splits into strictly
+  y-monotone chains; a sweep compares neighbouring chains at every vertex
+  height and certifies the shape when, between consecutive chain end
+  heights, the active chains keep their order and alternate in direction from
+  a common sign, so the winding is 0 or that sign with magnitude one
+  everywhere off the boundary. Comparisons keep their rounding error, and any
+  doubt leaves the shape uncertified. A stroke outline of pieces that the
+  stroker proves to meet without overlapping is certified by construction;
+  other strokes keep the boundary of their pieces' union or their
+  overlapping components, and pieces and components cover the same set.
+- **Cell analysis** decides an uncertified shape cell by cell: a cell that no
+  edge or only one monotone chain crosses has windings w and w ± 1 and folds
+  exactly; a cell that pieces of two or more chains cross, or that a mark and
+  a clip boundary both cross, goes to the exact local resolver. The resolver
+  cuts the cell at every end point and crossing height, between which no two
+  edges cross, and integrates the width where every group (the mark, and each
+  clipping path under its own rule, 8.5.4) is inside by the midpoint rule,
+  which is exact for those linear widths. The shape keeps the results.
+- **Rectangles** fill in closed form, and a rectangular clip clips the mark's
+  edges instead of being integrated.
+
+A subpath whose points all coincide covers the pixel under them
+(8.5.3.3.1), and a fill whose region is empty with a boundary paints that
+boundary's hairline outline (10.7.4).
+
+**Exactness of accumulation.** Accumulation and resolution are f64 throughout.
+For the geometry preparation admits, a cell's integral errs by about 1e-12 of
+a pixel against a level step of 1/255, so each coverage byte is the correctly
+rounded exact area, except where the exact area lies within that margin of a
+rounding boundary, and is always within one level of it. `quantize_unit`'s
+tie guard of 1e-9 levels exceeds that error, so exact half-level ties round
+up consistently. The order of every operation is fixed (edges in their own
+order, prefix sums left to right from column 0, cells indexed by global device
+column) and no kernel uses fused multiply-add, so a cell is a function of the
+geometry, the cell and the rule alone: band height, region and platform
+select which cells are visited, never their arithmetic. Certification and
+cell analysis depend only on the geometry and the clip state.
 
 **Glyph placement** is exact (ADR 0013). Filled outline text (render modes 0
 and 4) keeps its font outline, its linear glyph-to-device map L and its exact
@@ -431,11 +463,11 @@ exactly.
   function of outline, linear map and bin, so reuse never depends on
   regions, bands or cache state.
 - **`approximate_coverage`:** fills and strokes accumulate signed areas in
-  f32 cells after flattening curves to 1/64-pixel chords, instead of
-  certified accumulation. Cells are indexed in global device columns, so any
-  partition assembles into the page. Rectangles, degenerate contours and
-  compound paths, other than a stroke's pieces, keep the exact producers. A
-  stroke becomes pieces that meet without overlapping: each segment's
+  f32 cells after flattening curves to 1/64-pixel chords, and fold the
+  winding without certification or resolution. Cells are indexed in global
+  device columns, so any partition assembles into the page. Rectangles,
+  degenerate contours and compound paths, other than a stroke's pieces, keep
+  the exact producers. A stroke becomes pieces that meet without overlapping: each segment's
   quadrilateral ends at the inner miter point on the inner side of a turn and
   at its normal on the outer side, the outer wedge takes the join, and a
   round cap is the half disc beyond its endpoint. A stroke keeps overlapping
@@ -448,8 +480,12 @@ exactly.
   times a row factor for a rectangle and its own cells once per band for any
   other region, is multiplied into the mark, which approximates the
   intersection where both boundaries cross one pixel.
-- **`byte_storage`:** a buffer that exact rendering stores in N16 or F32 is
-  U8, rounding each store once; the error accumulates per mark.
+- **`byte_storage`:** only the page buffer is narrowed: when the page has no
+  group results, tiling cells or soft masks, a page that exact rendering
+  stores in N16 or F32 is U8, rounding each store once, so the error
+  accumulates per mark. Every other buffer, and the page buffer of any other
+  page, is F64 under this parameter, as the earlier competitive renderer
+  stored them.
 - **`reduced_image_decode`:** an opaque DeviceGray or DeviceRGB DCTDecode
   image without `Mask`, `SMask` or `Decode` is reconstructed near its drawn
   size, with 1, 2, 3, 4 or 6 cells per eight-sample block axis, the fewest
@@ -497,10 +533,9 @@ A bound changes only with the evidence of section 3 recorded here.
 - Formats are chosen per buffer, so a soft mask, a pattern or a blend inside
   a group no longer puts a whole page on F64, and translucent groups and
   soft masks can run in F32 under their parents' bounds.
-- Producers that ADR 0034 retires (the strip sweep, signed-area glyph cells,
-  the fragment rasterizer, the direct image routes) take their admission
-  rules and bounds with them. A producer that returns re-establishes its
-  bound under section 3.
+- The retired producers (ADR 0034) took their admission rules and bounds
+  with them; a producer that returns re-establishes its bound under section
+  3.
 - GPU backends stay out of scope until the CPU reference is complete.
 
 ## Alternatives considered

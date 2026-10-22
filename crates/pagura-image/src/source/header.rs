@@ -401,8 +401,8 @@ fn intent(document: &Document, dict: &Dictionary) -> Result<Option<Value>> {
 
 /// Whether an image XObject may be reconstructed near its drawn size under
 /// the `reduced_image_decode` fast parameter: an opaque DeviceGray or
-/// DeviceRGB `DCTDecode` image without `Mask`, `SMask` or `Decode` (ADR 0004,
-/// competitive amendment).
+/// DeviceRGB `DCTDecode` image without `Mask`, `SMask` or `Decode` (ADR 0004
+/// §9).
 pub(crate) fn drawn(document: &Document, dictionary: &Dictionary) -> bool {
     let resolve = |key: &[u8]| {
         dictionary

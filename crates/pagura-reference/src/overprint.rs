@@ -1,4 +1,4 @@
-//! Overprint simulation (8.6.7, 11.7.4; ADR 0004 overprint amendment).
+//! Overprint simulation (8.6.7, 11.7.4; ADR 0004 §7).
 //!
 //! Simulation needs a CMYK process device when some mark overprints with
 //! zero DeviceCMYK components under `OPM 1`, or when some mark overprints
