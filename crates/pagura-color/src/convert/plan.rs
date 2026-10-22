@@ -7,7 +7,7 @@ use crate::cie::Calibrated;
 use crate::function::Function;
 use crate::icc::{Intent, Profile};
 use crate::space::{ColorSpace, Colorant, Indexed, MAX_COMPONENTS};
-use pagura_core::{Error, Name, Result};
+use pagura_core::{Error, Meter, Name, Result};
 use std::sync::Arc;
 
 /// The most links a colour space chain may have.
@@ -35,7 +35,7 @@ pub(super) struct Plan {
 enum Kind {
     /// Separation or DeviceN tints painted straight into their channels:
     /// `(component, channel)` pairs.
-    Tints(Box<[(usize, usize)]>),
+    Tints(Vec<(usize, usize)>),
     /// Separation `All`: every channel at the tint.
     All,
     /// A space that paints nothing.
@@ -46,7 +46,7 @@ enum Kind {
 
 #[derive(Debug, Clone)]
 struct Chain {
-    steps: Box<[Step]>,
+    steps: Vec<Step>,
     terminal: Terminal,
 }
 
@@ -66,7 +66,7 @@ struct Lookup {
     high: f64,
     count: usize,
     /// `(high + 1) × count` decoded components.
-    table: Box<[f64]>,
+    table: Vec<f64>,
 }
 
 #[derive(Debug, Clone)]
@@ -118,21 +118,27 @@ impl Plan {
         space: &ColorSpace,
         target: &Target,
         conversion: &Conversion,
+        bytes: &mut Meter,
     ) -> Result<Self> {
         let (lookup, base) = match space {
-            ColorSpace::Indexed(indexed) => (Some(Lookup::new(indexed)?), &*indexed.base),
+            ColorSpace::Indexed(indexed) => (Some(Lookup::new(indexed, bytes)?), &*indexed.base),
             other => (None, other),
         };
         let separated = target.colorants == Colorants::Separated;
         let process = target.process.components();
+        let map = if separated && base.paints() {
+            tints(base, target, bytes)?
+        } else {
+            None
+        };
         let kind = if !base.paints() {
             Kind::Nothing
-        } else if let Some(map) = tints(base, target).filter(|_| separated) {
+        } else if let Some(map) = map {
             Kind::Tints(map)
         } else if matches!(base, ColorSpace::Separation(s) if s.colorant == Colorant::All) {
             Kind::All
         } else {
-            Kind::Chain(Chain::new(base, target.process, conversion)?)
+            Kind::Chain(Chain::new(base, target.process, conversion, bytes)?)
         };
         let channels = target.channels();
         let painted = match &kind {
@@ -166,6 +172,25 @@ impl Plan {
 
     pub(super) fn cost(&self) -> usize {
         self.cost
+    }
+
+    pub(super) fn owned_bytes(&self) -> usize {
+        self.lookup.as_ref().map_or(0, Lookup::owned_bytes)
+            + match &self.kind {
+                Kind::Tints(map) => map.capacity() * size_of::<(usize, usize)>(),
+                Kind::Chain(chain) => {
+                    chain.steps.capacity() * size_of::<Step>()
+                        + chain
+                            .steps
+                            .iter()
+                            .map(|step| match step {
+                                Step::Lookup(lookup) => lookup.owned_bytes(),
+                                Step::Clip { .. } | Step::Tint(_) => 0,
+                            })
+                            .sum::<usize>()
+                }
+                Kind::All | Kind::Nothing => 0,
+            }
     }
 
     pub(super) fn painted(&self) -> Painted {
@@ -243,13 +268,17 @@ impl Plan {
 /// The channel map of a Separation or DeviceN space whose colorants a
 /// separated target paints directly, or `None` when it converts through its
 /// alternate: a process colorant name in a Gray or RGB target does.
-fn tints(space: &ColorSpace, target: &Target) -> Option<Box<[(usize, usize)]>> {
+fn tints(
+    space: &ColorSpace,
+    target: &Target,
+    bytes: &mut Meter,
+) -> Result<Option<Vec<(usize, usize)>>> {
     let colorants: &[Colorant] = match space {
         ColorSpace::Separation(s) if matches!(s.colorant, Colorant::Named(_)) => {
             std::slice::from_ref(&s.colorant)
         }
         ColorSpace::DeviceN(d) => &d.colorants,
-        _ => return None,
+        _ => return Ok(None),
     };
     let cmyk = target.process == Process::Cmyk;
     let process_name = |name: &Name| PROCESS_NAMES.iter().position(|&n| name == n);
@@ -258,7 +287,7 @@ fn tints(space: &ColorSpace, target: &Target) -> Option<Box<[(usize, usize)]>> {
             .iter()
             .any(|c| matches!(c, Colorant::Named(name) if process_name(name).is_some()))
     {
-        return None;
+        return Ok(None);
     }
     let process = target.process.components();
     let channel = |name: &Name| {
@@ -270,21 +299,40 @@ fn tints(space: &ColorSpace, target: &Target) -> Option<Box<[(usize, usize)]>> {
                 .map(|j| process + j)
         })
     };
-    Some(
-        colorants
-            .iter()
-            .enumerate()
-            .filter_map(|(i, c)| match c {
-                Colorant::Named(name) => channel(name).map(|channel| (i, channel)),
-                Colorant::All | Colorant::None => None,
-            })
-            .collect(),
-    )
+    let mapped = || {
+        colorants.iter().enumerate().filter_map(|(i, c)| match c {
+            Colorant::Named(name) => channel(name).map(|channel| (i, channel)),
+            Colorant::All | Colorant::None => None,
+        })
+    };
+    let mut map = Vec::new();
+    bytes.reserve(&mut map, mapped().count())?;
+    map.extend(mapped());
+    Ok(Some(map))
+}
+
+/// Appends one owned chain step, charging the overlap of its old and new
+/// buffers before a possible reallocation.
+fn push<T>(values: &mut Vec<T>, value: T, bytes: &mut Meter) -> Result<()> {
+    if values.len() == values.capacity() {
+        let old = values.capacity().saturating_mul(size_of::<T>());
+        bytes.charge(old)?;
+        let reserved = bytes.reserve(values, 1);
+        bytes.refund(old);
+        reserved?;
+    }
+    values.push(value);
+    Ok(())
 }
 
 impl Chain {
     /// Follows `space` to the terminal conversion into `process`.
-    fn new(mut space: &ColorSpace, process: Process, conversion: &Conversion) -> Result<Self> {
+    fn new(
+        mut space: &ColorSpace,
+        process: Process,
+        conversion: &Conversion,
+        bytes: &mut Meter,
+    ) -> Result<Self> {
         let mut steps = Vec::new();
         let encode = || Encode::new(process, conversion);
         let rgb = |source| Terminal::Rgb {
@@ -306,10 +354,7 @@ impl Chain {
                 } else {
                     rgb(source)
                 };
-                return Ok(Self {
-                    steps: steps.into(),
-                    terminal,
-                });
+                return Ok(Self { steps, terminal });
             }
             let terminal = match space {
                 ColorSpace::Calibrated(space) => rgb(Source::Calibrated(Arc::clone(space))),
@@ -317,7 +362,7 @@ impl Chain {
                     let range = icc_range(icc.range)?;
                     let count = usize::from(icc.components).min(4);
                     let Some(profile) = &icc.profile else {
-                        steps.push(Step::Clip { range, count });
+                        push(&mut steps, Step::Clip { range, count }, bytes)?;
                         space = &icc.alternate;
                         continue;
                     };
@@ -332,7 +377,8 @@ impl Chain {
                     })
                 }
                 ColorSpace::Indexed(indexed) => {
-                    steps.push(Step::Lookup(Lookup::new(indexed)?));
+                    let lookup = Lookup::new(indexed, bytes)?;
+                    push(&mut steps, Step::Lookup(lookup), bytes)?;
                     space = &indexed.base;
                     continue;
                 }
@@ -340,7 +386,7 @@ impl Chain {
                     Colorant::All => Terminal::All,
                     Colorant::None => rgb(Source::Inverse),
                     Colorant::Named(_) => {
-                        steps.push(Step::Tint(Arc::clone(&s.tint)));
+                        push(&mut steps, Step::Tint(Arc::clone(&s.tint)), bytes)?;
                         space = &s.alternate;
                         continue;
                     }
@@ -349,7 +395,7 @@ impl Chain {
                     if d.colorants.iter().all(|c| *c == Colorant::None) {
                         rgb(Source::Inverse)
                     } else {
-                        steps.push(Step::Tint(Arc::clone(&d.tint)));
+                        push(&mut steps, Step::Tint(Arc::clone(&d.tint)), bytes)?;
                         space = &d.alternate;
                         continue;
                     }
@@ -363,10 +409,7 @@ impl Chain {
                     return Err(Error::invalid_argument("device space without a family"));
                 }
             };
-            return Ok(Self {
-                steps: steps.into(),
-                terminal,
-            });
+            return Ok(Self { steps, terminal });
         }
         Err(Error::limit("colour space nesting exceeded"))
     }
@@ -435,13 +478,14 @@ impl Step {
 }
 
 impl Lookup {
-    fn new(indexed: &Indexed) -> Result<Self> {
+    fn new(indexed: &Indexed, budget: &mut Meter) -> Result<Self> {
         let count = indexed.base.components();
         if count > MAX_COMPONENTS {
             return Err(Error::limit("Indexed base has too many components"));
         }
         let entries = usize::from(indexed.high) + 1;
-        let mut table = Vec::with_capacity(entries * count);
+        let mut table = Vec::new();
+        budget.reserve(&mut table, entries * count)?;
         let mut bytes = [0_u8; MAX_COMPONENTS];
         for entry in 0..entries {
             for (i, byte) in bytes.iter_mut().enumerate().take(count) {
@@ -452,8 +496,12 @@ impl Lookup {
         Ok(Self {
             high: f64::from(indexed.high),
             count,
-            table: table.into(),
+            table,
         })
+    }
+
+    fn owned_bytes(&self) -> usize {
+        self.table.capacity() * size_of::<f64>()
     }
 
     /// Replaces the index with its entry's components (8.6.6.3).
