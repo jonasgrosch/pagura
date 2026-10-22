@@ -11,8 +11,8 @@ use pagura_color::{ColorSpace, Conversion, Converter, Target};
 use pagura_core::{Built, Limits, Meter, Result, Store, StoreKey};
 use pagura_interpret::{GlyphSource, Image, OutlineKey, Paint, Pen, Shading};
 use pagura_raster::{
-    Area, BandCoverage, BandRasterizer, ClipShape, DeviceRect, FillRule, GlyphEdges, GlyphMask,
-    GlyphMasks, GlyphOrigins, MarkCoverage, Path, Point, RunGlyph, Shape, ShapeOptions, Transform,
+    Area, BandCoverage, BandRasterizer, ClipShape, DeviceRect, FillRule, GlyphEdges, MarkCoverage,
+    Path, Point, Shape, ShapeOptions, Transform,
 };
 use std::fmt;
 use std::sync::Arc;
@@ -208,32 +208,21 @@ pub(crate) trait Producer: Send + Sync + fmt::Debug {
         }
     }
 
-    /// The mask of glyph placement `shape` when its coverage is a mask that
-    /// stores as it is, its clip state keeping all of it.
-    fn mask(&self, shape: u32) -> Option<GlyphMask<'_>> {
-        let _ = shape;
-        None
-    }
-
-    /// The storage of its shapes and glyph masks, for the next preparation.
+    /// The storage of its shapes, for the next preparation.
     fn into_storage(self: Box<Self>) -> Storage {
         Storage::default()
     }
 }
 
-/// The storage prepared shapes and glyph masks are kept in.
-pub(crate) type Storage = (Vec<Shape>, GlyphMasks);
+/// The storage prepared shapes are kept in.
+pub(crate) type Storage = Vec<Shape>;
 
 /// The production backend: the band rasterizer and the paint sources.
 #[derive(Debug)]
 pub(crate) struct Raster<'a> {
     store: &'a Store,
     limits: &'a Limits,
-    origins: GlyphOrigins,
-    scale: f64,
     shapes: Vec<Shape>,
-    /// Glyph masks, keyed with [`MASK`] set.
-    masks: GlyphMasks,
     clips: Vec<ClipShape>,
     edges: FastMap<EdgesKey, Arc<GlyphEdges>>,
     /// Edges by the handles [`Backend::glyph`] gives out.
@@ -242,16 +231,12 @@ pub(crate) struct Raster<'a> {
 }
 
 impl<'a> Raster<'a> {
-    /// A backend that caches glyph edges in `store` and places glyphs at
-    /// `origins`.
-    pub(crate) fn new(store: &'a Store, limits: &'a Limits, origins: GlyphOrigins) -> Self {
+    /// A backend that caches glyph edges in `store`.
+    pub(crate) fn new(store: &'a Store, limits: &'a Limits) -> Self {
         Self {
             store,
             limits,
-            origins,
-            scale: 1.0,
             shapes: Vec::new(),
-            masks: GlyphMasks::default(),
             clips: Vec::new(),
             edges: hash::map(),
             handles: Vec::new(),
@@ -259,29 +244,11 @@ impl<'a> Raster<'a> {
         }
     }
 
-    /// Device pixels per default user-space unit, for binned glyph edges.
-    pub(crate) fn with_scale(mut self, scale: f64) -> Self {
-        self.scale = scale;
-        self
-    }
-
-    /// Prepares shapes and glyph masks in `storage`, emptied.
+    /// Prepares shapes in `storage`, emptied.
     pub(crate) fn with_storage(mut self, storage: Storage) -> Self {
-        (self.shapes, self.masks) = storage;
+        self.shapes = storage;
         self.shapes.clear();
-        self.masks.clear();
         self
-    }
-
-    /// The store key of `source`'s edges under the device linear map
-    /// `linear`.
-    fn edges_key(&self, source: &GlyphSource, linear: [f64; 4]) -> EdgesKey {
-        let binned = (self.origins == GlyphOrigins::Binned).then_some(self.scale);
-        EdgesKey {
-            outline: source.key,
-            linear: linear.map(f64::to_bits),
-            binned: binned.map(f64::to_bits),
-        }
     }
 
     fn shape(&mut self, shape: Option<Shape>) -> Result<Option<Prepared>> {
@@ -300,28 +267,22 @@ impl<'a> Raster<'a> {
     }
 }
 
-/// Glyph mask `index` of `masks` as prepared, keyed with [`MASK`] set.
-fn mask_prepared(masks: &GlyphMasks, index: usize) -> Result<Option<Prepared>> {
-    let key = self::index(index)? | MASK;
-    Ok(masks.get(index).map(|mask| Prepared {
-        key,
-        bounds: mask.bounds(),
-        work: mask.work(),
-        bytes: mask.retained_bytes(),
-    }))
-}
-
-/// The key bit of glyph masks, which the producer keeps apart from shapes.
-const MASK: u32 = 1 << 31;
-
 /// The identity of glyph edges in the [`Store`]: the outline and the bits
 /// of its device linear map.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct EdgesKey {
     outline: OutlineKey,
     linear: [u64; 4],
-    /// The device scale binned edges are flattened for; exact edges have none.
-    binned: Option<u64>,
+}
+
+impl EdgesKey {
+    /// The key of `source`'s edges under the device linear map `linear`.
+    fn new(source: &GlyphSource, linear: [f64; 4]) -> Self {
+        Self {
+            outline: source.key,
+            linear: linear.map(f64::to_bits),
+        }
+    }
 }
 
 impl StoreKey for EdgesKey {
@@ -329,12 +290,7 @@ impl StoreKey for EdgesKey {
 }
 
 fn index(len: usize) -> Result<u32> {
-    u32::try_from(len)
-        .ok()
-        .filter(|&i| i < MASK)
-        .ok_or(pagura_core::Error::limit(
-            "prepared shape count exceeds 2^31",
-        ))
+    u32::try_from(len).map_err(|_| pagura_core::Error::limit("prepared shape count exceeds u32"))
 }
 
 impl Backend for Raster<'_> {
@@ -378,14 +334,10 @@ impl Backend for Raster<'_> {
     ) -> Result<Option<Prepared>> {
         if let Some(edges) = handle.and_then(|i| self.handles.get(i as usize)) {
             let clip = self.current.and_then(|k| self.clips.get(k as usize));
-            if let Some(mask) = self.masks.place(edges, origin, clip, options)? {
-                return mask_prepared(&self.masks, mask);
-            }
-            let shape = Shape::glyph_with_clip(edges, origin, self.origins, clip, options)?;
+            let shape = Shape::glyph_with_clip(edges, origin, clip, options)?;
             return self.shape(shape);
         }
-        let binned = (self.origins == GlyphOrigins::Binned).then_some(self.scale);
-        let key = self.edges_key(source, linear);
+        let key = EdgesKey::new(source, linear);
         // Edges are a value of the store: they cost the render nothing,
         // found or built (ADR 0016), and are kept for the render's other
         // placements.
@@ -394,10 +346,7 @@ impl Backend for Raster<'_> {
         } else {
             let limits = self.limits;
             let edges = self.store.get_or_build(key, || {
-                let edges = match binned {
-                    Some(scale) => GlyphEdges::binned(&source.outline, linear, scale, limits)?,
-                    None => GlyphEdges::new(&source.outline, linear, limits)?,
-                };
+                let edges = GlyphEdges::new(&source.outline, linear, limits)?;
                 let bytes = edges.retained_bytes();
                 Ok(Built {
                     value: edges,
@@ -410,10 +359,7 @@ impl Backend for Raster<'_> {
         *handle = u32::try_from(self.handles.len()).ok();
         self.handles.push(Arc::clone(&edges));
         let clip = self.current.and_then(|k| self.clips.get(k as usize));
-        if let Some(mask) = self.masks.place(&edges, origin, clip, options)? {
-            return mask_prepared(&self.masks, mask);
-        }
-        let shape = Shape::glyph_with_clip(&edges, origin, self.origins, clip, options)?;
+        let shape = Shape::glyph_with_clip(&edges, origin, clip, options)?;
         self.shape(shape)
     }
 
@@ -427,7 +373,7 @@ impl Backend for Raster<'_> {
         }
         // Edges kept from an earlier render keep the hull; edges are not
         // built before a placement meets the region.
-        let key = self.edges_key(source, [transform.a, transform.b, transform.c, transform.d]);
+        let key = EdgesKey::new(source, [transform.a, transform.b, transform.c, transform.d]);
         let Some(edges) = self
             .edges
             .get(&key)
@@ -534,7 +480,6 @@ impl Backend for Raster<'_> {
     fn finish(self, _area: Area) -> Box<dyn Producer> {
         Box::new(RasterCoverage {
             shapes: self.shapes,
-            masks: self.masks,
             clips: self.clips,
         })
     }
@@ -544,18 +489,7 @@ impl Backend for Raster<'_> {
 #[derive(Debug)]
 struct RasterCoverage {
     shapes: Vec<Shape>,
-    masks: GlyphMasks,
     clips: Vec<ClipShape>,
-}
-
-/// The shape or mask of `key`.
-fn glyph<'a>(shapes: &'a [Shape], masks: &'a GlyphMasks, key: u32) -> Option<RunGlyph<'a>> {
-    let get = |i: u32| pagura_core::convert::u32_to_usize(i);
-    if key & MASK == 0 {
-        shapes.get(get(key)).map(RunGlyph::Shape)
-    } else {
-        masks.get(get(key & !MASK)).map(RunGlyph::Mask)
-    }
 }
 
 impl Producer for RasterCoverage {
@@ -569,12 +503,8 @@ impl Producer for RasterCoverage {
     ) {
         let get = |i: u32| pagura_core::convert::u32_to_usize(i);
         let clip = clip.and_then(|i| self.clips.get(get(i)));
-        let shape = match shape.map(|key| glyph(&self.shapes, &self.masks, key)) {
-            Some(Some(RunGlyph::Mask(mask))) => {
-                rasterizer.rasterize_mask(mask, band, out);
-                return;
-            }
-            Some(Some(RunGlyph::Shape(shape))) => Some(shape),
+        let shape = match shape.map(|key| self.shapes.get(get(key))) {
+            Some(Some(shape)) => Some(shape),
             // A key no preparation gave out covers nothing.
             Some(None) => {
                 out.clear();
@@ -594,10 +524,10 @@ impl Producer for RasterCoverage {
         out: &mut BandCoverage,
     ) -> usize {
         let get = |i: u32| pagura_core::convert::u32_to_usize(i);
-        let run: Vec<RunGlyph<'_>> = shapes
+        let run: Vec<&Shape> = shapes
             .iter()
             .take(RUN_SHAPES)
-            .map_while(|&key| glyph(&self.shapes, &self.masks, key))
+            .map_while(|&key| self.shapes.get(get(key)))
             .collect();
         if run.is_empty() {
             out.clear();
@@ -607,15 +537,8 @@ impl Producer for RasterCoverage {
         rasterizer.rasterize_run(&run, clip, band, out)
     }
 
-    fn mask(&self, shape: u32) -> Option<GlyphMask<'_>> {
-        match glyph(&self.shapes, &self.masks, shape)? {
-            RunGlyph::Mask(mask) => Some(mask),
-            RunGlyph::Shape(_) => None,
-        }
-    }
-
     fn into_storage(self: Box<Self>) -> Storage {
-        (self.shapes, self.masks)
+        self.shapes
     }
 }
 

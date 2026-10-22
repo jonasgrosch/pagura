@@ -24,7 +24,7 @@ use pagura_interpret::{
     GroupId, GroupRole, MaskId, MaskKind, Node, NodeId, Paint, Scene, TilingColors, TilingPaint,
     TilingSpacing,
 };
-use pagura_raster::{Area, DeviceRect, Path, Precision, Transform};
+use pagura_raster::{Area, DeviceRect, Path, Transform};
 use std::sync::Arc;
 
 /// A prepared solid paint's identity: paint, state, layout and how the
@@ -42,7 +42,6 @@ pub(crate) struct Planner<'s, B: Backend> {
     pub(crate) limits: &'s Limits,
     pub(crate) backend: B,
     pub(crate) area: Area,
-    pub(crate) precision: Precision,
     pub(crate) storage: Storage,
     pub(crate) simulate: bool,
     /// Spot colorants of the page target.
@@ -173,11 +172,6 @@ impl<'s, B: Backend> Planner<'s, B> {
             .iter()
             .map(|(name, _)| name.clone())
             .collect();
-        let precision = if request.fast.approximate_coverage {
-            Precision::Approximate
-        } else {
-            Precision::Exact
-        };
         let mut parts = Parts::default();
         parts.groups.push(GroupPlan {
             bounds: area.region,
@@ -195,7 +189,6 @@ impl<'s, B: Backend> Planner<'s, B> {
             limits,
             backend,
             area,
-            precision,
             storage,
             simulate: separations.simulate,
             spots,

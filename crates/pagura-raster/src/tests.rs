@@ -4,7 +4,7 @@
 use crate::testing::{fill, raster, stroke as band_stroke, window};
 use crate::{
     Adjustment, Area, ClipShape, DeviceRect, FillRule, LineCap, LineJoin, Path, PathBuilder, Point,
-    Precision, Shape, ShapeOptions, Stroke, Transform,
+    Shape, ShapeOptions, Stroke, Transform,
 };
 use pagura_core::{ErrorKind, Limits};
 
@@ -71,11 +71,7 @@ impl Vector {
             region,
             band_height: 3,
         };
-        let options = ShapeOptions {
-            area,
-            precision: Precision::Exact,
-            limits,
-        };
+        let options = ShapeOptions { area, limits };
         let clips: Vec<(&Path, FillRule)> = self.clips.iter().map(|c| (c, self.rule)).collect();
         let clip = (!clips.is_empty())
             .then(|| ClipShape::new(&clips, Transform::IDENTITY, &options).unwrap());

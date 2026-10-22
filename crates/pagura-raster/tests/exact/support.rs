@@ -4,7 +4,7 @@
 use pagura_core::{Limits, Meter};
 use pagura_raster::{
     Area, BandCoverage, BandRasterizer, ClipShape, DeviceRect, FillRule, MarkCoverage, Path,
-    PathBuilder, Point, Precision, Shape, ShapeOptions, Span, Transform,
+    PathBuilder, Point, Shape, ShapeOptions, Span, Transform,
 };
 use pagura_reference::{Region, exact};
 
@@ -44,11 +44,7 @@ pub fn area(x0: u32, y0: u32, x1: u32, y1: u32, band_height: u32) -> Area {
 
 /// Exact options of `area`.
 pub fn options(area: Area, limits: &Limits) -> ShapeOptions<'_> {
-    ShapeOptions {
-        area,
-        precision: Precision::Exact,
-        limits,
-    }
+    ShapeOptions { area, limits }
 }
 
 /// The pixels of a region.

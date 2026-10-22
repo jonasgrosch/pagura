@@ -26,8 +26,7 @@ use pagura_raster::{BandCoverage, BandRasterizer, DeviceRect};
 pub struct Scratch {
     workspace: Option<Workspace>,
     rasterizer: Option<BandRasterizer>,
-    /// The storage of the shapes and glyph masks of the scene taken back
-    /// last.
+    /// The storage of the shapes of the scene taken back last.
     storage: Storage,
 }
 
@@ -48,23 +47,22 @@ impl Scratch {
         crate::prepare::prepare_in(scene, request, (store, limits), storage)
     }
 
-    /// Takes back the storage of `scene`'s shapes and glyph masks, emptied,
-    /// for the next preparation.
+    /// Takes back the storage of `scene`'s shapes, emptied, for the next
+    /// preparation.
     pub fn recycle(&mut self, scene: PreparedScene) {
-        let (mut shapes, mut masks) = scene.into_storage();
+        let mut shapes = scene.into_storage();
         shapes.clear();
-        masks.clear();
-        self.storage = (shapes, masks);
+        self.storage = shapes;
     }
 
-    /// Bytes held between renders, glyph mask storage aside.
+    /// Bytes held between renders.
     pub fn retained_bytes(&self) -> usize {
         self.workspace.as_ref().map_or(0, Workspace::bytes)
             + self
                 .rasterizer
                 .as_ref()
                 .map_or(0, BandRasterizer::retained_bytes)
-            + self.storage.0.capacity() * size_of::<pagura_raster::Shape>()
+            + self.storage.capacity() * size_of::<pagura_raster::Shape>()
     }
 
     /// The workspace and rasterizer for `plan`.
@@ -218,13 +216,6 @@ impl Extents {
     /// region.
     pub(crate) fn mark(&mut self, row: usize, start: u32, end: u32) {
         if let Some(extent) = self.rows.get_mut(row) {
-            *extent = [extent[0].min(start), extent[1].max(end)];
-        }
-    }
-
-    /// Records a store at columns `start .. end` of each of `rows`.
-    pub(crate) fn mark_rows(&mut self, rows: std::ops::Range<usize>, start: u32, end: u32) {
-        for extent in self.rows.get_mut(rows).unwrap_or_default() {
             *extent = [extent[0].min(start), extent[1].max(end)];
         }
     }

@@ -468,7 +468,6 @@ impl<B: Backend> Planner<'_, B> {
     ) -> Result<()> {
         let options = ShapeOptions {
             area: self.area,
-            precision: self.precision,
             limits: self.limits,
         };
         let prepared = self.backend.fill(
@@ -597,7 +596,6 @@ impl<B: Backend> Planner<'_, B> {
     fn shape(&mut self, scope: &Scope, geometry: &Geometry<'_>) -> Result<Shape> {
         let options = ShapeOptions {
             area: self.area,
-            precision: self.precision,
             limits: self.limits,
         };
         let prepared = match geometry {

@@ -6,13 +6,12 @@
 //! coverage and its cell-local edges, so that a mark crossing it is
 //! integrated together with the clip's geometry rather than multiplied.
 
-use super::approximate::{ClipPath, Product};
 use super::certify::certified;
 use super::edges::{self, Bounds, Chained, Polygon};
 use super::rect::rectangle;
 use super::resolve::{LocalEdge, Resolver};
 use super::scan::{RowIndex, Scanner, Walk, gap_winding, inside};
-use super::{DeviceRect, Precision, Prep, ShapeOptions};
+use super::{DeviceRect, Prep, ShapeOptions};
 use crate::{FillRule, Path, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
 use std::sync::Arc;
@@ -34,8 +33,6 @@ struct Inner {
     bounds: DeviceRect,
     rect: Option<Bounds>,
     rows: Option<Rows>,
-    product: Option<Product>,
-    paths: Vec<ClipPath>,
     work: usize,
     retained: usize,
 }
@@ -89,32 +86,6 @@ impl Rows {
                 &self.segments[start as usize..end as usize]
             }
             _ => &[],
-        }
-    }
-
-    /// Scales `values`, row `y` from column `x0`, by the clip's coverage.
-    pub(crate) fn scale(&self, y: u32, x0: usize, values: &mut [u8]) {
-        let segments = self.row(y);
-        let mut s = 0;
-        for (x, v) in (x0..).zip(values.iter_mut()) {
-            while segments.get(s).is_some_and(|seg| (seg.x1 as usize) <= x) {
-                s += 1;
-            }
-            let factor = match segments.get(s) {
-                Some(seg) if (seg.x0 as usize) <= x => {
-                    if seg.cell == INSIDE {
-                        u8::MAX
-                    } else {
-                        self.cell(seg.cell).map_or(0, |(c, _, _)| c.value)
-                    }
-                }
-                _ => 0,
-            };
-            if factor != u8::MAX {
-                #[expect(clippy::cast_possible_truncation, reason = "a rounded byte product")]
-                let scaled = ((u16::from(*v) * u16::from(factor) + 127) / 255) as u8;
-                *v = scaled;
-            }
         }
     }
 
@@ -178,7 +149,6 @@ pub(crate) fn fill_polygon(
     path: &Path,
     transform: Transform,
     rule: FillRule,
-    tolerance: Option<f64>,
     limits: &Limits,
 ) -> Result<(Polygon, FillRule)> {
     if path.segments().len() > limits.path_segments {
@@ -189,13 +159,13 @@ pub(crate) fn fill_polygon(
     }
     if let Some(outline) = crate::empty_fill::classified_outline(path, transform, rule, limits)? {
         return Ok((
-            Polygon::from_path(&outline, Transform::IDENTITY, tolerance, limits)?,
+            Polygon::from_path(&outline, Transform::IDENTITY, limits)?,
             FillRule::NonZero,
         ));
     }
     let polygon = match Polygon::from_lines(path, transform, limits)? {
         Some(polygon) => polygon,
-        None => Polygon::from_path(path, transform, tolerance, limits)?,
+        None => Polygon::from_path(path, transform, limits)?,
     };
     Ok((polygon, rule))
 }
@@ -221,13 +191,8 @@ impl ClipShape {
         let region = options.area.region;
         let mut rect: Option<Bounds> = None;
         let mut groups = Vec::new();
-        let mut kinds = Vec::new();
-        kinds
-            .try_reserve(paths.len())
-            .map_err(|_| Error::limit("clip allocation failed"))?;
         for &(path, rule) in paths {
-            kinds.push(ClipPath::new(path, transform));
-            let (polygon, rule) = fill_polygon(path, transform, rule, None, limits)?;
+            let (polygon, rule) = fill_polygon(path, transform, rule, limits)?;
             if let Some(r) = rectangle(&polygon) {
                 rect = Some(rect.map_or(r, |b| b.intersect(r)));
             } else {
@@ -252,22 +217,14 @@ impl ClipShape {
             bounds,
             rect,
             rows: None,
-            product: None,
-            paths: kinds,
             work: 0,
             retained: size_of::<Inner>(),
         };
         if !groups.is_empty() && !bounds.is_empty() {
-            if options.precision == Precision::Approximate {
-                let product = Product::new(paths, transform, options, bounds)?;
-                inner.retained = inner.retained.saturating_add(product.retained_bytes());
-                inner.work = product.work();
-                inner.product = Some(product);
-            }
             let rows = classify(&groups, rect, bounds, options)?;
-            inner.work = inner
-                .work
-                .saturating_add(rows.segments.len())
+            inner.work = rows
+                .segments
+                .len()
                 .saturating_add(bounds.height() as usize * 2);
             inner.retained = inner.retained.saturating_add(rows.retained_bytes());
             inner.rows = Some(rows);
@@ -303,24 +260,8 @@ impl ClipShape {
         self.inner.rows.as_ref()
     }
 
-    pub(crate) fn product(&self) -> Option<&Product> {
-        self.inner.product.as_ref()
-    }
-
-    pub(crate) fn paths(&self) -> &[ClipPath] {
-        &self.inner.paths
-    }
-
     pub(crate) fn same(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.inner, &other.inner)
-    }
-
-    /// Whether the clip keeps every pixel geometry within `hull` can touch,
-    /// `pixels` within the region: its rectangle contains the hull, and its
-    /// rows are inside across those pixels.
-    pub(crate) fn keeps(&self, hull: Bounds, pixels: DeviceRect) -> bool {
-        self.rect().is_none_or(|r| r.contains(hull))
-            && self.rows().is_none_or(|rows| rows.inside(pixels))
     }
 }
 
