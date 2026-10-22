@@ -522,9 +522,25 @@ impl Backend for Raster<'_> {
     }
 
     fn finish(self, area: Area, bytes: &mut Meter) -> Result<Box<dyn Producer>> {
-        let rasterizer = BandRasterizer::new(area, bytes)?;
+        let spare = SPARE_RASTERIZER
+            .try_with(std::cell::Cell::take)
+            .ok()
+            .flatten()
+            .filter(|spare| spare.rasterizer.area() == area);
+        let rasterizer = if let Some(spare) = spare {
+            // The storage it holds charged as it did when it was made.
+            bytes.charge(spare.charged)?;
+            spare
+        } else {
+            let used = bytes.used();
+            let rasterizer = BandRasterizer::new(area, bytes)?;
+            Rasterizer {
+                rasterizer,
+                charged: bytes.used() - used,
+            }
+        };
         Ok(Box::new(RasterCoverage {
-            rasterizer,
+            rasterizer: Some(rasterizer),
             shapes: self.shapes,
             masks: self.masks,
             clips: self.clips,
@@ -535,10 +551,18 @@ impl Backend for Raster<'_> {
 /// The production coverage producer.
 #[derive(Debug)]
 struct RasterCoverage {
-    rasterizer: BandRasterizer,
+    /// Taken back as the thread's spare when the producer drops.
+    rasterizer: Option<Rasterizer>,
     shapes: Vec<Shape>,
     masks: GlyphMasks,
     clips: Vec<ClipShape>,
+}
+
+/// A band rasterizer and the bytes its storage charged.
+#[derive(Debug)]
+struct Rasterizer {
+    rasterizer: BandRasterizer,
+    charged: usize,
 }
 
 /// The shape or mask of `key`.
@@ -557,6 +581,9 @@ thread_local! {
     static SPARE_SHAPES: std::cell::Cell<Vec<Shape>> = const { std::cell::Cell::new(Vec::new()) };
     /// Its emptied mask list, likewise.
     static SPARE_MASKS: std::cell::Cell<GlyphMasks> = std::cell::Cell::default();
+    /// Its rasterizer, whose storage the next preparation of the same area
+    /// takes rather than allocating and clearing it again.
+    static SPARE_RASTERIZER: std::cell::Cell<Option<Rasterizer>> = const { std::cell::Cell::new(None) };
 }
 
 /// Keeps the emptied `list` as this thread's spare unless the spare holds
@@ -585,6 +612,12 @@ impl Drop for RasterCoverage {
         let mut masks = std::mem::take(&mut self.masks);
         masks.clear();
         keep_spare(&SPARE_MASKS, masks, GlyphMasks::capacity);
+        // Scratch that a panic left mid-mark is not taken again.
+        if let Some(rasterizer) = self.rasterizer.take()
+            && !std::thread::panicking()
+        {
+            let _ = SPARE_RASTERIZER.try_with(|spare| spare.set(Some(rasterizer)));
+        }
     }
 }
 
@@ -596,11 +629,15 @@ impl Producer for RasterCoverage {
         band: u32,
         out: &mut BandCoverage,
     ) {
+        let Some(Rasterizer { rasterizer, .. }) = self.rasterizer.as_mut() else {
+            out.clear();
+            return;
+        };
         let get = |i: u32| pagura_core::convert::u32_to_usize(i);
         let clip = clip.and_then(|i| self.clips.get(get(i)));
         let shape = match shape.map(|key| glyph(&self.shapes, &self.masks, key)) {
             Some(Some(RunGlyph::Mask(mask))) => {
-                self.rasterizer.rasterize_mask(mask, band, out);
+                rasterizer.rasterize_mask(mask, band, out);
                 return;
             }
             Some(Some(RunGlyph::Shape(shape))) => Some(shape),
@@ -611,8 +648,7 @@ impl Producer for RasterCoverage {
             }
             None => None,
         };
-        self.rasterizer
-            .rasterize(MarkCoverage { shape, clip }, band, out);
+        rasterizer.rasterize(MarkCoverage { shape, clip }, band, out);
     }
 
     fn rasterize_run(
@@ -622,6 +658,10 @@ impl Producer for RasterCoverage {
         band: u32,
         out: &mut BandCoverage,
     ) -> usize {
+        let Some(Rasterizer { rasterizer, .. }) = self.rasterizer.as_mut() else {
+            out.clear();
+            return 0;
+        };
         let get = |i: u32| pagura_core::convert::u32_to_usize(i);
         let run: Vec<RunGlyph<'_>> = shapes
             .iter()
@@ -633,7 +673,7 @@ impl Producer for RasterCoverage {
             return 0;
         }
         let clip = clip.and_then(|i| self.clips.get(get(i)));
-        self.rasterizer.rasterize_run(&run, clip, band, out)
+        rasterizer.rasterize_run(&run, clip, band, out)
     }
 
     fn mask(&self, shape: u32) -> Option<&GlyphMask> {
