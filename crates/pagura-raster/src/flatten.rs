@@ -18,6 +18,43 @@ pub(crate) const MAX_COORDINATE: f64 = 1e12;
 /// about 25 levels; this bound is reached only through rounding.
 const MAX_SUBDIVISION_DEPTH: usize = 64;
 
+/// The approximation bound for one curve: the canonical distance, or a
+/// share of a whole-outline area allowance. A curve and its chord lie in
+/// the same control hull, so that hull's area bounds their symmetric
+/// difference even when the outline overlaps or a clip cuts it.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum Flatness {
+    Distance,
+    Area(f64),
+}
+
+impl Flatness {
+    fn accepts(self, [a, b, c, d]: [Point; 4], depth: usize, rounding: f64) -> bool {
+        match self {
+            Self::Distance => close(b, a, d, TOLERANCE) && close(c, a, d, TOLERANCE),
+            Self::Area(allowance) => {
+                let triangle = |p: Point, q: Point| {
+                    let (ux, uy, vx, vy) = (p.x - a.x, p.y - a.y, q.x - a.x, q.y - a.y);
+                    let products = (ux * vy).abs() + (uy * vx).abs();
+                    let radius = 2.0 * rounding;
+                    let perturbation = radius * (ux.abs() + uy.abs() + vx.abs() + vy.abs())
+                        + 2.0 * radius * radius;
+                    let determinant =
+                        (ux * vy - uy * vx).abs() + 8.0 * f64::EPSILON * products + perturbation;
+                    determinant * (0.5 + 8.0 * f64::EPSILON) + f64::MIN_POSITIVE
+                };
+                // These triangles cover the hull. The outward determinant
+                // bound includes subdivision, mapping and cancellation;
+                // an uncertain zero determinant cannot certify zero area.
+                let area =
+                    (triangle(b, c) + triangle(b, d) + triangle(c, d)) * (1.0 + 8.0 * f64::EPSILON);
+                let share = allowance * 0.5_f64.powi(i32::try_from(depth).unwrap_or(i32::MAX));
+                area <= share
+            }
+        }
+    }
+}
+
 pub(crate) type CurveStack = Vec<([Point; 4], usize)>;
 
 /// A flattened contour with source closure and geometric-point metadata.
@@ -74,6 +111,19 @@ pub(crate) fn flatten_into(
     result: &mut Vec<Polyline>,
     pending: &mut CurveStack,
 ) -> Result<usize> {
+    flatten_with(path, transform, limits, result, pending, Flatness::Distance)
+}
+
+/// Flattens with an explicit approximation criterion, retaining the same
+/// subdivision order, metadata and limits as the canonical flattener.
+pub(crate) fn flatten_with(
+    path: &Path,
+    transform: Transform,
+    limits: &Limits,
+    result: &mut Vec<Polyline>,
+    pending: &mut CurveStack,
+    flatness: Flatness,
+) -> Result<usize> {
     pending.clear();
     validate(path, transform, limits)?;
     let mut contour = 0;
@@ -126,6 +176,7 @@ pub(crate) fn flatten_into(
                     &mut current.points,
                     &mut count,
                     limits,
+                    flatness,
                 )?;
                 position = end;
             }
@@ -169,7 +220,15 @@ fn curve(
     out: &mut Vec<Point>,
     count: &mut usize,
     limits: &Limits,
+    flatness: Flatness,
 ) -> Result<()> {
+    let magnitude = points
+        .iter()
+        .map(|p| {
+            ((p.x * transform.a).abs() + (p.y * transform.c).abs() + transform.e.abs())
+                .max((p.x * transform.b).abs() + (p.y * transform.d).abs() + transform.f.abs())
+        })
+        .fold(1.0_f64, f64::max);
     let mut points = points;
     let mut depth = 0;
     loop {
@@ -177,7 +236,11 @@ fn curve(
         // A Bézier lies in its control hull (ISO 32000-2, 8.5.2.2).
         // The tolerance neighbourhood of a segment is convex, so admitting
         // both inner controls certifies the whole curve, including cusps.
-        if close(b, a, d, TOLERANCE) && close(c, a, d, TOLERANCE) {
+        let rounding = magnitude
+            * f64::EPSILON
+            * 16.0
+            * f64::from(u32::try_from(depth + 4).unwrap_or(u32::MAX));
+        if flatness.accepts([a, b, c, d], depth, rounding) {
             append(out, points[3], count, limits)?;
             let Some(next) = pending.pop() else {
                 return Ok(());
@@ -245,6 +308,17 @@ mod tests {
     use pagura_core::ErrorKind;
 
     #[test]
+    fn hull_area_rejects_a_determinant_lost_to_cancellation() {
+        // The two large products round to the same f64 although their
+        // exact difference is -1, so the triangle's exact area is 1/2.
+        let a = Point::new(0.0, 0.0);
+        let b = Point::new(999_999_999_999.0, 999_999_999_998.0);
+        let c = Point::new(999_999_999_998.0, 999_999_999_997.0);
+        assert_eq!(b.x * c.y - b.y * c.x, 0.0);
+        assert!(!Flatness::Area(1.0 / 4096.0).accepts([a, b, c, a], 0, 0.0));
+    }
+
+    #[test]
     fn subdivision_stops_at_the_depth_bound() {
         let corner = [
             Point::new(0.0, 0.0),
@@ -262,6 +336,7 @@ mod tests {
                 &mut points,
                 &mut count,
                 &limits,
+                Flatness::Distance,
             )
         };
         flatten(Transform::IDENTITY).unwrap();
@@ -398,6 +473,7 @@ mod tests {
                 &mut actual,
                 &mut 0,
                 &Limits::default(),
+                Flatness::Distance,
             )
             .unwrap();
             assert_eq!(actual, expected);
@@ -438,6 +514,7 @@ mod tests {
             &mut out,
             &mut 1,
             &Limits::default(),
+            Flatness::Distance,
         )
         .unwrap();
         // Evaluate Bernstein polynomials independently of the subdivision.

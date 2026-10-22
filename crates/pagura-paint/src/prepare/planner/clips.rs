@@ -207,9 +207,13 @@ impl Planner<'_> {
         (clip, extra): (Option<ClipId>, Option<&Extra>),
         budget: &mut Budget,
     ) -> Result<Clipping> {
+        let limits = pagura_core::Limits {
+            render_bytes: budget.bytes.remaining(),
+            ..*self.limits
+        };
         let options = ShapeOptions {
             area: self.area,
-            limits: self.limits,
+            limits: &limits,
         };
         let chain = self.chain(scope, clip, extra)?;
         if chain.is_empty() {

@@ -1,20 +1,33 @@
-//! Closed-form coverage of axis-aligned rectangles (8.5.3–8.5.4): a row's
-//! coverage is its covered height times each column's covered width.
+//! Axis-aligned rectangles among clipping paths (8.5.4): they clip a mark's
+//! edges instead of being classified row by row.
 
 use super::edges::{Bounds, Polygon};
-use super::row::Sink;
-use crate::quantize_unit;
+use crate::Point;
 
-/// The rectangle a polygon of one axis-aligned four-sided contour encloses.
+/// The rectangle a polygon of one contour encloses when the contour is an
+/// axis-aligned rectangle once the vertices that lie on a straight
+/// axis-aligned run between their neighbours are dropped.
 pub(crate) fn rectangle(polygon: &Polygon) -> Option<Bounds> {
     let mut contours = polygon.contours();
-    let ([a, b, c, d], None) = (contours.next()?, contours.next()) else {
+    let (Some(contour), None) = (contours.next(), contours.next()) else {
         return None;
     };
-    let (a, b, c, d) = (*a, *b, *c, *d);
+    let n = contour.len();
+    let mut corners = [Point::default(); 4];
+    let mut count = 0;
+    for (i, &p) in contour.iter().enumerate() {
+        let a = contour[(i + n - 1) % n];
+        let b = contour[(i + 1) % n];
+        if on_run(a, p, b) {
+            continue;
+        }
+        *corners.get_mut(count)? = p;
+        count += 1;
+    }
+    let [a, b, c, d] = corners;
     let axis = (a.x == b.x && b.y == c.y && c.x == d.x && d.y == a.y)
         || (a.y == b.y && b.x == c.x && c.y == d.y && d.x == a.x);
-    (axis && a != b && b != c && c != d && d != a).then_some(Bounds {
+    (count == 4 && axis && a != b && b != c && c != d && d != a).then_some(Bounds {
         left: a.x.min(c.x),
         top: a.y.min(c.y),
         right: a.x.max(c.x),
@@ -22,84 +35,62 @@ pub(crate) fn rectangle(polygon: &Polygon) -> Option<Bounds> {
     })
 }
 
-/// Emits row `y` of `rect`, which lies within the region, to `sink`.
-/// Returns the runs emitted.
-#[expect(
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    reason = "the rectangle lies within the u32 region"
-)]
-pub(crate) fn emit_row(rect: Bounds, y: u32, sink: &mut impl Sink) -> usize {
-    let top = f64::from(y);
-    let height = (rect.bottom.min(top + 1.0) - rect.top.max(top)).clamp(0.0, 1.0);
-    if height <= 0.0 || rect.left >= rect.right {
-        return 0;
-    }
-    let start = rect.left.floor();
-    let end = rect.right.ceil();
-    let first = (rect.right.min(start + 1.0) - rect.left).min(1.0);
-    let last = rect.right - (end - 1.0).max(rect.left);
-    let (start, end) = (start as usize, end as usize);
-    if end <= start {
-        return 0;
-    }
-    if end == start + 1 {
-        sink.run(start, end, quantize_unit(last * height));
-        return 1;
-    }
-    sink.run(start, start + 1, quantize_unit(first * height));
-    sink.run(start + 1, end - 1, quantize_unit(height));
-    sink.run(end - 1, end, quantize_unit(last * height));
-    3
+/// Whether `p` lies on the axis-aligned segment from `a` to `b`, so that
+/// dropping it leaves the contour's region as it is.
+fn on_run(a: Point, p: Point, b: Point) -> bool {
+    let between = |u: f64, v: f64, w: f64| (u <= v && v <= w) || (w <= v && v <= u);
+    (a.x == p.x && p.x == b.x && between(a.y, p.y, b.y))
+        || (a.y == p.y && p.y == b.y && between(a.x, p.x, b.x))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Point;
     use pagura_core::Limits;
 
-    struct Collect(Vec<(usize, usize, u8)>);
-    impl Sink for Collect {
-        fn run(&mut self, x0: usize, x1: usize, value: u8) {
-            if x0 < x1 {
-                self.0.push((x0, x1, value));
-            }
-        }
-    }
-
-    #[test]
-    fn rows_take_height_times_width() {
-        let rect = Bounds {
-            left: 1.25,
-            top: 0.5,
-            right: 4.5,
-            bottom: 3.0,
-        };
-        let mut out = Collect(Vec::new());
-        emit_row(rect, 0, &mut out);
-        assert_eq!(out.0, [(1, 2, 96), (2, 4, 128), (4, 5, 64)]);
-        out.0.clear();
-        emit_row(rect, 1, &mut out);
-        assert_eq!(out.0, [(1, 2, 191), (2, 4, 255), (4, 5, 128)]);
-        out.0.clear();
-        emit_row(rect, 3, &mut out);
-        assert_eq!(out.0, [] as [(usize, usize, u8); 0]);
+    fn polygon(points: &[(f64, f64)]) -> Polygon {
+        let mut polygon = Polygon::default();
+        polygon.begin(&Limits::default(), points.len()).unwrap();
+        polygon
+            .points
+            .extend(points.iter().map(|&(x, y)| Point::new(x, y)));
+        polygon.end();
+        polygon
     }
 
     #[test]
     fn only_single_axis_aligned_quadrilaterals_are_rectangles() {
-        let mut polygon = Polygon::default();
-        polygon.begin(&Limits::default(), 4).unwrap();
-        polygon.points.extend([
-            Point::new(0.0, 0.0),
-            Point::new(2.0, 0.0),
-            Point::new(2.0, 1.0),
-            Point::new(0.0, 1.0),
+        let mut square = polygon(&[(0.0, 0.0), (2.0, 0.0), (2.0, 1.0), (0.0, 1.0)]);
+        assert!(rectangle(&square).is_some());
+        square.points[2].x = 2.5;
+        assert!(rectangle(&square).is_none());
+    }
+
+    #[test]
+    fn vertices_on_the_sides_leave_a_rectangle() {
+        // 0000266p22 writes its chart frame with two extra side points.
+        let framed = polygon(&[
+            (770.64, 445.92),
+            (770.64, 123.48),
+            (70.8, 123.48),
+            (70.8, 284.7),
+            (70.8, 445.92),
+            (124.63, 445.92),
         ]);
-        polygon.end();
-        assert!(rectangle(&polygon).is_some());
-        polygon.points[2].x = 2.5;
-        assert!(rectangle(&polygon).is_none());
+        let r = rectangle(&framed).unwrap();
+        assert_eq!(
+            (r.left, r.top, r.right, r.bottom),
+            (70.8, 123.48, 770.64, 445.92)
+        );
+        // A notch is not on a run.
+        let notched = polygon(&[
+            (0.0, 0.0),
+            (4.0, 0.0),
+            (4.0, 4.0),
+            (2.0, 4.0),
+            (2.0, 3.0),
+            (0.0, 3.0),
+        ]);
+        assert!(rectangle(&notched).is_none());
     }
 }

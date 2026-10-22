@@ -29,7 +29,7 @@ fn disjoint_clips_remove_and_containing_clips_drop_out() {
     .unwrap();
     assert!(shape.is_none());
     // Clips that keep every pixel the mark can touch are dropped for it: no
-    // edge clipping, overlay or analysis, the work and bytes of the mark
+    // edge clipping, masking or resolution, the work and bytes of the mark
     // alone.
     let wide = polygon(&[
         Point::new(0.5, 0.5),
@@ -62,8 +62,40 @@ fn disjoint_clips_remove_and_containing_clips_drop_out() {
         )
         .unwrap()
         .unwrap();
-        assert!(!clipped.overlay);
+        assert!(!clipped.masked);
         assert_eq!(clipped.work(), alone.work());
         assert_eq!(raster(&area, Some(&clipped), Some(&clip)).0, expected);
     }
+}
+
+#[test]
+fn clip_preparation_cells_and_rows_use_the_remaining_byte_budget() {
+    let area = area(0, 0, 64, 64, 16);
+    let mut triangle = PathBuilder::new();
+    triangle.polygon([
+        Point::new(0.25, 0.25),
+        Point::new(63.75, 0.75),
+        Point::new(32.25, 63.75),
+    ]);
+    let triangle = triangle.finish();
+    let generous = Limits::default();
+    assert!(
+        ClipShape::new(
+            &[(&triangle, FillRule::NonZero)],
+            Transform::IDENTITY,
+            &public(area, &generous)
+        )
+        .is_ok()
+    );
+    let limited = Limits {
+        render_bytes: 4096,
+        ..generous
+    };
+    let error = ClipShape::new(
+        &[(&triangle, FillRule::NonZero)],
+        Transform::IDENTITY,
+        &public(area, &limited),
+    )
+    .unwrap_err();
+    assert_eq!(error.message, shape::RENDER_BYTES);
 }

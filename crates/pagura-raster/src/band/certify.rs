@@ -15,6 +15,7 @@
 //! The sweep's steps are capped at 32 per vertex plus 1024, so certifying
 //! costs time linear in the vertices beyond the sorts.
 
+use super::curve::{Mono, Piece, Spline};
 use super::edges::Polygon;
 use crate::Point;
 
@@ -31,6 +32,20 @@ struct Active {
     segment: usize,
     x: f64,
     range: [f64; 2],
+}
+
+/// An upper bound of the polygon certificate's simultaneous vector
+/// capacities: split points, chains, heights, active chains and failed
+/// slabs. Geometric growth costs less than twice each maximum length;
+/// eight spare entries also cover the minimum allocation capacities.
+pub(crate) fn scratch_bytes(vertices: usize) -> usize {
+    vertices.saturating_add(8).saturating_mul(
+        4 * size_of::<Point>()
+            + 2 * size_of::<Chain>()
+            + 4 * size_of::<f64>()
+            + 2 * size_of::<Active>()
+            + 4 * size_of::<[f64; 2]>(),
+    )
 }
 
 /// Whether the winding of `polygon` is 0 or one common sign of magnitude one
@@ -300,6 +315,347 @@ fn apart(
         }
         y = points[i + 1].y.min(points[j + 1].y).min(hi);
     }
+}
+
+/// One y-monotone piece of a spline chain, oriented downward (`a.y <
+/// b.y`): a line, or a monotone quadratic.
+#[derive(Debug, Clone, Copy)]
+struct Down {
+    curve: Option<Mono>,
+    a: Point,
+    b: Point,
+}
+
+impl Down {
+    /// The piece oriented downward, and whether it ran downward.
+    fn new(piece: Piece) -> Option<(Self, bool)> {
+        let (curve, a, b) = match piece {
+            Piece::Line(line) => (None, line.a, line.b),
+            Piece::Curve(q) => (Some(Mono::new(q)), q.points[0], q.points[2]),
+        };
+        if a.y == b.y {
+            return None;
+        }
+        let down = a.y < b.y;
+        let (a, b) = if down { (a, b) } else { (b, a) };
+        Some((Self { curve, a, b }, down))
+    }
+
+    /// x at height `y` within the piece, and whether it is an end's value.
+    fn x(&self, y: f64) -> (f64, bool) {
+        if y <= self.a.y {
+            return (self.a.x, y == self.a.y);
+        }
+        if y >= self.b.y {
+            return (self.b.x, y == self.b.y);
+        }
+        match &self.curve {
+            None => (
+                self.a.x + (y - self.a.y) / (self.b.y - self.a.y) * (self.b.x - self.a.x),
+                false,
+            ),
+            Some(m) => (m.x_at(y), false),
+        }
+    }
+
+    /// The directions bounding the piece seen from its end at height `v`,
+    /// away from it: toward its control (or along it) and along its chord
+    /// to height `far`.
+    fn fan(&self, v: f64, far: f64) -> [Point; 2] {
+        let vertex = if v == self.a.y { self.a } else { self.b };
+        let end = Point::new(self.x(far).0, far);
+        let chord = Point::new(end.x - vertex.x, end.y - vertex.y);
+        let control = self.curve.map_or(chord, |m| {
+            let c = m.control();
+            Point::new(c.x - vertex.x, c.y - vertex.y)
+        });
+        [control, chord]
+    }
+}
+
+/// A chain of a spline: its pieces in `downs`, and its direction.
+#[derive(Debug, Clone, Copy)]
+struct Run {
+    start: usize,
+    end: usize,
+    down: bool,
+}
+
+/// Whether `spline`'s winding is 0 or one common sign of magnitude one
+/// everywhere, by the sweep of [`certified`] over chains of monotone pieces:
+/// neighbours are compared by the x ranges of monotone sub-pieces, halved
+/// where they overlap, and at a shared end by the fans of their control and
+/// chord directions, which meet only at the end when strictly ordered.
+/// Steps are capped as the polygon's are; doubt leaves it uncertified.
+pub(crate) fn spline_certified(spline: &Spline) -> bool {
+    spline_sweep(spline).is_some_and(|ok| ok)
+}
+
+fn spline_sweep(spline: &Spline) -> Option<bool> {
+    let mut downs: Vec<Down> = Vec::new();
+    let mut runs: Vec<Run> = Vec::new();
+    downs.try_reserve(spline.pieces.len()).ok()?;
+    let mut magnitude = 1.0_f64;
+    for contour in spline.contours() {
+        split_pieces(contour, &mut downs, &mut runs, &mut magnitude)?;
+    }
+    let mut work = Work {
+        done: 0,
+        cap: spline.pieces.len().saturating_mul(32).saturating_add(1024),
+    };
+    // Root solving errs by a few units of roundoff of the largest
+    // coordinate; keep 2^13 of them.
+    let margin = magnitude * 2f64.powi(-40);
+    let top = |r: &Run| downs[r.start].a.y;
+    let bottom = |r: &Run| downs[r.end - 1].b.y;
+    let mut heights: Vec<f64> = Vec::new();
+    heights.try_reserve(2 * runs.len()).ok()?;
+    heights.extend(runs.iter().flat_map(|r| [top(r), bottom(r)]));
+    heights.sort_unstable_by(f64::total_cmp);
+    heights.dedup();
+    let mut order: Vec<usize> = (0..runs.len()).collect();
+    order.sort_unstable_by(|&a, &b| top(&runs[a]).total_cmp(&top(&runs[b])));
+    // Active runs: run, piece at the slab's top, x at mid-slab, x range.
+    let mut active: Vec<(usize, usize, f64, [f64; 2])> = Vec::new();
+    active.try_reserve(runs.len()).ok()?;
+    let mut next = 0;
+    let mut sign = None;
+    for pair in heights.windows(2) {
+        let (lo, hi) = (pair[0], pair[1]);
+        active.retain(|a| bottom(&runs[a.0]) > lo);
+        while let Some(&r) = order.get(next).filter(|&&r| top(&runs[r]) <= lo) {
+            active.push((r, runs[r].start, 0.0, [0.0; 2]));
+            next += 1;
+        }
+        if active.is_empty() {
+            continue;
+        }
+        work.add(active.len())?;
+        let mid = lo.midpoint(hi);
+        for a in &mut active {
+            let end = runs[a.0].end;
+            while a.1 + 1 < end && downs[a.1].b.y <= lo {
+                a.1 += 1;
+            }
+            let mut k = a.1;
+            let first = downs[k].x(lo).0;
+            let mut range = [first, first];
+            loop {
+                work.add(1)?;
+                let piece = &downs[k];
+                if piece.a.y <= mid && mid <= piece.b.y {
+                    a.2 = piece.x(mid).0;
+                }
+                if piece.b.y >= hi || k + 1 >= end {
+                    let x = piece.x(hi).0;
+                    range = [range[0].min(x), range[1].max(x)];
+                    break;
+                }
+                range = [range[0].min(piece.b.x), range[1].max(piece.b.x)];
+                k += 1;
+            }
+            a.3 = range;
+        }
+        active.sort_unstable_by(|a, b| a.2.total_cmp(&b.2));
+        let first = *sign.get_or_insert(runs[active[0].0].down);
+        let ordered = active.len().is_multiple_of(2)
+            && active
+                .iter()
+                .enumerate()
+                .all(|(k, a)| runs[a.0].down == (first ^ (k % 2 == 1)));
+        if !ordered {
+            return Some(false);
+        }
+        for w in active.windows(2) {
+            if w[0].3[1] + margin < w[1].3[0] {
+                continue;
+            }
+            let left = (w[0].1, runs[w[0].0].end);
+            let right = (w[1].1, runs[w[1].0].end);
+            if !chains_apart(&downs, (left, right), (lo, hi), margin, &mut work)? {
+                return Some(false);
+            }
+        }
+    }
+    Some(true)
+}
+
+/// Appends the y-monotone chains of one closed contour of pieces, each
+/// oriented downward. A chain begins where the direction changes, so a
+/// cyclic walk from such a piece never splits one; horizontal pieces end
+/// chains.
+fn split_pieces(
+    contour: &[Piece],
+    downs: &mut Vec<Down>,
+    runs: &mut Vec<Run>,
+    magnitude: &mut f64,
+) -> Option<()> {
+    let n = contour.len();
+    let direction = |p: &Piece| match Down::new(*p) {
+        Some((_, true)) => 1,
+        Some((_, false)) => -1,
+        None => 0,
+    };
+    // A contour without height bounds no area.
+    let Some(first) = (0..n).find(|&i| {
+        let d = direction(&contour[i]);
+        d != 0 && direction(&contour[(i + n - 1) % n]) != d
+    }) else {
+        return Some(());
+    };
+    let mut current: Option<(usize, bool)> = None;
+    let close = |current: &mut Option<(usize, bool)>,
+                 downs: &mut Vec<Down>,
+                 runs: &mut Vec<Run>|
+     -> Option<()> {
+        if let Some((start, down)) = current.take() {
+            if !down {
+                downs.get_mut(start..)?.reverse();
+            }
+            runs.try_reserve(1).ok()?;
+            runs.push(Run {
+                start,
+                end: downs.len(),
+                down,
+            });
+        }
+        Some(())
+    };
+    for step in 0..n {
+        let piece = contour[(first + step) % n];
+        let Some((down_piece, down)) = Down::new(piece) else {
+            close(&mut current, downs, runs)?;
+            continue;
+        };
+        *magnitude = magnitude
+            .max(down_piece.a.x.abs())
+            .max(down_piece.b.x.abs())
+            .max(down_piece.a.y.abs())
+            .max(down_piece.b.y.abs());
+        if current.is_none_or(|(_, d)| d != down) {
+            close(&mut current, downs, runs)?;
+            current = Some((downs.len(), down));
+        }
+        downs.try_reserve(1).ok()?;
+        downs.push(down_piece);
+    }
+    close(&mut current, downs, runs)
+}
+
+/// Whether the right chain stays right of the left one on the open slab
+/// `(lo, hi)`; each chain is given by its piece at `lo` and its end.
+fn chains_apart(
+    downs: &[Down],
+    ((mut i, ie), (mut j, je)): ((usize, usize), (usize, usize)),
+    (lo, hi): (f64, f64),
+    margin: f64,
+    work: &mut Work,
+) -> Option<bool> {
+    let mut a = lo;
+    while a < hi {
+        while i + 1 < ie && downs[i].b.y <= a {
+            i += 1;
+        }
+        while j + 1 < je && downs[j].b.y <= a {
+            j += 1;
+        }
+        let b = downs[i].b.y.min(downs[j].b.y).min(hi);
+        if b <= a {
+            return Some(false);
+        }
+        if !pieces_apart(
+            &downs[i],
+            &downs[j],
+            (a, b),
+            (a == lo, b == hi),
+            margin,
+            work,
+            12,
+        )? {
+            return Some(false);
+        }
+        a = b;
+    }
+    Some(true)
+}
+
+/// Whether piece `right` stays right of piece `left` over `(a, b)`:
+/// straight pieces by their ends, curved ones by the x ranges of their
+/// monotone parts, halved up to `depth` times; at a shared end of the slab
+/// by their fans.
+fn pieces_apart(
+    left: &Down,
+    right: &Down,
+    (a, b): (f64, f64),
+    ends: (bool, bool),
+    margin: f64,
+    work: &mut Work,
+    depth: u32,
+) -> Option<bool> {
+    work.add(1)?;
+    let (la, left_a) = left.x(a);
+    let (lb, left_b) = left.x(b);
+    let (ra, right_a) = right.x(a);
+    let (rb, right_b) = right.x(b);
+    // Identical ends may touch at the slab's ends.
+    let touch_a = ends.0 && left_a && right_a && la == ra;
+    let touch_b = ends.1 && left_b && right_b && lb == rb;
+    if left.curve.is_none() && right.curve.is_none() {
+        return Some((touch_a || ra - la > margin) && (touch_b || rb - lb > margin));
+    }
+    if la.max(lb) + margin < ra.min(rb) {
+        return Some(true);
+    }
+    if touch_a || touch_b {
+        let (v, far) = if touch_a { (a, b) } else { (b, a) };
+        if fans_apart(left.fan(v, far), right.fan(v, far), far > v, margin) {
+            return Some(true);
+        }
+    }
+    if depth == 0 {
+        return Some(false);
+    }
+    let m = a.midpoint(b);
+    Some(
+        pieces_apart(
+            left,
+            right,
+            (a, m),
+            (ends.0, false),
+            margin,
+            work,
+            depth - 1,
+        )? && pieces_apart(
+            left,
+            right,
+            (m, b),
+            (false, ends.1),
+            margin,
+            work,
+            depth - 1,
+        )?,
+    )
+}
+
+/// Whether every direction of `left` lies strictly left of every direction
+/// of `right`, both leaving a shared vertex downward (`down`) or upward:
+/// directions on opposite sides of the vertical are ordered whatever their
+/// slopes, others by their cross product beyond its rounding.
+fn fans_apart(left: [Point; 2], right: [Point; 2], down: bool, margin: f64) -> bool {
+    left.iter().all(|u| {
+        right.iter().all(|w| {
+            if u.x <= 0.0 && w.x >= 0.0 && (u.x < 0.0 || w.x > 0.0) {
+                return true;
+            }
+            let cross = u.x * w.y - w.x * u.y;
+            let scale = (u.x.abs() + u.y.abs()) * (w.x.abs() + w.y.abs());
+            if down {
+                cross < -margin * scale
+            } else {
+                cross > margin * scale
+            }
+        })
+    })
 }
 
 #[cfg(test)]

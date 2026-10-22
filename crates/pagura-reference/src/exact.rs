@@ -48,7 +48,8 @@ pub fn stroke(
 
 /// The region of a glyph outline placed at the device-space `origin`, its
 /// points mapped by the linear map `linear` (glyph space to device pixels),
-/// against its true curve where every curve is an exact quadratic.
+/// against its true curve where the renderer integrates a spline of it
+/// (ADR 0004 §4).
 ///
 /// # Errors
 ///

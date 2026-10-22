@@ -6,9 +6,10 @@
 //! arithmetic produces a cell, so coverage is independent of both.
 
 use super::DeviceRect;
+use super::cells::STRIP;
 use crate::flatten::{CurveStack, Polyline, bounded, flatten_into};
 use crate::{Path, Point, Segment, Transform};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 
 /// A straight edge in device space, in contour order.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -377,134 +378,6 @@ fn ordered(value: f64) -> i64 {
     bits ^ (((bits >> 63) as u64) >> 1) as i64
 }
 
-/// A straight edge with the monotone chain it belongs to and its group (a
-/// clip path of an intersection), for the analysis of uncertified cells.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct Chained {
-    pub(crate) line: Line,
-    pub(crate) chain: u32,
-    pub(crate) group: u8,
-    /// Whether the edge's contour fits in one pixel, where it can enclose
-    /// a region no side of the pixel meets.
-    pub(crate) enclosed: bool,
-    /// The edge's place: its contour, its index there, and the contour's
-    /// edge count; pieces of one edge share it.
-    pub(crate) place: Place,
-}
-
-/// Where an edge lies in its polygon.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub(crate) struct Place {
-    pub(crate) contour: u32,
-    pub(crate) index: u32,
-    pub(crate) count: u32,
-}
-
-impl Place {
-    /// Whether two edges are one or consecutive edges of one contour.
-    pub(crate) fn adjacent(self, other: Self) -> bool {
-        self.contour == other.contour
-            && (self.index == other.index
-                || (self.index + 1) % self.count.max(1) == other.index
-                || (other.index + 1) % other.count.max(1) == self.index)
-    }
-}
-
-/// The edges of `polygon` in contour order with their chains: maximal runs
-/// whose vertical direction does not reverse. Chain numbers continue from
-/// `next`, which is advanced.
-pub(crate) fn chained(
-    polygon: &Polygon,
-    group: u8,
-    next: &mut u32,
-    out: &mut Vec<Chained>,
-) -> Result<()> {
-    out.try_reserve(polygon.vertices())
-        .map_err(|_| Error::limit("raster geometry allocation failed"))?;
-    for (contour_number, contour) in polygon.contours().enumerate() {
-        let n = contour.len();
-        let direction = |i: usize| {
-            let (a, b) = (contour[i].y, contour[(i + 1) % n].y);
-            if a < b {
-                1
-            } else if a > b {
-                -1
-            } else {
-                0
-            }
-        };
-        let base = out.len();
-        let (mut lo, mut hi) = (contour[0], contour[0]);
-        for p in contour {
-            lo = Point::new(lo.x.min(p.x), lo.y.min(p.y));
-            hi = Point::new(hi.x.max(p.x), hi.y.max(p.y));
-        }
-        let enclosed = hi.x.ceil() - lo.x.floor() <= 1.0 && hi.y.ceil() - lo.y.floor() <= 1.0;
-        let count = u32::try_from(n).map_err(|_| Error::limit("contour exceeds u32"))?;
-        let contour_index =
-            u32::try_from(contour_number).map_err(|_| Error::limit("contours exceed u32"))?;
-        for (i, index) in (0..n).zip(0_u32..) {
-            out.push(Chained {
-                line: Line {
-                    a: contour[i],
-                    b: contour[(i + 1) % n],
-                },
-                chain: 0,
-                group,
-                enclosed,
-                place: Place {
-                    contour: contour_index,
-                    index,
-                    count,
-                },
-            });
-        }
-        let Some(last) = (0..n).rev().find(|&i| direction(i) != 0) else {
-            *next = next
-                .checked_add(1)
-                .ok_or(Error::limit("chain index overflow"))?;
-            for edge in &mut out[base..] {
-                edge.chain = *next;
-            }
-            continue;
-        };
-        // Start where the direction changes, so a walk around the contour
-        // never splits a chain at the seam.
-        let mut previous = direction(last);
-        let start = (0..n)
-            .find(|&i| {
-                let d = direction(i);
-                let changed = d != 0 && d != previous;
-                if d != 0 {
-                    previous = d;
-                }
-                changed
-            })
-            .unwrap_or(0);
-        let mut previous = 0;
-        for offset in 0..n {
-            let i = (start + offset) % n;
-            let d = direction(i);
-            let prior = (i + n - 1) % n;
-            // A horizontal reversal is a spike of zero area: a new chain.
-            let spike = d == 0
-                && direction(prior) == 0
-                && (contour[i].x - contour[prior].x).signum()
-                    != (contour[(i + 1) % n].x - contour[i].x).signum();
-            if offset == 0 || (d != 0 && d != previous) || spike {
-                *next = next
-                    .checked_add(1)
-                    .ok_or(Error::limit("chain index overflow"))?;
-            }
-            out[base + i].chain = *next;
-            if d != 0 {
-                previous = d;
-            }
-        }
-    }
-    Ok(())
-}
-
 /// A device rectangle `[left, right] × [top, bottom]` of real coordinates.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct Bounds {
@@ -590,10 +463,9 @@ pub(crate) fn clip_line(line: Line, bounds: Bounds, out: &mut Vec<Line>) -> Resu
 }
 
 /// The straight edges of `polygon` that bound area (not horizontal).
-pub(crate) fn lines(polygon: &Polygon) -> Result<Vec<Line>> {
+pub(crate) fn lines(polygon: &Polygon, bytes: &mut Meter) -> Result<Vec<Line>> {
     let mut out = Vec::new();
-    out.try_reserve(polygon.vertices())
-        .map_err(|_| Error::limit("raster geometry allocation failed"))?;
+    bytes.reserve(&mut out, polygon.vertices())?;
     for contour in polygon.contours() {
         let n = contour.len();
         for i in 0..n {
@@ -604,17 +476,6 @@ pub(crate) fn lines(polygon: &Polygon) -> Result<Vec<Line>> {
         }
     }
     Ok(out)
-}
-
-/// Clips a chained edge to `bounds`: parts above or below disappear and
-/// parts left or right of it become vertical edges on its sides, which keeps
-/// the winding inside and leaves none outside (8.5.4). Horizontal edges are
-/// kept within the bounds' height with their x clamped.
-pub(crate) fn clip(edge: Chained, bounds: Bounds, out: &mut Vec<Chained>) -> Result<()> {
-    out.try_reserve(3)
-        .map_err(|_| Error::limit("raster geometry allocation failed"))?;
-    clip_pieces(edge.line, bounds, |line| out.push(Chained { line, ..edge }));
-    Ok(())
 }
 
 /// The at most three pieces of `line` within `bounds`, in its direction.
@@ -693,93 +554,94 @@ pub(crate) fn rows(lo: f64, hi: f64, region: DeviceRect) -> Option<(u32, u32)> {
     Some((first.max(top) as u32, last.min(bottom) as u32))
 }
 
-/// The edges and curves of one shape listed per row they have area in,
-/// each row in the shapes' own order: a row visits only the edges that
-/// cross it, whatever the band height.
+/// The items of one shape listed per strip ([`STRIP`] rows of the global
+/// grid) they have area in, each strip in the items' own order: a band
+/// visits only the items that cross its strips, whatever its height.
 #[derive(Debug, Default)]
-pub(crate) struct RowList {
+pub(crate) struct StripList {
     first: u32,
     offsets: Vec<u32>,
     items: Vec<u32>,
 }
 
-impl RowList {
-    /// Lists every item `i` in each row of `ranges(i)` (inclusive) within
-    /// rows `first..end`.
+impl StripList {
+    /// Lists every item `i` in each strip that rows `ranges(i)` (inclusive)
+    /// meet within rows `first..end`.
     pub(crate) fn new(
         (first, end): (u32, u32),
         count: usize,
         ranges: impl Fn(usize) -> Option<(u32, u32)>,
+        bytes: &mut Meter,
     ) -> Result<Self> {
-        let span = end.saturating_sub(first) as usize;
+        if u32::try_from(count).is_err() {
+            return Err(Error::limit("strip list exceeds u32"));
+        }
+        let last = end.checked_sub(1).filter(|&last| last >= first);
+        let Some(last) = last else {
+            return Ok(Self::default());
+        };
+        let strip0 = first / STRIP;
+        let span = (last / STRIP - strip0) as usize + 1;
         let mut list = Self {
-            first,
+            first: strip0,
             ..Self::default()
         };
-        if u32::try_from(count).is_err() {
-            return Err(Error::limit("row list exceeds u32"));
-        }
-        let allocation = |_| Error::limit("row list allocation failed");
-        list.offsets
-            .try_reserve_exact(span + 1)
-            .map_err(allocation)?;
+        bytes.reserve(&mut list.offsets, span + 1)?;
         list.offsets.resize(span + 1, 0);
         let clamp = |i: usize| {
             let (a, b) = ranges(i)?;
-            let (a, b) = (a.max(first), b.min(end.checked_sub(1)?));
-            (a <= b).then(|| ((a - first) as usize, (b - first) as usize))
+            let (a, b) = (a.max(first), b.min(last));
+            (a <= b).then(|| ((a / STRIP - strip0) as usize, (b / STRIP - strip0) as usize))
         };
         let mut total = 0_u32;
         for i in 0..count {
             if let Some((a, b)) = clamp(i) {
-                for row in a..=b {
-                    list.offsets[row + 1] += 1;
+                for strip in a..=b {
+                    list.offsets[strip + 1] += 1;
                 }
                 total = u32::try_from(b - a + 1)
                     .ok()
                     .and_then(|n| total.checked_add(n))
-                    .ok_or(Error::limit("row list exceeds u32"))?;
+                    .ok_or(Error::limit("strip list exceeds u32"))?;
             }
         }
-        for row in 0..span {
-            list.offsets[row + 1] += list.offsets[row];
+        for strip in 0..span {
+            list.offsets[strip + 1] += list.offsets[strip];
         }
-        list.items
-            .try_reserve_exact(total as usize)
-            .map_err(allocation)?;
+        bytes.reserve(&mut list.items, total as usize)?;
         list.items.resize(total as usize, 0);
-        // Fill each row from its start, which leaves every start at the
-        // next row's; shifting restores them.
+        // Fill each strip from its start, which leaves every start at the
+        // next strip's; shifting restores them.
         for i in 0..count {
             if let Some((a, b)) = clamp(i) {
-                for row in a..=b {
-                    let slot = &mut list.offsets[row];
+                for strip in a..=b {
+                    let slot = &mut list.offsets[strip];
                     // Checked above: the item count fits u32.
                     list.items[*slot as usize] = u32::try_from(i).unwrap_or(u32::MAX);
                     *slot += 1;
                 }
             }
         }
-        if span > 0 {
-            list.offsets.copy_within(0..span, 1);
-            list.offsets[0] = 0;
-        }
+        list.offsets.copy_within(0..span, 1);
+        list.offsets[0] = 0;
         Ok(list)
     }
 
-    /// The items listed for row `y`.
-    pub(crate) fn row(&self, y: u32) -> &[u32] {
-        let Some(local) = y.checked_sub(self.first) else {
+    /// The items listed for strip `strip`.
+    pub(crate) fn strip(&self, strip: u32) -> &[u32] {
+        let Some(local) = strip.checked_sub(self.first) else {
             return &[];
         };
         let local = local as usize;
         match (self.offsets.get(local), self.offsets.get(local + 1)) {
-            (Some(&start), Some(&end)) => &self.items[start as usize..end as usize],
+            (Some(&start), Some(&end)) => {
+                self.items.get(start as usize..end as usize).unwrap_or(&[])
+            }
             _ => &[],
         }
     }
 
-    /// Row visits over all rows.
+    /// Strip visits over all strips.
     pub(crate) fn len(&self) -> usize {
         self.items.len()
     }
@@ -787,6 +649,11 @@ impl RowList {
     pub(crate) fn retained_bytes(&self) -> usize {
         (self.offsets.capacity() + self.items.capacity()).saturating_mul(size_of::<u32>())
     }
+}
+
+/// The strips rows `first..=last` meet.
+pub(crate) fn strips((first, last): (u32, u32)) -> usize {
+    (last / STRIP - first / STRIP) as usize + 1
 }
 
 /// An upper bound of the cells a straight edge visits in rows
@@ -873,29 +740,6 @@ mod tests {
     }
 
     #[test]
-    fn chains_follow_vertical_direction_and_wrap_at_the_seam() {
-        let mut polygon = Polygon::default();
-        let limits = Limits::default();
-        polygon.begin(&limits, 4).unwrap();
-        polygon.points.extend([
-            Point::new(0.0, 1.0),
-            Point::new(1.0, 0.0),
-            Point::new(2.0, 1.0),
-            Point::new(1.0, 2.0),
-        ]);
-        polygon.end();
-        let mut next = 0;
-        let mut out = Vec::new();
-        chained(&polygon, 0, &mut next, &mut out).unwrap();
-        let chains: Vec<_> = out.iter().map(|e| e.chain).collect();
-        // Up, down, down, up: the two upward edges form one chain across
-        // the seam.
-        assert_eq!(chains[0], chains[3]);
-        assert_eq!(chains[1], chains[2]);
-        assert_ne!(chains[0], chains[1]);
-    }
-
-    #[test]
     fn rectangle_clipping_projects_outside_parts_onto_the_sides() {
         let bounds = Bounds {
             left: 1.0,
@@ -903,19 +747,12 @@ mod tests {
             right: 3.0,
             bottom: 4.0,
         };
-        let edge = Chained {
-            line: Line {
-                a: Point::new(0.0, -1.0),
-                b: Point::new(4.0, 7.0),
-            },
-            chain: 1,
-            group: 0,
-            enclosed: false,
-            place: Place::default(),
+        let edge = Line {
+            a: Point::new(0.0, -1.0),
+            b: Point::new(4.0, 7.0),
         };
-        let mut out = Vec::new();
-        clip(edge, bounds, &mut out).unwrap();
-        let lines: Vec<_> = out.iter().map(|e| e.line).collect();
+        let mut lines = Vec::new();
+        clip_line(edge, bounds, &mut lines).unwrap();
         assert_eq!(
             lines,
             [
