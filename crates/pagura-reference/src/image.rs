@@ -160,25 +160,57 @@ impl Sampler {
             .fold(polygon[0], |m, p| Point::new(m.x.max(p.x), m.y.max(p.y)));
         let columns = low.x.floor().max(0.0)..high.x.ceil().min(f64::from(self.width));
         let rows = low.y.floor().max(0.0)..high.y.ceil().min(f64::from(self.height));
-        let mut weight = 0.0;
+        // Footprints can hold millions of samples: compensated sums keep
+        // the mean within a few roundings, so exact ties stay ties.
+        let mut sums = [Sum::default(); MAX_VALUES];
+        let mut weight = Sum::default();
         let mut row = rows.start;
         while row < rows.end {
             let mut column = columns.start;
             while column < columns.end {
                 let area = clipped_area(&polygon, column, row);
                 if area > 0.0 {
-                    add(out, values.at(column, row), area);
-                    weight += area;
+                    for (sum, v) in sums.iter_mut().zip(values.at(column, row)) {
+                        sum.add(v * area);
+                    }
+                    weight.add(area);
                 }
                 column += 1.0;
             }
             row += 1.0;
         }
+        let weight = weight.value();
         if weight > 0.0 {
-            for v in out.iter_mut() {
-                *v /= weight;
+            for (out, sum) in out.iter_mut().zip(&sums) {
+                *out = sum.value() / weight;
             }
         }
+    }
+}
+
+/// The most values one sample carries: channels, alpha and shape.
+const MAX_VALUES: usize = crate::color::MAX + 2;
+
+/// A sum with Neumaier's compensation.
+#[derive(Debug, Clone, Copy, Default)]
+struct Sum {
+    total: f64,
+    error: f64,
+}
+
+impl Sum {
+    fn add(&mut self, value: f64) {
+        let total = self.total + value;
+        self.error += if self.total.abs() >= value.abs() {
+            (self.total - total) + value
+        } else {
+            (value - total) + self.total
+        };
+        self.total = total;
+    }
+
+    fn value(self) -> f64 {
+        self.total + self.error
     }
 }
 
@@ -282,8 +314,12 @@ pub(crate) struct ColorSamples<'a> {
     pub(crate) decoded: &'a DecodedImage,
     /// Its soft mask, for `Matte`.
     pub(crate) matte: Option<(&'a [f64], &'a Image, &'a DecodedImage)>,
-    /// The conversion of its colour space into the target.
+    /// The conversion of its colour space into the target, or of the
+    /// palette's base space with [`Self::palette`].
     pub(crate) convert: &'a Prepared,
+    /// An Indexed space looked up before the matte is removed, which
+    /// happens in the base space (11.6.5.3).
+    pub(crate) palette: Option<&'a pagura_color::Indexed>,
     /// The target's channels.
     pub(crate) channels: usize,
     /// Whether alpha is shape, so embedded opacity scales shape too.
@@ -298,7 +334,12 @@ impl ColorSamples<'_> {
     /// Returns `Syntax` for missing samples.
     pub(crate) fn value(&self, index: usize, out: &mut [f64]) -> Result<()> {
         let mut c = [0.0; pagura_color::MAX_COMPONENTS];
-        let count = components(self.image, self.decoded, index, &mut c)?;
+        let mut count = components(self.image, self.decoded, index, &mut c)?;
+        if let Some(indexed) = self.palette {
+            let base = crate::color::palette(indexed, c[0]);
+            count = base.len().min(c.len());
+            c[..count].copy_from_slice(&base[..count]);
+        }
         let (mut alpha, mut shape) = (1.0, 1.0);
         if let ImageMask::ColorKey(ranges) = &self.image.mask
             && keyed(ranges, self.decoded, index)
@@ -376,6 +417,23 @@ mod tests {
         // half of column 1.
         sampler.sample(&values, (0, 0), &mut out);
         assert!((out[0] - 0.5).abs() < 1e-12, "{}", out[0]);
+    }
+
+    #[test]
+    fn large_footprints_average_exactly_enough_to_keep_ties() {
+        // A 1024×1024 image of alternating 95 and 96 in one device pixel:
+        // the exact mean is the half level 95.5.
+        let values = Values::build((1024, 1024), 1, usize::MAX, |i, out| {
+            out[0] = f64::from(95 + u8::from(i % 2 == 1)) / 255.0;
+            Ok(())
+        })
+        .unwrap();
+        let unit = Transform::new(1.0, 0.0, 0.0, -1.0, 0.0, 1.0);
+        let sampler = Sampler::new((1024, 1024), Magnify::Nearest, unit).unwrap();
+        let mut out = [0.0];
+        sampler.sample(&values, (0, 0), &mut out);
+        assert!((out[0] * 255.0 - 95.5).abs() < 1e-11, "{}", out[0] * 255.0);
+        assert_eq!(pagura_raster::quantize_unit(out[0]), 96);
     }
 
     #[test]

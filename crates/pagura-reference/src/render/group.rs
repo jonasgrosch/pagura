@@ -1,10 +1,10 @@
 //! Transparency groups (11.4, 11.6.6) and soft masks (11.6.5).
 
 use super::transfer::{Selection, simple};
-use super::{Context, Renderer, elements, transparency};
+use super::{Context, Contribution, Crop, Renderer, elements, transparency};
 use crate::buffer::{Buffer, Initial};
 use crate::color::{Channels, MAX, components, luminosity};
-use crate::pixel::{Blending, Elements, Pixel, Source};
+use crate::pixel::{Elements, Pixel};
 use pagura_color::{Process, Target};
 use pagura_core::{Error, Result, ResultExt};
 use pagura_interpret::{GroupId, MaskId, MaskKind, ViewFit};
@@ -77,38 +77,22 @@ impl Renderer<'_> {
             selection,
             stencil: context.stencil,
             depth: context.depth + 1,
+            crop: context.crop,
         };
         self.children(&group.children, &mut buffer, &inner)
             .at(group.mark.position)?;
         let results = self.group_colors(&buffer, &initial, &target, context.target, state)?;
-        let mask = state
-            .soft_mask
-            .map(|mask| self.soft_mask(mask, context.device, context.target.process, context.depth))
-            .transpose()?;
-        let blending = Blending {
-            mode: state.blend,
-            process: context.target.process,
-            channels: context.target.channels(),
-        };
-        for (x, y, color, pixel) in results {
-            let mut source = Source {
+        let contributions = results
+            .into_iter()
+            .map(|(x, y, color, pixel)| Contribution {
+                x,
+                y,
                 color,
                 alpha: pixel.group,
                 shape: pixel.shape,
-                preserve: 0,
-            };
-            let m = mask
-                .as_ref()
-                .and_then(|m| crate::area::index(self.window, x, y).and_then(|i| m.get(i)))
-                .copied()
-                .unwrap_or(1.0);
-            source.apply(state, m);
-            let base = context.initial.pixel(x, y);
-            let mut out = parent.get(x, y);
-            out.paint(&source, blending, &base, context.elements);
-            parent.set(x, y, &out);
-        }
-        Ok(())
+            })
+            .collect();
+        self.contribute(contributions, state, parent, context)
     }
 
     /// The group's colour at every pixel it shapes, with its initial
@@ -206,6 +190,7 @@ impl Renderer<'_> {
             selection: Selection::Off,
             stencil: None,
             depth: depth + 1,
+            crop: Crop::Free,
         };
         self.children(&group.children, &mut buffer, &context)
             .at(mask.position)?;
