@@ -6,11 +6,13 @@
 //! earlier marks built.
 
 use super::{Planner, Scope};
+use crate::hash::{FastHasher, FastMap};
 use crate::plan::intersect;
 use crate::prepare::{Backend, Budget, Prepared, bounds, index};
 use pagura_core::{Error, Result};
 use pagura_interpret::ClipId;
-use pagura_raster::{DeviceRect, FillRule, Path, ShapeOptions, Transform};
+use pagura_raster::{DeviceRect, FillRule, Path, Segment, ShapeOptions, Transform};
+use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 /// The identity of a clip state.
@@ -33,6 +35,15 @@ pub(crate) struct Extra {
     /// Its transform to device space.
     pub(crate) transform: Transform,
 }
+
+/// The paths of a clip state, outermost first, with their rules and
+/// transforms.
+type Chain = Vec<(Arc<Path>, FillRule, Transform)>;
+
+/// Prepared clips by the hash of their chains. Content often sets the same
+/// clipping path again as a new clip; clip states with equal chains share
+/// one prepared clip.
+pub(crate) type Built = FastMap<u64, Vec<(Chain, Clipping)>>;
 
 /// A clip state's bounds and, once built, its prepared clip.
 #[derive(Debug, Clone, Copy)]
@@ -65,12 +76,7 @@ impl<B: Backend> Planner<'_, B> {
 
     /// The paths of `clip`'s chain, outermost first, with the transform of
     /// each (the crop is in default user space).
-    fn chain(
-        &self,
-        scope: &Scope,
-        clip: Option<ClipId>,
-        extra: Option<&Extra>,
-    ) -> Result<Vec<(Arc<Path>, FillRule, Transform)>> {
+    fn chain(&self, scope: &Scope, clip: Option<ClipId>, extra: Option<&Extra>) -> Result<Chain> {
         let mut chain = Vec::new();
         if let Some(extra) = extra {
             chain.push((Arc::clone(&extra.path), FillRule::NonZero, extra.transform));
@@ -194,6 +200,16 @@ impl<B: Backend> Planner<'_, B> {
         if chain.is_empty() {
             return Ok(Clipping::All);
         }
+        let hash = chain_hash(&chain);
+        let built = self.built_clips.get(&hash).and_then(|built| {
+            built
+                .iter()
+                .find(|(other, _)| same_chain(other, &chain))
+                .map(|&(_, clipping)| clipping)
+        });
+        if let Some(clipping) = built {
+            return Ok(clipping);
+        }
         let uniform = chain
             .iter()
             .all(|(_, _, transform)| *transform == scope.transform);
@@ -215,10 +231,68 @@ impl<B: Backend> Planner<'_, B> {
             self.backend.clip(&paths, Transform::IDENTITY, &options)?
         };
         budget.bytes.charge(prepared.bytes)?;
-        Ok(if prepared.bounds.is_empty() {
+        let clipping = if prepared.bounds.is_empty() {
             Clipping::Empty
         } else {
             Clipping::Shape(prepared)
+        };
+        self.built_clips
+            .entry(hash)
+            .or_default()
+            .push((chain, clipping));
+        Ok(clipping)
+    }
+}
+
+/// The bits of `t`.
+fn bits(t: Transform) -> [u64; 6] {
+    [t.a, t.b, t.c, t.d, t.e, t.f].map(f64::to_bits)
+}
+
+/// A hash of the bits of `chain`'s rules, transforms and segments.
+fn chain_hash(chain: &Chain) -> u64 {
+    let mut hasher = FastHasher::default();
+    for (path, rule, transform) in chain {
+        rule.hash(&mut hasher);
+        bits(*transform).hash(&mut hasher);
+        for segment in path.segments() {
+            segment_bits(*segment).hash(&mut hasher);
+        }
+    }
+    hasher.finish()
+}
+
+/// Whether two chains are the same paths, rules and transforms, bit for bit.
+fn same_chain(a: &Chain, b: &Chain) -> bool {
+    a.len() == b.len()
+        && a.iter().zip(b).all(|((a, a_rule, a_t), (b, b_rule, b_t))| {
+            a_rule == b_rule
+                && bits(*a_t) == bits(*b_t)
+                && (Arc::ptr_eq(a, b)
+                    || a == b
+                        && a.segments()
+                            .iter()
+                            .zip(b.segments())
+                            .all(|(&a, &b)| segment_bits(a) == segment_bits(b)))
         })
+}
+
+/// A segment's kind and the bits of its points.
+fn segment_bits(segment: Segment) -> (u8, [u64; 6]) {
+    let bits = |p: pagura_raster::Point| (p.x.to_bits(), p.y.to_bits());
+    match segment {
+        Segment::MoveTo(p) => {
+            let (x, y) = bits(p);
+            (0, [x, y, 0, 0, 0, 0])
+        }
+        Segment::LineTo(p) => {
+            let (x, y) = bits(p);
+            (1, [x, y, 0, 0, 0, 0])
+        }
+        Segment::CubicTo { c1, c2, end } => {
+            let ((x1, y1), (x2, y2), (x, y)) = (bits(c1), bits(c2), bits(end));
+            (2, [x1, y1, x2, y2, x, y])
+        }
+        Segment::Close => (3, [0; 6]),
     }
 }

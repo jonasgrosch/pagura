@@ -53,6 +53,8 @@ pub(crate) struct Planner<'s, B: Backend> {
     /// The page crop in default user space.
     pub(crate) crop: Arc<Path>,
     clips: FastMap<clips::Key, clips::State>,
+    /// Prepared clips by their paths, which clip states share.
+    built_clips: clips::Built,
     /// The clip state looked up last: marks in a row usually share one.
     last_clip: Option<(clips::Key, clips::State)>,
     solids: FastMap<SolidKey, u32>,
@@ -201,6 +203,7 @@ impl<'s, B: Backend> Planner<'s, B> {
             parts,
             crop: Arc::new(crop(scene)),
             clips: hash::map(),
+            built_clips: hash::map(),
             last_clip: None,
             solids: hash::map(),
             masks: hash::map(),
