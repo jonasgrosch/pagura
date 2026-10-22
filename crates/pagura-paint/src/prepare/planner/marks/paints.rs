@@ -129,7 +129,7 @@ impl Planner<'_> {
             }
         };
         budget.bytes.charge(PAINT_BYTES)?;
-        Source::solid_color(color, context, &mut budget.functions)
+        Source::solid_color(color, context, (&mut budget.functions, &budget.bytes))
     }
 
     /// Keeps a prepared paint, reserving its bytes and its geometry work

@@ -183,7 +183,7 @@ impl Source {
         (functions, bytes): (&mut Meter, &Meter),
     ) -> Result<Self> {
         match paint {
-            Paint::Solid(color) => Self::solid(color, context, functions),
+            Paint::Solid(color) => Self::solid(color, context, (functions, bytes)),
             Paint::Shading(pattern) => {
                 let source = ShadingSource::pattern(
                     &pattern.shading,
@@ -192,7 +192,7 @@ impl Source {
                     pixels,
                     (functions, bytes),
                 )?;
-                Ok(Self::from_shading(source))
+                Self::from_shading(source, bytes)
             }
             Paint::Tiling(_) => Err(pagura_core::Error::invalid_argument(
                 "tiling patterns are prepared as groups",
@@ -214,8 +214,9 @@ impl Source {
         pixels: usize,
         budgets: (&mut Meter, &Meter),
     ) -> Result<Self> {
+        let bytes = budgets.1;
         let source = ShadingSource::prepare(shading, shading_to_device, context, pixels, budgets)?;
-        Ok(Self::from_shading(source))
+        Self::from_shading(source, bytes)
     }
 
     /// Prepares `image` drawn under `unit_to_device` as
@@ -244,8 +245,12 @@ impl Source {
     }
 
     /// A solid colour, converted once.
-    fn solid(color: &Color, context: &PaintContext<'_>, functions: &mut Meter) -> Result<Self> {
-        let (color, painted) = Self::solid_color(color, context, functions)?;
+    fn solid(
+        color: &Color,
+        context: &PaintContext<'_>,
+        budgets: (&mut Meter, &Meter),
+    ) -> Result<Self> {
+        let (color, painted) = Self::solid_color(color, context, budgets)?;
         Ok(Self::Solid { color, painted })
     }
 
@@ -259,12 +264,19 @@ impl Source {
     pub(crate) fn solid_color(
         color: &Color,
         context: &PaintContext<'_>,
-        functions: &mut Meter,
+        (functions, bytes): (&mut Meter, &Meter),
     ) -> Result<(Box<[f64]>, Painted)> {
-        let converter =
-            Converter::new(&color.space, context.target, &context.composite.conversion)?;
+        let mut bytes = Meter::new(bytes.remaining(), "render memory budget exceeded");
+        let converter = Converter::new_metered(
+            &color.space,
+            context.target,
+            &context.composite.conversion,
+            &mut bytes,
+        )?;
         functions.charge(converter.cost())?;
-        let mut converted = vec![0.0; context.target.channels()];
+        let mut converted = Vec::new();
+        bytes.reserve(&mut converted, context.target.channels())?;
+        converted.resize(context.target.channels(), 0.0);
         let specified = converter.convert(&color.components, &mut converted);
         let overprint = context.composite.overprint;
         let painted = if !color.space.paints() {
@@ -279,14 +291,19 @@ impl Source {
         Ok((converted.into(), painted))
     }
 
-    fn from_shading(source: ShadingSource) -> Self {
-        match source.constant() {
-            Some(color) => Self::Solid {
-                color: color.into(),
-                painted: source.painted(),
-            },
-            None => Self::Shading(source),
-        }
+    fn from_shading(source: ShadingSource, bytes: &Meter) -> Result<Self> {
+        let Some(color) = source.constant() else {
+            return Ok(Self::Shading(source));
+        };
+        let mut bytes = Meter::new(bytes.remaining(), "render memory budget exceeded");
+        bytes.charge(source.bytes())?;
+        let mut converted = Vec::new();
+        bytes.reserve(&mut converted, color.len())?;
+        converted.extend_from_slice(color);
+        Ok(Self::Solid {
+            color: converted.into(),
+            painted: source.painted(),
+        })
     }
 
     /// The colour of every pixel and the channels it paints for a solid.

@@ -169,7 +169,10 @@ fn compare(parsed: &Parsed, target: &Target, counts: &mut Counts) {
                     transform,
                     &context,
                     usage,
-                    &mut Meter::new(limits.render_bytes, "test bytes"),
+                    (
+                        &mut Meter::new(limits.render_bytes, "test bytes"),
+                        &mut Meter::new(usize::MAX, "test functions"),
+                    ),
                 )
                 .unwrap();
                 counts.aligned += usize::from(source.aligned.is_some());

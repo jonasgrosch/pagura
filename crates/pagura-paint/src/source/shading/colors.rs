@@ -37,8 +37,12 @@ impl Colors {
                 "shading component count exceeds implementation limit (Annex C)",
             ));
         }
-        let converter =
-            Converter::new(shading.space, context.target, &context.composite.conversion)?;
+        let converter = Converter::new_metered(
+            shading.space,
+            context.target,
+            &context.composite.conversion,
+            bytes,
+        )?;
         let functions = match shading.function {
             None => Functions::Identity,
             Some(ShadingFunction::Single(f)) => Functions::Single(Arc::clone(f)),
@@ -65,12 +69,13 @@ impl Colors {
         })
     }
 
-    /// Function handles held by this source; function data stays shared.
+    /// Owned conversion storage and function handles; function data stays shared.
     pub(super) fn bytes(&self) -> usize {
-        match &self.functions {
-            Functions::PerComponent(fs) => fs.len() * size_of::<Arc<Function>>(),
-            Functions::Identity | Functions::Single(_) => 0,
-        }
+        self.converter.owned_bytes()
+            + match &self.functions {
+                Functions::PerComponent(fs) => fs.len() * size_of::<Arc<Function>>(),
+                Functions::Identity | Functions::Single(_) => 0,
+            }
     }
 
     /// Values per mesh vertex: one parametric value with a function, the
@@ -125,18 +130,29 @@ impl Colors {
     }
 
     /// The converted colour when the functions are constant.
-    pub(super) fn constant(&self) -> Option<Box<[f64]>> {
+    pub(super) fn constant(&self, work: &mut Meter) -> Result<Option<Box<[f64]>>> {
         let mut values = [0.0; MAX_COMPONENTS];
-        let values = values.get_mut(..self.components)?;
+        let Some(values) = values.get_mut(..self.components) else {
+            return Ok(None);
+        };
         let constant = match &self.functions {
             Functions::Identity => false,
-            Functions::Single(f) => f.constant(values),
-            Functions::PerComponent(fs) => fs
-                .iter()
-                .zip(values.iter_mut())
-                .all(|(f, out)| f.constant(std::slice::from_mut(out))),
+            Functions::Single(f) => f.constant_metered(values, work)?,
+            Functions::PerComponent(fs) => {
+                for (f, out) in fs.iter().zip(values.iter_mut()) {
+                    if !f.constant_metered(std::slice::from_mut(out), work)? {
+                        return Ok(None);
+                    }
+                }
+                true
+            }
         };
-        constant.then(|| self.convert_components(values))
+        if constant {
+            work.charge(self.converter.cost())?;
+            Ok(Some(self.convert_components(values)))
+        } else {
+            Ok(None)
+        }
     }
 }
 

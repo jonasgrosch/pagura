@@ -123,7 +123,7 @@ impl ShadingSource {
             shading_to_device,
             context,
             Use::Operator,
-            &mut bytes,
+            (&mut bytes, functions),
         )?
         .reserve(pixels, functions)
     }
@@ -147,7 +147,7 @@ impl ShadingSource {
             shading_to_device,
             context,
             Use::Pattern,
-            &mut bytes,
+            (&mut bytes, functions),
         )?
         .reserve(pixels, functions)
     }
@@ -157,7 +157,7 @@ impl ShadingSource {
         transform: Transform,
         context: &PaintContext<'_>,
         usage: Use,
-        bytes: &mut Meter,
+        (bytes, functions): (&mut Meter, &mut Meter),
     ) -> Result<Self> {
         let inverse = transform.inverse().ok_or(Error::unsupported(
             features::SHADING_TRANSFORM,
@@ -177,6 +177,7 @@ impl ShadingSource {
             let background = match shading.background {
                 Some(background) => {
                     bytes.charge_items::<f64>(colors.channels())?;
+                    functions.charge(colors.cost())?;
                     Some(colors.convert_components(background))
                 }
                 None => None,
@@ -216,21 +217,16 @@ impl ShadingSource {
             constant: None,
             aligned: None,
         };
-        source.constant = source.constant_colors(bytes)?;
+        source.constant = source.constant_colors(bytes, functions)?;
         source.covers = source.always_covers();
-        source.aligned = aligned::Aligned::new(&source, bytes)?.map(Box::new);
+        source.aligned = aligned::Aligned::new(&source, bytes, functions)?.map(Box::new);
         Ok(source)
     }
 
-    /// Reserves the function work of `pixels` pixels and of the prepared
-    /// tables.
+    /// Reserves execution work; preparation is charged before evaluation.
     fn reserve(self, pixels: usize, functions: &mut Meter) -> Result<Self> {
         let samples = pixels
             .checked_mul(self.samples())
-            .ok_or(Error::limit("shading sample count overflow"))?;
-        let prepared = self.aligned.as_ref().map_or(0, |a| a.pixels());
-        let samples = samples
-            .checked_add(prepared.saturating_mul(self.samples()))
             .ok_or(Error::limit("shading sample count overflow"))?;
         functions.charge_product(samples, self.colors.cost())?;
         Ok(self)
@@ -466,7 +462,11 @@ impl ShadingSource {
 
     /// Pixel colours by hit count when the shading's colour is constant and
     /// no background mixes in.
-    fn constant_colors(&self, bytes: &mut Meter) -> Result<Option<Box<[f64]>>> {
+    fn constant_colors(
+        &self,
+        bytes: &mut Meter,
+        functions: &mut Meter,
+    ) -> Result<Option<Box<[f64]>>> {
         if self
             .pattern
             .as_ref()
@@ -475,7 +475,7 @@ impl ShadingSource {
             return Ok(None);
         }
         bytes.charge_items::<f64>(self.channels)?;
-        let Some(color) = self.colors.constant() else {
+        let Some(color) = self.colors.constant(functions)? else {
             bytes.refund(self.channels * size_of::<f64>());
             return Ok(None);
         };
