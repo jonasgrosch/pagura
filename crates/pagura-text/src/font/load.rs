@@ -341,10 +341,10 @@ mod tests {
             .collect();
         let mapping = simple_mapping(&document, &font, FontKind::TrueType, Route::Raw, None)?;
         assert!(mapping.names.iter().all(Option::is_none));
-        assert!(mapping.unicode.iter().all(Option::is_none));
+        assert!((0..=255).all(|code| mapping.unicode(code).is_none()));
         // An unknown encoding name is a reported repair: StandardEncoding applies.
         let mapping = simple_mapping(&document, &font, FontKind::TrueType, Route::Named, None)?;
-        assert_eq!(mapping.unicode[65].as_deref(), Some("A"));
+        assert_eq!(mapping.unicode(65).map(crate::GlyphText::as_str), Some("A"));
         assert!(
             document
                 .diagnostics()
@@ -368,7 +368,7 @@ mod tests {
             .into_iter()
             .collect();
         let mapping = simple_mapping(&document, &named, FontKind::TrueType, Route::Named, None)?;
-        assert_eq!(mapping.unicode[65].as_deref(), Some("A"));
+        assert_eq!(mapping.unicode(65).map(crate::GlyphText::as_str), Some("A"));
         Ok(())
     }
 }
