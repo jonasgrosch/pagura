@@ -9,7 +9,7 @@ use crate::format::Format;
 use crate::plan::{Boundary, ItemKind, Layout, Plan};
 use crate::prepare::Storage;
 use crate::request::RenderRequest;
-use crate::source::{PaintScratch, SpanColors};
+use crate::source::{PaintScratch, Source, SpanColors};
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Meter, Result};
 use pagura_core::{Limits, Store};
@@ -355,7 +355,7 @@ impl Sizes {
             .saturating_add(
                 plan.paints
                     .iter()
-                    .map(crate::source::Source::scratch_bytes)
+                    .map(Source::scratch_bytes)
                     .fold(0, usize::saturating_add),
             )
     }
@@ -401,6 +401,33 @@ fn allocate<T>(count: usize) -> Result<Vec<T>> {
     Ok(values)
 }
 
+/// Fits paint storage without retaining headers or values outside the new
+/// plan's reservation while their replacements are allocated.
+fn paint_storage(
+    sources: &[Source],
+    previous: Vec<PaintScratch>,
+    bytes: &mut Meter,
+) -> Result<Vec<PaintScratch>> {
+    bytes.charge_items::<PaintScratch>(sources.len())?;
+    let mut storage = if previous.capacity() == sources.len() {
+        previous
+    } else {
+        drop(previous);
+        allocate(sources.len())?
+    };
+    storage.truncate(sources.len());
+    storage.resize_with(sources.len(), PaintScratch::default);
+    for (scratch, source) in storage.iter_mut().zip(sources) {
+        if !scratch.fits(source) {
+            *scratch = PaintScratch::default();
+        }
+    }
+    for (scratch, source) in storage.iter_mut().zip(sources) {
+        *scratch = source.make_scratch(Some(std::mem::take(scratch)), bytes)?;
+    }
+    Ok(storage)
+}
+
 impl Workspace {
     /// Allocates the storage `plan` executes in, charging it to `bytes`
     /// (what preparation reserved, [`Sizes::bytes`]) and taking the page
@@ -419,19 +446,8 @@ impl Workspace {
             }
             None => (None, Vec::new()),
         };
-        let mut old_paints = old_paints;
-        old_paints.truncate(plan.paints.len());
-        for (scratch, source) in old_paints.iter_mut().zip(&plan.paints) {
-            if !scratch.fits(source) {
-                *scratch = PaintScratch::default();
-            }
-        }
         let (page, coverage) = kept(previous, (sizes.rows, pixels));
-        let mut old_paints = old_paints.into_iter();
-        let mut paint_scratch = reserve(plan.paints.len(), bytes)?;
-        for source in &plan.paints {
-            paint_scratch.push(source.make_scratch(old_paints.next(), bytes)?);
-        }
+        let paint_scratch = paint_storage(&plan.paints, old_paints, bytes)?;
         let (format, layout) = plan.groups.first().map_or(
             (
                 Format::F64,
@@ -603,6 +619,31 @@ pub(crate) fn coverage_capacity(width: usize, rows: usize) -> pagura_raster::Cap
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn paint_headers_fit_the_new_plan_and_reuse_only_matching_capacity() {
+        let sources = [Source::Solid {
+            color: Box::new([0.0; 3]),
+            painted: pagura_color::Painted::all(3),
+        }];
+        let mut previous = allocate(4096).unwrap();
+        previous.resize_with(4096, PaintScratch::default);
+        let required = size_of::<PaintScratch>();
+        let mut bytes = Meter::new(required, "test");
+        let storage = paint_storage(&sources, previous, &mut bytes).unwrap();
+        assert_eq!(storage.len(), 1);
+        assert_eq!(storage.capacity(), 1);
+        assert_eq!(bytes.used(), required);
+        assert_eq!(storage.iter().map(PaintScratch::bytes).sum::<usize>(), 0);
+
+        let pointer = storage.as_ptr();
+        let mut bytes = Meter::new(required, "test");
+        let storage = paint_storage(&sources, storage, &mut bytes).unwrap();
+        assert_eq!(storage.as_ptr(), pointer);
+        assert_eq!(bytes.used(), required);
+        let mut bytes = Meter::new(required - 1, "test");
+        assert!(paint_storage(&sources, storage, &mut bytes).is_err());
+    }
 
     #[test]
     fn page_buffers_start_with_the_premultiplied_background() {
