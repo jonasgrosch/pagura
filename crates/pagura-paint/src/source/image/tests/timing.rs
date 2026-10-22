@@ -9,11 +9,10 @@
 //! files relative to the benchmark corpus (default: the ten image-heavy
 //! benchmark pages); `PAGURA_IMAGE_DPI` the resolutions (default
 //! `72,150,300`); `PAGURA_IMAGE_RUNS` the samples of which the best is kept
-//! (default 7); `PAGURA_IMAGE_ROUTES` the routes (default
-//! `exact,reduced`); `PAGURA_IMAGE_STAGE` `decode` or `sample` times
-//! that stage alone.
+//! (default 7); `PAGURA_IMAGE_STAGE` `decode` or `sample` times that stage
+//! alone.
 //!
-//! Each route decodes every image of the page with a fresh store, then
+//! Each run decodes every image of the page with a fresh store, then
 //! prepares its sampler and fills every span of its device bounds within the
 //! page.
 
@@ -225,7 +224,7 @@ pub(super) fn placed(document: &Document, page: &Page, scale: f64) -> Vec<Placed
 }
 
 /// Decodes `placed` for painting through a fresh store.
-pub(super) fn decode_once(placed: &Placed, limits: &Limits, reduced: bool) -> Option<Arc<Decoded>> {
+pub(super) fn decode_once(placed: &Placed, limits: &Limits) -> Option<Arc<Decoded>> {
     let target = Target::new(Process::Rgb);
     let composite = Composite::default();
     let store = Store::new(usize::MAX);
@@ -235,7 +234,6 @@ pub(super) fn decode_once(placed: &Placed, limits: &Limits, reduced: bool) -> Op
         composite: &composite,
         store: &store,
         limits,
-        reduced_image_decode: reduced,
         region: placed.rect,
     };
     let decode = decode_array(placed, usize::from(placed.source.components()));
@@ -247,13 +245,7 @@ pub(super) fn decode_once(placed: &Placed, limits: &Limits, reduced: bool) -> Op
         &context,
     );
     let orientation = Orientation::of(placed.unit_to_device);
-    decode_image(
-        &placed.source,
-        placed.unit_to_device,
-        (planes, orientation),
-        &context,
-    )
-    .ok()
+    decode_image(&placed.source, (planes, orientation), &context).ok()
 }
 
 /// The decode array of `placed`, one interval per component.
@@ -327,14 +319,14 @@ fn best(runs: usize, mut run: impl FnMut()) -> f64 {
 }
 
 /// Best decode and sampling times of a page's images, in milliseconds.
-fn new_route(images: &[Placed], limits: &Limits, reduced: bool, runs: usize) -> (f64, f64) {
+fn new_route(images: &[Placed], limits: &Limits, runs: usize) -> (f64, f64) {
     let only = std::env::var("PAGURA_IMAGE_STAGE").unwrap_or_default();
     let decoding = if only == "sample" {
         f64::NAN
     } else {
         best(runs, || {
             for placed in images {
-                std::hint::black_box(decode_once(placed, limits, reduced));
+                std::hint::black_box(decode_once(placed, limits));
             }
         })
     };
@@ -343,7 +335,7 @@ fn new_route(images: &[Placed], limits: &Limits, reduced: bool, runs: usize) -> 
     }
     let decoded: Vec<_> = images
         .iter()
-        .map(|placed| decode_once(placed, limits, reduced))
+        .map(|placed| decode_once(placed, limits))
         .collect();
     let sampling = best(runs, || {
         for (placed, decoded) in images.iter().zip(&decoded) {
@@ -388,35 +380,24 @@ fn image_page_timing() {
         .filter_map(|v| v.trim().parse().ok())
         .collect();
     let runs = setting("PAGURA_IMAGE_RUNS", "7").parse().unwrap_or(7);
-    let routes = setting("PAGURA_IMAGE_ROUTES", "exact,reduced");
-    let routes: Vec<&str> = routes.split(',').map(str::trim).collect();
-    eprintln!(
-        "page dpi | exact: decode + sample = total | reduced: decode + sample = total, \
-         milliseconds"
-    );
+    eprintln!("page dpi | decode + sample = total, milliseconds");
     for (name, document, index) in pages(IMAGE_PAGES) {
         let page = document.page(index).unwrap();
         let limits = document.limits();
         for &dpi in &dpis {
             let images = placed(&document, page, dpi / 72.0);
-            let mut line = format!("{name} {dpi} ({} images)", images.len());
-            for (route, reduced) in [("exact", false), ("reduced", true)] {
-                if routes.contains(&route) {
-                    let (decoding, sampling) = new_route(&images, &limits, reduced, runs);
-                    let total = decoding + sampling;
-                    let _ = write!(
-                        line,
-                        " | {route} {decoding:.2} + {sampling:.2} = {total:.2}"
-                    );
-                }
-            }
-            eprintln!("{line}");
+            let (decoding, sampling) = new_route(&images, &limits, runs);
+            let total = decoding + sampling;
+            eprintln!(
+                "{name} {dpi} ({} images) | {decoding:.2} + {sampling:.2} = {total:.2}",
+                images.len()
+            );
         }
     }
 }
 
 /// Decode times of each image of the pages in the interleaved and native
-/// layouts and with drawn-size cells.
+/// layouts.
 #[test]
 #[ignore = "timing; needs the benchmark corpus"]
 fn image_decode_timing() {
@@ -428,15 +409,11 @@ fn image_decode_timing() {
         for placed in placed(&document, page, 1.0) {
             let source = &placed.source;
             let mut line = format!("{name} {}x{}", source.width(), source.height());
-            for (label, reduce, layout) in [
-                ("interleaved", Reduce::Full, Layout::Interleaved),
-                ("native", Reduce::Full, Layout::Native),
-                ("cells 6", Reduce::Drawn { cells: 6 }, Layout::Interleaved),
-                ("native cells 6", Reduce::Drawn { cells: 6 }, Layout::Native),
-                ("cells 3", Reduce::Drawn { cells: 3 }, Layout::Interleaved),
-                ("native cells 3", Reduce::Drawn { cells: 3 }, Layout::Native),
+            for (label, layout) in [
+                ("interleaved", Layout::Interleaved),
+                ("native", Layout::Native),
             ] {
-                let request = DecodeRequest::new(reduce, None, layout);
+                let request = DecodeRequest::new(Reduce::Full, None, layout);
                 let time = best(runs, || {
                     std::hint::black_box(
                         source.decode(&request, &limits, source.recovery()).unwrap(),
@@ -452,7 +429,6 @@ fn image_decode_timing() {
                 }
                 if let Ok(decoded) = decoded
                     && let pagura_image::Samples::Planar(planar) = &decoded.image.samples
-                    && reduce == Reduce::Full
                 {
                     let [_, _, pitch] = planar.geometry(0);
                     let (stride, rows) = (pitch / 8, planar.height().div_ceil(16) * 2);
@@ -487,7 +463,7 @@ fn image_page_details() {
         for &dpi in &dpis {
             for placed in placed(&document, page, dpi / 72.0) {
                 let source = &placed.source;
-                let decoded = decode_once(&placed, &limits, true).unwrap();
+                let decoded = decode_once(&placed, &limits).unwrap();
                 let sampler = sampler(&placed, Arc::clone(&decoded)).unwrap();
                 let prepared = sampler.prepared.as_deref().unwrap();
                 let image = &decoded.image;
@@ -499,7 +475,7 @@ fn image_page_details() {
                     pagura_image::Samples::Planar(_) => "planar",
                 };
                 eprintln!(
-                    "{name} {dpi}: source {}x{} {}x{}bit {:?} | decoded {}x{} {layout} reduction {:?} | \
+                    "{name} {dpi}: source {}x{} {}x{}bit {:?} | decoded {}x{} {layout} | \
                      drawn {}x{} at {:?} | mode {:?} codes {}",
                     source.width(),
                     source.height(),
@@ -508,7 +484,6 @@ fn image_page_details() {
                     source.kind(),
                     image.width,
                     image.height,
-                    image.reduction,
                     placed.rect.x1 - placed.rect.x0,
                     placed.rect.y1 - placed.rect.y0,
                     placed.unit_to_device,

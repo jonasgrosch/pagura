@@ -1,9 +1,8 @@
 //! Samples from the data of an image source: the codec part of decoding,
 //! then the entries of finishing that the header already validated.
 
-use super::Orientation;
 use super::header::{Codec, Header};
-use crate::deferred::SampleLayout;
+use super::{Layout, Orientation};
 use crate::{DecodedImage, MaskKind, Samples, dispatch, fax_image, parameters as p};
 use pagura_core::{Diagnostics, Error, Limits, Result};
 use std::borrow::Cow;
@@ -12,13 +11,13 @@ use std::borrow::Cow;
 pub(crate) fn decode(
     header: &Header,
     data: &[u8],
-    (layout, orientation): (SampleLayout, Orientation),
+    (layout, orientation): (Layout, Orientation),
     limits: &Limits,
     diagnostics: &mut Diagnostics,
 ) -> Result<DecodedImage> {
     let transposed = orientation == Orientation::Transposed;
     let mut exchanged = false;
-    let (deferred, cells) = (layout.deferred(), layout.cells());
+    let deferred = layout == Layout::Native;
     let (width, height) = (header.width, header.height);
     let (components, bits) = (header.declared_components, header.declared_bits);
     let mut image = DecodedImage {
@@ -31,7 +30,6 @@ pub(crate) fn decode(
         decode: None,
         mask: MaskKind::None,
         interpolate: false,
-        reduction: None,
     };
     match &header.codec {
         Codec::None if deferred && bits == 1 && components == 1 => {
@@ -49,10 +47,9 @@ pub(crate) fn decode(
         Codec::Dct(params) => {
             // A baseline YCbCr frame decodes faster into its native planes;
             // their rows convert to exactly the interleaved samples.
-            let planes = layout == SampleLayout::Interleaved && bits == 8;
+            let planes = layout == Layout::Interleaved && bits == 8;
             let options = dispatch::DctOptions {
                 deferred: deferred || planes,
-                cells,
                 // Interleaved samples come from planes in image rows.
                 transposed: transposed && !planes,
             };

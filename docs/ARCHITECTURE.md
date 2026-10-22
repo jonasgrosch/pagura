@@ -36,13 +36,13 @@ oracle: only dev-dependencies name it.
 | `pagura-data` | optional bundled data for fonts a PDF does not embed: standard-14 metrics and substitute outlines, predefined CMaps, CID-to-Unicode data and CJK substitutes, behind one cargo feature each, as a `Provider` with lazy caches (ADR 0009, 0026) | documents, content streams |
 | `pagura-text` | PDF font dictionaries, encodings, widths, CMaps and ToUnicode, descriptor flag normalization; shown strings to glyphs (ADR 0009, ADR 0025) | content streams, pixels, page layout |
 | `pagura-extract` | page text: layout policy, reading order, search and the logical structure view over the interpreter's positioned glyphs (ADR 0014, ADR 0025) | content streams, font programs, pixels |
-| `pagura-image` | image XObjects and inline images as sources read without decoding, decoded on request (reduction, region, layout); JPEG, CCITT, JBIG2 and JPEG 2000 decoding to samples | painting, colour conversion |
+| `pagura-image` | image XObjects and inline images as sources read without decoding, decoded on request (layout and orientation); JPEG, CCITT, JBIG2 and JPEG 2000 decoding to samples | painting, colour conversion |
 | `pagura-color` | colour spaces, prepared converters, ICC profile transforms and CIE colorimetry; PDF functions, prepared and total (ADR 0028, ADR 0034) | PDF objects |
 | `pagura-content` | content-stream tokenizer and typed operators (Annex A) with source positions | graphics state, resources |
-| `pagura-interpret` | the one interpreter: the graphics state machine over pages, forms, annotations and patterns into a `Device`, with `Needs` negotiation; the scene recorder and the text device (ADR 0034) | pixels, resolution, fast parameters |
+| `pagura-interpret` | the one interpreter: the graphics state machine over pages, forms, annotations and patterns into a `Device`, with `Needs` negotiation; the scene recorder and the text device (ADR 0034) | pixels, resolution |
 | `pagura-appearance` | form-field and annotation appearance generation, as appearance streams kept as data (12.5.5, 12.7.4.3) | interpretation, pixels |
 | `pagura-paint` | the renderer: preparation and reservation of a scene for one region, the band executor, prepared paint, span kernels and storage formats (ADR 0034) | PDF objects, documents |
-| `pagura-render` | the thin rendering layer: `RenderContext` with its `Store`, `RenderOptions` and `FastParams`, page recording, rendering by region and text extraction | interpretation and painting internals |
+| `pagura-render` | the thin rendering layer: `RenderContext` with its `Store`, `RenderOptions`, page recording, rendering by region and text extraction | interpretation and painting internals |
 | `pagura-reference` | test only: the slow, obviously correct f64 rasterizer and compositor for differential tests, and the exact coverage of single shapes for the band rasterizer's tests | product code |
 | `pagura-write` | deterministic serialization | parsing |
 | `pagura` | the public facade: every public type, and the free functions with the feature-selected font data | — |
@@ -113,19 +113,14 @@ stop between bands for a viewer. Each output pixel is quantized once onto the
 background premultiplied once. Output does not depend on band height, tiles or
 platform.
 
-Exact rendering, every pixel within one level of its exact result, is the
-default. `RenderOptions::fast` switches the four named fast parameters
-(`FastParams`: glyph origin bins, approximate coverage, byte storage and
-reduced image decode) inside the same kernels; `FastParams::COMPETITIVE`
-switches all four and is held to the competitive gate of ADR 0004. Glyphs
-are rasterized at their exact device positions unless glyph origin bins are
-on (ADR 0013). The reference renderer (`pagura-reference`) is the
-diagnostic oracle, not an infallible one: its harness compares the renderer
-with it over every conformance render case, alone and with each fast
-parameter, and checks pixels, errors and charges across band heights,
-partitions and store states (`tools/check.py` runs it in release); the band
-rasterizer's fills, strokes, clips and glyphs are checked against its exact
-single-shape coverage.
+Rendering is exact: every pixel within one level of its exact result (ADR
+0004). Glyphs are rasterized at their exact device positions (ADR 0013).
+The reference renderer (`pagura-reference`) is the diagnostic oracle, not an
+infallible one: its harness compares the renderer with it over every
+conformance render case and checks pixels, errors and charges across band
+heights, partitions and store states (`tools/check.py` runs it in release);
+the band rasterizer's fills, strokes, clips and glyphs are checked against
+its exact single-shape coverage.
 
 ## Reading (M6)
 

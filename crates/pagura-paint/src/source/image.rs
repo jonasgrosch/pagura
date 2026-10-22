@@ -90,8 +90,8 @@ struct MaskSampling {
     separable: Option<Separable>,
 }
 
-/// A decoded image in the store: the source and the request (reduction,
-/// region, layout and orientation).
+/// A decoded image in the store: the source and the request (layout and
+/// orientation).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct DecodedKey {
     image: ImageId,
@@ -219,17 +219,9 @@ impl ImageSampler {
             }
         };
         let orientation = Orientation::of(unit_to_device);
-        let decoded = decode(
-            &image.source,
-            unit_to_device,
-            (planes, orientation),
-            context,
-        )?;
+        let decoded = decode(&image.source, (planes, orientation), context)?;
         let mask = mask
-            .map(|mask| {
-                let request = (Reduce::Full, Layout::Native, orientation);
-                decode_request(&mask.source, request, context)
-            })
+            .map(|mask| decode_request(&mask.source, (Layout::Native, orientation), context))
             .transpose()?;
         let description = Description {
             space: image.space.as_deref(),
@@ -307,8 +299,8 @@ impl ImageSampler {
     }
 
     /// Gives a stencil mask its colour, `color` in working colours painting
-    /// `painted`, so that spans carry the colour the exact route composites:
-    /// each texel's colour is the colour times its alpha before averaging.
+    /// `painted`, so that spans carry the exactly composited colour: each
+    /// texel's colour is the colour times its alpha before averaging.
     /// Other images are unchanged.
     #[must_use]
     pub fn with_stencil_color(mut self, color: &[f64], painted: Painted) -> Self {
@@ -663,30 +655,20 @@ impl<T: Texels> Rows for TexelRows<'_, T> {
     }
 }
 
-/// The image decoded for painting under `unit_to_device`, through the
-/// store: drawn-size cells under the `reduced_image_decode` fast parameter,
-/// one-bit samples packed, a JPEG's component planes when `planes`, and
-/// rows and columns exchanged as `orientation` says.
+/// The image decoded for painting through the store: one-bit samples
+/// packed, a JPEG's component planes when `planes`, and rows and columns
+/// exchanged as `orientation` says.
 fn decode(
     source: &ImageSource,
-    unit_to_device: Transform,
     (planes, orientation): (bool, Orientation),
     context: &PaintContext<'_>,
 ) -> Result<Arc<Decoded>> {
-    let reduce = if context.reduced_image_decode {
-        let t = unit_to_device;
-        let ratio = (f64::from(source.width()) / t.a.hypot(t.b))
-            .min(f64::from(source.height()) / t.c.hypot(t.d));
-        source.drawn(ratio)
-    } else {
-        Reduce::Full
-    };
     let layout = if planes || source.components() == 1 && source.bits_per_component() == 1 {
         Layout::Native
     } else {
         Layout::Interleaved
     };
-    decode_request(source, (reduce, layout, orientation), context)
+    decode_request(source, (layout, orientation), context)
 }
 
 /// Whether an image is sampled from a JPEG's component planes, converting
@@ -712,13 +694,14 @@ fn planes_suit(
 
 fn decode_request(
     source: &ImageSource,
-    (reduce, layout, orientation): (Reduce, Layout, Orientation),
+    (layout, orientation): (Layout, Orientation),
     context: &PaintContext<'_>,
 ) -> Result<Arc<Decoded>> {
-    let request = DecodeRequest::new(reduce, None, layout).with_orientation(match orientation {
-        Orientation::Rows => pagura_image::Orientation::Rows,
-        Orientation::Transposed => pagura_image::Orientation::Transposed,
-    });
+    let request =
+        DecodeRequest::new(Reduce::Full, None, layout).with_orientation(match orientation {
+            Orientation::Rows => pagura_image::Orientation::Rows,
+            Orientation::Transposed => pagura_image::Orientation::Transposed,
+        });
     let key = DecodedKey {
         image: source.id(),
         request,
@@ -768,11 +751,10 @@ fn placement(
     orientation: Orientation,
 ) -> Result<Geometry> {
     let (width, height) = (image.width, image.height);
-    let (x, y) = image.extent();
     match orientation {
-        Orientation::Rows => Geometry::new((width, height), (x, y), image.interpolate, inverse),
+        Orientation::Rows => Geometry::new((width, height), image.interpolate, inverse),
         Orientation::Transposed => {
-            Ok(Geometry::new((height, width), (y, x), image.interpolate, inverse)?.transposed())
+            Ok(Geometry::new((height, width), image.interpolate, inverse)?.transposed())
         }
     }
 }

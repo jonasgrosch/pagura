@@ -5,9 +5,7 @@
 use crate::support::{area, compare, options, pixels, raster, rectangle, reference};
 use pagura_core::Limits;
 use pagura_font::{FontFormat, FontProgram, GlyphId};
-use pagura_raster::{
-    ClipShape, FillRule, GlyphEdges, GlyphOrigins, Path, PathBuilder, Point, Shape, Transform,
-};
+use pagura_raster::{ClipShape, FillRule, GlyphEdges, Path, PathBuilder, Point, Shape, Transform};
 use pagura_reference::exact;
 use std::sync::Arc;
 
@@ -121,14 +119,8 @@ fn glyphs_of_fixture_and_bundled_fonts_are_within_one_level() {
                     let options = options(area, &limits);
                     let clip = (!clips.is_empty())
                         .then(|| ClipShape::new(clips, Transform::IDENTITY, &options).unwrap());
-                    let shape = Shape::glyph_with_clip(
-                        &edges,
-                        origin,
-                        GlyphOrigins::Exact,
-                        clip.as_ref(),
-                        &options,
-                    )
-                    .unwrap();
+                    let shape =
+                        Shape::glyph_with_clip(&edges, origin, clip.as_ref(), &options).unwrap();
                     let new = match &shape {
                         Some(shape) => {
                             let (coverage, work) = raster(&area, Some(shape), clip.as_ref());

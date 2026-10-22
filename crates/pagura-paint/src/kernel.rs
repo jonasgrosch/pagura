@@ -8,9 +8,8 @@
 mod narrow;
 
 pub(crate) use narrow::{
-    alpha_bytes, color_bytes, dynamic_f32, dynamic_n16, f32_bytes, full, level, n16_bytes,
-    overwrite_n16, overwrite_u8, store_f32, store_n16, store_u8, store_u8_alpha, store_u8_opaque,
-    word,
+    dynamic_f32, dynamic_n16, f32_bytes, full, level, n16_bytes, overwrite_n16, store_f32,
+    store_n16, word,
 };
 
 use crate::blend::{Blend, BlendVisitor, with_blend};
@@ -153,8 +152,8 @@ fn pixels<'c, B: Blend, const KNOCKOUT: bool>(
     }
 }
 
-/// One source onto one pixel: `Pixel::paint` of the earlier compositor,
-/// operation for operation, so that results stay byte-identical.
+/// One source onto one pixel, in a fixed order of operations: reordering
+/// them changes output bytes.
 ///
 /// `base` is the pixel itself, or for knockout the group's initial backdrop.
 /// With opacity `q` (alpha, or alpha over shape for knockout), the colour is

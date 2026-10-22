@@ -542,8 +542,7 @@
       "dpi": 72,
       "width": 8,
       "height": 8,
-      "tolerance": 0,
-      "competitive_tolerance": 1
+      "tolerance": 0
     },
     {
       "id": "zero_area/zero-area-clip-content",
@@ -623,8 +622,7 @@
       "dpi": 72,
       "width": 8,
       "height": 8,
-      "tolerance": 0,
-      "competitive_tolerance": 64
+      "tolerance": 0
     },
     {
       "id": "zero_area/zero-width-shading-pattern-bbox",

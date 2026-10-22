@@ -170,16 +170,6 @@ build: with `--engines` it requires `pagura` and is timed alongside it, and with
 `--reference` it is re-timed against stored competitor medians but never counts
 as the best competitor.
 
-The optional `round5.py --pagura-competitive` row times the portable binary
-with every fast parameter on (`--accuracy competitive`, `FastParams::COMPETITIVE`
-in `RenderOptions::fast`; ADR 0004's competitive accuracy gate) under the name
-`pagura-competitive`.
-Exact `pagura` remains the headline and paired reference. The row's pixels
-differ from exact Pagura by design, so it takes no part in runtime parity; its
-agreement records against `pagura` measure its accuracy. Like the x86-64-v3
-track, it requires `pagura` in `--engines` and never counts as the best
-competitor.
-
 Every warmup and measured WASI output must be byte-identical to its block's
 native Pagura pixels. A mismatch is retained as `runtime-parity-mismatch` and
 suppresses ratios; native output is a runtime parity reference, not a PDF oracle.
@@ -341,8 +331,7 @@ Controls do not replace stored competitor medians.
 `medians.json` retains newly measured per-page render/emit and per-document
 stage/process/CPU/RSS medians. `comparison.json` and `summary.md` compare Pagura
 with every engine, the fastest applicable competitor per cell, and reference
-Pagura. Best excludes Pagura's V8/Wasmtime and x86-64-v3 builds and its competitive
-path. Each category/DPI
+Pagura. Best excludes Pagura's V8/Wasmtime and x86-64-v3 builds. Each category/DPI
 entry is the median of its cell ratios of medians; reference values are used
 only for engines absent from `--engines`. Render
 cells are pages; engine contribution (`open + render`) and process cells are

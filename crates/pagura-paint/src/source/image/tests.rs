@@ -78,7 +78,6 @@ pub(super) fn image(
         decode: None,
         mask: MaskKind::None,
         interpolate: false,
-        reduction: None,
     }
 }
 
@@ -485,17 +484,10 @@ fn embedded_opacity_straight_and_premultiplied() {
 }
 
 #[test]
-fn interpolated_and_reduced_images() {
+fn interpolated_images() {
     let mut gray = case(image((7, 5), 1, 8, bytes(35, 8, 37)));
     gray.image.interpolate = true;
     agree(&gray, 3);
-    let mut cells = case(image((5, 4), 3, 8, bytes(60, 8, 41)));
-    cells.image.reduction = Some(pagura_image::Reduction {
-        cells: 3,
-        width: 13,
-        height: 9,
-    });
-    agree(&cells, 3);
 }
 
 #[test]
@@ -522,7 +514,6 @@ fn degenerate_placements_paint_nothing_and_overflow_is_refused() {
     assert!(
         Geometry::new(
             (4, 4),
-            (4.0, 4.0),
             false,
             Transform::new(1e300, 0.0, 0.0, 1.0, 0.0, 0.0)
         )

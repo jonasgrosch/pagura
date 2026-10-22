@@ -174,7 +174,7 @@ pub(crate) fn process(name: &Name) -> bool {
 }
 
 /// When a store keeps the backdrop's channels where its colour does not
-/// paint them (8.6.7), as the earlier renderer decided.
+/// paint them (8.6.7).
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct Keeping {
     /// The page's separations are simulated.

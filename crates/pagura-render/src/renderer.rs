@@ -91,7 +91,7 @@ impl<'a> Renderer<'a> {
         let Some(bytes) = surface_bytes(width, height, limits) else {
             // An empty surface or one over the pixel budget is refused as
             // allocation refuses it; one over only the byte budget, which an
-            // allocation taken over must keep to, is allocated as before.
+            // allocation taken over must keep to, is allocated by the pixmap.
             let mut pixmap = Pixmap::new(width, height, background, limits.pixels)?;
             let completion = rendering.render_until(&mut pixmap, stop);
             return Ok((pixmap, completion));
@@ -136,7 +136,6 @@ impl<'a> Renderer<'a> {
             RenderRequest::new(scene.page.device_transform(options.scale), page, region);
         request.background = options.background;
         request.overprint = options.overprint.resolve(scene.print_intent);
-        request.fast = options.fast;
         let limits = self.document.limits();
         let prepared = scratch.prepare(scene, &request, (self.store, &limits))?;
         for repair in prepared.repairs() {

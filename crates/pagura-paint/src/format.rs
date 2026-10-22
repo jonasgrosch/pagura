@@ -5,8 +5,6 @@
 /// group's whole content.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Format {
-    /// 8-bit, only under the `byte_storage` fast parameter.
-    U8,
     /// 16-bit normalized with one rounding per store: Normal source-over
     /// chains within ADR 0004's bound.
     N16,

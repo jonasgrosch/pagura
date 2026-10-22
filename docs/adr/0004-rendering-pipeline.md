@@ -3,11 +3,11 @@
 Status: accepted, 2026-10-17. Rewritten 2026-10-21 for ADR 0034: this text
 replaces the original decision and its amendments of 2026-10-18 to
 2026-10-21 (canonical glyph polygons, overprint preview, certified
-accumulation, bounded storage, direct glyph curves, direct opaque images, the
-competitive gate, signed-area glyph coverage and the competitive path). The
-history of this file keeps them and their evidence. Section 4's coverage
-producers and the scope of `byte_storage` (section 9) were brought in line with
-the implementation on 2026-10-22.
+accumulation, bounded storage, direct glyph curves, direct opaque images and
+signed-area glyph coverage). The history of this file keeps them and their
+evidence. Section 4's coverage producers were brought in line with the
+implementation on 2026-10-22, and the fast parameters and their accuracy gate
+were retired the same day (section 8).
 
 ## Decision
 
@@ -47,8 +47,8 @@ fixes what the stages compute and how exact the result is.
 ### 2. The accuracy contract
 
 Every rendered pixel has an exact answer, and one contract covers every
-stage: with every fast parameter off (section 9), each channel of each output
-pixel is within one level (of 255) of its exact result.
+stage: each channel of each output pixel is within one level (of 255) of its
+exact result.
 
 - **Coverage:** the exact area of the pixel square covered by the mark and
   its clip. Curves enter as the shared flattener's polygon, except exactly
@@ -221,7 +221,6 @@ format costs bandwidth, not page-sized memory.
   an F64 buffer; and every buffer that no narrow bound admits.
 - **N16** for the page buffer when its bound in section 6 holds, otherwise
   **F32** for a page, group or soft-mask buffer when its bound holds.
-- **U8** only under the `byte_storage` fast parameter.
 
 A tiling pattern's cell colours and alpha enter the marks painted with it as
 a per-pixel source, whose f64 evaluation error includes the cell buffer's
@@ -378,154 +377,16 @@ interaction and destination ICC output transforms are not modelled. An
 ICC-based transparency group composites in its N-component device base
 without inverse ICC transforms; its sources keep their forward transforms.
 
-### 8. The competitive gate
+### 8. Fast parameters
 
-The one-level contract stays the reference and the default. An approximate
-configuration, one that can leave a pixel more than one level from its exact
-result, may become the default only when it meets the absolute goals below on
-the 40-page benchmark set at 72, 150 and 300 dpi. The goals are fixed
-numbers. They were derived on 2026-10-19 from the best competitor in each
-cell, not from any single engine, measured on main 99bfb290 against the
-then-latest releases (hayro 0.8.0, PDFium 156.0.8076 via pypdfium2 5.14.0,
-MuPDF 1.28.5 via PyMuPDF 2.0, pdf.js 6.4.299, Poppler, Quartz on macOS 15.8),
-and do not move when competitors change.
-
-**Accuracy goals**, measured against Pagura's exact rendering of the same
-page, pixel-weighted per category and DPI: MAE, the mean absolute RGB error;
-within ±1, the share of pixels whose largest channel error is at most one;
-P99.9, the 99.9th percentile of the largest channel error. Each value is the
-competitors' best figure for that measure, improved by at least 10% and
-rounded towards the more ambitious side. No page may be less accurate than
-the best competitor on that page. The maximum error is not gated, because
-every engine reaches 231–255 on some pages.
-
-| Category | DPI | MAE ≤ | Within ±1 ≥ | P99.9 ≤ |
-|---|---:|---:|---:|---:|
-| Text | 72 / 150 / 300 | 1.0 / 0.5 / 0.3 | 93 / 96 / 98% | 60 / 40 / 30 |
-| Vector | 72 / 150 / 300 | 0.6 / 0.15 / 0.05 | 95 / 99.2 / 99.6% | 50 / 30 / 20 |
-| Mixed | 72 / 150 / 300 | 1.5 / 0.75 / 0.25 | 92 / 94 / 98% | 110 / 90 / 40 |
-| Images | 72 / 150 / 300 | 3.0 / 0.75 / 0.4 | 85 / 94 / 98.5% | 80 / 60 / 90 |
-
-The best competitor differs by cell among PDFium, MuPDF, hayro, pdf.js,
-Poppler and Quartz: hayro for most text and vector cells, MuPDF for vector at
-72 dpi, and pdf.js for images at 72 and 150 dpi, mixed at 150 dpi and some
-percentiles.
-
-**Speed goals.** For each category and DPI, the geometric mean over the
-category's documents of Pagura's engine time (open plus every page render)
-must be at most the value below, in milliseconds, on each benchmark runner.
-Each value is 0.9 times the fastest competitor on that runner, rounded down in
-0.5 ms steps below 10 ms, 1 ms steps up to 30 ms and 5 ms steps above. On M4
-the fastest competitor is hayro in every cell. On x86 it is PDFium for text
-at 72 and 150 dpi and for all vector, MuPDF for images at 72 dpi, and hayro
-otherwise. On Graviton it is PDFium for text, vector and mixed, MuPDF for
-images at 72 dpi, and hayro for images at 150 and 300 dpi.
-
-| Category | M4 (ms ≤) | x86 (ms ≤) | Graviton (ms ≤) |
-|---|---|---|---|
-| Text | 5.5 / 8 / 7.5 | 11 / 20 / 26 | 9.5 / 15 / 19 |
-| Vector | 3 / 4.5 / 9 | 6 / 11 / 29 | 5.5 / 8.5 / 19 |
-| Mixed | 4 / 6.5 / 7 | 9.5 / 17 / 23 | 8.5 / 14 / 17 |
-| Images | 13 / 19 / 16 | 25 / 45 / 50 | 27 / 40 / 40 |
-
-The values are for 72 / 150 / 300 dpi, from the 2026-10-19 runs on main
-99bfb290.
-
-**Ratchet.** Both margins tighten over time from 10% towards the original
-20%. Each tightening adds a new dated table to this section, and a
-configuration that falls behind a tightened table stops being a default.
-
-**Unchanged by any configuration.** Rendering stays deterministic and
-byte-identical across platforms, regions and band heights; work and storage
-stay reserved against `Limits` (ADR 0016); no `unsafe` code or dependency
-exception is introduced (ADR 0008); conformance fixtures keep their
-independent oracles. Every approximation is a named fast parameter (section
-9), and its per-category accuracy table is kept here with the change that
-introduces it.
-
-### 9. Fast parameters
-
-`RenderOptions::fast` is a `FastParams` of four switches, each a kernel or
-producer variant inside the one pipeline (ADR 0034). `FastParams::EXACT`, all
-off, is the default and is held to the contract above;
-`FastParams::COMPETITIVE`, all on, is the configuration the gate measures.
-Each parameter can be switched alone and is tested alone and in combination;
-none routes a page to other code, and fonts load the same way under every
-set. Preparation reserves what the selected kernels use, so a parameter can
-change whether a render reaches a limit; a failed render is not retried
-exactly.
-
-- **`glyph_origin_bins`:** glyph coverage is reused per origin bin. Bins lie
-  on the global device grid (ADR 0013): 1/128 pixel horizontally and,
-  vertically, 1/128 pixel below 108 dpi, 1/16 pixel from 108 dpi and 1/64
-  pixel from 216 dpi. Curves become 0.15-pixel chords below 108 dpi and two
-  area-balanced chords per 1/4-pixel piece from 108 dpi. Coverage is a pure
-  function of outline, linear map and bin, so reuse never depends on
-  regions, bands or cache state.
-- **`approximate_coverage`:** fills and strokes accumulate signed areas in
-  f32 cells after flattening curves to 1/64-pixel chords, and fold the
-  winding without certification or resolution. Cells are indexed in global
-  device columns, so any partition assembles into the page. Rectangles,
-  degenerate contours and compound paths, other than a stroke's pieces, keep
-  the exact producers. A stroke becomes pieces that meet without overlapping: each segment's
-  quadrilateral ends at the inner miter point on the inner side of a turn and
-  at its normal on the outer side, the outer wedge takes the join, and a
-  round cap is the half disc beyond its endpoint. A stroke keeps overlapping
-  components when a run reverses, turns tighter than the pen around a short
-  segment, has an open centreline whose directions span a half turn or a
-  closed one that is not convex, or when the bounding boxes of its runs' pens
-  meet. A clip whose path contains a mark's control hull is dropped for that
-  mark, and a quadrilateral mark within quadrilateral clips is integrated
-  with them geometrically. Otherwise the clip's coverage, a column factor
-  times a row factor for a rectangle and its own cells once per band for any
-  other region, is multiplied into the mark, which approximates the
-  intersection where both boundaries cross one pixel.
-- **`byte_storage`:** only the page buffer is narrowed: when the page has no
-  group results, tiling cells or soft masks, a page that exact rendering
-  stores in N16 or F32 is U8, rounding each store once, so the error
-  accumulates per mark. Every other buffer, and the page buffer of any other
-  page, is F64 under this parameter, as the earlier competitive renderer
-  stored them.
-- **`reduced_image_decode`:** an opaque DeviceGray or DeviceRGB DCTDecode
-  image without `Mask`, `SMask` or `Decode` is reconstructed near its drawn
-  size, with 1, 2, 3, 4 or 6 cells per eight-sample block axis, the fewest
-  that leave two and a half cells per device pixel along its less minified
-  axis. A cell is the mean of its block's unclamped T.81 A.3.3 samples from an
-  integrated cosine basis, rounded once; with six cells, a block that may
-  leave the sample range takes the means of its exact samples. The samplers
-  take the cells, the image's unit square spanning its declared extent in
-  them. JPEG 2000 images decode at a reduced resolution level near their
-  drawn size; the selection rule is recorded here with its accuracy table.
-
-The route stack these parameters replace met every accuracy goal on main
-752b52e7 (table in this file's history). The combination's own table is
-recorded here before it can become a default.
-
-**Fixtures.** Every render fixture stays within its exact tolerance under
-each parameter alone and under the combination, except these under the
-parameter named. The manifests record the bounds as `competitive_tolerance`
-(`tools/fixturegen/competitive.py`), which the conformance check applies under
-`FastParams::COMPETITIVE`; each parameter alone stays within the same bound.
-
-| Fixture | Bound | Parameter: cause |
-|---|---:|---|
-| classic/alpha-unsupported, content/alpha, paint/image-direct-rgb-fractional, paint/text-knockout-false, zero_area/half-alpha | 1 | `byte_storage`: one byte rounding per store |
-| content/alpha-accumulation | 66 | `byte_storage`: byte rounding accumulated per mark |
-| content/precision-slivers-254, content/precision-slivers-255 | 33 | `byte_storage`: byte rounding accumulated per mark |
-| content/precision-slivers-1000 | 122 | `byte_storage`: byte rounding accumulated per mark |
-| content/precision-slivers-270000, content/precision-translucent-stagnation | 127 | `byte_storage`: byte rounding accumulated per mark |
-| paint/bundled-symbol | 25 | `glyph_origin_bins`: origins binned |
-| paint/bundled-symbol-differences | 27 | `glyph_origin_bins`: origins binned |
-| paint/bundled-zapfdingbats | 14 | `glyph_origin_bins`: origins binned |
-| paint/bundled-zapfdingbats-differences | 19 | `glyph_origin_bins`: origins binned |
-| zero_area/zero-width-shading-bbox | 64 | `approximate_coverage`: the empty `BBox`'s boundary outline as a clip in cells |
-
-A bound changes only with the evidence of section 3 recorded here.
+Retired on 2026-10-22 by owner decision, with their accuracy gate: exact
+rendering is the only rendering.
 
 ## Consequences
 
 - One pipeline replaces the six execution routes, the page-wide storage plan,
-  the 8-bit opaque route and the Competitive exact re-render (ADR 0034). The
+  the 8-bit opaque route and the exact re-render of the former fast mode
+  (ADR 0034). The
   8-bit route's known defect, which quantized source colours and rounded
   twice per partial store (up to about 1.5 levels each, accumulating), goes
   with it: opaque pages store in N16 band buffers within the bound of

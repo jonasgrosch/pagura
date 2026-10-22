@@ -23,17 +23,16 @@ tools/check.py` passes, and `docs/STATUS.md` records the evidence.
   a recorded scene per page, preparation that validates and reserves in
   source order, the band rasterizer and a band executor with per-buffer
   storage formats are in place, held to ADR 0004's one-level contract by the
-  reference harness. The next goal is ADR 0004's absolute goal table for the
-  four fast parameters together, then exact rendering towards the same
-  table, then the 0.80 target of ADR 0002, judged on the scoreboard harness
-  in both policies. The levers in order of evidence: band cell coverage
-  (setup cost per mark, interior spans), non-overlapping stroke pieces,
-  prepared paint (span evaluators, column reuse), the executor on opaque
-  pages and band height, images decoded at size and region, interpretation
-  (numeric fast path, operator dispatch, scene reuse), glyph edge setup, and
-  occlusion culling. Byte storage promoted to N16 per 16×16 chunk is an
-  experiment that needs ADR 0004's proof first. WebAssembly SIMD and scalar
-  costs are measured for every kept lever.
+  reference harness. The next goal is exact rendering faster than hayro in
+  every category (text, vector, mixed, images), then the 0.80 target of ADR
+  0002, judged on the scoreboard harness. The levers in order of evidence:
+  band cell coverage (setup cost per mark, interior spans), non-overlapping
+  stroke pieces, prepared paint (span evaluators, column reuse), the
+  executor on opaque pages and band height, images decoded at size and
+  region, interpretation (numeric fast path, operator dispatch, scene
+  reuse), glyph edge setup, and occlusion culling. Byte storage promoted to
+  N16 per 16×16 chunk is an experiment that needs ADR 0004's proof first.
+  WebAssembly SIMD and scalar costs are measured for every kept lever.
 - **M7 foundations:** caller-owned transactions, append-only save and
   filled-form persistence (ADR 0031). Work and review use an isolated branch;
   tests run on hosted runners. Full rewrite, sanitizing redaction,
@@ -75,6 +74,12 @@ tools/check.py` passes, and `docs/STATUS.md` records the evidence.
   amendment); low-resolution previews and stale tiles while zooming; a worker
   pool fed with serialized prepared scenes; ARIA from the logical structure
   view; a size budget for the core module.
+- **Preview rendering:** a rough profile for thumbnails and progressive
+  first paint (greeking small text, images decoded at drawn size or as their
+  average colour, coarse coverage), built only after exact rendering beats
+  hayro. The 2026-10-22 stage study projects at least 5× over exact at
+  thumbnail size for image pages and about 2.5–3.5× cold for text, but not
+  for vector pages.
 - **More devices** on the interpreter's `Device` trait: SVG output, PDF
   re-emission through the operator layer, hit testing.
 - **Concurrency:** native band threads (`std::thread::scope`) and WebAssembly

@@ -37,9 +37,9 @@ COMMANDS = [
     (CARGO + ["clippy", *OFFLINE, "--workspace", "--all-targets", "--", "-D", "warnings"], {}),
     (CARGO + ["test", *OFFLINE, "--workspace", "--all-targets"], {}),
     # The cross-path differential test (ADR 0034): the renderer against the
-    # reference over every conformance render case, alone and with each fast
-    # parameter, and its invariance across band heights, partitions and cached
-    # store values. The workspace run skips it, as it is slow unoptimized.
+    # reference over every conformance render case, and its invariance across
+    # band heights, partitions and cached store values. The workspace run
+    # skips it, as it is slow unoptimized.
     (CARGO + ["test", *OFFLINE, "--release", "-p", "pagura-reference", "--test", "harness",
               "--", "--ignored"], {}),
     # The host as shipped (no bundled data, ADR 0005) and with every opt-in
