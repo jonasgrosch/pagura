@@ -122,7 +122,9 @@ fn runs_merge_the_rows_of_glyphs_that_share_no_pixel() {
             });
             let origin = Point::new(x, 20.37 + f64::from(i % 3) * 7.0);
             let prep = options(area, &limits, None);
-            let mask = glyph::mask(&edges, origin, &prep).unwrap();
+            let mut masks = Vec::new();
+            glyph::mask(&edges, origin, &prep, &mut masks).unwrap();
+            let mask = masks.pop();
             if let Some(shape) = glyph::place(&edges, origin, origins, &prep).unwrap() {
                 placed.push((shape, mask));
             }

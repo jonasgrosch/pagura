@@ -11,8 +11,9 @@
 //! it stores its mask's rows straight into the page, in content order with
 //! the placements that store one by one.
 
-use super::{Cover, Executor, Frame, Opaque, Runs, Tops, clamp, opaque_store};
+use super::{Executor, Extents, Frame, Opaque, Stores, Tops, clamp, opaque_store};
 use crate::plan::{Glyph, Item, Mark, Run, intersect};
+use pagura_core::convert::u32_to_usize;
 use pagura_raster::{BandCoverage, DeviceRect, GlyphMask};
 use std::ops::Range;
 
@@ -50,7 +51,7 @@ impl Executor<'_> {
                 && let Some(mask) = self.producer.mask(glyph.shape)
             {
                 let rows = self.rows.clone();
-                opaque_store(self.ws, &MaskRuns { mask, rows }, frame, opaque);
+                opaque_store(self.ws, &MaskRows { mask, rows }, frame, opaque);
                 continue;
             }
             if glyph.alone {
@@ -97,29 +98,42 @@ impl Executor<'_> {
 }
 
 /// The rows of a glyph mask within a band.
-struct MaskRuns<'a> {
+struct MaskRows<'a> {
     mask: &'a GlyphMask,
     rows: Range<u32>,
 }
 
-impl Runs for MaskRuns<'_> {
-    fn runs(&self, rect: DeviceRect, mut run: impl FnMut(u32, u32, Cover<'_>)) {
-        let bounds = self.mask.bounds();
-        let start = self.rows.start.max(rect.y0).max(bounds.y0);
-        let end = self.rows.end.min(rect.y1).min(bounds.y1);
-        for y in start..end {
-            let Some((x, values)) = self.mask.row(y) else {
-                continue;
-            };
-            let lo = x.max(rect.x0);
-            let hi = x
-                .saturating_add(u32::try_from(values.len()).unwrap_or(u32::MAX))
-                .min(rect.x1);
-            if lo < hi
-                && let Some(values) = values.get((lo - x) as usize..(hi - x) as usize)
+impl Stores for MaskRows<'_> {
+    fn store_into<T>(
+        &self,
+        page: &mut [T],
+        extents: &mut Extents,
+        frame: Frame,
+        store: impl Fn(&mut [T], Option<&[u8]>),
+    ) -> usize {
+        let rect = frame.rect;
+        let within = DeviceRect {
+            y0: rect.y0.max(self.rows.start),
+            y1: rect.y1.min(self.rows.end),
+            ..rect
+        };
+        let Some((block, cells, stride)) = self.mask.block(within) else {
+            return 0;
+        };
+        let width = u32_to_usize(rect.width());
+        let (columns, rows) = (u32_to_usize(block.width()), u32_to_usize(block.height()));
+        let (lo, hi) = (block.x0 - rect.x0, block.x1 - rect.x0);
+        let first = u32_to_usize(block.y0 - rect.y0);
+        let mut at = first * width + u32_to_usize(lo);
+        for values in cells.chunks(stride).take(rows) {
+            if let (Some(pixels), Some(values)) =
+                (page.get_mut(at..at + columns), values.get(..columns))
             {
-                run(y, lo, Cover::Partial(values));
+                store(pixels, Some(values));
             }
+            at += width;
         }
+        extents.mark_rows(first..first + rows, lo, hi);
+        columns * rows
     }
 }

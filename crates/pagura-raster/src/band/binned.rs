@@ -481,22 +481,22 @@ fn balanced_vertex([a, b, c, d]: [Point; 4]) -> Point {
 }
 
 /// Splits a device coordinate into its fraction, snapped to `phases` per
-/// pixel and given as the index of that phase, and its integer part.
+/// pixel and given as the index of that phase, and its integer part: whole
+/// phase steps, exact for the powers of two that `phases` are.
 fn phase(value: f64, phases: u16) -> Result<(u16, i32)> {
-    let value = (value * f64::from(phases)).round() / f64::from(phases);
-    if !value.is_finite() || value.abs() > 1e8 {
+    let steps = (value * f64::from(phases)).round();
+    if !steps.is_finite() || steps.abs() > 1e8 * f64::from(phases) {
         return Err(Error::limit("glyph origin exceeds working range"));
     }
     #[expect(
         clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "finite coordinate range checked above; the fraction's phase lies in 0..phases"
+        reason = "a whole number of steps within the range checked above"
     )]
-    let (integer, index) = {
-        let integer = value.floor() as i32;
-        let index = ((value - f64::from(integer)) * f64::from(phases)) as u16;
-        (integer, index)
-    };
+    let steps = steps as i64;
+    let phases = i64::from(phases);
+    let integer = i32::try_from(steps.div_euclid(phases))
+        .map_err(|_| Error::limit("glyph origin exceeds working range"))?;
+    let index = u16::try_from(steps.rem_euclid(phases)).unwrap_or(0);
     Ok((index, integer))
 }
 
@@ -549,19 +549,91 @@ impl GlyphMask {
         Some((b.x0, values))
     }
 
+    /// The mask's cells within `rect`: the pixels of its bounds there, the
+    /// cells from the first of them on, and the distance between rows;
+    /// `None` when they meet nowhere.
+    pub fn block(&self, rect: DeviceRect) -> Option<(DeviceRect, &[u8], usize)> {
+        let block = self.bounds.intersect(&rect);
+        if block.is_empty() {
+            return None;
+        }
+        let row = usize::try_from(i64::from(block.y0) - self.y).ok()?;
+        let skip = usize::try_from(i64::from(block.x0) - self.x).ok()?;
+        let start = row.checked_mul(self.width)?.checked_add(skip)?;
+        Some((block, self.mask.get(start..)?, self.width))
+    }
+
     pub(crate) fn add_work(&mut self, units: usize) {
         self.work = self.work.saturating_add(units);
     }
 }
 
+/// The glyph masks of one render's placements, by index. Each mask is
+/// built where it is kept, and the list keeps its storage when cleared.
+#[derive(Debug, Default)]
+pub struct GlyphMasks {
+    masks: Vec<GlyphMask>,
+}
+
+impl GlyphMasks {
+    /// Places binned `edges` at `origin` in the clip state `clip` as its
+    /// mask when the clip keeps every pixel it covers, and returns the
+    /// mask's index: its rows store as they are, without a shape. `None`
+    /// for any other placement, which
+    /// [`Shape::glyph_with_clip`](super::Shape::glyph_with_clip) prepares,
+    /// and for one that covers no pixel of the area.
+    ///
+    /// # Errors
+    ///
+    /// As [`Shape::fill`](super::Shape::fill).
+    #[inline]
+    pub fn place(
+        &mut self,
+        edges: &super::GlyphEdges,
+        origin: Point,
+        clip: Option<&ClipShape>,
+        options: &super::ShapeOptions<'_>,
+    ) -> Result<Option<usize>> {
+        let options = Prep::new(options, clip);
+        let kept = super::glyph::mask(edges, origin, &options, &mut self.masks)?;
+        Ok(kept.then(|| self.masks.len() - 1))
+    }
+
+    /// The mask at `index`.
+    pub fn get(&self, index: usize) -> Option<&GlyphMask> {
+        self.masks.get(index)
+    }
+
+    /// The number of masks.
+    pub fn len(&self) -> usize {
+        self.masks.len()
+    }
+
+    /// Whether there are none.
+    pub fn is_empty(&self) -> bool {
+        self.masks.is_empty()
+    }
+
+    /// The masks it holds without growing.
+    pub fn capacity(&self) -> usize {
+        self.masks.capacity()
+    }
+
+    /// Drops every mask, keeping the storage.
+    pub fn clear(&mut self) {
+        self.masks.clear();
+    }
+}
+
 /// Places binned `prepared` at `origin`: its mask at the origin's phases,
-/// kept with the edges or built now, and whether its clip state keeps all
-/// of it; `None` when it covers no pixel of the area.
-pub(crate) fn place(
+/// kept with the edges or built now, handed with whether its clip state
+/// keeps all of it to `keep`; `None` when it covers no pixel of the area.
+pub(crate) fn place<R>(
     prepared: &Prepared,
     origin: Point,
     options: &Prep<'_>,
-) -> Result<Option<(GlyphMask, bool)>> {
+    keep: impl FnOnce(GlyphMask, bool) -> R,
+) -> Result<Option<R>> {
     if prepared.width == 0 {
         return Ok(None);
     }
@@ -622,7 +694,7 @@ pub(crate) fn place(
         bounds,
         work: if kept { work } else { work * 3 },
     };
-    Ok(Some((mask, kept)))
+    Ok(Some(keep(mask, kept)))
 }
 
 /// The shape of a placement prepared in the clip state of `options`: its

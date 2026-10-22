@@ -290,24 +290,6 @@ impl Shape {
         super::glyph::place(edges, origin, origins, &Prep::new(options, clip))
     }
 
-    /// The mask of a binned glyph placement in the clip state `clip` when
-    /// the clip keeps every pixel it can cover: its rows store as they
-    /// are, without a shape. `None` for any other placement, which
-    /// [`Self::glyph_with_clip`] prepares, and for one that covers no pixel
-    /// of the area.
-    ///
-    /// # Errors
-    ///
-    /// As [`Self::fill`].
-    pub fn glyph_mask(
-        edges: &super::GlyphEdges,
-        origin: crate::Point,
-        clip: Option<&ClipShape>,
-        options: &ShapeOptions<'_>,
-    ) -> Result<Option<GlyphMask>> {
-        super::glyph::mask(edges, origin, &Prep::new(options, clip))
-    }
-
     #[cfg(test)]
     pub(crate) fn glyph_in(
         edges: &std::sync::Arc<super::GlyphEdges>,

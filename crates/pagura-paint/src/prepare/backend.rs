@@ -11,7 +11,7 @@ use pagura_core::{Built, Limits, Meter, Result, Store, StoreKey};
 use pagura_interpret::{GlyphSource, Image, OutlineKey, Paint, Pen, Shading};
 use pagura_raster::{
     Area, BandCoverage, BandRasterizer, ClipShape, DeviceRect, FillRule, GlyphEdges, GlyphMask,
-    GlyphOrigins, MarkCoverage, Path, Point, RunGlyph, Shape, ShapeOptions, Transform,
+    GlyphMasks, GlyphOrigins, MarkCoverage, Path, Point, RunGlyph, Shape, ShapeOptions, Transform,
 };
 use std::fmt;
 use std::sync::Arc;
@@ -213,7 +213,7 @@ pub(crate) struct Raster<'a> {
     scale: f64,
     shapes: Vec<Shape>,
     /// Glyph masks, keyed with [`MASK`] set.
-    masks: Vec<GlyphMask>,
+    masks: GlyphMasks,
     clips: Vec<ClipShape>,
     edges: FastMap<EdgesKey, Arc<GlyphEdges>>,
     /// Edges by the handles [`Backend::glyph`] gives out.
@@ -265,17 +265,15 @@ impl<'a> Raster<'a> {
     }
 }
 
-/// Keeps a glyph mask in `masks`, keyed with [`MASK`] set.
-fn keep_mask(masks: &mut Vec<GlyphMask>, mask: GlyphMask) -> Result<Option<Prepared>> {
-    let key = index(masks.len())? | MASK;
-    let prepared = Prepared {
+/// Glyph mask `index` of `masks` as prepared, keyed with [`MASK`] set.
+fn mask_prepared(masks: &GlyphMasks, index: usize) -> Result<Option<Prepared>> {
+    let key = self::index(index)? | MASK;
+    Ok(masks.get(index).map(|mask| Prepared {
         key,
         bounds: mask.bounds(),
         work: mask.work(),
         bytes: mask.retained_bytes(),
-    };
-    masks.push(mask);
-    Ok(Some(prepared))
+    }))
 }
 
 /// The key bit of glyph masks, which the producer keeps apart from shapes.
@@ -345,8 +343,8 @@ impl Backend for Raster<'_> {
     ) -> Result<Option<Prepared>> {
         if let Some(edges) = handle.and_then(|i| self.handles.get(i as usize)) {
             let clip = self.current.and_then(|k| self.clips.get(k as usize));
-            if let Some(mask) = Shape::glyph_mask(edges, origin, clip, options)? {
-                return keep_mask(&mut self.masks, mask);
+            if let Some(mask) = self.masks.place(edges, origin, clip, options)? {
+                return mask_prepared(&self.masks, mask);
             }
             let shape = Shape::glyph_with_clip(edges, origin, self.origins, clip, options)?;
             return self.shape(shape);
@@ -381,8 +379,8 @@ impl Backend for Raster<'_> {
         *handle = u32::try_from(self.handles.len()).ok();
         self.handles.push(Arc::clone(&edges));
         let clip = self.current.and_then(|k| self.clips.get(k as usize));
-        if let Some(mask) = Shape::glyph_mask(&edges, origin, clip, options)? {
-            return keep_mask(&mut self.masks, mask);
+        if let Some(mask) = self.masks.place(&edges, origin, clip, options)? {
+            return mask_prepared(&self.masks, mask);
         }
         let shape = Shape::glyph_with_clip(&edges, origin, self.origins, clip, options)?;
         self.shape(shape)
@@ -492,12 +490,12 @@ impl Backend for Raster<'_> {
 struct RasterCoverage {
     rasterizer: BandRasterizer,
     shapes: Vec<Shape>,
-    masks: Vec<GlyphMask>,
+    masks: GlyphMasks,
     clips: Vec<ClipShape>,
 }
 
 /// The shape or mask of `key`.
-fn glyph<'a>(shapes: &'a [Shape], masks: &'a [GlyphMask], key: u32) -> Option<RunGlyph<'a>> {
+fn glyph<'a>(shapes: &'a [Shape], masks: &'a GlyphMasks, key: u32) -> Option<RunGlyph<'a>> {
     let get = |i: u32| pagura_core::convert::u32_to_usize(i);
     if key & MASK == 0 {
         shapes.get(get(key)).map(RunGlyph::Shape)
@@ -511,20 +509,20 @@ thread_local! {
     /// thread: the next preparation fills it without growing it again.
     static SPARE_SHAPES: std::cell::Cell<Vec<Shape>> = const { std::cell::Cell::new(Vec::new()) };
     /// Its emptied mask list, likewise.
-    static SPARE_MASKS: std::cell::Cell<Vec<GlyphMask>> = const { std::cell::Cell::new(Vec::new()) };
+    static SPARE_MASKS: std::cell::Cell<GlyphMasks> = std::cell::Cell::default();
 }
 
-/// Keeps the emptied `list` as this thread's spare unless the spare is
-/// larger.
-fn keep_spare<T: 'static>(
-    spare: &'static std::thread::LocalKey<std::cell::Cell<Vec<T>>>,
-    mut list: Vec<T>,
+/// Keeps the emptied `list` as this thread's spare unless the spare holds
+/// more without growing.
+fn keep_spare<T: Default>(
+    spare: &'static std::thread::LocalKey<std::cell::Cell<T>>,
+    list: T,
+    capacity: impl Fn(&T) -> usize,
 ) {
-    list.clear();
     // A thread being torn down has no spare to keep.
     let _ = spare.try_with(|spare| {
         let kept = spare.take();
-        spare.set(if kept.capacity() > list.capacity() {
+        spare.set(if capacity(&kept) > capacity(&list) {
             kept
         } else {
             list
@@ -534,8 +532,12 @@ fn keep_spare<T: 'static>(
 
 impl Drop for RasterCoverage {
     fn drop(&mut self) {
-        keep_spare(&SPARE_SHAPES, std::mem::take(&mut self.shapes));
-        keep_spare(&SPARE_MASKS, std::mem::take(&mut self.masks));
+        let mut shapes = std::mem::take(&mut self.shapes);
+        shapes.clear();
+        keep_spare(&SPARE_SHAPES, shapes, Vec::capacity);
+        let mut masks = std::mem::take(&mut self.masks);
+        masks.clear();
+        keep_spare(&SPARE_MASKS, masks, GlyphMasks::capacity);
     }
 }
 

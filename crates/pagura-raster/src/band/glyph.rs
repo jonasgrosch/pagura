@@ -323,24 +323,26 @@ pub(crate) fn place(
     Ok(shape)
 }
 
-/// The mask of binned `edges` placed at `origin` when its clip state keeps
-/// all of it; `None` for any other placement.
+/// Adds the mask of binned `edges` placed at `origin` to `masks` when its
+/// clip state keeps all of it; `false` for any other placement.
 pub(crate) fn mask(
     edges: &GlyphEdges,
     origin: Point,
     options: &Prep<'_>,
-) -> Result<Option<GlyphMask>> {
+    masks: &mut Vec<GlyphMask>,
+) -> Result<bool> {
     let Kind::Binned(prepared) = &edges.kind else {
-        return Ok(None);
+        return Ok(false);
     };
     bounded(origin)?;
-    Ok(match binned::place(prepared, origin, options)? {
-        Some((mut mask, true)) => {
+    let kept = binned::place(prepared, origin, options, |mut mask, kept| {
+        if kept {
             mask.add_work(merged(mask.bounds()));
-            Some(mask)
+            masks.push(mask);
         }
-        _ => None,
-    })
+        kept
+    })?;
+    Ok(kept == Some(true))
 }
 
 /// Work keeping a placement's rows apart in a run and merging them.
@@ -358,8 +360,9 @@ fn placed(
     let exact = match &edges.kind {
         Kind::Binned(prepared) => {
             let _ = origins;
-            let placed = binned::place(prepared, origin, options)?;
-            return Ok(placed.map(|(mask, kept)| binned::shape(mask, kept, options)));
+            return binned::place(prepared, origin, options, |mask, kept| {
+                binned::shape(mask, kept, options)
+            });
         }
         Kind::Exact(exact) => exact,
     };

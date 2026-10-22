@@ -42,7 +42,7 @@ mod row;
 mod scan;
 mod shape;
 
-pub use binned::GlyphMask;
+pub use binned::{GlyphMask, GlyphMasks};
 pub use clip::ClipShape;
 pub use coverage::{BandCoverage, Capacity, CoverageRow, Span};
 pub use glyph::GlyphEdges;
