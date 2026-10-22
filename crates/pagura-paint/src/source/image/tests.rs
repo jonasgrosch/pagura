@@ -17,6 +17,7 @@ use pagura_image::{Decoded, DecodedImage, ImageAlpha, ImageKind, MaskKind, Sampl
 use pagura_raster::Transform;
 use std::sync::Arc;
 
+mod accuracy;
 mod documents;
 mod oracle;
 mod timing;

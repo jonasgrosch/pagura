@@ -37,7 +37,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 /// The image-heavy pages of the benchmark manifest.
-const IMAGE_PAGES: &str = "0000008.pdf:0,0000008.pdf:1,0000009.pdf:0,0000009.pdf:1,\
+pub(super) const IMAGE_PAGES: &str = "0000008.pdf:0,0000008.pdf:1,0000009.pdf:0,0000009.pdf:1,\
     0000095.pdf:0,0000095.pdf:1,0000200.pdf:2,0000200.pdf:3,0000603.pdf:0,0000603.pdf:1";
 
 /// One image drawn by a page: the XObject and its unit square to user space.
@@ -238,7 +238,7 @@ pub(super) fn placed(document: &Document, page: &Page, scale: f64) -> Vec<Placed
 }
 
 /// Decodes `placed` for painting through a fresh store.
-pub(super) fn decode_once(placed: &Placed, limits: &Limits, reduced: bool) -> Arc<Decoded> {
+pub(super) fn decode_once(placed: &Placed, limits: &Limits, reduced: bool) -> Option<Arc<Decoded>> {
     let target = Target::new(Process::Rgb);
     let composite = Composite::default();
     let store = Store::new(usize::MAX);
@@ -266,7 +266,7 @@ pub(super) fn decode_once(placed: &Placed, limits: &Limits, reduced: bool) -> Ar
         (planes, orientation),
         &context,
     )
-    .unwrap()
+    .ok()
 }
 
 /// The decode array of `placed`, one interval per component.
@@ -277,14 +277,19 @@ fn decode_array(placed: &Placed, components: usize) -> Vec<[f64; 2]> {
     )
 }
 
-/// The sampler of `placed` over `decoded`, into RGB.
-pub(super) fn sampler(placed: &Placed, decoded: Arc<Decoded>) -> ImageSampler {
+/// The sampler of `placed` over `decoded`, into RGB, or `None` where its
+/// placement cannot be sampled.
+pub(super) fn sampler(placed: &Placed, decoded: Arc<Decoded>) -> Option<ImageSampler> {
     let components = usize::from(decoded.image.components);
     let decode = decode_array(placed, components);
+    let key = match placed.source.mask() {
+        pagura_image::SourceMask::ColorKey(ranges) => Some(ranges.as_slice()),
+        _ => None,
+    };
     let description = Description {
         space: placed.space.as_ref(),
         decode: &decode,
-        key: None,
+        key,
         mask: MaskDescription::None,
         alpha_is_shape: false,
     };
@@ -293,23 +298,25 @@ pub(super) fn sampler(placed: &Placed, decoded: Arc<Decoded>) -> ImageSampler {
         &description,
         (decoded, None),
         (
-            placed.unit_to_device.inverse().unwrap(),
+            placed.unit_to_device.inverse()?,
             (placed.rect.x0, placed.rect.x1),
             Orientation::of(placed.unit_to_device, MaskDescription::None),
         ),
         convert,
     )
-    .unwrap();
-    ImageSampler {
+    .ok()?;
+    Some(ImageSampler {
         prepared: Some(Box::new(prepared)),
         channels: if placed.space.is_some() { 3 } else { 0 },
-    }
+    })
 }
 
 /// Prepares the sampler of `placed` over `decoded` and fills every span of
 /// its bounds, returning a checksum.
 fn sample_once(placed: &Placed, decoded: Arc<Decoded>) -> f64 {
-    let sampler = sampler(placed, decoded);
+    let Some(sampler) = sampler(placed, decoded) else {
+        return 0.0;
+    };
     let rect = placed.rect;
     let len = usize::try_from(rect.x1 - rect.x0).unwrap();
     let mut out = SpanColors::default();
@@ -353,7 +360,9 @@ fn new_route(images: &[Placed], limits: &Limits, reduced: bool, runs: usize) -> 
         .collect();
     let sampling = best(runs, || {
         for (placed, decoded) in images.iter().zip(&decoded) {
-            std::hint::black_box(sample_once(placed, Arc::clone(decoded)));
+            if let Some(decoded) = decoded {
+                std::hint::black_box(sample_once(placed, Arc::clone(decoded)));
+            }
         }
     });
     (decoding, sampling)

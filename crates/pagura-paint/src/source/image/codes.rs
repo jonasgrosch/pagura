@@ -691,25 +691,40 @@ fn bit(row: &[u8], x: usize) -> u8 {
     row.get(x / 8).map_or(0, |byte| (byte >> (7 - x % 8)) & 1)
 }
 
-/// The weighted sum of a line of reduced values, `N` per sample.
+/// The weighted sum of a line of reduced values, `N` per sample: the
+/// first and last weighted, those between added in order.
 #[inline]
 fn line_values<const N: usize>(values: &[f64], first: f64, last: f64) -> [f64; N] {
     let mut out = [0.0; N];
-    let cells = values.len() / N;
-    if cells == 0 {
-        return out;
-    }
-    for (out, &value) in out.iter_mut().zip(values) {
-        *out = first * value;
-    }
-    if cells > 1 {
-        for cell in values[N..(cells - 1) * N].as_chunks::<N>().0 {
-            for (out, &value) in out.iter_mut().zip(cell) {
-                *out += value;
+    match values.as_chunks::<N>().0 {
+        [] => {}
+        [a] => {
+            for (out, &a) in out.iter_mut().zip(a) {
+                *out = first * a;
             }
         }
-        for (out, &value) in out.iter_mut().zip(&values[(cells - 1) * N..cells * N]) {
-            *out += last * value;
+        [a, b] => {
+            for ((out, &a), &b) in out.iter_mut().zip(a).zip(b) {
+                *out = first * a + last * b;
+            }
+        }
+        [a, b, c] => {
+            for (((out, &a), &b), &c) in out.iter_mut().zip(a).zip(b).zip(c) {
+                *out = (first * a + b) + last * c;
+            }
+        }
+        [a, between @ .., z] => {
+            for (out, &a) in out.iter_mut().zip(a) {
+                *out = first * a;
+            }
+            for cell in between {
+                for (out, &value) in out.iter_mut().zip(cell) {
+                    *out += value;
+                }
+            }
+            for (out, &z) in out.iter_mut().zip(z) {
+                *out += last * z;
+            }
         }
     }
     out
@@ -874,22 +889,36 @@ impl Codes {
                 self.lanes.write_codes(&scratch.codes, n, out, shape);
             }
             Kind::Area => {
-                scratch.averages.clear();
                 scratch.covered.clear();
                 scratch.covered.resize(len, false);
                 // A lane that is not opaque averages each code beside its
                 // complement.
                 let n = if self.lanes.opaque { n } else { 2 };
-                scratch.averages.resize(len * n, 0.0);
+                // Lanes that are their components' codes mapped alike take
+                // their colours straight from the sums.
+                let direct = self.lanes.direct.filter(|_| n == self.lanes.table.len());
+                let (mut target, map) = match direct {
+                    Some(map) => (std::mem::take(&mut out.colors), map),
+                    None => (std::mem::take(&mut scratch.averages), (0.0, 1.0)),
+                };
+                target.clear();
+                target.resize(len * n, 0.0);
+                let into = (target.as_mut_slice(), map);
                 match n {
-                    1 => self.area::<1>(&grid, (x, y, len), scratch),
-                    2 => self.area::<2>(&grid, (x, y, len), scratch),
-                    3 => self.area::<3>(&grid, (x, y, len), scratch),
-                    _ => self.area::<4>(&grid, (x, y, len), scratch),
+                    1 => self.area::<1>(&grid, (x, y, len), scratch, into),
+                    2 => self.area::<2>(&grid, (x, y, len), scratch, into),
+                    3 => self.area::<3>(&grid, (x, y, len), scratch, into),
+                    _ => self.area::<4>(&grid, (x, y, len), scratch, into),
                 }
                 let mut shape = shape;
-                self.lanes
-                    .write_averages(&scratch.averages, n, out, shape.as_deref_mut());
+                if direct.is_some() {
+                    out.colors = target;
+                    opaque_shape(len, shape.as_deref_mut());
+                } else {
+                    self.lanes
+                        .write_averages(&target, n, out, shape.as_deref_mut());
+                    scratch.averages = target;
+                }
                 self.lanes.uncover(&scratch.covered, out, shape);
             }
         }
@@ -957,19 +986,19 @@ impl Codes {
         }
     }
 
-    /// The average codes of the span's separable footprints into
-    /// `scratch.averages`, `N` per pixel.
+    /// The average codes of the span's separable footprints, `N` per pixel,
+    /// mapped by `zero + average × slope` into `averages`.
     fn area<const N: usize>(
         &self,
         grid: &Grid<'_>,
         (x, y, len): (u32, u32, usize),
         scratch: &mut Scratch,
+        (averages, (zero, slope)): (&mut [f64], (f64, f64)),
     ) {
         let Scratch {
             feet,
             lines,
             sums,
-            averages,
             covered,
             runs,
             rows,
@@ -1044,8 +1073,9 @@ impl Codes {
                 continue;
             };
             let sum = line_values::<N>(values, foot.first_weight, foot.last_weight);
+            let factor = foot.normalization * scale;
             for (average, sum) in average.iter_mut().zip(sum) {
-                *average = sum * foot.normalization * scale;
+                *average = zero + sum * factor * slope;
             }
         }
     }
