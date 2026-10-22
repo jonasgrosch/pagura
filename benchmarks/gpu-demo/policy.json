@@ -14,7 +14,7 @@
     "median",
     "p95"
   ],
-  "correctness": "Every CPU/hybrid sample is byte-identical to the CPU reference. SVG repeats are identical within the browser run; SVG versus CPU differences are reported without a conformance claim.",
+  "correctness": "Every CPU/hybrid sample is byte-identical to the CPU reference. SVG export bytes must repeat exactly; browser SVG pixel variation and accuracy ranges are reported without a conformance or deterministic-pixel claim.",
   "render_time": "CPU engine versus hybrid program building, upload, GPU completion/readback versus SVG export, validation/parse, image decode, full Canvas rasterization/readback.",
   "frame_time": "Render time including worker/WASI output transport in both paths",
   "excluded_once": [

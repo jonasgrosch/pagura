@@ -11,7 +11,7 @@ export function stats(values) {
 }
 
 export function assertPixels(actual, expected, context) {
-  if (actual.length !== expected.length) throw new Error(`${context}: pixel count differs`);
+  if (actual.length !== expected.length) throw new Error(`${context}: byte count differs`);
   for (let i = 0; i < actual.length; i++) if (actual[i] !== expected[i]) throw new Error(`${context}: channel ${i}, actual ${actual[i]}, expected ${expected[i]}`);
 }
 
@@ -19,6 +19,12 @@ export function hash(bytes) {
   let n = 2166136261;
   for (const b of bytes) n = Math.imul(n ^ b, 16777619);
   return (n >>> 0).toString(16).padStart(8, '0');
+}
+
+function sameBytes(actual, expected) {
+  if (actual.length !== expected.length) return false;
+  for (let i = 0; i < actual.length; i++) if (actual[i] !== expected[i]) return false;
+  return true;
 }
 
 export async function compare(engine, gpu, options, {samples = 9, warmups = 2, progress = () => {}, svg = true} = {}) {
@@ -55,6 +61,7 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
   }
   const reference = coldCpu.data;
   const svgReference = lastSvg?.pixels;
+  const firstSvgAccuracy = svgReference ? pixelDifference(svgReference, reference) : null;
   try {
     const cpu = async () => {
       const sample = await engine.render(2, options);
@@ -73,19 +80,20 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
     const vector = async () => {
       const exported = await engine.render(4, options);
       if (exported.meta.fallback) throw new Error('SVG admission changed between identical requests');
+      assertPixels(exported.data, svgInitial.data, 'SVG export repeat');
       const start = performance.now();
       const page = new SvgPage(exported.data, exported.meta, options.dpi ?? 150);
       const output = await page.rasterize();
       const browser_ms = performance.now() - start;
-      assertPixels(output.pixels, svgReference, 'SVG repeat');
+      const repeat_difference = sameBytes(output.pixels, svgReference) ? null : pixelDifference(output.pixels, svgReference);
+      const accuracy = repeat_difference ? pixelDifference(output.pixels, reference) : firstSvgAccuracy;
       return {engine: exported.meta, browser_ms, render_ms: exported.meta.engine_ms + browser_ms,
-        frame_ms: exported.host_ms + browser_ms, pixels: output.pixels, page};
+        frame_ms: exported.host_ms + browser_ms, pixels: output.pixels, page, repeat_difference, accuracy};
     };
     let lastGpu = null;
     for (let i = 0; i < warmups; i++) { await cpu(); if (job) lastGpu = await hybrid(); if (svgPage && i < svgWarmups) lastSvg = await vector(); }
     for (let i = 0; i < samples; i++) {
       progress(i, samples);
-      // B C C B order across adjacent samples, for paired warm conditions.
       let c, g, s;
       // Rotate and reverse the three paths to balance earlier/later positions.
       const paths = ['cpu', ...(job ? ['gpu'] : []), ...(svgPage && i < svgSamples ? ['svg'] : [])];
@@ -100,7 +108,8 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
       if (s) {lastSvg = s;svgPage = s.page;}
       result.samples.push({cpu: {...c.meta, frame_ms: c.host_ms}, gpu: g ? {
         engine: g.engine, gpu_ms: g.gpu_ms, kernel_ms: g.kernel_ms, render_ms: g.render_ms, frame_ms: g.frame_ms,
-      } : null, svg: s ? {engine: s.engine, browser_ms: s.browser_ms, render_ms: s.render_ms, frame_ms: s.frame_ms} : null});
+      } : null, svg: s ? {engine: s.engine, browser_ms: s.browser_ms, render_ms: s.render_ms, frame_ms: s.frame_ms,
+        repeat_difference: s.repeat_difference, accuracy: s.accuracy} : null});
     }
     result.cpu_render_ms = stats(result.samples.map(s => s.cpu.engine_ms));
     result.cpu_frame_ms = stats(result.samples.map(s => s.cpu.frame_ms));
@@ -111,7 +120,14 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
       result.svg_frame_ms = stats(measured.map(s => s.frame_ms));
       result.svg_export_ms = stats(measured.map(s => s.engine.export_ms));
       result.svg_browser_ms = stats(measured.map(s => s.browser_ms));
-      result.svg_accuracy = pixelDifference(lastSvg.pixels, reference);
+      result.svg_accuracy = lastSvg.accuracy;
+      result.svg_repeatability = {export_byte_identical: true, pixel_byte_identical: measured.every(s => !s.repeat_difference),
+        differing_samples: measured.filter(s => s.repeat_difference).length,
+        max_channel_difference: Math.max(0, ...measured.map(s => s.repeat_difference?.max_channel_error ?? 0)),
+        max_changed_percent: Math.max(0, ...measured.map(s => s.repeat_difference?.changed_percent ?? 0))};
+      const accuracy = [firstSvgAccuracy, ...measured.map(s => s.accuracy)];
+      result.svg_accuracy_range = Object.fromEntries(['beyond_one_percent', 'mean_channel_error', 'max_channel_error'].map(key =>
+        [key, [Math.min(...accuracy.map(a => a[key])), Math.max(...accuracy.map(a => a[key]))]]));
       result.svg_speedup = result.cpu_render_ms.median / result.svg_render_ms.median;
     }
     if (job) {
@@ -126,7 +142,7 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
       result.packet_bytes = job.packet_bytes; result.spans = job.spans; result.references = job.references;
       result.gpu_allocation_validation_ms = job.setup_ms;
     }
-    result.byte_identical = true;
+    result.cpu_gpu_byte_identical = true;
     return {result, cpu: reference, gpu: lastGpu?.pixels ?? reference, svg: lastSvg?.pixels ?? null, svgPage};
   } finally { job?.destroy(); }
 }

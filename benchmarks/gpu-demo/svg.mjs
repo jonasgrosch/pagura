@@ -7,6 +7,14 @@ const attributes = new Set(['xmlns', 'width', 'height', 'viewBox', 'color-interp
   'image-rendering', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit',
   'stroke-dashoffset', 'stroke-dasharray', 'vector-effect']);
 
+async function imageReady(image) {
+  const loaded = image.complete ? Promise.resolve() : new Promise((resolve, reject) => {
+    image.addEventListener('load', resolve, {once: true});
+    image.addEventListener('error', () => reject(new Error('SVG image failed to load')), {once: true});
+  });
+  await Promise.all([loaded, image.decode()]);
+}
+
 export class SvgPage {
   constructor(bytes, {width, height}, dpi) {
     const start = performance.now();
@@ -56,7 +64,7 @@ export class SvgPage {
     container.replaceChildren(this.image);
   }
 
-  async ready() {if (this.image) await this.image.decode();}
+  async ready() {if (this.image) await imageReady(this.image);}
   destroy() {if (this.url) URL.revokeObjectURL(this.url);this.image?.remove();this.image = null;this.url = null;}
 
   clone() {
@@ -71,7 +79,7 @@ export class SvgPage {
     const url = URL.createObjectURL(new Blob([serialization], {type: 'image/svg+xml'}));
     const image = new Image();
     try {
-      image.src = url; await image.decode();
+      image.src = url; await imageReady(image);
       const decode_ms = performance.now() - start;
       const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
       const context = canvas.getContext('2d');

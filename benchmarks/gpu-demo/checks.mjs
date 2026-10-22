@@ -61,8 +61,9 @@ export async function run(config) {
       cpu_frame_ms: c.cpu_frame_ms.median, hybrid_frame_ms: c.gpu_frame_ms?.median ?? null,
       svg_ms: c.svg_render_ms?.median ?? null, svg_frame_ms: c.svg_frame_ms?.median ?? null,
       svg_fallback: c.svg_fallback, svg_accuracy: c.svg_accuracy,
+      svg_repeatability: c.svg_repeatability, svg_accuracy_range: c.svg_accuracy_range,
       zoom_ms: c.zoom ? Object.fromEntries(Object.entries(c.zoom.crisp).map(([name, value]) => [name, value.frame_ms.median])) : null,
-      fallback: c.fallback, byte_identical: c.byte_identical})),
+      fallback: c.fallback, cpu_gpu_byte_identical: c.cpu_gpu_byte_identical})),
   };
 }
 

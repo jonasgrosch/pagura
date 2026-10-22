@@ -168,7 +168,8 @@ Slow SVG raster cases remain in the report, with an explicit sample cap from
 `policy.json`. SVG differences against CPU include changed pixels, pixels
 whose largest channel difference exceeds one, maximum error, mean error and
 RMSE. These are differential measurements, not independent accuracy oracles
-or a pass of ADR 0004. CPU/hybrid byte equality remains required.
+or a pass of ADR 0004. CPU/hybrid byte equality remains required. SVG export bytes must repeat exactly;
+browser pixel variation across identical SVG inputs is reported separately.
 
 ```sh
 node benchmarks/gpu-demo/run.mjs svg-test
