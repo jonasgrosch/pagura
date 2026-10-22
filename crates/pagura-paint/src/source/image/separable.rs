@@ -15,8 +15,9 @@
 //! read them again.
 
 use super::geometry::{Footprint, Geometry, Mode};
+use super::scratch::allocate;
+use crate::source::Pixels;
 use pagura_core::{Error, Result};
-use std::sync::{Mutex, TryLockError};
 
 /// Rows kept at least: those of a few device rows' footprints.
 const KEPT_ROWS: usize = 8;
@@ -165,8 +166,6 @@ pub(super) struct RowCache<V> {
     entries: Vec<Kept<V>>,
     /// The entry replaced next.
     next: usize,
-    /// How many entries to keep.
-    capacity: usize,
     /// Scratch of the rows being filled.
     runs: Runs,
 }
@@ -176,7 +175,6 @@ impl<V> Default for RowCache<V> {
         Self {
             entries: Vec::new(),
             next: 0,
-            capacity: KEPT_ROWS,
             runs: Vec::new(),
         }
     }
@@ -206,19 +204,8 @@ impl<V: Copy + Default> RowCache<V> {
             .iter()
             .position(|kept| kept.row == y && kept.first <= first && end <= kept.end);
         let index = found.unwrap_or_else(|| {
-            let index = if self.entries.len() < self.capacity {
-                self.entries.push(Kept {
-                    row: usize::MAX,
-                    first: 0,
-                    end: 0,
-                    values: Vec::new(),
-                });
-                self.entries.len() - 1
-            } else {
-                let index = self.next % self.entries.len().max(1);
-                self.next = index + 1;
-                index
-            };
+            let index = self.next % self.entries.len().max(1);
+            self.next = index + 1;
             if let Some(kept) = self.entries.get_mut(index) {
                 // Filling writes every value.
                 let length = (end - first) * n;
@@ -242,12 +229,6 @@ impl<V: Copy + Default> RowCache<V> {
                 .get(start..start + (end - first) * n)
                 .unwrap_or(&[])
         })
-    }
-
-    /// Keeps `rows` rows of `bytes` bytes each, as many as [`KEPT_BYTES`]
-    /// allows beyond [`KEPT_ROWS`].
-    fn keep(&mut self, rows: usize, bytes: usize) {
-        self.capacity = rows.min(KEPT_BYTES / bytes.max(1)).max(KEPT_ROWS);
     }
 }
 
@@ -275,8 +256,6 @@ impl<V: Value> Default for Buffers<V> {
 /// Storage reused between spans.
 #[derive(Debug, Default)]
 pub(super) struct Scratch {
-    feet: Vec<Footprint>,
-    cells: Vec<u32>,
     /// Per source column, its row footprint's weighted sum.
     lines: Vec<f64>,
     /// A span's averages and which pixels its footprints cover.
@@ -286,6 +265,128 @@ pub(super) struct Scratch {
     runs: Runs,
     codes: Buffers<u8>,
     texels: Buffers<f64>,
+}
+
+/// The representation sampled by a separable plan.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Values {
+    Codes,
+    Texels,
+}
+
+/// Capacities of the one value type a separable plan samples.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct Layout {
+    columns: usize,
+    pixels: usize,
+    values: usize,
+    rows: usize,
+    kind: Values,
+}
+
+impl Layout {
+    /// Bytes of all allocations, including the boxed scratch value.
+    pub(super) fn bytes(self) -> usize {
+        let source = self.columns.saturating_mul(self.values);
+        let output = self.pixels.saturating_mul(self.values);
+        let sample = if self.kind == Values::Codes {
+            size_of::<u8>()
+        } else {
+            size_of::<f64>()
+        };
+        let sum = if self.kind == Values::Codes {
+            size_of::<u32>()
+        } else {
+            size_of::<f64>()
+        };
+        size_of::<Scratch>()
+            .saturating_add(self.rows.saturating_mul(size_of::<Kept<u8>>()))
+            .saturating_add(self.rows.saturating_mul(source).saturating_mul(sample))
+            .saturating_add(source.saturating_mul(sum + size_of::<f64>()))
+            .saturating_add(output.saturating_mul(sample + size_of::<f64>()))
+            .saturating_add(self.pixels)
+            .saturating_add(
+                self.columns
+                    .saturating_add(1)
+                    .saturating_mul(2 * size_of::<(usize, usize, bool)>()),
+            )
+    }
+
+    /// Allocates the capacities already charged by the source layout.
+    pub(super) fn make(self) -> Result<Scratch> {
+        let source = self.columns.saturating_mul(self.values);
+        let output = self.pixels.saturating_mul(self.values);
+        let mut scratch = Scratch {
+            lines: allocate(source)?,
+            averages: allocate(output)?,
+            covered: allocate(self.pixels)?,
+            runs: allocate(self.columns.saturating_add(1))?,
+            codes: Buffers::default(),
+            texels: Buffers::default(),
+        };
+        if self.kind == Values::Codes {
+            scratch.codes = self.buffers(source, output)?;
+        } else {
+            scratch.texels = self.buffers(source, output)?;
+        }
+        Ok(scratch)
+    }
+
+    fn buffers<V: Value>(self, source: usize, output: usize) -> Result<Buffers<V>> {
+        let mut entries = allocate(self.rows)?;
+        for _ in 0..self.rows {
+            entries.push(Kept {
+                row: usize::MAX,
+                first: 0,
+                end: 0,
+                values: allocate(source)?,
+            });
+        }
+        Ok(Buffers {
+            cache: RowCache {
+                entries,
+                next: 0,
+                runs: allocate(self.columns.saturating_add(1))?,
+            },
+            sums: allocate(source)?,
+            gathered: allocate(output)?,
+        })
+    }
+}
+
+impl Scratch {
+    /// Actual capacities retained, checked against the prepared layout.
+    pub(super) fn bytes(&self) -> usize {
+        fn buffers<V: Value>(values: &Buffers<V>) -> usize {
+            values.cache.entries.capacity() * size_of::<Kept<V>>()
+                + values
+                    .cache
+                    .entries
+                    .iter()
+                    .map(|row| row.values.capacity() * size_of::<V>())
+                    .sum::<usize>()
+                + values.cache.runs.capacity() * size_of::<(usize, usize, bool)>()
+                + values.sums.capacity() * size_of::<V::Sum>()
+                + values.gathered.capacity() * size_of::<V>()
+        }
+        size_of::<Self>()
+            + (self.lines.capacity() + self.averages.capacity()) * size_of::<f64>()
+            + self.covered.capacity()
+            + self.runs.capacity() * size_of::<(usize, usize, bool)>()
+            + buffers(&self.codes)
+            + buffers(&self.texels)
+    }
+
+    /// Invalidates source-dependent row values between renders.
+    pub(super) fn reset(&mut self) {
+        fn clear<V>(entries: &mut [Kept<V>]) {
+            for kept in entries {
+                kept.row = usize::MAX;
+            }
+        }
+        clear(&mut self.codes.cache.entries);
+        clear(&mut self.texels.cache.entries);
+    }
 }
 
 /// The separable placement of one image: each planned device column's
@@ -304,10 +405,59 @@ pub(super) struct Separable {
     whole: bool,
     /// Whether the planned nearest samples step by one sample.
     consecutive: bool,
-    scratch: Mutex<Scratch>,
 }
 
 impl Separable {
+    /// The storage needed by this plan, for `values` per sample, as codes
+    /// or converted texels. Every span stays inside the planned columns.
+    pub(super) fn layout(&self, values: usize, kind: Values) -> Layout {
+        let (first, end) = if self.nearest() {
+            self.cells
+                .iter()
+                .fold((u32::MAX, 0), |(first, end), &cell| {
+                    (first.min(cell), end.max(cell.saturating_add(1)))
+                })
+        } else {
+            let (first, end) = extent(&self.feet).unwrap_or((0, 0));
+            (
+                u32::try_from(first).unwrap_or(0),
+                u32::try_from(end).unwrap_or(0),
+            )
+        };
+        let columns = index(end.saturating_sub(first));
+        let value_bytes = if kind == Values::Codes {
+            size_of::<u8>()
+        } else {
+            size_of::<f64>()
+        };
+        let row_bytes = columns.saturating_mul(values).saturating_mul(value_bytes);
+        let height = index(self.geometry.size().1).max(1);
+        #[expect(
+            clippy::cast_possible_truncation,
+            clippy::cast_sign_loss,
+            reason = "finite non-negative sample extent, capped by the decoded image height"
+        )]
+        let needed = self
+            .geometry
+            .inverse()
+            .d
+            .abs()
+            .ceil()
+            .min(f64::from(self.geometry.size().1)) as usize;
+        let rows = needed
+            .saturating_add(4)
+            .min(KEPT_BYTES / row_bytes.max(1))
+            .max(KEPT_ROWS)
+            .min(height);
+        Layout {
+            columns,
+            pixels: self.feet.len().max(self.cells.len()),
+            values,
+            rows,
+            kind,
+        }
+    }
+
     /// The separable placement of `geometry` for device columns `x0..x1`,
     /// or `None` when it is not upright.
     ///
@@ -322,8 +472,7 @@ impl Separable {
         let taps = match geometry.mode() {
             Mode::Nearest => Taps::Nearest,
             Mode::Bilinear => Taps::Bilinear,
-            Mode::Separable => Taps::Area,
-            Mode::Area => return Ok(None),
+            Mode::Area => Taps::Area,
         };
         let count = index(x1.saturating_sub(x0));
         let (mut feet, mut cells) = (Vec::new(), Vec::new());
@@ -345,7 +494,6 @@ impl Separable {
             consecutive: consecutive(&cells),
             feet,
             cells,
-            scratch: Mutex::new(Scratch::default()),
         }))
     }
 
@@ -365,17 +513,14 @@ impl Separable {
     pub(super) fn gather<R: Rows>(
         &self,
         rows: &R,
-        (x, y, len): (u32, u32, usize),
+        pixels: Pixels<'_>,
+        scratch: &mut Scratch,
         finish: impl FnOnce(&[R::Value]),
     ) {
-        self.with_scratch(|scratch| {
-            let Scratch {
-                cells,
-                codes,
-                texels,
-                ..
-            } = scratch;
-            let (cells, consecutive) = self.cells(cells, (x, len));
+        let Pixels { y, len, .. } = pixels;
+        {
+            let Scratch { codes, texels, .. } = scratch;
+            let (cells, consecutive) = self.cells(pixels);
             let Buffers {
                 cache, gathered, ..
             } = R::Value::pick(codes, texels);
@@ -413,7 +558,7 @@ impl Separable {
             }
             gathered.resize(len * n, R::Value::default());
             finish(gathered);
-        });
+        }
     }
 
     /// Writes `map` of each average of device pixels `x .. x + len` of row
@@ -425,13 +570,14 @@ impl Separable {
     pub(super) fn average<R: Rows>(
         &self,
         rows: &R,
-        (x, y, len): (u32, u32, usize),
+        pixels: Pixels<'_>,
+        scratch: &mut Scratch,
         out: Option<(&mut [f64], usize)>,
         (map, finish): (impl Fn(f64) -> f64 + Copy, impl FnOnce(&mut [f64], &[bool])),
     ) {
-        self.with_scratch(|scratch| {
+        let Pixels { y, len, .. } = pixels;
+        {
             let Scratch {
-                feet,
                 lines,
                 averages,
                 covered,
@@ -450,17 +596,14 @@ impl Separable {
             };
             covered.clear();
             covered.resize(len, false);
-            let planned = self.planned(x, len).is_some();
-            let feet = self.feet(feet, (x, len));
-            let whole = if planned { self.whole } else { whole(feet) };
+            let feet = self.feet(pixels);
+            let whole = self.whole;
             let across = row(&self.geometry, self.taps, y);
             if let Some((first, end)) = extent(feet)
                 && across.first < across.end
                 && n > 0
             {
                 let Buffers { cache, sums, .. } = R::Value::pick(codes, texels);
-                let count = index(across.end - across.first);
-                cache.keep(count + 2, (end - first) * n * size_of::<R::Value>());
                 let span = Span {
                     feet,
                     first,
@@ -481,56 +624,23 @@ impl Separable {
                 }
             }
             finish(values, covered);
-        });
-    }
-
-    /// Forgets the rows kept, which a new source must not read.
-    pub(super) fn forget(&mut self) {
-        self.scratch = Mutex::new(Scratch::default());
-    }
-
-    /// Runs `work` in the placement's scratch, or in scratch of its own
-    /// when a concurrent caller holds that.
-    fn with_scratch<T>(&self, work: impl FnOnce(&mut Scratch) -> T) -> T {
-        let mut guard = match self.scratch.try_lock() {
-            Ok(guard) => Some(guard),
-            Err(TryLockError::Poisoned(poisoned)) => Some(poisoned.into_inner()),
-            Err(TryLockError::WouldBlock) => None,
-        };
-        match guard.as_deref_mut() {
-            Some(scratch) => work(scratch),
-            None => work(&mut Scratch::default()),
         }
     }
 
-    /// The footprints of device columns `x .. x + len`, planned or computed
-    /// into `feet`.
-    fn feet<'f>(&'f self, feet: &'f mut Vec<Footprint>, (x, len): (u32, usize)) -> &'f [Footprint] {
-        if let Some(planned) = self.planned(x, len).and_then(|range| self.feet.get(range)) {
-            return planned;
-        }
-        feet.clear();
-        feet.extend(
-            (x..=u32::MAX)
-                .take(len)
-                .map(|x| column(&self.geometry, self.taps, x)),
-        );
-        feet
+    /// The planned footprints of `pixels`.
+    fn feet(&self, pixels: Pixels<'_>) -> &[Footprint] {
+        self.planned(pixels.x, pixels.len)
+            .and_then(|range| self.feet.get(range))
+            .unwrap_or(&[])
     }
 
-    /// The nearest samples' columns of device columns `x .. x + len`,
-    /// planned or computed into `cells`, and whether they step by one.
-    fn cells<'c>(&'c self, cells: &'c mut Vec<u32>, (x, len): (u32, usize)) -> (&'c [u32], bool) {
-        if let Some(planned) = self.planned(x, len).and_then(|range| self.cells.get(range)) {
-            return (planned, self.consecutive);
-        }
-        cells.clear();
-        cells.extend(
-            (x..=u32::MAX)
-                .take(len)
-                .map(|x| column(&self.geometry, self.taps, x).first),
-        );
-        (cells, consecutive(cells))
+    /// The planned nearest samples of `pixels`.
+    fn cells(&self, pixels: Pixels<'_>) -> (&[u32], bool) {
+        let cells = self
+            .planned(pixels.x, pixels.len)
+            .and_then(|range| self.cells.get(range))
+            .unwrap_or(&[]);
+        (cells, self.consecutive)
     }
 
     /// The plan's entries for device columns `x .. x + len`, or `None` when
@@ -768,11 +878,11 @@ fn sum_rows<R: Rows>(
     sums.resize(length, Default::default());
     let (top, bottom) = (index(across.first), index(across.end) - 1);
     if let Some(background) = background(rows, (top, bottom), (first, end), runs) {
-        let constant: Vec<_> = background
-            .iter()
-            .map(|&value| (top..bottom).fold(value.alone(), |sum, _| value.add(sum)))
-            .collect();
-        fill(sums, (first, n), runs, &constant);
+        let mut constant = [<R::Value as Value>::Sum::default(); super::geometry::MAX_LANES];
+        for (sum, &value) in constant.iter_mut().zip(background) {
+            *sum = (top..bottom).fold(value.alone(), |sum, _| value.add(sum));
+        }
+        fill(sums, (first, n), runs, &constant[..n]);
     }
     for y in top..=bottom {
         let values = rows.row(y, (first, end), cache);
@@ -822,17 +932,17 @@ fn reduce_rows<R: Rows>(
     let weights = (across.first_weight, across.last_weight);
     if let Some(background) = background(rows, (top, bottom), (first, end), runs) {
         // A column of background takes the steps every column takes.
-        let mut constant = vec![0.0; n];
-        let mut sum = vec![Default::default(); n];
+        let mut constant = [0.0; super::geometry::MAX_LANES];
+        let mut sum = [<R::Value as Value>::Sum::default(); super::geometry::MAX_LANES];
         for y in top..=bottom {
             step(
                 (y, top, bottom),
                 weights,
-                (&mut constant, &mut sum),
+                (&mut constant[..n], &mut sum[..n]),
                 background,
             );
         }
-        fill(lines, (first, n), runs, &constant);
+        fill(lines, (first, n), runs, &constant[..n]);
     }
     for y in top..=bottom {
         let values = rows.row(y, (first, end), cache);

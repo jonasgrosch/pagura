@@ -314,8 +314,13 @@ fn compare(placed: &Placed, case: &Case, log: &mut String) -> Tally {
     let mut out = SpanColors::default();
     let mut tally = Tally::default();
     let components = usize::from(case.image.components);
+    let mut storage = super::scratch(&new);
     for y in rect.y0..rect.y1 {
-        new.span(rect.x0, y, len, &mut out);
+        new.span(
+            crate::source::Pixels::new(rect.x0, y, len),
+            &mut storage,
+            &mut out,
+        );
         for (i, x) in (rect.x0..rect.x1).enumerate() {
             let before = old.pixel(x, y);
             for channel in 0..out.channels {

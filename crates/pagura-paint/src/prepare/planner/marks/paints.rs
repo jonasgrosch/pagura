@@ -85,6 +85,7 @@ impl Planner<'_> {
                         .map(|(color, painted)| (&**color, *painted)),
                     (&context, pixels),
                     ImageBudgets {
+                        bytes: &mut budget.bytes,
                         work: &mut budget.work,
                         functions: &mut budget.functions,
                     },
