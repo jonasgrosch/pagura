@@ -210,9 +210,8 @@ impl Footprint {
 }
 
 impl Geometry {
-    /// The geometry of an image of `width` × `height` stored samples whose
-    /// unit square spans `extent` samples, placed by `unit_to_device`
-    /// (whose inverse is `inverse`).
+    /// The geometry of an image of `width` × `height` samples, its unit
+    /// square placed by `unit_to_device` (whose inverse is `inverse`).
     ///
     /// # Errors
     ///
@@ -220,10 +219,10 @@ impl Geometry {
     /// sample coordinates.
     pub(super) fn new(
         (width, height): (u32, u32),
-        extent: (f64, f64),
         interpolate: bool,
         inverse: Transform,
     ) -> Result<Self> {
+        let extent = (f64::from(width), f64::from(height));
         if !reaches(inverse, extent) {
             return Err(Error::limit("image sampling transform overflow"));
         }

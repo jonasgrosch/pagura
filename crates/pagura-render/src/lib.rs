@@ -13,11 +13,9 @@
 //! [`Pixmap`] and runs the band executor, which cannot fail. Repairs that
 //! preparation makes are reported to the document.
 //!
-//! Exact rendering, every pixel within one level of its exact result (ADR
-//! 0004), is the default; [`RenderOptions::fast`] switches the four named
-//! [`FastParams`] inside the same pipeline. Text extraction runs the same
-//! interpreter into its text device, which decodes no image, parses no
-//! shading and converts no colour.
+//! Every pixel is within one level of its exact result (ADR 0004). Text
+//! extraction runs the same interpreter into its text device, which decodes
+//! no image, parses no shading and converts no colour.
 //!
 //! The free functions record and render one page with a store of their own;
 //! keep a [`RenderContext`] to reuse scenes, fonts, glyphs and images across
@@ -32,7 +30,7 @@ pub use context::RenderContext;
 pub use options::{OverprintPreview, RenderOptions, Tile};
 pub use pagura_extract::{PositionedText, TextPage};
 pub use pagura_interpret::Scene;
-pub use pagura_paint::{Completion, FastParams};
+pub use pagura_paint::Completion;
 pub use pagura_raster::Pixmap;
 pub use pagura_text::Provider;
 

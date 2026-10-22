@@ -1,16 +1,13 @@
 //! Invariance and consistency tests of the band rasterizer: the same bytes,
-//! work and charges at every band height and on sub-regions, and its fast
-//! routes against its general ones. Its exactness against the reference is
+//! work and charges at every band height and on sub-regions, and its
+//! specialized routes against its general ones. Its exactness against the reference is
 //! tested in `tests/exact`.
 #![expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
-    clippy::range_plus_one,
-    reason = "test geometry is small, nonnegative and counted from one"
+    reason = "test geometry is small and nonnegative"
 )]
 
-mod approximate;
-mod binned;
 mod clips;
 mod fills;
 mod glyphs;
@@ -48,30 +45,12 @@ pub(super) fn area(x0: u32, y0: u32, x1: u32, y1: u32, band_height: u32) -> Area
 }
 
 pub(super) fn options<'a>(area: Area, limits: &'a Limits, clip: Option<&'a ClipShape>) -> Prep<'a> {
-    Prep {
-        area,
-        precision: Precision::Exact,
-        limits,
-        clip,
-    }
+    Prep { area, limits, clip }
 }
 
 /// The public options of `area`.
-pub(super) fn public(area: Area, limits: &Limits, precision: Precision) -> ShapeOptions<'_> {
-    ShapeOptions {
-        area,
-        precision,
-        limits,
-    }
-}
-
-/// Differences between two coverages: (count, largest).
-pub(super) fn compare(a: &[u8], b: &[u8]) -> (usize, u8) {
-    assert_eq!(a.len(), b.len());
-    a.iter()
-        .zip(b)
-        .filter(|(x, y)| x != y)
-        .fold((0, 0), |(n, m), (x, y)| (n + 1, m.max(x.abs_diff(*y))))
+pub(super) fn public(area: Area, limits: &Limits) -> ShapeOptions<'_> {
+    ShapeOptions { area, limits }
 }
 
 /// Rasterizes `shape` over `area` at several band heights and sub-regions,
@@ -81,16 +60,6 @@ pub(super) fn invariant(
     area: &Area,
     prepare: &dyn Fn(&Prep<'_>) -> Option<Shape>,
     clip: Option<&dyn Fn(&ShapeOptions<'_>) -> ClipShape>,
-) -> Vec<u8> {
-    invariant_with(area, prepare, clip, Precision::Exact)
-}
-
-/// [`invariant`] with clips prepared at `precision`.
-pub(super) fn invariant_with(
-    area: &Area,
-    prepare: &dyn Fn(&Prep<'_>) -> Option<Shape>,
-    clip: Option<&dyn Fn(&ShapeOptions<'_>) -> ClipShape>,
-    precision: Precision,
 ) -> Vec<u8> {
     let limits = Limits::default();
     let mut reference: Option<Vec<u8>> = None;
@@ -120,7 +89,7 @@ pub(super) fn invariant_with(
                 region,
                 band_height: height,
             };
-            let clip_shape = clip.map(|c| c(&public(sub, &limits, precision)));
+            let clip_shape = clip.map(|c| c(&public(sub, &limits)));
             let opts = options(sub, &limits, clip_shape.as_ref());
             let shape = prepare(&opts);
             let (coverage, work) = if let Some(shape) = &shape {

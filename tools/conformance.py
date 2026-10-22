@@ -1,9 +1,8 @@
 """Check every generated PDF case against its independent expectation.
 
 Runs the release `pagura` binary over corpus/manifests/*.json:
-  render       pixels equal the oracle within the case's tolerance, and within
-               its competitive_tolerance (or tolerance) under
-               `--accuracy competitive`; repairs and strict validity match
+  render       pixels equal the oracle within the case's tolerance; repairs
+               and strict validity match
   unsupported  rendering fails with the case's Feature tag
   open         opens with the expected page count and repairs; with
                `render_error`, rendering then fails with that error kind
@@ -71,20 +70,17 @@ def check(case: dict) -> list[str]:
     elif expected == "render":
         if report["failures"]:
             problems.append(f"render failures {report['failures']}")
-        modes = ((), case.get("tolerance", 0)), (("--accuracy", "competitive"),
-                                                    case.get("competitive_tolerance", case.get("tolerance", 0)))
-        for flags, tolerance in modes:
-            with tempfile.TemporaryDirectory() as directory:
-                output = Path(directory) / "page.ppm"
-                result = pagura("render", *flags, *password_args(case), str(ROOT / case["path"]), str(output),
-                                str(case.get("dpi", 72)))
-                label = " ".join(flags) or "exact"
-                if result.returncode != 0:
-                    problems.append(f"{label} render failed: {result.stderr.decode(errors='replace').strip()}")
-                else:
-                    problem = compare_images(output.read_bytes(), (ROOT / case["oracle"]).read_bytes(), tolerance)
-                    if problem:
-                        problems.append(f"{label}: {problem}")
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "page.ppm"
+            result = pagura("render", *password_args(case), str(ROOT / case["path"]), str(output),
+                            str(case.get("dpi", 72)))
+            if result.returncode != 0:
+                problems.append(f"render failed: {result.stderr.decode(errors='replace').strip()}")
+            else:
+                problem = compare_images(output.read_bytes(), (ROOT / case["oracle"]).read_bytes(),
+                                         case.get("tolerance", 0))
+                if problem:
+                    problems.append(problem)
     elif expected == "open":
         wanted = case.get("render_error")
         kinds = [failure["error"]["kind"] for failure in report["failures"]]

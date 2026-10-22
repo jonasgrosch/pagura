@@ -17,7 +17,7 @@ use std::sync::{Arc, Mutex};
 /// transforms, font programs and glyph edge setups, under one byte capacity.
 ///
 /// Every page is recorded once into a [`Scene`] and rendered from it at any
-/// resolution, region or set of fast parameters. Dropping the context
+/// resolution or region. Dropping the context
 /// releases the store; the document's own object caches stay with the
 /// document (ADR 0012). The context is `Send + Sync`.
 ///

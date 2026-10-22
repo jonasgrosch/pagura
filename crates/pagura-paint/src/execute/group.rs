@@ -102,7 +102,6 @@ impl Executor<'_> {
                     page: &ws.page,
                     wide: below,
                     levels: &ws.levels,
-                    bytes: &ws.bytes,
                 };
                 let row = u32_to_usize(rect.width()) * layout.stride();
                 for (y, out) in (rect.y0..rect.y1).zip(above.chunks_exact_mut(row.max(1))) {
@@ -115,12 +114,6 @@ impl Executor<'_> {
                 };
                 let value = narrow_start(initial, level);
                 out.fill(value);
-            }
-            Buffer::Bytes(offset) => {
-                let Some(out) = ws.bytes.get_mut(offset..offset + pixels) else {
-                    return;
-                };
-                out.fill(narrow_start(initial, pagura_raster::quantize_unit));
             }
             Buffer::Page => {}
         }
@@ -197,7 +190,6 @@ impl Executor<'_> {
                 extents: &mut ws.extents,
                 wide: &mut ws.wide,
                 levels: &mut ws.levels,
-                bytes: &mut ws.bytes,
                 initial: &mut ws.initial,
             },
             parent,
@@ -236,7 +228,6 @@ fn visible(ws: &Workspace, child: Frame, (x, y): (u32, u32), k: usize) -> bool {
             .get(offset + index * child.layout.stride() + n + 2)
             .is_some_and(|&shape| shape > 0.0),
         Buffer::Levels(offset) => ws.levels.get(offset + index).is_some_and(|p| p[3] > 0.0),
-        Buffer::Bytes(offset) => ws.bytes.get(offset + index).is_some_and(|p| p[3] > 0),
         Buffer::Page => false,
     }
 }
@@ -264,7 +255,6 @@ fn sources(
             page: &ws.page,
             wide: below,
             levels: &ws.levels,
-            bytes: &ws.bytes,
         };
         if let Some(initial) = ws.initial.get_mut(..len * stride) {
             child.initial.row(read, (x, y), from, initial);
@@ -342,10 +332,6 @@ fn removed(
         }
         Buffer::Levels(offset) => {
             let pixel = ws.levels.get(offset + index)?.map(f64::from);
-            Some(narrow_straight(pixel.map(|v| v / 255.0), straight))
-        }
-        Buffer::Bytes(offset) => {
-            let pixel = ws.bytes.get(offset + index)?.map(f64::from);
             Some(narrow_straight(pixel.map(|v| v / 255.0), straight))
         }
         Buffer::Page => None,

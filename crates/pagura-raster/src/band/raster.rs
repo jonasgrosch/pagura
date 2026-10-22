@@ -1,7 +1,5 @@
 //! The band rasterizer: one dense cell row, reused for every mark and band.
 
-use super::approximate::{self, Multiplied};
-use super::binned;
 use super::clip::{INSIDE, Rows, Segment};
 use super::coverage::RowOut;
 use super::curve::Quadratic;
@@ -10,7 +8,7 @@ use super::edges::Line;
 use super::rect;
 use super::row::{Accumulate, DenseRow, Row, Sink, fold};
 use super::shape::{Body, EdgeBody, GlyphBody, Shape};
-use super::{Area, BandCoverage, ClipShape, GlyphMask, MarkCoverage};
+use super::{Area, BandCoverage, ClipShape, MarkCoverage};
 use crate::FillRule;
 use pagura_core::{Meter, Result};
 
@@ -20,28 +18,9 @@ use pagura_core::{Meter, Result};
 pub struct BandRasterizer {
     area: Area,
     row: Row,
-    cells: approximate::Scratch,
     grid: Grid,
     run: Run,
     work: usize,
-}
-
-/// One glyph of a run: a shape, or a mask that stores as it is.
-#[derive(Debug, Clone, Copy)]
-pub enum RunGlyph<'a> {
-    /// A prepared shape.
-    Shape(&'a Shape),
-    /// A binned mask its clip state keeps whole.
-    Mask(GlyphMask<'a>),
-}
-
-impl RunGlyph<'_> {
-    fn bounds(&self) -> super::DeviceRect {
-        match self {
-            Self::Shape(shape) => shape.bounds,
-            Self::Mask(mask) => mask.bounds(),
-        }
-    }
 }
 
 /// The shapes of a run at once, at most.
@@ -167,8 +146,8 @@ impl Grid {
 
 impl BandRasterizer {
     /// Scratch storage for `area`, charged to `bytes` (`render_bytes`):
-    /// one row of cells up to the region's right edge and its bitmap, one
-    /// row of approximate cells, and a fixed grid for small marks. The
+    /// one row of cells up to the region's right edge and its bitmap, a
+    /// fixed grid for small marks, and the storage of glyph runs. The
     /// charge depends on the region's right edge only, never on the band
     /// height or the region's rows.
     ///
@@ -180,7 +159,6 @@ impl BandRasterizer {
         Ok(Self {
             area,
             row: Row::new(width, bytes)?,
-            cells: approximate::Scratch::new(width, bytes)?,
             grid: Grid::new(bytes)?,
             run: Run::new(width, bytes)?,
             work: 0,
@@ -201,12 +179,6 @@ impl BandRasterizer {
         bytes.charge_items::<f64>(width)?;
         bytes.charge_items::<f64>(width)?;
         bytes.charge_items::<u64>(words)?;
-        // The approximate row, its bitmap and product, and its grid.
-        bytes.charge_items::<f32>(width)?;
-        bytes.charge_items::<u64>(words)?;
-        bytes.charge_items::<u8>(width)?;
-        bytes.charge_items::<f32>(GRID_CELLS)?;
-        bytes.charge_items::<u8>(GRID_CELLS)?;
         // The grid.
         bytes.charge_items::<f64>(GRID_CELLS)?;
         bytes.charge_items::<f64>(GRID_CELLS)?;
@@ -232,7 +204,6 @@ impl BandRasterizer {
     pub fn retained_bytes(&self) -> usize {
         self.row
             .retained_bytes()
-            .saturating_add(self.cells.retained_bytes())
             .saturating_add(self.grid.retained_bytes())
             .saturating_add(self.run.retained_bytes())
     }
@@ -253,48 +224,30 @@ impl BandRasterizer {
             }
             (None, Some(clip)) => self.clip(clip, rows, out),
             (Some(shape), clip) => {
-                let rows = Self::shape_rows(shape, clip, rows);
-                self.shape(shape, clip, (band, rows), out);
+                debug_assert!(
+                    match (&shape.clip, clip) {
+                        (Some(a), Some(b)) => a.same(b),
+                        (prepared, clip) => prepared.is_none() && clip.is_none(),
+                    },
+                    "a shape is rasterized with the clip it was prepared against"
+                );
+                let rows = Self::shape_rows(shape, rows);
+                self.shape(shape, (band, rows), out);
             }
         }
         out.finish();
     }
 
-    /// The rows of `band` (`rows`) that `shape` within `clip` can cover.
-    fn shape_rows(
-        shape: &Shape,
-        clip: Option<&ClipShape>,
-        rows: std::ops::Range<u32>,
-    ) -> std::ops::Range<u32> {
-        let mut bounds = shape.bounds;
-        if let Some(clip) = Self::late(shape, clip) {
-            bounds = bounds.intersect(&clip.bounds());
-        }
+    /// The rows of `band` (`rows`) that `shape` can cover.
+    fn shape_rows(shape: &Shape, rows: std::ops::Range<u32>) -> std::ops::Range<u32> {
+        let bounds = shape.bounds;
         rows.start.max(bounds.y0)..rows.end.min(bounds.y1).max(rows.start.max(bounds.y0))
-    }
-
-    /// A clip `shape` was not prepared in: its coverage is multiplied in,
-    /// exact wherever either is empty or full, a product where both are
-    /// partial. Preparing the shape in its clip state keeps every pixel
-    /// exact.
-    fn late<'c>(shape: &Shape, clip: Option<&'c ClipShape>) -> Option<&'c ClipShape> {
-        let prepared = shape.clip.as_ref().or(shape.multiplied.as_ref());
-        debug_assert!(
-            match (prepared, clip) {
-                (Some(a), Some(b)) => a.same(b),
-                (Some(_), None) => false,
-                (None, _) => true,
-            },
-            "a shape is rasterized with the clip it was prepared against"
-        );
-        if prepared.is_none() { clip } else { None }
     }
 
     /// Writes `shape`'s `rows` of `band`, within its bounds, to `out`.
     fn shape(
         &mut self,
         shape: &Shape,
-        clip: Option<&ClipShape>,
         (band, rows): (u32, std::ops::Range<u32>),
         out: &mut dyn RowOut,
     ) {
@@ -302,54 +255,23 @@ impl BandRasterizer {
         if rows.is_empty() {
             return;
         }
-        let shape = (shape, Self::late(shape, clip));
-        match &shape.0.body {
+        match &shape.body {
             Body::Rect(r) => self.rect(*r, shape, rows, out),
             Body::Edges(edges) => self.edges(edges, shape, (band, rows), out),
             Body::Glyph(glyph) => self.glyph(glyph, shape, rows, out),
-            Body::Cells(cells) => {
-                self.work =
-                    self.work
-                        .saturating_add(self.cells.rasterize(cells, shape, (band, rows), out));
-            }
-            Body::Binned(mask) => {
-                self.work = self.work.saturating_add(binned::rasterize(
-                    mask,
-                    shape,
-                    rows,
-                    (out, self.cells.row_buffer()),
-                ));
-            }
         }
     }
 
-    /// Writes the coverage of `mask` within `band` to `out`, replacing its
-    /// contents: its rows as they are. The clip state it was prepared in
-    /// keeps all of it.
-    pub fn rasterize_mask(&mut self, mask: GlyphMask<'_>, band: u32, out: &mut BandCoverage) {
-        out.clear();
-        let rows = Self::mask_rows(mask, self.area.band_rows(band));
-        self.work = self.work.saturating_add(binned::emit(mask, rows, out));
-        out.finish();
-    }
-
-    /// The rows of `band` (`rows`) that `mask` can cover.
-    fn mask_rows(mask: GlyphMask<'_>, rows: std::ops::Range<u32>) -> std::ops::Range<u32> {
-        let b = mask.bounds();
-        let start = rows.start.max(b.y0);
-        start..rows.end.min(b.y1).max(start)
-    }
-
-    /// Writes the coverage within `band` of glyphs of one run, all in the
-    /// clip state `clip`, to `out`, replacing its contents: each glyph's
-    /// rows as [`Self::rasterize`] and [`Self::rasterize_mask`] write them
-    /// alone, merged into the band's rows. The glyphs must share no pixel;
-    /// they come in content order. Rasterizes the leading glyphs that fit
-    /// the run storage, at least one, and returns how many it took; the
-    /// caller passes the rest again.
+    /// Writes the coverage within `band` of glyph placements of one run, all
+    /// prepared in the clip state `clip`, to `out`, replacing its contents:
+    /// each glyph's rows as [`Self::rasterize`] writes them alone, merged
+    /// into the band's rows. The glyphs must share no pixel; they come in
+    /// content order. Rasterizes the leading glyphs that fit the run
+    /// storage, at least one, and returns how many it took; the caller
+    /// passes the rest again.
     pub fn rasterize_run(
         &mut self,
-        glyphs: &[RunGlyph<'_>],
+        glyphs: &[&Shape],
         clip: Option<&ClipShape>,
         band: u32,
         out: &mut BandCoverage,
@@ -360,29 +282,17 @@ impl BandRasterizer {
         run.slots.clear();
         let mut used = 0_usize;
         let mut taken = 0;
-        for glyph in glyphs {
-            let own = match glyph {
-                RunGlyph::Shape(shape) => Self::shape_rows(shape, clip, rows.clone()),
-                RunGlyph::Mask(mask) => Self::mask_rows(*mask, rows.clone()),
-            };
-            let bounds = glyph.bounds();
+        for &glyph in glyphs {
+            let own = Self::shape_rows(glyph, rows.clone());
+            let bounds = glyph.bounds;
             let width = bounds.width() as usize;
             let cells = own.len().saturating_mul(width);
             if run.slots.len() == RUN_SHAPES || used.saturating_add(cells) > RUN_CELLS {
                 if taken == 0 {
                     // Too large to share the run storage: alone.
                     self.run = run;
-                    match *glyph {
-                        RunGlyph::Shape(shape) => self.rasterize(
-                            MarkCoverage {
-                                shape: Some(shape),
-                                clip,
-                            },
-                            band,
-                            out,
-                        ),
-                        RunGlyph::Mask(mask) => self.rasterize_mask(mask, band, out),
-                    }
+                    let shape = Some(glyph);
+                    self.rasterize(MarkCoverage { shape, clip }, band, out);
                     return 1;
                 }
                 break;
@@ -409,15 +319,7 @@ impl BandRasterizer {
                 y0: slot.rows.start,
                 row: 0,
             };
-            match glyphs[slot.shape] {
-                RunGlyph::Shape(shape) => {
-                    self.shape(shape, clip, (band, slot.rows.clone()), &mut target);
-                }
-                RunGlyph::Mask(mask) => {
-                    let work = binned::emit(mask, slot.rows.clone(), &mut target);
-                    self.work = self.work.saturating_add(work);
-                }
-            }
+            self.shape(glyphs[slot.shape], (band, slot.rows.clone()), &mut target);
         }
         // Rows merged left to right; shapes whose columns meet go out as one
         // stretch, each pixel from the one shape that covers it.
@@ -454,16 +356,10 @@ impl BandRasterizer {
         taken
     }
 
-    fn rect(
-        &mut self,
-        r: Bounds,
-        shape: (&Shape, Option<&ClipShape>),
-        rows: std::ops::Range<u32>,
-        out: &mut dyn RowOut,
-    ) {
+    fn rect(&mut self, r: Bounds, shape: &Shape, rows: std::ops::Range<u32>, out: &mut dyn RowOut) {
         for y in rows {
             out.push_row(y);
-            let mut sink = sink(out, shape, y, self.cells.row_buffer());
+            let mut sink = sink(out, shape, y);
             let runs = rect::emit_row(r, y, &mut sink);
             self.work = self
                 .work
@@ -475,7 +371,7 @@ impl BandRasterizer {
     fn edges(
         &mut self,
         edges: &EdgeBody,
-        shape: (&Shape, Option<&ClipShape>),
+        shape: &Shape,
         (band, rows): (u32, std::ops::Range<u32>),
         out: &mut dyn RowOut,
     ) {
@@ -484,7 +380,7 @@ impl BandRasterizer {
             let at = |p: crate::Point| p;
             self.grid(
                 (&edges.lines, &edges.curves, &at),
-                (edges.scan, shape.0.rule),
+                (edges.scan, shape.rule),
                 shape,
                 rows,
                 out,
@@ -507,8 +403,8 @@ impl BandRasterizer {
                 };
             }
             out.push_row(y);
-            let mut sink = sink(out, shape, y, self.cells.row_buffer());
-            let touched = self.row.emit(edges.scan, shape.0.rule, &mut sink);
+            let mut sink = sink(out, shape, y);
+            let touched = self.row.emit(edges.scan, shape.rule, &mut sink);
             let words = (edges.scan.1.saturating_sub(edges.scan.0)) / 64 + 2;
             self.work = self
                 .work
@@ -525,22 +421,16 @@ impl BandRasterizer {
     fn glyph(
         &mut self,
         glyph: &GlyphBody,
-        shape: (&Shape, Option<&ClipShape>),
+        shape: &Shape,
         rows: std::ops::Range<u32>,
         out: &mut dyn RowOut,
     ) {
         let Some(relative) = glyph.edges.relative() else {
             return;
         };
-        let (plain, late) = shape;
         let width = glyph.scan.1.saturating_sub(glyph.scan.0);
         let height = rows.len();
-        if late.is_none()
-            && plain.multiplied.is_none()
-            && !plain.overlay
-            && width > 0
-            && width.saturating_mul(height) <= GRID_CELLS
-        {
+        if !shape.overlay && width > 0 && width.saturating_mul(height) <= GRID_CELLS {
             let o = glyph.origin;
             let at = |p: crate::Point| crate::Point::new(p.x + o.x, p.y + o.y);
             self.grid(
@@ -593,7 +483,7 @@ impl BandRasterizer {
                 };
             }
             out.push_row(y);
-            let mut sink = sink(out, shape, y, self.cells.row_buffer());
+            let mut sink = sink(out, shape, y);
             let touched = self.row.emit(glyph.scan, FillRule::NonZero, &mut sink);
             self.work = self
                 .work
@@ -608,8 +498,7 @@ impl BandRasterizer {
     /// A small mark's rows accumulated edge by edge into the grid, each
     /// edge (moved by `at`) visiting only the rows it crosses, then scanned
     /// whole: per cell the edges add in the same order and arithmetic as
-    /// row by row. Its rows go out at once, or through the shape's sink
-    /// where a clip is multiplied in.
+    /// row by row. Its rows go out at once.
     #[expect(
         clippy::cast_possible_truncation,
         reason = "bounded device rows are clamped to the band's u32 rows"
@@ -618,7 +507,7 @@ impl BandRasterizer {
         &mut self,
         (lines, curves, at): (&[Line], &[Quadratic], &dyn Fn(crate::Point) -> crate::Point),
         (scan, rule): ((usize, usize), FillRule),
-        shape: (&Shape, Option<&ClipShape>),
+        shape: &Shape,
         rows: std::ops::Range<u32>,
         out: &mut dyn RowOut,
     ) {
@@ -666,8 +555,7 @@ impl BandRasterizer {
                     .curve(q, f64::from(y));
             }
         }
-        let plain = shape.0.multiplied.is_none() && shape.1.is_none();
-        let bounds = shape.0.bounds;
+        let bounds = shape.bounds;
         for (k, y) in rows.enumerate() {
             let cells = k * width..(k + 1) * width;
             let mut cover = 0.0;
@@ -681,18 +569,10 @@ impl BandRasterizer {
             }
             out.push_row(y);
             work += width + 2;
-            if plain {
-                // The shape's own columns: the scan may reach past the area.
-                let x0 = (bounds.x0 as usize).clamp(from, to);
-                let x1 = (bounds.x1 as usize).clamp(x0, to);
-                out.put_row(x0 as u32, &grid.bytes[x0 - from..x1 - from]);
-                continue;
-            }
-            let mut sink = sink(out, shape, y, self.cells.row_buffer());
-            for (x, &value) in (from..).zip(&grid.bytes[..width]) {
-                sink.run(x, x + 1, value);
-            }
-            work += sink.extra();
+            // The shape's own columns: the scan may reach past the area.
+            let x0 = (bounds.x0 as usize).clamp(from, to);
+            let x1 = (bounds.x1 as usize).clamp(x0, to);
+            out.put_row(x0 as u32, &grid.bytes[x0 - from..x1 - from]);
         }
         self.work = self.work.saturating_add(work);
     }
@@ -707,16 +587,6 @@ impl BandRasterizer {
                 x0: bounds.x0 as usize,
                 x1: bounds.x1 as usize,
             };
-            if let Some(product) = clip.product() {
-                let runs = product.emit_row(
-                    y,
-                    clip.rect(),
-                    (bounds.x0 as usize, bounds.x1 as usize),
-                    &mut sink,
-                );
-                self.work = self.work.saturating_add(runs + 2);
-                continue;
-            }
             if let Some(rows) = clip.rows() {
                 let segments = rows.row(y);
                 for s in segments {
@@ -744,10 +614,10 @@ impl BandRasterizer {
 }
 
 /// Writes runs to the current row of a coverage, within columns `x0..x1`.
-pub(crate) struct Out<'a> {
-    pub(crate) coverage: &'a mut dyn RowOut,
-    pub(crate) x0: usize,
-    pub(crate) x1: usize,
+struct Out<'a> {
+    coverage: &'a mut dyn RowOut,
+    x0: usize,
+    x1: usize,
 }
 
 impl Sink for Out<'_> {
@@ -766,32 +636,8 @@ impl Sink for Out<'_> {
 }
 
 /// The sink of one row of `shape`: its cells resolved at preparation and
-/// its clip's rows, where it has them, over the output, or its multiplied
-/// clip; a clip it was not prepared in (`late`) is multiplied in after its
-/// resolved cells.
-pub(crate) fn sink<'a>(
-    out: &'a mut dyn RowOut,
-    (shape, late): (&'a Shape, Option<&'a ClipShape>),
-    y: u32,
-    buffer: &'a mut Vec<u8>,
-) -> RowSink<'a> {
-    // A multiplied clip scales the shape's own coverage, its resolved
-    // cells included.
-    if let Some(clip) = shape.multiplied.as_ref().or(late) {
-        let stored = shape.stored.row(y);
-        let multiplied = Multiplied::new(out, shape, Some(clip), y, buffer);
-        if stored.is_empty() {
-            return RowSink::Multiplied(multiplied);
-        }
-        return RowSink::Late(Overlay {
-            out: multiplied,
-            stored,
-            next: 0,
-            clip: None,
-            segment: 0,
-            extra: 0,
-        });
-    }
+/// its clip's rows, where it has them, over the output.
+fn sink<'a>(out: &'a mut dyn RowOut, shape: &'a Shape, y: u32) -> RowSink<'a> {
     let rows = shape
         .clip
         .as_ref()
@@ -817,21 +663,17 @@ pub(crate) fn sink<'a>(
 }
 
 /// A shape row's sink.
-pub(crate) enum RowSink<'a> {
+enum RowSink<'a> {
     /// Nothing between the shape and the output.
     Plain(Out<'a>),
     Overlay(Overlay<'a>),
-    Multiplied(Multiplied<'a>),
-    Late(Overlay<'a, Multiplied<'a>>),
 }
 
 impl RowSink<'_> {
-    pub(crate) fn extra(&self) -> usize {
+    fn extra(&self) -> usize {
         match self {
             Self::Plain(_) => 0,
             Self::Overlay(o) => o.extra(),
-            Self::Multiplied(m) => m.work(),
-            Self::Late(o) => o.extra().saturating_add(o.out.work()),
         }
     }
 }
@@ -842,8 +684,6 @@ impl Sink for RowSink<'_> {
         match self {
             Self::Plain(o) => o.run(x0, x1, value),
             Self::Overlay(o) => o.run(x0, x1, value),
-            Self::Multiplied(m) => m.run(x0, x1, value),
-            Self::Late(o) => o.run(x0, x1, value),
         }
     }
 }
@@ -851,8 +691,8 @@ impl Sink for RowSink<'_> {
 /// Runs of a shape's row with its resolved cells substituted and its clip's
 /// rows applied: inside runs keep the shape's value, a boundary cell takes
 /// the clip's value where the shape covers it fully, outside is dropped.
-pub(crate) struct Overlay<'a, S = Out<'a>> {
-    out: S,
+struct Overlay<'a> {
+    out: Out<'a>,
     stored: &'a [(u32, u8)],
     next: usize,
     clip: Option<(&'a Rows, &'a [Segment])>,
@@ -860,14 +700,14 @@ pub(crate) struct Overlay<'a, S = Out<'a>> {
     extra: usize,
 }
 
-impl<S> Overlay<'_, S> {
+impl Overlay<'_> {
     /// Work units spent on resolved cells and clip runs.
-    pub(crate) fn extra(&self) -> usize {
+    fn extra(&self) -> usize {
         self.extra
     }
 }
 
-impl<S: Sink> Sink for Overlay<'_, S> {
+impl Sink for Overlay<'_> {
     fn run(&mut self, x0: usize, x1: usize, value: u8) {
         if self.stored.is_empty() && self.clip.is_none() {
             self.out.run(x0, x1, value);

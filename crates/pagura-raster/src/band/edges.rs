@@ -65,26 +65,11 @@ impl Polygon {
     }
 
     /// The fill polygon of `path` under `transform`, flattened within the
-    /// exact tolerance (1/256 pixel) or `tolerance` when given.
-    pub(crate) fn from_path(
-        path: &Path,
-        transform: Transform,
-        tolerance: Option<f64>,
-        limits: &Limits,
-    ) -> Result<Self> {
+    /// exact tolerance (1/256 pixel).
+    pub(crate) fn from_path(path: &Path, transform: Transform, limits: &Limits) -> Result<Self> {
         let mut contours: Vec<Polyline> = Vec::new();
         let mut curves = CurveStack::new();
-        let count = match tolerance {
-            None => flatten_into(path, transform, limits, &mut contours, &mut curves)?,
-            Some(tolerance) => crate::flatten::flatten_into_at_tolerance(
-                path,
-                transform,
-                limits,
-                &mut contours,
-                &mut curves,
-                tolerance,
-            )?,
-        };
+        let count = flatten_into(path, transform, limits, &mut contours, &mut curves)?;
         let mut polygon = Self::default();
         polygon.extend(&contours[..count], transform, limits)?;
         Ok(polygon)
@@ -855,7 +840,7 @@ mod tests {
         paths.push(b.finish());
         for path in &paths {
             let fast = Polygon::from_lines(path, t, &limits).unwrap().unwrap();
-            let slow = Polygon::from_path(path, t, None, &limits).unwrap();
+            let slow = Polygon::from_path(path, t, &limits).unwrap();
             assert_eq!(fast.points, slow.points);
             assert_eq!(fast.starts, slow.starts);
             assert_eq!(fast.points_cells, slow.points_cells);
@@ -956,13 +941,8 @@ mod tests {
         path.line_to(Point::new(2.0, 0.0)).unwrap();
         path.line_to(Point::new(2.0, 2.0)).unwrap();
         path.line_to(Point::new(0.0, 0.0)).unwrap();
-        let polygon = Polygon::from_path(
-            &path.finish(),
-            Transform::IDENTITY,
-            None,
-            &Limits::default(),
-        )
-        .unwrap();
+        let polygon =
+            Polygon::from_path(&path.finish(), Transform::IDENTITY, &Limits::default()).unwrap();
         let contours: Vec<_> = polygon.contours().collect();
         assert_eq!(contours.len(), 2);
         assert_eq!(contours[0][0], Point::new(1.0, 2.0));

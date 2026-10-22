@@ -2,16 +2,14 @@
 //! placements in device space, clipped by their clip state's rectangle,
 //! with the cells their signed area does not determine already resolved.
 
-use super::approximate::Cells;
-use super::binned::Placement;
-use super::certify::{certified, uncertified};
+use super::certify::uncertified;
 use super::clip::{ClipShape, INSIDE, Rows, columns, fill_polygon};
 use super::curve::{self, Quadratic};
 use super::edges::{self, Bounds, Chained, Line, Polygon, RowList, line_work, rows};
 use super::rect::rectangle;
 use super::row::fold;
 use super::scan::{RowIndex, Scanner, Stored, Walk, gap_winding, inside};
-use super::{Adjustment, Area, DeviceRect, Precision, Prep, ShapeOptions};
+use super::{Adjustment, Area, DeviceRect, Prep, ShapeOptions};
 use crate::stroke::Tiling;
 use crate::{FillRule, Path, Stroke, Transform, features};
 use pagura_core::{Error, Meter, Result};
@@ -35,8 +33,6 @@ pub struct Shape {
     /// clip keeps every pixel the shape can touch.
     pub(crate) overlay: bool,
     pub(crate) stored: Stored,
-    /// A clip multiplied into the coverage (approximate precision).
-    pub(crate) multiplied: Option<ClipShape>,
 }
 
 /// How a shape's rows are produced.
@@ -46,10 +42,6 @@ pub(crate) enum Body {
     Rect(Bounds),
     /// Edges accumulated into the row.
     Edges(EdgeBody),
-    /// Approximate signed cells.
-    Cells(Cells),
-    /// A glyph mask reused per origin bin.
-    Binned(Placement),
     /// A certified glyph's relative edges, translated as they accumulate.
     Glyph(GlyphBody),
 }
@@ -127,7 +119,7 @@ impl Shape {
         rule: FillRule,
         options: &Prep<'_>,
     ) -> Result<Option<Self>> {
-        // A rectangle is filled in closed form under either precision.
+        // A rectangle is filled in closed form.
         if let Some(rect) = rect_fill(path, transform, options.limits) {
             // The rectangle the polygon would be, without building it.
             let Some(mut frame) = Frame::new(options) else {
@@ -141,10 +133,7 @@ impl Shape {
                 return Ok(Self::rect(rect, &frame, options));
             }
         }
-        if options.precision == Precision::Approximate {
-            return super::approximate::fill(path, transform, rule, options);
-        }
-        let (polygon, rule) = fill_polygon(path, transform, rule, None, options.limits)?;
+        let (polygon, rule) = fill_polygon(path, transform, rule, options.limits)?;
         Self::polygon(polygon, rule, Winding::Check(0.0), options)
     }
 
@@ -218,33 +207,18 @@ impl Shape {
                 let (outline, t) = crate::adjust::outline(&path, device, stroke, limits)?;
                 (outline, t, Tiling::Components)
             }
-            Adjustment::None => {
-                // Approximate cells take approximate round parts too.
-                let tolerance = match options.precision {
-                    Precision::Exact => crate::flatten::TOLERANCE,
-                    Precision::Approximate => super::approximate::TOLERANCE,
-                };
-                crate::stroke::pieces(&path, device, stroke, limits, (Tiling::Unproven, tolerance))?
-            }
+            Adjustment::None => crate::stroke::pieces(
+                &path,
+                device,
+                stroke,
+                limits,
+                (Tiling::Unproven, crate::flatten::TOLERANCE),
+            )?,
         };
-        let approximate = options.precision == Precision::Approximate;
-        if approximate && tiling != Tiling::Unproven {
-            return super::approximate::stroke(
-                &outline,
-                outline_transform,
-                tiling == Tiling::Proven,
-                options,
-            );
-        }
         let mut polygon = match Polygon::from_lines(&outline, outline_transform, limits)? {
             Some(polygon) => polygon,
-            None => Polygon::from_path(&outline, outline_transform, None, limits)?,
+            None => Polygon::from_path(&outline, outline_transform, limits)?,
         };
-        if approximate {
-            // Cells take the union's boundary where it certifies.
-            let union = polygon.cancel_shared()? && certified(&polygon, 0.0);
-            return super::approximate::union(&polygon, union, options);
-        }
         let winding = match tiling {
             Tiling::Proven => Winding::Certified,
             // The union's boundary, where it relinks, may still certify.
@@ -256,10 +230,6 @@ impl Shape {
 
     /// One glyph placement outside any clip: `edges` translated to the
     /// device-space `origin`; `None` when it covers no pixel of the area.
-    /// `origins` asks for origin bins, which need edges from
-    /// [`GlyphEdges::binned`](super::GlyphEdges::binned); edges from
-    /// [`GlyphEdges::new`](super::GlyphEdges::new) always place exactly, and
-    /// binned edges always in bins.
     ///
     /// # Errors
     ///
@@ -267,15 +237,13 @@ impl Shape {
     pub fn glyph(
         edges: &std::sync::Arc<super::GlyphEdges>,
         origin: crate::Point,
-        origins: super::GlyphOrigins,
         options: &ShapeOptions<'_>,
     ) -> Result<Option<Self>> {
-        Self::glyph_with_clip(edges, origin, origins, None, options)
+        Self::glyph_with_clip(edges, origin, None, options)
     }
 
     /// A glyph placement in the clip state `clip`, as
-    /// [`Self::fill_with_clip`]. Binned placements multiply the clip's
-    /// coverage in.
+    /// [`Self::fill_with_clip`].
     ///
     /// # Errors
     ///
@@ -283,21 +251,19 @@ impl Shape {
     pub fn glyph_with_clip(
         edges: &std::sync::Arc<super::GlyphEdges>,
         origin: crate::Point,
-        origins: super::GlyphOrigins,
         clip: Option<&ClipShape>,
         options: &ShapeOptions<'_>,
     ) -> Result<Option<Self>> {
-        super::glyph::place(edges, origin, origins, &Prep::new(options, clip))
+        super::glyph::place(edges, origin, &Prep::new(options, clip))
     }
 
     #[cfg(test)]
     pub(crate) fn glyph_in(
         edges: &std::sync::Arc<super::GlyphEdges>,
         origin: crate::Point,
-        origins: super::GlyphOrigins,
         options: &Prep<'_>,
     ) -> Result<Option<Self>> {
-        super::glyph::place(edges, origin, origins, options)
+        super::glyph::place(edges, origin, options)
     }
 
     /// The pixels the shape can cover within the area.
@@ -563,7 +529,6 @@ impl Shape {
             clip: frame.clip.cloned(),
             overlay: false,
             stored: Stored::default(),
-            multiplied: None,
         }))
     }
 
@@ -595,7 +560,6 @@ impl Shape {
             clip: frame.clip.cloned(),
             overlay: false,
             stored: Stored::default(),
-            multiplied: None,
         })
     }
 
@@ -691,29 +655,7 @@ impl Shape {
             clip: frame.clip.cloned(),
             overlay: frame.rows.is_some(),
             stored,
-            multiplied: None,
         })
-    }
-
-    /// A shape with a ready body, for the approximate and binned producers.
-    pub(crate) fn with_body(
-        body: Body,
-        bounds: DeviceRect,
-        (rule, work, retained): (FillRule, usize, usize),
-        options: &Prep<'_>,
-    ) -> Self {
-        Self {
-            area: options.area,
-            bounds,
-            work,
-            retained: size_of::<Self>().saturating_add(retained),
-            rule,
-            body,
-            clip: options.clip.cloned(),
-            overlay: true,
-            stored: Stored::default(),
-            multiplied: None,
-        }
     }
 
     /// Adds `units` to the work bound.

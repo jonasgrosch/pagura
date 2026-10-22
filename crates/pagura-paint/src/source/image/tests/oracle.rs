@@ -325,10 +325,10 @@ impl<T: Weighted> Prepared<T> {
     }
 }
 
-/// The sampler of an image whose unit square spans its extent in stored
-/// samples, placed by `inverse`.
+/// The sampler of an image whose unit square spans its samples, placed by
+/// `inverse`.
 fn sampler_for(image: &DecodedImage, inverse: Transform) -> Sampler {
-    let (width, height) = image.extent();
+    let (width, height) = (f64::from(image.width), f64::from(image.height));
     Sampler {
         width: image.width,
         height: image.height,

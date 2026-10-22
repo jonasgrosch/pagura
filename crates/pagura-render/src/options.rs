@@ -1,14 +1,14 @@
-//! What a rendering asks for: resolution, background, overprint preview,
-//! fast parameters and the pixels of the page to produce.
+//! What a rendering asks for: resolution, background, overprint preview
+//! and the pixels of the page to produce.
 
 use pagura_core::{Error, Result};
-use pagura_paint::{FastParams, OverprintMode};
+use pagura_paint::OverprintMode;
 use pagura_raster::{DeviceRect, Rgba8};
 
 /// Options for rendering a page.
 ///
 /// A plain record built with functional record update
-/// (`RenderOptions { fast: FastParams::COMPETITIVE, ..RenderOptions::from_dpi(150.0) }`),
+/// (`RenderOptions { background: Rgba8::TRANSPARENT, ..RenderOptions::from_dpi(150.0) }`),
 /// so it is not `#[non_exhaustive]`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RenderOptions {
@@ -18,20 +18,15 @@ pub struct RenderOptions {
     pub background: Rgba8,
     /// Whether overprinting is simulated (8.6.7, 11.7.4).
     pub overprint: OverprintPreview,
-    /// The fast parameters (ADR 0034). [`FastParams::EXACT`], the default,
-    /// renders every pixel within one level of its exact result (ADR 0004);
-    /// [`FastParams::COMPETITIVE`] switches all four on.
-    pub fast: FastParams,
 }
 
 impl Default for RenderOptions {
-    /// 72 dpi, exact, on white, with overprint preview [`OverprintPreview::Auto`].
+    /// 72 dpi on white, with overprint preview [`OverprintPreview::Auto`].
     fn default() -> Self {
         Self {
             scale: 1.0,
             background: Rgba8::WHITE,
             overprint: OverprintPreview::Auto,
-            fast: FastParams::EXACT,
         }
     }
 }
@@ -118,12 +113,11 @@ mod tests {
     use pagura_core::ErrorKind;
 
     #[test]
-    fn defaults_are_exact_on_white_at_72_dpi_with_automatic_overprint() {
+    fn defaults_are_white_at_72_dpi_with_automatic_overprint() {
         let options = RenderOptions::default();
         assert_eq!(options.scale, 1.0);
         assert_eq!(options.background, Rgba8::WHITE);
         assert_eq!(options.overprint, OverprintPreview::Auto);
-        assert!(options.fast.is_exact());
         assert_eq!(RenderOptions::from_dpi(144.0).scale, 2.0);
         assert_eq!(
             RenderOptions::from_dpi(150.0),

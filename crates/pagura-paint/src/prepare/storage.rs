@@ -67,7 +67,7 @@ pub(crate) struct Storage {
     pub(crate) transfers: bool,
     /// Some content outside soft masks, tiling cells included, has a
     /// transfer function: pattern-painted and simulated overprinting marks
-    /// outside soft masks are then unsupported, as before.
+    /// outside soft masks are then unsupported.
     pub(crate) transfer_gate: bool,
 }
 
@@ -80,8 +80,6 @@ pub(crate) struct Inputs {
     pub(crate) simulate: bool,
     /// The overprint simulation policy, page separations or not.
     pub(crate) policy: bool,
-    /// The `byte_storage` fast parameter.
-    pub(crate) bytes: bool,
     /// The nesting budget.
     pub(crate) depth: usize,
     /// Default user space to device pixels.
@@ -764,11 +762,7 @@ impl Survey<'_> {
         let n16 = buffer.page && n16_admits(buffer, resolved);
         let f32_bound =
             PI + RHO * stores.min(1.0 / buffer.theta + buffer.dynamic as f64) + injected;
-        // Byte storage narrows only a page without group results, tiling
-        // cells or soft masks; everything else keeps f64, as the earlier
-        // competitive renderer kept it.
-        let bytes = buffer.page && buffer.children.is_empty() && buffer.masks.is_empty();
-        let (bound, format) = if buffer.forced || (self.inputs.bytes && !bytes) {
+        let (bound, format) = if buffer.forced {
             wide
         } else if n16 {
             // The page's bound is never used as a child's.
@@ -777,11 +771,6 @@ impl Survey<'_> {
             (f32_bound + MARGIN, Format::F32)
         } else {
             wide
-        };
-        let format = if self.inputs.bytes && bytes && format != Format::F64 {
-            Format::U8
-        } else {
-            format
         };
         if let Some(slot) = resolved.get_mut(node) {
             *slot = Some((format, bound));

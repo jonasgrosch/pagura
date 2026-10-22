@@ -1,6 +1,5 @@
 //! Glyph outlines prepared once per linear map and placed at exact origins
-//! (ADR 0013), or reused per origin bin under the `glyph_origin_bins` fast
-//! parameter.
+//! (ADR 0013).
 //!
 //! Only the linear map participates in flattening; each placement adds its
 //! device origin to every vertex without rounding either to a grid. A small
@@ -8,13 +7,12 @@
 //! curve where its contours are certified at least two flattening
 //! tolerances apart, so that the curves cannot meet either.
 
-use super::binned::{self, Placement};
+use super::Prep;
 use super::certify::certified;
 use super::curve::{self, Piece, Quadratic};
 use super::edges::{self, Bounds, Line, Polygon, RowList};
 use super::rect::rectangle;
 use super::shape::{Frame, Shape, Winding};
-use super::{GlyphOrigins, Precision, Prep};
 use crate::flatten::{CurveStack, Polyline, TOLERANCE, bounded, flatten_into};
 use crate::{FillRule, Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Result};
@@ -27,18 +25,7 @@ use std::sync::Arc;
 #[derive(Debug)]
 pub struct GlyphEdges {
     retained: usize,
-    kind: Kind,
     hull: Option<[f64; 4]>,
-}
-
-#[derive(Debug)]
-enum Kind {
-    Exact(Box<Exact>),
-    Binned(binned::Prepared),
-}
-
-#[derive(Debug)]
-struct Exact {
     polygon: Polygon,
     /// Geometric points, whose floor cells are taken once placed.
     points: Vec<Point>,
@@ -271,31 +258,11 @@ impl GlyphEdges {
         Ok(Self {
             retained,
             hull: control_hull(outline, transform),
-            kind: Kind::Exact(Box::new(Exact {
-                polygon,
-                points,
-                certified: certified_polygon,
-                curves,
-                relative,
-            })),
-        })
-    }
-
-    /// Prepares `outline` under `linear` for placements whose origins snap
-    /// to bins (the `glyph_origin_bins` fast parameter). `scale` is the
-    /// render's device pixels per default user-space unit (1.0 at 72 dpi),
-    /// which chooses the bins and the flattening.
-    ///
-    /// # Errors
-    ///
-    /// As [`Self::new`].
-    pub fn binned(outline: &Path, linear: [f64; 4], scale: f64, limits: &Limits) -> Result<Self> {
-        let prepared = binned::Prepared::new(outline, linear, scale, limits)?;
-        let [a, b, c, d] = linear;
-        Ok(Self {
-            retained: size_of::<Self>().saturating_add(prepared.retained_bytes()),
-            kind: Kind::Binned(prepared),
-            hull: control_hull(outline, Transform::new(a, b, c, d, 0.0, 0.0)),
+            polygon,
+            points,
+            certified: certified_polygon,
+            curves,
+            relative,
         })
     }
 
@@ -311,12 +278,9 @@ impl GlyphEdges {
         self.retained
     }
 
-    /// The edges a certified exact placement translates.
+    /// The edges a certified placement translates.
     pub(crate) fn relative(&self) -> Option<&Relative> {
-        match &self.kind {
-            Kind::Exact(exact) => exact.relative.as_ref(),
-            Kind::Binned(_) => None,
-        }
+        self.relative.as_ref()
     }
 }
 
@@ -349,41 +313,13 @@ fn control_hull(outline: &Path, transform: Transform) -> Option<[f64; 4]> {
 pub(crate) fn place(
     edges: &Arc<GlyphEdges>,
     origin: Point,
-    origins: GlyphOrigins,
     options: &Prep<'_>,
 ) -> Result<Option<Shape>> {
-    let mut shape = placed(edges, origin, origins, options)?;
+    let mut shape = placed(edges, origin, options)?;
     if let Some(shape) = &mut shape {
         shape.add_work(merged(shape.bounds()));
     }
     Ok(shape)
-}
-
-/// Adds the mask of binned `edges` placed at `origin` to `masks` when its
-/// clip state keeps all of it; `false` for any other placement.
-pub(crate) fn mask(
-    edges: &GlyphEdges,
-    origin: Point,
-    options: &Prep<'_>,
-    (masks, formed, scratch): (&mut Vec<Placement>, &mut Vec<u8>, &mut binned::Scratch),
-) -> Result<bool> {
-    let Kind::Binned(prepared) = &edges.kind else {
-        return Ok(false);
-    };
-    bounded(origin)?;
-    let kept = binned::place(
-        prepared,
-        origin,
-        (options, scratch, Some(formed)),
-        |mut mask, kept| {
-            if kept {
-                mask.add_work(merged(mask.bounds()));
-                masks.push(mask);
-            }
-            kept
-        },
-    )?;
-    Ok(kept == Some(true))
 }
 
 /// Work keeping a placement's rows apart in a run and merging them.
@@ -391,26 +327,10 @@ fn merged(b: super::DeviceRect) -> usize {
     (b.height() as usize).saturating_mul(2 * b.width() as usize + 2) + 1
 }
 
-fn placed(
-    edges: &Arc<GlyphEdges>,
-    origin: Point,
-    origins: GlyphOrigins,
-    options: &Prep<'_>,
-) -> Result<Option<Shape>> {
+fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<Option<Shape>> {
     bounded(origin)?;
-    let exact = match &edges.kind {
-        Kind::Binned(prepared) => {
-            let _ = origins;
-            let scratch = &mut binned::Scratch::default();
-            return binned::place(prepared, origin, (options, scratch, None), |mask, kept| {
-                binned::shape(mask, kept, options)
-            });
-        }
-        Kind::Exact(exact) => exact,
-    };
-    // Under either precision a certified glyph the clip keeps whole is its
-    // exact translated edges: no cheaper coverage exists.
-    if let Some(relative) = &exact.relative {
+    // A certified glyph the clip keeps whole is its translated edges.
+    if let Some(relative) = &edges.relative {
         let Some(mut frame) = Frame::new(options) else {
             return Ok(None);
         };
@@ -428,28 +348,17 @@ fn placed(
             return Shape::translated(edges, relative, origin, &frame, options);
         }
     }
-    general(exact, origin, options)
-}
-
-/// [`place`] translating every vertex first, for exact edges.
-#[cfg(test)]
-pub(crate) fn place_general(
-    edges: &GlyphEdges,
-    origin: Point,
-    options: &Prep<'_>,
-) -> Result<Option<Shape>> {
-    match &edges.kind {
-        Kind::Exact(exact) => general(exact, origin, options),
-        Kind::Binned(_) => Ok(None),
-    }
+    general(edges, origin, options)
 }
 
 /// A placement that translates the outline's vertices and prepares them as
 /// any shape: where the clip cuts the glyph or the glyph is not certified.
-fn general(exact: &Exact, origin: Point, options: &Prep<'_>) -> Result<Option<Shape>> {
-    if options.precision == Precision::Exact
-        && let Some(pieces) = &exact.curves
-    {
+pub(crate) fn general(
+    edges: &GlyphEdges,
+    origin: Point,
+    options: &Prep<'_>,
+) -> Result<Option<Shape>> {
+    if let Some(pieces) = &edges.curves {
         let Some(mut frame) = Frame::new(options) else {
             return Ok(None);
         };
@@ -483,25 +392,22 @@ fn general(exact: &Exact, origin: Point, options: &Prep<'_>) -> Result<Option<Sh
     let mut polygon = Polygon::default();
     polygon
         .points
-        .try_reserve(exact.polygon.points.len())
-        .and_then(|()| polygon.starts.try_reserve(exact.polygon.starts.len()))
+        .try_reserve(edges.polygon.points.len())
+        .and_then(|()| polygon.starts.try_reserve(edges.polygon.starts.len()))
         .map_err(|_| Error::limit("glyph placement allocation failed"))?;
-    for &p in &exact.polygon.points {
+    for &p in &edges.polygon.points {
         let p = Point::new(p.x + origin.x, p.y + origin.y);
         bounded(p)?;
         polygon.points.push(p);
     }
-    polygon.starts.extend_from_slice(&exact.polygon.starts);
-    for &p in &exact.points {
+    polygon.starts.extend_from_slice(&edges.polygon.starts);
+    for &p in &edges.points {
         // A floor cell belongs to the placed point, not to the outline origin.
         let p = Point::new(p.x + origin.x, p.y + origin.y);
         bounded(p)?;
         polygon.cell(p, options.limits)?;
     }
-    if options.precision == Precision::Approximate {
-        return super::approximate::glyph(&polygon, options);
-    }
-    let winding = if exact.certified {
+    let winding = if edges.certified {
         Winding::Certified
     } else {
         Winding::Unknown

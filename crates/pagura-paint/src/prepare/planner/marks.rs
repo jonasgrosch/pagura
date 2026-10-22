@@ -468,7 +468,6 @@ impl<B: Backend> Planner<'_, B> {
     ) -> Result<()> {
         let options = ShapeOptions {
             area: self.area,
-            precision: self.precision,
             limits: self.limits,
         };
         let prepared = self.backend.fill(
@@ -597,7 +596,6 @@ impl<B: Backend> Planner<'_, B> {
     fn shape(&mut self, scope: &Scope, geometry: &Geometry<'_>) -> Result<Shape> {
         let options = ShapeOptions {
             area: self.area,
-            precision: self.precision,
             limits: self.limits,
         };
         let prepared = match geometry {
@@ -655,7 +653,6 @@ impl<B: Backend> Planner<'_, B> {
             composite: state,
             store: self.store,
             limits: self.limits,
-            reduced_image_decode: self.request.fast.reduced_image_decode,
             region: bounds,
         };
         let request = PaintRequest { context, pixels };
@@ -779,7 +776,6 @@ impl<B: Backend> Planner<'_, B> {
             composite: state,
             store: self.store,
             limits: self.limits,
-            reduced_image_decode: self.request.fast.reduced_image_decode,
             region: bounds,
         };
         let request = PaintRequest { context, pixels };

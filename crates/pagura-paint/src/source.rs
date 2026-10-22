@@ -3,10 +3,10 @@
 //! a constant. Colour conversion runs through prepared converters and
 //! functions are total, so filling a span cannot fail.
 //!
-//! Transfer functions (10.5) are not part of prepared paint: as before, the
-//! executor selects, per output pixel, the transfer of the last opaque
-//! elementary mark that fully covers it (11.7.5.2) and applies it to the
-//! final colour, so sources always carry untransferred colours.
+//! Transfer functions (10.5) are not part of prepared paint: the executor
+//! selects, per output pixel, the transfer of the last opaque elementary
+//! mark that fully covers it (11.7.5.2) and applies it to the final colour,
+//! so sources always carry untransferred colours.
 
 use pagura_color::{Converter, Painted, Target};
 use pagura_core::{Limits, Meter, Result, Store};
@@ -48,8 +48,6 @@ pub struct PaintContext<'a> {
     pub store: &'a Store,
     /// Budgets.
     pub limits: &'a Limits,
-    /// Whether images may be decoded near their drawn size.
-    pub reduced_image_decode: bool,
     /// The device pixels the paint is sampled in: the render's region
     /// intersected with the mark's bounds. Sources may skip what lies
     /// outside (rows of an image's decode, for example).

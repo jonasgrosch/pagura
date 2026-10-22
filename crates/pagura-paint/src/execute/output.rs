@@ -108,11 +108,6 @@ pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, target: 
                     crate::kernel::f32_bytes(out, levels);
                 }
             }
-            PageBuffer::U8(bytes) => {
-                if let Some(bytes) = bytes.get(first..end) {
-                    out.copy_from_slice(bytes);
-                }
-            }
             PageBuffer::F64(values) => {
                 let stride = output.layout.stride();
                 let pixels = values.get(first * stride..).unwrap_or_default();

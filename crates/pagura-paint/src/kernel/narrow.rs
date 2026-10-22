@@ -1,9 +1,8 @@
 //! Normal source-over into narrow RGBA storage (ADR 0004 §5–§6): N16 rounds
 //! once per store of an opaque colour at a coverage byte; a dynamic store
 //! (any other opacity, or a child's result) is evaluated in f64 and rounded
-//! once to the buffer's format; F32 mark stores evaluate `x += a·(t − x)`;
-//! U8 rounds every store to bytes and is used only under the `byte_storage`
-//! fast parameter. Colours are premultiplied with the background embedded.
+//! once to the buffer's format; F32 mark stores evaluate `x += a·(t − x)`.
+//! Colours are premultiplied with the background embedded.
 
 use super::Colors;
 
@@ -50,115 +49,6 @@ pub(crate) fn f32_bytes(out: &mut [[u8; 4]], levels: &[[f32; 4]]) {
 )]
 fn level_byte(level: f32) -> u8 {
     level.round().clamp(0.0, 255.0) as u8
-}
-
-/// Stores an opaque colour, already encoded as bytes, at `coverage` (`None`
-/// covers every pixel): `round((c·s + (255 − c)·u) / 255)`, the store the
-/// byte path makes at alpha `c / 255`, with no branch.
-pub(crate) fn store_u8_opaque(pixels: &mut [[u8; 4]], source: [u8; 4], coverage: Option<&[u8]>) {
-    let Some(coverage) = coverage else {
-        pixels.fill(source);
-        return;
-    };
-    let source = Lanes::new(source);
-    for (pixel, &c) in pixels.iter_mut().zip(coverage) {
-        *pixel = source.over(*pixel, u32::from(c));
-    }
-}
-
-/// Stores a constant colour, encoded as bytes, at the byte alpha `alpha[c]`
-/// of each pixel's coverage byte `c` (`None` covers every pixel), the store
-/// the byte path makes once the opacity is a byte.
-pub(crate) fn store_u8_alpha(
-    pixels: &mut [[u8; 4]],
-    source: [u8; 4],
-    coverage: Option<&[u8]>,
-    alpha: &[u8; 256],
-) {
-    let source = Lanes::new(source);
-    let Some(coverage) = coverage else {
-        let a = u32::from(alpha[255]);
-        for pixel in pixels.iter_mut() {
-            *pixel = source.over(*pixel, a);
-        }
-        return;
-    };
-    for (pixel, &c) in pixels.iter_mut().zip(coverage) {
-        *pixel = source.over(*pixel, u32::from(alpha[usize::from(c)]));
-    }
-}
-
-/// A byte colour as two pairs of channels in the 16-bit halves of a word
-/// each, so that one multiply weights two channels: a weighted channel is
-/// at most `255² + 128 + 254 < 2^16`, so no half carries into the other.
-#[derive(Clone, Copy)]
-struct Lanes {
-    /// Channels 0 and 2.
-    even: u32,
-    /// Channels 1 and 3.
-    odd: u32,
-}
-
-/// The low byte of each 16-bit half of a word.
-const HALVES: u32 = 0x00ff_00ff;
-
-impl Lanes {
-    fn new(color: [u8; 4]) -> Self {
-        let word = u32::from_le_bytes(color);
-        Self {
-            even: word & HALVES,
-            odd: (word >> 8) & HALVES,
-        }
-    }
-
-    /// `round255(s·a + u·(255 − a))` per channel of `pixel`.
-    #[inline]
-    fn over(self, pixel: [u8; 4], a: u32) -> [u8; 4] {
-        let word = u32::from_le_bytes(pixel);
-        let rest = 255_u32.wrapping_sub(a);
-        let even = round255_halves(
-            self.even
-                .wrapping_mul(a)
-                .wrapping_add((word & HALVES).wrapping_mul(rest)),
-        );
-        let odd = round255_halves(
-            self.odd
-                .wrapping_mul(a)
-                .wrapping_add(((word >> 8) & HALVES).wrapping_mul(rest)),
-        );
-        (even | (odd << 8)).to_le_bytes()
-    }
-}
-
-/// `round255` in both 16-bit halves of a word.
-#[inline]
-fn round255_halves(p: u32) -> u32 {
-    let t = p.wrapping_add(0x0080_0080);
-    (t.wrapping_add((t >> 8) & HALVES) >> 8) & HALVES
-}
-
-/// The byte opacity of every coverage byte under constant alpha `k`: the
-/// byte path's `quantize(c / 255 · k)`.
-pub(crate) fn alpha_bytes(k: f64) -> [u8; 256] {
-    let mut table = [0; 256];
-    for (c, out) in table.iter_mut().enumerate() {
-        let unit = crate::execute::unit(c);
-        *out = pagura_raster::quantize_unit(unit * k);
-    }
-    table
-}
-
-/// The bytes the byte path stores for an opaque constant colour.
-pub(crate) fn color_bytes(color: &[f64]) -> [u8; 4] {
-    bytes(color)
-}
-
-/// `round(p / 255)` for `p ≤ 255²` (never a tie): `t = p + 128`, then
-/// `(t + (t >> 8)) >> 8`.
-#[cfg(test)]
-pub(crate) fn round255(p: u32) -> u32 {
-    let t = p.wrapping_add(128);
-    t.wrapping_add(t >> 8) >> 8
 }
 
 /// Stores an opaque colour, already encoded as N16 `words`, at `coverage`
@@ -274,32 +164,6 @@ pub(crate) fn overwrite_n16(pixels: &mut [[u16; 4]], values: &[f64]) {
     }
 }
 
-/// The bytes of opaque colours, three values a pixel, over `pixels`: a
-/// store at full opacity, each colour as [`pagura_raster::quantize_unit`]
-/// rounds it. Eight pixels at a time, their 24 values round as one run.
-pub(crate) fn overwrite_u8(pixels: &mut [[u8; 4]], values: &[f64]) {
-    let quantize = pagura_raster::quantize_unit;
-    let (blocks, last) = pixels.as_chunks_mut::<8>();
-    let (colors, rest) = values.as_chunks::<24>();
-    for (block, color) in blocks.iter_mut().zip(colors) {
-        let mut bytes = [0u8; 24];
-        for (byte, &value) in bytes.iter_mut().zip(color) {
-            *byte = quantize(value);
-        }
-        for (pixel, bytes) in block.iter_mut().zip(bytes.as_chunks::<3>().0) {
-            *pixel = [bytes[0], bytes[1], bytes[2], 255];
-        }
-    }
-    for (pixel, color) in last.iter_mut().zip(rest.as_chunks::<3>().0) {
-        *pixel = [
-            quantize(color[0]),
-            quantize(color[1]),
-            quantize(color[2]),
-            255,
-        ];
-    }
-}
-
 /// Whether every opacity of `alpha` is 1.
 #[expect(
     clippy::needless_bitwise_bool,
@@ -408,125 +272,15 @@ pub(crate) fn level(value: f64) -> f32 {
     f32::from_bits(truncated | u32::from(f64::from(nearest) != value))
 }
 
-/// Stores `colors` at `alpha` into bytes, rounding each store once.
-pub(crate) fn store_u8(pixels: &mut [[u8; 4]], colors: &Colors<'_>, alpha: &[f64]) {
-    match *colors {
-        Colors::Constant(color) => {
-            let source = bytes(color);
-            for (pixel, &a) in pixels.iter_mut().zip(alpha) {
-                over(pixel, source, a);
-            }
-        }
-        Colors::Strided { values, stride: 3 } if full(alpha) => {
-            // At full opacity a store takes the source's bytes.
-            overwrite_u8(pixels, values);
-        }
-        Colors::Strided { values, stride } => {
-            for ((pixel, color), &a) in pixels
-                .iter_mut()
-                .zip(values.chunks(stride.max(1)))
-                .zip(alpha)
-            {
-                over(pixel, bytes(color), a);
-            }
-        }
-    }
-}
-
-fn bytes(color: &[f64]) -> [u8; 4] {
-    let at = |i: usize| pagura_raster::quantize_unit(color.get(i).copied().unwrap_or(0.0));
-    [at(0), at(1), at(2), 255]
-}
-
-/// One byte store at alpha `quantize(alpha)`, rounded once: at 255 the
-/// source, at 0 the pixel as it is, which is what the rounding gives too.
-fn over(pixel: &mut [u8; 4], source: [u8; 4], alpha: f64) {
-    match pagura_raster::quantize_unit(alpha) {
-        255 => *pixel = source,
-        0 => {}
-        a => *pixel = Lanes::new(source).over(*pixel, u32::from(a)),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// One byte store channel by channel, as the byte path defines it.
-    fn reference_over(pixel: &mut [u8; 4], source: [u8; 4], alpha: f64) {
-        let a = u32::from(pagura_raster::quantize_unit(alpha));
-        let rest = 255 - a;
-        for (out, source) in pixel.iter_mut().zip(source) {
-            let sum = u32::from(source) * a + u32::from(*out) * rest;
-            *out = u8::try_from(round255(sum)).unwrap();
-        }
-    }
-
-    #[test]
-    fn byte_stores_round_once_per_channel() {
-        for a in 0..=255_u8 {
-            let alpha = f64::from(a) / 255.0;
-            for s in (0..=255_u8).step_by(3) {
-                for b in (0..=255_u8).step_by(7) {
-                    let mut fast = [b, 255 - b, b / 2, 255];
-                    let mut slow = fast;
-                    over(&mut fast, [s, 255 - s, s / 3, 255], alpha);
-                    reference_over(&mut slow, [s, 255 - s, s / 3, 255], alpha);
-                    assert_eq!(fast, slow, "a {a} s {s} b {b}");
-                }
-            }
-        }
-    }
 
     #[test]
     fn words_round_to_their_nearest_byte_in_u16_lanes() {
         for word in 0..=u16::MAX {
             let exact = (f64::from(word) / 257.0).round();
             assert_eq!(f64::from(word_byte(word)), exact, "word {word}");
-        }
-    }
-
-    #[test]
-    fn opaque_byte_stores_match_the_byte_path() {
-        for c in 0..=255_u8 {
-            let alpha = f64::from(c) / 255.0;
-            assert_eq!(pagura_raster::quantize_unit(alpha), c);
-            for s in [0_u8, 1, 77, 128, 254, 255] {
-                for b in 0..=255_u8 {
-                    let mut fast = [[b, b, b, b]];
-                    store_u8_opaque(&mut fast, [s, s, s, 255], Some(&[c]));
-                    let mut slow = [b, b, b, b];
-                    reference_over(&mut slow, [s, s, s, 255], alpha);
-                    assert_eq!(fast[0], slow, "s {s} b {b} c {c}");
-                }
-            }
-        }
-        let mut full = [[3_u8; 4]; 3];
-        store_u8_opaque(&mut full, [9, 8, 7, 255], None);
-        assert_eq!(full, [[9, 8, 7, 255]; 3]);
-    }
-
-    #[test]
-    fn translucent_byte_stores_match_the_byte_path() {
-        for k in [0.0, 0.001, 0.25, 0.4, 0.5, 0.75, 0.999, 1.0] {
-            let table = alpha_bytes(k);
-            for c in 0..=255_u8 {
-                let alpha = crate::execute::unit(usize::from(c)) * k;
-                for s in [0_u8, 90, 255] {
-                    for b in (0..=255_u8).step_by(5) {
-                        let mut fast = [[b; 4]];
-                        store_u8_alpha(&mut fast, [s, s, s, 255], Some(&[c]), &table);
-                        let mut slow = [b; 4];
-                        reference_over(&mut slow, [s, s, s, 255], alpha);
-                        assert_eq!(fast[0], slow, "k {k} s {s} b {b} c {c}");
-                    }
-                }
-            }
-            let mut full = [[40_u8; 4]; 2];
-            store_u8_alpha(&mut full, [200, 100, 0, 255], None, &table);
-            let mut slow = [40_u8; 4];
-            reference_over(&mut slow, [200, 100, 0, 255], 1.0 * k);
-            assert_eq!(full, [slow; 2], "k {k}");
         }
     }
 
@@ -578,10 +332,6 @@ mod tests {
         dynamic_n16(&mut a, &fast, &alpha);
         dynamic_n16(&mut b, &general, &alpha);
         assert_eq!(a, b);
-        let (mut a, mut b) = ([[7_u8; 4]; 4], [[7_u8; 4]; 4]);
-        store_u8(&mut a, &fast, &alpha);
-        store_u8(&mut b, &general, &alpha);
-        assert_eq!(a, b);
     }
 
     #[test]
@@ -595,9 +345,6 @@ mod tests {
                 (u32::from(word) + 128) / 257,
                 "{word}"
             );
-        }
-        for p in 0..=255 * 255_u32 {
-            assert_eq!(round255(p), (p + 127) / 255, "{p}");
         }
     }
 
@@ -620,12 +367,9 @@ mod tests {
     }
 
     #[test]
-    fn f32_and_u8_store_source_over() {
+    fn f32_stores_source_over() {
         let mut pixels = [[255.0_f32; 4]];
         store_f32(&mut pixels, &Colors::Constant(&[0.0, 0.0, 0.0]), &[0.5]);
         assert_eq!(pixels[0], [127.5, 127.5, 127.5, 255.0]);
-        let mut bytes = [[255_u8; 4]];
-        store_u8(&mut bytes, &Colors::Constant(&[0.0, 0.0, 0.0]), &[0.5]);
-        assert_eq!(bytes[0], [127, 127, 127, 255]);
     }
 }
