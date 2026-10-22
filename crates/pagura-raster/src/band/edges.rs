@@ -55,6 +55,16 @@ impl Line {
         }
     }
 
+    /// The height of a nonvertical line at column `x`, through the same
+    /// interpolation with the coordinate axes exchanged.
+    pub(crate) fn y(self, x: f64) -> f64 {
+        Self {
+            a: Point::new(self.a.y, self.a.x),
+            b: Point::new(self.b.y, self.b.x),
+        }
+        .x(x)
+    }
+
     pub(crate) fn is_horizontal(self) -> bool {
         self.a.y == self.b.y
     }
@@ -110,6 +120,9 @@ fn distant_endpoints_preserve_the_stored_line_inside_a_pixel() {
     }
     assert_eq!(line.x(line.a.y), line.a.x);
     assert_eq!(line.x(line.b.y), line.b.x);
+    // Its inverse at zero is exactly u/2; an uncorrected height
+    // interpolation from either distant end loses that displacement.
+    assert_eq!(line.y(0.0), u * 0.5);
 }
 
 #[cfg(test)]
@@ -730,7 +743,7 @@ fn clip_pieces(line: Line, bounds: Bounds, mut emit: impl FnMut(Line)) {
     let mut count = 2;
     if top.x != bottom.x {
         for side in [bounds.left, bounds.right] {
-            let y = top.y + (bottom.y - top.y) * ((side - top.x) / (bottom.x - top.x));
+            let y = line.y(side);
             if y > lo && y < hi {
                 events[count] = y;
                 count += 1;
