@@ -667,18 +667,22 @@ fn byte_spans_cover_opaque_images_sampled_by_codes() {
     let mut filled = 0;
     for bits in [1, 2, 4, 8] {
         let gray = case(image((13, 9), 1, bits, bytes(13 * 9, bits, 89)));
-        for case in [&gray, &rgb] {
-            for unit_to_device in placements(case.image.width, case.image.height) {
-                let sampler = sampler(case, unit_to_device, 3);
-                let (x0, y0, x1, y1) = window(unit_to_device);
-                let len = usize::try_from(x1 - x0).unwrap();
-                filled += usize::from(bytes_agree(&sampler, (x0, len), y0..y1));
+        for interpolate in [false, true] {
+            for case in [&gray, &rgb] {
+                let mut case = case.clone();
+                case.image.interpolate = interpolate;
+                for unit_to_device in placements(case.image.width, case.image.height) {
+                    let sampler = sampler(&case, unit_to_device, 3);
+                    let (x0, y0, x1, y1) = window(unit_to_device);
+                    let len = usize::try_from(x1 - x0).unwrap();
+                    filled += usize::from(bytes_agree(&sampler, (x0, len), y0..y1));
+                }
             }
         }
     }
     // Every upright, flipped and quarter-turned placement; not the rotated
     // and skewed ones.
-    assert_eq!(filled, 4 * 2 * 10);
+    assert_eq!(filled, 4 * 2 * 2 * 10);
     let mut masked = rgb.clone();
     masked.mask = Some((
         image((9, 7), 1, 8, bytes(63, 8, 97)),
