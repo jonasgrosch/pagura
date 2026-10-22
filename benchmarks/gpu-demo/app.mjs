@@ -2,7 +2,7 @@ import {Engine} from './engine.mjs';
 import {GpuBackend} from './gpu.mjs';
 import {samples} from './samples.mjs';
 import {compare} from './measure.mjs';
-import {differencePixels} from './svg.mjs';
+import {differencePixels, pixelDifference} from './svg.mjs';
 import {paintOpportunity, putPixels, zoomStudy} from './zoom.mjs';
 
 const $ = id => document.getElementById(id);
@@ -34,6 +34,7 @@ export function show(output, label) {
   const {result, cpu, gpu, svg, svgPage} = output;
   if (demo.current?.output.svgPage !== svgPage) demo.current?.output.svgPage?.destroy();
   demo.current = {output, label};
+  for (const paper of document.querySelectorAll('.paper')) paper.classList.remove('zoomed');
   for (const [id, pixels] of [['cpu', cpu], ['gpu', gpu]]) putPixels($(id), pixels, result.width, result.height);
   $('svg').replaceChildren();
   if (svgPage) svgPage.mount($('svg'));
@@ -90,8 +91,9 @@ async function changeZoom() {
       }
     } else putPixels($('gpu'), dimensions.data, dimensions.meta.width, dimensions.meta.height);
     if (svgPage) {
-      const raster = await svgPage.rasterize(dimensions.meta.width, dimensions.meta.height, dpi);
+      const raster = await svgPage.rasterize(dimensions.meta.width, dimensions.meta.height, dpi, {retained: true});
       putPixels($('difference'), differencePixels(raster.pixels, dimensions.data), dimensions.meta.width, dimensions.meta.height);
+      $('svg-error').textContent = `${pixelDifference(raster.pixels, dimensions.data).beyond_one_percent.toFixed(2)}%`;
     }
     $('zoom-detail').textContent = `At ${dpi} DPI: CPU ${ms(cpuFrame)}${gpuFrame ? `; hybrid ${ms(gpuFrame)}` : ''}. SVG reused its vector tree. Use “Measure zoom” for independent SVG frame timings. Total update ${ms(performance.now() - svgStart)}.`;
   } catch (failure) {error(failure);}

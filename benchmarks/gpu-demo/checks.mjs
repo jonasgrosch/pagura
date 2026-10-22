@@ -134,7 +134,14 @@ async function checkSvgHost() {
   const copy = page.clone();copy.resize(4,4,144);
   const scaled = await copy.rasterize();
   if (scaled.pixels.length !== 64 || scaled.pixels.some((b,i) => b !== [255,0,0,255][i%4])) throw new Error('SVG zoom changed an opaque aligned colour');
-  return {active_or_external_resources_refused: refused, aligned_colour_pixels: 4, zoom_pixels: 16};
+  const stage = document.createElement('div');document.body.append(stage);
+  try {
+    page.mount(stage);await page.ready();const source = page.image.src;
+    const retained = await page.rasterize(4,4,144,{retained: true});
+    assertPixels(retained.pixels, scaled.pixels, 'independent retained SVG colour');
+    if (page.image.src !== source) throw new Error('SVG readback replaced its retained source');
+  } finally {page.destroy();stage.remove();}
+  return {active_or_external_resources_refused: refused, aligned_colour_pixels: 4, zoom_pixels: 16, retained_zoom_pixels: 16};
 }
 
 async function checkFixtures(engine, gpu) {

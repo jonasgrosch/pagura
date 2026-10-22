@@ -48,7 +48,7 @@ export async function presentationStudy(engine, gpu, options, {samples = 12, war
     }
     return {samples, warmups, viewport: {width: 480, height: 480},
       timing: 'Recorded scene and resources warm, freshly rebuilt backend output. Worker transport, SVG export/parse/image decode or CPU/hybrid pixel upload, then two animation-frame opportunities in top/centre viewport. No forced full-page SVG readback. Not display scanout or GPU-completion timing.',
-      paths: Object.fromEntries(modes.map(mode => [mode, {sample_cap: slow[mode] ? 'Frame exceeded 250 ms; at most 3 timed samples' : null,
+      paths: Object.fromEntries(modes.map(mode => [mode, {sample_cap: slow[mode] ? 'Stop after a frame above 250 ms once at least 3 samples are collected' : null,
         frame_ms: stats(measured[mode].map(s => s.frame_ms)), samples: measured[mode]}]))};
   } finally {stage.remove();}
 }
@@ -130,17 +130,19 @@ export async function zoomStudy(engine, gpu, options, vector, {samples = 12, war
         long_frames: intervals.filter(t => t > baseline * 1.5).length,
         missed_frame_estimate: intervals.reduce((n, t) => n + Math.max(0, Math.round(t / baseline) - 1), 0)};
     }
-    const accuracy = [];
+    const accuracy = [], retainedVsFresh = [];
     if (svg) for (const dpi of dpis) {
       const reference = references.get(dpi);
-      const output = await svg.rasterize(reference.meta.width, reference.meta.height, dpi);
+      const output = await svg.rasterize(reference.meta.width, reference.meta.height, dpi, {retained: true});
       accuracy.push({dpi, ...pixelDifference(output.pixels, reference.data)});
+      const fresh = await svg.rasterize(reference.meta.width, reference.meta.height, dpi);
+      retainedVsFresh.push({dpi, ...pixelDifference(output.pixels, fresh.pixels)});
     }
     return {dpis, samples, warmups, refresh_interval_ms: refreshInterval, viewport: {width: 480, height: 480}, gpu_fallback: fallback,
       svg_fallback: svg ? null : 'SVG unavailable for this page',
       timing: 'Request to two animation-frame opportunities in a visible clipped 480px viewport. Includes worker transport and canvas upload for CPU/hybrid; SVG changes retained vector viewport only. Not scanout or GPU-completion timing. Resources and GPU allocations warmed; no raster readback in the SVG interaction measurement.',
-      crisp: Object.fromEntries(modes.map(mode => [mode, {sample_cap: slow[mode] ? 'Frame exceeded 250 ms; at most 3 timed samples' : null, ready_ms: stats(crisp[mode].map(s => s.ready_ms)),
+      crisp: Object.fromEntries(modes.map(mode => [mode, {sample_cap: slow[mode] ? 'Stop after a frame above 250 ms once at least 3 samples are collected' : null, ready_ms: stats(crisp[mode].map(s => s.ready_ms)),
         frame_ms: stats(crisp[mode].map(s => s.frame_ms)), samples: crisp[mode]}])),
-      gesture, svg_accuracy: accuracy};
+      gesture, svg_accuracy: accuracy, svg_accuracy_source: 'retained image Canvas readback', svg_retained_vs_fresh: retainedVsFresh};
   } finally {for (const job of jobs.values()) job.destroy();svg?.destroy();stage.remove();}
 }

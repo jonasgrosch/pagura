@@ -72,14 +72,20 @@ export class SvgPage {
     copy.root = this.root.cloneNode(true); copy.image = null;copy.url = null;return copy;
   }
 
-  async rasterize(width = this.width, height = this.height, dpi = this.dpi) {
+  async rasterize(width = this.width, height = this.height, dpi = this.dpi, {retained = false} = {}) {
     const start = performance.now();
     this.resize(width, height, dpi);
-    const serialization = new XMLSerializer().serializeToString(this.root);
-    const url = URL.createObjectURL(new Blob([serialization], {type: 'image/svg+xml'}));
-    const image = new Image();
+    // A retained image can rasterize differently from a fresh export with
+    // different intrinsic dimensions. Zoom checks must sample the shown source.
+    const image = retained ? this.image : new Image();
+    if (!image) throw new Error('Retained SVG is not mounted');
+    let url;
     try {
-      image.src = url; await imageReady(image);
+      if (!retained) {
+        url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(this.root)], {type: 'image/svg+xml'}));
+        image.src = url;
+      }
+      await imageReady(image);
       const decode_ms = performance.now() - start;
       const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
       const context = canvas.getContext('2d');
@@ -88,7 +94,7 @@ export class SvgPage {
       // Readback completes rasterization, not just image decoding or DOM work.
       const pixels = new Uint8Array(context.getImageData(0, 0, width, height).data);
       return {pixels, wall_ms: performance.now() - start, decode_ms, context: context.getContextAttributes()};
-    } finally {image.src = ''; URL.revokeObjectURL(url);}
+    } finally {if (url) {image.src = ''; URL.revokeObjectURL(url);}}
   }
 }
 

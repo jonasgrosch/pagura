@@ -151,6 +151,8 @@ if (mode === 'serve') {
     for (const request of pending.values()) clearTimeout(request.timer);
     chrome.kill('SIGTERM');
     await new Promise(resolve => { if (chrome.exitCode !== null) resolve(); else {const timer = setTimeout(() => {chrome.kill('SIGKILL');resolve();}, 5000);chrome.once('exit', () => {clearTimeout(timer);resolve();});} });
+    // Chrome's detached crash reporter can retain its inherited stderr pipe.
+    chrome.stderr.destroy();
     await writeFile(output + '.chrome.log', log.join(''));
     await rm(profile, {recursive: true, force: true, maxRetries: 3});
     server.close();
