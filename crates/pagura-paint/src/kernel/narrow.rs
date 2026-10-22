@@ -130,7 +130,7 @@ impl Lanes {
     }
 }
 
-/// [`round255`] in both 16-bit halves of a word.
+/// `round255` in both 16-bit halves of a word.
 #[inline]
 fn round255_halves(p: u32) -> u32 {
     let t = p.wrapping_add(0x0080_0080);
@@ -155,7 +155,7 @@ pub(crate) fn color_bytes(color: &[f64]) -> [u8; 4] {
 
 /// `round(p / 255)` for `p ≤ 255²` (never a tie): `t = p + 128`, then
 /// `(t + (t >> 8)) >> 8`.
-#[inline]
+#[cfg(test)]
 pub(crate) fn round255(p: u32) -> u32 {
     let t = p.wrapping_add(128);
     t.wrapping_add(t >> 8) >> 8
@@ -372,26 +372,45 @@ fn bytes(color: &[f64]) -> [u8; 4] {
     [at(0), at(1), at(2), 255]
 }
 
-/// One byte store, rounded once; at alpha 0 the pixel stays and at 255 it
-/// takes the source, from the formula itself.
-#[expect(
-    clippy::cast_possible_truncation,
-    reason = "a convex combination of two bytes stays within 0..255"
-)]
+/// One byte store at alpha `quantize(alpha)`, rounded once: at 255 the
+/// source, at 0 the pixel as it is, which is what the rounding gives too.
 fn over(pixel: &mut [u8; 4], source: [u8; 4], alpha: f64) {
-    let a = u32::from(pagura_raster::quantize_unit(alpha));
-    let rest = 255_u32.wrapping_sub(a);
-    for (out, source) in pixel.iter_mut().zip(source) {
-        let sum = u32::from(source)
-            .wrapping_mul(a)
-            .wrapping_add(u32::from(*out).wrapping_mul(rest));
-        *out = round255(sum) as u8;
+    match pagura_raster::quantize_unit(alpha) {
+        255 => *pixel = source,
+        0 => {}
+        a => *pixel = Lanes::new(source).over(*pixel, u32::from(a)),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// One byte store channel by channel, as the byte path defines it.
+    fn reference_over(pixel: &mut [u8; 4], source: [u8; 4], alpha: f64) {
+        let a = u32::from(pagura_raster::quantize_unit(alpha));
+        let rest = 255 - a;
+        for (out, source) in pixel.iter_mut().zip(source) {
+            let sum = u32::from(source) * a + u32::from(*out) * rest;
+            *out = u8::try_from(round255(sum)).unwrap();
+        }
+    }
+
+    #[test]
+    fn byte_stores_round_once_per_channel() {
+        for a in 0..=255_u8 {
+            let alpha = f64::from(a) / 255.0;
+            for s in (0..=255_u8).step_by(3) {
+                for b in (0..=255_u8).step_by(7) {
+                    let mut fast = [b, 255 - b, b / 2, 255];
+                    let mut slow = fast;
+                    over(&mut fast, [s, 255 - s, s / 3, 255], alpha);
+                    reference_over(&mut slow, [s, 255 - s, s / 3, 255], alpha);
+                    assert_eq!(fast, slow, "a {a} s {s} b {b}");
+                }
+            }
+        }
+    }
 
     #[test]
     fn words_round_to_their_nearest_byte_in_u16_lanes() {
@@ -411,7 +430,7 @@ mod tests {
                     let mut fast = [[b, b, b, b]];
                     store_u8_opaque(&mut fast, [s, s, s, 255], Some(&[c]));
                     let mut slow = [b, b, b, b];
-                    over(&mut slow, [s, s, s, 255], alpha);
+                    reference_over(&mut slow, [s, s, s, 255], alpha);
                     assert_eq!(fast[0], slow, "s {s} b {b} c {c}");
                 }
             }
@@ -432,7 +451,7 @@ mod tests {
                         let mut fast = [[b; 4]];
                         store_u8_alpha(&mut fast, [s, s, s, 255], Some(&[c]), &table);
                         let mut slow = [b; 4];
-                        over(&mut slow, [s, s, s, 255], alpha);
+                        reference_over(&mut slow, [s, s, s, 255], alpha);
                         assert_eq!(fast[0], slow, "k {k} s {s} b {b} c {c}");
                     }
                 }
@@ -440,7 +459,7 @@ mod tests {
             let mut full = [[40_u8; 4]; 2];
             store_u8_alpha(&mut full, [200, 100, 0, 255], None, &table);
             let mut slow = [40_u8; 4];
-            over(&mut slow, [200, 100, 0, 255], 1.0 * k);
+            reference_over(&mut slow, [200, 100, 0, 255], 1.0 * k);
             assert_eq!(full, [slow; 2], "k {k}");
         }
     }
