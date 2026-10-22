@@ -19,7 +19,8 @@ mod operator;
 mod reader;
 mod token;
 
+use operator::Operator;
+
 pub use content::Content;
 pub use op::{ColorOperands, Dash, Op, Painting, Properties, Rule, TextArray, TextItem, TextItems};
-pub use operator::Operator;
 pub use reader::{Operation, Reader};

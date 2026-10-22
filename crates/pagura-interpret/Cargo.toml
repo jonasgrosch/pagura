@@ -23,5 +23,10 @@ pagura-image.workspace = true
 pagura-raster.workspace = true
 pagura-text.workspace = true
 
+[features]
+# A text dump of recorded scenes, for snapshot tests and debugging.
+dump = []
+
 [dev-dependencies]
+pagura-interpret = { workspace = true, features = ["dump"] }
 pagura-testkit.workspace = true

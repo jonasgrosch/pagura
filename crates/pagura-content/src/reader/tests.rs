@@ -1,4 +1,5 @@
 use super::*;
+use crate::op::tests::operator;
 use pagura_core::{ErrorKind, ObjectId, Repair};
 use std::borrow::Cow;
 
@@ -15,7 +16,7 @@ fn ops(bytes: &[u8]) -> Result<Vec<(Operator, usize, String)>> {
     let mut out = Vec::new();
     while let Some(operation) = reader.next(&mut tokens)? {
         let op = &operation.op;
-        out.push((op.operator(), operation.offset, format!("{op:?}")));
+        out.push((operator(op), operation.offset, format!("{op:?}")));
     }
     assert!(reader.is_balanced());
     Ok(out)
@@ -254,7 +255,7 @@ fn reader_tokens(
     let mut out = Vec::new();
     loop {
         match reader.next(&mut tokens) {
-            Ok(Some(operation)) => out.push((operation.op.operator(), operation.offset)),
+            Ok(Some(operation)) => out.push((operator(&operation.op), operation.offset)),
             Ok(None) => return Ok(out),
             Err(error) => return Err(identity(&error)),
         }
