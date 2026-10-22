@@ -32,7 +32,12 @@ fn a_fractional_clip_run_rounding_to_full_still_clips_glyph_geometry() {
     let edges = Arc::new(GlyphEdges::new(&mark.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
     let prepare = |options: &Prep<'_>| glyph::place(&edges, Point::default(), options).unwrap();
     let clip = |options: &ShapeOptions<'_>| {
-        ClipShape::new(&[(&clip_path, FillRule::NonZero)], Transform::IDENTITY, options).unwrap()
+        ClipShape::new(
+            &[(&clip_path, FillRule::NonZero)],
+            Transform::IDENTITY,
+            options,
+        )
+        .unwrap()
     };
     let coverage = invariant(&area, &prepare, Some(&clip));
     // The clip alone rounds .9985 to255, but its intersection with this

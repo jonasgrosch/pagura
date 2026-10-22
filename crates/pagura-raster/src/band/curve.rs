@@ -286,7 +286,8 @@ impl Mono {
         let [a, b] = times;
         self.coordinate_error(a, true)
             + self.coordinate_error(b, true)
-            + 8.0 * f64::EPSILON
+            + 8.0
+                * f64::EPSILON
                 * (ends[0].abs() + self.dx(a).abs() + self.dx(b).abs() + ends[1].abs())
     }
 

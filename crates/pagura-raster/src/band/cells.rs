@@ -420,19 +420,30 @@ impl Cells {
     /// cells: consecutive touched cells together, and each run between them
     /// once with the cover carried into it. Returns the touched cells.
     pub(crate) fn emit(&mut self, r: usize, rule: FillRule, sink: &mut impl Sink) -> usize {
-        self.emit_with(r, sink, |_, _, value| fold(value, rule))
+        self.emit_with(r, sink, |_, _, value, _| fold(value, rule))
     }
 
     /// The identical prefix sum before quantization, for preparation's
     /// coverage-byte certificate. Inspection clears the cells as emission
     /// does, and introduces no retained execution representation.
     pub(crate) fn inspect(&mut self, r: usize, mut visit: impl FnMut(usize, usize, f64)) -> usize {
+        self.inspect_parts(r, |x0, x1, value, _| visit(x0, x1, value))
+    }
+
+    /// The same inspection with the distinction between touched boundary
+    /// cells and untouched carried-cover runs. Clip classification needs
+    /// geometry support even when its provisional coverage byte is zero.
+    pub(crate) fn inspect_parts(
+        &mut self,
+        r: usize,
+        mut visit: impl FnMut(usize, usize, f64, bool),
+    ) -> usize {
         struct Ignore;
         impl Sink for Ignore {
             fn run(&mut self, _: usize, _: usize, _: u8) {}
         }
-        self.emit_with(r, &mut Ignore, |x0, x1, value| {
-            visit(x0, x1, value);
+        self.emit_with(r, &mut Ignore, |x0, x1, value, touched| {
+            visit(x0, x1, value, touched);
             0
         })
     }
@@ -441,7 +452,7 @@ impl Cells {
         &mut self,
         r: usize,
         sink: &mut impl Sink,
-        mut map: impl FnMut(usize, usize, f64) -> u8,
+        mut map: impl FnMut(usize, usize, f64, bool) -> u8,
     ) -> usize {
         let base = usize::try_from(self.base).unwrap_or(0);
         let cells = r.wrapping_mul(self.width);
@@ -468,7 +479,7 @@ impl Cells {
                         sink.cells(base + start, values);
                     }
                     pending = 0;
-                    let value = map(base + position, base + x, cover);
+                    let value = map(base + position, base + x, cover, false);
                     sink.run(base + position, base + x, value);
                 }
                 cover += std::mem::take(c);
@@ -477,7 +488,7 @@ impl Cells {
                     start = x;
                 }
                 if let Some(slot) = self.bytes.get_mut(pending) {
-                    *slot = map(base + x, base + x + 1, value);
+                    *slot = map(base + x, base + x + 1, value, true);
                     pending += 1;
                 }
                 position = x + 1;
@@ -488,7 +499,7 @@ impl Cells {
             sink.cells(base + start, values);
         }
         if position < self.width {
-            let value = map(base + position, base + self.width, cover);
+            let value = map(base + position, base + self.width, cover, false);
             sink.run(base + position, base + self.width, value);
         }
         touched

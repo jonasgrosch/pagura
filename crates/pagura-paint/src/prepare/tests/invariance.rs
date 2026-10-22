@@ -321,7 +321,7 @@ fn geometry_preparation_uses_what_earlier_marks_leave() {
             PAGE,
             Node::Fill(FillNode {
                 path: Arc::clone(&path),
-                rule: pagura_raster::FillRule::NonZero,
+                rule: FillRule::NonZero,
                 paint,
                 mark: MarkInfo {
                     position: Position::Buffer(7),

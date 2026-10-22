@@ -13,11 +13,10 @@ use super::cells::{Cells, STRIP};
 use super::certify::uncertified;
 use super::edges::{self, Bounds, Line, Polygon, StripList};
 use super::rect::rectangle;
-use super::row::Sink;
 use super::shape::RENDER_BYTES;
 use super::union::{Meters, Piece, Resolver, room};
 use super::{DeviceRect, Prep, ShapeOptions};
-use crate::{FillRule, Path, Transform};
+use crate::{FillRule, Path, Transform, quantize_unit};
 use pagura_core::{Error, Limits, Meter, Result};
 use std::sync::Arc;
 
@@ -462,9 +461,11 @@ fn classify(
         if !cells.open(scan, y..y + 1) {
             return Err(Error::limit(CLIP_WORK));
         }
+        let mut whole = true;
         if settled {
             for p in &pieces {
-                meter.charge(cells.line(p.line))?;
+                whole &= p.lo == top && p.hi == top + 1.0;
+                meter.charge(cells.line_measured(p.line))?;
             }
         } else {
             sides.clear();
@@ -474,9 +475,12 @@ fn classify(
             };
             resolver.row(&pieces, &rules, top, (&mut sides, meters))?;
             for &line in &sides {
-                meter.charge(cells.line(line))?;
+                whole &= line.a.y.min(line.b.y) <= top && line.a.y.max(line.b.y) >= top + 1.0;
+                meter.charge(cells.line_measured(line))?;
             }
         }
+        let arithmetic =
+            (paths.arithmetic + cells.arithmetic_error()) * (1.0 + 16.0 * f64::EPSILON);
         let mut sink = Classify {
             rows: &mut rows,
             bytes,
@@ -484,7 +488,16 @@ fn classify(
             bounds: (bounds.x0, bounds.x1),
             error: None,
         };
-        let touched = cells.emit(0, FillRule::NonZero, &mut sink);
+        let touched = cells.inspect_parts(0, |x0, x1, area, touched| {
+            let area = area.abs();
+            let value = quantize_unit(area);
+            // Only a proven-zero carried run can disappear. A touched zero
+            // or an interval crossing its first byte retains its geometry
+            // as an ordinary boundary segment for joint resolution.
+            if touched || value != 0 || quantize_unit(area + arithmetic) != 0 {
+                sink.push((x0, x1), value, !touched && whole && area == 1.0);
+            }
+        });
         if let Some(error) = sink.error {
             return Err(error);
         }
@@ -508,7 +521,7 @@ impl Classify<'_> {
     fn push(&mut self, (x0, x1): (usize, usize), value: u8, inside: bool) {
         let a = u32::try_from(x0).unwrap_or(u32::MAX).max(self.bounds.0);
         let b = u32::try_from(x1).unwrap_or(u32::MAX).min(self.bounds.1);
-        if a >= b || value == 0 || self.error.is_some() {
+        if a >= b || self.error.is_some() {
             return;
         }
         let segment = Segment {
@@ -519,18 +532,6 @@ impl Classify<'_> {
         };
         if let Err(error) = self.rows.push(self.y, segment, self.bytes) {
             self.error = Some(error);
-        }
-    }
-}
-
-impl Sink for Classify<'_> {
-    fn run(&mut self, x0: usize, x1: usize, value: u8) {
-        self.push((x0, x1), value, value == u8::MAX);
-    }
-
-    fn cells(&mut self, x: usize, values: &[u8]) {
-        for (k, &value) in values.iter().enumerate() {
-            self.push((x + k, x + k + 1), value, false);
         }
     }
 }
@@ -565,7 +566,66 @@ pub(crate) fn columns(lo: f64, hi: f64, width: usize) -> (usize, usize) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Point;
+    use crate::{Area, PathBuilder, Point};
+
+    #[test]
+    fn zero_clip_boundaries_and_uncertain_zero_runs_keep_geometry_support() {
+        let limits = Limits::default();
+        let area = Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 4,
+                y1: 1,
+            },
+            band_height: 1,
+        };
+        let options = ShapeOptions {
+            area,
+            limits: &limits,
+        };
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(0.95, 0.0));
+        path.line_to(Point::new(1.95, 1.0)).unwrap();
+        path.line_to(Point::new(3.0, 0.0)).unwrap();
+        path.close();
+        let path = path.finish();
+        let clip =
+            ClipShape::new(&[(&path, FillRule::NonZero)], Transform::IDENTITY, &options).unwrap();
+        let boundary = clip
+            .rows()
+            .unwrap()
+            .row(0)
+            .iter()
+            .find(|s| s.x0 == 0)
+            .unwrap();
+        assert_eq!(boundary.value, 0);
+        assert!(!boundary.inside);
+
+        // The off-window slanted side makes this a path clip, while the
+        // un-touched interior columns carry a height just below byte one.
+        // Its provisional zero cannot discard a rounding-uncertain run.
+        let top = 1.0 - (0.5 - 1.01e-9) / 255.0;
+        assert_eq!(quantize_unit(1.0 - top), 0);
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(-3.0, top));
+        path.line_to(Point::new(5.0, top)).unwrap();
+        path.line_to(Point::new(5.0, 2.0)).unwrap();
+        path.line_to(Point::new(-2.0, 2.0)).unwrap();
+        path.close();
+        let path = path.finish();
+        let clip =
+            ClipShape::new(&[(&path, FillRule::NonZero)], Transform::IDENTITY, &options).unwrap();
+        let run = clip
+            .rows()
+            .unwrap()
+            .row(0)
+            .iter()
+            .find(|s| s.x0 <= 2 && s.x1 > 2)
+            .unwrap();
+        assert_eq!(run.value, 0);
+        assert!(!run.inside);
+    }
 
     #[test]
     fn off_row_strip_edges_are_charged_before_a_local_proof_scans_them() {

@@ -533,6 +533,96 @@ fn repeated_uncertified_quadratics_keep_the_true_coverage_byte() {
     );
 }
 
+#[test]
+fn fractional_full_clip_runs_keep_repeated_glyph_composition() {
+    let mut b = Build::new(2.0, 1.0);
+    let black = b.rgb([0.0, 0.0, 0.0]);
+    let mut path = pagura_raster::PathBuilder::new();
+    path.move_to(Point::new(-2.0, 0.0));
+    for p in [(3.0, 0.0), (4.0, 0.5), (3.0, 0.9985), (-2.0, 0.9985)] {
+        path.line_to(Point::new(p.0, p.1)).unwrap();
+    }
+    path.close();
+    b.scene.clips.push(ClipNode {
+        parent: None,
+        path: Arc::new(path.finish()),
+        rule: FillRule::NonZero,
+    });
+    let mut outline = pagura_raster::PathBuilder::new();
+    outline.move_to(Point::new(-1.0, 0.4995));
+    outline
+        .cubic_to(
+            Point::new(0.0, 0.4995),
+            Point::new(1.0, 0.4995),
+            Point::new(2.0, 0.4995),
+        )
+        .unwrap();
+    outline.line_to(Point::new(2.0, 1.0)).unwrap();
+    outline.line_to(Point::new(-1.0, 1.0)).unwrap();
+    outline.close();
+    b.node(
+        GroupId(0),
+        Node::Glyphs(GlyphsNode {
+            sources: vec![GlyphSource {
+                outline: Arc::new(outline.finish()),
+                key: OutlineKey {
+                    font: pagura_interpret::FontKey(1),
+                    glyph: 1,
+                },
+                linear: Transform::IDENTITY,
+            }],
+            placements: vec![
+                Placement {
+                    source: 0,
+                    origin: Point::default()
+                };
+                2
+            ],
+            positions: Vec::new(),
+            paint: black,
+            mark: MarkInfo {
+                clip: Some(ClipId(0)),
+                ..mark(StateId(0))
+            },
+        }),
+    );
+    let expected = (1.0 - level(0.9985 - 0.4995)).powi(2);
+    assert!((255.0 * expected - 64.250_980_392_156_86).abs() < 1e-12);
+    assert_pixel(
+        &b.render(Rgba8::WHITE),
+        (1, 0),
+        [expected, expected, expected, 1.0],
+    );
+    let limits = Limits::default();
+    let page = DeviceRect {
+        x0: 0,
+        y0: 0,
+        x1: 2,
+        y1: 1,
+    };
+    let store = pagura_core::Store::new(64 << 20);
+    for region in [page, DeviceRect { x0: 1, ..page }] {
+        for height in [1, 3, 16] {
+            let mut request = pagura_paint::RenderRequest::new(Transform::IDENTITY, page, region);
+            request.band_height = height;
+            let prepared = pagura_paint::prepare(&b.scene, &request, &store, &limits).unwrap();
+            let mut scratch = pagura_paint::Scratch::default();
+            let mut actual = Vec::new();
+            prepared
+                .with_scratch(&mut scratch)
+                .unwrap()
+                .render(&mut actual);
+            assert!(
+                actual
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .all(|pixel| *pixel == [64, 64, 64, 255])
+            );
+        }
+    }
+}
+
 /// Exercise product preparation and ordinary Cells emission independently
 /// of the final-pixel differential assertion.
 fn emitted_glyph_byte(

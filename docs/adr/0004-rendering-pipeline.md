@@ -282,6 +282,16 @@ work. Strip input scans are reserved before traversal, mask filtering uses
 one monotone row cursor, and replacement-builder scratch is returned before
 the next inspection starts.
 
+Clip classification uses those unquantized cells too. Touched cells keep
+their boundary support even when they round to zero; an untouched zero run
+is omitted only if its full arithmetic interval still quantizes to zero.
+Only an untouched run with raw area one, whose resolved boundaries span the
+whole pixel row, is inside. A fractional-height run that merely rounds to
+255 remains a boundary and participates in joint mark/clip resolution.
+These are ordinary clip segments, charged by the existing row meters. They
+prevent classification from hiding an ambiguous pixel before glyph
+certification, and preserve the same geometry in sub-region requests.
+
 A general cubic's displacement tolerance alone does not bound area when
 several edges share a pixel, so its outline retains the canonical 1/256-pixel
 polygon as its reference. Singular linear maps retain the polygon's
