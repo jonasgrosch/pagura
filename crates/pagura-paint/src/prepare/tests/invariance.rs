@@ -8,7 +8,7 @@ use pagura_interpret::{
     BlendMode, GroupAttributes, GroupId, MarkInfo, MaskKind, Node, Paint, PatternId, Pen, PenId,
     StateId, StrokeNode, Tiling, TilingColors, TilingPaint,
 };
-use pagura_raster::{Adjustment, DeviceRect, PathBuilder, Pixmap, Point, Rgba8, Stroke, Transform};
+use pagura_raster::{Adjustment, DeviceRect, PathBuilder, Point, Stroke, Transform};
 use std::sync::Arc;
 
 const PAGE: GroupId = GroupId(0);
@@ -255,8 +255,7 @@ fn rendering_stops_between_bands() {
     let prepared = b
         .prepare(&b.request(page, 8), &Limits::default())
         .unwrap_or_else(|e| panic!("{e}"));
-    let mut target = Pixmap::new(page.width(), page.height(), Rgba8::TRANSPARENT, usize::MAX)
-        .unwrap_or_else(|e| panic!("{e}"));
+    let mut target = Vec::new();
     let mut scratch = crate::Scratch::default();
     let mut rendering = prepared
         .with_scratch(&mut scratch)
@@ -272,6 +271,6 @@ fn rendering_stops_between_bands() {
         .render(&b.request(page, 8))
         .unwrap_or_else(|e| panic!("{e}"));
     let rows = 16 * page.width() as usize * 4;
-    assert_eq!(&target.data()[..rows], &whole[..rows]);
-    assert!(target.data()[rows..].iter().all(|&v| v == 0));
+    assert_eq!(target.len(), rows);
+    assert_eq!(target, whole[..rows]);
 }

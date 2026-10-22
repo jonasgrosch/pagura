@@ -10,7 +10,7 @@ use pagura_interpret::{
     GroupRole, MarkInfo, MaskId, MaskKind, Node, NodeId, PageSpace, Paint, PaintId, Scene,
     SoftMask, StateId,
 };
-use pagura_raster::{Area, DeviceRect, FillRule, Path, Pixmap, Rgba8, ShapeOptions, Transform};
+use pagura_raster::{Area, DeviceRect, FillRule, Path, Rgba8, ShapeOptions, Transform};
 use std::sync::Arc;
 
 /// A device rectangle `[x0, y0, x1, y1]` in f64.
@@ -251,44 +251,6 @@ impl Build {
         limits: &Limits,
     ) -> Result<PreparedScene> {
         crate::prepare(&self.scene, request, &Store::new(1 << 20), limits)
-    }
-
-    /// Renders `request` into region-sized premultiplied RGBA8, checking
-    /// that preparation reserved at least what rendering used.
-    pub(crate) fn render(&self, request: &RenderRequest) -> Result<Vec<u8>> {
-        Ok(self.render_charged(request)?.0)
-    }
-
-    /// [`Self::render`] with the reserved charges.
-    pub(crate) fn render_charged(
-        &self,
-        request: &RenderRequest,
-    ) -> Result<(Vec<u8>, crate::Charges)> {
-        let prepared = self.prepare(request, &Limits::default())?;
-        let region = request.region;
-        let mut target = Pixmap::new(
-            region.width(),
-            region.height(),
-            Rgba8::TRANSPARENT,
-            usize::MAX,
-        )?;
-        let mut scratch = crate::Scratch::default();
-        let mut rendering = prepared.with_scratch(&mut scratch)?;
-        rendering.render(&mut target);
-        let (used, reserved) = (rendering.usage(), prepared.charges());
-        assert!(
-            used.render_bytes() <= reserved.render_bytes()
-                && used.render_work() <= reserved.render_work()
-                && used.function_work() <= reserved.function_work(),
-            "used {used:?} beyond reserved {reserved:?}"
-        );
-        Ok((target.data().to_vec(), reserved))
-    }
-
-    /// Renders the whole page.
-    pub(crate) fn render_page(&self) -> Vec<u8> {
-        self.render(&self.request(self.page(), RenderRequest::BAND_HEIGHT))
-            .unwrap_or_else(|e| panic!("render failed: {e}"))
     }
 
     /// The reference's exact rendering of the whole page.

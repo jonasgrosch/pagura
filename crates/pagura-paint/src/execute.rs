@@ -15,7 +15,6 @@ mod workspace;
 
 pub(crate) use frame::{Backdrop, Buffer, Frame, Read, Tops};
 pub(crate) use mask::transfer as mask_transfer;
-pub(crate) use output::Destination;
 pub(crate) use schedule::Active;
 pub(crate) use transfer::validate;
 pub use workspace::Scratch;
@@ -23,6 +22,7 @@ pub(crate) use workspace::{Extents, MaskCache, PageBuffer, Sizes, Usage, Workspa
 
 use crate::kernel::{self, Colors, Mode, Sources};
 use crate::plan::{Boundary, Compositing, Item, ItemKind, Mark, Plan, area};
+use crate::prepare::Completion;
 use crate::prepare::Shapes;
 use crate::source::{Pixels, Source};
 use pagura_core::convert::u32_to_usize;
@@ -32,13 +32,43 @@ use std::ops::Range;
 #[cfg(test)]
 mod tests;
 
-/// What one band's execution works with: the plan, the workspace, and the
-/// prepared shapes with the rasterizer they rasterize in.
-pub(crate) type Executing<'a> = (
-    &'a Plan,
-    &'a mut Workspace,
-    (&'a Shapes, &'a mut BandRasterizer),
-);
+/// A prepared scene with scratch storage sized for it: what every band's
+/// execution works with. Rendering cannot fail.
+#[derive(Debug)]
+pub struct Rendering<'a> {
+    pub(crate) plan: &'a Plan,
+    pub(crate) shapes: &'a Shapes,
+    pub(crate) workspace: &'a mut Workspace,
+    pub(crate) rasterizer: &'a mut BandRasterizer,
+}
+
+impl Rendering<'_> {
+    /// Renders every band, appending each row of the region to `rows` as
+    /// premultiplied RGBA8, `4 × width` bytes, top to bottom. Room for the
+    /// rows should be reserved: appending beyond it allocates.
+    pub fn render(&mut self, rows: &mut Vec<u8>) {
+        let _ = self.render_until(rows, |_| false);
+    }
+
+    /// Renders bands as [`Self::render`] does, asking `stop` with the next
+    /// band's first row before each band.
+    pub fn render_until(
+        &mut self,
+        rows: &mut Vec<u8>,
+        mut stop: impl FnMut(u32) -> bool,
+    ) -> Completion {
+        let area = self.plan.area;
+        self.workspace.restart();
+        for band in area.bands() {
+            let row = area.band_rows(band).start;
+            if stop(row) {
+                return Completion::Stopped { row };
+            }
+            Executor::band(self, band, rows);
+        }
+        Completion::Complete
+    }
+}
 
 /// One band's execution.
 pub(crate) struct Executor<'a> {
@@ -52,12 +82,9 @@ pub(crate) struct Executor<'a> {
 }
 
 impl<'a> Executor<'a> {
-    /// Executes `band` of `plan` and writes its rows to `target`.
-    pub(crate) fn band(
-        (plan, ws, (shapes, rasterizer)): Executing<'a>,
-        band: u32,
-        target: Destination<'_>,
-    ) {
+    /// Executes `band` of `rendering` and appends its rows to `out`.
+    fn band(rendering: &'a mut Rendering<'_>, band: u32, out: &mut Vec<u8>) {
+        let plan = rendering.plan;
         let rows = plan.area.band_rows(band);
         if rows.is_empty() {
             return;
@@ -65,15 +92,15 @@ impl<'a> Executor<'a> {
         let first = plan.area.bands().start;
         let mut executor = Executor {
             plan,
-            ws,
-            shapes,
-            rasterizer,
+            ws: rendering.workspace,
+            shapes: rendering.shapes,
+            rasterizer: rendering.rasterizer,
             band,
             rows,
             first,
         };
         executor.page();
-        output::write(executor.plan, executor.ws, &executor.rows, target);
+        output::write(executor.plan, executor.ws, &executor.rows, out);
     }
 
     fn page(&mut self) {

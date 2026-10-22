@@ -22,7 +22,7 @@ mod source;
 #[cfg(test)]
 mod testing;
 
-pub use execute::Scratch;
+pub use execute::{Rendering, Scratch};
 pub use format::Format;
-pub use prepare::{Charges, Completion, PreparedScene, Rendering, prepare};
+pub use prepare::{Charges, Completion, PreparedScene, prepare};
 pub use request::{OverprintMode, RenderRequest};

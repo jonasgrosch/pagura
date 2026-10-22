@@ -323,22 +323,6 @@ fn shrink(plan: &mut Plan) {
     plan.output.transfers.shrink_to_fit();
 }
 
-/// Bytes the plan's own structures retain.
-#[cfg(test)]
-pub(crate) fn plan_bytes(plan: &Plan) -> usize {
-    let groups: usize = plan
-        .groups
-        .iter()
-        .map(|g| (g.items.capacity() + g.order.capacity()) * size_of::<u32>())
-        .sum();
-    plan.items.capacity() * size_of::<Item>()
-        + plan.groups.capacity() * size_of::<crate::plan::GroupPlan>()
-        + groups
-        + plan.masks.capacity() * size_of::<crate::plan::MaskPlan>()
-        + plan.paints.capacity() * size_of::<crate::source::Source>()
-        + plan.conversions.capacity() * size_of::<crate::plan::Conversion>()
-}
-
 /// The background premultiplied once, as the output surface stores it.
 fn premultiplied(background: Rgba8) -> Result<[u8; 4]> {
     let pixel = pagura_raster::Pixmap::new(1, 1, background, 1)?;

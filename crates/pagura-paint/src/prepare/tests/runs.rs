@@ -2,6 +2,7 @@
 //! whatever the format, group, mask, band height or region, and report the
 //! same first error.
 
+use super::assert_within_charges;
 use crate::plan::ItemKind;
 use crate::prepare::planner::runs::RUNS;
 use crate::request::RenderRequest;
@@ -13,7 +14,7 @@ use pagura_interpret::{
     Node, OutlineKey, Paint, PaintId, PatternId, Placement, StateId, Tiling, TilingColors,
     TilingPaint,
 };
-use pagura_raster::{DeviceRect, Pixmap, Point, Rgba8, Transform};
+use pagura_raster::{DeviceRect, Point, Transform};
 
 const PAGE: GroupId = GroupId(0);
 const HEIGHTS: [u32; 5] = [1, 5, 16, 32, 256];
@@ -96,7 +97,7 @@ fn same_bytes(name: &str, b: &Build, gathers: bool) {
         .prepare(&request, &Limits::default())
         .unwrap_or_else(|e| panic!("{e}"));
     assert!(
-        prepared.plan().items.iter().any(|item| matches!(&item.kind,
+        prepared.plan.items.iter().any(|item| matches!(&item.kind,
                 ItemKind::Run(run) if run.glyphs.iter().any(|g| g.alone) == gathers)),
         "{name}: no run item with placements alone: {gathers}"
     );
@@ -132,26 +133,13 @@ fn render_with(
 ) -> (Vec<u8>, Charges) {
     let prepared = crate::prepare(&b.scene, request, store, &Limits::default())
         .unwrap_or_else(|e| panic!("{e}"));
-    let region = request.region;
-    let mut target = Pixmap::new(
-        region.width(),
-        region.height(),
-        Rgba8::TRANSPARENT,
-        usize::MAX,
-    )
-    .unwrap_or_else(|e| panic!("{e}"));
     let mut rendering = prepared
         .with_scratch(scratch)
         .unwrap_or_else(|e| panic!("{e}"));
-    rendering.render(&mut target);
-    let (used, reserved) = (rendering.usage(), prepared.charges());
-    assert!(
-        used.render_bytes() <= reserved.render_bytes()
-            && used.render_work() <= reserved.render_work()
-            && used.function_work() <= reserved.function_work(),
-        "used {used:?} beyond reserved {reserved:?}"
-    );
-    (target.data().to_vec(), reserved)
+    let mut rows = Vec::new();
+    rendering.render(&mut rows);
+    assert_within_charges(&rendering, prepared.charges());
+    (rows, prepared.charges())
 }
 
 fn page() -> (Build, [PaintId; 2]) {

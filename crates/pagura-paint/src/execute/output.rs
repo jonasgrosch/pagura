@@ -9,7 +9,7 @@ use crate::plan::{Output, Plan};
 use crate::process::{self, Separation};
 use pagura_color::Process;
 use pagura_core::convert::u32_to_usize;
-use pagura_raster::{Pixmap, quantize_unit};
+use pagura_raster::quantize_unit;
 use std::ops::Range;
 
 /// Records `select` for the fully covered pixels of a span at `(x, y)` of
@@ -35,91 +35,62 @@ pub(super) fn record(
     }
 }
 
-/// Where output rows go.
-pub(crate) enum Destination<'a> {
-    /// A surface whose pixel `(0, 0)` is the region's first pixel.
-    Pixmap(&'a mut Pixmap),
-    /// The end of a buffer that collects whole rows of the region, with room
-    /// reserved for them.
-    Rows(&'a mut Vec<u8>),
-}
-
-/// Writes the band's rows of the page buffer to `target`.
-pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, target: Destination<'_>) {
-    let region = plan.area.region;
-    let width = u32_to_usize(region.width());
+/// Appends the band's rows of the page buffer to `out` as premultiplied
+/// RGBA8, whole rows of the region.
+pub(super) fn write(plan: &Plan, ws: &mut Workspace, rows: &Range<u32>, out: &mut Vec<u8>) {
+    let width = u32_to_usize(plan.area.region.width());
     let output = &plan.output;
     let mut preview = Preview::default();
-    // Bytes holding row `origin` first and each next row `stride` later,
-    // `count` pixels of each written, and whether they hold the background.
-    let ((data, origin, stride, count), filled) = match target {
-        Destination::Pixmap(pixmap) => {
-            let target_width = u32_to_usize(pixmap.width());
-            let data = pixmap.data_mut();
-            (
-                (data, region.y0, target_width * 4, width.min(target_width)),
-                false,
-            )
-        }
-        Destination::Rows(collected) => {
-            // One fill of the whole band, written over while it is still in
-            // cache: cheaper than filling the surface beforehand, and than
-            // appending row by row. A background of one repeated byte, as
-            // white and transparent are, is that fill.
-            let [byte, ..] = output.background;
-            let uniform = output.background.iter().all(|&b| b == byte);
-            let start = collected.len();
-            let fill = if uniform { byte } else { 0 };
-            collected.resize(start + rows.len() * width * 4, fill);
-            let band = collected.get_mut(start..).unwrap_or_default();
-            ((band, rows.start, width * 4, width), uniform)
-        }
-    };
-    for (band_row, y) in rows.clone().enumerate() {
-        let Some(row) = y.checked_sub(origin) else {
-            continue;
-        };
-        let start = u32_to_usize(row) * stride;
-        let Some(out) = data.get_mut(start..start + count * 4) else {
-            continue;
-        };
-        let out = out.as_chunks_mut::<4>().0;
+    // One fill of the whole band, written over while it is still in cache:
+    // cheaper than filling a surface beforehand, and than appending row by
+    // row. A background of one repeated byte, as white and transparent
+    // are, is that fill; any other is written where no store reached.
+    let [byte, ..] = output.background;
+    let uniform = output.background.iter().all(|&b| b == byte);
+    let start = out.len();
+    out.resize(
+        start + rows.len() * width * 4,
+        if uniform { byte } else { 0 },
+    );
+    let band = out.get_mut(start..).unwrap_or_default();
+    for (band_row, row) in band.chunks_exact_mut(width * 4).enumerate() {
+        let row = row.as_chunks_mut::<4>().0;
         // Columns no store reached still hold the background.
         let (lo, hi) = ws
             .extents
             .get(band_row)
-            .map_or((0, 0), |(lo, hi)| (lo.min(count), hi.min(count)));
-        let (head, rest) = out.split_at_mut(lo);
-        let (out, tail) = rest.split_at_mut(hi - lo);
-        if !filled {
+            .map_or((0, 0), |(lo, hi)| (lo.min(width), hi.min(width)));
+        let (head, rest) = row.split_at_mut(lo);
+        let (row, tail) = rest.split_at_mut(hi - lo);
+        if !uniform {
             head.fill(output.background);
             tail.fill(output.background);
         }
         let first = band_row * width + lo;
-        let end = first + out.len();
+        let end = first + row.len();
         match &ws.page {
             PageBuffer::N16(words) => {
                 if let Some(words) = words.get(first..end) {
-                    crate::kernel::n16_bytes(out, words);
+                    crate::kernel::n16_bytes(row, words);
                 }
             }
             PageBuffer::F32(levels) => {
                 if let Some(levels) = levels.get(first..end) {
-                    crate::kernel::f32_bytes(out, levels);
+                    crate::kernel::f32_bytes(row, levels);
                 }
             }
             PageBuffer::F64(values) => {
                 let stride = output.layout.stride();
                 let pixels = values.get(first * stride..).unwrap_or_default();
                 let selection = ws.selection.get(first..).unwrap_or_default();
-                for (k, (out, pixel)) in out.iter_mut().zip(pixels.chunks_exact(stride)).enumerate()
+                for (k, (out, pixel)) in row.iter_mut().zip(pixels.chunks_exact(stride)).enumerate()
                 {
                     let select = selection.get(k).copied().unwrap_or(0);
                     *out = wide(output, pixel, select, &mut preview, &mut ws.usage);
                 }
             }
         }
-        ws.usage.work = ws.usage.work.saturating_add(count);
+        ws.usage.work = ws.usage.work.saturating_add(width);
     }
 }
 

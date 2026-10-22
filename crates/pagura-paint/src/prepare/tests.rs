@@ -8,3 +8,70 @@ mod functions;
 mod invariance;
 mod patterns;
 mod runs;
+
+use crate::execute::Rendering;
+use crate::plan::{Conversion, GroupPlan, Item, MaskPlan, Plan};
+use crate::request::RenderRequest;
+use crate::source::Source;
+use crate::testing::Build;
+use crate::{Charges, Scratch};
+use pagura_core::{Limits, Result};
+
+impl Build {
+    /// Renders `request` into region-sized premultiplied RGBA8, checking
+    /// that preparation reserved at least what rendering used.
+    pub(crate) fn render(&self, request: &RenderRequest) -> Result<Vec<u8>> {
+        Ok(self.render_charged(request)?.0)
+    }
+
+    /// [`Self::render`] with the reserved charges.
+    pub(crate) fn render_charged(&self, request: &RenderRequest) -> Result<(Vec<u8>, Charges)> {
+        let prepared = self.prepare(request, &Limits::default())?;
+        let mut scratch = Scratch::default();
+        let mut rendering = prepared.with_scratch(&mut scratch)?;
+        let mut rows = Vec::new();
+        rendering.render(&mut rows);
+        assert_within_charges(&rendering, prepared.charges());
+        Ok((rows, prepared.charges()))
+    }
+
+    /// Renders the whole page.
+    pub(crate) fn render_page(&self) -> Vec<u8> {
+        self.render(&self.request(self.page(), RenderRequest::BAND_HEIGHT))
+            .unwrap_or_else(|e| panic!("render failed: {e}"))
+    }
+}
+
+/// Asserts that the last render of `rendering` used no more work and
+/// function evaluations, and retains no more bytes, than `reserved`.
+pub(crate) fn assert_within_charges(rendering: &Rendering<'_>, reserved: Charges) {
+    let usage = rendering.workspace.usage;
+    let used = Charges {
+        render_bytes: rendering.workspace.bytes()
+            + rendering.rasterizer.retained_bytes()
+            + plan_bytes(rendering.plan),
+        render_work: usage.work,
+        function_work: usage.functions,
+    };
+    assert!(
+        used.render_bytes <= reserved.render_bytes
+            && used.render_work <= reserved.render_work
+            && used.function_work <= reserved.function_work,
+        "used {used:?} beyond reserved {reserved:?}"
+    );
+}
+
+/// Bytes the plan's own structures retain.
+fn plan_bytes(plan: &Plan) -> usize {
+    let groups: usize = plan
+        .groups
+        .iter()
+        .map(|g| (g.items.capacity() + g.order.capacity()) * size_of::<u32>())
+        .sum();
+    plan.items.capacity() * size_of::<Item>()
+        + plan.groups.capacity() * size_of::<GroupPlan>()
+        + groups
+        + plan.masks.capacity() * size_of::<MaskPlan>()
+        + plan.paints.capacity() * size_of::<Source>()
+        + plan.conversions.capacity() * size_of::<Conversion>()
+}

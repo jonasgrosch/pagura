@@ -4,7 +4,7 @@
 //! transfer functions, black generation, and narrow stores of group
 //! results. Expected values are clause-11 formulas evaluated here.
 
-use super::{Destination, Executor, Sizes, Tops, Workspace};
+use super::{Rendering, Sizes, Tops, Workspace};
 use crate::format::Format;
 use crate::plan::{
     Compositing, Conversion, Cover, Curve, Glyph, GroupPlan, GroupUse, Item, ItemKind, Layout,
@@ -19,7 +19,7 @@ use pagura_color::{
 };
 use pagura_core::{Limits, Meter, Position, Store};
 use pagura_interpret::{BlendMode, Composite, MaskKind, Shading, ShadingFunction, ShadingKind};
-use pagura_raster::{Area, DeviceRect, PathBuilder, Pixmap, Point, Rgba8, Transform};
+use pagura_raster::{Area, DeviceRect, PathBuilder, Point, Transform};
 use std::sync::Arc;
 
 /// `C0 + x^N (C1 − C0)` of one input.
@@ -306,23 +306,18 @@ impl Fixture {
         let mut free = Meter::new(usize::MAX, "test rasterizer");
         let mut rasterizer = pagura_raster::BandRasterizer::new(area, &mut free).unwrap();
         let shapes: Shapes = crate::testing::path_shapes(area, &self.paths);
-        let mut target =
-            Pixmap::new(self.width, self.height, Rgba8::TRANSPARENT, usize::MAX).unwrap();
-        workspace.restart();
-        for band in area.bands() {
-            let target = Destination::Pixmap(&mut target);
-            let executing = (&plan, &mut workspace, (&shapes, &mut rasterizer));
-            Executor::band(executing, band, target);
-        }
-        // Rows collected without a surface are the surface's rows.
+        let mut rendering = Rendering {
+            plan: &plan,
+            shapes: &shapes,
+            workspace: &mut workspace,
+            rasterizer: &mut rasterizer,
+        };
         let mut rows = Vec::new();
-        workspace.restart();
-        for band in area.bands() {
-            let target = Destination::Rows(&mut rows);
-            let executing = (&plan, &mut workspace, (&shapes, &mut rasterizer));
-            Executor::band(executing, band, target);
-        }
-        assert_eq!(rows, target.data());
+        rendering.render(&mut rows);
+        // A second render in the same storage writes the same rows.
+        let mut again = Vec::new();
+        rendering.render(&mut again);
+        assert_eq!(rows, again);
         rows
     }
 }
