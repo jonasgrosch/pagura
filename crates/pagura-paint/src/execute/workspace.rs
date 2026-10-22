@@ -65,19 +65,22 @@ impl Scratch {
             + self.storage.capacity() * size_of::<pagura_raster::Shape>()
     }
 
-    /// The workspace and rasterizer for `plan`.
+    /// The workspace and rasterizer for `plan`, allocated within the
+    /// bytes preparation reserved for them ([`Plan::scratch`]).
     pub(crate) fn fit(&mut self, plan: &Plan) -> Result<(&mut Workspace, &mut BandRasterizer)> {
-        let workspace = Workspace::new(plan, plan.sizes, self.workspace.take())?;
+        let mut bytes = Meter::new(plan.scratch, "render memory budget exceeded");
         let rasterizer = match self.rasterizer.take() {
-            Some(rasterizer) if rasterizer.area() == plan.area => rasterizer,
+            Some(rasterizer) if rasterizer.area() == plan.area => {
+                BandRasterizer::charge(plan.area, &mut bytes)?;
+                rasterizer
+            }
             other => {
                 // Its storage goes before the new one is made.
                 drop(other);
-                // Charged by preparation.
-                let mut free = Meter::new(usize::MAX, "band rasterizer");
-                BandRasterizer::new(plan.area, &mut free)?
+                BandRasterizer::new(plan.area, &mut bytes)?
             }
         };
+        let workspace = Workspace::new(plan, plan.sizes, self.workspace.take(), &mut bytes)?;
         let workspace = self.workspace.insert(workspace);
         let rasterizer = self.rasterizer.insert(rasterizer);
         Ok((workspace, rasterizer))
@@ -105,9 +108,15 @@ impl PageBuffer {
         }
     }
 
-    /// A buffer of `pixels` in `format`: `previous` when it was sized for
-    /// them.
-    fn new(format: Format, pixels: usize, layout: Layout, previous: Option<Self>) -> Result<Self> {
+    /// A buffer of `pixels` in `format`, charged to `bytes`: `previous`
+    /// when it was sized for them.
+    fn new(
+        (format, layout): (Format, Layout),
+        pixels: usize,
+        previous: Option<Self>,
+        bytes: &mut Meter,
+    ) -> Result<Self> {
+        bytes.charge_product(pixels, Self::pixel_bytes(format, layout))?;
         if let Some(mut page) = previous {
             let reused = match (&mut page, format) {
                 (Self::F64(values), Format::F64) => {
@@ -122,9 +131,9 @@ impl PageBuffer {
             }
         }
         Ok(match format {
-            Format::F64 => Self::F64(reserve(pixels.saturating_mul(layout.stride()))?),
-            Format::N16 => Self::N16(reserve(pixels)?),
-            Format::F32 => Self::F32(reserve(pixels)?),
+            Format::F64 => Self::F64(allocate(pixels.saturating_mul(layout.stride()))?),
+            Format::N16 => Self::N16(allocate(pixels)?),
+            Format::F32 => Self::F32(allocate(pixels)?),
         })
     }
 
@@ -198,8 +207,8 @@ pub(crate) struct Extents {
 }
 
 impl Extents {
-    fn new(rows: usize) -> Result<Self> {
-        let mut values = reserve(rows)?;
+    fn new(rows: usize, bytes: &mut Meter) -> Result<Self> {
+        let mut values = reserve(rows, bytes)?;
         values.resize(rows, EMPTY);
         Ok(Self { rows: values })
     }
@@ -367,7 +376,15 @@ fn recycle<T>(values: &mut Vec<T>, count: usize) -> bool {
     values.capacity() == count
 }
 
-fn reserve<T>(count: usize) -> Result<Vec<T>> {
+/// Room for `count` values, charged to `bytes`.
+fn reserve<T>(count: usize, bytes: &mut Meter) -> Result<Vec<T>> {
+    let mut values = Vec::new();
+    bytes.reserve(&mut values, count)?;
+    Ok(values)
+}
+
+/// Room for `count` values, charged by the caller.
+fn allocate<T>(count: usize) -> Result<Vec<T>> {
     let mut values = Vec::new();
     values
         .try_reserve_exact(count)
@@ -376,10 +393,15 @@ fn reserve<T>(count: usize) -> Result<Vec<T>> {
 }
 
 impl Workspace {
-    /// Allocates the storage `plan` executes in, taking the page buffer and
-    /// coverage of `previous` where they were sized alike; preparation has
-    /// charged [`Sizes::bytes`] before.
-    pub(crate) fn new(plan: &Plan, sizes: Sizes, previous: Option<Self>) -> Result<Self> {
+    /// Allocates the storage `plan` executes in, charging it to `bytes`
+    /// (what preparation reserved, [`Sizes::bytes`]) and taking the page
+    /// buffer and coverage of `previous` where they were sized alike.
+    pub(crate) fn new(
+        plan: &Plan,
+        sizes: Sizes,
+        previous: Option<Self>,
+        bytes: &mut Meter,
+    ) -> Result<Self> {
         let pixels = sizes.width.saturating_mul(sizes.rows);
         let (page, coverage) = kept(previous, (sizes.rows, pixels));
         let (format, layout) = plan.groups.first().map_or(
@@ -392,76 +414,63 @@ impl Workspace {
             ),
             |page| (page.format, page.layout),
         );
-        let mut wide = reserve(plan.stack.wide)?;
-        wide.resize(plan.stack.wide, 0.0);
-        let mut levels = reserve(plan.stack.levels)?;
+        let zeroed = |count: usize, bytes: &mut Meter| -> Result<Vec<f64>> {
+            let mut values = reserve(count, bytes)?;
+            values.resize(count, 0.0);
+            Ok(values)
+        };
+        let wide = zeroed(plan.stack.wide, bytes)?;
+        let mut levels = reserve(plan.stack.levels, bytes)?;
         levels.resize(plan.stack.levels, [0.0; 4]);
-        let mut masks = Vec::new();
-        masks
-            .try_reserve_exact(plan.masks.len())
-            .map_err(|_| Error::limit("render buffer allocation failed"))?;
+        let mut masks = reserve(plan.masks.len(), bytes)?;
         for mask in &plan.masks {
-            let mut values = reserve(mask_values(mask.extent, sizes.rows))?;
-            values.resize(mask_values(mask.extent, sizes.rows), 0.0);
             masks.push(MaskCache {
-                values,
+                values: zeroed(mask_values(mask.extent, sizes.rows), bytes)?,
                 rect: DeviceRect::default(),
                 band: None,
             });
         }
-        let mut active = Vec::new();
-        active
-            .try_reserve_exact(plan.groups.len())
-            .map_err(|_| Error::limit("render buffer allocation failed"))?;
+        let mut active = reserve(plan.groups.len(), bytes)?;
         for group in &plan.groups {
-            active.push(Active::with_capacity(group.items.len())?);
+            active.push(Active::new(reserve(group.items.len(), bytes)?));
         }
-        let scratch = |count: usize| -> Result<Vec<f64>> {
-            let mut values = reserve(count)?;
-            values.resize(count, 0.0);
-            Ok(values)
-        };
         let colors = SpanColors {
-            colors: reserve(sizes.width.saturating_mul(sizes.channels))?,
-            alpha: reserve(sizes.width)?,
+            colors: reserve(sizes.width.saturating_mul(sizes.channels), bytes)?,
+            alpha: reserve(sizes.width, bytes)?,
             ..SpanColors::default()
         };
         let mut selection = Vec::new();
         if sizes.selections {
-            selection = reserve(pixels)?;
+            selection = reserve(pixels, bytes)?;
             selection.resize(pixels, 0);
         }
-        let run_shapes = reserve(run_shapes(plan))?;
+        let run_shapes = reserve(run_shapes(plan), bytes)?;
+        // Only a shading pattern's outline needs a second coverage.
         let outlines = plan.items.iter().any(|item| {
             matches!(&item.kind, ItemKind::Mark(mark) if matches!(mark.boundary, Boundary::Shape(_)))
         });
+        let mut dense = reserve(sizes.width, bytes)?;
+        dense.resize(sizes.width, 0);
+        let outline = if outlines {
+            warm_coverage(sizes, None, bytes)?
+        } else {
+            BandCoverage::default()
+        };
         Ok(Self {
-            page: PageBuffer::new(format, pixels, layout, page)?,
-            extents: Extents::new(sizes.rows)?,
+            page: PageBuffer::new((format, layout), pixels, page, bytes)?,
+            extents: Extents::new(sizes.rows, bytes)?,
             wide,
             levels,
             masks,
-            coverage: coverage.unwrap_or_else(|| warm_coverage(sizes)),
-            // Only a shading pattern's outline needs a second coverage.
-            boundary: (
-                if outlines {
-                    warm_coverage(sizes)
-                } else {
-                    BandCoverage::default()
-                },
-                {
-                    let mut dense = reserve(sizes.width)?;
-                    dense.resize(sizes.width, 0);
-                    dense
-                },
-            ),
+            coverage: warm_coverage(sizes, coverage, bytes)?,
+            boundary: (outline, dense),
             colors,
-            alpha: scratch(sizes.width)?,
-            shape: scratch(sizes.width)?,
-            texel_shape: reserve(sizes.width)?,
-            mask: scratch(sizes.width)?,
-            source: scratch(sizes.width.saturating_mul(sizes.channels))?,
-            initial: scratch(sizes.width.saturating_mul(sizes.stride))?,
+            alpha: zeroed(sizes.width, bytes)?,
+            shape: zeroed(sizes.width, bytes)?,
+            texel_shape: reserve(sizes.width, bytes)?,
+            mask: zeroed(sizes.width, bytes)?,
+            source: zeroed(sizes.width.saturating_mul(sizes.channels), bytes)?,
+            initial: zeroed(sizes.width.saturating_mul(sizes.stride), bytes)?,
             selection,
             run_shapes,
             active,
@@ -525,17 +534,32 @@ fn kept(
 }
 
 /// A coverage buffer grown once to the largest band of one mark (a span
-/// per pixel), so that rasterization does not allocate.
-fn warm_coverage(sizes: Sizes) -> BandCoverage {
-    let cells = sizes.width.saturating_mul(sizes.rows);
-    let capacity = pagura_raster::Capacity {
-        rows: sizes.rows,
+/// per pixel), so that rasterization does not allocate, charged to
+/// `bytes`: `kept` when there is one.
+fn warm_coverage(
+    sizes: Sizes,
+    kept: Option<BandCoverage>,
+    bytes: &mut Meter,
+) -> Result<BandCoverage> {
+    let capacity = coverage_capacity(sizes.width, sizes.rows);
+    match kept {
+        Some(coverage) => {
+            bytes.charge(capacity.bytes())?;
+            Ok(coverage)
+        }
+        None => BandCoverage::with_capacity(capacity, bytes),
+    }
+}
+
+/// The capacity of coverage for every pixel of `rows` rows `width` wide
+/// a partial cell and a span of its own.
+pub(crate) fn coverage_capacity(width: usize, rows: usize) -> pagura_raster::Capacity {
+    let cells = width.saturating_mul(rows);
+    pagura_raster::Capacity {
+        rows,
         spans: cells,
         cells,
-    };
-    // Charged by preparation already.
-    let mut free = Meter::new(usize::MAX, "coverage bytes");
-    BandCoverage::with_capacity(capacity, &mut free).unwrap_or_default()
+    }
 }
 
 #[cfg(test)]
@@ -548,14 +572,15 @@ mod tests {
             process: pagura_color::Process::Rgb,
             spots: 0,
         };
-        let mut page = PageBuffer::new(Format::N16, 2, layout, None).unwrap();
-        let mut extents = Extents::new(1).unwrap();
+        let mut bytes = Meter::new(usize::MAX, "test");
+        let mut page = PageBuffer::new((Format::N16, layout), 2, None, &mut bytes).unwrap();
+        let mut extents = Extents::new(1, &mut bytes).unwrap();
         page.reset(&mut extents, (2, 2), [10, 20, 30, 40], layout);
         let PageBuffer::N16(words) = &page else {
             unreachable!()
         };
         assert_eq!(words[1], [2570, 5140, 7710, 10280]);
-        let mut wide = PageBuffer::new(Format::F64, 2, layout, None).unwrap();
+        let mut wide = PageBuffer::new((Format::F64, layout), 2, None, &mut bytes).unwrap();
         wide.reset(&mut extents, (2, 2), [10, 20, 30, 40], layout);
         let PageBuffer::F64(values) = &wide else {
             unreachable!()

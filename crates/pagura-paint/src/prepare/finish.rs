@@ -1,14 +1,15 @@
 //! The end of preparation: soft-mask extents, activation orders, stack
-//! sizes, output, the reservations of buffers and output, the coverage
-//! producer, the workspace's sizes, and the check of transfer selections.
+//! sizes, output, the reservations of buffers and output, the prepared
+//! shapes, the workspace's sizes, and the check of transfer selections.
 //! When the walk failed, the transfer check of the marks before the failure
 //! decides which error comes first in source order.
 
-use super::planner::{Parts, Planner, needs};
-use super::{Backend, Budget, Producer, index};
-use crate::execute::{Sizes, validate};
-use crate::plan::{Item, Layout, MAX_BAND_HEIGHT, Output, Plan, SpotPlan, area, intersect};
-use pagura_color::{ColorSpace, Colorant, Conversion, Process, Target};
+use super::planner::{Parts, Planner};
+use super::stacks::needs;
+use super::{Budget, Shapes, index};
+use crate::execute::{Sizes, coverage_capacity, validate};
+use crate::plan::{Curve, Item, Layout, MAX_BAND_HEIGHT, Output, Plan, SpotPlan, area, intersect};
+use pagura_color::{ColorSpace, Colorant, Conversion, Converter, Process, Target};
 use pagura_core::{Error, Meter, Result};
 use pagura_raster::{BandCoverage, BandRasterizer, Rgba8};
 use std::sync::Arc;
@@ -19,10 +20,7 @@ use std::sync::Arc;
 ///
 /// The first error in source order, then the reservations of buffers and
 /// output.
-pub(crate) fn finish<B: Backend>(
-    mut planner: Planner<'_, B>,
-    budget: &mut Budget,
-) -> Result<Finished> {
+pub(crate) fn finish(mut planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
     if let Err(error) = planner.page(budget) {
         return Err(first(planner, error));
     }
@@ -31,34 +29,41 @@ pub(crate) fn finish<B: Backend>(
 
 /// Between the walk's error and a transfer boundary met by an earlier mark,
 /// the one earlier in source order.
-fn first<B: Backend>(planner: Planner<'_, B>, error: Error) -> Error {
+fn first(planner: Planner<'_>, error: Error) -> Error {
     if !planner.storage.transfers {
         return error;
     }
     let serial = planner.failed.map_or(planner.serial, |(serial, _)| serial);
     let area = planner.area;
-    let Planner { backend, parts, .. } = planner;
-    let producer = backend.finish(area);
+    let limit = planner.limits.render_bytes;
+    let Planner { shapes, parts, .. } = planner;
+    let shapes = shapes.finish();
     let plan = partial(area, parts);
-    match check_transfers(&plan, producer.as_ref()) {
+    // Preparation fails either way, so the check's storage is bounded by
+    // the budget rather than reserved.
+    let mut bytes = Meter::new(limit, "render memory budget exceeded");
+    match check_transfers(&plan, &shapes, &mut bytes) {
         Ok(Some(found)) if found < serial => transfer_error(&plan, found),
         _ => error,
     }
 }
 
 /// The serial of the first recording mark whose transfer selection is not
-/// whole, rasterized in scratch storage of its own.
-fn check_transfers(plan: &Plan, producer: &dyn Producer) -> Result<Option<u32>> {
+/// whole, rasterized in storage of its own charged to `bytes`: a band
+/// rasterizer, one mark's coverage and a band of selections, no more than a
+/// render's scratch holds of them.
+fn check_transfers(plan: &Plan, shapes: &Shapes, bytes: &mut Meter) -> Result<Option<u32>> {
     let area = plan.area;
     let rows = index(area.band_height.min(area.region.height()));
-    // Charged with the render's rasterizer and workspace.
-    let mut free = Meter::new(usize::MAX, "transfer check scratch");
-    let mut rasterizer = BandRasterizer::new(area, &mut free)?;
-    let mut coverage = BandCoverage::default();
-    let mut selection = vec![0; index(area.region.width()).saturating_mul(rows)];
+    let width = index(area.region.width());
+    let mut rasterizer = BandRasterizer::new(area, bytes)?;
+    let mut coverage = BandCoverage::with_capacity(coverage_capacity(width, rows), bytes)?;
+    let mut selection = Vec::new();
+    bytes.reserve(&mut selection, width.saturating_mul(rows))?;
+    selection.resize(width.saturating_mul(rows), 0);
     Ok(validate(
         plan,
-        (producer, &mut rasterizer),
+        (shapes, &mut rasterizer),
         &mut coverage,
         &mut selection,
     ))
@@ -104,17 +109,18 @@ fn partial(area: pagura_raster::Area, parts: Parts) -> Plan {
         },
         stack: crate::execute::Tops::default(),
         sizes: Sizes::default(),
+        scratch: 0,
     }
 }
 
 /// A completed preparation.
 pub(crate) struct Finished {
     pub(crate) plan: Plan,
-    pub(crate) producer: Box<dyn Producer>,
+    pub(crate) shapes: Shapes,
     pub(crate) repairs: Vec<pagura_core::Diagnostic>,
 }
 
-fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<Finished> {
+fn complete(planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
     let area = planner.area;
     // Buffers are charged for the tallest band any band height gives, so
     // that charges never depend on it, and hold the tallest band of this
@@ -125,7 +131,7 @@ fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<
     let spots = spot_plans(&planner.definitions);
     let background = premultiplied(planner.request.background)?;
     let Planner {
-        mut backend,
+        shapes,
         mut parts,
         users,
         repairs,
@@ -144,7 +150,7 @@ fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<
     let mut output_spots = Vec::new();
     for (space, inputs) in spots {
         let target = Target::new(Process::Cmyk);
-        let convert = backend.converter(&space, &target, &Conversion::default())?;
+        let convert = Converter::new(&space, &target, &Conversion::default())?;
         output_spots.push(SpotPlan {
             convert,
             components: space.components(),
@@ -173,17 +179,21 @@ fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<
         },
         stack,
         sizes: Sizes::default(),
+        scratch: 0,
     };
     shrink(&mut plan);
     reserve_output(&plan, budget)?;
     let sizes = sizes(&plan, rows, transfers);
-    budget.bytes.charge(sizes.bytes(&plan, charged))?;
+    let workspace = sizes.bytes(&plan, charged);
+    budget.bytes.charge(workspace)?;
+    let before = budget.bytes.used();
     BandRasterizer::charge(area, &mut budget.bytes)?;
+    plan.scratch = workspace.saturating_add(budget.bytes.used() - before);
     plan.sizes = Sizes {
         rows: band_rows,
         ..sizes
     };
-    let producer = backend.finish(area);
+    let shapes = shapes.finish();
     if transfers {
         let checked: usize = plan
             .items
@@ -192,13 +202,16 @@ fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<
             .map(|item| item.work)
             .fold(0, usize::saturating_add);
         budget.work.charge(checked)?;
-        if let Some(serial) = check_transfers(&plan, producer.as_ref())? {
+        // The check runs before any render, in storage its reservation
+        // covers.
+        let mut bytes = Meter::new(plan.scratch, "render memory budget exceeded");
+        if let Some(serial) = check_transfers(&plan, &shapes, &mut bytes)? {
             return Err(transfer_error(&plan, serial));
         }
     }
     Ok(Finished {
         plan,
-        producer,
+        shapes,
         repairs,
     })
 }
@@ -246,7 +259,7 @@ fn reserve_output(plan: &Plan, budget: &mut Budget) -> Result<()> {
             functions
                 .iter()
                 .flatten()
-                .map(|f| f.cost())
+                .map(Curve::cost)
                 .fold(0, usize::saturating_add)
         })
         .max()
@@ -260,57 +273,24 @@ fn reserve_output(plan: &Plan, budget: &mut Budget) -> Result<()> {
 /// order.
 fn order(parts: &mut Parts) {
     let items = &parts.items;
-    for group in &mut parts.groups {
-        let firsts: Vec<u32> = group
-            .items
-            .iter()
-            .map(|&id| {
-                items
-                    .get(index(id))
-                    .map_or(u32::MAX, |item: &Item| item.bands[0])
-            })
-            .collect();
-        group.order = by_band(&firsts);
-    }
-}
-
-/// Positions `0..firsts.len()` ordered by their first band, stably: by
-/// counting when the bands span a range comparable to the count, as a
-/// region's bands do, by sorting otherwise.
-fn by_band(firsts: &[u32]) -> Vec<u32> {
-    let position = |i: usize| u32::try_from(i).unwrap_or(u32::MAX);
-    let (Some(&lo), Some(&hi)) = (firsts.iter().min(), firsts.iter().max()) else {
-        return Vec::new();
+    let first = |id: u32| {
+        items
+            .get(index(id))
+            .map_or(u32::MAX, |item: &Item| item.bands[0])
     };
-    let span = index(hi - lo).saturating_add(1);
-    if span > firsts.len().saturating_mul(4).saturating_add(64) {
-        let mut order: Vec<u32> = (0..firsts.len()).map(position).collect();
-        order.sort_by_key(|&i| firsts.get(index(i)).copied().unwrap_or(u32::MAX));
-        return order;
+    for group in &mut parts.groups {
+        let mut order: Vec<u32> = (0..group.items.len())
+            .map(|i| u32::try_from(i).unwrap_or(u32::MAX))
+            .collect();
+        // Stable: positions of one band stay in source order.
+        order.sort_by_key(|&position| {
+            group
+                .items
+                .get(index(position))
+                .map_or(u32::MAX, |&id| first(id))
+        });
+        group.order = order;
     }
-    // Where each band's positions start, then each position in its place.
-    let mut starts = vec![0_usize; span];
-    for &first in firsts {
-        if let Some(count) = starts.get_mut(index(first - lo)) {
-            *count += 1;
-        }
-    }
-    let mut total = 0;
-    for start in &mut starts {
-        let count = *start;
-        *start = total;
-        total += count;
-    }
-    let mut order = vec![0_u32; firsts.len()];
-    for (i, &first) in firsts.iter().enumerate() {
-        if let Some(start) = starts.get_mut(index(first - lo))
-            && let Some(slot) = order.get_mut(*start)
-        {
-            *slot = position(i);
-            *start += 1;
-        }
-    }
-    order
 }
 
 fn shrink(plan: &mut Plan) {
@@ -324,28 +304,6 @@ fn shrink(plan: &mut Plan) {
     plan.paints.shrink_to_fit();
     plan.conversions.shrink_to_fit();
     plan.output.transfers.shrink_to_fit();
-}
-
-/// Bytes the plan's own structures retain.
-#[cfg(test)]
-pub(crate) fn plan_bytes(plan: &Plan) -> usize {
-    let groups: usize = plan
-        .groups
-        .iter()
-        .map(|g| (g.items.capacity() + g.order.capacity()) * size_of::<u32>())
-        .sum();
-    let paints: usize = plan
-        .paints
-        .iter()
-        .map(|paint| size_of_val::<dyn crate::paint::PaintSpans>(&**paint))
-        .sum();
-    plan.items.capacity() * size_of::<Item>()
-        + plan.groups.capacity() * size_of::<crate::plan::GroupPlan>()
-        + groups
-        + plan.masks.capacity() * size_of::<crate::plan::MaskPlan>()
-        + plan.paints.capacity() * size_of::<Box<dyn crate::paint::PaintSpans>>()
-        + paints
-        + plan.conversions.capacity() * size_of::<crate::plan::Conversion>()
 }
 
 /// The background premultiplied once, as the output surface stores it.
@@ -402,23 +360,5 @@ fn same(a: &ColorSpace, b: &ColorSpace) -> bool {
         (ColorSpace::Separation(a), ColorSpace::Separation(b)) => Arc::ptr_eq(&a.tint, &b.tint),
         (ColorSpace::DeviceN(a), ColorSpace::DeviceN(b)) => Arc::ptr_eq(&a.tint, &b.tint),
         _ => false,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::by_band;
-
-    #[test]
-    fn positions_order_stably_by_first_band() {
-        let firsts = [3, 1, 3, 0, 1, u32::MAX, 2];
-        let mut expected: Vec<u32> = (0..7).collect();
-        expected.sort_by_key(|&i| firsts[i as usize]);
-        assert_eq!(by_band(&firsts), expected);
-        let dense: Vec<u32> = (0..500).map(|i| (i * 7919) % 13).collect();
-        let mut expected: Vec<u32> = (0..500).collect();
-        expected.sort_by_key(|&i| dense[i as usize]);
-        assert_eq!(by_band(&dense), expected);
-        assert_eq!(by_band(&[]), Vec::<u32>::new());
     }
 }

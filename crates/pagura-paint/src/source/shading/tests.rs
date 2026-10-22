@@ -176,7 +176,7 @@ fn compare(parsed: &Parsed, target: &Target, counts: &mut Counts) {
                         && parsed.bbox.is_some(),
                     index: oracle::Index::new(&parsed.old_mesh),
                 };
-                let boundary = source.bbox_use() == BBoxUse::Boundary;
+                let boundary = source.bbox_use == BBoxUse::Boundary;
                 let context = format!(
                     "{} {usage:?} aa {antialias} {transform:?} {target:?}",
                     parsed.name
