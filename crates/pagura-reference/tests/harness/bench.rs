@@ -180,7 +180,8 @@ fn measure(
         x1: width,
         y1: height,
     };
-    let mut request = Request::new(scene.page.device_transform(scale), region);
+    let device = pagura_paint::RenderRequest::page(&scene.page, scale).map_err(describe)?;
+    let mut request = Request::new(device.transform, region);
     request.overprint = if scene.print_intent {
         Overprint::Simulate
     } else {

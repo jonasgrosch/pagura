@@ -15,6 +15,7 @@ use pagura_core::{Dictionary, Error, Result, Value};
 use pagura_raster::{FillRule, PathBuilder, Transform};
 use std::sync::Arc;
 
+pub(crate) use show::Strings;
 pub(crate) use type3::Procedure;
 
 /// A text object (9.4.1): the text and line matrices and the glyph clip it

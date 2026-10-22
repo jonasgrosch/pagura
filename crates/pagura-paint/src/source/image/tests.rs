@@ -9,9 +9,9 @@
 //! bit for bit.
 
 use super::geometry::Geometry;
-use super::texels::{Convert, Opacity, OpacityTexels, SampleTexels};
+use super::texels::{Opacity, OpacityTexels, SampleTexels};
 use super::{Description, ImageSampler, MaskDescription, Orientation, Paint, Prepared};
-use crate::source::SpanColors;
+use crate::source::{Pixels, SpanColors};
 use pagura_color::{ColorSpace, Conversion, Converter, Indexed, Painted, Process, Target};
 use pagura_image::{Decoded, DecodedImage, ImageAlpha, ImageKind, MaskKind, Samples};
 use pagura_raster::Transform;
@@ -22,9 +22,17 @@ mod documents;
 mod oracle;
 mod timing;
 
+/// Allocates exactly the layout that preparation reserved.
+pub(super) fn scratch(sampler: &ImageSampler) -> super::ImageScratch {
+    let layout = sampler.scratch_layout();
+    let scratch = layout.make().unwrap();
+    assert_eq!(scratch.bytes(), layout.bytes());
+    scratch
+}
+
 /// A prepared conversion of `base` into a composite target of `channels`
 /// process channels (1 Gray, 3 RGB, 4 CMYK), and whether it is per channel.
-pub(super) fn converter(base: &ColorSpace, channels: usize) -> (Box<dyn Convert>, bool) {
+pub(super) fn converter(base: &ColorSpace, channels: usize) -> (Converter, bool) {
     let process = match channels {
         1 => Process::Gray,
         3 => Process::Rgb,
@@ -33,7 +41,7 @@ pub(super) fn converter(base: &ColorSpace, channels: usize) -> (Box<dyn Convert>
     let target = Target::new(process);
     let converter = Converter::new(base, &target, &Conversion::default()).unwrap();
     let rgb = matches!(base, ColorSpace::DeviceRgb) && process == Process::Rgb;
-    (Box::new(converter), rgb)
+    (converter, rgb)
 }
 
 /// The space an image's samples convert from: an Indexed space's base.
@@ -226,44 +234,121 @@ fn close(actual: f64, expected: f64) -> bool {
         || (actual - expected).abs() <= 1e-13 * expected.abs().max(1.0)
 }
 
-/// Compares the new sampler with the oracle on every pixel of the window,
-/// as whole rows and as single pixels, within [`close`]: colours
-/// premultiplied, as they composite, since a footprint that trimming leaves
-/// empty has alpha 0 where the oracle's sliver has alpha near 1e-15. An
-/// empty alpha span means every alpha is 1.
+/// The part of device pixel (`x`, `y`) inside the unit square placed by
+/// `unit_to_device`: the coverage its values composite with.
+fn coverage(unit_to_device: Transform, (x, y): (u32, u32)) -> f64 {
+    let inverse = unit_to_device.inverse().unwrap();
+    let (x, y) = (f64::from(x), f64::from(y));
+    let mut polygon: Vec<pagura_raster::Point> =
+        [(x, y), (x + 1.0, y), (x + 1.0, y + 1.0), (x, y + 1.0)]
+            .iter()
+            .map(|&(x, y)| pagura_raster::Point::new(x, y) * inverse)
+            .collect();
+    for (vertical, bound, sign) in [
+        (true, 0.0, 1.0),
+        (true, 1.0, -1.0),
+        (false, 0.0, 1.0),
+        (false, 1.0, -1.0),
+    ] {
+        let side = |p: pagura_raster::Point| sign * (if vertical { p.x } else { p.y } - bound);
+        let mut next = Vec::new();
+        for (i, &a) in polygon.iter().enumerate() {
+            let b = polygon[(i + 1) % polygon.len()];
+            if side(a) >= 0.0 {
+                next.push(a);
+            }
+            if (side(a) >= 0.0) != (side(b) >= 0.0) {
+                let t = side(a) / (side(a) - side(b));
+                next.push(pagura_raster::Point::new(
+                    a.x + t * (b.x - a.x),
+                    a.y + t * (b.y - a.y),
+                ));
+            }
+        }
+        polygon = next;
+        if polygon.is_empty() {
+            return 0.0;
+        }
+    }
+    let twice: f64 = (0..polygon.len())
+        .map(|i| {
+            let (a, b) = (polygon[i], polygon[(i + 1) % polygon.len()]);
+            a.x * b.y - a.y * b.x
+        })
+        .sum();
+    (twice.abs() * 0.5 * unit_to_device.determinant().abs()).min(1.0)
+}
+
+/// Compares the new sampler with the oracle on every pixel of the window
+/// with a coverage byte, as whole rows and as single pixels, within
+/// [`close`]: colours premultiplied and times the pixel's coverage, as
+/// they composite, since a contour average of the image's sliver of a
+/// pixel carries its rounding divided by the sliver's area. An empty alpha
+/// span means every alpha is 1.
 fn agree(case: &Case, target: usize) {
     for unit_to_device in placements(case.image.width, case.image.height) {
         let sampler = sampler(case, unit_to_device, target);
+        let mut storage = scratch(&sampler);
+        let reserved = storage.bytes();
+        let capacities = |storage: &super::ImageScratch| {
+            [
+                storage.plan.bytes(),
+                storage
+                    .mask
+                    .as_ref()
+                    .map_or(0, super::sampling::Scratch::bytes),
+                storage.memo.as_ref().map_or(0, |memo| memo.bytes()),
+                storage.summed.capacity() * 8,
+                storage.fused.capacity() * 8,
+            ]
+        };
+        let before = capacities(&storage);
         let mut oracle = oracle::Oracle::new(case, unit_to_device, target);
         let (x0, y0, x1, y1) = window(unit_to_device);
         let len = usize::try_from(x1 - x0).unwrap();
         let (mut row, mut single) = (SpanColors::default(), SpanColors::default());
         let (mut row_shape, mut single_shape) = (Vec::new(), Vec::new());
         for y in y0..y1 {
-            sampler.span_with_shape(x0, y, len, &mut row, &mut row_shape);
+            sampler.span_with_shape(
+                Pixels::new(x0, y, len),
+                &mut storage,
+                &mut row,
+                &mut row_shape,
+            );
+            assert_eq!(
+                storage.bytes(),
+                reserved,
+                "sampling keeps its reserved capacities: {unit_to_device:?} target {target}, {:?}; before {before:?}, after {:?}",
+                storage.layout(),
+                capacities(&storage)
+            );
             let channels = row.channels;
             assert_eq!(row.colors.len(), len * channels);
             assert!(row.alpha.is_empty() || row.alpha.len() == len);
             for (i, x) in (x0..x1).enumerate() {
+                let weight = coverage(unit_to_device, (x, y));
+                if weight * 255.0 < 0.5 {
+                    continue;
+                }
                 let expected = oracle.pixel(x, y);
                 let colors = &row.colors[i * channels..(i + 1) * channels];
                 let alpha = row.alpha.get(i).copied().unwrap_or(1.0);
                 let context = || format!("{unit_to_device:?} pixel ({x}, {y})");
                 for (&actual, &color) in colors.iter().zip(&expected.color[..channels]) {
                     assert!(
-                        close(actual * alpha, color * expected.alpha),
+                        close(actual * alpha * weight, color * expected.alpha * weight),
                         "colour {actual} vs {color} {}",
                         context()
                     );
                 }
                 assert!(
-                    close(alpha, expected.alpha),
+                    close(alpha * weight, expected.alpha * weight),
                     "alpha {alpha} vs {} {}",
                     expected.alpha,
                     context()
                 );
                 assert!(
-                    close(row_shape[i], expected.shape),
+                    close(row_shape[i] * weight, expected.shape * weight),
                     "shape {} vs {} {}",
                     row_shape[i],
                     expected.shape,
@@ -272,7 +357,17 @@ fn agree(case: &Case, target: usize) {
                 if sampler.shape_is_alpha() {
                     assert_eq!(row_shape[i].to_bits(), alpha.to_bits(), "{}", context());
                 }
-                sampler.span_with_shape(x, y, 1, &mut single, &mut single_shape);
+                sampler.span_with_shape(
+                    Pixels::new(x, y, 1),
+                    &mut storage,
+                    &mut single,
+                    &mut single_shape,
+                );
+                assert_eq!(
+                    storage.bytes(),
+                    reserved,
+                    "partitioned sampling keeps its capacities"
+                );
                 assert_eq!(single.colors, colors, "partition {}", context());
                 assert_eq!(
                     single.alpha.first().copied().unwrap_or(1.0).to_bits(),
@@ -381,18 +476,19 @@ fn stencils_paint_alpha_and_their_colour() {
 /// spans as its uniform colour, opaque, when it has one; returns that it
 /// has one.
 fn spans_are_uniform(sampler: &ImageSampler, unit_to_device: Transform) -> bool {
-    let Some((color, painted)) = sampler.uniform() else {
+    let Some((color, painted)) = sampler.constant() else {
         return false;
     };
     let (x0, y0, x1, y1) = window(unit_to_device);
     let len = usize::try_from(x1 - x0).unwrap();
     let mut span = SpanColors::default();
+    let mut storage = scratch(sampler);
     for y in y0..y1 {
-        sampler.span(x0, y, len, &mut span);
+        sampler.span(Pixels::new(x0, y, len), &mut storage, &mut span);
         assert_eq!(span.painted, painted);
         assert!(span.alpha.iter().all(|&alpha| alpha == 1.0));
         for pixel in span.colors.chunks_exact(span.channels) {
-            assert_eq!(bits(pixel), bits(color), "row {y}");
+            assert_eq!(bits(pixel), bits(&color), "row {y}");
         }
     }
     true
@@ -408,6 +504,16 @@ fn one_texel_images_sampled_nearest_are_uniform() {
         .count();
     assert!((1..placements.len()).contains(&uniform));
     let magnified = placements[0];
+    let mut repaired = sampler(&rgb, magnified, 3);
+    Arc::get_mut(&mut repaired.prepared.as_mut().unwrap().image)
+        .unwrap()
+        .diagnostics
+        .push(pagura_core::Diagnostic::information(
+            "image.observation",
+            "a retained decode observation",
+        ));
+    assert!(repaired.constant().is_none());
+    assert_eq!(repaired.repairs().len(), 1);
     for inverted in [false, true] {
         let mut stencil = image((1, 1), 1, 1, Samples::Bytes(vec![0]));
         stencil.kind = ImageKind::Stencil { inverted };
@@ -421,14 +527,14 @@ fn one_texel_images_sampled_nearest_are_uniform() {
     // Interpolated texels are weighted, and wider images vary.
     let mut interpolated = rgb.clone();
     interpolated.image.interpolate = true;
-    assert!(sampler(&interpolated, magnified, 3).uniform().is_none());
+    assert!(sampler(&interpolated, magnified, 3).constant().is_none());
     let wide = case(image(
         (2, 1),
         3,
         8,
         Samples::Bytes(vec![40, 200, 77, 40, 200, 77]),
     ));
-    assert!(sampler(&wide, magnified, 3).uniform().is_none());
+    assert!(sampler(&wide, magnified, 3).constant().is_none());
 }
 
 #[test]
@@ -461,9 +567,25 @@ fn soft_masks_with_and_without_matte_and_stencil_masks() {
     }
     let mut stencil = image((6, 4), 1, 1, bytes(24, 1, 23));
     stencil.kind = ImageKind::Stencil { inverted: true };
-    let mut masked = case(rgb);
+    let mut masked = case(rgb.clone());
     masked.mask = Some((stencil, [1.0, 0.0], MaskUse::Stencil));
     agree(&masked, 3);
+    // A mask on the image's grid with its own `Interpolate`, and Matte.
+    for interpolate in [false, true] {
+        let mut image = rgb.clone();
+        image.interpolate = interpolate;
+        let mut mask = image_mask((9, 7));
+        mask.interpolate = !interpolate;
+        let mut soft = case(image);
+        soft.mask = Some((mask, [0.0, 1.0], MaskUse::Soft(Some(vec![0.0; 3]))));
+        agree(&soft, 3);
+    }
+}
+
+/// An eight-bit soft mask of `size`.
+fn image_mask(size: (u32, u32)) -> DecodedImage {
+    let count = usize::try_from(size.0 * size.1).unwrap();
+    image(size, 1, 8, bytes(count, 8, 37))
 }
 
 #[test]
@@ -521,7 +643,7 @@ fn degenerate_placements_paint_nothing_and_overflow_is_refused() {
     );
     let mut empty = SpanColors::default();
     let sampler = ImageSampler::new(None, 3);
-    sampler.span(0, 0, 4, &mut empty);
+    sampler.span(Pixels::new(0, 0, 4), &mut scratch(&sampler), &mut empty);
     assert_eq!((empty.colors.len(), empty.alpha), (12, vec![0.0; 4]));
     let _ = gray;
 }
@@ -530,6 +652,39 @@ fn degenerate_placements_paint_nothing_and_overflow_is_refused() {
 fn prepared_samplers_are_shared_between_threads() {
     fn shared<T: Send + Sync>() {}
     shared::<ImageSampler>();
+}
+
+#[test]
+fn reused_paint_storage_drops_source_values_and_charges_the_same_layout() {
+    use crate::source::Source;
+    use pagura_core::Meter;
+
+    let make = |seed| {
+        let mut image = case(image((23, 17), 4, 8, bytes(23 * 17 * 4, 8, seed)));
+        image.space = Some(ColorSpace::DeviceCmyk);
+        Source::Image(sampler(&image, placements(23, 17)[0], 3))
+    };
+    let first = make(11);
+    let second = make(17);
+    let mut cold = Meter::new(usize::MAX, "test storage");
+    let mut storage = first.make_scratch(None, &mut cold).unwrap();
+    assert!(storage.fits(&second));
+    let pixels = Pixels::new(0, 0, 20);
+    let mut out = SpanColors::default();
+    first.fill(pixels, &mut storage, &mut out, &mut Vec::new());
+    let previous = bits(&out.colors);
+    let mut reused = Meter::new(usize::MAX, "test storage");
+    let mut storage = second.make_scratch(Some(storage), &mut reused).unwrap();
+    assert_eq!(cold.used(), reused.used());
+    assert_eq!(storage.bytes(), second.scratch_bytes());
+    second.fill(pixels, &mut storage, &mut out, &mut Vec::new());
+    assert_ne!(previous, bits(&out.colors));
+    let mut fresh = second.make_scratch(None, &mut cold).unwrap();
+    let mut expected = SpanColors::default();
+    second.fill(pixels, &mut fresh, &mut expected, &mut Vec::new());
+    assert_eq!(bits(&out.colors), bits(&expected.colors));
+    let mut tight = Meter::new(second.scratch_bytes() - 1, "test storage");
+    assert!(second.make_scratch(Some(storage), &mut tight).is_err());
 }
 
 #[test]
@@ -584,6 +739,7 @@ fn partitions(x0: u32, len: usize, y: u32) -> Vec<(u32, usize)> {
 /// row, within [`close`] of summing each pixel's per-sample texels over its
 /// footprint, the image's and the mask's.
 #[test]
+#[expect(clippy::too_many_lines, reason = "one case table and its checks")]
 fn rows_and_tables_sum_as_samples_do() {
     let rgb = image((23, 17), 3, 8, bytes(23 * 17 * 3, 8, 71));
     let gray = image((23, 17), 1, 8, bytes(23 * 17, 8, 73));
@@ -626,7 +782,12 @@ fn rows_and_tables_sum_as_samples_do() {
         for target in [1, 3, 4] {
             for &unit_to_device in &placements {
                 let sampler = sampler(case, unit_to_device, target);
+                let mut storage = scratch(&sampler);
+                let reserved = storage.bytes();
                 let prepared = sampler.prepared.as_deref().unwrap();
+                let super::Plan::Texels(plan) = &prepared.plan else {
+                    panic!("masked image samples converted texels");
+                };
                 let Paint::Colors(paint) = &prepared.paint else {
                     panic!("colour image");
                 };
@@ -643,30 +804,78 @@ fn rows_and_tables_sum_as_samples_do() {
                     .matte
                     .as_ref()
                     .map(|_| (&mask.image.image, &mask.opacity));
-                let texels = SampleTexels::new(&prepared.image.image, colors, matte, None);
+                let texels = SampleTexels::new(&prepared.image.image, colors, matte);
+                // A mask on the image's grid averages ahead of the texels.
+                let mut fused_values = Vec::new();
+                let texels = super::texels::Fused {
+                    texels: &texels,
+                    mask: OpacityTexels {
+                        mask: &mask.image.image,
+                        opacity: &mask.opacity,
+                    },
+                    values: std::cell::RefCell::new(&mut fused_values),
+                };
+                assert!(mask.fused);
+                assert!(storage.mask.is_none());
+                let mut mask_storage = mask.plan.layout(1).make().unwrap();
+                let lanes = lanes + 1;
                 for y in y0..y1 {
                     let mut whole = (vec![0.0; len * lanes], vec![0.0; len]);
-                    prepared.texels((x0, y, len), lanes, &mut whole.0);
-                    let masks = (mask.separable.as_ref(), &mask.geometry);
-                    super::sample(masks, (x0, y, len), &opacity, &mut whole.1);
+                    prepared.texels(
+                        plan,
+                        Pixels::new(x0, y, len),
+                        &mut storage,
+                        lanes - 1,
+                        &mut whole.0,
+                    );
+                    assert_eq!(storage.bytes(), reserved);
+                    mask.plan.fill(
+                        &mask.geometry,
+                        Pixels::new(x0, y, len),
+                        &mut mask_storage,
+                        &opacity,
+                        &mut whole.1,
+                    );
                     for (x, count) in partitions(x0, len, y) {
-                        let span = (x, y, count);
+                        let span = Pixels::new(x, y, count);
                         let start = usize::try_from(x - x0).unwrap();
                         let context = format!("{unit_to_device:?} target {target} span {span:?}");
                         let mut rows = vec![0.0; count * lanes];
-                        prepared.texels(span, lanes, &mut rows);
+                        prepared.texels(plan, span, &mut storage, lanes - 1, &mut rows);
                         let part = &whole.0[start * lanes..(start + count) * lanes];
                         assert_eq!(bits(&rows), bits(part), "{context}");
                         let mut samples = vec![0.0; count * lanes];
-                        prepared.geometry.fill(span, &texels, &mut samples);
+                        // A plan of its own: kept rows belong to one
+                        // source of texels.
+                        let own = super::Sampling::new(&prepared.geometry, (x0, x1)).unwrap();
+                        own.fill(
+                            &prepared.geometry,
+                            span,
+                            &mut own.layout(lanes).make().unwrap(),
+                            &texels,
+                            &mut samples,
+                        );
                         for (&row, &sample) in rows.iter().zip(&samples) {
                             assert!(close(row, sample), "{row} vs {sample} {context}");
                         }
                         let (mut rows, mut samples) = (vec![0.0; count], vec![0.0; count]);
-                        super::sample(masks, span, &opacity, &mut rows);
+                        mask.plan.fill(
+                            &mask.geometry,
+                            span,
+                            &mut mask_storage,
+                            &opacity,
+                            &mut rows,
+                        );
                         let part = &whole.1[start..start + count];
                         assert_eq!(bits(&rows), bits(part), "mask {context}");
-                        mask.geometry.fill(span, &opacity, &mut samples);
+                        let own = super::Sampling::new(&mask.geometry, (x0, x1)).unwrap();
+                        own.fill(
+                            &mask.geometry,
+                            span,
+                            &mut own.layout(1).make().unwrap(),
+                            &opacity,
+                            &mut samples,
+                        );
                         for (&row, &sample) in rows.iter().zip(&samples) {
                             assert!(close(row, sample), "mask {row} vs {sample} {context}");
                         }
@@ -675,4 +884,41 @@ fn rows_and_tables_sum_as_samples_do() {
             }
         }
     }
+}
+
+/// Wherever the sampler writes a span's words itself, they are the words
+/// a store at full opacity writes for its colours.
+#[test]
+fn words_store_as_opaque_spans_do() {
+    let rgb = case(image((9, 12), 3, 8, bytes(9 * 12 * 3, 8, 5)));
+    let gray = case(image((13, 9), 1, 8, bytes(13 * 9, 8, 3)));
+    let mut icc_like = case(image((10, 8), 3, 8, bytes(10 * 8 * 3, 8, 7)));
+    icc_like.decode = vec![[0.1, 0.9], [0.0, 1.0], [1.0, 0.0]];
+    let mut written = 0;
+    for case in [&rgb, &gray, &icc_like] {
+        for target in [3, 4] {
+            for unit_to_device in placements(case.image.width, case.image.height) {
+                let sampler = sampler(case, unit_to_device, target);
+                let mut storage = scratch(&sampler);
+                let reserved = storage.bytes();
+                let (x0, y0, x1, y1) = window(unit_to_device);
+                let len = usize::try_from(x1 - x0).unwrap();
+                let mut span = SpanColors::default();
+                for y in y0..y1 {
+                    let mut words = vec![[0u16; 4]; len];
+                    if !sampler.words(Pixels::new(x0, y, len), &mut storage, &mut words) {
+                        continue;
+                    }
+                    written += 1;
+                    sampler.span(Pixels::new(x0, y, len), &mut storage, &mut span);
+                    assert_eq!(storage.bytes(), reserved);
+                    assert!(span.alpha.iter().all(|&a| a == 1.0));
+                    let mut expected = vec![[0u16; 4]; len];
+                    crate::kernel::overwrite_n16(&mut expected, &span.colors);
+                    assert_eq!(words, expected, "{unit_to_device:?} row {y}");
+                }
+            }
+        }
+    }
+    assert!(written > 0);
 }

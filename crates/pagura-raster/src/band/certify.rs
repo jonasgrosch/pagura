@@ -18,6 +18,7 @@
 use super::curve::{Mono, Piece, Spline};
 use super::edges::Polygon;
 use crate::Point;
+use pagura_core::{Meter, Result};
 
 #[derive(Debug, Clone, Copy)]
 struct Chain {
@@ -34,34 +35,42 @@ struct Active {
     range: [f64; 2],
 }
 
-/// An upper bound of the polygon certificate's simultaneous vector
-/// capacities: split points, chains, heights, active chains and failed
-/// slabs. Geometric growth costs less than twice each maximum length;
-/// eight spare entries also cover the minimum allocation capacities.
-pub(crate) fn scratch_bytes(vertices: usize) -> usize {
-    vertices.saturating_add(8).saturating_mul(
-        4 * size_of::<Point>()
-            + 2 * size_of::<Chain>()
-            + 4 * size_of::<f64>()
-            + 2 * size_of::<Active>()
-            + 4 * size_of::<[f64; 2]>(),
-    )
-}
-
 /// Whether the winding of `polygon` is 0 or one common sign of magnitude one
 /// everywhere, with neighbouring chains at least `margin` apart where they
 /// do not share a vertex. Geometric-point cells are never certified.
-pub(crate) fn certified(polygon: &Polygon, margin: f64) -> bool {
-    uncertified(polygon, margin).is_some_and(|slabs| slabs.is_empty())
+pub(crate) fn certified(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Result<bool> {
+    let before = bytes.used();
+    let result = uncertified(polygon, margin, bytes)
+        .map(|slabs| slabs.is_some_and(|slabs| slabs.is_empty()));
+    bytes.refund(bytes.used().saturating_sub(before));
+    result
 }
 
 /// The heights `[lo, hi]` of the slabs [`certified`] cannot certify, merged
 /// where they meet; every other slab holds winding 0 or the common sign.
 /// `None` when no slab is certified: geometric points, or the sweep's work
-/// or storage ran out.
-pub(crate) fn uncertified(polygon: &Polygon, margin: f64) -> Option<Vec<[f64; 2]>> {
+/// ran out. Byte exhaustion is a typed error from `bytes`.
+pub(crate) fn uncertified(
+    polygon: &Polygon,
+    margin: f64,
+    bytes: &mut Meter,
+) -> Result<Option<Vec<[f64; 2]>>> {
+    let before = bytes.used();
+    let result = certificate(polygon, margin, bytes);
+    let retained = result
+        .as_ref()
+        .ok()
+        .and_then(Option::as_ref)
+        .map_or(0, |slabs| {
+            slabs.capacity().saturating_mul(size_of::<[f64; 2]>())
+        });
+    bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
+    result
+}
+
+fn certificate(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Result<Option<Vec<[f64; 2]>>> {
     if polygon.points_cells || polygon.points.len() > u32::MAX as usize {
-        return None;
+        return Ok(None);
     }
     let mut points = Vec::new();
     let mut chains = Vec::new();
@@ -70,7 +79,7 @@ pub(crate) fn uncertified(polygon: &Polygon, margin: f64) -> Option<Vec<[f64; 2]
         for p in contour {
             magnitude = magnitude.max(p.x.abs()).max(p.y.abs());
         }
-        split(contour, &mut points, &mut chains)?;
+        split(contour, &mut points, &mut chains, bytes)?;
     }
     let mut work = Work {
         done: 0,
@@ -83,8 +92,19 @@ pub(crate) fn uncertified(polygon: &Polygon, margin: f64) -> Option<Vec<[f64; 2]
         vertices: margin,
     };
     let mut failing = Vec::new();
-    sweep(&points, &mut chains, margins, &mut work, &mut failing)?;
-    Some(failing)
+    if sweep(
+        &points,
+        &mut chains,
+        margins,
+        &mut work,
+        &mut failing,
+        bytes,
+    )?
+    .is_none()
+    {
+        return Ok(None);
+    }
+    Ok(Some(failing))
 }
 
 /// The separation chains need: `rounding` between interpolated positions,
@@ -115,9 +135,10 @@ fn sweep(
     margins: Margins,
     work: &mut Work,
     failing: &mut Vec<[f64; 2]>,
-) -> Option<()> {
+    bytes: &mut Meter,
+) -> Result<Option<()>> {
     let mut heights = Vec::new();
-    heights.try_reserve(2 * chains.len()).ok()?;
+    bytes.reserve(&mut heights, chains.len().saturating_mul(2))?;
     heights.extend(
         chains
             .iter()
@@ -127,7 +148,7 @@ fn sweep(
     heights.dedup();
     chains.sort_unstable_by(|a, b| points[a.start].y.total_cmp(&points[b.start].y));
     let mut active: Vec<Active> = Vec::new();
-    active.try_reserve(chains.len()).ok()?;
+    bytes.reserve(&mut active, chains.len())?;
     let mut next = 0;
     let mut sign = None;
     for pair in heights.windows(2) {
@@ -145,12 +166,16 @@ fn sweep(
         if active.is_empty() {
             continue;
         }
-        work.add(active.len())?;
+        if work.add(active.len()).is_none() {
+            return Ok(None);
+        }
         let mid = lo.midpoint(hi);
         for a in &mut active {
             while points[a.segment + 1].y <= lo {
                 a.segment += 1;
-                work.add(1)?;
+                if work.add(1).is_none() {
+                    return Ok(None);
+                }
             }
             let mut segment = a.segment;
             let start = at(points, segment, lo).0;
@@ -161,7 +186,9 @@ fn sweep(
                     middle = Some(at(points, segment, mid).0);
                 }
                 segment += 1;
-                work.add(1)?;
+                if work.add(1).is_none() {
+                    return Ok(None);
+                }
                 range = [
                     range[0].min(points[segment].x),
                     range[1].max(points[segment].x),
@@ -191,24 +218,31 @@ fn sweep(
                         work,
                     )
             });
-        work.add(0)?;
+        if work.add(0).is_none() {
+            return Ok(None);
+        }
         if !separated {
             match failing.last_mut() {
                 Some(last) if last[1] >= lo => last[1] = hi,
                 _ => {
-                    failing.try_reserve(1).ok()?;
+                    bytes.reserve_capacity(failing, 1)?;
                     failing.push([lo, hi]);
                 }
             }
         }
     }
-    Some(())
+    Ok(Some(()))
 }
 
 // Appends the strictly y-monotone chains of one closed contour, each in
 // increasing y. A chain begins where the direction changes, so a cyclic walk
 // from such an edge never splits one.
-fn split(vertices: &[Point], points: &mut Vec<Point>, chains: &mut Vec<Chain>) -> Option<()> {
+fn split(
+    vertices: &[Point],
+    points: &mut Vec<Point>,
+    chains: &mut Vec<Chain>,
+    bytes: &mut Meter,
+) -> Result<()> {
     let n = vertices.len();
     let direction = |i: usize| {
         let (a, b) = (vertices[i].y, vertices[(i + 1) % n].y);
@@ -223,15 +257,24 @@ fn split(vertices: &[Point], points: &mut Vec<Point>, chains: &mut Vec<Chain>) -
     let Some(first) =
         (0..n).find(|&i| direction(i) != 0 && direction((i + n - 1) % n) != direction(i))
     else {
-        return Some(());
+        return Ok(());
     };
-    points.try_reserve(2 * n).ok()?;
+    let mut count = 0_usize;
+    let mut previous = 0;
+    for step in 0..n {
+        let d = direction((first + step) % n);
+        if d != 0 {
+            count += 1 + usize::from(d != previous);
+        }
+        previous = d;
+    }
+    bytes.reserve_capacity(points, count)?;
     let mut current: Option<Chain> = None;
     for step in 0..n {
         let i = (first + step) % n;
         let up = match direction(i) {
             0 => {
-                close(current.take(), points, chains)?;
+                close(current.take(), points, chains, bytes)?;
                 continue;
             }
             d => d > 0,
@@ -239,7 +282,7 @@ fn split(vertices: &[Point], points: &mut Vec<Point>, chains: &mut Vec<Chain>) -
         if let Some(chain) = current.as_mut().filter(|c| c.up == up) {
             chain.end += 1;
         } else {
-            close(current.take(), points, chains)?;
+            close(current.take(), points, chains, bytes)?;
             points.push(vertices[i]);
             current = Some(Chain {
                 start: points.len() - 1,
@@ -249,18 +292,23 @@ fn split(vertices: &[Point], points: &mut Vec<Point>, chains: &mut Vec<Chain>) -
         }
         points.push(vertices[(i + 1) % n]);
     }
-    close(current, points, chains)
+    close(current, points, chains, bytes)
 }
 
-fn close(chain: Option<Chain>, points: &mut [Point], chains: &mut Vec<Chain>) -> Option<()> {
+fn close(
+    chain: Option<Chain>,
+    points: &mut [Point],
+    chains: &mut Vec<Chain>,
+    bytes: &mut Meter,
+) -> Result<()> {
     if let Some(chain) = chain {
         if !chain.up {
             points[chain.start..chain.end].reverse();
         }
-        chains.try_reserve(1).ok()?;
+        bytes.reserve_capacity(chains, 1)?;
         chains.push(chain);
     }
-    Some(())
+    Ok(())
 }
 
 // x on segment `i` at height y, and whether it is a vertex value.
@@ -387,17 +435,28 @@ struct Run {
 /// where they overlap, and at a shared end by the fans of their control and
 /// chord directions, which meet only at the end when strictly ordered.
 /// Steps are capped as the polygon's are; doubt leaves it uncertified.
-pub(crate) fn spline_certified(spline: &Spline) -> bool {
-    spline_sweep(spline).is_some_and(|ok| ok)
+pub(crate) fn spline_certified(spline: &Spline, bytes: &mut Meter) -> Result<bool> {
+    let before = bytes.used();
+    let result = spline_sweep(spline, bytes).map(|ok| ok.is_some_and(|ok| ok));
+    bytes.refund(bytes.used().saturating_sub(before));
+    result
 }
 
-fn spline_sweep(spline: &Spline) -> Option<bool> {
+fn spline_sweep(spline: &Spline, bytes: &mut Meter) -> Result<Option<bool>> {
     let mut downs: Vec<Down> = Vec::new();
     let mut runs: Vec<Run> = Vec::new();
-    downs.try_reserve(spline.pieces.len()).ok()?;
+    let count = spline
+        .pieces
+        .iter()
+        .filter(|p| {
+            let [a, b] = p.ends();
+            a.y != b.y
+        })
+        .count();
+    bytes.reserve(&mut downs, count)?;
     let mut magnitude = 1.0_f64;
     for contour in spline.contours() {
-        split_pieces(contour, &mut downs, &mut runs, &mut magnitude)?;
+        split_pieces(contour, &mut downs, &mut runs, &mut magnitude, bytes)?;
     }
     let mut work = Work {
         done: 0,
@@ -409,15 +468,17 @@ fn spline_sweep(spline: &Spline) -> Option<bool> {
     let top = |r: &Run| downs[r.start].a.y;
     let bottom = |r: &Run| downs[r.end - 1].b.y;
     let mut heights: Vec<f64> = Vec::new();
-    heights.try_reserve(2 * runs.len()).ok()?;
+    bytes.reserve(&mut heights, runs.len().saturating_mul(2))?;
     heights.extend(runs.iter().flat_map(|r| [top(r), bottom(r)]));
     heights.sort_unstable_by(f64::total_cmp);
     heights.dedup();
-    let mut order: Vec<usize> = (0..runs.len()).collect();
+    let mut order = Vec::new();
+    bytes.reserve(&mut order, runs.len())?;
+    order.extend(0..runs.len());
     order.sort_unstable_by(|&a, &b| top(&runs[a]).total_cmp(&top(&runs[b])));
     // Active runs: run, piece at the slab's top, x at mid-slab, x range.
     let mut active: Vec<(usize, usize, f64, [f64; 2])> = Vec::new();
-    active.try_reserve(runs.len()).ok()?;
+    bytes.reserve(&mut active, runs.len())?;
     let mut next = 0;
     let mut sign = None;
     for pair in heights.windows(2) {
@@ -430,7 +491,9 @@ fn spline_sweep(spline: &Spline) -> Option<bool> {
         if active.is_empty() {
             continue;
         }
-        work.add(active.len())?;
+        if work.add(active.len()).is_none() {
+            return Ok(None);
+        }
         let mid = lo.midpoint(hi);
         for a in &mut active {
             let end = runs[a.0].end;
@@ -441,7 +504,9 @@ fn spline_sweep(spline: &Spline) -> Option<bool> {
             let first = downs[k].x(lo).0;
             let mut range = [first, first];
             loop {
-                work.add(1)?;
+                if work.add(1).is_none() {
+                    return Ok(None);
+                }
                 let piece = &downs[k];
                 if piece.a.y <= mid && mid <= piece.b.y {
                     a.2 = piece.x(mid).0;
@@ -464,7 +529,7 @@ fn spline_sweep(spline: &Spline) -> Option<bool> {
                 .enumerate()
                 .all(|(k, a)| runs[a.0].down == (first ^ (k % 2 == 1)));
         if !ordered {
-            return Some(false);
+            return Ok(Some(false));
         }
         for w in active.windows(2) {
             if w[0].3[1] + margin < w[1].3[0] {
@@ -472,12 +537,14 @@ fn spline_sweep(spline: &Spline) -> Option<bool> {
             }
             let left = (w[0].1, runs[w[0].0].end);
             let right = (w[1].1, runs[w[1].0].end);
-            if !chains_apart(&downs, (left, right), (lo, hi), margin, &mut work)? {
-                return Some(false);
+            match chains_apart(&downs, (left, right), (lo, hi), margin, &mut work) {
+                Some(true) => {}
+                Some(false) => return Ok(Some(false)),
+                None => return Ok(None),
             }
         }
     }
-    Some(true)
+    Ok(Some(true))
 }
 
 /// Appends the y-monotone chains of one closed contour of pieces, each
@@ -489,7 +556,8 @@ fn split_pieces(
     downs: &mut Vec<Down>,
     runs: &mut Vec<Run>,
     magnitude: &mut f64,
-) -> Option<()> {
+    bytes: &mut Meter,
+) -> Result<()> {
     let n = contour.len();
     let direction = |p: &Piece| match Down::new(*p) {
         Some((_, true)) => 1,
@@ -501,30 +569,32 @@ fn split_pieces(
         let d = direction(&contour[i]);
         d != 0 && direction(&contour[(i + n - 1) % n]) != d
     }) else {
-        return Some(());
+        return Ok(());
     };
     let mut current: Option<(usize, bool)> = None;
     let close = |current: &mut Option<(usize, bool)>,
                  downs: &mut Vec<Down>,
-                 runs: &mut Vec<Run>|
-     -> Option<()> {
+                 runs: &mut Vec<Run>,
+                 bytes: &mut Meter|
+     -> Result<()> {
         if let Some((start, down)) = current.take() {
             if !down {
-                downs.get_mut(start..)?.reverse();
+                debug_assert!(start <= downs.len());
+                downs[start..].reverse();
             }
-            runs.try_reserve(1).ok()?;
+            bytes.reserve_capacity(runs, 1)?;
             runs.push(Run {
                 start,
                 end: downs.len(),
                 down,
             });
         }
-        Some(())
+        Ok(())
     };
     for step in 0..n {
         let piece = contour[(first + step) % n];
         let Some((down_piece, down)) = Down::new(piece) else {
-            close(&mut current, downs, runs)?;
+            close(&mut current, downs, runs, bytes)?;
             continue;
         };
         *magnitude = magnitude
@@ -533,13 +603,13 @@ fn split_pieces(
             .max(down_piece.a.y.abs())
             .max(down_piece.b.y.abs());
         if current.is_none_or(|(_, d)| d != down) {
-            close(&mut current, downs, runs)?;
+            close(&mut current, downs, runs, bytes)?;
             current = Some((downs.len(), down));
         }
-        downs.try_reserve(1).ok()?;
+        bytes.reserve_capacity(downs, 1)?;
         downs.push(down_piece);
     }
-    close(&mut current, downs, runs)
+    close(&mut current, downs, runs, bytes)
 }
 
 /// Whether the right chain stays right of the left one on the open slab
@@ -663,10 +733,20 @@ mod tests {
     use super::*;
     use pagura_core::Limits;
 
+    fn certifies(polygon: &Polygon, margin: f64) -> bool {
+        certified(polygon, margin, &mut crate::testing::bytes()).unwrap()
+    }
+
     fn polygon(contours: &[&[(f64, f64)]]) -> Polygon {
         let mut polygon = Polygon::default();
         for contour in contours {
-            polygon.begin(&Limits::default(), contour.len()).unwrap();
+            polygon
+                .begin(
+                    &Limits::default(),
+                    contour.len(),
+                    &mut crate::testing::bytes(),
+                )
+                .unwrap();
             polygon
                 .points
                 .extend(contour.iter().map(|&(x, y)| Point::new(x, y)));
@@ -679,8 +759,8 @@ mod tests {
     fn simple_and_nested_opposite_contours_certify() {
         let square = [(0.0, 0.0), (4.0, 0.0), (4.0, 4.0), (0.0, 4.0)];
         let hole = [(1.0, 1.0), (1.0, 3.0), (3.0, 3.0), (3.0, 1.0)];
-        assert!(certified(&polygon(&[&square]), 0.0));
-        assert!(certified(&polygon(&[&square, &hole]), 0.0));
+        assert!(certifies(&polygon(&[&square]), 0.0));
+        assert!(certifies(&polygon(&[&square, &hole]), 0.0));
     }
 
     #[test]
@@ -688,15 +768,63 @@ mod tests {
         let square = [(0.0, 0.0), (4.0, 0.0), (4.0, 4.0), (0.0, 4.0)];
         let inner = [(1.0, 1.0), (3.0, 1.0), (3.0, 3.0), (1.0, 3.0)];
         let bowtie = [(0.0, 0.0), (4.0, 4.0), (4.0, 0.0), (0.0, 4.0)];
-        assert!(!certified(&polygon(&[&square, &inner]), 0.0));
-        assert!(!certified(&polygon(&[&bowtie]), 0.0));
+        assert!(!certifies(&polygon(&[&square, &inner]), 0.0));
+        assert!(!certifies(&polygon(&[&bowtie]), 0.0));
     }
 
     #[test]
     fn a_margin_rejects_close_chains() {
         let a = [(0.0, 0.0), (1.0, 0.0), (1.0, 4.0), (0.0, 4.0)];
         let b = [(1.001, 0.0), (2.0, 0.0), (2.0, 4.0), (1.001, 4.0)];
-        assert!(certified(&polygon(&[&a, &b]), 0.0));
-        assert!(!certified(&polygon(&[&a, &b]), 1.0 / 128.0));
+        assert!(certifies(&polygon(&[&a, &b]), 0.0));
+        assert!(!certifies(&polygon(&[&a, &b]), 1.0 / 128.0));
+    }
+
+    #[test]
+    fn polygon_certificate_scratch_shares_the_source_allowance() {
+        let square = [(0.0, 0.0), (4.0, 0.0), (4.0, 4.0), (0.0, 4.0)];
+        let polygon = polygon(&[&square]);
+        let source = polygon.heap_bytes();
+        let mut bytes = Meter::new(
+            source + 4 * size_of::<Point>() + size_of::<Chain>() - 1,
+            "certificate bytes",
+        );
+        bytes.charge(source).unwrap();
+        let error = uncertified(&polygon, 0.0, &mut bytes).unwrap_err();
+        assert_eq!(
+            (error.kind, error.message),
+            (pagura_core::ErrorKind::Limit, "certificate bytes")
+        );
+        assert_eq!(bytes.used(), source);
+        assert_eq!(polygon.points.len(), 4);
+        let mut enough = crate::testing::bytes();
+        enough.charge(source).unwrap();
+        assert!(certified(&polygon, 0.0, &mut enough).unwrap());
+        assert_eq!(enough.used(), source);
+    }
+
+    #[test]
+    fn spline_certificate_checks_storage_before_copying_pieces() {
+        let mut path = crate::PathBuilder::new();
+        path.rect(0.0, 0.0, 4.0, 4.0);
+        let mut construction = crate::testing::bytes();
+        let spline = super::super::curve::spline(
+            &path.finish(),
+            crate::Transform::IDENTITY,
+            &Limits::default(),
+            &mut construction,
+        )
+        .unwrap()
+        .unwrap();
+        let source = spline.retained_bytes();
+        let mut bytes = Meter::new(source + 2 * size_of::<Down>() - 1, "certificate bytes");
+        bytes.charge(source).unwrap();
+        assert_eq!(
+            spline_certified(&spline, &mut bytes).unwrap_err().message,
+            "certificate bytes"
+        );
+        assert_eq!(bytes.used(), source);
+        assert!(spline_certified(&spline, &mut construction).unwrap());
+        assert_eq!(construction.used(), source);
     }
 }

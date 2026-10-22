@@ -3,7 +3,7 @@
 //! with the rows their signed area does not determine already resolved.
 
 use super::cells::STRIP;
-use super::certify::{scratch_bytes, uncertified};
+use super::certify::uncertified;
 use super::clip::{self, ClipShape, Paths, columns, fill_polygon};
 use super::curve::{self, Mono, Quadratic};
 use super::edges::{self, Bounds, Line, Polygon, StripList, line_work, rows, strips};
@@ -187,8 +187,9 @@ impl Shape {
         rule: FillRule,
         options: &Prep<'_>,
     ) -> Result<Option<Self>> {
-        let (polygon, rule) = fill_polygon(path, transform, rule, options.limits)?;
-        Self::polygon(polygon, rule, Winding::Check(0.0), options)
+        let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
+        let (polygon, rule) = fill_polygon(path, transform, rule, options.limits, &mut bytes)?;
+        Self::polygon(polygon, rule, Winding::Check(0.0), options, &mut bytes)
     }
 
     /// A stroke of `path` (user space) with `stroke` whose line width and
@@ -254,11 +255,13 @@ impl Shape {
             features::SINGULAR_PEN,
             "singular stroke pen is not implemented",
         ))?;
-        let path = path.transformed(pen);
+        let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+        let path = path.transformed_with_bytes(pen, &mut bytes)?;
         let device = to_user.then(transform);
         let (outline, outline_transform, tiling) = match adjustment {
             Adjustment::Adjusted => {
-                let (outline, t) = crate::adjust::outline(&path, device, stroke, limits)?;
+                let (outline, t) =
+                    crate::adjust::outline(&path, device, stroke, limits, &mut bytes)?;
                 (outline, t, Tiling::Components)
             }
             Adjustment::None => crate::stroke::pieces(
@@ -267,19 +270,27 @@ impl Shape {
                 stroke,
                 limits,
                 (Tiling::Unproven, crate::flatten::TOLERANCE),
+                &mut bytes,
             )?,
         };
-        let mut polygon = match Polygon::from_lines(&outline, outline_transform, limits)? {
-            Some(polygon) => polygon,
-            None => Polygon::from_path(&outline, outline_transform, limits)?,
-        };
+        let mut polygon =
+            match Polygon::from_lines(&outline, outline_transform, limits, &mut bytes)? {
+                Some(polygon) => polygon,
+                None => Polygon::from_path(&outline, outline_transform, limits, &mut bytes)?,
+            };
+        let released = path
+            .retained_bytes()
+            .saturating_add(outline.retained_bytes());
+        drop(path);
+        drop(outline);
+        bytes.refund(released);
         let winding = match tiling {
             Tiling::Proven => Winding::Certified,
             // The union's boundary, where it relinks, may still certify.
-            Tiling::Unproven if polygon.cancel_shared()? => Winding::Check(0.0),
+            Tiling::Unproven if polygon.cancel_shared(&mut bytes)? => Winding::Check(0.0),
             Tiling::Unproven | Tiling::Components => Winding::Unknown,
         };
-        Self::polygon(polygon, FillRule::NonZero, winding, options)
+        Self::polygon(polygon, FillRule::NonZero, winding, options, &mut bytes)
     }
 
     /// One glyph placement outside any clip: `edges` translated to the
@@ -364,6 +375,7 @@ impl Shape {
         rule: FillRule,
         winding: Winding,
         options: &Prep<'_>,
+        bytes: &mut Meter,
     ) -> Result<Option<Self>> {
         let Some(mut frame) = Frame::new(options) else {
             return Ok(None);
@@ -378,42 +390,26 @@ impl Shape {
         // whatever its vertices.
         let triangle =
             polygon.starts.len() == 1 && polygon.vertices() == 3 && !polygon.points_cells;
-        let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
-        let polygon_bytes = polygon
-            .points
-            .capacity()
-            .saturating_mul(size_of::<crate::Point>())
-            .saturating_add(polygon.starts.capacity().saturating_mul(size_of::<usize>()));
-        bytes.charge(polygon_bytes)?;
-        let certificate = if matches!(winding, Winding::Check(_)) && !triangle {
-            scratch_bytes(polygon.vertices())
-        } else {
-            0
-        };
-        bytes.charge(certificate)?;
+        let polygon_bytes = polygon.heap_bytes();
         let doubtful = match winding {
             Winding::Certified => Some(Vec::new()),
             Winding::Check(_) if triangle => Some(Vec::new()),
-            Winding::Check(margin) => uncertified(&polygon, margin),
+            Winding::Check(margin) => uncertified(&polygon, margin, bytes)?,
             Winding::Unknown => None,
         };
-        let kept_certificate = doubtful
-            .as_ref()
-            .map_or(0, |s| s.capacity().saturating_mul(size_of::<[f64; 2]>()));
-        debug_assert!(kept_certificate <= certificate);
-        bytes.refund(certificate.saturating_sub(kept_certificate));
         let all_bytes = polygon.vertices().saturating_mul(size_of::<Line>());
-        let all = edges::lines(&polygon, &mut bytes)?;
+        let all = edges::lines(&polygon, bytes)?;
         drop(polygon);
         bytes.refund(polygon_bytes);
         let lines = match frame.rect {
             Some(r) => {
                 let mut clipped = Vec::new();
                 for &line in &all {
-                    room(&mut clipped, 3, &mut bytes)?;
+                    room(&mut clipped, 3, bytes)?;
                     edges::clip_line(line, r, &mut clipped)?;
                 }
                 clipped.retain(|l| !l.is_horizontal());
+                drop(all);
                 bytes.refund(all_bytes);
                 clipped
             }
@@ -441,14 +437,14 @@ impl Shape {
         for y in bounds.y0..bounds.y1 {
             let joint = joint(y);
             if joint || doubtful_row(y) {
-                room(&mut chosen, 1, &mut bytes)?;
+                room(&mut chosen, 1, bytes)?;
                 chosen.push((y, joint));
             }
         }
         let resolved = if chosen.is_empty() {
             Resolved::default()
         } else {
-            resolve(&lines, rule, &frame, (bounds, &chosen), options, &mut bytes)?
+            resolve(&lines, rule, &frame, (bounds, &chosen), options, bytes)?
         };
         Self::edges(
             lines,
@@ -457,7 +453,7 @@ impl Shape {
             (bounds, scan, resolved),
             &frame,
             options,
-            &mut bytes,
+            bytes,
         )
         .map(Some)
     }
@@ -469,25 +465,27 @@ impl Shape {
         curves: Vec<Quadratic>,
         frame: &Frame<'_>,
         options: &Prep<'_>,
+        bytes: &mut Meter,
     ) -> Result<Option<Self>> {
         debug_assert!(frame.paths.is_none(), "pieces meet no clip rows");
-        let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
-        bytes.charge_items::<Line>(lines.capacity())?;
-        bytes.charge_items::<Quadratic>(curves.capacity())?;
         let (mut lines, curves) = match frame.rect {
             Some(r) => {
                 let mut clipped = Vec::new();
                 let mut kept = Vec::new();
-                clipped
-                    .try_reserve(lines.len() + curves.len())
-                    .and_then(|()| kept.try_reserve(curves.len()))
-                    .map_err(|_| Error::limit("raster geometry allocation failed"))?;
-                for line in lines {
+                let source_bytes = lines
+                    .capacity()
+                    .saturating_mul(size_of::<Line>())
+                    .saturating_add(curves.capacity().saturating_mul(size_of::<Quadratic>()));
+                for &line in &lines {
+                    room(&mut clipped, 3, bytes)?;
                     edges::clip_line(line, r, &mut clipped)?;
                 }
-                for q in curves {
-                    curve::clip(q, r, &mut clipped, &mut kept)?;
+                for &q in &curves {
+                    curve::clip(q, r, &mut clipped, &mut kept, bytes)?;
                 }
+                drop(lines);
+                drop(curves);
+                bytes.refund(source_bytes);
                 (clipped, kept)
             }
             None => (lines, curves),
@@ -518,7 +516,7 @@ impl Shape {
             (bounds, scan, Resolved::default()),
             frame,
             options,
-            &mut bytes,
+            bytes,
         )
         .map(Some)
     }

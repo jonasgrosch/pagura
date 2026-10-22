@@ -1,7 +1,7 @@
 //! Bounded adaptive subdivision in device space.
 
 use crate::{Path, Point, Segment, Transform};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 
 /// Maximum distance of a flattened control point from its chord, in pixels.
 /// The convex-hull property bounds the whole curve by this tolerance.
@@ -74,6 +74,23 @@ impl Polyline {
     }
 }
 
+/// Heap storage of flattened contours, including their point buffers.
+pub(crate) fn retained_bytes(contours: &Vec<Polyline>) -> usize {
+    contours
+        .capacity()
+        .saturating_mul(size_of::<Polyline>())
+        .saturating_add(contours.iter().fold(0usize, |n, c| {
+            n.saturating_add(c.points.capacity().saturating_mul(size_of::<Point>()))
+        }))
+}
+
+/// Heap storage of the subdivision stack.
+pub(crate) fn stack_bytes(stack: &CurveStack) -> usize {
+    stack
+        .capacity()
+        .saturating_mul(size_of::<([Point; 4], usize)>())
+}
+
 /// Checks a point against the working range ([`MAX_COORDINATE`]).
 pub(crate) fn bounded(point: Point) -> Result<()> {
     if !point.is_finite() {
@@ -97,9 +114,18 @@ pub(crate) fn validate(path: &Path, transform: Transform, limits: &Limits) -> Re
     Ok(())
 }
 
-pub(crate) fn flatten(path: &Path, transform: Transform, limits: &Limits) -> Result<Vec<Polyline>> {
+pub(crate) fn flatten(
+    path: &Path,
+    transform: Transform,
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<Vec<Polyline>> {
     let mut result = Vec::new();
-    let count = flatten_into(path, transform, limits, &mut result, &mut CurveStack::new())?;
+    let mut pending = CurveStack::new();
+    let count = flatten_into(path, transform, limits, &mut result, &mut pending, bytes)?;
+    let scratch = stack_bytes(&pending);
+    drop(pending);
+    bytes.refund(scratch);
     result.truncate(count);
     Ok(result)
 }
@@ -110,8 +136,17 @@ pub(crate) fn flatten_into(
     limits: &Limits,
     result: &mut Vec<Polyline>,
     pending: &mut CurveStack,
+    bytes: &mut Meter,
 ) -> Result<usize> {
-    flatten_with(path, transform, limits, result, pending, Flatness::Distance)
+    flatten_with(
+        path,
+        transform,
+        limits,
+        result,
+        pending,
+        Flatness::Distance,
+        bytes,
+    )
 }
 
 /// Flattens with an explicit approximation criterion, retaining the same
@@ -123,12 +158,13 @@ pub(crate) fn flatten_with(
     result: &mut Vec<Polyline>,
     pending: &mut CurveStack,
     flatness: Flatness,
+    bytes: &mut Meter,
 ) -> Result<usize> {
     pending.clear();
     validate(path, transform, limits)?;
     let mut contour = 0;
     let mut count = 0;
-    let mut current = prepare(result, contour);
+    let mut current = prepare(result, contour, bytes)?;
     // A path opens every subpath with MoveTo, so the current point and the
     // subpath start are set before any line or curve reads them.
     let mut start = Point::default();
@@ -139,18 +175,21 @@ pub(crate) fn flatten_with(
         if current.closed && matches!(segment, Segment::LineTo(_) | Segment::CubicTo { .. }) {
             let first = current.points.first().copied();
             contour += 1;
-            current = prepare(result, contour);
-            current.points.extend(first);
+            current = prepare(result, contour, bytes)?;
+            if let Some(first) = first {
+                bytes.reserve_capacity(&mut current.points, 1)?;
+                current.points.push(first);
+            }
         }
         match *segment {
             Segment::MoveTo(point) => {
                 if !current.points.is_empty() {
                     contour += 1;
-                    current = prepare(result, contour);
+                    current = prepare(result, contour, bytes)?;
                 }
                 bounded(point)?;
                 bounded(point * transform)?;
-                append(&mut current.points, point, &mut count, limits)?;
+                append(&mut current.points, point, &mut count, limits, bytes)?;
                 current.closed = false;
                 current.degenerate = true;
                 start = point;
@@ -160,7 +199,7 @@ pub(crate) fn flatten_with(
                 bounded(point)?;
                 bounded(point * transform)?;
                 current.degenerate &= current.points.first().is_none_or(|p| *p == point);
-                append(&mut current.points, point, &mut count, limits)?;
+                append(&mut current.points, point, &mut count, limits, bytes)?;
                 position = point;
             }
             Segment::CubicTo { c1, c2, end } => {
@@ -176,7 +215,7 @@ pub(crate) fn flatten_with(
                     &mut current.points,
                     &mut count,
                     limits,
-                    flatness,
+                    Subdivision { flatness, bytes },
                 )?;
                 position = end;
             }
@@ -189,8 +228,13 @@ pub(crate) fn flatten_with(
     Ok(contour + usize::from(!current.points.is_empty()))
 }
 
-fn prepare(result: &mut Vec<Polyline>, index: usize) -> &mut Polyline {
+fn prepare<'a>(
+    result: &'a mut Vec<Polyline>,
+    index: usize,
+    bytes: &mut Meter,
+) -> Result<&'a mut Polyline> {
     if index == result.len() {
+        bytes.reserve_capacity(result, 1)?;
         result.push(Polyline {
             points: Vec::new(),
             closed: false,
@@ -201,16 +245,28 @@ fn prepare(result: &mut Vec<Polyline>, index: usize) -> &mut Polyline {
     current.points.clear();
     current.closed = false;
     current.degenerate = true;
-    current
+    Ok(current)
 }
 
-fn append(points: &mut Vec<Point>, point: Point, count: &mut usize, limits: &Limits) -> Result<()> {
+fn append(
+    points: &mut Vec<Point>,
+    point: Point,
+    count: &mut usize,
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<()> {
     if *count >= limits.path_segments {
         return Err(Error::limit("flattened segment budget exceeded"));
     }
+    bytes.reserve_capacity(points, 1)?;
     *count += 1;
     points.push(point);
     Ok(())
+}
+
+struct Subdivision<'a> {
+    flatness: Flatness,
+    bytes: &'a mut Meter,
 }
 
 fn curve(
@@ -220,8 +276,9 @@ fn curve(
     out: &mut Vec<Point>,
     count: &mut usize,
     limits: &Limits,
-    flatness: Flatness,
+    subdivision: Subdivision<'_>,
 ) -> Result<()> {
+    let Subdivision { flatness, bytes } = subdivision;
     let magnitude = points
         .iter()
         .map(|p| {
@@ -241,7 +298,7 @@ fn curve(
             * 16.0
             * f64::from(u32::try_from(depth + 4).unwrap_or(u32::MAX));
         if flatness.accepts([a, b, c, d], depth, rounding) {
-            append(out, points[3], count, limits)?;
+            append(out, points[3], count, limits, bytes)?;
             let Some(next) = pending.pop() else {
                 return Ok(());
             };
@@ -257,9 +314,7 @@ fn curve(
             let abc = midpoint(ab, bc);
             let bcd = midpoint(bc, cd);
             let mid = midpoint(abc, bcd);
-            pending
-                .try_reserve(1)
-                .map_err(|_| Error::limit("curve subdivision allocation failed"))?;
+            bytes.reserve_capacity(pending, 1)?;
             depth += 1;
             pending.push(([mid, bcd, cd, d], depth));
             points = [a, ab, abc, mid];
@@ -328,6 +383,7 @@ mod tests {
         ];
         let (mut points, mut count, mut pending) = (Vec::new(), 0, CurveStack::new());
         let limits = Limits::default();
+        let mut bytes = crate::testing::bytes();
         let mut flatten = |transform| {
             curve(
                 corner,
@@ -336,7 +392,10 @@ mod tests {
                 &mut points,
                 &mut count,
                 &limits,
-                Flatness::Distance,
+                Subdivision {
+                    flatness: Flatness::Distance,
+                    bytes: &mut bytes,
+                },
             )
         };
         flatten(Transform::IDENTITY).unwrap();
@@ -367,9 +426,21 @@ mod tests {
         let path = path.finish();
         let limits = Limits::default();
         // In range in user space, beyond it in device space.
-        let scaled = flatten(&path, Transform::scale(2e12, 1.0), &limits).unwrap_err();
+        let scaled = flatten(
+            &path,
+            Transform::scale(2e12, 1.0),
+            &limits,
+            &mut crate::testing::bytes(),
+        )
+        .unwrap_err();
         assert_eq!(scaled.kind, ErrorKind::Limit);
-        let invalid = flatten(&path, Transform::translate(f64::NAN, 0.0), &limits).unwrap_err();
+        let invalid = flatten(
+            &path,
+            Transform::translate(f64::NAN, 0.0),
+            &limits,
+            &mut crate::testing::bytes(),
+        )
+        .unwrap_err();
         assert_eq!(invalid.kind, ErrorKind::InvalidArgument);
     }
 
@@ -383,7 +454,13 @@ mod tests {
             Point::new(5.0, 5.0),
         )
         .unwrap();
-        let contours = flatten(&path.finish(), Transform::IDENTITY, &Limits::default()).unwrap();
+        let contours = flatten(
+            &path.finish(),
+            Transform::IDENTITY,
+            &Limits::default(),
+            &mut crate::testing::bytes(),
+        )
+        .unwrap();
         assert_eq!(contours.len(), 2);
         assert!(contours[0].closed && !contours[1].closed);
         assert_eq!(contours[1].points.first(), Some(&Point::new(1.0, 1.0)));
@@ -473,7 +550,10 @@ mod tests {
                 &mut actual,
                 &mut 0,
                 &Limits::default(),
-                Flatness::Distance,
+                Subdivision {
+                    flatness: Flatness::Distance,
+                    bytes: &mut crate::testing::bytes(),
+                },
             )
             .unwrap();
             assert_eq!(actual, expected);
@@ -514,7 +594,10 @@ mod tests {
             &mut out,
             &mut 1,
             &Limits::default(),
-            Flatness::Distance,
+            Subdivision {
+                flatness: Flatness::Distance,
+                bytes: &mut crate::testing::bytes(),
+            },
         )
         .unwrap();
         // Evaluate Bernstein polynomials independently of the subdivision.
@@ -601,8 +684,45 @@ mod tests {
         )
         .unwrap();
         path.close();
-        let contours = flatten(&path.finish(), Transform::IDENTITY, &Limits::default()).unwrap();
+        let contours = flatten(
+            &path.finish(),
+            Transform::IDENTITY,
+            &Limits::default(),
+            &mut crate::testing::bytes(),
+        )
+        .unwrap();
         assert_eq!(contours[0].points[0], contours[0].points[1]);
         assert!(!contours[0].degenerate);
+    }
+    #[test]
+    fn a_byte_refusal_precedes_the_first_contour_allocation() {
+        let mut path = PathBuilder::new();
+        path.move_to(Point::new(0.0, 0.0));
+        path.cubic_to(
+            Point::new(0.0, 1e12),
+            Point::new(1e12, 1e12),
+            Point::new(1e12, 0.0),
+        )
+        .unwrap();
+        let path = path.finish();
+        let (mut contours, mut pending) = (Vec::new(), CurveStack::new());
+        for allowance in [0, 64] {
+            let mut bytes = Meter::new(allowance, crate::band::RENDER_BYTES);
+            let error = flatten_into(
+                &path,
+                Transform::IDENTITY,
+                &Limits::default(),
+                &mut contours,
+                &mut pending,
+                &mut bytes,
+            )
+            .unwrap_err();
+            assert_eq!(error.message, crate::band::RENDER_BYTES);
+            let storage = retained_bytes(&contours) + stack_bytes(&pending);
+            assert!(storage <= bytes.used() && bytes.used() <= allowance);
+            if allowance == 0 {
+                assert_eq!((contours.capacity(), pending.capacity()), (0, 0));
+            }
+        }
     }
 }

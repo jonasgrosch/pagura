@@ -267,7 +267,10 @@ impl<'a> Executor<'a> {
         let ws = &mut *self.ws;
         let compositing = &mark.compositing;
         let constant = paint.constant();
-        if constant.is_none() && !fill_colors(ws, (paint, mark.boundary), (x, y), len) {
+        if constant.is_none()
+            && (paint_words(ws, (mark, paint), frame, (x, y), cover)
+                || !fill_colors(ws, (mark, paint), (x, y), len))
+        {
             return;
         }
         let mask = match compositing.mask {
@@ -311,8 +314,11 @@ impl<'a> Executor<'a> {
             && overwrite(
                 (&mut ws.page, &mut ws.extents),
                 frame,
-                (x, y),
-                values.get(..len * 3).unwrap_or(&[]),
+                Pixels::new(x, y, len),
+                |pixels| {
+                    kernel::overwrite_n16(pixels, values.get(..len * 3).unwrap_or(&[]));
+                    true
+                },
             )
         {
             ws.usage.work = ws.usage.work.saturating_add(len);
@@ -357,11 +363,11 @@ impl<'a> Executor<'a> {
 /// under `boundary`; false where the boundary's coverage does not fit.
 fn fill_colors(
     ws: &mut Workspace,
-    (paint, boundary): (&Source, Boundary),
+    (mark, paint): (&Mark, &Source),
     (x, y): (u32, u32),
     len: usize,
 ) -> bool {
-    let outline = match boundary {
+    let outline = match mark.boundary {
         Boundary::Shape(_) | Boundary::Empty => {
             let (boundary, dense) = &mut ws.boundary;
             let Some(dense) = dense.get_mut(..len) else {
@@ -378,7 +384,10 @@ fn fill_colors(
         len,
         boundary: outline,
     };
-    paint.fill(pixels, &mut ws.colors, &mut ws.texel_shape);
+    let Some(scratch) = ws.paint_scratch.get_mut(u32_to_usize(mark.paint)) else {
+        return false;
+    };
+    paint.fill(pixels, scratch, &mut ws.colors, &mut ws.texel_shape);
     true
 }
 
@@ -396,23 +405,58 @@ fn filled(colors: &SpanColors, len: usize) -> Option<(Colors<'_>, Option<&[f64]>
     Some((values, alpha, colors.painted))
 }
 
-/// Overwrites `frame`'s narrow page from pixel (`x`, `y`) on with opaque
-/// colours, three `values` a pixel, as a store at full opacity does; false,
-/// with nothing stored, where the frame is not a narrow page.
+/// Lets an opaque paint over a whole span at full opacity, without a soft
+/// mask, write a narrow page's words itself; false where it does not.
+fn paint_words(
+    ws: &mut Workspace,
+    (mark, paint): (&Mark, &Source),
+    frame: Frame,
+    (x, y): (u32, u32),
+    cover: Cover<'_>,
+) -> bool {
+    let compositing = &mark.compositing;
+    let len = cover.len();
+    let Some(scratch) = ws.paint_scratch.get_mut(u32_to_usize(mark.paint)) else {
+        return false;
+    };
+    let written = cover.coverage().is_none()
+        && !mark.records
+        && mark.boundary == Boundary::Absent
+        && compositing.alpha == 1.0
+        && compositing.mask.is_none()
+        && compositing.blend == pagura_interpret::BlendMode::Normal
+        && compositing.overprint == 0
+        && overwrite(
+            (&mut ws.page, &mut ws.extents),
+            frame,
+            Pixels::new(x, y, len),
+            |pixels| paint.words(Pixels::new(x, y, len), scratch, pixels),
+        );
+    if written {
+        ws.usage.work = ws.usage.work.saturating_add(len);
+    }
+    written
+}
+
+/// Overwrites `len` pixels of `frame`'s narrow page from pixel (`x`, `y`)
+/// on with the words `write` gives, as a store at full opacity does; false,
+/// with nothing stored, where the frame is not a narrow page or `write`
+/// gives none.
 fn overwrite(
     (page, extents): (&mut PageBuffer, &mut Extents),
     frame: Frame,
-    (x, y): (u32, u32),
-    values: &[f64],
+    pixels: Pixels<'_>,
+    write: impl FnOnce(&mut [[u16; 4]]) -> bool,
 ) -> bool {
-    let len = values.len() / 3;
+    let Pixels { x, y, len, .. } = pixels;
     let Some(start) = frame.index(x, y).filter(|_| frame.buffer == Buffer::Page) else {
         return false;
     };
     let stored = match page {
         PageBuffer::N16(page) => page
             .get_mut(start..start + len)
-            .map(|pixels| kernel::overwrite_n16(pixels, values)),
+            .is_some_and(write)
+            .then_some(()),
         PageBuffer::F64(_) | PageBuffer::F32(_) => None,
     };
     if stored.is_some() {

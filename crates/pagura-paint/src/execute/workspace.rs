@@ -9,7 +9,7 @@ use crate::format::Format;
 use crate::plan::{Boundary, ItemKind, Layout, Plan};
 use crate::prepare::Storage;
 use crate::request::RenderRequest;
-use crate::source::SpanColors;
+use crate::source::{PaintScratch, Source, SpanColors};
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Meter, Result};
 use pagura_core::{Limits, Store};
@@ -269,6 +269,8 @@ pub(crate) struct Workspace {
     pub(crate) boundary: (BandCoverage, Vec<u8>),
     /// One span of paint.
     pub(crate) colors: SpanColors,
+    /// Per-paint execution buffers with capacities fitted before rendering.
+    pub(crate) paint_scratch: Vec<PaintScratch>,
     /// Source alpha of a span.
     pub(crate) alpha: Vec<f64>,
     /// Source shape of a span.
@@ -349,6 +351,13 @@ impl Sizes {
             .saturating_add(active.saturating_mul(size_of::<u32>()))
             .saturating_add(plan.groups.len() * size_of::<Active>())
             .saturating_add(plan.masks.len() * size_of::<MaskCache>())
+            .saturating_add(plan.paints.len().saturating_mul(size_of::<PaintScratch>()))
+            .saturating_add(
+                plan.paints
+                    .iter()
+                    .map(Source::scratch_bytes)
+                    .fold(0, usize::saturating_add),
+            )
     }
 }
 
@@ -392,6 +401,33 @@ fn allocate<T>(count: usize) -> Result<Vec<T>> {
     Ok(values)
 }
 
+/// Fits paint storage without retaining headers or values outside the new
+/// plan's reservation while their replacements are allocated.
+fn paint_storage(
+    sources: &[Source],
+    previous: Vec<PaintScratch>,
+    bytes: &mut Meter,
+) -> Result<Vec<PaintScratch>> {
+    bytes.charge_items::<PaintScratch>(sources.len())?;
+    let mut storage = if previous.capacity() == sources.len() {
+        previous
+    } else {
+        drop(previous);
+        allocate(sources.len())?
+    };
+    storage.truncate(sources.len());
+    storage.resize_with(sources.len(), PaintScratch::default);
+    for (scratch, source) in storage.iter_mut().zip(sources) {
+        if !scratch.fits(source) {
+            *scratch = PaintScratch::default();
+        }
+    }
+    for (scratch, source) in storage.iter_mut().zip(sources) {
+        *scratch = source.make_scratch(Some(std::mem::take(scratch)), bytes)?;
+    }
+    Ok(storage)
+}
+
 impl Workspace {
     /// Allocates the storage `plan` executes in, charging it to `bytes`
     /// (what preparation reserved, [`Sizes::bytes`]) and taking the page
@@ -403,7 +439,15 @@ impl Workspace {
         bytes: &mut Meter,
     ) -> Result<Self> {
         let pixels = sizes.width.saturating_mul(sizes.rows);
+        let (previous, old_paints) = match previous {
+            Some(mut previous) => {
+                let paints = std::mem::take(&mut previous.paint_scratch);
+                (Some(previous), paints)
+            }
+            None => (None, Vec::new()),
+        };
         let (page, coverage) = kept(previous, (sizes.rows, pixels));
+        let paint_scratch = paint_storage(&plan.paints, old_paints, bytes)?;
         let (format, layout) = plan.groups.first().map_or(
             (
                 Format::F64,
@@ -465,6 +509,7 @@ impl Workspace {
             coverage: warm_coverage(sizes, coverage, bytes)?,
             boundary: (outline, dense),
             colors,
+            paint_scratch,
             alpha: zeroed(sizes.width, bytes)?,
             shape: zeroed(sizes.width, bytes)?,
             texel_shape: reserve(sizes.width, bytes)?,
@@ -505,6 +550,14 @@ impl Workspace {
             + self.active.iter().map(Active::bytes).sum::<usize>()
             + self.active.capacity() * size_of::<Active>()
             + self.masks.capacity() * size_of::<MaskCache>()
+            + self.paint_scratch.capacity() * size_of::<PaintScratch>()
+            + self
+                .paint_scratch
+                .iter()
+                .map(PaintScratch::bytes)
+                .sum::<usize>()
+            + self.coverage.retained_bytes()
+            + self.boundary.0.retained_bytes()
     }
 
     /// Clears the state of a previous render.
@@ -514,6 +567,9 @@ impl Workspace {
         }
         for mask in &mut self.masks {
             mask.band = None;
+        }
+        for scratch in &mut self.paint_scratch {
+            scratch.reset();
         }
         self.usage = Usage::default();
     }
@@ -565,6 +621,48 @@ pub(crate) fn coverage_capacity(width: usize, rows: usize) -> pagura_raster::Cap
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn paint_headers_fit_the_new_plan_and_reuse_only_matching_capacity() {
+        let sources = [Source::Solid {
+            color: Box::new([0.0; 3]),
+            painted: pagura_color::Painted::all(3),
+        }];
+        let mut previous = allocate(4096).unwrap();
+        previous.resize_with(4096, PaintScratch::default);
+        let required = size_of::<PaintScratch>();
+        let mut bytes = Meter::new(required, "test");
+        let storage = paint_storage(&sources, previous, &mut bytes).unwrap();
+        assert_eq!(storage.len(), 1);
+        assert_eq!(storage.capacity(), 1);
+        assert_eq!(bytes.used(), required);
+        assert_eq!(storage.iter().map(PaintScratch::bytes).sum::<usize>(), 0);
+
+        let pointer = storage.as_ptr();
+        let mut bytes = Meter::new(required, "test");
+        let storage = paint_storage(&sources, storage, &mut bytes).unwrap();
+        assert_eq!(storage.as_ptr(), pointer);
+        assert_eq!(bytes.used(), required);
+        let mut bytes = Meter::new(required - 1, "test");
+        assert!(paint_storage(&sources, storage, &mut bytes).is_err());
+    }
+
+    #[test]
+    fn retained_scratch_includes_its_coverage_allocations() {
+        let scene = crate::testing::Build::new(192.0, 256.0);
+        let prepared = scene
+            .prepare(&scene.request(scene.page(), 256), &Limits::default())
+            .unwrap();
+        let mut scratch = Scratch::default();
+        let buffers = {
+            let rendering = prepared.with_scratch(&mut scratch).unwrap();
+            rendering.workspace.page.bytes()
+                + rendering.workspace.coverage.retained_bytes()
+                + rendering.workspace.boundary.0.retained_bytes()
+                + rendering.rasterizer.retained_bytes()
+        };
+        assert!(scratch.retained_bytes() >= buffers);
+    }
 
     #[test]
     fn page_buffers_start_with_the_premultiplied_background() {

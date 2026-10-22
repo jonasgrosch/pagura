@@ -10,7 +10,7 @@
 //! multiplied.
 
 use super::cells::{Cells, STRIP};
-use super::certify::{scratch_bytes, uncertified};
+use super::certify::uncertified;
 use super::edges::{self, Bounds, Line, Polygon, StripList};
 use super::rect::rectangle;
 use super::row::Sink;
@@ -184,6 +184,7 @@ pub(crate) fn fill_polygon(
     transform: Transform,
     rule: FillRule,
     limits: &Limits,
+    bytes: &mut Meter,
 ) -> Result<(Polygon, FillRule)> {
     if path.segments().len() > limits.path_segments {
         return Err(Error::limit("path segment budget exceeded"));
@@ -191,15 +192,18 @@ pub(crate) fn fill_polygon(
     if !transform.is_finite() {
         return Err(Error::invalid_argument("path transform is not finite"));
     }
-    if let Some(outline) = crate::empty_fill::classified_outline(path, transform, rule, limits)? {
-        return Ok((
-            Polygon::from_path(&outline, Transform::IDENTITY, limits)?,
-            FillRule::NonZero,
-        ));
+    if let Some(outline) =
+        crate::empty_fill::classified_outline(path, transform, rule, limits, bytes)?
+    {
+        let polygon = Polygon::from_path(&outline, Transform::IDENTITY, limits, bytes)?;
+        let released = outline.retained_bytes();
+        drop(outline);
+        bytes.refund(released);
+        return Ok((polygon, FillRule::NonZero));
     }
-    let polygon = match Polygon::from_lines(path, transform, limits)? {
+    let polygon = match Polygon::from_lines(path, transform, limits, bytes)? {
         Some(polygon) => polygon,
-        None => Polygon::from_path(path, transform, limits)?,
+        None => Polygon::from_path(path, transform, limits, bytes)?,
     };
     Ok((polygon, rule))
 }
@@ -223,16 +227,18 @@ impl ClipShape {
             return Err(Error::limit("mask source budget exceeded"));
         }
         let region = options.area.region;
+        let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
         let mut rect: Option<Bounds> = None;
         let mut groups: Vec<(Polygon, FillRule)> = Vec::new();
         for &(path, rule) in paths {
-            let (polygon, rule) = fill_polygon(path, transform, rule, limits)?;
+            let (polygon, rule) = fill_polygon(path, transform, rule, limits, &mut bytes)?;
             if let Some(r) = rectangle(&polygon) {
                 rect = Some(rect.map_or(r, |b| b.intersect(r)));
+                let released = polygon.heap_bytes();
+                drop(polygon);
+                bytes.refund(released);
             } else {
-                groups
-                    .try_reserve(1)
-                    .map_err(|_| Error::limit("clip allocation failed"))?;
+                bytes.reserve_capacity(&mut groups, 1)?;
                 groups.push((polygon, rule));
             }
         }
@@ -249,6 +255,7 @@ impl ClipShape {
         // Alone, a rectangle's two sides go through the cells: per row at
         // most two visits, six cells, four touched and the bitmap words.
         let words = bounds.x1 as usize / 64 + 2;
+        bytes.charge(size_of::<Inner>())?;
         let mut inner = Inner {
             bounds,
             rect,
@@ -257,7 +264,7 @@ impl ClipShape {
             retained: size_of::<Inner>(),
         };
         if !groups.is_empty() && !bounds.is_empty() {
-            let paths = classify(&groups, rect, bounds, options)?;
+            let paths = classify(&groups, rect, bounds, options, &mut bytes)?;
             inner.work = paths
                 .rows
                 .len()
@@ -318,10 +325,6 @@ fn boundaries(
     meter: &mut Meter,
     bytes: &mut Meter,
 ) -> Result<Boundaries> {
-    for (polygon, _) in groups {
-        bytes.charge_items::<crate::Point>(polygon.points.capacity())?;
-        bytes.charge_items::<usize>(polygon.starts.capacity())?;
-    }
     let mut lines: Vec<Line> = Vec::new();
     let mut ends = Vec::new();
     bytes.reserve(&mut ends, groups.len())?;
@@ -340,19 +343,13 @@ fn boundaries(
                 lines.push(line);
             }
         }
+        drop(source);
         bytes.refund(source_bytes);
         lines.retain(|l| !l.is_horizontal());
         let end = u32::try_from(lines.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
         ends.push((end, *rule));
         if groups.len() == 1 {
-            let certificate = scratch_bytes(polygon.vertices());
-            bytes.charge(certificate)?;
-            doubtful = uncertified(polygon, 0.0);
-            let kept = doubtful
-                .as_ref()
-                .map_or(0, |s| s.capacity().saturating_mul(size_of::<[f64; 2]>()));
-            debug_assert!(kept <= certificate);
-            bytes.refund(certificate.saturating_sub(kept));
+            doubtful = uncertified(polygon, 0.0, bytes)?;
         }
     }
     Ok(Boundaries {
@@ -368,22 +365,21 @@ fn classify(
     rect: Option<Bounds>,
     bounds: DeviceRect,
     options: &Prep<'_>,
+    bytes: &mut Meter,
 ) -> Result<Paths> {
     let limits = options.limits;
     let mut meter = Meter::new(limits.raster_work, CLIP_WORK);
-    // The resolver's scratch, freed on return.
-    let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
     let Boundaries {
         lines,
         ends,
         doubtful,
-    } = boundaries(groups, rect, &mut meter, &mut bytes)?;
+    } = boundaries(groups, rect, &mut meter, bytes)?;
     let rows_of = |l: &Line| edges::rows(l.a.y.min(l.b.y), l.a.y.max(l.b.y), bounds);
     let strips_list = StripList::new(
         (bounds.y0, bounds.y1),
         lines.len(),
         |i| lines.get(i).and_then(rows_of),
-        &mut bytes,
+        bytes,
     )?;
     meter.charge(strips_list.len())?;
     let mut paths = Paths {
@@ -397,7 +393,7 @@ fn classify(
     rules.extend(paths.rules());
     let width = super::row::width(bounds.x1)?;
     let scan = scan_columns(&paths.lines, width);
-    let mut cells = Cells::new(scan.1.saturating_sub(scan.0).max(1), &mut bytes)?;
+    let mut cells = Cells::new(scan.1.saturating_sub(scan.0).max(1), bytes)?;
     let mut resolver = Resolver::default();
     let (mut pieces, mut sides) = (Vec::new(), Vec::new());
     let mut rows = Rows::default();
@@ -407,7 +403,7 @@ fn classify(
             .as_ref()
             .is_some_and(|slabs| !slabs.iter().any(|&[lo, hi]| lo < top + 1.0 && hi > top));
         pieces.clear();
-        paths.pieces(y, 0, (&mut pieces, &mut bytes))?;
+        paths.pieces(y, 0, (&mut pieces, bytes))?;
         meter.charge(pieces.len().saturating_add(2))?;
         if !cells.open(scan, y..y + 1) {
             return Err(Error::limit(CLIP_WORK));
@@ -420,7 +416,7 @@ fn classify(
             sides.clear();
             let meters = Meters {
                 work: &mut meter,
-                bytes: &mut bytes,
+                bytes,
             };
             resolver.row(&pieces, &rules, top, (&mut sides, meters))?;
             for &line in &sides {
@@ -429,7 +425,7 @@ fn classify(
         }
         let mut sink = Classify {
             rows: &mut rows,
-            bytes: &mut bytes,
+            bytes,
             y,
             bounds: (bounds.x0, bounds.x1),
             error: None,

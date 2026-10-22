@@ -8,15 +8,18 @@
 //! by a clip path use the same flattener with a whole-outline area bound;
 //! general cubics retain the canonical 1/256-pixel polygon.
 
-use super::Prep;
 use super::certify::{certified, spline_certified};
 use super::curve::{self, Mono, Piece, Quadratic, Spline};
 use super::edges::{self, Line, Polygon};
 use super::shape::{Frame, Shape, Winding};
+use super::{Prep, RENDER_BYTES};
 use crate::flatten::{CurveStack, Flatness, Polyline, bounded, flatten_with};
 use crate::{FillRule, Path, Point, Segment, Transform};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 use std::sync::Arc;
+
+#[cfg(test)]
+mod tests;
 
 /// A glyph outline prepared once for one linear map (outline space to device
 /// space without translation): its device-space edges relative to the glyph
@@ -68,15 +71,23 @@ pub(crate) struct Relative {
 
 impl Relative {
     /// From a certified spline's pieces.
-    fn new(spline: &Spline) -> Result<Self> {
-        let allocation = |_| Error::limit("glyph geometry allocation failed");
+    fn new(spline: &Spline, bytes: &mut Meter) -> Result<Self> {
         let mut lo = Point::new(f64::INFINITY, f64::INFINITY);
         let mut hi = Point::new(f64::NEG_INFINITY, f64::NEG_INFINITY);
         let mut lines: Vec<Line> = Vec::new();
         let mut curves: Vec<Mono> = Vec::new();
-        lines
-            .try_reserve_exact(spline.pieces.len())
-            .map_err(allocation)?;
+        let line_count = spline
+            .pieces
+            .iter()
+            .filter(|p| matches!(p, Piece::Line(line) if !line.is_horizontal()))
+            .count();
+        let curve_count = spline
+            .pieces
+            .iter()
+            .filter(|p| matches!(p, Piece::Curve(_)))
+            .count();
+        bytes.reserve(&mut lines, line_count)?;
+        bytes.reserve(&mut curves, curve_count)?;
         let mut work = 0_usize;
         for &piece in &spline.pieces {
             for p in piece.ends() {
@@ -91,7 +102,6 @@ impl Relative {
                 Piece::Line(line) if !line.is_horizontal() => lines.push(line),
                 Piece::Line(_) => continue,
                 Piece::Curve(q) => {
-                    curves.try_reserve(1).map_err(allocation)?;
                     curves.push(Mono::new(q));
                 }
             }
@@ -104,11 +114,6 @@ impl Relative {
             hull: [lo, hi],
             work,
         })
-    }
-
-    fn retained_bytes(&self) -> usize {
-        (self.lines.capacity() * size_of::<Line>())
-            .saturating_add(self.curves.capacity() * size_of::<Mono>())
     }
 }
 
@@ -143,57 +148,54 @@ impl GlyphEdges {
             return Err(Error::limit("path segment budget exceeded"));
         }
         let hull = control_hull(outline, transform);
+        let mut bytes = Meter::new(limits.decoded_bytes, "glyph geometry byte budget exceeded");
+        bytes.charge_items::<Self>(1)?;
+        let kind = Self::geometry(outline, transform, limits, &mut bytes)?;
+        Ok(Self {
+            retained: bytes.used(),
+            hull,
+            kind,
+        })
+    }
+
+    fn geometry(
+        outline: &Path,
+        transform: Transform,
+        limits: &Limits,
+        bytes: &mut Meter,
+    ) -> Result<Kind> {
         // A singular map can make a genuine point of a curve; the polygon
         // keeps the point rule.
-        let regular = a * d - b * c != 0.0;
+        let regular = transform.determinant() != 0.0;
         let spline = if regular {
-            curve::spline(outline, transform, limits)?
+            curve::spline(outline, transform, limits, bytes)?
         } else {
             None
         };
-        let kind = match spline {
-            Some(spline) if spline_certified(&spline) => {
-                let relative = Relative::new(&spline)?;
-                Kind::Curve {
+        if let Some(spline) = spline {
+            if spline_certified(&spline, bytes)? {
+                let relative = Relative::new(&spline, bytes)?;
+                // The outline's allocation includes the Arc counters and
+                // Path, whose segment vector is charged separately.
+                bytes.charge(size_of::<Path>() + 2 * size_of::<usize>())?;
+                let outline = Arc::new(outline.clone_with_bytes(bytes)?);
+                return Ok(Kind::Curve {
                     spline,
                     relative,
-                    outline: Arc::new(outline.clone()),
+                    outline,
                     linear: transform,
-                }
+                });
             }
-            _ => {
-                let (polygon, points) = polygon(outline, transform, limits)?;
-                let certified = points.is_empty() && certified(&polygon, 0.0);
-                Kind::Polygon {
-                    polygon,
-                    points,
-                    certified,
-                }
-            }
-        };
-        let retained = size_of::<Self>().saturating_add(match &kind {
-            Kind::Curve {
-                spline,
-                relative,
-                outline,
-                ..
-            } => spline
-                .retained_bytes()
-                .saturating_add(relative.retained_bytes())
-                .saturating_add(size_of_val(outline.segments())),
-            Kind::Polygon {
-                polygon, points, ..
-            } => (polygon.points.capacity() * size_of::<Point>())
-                .saturating_add(polygon.starts.capacity() * size_of::<usize>())
-                .saturating_add(points.capacity() * size_of::<Point>()),
-        });
-        if retained > limits.decoded_bytes {
-            return Err(Error::limit("glyph geometry byte budget exceeded"));
+            let released = spline.retained_bytes();
+            drop(spline);
+            bytes.refund(released);
         }
-        Ok(Self {
-            retained,
-            hull,
-            kind,
+        let (polygon, points) = polygon(outline, transform, limits, bytes)?;
+        let certified = points.is_empty() && certified(&polygon, 0.0, bytes)?;
+        Ok(Kind::Polygon {
+            polygon,
+            points,
+            certified,
         })
     }
 
@@ -226,7 +228,29 @@ impl GlyphEdges {
 
 /// The polygon of `outline` under the translation-free `transform` at the
 /// flattening tolerance, and its geometric points (8.5.3.3.1).
-fn polygon(outline: &Path, transform: Transform, limits: &Limits) -> Result<(Polygon, Vec<Point>)> {
+fn polygon(
+    outline: &Path,
+    transform: Transform,
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<(Polygon, Vec<Point>)> {
+    let before = bytes.used();
+    let result = flattened(outline, transform, limits, bytes);
+    let retained = result.as_ref().map_or(0, |(polygon, points)| {
+        polygon
+            .heap_bytes()
+            .saturating_add(points.capacity().saturating_mul(size_of::<Point>()))
+    });
+    bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
+    result
+}
+
+fn flattened(
+    outline: &Path,
+    transform: Transform,
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<(Polygon, Vec<Point>)> {
     let mut contours: Vec<Polyline> = Vec::new();
     let flatness = if curve::quadratic_outline(outline, transform) {
         // The convex-hull areas sum to at most 1/4096 pixel over the entire
@@ -240,14 +264,19 @@ fn polygon(outline: &Path, transform: Transform, limits: &Limits) -> Result<(Pol
     } else {
         Flatness::Distance
     };
+    let mut pending = CurveStack::new();
     let count = flatten_with(
         outline,
         transform,
         limits,
         &mut contours,
-        &mut CurveStack::new(),
+        &mut pending,
         flatness,
+        bytes,
     )?;
+    let released = crate::flatten::stack_bytes(&pending);
+    drop(pending);
+    bytes.refund(released);
     contours.truncate(count);
     classify(outline, transform, &mut contours)?;
     let mut polygon = Polygon::default();
@@ -263,13 +292,11 @@ fn polygon(outline: &Path, transform: Transform, limits: &Limits) -> Result<(Pol
         if contour.degenerate {
             let p = first * transform;
             bounded(p)?;
-            points
-                .try_reserve(1)
-                .map_err(|_| Error::limit("glyph geometry allocation failed"))?;
+            bytes.reserve_capacity(&mut points, 1)?;
             points.push(p);
             continue;
         }
-        polygon.begin(limits, contour.points.len())?;
+        polygon.begin(limits, contour.points.len(), bytes)?;
         for &point in &contour.points {
             let p = point * transform;
             bounded(p)?;
@@ -328,6 +355,7 @@ fn merged(b: super::DeviceRect) -> usize {
 
 fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<Option<Shape>> {
     bounded(origin)?;
+    let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
     match &edges.kind {
         Kind::Curve {
             spline,
@@ -352,12 +380,19 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
                 // The clip keeps it whole: its translated edges.
                 (None, None) => Shape::translated(edges, relative, origin, &frame, options),
                 // A rectangle cuts it: its pieces, clipped.
-                (Some(_), None) => pieces(spline, origin, &frame, options),
+                (Some(_), None) => pieces(spline, origin, &frame, options, &mut bytes),
                 // A clip path crosses it: its polygon, resolved with the
                 // clip's paths.
                 (_, Some(_)) => {
-                    let (polygon, points) = polygon(outline, *linear, options.limits)?;
-                    translated(&polygon, &points, origin, Winding::Check(0.0), options)
+                    let (polygon, points) = polygon(outline, *linear, options.limits, &mut bytes)?;
+                    translated(
+                        &polygon,
+                        &points,
+                        origin,
+                        Winding::Check(0.0),
+                        options,
+                        &mut bytes,
+                    )
                 }
             }
         }
@@ -371,7 +406,7 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
             } else {
                 Winding::Unknown
             };
-            translated(polygon, points, origin, winding, options)
+            translated(polygon, points, origin, winding, options, &mut bytes)
         }
     }
 }
@@ -384,8 +419,11 @@ pub(crate) fn moved(
     origin: Point,
     options: &Prep<'_>,
 ) -> Result<Option<Shape>> {
+    let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
     match (&edges.kind, Frame::new(options)) {
-        (Kind::Curve { spline, .. }, Some(frame)) => pieces(spline, origin, &frame, options),
+        (Kind::Curve { spline, .. }, Some(frame)) => {
+            pieces(spline, origin, &frame, options, &mut bytes)
+        }
         _ => placed(edges, origin, options),
     }
 }
@@ -397,13 +435,17 @@ fn pieces(
     origin: Point,
     frame: &Frame<'_>,
     options: &Prep<'_>,
+    bytes: &mut Meter,
 ) -> Result<Option<Shape>> {
     let mut lines = Vec::new();
     let mut curves: Vec<Quadratic> = Vec::new();
-    lines
-        .try_reserve(spline.pieces.len())
-        .and_then(|()| curves.try_reserve(spline.pieces.len()))
-        .map_err(|_| Error::limit("glyph placement allocation failed"))?;
+    let line_count = spline
+        .pieces
+        .iter()
+        .filter(|piece| matches!(piece, Piece::Line(_)))
+        .count();
+    bytes.reserve(&mut lines, line_count)?;
+    bytes.reserve(&mut curves, spline.pieces.len() - line_count)?;
     for piece in &spline.pieces {
         match piece.translated(origin) {
             Piece::Line(line) => {
@@ -420,7 +462,7 @@ fn pieces(
             }
         }
     }
-    Shape::pieces(lines, curves, frame, options)
+    Shape::pieces(lines, curves, frame, options, bytes)
 }
 
 /// A placement that translates a polygon's points and its geometric points
@@ -431,13 +473,11 @@ fn translated(
     origin: Point,
     winding: Winding,
     options: &Prep<'_>,
+    bytes: &mut Meter,
 ) -> Result<Option<Shape>> {
     let mut polygon = Polygon::default();
-    polygon
-        .points
-        .try_reserve(source.points.len())
-        .and_then(|()| polygon.starts.try_reserve(source.starts.len()))
-        .map_err(|_| Error::limit("glyph placement allocation failed"))?;
+    bytes.reserve(&mut polygon.points, source.points.len())?;
+    bytes.reserve(&mut polygon.starts, source.starts.len())?;
     for &p in &source.points {
         let p = Point::new(p.x + origin.x, p.y + origin.y);
         bounded(p)?;
@@ -448,9 +488,9 @@ fn translated(
         // A floor cell belongs to the placed point, not to the outline origin.
         let p = Point::new(p.x + origin.x, p.y + origin.y);
         bounded(p)?;
-        polygon.cell(p, options.limits)?;
+        polygon.cell(p, options.limits, bytes)?;
     }
-    Shape::polygon(polygon, FillRule::NonZero, winding, options)
+    Shape::polygon(polygon, FillRule::NonZero, winding, options, bytes)
 }
 
 // The shared flattener retains source point classification. A singular linear

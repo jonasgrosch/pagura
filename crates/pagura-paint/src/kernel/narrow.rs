@@ -135,19 +135,27 @@ pub(crate) fn dynamic_n16(pixels: &mut [[u16; 4]], colors: &Colors<'_>, alpha: &
     dynamic(pixels, colors, alpha, 65535.0, round, f64::from);
 }
 
+/// The word a store at full opacity writes for colour value `value`:
+/// `65535·value` clamped and rounded. `max` and `min` clamp as `clamp`
+/// does, with a NaN to zero, which is also its word.
+#[inline]
+#[expect(
+    clippy::manual_clamp,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "unlike clamp, max and min vectorize, and NaN gives the same word"
+)]
+pub(crate) fn opaque_word(value: f64) -> u16 {
+    (value.max(0.0).min(1.0) * 65535.0).round() as u16
+}
+
 /// The words of opaque colours, three values a pixel, over `pixels`: a
 /// store at full opacity, the word of each target `65535·c`. `max` and
 /// `min` clamp as `clamp` does, with a NaN to zero, which is also its word;
 /// the target then needs no clamp to the word range. Eight pixels at a
 /// time, their 24 values convert as one run, which vectorizes.
 pub(crate) fn overwrite_n16(pixels: &mut [[u16; 4]], values: &[f64]) {
-    #[expect(
-        clippy::manual_clamp,
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss,
-        reason = "unlike clamp, max and min vectorize, and NaN gives the same word"
-    )]
-    let word = |value: f64| (value.max(0.0).min(1.0) * 65535.0).round() as u16;
+    let word = opaque_word;
     let (blocks, last) = pixels.as_chunks_mut::<8>();
     let (colors, rest) = values.as_chunks::<24>();
     for (block, color) in blocks.iter_mut().zip(colors) {

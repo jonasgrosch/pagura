@@ -212,7 +212,11 @@ fn take_planar(frame: &mut Frame) -> Result<Planar> {
         planes,
         dirty,
         backgrounds,
-    })
+        clean: Vec::new(),
+        clean_words: 0,
+        background_rgb: [0; 3],
+    }
+    .with_clean())
 }
 
 #[cfg(test)]

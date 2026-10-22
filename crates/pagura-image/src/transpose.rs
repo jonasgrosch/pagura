@@ -278,7 +278,11 @@ fn planar_transposed(planar: &Planar, limits: &Limits) -> Result<Planar> {
         planes,
         dirty,
         backgrounds: planar.backgrounds,
-    })
+        clean: Vec::new(),
+        clean_words: 0,
+        background_rgb: [0; 3],
+    }
+    .with_clean())
 }
 
 #[cfg(test)]

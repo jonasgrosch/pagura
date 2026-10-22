@@ -50,7 +50,13 @@ mod tests {
 
     fn polygon(points: &[(f64, f64)]) -> Polygon {
         let mut polygon = Polygon::default();
-        polygon.begin(&Limits::default(), points.len()).unwrap();
+        polygon
+            .begin(
+                &Limits::default(),
+                points.len(),
+                &mut crate::testing::bytes(),
+            )
+            .unwrap();
         polygon
             .points
             .extend(points.iter().map(|&(x, y)| Point::new(x, y)));

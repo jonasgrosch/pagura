@@ -25,7 +25,7 @@ impl<D: Device + ?Sized> Machine<'_, '_, D> {
         let Some(emission) = self.admit(scope)? else {
             return Ok(());
         };
-        let composite = scope.state.fill_composite();
+        let composite = self.fill_state(scope);
         self.device.shading(&ShadingMark {
             shading: &shading,
             transform: scope.state.ctm,

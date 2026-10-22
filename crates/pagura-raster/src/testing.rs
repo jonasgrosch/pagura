@@ -6,6 +6,11 @@ use crate::{
 };
 use pagura_core::{Limits, Meter, Result};
 
+/// A byte allowance for private geometry tests with ordinary limits.
+pub(crate) fn bytes() -> Meter {
+    Meter::new(Limits::default().render_bytes, crate::band::RENDER_BYTES)
+}
+
 /// The coverage of `shape` within `clip` over `area`, row-major over its
 /// region, and the work rasterizing it took. Checks that rows and spans come
 /// in order within their bands and that filling the coverage never grows it.

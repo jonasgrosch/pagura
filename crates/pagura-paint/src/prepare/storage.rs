@@ -13,12 +13,12 @@ use formats::{F64_STORE, FOOTPRINTS, MARGIN};
 use hulls::{extent, hulls, unite};
 
 use crate::format::Format;
-use crate::hash::{self, FastMap};
 use crate::plan::Layout;
 use crate::prepare::bounds;
 use crate::prepare::index;
 use crate::prepare::overprint::{Keeping, Place};
 use pagura_color::Process;
+use pagura_core::hash::FastMap;
 use pagura_core::{Error, Result};
 use pagura_interpret::{
     BlendMode, Composite, GroupAttributes, GroupId, GroupRole, ImageMask, MaskId, Node, Paint,
@@ -94,9 +94,9 @@ pub(crate) fn survey(scene: &Scene, inputs: Inputs) -> Result<Storage> {
         scene,
         inputs,
         buffers: Vec::new(),
-        groups: hash::map(),
-        masks: hash::map(),
-        cells: hash::map(),
+        groups: FastMap::default(),
+        masks: FastMap::default(),
+        cells: FastMap::default(),
         open: Vec::new(),
         transfers: false,
     };

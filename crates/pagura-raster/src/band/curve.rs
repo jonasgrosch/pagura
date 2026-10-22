@@ -8,7 +8,7 @@
 use super::edges::{Bounds, Line};
 use crate::flatten::bounded;
 use crate::{Path, Point, Segment, Transform};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 
 /// Maximum sum of absolute cubic third differences per coordinate in one
 /// quadratic outline. Bounding the sum, rather than each segment, bounds
@@ -317,23 +317,38 @@ impl Spline {
 ///
 /// Returns a `Limit` error beyond `limits.path_segments` pieces and
 /// `InvalidArgument` for coordinates beyond the working range.
-pub(crate) fn spline(outline: &Path, linear: Transform, limits: &Limits) -> Result<Option<Spline>> {
+pub(crate) fn spline(
+    outline: &Path,
+    linear: Transform,
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<Option<Spline>> {
     if outline.segments().len() > limits.path_segments {
         return Err(Error::limit("path segment budget exceeded"));
     }
     if !quadratic_outline(outline, linear) || !reducible_with_rounding(outline, linear) {
         return Ok(None);
     }
+    let before = bytes.used();
     let builder = Builder {
         spline: Spline::default(),
         limits,
+        bytes,
     };
-    builder.path(outline, linear)
+    let result = builder.path(outline, linear);
+    let retained = result
+        .as_ref()
+        .ok()
+        .and_then(Option::as_ref)
+        .map_or(0, Spline::retained_bytes);
+    bytes.refund(bytes.used().saturating_sub(before.saturating_add(retained)));
+    result
 }
 
 struct Builder<'a> {
     spline: Spline,
     limits: &'a Limits,
+    bytes: &'a mut Meter,
 }
 
 impl Builder<'_> {
@@ -341,19 +356,13 @@ impl Builder<'_> {
         if self.spline.pieces.len() >= self.limits.path_segments {
             return Err(Error::limit("quadratic edge budget exceeded"));
         }
-        self.spline
-            .pieces
-            .try_reserve(1)
-            .map_err(|_| Error::limit("glyph piece allocation failed"))?;
+        self.bytes.reserve_capacity(&mut self.spline.pieces, 1)?;
         self.spline.pieces.push(piece);
         Ok(())
     }
 
     fn begin(&mut self) -> Result<()> {
-        self.spline
-            .starts
-            .try_reserve(1)
-            .map_err(|_| Error::limit("glyph piece allocation failed"))?;
+        self.bytes.reserve_capacity(&mut self.spline.starts, 1)?;
         self.spline.starts.push(self.spline.pieces.len());
         Ok(())
     }
@@ -534,6 +543,7 @@ pub(crate) fn clip(
     bounds: Bounds,
     lines: &mut Vec<Line>,
     out: &mut Vec<Quadratic>,
+    bytes: &mut Meter,
 ) -> Result<()> {
     if bounds.is_empty() {
         return Ok(());
@@ -547,18 +557,12 @@ pub(crate) fn clip(
     if first.y == last.y {
         return Ok(());
     }
-    let reserve = |n: usize, lines: &mut Vec<Line>, out: &mut Vec<Quadratic>| {
-        lines
-            .try_reserve(n)
-            .and_then(|()| out.try_reserve(n))
-            .map_err(|_| Error::limit("raster geometry allocation failed"))
-    };
     if bounds.left <= first.x.min(last.x)
         && first.x.max(last.x) <= bounds.right
         && bounds.top <= first.y
         && last.y <= bounds.bottom
     {
-        reserve(1, lines, out)?;
+        bytes.reserve_capacity(out, 1)?;
         out.push(piece);
         return Ok(());
     }
@@ -583,7 +587,6 @@ pub(crate) fn clip(
     }
     let events = &mut events[..count];
     events.sort_unstable_by(f64::total_cmp);
-    reserve(count, lines, out)?;
     for pair in events.windows(2) {
         let mut part = curve.interval(pair[0], pair[1]);
         let x = part.at(0.5).x;
@@ -593,6 +596,7 @@ pub(crate) fn clip(
                 Point::new(x, part.points[0].y),
                 Point::new(x, part.points[2].y),
             );
+            bytes.reserve_capacity(lines, 1)?;
             lines.push(if reversed {
                 Line { a: b, b: a }
             } else {
@@ -602,6 +606,7 @@ pub(crate) fn clip(
             if reversed {
                 part.points.reverse();
             }
+            bytes.reserve_capacity(out, 1)?;
             out.push(part);
         }
     }
@@ -625,99 +630,4 @@ fn cross(a: Point, b: Point) -> f64 {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::PathBuilder;
-
-    /// The integral of x dy along the pieces: the signed area they bound.
-    fn area(spline: &Spline) -> f64 {
-        spline
-            .pieces
-            .iter()
-            .map(|p| match *p {
-                Piece::Line(Line { a, b }) => (b.y - a.y) * (a.x + b.x) * 0.5,
-                Piece::Curve(q) => {
-                    let m = Mono::new(q);
-                    m.direction * ((m.y1 - m.y0) * m.x0 + m.h(1.0))
-                }
-            })
-            .sum()
-    }
-
-    #[test]
-    fn elevated_quadratics_split_into_monotone_pieces() {
-        // The quadratic (0,0) (2,4) (4,0) as a cubic.
-        let mut path = PathBuilder::new();
-        path.move_to(Point::new(0.0, 0.0));
-        let c = |a: f64, b: f64| a + (b - a) * 2.0 / 3.0;
-        path.cubic_to(
-            Point::new(c(0.0, 2.0), c(0.0, 4.0)),
-            Point::new(c(4.0, 2.0), c(0.0, 4.0)),
-            Point::new(4.0, 0.0),
-        )
-        .unwrap();
-        path.close();
-        let spline = spline(&path.finish(), Transform::IDENTITY, &Limits::default())
-            .unwrap()
-            .unwrap();
-        let curves = spline
-            .pieces
-            .iter()
-            .filter(|p| matches!(p, Piece::Curve(_)))
-            .count();
-        assert_eq!(curves, 2);
-        // The area under the arch, 2/3 × 4 × 2 = 16/3.
-        assert!((area(&spline).abs() - 16.0 / 3.0).abs() < 1e-12);
-    }
-
-    #[test]
-    fn a_cancelled_third_difference_does_not_hide_mapping_roundoff() {
-        let mut path = PathBuilder::new();
-        path.move_to(Point::new(1e12, 1e12));
-        path.cubic_to(
-            Point::new(1e12 + 2.0, 1e12 + 4.0),
-            Point::new(1e12 + 4.0, 1e12 + 4.0),
-            Point::new(1e12 + 6.0, 1e12),
-        )
-        .unwrap();
-        path.close();
-        let path = path.finish();
-        assert!(!reducible_with_rounding(&path, Transform::IDENTITY));
-        assert!(
-            spline(&path, Transform::IDENTITY, &Limits::default())
-                .unwrap()
-                .is_none()
-        );
-    }
-
-    #[test]
-    fn general_cubics_keep_the_canonical_polygon() {
-        let mut path = PathBuilder::new();
-        path.move_to(Point::new(100.0, 0.0));
-        path.cubic_to(
-            Point::new(100.0, 55.0),
-            Point::new(55.0, 100.0),
-            Point::new(0.0, 100.0),
-        )
-        .unwrap();
-        path.line_to(Point::new(0.0, 0.0)).unwrap();
-        path.close();
-        assert!(
-            spline(&path.finish(), Transform::IDENTITY, &Limits::default())
-                .unwrap()
-                .is_none()
-        );
-    }
-
-    #[test]
-    fn points_are_left_to_the_polygon() {
-        let mut path = PathBuilder::new();
-        path.move_to(Point::new(1.0, 1.0));
-        path.close();
-        assert!(
-            spline(&path.finish(), Transform::IDENTITY, &Limits::default())
-                .unwrap()
-                .is_none()
-        );
-    }
-}
+mod tests;
