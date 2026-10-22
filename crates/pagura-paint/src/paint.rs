@@ -64,6 +64,20 @@ pub(crate) trait PaintSpans: Send + Sync + fmt::Debug {
     fn repairs(&self) -> &[Diagnostic] {
         &[]
     }
+
+    /// Whether [`Self::span_bytes`] gives this paint's pixels as bytes.
+    fn byte_spans(&self) -> bool {
+        false
+    }
+
+    /// Fills `out` with device pixels `x .. x + out.len()` of row `y` as the
+    /// bytes a byte store takes: each pixel's colour rounded, alpha 255, or
+    /// `[0, 0, 0, 0]` where [`Self::span`] gives alpha 0. False unless
+    /// [`Self::byte_spans`].
+    fn span_bytes(&self, x: u32, y: u32, out: &mut [[u8; 4]]) -> bool {
+        let _ = (x, y, out);
+        false
+    }
 }
 
 impl PaintSpans for Source {
@@ -126,6 +140,17 @@ impl PaintSpans for Source {
                 shape.clear();
                 shape.extend_from_slice(&out.alpha);
             }
+        }
+    }
+
+    fn byte_spans(&self) -> bool {
+        matches!(self, Self::Image(image) if image.has_byte_spans())
+    }
+
+    fn span_bytes(&self, x: u32, y: u32, out: &mut [[u8; 4]]) -> bool {
+        match self {
+            Self::Image(image) => image.span_bytes(x, y, out),
+            Self::Solid { .. } | Self::Shading(_) => false,
         }
     }
 
