@@ -182,6 +182,19 @@ impl ImageSampler {
         if image.space.as_deref().is_some_and(|space| !space.paints()) {
             return Ok(empty);
         }
+        // A placement too thin for any of its sample space to be reached
+        // finitely covers no visible part of a pixel (zero coverage).
+        let extent = |source: &ImageSource| (f64::from(source.width()), f64::from(source.height()));
+        let masks = match &image.mask {
+            ImageMask::Stencil(mask) | ImageMask::Soft { mask, .. } => Some(&mask.source),
+            ImageMask::None | ImageMask::ColorKey(_) | ImageMask::Embedded => None,
+        };
+        if !std::iter::once(&image.source)
+            .chain(masks)
+            .all(|source| geometry::reaches(inverse, extent(source)))
+        {
+            return Ok(empty);
+        }
         let plain = matches!(image.mask, ImageMask::None) && !image.interpolate;
         let planes = planes_suit(
             (image.space.as_deref(), &image.decode, plain),

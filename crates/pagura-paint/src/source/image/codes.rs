@@ -31,6 +31,49 @@ const AFFINE_TOLERANCE: f64 = 1e-14;
 /// Converted rows of planar or packed samples kept for the next spans.
 const CACHED_ROWS: usize = 8;
 
+/// A lane's value as an affine function of a code: `zero + code × slope`.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Affine {
+    zero: f64,
+    slope: f64,
+    /// The largest code, where the map takes codes onto `0..=1` (`zero` 0,
+    /// `slope` `1 / maximum`); then a code that is exact in f64 stays exact
+    /// as the value that multiplies back to it.
+    unit: Option<f64>,
+}
+
+impl Affine {
+    /// The values `zero + code × slope` for codes `0..=maximum`.
+    fn new(zero: f64, slope: f64, maximum: f64) -> Self {
+        Self {
+            zero,
+            slope,
+            unit: (zero == 0.0 && slope * maximum == 1.0).then_some(maximum),
+        }
+    }
+
+    /// The value of `code`, which may be an average. On a unit map it is
+    /// the product unless that does not multiply back to the code, and
+    /// then the quotient, so that a level of 255 such as `k + 1/2` from an
+    /// exact average reaches storage exact, and with it its rounding.
+    #[inline]
+    fn apply(self, code: f64) -> f64 {
+        let value = code * self.slope;
+        match self.unit {
+            Some(maximum) if value * maximum != code => code / maximum,
+            Some(_) => value,
+            None => self.zero + value,
+        }
+    }
+}
+
+/// The map of averages already in colour values.
+const IDENTITY: Affine = Affine {
+    zero: 0.0,
+    slope: 1.0,
+    unit: None,
+};
+
 /// How each texel lane follows the codes.
 #[derive(Debug, Clone)]
 pub(super) struct Lanes {
@@ -38,17 +81,17 @@ pub(super) struct Lanes {
     component: Vec<usize>,
     /// Per lane: the texel value of every code.
     table: Vec<[f64; 256]>,
-    /// Per lane: the value at code zero and the change per code.
-    affine: Vec<(f64, f64)>,
+    /// Per lane: its value of a code.
+    affine: Vec<Affine>,
     /// Per lane: the values at code zero and at the largest code.
     ends: Vec<(f64, f64)>,
     /// The largest code.
     maximum: u8,
-    /// The value at code zero and the change per code shared by every lane
-    /// of opaque lanes that follow their own component.
-    direct: Option<(f64, f64)>,
+    /// The value of a code shared by every lane of opaque lanes that follow
+    /// their own component.
+    direct: Option<Affine>,
     /// The same, shared by opaque lanes that all follow the one component.
-    replicated: Option<(f64, f64)>,
+    replicated: Option<Affine>,
     /// Colour channels: all lanes when opaque, all but alpha and shape
     /// otherwise.
     channels: usize,
@@ -103,7 +146,7 @@ impl Lanes {
             let mut entries = [0.0; 256];
             entries.get_mut(..column.len())?.copy_from_slice(column);
             table.push(entries);
-            affine.push((zero, slope));
+            affine.push(Affine::new(zero, slope, maximum));
             ends.push((zero, top));
         }
         let own = component.iter().enumerate().all(|(lane, &c)| lane == c);
@@ -147,10 +190,10 @@ impl Lanes {
         out: &mut SpanColors,
         shape: Option<&mut Vec<f64>>,
     ) {
-        if let Some((zero, slope)) = self.direct.filter(|_| n == self.table.len()) {
+        if let Some(map) = self.direct.filter(|_| n == self.table.len()) {
             out.colors.clear();
             out.colors
-                .extend(averages.iter().map(|&average| zero + average * slope));
+                .extend(averages.iter().map(|&average| map.apply(average)));
             opaque_shape(averages.len() / n, shape);
             return;
         }
@@ -178,10 +221,10 @@ impl Lanes {
             return;
         }
         self.emit(averages.chunks_exact(n), out, shape, |codes, values| {
-            for ((value, &component), &(zero, slope)) in
+            for ((value, &component), map) in
                 values.iter_mut().zip(&self.component).zip(&self.affine)
             {
-                *value = zero + codes.get(component).copied().unwrap_or(0.0) * slope;
+                *value = map.apply(codes.get(component).copied().unwrap_or(0.0));
             }
         });
     }
@@ -196,16 +239,13 @@ impl Lanes {
         let Some(component) = self.lane_components::<N, L>() else {
             return false;
         };
-        let zero: [f64; L] = std::array::from_fn(|l| self.affine[l].0);
-        let slope: [f64; L] = std::array::from_fn(|l| self.affine[l].1);
+        let maps: [Affine; L] = std::array::from_fn(|l| self.affine[l]);
         let averages = averages.as_chunks::<N>().0;
         colors.clear();
         colors.resize(averages.len() * L, 0.0);
         for (values, average) in colors.as_chunks_mut::<L>().0.iter_mut().zip(averages) {
-            for (((value, &component), &zero), &slope) in
-                values.iter_mut().zip(&component).zip(&zero).zip(&slope)
-            {
-                *value = zero + average[component] * slope;
+            for ((value, &component), map) in values.iter_mut().zip(&component).zip(&maps) {
+                *value = map.apply(average[component]);
             }
         }
         true
@@ -282,11 +322,11 @@ impl Lanes {
         out: &mut SpanColors,
         shape: Option<&mut Vec<f64>>,
     ) {
-        if let Some((zero, slope)) = self.direct.filter(|_| n == self.table.len()) {
+        if let Some(map) = self.direct.filter(|_| n == self.table.len()) {
             // Every code becomes its colour value alike.
             out.colors.clear();
             out.colors
-                .extend(codes.iter().map(|&code| zero + f64::from(code) * slope));
+                .extend(codes.iter().map(|&code| map.apply(f64::from(code))));
             opaque_shape(codes.len() / n, shape);
             return;
         }
@@ -932,7 +972,7 @@ impl Codes {
                 };
                 let (mut target, (map, mut copies)) = match direct {
                     Some(direct) => (std::mem::take(&mut out.colors), direct),
-                    None => (std::mem::take(&mut scratch.averages), ((0.0, 1.0), 1)),
+                    None => (std::mem::take(&mut scratch.averages), (IDENTITY, 1)),
                 };
                 if !matches!(copies, 1 | 3 | 4) {
                     copies = 1;
@@ -1026,14 +1066,13 @@ impl Codes {
     }
 
     /// The average codes of the span's separable footprints, `N` per pixel,
-    /// mapped by `zero + average × slope` into `averages`, each value `C`
-    /// times.
+    /// mapped by `map` into `averages`, each value `C` times.
     fn area<const N: usize, const C: usize>(
         &self,
         grid: &Grid<'_>,
         (x, y, len): (u32, u32, usize),
         scratch: &mut Scratch,
-        (averages, (zero, slope)): (&mut [f64], (f64, f64)),
+        (averages, map): (&mut [f64], Affine),
     ) {
         let Scratch {
             feet,
@@ -1074,7 +1113,7 @@ impl Codes {
             (Grid::Planar(..), Some(clean)) => clean.runs(rows_spanned, (first, end), runs),
             _ => runs.push((first, end, true)),
         }
-        let map = (across.normalization, zero, slope);
+        let map = (across.normalization, map);
         if whole && across.whole() {
             // Whole samples sum as integers throughout.
             sum_rows::<N>(
@@ -1084,15 +1123,21 @@ impl Codes {
                 (sums, rows),
                 runs,
             );
-            columns::<N, C, u32>((feet, first), sums, (averages, covered), map, |values, _| {
-                let mut sum = [0u32; N];
-                for cell in values.as_chunks::<N>().0 {
-                    for (sum, &value) in sum.iter_mut().zip(cell) {
-                        *sum = sum.wrapping_add(value);
+            columns::<N, C, u32>(
+                (feet, first),
+                sums,
+                (averages, covered),
+                map,
+                |values, _| {
+                    let mut sum = [0u32; N];
+                    for cell in values.as_chunks::<N>().0 {
+                        for (sum, &value) in sum.iter_mut().zip(cell) {
+                            *sum = sum.wrapping_add(value);
+                        }
                     }
-                }
-                sum.map(f64::from)
-            });
+                    sum.map(f64::from)
+                },
+            );
             return;
         }
         if lines.len() != length {
@@ -1121,9 +1166,13 @@ impl Codes {
                 runs,
             );
         }
-        columns::<N, C, f64>((feet, first), lines, (averages, covered), map, |values, foot| {
-            line_values::<N>(values, foot.first_weight, foot.last_weight)
-        });
+        columns::<N, C, f64>(
+            (feet, first),
+            lines,
+            (averages, covered),
+            map,
+            |values, foot| line_values::<N>(values, foot.first_weight, foot.last_weight),
+        );
     }
 }
 
@@ -1195,12 +1244,12 @@ fn reduce_rows(
 /// Writes each covered pixel's `N` averages, its footprint's sums of
 /// `values` (`N` per source column from `first`) as `sum` gives them, scaled
 /// by the footprint's and the row's normalization and mapped by
-/// `zero + average × slope`, `C` times each, and marks it covered.
+/// `map`, `C` times each, and marks it covered.
 fn columns<const N: usize, const C: usize, T>(
     (feet, first): (&[Footprint], usize),
     values: &[T],
     (averages, covered): (&mut [f64], &mut [bool]),
-    (scale, zero, slope): (f64, f64, f64),
+    (scale, map): (f64, Affine),
     sum: impl Fn(&[T], &Footprint) -> [f64; N],
 ) {
     for ((foot, average), covered) in feet
@@ -1219,7 +1268,7 @@ fn columns<const N: usize, const C: usize, T>(
         };
         let factor = foot.normalization * scale;
         for (lanes, sum) in average.iter_mut().zip(sum(values, foot)) {
-            *lanes = [zero + sum * factor * slope; C];
+            *lanes = [map.apply(sum * factor); C];
         }
     }
 }

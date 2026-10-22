@@ -201,9 +201,9 @@ dependencies = [
  "pagura-document",
  "pagura-image",
  "pagura-interpret",
+ "pagura-legacy",
  "pagura-raster",
  "pagura-reference",
- "pagura-render",
  "pagura-testkit",
 ]
 

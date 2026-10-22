@@ -543,11 +543,11 @@ fn reduced_against_competitive() {
             continue;
         };
         for &dpi in &dpis {
-            let context = pagura_render::RenderContext::new(Arc::clone(&document));
-            let options = pagura_render::RenderOptions {
+            let context = pagura_legacy::RenderContext::new(Arc::clone(&document));
+            let options = pagura_legacy::RenderOptions {
                 scale: dpi / 72.0,
-                accuracy: pagura_render::Accuracy::Competitive,
-                ..pagura_render::RenderOptions::default()
+                accuracy: pagura_legacy::Accuracy::Competitive,
+                ..pagura_legacy::RenderOptions::default()
             };
             let Ok(old) = context.render_page(page, &options) else {
                 continue;

@@ -204,19 +204,10 @@ impl Geometry {
         interpolate: bool,
         inverse: Transform,
     ) -> Result<Self> {
-        let inverse = inverse.then(Transform::new(extent.0, 0.0, 0.0, -extent.1, 0.0, extent.1));
-        // Every device pixel corner within the u32 grid maps finitely, so
-        // footprints never overflow while painting.
-        let reach = f64::from(u32::MAX) + 1.0;
-        let finite = [inverse.a, inverse.b, inverse.c, inverse.d]
-            .iter()
-            .map(|v| v.abs() * reach)
-            .chain([inverse.e.abs(), inverse.f.abs()])
-            .fold(0.0, |sum: f64, v| sum + v)
-            .is_finite();
-        if !finite {
+        if !reaches(inverse, extent) {
             return Err(Error::limit("image sampling transform overflow"));
         }
+        let inverse = inverse.then(Transform::new(extent.0, 0.0, 0.0, -extent.1, 0.0, extent.1));
         Ok(Self {
             width,
             height,
@@ -481,6 +472,22 @@ impl Geometry {
         let y = coordinate(y, self.height.saturating_sub(1));
         sample_index(u64::from(y) * u64::from(self.width) + u64::from(x))
     }
+}
+
+/// Whether every device pixel corner within the u32 grid maps finitely into
+/// the sample space of an image whose unit square spans `extent` samples
+/// under the device-to-unit-square `inverse`, so footprints never overflow
+/// while painting. A placement that fails it is narrower than 2^-290 of a
+/// pixel along one axis, and covers no visible part of any pixel.
+pub(super) fn reaches(inverse: Transform, extent: (f64, f64)) -> bool {
+    let inverse = inverse.then(Transform::new(extent.0, 0.0, 0.0, -extent.1, 0.0, extent.1));
+    let reach = f64::from(u32::MAX) + 1.0;
+    [inverse.a, inverse.b, inverse.c, inverse.d]
+        .iter()
+        .map(|v| v.abs() * reach)
+        .chain([inverse.e.abs(), inverse.f.abs()])
+        .fold(0.0, |sum: f64, v| sum + v)
+        .is_finite()
 }
 
 /// How a placement whose device pixels map by `t` to sample space samples.

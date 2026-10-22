@@ -204,11 +204,11 @@ pub(super) fn placed(document: &Document, page: &Page, scale: f64) -> Vec<Placed
         }
     }
     let device = device_transform(page, scale);
-    let options = pagura_render::RenderOptions {
+    let options = pagura_legacy::RenderOptions {
         scale,
-        ..pagura_render::RenderOptions::default()
+        ..pagura_legacy::RenderOptions::default()
     };
-    let Ok(size) = pagura_render::device_size(page, &options) else {
+    let Ok(size) = pagura_legacy::device_size(page, &options) else {
         return Vec::new();
     };
     walk.draws
@@ -373,15 +373,15 @@ fn old_route(
     document: &Arc<Document>,
     index: usize,
     scale: f64,
-    accuracy: pagura_render::Accuracy,
+    accuracy: pagura_legacy::Accuracy,
     runs: usize,
 ) -> f64 {
-    let context = pagura_render::RenderContext::new(Arc::clone(document));
+    let context = pagura_legacy::RenderContext::new(Arc::clone(document));
     let page = context.document().page(index).unwrap();
-    let options = pagura_render::RenderOptions {
+    let options = pagura_legacy::RenderOptions {
         scale,
         accuracy,
-        ..pagura_render::RenderOptions::default()
+        ..pagura_legacy::RenderOptions::default()
     };
     best(runs, || {
         std::hint::black_box(context.render_page(page, &options).unwrap());
@@ -440,14 +440,14 @@ fn image_page_timing() {
                     &document,
                     index,
                     scale,
-                    pagura_render::Accuracy::Exact,
+                    pagura_legacy::Accuracy::Exact,
                     runs,
                 );
                 old_competitive = old_route(
                     &document,
                     index,
                     scale,
-                    pagura_render::Accuracy::Competitive,
+                    pagura_legacy::Accuracy::Competitive,
                     runs,
                 );
                 let _ = write!(line, " | {old_exact:.2} | {old_competitive:.2}");
