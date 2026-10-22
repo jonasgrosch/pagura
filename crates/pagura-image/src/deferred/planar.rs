@@ -111,6 +111,12 @@ impl Planar {
         matches!(repeat, 1 | 2 | 4).then_some(repeat)
     }
 
+    /// The value each component's plane holds where no block was stored.
+    #[must_use]
+    pub fn backgrounds(&self) -> [u8; 3] {
+        self.backgrounds
+    }
+
     /// Whether block `block` of component `c`'s block row `row` differs from
     /// the plane's background.
     #[must_use]

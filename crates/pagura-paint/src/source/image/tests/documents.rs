@@ -1,5 +1,6 @@
 //! Images read from documents: requests for exact means decode and sample
-//! as full decoding does.
+//! as full decoding does, and JPEG component planes, background blocks and
+//! exchanged rows and columns sample as interleaved samples do.
 
 use super::{SpanColors, converter};
 use crate::source::image::{Description, ImageSampler, MaskDescription, Orientation, Prepared};
@@ -37,8 +38,25 @@ fn jpeg_images(document: &Document) -> Vec<ObjectId> {
         .collect()
 }
 
-/// A sampler of an opaque device-colour image without masks.
+/// A sampler of an opaque device-colour image without masks, placed
+/// upright.
 fn device_sampler(decoded: Arc<Decoded>, unit_to_device: Transform, width: u32) -> ImageSampler {
+    oriented_sampler(decoded, unit_to_device, width)
+}
+
+/// A sampler of an opaque device-colour image without masks, its samples
+/// exchanged for a quarter turn as preparation decodes them.
+fn oriented_sampler(decoded: Arc<Decoded>, unit_to_device: Transform, width: u32) -> ImageSampler {
+    let orientation = Orientation::of(unit_to_device, MaskDescription::None);
+    let decoded = match orientation {
+        Orientation::Rows => decoded,
+        Orientation::Transposed => Arc::new(Decoded::from(
+            decoded
+                .image
+                .transposed(&pagura_core::Limits::default())
+                .unwrap(),
+        )),
+    };
     let components = usize::from(decoded.image.components);
     let space = match components {
         1 => ColorSpace::DeviceGray,
@@ -57,11 +75,7 @@ fn device_sampler(decoded: Arc<Decoded>, unit_to_device: Transform, width: u32) 
     let (prepared, _) = Prepared::new(
         &description,
         (decoded, None),
-        (
-            unit_to_device.inverse().unwrap(),
-            (0, width),
-            Orientation::Rows,
-        ),
+        (unit_to_device.inverse().unwrap(), (0, width), orientation),
         Some(convert),
     )
     .unwrap();
@@ -163,4 +177,79 @@ fn exact_means_decode_and_sample_as_full_decoding() {
         }
     }
     assert!(checked > 0, "no JPEG fixtures");
+}
+
+#[test]
+fn planes_background_blocks_and_turns_sample_as_interleaved_samples() {
+    let directory = pagura_testkit::workspace_root().join("corpus/generated/image");
+    let mut files: Vec<_> = std::fs::read_dir(&directory)
+        .unwrap()
+        .filter_map(|entry| entry.ok().map(|e| e.path()))
+        .filter(|path| path.extension().is_some_and(|e| e == "pdf"))
+        .filter_map(|path| std::fs::read(path).ok())
+        .collect();
+    files.extend(corpus("0000095.pdf"));
+    let mut planar = 0;
+    for bytes in files {
+        let Ok(document) = Document::open(bytes, &OpenOptions::default()) else {
+            continue;
+        };
+        for id in jpeg_images(&document).into_iter().take(1) {
+            let Ok(source) = ImageSource::from_xobject(&document, document.object(id).unwrap())
+            else {
+                continue;
+            };
+            let limits = document.limits();
+            let decode = |layout| {
+                source
+                    .decode(
+                        &DecodeRequest::new(Reduce::Full, None, layout),
+                        &limits,
+                        source.recovery(),
+                    )
+                    .map(Arc::new)
+            };
+            let (Ok(interleaved), Ok(native)) =
+                (decode(Layout::Interleaved), decode(Layout::Native))
+            else {
+                continue;
+            };
+            if !matches!(native.image.samples, pagura_image::Samples::Planar(_)) {
+                continue;
+            }
+            planar += 1;
+            let (w, h) = (f64::from(source.width()), f64::from(source.height()));
+            let scale = (240.0 / w.max(h)).min(1.0);
+            for (a, b, c, d) in [
+                (w * scale / 3.3, 0.0, 0.0, -h * scale / 3.3),
+                (w * scale, 0.0, 0.0, -h * scale),
+                (w * 1.7, 0.0, 0.0, h * 1.7),
+                (0.0, h * scale / 2.6, w * scale / 2.6, 0.0),
+                (0.0, -h * 1.3, w * 1.3, 0.0),
+            ] {
+                let placement = Transform::new(a, b, c, d, 0.25, 0.4 - d.min(0.0) - b.min(0.0));
+                #[expect(
+                    clippy::cast_possible_truncation,
+                    clippy::cast_sign_loss,
+                    reason = "test window"
+                )]
+                let window = (
+                    ((a.abs() + c.abs()).ceil() as u32 + 1).min(200),
+                    ((b.abs() + d.abs()).ceil() as u32 + 1).min(200),
+                );
+                assert_eq!(
+                    sample_all(
+                        &oriented_sampler(Arc::clone(&interleaved), placement, window.0),
+                        window
+                    ),
+                    sample_all(
+                        &oriented_sampler(Arc::clone(&native), placement, window.0),
+                        window
+                    ),
+                    "{id} {placement:?}"
+                );
+            }
+        }
+    }
+    assert!(planar > 0, "no planar JPEG fixtures");
 }

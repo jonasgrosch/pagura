@@ -106,7 +106,9 @@ impl Lanes {
         }
         let own = component.iter().enumerate().all(|(lane, &c)| lane == c);
         let shared = affine.windows(2).all(|pair| pair[0] == pair[1]);
-        let direct = (opaque && own && shared).then(|| affine.first().copied()).flatten();
+        let direct = (opaque && own && shared)
+            .then(|| affine.first().copied())
+            .flatten();
         Some(Self {
             component: component.to_vec(),
             table,
@@ -398,7 +400,108 @@ pub(super) struct Codes {
     /// The first device column of `plan`.
     x0: u32,
     plan: Plan,
+    /// The blocks of planar samples that hold only background.
+    clean: Option<Clean>,
     scratch: Mutex<Scratch>,
+}
+
+/// Which eight-by-eight luma blocks of planar samples, with the chroma
+/// blocks over them, hold only their planes' backgrounds, and the colour
+/// those convert to. Their samples need no conversion and their sums no
+/// arithmetic beyond one value per device row.
+#[derive(Debug)]
+struct Clean {
+    /// Bit words per block row.
+    words: usize,
+    /// One bit per luma block, set where it is background.
+    bits: Vec<u64>,
+    /// The RGB codes of the backgrounds.
+    background: [u8; 3],
+}
+
+impl Clean {
+    fn new(planar: &Planar) -> Self {
+        let [_, _, pitch] = planar.geometry(0);
+        let [max_h, max_v] = planar.maximum();
+        let columns = pitch / 8;
+        let rows = planar.height().div_ceil(8);
+        let words = columns.div_ceil(64);
+        let mut bits = vec![0u64; words * rows];
+        for (row, line) in bits.chunks_exact_mut(words.max(1)).enumerate() {
+            for column in 0..columns {
+                let chroma = (1..3).all(|c| {
+                    let [h, v, _] = planar.geometry(c);
+                    let (y0, y1) = (row * 8 * v / max_v / 8, (row * 8 + 7) * v / max_v / 8);
+                    let (x0, x1) = (column * 8 * h / max_h / 8, (column * 8 + 7) * h / max_h / 8);
+                    (y0..=y1).all(|y| (x0..=x1).all(|x| !planar.dirty(c, y, x)))
+                });
+                if chroma && !planar.dirty(0, row, column) {
+                    line[column / 64] |= 1 << (column % 64);
+                }
+            }
+        }
+        let [y, cb, cr] = planar.backgrounds();
+        let mut background = [0; 3];
+        let _ = pagura_image::deferred::ycbcr(&[y], &[cb], &[cr], 1, &mut background);
+        Self {
+            words,
+            bits,
+            background,
+        }
+    }
+
+    fn bytes(&self) -> usize {
+        self.bits.capacity() * size_of::<u64>()
+    }
+
+    /// Splits samples `first..end` of source rows `top..=bottom` into runs
+    /// that are all background (`false`) or may not be (`true`). Background
+    /// shorter than [`Clean::GAP`] samples joins the runs around it.
+    fn runs(
+        &self,
+        (top, bottom): (usize, usize),
+        (first, end): (usize, usize),
+        runs: &mut Vec<(usize, usize, bool)>,
+    ) {
+        runs.clear();
+        let mut push = |start: usize, stop: usize, dirty: bool| {
+            let dirty = dirty || stop - start < Self::GAP && (start != first || stop != end);
+            match runs.last_mut() {
+                Some(last) if last.2 == dirty => last.1 = stop,
+                _ => runs.push((start, stop, dirty)),
+            }
+        };
+        let (mut column, last) = (first / 8, (end - 1) / 8);
+        while column <= last {
+            // The background bits of this word's columns from `column` on,
+            // over every block row.
+            let (word, shift) = (column / 64, column % 64);
+            let mut bits = u64::MAX;
+            for row in top / 8..=bottom / 8 {
+                bits &= self.bits.get(row * self.words + word).copied().unwrap_or(0);
+            }
+            let bits = bits >> shift;
+            let background = bits & 1 == 1;
+            let same = if background {
+                bits.trailing_ones()
+            } else {
+                bits.trailing_zeros()
+            };
+            let available = 64 - shift;
+            let count = usize::try_from(same.min(u32::try_from(available).unwrap_or(64)))
+                .unwrap_or(1)
+                .max(1)
+                .min(last + 1 - column);
+            let start = (column * 8).max(first);
+            column += count;
+            let stop = (column * 8).min(end);
+            push(start, stop, !background);
+        }
+    }
+
+    /// The shortest background run worth reducing apart from its
+    /// neighbours.
+    const GAP: usize = 64;
 }
 
 /// Storage reused between spans.
@@ -411,6 +514,8 @@ struct Scratch {
     averages: Vec<f64>,
     /// Per pixel of an averaged span: whether its footprint meets the image.
     covered: Vec<bool>,
+    /// Runs of background and other samples.
+    runs: Vec<(usize, usize, bool)>,
     codes: Vec<u8>,
     rows: RowCache,
 }
@@ -420,6 +525,8 @@ struct Scratch {
 struct RowCache {
     entries: Vec<(usize, (usize, usize), Vec<u8>)>,
     next: usize,
+    /// Runs of background and other samples of the row being filled.
+    runs: Vec<(usize, usize, bool)>,
 }
 
 impl RowCache {
@@ -429,7 +536,7 @@ impl RowCache {
         &mut self,
         (y, range): (usize, (usize, usize)),
         len: usize,
-        fill: impl FnOnce(&mut [u8]) -> bool,
+        fill: impl FnOnce(&mut [u8], &mut Vec<(usize, usize, bool)>) -> bool,
     ) -> &[u8] {
         let found = self
             .entries
@@ -445,9 +552,12 @@ impl RowCache {
                 index
             };
             let entry = &mut self.entries[index];
-            entry.2.clear();
-            entry.2.resize(len, 0);
-            if fill(&mut entry.2) {
+            // Filling writes every code.
+            if entry.2.len() != len {
+                entry.2.clear();
+                entry.2.resize(len, 0);
+            }
+            if fill(&mut entry.2, &mut self.runs) {
                 (entry.0, entry.1) = (y, range);
             } else {
                 // A failed conversion reads as zeros and is not kept.
@@ -464,18 +574,18 @@ impl RowCache {
 enum Grid<'a> {
     Bytes { bytes: &'a [u8], width: usize },
     Packed(&'a Packed),
-    Planar(&'a Planar),
+    Planar(&'a Planar, Option<&'a Clean>),
 }
 
 impl<'a> Grid<'a> {
-    fn new(image: &'a DecodedImage) -> Option<Self> {
+    fn new(image: &'a DecodedImage, clean: Option<&'a Clean>) -> Option<Self> {
         match &image.samples {
             Samples::Bytes(bytes) => Some(Self::Bytes {
                 bytes,
                 width: usize::try_from(image.width).ok()?,
             }),
             Samples::Packed(packed) => Some(Self::Packed(packed)),
-            Samples::Planar(planar) => Some(Self::Planar(planar)),
+            Samples::Planar(planar) => Some(Self::Planar(planar, clean)),
             Samples::Words(_) | Samples::Mixed { .. } => None,
         }
     }
@@ -499,14 +609,16 @@ impl<'a> Grid<'a> {
                 true
             };
             return match self {
-                Self::Bytes { bytes, width } => cache.get((y, (x0, x1)), (x1 - x0) * 2, |out| {
-                    pairs(out, &|x| bytes.get(y * width + x).copied().unwrap_or(0))
-                }),
-                Self::Packed(packed) => cache.get((y, (x0, x1)), (x1 - x0) * 2, |out| {
+                Self::Bytes { bytes, width } => {
+                    cache.get((y, (x0, x1)), (x1 - x0) * 2, |out, _| {
+                        pairs(out, &|x| bytes.get(y * width + x).copied().unwrap_or(0))
+                    })
+                }
+                Self::Packed(packed) => cache.get((y, (x0, x1)), (x1 - x0) * 2, |out, _| {
                     let row = packed.row(y).unwrap_or(&[]);
                     pairs(out, &|x| bit(row, x))
                 }),
-                Self::Planar(_) => &[],
+                Self::Planar(..) => &[],
             };
         }
         match self {
@@ -514,14 +626,31 @@ impl<'a> Grid<'a> {
                 let start = (y * width + x0) * n;
                 bytes.get(start..start + (x1 - x0) * n).unwrap_or(&[])
             }
-            Self::Packed(packed) => cache.get((y, (x0, x1)), x1 - x0, |out| {
+            Self::Packed(packed) => cache.get((y, (x0, x1)), x1 - x0, |out, _| {
                 packed.row(y).is_some_and(|row| {
                     unpack(row, (x0, x1), out);
                     true
                 })
             }),
-            Self::Planar(planar) => cache.get((y, (x0, x1)), (x1 - x0) * 3, |out| {
-                planar.rgb_range(y, x0, x1, out)
+            Self::Planar(planar, clean) => cache.get((y, (x0, x1)), (x1 - x0) * 3, |out, runs| {
+                let Some(clean) = clean else {
+                    return planar.rgb_range(y, x0, x1, out);
+                };
+                // Background blocks need no conversion.
+                clean.runs((y, y), (x0, x1), runs);
+                runs.iter().all(|&(start, stop, dirty)| {
+                    let Some(out) = out.get_mut((start - x0) * 3..(stop - x0) * 3) else {
+                        return false;
+                    };
+                    if dirty {
+                        planar.rgb_range(y, start, stop, out)
+                    } else {
+                        for pixel in out.as_chunks_mut::<3>().0 {
+                            *pixel = clean.background;
+                        }
+                        true
+                    }
+                })
             }),
         }
     }
@@ -673,6 +802,10 @@ impl Codes {
                 Plan::Area(feet)
             }
         };
+        let clean = match &image.samples {
+            Samples::Planar(planar) => Some(Clean::new(planar)),
+            _ => None,
+        };
         Ok(Some(Self {
             lanes,
             kind,
@@ -681,6 +814,7 @@ impl Codes {
             components,
             x0,
             plan,
+            clean,
             scratch: Mutex::new(Scratch::default()),
         }))
     }
@@ -692,6 +826,7 @@ impl Codes {
             Plan::Area(feet) => feet.capacity() * size_of::<Footprint>(),
         };
         plan + self.lanes.table.len() * size_of::<[f64; 256]>()
+            + self.clean.as_ref().map_or(0, Clean::bytes)
     }
 
     /// Replaces the lanes, keeping the placement.
@@ -711,7 +846,7 @@ impl Codes {
     ) {
         out.channels = self.lanes.channels;
         out.alpha.clear();
-        let Some(grid) = Grid::new(image) else {
+        let Some(grid) = Grid::new(image, self.clean.as_ref()) else {
             out.colors.clear();
             out.colors.resize(len * self.lanes.channels, 0.0);
             return;
@@ -836,6 +971,7 @@ impl Codes {
             sums,
             averages,
             covered,
+            runs,
             rows,
             ..
         } = scratch;
@@ -859,13 +995,39 @@ impl Codes {
             return;
         }
         let complement = self.lanes.complement();
-        reduce_rows(
-            (grid, complement),
-            &across,
-            (first, end),
-            N,
-            (lines, sums, rows),
-        );
+        let length = (end - first) * N;
+        if lines.len() != length {
+            lines.clear();
+            lines.resize(length, 0.0);
+        }
+        let rows_spanned = (index(across.first), index(across.end) - 1);
+        runs.clear();
+        match (grid, self.clean.as_ref()) {
+            (Grid::Planar(..), Some(clean)) => clean.runs(rows_spanned, (first, end), runs),
+            _ => runs.push((first, end, true)),
+        }
+        if let Some(clean) = self.clean.as_ref() {
+            let constant: [f64; N] = std::array::from_fn(|k| {
+                let code = clean.background.get(k).copied().unwrap_or(0);
+                reduce_constant(&across, code)
+            });
+            for &(start, stop, _) in runs.iter().filter(|run| !run.2) {
+                if let Some(lines) = lines.get_mut((start - first) * N..(stop - first) * N) {
+                    for line in lines.as_chunks_mut::<N>().0 {
+                        *line = constant;
+                    }
+                }
+            }
+        }
+        if runs.iter().any(|run| run.2) {
+            reduce_rows(
+                (grid, complement),
+                &across,
+                ((first, end), N),
+                (lines, sums, rows),
+                runs,
+            );
+        }
         let scale = across.normalization;
         for ((foot, average), covered) in feet
             .iter()
@@ -889,49 +1051,83 @@ impl Codes {
     }
 }
 
-/// Reduces the source rows of `rows` for every source column `first..end`
-/// into `lines`, `n` values per column: the first and last rows weighted,
-/// those between added as integers in `sums`.
+/// Reduces the source rows of `rows` for the source columns of the `true`
+/// runs of `first..end` into `lines`, `n` values per column: the first and
+/// last rows weighted, those between added as integers in `sums`.
 fn reduce_rows(
     (grid, complement): (&Grid<'_>, Option<u8>),
     rows: &Footprint,
-    (first, end): (usize, usize),
-    n: usize,
-    (lines, sums, cache): (&mut Vec<f64>, &mut Vec<u32>, &mut RowCache),
+    ((first, end), n): ((usize, usize), usize),
+    (lines, sums, cache): (&mut [f64], &mut Vec<u32>, &mut RowCache),
+    runs: &[(usize, usize, bool)],
 ) {
     let (top, bottom) = (index(rows.first), index(rows.end) - 1);
-    let length = (end - first) * n;
-    lines.clear();
-    sums.clear();
+    let mut between = false;
     for y in top..=bottom {
         let codes = grid.row(y, ((first, end), n), complement, cache);
-        if codes.len() != length {
-            continue;
+        if codes.len() != lines.len() {
+            // Conversion failed; the samples read as zeros.
+            lines.fill(0.0);
+            return;
         }
-        if y == top {
-            lines.extend(
-                codes
-                    .iter()
-                    .map(|&code| rows.first_weight * f64::from(code)),
-            );
-        } else if y == bottom {
-            // Without rows between, the sum of none adds exactly nothing.
-            if sums.len() == lines.len() {
-                for ((line, &sum), &code) in lines.iter_mut().zip(sums.iter()).zip(codes) {
-                    *line = (*line + f64::from(sum)) + rows.last_weight * f64::from(code);
-                }
-            } else {
-                for (line, &code) in lines.iter_mut().zip(codes) {
-                    *line += rows.last_weight * f64::from(code);
-                }
+        let first_between = y != top && y != bottom && !between;
+        if first_between {
+            // The first row between assigns the sums, the others add.
+            if sums.len() != lines.len() {
+                sums.clear();
+                sums.resize(lines.len(), 0);
             }
-        } else if sums.is_empty() {
-            sums.extend(codes.iter().map(|&code| u32::from(code)));
-        } else {
-            for (sum, &code) in sums.iter_mut().zip(codes) {
-                *sum = sum.wrapping_add(u32::from(code));
+            between = true;
+        }
+        for &(start, stop, _) in runs.iter().filter(|run| run.2) {
+            let range = (start - first) * n..(stop - first) * n;
+            let (Some(lines), Some(codes)) =
+                (lines.get_mut(range.clone()), codes.get(range.clone()))
+            else {
+                continue;
+            };
+            if y == top {
+                for (line, &code) in lines.iter_mut().zip(codes) {
+                    *line = rows.first_weight * f64::from(code);
+                }
+            } else if y == bottom {
+                // Without rows between, the sum of none adds exactly nothing.
+                if let Some(sums) = sums.get(range).filter(|_| between) {
+                    for ((line, &sum), &code) in lines.iter_mut().zip(sums).zip(codes) {
+                        *line = (*line + f64::from(sum)) + rows.last_weight * f64::from(code);
+                    }
+                } else {
+                    for (line, &code) in lines.iter_mut().zip(codes) {
+                        *line += rows.last_weight * f64::from(code);
+                    }
+                }
+            } else if let Some(sums) = sums.get_mut(range) {
+                if first_between {
+                    for (sum, &code) in sums.iter_mut().zip(codes) {
+                        *sum = u32::from(code);
+                    }
+                } else {
+                    for (sum, &code) in sums.iter_mut().zip(codes) {
+                        *sum = sum.wrapping_add(u32::from(code));
+                    }
+                }
             }
         }
     }
-    lines.resize(length, 0.0);
+}
+
+/// What [`reduce_rows`] gives a column whose rows all hold `code`.
+fn reduce_constant(rows: &Footprint, code: u8) -> f64 {
+    let code32 = u32::from(code);
+    let count = rows.end.saturating_sub(rows.first);
+    let mut line = rows.first_weight * f64::from(code);
+    if count > 1 {
+        let between = code32.wrapping_mul(count - 2);
+        if count > 2 {
+            line = (line + f64::from(between)) + rows.last_weight * f64::from(code);
+        } else {
+            line += rows.last_weight * f64::from(code);
+        }
+    }
+    line
 }

@@ -488,6 +488,21 @@ fn image_decode_timing() {
                     );
                 });
                 let _ = write!(line, " | {label} {time:.2}");
+                if let Ok(decoded) = source.decode(&request, &limits, source.recovery())
+                    && let pagura_image::Samples::Planar(planar) = &decoded.image.samples
+                {
+                    let [_, _, pitch] = planar.geometry(0);
+                    let (stride, rows) = (pitch / 8, planar.height().div_ceil(16) * 2);
+                    let dirty = (0..rows)
+                        .flat_map(|row| (0..stride).map(move |block| (row, block)))
+                        .filter(|&(row, block)| planar.dirty(0, row, block))
+                        .count();
+                    let _ = write!(
+                        line,
+                        " (dirty luma blocks {:.3})",
+                        dirty as f64 / (rows * stride) as f64
+                    );
+                }
             }
             eprintln!("{line}");
         }
