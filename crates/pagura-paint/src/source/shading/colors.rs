@@ -3,7 +3,7 @@
 
 use super::{Input, PaintContext, Parts};
 use pagura_color::{Converter, Function, MAX_COMPONENTS, Painted};
-use pagura_core::{Error, Result};
+use pagura_core::{Error, Meter, Result};
 use pagura_interpret::ShadingFunction;
 use std::sync::Arc;
 
@@ -26,7 +26,11 @@ enum Functions {
 }
 
 impl Colors {
-    pub(super) fn new(shading: &Parts<'_>, context: &PaintContext<'_>) -> Result<Self> {
+    pub(super) fn new(
+        shading: &Parts<'_>,
+        context: &PaintContext<'_>,
+        bytes: &mut Meter,
+    ) -> Result<Self> {
         let components = shading.space.components();
         if components > MAX_COMPONENTS {
             return Err(Error::limit(
@@ -39,7 +43,10 @@ impl Colors {
             None => Functions::Identity,
             Some(ShadingFunction::Single(f)) => Functions::Single(Arc::clone(f)),
             Some(ShadingFunction::PerComponent(fs)) => {
-                Functions::PerComponent(fs.iter().cloned().collect())
+                let mut held = Vec::new();
+                bytes.reserve(&mut held, fs.len())?;
+                held.extend(fs.iter().cloned());
+                Functions::PerComponent(held.into())
             }
         };
         let function_cost = match &functions {
@@ -56,6 +63,14 @@ impl Colors {
             cost: function_cost.saturating_add(converter.cost()),
             converter,
         })
+    }
+
+    /// Function handles held by this source; function data stays shared.
+    pub(super) fn bytes(&self) -> usize {
+        match &self.functions {
+            Functions::PerComponent(fs) => fs.len() * size_of::<Arc<Function>>(),
+            Functions::Identity | Functions::Single(_) => 0,
+        }
     }
 
     /// Values per mesh vertex: one parametric value with a function, the

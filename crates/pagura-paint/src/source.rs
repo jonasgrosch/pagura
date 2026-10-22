@@ -180,7 +180,7 @@ impl Source {
         paint: &Paint,
         context: &PaintContext<'_>,
         pixels: usize,
-        functions: &mut Meter,
+        (functions, bytes): (&mut Meter, &Meter),
     ) -> Result<Self> {
         match paint {
             Paint::Solid(color) => Self::solid(color, context, functions),
@@ -190,7 +190,7 @@ impl Source {
                     pattern.matrix.then(context.transform),
                     context,
                     pixels,
-                    functions,
+                    (functions, bytes),
                 )?;
                 Ok(Self::from_shading(source))
             }
@@ -212,10 +212,9 @@ impl Source {
         shading_to_device: Transform,
         context: &PaintContext<'_>,
         pixels: usize,
-        functions: &mut Meter,
+        budgets: (&mut Meter, &Meter),
     ) -> Result<Self> {
-        let source =
-            ShadingSource::prepare(shading, shading_to_device, context, pixels, functions)?;
+        let source = ShadingSource::prepare(shading, shading_to_device, context, pixels, budgets)?;
         Ok(Self::from_shading(source))
     }
 

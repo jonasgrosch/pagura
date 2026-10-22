@@ -31,7 +31,7 @@ use pagura_color::{MAX_COMPONENTS, Painted};
 use pagura_core::{Error, Meter, Rect, Result};
 use pagura_interpret::features;
 use pagura_interpret::{Shading, ShadingFunction, ShadingKind};
-use pagura_raster::{FillRegion, FillRule, PathBuilder, Point, Transform};
+use pagura_raster::{Point, Transform};
 
 /// The function input of one sample: `t`, `(x, y)` or mesh values.
 type Input = [f64; MAX_COMPONENTS];
@@ -115,13 +115,15 @@ impl ShadingSource {
         shading_to_device: Transform,
         context: &PaintContext<'_>,
         pixels: usize,
-        functions: &mut Meter,
+        (functions, bytes): (&mut Meter, &Meter),
     ) -> Result<Self> {
+        let mut bytes = Meter::new(bytes.remaining(), "render memory budget exceeded");
         Self::new(
             &Parts::from(shading),
             shading_to_device,
             context,
             Use::Operator,
+            &mut bytes,
         )?
         .reserve(pixels, functions)
     }
@@ -137,13 +139,15 @@ impl ShadingSource {
         shading_to_device: Transform,
         context: &PaintContext<'_>,
         pixels: usize,
-        functions: &mut Meter,
+        (functions, bytes): (&mut Meter, &Meter),
     ) -> Result<Self> {
+        let mut bytes = Meter::new(bytes.remaining(), "render memory budget exceeded");
         Self::new(
             &Parts::from(shading),
             shading_to_device,
             context,
             Use::Pattern,
+            &mut bytes,
         )?
         .reserve(pixels, functions)
     }
@@ -153,32 +157,37 @@ impl ShadingSource {
         transform: Transform,
         context: &PaintContext<'_>,
         usage: Use,
+        bytes: &mut Meter,
     ) -> Result<Self> {
         let inverse = transform.inverse().ok_or(Error::unsupported(
             features::SHADING_TRANSFORM,
             "singular shading transform",
         ))?;
-        let colors = Box::new(Colors::new(shading, context)?);
-        let geometry = Box::new(Geometry::new(shading, colors.values())?);
+        bytes.charge_items::<Colors>(1)?;
+        let colors = Box::new(Colors::new(shading, context, bytes)?);
+        bytes.charge_items::<Geometry>(1)?;
+        let geometry = Box::new(Geometry::new(shading, colors.values(), bytes)?);
         // A box without area is certified once classified: the mark is
         // clipped to its hairline outline, and no sample is tested.
-        let certified = match shading.bbox {
-            Some(b) => {
-                let mut path = PathBuilder::new();
-                path.rect(b.x0(), b.y0(), b.width(), b.height());
-                let mut path = path.finish();
-                path.classify_fill(FillRule::NonZero, context.limits, &mut 0)?;
-                path.fill_region(FillRule::NonZero)
-                    .is_some_and(|region| region != FillRegion::Ordinary)
-            }
-            None => false,
-        };
-        let pattern = (usage == Use::Pattern).then(|| {
-            Box::new(Pattern {
+        let certified = shading
+            .bbox
+            .is_some_and(|b| b.width() == 0.0 || b.height() == 0.0);
+        let pattern = if usage == Use::Pattern {
+            bytes.charge_items::<Pattern>(1)?;
+            let background = match shading.background {
+                Some(background) => {
+                    bytes.charge_items::<f64>(colors.channels())?;
+                    Some(colors.convert_components(background))
+                }
+                None => None,
+            };
+            Some(Box::new(Pattern {
                 bbox: shading.bbox.filter(|_| !certified),
-                background: shading.background.map(|b| colors.convert_components(b)),
-            })
-        });
+                background,
+            }))
+        } else {
+            None
+        };
         let bbox_use = match &pattern {
             _ if shading.bbox.is_none() => BBoxUse::None,
             None => BBoxUse::Clip,
@@ -207,9 +216,9 @@ impl ShadingSource {
             constant: None,
             aligned: None,
         };
-        source.constant = source.constant_colors();
+        source.constant = source.constant_colors(bytes)?;
         source.covers = source.always_covers();
-        source.aligned = aligned::Aligned::new(&source).map(Box::new);
+        source.aligned = aligned::Aligned::new(&source, bytes)?.map(Box::new);
         Ok(source)
     }
 
@@ -267,10 +276,25 @@ impl ShadingSource {
     /// geometry and aligned tables.
     pub(crate) fn bytes(&self) -> usize {
         let mesh = match &*self.geometry {
-            Geometry::Mesh(mesh) => mesh.bytes(),
+            Geometry::Mesh(mesh) => size_of::<Mesh>() + mesh.bytes(),
             _ => 0,
         };
-        mesh + self.aligned.as_ref().map_or(0, |a| a.bytes())
+        size_of::<Geometry>()
+            + size_of::<Colors>()
+            + self.colors.bytes()
+            + mesh
+            + self.aligned.as_ref().map_or(0, |a| a.bytes())
+            + self
+                .constant
+                .as_ref()
+                .map_or(0, |c| c.len() * size_of::<f64>())
+            + self.pattern.as_ref().map_or(0, |pattern| {
+                size_of::<Pattern>()
+                    + pattern
+                        .background
+                        .as_ref()
+                        .map_or(0, |c| c.len() * size_of::<f64>())
+            })
     }
 
     /// Fills `out` with the colours of device pixels `x .. x + len` of row
@@ -442,17 +466,21 @@ impl ShadingSource {
 
     /// Pixel colours by hit count when the shading's colour is constant and
     /// no background mixes in.
-    fn constant_colors(&self) -> Option<Box<[f64]>> {
+    fn constant_colors(&self, bytes: &mut Meter) -> Result<Option<Box<[f64]>>> {
         if self
             .pattern
             .as_ref()
             .is_some_and(|p| p.background.is_some())
         {
-            return None;
+            return Ok(None);
         }
-        let color = self.colors.constant()?;
+        bytes.charge_items::<f64>(self.channels)?;
+        let Some(color) = self.colors.constant() else {
+            bytes.refund(self.channels * size_of::<f64>());
+            return Ok(None);
+        };
         let samples = self.samples();
-        let mut table = vec![0.0; samples * self.channels];
+        let mut table = allocate(samples * self.channels, bytes)?;
         for (k, entry) in table.chunks_exact_mut(self.channels.max(1)).enumerate() {
             for (out, &c) in entry.iter_mut().zip(&*color) {
                 let mut sum = 0.0;
@@ -462,7 +490,9 @@ impl ShadingSource {
                 *out = sum / f64::from(u32::try_from(k + 1).unwrap_or(1));
             }
         }
-        Some(table.into())
+        drop(color);
+        bytes.refund(self.channels * size_of::<f64>());
+        Ok(Some(table.into()))
     }
 
     /// Whether every sample of every device pixel hits: an axial shading
@@ -526,7 +556,7 @@ impl Pattern {
 }
 
 impl Geometry {
-    fn new(shading: &Parts<'_>, values: usize) -> Result<Self> {
+    fn new(shading: &Parts<'_>, values: usize, bytes: &mut Meter) -> Result<Self> {
         Ok(match shading.kind {
             ShadingKind::Axial {
                 start,
@@ -555,12 +585,24 @@ impl Geometry {
                 domain: *domain,
             }),
             ShadingKind::Triangles(triangles) => {
-                Self::Mesh(Box::new(Mesh::triangles(triangles, values)?))
+                bytes.charge_items::<Mesh>(1)?;
+                Self::Mesh(Box::new(Mesh::triangles(triangles, values, bytes)?))
             }
-            ShadingKind::Patches(patches) => Self::Mesh(Box::new(Mesh::patches(patches, values)?)),
+            ShadingKind::Patches(patches) => {
+                bytes.charge_items::<Mesh>(1)?;
+                Self::Mesh(Box::new(Mesh::patches(patches, values, bytes)?))
+            }
             _ => {
                 return Err(Error::invalid_argument("unknown shading geometry"));
             }
         })
     }
+}
+
+/// Allocates initialized shading storage after its byte reservation.
+fn allocate<T: Default + Clone>(count: usize, bytes: &mut Meter) -> Result<Vec<T>> {
+    let mut values = Vec::new();
+    bytes.reserve(&mut values, count)?;
+    values.resize(count, T::default());
+    Ok(values)
 }

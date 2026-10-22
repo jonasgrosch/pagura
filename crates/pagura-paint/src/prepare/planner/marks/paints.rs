@@ -55,7 +55,12 @@ impl Planner<'_> {
                 {
                     return Ok(cached);
                 }
-                let prepared = Source::prepare(&paint, &context, pixels, &mut budget.functions)?;
+                let prepared = Source::prepare(
+                    &paint,
+                    &context,
+                    pixels,
+                    (&mut budget.functions, &budget.bytes),
+                )?;
                 let index = self.add_paint(prepared, (scope, pixels), budget)?;
                 if matches!(*paint, Paint::Solid(_)) {
                     self.solids().insert(key, index);
@@ -69,7 +74,7 @@ impl Planner<'_> {
                     to_device,
                     &context,
                     pixels,
-                    &mut budget.functions,
+                    (&mut budget.functions, &budget.bytes),
                 )?
             }
             Colour::Image(node) => {
@@ -170,7 +175,12 @@ impl Planner<'_> {
             limits: self.limits,
             region: bounds,
         };
-        let prepared = Source::prepare(paint, &context, pixels, &mut budget.functions)?;
+        let prepared = Source::prepare(
+            paint,
+            &context,
+            pixels,
+            (&mut budget.functions, &budget.bytes),
+        )?;
         self.add_paint(prepared, (scope, pixels), budget)
     }
 }
