@@ -54,6 +54,17 @@ impl Grid {
             .saturating_mul(size_of::<f64>())
             .saturating_add(self.bytes.capacity())
     }
+
+    /// Row `k` of a grid `width` cells wide from device column `base`.
+    #[inline]
+    fn row(&mut self, k: usize, width: usize, base: i64) -> DenseRow<'_> {
+        let cells = k * width..(k + 1) * width;
+        DenseRow {
+            base,
+            area: &mut self.area[cells.clone()],
+            cover: &mut self.cover[cells],
+        }
+    }
 }
 
 impl BandRasterizer {
@@ -318,38 +329,25 @@ impl BandRasterizer {
         let (first, end) = (f64::from(rows.start), f64::from(rows.end));
         let grid = &mut self.grid;
         let mut work = 0_usize;
-        let count = relative.lines.len();
-        for item in 0..count + relative.curves.len() {
-            let piece = match relative.lines.get(item) {
-                Some(l) => Ok(Line {
-                    a: at(l.a),
-                    b: at(l.b),
-                }),
-                None => Err(Quadratic {
-                    points: relative.curves[item - count].points.map(at),
-                }),
-            };
-            let (ya, yb) = match piece {
-                Ok(l) => (l.a.y, l.b.y),
-                Err(q) => (q.points[0].y, q.points[2].y),
-            };
+        // The rows an edge from height `ya` to `yb` crosses in the band.
+        let span = |ya: f64, yb: f64| {
             let (lo, hi) = (ya.min(yb).floor().max(first), ya.max(yb).ceil().min(end));
+            (lo < hi).then(|| lo as u32..hi as u32)
+        };
+        for l in &relative.lines {
+            let line = Line { a: at(l.a), b: at(l.b) };
             work += 1;
-            if lo >= hi {
-                continue;
+            for y in span(line.a.y, line.b.y).into_iter().flatten() {
+                work += 1 + grid.row((y - rows.start) as usize, width, base).line(line, f64::from(y));
             }
-            for y in lo as u32..hi as u32 {
-                let k = (y - rows.start) as usize * width;
-                let mut row = DenseRow {
-                    base,
-                    area: &mut grid.area[k..k + width],
-                    cover: &mut grid.cover[k..k + width],
-                };
-                let top = f64::from(y);
-                work += 1 + match piece {
-                    Ok(line) => row.line(line, top),
-                    Err(q) => row.curve(q, top),
-                };
+        }
+        for q in &relative.curves {
+            let q = Quadratic {
+                points: q.points.map(at),
+            };
+            work += 1;
+            for y in span(q.points[0].y, q.points[2].y).into_iter().flatten() {
+                work += 1 + grid.row((y - rows.start) as usize, width, base).curve(q, f64::from(y));
             }
         }
         for (k, y) in rows.enumerate() {
