@@ -305,17 +305,24 @@ impl Shapes {
         band: u32,
         out: &mut BandCoverage,
     ) -> usize {
-        let run: Vec<&Shape> = shapes
+        let mut shapes = shapes
             .iter()
             .take(RUN_SHAPES)
-            .map_while(|&key| self.shapes.get(u32_to_usize(key)))
-            .collect();
-        if run.is_empty() {
+            .map_while(|&key| self.shapes.get(u32_to_usize(key)));
+        let Some(first) = shapes.next() else {
             out.clear();
             return 0;
+        };
+        // The run has a fixed preparation bound; gathering its references
+        // must not allocate inside the band executor.
+        let mut run = [first; RUN_SHAPES];
+        let mut count = 1;
+        for shape in shapes {
+            run[count] = shape;
+            count += 1;
         }
         let clip = clip.and_then(|i| self.clips.get(u32_to_usize(i)));
-        rasterizer.rasterize_run(&run, clip, band, out)
+        rasterizer.rasterize_run(&run[..count], clip, band, out)
     }
 
     /// The storage of its shapes, for the next preparation.
