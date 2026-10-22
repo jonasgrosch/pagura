@@ -1,5 +1,7 @@
 //! Allocation budgets for owned geometry prepared from borrowed paths.
 
+#![forbid(unsafe_code)]
+
 use pagura_core::{ErrorKind, Limits, Meter};
 use pagura_raster::{
     Adjustment, Area, ClipShape, DeviceRect, FillRule, PathBuilder, Point, Shape, ShapeOptions,
