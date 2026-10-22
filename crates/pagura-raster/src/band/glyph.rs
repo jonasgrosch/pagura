@@ -62,6 +62,11 @@ pub(crate) struct Relative {
     /// further than it reaches at a whole origin, for fractional ones.
     pub(crate) index: RowList,
     pub(crate) first: i64,
+    /// Per item, its first and last listed rows and the fractional origins
+    /// that reach them: the first row only below `reach[0]`, the last only
+    /// above `reach[1]`.
+    pub(crate) ends: Vec<[u32; 2]>,
+    pub(crate) reach: Vec<[f64; 2]>,
     /// The extent the pixels and the scanned columns come from.
     pub(crate) hull: [Point; 2],
     /// An axis-aligned rectangle, filled in closed form.
@@ -124,6 +129,16 @@ impl Relative {
             (row(a.floor()), row(b.ceil()))
         };
         let index = RowList::new((0, rows), count, |i| Some(relative(i)))?;
+        let mut ends = Vec::new();
+        let mut reach = Vec::new();
+        ends.try_reserve_exact(count)
+            .and_then(|()| reach.try_reserve_exact(count))
+            .map_err(allocation)?;
+        for i in 0..count {
+            let (a, b) = span(i);
+            ends.push(<[u32; 2]>::from(relative(i)));
+            reach.push([a.floor() + 1.0 - a, b.ceil() - b]);
+        }
         let mut work = index.len();
         for i in 0..count {
             let line = chord(i);
@@ -135,6 +150,8 @@ impl Relative {
             curves,
             index,
             first,
+            ends,
+            reach,
             hull: [lo, hi],
             rect: None,
             work,
@@ -144,6 +161,8 @@ impl Relative {
     fn retained_bytes(&self) -> usize {
         (self.lines.capacity() * size_of::<Line>())
             .saturating_add(self.curves.capacity() * size_of::<Quadratic>())
+            .saturating_add(self.ends.capacity() * size_of::<[u32; 2]>())
+            .saturating_add(self.reach.capacity() * size_of::<[f64; 2]>())
             .saturating_add(self.index.retained_bytes())
     }
 }

@@ -481,10 +481,12 @@ impl Shape {
         };
         let width = super::row::width(options.area.region.x1)?;
         let scan = columns(lo.x, hi.x, width);
-        let words = (scan.1.saturating_sub(scan.0)) / 64 + 2;
+        // Rows scanned through the bitmap or whole in the grid.
+        let columns = scan.1.saturating_sub(scan.0);
+        let words = columns / 64 + 2;
         let work = relative
             .work
-            .saturating_add((bounds.height() as usize).saturating_mul(words + 2));
+            .saturating_add((bounds.height() as usize).saturating_mul(words + columns + 4));
         if work > options.limits.raster_work {
             return Err(Error::limit(RASTER_WORK));
         }

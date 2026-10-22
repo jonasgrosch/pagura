@@ -13,7 +13,7 @@
 
 use super::edges::{Chained, Line, Place, rows};
 use super::resolve::{LocalEdge, Resolver};
-use super::row::{Row, fold};
+use super::row::{Accumulate, Row, fold};
 use crate::FillRule;
 use pagura_core::{Error, Meter, Result};
 

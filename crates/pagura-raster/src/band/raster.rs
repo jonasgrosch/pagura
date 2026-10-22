@@ -7,7 +7,7 @@ use super::curve::Quadratic;
 use super::edges::Bounds;
 use super::edges::Line;
 use super::rect;
-use super::row::{Row, Sink};
+use super::row::{Accumulate, DenseRow, Row, Sink, fold};
 use super::shape::{Body, EdgeBody, GlyphBody, Shape};
 use super::{Area, BandCoverage, ClipShape, MarkCoverage};
 use crate::FillRule;
@@ -21,7 +21,39 @@ pub struct BandRasterizer {
     row: Row,
     cells: approximate::Scratch,
     cache: binned::Cache,
+    grid: Grid,
     work: usize,
+}
+
+/// The cells of a small mark's rows within a band, accumulated edge by edge
+/// and scanned whole, and the bytes of one of its rows.
+#[derive(Debug, Default)]
+struct Grid {
+    area: Vec<f64>,
+    cover: Vec<f64>,
+    bytes: Vec<u8>,
+}
+
+/// The cells of the largest mark the grid holds.
+const GRID_CELLS: usize = 1 << 14;
+
+impl Grid {
+    fn new(bytes: &mut Meter) -> Result<Self> {
+        let mut grid = Self::default();
+        bytes.reserve(&mut grid.area, GRID_CELLS)?;
+        bytes.reserve(&mut grid.cover, GRID_CELLS)?;
+        bytes.reserve(&mut grid.bytes, GRID_CELLS)?;
+        grid.area.resize(GRID_CELLS, 0.0);
+        grid.cover.resize(GRID_CELLS, 0.0);
+        grid.bytes.resize(GRID_CELLS, 0);
+        Ok(grid)
+    }
+
+    fn retained_bytes(&self) -> usize {
+        (self.area.capacity() + self.cover.capacity())
+            .saturating_mul(size_of::<f64>())
+            .saturating_add(self.bytes.capacity())
+    }
 }
 
 impl BandRasterizer {
@@ -41,6 +73,7 @@ impl BandRasterizer {
             row: Row::new(width, bytes)?,
             cells: approximate::Scratch::new(width, bytes)?,
             cache: binned::Cache::new(bytes)?,
+            grid: Grid::new(bytes)?,
             work: 0,
         })
     }
@@ -62,6 +95,7 @@ impl BandRasterizer {
             .retained_bytes()
             .saturating_add(self.cells.retained_bytes())
             .saturating_add(self.cache.retained_bytes())
+            .saturating_add(self.grid.retained_bytes())
     }
 
     /// Writes the coverage of `mark` within `band` to `out`, replacing its
@@ -198,17 +232,39 @@ impl BandRasterizer {
         let Some(relative) = glyph.edges.relative() else {
             return;
         };
+        let (plain, late) = shape;
+        let width = glyph.scan.1.saturating_sub(glyph.scan.0);
+        let height = rows.len();
+        if late.is_none()
+            && plain.multiplied.is_none()
+            && !plain.overlay
+            && width > 0
+            && width.saturating_mul(height) <= GRID_CELLS
+        {
+            self.glyph_grid((glyph, plain.bounds), relative, rows, out);
+            return;
+        }
         let o = glyph.origin;
         let at = |p: crate::Point| crate::Point::new(p.x + o.x, p.y + o.y);
         let count = relative.lines.len();
         let words = (glyph.scan.1.saturating_sub(glyph.scan.0)) / 64 + 2;
+        // An item's first and last listed rows are reached only by some
+        // fractional origins; others skip them, with a margin far above the
+        // rounding of the translation.
+        let f = o.y - o.y.floor();
+        let (low, high) = (f - 1e-9, f + 1e-9);
         for y in rows {
             let top = f64::from(y);
-            let items =
-                u32::try_from(i64::from(y) - glyph.row0).map_or(&[][..], |r| relative.index.row(r));
+            let local = u32::try_from(i64::from(y) - glyph.row0).ok();
+            let items = local.map_or(&[][..], |r| relative.index.row(r));
             let mut cells = 0;
             for &item in items {
                 let item = item as usize;
+                let [first, last] = relative.ends[item];
+                let [below, above] = relative.reach[item];
+                if (local == Some(first) && low >= below) || (local == Some(last) && high <= above) {
+                    continue;
+                }
                 cells += match relative.lines.get(item) {
                     Some(l) => self.row.line(
                         Line {
@@ -238,6 +294,83 @@ impl BandRasterizer {
                 .saturating_add(words + 2)
                 .saturating_add(sink.extra());
         }
+    }
+
+    /// A glyph's rows accumulated edge by edge into the grid, each edge
+    /// visiting only the rows it crosses, then scanned whole: per cell the
+    /// edges add in the same order and arithmetic as row by row.
+    #[expect(
+        clippy::cast_possible_truncation,
+        reason = "bounded device rows are clamped to the band's u32 rows"
+    )]
+    fn glyph_grid(
+        &mut self,
+        (glyph, bounds): (&GlyphBody, super::DeviceRect),
+        relative: &super::glyph::Relative,
+        rows: std::ops::Range<u32>,
+        out: &mut BandCoverage,
+    ) {
+        let o = glyph.origin;
+        let at = |p: crate::Point| crate::Point::new(p.x + o.x, p.y + o.y);
+        let (from, to) = glyph.scan;
+        let width = to - from;
+        let base = from as i64;
+        let (first, end) = (f64::from(rows.start), f64::from(rows.end));
+        let grid = &mut self.grid;
+        let mut work = 0_usize;
+        let count = relative.lines.len();
+        for item in 0..count + relative.curves.len() {
+            let piece = match relative.lines.get(item) {
+                Some(l) => Ok(Line {
+                    a: at(l.a),
+                    b: at(l.b),
+                }),
+                None => Err(Quadratic {
+                    points: relative.curves[item - count].points.map(at),
+                }),
+            };
+            let (ya, yb) = match piece {
+                Ok(l) => (l.a.y, l.b.y),
+                Err(q) => (q.points[0].y, q.points[2].y),
+            };
+            let (lo, hi) = (ya.min(yb).floor().max(first), ya.max(yb).ceil().min(end));
+            work += 1;
+            if lo >= hi {
+                continue;
+            }
+            for y in lo as u32..hi as u32 {
+                let k = (y - rows.start) as usize * width;
+                let mut row = DenseRow {
+                    base,
+                    area: &mut grid.area[k..k + width],
+                    cover: &mut grid.cover[k..k + width],
+                };
+                let top = f64::from(y);
+                work += 1 + match piece {
+                    Ok(line) => row.line(line, top),
+                    Err(q) => row.curve(q, top),
+                };
+            }
+        }
+        for (k, y) in rows.enumerate() {
+            let cells = k * width..(k + 1) * width;
+            let mut cover = 0.0;
+            for ((a, c), byte) in grid.area[cells.clone()]
+                .iter_mut()
+                .zip(&mut grid.cover[cells])
+                .zip(&mut grid.bytes[..width])
+            {
+                cover += std::mem::take(c);
+                *byte = fold(std::mem::take(a) + cover, FillRule::NonZero);
+            }
+            // The shape's own columns: the scan may reach past the area.
+            let x0 = (bounds.x0 as usize).clamp(from, to);
+            let x1 = (bounds.x1 as usize).clamp(x0, to);
+            out.push_row(y);
+            out.put_row(x0 as u32, &grid.bytes[x0 - from..x1 - from]);
+            work += width + 2;
+        }
+        self.work = self.work.saturating_add(work);
     }
 
     fn clip(&mut self, clip: &ClipShape, rows: std::ops::Range<u32>, out: &mut BandCoverage) {

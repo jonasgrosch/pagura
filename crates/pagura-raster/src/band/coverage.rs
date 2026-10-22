@@ -209,6 +209,58 @@ impl BandCoverage {
         self.put_run(x, 1, value);
     }
 
+    /// Appends one row's coverage from `x`, as [`Self::put`] pixel by pixel,
+    /// a run at a time.
+    pub(crate) fn put_row(&mut self, x: u32, values: &[u8]) {
+        let mut i = 0;
+        while let Some(&value) = values.get(i) {
+            let same = |v: &u8| match value {
+                0 => *v == 0,
+                u8::MAX => *v == u8::MAX,
+                _ => *v != 0 && *v != u8::MAX,
+            };
+            let len = values[i..].iter().take_while(|v| same(v)).count();
+            let at = x.saturating_add(u32::try_from(i).unwrap_or(u32::MAX));
+            match value {
+                0 => {}
+                u8::MAX => self.put_run(at, u32::try_from(len).unwrap_or(u32::MAX), u8::MAX),
+                _ => self.put_cells(at, &values[i..i + len]),
+            }
+            i += len;
+        }
+    }
+
+    /// Appends partial pixels `values`, all within 1..=254, from `x`.
+    fn put_cells(&mut self, x: u32, values: &[u8]) {
+        let Some(row) = self.rows.last_mut() else {
+            return;
+        };
+        let len = u32::try_from(values.len()).unwrap_or(u32::MAX);
+        let last = if row.end > row.start {
+            self.spans.last_mut()
+        } else {
+            None
+        };
+        if let Some(span) = last
+            && span.x.wrapping_add(span.len) == x
+            && span.cells != FULL
+        {
+            span.len = span.len.wrapping_add(len);
+            self.cells.extend_from_slice(values);
+            return;
+        }
+        let Ok(offset) = u32::try_from(self.cells.len()) else {
+            return;
+        };
+        self.cells.extend_from_slice(values);
+        self.spans.push(RawSpan {
+            x,
+            len,
+            cells: offset,
+        });
+        row.end = u32::try_from(self.spans.len()).unwrap_or(u32::MAX);
+    }
+
     /// Appends `len` pixels of equal coverage from `x`, as [`Self::put`].
     pub(crate) fn put_run(&mut self, x: u32, len: u32, value: u8) {
         if len == 0 || value == 0 {
