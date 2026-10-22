@@ -14,8 +14,8 @@ use crate::prepare::Shapes;
 use crate::source::{PaintContext, Pixels, Source, SpanColors};
 use crate::testing::Box4;
 use pagura_color::{
-    ColorSpace, Colorant, Conversion as ColorConversion, Converter, ExponentialFunction, Function,
-    Painted, Process, Separation, Target,
+    ColorSpace, Colorant, Conversion as ColorConversion, Converter, Encoder, ExponentialFunction,
+    Function, Painted, Process, Separation, Target,
 };
 use pagura_core::{Limits, Meter, Position, Store};
 use pagura_interpret::{BlendMode, Composite, MaskKind, Shading, ShadingFunction, ShadingKind};
@@ -39,11 +39,6 @@ fn exponential(c0: &[f64], c1: &[f64], exponent: f64) -> Arc<Function> {
 /// `x²`.
 fn square() -> Curve {
     Curve::new(&exponential(&[0.0], &[1.0], 2.0)).unwrap()
-}
-
-/// `x × factor`.
-fn scaled(factor: f64) -> Curve {
-    Curve::new(&exponential(&[0.0], &[factor], 1.0)).unwrap()
 }
 
 /// A spot ink with this CMYK composition per unit of tint, converted into
@@ -495,11 +490,13 @@ fn black_generation_converts_group_results_into_cmyk() {
         opaque(),
         0,
     );
+    let mut separation = ColorConversion::default();
+    separation.black_generation = Some(exponential(&[0.0], &[0.5], 1.0));
+    separation.undercolor_removal = Some(exponential(&[0.0], &[0.0], 1.0));
     f.conversions.push(Conversion {
         from: Process::Rgb,
         to: Process::Cmyk,
-        black: Some(scaled(0.5)),
-        removal: Some(scaled(0.0)),
+        encoder: Encoder::new(Process::Cmyk, &separation),
     });
     f.use_group(0, group, opaque(), Some(0));
     let bytes = f.render(32);

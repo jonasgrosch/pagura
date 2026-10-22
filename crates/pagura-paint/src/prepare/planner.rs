@@ -18,7 +18,7 @@ use crate::plan::{
 use crate::process;
 use crate::request::RenderRequest;
 use crate::source::Source;
-use pagura_color::{Process, Target};
+use pagura_color::{Encoder, Process, Target};
 use pagura_core::{Error, Limits, Name, Position, Result, Store};
 use pagura_interpret::{
     GroupId, GroupRole, MaskId, MaskKind, Node, NodeId, Paint, Scene, TilingColors, TilingPaint,
@@ -486,32 +486,23 @@ impl<'s> Planner<'s> {
         bounds: DeviceRect,
         budget: &mut Budget,
     ) -> Result<u32> {
-        let black = conversion
-            .black_generation
-            .as_ref()
-            .map(Curve::new)
-            .transpose()?;
-        let removal = conversion
-            .undercolor_removal
-            .as_ref()
-            .map(Curve::new)
-            .transpose()?;
-        let cost = black
-            .as_ref()
-            .map_or(0, Curve::cost)
-            .saturating_add(removal.as_ref().map_or(0, Curve::cost));
-        if to == Process::Cmyk {
-            budget.functions.charge_product(area(bounds), cost)?;
+        // BG and UCR map one input, as transfer functions do.
+        for function in [&conversion.black_generation, &conversion.undercolor_removal]
+            .into_iter()
+            .flatten()
+        {
+            Curve::new(function)?;
         }
+        let encoder = Encoder::new(to, conversion);
+        budget
+            .functions
+            .charge_product(area(bounds), encoder.cost())?;
         budget.bytes.charge(size_of::<Conversion>())?;
         let id = u32::try_from(self.parts.conversions.len())
             .map_err(|_| Error::limit("conversion count exceeds u32"))?;
-        self.parts.conversions.push(Conversion {
-            from,
-            to,
-            black,
-            removal,
-        });
+        self.parts
+            .conversions
+            .push(Conversion { from, to, encoder });
         Ok(id)
     }
 

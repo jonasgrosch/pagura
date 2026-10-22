@@ -5,7 +5,7 @@
 
 use crate::format::Format;
 use crate::source::Source;
-use pagura_color::{Converter, Function, MAX_COMPONENTS, Process};
+use pagura_color::{Converter, Encoder, Function, MAX_COMPONENTS, Process};
 use pagura_core::{Error, Position, Result};
 use pagura_interpret::{BlendMode, MaskKind};
 use pagura_raster::{Area, DeviceRect};
@@ -276,10 +276,9 @@ pub(crate) struct Conversion {
     pub(crate) from: Process,
     /// The parent's.
     pub(crate) to: Process,
-    /// `BG` of the group's composite state.
-    pub(crate) black: Option<Curve>,
-    /// `UCR` of the group's composite state.
-    pub(crate) removal: Option<Curve>,
+    /// RGB into the parent's process channels, with the `BG` and `UCR` of
+    /// the group's composite state.
+    pub(crate) encoder: Encoder,
 }
 
 /// The page buffer's conversion into RGBA8 (11.3.3).
@@ -308,8 +307,8 @@ pub(crate) struct SpotPlan {
     pub(crate) inputs: Vec<(usize, usize)>,
 }
 
-/// A function of one input whose first output is used: a transfer,
-/// soft-mask transfer, black-generation or undercolour-removal function.
+/// A function of one input whose first output is used: a transfer or
+/// soft-mask transfer function.
 #[derive(Debug, Clone)]
 pub(crate) struct Curve(Arc<Function>);
 

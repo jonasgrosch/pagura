@@ -6,8 +6,8 @@
 use super::frame::CHANNELS;
 use super::{Cover, PageBuffer, Usage, Workspace};
 use crate::plan::{Output, Plan};
-use crate::process::{self, Separation};
-use pagura_color::Process;
+use crate::process;
+use pagura_color::{Conversion, Encoder, Process};
 use pagura_core::convert::u32_to_usize;
 use pagura_raster::quantize_unit;
 use std::ops::Range;
@@ -163,7 +163,7 @@ impl Preview {
             cmyk.copy_from_slice(&straight[..4]);
         } else {
             let rgb = process::rgb(layout.process, &straight[..process]);
-            process::encode_rgb(Process::Cmyk, rgb, &Separation::default(), &mut cmyk);
+            Encoder::new(Process::Cmyk, &Conversion::default()).encode(rgb, &mut cmyk);
         }
         let mut tints = [0.0; crate::plan::MAX_SPOTS];
         for (tint, &value) in tints.iter_mut().zip(&straight[process..]) {

@@ -198,22 +198,26 @@ impl<'a> Executor<'a> {
         let mut coverage = std::mem::take(&mut self.ws.coverage);
         self.shapes
             .rasterize(self.rasterizer, mark.cover, self.band, &mut coverage);
-        if let Some(words) = self.opaque(mark, frame) {
-            self.opaque_store(&coverage, frame, words);
-            self.ws.coverage = coverage;
-            return;
-        }
-        for row in coverage.rows() {
-            if row.y < frame.rect.y0 || row.y >= frame.rect.y1 {
-                continue;
-            }
-            for span in row.spans() {
-                if let Some((x, cover)) = clamp(span, frame.rect) {
-                    self.mark_span(mark, frame, (x, row.y), cover);
-                }
-            }
-        }
+        let opaque = self.opaque(mark, frame);
+        self.store_coverage(mark, frame, opaque, &coverage);
         self.ws.coverage = coverage;
+    }
+
+    /// Stores every span of `coverage` within `frame`: straight from
+    /// coverage as `opaque` words where there are some.
+    fn store_coverage(
+        &mut self,
+        mark: &Mark,
+        frame: Frame,
+        opaque: Option<[u16; 4]>,
+        coverage: &BandCoverage,
+    ) {
+        match opaque {
+            Some(words) => self.opaque_store(coverage, frame, words),
+            None => each_span(coverage, frame.rect, |at, cover| {
+                self.mark_span(mark, frame, at, cover);
+            }),
+        }
     }
 
     /// The words `mark` stores straight from coverage into `frame`: an
@@ -230,7 +234,7 @@ impl<'a> Executor<'a> {
 
     /// Opaque constant colour `words` into the N16 page: one rounding per
     /// store straight from coverage, nothing else to evaluate.
-    pub(super) fn opaque_store(&mut self, coverage: &BandCoverage, frame: Frame, words: [u16; 4]) {
+    fn opaque_store(&mut self, coverage: &BandCoverage, frame: Frame, words: [u16; 4]) {
         let ws = &mut *self.ws;
         let PageBuffer::N16(page) = &mut ws.page else {
             return;
@@ -238,33 +242,18 @@ impl<'a> Executor<'a> {
         let rect = frame.rect;
         let width = u32_to_usize(rect.width());
         let mut stored = 0;
-        for row in coverage.rows() {
-            if row.y < rect.y0 || row.y >= rect.y1 {
-                continue;
+        each_span(coverage, rect, |(x, y), cover| {
+            let row = u32_to_usize(y - rect.y0);
+            let column = x - rect.x0;
+            let start = row * width + u32_to_usize(column);
+            let len = cover.len();
+            if let Some(pixels) = page.get_mut(start..start + len) {
+                kernel::store_n16(pixels, words, cover.coverage());
             }
-            let base = u32_to_usize(row.y - rect.y0) * width;
-            let Some(line) = page.get_mut(base..base + width) else {
-                continue;
-            };
-            let (mut lo, mut hi) = (u32::MAX, 0);
-            for span in row.spans() {
-                let Some((x, cover)) = clamp(span, rect) else {
-                    continue;
-                };
-                let column = x - rect.x0;
-                let start = u32_to_usize(column);
-                let len = cover.len();
-                if let Some(pixels) = line.get_mut(start..start + len) {
-                    kernel::store_n16(pixels, words, cover.coverage());
-                }
-                lo = lo.min(column);
-                hi = hi.max(column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX)));
-                stored += len;
-            }
-            if lo < hi {
-                ws.extents.mark(u32_to_usize(row.y - rect.y0), lo, hi);
-            }
-        }
+            let end = column.saturating_add(u32::try_from(len).unwrap_or(u32::MAX));
+            ws.extents.mark(row, column, end);
+            stored += len;
+        });
         ws.usage.work = ws.usage.work.saturating_add(stored);
     }
 
@@ -498,6 +487,25 @@ impl<'a> Cover<'a> {
         match *self {
             Self::Full(_) => Self::Full(end.saturating_sub(start)),
             Self::Partial(coverage) => Self::Partial(coverage.get(start..end).unwrap_or_default()),
+        }
+    }
+}
+
+/// Calls `store` with every span of `coverage` within `rect` and its first
+/// pixel.
+fn each_span(
+    coverage: &BandCoverage,
+    rect: DeviceRect,
+    mut store: impl FnMut((u32, u32), Cover<'_>),
+) {
+    for row in coverage.rows() {
+        if row.y < rect.y0 || row.y >= rect.y1 {
+            continue;
+        }
+        for span in row.spans() {
+            if let Some((x, cover)) = clamp(span, rect) {
+                store((x, row.y), cover);
+            }
         }
     }
 }

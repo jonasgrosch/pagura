@@ -7,9 +7,8 @@
 //! order, plus zero-coverage stores at the gaps, which leave every format
 //! as it is. Results are byte-identical.
 
-use super::{Executor, Frame, Tops, clamp};
-use crate::plan::{Glyph, Item, Mark, Run, intersect};
-use pagura_raster::BandCoverage;
+use super::{Executor, Frame, Tops};
+use crate::plan::{Glyph, Item, Run, intersect};
 
 impl Executor<'_> {
     pub(super) fn glyph_run(&mut self, item: &Item, run: &Run, frame: Frame, tops: Tops) {
@@ -61,29 +60,5 @@ impl Executor<'_> {
         glyph.bands[0] <= self.band
             && self.band <= glyph.bands[1]
             && !intersect(glyph.bounds, frame.rect).is_empty()
-    }
-
-    /// Stores every span of `coverage` within `frame`.
-    fn store_coverage(
-        &mut self,
-        mark: &Mark,
-        frame: Frame,
-        opaque: Option<[u16; 4]>,
-        coverage: &BandCoverage,
-    ) {
-        if let Some(words) = opaque {
-            self.opaque_store(coverage, frame, words);
-            return;
-        }
-        for row in coverage.rows() {
-            if row.y < frame.rect.y0 || row.y >= frame.rect.y1 {
-                continue;
-            }
-            for span in row.spans() {
-                if let Some((x, cover)) = clamp(span, frame.rect) {
-                    self.mark_span(mark, frame, (x, row.y), cover);
-                }
-            }
-        }
     }
 }

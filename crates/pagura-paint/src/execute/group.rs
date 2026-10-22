@@ -7,12 +7,12 @@
 
 use super::frame::CHANNELS;
 use super::{
-    Backdrop, Buffer, Cover, Executor, Frame, Read, Store, Target, Tops, Workspace, apply, clamp,
-    mask, store,
+    Backdrop, Buffer, Cover, Executor, Frame, Read, Store, Target, Tops, Workspace, apply,
+    each_span, mask, store,
 };
 use crate::kernel::{Colors, Mode, Sources, level};
 use crate::plan::{Conversion, GroupUse, Item, Layout, Start, area, intersect};
-use crate::process::{self, Separation};
+use crate::process;
 use pagura_core::convert::u32_to_usize;
 use pagura_raster::DeviceRect;
 
@@ -62,16 +62,9 @@ impl Executor<'_> {
                 let mut coverage = std::mem::take(&mut self.ws.coverage);
                 self.shapes
                     .rasterize(self.rasterizer, cover, self.band, &mut coverage);
-                for row in coverage.rows() {
-                    if row.y < rect.y0 || row.y >= rect.y1 {
-                        continue;
-                    }
-                    for span in row.spans() {
-                        if let Some((x, cover)) = clamp(span, rect) {
-                            self.result(used, (frame, parent), (x, row.y), cover);
-                        }
-                    }
-                }
+                each_span(&coverage, rect, |at, cover| {
+                    self.result(used, (frame, parent), at, cover);
+                });
                 self.ws.coverage = coverage;
             }
         }
@@ -253,10 +246,6 @@ fn sources(
             child.initial.row(read, (x, y), from, initial);
         }
     }
-    let separation = conversion.map(|c| Separation {
-        black: c.black.as_ref(),
-        removal: c.removal.as_ref(),
-    });
     let mut work = 0;
     let mut straight = [0.0; CHANNELS];
     for k in 0..len {
@@ -271,12 +260,12 @@ fn sources(
         ) else {
             return work;
         };
-        match (conversion, &separation) {
-            (Some(c), Some(separation)) => {
-                convert(c, (from, to), separation, &straight, target);
-                work += separation.cost();
+        match conversion {
+            Some(c) => {
+                convert(c, (from, to), &straight, target);
+                work += c.encoder.cost();
             }
-            _ => {
+            None => {
                 for (slot, &value) in target.iter_mut().zip(&straight[..from.channels()]) {
                     *slot = value;
                 }
@@ -336,13 +325,13 @@ fn removed(
 fn convert(
     conversion: &Conversion,
     (from, to): (Layout, Layout),
-    separation: &Separation<'_>,
     straight: &[f64; CHANNELS],
     target: &mut [f64],
 ) {
     let process = conversion.from.components();
     let rgb = process::rgb(conversion.from, &straight[..process]);
-    process::encode_rgb(conversion.to, rgb, separation, target);
+    let channels = conversion.to.components().min(target.len());
+    conversion.encoder.encode(rgb, &mut target[..channels]);
     let spots = from.spots.min(to.spots);
     for (slot, &value) in target
         .iter_mut()

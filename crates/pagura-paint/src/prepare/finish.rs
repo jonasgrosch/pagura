@@ -272,57 +272,24 @@ fn reserve_output(plan: &Plan, budget: &mut Budget) -> Result<()> {
 /// order.
 fn order(parts: &mut Parts) {
     let items = &parts.items;
-    for group in &mut parts.groups {
-        let firsts: Vec<u32> = group
-            .items
-            .iter()
-            .map(|&id| {
-                items
-                    .get(index(id))
-                    .map_or(u32::MAX, |item: &Item| item.bands[0])
-            })
-            .collect();
-        group.order = by_band(&firsts);
-    }
-}
-
-/// Positions `0..firsts.len()` ordered by their first band, stably: by
-/// counting when the bands span a range comparable to the count, as a
-/// region's bands do, by sorting otherwise.
-fn by_band(firsts: &[u32]) -> Vec<u32> {
-    let position = |i: usize| u32::try_from(i).unwrap_or(u32::MAX);
-    let (Some(&lo), Some(&hi)) = (firsts.iter().min(), firsts.iter().max()) else {
-        return Vec::new();
+    let first = |id: u32| {
+        items
+            .get(index(id))
+            .map_or(u32::MAX, |item: &Item| item.bands[0])
     };
-    let span = index(hi - lo).saturating_add(1);
-    if span > firsts.len().saturating_mul(4).saturating_add(64) {
-        let mut order: Vec<u32> = (0..firsts.len()).map(position).collect();
-        order.sort_by_key(|&i| firsts.get(index(i)).copied().unwrap_or(u32::MAX));
-        return order;
+    for group in &mut parts.groups {
+        let mut order: Vec<u32> = (0..group.items.len())
+            .map(|i| u32::try_from(i).unwrap_or(u32::MAX))
+            .collect();
+        // Stable: positions of one band stay in source order.
+        order.sort_by_key(|&position| {
+            group
+                .items
+                .get(index(position))
+                .map_or(u32::MAX, |&id| first(id))
+        });
+        group.order = order;
     }
-    // Where each band's positions start, then each position in its place.
-    let mut starts = vec![0_usize; span];
-    for &first in firsts {
-        if let Some(count) = starts.get_mut(index(first - lo)) {
-            *count += 1;
-        }
-    }
-    let mut total = 0;
-    for start in &mut starts {
-        let count = *start;
-        *start = total;
-        total += count;
-    }
-    let mut order = vec![0_u32; firsts.len()];
-    for (i, &first) in firsts.iter().enumerate() {
-        if let Some(start) = starts.get_mut(index(first - lo))
-            && let Some(slot) = order.get_mut(*start)
-        {
-            *slot = position(i);
-            *start += 1;
-        }
-    }
-    order
 }
 
 fn shrink(plan: &mut Plan) {
@@ -392,23 +359,5 @@ fn same(a: &ColorSpace, b: &ColorSpace) -> bool {
         (ColorSpace::Separation(a), ColorSpace::Separation(b)) => Arc::ptr_eq(&a.tint, &b.tint),
         (ColorSpace::DeviceN(a), ColorSpace::DeviceN(b)) => Arc::ptr_eq(&a.tint, &b.tint),
         _ => false,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::by_band;
-
-    #[test]
-    fn positions_order_stably_by_first_band() {
-        let firsts = [3, 1, 3, 0, 1, u32::MAX, 2];
-        let mut expected: Vec<u32> = (0..7).collect();
-        expected.sort_by_key(|&i| firsts[i as usize]);
-        assert_eq!(by_band(&firsts), expected);
-        let dense: Vec<u32> = (0..500).map(|i| (i * 7919) % 13).collect();
-        let mut expected: Vec<u32> = (0..500).collect();
-        expected.sort_by_key(|&i| dense[i as usize]);
-        assert_eq!(by_band(&dense), expected);
-        assert_eq!(by_band(&[]), Vec::<u32>::new());
     }
 }
