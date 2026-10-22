@@ -147,6 +147,54 @@ fn round_cap_polygons_match_for_reversed_rotated_and_dashed_lines() {
     }
 }
 
+#[test]
+fn round_cap_slabs_keep_clip_and_band_geometry() {
+    let limits = Limits::default();
+    let area = area(0, 0, 32, 128, 16);
+    let mut path = PathBuilder::new();
+    path.move_to(Point::new(8.25, 5.1));
+    path.line_to(Point::new(8.25, 105.3)).unwrap();
+    let path = path.finish();
+    let stroke = Stroke {
+        width: 4.1,
+        cap: LineCap::Round,
+        ..Stroke::default()
+    };
+    let mut clip = PathBuilder::new();
+    clip.polygon([
+        Point::new(6.1, 0.0),
+        Point::new(17.0, 0.0),
+        Point::new(14.5, 128.0),
+        Point::new(7.9, 128.0),
+    ]);
+    let clip = clip.finish();
+    let clips = [(&clip, pagura_raster::FillRule::NonZero)];
+    let prepare = |options: &ShapeOptions<'_>, clip: Option<&ClipShape>| {
+        Shape::stroke_with_clip(
+            &path,
+            &stroke,
+            (Transform::IDENTITY, Transform::IDENTITY),
+            Adjustment::None,
+            clip,
+            options,
+        )
+        .unwrap()
+    };
+    let mark = exact::stroke(
+        &path,
+        &stroke,
+        Transform::IDENTITY,
+        Adjustment::None,
+        Transform::IDENTITY,
+        &limits,
+    )
+    .unwrap();
+    assert_eq!(
+        invariant(&area, &prepare, &clips),
+        reference(area.region, mark, &clips)
+    );
+}
+
 fn paths(rng: &mut Lcg) -> Vec<Path> {
     let mut out = Vec::new();
     // Two-segment polylines, as most marks of dense vector pages are.
