@@ -119,7 +119,7 @@ impl Dash {
 
 /// The array of `TJ` (9.4.3): strings to show and position adjustments,
 /// borrowed from the [`Reader`](crate::Reader).
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy)]
 pub struct TextArray<'a> {
     bytes: &'a [u8],
     items: &'a [Item],
@@ -186,6 +186,12 @@ impl<'a> Iterator for TextItems<'a> {
 }
 
 impl ExactSizeIterator for TextItems<'_> {}
+
+impl PartialEq for TextArray<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.iter().eq(other.iter())
+    }
+}
 
 impl std::fmt::Debug for TextArray<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

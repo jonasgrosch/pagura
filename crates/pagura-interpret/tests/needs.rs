@@ -77,7 +77,7 @@ fn text_extraction_succeeds_where_images_and_shadings_are_broken() {
     assert_eq!(text.glyphs[0].unicode.as_deref(), Some("A"));
     assert!(Interpreter::new(&document).scene(page).is_err());
     let old = Document::open(bytes, &OpenOptions::default()).unwrap();
-    assert!(pagura_render::text_page(&old, old.page(0).unwrap(), None).is_err());
+    assert!(pagura_legacy::text_page(&old, old.page(0).unwrap(), None).is_err());
 }
 
 /// Counts what a device receives, with chosen needs.

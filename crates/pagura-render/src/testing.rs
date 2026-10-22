@@ -5,8 +5,9 @@ use pagura_color::{ColorSpace, Colorant, Components, ExponentialFunction, Functi
 use pagura_core::{Dictionary, Name, ObjectId, Position, Rect, Value};
 use pagura_document::{Document, OpenOptions, Rotation};
 use pagura_interpret::{
-    ClipId, ClipNode, Color, Composite, FillNode, Group, GroupAttributes, GroupId, GroupRole,
-    MarkInfo, Node, NodeId, PageSpace, Paint, PaintId, Pen, PenId, Scene, StateId, StrokeNode,
+    ClipId, ClipNode, Color, Composite, FillNode, Group, GroupAttributes, GroupCause, GroupId,
+    GroupRole, MarkInfo, Node, NodeId, PageSpace, Paint, PaintId, Pen, PenId, Scene, StateId,
+    StrokeNode,
 };
 use pagura_raster::{Adjustment, FillRule, Path, Stroke, Transform};
 use pagura_write::{Builder, NewObject};
@@ -27,6 +28,7 @@ impl SceneBuilder {
     pub(crate) fn new(crop: Rect) -> Self {
         let root = Group {
             role: GroupRole::Page,
+            cause: GroupCause::Document,
             attributes: GroupAttributes::default(),
             bbox: None,
             view: None,
@@ -153,6 +155,7 @@ impl SceneBuilder {
     pub(crate) fn group(&mut self, parent: GroupId, bbox: Option<Rect>) -> GroupId {
         self.scene.groups.push(Group {
             role: GroupRole::Transparency,
+            cause: GroupCause::Document,
             attributes: GroupAttributes::default(),
             bbox: bbox.map(|bbox| Arc::new(Path::rect(bbox))),
             view: None,

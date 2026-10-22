@@ -84,7 +84,7 @@ pub fn counts(scene: &pagura_interpret::Scene) -> (usize, usize) {
 
 /// Glyph placements of an old display list outside soft masks and pattern
 /// cells, read from its debug form (the count is private to the old crate).
-pub fn old_glyphs(list: &pagura_render::DisplayList) -> usize {
+pub fn old_glyphs(list: &pagura_legacy::DisplayList) -> usize {
     let text = format!("{list:?}");
     let bytes = text.as_bytes();
     let skips: [&[u8]; 2] = [b"mask: Some(", b"selected: Some("];
@@ -141,7 +141,7 @@ pub fn page(name: &str, bytes: &[u8], index: usize, recovery: Recovery, outcome:
     let (Ok(old_page), Ok(new_page)) = (old_doc.page(index), new_doc.page(index)) else {
         return;
     };
-    let old = pagura_render::compile_page(&old_doc, old_page);
+    let old = pagura_legacy::compile_page(&old_doc, old_page);
     let new = {
         let mut device = crate::decoding::Decoding::new(&new_doc);
         Interpreter::new(&new_doc)
@@ -333,7 +333,7 @@ fn text(
     let (Ok(old_page), Ok(new_page)) = (old_doc.page(index), new_doc.page(index)) else {
         return;
     };
-    let old = pagura_render::text_page(&old_doc, old_page, None);
+    let old = pagura_legacy::text_page(&old_doc, old_page, None);
     let new = Interpreter::new(&new_doc).text(new_page).and_then(|text| {
         TextPage::from_positioned(text, LayoutOptions::default(), new_doc.limits())?
             .with_structure(&new_doc, new_page)
@@ -419,7 +419,7 @@ pub fn filled_page(name: &str, bytes: &[u8], index: usize, outcome: &mut Outcome
     let (Ok(old_page), Ok(new_page)) = (old_doc.page(index), new_doc.page(index)) else {
         return;
     };
-    let old = pagura_render::compile_filled_page(&old_filler, old_page, None);
+    let old = pagura_legacy::compile_filled_page(&old_filler, old_page, None);
     let new = {
         let mut device = crate::decoding::Decoding::new(&new_doc);
         Interpreter::new(&new_doc)
@@ -494,7 +494,7 @@ pub fn appearances(name: &str, bytes: &[u8], index: usize, outcome: &mut Outcome
             continue;
         };
         let label = format!("{name} p{index} appearance {id}");
-        let old = pagura_render::appearance_text(&document, page, id, rect, None);
+        let old = pagura_legacy::appearance_text(&document, page, id, rect, None);
         let new = Interpreter::new(&document).appearance_text(page, id, rect);
         match (old, new) {
             (_, Err(error)) if pending(&error) => outcome.pending.push(format!("{label}: {error}")),
