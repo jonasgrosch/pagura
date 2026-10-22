@@ -4,7 +4,6 @@
 
 use crate::plan::{GroupPlan, Item};
 use pagura_core::convert::u32_to_usize;
-use pagura_core::{Error, Result};
 
 /// One group's active items.
 #[derive(Debug, Default)]
@@ -18,16 +17,14 @@ pub(crate) struct Active {
 }
 
 impl Active {
-    /// An empty list with room for `items` positions.
-    pub(crate) fn with_capacity(items: usize) -> Result<Self> {
-        let mut list = Vec::new();
-        list.try_reserve_exact(items)
-            .map_err(|_| Error::limit("render buffer allocation failed"))?;
-        Ok(Self {
+    /// An empty list in `list`, whose room is for the group's positions.
+    pub(crate) fn new(mut list: Vec<u32>) -> Self {
+        list.clear();
+        Self {
             list,
             next: 0,
             band: None,
-        })
+        }
     }
 
     /// Bytes retained.

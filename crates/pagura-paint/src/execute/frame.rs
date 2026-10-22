@@ -27,11 +27,16 @@ pub(crate) struct Tops {
 }
 
 impl Tops {
-    /// Places a buffer of `format` over `rect`: its storage and the tops
-    /// above it.
-    pub(crate) fn place(self, format: Format, rect: DeviceRect, layout: Layout) -> (Buffer, Self) {
+    /// Places a buffer of `format` over `rect` on stacks of `limits`: its
+    /// storage and the tops above it, or `None` where the stacks do not
+    /// hold it. Preparation sizes the stacks for every nested buffer.
+    pub(crate) fn place(
+        self,
+        (format, rect, layout): (Format, DeviceRect, Layout),
+        limits: Self,
+    ) -> Option<(Buffer, Self)> {
         let pixels = area(rect);
-        match format {
+        let placed = match format {
             Format::F64 => (
                 Buffer::Wide(self.wide),
                 Self {
@@ -46,12 +51,11 @@ impl Tops {
                     ..self
                 },
             ),
-        }
-    }
-
-    /// Whether every stack holds these tops.
-    pub(crate) fn within(self, limits: Self) -> bool {
-        self.wide <= limits.wide && self.levels <= limits.levels
+        };
+        let above = placed.1;
+        let fits = above.wide <= limits.wide && above.levels <= limits.levels;
+        debug_assert!(fits, "the stacks hold every nested buffer");
+        fits.then_some(placed)
     }
 }
 

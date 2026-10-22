@@ -6,7 +6,7 @@
 
 use super::planner::{Parts, Planner, needs};
 use super::{Budget, Shapes, index};
-use crate::execute::{Sizes, validate};
+use crate::execute::{Sizes, coverage_capacity, validate};
 use crate::plan::{Curve, Item, Layout, MAX_BAND_HEIGHT, Output, Plan, SpotPlan, area, intersect};
 use pagura_color::{ColorSpace, Colorant, Conversion, Converter, Process, Target};
 use pagura_core::{Error, Meter, Result};
@@ -34,25 +34,32 @@ fn first(planner: Planner<'_>, error: Error) -> Error {
     }
     let serial = planner.failed.map_or(planner.serial, |(serial, _)| serial);
     let area = planner.area;
+    let limit = planner.limits.render_bytes;
     let Planner { shapes, parts, .. } = planner;
     let shapes = shapes.finish();
     let plan = partial(area, parts);
-    match check_transfers(&plan, &shapes) {
+    // Preparation fails either way, so the check's storage is bounded by
+    // the budget rather than reserved.
+    let mut bytes = Meter::new(limit, "render memory budget exceeded");
+    match check_transfers(&plan, &shapes, &mut bytes) {
         Ok(Some(found)) if found < serial => transfer_error(&plan, found),
         _ => error,
     }
 }
 
 /// The serial of the first recording mark whose transfer selection is not
-/// whole, rasterized in scratch storage of its own.
-fn check_transfers(plan: &Plan, shapes: &Shapes) -> Result<Option<u32>> {
+/// whole, rasterized in storage of its own charged to `bytes`: a band
+/// rasterizer, one mark's coverage and a band of selections, no more than a
+/// render's scratch holds of them.
+fn check_transfers(plan: &Plan, shapes: &Shapes, bytes: &mut Meter) -> Result<Option<u32>> {
     let area = plan.area;
     let rows = index(area.band_height.min(area.region.height()));
-    // Charged with the render's rasterizer and workspace.
-    let mut free = Meter::new(usize::MAX, "transfer check scratch");
-    let mut rasterizer = BandRasterizer::new(area, &mut free)?;
-    let mut coverage = BandCoverage::default();
-    let mut selection = vec![0; index(area.region.width()).saturating_mul(rows)];
+    let width = index(area.region.width());
+    let mut rasterizer = BandRasterizer::new(area, bytes)?;
+    let mut coverage = BandCoverage::with_capacity(coverage_capacity(width, rows), bytes)?;
+    let mut selection = Vec::new();
+    bytes.reserve(&mut selection, width.saturating_mul(rows))?;
+    selection.resize(width.saturating_mul(rows), 0);
     Ok(validate(
         plan,
         (shapes, &mut rasterizer),
@@ -101,6 +108,7 @@ fn partial(area: pagura_raster::Area, parts: Parts) -> Plan {
         },
         stack: crate::execute::Tops::default(),
         sizes: Sizes::default(),
+        scratch: 0,
     }
 }
 
@@ -170,12 +178,16 @@ fn complete(planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
         },
         stack,
         sizes: Sizes::default(),
+        scratch: 0,
     };
     shrink(&mut plan);
     reserve_output(&plan, budget)?;
     let sizes = sizes(&plan, rows, transfers);
-    budget.bytes.charge(sizes.bytes(&plan, charged))?;
+    let workspace = sizes.bytes(&plan, charged);
+    budget.bytes.charge(workspace)?;
+    let before = budget.bytes.used();
     BandRasterizer::charge(area, &mut budget.bytes)?;
+    plan.scratch = workspace.saturating_add(budget.bytes.used() - before);
     plan.sizes = Sizes {
         rows: band_rows,
         ..sizes
@@ -189,7 +201,10 @@ fn complete(planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
             .map(|item| item.work)
             .fold(0, usize::saturating_add);
         budget.work.charge(checked)?;
-        if let Some(serial) = check_transfers(&plan, &shapes)? {
+        // The check runs before any render, in storage its reservation
+        // covers.
+        let mut bytes = Meter::new(plan.scratch, "render memory budget exceeded");
+        if let Some(serial) = check_transfers(&plan, &shapes, &mut bytes)? {
             return Err(transfer_error(&plan, serial));
         }
     }

@@ -342,11 +342,9 @@ impl<'s> Planner<'s> {
         if group.role != GroupRole::Transparency {
             return Ok(());
         }
-        let decision = *self
-            .storage
-            .groups
-            .get(&(id, scope.layout.process))
-            .ok_or(Error::invalid_argument("scene group visited twice"))?;
+        let decision = *self.storage.groups.get(&(id, scope.layout.process)).ok_or(
+            Error::invalid_argument("scene group outside the content the storage survey walked"),
+        )?;
         let state = Arc::clone(
             scene
                 .states

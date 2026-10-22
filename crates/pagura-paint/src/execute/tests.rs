@@ -301,8 +301,10 @@ impl Fixture {
                 stride: 43,
                 selections,
             },
+            scratch: 0,
         };
-        let mut workspace = Workspace::new(&plan, plan.sizes, None).unwrap();
+        let mut bytes = Meter::new(usize::MAX, "test workspace");
+        let mut workspace = Workspace::new(&plan, plan.sizes, None, &mut bytes).unwrap();
         let mut free = Meter::new(usize::MAX, "test rasterizer");
         let mut rasterizer = pagura_raster::BandRasterizer::new(area, &mut free).unwrap();
         let shapes: Shapes = crate::testing::path_shapes(area, &self.paths);

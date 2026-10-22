@@ -30,11 +30,9 @@ impl Executor<'_> {
         }
         self.count_shape(item);
         let layout = child.layout;
-        let (buffer, above) = tops.place(child.format, rect, layout);
-        if !above.within(plan.stack) {
-            debug_assert!(false, "the stacks hold every nested group buffer");
+        let Some((buffer, above)) = tops.place((child.format, rect, layout), plan.stack) else {
             return;
-        }
+        };
         let initial = match child.start {
             Start::Transparent => Backdrop::Transparent,
             Start::Opaque(color) => Backdrop::Opaque(color),

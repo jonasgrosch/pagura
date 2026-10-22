@@ -72,6 +72,9 @@ pub(crate) struct Plan {
     pub(crate) stack: crate::execute::Tops,
     /// The sizes of the workspace a render needs.
     pub(crate) sizes: crate::execute::Sizes,
+    /// Bytes reserved for a render's scratch storage, the workspace and the
+    /// band rasterizer, which it allocates within them.
+    pub(crate) scratch: usize,
 }
 
 /// A buffer: the page, a transparency group, a soft mask's group or the

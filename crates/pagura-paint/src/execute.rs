@@ -18,13 +18,16 @@ pub(crate) use mask::transfer as mask_transfer;
 pub(crate) use schedule::Active;
 pub(crate) use transfer::validate;
 pub use workspace::Scratch;
-pub(crate) use workspace::{Extents, MaskCache, PageBuffer, Sizes, Usage, Workspace};
+pub(crate) use workspace::{
+    Extents, MaskCache, PageBuffer, Sizes, Usage, Workspace, coverage_capacity,
+};
 
 use crate::kernel::{self, Colors, Mode, Sources};
 use crate::plan::{Boundary, Compositing, Item, ItemKind, Mark, Plan, area};
 use crate::prepare::Completion;
 use crate::prepare::Shapes;
-use crate::source::{Pixels, Source};
+use crate::source::{Pixels, Source, SpanColors};
+use pagura_color::Painted;
 use pagura_core::convert::u32_to_usize;
 use pagura_raster::{BandCoverage, BandRasterizer, DeviceRect, Span};
 use std::ops::Range;
@@ -285,27 +288,18 @@ impl<'a> Executor<'a> {
         let paint_shape = (constant.is_none() && !paint.shape_is_alpha())
             .then(|| ws.texel_shape.get(..len))
             .flatten();
-        let (colors, paint_alpha, painted) = if let Some((color, painted)) = constant {
-            (Colors::Constant(color), None, painted)
-        } else {
-            let alpha = if ws.colors.alpha.is_empty() {
-                None
-            } else if let Some(alpha) = ws.colors.alpha.get(..len) {
-                Some(alpha)
-            } else {
-                debug_assert!(false, "a paint source filled a short alpha span");
-                return;
-            };
-            let colors = Colors::Strided {
-                values: &ws.colors.colors,
-                stride: ws.colors.channels,
-            };
-            (colors, alpha, ws.colors.painted)
-        };
-        if !colors.holds(len, frame.layout.channels()) {
-            debug_assert!(false, "a paint source filled a malformed span");
-            return;
+        let span = match constant {
+            Some((color, painted)) => Some((Colors::Constant(color), None, painted)),
+            None => filled(&ws.colors, len),
         }
+        .filter(|(colors, ..)| colors.holds(len, frame.layout.channels()));
+        debug_assert!(
+            span.is_some(),
+            "paint fills whole spans of the buffer's channels"
+        );
+        let Some((colors, paint_alpha, painted)) = span else {
+            return;
+        };
         if mark.records && !ws.selection.is_empty() {
             output::record(
                 plan,
@@ -395,6 +389,20 @@ fn fill_colors(
     };
     paint.fill(pixels, &mut ws.colors, &mut ws.texel_shape);
     true
+}
+
+/// The colours, alpha and painted channels of the first `len` pixels a
+/// paint filled; `None` where it filled a shorter alpha span.
+fn filled(colors: &SpanColors, len: usize) -> Option<(Colors<'_>, Option<&[f64]>, Painted)> {
+    let alpha = match colors.alpha.as_slice() {
+        [] => None,
+        alpha => Some(alpha.get(..len)?),
+    };
+    let values = Colors::Strided {
+        values: &colors.colors,
+        stride: colors.channels,
+    };
+    Some((values, alpha, colors.painted))
 }
 
 /// Overwrites `frame`'s narrow page from pixel (`x`, `y`) on with opaque

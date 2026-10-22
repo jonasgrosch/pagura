@@ -36,11 +36,9 @@ impl Executor<'_> {
         let mut computed = DeviceRect::default();
         if let (false, Some(group)) = (rect.is_empty(), plan.groups.get(u32_to_usize(mask.group))) {
             let layout = group.layout;
-            let (buffer, above) = tops.place(group.format, rect, layout);
-            if !above.within(plan.stack) {
-                debug_assert!(false, "the stacks hold every mask group buffer");
+            let Some((buffer, above)) = tops.place((group.format, rect, layout), plan.stack) else {
                 return;
-            }
+            };
             let initial = match group.start {
                 Start::Opaque(color) => Backdrop::Opaque(color),
                 Start::Transparent | Start::Backdrop => Backdrop::Transparent,
