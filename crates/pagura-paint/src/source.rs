@@ -233,12 +233,29 @@ impl Source {
         (context, pixels): (&PaintContext<'_>, usize),
         budgets: ImageBudgets<'_>,
     ) -> Result<Self> {
-        let sampler = ImageSampler::prepare_with(image, unit_to_device, context, pixels, budgets)?;
+        let ImageBudgets {
+            bytes: remaining,
+            work,
+            functions,
+        } = budgets;
+        let sampler = ImageSampler::prepare_with(
+            image,
+            unit_to_device,
+            context,
+            pixels,
+            ImageBudgets {
+                bytes: &mut *remaining,
+                work,
+                functions: &mut *functions,
+            },
+        )?;
+        let mut bytes = Meter::new(remaining.remaining(), "render memory budget exceeded");
+        bytes.charge(sampler.bytes())?;
         let sampler = match stencil {
-            Some((color, painted)) => sampler.with_stencil_color(color, painted),
+            Some((color, painted)) => sampler.with_stencil_color(color, painted, &mut bytes)?,
             None => sampler,
         };
-        Ok(match sampler.constant() {
+        Ok(match sampler.constant(&mut bytes, functions)? {
             Some((color, painted)) => Self::Solid { color, painted },
             None => Self::Image(sampler),
         })

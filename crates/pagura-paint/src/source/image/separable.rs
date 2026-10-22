@@ -17,7 +17,7 @@
 use super::geometry::{Footprint, Geometry, Mode};
 use super::scratch::allocate;
 use crate::source::Pixels;
-use pagura_core::{Error, Result};
+use pagura_core::{Meter, Result};
 
 /// Rows kept at least: those of a few device rows' footprints.
 const KEPT_ROWS: usize = 8;
@@ -464,7 +464,11 @@ impl Separable {
     /// # Errors
     ///
     /// A `Limit` error when the plan cannot be allocated.
-    pub(super) fn new(geometry: &Geometry, (x0, x1): (u32, u32)) -> Result<Option<Self>> {
+    pub(super) fn new(
+        geometry: &Geometry,
+        (x0, x1): (u32, u32),
+        bytes: &mut Meter,
+    ) -> Result<Option<Self>> {
         let t = geometry.inverse();
         if t.b != 0.0 || t.c != 0.0 {
             return Ok(None);
@@ -477,13 +481,10 @@ impl Separable {
         let count = index(x1.saturating_sub(x0));
         let (mut feet, mut cells) = (Vec::new(), Vec::new());
         if taps == Taps::Nearest {
-            cells
-                .try_reserve_exact(count)
-                .map_err(|_| Error::limit("image plan allocation failed"))?;
+            bytes.reserve(&mut cells, count)?;
             cells.extend((x0..x1).map(|x| column(geometry, taps, x).first));
         } else {
-            feet.try_reserve_exact(count)
-                .map_err(|_| Error::limit("image plan allocation failed"))?;
+            bytes.reserve(&mut feet, count)?;
             feet.extend((x0..x1).map(|x| column(geometry, taps, x)));
         }
         Ok(Some(Self {

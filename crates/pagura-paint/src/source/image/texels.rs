@@ -137,6 +137,21 @@ impl Colors {
         self.convert.target().channels() + 2
     }
 
+    /// Heap storage owned by this prepared colour description.
+    pub(super) fn bytes(&self) -> usize {
+        self.decode.capacity() * size_of::<[f64; 2]>()
+            + self.maxima.capacity() * size_of::<f64>()
+            + self
+                .key
+                .as_ref()
+                .map_or(0, |key| key.capacity() * size_of::<[u16; 2]>())
+            + self
+                .matte
+                .as_ref()
+                .map_or(0, |matte| matte.capacity() * size_of::<f64>())
+            + self.convert.owned_bytes()
+    }
+
     /// The texel of one sample's `codes`.
     fn texel(&self, codes: &[u16], extra: Extra, out: &mut [f64]) {
         let mut values = [0.0; MAX_COMPONENTS];
@@ -223,7 +238,7 @@ enum OpacityKind {
 
 impl Opacity {
     /// The opacities of `mask`, decoded with `decode`.
-    pub(super) fn new(mask: &DecodedImage, decode: [f64; 2]) -> Self {
+    pub(super) fn new(mask: &DecodedImage, decode: [f64; 2], bytes: &mut Meter) -> Result<Self> {
         let kind = match mask.kind {
             ImageKind::Stencil { inverted } => OpacityKind::Stencil { inverted },
             ImageKind::Color { .. } | ImageKind::EmbeddedColor { .. } => OpacityKind::Soft {
@@ -235,9 +250,18 @@ impl Opacity {
         let bits = mask.component_bits(0).unwrap_or(16);
         if (1..=8).contains(&bits) && matches!(mask.samples, Samples::Bytes(_) | Samples::Packed(_))
         {
-            opacity.table = Some((0..1u16 << bits).map(|code| opacity.of(code)).collect());
+            let mut table = super::reserved(1usize << bits, bytes)?;
+            table.extend((0..1u16 << bits).map(|code| opacity.of(code)));
+            opacity.table = Some(table);
         }
-        opacity
+        Ok(opacity)
+    }
+
+    /// Heap bytes held by its opacity table.
+    pub(super) fn bytes(&self) -> usize {
+        self.table
+            .as_ref()
+            .map_or(0, |table| table.capacity() * size_of::<f64>())
     }
 
     /// The opacity of one code.
@@ -288,19 +312,22 @@ pub(super) enum Strategy {
 }
 
 impl Strategy {
-    /// The strategy for `image` painted with `colors`, and the conversions
-    /// preparing it costs.
+    /// The strategy for `image`, reserving its tables and conversions
+    /// before they are built.
     pub(super) fn new(
         image: &DecodedImage,
         colors: &Colors,
         rgb: bool,
         mask: Option<&DecodedImage>,
-    ) -> (Self, usize) {
+        bytes: &mut Meter,
+        functions: &mut Meter,
+    ) -> Result<Self> {
         let components = usize::from(image.components);
-        let bits: Vec<u8> = (0..components)
-            .filter_map(|i| image.component_bits(i))
-            .collect();
-        let narrow = bits.len() == components && bits.iter().all(|b| (1..=8).contains(b));
+        let narrow = (0..components).all(|i| {
+            image
+                .component_bits(i)
+                .is_some_and(|b| (1..=8).contains(&b))
+        });
         let per_pixel = colors.matte.is_some() || colors.embedded.is_some();
         let lanes = colors.lanes();
         if components == 1
@@ -308,25 +335,29 @@ impl Strategy {
             && !per_pixel
             && matches!(image.samples, Samples::Bytes(_) | Samples::Packed(_))
         {
-            let codes = 1u16 << bits[0];
-            let mut table = vec![0.0; usize::from(codes) * lanes];
+            let codes = 1u16 << image.component_bits(0).unwrap_or(8);
+            let mut table = super::reserved(usize::from(codes) * lanes, bytes)?;
+            table.resize(usize::from(codes) * lanes, 0.0);
+            functions.charge_product(usize::from(codes), colors.convert.cost())?;
             for (code, texel) in (0..codes).zip(table.chunks_exact_mut(lanes)) {
                 colors.code_texel(code, texel);
             }
             let opaque = opaque_table(&table, lanes);
-            return (Self::Table(table, opaque), usize::from(codes));
+            return Ok(Self::Table(table, opaque));
         }
         if rgb
             && components == 3
-            && bits == [8, 8, 8]
+            && (0..3).all(|i| image.component_bits(i) == Some(8))
             && !per_pixel
             && colors.key.is_none()
             && colors.lookup.is_none()
             && lanes == 5
             && matches!(image.samples, Samples::Bytes(_) | Samples::Planar(_))
         {
+            bytes.charge_items::<[[f64; 256]; 3]>(1)?;
             let mut tables = Box::new([[0.0; 256]; 3]);
             let mut texel = [0.0; 5];
+            functions.charge_product(256, colors.convert.cost())?;
             for code in 0..=255u8 {
                 let code = u16::from(code);
                 colors.texel(&[code, code, code], Extra::default(), &mut texel);
@@ -334,16 +365,16 @@ impl Strategy {
                     table[usize::from(code)] = value;
                 }
             }
-            return (Self::Rgb(tables), 256);
+            return Ok(Self::Rgb(tables));
         }
         if let Some(key) = Key::new(image, colors, mask) {
             let samples = u64::from(image.width) * u64::from(image.height);
             let entries = usize::try_from(samples).unwrap_or(usize::MAX);
             let opaque = colors.key.is_none() && colors.embedded.is_none();
             let held = if opaque { lanes - 2 } else { lanes };
-            return (Self::Memo(MemoLayout::new(key, (held, opaque), entries)), 0);
+            return Ok(Self::Memo(MemoLayout::new(key, (held, opaque), entries)));
         }
-        (Self::General, 0)
+        Ok(Self::General)
     }
 
     /// Bytes the strategy's tables hold.
