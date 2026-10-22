@@ -32,7 +32,7 @@ pub enum RunGlyph<'a> {
     /// A prepared shape.
     Shape(&'a Shape),
     /// A binned mask its clip state keeps whole.
-    Mask(&'a GlyphMask),
+    Mask(GlyphMask<'a>),
 }
 
 impl RunGlyph<'_> {
@@ -296,7 +296,7 @@ impl BandRasterizer {
     /// Writes the coverage of `mask` within `band` to `out`, replacing its
     /// contents: its rows as they are. The clip state it was prepared in
     /// keeps all of it.
-    pub fn rasterize_mask(&mut self, mask: &GlyphMask, band: u32, out: &mut BandCoverage) {
+    pub fn rasterize_mask(&mut self, mask: GlyphMask<'_>, band: u32, out: &mut BandCoverage) {
         out.clear();
         let rows = Self::mask_rows(mask, self.area.band_rows(band));
         self.work = self.work.saturating_add(binned::emit(mask, rows, out));
@@ -304,7 +304,7 @@ impl BandRasterizer {
     }
 
     /// The rows of `band` (`rows`) that `mask` can cover.
-    fn mask_rows(mask: &GlyphMask, rows: std::ops::Range<u32>) -> std::ops::Range<u32> {
+    fn mask_rows(mask: GlyphMask<'_>, rows: std::ops::Range<u32>) -> std::ops::Range<u32> {
         let b = mask.bounds();
         let start = rows.start.max(b.y0);
         start..rows.end.min(b.y1).max(start)
@@ -333,7 +333,7 @@ impl BandRasterizer {
         for glyph in glyphs {
             let own = match glyph {
                 RunGlyph::Shape(shape) => Self::shape_rows(shape, clip, rows.clone()),
-                RunGlyph::Mask(mask) => Self::mask_rows(mask, rows.clone()),
+                RunGlyph::Mask(mask) => Self::mask_rows(*mask, rows.clone()),
             };
             let bounds = glyph.bounds();
             let width = bounds.width() as usize;

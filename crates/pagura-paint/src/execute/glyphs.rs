@@ -101,7 +101,7 @@ impl Executor<'_> {
 
 /// The rows of a glyph mask within a band.
 struct MaskRows<'a> {
-    mask: &'a GlyphMask,
+    mask: GlyphMask<'a>,
     rows: Range<u32>,
 }
 

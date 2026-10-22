@@ -212,7 +212,7 @@ pub(crate) trait Producer: Send + Sync + fmt::Debug {
 
     /// The mask of glyph placement `shape` when its coverage is a mask that
     /// stores as it is, its clip state keeping all of it.
-    fn mask(&self, shape: u32) -> Option<&GlyphMask> {
+    fn mask(&self, shape: u32) -> Option<GlyphMask<'_>> {
         let _ = shape;
         None
     }
@@ -676,7 +676,7 @@ impl Producer for RasterCoverage {
         rasterizer.rasterize_run(&run, clip, band, out)
     }
 
-    fn mask(&self, shape: u32) -> Option<&GlyphMask> {
+    fn mask(&self, shape: u32) -> Option<GlyphMask<'_>> {
         match glyph(&self.shapes, &self.masks, shape)? {
             RunGlyph::Mask(mask) => Some(mask),
             RunGlyph::Shape(_) => None,

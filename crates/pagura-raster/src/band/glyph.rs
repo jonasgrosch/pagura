@@ -8,7 +8,7 @@
 //! curve where its contours are certified at least two flattening
 //! tolerances apart, so that the curves cannot meet either.
 
-use super::binned::{self, GlyphMask};
+use super::binned::{self, Placement};
 use super::certify::certified;
 use super::curve::{self, Piece, Quadratic};
 use super::edges::{self, Bounds, Line, Polygon, RowList};
@@ -365,19 +365,24 @@ pub(crate) fn mask(
     edges: &GlyphEdges,
     origin: Point,
     options: &Prep<'_>,
-    masks: &mut Vec<GlyphMask>,
+    (masks, formed, scratch): (&mut Vec<Placement>, &mut Vec<u8>, &mut binned::Scratch),
 ) -> Result<bool> {
     let Kind::Binned(prepared) = &edges.kind else {
         return Ok(false);
     };
     bounded(origin)?;
-    let kept = binned::place(prepared, origin, options, |mut mask, kept| {
-        if kept {
-            mask.add_work(merged(mask.bounds()));
-            masks.push(mask);
-        }
-        kept
-    })?;
+    let kept = binned::place(
+        prepared,
+        origin,
+        (options, scratch, Some(formed)),
+        |mut mask, kept| {
+            if kept {
+                mask.add_work(merged(mask.bounds()));
+                masks.push(mask);
+            }
+            kept
+        },
+    )?;
     Ok(kept == Some(true))
 }
 
@@ -396,7 +401,8 @@ fn placed(
     let exact = match &edges.kind {
         Kind::Binned(prepared) => {
             let _ = origins;
-            return binned::place(prepared, origin, options, |mask, kept| {
+            let scratch = &mut binned::Scratch::default();
+            return binned::place(prepared, origin, (options, scratch, None), |mask, kept| {
                 binned::shape(mask, kept, options)
             });
         }

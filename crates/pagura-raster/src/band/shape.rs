@@ -3,7 +3,7 @@
 //! with the cells their signed area does not determine already resolved.
 
 use super::approximate::Cells;
-use super::binned::GlyphMask;
+use super::binned::Placement;
 use super::certify::{certified, uncertified};
 use super::clip::{ClipShape, INSIDE, Rows, columns, fill_polygon};
 use super::curve::{self, Quadratic};
@@ -49,7 +49,7 @@ pub(crate) enum Body {
     /// Approximate signed cells.
     Cells(Cells),
     /// A glyph mask reused per origin bin.
-    Binned(GlyphMask),
+    Binned(Placement),
     /// A certified glyph's relative edges, translated as they accumulate.
     Glyph(GlyphBody),
 }
