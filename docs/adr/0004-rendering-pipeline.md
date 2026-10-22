@@ -235,6 +235,16 @@ segment limit or subdivision limit is an error, never permission to select
 the byte that agrees with the renderer. A synthetic overlapping-quadratic
 case checks this distinction against an analytic area.
 
+Ambiguous pixels are evaluated in a local frame: subtract the integer pixel
+from the stored glyph origin before mapping the original controls. An
+error-free two-sum subtraction retains its tail as coordinate uncertainty;
+canonical clip endpoints retain their own subtraction tails. Thus a large
+absolute position cannot impose an artificial precision floor. A curve hull
+is omitted only when its outward rectangle misses the intersection of the
+canonical clips' outward bounds, including those endpoint tails. The full
+hull, rather than its chord, must miss that intersection. Translated
+half-level and clipped half-level cases exercise both decisions.
+
 ### 5. Storage formats
 
 Each buffer (the page, a group, a soft mask) gets its format before its first
