@@ -699,7 +699,11 @@ pub(crate) fn stroke(
 /// A stroke whose pieces may overlap where its centreline comes back,
 /// from the boundary of their union: cells where that boundary's winding
 /// is `certified`, the exact union otherwise.
-pub(crate) fn union(polygon: &Polygon, certified: bool, options: &Prep<'_>) -> Result<Option<Shape>> {
+pub(crate) fn union(
+    polygon: &Polygon,
+    certified: bool,
+    options: &Prep<'_>,
+) -> Result<Option<Shape>> {
     let hull = polygon.bounds().map(|[min, max]| {
         [
             Point::new(min.x.floor(), min.y.floor()),
@@ -858,8 +862,9 @@ fn cells(polygon: &Polygon, rule: FillRule, options: &Prep<'_>) -> Result<Option
     let scan = super::clip::columns(bounds[0].x, bounds[1].x, width);
     let columns = scan.1.saturating_sub(scan.0);
     let rows_of = |l: &Line| rows(l.a.y.min(l.b.y), l.a.y.max(l.b.y), bounds_px);
-    // A small mark needs no row lists: the grid takes it edge by edge.
-    let small = columns.saturating_mul(bounds_px.height() as usize) <= GRID_CELLS;
+    // A small, narrow mark needs no row lists: the grid takes it edge by
+    // edge and scans its rows whole, a bitmap word's width at most.
+    let small = columns <= 64 && columns.saturating_mul(bounds_px.height() as usize) <= GRID_CELLS;
     let index = if small {
         None
     } else {

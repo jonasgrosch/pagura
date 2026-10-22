@@ -65,8 +65,14 @@ pub(crate) fn outline(
     stroke: &Stroke,
     limits: &Limits,
 ) -> Result<(Path, Transform)> {
-    outline_with(path, transform, stroke, limits, Tiling::Components)
-        .map(|(path, transform, _)| (path, transform))
+    outline_with(
+        path,
+        transform,
+        stroke,
+        limits,
+        (Tiling::Components, TOLERANCE),
+    )
+    .map(|(path, transform, _)| (path, transform))
 }
 
 /// [`outline`] whose boundary, when every run admits one, is made of pieces
@@ -78,20 +84,21 @@ pub(crate) fn tiled_outline(
     stroke: &Stroke,
     limits: &Limits,
 ) -> Result<(Path, Transform)> {
-    outline_with(path, transform, stroke, limits, Tiling::Proven)
+    outline_with(path, transform, stroke, limits, (Tiling::Proven, TOLERANCE))
         .map(|(path, transform, _)| (path, transform))
 }
 
 /// The outline as pieces where every run admits them at least as well as
-/// `accept`, else as components, and how far its pieces tile.
+/// `accept`, else as components, and how far its pieces tile; round caps
+/// and joins are flattened within the device tolerance `tolerance`.
 pub(crate) fn pieces(
     path: &Path,
     transform: Transform,
     stroke: &Stroke,
     limits: &Limits,
-    accept: Tiling,
+    (accept, tolerance): (Tiling, f64),
 ) -> Result<(Path, Transform, Tiling)> {
-    outline_with(path, transform, stroke, limits, accept)
+    outline_with(path, transform, stroke, limits, (accept, tolerance))
 }
 
 fn outline_with(
@@ -99,12 +106,14 @@ fn outline_with(
     transform: Transform,
     stroke: &Stroke,
     limits: &Limits,
-    accept: Tiling,
+    (accept, device_tolerance): (Tiling, f64),
 ) -> Result<(Path, Transform, Tiling)> {
     validate(stroke, limits)?;
     // Dash distances belong to user space even for a device-width hairline
     // (8.4.3.6). Flatten with a device-space error bound, split there, and only
     // then transform each run before constructing the hairline pen.
+    // The centreline keeps the exact tolerance: near a cusp, chords of
+    // another tolerance turn otherwise and move whole joins.
     let contours = flatten(path, transform, limits)?;
     let hairline = stroke.width == 0.0;
     let pen_transform = if hairline {
@@ -116,9 +125,9 @@ fn outline_with(
     let radius = width * 0.5;
     let stretch = pen_transform.a.hypot(pen_transform.b) + pen_transform.c.hypot(pen_transform.d);
     let tolerance = if stretch == 0.0 {
-        TOLERANCE
+        device_tolerance
     } else {
-        TOLERANCE / stretch
+        device_tolerance / stretch
     };
     // Boundaries replace components only for undashed miter strokes whose pen
     // maps circles to circles.

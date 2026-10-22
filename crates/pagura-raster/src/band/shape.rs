@@ -217,7 +217,12 @@ impl Shape {
                 (outline, t, Tiling::Components)
             }
             Adjustment::None => {
-                crate::stroke::pieces(&path, device, stroke, limits, Tiling::Unproven)?
+                // Approximate cells take approximate round parts too.
+                let tolerance = match options.precision {
+                    Precision::Exact => crate::flatten::TOLERANCE,
+                    Precision::Approximate => super::approximate::TOLERANCE,
+                };
+                crate::stroke::pieces(&path, device, stroke, limits, (Tiling::Unproven, tolerance))?
             }
         };
         let approximate = options.precision == Precision::Approximate;
