@@ -9,7 +9,7 @@
 //! bit for bit.
 
 use super::geometry::Geometry;
-use super::texels::{Convert, Opacity, OpacityTexels, SampleTexels};
+use super::texels::{Opacity, OpacityTexels, SampleTexels};
 use super::{Description, ImageSampler, MaskDescription, Orientation, Paint, Prepared};
 use crate::SpanColors;
 use pagura_color::{ColorSpace, Conversion, Converter, Indexed, Painted, Process, Target};
@@ -24,7 +24,7 @@ mod timing;
 
 /// A prepared conversion of `base` into a composite target of `channels`
 /// process channels (1 Gray, 3 RGB, 4 CMYK), and whether it is per channel.
-pub(super) fn converter(base: &ColorSpace, channels: usize) -> (Box<dyn Convert>, bool) {
+pub(super) fn converter(base: &ColorSpace, channels: usize) -> (Converter, bool) {
     let process = match channels {
         1 => Process::Gray,
         3 => Process::Rgb,
@@ -33,7 +33,7 @@ pub(super) fn converter(base: &ColorSpace, channels: usize) -> (Box<dyn Convert>
     let target = Target::new(process);
     let converter = Converter::new(base, &target, &Conversion::default()).unwrap();
     let rgb = matches!(base, ColorSpace::DeviceRgb) && process == Process::Rgb;
-    (Box::new(converter), rgb)
+    (converter, rgb)
 }
 
 /// The space an image's samples convert from: an Indexed space's base.

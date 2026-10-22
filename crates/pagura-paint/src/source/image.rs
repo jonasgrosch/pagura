@@ -31,8 +31,8 @@ use pagura_raster::Transform;
 use separable::{RowCache, Rows, Separable};
 use std::sync::Arc;
 use texels::{
-    ByteCodes, Colors, Convert, Fused, Lookup, MemoTexels, Opacity, OpacityTexels, PackedCodes,
-    RgbTexels, SampleTexels, Strategy, TableTexels,
+    ByteCodes, Colors, Fused, Lookup, MemoTexels, Opacity, OpacityTexels, PackedCodes, RgbTexels,
+    SampleTexels, Strategy, TableTexels,
 };
 
 /// An image prepared for one render: decoded (through the store) and ready
@@ -138,43 +138,13 @@ impl StoreKey for DecodedKey {
 impl ImageSampler {
     /// Prepares `image` drawn under `unit_to_device` (the image's unit
     /// square to device pixels), decoding what the region needs, and
-    /// charges `work` for the texels `pixels` filled device pixels read.
-    /// Colour conversions are charged to a `function_work` budget of their
-    /// own; [`Self::prepare_with`] charges a caller's.
+    /// charges `budgets.work` for the texels `pixels` filled device pixels
+    /// read and `budgets.functions` for the colour conversions.
     ///
     /// # Errors
     ///
     /// Returns the decode's errors and a `Limit` error when decoding or
     /// sampling exceeds the budgets.
-    pub fn prepare(
-        image: &Image,
-        unit_to_device: Transform,
-        context: &PaintContext<'_>,
-        pixels: usize,
-        work: &mut Meter,
-    ) -> Result<Self> {
-        let mut functions = Meter::new(
-            context.limits.function_work,
-            "image colour conversion work budget exceeded",
-        );
-        Self::prepare_with(
-            image,
-            unit_to_device,
-            context,
-            pixels,
-            ImageBudgets {
-                work,
-                functions: &mut functions,
-            },
-        )
-    }
-
-    /// As [`Self::prepare`], charging colour conversions to
-    /// `budgets.functions`.
-    ///
-    /// # Errors
-    ///
-    /// As [`Self::prepare`].
     pub fn prepare_with(
         image: &Image,
         unit_to_device: Transform,
@@ -251,8 +221,7 @@ impl ImageSampler {
                     conversion.intent = intent;
                 }
                 let base = Lookup::of(space).map_or(space, |(_, base)| base);
-                let converter: Box<dyn Convert> =
-                    Box::new(Converter::new(base, context.target, &conversion)?);
+                let converter = Converter::new(base, context.target, &conversion)?;
                 Some((converter, rgb_target(base, context)))
             }
             None => None,
@@ -342,14 +311,6 @@ impl ImageSampler {
         }
         self.uniform = self.find_uniform();
         self
-    }
-
-    /// Whether the image is a stencil mask, which paints its colour where
-    /// its samples say.
-    pub fn is_stencil(&self) -> bool {
-        self.prepared
-            .as_ref()
-            .is_some_and(|prepared| matches!(prepared.paint, Paint::Stencil { .. }))
     }
 
     /// Whether every pixel's shape equals its alpha. Otherwise (a soft mask
@@ -948,7 +909,7 @@ impl Prepared {
         description: &Description<'_>,
         (decoded, mask): (Arc<Decoded>, Option<Arc<Decoded>>),
         (inverse, columns, orientation): (Transform, (u32, u32), Orientation),
-        convert: Option<(Box<dyn Convert>, bool)>,
+        convert: Option<(Converter, bool)>,
     ) -> Result<(Self, usize)> {
         validate(&decoded.image)?;
         let geometry = placement(&decoded.image, inverse, orientation)?;
@@ -1119,7 +1080,7 @@ fn colors(
     description: &Description<'_>,
     decoded: &DecodedImage,
     mask: Option<&MaskSampling>,
-    convert: Box<dyn Convert>,
+    convert: Converter,
 ) -> Result<Colors> {
     let space = description
         .space

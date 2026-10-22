@@ -12,43 +12,13 @@
 //! most eight bits a cache by sample tuple.
 
 use super::geometry::{MAX_LANES, Texels, sample_index, sample_row};
-use pagura_color::{ColorSpace, Converter, Painted};
+use pagura_color::{ColorSpace, Converter};
 use pagura_image::{DecodedImage, ImageKind, MaskKind, Samples};
 use std::cell::RefCell;
 use std::sync::{Mutex, MutexGuard, PoisonError};
 
 /// The most components an image has (DeviceN's 32 colorants).
 const MAX_COMPONENTS: usize = pagura_color::MAX_COMPONENTS;
-
-/// A colour conversion into working colours, prepared once.
-pub(super) trait Convert: Send + Sync + std::fmt::Debug {
-    /// Values per converted colour.
-    fn channels(&self) -> usize;
-    /// Converts `components` into `output`, returning the channels painted.
-    fn convert(&self, components: &[f64], output: &mut [f64]) -> Painted;
-    /// The channels every colour paints; they do not depend on the values.
-    fn painted(&self) -> Painted;
-    /// The `function_work` units one conversion costs at most.
-    fn cost(&self) -> usize;
-}
-
-impl Convert for Converter {
-    fn channels(&self) -> usize {
-        self.target().channels()
-    }
-
-    fn convert(&self, components: &[f64], output: &mut [f64]) -> Painted {
-        Converter::convert(self, components, output)
-    }
-
-    fn painted(&self) -> Painted {
-        Converter::painted(self)
-    }
-
-    fn cost(&self) -> usize {
-        Converter::cost(self)
-    }
-}
 
 /// An Indexed space's lookup into its base space (8.6.6.3).
 #[derive(Debug, Clone)]
@@ -149,7 +119,7 @@ pub(super) struct Colors {
     /// The Matte colour of a soft mask with the image's dimensions.
     pub(super) matte: Option<Vec<f64>>,
     pub(super) alpha_is_shape: bool,
-    pub(super) convert: Box<dyn Convert>,
+    pub(super) convert: Converter,
 }
 
 /// Per-sample inputs other than the codes: embedded opacity and the soft
@@ -163,7 +133,7 @@ struct Extra {
 impl Colors {
     /// Values per texel: colour channels, alpha and shape.
     pub(super) fn lanes(&self) -> usize {
-        self.convert.channels() + 2
+        self.convert.target().channels() + 2
     }
 
     /// The texel of one sample's `codes`.
@@ -214,7 +184,7 @@ impl Colors {
                 };
             }
         }
-        let channels = self.convert.channels();
+        let channels = self.convert.target().channels();
         let (color, rest) = out.split_at_mut(channels);
         self.convert.convert(&values[..count], color);
         for value in color.iter_mut() {
