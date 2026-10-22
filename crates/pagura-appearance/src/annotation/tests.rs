@@ -190,3 +190,56 @@ fn content_and_storage_budgets_bound_generation() {
     .unwrap_err();
     assert_eq!(error.kind, ErrorKind::Limit);
 }
+
+#[test]
+fn unusable_dash_arrays_fail_at_generation() {
+    let area = rect(0.0, 0.0, 8.0, 8.0);
+    for text in [
+        b"<< /Subtype /Link /BS << /S /D /D [-1 2] >> >>".as_slice(),
+        b"<< /Subtype /Link /Border [0 0 1 [0 0]] >>",
+        b"<< /Subtype /Widget /FT /Tx /MK << /BC [0] >> /Border [0 0 1 [0]] >>",
+    ] {
+        let error = generate(text, area).unwrap_err();
+        assert_eq!(
+            (error.kind, error.message),
+            (ErrorKind::Syntax, "invalid annotation dash pattern"),
+            "{}",
+            String::from_utf8_lossy(text)
+        );
+    }
+}
+
+/// A rectangle without area gets no appearance, as fitting one into it
+/// would scale it to nothing (12.5.5), but its entries are still read with
+/// the errors of a rectangle with area.
+#[test]
+fn rectangles_without_area_get_no_appearance_after_validation() {
+    let line = rect(2.0, 2.0, 2.0, 9.0);
+    for text in [
+        b"<< /Subtype /Link >>".as_slice(),
+        b"<< /Subtype /Square /IC [1 0 0] >>",
+        b"<< /Subtype /Text >>",
+        b"<< /Subtype /Widget /FT /Tx /MK << /BC [0] >> >>",
+    ] {
+        assert_eq!(
+            generate(text, line).unwrap(),
+            None,
+            "{}",
+            String::from_utf8_lossy(text)
+        );
+    }
+    for text in [
+        b"<< /Subtype /Link /BS << /W /Thick >> >>".as_slice(),
+        b"<< /Subtype /Text /C [0 0] >>",
+        b"<< /Subtype /Widget /FT /Tx /V (value) >>",
+    ] {
+        let flat = generate(text, line).unwrap_err();
+        let full = generate(text, rect(2.0, 2.0, 9.0, 9.0)).unwrap_err();
+        assert_eq!(
+            (flat.kind, flat.message),
+            (full.kind, full.message),
+            "{}",
+            String::from_utf8_lossy(text)
+        );
+    }
+}

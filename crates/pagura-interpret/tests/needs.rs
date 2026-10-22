@@ -70,14 +70,12 @@ fn broken_paint() -> Vec<u8> {
 #[test]
 fn text_extraction_succeeds_where_images_and_shadings_are_broken() {
     let bytes = broken_paint();
-    let document = Document::open(bytes.clone(), &OpenOptions::default()).unwrap();
+    let document = Document::open(bytes, &OpenOptions::default()).unwrap();
     let page = document.page(0).unwrap();
     let text = Interpreter::new(&document).text(page).unwrap();
     assert_eq!(text.glyphs.len(), 1);
     assert_eq!(text.glyphs[0].unicode.as_deref(), Some("A"));
     assert!(Interpreter::new(&document).scene(page).is_err());
-    let old = Document::open(bytes, &OpenOptions::default()).unwrap();
-    assert!(pagura_legacy::text_page(&old, old.page(0).unwrap(), None).is_err());
 }
 
 /// Counts what a device receives, with chosen needs.

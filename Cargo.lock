@@ -31,7 +31,6 @@ dependencies = [
  "pagura-core",
  "pagura-data",
  "pagura-document",
- "pagura-legacy",
  "pagura-testkit",
  "pagura-text",
  "pagura-write",
@@ -171,22 +170,6 @@ dependencies = [
  "pagura-extract",
  "pagura-font",
  "pagura-image",
- "pagura-legacy",
- "pagura-raster",
- "pagura-testkit",
- "pagura-text",
-]
-
-[[package]]
-name = "pagura-legacy"
-version = "0.1.0"
-dependencies = [
- "pagura-color",
- "pagura-core",
- "pagura-document",
- "pagura-extract",
- "pagura-font",
- "pagura-image",
  "pagura-raster",
  "pagura-testkit",
  "pagura-text",
@@ -201,7 +184,6 @@ dependencies = [
  "pagura-document",
  "pagura-image",
  "pagura-interpret",
- "pagura-legacy",
  "pagura-raster",
  "pagura-reference",
  "pagura-testkit",
