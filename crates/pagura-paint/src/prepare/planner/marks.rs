@@ -30,7 +30,7 @@ enum Geometry<'a> {
     /// A stroke.
     Stroke(&'a Path, &'a Pen),
     /// A glyph placement: its device linear map and origin.
-    Glyph(&'a GlyphSource, [f64; 4], Point),
+    Glyph(&'a GlyphSource, [f64; 4], Point, usize),
     /// An image's unit square under this transform.
     Unit(Transform),
     /// A shading's `BBox` under its transform, or its clip region.
@@ -112,9 +112,11 @@ impl<B: Backend> Planner<'_, B> {
         let gather = node.placements.len() > 1 && self.gathers(scope, node);
         let outer = std::mem::replace(&mut self.gathering, gather.then_some(scope.group));
         let outer_memo = self.memo.take();
+        let outer_edges = std::mem::replace(&mut self.glyph_edges, vec![None; node.sources.len()]);
         let placed = self.placements(scope, node, budget);
         self.gathering = outer;
         self.memo = outer_memo;
+        self.glyph_edges = outer_edges;
         placed?;
         if gather {
             let position = self.run.as_ref().map(|open| open.position);
@@ -128,7 +130,10 @@ impl<B: Backend> Planner<'_, B> {
     fn placements(&mut self, scope: &Scope, node: &GlyphsNode, budget: &mut Budget) -> Result<()> {
         let t = scope.transform;
         let device = Transform::new(t.a, t.b, t.c, t.d, 0.0, 0.0);
-        let mut hulls: Vec<Option<Option<bounds::Hull>>> = vec![None; node.sources.len()];
+        // Each source's device linear map and hull relative to the origin,
+        // once.
+        let mut sources: Vec<Option<([f64; 4], Option<bounds::Hull>)>> =
+            vec![None; node.sources.len()];
         for (i, placement) in node.placements.iter().enumerate() {
             let source_index = index(placement.source);
             let Some(source) = node.sources.get(source_index) else {
@@ -138,17 +143,18 @@ impl<B: Backend> Planner<'_, B> {
                     node.position(i),
                 ));
             };
-            let l = source.linear;
-            let linear = Transform::new(l.a, l.b, l.c, l.d, 0.0, 0.0).then(device);
-            let relative = if let Some(hull) = hulls.get(source_index).copied().flatten() {
-                hull
-            } else {
+            let cached = sources.get(source_index).copied().flatten();
+            let (linear, relative) = cached.unwrap_or_else(|| {
+                let l = source.linear;
+                let linear = Transform::new(l.a, l.b, l.c, l.d, 0.0, 0.0).then(device);
                 let hull = bounds::path(&source.outline, linear);
-                if let Some(slot) = hulls.get_mut(source_index) {
-                    *slot = Some(hull);
-                }
-                hull
-            };
+                ([linear.a, linear.b, linear.c, linear.d], hull)
+            });
+            if cached.is_none()
+                && let Some(slot) = sources.get_mut(source_index)
+            {
+                *slot = Some((linear, relative));
+            }
             let origin = t.apply(placement.origin);
             let hull = relative.map(|[x0, y0, x1, y1]| {
                 bounds::expand(
@@ -156,8 +162,7 @@ impl<B: Backend> Planner<'_, B> {
                     1.0,
                 )
             });
-            let geometry =
-                Geometry::Glyph(source, [linear.a, linear.b, linear.c, linear.d], origin);
+            let geometry = Geometry::Glyph(source, linear, origin, source_index);
             if let Some(memo) = self.memo.filter(|_| self.gathering == Some(scope.group)) {
                 self.serial += 1;
                 let position = node.position(i);
@@ -601,8 +606,15 @@ impl<B: Backend> Planner<'_, B> {
                 self.backend
                     .stroke(path, (pen, inverse), scope.transform, &options)?
             }
-            Geometry::Glyph(source, linear, origin) => {
-                self.backend.glyph(source, *linear, *origin, &options)?
+            Geometry::Glyph(source, linear, origin, index) => {
+                let mut edges = self.glyph_edges.get(*index).copied().flatten();
+                let prepared =
+                    self.backend
+                        .glyph((source, &mut edges), *linear, *origin, &options)?;
+                if let Some(slot) = self.glyph_edges.get_mut(*index) {
+                    *slot = edges;
+                }
+                prepared
             }
             Geometry::Unit(transform) => self.backend.fill(
                 &bounds::unit_square(),

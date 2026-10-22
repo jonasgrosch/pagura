@@ -54,24 +54,15 @@ fn level_byte(level: f32) -> u8 {
 
 /// Stores an opaque colour, already encoded as bytes, at `coverage` (`None`
 /// covers every pixel): `round((c·s + (255 − c)·u) / 255)`, the store the
-/// byte path makes at alpha `c / 255`, in u16 lanes (`255² + 128 + 254`
-/// stays below 2^16) with no branch.
+/// byte path makes at alpha `c / 255`, with no branch.
 pub(crate) fn store_u8_opaque(pixels: &mut [[u8; 4]], source: [u8; 4], coverage: Option<&[u8]>) {
     let Some(coverage) = coverage else {
         pixels.fill(source);
         return;
     };
-    let s = source.map(u16::from);
+    let source = Lanes::new(source);
     for (pixel, &c) in pixels.iter_mut().zip(coverage) {
-        let c = u16::from(c);
-        let r = 255_u16.wrapping_sub(c);
-        let b = pixel.map(u16::from);
-        *pixel = [
-            mix_byte(s[0], b[0], (c, r)),
-            mix_byte(s[1], b[1], (c, r)),
-            mix_byte(s[2], b[2], (c, r)),
-            mix_byte(s[3], b[3], (c, r)),
-        ];
+        *pixel = source.over(*pixel, u32::from(c));
     }
 }
 
@@ -84,32 +75,66 @@ pub(crate) fn store_u8_alpha(
     coverage: Option<&[u8]>,
     alpha: &[u8; 256],
 ) {
-    let s = source.map(u16::from);
+    let source = Lanes::new(source);
     let Some(coverage) = coverage else {
-        let a = u16::from(alpha[255]);
-        let r = 255_u16.wrapping_sub(a);
+        let a = u32::from(alpha[255]);
         for pixel in pixels.iter_mut() {
-            let b = pixel.map(u16::from);
-            *pixel = [
-                mix_byte(s[0], b[0], (a, r)),
-                mix_byte(s[1], b[1], (a, r)),
-                mix_byte(s[2], b[2], (a, r)),
-                mix_byte(s[3], b[3], (a, r)),
-            ];
+            *pixel = source.over(*pixel, a);
         }
         return;
     };
     for (pixel, &c) in pixels.iter_mut().zip(coverage) {
-        let a = u16::from(alpha[usize::from(c)]);
-        let r = 255_u16.wrapping_sub(a);
-        let b = pixel.map(u16::from);
-        *pixel = [
-            mix_byte(s[0], b[0], (a, r)),
-            mix_byte(s[1], b[1], (a, r)),
-            mix_byte(s[2], b[2], (a, r)),
-            mix_byte(s[3], b[3], (a, r)),
-        ];
+        *pixel = source.over(*pixel, u32::from(alpha[usize::from(c)]));
     }
+}
+
+/// A byte colour as two pairs of channels in the 16-bit halves of a word
+/// each, so that one multiply weights two channels: a weighted channel is
+/// at most `255² + 128 + 254 < 2^16`, so no half carries into the other.
+#[derive(Clone, Copy)]
+struct Lanes {
+    /// Channels 0 and 2.
+    even: u32,
+    /// Channels 1 and 3.
+    odd: u32,
+}
+
+/// The low byte of each 16-bit half of a word.
+const HALVES: u32 = 0x00ff_00ff;
+
+impl Lanes {
+    fn new(color: [u8; 4]) -> Self {
+        let word = u32::from_le_bytes(color);
+        Self {
+            even: word & HALVES,
+            odd: (word >> 8) & HALVES,
+        }
+    }
+
+    /// `round255(s·a + u·(255 − a))` per channel of `pixel`.
+    #[inline]
+    fn over(self, pixel: [u8; 4], a: u32) -> [u8; 4] {
+        let word = u32::from_le_bytes(pixel);
+        let rest = 255_u32.wrapping_sub(a);
+        let even = round255_halves(
+            self.even
+                .wrapping_mul(a)
+                .wrapping_add((word & HALVES).wrapping_mul(rest)),
+        );
+        let odd = round255_halves(
+            self.odd
+                .wrapping_mul(a)
+                .wrapping_add(((word >> 8) & HALVES).wrapping_mul(rest)),
+        );
+        (even | (odd << 8)).to_le_bytes()
+    }
+}
+
+/// [`round255`] in both 16-bit halves of a word.
+#[inline]
+fn round255_halves(p: u32) -> u32 {
+    let t = p.wrapping_add(0x0080_0080);
+    (t.wrapping_add((t >> 8) & HALVES) >> 8) & HALVES
 }
 
 /// The byte opacity of every coverage byte under constant alpha `k`: the
@@ -121,16 +146,6 @@ pub(crate) fn alpha_bytes(k: f64) -> [u8; 256] {
         *out = pagura_raster::quantize_unit(unit * k);
     }
     table
-}
-
-/// One byte store, `round255` in u16.
-#[inline]
-fn mix_byte(source: u16, backdrop: u16, (c, rest): (u16, u16)) -> u8 {
-    let t = source
-        .wrapping_mul(c)
-        .wrapping_add(backdrop.wrapping_mul(rest))
-        .wrapping_add(128);
-    (t.wrapping_add(t >> 8) >> 8) as u8
 }
 
 /// The bytes the byte path stores for an opaque constant colour.

@@ -104,8 +104,14 @@ impl<B: Backend> Planner<'_, B> {
         budget.bytes.charge(GLYPH_BYTES)?;
         self.gathered += 1;
         let fits = self.run.as_ref().is_some_and(|open| {
+            // A run follows one line: the placement shares rows with the
+            // one before it.
+            let line = open.glyphs.last().is_some_and(|last| {
+                last.bounds.y0 < placed.bounds.y1 && placed.bounds.y0 < last.bounds.y1
+            });
             open.group == group
                 && same(&open.mark, &mark)
+                && line
                 && open.glyphs.len() < RUN_GLYPHS
                 && area(union(open.bounds, placed.bounds))
                     <= SPREAD
@@ -121,7 +127,7 @@ impl<B: Backend> Planner<'_, B> {
             mark,
             serial: placed.serial,
             position: placed.position,
-            glyphs: Vec::new(),
+            glyphs: Vec::with_capacity(RUN_GLYPHS),
             bounds: DeviceRect::default(),
             covered: 0,
             work: 0,
@@ -166,6 +172,7 @@ impl<B: Backend> Planner<'_, B> {
             };
             return self.push(group, item, budget);
         }
+        glyphs.shrink_to_fit();
         mark_alone(&mut glyphs);
         if glyphs.iter().any(|glyph| glyph.alone) {
             // Merged rows composite over the run's bounds at most; the

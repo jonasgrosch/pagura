@@ -105,7 +105,7 @@ impl Backend for Rects {
 
     fn glyph(
         &mut self,
-        source: &GlyphSource,
+        (source, _): (&GlyphSource, &mut Option<u32>),
         linear: [f64; 4],
         origin: Point,
         options: &ShapeOptions<'_>,
