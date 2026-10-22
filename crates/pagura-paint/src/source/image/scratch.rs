@@ -94,7 +94,10 @@ impl ImageSampler {
                 fused: 0,
             };
         };
-        let fused = prepared.mask.as_ref().is_some_and(|mask| mask.fused);
+        let fused = prepared
+            .mask
+            .as_ref()
+            .is_some_and(|mask| mask.independent.is_none());
         let lanes = self.channels + 2 + usize::from(fused);
         let values = lanes - usize::from(prepared.opaque()) * 2;
         let plan = match &prepared.plan {
@@ -113,8 +116,8 @@ impl ImageSampler {
             mask: prepared
                 .mask
                 .as_ref()
-                .filter(|mask| !mask.fused)
-                .map(|mask| mask.plan.layout(1)),
+                .and_then(|mask| mask.independent.as_ref())
+                .map(|(_, plan)| plan.layout(1)),
             memo,
             summed: if matches!(prepared.plan, Plan::Texels(_)) {
                 prepared.columns.saturating_mul(lanes)

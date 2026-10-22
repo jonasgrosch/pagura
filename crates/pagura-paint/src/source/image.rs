@@ -114,15 +114,13 @@ impl Plan {
 #[derive(Debug)]
 struct MaskSampling {
     image: Arc<Decoded>,
-    geometry: Geometry,
     opacity: Opacity,
     /// Whether the mask's opacity also scales shape: an explicit stencil
     /// mask, or alpha is shape.
     scales_shape: bool,
-    plan: Sampling,
-    /// Whether the mask is on the image's grid, so that its opacity
+    /// A mask with its own grid or reconstruction; otherwise opacity
     /// averages over the image's footprints together with the texels.
-    fused: bool,
+    independent: Option<(Geometry, Sampling)>,
 }
 
 /// A decoded image in the store: the source and the request (layout and
@@ -507,16 +505,17 @@ impl ImageSampler {
         let mask = prepared.mask.as_ref();
         // A mask on the image's grid averages ahead of the texels; another
         // is sampled into the alphas first.
-        let fused = mask.is_some_and(|mask| mask.fused);
+        let fused = mask.is_some_and(|mask| mask.independent.is_none());
         out.alpha.resize(len, 0.0);
-        if let Some(mask) = mask.filter(|mask| !mask.fused) {
+        if let Some(mask) = mask
+            && let Some((geometry, plan)) = &mask.independent
+        {
             let texels = OpacityTexels {
                 mask: &mask.image.image,
                 opacity: &mask.opacity,
             };
             if let Some(storage) = &mut scratch.mask {
-                mask.plan
-                    .fill(&mask.geometry, pixels, storage, &texels, &mut out.alpha);
+                plan.fill(geometry, pixels, storage, &texels, &mut out.alpha);
             }
         }
         let stride = lanes + usize::from(fused);
@@ -611,7 +610,7 @@ impl Prepared {
         texels: &impl Texels,
         out: &mut [f64],
     ) {
-        match self.mask.as_ref().filter(|mask| mask.fused) {
+        match self.mask.as_ref().filter(|mask| mask.independent.is_none()) {
             Some(mask) => {
                 let fused = Fused {
                     texels,
@@ -924,7 +923,6 @@ impl Prepared {
                     MaskDescription::Soft { decode, .. } => (decode, description.alpha_is_shape),
                     _ => ([0.0, 1.0], true),
                 };
-                let geometry = placement(&image.image, inverse, orientation)?;
                 // On the image's grid and sampled alike: the same samples
                 // and the same reconstruction (a mask has its own
                 // `Interpolate`).
@@ -933,11 +931,15 @@ impl Prepared {
                     && image.image.interpolate == decoded.image.interpolate;
                 Some(MaskSampling {
                     opacity: Opacity::new(&image.image, decode, bytes)?,
-                    plan: Sampling::new(&geometry, columns, bytes)?,
-                    geometry,
+                    independent: if fused {
+                        None
+                    } else {
+                        let geometry = placement(&image.image, inverse, orientation)?;
+                        let plan = Sampling::new(&geometry, columns, bytes)?;
+                        Some((geometry, plan))
+                    },
                     image,
                     scales_shape,
-                    fused,
                 })
             }
             _ => None,
@@ -1000,17 +1002,20 @@ impl Prepared {
                 size_of::<(Colors, Strategy)>() + paint.0.bytes() + paint.1.bytes()
             }
         };
-        let mask = self
-            .mask
-            .as_ref()
-            .map_or(0, |mask| decoded_bytes(&mask.image.image));
+        let mask = self.mask.as_ref().map_or(0, |mask| {
+            let plan = mask
+                .independent
+                .as_ref()
+                .map_or(0, |(_, plan)| plan.bytes());
+            decoded_bytes(&mask.image.image)
+                .saturating_add(mask.opacity.bytes())
+                .saturating_add(plan)
+        });
         [
             decoded_bytes(&self.image.image),
             mask,
             tables,
             self.plan.bytes(),
-            self.mask.as_ref().map_or(0, |mask| mask.plan.bytes()),
-            self.mask.as_ref().map_or(0, |mask| mask.opacity.bytes()),
         ]
         .into_iter()
         .fold(size_of::<Self>(), usize::saturating_add)
@@ -1023,7 +1028,11 @@ impl Prepared {
         let per_pixel = self
             .geometry
             .cost()
-            .saturating_add(self.mask.as_ref().map_or(0, |mask| mask.geometry.cost()));
+            .saturating_add(self.mask.as_ref().map_or(0, |mask| {
+                mask.independent
+                    .as_ref()
+                    .map_or(self.geometry.cost(), |(geometry, _)| geometry.cost())
+            }));
         budgets.work.charge_product(pixels, per_pixel)?;
         if let Paint::Colors(paint) = &self.paint {
             let (colors, strategy) = paint.as_ref();
