@@ -816,6 +816,8 @@ fn rows_and_tables_sum_as_samples_do() {
                     values: std::cell::RefCell::new(&mut fused_values),
                 };
                 assert!(mask.fused);
+                assert!(storage.mask.is_none());
+                let mut mask_storage = mask.plan.layout(1).make().unwrap();
                 let lanes = lanes + 1;
                 for y in y0..y1 {
                     let mut whole = (vec![0.0; len * lanes], vec![0.0; len]);
@@ -830,7 +832,7 @@ fn rows_and_tables_sum_as_samples_do() {
                     mask.plan.fill(
                         &mask.geometry,
                         Pixels::new(x0, y, len),
-                        storage.mask.as_mut().unwrap(),
+                        &mut mask_storage,
                         &opacity,
                         &mut whole.1,
                     );
@@ -860,7 +862,7 @@ fn rows_and_tables_sum_as_samples_do() {
                         mask.plan.fill(
                             &mask.geometry,
                             span,
-                            storage.mask.as_mut().unwrap(),
+                            &mut mask_storage,
                             &opacity,
                             &mut rows,
                         );

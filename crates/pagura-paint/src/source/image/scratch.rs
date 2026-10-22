@@ -110,7 +110,11 @@ impl ImageSampler {
         };
         Layout {
             plan,
-            mask: prepared.mask.as_ref().map(|mask| mask.plan.layout(1)),
+            mask: prepared
+                .mask
+                .as_ref()
+                .filter(|mask| !mask.fused)
+                .map(|mask| mask.plan.layout(1)),
             memo,
             summed: if matches!(prepared.plan, Plan::Texels(_)) {
                 prepared.columns.saturating_mul(lanes)

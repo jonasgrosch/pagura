@@ -14,7 +14,7 @@
 use super::geometry::{MAX_LANES, Texels, sample_index, sample_row};
 use super::scratch::allocate;
 use pagura_color::{ColorSpace, Converter};
-use pagura_core::Result;
+use pagura_core::{Meter, Result};
 use pagura_image::{DecodedImage, ImageKind, MaskKind, Samples};
 use std::cell::RefCell;
 
@@ -694,6 +694,112 @@ impl Key {
     }
 }
 
+/// The exact inputs of a sample key, shared by capacity planning and use.
+struct SampleKeys<'a> {
+    components: usize,
+    count: usize,
+    colors: &'a [u8],
+    matte: Option<&'a [u8]>,
+    embedded: Option<&'a [u8]>,
+}
+
+impl<'a> SampleKeys<'a> {
+    fn new(key: Key, image: &'a DecodedImage, mask: Option<&'a DecodedImage>) -> Option<Self> {
+        let Samples::Bytes(colors) = &image.samples else {
+            return None;
+        };
+        let matte = if key.matte {
+            let Samples::Bytes(codes) = &mask?.samples else {
+                return None;
+            };
+            Some(codes.as_slice())
+        } else {
+            None
+        };
+        let embedded = match (&image.mask, key.embedded) {
+            (MaskKind::Embedded(alpha), true) => match &alpha.samples {
+                Samples::Bytes(codes) => Some(codes.as_slice()),
+                _ => return None,
+            },
+            _ => None,
+        };
+        Some(Self {
+            components: key.components,
+            count: sample_index(u64::from(image.width) * u64::from(image.height)),
+            colors,
+            matte,
+            embedded,
+        })
+    }
+
+    /// The colour and opacity codes of sample `index`.
+    #[inline]
+    fn get(&self, index: usize) -> u64 {
+        let start = index.saturating_mul(self.components);
+        let codes = self
+            .colors
+            .get(start..start + self.components)
+            .unwrap_or(&[]);
+        let mut key = codes.iter().fold(0u64, |key, &c| (key << 8) | u64::from(c));
+        for codes in [self.matte, self.embedded].into_iter().flatten() {
+            key = (key << 8) | u64::from(codes.get(index).copied().unwrap_or(0));
+        }
+        key
+    }
+
+    /// Counts at most 2048 distinct keys. A photographic source ends the
+    /// scan as soon as it exceeds that count and keeps its original bound.
+    fn distinct(&self, work: &mut Meter, bytes: &mut Meter) -> Result<Option<usize>> {
+        const COUNT: usize = 2048;
+        const EMPTY: u64 = u64::MAX;
+        let mut slots = Vec::new();
+        bytes.reserve(&mut slots, COUNT * 2)?;
+        let allocated = slots.capacity() * size_of::<u64>();
+        let result = (|| {
+            work.charge(COUNT * 2)?;
+            slots.resize(COUNT * 2, EMPTY);
+            let mut distinct = 0;
+            let mut previous = None;
+            for index in 0..self.count {
+                work.charge(1)?;
+                let key = self.get(index);
+                if previous == Some(key) {
+                    continue;
+                }
+                previous = Some(key);
+                let mut slot = hash_slot(key, slots.len() - 1);
+                loop {
+                    work.charge(1)?;
+                    let held = slots[slot];
+                    if held == key {
+                        break;
+                    }
+                    if held == EMPTY {
+                        if distinct == COUNT {
+                            return Ok(None);
+                        }
+                        slots[slot] = key;
+                        distinct += 1;
+                        break;
+                    }
+                    slot = (slot + 1) & (slots.len() - 1);
+                }
+            }
+            Ok(Some(distinct))
+        })();
+        drop(slots);
+        bytes.refund(allocated);
+        result
+    }
+}
+
+/// The memo's first probe, shared with capacity discovery.
+#[inline]
+fn hash_slot(key: u64, mask: usize) -> usize {
+    let hash = key.wrapping_mul(0x9e37_79b9_7f4a_7c15) >> 29;
+    usize::try_from(hash).unwrap_or(0) & mask
+}
+
 /// Texels by sample key: open addressing into slots that hold a key and
 /// its `held` values together, so that a lookup reads one place. Keys have
 /// at most 48 bits, so each is held exactly as an f64. The memo holds at
@@ -750,6 +856,26 @@ impl MemoLayout {
         (2 * self.limit)
             .next_power_of_two()
             .saturating_mul(1 + self.held)
+    }
+
+    /// Tightens only a source proven to have few distinct sample keys.
+    pub(super) fn fit(
+        &mut self,
+        image: &DecodedImage,
+        mask: Option<&DecodedImage>,
+        work: &mut Meter,
+        bytes: &mut Meter,
+    ) -> Result<()> {
+        if let Some(samples) = SampleKeys::new(self.key, image, mask) {
+            // The pixel count already bounds small sources; discovering
+            // their keys would spend more temporary storage than it saves.
+            if samples.count <= 2048 {
+                self.limit = self.limit.min(samples.count.max(1));
+            } else if let Some(count) = samples.distinct(work, bytes)? {
+                self.limit = self.limit.min(count.max(1));
+            }
+        }
+        Ok(())
     }
 
     /// Allocates the full fixed table after its bytes have been charged.
@@ -812,8 +938,7 @@ impl Memo {
     fn slot(&self, key: u64, wanted: f64) -> usize {
         let stride = 1 + self.layout.held;
         let mask = self.slots.len() / stride - 1;
-        let hash = key.wrapping_mul(0x9e37_79b9_7f4a_7c15) >> 29;
-        let mut slot = usize::try_from(hash).unwrap_or(0) & mask;
+        let mut slot = hash_slot(key, mask);
         while self
             .slots
             .get(slot * stride)
@@ -827,13 +952,11 @@ impl Memo {
 
 /// Texels of eight-bit samples through their memo.
 pub(super) struct MemoTexels<'a> {
-    samples: &'a [u8],
+    samples: SampleKeys<'a>,
     colors: &'a Colors,
     /// The soft mask's codes on the image's grid and their opacities, where
     /// a Matte is removed.
-    matte: Option<(&'a [u8], &'a Opacity)>,
-    /// The embedded opacity codes.
-    embedded: Option<&'a [u8]>,
+    matte: Option<&'a Opacity>,
     memo: RefCell<&'a mut Memo>,
 }
 
@@ -846,54 +969,21 @@ impl<'a> MemoTexels<'a> {
         mask: Option<(&'a DecodedImage, &'a Opacity)>,
         memo: &'a mut Memo,
     ) -> Option<Self> {
-        let Samples::Bytes(samples) = &image.samples else {
-            return None;
-        };
-        let matte = if memo.layout.key.matte {
-            let (mask, opacity) = mask?;
-            let Samples::Bytes(codes) = &mask.samples else {
-                return None;
-            };
-            Some((codes.as_slice(), opacity))
-        } else {
-            None
-        };
-        let embedded = match (&image.mask, memo.layout.key.embedded) {
-            (MaskKind::Embedded(alpha), true) => match &alpha.samples {
-                Samples::Bytes(codes) => Some(codes.as_slice()),
-                _ => return None,
-            },
-            _ => None,
-        };
+        let samples = SampleKeys::new(memo.layout.key, image, mask.map(|mask| mask.0))?;
+        let matte = mask.map(|mask| mask.1);
         Some(Self {
             samples,
             colors,
             matte,
-            embedded,
             memo: RefCell::new(memo),
         })
-    }
-
-    /// The key of sample `index`.
-    #[inline]
-    fn key(&self, index: usize, components: usize) -> u64 {
-        let start = index.saturating_mul(components);
-        let codes = self.samples.get(start..start + components).unwrap_or(&[]);
-        let mut key = codes.iter().fold(0u64, |key, &c| (key << 8) | u64::from(c));
-        if let Some((mask, _)) = self.matte {
-            key = (key << 8) | u64::from(mask.get(index).copied().unwrap_or(0));
-        }
-        if let Some(alpha) = self.embedded {
-            key = (key << 8) | u64::from(alpha.get(index).copied().unwrap_or(0));
-        }
-        key
     }
 
     /// The texel of sample `index`, written into `out` (its held values).
     #[inline]
     fn write(&self, memo: &mut Memo, index: usize, out: &mut [f64]) {
         let components = memo.layout.key.components;
-        let key = self.key(index, components);
+        let key = self.samples.get(index);
         let values = memo.get(key, |texel| self.convert(index, components, texel));
         for (out, &value) in out.iter_mut().zip(values) {
             *out = value;
@@ -904,17 +994,20 @@ impl<'a> MemoTexels<'a> {
     fn convert(&self, index: usize, components: usize, texel: &mut [f64]) {
         let start = index.saturating_mul(components);
         let mut codes = [0u16; MAX_COMPONENTS];
-        for (code, &byte) in codes
-            .iter_mut()
-            .zip(self.samples.get(start..start + components).unwrap_or(&[]))
-        {
+        for (code, &byte) in codes.iter_mut().zip(
+            self.samples
+                .colors
+                .get(start..start + components)
+                .unwrap_or(&[]),
+        ) {
             *code = u16::from(byte);
         }
         let extra = Extra {
             embedded: self
+                .samples
                 .embedded
                 .map(|alpha| u16::from(alpha.get(index).copied().unwrap_or(0))),
-            mask: self.matte.map(|(mask, opacity)| {
+            mask: self.samples.matte.zip(self.matte).map(|(mask, opacity)| {
                 opacity.code(u16::from(mask.get(index).copied().unwrap_or(0)))
             }),
         };
@@ -956,7 +1049,7 @@ impl Texels for MemoTexels<'_> {
         let mut previous = None;
         let mut last = [0.0; MAX_LANES];
         for (index, values) in (start..start + count).zip(out.chunks_exact_mut(stride)) {
-            let key = self.key(index, components);
+            let key = self.samples.get(index);
             if previous != Some(key) {
                 let held = memo.get(key, |texel| self.convert(index, components, texel));
                 copy_texel(&mut last, held);
@@ -992,7 +1085,91 @@ pub(super) fn copy_texel(to: &mut [f64], from: &[f64]) {
 
 #[cfg(test)]
 mod tests {
-    use super::{Key, MemoLayout};
+    use super::{Key, MemoLayout, SampleKeys};
+    use pagura_core::Meter;
+
+    #[test]
+    fn small_sources_need_no_capacity_discovery_allocation() {
+        let image = crate::source::image::tests::image(
+            (1, 1),
+            3,
+            8,
+            pagura_image::Samples::Bytes(vec![1, 2, 3]),
+        );
+        let mut layout = MemoLayout::new(
+            Key {
+                components: 3,
+                matte: false,
+                embedded: false,
+            },
+            (3, true),
+            1,
+        );
+        layout
+            .fit(
+                &image,
+                None,
+                &mut Meter::new(0, "test"),
+                &mut Meter::new(0, "test"),
+            )
+            .unwrap();
+        assert_eq!(layout.limit, 1);
+    }
+
+    #[test]
+    fn capacity_discovery_includes_both_opacities_and_refunds_temporary_bytes() {
+        let colors = vec![17; 6000 * 3];
+        let matte: Vec<_> = (0..6000).map(|n| u8::from(n % 2 != 0)).collect();
+        let embedded: Vec<_> = (0..6000).map(|n| [0, 1, 2][n % 3]).collect();
+        let keys = SampleKeys {
+            components: 3,
+            count: 6000,
+            colors: &colors,
+            matte: Some(&matte),
+            embedded: Some(&embedded),
+        };
+        let mut work = Meter::new(100_000, "test");
+        let mut bytes = Meter::new(32_768 + 7, "test");
+        bytes.charge(7).unwrap();
+        assert_eq!(keys.distinct(&mut work, &mut bytes).unwrap(), Some(6));
+        assert!(work.used() >= keys.count);
+        assert_eq!(bytes.used(), 7);
+
+        let mut tiny = Meter::new(0, "test");
+        assert!(keys.distinct(&mut tiny, &mut bytes).is_err());
+        assert_eq!(tiny.used(), 0);
+        assert_eq!(bytes.used(), 7);
+        let mut tiny = Meter::new(32_767, "test");
+        let before = work.used();
+        assert!(keys.distinct(&mut work, &mut tiny).is_err());
+        assert_eq!(work.used(), before);
+    }
+
+    #[test]
+    fn capacity_discovery_keeps_the_photographic_bound() {
+        let colors: Vec<_> = (0..3000u16)
+            .flat_map(|n| [n.to_be_bytes()[0], n.to_be_bytes()[1], 17])
+            .collect();
+        let image = crate::source::image::tests::image(
+            (3000, 1),
+            3,
+            8,
+            pagura_image::Samples::Bytes(colors),
+        );
+        let key = Key {
+            components: 3,
+            matte: false,
+            embedded: false,
+        };
+        let mut layout = MemoLayout::new(key, (3, true), 1_000_000);
+        let before = layout;
+        let mut work = Meter::new(100_000, "test");
+        let mut bytes = Meter::new(32_768, "test");
+        layout.fit(&image, None, &mut work, &mut bytes).unwrap();
+        assert_eq!(layout, before);
+        assert_eq!(bytes.used(), 0);
+        assert!(work.used() < 4096 + 3 * 3000);
+    }
 
     /// The memo reserves less than eight bytes a sample of its image, and
     /// past its limit it converts every sample anew, alike.

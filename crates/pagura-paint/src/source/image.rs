@@ -49,6 +49,8 @@ pub(crate) struct ImageSampler {
 /// The budgets preparing an image charges.
 #[derive(Debug)]
 pub(crate) struct ImageBudgets<'a> {
+    /// Remaining preparation memory, including temporary capacity discovery.
+    pub(crate) bytes: &'a mut Meter,
     /// Render work: one unit per texel the filled pixels read.
     pub(crate) work: &'a mut Meter,
     /// `function_work` of the colour conversions sampling makes.
@@ -236,12 +238,19 @@ impl ImageSampler {
             None => None,
         };
         let columns = (context.region.x0, context.region.x1);
-        let (prepared, conversions) = Prepared::new(
+        let (mut prepared, conversions) = Prepared::new(
             &description,
             (decoded, mask),
             (inverse, columns, orientation),
             convert,
         )?;
+        // The prepared source stays alive while capacity discovery uses
+        // temporary storage; the planner charges its retained bytes next.
+        let held = prepared.bytes();
+        budgets.bytes.charge(held)?;
+        let fitted = prepared.fit_memo(&mut budgets);
+        budgets.bytes.refund(held);
+        fitted?;
         prepared.charge(pixels, conversions, &mut budgets)?;
         Ok(Self::new(Some(Box::new(prepared)), channels))
     }
@@ -502,6 +511,22 @@ struct SamplingBuffers<'a> {
 }
 
 impl Prepared {
+    /// Sizes a sparse memo from its source keys without reducing the
+    /// conversion reuse of photographic images.
+    fn fit_memo(&mut self, budgets: &mut ImageBudgets<'_>) -> Result<()> {
+        if let Paint::Colors(paint) = &mut self.paint
+            && let Strategy::Memo(layout) = &mut paint.1
+        {
+            layout.fit(
+                &self.image.image,
+                self.mask.as_ref().map(|mask| &mask.image.image),
+                budgets.work,
+                budgets.bytes,
+            )?;
+        }
+        Ok(())
+    }
+
     /// Whether converted texels omit their constant alpha and shape lanes.
     fn opaque(&self) -> bool {
         match &self.paint {
