@@ -185,7 +185,13 @@ fn planes_background_blocks_and_turns_sample_as_interleaved_samples() {
         .filter(|path| path.extension().is_some_and(|e| e == "pdf"))
         .filter_map(|path| std::fs::read(path).ok())
         .collect();
-    files.extend(corpus("0000095.pdf"));
+    // The generated fixtures hold no baseline YCbCr JPEG that decodes to
+    // planes; the real-world page does, where the corpus is available.
+    let Some(page) = corpus("0000095.pdf") else {
+        eprintln!("skipped: corpus page 0000095.pdf is not available");
+        return;
+    };
+    files.push(page);
     let mut planar = 0;
     for bytes in files {
         let Ok(document) = Document::open(bytes, &OpenOptions::default()) else {
