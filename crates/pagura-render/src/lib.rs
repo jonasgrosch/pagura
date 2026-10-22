@@ -39,6 +39,7 @@ pub use pagura_text::Provider;
 use pagura_core::{ObjectId, Rect, Result, Store};
 use pagura_document::{Document, Page};
 use pagura_interpret::PageSpace;
+use pagura_paint::Scratch;
 use renderer::Renderer;
 
 /// The size in device pixels of `page` rendered with `options`: its crop
@@ -85,7 +86,7 @@ pub fn render_page(
     with_renderer(document, provider, |renderer| {
         let scene = renderer.record(page)?;
         renderer
-            .render(&scene, options, None, |_| false)
+            .render(&scene, (options, None), &mut Scratch::default(), |_| false)
             .map(|(pixmap, _)| pixmap)
     })
 }
@@ -106,7 +107,12 @@ pub fn render_tile(
     with_renderer(document, provider, |renderer| {
         let scene = renderer.record(page)?;
         renderer
-            .render(&scene, options, Some(tile), |_| false)
+            .render(
+                &scene,
+                (options, Some(tile)),
+                &mut Scratch::default(),
+                |_| false,
+            )
             .map(|(pixmap, _)| pixmap)
     })
 }

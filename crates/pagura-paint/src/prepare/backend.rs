@@ -168,21 +168,18 @@ pub(crate) trait Backend {
         conversion: &Conversion,
     ) -> Result<Box<dyn Convert>>;
 
-    /// The coverage producer of the prepared shapes and clips, its scratch
-    /// storage charged to `bytes`.
-    ///
-    /// # Errors
-    ///
-    /// A `Limit` error when the scratch storage exceeds `bytes`.
-    fn finish(self, area: Area, bytes: &mut Meter) -> Result<Box<dyn Producer>>;
+    /// The coverage producer of the prepared shapes and clips over `area`.
+    fn finish(self, area: Area) -> Box<dyn Producer>;
 }
 
-/// Coverage of prepared marks, band by band.
+/// Coverage of prepared marks, band by band, rasterized in the scratch
+/// storage of the caller's rasterizer.
 pub(crate) trait Producer: Send + Sync + fmt::Debug {
     /// Writes the coverage of `shape` (`None`: the whole area) within
     /// `clip` (`None`: everything) in `band` to `out`, replacing it.
     fn rasterize(
-        &mut self,
+        &self,
+        rasterizer: &mut BandRasterizer,
         shape: Option<u32>,
         clip: Option<u32>,
         band: u32,
@@ -195,14 +192,15 @@ pub(crate) trait Producer: Send + Sync + fmt::Debug {
     /// shape that can cover it, with zero coverage in the gaps of a row.
     /// Returns how many shapes it took, at least one when there are any.
     fn rasterize_run(
-        &mut self,
+        &self,
+        rasterizer: &mut BandRasterizer,
         shapes: &[u32],
         clip: Option<u32>,
         band: u32,
         out: &mut BandCoverage,
     ) -> usize {
         if let Some(&shape) = shapes.first() {
-            self.rasterize(Some(shape), clip, band, out);
+            self.rasterize(rasterizer, Some(shape), clip, band, out);
             1
         } else {
             out.clear();
@@ -216,7 +214,15 @@ pub(crate) trait Producer: Send + Sync + fmt::Debug {
         let _ = shape;
         None
     }
+
+    /// The storage of its shapes and glyph masks, for the next preparation.
+    fn into_storage(self: Box<Self>) -> Storage {
+        Storage::default()
+    }
 }
+
+/// The storage prepared shapes and glyph masks are kept in.
+pub(crate) type Storage = (Vec<Shape>, GlyphMasks);
 
 /// The production backend: the band rasterizer and the paint sources.
 #[derive(Debug)]
@@ -244,12 +250,8 @@ impl<'a> Raster<'a> {
             limits,
             origins,
             scale: 1.0,
-            shapes: SPARE_SHAPES
-                .try_with(std::cell::Cell::take)
-                .unwrap_or_default(),
-            masks: SPARE_MASKS
-                .try_with(std::cell::Cell::take)
-                .unwrap_or_default(),
+            shapes: Vec::new(),
+            masks: GlyphMasks::default(),
             clips: Vec::new(),
             edges: hash::map(),
             handles: Vec::new(),
@@ -260,6 +262,14 @@ impl<'a> Raster<'a> {
     /// Device pixels per default user-space unit, for binned glyph edges.
     pub(crate) fn with_scale(mut self, scale: f64) -> Self {
         self.scale = scale;
+        self
+    }
+
+    /// Prepares shapes and glyph masks in `storage`, emptied.
+    pub(crate) fn with_storage(mut self, storage: Storage) -> Self {
+        (self.shapes, self.masks) = storage;
+        self.shapes.clear();
+        self.masks.clear();
         self
     }
 
@@ -521,48 +531,21 @@ impl Backend for Raster<'_> {
         Ok(Box::new(Converter::new(space, target, conversion)?))
     }
 
-    fn finish(self, area: Area, bytes: &mut Meter) -> Result<Box<dyn Producer>> {
-        let spare = SPARE_RASTERIZER
-            .try_with(std::cell::Cell::take)
-            .ok()
-            .flatten()
-            .filter(|spare| spare.rasterizer.area() == area);
-        let rasterizer = if let Some(spare) = spare {
-            // The storage it holds charged as it did when it was made.
-            bytes.charge(spare.charged)?;
-            spare
-        } else {
-            let used = bytes.used();
-            let rasterizer = BandRasterizer::new(area, bytes)?;
-            Rasterizer {
-                rasterizer,
-                charged: bytes.used() - used,
-            }
-        };
-        Ok(Box::new(RasterCoverage {
-            rasterizer: Some(rasterizer),
+    fn finish(self, _area: Area) -> Box<dyn Producer> {
+        Box::new(RasterCoverage {
             shapes: self.shapes,
             masks: self.masks,
             clips: self.clips,
-        }))
+        })
     }
 }
 
 /// The production coverage producer.
 #[derive(Debug)]
 struct RasterCoverage {
-    /// Taken back as the thread's spare when the producer drops.
-    rasterizer: Option<Rasterizer>,
     shapes: Vec<Shape>,
     masks: GlyphMasks,
     clips: Vec<ClipShape>,
-}
-
-/// A band rasterizer and the bytes its storage charged.
-#[derive(Debug)]
-struct Rasterizer {
-    rasterizer: BandRasterizer,
-    charged: usize,
 }
 
 /// The shape or mask of `key`.
@@ -575,64 +558,15 @@ fn glyph<'a>(shapes: &'a [Shape], masks: &'a GlyphMasks, key: u32) -> Option<Run
     }
 }
 
-thread_local! {
-    /// The emptied shape list of the coverage producer dropped last on this
-    /// thread: the next preparation fills it without growing it again.
-    static SPARE_SHAPES: std::cell::Cell<Vec<Shape>> = const { std::cell::Cell::new(Vec::new()) };
-    /// Its emptied mask list, likewise.
-    static SPARE_MASKS: std::cell::Cell<GlyphMasks> = std::cell::Cell::default();
-    /// Its rasterizer, whose storage the next preparation of the same area
-    /// takes rather than allocating and clearing it again.
-    static SPARE_RASTERIZER: std::cell::Cell<Option<Rasterizer>> = const { std::cell::Cell::new(None) };
-}
-
-/// Keeps the emptied `list` as this thread's spare unless the spare holds
-/// more without growing.
-fn keep_spare<T: Default>(
-    spare: &'static std::thread::LocalKey<std::cell::Cell<T>>,
-    list: T,
-    capacity: impl Fn(&T) -> usize,
-) {
-    // A thread being torn down has no spare to keep.
-    let _ = spare.try_with(|spare| {
-        let kept = spare.take();
-        spare.set(if capacity(&kept) > capacity(&list) {
-            kept
-        } else {
-            list
-        });
-    });
-}
-
-impl Drop for RasterCoverage {
-    fn drop(&mut self) {
-        let mut shapes = std::mem::take(&mut self.shapes);
-        shapes.clear();
-        keep_spare(&SPARE_SHAPES, shapes, Vec::capacity);
-        let mut masks = std::mem::take(&mut self.masks);
-        masks.clear();
-        keep_spare(&SPARE_MASKS, masks, GlyphMasks::capacity);
-        // Scratch that a panic left mid-mark is not taken again.
-        if let Some(rasterizer) = self.rasterizer.take()
-            && !std::thread::panicking()
-        {
-            let _ = SPARE_RASTERIZER.try_with(|spare| spare.set(Some(rasterizer)));
-        }
-    }
-}
-
 impl Producer for RasterCoverage {
     fn rasterize(
-        &mut self,
+        &self,
+        rasterizer: &mut BandRasterizer,
         shape: Option<u32>,
         clip: Option<u32>,
         band: u32,
         out: &mut BandCoverage,
     ) {
-        let Some(Rasterizer { rasterizer, .. }) = self.rasterizer.as_mut() else {
-            out.clear();
-            return;
-        };
         let get = |i: u32| pagura_core::convert::u32_to_usize(i);
         let clip = clip.and_then(|i| self.clips.get(get(i)));
         let shape = match shape.map(|key| glyph(&self.shapes, &self.masks, key)) {
@@ -652,16 +586,13 @@ impl Producer for RasterCoverage {
     }
 
     fn rasterize_run(
-        &mut self,
+        &self,
+        rasterizer: &mut BandRasterizer,
         shapes: &[u32],
         clip: Option<u32>,
         band: u32,
         out: &mut BandCoverage,
     ) -> usize {
-        let Some(Rasterizer { rasterizer, .. }) = self.rasterizer.as_mut() else {
-            out.clear();
-            return 0;
-        };
         let get = |i: u32| pagura_core::convert::u32_to_usize(i);
         let run: Vec<RunGlyph<'_>> = shapes
             .iter()
@@ -681,6 +612,10 @@ impl Producer for RasterCoverage {
             RunGlyph::Mask(mask) => Some(mask),
             RunGlyph::Shape(_) => None,
         }
+    }
+
+    fn into_storage(self: Box<Self>) -> Storage {
+        (self.shapes, self.masks)
     }
 }
 

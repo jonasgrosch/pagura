@@ -189,3 +189,24 @@ fn scratch_charges_depend_on_the_region_only() {
         assert_eq!(charge(height), first);
     }
 }
+
+#[test]
+fn a_rasterizer_charges_what_it_reserves() {
+    for x1 in [1, 63, 64, 65, 2550] {
+        let area = Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1,
+                y1: 40,
+            },
+            band_height: 16,
+        };
+        let mut made = Meter::new(usize::MAX, "made");
+        let rasterizer = BandRasterizer::new(area, &mut made).unwrap();
+        let mut charged = Meter::new(usize::MAX, "charged");
+        BandRasterizer::charge(area, &mut charged).unwrap();
+        assert_eq!(charged.used(), made.used(), "{x1}");
+        assert_eq!(rasterizer.retained_bytes(), made.used(), "{x1}");
+    }
+}

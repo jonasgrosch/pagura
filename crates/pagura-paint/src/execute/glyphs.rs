@@ -39,9 +39,13 @@ impl Executor<'_> {
         );
         let mut next = 0;
         while let Some(shapes) = alone.get(next..).filter(|rest| !rest.is_empty()) {
-            let taken =
-                self.producer
-                    .rasterize_run(shapes, mark.cover.clip, self.band, &mut coverage);
+            let taken = self.producer.rasterize_run(
+                self.rasterizer,
+                shapes,
+                mark.cover.clip,
+                self.band,
+                &mut coverage,
+            );
             next += taken.max(1);
             self.store_coverage(mark, frame, opaque, &coverage);
         }
@@ -59,8 +63,13 @@ impl Executor<'_> {
             if glyph.alone {
                 continue;
             }
-            self.producer
-                .rasterize(Some(glyph.shape), mark.cover.clip, self.band, &mut coverage);
+            self.producer.rasterize(
+                self.rasterizer,
+                Some(glyph.shape),
+                mark.cover.clip,
+                self.band,
+                &mut coverage,
+            );
             self.store_coverage(mark, frame, opaque, &coverage);
         }
         self.ws.coverage = coverage;

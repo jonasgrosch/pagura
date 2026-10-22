@@ -70,6 +70,8 @@ pub(crate) struct Plan {
     pub(crate) output: Output,
     /// The stacks of group buffers alive at once.
     pub(crate) stack: crate::execute::Tops,
+    /// The sizes of the workspace a render needs.
+    pub(crate) sizes: crate::execute::Sizes,
 }
 
 /// A buffer: the page, a transparency group, a soft mask's group or the

@@ -1,16 +1,16 @@
 //! The end of preparation: soft-mask extents, activation orders, stack
 //! sizes, output, the reservations of buffers and output, the coverage
-//! producer, the workspace, and the check of transfer selections. When the
-//! walk failed, the transfer check of the marks before the failure decides
-//! which error comes first in source order.
+//! producer, the workspace's sizes, and the check of transfer selections.
+//! When the walk failed, the transfer check of the marks before the failure
+//! decides which error comes first in source order.
 
 use super::planner::{Parts, Planner, needs};
 use super::{Backend, Budget, Producer, index};
-use crate::execute::{Sizes, Workspace, validate};
+use crate::execute::{Sizes, validate};
 use crate::plan::{Item, Layout, MAX_BAND_HEIGHT, Output, Plan, SpotPlan, area, intersect};
 use pagura_color::{ColorSpace, Colorant, Conversion, Process, Target};
 use pagura_core::{Error, Meter, Result};
-use pagura_raster::{BandCoverage, Rgba8};
+use pagura_raster::{BandCoverage, BandRasterizer, Rgba8};
 use std::sync::Arc;
 
 /// Plans the page and completes preparation.
@@ -37,20 +37,31 @@ fn first<B: Backend>(planner: Planner<'_, B>, error: Error) -> Error {
     }
     let serial = planner.failed.map_or(planner.serial, |(serial, _)| serial);
     let area = planner.area;
-    let rows = rows(area.region.height());
     let Planner { backend, parts, .. } = planner;
-    let mut scratch = Meter::new(usize::MAX, "transfer check scratch");
-    let Ok(mut producer) = backend.finish(area, &mut scratch) else {
-        return error;
-    };
+    let producer = backend.finish(area);
     let plan = partial(area, parts);
-    let width = index(area.region.width());
-    let mut coverage = BandCoverage::default();
-    let mut selection = vec![0; width.saturating_mul(rows)];
-    match validate(&plan, producer.as_mut(), &mut coverage, &mut selection) {
-        Some(found) if found < serial => transfer_error(&plan, found),
+    match check_transfers(&plan, producer.as_ref()) {
+        Ok(Some(found)) if found < serial => transfer_error(&plan, found),
         _ => error,
     }
+}
+
+/// The serial of the first recording mark whose transfer selection is not
+/// whole, rasterized in scratch storage of its own.
+fn check_transfers(plan: &Plan, producer: &dyn Producer) -> Result<Option<u32>> {
+    let area = plan.area;
+    let rows = index(area.band_height.min(area.region.height()));
+    // Charged with the render's rasterizer and workspace.
+    let mut free = Meter::new(usize::MAX, "transfer check scratch");
+    let mut rasterizer = BandRasterizer::new(area, &mut free)?;
+    let mut coverage = BandCoverage::default();
+    let mut selection = vec![0; index(area.region.width()).saturating_mul(rows)];
+    Ok(validate(
+        plan,
+        (producer, &mut rasterizer),
+        &mut coverage,
+        &mut selection,
+    ))
 }
 
 fn transfer_error(plan: &Plan, serial: u32) -> Error {
@@ -92,6 +103,7 @@ fn partial(area: pagura_raster::Area, parts: Parts) -> Plan {
             transfers: parts.transfers,
         },
         stack: crate::execute::Tops::default(),
+        sizes: Sizes::default(),
     }
 }
 
@@ -99,13 +111,16 @@ fn partial(area: pagura_raster::Area, parts: Parts) -> Plan {
 pub(crate) struct Finished {
     pub(crate) plan: Plan,
     pub(crate) producer: Box<dyn Producer>,
-    pub(crate) workspace: Workspace,
     pub(crate) repairs: Vec<pagura_core::Diagnostic>,
 }
 
 fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<Finished> {
     let area = planner.area;
+    // Buffers are charged for the tallest band any band height gives, so
+    // that charges never depend on it, and hold the tallest band of this
+    // one.
     let rows = rows(area.region.height());
+    let band_rows = index(area.band_height.min(area.region.height()));
     let transfers = planner.storage.transfers;
     let spots = spot_plans(&planner.definitions);
     let background = premultiplied(planner.request.background)?;
@@ -124,7 +139,8 @@ fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<
         }
     }
     order(&mut parts);
-    let stack = needs(&parts, rows);
+    let charged = needs(&parts, rows);
+    let stack = needs(&parts, band_rows);
     let mut output_spots = Vec::new();
     for (space, inputs) in spots {
         let target = Target::new(Process::Cmyk);
@@ -156,11 +172,41 @@ fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<
             transfers: parts.transfers,
         },
         stack,
+        sizes: Sizes::default(),
     };
     shrink(&mut plan);
     reserve_output(&plan, budget)?;
-    let sizes = Sizes {
-        width: index(area.region.width()),
+    let sizes = sizes(&plan, rows, transfers);
+    budget.bytes.charge(sizes.bytes(&plan, charged))?;
+    BandRasterizer::charge(area, &mut budget.bytes)?;
+    plan.sizes = Sizes {
+        rows: band_rows,
+        ..sizes
+    };
+    let producer = backend.finish(area);
+    if transfers {
+        let checked: usize = plan
+            .items
+            .iter()
+            .filter(|item| matches!(&item.kind, crate::plan::ItemKind::Mark(mark) if mark.records))
+            .map(|item| item.work)
+            .fold(0, usize::saturating_add);
+        budget.work.charge(checked)?;
+        if let Some(serial) = check_transfers(&plan, producer.as_ref())? {
+            return Err(transfer_error(&plan, serial));
+        }
+    }
+    Ok(Finished {
+        plan,
+        producer,
+        repairs,
+    })
+}
+
+/// The sizes of the workspace of `plan` for bands of `rows` rows.
+fn sizes(plan: &Plan, rows: usize, selections: bool) -> Sizes {
+    Sizes {
+        width: index(plan.area.region.width()),
         rows,
         channels: plan
             .groups
@@ -176,34 +222,8 @@ fn complete<B: Backend>(planner: Planner<'_, B>, budget: &mut Budget) -> Result<
             .max()
             .unwrap_or(6)
             .max(7),
-        selections: transfers,
-    };
-    budget.bytes.charge(sizes.bytes(&plan))?;
-    let mut producer = backend.finish(area, &mut budget.bytes)?;
-    let mut workspace = Workspace::new(&plan, sizes)?;
-    if transfers {
-        let checked: usize = plan
-            .items
-            .iter()
-            .filter(|item| matches!(&item.kind, crate::plan::ItemKind::Mark(mark) if mark.records))
-            .map(|item| item.work)
-            .fold(0, usize::saturating_add);
-        budget.work.charge(checked)?;
-        if let Some(serial) = validate(
-            &plan,
-            producer.as_mut(),
-            &mut workspace.coverage,
-            &mut workspace.selection,
-        ) {
-            return Err(transfer_error(&plan, serial));
-        }
+        selections,
     }
-    Ok(Finished {
-        plan,
-        producer,
-        workspace,
-        repairs,
-    })
 }
 
 /// The output's work and function evaluations: one unit per pixel, and per
