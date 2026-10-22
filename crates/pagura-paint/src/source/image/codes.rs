@@ -1884,11 +1884,14 @@ fn column_bytes<const N: usize>(
         Reduced::Lines(lines) => lines.len() / N,
     };
     let background = background.filter(|_| reduction.runs.iter().any(|run| !run.2));
-    if background.is_some() {
+    if background.is_some() && !reduction.monotone {
         dirty_counts(reduction, columns, dirty);
     }
     let first = reduction.first;
-    let feet = reduction.feet;
+    let (feet, runs) = (reduction.feet, reduction.runs);
+    // With footprints that never step back, the run holding a footprint's
+    // first sample only moves forward.
+    let mut run = 0;
     let mut i = 0;
     while let (Some(foot), Some(pixel)) = (feet.get(i), out.get_mut(i)) {
         i += 1;
@@ -1897,25 +1900,33 @@ fn column_bytes<const N: usize>(
             continue;
         }
         let (start, stop) = (index(foot.first) - first, index(foot.end) - first);
-        if let Some(background) = background
-            && dirty.get(start) == dirty.get(stop)
-        {
-            *pixel = background;
+        if let Some(background) = background {
             if reduction.monotone {
-                // The pixels whose footprints end before the next column
-                // that is not background are background too.
-                let count = dirty.get(start).copied().unwrap_or(0);
-                let limit = dirty.partition_point(|&d| d <= count).saturating_sub(1);
-                let rest = feet.get(i..).unwrap_or(&[]);
-                let more = rest.partition_point(|foot| {
-                    foot.first < foot.end && index(foot.end) - first <= limit
-                });
-                if let Some(pixels) = out.get_mut(i..i + more) {
-                    pixels.fill(background);
+                while runs
+                    .get(run)
+                    .is_some_and(|&(_, end, _)| end <= index(foot.first))
+                {
+                    run += 1;
                 }
-                i += more;
+                if let Some(&(_, end, false)) = runs.get(run)
+                    && index(foot.end) <= end
+                {
+                    *pixel = background;
+                    // The pixels whose footprints end in the same run are
+                    // background too.
+                    let rest = feet.get(i..).unwrap_or(&[]);
+                    let more = rest
+                        .partition_point(|foot| foot.first < foot.end && index(foot.end) <= end);
+                    if let Some(pixels) = out.get_mut(i..i + more) {
+                        pixels.fill(background);
+                    }
+                    i += more;
+                    continue;
+                }
+            } else if dirty.get(start) == dirty.get(stop) {
+                *pixel = background;
+                continue;
             }
-            continue;
         }
         let sum = match reduction.reduced {
             Reduced::Sums(sums) => sums.get(start * N..stop * N).map(whole_sum::<N>),
