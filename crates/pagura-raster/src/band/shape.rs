@@ -359,8 +359,13 @@ impl Shape {
         }
         // The heights the winding certificate leaves in doubt: none when
         // certified throughout, all when unknown.
+        // A lone triangle bounds winding 0 or one sign of magnitude one,
+        // whatever its vertices.
+        let triangle =
+            polygon.starts.len() == 1 && polygon.vertices() == 3 && !polygon.points_cells;
         let doubtful = match winding {
             Winding::Certified => Some(Vec::new()),
+            Winding::Check(_) if triangle => Some(Vec::new()),
             Winding::Check(margin) => uncertified(&polygon, margin),
             Winding::Unknown => None,
         };
