@@ -1,5 +1,6 @@
 //! Showing strings (9.4.3): glyph placement, outlines, the text clip
-//! (9.3.6), and one glyph run per string operand for the device.
+//! (9.3.6), and per string operand a glyph run and a text run for the
+//! devices that need them.
 
 use super::{Machine, Scope, checked, text_object, text_translate};
 use crate::device::{Device, Glyph, GlyphPaint, GlyphRun, MarkState, OutlineKey, TextRun};
