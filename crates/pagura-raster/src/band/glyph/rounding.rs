@@ -645,14 +645,41 @@ mod tests {
         let exact = 1.0 - (u * z - 0.75 * z * z + z * z * z / (6.0 * m));
         assert!((exact - 0.664_705_581_461_998_8).abs() < 2e-15);
         assert_eq!(quantize_unit(exact), 169);
-        let prepared = super::super::place(&edges, origin, &options).unwrap().unwrap();
+        let prepared = super::super::placed(&edges, origin, &options)
+            .unwrap()
+            .unwrap();
         let mut cells = Cells::new(1, &mut Meter::new(limits.render_bytes, RENDER_BYTES)).unwrap();
-        let mut actual = None;
-        raster::inspect(&prepared, &mut cells, |_, _, _, value, _| {
-            actual = Some(quantize_unit(value));
+        raster::inspect(&prepared, &mut cells, |_, _, _, value, error| {
+            assert!(
+                (value - exact).abs() <= error,
+                "primitive area {value} ±{error} excludes analytic {exact}"
+            );
         })
         .unwrap();
-        assert_eq!(actual, Some(169));
+        let mut work = Meter::new(limits.raster_work, RASTER_WORK);
+        let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+        assert_eq!(
+            ambiguous(&prepared, 0.0, (&mut work, &mut bytes))
+                .unwrap()
+                .len(),
+            1,
+        );
+        match super::super::place(&edges, origin, &options) {
+            Ok(Some(prepared)) => {
+                raster::inspect(&prepared, &mut cells, |_, _, _, value, _| {
+                    assert_eq!(quantize_unit(value), 169);
+                })
+                .unwrap();
+            }
+            Err(error) => {
+                assert!(matches!(error.kind, pagura_core::ErrorKind::Limit));
+                assert!(matches!(
+                    error.message,
+                    "unresolved curve coverage interval" | "curve subdivision depth exceeded"
+                ));
+            }
+            Ok(None) => panic!("the mark covers the pixel"),
+        }
     }
 
     #[test]

@@ -240,6 +240,66 @@ impl Mono {
         t * t * (self.h2 + t * (self.h3 + t * self.h4))
     }
 
+    /// Error against the exact integral of this piece's stored polynomial
+    /// coefficients. Expanded absolute products include constructing H's
+    /// coefficients, notably cancellation inside h3, as well as evaluation.
+    pub(crate) fn h_error(&self, t: f64) -> f64 {
+        let t = t.abs();
+        64.0 * f64::EPSILON
+            * t
+            * t
+            * (0.5 * (self.bx * self.by).abs()
+                + t * ((2.0 * self.bx * self.ay).abs() + (self.ax * self.by).abs()) / 3.0
+                + t * t * 0.5 * (self.ax * self.ay).abs())
+            + f64::MIN_POSITIVE
+    }
+
+    /// Error of the cell's antiderivative difference and offset-height
+    /// product, before their potentially large cancellation.
+    pub(crate) fn area_error(&self, times: [f64; 2], offset: f64, height: f64) -> f64 {
+        let [a, b] = times;
+        self.h_error(a)
+            + self.h_error(b)
+            + 32.0 * f64::EPSILON * ((offset * height).abs() + self.h(a).abs() + self.h(b).abs())
+    }
+
+    /// Error of one coordinate's Horner evaluation against the exact
+    /// polynomial with stored coefficients. Source/control construction is
+    /// bounded separately by the placement certificate.
+    pub(crate) fn coordinate_error(&self, t: f64, x: bool) -> f64 {
+        let (b, a) = if x {
+            (self.bx, self.ax)
+        } else {
+            (self.by, self.ay)
+        };
+        8.0 * f64::EPSILON * ((t * b).abs() + (t * t * a).abs()) + f64::MIN_POSITIVE
+    }
+
+    pub(crate) fn height_error(&self, times: [f64; 2]) -> f64 {
+        let [a, b] = times;
+        self.coordinate_error(a, false)
+            + self.coordinate_error(b, false)
+            + 8.0 * f64::EPSILON * (self.dy(a).abs() + self.dy(b).abs())
+    }
+
+    pub(crate) fn endpoint_error(&self, times: [f64; 2], ends: [f64; 2]) -> f64 {
+        let [a, b] = times;
+        self.coordinate_error(a, true)
+            + self.coordinate_error(b, true)
+            + 8.0 * f64::EPSILON
+                * (ends[0].abs() + self.dx(a).abs() + self.dx(b).abs() + ends[1].abs())
+    }
+
+    /// A coordinate residual bounds a horizontal/vertical strip directly;
+    /// no inverse derivative or well-conditioned root is required.
+    pub(crate) fn residual(&self, t: f64, delta: f64, x: bool) -> f64 {
+        let value = if x { self.dx(t) } else { self.dy(t) };
+        ((value - delta).abs()
+            + self.coordinate_error(t, x)
+            + 8.0 * f64::EPSILON * (value.abs() + delta.abs()))
+            * (1.0 + 16.0 * f64::EPSILON)
+    }
+
     /// x(t) - x0.
     #[inline]
     pub(crate) fn dx(&self, t: f64) -> f64 {

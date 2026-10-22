@@ -41,6 +41,10 @@ pub(crate) trait Accumulate {
     /// columns left of it; right of the row it drops.
     fn cover_at(&mut self, column: i64, value: f64);
 
+    /// Preparation can measure primitive error before cancellation. The
+    /// execution accumulator specializes this hook away.
+    fn area_error(&mut self, _column: i64, _error: f64) {}
+
     /// Adds a straight piece within one row, from x `xa` to `xb`, of signed
     /// height `h`.
     #[expect(
@@ -62,6 +66,10 @@ pub(crate) trait Accumulate {
             #[expect(clippy::manual_midpoint, reason = "bounded coordinates; one rounding")]
             let middle = (xa + xb) * 0.5;
             self.area_at(first, h * ((start + 1.0) - middle));
+            self.area_error(
+                first,
+                64.0 * f64::EPSILON * h.abs() * (xa.abs() + xb.abs() + (start + 1.0).abs() + 1.0),
+            );
             self.cover_at(first + 1, h);
             return 2;
         }
@@ -78,6 +86,18 @@ pub(crate) trait Accumulate {
             let far = (c + 1.0) - x1;
             let right = s * ((x0 - l) + (near * near - far * far) * 0.5);
             self.area_at(column, right);
+            self.area_error(
+                column,
+                64.0 * f64::EPSILON
+                    * (h.abs()
+                        + s.abs()
+                            * (x0.abs()
+                                + l.abs()
+                                + near * near
+                                + far * far
+                                + (near.abs() + far.abs())
+                                    * ((c + 1.0).abs() + x0.abs() + x1.abs()))),
+            );
         }
         self.cover_at(last, h);
         usize::try_from(to - from).unwrap_or(0) + 1

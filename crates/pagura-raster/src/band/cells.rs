@@ -45,7 +45,7 @@ pub(crate) struct Cells {
     rows: usize,
     /// Window rows (bits from the first) that items skip.
     skip: u32,
-    /// Used only by the preparation-only measured line entry point. The
+    /// Used only by the preparation-only measured entry points. The
     /// ordinary kernel specializes measurement away at compile time.
     rounding: Rounding,
 }
@@ -53,12 +53,18 @@ pub(crate) struct Cells {
 #[derive(Debug, Default)]
 struct Rounding {
     absolute: f64,
+    primitive: f64,
     additions: usize,
 }
 
 impl Rounding {
     fn add(&mut self, value: f64) {
         self.absolute += value.abs();
+        self.additions = self.additions.saturating_add(1);
+    }
+
+    fn primitive(&mut self, error: f64) {
+        self.primitive += error;
         self.additions = self.additions.saturating_add(1);
     }
 
@@ -76,7 +82,8 @@ impl Rounding {
         // inputs. Include its own positive-sum rounding, per-piece products
         // and the final cover/area additions, without assigning a whole
         // square pixel of rounding to every tiny boundary fragment.
-        ((8.0 * product / (1.0 - product) + 64.0 * f64::EPSILON) * self.absolute)
+        (self.primitive / (1.0 - product)
+            + (8.0 * product / (1.0 - product) + 64.0 * f64::EPSILON) * self.absolute)
             * (1.0 + 8.0 * f64::EPSILON)
             + f64::MIN_POSITIVE
     }
@@ -326,6 +333,17 @@ impl Cells {
             let end = right.ceil();
             let first = start as i64;
             let mut row = self.row::<MEASURE>(r);
+            if MEASURE {
+                // Approximate row roots replace the exact truncation only
+                // inside horizontal residual strips. Endpoint x rounding
+                // can also change floor/ceil and skip an entire column,
+                // even when no column root is evaluated. Each quadratic
+                // coordinate has at most two monotone intervals; eight
+                // includes both ends and the opposite-strip cross terms.
+                let ey = m.residual(ta, lo - y0, false) + m.residual(tb, hi - y0, false);
+                let ex = m.endpoint_error([ta, tb], [x0, x1]);
+                row.primitive(8.0 * (ex + ey + ex * ey));
+            }
             visited += 2;
             if end <= start + 1.0 {
                 if end == start {
@@ -334,6 +352,9 @@ impl Cells {
                 }
                 let area = (start + 1.0 - x0) * (hi - lo) - (m.h(tb) - m.h(ta));
                 row.area_at(first, area * m.direction);
+                if MEASURE {
+                    row.primitive(m.area_error([ta, tb], start + 1.0 - x0, hi - lo));
+                }
                 row.cover_at(first + 1, height);
                 continue;
             }
@@ -341,6 +362,7 @@ impl Cells {
             let total = hi - lo;
             let (mut t, mut yt, mut ht) = (ta, m.dy(ta), m.h(ta));
             let mut done = 0.0;
+            let mut done_error = 0.0;
             let columns = last.wrapping_sub(first);
             for k in 0..columns {
                 let c = if increasing {
@@ -354,6 +376,14 @@ impl Cells {
                     let side = if increasing { c.wrapping_add(1) } else { c };
                     m.tx(side as f64 - x0).clamp(t, tb)
                 };
+                if MEASURE && k + 1 != columns {
+                    let side = if increasing { c.wrapping_add(1) } else { c };
+                    let ex = m.residual(tn, side as f64 - x0, true);
+                    let ey = m.residual(ta, lo - y0, false) + m.residual(tb, hi - y0, false);
+                    // Moving a column transition changes coverage only in
+                    // its vertical residual strip, including clamped roots.
+                    row.primitive(8.0 * ex * (1.0 + ey));
+                }
                 let (yn, hn) = (m.dy(tn), m.h(tn));
                 let dy = yn - yt;
                 // The cell's part right of the curve where the curve is in
@@ -361,6 +391,22 @@ impl Cells {
                 let inside = (c.wrapping_add(1) as f64 - x0) * dy - (hn - ht);
                 let left = if increasing { done } else { total - done - dy };
                 row.area_at(c, (left + inside) * m.direction);
+                if MEASURE {
+                    let dy_error = m.height_error([t, tn]);
+                    let left_error = done_error
+                        + if increasing {
+                            0.0
+                        } else {
+                            dy_error + 8.0 * f64::EPSILON * (total.abs() + done.abs() + dy.abs())
+                        };
+                    row.primitive(
+                        left_error
+                            + (c.wrapping_add(1) as f64 - x0).abs() * dy_error
+                            + m.area_error([t, tn], c.wrapping_add(1) as f64 - x0, dy)
+                            + 32.0 * f64::EPSILON * (left.abs() + inside.abs()),
+                    );
+                    done_error += dy_error + 8.0 * f64::EPSILON * (done.abs() + dy.abs());
+                }
                 done += dy;
                 (t, yt, ht) = (tn, yn, hn);
                 visited += 1;
@@ -466,6 +512,13 @@ struct Row<'a, const MEASURE: bool> {
 
 impl<const MEASURE: bool> Row<'_, MEASURE> {
     #[inline]
+    fn primitive(&mut self, error: f64) {
+        if MEASURE {
+            self.rounding.primitive(error);
+        }
+    }
+
+    #[inline]
     fn mark(&mut self, x: usize) {
         if let Some(word) = self.touched.get_mut(x / 64) {
             *word |= 1 << (x % 64);
@@ -482,6 +535,15 @@ impl<const MEASURE: bool> Accumulate for Row<'_, MEASURE> {
     #[inline]
     fn width(&self) -> usize {
         self.area.len()
+    }
+
+    #[inline]
+    fn area_error(&mut self, column: i64, error: f64) {
+        if let Ok(x) = usize::try_from(column.wrapping_sub(self.base))
+            && x < self.area.len()
+        {
+            self.primitive(error);
+        }
     }
 
     #[inline]
@@ -537,6 +599,72 @@ mod tests {
         Line {
             a: Point::new(a.0, a.1),
             b: Point::new(b.0, b.1),
+        }
+    }
+
+    #[test]
+    fn measured_quadratics_enclose_flat_roots_and_discarded_column_prefixes() {
+        use crate::band::curve::Quadratic;
+        for decreasing in [false, true] {
+            for (width, offset, first) in [(32.0, 0.0, 0), (32.0, -16.0, 8)] {
+                let (a, b, c) = if decreasing {
+                    (
+                        Point::new(width, 0.0),
+                        Point::new(0.0, 0.5),
+                        Point::new(0.0, 1.0),
+                    )
+                } else {
+                    (
+                        Point::new(0.0, 0.0),
+                        Point::new(0.0, 0.5),
+                        Point::new(width, 1.0),
+                    )
+                };
+                let m = Mono::new(Quadratic { points: [a, b, c] });
+                let mut measured = cells(40);
+                assert!(measured.open((first, first + 8), 0..1));
+                measured.curve_measured(&m, Point::new(offset, 0.0));
+                let error = measured.arithmetic_error();
+                measured.inspect(0, |x0, x1, area| {
+                    for column in x0..x1 {
+                        let c = f64::from(u32::try_from(column).unwrap()) - offset;
+                        let a = (c / width).clamp(0.0, 1.0).sqrt();
+                        let b = ((c + 1.0) / width).clamp(0.0, 1.0).sqrt();
+                        // x=w*t², y=t, or its t-reflection. Integrate the
+                        // pixel-local width with factored cubic difference.
+                        let exact = a + (b - a) * (c + 1.0 - width * (b * b + b * a + a * a) / 3.0);
+                        assert!(
+                            (area - exact).abs() <= error + 16.0 * f64::EPSILON,
+                            "descending{decreasing}, column{column}: {area} ±{error}, exact{exact}"
+                        );
+                    }
+                });
+            }
+        }
+        for (x, expected) in [(0.0, 1.0), (0.375, 0.625), (-2.0, 1.0)] {
+            let m = Mono::new(Quadratic {
+                points: [Point::new(x, 0.0), Point::new(x, 0.5), Point::new(x, 1.0)],
+            });
+            let mut measured = cells(1);
+            assert!(measured.open((0, 1), 0..1));
+            measured.curve_measured(&m, Point::default());
+            let error = measured.arithmetic_error();
+            measured.inspect(0, |_, _, area| assert!((area - expected).abs() <= error));
+        }
+        // At the horizontal tangent y=t², the row root has arbitrarily
+        // small derivative. Its residual strip still bounds coverage.
+        let m = Mono::new(Quadratic {
+            points: [Point::default(), Point::new(0.5, 0.0), Point::new(1.0, 1.0)],
+        });
+        for height in [1.0, 2.0_f64.powi(-20), 2.0_f64.powi(-40)] {
+            let mut measured = cells(1);
+            assert!(measured.open((0, 1), 0..1));
+            measured.curve_measured(&m, Point::new(0.0, 1.0 - height));
+            let error = measured.arithmetic_error();
+            let exact = height * (1.0 - 2.0 * height.sqrt() / 3.0);
+            measured.inspect(0, |_, _, area| {
+                assert!((area - exact).abs() <= error + 16.0 * f64::EPSILON);
+            });
         }
     }
 

@@ -257,6 +257,25 @@ Signed accumulation is bounded with gamma_n times the sum of absolute cell
 inputs, including the final prefix additions. Preparation measures those
 inputs in the common kernel for both initial ambiguity selection and local
 proof; a linear count alone cannot bound cancellation of many boundaries.
+This includes the primitives before they cancel: H's coefficient products
+and endpoint evaluations, coordinate evaluations, area products and the
+multi-column kernel's internal prefix of dy values. Their absolute operand
+bounds remain charged even for columns left of the requested window.
+Measuring only the final area additions would miss cancellation between
+large antiderivative values.
+
+Computed quadratic roots need no inverse-derivative assumption. Moving a row
+cut to a computed parameter changes coverage only in the horizontal strip
+between the target height and the exact stored polynomial at that parameter;
+a column transition similarly changes coverage only in a vertical residual
+strip. Its area inside a unit cell is bounded by the residual times one plus
+the opposite-coordinate residual. Coordinate-evaluation error, both ends,
+endpoint floor/ceil decisions and clamped column roots are included. A
+quadratic has at most two monotone intervals per coordinate, so an eightfold
+sum including residual cross products conservatively covers their overlaps.
+These bounds remain valid at a zero derivative and for a carried row root.
+An independent long-quadratic half-level regression checks the primitive
+interval and requires the original-curve byte or a bounded precision refusal.
 The execution specialization omits that measurement. Canonical clip proof
 bounds and their broad arithmetic allowance are computed once with charged
 work. Strip input scans are reserved before traversal, mask filtering uses
