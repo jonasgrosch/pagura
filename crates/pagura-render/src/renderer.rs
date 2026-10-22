@@ -136,7 +136,6 @@ impl<'a> Renderer<'a> {
             RenderRequest::new(scene.page.device_transform(options.scale), page, region);
         request.background = options.background;
         request.overprint = options.overprint.resolve(scene.print_intent);
-        request.fast = options.fast;
         let limits = self.document.limits();
         let prepared = scratch.prepare(scene, &request, (self.store, &limits))?;
         for repair in prepared.repairs() {

@@ -1,5 +1,5 @@
 use super::{Bench, Command, Conversion, Output, Source, Timings, parse};
-use pagura::{FastParams, OverprintPreview, Recovery, RenderOptions};
+use pagura::{OverprintPreview, Recovery, RenderOptions};
 use std::ffi::OsString;
 use std::path::PathBuf;
 
@@ -21,13 +21,10 @@ fn help_wins_anywhere_and_version_stands_alone() {
     assert_eq!(run(&["render", "-h", "--bogus"]), Ok(Command::Help));
     assert_eq!(run(&["--version"]), Ok(Command::Version));
     // A harness puts rendering options before every invocation.
-    for args in [
-        &["--accuracy", "competitive", "--version"][..],
-        &["--fast", "byte-storage", "--version"],
-        &["--overprint", "never", "--version"],
-    ] {
-        assert_eq!(run(args), Ok(Command::Version), "{args:?}");
-    }
+    assert_eq!(
+        run(&["--overprint", "never", "--version"]),
+        Ok(Command::Version)
+    );
     assert_eq!(
         run(&["--version", "--strict"]),
         Err("--strict does not apply to --version".into())
@@ -279,107 +276,4 @@ fn overprint_selects_the_preview_of_every_rendering_command() {
             assert_eq!(preview(&args), expected, "{args:?}");
         }
     }
-}
-
-#[test]
-fn accuracy_selects_the_presets_of_every_rendering_command() {
-    let fast = |args: &[&str]| match run(args) {
-        Ok(Command::Convert(conversion)) => conversion.render.fast,
-        Ok(Command::Scan { render, .. } | Command::Microbench { render, .. }) => render.fast,
-        other => panic!("{args:?}: {other:?}"),
-    };
-    assert_eq!(fast(&["render", "a.pdf", "b.ppm"]), FastParams::EXACT);
-    for (mode, expected) in [
-        ("exact", FastParams::EXACT),
-        ("competitive", FastParams::COMPETITIVE),
-    ] {
-        for args in [
-            &["render", "a.pdf", "b.ppm"][..],
-            &["convert", "a.pdf", "out"],
-            &["scan", "a.pdf"],
-            &["microbench", "a.pdf", "render-cold", "1"],
-        ] {
-            let mut args = args.to_vec();
-            args.extend(["--accuracy", mode]);
-            assert_eq!(fast(&args), expected, "{args:?}");
-        }
-    }
-    assert_eq!(
-        run(&["render", "--accuracy", "fast", "a.pdf", "b.ppm"]),
-        Err("--accuracy must be exact or competitive".into())
-    );
-    assert_eq!(
-        run(&["inspect", "--accuracy", "exact", "a.pdf"]),
-        Err("--accuracy does not apply to inspect".into())
-    );
-}
-
-#[test]
-fn fast_switches_each_parameter_by_name() {
-    let fast = |list: &str| match run(&["convert", "--fast", list, "a.pdf", "out"]) {
-        Ok(Command::Convert(conversion)) => Ok(conversion.render.fast),
-        Ok(other) => panic!("{list}: {other:?}"),
-        Err(error) => Err(error),
-    };
-    assert_eq!(fast("none"), Ok(FastParams::EXACT));
-    assert_eq!(
-        fast("byte-storage"),
-        Ok(FastParams {
-            byte_storage: true,
-            ..FastParams::EXACT
-        })
-    );
-    assert_eq!(
-        fast("glyph-bins,reduced-image-decode"),
-        Ok(FastParams {
-            glyph_origin_bins: true,
-            reduced_image_decode: true,
-            ..FastParams::EXACT
-        })
-    );
-    assert_eq!(
-        fast("glyph-bins,approximate-coverage,byte-storage,reduced-image-decode"),
-        Ok(FastParams::COMPETITIVE)
-    );
-    let names =
-        "--fast takes glyph-bins, approximate-coverage, byte-storage, reduced-image-decode or none";
-    for wrong in [
-        "",
-        "fast",
-        "none,byte-storage",
-        "byte-storage,",
-        "Glyph-Bins",
-    ] {
-        assert_eq!(fast(wrong), Err(names.into()), "{wrong:?}");
-    }
-    for args in [
-        &[
-            "render",
-            "--fast",
-            "none",
-            "--accuracy",
-            "exact",
-            "a.pdf",
-            "b.ppm",
-        ][..],
-        &[
-            "render",
-            "--accuracy",
-            "exact",
-            "--fast",
-            "none",
-            "a.pdf",
-            "b.ppm",
-        ],
-    ] {
-        assert_eq!(
-            run(args),
-            Err("--accuracy and --fast are alternatives".into()),
-            "{args:?}"
-        );
-    }
-    assert_eq!(
-        run(&["text", "--fast", "none", "a.pdf"]),
-        Err("--fast does not apply to text".into())
-    );
 }

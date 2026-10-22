@@ -37,13 +37,11 @@ impl Session {
                 .at(request.scale.position()));
         }
         // The session's policy, not a default: on white, overprint preview
-        // where the document declares PDF/X, and exact unless the host
-        // configured fast parameters.
+        // where the document declares PDF/X.
         let options = RenderOptions {
             scale,
             background: Rgba8::WHITE,
             overprint: OverprintPreview::Auto,
-            fast: self.config.fast,
         };
         let (width, height) = pagura::device_size(page, &options)?;
         if tile.width == 0

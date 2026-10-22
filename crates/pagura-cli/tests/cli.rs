@@ -348,15 +348,11 @@ fn help_succeeds_and_usage_errors_exit_with_status_two() {
     assert_eq!(missing.status.code(), Some(1));
 }
 
-/// The benchmark harness checks a competitive build with its flags before
-/// `--version`.
+/// A harness puts rendering options before every invocation, `--version`
+/// included.
 #[test]
 fn version_accepts_rendering_options_before_it() {
-    for args in [
-        &["--version"][..],
-        &["--accuracy", "competitive", "--version"],
-        &["--fast", "glyph-bins,byte-storage", "--version"],
-    ] {
+    for args in [&["--version"][..], &["--overprint", "never", "--version"]] {
         let output = pagura().args(args).output().unwrap();
         assert_eq!(output.status.code(), Some(0), "{args:?}");
         let text = String::from_utf8(output.stdout).unwrap();

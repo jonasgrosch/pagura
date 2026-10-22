@@ -1,7 +1,7 @@
 //! Session budgets, separate from the engine's per-document `Limits` (ADR 0032).
 
 use crate::protocol::layout;
-use pagura::{FastParams, Limits};
+use pagura::Limits;
 
 const MIB: usize = 1024 * 1024;
 
@@ -108,19 +108,14 @@ pub struct SessionConfig {
     pub engine: Limits,
     /// Budgets of the session as a whole.
     pub session: SessionLimits,
-    /// The fast parameters of every tile: [`FastParams::EXACT`] unless a
-    /// host chooses otherwise, so tiles are within one level of their exact
-    /// result (ADR 0004).
-    pub fast: FastParams,
 }
 
 impl SessionConfig {
-    /// `engine` budgets with [`SessionLimits::for_engine`], rendering exactly.
+    /// `engine` budgets with [`SessionLimits::for_engine`].
     pub const fn new(engine: Limits) -> Self {
         Self {
             engine,
             session: SessionLimits::for_engine(&engine),
-            fast: FastParams::EXACT,
         }
     }
 
@@ -128,13 +123,6 @@ impl SessionConfig {
     #[must_use]
     pub const fn with_session(mut self, session: SessionLimits) -> Self {
         self.session = session;
-        self
-    }
-
-    /// Replaces the fast parameters of tiles.
-    #[must_use]
-    pub const fn with_fast(mut self, fast: FastParams) -> Self {
-        self.fast = fast;
         self
     }
 }
