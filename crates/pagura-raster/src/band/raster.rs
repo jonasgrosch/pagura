@@ -212,7 +212,12 @@ impl BandRasterizer {
                     strips: edges.strips.as_ref(),
                     resolved: &shape.resolved,
                 };
-                self.items(&items, (Target::of(shape), edges.scan, shape.rule), rows, out);
+                self.items(
+                    &items,
+                    (Target::of(shape), edges.scan, shape.rule),
+                    rows,
+                    out,
+                );
             }
             Body::Glyph(glyph) => {
                 if let Some(relative) = glyph.edges.relative() {

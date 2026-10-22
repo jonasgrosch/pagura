@@ -78,7 +78,9 @@ impl Relative {
         let mut work = 0_usize;
         for line in chords {
             let rows = (line.a.y.min(line.b.y), line.a.y.max(line.b.y));
-            work = work.saturating_add(edges::line_work(line, rows_reached(rows), usize::MAX).saturating_mul(4));
+            work = work.saturating_add(
+                edges::line_work(line, rows_reached(rows), usize::MAX).saturating_mul(4),
+            );
         }
         Ok(Self {
             lines,

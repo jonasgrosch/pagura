@@ -14,7 +14,8 @@ use super::certify::uncertified;
 use super::edges::{self, Bounds, Line, Polygon, StripList};
 use super::rect::rectangle;
 use super::row::Sink;
-use super::union::{Piece, Resolver};
+use super::shape::RENDER_BYTES;
+use super::union::{Meters, Piece, Resolver, room};
 use super::{DeviceRect, Prep, ShapeOptions};
 use crate::{FillRule, Path, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
@@ -60,12 +61,16 @@ impl Paths {
     }
 
     /// Appends the pieces of row `y` of every path, as groups `first`,
-    /// `first + 1`, ….
-    pub(crate) fn pieces(&self, y: u32, first: u8, out: &mut Vec<Piece>) -> Result<()> {
+    /// `first + 1`, …, charging the room they take to `bytes`.
+    pub(crate) fn pieces(
+        &self,
+        y: u32,
+        first: u8,
+        (out, bytes): (&mut Vec<Piece>, &mut Meter),
+    ) -> Result<()> {
         let top = f64::from(y);
         let listed = self.strips.strip(y / STRIP);
-        out.try_reserve(listed.len())
-            .map_err(|_| Error::limit("clip piece allocation failed"))?;
+        room(out, listed.len(), bytes)?;
         for &item in listed {
             let Some(&line) = self.lines.get(item as usize) else {
                 continue;
@@ -308,6 +313,8 @@ fn classify(
 ) -> Result<Paths> {
     let limits = options.limits;
     let mut meter = Meter::new(limits.raster_work, CLIP_WORK);
+    // The resolver's scratch, freed on return.
+    let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
     let allocation = |_| Error::limit("clip allocation failed");
     let mut lines: Vec<Line> = Vec::new();
     let mut ends = Vec::new();
@@ -351,11 +358,11 @@ fn classify(
     let mut rows = Rows::default();
     for y in bounds.y0..bounds.y1 {
         let top = f64::from(y);
-        let settled = doubtful.as_ref().is_some_and(|slabs| {
-            !slabs.iter().any(|&[lo, hi]| lo < top + 1.0 && hi > top)
-        });
+        let settled = doubtful
+            .as_ref()
+            .is_some_and(|slabs| !slabs.iter().any(|&[lo, hi]| lo < top + 1.0 && hi > top));
         pieces.clear();
-        paths.pieces(y, 0, &mut pieces)?;
+        paths.pieces(y, 0, (&mut pieces, &mut bytes))?;
         meter.charge(pieces.len().saturating_add(2))?;
         if !cells.open(scan, y..y + 1) {
             return Err(Error::limit(CLIP_WORK));
@@ -366,7 +373,11 @@ fn classify(
             }
         } else {
             sides.clear();
-            resolver.row(&pieces, &rules, top, (&mut sides, &mut meter))?;
+            let meters = Meters {
+                work: &mut meter,
+                bytes: &mut bytes,
+            };
+            resolver.row(&pieces, &rules, top, (&mut sides, meters))?;
             for &line in &sides {
                 meter.charge(cells.line(line))?;
             }

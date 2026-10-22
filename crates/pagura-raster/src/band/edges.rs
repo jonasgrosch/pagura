@@ -639,7 +639,9 @@ impl StripList {
         };
         let local = local as usize;
         match (self.offsets.get(local), self.offsets.get(local + 1)) {
-            (Some(&start), Some(&end)) => self.items.get(start as usize..end as usize).unwrap_or(&[]),
+            (Some(&start), Some(&end)) => {
+                self.items.get(start as usize..end as usize).unwrap_or(&[])
+            }
             _ => &[],
         }
     }

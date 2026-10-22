@@ -7,7 +7,7 @@ use super::certify::uncertified;
 use super::clip::{self, ClipShape, Paths, columns, fill_polygon};
 use super::curve::{self, Quadratic};
 use super::edges::{self, Bounds, Line, Polygon, StripList, line_work, rows, strips};
-use super::union::{Piece, Resolver};
+use super::union::{Meters, Piece, Resolver, room};
 use super::{Adjustment, Area, DeviceRect, Prep, ShapeOptions};
 use crate::stroke::Tiling;
 use crate::{FillRule, Path, Stroke, Transform, features};
@@ -15,6 +15,9 @@ use pagura_core::{Error, Meter, Result};
 
 /// The message of every preparation work budget error.
 pub(crate) const RASTER_WORK: &str = "raster work budget exceeded";
+
+/// The message of the scratch byte budget errors of preparation.
+pub(crate) const RENDER_BYTES: &str = "render memory budget exceeded";
 
 /// One mark's geometry in device space, restricted to an [`Area`] and binned
 /// by band: a fill, a stroke outline (as pieces that meet without
@@ -744,6 +747,9 @@ fn rows_of(l: &Line, bounds: DeviceRect) -> Option<(u32, u32)> {
 
 /// Resolves the rows `chosen` of `bounds`: the sides of the covered set of
 /// `lines` under `rule`, within the clip's paths in the rows marked joint.
+///
+/// Its work is charged to a meter of `raster_work`, and its scratch, which
+/// it frees on return, to one of `render_bytes`.
 fn resolve(
     lines: &[Line],
     rule: FillRule,
@@ -751,19 +757,27 @@ fn resolve(
     (bounds, chosen): (DeviceRect, &[(u32, bool)]),
     options: &Prep<'_>,
 ) -> Result<Resolved> {
-    let mut meter = Meter::new(options.limits.raster_work, RASTER_WORK);
-    let allocation = |_| Error::limit("raster geometry allocation failed");
+    let mut work = Meter::new(options.limits.raster_work, RASTER_WORK);
+    let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
     // The lines of each strip, then each row's pieces from its strip.
+    let strip_rows =
+        |l: &Line| rows_of(l, bounds).map(|(a, b)| (b / STRIP - a / STRIP) as usize + 1);
+    let listed = lines
+        .iter()
+        .filter_map(strip_rows)
+        .fold(0, usize::saturating_add);
+    let strips = (bounds.y1.saturating_sub(bounds.y0) / STRIP) as usize + 2;
+    work.charge(listed.saturating_add(lines.len()))?;
+    bytes.charge_items::<u32>(listed.saturating_add(strips))?;
     let list = StripList::new((bounds.y0, bounds.y1), lines.len(), |i| {
         lines.get(i).and_then(|l| rows_of(l, bounds))
     })?;
-    meter.charge(list.len())?;
     let mut rules = Vec::new();
-    rules.try_reserve(1).map_err(allocation)?;
+    room(&mut rules, 1, &mut bytes)?;
     rules.push(rule);
     if let Some(paths) = frame.paths {
         let count = paths.rules().count();
-        rules.try_reserve(count).map_err(allocation)?;
+        room(&mut rules, count, &mut bytes)?;
         rules.extend(paths.rules());
     }
     let mut resolver = Resolver::default();
@@ -773,7 +787,7 @@ fn resolve(
         let top = f64::from(y);
         pieces.clear();
         let listed = list.strip(y / STRIP);
-        pieces.try_reserve(listed.len()).map_err(allocation)?;
+        room(&mut pieces, listed.len(), &mut bytes)?;
         for &i in listed {
             if let Some(&line) = lines.get(i as usize) {
                 pieces.extend(Piece::new(line, top, 0));
@@ -781,14 +795,18 @@ fn resolve(
         }
         let groups = match (joint, frame.paths) {
             (true, Some(paths)) => {
-                paths.pieces(y, 1, &mut pieces)?;
+                paths.pieces(y, 1, (&mut pieces, &mut bytes))?;
                 rules.len()
             }
             _ => 1,
         };
-        meter.charge(pieces.len())?;
+        work.charge(pieces.len())?;
         sides.clear();
-        resolver.row(&pieces, &rules[..groups], top, (&mut sides, &mut meter))?;
+        let meters = Meters {
+            work: &mut work,
+            bytes: &mut bytes,
+        };
+        resolver.row(&pieces, &rules[..groups], top, (&mut sides, meters))?;
         resolved.push(y, &sides)?;
     }
     Ok(resolved)
