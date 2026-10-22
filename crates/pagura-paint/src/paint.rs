@@ -17,6 +17,13 @@ pub(crate) trait PaintSpans: Send + Sync + fmt::Debug {
     /// The channels a constant colour paints, for overprint.
     fn painted(&self) -> Painted;
 
+    /// The colour of every pixel and the channels it paints, when the
+    /// spans give each pixel the same opaque colour although the paint is
+    /// not [`Self::constant`]: a span then stores as that colour does.
+    fn uniform(&self) -> Option<(&[f64], Painted)> {
+        None
+    }
+
     /// Fills `out` with the straight colours and alpha of device pixels
     /// `x .. x + len` of row `y`. A pixel's alpha is also its shape.
     fn span(&self, x: u32, y: u32, len: usize, out: &mut SpanColors);
@@ -89,6 +96,13 @@ impl PaintSpans for Source {
         match self {
             Self::Solid { painted, .. } => *painted,
             Self::Shading(_) | Self::Image(_) => Painted::default(),
+        }
+    }
+
+    fn uniform(&self) -> Option<(&[f64], Painted)> {
+        match self {
+            Self::Image(image) => image.uniform(),
+            Self::Solid { .. } | Self::Shading(_) => None,
         }
     }
 

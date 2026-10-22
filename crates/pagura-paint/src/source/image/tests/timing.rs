@@ -307,10 +307,10 @@ pub(super) fn sampler(placed: &Placed, decoded: Arc<Decoded>) -> Option<ImageSam
         convert,
     )
     .ok()?;
-    Some(ImageSampler {
-        prepared: Some(Box::new(prepared)),
-        channels: if placed.space.is_some() { 3 } else { 0 },
-    })
+    Some(ImageSampler::new(
+        Some(Box::new(prepared)),
+        if placed.space.is_some() { 3 } else { 0 },
+    ))
 }
 
 /// Prepares the sampler of `placed` over `decoded` and fills every span of

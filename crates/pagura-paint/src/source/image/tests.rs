@@ -165,10 +165,10 @@ fn sampler(case: &Case, unit_to_device: Transform, target: usize) -> ImageSample
         convert,
     )
     .unwrap();
-    let sampler = ImageSampler {
-        channels: if case.space.is_some() { target } else { 0 },
-        prepared: Some(Box::new(prepared)),
-    };
+    let sampler = ImageSampler::new(
+        Some(Box::new(prepared)),
+        if case.space.is_some() { target } else { 0 },
+    );
     match &case.stencil_color {
         Some(color) => sampler.with_stencil_color(color, Painted(7)),
         None => sampler,
@@ -414,6 +414,60 @@ fn stencils_paint_alpha_and_their_colour() {
     }
 }
 
+/// Whether every pixel of `sampler`'s window, placed by `unit_to_device`,
+/// spans as its uniform colour, opaque, when it has one; returns that it
+/// has one.
+fn spans_are_uniform(sampler: &ImageSampler, unit_to_device: Transform) -> bool {
+    let Some((color, painted)) = sampler.uniform() else {
+        return false;
+    };
+    let (x0, y0, x1, y1) = window(unit_to_device);
+    let len = usize::try_from(x1 - x0).unwrap();
+    let mut span = SpanColors::default();
+    for y in y0..y1 {
+        sampler.span(x0, y, len, &mut span);
+        assert_eq!(span.painted, painted);
+        assert!(span.alpha.iter().all(|&alpha| alpha == 1.0));
+        for pixel in span.colors.chunks_exact(span.channels) {
+            assert_eq!(bits(pixel), bits(color), "row {y}");
+        }
+    }
+    true
+}
+
+#[test]
+fn one_texel_images_sampled_nearest_are_uniform() {
+    let rgb = case(image((1, 1), 3, 8, Samples::Bytes(vec![40, 200, 77])));
+    let placements = placements(1, 1);
+    let uniform = placements
+        .iter()
+        .filter(|&&t| spans_are_uniform(&sampler(&rgb, t, 3), t))
+        .count();
+    assert!((1..placements.len()).contains(&uniform));
+    let magnified = placements[0];
+    for inverted in [false, true] {
+        let mut stencil = image((1, 1), 1, 1, Samples::Bytes(vec![0]));
+        stencil.kind = ImageKind::Stencil { inverted };
+        let mut case = case(stencil);
+        case.space = None;
+        case.stencil_color = Some(vec![0.3, 0.7, 0.123_456_789]);
+        // The texel paints unless the mask is inverted.
+        let sampler = sampler(&case, magnified, 3);
+        assert_eq!(spans_are_uniform(&sampler, magnified), !inverted);
+    }
+    // Interpolated texels are weighted, and wider images vary.
+    let mut interpolated = rgb.clone();
+    interpolated.image.interpolate = true;
+    assert!(sampler(&interpolated, magnified, 3).uniform().is_none());
+    let wide = case(image(
+        (2, 1),
+        3,
+        8,
+        Samples::Bytes(vec![40, 200, 77, 40, 200, 77]),
+    ));
+    assert!(sampler(&wide, magnified, 3).uniform().is_none());
+}
+
 #[test]
 fn soft_masks_with_and_without_matte_and_stencil_masks() {
     let rgb = image((9, 7), 3, 8, bytes(9 * 7 * 3, 8, 17));
@@ -511,10 +565,7 @@ fn degenerate_placements_paint_nothing_and_overflow_is_refused() {
         .is_err()
     );
     let mut empty = SpanColors::default();
-    let sampler = ImageSampler {
-        prepared: None,
-        channels: 3,
-    };
+    let sampler = ImageSampler::new(None, 3);
     sampler.span(0, 0, 4, &mut empty);
     assert_eq!((empty.colors.len(), empty.alpha), (12, vec![0.0; 4]));
     let _ = gray;

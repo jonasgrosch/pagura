@@ -21,8 +21,10 @@ pub(crate) use transfer::validate;
 pub(crate) use workspace::{Extents, MaskCache, PageBuffer, Sizes, Usage, Workspace};
 
 use crate::kernel::{self, Colors, Mode, Sources};
+use crate::paint::PaintSpans;
 use crate::plan::{Boundary, Compositing, Item, ItemKind, Mark, Plan, area};
 use crate::prepare::Producer;
+use pagura_color::Painted;
 use pagura_core::convert::u32_to_usize;
 use pagura_raster::{DeviceRect, Span};
 use std::ops::Range;
@@ -194,8 +196,8 @@ impl<'a> Executor<'a> {
     }
 
     /// How `mark` stores straight from coverage into `frame`: an opaque
-    /// constant colour into the N16 page, and a constant colour without a
-    /// soft mask into the byte page.
+    /// constant colour into the N16 page, and a constant or uniform colour
+    /// without a soft mask into the byte page.
     pub(super) fn opaque(&self, mark: &Mark, frame: Frame) -> Option<Opaque> {
         if mark.records || frame.buffer != Buffer::Page {
             return None;
@@ -204,7 +206,10 @@ impl<'a> Executor<'a> {
             PageBuffer::N16(_) => mark.words.map(Opaque::N16),
             PageBuffer::U8(_) => {
                 let paint = self.plan.paints.get(u32_to_usize(mark.paint))?;
-                let bytes = kernel::color_bytes(paint.constant()?);
+                let color = paint
+                    .constant()
+                    .or_else(|| paint.uniform().map(|(color, _)| color))?;
+                let bytes = kernel::color_bytes(color);
                 let compositing = &mark.compositing;
                 if mark.words.is_some() {
                     Some(Opaque::U8(bytes))
@@ -318,7 +323,7 @@ impl<'a> Executor<'a> {
             Some(m) => mask::row(plan, &ws.masks, &mut ws.mask, m, (x, y), len),
             None => None,
         };
-        let constant = paint.constant();
+        let constant = constant(paint);
         if constant.is_none() {
             match mark.boundary {
                 Boundary::Shape(_) | Boundary::Empty => {
@@ -340,8 +345,8 @@ impl<'a> Executor<'a> {
         let paint_shape = (constant.is_none() && !paint.shape_is_alpha())
             .then(|| ws.texel_shape.get(..len))
             .flatten();
-        let (colors, paint_alpha, painted) = if let Some(color) = constant {
-            (Colors::Constant(color), None, paint.painted())
+        let (colors, paint_alpha, painted) = if let Some((color, painted)) = constant {
+            (Colors::Constant(color), None, painted)
         } else {
             let alpha = if ws.colors.alpha.is_empty() {
                 None
@@ -404,6 +409,15 @@ impl<'a> Executor<'a> {
             kind,
         );
     }
+}
+
+/// The colour every pixel of `paint` has and the channels it paints, when
+/// it is constant or its spans are uniform.
+fn constant(paint: &dyn PaintSpans) -> Option<(&[f64], Painted)> {
+    paint
+        .constant()
+        .map(|color| (color, paint.painted()))
+        .or_else(|| paint.uniform())
 }
 
 /// Coverage an opaque store writes into the page.
