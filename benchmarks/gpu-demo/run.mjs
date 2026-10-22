@@ -17,7 +17,7 @@ const pdfPaths = [];
 for (let i = 3; i < process.argv.length; i++) if (process.argv[i] === '--pdf') pdfPaths.push(resolve(process.argv[++i]));
 const mime = {'.mjs': 'text/javascript', '.js': 'text/javascript', '.html': 'text/html', '.css': 'text/css', '.wgsl': 'text/plain', '.wasm': 'application/wasm', '.pdf': 'application/pdf'};
 const webFiles = new Set(['host_runtime.mjs', 'wasi.mjs', 'transport.mjs', 'failure.mjs']);
-const demoFiles = new Set(['index.html', 'style.css', 'app.mjs', 'engine.mjs', 'gpu.mjs', 'worker.mjs', 'samples.mjs', 'measure.mjs', 'composite.wgsl', 'checks.mjs']);
+const demoFiles = new Set(['index.html', 'style.css', 'app.mjs', 'engine.mjs', 'gpu.mjs', 'worker.mjs', 'samples.mjs', 'measure.mjs', 'composite.wgsl', 'checks.mjs', 'svg.mjs', 'zoom.mjs']);
 const fixtureIndex = [];
 for (const name of (await readdir(resolve(root, 'corpus/manifests'))).sort()) {
   if (!name.endsWith('.json')) continue;
@@ -61,6 +61,16 @@ if (mode === 'serve') {
   await mkdir(dirname(output), {recursive: true});
   const profile = await mkdtemp(resolve(tmpdir(), 'pagura-gpu-'));
   const chromePath = option('--chrome', process.env.CHROME_BIN ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
+  const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+  const sourceFiles = [...demoFiles].map(file => `benchmarks/gpu-demo/${file}`).concat([
+    'crates/pagura-paint/src/prepare/gpu.rs', 'crates/pagura-paint/src/prepare/gpu/tests.rs',
+    'benchmarks/gpu-demo/engine/Cargo.toml', 'benchmarks/gpu-demo/engine/Cargo.lock',
+    'benchmarks/gpu-demo/engine/src/main.rs', 'benchmarks/gpu-demo/engine/src/svg.rs',
+    'benchmarks/gpu-demo/engine/src/svg/images.rs', 'benchmarks/gpu-demo/engine/src/svg/tests.rs',
+    'benchmarks/gpu-demo/policy.json', 'web/host_runtime.mjs', 'web/transport.mjs', 'web/wasi.mjs']);
+  const initialHashes = Object.fromEntries(await Promise.all(sourceFiles.map(async file => [file, digest(await readFile(resolve(root, file)))])));
+  const initialWasmHash = digest(await readFile(wasm));
+  const initialCommit = (await promisify(execFile)('git', ['rev-parse', 'HEAD'], {cwd: root})).stdout.trim();
   const log = [];
   const chrome = spawn(chromePath, ['--headless', '--no-first-run', '--no-default-browser-check', '--disable-background-networking',
     '--enable-webgpu-developer-features', '--remote-debugging-port=0', `--user-data-dir=${profile}`, 'about:blank'], {stdio: ['ignore', 'ignore', 'pipe']});
@@ -86,7 +96,7 @@ if (mode === 'serve') {
     });
     await new Promise((resolve, reject) => { socket.addEventListener('open', resolve, {once: true}); socket.addEventListener('error', reject, {once: true}); });
     const command = (method, params = {}) => new Promise((resolve, reject) => {
-      const id = ++nextId, timer = setTimeout(() => {pending.delete(id); reject(new Error(`CDP timeout: ${method}`));}, 600000);
+      const id = ++nextId, timer = setTimeout(() => {pending.delete(id); reject(new Error(`CDP timeout: ${method}`));}, 1800000);
       pending.set(id, {resolve, reject, timer}); socket.send(JSON.stringify({id, method, params}));
     });
     await command('Runtime.enable');
@@ -96,25 +106,37 @@ if (mode === 'serve') {
     if (loaded.exceptionDetails) throw new Error(loaded.exceptionDetails.text);
     let expression;
     if (mode === 'probe') expression = `(async()=>{const {GpuBackend}=await import('/gpu.mjs'); const gpu=await GpuBackend.create(); const info=gpu.info;gpu.destroy();return info;})()`;
-    else expression = `(async()=>{const {run}=await import('/checks.mjs');return run(${JSON.stringify({mode, samples: Number(option('--samples', '100')), warmups: Number(option('--warmups', '5')), dpis: option('--dpis', '72,150,300').split(',').map(Number)})});})()`;
+    else expression = `(async()=>{const {run}=await import('/checks.mjs');return run(${JSON.stringify({mode, samples: Number(option('--samples', '100')), warmups: Number(option('--warmups', '5')), dpis: option('--dpis', '72,150,300').split(',').map(Number), zoom: !process.argv.includes('--skip-zoom'), realOnly: process.argv.includes('--real-only'), zoomSamples: Number(option('--zoom-samples', '18')), gestureFrames: Number(option('--gesture-frames', '60'))})});})()`;
     const result = await command('Runtime.evaluate', {expression, awaitPromise: true, returnByValue: true});
     if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description ?? result.exceptionDetails.text);
     const report = result.result.value;
     const exec = promisify(execFile);
-    const digest = bytes => createHash('sha256').update(bytes).digest('hex');
     const source_hashes = {};
+    if (report.artifacts) {
+      const folder = output.replace(/\.json$/, '') + '-visuals'; await mkdir(folder, {recursive: true});
+      for (const artifact of report.artifacts) {
+        if (!/^[a-z0-9-]+\.(png|svg)$/.test(artifact.name)) throw new Error('Invalid visual artifact name');
+        const bytes = artifact.text !== undefined ? Buffer.from(artifact.text) : Buffer.from(artifact.data_url.split(',')[1], 'base64');
+        await writeFile(resolve(folder, artifact.name), bytes);
+        artifact.path = relative(root, resolve(folder, artifact.name)); artifact.sha256 = digest(bytes);
+        delete artifact.text; delete artifact.data_url;
+      }
+    }
     for (const file of [...demoFiles].sort()) source_hashes[`benchmarks/gpu-demo/${file}`] = digest(await readFile(resolve(here, file)));
     for (const file of ['crates/pagura-paint/src/prepare/gpu.rs', 'crates/pagura-paint/src/prepare/gpu/tests.rs',
       'benchmarks/gpu-demo/engine/Cargo.toml', 'benchmarks/gpu-demo/engine/Cargo.lock', 'benchmarks/gpu-demo/engine/src/main.rs',
+      'benchmarks/gpu-demo/engine/src/svg.rs', 'benchmarks/gpu-demo/engine/src/svg/images.rs', 'benchmarks/gpu-demo/engine/src/svg/tests.rs',
       'benchmarks/gpu-demo/policy.json', 'web/host_runtime.mjs', 'web/transport.mjs', 'web/wasi.mjs']) source_hashes[file] = digest(await readFile(resolve(root, file)));
-    report.build = {commit: (await exec('git', ['rev-parse', 'HEAD'], {cwd: root})).stdout.trim(),
+    report.build = {commit: initialCommit,
       rustc: (await exec('rustc', ['--version'], {cwd: root})).stdout.trim(),
       node: process.version, platform: process.platform, arch: process.arch,
-      wasm_sha256: digest(await readFile(wasm)), source_hashes};
+      wasm_sha256: initialWasmHash, source_hashes: initialHashes,
+      sources_unchanged: Object.entries(source_hashes).every(([file, hash]) => initialHashes[file] === hash) && initialWasmHash === digest(await readFile(wasm))};
+    if (!report.build.sources_unchanged) {report.failures ??= [];report.failures.push({error: 'Benchmark sources or WASM changed during the run'});}
     await writeFile(output, JSON.stringify(report, null, 2) + '\n');
-    console.log(JSON.stringify(mode === 'bench' ? report.summary : mode === 'test' ? {
+    console.log(JSON.stringify(mode === 'bench' ? report.summary : ['test', 'svg-test'].includes(mode) ? {
       fixtures: report.fixtures, admitted: report.admitted, gpu_variants: report.gpu_variants,
-      fallback: report.fallback, failures: report.failures, kernel_checks: report.kernel_checks,
+      fallback: report.fallback ?? report.unsupported, failures: report.failures, kernel_checks: report.kernel_checks,
     } : report, null, 2));
     console.log(`Evidence: ${output}`);
     if (report.failures?.length) process.exitCode = 1;

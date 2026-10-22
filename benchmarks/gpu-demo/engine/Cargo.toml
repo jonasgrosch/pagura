@@ -8,10 +8,13 @@ publish = false
 [workspace]
 
 [dependencies]
+pagura-codec = { path = "../../../crates/pagura-codec" }
+pagura-color = { path = "../../../crates/pagura-color" }
 pagura-core = { path = "../../../crates/pagura-core" }
 pagura-data = { path = "../../../crates/pagura-data" }
 pagura-document = { path = "../../../crates/pagura-document" }
 pagura-interpret = { path = "../../../crates/pagura-interpret" }
+pagura-image = { path = "../../../crates/pagura-image" }
 pagura-paint = { path = "../../../crates/pagura-paint", features = ["gpu-demo"] }
 pagura-raster = { path = "../../../crates/pagura-raster" }
 

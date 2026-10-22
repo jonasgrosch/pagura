@@ -1,17 +1,18 @@
 /** Measured render stages and full frame latency, with untimed byte checks. */
+import {SvgPage, pixelDifference} from './svg.mjs';
 export function median(values) {
   const sorted = [...values].sort((a, b) => a - b), i = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[i] : (sorted[i - 1] + sorted[i]) / 2;
 }
 
-function stats(values) {
+export function stats(values) {
   const sorted = [...values].sort((a, b) => a - b);
   return {median: median(values), p95: sorted[Math.ceil(sorted.length * 0.95) - 1]};
 }
 
 export function assertPixels(actual, expected, context) {
   if (actual.length !== expected.length) throw new Error(`${context}: pixel count differs`);
-  for (let i = 0; i < actual.length; i++) if (actual[i] !== expected[i]) throw new Error(`${context}: channel ${i}, GPU ${actual[i]}, CPU ${expected[i]}`);
+  for (let i = 0; i < actual.length; i++) if (actual[i] !== expected[i]) throw new Error(`${context}: channel ${i}, actual ${actual[i]}, expected ${expected[i]}`);
 }
 
 export function hash(bytes) {
@@ -20,12 +21,30 @@ export function hash(bytes) {
   return (n >>> 0).toString(16).padStart(8, '0');
 }
 
-export async function compare(engine, gpu, options, {samples = 9, warmups = 2, progress = () => {}} = {}) {
+export async function compare(engine, gpu, options, {samples = 9, warmups = 2, progress = () => {}, svg = true} = {}) {
   if (!Number.isInteger(samples) || samples < 1 || samples > 1000 || !Number.isInteger(warmups) || warmups < 0 || warmups > 100) throw new Error('Invalid sample count');
   const coldCpu = await engine.render(2, options);
   const initial = await engine.render(3, options);
+  const svgInitial = svg ? await engine.render(4, options) : null;
   const result = {options, width: coldCpu.meta.width, height: coldCpu.meta.height, first_cpu: coldCpu.meta,
-    pixel_hash: hash(coldCpu.data), samples: [], fallback: initial.meta.fallback ?? null, warmups};
+    pixel_hash: hash(coldCpu.data), samples: [], fallback: initial.meta.fallback ?? null, warmups,
+    svg_fallback: svgInitial?.meta.fallback ?? null};
+  let svgPage, lastSvg;
+  let svgSamples = samples, svgWarmups = warmups;
+  if (svgInitial && !result.svg_fallback) {
+    const start = performance.now();
+    svgPage = new SvgPage(svgInitial.data, svgInitial.meta, options.dpi ?? 150);
+    lastSvg = await svgPage.rasterize();
+    result.first_svg = {...svgInitial.meta, parse_ms: svgPage.parse_ms, browser_ms: performance.now() - start,
+      frame_ms: svgInitial.host_ms + performance.now() - start};
+    result.svg_snapshot_context = lastSvg.context;
+    result.svg_bytes = svgInitial.data.length;
+    result.svg_resources = {paths: svgInitial.meta.paths, glyphs: svgInitial.meta.glyphs, images: svgInitial.meta.images};
+    if (lastSvg.wall_ms > 250) {
+      svgSamples = Math.min(samples, 3);svgWarmups = Math.min(warmups, 1);
+      result.svg_sample_cap = 'Initial completed SVG raster exceeded 250 ms; at most 3 timed samples and 1 warmup';
+    }
+  }
   let job;
   if (!result.fallback) {
     if (!gpu) result.fallback = 'No hardware WebGPU adapter is available';
@@ -35,6 +54,7 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
     }
   }
   const reference = coldCpu.data;
+  const svgReference = lastSvg?.pixels;
   try {
     const cpu = async () => {
       const sample = await engine.render(2, options);
@@ -50,21 +70,50 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
         kernel_ms: output.kernel_ms, render_ms: packet.meta.engine_ms + output.wall_ms,
         frame_ms: packet.host_ms + output.wall_ms, pixels: output.pixels};
     };
+    const vector = async () => {
+      const exported = await engine.render(4, options);
+      if (exported.meta.fallback) throw new Error('SVG admission changed between identical requests');
+      const start = performance.now();
+      const page = new SvgPage(exported.data, exported.meta, options.dpi ?? 150);
+      const output = await page.rasterize();
+      const browser_ms = performance.now() - start;
+      assertPixels(output.pixels, svgReference, 'SVG repeat');
+      return {engine: exported.meta, browser_ms, render_ms: exported.meta.engine_ms + browser_ms,
+        frame_ms: exported.host_ms + browser_ms, pixels: output.pixels, page};
+    };
     let lastGpu = null;
-    for (let i = 0; i < warmups; i++) { await cpu(); if (job) lastGpu = await hybrid(); }
+    for (let i = 0; i < warmups; i++) { await cpu(); if (job) lastGpu = await hybrid(); if (svgPage && i < svgWarmups) lastSvg = await vector(); }
     for (let i = 0; i < samples; i++) {
       progress(i, samples);
       // B C C B order across adjacent samples, for paired warm conditions.
-      let c, g;
-      if (!job || i % 2 === 0) { c = await cpu(); if (job) g = await hybrid(); }
-      else { g = await hybrid(); c = await cpu(); }
+      let c, g, s;
+      // Rotate and reverse the three paths to balance earlier/later positions.
+      const paths = ['cpu', ...(job ? ['gpu'] : []), ...(svgPage && i < svgSamples ? ['svg'] : [])];
+      const order = paths.slice(i % paths.length).concat(paths.slice(0, i % paths.length));
+      if (Math.floor(i / paths.length) % 2) order.reverse();
+      for (const path of order) {
+        if (path === 'cpu') c = await cpu();
+        else if (path === 'gpu') g = await hybrid();
+        else s = await vector();
+      }
       if (g) lastGpu = g;
+      if (s) {lastSvg = s;svgPage = s.page;}
       result.samples.push({cpu: {...c.meta, frame_ms: c.host_ms}, gpu: g ? {
         engine: g.engine, gpu_ms: g.gpu_ms, kernel_ms: g.kernel_ms, render_ms: g.render_ms, frame_ms: g.frame_ms,
-      } : null});
+      } : null, svg: s ? {engine: s.engine, browser_ms: s.browser_ms, render_ms: s.render_ms, frame_ms: s.frame_ms} : null});
     }
     result.cpu_render_ms = stats(result.samples.map(s => s.cpu.engine_ms));
     result.cpu_frame_ms = stats(result.samples.map(s => s.cpu.frame_ms));
+    if (svgPage) {
+      const measured = result.samples.filter(s => s.svg).map(s => s.svg);
+      result.svg_samples = measured.length;result.svg_warmups = svgWarmups;
+      result.svg_render_ms = stats(measured.map(s => s.render_ms));
+      result.svg_frame_ms = stats(measured.map(s => s.frame_ms));
+      result.svg_export_ms = stats(measured.map(s => s.engine.export_ms));
+      result.svg_browser_ms = stats(measured.map(s => s.browser_ms));
+      result.svg_accuracy = pixelDifference(lastSvg.pixels, reference);
+      result.svg_speedup = result.cpu_render_ms.median / result.svg_render_ms.median;
+    }
     if (job) {
       result.gpu_render_ms = stats(result.samples.map(s => s.gpu.render_ms));
       result.gpu_frame_ms = stats(result.samples.map(s => s.gpu.frame_ms));
@@ -78,6 +127,6 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
       result.gpu_allocation_validation_ms = job.setup_ms;
     }
     result.byte_identical = true;
-    return {result, cpu: reference, gpu: lastGpu?.pixels ?? reference};
+    return {result, cpu: reference, gpu: lastGpu?.pixels ?? reference, svg: lastSvg?.pixels ?? null, svgPage};
   } finally { job?.destroy(); }
 }

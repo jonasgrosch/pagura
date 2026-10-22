@@ -1,4 +1,4 @@
-# Experimental GPU compositor
+# Rendering backend experiment
 
 A WebGPU host for the existing prepared scene, branched from
 `render/one-pass` at `87fa81b64162281fccbdcae5564e1ec431022c4c`.
@@ -121,3 +121,66 @@ would suit a viewer, while conversion still needs readback. Prepared-program
 reuse needs a measured viewer workload before adding a cache, as ADR 0034
 requires. Sampled paints and F32 groups need separate validated kernels;
 F64-dependent operations retain their CPU execution.
+
+## SVG presentation experiment
+
+The same host also accepts operation 4, a whole-page SVG export of the public
+`pagura_interpret::Scene`. The adapter lives in `engine/src/svg.rs` and its
+image resource module, outside product crates. It never consumes CPU coverage
+spans and adds no third-party dependency or GPU API to the Rust engine.
+
+Paths and cubic curves remain vectors. Glyph outlines are shared definitions
+with ordered placements, so browser font matching and text shaping do not
+change their geometry. Clips intersect through SVG clip paths; pen transforms,
+dashes, ordinary opacity, RGB groups and representable blends are emitted as
+SVG operations. Image source samples use the existing decoders, colour
+converters and eight-bit RGBA PNG encoder. They become reusable image resources, not a raster
+substitute for the page. Native SVG antialiasing, stroke placement and image
+sampling and PDF zero-area fill behaviour can differ from Pagura's exact renderer.
+Zero-length strokes that cannot be represented by this adapter are refused.
+
+The browser validates the generated XML's element/attribute vocabulary and
+resources. SVG is displayed as an image with a retained vector source, keeping
+its definitions private and avoiding a large SVG tree in the live HTML DOM.
+Zoom resizes that vector image; CPU and hybrid paths rebuild their pixel
+buffers. There is no selectable browser text in the outlined SVG presentation.
+
+An unimplemented shading, tiling paint, soft-mask group, transfer function,
+non-RGB group, non-isolated blend group, unsupported knockout, print overprint,
+fixed-view annotation, image matte/embedded alpha or resampled image mask
+refuses the whole SVG export with a reason. The demo labels it unavailable;
+it never displays a partial SVG page or silently calls a CPU image SVG.
+Export bytes, tags, traversal/function work and image bytes are bounded.
+
+The comparison distinguishes three costs:
+
+- **Completed RGBA:** export, validation/parse, decode, browser rasterization
+  and Canvas readback. Both other paths already produce completed RGBA.
+- **Fresh viewport display:** rebuild backend output from a warm recorded
+  scene, then show a top or centre 480-pixel viewport. This does not force
+  full-page SVG readback. Timings end after two animation-frame opportunities;
+  they are not display scanout or GPU-completion timestamps.
+- **Zoom:** reuse the SVG vector source at 1×, 1.5× and 2× while CPU/hybrid
+  produce fresh pixels. A separate CSS gesture scales existing content for
+  every backend; bitmap preview scaling is not fresh-resolution rendering.
+
+Slow SVG raster cases remain in the report, with an explicit sample cap from
+`policy.json`. SVG differences against CPU include changed pixels, pixels
+whose largest channel difference exceeds one, maximum error, mean error and
+RMSE. These are differential measurements, not independent accuracy oracles
+or a pass of ADR 0004. CPU/hybrid byte equality remains required.
+
+```sh
+node benchmarks/gpu-demo/run.mjs svg-test
+node benchmarks/gpu-demo/run.mjs ui-test
+node benchmarks/gpu-demo/native.mjs svg-parity
+node benchmarks/gpu-demo/run.mjs bench --samples 100 --warmups 5 \
+  --output target/gpu-demo/three-backends.json --pdf /absolute/path/to/input.pdf
+```
+
+Repeat `--pdf` for additional local documents; their labels are generic.
+The same arguments with `serve --port 8097` make them available in the local
+workload selector. PNG comparisons, amplified differences and SVG files are
+saved beside a benchmark report under its `-visuals` directory. No real PDF
+or generated real-document output is committed. `--real-only` limits a run to
+explicit inputs; `--skip-zoom` skips the presentation/zoom studies.

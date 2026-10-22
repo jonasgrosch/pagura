@@ -1,16 +1,39 @@
 {
-  "schema": 1,
-  "scope": "Exploratory GPU compositor experiment on a shared desktop; not the release performance gate",
+  "schema": 2,
+  "scope": "Exploratory CPU, hybrid WebGPU and browser SVG presentation on a shared desktop; not the release performance gate",
   "minimum_samples": 100,
   "minimum_warmups": 5,
-  "dpi": [72, 150, 300],
+  "dpi": [
+    72,
+    150,
+    300
+  ],
   "background": "opaque white",
-  "order": "CPU GPU GPU CPU across adjacent paired samples",
-  "statistics": ["median", "p95"],
-  "correctness": "Every timed result must be byte-identical to the untimed CPU reference",
-  "render_time": "CPU engine execution versus CPU GPU-program preparation plus completed upload, GPU execution and RGBA readback",
+  "order": "Rotating and reversing CPU, GPU, SVG sample order",
+  "statistics": [
+    "median",
+    "p95"
+  ],
+  "correctness": "Every CPU/hybrid sample is byte-identical to the CPU reference. SVG repeats are identical within the browser run; SVG versus CPU differences are reported without a conformance claim.",
+  "render_time": "CPU engine versus hybrid program building, upload, GPU completion/readback versus SVG export, validation/parse, image decode, full Canvas rasterization/readback.",
   "frame_time": "Render time including worker/WASI output transport in both paths",
-  "excluded_once": ["PDF open", "WASM compilation", "adapter and pipeline initialization", "first GPU buffer allocation and packet validation"],
-  "required_separate_reporting": ["first CPU render", "GPU initialization", "GPU allocation and validation", "CPU fallbacks", "raw samples", "hardware adapter and browser", "source and binary hashes"],
-  "interactive_demo": "Nine samples after two warmups; illustrative only"
+  "excluded_once": [
+    "PDF open",
+    "WASM compilation",
+    "adapter and pipeline initialization",
+    "first GPU buffer allocation and packet validation"
+  ],
+  "required_separate_reporting": [
+    "first CPU render",
+    "GPU initialization",
+    "GPU allocation and validation",
+    "CPU fallbacks",
+    "raw samples",
+    "hardware adapter and browser",
+    "source and binary hashes"
+  ],
+  "interactive_demo": "Nine samples after two warmups; illustrative only",
+  "svg_slow_case_policy": "An initial completed SVG raster exceeding 250 ms caps SVG at 3 timed samples and 1 warmup; CPU/hybrid keep the requested count. Actual counts and cap are reported. No slow input is silently excluded.",
+  "presentation": "12 samples after 2 warmups in top and centre 480px viewports, from a warm recorded scene. SVG export and fresh image decode included, without forced full-page readback. Request to two animation-frame opportunities; not scanout.",
+  "zoom": "18 fresh-resolution samples after 3 warmups across 1x, 1.5x and 2x, alternating top/centre viewport. SVG retains its vector image. A 60-frame CSS gesture uses the centre viewport. Frames above 250 ms cap a path at 3 timed samples and stop a slow gesture after at least 3 frames; actual counts are reported."
 }

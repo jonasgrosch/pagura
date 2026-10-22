@@ -14,6 +14,8 @@ use std::time::Instant;
 
 const MAX_FRAME: usize = 64 * 1024 * 1024;
 
+mod svg;
+
 struct Session {
     document: Option<Document>,
     scene: Option<(usize, Scene)>,
@@ -68,7 +70,7 @@ impl Session {
                 Vec::new(),
             ));
         }
-        if !matches!(operation, 2 | 3) || bytes.len() != 32 {
+        if !matches!(operation, 2..=4) || bytes.len() != 32 {
             return Err(Error::invalid_argument("invalid demo request"));
         }
         let page_index =
@@ -121,6 +123,39 @@ impl Session {
                 y1: word(bytes, 7)?,
             }
         };
+        if operation == 4 {
+            if region != page {
+                return Err(Error::invalid_argument("SVG demo exports whole pages"));
+            }
+            let start = Instant::now();
+            return match svg::export(scene, document, dpi) {
+                Ok(svg) => Ok((
+                    format!(
+                        "{{\"ok\":true,\"width\":{},\"height\":{},\"record_ms\":{record_ms},\"export_ms\":{},\"engine_ms\":{},\"paths\":{},\"glyphs\":{},\"images\":{}}}",
+                        page.width(),
+                        page.height(),
+                        ms(start),
+                        ms(total),
+                        svg.paths,
+                        svg.glyphs,
+                        svg.images,
+                    ),
+                    svg.bytes,
+                )),
+                Err(svg::Failure::Unsupported(reason)) => Ok((
+                    format!("{{\"ok\":true,\"fallback\":{}}}", json_string(reason)),
+                    Vec::new(),
+                )),
+                Err(svg::Failure::Engine(error)) if error.kind == ErrorKind::Limit => Ok((
+                    format!(
+                        "{{\"ok\":true,\"fallback\":{}}}",
+                        json_string("SVG export exceeds its memory, element or work budget")
+                    ),
+                    Vec::new(),
+                )),
+                Err(svg::Failure::Engine(error)) => Err(error),
+            };
+        }
         let mut request = RenderRequest::new(scene.page.device_transform(scale), page, region);
         request.band_height = band;
         request.overprint = if scene.print_intent {

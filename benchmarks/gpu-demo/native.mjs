@@ -51,7 +51,28 @@ class Native {
 const native = new Native();
 try {
   let report;
-  if (mode === 'parity') {
+  if (mode === 'svg-parity') {
+    const browser = JSON.parse(await readFile(resolve(option('--browser-report', resolve(root, 'target/gpu-demo/svg-tests.json'))), 'utf8'));
+    if (browser.failures.length) throw new Error('SVG browser sweep must pass first');
+    const paths = new Map();
+    for (const file of await readdir(resolve(root, 'corpus/manifests'))) {
+      if (!file.endsWith('.json')) continue;
+      for (const c of JSON.parse(await readFile(resolve(root, 'corpus/manifests', file), 'utf8')).cases) paths.set(c.id, c);
+    }
+    const failures = [];let exports = 0;
+    for (const entry of browser.cases) {
+      const c = paths.get(entry.id);await native.open(await readFile(resolve(root, c.path)));
+      const svg = await native.render(4, c.dpi ?? 72);
+      if ((svg.meta.fallback ?? null) !== (entry.unsupported ?? null)) failures.push(`${entry.id}: SVG admission`);
+      if (entry.svg_sha256) {
+        if (sha256(svg.data) !== entry.svg_sha256) failures.push(`${entry.id}: SVG bytes`);
+        const cpu = await native.render(2, c.dpi ?? 72);
+        if (sha256(cpu.data) !== entry.cpu_sha256) failures.push(`${entry.id}: CPU bytes`);
+        exports++;
+      }
+    }
+    report = {schema: 1, fixtures: browser.cases.length, exports, failures};
+  } else if (mode === 'parity') {
     const browser = JSON.parse(await readFile(resolve(option('--browser-report', resolve(root, 'target/gpu-demo/hardware-tests.json'))), 'utf8'));
     if (browser.failures.length || browser.cases.some(c => !c.cpu_sha256 || !c.fallback && !c.program_sha256)) throw new Error('Rerun the browser sweep to obtain complete successful SHA-256 evidence');
     const paths = new Map();
