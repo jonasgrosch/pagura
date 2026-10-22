@@ -102,15 +102,24 @@ pub enum SampleLayout {
     /// images drawn smaller than their samples (ADR 0004). Other images,
     /// and eight cells, are interleaved exactly.
     Cells(u8),
+    /// As [`Self::Deferred`], with an eight-bit baseline JPEG reconstructed
+    /// at this many cells per block axis as [`Self::Cells`] reconstructs it,
+    /// in native planes of cells.
+    DeferredCells(u8),
 }
 
 impl SampleLayout {
     /// JPEG samples kept per eight-sample block axis in this layout.
     pub(crate) fn cells(self) -> u8 {
         match self {
-            Self::Cells(cells) => cells,
+            Self::Cells(cells) | Self::DeferredCells(cells) => cells,
             Self::Interleaved | Self::Deferred => 8,
         }
+    }
+
+    /// Whether native layouts are kept where they apply.
+    pub(crate) fn deferred(self) -> bool {
+        matches!(self, Self::Deferred | Self::DeferredCells(_))
     }
 }
 

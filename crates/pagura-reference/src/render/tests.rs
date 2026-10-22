@@ -472,3 +472,44 @@ fn overprint_simulation_needs_overprinting_marks() {
     assert!(!simulation(false, true, true));
     assert!(!simulation(true, true, false));
 }
+
+#[test]
+fn page_content_is_clipped_to_the_crop_box_and_mask_sources_are_not() {
+    // A crop box half a pixel short of the second column; the alpha mask's
+    // source covers both columns.
+    let mut b = Build::new(2.0, 1.0);
+    b.scene.page.crop = Rect::from_corners(0.0, 0.0, 1.5, 1.0).unwrap();
+    let black = b.rgb([0.0, 0.0, 0.0]);
+    let mask = b.group(
+        GroupRole::SoftMask {
+            kind: MaskKind::Alpha,
+        },
+        GroupAttributes::default(),
+        StateId(0),
+    );
+    b.rect(mask, [0.0, 0.0, 2.0, 1.0], black, StateId(0));
+    b.scene.masks.push(SoftMask {
+        group: mask,
+        kind: MaskKind::Alpha,
+        backdrop: None,
+        transfer: None,
+        position: Position::Unknown,
+    });
+    let masked = b.state(|s| s.soft_mask = Some(MaskId(0)));
+    b.rect(GroupId(0), [0.0, 0.0, 2.0, 1.0], black, masked);
+    let r = b.render(Rgba8::WHITE);
+    assert_pixel(&r, (0, 0), [0.0, 0.0, 0.0, 1.0]);
+    let v = 1.0 - level(0.5);
+    assert_pixel(&r, (1, 0), [v, v, v, 1.0]);
+}
+
+#[test]
+fn the_initial_pattern_colour_paints_nothing() {
+    let mut b = Build::new(1.0, 1.0);
+    let pattern = b.paint(Paint::Solid(Color {
+        space: Arc::new(ColorSpace::Pattern(None)),
+        components: Components::from_slice(&[]),
+    }));
+    b.rect(GroupId(0), [0.0, 0.0, 1.0, 1.0], pattern, StateId(0));
+    assert_pixel(&b.render(Rgba8::WHITE), (0, 0), [1.0, 1.0, 1.0, 1.0]);
+}

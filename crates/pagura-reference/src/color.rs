@@ -75,6 +75,7 @@ struct Key {
     process: Process,
     spots: usize,
     spot_count: usize,
+    colorants: pagura_color::Colorants,
     intent: u8,
     black: usize,
     removal: usize,
@@ -121,6 +122,7 @@ impl Colors {
             process: target.process,
             spots: Arc::as_ptr(&target.spots).cast::<u8>() as usize,
             spot_count: target.spots.len(),
+            colorants: target.colorants,
             intent: match conversion.intent {
                 Intent::Perceptual => 0,
                 Intent::Relative => 1,
@@ -170,6 +172,30 @@ impl Colors {
     }
 }
 
+/// The base components of palette entry `index` of an Indexed space
+/// (8.6.6.3): the index rounded and clipped to `0..=hival`, its bytes mapped
+/// onto the base space's component ranges.
+pub(crate) fn palette(indexed: &pagura_color::Indexed, index: f64) -> Vec<f64> {
+    let n = indexed.base.components();
+    #[expect(
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "rounded and clamped to 0..=255"
+    )]
+    let entry = usize::from(index.round().clamp(0.0, f64::from(indexed.high)) as u8);
+    let ranges = match indexed.base.as_ref() {
+        ColorSpace::Icc(icc) => icc.range,
+        _ => [[0.0, 1.0]; 4],
+    };
+    (0..n)
+        .map(|k| {
+            let byte = indexed.lookup.get(entry * n + k).copied().unwrap_or(0);
+            let [low, high] = ranges.get(k).copied().unwrap_or([0.0, 1.0]);
+            low + f64::from(byte) / 255.0 * (high - low)
+        })
+        .collect()
+}
+
 /// The device components of process values stored in compositing form.
 pub(crate) fn components(process: Process, stored: &[f64]) -> [f64; 4] {
     let mut out = [0.0; 4];
@@ -194,4 +220,22 @@ pub(crate) fn luminosity(process: Process, c: &[f64]) -> f64 {
 /// The luminance of an RGB triple (11.3.5.3).
 pub(crate) fn lum(c: [f64; 3]) -> f64 {
     0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pagura_color::Indexed;
+
+    #[test]
+    fn palette_entries_map_bytes_onto_the_base_ranges() {
+        let indexed = Indexed {
+            base: Arc::new(ColorSpace::DeviceCmyk),
+            high: 1,
+            lookup: Arc::from([0, 0, 0, 0, 255, 0, 51, 0].as_slice()),
+        };
+        assert_eq!(palette(&indexed, 1.2), [1.0, 0.0, 0.2, 0.0]);
+        assert_eq!(palette(&indexed, 7.0), [1.0, 0.0, 0.2, 0.0]);
+        assert_eq!(palette(&indexed, -3.0), [0.0; 4]);
+    }
 }

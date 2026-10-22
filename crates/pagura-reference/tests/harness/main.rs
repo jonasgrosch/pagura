@@ -17,8 +17,9 @@
 //! reported as pending. Run with `-- --nocapture` for one line per case;
 //! `PAGURA_REFERENCE_REPORT=<dir>` writes a JSON summary per test there,
 //! `PAGURA_REFERENCE_FILTER=<text>` keeps the cases whose id contains it,
-//! and `PAGURA_REFERENCE_FULL=1` probes charges on every case rather than
-//! on every eighth.
+//! `PAGURA_REFERENCE_DUMP=<dir>` writes both renderings of every compared
+//! case there as PPM on white, and `PAGURA_REFERENCE_FULL=1` probes charges
+//! on every case rather than on every eighth.
 
 mod cases;
 mod compare;
@@ -94,6 +95,14 @@ fn the_renderer_is_within_one_level_of_the_reference() {
             &case.id,
             Status::Compared(Comparison::of(&rendered, &reference)),
         );
+        if let Some(directory) = std::env::var_os("PAGURA_REFERENCE_DUMP") {
+            dump(
+                std::path::Path::new(&directory),
+                &case.id,
+                &rendered,
+                &reference,
+            );
+        }
         if let Some(directory) = &goldens {
             let status = match goldens::load(directory, &case.id) {
                 Some((width, height, golden))
@@ -116,6 +125,25 @@ fn the_renderer_is_within_one_level_of_the_reference() {
         failures.is_empty(),
         "beyond one level of the reference: {failures:?}"
     );
+}
+
+/// Writes the renderer's and the reference's output of case `id` as PPM.
+fn dump(
+    directory: &std::path::Path,
+    id: &str,
+    rendered: &[u8],
+    reference: &pagura_reference::Rendering,
+) {
+    let (width, height) = (reference.region().width(), reference.region().height());
+    let name = id.replace('/', "__");
+    let _ = std::fs::create_dir_all(directory);
+    for (suffix, rgba) in [
+        ("renderer", rendered.to_vec()),
+        ("reference", reference.to_rgba8()),
+    ] {
+        let ppm = pagura_testkit::ppm(width, height, &rgb_on_white(&rgba));
+        let _ = std::fs::write(directory.join(format!("{name}.{suffix}.ppm")), ppm);
+    }
 }
 
 #[test]
@@ -382,6 +410,22 @@ fn partitions(id: &str, page: DeviceRect) -> Vec<Vec<DeviceRect>> {
         .collect()
 }
 
+/// How a premultiplied RGBA rendering misses a PPM oracle by more than
+/// `tolerance`, if it does.
+fn beyond_oracle(rgba: &[u8], oracle: &[u8], tolerance: u8) -> Option<String> {
+    let (_, _, expected) = parse_ppm(oracle)?;
+    let actual = rgb_on_white(rgba);
+    let (difference, pixel) = actual
+        .iter()
+        .zip(expected)
+        .enumerate()
+        .map(|(i, (&a, &e))| (a.abs_diff(e), i / 3))
+        .max()?;
+    (difference > tolerance).then(|| {
+        format!("differs from the oracle by {difference} (bound {tolerance}) at pixel {pixel}")
+    })
+}
+
 #[test]
 fn fast_parameters_alone_against_the_reference() {
     let provider = pagura_data::Bundled::default();
@@ -426,10 +470,22 @@ fn fast_parameters_alone_against_the_reference() {
         };
         let page = Run::page(&recorded);
         let reference = page.reference(&recorded);
+        let oracle = case
+            .oracle
+            .as_ref()
+            .and_then(|path| std::fs::read(path).ok());
         for (name, fast) in parameters {
             let id = format!("{} {name}", case.id);
             let run = Run { fast, ..page };
-            let status = match (run.render(&recorded), &reference) {
+            let rendered = run.render(&recorded);
+            // ADR 0004 §9: each parameter alone stays within the fixture's
+            // competitive tolerance of its oracle.
+            if let (Ok(rendered), Some(oracle)) = (&rendered, &oracle)
+                && let Some(problem) = beyond_oracle(rendered, oracle, case.fast_tolerance)
+            {
+                report.push(format!("{id} oracle"), Status::Failed(problem));
+            }
+            let status = match (rendered, &reference) {
                 (Ok(rendered), Ok(reference)) => {
                     Status::Compared(Comparison::of(&rendered, reference))
                 }
