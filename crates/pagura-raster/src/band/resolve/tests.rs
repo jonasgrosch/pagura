@@ -223,3 +223,20 @@ fn short_edges_cost_the_slabs_they_span() {
     let edges = edges.len();
     assert!(meter.used() < 100 * edges, "{}", meter.used());
 }
+
+/// A cell whose crossings need more work than the budget is refused, with
+/// no more work done than charged.
+#[test]
+fn crowded_crossings_are_refused_within_the_budget() {
+    let count = 2_000_u32;
+    let edges: Vec<LocalEdge> = (0..count)
+        .map(|i| {
+            let t = f64::from(i) / f64::from(count);
+            edge(t, 0.0, 1.0 - t, 1.0, 1, 0)
+        })
+        .collect();
+    let mut meter = Meter::new(1_000_000, "budget");
+    let result = Resolver::default().coverage(&edges, &[FillRule::NonZero], (0.0, 1.0), &mut meter);
+    assert!(result.is_err());
+    assert!(meter.used() <= 1_000_000);
+}
