@@ -209,8 +209,8 @@ pub struct DecodedImage {
 }
 
 /// A JPEG image reconstructed with fewer samples than its dictionary
-/// declares, in the [`deferred::SampleLayout::Cells`] layout: an
-/// approximate path (ADR 0004).
+/// declares, as a [`Reduce::Drawn`] request asks: the `reduced_image_decode`
+/// fast parameter (ADR 0004 §9).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Reduction {
     /// Samples kept per eight-sample block axis: 1, 2, 3, 4 or 6.
