@@ -9,7 +9,7 @@ use super::DeviceRect;
 use super::cells::STRIP;
 use crate::flatten::{CurveStack, Polyline, bounded, flatten_into};
 use crate::{Path, Point, Segment, Transform};
-use pagura_core::{Error, Limits, Result};
+use pagura_core::{Error, Limits, Meter, Result};
 
 /// A straight edge in device space, in contour order.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -463,10 +463,9 @@ pub(crate) fn clip_line(line: Line, bounds: Bounds, out: &mut Vec<Line>) -> Resu
 }
 
 /// The straight edges of `polygon` that bound area (not horizontal).
-pub(crate) fn lines(polygon: &Polygon) -> Result<Vec<Line>> {
+pub(crate) fn lines(polygon: &Polygon, bytes: &mut Meter) -> Result<Vec<Line>> {
     let mut out = Vec::new();
-    out.try_reserve(polygon.vertices())
-        .map_err(|_| Error::limit("raster geometry allocation failed"))?;
+    bytes.reserve(&mut out, polygon.vertices())?;
     for contour in polygon.contours() {
         let n = contour.len();
         for i in 0..n {
@@ -572,6 +571,7 @@ impl StripList {
         (first, end): (u32, u32),
         count: usize,
         ranges: impl Fn(usize) -> Option<(u32, u32)>,
+        bytes: &mut Meter,
     ) -> Result<Self> {
         if u32::try_from(count).is_err() {
             return Err(Error::limit("strip list exceeds u32"));
@@ -586,10 +586,7 @@ impl StripList {
             first: strip0,
             ..Self::default()
         };
-        let allocation = |_| Error::limit("strip list allocation failed");
-        list.offsets
-            .try_reserve_exact(span + 1)
-            .map_err(allocation)?;
+        bytes.reserve(&mut list.offsets, span + 1)?;
         list.offsets.resize(span + 1, 0);
         let clamp = |i: usize| {
             let (a, b) = ranges(i)?;
@@ -611,9 +608,7 @@ impl StripList {
         for strip in 0..span {
             list.offsets[strip + 1] += list.offsets[strip];
         }
-        list.items
-            .try_reserve_exact(total as usize)
-            .map_err(allocation)?;
+        bytes.reserve(&mut list.items, total as usize)?;
         list.items.resize(total as usize, 0);
         // Fill each strip from its start, which leaves every start at the
         // next strip's; shifting restores them.

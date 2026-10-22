@@ -3,7 +3,7 @@
 //! with the rows their signed area does not determine already resolved.
 
 use super::cells::STRIP;
-use super::certify::uncertified;
+use super::certify::{scratch_bytes, uncertified};
 use super::clip::{self, ClipShape, Paths, columns, fill_polygon};
 use super::curve::{self, Mono, Quadratic};
 use super::edges::{self, Bounds, Line, Polygon, StripList, line_work, rows, strips};
@@ -82,24 +82,17 @@ impl Resolved {
         self.lines.get(start..end.max(start)).unwrap_or(&[])
     }
 
-    fn push(&mut self, y: u32, sides: &[Line]) -> Result<()> {
-        if sides.is_empty() {
-            // A resolved row with nothing covered still replaces the edges.
-            return self.mark(y);
-        }
-        self.lines
-            .try_reserve(sides.len())
-            .map_err(|_| Error::limit("resolved row allocation failed"))?;
+    fn push(&mut self, y: u32, sides: &[Line], bytes: &mut Meter) -> Result<()> {
+        // An empty resolved row still replaces the original edges.
+        room(&mut self.lines, sides.len(), bytes)?;
         self.lines.extend_from_slice(sides);
-        self.mark(y)
+        self.mark(y, bytes)
     }
 
-    fn mark(&mut self, y: u32) -> Result<()> {
+    fn mark(&mut self, y: u32, bytes: &mut Meter) -> Result<()> {
         let end = u32::try_from(self.lines.len())
             .map_err(|_| Error::limit("resolved rows exceed u32"))?;
-        self.rows
-            .try_reserve(1)
-            .map_err(|_| Error::limit("resolved row allocation failed"))?;
+        room(&mut self.rows, 1, bytes)?;
         self.rows.push((y, end));
         Ok(())
     }
@@ -385,24 +378,43 @@ impl Shape {
         // whatever its vertices.
         let triangle =
             polygon.starts.len() == 1 && polygon.vertices() == 3 && !polygon.points_cells;
+        let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
+        let polygon_bytes = polygon
+            .points
+            .capacity()
+            .saturating_mul(size_of::<crate::Point>())
+            .saturating_add(polygon.starts.capacity().saturating_mul(size_of::<usize>()));
+        bytes.charge(polygon_bytes)?;
+        let certificate = if matches!(winding, Winding::Check(_)) && !triangle {
+            scratch_bytes(polygon.vertices())
+        } else {
+            0
+        };
+        bytes.charge(certificate)?;
         let doubtful = match winding {
             Winding::Certified => Some(Vec::new()),
             Winding::Check(_) if triangle => Some(Vec::new()),
             Winding::Check(margin) => uncertified(&polygon, margin),
             Winding::Unknown => None,
         };
-        let all = edges::lines(&polygon)?;
+        let kept_certificate = doubtful
+            .as_ref()
+            .map_or(0, |s| s.capacity().saturating_mul(size_of::<[f64; 2]>()));
+        debug_assert!(kept_certificate <= certificate);
+        bytes.refund(certificate.saturating_sub(kept_certificate));
+        let all_bytes = polygon.vertices().saturating_mul(size_of::<Line>());
+        let all = edges::lines(&polygon, &mut bytes)?;
         drop(polygon);
+        bytes.refund(polygon_bytes);
         let lines = match frame.rect {
             Some(r) => {
                 let mut clipped = Vec::new();
-                clipped
-                    .try_reserve(all.len())
-                    .map_err(|_| Error::limit("raster geometry allocation failed"))?;
-                for line in all {
+                for &line in &all {
+                    room(&mut clipped, 3, &mut bytes)?;
                     edges::clip_line(line, r, &mut clipped)?;
                 }
                 clipped.retain(|l| !l.is_horizontal());
+                bytes.refund(all_bytes);
                 clipped
             }
             None => all,
@@ -429,16 +441,14 @@ impl Shape {
         for y in bounds.y0..bounds.y1 {
             let joint = joint(y);
             if joint || doubtful_row(y) {
-                chosen
-                    .try_reserve(1)
-                    .map_err(|_| Error::limit("resolved row allocation failed"))?;
+                room(&mut chosen, 1, &mut bytes)?;
                 chosen.push((y, joint));
             }
         }
         let resolved = if chosen.is_empty() {
             Resolved::default()
         } else {
-            resolve(&lines, rule, &frame, (bounds, &chosen), options)?
+            resolve(&lines, rule, &frame, (bounds, &chosen), options, &mut bytes)?
         };
         Self::edges(
             lines,
@@ -447,6 +457,7 @@ impl Shape {
             (bounds, scan, resolved),
             &frame,
             options,
+            &mut bytes,
         )
         .map(Some)
     }
@@ -460,7 +471,10 @@ impl Shape {
         options: &Prep<'_>,
     ) -> Result<Option<Self>> {
         debug_assert!(frame.paths.is_none(), "pieces meet no clip rows");
-        let (lines, curves) = match frame.rect {
+        let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
+        bytes.charge_items::<Line>(lines.capacity())?;
+        bytes.charge_items::<Quadratic>(curves.capacity())?;
+        let (mut lines, curves) = match frame.rect {
             Some(r) => {
                 let mut clipped = Vec::new();
                 let mut kept = Vec::new();
@@ -479,9 +493,7 @@ impl Shape {
             None => (lines, curves),
         };
         let mut monos = Vec::new();
-        monos
-            .try_reserve(curves.len())
-            .map_err(|_| Error::limit("raster geometry allocation failed"))?;
+        bytes.reserve(&mut monos, curves.len())?;
         monos.extend(curves.iter().map(|&q| Mono::new(q)));
         let points = lines
             .iter()
@@ -498,7 +510,7 @@ impl Shape {
                 .chain(curves.iter().flat_map(|q| [q.points[0].x, q.points[2].x])),
             width,
         );
-        let lines = lines.into_iter().filter(|l| !l.is_horizontal()).collect();
+        lines.retain(|l| !l.is_horizontal());
         Self::edges(
             lines,
             monos,
@@ -506,6 +518,7 @@ impl Shape {
             (bounds, scan, Resolved::default()),
             frame,
             options,
+            &mut bytes,
         )
         .map(Some)
     }
@@ -568,7 +581,9 @@ impl Shape {
         (bounds, scan, resolved): (DeviceRect, (usize, usize), Resolved),
         frame: &Frame<'_>,
         options: &Prep<'_>,
+        bytes: &mut Meter,
     ) -> Result<Self> {
+        bytes.charge(size_of::<Self>())?;
         let area = options.area;
         let region = area.region;
         let right = f64::from(region.x1);
@@ -598,7 +613,7 @@ impl Shape {
         let (list, mut work) = if strips((bounds.y0, bounds.y1 - 1)) == 1 {
             (None, count.saturating_mul(height))
         } else {
-            let list = StripList::new((bounds.y0, bounds.y1), count, item_rows)?;
+            let list = StripList::new((bounds.y0, bounds.y1), count, item_rows, bytes)?;
             let visits = list.len().saturating_mul(STRIP as usize);
             (Some(list), visits)
         };
@@ -763,9 +778,9 @@ fn resolve(
     frame: &Frame<'_>,
     (bounds, chosen): (DeviceRect, &[(u32, bool)]),
     options: &Prep<'_>,
+    bytes: &mut Meter,
 ) -> Result<Resolved> {
     let mut work = Meter::new(options.limits.raster_work, RASTER_WORK);
-    let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
     // The lines of each strip, then each row's pieces from its strip.
     let strip_rows =
         |l: &Line| rows_of(l, bounds).map(|(a, b)| (b / STRIP - a / STRIP) as usize + 1);
@@ -773,18 +788,19 @@ fn resolve(
         .iter()
         .filter_map(strip_rows)
         .fold(0, usize::saturating_add);
-    let strips = (bounds.y1.saturating_sub(bounds.y0) / STRIP) as usize + 2;
     work.charge(listed.saturating_add(lines.len()))?;
-    bytes.charge_items::<u32>(listed.saturating_add(strips))?;
-    let list = StripList::new((bounds.y0, bounds.y1), lines.len(), |i| {
-        lines.get(i).and_then(|l| rows_of(l, bounds))
-    })?;
+    let list = StripList::new(
+        (bounds.y0, bounds.y1),
+        lines.len(),
+        |i| lines.get(i).and_then(|l| rows_of(l, bounds)),
+        bytes,
+    )?;
     let mut rules = Vec::new();
-    room(&mut rules, 1, &mut bytes)?;
+    room(&mut rules, 1, bytes)?;
     rules.push(rule);
     if let Some(paths) = frame.paths {
         let count = paths.rules().count();
-        room(&mut rules, count, &mut bytes)?;
+        room(&mut rules, count, bytes)?;
         rules.extend(paths.rules());
     }
     let mut resolver = Resolver::default();
@@ -794,7 +810,7 @@ fn resolve(
         let top = f64::from(y);
         pieces.clear();
         let listed = list.strip(y / STRIP);
-        room(&mut pieces, listed.len(), &mut bytes)?;
+        room(&mut pieces, listed.len(), bytes)?;
         for &i in listed {
             if let Some(&line) = lines.get(i as usize) {
                 pieces.extend(Piece::new(line, top, 0));
@@ -802,7 +818,7 @@ fn resolve(
         }
         let groups = match (joint, frame.paths) {
             (true, Some(paths)) => {
-                paths.pieces(y, 1, (&mut pieces, &mut bytes))?;
+                paths.pieces(y, 1, (&mut pieces, bytes))?;
                 rules.len()
             }
             _ => 1,
@@ -811,10 +827,13 @@ fn resolve(
         sides.clear();
         let meters = Meters {
             work: &mut work,
-            bytes: &mut bytes,
+            bytes,
         };
         resolver.row(&pieces, &rules[..groups], top, (&mut sides, meters))?;
-        resolved.push(y, &sides)?;
+        resolved.push(y, &sides, bytes)?;
     }
     Ok(resolved)
 }
+
+#[cfg(test)]
+mod tests;

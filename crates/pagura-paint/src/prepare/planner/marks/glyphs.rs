@@ -124,7 +124,7 @@ impl Planner<'_> {
             Clipping::Shape(prepared) => (Some(prepared.key), prepared.bounds),
         };
         self.shapes.set_clip(clip);
-        let shape = self.shape(scope, &spec.geometry);
+        let shape = self.shape(scope, &spec.geometry, budget);
         self.shapes.set_clip(None);
         let Shape::Prepared(prepared) = shape? else {
             return Ok(());

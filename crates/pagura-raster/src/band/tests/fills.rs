@@ -97,13 +97,18 @@ fn unlisted_shapes_match_their_strip_lists() {
             let right = 48.0;
             let lines = e.lines.clone();
             e.strips = Some(
-                edges::StripList::new((bounds.y0, bounds.y1), lines.len(), |i| {
-                    let l = lines[i];
-                    if l.a.x.min(l.b.x) >= right {
-                        return None;
-                    }
-                    edges::rows(l.a.y.min(l.b.y), l.a.y.max(l.b.y), bounds)
-                })
+                edges::StripList::new(
+                    (bounds.y0, bounds.y1),
+                    lines.len(),
+                    |i| {
+                        let l = lines[i];
+                        if l.a.x.min(l.b.x) >= right {
+                            return None;
+                        }
+                        edges::rows(l.a.y.min(l.b.y), l.a.y.max(l.b.y), bounds)
+                    },
+                    &mut Meter::new(usize::MAX, "bytes"),
+                )
                 .unwrap(),
             );
             assert_eq!(raster(&area, Some(&shape), None).0, grid, "case {case}");

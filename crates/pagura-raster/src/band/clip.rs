@@ -10,7 +10,7 @@
 //! multiplied.
 
 use super::cells::{Cells, STRIP};
-use super::certify::uncertified;
+use super::certify::{scratch_bytes, uncertified};
 use super::edges::{self, Bounds, Line, Polygon, StripList};
 use super::rect::rectangle;
 use super::row::Sink;
@@ -154,7 +154,7 @@ impl Rows {
             .saturating_add(self.segments.capacity() * size_of::<Segment>())
     }
 
-    fn push(&mut self, y: u32, segment: Segment) -> Result<()> {
+    fn push(&mut self, y: u32, segment: Segment, bytes: &mut Meter) -> Result<()> {
         if let Some(last) = self.segments.last_mut()
             && self.index.last().is_some_and(|&(row, _)| row == y)
             && last.x1 == segment.x0
@@ -164,9 +164,8 @@ impl Rows {
             last.x1 = segment.x1;
             return Ok(());
         }
-        let allocation = |_| Error::limit("clip row allocation failed");
-        self.segments.try_reserve(1).map_err(allocation)?;
-        self.index.try_reserve(1).map_err(allocation)?;
+        room(&mut self.segments, 1, bytes)?;
+        room(&mut self.index, 1, bytes)?;
         self.segments.push(segment);
         let end =
             u32::try_from(self.segments.len()).map_err(|_| Error::limit("clip rows exceed u32"))?;
@@ -304,6 +303,65 @@ impl ClipShape {
     }
 }
 
+/// Straight boundaries and uncertain slabs before the row classification.
+struct Boundaries {
+    lines: Vec<Line>,
+    ends: Vec<(u32, FillRule)>,
+    doubtful: Option<Vec<[f64; 2]>>,
+}
+
+/// Flattens the clip's groups into directed boundaries, accounting for the
+/// original polygons, temporary line copies and certificate scratch.
+fn boundaries(
+    groups: &[(Polygon, FillRule)],
+    rect: Option<Bounds>,
+    meter: &mut Meter,
+    bytes: &mut Meter,
+) -> Result<Boundaries> {
+    for (polygon, _) in groups {
+        bytes.charge_items::<crate::Point>(polygon.points.capacity())?;
+        bytes.charge_items::<usize>(polygon.starts.capacity())?;
+    }
+    let mut lines: Vec<Line> = Vec::new();
+    let mut ends = Vec::new();
+    bytes.reserve(&mut ends, groups.len())?;
+    // Rows a single certified path settles by its signed area.
+    let mut doubtful: Option<Vec<[f64; 2]>> = None;
+    for (polygon, rule) in groups {
+        meter.charge(polygon.vertices())?;
+        let source_bytes = polygon.vertices().saturating_mul(size_of::<Line>());
+        let source = edges::lines(polygon, bytes)?;
+        for &line in &source {
+            if let Some(r) = rect {
+                room(&mut lines, 3, bytes)?;
+                edges::clip_line(line, r, &mut lines)?;
+            } else {
+                room(&mut lines, 1, bytes)?;
+                lines.push(line);
+            }
+        }
+        bytes.refund(source_bytes);
+        lines.retain(|l| !l.is_horizontal());
+        let end = u32::try_from(lines.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
+        ends.push((end, *rule));
+        if groups.len() == 1 {
+            let certificate = scratch_bytes(polygon.vertices());
+            bytes.charge(certificate)?;
+            doubtful = uncertified(polygon, 0.0);
+            let kept = doubtful
+                .as_ref()
+                .map_or(0, |s| s.capacity().saturating_mul(size_of::<[f64; 2]>()));
+            debug_assert!(kept <= certificate);
+            bytes.refund(certificate.saturating_sub(kept));
+        }
+    }
+    Ok(Boundaries {
+        lines,
+        ends,
+        doubtful,
+    })
+}
+
 /// Classifies the rows of `bounds` for the non-rectangular `groups`.
 fn classify(
     groups: &[(Polygon, FillRule)],
@@ -315,33 +373,18 @@ fn classify(
     let mut meter = Meter::new(limits.raster_work, CLIP_WORK);
     // The resolver's scratch, freed on return.
     let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
-    let allocation = |_| Error::limit("clip allocation failed");
-    let mut lines: Vec<Line> = Vec::new();
-    let mut ends = Vec::new();
-    ends.try_reserve(groups.len()).map_err(allocation)?;
-    // Rows a single certified path settles by its signed area.
-    let mut doubtful: Option<Vec<[f64; 2]>> = None;
-    for (polygon, rule) in groups {
-        meter.charge(polygon.vertices())?;
-        for line in edges::lines(polygon)? {
-            if let Some(r) = rect {
-                edges::clip_line(line, r, &mut lines)?;
-            } else {
-                lines.try_reserve(1).map_err(allocation)?;
-                lines.push(line);
-            }
-        }
-        lines.retain(|l| !l.is_horizontal());
-        let end = u32::try_from(lines.len()).map_err(|_| Error::limit("clip edges exceed u32"))?;
-        ends.push((end, *rule));
-        if groups.len() == 1 {
-            doubtful = uncertified(polygon, 0.0);
-        }
-    }
+    let Boundaries {
+        lines,
+        ends,
+        doubtful,
+    } = boundaries(groups, rect, &mut meter, &mut bytes)?;
     let rows_of = |l: &Line| edges::rows(l.a.y.min(l.b.y), l.a.y.max(l.b.y), bounds);
-    let strips_list = StripList::new((bounds.y0, bounds.y1), lines.len(), |i| {
-        lines.get(i).and_then(rows_of)
-    })?;
+    let strips_list = StripList::new(
+        (bounds.y0, bounds.y1),
+        lines.len(),
+        |i| lines.get(i).and_then(rows_of),
+        &mut bytes,
+    )?;
     meter.charge(strips_list.len())?;
     let mut paths = Paths {
         lines,
@@ -349,10 +392,12 @@ fn classify(
         strips: strips_list,
         rows: Rows::default(),
     };
-    let rules: Vec<FillRule> = paths.rules().collect();
+    let mut rules = Vec::new();
+    bytes.reserve(&mut rules, paths.ends.len())?;
+    rules.extend(paths.rules());
     let width = super::row::width(bounds.x1)?;
     let scan = scan_columns(&paths.lines, width);
-    let mut cells = Cells::new(scan.1.saturating_sub(scan.0).max(1), &mut meter)?;
+    let mut cells = Cells::new(scan.1.saturating_sub(scan.0).max(1), &mut bytes)?;
     let mut resolver = Resolver::default();
     let (mut pieces, mut sides) = (Vec::new(), Vec::new());
     let mut rows = Rows::default();
@@ -384,6 +429,7 @@ fn classify(
         }
         let mut sink = Classify {
             rows: &mut rows,
+            bytes: &mut bytes,
             y,
             bounds: (bounds.x0, bounds.x1),
             error: None,
@@ -402,6 +448,7 @@ fn classify(
 /// partial runs are boundary, full runs inside, empty ones outside.
 struct Classify<'a> {
     rows: &'a mut Rows,
+    bytes: &'a mut Meter,
     y: u32,
     bounds: (u32, u32),
     error: Option<Error>,
@@ -420,7 +467,7 @@ impl Classify<'_> {
             value,
             inside,
         };
-        if let Err(error) = self.rows.push(self.y, segment) {
+        if let Err(error) = self.rows.push(self.y, segment, self.bytes) {
             self.error = Some(error);
         }
     }

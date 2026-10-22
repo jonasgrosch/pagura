@@ -34,6 +34,20 @@ struct Active {
     range: [f64; 2],
 }
 
+/// An upper bound of the polygon certificate's simultaneous vector
+/// capacities: split points, chains, heights, active chains and failed
+/// slabs. Geometric growth costs less than twice each maximum length;
+/// eight spare entries also cover the minimum allocation capacities.
+pub(crate) fn scratch_bytes(vertices: usize) -> usize {
+    vertices.saturating_add(8).saturating_mul(
+        4 * size_of::<Point>()
+            + 2 * size_of::<Chain>()
+            + 4 * size_of::<f64>()
+            + 2 * size_of::<Active>()
+            + 4 * size_of::<[f64; 2]>(),
+    )
+}
+
 /// Whether the winding of `polygon` is 0 or one common sign of magnitude one
 /// everywhere, with neighbouring chains at least `margin` apart where they
 /// do not share a vertex. Geometric-point cells are never certified.
