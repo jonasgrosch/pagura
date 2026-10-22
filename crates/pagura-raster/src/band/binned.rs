@@ -26,10 +26,10 @@ use std::sync::{Arc, Mutex};
 const PHASES: u16 = 128;
 
 /// The masks one glyph keeps, at most.
-const KEPT_MASKS: usize = 128;
+const KEPT_MASKS: usize = 1024;
 
 /// The bytes of masks one glyph keeps, at most, unless one mask is larger.
-const KEPT_BYTES: usize = 64 << 10;
+const KEPT_BYTES: usize = 256 << 10;
 
 /// Flattening and vertical origin lattice for a rendering resolution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
