@@ -19,8 +19,9 @@ pub(crate) struct Line {
 
 impl Line {
     /// The x of the edge at height `y` within its vertical extent: the end
-    /// points exactly, and between them by one interpolation from the upper
-    /// end, as every row and column crossing of this edge is computed.
+    /// points exactly, and between them by the weighted endpoint numerator.
+    /// Its products and sums keep their rounding tails: distant endpoints
+    /// may cancel almost completely at an ordinary device pixel.
     pub(crate) fn x(self, y: f64) -> f64 {
         let (top, bottom) = if self.a.y < self.b.y {
             (self.a, self.b)
@@ -31,15 +32,100 @@ impl Line {
             top.x
         } else if y >= bottom.y {
             bottom.x
+        } else if top.x == bottom.x {
+            top.x
         } else {
-            let t = (y - top.y) / (bottom.y - top.y);
-            top.x + t * (bottom.x - top.x)
+            let (height, low) = sum(bottom.y, -top.y);
+            // Normalize the vertical weights by an exact power of two.
+            // Subnormal heights must not underflow their x products.
+            let exponent = (height.to_bits() >> 52).max(1);
+            let scale = f64::from_bits((2046 - exponent) << 52);
+            let (wa, ea) = sum(bottom.y, -y);
+            let (wb, eb) = sum(y, -top.y);
+            let (wa, ea, wb, eb) = (wa * scale, ea * scale, wb * scale, eb * scale);
+            let (height, low) = (height * scale, low * scale);
+            let (pa, ra) = product(top.x, wa);
+            let (pb, rb) = product(bottom.x, wb);
+            let (numerator, tail) = sum(pa, pb);
+            let tail = tail + ra + rb + top.x * ea + bottom.x * eb;
+            let quotient = numerator / height;
+            let (back, error) = product(quotient, height);
+            let x = quotient + (((numerator - back) + tail - error) - quotient * low) / height;
+            x.max(top.x.min(bottom.x)).min(top.x.max(bottom.x))
         }
     }
 
     pub(crate) fn is_horizontal(self) -> bool {
         self.a.y == self.b.y
     }
+}
+
+/// The exact sum of two finite values, apart from subnormal underflow.
+fn sum(a: f64, b: f64) -> (f64, f64) {
+    let high = a + b;
+    let back = high - a;
+    (high, (a - (high - back)) + (b - back))
+}
+
+/// Product and rounding tail without fused operations. Device coordinates
+/// are bounded by 10^12, so splitting and the products cannot overflow.
+fn product(a: f64, b: f64) -> (f64, f64) {
+    let split = |value| {
+        let expanded = value * 134_217_729.0;
+        let high = expanded - (expanded - value);
+        (high, value - high)
+    };
+    let (ah, al) = split(a);
+    let (bh, bl) = split(b);
+    let high = a * b;
+    let low = ((ah * bh - high) + ah * bl + al * bh) + al * bl;
+    (high, low)
+}
+
+#[cfg(test)]
+#[test]
+fn distant_endpoints_preserve_the_stored_line_inside_a_pixel() {
+    let n = 549_755_813_888.0;
+    let u = 1.0 / 8192.0;
+    let line = Line {
+        a: Point::new(-n, -n),
+        b: Point::new(n, n + u),
+    };
+    // Exact rational x(y) = n * (2*y-u) / (2*n+u), rounded to f64.
+    let expected = [
+        (0.0, -6.103_515_624_999_999e-5),
+        (0.5, 0.499_938_964_843_749_94),
+        (1.0, 0.999_938_964_843_749_9),
+    ];
+    for (y, x) in expected {
+        assert_eq!(line.x(y), x);
+        assert_eq!(
+            Line {
+                a: line.b,
+                b: line.a
+            }
+            .x(y),
+            x
+        );
+    }
+    assert_eq!(line.x(line.a.y), line.a.x);
+    assert_eq!(line.x(line.b.y), line.b.x);
+}
+
+#[cfg(test)]
+#[test]
+fn interpolation_keeps_subnormal_heights_and_endpoint_ranges() {
+    let tiny = f64::from_bits(1);
+    let line = Line {
+        a: Point::new(0.25, 0.0),
+        b: Point::new(0.5, 2.0 * tiny),
+    };
+    assert_eq!(line.x(tiny), 0.375);
+    let line = Line {
+        a: Point::new(tiny, 0.0),
+        b: Point::new(2.0 * tiny, 2.0 * tiny),
+    };
+    assert!((tiny..=2.0 * tiny).contains(&line.x(tiny)));
 }
 
 /// Closed device polygons: contour `i` is `points[starts[i]..starts[i + 1]]`

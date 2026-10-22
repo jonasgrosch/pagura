@@ -5,14 +5,67 @@ use crate::Completion;
 use crate::testing::{Build, assert_within_one_level, mark};
 use pagura_core::{Limits, Position};
 use pagura_interpret::{
-    BlendMode, GroupAttributes, GroupId, MarkInfo, MaskKind, Node, Paint, PatternId, Pen, PenId,
-    StateId, StrokeNode, Tiling, TilingColors, TilingPaint,
+    BlendMode, ClipId, ClipNode, FillNode, GroupAttributes, GroupId, MarkInfo, MaskKind, Node,
+    Paint, PatternId, Pen, PenId, StateId, StrokeNode, Tiling, TilingColors, TilingPaint,
 };
-use pagura_raster::{Adjustment, DeviceRect, PathBuilder, Point, Stroke, Transform};
+use pagura_raster::{Adjustment, DeviceRect, FillRule, PathBuilder, Point, Stroke, Transform};
 use std::sync::Arc;
 
 const PAGE: GroupId = GroupId(0);
 const HEIGHTS: [u32; 5] = [1, 5, 16, 32, 256];
+
+#[test]
+fn distant_line_interpolation_survives_repeated_composition() {
+    let n = 549_755_813_888.0;
+    let u = 1.0 / 8192.0;
+    let mut path = PathBuilder::new();
+    path.move_to(Point::new(-n, -n));
+    path.line_to(Point::new(n, n + u)).unwrap();
+    path.line_to(Point::new(-n, n + u)).unwrap();
+    path.close();
+    let path = Arc::new(path.finish());
+    for clipped in [false, true] {
+        let mut b = Build::new(1.0, 1.0);
+        let black = b.rgb([0.0; 3]);
+        if clipped {
+            b.scene.clips.push(ClipNode {
+                parent: None,
+                path: Arc::clone(&path),
+                rule: FillRule::NonZero,
+            });
+        }
+        for _ in 0..2 {
+            let info = MarkInfo {
+                clip: clipped.then_some(ClipId(0)),
+                ..mark(StateId(0))
+            };
+            if clipped {
+                b.rect(PAGE, [-2.0, -2.0, 2.0, 2.0], black, info);
+            } else {
+                b.node(
+                    PAGE,
+                    Node::Fill(FillNode {
+                        path: Arc::clone(&path),
+                        rule: FillRule::NonZero,
+                        paint: black,
+                        mark: info,
+                    }),
+                );
+            }
+        }
+        // Area=(1-u/2)^2/(2+u/n)=0.4999389667063951, hence coverage127.
+        // Two black stores over white reference16384/255=64.25098039215686;
+        // biased coverage128 produces63, outside the one-level contract.
+        for height in HEIGHTS {
+            let actual = b.render(&b.request(b.page(), height)).unwrap();
+            assert_eq!(
+                actual,
+                [64, 64, 64, 255],
+                "clipped={clipped}, height={height}"
+            );
+        }
+    }
+}
 
 /// A page that exercises every buffer kind: translucent marks, blend
 /// modes, a knockout group, a soft mask, a tiling pattern and clips.
