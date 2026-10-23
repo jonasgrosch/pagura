@@ -79,3 +79,85 @@ fn round_cap_overlap_resolves_only_uncertified_rows() {
             .all(|&(y, _)| !(9..=100).contains(&y))
     );
 }
+
+#[test]
+fn a_glyph_point_cell_resolves_only_its_overlap_row() {
+    let mut path = crate::PathBuilder::new();
+    path.rect(2.0, 2.0, 6.0, 28.0);
+    path.move_to(Point::new(4.25, 15.75));
+    path.close();
+    let limits = Limits::default();
+    let edges = std::sync::Arc::new(
+        crate::GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
+    );
+    assert!(!edges.curved());
+    let area = super::super::tests::area(0, 0, 16, 36, 4);
+    let options = ShapeOptions {
+        area,
+        limits: &limits,
+    };
+    let shape = Shape::glyph(&edges, Point::default(), &options)
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        shape
+            .resolved
+            .rows
+            .iter()
+            .map(|&(y, _)| y)
+            .collect::<Vec<_>>(),
+        [15]
+    );
+    let (pixels, work) = crate::testing::raster(&area, Some(&shape), None);
+    assert!(work <= shape.work());
+    for y in 0..36 {
+        for x in 0..16 {
+            assert_eq!(
+                pixels[y * 16 + x],
+                if (2..8).contains(&x) && (2..30).contains(&y) {
+                    255
+                } else {
+                    0
+                }
+            );
+        }
+    }
+}
+
+#[test]
+fn a_work_limited_point_cell_sweep_keeps_full_resolution() {
+    let limits = Limits::default();
+    let mut path = crate::PathBuilder::new();
+    for i in 0..128 {
+        let offset = f64::from(i) / 256.0;
+        path.rect(3.0 * f64::from(i) + 2.0, offset, 1.0, 32.0 - 2.0 * offset);
+    }
+    let mut bytes = crate::testing::bytes();
+    let mut polygon = Polygon::from_lines(&path.finish(), Transform::IDENTITY, &limits, &mut bytes)
+        .unwrap()
+        .unwrap();
+    // Disjoint rectangles with many distinct end heights exhaust the
+    // bounded sweep even before the point cell is added.
+    assert!(uncertified(&polygon, 0.0, &mut bytes).unwrap().is_none());
+    polygon
+        .cell(Point::new(388.3, 1.2), &limits, &mut bytes)
+        .unwrap();
+    assert!(uncertified(&polygon, 0.0, &mut bytes).unwrap().is_none());
+    let area = super::super::tests::area(0, 0, 400, 36, 4);
+    let options = ShapeOptions {
+        area,
+        limits: &limits,
+    };
+    let shape = Shape::polygon(
+        polygon,
+        FillRule::NonZero,
+        Winding::Check(0.0),
+        &Prep::new(&options, None),
+        &mut bytes,
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(shape.resolved.rows.len(), shape.bounds.height() as usize);
+    let (_, work) = crate::testing::raster(&area, Some(&shape), None);
+    assert!(work <= shape.work());
+}

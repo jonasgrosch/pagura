@@ -461,7 +461,7 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
             let winding = if *certified {
                 Winding::Certified
             } else {
-                Winding::Unknown
+                Winding::Check(0.0)
             };
             translated(polygon, points, origin, winding, options, &mut bytes, None)
         }
