@@ -33,6 +33,12 @@ impl Rgba8 {
     pub const fn opaque(r: u8, g: u8, b: u8) -> Self {
         Self::new(r, g, b, 255)
     }
+
+    /// The premultiplied RGBA8 bytes used by pixel surfaces.
+    pub fn premultiplied(self) -> [u8; 4] {
+        let scale = |channel| multiply(channel, self.a);
+        [scale(self.r), scale(self.g), scale(self.b), self.a]
+    }
 }
 
 /// A row-major, top-left-origin surface of premultiplied RGBA8 pixels.
@@ -76,7 +82,7 @@ impl Pixmap {
         let mut data = Vec::new();
         data.try_reserve_exact(bytes)
             .map_err(|_| Error::limit("surface allocation failed"))?;
-        let pixel = premultiply(background);
+        let pixel = background.premultiplied();
         // A gray or transparent background is one repeated byte; any other
         // is written a whole pixel at a time rather than byte by byte.
         if pixel.iter().all(|&byte| byte == pixel[0]) {
@@ -177,10 +183,11 @@ impl Pixmap {
 
     /// Composites onto `background` and drops alpha, giving packed RGB8.
     pub fn to_rgb_over(&self, background: Rgba8) -> Vec<u8> {
-        let under = premultiply(Rgba8 {
+        let under = Rgba8 {
             a: 255,
             ..background
-        });
+        }
+        .premultiplied();
         let (pixels, _) = self.data.as_chunks::<4>();
         pixels
             .iter()
@@ -198,11 +205,6 @@ impl PartialEq for Pixmap {
     }
 }
 impl Eq for Pixmap {}
-
-fn premultiply(color: Rgba8) -> [u8; 4] {
-    let scale = |channel| multiply(channel, color.a);
-    [scale(color.r), scale(color.g), scale(color.b), color.a]
-}
 
 fn unpremultiply(pixel: [u8; 4]) -> [u8; 4] {
     let alpha = u32::from(pixel[3]);
