@@ -94,7 +94,7 @@ impl Summary {
 )]
 fn extent(a: f64, b: f64, rounding: f64) -> Option<u32> {
     let span = ((a - b).abs().next_up() + 2.0 * rounding).next_up().ceil();
-    (span.is_finite() && (0.0..=f64::from(u32::MAX)).contains(&span)).then(|| span as u32)
+    (span.is_finite() && (0.0..=f64::from(u32::MAX)).contains(&span)).then_some(span as u32)
 }
 
 /// The canonical point cell's vertical sides, already placed and in
