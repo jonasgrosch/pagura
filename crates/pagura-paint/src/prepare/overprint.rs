@@ -6,7 +6,7 @@
 use crate::request::OverprintMode;
 use pagura_color::{ColorSpace, Colorant};
 use pagura_core::hash::FastSet;
-use pagura_core::{Error, Name, Result};
+use pagura_core::{Error, Meter, Name, Result};
 use pagura_interpret::{Composite, GroupId, GroupRole, Node, Paint, PatternId, Scene};
 use std::sync::Arc;
 
@@ -19,16 +19,34 @@ pub(crate) struct Separations {
     pub(crate) spots: Vec<(Name, Arc<ColorSpace>)>,
 }
 
+impl Separations {
+    /// Owned definition slots and cloned name data; color spaces are shared.
+    pub(crate) fn retained_bytes(&self) -> usize {
+        self.spots.capacity() * size_of::<(Name, Arc<ColorSpace>)>()
+            + self
+                .spots
+                .iter()
+                .map(|(name, _)| name.heap_bytes())
+                .sum::<usize>()
+    }
+}
+
 /// Discovers the separations of `scene` under `mode`; content nested deeper
 /// than `depth` is a `Limit` error.
 ///
 /// # Errors
 ///
-/// A `Limit` error beyond 32 spot colorants or `depth`.
-pub(crate) fn discover(scene: &Scene, mode: OverprintMode, depth: usize) -> Result<Separations> {
+/// A `Limit` error beyond 32 spot colorants, `depth` or available render memory.
+pub(crate) fn discover(
+    scene: &Scene,
+    mode: OverprintMode,
+    depth: usize,
+    bytes: &mut Meter,
+) -> Result<Separations> {
     if mode == OverprintMode::Ignore {
         return Ok(Separations::default());
     }
+    let before = bytes.used();
     let mut walk = Walk {
         scene,
         depth,
@@ -38,14 +56,20 @@ pub(crate) fn discover(scene: &Scene, mode: OverprintMode, depth: usize) -> Resu
         nonzero: false,
         spots: Vec::new(),
     };
-    walk.group(scene.root, 0)?;
-    if !(walk.nonzero || walk.overprint && walk.tint) {
-        return Ok(Separations::default());
-    }
-    Ok(Separations {
-        simulate: true,
-        spots: walk.spots,
-    })
+    let result = walk.group(scene.root, 0, bytes).map(|()| {
+        if walk.nonzero || walk.overprint && walk.tint {
+            Separations {
+                simulate: true,
+                spots: std::mem::take(&mut walk.spots),
+            }
+        } else {
+            Separations::default()
+        }
+    });
+    drop(walk);
+    let retained = result.as_ref().map_or(0, Separations::retained_bytes);
+    bytes.refund(bytes.used() - before - retained);
+    result
 }
 
 struct Walk<'s> {
@@ -59,7 +83,7 @@ struct Walk<'s> {
 }
 
 impl Walk<'_> {
-    fn group(&mut self, id: GroupId, depth: usize) -> Result<()> {
+    fn group(&mut self, id: GroupId, depth: usize, bytes: &mut Meter) -> Result<()> {
         if depth >= self.depth {
             return Err(Error::limit("compositing depth exceeded"));
         }
@@ -84,27 +108,29 @@ impl Walk<'_> {
                     .ok_or(Error::invalid_argument("scene paint out of range"))
             };
             match node {
-                Node::Fill(fill) => self.paint(paint(fill.paint)?, state(&fill.mark)?, depth)?,
+                Node::Fill(fill) => {
+                    self.paint(paint(fill.paint)?, state(&fill.mark)?, depth, bytes)?;
+                }
                 Node::Stroke(stroke) => {
-                    self.paint(paint(stroke.paint)?, state(&stroke.mark)?, depth)?;
+                    self.paint(paint(stroke.paint)?, state(&stroke.mark)?, depth, bytes)?;
                 }
                 Node::Glyphs(glyphs) => {
-                    self.paint(paint(glyphs.paint)?, state(&glyphs.mark)?, depth)?;
+                    self.paint(paint(glyphs.paint)?, state(&glyphs.mark)?, depth, bytes)?;
                 }
                 Node::Image(image) => match (&image.image.space, image.stencil) {
-                    (Some(space), _) => self.space(space, state(&image.mark)?, false)?,
+                    (Some(space), _) => self.space(space, state(&image.mark)?, false, bytes)?,
                     (None, Some(stencil)) => {
-                        self.paint(paint(stencil)?, state(&image.mark)?, depth)?;
+                        self.paint(paint(stencil)?, state(&image.mark)?, depth, bytes)?;
                     }
                     (None, None) => {}
                 },
                 Node::Shading(shading) => {
-                    self.space(&shading.shading.space, state(&shading.mark)?, false)?;
+                    self.space(&shading.shading.space, state(&shading.mark)?, false, bytes)?;
                 }
                 Node::Group(id) => {
                     let role = scene.group(*id).map(|g| g.role);
                     if role == Some(GroupRole::Transparency) {
-                        self.group(*id, depth + 1)?;
+                        self.group(*id, depth + 1, bytes)?;
                     }
                 }
             }
@@ -112,39 +138,55 @@ impl Walk<'_> {
         Ok(())
     }
 
-    fn paint(&mut self, paint: &Paint, state: &Composite, depth: usize) -> Result<()> {
+    fn paint(
+        &mut self,
+        paint: &Paint,
+        state: &Composite,
+        depth: usize,
+        bytes: &mut Meter,
+    ) -> Result<()> {
         match paint {
-            Paint::Solid(color) => self.space(&color.space, state, true),
-            Paint::Shading(shading) => self.space(&shading.shading.space, state, false),
+            Paint::Solid(color) => self.space(&color.space, state, true, bytes),
+            Paint::Shading(shading) => self.space(&shading.shading.space, state, false, bytes),
             Paint::Tiling(tiling) => {
                 self.overprint |= state.overprint.enabled;
-                if self.cells.insert(tiling.pattern) {
+                if !self.cells.contains(&tiling.pattern) {
+                    bytes.reserve_set_capacity(&mut self.cells, 1)?;
+                    self.cells.insert(tiling.pattern);
                     let cell = self
                         .scene
                         .tilings
                         .get(crate::prepare::index(tiling.pattern.0))
                         .ok_or(Error::invalid_argument("scene pattern out of range"))?
                         .cell;
-                    self.group(cell, depth + 1)?;
+                    self.group(cell, depth + 1, bytes)?;
                 }
                 Ok(())
             }
         }
     }
 
-    fn space(&mut self, space: &ColorSpace, state: &Composite, direct: bool) -> Result<()> {
+    fn space(
+        &mut self,
+        space: &Arc<ColorSpace>,
+        state: &Composite,
+        direct: bool,
+        bytes: &mut Meter,
+    ) -> Result<()> {
         if !space.paints() {
             return Ok(());
         }
         let mut space = space;
-        while let ColorSpace::Indexed(indexed) = space {
+        while let ColorSpace::Indexed(indexed) = &**space {
             space = &indexed.base;
         }
         let enabled = state.overprint.enabled;
         self.overprint |= enabled;
-        self.nonzero |=
-            matches!(space, ColorSpace::DeviceCmyk) && enabled && state.overprint.nonzero && direct;
-        let colorants: &[Colorant] = match space {
+        self.nonzero |= matches!(&**space, ColorSpace::DeviceCmyk)
+            && enabled
+            && state.overprint.nonzero
+            && direct;
+        let colorants: &[Colorant] = match &**space {
             ColorSpace::Separation(separation) => std::slice::from_ref(&separation.colorant),
             ColorSpace::DeviceN(device) => &device.colorants,
             _ => return Ok(()),
@@ -160,7 +202,9 @@ impl Walk<'_> {
             if self.spots.len() >= crate::plan::MAX_SPOTS {
                 return Err(Error::limit("page spot colourant budget exceeded"));
             }
-            self.spots.push((name.clone(), Arc::new(space.clone())));
+            bytes.reserve_capacity(&mut self.spots, 1)?;
+            bytes.charge(name.heap_bytes())?;
+            self.spots.push((name.clone(), Arc::clone(space)));
         }
         Ok(())
     }
@@ -220,4 +264,74 @@ pub(crate) fn direct_cmyk(paint: &Paint) -> bool {
         }
     }
     matches!(paint, Paint::Solid(color) if native(&color.space))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testing::{Build, mark};
+    use pagura_color::{ExponentialFunction, Function, Separation};
+    use pagura_core::ErrorKind;
+    use pagura_interpret::{Color, StateId};
+
+    #[test]
+    fn discovered_definitions_share_spaces_and_account_owned_names() {
+        let name = Name::new(b"A spot name longer than the inline name representation");
+        let space = Arc::new(ColorSpace::Separation(Arc::new(Separation {
+            colorant: Colorant::Named(name.clone()),
+            alternate: Arc::new(ColorSpace::DeviceCmyk),
+            tint: Arc::new(
+                Function::exponential(ExponentialFunction {
+                    domain: [0.0, 1.0],
+                    range: None,
+                    c0: vec![0.0; 4],
+                    c1: vec![1.0; 4],
+                    exponent: 1.0,
+                })
+                .unwrap(),
+            ),
+        })));
+        let mut build = Build::new(4.0, 4.0);
+        let paint = build.paint(Paint::Solid(Color {
+            space: Arc::clone(&space),
+            components: pagura_color::Components::from_slice(&[0.5]),
+        }));
+        let state = build.state(|state| state.overprint.enabled = true);
+        build.rect(GroupId(0), [0.0, 0.0, 4.0, 4.0], paint, mark(state));
+        let mut bytes = Meter::new(1 << 20, "overprint memory");
+        bytes.charge(13).unwrap();
+        let separations = discover(&build.scene, OverprintMode::Simulate, 64, &mut bytes).unwrap();
+        assert!(separations.simulate);
+        assert_eq!(separations.spots[0].0, name);
+        assert!(Arc::ptr_eq(&separations.spots[0].1, &space));
+        let retained = separations.retained_bytes();
+        assert_eq!(bytes.used(), 13 + retained);
+        assert!(retained >= name.heap_bytes() + size_of::<(Name, Arc<ColorSpace>)>());
+        drop(separations);
+        bytes.refund(retained);
+        assert_eq!(bytes.used(), 13);
+        let mut tiny = Meter::new(
+            size_of::<(Name, Arc<ColorSpace>)>() + name.heap_bytes() - 1,
+            "overprint memory",
+        );
+        assert_eq!(
+            discover(&build.scene, OverprintMode::Simulate, 64, &mut tiny)
+                .unwrap_err()
+                .kind,
+            ErrorKind::Limit
+        );
+        assert_eq!(tiny.used(), 0);
+        build.scene.groups[0].children.clear();
+        build.rect(GroupId(0), [0.0, 0.0, 4.0, 4.0], paint, mark(StateId(0)));
+        assert!(
+            !discover(&build.scene, OverprintMode::Simulate, 64, &mut bytes)
+                .unwrap()
+                .simulate
+        );
+        assert_eq!(
+            bytes.used(),
+            13,
+            "unused candidate definitions were dropped"
+        );
+    }
 }

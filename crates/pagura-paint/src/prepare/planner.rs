@@ -157,8 +157,10 @@ impl<'s> Planner<'s> {
         (store, limits): (&'s Store, &'s Limits),
         area: Area,
         shapes: ShapeBuilder<'s>,
+        budget: &mut Budget,
     ) -> Result<Self> {
-        let separations = overprint::discover(scene, request.overprint, limits.depth)?;
+        let separations =
+            overprint::discover(scene, request.overprint, limits.depth, &mut budget.bytes)?;
         let root = scene
             .group(scene.root)
             .ok_or(Error::invalid_argument("scene group out of range"))?;
@@ -182,6 +184,7 @@ impl<'s> Planner<'s> {
                 pixels: request.page,
                 user_unit: scene.page.user_unit,
             },
+            &mut budget.bytes,
         )?;
         let spots: Arc<[Name]> = separations
             .spots

@@ -140,7 +140,8 @@ pub(crate) fn prepare_in(
     let area = area(request, limits)?;
     let mut budget = Budget::new(limits);
     let shapes = ShapeBuilder::new(store, limits, storage);
-    let planner = planner::Planner::new(scene, request, (store, limits), area, shapes)?;
+    let planner =
+        planner::Planner::new(scene, request, (store, limits), area, shapes, &mut budget)?;
     let finished = finish::finish(planner, &mut budget)?;
     Ok(PreparedScene {
         plan: finished.plan,
