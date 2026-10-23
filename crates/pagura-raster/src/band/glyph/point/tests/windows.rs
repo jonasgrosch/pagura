@@ -72,8 +72,12 @@ fn tall_and_wide_mixed_bodies_bound_work_in_every_band_grid() {
                             panic!("mixed glyph stays shared");
                         };
                         assert_eq!(body.geometry, GlyphGeometry::Relative);
-                        assert_eq!(shape.resolved.contains(37), first_row == 0);
-                        assert_eq!(shape.resolved.is_empty(), first_row != 0);
+                        assert!(shape.resolved.is_empty());
+                        let relative = edges.relative().unwrap();
+                        assert_eq!(
+                            shape.boundaries(),
+                            relative.lines.len() + relative.curves.len() + 2
+                        );
                         let scan_width = body.scan.1 - body.scan.0;
                         if width > 4096 {
                             assert!(scan_width > 4096);
@@ -147,6 +151,73 @@ fn current_placed_range_errors_are_independent_of_bands_and_store_state() {
                     assert_eq!(&actual, expected);
                 } else {
                     expected = Some(actual);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn a_point_left_of_the_output_region_keeps_the_full_scan_prefix() {
+    let limits = Limits::default();
+    for reversed in [false, true] {
+        for point in [
+            Point::new(-1.0, 35.25),
+            Point::new(2.25, 35.25),
+            Point::new(13.25, 35.25),
+        ] {
+            let edges = Arc::new(
+                GlyphEdges::new(
+                    &outline([12, 80], point, reversed),
+                    [1.0, 0.0, 0.0, 1.0],
+                    &limits,
+                )
+                .unwrap(),
+            );
+            for band_height in HEIGHTS {
+                let full = ShapeOptions {
+                    area: Area {
+                        region: DeviceRect {
+                            x0: 0,
+                            y0: 0,
+                            x1: 16,
+                            y1: 88,
+                        },
+                        band_height,
+                    },
+                    limits: &limits,
+                };
+                let origin = Point::new(0.0, 0.271);
+                let shape = place(&edges, origin, &Prep::new(&full, None))
+                    .unwrap()
+                    .unwrap();
+                let (pixels, spent) = crate::testing::raster(&full.area, Some(&shape), None);
+                assert!(spent <= shape.work());
+                for (x0, x1) in [(4, 16), (0, 10), (4, 10)] {
+                    let cropped = ShapeOptions {
+                        area: Area {
+                            region: DeviceRect {
+                                x0,
+                                x1,
+                                ..full.area.region
+                            },
+                            band_height,
+                        },
+                        limits: &limits,
+                    };
+                    let shape = place(&edges, origin, &Prep::new(&cropped, None))
+                        .unwrap()
+                        .unwrap();
+                    let (actual, spent) = crate::testing::raster(&cropped.area, Some(&shape), None);
+                    assert!(spent <= shape.work());
+                    let expected: Vec<_> = pixels
+                        .as_chunks::<16>()
+                        .0
+                        .iter()
+                        .flat_map(|row| &row[x0 as usize..x1 as usize])
+                        .copied()
+                        .collect();
+                    assert_eq!(actual, expected, "{point:?}/{reversed}/band {band_height}");
                 }
             }
         }

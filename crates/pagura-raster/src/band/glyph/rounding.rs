@@ -87,15 +87,13 @@ pub(super) fn certify(
         } else {
             AREA
         };
-        let (placement, resolved_placement) = placement_error(outline, linear, origin, &shape);
+        let placement = placement_error(outline, linear, origin, &shape);
         let clip = options
             .clip
             .and_then(|clip| clip.paths())
             .map_or(0.0, Paths::arithmetic_error);
         let error = base + placement + clip;
-        let row_error =
-            (analytic && !shape.resolved.is_empty()).then_some(AREA + resolved_placement + clip);
-        let pending = ambiguous(&shape, (error, row_error), (&mut work, &mut bytes))?;
+        let pending = ambiguous(&shape, error, (&mut work, &mut bytes))?;
         let mut wrong = false;
         for pixel in pending {
             let expected = true_byte(source, pixel, options, (&mut work, &mut bytes))?;
@@ -197,7 +195,7 @@ fn replacement(
 /// per-edge homotopy bound is at most three times the two coordinate
 /// displacements inside any pixel. This broad initial bound only selects
 /// pixels for the local, original-control certificate below.
-fn placement_error(outline: &Path, linear: Transform, origin: Point, shape: &Shape) -> (f64, f64) {
+fn placement_error(outline: &Path, linear: Transform, origin: Point, shape: &Shape) -> f64 {
     let mut magnitude = origin.x.abs().max(origin.y.abs()).max(1.0);
     for segment in outline.segments() {
         let mut include = |p: Point| {
@@ -215,30 +213,15 @@ fn placement_error(outline: &Path, linear: Transform, origin: Point, shape: &Sha
             Segment::Close => {}
         }
     }
-    let full = shape.boundaries();
-    let body = match &shape.body {
-        Body::Glyph(body)
-            if body.geometry == GlyphGeometry::Relative && !shape.resolved.is_empty() =>
-        {
-            // Only the replaced row uses the canonical polygon's inputs
-            // and resolved sides. Every other row visits the relative body.
-            body.edges.relative().map_or(full, |relative| {
-                relative.lines.len().saturating_add(relative.curves.len())
-            })
-        }
-        _ => full,
-    };
-    let error = |boundaries| {
-        let pieces =
-            f64::from(u32::try_from(outline.segments().len().max(boundaries)).unwrap_or(u32::MAX));
-        384.0 * f64::EPSILON * magnitude * pieces
-    };
-    (error(body), error(full))
+    let pieces = f64::from(
+        u32::try_from(outline.segments().len().max(shape.boundaries())).unwrap_or(u32::MAX),
+    );
+    384.0 * f64::EPSILON * magnitude * pieces
 }
 
 fn ambiguous(
     shape: &Shape,
-    (error, resolved_error): (f64, Option<f64>),
+    error: f64,
     (work, bytes): (&mut Meter, &mut Meter),
 ) -> Result<Vec<Pixel>> {
     let width = match &shape.body {
@@ -250,21 +233,17 @@ fn ambiguous(
     work.charge(shape.work())?;
     let mut pending = Vec::new();
     let mut failure = None;
-    let mut row = None;
-    let mut row_error = error;
     raster::inspect(shape, &mut cells, |y, x0, x1, area, arithmetic| {
-        if let Some(resolved_error) = resolved_error
-            && row != Some(y)
+        let error = outward(error + arithmetic);
+        // Signed winding can exceed one in the canonical point cell.
+        // Clamp the certificate center before adding uncertainty, so a
+        // saturated raw area cannot hide an original-control error.
+        let center = area.clamp(0.0, 1.0);
+        if failure.is_some()
+            || (area.is_finite()
+                && error.is_finite()
+                && quantize_unit(center - error) == quantize_unit(center + error))
         {
-            row_error = if shape.resolved.contains(y) {
-                resolved_error
-            } else {
-                error
-            };
-            row = Some(y);
-        }
-        let error = outward(row_error + arithmetic);
-        if failure.is_some() || quantize_unit(area - error) == quantize_unit(area + error) {
             return;
         }
         let result = (|| {
@@ -681,16 +660,20 @@ mod tests {
                 let shape = super::super::placed(&edges, origin, &options)
                     .unwrap()
                     .unwrap();
-                assert!(shape.resolved.contains(4));
-                let (ordinary, resolved) =
-                    placement_error(&path, Transform::IDENTITY, origin, &shape);
-                assert!(resolved > ordinary * 8.0);
-                // Preserve the canonical row's previous allowance exactly.
-                let previous = 384.0
+                assert!(shape.resolved.is_empty());
+                let relative = edges.relative().unwrap();
+                assert_eq!(
+                    shape.boundaries(),
+                    relative.lines.len() + relative.curves.len() + 2
+                );
+                let ordinary = placement_error(&path, Transform::IDENTITY, origin, &shape);
+                let expected = 384.0
                     * f64::EPSILON
                     * (7.0 + origin.y)
-                    * f64::from(u32::try_from(shape.boundaries()).unwrap());
-                assert_eq!(resolved.to_bits(), previous.to_bits());
+                    * f64::from(
+                        u32::try_from(path.segments().len().max(shape.boundaries())).unwrap(),
+                    );
+                assert_eq!(ordinary.to_bits(), expected.to_bits());
                 // The original cubic has x=6t and y=12t(1-t). Over x=2..3,
                 // its mean height is26/9, so the covered part of row3 is
                 // 4-origin.y-26/9. This evaluation avoids the raster kernel.
@@ -712,6 +695,67 @@ mod tests {
                 assert_eq!(coverage[3 * 8 + 2], 127);
                 assert_eq!(coverage[4 * 8 + 2], if reversed { 0 } else { 255 });
             }
+        }
+    }
+
+    #[test]
+    fn saturated_winding_keeps_original_control_and_nonfinite_uncertainty() {
+        let limits = Limits::default();
+        let mut path = PathBuilder::new();
+        path.move_to(Point::default());
+        path.cubic_to(
+            Point::new(2.0, 4.0),
+            Point::new(4.0, 4.0),
+            Point::new(6.0, 0.0),
+        )
+        .unwrap();
+        path.line_to(Point::new(6.0, 7.0)).unwrap();
+        path.line_to(Point::new(0.0, 7.0)).unwrap();
+        path.close();
+        path.move_to(Point::new(2.25, 4.25));
+        path.close();
+        let edges = std::sync::Arc::new(
+            GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
+        );
+        let options = Prep {
+            area: Area {
+                region: DeviceRect {
+                    x0: 0,
+                    y0: 0,
+                    x1: 8,
+                    y1: 8,
+                },
+                band_height: 3,
+            },
+            limits: &limits,
+            clip: None,
+        };
+        let shape = super::super::placed(&edges, Point::default(), &options)
+            .unwrap()
+            .unwrap();
+        let mut cells = Cells::new(8, &mut crate::testing::bytes()).unwrap();
+        let mut found = false;
+        raster::inspect(&shape, &mut cells, |y, x0, x1, area, _| {
+            if y == 4 && x0 <= 2 && x1 > 2 {
+                found = true;
+                assert!(area > 1.5);
+            }
+        })
+        .unwrap();
+        assert!(found);
+        for uncertainty in [1.0 / 255.0, f64::NAN, f64::INFINITY] {
+            let mut work = Meter::new(limits.raster_work, RASTER_WORK);
+            let mut bytes = crate::testing::bytes();
+            let pending = ambiguous(&shape, uncertainty, (&mut work, &mut bytes)).unwrap();
+            let pixel = *pending.iter().find(|p| p.x == 2 && p.y == 4).unwrap();
+            assert_eq!(pixel.byte, 255);
+            let source = Source::of(&edges, Point::default(), &mut work)
+                .unwrap()
+                .unwrap();
+            assert_eq!(
+                true_byte(source, pixel, &options, (&mut work, &mut bytes)).unwrap(),
+                255
+            );
         }
     }
 
@@ -830,7 +874,7 @@ mod tests {
         let mut work = Meter::new(limits.raster_work, RASTER_WORK);
         let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
         assert_eq!(
-            ambiguous(&prepared, (0.0, None), (&mut work, &mut bytes))
+            ambiguous(&prepared, 0.0, (&mut work, &mut bytes))
                 .unwrap()
                 .len(),
             1,
@@ -917,7 +961,7 @@ mod tests {
             RENDER_BYTES,
         );
         tight.charge(bytes.used()).unwrap();
-        let pending = ambiguous(&shape, (AREA, None), (&mut work, &mut tight)).unwrap();
+        let pending = ambiguous(&shape, AREA, (&mut work, &mut tight)).unwrap();
         assert_eq!(pending.len(), 1);
         assert_eq!(tight.used(), shape.retained_bytes() + size_of::<Pixel>());
     }

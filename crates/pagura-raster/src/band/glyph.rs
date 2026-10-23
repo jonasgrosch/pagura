@@ -28,7 +28,7 @@ mod tests;
 mod point;
 mod polygon;
 mod rounding;
-pub(crate) use polygon::PolygonLines;
+pub(crate) use polygon::{PolygonLines, point_sides};
 
 /// A glyph outline prepared once for one linear map (outline space to device
 /// space without translation): its device-space edges relative to the glyph

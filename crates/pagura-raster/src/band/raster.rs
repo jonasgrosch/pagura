@@ -5,7 +5,7 @@ use super::clip::{Rows, Segment};
 use super::coverage::RowOut;
 use super::curve::Mono;
 use super::edges::{Line, StripList};
-use super::glyph::{Kind, PolygonLines};
+use super::glyph::{Kind, PolygonLines, point_sides};
 use super::row::Sink;
 use super::shape::{Body, GlyphBody, Resolved, Shape};
 use super::{Area, BandCoverage, ClipShape, DeviceRect, MarkCoverage};
@@ -207,7 +207,10 @@ impl BandRasterizer {
         match &shape.body {
             Body::Edges(edges) => {
                 let items = Items {
-                    lines: Lines::Slice(&edges.lines),
+                    lines: Lines::Slice {
+                        lines: &edges.lines,
+                        point: None,
+                    },
                     curves: &edges.curves,
                     origin: None,
                     strips: edges.strips.as_ref(),
@@ -405,7 +408,10 @@ impl BandRasterizer {
         let scan = super::clip::scan_columns(&sides, bounds.x1 as usize);
         let none = Resolved::default();
         let items = Items {
-            lines: Lines::Slice(&sides),
+            lines: Lines::Slice {
+                lines: &sides,
+                point: None,
+            },
             curves: &[],
             origin: None,
             strips: None,
@@ -416,11 +422,14 @@ impl BandRasterizer {
     }
 }
 
-/// A mark's straight sides, either owned by the placement or borrowed from
-/// its canonical polygon. Strip indexes keep either representation's source
-/// order, with keys that recover the same placed side.
+/// A mark's straight sides, owned by the placement or borrowed from its
+/// source, with an optional canonical point contour. Strip indexes keep a
+/// polygon's source order, with keys that recover the same placed side.
 enum Lines<'a> {
-    Slice(&'a [Line]),
+    Slice {
+        lines: &'a [Line],
+        point: Option<&'a GlyphBody>,
+    },
     Polygon(PolygonLines<'a>),
 }
 
@@ -442,7 +451,20 @@ impl Items<'_> {
                 let Some(relative) = glyph.edges.relative() else {
                     unreachable!("a relative glyph source");
                 };
-                (Lines::Slice(&relative.lines), relative.curves.as_slice())
+                let lines = match &glyph.edges.kind {
+                    Kind::Polygon { .. } => {
+                        debug_assert!(glyph.strips.is_none());
+                        Lines::Slice {
+                            lines: &relative.lines,
+                            point: Some(glyph),
+                        }
+                    }
+                    Kind::Curve { .. } => Lines::Slice {
+                        lines: &relative.lines,
+                        point: None,
+                    },
+                };
+                (lines, relative.curves.as_slice())
             }
             super::shape::GlyphGeometry::Polygon => {
                 let Kind::Polygon {
@@ -501,14 +523,14 @@ impl Items<'_> {
         work
     }
 
-    /// Adds every item to the open window, lines then curves. Returns the
-    /// work spent, one unit per item visited.
+    /// Adds every item to the open window: lines, curves, then any canonical
+    /// point contour. Returns the work spent, one unit per item visited.
     fn all<const MEASURE: bool>(&self, cells: &mut Cells) -> usize {
         let origin = self.origin.unwrap_or_default();
         let at = |p: Point| Point::new(p.x + origin.x, p.y + origin.y);
         let mut work = self.curves.len();
         match &self.lines {
-            Lines::Slice(lines) => {
+            Lines::Slice { lines, .. } => {
                 work += lines.len();
                 for l in *lines {
                     work += Self::line::<MEASURE>(
@@ -546,6 +568,35 @@ impl Items<'_> {
                 };
             }
         }
+        if let Lines::Slice {
+            point: Some(glyph), ..
+        } = &self.lines
+        {
+            work += 2;
+            let Kind::Polygon { points, .. } = &glyph.edges.kind else {
+                unreachable!("a canonical point with a certified body");
+            };
+            let [point] = points.as_slice() else {
+                unreachable!("one canonical point with a certified body");
+            };
+            let [right, left] = point_sides(*point + glyph.origin);
+            let rows = cells.rows();
+            let scan = f64::from(u32::try_from(glyph.scan.0).unwrap_or(u32::MAX));
+            // A whole cell outside the global scan contributes no carry.
+            // Within that scan, keep both sides even left of the output
+            // region: its prefix arithmetic is shared with a full render.
+            if right.a.y >= f64::from(rows.start)
+                && right.a.y < f64::from(rows.end)
+                && right.a.x > scan
+                && cells.reaches(left.a.x)
+            {
+                for line in [right, left] {
+                    // These are absolute canonical endpoints. Adding an
+                    // origin or a default zero again changes their bits.
+                    work += Self::line::<MEASURE>(cells, line);
+                }
+            }
+        }
         work
     }
 
@@ -565,7 +616,10 @@ impl Items<'_> {
     #[inline]
     fn add<const MEASURE: bool>(&self, cells: &mut Cells, item: usize) -> usize {
         let lines = match &self.lines {
-            Lines::Slice(lines) => lines,
+            Lines::Slice { lines, point } => {
+                debug_assert!(point.is_none());
+                lines
+            }
             Lines::Polygon(view) => {
                 return view
                     .line(item)
@@ -623,7 +677,10 @@ pub(crate) fn inspect(
     let (items, scan) = match &shape.body {
         Body::Edges(edges) => (
             Items {
-                lines: Lines::Slice(&edges.lines),
+                lines: Lines::Slice {
+                    lines: &edges.lines,
+                    point: None,
+                },
                 curves: &edges.curves,
                 origin: None,
                 strips: edges.strips.as_ref(),
@@ -833,6 +890,16 @@ fn masked_ranges(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_point_source_does_not_grow_the_item_view() {
+        #[expect(dead_code, reason = "only the prior view layout is compared")]
+        enum OldLines<'a> {
+            Slice(&'a [Line]),
+            Polygon(PolygonLines<'a>),
+        }
+        assert_eq!(size_of::<Lines<'_>>(), size_of::<OldLines<'_>>());
+    }
 
     #[test]
     fn inspection_and_emission_advance_each_mask_segment_once() {

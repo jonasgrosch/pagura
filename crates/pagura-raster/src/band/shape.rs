@@ -49,9 +49,6 @@ pub(crate) struct Resolved {
 }
 
 impl Resolved {
-    pub(crate) fn contains(&self, y: u32) -> bool {
-        self.rows.binary_search_by_key(&y, |&(row, _)| row).is_ok()
-    }
     /// Whether no row is resolved.
     pub(crate) fn is_empty(&self) -> bool {
         self.rows.is_empty()
@@ -128,7 +125,7 @@ pub(crate) struct GlyphBody {
     pub(crate) strips: Option<StripList>,
     pub(crate) geometry: GlyphGeometry,
     /// Boundary count for placement-error certification, before resolved
-    /// sides. Includes canonical polygon inputs when they resolved a row.
+    /// sides, including any canonical point contour.
     boundaries: usize,
 }
 
@@ -583,7 +580,7 @@ impl Shape {
 
     /// A placement of a certified glyph within `frame`, which keeps every
     /// pixel the glyph can touch: its relative edges and the origin, with
-    /// no geometry work and no allocation.
+    /// no owned geometry and no allocation.
     pub(crate) fn translated(
         edges: &std::sync::Arc<super::GlyphEdges>,
         relative: &super::glyph::Relative,
@@ -601,10 +598,36 @@ impl Shape {
         let words = columns / 64 + 2;
         // Each window of a band visits every item once, at most as often as
         // the placement has rows.
-        let items = relative.lines.len() + relative.curves.len();
+        let point = match &edges.kind {
+            super::glyph::Kind::Polygon { points, .. } => {
+                let [point] = points.as_slice() else {
+                    unreachable!("one canonical point with a certified body");
+                };
+                Some(*point + origin)
+            }
+            super::glyph::Kind::Curve { .. } => None,
+        };
+        let items = relative
+            .lines
+            .len()
+            .saturating_add(relative.curves.len())
+            .saturating_add(usize::from(point.is_some()).saturating_mul(2));
         let rows = bounds.height() as usize;
+        // Each point side visits one row. Use the same primitive/emission
+        // bound as the relative body's edges; item visits include both
+        // sides in every window, even when the point is outside it.
+        let point_work = point.map_or(0, |point| {
+            super::glyph::point_sides(point)
+                .into_iter()
+                .filter_map(|line| {
+                    line_rows(&line, bounds, options.area.region.x1)
+                        .map(|rows| line_work(line, rows, width).saturating_mul(4))
+                })
+                .fold(0_usize, usize::saturating_add)
+        });
         let work = relative
             .work
+            .saturating_add(point_work)
             .saturating_add(rows.saturating_mul(words + columns + 4))
             .saturating_add(rows.saturating_mul(items));
         if work > options.limits.raster_work {
@@ -774,47 +797,6 @@ impl Shape {
     /// Adds `units` to the work bound.
     pub(crate) fn add_work(&mut self, units: usize) {
         self.work = self.work.saturating_add(units);
-    }
-
-    /// Resolves one row directly from the stored canonical polygon, without
-    /// building a whole-placement line vector or strip index.
-    pub(crate) fn point_row(
-        &mut self,
-        view: super::glyph::PolygonLines<'_>,
-        y: u32,
-        options: &Prep<'_>,
-        bytes: &mut Meter,
-        work: &mut Meter,
-    ) -> Result<()> {
-        debug_assert!(self.resolved.is_empty());
-        let before = bytes.used();
-        let result = resolve_one(view, y, work, bytes);
-        let retained = result
-            .as_ref()
-            .map_or(0, |(resolved, _)| resolved.retained_bytes());
-        // The row builder has dropped every temporary owner.
-        bytes.refund(bytes.used().saturating_sub(before + retained));
-        let (resolved, boundaries) = result?;
-        let cells = cell_work(&[], &[], &resolved, self.bounds, options.area.region.x1);
-        // The original body's work remains a conservative reservation even
-        // for the replaced row. Add its absolute sides and mask traversal.
-        let extra = cells
-            .saturating_mul(4)
-            .saturating_add(resolved.len())
-            .saturating_add(self.bounds.height() as usize);
-        let work = self.work.saturating_add(extra);
-        if work > options.limits.raster_work {
-            drop(resolved);
-            bytes.refund(retained);
-            return Err(Error::limit(RASTER_WORK));
-        }
-        self.work = work;
-        self.retained = self.retained.saturating_add(retained);
-        self.resolved = resolved;
-        if let Body::Glyph(body) = &mut self.body {
-            body.boundaries = body.boundaries.max(boundaries);
-        }
-        Ok(())
     }
 }
 
@@ -1039,8 +1021,8 @@ fn resolve(
     Ok(resolved)
 }
 
-/// Both indexed shape resolution and a stored glyph's single row use the
-/// same winding resolver and retained-row assembly.
+/// Shared winding resolution and retained-row assembly for polygon and
+/// joint clip preparation.
 fn resolve_pieces(
     pieces: &[Piece],
     rules: &[FillRule],
@@ -1052,37 +1034,6 @@ fn resolve_pieces(
     sides.clear();
     resolver.row(pieces, rules, f64::from(y), (sides, Meters { work, bytes }))?;
     resolved.push(y, sides, bytes)
-}
-
-fn resolve_one(
-    view: super::glyph::PolygonLines<'_>,
-    y: u32,
-    work: &mut Meter,
-    bytes: &mut Meter,
-) -> Result<(Resolved, usize)> {
-    work.charge(view.raw_count().unwrap_or(usize::MAX))?;
-    let mut pieces = Vec::new();
-    let mut boundaries = 0_usize;
-    for (_, line) in view.indexed() {
-        if !line.is_horizontal() {
-            boundaries = boundaries.saturating_add(1);
-        }
-        if let Some(piece) = Piece::new(line, f64::from(y), 0) {
-            room(&mut pieces, 1, bytes)?;
-            pieces.push(piece);
-        }
-    }
-    let mut resolver = Resolver::default();
-    let mut sides = Vec::new();
-    let mut resolved = Resolved::default();
-    resolve_pieces(
-        &pieces,
-        &[FillRule::NonZero],
-        y,
-        (&mut resolver, &mut sides, &mut resolved),
-        Meters { work, bytes },
-    )?;
-    Ok((resolved, boundaries))
 }
 
 #[cfg(test)]

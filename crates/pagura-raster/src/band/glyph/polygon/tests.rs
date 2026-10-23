@@ -48,6 +48,27 @@ fn keyed_sides_keep_contour_closing_and_final_point_order() {
 }
 
 #[test]
+fn point_sides_keep_the_final_floor_and_signed_zero_bits() {
+    for (point, expected) in [
+        (Point::new(-0.0, -0.0), [1.0, -0.0, -0.0, 1.0]),
+        (Point::new(-0.25, 3.75), [0.0, 3.0, -1.0, 4.0]),
+        (Point::new(1e12, 1e12), [1e12 + 1.0, 1e12, 1e12, 1e12 + 1.0]),
+    ] {
+        let [right, left] = point_sides(point);
+        let [right_x, top, left_x, bottom] = expected;
+        for (actual, expected) in [
+            (right.a, Point::new(right_x, top)),
+            (right.b, Point::new(right_x, bottom)),
+            (left.a, Point::new(left_x, bottom)),
+            (left.b, Point::new(left_x, top)),
+        ] {
+            assert_eq!(actual.x.to_bits(), expected.x.to_bits());
+            assert_eq!(actual.y.to_bits(), expected.y.to_bits());
+        }
+    }
+}
+
+#[test]
 fn source_keys_preserve_filtered_strip_order_and_capacity() {
     let polygon = Polygon {
         points: vec![

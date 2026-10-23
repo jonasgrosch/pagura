@@ -72,7 +72,7 @@ fn canonical(edges: &Arc<GlyphEdges>, origin: Point, prep: &Prep<'_>) -> Shape {
 }
 
 #[test]
-fn point_row_preserves_winding_and_floor_origin_across_bands() {
+fn point_cell_preserves_winding_and_floor_origin_across_bands() {
     let limits = Limits::default();
     for reversed in [false, true] {
         for point in [
@@ -110,30 +110,13 @@ fn point_row_preserves_winding_and_floor_origin_across_bands() {
                         panic!("relative body");
                     };
                     assert_eq!(body.geometry, GlyphGeometry::Relative);
-                    let row = (point.y + origin.y).floor();
-                    if (0.0..12.0).contains(&row) && point.x + origin.x >= 0.0 {
-                        let row = (0_u32..12).find(|&y| f64::from(y) == row).unwrap();
-                        assert!(shape.resolved.contains(row));
-                        let Kind::Polygon {
-                            polygon, points, ..
-                        } = &edges.kind
-                        else {
-                            panic!("canonical polygon retained");
-                        };
-                        let canonical_inputs = PolygonLines::new(polygon, points, origin)
-                            .indexed()
-                            .filter(|(_, line)| !line.is_horizontal())
-                            .count();
-                        let relative = edges.relative().unwrap();
-                        let relative_inputs = relative.lines.len() + relative.curves.len();
-                        // Even sides outside this row contributed to the
-                        // canonical preparation's placement-error bound.
-                        let resolved_sides = shape.resolved.lines(&(0..12)).len();
-                        assert_eq!(
-                            shape.boundaries(),
-                            canonical_inputs.max(relative_inputs) + resolved_sides
-                        );
-                    }
+                    let relative = edges.relative().unwrap();
+                    assert!(shape.resolved.is_empty());
+                    assert_eq!(
+                        shape.boundaries(),
+                        relative.lines.len() + relative.curves.len() + 2
+                    );
+                    assert_eq!(shape.retained_bytes(), size_of::<Shape>());
                 }
             }
         }
@@ -191,56 +174,6 @@ fn fixed_constructor_overlap_refunds_declined_projection_and_keeps_layout() {
         size_of::<crate::band::shape::GlyphBody>() <= size_of::<crate::band::shape::EdgeBody>()
     );
     assert_eq!(size_of::<curve::Spline>(), 2 * size_of::<Vec<usize>>());
-}
-
-#[test]
-fn an_empty_resolved_row_still_masks_the_nonpoint_body() {
-    let limits = Limits::default();
-    let mut path = PathBuilder::new();
-    path.move_to(Point::default());
-    path.cubic_to(
-        Point::new(2.0, 4.0),
-        Point::new(4.0, 4.0),
-        Point::new(6.0, 0.0),
-    )
-    .unwrap();
-    path.line_to(Point::new(6.0, 7.0)).unwrap();
-    path.line_to(Point::new(0.0, 7.0)).unwrap();
-    path.close();
-    let edges = Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
-    let options = options(&limits, 3);
-    let prep = Prep::new(&options, None);
-    let mut shape = placed(&edges, Point::default(), &prep).unwrap().unwrap();
-    let mut bytes = crate::testing::bytes();
-    bytes.charge(shape.retained_bytes()).unwrap();
-    let mut polygon = crate::band::edges::Polygon::default();
-    let mut storage = crate::testing::bytes();
-    polygon.begin(&limits, 4, &mut storage).unwrap();
-    polygon.points.extend([
-        Point::new(0.0, 0.0),
-        Point::new(0.0, 1.0),
-        Point::new(1.0, 1.0),
-        Point::new(1.0, 0.0),
-    ]);
-    polygon.end();
-    // Negative unit-square body and positive canonical point cell cancel.
-    let points = [Point::new(0.25, 0.25)];
-    let mut work = Meter::new(limits.raster_work, RASTER_WORK);
-    shape
-        .point_row(
-            PolygonLines::new(&polygon, &points, Point::default()),
-            0,
-            &prep,
-            &mut bytes,
-            &mut work,
-        )
-        .unwrap();
-    assert!(shape.resolved.contains(0));
-    assert_eq!(shape.resolved.lines(&(0..1)), []);
-    assert_eq!(bytes.used(), shape.retained_bytes());
-    let (actual, spent) = crate::testing::raster(&options.area, Some(&shape), None);
-    assert!(actual[..12].iter().all(|&c| c == 0));
-    assert!(spent <= shape.work());
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -415,7 +348,7 @@ fn old_geometry_and_shape_layouts_are_unchanged() {
 }
 
 #[test]
-fn point_row_refuses_before_scratch_and_refunds_failed_temporary_owners() {
+fn point_cell_checks_the_complete_work_and_fixed_placement_bytes() {
     let limits = Limits::default();
     let edges = Arc::new(
         GlyphEdges::new(
@@ -425,53 +358,45 @@ fn point_row_refuses_before_scratch_and_refunds_failed_temporary_owners() {
         )
         .unwrap(),
     );
-    let Kind::Polygon {
-        polygon, points, ..
-    } = &edges.kind
-    else {
-        panic!("polygon");
+    let setup = options(&limits, 3);
+    let shape = placed(&edges, Point::default(), &Prep::new(&setup, None))
+        .unwrap()
+        .unwrap();
+    let needed_work = shape.work();
+    let needed_bytes = size_of::<Shape>();
+    assert_eq!(shape.retained_bytes(), needed_bytes);
+    assert!(shape.resolved.is_empty());
+    let limits = Limits {
+        raster_work: needed_work,
+        render_bytes: needed_bytes,
+        ..limits
     };
-    let relative = edges.relative().unwrap();
-    let options = options(&limits, 3);
-    let prep = Prep::new(&options, None);
-    let frame = Frame::new(&prep).unwrap();
-    let origin = Point::default();
-    let hull = relative.placed_hull(origin, Some(points[0])).unwrap();
-    for no_work in [false, true] {
-        let mut shape = Shape::translated(&edges, relative, origin, hull, &frame, &prep)
-            .unwrap()
-            .unwrap();
-        let before = (shape.work(), shape.retained_bytes());
-        let mut bytes = Meter::new(
-            if no_work {
-                limits.render_bytes
-            } else {
-                before.1
-            },
-            crate::band::RENDER_BYTES,
-        );
-        bytes.charge(before.1).unwrap();
-        let mut work = Meter::new(if no_work { 0 } else { limits.raster_work }, RASTER_WORK);
-        let error = shape
-            .point_row(
-                PolygonLines::new(polygon, points, origin),
-                1,
-                &prep,
-                &mut bytes,
-                &mut work,
-            )
-            .unwrap_err();
+    let setup = options(&limits, 3);
+    let same = placed(&edges, Point::default(), &Prep::new(&setup, None))
+        .unwrap()
+        .unwrap();
+    let (_, spent) = crate::testing::raster(&setup.area, Some(&same), None);
+    assert!(spent <= needed_work);
+    for limits in [
+        Limits {
+            raster_work: needed_work - 1,
+            ..limits
+        },
+        Limits {
+            render_bytes: needed_bytes - 1,
+            ..limits
+        },
+    ] {
+        let setup = options(&limits, 3);
+        let error = placed(&edges, Point::default(), &Prep::new(&setup, None)).unwrap_err();
         assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
         assert_eq!(
             error.message,
-            if no_work {
+            if limits.raster_work < needed_work {
                 RASTER_WORK
             } else {
                 crate::band::RENDER_BYTES
             }
         );
-        assert!(shape.resolved.is_empty());
-        assert_eq!((shape.work(), shape.retained_bytes()), before);
-        assert_eq!(bytes.used(), before.1);
     }
 }

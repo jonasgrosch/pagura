@@ -1,6 +1,6 @@
-//! Certified nonpoint geometry with the canonical point row resolved once.
+//! A certified nonpoint body with its canonical whole-pixel point contour.
 
-use super::{GlyphEdges, Kind, PolygonLines, Relative, curve, spline_certified};
+use super::{GlyphEdges, Kind, Relative, curve, spline_certified};
 use crate::band::shape::{Frame, Shape};
 use crate::band::{Prep, RASTER_WORK};
 use crate::flatten::bounded;
@@ -108,33 +108,14 @@ pub(super) fn placed(
     }
     let point = point + origin;
     bounded(point)?;
-    let Some(mut shape) = Shape::translated(edges, relative, origin, hull, frame, options)? else {
+    let Some(shape) = Shape::translated(edges, relative, origin, hull, frame, options)? else {
         return Ok(None);
     };
     bytes.charge(shape.retained_bytes())?;
-    let bounds = shape.bounds();
-    let (x, y) = (point.x.floor(), point.y.floor());
-    if y >= f64::from(bounds.y0)
-        && y < f64::from(bounds.y1)
-        && x < f64::from(bounds.x1)
-        && x + 1.0 > f64::from(bounds.x0)
-    {
-        #[expect(
-            clippy::cast_possible_truncation,
-            clippy::cast_sign_loss,
-            reason = "the row lies in the u32 device bounds above"
-        )]
-        let row = y as u32;
-        shape.point_row(
-            PolygonLines::new(polygon, points, origin),
-            row,
-            options,
-            bytes,
-            &mut work,
-        )?;
-    }
-    // Keep only the ready body and its row; there is no placement geometry
-    // outside those owners.
+    // The body's winding is zero or one common sign. In the integer point
+    // pixel, equal signs saturate to full coverage; opposite signs cancel
+    // exactly where the body covers it. Ordinary signed-area accumulation
+    // therefore handles both orientations without a resolved row.
     debug_assert_eq!(bytes.used(), shape.retained_bytes());
     Ok(Some(shape))
 }

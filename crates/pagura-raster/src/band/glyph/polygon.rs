@@ -3,6 +3,13 @@
 use super::super::edges::{Line, Polygon};
 use crate::Point;
 
+/// The canonical point cell's vertical sides, already placed and in
+/// contour order. No origin or default zero is added to these endpoints.
+pub(crate) fn point_sides(point: Point) -> [Line; 2] {
+    let [a, b, c, d] = Polygon::cell_corners(point);
+    [Line { a: b, b: c }, Line { a: d, b: a }]
+}
+
 /// A borrowed view of the stored polygon, with canonical placed point cells.
 #[derive(Clone, Copy)]
 pub(crate) struct PolygonLines<'a> {
@@ -46,12 +53,9 @@ impl<'a> PolygonLines<'a> {
     }
 
     fn point_side(self, point: usize, side: usize) -> Option<Line> {
-        let corners = Polygon::cell_corners(self.at(*self.points.get(point)?));
-        let i = side * 2 + 1;
-        Some(Line {
-            a: corners[i],
-            b: corners[(i + 1) % corners.len()],
-        })
+        point_sides(self.at(*self.points.get(point)?))
+            .get(side)
+            .copied()
     }
 
     pub(crate) fn line(self, key: usize) -> Option<Line> {
