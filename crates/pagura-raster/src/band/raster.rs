@@ -538,11 +538,7 @@ impl Items<'_> {
                 // Count every visited side, including those whose placed
                 // endpoints collapse to a horizontal line.
                 work = work.saturating_add(view.raw_count().unwrap_or(usize::MAX));
-                view.for_each_unindexed(|line| {
-                    if !line.is_horizontal() {
-                        work += Self::line::<MEASURE>(cells, line);
-                    }
-                });
+                work += view.accumulate_unindexed::<MEASURE>(cells);
             }
         }
         for m in self.curves {

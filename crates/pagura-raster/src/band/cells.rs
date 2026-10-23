@@ -270,6 +270,92 @@ impl Cells {
         self.rounding.bound(self.width)
     }
 
+    /// Adds a canonical contour in source order, moving each vertex once.
+    /// Consecutive whole-row sides keep one row view; all other sides use
+    /// the ordinary line kernel. Closing sides use the first placed bits.
+    #[expect(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss,
+        reason = "window coordinates are bounded; a checked local row is below WINDOW"
+    )]
+    pub(super) fn contour<const MEASURE: bool>(
+        &mut self,
+        points: &[Point],
+        origin: Point,
+    ) -> usize {
+        let Some(&head) = points.first() else {
+            return 0;
+        };
+        // Match canonical placement followed by the all-items default
+        // origin addition, including signed zero. Floors are call-local.
+        let at = |point: Point| {
+            let point = (point + origin) + Point::default();
+            (point, point.y.floor())
+        };
+        let first = at(head);
+        let y0 = f64::from(self.y0);
+        let rows = f64::from(u32::try_from(self.rows).unwrap_or(u32::MAX));
+        let skip = self.skip;
+        let right = self.base as f64 + self.width as f64;
+        let row_of = |(a, ay): (Point, f64), (b, by): (Point, f64)| {
+            if a.y == b.y {
+                return None;
+            }
+            let (top, bottom) = if a.y < b.y { (ay, b.y) } else { (by, a.y) };
+            let local = top - y0;
+            if !(0.0..rows).contains(&local) || bottom > top + 1.0 {
+                return None;
+            }
+            let row = local as usize;
+            (skip & (1_u32 << row) == 0).then_some(row)
+        };
+        let mut index = 1;
+        let mut a = first;
+        let mut b = points.get(index).copied().map_or(first, at);
+        let mut visited = 0;
+        loop {
+            if let Some(r) = row_of(a, b)
+                && a.0.x.min(b.0.x) < right
+            {
+                // This is the same top/lo/hi/height expression as the
+                // ordinary kernel, rather than a translated row fraction.
+                let top = y0 + f64::from(u32::try_from(r).unwrap_or(u32::MAX));
+                let mut row = self.row::<MEASURE>(r);
+                loop {
+                    let (upper, lower, direction) = if a.0.y < b.0.y {
+                        (a.0, b.0, 1.0)
+                    } else {
+                        (b.0, a.0, -1.0)
+                    };
+                    let lo = upper.y.max(top);
+                    let hi = lower.y.min(top + 1.0);
+                    visited += 1 + row.piece(upper.x, lower.x, (hi - lo) * direction);
+                    if index == points.len() {
+                        return visited;
+                    }
+                    a = b;
+                    index += 1;
+                    b = points.get(index).copied().map_or(first, at);
+                    let reaches = a.0.x.min(b.0.x) < right;
+                    if row_of(a, b) != Some(r) || !reaches {
+                        break;
+                    }
+                }
+            } else {
+                if a.0.y != b.0.y && a.0.x.min(b.0.x) < right {
+                    visited += self.line_with::<MEASURE>(Line { a: a.0, b: b.0 });
+                }
+                if index == points.len() {
+                    return visited;
+                }
+                a = b;
+                index += 1;
+                b = points.get(index).copied().map_or(first, at);
+            }
+        }
+    }
+
     #[inline]
     fn line_with<const MEASURE: bool>(&mut self, line: Line) -> usize {
         let Line { a, b } = line;
@@ -604,6 +690,8 @@ impl<const MEASURE: bool> Accumulate for Row<'_, MEASURE> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    mod contours;
 
     /// Merges runs of equal value.
     struct Collect(Vec<(usize, usize, u8)>);

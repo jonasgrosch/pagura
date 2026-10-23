@@ -202,3 +202,48 @@ fn unindexed_sides_match_the_keyed_coordinate_bits_and_order() {
     PolygonLines::new(&empty, &[], Point::default()).for_each_unindexed(|_| visits += 1);
     assert_eq!(visits, 0);
 }
+
+#[test]
+fn bulk_contours_keep_multiple_contours_and_canonical_point_cells() {
+    let polygon = Polygon {
+        points: vec![
+            Point::new(1.25, 2.25),
+            Point::new(1.75, 2.75),
+            Point::new(2.5, 2.5),
+            Point::new(-2.0, 1.0),
+            Point::new(4.0, 5.0),
+            Point::new(6.0, 1.0),
+        ],
+        starts: vec![0, 3],
+        points_cells: false,
+    };
+    let points = [
+        Point::new(-0.0, -0.0),
+        Point::new(1.25, 2.25),
+        Point::new(1.25, 2.25),
+    ];
+    for origin in [Point::new(-0.0, -0.0), Point::new(0.25, 0.125)] {
+        let view = PolygonLines::new(&polygon, &points, origin);
+        let new = || Cells::new(16, &mut Meter::new(usize::MAX, "bytes")).unwrap();
+        let (mut expected, mut actual) = (new(), new());
+        assert!(expected.open((1, 8), 0..8));
+        assert!(actual.open((1, 8), 0..8));
+        let mut work = 0;
+        view.for_each_unindexed(|line| {
+            if !line.is_horizontal() && expected.reaches(line.a.x.min(line.b.x)) {
+                work += expected.line_measured(line);
+            }
+        });
+        assert_eq!(view.accumulate_unindexed::<true>(&mut actual), work);
+        assert_eq!(
+            actual.arithmetic_error().to_bits(),
+            expected.arithmetic_error().to_bits()
+        );
+        for row in 0..8 {
+            let (mut a, mut b) = (Vec::new(), Vec::new());
+            actual.inspect(row, |x0, x1, value| a.push((x0, x1, value.to_bits())));
+            expected.inspect(row, |x0, x1, value| b.push((x0, x1, value.to_bits())));
+            assert_eq!(a, b);
+        }
+    }
+}

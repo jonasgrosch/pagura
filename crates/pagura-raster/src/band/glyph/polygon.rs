@@ -2,7 +2,7 @@
 
 use super::super::edges::{Line, Polygon};
 use crate::Point;
-use crate::band::cells::{WIDE, WINDOW};
+use crate::band::cells::{Cells, WIDE, WINDOW};
 use crate::flatten::{MAX_COORDINATE, bounded};
 use pagura_core::{Result, convert::u32_to_usize};
 use std::num::NonZeroU32;
@@ -166,9 +166,35 @@ impl<'a> PolygonLines<'a> {
         }
     }
 
+    /// Adds each unindexed contour through the common bulk cell kernel.
+    /// Canonical point cells retain their original two-side path and order.
+    pub(crate) fn accumulate_unindexed<const MEASURE: bool>(self, cells: &mut Cells) -> usize {
+        let mut work = 0;
+        for contour in self.polygon.contours() {
+            work += cells.contour::<MEASURE>(contour, self.origin);
+        }
+        for &point in self.points {
+            for line in point_sides(self.at(point)) {
+                let line = Line {
+                    a: line.a + Point::default(),
+                    b: line.b + Point::default(),
+                };
+                if !line.is_horizontal() && cells.reaches(line.a.x.min(line.b.x)) {
+                    work += if MEASURE {
+                        cells.line_measured(line)
+                    } else {
+                        cells.line(line)
+                    };
+                }
+            }
+        }
+        work
+    }
+
     /// Visits the unindexed sides directly, translating each contour
     /// vertex once. The default origin addition matches the owned
     /// all-items path, including the bits of signed zero.
+    #[cfg(test)]
     pub(crate) fn for_each_unindexed(self, mut add: impl FnMut(Line)) {
         let at = |point| self.at(point) + Point::default();
         for contour in self.polygon.contours() {
