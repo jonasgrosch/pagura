@@ -3,8 +3,9 @@
 //!
 //! Only the linear map shapes the edges; each placement adds its device
 //! origin to every point without rounding either to a grid. An outline is
-//! integrated as quadratics when its pieces certify winding zero or one
-//! sign everywhere. Uncertified quadratic outlines and placements crossed
+//! integrated as quadratics when its nonpoint pieces certify winding zero
+//! or one sign everywhere. Genuine points keep their placed floor cells.
+//! Uncertified quadratic outlines and placements crossed
 //! by a clip path use the same flattener with a whole-outline area bound;
 //! every quadratic placement certifies its coverage bytes before execution,
 //! refining ambiguous pixels from the original controls. General cubics
@@ -44,8 +45,8 @@ pub struct GlyphEdges {
 
 #[derive(Debug)]
 pub(super) enum Kind {
-    /// A certified spline: its pieces in contour order, for placements a
-    /// clip's rectangle cuts, and the edges a placement translates. The
+    /// A certified nonpoint spline and its geometric points: its pieces
+    /// in contour order and the edges a placement translates. The
     /// outline and map stay for placements a clip path crosses, which take
     /// its polygon.
     Curve {
@@ -134,13 +135,13 @@ impl Relative {
         })
     }
 
-    fn placed_hull(&self, origin: Point, point: Option<Point>) -> Result<[Point; 2]> {
+    fn placed_hull(&self, origin: Point, points: &[Point]) -> Result<[Point; 2]> {
         let [lo, hi] = self.hull;
         let mut lo = lo + origin;
         let mut hi = hi + origin;
         bounded(lo)?;
         bounded(hi)?;
-        if let Some(point) = point {
+        for &point in points {
             let point = point + origin;
             bounded(point)?;
             let [a, _, b, _] = Polygon::cell_corners(point);
@@ -202,7 +203,7 @@ impl GlyphEdges {
         // keeps the point rule.
         let regular = transform.determinant() != 0.0;
         let spline = if regular {
-            curve::spline(outline, transform, limits, bytes)?
+            curve::glyph_spline(outline, transform, limits, bytes)?
         } else {
             None
         };
@@ -224,6 +225,16 @@ impl GlyphEdges {
             drop(spline);
             bytes.refund(released);
         }
+        Self::polygon_geometry(outline, transform, limits, bytes)
+    }
+
+    fn polygon_geometry(
+        outline: &Path,
+        transform: Transform,
+        limits: &Limits,
+        bytes: &mut Meter,
+    ) -> Result<Kind> {
+        let regular = transform.determinant() != 0.0;
         let (polygon, points) = polygon(outline, transform, limits, bytes)?;
         let certified = points.is_empty() && certified(&polygon, 0.0, bytes)?;
         let summary = if certified {
@@ -258,6 +269,26 @@ impl GlyphEdges {
         })
     }
 
+    /// Exercises canonical fallback ownership independently of analytic
+    /// admission, whose supported source grammar may grow.
+    #[cfg(test)]
+    pub(crate) fn polygon_for_test(
+        outline: &Path,
+        linear: [f64; 4],
+        limits: &Limits,
+    ) -> Result<Self> {
+        let [a, b, c, d] = linear;
+        let transform = Transform::new(a, b, c, d, 0.0, 0.0);
+        let mut bytes = Meter::new(limits.decoded_bytes, "glyph geometry byte budget exceeded");
+        bytes.charge_items::<Self>(1)?;
+        let kind = Self::polygon_geometry(outline, transform, limits, &mut bytes)?;
+        Ok(Self {
+            retained: bytes.used(),
+            hull: control_hull(outline, transform),
+            kind,
+        })
+    }
+
     /// The bounds of the outline's points under the linear map, relative to
     /// a placement's origin, `[x0, y0, x1, y1]`: each point mapped once, in
     /// path order. `None` for an outline without points.
@@ -275,6 +306,15 @@ impl GlyphEdges {
         match &self.kind {
             Kind::Curve { relative, .. } => Some(relative),
             Kind::Polygon { relative, .. } => relative.as_deref(),
+        }
+    }
+
+    /// Genuine geometric points in source contour order. Their cells are
+    /// formed only after adding the exact placement origin.
+    pub(crate) fn points(&self) -> &[Point] {
+        match &self.kind {
+            Kind::Curve { spline, .. } => &spline.points,
+            Kind::Polygon { points, .. } => points,
         }
     }
 
@@ -456,6 +496,14 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
             outline,
             linear,
         } => {
+            // Point-bearing outlines previously validated their placed
+            // polygon before an empty clip could cull it. Keep that range
+            // check before the frame's early return.
+            let point_hull = if spline.points.is_empty() {
+                None
+            } else {
+                Some(relative.placed_hull(origin, &spline.points)?)
+            };
             let Some(mut frame) = Frame::new(options) else {
                 return Ok(None);
             };
@@ -464,17 +512,28 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
                 // No edges: nothing to cover.
                 return Ok(None);
             }
-            let hull = relative.placed_hull(origin, None)?;
+            let hull = match point_hull {
+                Some(hull) => hull,
+                None => relative.placed_hull(origin, &[])?,
+            };
             let [lo, hi] = hull;
             frame.fit([lo, hi]);
             match (frame.rect, frame.paths) {
                 // The clip keeps it whole: its translated edges.
-                (None, None) => Shape::translated(edges, relative, origin, hull, &frame, options),
+                (None, None) => {
+                    let shape = Shape::translated(edges, relative, origin, hull, &frame, options)?;
+                    if let Some(shape) = &shape {
+                        bytes.charge(shape.retained_bytes())?;
+                    }
+                    Ok(shape)
+                }
                 // A rectangle cuts it: its pieces, clipped.
-                (Some(_), None) => pieces(spline, origin, &frame, options, &mut bytes),
-                // A clip path crosses it: its polygon, resolved with the
-                // clip's paths.
-                (_, Some(_)) => {
+                (Some(_), None) if spline.points.is_empty() => {
+                    pieces(spline, origin, &frame, options, &mut bytes)
+                }
+                // A clip path, or a rectangle cutting canonical point
+                // cells, uses the polygon's joint winding resolution.
+                _ => {
                     let (polygon, points) = polygon(outline, *linear, options.limits, &mut bytes)?;
                     translated(
                         (&polygon, &points),
@@ -519,7 +578,7 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
             if let (Some(relative), [point], Some(mut frame)) =
                 (relative.as_deref(), points.as_slice(), Frame::new(options))
             {
-                let hull = relative.placed_hull(origin, Some(*point))?;
+                let hull = relative.placed_hull(origin, &[*point])?;
                 frame.fit(hull);
                 if frame.rect.is_none() && frame.paths.is_none() {
                     return point::placed(
@@ -560,7 +619,7 @@ pub(crate) fn moved(
 ) -> Result<Option<Shape>> {
     let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
     match (&edges.kind, Frame::new(options)) {
-        (Kind::Curve { spline, .. }, Some(frame)) => {
+        (Kind::Curve { spline, .. }, Some(frame)) if spline.points.is_empty() => {
             pieces(spline, origin, &frame, options, &mut bytes)
         }
         _ => placed(edges, origin, options),

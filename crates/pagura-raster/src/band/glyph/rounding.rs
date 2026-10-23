@@ -35,8 +35,11 @@ impl<'a> Source<'a> {
     fn of(edges: &'a GlyphEdges, origin: Point, work: &mut Meter) -> Result<Option<Self>> {
         let (outline, linear, points) = match &edges.kind {
             Kind::Curve {
-                outline, linear, ..
-            } => (outline.as_ref(), *linear, &[][..]),
+                outline,
+                linear,
+                spline,
+                ..
+            } => (outline.as_ref(), *linear, spline.points.as_slice()),
             Kind::Polygon {
                 source: Some((outline, linear)),
                 points,

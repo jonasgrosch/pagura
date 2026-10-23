@@ -598,33 +598,24 @@ impl Shape {
         let words = columns / 64 + 2;
         // Each window of a band visits every item once, at most as often as
         // the placement has rows.
-        let point = match &edges.kind {
-            super::glyph::Kind::Polygon { points, .. } => {
-                let [point] = points.as_slice() else {
-                    unreachable!("one canonical point with a certified body");
-                };
-                Some(*point + origin)
-            }
-            super::glyph::Kind::Curve { .. } => None,
-        };
+        let points = edges.points();
         let items = relative
             .lines
             .len()
             .saturating_add(relative.curves.len())
-            .saturating_add(usize::from(point.is_some()).saturating_mul(2));
+            .saturating_add(points.len().saturating_mul(2));
         let rows = bounds.height() as usize;
         // Each point side visits one row. Use the same primitive/emission
         // bound as the relative body's edges; item visits include both
         // sides in every window, even when the point is outside it.
-        let point_work = point.map_or(0, |point| {
-            super::glyph::point_sides(point)
-                .into_iter()
-                .filter_map(|line| {
-                    line_rows(&line, bounds, options.area.region.x1)
-                        .map(|rows| line_work(line, rows, width).saturating_mul(4))
-                })
-                .fold(0_usize, usize::saturating_add)
-        });
+        let point_work = points
+            .iter()
+            .flat_map(|&point| super::glyph::point_sides(point + origin))
+            .filter_map(|line| {
+                line_rows(&line, bounds, options.area.region.x1)
+                    .map(|rows| line_work(line, rows, width).saturating_mul(4))
+            })
+            .fold(0_usize, usize::saturating_add);
         let work = relative
             .work
             .saturating_add(point_work)

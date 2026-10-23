@@ -126,7 +126,7 @@ fn a_glyph_point_cell_resolves_only_its_overlap_row() {
     path.close();
     let limits = Limits::default();
     let edges = std::sync::Arc::new(
-        crate::GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
+        crate::GlyphEdges::polygon_for_test(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
     );
     assert!(!edges.curved());
     let area = super::super::tests::area(0, 0, 16, 36, 4);

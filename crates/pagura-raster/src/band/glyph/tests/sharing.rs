@@ -75,8 +75,9 @@ fn equivalent(
 fn polygon_placements_share_short_and_indexed_geometry_with_identical_work() {
     let limits = Limits::default();
     for height in [7.0, 37.0] {
-        let edges =
-            Arc::new(GlyphEdges::new(&outline(height), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+        let edges = Arc::new(
+            GlyphEdges::polygon_for_test(&outline(height), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
+        );
         assert!(!edges.curved());
         for band in [1, 3, 16, 32] {
             let options = ShapeOptions {
@@ -121,7 +122,9 @@ fn polygon_placements_share_short_and_indexed_geometry_with_identical_work() {
 #[test]
 fn cutting_clips_and_rebuilt_polygons_keep_owned_edges() {
     let limits = Limits::default();
-    let edges = Arc::new(GlyphEdges::new(&outline(37.0), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+    let edges = Arc::new(
+        GlyphEdges::polygon_for_test(&outline(37.0), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
+    );
     for band in [1, 7, 32] {
         let options = ShapeOptions {
             area: area(48, band),
@@ -164,7 +167,9 @@ fn translated_horizontal_collapse_keeps_the_same_boundaries_and_cells() {
     path.close();
     path.move_to(Point::new(10.25, 0.25));
     path.close();
-    let edges = Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+    let edges = Arc::new(
+        GlyphEdges::polygon_for_test(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
+    );
     let top = 1_u32 << 29;
     for band in [1, 3, 16, 32] {
         let options = ShapeOptions {
@@ -187,7 +192,9 @@ fn translated_horizontal_collapse_keeps_the_same_boundaries_and_cells() {
 #[test]
 fn sharing_refunds_only_dropped_edges_and_never_pins_on_refusal() {
     let limits = Limits::default();
-    let edges = Arc::new(GlyphEdges::new(&outline(37.0), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+    let edges = Arc::new(
+        GlyphEdges::polygon_for_test(&outline(37.0), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
+    );
     let options = ShapeOptions {
         area: area(48, 7),
         limits: &limits,
@@ -256,7 +263,7 @@ fn held_polygon_sources_follow_existing_store_pinning_and_nonadmission() {
     let limits = Limits::default();
     let path = outline(37.0);
     let build = || {
-        let value = GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits)?;
+        let value = GlyphEdges::polygon_for_test(&path, [1.0, 0.0, 0.0, 1.0], &limits)?;
         Ok(Built {
             bytes: value.retained_bytes(),
             value,
@@ -299,7 +306,9 @@ fn long_horizontal_contours_keep_owned_storage_when_raw_visits_exceed_work() {
     path.close();
     path.move_to(Point::new(6.25, 3.25));
     path.close();
-    let edges = Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+    let edges = Arc::new(
+        GlyphEdges::polygon_for_test(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
+    );
     for band in [1, 7, 32] {
         let options = ShapeOptions {
             area: area(16, band),
@@ -319,7 +328,9 @@ fn shared_polygons_keep_the_original_curve_certificate_and_cancellation() {
     // source also offers a certified nonpoint projection.
     path.move_to(Point::new(6.25, 2.75));
     path.close();
-    let edges = Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+    let edges = Arc::new(
+        GlyphEdges::polygon_for_test(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
+    );
     assert!(edges.curved());
     for band in [1, 3, 16, 32] {
         let options = ShapeOptions {
@@ -368,7 +379,9 @@ fn shared_polygons_keep_the_original_curve_certificate_and_cancellation() {
     path.close();
     path.move_to(Point::new(4.25, 3.75));
     path.close();
-    let edges = Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+    let edges = Arc::new(
+        GlyphEdges::polygon_for_test(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
+    );
     let options = ShapeOptions {
         area: area(48, 3),
         limits: &limits,
@@ -386,7 +399,9 @@ fn negative_zero_origins_keep_shared_and_owned_cell_arithmetic() {
     path.rect(-0.0, -0.0, 4.0, 4.0);
     path.move_to(Point::new(-0.0, -0.0));
     path.close();
-    let edges = Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+    let edges = Arc::new(
+        GlyphEdges::polygon_for_test(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
+    );
     for band in [1, 3, 16, 32] {
         let options = ShapeOptions {
             area: area(16, band),

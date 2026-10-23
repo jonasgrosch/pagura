@@ -451,18 +451,10 @@ impl Items<'_> {
                 let Some(relative) = glyph.edges.relative() else {
                     unreachable!("a relative glyph source");
                 };
-                let lines = match &glyph.edges.kind {
-                    Kind::Polygon { .. } => {
-                        debug_assert!(glyph.strips.is_none());
-                        Lines::Slice {
-                            lines: &relative.lines,
-                            point: Some(glyph),
-                        }
-                    }
-                    Kind::Curve { .. } => Lines::Slice {
-                        lines: &relative.lines,
-                        point: None,
-                    },
+                debug_assert!(glyph.strips.is_none());
+                let lines = Lines::Slice {
+                    lines: &relative.lines,
+                    point: (!glyph.edges.points().is_empty()).then_some(glyph),
                 };
                 (lines, relative.curves.as_slice())
             }
@@ -523,8 +515,8 @@ impl Items<'_> {
         work
     }
 
-    /// Adds every item to the open window: lines, curves, then any canonical
-    /// point contour. Returns the work spent, one unit per item visited.
+    /// Adds every item to the open window: lines, curves, then canonical
+    /// point contours. Returns the work spent, one unit per item visited.
     fn all<const MEASURE: bool>(&self, cells: &mut Cells) -> usize {
         let origin = self.origin.unwrap_or_default();
         let at = |p: Point| Point::new(p.x + origin.x, p.y + origin.y);
@@ -572,28 +564,24 @@ impl Items<'_> {
             point: Some(glyph), ..
         } = &self.lines
         {
-            work += 2;
-            let Kind::Polygon { points, .. } = &glyph.edges.kind else {
-                unreachable!("a canonical point with a certified body");
-            };
-            let [point] = points.as_slice() else {
-                unreachable!("one canonical point with a certified body");
-            };
-            let [right, left] = point_sides(*point + glyph.origin);
-            let rows = cells.rows();
-            let scan = f64::from(u32::try_from(glyph.scan.0).unwrap_or(u32::MAX));
-            // A whole cell outside the global scan contributes no carry.
-            // Within that scan, keep both sides even left of the output
-            // region: its prefix arithmetic is shared with a full render.
-            if right.a.y >= f64::from(rows.start)
-                && right.a.y < f64::from(rows.end)
-                && right.a.x > scan
-                && cells.reaches(left.a.x)
-            {
-                for line in [right, left] {
-                    // These are absolute canonical endpoints. Adding an
-                    // origin or a default zero again changes their bits.
-                    work += Self::line::<MEASURE>(cells, line);
+            for &point in glyph.edges.points() {
+                work += 2;
+                let [right, left] = point_sides(point + glyph.origin);
+                let rows = cells.rows();
+                let scan = f64::from(u32::try_from(glyph.scan.0).unwrap_or(u32::MAX));
+                // A whole cell outside the global scan contributes no carry.
+                // Within that scan, keep both sides even left of the output
+                // region: its prefix arithmetic is shared with a full render.
+                if right.a.y >= f64::from(rows.start)
+                    && right.a.y < f64::from(rows.end)
+                    && right.a.x > scan
+                    && cells.reaches(left.a.x)
+                {
+                    for line in [right, left] {
+                        // These are absolute canonical endpoints. Adding an
+                        // origin or a default zero again changes their bits.
+                        work += Self::line::<MEASURE>(cells, line);
+                    }
                 }
             }
         }

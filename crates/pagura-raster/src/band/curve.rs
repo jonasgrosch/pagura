@@ -367,6 +367,8 @@ impl Mono {
 pub(crate) struct Spline {
     pub(crate) pieces: Vec<Piece>,
     pub(crate) starts: Vec<usize>,
+    /// Canonical mapped geometric points, before placement and flooring.
+    pub(crate) points: Vec<Point>,
 }
 
 impl Spline {
@@ -381,6 +383,7 @@ impl Spline {
     pub(crate) fn retained_bytes(&self) -> usize {
         (self.pieces.capacity() * size_of::<Piece>())
             .saturating_add(self.starts.capacity() * size_of::<usize>())
+            .saturating_add(self.points.capacity() * size_of::<Point>())
     }
 }
 
@@ -392,6 +395,7 @@ impl Spline {
 ///
 /// Returns a `Limit` error beyond `limits.path_segments` pieces and
 /// `InvalidArgument` for coordinates beyond the working range.
+#[cfg(test)]
 pub(crate) fn spline(
     outline: &Path,
     linear: Transform,
@@ -399,6 +403,24 @@ pub(crate) fn spline(
     bytes: &mut Meter,
 ) -> Result<Option<Spline>> {
     spline_using(outline, linear, limits, bytes, PointContours::Keep)
+        .map_err(SplineError::into_error)
+}
+
+/// A glyph's quadratic body and its canonical mapped geometric points.
+/// The points keep their source order and are floored only at placement.
+/// Empty nonpoint bodies and general cubics keep the canonical polygon.
+///
+/// # Errors
+///
+/// Returns a `Limit` error beyond the segment or byte budget and
+/// `InvalidArgument` for coordinates beyond the working range.
+pub(crate) fn glyph_spline(
+    outline: &Path,
+    linear: Transform,
+    limits: &Limits,
+    bytes: &mut Meter,
+) -> Result<Option<Spline>> {
+    spline_using(outline, linear, limits, bytes, PointContours::Collect)
         .map_err(SplineError::into_error)
 }
 
@@ -441,6 +463,7 @@ type BuildResult<T> = std::result::Result<T, SplineError>;
 enum PointContours {
     Keep,
     OmitExplicit,
+    Collect,
 }
 
 fn spline_using(
@@ -483,12 +506,25 @@ struct Builder<'a> {
 }
 
 impl Builder<'_> {
-    fn push(&mut self, piece: Piece) -> BuildResult<()> {
-        if self.spline.pieces.len() >= self.limits.path_segments {
+    fn check_segments(&self, extra: usize) -> BuildResult<()> {
+        if self
+            .spline
+            .points
+            .len()
+            .checked_mul(4)
+            .and_then(|points| points.checked_add(self.spline.pieces.len()))
+            .and_then(|count| count.checked_add(extra))
+            .is_none_or(|count| count > self.limits.path_segments)
+        {
             return Err(SplineError::Segments(Error::limit(
                 "quadratic edge budget exceeded",
             )));
         }
+        Ok(())
+    }
+
+    fn push(&mut self, piece: Piece) -> BuildResult<()> {
+        self.check_segments(1)?;
         self.bytes
             .reserve_capacity(&mut self.spline.pieces, 1)
             .map_err(SplineError::Bytes)?;
@@ -589,7 +625,7 @@ impl Builder<'_> {
                 Segment::MoveTo(p) => {
                     if let (Some(a), Some(b)) = (start, current)
                         && !closed
-                        && segments > 0
+                        && (segments > 0 || self.point_contours == PointContours::Collect)
                         && !self.finish(a, b, degenerate)?
                     {
                         return Ok(None);
@@ -614,7 +650,11 @@ impl Builder<'_> {
                         closed = false;
                         self.begin()?;
                     }
-                    degenerate &= source_current == Some(source);
+                    degenerate &= if self.point_contours == PointContours::Collect {
+                        start == Some(p)
+                    } else {
+                        source_current == Some(source)
+                    };
                     source_current = Some(source);
                     self.line(a, p)?;
                     current = Some(p);
@@ -629,9 +669,14 @@ impl Builder<'_> {
                         closed = false;
                         self.begin()?;
                     }
-                    degenerate &= [c1, c2, end].iter().all(|p| Some(*p) == source_current);
+                    if self.point_contours != PointContours::Collect {
+                        degenerate &= [c1, c2, end].iter().all(|p| Some(*p) == source_current);
+                    }
                     source_current = Some(end);
                     let (b, c, d) = (map(c1)?, map(c2)?, map(end)?);
+                    if self.point_contours == PointContours::Collect {
+                        degenerate &= [b, c, d].into_iter().all(|p| Some(p) == start);
+                    }
                     self.cubic([a, b, c, d])?;
                     current = Some(d);
                     segments += 1;
@@ -663,6 +708,11 @@ impl Builder<'_> {
         {
             return Ok(None);
         }
+        if self.point_contours == PointContours::Collect && !closed && segments == 0 {
+            // Only the final dangling MoveTo is ignored. Earlier open
+            // MoveTo contours were collected before the next MoveTo.
+            self.spline.starts.pop();
+        }
         Ok(
             (self.point_contours == PointContours::Keep || !self.spline.pieces.is_empty())
                 .then_some(self.spline),
@@ -673,7 +723,20 @@ impl Builder<'_> {
     /// polygon's point rule.
     fn finish(&mut self, start: Point, current: Point, degenerate: bool) -> BuildResult<bool> {
         if degenerate {
-            return Ok(false);
+            if self.point_contours != PointContours::Collect {
+                return Ok(false);
+            }
+            // Classification used mapped original controls, before any
+            // reduction. Remove this contour from the nonpoint body.
+            if let Some(first) = self.spline.starts.pop() {
+                self.spline.pieces.truncate(first);
+            }
+            self.check_segments(4)?;
+            self.bytes
+                .reserve_capacity(&mut self.spline.points, 1)
+                .map_err(SplineError::Bytes)?;
+            self.spline.points.push(start);
+            return Ok(true);
         }
         self.line(current, start)?;
         Ok(true)

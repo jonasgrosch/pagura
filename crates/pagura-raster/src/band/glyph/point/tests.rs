@@ -51,11 +51,19 @@ fn options(limits: &Limits, band_height: u32) -> ShapeOptions<'_> {
 }
 
 fn canonical(edges: &Arc<GlyphEdges>, origin: Point, prep: &Prep<'_>) -> Shape {
-    let Kind::Polygon {
-        polygon, points, ..
-    } = &edges.kind
-    else {
-        panic!("canonical polygon retained");
+    let owned;
+    let (polygon, points) = match &edges.kind {
+        Kind::Polygon {
+            polygon, points, ..
+        } => (polygon, points.as_slice()),
+        Kind::Curve {
+            outline, linear, ..
+        } => {
+            owned =
+                super::super::polygon(outline, *linear, prep.limits, &mut crate::testing::bytes())
+                    .unwrap();
+            (&owned.0, owned.1.as_slice())
+        }
     };
     let shape = translated(
         (polygon, points),
@@ -64,7 +72,7 @@ fn canonical(edges: &Arc<GlyphEdges>, origin: Point, prep: &Prep<'_>) -> Shape {
         prep,
         &mut crate::testing::bytes(),
         None,
-        Some(edges),
+        None,
     )
     .unwrap()
     .unwrap();
@@ -173,7 +181,7 @@ fn fixed_constructor_overlap_refunds_declined_projection_and_keeps_layout() {
     assert!(
         size_of::<crate::band::shape::GlyphBody>() <= size_of::<crate::band::shape::EdgeBody>()
     );
-    assert_eq!(size_of::<curve::Spline>(), 2 * size_of::<Vec<usize>>());
+    assert_eq!(size_of::<curve::Spline>(), 3 * size_of::<Vec<usize>>());
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -401,4 +409,116 @@ fn point_cell_checks_the_complete_work_and_fixed_placement_bytes() {
             }
         );
     }
+}
+
+#[test]
+fn repeated_and_disjoint_point_cells_preserve_both_body_orientations() {
+    let limits = Limits::default();
+    for reversed in [false, true] {
+        for duplicate_count in [1, 2, 4] {
+            let first = Point::new(2.25, 1.25);
+            let base = outline(first, reversed);
+            let mut path = PathBuilder::new();
+            for segment in base.segments() {
+                match *segment {
+                    Segment::MoveTo(p) => {
+                        path.move_to(p);
+                    }
+                    Segment::LineTo(p) => {
+                        path.line_to(p).unwrap();
+                    }
+                    Segment::CubicTo { c1, c2, end } => {
+                        path.cubic_to(c1, c2, end).unwrap();
+                    }
+                    Segment::Close => {
+                        path.close();
+                    }
+                }
+            }
+            for _ in 1..duplicate_count {
+                path.move_to(first);
+                path.close();
+            }
+            for point in [
+                Point::new(2.75, 1.75),
+                Point::new(8.25, 4.25),
+                Point::new(-1.25, 3.25),
+            ] {
+                path.move_to(point);
+                path.close();
+            }
+            let edges =
+                Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+            let Kind::Curve { spline, .. } = &edges.kind else {
+                panic!("the certified body keeps its canonical point contours");
+            };
+            assert_eq!(spline.points.len(), duplicate_count + 3);
+            for band in [1, 3, 16, 32] {
+                let setup = options(&limits, band);
+                let prep = Prep::new(&setup, None);
+                for origin in [
+                    Point::default(),
+                    Point::new(1.75, 0.75),
+                    Point::new(-0.25, 0.25),
+                ] {
+                    let actual = place(&edges, origin, &prep).unwrap().unwrap();
+                    let expected = canonical(&edges, origin, &prep);
+                    let (pixels, spent) = crate::testing::raster(&setup.area, Some(&actual), None);
+                    assert_eq!(
+                        pixels,
+                        crate::testing::raster(&setup.area, Some(&expected), None).0,
+                        "{reversed}/{duplicate_count}/{band}/{origin:?}"
+                    );
+                    assert!(spent <= actual.work(), "{spent}>{}", actual.work());
+                    let relative = edges.relative().unwrap();
+                    assert_eq!(
+                        actual.boundaries(),
+                        relative.lines.len() + relative.curves.len() + 2 * edges.points().len()
+                    );
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn linear_body_with_points_charges_retained_shape_without_curve_inspection() {
+    let limits = Limits::default();
+    let mut path = PathBuilder::new();
+    path.rect(0.0, 0.0, 4.0, 4.0);
+    path.move_to(Point::new(1.25, 1.25));
+    path.close();
+    let edges = Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+    assert!(matches!(edges.kind, Kind::Curve { .. }));
+    let limits = Limits {
+        render_bytes: 0,
+        ..limits
+    };
+    let setup = options(&limits, 3);
+    let error = placed(&edges, Point::default(), &Prep::new(&setup, None)).unwrap_err();
+    assert_eq!(error.message, crate::band::RENDER_BYTES);
+}
+
+#[test]
+fn mixed_point_range_validation_precedes_empty_clip_culling() {
+    let limits = Limits::default();
+    let path = outline(
+        Point::new(crate::flatten::MAX_COORDINATE - 1.0, 1.25),
+        false,
+    );
+    let edges = Arc::new(GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+    assert!(matches!(edges.kind, Kind::Curve { .. }));
+    let setup = options(&limits, 3);
+    let rectangle = Path::rect(Rect::from_corners(40.0, 40.0, 44.0, 44.0).unwrap());
+    let clip = ClipShape::new(
+        &[(&rectangle, FillRule::NonZero)],
+        Transform::IDENTITY,
+        &setup,
+    )
+    .unwrap();
+    assert!(clip.bounds().is_empty());
+    let prep = Prep::new(&setup, Some(&clip));
+    assert!(placed(&edges, Point::default(), &prep).unwrap().is_none());
+    let error = placed(&edges, Point::new(2.0, 0.0), &prep).unwrap_err();
+    assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
 }
