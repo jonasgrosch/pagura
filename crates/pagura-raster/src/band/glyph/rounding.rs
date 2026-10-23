@@ -87,13 +87,14 @@ pub(super) fn certify(
         } else {
             AREA
         };
-        let placement = placement_error(outline, linear, origin, &shape);
+        let (placement, resolved_placement) = placement_error(outline, linear, origin, &shape);
         let clip = options
             .clip
             .and_then(|clip| clip.paths())
             .map_or(0.0, Paths::arithmetic_error);
         let error = base + placement + clip;
-        let row_error = (analytic && !shape.resolved.is_empty()).then_some(AREA + placement + clip);
+        let row_error =
+            (analytic && !shape.resolved.is_empty()).then_some(AREA + resolved_placement + clip);
         let pending = ambiguous(&shape, (error, row_error), (&mut work, &mut bytes))?;
         let mut wrong = false;
         for pixel in pending {
@@ -196,7 +197,7 @@ fn replacement(
 /// per-edge homotopy bound is at most three times the two coordinate
 /// displacements inside any pixel. This broad initial bound only selects
 /// pixels for the local, original-control certificate below.
-fn placement_error(outline: &Path, linear: Transform, origin: Point, shape: &Shape) -> f64 {
+fn placement_error(outline: &Path, linear: Transform, origin: Point, shape: &Shape) -> (f64, f64) {
     let mut magnitude = origin.x.abs().max(origin.y.abs()).max(1.0);
     for segment in outline.segments() {
         let mut include = |p: Point| {
@@ -214,10 +215,25 @@ fn placement_error(outline: &Path, linear: Transform, origin: Point, shape: &Sha
             Segment::Close => {}
         }
     }
-    let pieces = f64::from(
-        u32::try_from(outline.segments().len().max(shape.boundaries())).unwrap_or(u32::MAX),
-    );
-    384.0 * f64::EPSILON * magnitude * pieces
+    let full = shape.boundaries();
+    let body = match &shape.body {
+        Body::Glyph(body)
+            if body.geometry == GlyphGeometry::Relative && !shape.resolved.is_empty() =>
+        {
+            // Only the replaced row uses the canonical polygon's inputs
+            // and resolved sides. Every other row visits the relative body.
+            body.edges.relative().map_or(full, |relative| {
+                relative.lines.len().saturating_add(relative.curves.len())
+            })
+        }
+        _ => full,
+    };
+    let error = |boundaries| {
+        let pieces =
+            f64::from(u32::try_from(outline.segments().len().max(boundaries)).unwrap_or(u32::MAX));
+        384.0 * f64::EPSILON * magnitude * pieces
+    };
+    (error(body), error(full))
 }
 
 fn ambiguous(
@@ -618,6 +634,86 @@ mod tests {
     use super::*;
     use crate::{Area, ClipShape, DeviceRect, PathBuilder, ShapeOptions};
     use pagura_core::Limits;
+
+    #[test]
+    fn mixed_rows_keep_original_curve_and_point_enclosures() {
+        let limits = Limits::default();
+        let origin = Point::new(0.0, 11.0 / 18.0 + 1e-10);
+        for reversed in [false, true] {
+            let mut path = PathBuilder::new();
+            if reversed {
+                path.move_to(Point::new(0.0, 7.0));
+                path.line_to(Point::new(6.0, 7.0)).unwrap();
+                path.line_to(Point::new(6.0, 0.0)).unwrap();
+                path.cubic_to(Point::new(4.0, 4.0), Point::new(2.0, 4.0), Point::default())
+                    .unwrap();
+            } else {
+                path.move_to(Point::default());
+                path.cubic_to(
+                    Point::new(2.0, 4.0),
+                    Point::new(4.0, 4.0),
+                    Point::new(6.0, 0.0),
+                )
+                .unwrap();
+                path.line_to(Point::new(6.0, 7.0)).unwrap();
+                path.line_to(Point::new(0.0, 7.0)).unwrap();
+            }
+            path.close();
+            path.move_to(Point::new(2.25, 4.25));
+            path.close();
+            let path = path.finish();
+            let edges =
+                std::sync::Arc::new(GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
+            for band_height in [1, 3, 16, 32] {
+                let options = Prep {
+                    area: Area {
+                        region: DeviceRect {
+                            x0: 0,
+                            y0: 0,
+                            x1: 8,
+                            y1: 10,
+                        },
+                        band_height,
+                    },
+                    limits: &limits,
+                    clip: None,
+                };
+                let shape = super::super::placed(&edges, origin, &options)
+                    .unwrap()
+                    .unwrap();
+                assert!(shape.resolved.contains(4));
+                let (ordinary, resolved) =
+                    placement_error(&path, Transform::IDENTITY, origin, &shape);
+                assert!(resolved > ordinary * 8.0);
+                // Preserve the canonical row's previous allowance exactly.
+                let previous = 384.0
+                    * f64::EPSILON
+                    * (7.0 + origin.y)
+                    * f64::from(u32::try_from(shape.boundaries()).unwrap());
+                assert_eq!(resolved.to_bits(), previous.to_bits());
+                // The original cubic has x=6t and y=12t(1-t). Over x=2..3,
+                // its mean height is26/9, so the covered part of row3 is
+                // 4-origin.y-26/9. This evaluation avoids the raster kernel.
+                let original = 10.0 / 9.0 - origin.y;
+                assert_eq!(quantize_unit(original), 127);
+                let mut found = false;
+                let mut cells = Cells::new(8, &mut crate::testing::bytes()).unwrap();
+                raster::inspect(&shape, &mut cells, |y, x0, x1, value, arithmetic| {
+                    if y == 3 && x0 <= 2 && x1 > 2 {
+                        found = true;
+                        let error = ordinary + arithmetic + 8.0 * f64::EPSILON;
+                        assert!((value.abs() - original).abs() <= error);
+                    }
+                })
+                .unwrap();
+                assert!(found);
+                let ready = certify(&edges, origin, shape, &options).unwrap();
+                let (coverage, _) = crate::testing::raster(&options.area, Some(&ready), None);
+                assert_eq!(coverage[3 * 8 + 2], 127);
+                assert_eq!(coverage[4 * 8 + 2], if reversed { 0 } else { 255 });
+            }
+        }
+    }
 
     #[test]
     fn local_proof_chords_keep_nonpoint_loops_distinct_from_points() {
