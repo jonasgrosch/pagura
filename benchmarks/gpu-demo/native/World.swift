@@ -51,7 +51,7 @@ func validateWorld(_ data:Data) throws -> [UInt32] {
     func install(_ dpi:UInt32,data:Data,otherBytes:Int) throws {
         guard (72...300).contains(dpi),data.count>=32,data.count%4==0,data.count<=64*1024*1024+marks*48 else {throw fail("Native world view size")}
         let w=data.withUnsafeBytes {Array($0.bindMemory(to:UInt32.self))}
-        guard w[0]>0,w[1]>0,UInt64(w[0])*UInt64(w[1])*4<=output.length,w[3]==dpi,w[4]==8+marks*12,w[4]<=w.count,(w.count-Int(w[4]))%4==0,
+        guard w[0]>0,w[1]>0,UInt64(w[0])*UInt64(w[1])<=UInt64(output.length)/4,w[3]==dpi,w[4]==8+marks*12,w[4]<=w.count,(w.count-Int(w[4]))%4==0,
             abs(Double(Float(bitPattern:w[2]))-Double(dpi)/300)<1e-6 else {throw fail("Native world view header")}
         let cells=(w.count-Int(w[4]))/4
         for i in 0..<marks {

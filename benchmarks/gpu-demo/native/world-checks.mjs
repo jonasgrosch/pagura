@@ -3,7 +3,8 @@ import {readFile,readdir,writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {Host} from './transport.mjs';
 import {MetalBackend} from './gpu.mjs';
-import {WorldSession} from '../world.mjs';
+import {WorldSession,validateWorld,worldView} from '../world.mjs';
+import {samples} from '../samples.mjs';
 import {sha256} from '../retained-study.mjs';
 import {pixelDifference} from '../svg.mjs';
 const option=(key,fallback)=>process.argv.includes(key)?process.argv[process.argv.indexOf(key)+1]:fallback;
@@ -39,7 +40,20 @@ try {
     finally{await world.clear();}
     if(cases.length%150===0)console.log('Native world fixtures',cases.length,browser.cases.length);
   }
-  const report={timestamp:new Date().toISOString(),capability:info,fixtures:browser.fixtures,admitted:cases.filter(c=>c.accuracy).length,cases,failures};
+  // Independently reject hostile view dimensions without integer overflow.
+  await engine.open(samples[0].make());
+  const packet=await engine.render(11,{dpi:150}),patches=await engine.render(12,{dpi:150});
+  const canonical=validateWorld(packet.data),view=worldView(canonical,packet.meta,150,patches.data),id=0xffff;
+  await gpu.control(10,id,packet.data);let malformed_views_refused=0;
+  try {
+    for(const dimensions of [[0xffffffff,0xffffffff],[canonical.width,canonical.height+1]]){
+      const bytes=view.bytes.slice(),w=new Uint32Array(bytes.buffer);w[0]=dimensions[0];w[1]=dimensions[1];
+      const payload=Buffer.alloc(bytes.length+4);payload.writeUInt32LE(150);payload.set(bytes,4);
+      try{await gpu.control(11,id,payload);}catch(error){if(!String(error).includes('Native world view header'))throw error;malformed_views_refused++;}
+    }
+  }finally{await gpu.control(3,id);}
+  if(malformed_views_refused!==2)throw new Error('Malformed native view accepted');
+  const report={timestamp:new Date().toISOString(),capability:info,malformed_views_refused,fixtures:browser.fixtures,admitted:cases.filter(c=>c.accuracy).length,cases,failures};
   await writeFile(resolve(option('--output','target/gpu-demo/display-native-fixtures.json')),JSON.stringify(report,null,2)+'\n');
   console.log(JSON.stringify({cases:cases.length,admitted:report.admitted,failures}));if(failures.length)process.exitCode=1;
 }finally{engine.close();host.close();}
