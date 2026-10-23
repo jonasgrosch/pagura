@@ -70,10 +70,8 @@ impl<'a> Renderer<'a> {
         scratch: &mut Scratch,
         stop: impl FnMut(u32) -> bool,
     ) -> Result<(Pixmap, Completion)> {
-        let prepared = self.prepare(scene, (options, tile), scratch)?;
-        let rendered = self.draw(&prepared, scratch, stop);
-        scratch.recycle(prepared);
-        rendered
+        let prepared = self.prepare(scene, (options, tile))?;
+        self.draw(&prepared, scratch, stop)
     }
 
     /// Renders `prepared` in `scratch`.
@@ -104,14 +102,12 @@ impl<'a> Renderer<'a> {
         Ok((pixmap, completion))
     }
 
-    /// Prepares `scene` for one region in the storage of `scratch` and
-    /// reports the repairs preparation made to the document, where strict
-    /// recovery refuses them.
+    /// Prepares `scene` for one region and reports its repairs to the
+    /// document, where strict recovery refuses them.
     fn prepare(
         self,
         scene: &Scene,
         (options, tile): (&RenderOptions, Option<Tile>),
-        scratch: &mut Scratch,
     ) -> Result<PreparedScene> {
         let mut request = RenderRequest::page(&scene.page, options.scale)?;
         if let Some(tile) = tile {
@@ -120,7 +116,7 @@ impl<'a> Renderer<'a> {
         request.background = options.background;
         request.overprint = options.overprint.resolve(scene.print_intent);
         let limits = self.document.limits();
-        let prepared = scratch.prepare(scene, &request, (self.store, &limits))?;
+        let prepared = pagura_paint::prepare(scene, &request, self.store, &limits)?;
         for repair in prepared.repairs() {
             self.document.repair(repair.clone())?;
         }

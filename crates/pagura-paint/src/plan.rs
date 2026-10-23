@@ -6,7 +6,7 @@
 use crate::format::Format;
 use crate::source::Source;
 use pagura_color::{Converter, Encoder, Function, MAX_COMPONENTS, Process};
-use pagura_core::{Error, Position, Result};
+use pagura_core::{Error, Name, Position, Result};
 use pagura_interpret::{BlendMode, MaskKind};
 use pagura_raster::{Area, DeviceRect};
 use std::sync::Arc;
@@ -54,6 +54,9 @@ impl Layout {
 /// Everything the executor needs.
 #[derive(Debug)]
 pub(crate) struct Plan {
+    /// Explicit owner of the shared target-name allocations. Converters
+    /// borrow them through Arcs without charging the payload again.
+    pub(crate) _names: TargetNames,
     /// The region and the band grid of execution.
     pub(crate) area: Area,
     /// Groups; the page group is the first.
@@ -75,6 +78,13 @@ pub(crate) struct Plan {
     /// Bytes reserved for a render's scratch storage, the workspace and the
     /// band rasterizer, which it allocates within them.
     pub(crate) scratch: usize,
+}
+
+/// The two name lists every conversion target of one preparation shares.
+#[derive(Debug, Default)]
+pub(crate) struct TargetNames {
+    pub(crate) spots: Arc<[Name]>,
+    pub(crate) empty: Arc<[Name]>,
 }
 
 /// A buffer: the page, a transparency group, a soft mask's group or the

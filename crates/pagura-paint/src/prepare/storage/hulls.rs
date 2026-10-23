@@ -5,7 +5,7 @@
 use crate::prepare::{bounds, index};
 use pagura_core::{Error, Meter, Rect, Result};
 use pagura_interpret::{Node, Scene};
-use pagura_raster::{Point, Transform};
+use pagura_raster::Transform;
 
 /// A device rectangle that covers every pixel.
 const WHOLE: bounds::Hull = [f64::MIN, f64::MIN, f64::MAX, f64::MAX];
@@ -77,37 +77,20 @@ pub(super) fn hulls(
         Node::Fill(fill) => fill_hull(fill, t),
         Node::Stroke(stroke) => stroke_hull(scene, stroke, t)?,
         Node::Glyphs(glyphs) => return glyph_hulls(glyphs, t, bytes),
-        Node::Image(image) => rectangle(
-            [
-                Point::new(0.0, 0.0),
-                Point::new(1.0, 0.0),
-                Point::new(1.0, 1.0),
-                Point::new(0.0, 1.0),
-            ],
+        Node::Image(image) => bounds::rect(
+            Rect::from_corners(0.0, 0.0, 1.0, 1.0).unwrap_or_else(|| unreachable!()),
             image.transform.then(t),
         ),
-        Node::Shading(shading) => shading.shading.bbox.map_or(Some(WHOLE), |b| {
-            rectangle(corners(b), shading.transform.then(t))
-        }),
+        Node::Shading(shading) => shading
+            .shading
+            .bbox
+            .map_or(Some(WHOLE), |b| bounds::rect(b, shading.transform.then(t))),
         Node::Group(_) => return Ok(Vec::new()),
     };
     let mut hulls = Vec::new();
     bytes.reserve_capacity(&mut hulls, 1)?;
     hulls.push(hull);
     Ok(hulls)
-}
-
-fn corners(rect: Rect) -> [Point; 4] {
-    [
-        Point::new(rect.x0(), rect.y0()),
-        Point::new(rect.x1(), rect.y0()),
-        Point::new(rect.x1(), rect.y1()),
-        Point::new(rect.x0(), rect.y1()),
-    ]
-}
-
-fn rectangle(corners: [Point; 4], transform: Transform) -> Option<bounds::Hull> {
-    bounds::points(corners.map(|point| transform.apply(point)))
 }
 
 /// A fill's device hull, a pixel wider for degenerate subpaths.
@@ -186,7 +169,7 @@ mod tests {
             ] {
                 let bits = |hull: Option<bounds::Hull>| hull.map(|hull| hull.map(f64::to_bits));
                 assert_eq!(
-                    bits(rectangle(corners(rect), transform)),
+                    bits(bounds::rect(rect, transform)),
                     bits(bounds::path(&Path::rect(rect), transform))
                 );
             }

@@ -16,7 +16,7 @@ mod shapes;
 pub(crate) mod stacks;
 mod storage;
 
-pub(crate) use shapes::{Prepared, ShapeBuilder, Shapes, Storage};
+pub(crate) use shapes::{Prepared, ShapeBuilder, Shapes};
 
 use crate::execute::{Rendering, Scratch};
 use crate::plan::{MAX_BAND_HEIGHT, Plan};
@@ -127,19 +127,9 @@ pub fn prepare(
     store: &Store,
     limits: &Limits,
 ) -> Result<PreparedScene> {
-    prepare_in(scene, request, (store, limits), Storage::default())
-}
-
-/// [`prepare`] in the storage of an earlier prepared scene.
-pub(crate) fn prepare_in(
-    scene: &Scene,
-    request: &RenderRequest,
-    (store, limits): (&Store, &Limits),
-    storage: Storage,
-) -> Result<PreparedScene> {
     let area = area(request, limits)?;
     let mut budget = Budget::new(limits);
-    let shapes = ShapeBuilder::new(store, limits, storage);
+    let shapes = ShapeBuilder::new(store, limits);
     let planner =
         planner::Planner::new(scene, request, (store, limits), area, shapes, &mut budget)?;
     let finished = finish::finish(planner, &mut budget)?;
@@ -223,10 +213,5 @@ impl PreparedScene {
             workspace,
             rasterizer,
         })
-    }
-
-    /// The storage of its shapes, for the next preparation.
-    pub(crate) fn into_storage(self) -> Storage {
-        self.shapes.into_storage()
     }
 }

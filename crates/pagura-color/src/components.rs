@@ -47,6 +47,14 @@ impl Components {
         }
     }
 
+    /// Bytes owned by the component buffer, excluding inline storage.
+    pub fn heap_bytes(&self) -> usize {
+        match &self.0 {
+            Repr::Inline { .. } => 0,
+            Repr::Heap(values) => size_of_val(&**values),
+        }
+    }
+
     /// The number of components.
     pub fn len(&self) -> usize {
         self.as_slice().len()
@@ -72,9 +80,13 @@ mod tests {
 
     #[test]
     fn short_colours_are_inline_and_long_ones_kept() {
-        assert_eq!(Components::from_slice(&[0.5, 1.0]).as_slice(), &[0.5, 1.0]);
+        let short = Components::from_slice(&[0.5, 1.0]);
+        assert_eq!(short.as_slice(), &[0.5, 1.0]);
+        assert_eq!(short.heap_bytes(), 0);
         let six = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6];
-        assert_eq!(&*Components::from_slice(&six), &six);
+        let long = Components::from_slice(&six);
+        assert_eq!(&*long, &six);
+        assert_eq!(long.heap_bytes(), size_of_val(&six));
         assert_eq!(Components::filled(1.0, 3).as_slice(), &[1.0; 3]);
         assert!(Components::from_slice(&[]).is_empty());
     }

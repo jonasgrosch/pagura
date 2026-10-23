@@ -4,16 +4,11 @@
 //! who reuses them render after render.
 
 use super::{Active, Tops};
-use crate::PreparedScene;
 use crate::format::Format;
 use crate::plan::{Boundary, ItemKind, Layout, Plan};
-use crate::prepare::Storage;
-use crate::request::RenderRequest;
 use crate::source::{PaintScratch, Source, SpanColors};
 use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Meter, Result};
-use pagura_core::{Limits, Store};
-use pagura_interpret::Scene;
 use pagura_raster::{BandCoverage, BandRasterizer, DeviceRect};
 
 /// The storage renders write: band buffers, coverage, span scratch and the
@@ -26,35 +21,9 @@ use pagura_raster::{BandCoverage, BandRasterizer, DeviceRect};
 pub struct Scratch {
     workspace: Option<Workspace>,
     rasterizer: Option<BandRasterizer>,
-    /// The storage of the shapes of the scene taken back last.
-    storage: Storage,
 }
 
 impl Scratch {
-    /// Prepares `scene` for `request` as [`crate::prepare`] does, in the
-    /// shape storage of the scene taken back last ([`Self::recycle`]).
-    ///
-    /// # Errors
-    ///
-    /// As [`crate::prepare`].
-    pub fn prepare(
-        &mut self,
-        scene: &Scene,
-        request: &RenderRequest,
-        (store, limits): (&Store, &Limits),
-    ) -> Result<PreparedScene> {
-        let storage = std::mem::take(&mut self.storage);
-        crate::prepare::prepare_in(scene, request, (store, limits), storage)
-    }
-
-    /// Takes back the storage of `scene`'s shapes, emptied, for the next
-    /// preparation.
-    pub fn recycle(&mut self, scene: PreparedScene) {
-        let mut shapes = scene.into_storage();
-        shapes.clear();
-        self.storage = shapes;
-    }
-
     /// Bytes held between renders.
     pub fn retained_bytes(&self) -> usize {
         self.workspace.as_ref().map_or(0, Workspace::bytes)
@@ -62,7 +31,6 @@ impl Scratch {
                 .rasterizer
                 .as_ref()
                 .map_or(0, BandRasterizer::retained_bytes)
-            + self.storage.capacity() * size_of::<pagura_raster::Shape>()
     }
 
     /// The workspace and rasterizer for `plan`, allocated within the
@@ -651,7 +619,10 @@ mod tests {
     fn retained_scratch_includes_its_coverage_allocations() {
         let scene = crate::testing::Build::new(192.0, 256.0);
         let prepared = scene
-            .prepare(&scene.request(scene.page(), 256), &Limits::default())
+            .prepare(
+                &scene.request(scene.page(), 256),
+                &pagura_core::Limits::default(),
+            )
             .unwrap();
         let mut scratch = Scratch::default();
         let buffers = {

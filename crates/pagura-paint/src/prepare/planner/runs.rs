@@ -294,9 +294,17 @@ mod tests {
             region: b.page(),
             band_height: 1,
         };
-        let shapes = ShapeBuilder::new(&store, &limits, Vec::new());
-        let mut planner =
-            Planner::new(&b.scene, &request, (&store, &limits), area, shapes).unwrap();
+        let shapes = ShapeBuilder::new(&store, &limits);
+        let mut setup = Budget::new(&Limits::default());
+        let mut planner = Planner::new(
+            &b.scene,
+            &request,
+            (&store, &limits),
+            area,
+            shapes,
+            &mut setup,
+        )
+        .unwrap();
         test(&mut planner, &mut Budget::new(&limits));
     }
 
@@ -374,13 +382,19 @@ mod tests {
                 panic!("expected run")
             };
             assert_eq!(run.glyphs.capacity(), capacity);
-            assert_eq!(budget.bytes.used(), retained + super::super::ITEM_BYTES);
+            assert_eq!(
+                budget.bytes.used(),
+                retained + size_of::<crate::plan::Item>() + 2 * size_of::<u32>()
+            );
         });
         with_planner(1 << 20, |planner, budget| {
             planner.gather(0, mark(), placed(), budget).unwrap();
             planner.flush(budget).unwrap();
             assert!(matches!(planner.parts.items[0].kind, ItemKind::Mark(_)));
-            assert_eq!(budget.bytes.used(), super::super::ITEM_BYTES);
+            assert_eq!(
+                budget.bytes.used(),
+                size_of::<crate::plan::Item>() + 2 * size_of::<u32>()
+            );
         });
     }
 

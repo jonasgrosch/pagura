@@ -43,68 +43,98 @@ impl Planner<'_> {
         }
         let override_paint = match tiling.colors {
             TilingColors::Colored => None,
-            TilingColors::Uncolored => {
-                let color = paint
-                    .color
-                    .clone()
-                    .ok_or(Error::syntax("uncoloured pattern without a colour"))?;
-                let state = Arc::new(pagura_interpret::Composite::default());
-                let paint = Arc::new(Paint::Solid(color));
-                let index = self.solid_paint(&paint, (&state, scope), bounds, budget)?;
-                Some((index, paint))
-            }
+            TilingColors::Uncolored => Some(self.pattern_paint(scope, paint, bounds, budget)?),
         };
-        let transparent = self
-            .storage
-            .cells
-            .get(&(paint.pattern, scope.layout.process))
-            .copied()
-            .unwrap_or(false);
-        let group = self.new_group(
-            GroupPlan {
-                bounds,
-                items: Vec::new(),
-                order: Vec::new(),
-                layout: scope.layout,
-                format: Format::F64,
-                knockout: false,
-                start: if transparent {
-                    Start::Transparent
-                } else {
-                    Start::Backdrop
-                },
-            },
-            budget,
-        )?;
-        let [x_step, y_step] = tiling.step;
-        for j in rows.0..=rows.1 {
-            for i in columns.0..=columns.1 {
-                #[expect(
-                    clippy::cast_precision_loss,
-                    reason = "instance indices are below 2^53"
-                )]
-                let offset = Transform::translate(i as f64 * x_step, j as f64 * y_step);
-                let inner = Scope {
-                    group,
-                    transform: offset.then(transform),
-                    crop: false,
+        let temporary = override_paint.as_ref().map_or(0, |(_, paint)| {
+            let Paint::Solid(color) = &**paint else {
+                unreachable!("pattern override is solid")
+            };
+            2 * size_of::<usize>() + size_of::<Paint>() + color.components.heap_bytes()
+        });
+        let prepared = (|| {
+            let transparent = self
+                .storage
+                .cells
+                .get(&(paint.pattern, scope.layout.process))
+                .copied()
+                .unwrap_or(false);
+            let group = self.new_group(
+                GroupPlan {
                     bounds,
+                    items: Vec::new(),
+                    order: Vec::new(),
                     layout: scope.layout,
-                    plain: false,
-                    records: false,
-                    separated: scope.separated,
-                    masked: scope.masked,
-                    paint: override_paint.clone().or_else(|| scope.paint.clone()),
-                    depth: scope.depth + 1,
-                };
-                self.children(&inner, &cell.children, budget)?;
+                    format: Format::F64,
+                    knockout: false,
+                    start: if transparent {
+                        Start::Transparent
+                    } else {
+                        Start::Backdrop
+                    },
+                },
+                budget,
+            )?;
+            let [x_step, y_step] = tiling.step;
+            for j in rows.0..=rows.1 {
+                for i in columns.0..=columns.1 {
+                    #[expect(
+                        clippy::cast_precision_loss,
+                        reason = "instance indices are below 2^53"
+                    )]
+                    let offset = Transform::translate(i as f64 * x_step, j as f64 * y_step);
+                    let inner = Scope {
+                        group,
+                        transform: offset.then(transform),
+                        crop: false,
+                        bounds,
+                        layout: scope.layout,
+                        plain: false,
+                        records: false,
+                        separated: scope.separated,
+                        masked: scope.masked,
+                        paint: override_paint.clone().or_else(|| scope.paint.clone()),
+                        depth: scope.depth + 1,
+                    };
+                    self.children(&inner, &cell.children, budget)?;
+                }
             }
+            let content = intersect(self.content(group), bounds);
+            if let Some(plan) = self.parts.groups.get_mut(index(group)) {
+                plan.bounds = content;
+            }
+            Ok((!content.is_empty()).then_some((group, content)))
+        })();
+        drop(override_paint);
+        budget.bytes.refund(temporary);
+        prepared
+    }
+
+    /// One temporary, shared colour override for an uncoloured cell.
+    fn pattern_paint(
+        &mut self,
+        scope: &Scope,
+        tiling: &TilingPaint,
+        bounds: DeviceRect,
+        budget: &mut Budget,
+    ) -> Result<(u32, Arc<Paint>)> {
+        let color = tiling
+            .color
+            .as_ref()
+            .ok_or(Error::syntax("uncoloured pattern without a colour"))?;
+        budget
+            .bytes
+            .charge(2 * size_of::<usize>() + size_of::<Paint>() + color.components.heap_bytes())?;
+        let state = pagura_interpret::Composite::default();
+        let paint = Arc::new(Paint::Solid(color.clone()));
+        let prepared = self.solid_paint(&paint, (&state, scope), bounds, budget);
+        if let Err(error) = prepared {
+            let released =
+                2 * size_of::<usize>() + size_of::<Paint>() + color.components.heap_bytes();
+            drop(paint);
+            budget.bytes.refund(released);
+            return Err(error);
         }
-        let content = intersect(self.content(group), bounds);
-        if let Some(plan) = self.parts.groups.get_mut(index(group)) {
-            plan.bounds = content;
-        }
-        Ok((!content.is_empty()).then_some((group, content)))
+        Ok((prepared?, paint))
     }
 }
 

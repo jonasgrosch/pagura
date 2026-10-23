@@ -294,6 +294,7 @@ impl Fixture {
         .unwrap();
         let selections = !self.output.transfers.is_empty();
         let plan = Plan {
+            _names: crate::plan::TargetNames::default(),
             area,
             groups: parts.groups,
             items: parts.items,

@@ -338,6 +338,8 @@ fn kept_glyph_edges_change_nothing() {
         ..page
     };
     let store = Store::new(1 << 20);
+    // Warm every source first, including placements the top region culls.
+    render_in(&b, &b.request(page, 16), &store);
     for region in [tops, page] {
         let request = b.request(region, 16);
         let cold = render_in(&b, &request, &Store::new(1 << 20));

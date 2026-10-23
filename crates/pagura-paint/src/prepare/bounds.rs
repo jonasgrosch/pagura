@@ -111,6 +111,7 @@ pub(crate) fn stroke_reach(pen: &pagura_interpret::Pen, transform: Transform) ->
 }
 
 /// The unit square under `transform`, as a path.
+#[cfg(test)]
 pub(crate) fn unit_square() -> Path {
     let mut builder = pagura_raster::PathBuilder::new();
     builder.rect(0.0, 0.0, 1.0, 1.0);

@@ -15,12 +15,14 @@ pub(crate) use groups::view_transform;
 
 use super::storage::{self, Inputs, Storage};
 use super::{Budget, ShapeBuilder, index, overprint};
-use crate::plan::{Conversion, Curve, GroupPlan, Item, Layout, MaskPlan, Start, union};
+use crate::plan::{
+    Conversion, Curve, GroupPlan, Item, Layout, MaskPlan, Start, TargetNames, union,
+};
 use crate::request::RenderRequest;
 use crate::source::Source;
 use pagura_color::{Process, Target};
 use pagura_core::hash::FastMap;
-use pagura_core::{Error, Limits, Name, Position, Result, Store};
+use pagura_core::{Diagnostic, Error, Limits, Meter, Name, Position, Result, Store};
 use pagura_interpret::{MaskId, Node, NodeId, Paint, Scene};
 use pagura_raster::{Area, DeviceRect, Path, Transform};
 use std::sync::Arc;
@@ -49,9 +51,6 @@ pub(crate) struct MaskKey {
     pub(crate) process: Process,
 }
 
-/// Bytes charged per item: the item and its places in its group's lists.
-const ITEM_BYTES: usize = size_of::<Item>() + 2 * size_of::<u32>();
-
 /// The state of the walk.
 pub(crate) struct Planner<'s> {
     pub(crate) scene: &'s Scene,
@@ -63,7 +62,7 @@ pub(crate) struct Planner<'s> {
     pub(crate) storage: Storage,
     pub(crate) simulate: bool,
     /// Spot colorants of the page target.
-    pub(crate) spots: Arc<[Name]>,
+    pub(crate) names: TargetNames,
     /// Spot colorants with their first definition.
     pub(crate) definitions: Vec<(Name, Arc<pagura_color::ColorSpace>)>,
     pub(crate) parts: Parts,
@@ -86,7 +85,7 @@ pub(crate) struct Planner<'s> {
     /// Where the walk failed.
     pub(crate) failed: Option<(u32, Position)>,
     /// Repairs made preparing paint, in source order.
-    pub(crate) repairs: Vec<pagura_core::Diagnostic>,
+    pub(crate) repairs: Vec<Diagnostic>,
     /// The group whose glyph run's placements are being gathered; content
     /// walked meanwhile (a soft mask's, at its first use) is not.
     gathering: Option<u32>,
@@ -186,12 +185,9 @@ impl<'s> Planner<'s> {
             },
             &mut budget.bytes,
         )?;
-        let spots: Arc<[Name]> = separations
-            .spots
-            .iter()
-            .map(|(name, _)| name.clone())
-            .collect();
+        let names = target_names(&separations, &mut budget.bytes)?;
         let mut parts = Parts::default();
+        budget.bytes.reserve_capacity(&mut parts.groups, 1)?;
         parts.groups.push(GroupPlan {
             bounds: area.region,
             items: Vec::new(),
@@ -201,6 +197,10 @@ impl<'s> Planner<'s> {
             knockout: storage.page_knockout,
             start: Start::Transparent,
         });
+        budget
+            .bytes
+            .charge(2 * size_of::<usize>() + size_of::<Path>())?;
+        let crop = Arc::new(Path::rect_with_bytes(scene.page.crop, &mut budget.bytes)?);
         Ok(Self {
             scene,
             request,
@@ -210,10 +210,10 @@ impl<'s> Planner<'s> {
             area,
             storage,
             simulate: separations.simulate,
-            spots,
+            names,
             definitions: separations.spots,
             parts,
-            crop: Arc::new(crop(scene)),
+            crop,
             clips: FastMap::default(),
             built_clips: FastMap::default(),
             last_clip: None,
@@ -260,7 +260,6 @@ impl<'s> Planner<'s> {
             paint: None,
             depth: 0,
         };
-        budget.bytes.charge(size_of::<GroupPlan>())?;
         self.children(&scope, &root.children, budget)
     }
 
@@ -269,9 +268,9 @@ impl<'s> Planner<'s> {
     pub(crate) fn target(&self, scope: &Scope) -> Target {
         if scope.separated {
             let spots = if scope.layout.spots > 0 {
-                Arc::clone(&self.spots)
+                Arc::clone(&self.names.spots)
             } else {
-                Arc::from([])
+                Arc::clone(&self.names.empty)
             };
             Target::separated(scope.layout.process, spots)
         } else if self.request.overprint == crate::request::OverprintMode::Simulate {
@@ -279,10 +278,15 @@ impl<'s> Planner<'s> {
             // soft masks in particular.
             Target {
                 colorants: pagura_color::Colorants::ProcessOverprint,
-                ..Target::new(scope.layout.process)
+                process: scope.layout.process,
+                spots: Arc::clone(&self.names.empty),
             }
         } else {
-            Target::new(scope.layout.process)
+            Target {
+                process: scope.layout.process,
+                spots: Arc::clone(&self.names.empty),
+                colorants: pagura_color::Colorants::Composite,
+            }
         }
     }
 
@@ -314,9 +318,14 @@ impl<'s> Planner<'s> {
         if self.parts.items.len().saturating_add(self.gathered) >= self.limits.display_commands {
             return Err(Error::limit("painted mark budget exceeded"));
         }
-        budget.bytes.charge(ITEM_BYTES)?;
         let id = u32::try_from(self.parts.items.len())
             .map_err(|_| Error::limit("painted mark budget exceeded"))?;
+        budget.bytes.reserve_capacity(&mut self.parts.items, 1)?;
+        if let Some(group) = self.parts.groups.get_mut(index(group)) {
+            budget.bytes.reserve_capacity(&mut group.items, 1)?;
+            // Finalization constructs the one order slot for this item.
+            budget.bytes.charge_items::<u32>(1)?;
+        }
         self.parts.items.push(item);
         if let Some(group) = self.parts.groups.get_mut(index(group)) {
             group.items.push(id);
@@ -344,9 +353,9 @@ impl<'s> Planner<'s> {
     }
 
     fn new_group(&mut self, plan: GroupPlan, budget: &mut Budget) -> Result<u32> {
-        budget.bytes.charge(size_of::<GroupPlan>())?;
         let id = u32::try_from(self.parts.groups.len())
             .map_err(|_| Error::limit("group count exceeds u32"))?;
+        budget.bytes.reserve_capacity(&mut self.parts.groups, 1)?;
         self.parts.groups.push(plan);
         Ok(id)
     }
@@ -382,7 +391,10 @@ impl<'s> Planner<'s> {
                 out
             }
         };
-        budget.bytes.charge(size_of::<[Option<Curve>; 3]>())?;
+        budget
+            .bytes
+            .reserve_capacity(&mut self.parts.transfers, 1)?;
+        budget.bytes.reserve_map_capacity(&mut self.transfers, 1)?;
         self.parts.transfers.push(functions);
         let index = u16::try_from(self.parts.transfers.len())
             .map_err(|_| Error::limit("transfer function count exceeds u16"))?;
@@ -397,6 +409,97 @@ impl<'s> Planner<'s> {
     pub(crate) fn clip_states(&mut self) -> &mut FastMap<clips::Key, clips::State> {
         &mut self.clips
     }
+
+    /// Drops the walk's setup tables and temporary owners before the
+    /// workspace is reserved. The returned values alone survive in the plan.
+    pub(crate) fn finish(self, bytes: &mut Meter) -> Result<Walked<'s>> {
+        let released = self.storage.retained_bytes(bytes)?
+            + self.definitions.capacity() * size_of::<(Name, Arc<pagura_color::ColorSpace>)>()
+            + self
+                .definitions
+                .iter()
+                .map(|(name, _)| name.heap_bytes())
+                .sum::<usize>()
+            + 2 * size_of::<usize>()
+            + size_of::<Path>()
+            + self.crop.retained_bytes()
+            + bytes.map_bytes(&self.clips)?
+            + clips::retained_bytes(&self.built_clips, bytes)?
+            + bytes.map_bytes(&self.solids)?
+            + bytes.map_bytes(&self.masks)?
+            + bytes.map_bytes(&self.transfers)?
+            + self.open.capacity() * size_of::<MaskKey>()
+            + self.users.capacity() * size_of::<DeviceRect>();
+        let Self {
+            shapes,
+            names,
+            parts,
+            repairs,
+            storage,
+            definitions,
+            crop,
+            clips,
+            built_clips,
+            solids,
+            masks,
+            transfers,
+            open,
+            users,
+            ..
+        } = self;
+        drop((
+            storage,
+            definitions,
+            crop,
+            clips,
+            built_clips,
+            solids,
+            masks,
+            transfers,
+            open,
+            users,
+        ));
+        bytes.refund(released);
+        Ok(Walked {
+            shapes,
+            names,
+            parts,
+            repairs,
+        })
+    }
+}
+
+/// The retained result of the ordered walk.
+pub(crate) struct Walked<'s> {
+    pub(crate) shapes: ShapeBuilder<'s>,
+    pub(crate) names: TargetNames,
+    pub(crate) parts: Parts,
+    pub(crate) repairs: Vec<Diagnostic>,
+}
+
+/// Copies only the owned name bytes, then moves those names into one
+/// shared payload while both its allocation and the old slots are charged.
+fn target_names(separations: &overprint::Separations, bytes: &mut Meter) -> Result<TargetNames> {
+    bytes.charge_items::<usize>(2)?;
+    let empty: Arc<[Name]> = Arc::new([]);
+    if separations.spots.is_empty() {
+        return Ok(TargetNames {
+            spots: Arc::clone(&empty),
+            empty,
+        });
+    }
+    let mut names = Vec::new();
+    bytes.reserve_capacity(&mut names, separations.spots.len())?;
+    for (name, _) in &separations.spots {
+        bytes.charge(name.heap_bytes())?;
+        names.push(name.clone());
+    }
+    bytes.charge_items::<usize>(2)?;
+    bytes.charge_items::<Name>(names.len())?;
+    let released = names.capacity() * size_of::<Name>();
+    let spots = names.into();
+    bytes.refund(released);
+    Ok(TargetNames { spots, empty })
 }
 
 impl Scope {
@@ -407,7 +510,44 @@ impl Scope {
     }
 }
 
-/// The page crop as a path, in default user space.
-pub(crate) fn crop(scene: &Scene) -> Path {
-    Path::rect(scene.page.crop)
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pagura_color::ColorSpace;
+
+    #[test]
+    fn shared_target_names_charge_owned_copy_overlap_then_only_live_owners() {
+        let definitions = overprint::Separations {
+            simulate: true,
+            spots: vec![
+                (
+                    Name::new(b"An owned spot name longer than the inline limit"),
+                    Arc::new(ColorSpace::DeviceRgb),
+                ),
+                (Name::new(b"Other"), Arc::new(ColorSpace::DeviceRgb)),
+            ],
+        };
+        let heap = definitions
+            .spots
+            .iter()
+            .map(|(name, _)| name.heap_bytes())
+            .sum::<usize>();
+        let slots = definitions.spots.len() * size_of::<Name>();
+        let peak = 4 * size_of::<usize>() + 2 * slots + heap;
+        let mut tiny = Meter::new(peak - 1, "name memory");
+        assert_eq!(
+            target_names(&definitions, &mut tiny).unwrap_err().message,
+            "name memory"
+        );
+        let mut bytes = Meter::new(peak, "name memory");
+        let names = target_names(&definitions, &mut bytes).unwrap();
+        assert_eq!(bytes.used(), 4 * size_of::<usize>() + slots + heap);
+        assert_eq!(names.spots.len(), 2);
+        assert!(!Arc::ptr_eq(&names.spots, &names.empty));
+
+        let mut empty_bytes = Meter::new(2 * size_of::<usize>(), "name memory");
+        let names = target_names(&overprint::Separations::default(), &mut empty_bytes).unwrap();
+        assert!(Arc::ptr_eq(&names.spots, &names.empty));
+        assert_eq!(empty_bytes.used(), 2 * size_of::<usize>());
+    }
 }

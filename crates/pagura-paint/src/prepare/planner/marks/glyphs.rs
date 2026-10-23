@@ -159,7 +159,6 @@ impl Planner<'_> {
         if bounds.is_empty() {
             return Ok(());
         }
-        budget.bytes.charge(prepared.bytes)?;
         self.use_mask(memo.mask, bounds, budget)?;
         budget.work.charge(prepared.work)?;
         budget.work.charge(area(bounds))?;
