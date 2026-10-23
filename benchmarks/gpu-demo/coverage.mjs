@@ -128,17 +128,17 @@ async function check(engine, gpu) {
   const curveAt = cw[9] + 8;cw[curveAt] = 1;cf.set([16,0,16,16,0,16],curveAt+1);
   const curveJob = gpu.prepare(curveBytes);
   try {
-    const output = await curveJob.render();let max = 0;
+    const output = await curveJob.render();let max = 0,worst=null;
     const integrate = (f,a,b,eps,depth=0) => {
       const m=(a+b)/2,fa=f(a),fm=f(m),fb=f(b),whole=(b-a)*(fa+4*fm+fb)/6;
       const l=(a+m)/2,r=(m+b)/2,parts=(m-a)*(fa+4*f(l)+fm)/6+(b-m)*(fm+4*f(r)+fb)/6;
-      return depth>=20||Math.abs(parts-whole)<15*eps ? parts+(parts-whole)/15 : integrate(f,a,m,eps/2,depth+1)+integrate(f,m,b,eps/2,depth+1);
+      return depth>=20||(depth>=4&&Math.abs(parts-whole)<15*eps) ? parts+(parts-whole)/15 : integrate(f,a,m,eps/2,depth+1)+integrate(f,m,b,eps/2,depth+1);
     };
     for(let y=0;y<16;y++)for(let x=0;x<32;x++){
       const area=integrate(v=>{const t=1-Math.sqrt(Math.max(0,1-v/16));return Math.max(0,Math.min(1,16*(1-t*t)-x));},y,y+1,1e-10);
-      const expected=255-Math.floor(area*255+0.5);max=Math.max(max,Math.abs(output.pixels[(y*32+x)*4]-expected));
+      const expected=255-Math.floor(area*255+0.5),actual=output.pixels[(y*32+x)*4],delta=Math.abs(actual-expected);if(delta>max){max=delta;worst={x,y,expected,actual,area};}
     }
-    oracle.push({kind:'true-quadratic-independent-integral',pixels:512,max_channel_error:max});if(max>1)failures.push({error:'Quadratic integral oracle',max});
+    oracle.push({kind:'true-quadratic-independent-integral',pixels:512,max_channel_error:max,worst});if(max>1)failures.push({error:'Quadratic integral oracle',max});
   }finally{curveJob.destroy();}
   const precision=[];
   const vertices=[[0.1,0.1],[31.9,0.1],[31.9,15.9],[0.1,15.9]];
