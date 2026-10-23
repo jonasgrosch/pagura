@@ -1,3 +1,4 @@
+import {validateRaster} from './raster.mjs';
 /** Experimental exact integer N16 backend. No Rust GPU dependency or FFI. */
 export function validateProgram(buffer, limits) {
   if (!(buffer instanceof Uint8Array) || buffer.byteLength < 64 || buffer.byteLength % 4) throw new Error('Truncated GPU program');
@@ -52,24 +53,31 @@ export class GpuBackend {
     const errors = (await module.getCompilationInfo()).messages.filter(message => message.type === 'error');
     if (errors.length) { device.destroy(); throw new Error(errors.map(error => error.message).join('\n')); }
     const pipeline = await device.createComputePipelineAsync({layout: 'auto', compute: {module, entryPoint: 'composite'}});
+    const rasterCode = await (await fetch(new URL('./raster.wgsl', import.meta.url))).text();
+    const rasterModule = device.createShaderModule({code: rasterCode});
+    const rasterErrors = (await rasterModule.getCompilationInfo()).messages.filter(m => m.type === 'error');
+    if (rasterErrors.length) { device.destroy(); throw new Error(rasterErrors.map(m => m.message).join('\n')); }
+    const rasterPipeline = await device.createComputePipelineAsync({layout: 'auto', compute: {module: rasterModule, entryPoint: 'rasterize'}});
     const info = adapter.info;
     return new GpuBackend(device, pipeline, timestamps, {
       vendor: info.vendor, architecture: info.architecture, device: info.device, description: info.description,
       isFallbackAdapter: info.isFallbackAdapter, backend: info.backend ?? null, type: info.type ?? null,
       userAgent: navigator.userAgent, initialization_ms: performance.now() - start,
-    }, () => lost);
+    }, () => lost, rasterPipeline);
   }
 
-  constructor(device, pipeline, timestamps, info, lost) {
-    Object.assign(this, {device, pipeline, timestamps, info, lost});
+  constructor(device, pipeline, timestamps, info, lost, rasterPipeline) {
+    Object.assign(this, {device, pipeline, timestamps, info, lost, rasterPipeline});
   }
 
   /** Validation, allocation and initial upload are measured separately. */
   prepare(bytes) {
     if (this.lost()) throw new Error(this.lost());
     const start = performance.now();
-    const program = validateProgram(bytes, this.device.limits);
-    const {device, pipeline, timestamps} = this;
+    const raster = bytes.length >= 4 && new DataView(bytes.buffer, bytes.byteOffset).getUint32(0, true) === 0x32555047;
+    const program = raster ? validateRaster(bytes, this.device.limits) : validateProgram(bytes, this.device.limits);
+    const {device, timestamps} = this;
+    const pipeline = raster ? this.rasterPipeline : this.pipeline;
     const source = device.createBuffer({size: bytes.length, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST});
     const size = program.width * program.height * 4;
     const output = device.createBuffer({size, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC});
@@ -84,7 +92,7 @@ export class GpuBackend {
     let busy = false, destroyed = false;
     return {
       setup_ms, width: program.width, height: program.height, spans: program.spans,
-      packet_bytes: bytes.length, references: program.references,
+      packet_bytes: bytes.length, references: program.references, geometry: raster ? program : null,
       render: async (upload = bytes) => {
         if (busy || destroyed || this.lost()) throw new Error(this.lost() || 'GPU job is unavailable');
         if (!(upload instanceof Uint8Array) || upload.length !== bytes.length) throw new Error('GPU program changed; prepare a new job');

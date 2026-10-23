@@ -266,8 +266,8 @@ impl<'a> ShapeBuilder<'a> {
 /// scratch storage of the caller's rasterizer.
 #[derive(Debug, Default)]
 pub(crate) struct Shapes {
-    shapes: Vec<Shape>,
-    clips: Vec<ClipShape>,
+    pub(super) shapes: Vec<Shape>,
+    pub(super) clips: Vec<ClipShape>,
 }
 
 impl Shapes {

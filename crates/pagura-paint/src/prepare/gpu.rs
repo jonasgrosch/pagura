@@ -32,6 +32,11 @@ pub struct Program {
 }
 
 impl Program {
+    /// Takes the packet without copying its storage.
+    pub fn into_words(self) -> Vec<u32> {
+        self.words
+    }
+
     /// Versioned packet words; serialize each word little-endian.
     pub fn words(&self) -> &[u32] {
         &self.words

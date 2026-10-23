@@ -1,5 +1,5 @@
 {
-  "schema": 3,
+  "schema": 4,
   "scope": "Exploratory CPU, hybrid WebGPU and browser SVG presentation on a shared desktop; not the release performance gate",
   "minimum_samples": 100,
   "minimum_warmups": 5,
@@ -41,5 +41,8 @@
   "svg_slow_case_policy": "An initial completed SVG raster exceeding 250 ms caps SVG at 3 timed samples and 1 warmup; CPU/hybrid keep the requested count. Actual counts and cap are reported. No slow input is silently excluded.",
   "presentation": "12 samples after 2 warmups in top and centre 480px viewports. CPU/hybrid rebuild pixels; SVG reuses its exported page and decoded image. No forced full-page SVG readback. Request to two animation-frame opportunities, not scanout.",
   "zoom": "18 fresh-resolution samples after 3 warmups across 1x, 1.5x and 2x, alternating top/centre viewport. SVG retains its vector image. A 60-frame CSS gesture uses the centre viewport. A path stops after a frame above 250 ms once at least 3 samples are collected, preserving earlier samples. A slow gesture stops after at least 3 frames. Actual counts are reported. Untimed accuracy readback samples the retained image and also compares it with fresh SVG serialization.",
-  "svg_cache_scope": "One host export per current recorded page, reset on page/document change, bounded by 64 MiB. Encoded images are deduplicated inside that artifact. One parsed/decoded browser artifact per comparison, shared by all its samples. No application raster pixel cache."
+  "svg_cache_scope": "One host export per current recorded page, reset on page/document change, bounded by 64 MiB. Encoded images are deduplicated inside that artifact. One parsed/decoded browser artifact per comparison, shared by all its samples. No application raster pixel cache.",
+  "coverage_experiment": "Operations 5/6 export prepared geometry and exact exceptional cells. GPU integrates lines and true monotone quadratics in f32, then composites N16. Local mode subtracts an integer origin in f64 before narrowing. This is approximate and never advertised as Exact.",
+  "coverage_benchmark": "100 fresh exports/uploads/completed readbacks after 5 warmups; rotate/reverse native CPU vs local/absolute GPU and browser CPU vs exact-span GPU vs local/absolute coverage GPU. Same page-0 real PDFs at 72/150/300 DPI. CPU prepare and geometry export count; first adapter/pipeline/allocation/validation excluded and separately reported. Every sample completes a readback. Differential accuracy is checked outside timing.",
+  "coverage_limits": "Existing opaque-solid RGB N16 admission remains; sampled paints, transparency and required F64 use explicit CPU fallback. Sparse winding/joint-clip corrections and clip classification stay in CPU preparation. Coverage work is moved, not the whole preparation stage."
 }

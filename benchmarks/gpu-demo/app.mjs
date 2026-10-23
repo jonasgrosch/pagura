@@ -46,10 +46,15 @@ export function show(output, label) {
   $('svg-time').textContent = result.svg_fallback ? 'Unavailable' : ms(result.svg_render_ms.median);
   $('svg-error').textContent = result.svg_accuracy ? `${result.svg_accuracy.beyond_one_percent.toFixed(2)}%` : '—';
   $('svg-path').textContent = result.svg_fallback ? 'Unavailable' : 'Browser vector rendering';
-  $('identity').textContent = result.fallback ? 'WebGPU: CPU fallback' : 'WebGPU: identical CPU bytes';
-  $('gpu-path').textContent = result.fallback ? 'CPU fallback' : 'WebGPU · N16 integer';
+  const raster = result.gpu_operation !== 3;
+  $('identity').textContent = result.fallback ? 'WebGPU: CPU fallback' : result.cpu_gpu_byte_identical ? 'WebGPU: identical CPU bytes in this comparison' : `WebGPU: ${result.gpu_accuracy.changed_pixels} changed pixels · max ${result.gpu_accuracy.max_channel_error} levels`;
+  $('gpu-label').textContent = raster ? 'GPU coverage render' : 'Hybrid render';
+  $('gpu-summary').textContent = raster ? 'Preparation + GPU coverage + readback' : 'CPU coverage + GPU + readback';
+  $('gpu-stage').textContent = raster ? 'coverage' : '+ CPU coverage';
+  $('gpu-path').textContent = result.fallback ? 'CPU fallback' : raster ? `WebGPU · ${result.gpu_operation === 5 ? 'local' : 'absolute'} f32 area` : 'WebGPU · N16 integer';
   $('detail').textContent = result.fallback ? `WebGPU fallback: ${result.fallback}. This panel shows the CPU result.`
-    : `WebGPU packet: ${(result.packet_bytes / 1024).toFixed(0)} KiB; coverage and packet ${ms(result.packet_build_ms.median)}, GPU completion and readback ${ms(result.gpu_complete_ms.median)}. Kernel ${result.gpu_kernel_ms ? ms(result.gpu_kernel_ms.median) : 'timestamp unavailable'}.`;
+    : `WebGPU packet: ${(result.packet_bytes / 1024).toFixed(0)} KiB; ${raster ? 'geometry export' : 'coverage and packet'} ${ms(result.packet_build_ms.median)}, GPU completion and readback ${ms(result.gpu_complete_ms.median)}. Kernel ${result.gpu_kernel_ms ? ms(result.gpu_kernel_ms.median) : 'timestamp unavailable'}.`;
+  if (result.gpu_geometry) $('detail').textContent += ` ${result.gpu_geometry.edges.toLocaleString()} edges; ${result.gpu_geometry.correction_cells.toLocaleString()} exact CPU correction cells; ${result.gpu_geometry.clip_runs.toLocaleString()} prepared clip runs. Experimental f32 coverage is compared with Exact CPU, not certified as exact.`;
   $('frame-detail').textContent = `Worker transport included: CPU ${ms(result.cpu_frame_ms.median)}${result.gpu_frame_ms ? `, hybrid ${ms(result.gpu_frame_ms.median)}` : ''}${result.svg_frame_ms ? `, SVG ${ms(result.svg_frame_ms.median)}` : ''}. ${result.samples.length} samples after ${result.warmups} warmups.`;
   $('svg-detail').textContent = result.svg_fallback ? `SVG unavailable: ${result.svg_fallback}. No partial page is displayed.`
     : `Retained SVG raster and readback ${ms(result.svg_browser_ms.median)}. First setup ${ms(result.first_svg.frame_ms)} including export ${ms(result.first_svg.export_ms)}${result.first_svg.cache_hit ? ' (host artifact reused)' : ''}. XML and source images are reused after setup. ${result.svg_samples} samples after ${result.svg_warmups} warmups${result.svg_sample_cap ? ' (slow raster sample cap)' : ''}. ${(result.svg_bytes / 1024).toFixed(0)} KiB; ${result.svg_resources.glyphs.toLocaleString()} glyph placements; ${result.svg_resources.images} image resources; ${result.svg_resources.clips_elided} inactive clips removed, ${result.svg_resources.clips_retained} retained. Against CPU: ${result.svg_accuracy.changed_percent.toFixed(2)}% changed pixels, max channel difference ${result.svg_accuracy.max_channel_error}, mean ${result.svg_accuracy.mean_channel_error.toFixed(3)}. SVG repeat variation: ${result.svg_repeatability.differing_samples}/${result.svg_samples} samples, max channel delta ${result.svg_repeatability.max_channel_difference}. This is a differential comparison, not an exactness proof.`;
@@ -83,7 +88,7 @@ async function changeZoom() {
     const cpuFrame = dimensions.host_ms + performance.now() - cpuStart;
     let gpuFrame;
     if (!result.fallback && demo.gpu) {
-      const start = performance.now(), packet = await demo.engine.render(3, {...result.options, dpi});
+      const start = performance.now(), packet = await demo.engine.render(result.gpu_operation, {...result.options, dpi});
       if (!packet.meta.fallback) {
         const job = demo.gpu.prepare(packet.data);
         try { const pixels = await job.render(packet.data);putPixels($('gpu'), pixels.pixels, dimensions.meta.width, dimensions.meta.height);await paintOpportunity();gpuFrame = performance.now() - start; }
@@ -114,7 +119,7 @@ $('zoom-test').addEventListener('click', async () => {
   try {
     status('Measuring retained zoom and fresh frames…');
     const {output} = demo.current;
-    const study = await zoomStudy(demo.engine, demo.gpu, output.result.options, output.svgPage);
+    const study = await zoomStudy(demo.engine, demo.gpu, output.result.options, output.svgPage, {operation: output.result.gpu_operation});
     demo.lastZoom = study;
     $('zoom-detail').textContent = Object.entries(study.crisp).map(([mode, timing]) => `${mode.toUpperCase()} ${ms(timing.frame_ms.median)} (p95 ${ms(timing.frame_ms.p95)})`).join(' · ') + '. Request to animation-frame opportunity; not display scanout. Retained CSS gesture intervals: ' + Object.entries(study.gesture).map(([mode, g]) => `${mode} ${ms(g.interval_ms.median)}`).join(' · ');
     status('Zoom comparison complete');
@@ -134,6 +139,7 @@ async function run() {
     if (!Number.isInteger(page) || page < 0 || page >= opened.meta.pages) throw new Error('Choose an existing page');
     status(`Comparing ${selectedName}…`);
     const output = await compare(demo.engine, demo.gpu, {page, dpi: Number($('dpi').value)}, {
+      operation: Number($('gpu-mode').value),
       progress: (i, n) => status(`Measuring ${selectedName} · ${i + 1} / ${n}`),
     });
     show(output, selectedName);

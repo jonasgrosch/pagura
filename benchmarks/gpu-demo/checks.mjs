@@ -84,10 +84,11 @@ async function checkUi() {
   if (image.src !== source) throw new Error('Interactive SVG zoom replaced the retained vector source');
   const cpu = document.querySelector('#cpu'), gpu = document.querySelector('#gpu'), difference = document.querySelector('#difference');
   if (cpu.width <= original.width || difference.width !== cpu.width) throw new Error('Interactive zoom did not refresh resolution and differences');
-  assertPixels(gpu.getContext('2d').getImageData(0,0,gpu.width,gpu.height).data, cpu.getContext('2d').getImageData(0,0,cpu.width,cpu.height).data, 'UI zoom hybrid');
+  const gpuDelta = pixelDifference(gpu.getContext('2d').getImageData(0,0,gpu.width,gpu.height).data, cpu.getContext('2d').getImageData(0,0,cpu.width,cpu.height).data);
+  if (gpuDelta.max_channel_error > (original.gpu_operation === 3 ? 0 : 1)) throw new Error('Interactive GPU zoom accuracy changed');
   document.querySelector('#zoom-test').click();await wait(() => !demo.busy);
   if (!demo.lastZoom?.crisp.svg) throw new Error('Zoom controls did not record SVG timings');
-  return {schema: 1, failures: [], aspect_preserved: true, retained_svg_source: true, gpu_zoom_identical: true,
+  return {schema: 1, failures: [], aspect_preserved: true, retained_svg_source: true, gpu_zoom_accuracy: gpuDelta, gpu_operation: original.gpu_operation,
     zoom_dimensions: {width: cpu.width, height: cpu.height}, zoom: demo.lastZoom};
 }
 

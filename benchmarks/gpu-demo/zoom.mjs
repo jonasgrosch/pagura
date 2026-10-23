@@ -52,7 +52,7 @@ export async function presentationStudy(engine, gpu, options, vector, {samples =
   } finally {svg?.destroy();stage.remove();}
 }
 
-export async function zoomStudy(engine, gpu, options, vector, {samples = 12, warmups = 2, gestureFrames = 60} = {}) {
+export async function zoomStudy(engine, gpu, options, vector, {samples = 12, warmups = 2, gestureFrames = 60, operation = 3} = {}) {
   const dpis = [options.dpi, Math.round(options.dpi * 1.5), options.dpi * 2];
   if (dpis.at(-1) > 600) throw new Error('Zoom exceeds demo resolution limit');
   const stage = document.createElement('div'); stage.className = 'zoom-stage';
@@ -67,7 +67,7 @@ export async function zoomStudy(engine, gpu, options, vector, {samples = 12, war
     for (const dpi of dpis) {
       const reference = await engine.render(2, {...options, dpi}); references.set(dpi, reference);
       if (gpu && !fallback) {
-        const packet = await engine.render(3, {...options, dpi});
+        const packet = await engine.render(operation, {...options, dpi});
         if (packet.meta.fallback) fallback = packet.meta.fallback;
         else jobs.set(dpi, gpu.prepare(packet.data));
       }
@@ -95,7 +95,7 @@ export async function zoomStudy(engine, gpu, options, vector, {samples = 12, war
           putPixels(canvas, rendered.data, width, height); ready = performance.now() - start;
           output = rendered.data;
         } else {
-          const packet = await engine.render(3, {...options, dpi});
+          const packet = await engine.render(operation, {...options, dpi});
           output = (await jobs.get(dpi).render(packet.data)).pixels;
           putPixels(canvas, output, width, height); ready = performance.now() - start;
         }
@@ -103,7 +103,7 @@ export async function zoomStudy(engine, gpu, options, vector, {samples = 12, war
         stage.scrollTop = position === 'center' ? Math.max(0, (height - 480) / 2) : 0;
         await paintOpportunity();
         const frame_ms = performance.now() - start;
-        if (output) assertPixels(output, reference.data, `${mode} zoom ${dpi}`);
+        if (output && (mode === 'cpu' || operation === 3)) assertPixels(output, reference.data, `${mode} zoom ${dpi}`);
         if (frame_ms > 250) slow[mode] = true;
         if (i >= 0) crisp[mode].push({dpi, position, ready_ms: ready, frame_ms});
       }

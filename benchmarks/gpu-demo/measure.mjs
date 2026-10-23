@@ -27,12 +27,12 @@ function sameBytes(actual, expected) {
   return true;
 }
 
-export async function compare(engine, gpu, options, {samples = 9, warmups = 2, progress = () => {}, svg = true} = {}) {
+export async function compare(engine, gpu, options, {samples = 9, warmups = 2, progress = () => {}, svg = true, operation = 3} = {}) {
   if (!Number.isInteger(samples) || samples < 1 || samples > 1000 || !Number.isInteger(warmups) || warmups < 0 || warmups > 100) throw new Error('Invalid sample count');
   const coldCpu = await engine.render(2, options);
-  const initial = await engine.render(3, options);
+  const initial = await engine.render(operation, options);
   const svgInitial = svg ? await engine.render(4, options) : null;
-  const result = {options, width: coldCpu.meta.width, height: coldCpu.meta.height, first_cpu: coldCpu.meta,
+  const result = {options, gpu_operation: operation, width: coldCpu.meta.width, height: coldCpu.meta.height, first_cpu: coldCpu.meta,
     pixel_hash: hash(coldCpu.data), samples: [], fallback: initial.meta.fallback ?? null, warmups,
     svg_fallback: svgInitial?.meta.fallback ?? null};
   let svgPage, lastSvg;
@@ -72,10 +72,10 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
       return sample;
     };
     const hybrid = async () => {
-      const packet = await engine.render(3, options);
+      const packet = await engine.render(operation, options);
       if (packet.meta.fallback) throw new Error('GPU admission changed between identical requests');
       const output = await job.render(packet.data);
-      assertPixels(output.pixels, reference, 'GPU rendering');
+      if (operation === 3) assertPixels(output.pixels, reference, 'GPU rendering');
       return {engine: packet.meta, host_ms: packet.host_ms, gpu_ms: output.wall_ms,
         kernel_ms: output.kernel_ms, render_ms: packet.meta.engine_ms + output.wall_ms,
         frame_ms: packet.host_ms + output.wall_ms, pixels: output.pixels};
@@ -141,7 +141,9 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
       result.packet_bytes = job.packet_bytes; result.spans = job.spans; result.references = job.references;
       result.gpu_allocation_validation_ms = job.setup_ms;
     }
-    result.cpu_gpu_byte_identical = true;
+    result.gpu_accuracy = lastGpu ? pixelDifference(lastGpu.pixels, reference) : null;
+    result.cpu_gpu_byte_identical = !lastGpu || result.gpu_accuracy.changed_pixels === 0;
+    if (job?.geometry) result.gpu_geometry = {marks: job.spans, edges: job.geometry.edges, correction_cells: job.geometry.correction_cells, clip_runs: job.geometry.clip_runs};
     return {result, cpu: reference, gpu: lastGpu?.pixels ?? reference, svg: lastSvg?.pixels ?? null, svgPage};
   } finally { job?.destroy(); }
 }

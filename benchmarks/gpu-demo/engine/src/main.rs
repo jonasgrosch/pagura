@@ -74,7 +74,7 @@ impl Session {
                 Cow::Owned(Vec::new()),
             ));
         }
-        if !matches!(operation, 2..=4) || bytes.len() != 32 {
+        if !matches!(operation, 2..=6) || bytes.len() != 32 {
             return Err(Error::invalid_argument("invalid demo request"));
         }
         let page_index =
@@ -197,7 +197,7 @@ impl Session {
             document.repair(repair.clone())?;
         }
         let prepare_ms = ms(start);
-        if operation == 3
+        if matches!(operation, 3 | 5 | 6)
             && let Some(reason) = prepared.gpu_fallback_reason()
         {
             self.scratch.recycle(prepared);
@@ -227,7 +227,13 @@ impl Session {
                 render_bytes: MAX_FRAME,
                 ..limits
             };
-            let program = match prepared.gpu_program(&mut self.scratch, &export_limits) {
+            let program = match if operation >= 5 {
+                prepared.gpu_raster_program(&export_limits, operation == 5)
+            } else {
+                prepared
+                    .gpu_program(&mut self.scratch, &export_limits)
+                    .map(|program| program.into_words())
+            } {
                 Ok(program) => program,
                 Err(error) if error.kind == ErrorKind::Limit => {
                     self.scratch.recycle(prepared);
@@ -239,11 +245,15 @@ impl Session {
                         Cow::Owned(Vec::new()),
                     ));
                 }
+                Err(error) if matches!(error.kind, ErrorKind::Unsupported(_)) => {
+                    self.scratch.recycle(prepared);
+                    return Ok((format!("{{\"ok\":true,\"fallback\":{},\"prepare_ms\":{prepare_ms}}}", json_string(&error.to_string())), Cow::Owned(Vec::new())));
+                }
                 Err(error) => return Err(error),
             };
-            data.try_reserve_exact(program.words().len() * 4)
+            data.try_reserve_exact(program.len() * 4)
                 .map_err(|_| Error::limit("GPU wire allocation failed"))?;
-            for word in program.words() {
+            for word in &program {
                 data.extend_from_slice(&word.to_le_bytes());
             }
         }

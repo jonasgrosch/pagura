@@ -155,3 +155,72 @@ fn packet_storage_and_bin_work_are_bounded() {
         .render(&mut pixels);
     assert_eq!(pixels.len(), 77 * 51 * 4);
 }
+
+#[test]
+fn gpu_geometry_is_optional_bounded_and_does_not_change_cpu_rendering() {
+    let build = artwork();
+    let limits = Limits::default();
+    let prepared = build
+        .prepare(&build.request(build.page(), 7), &limits)
+        .unwrap();
+    let mut scratch = Scratch::default();
+    let mut before = Vec::new();
+    prepared
+        .with_scratch(&mut scratch)
+        .unwrap()
+        .render(&mut before);
+    for local in [false, true] {
+        let words = prepared.gpu_raster_program(&limits, local).unwrap();
+        assert_eq!(words[0], 0x3255_5047);
+        assert_eq!(words[19], u32::from(local));
+        assert_eq!(words[17] as usize, words.len());
+        assert!(words[14] > 0);
+        let bytes = Limits {
+            render_bytes: 64,
+            ..limits
+        };
+        assert_eq!(
+            prepared.gpu_raster_program(&bytes, local).unwrap_err().kind,
+            ErrorKind::Limit
+        );
+        let work = Limits {
+            render_work: 0,
+            ..limits
+        };
+        assert_eq!(
+            prepared.gpu_raster_program(&work, local).unwrap_err().kind,
+            ErrorKind::Limit
+        );
+    }
+    let mut after = Vec::new();
+    prepared
+        .with_scratch(&mut scratch)
+        .unwrap()
+        .render(&mut after);
+    assert_eq!(before, after);
+}
+
+#[test]
+fn gpu_geometry_requires_an_opaque_background_and_preserves_band_independence() {
+    let mut build = artwork();
+    let limits = Limits::default();
+    let a = build
+        .prepare(&build.request(build.page(), 1), &limits)
+        .unwrap()
+        .gpu_raster_program(&limits, true)
+        .unwrap();
+    let b = build
+        .prepare(&build.request(build.page(), 256), &limits)
+        .unwrap()
+        .gpu_raster_program(&limits, true)
+        .unwrap();
+    assert_eq!(a, b);
+    build.background = Rgba8::TRANSPARENT;
+    let prepared = build
+        .prepare(&build.request(build.page(), 7), &limits)
+        .unwrap();
+    assert!(matches!(
+        prepared.gpu_raster_program(&limits, true).unwrap_err().kind,
+        ErrorKind::Unsupported(_)
+    ));
+}

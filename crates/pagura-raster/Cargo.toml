@@ -8,6 +8,10 @@ publish.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+# Read-only prepared geometry for the isolated GPU experiment.
+gpu-demo = []
+
 [lints]
 workspace = true
 

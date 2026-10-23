@@ -56,6 +56,56 @@ with only local engine dependencies. Native and WASI builds use the same
 code. The browser reuses the viewer's WASI shim, bounded mailbox and extracted
 `web/host_runtime.mjs`. WebGPU and shader code stay in the host.
 
+## GPU coverage experiment
+
+The GPU stage selector also offers **local f32 coverage** and **absolute f32
+coverage**. These are approximate experiments, distinct from the exact N16
+span compositor. SVG export, its one-page cache, reusable resources and the
+Export SVG control remain independent of either GPU path.
+
+A second optional method, `PreparedScene::gpu_raster_program`, borrows the
+existing prepared shapes through the `pagura-raster/gpu-demo` geometry seam.
+It exports straight edges and true monotone quadratic glyph boundaries;
+it never calls the band rasterizer or generates ordinary coverage spans.
+The GPU integrates pixel areas, quantizes coverage once, then composites
+source-ordered N16 colours. Existing preparation still outlines strokes,
+flattens general cubics at its existing tolerance, certifies winding and
+resolves exceptional winding/joint-clip cells. Those sparse exact corrections
+and non-rectangular clip runs are explicit packet inputs and reported counts.
+This experiment does not move all of preparation to the GPU.
+
+Local mode subtracts a shape's integer origin in f64 **before** conversion to
+f32. Absolute mode narrows device coordinates directly. Both use the same
+compensated GPU sum and true-curve integrals; neither is `Accuracy::Exact`.
+Large compound shapes have a bounded row index. Tile references preserve
+source order; export bytes and conservative pixel-edge evaluations have
+separate limits. The existing solid opaque RGB N16 admission remains.
+Unsupported pages show a CPU result with an explicit reason.
+
+`native/Host.swift` is an isolated Metal host using system frameworks, with
+an independent shader counterpart and the same wire format. It probes
+`double` compilation, uses safe math, waits for command completion and copies
+the RGBA output before reporting time. No FFI, unsafe Rust or external GPU
+dependency enters the engine. On a platform without Metal this optional host
+is unavailable; the portable Rust and browser paths are unchanged.
+
+```sh
+node benchmarks/gpu-demo/run.mjs coverage-test --output target/gpu-demo/coverage-fixtures.json
+node benchmarks/gpu-demo/run.mjs coverage-bench --samples 100 --warmups 5 \
+  --pdf /absolute/path.pdf --output target/gpu-demo/coverage-browser.json
+swiftc -O benchmarks/gpu-demo/native/Host.swift -o target/gpu-demo/metal-host
+node benchmarks/gpu-demo/native/bench.mjs --samples 100 --warmups 5 \
+  --pdf /absolute/path.pdf --output target/gpu-demo/coverage-native.json
+node benchmarks/gpu-demo/native/bench.mjs --fixtures \
+  --browser-report target/gpu-demo/coverage-fixtures.json
+```
+
+Coverage checks include independent clipped-polygon and numerical true-curve
+oracles, large-coordinate precision stress, malformed packets, and fixture
+comparisons against CPU. Error distributions are evidence about this sample,
+not a global error bound or a replacement for conformance. Native/WASM packet
+parity is checked separately from GPU arithmetic differences.
+
 ## Measurement
 
 [`policy.json`](policy.json) defines exploratory reporting, separately from
