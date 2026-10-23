@@ -5,8 +5,9 @@ use super::clip::{Rows, Segment};
 use super::coverage::RowOut;
 use super::curve::Mono;
 use super::edges::{Line, StripList};
+use super::glyph::{Kind, PolygonLines};
 use super::row::Sink;
-use super::shape::{Body, Resolved, Shape};
+use super::shape::{Body, GlyphBody, Resolved, Shape};
 use super::{Area, BandCoverage, ClipShape, DeviceRect, MarkCoverage};
 use crate::{FillRule, Point};
 use pagura_core::{Error, Meter, Result};
@@ -206,7 +207,7 @@ impl BandRasterizer {
         match &shape.body {
             Body::Edges(edges) => {
                 let items = Items {
-                    lines: &edges.lines,
+                    lines: Lines::Slice(&edges.lines),
                     curves: &edges.curves,
                     origin: None,
                     strips: edges.strips.as_ref(),
@@ -220,17 +221,9 @@ impl BandRasterizer {
                 );
             }
             Body::Glyph(glyph) => {
-                if let Some(relative) = glyph.edges.relative() {
-                    let items = Items {
-                        lines: &relative.lines,
-                        curves: &relative.curves,
-                        origin: Some(glyph.origin),
-                        strips: None,
-                        resolved: &shape.resolved,
-                    };
-                    let target = Target::of(shape);
-                    self.items(&items, (target, glyph.scan, FillRule::NonZero), rows, out);
-                }
+                let items = Items::glyph(glyph, &shape.resolved);
+                let target = Target::of(shape);
+                self.items(&items, (target, glyph.scan, FillRule::NonZero), rows, out);
             }
         }
     }
@@ -412,7 +405,7 @@ impl BandRasterizer {
         let scan = super::clip::scan_columns(&sides, bounds.x1 as usize);
         let none = Resolved::default();
         let items = Items {
-            lines: &sides,
+            lines: Lines::Slice(&sides),
             curves: &[],
             origin: None,
             strips: None,
@@ -423,10 +416,18 @@ impl BandRasterizer {
     }
 }
 
+/// A mark's straight sides, either owned by the placement or borrowed from
+/// its canonical polygon. Strip indexes keep either representation's source
+/// order, with keys that recover the same placed side.
+enum Lines<'a> {
+    Slice(&'a [Line]),
+    Polygon(PolygonLines<'a>),
+}
+
 /// A mark's items: its lines, then its monotone quadratics, moved by a
 /// glyph's origin, and listed per strip where the mark has lists.
 struct Items<'a> {
-    lines: &'a [Line],
+    lines: Lines<'a>,
     curves: &'a [Mono],
     origin: Option<Point>,
     strips: Option<&'a StripList>,
@@ -435,6 +436,27 @@ struct Items<'a> {
 }
 
 impl Items<'_> {
+    fn glyph<'a>(glyph: &'a GlyphBody, resolved: &'a Resolved) -> Items<'a> {
+        let (lines, curves) = match &glyph.edges.kind {
+            Kind::Curve { relative, .. } => {
+                (Lines::Slice(&relative.lines), relative.curves.as_slice())
+            }
+            Kind::Polygon {
+                polygon, points, ..
+            } => (
+                Lines::Polygon(PolygonLines::new(polygon, points, glyph.origin)),
+                &[][..],
+            ),
+        };
+        Items {
+            lines,
+            curves,
+            origin: Some(glyph.origin),
+            strips: glyph.strips.as_ref(),
+            resolved,
+        }
+    }
+
     /// The common accumulation for execution and preparation inspection.
     fn accumulate<const MEASURE: bool>(
         &self,
@@ -474,18 +496,36 @@ impl Items<'_> {
     /// work spent, one unit per item visited.
     fn all<const MEASURE: bool>(&self, cells: &mut Cells) -> usize {
         let origin = self.origin.unwrap_or_default();
-        let mut work = self.lines.len() + self.curves.len();
-        for l in self.lines {
-            let line = Line {
-                a: Point::new(l.a.x + origin.x, l.a.y + origin.y),
-                b: Point::new(l.b.x + origin.x, l.b.y + origin.y),
-            };
-            if cells.reaches(line.a.x.min(line.b.x)) {
-                work += if MEASURE {
-                    cells.line_measured(line)
-                } else {
-                    cells.line(line)
-                };
+        let at = |p: Point| Point::new(p.x + origin.x, p.y + origin.y);
+        let mut work = self.curves.len();
+        match &self.lines {
+            Lines::Slice(lines) => {
+                work += lines.len();
+                for l in *lines {
+                    work += Self::line::<MEASURE>(
+                        cells,
+                        Line {
+                            a: at(l.a),
+                            b: at(l.b),
+                        },
+                    );
+                }
+            }
+            Lines::Polygon(view) => {
+                // Count every visited side, including those whose placed
+                // endpoints collapse to a horizontal line.
+                work = work.saturating_add(view.raw_count().unwrap_or(usize::MAX));
+                for (_, line) in view.indexed() {
+                    if !line.is_horizontal() {
+                        // The owned all-items path adds the default origin
+                        // to already placed endpoints; keep its signed zeros.
+                        let line = Line {
+                            a: line.a + Point::default(),
+                            b: line.b + Point::default(),
+                        };
+                        work += Self::line::<MEASURE>(cells, line);
+                    }
+                }
             }
         }
         for m in self.curves {
@@ -500,16 +540,35 @@ impl Items<'_> {
         work
     }
 
+    #[inline]
+    fn line<const MEASURE: bool>(cells: &mut Cells, line: Line) -> usize {
+        if !cells.reaches(line.a.x.min(line.b.x)) {
+            0
+        } else if MEASURE {
+            cells.line_measured(line)
+        } else {
+            cells.line(line)
+        }
+    }
+
     /// Adds item `item` to the open window: each point plus the origin, as
     /// translating the vertices first would give. Returns the work spent.
     #[inline]
     fn add<const MEASURE: bool>(&self, cells: &mut Cells, item: usize) -> usize {
+        let lines = match &self.lines {
+            Lines::Slice(lines) => lines,
+            Lines::Polygon(view) => {
+                return view
+                    .line(item)
+                    .map_or(0, |line| Self::line::<MEASURE>(cells, line));
+            }
+        };
         let at = |p: Point| match self.origin {
             Some(o) => Point::new(p.x + o.x, p.y + o.y),
             None => p,
         };
         // Items right of the window change none of its cells.
-        match self.lines.get(item) {
+        match lines.get(item) {
             Some(l) => {
                 let line = Line {
                     a: at(l.a),
@@ -527,7 +586,7 @@ impl Items<'_> {
             }
             None => self
                 .curves
-                .get(item.wrapping_sub(self.lines.len()))
+                .get(item.wrapping_sub(lines.len()))
                 .map_or(0, |m| {
                     let origin = self.origin.unwrap_or_default();
                     if cells.reaches(m.x0.min(m.x1) + origin.x) {
@@ -555,7 +614,7 @@ pub(crate) fn inspect(
     let (items, scan) = match &shape.body {
         Body::Edges(edges) => (
             Items {
-                lines: &edges.lines,
+                lines: Lines::Slice(&edges.lines),
                 curves: &edges.curves,
                 origin: None,
                 strips: edges.strips.as_ref(),
@@ -563,21 +622,7 @@ pub(crate) fn inspect(
             },
             edges.scan,
         ),
-        Body::Glyph(glyph) => {
-            let Some(relative) = glyph.edges.relative() else {
-                return Err(Error::limit("glyph inspection has no relative edges"));
-            };
-            (
-                Items {
-                    lines: &relative.lines,
-                    curves: &relative.curves,
-                    origin: Some(glyph.origin),
-                    strips: None,
-                    resolved: &shape.resolved,
-                },
-                glyph.scan,
-            )
-        }
+        Body::Glyph(glyph) => (Items::glyph(glyph, &shape.resolved), glyph.scan),
     };
     let target = Target::of(shape);
     let fit = cells.rows_fit(scan.1.saturating_sub(scan.0));

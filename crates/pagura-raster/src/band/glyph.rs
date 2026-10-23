@@ -25,7 +25,9 @@ use std::sync::Arc;
 #[cfg(test)]
 mod tests;
 
+mod polygon;
 mod rounding;
+pub(crate) use polygon::PolygonLines;
 
 /// A glyph outline prepared once for one linear map (outline space to device
 /// space without translation): its device-space edges relative to the glyph
@@ -35,11 +37,11 @@ mod rounding;
 pub struct GlyphEdges {
     retained: usize,
     hull: Option<[f64; 4]>,
-    kind: Kind,
+    pub(super) kind: Kind,
 }
 
 #[derive(Debug)]
-enum Kind {
+pub(super) enum Kind {
     /// A certified spline: its pieces in contour order, for placements a
     /// clip's rectangle cuts, and the edges a placement translates. The
     /// outline and map stay for placements a clip path crosses, which take
@@ -233,6 +235,7 @@ impl GlyphEdges {
     }
 
     /// The edges a certified placement translates.
+    #[cfg(test)]
     pub(crate) fn relative(&self) -> Option<&Relative> {
         match &self.kind {
             Kind::Curve { relative, .. } => Some(relative),
@@ -441,12 +444,12 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
                 (_, Some(_)) => {
                     let (polygon, points) = polygon(outline, *linear, options.limits, &mut bytes)?;
                     translated(
-                        &polygon,
-                        &points,
+                        (&polygon, &points),
                         origin,
                         Winding::Check(0.0),
                         options,
                         &mut bytes,
+                        None,
                         None,
                     )
                 }
@@ -463,7 +466,15 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
             } else {
                 Winding::Check(0.0)
             };
-            translated(polygon, points, origin, winding, options, &mut bytes, None)
+            translated(
+                (polygon, points),
+                origin,
+                winding,
+                options,
+                &mut bytes,
+                None,
+                Some(edges),
+            )
         }
     }
 }
@@ -525,13 +536,13 @@ fn pieces(
 /// A placement that translates a polygon's points and its geometric points
 /// and prepares them as any shape.
 fn translated(
-    source: &Polygon,
-    points: &[Point],
+    (source, points): (&Polygon, &[Point]),
     origin: Point,
     winding: Winding,
     options: &Prep<'_>,
     bytes: &mut Meter,
     work: Option<&mut Meter>,
+    shared: Option<&Arc<GlyphEdges>>,
 ) -> Result<Option<Shape>> {
     let mut polygon = Polygon::default();
     bytes.reserve(&mut polygon.points, source.points.len())?;
@@ -551,9 +562,24 @@ fn translated(
     match work {
         Some(work) => {
             work.charge(polygon.vertices())?;
-            Shape::polygon_metered(polygon, FillRule::NonZero, winding, options, bytes, work)
+            Shape::polygon_metered(
+                polygon,
+                FillRule::NonZero,
+                winding,
+                options,
+                bytes,
+                work,
+                shared.map(|edges| (edges, origin)),
+            )
         }
-        None => Shape::polygon(polygon, FillRule::NonZero, winding, options, bytes),
+        None => Shape::polygon(
+            polygon,
+            FillRule::NonZero,
+            winding,
+            options,
+            bytes,
+            shared.map(|edges| (edges, origin)),
+        ),
     }
 }
 

@@ -78,7 +78,7 @@ pub(super) fn certify(
     let mut targets = Vec::new();
     for round in 0..=ROUNDS {
         let analytic = match &shape.body {
-            Body::Glyph(_) => true,
+            Body::Glyph(body) => body.edges.curved(),
             Body::Edges(body) => !body.curves.is_empty(),
         };
         work.charge_product(outline.segments().len(), 2)?;
@@ -164,13 +164,13 @@ fn replacement(
     bytes.refund(bytes.used().saturating_sub(before + polygon_bytes));
     // Old geometry stays charged until its replacement is fully ready.
     let prepared = translated(
-        &polygon,
-        &points,
+        (&polygon, &points),
         source.origin,
         Winding::Unknown,
         options,
         bytes,
         Some(work),
+        None,
     )?
     .ok_or(Error::limit("unresolved curve coverage interval"))?;
     drop((polygon, points));

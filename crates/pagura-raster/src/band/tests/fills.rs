@@ -48,8 +48,15 @@ fn rectangle_fills_skip_the_polygon_with_its_bytes() {
             let (polygon, rule) =
                 clip::fill_polygon(&path, transform, FillRule::NonZero, &limits, &mut bytes)
                     .unwrap();
-            let slow = Shape::polygon(polygon, rule, shape::Winding::Check(0.0), &prep, &mut bytes)
-                .unwrap();
+            let slow = Shape::polygon(
+                polygon,
+                rule,
+                shape::Winding::Check(0.0),
+                &prep,
+                &mut bytes,
+                None,
+            )
+            .unwrap();
             let bytes = |s: Option<&Shape>| {
                 s.map_or_else(
                     || vec![0; 40 * 32],
@@ -103,13 +110,13 @@ fn unlisted_shapes_match_their_strip_lists() {
                 edges::StripList::new(
                     (bounds.y0, bounds.y1),
                     lines.len(),
-                    |i| {
-                        let l = lines[i];
+                    lines.iter().enumerate().filter_map(|(i, l)| {
                         if l.a.x.min(l.b.x) >= right {
                             return None;
                         }
                         edges::rows(l.a.y.min(l.b.y), l.a.y.max(l.b.y), bounds)
-                    },
+                            .map(|rows| (i, rows))
+                    }),
                     &mut Meter::new(usize::MAX, "bytes"),
                 )
                 .unwrap(),

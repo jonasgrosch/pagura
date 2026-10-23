@@ -154,6 +154,7 @@ fn a_work_limited_point_cell_sweep_keeps_full_resolution() {
         Winding::Check(0.0),
         &Prep::new(&options, None),
         &mut bytes,
+        None,
     )
     .unwrap()
     .unwrap();

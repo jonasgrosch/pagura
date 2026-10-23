@@ -112,16 +112,19 @@ impl Resolved {
 pub(crate) enum Body {
     /// Edges accumulated into the cells.
     Edges(EdgeBody),
-    /// A certified glyph's relative edges, translated as they accumulate.
+    /// Shared glyph geometry, translated as its edges accumulate.
     Glyph(GlyphBody),
 }
 
-/// One translated placement of a certified glyph.
+/// One translated placement of shared glyph geometry.
 #[derive(Debug)]
 pub(crate) struct GlyphBody {
     pub(crate) edges: std::sync::Arc<super::GlyphEdges>,
     pub(crate) origin: crate::Point,
     pub(crate) scan: (usize, usize),
+    pub(crate) strips: Option<StripList>,
+    /// Nonhorizontal placed edges and curves, before resolved sides.
+    boundaries: usize,
 }
 
 /// Straight edges and monotone quadratics, listed by strip, and the
@@ -189,7 +192,14 @@ impl Shape {
     ) -> Result<Option<Self>> {
         let mut bytes = Meter::new(options.limits.render_bytes, RENDER_BYTES);
         let (polygon, rule) = fill_polygon(path, transform, rule, options.limits, &mut bytes)?;
-        Self::polygon(polygon, rule, Winding::Check(0.0), options, &mut bytes)
+        Self::polygon(
+            polygon,
+            rule,
+            Winding::Check(0.0),
+            options,
+            &mut bytes,
+            None,
+        )
     }
 
     /// A stroke of `path` (user space) with `stroke` whose line width and
@@ -294,7 +304,14 @@ impl Shape {
             }
             Tiling::Components => Winding::Unknown,
         };
-        Self::polygon(polygon, FillRule::NonZero, winding, options, &mut bytes)
+        Self::polygon(
+            polygon,
+            FillRule::NonZero,
+            winding,
+            options,
+            &mut bytes,
+            None,
+        )
     }
 
     /// One glyph placement outside any clip: `edges` translated to the
@@ -364,10 +381,7 @@ impl Shape {
     pub(crate) fn boundaries(&self) -> usize {
         let own = match &self.body {
             Body::Edges(edges) => edges.lines.len() + edges.curves.len(),
-            Body::Glyph(glyph) => glyph
-                .edges
-                .relative()
-                .map_or(0, |relative| relative.lines.len() + relative.curves.len()),
+            Body::Glyph(glyph) => glyph.boundaries,
         };
         own.saturating_add(self.resolved.len())
     }
@@ -392,9 +406,10 @@ impl Shape {
         winding: Winding,
         options: &Prep<'_>,
         bytes: &mut Meter,
+        shared: Option<(&std::sync::Arc<super::GlyphEdges>, crate::Point)>,
     ) -> Result<Option<Self>> {
         let mut work = Meter::new(options.limits.raster_work, RASTER_WORK);
-        Self::polygon_metered(polygon, rule, winding, options, bytes, &mut work)
+        Self::polygon_metered(polygon, rule, winding, options, bytes, &mut work, shared)
     }
 
     /// A polygon replacement whose preparation shares the certificate's
@@ -406,6 +421,7 @@ impl Shape {
         options: &Prep<'_>,
         bytes: &mut Meter,
         work: &mut Meter,
+        shared: Option<(&std::sync::Arc<super::GlyphEdges>, crate::Point)>,
     ) -> Result<Option<Self>> {
         let Some(mut frame) = Frame::new(options) else {
             return Ok(None);
@@ -414,6 +430,8 @@ impl Shape {
             return Ok(None);
         };
         frame.fit(hull);
+        // Only the original, uncut stored polygon can supply these edges.
+        let shared = shared.filter(|_| frame.rect.is_none() && frame.paths.is_none());
         // The heights the winding certificate leaves in doubt: none when
         // certified throughout, all when unknown.
         // A lone triangle bounds winding 0 or one sign of magnitude one,
@@ -477,13 +495,13 @@ impl Shape {
             resolve(&lines, rule, &frame, (bounds, &chosen), work, bytes)?
         };
         Self::edges(
-            lines,
-            Vec::new(),
+            (lines, Vec::new()),
             rule,
             (bounds, scan, resolved),
             &frame,
             options,
             bytes,
+            shared,
         )
         .map(Some)
     }
@@ -540,13 +558,13 @@ impl Shape {
         );
         lines.retain(|l| !l.is_horizontal());
         Self::edges(
-            lines,
-            monos,
+            (lines, monos),
             FillRule::NonZero,
             (bounds, scan, Resolved::default()),
             frame,
             options,
             bytes,
+            None,
         )
         .map(Some)
     }
@@ -595,6 +613,8 @@ impl Shape {
                 edges: std::sync::Arc::clone(edges),
                 origin,
                 scan,
+                strips: None,
+                boundaries: items,
             }),
             clip: frame.clip.cloned(),
             masked: false,
@@ -603,37 +623,35 @@ impl Shape {
     }
 
     fn edges(
-        lines: Vec<Line>,
-        curves: Vec<Mono>,
+        (lines, curves): (Vec<Line>, Vec<Mono>),
         rule: FillRule,
         (bounds, scan, resolved): (DeviceRect, (usize, usize), Resolved),
         frame: &Frame<'_>,
         options: &Prep<'_>,
         bytes: &mut Meter,
+        shared: Option<(&std::sync::Arc<super::GlyphEdges>, crate::Point)>,
     ) -> Result<Self> {
         bytes.charge(size_of::<Self>())?;
         let area = options.area;
         let region = area.region;
-        let right = f64::from(region.x1);
-        let extent = |lo: f64, hi: f64| rows(lo, hi, bounds);
-        let line_rows = |l: &Line| {
-            if l.a.x.min(l.b.x) >= right {
-                return None;
-            }
-            extent(l.a.y.min(l.b.y), l.a.y.max(l.b.y))
-        };
-        let curve_rows = |m: &Mono| {
-            if m.x0.min(m.x1) >= right {
-                return None;
-            }
-            extent(m.y0, m.y1)
-        };
+        let line_extent = |l: &Line| line_rows(l, bounds, region.x1);
+        let curve_extent = |m: &Mono| curve_rows(m, bounds, region.x1);
         let count = lines.len() + curves.len();
         let item_rows = |i: usize| match lines.get(i) {
-            Some(l) => line_rows(l),
-            None => curves.get(i - lines.len()).and_then(curve_rows),
+            Some(l) => line_extent(l),
+            None => curves.get(i - lines.len()).and_then(curve_extent),
         };
         let columns = scan.1.saturating_sub(scan.0);
+        let shared = shared.and_then(|(edges, origin)| {
+            let super::glyph::Kind::Polygon {
+                polygon, points, ..
+            } = &edges.kind
+            else {
+                return None;
+            };
+            let view = super::glyph::PolygonLines::new(polygon, points, origin);
+            Some((edges, origin, view, view.keys()?))
+        });
         // A shape within one strip visits every item in each window of a
         // band, at most once per row; a taller one lists its items per
         // strip, each visited at most once per row of the strip.
@@ -641,50 +659,57 @@ impl Shape {
         let (list, mut work) = if strips((bounds.y0, bounds.y1 - 1)) == 1 {
             (None, count.saturating_mul(height))
         } else {
-            let list = StripList::new((bounds.y0, bounds.y1), count, item_rows, bytes)?;
+            let list = match shared {
+                Some((_, _, view, keys)) => StripList::new(
+                    (bounds.y0, bounds.y1),
+                    keys,
+                    view.indexed().filter_map(|(key, line)| {
+                        (!line.is_horizontal())
+                            .then(|| line_extent(&line))
+                            .flatten()
+                            .map(|rows| (key, rows))
+                    }),
+                    bytes,
+                )?,
+                None => StripList::new(
+                    (bounds.y0, bounds.y1),
+                    count,
+                    (0..count).filter_map(|i| item_rows(i).map(|rows| (i, rows))),
+                    bytes,
+                )?,
+            };
             let visits = list.len().saturating_mul(STRIP as usize);
             (Some(list), visits)
         };
-        let mut cells = 0_usize;
-        for l in &lines {
-            if let Some(r) = line_rows(l) {
-                cells = cells.saturating_add(line_work(*l, r, region.x1 as usize));
-            }
-        }
-        for m in &curves {
-            if let Some(r) = curve_rows(m) {
-                let chord = Line {
-                    a: crate::Point::new(m.x0, m.y0),
-                    b: crate::Point::new(m.x1, m.y1),
-                };
-                cells = cells.saturating_add(line_work(chord, r, region.x1 as usize));
-            }
-        }
         let rows = bounds.height() as usize;
-        let words = (scan.1.saturating_sub(scan.0)) / 64 + 2;
-        // Each resolved side visits its one row.
-        for l in &resolved.lines {
-            let r = rows_of(l, bounds).unwrap_or((bounds.y0, bounds.y0));
-            cells = cells.saturating_add(line_work(*l, r, region.x1 as usize));
-        }
-        work = work
-            .saturating_add(cells.saturating_mul(4))
-            .saturating_add(rows.saturating_mul(words + columns + 4))
+        let words = columns / 64 + 2;
+        let cells = cell_work(&lines, &curves, &resolved, bounds, region.x1);
+        let overhead = rows
+            .saturating_mul(words + columns + 4)
             .saturating_add(resolved.len())
             .saturating_add(frame.segments(bounds));
+        work = work
+            .saturating_add(cells.saturating_mul(4))
+            .saturating_add(overhead);
         if work > options.limits.raster_work {
             return Err(Error::limit(RASTER_WORK));
         }
-        let body = EdgeBody {
-            lines,
-            curves,
-            strips: list,
+        let shared = shared.filter(|(_, _, view, _)| {
+            list.is_some()
+                || view
+                    .raw_count()
+                    .and_then(|raw| shared_work(raw, rows, columns, cells, overhead))
+                    .is_some_and(|bound| bound <= work)
+        });
+        let (body, payload) = Self::retain_edges(
+            (lines, curves),
+            list,
             scan,
-        };
+            shared.map(|(edges, origin, _, _)| (edges, origin)),
+            bytes,
+        );
         let retained = size_of::<Self>()
-            .saturating_add(body.lines.capacity() * size_of::<Line>())
-            .saturating_add(body.curves.capacity() * size_of::<Mono>())
-            .saturating_add(body.strips.as_ref().map_or(0, StripList::retained_bytes))
+            .saturating_add(payload)
             .saturating_add(resolved.retained_bytes());
         Ok(Self {
             area,
@@ -692,17 +717,120 @@ impl Shape {
             work,
             retained,
             rule,
-            body: Body::Edges(body),
+            body,
             clip: frame.clip.cloned(),
             masked: frame.paths.is_some(),
             resolved,
         })
     }
 
+    /// The final owner of prepared sides: retain the index beside shared
+    /// glyph geometry, and release only the copied edge vectors.
+    fn retain_edges(
+        (lines, curves): (Vec<Line>, Vec<Mono>),
+        list: Option<StripList>,
+        scan: (usize, usize),
+        shared: Option<(&std::sync::Arc<super::GlyphEdges>, crate::Point)>,
+        bytes: &mut Meter,
+    ) -> (Body, usize) {
+        let count = lines.len() + curves.len();
+        let payload = lines.capacity() * size_of::<Line>() + curves.capacity() * size_of::<Mono>();
+        let list_bytes = list.as_ref().map_or(0, StripList::retained_bytes);
+        if let Some((edges, origin)) = shared {
+            drop((lines, curves));
+            bytes.refund(payload);
+            (
+                Body::Glyph(GlyphBody {
+                    edges: std::sync::Arc::clone(edges),
+                    origin,
+                    scan,
+                    strips: list,
+                    boundaries: count,
+                }),
+                list_bytes,
+            )
+        } else {
+            (
+                Body::Edges(EdgeBody {
+                    lines,
+                    curves,
+                    strips: list,
+                    scan,
+                }),
+                payload + list_bytes,
+            )
+        }
+    }
+
     /// Adds `units` to the work bound.
     pub(crate) fn add_work(&mut self, units: usize) {
         self.work = self.work.saturating_add(units);
     }
+}
+
+fn line_rows(line: &Line, bounds: DeviceRect, right: u32) -> Option<(u32, u32)> {
+    if line.a.x.min(line.b.x) >= f64::from(right) {
+        None
+    } else {
+        rows_of(line, bounds)
+    }
+}
+
+fn curve_rows(curve: &Mono, bounds: DeviceRect, right: u32) -> Option<(u32, u32)> {
+    if curve.x0.min(curve.x1) >= f64::from(right) {
+        None
+    } else {
+        rows(curve.y0, curve.y1, bounds)
+    }
+}
+
+/// The same cell bound for owned and shared geometry, including every
+/// absolute side that replaces a resolved row.
+fn cell_work(
+    lines: &[Line],
+    curves: &[Mono],
+    resolved: &Resolved,
+    bounds: DeviceRect,
+    right: u32,
+) -> usize {
+    let mut cells = 0_usize;
+    for line in lines {
+        if let Some(r) = line_rows(line, bounds, right) {
+            cells = cells.saturating_add(line_work(*line, r, right as usize));
+        }
+    }
+    for curve in curves {
+        if let Some(r) = curve_rows(curve, bounds, right) {
+            let chord = Line {
+                a: crate::Point::new(curve.x0, curve.y0),
+                b: crate::Point::new(curve.x1, curve.y1),
+            };
+            cells = cells.saturating_add(line_work(chord, r, right as usize));
+        }
+    }
+    for line in &resolved.lines {
+        let r = rows_of(line, bounds).unwrap_or((bounds.y0, bounds.y0));
+        cells = cells.saturating_add(line_work(*line, r, right as usize));
+    }
+    cells
+}
+
+/// Borrowed polygons visit raw vertices even when a side is horizontal.
+/// Line primitives cost at most `cells`; emission touches at most that
+/// many cells and at most the scanned rectangle's area. Keep the original
+/// work reservation only when it covers this complete traversal too.
+fn shared_work(
+    raw: usize,
+    rows: usize,
+    columns: usize,
+    cells: usize,
+    overhead: usize,
+) -> Option<usize> {
+    let touched = cells.min(rows.checked_mul(columns)?);
+    raw.checked_mul(rows)?
+        .checked_add(cells)?
+        .checked_add(touched.checked_mul(3)?)?
+        .checked_add(overhead)
 }
 
 /// The columns cells of edges with these x can be touched in.
@@ -819,7 +947,7 @@ fn resolve(
     let list = StripList::new(
         (bounds.y0, bounds.y1),
         lines.len(),
-        |i| lines.get(i).and_then(|l| rows_of(l, bounds)),
+        (0..lines.len()).filter_map(|i| rows_of(&lines[i], bounds).map(|rows| (i, rows))),
         bytes,
     )?;
     let mut rules = Vec::new();

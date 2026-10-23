@@ -1,3 +1,5 @@
+mod sharing;
+
 use super::*;
 use crate::PathBuilder;
 use pagura_core::ErrorKind;

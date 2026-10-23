@@ -174,6 +174,59 @@ impl Polygon {
         })
     }
 
+    /// Every contour side in source order, including horizontal sides.
+    pub(crate) fn sides(&self) -> impl Iterator<Item = Line> {
+        self.indexed_sides().map(|(_, line)| line)
+    }
+
+    /// Source-ordered sides with keys that recover both endpoints in O(1).
+    /// Closing sides use the contour ordinal after the vertex key range.
+    pub(crate) fn indexed_sides(&self) -> impl Iterator<Item = (usize, Line)> + Clone {
+        self.starts
+            .iter()
+            .enumerate()
+            .flat_map(move |(contour, &start)| {
+                let end = self
+                    .starts
+                    .get(contour + 1)
+                    .copied()
+                    .unwrap_or(self.points.len());
+                (start..end).map(move |i| {
+                    let (key, next) = if i + 1 == end {
+                        (self.points.len().saturating_add(contour), start)
+                    } else {
+                        (i, i + 1)
+                    };
+                    (
+                        key,
+                        Line {
+                            a: self.points[i],
+                            b: self.points[next],
+                        },
+                    )
+                })
+            })
+    }
+
+    pub(crate) fn side(&self, key: usize) -> Option<Line> {
+        let (a, b) = if key < self.points.len() {
+            (key, key.checked_add(1)?)
+        } else {
+            let contour = key - self.points.len();
+            let start = *self.starts.get(contour)?;
+            let end = self
+                .starts
+                .get(contour.checked_add(1)?)
+                .copied()
+                .unwrap_or(self.points.len());
+            (end.checked_sub(1)?, start)
+        };
+        Some(Line {
+            a: *self.points.get(a)?,
+            b: *self.points.get(b)?,
+        })
+    }
+
     pub(crate) fn vertices(&self) -> usize {
         self.points.len()
     }
@@ -330,17 +383,22 @@ impl Polygon {
 
     /// The floor cell of a geometric point at `p`.
     pub(crate) fn cell(&mut self, p: Point, limits: &Limits, bytes: &mut Meter) -> Result<()> {
-        let (x, y) = (p.x.floor(), p.y.floor());
         self.begin(limits, 4, bytes)?;
-        self.points.extend([
+        self.points.extend(Self::cell_corners(p));
+        self.points_cells = true;
+        self.end();
+        Ok(())
+    }
+
+    /// Corners of the floor cell, in the contour's accumulation order.
+    pub(crate) fn cell_corners(p: Point) -> [Point; 4] {
+        let (x, y) = (p.x.floor(), p.y.floor());
+        [
             Point::new(x, y),
             Point::new(x + 1.0, y),
             Point::new(x + 1.0, y + 1.0),
             Point::new(x, y + 1.0),
-        ]);
-        self.points_cells = true;
-        self.end();
-        Ok(())
+        ]
     }
 
     pub(crate) fn begin(&mut self, limits: &Limits, count: usize, bytes: &mut Meter) -> Result<()> {
@@ -622,15 +680,7 @@ pub(crate) fn clip_line(line: Line, bounds: Bounds, out: &mut Vec<Line>) -> Resu
 pub(crate) fn lines(polygon: &Polygon, bytes: &mut Meter) -> Result<Vec<Line>> {
     let mut out = Vec::new();
     bytes.reserve(&mut out, polygon.vertices())?;
-    for contour in polygon.contours() {
-        let n = contour.len();
-        for i in 0..n {
-            let (a, b) = (contour[i], contour[(i + 1) % n]);
-            if a.y != b.y {
-                out.push(Line { a, b });
-            }
-        }
-    }
+    out.extend(polygon.sides().filter(|line| !line.is_horizontal()));
     Ok(out)
 }
 
@@ -726,7 +776,7 @@ impl StripList {
     pub(crate) fn new(
         (first, end): (u32, u32),
         count: usize,
-        ranges: impl Fn(usize) -> Option<(u32, u32)>,
+        ranges: impl Iterator<Item = (usize, (u32, u32))> + Clone,
         bytes: &mut Meter,
     ) -> Result<Self> {
         if u32::try_from(count).is_err() {
@@ -744,14 +794,16 @@ impl StripList {
         };
         bytes.reserve(&mut list.offsets, span + 1)?;
         list.offsets.resize(span + 1, 0);
-        let clamp = |i: usize| {
-            let (a, b) = ranges(i)?;
+        let clamp = |(a, b): (u32, u32)| {
             let (a, b) = (a.max(first), b.min(last));
             (a <= b).then(|| ((a / STRIP - strip0) as usize, (b / STRIP - strip0) as usize))
         };
         let mut total = 0_u32;
-        for i in 0..count {
-            if let Some((a, b)) = clamp(i) {
+        for (i, range) in ranges.clone() {
+            if i >= count {
+                return Err(Error::limit("strip item exceeds its key range"));
+            }
+            if let Some((a, b)) = clamp(range) {
                 for strip in a..=b {
                     list.offsets[strip + 1] += 1;
                 }
@@ -768,8 +820,8 @@ impl StripList {
         list.items.resize(total as usize, 0);
         // Fill each strip from its start, which leaves every start at the
         // next strip's; shifting restores them.
-        for i in 0..count {
-            if let Some((a, b)) = clamp(i) {
+        for (i, range) in ranges {
+            if let Some((a, b)) = clamp(range) {
                 for strip in a..=b {
                     let slot = &mut list.offsets[strip];
                     // Checked above: the item count fits u32.

@@ -422,7 +422,10 @@ fn classify(
     let strips_list = StripList::new(
         (bounds.y0, bounds.y1),
         lines.len(),
-        |i| lines.get(i).and_then(rows_of),
+        lines
+            .iter()
+            .enumerate()
+            .filter_map(|(i, line)| rows_of(line).map(|rows| (i, rows))),
         bytes,
     )?;
     meter.charge(strips_list.len())?;
@@ -637,7 +640,13 @@ mod tests {
             100
         ];
         let mut bytes = Meter::new(1 << 20, RENDER_BYTES);
-        let strips = StripList::new((0, 16), lines.len(), |_| Some((15, 15)), &mut bytes).unwrap();
+        let strips = StripList::new(
+            (0, 16),
+            lines.len(),
+            (0..lines.len()).map(|i| (i, (15, 15))),
+            &mut bytes,
+        )
+        .unwrap();
         let paths = Paths {
             lines,
             ends: vec![(100, FillRule::NonZero)],
