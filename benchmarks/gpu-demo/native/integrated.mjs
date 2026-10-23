@@ -9,6 +9,7 @@ const sources=execFileSync('git',['ls-files','crates','benchmarks/gpu-demo','web
 const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 async function freeze(){return Object.fromEntries(await Promise.all([...sources,host,engine].map(async p=>[p,digest(await readFile(p))])));}
 const initial=await freeze(),commit=execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),args=['--engine',engine,'--shaders',resolve('benchmarks/gpu-demo/native'),'--samples',option('--samples','100'),'--warmups',option('--warmups','5'),'--cold-samples',option('--cold-samples','20')];
+if(process.argv.includes('--world-reciprocal'))args.push('--world-reciprocal');
 for(let i=2;i<process.argv.length;i++)if(process.argv[i]==='--pdf')args.push('--pdf',resolve(process.argv[++i]));
 const start=performance.now(),child=spawn(host,args,{stdio:['ignore','pipe','inherit']}),chunks=[];child.stdout.on('data',b=>chunks.push(b));
 const code=await new Promise((resolve,reject)=>{child.once('error',reject);child.once('exit',resolve);});if(code!==0)throw new Error(`Shared host exited ${code}`);

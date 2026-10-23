@@ -1,7 +1,9 @@
 # Rendering backend experiment
 
 A comparison host branched from `render/one-pass` at
-`87fa81b64162281fccbdcae5564e1ec431022c4c`. It presents exact CPU output,
+`87fa81b64162281fccbdcae5564e1ec431022c4c`, merged with
+`f86eb5da130286b5c9f270e367a7e4daafa68a89` for the shared-buffer study.
+It presents exact CPU output,
 approximate GPU area coverage through WebGPU and native Metal, an exact integer
 N16 GPU compositor using CPU coverage, and browser SVG exported from the shared
 scene. The demo retains shared GPU geometry and compares it with CPU
@@ -9,6 +11,61 @@ prepared-scene reuse. A separate direct-display panel tests resolution-specific
 and fixed world geometry with WebGPU canvas and native Metal presentation. GPU coverage currently admits opaque solid RGB pages.
 This experiment does not change the production renderer or the scope of
 ADR 0004.
+
+## Native shared-buffer application
+
+The Swift application owns Metal and a safe-Rust engine child directly. Two
+private 64 MiB files carry frames and packets; the pipe carries bounded metadata
+only. CPU prepared rendering streams the current base's `render_bands` into
+the frame file. A page-aligned shared mapping is wrapped by a Metal
+`bytesNoCopy` buffer, with its mapping lifetime owned by that buffer. Each draw
+completes before another engine request can overwrite shared bytes. Rust uses
+only safe standard-library file writes. There is no Rust FFI, mapping library,
+new product dependency, or Node frame relay. Kernel file-write copies remain.
+
+```sh
+cargo build --manifest-path benchmarks/gpu-demo/engine/Cargo.toml \
+  --release --target-dir target/gpu-demo
+swiftc -D SHARED_CLIENT -O -warnings-as-errors \
+  benchmarks/gpu-demo/native/Host.swift \
+  benchmarks/gpu-demo/native/Presentation.swift \
+  benchmarks/gpu-demo/native/World.swift \
+  benchmarks/gpu-demo/native/Shared.swift \
+  benchmarks/gpu-demo/native/Integrated.swift -o target/gpu-demo/shared-host
+node benchmarks/gpu-demo/native/integrated.mjs \
+  --samples 100 --warmups 5 --cold-samples 20 \
+  --pdf /absolute/input.pdf --output target/gpu-demo/integrated-native.json
+node benchmarks/gpu-demo/run.mjs integrated \
+  --samples 100 --warmups 5 --cold-samples 20 \
+  --pdf /absolute/input.pdf --output target/gpu-demo/integrated-browser.json
+```
+
+Repeat `--pdf` in the same order on both runners. Opening starts a new engine
+process or browser worker, opens already-read bytes and waits for first display
+at 150 DPI. Application/adapter/presentation initialization and file I/O are
+reported separately. These are document-cold trials with a warm application.
+Browser frame opportunities and native drawable callbacks are different clocks;
+neither is display scanout.
+
+Warm redraws render fresh full-page pixels at 72/150/300 DPI. Twelve new zoom
+targets include all preparation and transfer. Scrolling lets **every** mode
+retain its full-page bitmap and changes only the viewport, with zero engine
+requests, coverage dispatches or page-content uploads. Diagnostic readbacks and
+top/middle/bottom attachment captures run afterward. The browser demo includes
+an opening/scrolling panel and live retained scroll control for page 1.
+
+`--world-reciprocal` is a separate arithmetic experiment on both runners: one
+clip reciprocal per mark/pixel replaces three divisions per edge. The original
+shader remains the default control. The new option changes no admission rules
+or CPU view preparation. Run `world-test --world-reciprocal` to check it against
+the same fixtures and independent polygon oracle.
+
+Preparation now follows the base's 512 MiB limit. The prepared LRU remains
+256 MiB charged bytes. The experimental WASM worker has a 1 GiB aggregate
+memory cap for recorded/prepared/exported data and allocator high-water use;
+the production browser host keeps its 512 MiB default. Mappings/reservations
+are not measurements of resident memory. See `policy.json` for all scopes and
+`SHARED_HOST_RESULTS.md` for results.
 
 [`DIRECT_GPU_RESULTS.md`](DIRECT_GPU_RESULTS.md) records the latest direct-display
 and world-geometry experiment. [`RETAINED_GPU_RESULTS.md`](RETAINED_GPU_RESULTS.md) records the shared-geometry,

@@ -2,13 +2,14 @@ import { createWasi, WasiExit } from './wasi.mjs';
 import { inputReader } from './transport.mjs';
 
 /** Runs the same worker/shim under browser and Node's worker_threads tests. */
-export async function runHost(module, shared, send) {
+export async function runHost(module, shared, send, {memoryBytes = 512 * 1024 * 1024} = {}) {
+  if (!Number.isSafeInteger(memoryBytes) || memoryBytes < 65536 || memoryBytes > 2 ** 32) throw new RangeError('Invalid WebAssembly host memory budget');
   let instance, lastMemoryBytes = 0, stderr = '';
   const text = new TextDecoder();
   const input = inputReader(shared, () => send({ type: 'drain' }));
   const memory = () => {
     const wasmBytes = instance.exports.memory.buffer.byteLength;
-    if (wasmBytes > 512 * 1024 * 1024) throw new RangeError('WebAssembly memory exceeds the 512 MiB host budget');
+    if (wasmBytes > memoryBytes) throw new RangeError(`WebAssembly memory exceeds the ${memoryBytes / 1024 / 1024} MiB host budget`);
     if (wasmBytes !== lastMemoryBytes) { lastMemoryBytes = wasmBytes; send({ type: 'memory', wasmBytes }); }
   };
   const read = (bytes) => { memory(); return input(bytes); };

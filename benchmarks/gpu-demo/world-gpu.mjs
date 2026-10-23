@@ -1,14 +1,16 @@
 /** WebGPU executor: immutable vectors, one output, bounded view LRU. */
 import {worldView} from './world.mjs';
 const LIMIT=256*1024*1024;
-export async function createWorldJob(gpu,bytes,meta,world) {
+export async function createWorldJob(gpu,bytes,meta,world,{reciprocal=false}={}) {
   const start=performance.now(),device=gpu.device,packetSize=bytes.length;
-  if(!gpu.worldPipeline){
+  gpu.worldPipelines??=new Map();
+  if(!gpu.worldPipelines.has(reciprocal)){
     const code=await(await fetch('/area.wgsl')).text()+await(await fetch('/world.wgsl')).text();
     const module=device.createShaderModule({code});
     const errors=(await module.getCompilationInfo()).messages.filter(m=>m.type==="error");if(errors.length)throw new Error(errors.map(m=>m.message).join("\n"));
-    gpu.worldPipeline=await device.createComputePipelineAsync({layout:'auto',compute:{module,entryPoint:'rasterize'}});
+    gpu.worldPipelines.set(reciprocal,await device.createComputePipelineAsync({layout:'auto',compute:{module,entryPoint:'rasterize',constants:{hoist_clip_reciprocal:reciprocal}}}));
   }
+  const pipeline=gpu.worldPipelines.get(reciprocal);
   const seed={...world,words:world.words.slice(0,world.words[9])};seed.floats=new Float32Array(seed.words.buffer);
   const source=device.createBuffer({size:packetSize,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST});
   device.queue.writeBuffer(source,0,bytes);await device.queue.onSubmittedWorkDone();
@@ -26,7 +28,7 @@ export async function createWorldJob(gpu,bytes,meta,world) {
     while(slots.size>=3||resident+required>LIMIT){const [key,old]=slots.entries().next().value;release(old);slots.delete(key);evictions++;}
     const view=device.createBuffer({size:v.bytes.length,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST});
     device.queue.writeBuffer(view,0,v.bytes);viewUploads++;viewBytes+=v.bytes.length;
-    const group=device.createBindGroup({layout:gpu.worldPipeline.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:source}},{binding:1,resource:{buffer:output}},{binding:2,resource:{buffer:view}}]});
+    const group=device.createBindGroup({layout:pipeline.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:source}},{binding:1,resource:{buffer:output}},{binding:2,resource:{buffer:view}}]});
     const slot={width:v.width,height:v.height,dpi,size,output,view,group,bytes:required};slots.set(dpi,slot);resident+=required;
     return {...slot,cache_hit:false,prepare_ms:performance.now()-started};
   };
@@ -42,7 +44,7 @@ export async function createWorldJob(gpu,bytes,meta,world) {
       try {
         const slot=prepare(dpi,patches),encoder=device.createCommandEncoder();
         const pass=encoder.beginComputePass(timedQueries?{timestampWrites:{querySet:queries,beginningOfPassWriteIndex:0,endOfPassWriteIndex:1}}:{});
-        pass.setPipeline(gpu.worldPipeline);pass.setBindGroup(0,slot.group);pass.dispatchWorkgroups(Math.ceil(slot.width/64),slot.height);pass.end();
+        pass.setPipeline(pipeline);pass.setBindGroup(0,slot.group);pass.dispatchWorkgroups(Math.ceil(slot.width/64),slot.height);pass.end();
         if(presenter)presenter.encode(encoder,slot.output,slot.width,slot.height);
         if(readback){
           // Diagnostic readback is separate from display frames and explicitly counted.

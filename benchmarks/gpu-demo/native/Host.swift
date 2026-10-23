@@ -105,6 +105,7 @@ func validate(_ data: Data) throws -> [UInt32] {
     let start = now()
     guard let device = MTLCreateSystemDefaultDevice(), let queue = device.makeCommandQueue() else { throw fail("No Metal GPU") }
     let options = MTLCompileOptions();options.mathMode = .safe
+    options.preprocessorMacros=["WORLD_RECIPROCAL":NSNumber(value:CommandLine.arguments.contains("--world-reciprocal"))]
     var fp64 = false, fp64Reason = ""
     do {
         _ = try device.makeLibrary(source:"#include <metal_stdlib>\nusing namespace metal; kernel void fp64(device double* a [[buffer(0)]], uint i [[thread_position_in_grid]]) { a[i] = a[i] * 2.0; }",options:options)

@@ -17,12 +17,21 @@ uint worldCoverage(device const uint* data,device const uint* view,uint mark,uin
   auto lo=float2(0.0f),hi=float2(1.0f);
   if(data[mark+6u]!=0u){lo=max(lo,point(data,mark+20u)*scale-pixel);hi=min(hi,point(data,mark+22u)*scale-pixel);}
   auto span=hi-lo;if(any(span<=float2(0.0f)))return 0u;
+#if WORLD_RECIPROCAL
+  auto inverseSpan=1.0f/span;
+#endif
   float sum=0.0f,correction=0.0f;
   for(auto i=data[index];i<data[index+1u];i++){
     auto at=data[9]+data[data[20]+i]*8u;
+#if WORLD_RECIPROCAL
+    auto a=(point(data,at+1u)*scale-pixel-lo)*inverseSpan;
+    auto b=(point(data,at+3u)*scale-pixel-lo)*inverseSpan;
+    auto c=(point(data,at+5u)*scale-pixel-lo)*inverseSpan;
+#else
     auto a=(point(data,at+1u)*scale-pixel-lo)/span;
     auto b=(point(data,at+3u)*scale-pixel-lo)/span;
     auto c=(point(data,at+5u)*scale-pixel-lo)/span;
+#endif
     auto area=data[at]==0u?line_area(a,b):quadratic_area(a,b,c);
     auto adjusted=area-correction;auto next=sum+adjusted;correction=(next-sum)-adjusted;sum=next;
   }

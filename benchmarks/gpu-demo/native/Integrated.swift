@@ -44,6 +44,7 @@ func cropped(_ data:Data,width:Int,height:Int,offset:SIMD2<UInt32>)->Data {
     func pipeline(_ mode:String) throws -> MTLComputePipelineState {
         if let cached=mode=="world" ? world:raster {return cached}
         let options=MTLCompileOptions();options.mathMode = .safe
+        options.preprocessorMacros=["WORLD_RECIPROCAL":NSNumber(value:CommandLine.arguments.contains("--world-reciprocal"))]
         let files=mode=="world" ? ["area.metal","raster.metal","world.metal"]:["area.metal","raster.metal"]
         let code=try files.map {try String(contentsOf:folder.appendingPathComponent($0),encoding:.utf8)}.joined(separator:"\n")
         let library=try device.makeLibrary(source:"#include <metal_stdlib>\nusing namespace metal;\n"+code,options:options)
@@ -141,7 +142,7 @@ func cropped(_ data:Data,width:Int,height:Int,offset:SIMD2<UInt32>)->Data {
         defer {for page in pages {page.close()}}
         for mode in modes {opening[mode]=[]}
         for i in 0..<cold {
-            let order=Array(modes[(i%3)...]+modes[..<(i%3)])
+            var order=Array(modes[(i%3)...]+modes[..<(i%3)]);if i/3%2==1 {order.reverse()}
             for mode in order {
                 let started=now(),page=try NativePage(mode,binary:binary,context:context)
                 do {
@@ -161,18 +162,26 @@ func cropped(_ data:Data,width:Int,height:Int,offset:SIMD2<UInt32>)->Data {
             let summary=rows.mapValues { ["frame_ms":distribution($0.map{metric($0,"frame_ms")}),"render_ms":distribution($0.map{metric($0,"render_ms")})] }
             staticCases.append(["dpi":dpi,"raw":rows,"summary":summary])
         }
+        for mode in modes {zoom[mode]=[];scroll[mode]=[];accuracy[mode]=[]}
+        for (i,dpi) in novel.enumerated() {
+            var order=Array(0..<3);let shift=i%3;order=Array(order[shift...]+order[..<shift]);if i/3%2==1 {order.reverse()}
+            for n in order {let page=pages[n];_=try page.engine.render(9,dpi);var row=try page.render(dpi);row["dpi"]=dpi;zoom[modes[n]]!.append(row)}
+        }
+        for page in pages {_=try page.render(300)}
+        let before=pages.map{$0.counters()},requests=pages.map{$0.engine.requests}
+        for i in -warmups..<samples {
+            var order=Array(0..<3);let shift=(i+warmups)%3;order=Array(order[shift...]+order[..<shift]);if (i+warmups)/3%2==1 {order.reverse()}
+            for n in order {let start=now(),(meta,_,_)=try pages[n].scroll(Double((i+warmups)%60)/59);if i>=0 {scroll[modes[n]]!.append(["frame_ms":now()-start,"presentation":meta])}}
+        }
+        let scrollAfter=pages.map{$0.counters()}
         for (n,page) in pages.enumerated() {
-            let mode=modes[n];zoom[mode]=[];scroll[mode]=[];accuracy[mode]=[]
-            for dpi in novel {_=try page.engine.render(9,dpi);var row=try page.render(dpi);row["dpi"]=dpi;zoom[mode]!.append(row)}
-            _=try page.render(300);let before=page.counters(),requests=page.engine.requests
-            for i in -warmups..<samples {let start=now(),(meta,_,_)=try page.scroll(Double((i+warmups)%60)/59);if i>=0 {scroll[mode]!.append(["frame_ms":now()-start,"presentation":meta])}}
-            let scrollAfter=page.counters()
-            guard requests==page.engine.requests,metric(before["gpu"] as! [String:Any],"dispatches")==metric(scrollAfter["gpu"] as! [String:Any],"dispatches") else {throw fail("Scroll rendered fresh pixels")}
+            let mode=modes[n]
+            guard requests[n]==page.engine.requests,metric(before[n]["gpu"] as! [String:Any],"dispatches")==metric(scrollAfter[n]["gpu"] as! [String:Any],"dispatches") else {throw fail("Scroll rendered fresh pixels")}
             for dpi in dpis+novel {accuracy[mode]!.append(try page.accuracy(dpi))}
-            cases.append(["label":"Document \(index+1)","mode":mode,"input_sha256":digest(pdf),"input_file_read_ms":fileMs,"fallback":page.fallback as Any? ?? NSNull(),"opening_raw":opening[mode]!,"opening":distribution(opening[mode]!.map{metric($0,"first_display_ms")}),"static":staticCases.map{["dpi":$0["dpi"]!,"raw":($0["raw"] as! [String:[[String:Any]]])[mode]!,"summary":($0["summary"] as! [String:[String:[String:Double]]])[mode]!] as [String:Any]},"novel_zoom_raw":zoom[mode]!,"novel_zoom":distribution(zoom[mode]!.map{metric($0,"frame_ms")}),"scroll_raw":scroll[mode]!,"scroll":distribution(scroll[mode]!.map{metric($0,"frame_ms")}),"scroll_before":before,"scroll_after":scrollAfter,"accuracy":accuracy[mode]!])
+            cases.append(["label":"Document \(index+1)","mode":mode,"input_sha256":digest(pdf),"input_file_read_ms":fileMs,"fallback":page.fallback as Any? ?? NSNull(),"opening_raw":opening[mode]!,"opening":distribution(opening[mode]!.map{metric($0,"first_display_ms")}),"static":staticCases.map{["dpi":$0["dpi"]!,"raw":($0["raw"] as! [String:[[String:Any]]])[mode]!,"summary":($0["summary"] as! [String:[String:[String:Double]]])[mode]!] as [String:Any]},"novel_zoom_raw":zoom[mode]!,"novel_zoom":distribution(zoom[mode]!.map{metric($0,"frame_ms")}),"scroll_raw":scroll[mode]!,"scroll":distribution(scroll[mode]!.map{metric($0,"frame_ms")}),"scroll_before":before[n],"scroll_after":scrollAfter[n],"accuracy":accuracy[mode]!])
         }
     }
-    let report:[String:Any]=["device":context.device.name,"unified_memory":context.device.hasUnifiedMemory,"application_initialization_ms":context.initializationMs,"samples":samples,"warmups":warmups,"cold_samples":cold,"clock":"Native request through drawable presentation-or-discard callback; no Node relay. Document-cold opening, application/presentation warm; file read reported separately. Not scanout.","cases":cases,"failures":[],"presentations":context.screen.frames,"discarded":context.screen.droppedFrames]
+    let report:[String:Any]=["world_reciprocal":CommandLine.arguments.contains("--world-reciprocal"),"device":context.device.name,"unified_memory":context.device.hasUnifiedMemory,"application_initialization_ms":context.initializationMs,"samples":samples,"warmups":warmups,"cold_samples":cold,"clock":"Native request through drawable presentation-or-discard callback; no Node relay. Document-cold opening, application/presentation warm; file read reported separately. Not scanout.","cases":cases,"failures":[],"presentations":context.screen.frames,"discarded":context.screen.droppedFrames]
     let data=try JSONSerialization.data(withJSONObject:report,options:[.sortedKeys]);try FileHandle.standardOutput.write(contentsOf:data)
 }
 @main struct SharedMain {

@@ -5,7 +5,7 @@ import {sha256} from './retained-study.mjs';
 export async function run(config){
   await demo.ready;const {engine,gpu}=demo;if(!gpu)throw new Error('Hardware GPU required');
   if(config.mode==='world-ui-test')return(await import('./display-tests.mjs')).runUi(demo);
-  if(config.mode==='world-test')return(await import('./display-tests.mjs')).runTests(engine,gpu);
+  if(config.mode==='world-test')return(await import('./display-tests.mjs')).runTests(engine,gpu,config);
   const harness=await browserHarness(gpu),cases=[],failures=[];
   try {
     for(const input of await(await fetch('/benchmark-inputs.json')).json()){

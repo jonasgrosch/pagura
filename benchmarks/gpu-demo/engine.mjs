@@ -26,6 +26,7 @@ export class Engine {
   }
 
   fail(error) {
+    this.failed = error;
     this.rejectReady(error); this.pending?.reject(error); this.pending = null;
   }
 
@@ -55,6 +56,7 @@ export class Engine {
   }
 
   request(bytes) {
+    if (this.failed) throw this.failed;
     if (this.pending) throw new Error('One engine request may run at a time');
     return new Promise((resolve, reject) => {
       this.pending = {resolve, reject, start: performance.now()};

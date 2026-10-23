@@ -17,9 +17,9 @@ function oraclePacket(){
   for(let i=0;i<4;i++){w.set([i*3,i*3+3],ra+i*2);w.set([0,1,2],rra+i*3);}
   w.set([0,2,2,4],ba);w.set([0,1,0,1],bpa);return new Uint8Array(w.buffer);
 }
-async function independent(gpu){
+async function independent(gpu,options){
   const bytes=oraclePacket(),world=validateWorld(bytes),meta={extent_width:32*72/300,extent_height:16*72/300};
-  const job=await createWorldJob(gpu,bytes,meta,world);const cases=[];
+  const job=await createWorldJob(gpu,bytes,meta,world,options);const cases=[];
   const canvas=document.createElement('canvas');document.body.append(canvas);const presenter=await Presenter.create(gpu,canvas);
   try {
     for(const dpi of [72,150,173,225,291,300]){
@@ -42,26 +42,26 @@ async function independent(gpu){
     return {cases,malformed_refused:refused,geometry_uploads:before.geometry_uploads,evictions:before.evictions,presentation_identical:true};
   }finally{job.destroy();presenter.destroy();canvas.remove();}
 }
-export async function runTests(engine,gpu){
-  const oracle=await independent(gpu),failures=[],cases=[],unsupported={};
+export async function runTests(engine,gpu,options={}){
+  const oracle=await independent(gpu,options),failures=[],cases=[],unsupported={};
   const index=await(await fetch('/fixture-index.json')).json();let admitted=0,variants=0;
   for(const fixture of index){
-    const world=new WorldSession(engine,gpu),options={page:0,dpi:fixture.dpi??72};
+    const world=new WorldSession(engine,gpu,options),request={page:0,dpi:fixture.dpi??72};
     try {
       await engine.open(new Uint8Array(await(await fetch(fixture.path)).arrayBuffer()));
-      const cpu=await engine.render(2,options),cached=await engine.render(7,options);
+      const cpu=await engine.render(2,request),cached=await engine.render(7,request);
       if(await sha256(cpu.data)!==await sha256(cached.data))throw new Error('CPU prepared scene changed');
-      const out=await world.draw(options,{readback:true});
+      const out=await world.draw(request,{readback:true});
       const result={id:fixture.id,cpu_sha256:await sha256(cpu.data)};
       if(out.fallback){result.fallback=out.fallback;unsupported[out.fallback]=(unsupported[out.fallback]??0)+1;}
       else {
         admitted++;result.accuracy=pixelDifference(out.pixels,cpu.data);
         if(result.accuracy.max_channel_error>2)throw new Error('World fixture accuracy exceeded two levels');
-        const packet=await engine.render(11,options),patches=await engine.render(12,options);
+        const packet=await engine.render(11,request),patches=await engine.render(12,request);
         result.world_sha256=await sha256(packet.data);result.patch_sha256=await sha256(patches.data);
         validatePatches(patches.data);
         if(admitted<=80){
-          const repeat=await world.draw(options,{readback:true});if(pixelDifference(repeat.pixels,out.pixels).max_channel_error)throw new Error('World repeat output changed');
+          const repeat=await world.draw(request,{readback:true});if(pixelDifference(repeat.pixels,out.pixels).max_channel_error)throw new Error('World repeat output changed');
           const before=world.job.metadata();result.zoom_accuracy=[];
           for(const dpi of [151,173,225]){const c=await engine.render(2,{dpi}),view=await world.draw({dpi},{readback:true});if(view.fallback)break;variants++;if(c.data.length!==view.pixels.length)throw new Error('World zoom dimensions');const delta=pixelDifference(view.pixels,c.data);result.zoom_accuracy.push({dpi,...delta});if(delta.max_channel_error>2)throw new Error('World fixture zoom accuracy exceeded two levels');}
           if(world.job.metadata().geometry_uploads!==before.geometry_uploads)throw new Error('World zoom reuploaded geometry');

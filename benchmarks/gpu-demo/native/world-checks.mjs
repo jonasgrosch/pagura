@@ -10,7 +10,7 @@ import {pixelDifference} from '../svg.mjs';
 const option=(key,fallback)=>process.argv.includes(key)?process.argv[process.argv.indexOf(key)+1]:fallback;
 const root=resolve(import.meta.dirname,'../../..');
 const engine=new Host(resolve(option('--binary','target/gpu-demo/release/pagura-gpu-demo')));
-const host=new Host(resolve(option('--metal','target/gpu-demo/metal-host')),[resolve(root,'benchmarks/gpu-demo/native/raster.metal')],true);
+const host=new Host(resolve(option('--metal','target/gpu-demo/metal-host')),[resolve(root,'benchmarks/gpu-demo/native/raster.metal'),...(process.argv.includes('--world-reciprocal')?['--world-reciprocal']:[])],true);
 const cases=[],failures=[];
 try {
   const info=(await host.ready).meta,gpu=new MetalBackend(host,info);

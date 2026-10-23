@@ -1,4 +1,5 @@
 // Immutable canonical vectors; only view-local transforms change with zoom.
+override hoist_clip_reciprocal:bool=false;
 @group(0) @binding(0) var<storage,read> data:array<u32>;
 @group(0) @binding(1) var<storage,read_write> rgba:array<u32>;
 @group(0) @binding(2) var<storage,read> view:array<u32>;
@@ -22,12 +23,20 @@ fn coverage(mark:u32,v:u32,x:u32,y:u32)->u32 {
   var lo=vec2f(0.0);var hi=vec2f(1.0);
   if(data[mark+6u]!=0u){lo=max(lo,point(mark+20u)*scale-pixel);hi=min(hi,point(mark+22u)*scale-pixel);}
   let span=hi-lo;if(any(span<=vec2f(0.0))){return 0u;}
+  let inverseSpan=vec2f(1.0)/span;
   var sum=0.0;var correction=0.0;
   for(var i=data[index];i<data[index+1u];i++){
     let at=data[9]+data[data[20]+i]*8u;
-    let a=(point(at+1u)*scale-pixel-lo)/span;
-    let b=(point(at+3u)*scale-pixel-lo)/span;
-    let c=(point(at+5u)*scale-pixel-lo)/span;
+    var a:vec2f;var b:vec2f;var c:vec2f;
+    if(hoist_clip_reciprocal){
+      a=(point(at+1u)*scale-pixel-lo)*inverseSpan;
+      b=(point(at+3u)*scale-pixel-lo)*inverseSpan;
+      c=(point(at+5u)*scale-pixel-lo)*inverseSpan;
+    }else{
+      a=(point(at+1u)*scale-pixel-lo)/span;
+      b=(point(at+3u)*scale-pixel-lo)/span;
+      c=(point(at+5u)*scale-pixel-lo)/span;
+    }
     var area:f32;if(data[at]==0u){area=line_area(a,b);}else{area=quadratic_area(a,b,c);}
     let adjusted=area-correction;let next=sum+adjusted;correction=(next-sum)-adjusted;sum=next;
   }

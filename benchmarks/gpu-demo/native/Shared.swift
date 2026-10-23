@@ -61,6 +61,9 @@ final class SharedRegion {
         guard metaLength==length-4 else {throw fail("Bulk bytes on control channel")}
         guard let meta=try JSONSerialization.jsonObject(with:response.subdata(in:4..<length)) as? [String:Any],meta["ok"] as? Bool == true else {throw fail("Engine: \(String(data:response.dropFirst(4),encoding:.utf8) ?? "invalid response")")}
         guard let size=meta["shared_bytes"] as? Int,meta["pipe_payload_bytes"] as? Int == 0,let kind=meta["shared_kind"] as? String,["rgba","packet"].contains(kind) else {throw fail("Missing shared acknowledgement")}
+        if kind=="rgba" {
+            guard let width=meta["width"] as? Int,let height=meta["height"] as? Int,width>0,height>0,width<=16*1024*1024,height<=16*1024*1024,width*height<=16*1024*1024,size==width*height*4 else {throw fail("Shared RGBA extent")}
+        }
         requests+=1;sharedBytes+=size;if kind=="rgba" {rgbaBytes+=size}
         return (meta,try (kind=="rgba" ? frame:packet).bytes(size))
     }
@@ -77,7 +80,7 @@ func wire(_ words:[UInt32])->Data {var data=Data();for var word in words {word=w
 func nativeWorldView(_ world:[UInt32],patch:Data,dpi:UInt32) throws -> Data {
     guard patch.count>=32,patch.count<=SharedRegion.capacity,patch.count%4==0 else {throw fail("Shared patch size")}
     let p=patch.withUnsafeBytes {Array($0.bindMemory(to:UInt32.self))}
-    guard p[0]==0x31505747,p[1]==1,p[6]==8,p[7]==8+p[4]*16,p[7]<=p.count,p.count==Int(p[7])+Int(p[5])*4 else {throw fail("Shared patch sections")}
+    guard p[0]==0x31505747,p[1]==1,p[2]>0,p[3]>0,UInt64(p[2])*UInt64(p[3])<=16*1024*1024,Int(p[4])<=(p.count-8)/16,Int(p[5])<=(p.count-8)/4,p[6]==8,Int(p[7])==8+Int(p[4])*16,Int(p[7])<=p.count,p.count==Int(p[7])+Int(p[5])*4 else {throw fail("Shared patch sections")}
     let marks=Int(world[13]),start=8+marks*12
     var view=[UInt32](repeating:0,count:start+Int(p[5])*4);view[0]=p[2];view[1]=p[3];view[2]=(Float(dpi)/300).bitPattern;view[3]=dpi;view[4]=UInt32(start)
     var entries=[UInt32:Int](),previous:UInt32=0

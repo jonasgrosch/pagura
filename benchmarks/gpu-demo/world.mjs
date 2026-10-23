@@ -76,7 +76,7 @@ export function worldView(world,meta,dpi,patchBytes=null) {
   return {bytes:new Uint8Array(view.buffer),width,height,dpi,correction_cells:patches?.cells??0};
 }
 export class WorldSession {
-  constructor(engine,gpu,{patches=true}={}){Object.assign(this,{engine,gpu,patches,generation:engine.generation,page:null,job:null,packet:null});}
+  constructor(engine,gpu,{patches=true,reciprocal=false}={}){Object.assign(this,{engine,gpu,patches,reciprocal,generation:engine.generation,page:null,job:null,packet:null});}
   async prepare(options) {
     if(options.region?.some(v=>v!==0))return {fallback:'World geometry supports whole-page requests'};
     if(this.generation!==this.engine.generation||this.page!==(options.page??0)){await this.clear();this.generation=this.engine.generation;this.page=options.page??0;}
@@ -86,7 +86,7 @@ export class WorldSession {
     if(packet.meta.fallback)return {fallback:packet.meta.fallback};
     let world;try{world=validateWorld(packet.data);}catch(error){if(String(error).toLowerCase().includes('budget')){this.packet.meta.fallback=String(error);return {fallback:String(error)};}throw error;}
     const start=performance.now();
-    this.job=this.gpu.prepareWorld?await this.gpu.prepareWorld(packet.data,packet.meta):await(await import('./world-gpu.mjs')).createWorldJob(this.gpu,packet.data,packet.meta,world);
+    this.job=this.gpu.prepareWorld?await this.gpu.prepareWorld(packet.data,packet.meta):await(await import('./world-gpu.mjs')).createWorldJob(this.gpu,packet.data,packet.meta,world,{reciprocal:this.reciprocal});
     this.packet={meta:packet.meta,bytes:packet.data.length,setup_ms:performance.now()-start,geometry:{marks:world.marks,edges:world.edges,sources:world.sources,omitted_canonical_cells:world.omitted_canonical_cells}};
     return {cache_hit:false,job:this.job};
   }
