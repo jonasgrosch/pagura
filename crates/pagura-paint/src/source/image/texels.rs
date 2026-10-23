@@ -380,7 +380,7 @@ impl Strategy {
     /// Bytes the strategy's tables hold.
     pub(super) fn bytes(&self) -> usize {
         match self {
-            Self::Table(table, _) => size_of_val::<[f64]>(table),
+            Self::Table(table, _) => table.capacity() * size_of::<f64>(),
             Self::Rgb(_) => size_of::<[[f64; 256]; 3]>(),
             Self::Memo(_) | Self::General => 0,
         }

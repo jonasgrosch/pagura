@@ -70,8 +70,13 @@ fn oriented_sampler(decoded: Arc<Decoded>, unit_to_device: Transform, width: u32
         (decoded, None),
         (unit_to_device.inverse().unwrap(), (0, width), orientation),
         Some(convert),
-        &mut super::meter(),
-        &mut super::meter(),
+        None,
+        1,
+        super::super::ImageBudgets {
+            bytes: &mut super::meter(),
+            work: &mut super::meter(),
+            functions: &mut super::meter(),
+        },
     )
     .unwrap();
     ImageSampler::new(Some(Box::new(prepared)), 3)

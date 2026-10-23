@@ -283,8 +283,13 @@ pub(super) fn sampler(placed: &Placed, decoded: Arc<Decoded>) -> Option<ImageSam
             Orientation::of(placed.unit_to_device),
         ),
         convert,
-        &mut super::meter(),
-        &mut super::meter(),
+        None,
+        usize::try_from(u64::from(placed.rect.width()) * u64::from(placed.rect.height())).unwrap(),
+        super::super::ImageBudgets {
+            bytes: &mut super::meter(),
+            work: &mut super::meter(),
+            functions: &mut super::meter(),
+        },
     )
     .ok()?;
     Some(ImageSampler::new(

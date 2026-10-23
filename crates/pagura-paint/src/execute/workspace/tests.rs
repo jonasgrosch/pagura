@@ -247,7 +247,8 @@ fn image_source() -> Source {
             Transform::scale(8.0, 2.0),
             &context,
             16,
-            ImageBudgets {
+            None,
+            &mut ImageBudgets {
                 bytes: &mut bytes,
                 work: &mut work,
                 functions: &mut functions,
