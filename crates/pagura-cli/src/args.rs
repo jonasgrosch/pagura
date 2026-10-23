@@ -60,8 +60,8 @@ options:
                    the document declares a PDF/X print intent, always, or
                    never
   --timings        print JSON stage timings to stdout: open (read and parse
-                   the file, build the page list), render (rasterize into
-                   memory) and emit (encode and write the image); the
+                   the file, build the page list), render (interpret and
+                   rasterize) and emit (encode and write the image); the
                    engine's contribution to a conversion is open + render
   --max-pages N    scan at most N pages per document
   --version        print the version

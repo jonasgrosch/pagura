@@ -22,6 +22,72 @@ use pagura_interpret::{BlendMode, Composite, MaskKind, Shading, ShadingFunction,
 use pagura_raster::{Area, DeviceRect, PathBuilder, Point, Transform};
 use std::sync::Arc;
 
+#[test]
+fn output_band_capacity_uses_actual_edge_rows_and_checked_products() {
+    for (region, expected) in [
+        (
+            DeviceRect {
+                x0: 2,
+                y0: 31,
+                x1: 5,
+                y1: 33,
+            },
+            12,
+        ),
+        (
+            DeviceRect {
+                x0: 2,
+                y0: 31,
+                x1: 5,
+                y1: 65,
+            },
+            384,
+        ),
+        (
+            DeviceRect {
+                x0: 2,
+                y0: 5,
+                x1: 5,
+                y1: 15,
+            },
+            120,
+        ),
+        (
+            DeviceRect {
+                x0: 2,
+                y0: u32::MAX - 3,
+                x1: 5,
+                y1: u32::MAX,
+            },
+            36,
+        ),
+        (DeviceRect::default(), 0),
+    ] {
+        let area = Area {
+            region,
+            band_height: 32,
+        };
+        assert_eq!(
+            super::output_band_bytes(area).unwrap(),
+            expected,
+            "{area:?}"
+        );
+    }
+    let enormous = Area {
+        region: DeviceRect {
+            x0: 0,
+            y0: 0,
+            x1: u32::MAX,
+            y1: u32::MAX,
+        },
+        band_height: u32::MAX,
+    };
+    assert_eq!(
+        super::output_band_bytes(enormous).unwrap_err().kind,
+        pagura_core::ErrorKind::Limit
+    );
+}
+
 /// `C0 + x^N (C1 − C0)` of one input.
 fn exponential(c0: &[f64], c1: &[f64], exponent: f64) -> Arc<Function> {
     Arc::new(

@@ -7,11 +7,15 @@
 //! (`pagura-interpret`), which a [`RenderContext`] keeps in its
 //! [`Store`]. Rendering a region of it at a resolution
 //! maps the page to device pixels ([`RenderRequest::page`](pagura_paint::RenderRequest::page)),
-//! prepares the scene for that region (`pagura_paint::prepare`, the only
-//! step that can fail: it validates every mark that meets the region and
-//! reserves every budget, in source order), allocates the region's
-//! [`Pixmap`] and runs the band executor, which cannot fail. Repairs that
-//! preparation makes are reported to the document.
+//! prepares the scene for that region (`pagura_paint::prepare` validates
+//! every mark that meets the region and reserves every budget in source
+//! order), reserves output storage and
+//! runs the band executor, which cannot fail. Output can be collected into
+//! a [`Pixmap`] or consumed one band at a time through
+//! [`RenderContext::render_bands`]. Repairs that preparation makes are
+//! reported to the document. Engine validation and allocation finish before
+//! the first consumer call; a consumer can return its own error, such as an
+//! I/O failure, after output starts.
 //!
 //! Every pixel is within one level of its exact result (ADR 0004). Text
 //! extraction runs the same interpreter into its text device, which decodes

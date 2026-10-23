@@ -79,7 +79,7 @@ fn distant_line_interpolation_survives_repeated_composition() {
 
 /// A page that exercises every buffer kind: translucent marks, blend
 /// modes, a knockout group, a soft mask, a tiling pattern and clips.
-fn busy() -> Build {
+pub(super) fn busy() -> Build {
     let mut b = Build::new(37.0, 29.0);
     let colors = [
         b.rgb([0.9, 0.1, 0.1]),

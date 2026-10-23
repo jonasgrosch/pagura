@@ -10,6 +10,7 @@ use pagura_interpret::Scene;
 use pagura_paint::{Completion, Scratch};
 use pagura_raster::Pixmap;
 use pagura_text::Provider;
+use std::ops::Range;
 use std::sync::{Arc, Mutex};
 
 /// A document, its font provider and the [`Store`] that holds everything
@@ -229,11 +230,50 @@ impl RenderContext {
         tile: Option<Tile>,
         stop: impl FnMut(u32) -> bool,
     ) -> Result<(Pixmap, Completion)> {
+        self.with_scratch(|scratch| {
+            self.renderer()
+                .render(scene, (options, tile), scratch, stop)
+        })
+    }
+
+    /// Renders the whole region as [`Self::render_scene`] does, lending
+    /// each completed band's device-row range and premultiplied RGBA8 bytes
+    /// to `consume`, top to bottom. The bytes are valid only for that call.
+    /// `stop` is asked before each band, as in [`Self::render_until`].
+    ///
+    /// All preparation, repair reporting and renderer allocation finish
+    /// before the first consumer call. Output storage is one reusable band,
+    /// capped by `Limits::decoded_bytes`; an owned full surface is not
+    /// allocated or subject to that byte cap. The whole region still obeys
+    /// `Limits::pixels`, and all render budgets remain per region.
+    ///
+    /// # Errors
+    ///
+    /// The outer result has the preparation and allocation errors of
+    /// [`Self::render_scene`], before any consumer call. The inner result
+    /// returns the first consumer error without rendering another band.
+    /// Stopping is not an error. Repeating the call starts at the region's
+    /// first row, whether the previous call completed, stopped or failed.
+    pub fn render_bands<E>(
+        &self,
+        scene: &Scene,
+        options: &RenderOptions,
+        tile: Option<Tile>,
+        stop: impl FnMut(u32) -> bool,
+        consume: impl FnMut(Range<u32>, &[u8]) -> std::result::Result<(), E>,
+    ) -> Result<std::result::Result<Completion, E>> {
+        self.with_scratch(|scratch| {
+            self.renderer()
+                .render_bands(scene, (options, tile), scratch, stop, consume)
+        })
+    }
+
+    /// Takes and returns scratch identically for collectors and consumers,
+    /// including preparation refusals, stops and consumer errors.
+    fn with_scratch<T>(&self, render: impl FnOnce(&mut Scratch) -> T) -> T {
         let kept = self.scratch.lock().ok().and_then(|mut kept| kept.take());
         let mut scratch = kept.unwrap_or_default();
-        let rendered = self
-            .renderer()
-            .render(scene, (options, tile), &mut scratch, stop);
+        let rendered = render(&mut scratch);
         if scratch.retained_bytes() <= self.store.capacity()
             && let Ok(mut kept) = self.scratch.lock()
         {
@@ -298,5 +338,72 @@ impl RenderContext {
             ));
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RenderContext;
+    use crate::{Completion, RenderOptions};
+    use pagura_document::{Document, OpenOptions};
+    use pagura_testkit::open_fixture;
+    use std::sync::Arc;
+
+    #[test]
+    fn collectors_and_consumers_return_or_drop_scratch_on_every_exit() {
+        for capacity in [0, 1 << 20] {
+            let document = Arc::new(open_fixture("classic", "rectangle.pdf", |bytes| {
+                Document::open(bytes, &OpenOptions::default())
+            }));
+            let context = RenderContext::with_store_capacity(document, None, capacity);
+            let scene = context.record(context.document().page(0).unwrap()).unwrap();
+            let options = RenderOptions::default();
+            let expected = context.render_scene(&scene, &options, None).unwrap();
+            assert_eq!(context.scratch.lock().unwrap().is_some(), capacity != 0);
+            let failed = context
+                .render_bands(&scene, &options, None, |_| false, |_, _| Err("sink"))
+                .unwrap();
+            assert_eq!(failed, Err("sink"));
+            assert_eq!(context.scratch.lock().unwrap().is_some(), capacity != 0);
+            let stopped = context
+                .render_bands(
+                    &scene,
+                    &options,
+                    None,
+                    |_| true,
+                    |_, _| panic!("stopped render called its sink"),
+                )
+                .unwrap();
+            assert_eq!(stopped, Ok::<_, ()>(Completion::Stopped { row: 0 }));
+            assert_eq!(context.scratch.lock().unwrap().is_some(), capacity != 0);
+            let previous = context
+                .scratch
+                .lock()
+                .unwrap()
+                .as_ref()
+                .map_or(0, pagura_paint::Scratch::retained_bytes);
+            let error = context
+                .render_bands(
+                    &scene,
+                    &RenderOptions::from_dpi(0.0),
+                    None,
+                    |_| false,
+                    |_, _| Ok::<(), ()>(()),
+                )
+                .unwrap_err();
+            assert_eq!(error.kind, pagura_core::ErrorKind::InvalidArgument);
+            // An early refusal leaves the prior scratch untouched; when
+            // none was kept, its empty replacement fits even capacity 0.
+            let retained = context
+                .scratch
+                .lock()
+                .unwrap()
+                .as_ref()
+                .map(pagura_paint::Scratch::retained_bytes);
+            assert_eq!(retained, Some(previous));
+            let actual = context.render_scene(&scene, &options, None).unwrap();
+            assert_eq!(actual, expected);
+            assert_eq!(context.scratch.lock().unwrap().is_some(), capacity != 0);
+        }
     }
 }

@@ -8,6 +8,7 @@ mod functions;
 mod invariance;
 mod patterns;
 mod runs;
+mod streaming;
 
 use crate::execute::Rendering;
 use crate::plan::{Conversion, Curve, Glyph, GroupPlan, Item, ItemKind, MaskPlan, Plan, SpotPlan};
