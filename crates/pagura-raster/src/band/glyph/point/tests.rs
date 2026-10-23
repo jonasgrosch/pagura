@@ -4,6 +4,8 @@ use crate::band::shape::{Body, GlyphGeometry, Winding};
 use crate::{Area, ClipShape, DeviceRect, FillRule, PathBuilder, ShapeOptions};
 use pagura_core::{Built, Rect, Store, StoreKey};
 
+mod windows;
+
 fn outline(point: Point, reversed: bool) -> Path {
     let mut path = PathBuilder::new();
     if reversed {
