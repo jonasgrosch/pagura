@@ -445,3 +445,70 @@ fn reused_scratch_forgets_scenes_backgrounds_and_stopped_renders() {
         }
     }
 }
+
+#[test]
+fn a_prior_large_scratch_changes_neither_small_charges_nor_tight_errors() {
+    use pagura_core::{ErrorKind, Store};
+
+    let mut large = Build::new(128.0, 96.0);
+    let ink = large.rgb([0.1, 0.2, 0.4]);
+    for i in 0..80_u32 {
+        let x = f64::from(i % 10) * 12.0;
+        let y = f64::from(i / 10) * 11.0;
+        large.rect(PAGE, [x, y, x + 9.5, y + 8.25], ink, mark(StateId(0)));
+    }
+    let store = Store::new(1 << 20);
+    let prepared = crate::prepare(
+        &large.scene,
+        &large.request(large.page(), 32),
+        &store,
+        &Limits::default(),
+    )
+    .unwrap();
+    let mut reused = crate::Scratch::default();
+    prepared
+        .with_scratch(&mut reused)
+        .unwrap()
+        .render(&mut Vec::new());
+    drop(prepared);
+
+    let mut small = Build::new(8.0, 4.0);
+    let ink = small.rgb([0.8, 0.2, 0.1]);
+    small.rect(
+        PAGE,
+        [0.25, 0.5, 7.75, 3.5],
+        ink,
+        MarkInfo {
+            position: Position::Buffer(5),
+            ..mark(StateId(0))
+        },
+    );
+    let request = small.request(small.page(), 1);
+    let cold_store = Store::new(1 << 20);
+    let fresh = crate::prepare(&small.scene, &request, &cold_store, &Limits::default()).unwrap();
+    let charges = fresh.charges();
+    let mut fresh_scratch = crate::Scratch::default();
+    let mut expected = Vec::new();
+    fresh
+        .with_scratch(&mut fresh_scratch)
+        .unwrap()
+        .render(&mut expected);
+    let kept = crate::prepare(&small.scene, &request, &store, &Limits::default()).unwrap();
+    assert_eq!(kept.charges(), charges);
+    let mut actual = Vec::new();
+    kept.with_scratch(&mut reused).unwrap().render(&mut actual);
+    assert_eq!(actual, expected);
+    assert_eq!(reused.retained_bytes(), fresh_scratch.retained_bytes());
+
+    let limits = Limits {
+        render_bytes: charges.render_bytes() - 1,
+        ..Limits::default()
+    };
+    let error = crate::prepare(&small.scene, &request, &store, &limits).unwrap_err();
+    let cold = crate::prepare(&small.scene, &request, &cold_store, &limits).unwrap_err();
+    assert_eq!(
+        (error.kind, error.message, error.position),
+        (cold.kind, cold.message, cold.position)
+    );
+    assert_eq!(error.kind, ErrorKind::Limit);
+}

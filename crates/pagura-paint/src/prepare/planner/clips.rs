@@ -30,8 +30,8 @@ pub(crate) struct Key {
 pub(crate) struct Extra {
     /// The paint it belongs to, for the key.
     pub(crate) paint: u32,
-    /// The path.
-    pub(crate) path: Arc<Path>,
+    /// The canonical rectangle, built only after the mark meets the region.
+    pub(crate) bbox: pagura_core::Rect,
     /// Its transform to device space.
     pub(crate) transform: Transform,
 }
@@ -43,6 +43,9 @@ pub(crate) struct Link {
     rule: FillRule,
     /// Its space to device pixels.
     transform: Transform,
+    /// Owned path allocation of an extra rectangle; scene/crop paths have
+    /// their owning phase and contribute no second payload charge here.
+    owned: usize,
 }
 
 /// The paths of a clip state, outermost first.
@@ -88,17 +91,10 @@ impl Planner<'_> {
         &self,
         scope: &Scope,
         clip: Option<ClipId>,
-        extra: Option<&Extra>,
+        extra: bool,
         mut visit: impl FnMut(Link) -> Result<()>,
     ) -> Result<()> {
-        let mut count = usize::from(extra.is_some());
-        if let Some(extra) = extra {
-            visit(Link {
-                path: Arc::clone(&extra.path),
-                rule: FillRule::NonZero,
-                transform: extra.transform,
-            })?;
-        }
+        let mut count = usize::from(extra);
         let mut current = clip;
         while let Some(id) = current {
             if count >= self.limits.mask_sources {
@@ -116,6 +112,7 @@ impl Planner<'_> {
                 path: Arc::clone(&node.path),
                 rule: node.rule,
                 transform: scope.transform,
+                owned: 0,
             })?;
             count += 1;
             current = node.parent;
@@ -125,6 +122,7 @@ impl Planner<'_> {
                 path: Arc::clone(&self.crop),
                 rule: FillRule::NonZero,
                 transform: self.request.transform,
+                owned: 0,
             })?;
         }
         Ok(())
@@ -151,7 +149,11 @@ impl Planner<'_> {
         // A pixel wider: a clipping path without area still keeps the
         // pixels its boundary touches.
         let mut bounds = region;
-        self.walk_chain(scope, clip, extra, |link| {
+        if let Some(extra) = extra {
+            let hull = bounds::rect(extra.bbox, extra.transform).map(|h| bounds::expand(h, 1.0));
+            bounds = intersect(bounds, bounds::device(hull, region));
+        }
+        self.walk_chain(scope, clip, extra.is_some(), |link| {
             let hull = bounds::path(&link.path, link.transform).map(|h| bounds::expand(h, 1.0));
             bounds = intersect(bounds, bounds::device(hull, region));
             Ok(())
@@ -160,7 +162,6 @@ impl Planner<'_> {
             bounds,
             built: None,
         };
-        self.clip_states().insert(key, state);
         self.last_clip = Some((key, state));
         Ok(bounds)
     }
@@ -194,10 +195,13 @@ impl Planner<'_> {
             self.last_clip = Some((key, state));
             return Ok(clipping);
         }
+        let bounds = self.clip_bounds(scope, clip, extra)?;
+        if !self.clips.contains_key(&key) {
+            budget.bytes.reserve_map_capacity(&mut self.clips, 1)?;
+        }
         let clipping = self.build(scope, (clip, extra), budget)?;
-        let region = self.area.region;
         let state = self.clip_states().entry(key).or_insert(State {
-            bounds: region,
+            bounds,
             built: None,
         });
         state.built = Some(clipping);
@@ -212,13 +216,7 @@ impl Planner<'_> {
         (clip, extra): (Option<ClipId>, Option<&Extra>),
         budget: &mut Budget,
     ) -> Result<Clipping> {
-        let mut bytes = Meter::new(budget.bytes.remaining(), "render memory budget exceeded");
-        let mut chain = Vec::new();
-        self.walk_chain(scope, clip, extra, |link| {
-            bytes.reserve_capacity(&mut chain, 1)?;
-            chain.push(link);
-            Ok(())
-        })?;
+        let mut chain = self.chain(scope, (clip, extra), &mut budget.bytes)?;
         chain.reverse();
         if chain.is_empty() {
             return Ok(Clipping::All);
@@ -231,49 +229,31 @@ impl Planner<'_> {
                 .map(|&(_, clipping)| clipping)
         });
         if let Some(clipping) = built {
+            let released = chain_bytes(&chain);
+            drop(chain);
+            budget.bytes.refund(released);
             return Ok(clipping);
         }
-        let uniform = chain.iter().all(|link| link.transform == scope.transform);
-        let prepared = if uniform {
-            let mut paths = Vec::new();
-            bytes.reserve(&mut paths, chain.len())?;
-            paths.extend(chain.iter().map(|link| (&*link.path, link.rule)));
-            let limits = pagura_core::Limits {
-                render_bytes: bytes.remaining(),
-                ..*self.limits
-            };
-            let options = ShapeOptions {
-                area: self.area,
-                limits: &limits,
-            };
-            self.shapes.clip(&paths, scope.transform, &options)?
-        } else {
-            // A fixed view moves its content but not the crop: clip in
-            // device space. Source copies stay charged while the prepared
-            // clip is constructed beside them.
-            let mut device = Vec::new();
-            bytes.reserve(&mut device, chain.len())?;
-            for link in &chain {
-                device.push((
-                    link.path
-                        .transformed_with_bytes(link.transform, &mut bytes)?,
-                    link.rule,
-                ));
+        let prepared = (|| {
+            if !self.built_clips.contains_key(&hash) {
+                budget
+                    .bytes
+                    .reserve_map_capacity(&mut self.built_clips, 1)?;
             }
-            let mut paths = Vec::new();
-            bytes.reserve(&mut paths, device.len())?;
-            paths.extend(device.iter().map(|(path, rule)| (path, *rule)));
-            let limits = pagura_core::Limits {
-                render_bytes: bytes.remaining(),
-                ..*self.limits
-            };
-            let options = ShapeOptions {
-                area: self.area,
-                limits: &limits,
-            };
-            self.shapes.clip(&paths, Transform::IDENTITY, &options)?
+            budget
+                .bytes
+                .reserve_capacity(self.built_clips.entry(hash).or_default(), 1)?;
+            self.clip_geometry(scope, &chain, &mut budget.bytes)
+        })();
+        let prepared = match prepared {
+            Ok(prepared) => prepared,
+            Err(error) => {
+                let released = chain_bytes(&chain);
+                drop(chain);
+                budget.bytes.refund(released);
+                return Err(error);
+            }
         };
-        budget.bytes.charge(prepared.bytes)?;
         let clipping = if prepared.bounds.is_empty() {
             Clipping::Empty
         } else {
@@ -285,6 +265,129 @@ impl Planner<'_> {
             .push((chain, clipping));
         Ok(clipping)
     }
+
+    fn chain(
+        &self,
+        scope: &Scope,
+        (clip, extra): (Option<ClipId>, Option<&Extra>),
+        bytes: &mut Meter,
+    ) -> Result<Chain> {
+        let before = bytes.used();
+        let mut chain = Vec::new();
+        let built = (|| {
+            if let Some(extra) = extra {
+                bytes.reserve_capacity(&mut chain, 1)?;
+                bytes.charge(2 * size_of::<usize>() + size_of::<Path>())?;
+                let path = super::marks::bbox_path(extra.bbox, self.limits, bytes)?;
+                let owned = 2 * size_of::<usize>() + size_of::<Path>() + path.retained_bytes();
+                chain.push(Link {
+                    path: Arc::new(path),
+                    rule: FillRule::NonZero,
+                    transform: extra.transform,
+                    owned,
+                });
+            }
+            self.walk_chain(scope, clip, extra.is_some(), |link| {
+                bytes.reserve_capacity(&mut chain, 1)?;
+                chain.push(link);
+                Ok(())
+            })
+        })();
+        if let Err(error) = built {
+            drop(chain);
+            bytes.refund(bytes.used() - before);
+            return Err(error);
+        }
+        Ok(chain)
+    }
+
+    /// Source copies and reference lists are temporary; the chain, table
+    /// entry and prepared clip stay charged to the same cumulative meter.
+    fn clip_geometry(
+        &mut self,
+        scope: &Scope,
+        chain: &[Link],
+        bytes: &mut Meter,
+    ) -> Result<Prepared> {
+        let uniform = chain.iter().all(|link| link.transform == scope.transform);
+        if uniform {
+            let mut paths = Vec::new();
+            bytes.reserve_capacity(&mut paths, chain.len())?;
+            paths.extend(chain.iter().map(|link| (&*link.path, link.rule)));
+            let limits = pagura_core::Limits {
+                render_bytes: bytes.remaining(),
+                ..*self.limits
+            };
+            let options = ShapeOptions {
+                area: self.area,
+                limits: &limits,
+            };
+            let prepared = self.shapes.clip(&paths, scope.transform, &options, bytes);
+            let released = paths.capacity() * size_of::<(&Path, FillRule)>();
+            drop(paths);
+            bytes.refund(released);
+            prepared
+        } else {
+            // A fixed view moves its content but not the crop: clip in
+            // device space. Source copies stay charged while the prepared
+            // clip is constructed beside them.
+            let mut device = Vec::new();
+            let prepared = (|| {
+                bytes.reserve_capacity(&mut device, chain.len())?;
+                for link in chain {
+                    device.push((
+                        link.path.transformed_with_bytes(link.transform, bytes)?,
+                        link.rule,
+                    ));
+                }
+                let mut paths = Vec::new();
+                bytes.reserve_capacity(&mut paths, device.len())?;
+                paths.extend(device.iter().map(|(path, rule)| (path, *rule)));
+                let limits = pagura_core::Limits {
+                    render_bytes: bytes.remaining(),
+                    ..*self.limits
+                };
+                let options = ShapeOptions {
+                    area: self.area,
+                    limits: &limits,
+                };
+                let prepared = self
+                    .shapes
+                    .clip(&paths, Transform::IDENTITY, &options, bytes);
+                let released = paths.capacity() * size_of::<(&Path, FillRule)>();
+                drop(paths);
+                bytes.refund(released);
+                prepared
+            })();
+            let released = device.capacity() * size_of::<(Path, FillRule)>()
+                + device
+                    .iter()
+                    .map(|(path, _)| path.retained_bytes())
+                    .sum::<usize>();
+            drop(device);
+            bytes.refund(released);
+            prepared
+        }
+    }
+}
+
+/// Retained chains and collision lists, besides the table's own storage.
+pub(super) fn retained_bytes(built: &Built, bytes: &Meter) -> Result<usize> {
+    Ok(bytes.map_bytes(built)?
+        + built
+            .values()
+            .map(|list| {
+                list.capacity() * size_of::<(Chain, Clipping)>()
+                    + list
+                        .iter()
+                        .map(|(chain, _)| chain_bytes(chain))
+                        .sum::<usize>()
+            })
+            .sum::<usize>())
+}
+
+fn chain_bytes(chain: &Chain) -> usize {
+    chain.capacity() * size_of::<Link>() + chain.iter().map(|link| link.owned).sum::<usize>()
 }
 
 /// The bits of `t`.
@@ -338,5 +441,142 @@ fn segment_bits(segment: Segment) -> (u8, [u64; 6]) {
             (2, [x1, y1, x2, y2, x, y])
         }
         Segment::Close => (3, [0; 6]),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::prepare::ShapeBuilder;
+    use crate::testing::Build;
+    use pagura_core::{Limits, Position, Rect, Store};
+    use pagura_raster::Area;
+
+    fn with_planner(test: impl FnOnce(Planner<'_>, Scope, Budget)) {
+        let b = Build::new(4.0, 4.0);
+        let request = b.request(b.page(), 1);
+        let store = Store::new(1 << 20);
+        let limits = Limits::default();
+        let mut budget = Budget::new(&limits);
+        let planner = Planner::new(
+            &b.scene,
+            &request,
+            (&store, &limits),
+            Area {
+                region: b.page(),
+                band_height: 1,
+            },
+            ShapeBuilder::new(&store, &limits),
+            &mut budget,
+        )
+        .unwrap();
+        let scope = Scope {
+            group: 0,
+            transform: Transform::IDENTITY,
+            crop: false,
+            bounds: b.page(),
+            layout: planner.parts.groups[0].layout,
+            plain: true,
+            records: false,
+            separated: false,
+            masked: false,
+            paint: None,
+            depth: 0,
+        };
+        test(planner, scope, budget);
+    }
+
+    fn extra(paint: u32) -> Extra {
+        Extra {
+            paint,
+            bbox: Rect::from_corners(0.25, 0.25, 3.75, 3.75).unwrap(),
+            transform: Transform::IDENTITY,
+        }
+    }
+
+    #[test]
+    fn culling_uses_no_owned_path_or_table_capacity() {
+        with_planner(|mut planner, scope, budget| {
+            let before = budget.bytes.used();
+            planner.clip_bounds(&scope, None, Some(&extra(0))).unwrap();
+            assert_eq!(budget.bytes.used(), before);
+            assert_eq!(planner.clips.capacity(), 0);
+            assert!(planner.built_clips.is_empty());
+        });
+    }
+
+    #[test]
+    fn building_keeps_the_allocation_free_culling_bounds() {
+        with_planner(|mut planner, scope, mut budget| {
+            let extra = Extra {
+                bbox: Rect::from_corners(1.25, 1.25, 1.75, 1.75).unwrap(),
+                ..extra(0)
+            };
+            let before = planner.clip_bounds(&scope, None, Some(&extra)).unwrap();
+            assert_ne!(before, planner.area.region);
+            planner
+                .clip(&scope, (None, Some(&extra)), &mut budget)
+                .unwrap();
+            assert_eq!(
+                planner.clip_bounds(&scope, None, Some(&extra)).unwrap(),
+                before
+            );
+        });
+    }
+
+    #[test]
+    fn duplicate_extra_chains_return_their_temporary_path_and_slots() {
+        with_planner(|mut planner, scope, mut budget| {
+            let first = planner
+                .clip(&scope, (None, Some(&extra(0))), &mut budget)
+                .unwrap();
+            let before = budget.bytes.used();
+            let table = budget.bytes.map_bytes(&planner.clips).unwrap();
+            let second = planner
+                .clip(&scope, (None, Some(&extra(1))), &mut budget)
+                .unwrap();
+            assert_eq!(first, second);
+            assert_eq!(planner.built_clips.len(), 1);
+            assert_eq!(planner.built_clips.values().next().unwrap().len(), 1);
+            assert_eq!(
+                budget.bytes.used() - before,
+                budget.bytes.map_bytes(&planner.clips).unwrap() - table
+            );
+            let walked = planner.finish(&mut budget.bytes).unwrap();
+            let shapes = walked.shapes.finish(&mut budget.bytes).unwrap();
+            let names = 2 * size_of::<usize>(); // empty and spots share one Arc
+            assert_eq!(
+                budget.bytes.used(),
+                walked.parts.groups.capacity() * size_of::<crate::plan::GroupPlan>()
+                    + names
+                    + shapes.retained_bytes()
+            );
+        });
+    }
+
+    #[test]
+    fn chain_growth_is_refused_before_allocating_owned_geometry() {
+        with_planner(|mut planner, scope, mut budget| {
+            // Reserve just the state table, then leave less than one Link.
+            budget
+                .bytes
+                .reserve_map_capacity(&mut planner.clips, 1)
+                .unwrap();
+            let used = budget.bytes.used();
+            let mut tight = Meter::new(
+                used + size_of::<Link>() - 1,
+                "render memory budget exceeded",
+            );
+            tight.charge(used).unwrap();
+            budget.bytes = tight;
+            let error = planner
+                .clip(&scope, (None, Some(&extra(0))), &mut budget)
+                .unwrap_err();
+            assert_eq!(error.message, "render memory budget exceeded");
+            assert_eq!(error.position, Position::Unknown);
+            assert!(planner.built_clips.is_empty());
+            assert!(planner.clips.is_empty());
+            assert_eq!(budget.bytes.used(), used);
+        });
     }
 }

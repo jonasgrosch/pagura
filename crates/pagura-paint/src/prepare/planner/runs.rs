@@ -9,7 +9,7 @@ use super::clips::Clipping;
 use super::{Planner, Scope};
 use crate::plan::{Glyph, Item, ItemKind, Mark, Run, area, intersect, union};
 use crate::prepare::Budget;
-use pagura_core::{Error, Position, Result};
+use pagura_core::{Error, Meter, Position, Result};
 use pagura_interpret::{GlyphsNode, Paint};
 use pagura_raster::DeviceRect;
 
@@ -24,9 +24,6 @@ const SPREAD: usize = 4;
 
 /// See [`SPREAD`].
 const SLACK: usize = 4096;
-
-/// Bytes charged per gathered placement.
-const GLYPH_BYTES: usize = size_of::<Glyph>();
 
 #[cfg(test)]
 thread_local! {
@@ -101,7 +98,6 @@ impl Planner<'_> {
         if self.parts.items.len().saturating_add(self.gathered) >= self.limits.display_commands {
             return Err(Error::limit("painted mark budget exceeded"));
         }
-        budget.bytes.charge(GLYPH_BYTES)?;
         self.gathered += 1;
         let fits = self.run.as_ref().is_some_and(|open| {
             // A run follows one line: the placement shares rows with the
@@ -127,11 +123,12 @@ impl Planner<'_> {
             mark,
             serial: placed.serial,
             position: placed.position,
-            glyphs: Vec::with_capacity(RUN_GLYPHS),
+            glyphs: Vec::new(),
             bounds: DeviceRect::default(),
             covered: 0,
             work: 0,
         });
+        budget.bytes.reserve_capacity(&mut open.glyphs, 1)?;
         open.glyphs.push(Glyph {
             shape: placed.shape,
             bounds: placed.bounds,
@@ -161,6 +158,9 @@ impl Planner<'_> {
             work,
         } = open;
         if let [glyph] = glyphs[..] {
+            let released = glyphs.capacity() * size_of::<Glyph>();
+            drop(glyphs);
+            budget.bytes.refund(released);
             mark.cover.shape = Some(glyph.shape);
             let item = Item {
                 bounds: glyph.bounds,
@@ -172,8 +172,7 @@ impl Planner<'_> {
             };
             return self.push(group, item, budget);
         }
-        glyphs.shrink_to_fit();
-        mark_alone(&mut glyphs);
+        mark_alone(&mut glyphs, &mut budget.bytes)?;
         if glyphs.iter().any(|glyph| glyph.alone) {
             // Merged rows composite over the run's bounds at most; the
             // placements charged their own pixels.
@@ -205,24 +204,47 @@ fn same(a: &Mark, b: &Mark) -> bool {
 
 /// Marks the placements whose bounds meet no other placement's: a sweep
 /// over the bounds in order of their left column, which content order
-/// usually already is.
-pub(crate) fn mark_alone(glyphs: &mut [Glyph]) {
+/// usually already is. Each run holds at most [`RUN_GLYPHS`] placements,
+/// and `display_commands` bounds their total across the page.
+///
+/// # Errors
+///
+/// Returns a `Limit` error before scratch allocation exceeds `bytes`.
+pub(crate) fn mark_alone(glyphs: &mut [Glyph], bytes: &mut Meter) -> Result<()> {
+    let mut sorted_order = Vec::new();
+    let mut active = Vec::new();
+    let marked = mark(glyphs, &mut sorted_order, &mut active, bytes);
+    let released = (sorted_order.capacity() + active.capacity()) * size_of::<usize>();
+    drop(sorted_order);
+    drop(active);
+    bytes.refund(released);
+    marked
+}
+
+/// Scratch is local to one sweep, including index storage for out-of-order
+/// glyphs. Unstable sorting needs no further allocation and equal left
+/// columns have the same overlap result in either index order.
+fn mark(
+    glyphs: &mut [Glyph],
+    sorted_order: &mut Vec<usize>,
+    active: &mut Vec<usize>,
+    bytes: &mut Meter,
+) -> Result<()> {
     for glyph in glyphs.iter_mut() {
         glyph.alone = true;
     }
-    let mut sorted_order = Vec::new();
     if !glyphs.is_sorted_by_key(|glyph| glyph.bounds.x0) {
-        sorted_order = (0..glyphs.len()).collect();
-        sorted_order.sort_by_key(|&i| glyphs.get(i).map_or(0, |glyph| glyph.bounds.x0));
+        bytes.reserve_capacity(sorted_order, glyphs.len())?;
+        sorted_order.extend(0..glyphs.len());
+        sorted_order.sort_unstable_by_key(|&i| glyphs.get(i).map_or(0, |glyph| glyph.bounds.x0));
     }
     let mut in_order = 0..glyphs.len();
-    let mut out_of_order = sorted_order.into_iter();
+    let mut out_of_order = sorted_order.iter().copied();
     let order: &mut dyn Iterator<Item = usize> = if out_of_order.len() == 0 {
         &mut in_order
     } else {
         &mut out_of_order
     };
-    let mut active: Vec<usize> = Vec::new();
     for i in order {
         let Some(bounds) = glyphs.get(i).map(|glyph| glyph.bounds) else {
             continue;
@@ -232,7 +254,7 @@ pub(crate) fn mark_alone(glyphs: &mut [Glyph]) {
                 .get(j)
                 .is_some_and(|other| other.bounds.x1 > bounds.x0)
         });
-        for &j in &active {
+        for &j in &*active {
             let meets = glyphs
                 .get(j)
                 .is_some_and(|other| !intersect(bounds, other.bounds).is_empty());
@@ -244,6 +266,211 @@ pub(crate) fn mark_alone(glyphs: &mut [Glyph]) {
                 }
             }
         }
+        bytes.reserve_capacity(active, 1)?;
         active.push(i);
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Placed, Planner, mark_alone};
+    use crate::plan::{Boundary, Compositing, Cover, Glyph, ItemKind, Mark};
+    use crate::prepare::{Budget, ShapeBuilder};
+    use crate::testing::Build;
+    use pagura_core::{ErrorKind, Limits, Meter, Position, Store};
+    use pagura_interpret::BlendMode;
+    use pagura_raster::{Area, DeviceRect};
+
+    fn with_planner(bytes: usize, test: impl FnOnce(&mut Planner<'_>, &mut Budget)) {
+        let b = Build::new(16.0, 16.0);
+        let request = b.request(b.page(), 1);
+        let store = Store::new(1 << 20);
+        let limits = Limits {
+            render_bytes: bytes,
+            ..Limits::default()
+        };
+        let area = Area {
+            region: b.page(),
+            band_height: 1,
+        };
+        let shapes = ShapeBuilder::new(&store, &limits);
+        let mut setup = Budget::new(&Limits::default());
+        let mut planner = Planner::new(
+            &b.scene,
+            &request,
+            (&store, &limits),
+            area,
+            shapes,
+            &mut setup,
+        )
+        .unwrap();
+        test(&mut planner, &mut Budget::new(&limits));
+    }
+
+    fn mark() -> Mark {
+        Mark {
+            cover: Cover::default(),
+            paint: 0,
+            compositing: Compositing {
+                alpha: 1.0,
+                blend: BlendMode::Normal,
+                alpha_is_shape: false,
+                mask: None,
+                overprint: 0,
+            },
+            select: 0,
+            records: false,
+            boundary: Boundary::Absent,
+            words: None,
+        }
+    }
+
+    fn placed() -> Placed {
+        Placed {
+            shape: 0,
+            bounds: DeviceRect {
+                x0: 1,
+                y0: 1,
+                x1: 3,
+                y1: 3,
+            },
+            work: 0,
+            serial: 1,
+            position: Position::Buffer(17),
+        }
+    }
+
+    #[test]
+    fn gathering_reserves_only_the_capacity_it_can_afford_before_growth() {
+        let unit = size_of::<Glyph>();
+        with_planner(unit - 1, |planner, budget| {
+            let error = planner.gather(0, mark(), placed(), budget).unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Limit);
+            let glyphs = &planner.run.as_ref().unwrap().glyphs;
+            assert_eq!(
+                (glyphs.len(), glyphs.capacity(), budget.bytes.used()),
+                (0, 0, 0)
+            );
+        });
+        // Two retained glyphs fit, but the old allocation must remain
+        // charged while reserving its two-glyph replacement.
+        with_planner(3 * unit - 1, |planner, budget| {
+            planner.gather(0, mark(), placed(), budget).unwrap();
+            let error = planner.gather(0, mark(), placed(), budget).unwrap_err();
+            assert_eq!(error.kind, ErrorKind::Limit);
+            let glyphs = &planner.run.as_ref().unwrap().glyphs;
+            assert_eq!(
+                (glyphs.len(), glyphs.capacity(), budget.bytes.used()),
+                (1, 1, unit)
+            );
+        });
+    }
+
+    #[test]
+    fn flushed_runs_keep_capacity_charged_and_singletons_return_it() {
+        with_planner(1 << 20, |planner, budget| {
+            for _ in 0..3 {
+                planner.gather(0, mark(), placed(), budget).unwrap();
+            }
+            let capacity = planner.run.as_ref().unwrap().glyphs.capacity();
+            assert!(capacity > 3 && capacity < super::RUN_GLYPHS);
+            let retained = capacity * size_of::<Glyph>();
+            assert_eq!(budget.bytes.used(), retained);
+            planner.flush(budget).unwrap();
+            let ItemKind::Run(run) = &planner.parts.items[0].kind else {
+                panic!("expected run")
+            };
+            assert_eq!(run.glyphs.capacity(), capacity);
+            assert_eq!(
+                budget.bytes.used(),
+                retained + size_of::<crate::plan::Item>() + 2 * size_of::<u32>()
+            );
+        });
+        with_planner(1 << 20, |planner, budget| {
+            planner.gather(0, mark(), placed(), budget).unwrap();
+            planner.flush(budget).unwrap();
+            assert!(matches!(planner.parts.items[0].kind, ItemKind::Mark(_)));
+            assert_eq!(
+                budget.bytes.used(),
+                size_of::<crate::plan::Item>() + 2 * size_of::<u32>()
+            );
+        });
+    }
+
+    #[test]
+    fn overlap_scratch_reserves_before_allocation_and_is_returned_on_refusal() {
+        let mut glyphs = [2, 1].map(|x| Glyph {
+            shape: x,
+            bounds: DeviceRect {
+                x0: x,
+                y0: 1,
+                x1: x + 2,
+                y1: 3,
+            },
+            bands: [0, 0],
+            alone: false,
+        });
+        let mut sorted_order = Vec::new();
+        let mut active = Vec::new();
+        let mut bytes = Meter::new(2 * size_of::<usize>() - 1, "test bytes");
+        let error =
+            super::mark(&mut glyphs, &mut sorted_order, &mut active, &mut bytes).unwrap_err();
+        assert_eq!(
+            (error.kind, error.message),
+            (ErrorKind::Limit, "test bytes")
+        );
+        assert_eq!(
+            (sorted_order.capacity(), active.capacity(), bytes.used()),
+            (0, 0, 0)
+        );
+        assert_eq!(glyphs.map(|g| g.shape), [2, 1]);
+
+        // Sorting fits, then the active set refuses its first word. The
+        // already allocated sorting scratch must be dropped and refunded.
+        let mut bytes = Meter::new(2 * size_of::<usize>(), "test bytes");
+        let error = mark_alone(&mut glyphs, &mut bytes).unwrap_err();
+        assert_eq!(
+            (error.kind, error.message),
+            (ErrorKind::Limit, "test bytes")
+        );
+        assert_eq!(bytes.used(), 0);
+    }
+
+    #[test]
+    fn overlap_sweep_preserves_content_order_and_equal_left_edges() {
+        let mut glyphs: Vec<_> = (0..super::RUN_GLYPHS)
+            .map(|i| {
+                let i = u32::try_from(i).unwrap();
+                let (x, y) = ((i * 17) % 100, (i * 23) % 71);
+                Glyph {
+                    shape: i,
+                    bounds: DeviceRect {
+                        x0: x,
+                        y0: y,
+                        x1: x + 3,
+                        y1: y + 4,
+                    },
+                    bands: [0, 0],
+                    alone: false,
+                }
+            })
+            .collect();
+        let expected: Vec<_> = glyphs
+            .iter()
+            .enumerate()
+            .map(|(i, glyph)| {
+                !glyphs.iter().enumerate().any(|(j, other)| {
+                    i != j && !crate::plan::intersect(glyph.bounds, other.bounds).is_empty()
+                })
+            })
+            .collect();
+        let mut bytes = Meter::new(1 << 20, "test bytes");
+        mark_alone(&mut glyphs, &mut bytes).unwrap();
+        assert_eq!(bytes.used(), 0);
+        for (i, (glyph, alone)) in glyphs.iter().zip(expected).enumerate() {
+            assert_eq!(glyph.shape, u32::try_from(i).unwrap());
+            assert_eq!(glyph.alone, alone);
+        }
     }
 }

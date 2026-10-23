@@ -60,13 +60,33 @@ impl Path {
     /// orientation `re` gives a positive width and height (8.5.2.1).
     pub fn rect(rect: Rect) -> Self {
         let mut builder = PathBuilder::new();
-        builder.polygon([
+        builder.polygon(Self::rect_corners(rect));
+        builder.finish()
+    }
+
+    /// [`Self::rect`] with segment capacity charged before construction.
+    ///
+    /// # Errors
+    ///
+    /// Returns the meter's `Limit` error if the segment allocation exceeds
+    /// its allowance or cannot be reserved.
+    pub fn rect_with_bytes(rect: Rect, bytes: &mut Meter) -> Result<Self> {
+        let corners = Self::rect_corners(rect);
+        let mut builder = PathBuilder::new();
+        builder.reserve(corners.len() + 1, bytes)?;
+        builder.polygon(corners);
+        Ok(builder.finish())
+    }
+
+    /// The four corners in the construction order of [`Self::rect`],
+    /// without allocating or reconstructing an edge from a width or height.
+    pub fn rect_corners(rect: Rect) -> [Point; 4] {
+        [
             Point::new(rect.x0(), rect.y0()),
             Point::new(rect.x1(), rect.y0()),
             Point::new(rect.x1(), rect.y1()),
             Point::new(rect.x0(), rect.y1()),
-        ]);
-        builder.finish()
+        ]
     }
 
     /// The segments in construction order. Every subpath starts with
@@ -92,14 +112,33 @@ impl Path {
         limits: &Limits,
         work: &mut usize,
     ) -> Result<()> {
+        self.classify_fill_with_bytes(
+            rule,
+            limits,
+            work,
+            &mut Meter::new(limits.render_bytes, crate::band::RENDER_BYTES),
+        )
+    }
+
+    /// [`Self::classify_fill`] with temporary classification storage charged
+    /// to the caller's byte meter. Cached certificates need no further work
+    /// or storage, and classification scratch is released before returning.
+    ///
+    /// # Errors
+    ///
+    /// Returns invalid geometry, exhausted page geometry/work budgets or the
+    /// byte meter's `Limit` error if temporary storage cannot be reserved.
+    pub fn classify_fill_with_bytes(
+        &mut self,
+        rule: FillRule,
+        limits: &Limits,
+        work: &mut usize,
+        bytes: &mut Meter,
+    ) -> Result<()> {
         let index = usize::from(rule == FillRule::EvenOdd);
         if self.fill_certificates[index].is_none() {
             self.fill_certificates[index] = Some(crate::empty_fill::classify(
-                self,
-                rule,
-                limits,
-                work,
-                &mut Meter::new(limits.render_bytes, crate::band::RENDER_BYTES),
+                self, rule, limits, work, bytes,
             )?);
         }
         Ok(())
@@ -355,112 +394,4 @@ impl PathBuilder {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn bounded_clone_preserves_certificates_and_point_bits() {
-        let mut builder = PathBuilder::new();
-        builder.move_to(Point::new(-0.0, 0.0)).close();
-        let mut path = builder.finish();
-        path.fill_certificates = [Some(FillRegion::Points), Some(FillRegion::EmptyBoundary)];
-        let needed = size_of_val(path.segments());
-        let mut refused = Meter::new(needed - 1, "outline bytes");
-        assert_eq!(
-            path.clone_with_bytes(&mut refused).unwrap_err().message,
-            "outline bytes"
-        );
-        assert_eq!(refused.used(), 0);
-        let mut exact = Meter::new(needed, "outline bytes");
-        let copy = path.clone_with_bytes(&mut exact).unwrap();
-        assert_eq!(copy, path);
-        let Segment::MoveTo(point) = copy.segments()[0] else {
-            panic!("the first point changed");
-        };
-        assert_eq!(point.x.to_bits(), (-0.0_f64).to_bits());
-        assert_eq!(point.y.to_bits(), 0.0_f64.to_bits());
-        assert_eq!(exact.used(), copy.retained_bytes());
-    }
-
-    #[test]
-    fn rect_paths_match_re_and_keep_exact_corners() {
-        let rect = Rect::from_corners(7.0, 0.1, -3.0, 0.3).unwrap();
-        let mut re = PathBuilder::new();
-        re.rect(-3.0, 0.1, 10.0, 0.2);
-        let expected = re.finish();
-        let path = Path::rect(rect);
-        assert_eq!(path.segments()[..2], expected.segments()[..2]);
-        // 0.1 + 0.2 != 0.3 in f64: the corners come from the rectangle itself.
-        assert_eq!(
-            path.segments()[2..],
-            [
-                Segment::LineTo(Point::new(7.0, 0.3)),
-                Segment::LineTo(Point::new(-3.0, 0.3)),
-                Segment::Close
-            ]
-        );
-    }
-
-    #[test]
-    fn lines_and_curves_need_a_current_point() {
-        let mut path = PathBuilder::new();
-        assert_eq!(
-            path.line_to(Point::new(1.0, 0.0)).err(),
-            Some(NoCurrentPoint)
-        );
-        assert_eq!(
-            path.cubic_to(Point::default(), Point::default(), Point::default())
-                .err(),
-            Some(NoCurrentPoint)
-        );
-        assert!(path.close().is_empty());
-        path.move_to(Point::new(1.0, 1.0)).close();
-        // Close returns the current point to the subpath start (8.5.2.1).
-        path.line_to(Point::new(2.0, 1.0)).unwrap();
-        assert_eq!(path.current_point(), Some(Point::new(2.0, 1.0)));
-    }
-
-    #[test]
-    fn polylines_polygons_and_appended_paths_keep_their_order() {
-        let mut path = PathBuilder::new();
-        path.polygon([]);
-        assert!(path.is_empty());
-        let [a, b, c] = [
-            Point::new(0.0, 0.0),
-            Point::new(2.0, 0.0),
-            Point::new(0.0, 2.0),
-        ];
-        path.polyline([a, b, c]);
-        assert_eq!(path.current_point(), Some(c));
-        let open = path.finish();
-        path.polygon([a, b, c]);
-        assert_eq!(path.current_point(), Some(a));
-        let triangle = path.finish();
-        assert_eq!(
-            triangle.segments(),
-            [
-                Segment::MoveTo(a),
-                Segment::LineTo(b),
-                Segment::LineTo(c),
-                Segment::Close
-            ]
-        );
-        assert_eq!(open.segments(), &triangle.segments()[..3]);
-        let mut curve = PathBuilder::new();
-        curve.move_to(a).cubic_to(b, c, b).unwrap();
-        let curve = curve.finish();
-        let shift = Transform::translate(1.0, -1.0);
-        let mut combined = PathBuilder::new();
-        combined
-            .move_to(c)
-            .append(&triangle, shift)
-            .append(&curve, shift);
-        assert_eq!(combined.current_point(), Some(b * shift));
-        let expected: Vec<_> = [Segment::MoveTo(c)]
-            .into_iter()
-            .chain(triangle.transformed(shift).segments().iter().copied())
-            .chain(curve.transformed(shift).segments().iter().copied())
-            .collect();
-        assert_eq!(combined.finish().segments(), expected);
-    }
-}
+mod tests;

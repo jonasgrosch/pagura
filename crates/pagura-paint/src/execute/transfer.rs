@@ -5,26 +5,29 @@
 //! averaged before the nonlinear function; that is not supported, and the
 //! first such mark in source order fails preparation, so execution cannot.
 
-use crate::plan::{Cover, ItemKind, Plan};
+use crate::plan::{Cover, GroupPlan, Item, ItemKind};
 use crate::prepare::Shapes;
 use pagura_core::convert::u32_to_usize;
-use pagura_raster::{BandCoverage, BandRasterizer, Span};
+use pagura_raster::{Area, BandCoverage, BandRasterizer, Span};
 
 /// The serial of the first mark in source order whose coverage meets an
 /// unsupported transfer boundary in the region, using `coverage` and
 /// `selection` (one band of the region) as storage.
 pub(crate) fn validate(
-    plan: &Plan,
+    area: Area,
+    (groups, items): (&[GroupPlan], &[Item]),
     (shapes, rasterizer): (&Shapes, &mut BandRasterizer),
     coverage: &mut BandCoverage,
     selection: &mut [u16],
 ) -> Option<u32> {
     let mut first = None;
-    for band in plan.area.bands() {
-        let rows = plan.area.band_rows(band);
+    for band in area.bands() {
+        let rows = area.band_rows(band);
         selection.fill(0);
         let mut check = Check {
-            plan,
+            area,
+            groups,
+            items,
             shapes,
             rasterizer: &mut *rasterizer,
             coverage: &mut *coverage,
@@ -40,7 +43,9 @@ pub(crate) fn validate(
 }
 
 struct Check<'a> {
-    plan: &'a Plan,
+    area: Area,
+    groups: &'a [GroupPlan],
+    items: &'a [Item],
     shapes: &'a Shapes,
     rasterizer: &'a mut BandRasterizer,
     coverage: &'a mut BandCoverage,
@@ -53,12 +58,11 @@ struct Check<'a> {
 
 impl Check<'_> {
     fn group(&mut self, group: u32) {
-        let plan = self.plan;
-        let Some(group) = plan.groups.get(u32_to_usize(group)) else {
+        let Some(group) = self.groups.get(u32_to_usize(group)) else {
             return;
         };
         for &id in &group.items {
-            let Some(item) = plan.items.get(u32_to_usize(id)) else {
+            let Some(item) = self.items.get(u32_to_usize(id)) else {
                 continue;
             };
             if item.bands[0] > self.band || item.bands[1] < self.band {
@@ -77,7 +81,7 @@ impl Check<'_> {
     }
 
     fn mark(&mut self, cover: Cover, select: u16, serial: u32) {
-        let region = self.plan.area.region;
+        let region = self.area.region;
         let width = u32_to_usize(region.width());
         let coverage = &mut *self.coverage;
         self.shapes

@@ -10,7 +10,7 @@ mod patterns;
 mod runs;
 
 use crate::execute::Rendering;
-use crate::plan::{Conversion, GroupPlan, Item, MaskPlan, Plan};
+use crate::plan::{Conversion, Curve, Glyph, GroupPlan, Item, ItemKind, MaskPlan, Plan, SpotPlan};
 use crate::request::RenderRequest;
 use crate::source::Source;
 use crate::testing::Build;
@@ -47,7 +47,8 @@ impl Build {
 pub(crate) fn assert_within_charges(rendering: &Rendering<'_>, reserved: Charges) {
     let usage = rendering.workspace.usage;
     let used = Charges {
-        render_bytes: rendering.workspace.bytes()
+        render_bytes: rendering.shapes.retained_bytes()
+            + rendering.workspace.bytes()
             + rendering.rasterizer.retained_bytes()
             + plan_bytes(rendering.plan),
         render_work: usage.work,
@@ -68,9 +69,44 @@ fn plan_bytes(plan: &Plan) -> usize {
         .iter()
         .map(|g| (g.items.capacity() + g.order.capacity()) * size_of::<u32>())
         .sum();
-    plan.items.capacity() * size_of::<Item>()
+    let glyphs: usize = plan
+        .items
+        .iter()
+        .map(|item| match &item.kind {
+            ItemKind::Run(run) => run.glyphs.capacity() * size_of::<Glyph>(),
+            _ => 0,
+        })
+        .sum();
+    let Plan { _names: names, .. } = plan;
+    let shared_names = 2 * size_of::<usize>()
+        + size_of_val(&*names.spots)
+        + names
+            .spots
+            .iter()
+            .map(pagura_core::Name::heap_bytes)
+            .sum::<usize>()
+        + if std::sync::Arc::ptr_eq(&names.spots, &names.empty) {
+            0
+        } else {
+            2 * size_of::<usize>()
+        };
+    let spots = plan.output.spots.capacity() * size_of::<SpotPlan>()
+        + plan
+            .output
+            .spots
+            .iter()
+            .map(|spot| {
+                spot.convert.owned_bytes() + spot.inputs.capacity() * size_of::<(usize, usize)>()
+            })
+            .sum::<usize>();
+    shared_names
+        + spots
+        + plan.output.transfers.capacity() * size_of::<[Option<Curve>; 3]>()
+        + plan.paints.iter().map(Source::bytes).sum::<usize>()
+        + plan.items.capacity() * size_of::<Item>()
         + plan.groups.capacity() * size_of::<GroupPlan>()
         + groups
+        + glyphs
         + plan.masks.capacity() * size_of::<MaskPlan>()
         + plan.paints.capacity() * size_of::<Source>()
         + plan.conversions.capacity() * size_of::<Conversion>()

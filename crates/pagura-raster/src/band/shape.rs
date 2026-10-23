@@ -286,9 +286,13 @@ impl Shape {
         bytes.refund(released);
         let winding = match tiling {
             Tiling::Proven => Winding::Certified,
-            // The union's boundary, where it relinks, may still certify.
-            Tiling::Unproven if polygon.cancel_shared(&mut bytes)? => Winding::Check(0.0),
-            Tiling::Unproven | Tiling::Components => Winding::Unknown,
+            Tiling::Unproven => {
+                polygon.cancel_shared(&mut bytes)?;
+                // Even without shared edges, only the slabs where pieces
+                // overlap need the union resolver.
+                Winding::Check(0.0)
+            }
+            Tiling::Components => Winding::Unknown,
         };
         Self::polygon(polygon, FillRule::NonZero, winding, options, &mut bytes)
     }

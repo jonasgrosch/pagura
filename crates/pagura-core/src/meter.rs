@@ -3,6 +3,8 @@
 
 use crate::{Error, Result};
 
+mod tables;
+
 /// A budget that work or bytes are charged against before they are spent.
 ///
 /// A meter is created from one [`Limits`](crate::Limits) field, or a value

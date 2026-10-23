@@ -285,8 +285,10 @@ fn flattened_with(
 ) -> Result<(Polygon, Vec<Point>)> {
     let mut contours: Vec<Polyline> = Vec::new();
     let flatness = if inspection.is_some() || curve::quadratic_outline(outline, transform) {
-        // The convex-hull areas sum to at most 1/4096 pixel over the entire
-        // outline: less than 0.063 levels in any pixel, also after clipping.
+        // Global polygons bound the hull areas over the whole outline by
+        // 1/4096 pixel: less than 0.063 levels, also after clipping. Local
+        // interval proofs retain that bound only where hulls meet targets;
+        // disjoint hulls may keep their chords without moving target winding.
         let curves = outline
             .segments()
             .iter()
@@ -459,7 +461,7 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
             let winding = if *certified {
                 Winding::Certified
             } else {
-                Winding::Unknown
+                Winding::Check(0.0)
             };
             translated(polygon, points, origin, winding, options, &mut bytes, None)
         }

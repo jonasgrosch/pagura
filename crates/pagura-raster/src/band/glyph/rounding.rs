@@ -605,6 +605,66 @@ mod tests {
     use pagura_core::Limits;
 
     #[test]
+    fn local_proof_chords_keep_nonpoint_loops_distinct_from_points() {
+        let limits = Limits::default();
+        let area = Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 1,
+                y1: 1,
+            },
+            band_height: 1,
+        };
+        let mut clip_path = PathBuilder::new();
+        clip_path.rect(0.75, 0.75, 0.25, 0.25);
+        let clip_path = clip_path.finish();
+        let clip = ClipShape::new(
+            &[(&clip_path, FillRule::NonZero)],
+            Transform::IDENTITY,
+            &ShapeOptions {
+                area,
+                limits: &limits,
+            },
+        )
+        .unwrap();
+        let options = Prep {
+            area,
+            limits: &limits,
+            clip: Some(&clip),
+        };
+        let start = Point::new(0.125, 0.125);
+        for (control, expected) in [(Point::new(0.25, 0.25), 0), (start, 16)] {
+            let mut path = PathBuilder::new();
+            path.move_to(start);
+            path.cubic_to(control, control, start).unwrap();
+            path.close();
+            let path = path.finish();
+            let edges = GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap();
+            let mut work = Meter::new(limits.raster_work, RASTER_WORK);
+            let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+            let source = Source::of(&edges, Point::default(), &mut work)
+                .unwrap()
+                .unwrap();
+            let (value, error) = interval(
+                source,
+                Pixel {
+                    x: 0,
+                    y: 0,
+                    byte: 0,
+                },
+                (&options, 0),
+                (&mut work, &mut bytes),
+            )
+            .unwrap();
+            // The out-and-back curve is nonpoint geometry outside the
+            // partial clip. A genuine point still owns its whole floor cell.
+            assert_eq!(quantize_unit(value - error), expected);
+            assert_eq!(quantize_unit(value + error), expected);
+        }
+    }
+
+    #[test]
     fn analytic_integral_cancellation_cannot_skip_a_coverage_byte() {
         let limits = Limits::default();
         let m = 98_304.0;

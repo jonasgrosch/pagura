@@ -8,9 +8,25 @@ use crate::prepare::planner::clips::Clipping;
 use crate::prepare::planner::runs::{Memo, Placed};
 use crate::prepare::planner::{Planner, Scope};
 use crate::prepare::{Budget, bounds, index};
-use pagura_core::{Error, Position, Result};
+use pagura_core::{Error, Meter, Position, Result};
 use pagura_interpret::GlyphsNode;
 use pagura_raster::Transform;
+use std::cell::Cell;
+
+/// What a node's placements share for one source, prepared on first use.
+struct Source {
+    linear: [f64; 4],
+    relative: Option<bounds::Hull>,
+    edges: Cell<Option<u32>>,
+}
+
+/// Makes the one source lookup array, charged before allocation. Empty
+/// nodes need none; callers retain the charge until the array is dropped.
+fn sources(slots: &mut Vec<Option<Source>>, count: usize, bytes: &mut Meter) -> Result<()> {
+    bytes.reserve_capacity(slots, count)?;
+    slots.resize_with(count, || None);
+    Ok(())
+}
 
 impl Planner<'_> {
     /// A glyph run: one item for its placements where they share a solid
@@ -26,11 +42,13 @@ impl Planner<'_> {
         let gather = node.placements.len() > 1 && self.gathers(scope, node);
         let outer = std::mem::replace(&mut self.gathering, gather.then_some(scope.group));
         let outer_memo = self.memo.take();
-        let outer_edges = std::mem::replace(&mut self.glyph_edges, vec![None; node.sources.len()]);
-        let placed = self.placements(scope, node, budget);
+        let mut sources = Vec::new();
+        let placed = self.placements(scope, node, &mut sources, budget);
+        let released = sources.capacity() * size_of::<Option<Source>>();
+        drop(sources);
+        budget.bytes.refund(released);
         self.gathering = outer;
         self.memo = outer_memo;
-        self.glyph_edges = outer_edges;
         placed?;
         if gather {
             let position = self.run.as_ref().map(|open| open.position);
@@ -41,13 +59,15 @@ impl Planner<'_> {
         Ok(())
     }
 
-    fn placements(&mut self, scope: &Scope, node: &GlyphsNode, budget: &mut Budget) -> Result<()> {
+    fn placements(
+        &mut self,
+        scope: &Scope,
+        node: &GlyphsNode,
+        cached: &mut Vec<Option<Source>>,
+        budget: &mut Budget,
+    ) -> Result<()> {
         let t = scope.transform;
         let device = Transform::new(t.a, t.b, t.c, t.d, 0.0, 0.0);
-        // Each source's device linear map and hull relative to the origin,
-        // once.
-        let mut sources: Vec<Option<([f64; 4], Option<bounds::Hull>)>> =
-            vec![None; node.sources.len()];
         let mut positions = Positions::new(node);
         for (i, placement) in node.placements.iter().enumerate() {
             let position = positions.at(i);
@@ -59,25 +79,28 @@ impl Planner<'_> {
                     position,
                 ));
             };
-            let cached = sources.get(source_index).copied().flatten();
-            let (linear, relative) = if let Some(cached) = cached {
-                cached
-            } else {
+            if cached.is_empty()
+                && let Err(error) = sources(cached, node.sources.len(), &mut budget.bytes)
+            {
+                self.serial += 1;
+                return Err(self.fail(error, position));
+            }
+            let slot = cached
+                .get_mut(source_index)
+                .ok_or(Error::invalid_argument("glyph source out of range"))?;
+            let found = slot.get_or_insert_with(|| {
                 let l = source.linear;
                 let linear = Transform::new(l.a, l.b, l.c, l.d, 0.0, 0.0).then(device);
-                let mut edges = self.glyph_edges.get(source_index).copied().flatten();
+                let mut edges = None;
                 let hull = self.shapes.glyph_hull((source, &mut edges), linear);
-                if let Some(slot) = self.glyph_edges.get_mut(source_index) {
-                    *slot = edges;
+                Source {
+                    linear: [linear.a, linear.b, linear.c, linear.d],
+                    relative: hull,
+                    edges: Cell::new(edges),
                 }
-                let found = ([linear.a, linear.b, linear.c, linear.d], hull);
-                if let Some(slot) = sources.get_mut(source_index) {
-                    *slot = Some(found);
-                }
-                found
-            };
+            });
             let origin = t.apply(placement.origin);
-            let hull = relative.map(|[x0, y0, x1, y1]| {
+            let hull = found.relative.map(|[x0, y0, x1, y1]| {
                 bounds::expand(
                     [x0 + origin.x, y0 + origin.y, x1 + origin.x, y1 + origin.y],
                     1.0,
@@ -87,7 +110,7 @@ impl Planner<'_> {
                 info: &node.mark,
                 position,
                 hull,
-                geometry: Geometry::Glyph(source, linear, origin, source_index),
+                geometry: Geometry::Glyph(source, found.linear, origin, &found.edges),
                 colour: Colour::Paint(node.paint),
             };
             if let Some(memo) = self.memo.filter(|_| self.gathering == Some(scope.group)) {
@@ -136,7 +159,6 @@ impl Planner<'_> {
         if bounds.is_empty() {
             return Ok(());
         }
-        budget.bytes.charge(prepared.bytes)?;
         self.use_mask(memo.mask, bounds, budget)?;
         budget.work.charge(prepared.work)?;
         budget.work.charge(area(bounds))?;
@@ -185,5 +207,32 @@ impl<'a> Positions<'a> {
             self.next += 1;
         }
         self.current
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Source, sources};
+    use pagura_core::{ErrorKind, Meter};
+
+    #[test]
+    fn source_lookup_reserves_before_allocation() {
+        let unit = size_of::<Option<Source>>();
+        let mut slots = Vec::new();
+        let mut bytes = Meter::new(2 * unit - 1, "test bytes");
+        let error = sources(&mut slots, 2, &mut bytes).unwrap_err();
+        assert_eq!(
+            (error.kind, error.message),
+            (ErrorKind::Limit, "test bytes")
+        );
+        assert_eq!((slots.len(), slots.capacity(), bytes.used()), (0, 0, 0));
+        let error = sources(&mut slots, usize::MAX, &mut bytes).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::Limit);
+        assert_eq!((slots.capacity(), bytes.used()), (0, 0));
+
+        let mut bytes = Meter::new(2 * unit, "test bytes");
+        sources(&mut slots, 2, &mut bytes).unwrap();
+        assert_eq!(slots.len(), 2);
+        assert_eq!(bytes.used(), slots.capacity() * unit);
     }
 }

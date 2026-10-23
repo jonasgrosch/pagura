@@ -286,9 +286,15 @@ impl Fixture {
             transfers: Vec::new(),
         };
         let rows = self.height.min(256) as usize;
-        let stack: Tops = crate::prepare::stacks::needs(&parts, rows);
+        let stack: Tops = crate::prepare::stacks::needs(
+            &parts,
+            rows,
+            &mut Meter::new(usize::MAX, "test stack analysis"),
+        )
+        .unwrap();
         let selections = !self.output.transfers.is_empty();
         let plan = Plan {
+            _names: crate::plan::TargetNames::default(),
             area,
             groups: parts.groups,
             items: parts.items,
@@ -652,7 +658,11 @@ impl Fixture {
             })
             .collect();
         if alone {
-            crate::prepare::planner::runs::mark_alone(&mut glyphs);
+            crate::prepare::planner::runs::mark_alone(
+                &mut glyphs,
+                &mut Meter::new(usize::MAX, "test bytes"),
+            )
+            .unwrap();
         }
         let union = bounds
             .iter()

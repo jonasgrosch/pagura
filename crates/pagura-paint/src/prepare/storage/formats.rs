@@ -4,7 +4,7 @@
 
 use super::{Buffer, Survey};
 use crate::format::Format;
-use pagura_core::{Error, Result};
+use pagura_core::{Error, Meter, Result};
 use pagura_raster::DeviceRect;
 
 /// `π` of the F32 bound: source encoding and six roundings relative to the
@@ -33,9 +33,13 @@ pub(super) const FOOTPRINTS: usize = 4096;
 /// any pixel, each injecting less than the room an N16 pixel leaves
 /// (ADR 0004 §6). Footprints are page-level device bounds, so the answer
 /// does not depend on the region. Children and masks are resolved first.
-pub(super) fn n16_admits(buffer: &Buffer, resolved: &[Option<(Format, f64)>]) -> bool {
+pub(super) fn n16_admits(
+    buffer: &Buffer,
+    resolved: &[Option<(Format, f64)>],
+    bytes: &mut Meter,
+) -> Result<bool> {
     if buffer.dynamics.len() != buffer.dynamic || buffer.dynamic > FOOTPRINTS {
-        return false;
+        return Ok(false);
     }
     let bound = |node: usize| {
         resolved
@@ -51,30 +55,46 @@ pub(super) fn n16_admits(buffer: &Buffer, resolved: &[Option<(Format, f64)>]) ->
         let mask = store.mask.map_or(0.0, |m| 256.0 / 255.0 * bound(m));
         257.0 * (store.eta + child + mask) <= N16_ROOM
     });
-    let mut rects: Vec<DeviceRect> = buffer
-        .dynamics
-        .iter()
-        .map(|store| store.rect)
-        .filter(|rect| !rect.is_empty())
-        .collect();
-    fits && disjoint(&mut rects)
+    if !fits {
+        return Ok(false);
+    }
+    let mut rects = Vec::new();
+    bytes.reserve_capacity(&mut rects, buffer.dynamics.len())?;
+    rects.extend(
+        buffer
+            .dynamics
+            .iter()
+            .map(|store| store.rect)
+            .filter(|rect| !rect.is_empty()),
+    );
+    let admitted = disjoint(&mut rects, bytes)?;
+    let released = rects.capacity() * size_of::<DeviceRect>();
+    drop(rects);
+    bytes.refund(released);
+    Ok(admitted)
 }
 
 /// Whether no two rectangles share a pixel.
-fn disjoint(rects: &mut [DeviceRect]) -> bool {
+fn disjoint(rects: &mut [DeviceRect], bytes: &mut Meter) -> Result<bool> {
     rects.sort_unstable_by_key(|r| r.x0);
     let mut active: Vec<DeviceRect> = Vec::new();
+    let mut disjoint = true;
     for rect in rects.iter() {
         active.retain(|other| other.x1 > rect.x0);
         if active
             .iter()
             .any(|other| other.y0 < rect.y1 && rect.y0 < other.y1)
         {
-            return false;
+            disjoint = false;
+            break;
         }
+        bytes.reserve_capacity(&mut active, 1)?;
         active.push(*rect);
     }
-    true
+    let released = active.capacity() * size_of::<DeviceRect>();
+    drop(active);
+    bytes.refund(released);
+    Ok(disjoint)
 }
 
 impl Survey<'_> {
@@ -85,6 +105,7 @@ impl Survey<'_> {
         node: usize,
         resolved: &mut Vec<Option<(Format, f64)>>,
         depth: usize,
+        bytes: &mut Meter,
     ) -> Result<(Format, f64)> {
         if let Some(Some(done)) = resolved.get(node) {
             return Ok(*done);
@@ -95,16 +116,16 @@ impl Survey<'_> {
         let buffer = &self.buffers[node];
         let mut injected = 0.0;
         for &(child, count) in &buffer.children {
-            let (_, bound) = self.resolve(child, resolved, depth + 1)?;
+            let (_, bound) = self.resolve(child, resolved, depth + 1, bytes)?;
             injected += (bound * (1.0 + 256.0 / 255.0) + F64_STORE) * count as f64;
         }
         for &(mask, count) in &buffer.masks {
-            let (_, bound) = self.resolve(mask, resolved, depth + 1)?;
+            let (_, bound) = self.resolve(mask, resolved, depth + 1, bytes)?;
             injected += 256.0 / 255.0 * bound * count as f64;
         }
         let stores = buffer.stores as f64;
         let wide = (stores * F64_STORE + MARGIN + injected, Format::F64);
-        let n16 = buffer.page && n16_admits(buffer, resolved);
+        let n16 = !buffer.forced && buffer.page && n16_admits(buffer, resolved, bytes)?;
         let f32_bound =
             PI + RHO * stores.min(1.0 / buffer.theta + buffer.dynamic as f64) + injected;
         let (bound, format) = if buffer.forced {
@@ -125,10 +146,19 @@ impl Survey<'_> {
 
     /// Widens every child and mask of an F64 buffer to F64, from the
     /// outermost buffer inwards: no narrow child of an F64 parent is proven.
-    pub(super) fn widen(&self, root: usize, resolved: &mut [Option<(Format, f64)>]) {
+    pub(super) fn widen(
+        &self,
+        root: usize,
+        resolved: &mut [Option<(Format, f64)>],
+        bytes: &mut Meter,
+    ) -> Result<()> {
         // 1: visited while narrow, 2: visited while F64.
-        let mut seen = vec![0_u8; self.buffers.len()];
-        let mut pending = vec![(root, false)];
+        let mut seen = Vec::new();
+        bytes.reserve_capacity(&mut seen, self.buffers.len())?;
+        seen.resize(self.buffers.len(), 0_u8);
+        let mut pending = Vec::new();
+        bytes.reserve_capacity(&mut pending, 1)?;
+        pending.push((root, false));
         while let Some((node, parent_wide)) = pending.pop() {
             let Some(Some((format, _))) = resolved.get_mut(node) else {
                 continue;
@@ -144,8 +174,84 @@ impl Survey<'_> {
             seen[node] = mark;
             let buffer = &self.buffers[node];
             for &(child, _) in buffer.children.iter().chain(&buffer.masks) {
+                bytes.reserve_capacity(&mut pending, 1)?;
                 pending.push((child, wide));
             }
         }
+        let released =
+            seen.capacity() * size_of::<u8>() + pending.capacity() * size_of::<(usize, bool)>();
+        drop(seen);
+        drop(pending);
+        bytes.refund(released);
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::plan::Layout;
+    use crate::prepare::storage::{Dynamic, Inputs};
+    use crate::testing::Build;
+    use pagura_color::Process;
+    use pagura_core::hash::FastMap;
+
+    #[test]
+    fn failed_and_forced_proofs_need_no_n16_scratch() {
+        let build = Build::new(4.0, 4.0);
+        let mut survey = Survey {
+            scene: &build.scene,
+            inputs: Inputs {
+                page: Layout {
+                    process: Process::Rgb,
+                    spots: 0,
+                },
+                simulate: false,
+                policy: false,
+                depth: 64,
+                transform: build.transform(),
+                pixels: build.page(),
+                user_unit: 1.0,
+            },
+            buffers: Vec::new(),
+            groups: FastMap::default(),
+            masks: FastMap::default(),
+            cells: FastMap::default(),
+            open: Vec::new(),
+            transfers: false,
+        };
+        let mut fixture = Meter::new(1 << 20, "proof fixture");
+        let node = survey
+            .buffer(survey.inputs.page, false, &mut fixture)
+            .unwrap();
+        let buffer = &mut survey.buffers[node];
+        buffer.page = true;
+        buffer.stores = 1;
+        buffer.dynamic = 1;
+        fixture.reserve_capacity(&mut buffer.dynamics, 1).unwrap();
+        buffer.dynamics.push(Dynamic {
+            rect: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 2,
+                y1: 2,
+            },
+            eta: 1.0,
+            child: None,
+            mask: None,
+        });
+        let mut no_scratch = Meter::new(0, "no proof scratch");
+        assert!(!n16_admits(buffer, &[None], &mut no_scratch).unwrap());
+        buffer.forced = true;
+        buffer.dynamics[0].eta = 0.0;
+        let mut resolved = vec![None];
+        assert_eq!(
+            survey
+                .resolve(node, &mut resolved, 0, &mut no_scratch)
+                .unwrap()
+                .0,
+            Format::F64
+        );
+        assert_eq!(no_scratch.used(), 0);
     }
 }

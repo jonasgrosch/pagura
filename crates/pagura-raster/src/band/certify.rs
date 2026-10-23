@@ -37,7 +37,8 @@ struct Active {
 
 /// Whether the winding of `polygon` is 0 or one common sign of magnitude one
 /// everywhere, with neighbouring chains at least `margin` apart where they
-/// do not share a vertex. Geometric-point cells are never certified.
+/// do not share a vertex. Point cells participate as their emitted square
+/// contours, with the same winding requirements as every other contour.
 pub(crate) fn certified(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Result<bool> {
     let before = bytes.used();
     let result = uncertified(polygon, margin, bytes)
@@ -48,8 +49,8 @@ pub(crate) fn certified(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Re
 
 /// The heights `[lo, hi]` of the slabs [`certified`] cannot certify, merged
 /// where they meet; every other slab holds winding 0 or the common sign.
-/// `None` when no slab is certified: geometric points, or the sweep's work
-/// ran out. Byte exhaustion is a typed error from `bytes`.
+/// `None` when vertex indexing or the sweep's work bound is exceeded.
+/// Byte exhaustion is a typed error from `bytes`.
 pub(crate) fn uncertified(
     polygon: &Polygon,
     margin: f64,
@@ -69,7 +70,7 @@ pub(crate) fn uncertified(
 }
 
 fn certificate(polygon: &Polygon, margin: f64, bytes: &mut Meter) -> Result<Option<Vec<[f64; 2]>>> {
-    if polygon.points_cells || polygon.points.len() > u32::MAX as usize {
+    if polygon.points.len() > u32::MAX as usize {
         return Ok(None);
     }
     let mut points = Vec::new();
@@ -826,5 +827,39 @@ mod tests {
         assert_eq!(bytes.used(), source);
         assert!(spline_certified(&spline, &mut construction).unwrap());
         assert_eq!(construction.used(), source);
+    }
+
+    #[test]
+    fn point_cells_certify_only_their_actual_contour_winding() {
+        let limits = Limits::default();
+        let mut bytes = crate::testing::bytes();
+        let mut cells = Polygon::default();
+        cells
+            .cell(Point::new(-1.2, 0.3), &limits, &mut bytes)
+            .unwrap();
+        assert!(certifies(&cells, 0.0));
+        cells
+            .cell(Point::new(3.8, 0.9), &limits, &mut bytes)
+            .unwrap();
+        assert!(certifies(&cells, 0.0));
+        // Coincident cells have winding two and must still resolve.
+        cells
+            .cell(Point::new(3.2, 0.1), &limits, &mut bytes)
+            .unwrap();
+        assert!(!certifies(&cells, 0.0));
+        let mut tight = Meter::new(cells.heap_bytes(), "point certificate bytes");
+        tight.charge(cells.heap_bytes()).unwrap();
+        assert_eq!(
+            uncertified(&cells, 0.0, &mut tight).unwrap_err().message,
+            "point certificate bytes"
+        );
+        assert_eq!(tight.used(), cells.heap_bytes());
+
+        let opposite = [(0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (1.0, 0.0)];
+        let mut cancelled = polygon(&[&opposite]);
+        cancelled
+            .cell(Point::new(0.2, 0.7), &limits, &mut bytes)
+            .unwrap();
+        assert!(!certifies(&cancelled, 0.0));
     }
 }

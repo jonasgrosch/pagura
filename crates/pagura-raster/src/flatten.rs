@@ -81,6 +81,10 @@ impl Hull {
 /// Optional original-curve evidence from the same subdivision used for
 /// polygon production. Refinement changes only pieces whose full outward
 /// hull meets a target rectangle after `offset` is added.
+/// When hulls are retained, only those targets need the area bound: a
+/// disjoint hull may keep its chord, since moving the curve to that chord
+/// stays outside every target. Without retained hulls, the whole outline
+/// keeps its area allowance, including outside the refinement targets.
 pub(crate) struct Inspection<'a> {
     pub(crate) hulls: Option<&'a mut Vec<Hull>>,
     pub(crate) work: &'a mut Meter,
@@ -390,6 +394,11 @@ fn curve(
         .fold(1.0_f64, f64::max);
     let mut points = points;
     let mut depth = 0;
+    let finite_rectangle =
+        |b: &[f64; 4]| b.iter().all(|v| v.is_finite()) && b[0] < b[2] && b[1] < b[3];
+    let local_proof = inspection.as_ref().is_some_and(|i| {
+        i.hulls.is_some() && !i.targets.is_empty() && i.targets.iter().all(finite_rectangle)
+    });
     loop {
         if let Some(inspection) = &mut inspection {
             inspection.work.charge(1 + inspection.targets.len())?;
@@ -406,6 +415,7 @@ fn curve(
         let hull = inspection
             .as_ref()
             .map(|_| Hull::new([a, b, c, d], rounding));
+        let mut outside_targets = false;
         let flatness = match (flatness, &inspection, hull) {
             (Flatness::Area(area), Some(i), Some(hull)) => {
                 let [x0, y0, x1, y1] = hull.bounds;
@@ -418,7 +428,9 @@ fn curve(
                     ],
                     area: hull.area,
                 };
-                if i.targets.iter().any(|&b| shifted.intersects(b)) {
+                let meets = i.targets.iter().any(|&b| shifted.intersects(b));
+                outside_targets = local_proof && finite_rectangle(&shifted.bounds) && !meets;
+                if meets {
                     Flatness::Area(area * i.factor)
                 } else {
                     Flatness::Area(area)
@@ -426,7 +438,7 @@ fn curve(
             }
             (flatness, _, _) => flatness,
         };
-        if flatness.accepts([a, b, c, d], depth, rounding) {
+        if outside_targets || flatness.accepts([a, b, c, d], depth, rounding) {
             if let (Some(i), Some(hull)) = (&mut inspection, hull)
                 && let Some(hulls) = &mut i.hulls
             {
@@ -506,6 +518,73 @@ mod tests {
         let c = Point::new(999_999_999_998.0, 999_999_999_997.0);
         assert_eq!(b.x * c.y - b.y * c.x, 0.0);
         assert!(!Flatness::Area(1.0 / 4096.0).accepts([a, b, c, a], 0, 0.0));
+    }
+
+    #[test]
+    fn local_curve_proofs_only_refine_hulls_that_meet_the_target() {
+        let controls = [
+            Point::new(0.0, 0.0),
+            Point::new(0.0, 100.0),
+            Point::new(100.0, 100.0),
+            Point::new(100.0, 0.0),
+        ];
+        let away = [200.0, 200.0, 201.0, 201.0];
+        let near = [40.0, 74.0, 60.0, 76.0];
+        let invalid = [f64::NAN, 200.0, 201.0, 201.0];
+        let reversed = [201.0, 200.0, 200.0, 201.0];
+        let allowance = 1.0 / 4096.0;
+        for (targets, retain_hulls, coarse) in [
+            (std::slice::from_ref(&away), true, true),
+            (std::slice::from_ref(&away), false, false),
+            (std::slice::from_ref(&near), true, false),
+            (std::slice::from_ref(&invalid), true, false),
+            (std::slice::from_ref(&reversed), true, false),
+            (&[][..], true, false),
+        ] {
+            let mut out = Vec::new();
+            let mut pending = CurveStack::new();
+            let mut hulls = Vec::new();
+            let mut count = 0;
+            let mut work = Meter::new(100_000, crate::band::RASTER_WORK);
+            let mut bytes = crate::testing::bytes();
+            curve(
+                controls,
+                Transform::IDENTITY,
+                &mut pending,
+                &mut out,
+                &mut count,
+                &Limits::default(),
+                Subdivision {
+                    flatness: Flatness::Area(allowance),
+                    bytes: &mut bytes,
+                    inspection: Some(Inspection {
+                        hulls: retain_hulls.then_some(&mut hulls),
+                        work: &mut work,
+                        rounding: 0.0,
+                        targets,
+                        offset: Point::default(),
+                        factor: 1.0,
+                    }),
+                },
+            )
+            .unwrap();
+            if coarse {
+                assert_eq!(out, [controls[3]]);
+                assert_eq!(hulls.len(), 1);
+                assert!(!hulls[0].intersects(away));
+                assert_eq!(work.used(), 2);
+            } else {
+                // Actual geometry keeps its whole-outline allowance even
+                // outside targets; local proofs refine a curve that meets one.
+                assert!(out.len() > 1);
+                let error: f64 = hulls
+                    .iter()
+                    .filter(|hull| targets.iter().any(|&target| hull.intersects(target)))
+                    .map(|hull| hull.area)
+                    .sum();
+                assert!(error <= allowance);
+            }
+        }
     }
 
     #[test]
