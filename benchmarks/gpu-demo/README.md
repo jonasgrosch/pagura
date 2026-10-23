@@ -2,13 +2,17 @@
 
 A comparison host branched from `render/one-pass` at
 `87fa81b64162281fccbdcae5564e1ec431022c4c`. It presents exact CPU output,
-a hybrid integer N16 WebGPU compositor using CPU coverage, and browser SVG
-exported from the shared scene. There is no general GPU rasterizer here.
+approximate GPU area coverage through WebGPU and native Metal, an exact integer
+N16 GPU compositor using CPU coverage, and browser SVG exported from the shared
+scene. The default demo retains shared GPU geometry and compares it with CPU
+prepared-scene reuse. GPU coverage currently admits opaque solid RGB pages.
 This experiment does not change the production renderer or the scope of
 ADR 0004.
 
-[`SVG_CLEANUP_RESULTS.md`](SVG_CLEANUP_RESULTS.md) records the retained-export
-cleanup and the new comparisons. [`SVG_RESULTS.md`](SVG_RESULTS.md) preserves
+[`RETAINED_GPU_RESULTS.md`](RETAINED_GPU_RESULTS.md) records the shared-geometry,
+resource-retention and equivalent CPU reuse comparison, including new and
+revisited zoom targets. [`SVG_CLEANUP_RESULTS.md`](SVG_CLEANUP_RESULTS.md) records
+the retained SVG export cleanup. [`SVG_RESULTS.md`](SVG_RESULTS.md) preserves
 the first three-backend experiment, and [`RESULTS.md`](RESULTS.md) preserves
 the original CPU/GPU measurements. Raw evidence stays under ignored
 `target/gpu-demo/`.
@@ -26,11 +30,11 @@ the demo, its WASM module and generated development fixtures. No packages
 need installing. The existing bundled font notices accompany this host in
 [`data/README.md`](../../data/README.md) and its linked license files.
 
-## Architecture
+## Exact-span architecture
 
-`pagura-paint`'s optional `gpu-demo` feature adds two methods on
-`PreparedScene`: `gpu_fallback_reason` and `gpu_program`. Default product
-builds do not include them. The latter is an additional bounded preparation
+`pagura-paint`'s optional `gpu-demo` feature adds export methods on
+`PreparedScene`. Default product builds do not include them. The original
+`gpu_program` exact-span export is an additional bounded preparation
 step: it uses the same active-item schedule, prepared shapes, joint clips,
 glyph-run batching and exact coverage bytes as CPU execution. It preserves
 the existing N16 source encodings and source order.
@@ -109,15 +113,16 @@ comparisons against CPU. Error distributions are evidence about this sample,
 not a global error bound or a replacement for conformance. Native/WASM packet
 parity is checked separately from GPU arithmetic differences.
 
-## Measurement
+## Earlier fresh-export measurement
 
 [`policy.json`](policy.json) defines exploratory reporting, separately from
-the release gate. All paths use the same SIMD WASI engine, cached scene and
-warm resources. CPU and hybrid results are checked byte-for-byte outside
-timing. SVG differences are reported separately. Samples rotate and reverse
-the CPU, GPU and SVG order.
+the release gate. The earlier `bench` runner uses the same SIMD WASI engine, cached scene and
+warm resources. CPU and integer-span GPU results are checked byte-for-byte
+outside timing; approximate coverage and SVG report differential error. Samples
+rotate and reverse the CPU, GPU and SVG order. The retained experiment below
+has its own CPU reuse control and separate setup/redraw/zoom measurements.
 
-The main comparison includes CPU preparation and coverage, packet
+The earlier fresh-export comparison includes CPU preparation and coverage, packet
 construction, program upload on every render, GPU completion and RGBA
 readback. It reports full worker-transport latency separately. GPU timestamp
 queries are diagnostic kernel timings, never the end-to-end result. PDF
@@ -174,10 +179,10 @@ admission. JSON, screenshots, binaries and logs stay under ignored `target/`.
 
 Packet construction and readback are real costs. Moving exact coverage or
 source evaluation to the GPU needs its own accuracy proof, especially for
-true glyph quadratics and joint clipping. Keeping the result GPU-resident
-would suit a viewer, while conversion still needs readback. Prepared-program
-reuse needs a measured viewer workload before adding a cache, as ADR 0034
-requires. Sampled paints and F32 groups need separate validated kernels;
+true glyph quadratics and joint clipping. Keeping rendered pixels GPU-resident would suit a viewer, while conversion
+still needs readback. This experiment now measures bounded geometry/program
+reuse alongside CPU preparation reuse; it does not introduce a production
+viewer cache. Sampled paints and F32 groups need separate validated kernels;
 F64-dependent operations retain their CPU execution.
 
 ## SVG presentation experiment
