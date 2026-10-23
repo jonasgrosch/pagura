@@ -403,7 +403,6 @@ pub(crate) fn spline(
     bytes: &mut Meter,
 ) -> Result<Option<Spline>> {
     spline_using(outline, linear, limits, bytes, PointContours::Keep)
-        .map_err(SplineError::into_error)
 }
 
 /// A glyph's quadratic body and its canonical mapped geometric points.
@@ -421,48 +420,11 @@ pub(crate) fn glyph_spline(
     bytes: &mut Meter,
 ) -> Result<Option<Spline>> {
     spline_using(outline, linear, limits, bytes, PointContours::Collect)
-        .map_err(SplineError::into_error)
 }
-
-/// A nonpoint projection for a stored polygon with one already classified
-/// MoveTo/Close point. Other geometric-point contours still decline.
-pub(crate) fn nonpoint_spline(
-    outline: &Path,
-    linear: Transform,
-    limits: &Limits,
-    bytes: &mut Meter,
-) -> std::result::Result<Option<Spline>, SplineError> {
-    spline_using(outline, linear, limits, bytes, PointContours::OmitExplicit)
-}
-
-/// Keeps optional byte headroom distinct from geometry/segment failures.
-#[derive(Debug)]
-pub(crate) enum SplineError {
-    Bytes(Error),
-    Segments(Error),
-    Geometry(Error),
-}
-
-impl SplineError {
-    pub(crate) fn into_error(self) -> Error {
-        match self {
-            Self::Bytes(error) | Self::Segments(error) | Self::Geometry(error) => error,
-        }
-    }
-}
-
-impl From<Error> for SplineError {
-    fn from(error: Error) -> Self {
-        Self::Geometry(error)
-    }
-}
-
-type BuildResult<T> = std::result::Result<T, SplineError>;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum PointContours {
     Keep,
-    OmitExplicit,
     Collect,
 }
 
@@ -472,11 +434,9 @@ fn spline_using(
     limits: &Limits,
     bytes: &mut Meter,
     point_contours: PointContours,
-) -> BuildResult<Option<Spline>> {
+) -> Result<Option<Spline>> {
     if outline.segments().len() > limits.path_segments {
-        return Err(SplineError::Segments(Error::limit(
-            "path segment budget exceeded",
-        )));
+        return Err(Error::limit("path segment budget exceeded"));
     }
     if !quadratic_outline(outline, linear) || !reducible_with_rounding(outline, linear) {
         return Ok(None);
@@ -506,7 +466,7 @@ struct Builder<'a> {
 }
 
 impl Builder<'_> {
-    fn check_segments(&self, extra: usize) -> BuildResult<()> {
+    fn check_segments(&self, extra: usize) -> Result<()> {
         if self
             .spline
             .points
@@ -516,31 +476,25 @@ impl Builder<'_> {
             .and_then(|count| count.checked_add(extra))
             .is_none_or(|count| count > self.limits.path_segments)
         {
-            return Err(SplineError::Segments(Error::limit(
-                "quadratic edge budget exceeded",
-            )));
+            return Err(Error::limit("quadratic edge budget exceeded"));
         }
         Ok(())
     }
 
-    fn push(&mut self, piece: Piece) -> BuildResult<()> {
+    fn push(&mut self, piece: Piece) -> Result<()> {
         self.check_segments(1)?;
-        self.bytes
-            .reserve_capacity(&mut self.spline.pieces, 1)
-            .map_err(SplineError::Bytes)?;
+        self.bytes.reserve_capacity(&mut self.spline.pieces, 1)?;
         self.spline.pieces.push(piece);
         Ok(())
     }
 
-    fn begin(&mut self) -> BuildResult<()> {
-        self.bytes
-            .reserve_capacity(&mut self.spline.starts, 1)
-            .map_err(SplineError::Bytes)?;
+    fn begin(&mut self) -> Result<()> {
+        self.bytes.reserve_capacity(&mut self.spline.starts, 1)?;
         self.spline.starts.push(self.spline.pieces.len());
         Ok(())
     }
 
-    fn line(&mut self, a: Point, b: Point) -> BuildResult<()> {
+    fn line(&mut self, a: Point, b: Point) -> Result<()> {
         if a != b {
             self.push(Piece::Line(Line { a, b }))?;
         }
@@ -549,7 +503,7 @@ impl Builder<'_> {
 
     /// The midpoint quadratic of a degree-elevated cubic. The whole
     /// outline's third differences have already been bounded.
-    fn cubic(&mut self, [a, b, c, d]: [Point; 4]) -> BuildResult<()> {
+    fn cubic(&mut self, [a, b, c, d]: [Point; 4]) -> Result<()> {
         let control = add(lerp(a, d, 0.5), scale(add(sub(b, a), sub(c, d)), 0.75));
         self.quadratic(Quadratic {
             points: [a, control, d],
@@ -559,7 +513,7 @@ impl Builder<'_> {
     /// A quadratic split at its x and y extrema into monotone pieces whose
     /// shared ends are computed once; an extremum within rounding of an end
     /// is that end.
-    fn quadratic(&mut self, curve: Quadratic) -> BuildResult<()> {
+    fn quadratic(&mut self, curve: Quadratic) -> Result<()> {
         let [_, v, a] = curve.coefficients();
         let [p0, _, p2] = curve.points;
         let mut events = [0.0, 1.0, 0.0, 0.0];
@@ -602,11 +556,9 @@ impl Builder<'_> {
         Ok(())
     }
 
-    fn path(mut self, path: &Path, transform: Transform) -> BuildResult<Option<Spline>> {
+    fn path(mut self, path: &Path, transform: Transform) -> Result<Option<Spline>> {
         if path.segments().len() > self.limits.path_segments {
-            return Err(SplineError::Segments(Error::limit(
-                "path segment budget exceeded",
-            )));
+            return Err(Error::limit("path segment budget exceeded"));
         }
         let mut start = None;
         let mut current = None;
@@ -614,12 +566,7 @@ impl Builder<'_> {
         let mut closed = false;
         let mut degenerate = true;
         let mut segments = 0;
-        let map = |point: Point| -> Result<Point> {
-            bounded(point)?;
-            let point = point * transform;
-            bounded(point)?;
-            Ok(point)
-        };
+        let map = |point| mapped(point, transform);
         for segment in path.segments() {
             match *segment {
                 Segment::MoveTo(p) => {
@@ -685,14 +632,7 @@ impl Builder<'_> {
                     if let (Some(a), Some(b)) = (start, current)
                         && !closed
                     {
-                        if self.point_contours == PointContours::OmitExplicit
-                            && degenerate
-                            && segments == 0
-                        {
-                            // This contour has emitted no piece. Keep no
-                            // empty start in the nonpoint projection.
-                            self.spline.starts.pop();
-                        } else if !self.finish(a, b, degenerate)? {
+                        if !self.finish(a, b, degenerate)? {
                             return Ok(None);
                         }
                         current = Some(a);
@@ -721,7 +661,7 @@ impl Builder<'_> {
 
     /// Closes a contour; `false` for a geometric point, which keeps the
     /// polygon's point rule.
-    fn finish(&mut self, start: Point, current: Point, degenerate: bool) -> BuildResult<bool> {
+    fn finish(&mut self, start: Point, current: Point, degenerate: bool) -> Result<bool> {
         if degenerate {
             if self.point_contours != PointContours::Collect {
                 return Ok(false);
@@ -732,15 +672,21 @@ impl Builder<'_> {
                 self.spline.pieces.truncate(first);
             }
             self.check_segments(4)?;
-            self.bytes
-                .reserve_capacity(&mut self.spline.points, 1)
-                .map_err(SplineError::Bytes)?;
+            self.bytes.reserve_capacity(&mut self.spline.points, 1)?;
             self.spline.points.push(start);
             return Ok(true);
         }
         self.line(current, start)?;
         Ok(true)
     }
+}
+
+/// Validates the source point, maps it, then validates the mapped point.
+fn mapped(point: Point, transform: Transform) -> Result<Point> {
+    bounded(point)?;
+    let point = point * transform;
+    bounded(point)?;
+    Ok(point)
 }
 
 /// An extremum this close to an end of a quadratic's parameter range is

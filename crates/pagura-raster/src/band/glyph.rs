@@ -17,7 +17,7 @@ use super::edges::{self, Line, Polygon};
 use super::shape::{Frame, Shape, Winding};
 use super::{Prep, RENDER_BYTES};
 use crate::flatten::{
-    CurveStack, Flatness, Inspection, Polyline, bounded, flatten_inspected, flatten_with,
+    CurveStack, Flatness, Inspection, Polyline, Scope, bounded, flatten_inspected, flatten_with,
 };
 use crate::{FillRule, Path, Point, Segment, Transform};
 use pagura_core::{Error, Limits, Meter, Result};
@@ -26,11 +26,23 @@ use std::sync::Arc;
 #[cfg(test)]
 mod tests;
 
-mod point;
 mod polygon;
+mod proof;
 mod rounding;
 pub(super) use polygon::Summary;
 pub(crate) use polygon::{PolygonLines, point_sides};
+
+pub(super) const AREA: f64 = 1.0 / 4096.0;
+pub(super) const INITIAL_AREA: f64 = 1.0 / 32.0;
+
+/// Original controls and the area allowance of their stored polygon.
+#[derive(Debug)]
+pub(super) struct OwnedSource {
+    pub(super) outline: Arc<Path>,
+    pub(super) linear: Transform,
+    pub(super) initial_area: f64,
+    proof: Option<proof::Proof>,
+}
 
 /// A glyph outline prepared once for one linear map (outline space to device
 /// space without translation): its device-space edges relative to the glyph
@@ -62,10 +74,7 @@ pub(super) enum Kind {
         points: Vec<Point>,
         certified: bool,
         /// Original curves retained for coverage-byte certification.
-        source: Option<(Arc<Path>, Transform)>,
-        /// A certified nonpoint projection. The canonical polygon remains
-        /// the owner used by clipped and ordinary polygon placements.
-        relative: Option<Box<Relative>>,
+        source: Option<OwnedSource>,
         /// Bounds and work for uncut short placements, computed once from
         /// the canonical vertices without retaining another edge array.
         summary: Option<Summary>,
@@ -225,7 +234,7 @@ impl GlyphEdges {
             drop(spline);
             bytes.refund(released);
         }
-        Self::polygon_geometry(outline, transform, limits, bytes)
+        Self::polygon_geometry(outline, transform, limits, bytes, INITIAL_AREA)
     }
 
     fn polygon_geometry(
@@ -233,29 +242,78 @@ impl GlyphEdges {
         transform: Transform,
         limits: &Limits,
         bytes: &mut Meter,
+        initial_area: f64,
     ) -> Result<Kind> {
         let regular = transform.determinant() != 0.0;
-        let (polygon, points) = polygon(outline, transform, limits, bytes)?;
-        let certified = points.is_empty() && certified(&polygon, 0.0, bytes)?;
-        let summary = if certified {
-            Summary::new(&polygon)
-        } else {
-            None
-        };
         let source_available = regular
             && outline
                 .segments()
                 .iter()
                 .any(|s| matches!(s, Segment::CubicTo { .. }))
             && curve::quadratic_outline(outline, transform);
-        let relative = if source_available && points.len() == 1 {
-            point::relative(outline, transform, limits, polygon.vertices(), bytes)?
+        let initial_area = if source_available { initial_area } else { AREA };
+        let capture = source_available && initial_area > AREA;
+        let mut hulls = Vec::new();
+        // Stored source geometry has its own path, depth and decoded-byte
+        // bounds. Building it must not borrow a placement's work budget.
+        let mut work = Meter::new(usize::MAX, "glyph geometry work counter overflow");
+        let before = bytes.used();
+        let result = flattened_with(
+            outline,
+            transform,
+            limits,
+            bytes,
+            initial_area,
+            capture.then(|| Inspection {
+                scope: Scope::Global,
+                hulls: Some(&mut hulls),
+                work: &mut work,
+                rounding: 0.0,
+                targets: &[],
+                offset: Point::default(),
+                factor: 1.0,
+            }),
+        );
+        let retained = result.as_ref().map_or(0, |(polygon, points)| {
+            polygon
+                .heap_bytes()
+                .saturating_add(points.capacity().saturating_mul(size_of::<Point>()))
+        });
+        let hull_bytes = hulls
+            .capacity()
+            .saturating_mul(size_of::<crate::flatten::Hull>());
+        bytes.refund(
+            bytes
+                .used()
+                .saturating_sub(before.saturating_add(retained).saturating_add(hull_bytes)),
+        );
+        let (polygon, points) = match result {
+            Ok(geometry) => geometry,
+            Err(error) => {
+                drop(hulls);
+                bytes.refund(hull_bytes);
+                return Err(error);
+            }
+        };
+        let certified = points.is_empty() && certified(&polygon, 0.0, bytes)?;
+        let summary = if certified {
+            Summary::new(&polygon)
         } else {
             None
         };
         let source = if source_available {
+            let proof = if capture {
+                Some(proof::Proof::new(hulls, bytes, &mut work)?)
+            } else {
+                None
+            };
             bytes.charge(size_of::<Path>() + 2 * size_of::<usize>())?;
-            Some((Arc::new(outline.clone_with_bytes(bytes)?), transform))
+            Some(OwnedSource {
+                outline: Arc::new(outline.clone_with_bytes(bytes)?),
+                linear: transform,
+                initial_area,
+                proof,
+            })
         } else {
             None
         };
@@ -264,7 +322,6 @@ impl GlyphEdges {
             points,
             certified,
             source,
-            relative,
             summary,
         })
     }
@@ -281,7 +338,7 @@ impl GlyphEdges {
         let transform = Transform::new(a, b, c, d, 0.0, 0.0);
         let mut bytes = Meter::new(limits.decoded_bytes, "glyph geometry byte budget exceeded");
         bytes.charge_items::<Self>(1)?;
-        let kind = Self::polygon_geometry(outline, transform, limits, &mut bytes)?;
+        let kind = Self::polygon_geometry(outline, transform, limits, &mut bytes, AREA)?;
         Ok(Self {
             retained: bytes.used(),
             hull: control_hull(outline, transform),
@@ -305,7 +362,7 @@ impl GlyphEdges {
     pub(crate) fn relative(&self) -> Option<&Relative> {
         match &self.kind {
             Kind::Curve { relative, .. } => Some(relative),
-            Kind::Polygon { relative, .. } => relative.as_deref(),
+            Kind::Polygon { .. } => None,
         }
     }
 
@@ -333,9 +390,10 @@ fn polygon(
     transform: Transform,
     limits: &Limits,
     bytes: &mut Meter,
+    area: f64,
 ) -> Result<(Polygon, Vec<Point>)> {
     let before = bytes.used();
-    let result = flattened(outline, transform, limits, bytes);
+    let result = flattened(outline, transform, limits, bytes, area);
     let retained = result.as_ref().map_or(0, |(polygon, points)| {
         polygon
             .heap_bytes()
@@ -350,8 +408,9 @@ fn flattened(
     transform: Transform,
     limits: &Limits,
     bytes: &mut Meter,
+    area: f64,
 ) -> Result<(Polygon, Vec<Point>)> {
-    flattened_with(outline, transform, limits, bytes, None)
+    flattened_with(outline, transform, limits, bytes, area, None)
 }
 
 fn flattened_with(
@@ -359,12 +418,13 @@ fn flattened_with(
     transform: Transform,
     limits: &Limits,
     bytes: &mut Meter,
+    area: f64,
     inspection: Option<Inspection<'_>>,
 ) -> Result<(Polygon, Vec<Point>)> {
     let mut contours: Vec<Polyline> = Vec::new();
     let flatness = if inspection.is_some() || curve::quadratic_outline(outline, transform) {
         // Global polygons bound the hull areas over the whole outline by
-        // 1/4096 pixel: less than 0.063 levels, also after clipping. Local
+        // the given area allowance. Local
         // interval proofs retain that bound only where hulls meet targets;
         // disjoint hulls may keep their chords without moving target winding.
         let curves = outline
@@ -372,7 +432,7 @@ fn flattened_with(
             .iter()
             .filter(|s| matches!(s, Segment::CubicTo { .. }))
             .count();
-        Flatness::Area(1.0 / 4096.0 / f64::from(u32::try_from(curves.max(1)).unwrap_or(u32::MAX)))
+        Flatness::Area(area / f64::from(u32::try_from(curves.max(1)).unwrap_or(u32::MAX)))
     } else {
         Flatness::Distance
     };
@@ -471,10 +531,8 @@ pub(crate) fn place(
     origin: Point,
     options: &Prep<'_>,
 ) -> Result<Option<Shape>> {
-    let mut shape = placed(edges, origin, options)?;
-    if let Some(prepared) = shape.take() {
-        shape = Some(rounding::certify(edges, origin, prepared, options)?);
-    }
+    let candidate = placed(edges, origin, options)?;
+    let mut shape = rounding::certify(edges, origin, candidate, options)?;
     if let Some(shape) = &mut shape {
         shape.add_work(merged(shape.bounds()));
     }
@@ -534,7 +592,8 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
                 // A clip path, or a rectangle cutting canonical point
                 // cells, uses the polygon's joint winding resolution.
                 _ => {
-                    let (polygon, points) = polygon(outline, *linear, options.limits, &mut bytes)?;
+                    let (polygon, points) =
+                        polygon(outline, *linear, options.limits, &mut bytes, AREA)?;
                     translated(
                         (&polygon, &points),
                         origin,
@@ -551,7 +610,6 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
             polygon,
             points,
             certified,
-            relative,
             summary,
             ..
         } => {
@@ -573,22 +631,6 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
                             return Ok(shape);
                         }
                     }
-                }
-            }
-            if let (Some(relative), [point], Some(mut frame)) =
-                (relative.as_deref(), points.as_slice(), Frame::new(options))
-            {
-                let hull = relative.placed_hull(origin, &[*point])?;
-                frame.fit(hull);
-                if frame.rect.is_none() && frame.paths.is_none() {
-                    return point::placed(
-                        (edges, relative, *point),
-                        origin,
-                        hull,
-                        &frame,
-                        options,
-                        &mut bytes,
-                    );
                 }
             }
             let winding = if *certified {

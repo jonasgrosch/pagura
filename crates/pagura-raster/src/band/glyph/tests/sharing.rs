@@ -324,14 +324,20 @@ fn shared_polygons_keep_the_original_curve_certificate_and_cancellation() {
     let limits = Limits::default();
     let mut path = PathBuilder::new();
     path.append(&arch(), Transform::IDENTITY);
-    // A canonical polygon requires its area-bound selector even when the
-    // source also offers a certified nonpoint projection.
+    // The canonical fallback keeps its original-control selector and
+    // genuine point cells when geometry is shared between placements.
     path.move_to(Point::new(6.25, 2.75));
     path.close();
     let edges = Arc::new(
         GlyphEdges::polygon_for_test(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap(),
     );
-    assert!(edges.curved());
+    assert!(matches!(
+        &edges.kind,
+        Kind::Polygon {
+            source: Some(_),
+            ..
+        }
+    ));
     for band in [1, 3, 16, 32] {
         let options = ShapeOptions {
             area: area(16, band),
@@ -361,8 +367,12 @@ fn shared_polygons_keep_the_original_curve_certificate_and_cancellation() {
             };
             assert_eq!(body.geometry, crate::band::shape::GlyphGeometry::Polygon);
             let copied = owned(&edges, origin, &prep, &mut crate::testing::bytes()).unwrap();
-            let shared = rounding::certify(&edges, origin, shared, &prep).unwrap();
-            let copied = rounding::certify(&edges, origin, copied, &prep).unwrap();
+            let shared = rounding::certify(&edges, origin, Some(shared), &prep)
+                .unwrap()
+                .unwrap();
+            let copied = rounding::certify(&edges, origin, Some(copied), &prep)
+                .unwrap()
+                .unwrap();
             assert_eq!(
                 crate::testing::raster(&options.area, Some(&shared), None).0,
                 crate::testing::raster(&options.area, Some(&copied), None).0

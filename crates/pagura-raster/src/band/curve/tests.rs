@@ -268,7 +268,8 @@ fn glyph_spline_classifies_mapped_original_controls() {
     )
     .unwrap()
     .unwrap();
-    assert!(ordinary.points.is_empty());
+    let empty: [Point; 0] = [];
+    assert_eq!(ordinary.points, empty);
 }
 
 #[test]

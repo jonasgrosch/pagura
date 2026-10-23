@@ -1,3 +1,4 @@
+mod points;
 mod sharing;
 mod summary;
 

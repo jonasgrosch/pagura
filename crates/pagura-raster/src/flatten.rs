@@ -78,14 +78,23 @@ impl Hull {
     }
 }
 
+/// Where a flattened mesh must preserve its approximation allowance.
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum Scope {
+    /// Every emitted chord keeps the whole-outline allowance, including
+    /// outside targets used for additional refinement.
+    Global,
+    /// Only the targets need the allowance. When hulls are retained, a
+    /// disjoint hull may keep its chord without moving target winding.
+    Local,
+}
+
 /// Optional original-curve evidence from the same subdivision used for
 /// polygon production. Refinement changes only pieces whose full outward
-/// hull meets a target rectangle after `offset` is added.
-/// When hulls are retained, only those targets need the area bound: a
-/// disjoint hull may keep its chord, since moving the curve to that chord
-/// stays outside every target. Without retained hulls, the whole outline
-/// keeps its area allowance, including outside the refinement targets.
+/// hull meets a target rectangle after `offset` is added. The explicit
+/// scope keeps global mesh evidence independent of whether hulls are stored.
 pub(crate) struct Inspection<'a> {
+    pub(crate) scope: Scope,
     pub(crate) hulls: Option<&'a mut Vec<Hull>>,
     pub(crate) work: &'a mut Meter,
     pub(crate) rounding: f64,
@@ -309,6 +318,7 @@ fn flatten_using(
                         flatness: subdivision.flatness,
                         bytes,
                         inspection: subdivision.inspection.as_mut().map(|i| Inspection {
+                            scope: i.scope,
                             hulls: i.hulls.as_deref_mut(),
                             work: i.work,
                             rounding: i.rounding,
@@ -397,7 +407,10 @@ fn curve(
     let finite_rectangle =
         |b: &[f64; 4]| b.iter().all(|v| v.is_finite()) && b[0] < b[2] && b[1] < b[3];
     let local_proof = inspection.as_ref().is_some_and(|i| {
-        i.hulls.is_some() && !i.targets.is_empty() && i.targets.iter().all(finite_rectangle)
+        matches!(i.scope, Scope::Local)
+            && i.hulls.is_some()
+            && !i.targets.is_empty()
+            && i.targets.iter().all(finite_rectangle)
     });
     loop {
         if let Some(inspection) = &mut inspection {
@@ -558,6 +571,7 @@ mod tests {
                     flatness: Flatness::Area(allowance),
                     bytes: &mut bytes,
                     inspection: Some(Inspection {
+                        scope: Scope::Local,
                         hulls: retain_hulls.then_some(&mut hulls),
                         work: &mut work,
                         rounding: 0.0,
@@ -583,6 +597,62 @@ mod tests {
                     .map(|hull| hull.area)
                     .sum();
                 assert!(error <= allowance);
+            }
+        }
+    }
+
+    #[test]
+    fn global_leaf_evidence_keeps_the_mesh_bound_away_from_targets() {
+        let controls = [
+            Point::new(0.0, 0.0),
+            Point::new(0.0, 1.0),
+            Point::new(1.0, 1.0),
+            Point::new(1.0, 0.0),
+        ];
+        let targets = [[2.0, 2.0, 3.0, 3.0]];
+        let allowance = 1.0 / 4096.0;
+        for scope in [Scope::Global, Scope::Local] {
+            let mut out = Vec::new();
+            let mut pending = CurveStack::new();
+            let mut hulls = Vec::new();
+            let mut count = 0;
+            let mut work = Meter::new(100_000, crate::band::RASTER_WORK);
+            let mut bytes = crate::testing::bytes();
+            curve(
+                controls,
+                Transform::IDENTITY,
+                &mut pending,
+                &mut out,
+                &mut count,
+                &Limits::default(),
+                Subdivision {
+                    flatness: Flatness::Area(allowance),
+                    bytes: &mut bytes,
+                    inspection: Some(Inspection {
+                        scope,
+                        hulls: Some(&mut hulls),
+                        work: &mut work,
+                        rounding: 0.0,
+                        targets: &targets,
+                        offset: Point::default(),
+                        factor: 1.0,
+                    }),
+                },
+            )
+            .unwrap();
+            match scope {
+                Scope::Global => {
+                    assert!(out.len() > 1);
+                    let error = hulls
+                        .iter()
+                        .fold(0.0, |sum, hull| (sum + hull.area).next_up());
+                    assert!(error <= allowance);
+                }
+                Scope::Local => {
+                    assert_eq!(out, [controls[3]]);
+                    assert_eq!(hulls.len(), 1);
+                    assert!(hulls[0].area > allowance);
+                }
             }
         }
     }
