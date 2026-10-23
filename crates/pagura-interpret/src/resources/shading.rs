@@ -3,8 +3,6 @@
 
 mod mesh;
 
-pub(crate) use mesh::retained_bytes;
-
 use super::colorspace::Colors;
 use super::function::{self, ReadFunction};
 use super::numbers::{GEOMETRY, array, entry};

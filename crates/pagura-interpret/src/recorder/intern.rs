@@ -4,6 +4,7 @@
 //! pens and clips by identity. The tables hold every value interned by
 //! identity, so its address names it for the whole recording.
 
+use super::owned;
 use crate::model::{BlendMode, Clip, Composite, MaskId, Overprint, Paint, Pen};
 use crate::scene::{ClipId, ClipNode, PaintId, PenId, StateId};
 use pagura_color::Intent;
@@ -113,18 +114,58 @@ fn address<T>(value: &Arc<T>) -> usize {
 }
 
 impl Interner {
-    pub(super) fn into_tables(self) -> Tables {
-        (self.clips, self.states, self.paints, self.pens)
+    pub(super) fn into_tables(self, bytes: &mut Meter) -> Result<Tables> {
+        let released = bytes.map_bytes(&self.clip_ids)?
+            + bytes.map_bytes(&self.state_ids)?
+            + bytes.map_bytes(&self.solid_ids)?
+            + bytes.map_bytes(&self.paint_ids)?
+            + bytes.map_bytes(&self.pen_ids)?
+            + self.clip_arcs.capacity() * size_of::<Arc<Clip>>()
+            + self.clip_arcs.len() * (owned::ARC + size_of::<Clip>());
+        let Self {
+            clips,
+            states,
+            paints,
+            pens,
+            clip_ids,
+            clip_arcs,
+            state_ids,
+            solid_ids,
+            paint_ids,
+            pen_ids,
+        } = self;
+        drop((
+            clip_ids, clip_arcs, state_ids, solid_ids, paint_ids, pen_ids,
+        ));
+        bytes.refund(released);
+        Ok((clips, states, paints, pens))
     }
 
     pub(super) fn state(&mut self, state: &Arc<Composite>, bytes: &mut Meter) -> Result<StateId> {
+        self.state_with(state, || Arc::clone(state), bytes)
+    }
+
+    pub(super) fn page_state(&mut self, bytes: &mut Meter) -> Result<StateId> {
+        let state = Composite::default();
+        self.state_with(&state, || Arc::new(state.clone()), bytes)
+    }
+
+    /// Reserves both the payload and tables before creating an owned Arc.
+    fn state_with(
+        &mut self,
+        state: &Composite,
+        retain: impl FnOnce() -> Arc<Composite>,
+        bytes: &mut Meter,
+    ) -> Result<StateId> {
         let key = StateKey::of(state);
         if let Some(&id) = self.state_ids.get(&key) {
             return Ok(id);
         }
-        bytes.charge_items::<Composite>(1)?;
+        bytes.charge(owned::composite(state))?;
         let id = StateId(index(self.states.len())?);
-        self.states.push(Arc::clone(state));
+        bytes.reserve_capacity(&mut self.states, 1)?;
+        bytes.reserve_map_capacity(&mut self.state_ids, 1)?;
+        self.states.push(retain());
         self.state_ids.insert(key, id);
         Ok(id)
     }
@@ -138,8 +179,13 @@ impl Interner {
         if let Some(&id) = known {
             return Ok(id);
         }
-        bytes.charge_items::<Paint>(1)?;
+        bytes.charge(owned::paint(paint))?;
         let id = PaintId(index(self.paints.len())?);
+        bytes.reserve_capacity(&mut self.paints, 1)?;
+        match &solid {
+            Some(_) => bytes.reserve_map_capacity(&mut self.solid_ids, 1)?,
+            None => bytes.reserve_map_capacity(&mut self.paint_ids, 1)?,
+        }
         self.paints.push(Arc::clone(paint));
         match solid {
             Some(key) => self.solid_ids.insert(key, id),
@@ -152,9 +198,10 @@ impl Interner {
         if let Some(&id) = self.pen_ids.get(&address(pen)) {
             return Ok(id);
         }
-        bytes.charge_items::<Pen>(1)?;
-        bytes.charge_items::<f64>(pen.stroke.dash_array.len())?;
+        bytes.charge(owned::pen(pen))?;
         let id = PenId(index(self.pens.len())?);
+        bytes.reserve_capacity(&mut self.pens, 1)?;
+        bytes.reserve_map_capacity(&mut self.pen_ids, 1)?;
         self.pens.push(Arc::clone(pen));
         self.pen_ids.insert(address(pen), id);
         Ok(id)
@@ -166,7 +213,22 @@ impl Interner {
             return Ok(id);
         }
         // Walk up to the first interned ancestor, then intern downwards.
-        let mut chain = vec![clip];
+        let mut chain = Vec::new();
+        let result = self.clip_chain(clip, &mut chain, bytes);
+        let released = chain.capacity() * size_of::<&Arc<Clip>>();
+        drop(chain);
+        bytes.refund(released);
+        result
+    }
+
+    fn clip_chain<'a>(
+        &mut self,
+        clip: &'a Arc<Clip>,
+        chain: &mut Vec<&'a Arc<Clip>>,
+        bytes: &mut Meter,
+    ) -> Result<ClipId> {
+        bytes.reserve_capacity(chain, 1)?;
+        chain.push(clip);
         let mut parent = None;
         let mut next = clip.parent();
         while let Some(node) = next {
@@ -174,13 +236,19 @@ impl Interner {
                 parent = Some(id);
                 break;
             }
+            bytes.reserve_capacity(chain, 1)?;
             chain.push(node);
             next = node.parent();
         }
-        for node in chain.into_iter().rev() {
-            bytes.charge_items::<ClipNode>(1)?;
-            bytes.charge_items::<pagura_raster::Segment>(node.path().segments().len())?;
+        for &node in chain.iter().rev() {
+            bytes.charge(owned::path(node.path()))?;
+            // These keep recording identities alive, but only paths survive
+            // into the scene. Their Arc roots are refunded with clip_arcs.
+            bytes.charge(owned::ARC + size_of::<Clip>())?;
             let id = ClipId(index(self.clips.len())?);
+            bytes.reserve_capacity(&mut self.clips, 1)?;
+            bytes.reserve_capacity(&mut self.clip_arcs, 1)?;
+            bytes.reserve_map_capacity(&mut self.clip_ids, 1)?;
             self.clips.push(ClipNode {
                 parent,
                 path: Arc::clone(node.path()),

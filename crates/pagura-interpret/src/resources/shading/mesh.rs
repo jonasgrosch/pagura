@@ -384,14 +384,3 @@ fn integer(document: &Document, d: &Dictionary, key: &[u8]) -> Result<usize> {
         .and_then(|n| usize::try_from(n).ok())
         .ok_or(Error::syntax("mesh integer parameter missing or invalid"))
 }
-
-/// The bytes a mesh retains, for the scene's accounting.
-pub(crate) fn retained_bytes(kind: &ShadingKind) -> usize {
-    match kind {
-        ShadingKind::Triangles(triangles) => {
-            triangles.len().saturating_mul(size_of::<[MeshVertex; 3]>())
-        }
-        ShadingKind::Patches(patches) => patches.len().saturating_mul(size_of::<Patch>()),
-        _ => 0,
-    }
-}

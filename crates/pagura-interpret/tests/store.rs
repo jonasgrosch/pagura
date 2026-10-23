@@ -6,6 +6,44 @@ use pagura_core::Store;
 use pagura_document::{Document, OpenOptions};
 use pagura_interpret::{Interpreter, Node, Scene};
 
+#[test]
+fn scene_bytes_and_tight_errors_do_not_depend_on_store_history() {
+    let document = Document::open(
+        pagura_testkit::fixture("paint", "text-mode-0.pdf"),
+        &OpenOptions::default(),
+    )
+    .unwrap();
+    let page = document.page(0).unwrap();
+    let record = |store: &Store, bytes| {
+        let mut recorder = pagura_interpret::SceneRecorder::new(pagura_core::Limits {
+            render_bytes: bytes,
+            ..document.limits()
+        });
+        Interpreter::new(&document)
+            .with_store(store)
+            .run(page, &mut recorder)?;
+        recorder.finish()
+    };
+    let store = Store::new(64 << 20);
+    let first = record(&store, document.limits().render_bytes).unwrap();
+    let warm = record(&store, document.limits().render_bytes).unwrap();
+    let fresh = record(&Store::new(0), document.limits().render_bytes).unwrap();
+    assert_eq!(
+        (first.bytes, pagura_interpret::dump(&first)),
+        (warm.bytes, pagura_interpret::dump(&warm))
+    );
+    assert_eq!(
+        (first.bytes, pagura_interpret::dump(&first)),
+        (fresh.bytes, pagura_interpret::dump(&fresh))
+    );
+    let tight = first.bytes - 1;
+    let error = record(&store, tight).unwrap_err();
+    assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
+    assert_eq!(error.message, "scene byte budget exceeded");
+    assert_eq!(record(&Store::new(0), tight).unwrap_err(), error);
+    assert_eq!(record(&Store::new(64 << 20), tight).unwrap_err(), error);
+}
+
 fn font_keys(scene: &Scene) -> Vec<u64> {
     scene
         .nodes
