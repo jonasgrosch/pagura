@@ -150,3 +150,55 @@ fn key_ranges_refuse_overflow_without_an_allocation() {
     assert_eq!(key_count(0, 0, usize::MAX), None);
     assert_eq!(key_count(u32::MAX as usize, 1, 0), None);
 }
+
+#[test]
+fn unindexed_sides_match_the_keyed_coordinate_bits_and_order() {
+    let tiny = f64::from_bits(1);
+    let polygon = Polygon {
+        points: vec![
+            Point::new(-0.0, 0.0),
+            Point::new(tiny, -tiny),
+            Point::new(0.5, 0.5),
+            Point::new(0.5, -0.0),
+            Point::new(-0.25, 3.75),
+            Point::new(-0.25, 3.75 + f64::EPSILON),
+            Point::new(1.0, 1.0),
+        ],
+        starts: vec![0, 4],
+        points_cells: false,
+    };
+    let points = [Point::new(-0.0, -0.0), Point::new(-0.25, 3.75)];
+    let bits = |line: Line| {
+        [
+            line.a.x.to_bits(),
+            line.a.y.to_bits(),
+            line.b.x.to_bits(),
+            line.b.y.to_bits(),
+        ]
+    };
+    for origin in [
+        Point::new(-0.0, -0.0),
+        Point::new(tiny, -tiny),
+        Point::new(-0.75, 0.25),
+        Point::new(1e12 - 2.0, 1e12 - 8.0),
+        Point::new(-1e12 + 2.0, -1e12 + 8.0),
+    ] {
+        let view = PolygonLines::new(&polygon, &points, origin);
+        let expected: Vec<_> = view
+            .indexed()
+            .map(|(_, line)| {
+                bits(Line {
+                    a: line.a + Point::default(),
+                    b: line.b + Point::default(),
+                })
+            })
+            .collect();
+        let mut actual = Vec::new();
+        view.for_each_unindexed(|line| actual.push(bits(line)));
+        assert_eq!(actual, expected);
+    }
+    let empty = Polygon::default();
+    let mut visits = 0;
+    PolygonLines::new(&empty, &[], Point::default()).for_each_unindexed(|_| visits += 1);
+    assert_eq!(visits, 0);
+}

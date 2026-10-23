@@ -166,6 +166,40 @@ impl<'a> PolygonLines<'a> {
         }
     }
 
+    /// Visits the unindexed sides directly, translating each contour
+    /// vertex once. The default origin addition matches the owned
+    /// all-items path, including the bits of signed zero.
+    pub(crate) fn for_each_unindexed(self, mut add: impl FnMut(Line)) {
+        let at = |point| self.at(point) + Point::default();
+        for contour in self.polygon.contours() {
+            let Some((&first, rest)) = contour.split_first() else {
+                continue;
+            };
+            let first = at(first);
+            let mut previous = first;
+            for &point in rest {
+                let next = at(point);
+                add(Line {
+                    a: previous,
+                    b: next,
+                });
+                previous = next;
+            }
+            add(Line {
+                a: previous,
+                b: first,
+            });
+        }
+        for &point in self.points {
+            for line in point_sides(self.at(point)) {
+                add(Line {
+                    a: line.a + Point::default(),
+                    b: line.b + Point::default(),
+                });
+            }
+        }
+    }
+
     /// Keep source order, never numeric key order: a closing key precedes
     /// the next contour's ordinary vertex keys.
     pub(crate) fn indexed(self) -> impl Iterator<Item = (usize, Line)> + Clone {
