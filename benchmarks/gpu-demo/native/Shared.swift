@@ -113,3 +113,16 @@ func nativeWorldView(_ world:[UInt32],patch:Data,dpi:UInt32) throws -> Data {
     guard seen==entries.count else {throw fail("Shared source absent from canonical scene")}
     view.replaceSubrange(start..<view.count,with:p[Int(p[7])...]);return wire(view)
 }
+
+// Independent metadata fixture: fractional placement and hostile wire counts.
+func sharedProtocolChecks() throws -> Int {
+    var world=[UInt32](repeating:0,count:48);world[13]=1;world[24+18]=42;world[24+19]=1;world[24+11]=0xffff0000
+    var patch:[UInt32]=[0x31505747,1,10,10,1,1,8,24,42,0,0,10,10,0,0xffff0000,1,0,0,0,0,0,1,0,0,0,0,1,127]
+    let x=0.25.bitPattern,y=0.5.bitPattern;patch[16]=UInt32(truncatingIfNeeded:x);patch[17]=UInt32(x>>32);patch[18]=UInt32(truncatingIfNeeded:y);patch[19]=UInt32(y>>32)
+    let view=try nativeWorldView(world,patch:wire(patch),dpi:150).withUnsafeBytes {Array($0.bindMemory(to:UInt32.self))}
+    guard view[14]==Float(0.25).bitPattern,view[15]==Float(0.5).bitPattern,view.last==127 else {throw fail("Fractional shared view fixture")}
+    let changes:[(inout [UInt32])->Void]=[{$0[4]=0xffffffff},{$0[5]=0xffffffff},{$0[2]=0},{$0[7]=0xffffffff},{$0[8]=43},{$0[13]=1},{$0[17]=0x7ff80000},{$0[25]=10},{$0[27]=256}]
+    var refused=0
+    for change in changes {var bad=patch;change(&bad);do {_=try nativeWorldView(world,patch:wire(bad),dpi:150)}catch {refused+=1}}
+    guard refused==changes.count else {throw fail("Malformed shared view accepted")};return refused
+}

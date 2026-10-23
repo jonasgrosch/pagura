@@ -129,6 +129,7 @@ func cropped(_ data:Data,width:Int,height:Int,offset:SIMD2<UInt32>)->Data {
 }
 
 @MainActor func integratedStudy() throws {
+    _=try sharedProtocolChecks()
     let binary=URL(fileURLWithPath:option("--engine","target/gpu-demo/release/pagura-gpu-demo")),folder=URL(fileURLWithPath:option("--shaders","benchmarks/gpu-demo/native"),isDirectory:true)
     let samples=Int(option("--samples","100")) ?? 0,warmups=Int(option("--warmups","5")) ?? 0,cold=Int(option("--cold-samples","20")) ?? 0
     guard (1...1000).contains(samples),(0...100).contains(warmups),(1...100).contains(cold) else {throw fail("Integrated sample bounds")}
