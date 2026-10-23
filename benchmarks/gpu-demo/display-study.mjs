@@ -70,7 +70,7 @@ export class DisplayStudy {
     await this.engine.render(9,options);start=performance.now();const world=await this.world.prepare(options);
     first.world={...this.world.packet,setup_request_ms:performance.now()-start,cache_hit:world.cache_hit,fallback:world.fallback};
     const modes=['cpu',...(retained.fallback?[]:['retained_readback','retained_direct']),...(world.fallback?[]:['world_direct'])];
-    for(const mode of modes){if(mode==='world_direct')await this.engine.render(9,options);first[mode+'_draw']=await this.trial(mode,options);}
+    for(const mode of modes){if(mode==='world_direct'&&!this.world.job.hasView(options.dpi??150))await this.engine.render(9,options);first[mode+'_draw']=await this.trial(mode,options);}
     const before={retained:this.retained.metadata(),world:this.world.job?.metadata()},rows=[];
     for(let i=-warmups;i<samples;i++){
       const row={};for(const mode of orderAt(modes,i+warmups)){
