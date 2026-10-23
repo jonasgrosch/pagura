@@ -211,9 +211,10 @@ fn point_cells_keep_the_true_curve_across_origins_clips_and_bands() {
         for reversed in [false, true] {
             let path = pointed_curve(&points, reversed);
             let edges = Arc::new(GlyphEdges::new(&path, [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
-            if points.len() > 1 {
-                assert!(!edges.curved());
-            }
+            assert!(
+                edges.curved(),
+                "quadratic body keeps analytic setup with canonical point cells"
+            );
             for origin in [
                 Point::new(-1.000_000_1, -2.0),
                 Point::new(-0.999_999_9, -1.999_999_9),
