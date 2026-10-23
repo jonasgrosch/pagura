@@ -25,6 +25,7 @@ use std::sync::Arc;
 #[cfg(test)]
 mod tests;
 
+mod point;
 mod polygon;
 mod rounding;
 pub(crate) use polygon::PolygonLines;
@@ -60,6 +61,9 @@ pub(super) enum Kind {
         certified: bool,
         /// Original curves retained for coverage-byte certification.
         source: Option<(Arc<Path>, Transform)>,
+        /// A certified nonpoint projection. The canonical polygon remains
+        /// the owner used by clipped and ordinary polygon placements.
+        relative: Option<Box<Relative>>,
     },
 }
 
@@ -124,6 +128,22 @@ impl Relative {
             hull: [lo, hi],
             work,
         })
+    }
+
+    fn placed_hull(&self, origin: Point, point: Option<Point>) -> Result<[Point; 2]> {
+        let [lo, hi] = self.hull;
+        let mut lo = lo + origin;
+        let mut hi = hi + origin;
+        bounded(lo)?;
+        bounded(hi)?;
+        if let Some(point) = point {
+            let point = point + origin;
+            bounded(point)?;
+            let [a, _, b, _] = Polygon::cell_corners(point);
+            lo = Point::new(lo.x.min(a.x), lo.y.min(a.y));
+            hi = Point::new(hi.x.max(b.x), hi.y.max(b.y));
+        }
+        Ok([lo, hi])
     }
 }
 
@@ -202,13 +222,18 @@ impl GlyphEdges {
         }
         let (polygon, points) = polygon(outline, transform, limits, bytes)?;
         let certified = points.is_empty() && certified(&polygon, 0.0, bytes)?;
-        let source = if regular
+        let source_available = regular
             && outline
                 .segments()
                 .iter()
                 .any(|s| matches!(s, Segment::CubicTo { .. }))
-            && curve::quadratic_outline(outline, transform)
-        {
+            && curve::quadratic_outline(outline, transform);
+        let relative = if source_available && points.len() == 1 {
+            point::relative(outline, transform, limits, polygon.vertices(), bytes)?
+        } else {
+            None
+        };
+        let source = if source_available {
             bytes.charge(size_of::<Path>() + 2 * size_of::<usize>())?;
             Some((Arc::new(outline.clone_with_bytes(bytes)?), transform))
         } else {
@@ -219,6 +244,7 @@ impl GlyphEdges {
             points,
             certified,
             source,
+            relative,
         })
     }
 
@@ -235,11 +261,10 @@ impl GlyphEdges {
     }
 
     /// The edges a certified placement translates.
-    #[cfg(test)]
     pub(crate) fn relative(&self) -> Option<&Relative> {
         match &self.kind {
             Kind::Curve { relative, .. } => Some(relative),
-            Kind::Polygon { .. } => None,
+            Kind::Polygon { relative, .. } => relative.as_deref(),
         }
     }
 
@@ -247,7 +272,7 @@ impl GlyphEdges {
     /// whose coverage byte is ambiguous takes the shared bounded polygon
     /// refinement before execution (ADR 0004 §4).
     pub fn curved(&self) -> bool {
-        matches!(self.kind, Kind::Curve { .. })
+        self.relative().is_some()
     }
 }
 
@@ -429,14 +454,12 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
                 // No edges: nothing to cover.
                 return Ok(None);
             }
-            let lo = Point::new(lo.x + origin.x, lo.y + origin.y);
-            let hi = Point::new(hi.x + origin.x, hi.y + origin.y);
-            bounded(lo)?;
-            bounded(hi)?;
+            let hull = relative.placed_hull(origin, None)?;
+            let [lo, hi] = hull;
             frame.fit([lo, hi]);
             match (frame.rect, frame.paths) {
                 // The clip keeps it whole: its translated edges.
-                (None, None) => Shape::translated(edges, relative, origin, &frame, options),
+                (None, None) => Shape::translated(edges, relative, origin, hull, &frame, options),
                 // A rectangle cuts it: its pieces, clipped.
                 (Some(_), None) => pieces(spline, origin, &frame, options, &mut bytes),
                 // A clip path crosses it: its polygon, resolved with the
@@ -459,8 +482,25 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
             polygon,
             points,
             certified,
+            relative,
             ..
         } => {
+            if let (Some(relative), [point], Some(mut frame)) =
+                (relative.as_deref(), points.as_slice(), Frame::new(options))
+            {
+                let hull = relative.placed_hull(origin, Some(*point))?;
+                frame.fit(hull);
+                if frame.rect.is_none() && frame.paths.is_none() {
+                    return point::placed(
+                        (edges, relative, *point),
+                        origin,
+                        hull,
+                        &frame,
+                        options,
+                        &mut bytes,
+                    );
+                }
+            }
             let winding = if *certified {
                 Winding::Certified
             } else {

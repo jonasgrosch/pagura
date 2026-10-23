@@ -49,6 +49,9 @@ pub(crate) struct Resolved {
 }
 
 impl Resolved {
+    pub(crate) fn contains(&self, y: u32) -> bool {
+        self.rows.binary_search_by_key(&y, |&(row, _)| row).is_ok()
+    }
     /// Whether no row is resolved.
     pub(crate) fn is_empty(&self) -> bool {
         self.rows.is_empty()
@@ -123,8 +126,17 @@ pub(crate) struct GlyphBody {
     pub(crate) origin: crate::Point,
     pub(crate) scan: (usize, usize),
     pub(crate) strips: Option<StripList>,
-    /// Nonhorizontal placed edges and curves, before resolved sides.
+    pub(crate) geometry: GlyphGeometry,
+    /// Boundary count for placement-error certification, before resolved
+    /// sides. Includes canonical polygon inputs when they resolved a row.
     boundaries: usize,
+}
+
+/// Which retained source this placement actually accumulates.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum GlyphGeometry {
+    Relative,
+    Polygon,
 }
 
 /// Straight edges and monotone quadratics, listed by strip, and the
@@ -576,15 +588,10 @@ impl Shape {
         edges: &std::sync::Arc<super::GlyphEdges>,
         relative: &super::glyph::Relative,
         origin: crate::Point,
+        [lo, hi]: [crate::Point; 2],
         frame: &Frame<'_>,
         options: &Prep<'_>,
     ) -> Result<Option<Self>> {
-        let o = origin;
-        let [lo, hi] = relative.hull;
-        let (lo, hi) = (
-            crate::Point::new(lo.x + o.x, lo.y + o.y),
-            crate::Point::new(hi.x + o.x, hi.y + o.y),
-        );
         let Some(bounds) = frame.bounds([lo, hi].into_iter()) else {
             return Ok(None);
         };
@@ -614,6 +621,7 @@ impl Shape {
                 origin,
                 scan,
                 strips: None,
+                geometry: GlyphGeometry::Relative,
                 boundaries: items,
             }),
             clip: frame.clip.cloned(),
@@ -745,6 +753,7 @@ impl Shape {
                     origin,
                     scan,
                     strips: list,
+                    geometry: GlyphGeometry::Polygon,
                     boundaries: count,
                 }),
                 list_bytes,
@@ -765,6 +774,47 @@ impl Shape {
     /// Adds `units` to the work bound.
     pub(crate) fn add_work(&mut self, units: usize) {
         self.work = self.work.saturating_add(units);
+    }
+
+    /// Resolves one row directly from the stored canonical polygon, without
+    /// building a whole-placement line vector or strip index.
+    pub(crate) fn point_row(
+        &mut self,
+        view: super::glyph::PolygonLines<'_>,
+        y: u32,
+        options: &Prep<'_>,
+        bytes: &mut Meter,
+        work: &mut Meter,
+    ) -> Result<()> {
+        debug_assert!(self.resolved.is_empty());
+        let before = bytes.used();
+        let result = resolve_one(view, y, work, bytes);
+        let retained = result
+            .as_ref()
+            .map_or(0, |(resolved, _)| resolved.retained_bytes());
+        // The row builder has dropped every temporary owner.
+        bytes.refund(bytes.used().saturating_sub(before + retained));
+        let (resolved, boundaries) = result?;
+        let cells = cell_work(&[], &[], &resolved, self.bounds, options.area.region.x1);
+        // The original body's work remains a conservative reservation even
+        // for the replaced row. Add its absolute sides and mask traversal.
+        let extra = cells
+            .saturating_mul(4)
+            .saturating_add(resolved.len())
+            .saturating_add(self.bounds.height() as usize);
+        let work = self.work.saturating_add(extra);
+        if work > options.limits.raster_work {
+            drop(resolved);
+            bytes.refund(retained);
+            return Err(Error::limit(RASTER_WORK));
+        }
+        self.work = work;
+        self.retained = self.retained.saturating_add(retained);
+        self.resolved = resolved;
+        if let Body::Glyph(body) = &mut self.body {
+            body.boundaries = body.boundaries.max(boundaries);
+        }
+        Ok(())
     }
 }
 
@@ -978,13 +1028,61 @@ fn resolve(
             }
             _ => 1,
         };
-        work.charge(pieces.len())?;
-        sides.clear();
-        let meters = Meters { work, bytes };
-        resolver.row(&pieces, &rules[..groups], top, (&mut sides, meters))?;
-        resolved.push(y, &sides, bytes)?;
+        resolve_pieces(
+            &pieces,
+            &rules[..groups],
+            y,
+            (&mut resolver, &mut sides, &mut resolved),
+            Meters { work, bytes },
+        )?;
     }
     Ok(resolved)
+}
+
+/// Both indexed shape resolution and a stored glyph's single row use the
+/// same winding resolver and retained-row assembly.
+fn resolve_pieces(
+    pieces: &[Piece],
+    rules: &[FillRule],
+    y: u32,
+    (resolver, sides, resolved): (&mut Resolver, &mut Vec<Line>, &mut Resolved),
+    Meters { work, bytes }: Meters<'_>,
+) -> Result<()> {
+    work.charge(pieces.len())?;
+    sides.clear();
+    resolver.row(pieces, rules, f64::from(y), (sides, Meters { work, bytes }))?;
+    resolved.push(y, sides, bytes)
+}
+
+fn resolve_one(
+    view: super::glyph::PolygonLines<'_>,
+    y: u32,
+    work: &mut Meter,
+    bytes: &mut Meter,
+) -> Result<(Resolved, usize)> {
+    work.charge(view.raw_count().unwrap_or(usize::MAX))?;
+    let mut pieces = Vec::new();
+    let mut boundaries = 0_usize;
+    for (_, line) in view.indexed() {
+        if !line.is_horizontal() {
+            boundaries = boundaries.saturating_add(1);
+        }
+        if let Some(piece) = Piece::new(line, f64::from(y), 0) {
+            room(&mut pieces, 1, bytes)?;
+            pieces.push(piece);
+        }
+    }
+    let mut resolver = Resolver::default();
+    let mut sides = Vec::new();
+    let mut resolved = Resolved::default();
+    resolve_pieces(
+        &pieces,
+        &[FillRule::NonZero],
+        y,
+        (&mut resolver, &mut sides, &mut resolved),
+        Meters { work, bytes },
+    )?;
+    Ok((resolved, boundaries))
 }
 
 #[cfg(test)]

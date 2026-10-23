@@ -6,7 +6,7 @@ use super::{GlyphEdges, Kind, flattened_with, translated};
 use crate::band::cells::Cells;
 use crate::band::clip::Paths;
 use crate::band::edges::{self, Bounds, Line};
-use crate::band::shape::{Body, Frame, Shape, Winding};
+use crate::band::shape::{Body, Frame, GlyphGeometry, Shape, Winding};
 use crate::band::union::{Meters, Piece, Resolver};
 use crate::band::{Prep, RASTER_WORK, RENDER_BYTES, curve, raster};
 use crate::flatten::{Hull, Inspection};
@@ -78,20 +78,23 @@ pub(super) fn certify(
     let mut targets = Vec::new();
     for round in 0..=ROUNDS {
         let analytic = match &shape.body {
-            Body::Glyph(body) => body.edges.curved(),
+            Body::Glyph(body) => body.geometry == GlyphGeometry::Relative,
             Body::Edges(body) => !body.curves.is_empty(),
         };
         work.charge_product(outline.segments().len(), 2)?;
-        let error = if analytic {
+        let base = if analytic {
             curve::reduction_area(outline, linear)
         } else {
             AREA
-        } + placement_error(outline, linear, origin, &shape)
-            + options
-                .clip
-                .and_then(|clip| clip.paths())
-                .map_or(0.0, Paths::arithmetic_error);
-        let pending = ambiguous(&shape, error, (&mut work, &mut bytes))?;
+        };
+        let placement = placement_error(outline, linear, origin, &shape);
+        let clip = options
+            .clip
+            .and_then(|clip| clip.paths())
+            .map_or(0.0, Paths::arithmetic_error);
+        let error = base + placement + clip;
+        let row_error = (analytic && !shape.resolved.is_empty()).then_some(AREA + placement + clip);
+        let pending = ambiguous(&shape, (error, row_error), (&mut work, &mut bytes))?;
         let mut wrong = false;
         for pixel in pending {
             let expected = true_byte(source, pixel, options, (&mut work, &mut bytes))?;
@@ -219,7 +222,7 @@ fn placement_error(outline: &Path, linear: Transform, origin: Point, shape: &Sha
 
 fn ambiguous(
     shape: &Shape,
-    error: f64,
+    (error, resolved_error): (f64, Option<f64>),
     (work, bytes): (&mut Meter, &mut Meter),
 ) -> Result<Vec<Pixel>> {
     let width = match &shape.body {
@@ -231,8 +234,20 @@ fn ambiguous(
     work.charge(shape.work())?;
     let mut pending = Vec::new();
     let mut failure = None;
+    let mut row = None;
+    let mut row_error = error;
     raster::inspect(shape, &mut cells, |y, x0, x1, area, arithmetic| {
-        let error = outward(error + arithmetic);
+        if let Some(resolved_error) = resolved_error
+            && row != Some(y)
+        {
+            row_error = if shape.resolved.contains(y) {
+                resolved_error
+            } else {
+                error
+            };
+            row = Some(y);
+        }
+        let error = outward(row_error + arithmetic);
         if failure.is_some() || quantize_unit(area - error) == quantize_unit(area + error) {
             return;
         }
@@ -719,7 +734,7 @@ mod tests {
         let mut work = Meter::new(limits.raster_work, RASTER_WORK);
         let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
         assert_eq!(
-            ambiguous(&prepared, 0.0, (&mut work, &mut bytes))
+            ambiguous(&prepared, (0.0, None), (&mut work, &mut bytes))
                 .unwrap()
                 .len(),
             1,
@@ -806,7 +821,7 @@ mod tests {
             RENDER_BYTES,
         );
         tight.charge(bytes.used()).unwrap();
-        let pending = ambiguous(&shape, AREA, (&mut work, &mut tight)).unwrap();
+        let pending = ambiguous(&shape, (AREA, None), (&mut work, &mut tight)).unwrap();
         assert_eq!(pending.len(), 1);
         assert_eq!(tight.used(), shape.retained_bytes() + size_of::<Pixel>());
     }

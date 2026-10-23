@@ -315,12 +315,12 @@ fn shared_polygons_keep_the_original_curve_certificate_and_cancellation() {
     let limits = Limits::default();
     let mut path = PathBuilder::new();
     path.append(&arch(), Transform::IDENTITY);
-    // Appending a genuine point requires the polygon's area-bound selector,
-    // even though its underlying source admits quadratic reduction.
+    // A canonical polygon requires its area-bound selector even when the
+    // source also offers a certified nonpoint projection.
     path.move_to(Point::new(6.25, 2.75));
     path.close();
     let edges = Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], &limits).unwrap());
-    assert!(!edges.curved());
+    assert!(edges.curved());
     for band in [1, 3, 16, 32] {
         let options = ShapeOptions {
             area: area(16, band),
@@ -328,8 +328,27 @@ fn shared_polygons_keep_the_original_curve_certificate_and_cancellation() {
         };
         for origin in [Point::new(-0.25, 0.125), Point::new(0.375, 0.75)] {
             let prep = Prep::new(&options, None);
-            let shared = placed(&edges, origin, &prep).unwrap().unwrap();
-            assert!(matches!(shared.body, Body::Glyph(_)));
+            let Kind::Polygon {
+                polygon, points, ..
+            } = &edges.kind
+            else {
+                panic!("canonical polygon source");
+            };
+            let shared = translated(
+                (polygon, points),
+                origin,
+                Winding::Check(0.0),
+                &prep,
+                &mut crate::testing::bytes(),
+                None,
+                Some(&edges),
+            )
+            .unwrap()
+            .unwrap();
+            let Body::Glyph(body) = &shared.body else {
+                panic!("shared polygon");
+            };
+            assert_eq!(body.geometry, crate::band::shape::GlyphGeometry::Polygon);
             let copied = owned(&edges, origin, &prep, &mut crate::testing::bytes()).unwrap();
             let shared = rounding::certify(&edges, origin, shared, &prep).unwrap();
             let copied = rounding::certify(&edges, origin, copied, &prep).unwrap();

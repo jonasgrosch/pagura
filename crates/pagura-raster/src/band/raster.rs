@@ -437,16 +437,25 @@ struct Items<'a> {
 
 impl Items<'_> {
     fn glyph<'a>(glyph: &'a GlyphBody, resolved: &'a Resolved) -> Items<'a> {
-        let (lines, curves) = match &glyph.edges.kind {
-            Kind::Curve { relative, .. } => {
+        let (lines, curves) = match glyph.geometry {
+            super::shape::GlyphGeometry::Relative => {
+                let Some(relative) = glyph.edges.relative() else {
+                    unreachable!("a relative glyph source");
+                };
                 (Lines::Slice(&relative.lines), relative.curves.as_slice())
             }
-            Kind::Polygon {
-                polygon, points, ..
-            } => (
-                Lines::Polygon(PolygonLines::new(polygon, points, glyph.origin)),
-                &[][..],
-            ),
+            super::shape::GlyphGeometry::Polygon => {
+                let Kind::Polygon {
+                    polygon, points, ..
+                } = &glyph.edges.kind
+                else {
+                    unreachable!("a canonical polygon glyph source");
+                };
+                (
+                    Lines::Polygon(PolygonLines::new(polygon, points, glyph.origin)),
+                    &[][..],
+                )
+            }
         };
         Items {
             lines,
