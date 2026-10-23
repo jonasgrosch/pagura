@@ -1,5 +1,9 @@
 # GPU area integration experiment
 
+The follow-up [retained geometry comparison](RETAINED_GPU_RESULTS.md) gives CPU
+prepared-scene reuse and retains expanded/shared GPU resources. Its redraw and
+new/revisited zoom measurements are separate from the fresh-export results here.
+
 SVG export remains available, with its independent bounded artifact cache,
 image reuse, clip proof and download control. This experiment adds actual
 GPU coverage integration alongside the exact CPU-coverage GPU compositor.
