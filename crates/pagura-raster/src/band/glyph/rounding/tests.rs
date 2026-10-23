@@ -1038,7 +1038,7 @@ fn prove_original_pixel(
         .unwrap()
     );
     bytes.refund(released);
-    assert!(targets.is_empty());
+    assert_eq!(targets, [] as [[f64; 4]; 0]);
     assert_eq!(proven.len(), 1);
     assert_eq!(proven[0].byte, pixel.byte);
     proven
@@ -1236,7 +1236,7 @@ fn original_byte_reuse_keeps_adjacent_work_and_byte_limits() {
                         Budget::Measure => unreachable!(),
                     },
                 );
-                assert!(targets.is_empty());
+                assert_eq!(targets, [] as [[f64; 4]; 0]);
             }
             assert_eq!(proven.len(), 1);
             assert_eq!(proven[0].byte, 127);
