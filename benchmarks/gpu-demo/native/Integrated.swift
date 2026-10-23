@@ -62,7 +62,7 @@ func cropped(_ data:Data,width:Int,height:Int,offset:SIMD2<UInt32>)->Data {
     init(_ mode:String,binary:URL,context:NativeContext) throws {self.mode=mode;self.context=context;engine=try EngineBridge(binary:binary,device:context.device)}
     func close() {jobs.removeAll();world=nil;engine.close()}
     func render(_ dpi:UInt32,present:Bool=true) throws -> [String:Any] {
-        let started=now();var prepare=0.0,cache=false,draw:[String:Any]=[:]
+        let started=now(),requestsBefore=engine.requests;var prepare=0.0,cache=false,draw:[String:Any]=[:]
         if mode=="retained",fallback==nil,jobs[dpi]==nil {
             let (meta,packet)=try engine.render(8,dpi);lastMeta=meta
             if let reason=meta["fallback"] as? String {fallback=reason}
@@ -99,7 +99,7 @@ func cropped(_ data:Data,width:Int,height:Int,offset:SIMD2<UInt32>)->Data {
         currentDpi=dpi
         let total=now()-started
         // GPU complete_ms excludes drawable waiting; CPU prepare includes safe file writes.
-        return ["frame_ms":total,"render_ms":prepare+metric(draw,"complete_ms"),"prepare_ms":prepare,"engine_ms":metric(lastMeta,"engine_ms"),"cache_hit":cache,"fallback":fallback as Any? ?? NSNull(),"presentation":draw]
+        return ["frame_ms":total,"render_ms":prepare+metric(draw,"complete_ms"),"prepare_ms":prepare,"engine_ms":engine.requests>requestsBefore ? metric(lastMeta,"engine_ms"):0,"cache_hit":cache,"fallback":fallback as Any? ?? NSNull(),"presentation":draw]
     }
     func scroll(_ fraction:Double,capture:Bool=false) throws -> ([String:Any],Data,SIMD2<UInt32>) {
         let offset=SIMD2<UInt32>(UInt32(max(0,(width-480)/2)),UInt32(Double(max(0,height-480))*fraction))

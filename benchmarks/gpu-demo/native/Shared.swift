@@ -74,7 +74,9 @@ final class SharedRegion {
     func render(_ operation:UInt32,_ dpi:UInt32) throws -> ([String:Any],Data) {try request(wire([operation,0,dpi,32,0,0,0,0]))}
     func counters()->[String:Int] { ["requests":requests,"shared_bytes_written":sharedBytes,"rgba_file_write_bytes":rgbaBytes,"rgba_pipe_bytes":pipePayloadBytes,"rgba_swift_upload_bytes":0] }
 }
-func wire(_ words:[UInt32])->Data {var data=Data();for var word in words {word=word.littleEndian;withUnsafeBytes(of:&word){data.append(contentsOf:$0)}};return data}
+func wire(_ words:[UInt32])->Data {
+    words.map{$0.littleEndian}.withUnsafeBufferPointer {Data(buffer:$0)}
+}
 
 // Convert validated per-view metadata; canonical source coordinates stay immutable.
 func nativeWorldView(_ world:[UInt32],patch:Data,dpi:UInt32) throws -> Data {
@@ -116,6 +118,7 @@ func nativeWorldView(_ world:[UInt32],patch:Data,dpi:UInt32) throws -> Data {
 
 // Independent metadata fixture: fractional placement and hostile wire counts.
 func sharedProtocolChecks() throws -> Int {
+    guard wire([0x01234567,0x89abcdef,0,0xffffffff])==Data([0x67,0x45,0x23,0x01,0xef,0xcd,0xab,0x89,0,0,0,0,255,255,255,255]) else {throw fail("Shared little-endian wire fixture")}
     var world=[UInt32](repeating:0,count:48);world[13]=1;world[24+18]=42;world[24+19]=1;world[24+11]=0xffff0000
     var patch:[UInt32]=[0x31505747,1,10,10,1,1,8,24,42,0,0,10,10,0,0xffff0000,1,0,0,0,0,0,1,0,0,0,0,1,127]
     let x=0.25.bitPattern,y=0.5.bitPattern;patch[16]=UInt32(truncatingIfNeeded:x);patch[17]=UInt32(x>>32);patch[18]=UInt32(truncatingIfNeeded:y);patch[19]=UInt32(y>>32)

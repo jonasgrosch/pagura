@@ -41,7 +41,7 @@ export class BrowserPage {
     if(this.mode==='cpu'||this.fallback){
       out=await this.engine.render(7,{dpi});cache_hit=out.meta.cache_hit;this.width=out.meta.width;this.height=out.meta.height;
       if(this.bitmap.width!==this.width||this.bitmap.height!==this.height){this.bitmap.width=this.width;this.bitmap.height=this.height;}
-      this.bitmapContext.putImageData(new ImageData(new Uint8ClampedArray(out.data),this.width,this.height),0,0);
+      this.bitmapContext.putImageData(new ImageData(new Uint8ClampedArray(out.data.buffer,out.data.byteOffset,out.data.byteLength),this.width,this.height),0,0);
       render_ms=performance.now()-started;if(present)this.paintCpu({x:0,y:0});
     }
     this.activate();this.dpi=dpi;if(present)await paintOpportunity();
