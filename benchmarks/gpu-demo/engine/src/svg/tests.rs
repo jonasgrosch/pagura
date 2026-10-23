@@ -8,7 +8,7 @@ fn pdf(content: &[u8]) -> Vec<u8> {
     pages(&[content])
 }
 
-fn pages(contents: &[&[u8]]) -> Vec<u8> {
+pub(crate) fn pages(contents: &[&[u8]]) -> Vec<u8> {
     let kids = (0..contents.len())
         .map(|i| format!("{} 0 R ", 3 + i * 2))
         .collect::<String>();

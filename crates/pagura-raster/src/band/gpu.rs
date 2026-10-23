@@ -19,6 +19,15 @@ impl Shape {
 }
 
 impl<'a> Geometry<'a> {
+    /// A certified placement's shared translation-free source and origin.
+    /// Identity is borrowed only for one export; it never enters the packet.
+    pub fn shared(self) -> Option<(&'a crate::GlyphEdges, Point)> {
+        match &self.0.body {
+            Body::Glyph(body) => Some((&body.edges, body.origin)),
+            _ => None,
+        }
+    }
+
     /// Its fill rule.
     pub fn rule(self) -> FillRule {
         self.0.rule
@@ -115,6 +124,25 @@ impl<'a> Geometry<'a> {
                 };
                 visit(s.x0, s.x1, value)?;
             }
+        }
+        Ok(())
+    }
+}
+
+impl crate::GlyphEdges {
+    /// Visits a certified source once, without placement translation.
+    ///
+    /// # Errors
+    /// Missing relative geometry or the visitor's allocation/work error.
+    pub fn gpu_edges(&self, mut visit: impl FnMut([Point; 3], bool) -> Result<()>) -> Result<()> {
+        let relative = self.relative().ok_or(pagura_core::Error::invalid_argument(
+            "missing shared glyph geometry",
+        ))?;
+        for line in &relative.lines {
+            visit([line.a, line.b, line.b], false)?;
+        }
+        for curve in &relative.curves {
+            visit(curve.points, true)?;
         }
         Ok(())
     }

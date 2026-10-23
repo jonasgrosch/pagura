@@ -224,3 +224,68 @@ fn gpu_geometry_requires_an_opaque_background_and_preserves_band_independence() 
         ErrorKind::Unsupported(_)
     ));
 }
+
+#[test]
+fn shared_gpu_sources_are_instanced_and_packet_storage_is_bounded() {
+    use pagura_interpret::{FontKey, GlyphSource, GlyphsNode, Node, OutlineKey, Placement};
+    use pagura_raster::{PathBuilder, Point, Transform};
+    use std::sync::Arc;
+    let mut b = Build::new(80.0, 20.0);
+    let paint = b.rgb([0.2, 0.5, 0.75]);
+    let mut path = PathBuilder::new();
+    path.move_to(Point::new(0.0, 0.0));
+    path.line_to(Point::new(2.0, 4.0)).unwrap();
+    path.line_to(Point::new(4.0, 0.0)).unwrap();
+    path.close();
+    b.node(
+        GroupId(0),
+        Node::Glyphs(GlyphsNode {
+            sources: vec![GlyphSource {
+                outline: Arc::new(path.finish()),
+                key: OutlineKey {
+                    font: FontKey(1),
+                    glyph: 7,
+                },
+                linear: Transform::IDENTITY,
+            }],
+            placements: (0..8)
+                .map(|i| Placement {
+                    source: 0,
+                    origin: Point::new(2.125 + f64::from(i) * 8.0, 4.375),
+                })
+                .collect(),
+            positions: Vec::new(),
+            paint,
+            mark: mark(StateId(0)),
+        }),
+    );
+    let limits = Limits::default();
+    let mut baseline = None;
+    for band in [1, 7, 256] {
+        let prepared = b.prepare(&b.request(b.page(), band), &limits).unwrap();
+        let shared = prepared.gpu_shared_program(&limits).unwrap();
+        let expanded = prepared.gpu_raster_program(&limits, true).unwrap();
+        assert_eq!(shared[1], 3);
+        assert_eq!(shared[13], 8);
+        assert!(shared[14] < expanded[14]);
+        for m in 0..8_usize {
+            assert_eq!(&shared[24 + m * 20 + 4..24 + m * 20 + 6], &shared[28..30]);
+            assert_eq!(shared[24 + m * 20 + 18], 1);
+        }
+        if let Some(before) = &baseline {
+            assert_eq!(before, &shared);
+        } else {
+            baseline = Some(shared);
+        }
+        assert_eq!(
+            prepared
+                .gpu_shared_program(&Limits {
+                    render_bytes: 64,
+                    ..limits
+                })
+                .unwrap_err()
+                .kind,
+            ErrorKind::Limit
+        );
+    }
+}

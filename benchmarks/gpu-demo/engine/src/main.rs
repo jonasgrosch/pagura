@@ -15,12 +15,17 @@ use std::time::Instant;
 
 const MAX_FRAME: usize = 64 * 1024 * 1024;
 
+mod cache;
 mod svg;
+#[cfg(test)]
+mod tests;
 
 struct Session {
     document: Option<Document>,
     scene: Option<(usize, Scene)>,
     svg: Option<svg::Export>,
+    prepared: cache::Cache,
+    output: Vec<u8>,
     store: Store,
     scratch: Scratch,
     provider: Bundled,
@@ -32,6 +37,8 @@ impl Session {
             document: None,
             scene: None,
             svg: None,
+            prepared: cache::Cache::default(),
+            output: Vec::new(),
             store: Store::new(MAX_FRAME),
             scratch: Scratch::default(),
             provider: Bundled::new(Self::limits()),
@@ -47,9 +54,19 @@ impl Session {
         }
     }
 
+    fn cache_metadata(&self) -> String {
+        format!(
+            "{},\"cpu_output_capacity_bytes\":{}",
+            self.prepared.metadata(),
+            self.output.capacity()
+        )
+    }
+
     fn request(&mut self, bytes: &[u8]) -> Result<(String, Cow<'_, [u8]>)> {
         let operation = word(bytes, 0)?;
         if operation == 1 {
+            self.prepared.clear(&mut self.scratch);
+            self.output = Vec::new();
             self.scene = None;
             self.svg = None;
             self.document = None;
@@ -74,7 +91,14 @@ impl Session {
                 Cow::Owned(Vec::new()),
             ));
         }
-        if !matches!(operation, 2..=6) || bytes.len() != 32 {
+        if operation == 9 && bytes.len() == 32 {
+            self.prepared.clear(&mut self.scratch);
+            return Ok((
+                format!("{{\"ok\":true,{}}}", self.cache_metadata()),
+                Cow::Owned(Vec::new()),
+            ));
+        }
+        if !matches!(operation, 2..=10) || bytes.len() != 32 {
             return Err(Error::invalid_argument("invalid demo request"));
         }
         let page_index =
@@ -98,6 +122,7 @@ impl Session {
             .is_none_or(|(index, _)| *index != page_index)
         {
             self.svg = None;
+            self.prepared.clear(&mut self.scratch);
             let scene = Interpreter::new(document)
                 .with_provider(Some(&self.provider))
                 .with_store(&self.store)
@@ -189,6 +214,93 @@ impl Session {
             OverprintMode::Ignore
         };
         let limits = document.limits();
+        if matches!(operation, 7 | 8 | 10) {
+            let start = Instant::now();
+            let key = cache::Key([
+                word(bytes, 1)?,
+                dpi,
+                band,
+                region.x0,
+                region.y0,
+                region.x1,
+                region.y1,
+            ]);
+            let hit = self.prepared.ensure(
+                key,
+                scene,
+                &request,
+                (&self.store, &limits),
+                &mut self.scratch,
+            )?;
+            let prepare_ms = ms(start);
+            let entry = self.prepared.current()?;
+            for repair in entry.prepared.repairs() {
+                document.repair(repair.clone())?;
+            }
+            let start = Instant::now();
+            let mut data = Vec::new();
+            if operation == 7 {
+                self.output.clear();
+                let count =
+                    usize::try_from(u64::from(region.width()) * u64::from(region.height()) * 4)
+                        .map_err(|_| Error::limit("retained CPU pixels"))?;
+                self.output
+                    .try_reserve_exact(count)
+                    .map_err(|_| Error::limit("retained CPU output allocation"))?;
+                entry
+                    .prepared
+                    .with_scratch(&mut self.scratch)?
+                    .render(&mut self.output);
+            } else {
+                let export_limits = Limits {
+                    render_bytes: MAX_FRAME,
+                    ..limits
+                };
+                match if operation == 8 {
+                    entry.prepared.gpu_shared_program(&export_limits)
+                } else {
+                    entry.prepared.gpu_raster_program(&export_limits, true)
+                } {
+                    Ok(words) => {
+                        data.try_reserve_exact(words.len() * 4)
+                            .map_err(|_| Error::limit("shared GPU wire allocation"))?;
+                        for word in words {
+                            data.extend_from_slice(&word.to_le_bytes());
+                        }
+                    }
+                    Err(error)
+                        if matches!(error.kind, ErrorKind::Unsupported(_) | ErrorKind::Limit) =>
+                    {
+                        return Ok((
+                            format!(
+                                "{{\"ok\":true,\"fallback\":{},\"cache_hit\":{hit},\"prepare_ms\":{prepare_ms},\"engine_ms\":{},{}}}",
+                                json_string(&error.to_string()),
+                                ms(total),
+                                self.cache_metadata()
+                            ),
+                            Cow::Owned(Vec::new()),
+                        ));
+                    }
+                    Err(error) => return Err(error),
+                }
+            }
+            return Ok((
+                format!(
+                    "{{\"ok\":true,\"width\":{},\"height\":{},\"record_ms\":{record_ms},\"prepare_ms\":{prepare_ms},\"execute_ms\":{},\"engine_ms\":{},\"cache_hit\":{hit},\"prepared_id\":{},{}}}",
+                    region.width(),
+                    region.height(),
+                    ms(start),
+                    ms(total),
+                    entry.id,
+                    self.cache_metadata()
+                ),
+                if operation == 7 {
+                    Cow::Borrowed(&self.output)
+                } else {
+                    Cow::Owned(data)
+                },
+            ));
+        }
         let start = Instant::now();
         let prepared = self
             .scratch

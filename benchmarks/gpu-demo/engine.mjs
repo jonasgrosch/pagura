@@ -64,12 +64,14 @@ export class Engine {
   }
 
   open(pdf) {
+    this.generation = (this.generation ?? 0) + 1;
     if (pdf.length > 64 * 1024 * 1024 - 4) throw new Error('PDF exceeds the 64 MiB demo limit');
     const input = new Uint8Array(pdf.length + 4); new DataView(input.buffer).setUint32(0, 1, true); input.set(pdf, 4);
     return this.request(input);
   }
 
   render(operation, {page = 0, dpi = 150, band = 32, region = [0, 0, 0, 0]} = {}) {
+    this.renderRequests = (this.renderRequests ?? 0) + 1;
     const bytes = new Uint8Array(32), view = new DataView(bytes.buffer);
     [operation, page, dpi, band, ...region].forEach((word, index) => view.setUint32(index * 4, word, true));
     return this.request(bytes);

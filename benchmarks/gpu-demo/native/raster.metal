@@ -67,9 +67,12 @@ uint coverage(device const uint* data, uint mark, uint x, uint y) {
   auto fixed = lookup(data, data[mark + 12u], data[mark + 13u], x, y);
   if (fixed != 0xffffffffu) { return fixed; }
   auto pixel = float2(float(x - data[mark + 8u]), float(y - data[mark + 9u]));
+  if (data[1] == 3u) { pixel -= point(data, mark + 16u); }
   auto sum = 0.0f; auto correction = 0.0f;
   for (auto i = data[mark + 4u]; i < data[mark + 5u]; i++) {
-    auto at = data[9] + i * 8u;
+    auto edge = i;
+    if (data[1] == 3u) { edge = data[data[22] + i]; }
+    auto at = data[9] + edge * 8u;
     auto a = point(data, at + 1u) - pixel; auto b = point(data, at + 3u) - pixel; auto c = point(data, at + 5u) - pixel;
     float area;
     if (data[at] == 0u) { area = line_area(a, b); } else { area = quadratic_area(a, b, c); }
@@ -95,7 +98,7 @@ kernel void rasterize(device const uint* data [[buffer(0)]], device uint* rgba [
   auto background = data[18];
   auto color = uint3(background & 255u, (background >> 8u) & 255u, (background >> 16u) & 255u) * 257u;
   for (auto i = data[at]; i < data[at + 1u]; i++) {
-    auto mark = data[8] + data[data[12] + i] * 16u;
+    auto mark = data[8] + data[data[12] + i] * (data[1] == 3u ? 20u : 16u);
     if (x < data[mark] || y < data[mark + 1u] || x >= data[mark + 2u] || y >= data[mark + 3u]) { continue; }
     auto c = coverage(data, mark, x, y);
     auto rg = data[mark + 10u]; auto ba = data[mark + 11u];

@@ -83,7 +83,7 @@ export async function run(config) {
 }
 
 // Independent polygon oracle: clip each contour to a unit cell, shoelace area.
-function polygonArea(vertices, x, y) {
+export function polygonArea(vertices, x, y) {
   let points = vertices.map(p => [...p]);
   for (const [axis, limit, sign] of [[0,x,1],[0,x+1,-1],[1,y,1],[1,y+1,-1]]) {
     const next = [];
@@ -98,7 +98,7 @@ function polygonArea(vertices, x, y) {
   for (let i = 0; i < points.length; i++) {const a = points[i], b = points[(i+1)%points.length];area += (a[0]-x)*(b[1]-y)-(b[0]-x)*(a[1]-y);}
   return Math.min(1, Math.abs(area) / 2);
 }
-function oraclePacket(vertices, width = 32, height = 16) {
+export function oraclePacket(vertices, width = 32, height = 16) {
   const marksAt = 24, edgesAt = 40, extrasAt = edgesAt + vertices.length * 8, binsAt = extrasAt, bins = Math.ceil(width/32)*Math.ceil(height/8), refsAt = binsAt + bins * 2;
   const words = new Uint32Array(refsAt + bins), floats = new Float32Array(words.buffer);
   words.set([0x32555047,2,width,height,Math.ceil(width/32),bins,0,0,marksAt,edgesAt,extrasAt,binsAt,refsAt,1,vertices.length,0,bins,words.length,0xffffffff,1,0,0,0,0]);
@@ -107,12 +107,13 @@ function oraclePacket(vertices, width = 32, height = 16) {
   for (let i = 0; i < bins; i++) words.set([i,i+1],binsAt+i*2);
   return new Uint8Array(words.buffer);
 }
-async function check(engine, gpu) {
+export async function check(engine, gpu, {operation=5, packetTransform=bytes=>bytes}={}) {
+  const oracleJob=bytes=>gpu.prepare(packetTransform(bytes));
   const failures = [], oracle = [], cases = [];
   let variants = 0;
   const polygons = [ [[0.25,0.5],[31.75,0.5],[31.75,15.5],[0.25,15.5]], [[1.125,1.875],[30.875,2.125],[15.375,15.25]], [[0,0],[32,16],[0,16]], [[8.5,0.25],[9.25,15.875],[7.75,15.125]] ];
   for (const vertices of polygons) {
-    const bytes = oraclePacket(vertices), job = gpu.prepare(bytes);
+    const bytes = oraclePacket(vertices), job = oracleJob(bytes);
     try {
       const {pixels} = await job.render();let max = 0;
       for (let y=0;y<16;y++) for(let x=0;x<32;x++) {const expected = 255 - Math.floor(polygonArea(vertices,x,y)*255+0.5+1e-9);max=Math.max(max,Math.abs(pixels[(y*32+x)*4]-expected));}
@@ -127,7 +128,7 @@ async function check(engine, gpu) {
   const curveBytes = oraclePacket([[0,0],[16,0],[0,16]]);
   const cw = new Uint32Array(curveBytes.buffer), cf = new Float32Array(curveBytes.buffer);
   const curveAt = cw[9] + 8;cw[curveAt] = 1;cf.set([16,0,16,16,0,16],curveAt+1);
-  const curveJob = gpu.prepare(curveBytes);
+  const curveJob = oracleJob(curveBytes);
   try {
     const output = await curveJob.render();let max = 0,worst=null;
     const integrate = (f,a,b,eps,depth=0) => {
@@ -148,23 +149,29 @@ async function check(engine, gpu) {
     w[6]=origin;w[7]=origin;for(let i=0;i<4;i++)w[24+i]+=origin;
     w[32]=local?origin:0;w[33]=local?origin:0;w[19]=Number(local);
     if(!local)for(let i=w[9];i<w[10];i+=8)for(let j=1;j<=6;j++)f[i+j]+=origin;
-    const job=gpu.prepare(bytes);try{const output=await job.render();let max=0;for(let y=0;y<16;y++)for(let x=0;x<32;x++){const expected=255-Math.floor(polygonArea(vertices,x,y)*255+0.5);max=Math.max(max,Math.abs(output.pixels[(y*32+x)*4]-expected));}precision.push({local,origin,max_channel_error:max});if(local&&max>1)failures.push({error:'Local precision stress',max});}finally{job.destroy();}
+    const job=oracleJob(bytes);try{const output=await job.render();let max=0;for(let y=0;y<16;y++)for(let x=0;x<32;x++){const expected=255-Math.floor(polygonArea(vertices,x,y)*255+0.5);max=Math.max(max,Math.abs(output.pixels[(y*32+x)*4]-expected));}precision.push({local,origin,max_channel_error:max});if(local&&max>1)failures.push({error:'Local precision stress',max});}finally{job.destroy();}
   }
   const fixtures = await (await fetch('/fixture-index.json')).json();
   let admitted = 0, fallback = 0;
   for (const fixture of fixtures) {
     try {
       await engine.open(new Uint8Array(await (await fetch(fixture.path)).arrayBuffer()));
-      const options={page:0,dpi:fixture.dpi};const packet=await engine.render(5,options);
-      if(packet.meta.fallback){fallback++;continue;}
-      const cpu=await engine.render(2,options),job=gpu.prepare(packet.data);
+      const options={page:0,dpi:fixture.dpi};const packet=await engine.render(operation,options);
+      const retainedCpu=operation===8?await engine.render(7,options):null;
+      const fresh=retainedCpu?await engine.render(2,options):null;
+      if(retainedCpu){assertPixels(retainedCpu.data,fresh.data,'CPU prepared fixture reuse');if(!retainedCpu.meta.cache_hit)throw new Error('CPU fixture cache missed');}
+      if(packet.meta.fallback){fallback++;if(operation===8)cases.push({id:fixture.id,fallback:packet.meta.fallback,cpu_sha256:await sha256(fresh.data)});continue;}
+      const cpu=fresh??await engine.render(2,options),job=gpu.prepare(packet.data);
       try {
-        const result=await job.render();const accuracy=pixelDifference(result.pixels,cpu.data);
+        if(operation===8)await job.retain();
+        const result=await job.render(operation===8?null:packet.data);
+        if(operation===8){const second=await job.render(null);assertPixels(second.pixels,result.pixels,'Retained GPU repeat');if(job.counters().uploads!==1||job.counters().dispatches!==2)throw new Error('Fixture residency counters');}
+        const accuracy=pixelDifference(result.pixels,cpu.data);
         const entry={id:fixture.id,accuracy,packet_hash:hash(packet.data),cpu_hash:hash(cpu.data),packet_sha256:await sha256(packet.data),cpu_sha256:await sha256(cpu.data)};
         if(admitted%4===0){
-          const band=await engine.render(5,{...options,band:1});assertPixels(band.data,packet.data,'GPU geometry band independence');
+          const band=await engine.render(operation,{...options,band:1});assertPixels(band.data,packet.data,'GPU geometry band independence');
           const {width,height}=cpu.meta,x0=Math.floor(width/4),y0=Math.floor(height/4),x1=Math.max(x0+1,Math.ceil(width*3/4)),y1=Math.max(y0+1,Math.ceil(height*3/4));
-          const tileOptions={...options,region:[x0,y0,x1,y1]},tile=await engine.render(5,tileOptions),tileCpu=await engine.render(2,tileOptions);
+          const tileOptions={...options,region:[x0,y0,x1,y1]},tile=await engine.render(operation,tileOptions),tileCpu=await engine.render(2,tileOptions);
           if(tile.meta.fallback)throw new Error('A smaller tile lost geometry admission');
           const tileJob=gpu.prepare(tile.data);try{const out=await tileJob.render();entry.tile_accuracy=pixelDifference(out.pixels,tileCpu.data);}finally{tileJob.destroy();}
           variants+=2;

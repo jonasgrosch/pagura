@@ -1,5 +1,5 @@
 {
-  "schema": 4,
+  "schema": 5,
   "scope": "Exploratory CPU, hybrid WebGPU and browser SVG presentation on a shared desktop; not the release performance gate",
   "minimum_samples": 100,
   "minimum_warmups": 5,
@@ -44,5 +44,9 @@
   "svg_cache_scope": "One host export per current recorded page, reset on page/document change, bounded by 64 MiB. Encoded images are deduplicated inside that artifact. One parsed/decoded browser artifact per comparison, shared by all its samples. No application raster pixel cache.",
   "coverage_experiment": "Operations 5/6 export prepared geometry and exact exceptional cells. GPU integrates lines and true monotone quadratics in f32, then composites N16. Local mode subtracts an integer origin in f64 before narrowing. This is approximate and never advertised as Exact.",
   "coverage_benchmark": "100 fresh exports/uploads/completed readbacks after 5 warmups; rotate/reverse native CPU vs local/absolute GPU and browser CPU vs exact-span GPU vs local/absolute coverage GPU. Same page-0 real PDFs at 72/150/300 DPI. CPU prepare and geometry export count; first adapter/pipeline/allocation/validation excluded and separately reported. Every sample completes a readback. Differential accuracy is checked outside timing.",
-  "coverage_limits": "Existing opaque-solid RGB N16 admission remains; sampled paints, transparency and required F64 use explicit CPU fallback. Sparse winding/joint-clip corrections and clip classification stay in CPU preparation. Coverage work is moved, not the whole preparation stage."
+  "coverage_limits": "Existing opaque-solid RGB N16 admission remains; sampled paints, transparency and required F64 use explicit CPU fallback. Sparse winding/joint-clip corrections and clip classification stay in CPU preparation. Coverage work is moved, not the whole preparation stage.",
+  "retained_experiment": "Compare Exact CPU PreparedScene reuse with retained expanded and shared GPU geometry. All paths rasterize fresh pixels on every redraw; no RGBA cache. CPU reuses its output Vec and Scratch; GPU reuses source/output/readback buffers. GPU warm samples make zero engine calls and zero uploads, verified by counters.",
+  "retained_scope": "At most three requested resolutions per cache. CPU eviction uses the existing render_bytes reservation metric, capped at 256 MiB; this is not an RSS measurement and excludes separately bounded Store/output storage. GPU caches cap nominal source/output/readback buffer bytes at 256 MiB. Document/page changes invalidate retained resources.",
+  "retained_zoom": "Twelve cold target updates with prepared/GPU caches cleared per mode/target; eighteen warmed updates after three warmups across 150/225/300 DPI. CPU and GPU retain the same three resolutions. New DPIs rebuild grid-dependent strokes/clips; cached revisits reuse preparation. Browser measures completed pixels/canvas upload/two RAF opportunities; native measures completed RGBA and separately IPC. Neither is scanout.",
+  "retained_control": "Version 2 expanded geometry is retained as a control alongside version 3 source instancing and edge indirection. Setup order rotates by case; warm modes rotate/reverse. First setup is reported separately from 100 warm redraws after five warmups."
 }

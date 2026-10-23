@@ -69,10 +69,13 @@ fn lookup(start: u32, end: u32, x: u32, y: u32) -> u32 {
 fn coverage(mark: u32, x: u32, y: u32) -> u32 {
   let fixed = lookup(data[mark + 12u], data[mark + 13u], x, y);
   if (fixed != 0xffffffffu) { return fixed; }
-  let pixel = vec2f(f32(x - data[mark + 8u]), f32(y - data[mark + 9u]));
+  var pixel = vec2f(f32(x - data[mark + 8u]), f32(y - data[mark + 9u]));
+  if (data[1] == 3u) { pixel -= point(mark + 16u); }
   var sum = 0.0; var correction = 0.0;
   for (var i = data[mark + 4u]; i < data[mark + 5u]; i++) {
-    let at = data[9] + i * 8u;
+    var edge = i;
+    if (data[1] == 3u) { edge = data[data[22] + i]; }
+    let at = data[9] + edge * 8u;
     let a = point(at + 1u) - pixel; let b = point(at + 3u) - pixel; let c = point(at + 5u) - pixel;
     var area: f32;
     if (data[at] == 0u) { area = line_area(a, b); } else { area = quadratic_area(a, b, c); }
@@ -99,7 +102,7 @@ fn rasterize(@builtin(global_invocation_id) id: vec3u) {
   let background = data[18];
   var color = vec3u(background & 255u, (background >> 8u) & 255u, (background >> 16u) & 255u) * 257u;
   for (var i = data[at]; i < data[at + 1u]; i++) {
-    let mark = data[8] + data[data[12] + i] * 16u;
+    let mark = data[8] + data[data[12] + i] * select(16u, 20u, data[1] == 3u);
     if (x < data[mark] || y < data[mark + 1u] || x >= data[mark + 2u] || y >= data[mark + 3u]) { continue; }
     let c = coverage(mark, x, y);
     let rg = data[mark + 10u]; let ba = data[mark + 11u];

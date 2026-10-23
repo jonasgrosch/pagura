@@ -76,26 +76,42 @@ export class GpuBackend {
     const start = performance.now();
     const raster = bytes.length >= 4 && new DataView(bytes.buffer, bytes.byteOffset).getUint32(0, true) === 0x32555047;
     const program = raster ? validateRaster(bytes, this.device.limits) : validateProgram(bytes, this.device.limits);
+    delete program.words;
+    let initial = bytes;const packetSize = bytes.length;
     const {device, timestamps} = this;
     const pipeline = raster ? this.rasterPipeline : this.pipeline;
     const source = device.createBuffer({size: bytes.length, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST});
     const size = program.width * program.height * 4;
     const output = device.createBuffer({size, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC});
-    const readback = device.createBuffer({size, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST});
+    const queryOffset = Math.ceil(size / 8) * 8;
+    const readbackSize = timestamps ? queryOffset + 16 : size;
+    const readback = device.createBuffer({size: readbackSize, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST});
     const group = device.createBindGroup({layout: pipeline.getBindGroupLayout(0), entries: [
       {binding: 0, resource: {buffer: source}}, {binding: 1, resource: {buffer: output}},
     ]});
     const queries = timestamps ? device.createQuerySet({type: 'timestamp', count: 2}) : null;
     const resolve = timestamps ? device.createBuffer({size: 16, usage: GPUBufferUsage.QUERY_RESOLVE | GPUBufferUsage.COPY_SRC}) : null;
-    const timing = timestamps ? device.createBuffer({size: 16, usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST}) : null;
     const setup_ms = performance.now() - start;
-    let busy = false, destroyed = false;
+    let busy = false, destroyed = false, resident = false, uploads = 0, uploadBytes = 0, dispatches = 0;
     return {
       setup_ms, width: program.width, height: program.height, spans: program.spans,
       packet_bytes: bytes.length, references: program.references, geometry: raster ? program : null,
-      render: async (upload = bytes) => {
+      resident_bytes: bytes.length + size + readbackSize + (timestamps ? 16 : 0),
+      counters: () => ({uploads, upload_bytes: uploadBytes, dispatches, resident:resident&&!destroyed}),
+      retain: async () => {
         if (busy || destroyed || this.lost()) throw new Error(this.lost() || 'GPU job is unavailable');
-        if (!(upload instanceof Uint8Array) || upload.length !== bytes.length) throw new Error('GPU program changed; prepare a new job');
+        if (resident) return {upload_ms: 0};
+        busy = true;const start = performance.now();
+        try {
+          device.queue.writeBuffer(source, 0, initial);uploads++;uploadBytes += packetSize;
+          await device.queue.onSubmittedWorkDone();
+          if (this.lost()) throw new Error(this.lost());
+          resident = true;initial = null;return {upload_ms: performance.now() - start};
+        } finally {busy = false;}
+      },
+      render: async (upload = initial) => {
+        if (busy || destroyed || this.lost()) throw new Error(this.lost() || 'GPU job is unavailable');
+        if (upload === null ? !resident : !(upload instanceof Uint8Array) || upload.length !== packetSize) throw new Error('GPU program changed; prepare a new job');
         busy = true;
         device.pushErrorScope('validation');
         let scoped = true;
@@ -103,7 +119,7 @@ export class GpuBackend {
         try {
           // Every measured fresh render uploads its program; residency is not
           // silently assumed. Reusing allocations matches the CPU Scratch.
-          device.queue.writeBuffer(source, 0, upload);
+          if (upload !== null) {device.queue.writeBuffer(source, 0, upload);uploads++;uploadBytes += upload.length;}
           const encoder = device.createCommandEncoder();
           const pass = encoder.beginComputePass(queries ? {timestampWrites: {
             querySet: queries, beginningOfPassWriteIndex: 0, endOfPassWriteIndex: 1,
@@ -114,22 +130,21 @@ export class GpuBackend {
           encoder.copyBufferToBuffer(output, 0, readback, 0, size);
           if (queries) {
             encoder.resolveQuerySet(queries, 0, 2, resolve, 0);
-            encoder.copyBufferToBuffer(resolve, 0, timing, 0, 16);
+            encoder.copyBufferToBuffer(resolve, 0, readback, queryOffset, 16);
           }
-          device.queue.submit([encoder.finish()]);
+          device.queue.submit([encoder.finish()]);dispatches++;
           // Completion includes upload, dispatch, RGBA readback and the copy
           // into JS-owned memory. Submission time alone is never a timing.
           await readback.mapAsync(GPUMapMode.READ);
-          const pixels = new Uint8Array(readback.getMappedRange()).slice();
+          const mapped = readback.getMappedRange();
+          const pixels = new Uint8Array(mapped, 0, size).slice();
+          let kernel_ms = null;
+          if (queries) {
+            const times = new BigUint64Array(mapped, queryOffset, 2);
+            kernel_ms = Number(times[1] - times[0]) / 1e6;
+          }
           readback.unmap();
           const wall_ms = performance.now() - started;
-          let kernel_ms = null;
-          if (timing) {
-            await timing.mapAsync(GPUMapMode.READ);
-            const times = new BigUint64Array(timing.getMappedRange());
-            kernel_ms = Number(times[1] - times[0]) / 1e6;
-            timing.unmap();
-          }
           const error = await device.popErrorScope();
           scoped = false;
           if (error) throw new Error(error.message);
@@ -137,14 +152,13 @@ export class GpuBackend {
           return {pixels, wall_ms, kernel_ms};
         } catch (error) {
           if (readback.mapState === 'mapped') readback.unmap();
-          if (timing?.mapState === 'mapped') timing.unmap();
           if (scoped) await device.popErrorScope().catch(() => {});
           throw error;
         } finally { busy = false; }
       },
       destroy() {
         destroyed = true;
-        for (const resource of [source, output, readback, queries, resolve, timing]) resource?.destroy();
+        for (const resource of [source, output, readback, queries, resolve]) resource?.destroy();
       },
     };
   }

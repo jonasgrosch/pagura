@@ -547,4 +547,4 @@ impl Write for Xml {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

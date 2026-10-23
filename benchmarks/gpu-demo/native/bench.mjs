@@ -1,5 +1,6 @@
+import {Host} from './transport.mjs';
 /** Native Metal + native Rust reference; Node standard library only. */
-import {spawn, execFileSync} from 'node:child_process';
+import {execFileSync} from 'node:child_process';
 import {readFile, writeFile, readdir} from 'node:fs/promises';
 import {resolve, dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -11,30 +12,11 @@ import {stats, hash} from '../measure.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const option = (k,d) => process.argv.includes(k) ? process.argv[process.argv.indexOf(k)+1] : d;
 const digest = b => createHash('sha256').update(b).digest('hex');
-class Host {
-  constructor(binary, args = [], hello = false) {
-    this.chunks = [];this.length = 0;this.pending = null;
-    this.ready = hello ? new Promise((resolve,reject) => {this.pending={resolve,reject};}) : Promise.resolve();
-    this.child=spawn(binary,args,{stdio:['pipe','pipe','inherit']});
-    this.child.stdout.on('data',b=>{this.chunks.push(b);this.length+=b.length;this.receive();});
-    this.child.on('error',e=>this.pending?.reject(e));
-    this.child.on('exit',c=>this.pending?.reject(new Error(`Native host exit ${c}`)));
-  }
-  receive(){
-    if(this.length<4)return;const header=Buffer.alloc(4);let offset=0;for(const chunk of this.chunks){const count=Math.min(4-offset,chunk.length);chunk.copy(header,offset,0,count);offset+=count;if(offset===4)break;}const n=header.readUInt32LE();
-    if(n>68*1024*1024){this.pending?.reject(new Error('Native frame budget'));this.close();return;}
-    if(this.length<n+4)return;const data=Buffer.concat(this.chunks);const pending=this.pending;this.pending=null;this.chunks=[];this.length=0;
-    try{if(!pending||data.length!==n+4)throw new Error('Unexpected native frame');const size=data.readUInt32LE(4);if(size>n-4)throw new Error('Native metadata budget');const meta=JSON.parse(data.subarray(8,8+size));if(!meta.ok)throw new Error(meta.error);pending.resolve({meta,data:data.subarray(8+size)});}catch(e){pending?.reject(e);}
-  }
-  request(bytes){return new Promise((resolve,reject)=>{if(this.pending){reject(new Error('Concurrent native requests'));return;}this.pending={resolve,reject};const h=Buffer.alloc(4);h.writeUInt32LE(bytes.length);this.child.stdin.write(h);this.child.stdin.write(bytes);});}
-  open(pdf){const b=Buffer.alloc(pdf.length+4);b.writeUInt32LE(1);b.set(pdf,4);return this.request(b);}
-  render(op,dpi){const b=Buffer.alloc(32);b.writeUInt32LE(op);b.writeUInt32LE(dpi,8);b.writeUInt32LE(32,12);return this.request(b);}
-  close(){this.child.stdin.end();this.child.kill('SIGTERM');}
-}
+
 const enginePath=resolve(option('--binary','target/gpu-demo/release/pagura-gpu-demo'));
 const metalPath=resolve(option('--metal','target/gpu-demo/metal-host'));
 const shaderPath=resolve(root,'benchmarks/gpu-demo/native/raster.metal');
-const files=['benchmarks/gpu-demo/native/bench.mjs','benchmarks/gpu-demo/native/Host.swift','benchmarks/gpu-demo/native/raster.metal', 'crates/pagura-paint/src/prepare/gpu_raster.rs','crates/pagura-raster/src/band/gpu.rs'];
+const files=['benchmarks/gpu-demo/native/transport.mjs','benchmarks/gpu-demo/native/bench.mjs','benchmarks/gpu-demo/native/Host.swift','benchmarks/gpu-demo/native/raster.metal', 'crates/pagura-paint/src/prepare/gpu_raster.rs','crates/pagura-raster/src/band/gpu.rs'];
 const hashes=Object.fromEntries(await Promise.all(files.map(async p=>[p,digest(await readFile(resolve(root,p)))])));
 const binaryHash=digest(await readFile(enginePath)),metalHash=digest(await readFile(metalPath));
 const engine=new Host(enginePath),metal=new Host(metalPath,[shaderPath],true);

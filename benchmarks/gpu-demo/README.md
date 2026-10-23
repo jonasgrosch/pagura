@@ -266,3 +266,50 @@ workload selector. PNG comparisons, amplified differences and SVG files are
 saved beside a benchmark report under its `-visuals` directory. No real PDF
 or generated real-document output is committed. `--real-only` limits a run to
 explicit inputs; `--skip-zoom` skips the presentation/zoom studies.
+
+## Shared geometry and retained resources
+
+The default demo option retains a version 3 packet: certified glyph placements
+reference one translation-free source; large path rows reference a single edge
+pool. Fractional placement offsets remain separate from integer device origins.
+No pointer/address enters the wire format. The version 2 expanded packet remains
+available as a retained benchmark control.
+
+The demo host adds a three-entry prepared-scene LRU for CPU and GPU setup.
+Operation 7 renders the existing immutable `PreparedScene` into a reused output
+Vec; operation 8 exports shared geometry from it, 10 exports expanded geometry,
+and 9 clears prepared entries. Open/page changes invalidate entries. Existing
+operations 2 through 6 keep their fresh-render behavior. No product renderer
+policy or third-party dependency changes.
+
+GPU setup validates, allocates and uploads once; every warm redraw dispatches
+coverage again and completes a fresh RGBA readback/copy. No pixel bitmap cache
+is used. A three-entry GPU LRU explicitly destroys evicted resources. WebGPU
+combines pixel and timestamp readback; Metal uses immutable handle-owned buffers
+and reports actual command completion. Cold setup, upload/dispatch counts, byte
+reservations and evictions are recorded independently from warm timings.
+
+Prepared geometry is tied to its DPI and region: clip corrections and stroke
+outlines use that device grid. A new resolution rebuilds those values. Zoom
+studies distinguish new targets from revisiting the same three retained targets,
+giving CPU the same prepared-scene reuse. The demo's preview panels share CPU
+preparation; the dedicated zoom study clears caches separately for each cold
+mode to measure its complete cost.
+
+```sh
+node benchmarks/gpu-demo/run.mjs retained-test --output target/gpu-demo/retained-fixtures.json
+node benchmarks/gpu-demo/run.mjs retained-bench --samples 100 --warmups 5 \
+  --pdf /absolute/path.pdf --output target/gpu-demo/retained-browser.json
+swiftc -warnings-as-errors -O benchmarks/gpu-demo/native/Host.swift -o target/gpu-demo/metal-host
+node benchmarks/gpu-demo/native/retained.mjs --samples 100 --warmups 5 \
+  --pdf /absolute/path.pdf --output target/gpu-demo/retained-native.json
+node benchmarks/gpu-demo/native/retained.mjs --fixtures \
+  --browser-report target/gpu-demo/retained-fixtures.json
+```
+
+CPU cache eviction uses at most 256 MiB of the existing preparation reservation
+metric, with the bounded Store and one output Vec reported separately; this is
+not total physical memory. GPU cache limits cover nominal buffer sizes, including
+readback, with at most three resolutions. The retained expanded control and
+shared path each hold one job during static comparisons and release both before
+zoom. Native independently enforces three handles and a 256 MiB buffer cap.

@@ -7,6 +7,8 @@ use crate::{
 use pagura_core::{Error, Feature, Limits, Meter, Result};
 use pagura_raster::{DeviceRect, FillRule};
 
+mod shared;
+
 const HEADER: usize = 24;
 const MARK: usize = 16;
 const EDGE: usize = 8;
@@ -23,6 +25,19 @@ impl PreparedScene {
     /// Unsupported PDF semantics retain the existing CPU admission policy;
     /// packet memory and conservative shader work have independent limits.
     pub fn gpu_raster_program(&self, limits: &Limits, local: bool) -> Result<Vec<u32>> {
+        self.gpu_geometry_program(limits, local, false)
+    }
+
+    /// Exports shared certified glyph sources and edge references, for a
+    /// retained GPU executor. Approximate local f32 coverage, never Exact.
+    ///
+    /// # Errors
+    /// As [`Self::gpu_raster_program`].
+    pub fn gpu_shared_program(&self, limits: &Limits) -> Result<Vec<u32>> {
+        self.gpu_geometry_program(limits, true, true)
+    }
+
+    fn gpu_geometry_program(&self, limits: &Limits, local: bool, shared: bool) -> Result<Vec<u32>> {
         if let Some(reason) = self.gpu_fallback_reason() {
             return Err(Error::unsupported(Feature::new("gpu.raster"), reason));
         }
@@ -38,6 +53,9 @@ impl PreparedScene {
         let mut b = Builder {
             region,
             local,
+            shared,
+            edge_refs: Vec::new(),
+            sources: Vec::new(),
             columns,
             marks: Vec::new(),
             edges: Vec::new(),
@@ -55,10 +73,10 @@ impl PreparedScene {
         b.bins.resize_with(count, Vec::new);
         for &id in &self.plan.groups[0].items {
             match &self.plan.items[id as usize].kind {
-                ItemKind::Mark(mark) => b.mark(self, mark.cover.shape, mark)?,
+                ItemKind::Mark(mark) => b.draw(self, mark.cover.shape, mark)?,
                 ItemKind::Run(run) => {
                     for glyph in &run.glyphs {
-                        b.mark(self, Some(glyph.shape), &run.mark)?;
+                        b.draw(self, Some(glyph.shape), &run.mark)?;
                     }
                 }
                 ItemKind::Group(_) => {
@@ -73,6 +91,9 @@ impl PreparedScene {
 struct Builder {
     region: DeviceRect,
     local: bool,
+    shared: bool,
+    edge_refs: Vec<u32>,
+    sources: Vec<(*const pagura_raster::GlyphEdges, [u32; 2])>,
     columns: u32,
     marks: Vec<u32>,
     edges: Vec<u32>,
@@ -90,6 +111,14 @@ fn index(n: usize) -> Result<u32> {
 }
 
 impl Builder {
+    fn draw(&mut self, prepared: &PreparedScene, key: Option<u32>, mark: &Mark) -> Result<()> {
+        if self.shared {
+            self.shared_mark(prepared, key, mark)
+        } else {
+            self.mark(prepared, key, mark)
+        }
+    }
+
     fn mark(&mut self, prepared: &PreparedScene, key: Option<u32>, mark: &Mark) -> Result<()> {
         let shape = key
             .and_then(|key| prepared.shapes.shapes.get(key as usize))
@@ -256,7 +285,8 @@ impl Builder {
         let marks_at = HEADER;
         let edges_at = marks_at + self.marks.len();
         let extras_at = edges_at + self.edges.len();
-        let bins_at = extras_at + self.extras.len();
+        let edge_refs_at = extras_at + self.extras.len();
+        let bins_at = edge_refs_at + self.edge_refs.len();
         let refs_at = bins_at + self.bins.len() * 2;
         let references: usize = self.bins.iter().map(Vec::len).sum();
         let total = refs_at
@@ -266,7 +296,7 @@ impl Builder {
         self.bytes.reserve(&mut words, total)?;
         words.extend([
             0x3255_5047,
-            2,
+            if self.shared { 3 } else { 2 },
             self.region.width(),
             self.region.height(),
             self.columns,
@@ -278,7 +308,7 @@ impl Builder {
             index(extras_at)?,
             index(bins_at)?,
             index(refs_at)?,
-            index(self.marks.len() / MARK)?,
+            index(self.marks.len() / if self.shared { 20 } else { MARK })?,
             index(self.edges.len() / EDGE)?,
             index(self.extras.len() / 4)?,
             index(references)?,
@@ -287,12 +317,13 @@ impl Builder {
             u32::from(self.local),
             self.correction_cells,
             self.clip_runs,
-            0,
-            0,
+            if self.shared { index(edge_refs_at)? } else { 0 },
+            index(self.edge_refs.len())?,
         ]);
         words.extend(self.marks);
         words.extend(self.edges);
         words.extend(self.extras);
+        words.extend(self.edge_refs);
         let mut start = 0;
         for bin in &self.bins {
             let end = start + index(bin.len())?;

@@ -1,3 +1,4 @@
+import {RetainedSession} from './retained.mjs';
 /** Measured render stages and full frame latency, with untimed byte checks. */
 import {SvgPage, pixelDifference} from './svg.mjs';
 export function median(values) {
@@ -29,8 +30,10 @@ function sameBytes(actual, expected) {
 
 export async function compare(engine, gpu, options, {samples = 9, warmups = 2, progress = () => {}, svg = true, operation = 3} = {}) {
   if (!Number.isInteger(samples) || samples < 1 || samples > 1000 || !Number.isInteger(warmups) || warmups < 0 || warmups > 100) throw new Error('Invalid sample count');
-  const coldCpu = await engine.render(2, options);
-  const initial = await engine.render(operation, options);
+  const retained = operation === 8 ? new RetainedSession(engine, gpu) : null;
+  const coldCpu = await engine.render(retained ? 7 : 2, options);
+  const resident = retained ? await retained.prepare(options) : null;
+  const initial = retained ? {meta: {...resident.packet, fallback: resident.fallback}} : await engine.render(operation, options);
   const svgInitial = svg ? await engine.render(4, options) : null;
   const result = {options, gpu_operation: operation, width: coldCpu.meta.width, height: coldCpu.meta.height, first_cpu: coldCpu.meta,
     pixel_hash: hash(coldCpu.data), samples: [], fallback: initial.meta.fallback ?? null, warmups,
@@ -58,7 +61,7 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
   if (!result.fallback) {
     if (!gpu) result.fallback = 'No hardware WebGPU adapter is available';
     else {
-      try { job = gpu.prepare(initial.data); }
+      try { job = retained ? resident.job : gpu.prepare(initial.data); }
       catch (error) { result.fallback = String(error); }
     }
   }
@@ -67,12 +70,12 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
   const firstSvgAccuracy = svgReference ? pixelDifference(svgReference, reference) : null;
   try {
     const cpu = async () => {
-      const sample = await engine.render(2, options);
+      const sample = await engine.render(retained ? 7 : 2, options);
       assertPixels(sample.data, reference, 'CPU repeat');
       return sample;
     };
     const hybrid = async () => {
-      const packet = await engine.render(operation, options);
+      const packet = retained ? {meta:{engine_ms:0,execute_ms:0},host_ms:0,data:null} : await engine.render(operation, options);
       if (packet.meta.fallback) throw new Error('GPU admission changed between identical requests');
       const output = await job.render(packet.data);
       if (operation === 3) assertPixels(output.pixels, reference, 'GPU rendering');
@@ -142,8 +145,10 @@ export async function compare(engine, gpu, options, {samples = 9, warmups = 2, p
       result.gpu_allocation_validation_ms = job.setup_ms;
     }
     result.gpu_accuracy = lastGpu ? pixelDifference(lastGpu.pixels, reference) : null;
+    result.retained = !!retained;
+    result.retained_setup = retained && !result.fallback ? {packet:resident.packet,setup_ms:resident.setup_ms,upload_ms:resident.upload_ms} : null;
     result.cpu_gpu_byte_identical = !lastGpu || result.gpu_accuracy.changed_pixels === 0;
     if (job?.geometry) result.gpu_geometry = {marks: job.spans, edges: job.geometry.edges, correction_cells: job.geometry.correction_cells, clip_runs: job.geometry.clip_runs};
-    return {result, cpu: reference, gpu: lastGpu?.pixels ?? reference, svg: lastSvg?.pixels ?? null, svgPage};
-  } finally { job?.destroy(); }
+    return {result, cpu: reference, gpu: lastGpu?.pixels ?? reference, svg: lastSvg?.pixels ?? null, svgPage, retained};
+  } catch(error) {await retained?.clear();throw error;} finally { if (!retained) job?.destroy(); }
 }
