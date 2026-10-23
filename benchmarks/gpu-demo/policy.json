@@ -1,6 +1,6 @@
 {
   "schema": 5,
-  "scope": "Exploratory CPU, hybrid WebGPU and browser SVG presentation on a shared desktop; not the release performance gate",
+  "scope": "Exploratory CPU, hybrid WebGPU, native Metal and browser SVG presentation on a shared desktop; not the release performance gate",
   "minimum_samples": 100,
   "minimum_warmups": 5,
   "dpi": [
@@ -14,7 +14,7 @@
     "median",
     "p95"
   ],
-  "correctness": "Every CPU/hybrid sample is byte-identical to the CPU reference. SVG export bytes must repeat exactly; browser SVG pixel variation and accuracy ranges are reported without a conformance or deterministic-pixel claim.",
+  "correctness": "Exact CPU prepared reuse and integer CPU-span GPU composition must be byte-identical to fresh CPU output. F32 GPU coverage reports differential errors and repeat variation without an Exact conformance claim. SVG export bytes must repeat exactly; browser SVG pixel variation and accuracy ranges are reported without a deterministic-pixel claim.",
   "render_time": "CPU and hybrid build fresh pixels, including hybrid program/upload/completion/readback. SVG reuses one page export, its embedded image resources and decoded browser image, then performs fresh Canvas rasterization/readback.",
   "frame_time": "CPU/hybrid render including worker/WASI transport; retained SVG performs no worker export request after setup.",
   "excluded_once": [
