@@ -175,6 +175,23 @@ and a small gain does not justify a large or fragile mechanism. Profile before
 optimizing, and keep algorithmic fallbacks explicit and bounded. Never trade
 fidelity, security, portability or the no-unsafe rule for speed.
 
+Before choosing a performance experiment, establish a comparison on the same
+inputs and host, with pinned engine versions, settings, output checks and cache
+lifetimes. Measure cold and warm requests separately. Capture phase timings and
+profiles for both implementations, distinguishing inclusive from exclusive
+costs. Where their work differs, count that work: geometry produced, repeated
+preparation, intersection candidates, fallbacks and allocations. A hotspot in
+one implementation is not yet an explanation of the gap.
+
+Rank experiments by the end-to-end cost they can remove and state the evidence
+that would reject each hypothesis. Prefer removing dominant or repeated work
+over making a small operation cheaper. Reuse the comparison harness and collect
+related experiments in bounded sessions. Keep instrumented traces and counts
+separate from timings of the default build. Run focused correctness checks
+before measuring a candidate; run the complete required correctness and
+platform gates before retaining it. Preserve failed trials and report control
+regressions alongside gains.
+
 An optimization keeps output identical, or stays within the rendering
 accuracy contract of ADR 0004: every pixel within one level of its exact
 result. A change that alters output qualifies only under these conditions:
