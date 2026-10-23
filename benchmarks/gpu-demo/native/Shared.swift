@@ -1,4 +1,4 @@
-// Native host capabilities: private shared files and a metadata-only engine channel.
+// Native host capabilities: private shared files and metadata-only responses.
 import Foundation
 import Metal
 import Darwin

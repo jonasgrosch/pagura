@@ -15,8 +15,9 @@ ADR 0004.
 ## Native shared-buffer application
 
 The Swift application owns Metal and a safe-Rust engine child directly. Two
-private 64 MiB files carry frames and packets; the pipe carries bounded metadata
-only. CPU prepared rendering streams the current base's `render_bands` into
+private 64 MiB files carry frames and packets. After uploading the PDF once
+through the request pipe, draws use small control requests and bounded metadata
+responses. CPU prepared rendering streams the current base's `render_bands` into
 the frame file. A page-aligned shared mapping is wrapped by a Metal
 `bytesNoCopy` buffer, with its mapping lifetime owned by that buffer. Each draw
 completes before another engine request can overwrite shared bytes. Rust uses
@@ -39,6 +40,8 @@ node benchmarks/gpu-demo/run.mjs integrated \
   --samples 100 --warmups 5 --cold-samples 20 \
   --pdf /absolute/input.pdf --output target/gpu-demo/integrated-browser.json
 ```
+
+The measured final variant adds `--world-reciprocal` to both commands.
 
 Repeat `--pdf` in the same order on both runners. Opening starts a new engine
 process or browser worker, opens already-read bytes and waits for first display
