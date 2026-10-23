@@ -22,7 +22,7 @@ pub(crate) const STRIP: u32 = 16;
 /// The widest window that still gets whole strips: wider ones take fewer
 /// rows at a time, down to one, so that storage stays near a strip of this
 /// width, or one row of the region.
-const WIDE: usize = 4096;
+pub(crate) const WIDE: usize = 4096;
 
 /// The most rows of one window: a mark without strip lists (a glyph) takes
 /// up to this many rows of a band at once.

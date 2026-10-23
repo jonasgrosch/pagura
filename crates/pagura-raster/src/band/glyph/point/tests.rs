@@ -295,7 +295,7 @@ fn only_explicit_closed_move_points_are_omitted() {
 }
 
 #[test]
-fn old_geometry_and_shape_layouts_are_unchanged() {
+fn source_metadata_is_bounded_and_execution_layouts_are_unchanged() {
     use crate::band::edges::{Polygon, StripList};
     use crate::band::shape::{EdgeBody, Resolved};
     #[expect(dead_code, reason = "only the prior layout is compared")]
@@ -334,8 +334,10 @@ fn old_geometry_and_shape_layouts_are_unchanged() {
         masked: bool,
         resolved: Resolved,
     }
-    assert_eq!(size_of::<Kind>(), size_of::<OldKind>());
-    assert_eq!(size_of::<GlyphEdges>(), size_of::<OldEdges>());
+    // Source scalar facts are charged in GlyphEdges::new; execution keeps
+    // the same inline body and shape, with no new per-placement owner.
+    assert!(size_of::<Kind>() <= size_of::<OldKind>() + size_of::<super::super::Summary>());
+    assert!(size_of::<GlyphEdges>() <= size_of::<OldEdges>() + size_of::<super::super::Summary>());
     assert_eq!(size_of::<Body>(), size_of::<OldBody>());
     assert_eq!(size_of::<Shape>(), size_of::<OldShape>());
     eprintln!(

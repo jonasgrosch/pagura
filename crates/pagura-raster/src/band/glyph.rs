@@ -28,6 +28,7 @@ mod tests;
 mod point;
 mod polygon;
 mod rounding;
+pub(super) use polygon::Summary;
 pub(crate) use polygon::{PolygonLines, point_sides};
 
 /// A glyph outline prepared once for one linear map (outline space to device
@@ -64,6 +65,9 @@ pub(super) enum Kind {
         /// A certified nonpoint projection. The canonical polygon remains
         /// the owner used by clipped and ordinary polygon placements.
         relative: Option<Box<Relative>>,
+        /// Bounds and work for uncut short placements, computed once from
+        /// the canonical vertices without retaining another edge array.
+        summary: Option<Summary>,
     },
 }
 
@@ -222,6 +226,11 @@ impl GlyphEdges {
         }
         let (polygon, points) = polygon(outline, transform, limits, bytes)?;
         let certified = points.is_empty() && certified(&polygon, 0.0, bytes)?;
+        let summary = if certified {
+            Summary::new(&polygon)
+        } else {
+            None
+        };
         let source_available = regular
             && outline
                 .segments()
@@ -245,6 +254,7 @@ impl GlyphEdges {
             certified,
             source,
             relative,
+            summary,
         })
     }
 
@@ -483,8 +493,29 @@ fn placed(edges: &Arc<GlyphEdges>, origin: Point, options: &Prep<'_>) -> Result<
             points,
             certified,
             relative,
+            summary,
             ..
         } => {
+            if let Some(summary) = summary {
+                let hull = summary.placed_hull(origin)?;
+                if Summary::short(hull) {
+                    let Some(mut frame) = Frame::new(options) else {
+                        return Ok(None);
+                    };
+                    if frame.paths.is_none() {
+                        frame.fit(hull);
+                        if frame.rect.is_none() {
+                            let shape = Shape::polygon_glyph(
+                                edges, *summary, origin, hull, &frame, options,
+                            )?;
+                            if let Some(shape) = &shape {
+                                bytes.charge(shape.retained_bytes())?;
+                            }
+                            return Ok(shape);
+                        }
+                    }
+                }
+            }
             if let (Some(relative), [point], Some(mut frame)) =
                 (relative.as_deref(), points.as_slice(), Frame::new(options))
             {

@@ -630,6 +630,62 @@ impl Shape {
             .saturating_add(point_work)
             .saturating_add(rows.saturating_mul(words + columns + 4))
             .saturating_add(rows.saturating_mul(items));
+        Self::shared_glyph(
+            edges,
+            origin,
+            (bounds, scan),
+            (GlyphGeometry::Relative, items),
+            work,
+            frame,
+            options,
+        )
+    }
+
+    /// A short certified polygon with source-fixed bounds and work. Its
+    /// raw sides use the same accumulation as any shared polygon body.
+    pub(crate) fn polygon_glyph(
+        edges: &std::sync::Arc<super::GlyphEdges>,
+        summary: super::glyph::Summary,
+        origin: crate::Point,
+        [lo, hi]: [crate::Point; 2],
+        frame: &Frame<'_>,
+        options: &Prep<'_>,
+    ) -> Result<Option<Self>> {
+        let Some(bounds) = frame.bounds([lo, hi].into_iter()) else {
+            return Ok(None);
+        };
+        let super::glyph::Kind::Polygon { polygon, .. } = &edges.kind else {
+            unreachable!("canonical polygon source");
+        };
+        let width = super::row::width(options.area.region.x1)?;
+        let scan = columns(lo.x, hi.x, width);
+        let work = summary
+            .work(
+                polygon.vertices(),
+                (bounds.height() as usize, scan.1.saturating_sub(scan.0)),
+            )
+            .ok_or(Error::limit(RASTER_WORK))?;
+        Self::shared_glyph(
+            edges,
+            origin,
+            (bounds, scan),
+            (GlyphGeometry::Polygon, summary.boundaries()),
+            work,
+            frame,
+            options,
+        )
+    }
+
+    /// The common owner and limit check for allocation-free placements.
+    fn shared_glyph(
+        edges: &std::sync::Arc<super::GlyphEdges>,
+        origin: crate::Point,
+        (bounds, scan): (DeviceRect, (usize, usize)),
+        (geometry, boundaries): (GlyphGeometry, usize),
+        work: usize,
+        frame: &Frame<'_>,
+        options: &Prep<'_>,
+    ) -> Result<Option<Self>> {
         if work > options.limits.raster_work {
             return Err(Error::limit(RASTER_WORK));
         }
@@ -644,8 +700,8 @@ impl Shape {
                 origin,
                 scan,
                 strips: None,
-                geometry: GlyphGeometry::Relative,
-                boundaries: items,
+                geometry,
+                boundaries,
             }),
             clip: frame.clip.cloned(),
             masked: false,

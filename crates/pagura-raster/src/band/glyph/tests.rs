@@ -1,4 +1,5 @@
 mod sharing;
+mod summary;
 
 use super::*;
 use crate::PathBuilder;

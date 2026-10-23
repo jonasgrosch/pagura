@@ -2,6 +2,100 @@
 
 use super::super::edges::{Line, Polygon};
 use crate::Point;
+use crate::band::cells::{WIDE, WINDOW};
+use crate::flatten::{MAX_COORDINATE, bounded};
+use pagura_core::{Result, convert::u32_to_usize};
+use std::num::NonZeroU32;
+
+/// Source facts for uncut, short polygon placements. The positive cell
+/// bound lets an optional summary use its existing zero niche.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Summary {
+    hull: [Point; 2],
+    cells: NonZeroU32,
+    boundaries: u32,
+}
+
+impl Summary {
+    /// A source-fixed bound; large or empty sources keep ordinary setup.
+    pub(crate) fn new(polygon: &Polygon) -> Option<Self> {
+        let hull = polygon.bounds()?;
+        // An accepted rounded sum lies in a rounding cell of a coordinate
+        // inside MAX_COORDINATE, even if its exact sum is slightly outside.
+        // EPS*MAX bounds that cell's radius and subnormal rounding too.
+        let rounding = (f64::EPSILON * MAX_COORDINATE).next_up();
+        let (mut cells, mut boundaries) = (0_u32, 0_u32);
+        for line in polygon.sides().filter(|line| !line.is_horizontal()) {
+            let rows = extent(line.a.y, line.b.y, rounding)?.checked_add(1)?;
+            let columns = extent(line.a.x, line.b.x, rounding)?.checked_add(4)?;
+            cells = cells.checked_add(rows.checked_mul(columns)?)?;
+            boundaries = boundaries.checked_add(1)?;
+        }
+        Some(Self {
+            hull,
+            cells: NonZeroU32::new(cells)?,
+            boundaries,
+        })
+    }
+
+    /// Monotone rounded addition makes these four extrema sufficient to
+    /// validate every canonical vertex before any clip or empty result.
+    pub(crate) fn placed_hull(self, origin: Point) -> Result<[Point; 2]> {
+        let [lo, hi] = self.hull.map(|point| point + origin);
+        bounded(lo)?;
+        bounded(hi)?;
+        Ok([lo, hi])
+    }
+
+    /// Keep real strip-local traversal for tall or wide complete glyphs,
+    /// even when the requested region contains only a small part of one.
+    #[expect(
+        clippy::cast_precision_loss,
+        reason = "the shared window width is 4096"
+    )]
+    pub(crate) fn short([lo, hi]: [Point; 2]) -> bool {
+        let height = hi.y.ceil() - lo.y.floor();
+        let width = hi.x.ceil() + 1.0 - lo.x.floor();
+        height.is_finite()
+            && width.is_finite()
+            && (0.0..=f64::from(WINDOW)).contains(&height)
+            && (0.0..=WIDE as f64).contains(&width)
+    }
+
+    pub(crate) fn boundaries(self) -> usize {
+        u32_to_usize(self.boundaries)
+    }
+
+    /// Raw visits, primitive work, touched emission and the ordinary row
+    /// overhead, independent of bands and width-dependent window splits.
+    pub(crate) fn work(self, raw: usize, (rows, columns): (usize, usize)) -> Option<usize> {
+        let cells = u32_to_usize(self.cells.get()).min(
+            self.boundaries()
+                .checked_mul(rows)?
+                .checked_mul(columns.checked_add(3)?)?,
+        );
+        let touched = cells.min(rows.checked_mul(columns)?);
+        let per_row = (columns / 64)
+            .checked_add(2)?
+            .checked_add(columns)?
+            .checked_add(4)?;
+        raw.checked_mul(rows)?
+            .checked_add(cells)?
+            .checked_add(touched.checked_mul(3)?)?
+            .checked_add(rows.checked_mul(per_row)?)
+    }
+}
+
+/// An outward integer bound on one translated endpoint displacement.
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "finite nonnegative ceiling checked against u32 before conversion"
+)]
+fn extent(a: f64, b: f64, rounding: f64) -> Option<u32> {
+    let span = ((a - b).abs().next_up() + 2.0 * rounding).next_up().ceil();
+    (span.is_finite() && (0.0..=f64::from(u32::MAX)).contains(&span)).then(|| span as u32)
+}
 
 /// The canonical point cell's vertical sides, already placed and in
 /// contour order. No origin or default zero is added to these endpoints.
