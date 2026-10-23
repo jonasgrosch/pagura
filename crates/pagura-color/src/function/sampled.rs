@@ -54,6 +54,20 @@ struct Weights {
 }
 
 impl Sampled {
+    pub(super) fn retained_bytes(&self) -> usize {
+        [
+            size_of::<Self>(),
+            size_of_val(self.domain.as_ref()),
+            size_of_val(self.size.as_ref()),
+            self.data.len(),
+            2 * size_of::<usize>(),
+            size_of_val(self.encode.as_ref()),
+            size_of_val(self.decode.as_ref()),
+        ]
+        .into_iter()
+        .fold(0, usize::saturating_add)
+    }
+
     pub(super) fn new(
         parameters: SampledFunction,
         outputs: usize,

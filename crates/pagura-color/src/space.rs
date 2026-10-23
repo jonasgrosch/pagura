@@ -7,6 +7,8 @@ use crate::icc::Profile;
 use pagura_core::{Name, ObjectId};
 use std::sync::Arc;
 
+mod retained;
+
 /// The most colour components any space has: DeviceN's 32 colorants
 /// (Annex C, Table C.1).
 pub const MAX_COMPONENTS: usize = 32;

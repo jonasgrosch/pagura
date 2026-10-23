@@ -25,6 +25,7 @@
 //!   where an integer is required.
 
 mod calculator;
+mod retained;
 mod sampled;
 
 use crate::space::MAX_COMPONENTS;
@@ -38,6 +39,8 @@ pub struct Function {
     range: Option<Box<[[f64; 2]]>>,
     outputs: usize,
     cost: usize,
+    /// Bottom-up ownership, so shared stitching children are never unfolded.
+    retained: usize,
     kind: Kind,
 }
 
@@ -155,12 +158,14 @@ impl Function {
             return Err(Error::limit("sampled interpolation corner budget exceeded"));
         }
         Ok(Self {
+            retained: 0,
             domain,
             range: Some(range),
             outputs,
             cost,
             kind: Kind::Sampled(Box::new(sampled)),
-        })
+        }
+        .with_retained())
     }
 
     /// A Type 2 exponential interpolation function.
@@ -195,6 +200,7 @@ impl Function {
         }
         let delta = c0.iter().zip(&c1).map(|(&low, &high)| high - low).collect();
         Ok(Self {
+            retained: 0,
             domain,
             range,
             outputs,
@@ -204,7 +210,8 @@ impl Function {
                 delta,
                 exponent,
             },
-        })
+        }
+        .with_retained())
     }
 
     /// A Type 3 stitching function.
@@ -257,6 +264,7 @@ impl Function {
             .unwrap_or(0)
             .saturating_add(1);
         Ok(Self {
+            retained: 0,
             domain,
             range,
             outputs,
@@ -266,7 +274,8 @@ impl Function {
                 bounds: bounds.into(),
                 encode: encode.into(),
             }),
-        })
+        }
+        .with_retained())
     }
 
     /// A Type 4 calculator function, parsed and validated statically: every
@@ -301,12 +310,14 @@ impl Function {
         let outputs = dimensions(domain.len(), range.len())?;
         let program = calculator::Program::new(&program, domain.len(), outputs, limits)?;
         Ok(Self {
+            retained: 0,
             domain,
             range: Some(range),
             outputs,
             cost: program.cost().saturating_add(1),
             kind: Kind::Calculator(program),
-        })
+        }
+        .with_retained())
     }
 
     /// The number of inputs `m`.
