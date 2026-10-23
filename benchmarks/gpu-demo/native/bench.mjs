@@ -21,9 +21,9 @@ class Host {
     this.child.on('exit',c=>this.pending?.reject(new Error(`Native host exit ${c}`)));
   }
   receive(){
-    if(this.length<4)return;const data=Buffer.concat(this.chunks),n=data.readUInt32LE();
+    if(this.length<4)return;const header=Buffer.alloc(4);let offset=0;for(const chunk of this.chunks){const count=Math.min(4-offset,chunk.length);chunk.copy(header,offset,0,count);offset+=count;if(offset===4)break;}const n=header.readUInt32LE();
     if(n>68*1024*1024){this.pending?.reject(new Error('Native frame budget'));this.close();return;}
-    if(data.length<n+4)return;const pending=this.pending;this.pending=null;this.chunks=[];this.length=0;
+    if(this.length<n+4)return;const data=Buffer.concat(this.chunks);const pending=this.pending;this.pending=null;this.chunks=[];this.length=0;
     try{if(!pending||data.length!==n+4)throw new Error('Unexpected native frame');const size=data.readUInt32LE(4);if(size>n-4)throw new Error('Native metadata budget');const meta=JSON.parse(data.subarray(8,8+size));if(!meta.ok)throw new Error(meta.error);pending.resolve({meta,data:data.subarray(8+size)});}catch(e){pending?.reject(e);}
   }
   request(bytes){return new Promise((resolve,reject)=>{if(this.pending){reject(new Error('Concurrent native requests'));return;}this.pending={resolve,reject};const h=Buffer.alloc(4);h.writeUInt32LE(bytes.length);this.child.stdin.write(h);this.child.stdin.write(bytes);});}
@@ -52,7 +52,7 @@ try {
       const c=paths.get(entry.id);await engine.open(await readFile(resolve(root,c.path)));const packet=await engine.render(5,c.dpi??72);
       if(packet.meta.fallback){failures.push({id:entry.id,error:'Native admission differs'});continue;}
       validateRaster(packet.data);const cpu=await engine.render(2,c.dpi??72),output=await metal.request(packet.data);
-      if(hash(packet.data)!==entry.packet_hash||hash(cpu.data)!==entry.cpu_hash)failures.push({id:entry.id,error:'Native/WASM packet or CPU parity'});
+      if(digest(packet.data)!==entry.packet_sha256||digest(cpu.data)!==entry.cpu_sha256)failures.push({id:entry.id,error:'Native/WASM packet or CPU parity'});
       cases.push({id:entry.id,accuracy:pixelDifference(output.data,cpu.data),webgpu_delta:entry.accuracy,packet_hash:hash(packet.data),pixel_hash:hash(output.data)});
     }
   }
@@ -60,7 +60,7 @@ try {
     await engine.open(input.bytes);
     for(const dpi of dpis){
       const reference=await engine.render(2,dpi),jobs={},rows=[],last={cpu:reference.data},first={cpu:reference.meta};
-      for(const [mode,op]of[['local',5],['absolute',6]]){const p=await engine.render(op,dpi);first[mode]=p.meta;if(!p.meta.fallback){validateRaster(p.data);jobs[mode]=true;}}
+      for(const [mode,op]of[['local',5],['absolute',6]]){const p=await engine.render(op,dpi);first[mode]={...p.meta,packet_sha256:p.meta.fallback?null:digest(p.data)};if(!p.meta.fallback){validateRaster(p.data);jobs[mode]=true;}}
       const modes=['cpu',...Object.keys(jobs)];
       for(let i=-warmups;i<count;i++){
         const order=modes.slice((i+warmups)%modes.length).concat(modes.slice(0,(i+warmups)%modes.length));if(Math.floor((i+warmups)/modes.length)%2)order.reverse();const row={};
@@ -73,7 +73,7 @@ try {
       for(const mode of ['cpu','local','absolute']){
         if(mode!=='cpu'&&!jobs[mode]){entry.modes[mode]={fallback:first[mode].fallback};continue;}
         entry.modes[mode]=Object.fromEntries(['prepare_ms','export_ms','engine_ms','complete_ms','kernel_ms','render_ms','frame_ms'].filter(k=>rows[0][mode][k]!==null).map(k=>[k,stats(rows.map(r=>r[mode][k]))]));
-        entry.modes[mode].accuracy=pixelDifference(last[mode],reference.data);entry.modes[mode].pixel_hash=hash(last[mode]);
+        entry.modes[mode].accuracy=pixelDifference(last[mode],reference.data);entry.modes[mode].pixel_hash=hash(last[mode]);entry.modes[mode].pixel_sha256=digest(last[mode]);
       }cases.push(entry);console.log(input.label,dpi,Object.fromEntries(Object.entries(entry.modes).map(([k,v])=>[k,v.fallback??v.render_ms.median])));
     }
   }

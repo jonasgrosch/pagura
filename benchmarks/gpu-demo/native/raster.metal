@@ -66,7 +66,7 @@ uint lookup(device const uint* data, uint start, uint end, uint x, uint y) {
 uint coverage(device const uint* data, uint mark, uint x, uint y) {
   auto fixed = lookup(data, data[mark + 12u], data[mark + 13u], x, y);
   if (fixed != 0xffffffffu) { return fixed; }
-  auto pixel = float2(float(x) - float(data[mark + 8u]), float(y) - float(data[mark + 9u]));
+  auto pixel = float2(float(x - data[mark + 8u]), float(y - data[mark + 9u]));
   auto sum = 0.0f; auto correction = 0.0f;
   for (auto i = data[mark + 4u]; i < data[mark + 5u]; i++) {
     auto at = data[9] + i * 8u;

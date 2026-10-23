@@ -4,6 +4,7 @@ import {stats, assertPixels, hash} from './measure.mjs';
 import {pixelDifference, differencePixels} from './svg.mjs';
 import {validateRaster} from './raster.mjs';
 
+const sha256 = async bytes => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), b => b.toString(16).padStart(2, '0')).join('');
 const modes = {cpu: 2, spans: 3, local: 5, absolute: 6};
 export async function compareCoverage(engine, gpu, options, {samples = 9, warmups = 2} = {}) {
   const reference = await engine.render(2, options);
@@ -12,7 +13,7 @@ export async function compareCoverage(engine, gpu, options, {samples = 9, warmup
   try {
     for (const [mode, op] of Object.entries(modes).slice(1)) {
       initial[mode] = await engine.render(op, options);
-      first[mode] = initial[mode].meta;
+      first[mode] = {...initial[mode].meta, packet_sha256: initial[mode].meta.fallback ? null : await sha256(initial[mode].data)};
       if (!initial[mode].meta.fallback) {
         jobs[mode] = gpu.prepare(initial[mode].data);
         paths.push(mode);
@@ -45,7 +46,7 @@ export async function compareCoverage(engine, gpu, options, {samples = 9, warmup
       result.modes[mode].accuracy = pixelDifference(last[mode], reference.data);
       if (job) result.modes[mode].packet = {bytes: initial[mode].data.length, marks: job.spans, edges: job.geometry?.edges,
         correction_cells: job.geometry?.correction_cells, clip_runs: job.geometry?.clip_runs, references: job.references, setup_ms: job.setup_ms};
-      result.modes[mode].pixel_hash = hash(last[mode]);
+      result.modes[mode].pixel_hash = hash(last[mode]);result.modes[mode].pixel_sha256 = await sha256(last[mode]);
     }
     return {result, pixels: last};
   } finally { for (const job of Object.values(jobs)) job.destroy(); }
@@ -142,8 +143,8 @@ async function check(engine, gpu) {
   }finally{curveJob.destroy();}
   const precision=[];
   const vertices=[[0.1,0.1],[31.9,0.1],[31.9,15.9],[0.1,15.9]];
-  for(const local of [true,false]){
-    const bytes=oraclePacket(vertices),w=new Uint32Array(bytes.buffer),f=new Float32Array(bytes.buffer),origin=1048576;
+  for(const origin of [1048576,268435456])for(const local of [true,false]){
+    const bytes=oraclePacket(vertices),w=new Uint32Array(bytes.buffer),f=new Float32Array(bytes.buffer);
     w[6]=origin;w[7]=origin;for(let i=0;i<4;i++)w[24+i]+=origin;
     w[32]=local?origin:0;w[33]=local?origin:0;w[19]=Number(local);
     if(!local)for(let i=w[9];i<w[10];i+=8)for(let j=1;j<=6;j++)f[i+j]+=origin;
@@ -159,7 +160,7 @@ async function check(engine, gpu) {
       const cpu=await engine.render(2,options),job=gpu.prepare(packet.data);
       try {
         const result=await job.render();const accuracy=pixelDifference(result.pixels,cpu.data);
-        const entry={id:fixture.id,accuracy,packet_hash:hash(packet.data),cpu_hash:hash(cpu.data)};
+        const entry={id:fixture.id,accuracy,packet_hash:hash(packet.data),cpu_hash:hash(cpu.data),packet_sha256:await sha256(packet.data),cpu_sha256:await sha256(cpu.data)};
         if(admitted%4===0){
           const band=await engine.render(5,{...options,band:1});assertPixels(band.data,packet.data,'GPU geometry band independence');
           const {width,height}=cpu.meta,x0=Math.floor(width/4),y0=Math.floor(height/4),x1=Math.max(x0+1,Math.ceil(width*3/4)),y1=Math.max(y0+1,Math.ceil(height*3/4));

@@ -247,7 +247,13 @@ impl Session {
                 }
                 Err(error) if matches!(error.kind, ErrorKind::Unsupported(_)) => {
                     self.scratch.recycle(prepared);
-                    return Ok((format!("{{\"ok\":true,\"fallback\":{},\"prepare_ms\":{prepare_ms}}}", json_string(&error.to_string())), Cow::Owned(Vec::new())));
+                    return Ok((
+                        format!(
+                            "{{\"ok\":true,\"fallback\":{},\"prepare_ms\":{prepare_ms}}}",
+                            json_string(&error.to_string())
+                        ),
+                        Cow::Owned(Vec::new()),
+                    ));
                 }
                 Err(error) => return Err(error),
             };

@@ -69,7 +69,7 @@ fn lookup(start: u32, end: u32, x: u32, y: u32) -> u32 {
 fn coverage(mark: u32, x: u32, y: u32) -> u32 {
   let fixed = lookup(data[mark + 12u], data[mark + 13u], x, y);
   if (fixed != 0xffffffffu) { return fixed; }
-  let pixel = vec2f(f32(x) - f32(data[mark + 8u]), f32(y) - f32(data[mark + 9u]));
+  let pixel = vec2f(f32(x - data[mark + 8u]), f32(y - data[mark + 9u]));
   var sum = 0.0; var correction = 0.0;
   for (var i = data[mark + 4u]; i < data[mark + 5u]; i++) {
     let at = data[9] + i * 8u;
