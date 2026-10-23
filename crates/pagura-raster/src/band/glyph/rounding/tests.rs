@@ -993,3 +993,253 @@ fn assert_point_band_pixels(
         }
     }
 }
+
+fn original_reuse_fixture(limits: &Limits) -> (std::sync::Arc<GlyphEdges>, Prep<'_>) {
+    let mut path = PathBuilder::new();
+    local_proof_arch(&mut path, Point::default(), Direction::Forward);
+    local_proof_arch(&mut path, Point::new(1000.0, 0.0), Direction::Reverse);
+    let edges =
+        std::sync::Arc::new(GlyphEdges::new(&path.finish(), [1.0, 0.0, 0.0, 1.0], limits).unwrap());
+    let options = Prep {
+        area: Area {
+            region: DeviceRect {
+                x0: 0,
+                y0: 0,
+                x1: 8,
+                y1: 10,
+            },
+            band_height: 1,
+        },
+        limits,
+        clip: None,
+    };
+    (edges, options)
+}
+
+fn prove_original_pixel(
+    source: Source<'_>,
+    pixel: Pixel,
+    options: &Prep<'_>,
+    Meters { work, bytes }: Meters<'_>,
+) -> Vec<Pixel> {
+    let mut pending = Vec::new();
+    bytes.reserve_capacity(&mut pending, 1).unwrap();
+    pending.push(pixel);
+    let released = pending.capacity() * size_of::<Pixel>();
+    let (mut targets, mut proven) = (Vec::new(), Vec::new());
+    assert!(
+        !collect_targets(
+            source,
+            pending,
+            (&mut targets, &mut proven),
+            options,
+            Meters { work, bytes },
+        )
+        .unwrap()
+    );
+    bytes.refund(released);
+    assert!(targets.is_empty());
+    assert_eq!(proven.len(), 1);
+    assert_eq!(proven[0].byte, pixel.byte);
+    proven
+}
+
+#[test]
+fn original_byte_reuse_still_detects_a_changed_wrong_candidate() {
+    let limits = Limits::default();
+    let (edges, options) = original_reuse_fixture(&limits);
+    let origin = Point::new(0.0, 11.0 / 18.0 + 1e-10);
+    let mut work = Meter::new(limits.raster_work, RASTER_WORK);
+    let source = Source::of(&edges, origin, &mut work).unwrap().unwrap();
+    let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+    // Integrating y=2x-x²/3 over x=2..3 gives the covered area
+    // 10/9-origin.y, just below the half-level: its byte is127.
+    let pixel = Pixel {
+        x: 2,
+        y: 3,
+        byte: quantize_unit(10.0 / 9.0 - origin.y),
+    };
+    assert_eq!(pixel.byte, 127);
+    let mut proven = prove_original_pixel(
+        source,
+        pixel,
+        &options,
+        Meters {
+            work: &mut work,
+            bytes: &mut bytes,
+        },
+    );
+    assert!(work.used() > 64);
+    // This budget cannot repeat the original-control proof. A newly
+    // wrong candidate must still be detected from its successful byte.
+    let mut hit_work = Meter::new(64, RASTER_WORK);
+    let mut pending = Vec::new();
+    bytes.reserve_capacity(&mut pending, 1).unwrap();
+    pending.push(Pixel { byte: 0, ..pixel });
+    let released = pending.capacity() * size_of::<Pixel>();
+    let mut targets = Vec::new();
+    assert!(
+        collect_targets(
+            source,
+            pending,
+            (&mut targets, &mut proven),
+            &options,
+            Meters {
+                work: &mut hit_work,
+                bytes: &mut bytes,
+            },
+        )
+        .unwrap()
+    );
+    bytes.refund(released);
+    assert_eq!(proven.len(), 1);
+    assert_eq!(targets, [[2.0, 3.0, 3.0, 4.0]]);
+    assert_eq!(
+        bytes.used(),
+        proven.capacity() * size_of::<Pixel>() + targets.capacity() * size_of::<[f64; 4]>(),
+    );
+}
+
+#[test]
+fn original_byte_certificates_do_not_survive_a_different_clip_or_call() {
+    let limits = Limits::default();
+    let (edges, options) = original_reuse_fixture(&limits);
+    let origin = Point::new(0.0, 11.0 / 18.0 + 1e-10);
+    let mut path = PathBuilder::new();
+    path.rect(2.25, 0.0, 4.0, 10.0);
+    let clip = ClipShape::new(
+        &[(&path.finish(), FillRule::NonZero)],
+        Transform::IDENTITY,
+        &ShapeOptions {
+            area: options.area,
+            limits: &limits,
+        },
+    )
+    .unwrap();
+    for band_height in [1, 32] {
+        for clipped in [false, true, false] {
+            let options = Prep {
+                area: Area {
+                    band_height,
+                    ..options.area
+                },
+                clip: clipped.then_some(&clip),
+                ..options
+            };
+            let exact = if clipped {
+                // Integral of 4-origin.y-2x+x²/3 over x=9/4..3.
+                51.0 / 64.0 - 3.0 * origin.y / 4.0
+            } else {
+                10.0 / 9.0 - origin.y
+            };
+            let mut work = Meter::new(limits.raster_work, RASTER_WORK);
+            let source = Source::of(&edges, origin, &mut work).unwrap().unwrap();
+            let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+            let proven = prove_original_pixel(
+                source,
+                Pixel {
+                    x: 2,
+                    y: 3,
+                    byte: quantize_unit(exact),
+                },
+                &options,
+                Meters {
+                    work: &mut work,
+                    bytes: &mut bytes,
+                },
+            );
+            assert_eq!(proven[0].byte, if clipped { 86 } else { 127 });
+            let ready = super::super::place(&edges, origin, &options)
+                .unwrap()
+                .unwrap();
+            let (pixels, spent) = crate::testing::raster(&options.area, Some(&ready), options.clip);
+            assert!(spent <= ready.work());
+            assert_eq!(pixels[3 * 8 + 2], quantize_unit(exact));
+        }
+    }
+}
+
+#[test]
+fn original_byte_reuse_keeps_adjacent_work_and_byte_limits() {
+    #[derive(Clone, Copy)]
+    enum Budget {
+        Measure,
+        Work,
+        Bytes,
+    }
+    let limits = Limits::default();
+    let (edges, options) = original_reuse_fixture(&limits);
+    let origin = Point::new(0.0, 11.0 / 18.0 + 1e-10);
+    let mut work = Meter::new(limits.raster_work, RASTER_WORK);
+    let source = Source::of(&edges, origin, &mut work).unwrap().unwrap();
+    let mut bytes = Meter::new(limits.render_bytes, RENDER_BYTES);
+    let pixel = Pixel {
+        x: 2,
+        y: 3,
+        byte: 127,
+    };
+    let proven = prove_original_pixel(
+        source,
+        pixel,
+        &options,
+        Meters {
+            work: &mut work,
+            bytes: &mut bytes,
+        },
+    );
+    let mut boundary = None;
+    for budget in [Budget::Measure, Budget::Work, Budget::Bytes] {
+        for offset in [0, 1] {
+            if matches!(budget, Budget::Measure) && offset != 0 {
+                continue;
+            }
+            let (work_limit, byte_limit) = boundary.map_or(
+                (limits.raster_work, limits.render_bytes),
+                |(needed_work, needed_bytes): (usize, usize)| match budget {
+                    Budget::Work => (needed_work - offset, limits.render_bytes),
+                    Budget::Bytes => (limits.raster_work, needed_bytes - offset),
+                    Budget::Measure => (limits.raster_work, limits.render_bytes),
+                },
+            );
+            let mut work = Meter::new(work_limit, RASTER_WORK);
+            let mut bytes = Meter::new(byte_limit, RENDER_BYTES);
+            let mut proven = proven.clone();
+            bytes.charge_items::<Pixel>(proven.capacity()).unwrap();
+            let mut pending = Vec::new();
+            bytes.reserve_capacity(&mut pending, 1).unwrap();
+            pending.push(Pixel { byte: 0, ..pixel });
+            let mut targets = Vec::new();
+            let result = collect_targets(
+                source,
+                pending,
+                (&mut targets, &mut proven),
+                &options,
+                Meters {
+                    work: &mut work,
+                    bytes: &mut bytes,
+                },
+            );
+            if matches!(budget, Budget::Measure) {
+                assert!(result.unwrap());
+                boundary = Some((work.used(), bytes.used()));
+            } else if offset == 0 {
+                assert!(result.unwrap());
+                assert_eq!(targets, [[2.0, 3.0, 3.0, 4.0]]);
+            } else {
+                let error = result.unwrap_err();
+                assert_eq!(error.kind, pagura_core::ErrorKind::Limit);
+                assert_eq!(
+                    error.message,
+                    match budget {
+                        Budget::Work => RASTER_WORK,
+                        Budget::Bytes => RENDER_BYTES,
+                        Budget::Measure => unreachable!(),
+                    },
+                );
+                assert!(targets.is_empty());
+            }
+            assert_eq!(proven.len(), 1);
+            assert_eq!(proven[0].byte, 127);
+        }
+    }
+}

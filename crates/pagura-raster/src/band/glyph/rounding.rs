@@ -11,6 +11,7 @@ use crate::band::union::{Meters, Piece, Resolver};
 use crate::band::{Prep, RASTER_WORK, RENDER_BYTES, curve, raster};
 use crate::flatten::{Hull, Inspection, MAX_COORDINATE, Scope};
 use crate::{FillRule, Path, Point, Segment, Transform, quantize_unit};
+use pagura_core::convert::u32_to_usize;
 use pagura_core::{Error, Meter, Result};
 
 const ROUNDS: i32 = 12;
@@ -283,6 +284,9 @@ pub(super) fn certify(
         .filter(|_| current_area > AREA && !analytic(&shape));
     let mut owned_proof = None;
     let mut targets = Vec::new();
+    // Successful original-control bytes belong only to this immutable
+    // source/clip invocation, never to the returned execution geometry.
+    let mut proven = Vec::new();
     for round in 0..=ROUNDS {
         work.charge_product(outline.segments().len(), 2)?;
         let (error, other_error) = uncertainties(source, &shape, current_area, options);
@@ -296,7 +300,7 @@ pub(super) fn certify(
         let wrong = collect_targets(
             source,
             pending,
-            &mut targets,
+            (&mut targets, &mut proven),
             options,
             Meters {
                 work: &mut work,
@@ -304,11 +308,14 @@ pub(super) fn certify(
             },
         )?;
         let target_bytes = targets.capacity() * size_of::<[f64; 4]>();
+        let proven_bytes = proven.capacity() * size_of::<Pixel>();
         // Inspection cells, pending pixels and local interval geometry have
-        // left scope. Keep the targets, live shape and its active proof charged.
+        // left scope. Keep the targets, original certificates, live shape
+        // and its active proof charged.
         bytes.refund(bytes.used().saturating_sub(
             shape.retained_bytes()
                 + target_bytes
+                + proven_bytes
                 + owned_proof.as_ref().map_or(0, Proof::retained_bytes),
         ));
         if !wrong {
@@ -364,13 +371,29 @@ fn uncertainties(source: Source<'_>, shape: &Shape, area: f64, options: &Prep<'_
 fn collect_targets(
     source: Source<'_>,
     pending: Vec<Pixel>,
-    targets: &mut Vec<[f64; 4]>,
+    (targets, proven): (&mut Vec<[f64; 4]>, &mut Vec<Pixel>),
     options: &Prep<'_>,
     Meters { work, bytes }: Meters<'_>,
 ) -> Result<bool> {
+    // The sorted prefix comes from earlier replacement passes. Inspection
+    // visits each pixel once, so new successes can append in query order.
+    let known = proven.len();
     let mut wrong = false;
     for pixel in pending {
-        let expected = true_byte(source, pixel, options, (work, bytes))?;
+        work.charge(u32_to_usize(known.max(1).ilog2()) + 2)?;
+        let expected =
+            match proven[..known].binary_search_by_key(&(pixel.y, pixel.x), |p| (p.y, p.x)) {
+                Ok(index) => proven[index].byte,
+                Err(_) => {
+                    let byte = true_byte(source, pixel, options, (work, bytes))?;
+                    if proven.len() == proven.capacity() {
+                        work.charge(proven.len())?;
+                    }
+                    bytes.reserve_capacity(proven, 1)?;
+                    proven.push(Pixel { byte, ..pixel });
+                    byte
+                }
+            };
         if expected != pixel.byte {
             wrong = true;
             let target = [
@@ -385,6 +408,10 @@ fn collect_targets(
                 targets.push(target);
             }
         }
+    }
+    if proven.len() > known {
+        work.charge_product(proven.len(), u32_to_usize(proven.len().max(1).ilog2()) + 2)?;
+        proven.sort_unstable_by_key(|p| (p.y, p.x));
     }
     Ok(wrong)
 }
