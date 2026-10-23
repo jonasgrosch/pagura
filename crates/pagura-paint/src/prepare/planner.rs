@@ -60,6 +60,8 @@ pub(crate) struct Planner<'s> {
     pub(crate) shapes: ShapeBuilder<'s>,
     pub(crate) area: Area,
     pub(crate) storage: Storage,
+    /// Held until the ordered walk's transfer check has dropped its scratch.
+    pub(crate) transfer_bytes: usize,
     pub(crate) simulate: bool,
     /// Spot colorants of the page target.
     pub(crate) names: TargetNames,
@@ -185,6 +187,11 @@ impl<'s> Planner<'s> {
             },
             &mut budget.bytes,
         )?;
+        let transfer_bytes = if storage.transfers {
+            super::finish::reserve_transfer_check(area, &mut budget.bytes)?
+        } else {
+            0
+        };
         let names = target_names(&separations, &mut budget.bytes)?;
         let mut parts = Parts::default();
         budget.bytes.reserve_capacity(&mut parts.groups, 1)?;
@@ -209,6 +216,7 @@ impl<'s> Planner<'s> {
             shapes,
             area,
             storage,
+            transfer_bytes,
             simulate: separations.simulate,
             names,
             definitions: separations.spots,
@@ -411,15 +419,10 @@ impl<'s> Planner<'s> {
     }
 
     /// Drops the walk's setup tables and temporary owners before the
-    /// workspace is reserved. The returned values alone survive in the plan.
+    /// workspace is reserved. The result retains plan data and the owners
+    /// still needed for post-walk transfer checking and spot preparation.
     pub(crate) fn finish(self, bytes: &mut Meter) -> Result<Walked<'s>> {
         let released = self.storage.retained_bytes(bytes)?
-            + self.definitions.capacity() * size_of::<(Name, Arc<pagura_color::ColorSpace>)>()
-            + self
-                .definitions
-                .iter()
-                .map(|(name, _)| name.heap_bytes())
-                .sum::<usize>()
             + 2 * size_of::<usize>()
             + size_of::<Path>()
             + self.crop.retained_bytes()
@@ -437,6 +440,7 @@ impl<'s> Planner<'s> {
             repairs,
             storage,
             definitions,
+            transfer_bytes,
             crop,
             clips,
             built_clips,
@@ -449,7 +453,6 @@ impl<'s> Planner<'s> {
         } = self;
         drop((
             storage,
-            definitions,
             crop,
             clips,
             built_clips,
@@ -465,6 +468,8 @@ impl<'s> Planner<'s> {
             names,
             parts,
             repairs,
+            definitions,
+            transfer_bytes,
         })
     }
 }
@@ -475,6 +480,8 @@ pub(crate) struct Walked<'s> {
     pub(crate) names: TargetNames,
     pub(crate) parts: Parts,
     pub(crate) repairs: Vec<Diagnostic>,
+    pub(crate) definitions: Vec<(Name, Arc<pagura_color::ColorSpace>)>,
+    pub(crate) transfer_bytes: usize,
 }
 
 /// Copies only the owned name bytes, then moves those names into one

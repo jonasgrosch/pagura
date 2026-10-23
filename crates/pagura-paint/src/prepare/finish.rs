@@ -8,9 +8,7 @@ use super::planner::{Parts, Planner, Walked};
 use super::stacks::needs;
 use super::{Budget, Shapes, index};
 use crate::execute::{Sizes, coverage_capacity, validate};
-use crate::plan::{
-    Curve, Item, Layout, MAX_BAND_HEIGHT, Output, Plan, SpotPlan, TargetNames, area, intersect,
-};
+use crate::plan::{Curve, Item, Layout, MAX_BAND_HEIGHT, Output, Plan, SpotPlan, area, intersect};
 use pagura_color::{ColorSpace, Colorant, Conversion, Converter, Process, Target};
 use pagura_core::{Error, Meter, Result};
 use pagura_raster::{BandCoverage, BandRasterizer};
@@ -40,33 +38,73 @@ fn first(planner: Planner<'_>, error: Error, budget: &mut Budget) -> Error {
     let Ok(Walked {
         shapes,
         parts,
-        names,
+        definitions,
+        transfer_bytes,
         ..
     }) = planner.finish(&mut budget.bytes)
     else {
         return error;
     };
+    drop_definitions(definitions, &mut budget.bytes);
     let Ok(shapes) = shapes.finish(&mut budget.bytes) else {
         return error;
     };
-    let plan = partial(area, parts, names);
-    // The partial plan remains live during this precedence check. Its
-    // temporary raster storage uses only the shared allowance left beside it.
-    let before = budget.bytes.used();
-    let checked = check_transfers(&plan, &shapes, &mut budget.bytes);
-    budget.bytes.refund(budget.bytes.used() - before);
+    let checked = held_transfer_check(area, &parts, &shapes, transfer_bytes, &mut budget.bytes);
     match checked {
-        Ok(Some(found)) if found < serial => transfer_error(&plan, found),
+        Ok(Some(found)) if found < serial => transfer_error(&parts.items, found),
         _ => error,
     }
+}
+
+/// Reserves the fixed worst-band checker before the ordered walk, so a
+/// later mark's allocations cannot hide an earlier transfer boundary.
+pub(super) fn reserve_transfer_check(
+    area: pagura_raster::Area,
+    bytes: &mut Meter,
+) -> Result<usize> {
+    let mut reservation = Meter::new(bytes.remaining(), "render memory budget exceeded");
+    BandRasterizer::charge(area, &mut reservation)?;
+    let width = index(area.region.width());
+    let rows = rows(area.region.height());
+    reservation.charge(coverage_capacity(width, rows).bytes())?;
+    reservation.charge_product(width, rows.saturating_mul(size_of::<u16>()))?;
+    let reserved = reservation.used();
+    bytes.charge(reserved)?;
+    Ok(reserved)
+}
+
+/// Uses the already held reservation; every checker allocation is dropped
+/// before that reservation returns to finalization's shared allowance.
+fn held_transfer_check(
+    area: pagura_raster::Area,
+    parts: &Parts,
+    shapes: &Shapes,
+    reserved: usize,
+    bytes: &mut Meter,
+) -> Result<Option<u32>> {
+    if reserved == 0 {
+        return Ok(None);
+    }
+    let checked = check_transfers(
+        area,
+        parts,
+        shapes,
+        &mut Meter::new(reserved, "render memory budget exceeded"),
+    );
+    bytes.refund(reserved);
+    checked
 }
 
 /// The serial of the first recording mark whose transfer selection is not
 /// whole, rasterized in storage of its own charged to `bytes`: a band
 /// rasterizer, one mark's coverage and a band of selections, no more than a
 /// render's scratch holds of them.
-fn check_transfers(plan: &Plan, shapes: &Shapes, bytes: &mut Meter) -> Result<Option<u32>> {
-    let area = plan.area;
+fn check_transfers(
+    area: pagura_raster::Area,
+    parts: &Parts,
+    shapes: &Shapes,
+    bytes: &mut Meter,
+) -> Result<Option<u32>> {
     let capacity_rows = rows(area.region.height());
     let actual_rows = index(area.band_height.min(area.region.height()));
     let width = index(area.region.width());
@@ -78,16 +116,16 @@ fn check_transfers(plan: &Plan, shapes: &Shapes, bytes: &mut Meter) -> Result<Op
     bytes.reserve(&mut selection, width.saturating_mul(capacity_rows))?;
     selection.resize(width.saturating_mul(actual_rows), 0);
     Ok(validate(
-        plan,
+        area,
+        (&parts.groups, &parts.items),
         (shapes, &mut rasterizer),
         &mut coverage,
         &mut selection,
     ))
 }
 
-fn transfer_error(plan: &Plan, serial: u32) -> Error {
-    let position = plan
-        .items
+fn transfer_error(items: &[Item], serial: u32) -> Error {
+    let position = items
         .iter()
         .find(|item| item.serial == serial)
         .map(|item| item.position)
@@ -105,31 +143,6 @@ fn rows(height: u32) -> usize {
     index(height.min(MAX_BAND_HEIGHT))
 }
 
-/// The plan of a walk that stopped, enough for the transfer check.
-fn partial(area: pagura_raster::Area, parts: Parts, names: TargetNames) -> Plan {
-    Plan {
-        _names: names,
-        area,
-        groups: parts.groups,
-        items: parts.items,
-        masks: parts.masks,
-        paints: parts.paints,
-        conversions: parts.conversions,
-        output: Output {
-            layout: Layout {
-                process: Process::Rgb,
-                spots: 0,
-            },
-            background: [0; 4],
-            spots: Vec::new(),
-            transfers: parts.transfers,
-        },
-        stack: crate::execute::Tops::default(),
-        sizes: Sizes::default(),
-        scratch: 0,
-    }
-}
-
 /// A completed preparation.
 pub(crate) struct Finished {
     pub(crate) plan: Plan,
@@ -145,11 +158,6 @@ fn complete(mut planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
     let rows = rows(area.region.height());
     let band_rows = index(area.band_height.min(area.region.height()));
     let transfers = planner.storage.transfers;
-    let spots = spot_plans(
-        &planner.definitions,
-        &planner.names.empty,
-        &mut budget.bytes,
-    )?;
     let background = planner.request.background.premultiplied();
     for (mask, users) in planner.parts.masks.iter_mut().zip(&planner.users) {
         let extent = intersect(mask.extent, *users);
@@ -163,8 +171,18 @@ fn complete(mut planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
         names,
         mut parts,
         repairs,
+        definitions,
+        transfer_bytes,
     } = planner.finish(&mut budget.bytes)?;
     let shapes = shapes.finish(&mut budget.bytes)?;
+    if let Some(serial) =
+        held_transfer_check(area, &parts, &shapes, transfer_bytes, &mut budget.bytes)?
+    {
+        return Err(transfer_error(&parts.items, serial));
+    }
+    let spots = spot_plans(&definitions, &names.empty, &mut budget.bytes);
+    drop_definitions(definitions, &mut budget.bytes);
+    let spots = spots?;
     order(&mut parts)?;
     let charged = needs(&parts, rows, &mut budget.bytes)?;
     let stack = needs(&parts, band_rows, &mut budget.bytes)?;
@@ -204,26 +222,21 @@ fn complete(mut planner: Planner<'_>, budget: &mut Budget) -> Result<Finished> {
         rows: band_rows,
         ..sizes
     };
-    if transfers {
-        let checked: usize = plan
-            .items
-            .iter()
-            .filter(|item| matches!(&item.kind, crate::plan::ItemKind::Mark(mark) if mark.records))
-            .map(|item| item.work)
-            .fold(0, usize::saturating_add);
-        budget.work.charge(checked)?;
-        // The check runs before any render, in storage its reservation
-        // covers.
-        let mut bytes = Meter::new(plan.scratch, "render memory budget exceeded");
-        if let Some(serial) = check_transfers(&plan, &shapes, &mut bytes)? {
-            return Err(transfer_error(&plan, serial));
-        }
-    }
     Ok(Finished {
         plan,
         shapes,
         repairs,
     })
+}
+
+fn drop_definitions(definitions: Vec<(pagura_core::Name, Arc<ColorSpace>)>, bytes: &mut Meter) {
+    let released = definitions.capacity() * size_of::<(pagura_core::Name, Arc<ColorSpace>)>()
+        + definitions
+            .iter()
+            .map(|(name, _)| name.heap_bytes())
+            .sum::<usize>();
+    drop(definitions);
+    bytes.refund(released);
 }
 
 /// The sizes of the workspace of `plan` for bands of `rows` rows.

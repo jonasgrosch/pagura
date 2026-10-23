@@ -401,6 +401,11 @@ impl Planner<'_> {
             });
         budget.work.charge(covered.work)?;
         budget.work.charge(area(covered.bounds))?;
+        if records {
+            // The same rasterization validates transfer selections before
+            // execution. Reserve it in source order beside this mark's draw.
+            budget.work.charge(covered.work)?;
+        }
         let mark = Mark {
             cover: covered.cover,
             paint,

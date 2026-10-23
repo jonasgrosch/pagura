@@ -51,7 +51,10 @@ fn precedence_scene() -> crate::testing::Build {
             }],
             positions: Vec::new(),
             paint: ink,
-            mark: mark(StateId(0)),
+            mark: MarkInfo {
+                position: Position::Buffer(6),
+                ..mark(StateId(0))
+            },
         }),
     );
     b.scene.pens.push(Arc::new(Pen {
@@ -75,7 +78,7 @@ fn precedence_scene() -> crate::testing::Build {
 }
 
 #[test]
-fn precedence_scratch_uses_remaining_bytes_and_returns_after_drop() {
+fn precedence_scratch_is_protected_before_walk_and_returned_after_drop() {
     use crate::prepare::{ShapeBuilder, planner::Planner};
     use pagura_core::{Position, Store};
     use pagura_raster::Area;
@@ -114,7 +117,7 @@ fn precedence_scratch_uses_remaining_bytes_and_returns_after_drop() {
                 let found = first(planner, original, &mut budget);
                 assert_eq!(
                     found.position,
-                    Position::Buffer(if tight { 9 } else { 2 }),
+                    Position::Buffer(2),
                     "height={height}, kept={kept}, tight={tight}"
                 );
                 assert!(budget.bytes.used() < before);
@@ -213,4 +216,170 @@ fn spot_plans_share_their_definition_and_charge_live_conversion_storage() {
             .message,
         "spot memory"
     );
+}
+
+#[test]
+fn transfer_check_reservation_fits_identically_for_every_band_height() {
+    use pagura_raster::{Area, DeviceRect};
+    let region = DeviceRect {
+        x0: 0,
+        y0: 0,
+        x1: 1024,
+        y1: 4,
+    };
+    let mut expected = None;
+    for band_height in [1, 4, 256] {
+        let area = Area {
+            region,
+            band_height,
+        };
+        let mut bytes = Meter::new(1 << 20, "render memory budget exceeded");
+        let reserved = reserve_transfer_check(area, &mut bytes).unwrap();
+        assert_eq!(*expected.get_or_insert(reserved), reserved);
+        assert_eq!(bytes.used(), reserved);
+        let mut tiny = Meter::new(reserved - 1, "render memory budget exceeded");
+        assert_eq!(
+            reserve_transfer_check(area, &mut tiny).unwrap_err().message,
+            "render memory budget exceeded"
+        );
+        assert_eq!(tiny.used(), 0);
+    }
+}
+
+#[test]
+fn an_earlier_transfer_boundary_precedes_late_finalization_limits() {
+    use crate::prepare::{ShapeBuilder, planner::Planner};
+    use crate::testing::rect_path;
+    use pagura_core::{ErrorKind, Position, Store};
+    use pagura_interpret::Node;
+    use pagura_raster::Area;
+
+    for fractional in [true, false] {
+        let mut b = precedence_scene();
+        b.scene.groups[0].children.pop(); // all walked content now succeeds
+        if !fractional {
+            let Node::Fill(fill) = &mut b.scene.nodes[0] else {
+                unreachable!()
+            };
+            fill.path = rect_path([0.0, 0.0, 1024.0, 4.0]);
+            // Keep the second mark whole too: fractional default coverage
+            // after a selected transfer would itself be unsupported.
+            let Node::Glyphs(glyphs) = &mut b.scene.nodes[1] else {
+                unreachable!()
+            };
+            glyphs.sources[0].outline = rect_path([0.0, 0.0, 1.0, 1.0]);
+        }
+        let limits = Limits::default();
+        let warm = Store::new(1 << 20);
+        let _ = crate::prepare(&b.scene, &b.request(b.page(), 1), &warm, &limits);
+        for height in [1, 4, 256] {
+            let request = b.request(b.page(), height);
+            for kept in [false, true] {
+                let cold = Store::new(1 << 20);
+                let store = if kept { &warm } else { &cold };
+                let mut budget = Budget::new(&limits);
+                let mut planner = Planner::new(
+                    &b.scene,
+                    &request,
+                    (store, &limits),
+                    Area {
+                        region: b.page(),
+                        band_height: height,
+                    },
+                    ShapeBuilder::new(store, &limits),
+                    &mut budget,
+                )
+                .unwrap();
+                planner.page(&mut budget).unwrap();
+                let before = budget.bytes.used();
+                budget.bytes = Meter::new(before, "render memory budget exceeded");
+                budget.bytes.charge(before).unwrap();
+                let error = complete(planner, &mut budget).err().unwrap();
+                if fractional {
+                    assert_eq!(
+                        (error.kind, error.position),
+                        (
+                            ErrorKind::Unsupported(
+                                pagura_interpret::features::TRANSPARENCY_TRANSFER
+                            ),
+                            Position::Buffer(2)
+                        )
+                    );
+                } else {
+                    assert_eq!(error.kind, ErrorKind::Limit);
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn a_later_work_refusal_cannot_consume_an_earlier_marks_validation() {
+    use crate::prepare::{ShapeBuilder, planner::Planner};
+    use pagura_core::{ErrorKind, Position, Store};
+    use pagura_raster::Area;
+
+    let b = precedence_scene();
+    let mut one = precedence_scene();
+    one.scene.groups[0].children.truncate(1);
+    let default = Limits::default();
+    let request = one.request(one.page(), 1);
+    let store = Store::new(1 << 20);
+    let mut budget = Budget::new(&default);
+    let mut first_only = Planner::new(
+        &one.scene,
+        &request,
+        (&store, &default),
+        Area {
+            region: one.page(),
+            band_height: 1,
+        },
+        ShapeBuilder::new(&store, &default),
+        &mut budget,
+    )
+    .unwrap();
+    first_only.page(&mut budget).unwrap();
+    let first_work = budget.work.used();
+    let warm = Store::new(1 << 20);
+    crate::prepare(&b.scene, &b.request(b.page(), 1), &warm, &default).unwrap_err();
+    for height in [1, 4, 256] {
+        let request = b.request(b.page(), height);
+        for kept in [false, true] {
+            let cold = Store::new(1 << 20);
+            let store = if kept { &warm } else { &cold };
+            for work in [first_work - 1, first_work] {
+                let limits = Limits {
+                    render_work: work,
+                    ..default
+                };
+                let mut budget = Budget::new(&limits);
+                let mut planner = Planner::new(
+                    &b.scene,
+                    &request,
+                    (store, &limits),
+                    Area {
+                        region: b.page(),
+                        band_height: height,
+                    },
+                    ShapeBuilder::new(store, &limits),
+                    &mut budget,
+                )
+                .unwrap();
+                let original = planner.page(&mut budget).unwrap_err();
+                assert_eq!(original.kind, ErrorKind::Limit);
+                if work == first_work {
+                    assert_eq!(original.position, Position::Buffer(6));
+                    assert_eq!(
+                        first(planner, original, &mut budget).position,
+                        Position::Buffer(2)
+                    );
+                } else {
+                    assert_eq!(
+                        first(planner, original, &mut budget).position,
+                        Position::Buffer(2)
+                    );
+                }
+            }
+        }
+    }
 }
