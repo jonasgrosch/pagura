@@ -7,9 +7,10 @@ exported from the shared scene. There is no general GPU rasterizer here.
 This experiment does not change the production renderer or the scope of
 ADR 0004.
 
-[`SVG_RESULTS.md`](SVG_RESULTS.md) records the three-backend comparison,
-zoom studies and visual differences. [`RESULTS.md`](RESULTS.md) preserves
-the earlier CPU/GPU measurements. Raw evidence remains local under
+[`SVG_CLEANUP_RESULTS.md`](SVG_CLEANUP_RESULTS.md) records the retained-export
+cleanup and the new comparisons. [`SVG_RESULTS.md`](SVG_RESULTS.md) preserves
+the first three-backend experiment, and [`RESULTS.md`](RESULTS.md) preserves
+the original CPU/GPU measurements. Raw evidence stays under ignored
 `target/gpu-demo/`.
 
 ```sh
@@ -133,6 +134,13 @@ The same host also accepts operation 4, a whole-page SVG export of the public
 image resource module, outside product crates. It never consumes CPU coverage
 spans and adds no third-party dependency or GPU API to the Rust engine.
 
+The exporter produces a resolution-independent owned artifact from `Scene`
+and `Document`. It is separate from the native/WASI transport and browser
+presentation. The host retains one artifact (at most 64 MiB) for the current
+recorded page, invalidating it on page or document changes. Image encodings
+are deduplicated inside that artifact and reused with it. There is no separate
+cross-page image cache or cache keyed by scene-local resource IDs.
+
 Paths and cubic curves remain vectors. Glyph outlines are shared definitions
 with ordered placements, so browser font matching and text shaping do not
 change their geometry. Clips intersect through SVG clip paths; pen transforms,
@@ -146,8 +154,10 @@ Zero-length strokes that cannot be represented by this adapter are refused.
 The browser validates the generated XML's element/attribute vocabulary and
 resources. SVG is displayed as an image with a retained vector source, keeping
 its definitions private and avoiding a large SVG tree in the live HTML DOM.
-Zoom resizes that vector image; CPU and hybrid paths rebuild their pixel
-buffers. There is no selectable browser text in the outlined SVG presentation.
+Each comparison retains one parsed SVG and decoded image for its samples;
+zoom resizes that vector image. CPU and hybrid paths rebuild their pixel
+buffers. The **Export SVG** button saves the self-contained vector document
+with its embedded image resources. There is no selectable browser text in the outlined SVG presentation.
 
 An unimplemented shading, tiling paint, soft-mask group, transfer function,
 non-RGB group, non-isolated blend group, unsupported knockout, print overprint,
@@ -156,13 +166,23 @@ refuses the whole SVG export with a reason. The demo labels it unavailable;
 it never displays a partial SVG page or silently calls a CPU image SVG.
 Export bytes, tags, traversal/function work and image bytes are bounded.
 
+The adapter removes a fill/glyph clip application only when its complete
+rectangular clip chain strictly contains a conservative control-hull bound.
+The proof includes affine transforms, a generous margin in natural SVG units
+and finite-precision padding. Empty/uncertain chains, extreme transforms,
+near-edge marks, strokes, images and group clips remain unchanged. Glyph
+placements and their opacity stay in source order; no clip groups are merged.
+`engine/src/svg/clips.rs` contains the bounded proof independently of XML output.
+
 The comparison distinguishes three costs:
 
-- **Completed RGBA:** export, validation/parse, decode, browser rasterization
-  and Canvas readback. Both other paths already produce completed RGBA.
-- **Fresh viewport display:** rebuild backend output from a warm recorded
-  scene, then show a top or centre 480-pixel viewport. This does not force
-  full-page SVG readback. Timings end after two animation-frame opportunities;
+- **Completed RGBA:** fresh Canvas rasterization and readback from the retained
+  SVG/image artifact. Initial export, transport, validation/parse, decode and
+  first rasterization are reported separately. CPU/hybrid still build fresh
+  pixels; neither path has an application raster cache.
+- **Viewport display:** rebuild CPU/hybrid pixels or reuse the compiled SVG,
+  then show a top or centre 480-pixel viewport. This does not force full-page
+  SVG readback. Timings end after two animation-frame opportunities;
   they are not display scanout or GPU-completion timestamps.
 - **Zoom:** reuse the SVG vector source at 1×, 1.5× and 2× while CPU/hybrid
   produce fresh pixels. A separate CSS gesture scales existing content for
@@ -180,7 +200,7 @@ or a pass of ADR 0004. CPU/hybrid byte equality remains required. SVG export byt
 browser pixel variation across identical SVG inputs is reported separately.
 
 ```sh
-node benchmarks/gpu-demo/run.mjs svg-test
+node benchmarks/gpu-demo/run.mjs svg-test --output target/gpu-demo/svg-tests.json
 node benchmarks/gpu-demo/run.mjs ui-test
 node benchmarks/gpu-demo/native.mjs svg-parity
 node benchmarks/gpu-demo/run.mjs bench --samples 100 --warmups 5 \

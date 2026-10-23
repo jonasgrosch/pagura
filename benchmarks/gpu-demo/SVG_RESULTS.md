@@ -1,4 +1,8 @@
-# CPU, WebGPU and SVG: local comparison
+# CPU, WebGPU and SVG: initial local comparison
+
+These are the initial fresh-export measurements. See
+[`SVG_CLEANUP_RESULTS.md`](SVG_CLEANUP_RESULTS.md) for the retained-export
+cleanup, bounded clip elision and follow-up measurements.
 
 CPU remains the best fresh-rendering path on the four real PDF pages measured
 here. Retaining an SVG source reduces zoom work on two of those pages, but
