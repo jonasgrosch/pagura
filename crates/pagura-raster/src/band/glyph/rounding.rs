@@ -381,19 +381,19 @@ fn collect_targets(
     let mut wrong = false;
     for pixel in pending {
         work.charge(u32_to_usize(known.max(1).ilog2()) + 2)?;
-        let expected =
-            match proven[..known].binary_search_by_key(&(pixel.y, pixel.x), |p| (p.y, p.x)) {
-                Ok(index) => proven[index].byte,
-                Err(_) => {
-                    let byte = true_byte(source, pixel, options, (work, bytes))?;
-                    if proven.len() == proven.capacity() {
-                        work.charge(proven.len())?;
-                    }
-                    bytes.reserve_capacity(proven, 1)?;
-                    proven.push(Pixel { byte, ..pixel });
-                    byte
-                }
-            };
+        let expected = if let Ok(index) =
+            proven[..known].binary_search_by_key(&(pixel.y, pixel.x), |p| (p.y, p.x))
+        {
+            proven[index].byte
+        } else {
+            let byte = true_byte(source, pixel, options, (work, bytes))?;
+            if proven.len() == proven.capacity() {
+                work.charge(proven.len())?;
+            }
+            bytes.reserve_capacity(proven, 1)?;
+            proven.push(Pixel { byte, ..pixel });
+            byte
+        };
         if expected != pixel.byte {
             wrong = true;
             let target = [
