@@ -91,3 +91,44 @@ fn page_and_document_changes_invalidate_prepared_scenes() {
             .is_err()
     );
 }
+
+#[test]
+fn world_packet_reuses_across_dpis_and_resets_on_open() {
+    let mut session = Session::new();
+    open(&mut session, &[b"0.2 0.4 0.8 rg 1.25 2.75 12.3 20.1 re f"]);
+    let (first, vector) = request(&mut session, [11, 0, 72, 32, 0, 0, 0, 0]);
+    assert!(first.contains("\"world_cache_hit\":false"));
+    for dpi in [150, 173, 225, 299, 300] {
+        let (meta, reused) = request(&mut session, [11, 0, dpi, 32, 0, 0, 0, 0]);
+        assert!(meta.contains("\"world_cache_hit\":true"));
+        assert_eq!(vector, reused);
+        let (_, patch) = request(&mut session, [12, 0, dpi, 32, 0, 0, 0, 0]);
+        assert_eq!(
+            u32::from_le_bytes(patch[0..4].try_into().unwrap()),
+            0x3150_5747
+        );
+    }
+    open(&mut session, &[b"0 w 0 0 m 12 20 l S"]);
+    let (meta, _) = request(&mut session, [11, 0, 150, 32, 0, 0, 0, 0]);
+    assert!(meta.contains("hairlines"));
+    open(&mut session, &[b"1 0 0 rg 1 2 12 20 re f"]);
+    let (meta, new) = request(&mut session, [11, 0, 150, 32, 0, 0, 0, 0]);
+    assert!(meta.contains("\"world_cache_hit\":false"));
+    assert_ne!(vector, new);
+}
+
+#[test]
+fn world_refuses_device_cell_fills_and_clips() {
+    let mut session = Session::new();
+    for content in [
+        b"2 2 m 2 2 l f".as_slice(),
+        b"2 2 0 4 re f",
+        b"2 2 m 4 4 l 6 6 l f",
+        b"2 2 m 2 2 l W n 0 0 20 30 re f",
+    ] {
+        open(&mut session, &[content]);
+        let (meta, bytes) = request(&mut session, [11, 0, 150, 32, 0, 0, 0, 0]);
+        assert!(meta.contains("resolution dependent"), "{meta}");
+        assert!(bytes.is_empty());
+    }
+}

@@ -53,7 +53,7 @@ export class GpuBackend {
     const errors = (await module.getCompilationInfo()).messages.filter(message => message.type === 'error');
     if (errors.length) { device.destroy(); throw new Error(errors.map(error => error.message).join('\n')); }
     const pipeline = await device.createComputePipelineAsync({layout: 'auto', compute: {module, entryPoint: 'composite'}});
-    const rasterCode = await (await fetch(new URL('./raster.wgsl', import.meta.url))).text();
+    const rasterCode = await (await fetch(new URL('./area.wgsl', import.meta.url))).text() + await (await fetch(new URL('./raster.wgsl', import.meta.url))).text();
     const rasterModule = device.createShaderModule({code: rasterCode});
     const rasterErrors = (await rasterModule.getCompilationInfo()).messages.filter(m => m.type === 'error');
     if (rasterErrors.length) { device.destroy(); throw new Error(rasterErrors.map(m => m.message).join('\n')); }
@@ -92,12 +92,12 @@ export class GpuBackend {
     const queries = timestamps ? device.createQuerySet({type: 'timestamp', count: 2}) : null;
     const resolve = timestamps ? device.createBuffer({size: 16, usage: GPUBufferUsage.QUERY_RESOLVE | GPUBufferUsage.COPY_SRC}) : null;
     const setup_ms = performance.now() - start;
-    let busy = false, destroyed = false, resident = false, uploads = 0, uploadBytes = 0, dispatches = 0;
+    let busy = false, destroyed = false, resident = false, uploads = 0, uploadBytes = 0, dispatches = 0, rgbaReadbacks = 0;
     return {
-      setup_ms, width: program.width, height: program.height, spans: program.spans,
+      setup_ms, width: program.width, height: program.height, spans: program.spans, output_buffer: output,
       packet_bytes: bytes.length, references: program.references, geometry: raster ? program : null,
       resident_bytes: bytes.length + size + readbackSize + (timestamps ? 16 : 0),
-      counters: () => ({uploads, upload_bytes: uploadBytes, dispatches, resident:resident&&!destroyed}),
+      counters: () => ({uploads, upload_bytes: uploadBytes, dispatches, rgba_readbacks:rgbaReadbacks, resident:resident&&!destroyed}),
       retain: async () => {
         if (busy || destroyed || this.lost()) throw new Error(this.lost() || 'GPU job is unavailable');
         if (resident) return {upload_ms: 0};
@@ -109,41 +109,46 @@ export class GpuBackend {
           resident = true;initial = null;return {upload_ms: performance.now() - start};
         } finally {busy = false;}
       },
-      render: async (upload = initial) => {
+      render: async (upload = initial, {readback: copyPixels = true, presenter = null} = {}) => {
         if (busy || destroyed || this.lost()) throw new Error(this.lost() || 'GPU job is unavailable');
         if (upload === null ? !resident : !(upload instanceof Uint8Array) || upload.length !== packetSize) throw new Error('GPU program changed; prepare a new job');
         busy = true;
         device.pushErrorScope('validation');
         let scoped = true;
         const started = performance.now();
+        const timedQueries = copyPixels ? queries : null;
         try {
           // Every measured fresh render uploads its program; residency is not
           // silently assumed. Reusing allocations matches the CPU Scratch.
           if (upload !== null) {device.queue.writeBuffer(source, 0, upload);uploads++;uploadBytes += upload.length;}
           const encoder = device.createCommandEncoder();
-          const pass = encoder.beginComputePass(queries ? {timestampWrites: {
+          const pass = encoder.beginComputePass(timedQueries ? {timestampWrites: {
             querySet: queries, beginningOfPassWriteIndex: 0, endOfPassWriteIndex: 1,
           }} : {});
           pass.setPipeline(pipeline); pass.setBindGroup(0, group);
           pass.dispatchWorkgroups(Math.ceil(program.width / 64), program.height);
           pass.end();
-          encoder.copyBufferToBuffer(output, 0, readback, 0, size);
-          if (queries) {
+          if (presenter) presenter.encode(encoder, output, program.width, program.height);
+          if (copyPixels) {encoder.copyBufferToBuffer(output, 0, readback, 0, size);rgbaReadbacks++;}
+          if (timedQueries) {
             encoder.resolveQuerySet(queries, 0, 2, resolve, 0);
             encoder.copyBufferToBuffer(resolve, 0, readback, queryOffset, 16);
           }
           device.queue.submit([encoder.finish()]);dispatches++;
           // Completion includes upload, dispatch, RGBA readback and the copy
           // into JS-owned memory. Submission time alone is never a timing.
-          await readback.mapAsync(GPUMapMode.READ);
-          const mapped = readback.getMappedRange();
-          const pixels = new Uint8Array(mapped, 0, size).slice();
-          let kernel_ms = null;
-          if (queries) {
-            const times = new BigUint64Array(mapped, queryOffset, 2);
-            kernel_ms = Number(times[1] - times[0]) / 1e6;
-          }
-          readback.unmap();
+          let pixels, kernel_ms = null;
+          if (copyPixels || timedQueries) {
+            const offset = copyPixels ? 0 : queryOffset, length = copyPixels ? readbackSize : 16;
+            await readback.mapAsync(GPUMapMode.READ, offset, length);
+            const mapped = readback.getMappedRange(offset, length);
+            if (copyPixels) pixels = new Uint8Array(mapped, 0, size).slice();
+            if (timedQueries) {
+              const times = new BigUint64Array(mapped, copyPixels ? queryOffset : 0, 2);
+              kernel_ms = Number(times[1] - times[0]) / 1e6;
+            }
+            readback.unmap();
+          } else await device.queue.onSubmittedWorkDone();
           const wall_ms = performance.now() - started;
           const error = await device.popErrorScope();
           scoped = false;

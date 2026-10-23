@@ -17,7 +17,7 @@ const pdfPaths = [];
 for (let i = 3; i < process.argv.length; i++) if (process.argv[i] === '--pdf') pdfPaths.push(resolve(process.argv[++i]));
 const mime = {'.mjs': 'text/javascript', '.js': 'text/javascript', '.html': 'text/html', '.css': 'text/css', '.wgsl': 'text/plain', '.wasm': 'application/wasm', '.pdf': 'application/pdf'};
 const webFiles = new Set(['host_runtime.mjs', 'wasi.mjs', 'transport.mjs', 'failure.mjs']);
-const demoFiles = new Set(['index.html', 'style.css', 'app.mjs', 'engine.mjs', 'gpu.mjs', 'worker.mjs', 'samples.mjs', 'measure.mjs', 'composite.wgsl', 'raster.wgsl', 'raster.mjs', 'coverage.mjs', 'retained.mjs', 'retained-study.mjs', 'retained-zoom.mjs', 'retained-checks.mjs', 'retained-tests.mjs', 'checks.mjs', 'svg.mjs', 'zoom.mjs']);
+const demoFiles = new Set(['index.html', 'style.css', 'app.mjs', 'engine.mjs', 'gpu.mjs', 'worker.mjs', 'samples.mjs', 'measure.mjs', 'composite.wgsl', 'raster.wgsl', 'area.wgsl', 'present.wgsl', 'present.mjs', 'world.wgsl', 'world.mjs', 'world-gpu.mjs', 'world-checks.mjs', 'display-study.mjs', 'display-browser.mjs', 'display-panel.mjs', 'display-tests.mjs', 'raster.mjs', 'coverage.mjs', 'retained.mjs', 'retained-study.mjs', 'retained-zoom.mjs', 'retained-checks.mjs', 'retained-tests.mjs', 'checks.mjs', 'svg.mjs', 'zoom.mjs']);
 const fixtureIndex = [];
 for (const name of (await readdir(resolve(root, 'corpus/manifests'))).sort()) {
   if (!name.endsWith('.json')) continue;
@@ -63,7 +63,7 @@ if (mode === 'serve') {
   const chromePath = option('--chrome', process.env.CHROME_BIN ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
   const digest = bytes => createHash('sha256').update(bytes).digest('hex');
   const sourceFiles = [...demoFiles].map(file => `benchmarks/gpu-demo/${file}`).concat([
-    'crates/pagura-paint/src/prepare/gpu.rs', 'crates/pagura-paint/src/prepare/gpu/tests.rs', 'crates/pagura-paint/src/prepare/gpu_raster.rs', 'crates/pagura-paint/src/prepare/gpu_raster/shared.rs', 'benchmarks/gpu-demo/engine/src/cache.rs', 'benchmarks/gpu-demo/engine/src/tests.rs', 'crates/pagura-raster/src/band/gpu.rs', 'crates/pagura-raster/Cargo.toml', 'crates/pagura-paint/Cargo.toml', 'crates/pagura-raster/src/lib.rs', 'crates/pagura-raster/src/band.rs', 'crates/pagura-paint/src/prepare.rs', 'crates/pagura-paint/src/prepare/shapes.rs',
+    'crates/pagura-paint/src/prepare/gpu.rs', 'crates/pagura-paint/src/prepare/gpu/tests.rs', 'crates/pagura-paint/src/prepare/gpu_raster.rs', 'crates/pagura-paint/src/prepare/gpu_raster/shared.rs', 'crates/pagura-paint/src/prepare/gpu_world.rs', 'crates/pagura-paint/src/prepare/gpu_world/geometry.rs', 'crates/pagura-paint/src/prepare/gpu_world/patches.rs', 'crates/pagura-paint/src/prepare/gpu_world/tests.rs', 'crates/pagura-paint/src/execute/tests.rs', 'crates/pagura-paint/src/plan.rs', 'crates/pagura-paint/src/prepare/planner/runs.rs', 'benchmarks/gpu-demo/engine/src/world.rs', 'benchmarks/gpu-demo/engine/src/cache.rs', 'benchmarks/gpu-demo/engine/src/tests.rs', 'crates/pagura-raster/src/band/gpu.rs', 'crates/pagura-raster/Cargo.toml', 'crates/pagura-paint/Cargo.toml', 'crates/pagura-raster/src/lib.rs', 'crates/pagura-raster/src/band.rs', 'crates/pagura-paint/src/prepare.rs', 'crates/pagura-paint/src/prepare/shapes.rs',
     'benchmarks/gpu-demo/engine/Cargo.toml', 'benchmarks/gpu-demo/engine/Cargo.lock',
     'benchmarks/gpu-demo/engine/src/main.rs', 'benchmarks/gpu-demo/engine/src/svg.rs',
     'benchmarks/gpu-demo/engine/src/svg/images.rs', 'benchmarks/gpu-demo/engine/src/svg/clips.rs', 'benchmarks/gpu-demo/engine/src/svg/tests.rs',
@@ -106,6 +106,7 @@ if (mode === 'serve') {
     if (loaded.exceptionDetails) throw new Error(loaded.exceptionDetails.text);
     let expression;
     if (mode === 'probe') expression = `(async()=>{const {GpuBackend}=await import('/gpu.mjs'); const gpu=await GpuBackend.create(); const info=gpu.info;gpu.destroy();return info;})()`;
+    else if (mode.startsWith('world')) expression = `(async()=>{const {run}=await import('/world-checks.mjs');return run(${JSON.stringify({mode,samples:Number(option('--samples','100')),warmups:Number(option('--warmups','5')),dpis:option('--dpis','72,150,300').split(',').map(Number),zoom:!process.argv.includes('--skip-zoom')})});})()`;
     else if (mode.startsWith('retained')) expression = `(async()=>{const {run}=await import('/retained-checks.mjs');return run(${JSON.stringify({mode,samples:Number(option('--samples','100')),warmups:Number(option('--warmups','5')),dpis:option('--dpis','72,150,300').split(',').map(Number),zoom:!process.argv.includes('--skip-zoom')})});})()`;
     else if (mode.startsWith('coverage')) expression = `(async()=>{const {run}=await import('/coverage.mjs');return run(${JSON.stringify({mode, samples:Number(option('--samples','100')), warmups:Number(option('--warmups','5')), dpis:option('--dpis','72,150,300').split(',').map(Number)})});})()`;
     else expression = `(async()=>{const {run}=await import('/checks.mjs');return run(${JSON.stringify({mode, samples: Number(option('--samples', '100')), warmups: Number(option('--warmups', '5')), dpis: option('--dpis', '72,150,300').split(',').map(Number), zoom: !process.argv.includes('--skip-zoom'), realOnly: process.argv.includes('--real-only'), zoomSamples: Number(option('--zoom-samples', '18')), gestureFrames: Number(option('--gesture-frames', '60'))})});})()`;
@@ -125,7 +126,7 @@ if (mode === 'serve') {
       }
     }
     for (const file of [...demoFiles].sort()) source_hashes[`benchmarks/gpu-demo/${file}`] = digest(await readFile(resolve(here, file)));
-    for (const file of ['crates/pagura-paint/src/prepare/gpu.rs', 'crates/pagura-paint/src/prepare/gpu/tests.rs', 'crates/pagura-paint/src/prepare/gpu_raster.rs', 'crates/pagura-paint/src/prepare/gpu_raster/shared.rs', 'benchmarks/gpu-demo/engine/src/cache.rs', 'benchmarks/gpu-demo/engine/src/tests.rs', 'crates/pagura-raster/src/band/gpu.rs', 'crates/pagura-raster/Cargo.toml', 'crates/pagura-paint/Cargo.toml', 'crates/pagura-raster/src/lib.rs', 'crates/pagura-raster/src/band.rs', 'crates/pagura-paint/src/prepare.rs', 'crates/pagura-paint/src/prepare/shapes.rs',
+    for (const file of ['crates/pagura-paint/src/prepare/gpu.rs', 'crates/pagura-paint/src/prepare/gpu/tests.rs', 'crates/pagura-paint/src/prepare/gpu_raster.rs', 'crates/pagura-paint/src/prepare/gpu_raster/shared.rs', 'crates/pagura-paint/src/prepare/gpu_world.rs', 'crates/pagura-paint/src/prepare/gpu_world/geometry.rs', 'crates/pagura-paint/src/prepare/gpu_world/patches.rs', 'crates/pagura-paint/src/prepare/gpu_world/tests.rs', 'crates/pagura-paint/src/execute/tests.rs', 'crates/pagura-paint/src/plan.rs', 'crates/pagura-paint/src/prepare/planner/runs.rs', 'benchmarks/gpu-demo/engine/src/world.rs', 'benchmarks/gpu-demo/engine/src/cache.rs', 'benchmarks/gpu-demo/engine/src/tests.rs', 'crates/pagura-raster/src/band/gpu.rs', 'crates/pagura-raster/Cargo.toml', 'crates/pagura-paint/Cargo.toml', 'crates/pagura-raster/src/lib.rs', 'crates/pagura-raster/src/band.rs', 'crates/pagura-paint/src/prepare.rs', 'crates/pagura-paint/src/prepare/shapes.rs',
       'benchmarks/gpu-demo/engine/Cargo.toml', 'benchmarks/gpu-demo/engine/Cargo.lock', 'benchmarks/gpu-demo/engine/src/main.rs',
       'benchmarks/gpu-demo/engine/src/svg.rs', 'benchmarks/gpu-demo/engine/src/svg/images.rs', 'benchmarks/gpu-demo/engine/src/svg/clips.rs', 'benchmarks/gpu-demo/engine/src/svg/tests.rs',
       'benchmarks/gpu-demo/policy.json', 'web/host_runtime.mjs', 'web/transport.mjs', 'web/wasi.mjs']) source_hashes[file] = digest(await readFile(resolve(root, file)));
@@ -136,7 +137,7 @@ if (mode === 'serve') {
       sources_unchanged: Object.entries(source_hashes).every(([file, hash]) => initialHashes[file] === hash) && initialWasmHash === digest(await readFile(wasm))};
     if (!report.build.sources_unchanged) {report.failures ??= [];report.failures.push({error: 'Benchmark sources or WASM changed during the run'});}
     await writeFile(output, JSON.stringify(report, null, 2) + '\n');
-    console.log(JSON.stringify((mode === 'bench' || mode === 'coverage-bench' || mode === 'retained-bench') ? report.summary : ['test', 'svg-test', 'coverage-test', 'retained-test'].includes(mode) ? {
+    console.log(JSON.stringify((mode === 'bench' || mode === 'coverage-bench' || mode === 'retained-bench' || mode === 'world-bench') ? report.summary : ['test', 'svg-test', 'coverage-test', 'retained-test', 'world-test'].includes(mode) ? {
       fixtures: report.fixtures, admitted: report.admitted, gpu_variants: report.gpu_variants,
       fallback: report.fallback ?? report.unsupported, failures: report.failures, kernel_checks: report.kernel_checks,
     } : report, null, 2));

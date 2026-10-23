@@ -4,12 +4,14 @@ A comparison host branched from `render/one-pass` at
 `87fa81b64162281fccbdcae5564e1ec431022c4c`. It presents exact CPU output,
 approximate GPU area coverage through WebGPU and native Metal, an exact integer
 N16 GPU compositor using CPU coverage, and browser SVG exported from the shared
-scene. The default demo retains shared GPU geometry and compares it with CPU
-prepared-scene reuse. GPU coverage currently admits opaque solid RGB pages.
+scene. The demo retains shared GPU geometry and compares it with CPU
+prepared-scene reuse. A separate direct-display panel tests resolution-specific
+and fixed world geometry with WebGPU canvas and native Metal presentation. GPU coverage currently admits opaque solid RGB pages.
 This experiment does not change the production renderer or the scope of
 ADR 0004.
 
-[`RETAINED_GPU_RESULTS.md`](RETAINED_GPU_RESULTS.md) records the shared-geometry,
+[`DIRECT_GPU_RESULTS.md`](DIRECT_GPU_RESULTS.md) records the latest direct-display
+and world-geometry experiment. [`RETAINED_GPU_RESULTS.md`](RETAINED_GPU_RESULTS.md) records the shared-geometry,
 resource-retention and equivalent CPU reuse comparison, including new and
 revisited zoom targets. [`SVG_CLEANUP_RESULTS.md`](SVG_CLEANUP_RESULTS.md) records
 the retained SVG export cleanup. [`SVG_RESULTS.md`](SVG_RESULTS.md) preserves
@@ -100,7 +102,9 @@ is unavailable; the portable Rust and browser paths are unchanged.
 node benchmarks/gpu-demo/run.mjs coverage-test --output target/gpu-demo/coverage-fixtures.json
 node benchmarks/gpu-demo/run.mjs coverage-bench --samples 100 --warmups 5 \
   --pdf /absolute/path.pdf --output target/gpu-demo/coverage-browser.json
-swiftc -O benchmarks/gpu-demo/native/Host.swift -o target/gpu-demo/metal-host
+swiftc -O benchmarks/gpu-demo/native/Host.swift \
+  benchmarks/gpu-demo/native/Presentation.swift benchmarks/gpu-demo/native/World.swift \
+  -o target/gpu-demo/metal-host
 node benchmarks/gpu-demo/native/bench.mjs --samples 100 --warmups 5 \
   --pdf /absolute/path.pdf --output target/gpu-demo/coverage-native.json
 node benchmarks/gpu-demo/native/bench.mjs --fixtures \
@@ -318,3 +322,62 @@ not total physical memory. GPU cache limits cover nominal buffer sizes, includin
 readback, with at most three resolutions. The retained expanded control and
 shared path each hold one job during static comparisons and release both before
 zoom. Native independently enforces three handles and a 256 MiB buffer cap.
+
+
+## Direct display and fixed world geometry
+
+The additional panel compares CPU prepared-scene reuse, retained GPU with
+readback as a control, retained GPU with direct display, and fixed world
+geometry with direct display. Every mode rasterizes fresh whole-page pixels,
+then displays the same 480×480 top or centre viewport. Direct GPU frames use
+neither RGBA readback nor timestamp-query mapping. Explicit diagnostic
+readbacks and attachment captures occur outside timed samples. CPU and
+readback controls upload a fresh cropped viewport, rather than a full-page
+texture, to avoid charging unnecessary display traffic.
+
+`present.mjs`/`present.wgsl` draw the existing compute output directly into a
+WebGPU canvas. The native host uses a real `CAMetalLayer` in an AppKit window,
+not an offscreen timing substitute. An alternating eight-pixel footer outside
+the measured PDF viewport marks distinct native frames. Native samples keep
+presentation/discard counts and presented-only drawable timings. No discarded
+sample is silently retried or removed. Browser measurements end at two
+animation-frame opportunities, while native measurements include completion,
+presentation-or-discard callbacks and pipe transport. These clocks are not
+interchangeable, and neither measures photons at the display.
+
+`PreparedScene::gpu_world_program` exports a single 300-DPI vectorization for
+views at integer DPIs from 72 through 300. Source-local edge indices and fixed
+canonical tile bins are conservative over that interval. Geometry is uploaded
+once per document/page; one maximum-size output allocation is overwritten on
+every draw. At most three small view buffers remain resident. Per-view data
+contains placement transforms and sparse exceptional coverage cells, never
+edges or ordinary coverage rows. Native Metal independently validates the
+wire format and uses the same ownership model. Buffer budgets count nominal
+allocations, not process RSS or total driver memory.
+
+**New resolutions still run existing CPU preparation** to derive those
+corrections. Revisited views need no engine request, edge upload or pixel
+cache. Removing the view corrections causes visible errors; keeping them
+preserves the existing CPU certification boundary. Fixed vectorization is
+approximate and must not be called Exact. Hairlines, stroke adjustment,
+fixed-size annotations, zero-area device fills/clips/shading bounds and active
+nonrectangular clips explicitly refuse world admission. Other GPU paths and
+the CPU remain available. SVG export stays independent and reusable.
+
+The formal comparison uses 100 samples after five warmups per static DPI.
+Zoom measures twelve genuinely new DPIs (151–299), clearing prepared CPU state
+separately before each mode/target, followed by eighteen revisits to three
+retained views after three warmups. Store/recorded-scene/pipeline state stays
+warm. Geometry and view upload counters, readbacks, accuracy and cold costs
+are reported separately. `DIRECT_GPU_RESULTS.md` records outcomes and limits.
+
+```sh
+node benchmarks/gpu-demo/run.mjs world-test
+node benchmarks/gpu-demo/run.mjs world-ui-test
+node benchmarks/gpu-demo/native/world-checks.mjs \
+  --browser-report target/gpu-demo/display-fixtures.json
+node benchmarks/gpu-demo/run.mjs world-bench --samples 100 --warmups 5 \
+  --pdf /absolute/input.pdf --output target/gpu-demo/display-browser.json
+node benchmarks/gpu-demo/native/display.mjs --samples 100 --warmups 5 \
+  --pdf /absolute/input.pdf --output target/gpu-demo/display-native.json
+```

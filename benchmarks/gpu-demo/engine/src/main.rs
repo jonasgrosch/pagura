@@ -19,11 +19,13 @@ mod cache;
 mod svg;
 #[cfg(test)]
 mod tests;
+mod world;
 
 struct Session {
     document: Option<Document>,
     scene: Option<(usize, Scene)>,
     svg: Option<svg::Export>,
+    world: Option<Vec<u8>>,
     prepared: cache::Cache,
     output: Vec<u8>,
     store: Store,
@@ -37,6 +39,7 @@ impl Session {
             document: None,
             scene: None,
             svg: None,
+            world: None,
             prepared: cache::Cache::default(),
             output: Vec::new(),
             store: Store::new(MAX_FRAME),
@@ -69,6 +72,7 @@ impl Session {
             self.output = Vec::new();
             self.scene = None;
             self.svg = None;
+            self.world = None;
             self.document = None;
             self.store = Store::new(MAX_FRAME);
             self.scratch = Scratch::default();
@@ -98,7 +102,7 @@ impl Session {
                 Cow::Owned(Vec::new()),
             ));
         }
-        if !matches!(operation, 2..=10) || bytes.len() != 32 {
+        if !matches!(operation, 2..=12) || bytes.len() != 32 {
             return Err(Error::invalid_argument("invalid demo request"));
         }
         let page_index =
@@ -122,6 +126,7 @@ impl Session {
             .is_none_or(|(index, _)| *index != page_index)
         {
             self.svg = None;
+            self.world = None;
             self.prepared.clear(&mut self.scratch);
             let scene = Interpreter::new(document)
                 .with_provider(Some(&self.provider))
@@ -153,6 +158,32 @@ impl Session {
                 y1: word(bytes, 7)?,
             }
         };
+        if operation == 11 {
+            if region != page {
+                return Err(Error::invalid_argument("world demo exports whole pages"));
+            }
+            return match world::export(
+                &mut self.world,
+                scene,
+                document,
+                &self.store,
+                &mut self.scratch,
+                total,
+            ) {
+                Err(error)
+                    if matches!(error.kind, ErrorKind::Limit | ErrorKind::Unsupported(_)) =>
+                {
+                    Ok((
+                        format!(
+                            "{{\"ok\":true,\"fallback\":{}}}",
+                            json_string(&error.to_string())
+                        ),
+                        Cow::Owned(Vec::new()),
+                    ))
+                }
+                result => result,
+            };
+        }
         if operation == 4 {
             if region != page {
                 return Err(Error::invalid_argument("SVG demo exports whole pages"));
@@ -214,7 +245,7 @@ impl Session {
             OverprintMode::Ignore
         };
         let limits = document.limits();
-        if matches!(operation, 7 | 8 | 10) {
+        if matches!(operation, 7 | 8 | 10 | 12) {
             let start = Instant::now();
             let key = cache::Key([
                 word(bytes, 1)?,
@@ -256,7 +287,9 @@ impl Session {
                     render_bytes: MAX_FRAME,
                     ..limits
                 };
-                match if operation == 8 {
+                match if operation == 12 {
+                    entry.prepared.gpu_world_patches(&export_limits)
+                } else if operation == 8 {
                     entry.prepared.gpu_shared_program(&export_limits)
                 } else {
                     entry.prepared.gpu_raster_program(&export_limits, true)

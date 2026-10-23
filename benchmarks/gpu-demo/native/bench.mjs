@@ -16,7 +16,7 @@ const digest = b => createHash('sha256').update(b).digest('hex');
 const enginePath=resolve(option('--binary','target/gpu-demo/release/pagura-gpu-demo'));
 const metalPath=resolve(option('--metal','target/gpu-demo/metal-host'));
 const shaderPath=resolve(root,'benchmarks/gpu-demo/native/raster.metal');
-const files=['benchmarks/gpu-demo/native/transport.mjs','benchmarks/gpu-demo/native/bench.mjs','benchmarks/gpu-demo/native/Host.swift','benchmarks/gpu-demo/native/raster.metal', 'crates/pagura-paint/src/prepare/gpu_raster.rs','crates/pagura-raster/src/band/gpu.rs'];
+const files=['benchmarks/gpu-demo/native/transport.mjs','benchmarks/gpu-demo/native/bench.mjs','benchmarks/gpu-demo/native/Host.swift','benchmarks/gpu-demo/native/Presentation.swift','benchmarks/gpu-demo/native/World.swift','benchmarks/gpu-demo/native/area.metal','benchmarks/gpu-demo/native/world.metal','benchmarks/gpu-demo/native/present.metal','benchmarks/gpu-demo/native/raster.metal', 'crates/pagura-paint/src/prepare/gpu_raster.rs','crates/pagura-raster/src/band/gpu.rs'];
 const hashes=Object.fromEntries(await Promise.all(files.map(async p=>[p,digest(await readFile(resolve(root,p)))])));
 const binaryHash=digest(await readFile(enginePath)),metalHash=digest(await readFile(metalPath));
 const engine=new Host(enginePath),metal=new Host(metalPath,[shaderPath],true);

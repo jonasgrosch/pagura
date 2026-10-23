@@ -28,6 +28,15 @@ impl<'a> Geometry<'a> {
         }
     }
 
+    /// The continuous rectangular clip, when present, in device coordinates.
+    pub fn rectangle_clip(self) -> Option<[f64; 4]> {
+        self.0
+            .clip
+            .as_ref()
+            .and_then(crate::ClipShape::rect)
+            .map(|r| [r.left, r.top, r.right, r.bottom])
+    }
+
     /// Its fill rule.
     pub fn rule(self) -> FillRule {
         self.0.rule

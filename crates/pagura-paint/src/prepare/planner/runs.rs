@@ -133,6 +133,8 @@ impl Planner<'_> {
             work: 0,
         });
         open.glyphs.push(Glyph {
+            #[cfg(feature = "gpu-demo")]
+            serial: placed.serial,
             shape: placed.shape,
             bounds: placed.bounds,
             bands,

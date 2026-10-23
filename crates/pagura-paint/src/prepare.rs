@@ -14,6 +14,8 @@ mod finish;
 pub mod gpu;
 #[cfg(feature = "gpu-demo")]
 mod gpu_raster;
+#[cfg(feature = "gpu-demo")]
+mod gpu_world;
 mod overprint;
 pub(crate) mod planner;
 mod shapes;
